@@ -66,8 +66,9 @@ AC_SUBST(PGSINC)
 
 AC_DEFUN([JH_LIST_SOURCES],
 [
-F90SOURCES=`grep -v '\#' f90_files.lis|tr '\n' ' '`
-CSOURCES=`cat c_files.lis|tr '\n' ' '`
+dir="$1"
+F90SOURCES=`grep -v '\#' $dir/f90_files.lis|tr '\n' ' '`
+CSOURCES=`cat $dir/c_files.lis|tr '\n' ' '`
 AC_SUBST(F90SOURCES)
 AC_SUBST(CSOURCES)
 

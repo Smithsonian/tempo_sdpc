@@ -1,0 +1,17 @@
+
+
+@SET_MAKE@
+
+RM = /bin/rm
+
+all:
+	cd src/L1b_L2; $(MAKE) all
+
+install:
+	cd src/L1b_L2; $(MAKE) install
+
+clean:
+	cd src/L1b_L2; $(MAKE) clean
+
+confclean:
+	-$(RM) Makefile config.status config.log config.cache

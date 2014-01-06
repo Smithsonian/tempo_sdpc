@@ -3,8 +3,9 @@
 EXECUTABLE = L1b_L2
 
 config_dir = @CONFIG_DIR@
-objdir     = $(config_dir)/objs
-msgdir     = $(config_dir)/msgs
+srcdir     = $(config_dir)/src/L1b_L2
+objdir     = $(srcdir)/objs
+msgdir     = $(srcdir)/msgs
 
 prefix     = @prefix@
 bindir     = $(prefix)/bin
@@ -161,6 +162,6 @@ rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
 	./mkrules.sh c $(CSOURCES) >> rules.inc
 
 ODIR = $(objdir)
-SDIR = $(config_dir)
+SDIR = $(srcdir)
 -include rules.inc
 
