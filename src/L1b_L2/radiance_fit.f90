@@ -77,10 +77,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
+    procedure(), pointer :: objective => null()
     INTEGER (KIND=i4) :: i, j, idx, j1, j2, k1, k2, l, ll_rad, lu_rad, index
     INTEGER (KIND=i4) :: n_fitwav_rad, locitnum, n_nozero_wgt
     REAL    (KIND=r8)                                         :: asum, ssum
-    REAL    (KIND=r8)                                         :: mean, mdev, sdev, loclim, normfac, mfac
+    REAL    (KIND=r8)                                         :: mean, sdev, loclim, normfac, mfac
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc)                  :: fitres, fitspec, tmp
     REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad, n_fitvar_rad) :: covar_matrix
@@ -257,112 +258,158 @@ CONTAINS
     ! -------------------------------------
     ALLOCATE ( covar(1:n_fitvar_rad,1:n_fitvar_rad) )
     covar = r8_missval
+
     ! ------------------------------------------------------------------------------
     ! For certain PGEs we use a fitting function that corrects the O3 cross sections
     ! with a quadratic polynomial in wavelength, to account for the fact that O3
     ! absorption can vary greatly in magnitude over the fitting window (HH bands).
     ! ------------------------------------------------------------------------------
-    IF ( yn_o3amf_cor ) THEN
+    if (yn_o3amf_cor) then
+      objective => specfit_func_o3exp
+    else
+      objective => specfit_func
+    endif
+
+    radfit_itnum = 0
+    j = 0
+
+    new_fit_loop: do
+
       CALL spec_fit (                                                    &
         n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,             &
         lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad, &
         covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
-        fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func_o3exp )
-    ELSE
-      CALL spec_fit (                                                    &
-        n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,             &
-        lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad, &
-        covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
-        fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func      )
-    END IF
+        fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, objective )
 
-    covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
+      !IF ( yn_o3amf_cor ) THEN
+      !  CALL spec_fit (                                                    &
+      !    n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,             &
+      !    lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad, &
+      !    covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
+      !    fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func_o3exp )
+      !ELSE
+      !  CALL spec_fit (                                                    &
+      !    n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,             &
+      !    lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad, &
+      !    covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
+      !    fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func      )
+      !END IF
 
-    ! ------------------------------------------
-    ! Assign iteration number from the first fit
-    ! ------------------------------------------
-    radfit_itnum = locitnum
+      covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
 
-    n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
-    mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
-    sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
-    mdev         = SUM  ( ABS(fitres(1:n_rad_wvl_loc)-mean) )       / REAL(n_nozero_wgt, KIND=r8)
-    loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
+      n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
+      mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
+      sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+      loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
 
-    ! ----------------------
-    ! Fitting RMS and CHI**2
-    ! ----------------------
-    IF ( n_nozero_wgt > 0 ) THEN
-      rms     = SQRT ( SUM ( fitres(1:n_rad_wvl_loc)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-      ! ---------------------------------------------
-      ! This gives the same CHI**2 as the NR routines
-      ! ---------------------------------------------
-      chisquav = SUM  ( fitres(1:n_rad_wvl_loc)**2 )
-    ELSE
-      rms      = r8_missval
-      chisquav = r8_missval
-    END IF
+      ! ----------------------
+      ! Fitting RMS and CHI**2
+      ! ----------------------
+      IF ( n_nozero_wgt > 0 ) THEN
+        rms     = SQRT ( SUM ( fitres(1:n_rad_wvl_loc)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
+        ! ---------------------------------------------
+        ! This gives the same CHI**2 as the NR routines
+        ! ---------------------------------------------
+        chisquav = SUM  ( fitres(1:n_rad_wvl_loc)**2 )
+      ELSE
+        rms      = r8_missval
+        chisquav = r8_missval
+      END IF
 
-    IF ( do_reference_fit ) xtrack_fitres_limit(ipix) = loclim
+      radfit_itnum = radfit_itnum + locitnum
+      j = j + 1
 
-    IF ( ( num_fitres_loops                    >  0             ) .AND. &
-        ( loclim                           >  0.0_r8        ) .AND. &
-        ( MAXVAL(ABS(fitres(1:n_rad_wvl_loc))) >= loclim        ) .AND. &
-        ( n_nozero_wgt                     >  n_fitvar_rad  )          ) THEN
+      if (j == 1) then
+        ! (jch) Original code saved loclim only from the first iteration,
+        !       so I kept that behavior, even though it looked odd.
+        !       Is this a bug? FIXME?
+        if ( do_reference_fit) xtrack_fitres_limit(ipix) = loclim
 
-      fitloop: DO j = 1, num_fitres_loops
+        ! (jch)  It seems to me that loclim could be negative,
+        !        but the original code iterates further only if loclim > 0.
+        !        Is this a bug?  FIXME?
+        if (.not. ((num_fitres_loops > 0) &
+                   .and. (loclim > 0.0_r8) &
+                   .and. (n_nozero_wgt >  n_fitvar_rad))) then
+          exit new_fit_loop
+        endif
+      endif
 
-        WHERE ( ABS(fitres(1:n_rad_wvl_loc)) >= loclim )
-          fitweights(1:n_rad_wvl_loc) = downweight
-        END WHERE
+      if ((j > num_fitres_loops) &
+          .or. (MAXVAL(ABS(fitres(1:n_rad_wvl_loc))) < loclim)) then
+        exit new_fit_loop
+      endif
 
-        IF ( yn_o3amf_cor ) THEN
-          CALL spec_fit (                                                     &
-            n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,              &
-            lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad,  &
-            covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc),  &
-            fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func_o3exp )
-        ELSE
-          CALL spec_fit (                                                     &
-            n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,              &
-            lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad,  &
-            covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc),  &
-            fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func       )
-        END IF
-        covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
+      WHERE ( ABS(fitres(1:n_rad_wvl_loc)) >= loclim )
+        fitweights(1:n_rad_wvl_loc) = downweight
+      END WHERE
 
-        ! -----------------------------
-        ! Add any subsequent iterations
-        ! -----------------------------
-        radfit_itnum = radfit_itnum + locitnum
+    enddo new_fit_loop
 
-        n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
-        mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
-        sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
-        loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
-
-        ! ----------------------
-        ! Fitting RMS and CHI**2
-        ! ----------------------
-        IF ( n_nozero_wgt > 0 ) THEN
-          rms     = SQRT ( SUM ( fitres(1:n_rad_wvl_loc)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-          ! ---------------------------------------------
-          ! This gives the same CHI**2 as the NR routines
-          ! ---------------------------------------------
-          chisquav = SUM  ( fitres(1:n_rad_wvl_loc)**2 )
-        ELSE
-          rms      = r8_missval
-          chisquav = r8_missval
-        END IF
-
-        ! ---------------------------------------------------------------
-        ! Exit iteration loop if fitting residual is within contstraints.
-        ! Save the (spike-adjusted) radiance reference fitting weights .
-        ! ---------------------------------------------------------------
-        IF ( MAXVAL(ABS(fitres(1:n_rad_wvl_loc))) < loclim ) EXIT fitloop
-
-      END DO fitloop
-    END IF
+    !IF ( ( num_fitres_loops                    >  0             ) .AND. &
+    !    ( loclim                           >  0.0_r8        ) .AND. &
+    !    ( MAXVAL(ABS(fitres(1:n_rad_wvl_loc))) >= loclim        ) .AND. &
+    !    ( n_nozero_wgt                     >  n_fitvar_rad  )          ) THEN
+    !
+    !  fitloop: DO j = 1, num_fitres_loops
+    !
+    !    WHERE ( ABS(fitres(1:n_rad_wvl_loc)) >= loclim )
+    !      fitweights(1:n_rad_wvl_loc) = downweight
+    !    END WHERE
+    !
+    !    CALL spec_fit (                                                     &
+    !      n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,              &
+    !      lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad,  &
+    !      covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc),  &
+    !      fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, objective )
+    !
+    !    !IF ( yn_o3amf_cor ) THEN
+    !    !  CALL spec_fit (                                                     &
+    !    !    n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,              &
+    !    !    lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad,  &
+    !    !    covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc),  &
+    !    !    fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func_o3exp )
+    !    !ELSE
+    !    !  CALL spec_fit (                                                     &
+    !    !    n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,              &
+    !    !    lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad,  &
+    !    !    covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc),  &
+    !    !    fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func       )
+    !    !END IF
+    !    covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
+    !
+    !    ! -----------------------------
+    !    ! Add any subsequent iterations
+    !    ! -----------------------------
+    !    radfit_itnum = radfit_itnum + locitnum
+    !
+    !    n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
+    !    mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
+    !    sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+    !    loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
+    !
+    !    ! ----------------------
+    !    ! Fitting RMS and CHI**2
+    !    ! ----------------------
+    !    IF ( n_nozero_wgt > 0 ) THEN
+    !      rms     = SQRT ( SUM ( fitres(1:n_rad_wvl_loc)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
+    !      ! ---------------------------------------------
+    !      ! This gives the same CHI**2 as the NR routines
+    !      ! ---------------------------------------------
+    !      chisquav = SUM  ( fitres(1:n_rad_wvl_loc)**2 )
+    !    ELSE
+    !      rms      = r8_missval
+    !      chisquav = r8_missval
+    !    END IF
+    !
+    !    ! ---------------------------------------------------------------
+    !    ! Exit iteration loop if fitting residual is within contstraints.
+    !    ! Save the (spike-adjusted) radiance reference fitting weights .
+    !    ! ---------------------------------------------------------------
+    !    IF ( MAXVAL(ABS(fitres(1:n_rad_wvl_loc))) < loclim ) EXIT fitloop
+    !
+    !  END DO fitloop
+    !END IF
 
     ! ----------------------------------------
     ! De-allocate memory for COVARIANCE MATRIX
