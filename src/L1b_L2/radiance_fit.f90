@@ -1,4 +1,11 @@
 MODULE radiance_fit
+  USE OMSAO_precision_module, only : i4, r8
+  USE fitting_functions, only: num_fitfunc_calls, num_fitfunc_jacobi, max_fitfunc_calls
+
+  private new_spec_fit, spectrum_residuals, spectrum_residuals_o3exp
+
+  INTEGER (KIND=i4), PARAMETER, PRIVATE :: forever = HUGE(1_i4)  
+  
 CONTAINS
   SUBROUTINE fit_radiance ( &
       pge_idx, ipix, num_fitres_loops, fitres_range, do_reference_fit, &
@@ -35,7 +42,8 @@ CONTAINS
       yn_lqh2o_prefit,lqh2o_prefit_var,lqh2o_prefit_fitidx
     USE omi_pge_fitting_aux, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
-    USE fitting_functions, ONLY: specfit_func_o3exp, specfit_func, spec_fit
+    !USE fitting_functions, ONLY: specfit_func_o3exp, specfit_func, spec_fit
+    USE spectra, ONLY: spectrum_earthshine, spectrum_earthshine_o3exp
     IMPLICIT NONE
 
     ! *******************************************************************
@@ -77,7 +85,8 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    procedure(), pointer :: objective => null()
+    procedure(), pointer :: objective_residuals => null()
+    procedure(), pointer :: objective_spectrum => null()
     INTEGER (KIND=i4) :: i, j, idx, j1, j2, k1, k2, l, ll_rad, lu_rad, index
     INTEGER (KIND=i4) :: n_fitwav_rad, locitnum, n_nozero_wgt
     REAL    (KIND=r8)                                         :: asum, ssum
@@ -85,7 +94,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc)                  :: fitres, fitspec, tmp
     REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad, n_fitvar_rad) :: covar_matrix
-    REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE           :: covar
+    !REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE           :: covar
 
     REAL    (KIND=r8) :: fitcol_saved
 
@@ -256,8 +265,9 @@ CONTAINS
     ! -------------------------------------
     ! Allocate memory for COVARIANCE MATRIX
     ! -------------------------------------
-    ALLOCATE ( covar(1:n_fitvar_rad,1:n_fitvar_rad) )
-    covar = r8_missval
+    !ALLOCATE ( covar(1:n_fitvar_rad,1:n_fitvar_rad) )
+    !covar = r8_missval
+    covar_matrix = r8_missval
 
     ! ------------------------------------------------------------------------------
     ! For certain PGEs we use a fitting function that corrects the O3 cross sections
@@ -265,9 +275,11 @@ CONTAINS
     ! absorption can vary greatly in magnitude over the fitting window (HH bands).
     ! ------------------------------------------------------------------------------
     if (yn_o3amf_cor) then
-      objective => specfit_func_o3exp
+      objective_residuals => spectrum_residuals_o3exp
+      objective_spectrum => spectrum_earthshine_o3exp
     else
-      objective => specfit_func
+      objective_residuals => spectrum_residuals
+      objective_spectrum => spectrum_earthshine
     endif
 
     radfit_itnum = 0
@@ -275,11 +287,15 @@ CONTAINS
 
     new_fit_loop: do
 
-      CALL spec_fit (                                                    &
+      CALL new_spec_fit (                                                &
         n_fitvar_rad, fitvar(1:n_fitvar_rad), n_rad_wvl_loc,             &
         lobnd(1:n_fitvar_rad), upbnd(1:n_fitvar_rad), max_itnum_rad, &
-        covar(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
-        fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, objective )
+        covar_matrix(1:n_fitvar_rad, 1:n_fitvar_rad), fitspec(1:n_rad_wvl_loc), &
+        fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, objective_residuals)
+
+      call objective_spectrum ( &
+        n_rad_wvl_loc, n_fitvar_rad, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
+        fitspec(1:n_rad_wvl_loc), fitvar(1:n_fitvar_rad), yn_doas)
 
       !IF ( yn_o3amf_cor ) THEN
       !  CALL spec_fit (                                                    &
@@ -295,7 +311,7 @@ CONTAINS
       !    fitres(1:n_rad_wvl_loc), radfit_exval, locitnum, specfit_func      )
       !END IF
 
-      covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
+      !covar_matrix(1:n_fitvar_rad,1:n_fitvar_rad) = covar(1:n_fitvar_rad,1:n_fitvar_rad)
 
       n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
       mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
@@ -414,7 +430,7 @@ CONTAINS
     ! ----------------------------------------
     ! De-allocate memory for COVARIANCE MATRIX
     ! ----------------------------------------
-    IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
+    !IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
 
     ! ---------------------------------------------------------------------
     ! Save correlation information from covariance matrix !gga to real corr
@@ -608,4 +624,310 @@ CONTAINS
     RETURN
   END SUBROUTINE fit_radiance
 
+  SUBROUTINE new_spec_fit (                                 &
+      nfitvar, fitvar, nspecpts, lowbnd, uppbnd, max_itnum, &
+      covar, fitspec, fitres, exval, itnum, fitfunc           )
+
+    USE OMSAO_indices_module,        ONLY: elsunc_userdef
+    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_NP, ELSUNC_NW
+    USE OMSAO_variables_module,      ONLY: &
+      tol, epsrel, epsabs, epsx !, num_fitfunc_calls, num_fitfunc_jacobi, max_fitfunc_calls
+    USE OMSAO_elsunc_fitting_module, ONLY: elsunc
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER (KIND=i4),                       INTENT (IN) :: nfitvar, nspecpts, max_itnum
+    REAL    (KIND=r8), DIMENSION (nfitvar),  INTENT (IN) :: lowbnd, uppbnd
+
+    ! ==================
+    ! Modified variables
+    ! ==================
+    REAL (KIND=r8), DIMENSION (nfitvar),  INTENT (INOUT) :: fitvar
+
+    ! ================
+    ! Output variables
+    ! ================
+    INTEGER (KIND=i4),                              INTENT (OUT) :: exval, itnum
+    REAL    (KIND=r8), DIMENSION (nfitvar,nfitvar), INTENT (OUT) :: covar
+    REAL    (KIND=r8), DIMENSION (nspecpts),        INTENT (OUT) :: fitres, fitspec
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER (KIND=i4)                               :: elbnd
+    INTEGER (KIND=i4), DIMENSION (ELSUNC_NP)        :: p
+    REAL    (KIND=r8), DIMENSION (ELSUNC_NW)        :: w
+    REAL    (KIND=r8), DIMENSION (nfitvar)          :: blow, bupp
+    REAL    (KIND=r8), DIMENSION (nspecpts)         :: f
+    REAL    (KIND=r8), DIMENSION (nspecpts,nfitvar) :: dfda
+    INTEGER :: exit_val_local
+
+    EXTERNAL fitfunc
+
+    ! ===============================================================
+    ! ELBND: 0 = unconstrained
+    !        1 = all variables have same lower bound
+    !        else: lower and upper bounds must be supplied by the use
+    ! ===============================================================
+    elbnd = elsunc_userdef
+
+    exit_val_local = 0 ; itnum = 0
+
+    p   = -1    ;  p(1)   = 0  ;  p(3) = max_itnum
+    w   = -1.0  ;  w(1:4) = (/ tol,  epsrel,  epsabs,  epsx /)
+
+    blow(1:nfitvar) = lowbnd(1:nfitvar)
+    bupp(1:nfitvar) = uppbnd(1:nfitvar)
+
+    ! ---------------------------------------------------------------------------------
+    ! Reset to ZERO the number of calls to the fitting function, NUM_FITFUNC_CALLS.
+    ! This variable is incremented with each call to the fitting function and
+    ! checked agains MAX_FITFUNC_CALLS. Exceeded function calls lead to uncomputability
+    ! followed by termination of the iteration process.
+    ! ---------------------------------------------------------------------------------
+    num_fitfunc_calls = 0 ; num_fitfunc_jacobi = 0
+    max_fitfunc_calls = max_itnum * nfitvar * nfitvar ! Empiric value
+    IF ( max_itnum < 0 ) max_fitfunc_calls = forever
+
+    ! Use a local variable for the exit value since elsunc uses a integer, which
+    ! may be a different size from i4.
+    CALL elsunc ( &
+      fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts, fitfunc, elbnd, blow(1:nfitvar), &
+      bupp(1:nfitvar), p, w, exit_val_local, &
+      f(1:nspecpts), dfda(1:nspecpts,1:nfitvar) )
+
+    exval = exit_val_local
+
+    ! -----------------------------
+    ! Save the number of iterations
+    ! -----------------------------
+    itnum = p(6)
+
+    ! ------------------------------------------------------------------
+    ! Call to ELSUNC fitting function to obtain complete fitted spectrum
+    ! ------------------------------------------------------------------
+    !CALL fitfunc ( fitvar(1:nfitvar), nfitvar, fitspec(1:nspecpts), nspecpts, 3, dfda, 0 )
+
+    ! ---------------------------------------------------------------
+    ! Compute fitting residual
+    ! FITRES is the negative of the returned function F = Model-Data.
+    ! ---------------------------------------------------------------
+    fitres(1:nspecpts) = -f(1:nspecpts)
+
+    ! Covariance matrix.
+    ! ------------------
+    covar(1:nfitvar,1:nfitvar) = dfda(1:nfitvar,1:nfitvar)
+
+    RETURN
+  END SUBROUTINE new_spec_fit
+
+  SUBROUTINE spectrum_residuals ( fitvar, nfitvar, ymod, npoints, ctrl, dyda, mdy )
+
+    !
+    !     Calculates the spectrum and its derivatives for ELSUNC
+    !
+    ! NOTE: the variable DYDA as required here is the transpose of that
+    !       rquired for the Numerical Recipes
+    !
+
+    USE OMSAO_elsunc_fitting_module, ONLY : &
+      ELSUNC_INFLOOP_EVAL
+    USE OMSAO_variables_module, ONLY : &
+      yn_doas, fitwavs, fitweights, currspec, rad_wav_avg, &
+      lobnd, upbnd !, num_fitfunc_calls, num_fitfunc_jacobi, max_fitfunc_calls
+    USE spectra, ONLY: spectrum_earthshine
+
+    IMPLICIT NONE
+
+    INTEGER (KIND=i4),                              INTENT (IN)    :: nfitvar, npoints, mdy
+    INTEGER (KIND=i4),                              INTENT (INOUT) :: ctrl
+    REAL    (KIND=r8), DIMENSION (nfitvar),         INTENT (INOUT) :: fitvar
+    REAL    (KIND=r8), DIMENSION (npoints),         INTENT (INOUT) :: ymod
+    REAL    (KIND=r8), DIMENSION (npoints,nfitvar), INTENT (INOUT) :: dyda
+
+    REAL    (KIND=r8), DIMENSION (npoints)       :: locwvl
+
+    locwvl(1:npoints) = fitwavs(1:npoints)
+
+    SELECT CASE ( ABS ( ctrl ) )
+    CASE ( 1 )
+      ! -------------------------------------------------
+      ! Count the number of calls to the fitting function
+      ! and terminate if we exceed the allowed maximum.
+      ! -------------------------------------------------
+      num_fitfunc_calls = num_fitfunc_calls + 1
+      IF ( num_fitfunc_calls > max_fitfunc_calls ) THEN
+        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+        RETURN
+      END IF
+      ! -------------------------------------------------------------
+      ! Check whether any of the fitting variables are out of bounds.
+      ! If so, indicate uncomputability and return. "Uncomputability"
+      ! is indicated by setting  CTRL to < -10.
+      ! (NOTE that this is slightly different from the description in
+      ! the ELSUNC fitting module).
+      ! -------------------------------------------------------------
+      IF ( ANY(fitvar(1:nfitvar) < lobnd(1:nfitvar)) .OR. &
+          ANY(fitvar(1:nfitvar) > upbnd(1:nfitvar)) ) THEN
+        ! DON'T USE THIS! ctrl = INT(ELSUNC_PARSOOB_EVAL, KIND=i4)
+        ctrl = -1
+        RETURN
+      END IF
+
+      ! -----------------------------------------------------------------------
+      ! Calculate the weighted difference between fitted and measured spectrum.
+      ! -----------------------------------------------------------------------
+      CALL spectrum_earthshine ( &
+        npoints, nfitvar, rad_wav_avg, locwvl(1:npoints), &
+        ymod(1:npoints), fitvar(1:nfitvar), & !database,
+        yn_doas )
+      !IF ( .NOT. yn_reference_fit ) THEN
+      !   WRITE (99,'(3I6)') num_fitfunc_calls, nfitvar, npoints
+      !   WRITE (99,'(1P100(E15.5:))') fitvar(1:nfitvar)
+      !   DO i = 1, npoints
+      !      WRITE (99,'(0PF12.4, 1P3E15.5)') locwvl(i), currspec(i), ymod(i), fitweights(i)
+      !   END DO
+      !END IF
+
+      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) * fitweights(1:npoints)
+
+    CASE ( 2 )
+      ! -------------------------------------------------
+      ! Count the number of calls to the fitting function
+      ! with request for the Jacobian and terminate if we
+      ! exceed the allowed maximum (just to be safe!).
+      ! -------------------------------------------------
+      num_fitfunc_jacobi = num_fitfunc_jacobi + 1
+      IF ( num_fitfunc_jacobi > max_fitfunc_calls ) THEN
+        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+        RETURN
+      END IF
+      ! ---------------------------------------------------------------------
+      ! The following sets up ELSUNC for numerical computation of the fitting
+      ! function derivative. It is faster and more flexible than the original
+      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
+      ! ---------------------------------------------------------------------
+      ctrl = 0; RETURN
+
+    !CASE ( 3 )
+    !  ! Calculate the spectrum, without weighting
+    !  CALL spectrum_earthshine ( &
+    !    npoints, nfitvar, rad_wav_avg, locwvl(1:npoints), &
+    !    ymod(1:npoints), fitvar(1:nfitvar), & !database,
+    !    yn_doas )
+
+    CASE DEFAULT
+      !WRITE (*,'(A,I4)') &
+      !     "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL = ", ctrl
+    END SELECT
+
+    RETURN
+  END SUBROUTINE spectrum_residuals
+
+  SUBROUTINE spectrum_residuals_o3exp ( fitvar, nfitvar, ymod, npoints, ctrl, dyda, mdy )
+
+    !
+    !     Calculates the spectrum and its derivatives for ELSUNC
+    !
+    ! NOTE: the variable DYDA as required here is the transpose of that
+    !       rquired for the Numerical Recipes
+    !
+
+    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_INFLOOP_EVAL
+    USE OMSAO_variables_module, ONLY : &
+      yn_doas, rad_wav_avg, fitwavs, fitweights, currspec, &
+      lobnd, upbnd!, num_fitfunc_calls, num_fitfunc_jacobi, max_fitfunc_calls
+    USE spectra, ONLY: spectrum_earthshine_o3exp
+
+    IMPLICIT NONE
+
+    INTEGER (KIND=i4),                              INTENT (IN)    :: nfitvar, npoints, mdy
+    INTEGER (KIND=i4),                              INTENT (INOUT) :: ctrl
+    REAL    (KIND=r8), DIMENSION (nfitvar),         INTENT (INOUT) :: fitvar
+    REAL    (KIND=r8), DIMENSION (npoints),         INTENT (INOUT) :: ymod
+    REAL    (KIND=r8), DIMENSION (npoints,nfitvar), INTENT (INOUT) :: dyda
+
+    REAL    (KIND=r8), DIMENSION (npoints)       :: locwvl
+
+    locwvl(1:npoints) = fitwavs(1:npoints)
+
+    SELECT CASE ( ABS ( ctrl ) )
+    CASE ( 1 )
+      ! -------------------------------------------------
+      ! Count the number of calls to the fitting function
+      ! and terminate if we exceed the allowed maximum.
+      ! -------------------------------------------------
+      num_fitfunc_calls = num_fitfunc_calls + 1
+      IF ( num_fitfunc_calls > max_fitfunc_calls ) THEN
+        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+        RETURN
+      END IF
+      ! -------------------------------------------------------------
+      ! Check whether any of the fitting variables are out of bounds.
+      ! If so, indicate uncomputability and return. "Uncomputability"
+      ! is indicated by setting  CTRL to < -10.
+      ! (NOTE that this is slightly different from the description in
+      ! the ELSUNC fitting module).
+      ! -------------------------------------------------------------
+      IF ( ANY(fitvar(1:nfitvar) < lobnd(1:nfitvar)) .OR. &
+          ANY(fitvar(1:nfitvar) > upbnd(1:nfitvar)) ) THEN
+        ! DON'T USE THIS! ctrl = INT(ELSUNC_PARSOOB_EVAL, KIND=i4)
+        ctrl = -1
+        RETURN
+      END IF
+
+      ! -----------------------------------------------------------------------
+      ! Calculate the weighted difference between fitted and measured spectrum.
+      ! -----------------------------------------------------------------------
+      CALL spectrum_earthshine_o3exp ( &
+        npoints, nfitvar, rad_wav_avg, locwvl(1:npoints), &
+        ymod(1:npoints), fitvar(1:nfitvar), & !database,
+        yn_doas )
+
+      !WRITE (*,'(1P100(E12.4:))') fitvar(1:nfitvar)
+      !IF ( .NOT. yn_reference_fit ) THEN
+      !   WRITE (99,'(3I6)') num_fitfunc_calls, nfitvar, npoints
+      !   WRITE (99,'(1P100(E15.5:))') fitvar(1:nfitvar)
+      !   DO i = 1, npoints
+      !      WRITE (99,'(0PF12.4, 1P3E15.5)') locwvl(i), currspec(i), ymod(i), fitweights(i)
+      !   END DO
+      !END IF
+
+      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) * fitweights(1:npoints)
+    CASE ( 2 )
+      ! -------------------------------------------------
+      ! Count the number of calls to the fitting function
+      ! with request for the Jacobian and terminate if we
+      ! exceed the allowed maximum (just to be safe!).
+      ! -------------------------------------------------
+      num_fitfunc_jacobi = num_fitfunc_jacobi + 1
+      IF ( num_fitfunc_jacobi > max_fitfunc_calls ) THEN
+        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+        RETURN
+      END IF
+      ! ---------------------------------------------------------------------
+      ! The following sets up ELSUNC for numerical computation of the fitting
+      ! function derivative. It is faster and more flexible than the original
+      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
+      ! ---------------------------------------------------------------------
+      ctrl = 0; RETURN
+
+    !CASE ( 3 )
+    !  ! Calculate the spectrum, without weighting
+    !  CALL spectrum_earthshine_o3exp ( &
+    !    npoints, nfitvar, rad_wav_avg, locwvl(1:npoints), &
+    !    ymod(1:npoints), fitvar(1:nfitvar), & !database,
+    !    yn_doas )
+
+    CASE DEFAULT
+      !WRITE (*,'(A,I4)') &
+      !     "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL = ", ctrl
+    END SELECT
+
+    RETURN
+  END SUBROUTINE spectrum_residuals_o3exp
+  
 END MODULE
