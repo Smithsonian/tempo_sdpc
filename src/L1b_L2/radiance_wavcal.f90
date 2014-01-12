@@ -1,6 +1,13 @@
 MODULE radiance_wavcal
+  use optimizer_interface_module
+  use elsunc_interface_module
+  use spectra, only: spectrum_solar
+
+  public radiance_wavecal
+  private solar_residuals
+
 CONTAINS
-SUBROUTINE radiance_wavecal (                              &
+SUBROUTINE radiance_wavecal (                            &
     ipix, n_fitres_loop, fitres_range, n_rad_wvl,        &
     curr_rad_spec, radcal_exval, radcal_itnum, chisquav, &
     is_bad_pixel, errstat )
@@ -20,7 +27,6 @@ SUBROUTINE radiance_wavecal (                              &
     max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor, yn_newshift, sol_wav_avg
   USE OMSAO_errstat_module
   USE omi_pge_fitting_aux, ONLY: compute_common_mode
-  USE fitting_functions, ONLY: specfit_func_sol, spec_fit
   IMPLICIT NONE
 
   ! ----------------
@@ -45,9 +51,9 @@ SUBROUTINE radiance_wavecal (                              &
   REAL    (KIND=r8)  :: mean, sdev, loclim
   REAL    (KIND=r8), DIMENSION (n_rad_wvl)         :: fitres, fitspec
   REAL    (KIND=r8), DIMENSION (max_calfit_idx)    :: fitvar
-  REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE  :: covar
 
-  !EXTERNAL specfit_func_sol
+  type(optimizer_type) :: opt
+  integer (kind=i4) :: return_status
 
   is_bad_pixel = .FALSE.
 
@@ -119,11 +125,6 @@ SUBROUTINE radiance_wavecal (                              &
     is_bad_pixel = .TRUE.  ;  RETURN
   END IF
 
-  ! -------------------------------------
-  ! Allocate memory for COVARIANCE MATRIX
-  ! -------------------------------------
-  ALLOCATE ( covar(1:n_fitvar_cal,1:n_fitvar_cal) )
-
   loclim = 0.0_r8
   radcal_itnum = 0
   i = 0
@@ -135,15 +136,31 @@ SUBROUTINE radiance_wavecal (                              &
   ! from fitting lots of spectra.
   ! ---------------------------------------------------------------------
 
-  new_fit_loop: do
-    CALL spec_fit (                                                    &
-      n_fitvar_cal, fitvar(1:n_fitvar_cal), n_rad_wvl,             &
-      lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-      covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_rad_wvl),  &
-      fitres(1:n_rad_wvl), radcal_exval, locitnum, specfit_func_sol )
+  fit_loop: do
+    call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+                         param_min = lobnd(1:n_fitvar_cal), &
+                         param_max = upbnd(1:n_fitvar_cal), &
+                         param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
+                         max_num_iterations = max_itnum_sol)
+    if (return_status < 0) then
+      write(*,*)' radiance_wavecal: optimizer_open failed '
+      stop  ! FIXME!!!
+    endif
 
-    radcal_itnum = radcal_itnum + INT ( locitnum, KIND=i2 )
-    i = i + 1
+    call opt%optimize (opt, fitvar(1:n_fitvar_cal), n_fitvar_cal, &
+                       fitres(1:n_rad_wvl), n_rad_wvl, return_status)
+    locitnum = opt%num_iterations
+    radcal_exval = return_status
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write(*,*)'radiance_wavecal: optimizer_close failed'
+      stop  ! FIXME!
+    endif
+
+    CALL spectrum_solar ( &
+      n_rad_wvl, sol_wav_avg, fitwavs(1:n_rad_wvl), fitspec(1:n_rad_wvl), &
+      fitvar_cal, max_calfit_idx)
 
     n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_rad_wvl)) ) )
     IF (n_nozero_wgt > 0) THEN
@@ -152,8 +169,11 @@ SUBROUTINE radiance_wavecal (                              &
       chisquav = r8_missval
     END IF
 
+    radcal_itnum = radcal_itnum + INT ( locitnum, KIND=i2 )
+    i = i + 1
+
     if (1 < i .and. i <= n_fitres_loop) then
-      if (maxval(abs(fitres(1:n_rad_wvl))) <= loclim) exit new_fit_loop
+      if (maxval(abs(fitres(1:n_rad_wvl))) <= loclim) exit fit_loop
     else if (i == 1) then
       mean    = SUM  ( fitres(1:n_rad_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
       sdev    = SQRT ( SUM ( (fitres(1:n_rad_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
@@ -161,21 +181,16 @@ SUBROUTINE radiance_wavecal (                              &
       if (.not. ((n_fitres_loop > 0) &
                  .and. (loclim > 0.0_r8) &
                  .and. (MAXVAL(ABS(fitres(1:n_rad_wvl))) >= loclim) &
-                 .and. (n_nozero_wgt > n_fitvar_cal))) exit new_fit_loop
+                 .and. (n_nozero_wgt > n_fitvar_cal))) exit fit_loop
     else
-      exit new_fit_loop ! i > n_fitres_loop
+      exit fit_loop ! i > n_fitres_loop
     endif
 
     WHERE ( ABS(fitres(1:n_rad_wvl)) > loclim )
       fitweights(1:n_rad_wvl) = downweight
     END WHERE
 
-  enddo new_fit_loop
-
-  ! ----------------------------------------
-  ! De-allocate memory for COVARIANCE MATRIX
-  ! ----------------------------------------
-  IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
+  enddo fit_loop
 
   ! ------------------------------------------------------------------
   ! The following assignment makes sense only because FITVAR_CAL is
@@ -216,5 +231,33 @@ SUBROUTINE radiance_wavecal (                              &
 
   RETURN
 END SUBROUTINE radiance_wavecal
+
+  subroutine solar_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
+    USE OMSAO_indices_module, ONLY: max_calfit_idx
+    USE OMSAO_variables_module,  ONLY : &
+      fitwavs, fitweights, currspec, sol_wav_avg, fitvar_cal
+    implicit none
+    type(optimizer_type) :: this_optimizer
+    real (kind=r8), dimension (:), intent(in) :: params
+    real (kind=r8), dimension (:), intent(out) :: residuals
+    integer (kind=i4), intent(in) :: num_params, num_residuals
+    integer (kind=i4), intent(out) :: return_status
+    ! local variables
+    integer (kind=i4) :: i, idx
+
+    ! unpack fit parameters
+    DO i = 1, num_params
+      idx = this_optimizer%param_mask(i)
+      fitvar_cal(idx) = params(i)
+    END DO
+
+    CALL spectrum_solar (num_residuals, sol_wav_avg, fitwavs(1:num_residuals), &
+                         residuals(1:num_residuals), fitvar_cal, max_calfit_idx)
+
+    residuals = (currspec(1:num_residuals) - residuals(1:num_residuals)) * fitweights(1:num_residuals)
+    return_status = 0
+
+  end subroutine solar_residuals
+
 END MODULE
 
