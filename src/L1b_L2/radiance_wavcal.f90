@@ -42,7 +42,7 @@ SUBROUTINE radiance_wavecal (                              &
   ! Local variables
   ! ---------------
   INTEGER (KIND=i4)  :: i, locerrstat, locitnum, n_nozero_wgt
-  REAL    (KIND=r8)  :: rms, mean, mdev, sdev, loclim
+  REAL    (KIND=r8)  :: mean, sdev, loclim
   REAL    (KIND=r8), DIMENSION (n_rad_wvl)         :: fitres, fitspec
   REAL    (KIND=r8), DIMENSION (max_calfit_idx)    :: fitvar
   REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE  :: covar
@@ -124,15 +124,9 @@ SUBROUTINE radiance_wavecal (                              &
   ! -------------------------------------
   ALLOCATE ( covar(1:n_fitvar_cal,1:n_fitvar_cal) )
 
-  !WRITE (*,'(A9,20(F12.6:))') '>>>>>>>>>', fitvar(1:n_fitvar_cal)
-  CALL spec_fit (                                                    &
-    n_fitvar_cal, fitvar(1:n_fitvar_cal), n_rad_wvl,             &
-    lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-    covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_rad_wvl),  &
-    fitres(1:n_rad_wvl), radcal_exval, locitnum, specfit_func_sol )
-  !WRITE (*,'(I6,I3,20(F12.6:))') radcal_exval, locitnum, fitvar(1:n_fitvar_cal)
-
-  radcal_itnum = INT ( locitnum, KIND=i2 )
+  loclim = 0.0_r8
+  radcal_itnum = 0
+  i = 0
 
   ! ---------------------------------------------------------------------
   ! Attempt to standardize the re-iteration with spectral points excluded
@@ -140,64 +134,43 @@ SUBROUTINE radiance_wavecal (                              &
   ! thinking before it can replace a simple window determined empirically
   ! from fitting lots of spectra.
   ! ---------------------------------------------------------------------
-  n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_rad_wvl)) ) )
-  mean         = SUM  ( fitres(1:n_rad_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
-  sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
-  mdev         = SUM  ( ABS(fitres(1:n_rad_wvl)-mean) )       / REAL(n_nozero_wgt,   KIND=r8)
-  loclim       = REAL (fitres_range, KIND=r8)*sdev
 
-  ! ----------------------
-  ! Fitting RMS and CHI**2
-  ! ----------------------
-  IF ( n_nozero_wgt > 0 ) THEN
-    rms     = SQRT ( SUM ( fitres(1:n_rad_wvl)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-    ! ---------------------------------------------
-    ! This gives the same CHI**2 as the NR routines
-    ! ---------------------------------------------
-    chisquav = SUM  ( fitres(1:n_rad_wvl)**2 )
-  ELSE
-    rms      = r8_missval
-    chisquav = r8_missval
-  END IF
+  new_fit_loop: do
+    CALL spec_fit (                                                    &
+      n_fitvar_cal, fitvar(1:n_fitvar_cal), n_rad_wvl,             &
+      lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
+      covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_rad_wvl),  &
+      fitres(1:n_rad_wvl), radcal_exval, locitnum, specfit_func_sol )
 
-  IF ( ( n_fitres_loop                    >  0             ) .AND. &
-    ( loclim                           >  0.0_r8        ) .AND. &
-    ( MAXVAL(ABS(fitres(1:n_rad_wvl))) >= loclim        ) .AND. &
-    ( n_nozero_wgt                     >  n_fitvar_cal  )  ) THEN
+    radcal_itnum = radcal_itnum + INT ( locitnum, KIND=i2 )
+    i = i + 1
 
-    fitloop: DO i = 1, n_fitres_loop
-      WHERE ( ABS(fitres(1:n_rad_wvl)) > loclim )
-        fitweights(1:n_rad_wvl) = downweight
-      END WHERE
+    n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_rad_wvl)) ) )
+    IF (n_nozero_wgt > 0) THEN
+      chisquav = SUM  ( fitres(1:n_rad_wvl)**2 )
+    ELSE
+      chisquav = r8_missval
+    END IF
 
-      !WRITE (*,'(A9,20(F12.6:))') '>>>>>>>>>', fitvar(1:n_fitvar_cal)
-      CALL spec_fit (                                                    &
-        n_fitvar_cal, fitvar(1:n_fitvar_cal), n_rad_wvl,             &
-        lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-        covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_rad_wvl),  &
-        fitres(1:n_rad_wvl), radcal_exval, locitnum, specfit_func_sol )
-      !WRITE (*,'(I6,I3,20(F12.6:))') radcal_exval, locitnum, fitvar(1:n_fitvar_cal)
+    if (1 < i .and. i <= n_fitres_loop) then
+      if (maxval(abs(fitres(1:n_rad_wvl))) <= loclim) exit new_fit_loop
+    else if (i == 1) then
+      mean    = SUM  ( fitres(1:n_rad_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
+      sdev    = SQRT ( SUM ( (fitres(1:n_rad_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+      loclim  = REAL (fitres_range, KIND=r8)*sdev
+      if (.not. ((n_fitres_loop > 0) &
+                 .and. (loclim > 0.0_r8) &
+                 .and. (MAXVAL(ABS(fitres(1:n_rad_wvl))) >= loclim) &
+                 .and. (n_nozero_wgt > n_fitvar_cal))) exit new_fit_loop
+    else
+      exit new_fit_loop ! i > n_fitres_loop
+    endif
 
-      ! ----------------------
-      ! Fitting RMS and CHI**2
-      ! ----------------------
-      n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_rad_wvl)) ) )
-      IF ( n_nozero_wgt > 0 ) THEN
-        rms     = SQRT ( SUM ( fitres(1:n_rad_wvl)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-        ! ---------------------------------------------
-        ! This gives the same CHI**2 as the NR routines
-        ! ---------------------------------------------
-        chisquav = SUM  ( fitres(1:n_rad_wvl)**2 )
-      ELSE
-        rms      = r8_missval
-        chisquav = r8_missval
-      END IF
+    WHERE ( ABS(fitres(1:n_rad_wvl)) > loclim )
+      fitweights(1:n_rad_wvl) = downweight
+    END WHERE
 
-      radcal_itnum = radcal_itnum + INT ( locitnum, KIND=i2 )
-
-      IF ( MAXVAL(ABS(fitres(1:n_rad_wvl))) <= loclim ) EXIT fitloop
-    END DO fitloop
-  END IF
+  enddo new_fit_loop
 
   ! ----------------------------------------
   ! De-allocate memory for COVARIANCE MATRIX
