@@ -3,8 +3,7 @@ MODULE radiance_wavcal
   use elsunc_interface_module
   use spectra, only: spectrum_solar
 
-  public radiance_wavecal
-  private solar_residuals
+  public radiance_wavecal, solar_residuals
 
 CONTAINS
 SUBROUTINE radiance_wavecal (                            &
