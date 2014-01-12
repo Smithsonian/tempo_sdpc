@@ -213,7 +213,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)  :: locerrstat, i, j, locitnum, n_nozero_wgt
-    REAL    (KIND=r8)  :: rms, mean, mdev, sdev, loclim
+    REAL    (KIND=r8)  :: mean, sdev, loclim
     REAL    (KIND=r8), DIMENSION (n_sol_wvl)         :: fitres, fitspec
     REAL    (KIND=r8), DIMENSION (MAX_CALFIT_IDX)    :: fitvar
     REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE  :: covar
@@ -273,17 +273,6 @@ CONTAINS
     END IF
 
     ALLOCATE ( covar(1:n_fitvar_cal,1:n_fitvar_cal) )
-    CALL spec_fit (                                                    &
-      n_fitvar_cal, fitvar(1:n_fitvar_cal), n_sol_wvl,             &
-      lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-      covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_sol_wvl),  &
-      fitres(1:n_sol_wvl), solcal_exval, locitnum, specfit_func_sol )
-    IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
-
-    ! ------------------------------------------
-    ! Assign iteration number from the first fit
-    ! ------------------------------------------
-    solcal_itnum = INT ( locitnum, KIND=i2 )
 
     ! ---------------------------------------------------------------------
     ! Attempt to standardize the re-iteration with spectral points excluded
@@ -291,25 +280,6 @@ CONTAINS
     ! thinking before it can replace a simple window determined empirically
     ! from fitting lots of spectra.
     ! ---------------------------------------------------------------------
-    n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_sol_wvl)) ) )
-    mean         = SUM  ( fitres(1:n_sol_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
-    sdev         = SQRT ( SUM ( (fitres(1:n_sol_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
-    mdev         = SUM  ( ABS(fitres(1:n_sol_wvl)-mean) )       / REAL(n_nozero_wgt,   KIND=r8)
-    loclim       = REAL (fitres_range, KIND=r8)*sdev
-
-    ! ----------------------
-    ! Fitting RMS and CHI**2
-    ! ----------------------
-    IF ( n_nozero_wgt > 0 ) THEN
-      rms     = SQRT ( SUM ( fitres(1:n_sol_wvl)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-      ! ---------------------------------------------
-      ! This gives the same CHI**2 as the NR routines
-      ! ---------------------------------------------
-      chisquav = SUM  ( fitres(1:n_sol_wvl)**2 )
-    ELSE
-      rms      = r8_missval
-      chisquav = r8_missval
-    END IF
 
     ! -----------------------------------------------------------------------
     ! Refit if any part of the fitting residual computed above is larger than
@@ -317,57 +287,55 @@ CONTAINS
     ! since it determines the maximum number of re-iterations (we don't want
     ! to fit forever!).
     ! -----------------------------------------------------------------------
-    IF ( ( n_fitres_loop                    >  0             ) .AND. &
-      ( loclim                           >  0.0_r8        ) .AND. &
-      ( MAXVAL(ABS(fitres(1:n_sol_wvl))) >= loclim        ) .AND. &
-      ( n_nozero_wgt                     >  n_fitvar_cal  )  ) THEN
 
-      fitloop: DO j = 1, n_fitres_loop
-        WHERE ( ABS(fitres(1:n_sol_wvl)) > loclim )
-          fitweights(1:n_sol_wvl) = downweight
-        END WHERE
+    loclim = 0.0_r8
+    solcal_itnum = 0
+    j = 0
 
-        ALLOCATE ( covar(1:n_fitvar_cal,1:n_fitvar_cal) )
-        CALL spec_fit ( &
-          n_fitvar_cal, fitvar(1:n_fitvar_cal), n_sol_wvl, &
-          lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-          covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_sol_wvl), &
-          fitres(1:n_sol_wvl), solcal_exval, locitnum, specfit_func_sol )
-        IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
+    new_fit_loop: do
+      CALL spec_fit (                                                    &
+        n_fitvar_cal, fitvar(1:n_fitvar_cal), n_sol_wvl,             &
+        lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
+        covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_sol_wvl),  &
+        fitres(1:n_sol_wvl), solcal_exval, locitnum, specfit_func_sol )
 
-        IF ( solcal_exval > 0 ) THEN
+      solcal_itnum = solcal_itnum + INT ( locitnum, KIND=i2 )
+      j = j + 1
+
+      n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_sol_wvl)) ) )
+
+      IF ( n_nozero_wgt > 0 ) THEN
+        chisquav = SUM (fitres(1:n_sol_wvl)**2)
+      ELSE
+        chisquav = r8_missval
+      END IF
+
+      if (1 < j .and. j <= n_fitres_loop) then
+        if ( solcal_exval > 0 ) then
           fitvar_cal_saved(1:max_calfit_idx) = fitvar_cal(1:max_calfit_idx)
-        ELSE
+        else
           fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
-        END IF
+        end if
+        IF ( MAXVAL(ABS(fitres(1:n_sol_wvl))) <= loclim ) exit new_fit_loop
+      else if (j == 1) then
+        mean = SUM  ( fitres(1:n_sol_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
+        sdev = SQRT ( SUM ( (fitres(1:n_sol_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+        loclim = REAL (fitres_range, KIND=r8)*sdev
+        if (.not.((n_fitres_loop > 0) &
+                  .and.(loclim > 0.0_r8) &
+                  .and.(MAXVAL(ABS(fitres(1:n_sol_wvl))) >= loclim) &
+                  .and.(n_nozero_wgt > n_fitvar_cal))) exit new_fit_loop
+      else
+        exit new_fit_loop  ! (j > n_fitres_loop)
+      endif
 
-        ! ----------------------
-        ! Fitting RMS and CHI**2
-        ! ----------------------
-        n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_sol_wvl)) ) )
-        IF ( n_nozero_wgt > 0.0_r8 ) THEN
-          rms     = SQRT ( SUM ( fitres(1:n_sol_wvl)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
-          ! ---------------------------------------------
-          ! This gives the same CHI**2 as the NR routines
-          ! ---------------------------------------------
-          chisquav = SUM  ( fitres(1:n_sol_wvl)**2 )
-        ELSE
-          rms      = r8_missval
-          chisquav = r8_missval
-        END IF
+      WHERE ( ABS(fitres(1:n_sol_wvl)) > loclim )
+        fitweights(1:n_sol_wvl) = downweight
+      END WHERE
 
-        ! -----------------------------
-        ! Add any subsequent iterations
-        ! -----------------------------
-        solcal_itnum = solcal_itnum + INT ( locitnum, KIND=i2 )
+    enddo new_fit_loop
 
-        ! --------------------------------------------------------------
-        ! Exit iteration loop if fitting residual is within contstraints
-        ! --------------------------------------------------------------
-        IF ( MAXVAL(ABS(fitres(1:n_sol_wvl))) <= loclim ) EXIT fitloop
-
-      END DO fitloop
-    END IF
+    IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
 
     ! ---------------------------------------------------------------
     ! The following assignment makes sense only because FITVAR_CAL is
