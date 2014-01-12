@@ -68,7 +68,7 @@ contains
   end subroutine elsunc_objective
 
  subroutine elsunc_optimizer (this, params, num_params, residuals, num_residuals, return_status, &
-                              cov_matrix)
+                              optional_cov_matrix)
    use OMSAO_indices_module, only: elsunc_userdef
    use OMSAO_variables_module, only: tol, epsrel, epsabs, epsx
    implicit none
@@ -79,7 +79,10 @@ contains
    integer (kind=i4),  intent(in) :: num_params, num_residuals
    integer (kind=i4), intent(out) :: return_status
    ! optional parameters
-   real (kind=r8), dimension (:,:), intent(out), optional :: cov_matrix
+   real (kind=r8), dimension (:,:), intent(out), optional :: optional_cov_matrix
+
+   !local
+   real (kind=r8), dimension(num_residuals,num_params) :: cov_matrix
 
    ! elsunc specific objects
    integer (kind=i4), dimension (ELSUNC_NP) :: p
@@ -108,7 +111,7 @@ contains
    this_optimizer = this
 
    elsunc_return_status = 0
-   call elsunc (params, num_params, size(cov_matrix, 1), num_residuals, &
+   call elsunc (params, num_params, num_residuals, num_residuals, &
                 elsunc_objective, elsunc_userdef, &
                 this%param_min, this%param_max, &
                 p, w, elsunc_return_status, &
@@ -118,6 +121,10 @@ contains
    this%num_iterations = p(6)
 
    return_status = elsunc_return_status
+
+   if (present(optional_cov_matrix)) then
+     optional_cov_matrix(1:num_residuals,1:num_params) = cov_matrix(1:num_residuals,1:num_params)
+   endif
 
  end subroutine elsunc_optimizer
 
