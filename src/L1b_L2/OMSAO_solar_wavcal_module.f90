@@ -1,4 +1,6 @@
 MODULE OMSAO_solar_wavcal_module
+  use optimizer_interface_module
+  use elsunc_interface_module
 
   IMPLICIT NONE
 
@@ -187,7 +189,7 @@ CONTAINS
     USE OMSAO_indices_module, ONLY: wvl_idx, ccd_idx, asy_idx, hwe_idx, &
       shi_idx, sig_idx, squ_idx, spc_idx, max_calfit_idx
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok
-    USE fitting_functions, ONLY: specfit_func_sol, spec_fit
+    use radiance_wavcal, only: solar_residuals
     IMPLICIT NONE
 
     ! ---------------
@@ -214,11 +216,11 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)  :: locerrstat, i, j, locitnum, n_nozero_wgt
     REAL    (KIND=r8)  :: mean, sdev, loclim
-    REAL    (KIND=r8), DIMENSION (n_sol_wvl)         :: fitres, fitspec
+    REAL    (KIND=r8), DIMENSION (n_sol_wvl)         :: fitres
     REAL    (KIND=r8), DIMENSION (MAX_CALFIT_IDX)    :: fitvar
-    REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE  :: covar
 
-    !EXTERNAL specfit_func_sol
+    type(optimizer_type) :: opt
+    integer (kind=i4) :: return_status
 
     ! ----------------------------------------------------------------
     ! Initialize local error status variable; note that error handling
@@ -272,8 +274,6 @@ CONTAINS
       is_bad_pixel = .TRUE.  ;  RETURN
     END IF
 
-    ALLOCATE ( covar(1:n_fitvar_cal,1:n_fitvar_cal) )
-
     ! ---------------------------------------------------------------------
     ! Attempt to standardize the re-iteration with spectral points excluded
     ! that have fitting residuals larger than a pre-set window. Needs more
@@ -292,12 +292,27 @@ CONTAINS
     solcal_itnum = 0
     j = 0
 
-    new_fit_loop: do
-      CALL spec_fit (                                                    &
-        n_fitvar_cal, fitvar(1:n_fitvar_cal), n_sol_wvl,             &
-        lobnd(1:n_fitvar_cal), upbnd(1:n_fitvar_cal), max_itnum_sol, &
-        covar(1:n_fitvar_cal,1:n_fitvar_cal), fitspec(1:n_sol_wvl),  &
-        fitres(1:n_sol_wvl), solcal_exval, locitnum, specfit_func_sol )
+    fit_loop: do
+      call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+                           param_min = lobnd(1:n_fitvar_cal), &
+                           param_max = upbnd(1:n_fitvar_cal), &
+                           param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
+                           max_num_iterations = max_itnum_sol)
+      if (return_status < 0) then
+        write(*,*)'solar_fit: optimizer_open failed '
+        stop  ! FIXME!!!
+      endif
+
+      call opt%optimize (opt, fitvar(1:n_fitvar_cal), n_fitvar_cal, &
+                         fitres(1:n_sol_wvl), n_sol_wvl, return_status)
+      locitnum = opt%num_iterations
+      solcal_exval = return_status
+
+      call optimizer_close (opt, return_status)
+      if (return_status < 0) then
+        write(*,*)'solar_fit: optimizer_close failed'
+        stop  ! FIXME!
+      endif
 
       solcal_itnum = solcal_itnum + INT ( locitnum, KIND=i2 )
       j = j + 1
@@ -316,7 +331,7 @@ CONTAINS
         else
           fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
         end if
-        IF ( MAXVAL(ABS(fitres(1:n_sol_wvl))) <= loclim ) exit new_fit_loop
+        IF ( MAXVAL(ABS(fitres(1:n_sol_wvl))) <= loclim ) exit fit_loop
       else if (j == 1) then
         mean = SUM  ( fitres(1:n_sol_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
         sdev = SQRT ( SUM ( (fitres(1:n_sol_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
@@ -324,18 +339,16 @@ CONTAINS
         if (.not.((n_fitres_loop > 0) &
                   .and.(loclim > 0.0_r8) &
                   .and.(MAXVAL(ABS(fitres(1:n_sol_wvl))) >= loclim) &
-                  .and.(n_nozero_wgt > n_fitvar_cal))) exit new_fit_loop
+                  .and.(n_nozero_wgt > n_fitvar_cal))) exit fit_loop
       else
-        exit new_fit_loop  ! (j > n_fitres_loop)
+        exit fit_loop  ! (j > n_fitres_loop)
       endif
 
       WHERE ( ABS(fitres(1:n_sol_wvl)) > loclim )
         fitweights(1:n_sol_wvl) = downweight
       END WHERE
 
-    enddo new_fit_loop
-
-    IF ( ALLOCATED (covar) ) DEALLOCATE (covar)
+    enddo fit_loop
 
     ! ---------------------------------------------------------------
     ! The following assignment makes sense only because FITVAR_CAL is
