@@ -292,27 +292,21 @@ CONTAINS
     solcal_itnum = 0
     j = 0
 
+    call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+                         param_min = lobnd(1:n_fitvar_cal), &
+                         param_max = upbnd(1:n_fitvar_cal), &
+                         param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
+                         max_num_iterations = max_itnum_sol)
+    if (return_status < 0) then
+      write(*,*)'solar_fit: optimizer_open failed '
+      stop  ! FIXME!!!
+    endif
+    
     fit_loop: do
-      call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
-                           param_min = lobnd(1:n_fitvar_cal), &
-                           param_max = upbnd(1:n_fitvar_cal), &
-                           param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
-                           max_num_iterations = max_itnum_sol)
-      if (return_status < 0) then
-        write(*,*)'solar_fit: optimizer_open failed '
-        stop  ! FIXME!!!
-      endif
-
       call opt%optimize (opt, fitvar(1:n_fitvar_cal), n_fitvar_cal, &
                          fitres(1:n_sol_wvl), n_sol_wvl, return_status)
       locitnum = opt%num_iterations
       solcal_exval = return_status
-
-      call optimizer_close (opt, return_status)
-      if (return_status < 0) then
-        write(*,*)'solar_fit: optimizer_close failed'
-        stop  ! FIXME!
-      endif
 
       solcal_itnum = solcal_itnum + INT ( locitnum, KIND=i2 )
       j = j + 1
@@ -349,6 +343,12 @@ CONTAINS
       END WHERE
 
     enddo fit_loop
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write(*,*)'solar_fit: optimizer_close failed'
+      stop  ! FIXME!
+    endif    
 
     ! ---------------------------------------------------------------
     ! The following assignment makes sense only because FITVAR_CAL is

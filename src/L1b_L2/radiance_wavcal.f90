@@ -135,27 +135,21 @@ SUBROUTINE radiance_wavecal (                            &
   ! from fitting lots of spectra.
   ! ---------------------------------------------------------------------
 
-  fit_loop: do
-    call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
-                         param_min = lobnd(1:n_fitvar_cal), &
-                         param_max = upbnd(1:n_fitvar_cal), &
-                         param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
-                         max_num_iterations = max_itnum_sol)
-    if (return_status < 0) then
-      write(*,*)' radiance_wavecal: optimizer_open failed '
-      stop  ! FIXME!!!
-    endif
+  call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+                       param_min = lobnd(1:n_fitvar_cal), &
+                       param_max = upbnd(1:n_fitvar_cal), &
+                       param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
+                       max_num_iterations = max_itnum_sol)
+  if (return_status < 0) then
+    write(*,*)' radiance_wavecal: optimizer_open failed '
+    stop  ! FIXME!!!
+  endif
 
+  fit_loop: do
     call opt%optimize (opt, fitvar(1:n_fitvar_cal), n_fitvar_cal, &
                        fitres(1:n_rad_wvl), n_rad_wvl, return_status)
     locitnum = opt%num_iterations
     radcal_exval = return_status
-
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      write(*,*)'radiance_wavecal: optimizer_close failed'
-      stop  ! FIXME!
-    endif
 
     CALL spectrum_solar ( &
       n_rad_wvl, sol_wav_avg, fitwavs(1:n_rad_wvl), fitspec(1:n_rad_wvl), &
@@ -190,6 +184,12 @@ SUBROUTINE radiance_wavecal (                            &
     END WHERE
 
   enddo fit_loop
+
+  call optimizer_close (opt, return_status)
+  if (return_status < 0) then
+    write(*,*)'radiance_wavecal: optimizer_close failed'
+    stop  ! FIXME!
+  endif  
 
   ! ------------------------------------------------------------------
   ! The following assignment makes sense only because FITVAR_CAL is

@@ -271,28 +271,22 @@ CONTAINS
     radfit_itnum = 0
     j = 0
 
-    fit_loop: do
-      call optimizer_open (opt, elsunc_optimizer, earthshine_residuals, n_fitvar_rad, return_status, &
-                           param_min = lobnd(1:n_fitvar_rad), &
-                           param_max = upbnd(1:n_fitvar_rad), &
-                           param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
-                           max_num_iterations = max_itnum_rad)
-      if (return_status < 0) then
-        write(*,*)' fit_radiance: optimizer_open failed '
-        stop  ! FIXME!!!
-      endif
+    call optimizer_open (opt, elsunc_optimizer, earthshine_residuals, n_fitvar_rad, return_status, &
+                         param_min = lobnd(1:n_fitvar_rad), &
+                         param_max = upbnd(1:n_fitvar_rad), &
+                         param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
+                         max_num_iterations = max_itnum_rad)
+    if (return_status < 0) then
+      write(*,*)' fit_radiance: optimizer_open failed '
+      stop  ! FIXME!!!
+    endif
 
+    fit_loop: do
       call opt%optimize (opt, fitvar(1:n_fitvar_rad), n_fitvar_rad, &
                          fitres(1:n_rad_wvl_loc), n_rad_wvl_loc, return_status, &
                          cov_matrix=covar_matrix)
       locitnum = opt%num_iterations
       radfit_exval = return_status
-
-      call optimizer_close (opt, return_status)
-      if (return_status < 0) then
-        write(*,*)'fit_radiance: optimizer_close failed'
-        stop  ! FIXME!
-      endif
 
       call earthshine_spectrum ( &
         n_rad_wvl_loc, n_fitvar_rad, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
@@ -343,6 +337,12 @@ CONTAINS
       END WHERE
 
     enddo fit_loop
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write(*,*)'fit_radiance: optimizer_close failed'
+      stop  ! FIXME!
+    endif
 
     ! ---------------------------------------------------------------------
     ! Save correlation information from covariance matrix !gga to real corr
