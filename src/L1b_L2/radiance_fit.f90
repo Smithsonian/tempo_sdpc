@@ -29,7 +29,8 @@ CONTAINS
       lo_radbnd, up_radbnd, lobnd, upbnd, fitweights, currspec, fitwavs, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
       xtrack_fitres_limit, all_radfit_idx, yn_o3amf_cor, &
-      n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved
+      n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
+      tol, epsrel, epsabs, epsx
 
     USE OMSAO_prefitcol_module, ONLY:                                       &
       n_prefit_vars, yn_o3_prefit, yn_bro_prefit, bro_prefit_var,        &
@@ -272,6 +273,7 @@ CONTAINS
     j = 0
 
     call optimizer_open (opt, elsunc_optimizer, earthshine_residuals, n_fitvar_rad, return_status, &
+                         mode=2, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_rad), &
                          param_max = upbnd(1:n_fitvar_rad), &
                          param_mask = mask_fitvar_rad(1:n_fitvar_rad), &

@@ -185,7 +185,7 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY: yn_newshift, fitwavs, fitweights, &
       currspec, fitvar_cal, n_fitvar_cal, lobnd, upbnd, fitvar_cal_saved, &
       mask_fitvar_cal, fitvar_sol_init, sol_wav_avg, &
-      max_itnum_sol, up_sunbnd, lo_sunbnd
+      max_itnum_sol, up_sunbnd, lo_sunbnd, tol, epsrel, epsabs, epsx
     USE OMSAO_indices_module, ONLY: wvl_idx, ccd_idx, asy_idx, hwe_idx, &
       shi_idx, sig_idx, squ_idx, spc_idx, max_calfit_idx
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok
@@ -293,6 +293,7 @@ CONTAINS
     j = 0
 
     call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+                         mode=2, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_cal), &
                          param_max = upbnd(1:n_fitvar_cal), &
                          param_mask = mask_fitvar_cal(1:n_fitvar_cal), &

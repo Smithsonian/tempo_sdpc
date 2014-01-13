@@ -69,8 +69,6 @@ contains
 
  subroutine elsunc_optimizer (this, params, num_params, residuals, num_residuals, return_status, &
                               optional_cov_matrix)
-   use OMSAO_indices_module, only: elsunc_userdef
-   use OMSAO_variables_module, only: tol, epsrel, epsabs, epsx
    implicit none
    ! positional parameters
    type (optimizer_type) :: this
@@ -105,14 +103,14 @@ contains
    p(1) = 0
    p(3) = this%max_num_iterations
    w = -1.0
-   w(1:4) = [real (kind=r8) :: tol, epsrel, epsabs, epsx]
+   w(1:4) = [real (kind=r8) :: this%tol, this%epsrel, this%epsabs, this%epsx]
 
    ! use a global to pass 'this' structure to elsunc_objective
    this_optimizer = this
 
    elsunc_return_status = 0
    call elsunc (params, num_params, num_residuals, num_residuals, &
-                elsunc_objective, elsunc_userdef, &
+                elsunc_objective, this%mode, &
                 this%param_min, this%param_max, &
                 p, w, elsunc_return_status, &
                 residuals, cov_matrix)

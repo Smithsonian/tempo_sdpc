@@ -9,6 +9,7 @@ module optimizer_interface_module
   !  type (optimizer_type) :: opt
   !  call optimizer_open (opt, optimizer_method, objective, num_params, return_status, &
   !                       param_min=pmin, param_max=pmax, param_mask=mask, &
+  !                       mode=mode, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
   !                       max_num_fun_calls=max_nfc,
   !                       max_num_iterations=max_itnum)
   !  call opt%optimize (opt, params, num_params, residuals, num_residuals, return_status, &
@@ -26,8 +27,10 @@ module optimizer_interface_module
   type optimizer_type
     procedure(optimizer_interface), nopass, pointer :: optimize
     procedure(objective_interface), nopass, pointer :: objective
+    real    (kind=r8) :: tol, epsrel, epsabs, epsx
     real    (kind=r8), dimension(:), allocatable :: param_min, param_max
     integer (kind=i4), dimension(:), allocatable :: param_mask
+    integer (kind=i4) :: mode
     integer (kind=i4) :: num_params
     integer (kind=i4) :: num_iterations, max_num_iterations
     integer (kind=i4) :: num_fun_calls, max_num_fun_calls
@@ -76,6 +79,7 @@ contains
 
   subroutine optimizer_open (this, optimizer_method, objective, &
                              num_params, return_status, &
+                             mode, tol, epsabs, epsrel, epsx, &
                              param_min, param_max, param_mask, &
                              max_num_fun_calls, &
                              max_num_iterations)
@@ -87,6 +91,8 @@ contains
     integer (kind=i4), intent(in) :: num_params
     integer (kind=i4), intent(out) :: return_status
     ! optional parameters
+    integer (kind=i4), intent(in), optional :: mode
+    real    (kind=r8), intent(in), optional :: tol, epsabs, epsrel, epsx
     real    (kind=r8), dimension(:), intent(inout), optional :: param_min, param_max
     integer (kind=i4), dimension(:), intent(in), optional :: param_mask
     integer (kind=i4), intent(in), optional :: max_num_fun_calls
@@ -105,6 +111,32 @@ contains
     this%optimize => optimizer_method
     this%objective => objective
     this%num_params = num_params
+
+    if (present(mode)) then
+      this%mode = mode
+    else
+      this%mode = 0_i4
+    endif
+    if (present(tol)) then
+      this%tol = tol
+    else
+      this%tol = -1.0_r8
+    endif
+    if (present(epsrel)) then
+      this%epsrel = epsrel
+    else
+      this%epsrel = -1.0_r8
+    endif
+    if (present(epsabs)) then
+      this%epsabs = epsabs
+    else
+      this%epsabs = -1.0_r8
+    endif
+    if (present(epsx)) then
+      this%epsx = epsx
+    else
+      this%epsx = -1.0_r8
+    endif
 
     allocate (this%param_min(num_params), stat=status)
     if (status == 0) allocate (this%param_max(num_params), stat=status)
