@@ -4,11 +4,11 @@ MODULE OMSAO_destriping_module
   USE OMSAO_indices_module,    ONLY: pge_bro_idx, pge_o3_idx, xtrcor_didx
   USE OMSAO_parameters_module, ONLY: &
     r8_missval, normweight, downweight, nxtrack_max, nlines_max
-  USE OMSAO_elsunc_fitting_module, ONLY: &
-    ELSUNC_LESS_IS_NOISE, ELSUNC_INFLOOP_EVAL
   USE OMSAO_variables_module,  ONLY: &
     radfit_latrange, yn_diagnostic_run
   USE OMSAO_median_module,     ONLY: median
+  use optimizer_interface_module
+  use elsunc_interface_module
 
   IMPLICIT NONE
 
@@ -52,8 +52,10 @@ MODULE OMSAO_destriping_module
   ! itself, in an attempt to catch infinite loops of the ELSUNC routine, which
   ! occur on occasion for reasons not yet known.
   ! ----------------------------------------------------------------------------
-  INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi
+  INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi ! FIXME (unused)
 
+  private xtrack_striping_func ! FIXME (unused)
+  private xtrack_striping_model, xtrack_striping_objective
 CONTAINS
 
   SUBROUTINE xtrack_destriping (                           &
@@ -474,39 +476,39 @@ CONTAINS
 !UNUSED!   SUBROUTINE xtrack_destriping_lat_limits (             &
 !UNUSED!       ntimes, fline, lline, nxtrack, lat, nblocks,     &
 !UNUSED!       latitude_lim, latitude_lines, avg_limits, errstat )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE OMSAO_errstat_module, ONLY: pge_errstat_ok
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Input variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4),                INTENT (IN) :: ntimes, nxtrack, nblocks, fline, lline
 !UNUSED!     REAL    (KIND=r4), DIMENSION (2), INTENT (IN) :: latitude_lim
 !UNUSED!     REAL    (KIND=r4), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: lat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! -----------------
 !UNUSED!     ! Modified variable
 !UNUSED!     ! -----------------
 !UNUSED!     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ----------------
 !UNUSED!     ! Output variables
 !UNUSED!     ! ----------------
 !UNUSED!     INTEGER (KIND=i4), DIMENSION (2), INTENT (OUT) :: latitude_lines, avg_limits
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Local variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4) :: locerrstat, j, k
 !UNUSED!     INTEGER (KIND=i4) :: nxh, nth, lower_line, upper_line
 !UNUSED!     REAL    (KIND=r4) :: lat1
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! -------------------------------------
 !UNUSED!     ! Initialize local and output variables
 !UNUSED!     ! -------------------------------------
 !UNUSED!     latitude_lines = -1 ; avg_limits = -1 ; locerrstat = pge_errstat_ok
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! -----------------------------------------------------
 !UNUSED!     ! Check whether we actually have to do any processing.
 !UNUSED!     ! If first and last line don't differe by more than one
@@ -522,7 +524,7 @@ CONTAINS
 !UNUSED!       avg_limits(2)     = lline
 !UNUSED!       RETURN
 !UNUSED!     END IF
-!UNUSED! 
+!UNUSED!
 !UNUSED!     nxh = nxtrack/2 ; nth = (fline+lline)/2
 !UNUSED!     ! --------------------------------------------
 !UNUSED!     ! Find points of latitude wrap-around (if any)
@@ -535,7 +537,7 @@ CONTAINS
 !UNUSED!         EXIT LatUpper
 !UNUSED!       END IF
 !UNUSED!     END DO LatUpper
-!UNUSED! 
+!UNUSED!
 !UNUSED!     lower_line = -1 ; lat1 = lat(nxh,nth)
 !UNUSED!     LatLower: DO j = nth, fline+1, -1  !nth-1, 1, -1
 !UNUSED!       IF ( ALL(lat(nxh,j-1:j) <= lat1) ) THEN
@@ -544,24 +546,24 @@ CONTAINS
 !UNUSED!         EXIT LatLower
 !UNUSED!       END IF
 !UNUSED!     END DO LatLower
-!UNUSED! 
+!UNUSED!
 !UNUSED!     GetLatLines1: DO j = lower_line, upper_line
 !UNUSED!       IF ( latitude_lines(2) == -1 .AND. ALL(lat(1:nxtrack,j) > latitude_lim(2)) ) THEN
 !UNUSED!         latitude_lines(2) = MAX(j-1,lower_line)
 !UNUSED!         EXIT GetLatLines1
 !UNUSED!       END IF
 !UNUSED!     END DO GetLatLines1
-!UNUSED! 
+!UNUSED!
 !UNUSED!     GetLatLines2: DO j = upper_line, lower_line, -1
 !UNUSED!       IF ( latitude_lines(1) == -1 .AND. ALL(lat(1:nxtrack,j) < latitude_lim(1)) ) THEN
 !UNUSED!         latitude_lines(1) = MIN(j+1,upper_line)
 !UNUSED!         EXIT GetLatLines2
 !UNUSED!       END IF
 !UNUSED!     END DO GetLatLines2
-!UNUSED! 
+!UNUSED!
 !UNUSED!     IF ( latitude_lines(1) == -1 ) latitude_lines(1) = lower_line
 !UNUSED!     IF ( latitude_lines(2) == -1 ) latitude_lines(2) = upper_line
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! --------------------------------------------------------
 !UNUSED!     ! Find the range of swath lines that go into the averaging
 !UNUSED!     ! --------------------------------------------------------
@@ -575,9 +577,9 @@ CONTAINS
 !UNUSED!         IF ( MINVAL(avg_limits) > -1 ) EXIT GetAvgLines
 !UNUSED!       END DO GetAvgLines
 !UNUSED!     END IF
-!UNUSED! 
+!UNUSED!
 !UNUSED!     errstat = MAX ( errstat, locerrstat )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     RETURN
 !UNUSED!   END SUBROUTINE xtrack_destriping_lat_limits
 
@@ -625,8 +627,6 @@ CONTAINS
 
   SUBROUTINE xtrack_striping_fit ( nxtrack, npolb, npols, xnorm, a_stripe, xtrack_cor )
 
-    USE OMSAO_elsunc_fitting_module, ONLY: elsunc, ELSUNC_NP, ELSUNC_NW
-
     IMPLICIT NONE
 
     ! ---------------
@@ -656,14 +656,13 @@ CONTAINS
     ! requirement somewhere inside the fitting code. For less than 4
     ! parameters it is possible that arrays run out of bounds.
     ! ------------------------------------------------------------------
-    INTEGER (KIND=i4)                                    :: exval, ctrl
-    INTEGER (KIND=i4)                                    :: elbnd
-    INTEGER (KIND=i4), DIMENSION (ELSUNC_NP)             :: p
-    REAL    (KIND=r8), DIMENSION (ELSUNC_NW)             :: w
+    INTEGER (KIND=i4)                                    :: exval
     REAL    (KIND=r8), DIMENSION (npolb+npols+4)         :: blow, bupp
     REAL    (KIND=r8), DIMENSION (nxtrack)               :: f
-    REAL    (KIND=r8), DIMENSION (nxtrack,npolb+npols+4) :: dfda
     REAL    (KIND=r8), DIMENSION (npolb+npols+4)         :: fitpar
+
+    type(optimizer_type) :: opt
+    integer (kind=i4) :: return_status
 
     ! -------------------------------------------------------------
     ! Set the number of fitting parameters: Order of the baseline
@@ -671,15 +670,6 @@ CONTAINS
     ! -------------------------------------------------------------
     nfit = (npolb+1) + (npols+1) + 1
 
-    ! -------------------------------------------------------------
-    ! Set ELSUNC fitting paramerters for unconstrained fit
-    ! -------------------------------------------------------------
-    ! ELBND: 0 = unconstrained
-    !        1 = all variables have same lower bound
-    !        else: lower and upper bounds must be supplied
-    ! -------------------------------------------------------------
-    elbnd = 2  ;  exval = 0 ; p = -1 ; p(1) = 0 ; p(3) = ctr_fitfunc_calls
-    w = -1.0
     blow(1:nfit) = 0.0_r8  ;  bupp(1:nfit) = 0.0_r8
 
     ! ---------------------------------------------------------
@@ -744,10 +734,23 @@ CONTAINS
       nfit = 4
     END IF
 
-    CALL elsunc ( &
-      fitpar(1:nfit), nfit, nxtrack, nxtrack, xtrack_striping_func, &
-      elbnd, blow(1:nfit), bupp(1:nfit), p, w, exval, f(1:nxtrack), &
-      dfda(1:nxtrack,1:nfit) )
+    call optimizer_open (opt, elsunc_optimizer, xtrack_striping_objective, nfit, return_status, &
+                         mode=2, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
+                         max_num_iterations=ctr_fitfunc_calls)
+    if (return_status < 0) then
+      write (*,*)'xtrack_striping_fit: optimizer_open failed'
+      return
+    endif
+
+    exval = 0
+    call opt%optimize (opt, fitpar(1:nfit), nfit, f(1:nxtrack), nxtrack, exval)
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write (*,*)'xtrack_striping_fit: optimizer_close failed'
+      return
+    endif
+    
     chisq = SUM  ( f(1:nxtrack)**2 ) ! This gives the same CHI**2 as the NR routines
 
     a_stripe = fitpar(1)
@@ -760,15 +763,100 @@ CONTAINS
     ! polynomial are set to zero so that we just consider the
     ! stripe pattern and the scaling polynomial.
     ! ----------------------------------------------------------
-    ctrl = 3
     fitpar(2:2+npolb) = 0.0_r8
-    CALL xtrack_striping_func ( &
-      fitpar(1:nfit), nfit, xtrack_cor(1:nxtrack), nxtrack, ctrl, &
-      dfda(1:nxtrack,1:nfit), 0 )
+    call xtrack_striping_model (fitpar(1:nfit), nfit, xtrack_cor(1:nxtrack), nxtrack, return_status)
     RETURN
   END SUBROUTINE xtrack_striping_fit
 
+  subroutine xtrack_striping_model (a, na, y, m, return_status)
+    IMPLICIT NONE
+
+    ! ----------------
+    ! Input parameters
+    ! ----------------
+    INTEGER (KIND=i4),                  INTENT (IN)  :: na, m
+    REAL    (KIND=r8), DIMENSION (na),  INTENT (IN)  :: a
+
+    ! ----------------
+    ! Output parameters
+    ! ----------------
+    REAL (KIND=r8), DIMENSION (m),    INTENT (OUT)  :: y
+    integer (kind=i4), intent(out) :: return_status
+
+    ! ----------------
+    ! Local variables
+    ! ----------------
+    INTEGER (KIND=i4)                :: i, ipar
+    REAL    (KIND=r8), DIMENSION (m) :: x, xpow, scpol, blpol, xtr
+
+    x   (1:m) = xtrack_striping_pos(1:m)
+    xpow(1:m) = 1.0_r8
+
+    ! -------------------------------------------------------------
+    ! Compose the cross-track spectrum:
+    !
+    ! ---------    ----------
+    ! Parameter    Represents
+    ! ---------    ----------
+    ! 1            Cross-Track Stripe Pattern
+    ! 2  :i        Baseline Polynomial (of order i-2)
+    ! i+1:k        Scaling  Polynmial  (of order k-i-1)
+    ! -------------------------------------------------------------
+
+    ! -------------------------
+    ! First the XTrack Pattern:
+    ! -------------------------
+    ipar = 1
+    xtr(1:m) = a(ipar)*xtrack_striping_pat(1:m)
+    y (1:m) = xtr(1:m)
+
+    ! --------------------------------
+    ! Now add the baseline polynomial:
+    ! --------------------------------
+    ipar = ipar + 1
+    blpol(1:m) = a(ipar)
+    DO i = 1, ctr_pol_base
+      ipar = ipar + 1
+      blpol(1:m) = blpol(1:m) + a(ipar)*x(1:m)**i
+    END DO
+    y(1:m) = y(1:m) + blpol(1:m)
+
+    ! ----------------------------------------------
+    ! Now NPOLS scaling coefficients. The zero order
+    ! coefficient is fixed at 1 in order to prevent
+    ! strong correlations with the baseline offset.
+    ! Hence we can se
+    ! ----------------------------------------------
+    ipar = ipar + 1
+    scpol(1:m) = a(ipar)
+    DO i = 1, ctr_pol_scal
+      ipar = ipar + 1
+      scpol(1:m) = scpol(1:m) + a(ipar)*x(1:m)**i
+    END DO
+    y(1:m) = y(1:m) * scpol(1:m)
+    return_status = 0
+  end subroutine xtrack_striping_model
+
+  subroutine xtrack_striping_objective (this, a, na, y, m, return_status)
+    implicit none
+    type(optimizer_type) :: this
+    real (kind=r8), dimension(:), intent(in) :: a
+    real (kind=r8), dimension(:), intent(out) :: y
+    integer (kind=i4), intent(in) :: na, m
+    integer (kind=i4), intent(out) :: return_status
+
+    call xtrack_striping_model (a, na, y, m, return_status)
+    if (return_status < 0) return
+
+    ! ------------------------------------------
+    ! Return the residual between data and model
+    ! ------------------------------------------
+    y(1:m)  = ( y(1:m) - xtrack_striping_col(1:m) ) * xtrack_striping_wgt(1:m)
+    return_status = 0
+  end subroutine xtrack_striping_objective
+
   SUBROUTINE xtrack_striping_func ( a, na, y, m, ctrl, dyda, mdy )
+    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_INFLOOP_EVAL !, ELSUNC_LESS_IS_NOISE
 
     IMPLICIT NONE
 
