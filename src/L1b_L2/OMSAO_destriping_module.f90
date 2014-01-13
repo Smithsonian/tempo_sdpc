@@ -47,6 +47,13 @@ MODULE OMSAO_destriping_module
   ! --------------------------------------------------------------
   REAL (KIND=r8) :: ctr_maxcol
 
+  ! ----------------------------------------------------------------------------
+  ! Number of calls to fitting function. This is counted in the fitting function
+  ! itself, in an attempt to catch infinite loops of the ELSUNC routine, which
+  ! occur on occasion for reasons not yet known.
+  ! ----------------------------------------------------------------------------
+  INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi
+
 CONTAINS
 
   SUBROUTINE xtrack_destriping (                           &
@@ -56,7 +63,6 @@ CONTAINS
 
     USE omi_pge_fitting_aux, ONLY: find_swathrange_by_latitude
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok
-    USE fitting_functions, ONLY: num_fitfunc_calls, num_fitfunc_jacobi
     IMPLICIT NONE
 
     ! ---------------
@@ -763,8 +769,6 @@ CONTAINS
   END SUBROUTINE xtrack_striping_fit
 
   SUBROUTINE xtrack_striping_func ( a, na, y, m, ctrl, dyda, mdy )
-
-    USE fitting_functions, ONLY: num_fitfunc_calls, num_fitfunc_jacobi
 
     IMPLICIT NONE
 
