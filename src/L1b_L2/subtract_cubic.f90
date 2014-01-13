@@ -1,62 +1,44 @@
 MODULE subtract_cubic
   USE OMSAO_precision_module, ONLY: r8, i4
+  use optimizer_interface_module
+  use elsunc_interface_module
 
   REAL (KIND=r8), DIMENSION (:), ALLOCATABLE :: cubic_x, cubic_y, cubic_w
 
-  PRIVATE cubic_specfit, cubic_x, cubic_y, cubic_w, r8, i4
+  PRIVATE cubic_x, cubic_y, cubic_w, r8, i4
 
 CONTAINS
-  SUBROUTINE cubic_specfit ( a, na, y, m, ctrl, dyda, mdy )
+  subroutine eval_cubic (a, x, y)
+    implicit none
+    real (kind=r8), dimension(:), intent(in) :: a
+    real (kind=r8), dimension(:), intent(in) :: x
+    real (kind=r8), dimension(:), intent(out) :: y
+    ! do it the stupid way to reproduce the previous answer  ! FIXME!!
+    y = a(1) + a(2)*x + a(3)*x*x + a(4)*x*x*x
+    !y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))      ! the proper way
+  end subroutine eval_cubic
 
-    IMPLICIT NONE
+  SUBROUTINE cubic_objective (this, a, na, y, m, return_status)
+    implicit none
+    type(optimizer_type) :: this
+    real (kind=r8), dimension(:), intent(in) :: a
+    real (kind=r8), dimension(:), intent(out) :: y
+    integer (kind=i4), intent(in) :: na, m
+    integer (kind=i4), intent(out) :: return_status
+    ! local
+    real (kind=r8), dimension(m) :: y0
 
-    ! Input parameters
-    ! ================
-    INTEGER (KIND=i4),                  INTENT (IN)  :: na, m, mdy
-    REAL    (KIND=r8), DIMENSION (na),  INTENT (IN)  :: a
+    call eval_cubic (a, cubic_x(1:m), y0)
+    y = (y0 - cubic_y(1:m)) / cubic_w(1:m)
+    return_status = 0
 
-    ! Modified parameters
-    ! ===================
-    INTEGER (KIND=i4), INTENT (INOUT) :: ctrl
-
-    ! Output parameters
-    ! =================
-    REAL (KIND=r8), DIMENSION (m),    INTENT (OUT)  :: y
-    REAL (KIND=r8), DIMENSION (m,na), INTENT (OUT)  :: dyda
-
-    ! Local variables
-    ! ===============
-    REAL (KIND=r8), DIMENSION (m) :: x, y0
-
-    x  = cubic_x(1:m)
-    y0 = a(1) + a(2)*x + a(3)*x*x + a(4)*x*x*x
-
-    SELECT CASE ( ABS(ctrl) )
-    CASE ( 1 )
-      y  = ( y0 - cubic_y(1:m) ) / cubic_w(1:m)
-    CASE ( 2 )
-      dyda = 0.0_r8
-      dyda(1:m,1) = 1.0_r8
-      dyda(1:m,2) = x(1:m)
-      dyda(1:m,3) = x(1:m)*x(1:m)
-      dyda(1:m,4) = x(1:m)*x(1:m)*x(1:m)
-    CASE ( 3 )
-      ! This CASE is included to get the complete fitted spectrum
-      y  = y0
-    CASE DEFAULT
-      !WRITE (*, '(A,I3)') "Don't know how to handle CTRL = ", ctrl
-    END SELECT
-
-    RETURN
-  END SUBROUTINE cubic_specfit
+  end subroutine cubic_objective
 
   SUBROUTINE cubic_subtract ( locwvl, npts, ll_rad, lu_rad )
 
     USE OMSAO_indices_module,        ONLY : max_rs_idx, solar_idx
     USE OMSAO_parameters_module,     ONLY : max_spec_pts, doas_npol
-    USE OMSAO_elsunc_fitting_module, ONLY : ELSUNC_NP, ELSUNC_NW
     USE OMSAO_variables_module,      ONLY : database
-    USE OMSAO_elsunc_fitting_module, ONLY : elsunc
 
     IMPLICIT NONE
 
@@ -67,17 +49,13 @@ CONTAINS
     REAL    (KIND=r8)                   :: locavg, chisq
     REAL    (KIND=r8), DIMENSION (npts) :: x, ptemp, sig
 
-    ! ================
-    ! ELSUNC variables
-    ! ================
+    ! optimization variables
     INTEGER (KIND=i4)                                     :: exval
-    INTEGER (KIND=i4)                                     :: elbnd
-    INTEGER (KIND=i4), DIMENSION (ELSUNC_NP)              :: p
-    REAL    (KIND=r8), DIMENSION (ELSUNC_NW)              :: w
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: blow, bupp
     REAL    (KIND=r8), DIMENSION (max_spec_pts)           :: f
-    REAL    (KIND=r8), DIMENSION (max_spec_pts,doas_npol) :: dfda
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: par
+    type(optimizer_type) :: opt
+    integer (kind=i4) :: return_status
 
     ! ======================
     ! Assign fitting weights
@@ -110,36 +88,39 @@ CONTAINS
       ptemp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
+    call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
+                         mode=0, max_num_iterations=5)
+    if (return_status < 0) then
+      write (*,*)'cubic_subtract:  optimizer_open failed'
+      return
+    endif
+
     !     Load and fit database spectra nos. 2-11
     DO i = 1, max_rs_idx
       IF ( i /= solar_idx ) THEN
-        ! ===============================================================
-        ! ELBND: 0 = unconstrained
-        !        1 = all variables have same lower bound
-        !        else: lower and upper bounds must be supplied by the use
-        ! ===============================================================
-        elbnd = 0  ;  exval = 0
-        p   = -1 ; p(1) = 0  ;  p(3) = 5  ; w = -1.0
+        exval = 0
         blow(1:doas_npol) = 0.0_r8  ;  bupp(1:doas_npol) = 0.0_r8
 
         cubic_x(1:nfitted) = ptemp(1:nfitted)
         cubic_y(1:nfitted) = database(i, 1+nlower-1:nfitted+nlower-1)
         cubic_w(1:nfitted) = sig(1:nfitted)
 
-        par = 0.0_r8 ; f = 0.0_r8 ; dfda = 0.0_r8
-        CALL elsunc ( &
-          par, doas_npol, nfitted, nfitted, cubic_specfit, elbnd, blow(1:doas_npol), &
-          bupp(1:doas_npol), p, w, exval, f(1:nfitted), dfda(1:nfitted,1:doas_npol) )
+        par = 0.0_r8 ; f = 0.0_r8
+        call opt%optimize (opt, par, doas_npol, f(1:nfitted), nfitted, exval)
         chisq = SUM  ( f(1:nfitted)**2 ) ! This gives the same CHI**2 as the NR routines
         x(1:npts) = locwvl(1:npts) - locavg
 
         cubic_x(1:npts) = x(1:npts)
-        exval = 3
-        CALL cubic_specfit ( &
-          par(1:doas_npol), doas_npol, cubic_y(1:npts), npts, exval, dfda, 0 )
+        call eval_cubic (par(1:doas_npol), cubic_x(1:npts), cubic_y(1:npts))
         database(i,1:npts) = database(i,1:npts) - cubic_y(1:npts)
       END IF
     END DO
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write (*,*)'cubic_subtract:  optimizer_close failed'
+      return
+    endif
 
     DEALLOCATE (cubic_x)
     DEALLOCATE (cubic_y)
@@ -152,10 +133,7 @@ CONTAINS
   SUBROUTINE cubic_subtract_meas ( locwvl, npoints, locspec, ll_rad, lu_rad )
 
     USE OMSAO_parameters_module,     ONLY : doas_npol
-    USE OMSAO_elsunc_fitting_module, ONLY : elsunc
     IMPLICIT NONE
-
-    !EXTERNAL cubic_specfit
 
     ! ---------------
     ! Input variables
@@ -177,17 +155,13 @@ CONTAINS
     REAL    (KIND=r8)                                  :: locavg
     REAL    (KIND=r8), DIMENSION (npoints)             :: x
 
-    ! ================
-    ! ELSUNC variables
-    ! ================
+    ! optimization variables
     INTEGER (KIND=i4)                                :: exval
     REAL    (KIND=r8)                                :: chisq2
-    INTEGER (KIND=i4)                                :: elbnd
-    INTEGER (KIND=i4), DIMENSION (11)                :: p
-    REAL    (KIND=r8), DIMENSION (6)                 :: w
     REAL    (KIND=r8), DIMENSION (doas_npol)         :: blow, bupp
     REAL    (KIND=r8), DIMENSION (npoints)           :: f
-    REAL    (KIND=r8), DIMENSION (npoints,doas_npol) :: dfda
+    type(optimizer_type) :: opt
+    integer (kind=i4) :: return_status
 
     ! ======================
     ! Assign fitting weights
@@ -215,16 +189,16 @@ CONTAINS
       ptmp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
+    call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
+                         mode=0, max_num_iterations=5)
+    if (return_status < 0) then
+      write (*,*)'cubic_subtract_meas:  optimizer_open failed'
+      return
+    endif
+
     !     Load and fit spectrum
     tmp(1:nfitted) = locspec(1+nlower-1:nfitted+nlower-1)
 
-    ! ===============================================================
-    ! ELBND: 0 = unconstrained
-    !        1 = all variables have same lower bound
-    !        else: lower and upper bounds must be supplied by the use
-    ! ===============================================================
-    elbnd = 0  ;  exval = 0
-    p   = -1 ; p(1) = 0  ;  p(3) = 5  ; w = -1.0
     blow(1:doas_npol) = 0.0_r8  ;  bupp(1:doas_npol) = 0.0_r8
 
     ALLOCATE (cubic_x(nfitted))
@@ -235,20 +209,23 @@ CONTAINS
     cubic_y(1:nfitted) =  tmp(1:nfitted)
     cubic_w(1:nfitted) =  sig(1:nfitted)
 
-    r = 0.0_r8 ; f = 0.0_r8 ; dfda = 0.0_r8
+    exval = 0
+    r = 0.0_r8 ; f = 0.0_r8
 
-    CALL elsunc ( &
-      r, doas_npol, nfitted, nfitted, cubic_specfit, elbnd, blow(1:doas_npol), &
-      bupp(1:doas_npol), p, w, exval, f(1:nfitted), dfda(1:nfitted,1:doas_npol) )
+    call opt%optimize (opt, r, doas_npol, f(1:nfitted), nfitted, exval)
     chisq2 = SUM  ( f(1:nfitted)**2 ) ! This gives the same CHI**2 as the NR routines
+
+    call optimizer_close (opt, return_status)
+    if (return_status < 0) then
+      write(*,*)'cubic_subtract_meas:  optimizer_close failed'
+      return
+    endif
 
     ! Re-load spec with high-pass filtered data, over whole  spectral region
     x(1:npoints) = locwvl(1:npoints) - locavg
 
     cubic_x(1:npoints) = x(1:npoints)
-    exval = 3
-    CALL cubic_specfit ( &
-      r(1:doas_npol), doas_npol, cubic_y(1:npoints), npoints, exval, dfda, 0 )
+    call eval_cubic (r(1:doas_npol), cubic_x(1:npoints), cubic_y(1:npoints))
     locspec(1:npoints) = locspec(1:npoints) - cubic_y(1:npoints)
 
     DEALLOCATE(cubic_x)
