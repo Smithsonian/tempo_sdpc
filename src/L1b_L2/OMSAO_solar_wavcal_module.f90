@@ -1,6 +1,5 @@
 MODULE OMSAO_solar_wavcal_module
   use optimizer_interface_module
-  use elsunc_interface_module
 
   IMPLICIT NONE
 
@@ -291,7 +290,7 @@ CONTAINS
     solcal_itnum = 0
     j = 0
 
-    call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+    call optimizer_open (opt, solar_residuals, n_fitvar_cal, return_status, &
                          mode=opt_bounded, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_cal), &
                          param_max = upbnd(1:n_fitvar_cal), &

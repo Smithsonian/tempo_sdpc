@@ -1,7 +1,6 @@
 MODULE radiance_fit
   USE OMSAO_precision_module, only : i4, r8
   use optimizer_interface_module
-  use elsunc_interface_module
 
   public fit_radiance
 
@@ -272,7 +271,7 @@ CONTAINS
     radfit_itnum = 0
     j = 0
 
-    call optimizer_open (opt, elsunc_optimizer, earthshine_residuals, n_fitvar_rad, return_status, &
+    call optimizer_open (opt, earthshine_residuals, n_fitvar_rad, return_status, &
                          mode=opt_bounded, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_rad), &
                          param_max = upbnd(1:n_fitvar_rad), &

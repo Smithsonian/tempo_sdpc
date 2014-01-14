@@ -1,7 +1,6 @@
 MODULE subtract_cubic
   USE OMSAO_precision_module, ONLY: r8, i4
   use optimizer_interface_module
-  use elsunc_interface_module
 
   REAL (KIND=r8), DIMENSION (:), ALLOCATABLE :: cubic_x, cubic_y, cubic_w
 
@@ -88,7 +87,7 @@ CONTAINS
       ptemp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
-    call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
+    call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
                          mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
       write (*,*)'cubic_subtract:  optimizer_open failed'
@@ -189,7 +188,7 @@ CONTAINS
       ptmp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
-    call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
+    call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
                          mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
       write (*,*)'cubic_subtract_meas:  optimizer_open failed'

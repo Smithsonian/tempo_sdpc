@@ -75,7 +75,15 @@ module optimizer_interface_module
    end subroutine objective_interface
  end interface
 
+ procedure(optimizer_interface), private, pointer :: default_optimizer_method => null()
+ 
 contains
+
+  subroutine optimizer_set_default_method (optimizer_method)
+    implicit none
+    procedure(optimizer_interface) :: optimizer_method
+    default_optimizer_method => optimizer_method
+  end subroutine optimizer_set_default_method
 
   subroutine optimizer_close (this, return_status)
     implicit none
@@ -87,8 +95,8 @@ contains
     return_status = 0
   end subroutine optimizer_close
 
-  subroutine optimizer_open (this, optimizer_method, objective, &
-                             num_params, return_status, &
+  subroutine optimizer_open (this, objective, num_params, return_status, &
+                             optimizer_method, &
                              mode, tol, epsabs, epsrel, epsx, &
                              param_min, param_max, param_mask, &
                              max_num_fun_calls, &
@@ -96,11 +104,11 @@ contains
     implicit none
     ! positional parameters
     type(optimizer_type) :: this
-    procedure(optimizer_interface) :: optimizer_method
     procedure(objective_interface) :: objective
     integer (kind=i4), intent(in) :: num_params
     integer (kind=i4), intent(out) :: return_status
     ! optional parameters
+    procedure(optimizer_interface), optional :: optimizer_method
     integer (kind=i4), intent(in), optional :: mode
     real    (kind=r8), intent(in), optional :: tol, epsabs, epsrel, epsx
     real    (kind=r8), dimension(:), intent(inout), optional :: param_min, param_max
@@ -118,7 +126,12 @@ contains
       return
     endif
 
-    this%optimize => optimizer_method
+    if (present(optimizer_method)) then
+      this%optimize => optimizer_method
+    else
+      this%optimize => default_optimizer_method
+    endif
+
     this%objective => objective
     this%num_params = num_params
 

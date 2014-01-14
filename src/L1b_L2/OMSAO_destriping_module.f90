@@ -8,7 +8,6 @@ MODULE OMSAO_destriping_module
     radfit_latrange, yn_diagnostic_run
   USE OMSAO_median_module,     ONLY: median
   use optimizer_interface_module
-  use elsunc_interface_module
 
   IMPLICIT NONE
 
@@ -731,7 +730,7 @@ CONTAINS
       nfit = 4
     END IF
 
-    call optimizer_open (opt, elsunc_optimizer, xtrack_striping_objective, nfit, return_status, &
+    call optimizer_open (opt, xtrack_striping_objective, nfit, return_status, &
                          mode=opt_bounded, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
                          max_num_iterations=ctr_fitfunc_calls)
     if (return_status < 0) then

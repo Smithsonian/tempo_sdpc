@@ -1,6 +1,5 @@
 MODULE radiance_wavcal
   use optimizer_interface_module
-  use elsunc_interface_module
   use spectra, only: spectrum_solar
 
   public radiance_wavecal, solar_residuals
@@ -131,7 +130,7 @@ SUBROUTINE radiance_wavecal (                            &
   ! from fitting lots of spectra.
   ! ---------------------------------------------------------------------
 
-  call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
+  call optimizer_open (opt, solar_residuals, n_fitvar_cal, return_status, &
                        mode=opt_bounded, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
                        param_min = lobnd(1:n_fitvar_cal), &
                        param_max = upbnd(1:n_fitvar_cal), &

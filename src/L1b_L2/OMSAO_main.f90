@@ -25,6 +25,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   USE pcf_file_module, ONLY: read_pcf_file
   USE read_reference_spectra, ONLY: read_ref_spectra
   USE omi_pge_fitting_process, ONLY: omi_pge_fitting
+  use optimizer_interface_module
+  use elsunc_interface_module
   IMPLICIT NONE
 
   ! ---------------
@@ -61,6 +63,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered
   ! ----------------------------------------------------------------------------
+
+  call optimizer_set_default_method (elsunc_optimizer)
 
   errstat = pge_errstat_ok
   ! ---------------------------------------------------------------------------
