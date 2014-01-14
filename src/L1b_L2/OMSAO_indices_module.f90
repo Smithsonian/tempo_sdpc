@@ -202,12 +202,6 @@ MODULE OMSAO_indices_module
   ! -----------------------------------------------------------------
   INTEGER (KIND=i4), PARAMETER :: n_max_fitpars = max_calfit_idx + mxs_idx*max_rs_idx
 
-  ! --------------------------------
-  ! ELSUNC fitting constraints index
-  ! --------------------------------
-  INTEGER (KIND=i4), PARAMETER :: &
-    elsunc_unconstrained = 0, elsunc_same_lower = 1, elsunc_userdef = 2
-
   ! ------------------------------------------------------
   ! Indices for fitting wavelengths, spectrum, and weights
   ! ------------------------------------------------------

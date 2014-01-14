@@ -12,8 +12,6 @@ MODULE OMSAO_he5_module
   USE OMSAO_indices_module,    ONLY: &
     n_sao_pge, max_calfit_idx, sao_pge_min_idx, sao_pge_max_idx, &
     o3_t1_idx, o3_t3_idx
-  USE OMSAO_elsunc_fitting_module, ONLY: &
-    ELSUNC_USRSTOP_EVAL_r8, ELSUNC_HIGHEST_EVAL_r8
 
   IMPLICIT NONE
 

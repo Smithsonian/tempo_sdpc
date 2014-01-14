@@ -85,7 +85,10 @@ contains
    ! elsunc specific objects
    integer (kind=i4), dimension (ELSUNC_NP) :: p
    real    (kind=r8), dimension (ELSUNC_NW) :: w
-   integer (kind=i4) :: elsunc_return_status
+   integer (kind=i4) :: elbnd
+   integer (kind=i4) :: elsunc_exval
+
+   return_status = -1
 
    if ((0 < this%max_num_iterations) &
        .and. (this%max_num_iterations < (huge(1_i4)/num_params)/num_params)) then
@@ -108,17 +111,33 @@ contains
    ! use a global to pass 'this' structure to elsunc_objective
    this_optimizer = this
 
-   elsunc_return_status = 0
+   if (this%mode == opt_unbounded) then
+     elbnd = 0
+   else if (this%mode == opt_bounded) then
+     elbnd = 2
+   else
+     write(*,*)'unsupported bounds type'
+     return
+   endif
+
+   elsunc_exval = 0
    call elsunc (params, num_params, num_residuals, num_residuals, &
-                elsunc_objective, this%mode, &
-                this%param_min, this%param_max, &
-                p, w, elsunc_return_status, &
-                residuals, cov_matrix)
+                elsunc_objective, elbnd, this%param_min, this%param_max, &
+                p, w, elsunc_exval, residuals, cov_matrix)
 
    ! save the number of iterations
    this%num_iterations = p(6)
 
-   return_status = elsunc_return_status
+   ! map elsunc return code range onto the generic set
+   if (elsunc_exval >= ELSUNC_LESS_IS_NOISE) then
+     return_status = opt_convergence_good
+   else if (0 <= elsunc_exval .and. elsunc_exval < ELSUNC_LESS_IS_NOISE) then
+     return_status = opt_convergence_suspect
+   else if (elsunc_exval == ELSUNC_MAXITER_EVAL) then
+     return_status = opt_convergence_maxiter_exceeded
+   else
+     return_status = opt_convergence_failed
+   endif
 
    if (present(optional_cov_matrix)) then
      optional_cov_matrix(1:num_residuals,1:num_params) = cov_matrix(1:num_residuals,1:num_params)

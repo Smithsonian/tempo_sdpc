@@ -89,7 +89,7 @@ CONTAINS
     END DO
 
     call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
-                         mode=0, max_num_iterations=5)
+                         mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
       write (*,*)'cubic_subtract:  optimizer_open failed'
       return
@@ -190,7 +190,7 @@ CONTAINS
     END DO
 
     call optimizer_open (opt, elsunc_optimizer, cubic_objective, doas_npol, return_status, &
-                         mode=0, max_num_iterations=5)
+                         mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
       write (*,*)'cubic_subtract_meas:  optimizer_open failed'
       return

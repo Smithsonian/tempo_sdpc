@@ -382,8 +382,9 @@ CONTAINS
     USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
-    USE OMSAO_elsunc_fitting_module, ONLY: &
-      ELSUNC_MAXITER_EVAL, ELSUNC_USRSTOP_EVAL, ELSUNC_LESS_IS_NOISE
+    use optimizer_interface_module, only: &
+      opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
+      opt_convergence_good
     USE metadata_tools,  ONLY:  QAPercentMissingData, QAPercentOutofBoundsData
     USE OMSAO_he5_module,       ONLY:  &
       NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
@@ -465,7 +466,7 @@ CONTAINS
         !           For this "sweet spot" we compute the average
         !           fitting statistics.
         ! ------------------------------------------------------
-        IF ( (saofcf(ix,it)      >= INT(ELSUNC_LESS_IS_NOISE,KIND=i4)) .AND. &
+        IF ( (saofcf(ix,it)   == opt_convergence_good) .AND. &
             (saocol(ix,it)      >  r8_missval                       ) .AND. &
             (ABS(saocol(ix,it)) <= max_good_col                     ) .AND. &
             (col2sig            >= 0.0_r8                           ) ) THEN
@@ -500,9 +501,9 @@ CONTAINS
 
           IF ( saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
             NrofOutofBoundsSamples        = NrofOutofBoundsSamples        + 1
-          IF ( saofcf(ix,it) < 0 .AND. saofcf(ix,it) >= ELSUNC_USRSTOP_EVAL ) &
+          IF ( saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded ) &
             NrofFailedConvergenceSamples  = NrofFailedConvergenceSamples  + 1
-          IF ( saofcf(ix,it) == ELSUNC_MAXITER_EVAL )                      &
+          IF ( saofcf(ix,it) == opt_convergence_maxiter_exceeded)                      &
             NrofExceededIterationsSamples = NrofExceededIterationsSamples + 1
 
           CYCLE
@@ -513,7 +514,7 @@ CONTAINS
         ! ----------------------------------------------------------
         IF ( saocol(ix,it) > r8_missval ) THEN
 
-          IF ( (saofcf(ix,it) >= 0_i2 .AND. saofcf(ix,it) < ELSUNC_LESS_IS_NOISE) .OR. &
+          IF ( (saofcf(ix,it) == opt_convergence_suspect) .OR. &
               (col2sig <  0.0_r8  .AND. col3sig >= 0.0_r8                      ) .OR. &
               (ABS(saocol(ix,it)) > max_good_col                               ) ) THEN
 
@@ -1892,8 +1893,9 @@ CONTAINS
     USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
-    USE OMSAO_elsunc_fitting_module, ONLY: &
-      ELSUNC_MAXITER_EVAL, ELSUNC_USRSTOP_EVAL, ELSUNC_LESS_IS_NOISE
+    use optimizer_interface_module, only: &
+      opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
+      opt_convergence_good
     USE metadata_tools, ONLY:  QAPercentMissingData, QAPercentOutofBoundsData
     USE OMSAO_he5_module,       ONLY:  &
       NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
@@ -1974,7 +1976,7 @@ CONTAINS
         !           For this "sweet spot" we compute the average
         !           fitting statistics.
         ! ------------------------------------------------------
-        IF ( (saofcf(ix,it)      >= INT(ELSUNC_LESS_IS_NOISE,KIND=i4)) .AND. &
+        IF ( (saofcf(ix,it) == opt_convergence_good) .AND. &
             (saocol(ix,it)      >  r8_missval                       ) .AND. &
             (ABS(saocol(ix,it)) <= max_good_col                     ) .AND. &
             (col2sig            >= 0.0_r8                           ) ) THEN
@@ -2010,9 +2012,9 @@ CONTAINS
 
           IF ( saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
             NrofOutofBoundsSamples        = NrofOutofBoundsSamples        + 1
-          IF ( saofcf(ix,it) < 0 .AND. saofcf(ix,it) >= ELSUNC_USRSTOP_EVAL ) &
+          IF ( saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded) &
             NrofFailedConvergenceSamples  = NrofFailedConvergenceSamples  + 1
-          IF ( saofcf(ix,it) == ELSUNC_MAXITER_EVAL )                      &
+          IF ( saofcf(ix,it) == opt_convergence_maxiter_exceeded)  &
             NrofExceededIterationsSamples = NrofExceededIterationsSamples + 1
 
           CYCLE
@@ -2023,7 +2025,7 @@ CONTAINS
         ! ----------------------------------------------------------
         IF ( saocol(ix,it) > r8_missval ) THEN
 
-          IF ( (saofcf(ix,it) >= 0_i2 .AND. saofcf(ix,it) < ELSUNC_LESS_IS_NOISE) .OR. &
+          IF ( (saofcf(ix,it) == opt_convergence_suspect) .OR. &
               (col2sig <  0.0_r8  .AND. col3sig >= 0.0_r8                      ) .OR. &
               (ABS(saocol(ix,it)) > max_good_col                               ) ) THEN
 

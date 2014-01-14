@@ -52,9 +52,9 @@ MODULE OMSAO_destriping_module
   ! itself, in an attempt to catch infinite loops of the ELSUNC routine, which
   ! occur on occasion for reasons not yet known.
   ! ----------------------------------------------------------------------------
-  INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi ! FIXME (unused)
+  !INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi ! FIXME (unused)
 
-  private xtrack_striping_func ! FIXME (unused)
+  !private xtrack_striping_func ! FIXME (unused)  
   private xtrack_striping_model, xtrack_striping_objective
 CONTAINS
 
@@ -290,7 +290,7 @@ CONTAINS
           ! --------------------------------------------------------------------------
           ! Fit for contribution of the cross-track striping in the current swath line
           ! --------------------------------------------------------------------------
-          num_fitfunc_calls = 0 ; num_fitfunc_jacobi = 0
+          !num_fitfunc_calls = 0 ; num_fitfunc_jacobi = 0
           CALL xtrack_striping_fit (                                &
             nxtrack, ctr_pol_base, ctr_pol_scal, xtrack_norm, &
             a_stripe, xtrack_cor(1:nxtrack,it) )
@@ -647,9 +647,6 @@ CONTAINS
     INTEGER (KIND=i4) :: i, nfit, ipar
     REAL    (KIND=r8) :: chisq
 
-    ! ----------------
-    ! ELSUNC variables
-    ! ----------------
     ! ------------------------------------------------------------------
     ! Note that we add "4" to NPOL. This is to prevent ELSUNC choking on
     ! not having a minimum of 4 parameters (NPOL=0), which seems to be a
@@ -735,7 +732,7 @@ CONTAINS
     END IF
 
     call optimizer_open (opt, elsunc_optimizer, xtrack_striping_objective, nfit, return_status, &
-                         mode=2, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
+                         mode=opt_bounded, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
                          max_num_iterations=ctr_fitfunc_calls)
     if (return_status < 0) then
       write (*,*)'xtrack_striping_fit: optimizer_open failed'
@@ -855,163 +852,163 @@ CONTAINS
     return_status = 0
   end subroutine xtrack_striping_objective
 
-  SUBROUTINE xtrack_striping_func ( a, na, y, m, ctrl, dyda, mdy )
-    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_INFLOOP_EVAL !, ELSUNC_LESS_IS_NOISE
-
-    IMPLICIT NONE
-
-    ! ----------------
-    ! Input parameters
-    ! ----------------
-    INTEGER (KIND=i4),                  INTENT (IN)  :: na, m, mdy
-    REAL    (KIND=r8), DIMENSION (na),  INTENT (IN)  :: a
-
-    ! -------------------
-    ! Modified parameters
-    ! -------------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: ctrl
-
-    ! ----------------
-    ! Output parameters
-    ! ----------------
-    REAL (KIND=r8), DIMENSION (m),    INTENT (OUT)  :: y
-    REAL (KIND=r8), DIMENSION (m,na), INTENT (OUT)  :: dyda
-
-    ! ----------------
-    ! Local variables
-    ! ----------------
-    INTEGER (KIND=i4)                :: i, ipar
-    REAL    (KIND=r8), DIMENSION (m) :: x, y0, xpow, scpol, blpol, xtr
-
-    x   (1:m) = xtrack_striping_pos(1:m)
-    xpow(1:m) = 1.0_r8
-
-    ! -------------------------------------------------------------
-    ! Compose the cross-track spectrum:
-    !
-    ! ---------    ----------
-    ! Parameter    Represents
-    ! ---------    ----------
-    ! 1            Cross-Track Stripe Pattern
-    ! 2  :i        Baseline Polynomial (of order i-2)
-    ! i+1:k        Scaling  Polynmial  (of order k-i-1)
-    ! -------------------------------------------------------------
-
-    ! -------------------------
-    ! First the XTrack Pattern:
-    ! -------------------------
-    ipar = 1
-    xtr(1:m) = a(ipar)*xtrack_striping_pat(1:m)
-    y0 (1:m) = xtr(1:m)
-
-    ! --------------------------------
-    ! Now add the baseline polynomial:
-    ! --------------------------------
-    ipar = ipar + 1
-    blpol(1:m) = a(ipar)
-    DO i = 1, ctr_pol_base
-      ipar = ipar + 1
-      blpol(1:m) = blpol(1:m) + a(ipar)*x(1:m)**i
-    END DO
-    y0(1:m) = y0(1:m) + blpol(1:m)
-
-    ! ----------------------------------------------
-    ! Now NPOLS scaling coefficients. The zero order
-    ! coefficient is fixed at 1 in order to prevent
-    ! strong correlations with the baseline offset.
-    ! Hence we can se
-    ! ----------------------------------------------
-    ipar = ipar + 1
-    scpol(1:m) = a(ipar)
-    DO i = 1, ctr_pol_scal
-      ipar = ipar + 1
-      scpol(1:m) = scpol(1:m) + a(ipar)*x(1:m)**i
-    END DO
-    y0(1:m) = y0(1:m) * scpol(1:m)
-
-    SELECT CASE ( ABS(ctrl) )
-    CASE ( 1 )
-      ! -------------------------------------------------
-      ! Count the number of calls to the fitting function
-      ! and terminate if we exceed the allowed maximum.
-      ! -------------------------------------------------
-      num_fitfunc_calls = num_fitfunc_calls + 1
-      IF ( num_fitfunc_calls > ctr_fitfunc_calls ) THEN
-        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
-        RETURN
-      END IF
-
-      ! ------------------------------------------
-      ! Return the residual between data and model
-      ! ------------------------------------------
-      y(1:m)  = ( y0(1:m) - xtrack_striping_col(1:m) ) * xtrack_striping_wgt(1:m)
-    CASE ( 2 )
-      ! -------------------------------------------------
-      ! Count the number of calls to the fitting function
-      ! with request for the Jacobian and terminate if we
-      ! exceed the allowed maximum (just to be safe!).
-      ! -------------------------------------------------
-      num_fitfunc_jacobi = num_fitfunc_jacobi + 1
-      IF ( num_fitfunc_jacobi > ctr_fitfunc_calls ) THEN
-        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
-        RETURN
-      END IF
-
-      ! -------------------------------------------
-      ! Compute the Jacobian (we know the function)
-      ! -------------------------------------------
-      dyda(1:m,1:na) = 0.0_r8
-
-      ! ----------------------------
-      ! Cross-Track Stripe parameter
-      ! ----------------------------
-      ipar = 1
-      dyda(1:m,ipar) = xtrack_striping_pat(1:m) * scpol(1:m)
-
-      ! ------------------------------
-      ! Baseline Polynomial parameters
-      ! ------------------------------
-      ipar = ipar + 1
-      dyda(1:m,ipar) = a(ipar) * scpol(1:m)
-      DO i = 1, ctr_pol_base
-        ipar = ipar + 1
-        dyda(1:m,ipar) = (a(ipar)*x(1:m)**i)*scpol(1:m)
-      END DO
-
-      ! -----------------------------
-      ! Scaling Polynomial parameters
-      ! -----------------------------
-      blpol(1:m) = blpol(1:m) + xtr(1:m)
-      ipar = ipar + 1
-      dyda(1:m,ipar) = blpol(1:m) * a(ipar)
-      DO i = 1, ctr_pol_scal
-        ipar = ipar + 1
-        dyda(1:m,ipar) = blpol(1:m) * (a(ipar)*x(1:m)**i)
-      END DO
-
-      ! --------------------------------------------------------------
-      ! Any additional entries are taken care of by the initialization
-      ! to 0 above. There could be two such entries since ELSUNC needs
-      ! a minimum of 4 variables, and if both polynomials are of Zero
-      ! order (and the scaling is fixed), this will lead to less than
-      ! 4 fitting parameters.
-      ! --------------------------------------------------------------
-
-    CASE ( 3 )
-      ! ---------------------------------------------------------
-      ! This CASE is included to get the complete fitted spectrum
-      ! ---------------------------------------------------------
-      y(1:m)  = y0(1:m)
-    CASE DEFAULT
-      ! ----------------------------------------------------------
-      ! This shouldn't happen, but just for the case we reach here
-      ! ..... we do nothing
-      ! ----------------------------------------------------------
-      !WRITE (*, '(A,I3)') "Don't know how to handle CTRL = ", ctrl
-    END SELECT
-
-    RETURN
-  END SUBROUTINE xtrack_striping_func
+!unused  SUBROUTINE xtrack_striping_func ( a, na, y, m, ctrl, dyda, mdy )
+!unused    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_INFLOOP_EVAL !, ELSUNC_LESS_IS_NOISE
+!unused
+!unused    IMPLICIT NONE
+!unused
+!unused    ! ----------------
+!unused    ! Input parameters
+!unused    ! ----------------
+!unused    INTEGER (KIND=i4),                  INTENT (IN)  :: na, m, mdy
+!unused    REAL    (KIND=r8), DIMENSION (na),  INTENT (IN)  :: a
+!unused
+!unused    ! -------------------
+!unused    ! Modified parameters
+!unused    ! -------------------
+!unused    INTEGER (KIND=i4), INTENT (INOUT) :: ctrl
+!unused
+!unused    ! ----------------
+!unused    ! Output parameters
+!unused    ! ----------------
+!unused    REAL (KIND=r8), DIMENSION (m),    INTENT (OUT)  :: y
+!unused    REAL (KIND=r8), DIMENSION (m,na), INTENT (OUT)  :: dyda
+!unused
+!unused    ! ----------------
+!unused    ! Local variables
+!unused    ! ----------------
+!unused    INTEGER (KIND=i4)                :: i, ipar
+!unused    REAL    (KIND=r8), DIMENSION (m) :: x, y0, xpow, scpol, blpol, xtr
+!unused
+!unused    x   (1:m) = xtrack_striping_pos(1:m)
+!unused    xpow(1:m) = 1.0_r8
+!unused
+!unused    ! -------------------------------------------------------------
+!unused    ! Compose the cross-track spectrum:
+!unused    !
+!unused    ! ---------    ----------
+!unused    ! Parameter    Represents
+!unused    ! ---------    ----------
+!unused    ! 1            Cross-Track Stripe Pattern
+!unused    ! 2  :i        Baseline Polynomial (of order i-2)
+!unused    ! i+1:k        Scaling  Polynmial  (of order k-i-1)
+!unused    ! -------------------------------------------------------------
+!unused
+!unused    ! -------------------------
+!unused    ! First the XTrack Pattern:
+!unused    ! -------------------------
+!unused    ipar = 1
+!unused    xtr(1:m) = a(ipar)*xtrack_striping_pat(1:m)
+!unused    y0 (1:m) = xtr(1:m)
+!unused
+!unused    ! --------------------------------
+!unused    ! Now add the baseline polynomial:
+!unused    ! --------------------------------
+!unused    ipar = ipar + 1
+!unused    blpol(1:m) = a(ipar)
+!unused    DO i = 1, ctr_pol_base
+!unused      ipar = ipar + 1
+!unused      blpol(1:m) = blpol(1:m) + a(ipar)*x(1:m)**i
+!unused    END DO
+!unused    y0(1:m) = y0(1:m) + blpol(1:m)
+!unused
+!unused    ! ----------------------------------------------
+!unused    ! Now NPOLS scaling coefficients. The zero order
+!unused    ! coefficient is fixed at 1 in order to prevent
+!unused    ! strong correlations with the baseline offset.
+!unused    ! Hence we can se
+!unused    ! ----------------------------------------------
+!unused    ipar = ipar + 1
+!unused    scpol(1:m) = a(ipar)
+!unused    DO i = 1, ctr_pol_scal
+!unused      ipar = ipar + 1
+!unused      scpol(1:m) = scpol(1:m) + a(ipar)*x(1:m)**i
+!unused    END DO
+!unused    y0(1:m) = y0(1:m) * scpol(1:m)
+!unused
+!unused    SELECT CASE ( ABS(ctrl) )
+!unused    CASE ( 1 )
+!unused      ! -------------------------------------------------
+!unused      ! Count the number of calls to the fitting function
+!unused      ! and terminate if we exceed the allowed maximum.
+!unused      ! -------------------------------------------------
+!unused      num_fitfunc_calls = num_fitfunc_calls + 1
+!unused      IF ( num_fitfunc_calls > ctr_fitfunc_calls ) THEN
+!unused        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+!unused        RETURN
+!unused      END IF
+!unused
+!unused      ! ------------------------------------------
+!unused      ! Return the residual between data and model
+!unused      ! ------------------------------------------
+!unused      y(1:m)  = ( y0(1:m) - xtrack_striping_col(1:m) ) * xtrack_striping_wgt(1:m)
+!unused    CASE ( 2 )
+!unused      ! -------------------------------------------------
+!unused      ! Count the number of calls to the fitting function
+!unused      ! with request for the Jacobian and terminate if we
+!unused      ! exceed the allowed maximum (just to be safe!).
+!unused      ! -------------------------------------------------
+!unused      num_fitfunc_jacobi = num_fitfunc_jacobi + 1
+!unused      IF ( num_fitfunc_jacobi > ctr_fitfunc_calls ) THEN
+!unused        ctrl = INT(ELSUNC_INFLOOP_EVAL, KIND=i4)
+!unused        RETURN
+!unused      END IF
+!unused
+!unused      ! -------------------------------------------
+!unused      ! Compute the Jacobian (we know the function)
+!unused      ! -------------------------------------------
+!unused      dyda(1:m,1:na) = 0.0_r8
+!unused
+!unused      ! ----------------------------
+!unused      ! Cross-Track Stripe parameter
+!unused      ! ----------------------------
+!unused      ipar = 1
+!unused      dyda(1:m,ipar) = xtrack_striping_pat(1:m) * scpol(1:m)
+!unused
+!unused      ! ------------------------------
+!unused      ! Baseline Polynomial parameters
+!unused      ! ------------------------------
+!unused      ipar = ipar + 1
+!unused      dyda(1:m,ipar) = a(ipar) * scpol(1:m)
+!unused      DO i = 1, ctr_pol_base
+!unused        ipar = ipar + 1
+!unused        dyda(1:m,ipar) = (a(ipar)*x(1:m)**i)*scpol(1:m)
+!unused      END DO
+!unused
+!unused      ! -----------------------------
+!unused      ! Scaling Polynomial parameters
+!unused      ! -----------------------------
+!unused      blpol(1:m) = blpol(1:m) + xtr(1:m)
+!unused      ipar = ipar + 1
+!unused      dyda(1:m,ipar) = blpol(1:m) * a(ipar)
+!unused      DO i = 1, ctr_pol_scal
+!unused        ipar = ipar + 1
+!unused        dyda(1:m,ipar) = blpol(1:m) * (a(ipar)*x(1:m)**i)
+!unused      END DO
+!unused
+!unused      ! --------------------------------------------------------------
+!unused      ! Any additional entries are taken care of by the initialization
+!unused      ! to 0 above. There could be two such entries since ELSUNC needs
+!unused      ! a minimum of 4 variables, and if both polynomials are of Zero
+!unused      ! order (and the scaling is fixed), this will lead to less than
+!unused      ! 4 fitting parameters.
+!unused      ! --------------------------------------------------------------
+!unused
+!unused    CASE ( 3 )
+!unused      ! ---------------------------------------------------------
+!unused      ! This CASE is included to get the complete fitted spectrum
+!unused      ! ---------------------------------------------------------
+!unused      y(1:m)  = y0(1:m)
+!unused    CASE DEFAULT
+!unused      ! ----------------------------------------------------------
+!unused      ! This shouldn't happen, but just for the case we reach here
+!unused      ! ..... we do nothing
+!unused      ! ----------------------------------------------------------
+!unused      !WRITE (*, '(A,I3)') "Don't know how to handle CTRL = ", ctrl
+!unused    END SELECT
+!unused
+!unused    RETURN
+!unused  END SUBROUTINE xtrack_striping_func
 
   SUBROUTINE xtrack_destriping_writecol (ntimes, nxtrack, saocol, &
                                          xtrack_cor) ! , xtrack_fit )

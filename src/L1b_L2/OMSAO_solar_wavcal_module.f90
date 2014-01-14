@@ -181,7 +181,6 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval, downweight
-    USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_LESS_IS_NOISE
     USE OMSAO_variables_module,  ONLY: yn_newshift, fitwavs, fitweights, &
       currspec, fitvar_cal, n_fitvar_cal, lobnd, upbnd, fitvar_cal_saved, &
       mask_fitvar_cal, fitvar_sol_init, sol_wav_avg, &
@@ -252,7 +251,7 @@ CONTAINS
     fitvar_cal(1:max_calfit_idx) = fitvar_cal_saved(1:max_calfit_idx)
 
     ! ---------------------------------------------------------
-    ! Assign varied fitting variables to array passed to Elsunc
+    ! Assign varied fitting variables to array passed to optimizer
     ! ---------------------------------------------------------
     fitvar = 0.0_r8 ; lobnd = 0.0_r8 ; upbnd = 0.0_r8
     n_fitvar_cal = 0
@@ -293,7 +292,7 @@ CONTAINS
     j = 0
 
     call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
-                         mode=2, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
+                         mode=opt_bounded, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_cal), &
                          param_max = upbnd(1:n_fitvar_cal), &
                          param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
@@ -355,7 +354,7 @@ CONTAINS
     ! The following assignment makes sense only because FITVAR_CAL is
     ! updated with FITVAR (using the proper mask) in SPECTRUM_SOLAR.
     ! ---------------------------------------------------------------
-    IF ( solcal_exval >= ELSUNC_LESS_IS_NOISE) THEN
+    IF ( solcal_exval == opt_convergence_good ) THEN
       fitvar_cal_saved(1:max_calfit_idx) = fitvar_cal(1:max_calfit_idx)
     ELSE
       fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)

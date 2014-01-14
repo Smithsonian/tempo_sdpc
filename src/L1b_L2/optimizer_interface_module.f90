@@ -24,6 +24,16 @@ module optimizer_interface_module
 
   public
 
+  ! exit codes
+  integer (kind=i4), parameter :: &
+    opt_convergence_failed=-2, &
+    opt_convergence_maxiter_exceeded=-1, &
+    opt_convergence_suspect=0, &
+    opt_convergence_good=1
+
+  ! modes
+  integer (kind=i4), parameter :: opt_unbounded=0, opt_bounded=1
+
   type optimizer_type
     procedure(optimizer_interface), nopass, pointer :: optimize
     procedure(objective_interface), nopass, pointer :: objective
@@ -115,7 +125,11 @@ contains
     if (present(mode)) then
       this%mode = mode
     else
-      this%mode = 0_i4
+      if (present(param_min).or.present(param_max)) then
+        this%mode = opt_bounded
+      else
+        this%mode = opt_unbounded
+      endif
     endif
     if (present(tol)) then
       this%tol = tol

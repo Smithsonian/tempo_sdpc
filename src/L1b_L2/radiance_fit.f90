@@ -273,7 +273,7 @@ CONTAINS
     j = 0
 
     call optimizer_open (opt, elsunc_optimizer, earthshine_residuals, n_fitvar_rad, return_status, &
-                         mode=2, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
+                         mode=opt_bounded, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_rad), &
                          param_max = upbnd(1:n_fitvar_rad), &
                          param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
@@ -518,7 +518,7 @@ CONTAINS
       !          dangerous. By going back to the initial guess, we may
       !          lose some speed, but we gain predictability.
       ! -------------------------------------------------------------------
-      !IF ( (radfit_exval >= INT(elsunc_less_is_noise, KIND=i4)) .AND. &
+      !IF ( (radfit_exval == opt_convergence_good) .AND. &
       !     (fitcol+1.0_r8*dfitcol >= 0.0_r8)                    .AND. &
       !     ( .NOT. do_reference_fit )                                  )  THEN
       !   fitvar_rad_saved(1:n_max_fitpars) = fitvar_rad(1:n_max_fitpars)

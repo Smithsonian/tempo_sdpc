@@ -783,7 +783,7 @@ CONTAINS
                               he5_start_2d, he5_stride_2d, he5_edge_2d, omi_column_uncert(1:nXtrack,0:nblock-1) )
 
     ! -----------------------------------------------------
-    ! Fitting RMS and EXIT values from ELSUNC fitting.
+    ! Fitting RMS and EXIT values from fitting.
     ! The latter shows if convergence was achieved and how.
     ! -----------------------------------------------------
     CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, omi_fit_rms(fpix:lpix,0:nblock-1) )

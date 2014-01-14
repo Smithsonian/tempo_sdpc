@@ -261,8 +261,8 @@ SUBROUTINE spectrum_earthshine ( &
   ! -----------------------------------------------------------------------------------
   ! First, we have to undo the compression of the FITVAR_RAD array. This compression
   ! is performed in the RADIANCE_FIT subroutine and accelerates the fitting process,
-  ! because ELSUNC has to handle less paraemters. But here we require the original
-  ! layout, otherwise the index assingment is screwed.
+  ! because the optimizer has to handle fewer parameters. But here we require the original
+  ! layout, otherwise the index assignment is screwed.
   ! -----------------------------------------------------------------------------------
   DO i = 1, n_fitvar
     idx = mask_fitvar_rad(i)
@@ -590,8 +590,8 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
   ! -----------------------------------------------------------------------------------
   ! First, we have to undo the compression of the FITVAR_RAD array. This compression
   ! is performed in the RADIANCE_FIT subroutine and accelerates the fitting process,
-  ! because ELSUNC has to handle less paraemters. But here we require the original
-  ! layout, otherwise the index assingment is screwed.
+  ! because the optimizer has to handle fewer paraemters. But here we require the original
+  ! layout, otherwise the index assignment is screwed.
   ! -----------------------------------------------------------------------------------
   DO i = 1, n_fitvar
     idx = mask_fitvar_rad(i)

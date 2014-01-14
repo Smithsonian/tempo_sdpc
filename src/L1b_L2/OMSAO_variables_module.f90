@@ -172,9 +172,9 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------
   INTEGER (KIND=I4) :: radwavcal_freq
 
-  ! ------------------------------------------------------------------------
-  ! Variables connected with ELSUNC numerical precision/convergence criteria
-  ! ------------------------------------------------------------------------
+  ! -----------------------------------------------------------------
+  ! Variables connected with numerical precision/convergence criteria
+  ! -----------------------------------------------------------------
   REAL (KIND=r8) :: tol,  epsrel,  epsabs,  epsx
 
   ! ----------------------------------------

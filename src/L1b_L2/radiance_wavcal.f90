@@ -14,7 +14,6 @@ SUBROUTINE radiance_wavecal (                            &
   USE OMSAO_precision_module,     ONLY: i2, i4, r8
   USE OMSAO_parameters_module,    ONLY: &
     i2_missval, i4_missval, r8_missval, downweight
-  USE OMSAO_elsunc_fitting_module, ONLY: ELSUNC_LESS_IS_NOISE
   USE OMSAO_indices_module,       ONLY: &
     max_calfit_idx, shi_idx, squ_idx, wvl_idx, spc_idx, sig_idx, ccd_idx, &
     hwe_idx, asy_idx
@@ -64,9 +63,6 @@ SUBROUTINE radiance_wavecal (                            &
   radcal_itnum = i2_missval
   chisquav     = r8_missval
 
-  ! ----------
-  ! ELSUNC fit
-  ! ----------
   fitwavs   (1:n_rad_wvl) = curr_rad_spec(wvl_idx, 1:n_rad_wvl)
   currspec  (1:n_rad_wvl) = curr_rad_spec(spc_idx, 1:n_rad_wvl)
   fitweights(1:n_rad_wvl) = curr_rad_spec(sig_idx, 1:n_rad_wvl)
@@ -136,7 +132,7 @@ SUBROUTINE radiance_wavecal (                            &
   ! ---------------------------------------------------------------------
 
   call optimizer_open (opt, elsunc_optimizer, solar_residuals, n_fitvar_cal, return_status, &
-                       mode=2, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
+                       mode=opt_bounded, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
                        param_min = lobnd(1:n_fitvar_cal), &
                        param_max = upbnd(1:n_fitvar_cal), &
                        param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
@@ -196,7 +192,7 @@ SUBROUTINE radiance_wavecal (                            &
   ! The following assignment makes sense only because FITVAR_CAL is
   ! updated with FITVAR (using the proper mask) in SPECTRUM_SOLAR.
   ! ------------------------------------------------------------------
-  IF ( radcal_exval >= INT(ELSUNC_LESS_IS_NOISE, KIND=i4) ) THEN
+  IF ( radcal_exval == opt_convergence_good ) THEN
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_cal(1:max_calfit_idx)
   ELSE
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
