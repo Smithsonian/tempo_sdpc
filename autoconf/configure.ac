@@ -17,6 +17,29 @@ AC_SUBST(FC)
 AC_SUBST(FCFLAGS)
 
 JH_SDPTK_SETUP
+
+AC_ARG_WITH(hdfeos,
+  [  --with-hdfeos[=DIR]      Use HDFEOS libraries installed in DIR],
+  [jh_with_hdfeos=$withval],
+  [jh_with_hdfeos=no])
+if ! test "x$jh_with_hdfeos" = "xno"; then
+   HDFEOS_LIB="$jh_with_hdfeos/lib/$OMIUTIL_SYSDIR"
+   HDFEOS_INC="$jh_with_hdfeos/include"
+fi
+AC_SUBST(HDFEOS_LIB)
+AC_SUBST(HDFEOS_INC)
+
+AC_ARG_WITH(hdfeos5,
+  [  --with-hdfeos5[=DIR]      Use HDFEOS5 libraries installed in DIR],
+  [jh_with_hdfeos5=$withval],
+  [jh_with_hdfeos5=no])
+if ! test "x$jh_with_hdfeos" = "xno"; then
+   HDFEOS5_LIB="$jh_with_hdfeos5/lib/$OMIUTIL_SYSDIR"
+   HDFEOS5_INC="$jh_with_hdfeos5/include"
+fi
+AC_SUBST(HDFEOS5_LIB)
+AC_SUBST(HDFEOS5_INC)
+
 JH_LIST_SOURCES(src/L1b_L2)
 
 AC_CONFIG_FILES([\
