@@ -37,7 +37,7 @@ CONTAINS
       yn_lqh2o_prefit,lqh2o_prefit_var,lqh2o_prefit_fitidx
     USE omi_pge_fitting_aux, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
-    USE spectra, ONLY: spectrum_earthshine, spectrum_earthshine_o3exp
+    USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
     IMPLICIT NONE
 
     ! *******************************************************************
@@ -78,7 +78,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    procedure(), pointer :: earthshine_spectrum => null()
+    procedure(earthshine_spectrum_interface), pointer :: earthshine_spectrum => null()
     INTEGER (KIND=i4) :: i, j, idx, j1, j2, k1, k2, l, ll_rad, lu_rad, index
     INTEGER (KIND=i4) :: n_fitwav_rad, locitnum, n_nozero_wgt
     REAL    (KIND=r8)                                         :: asum, ssum
@@ -289,9 +289,8 @@ CONTAINS
       locitnum = opt%num_iterations
       radfit_exval = return_status
 
-      call earthshine_spectrum ( &
-        n_rad_wvl_loc, n_fitvar_rad, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
-        fitspec(1:n_rad_wvl_loc), fitvar(1:n_fitvar_rad), yn_doas)
+      call earthshine_spectrum (n_rad_wvl_loc, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
+                                fitspec(1:n_rad_wvl_loc), fitvar_rad, yn_doas)
 
       n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
       mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
@@ -538,9 +537,9 @@ CONTAINS
   END SUBROUTINE fit_radiance
 
   subroutine earthshine_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
-    use spectra, only: spectrum_earthshine, spectrum_earthshine_o3exp
+    use spectra, only: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
     use OMSAO_variables_module, only: rad_wav_avg, fitwavs, fitweights, &
-      currspec, yn_doas, yn_o3amf_cor
+      currspec, fitvar_rad, yn_doas, yn_o3amf_cor
     implicit none
     type(optimizer_type) :: this_optimizer
     real (kind=r8), dimension (:), intent(in) :: params
@@ -548,16 +547,22 @@ CONTAINS
     integer (kind=i4), intent(in) :: num_params, num_residuals
     integer (kind=i4), intent(out) :: return_status
     ! local variables
-    procedure(), pointer :: earthshine_spectrum => null()
+    procedure(earthshine_spectrum_interface), pointer :: earthshine_spectrum => null()
+    integer (kind=i4) :: i, idx
+
+    DO i = 1, num_params
+      idx = this_optimizer%param_mask(i)
+      fitvar_rad(idx) = params(i)
+    END DO
 
     if (yn_o3amf_cor) then
       earthshine_spectrum => spectrum_earthshine_o3exp
     else
       earthshine_spectrum => spectrum_earthshine
     endif
-    call earthshine_spectrum (num_residuals, num_params, rad_wav_avg, &
+    call earthshine_spectrum (num_residuals, rad_wav_avg, &
                               fitwavs(1:num_residuals), residuals(1:num_residuals), &
-                              params(1:num_params), yn_doas)
+                              fitvar_rad, yn_doas)
     residuals = (currspec(1:num_residuals) - residuals(1:num_residuals)) * fitweights(1:num_residuals)
 
     return_status = 0

@@ -1,4 +1,19 @@
 MODULE spectra
+  use OMSAO_precision_module, only : i4, r8
+
+  interface
+    subroutine earthshine_spectrum_interface (npts, avg_wavl, wavelengths, spectrum, params, is_doas)
+      import i4, r8
+      implicit none
+      logical, intent(in) :: is_doas
+      integer (kind=i4), intent(in) :: npts
+      real (kind=r8), intent(in) :: avg_wavl
+      real (kind=r8), dimension(:), intent(inout) :: params
+      real (kind=r8), dimension(npts), intent(in) :: wavelengths
+      real (kind=r8), dimension(npts), intent(out) :: spectrum
+    end subroutine earthshine_spectrum_interface
+  end interface
+  
 CONTAINS
 
 SUBROUTINE spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, &
@@ -154,9 +169,7 @@ SUBROUTINE spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, &
   RETURN
 END SUBROUTINE spectrum_solar
 
-SUBROUTINE spectrum_earthshine ( &
-    npts, n_fitvar, rad_wav_avg, locwvl, fit, fitvar, &! database,
-    doas )
+SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas)
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
@@ -167,7 +180,7 @@ SUBROUTINE spectrum_earthshine ( &
     o3_t1_idx, o3_t3_idx
   USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
   USE OMSAO_variables_module,  ONLY: &
-    n_database_wvl, curr_sol_spec, fitvar_rad, mask_fitvar_rad, fitweights, &
+    n_database_wvl, curr_sol_spec, fitweights, &
     yn_solar_comp, yn_spectrum_norm, yn_newshift, &
     yn_radiance_reference, yn_reference_fit, database, &
     curr_xtrack_pixnum
@@ -186,11 +199,11 @@ SUBROUTINE spectrum_earthshine ( &
   ! ===============
   ! Input variables
   ! ===============
-  LOGICAL,                                                INTENT (IN) :: doas
-  INTEGER (KIND=i4),                                      INTENT (IN) :: npts, n_fitvar
-  REAL    (KIND=r8),                                      INTENT (IN) :: rad_wav_avg
-  REAL    (KIND=r8), DIMENSION (n_fitvar),                INTENT (IN) :: fitvar
-  REAL    (KIND=r8), DIMENSION (npts),                    INTENT (IN) :: locwvl
+  LOGICAL,                              INTENT (IN)    :: doas
+  INTEGER (KIND=i4),                    INTENT (IN)    :: npts
+  REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
+  REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
+  REAL    (KIND=r8), DIMENSION (npts),  INTENT (IN)    :: locwvl
   !REAL    (KIND=r8), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: database
 
   ! ================
@@ -204,7 +217,7 @@ SUBROUTINE spectrum_earthshine ( &
   REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
   REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
   LOGICAL                                       :: yn_full_range, yn_solsynth
-  INTEGER (KIND=i4)                             :: i, j, idx, errstat, j1, j2, n_sunpos
+  INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos
   REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
 
   ! Try to save some stack space by reusing some arrays via pointers.  --JED
@@ -258,18 +271,8 @@ SUBROUTINE spectrum_earthshine ( &
     soco_shi = 0.0_r8
   END IF
 
-  ! -----------------------------------------------------------------------------------
-  ! First, we have to undo the compression of the FITVAR_RAD array. This compression
-  ! is performed in the RADIANCE_FIT subroutine and accelerates the fitting process,
-  ! because the optimizer has to handle fewer parameters. But here we require the original
-  ! layout, otherwise the index assignment is screwed.
-  ! -----------------------------------------------------------------------------------
-  DO i = 1, n_fitvar
-    idx = mask_fitvar_rad(i)
-    fitvar_rad(idx) = fitvar(i)
-  END DO
-  shift   = fitvar_rad(shi_idx)
-  squeeze = fitvar_rad(squ_idx)
+  shift   = rad_fitvar(shi_idx)
+  squeeze = rad_fitvar(squ_idx)
 
   ! -------------------------------------
   ! Dealing with any pre-fitted variables
@@ -277,15 +280,15 @@ SUBROUTINE spectrum_earthshine ( &
   ! (1) OMCHOCHO
   ! ------------
   IF ( yn_lqh2o_prefit(1) .AND. (.NOT. yn_lqh2o_prefit(2)) .AND. lqh2o_prefit_var /= 0.0_r8 ) &
-    fitvar_rad(lqh2o_prefit_fitidx) = lqh2o_prefit_var
+    rad_fitvar(lqh2o_prefit_fitidx) = lqh2o_prefit_var
   ! ----------
   ! (2) OMHCHO
   !-----------
   IF ( yn_bro_prefit(1) .AND. (.NOT. yn_bro_prefit(2)) .AND. bro_prefit_var /= 0.0_r8 ) &
-    fitvar_rad(bro_prefit_fitidx) = bro_prefit_var
+    rad_fitvar(bro_prefit_fitidx) = bro_prefit_var
   IF ( yn_o3_prefit(1)  .AND. (.NOT. yn_o3_prefit(2))  ) THEN
     DO j = o3_t1_idx, o3_t3_idx
-      IF ( o3_prefit_var(j) /= 0.0_r8 ) fitvar_rad(o3_prefit_fitidx(j)) = o3_prefit_var(j)
+      IF ( o3_prefit_var(j) /= 0.0_r8 ) rad_fitvar(o3_prefit_fitidx(j)) = o3_prefit_var(j)
     END DO
   END IF
 
@@ -372,8 +375,8 @@ SUBROUTINE spectrum_earthshine ( &
 
   END IF
 
-  ! Add up the contributions, with solar intensity as FITVAR_RAD(sin_idx), trace
-  ! species beginning at FITVAR_RAD(SQU_IDX+1), to include possible linear and
+  ! Add up the contributions, with solar intensity as rad_fitvar(sin_idx), trace
+  ! species beginning at rad_fitvar(SQU_IDX+1), to include possible linear and
   ! Beer's law forms.  Do these as linear-Beer's-linear. In order to
   ! do DOAS I only need to be careful to include just linear
   ! contributions, since I already high-pass filtered them.
@@ -387,7 +390,7 @@ SUBROUTINE spectrum_earthshine ( &
   ! For BOAS or any wavelength calibration, we have the following line
   ! ==================================================================
 
-  fit(j1:j2) = fitvar_rad(sin_idx) * sunspec_ss(j1:j2)
+  fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
 
   !     DOAS here - the spectrum to be fitted needs to be re-defined:
   IF ( doas ) THEN
@@ -395,15 +398,15 @@ SUBROUTINE spectrum_earthshine ( &
     i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 
     fit(j1:j2) = &
-      ! For DOAS, FITVAR_RAD(SIN_IDX) should == 1., and not be varied
-      fitvar_rad(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
+      ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
+      rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
       ! Ring adjustment
-      fitvar_rad(i) * (database(ring_idx,j1:j2) / sunspec_ss (j1:j2))
+      rad_fitvar(i) * (database(ring_idx,j1:j2) / sunspec_ss (j1:j2))
 
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx .AND. j /= ring_idx ) THEN
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-        fit(j1:j2) = fit(j1:j2) + fitvar_rad(i) * database(j,j1:j2)
+        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
       END IF
     END DO
 
@@ -418,7 +421,7 @@ SUBROUTINE spectrum_earthshine ( &
       ! Initial add-on contributions.
       ! -----------------------------
       i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-      fit(j1:j2) = fit(j1:j2) + fitvar_rad(i) * database_j(j1:j2)
+      fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database_j(j1:j2)
 
       ! -----------------------------
       ! Beer's law contributions.
@@ -428,12 +431,12 @@ SUBROUTINE spectrum_earthshine ( &
       ! This should shave a few seconds off the execution time.
       ! ---------------------------------------------------------------
       i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
-      sumexp(j1:j2) = sumexp(j1:j2) - fitvar_rad(i)*database_j(j1:j2)
+      sumexp(j1:j2) = sumexp(j1:j2) - rad_fitvar(i)*database_j(j1:j2)
 
       ! Final add-on contributions.
       i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
       fit_final_add_on(j1:j2) = fit_final_add_on(j1:j2) + &
-        fitvar_rad(i) * database_j(j1:j2)
+        rad_fitvar(i) * database_j(j1:j2)
     END DO
 
     WHERE ( sumexp(j1:j2) >= expmax )
@@ -452,25 +455,25 @@ SUBROUTINE spectrum_earthshine ( &
   ! Use the form: A+BX+CX^2+DX^3 = A + X*(B + X*(C + X*D))
   del(j1:j2) = locwvl(j1:j2) - rad_wav_avg
   fit(j1:j2) = fit(j1:j2) &
-    * (fitvar_rad(sc0_idx) + &
-       del(j1:j2) * (fitvar_rad(sc1_idx) + &
-                     del(j1:j2) * (fitvar_rad(sc2_idx) + &
-                                   del(j1:j2) * fitvar_rad(sc3_idx))))
+    * (rad_fitvar(sc0_idx) + &
+       del(j1:j2) * (rad_fitvar(sc1_idx) + &
+                     del(j1:j2) * (rad_fitvar(sc2_idx) + &
+                                   del(j1:j2) * rad_fitvar(sc3_idx))))
 
   ! Add baseline parameters.
   fit(j1:j2) = fit(j1:j2)                                        + &
-    fitvar_rad(bl0_idx)                                       + &
-    fitvar_rad(bl1_idx) * del(j1:j2)                          + &
-    fitvar_rad(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
-    fitvar_rad(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+    rad_fitvar(bl0_idx)                                       + &
+    rad_fitvar(bl1_idx) * del(j1:j2)                          + &
+    rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
+    rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
 
   ! This form is better than the above, but introduces differences
   ! in the last digits of the output, breaking simple-minded diff-based
   ! regression tests.
-  !fit(j1:j2) = fit(j1:j2) + fitvar_rad(bl0_idx) &
-  !  + del(j1:j2) * (fitvar_rad(bl1_idx) + &
-  !                  del(j1:j2) * (fitvar_rad(bl2_idx) + &
-  !                                del(j1:j2) * fitvar_rad(bl3_idx)))
+  !fit(j1:j2) = fit(j1:j2) + rad_fitvar(bl0_idx) &
+  !  + del(j1:j2) * (rad_fitvar(bl1_idx) + &
+  !                  del(j1:j2) * (rad_fitvar(bl2_idx) + &
+  !                                del(j1:j2) * rad_fitvar(bl3_idx)))
 
   ! ----------------------------------------------------------------
   ! Final sanity check: If the various multiplications and additions
@@ -487,8 +490,7 @@ SUBROUTINE spectrum_earthshine ( &
   RETURN
 END SUBROUTINE spectrum_earthshine
 
-SUBROUTINE spectrum_earthshine_o3exp ( &
-    npts, n_fitvar, rad_wav_avg, locwvl, fit, fitvar, doas )
+SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas)
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
@@ -499,7 +501,7 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
     o3_t1_idx, o3_t2_idx, o3_t3_idx
   USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
   USE OMSAO_variables_module,  ONLY: &
-    n_database_wvl, curr_sol_spec, fitvar_rad, mask_fitvar_rad, fitweights, &
+    n_database_wvl, curr_sol_spec, fitweights, &
     yn_solar_comp, yn_spectrum_norm, yn_newshift, &
     yn_radiance_reference, yn_reference_fit, database, &
     curr_xtrack_pixnum
@@ -517,11 +519,11 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
   ! ===============
   ! Input variables
   ! ===============
-  LOGICAL,                                                INTENT (IN) :: doas
-  INTEGER (KIND=i4),                                      INTENT (IN) :: npts, n_fitvar
-  REAL    (KIND=r8),                                      INTENT (IN) :: rad_wav_avg
-  REAL    (KIND=r8), DIMENSION (n_fitvar),                INTENT (IN) :: fitvar
-  REAL    (KIND=r8), DIMENSION (npts),                    INTENT (IN) :: locwvl
+  LOGICAL,                              INTENT (IN)    :: doas
+  INTEGER (KIND=i4),                    INTENT (IN)    :: npts
+  REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
+  REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
+  REAL    (KIND=r8), DIMENSION (npts),  INTENT (IN)    :: locwvl
 
   !REAL    (KIND=r8), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: database
   ! database was passed as an argument.  However, it came from the OMSAO_variables_module, and
@@ -537,7 +539,7 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
   REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
   REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
   LOGICAL                                       :: yn_full_range, yn_solsynth
-  INTEGER (KIND=i4)                             :: i, j, idx, errstat, j1, j2, n_sunpos, k1, k2
+  INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos, k1, k2
   REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
   REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, tmpexp, sumexp
   REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
@@ -587,24 +589,14 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
     soco_shi = 0.0_r8
   END IF
 
-  ! -----------------------------------------------------------------------------------
-  ! First, we have to undo the compression of the FITVAR_RAD array. This compression
-  ! is performed in the RADIANCE_FIT subroutine and accelerates the fitting process,
-  ! because the optimizer has to handle fewer paraemters. But here we require the original
-  ! layout, otherwise the index assignment is screwed.
-  ! -----------------------------------------------------------------------------------
-  DO i = 1, n_fitvar
-    idx = mask_fitvar_rad(i)
-    fitvar_rad(idx) = fitvar(i)
-  END DO
-  shift   = fitvar_rad(shi_idx)
-  squeeze = fitvar_rad(squ_idx)
+  shift   = rad_fitvar(shi_idx)
+  squeeze = rad_fitvar(squ_idx)
 
   IF ( yn_bro_prefit(1) .AND. (.NOT. yn_bro_prefit(2)) .AND. bro_prefit_var /= 0.0_r8 ) &
-    fitvar_rad(bro_prefit_fitidx) = bro_prefit_var
+    rad_fitvar(bro_prefit_fitidx) = bro_prefit_var
   IF ( yn_o3_prefit(1)  .AND. (.NOT. yn_o3_prefit(2))  ) THEN
     DO j = o3_t1_idx, o3_t3_idx
-      IF ( o3_prefit_var(j) /= 0.0_r8 ) fitvar_rad(o3_prefit_fitidx(j)) = o3_prefit_var(j)
+      IF ( o3_prefit_var(j) /= 0.0_r8 ) rad_fitvar(o3_prefit_fitidx(j)) = o3_prefit_var(j)
     END DO
   END IF
 
@@ -685,8 +677,8 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
 
   END IF
 
-  !     Add up the contributions, with solar intensity as FITVAR_RAD(sin_idx), trace
-  !     species beginning at FITVAR_RAD(SQU_IDX+1), to include possible linear and
+  !     Add up the contributions, with solar intensity as rad_fitvar(sin_idx), trace
+  !     species beginning at rad_fitvar(SQU_IDX+1), to include possible linear and
   !     Beer's law forms.  Do these as linear-Beer's-linear. In order to
   !     do DOAS I only need to be careful to include just linear
   !     contributions, since I already high-pass filtered them.
@@ -706,7 +698,7 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
   ! For BOAS or any wavelength calibration, we have the following line
   ! ==================================================================
 
-  fit(j1:j2) = fitvar_rad(sin_idx) * sunspec_ss(j1:j2)
+  fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
 
   !     DOAS here - the spectrum to be fitted needs to be re-defined:
   IF ( doas ) THEN
@@ -714,16 +706,16 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
     i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 
     fit(j1:j2) = &
-      ! For DOAS, FITVAR_RAD(SIN_IDX) should == 1., and not be varied
-      fitvar_rad(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
+      ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
+      rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
       ! Ring adjustment
-      fitvar_rad(i) * (database(ring_idx,j1:j2) / sunspec_ss (j1:j2))
+      rad_fitvar(i) * (database(ring_idx,j1:j2) / sunspec_ss (j1:j2))
 
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx .AND. j /= ring_idx  .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-        fit(j1:j2) = fit(j1:j2) + fitvar_rad(i) * database(j,j1:j2)
+        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
       END IF
     END DO
 
@@ -735,7 +727,7 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
       IF ( j /= solar_idx .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-        fit(j1:j2) = fit(j1:j2) + fitvar_rad(i) * database(j,j1:j2)
+        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
       END IF
     END DO
     ! -----------------------------
@@ -753,11 +745,11 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
         IF ( j == o3_t1_idx .OR. j == o3_t2_idx .OR. j == o3_t3_idx ) THEN
           k1 = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
           k2 = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-          tmpexp(j1:j2) = fitvar_rad(i)*database(j,j1:j2) *  &
-            (1.0_r8 + fitvar_rad(k1)*del(j1:j2) + &
-            fitvar_rad(k2)*del(j1:j2)*del(j1:j2))
+          tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2) *  &
+            (1.0_r8 + rad_fitvar(k1)*del(j1:j2) + &
+            rad_fitvar(k2)*del(j1:j2)*del(j1:j2))
         ELSE
-          tmpexp(j1:j2) = fitvar_rad(i)*database(j,j1:j2)
+          tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2)
         END IF
 
         WHERE ( tmpexp(j1:j2) >= expmax )
@@ -782,7 +774,7 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
       IF ( j /= solar_idx .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
         i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-        fit(j1:j2) = fit(j1:j2) + fitvar_rad(i) * database(j,j1:j2)
+        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
       END IF
     END DO
 
@@ -795,17 +787,17 @@ SUBROUTINE spectrum_earthshine_o3exp ( &
 
   ! Add the scaling.
   fit(j1:j2) = fit(j1:j2) * ( &
-    fitvar_rad(sc0_idx)                                       + &
-    fitvar_rad(sc1_idx) * del(j1:j2)                          + &
-    fitvar_rad(sc2_idx) * del(j1:j2)*del(j1:j2)               + &
-    fitvar_rad(sc3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2) )
+    rad_fitvar(sc0_idx)                                       + &
+    rad_fitvar(sc1_idx) * del(j1:j2)                          + &
+    rad_fitvar(sc2_idx) * del(j1:j2)*del(j1:j2)               + &
+    rad_fitvar(sc3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2) )
 
   ! Add baseline parameters.
   fit(j1:j2) = fit(j1:j2)                                        + &
-    fitvar_rad(bl0_idx)                                       + &
-    fitvar_rad(bl1_idx) * del(j1:j2)                          + &
-    fitvar_rad(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
-    fitvar_rad(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+    rad_fitvar(bl0_idx)                                       + &
+    rad_fitvar(bl1_idx) * del(j1:j2)                          + &
+    rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
+    rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
 
   ! ----------------------------------------------------------------
   ! Final sanity check: If the various multiplications and additions
