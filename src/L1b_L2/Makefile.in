@@ -35,6 +35,7 @@ HDFINC      = @HDFINC@
 HDF5LIB     = @HDF5LIB@
 HDF5INC     = @HDF5INC@
 
+PGSBIN      = @PGSBIN@
 PGSLIB      = @PGSLIB@
 PGSINC      = @PGSINC@
 HDFEOS_LIB  = @HDFEOS_LIB@
@@ -85,7 +86,7 @@ LFLAGS = -L$(objdir) -L$(OMIUTIL)/lib \
 LIBS   = $(PSPLINELIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
 
-CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(objdir)
+CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
@@ -128,30 +129,31 @@ fix-hdf-tabs:
 # ---------------------------------------
 
 PGEPGSSRC = OMSAO_52500.t OMI_1900.t
-PGEPGSCMP = PGS_OMSAO_52500.f PGS_OMI_1900.f PGS_OMI_1900.h
-TKPGSCMP  = PGS_1 PGS_3 PGS_4 PGS_5 PGS_6 PGS_7 PGS_9 PGS_11 \
-            PGS_12 PGS_13 PGS_14 PGS_15 PGS_10 PGS_101 PGS_1900 PGS_52500
+PGEPGSCMP = $(msgdir)/PGS_52500 $(msgdir)/PGS_1900
+TKPGSCMP = PGS_9
 
-messages: pgemessages tkmessages
-
-pgemessages: $(PGEPGSCMP)
+messages: $(PGEPGSCMP) tkmessages
 
 tkmessages:
 	@for tkpgs in $(TKPGSCMP); do                                 \
-	   if [ ! -e $(msgdir)/$$tkpgs ]; then                        \
-	      echo 'Copying' $$tkpgs 'to' $(msgdir);                  \
-	      touch $(msgdir)/$$tkpgs ; chmod u+w $(msgdir)/$$tkpgs;  \
-	      $(CP) -p $(PGSHOME)/message/$$tkpgs $(msgdir)/;            \
-	   fi;                                                        \
-	 done
+	  if [ ! -e $(msgdir)/$$tkpgs ]; then                        \
+	     echo 'Copying' $$tkpgs 'to' $(msgdir);                  \
+	     touch $(msgdir)/$$tkpgs ; chmod u+w $(msgdir)/$$tkpgs;  \
+	     $(CP) -p $(PGSHOME)/message/$$tkpgs $(msgdir)/;            \
+	  fi;                                                        \
+	done
 
-# ---------------------------------------------
-# Pattern rule for the creation of SMF messages
-# ---------------------------------------------
-PGS_%.f : %.t
-	$(PGSBIN)/smfcompile -r -f77 -f $< -o $(objdir)/$@
-PGS_%.h : %.t
-	$(PGSBIN)/smfcompile -r      -f $< -o $(objdir)/$@
+# ----------------------------------------------------------------------
+# Pattern rule for the creation of SMF messages and associated .f and .h
+# ----------------------------------------------------------------------
+$(msgdir)/PGS_1900:
+	export PGSMSG="$(msgdir)" ; \
+	$(PGSBIN)/smfcompile -r -f77 -f OMI_1900.t ; \
+	$(PGSBIN)/smfcompile -r      -f OMI_1900.t
+$(msgdir)/PGS_52500:
+	export PGSMSG="$(msgdir)" ; \
+	$(PGSBIN)/smfcompile -r -f77 -f OMSAO_52500.t ; \
+	$(PGSBIN)/smfcompile -r      -f OMSAO_52500.t
 
 # ---- build dependencies ----
 # During development, the rules will be dynamically updated.
