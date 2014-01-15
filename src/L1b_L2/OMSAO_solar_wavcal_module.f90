@@ -22,7 +22,8 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
     USE OMSAO_variables_module,  ONLY: verb_thresh_lev, Slit_Half_Width_1e, &
       Slit_Asym_Factor, curr_sol_spec, sol_wav_avg, fitvar_cal, fitvar_cal_saved,  &
-      fitvar_sol_init, n_fitres_loop, fitres_range, curr_xtrack_pixnum
+      fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
+      curr_xtrack_pixnum
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -99,8 +100,8 @@ CONTAINS
 
       is_bad_pixel   = .FALSE.
       CALL solar_fit ( &   ! Solar wavelength calibration
-        n_fitres_loop(solcal_idx), fitres_range(solcal_idx), n_sol_wvl, &
-        curr_sol_spec(wvl_idx:ccd_idx,1:n_sol_wvl), Slit_Half_Width_1e, &
+        ctrl_n_fitres_loop(solcal_idx), ctrl_fitres_range(solcal_idx), &
+        n_sol_wvl, curr_sol_spec(wvl_idx:ccd_idx,1:n_sol_wvl), Slit_Half_Width_1e, &
         Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, is_bad_pixel, locerrstat )
       ! ------------------------------------------------------------------------------------------
 

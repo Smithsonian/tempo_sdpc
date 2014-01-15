@@ -73,10 +73,10 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     zatmos, lo_sunbnd, up_sunbnd, lo_radbnd, up_radbnd,                      &
     yn_use_labslitfunc, radwavcal_freq, tol, epsrel,  epsabs,  epsx, &
     pm_one, Undersample_Phase,     &
-    fit_winwav_lim, fit_winexc_lim, pixnum_lim, radfit_latrange,                        &
+    ctrl_fit_winwav_lim, ctrl_fit_winexc_lim, pixnum_lim, radfit_latrange, &
     static_input_fnames, fitvar_rad_str, winwav_min, winwav_max,       &
     have_undersampling,                                                &
-    n_fitres_loop, fitres_range, l1b_channel, yn_solar_i0,                              &
+    ctrl_n_fitres_loop, ctrl_fitres_range, l1b_channel, yn_solar_i0,                              &
     yn_solar_comp, solar_comp_typ, yn_spectrum_norm, yn_common_iter,    &
     common_fitpos, common_fitvar, common_latrange, yn_o3amf_cor, yn_diagnostic_run,     &
     max_good_col, yn_solmonthave, yn_newshift, yn_refseccor, yn_sw, &
@@ -494,7 +494,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     modulename//f_sep//wavwindow_str, vb_lev_default, pge_error_status )
   IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) l1b_channel
-  READ (fit_ctrl_unit, *) fit_winwav_lim(1:N_FIT_WINWAV), fit_winexc_lim(1:2)
+  READ (fit_ctrl_unit, *) ctrl_fit_winwav_lim(1:N_FIT_WINWAV), ctrl_fit_winexc_lim(1:2)
 
   ! ------------------------------------------------------------------
   ! Acceptable window for the fitting residual in multiples of its
@@ -511,10 +511,10 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
     modulename//f_sep//fitresconst_str, vb_lev_default, pge_error_status )
   IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) fitres_range(solcal_idx), n_fitres_loop(solcal_idx)
-  READ (fit_ctrl_unit, *) fitres_range(radcal_idx), n_fitres_loop(radcal_idx)
-  READ (fit_ctrl_unit, *) fitres_range(radref_idx), n_fitres_loop(radref_idx)
-  READ (fit_ctrl_unit, *) fitres_range(radfit_idx), n_fitres_loop(radfit_idx)
+  READ (fit_ctrl_unit, *) ctrl_fitres_range(solcal_idx), ctrl_n_fitres_loop(solcal_idx)
+  READ (fit_ctrl_unit, *) ctrl_fitres_range(radcal_idx), ctrl_n_fitres_loop(radcal_idx)
+  READ (fit_ctrl_unit, *) ctrl_fitres_range(radref_idx), ctrl_n_fitres_loop(radref_idx)
+  READ (fit_ctrl_unit, *) ctrl_fitres_range(radfit_idx), ctrl_n_fitres_loop(radfit_idx)
 
   ! ---------------------------------------------------------------------------
   ! Position cursor to read maximum good column amount
@@ -590,8 +590,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
   ! -------------------------------------------------------------------------
   ! Determine minimum and maximum wavelength in selected read/fitting windows
   ! -------------------------------------------------------------------------
-  winwav_min = MINVAL((/ fit_winwav_lim(1:N_FIT_WINWAV) /))
-  winwav_max = MAXVAL((/ fit_winwav_lim(1:N_FIT_WINWAV) /))
+  winwav_min = MINVAL((/ ctrl_fit_winwav_lim(1:N_FIT_WINWAV) /))
+  winwav_max = MAXVAL((/ ctrl_fit_winwav_lim(1:N_FIT_WINWAV) /))
 
   errstat = pge_errstat_ok
 

@@ -28,7 +28,8 @@ CONTAINS
       r4_missval, downweight, normweight, nlines_max
     USE OMSAO_indices_module,    ONLY: &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
-    USE OMSAO_variables_module,  ONLY: fit_winwav_lim, fit_winexc_lim, &
+    USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, &
+      ctrl_fit_winexc_lim, &
       radiance_reference_lnums, radref_latrange
     USE OMSAO_omidata_module,    ONLY: &
       omi_ccdpix_selection, omi_radiance_qflg, omi_radiance_spec, omi_radiance_wavl, &
@@ -280,10 +281,10 @@ CONTAINS
       radref_wavl_ix = radref_wavl (ix, 1:nwrr)
       DO j1 = 1, 3, 2
         CALL array_locate_r8 ( &
-          nwrr, radref_wavl_ix, fit_winwav_lim(j1  ), 'LE', &
+          nwrr, radref_wavl_ix, ctrl_fit_winwav_lim(j1  ), 'LE', &
           omi_ccdpix_selection(ix,j1  ) )
         CALL array_locate_r8 ( &
-          nwrr, radref_wavl_ix, fit_winwav_lim(j1+1), 'GE', &
+          nwrr, radref_wavl_ix, ctrl_fit_winwav_lim(j1+1), 'GE', &
           omi_ccdpix_selection(ix,j1+1) )
       END DO
 
@@ -318,12 +319,12 @@ CONTAINS
       ! exclude from the final arrays, not the complete ones read from the HE4 file.
       ! ------------------------------------------------------------------------------
       omi_ccdpix_exclusion(ix,1:2) = -1
-      IF ( MINVAL(fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
+      IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
         CALL array_locate_r8 ( &
-          nwrr, radref_wavl_ix, fit_winexc_lim(1), 'GE', &
+          nwrr, radref_wavl_ix, ctrl_fit_winexc_lim(1), 'GE', &
           omi_ccdpix_exclusion(ix,1) )
         CALL array_locate_r8 ( &
-          nwrr, radref_wavl_ix, fit_winexc_lim(2), 'LE', &
+          nwrr, radref_wavl_ix, ctrl_fit_winexc_lim(2), 'LE', &
           omi_ccdpix_exclusion(ix,2) )
       END IF
 
@@ -351,7 +352,7 @@ CONTAINS
       database, curr_sol_spec, n_rad_wvl, curr_rad_spec, sol_wav_avg,                  &
       Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
-      n_fitres_loop, fitres_range, xtrack_fitres_limit, &
+      ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
       n_rad_wvl_max, target_npol, yn_reference_fit, &
       curr_xtrack_pixnum, fitvar_rad_saved, fitvar_rad_init
     USE OMSAO_prefitcol_module, ONLY:                                                     &
@@ -555,8 +556,8 @@ CONTAINS
           is_bad_pixel     = .FALSE.
 
           CALL fit_radiance ( &
-            pge_idx, ipix, n_fitres_loop(radref_idx), fitres_range(radref_idx),       &
-            yn_reference_fit,                                                         &
+            pge_idx, ipix, ctrl_n_fitres_loop(radref_idx), &
+            ctrl_fitres_range(radref_idx), yn_reference_fit, &
             n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                    &
             fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,               &
             o3fit_cols, o3fit_dcols, bro_prefit_col(ipix,0), bro_prefit_dcol(ipix,0), &

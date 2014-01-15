@@ -24,8 +24,8 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: r4, i2
     USE OMSAO_parameters_module, ONLY: nwavel_max, nxtrack_max
     USE OMSAO_variables_module, ONLY: &
-      OMSAO_solmonthave_filename, l1b_channel, fit_winwav_lim, &
-      fit_winexc_lim
+      OMSAO_solmonthave_filename, l1b_channel, ctrl_fit_winwav_lim, &
+      ctrl_fit_winexc_lim
     USE OMSAO_omidata_module,   ONLY: &
       omi_irradiance_spec,        &
       omi_irradiance_qflg, omi_irradiance_prec, omi_irradiance_wavl, omi_nwav_irrad, &
@@ -310,10 +310,10 @@ CONTAINS
       ! -------------------------------------------------------------------------------
       DO j = 1, 3, 2
         CALL array_locate_r4 ( &
-          nwavel, tmp_wvl(1:nwavel,ix), REAL(fit_winwav_lim(j  ),KIND=r4), 'LE', &
+          nwavel, tmp_wvl(1:nwavel,ix), REAL(ctrl_fit_winwav_lim(j  ),KIND=r4), 'LE', &
           omi_ccdpix_selection(ix,j  ) )
         CALL array_locate_r4 ( &
-          nwavel, tmp_wvl(1:nwavel,ix), REAL(fit_winwav_lim(j+1),KIND=r4), 'GE', &
+          nwavel, tmp_wvl(1:nwavel,ix), REAL(ctrl_fit_winwav_lim(j+1),KIND=r4), 'GE', &
           omi_ccdpix_selection(ix,j+1) )
       END DO
 
@@ -334,11 +334,11 @@ CONTAINS
       ! exclude from the final arrays, not the complete ones read from the HE4 file.
       ! ------------------------------------------------------------------------------
       omi_ccdpix_exclusion(ix,1:2) = -1
-      IF ( MINVAL(fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
+      IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
         CALL array_locate_r4 ( &
-          nwavel, tmp_wvl(1:nwavel,ix), REAL(fit_winexc_lim(1),KIND=r4), 'GE', omi_ccdpix_exclusion(ix,1) )
+          nwavel, tmp_wvl(1:nwavel,ix), REAL(ctrl_fit_winexc_lim(1),KIND=r4), 'GE', omi_ccdpix_exclusion(ix,1) )
         CALL array_locate_r4 ( &
-          nwavel, tmp_wvl(1:nwavel,ix), REAL(fit_winexc_lim(2),KIND=r4), 'LE', omi_ccdpix_exclusion(ix,2) )
+          nwavel, tmp_wvl(1:nwavel,ix), REAL(ctrl_fit_winexc_lim(2),KIND=r4), 'LE', omi_ccdpix_exclusion(ix,2) )
       END IF
 
     END DO

@@ -131,8 +131,8 @@ MODULE OMSAO_variables_module
   ! --------------------------------------
   ! Solar and Earth shine wavlength limits
   ! --------------------------------------
-  REAL (KIND=r8), DIMENSION (N_FIT_WINWAV) :: fit_winwav_lim
-  REAL (KIND=r8), DIMENSION (2)            :: fit_winexc_lim
+  REAL (KIND=r8), DIMENSION (N_FIT_WINWAV) :: ctrl_fit_winwav_lim
+  REAL (KIND=r8), DIMENSION (2)            :: ctrl_fit_winexc_lim
   REAL (KIND=r8)                           :: winwav_min, winwav_max
 
   ! ------------------------------------------------------------------
@@ -164,7 +164,8 @@ MODULE OMSAO_variables_module
   ! ---------------------------------------------------------------------
   ! Contstraints on the fitting residual: Window and Number of Iterations
   ! ---------------------------------------------------------------------
-  INTEGER (KIND=i4), DIMENSION (radfit_idx)  :: n_fitres_loop, fitres_range
+  INTEGER (KIND=i4), DIMENSION (radfit_idx)  :: &
+    ctrl_n_fitres_loop, ctrl_fitres_range
   REAL    (KIND=r8), DIMENSION (nxtrack_max) :: xtrack_fitres_limit
 
   ! --------------------------------------------

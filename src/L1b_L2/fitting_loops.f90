@@ -13,9 +13,8 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY:  &
       verb_thresh_lev, Slit_Half_Width_1e, Slit_Asym_Factor, &
       n_rad_wvl, curr_rad_spec, sol_wav_avg, database, fitvar_cal, fitvar_cal_saved, &
-      fitvar_rad_init,    &
-      n_fitres_loop, fitres_range, yn_diagnostic_run, &
-      yn_radiance_reference, yn_solar_comp, &
+      fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
+      yn_diagnostic_run, yn_radiance_reference, yn_solar_comp, &
       curr_xtrack_pixnum
     USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
@@ -191,7 +190,7 @@ CONTAINS
         SUM ( curr_rad_spec(wvl_idx,1:n_omi_radwvl) ) / REAL(n_omi_radwvl,KIND=r8)
       is_bad_pixel = .FALSE.
       CALL radiance_wavecal ( &                       ! Radiance wavelength calibration
-        ipix, n_fitres_loop(radcal_idx), fitres_range(radcal_idx),       &
+        ipix, ctrl_n_fitres_loop(radcal_idx), ctrl_fitres_range(radcal_idx), &
         n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),           &
         radcal_exval, radcal_itnum, chisquav, is_bad_pixel, locerrstat )
 
@@ -337,8 +336,7 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY:  &
       database, curr_sol_spec, n_rad_wvl, curr_rad_spec, sol_wav_avg, &
       Slit_Half_Width_1e, Slit_Asym_Factor,     &
-      n_database_wvl, &
-      n_fitres_loop, fitres_range,     &
+      n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
       szamax, n_fincol_idx, yn_reference_fit, curr_xtrack_pixnum
     USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_prefitcol_module, ONLY: &
@@ -516,8 +514,8 @@ CONTAINS
 
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
-          pge_idx, ipix, n_fitres_loop(radfit_idx), fitres_range(radfit_idx),   &
-          yn_reference_fit,                                                     &
+          pge_idx, ipix, ctrl_n_fitres_loop(radfit_idx), &
+          ctrl_fitres_range(radfit_idx), yn_reference_fit, &
           n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                &
           fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,           &
           o3fit_cols, o3fit_dcols, brofit_col, brofit_dcol,                     &

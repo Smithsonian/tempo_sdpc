@@ -100,6 +100,9 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
         ! CAREFUL: The Common Mode has 60 potentially different wavelength arrays.
         !          This assignment here can screw up things!
         ! ------------------------------------------------------------------------
+        ! Q: There is a common-mode spectrum for each cross-track pixel.
+        !    Instead of using the first, would it be better to average them?
+        !       --JED
         refspecs_original(i)%RefSpecWavs(1:npts) = common_mode_spec%RefSpecWavs(1,1:npts)
       END IF
 

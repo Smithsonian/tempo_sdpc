@@ -1611,7 +1611,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, N_FIT_WINWAV
     USE OMSAO_indices_module,    ONLY: &
       n_config_luns, yn_config_lun_autocopy, config_lun_strings, config_lun_values
-    USE OMSAO_variables_module,  ONLY: fit_winwav_lim, fit_winexc_lim
+    USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, ctrl_fit_winexc_lim
 
     IMPLICIT NONE
 
@@ -1696,8 +1696,8 @@ CONTAINS
     ! Now the Global Attributes that are set by the PGE: PGE statistics mostly
     ! ------------------------------------------------------------------------
     parname = "FittingWindowLimits"
-    fitwinlim(1:N_FIT_WINWAV) = REAL( fit_winwav_lim(1:N_FIT_WINWAV), KIND=r4 )
-    fitwinlim(5:6)            = REAL( fit_winexc_lim(1:2),            KIND=r4 )
+    fitwinlim(1:N_FIT_WINWAV) = REAL( ctrl_fit_winwav_lim(1:N_FIT_WINWAV), KIND=r4 )
+    fitwinlim(5:6)            = REAL( ctrl_fit_winexc_lim(1:2),            KIND=r4 )
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
                             HE5T_NATIVE_FLOAT, INT( N_FIT_WINWAV+2, KIND=r8), fitwinlim(1:N_FIT_WINWAV+2) )
     CALL error_check ( &

@@ -297,7 +297,7 @@ CONTAINS
     ! ------------------------------------------------------------------
 
     USE OMSAO_parameters_module, ONLY: i2, i4, r8, N_FIT_WINWAV, NWAVEL_MAX
-    USE OMSAO_variables_module,  ONLY: fit_winwav_lim, fit_winexc_lim
+    USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, ctrl_fit_winexc_lim
     USE OMSAO_solcomp_module,    ONLY: soco_compute
     USE OMSAO_omidata_module,    ONLY:                                                    &
       omi_irradiance_spec, omi_irradiance_qflg, omi_irradiance_prec,       &
@@ -324,7 +324,7 @@ CONTAINS
     ! -----------------------------------------------------------
     ! Compute number of wavelengths and assign to temporary array
     ! -----------------------------------------------------------
-    swvl = fit_winwav_lim(1) ; ewvl = fit_winwav_lim(N_FIT_WINWAV)
+    swvl = ctrl_fit_winwav_lim(1) ; ewvl = ctrl_fit_winwav_lim(N_FIT_WINWAV)
     nwvl = INT ( (ewvl-swvl) / dwvl, KIND=i4 ) + 1
     !tmpwvl(1:nwvl) = swvl + (/ (REAL(j, KIND=r8), j = 0, nwvl) /) * dwvl
     tmpwvl(1:nwvl) = swvl + (/ (REAL(j, KIND=r8), j = 0, nwvl-1) /) * dwvl  ! JED fix
@@ -359,16 +359,16 @@ CONTAINS
       omi_ccdpix_exclusion(ix,1:2) = -1
       DO j = 1, 3, 2
         CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), fit_winwav_lim(j  ), 'LE', omi_ccdpix_selection(ix,j  ) )
+          nwvl, tmpwvl(1:nwvl), ctrl_fit_winwav_lim(j  ), 'LE', omi_ccdpix_selection(ix,j  ) )
         CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), fit_winwav_lim(j+1), 'GE', omi_ccdpix_selection(ix,j+1) )
+          nwvl, tmpwvl(1:nwvl), ctrl_fit_winwav_lim(j+1), 'GE', omi_ccdpix_selection(ix,j+1) )
       END DO
 
-      IF ( MINVAL(fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
+      IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
         CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), fit_winexc_lim(1), 'GE', omi_ccdpix_exclusion(ix,1) )
+          nwvl, tmpwvl(1:nwvl), ctrl_fit_winexc_lim(1), 'GE', omi_ccdpix_exclusion(ix,1) )
         CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), fit_winexc_lim(2), 'LE', omi_ccdpix_exclusion(ix,2) )
+          nwvl, tmpwvl(1:nwvl), ctrl_fit_winexc_lim(2), 'LE', omi_ccdpix_exclusion(ix,2) )
       END IF
 
     END DO
