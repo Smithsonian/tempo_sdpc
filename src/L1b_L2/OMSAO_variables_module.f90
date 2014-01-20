@@ -221,7 +221,7 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   ! Generic dimension variables (initialized from either GOME or OMI)
   ! -----------------------------------------------------------------
-  INTEGER (KIND=I4) :: n_sol_wvl, n_rad_wvl, n_database_wvl
+  INTEGER (KIND=I4) :: n_rad_wvl, n_database_wvl
   INTEGER (KIND=I4) :: n_rad_wvl_max
 
   ! --------------------------------------------

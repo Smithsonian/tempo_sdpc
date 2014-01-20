@@ -128,15 +128,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     o3_prefit_col, o3_prefit_dcol, &
     yn_o3_prefit, yn_bro_prefit, yn_lqh2o_prefit
   USE OMSAO_errstat_module
-  USE OMSAO_solmonthave_module, ONLY: omi_read_monthly_average_irradiance
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
     he5_write_wavcal_output, he5_write_common_mode !, he5_open_readwrite
-  USE omi_read_l1b_data, ONLY: omi_read_binning_factor, omi_read_irradiance_data, &
+  USE omi_read_l1b_data, ONLY: omi_read_binning_factor, &
     omi_read_radiance_lines, omi_read_radiance_lines
-  USE omi_pge_fitting_aux, ONLY: omi_set_xtrpix_range, omi_create_solcomp_irradiance, &
+  USE omi_pge_fitting_aux, ONLY: omi_set_xtrpix_range, &
     read_latitude, find_swathline_range, finalize_common_mode
   USE fitting_loops, ONLY: xtrack_radiance_wvl_calibration
   USE metadata_tools, ONLY: check_metadata_consistency, set_l2_metadata
@@ -146,6 +145,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
     omi_cross_track_skippix, omi_radcal_itnum, omi_radcal_xflag, &
     omi_radiance_swathname, omi_solcal_itnum, omi_solcal_xflag
+  USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
 
@@ -172,7 +172,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------------------------------------
   ! Swath dimensions and variables that aren't passed from calling routine
   ! ----------------------------------------------------------------------
-  INTEGER   (KIND=i4)      :: nTimesIrr, nXtrackIrr
   CHARACTER (LEN=MAX_STR_LEN) :: molname
 
   ! ----------------------------------------------------------
@@ -287,27 +286,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     GO TO 666
   END IF
 
-  IF ( yn_solar_comp ) THEN
-    ! -----------------------------------
-    ! Compute composite solar irradiances
-    ! -----------------------------------
-    CALL omi_create_solcomp_irradiance ( nxtrack_rad )
-  ELSE IF (yn_solmonthave) THEN
-    ! -----------------------------------
-    ! Read solar monthly mean irradiance
-    ! -----------------------------------
-    CALL omi_read_monthly_average_irradiance (nTimesIrr, nXtrackIrr, errstat)
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
-  ELSE
-    ! --------------------
-    ! Read OMI irradiances
-    ! --------------------
-    CALL omi_read_irradiance_data ( nTimesIrr, nXtrackIrr, errstat )
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
-  END IF
-
+  call irradiance_data_init (rpt_rad, errstat);
+  if (errstat < 0) &
+    goto 666
   ! ---------------------------------------------------------------
   ! Solar wavelength calibration, done even when we use a composite
   ! solar spectrum to avoid un-initialized variables. However, no
@@ -721,6 +702,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     modulename//f_sep//"SET_L2_METADATA.", vb_lev_default, pge_error_status )
 
   RETURN
+
 END SUBROUTINE omi_fitting
 
 END MODULE

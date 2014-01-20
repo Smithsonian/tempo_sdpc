@@ -39,7 +39,7 @@ OMSAO_Reference_sector_module.f90
 OMSAO_slitfunction_module.f90
 OMSAO_solar_wavcal_module.f90
 OMSAO_solcomp_module.f90
-OMSAO_solmonthave_module.f90
+#OMSAO_solmonthave_module.f90
 OMSAO_variables_module.f90
 OMSAO_wfamf_module.f90
 prepare_databases.f90
@@ -56,5 +56,7 @@ Szoom_Parameter_Module.f90
 SLATEC_davint.f90
 undersample.f90
 datafields.f90
-addr_module.f90
+# addr_module.f90
+irradiance_data.f90
+errormodule.f90
 

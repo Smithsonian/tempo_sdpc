@@ -53,38 +53,37 @@ CONTAINS
     RETURN
   END SUBROUTINE omi_set_fitting_parameters
 
-  SUBROUTINE omi_adjust_irradiance_data ( &
-      omi_ccdpix_idx, omi_ccdpix_exc, n_omi_irradwvl, omi_irrad_wvl, omi_irrad_spc, &
-      omi_irrad_qflg, omi_irrad_ccd, n_sol_wvl, curr_sol_spec, yn_skip_pix, errstat )
+  SUBROUTINE omi_adjust_irradiance_data (irr, xtpix, irrad_ccd, &
+                                         sol_spec, avg_sol_wav, &
+                                         yn_skip_pix, errstat )
 
+    USE sao_pge_utils, ONLY: print_array
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: downweight, normweight, r4_missval
     USE OMSAO_indices_module,         ONLY: &
       wvl_idx, spc_idx, sig_idx, ccd_idx, &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
-    USE OMSAO_variables_module, ONLY: sol_wav_avg, yn_spectrum_norm
+    USE OMSAO_variables_module, ONLY: yn_spectrum_norm
     USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
     USE strutils, ONLY: convert_2bytes_to_16bits
+    USE irradiance_data, only: Irradiance_Data_Type
 
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                             INTENT (IN) :: n_omi_irradwvl
-    INTEGER (KIND=i4), DIMENSION (2),              INTENT (IN) :: omi_ccdpix_exc
-    INTEGER (KIND=i4), DIMENSION (4),              INTENT (IN) :: omi_ccdpix_idx
-    INTEGER (KIND=i2), DIMENSION (n_omi_irradwvl), INTENT (IN) :: omi_irrad_qflg
-    REAL    (KIND=r8), DIMENSION (n_omi_irradwvl), INTENT (IN) :: omi_irrad_wvl, omi_irrad_spc
+    type (Irradiance_Data_Type), intent(in) :: irr
+    integer (kind=i4), intent(in) :: xtpix
 
     ! ----------------
     ! Output variables
     ! ----------------
     LOGICAL,                                               INTENT (OUT) :: yn_skip_pix
-    INTEGER (KIND=i4),                                     INTENT (OUT) :: n_sol_wvl
-    INTEGER (KIND=i4), DIMENSION (n_omi_irradwvl),         INTENT (OUT) :: omi_irrad_ccd
-    REAL    (KIND=r8), DIMENSION (ccd_idx,n_omi_irradwvl), INTENT (OUT) :: curr_sol_spec
+    INTEGER (KIND=i4), DIMENSION (irr%nwaves(xtpix)),         INTENT (OUT) :: irrad_ccd
+    REAL    (KIND=r8), DIMENSION (ccd_idx,irr%nwaves(xtpix)), INTENT (OUT) :: sol_spec
+    real (kind=r8), intent(out) :: avg_sol_wav
 
     ! ------------------
     ! Modified variables
@@ -98,32 +97,37 @@ CONTAINS
     INTEGER (KIND=i4)                                       :: &
       i, j, locerrstat, imin1, imax1, imin2, imax2, j1, j2
     LOGICAL                                                 :: have_good_window
-    INTEGER (KIND=i2), DIMENSION (n_omi_irradwvl,0:nbits-1) :: irrad_qflg_bit
-    INTEGER (KIND=i2), DIMENSION (n_omi_irradwvl)           :: irrad_qflg_mask
-    REAL    (KIND=r8), DIMENSION (n_omi_irradwvl)           :: weightsum
+    INTEGER (KIND=i2), DIMENSION (irr%nwaves(xtpix),0:nbits-1) :: irrad_qflg_bit
+    INTEGER (KIND=i2), DIMENSION (irr%nwaves(xtpix))           :: irrad_qflg_mask
+    REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix))           :: weightsum
     REAL    (KIND=r8)                                       :: sol_spec_avg, asum, ssum
+    INTEGER (KIND=i4) :: num_irr_wvl
 
     ! ----------------------------------------------
     ! Variables for separating the good from the bad
     ! ----------------------------------------------
     INTEGER (KIND=i4) :: ngood, nbad
-    INTEGER (KIND=i4), DIMENSION (n_omi_irradwvl) :: bad_idx
-    REAL    (KIND=r8), DIMENSION (n_omi_irradwvl) :: wvl_good, wvl_bad, spc_good, spc_bad
+    INTEGER (KIND=i4), DIMENSION (irr%nwaves(xtpix)) :: bad_idx
+    REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix)) :: wvl_good, wvl_bad, spc_good, spc_bad
 
     locerrstat  = pge_errstat_ok
     yn_skip_pix = .FALSE.
 
-    imin1 = omi_ccdpix_idx(1) ; imax1 = omi_ccdpix_idx(4)  ! The total window
-    imin2 = omi_ccdpix_idx(2) ; imax2 = omi_ccdpix_idx(3)  ! The fitting window
+    ! The total window
+    imin1 = irr%ccdpix_selection (1,xtpix)
+    imax1 = irr%ccdpix_selection (4,xtpix)
+    ! The fitting window
+    imin2 = irr%ccdpix_selection (1,xtpix)
+    imax2 = irr%ccdpix_selection (4,xtpix)
 
     ! ---------------------------------------------------------------
     ! Assign irradiance spectrum to generic variables that are passed
     ! through the fitting routines down to the spectrum function.
     ! ---------------------------------------------------------------
-    n_sol_wvl                          = n_omi_irradwvl
-    curr_sol_spec(wvl_idx,1:n_sol_wvl) = omi_irrad_wvl(1:n_sol_wvl)
-    curr_sol_spec(spc_idx,1:n_sol_wvl) = omi_irrad_spc(1:n_sol_wvl)
-    omi_irrad_ccd(        1:n_sol_wvl) = (/ (i, i = imin1, imax1) /)
+    num_irr_wvl                          = irr%nwaves(xtpix)
+    sol_spec(wvl_idx,1:num_irr_wvl) = irr%wavelengths(1:num_irr_wvl, xtpix)
+    sol_spec(spc_idx,1:num_irr_wvl) = irr%spectrum(1:num_irr_wvl, xtpix)
+    irrad_ccd(        1:num_irr_wvl) = (/ (i, i = imin1, imax1) /)
 
     ! ---------------------------------------------------------
     ! Compute the weights. This is a bit tedious, as we have to
@@ -132,24 +136,26 @@ CONTAINS
     ! entries that are expected to give us trouble.
     ! ---------------------------------------------------------
 
-    curr_sol_spec(sig_idx,1:n_sol_wvl) = normweight
+    sol_spec(sig_idx,1:num_irr_wvl) = normweight
 
     ! -----------------------------------
     ! Make sure wavelengths are ascending
     ! -----------------------------------
-    DO i = 2, n_sol_wvl
-      IF ( curr_sol_spec(wvl_idx,i) <= curr_sol_spec(wvl_idx,i-1) ) THEN
-        curr_sol_spec(wvl_idx,i) = curr_sol_spec(wvl_idx,i-1) + 0.001_r8
-        curr_sol_spec(sig_idx,i) = downweight
+    DO i = 2, num_irr_wvl
+      IF ( sol_spec(wvl_idx,i) <= sol_spec(wvl_idx,i-1) ) THEN
+        sol_spec(wvl_idx,i) = sol_spec(wvl_idx,i-1) + 0.001_r8
+        sol_spec(sig_idx,i) = downweight
       END IF
     END DO
 
     ! -----------------------------
     ! No missing values in spectrum
     ! -----------------------------
-    WHERE ( curr_sol_spec(spc_idx,1:n_sol_wvl) <= REAL( r4_missval, KIND=r8 ) )
-      curr_sol_spec(sig_idx,1:n_sol_wvl) = downweight
-      curr_sol_spec(spc_idx,1:n_sol_wvl) = 0.0_r8
+    !call print_array (sol_spec (spc_idx, 1:num_irr_wvl), num_irr_wvl)
+
+    WHERE ( sol_spec(spc_idx,1:num_irr_wvl) <= REAL( r4_missval, KIND=r8 ) )
+      sol_spec(sig_idx,1:num_irr_wvl) = downweight
+      sol_spec(spc_idx,1:num_irr_wvl) = 0.0_r8
     END WHERE
 
     ! ----------------------------------------------------------------------
@@ -160,8 +166,9 @@ CONTAINS
     ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
     !          conversion will result in a numeric overflow.
     ! -------------------------------------------------------------------
-    CALL convert_2bytes_to_16bits ( nbits-1, n_sol_wvl, &
-                                   omi_irrad_qflg(1:n_sol_wvl), irrad_qflg_bit(1:n_sol_wvl,0:nbits-2) )
+    CALL convert_2bytes_to_16bits (nbits-1, num_irr_wvl, &
+                                   irr%qflags(1:num_irr_wvl, xtpix), &
+                                   irrad_qflg_bit(1:num_irr_wvl,0:nbits-2) )
 
     ! --------------------------------------------------------------------
     ! Add contributions from various quality flags. Any CCD pixel that has
@@ -169,16 +176,16 @@ CONTAINS
     !
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    irrad_qflg_mask(1:n_sol_wvl) = 0_i2
-    irrad_qflg_mask(1:n_sol_wvl) =                  &
-      irrad_qflg_bit(1:n_sol_wvl,qflg_mis_idx) + &   ! Missing pixel
-      irrad_qflg_bit(1:n_sol_wvl,qflg_bad_idx) + &   ! Bad pixel
-      irrad_qflg_bit(1:n_sol_wvl,qflg_err_idx) !+ &   ! Processing error
-    !irrad_qflg_bit(1:n_sol_wvl,qflg_rts_idx)       ! RTS
+    irrad_qflg_mask(1:num_irr_wvl) = 0_i2
+    irrad_qflg_mask(1:num_irr_wvl) =                  &
+      irrad_qflg_bit(1:num_irr_wvl,qflg_mis_idx) + &   ! Missing pixel
+      irrad_qflg_bit(1:num_irr_wvl,qflg_bad_idx) + &   ! Bad pixel
+      irrad_qflg_bit(1:num_irr_wvl,qflg_err_idx) !+ &   ! Processing error
+    !irrad_qflg_bit(1:num_irr_wvl,qflg_rts_idx)       ! RTS
 
-    WHERE ( irrad_qflg_mask(1:n_sol_wvl) > 0_i2 )
-      curr_sol_spec(sig_idx,1:n_sol_wvl) = downweight
-      curr_sol_spec(spc_idx,1:n_sol_wvl) = 0.0_r8
+    WHERE ( irrad_qflg_mask(1:num_irr_wvl) > 0_i2 )
+      sol_spec(sig_idx,1:num_irr_wvl) = downweight
+      sol_spec(spc_idx,1:num_irr_wvl) = 0.0_r8
     END WHERE
 
     ! -------------------------------------------------------------------------------
@@ -194,11 +201,11 @@ CONTAINS
     ! Compute normalization factor for solar spectrum
     ! -----------------------------------------------
     weightsum = 0.0_r8
-    WHERE ( curr_sol_spec(sig_idx,1:n_sol_wvl) /= downweight )
+    WHERE ( sol_spec(sig_idx,1:num_irr_wvl) /= downweight )
       weightsum = 1.0_r8
     END WHERE
-    sol_spec_avg = SUM ( curr_sol_spec(spc_idx,1:n_sol_wvl)*weightsum(1:n_sol_wvl) ) / &
-      MAX(1.0_r8, SUM(weightsum(1:n_sol_wvl)))
+    sol_spec_avg = SUM ( sol_spec(spc_idx,1:num_irr_wvl)*weightsum(1:num_irr_wvl) ) / &
+      MAX(1.0_r8, SUM(weightsum(1:num_irr_wvl)))
     IF ( sol_spec_avg == 0.0_r8 ) sol_spec_avg = 1.0_r8
 
     ! -------------------------------------------------------------------------
@@ -208,18 +215,18 @@ CONTAINS
     ! be a large enough window to keep anything sensible and reject the real
     ! outliers.
     ! -------------------------------------------------------------------------
-    WHERE ( weightsum(1:n_sol_wvl) /= 0.0_r8 .AND. &
-           ABS(curr_sol_spec(spc_idx,1:n_sol_wvl)) >= 100.0_r8 * sol_spec_avg )
-      weightsum(1:n_sol_wvl) = 0.0_r8
-      curr_sol_spec(sig_idx,1:n_sol_wvl) = downweight
-      curr_sol_spec(spc_idx,1:n_sol_wvl) = 0.0_r8
+    WHERE ( weightsum(1:num_irr_wvl) /= 0.0_r8 .AND. &
+           ABS(sol_spec(spc_idx,1:num_irr_wvl)) >= 100.0_r8 * sol_spec_avg )
+      weightsum(1:num_irr_wvl) = 0.0_r8
+      sol_spec(sig_idx,1:num_irr_wvl) = downweight
+      sol_spec(spc_idx,1:num_irr_wvl) = 0.0_r8
     ENDWHERE
 
     ! ------------------------------------------------------------------
     ! Recompute the solar spectrum average, because it may have changed.
     ! ------------------------------------------------------------------
-    sol_spec_avg = SUM ( curr_sol_spec(spc_idx,1:n_sol_wvl)*weightsum(1:n_sol_wvl) ) / &
-      MAX(1.0_r8, SUM(weightsum(1:n_sol_wvl)))
+    sol_spec_avg = SUM ( sol_spec(spc_idx,1:num_irr_wvl)*weightsum(1:num_irr_wvl) ) / &
+      MAX(1.0_r8, SUM(weightsum(1:num_irr_wvl)))
     IF ( sol_spec_avg <= 0.0_r8 ) THEN
       yn_skip_pix = .TRUE.
       sol_spec_avg = 1.0_r8
@@ -229,32 +236,32 @@ CONTAINS
     ! Finally, normalize the solar spectrum.
     ! --------------------------------------
     IF ( yn_spectrum_norm ) &
-      curr_sol_spec(spc_idx,1:n_sol_wvl) = curr_sol_spec(spc_idx,1:n_sol_wvl) / sol_spec_avg
+      sol_spec(spc_idx,1:num_irr_wvl) = sol_spec(spc_idx,1:num_irr_wvl) / sol_spec_avg
 
     ! ---------------------------------------------
     ! Calculate SOL_WAV_AVG of measured solar spectra here,
     ! for use in calculated spectra.
     ! ---------------------------------------------
-    asum = SUM ( curr_sol_spec(wvl_idx,1:n_sol_wvl) * &
-                ( curr_sol_spec(sig_idx,1:n_sol_wvl)*curr_sol_spec(sig_idx,1:n_sol_wvl) ) )
+    asum = SUM ( sol_spec(wvl_idx,1:num_irr_wvl) * &
+                ( sol_spec(sig_idx,1:num_irr_wvl)*sol_spec(sig_idx,1:num_irr_wvl) ) )
     ssum = SUM ( 1.0_r8 * &
-                ( curr_sol_spec(sig_idx,1:n_sol_wvl)*curr_sol_spec(sig_idx,1:n_sol_wvl) ) )
-    sol_wav_avg = asum / ssum
+                ( sol_spec(sig_idx,1:num_irr_wvl)*sol_spec(sig_idx,1:num_irr_wvl) ) )
+    avg_sol_wav = asum / ssum
 
     ! ------------------------------------------------------------
     ! Count the good and the bad, and interpolate one to the other
     ! ------------------------------------------------------------
     ngood = 0 ; nbad = 0 ; bad_idx = 0
     wvl_good = 0.0_r8 ; wvl_bad = 0.0_r8 ; spc_good = 0.0_r8 ; spc_bad = 0.0_r8
-    DO i = 1, n_sol_wvl
-      IF ( curr_sol_spec(spc_idx,i) <= 0.0_r8 .OR. curr_sol_spec(spc_idx,i) == downweight ) THEN
+    DO i = 1, num_irr_wvl
+      IF ( sol_spec(spc_idx,i) <= 0.0_r8 .OR. sol_spec(spc_idx,i) == downweight ) THEN
         nbad          = nbad + 1
         bad_idx(nbad) = i
-        wvl_bad(nbad) = curr_sol_spec(wvl_idx,i)
+        wvl_bad(nbad) = sol_spec(wvl_idx,i)
       ELSE
         ngood           = ngood + 1
-        spc_good(ngood) = curr_sol_spec(spc_idx,i)
-        wvl_good(ngood) = curr_sol_spec(wvl_idx,i)
+        spc_good(ngood) = sol_spec(spc_idx,i)
+        wvl_good(ngood) = sol_spec(wvl_idx,i)
       END IF
     END DO
     IF ( nbad > 0 ) THEN
@@ -263,118 +270,30 @@ CONTAINS
         nbad, wvl_bad(1:nbad), spc_bad(1:nbad), locerrstat )
       DO i = 1, nbad
         j = bad_idx(i)
-        curr_sol_spec(spc_idx,j) = spc_bad(i)
-        curr_sol_spec(sig_idx,j) = downweight
+        sol_spec(spc_idx,j) = spc_bad(i)
+        sol_spec(sig_idx,j) = downweight
       END DO
     END IF
 
     ! ------------------------------------------------------------
     ! Anything outside the fitting window will receive Zero weight
     ! ------------------------------------------------------------
-    ! (the CCD indices are absolute positions, i.e., unlikely to be "1:n_sol_wvl")
+    ! (the CCD indices are absolute positions, i.e., unlikely to be "1:num_irr_wvl")
     ! ----------------------------------------------------------------------------
-    IF ( imin2 > imin1 ) curr_sol_spec(sig_idx,1:imin2-imin1+1)         = downweight
-    IF ( imax2 < imax1 ) curr_sol_spec(sig_idx,imax2-imin1+1:n_sol_wvl) = downweight
+    IF ( imin2 > imin1 ) sol_spec(sig_idx,1:imin2-imin1+1)         = downweight
+    IF ( imax2 < imax1 ) sol_spec(sig_idx,imax2-imin1+1:num_irr_wvl) = downweight
 
     ! ------------------------------------------------------------------------
     ! Also any window excluded by the user (specified in fitting control file)
     ! ------------------------------------------------------------------------
-    j1 = omi_ccdpix_exc(1) ; j2 = omi_ccdpix_exc(2)
+    j1 = irr%ccdpix_exclusion(1, xtpix) ; j2 = irr%ccdpix_exclusion(2, xtpix)
     j1 = j1 - imin1 + 1    ; j2 = j2 - imin1 + 1
-    IF ( j1 >= 1 .AND. j2 <= n_sol_wvl ) curr_sol_spec(sig_idx,j1:j2) = downweight
+    IF ( j1 >= 1 .AND. j2 <= num_irr_wvl ) sol_spec(sig_idx,j1:j2) = downweight
 
     IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE omi_adjust_irradiance_data
-
-  SUBROUTINE omi_create_solcomp_irradiance ( nxt )
-
-    ! ------------------------------------------------------------------
-    ! Compute an initial spectrum for an equidistant wavelength array.
-    ! This will be used in the solar wavelength calibration to determine
-    ! the shift of the composite solar spectrum.
-    ! ------------------------------------------------------------------
-
-    USE OMSAO_parameters_module, ONLY: i2, i4, r8, N_FIT_WINWAV, NWAVEL_MAX
-    USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, ctrl_fit_winexc_lim
-    USE OMSAO_solcomp_module,    ONLY: soco_compute
-    USE OMSAO_omidata_module,    ONLY:                                                    &
-      omi_irradiance_spec, omi_irradiance_qflg, omi_irradiance_prec,       &
-      omi_irradiance_wavl, omi_nwav_irrad, omi_ccdpix_selection, omi_ccdpix_exclusion, &
-      omi_sol_wav_avg
-    USE sao_pge_utils, ONLY: array_locate_r8
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: nxt
-
-    ! --------------------------------------------
-    ! Spacing of the wavelength array to be set up
-    ! --------------------------------------------
-    REAL    (KIND=r8), PARAMETER :: dwvl = 0.1_r8
-
-    INTEGER (KIND=i4)                         :: j, ix, nwvl
-    REAL    (KIND=r8)                         :: swvl, ewvl
-    REAL    (KIND=r8), DIMENSION (nwavel_max) :: tmpwvl
-
-    ! -----------------------------------------------------------
-    ! Compute number of wavelengths and assign to temporary array
-    ! -----------------------------------------------------------
-    swvl = ctrl_fit_winwav_lim(1) ; ewvl = ctrl_fit_winwav_lim(N_FIT_WINWAV)
-    nwvl = INT ( (ewvl-swvl) / dwvl, KIND=i4 ) + 1
-    !tmpwvl(1:nwvl) = swvl + (/ (REAL(j, KIND=r8), j = 0, nwvl) /) * dwvl
-    tmpwvl(1:nwvl) = swvl + (/ (REAL(j, KIND=r8), j = 0, nwvl-1) /) * dwvl  ! JED fix
-
-    DO ix = 1, nxt
-
-      omi_nwav_irrad (ix) = nwvl
-      omi_irradiance_wavl(1:nwvl,ix) = tmpwvl(1:nwvl)
-
-      ! ---------------------------------------------------------------
-      ! Compute the solar spectrum. Note that we are not requesting the
-      ! normalized spectrum here, even in cases where we DO want to use
-      ! one. Rather, we are keeping the Solar Composite branch as close
-      ! as possible to the regular L1b irradiance branch, which at this
-      ! point is not normalized. This will be done in a later routine.
-      ! ---------------------------------------------------------------
-      CALL soco_compute ( &
-        .FALSE., ix, nwvl, &
-        omi_irradiance_wavl(1:nwvl,ix), omi_irradiance_spec(1:nwvl,ix) )
-
-      omi_irradiance_prec(1:nwvl,ix) = 0.0_r8
-      omi_irradiance_qflg(1:nwvl,ix) = 0_i2
-
-      omi_sol_wav_avg(ix) = omi_irradiance_wavl(nwvl/2,ix)
-
-      ! ------------------------------------------------------------------------------
-      ! Determine indices included and excluded from the fit. We need to make sure
-      ! that further down the line of the fitting this doesn't screw up things by
-      ! introducing incompatible indices into the radiance CCD positions.
-      ! ------------------------------------------------------------------------------
-      omi_ccdpix_selection(ix,1:4) = -1
-      omi_ccdpix_exclusion(ix,1:2) = -1
-      DO j = 1, 3, 2
-        CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), ctrl_fit_winwav_lim(j  ), 'LE', omi_ccdpix_selection(ix,j  ) )
-        CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), ctrl_fit_winwav_lim(j+1), 'GE', omi_ccdpix_selection(ix,j+1) )
-      END DO
-
-      IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
-        CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), ctrl_fit_winexc_lim(1), 'GE', omi_ccdpix_exclusion(ix,1) )
-        CALL array_locate_r8 ( &
-          nwvl, tmpwvl(1:nwvl), ctrl_fit_winexc_lim(2), 'LE', omi_ccdpix_exclusion(ix,2) )
-      END IF
-
-    END DO
-
-    RETURN
-  END SUBROUTINE omi_create_solcomp_irradiance
 
   SUBROUTINE compute_fitting_statistics ( &
       pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, saomqf, errstat )
@@ -1369,7 +1288,7 @@ CONTAINS
       common_fitpos, common_latrange
     USE OMSAO_omidata_module,   ONLY:                                           &
       common_spc, common_wvl, common_cnt, &
-      omi_ccdpix_selection, omi_blockline_no, omi_latitude, n_comm_wvl
+      rad_ccdpix_selection, omi_blockline_no, omi_latitude, n_comm_wvl
 
     IMPLICIT NONE
 
@@ -1423,8 +1342,8 @@ CONTAINS
       common_mode_spec%RefSpecData  = 0.0_r8
       common_mode_spec%RefSpecCount = 0
 
-      common_mode_spec%CCDPixel(xti,1) = INT(omi_ccdpix_selection(xti,1), KIND=i2)
-      common_mode_spec%CCDPixel(xti,2) = INT(omi_ccdpix_selection(xti,4), KIND=i2)
+      common_mode_spec%CCDPixel(xti,1) = INT(rad_ccdpix_selection(xti,1), KIND=i2)
+      common_mode_spec%CCDPixel(xti,2) = INT(rad_ccdpix_selection(xti,4), KIND=i2)
     ELSE
 
       ! --------------------------------------------------------

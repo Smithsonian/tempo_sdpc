@@ -69,10 +69,13 @@ MODULE OMSAO_omidata_module
   ! the maximum swath dimensions.
   ! ---------------------------------------------------------------
   INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_ccdpix
-  INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_qflg, omi_radref_qflg
+  INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_radref_qflg
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: &
-    omi_irradiance_prec, omi_irradiance_wavl, omi_irradiance_spec, omi_irradiance_wght, &
+    omi_irradiance_wght, &
     omi_radref_spec, omi_radref_wavl, omi_radref_wght
+  !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: &
+  !  omi_irradiance_prec, omi_irradiance_wavl, omi_irradiance_spec, &
+  !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_qflg
   REAL    (KIND=r4), DIMENSION (nxtrack_max) :: omi_radref_sza, omi_radref_vza
 
   ! ---------------------------------------------------------------
@@ -80,8 +83,8 @@ MODULE OMSAO_omidata_module
   ! ---------------------------------------------------------------
   REAL (KIND=r4), DIMENSION (nxtrack_max) :: omi_scene_albedo
 
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max,4) :: omi_ccdpix_selection
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max,2) :: omi_ccdpix_exclusion
+  INTEGER (KIND=i4), DIMENSION (nxtrack_max,4) :: rad_ccdpix_selection
+  INTEGER (KIND=i4), DIMENSION (nxtrack_max,2) :: rad_ccdpix_exclusion
 
   ! ----------------------------------------
   ! Arrays for fitting and/or derived output
@@ -117,7 +120,8 @@ MODULE OMSAO_omidata_module
   ! ---------------------------------
   !INTEGER (KIND=i4) :: ntimes, ntimessmallpixel, nxtrack, nwavel, ntimes_loop, nwavel_ccd
   INTEGER (KIND=i4) :: ntimessmallpixel, nwavel, ntimes_loop
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max)                  :: omi_nwav_irrad, omi_nwav_radref
+  !INTEGER (KIND=i4), DIMENSION (nxtrack_max)                  :: omi_nwav_irrad, omi_nwav_radref
+  INTEGER (KIND=i4), DIMENSION (nxtrack_max)                  :: omi_nwav_radref
   INTEGER (KIND=i4), DIMENSION (nxtrack_max,0:nlines_max-1)   :: omi_nwav_rad
 
   ! ---------------------------------------
@@ -134,7 +138,7 @@ MODULE OMSAO_omidata_module
     omi_solcal_pars,  omi_radcal_pars,  omi_radref_pars
   REAL    (KIND=r8), DIMENSION (max_rs_idx, nwavel_max, nxtrack_max) :: omi_database
   REAL    (KIND=r8), DIMENSION (            nwavel_max, nxtrack_max) :: omi_database_wvl
-  REAL    (KIND=r8), DIMENSION (nxtrack_max)                         :: omi_sol_wav_avg
+  REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
     omi_solcal_chisq, omi_radcal_chisq, omi_radref_chisq, &
     omi_radref_col,   omi_radref_dcol,  omi_radref_rms,   &
@@ -174,7 +178,7 @@ MODULE OMSAO_omidata_module
   ! course of the processing.
   ! ------------------------------------------------------
   INTEGER (KIND=i4) :: &
-    n_omi_radwvl, n_omi_radrefwvl, n_omi_irradwvl,  &
+    n_omi_radwvl, n_omi_radrefwvl,  &
     nwavelcoef_irrad, nwavelcoef_rad,               &
     ntimes_smapix_irrad, ntimes_smpix_rad, nclenfit
 

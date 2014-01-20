@@ -1,7 +1,7 @@
 MODULE radiance_wavcal
-  use optimizer_interface_module
-  use spectra, only: spectrum_solar
 
+  use optimizer_interface_module
+  private
   public radiance_wavecal, solar_residuals
 
 CONTAINS
@@ -185,7 +185,7 @@ SUBROUTINE radiance_wavecal (                            &
   if (return_status < 0) then
     write(*,*)'radiance_wavecal: optimizer_close failed'
     stop  ! FIXME!
-  endif  
+  endif
 
   ! ------------------------------------------------------------------
   ! The following assignment makes sense only because FITVAR_CAL is
@@ -225,6 +225,7 @@ SUBROUTINE radiance_wavecal (                            &
   IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
 
   RETURN
+
 END SUBROUTINE radiance_wavecal
 
   subroutine solar_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
@@ -253,6 +254,159 @@ END SUBROUTINE radiance_wavecal
     return_status = 0
 
   end subroutine solar_residuals
+
+SUBROUTINE spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, &
+                           cal_fitvar, ncal_fitvar)
+
+  USE OMSAO_precision_module
+  USE OMSAO_indices_module, ONLY: &
+    solar_idx, &
+    bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, &
+    sc2_idx, sc3_idx, sin_idx, hwe_idx, asy_idx, shi_idx, squ_idx
+  USE OMSAO_variables_module,  ONLY: &
+    refspecs_original, solar_spec_convolved, yn_use_labslitfunc, &
+    yn_spectrum_norm, yn_newshift, &
+    curr_xtrack_pixnum
+  USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze, &
+    asymmetric_gaussian_sf, omi_slitfunc_convolve
+  USE OMSAO_errstat_module
+  USE sao_pge_utils, ONLY: interpolation
+
+  IMPLICIT NONE
+
+  INTEGER (KIND=i4),                      INTENT (IN)    :: npoints, ncal_fitvar
+  REAL    (KIND=r8),                      INTENT (IN)    :: solar_wavel_avg
+  REAL    (KIND=r8), DIMENSION (ncal_fitvar), INTENT (IN) :: cal_fitvar
+  REAL    (KIND=r8), DIMENSION (npoints), INTENT (IN) :: locwvl
+  REAL    (KIND=r8), DIMENSION (npoints), INTENT (OUT) :: fit
+
+  ! ---------------
+  ! Local variables
+  ! ---------------
+  LOGICAL                                                 :: yn_full_range
+  REAL    (KIND=r8), DIMENSION (npoints)                  :: del, sunspec_ss
+  INTEGER (KIND=i4)                                       :: npts, errstat
+  ! Shorthands for solar reference spectrum
+  REAL    (KIND=r8), DIMENSION (refspecs_original(solar_idx)%nPoints) :: &
+    solar_pos, solar_spec
+
+  ! ------------------------------
+  ! Name of this subroutine/module
+  ! ------------------------------
+  CHARACTER (LEN=14), PARAMETER :: modulename = 'spectrum_solar'
+
+  errstat = pge_errstat_ok
+
+  npts               = refspecs_original(solar_idx)%nPoints
+  solar_pos (1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
+  solar_spec(1:npts) = refspecs_original(solar_idx)%RefSpecData(1:npts)
+  IF ( .NOT. yn_spectrum_norm ) &
+    solar_spec(1:npts) = solar_spec(1:npts) * refspecs_original(solar_idx)%NormFactor
+
+  ! =========================================================================
+  !     Spectrum Calculation for Solar and Radiance Wavelength Calibration
+  ! =========================================================================
+
+  !     Calculate the spectrum:
+  !     First do the shift and squeeze. Shift by FITVAR(SHI_IDX), squeeze by
+  !     1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
+  !     OMI data.
+  !     Now, after Xiong recommendation if yn_newfit equal true then (gga):
+  !     Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
+
+  IF (yn_newshift .EQV. .true.) THEN ! gga
+    solar_pos(1:npts) = solar_pos(1:npts) * (1.0_r8 + cal_fitvar(squ_idx)) &
+      +  cal_fitvar(shi_idx) - solar_wavel_avg * cal_fitvar(squ_idx)
+  ELSE ! gga
+    solar_pos(1:npts) = solar_pos(1:npts) * (1.0_r8 + cal_fitvar(squ_idx)) &
+      + cal_fitvar(shi_idx)
+  END IF
+
+  ! ----------------------------------------------
+  ! Convolve only if we don't do a solar composite
+  ! ----------------------------------------------
+  IF ( yn_use_labslitfunc ) THEN
+    ! ------------------------------------------------------------------------
+    ! Only if either SHIFT or SQUEEZE have changed from the last iteration do
+    ! we need to reconvolve the solar spectrum (its convolved value is saved
+    ! in SOLAR_SPEC_CONVOLVED through MODULE association.
+    !
+    ! The choice of OMI lab slit function vs. Gaussian is made in the fitting
+    ! control file: If the initial value of FITVAR(hwe_idx) is 0.0 then we are
+    ! using the lab measurements, otherwise the Gaussian.
+    ! ------------------------------------------------------------------------
+    IF ( cal_fitvar(squ_idx) /= saved_squeeze .OR. &
+      cal_fitvar(shi_idx) /= saved_shift ) THEN
+      saved_squeeze = cal_fitvar(squ_idx)
+      saved_shift   = cal_fitvar(shi_idx)
+      solar_spec_convolved = 0.0_r8
+      CALL omi_slitfunc_convolve (                                  &
+        curr_xtrack_pixnum, npts, solar_pos(1:npts),             &
+        solar_spec(1:npts), solar_spec_convolved(1:npts), errstat )
+      CALL error_check ( &
+        errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+        modulename//f_sep//'Convolution', vb_lev_default, errstat )
+      IF ( errstat >= pge_errstat_error ) RETURN
+    END IF
+  ELSE
+    CALL asymmetric_gaussian_sf (                                           &
+      npts, cal_fitvar(hwe_idx), cal_fitvar(asy_idx),                    &
+      solar_pos(1:npts), solar_spec(1:npts), solar_spec_convolved(1:npts) )
+  END IF
+
+  ! =============================================
+  ! Broadening and re-sampling of solar spectrum:
+  ! =============================================
+  ! Case for wavelength fitting of irradiance and radiance
+  ! Broaden the solar reference by the hw1e value
+  ! ------------------------------------------------------
+
+  ! ------------------------------------------------------
+  ! Re-sample the solar reference spectrum to the OMI grid
+  ! ------------------------------------------------------
+  CALL interpolation ( &
+    npts, solar_pos(1:npts), solar_spec_convolved(1:npts), &
+    npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
+    yn_full_range, errstat )
+  CALL error_check ( &
+    errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    modulename//f_sep//'Resampling to Solar Grid', vb_lev_default, errstat )
+  IF ( errstat >= pge_errstat_error ) RETURN
+
+  ! --------------------------------------------------------------------
+  ! Add up the contributions, with solar intensity as FITVAR (SIN_IDX),
+  ! to include possible linear and Beer's law forms.  Do these as
+  ! linear-Beer's-linear. In order to do DOAS we only need to be careful
+  ! to include just linear contributions, since I already high-pass
+  ! filtered them.
+  ! --------------------------------------------------------------------
+
+  ! -----------
+  !  Doing BOAS
+  ! -----------
+  fit(1:npoints) = cal_fitvar(sin_idx) * sunspec_ss(1:npoints)
+
+  ! ----------------
+  ! Add the scaling.
+  ! ----------------
+  del(1:npoints) = locwvl(1:npoints) - solar_wavel_avg
+  fit(1:npoints) = fit(1:npoints) * ( &
+    cal_fitvar(sc0_idx)                                               + &
+    cal_fitvar(sc1_idx) * del(1:npoints)                              + &
+    cal_fitvar(sc2_idx) * del(1:npoints)*del(1:npoints)               + &
+    cal_fitvar(sc3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints) )
+
+  ! ------------------------
+  ! Add baseline parameters.
+  ! ------------------------
+  fit(1:npoints) = fit(1:npoints) + &
+    cal_fitvar(bl0_idx)                                               + &
+    cal_fitvar(bl1_idx) * del(1:npoints)                              + &
+    cal_fitvar(bl2_idx) * del(1:npoints)*del(1:npoints)               + &
+    cal_fitvar(bl3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)
+
+  RETURN
+END SUBROUTINE spectrum_solar
 
 END MODULE
 

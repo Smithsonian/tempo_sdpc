@@ -1,4 +1,5 @@
 MODULE sao_pge_utils
+
 CONTAINS
 ! ================================================================================
 !
@@ -1100,6 +1101,71 @@ SUBROUTINE array_locate_r8 ( n, x, x0, psel, ipos )
   RETURN
 END SUBROUTINE array_locate_r8
 
+subroutine find_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
+
+  USE OMSAO_precision_module, ONLY: i4, r4
+  implicit none
+  integer (kind=i4), intent(in) :: n
+  real (kind=r4), intent(in), dimension(n) :: xs
+  real (kind=r4), intent(in) :: xmin, xmax
+  integer (kind=i4), intent(out) :: iminp, imaxp
+
+  ! xs[iminp] <= xmin
+  CALL array_locate_r4 (n, xs, xmin, 'LE', iminp)
+  ! xmax <= xs[imaxp] 
+  CALL array_locate_r4 (n, xs, xmax, 'GE', imaxp)
+
+end subroutine
+
+subroutine find_inner_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
+
+  USE OMSAO_precision_module, ONLY: i4, r4
+  implicit none
+  integer (kind=i4), intent(in) :: n
+  real (kind=r4), intent(in), dimension(n) :: xs
+  real (kind=r4), intent(in) :: xmin, xmax
+  integer (kind=i4), intent(out) :: iminp, imaxp
+
+  ! xs[iminp] <= xmin
+  CALL array_locate_r4 (n, xs, xmin, 'GE', iminp)
+  ! xmax <= xs[imaxp] 
+  CALL array_locate_r4 (n, xs, xmax, 'LE', imaxp)
+
+end subroutine
+
+subroutine find_bounding_indices_r8 (n, xs, xmin, xmax, iminp, imaxp)
+
+  USE OMSAO_precision_module, ONLY: i4, r8
+  implicit none
+  integer (kind=i4), intent(in) :: n
+  real (kind=r8), intent(in), dimension(n) :: xs
+  real (kind=r8), intent(in) :: xmin, xmax
+  integer (kind=i4), intent(out) :: iminp, imaxp
+
+  ! xs[iminp] <= xmin
+  call array_locate_r8 (n, xs, xmin, 'LE', iminp)
+  ! xmax <= xs[imaxp] 
+  call array_locate_r8 (n, xs, xmax, 'GE', imaxp)
+
+end subroutine
+
+subroutine find_inner_bounding_indices_r8 (n, xs, xmin, xmax, iminp, imaxp)
+
+  USE OMSAO_precision_module, ONLY: i4, r8
+  implicit none
+  integer (kind=i4), intent(in) :: n
+  real (kind=r8), intent(in), dimension(n) :: xs
+  real (kind=r8), intent(in) :: xmin, xmax
+  integer (kind=i4), intent(out) :: iminp, imaxp
+
+  ! xs[iminp] <= xmin
+  call array_locate_r8 (n, xs, xmin, 'GE', iminp)
+  ! xmax <= xs[imaxp] 
+  call array_locate_r8 (n, xs, xmax, 'LE', imaxp)
+
+end subroutine
+
+
 SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
 
   USE OMSAO_precision_module, ONLY: i4, r8
@@ -1124,5 +1190,17 @@ SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
 
   RETURN
 END SUBROUTINE roundoff_3darr_r8
+
+  subroutine print_array (a, n)
+    use OMSAO_precision_module, only: i4, r8
+    implicit none
+    integer (kind=i4), intent(in) :: n
+    real (kind=r8), intent(in) :: a(n)
+
+    integer(kind=i4) :: i
+    do i=1, n
+      write(*,*) "a[", i, "]=", a(i)
+    enddo
+  end subroutine
 
 END MODULE

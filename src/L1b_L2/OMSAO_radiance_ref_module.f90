@@ -15,7 +15,7 @@ CONTAINS
 
   ! This function is called from omi_fitting with l1bfile=l1b_radref_filename.
   ! Among other things, this function sets
-  !     omi_ccdpix_selection(*,1)=1 and  omi_ccdpix_selection(*,4)=nwrr.
+  !     rad_ccdpix_selection(*,1)=1 and  rad_ccdpix_selection(*,4)=nwrr.
   ! This is important to note since omi_read_radiance_lines uses those
   ! values to set omi_nwav_rad (producing omi_nwav_rad(*,*)=nwrr)
   ! It is this value that is used to set the number of wavelengths.
@@ -32,11 +32,11 @@ CONTAINS
       ctrl_fit_winexc_lim, &
       radiance_reference_lnums, radref_latrange
     USE OMSAO_omidata_module,    ONLY: &
-      omi_ccdpix_selection, omi_radiance_qflg, omi_radiance_spec, omi_radiance_wavl, &
+      rad_ccdpix_selection, omi_radiance_qflg, omi_radiance_spec, omi_radiance_wavl, &
       omi_szenith, omi_vzenith, omi_nwav_radref, omi_radref_spec, omi_radref_wavl,   &
-      omi_radref_qflg, omi_radref_sza, omi_radref_vza, omi_radref_wght,              &
-      omi_ccdpix_exclusion, n_comm_wvl, omi_sol_wav_avg, &
-      omi_nwav_rad
+      omi_radref_qflg, omi_radref_sza, omi_radref_vza, omi_radref_wght, &
+      rad_ccdpix_exclusion, n_comm_wvl, &
+      omi_nwav_rad, omi_radref_wav_avg
     USE OMSAO_errstat_module
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
@@ -143,7 +143,7 @@ CONTAINS
     ! after the Irradiance reading (which we are skipping). We will be setting up
     ! the proper numbers below.
     ! ---------------------------------------------------------------------------
-    omi_ccdpix_selection(1:nxrr,1) = 1 ; omi_ccdpix_selection(1:nxrr,4) = nwrr
+    rad_ccdpix_selection(1:nxrr,1) = 1 ; rad_ccdpix_selection(1:nxrr,4) = nwrr
 
     ! --------------------------------------------------------------------
     ! Now we can average the spectra and the wavelength arrays. Loop over
@@ -282,14 +282,14 @@ CONTAINS
       DO j1 = 1, 3, 2
         CALL array_locate_r8 ( &
           nwrr, radref_wavl_ix, ctrl_fit_winwav_lim(j1  ), 'LE', &
-          omi_ccdpix_selection(ix,j1  ) )
+          rad_ccdpix_selection(ix,j1  ) )
         CALL array_locate_r8 ( &
           nwrr, radref_wavl_ix, ctrl_fit_winwav_lim(j1+1), 'GE', &
-          omi_ccdpix_selection(ix,j1+1) )
+          rad_ccdpix_selection(ix,j1+1) )
       END DO
 
-      imin = omi_ccdpix_selection(ix,1)
-      imax = omi_ccdpix_selection(ix,4)
+      imin = rad_ccdpix_selection(ix,1)
+      imax = rad_ccdpix_selection(ix,4)
 
       icnt = imax - imin + 1
       omi_nwav_radref(       ix) = icnt
@@ -302,7 +302,8 @@ CONTAINS
       ! Re-assign the average solar wavelength variable, sinfe from here
       ! on we are concerned with radiances.
       ! -----------------------------------------------------------------
-      omi_sol_wav_avg(ix) =  SUM( omi_radref_wavl(1:icnt,ix) ) / REAL(icnt, KIND=r8)
+      omi_radref_wav_avg(ix) = &
+        SUM( omi_radref_wavl(1:icnt,ix) ) / REAL(icnt, KIND=r8)
 
       ! ------------------------------------------------------------------
       ! Set weights and quality flags to "bad" for missing spectral points
@@ -318,14 +319,14 @@ CONTAINS
       ! after the array assignements above because we need to know which indices to
       ! exclude from the final arrays, not the complete ones read from the HE4 file.
       ! ------------------------------------------------------------------------------
-      omi_ccdpix_exclusion(ix,1:2) = -1
+      rad_ccdpix_exclusion(ix,1:2) = -1
       IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
         CALL array_locate_r8 ( &
           nwrr, radref_wavl_ix, ctrl_fit_winexc_lim(1), 'GE', &
-          omi_ccdpix_exclusion(ix,1) )
+          rad_ccdpix_exclusion(ix,1) )
         CALL array_locate_r8 ( &
           nwrr, radref_wavl_ix, ctrl_fit_winexc_lim(2), 'LE', &
-          omi_ccdpix_exclusion(ix,2) )
+          rad_ccdpix_exclusion(ix,2) )
       END IF
 
       ! ----------------------------------------
@@ -361,17 +362,18 @@ CONTAINS
       lqh2o_prefit_col, lqh2o_prefit_dcol
     USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
-      omi_nwav_irrad, omi_nwav_rad, n_omi_database_wvl, &
+      omi_nwav_rad, n_omi_database_wvl, &
       omi_cross_track_skippix, n_omi_radwvl, &
-      omi_database, omi_database_wvl, omi_sol_wav_avg, omi_solcal_pars,      &
+      omi_database, omi_database_wvl, omi_solcal_pars,      &
       omi_radiance_wavl, omi_radref_wavl, omi_radiance_spec, omi_radref_spec,&
       omi_radiance_qflg, omi_radref_qflg, omi_radiance_spec,                 &
-      omi_ccdpix_selection, omi_radiance_ccdpix, omi_ccdpix_exclusion,       &
+      rad_ccdpix_selection, omi_radiance_ccdpix, rad_ccdpix_exclusion,       &
       omi_xtrackpix_no, omi_radref_wght, omi_radref_pars,    &
       omi_radref_xflag, omi_radref_itnum, omi_radref_chisq, omi_radref_col,  &
-      omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol
+      omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol, omi_radref_wav_avg
     USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
+    use irradiance_data, only: Irr_Data
 
     IMPLICIT NONE
 
@@ -401,6 +403,7 @@ CONTAINS
     INTEGER (KIND=i4)                                :: n_solar_pts
     REAL    (KIND=r8), DIMENSION (1:nw)              :: solar_wgt
     REAL    (KIND=r8), DIMENSION (n_fincol_idx,1:nx) :: target_var
+    integer (kind=i4) :: nwav_irrad
 
     !CHARACTER (LEN=30), PARAMETER :: modulename = 'xtrack_radiance_reference_loop'
 
@@ -460,11 +463,14 @@ CONTAINS
       ! ---------------------------------------------------------------------------
       saved_shift = -1.0e+30_r8 ; saved_squeeze = -1.0e+30_r8
 
+      nwav_irrad = Irr_Data%nwaves(ipix)
+
       ! ------------------------------------------------------------------
       ! Assign number of irradiance wavelengths and the fitting weights
       ! from the solar wavelength calibration. Why? gga
       ! ------------------------------------------------------------------
-      n_solar_pts              = omi_nwav_irrad(ipix)
+      n_solar_pts              = nwav_irrad
+
       !       IF (yn_solar_comp) THEN !gga
       !          solar_wgt(1:n_solar_pts) = 1.0_r8
       !       ELSE
@@ -492,7 +498,7 @@ CONTAINS
         ! -----------------------------------------------------------------------
         ! Restore solar fitting variables for across-track reference in Earthshine fitting
         ! --------------------------------------------------------------------------------
-        sol_wav_avg = omi_sol_wav_avg(ipix)
+        sol_wav_avg = omi_radref_wav_avg (ipix)
         Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
         Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
         curr_sol_spec(wvl_idx,1:n_database_wvl) = omi_database_wvl(1:n_database_wvl,ipix)
@@ -512,8 +518,8 @@ CONTAINS
         omi_xtrackpix_no = ipix
 
         ! -------------------------------------------------------------------------
-        select_idx(1:4) = omi_ccdpix_selection(ipix,1:4)
-        exclud_idx(1:2) = omi_ccdpix_exclusion(ipix,1:2)
+        select_idx(1:4) = rad_ccdpix_selection(ipix,1:4)
+        exclud_idx(1:2) = rad_ccdpix_exclusion(ipix,1:2)
         CALL omi_adjust_radiance_data ( & ! Set up generic fitting arrays
           select_idx(1:4), exclud_idx(1:2),            &
           n_omi_radwvl,                                &

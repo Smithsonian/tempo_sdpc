@@ -1,167 +1,6 @@
 MODULE omi_read_l1b_data
   INCLUDE 'hdf.f90'
 CONTAINS
-  SUBROUTINE omi_read_irradiance_data ( ntimes, nxtrack, errstat )
-
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: nwavel_max, nxtrack_max
-    USE OMSAO_variables_module,  ONLY: &
-      l1b_irrad_filename, l1b_channel, ctrl_fit_winwav_lim, &
-      ctrl_fit_winexc_lim
-    USE OMSAO_omidata_module,    ONLY: &
-      omi_irradiance_swathname, omi_irradiance_spec,        &
-      omi_irradiance_qflg, omi_irradiance_prec, omi_irradiance_wavl, omi_nwav_irrad, &
-      omi_ccdpix_selection, omi_ccdpix_exclusion,             &
-      omi_sol_wav_avg
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
-    USE OMSAO_errstat_module
-    USE sao_pge_utils, ONLY: array_locate_r4
-
-    IMPLICIT NONE
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-    INTEGER (KIND=i4), INTENT (OUT)   :: ntimes, nxtrack
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    TYPE      (L1B_block_type)   :: omi_data_block
-    INTEGER   (KIND=i4)          :: &
-      nwl, nwavel, imin, imax, i, j, locerrstat, ix, icnt, nwavelcoef
-
-    REAL      (KIND=r4), DIMENSION (nwavel_max)             :: tmp_www, tmp_sss, tmp_ppp
-    INTEGER   (KIND=i2), DIMENSION (nwavel_max)             :: tmp_fff
-    REAL      (KIND=r4), DIMENSION (nwavel_max,nxtrack_max) :: tmp_spc, tmp_wvl, tmp_prc
-    INTEGER   (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: tmp_flg
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=24), PARAMETER :: modulename = 'omi_read_irradiance_data'
-
-    locerrstat = pge_errstat_ok
-
-    ntimes = 0 ; nxtrack = 0 ; nwavel = 0 ; nwavelcoef = 0
-
-    ! ------------------------------------------------------
-    ! Open data block structure with default size of 1 lines
-    ! ------------------------------------------------------
-    locerrstat = L1Br_open ( &
-      omi_data_block, l1b_irrad_filename, TRIM(ADJUSTL(omi_irradiance_swathname)) )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! ----------------------------------
-    ! Obtain irradiance swath dimensions
-    ! ----------------------------------
-    locerrstat = L1Br_getSWdims ( omi_data_block, &
-                                 NumTimes_k=ntimes, nXtrack_k=nxtrack, nWavel_k=nwavel, nWavelCoef_k=nwavelcoef )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_getSWdims failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! ----------------------------
-    ! Initialize irradiance arrays
-    ! ----------------------------
-    omi_irradiance_spec (1:nwavel,1:nxtrack) = 0.0_r8
-    omi_irradiance_prec (1:nwavel,1:nxtrack) = 0.0_r8
-    omi_irradiance_qflg (1:nwavel,1:nxtrack) = 0_i2
-    omi_irradiance_wavl (1:nwavel,1:nxtrack) = 0.0_r8
-
-    ! -----------------------------------------------------------------
-    ! Read Irradiances from L1b file. Only limit the upper end of the
-    ! spectrum because we want to save the pixel numbers and hence need
-    ! the wavelengths from the first detector pixel on.
-    ! -----------------------------------------------------------------
-    locerrstat = L1Br_getSIGline ( omi_data_block, 0, &
-                                  Signal_k            = tmp_spc,   &
-                                  SignalPrecision_k   = tmp_prc,   &
-                                  PixelQualityFlags_k = tmp_flg,   &
-                                  Wavelength_k        = tmp_wvl,   &
-                                  Nwl_k               = nwl                       )
-
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_getSIGline failed.", vb_lev_default, errstat )
-
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! -------------------------------
-    ! Reverse arrays for UV-1 channel
-    ! -------------------------------
-    IF ( l1b_channel == 'UV1' ) THEN
-      DO ix = 1, nxtrack
-        tmp_www(1:nwl) = tmp_wvl(1:nwl,ix)
-        tmp_sss(1:nwl) = tmp_spc(1:nwl,ix)
-        tmp_ppp(1:nwl) = tmp_prc(1:nwl,ix)
-        tmp_fff(1:nwl) = tmp_flg(1:nwl,ix)
-        DO i = 1, nwl
-          j = nwl - i + 1
-          tmp_wvl(j,ix) = tmp_www(i)
-          tmp_spc(j,ix) = tmp_sss(i)
-          tmp_prc(j,ix) = tmp_ppp(i)
-          tmp_flg(j,ix) = tmp_fff(i)
-        END DO
-      END DO
-    END IF
-
-    ! ----------------------------------------------------
-    ! Limit irradiance arrays to fitting window. Check for
-    ! strictly ascending wavelengths in the process.
-    ! ----------------------------------------------------
-    DO ix = 1, nxtrack
-
-      ! -------------------------------------------------------------------------------
-      ! Determine the CCD pixel numbers based on the selected wavelength fitting window
-      ! -------------------------------------------------------------------------------
-      DO j = 1, 3, 2
-        CALL array_locate_r4 ( &
-          nwl, tmp_wvl(1:nwl,ix), REAL(ctrl_fit_winwav_lim(j  ),KIND=r4), 'LE', &
-          omi_ccdpix_selection(ix,j  ) )
-        CALL array_locate_r4 ( &
-          nwl, tmp_wvl(1:nwl,ix), REAL(ctrl_fit_winwav_lim(j+1),KIND=r4), 'GE', &
-          omi_ccdpix_selection(ix,j+1) )
-      END DO
-
-      imin = omi_ccdpix_selection(ix,1)
-      imax = omi_ccdpix_selection(ix,4)
-
-      icnt = imax - imin + 1
-      omi_irradiance_wavl(1:icnt,ix) = REAL(tmp_wvl(imin:imax,ix), KIND=r8)
-      omi_irradiance_spec(1:icnt,ix) = REAL(tmp_spc(imin:imax,ix), KIND=r8)
-      omi_irradiance_prec(1:icnt,ix) = REAL(tmp_prc(imin:imax,ix), KIND=r8)
-      omi_irradiance_qflg(1:icnt,ix) = tmp_flg(imin:imax,ix)
-      omi_nwav_irrad (ix) = icnt
-      omi_sol_wav_avg(ix) = SUM( tmp_wvl(imin:imax,ix) ) / REAL(icnt, KIND=r8)
-
-      ! ------------------------------------------------------------------------------
-      ! If any window is excluded, find the corresponding indices. This has to be done
-      ! after the array assignements above because we need to know which indices to
-      ! exclude from the final arrays, not the complete ones read from the HE4 file.
-      ! ------------------------------------------------------------------------------
-      omi_ccdpix_exclusion(ix,1:2) = -1
-      IF ( MINVAL(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) THEN
-        CALL array_locate_r4 ( &
-          nwl, tmp_wvl(1:nwl,ix), REAL(ctrl_fit_winexc_lim(1),KIND=r4), 'GE', omi_ccdpix_exclusion(ix,1) )
-        CALL array_locate_r4 ( &
-          nwl, tmp_wvl(1:nwl,ix), REAL(ctrl_fit_winexc_lim(2),KIND=r4), 'LE', omi_ccdpix_exclusion(ix,2) )
-      END IF
-
-    END DO
-
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerrstat = L1Br_close ( omi_data_block )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_warning, OMSAO_W_CLOS_L1B_FILE, &
-                      modulename//f_sep//"L1Br_close failed.", vb_lev_omidebug, errstat )
-
-    RETURN
-  END SUBROUTINE omi_read_irradiance_data
 
   SUBROUTINE omi_read_radiance_paras (l1bfile, rpt, errstat)
 
@@ -401,7 +240,7 @@ CONTAINS
       omi_radiance_wavl, omi_radiance_qflg, omi_height, omi_geoflg, omi_latitude,             &
       omi_longitude, omi_szenith, omi_sazimuth, omi_vzenith, omi_vazimuth,                    &
       omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, omi_radiance_errstat,                &
-      omi_ccdpix_selection,                                                                   &
+      rad_ccdpix_selection,                                                                   &
       omi_xtrflg_l1b, omi_xtrflg
     USE OMSAO_errstat_module
     USE hdfeos4_parameters
@@ -594,8 +433,8 @@ CONTAINS
         IF ( locerrstat /= omi_s_success ) omi_radiance_errstat(iloop) = pge_errstat_error
 
         DO ix = 1, nxtrack
-          imin = omi_ccdpix_selection(ix,1)
-          imax = omi_ccdpix_selection(ix,4)
+          imin = rad_ccdpix_selection(ix,1)
+          imax = rad_ccdpix_selection(ix,4)
           icnt = imax - imin + 1
           omi_radiance_wavl(1:icnt,ix,iloop) = REAL ( tmp_wvl(imin:imax,ix), KIND=r8 )
           omi_radiance_spec(1:icnt,ix,iloop) = REAL ( tmp_spc(imin:imax,ix), KIND=r8 )

@@ -470,7 +470,7 @@ CONTAINS
 
     USE OMSAO_variables_module, ONLY: radref_latrange
     USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8
-    use addr_module
+    !use addr_module
 
     IMPLICIT NONE
 

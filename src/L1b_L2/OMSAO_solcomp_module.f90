@@ -515,7 +515,7 @@ CONTAINS
     RETURN
   END SUBROUTINE soco_get_dims
 
-  SUBROUTINE soco_compute ( yn_norm, ixt, nwvl, wvl, spc )
+  SUBROUTINE soco_compute ( yn_norm, ixt, nwvl, wvl, spc)
 
     USE sao_pge_utils, ONLY: array_locate_r8
     IMPLICIT NONE

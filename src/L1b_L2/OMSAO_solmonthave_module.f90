@@ -26,11 +26,7 @@ CONTAINS
     USE OMSAO_variables_module, ONLY: &
       OMSAO_solmonthave_filename, l1b_channel, ctrl_fit_winwav_lim, &
       ctrl_fit_winexc_lim
-    USE OMSAO_omidata_module,   ONLY: &
-      omi_irradiance_spec,        &
-      omi_irradiance_qflg, omi_irradiance_prec, omi_irradiance_wavl, omi_nwav_irrad, &
-      omi_ccdpix_selection, omi_ccdpix_exclusion,             &
-      omi_sol_wav_avg, EarthSunDistance
+    USE OMSAO_omidata_module, only: EarthSunDistance
     USE OMSAO_indices_module,   ONLY: &
       OMSAO_solmonthave_lun
     USE sao_pge_utils, ONLY: array_locate_r4

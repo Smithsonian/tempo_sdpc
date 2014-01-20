@@ -2,6 +2,7 @@ MODULE radiance_fit
   USE OMSAO_precision_module, only : i4, r8
   use optimizer_interface_module
 
+  private
   public fit_radiance
 
   INTEGER (KIND=i4), PARAMETER, PRIVATE :: forever = HUGE(1_i4)
@@ -9,7 +10,7 @@ MODULE radiance_fit
 CONTAINS
   SUBROUTINE fit_radiance ( &
       pge_idx, ipix, num_fitres_loops, fitres_range, do_reference_fit, &
-      n_rad_wvl_loc, curr_rad_spec,                                     &
+      n_rad_wvl_loc, rad_array,                                     &
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       o3fit_cols, o3fit_dcols, brofit_cols, brofit_dcols,           &
       lqh2ofit_cols, lqh2ofit_dcols,                                &
@@ -59,7 +60,7 @@ CONTAINS
     ! (Possibly) Modified Variables
     ! -----------------------------
     REAL (KIND=r8), DIMENSION (ccd_idx, n_rad_wvl_loc), INTENT (INOUT) &
-      :: curr_rad_spec
+      :: rad_array
     REAL (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx), INTENT (INOUT) &
       :: o3fit_cols, o3fit_dcols
 
@@ -109,9 +110,9 @@ CONTAINS
     ! ============================================================
     ll_rad = fit_winwav_idx(2)  ;  lu_rad = fit_winwav_idx(3)
 
-    fitwavs   (1:n_rad_wvl_loc) = curr_rad_spec(wvl_idx,1:n_rad_wvl_loc)
-    currspec  (1:n_rad_wvl_loc) = curr_rad_spec(spc_idx,1:n_rad_wvl_loc)
-    fitweights(1:n_rad_wvl_loc) = curr_rad_spec(sig_idx,1:n_rad_wvl_loc)
+    fitwavs   (1:n_rad_wvl_loc) = rad_array(wvl_idx,1:n_rad_wvl_loc)
+    currspec  (1:n_rad_wvl_loc) = rad_array(spc_idx,1:n_rad_wvl_loc)
+    fitweights(1:n_rad_wvl_loc) = rad_array(sig_idx,1:n_rad_wvl_loc)
 
     ! ---------------------------------------------------------------
     ! High pass filtering for DOAS. First, take log (rad/irrad), then
@@ -360,7 +361,7 @@ CONTAINS
     ! --------------------------------------------------------------------
     ! Save fitting weights for possible use through radiance reference fit
     ! --------------------------------------------------------------------
-    curr_rad_spec(sig_idx,1:n_rad_wvl_loc) = fitweights(1:n_rad_wvl_loc)
+    rad_array(sig_idx,1:n_rad_wvl_loc) = fitweights(1:n_rad_wvl_loc)
 
     ! CCM save fitted spectrum
     fitspc_out(1:n_rad_wvl_loc) = fitspec(1:n_rad_wvl_loc)

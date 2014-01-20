@@ -12,19 +12,19 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
     USE omi_pge_fitting_aux, ONLY: omi_adjust_irradiance_data
-    USE OMSAO_omidata_module, ONLY: omi_ccdpix_selection, omi_ccdpix_exclusion, &
-      n_omi_irradwvl, omi_irradiance_wavl, omi_cross_track_skippix, &
-      omi_sol_wav_avg, omi_solcal_chisq, omi_solcal_pars, omi_solcal_xflag, &
-      omi_nwav_irrad, omi_irradiance_spec, omi_irradiance_qflg, &
+    USE OMSAO_omidata_module, ONLY: &
+      omi_cross_track_skippix, &
+      omi_solcal_chisq, omi_solcal_pars, omi_solcal_xflag, &
       omi_solcal_itnum, omi_irradiance_wght, omi_irradiance_ccdpix
     USE OMSAO_indices_module, ONLY: wvl_idx, sig_idx, spc_idx, ccd_idx, &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
     USE OMSAO_variables_module,  ONLY: verb_thresh_lev, Slit_Half_Width_1e, &
-      Slit_Asym_Factor, curr_sol_spec, sol_wav_avg, fitvar_cal, fitvar_cal_saved,  &
+      Slit_Asym_Factor, curr_sol_spec, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum
     USE OMSAO_errstat_module
+    use irradiance_data, only : Irr_Data
 
     IMPLICIT NONE
     ! ---------------
@@ -41,12 +41,10 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER   (KIND=i2)              :: solcal_itnum
-    INTEGER   (KIND=i4)              :: locerrstat, ipix, solcal_exval, n_sol_wvl
+    INTEGER   (KIND=i4)              :: locerrstat, ipix, solcal_exval, n_irradwvl
     CHARACTER (LEN=MAX_STR_LEN)         :: addmsg
-    REAL      (KIND=r8)              :: chisquav
+    REAL      (KIND=r8)              :: chisquav, curr_sol_wav_avg
     LOGICAL                          :: yn_skip_pix, is_bad_pixel
-    INTEGER (KIND=i4), DIMENSION (4) :: select_idx
-    INTEGER (KIND=i4), DIMENSION (2) :: exclud_idx
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -67,25 +65,19 @@ CONTAINS
 
       curr_xtrack_pixnum = ipix
 
-      n_omi_irradwvl = omi_nwav_irrad(ipix)
+      n_irradwvl = Irr_Data%nwaves(ipix)
 
-      IF ( n_omi_irradwvl <= 0 ) CYCLE
+      IF ( n_irradwvl <= 0 ) CYCLE
 
       saved_shift = -1.0e+30_r8 ; saved_squeeze = -1.0e+30_r8
 
-      ! -------------------------------------------------------------------------
-      select_idx(1:4) = omi_ccdpix_selection(ipix,1:4)
-      exclud_idx(1:2) = omi_ccdpix_exclusion(ipix,1:2)
-      CALL omi_adjust_irradiance_data ( &           ! Set up generic fitting arrays
-        select_idx(1:4), exclud_idx(1:2),             &
-        n_omi_irradwvl,                               &
-        omi_irradiance_wavl  (1:n_omi_irradwvl,ipix), &
-        omi_irradiance_spec  (1:n_omi_irradwvl,ipix), &
-        omi_irradiance_qflg  (1:n_omi_irradwvl,ipix), &
-        omi_irradiance_ccdpix(1:n_omi_irradwvl,ipix), &
-        n_sol_wvl, curr_sol_spec(wvl_idx:ccd_idx,1:n_omi_irradwvl), &
+      ! Set up generic fitting arrays
+      CALL omi_adjust_irradiance_data ( &
+        Irr_Data, ipix, &
+        omi_irradiance_ccdpix(1:n_irradwvl,ipix), &
+        curr_sol_spec(wvl_idx:ccd_idx,1:n_irradwvl), &
+        curr_sol_wav_avg, &
         yn_skip_pix, locerrstat )
-      ! -------------------------------------------------------------------------
 
       IF ( yn_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
         errstat = MAX ( errstat, locerrstat )
@@ -100,10 +92,14 @@ CONTAINS
 
       is_bad_pixel   = .FALSE.
       CALL solar_fit ( &   ! Solar wavelength calibration
-        ctrl_n_fitres_loop(solcal_idx), ctrl_fitres_range(solcal_idx), &
-        n_sol_wvl, curr_sol_spec(wvl_idx:ccd_idx,1:n_sol_wvl), Slit_Half_Width_1e, &
-        Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, is_bad_pixel, locerrstat )
-      ! ------------------------------------------------------------------------------------------
+        ctrl_n_fitres_loop(solcal_idx), ctrl_fitres_range(solcal_idx), n_irradwvl, &
+        curr_sol_wav_avg, &
+        curr_sol_spec(wvl_idx:ccd_idx,1:n_irradwvl), Slit_Half_Width_1e, &
+        Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, &
+        is_bad_pixel, locerrstat )
+      ! solar_fit modifies the following variables:
+      !   curr_sol_spec, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
+      !   solcal_itnum, chisquav, is_bad_pixel, locerrstat
 
       IF ( is_bad_pixel .OR. locerrstat >= pge_errstat_error ) THEN
         errstat = MAX ( errstat, locerrstat )
@@ -120,7 +116,6 @@ CONTAINS
       ! Save crucial variables for across-track reference in Earthshine fitting
       ! -----------------------------------------------------------------------
       if (solcal_exval == i4_missval) solcal_exval = i2_missval
-      omi_sol_wav_avg (ipix)                     = sol_wav_avg
       omi_solcal_chisq(ipix)                     = chisquav
       omi_solcal_pars (1:max_calfit_idx,ipix)    = fitvar_cal(1:max_calfit_idx)
       omi_solcal_xflag(ipix)                     = INT (solcal_exval, KIND=i2)
@@ -131,10 +126,10 @@ CONTAINS
       ! spectrum is now normalized, has bad pixels set to -1, and that the
       ! wavelength array is calibrated.
       ! ------------------------------------------------------------------------
-      omi_nwav_irrad(ipix)                  = n_sol_wvl
-      omi_irradiance_wavl(1:n_sol_wvl,ipix) = curr_sol_spec(wvl_idx,1:n_sol_wvl)
-      omi_irradiance_spec(1:n_sol_wvl,ipix) = curr_sol_spec(spc_idx,1:n_sol_wvl)
-      omi_irradiance_wght(1:n_sol_wvl,ipix) = curr_sol_spec(sig_idx,1:n_sol_wvl)
+      Irr_Data%wavelengths(1:n_irradwvl,ipix) = curr_sol_spec(wvl_idx,1:n_irradwvl)
+      Irr_Data%spectrum(1:n_irradwvl, ipix) = curr_sol_spec(spc_idx,1:n_irradwvl)
+      Irr_Data%avg_wavelengths(ipix) = curr_sol_wav_avg
+      omi_irradiance_wght(1:n_irradwvl,ipix) = curr_sol_spec(sig_idx,1:n_irradwvl)
 
       addmsg = ''
       WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'SOLAR FIT          #', ipix, &
@@ -168,8 +163,8 @@ CONTAINS
   END SUBROUTINE xtrack_solar_calibration_loop
 
   SUBROUTINE solar_fit ( &
-      n_fitres_loop, fitres_range, n_sol_wvl,                            &
-      curr_sol_spec, hw1e, e_asym, solcal_exval, solcal_itnum, chisquav, &
+      n_fitres_loop, fitres_range, n_irradwvl, avg_sol_wav, &
+      sol_spec, hw1e, e_asym, solcal_exval, solcal_itnum, chisquav, &
       is_bad_pixel, errstat )
 
     ! ***************************************************************
@@ -194,7 +189,8 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: n_fitres_loop, n_sol_wvl, fitres_range
+    INTEGER (KIND=i4), INTENT (IN) :: n_fitres_loop, n_irradwvl, fitres_range
+    real (kind=r8), intent(in) :: avg_sol_wav
 
     ! ----------------
     ! Output variables
@@ -208,14 +204,14 @@ CONTAINS
     ! ------------------
     LOGICAL,                                                   INTENT (OUT)   :: is_bad_pixel
     INTEGER (KIND=i4),                                         INTENT (INOUT) :: errstat
-    REAL    (KIND=r8), DIMENSION(wvl_idx:ccd_idx,1:n_sol_wvl), INTENT (INOUT) :: curr_sol_spec
+    REAL    (KIND=r8), DIMENSION(wvl_idx:ccd_idx,1:n_irradwvl), INTENT (INOUT) :: sol_spec
 
     ! ---------------
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)  :: locerrstat, i, j, locitnum, n_nozero_wgt
     REAL    (KIND=r8)  :: mean, sdev, loclim
-    REAL    (KIND=r8), DIMENSION (n_sol_wvl)         :: fitres
+    REAL    (KIND=r8), DIMENSION (n_irradwvl)         :: fitres
     REAL    (KIND=r8), DIMENSION (MAX_CALFIT_IDX)    :: fitvar
 
     type(optimizer_type) :: opt
@@ -237,9 +233,9 @@ CONTAINS
     ! --------------------------------------------------------------
     ! Calculate and iterate on the irradiance spectrum.
     ! --------------------------------------------------------------
-    fitwavs   (1:n_sol_wvl) = curr_sol_spec(wvl_idx,1:n_sol_wvl)
-    fitweights(1:n_sol_wvl) = curr_sol_spec(sig_idx,1:n_sol_wvl)
-    currspec  (1:n_sol_wvl) = curr_sol_spec(spc_idx,1:n_sol_wvl)
+    fitwavs   (1:n_irradwvl) = sol_spec(wvl_idx,1:n_irradwvl)
+    fitweights(1:n_irradwvl) = sol_spec(sig_idx,1:n_irradwvl)
+    currspec  (1:n_irradwvl) = sol_spec(spc_idx,1:n_irradwvl)
 
     ! -------------------------------------------------------------
     ! Initialize the fitting variables. FITVAR_CAL_SAVED has been
@@ -269,7 +265,7 @@ CONTAINS
     ! Check whether we enough spectral points to carry out the fitting. If
     ! not, call it a bad pixel and return.
     ! --------------------------------------------------------------------
-    IF ( n_fitvar_cal >= n_sol_wvl ) THEN
+    IF ( n_fitvar_cal >= n_irradwvl ) THEN
       is_bad_pixel = .TRUE.  ;  RETURN
     END IF
 
@@ -290,6 +286,7 @@ CONTAINS
     loclim = 0.0_r8
     solcal_itnum = 0
     j = 0
+    sol_wav_avg = avg_sol_wav
 
     call optimizer_open (opt, solar_residuals, n_fitvar_cal, return_status, &
                          mode=opt_bounded, tol=tol, epsabs=epsabs, epsrel=epsrel, epsx=epsx, &
@@ -304,17 +301,17 @@ CONTAINS
     
     fit_loop: do
       call opt%optimize (opt, fitvar(1:n_fitvar_cal), n_fitvar_cal, &
-                         fitres(1:n_sol_wvl), n_sol_wvl, return_status)
+                         fitres(1:n_irradwvl), n_irradwvl, return_status)
       locitnum = opt%num_iterations
       solcal_exval = return_status
 
       solcal_itnum = solcal_itnum + INT ( locitnum, KIND=i2 )
       j = j + 1
 
-      n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_sol_wvl)) ) )
+      n_nozero_wgt = INT ( ANINT ( SUM(fitweights(1:n_irradwvl)) ) )
 
       IF ( n_nozero_wgt > 0 ) THEN
-        chisquav = SUM (fitres(1:n_sol_wvl)**2)
+        chisquav = SUM (fitres(1:n_irradwvl)**2)
       ELSE
         chisquav = r8_missval
       END IF
@@ -325,21 +322,21 @@ CONTAINS
         else
           fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
         end if
-        IF ( MAXVAL(ABS(fitres(1:n_sol_wvl))) <= loclim ) exit fit_loop
+        IF ( MAXVAL(ABS(fitres(1:n_irradwvl))) <= loclim ) exit fit_loop
       else if (j == 1) then
-        mean = SUM  ( fitres(1:n_sol_wvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
-        sdev = SQRT ( SUM ( (fitres(1:n_sol_wvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+        mean = SUM  ( fitres(1:n_irradwvl) )                 / REAL(n_nozero_wgt,   KIND=r8)
+        sdev = SQRT ( SUM ( (fitres(1:n_irradwvl)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
         loclim = REAL (fitres_range, KIND=r8)*sdev
         if (.not.((n_fitres_loop > 0) &
                   .and.(loclim > 0.0_r8) &
-                  .and.(MAXVAL(ABS(fitres(1:n_sol_wvl))) >= loclim) &
+                  .and.(MAXVAL(ABS(fitres(1:n_irradwvl))) >= loclim) &
                   .and.(n_nozero_wgt > n_fitvar_cal))) exit fit_loop
       else
         exit fit_loop  ! (j > n_fitres_loop)
       endif
 
-      WHERE ( ABS(fitres(1:n_sol_wvl)) > loclim )
-        fitweights(1:n_sol_wvl) = downweight
+      WHERE ( ABS(fitres(1:n_irradwvl)) > loclim )
+        fitweights(1:n_irradwvl) = downweight
       END WHERE
 
     enddo fit_loop
@@ -364,14 +361,14 @@ CONTAINS
     ! Save shifted&squeezed wavelength array, and the fitting weights
     ! ---------------------------------------------------------------
     IF (yn_newshift .EQV. .true.) THEN !gga
-      curr_sol_spec(wvl_idx,1:n_sol_wvl) = &
-        (fitwavs (1:n_sol_wvl) - fitvar_cal_saved(shi_idx) + &
+      sol_spec(wvl_idx,1:n_irradwvl) = &
+        (fitwavs (1:n_irradwvl) - fitvar_cal_saved(shi_idx) + &
         sol_wav_avg * fitvar_cal_saved(squ_idx)) /          &
         (1.0_r8 + fitvar_cal_saved(squ_idx))
     ELSE !gga
-      curr_sol_spec(wvl_idx,1:n_sol_wvl) = fitwavs (1:n_sol_wvl)
+      sol_spec(wvl_idx,1:n_irradwvl) = fitwavs (1:n_irradwvl)
     END IF
-    curr_sol_spec(sig_idx,1:n_sol_wvl) = fitweights (1:n_sol_wvl)
+    sol_spec(sig_idx,1:n_irradwvl) = fitweights (1:n_irradwvl)
 
     ! ------------------------------------------------
     !  Save the slit function parameters for later use
