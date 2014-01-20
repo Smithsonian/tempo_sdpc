@@ -9,7 +9,7 @@ MODULE radiance_fit
 
 CONTAINS
   SUBROUTINE fit_radiance ( &
-      pge_idx, ipix, num_fitres_loops, fitres_range, do_reference_fit, &
+      pge_idx, ipix, num_fitres_loops, fitres_range, &
       n_rad_wvl_loc, rad_array,                                     &
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       o3fit_cols, o3fit_dcols, brofit_cols, brofit_dcols,           &
@@ -28,7 +28,7 @@ CONTAINS
       yn_doas, yn_smooth, rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
       lo_radbnd, up_radbnd, lobnd, upbnd, fitweights, currspec, fitwavs, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
-      xtrack_fitres_limit, all_radfit_idx, yn_o3amf_cor, &
+      all_radfit_idx, yn_o3amf_cor, &
       n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
       tol, epsrel, epsabs, epsx
 
@@ -54,7 +54,6 @@ CONTAINS
       pge_idx, ipix, n_rad_wvl_loc, num_fitres_loops, fitres_range
     REAL    (KIND=r8), INTENT (IN) :: brofit_cols, brofit_dcols
     REAL    (KIND=r8), INTENT (IN) :: lqh2ofit_cols, lqh2ofit_dcols
-    LOGICAL,           INTENT (IN) :: do_reference_fit
 
     ! -----------------------------
     ! (Possibly) Modified Variables
@@ -321,7 +320,6 @@ CONTAINS
         ! (jch) Original code saved loclim only from the first iteration,
         !       so I kept that behavior, even though it looked odd.
         !       Is this a bug? FIXME?
-        if ( do_reference_fit) xtrack_fitres_limit(ipix) = loclim
 
         ! (jch)  It seems to me that loclim could be negative,
         !        but the original code iterates further only if loclim > 0.
@@ -385,12 +383,9 @@ CONTAINS
       ! ---------------------------
       ! Update common mode spectrum
       ! ---------------------------
-      IF ( .NOT. do_reference_fit ) THEN
-        !fitres(1:n_rad_wvl_loc) = fitres(1:n_rad_wvl_loc) !/ fitweights(1:n_rad_wvl_loc)
-        CALL compute_common_mode ( &
-          do_reference_fit, ipix, n_rad_wvl_loc, fitwavs(1:n_rad_wvl_loc), &
-          fitres(1:n_rad_wvl_loc))
-      END IF
+      CALL compute_common_mode ( &
+        .FALSE., ipix, n_rad_wvl_loc, fitwavs(1:n_rad_wvl_loc), &
+        fitres(1:n_rad_wvl_loc))
 
       ! =====================================================================
       ! Compute the actual number of radiance wavelengths used in the fitting

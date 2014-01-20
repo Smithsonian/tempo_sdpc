@@ -29,7 +29,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   USE OMSAO_variables_module,  ONLY: &
     n_database_wvl, curr_sol_spec, fitweights, &
     yn_solar_comp, yn_spectrum_norm, yn_newshift, &
-    yn_radiance_reference, yn_reference_fit, database, &
+    yn_radiance_reference, database, &
     curr_xtrack_pixnum
   USE OMSAO_prefitcol_module,  ONLY:                             &
     o3_prefit_fitidx,    yn_o3_prefit,    o3_prefit_var,      &
@@ -109,8 +109,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
   !          .AND. yn_reference_fit)) ) THEN
   ! The above test can be simplified to the following: --JED
-  IF (yn_solar_comp &
-      .and. ((.not.yn_radiance_reference).or.yn_reference_fit)) then
+  IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
     yn_solsynth = .TRUE.
     soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
   ELSE
@@ -350,7 +349,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   USE OMSAO_variables_module,  ONLY: &
     n_database_wvl, curr_sol_spec, fitweights, &
     yn_solar_comp, yn_spectrum_norm, yn_newshift, &
-    yn_radiance_reference, yn_reference_fit, database, &
+    yn_radiance_reference, database, &
     curr_xtrack_pixnum
   USE OMSAO_prefitcol_module,  ONLY: &
     bro_prefit_fitidx, o3_prefit_fitidx, yn_bro_prefit, bro_prefit_var,     &
@@ -427,8 +426,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
   !          .AND. yn_reference_fit)) ) THEN
   ! The above test can be simplified to the following: --JED
-  IF (yn_solar_comp &
-      .and. ((.not.yn_radiance_reference).or.yn_reference_fit)) then
+  IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
     yn_solsynth = .TRUE.
     soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
   ELSE

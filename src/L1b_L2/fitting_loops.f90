@@ -339,7 +339,7 @@ CONTAINS
       database, curr_sol_spec, n_rad_wvl, curr_rad_spec, sol_wav_avg, &
       Slit_Half_Width_1e, Slit_Asym_Factor,     &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
-      szamax, n_fincol_idx, yn_reference_fit, curr_xtrack_pixnum
+      szamax, n_fincol_idx, curr_xtrack_pixnum
     USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_prefitcol_module, ONLY: &
       o3_prefit_col,  o3_prefit_dcol,  &
@@ -509,16 +509,13 @@ CONTAINS
       radfit_itnum = INT(i2_missval, KIND=i4)
       rms          = r8_missval
 
-      ! Setting yn_reference_fit to FALSE will result in common_mode
-      ! being computed by fit_radiance.  --JED
-      yn_reference_fit = .FALSE.
       IF ( MAXVAL(curr_rad_spec(spc_idx,1:n_rad_wvl)) > 0.0_r8 .AND.     &
           n_rad_wvl > n_fitvar_rad .AND. (.NOT. yn_skip_pix)          ) THEN
 
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
           pge_idx, ipix, ctrl_n_fitres_loop(radfit_idx), &
-          ctrl_fitres_range(radfit_idx), yn_reference_fit, &
+          ctrl_fitres_range(radfit_idx), &
           n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                &
           fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,           &
           o3fit_cols, o3fit_dcols, brofit_col, brofit_dcol,                     &

@@ -354,7 +354,7 @@ CONTAINS
       Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
-      n_rad_wvl_max, target_npol, yn_reference_fit, &
+      n_rad_wvl_max, target_npol, &
       curr_xtrack_pixnum, fitvar_rad_saved, fitvar_rad_init
     USE OMSAO_prefitcol_module, ONLY:                                                     &
       o3_prefit_col, o3_prefit_dcol,                                     &
@@ -563,7 +563,7 @@ CONTAINS
 
           CALL fit_radiance ( &
             pge_idx, ipix, ctrl_n_fitres_loop(radref_idx), &
-            ctrl_fitres_range(radref_idx), yn_reference_fit, &
+            ctrl_fitres_range(radref_idx), &
             n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                    &
             fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,               &
             o3fit_cols, o3fit_dcols, bro_prefit_col(ipix,0), bro_prefit_dcol(ipix,0), &
@@ -571,8 +571,6 @@ CONTAINS
             target_var(1:n_fincol_idx,ipix),                                          &
             allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
             corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp )
-
-          yn_reference_fit = .FALSE.
 
           IF ( is_bad_pixel ) CYCLE
 

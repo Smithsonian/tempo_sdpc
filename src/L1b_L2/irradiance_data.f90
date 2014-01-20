@@ -119,6 +119,7 @@ contains
                               errstat)
       return
     endif
+    ccdpix_sel = -1
 
     ! ----------------------------------------------------
     ! Limit irradiance arrays to fitting window. Check for

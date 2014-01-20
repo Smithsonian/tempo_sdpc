@@ -304,7 +304,7 @@ MODULE OMSAO_variables_module
   ! -------------------------------------------------------
   ! Variables connected with  a radiance reference spectrum
   ! -------------------------------------------------------
-  LOGICAL                          :: yn_radiance_reference, yn_reference_fit, yn_remove_target
+  LOGICAL                          :: yn_radiance_reference, yn_remove_target
   INTEGER (KIND=i4)                :: target_npol
   INTEGER (KIND=i4), DIMENSION (2) :: radiance_reference_lnums
   REAL    (KIND=r4), DIMENSION (2), TARGET :: radref_latrange
