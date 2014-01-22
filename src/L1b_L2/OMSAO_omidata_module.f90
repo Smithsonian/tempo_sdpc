@@ -132,7 +132,6 @@ MODULE OMSAO_omidata_module
 
   INTEGER (KIND=i4), DIMENSION (nxtrack_max)                         :: n_omi_database_wvl
   INTEGER (KIND=i2), DIMENSION (nxtrack_max), TARGET                 :: &
-    omi_solcal_itnum, omi_radcal_itnum, omi_radref_itnum,            &
     omi_solcal_xflag, omi_radcal_xflag, omi_radref_xflag
   REAL    (KIND=r8), DIMENSION (max_calfit_idx, nxtrack_max)         :: &
     omi_solcal_pars,  omi_radcal_pars,  omi_radref_pars

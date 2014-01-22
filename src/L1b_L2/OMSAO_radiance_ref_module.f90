@@ -372,7 +372,7 @@ CONTAINS
       omi_radiance_qflg, omi_radref_qflg, omi_radiance_spec,                 &
       rad_ccdpix_selection, omi_radiance_ccdpix, rad_ccdpix_exclusion,       &
       omi_xtrackpix_no, omi_radref_wght, omi_radref_pars,    &
-      omi_radref_xflag, omi_radref_itnum, omi_radref_chisq, omi_radref_col,  &
+      omi_radref_xflag, omi_radref_chisq, omi_radref_col,  &
       omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol, omi_radref_wav_avg
     USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
@@ -435,7 +435,6 @@ CONTAINS
     ! ---------------------------------------------------
     omi_radref_pars  (1:max_calfit_idx,1:nx) = r8_missval
     omi_radref_xflag (1:nx)                  = i2_missval
-    omi_radref_itnum (1:nx)                  = i2_missval
     omi_radref_chisq (1:nx)                  = r8_missval
     omi_radref_col   (1:nx)                  = r8_missval
     omi_radref_dcol  (1:nx)                  = r8_missval
@@ -600,7 +599,6 @@ CONTAINS
         ! -----------------------------------
         omi_radref_pars (1:max_calfit_idx,ipix) = fitvar_rad(1:max_calfit_idx)
         omi_radref_xflag(ipix)                  = INT (radfit_exval, KIND=i2)
-        omi_radref_itnum(ipix)                  = INT (radfit_itnum, KIND=i2)
         omi_radref_chisq(ipix)                  = chisquav
         omi_radref_col  (ipix)                  = fitcol
         omi_radref_dcol (ipix)                  = dfitcol

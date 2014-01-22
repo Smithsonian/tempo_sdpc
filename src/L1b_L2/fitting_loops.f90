@@ -23,7 +23,7 @@ CONTAINS
       omi_radiance_spec, omi_radiance_qflg, n_omi_radwvl, omi_radref_wavl, &
       omi_radref_spec, omi_radref_qflg, rad_ccdpix_selection, &
       rad_ccdpix_exclusion, omi_radiance_ccdpix, omi_cross_track_skippix, &
-      omi_radcal_pars, omi_radcal_xflag, omi_radcal_itnum, &
+      omi_radcal_pars, omi_radcal_xflag, &
       omi_radcal_chisq, &
       omi_radref_wght, omi_database, n_omi_database_wvl, &
       omi_database_wvl, omi_radref_wav_avg, &
@@ -223,7 +223,6 @@ CONTAINS
       ! ---------------------------------
       omi_radcal_pars (1:max_calfit_idx,ipix) = fitvar_cal(1:max_calfit_idx)
       omi_radcal_xflag(ipix)                  = INT (radcal_exval, KIND=i2)
-      omi_radcal_itnum(ipix)                  = INT (radcal_itnum, KIND=i2)
       omi_radcal_chisq(ipix)                  = chisquav
       ! -----------------------------------------------------------------------
 

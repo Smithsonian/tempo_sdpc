@@ -16,7 +16,7 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: &
       omi_cross_track_skippix, &
       omi_solcal_chisq, omi_solcal_pars, omi_solcal_xflag, &
-      omi_solcal_itnum, omi_irradiance_wght, omi_irradiance_ccdpix
+      omi_irradiance_wght, omi_irradiance_ccdpix
     USE OMSAO_indices_module, ONLY: wvl_idx, sig_idx, spc_idx, ccd_idx, &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
@@ -122,7 +122,6 @@ CONTAINS
       omi_solcal_chisq(ipix)                     = chisquav
       omi_solcal_pars (1:max_calfit_idx,ipix)    = fitvar_cal(1:max_calfit_idx)
       omi_solcal_xflag(ipix)                     = INT (solcal_exval, KIND=i2)
-      omi_solcal_itnum(ipix)                     = INT (solcal_itnum, KIND=i2)
 
       ! ------------------------------------------------------------------------
       ! Save the processed solar spectrum in its original array. Note that the

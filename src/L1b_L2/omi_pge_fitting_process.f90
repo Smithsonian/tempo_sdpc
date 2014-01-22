@@ -143,8 +143,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE omi_pge_swathline_loop, ONLY: omi_pge_swathline_loops
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
-    omi_cross_track_skippix, omi_radcal_itnum, omi_radcal_xflag, &
-    omi_radiance_swathname, omi_solcal_itnum, omi_solcal_xflag
+    omi_cross_track_skippix, omi_radcal_xflag, &
+    omi_radiance_swathname, omi_solcal_xflag
   USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
@@ -276,7 +276,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! Otherwise we need to compute them from the solar composite
   ! parameterization on a equidistant grid.
   ! -------------------------------------------------------------------
-  omi_solcal_itnum = i2_missval ; omi_solcal_xflag = i2_missval
+  omi_solcal_xflag = i2_missval
   ! --------------------------------------------------------------------------
   ! Check than only one or non of yn_solar_comp are yn_solmonthva are set True
   ! --------------------------------------------------------------------------
@@ -361,7 +361,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------------------------------------------
   ! Across-track loop for radiance wavelength calibration
   ! -----------------------------------------------------
-  omi_radcal_itnum = i2_missval ; omi_radcal_xflag = i2_missval
+  omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (                          &
     first_wc_pix, last_wc_pix, n_max_rspec, n_comm_wvl, errstat )
   pge_error_status = MAX ( pge_error_status, errstat )
