@@ -1,4 +1,5 @@
 MODULE prepare_databases
+  use errormodule
 CONTAINS
 
 SUBROUTINE prepare_solar_refspec ( &
@@ -43,6 +44,8 @@ SUBROUTINE prepare_solar_refspec ( &
   ! Name of this subroutine/module
   ! ------------------------------
   CHARACTER (LEN=21), PARAMETER :: modulename = 'prepare_solar_refspec'
+
+  if (errstat < 0) return
 
   locerrstat = pge_errstat_ok
 
@@ -124,7 +127,8 @@ SUBROUTINE prepare_solar_refspec ( &
   ! ---------------------------------------------------------
   IF ( yn_doas ) THEN
     ll_rad = fit_winwav_idx(2) ; lu_rad = fit_winwav_idx(3)
-    CALL cubic_subtract (curr_rad_wvl, n_radpts, ll_rad, lu_rad)
+    CALL cubic_subtract (curr_rad_wvl, n_radpts, ll_rad, lu_rad, errstat)
+    if (errstat < 0) return
     database(ring_idx, 1:n_radpts) = &
       database(ring_idx, 1:n_radpts) * spline_sun(1:n_radpts)
   END IF

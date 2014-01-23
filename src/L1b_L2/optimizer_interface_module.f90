@@ -1,5 +1,6 @@
 module optimizer_interface_module
   USE OMSAO_precision_module, only : i4, r8
+  use errormodule
   implicit none
 
   ! This module is intended to provide a generic optimizer interface
@@ -7,7 +8,8 @@ module optimizer_interface_module
   ! Example:
   !
   !  type (optimizer_type) :: opt
-  !  call optimizer_open (opt, optimizer_method, objective, num_params, return_status, &
+  !  call optimizer_open (opt, objective, num_params, return_status, &
+  !                       optimizer_method=method, &
   !                       param_min=pmin, param_max=pmax, param_mask=mask, &
   !                       mode=mode, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
   !                       max_num_fun_calls=max_nfc,
@@ -122,7 +124,7 @@ contains
     return_status = -1
 
     if (num_params < 1) then
-      write(*,*)'optimizer_open:  invalid number of parameters'
+      call err_message_error ("optimizer_open:  invalid number of parameters", return_status)
       return
     endif
 
@@ -169,13 +171,13 @@ contains
     if (status == 0) allocate (this%param_max(num_params), stat=status)
     if (status == 0) allocate (this%param_mask(num_params), stat=status)
     if (status /= 0) then
-      write(*,*)'optimizer_open:  allocate failed'
+      call err_message_error ("optimizer_open:  allocate failed", return_status)
       return
     endif
 
     if (present(param_min)) then
       if (size(param_min) < num_params) then
-        write(*,*)'optimizer_open:  invalid param_min array'
+        call err_message_error ("optimizer_open:  invalid param_min array", return_status)
         return
       endif
       this%param_min = param_min
@@ -185,7 +187,7 @@ contains
 
     if (present(param_max)) then
       if (size(param_max) < num_params) then
-        write(*,*)'optimizer_open:  invalid param_max array'
+        call err_message_error ("optimizer_open:  invalid param_max array", return_status)
         return
       endif
       this%param_max = param_max
@@ -195,7 +197,7 @@ contains
 
     if (present(param_mask)) then
       if (size(param_mask) < num_params) then
-        write(*,*)'optimizer_open:  invalid param_mask array'
+        call err_message_error ("optimizer_open:  invalid param_mask array", return_status)
         return
       endif
       this%param_mask = param_mask

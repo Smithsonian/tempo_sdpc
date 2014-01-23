@@ -8,6 +8,7 @@ MODULE OMSAO_destriping_module
     radfit_latrange, yn_diagnostic_run
   USE OMSAO_median_module,     ONLY: median
   use optimizer_interface_module
+  use errormodule
 
   IMPLICIT NONE
 
@@ -100,6 +101,8 @@ CONTAINS
     REAL    (KIND=r8)                                 :: xtr_median_med
     REAL    (KIND=r8), DIMENSION (nxtrack)            :: xtr_median, xtr_weight
     LOGICAL,           DIMENSION (0:ntimes-1)         :: yn_dst_range
+
+    if (errstat < 0) return
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -292,7 +295,8 @@ CONTAINS
           !num_fitfunc_calls = 0 ; num_fitfunc_jacobi = 0
           CALL xtrack_striping_fit (                                &
             nxtrack, ctr_pol_base, ctr_pol_scal, xtrack_norm, &
-            a_stripe, xtrack_cor(1:nxtrack,it) )
+            a_stripe, xtrack_cor(1:nxtrack,it), errstat )
+          if (errstat < 0) return
 
           ! ----------------
           ! Apply correction
@@ -624,7 +628,7 @@ CONTAINS
     RETURN
   END SUBROUTINE xtrack_pattern_polyfit
 
-  SUBROUTINE xtrack_striping_fit ( nxtrack, npolb, npols, xnorm, a_stripe, xtrack_cor )
+  SUBROUTINE xtrack_striping_fit ( nxtrack, npolb, npols, xnorm, a_stripe, xtrack_cor, errstat )
 
     IMPLICIT NONE
 
@@ -633,6 +637,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: nxtrack, npolb, npols
     REAL    (KIND=r8), INTENT (IN) :: xnorm
+    integer, intent(inout) :: errstat
 
     ! ---------------
     ! Output variable
@@ -659,6 +664,8 @@ CONTAINS
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
+
+    if (errstat < 0) return
 
     ! -------------------------------------------------------------
     ! Set the number of fitting parameters: Order of the baseline
@@ -734,7 +741,7 @@ CONTAINS
                          mode=opt_bounded, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
                          max_num_iterations=ctr_fitfunc_calls)
     if (return_status < 0) then
-      write (*,*)'xtrack_striping_fit: optimizer_open failed'
+      call err_message_error ("xtrack_striping_fit: optimizer_open failed", errstat)
       return
     endif
 
@@ -743,7 +750,7 @@ CONTAINS
 
     call optimizer_close (opt, return_status)
     if (return_status < 0) then
-      write (*,*)'xtrack_striping_fit: optimizer_close failed'
+      call err_message_error ("xtrack_striping_fit: optimizer_close failed", errstat)
       return
     endif
     

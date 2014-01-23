@@ -1,6 +1,7 @@
 MODULE radiance_wavcal
 
   use optimizer_interface_module
+  use errormodule
   private
   public radiance_wavecal, solar_residuals
 
@@ -51,6 +52,8 @@ SUBROUTINE radiance_wavecal (                            &
 
   type(optimizer_type) :: opt
   integer (kind=i4) :: return_status
+
+  if (errstat < 0) return
 
   is_bad_pixel = .FALSE.
 
@@ -137,8 +140,8 @@ SUBROUTINE radiance_wavecal (                            &
                        param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
                        max_num_iterations = max_itnum_sol)
   if (return_status < 0) then
-    write(*,*)' radiance_wavecal: optimizer_open failed '
-    stop  ! FIXME!!!
+    call err_message_error ("radiance_wavecal: optimizer_open failed", errstat)
+    return
   endif
 
   fit_loop: do
@@ -183,8 +186,8 @@ SUBROUTINE radiance_wavecal (                            &
 
   call optimizer_close (opt, return_status)
   if (return_status < 0) then
-    write(*,*)'radiance_wavecal: optimizer_close failed'
-    stop  ! FIXME!
+    call err_message_error ("radiance_wavecal: optimizer_close failed", errstat)
+    return
   endif
 
   ! ------------------------------------------------------------------

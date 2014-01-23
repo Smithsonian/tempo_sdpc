@@ -3,6 +3,7 @@ MODULE OMSAO_radiance_ref_module
   USE OMSAO_precision_module, ONLY: i2, i4, r4, r8
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN
   USE OMSAO_variables_module, ONLY: n_rad_wvl_max
+  use errormodule
 
   IMPLICIT NONE
 
@@ -86,6 +87,8 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (nwrr      )     :: cntr8
     INTEGER (KIND=i2), DIMENSION (nwrr,0:nbits-1) :: qflg_bit
     INTEGER (KIND=i2), DIMENSION (nwrr)           :: qflg_mask
+
+    if (errstat < 0) return
 
     ! ------------------------------
     ! Initialize some some variables
@@ -412,6 +415,8 @@ CONTAINS
     ! The above will not work since size varies with the loop index --JED
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_max) :: fitspctmp
 
+    if (errstat < 0) return
+
     ! -------------------------
     ! Initialize some variables
     ! -------------------------
@@ -570,7 +575,8 @@ CONTAINS
             lqh2o_prefit_col(ipix,0), lqh2o_prefit_dcol(ipix,0),                      &
             target_var(1:n_fincol_idx,ipix),                                          &
             allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
-            corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp )
+            corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &
+            errstat)
 
           IF ( is_bad_pixel ) CYCLE
 

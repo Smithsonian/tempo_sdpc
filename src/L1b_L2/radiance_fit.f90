@@ -1,6 +1,7 @@
 MODULE radiance_fit
   USE OMSAO_precision_module, only : i4, r8
   use optimizer_interface_module
+  use errormodule
 
   private
   public fit_radiance
@@ -14,7 +15,8 @@ CONTAINS
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       o3fit_cols, o3fit_dcols, brofit_cols, brofit_dcols,           &
       lqh2ofit_cols, lqh2ofit_dcols,                                &
-      target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out )
+      target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out, &
+      errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
@@ -62,6 +64,7 @@ CONTAINS
       :: rad_array
     REAL (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx), INTENT (INOUT) &
       :: o3fit_cols, o3fit_dcols
+    integer, intent(inout) :: errstat
 
     ! ------------------
     ! Modified variables
@@ -94,6 +97,8 @@ CONTAINS
 
     SAVE fitcol_saved
 
+    if (errstat < 0) return
+
     is_bad_pixel = .FALSE.
 
     radfit_exval = INT(i2_missval, KIND=i4)
@@ -125,7 +130,8 @@ CONTAINS
     ! ---------------------------------------------------------------
     IF ( yn_doas ) THEN
       currspec(1:n_rad_wvl_loc) = LOG ( currspec(1:n_rad_wvl_loc) / database(solar_idx,1:n_rad_wvl_loc) )
-      CALL cubic_subtract_meas (fitwavs(1:n_rad_wvl_loc), n_rad_wvl_loc, currspec(1:n_rad_wvl_loc), ll_rad, lu_rad)
+      CALL cubic_subtract_meas (fitwavs(1:n_rad_wvl_loc), n_rad_wvl_loc, currspec(1:n_rad_wvl_loc), ll_rad, lu_rad, errstat)
+      if (errstat < 0) return
       currspec(1:n_rad_wvl_loc) = currspec(1:n_rad_wvl_loc) + LOG ( database(solar_idx,1:n_rad_wvl_loc) )
     END IF
 
@@ -278,8 +284,8 @@ CONTAINS
                          param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
                          max_num_iterations = max_itnum_rad)
     if (return_status < 0) then
-      write(*,*)' fit_radiance: optimizer_open failed '
-      stop  ! FIXME!!!
+      call err_message_error ("fit_radiance: optimizer_open failed", errstat)
+      return
     endif
 
     fit_loop: do
@@ -339,8 +345,8 @@ CONTAINS
 
     call optimizer_close (opt, return_status)
     if (return_status < 0) then
-      write(*,*)'fit_radiance: optimizer_close failed'
-      stop  ! FIXME!
+      call err_message_error ("fit_radiance: optimizer_close failed", errstat)
+      return
     endif
 
     ! ---------------------------------------------------------------------

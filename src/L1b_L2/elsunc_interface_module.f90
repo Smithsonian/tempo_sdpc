@@ -1,6 +1,7 @@
 module elsunc_interface_module
   use optimizer_interface_module
   use OMSAO_elsunc_fitting_module
+  use errormodule
   implicit none
 
   public elsunc_optimizer
@@ -48,7 +49,7 @@ contains
     if (.not.(allocated(this_optimizer%param_min) &
               .and.allocated(this_optimizer%param_max) &
               .and.allocated(this_optimizer%param_mask))) then
-      write(*,*)'*** elsunc_objective:  internal error'
+      write(*,*)'*** elsunc_objective:  internal error -- param min, max, or mask array not allocated'
       stop
     endif
 
@@ -116,7 +117,7 @@ contains
    else if (this%mode == opt_bounded) then
      elbnd = 2
    else
-     write(*,*)'unsupported bounds type'
+     call err_message_error ("elsunc_optimizer: unsupported bounds type", return_status)
      return
    endif
 

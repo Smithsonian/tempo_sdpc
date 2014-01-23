@@ -1,6 +1,7 @@
 MODULE subtract_cubic
   USE OMSAO_precision_module, ONLY: r8, i4
   use optimizer_interface_module
+  use errormodule
 
   REAL (KIND=r8), DIMENSION (:), ALLOCATABLE :: cubic_x, cubic_y, cubic_w
 
@@ -12,9 +13,9 @@ CONTAINS
     real (kind=r8), dimension(:), intent(in) :: a
     real (kind=r8), dimension(:), intent(in) :: x
     real (kind=r8), dimension(:), intent(out) :: y
-    ! do it the stupid way to reproduce the previous answer  ! FIXME!!
+    ! do it this way to reproduce the previous answer  ! FIXME!!
     y = a(1) + a(2)*x + a(3)*x*x + a(4)*x*x*x
-    !y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))      ! the proper way
+    !y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))      ! a better way
   end subroutine eval_cubic
 
   SUBROUTINE cubic_objective (this, a, na, y, m, return_status)
@@ -33,7 +34,7 @@ CONTAINS
 
   end subroutine cubic_objective
 
-  SUBROUTINE cubic_subtract ( locwvl, npts, ll_rad, lu_rad )
+  SUBROUTINE cubic_subtract ( locwvl, npts, ll_rad, lu_rad, errstat )
 
     USE OMSAO_indices_module,        ONLY : max_rs_idx, solar_idx
     USE OMSAO_parameters_module,     ONLY : max_spec_pts, doas_npol
@@ -43,6 +44,7 @@ CONTAINS
 
     INTEGER (KIND=i4),                   INTENT (IN) :: npts, ll_rad, lu_rad
     REAL    (KIND=r8), DIMENSION (npts), INTENT (IN) :: locwvl
+    integer, intent(inout) :: errstat
 
     INTEGER (KIND=i4)                   :: i, nlower, nupper, nfitted
     REAL    (KIND=r8)                   :: locavg, chisq
@@ -55,6 +57,8 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: par
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
+
+    if (errstat < 0) return
 
     ! ======================
     ! Assign fitting weights
@@ -90,7 +94,7 @@ CONTAINS
     call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
                          mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
-      write (*,*)'cubic_subtract:  optimizer_open failed'
+      call err_message_error ("cubic_subtract:  optimizer_open failed", errstat)
       return
     endif
 
@@ -117,7 +121,7 @@ CONTAINS
 
     call optimizer_close (opt, return_status)
     if (return_status < 0) then
-      write (*,*)'cubic_subtract:  optimizer_close failed'
+      call err_message_error ("cubic_subtract:  optimizer_close failed", errstat)
       return
     endif
 
@@ -129,7 +133,7 @@ CONTAINS
 
   END SUBROUTINE cubic_subtract
 
-  SUBROUTINE cubic_subtract_meas ( locwvl, npoints, locspec, ll_rad, lu_rad )
+  SUBROUTINE cubic_subtract_meas ( locwvl, npoints, locspec, ll_rad, lu_rad, errstat )
 
     USE OMSAO_parameters_module,     ONLY : doas_npol
     IMPLICIT NONE
@@ -144,6 +148,7 @@ CONTAINS
     ! Modified variables
     ! ------------------
     REAL (KIND=r8), DIMENSION (npoints), INTENT (INOUT) :: locspec
+    integer, intent(inout) :: errstat
 
     ! ---------------
     ! Local variables
@@ -161,6 +166,8 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (npoints)           :: f
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
+
+    if (errstat < 0) return
 
     ! ======================
     ! Assign fitting weights
@@ -191,7 +198,7 @@ CONTAINS
     call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
                          mode=opt_unbounded, max_num_iterations=5)
     if (return_status < 0) then
-      write (*,*)'cubic_subtract_meas:  optimizer_open failed'
+      call err_message_error ("cubic_subtract_meas:  optimizer_open failed", errstat)
       return
     endif
 
@@ -216,7 +223,7 @@ CONTAINS
 
     call optimizer_close (opt, return_status)
     if (return_status < 0) then
-      write(*,*)'cubic_subtract_meas:  optimizer_close failed'
+      call err_message_error ("cubic_subtract_meas:  optimizer_close failed", errstat)
       return
     endif
 

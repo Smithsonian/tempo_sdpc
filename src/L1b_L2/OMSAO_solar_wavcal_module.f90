@@ -1,5 +1,6 @@
 MODULE OMSAO_solar_wavcal_module
   use optimizer_interface_module
+  use errormodule
 
   IMPLICIT NONE
 
@@ -50,6 +51,8 @@ CONTAINS
     ! Name of this module/subroutine
     ! ------------------------------
     CHARACTER (LEN=29), PARAMETER :: modulename = 'xtrack_solar_calibration_loop'
+
+    if (errstat < 0) return
 
     omi_solcal_chisq = r8_missval
 
@@ -295,8 +298,8 @@ CONTAINS
                          param_mask = mask_fitvar_cal(1:n_fitvar_cal), &
                          max_num_iterations = max_itnum_sol)
     if (return_status < 0) then
-      write(*,*)'solar_fit: optimizer_open failed '
-      stop  ! FIXME!!!
+      call err_message_error ("solar_fit: optimizer_open failed", errstat)
+      return
     endif
     
     fit_loop: do
@@ -343,9 +346,9 @@ CONTAINS
 
     call optimizer_close (opt, return_status)
     if (return_status < 0) then
-      write(*,*)'solar_fit: optimizer_close failed'
-      stop  ! FIXME!
-    endif    
+      call err_message_error ("solar_fit: optimizer_close failed", errstat)
+      return
+    endif
 
     ! ---------------------------------------------------------------
     ! The following assignment makes sense only because FITVAR_CAL is

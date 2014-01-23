@@ -522,7 +522,8 @@ CONTAINS
           lqh2ofit_col, lqh2ofit_dcol,                                          &
           target_var(1:n_fincol_idx,ipix),                                      &
           allfit_cols(1:n_fitvar_rad,ipix), allfit_errs(1:n_fitvar_rad,ipix),   &
-          corr_matrix(1:n_fitvar_rad,ipix), is_bad_pixel, fitspc(1:n_rad_wvl) )
+          corr_matrix(1:n_fitvar_rad,ipix), is_bad_pixel, fitspc(1:n_rad_wvl), &
+          errstat)
 
         IF ( is_bad_pixel ) CYCLE
       END IF
