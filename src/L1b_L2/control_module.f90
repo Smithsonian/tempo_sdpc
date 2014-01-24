@@ -242,6 +242,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
 
   READ (fit_ctrl_unit, *) yn_solmonthave
 
+  ! --------------------------------------------------------------------------
+  ! Check than only one or non of yn_solar_comp are yn_solmonthva are set True
+  ! --------------------------------------------------------------------------
+  IF ( yn_solar_comp .AND. yn_solmonthave ) THEN
+    CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_F_SOLCOM_VS_SOLAVE, &
+                      modulename, vb_lev_gt1mb, errstat )
+    IF ( pge_error_status >= pge_errstat_error ) RETURN
+  END IF
+
   ! -------------------------------------------------------
   ! Position cursor to read spectum normalization selection
   ! -------------------------------------------------------

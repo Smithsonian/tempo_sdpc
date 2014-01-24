@@ -22,7 +22,7 @@ CONTAINS
     use OMSAO_parameters_module, ONLY: MAX_STR_LEN
     USE OMSAO_errstat_module, ONLY: pge_errstat_warning, error_check, &
       PGSd_PC_VALUE_LENGTH_MAX, ERR_SEP, vb_lev_default, &
-      PGS_SMF_MASK_LEV_S, pge_errstat_error, pge_errstat_fatal, &
+      PGS_SMF_MASK_LEV_S, pge_errstat_error, &
       vb_lev_default
 
     implicit none

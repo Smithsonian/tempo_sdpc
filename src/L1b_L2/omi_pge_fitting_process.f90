@@ -114,9 +114,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     l1b_rad_filename, &
     l2_filename, pixnum_lim,    &
     radfit_latrange,                &
-    yn_solar_comp, yn_diagnostic_run,              &
+    yn_diagnostic_run,              &
     yn_common_iter, common_latrange,    &
-    radiance_wavcal_lnums, yn_solmonthave, Radiance_Paras_Type, &
+    radiance_wavcal_lnums, Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename, yn_radiance_reference, &
     yn_remove_target !, fitvar_rad_init, fitvar_rad_saved
   USE OMSAO_he5_module,       ONLY:  pge_swath_name
@@ -144,7 +144,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
     omi_cross_track_skippix, omi_radcal_xflag, &
-    omi_radiance_swathname, omi_solcal_xflag
+    omi_radiance_swathname
   USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
@@ -191,7 +191,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! OMI L1b latitudes
   ! ----------------------------------------------------------
   REAL (KIND=r4), DIMENSION (1:rpt_rad%nxtrack, 0:rpt_rad%ntimes-1) :: l1b_latitudes
-  REAL (KIND=r4), DIMENSION(:,:), ALLOCATABLE :: latitudes_rr
 
   ! ------------------------------
   ! Name of this module/subroutine
@@ -269,23 +268,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     omi_xtrpix_range_rr(0:ntimes_rad-1,1:2) = omi_xtrpix_range(0:ntimes_rad-1,1:2)
   END IF
 
-  ! --------------------------------------------------------------------
-  ! Solar Irradiance Processing: If we don't do a solar composite, we can
-  ! use a solar monthly average, if not we have to read the irradiance
-  ! data.
-  ! Otherwise we need to compute them from the solar composite
-  ! parameterization on a equidistant grid.
-  ! -------------------------------------------------------------------
-  omi_solcal_xflag = i2_missval
-  ! --------------------------------------------------------------------------
-  ! Check than only one or non of yn_solar_comp are yn_solmonthva are set True
-  ! --------------------------------------------------------------------------
-  IF ( yn_solar_comp .AND. yn_solmonthave ) THEN
-    CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_F_SOLCOM_VS_SOLAVE, &
-      modulename, vb_lev_gt1mb, errstat )
-    GO TO 666
-  END IF
-
   call irradiance_data_init (rpt_rad, errstat);
   if (errstat < 0) &
     goto 666
@@ -306,17 +288,19 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! need to make sure that we are using a radiance from the current
   ! granule.
   ! ---------------------------------------------------------------
-  ALLOCATE (latitudes_rr(1:nxtrack_rr,0:ntimes_rr-1), STAT=errstat)
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
 
-  CALL read_latitude (l1b_radref_filename, omi_radiance_swathname, &
-                      ntimes_rr, nxtrack_rr, latitudes_rr)
-  CALL omi_get_radiance_reference (l1b_radref_filename, &
-                                   ntimes_rr, nxtrack_rr, nwavel_rr, &
-                                   omi_xtrpix_range_rr, latitudes_rr, &
+  ! Should radiance and radiance-ref swathnames be equal?  The original
+  ! code did not have this restriction.  --JED
+  if (trim(omi_radiance_swathname) /= trim(rpt_rr%swathname)) then
+    write (*,*) "swathnames are not equal: ", trim(omi_radiance_swathname), &
+      " /= ", trim(rpt_rr%swathname)
+    write (*,*) "modify omi_get_radiance_reference to use omi_radiance_swathname"
+    stop
+  endif
+  CALL omi_get_radiance_reference (rpt_rr, &
+                                   omi_xtrpix_range_rr, &
                                    radiance_wavcal_lnums, errstat)
-  DEALLOCATE(latitudes_rr)
+
   pge_error_status = MAX ( pge_error_status, errstat )
   IF ( pge_error_status >= pge_errstat_error )  GO TO 666
 

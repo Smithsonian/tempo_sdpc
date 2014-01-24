@@ -36,13 +36,21 @@ contains
 
     if (errstat < 0) return
 
-  if ( yn_solar_comp ) then
-    call omi_create_solcomp_irradiance (rpt_rad%nxtrack, errstat)
-  else if (yn_solmonthave) then
-    call omi_read_monthly_average_irradiance (errstat)
-  else
-    call omi_read_irradiance_data (errstat)
-  end if
+    ! --------------------------------------------------------------------
+    ! Solar Irradiance Processing: If we don't do a solar composite, we can
+    ! use a solar monthly average, if not we have to read the irradiance
+    ! data.
+    ! Otherwise we need to compute them from the solar composite
+    ! parameterization on a equidistant grid.
+    ! -------------------------------------------------------------------
+
+    if ( yn_solar_comp ) then
+      call omi_create_solcomp_irradiance (rpt_rad%nxtrack, errstat)
+    else if (yn_solmonthave) then
+      call omi_read_monthly_average_irradiance (errstat)
+    else
+      call omi_read_irradiance_data (errstat)
+    end if
 
   end subroutine irradiance_data_init
 

@@ -55,6 +55,7 @@ CONTAINS
     if (errstat < 0) return
 
     omi_solcal_chisq = r8_missval
+    omi_solcal_xflag = i2_missval
 
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
 

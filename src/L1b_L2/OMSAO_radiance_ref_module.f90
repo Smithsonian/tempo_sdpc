@@ -21,8 +21,8 @@ CONTAINS
   ! values to set omi_nwav_rad (producing omi_nwav_rad(*,*)=nwrr)
   ! It is this value that is used to set the number of wavelengths.
   !
-  SUBROUTINE omi_get_radiance_reference (l1bfile, &
-                                         ntrr, nxrr, nwrr, xtrange, latr4, &
+  SUBROUTINE omi_get_radiance_reference (rpt_rr, &
+                                         xtrange, &
                                          radwcal_lines, errstat )
 
     USE OMSAO_parameters_module, ONLY: &
@@ -30,8 +30,8 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
     USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, &
-      ctrl_fit_winexc_lim, &
-      radiance_reference_lnums, radref_latrange
+      ctrl_fit_winexc_lim, radiance_reference_lnums, radref_latrange, &
+      Radiance_Paras_Type
     USE OMSAO_omidata_module,    ONLY: &
       rad_ccdpix_selection, omi_radiance_qflg, omi_radiance_spec, omi_radiance_wavl, &
       omi_szenith, omi_vzenith, omi_nwav_radref, omi_radref_spec, omi_radref_wavl,   &
@@ -39,11 +39,11 @@ CONTAINS
       rad_ccdpix_exclusion, n_comm_wvl, &
       omi_nwav_rad, omi_radref_wav_avg
     USE OMSAO_errstat_module
-    USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude
+    USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE strutils, ONLY: convert_2bytes_to_16bits
     USE sao_pge_utils, ONLY: array_locate_r8
-
+    USE errormodule
     IMPLICIT NONE
 
     ! ------------------------------
@@ -54,10 +54,8 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    CHARACTER (LEN=*), INTENT (IN) :: l1bfile
-    INTEGER (KIND=i4), INTENT (IN) :: ntrr, nxrr, nwrr
-    INTEGER (KIND=i4), DIMENSION (0:ntrr-1,2), INTENT(in) :: xtrange
-    REAL    (KIND=r4), DIMENSION (nxrr,0:ntrr-1), INTENT(in) :: latr4
+    TYPE(Radiance_Paras_Type), INTENT(IN) :: rpt_rr
+    INTEGER (KIND=i4), DIMENSION (0:rpt_rr%ntimes-1,2), INTENT(in) :: xtrange
 
     ! -----------------------------
     ! Output and Modified variables
@@ -76,17 +74,20 @@ CONTAINS
     INTEGER (KIND=i4) :: nloop, j1, iline, ix, iloop, imin, imax, icnt
     REAL    (KIND=r4) :: lat_midpt
     REAL    (KIND=r8) :: specsum
+    real    (kind=r4), dimension (:,:), allocatable :: latr4
 
-    !INTEGER (KIND=i1), DIMENSION (0:ntrr-1)       :: binfac
-    !LOGICAL,           DIMENSION (0:ntrr-1)       :: ynzoom
+    !INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)       :: binfac
+    !LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)       :: ynzoom
 
-    REAL    (KIND=r4), DIMENSION (nxrr)           :: szacount
-    REAL    (KIND=r8), DIMENSION (nxrr, nwrr)     :: radref_spec, radref_wavl
-    REAL    (KIND=r8), DIMENSION (nwrr)           :: radref_wavl_ix
-    REAL    (KIND=r8), DIMENSION (nxrr, nwrr)     :: allcount, dumcount
-    REAL    (KIND=r8), DIMENSION (nwrr      )     :: cntr8
-    INTEGER (KIND=i2), DIMENSION (nwrr,0:nbits-1) :: qflg_bit
-    INTEGER (KIND=i2), DIMENSION (nwrr)           :: qflg_mask
+    REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack)           :: szacount
+    REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack, rpt_rr%nwavel_ccd)     :: radref_spec, radref_wavl
+    REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd)           :: radref_wavl_ix
+    REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack, rpt_rr%nwavel_ccd)     :: allcount, dumcount
+    REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd      )     :: cntr8
+    INTEGER (KIND=i2), DIMENSION (rpt_rr%nwavel_ccd,0:nbits-1) :: qflg_bit
+    INTEGER (KIND=i2), DIMENSION (rpt_rr%nwavel_ccd)           :: qflg_mask
+    integer :: locerrstat
+    INTEGER (KIND=i4) :: ntrr, nxrr, nwrr
 
     if (errstat < 0) return
 
@@ -95,6 +96,19 @@ CONTAINS
     ! ------------------------------
     radiance_reference_lnums = -1  ! This will be written to file, hence needs a value
     lat_midpt = SUM ( radref_latrange ) / 2.0_r4
+    ntrr = rpt_rr % ntimes
+    nxrr = rpt_rr % nxtrack
+    nwrr = rpt_rr % nwavel_ccd
+
+    ALLOCATE (latr4(1:nxrr,0:ntrr-1), STAT=locerrstat)
+    if (locerrstat /= 0) then
+      errstat = -1
+      call err_message_error ("omi_get_radiance_reference: allocate failed", errstat)
+      return
+    endif
+
+    CALL read_latitude (rpt_rr%l1bfilename, rpt_rr%swathname, &
+                        ntrr, nxrr, latr4)
 
     ! ----------------------------------------------------------------------
     ! Locate the swath line numbers corresponding the center of the latitude
@@ -120,6 +134,8 @@ CONTAINS
         nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
         xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), yn_have_limits(2) )
     END IF
+
+    deallocate (latr4)
 
     ! -----------------------------------------------------
     ! If we don't find a working scan line, we have to fold
@@ -171,7 +187,7 @@ CONTAINS
       ! ------------------------------
       ! omi_read_radiance_lines also sets omi_nwav_rad
       CALL omi_read_radiance_lines (              &
-        l1bfile, iline, nxrr, nloop, nwrr, errstat )
+        rpt_rr%l1bfilename, iline, nxrr, nloop, nwrr, errstat )
 
       ! Global used to set the dimension of fitspc
       n_rad_wvl_max = MAXVAL(omi_nwav_rad(:,0))
