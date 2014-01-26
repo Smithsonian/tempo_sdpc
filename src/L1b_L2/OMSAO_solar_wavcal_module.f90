@@ -11,7 +11,7 @@ CONTAINS
   SUBROUTINE xtrack_solar_calibration_loop ( first_pix, last_pix, errstat )
 
     USE OMSAO_precision_module
-    USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+    USE cache_module, ONLY: saved_shift, saved_squeeze
     USE omi_pge_fitting_aux, ONLY: omi_adjust_irradiance_data
     USE OMSAO_omidata_module, ONLY: &
       omi_cross_track_skippix, &

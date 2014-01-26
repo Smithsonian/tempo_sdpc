@@ -25,6 +25,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
     lo_radbnd, up_radbnd, yn_use_labslitfunc, yn_solar_i0
   USE OMSAO_omidata_module, ONLY : omi_solcal_pars
   USE OMSAO_errstat_module
+  use slitfunction, only : slitfunction_convolve
   USE sao_pge_utils, ONLY: interpolation
   IMPLICIT NONE
 
@@ -75,10 +76,13 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
 
     solar_wvl(1:nsol) = refspecs_original(idx)%RefSpecWavs(1:nsol)
     solar_spc(1:nsol) = refspecs_original(idx)%RefSpecData(1:nsol)
-    CALL convolve_data (                                                              &
-      xtrack_pix, nsol,  solar_wvl(1:nsol), solar_spc(1:nsol), yn_use_labslitfunc, &
-      omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),    &
-      solar_conv(1:nsol), errstat )
+    CALL slitfunction_convolve ( &
+      nsol, solar_wvl(1:nsol), solar_spc(1:nsol), solar_conv(1:nsol), &
+      yn_use_labslitfunc, xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+    !CALL convolve_data (                                                              &
+    !  xtrack_pix, nsol,  solar_wvl(1:nsol), solar_spc(1:nsol), yn_use_labslitfunc, &
+    !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),    &
+    !  solar_conv(1:nsol), errstat )
   END IF
   ! ---------------------------------------------------------------------
   ! Load results into the database array. The order of the spectra is
@@ -151,10 +155,13 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
         ! ------------------------------
         ! 4: Convolve with slit function
         ! ------------------------------
-        CALL convolve_data (                                                            &
-          xtrack_pix, nsol, solar_wvl(1:nsol), tmp_spec(1:nsol), yn_use_labslitfunc, &
-          omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),  &
-          xsec_i0_spc(1:nsol), errstat )
+        CALL slitfunction_convolve ( &
+          nsol, solar_wvl(1:nsol), tmp_spec(1:nsol), xsec_i0_spc(1:nsol),&
+          yn_use_labslitfunc, xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+        !CALL convolve_data (                                                            &
+        !  xtrack_pix, nsol, solar_wvl(1:nsol), tmp_spec(1:nsol), yn_use_labslitfunc, &
+        !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),  &
+        !  xsec_i0_spc(1:nsol), errstat )
         ! -----------------------------------
         ! 5: Compute corrected cross sections
         ! -----------------------------------
@@ -179,10 +186,13 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
         IF ( (idx == comm_idx) ) THEN
           tmp_spec(1:npts) = common_mode_spec%RefSpecData(xtrack_pix,1:npts)
         ELSE
-          CALL convolve_data (                                                           &
-            xtrack_pix, npts, tmp_wavl(1:npts), tmp_spec(1:npts), yn_use_labslitfunc, &
-            omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix), &
-            tmp_spec(1:npts), errstat )
+          CALL slitfunction_convolve ( &
+            npts, tmp_wavl(1:npts), tmp_spec(1:npts), tmp_spec(1:npts), &
+            yn_use_labslitfunc, xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+          !CALL convolve_data (                                                           &
+          !  xtrack_pix, npts, tmp_wavl(1:npts), tmp_spec(1:npts), yn_use_labslitfunc, &
+          !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix), &
+          !  tmp_spec(1:npts), errstat )
           !DO k = 1, npts
           !   WRITE (idx+10,'(0P1F15.5,1PE20.10)') tmp_wavl(k), tmp_spec(k)*refspecs_original(idx)%NormFactor
           !END DO
@@ -223,58 +233,58 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   RETURN
 END SUBROUTINE dataspline
 
-SUBROUTINE convolve_data (                                     &
-    xtrack_pix, npts, wvl_in, spec_in, yn_labslit, hw1e, asy, &
-    spec_conv, errstat )
-
-  USE OMSAO_precision_module
-  USE OMSAO_slitfunction_module, ONLY: omi_slitfunc_convolve, &
-    asymmetric_gaussian_sf
-  USE OMSAO_errstat_module
-
-  IMPLICIT NONE
-
-  ! ---------------
-  ! Input variables
-  ! ---------------
-  INTEGER (KIND=i4),                   INTENT (IN) :: xtrack_pix, npts
-  REAL    (KIND=r8),                   INTENT (IN) :: hw1e, asy
-  LOGICAL,                             INTENT (IN) :: yn_labslit
-  REAL    (KIND=r8), DIMENSION (npts), INTENT (IN) :: spec_in, wvl_in
-
-  ! ----------------
-  ! Output variables
-  ! ----------------
-  REAL (KIND=r8), DIMENSION (npts), INTENT (OUT) :: spec_conv
-
-  ! ---------------
-  ! Local variables
-  ! ---------------
-  INTEGER   (KIND=i4)           :: errstat
-  CHARACTER (LEN=13), PARAMETER :: modulename = 'convolve_data'
-
-  errstat = pge_errstat_ok
-
-  ! -----------------------------------------------------------------
-  ! Either laboratory slit function (tabulated) or Gaussian (fitted).
-  ! -----------------------------------------------------------------
-  IF ( yn_labslit ) THEN
-    CALL omi_slitfunc_convolve (                     &
-      xtrack_pix, npts, wvl_in(1:npts), spec_in(1:npts), spec_conv(1:npts), errstat )
-    CALL error_check ( &
-      errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
-      modulename//f_sep//'Convolution', vb_lev_default, errstat )
-  ELSE
-    ! -----------------------------------------------------------------
-    ! Here is the Gaussian branch. We need to make sure that we use the
-    ! slit function information for the current pixel. There is also no
-    ! need to save the convolved spectrum, because we have to convolve
-    ! for each and every pixel due to the varying slit function.
-    ! -----------------------------------------------------------------
-    CALL asymmetric_gaussian_sf (                                           &
-      npts, hw1e, asy, wvl_in(1:npts), spec_in(1:npts), spec_conv(1:npts) )
-  END IF
-
-  RETURN
-END SUBROUTINE convolve_data
+!unused SUBROUTINE convolve_data (                                     &
+!unused     xtrack_pix, npts, wvl_in, spec_in, yn_labslit, hw1e, asy, &
+!unused     spec_conv, errstat )
+!unused
+!unused   USE OMSAO_precision_module
+!unused   USE OMSAO_slitfunction_module, ONLY: omi_slitfunc_convolve, &
+!unused     asymmetric_gaussian_sf
+!unused   USE OMSAO_errstat_module
+!unused
+!unused   IMPLICIT NONE
+!unused
+!unused   ! ---------------
+!unused   ! Input variables
+!unused   ! ---------------
+!unused   INTEGER (KIND=i4),                   INTENT (IN) :: xtrack_pix, npts
+!unused   REAL    (KIND=r8),                   INTENT (IN) :: hw1e, asy
+!unused   LOGICAL,                             INTENT (IN) :: yn_labslit
+!unused   REAL    (KIND=r8), DIMENSION (npts), INTENT (IN) :: spec_in, wvl_in
+!unused
+!unused   ! ----------------
+!unused   ! Output variables
+!unused   ! ----------------
+!unused   REAL (KIND=r8), DIMENSION (npts), INTENT (OUT) :: spec_conv
+!unused
+!unused   ! ---------------
+!unused   ! Local variables
+!unused   ! ---------------
+!unused   INTEGER   (KIND=i4)           :: errstat
+!unused   CHARACTER (LEN=13), PARAMETER :: modulename = 'convolve_data'
+!unused
+!unused   errstat = pge_errstat_ok
+!unused
+!unused   ! -----------------------------------------------------------------
+!unused   ! Either laboratory slit function (tabulated) or Gaussian (fitted).
+!unused   ! -----------------------------------------------------------------
+!unused   IF ( yn_labslit ) THEN
+!unused     CALL omi_slitfunc_convolve (                     &
+!unused       xtrack_pix, npts, wvl_in(1:npts), spec_in(1:npts), spec_conv(1:npts), errstat )
+!unused     CALL error_check ( &
+!unused       errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
+!unused       modulename//f_sep//'Convolution', vb_lev_default, errstat )
+!unused   ELSE
+!unused     ! -----------------------------------------------------------------
+!unused     ! Here is the Gaussian branch. We need to make sure that we use the
+!unused     ! slit function information for the current pixel. There is also no
+!unused     ! need to save the convolved spectrum, because we have to convolve
+!unused     ! for each and every pixel due to the varying slit function.
+!unused     ! -----------------------------------------------------------------
+!unused     CALL asymmetric_gaussian_sf (                                           &
+!unused       npts, hw1e, asy, wvl_in(1:npts), spec_in(1:npts), spec_conv(1:npts) )
+!unused   END IF
+!unused
+!unused   RETURN
+!unused END SUBROUTINE convolve_data
 END MODULE

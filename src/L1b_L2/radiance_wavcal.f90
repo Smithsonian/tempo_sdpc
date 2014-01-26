@@ -270,8 +270,8 @@ SUBROUTINE spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, &
     refspecs_original, solar_spec_convolved, yn_use_labslitfunc, &
     yn_spectrum_norm, yn_newshift, &
     curr_xtrack_pixnum
-  USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze, &
-    asymmetric_gaussian_sf, omi_slitfunc_convolve
+  use slitfunction, only : slitfunction_convolve
+  USE cache_module, ONLY: saved_shift, saved_squeeze
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
 
@@ -328,34 +328,49 @@ SUBROUTINE spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, &
   ! ----------------------------------------------
   ! Convolve only if we don't do a solar composite
   ! ----------------------------------------------
-  IF ( yn_use_labslitfunc ) THEN
-    ! ------------------------------------------------------------------------
-    ! Only if either SHIFT or SQUEEZE have changed from the last iteration do
-    ! we need to reconvolve the solar spectrum (its convolved value is saved
-    ! in SOLAR_SPEC_CONVOLVED through MODULE association.
-    !
-    ! The choice of OMI lab slit function vs. Gaussian is made in the fitting
-    ! control file: If the initial value of FITVAR(hwe_idx) is 0.0 then we are
-    ! using the lab measurements, otherwise the Gaussian.
-    ! ------------------------------------------------------------------------
-    IF ( cal_fitvar(squ_idx) /= saved_squeeze .OR. &
-      cal_fitvar(shi_idx) /= saved_shift ) THEN
-      saved_squeeze = cal_fitvar(squ_idx)
-      saved_shift   = cal_fitvar(shi_idx)
-      solar_spec_convolved = 0.0_r8
-      CALL omi_slitfunc_convolve (                                  &
-        curr_xtrack_pixnum, npts, solar_pos(1:npts),             &
-        solar_spec(1:npts), solar_spec_convolved(1:npts), errstat )
-      CALL error_check ( &
-        errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-        modulename//f_sep//'Convolution', vb_lev_default, errstat )
-      IF ( errstat >= pge_errstat_error ) RETURN
-    END IF
-  ELSE
-    CALL asymmetric_gaussian_sf (                                           &
-      npts, cal_fitvar(hwe_idx), cal_fitvar(asy_idx),                    &
-      solar_pos(1:npts), solar_spec(1:npts), solar_spec_convolved(1:npts) )
-  END IF
+  !IF ( yn_use_labslitfunc ) THEN
+  !  ! ------------------------------------------------------------------------
+  !  ! Only if either SHIFT or SQUEEZE have changed from the last iteration do
+  !  ! we need to reconvolve the solar spectrum (its convolved value is saved
+  !  ! in SOLAR_SPEC_CONVOLVED through MODULE association.
+  !  !
+  !  ! The choice of OMI lab slit function vs. Gaussian is made in the fitting
+  !  ! control file: If the initial value of FITVAR(hwe_idx) is 0.0 then we are
+  !  ! using the lab measurements, otherwise the Gaussian.
+  !  ! ------------------------------------------------------------------------
+  !  IF ( cal_fitvar(squ_idx) /= saved_squeeze .OR. &
+  !    cal_fitvar(shi_idx) /= saved_shift ) THEN
+  !    saved_squeeze = cal_fitvar(squ_idx)
+  !    saved_shift   = cal_fitvar(shi_idx)
+  !    solar_spec_convolved = 0.0_r8
+  !    CALL omi_slitfunc_convolve (                                  &
+  !      curr_xtrack_pixnum, npts, solar_pos(1:npts),             &
+  !      solar_spec(1:npts), solar_spec_convolved(1:npts), errstat )
+  !    CALL error_check ( &
+  !      errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+  !      modulename//f_sep//'Convolution', vb_lev_default, errstat )
+  !    IF ( errstat >= pge_errstat_error ) RETURN
+  !  END IF
+  !ELSE
+  !  CALL asymmetric_gaussian_sf (                                           &
+  !    npts, cal_fitvar(hwe_idx), cal_fitvar(asy_idx),                    &
+  !    solar_pos(1:npts), solar_spec(1:npts), solar_spec_convolved(1:npts) )
+  !END IF
+
+  if (cal_fitvar(squ_idx) /= saved_squeeze &
+      .OR. cal_fitvar(shi_idx) /= saved_shift) then
+    ! The slit-function convolved solar spectrum is cached in the global array
+    ! solar_spec_convolved and need not be updated unless the shift/squeeze
+    ! parameters have changed, modifying the wavelength grid.
+    saved_squeeze = cal_fitvar(squ_idx)
+    saved_shift   = cal_fitvar(shi_idx)
+    solar_spec_convolved = 0.0_r8
+    CALL slitfunction_convolve ( &
+      npts, solar_pos(1:npts), solar_spec(1:npts), solar_spec_convolved(1:npts), &
+      yn_use_labslitfunc, curr_xtrack_pixnum, cal_fitvar ([hwe_idx, asy_idx]), 2, &
+      errstat)
+    if (errstat < 0) return
+  endif
 
   ! =============================================
   ! Broadening and re-sampling of solar spectrum:

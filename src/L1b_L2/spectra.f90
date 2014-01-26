@@ -36,7 +36,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
     bro_prefit_fitidx,   yn_bro_prefit,   bro_prefit_var,     &
     lqh2o_prefit_fitidx, yn_lqh2o_prefit, lqh2o_prefit_var
   USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
-  USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+  USE cache_module, ONLY: saved_shift, saved_squeeze
   USE OMSAO_errstat_module
   USE OMSAO_solcomp_module, ONLY: soco_compute
   USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8
@@ -355,7 +355,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
     bro_prefit_fitidx, o3_prefit_fitidx, yn_bro_prefit, bro_prefit_var,     &
     yn_o3_prefit, o3_prefit_var
   USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
-  USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+  USE cache_module, ONLY: saved_shift, saved_squeeze
   USE OMSAO_errstat_module
   USE OMSAO_solcomp_module, ONLY: soco_compute
   USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8

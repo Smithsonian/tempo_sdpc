@@ -16,7 +16,7 @@ CONTAINS
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       yn_diagnostic_run, yn_radiance_reference, yn_solar_comp, &
       curr_xtrack_pixnum
-    USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+    USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE OMSAO_omidata_module, ONLY: omi_nwav_radref, omi_nwav_rad, &
       omi_irradiance_wght, omi_radiance_wavl, &
@@ -339,7 +339,7 @@ CONTAINS
       Slit_Half_Width_1e, Slit_Asym_Factor,     &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
       szamax, n_fincol_idx, curr_xtrack_pixnum
-    USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+    USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_prefitcol_module, ONLY: &
       o3_prefit_col,  o3_prefit_dcol,  &
       bro_prefit_col, bro_prefit_dcol, &

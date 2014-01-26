@@ -19,14 +19,16 @@ SUBROUTINE OMSAO_main ( exit_value )
   !USE OMSAO_indices_module,    ONLY: pge_bro_idx
   USE OMSAO_parameters_module
   USE OMSAO_errstat_module
-  USE OMSAO_slitfunction_module, ONLY: omi_slitfunc_read
   USE metadata_tools, ONLY: init_metadata
   USE omi_pge_fitting_aux, ONLY: set_input_pointer_and_versions
   USE pcf_file_module, ONLY: read_pcf_file
   USE read_reference_spectra, ONLY: read_ref_spectra
   USE omi_pge_fitting_process, ONLY: omi_pge_fitting
-  use optimizer_interface_module
-  use elsunc_interface_module
+  use optimizer_interface_module, only : optimizer_set_default_method
+  use elsunc_interface_module, only : elsunc_optimizer
+  use slitfunction, only : slitfunction_select, slitfunction_open
+  use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
+  use OMSAO_variables_module, only : yn_use_labslitfunc
   IMPLICIT NONE
 
   ! ---------------
@@ -65,6 +67,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------------------------------------------------------
 
   call optimizer_set_default_method (elsunc_optimizer)
+  call slitfunction_select (omi_slitfunc_read, omi_slitfunc_convolve)
 
   errstat = pge_errstat_ok
   ! ---------------------------------------------------------------------------
@@ -93,11 +96,13 @@ SUBROUTINE OMSAO_main ( exit_value )
   errstat = pge_errstat_ok
 
   ! ------------------------------------------------------------------------------------
-  CALL omi_slitfunc_read ( errstat )                   ! Read OMI slit function
+  !CALL omi_slitfunc_read ( errstat )                   ! Read OMI slit function
   ! ------------------------------------------------------------------------------------
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"OMI_SLITFUNC_READ.", vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
+  !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
+  !  modulename//f_sep//"OMI_SLITFUNC_READ.", vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
+  call slitfunction_open (errstat, use_table=yn_use_labslitfunc)
+  if (errstat < 0) goto 666
 
   ! ---------------------------------------------
   ! Set number of InputPointers and InputVersions

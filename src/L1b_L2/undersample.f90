@@ -13,7 +13,8 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   USE OMSAO_parameters_module, ONLY: max_spec_pts
   USE OMSAO_variables_module,  ONLY: &
     refspecs_original, database, have_undersampling, yn_use_labslitfunc
-  USE OMSAO_slitfunction_module, ONLY: omi_slitfunc_convolve, asymmetric_gaussian_sf
+  use slitfunction, only : slitfunction_convolve
+  use errormodule
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
 
@@ -46,6 +47,8 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! ------------------------------
   CHARACTER (LEN=11), PARAMETER :: modulename = 'undersample'
 
+  if (errstat < 0) return
+
   locerrstat = pge_errstat_ok
 
   ! ==================================================
@@ -55,17 +58,20 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   locwvl (1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
   locspec(1:npts) = refspecs_original(solar_idx)%RefSpecData(1:npts)
 
-  IF ( yn_use_labslitfunc ) THEN
-    CALL omi_slitfunc_convolve ( &
-      xtrack_pix, npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), locerrstat )
-  ELSE
-    CALL asymmetric_gaussian_sf ( &
-      npts, hw1e, e_asym, locwvl(1:npts), locspec(1:npts), specmod(1:npts))
-  END IF
-  CALL error_check ( &
-    locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-    modulename//f_sep//'Convolution', vb_lev_default, errstat )
-  IF ( locerrstat >= pge_errstat_error ) RETURN
+  !IF ( yn_use_labslitfunc ) THEN
+  !  CALL omi_slitfunc_convolve ( &
+  !    xtrack_pix, npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), locerrstat )
+  !ELSE
+  !  CALL asymmetric_gaussian_sf ( &
+  !    npts, hw1e, e_asym, locwvl(1:npts), locspec(1:npts), specmod(1:npts))
+  !END IF
+  !CALL error_check ( &
+  !  locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+  !  modulename//f_sep//'Convolution', vb_lev_default, errstat )
+  !IF ( locerrstat >= pge_errstat_error ) RETURN
+  call slitfunction_convolve (npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), &
+                              yn_use_labslitfunc, xtrack_pix, [hw1e, e_asym], 2, errstat)
+  if (errstat < 0) return
 
   ! Phase1 calculation: Calculate spline derivatives for KPNO data
   !                     Calculate solar spectrum at OMI positions

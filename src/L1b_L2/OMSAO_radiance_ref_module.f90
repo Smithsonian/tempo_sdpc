@@ -379,7 +379,7 @@ CONTAINS
       o3_prefit_col, o3_prefit_dcol,                                     &
       bro_prefit_col, bro_prefit_dcol,                                  &
       lqh2o_prefit_col, lqh2o_prefit_dcol
-    USE OMSAO_slitfunction_module, ONLY: saved_shift, saved_squeeze
+    USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
       omi_nwav_rad, n_omi_database_wvl, &
       omi_cross_track_skippix, n_omi_radwvl, &

@@ -1,21 +1,12 @@
-MODULE OMSAO_slitfunction_module
-
-  ! =================================================================
-  !
-  ! This module defines variables associated with error handling. It
-  ! also loads/includes all (SDPTK) files that define error messages
-  ! and generally deal with error handling.
-  !
-  ! =================================================================
-
+MODULE slitfunction_omi
   USE OMSAO_precision_module,  ONLY: i4, r8
-  USE OMSAO_indices_module,    ONLY: omi_slitfunc_lun
-  USE OMSAO_variables_module,  ONLY: omi_slitfunc_fname, l1b_channel
   USE OMSAO_parameters_module, ONLY: nxtrack_max
-
   IMPLICIT NONE
-  PRIVATE i4, r8, omi_slitfunc_lun, omi_slitfunc_fname, l1b_channel, &
-    nxtrack_max
+
+  public omi_slitfunc_read, omi_slitfunc_convolve
+
+  PRIVATE
+
   ! --------------------------------------------------------------------
   ! Some maximum dimension definitions, basically used to circumvent the
   ! need of allocating arrays dynamically.
@@ -36,8 +27,8 @@ MODULE OMSAO_slitfunction_module
   ! ------------------------------------------------------------
   ! Character strings to look for in the slit function data file
   ! ------------------------------------------------------------
-  INTEGER   (KIND=i4),  PARAMETER, PRIVATE :: lstr = 25
-  CHARACTER (LEN=lstr), PARAMETER, PRIVATE :: &
+  INTEGER   (KIND=i4),  PARAMETER :: lstr = 25
+  CHARACTER (LEN=lstr), PARAMETER :: &
     sf_uv2_str = 'UV2 channel slit function', sf_vis_str = 'VIS channel slit function'
 
   ! --------------------------------------------------
@@ -74,18 +65,13 @@ MODULE OMSAO_slitfunction_module
     33, 33, 34, 34, 35, 35, 36, 36, 37, 37, 38, 38, 39, 39, 40, 40, 41,      &
     41, 42, 42, 43, 43, 44, 44, 45, 45 /)
 
-  ! ---------------------------------------------------------------------
-  ! The following two quantities are used to determine whether we need to
-  ! reconvolve the solar spectrum. Only if either SHIFT or SQUEEZE have
-  ! changed from one iteration to the other is a reconvolution necessary.
-  ! ---------------------------------------------------------------------
-  REAL (KIND=r8) :: saved_shift = -1.0E+30_r8, saved_squeeze = -1.0E+30_r8
-
 CONTAINS
 
   SUBROUTINE omi_slitfunc_read ( errstat )
 
     USE sao_pge_utils, ONLY: skip_to_filemark
+    USE OMSAO_indices_module,    ONLY: omi_slitfunc_lun
+    USE OMSAO_variables_module,  ONLY: omi_slitfunc_fname, l1b_channel
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -348,8 +334,8 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                  INTENT (IN) :: nwvl, xtrack_pix
-    REAL    (KIND=r8), DIMENSION(nwvl), INTENT (IN) :: wvl, spec
+    INTEGER (KIND=i4),               INTENT (IN) :: nwvl, xtrack_pix
+    REAL    (KIND=r8), DIMENSION(:), INTENT (IN) :: wvl, spec
 
     ! ------------------
     ! Modified variables
@@ -359,7 +345,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    REAL (KIND=r8), DIMENSION(nwvl), INTENT (OUT) :: spec_conv
+    REAL (KIND=r8), DIMENSION(:), INTENT (OUT) :: spec_conv
 
     ! ---------------
     ! Local variables
@@ -512,140 +498,4 @@ CONTAINS
     RETURN
   END SUBROUTINE omi_slitfunc_convolve
 
-  SUBROUTINE asymmetric_gaussian_sf ( npoints, hw1e, e_asym, wvlarr, specarr, specmod)
-
-    ! =========================================================================
-    !
-    ! Convolves input spectrum with an asymmetric Gaussian slit function of
-    ! specified HW1E (half-width at 1/e intensity) and asymmetry factor E_ASYM.
-    !
-    ! The asymetric Gaussian g(x) is defined as
-    !                   _                                   _
-    !                  |               x^2                   |
-    !      g(x) =  EXP | - --------------------------------- |
-    !                  |_   (hw1e * (1 + SIGN(x)*e_asym))^2 _|
-    !
-    ! g(x) becomes symmetric for E_ASYM = 0.
-    !
-    ! =========================================================================
-
-    USE sao_pge_utils, ONLY: signdp
-    USE integration_routines, ONLY: cubint
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                      INTENT (IN) :: npoints
-    REAL    (KIND=r8),                      INTENT (IN) :: hw1e, e_asym
-    REAL    (KIND=r8), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL (KIND=r8), DIMENSION (npoints), INTENT (OUT) :: specmod
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)                        :: i, j, nslit, sslit, eslit
-    REAL    (KIND=r8)                        :: slitsum, sliterr, cwvl, lwvl, rwvl
-    REAL    (KIND=r8), DIMENSION (3*npoints) :: spc_temp, wvl_temp, sf_val, xtmp, ytmp
-
-    !REAL (KIND=r8) :: signdp
-    !EXTERNAL signdp
-
-    sslit = 1; eslit = 1   ! silence compiler warning
-
-    ! --------------------------------------------------------
-    ! Initialize output variable (default for "no convolution"
-    ! --------------------------------------------------------
-    specmod(1:npoints) = specarr(1:npoints)
-
-    ! -----------------------------------------------
-    ! No Gaussian convolution if Halfwidth @ 1/e is 0
-    ! -----------------------------------------------
-    IF ( hw1e == 0.0_r8 ) RETURN
-
-    ! ------------------------------------------------------------------------
-    ! One temporary variable is SPC_TEMP, which is three times the size of
-    ! SPEC. For the convolution routine to work (hopefully) in each and
-    ! every case, we reflect the spectrum at its end points to always have a
-    ! fully filled slit function. But this causes some real index headaches
-    ! when the slit function wraps around at the ends. Performing the mirror
-    ! imaging before we get to the convolution helps to keep things a little
-    ! more simple.
-    !
-    ! Note that this approach is the same as for the pre-tabulated OMI lab
-    ! slit function. It is adopted here because now we not only convolve the
-    ! solar spectrum, but also any higher resolution reference cross sections,
-    ! and these may not necessarily be equidistant in wavelength.
-    ! ------------------------------------------------------------------------
-    spc_temp(npoints+1:2*npoints) = specarr(1:npoints)
-    wvl_temp(npoints+1:2*npoints) = wvlarr (1:npoints)
-    DO i = 1, npoints
-      spc_temp(npoints+1-i) = specarr(i)
-      wvl_temp(npoints+1-i) = 2.0_r8*wvlarr(1)-wvlarr(i) -0.001_r8
-      spc_temp(2*npoints+i) = specarr(npoints+1-i)
-      wvl_temp(2*npoints+i) = 2.0_r8*wvlarr(npoints)-wvlarr(npoints+1-i) +0.001_r8
-    END DO
-
-    ! ------------------------------------------------------------------------
-    ! We now compute the asymmetric Gaussian for every point in the spectrum.
-    ! Starting from the center point, we go outwards and stop accumulating
-    ! points when both sides are less than 0.001 of the maximum slit function.
-    ! Since we are starting at the center wavelength, this can be set to 1.0.
-    ! Remember that the original wavelength array is now located at indices
-    ! NPOINTS+1:2*NPOINTS
-    ! ------------------------------------------------------------------------
-    DO i = 1, npoints
-      sf_val = 0.0_r8
-      cwvl = wvl_temp(npoints+i)
-
-      sf_val(npoints+i) = 1.0_r8
-      getslit: DO j = 1, npoints
-        sslit = npoints+i-j ; lwvl = wvl_temp(sslit) - cwvl
-        eslit = npoints+i+j ; rwvl = wvl_temp(eslit) - cwvl
-        sf_val(sslit) = EXP(-lwvl**2 / ( hw1e * (1.0_r8 + signdp(lwvl)*e_asym) )**2)
-        sf_val(eslit) = EXP(-rwvl**2 / ( hw1e * (1.0_r8 + signdp(rwvl)*e_asym) )**2)
-        IF ( sf_val(sslit) < 0.0005_r8 .AND. sf_val(sslit) < 0.0005_r8 ) EXIT getslit
-      END DO getslit
-
-      ! ----------------------------------
-      ! The number of slit function points
-      ! ----------------------------------
-      nslit = eslit - sslit + 1
-      ! ----------------------------------------------------------------
-      ! Compute the norm of the slitfunction. It should be close to 1
-      ! already, but making sure doesn't hurt.
-      ! ----------------------------------------------------------------
-      xtmp(1:nslit) = wvl_temp(sslit:eslit)-cwvl
-      ytmp(1:nslit) = sf_val  (sslit:eslit)
-      CALL cubint ( &
-        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
-      !!CALL DAVINT ( &
-      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-      !!     slitsum, locerrstat )
-
-      IF ( slitsum > 0.0_r8 ) sf_val(sslit:eslit) = sf_val(sslit:eslit) / slitsum
-
-      ! ---------------------------------------------------------------------
-      ! Prepare array for integration: Multiply slit function values with the
-      ! spectrum array to be convolved.
-      ! ---------------------------------------------------------------------
-      ytmp(1:nslit) = sf_val(sslit:eslit) * spc_temp(sslit:eslit)
-
-      ! ----------------------------------------------------------
-      ! Folding (a.k.a. integration) of spectrum and slit function
-      ! ----------------------------------------------------------
-      !!CALL DAVINT ( &
-      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-      !!     specmod(i), locerrstat )
-      CALL cubint ( &
-        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, specmod(i), sliterr)
-    END DO
-
-    RETURN
-  END SUBROUTINE asymmetric_gaussian_sf
-
-END MODULE OMSAO_slitfunction_module
+END MODULE slitfunction_omi
