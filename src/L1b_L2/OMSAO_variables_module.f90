@@ -45,7 +45,7 @@ MODULE OMSAO_variables_module
 
   REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: fitvar_rad, fitvar_rad_init
   REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: fitvar_rad_saved
-  REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: lo_radbnd, up_radbnd, lobnd, upbnd
+  REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: lo_radbnd, up_radbnd
   CHARACTER (LEN=6), DIMENSION (n_max_fitpars)  :: fitvar_rad_str, fitvar_sol_str
 
   REAL    (KIND=r8), DIMENSION (max_rs_idx, nwavel_max) :: database

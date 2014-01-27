@@ -21,7 +21,7 @@ SUBROUTINE radiance_wavecal (                            &
     fitwavs, fitweights, currspec,                                 &
     fitvar_cal, fitvar_rad_init, fitvar_sol_init, fitvar_cal_saved,&
     mask_fitvar_cal, n_fitvar_cal,           &
-    lo_radbnd, up_radbnd, lobnd, upbnd, tol, epsrel, epsabs, epsx, &
+    lo_radbnd, up_radbnd, tol, epsrel, epsabs, epsx, &
     max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor, yn_newshift, sol_wav_avg
   USE OMSAO_errstat_module
   USE omi_pge_fitting_aux, ONLY: compute_common_mode
@@ -48,7 +48,7 @@ SUBROUTINE radiance_wavecal (                            &
   INTEGER (KIND=i4)  :: i, locerrstat, locitnum, n_nozero_wgt
   REAL    (KIND=r8)  :: mean, sdev, loclim
   REAL    (KIND=r8), DIMENSION (n_rad_wvl)         :: fitres, fitspec
-  REAL    (KIND=r8), DIMENSION (max_calfit_idx)    :: fitvar
+  REAL    (KIND=r8), DIMENSION (max_calfit_idx)    :: fitvar, lobnd, upbnd
 
   type(optimizer_type) :: opt
   integer (kind=i4) :: return_status

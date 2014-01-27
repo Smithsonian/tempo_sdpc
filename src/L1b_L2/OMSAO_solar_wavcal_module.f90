@@ -180,7 +180,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval, downweight
     USE OMSAO_variables_module,  ONLY: yn_newshift, fitwavs, fitweights, &
-      currspec, fitvar_cal, n_fitvar_cal, lobnd, upbnd, fitvar_cal_saved, &
+      currspec, fitvar_cal, n_fitvar_cal, fitvar_cal_saved, &
       mask_fitvar_cal, fitvar_sol_init, sol_wav_avg, &
       max_itnum_sol, up_sunbnd, lo_sunbnd, tol, epsrel, epsabs, epsx
     USE OMSAO_indices_module, ONLY: wvl_idx, ccd_idx, asy_idx, hwe_idx, &
@@ -215,7 +215,7 @@ CONTAINS
     INTEGER (KIND=i4)  :: locerrstat, i, j, locitnum, n_nozero_wgt
     REAL    (KIND=r8)  :: mean, sdev, loclim
     REAL    (KIND=r8), DIMENSION (n_irradwvl)         :: fitres
-    REAL    (KIND=r8), DIMENSION (MAX_CALFIT_IDX)    :: fitvar
+    REAL    (KIND=r8), DIMENSION (MAX_CALFIT_IDX)    :: fitvar, lobnd, upbnd
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status

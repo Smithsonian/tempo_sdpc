@@ -28,7 +28,7 @@ CONTAINS
     USE OMSAO_variables_module,    ONLY:                                    &
       n_fincol_idx, fincol_idx, pm_one, database, &
       yn_doas, yn_smooth, rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
-      lo_radbnd, up_radbnd, lobnd, upbnd, fitweights, currspec, fitwavs, &
+      lo_radbnd, up_radbnd, fitweights, currspec, fitwavs, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
       all_radfit_idx, yn_o3amf_cor, &
       n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
@@ -87,7 +87,7 @@ CONTAINS
     REAL    (KIND=r8)                                         :: asum, ssum
     REAL    (KIND=r8)                                         :: mean, sdev, loclim, normfac, mfac
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc)              :: fitres, fitspec, tmp
-    REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar
+    REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar, lobnd, upbnd
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc, n_fitvar_rad) :: covar_matrix
 
     REAL    (KIND=r8) :: fitcol_saved
