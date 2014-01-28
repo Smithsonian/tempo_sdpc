@@ -364,8 +364,7 @@ CONTAINS
 
     USE OMSAO_indices_module,    ONLY: &
       wvl_idx, spc_idx, sig_idx, o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, shi_idx, &
-      squ_idx, pge_hcho_idx, solar_idx, ccd_idx, radref_idx, max_rs_idx, &
-      max_calfit_idx
+      squ_idx, solar_idx, ccd_idx, radref_idx, max_rs_idx, max_calfit_idx
     USE OMSAO_parameters_module, ONLY:  &
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
@@ -375,10 +374,7 @@ CONTAINS
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
       n_rad_wvl_max, target_npol, &
       curr_xtrack_pixnum, fitvar_rad_saved, fitvar_rad_init
-    USE OMSAO_prefitcol_module, ONLY:                                                     &
-      o3_prefit_col, o3_prefit_dcol,                                     &
-      bro_prefit_col, bro_prefit_dcol,                                  &
-      lqh2o_prefit_col, lqh2o_prefit_dcol
+    USE OMSAO_prefitcol_module, ONLY:  prefit_type, copy_prefit_values
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
       omi_nwav_rad, n_omi_database_wvl, &
@@ -430,6 +426,8 @@ CONTAINS
     !REAL    (KIND=r8), DIMENSION (n_rad_wvl)         :: fitspctmp
     ! The above will not work since size varies with the loop index --JED
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_max) :: fitspctmp
+
+    type (prefit_type) :: prefit
 
     if (errstat < 0) return
 
@@ -557,13 +555,11 @@ CONTAINS
         ! --------------------------------------------------------------------
         omi_radref_wght(1:n_omi_radwvl,ipix) = curr_rad_spec(sig_idx,1:n_omi_radwvl)
 
-        IF ( pge_idx == pge_hcho_idx .AND. &
-          ( .NOT. do_radiance_reference )  ) THEN
-          o3fit_cols (o3_t1_idx:o3_t3_idx) = o3_prefit_col (o3_t1_idx:o3_t3_idx,ipix,0)
-          o3fit_dcols(o3_t1_idx:o3_t3_idx) = o3_prefit_dcol(o3_t1_idx:o3_t3_idx,ipix,0)
+        IF (.NOT. do_radiance_reference) THEN
+          call copy_prefit_values (prefit, pge_idx, ipix, 0)
         ELSE
-          o3fit_cols (o3_t1_idx:o3_t3_idx) = 0.0_r8
-          o3fit_dcols(o3_t1_idx:o3_t3_idx) = 0.0_r8
+          prefit%o3_col = 0.0_r8
+          prefit%o3_dcol = 0.0_r8
         END IF
 
         ! --------------------
@@ -586,8 +582,7 @@ CONTAINS
             ctrl_fitres_range(radref_idx), &
             n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                    &
             fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,               &
-            o3fit_cols, o3fit_dcols, bro_prefit_col(ipix,0), bro_prefit_dcol(ipix,0), &
-            lqh2o_prefit_col(ipix,0), lqh2o_prefit_dcol(ipix,0),                      &
+            prefit, o3fit_cols, o3fit_dcols,                                          &
             target_var(1:n_fincol_idx,ipix),                                          &
             allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
             corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &

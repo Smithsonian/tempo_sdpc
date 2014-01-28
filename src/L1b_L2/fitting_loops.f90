@@ -330,8 +330,9 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
       wvl_idx, spc_idx, sig_idx, o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, &
-      pge_o3_idx, pge_hcho_idx, solar_idx, ccd_idx, radfit_idx,  &
-      pge_gly_idx, max_rs_idx
+      pge_o3_idx, & !pge_hcho_idx, &
+      solar_idx, ccd_idx, radfit_idx, & !pge_gly_idx, &
+      max_rs_idx
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
@@ -340,10 +341,7 @@ CONTAINS
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
       szamax, n_fincol_idx, curr_xtrack_pixnum
     USE cache_module, ONLY: saved_shift, saved_squeeze
-    USE OMSAO_prefitcol_module, ONLY: &
-      o3_prefit_col,  o3_prefit_dcol,  &
-      bro_prefit_col, bro_prefit_dcol, &
-      lqh2o_prefit_col, lqh2o_prefit_dcol
+    USE OMSAO_prefitcol_module, ONLY: prefit_type, copy_prefit_values
     USE OMSAO_omidata_module, ONLY: omi_database_wvl, omi_radiance_wavl, &
       omi_database, rad_ccdpix_selection, rad_ccdpix_exclusion, &
       omi_fitconv_flag, omi_itnum_flag, omi_radfit_chisq, &
@@ -387,8 +385,6 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4) :: locerrstat, ipix, radfit_exval, radfit_itnum
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
-    REAL    (KIND=r8) :: brofit_col, brofit_dcol
-    REAL    (KIND=r8) :: lqh2ofit_col, lqh2ofit_dcol
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     LOGICAL                                     :: yn_skip_pix, yn_cycle_this_pix
     LOGICAL                                     :: is_bad_pixel
@@ -400,6 +396,8 @@ CONTAINS
 
     ! CCM Array for holding fitted spectra
     REAL    (KIND=r8), DIMENSION (fitspc_out_dim0)   :: fitspc
+
+    type (prefit_type) :: prefit
 
     !CHARACTER (LEN=28), PARAMETER :: modulename = 'xtrack_radiance_fitting_loop'
 
@@ -484,20 +482,7 @@ CONTAINS
         n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_omi_radwvl),&
         rad_spec_avg, yn_skip_pix )
 
-      SELECT CASE ( pge_idx )
-
-      CASE (pge_hcho_idx)
-        o3fit_cols (o3_t1_idx:o3_t3_idx) = o3_prefit_col (o3_t1_idx:o3_t3_idx,ipix,iloop)
-        o3fit_dcols(o3_t1_idx:o3_t3_idx) = o3_prefit_dcol(o3_t1_idx:o3_t3_idx,ipix,iloop)
-        brofit_col                       = bro_prefit_col (ipix,iloop)
-        brofit_dcol                      = bro_prefit_dcol(ipix,iloop)
-
-      CASE ( pge_gly_idx )
-        lqh2ofit_col                     = lqh2o_prefit_col (ipix,iloop)
-        lqh2ofit_dcol                    = lqh2o_prefit_dcol(ipix,iloop)
-      CASE DEFAULT
-        ! Nothing
-      END SELECT
+      call copy_prefit_values (prefit, pge_idx, ipix, iloop)
 
       ! --------------------
       ! The radiance fitting
@@ -517,8 +502,7 @@ CONTAINS
           ctrl_fitres_range(radfit_idx), &
           n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                &
           fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,           &
-          o3fit_cols, o3fit_dcols, brofit_col, brofit_dcol,                     &
-          lqh2ofit_col, lqh2ofit_dcol,                                          &
+          prefit, o3fit_cols, o3fit_dcols,                                      &
           target_var(1:n_fincol_idx,ipix),                                      &
           allfit_cols(1:n_fitvar_rad,ipix), allfit_errs(1:n_fitvar_rad,ipix),   &
           corr_matrix(1:n_fitvar_rad,ipix), is_bad_pixel, fitspc(1:n_rad_wvl), &

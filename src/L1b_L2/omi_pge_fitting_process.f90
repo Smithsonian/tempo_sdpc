@@ -109,7 +109,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN
-  USE OMSAO_indices_module,    ONLY: sao_molecule_names, pge_hcho_idx, pge_gly_idx
+  USE OMSAO_indices_module,    ONLY: sao_molecule_names
   USE OMSAO_variables_module,  ONLY: &
     l1b_rad_filename, &
     l2_filename, pixnum_lim,    &
@@ -123,10 +123,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
     xtrack_radiance_reference_loop
-  USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files, &
-    bro_prefit_col, bro_prefit_dcol, lqh2o_prefit_col, lqh2o_prefit_dcol, &
-    o3_prefit_col, o3_prefit_dcol, &
-    yn_o3_prefit, yn_bro_prefit, yn_lqh2o_prefit
+  USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
@@ -360,43 +357,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     GO TO 666
   END IF
 
-  ! ----------------------------------
-  ! CCM - Add lqH2O prefit
-  ! ----------------------------------
-  SELECT CASE(pge_idx )
-
-  CASE( pge_hcho_idx )
-
-    ! -------------------------------------------------------------------
-    ! First access to pre-fitted O3 and BrO columns. At this time we have
-    ! already set up some of the fitting arrays, so any error would lead
-    ! to some major headaches to undo things. Hence we return if access
-    ! fails.
-    ! -------------------------------------------------------------------
-    IF ( ( .NOT. yn_radiance_reference ) .AND. &
-      ( pge_idx == pge_hcho_idx ) .AND. &
-      ANY((/yn_o3_prefit(1),yn_bro_prefit(1)/)) ) THEN
-      CALL init_prefit_files ( pge_idx, ntimes_rad, nxtrack_rad, errstat )
-      IF ( errstat >= pge_errstat_error ) RETURN
-    END IF
-
-  CASE( pge_gly_idx )
-
-    ! -------------------------------------------------------------------
-    ! First access to pre-fitted Liquid Water columns. At this time we
-    ! have already set up some of the fitting arrays, so any error would
-    ! lead to some major headaches to undo things. Hence we return if
-    ! access fails.
-    ! -------------------------------------------------------------------
-
-    IF ( (.NOT. yn_radiance_reference) .AND. yn_lqh2o_prefit(1) ) THEN
-      CALL init_prefit_files ( pge_idx, ntimes_rad, nxtrack_rad, errstat )
-      IF ( errstat >= pge_errstat_error ) RETURN
-    END IF
-
-  CASE DEFAULT
-    ! Nothing here yet
-  END SELECT
+  if (.not.yn_radiance_reference) then
+    call init_prefit_files (pge_idx, ntimes_rad, nxtrack_rad, errstat)
+    if ( errstat >= pge_errstat_error ) return
+  endif
 
   ! ---------------------------------------------------------------------
   ! If we are using a radiance reference AND want to remove the target
@@ -534,18 +498,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
     ! -------------------------------------------------
     ! Only use prefit if not using a Radiance Reference
-    ! CCM modify to include lqH2O
     ! -------------------------------------------------
-    IF ( ( .NOT. yn_radiance_reference )                             .AND. &
-      ( (pge_idx == pge_hcho_idx) .OR. (pge_idx == pge_gly_idx) ) .AND. &
-      ANY((/yn_o3_prefit(1),yn_bro_prefit(1),yn_lqh2o_prefit(1)/)) ) THEN
+    IF (.NOT. yn_radiance_reference ) THEN
       CALL read_prefit_columns ( pge_idx, nxtrack_rad, ntimes_loop, iline, errstat )
       pge_error_status = MAX ( pge_error_status, errstat )
       IF ( errstat >= pge_errstat_error ) GO TO 666
-    ELSE
-      o3_prefit_col    = 0.0_r8 ; o3_prefit_dcol    = 0.0_r8
-      bro_prefit_col   = 0.0_r8 ; bro_prefit_dcol   = 0.0_r8
-      lqh2o_prefit_col = 0.0_r8 ; lqh2o_prefit_dcol = 0.0_r8
     END IF
 
     ! ------------------------------

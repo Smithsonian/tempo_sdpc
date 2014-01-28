@@ -15,45 +15,51 @@ MODULE OMSAO_prefitcol_module
 
   IMPLICIT NONE
 
+  public init_prefit_files, read_prefit_columns
+  public copy_prefit_values, apply_prefit_values_and_bounds, apply_prefit_values
+  type, public :: prefit_type
+    real (kind=r8) :: bro_col, bro_dcol
+    real (kind=r8) :: lqh2o_col, lqh2o_dcol
+    real (kind=r8), dimension(o3_t1_idx:o3_t3_idx) :: o3_col, o3_dcol
+  end type prefit_type
+
   ! -------------------------------------
   ! Logicals for use of prefitted columns
   ! -------------------------------------
-  LOGICAL, PUBLIC, DIMENSION (2) :: yn_bro_prefit, yn_o3_prefit, yn_lqh2o_prefit
+  LOGICAL, public, DIMENSION (2) :: yn_bro_prefit, yn_o3_prefit, yn_lqh2o_prefit
 
   ! ------------------------------------------
   ! Total number of prefitted column variables
   ! ------------------------------------------
-  INTEGER (KIND=i4), PUBLIC :: n_prefit_vars
+  INTEGER (KIND=i4), public :: n_prefit_vars
 
   ! --------------------------------------------
   ! BrO prefitted column variables
   ! --------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN), PUBLIC :: bro_prefit_fname
-  INTEGER (KIND=i4), PUBLIC :: bro_prefit_fitidx
-  REAL (KIND=r8), PUBLIC :: bro_prefit_var
-  REAL (KIND=r8), PUBLIC, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
+  CHARACTER (LEN=MAX_STR_LEN) :: bro_prefit_fname
+  INTEGER (KIND=i4) :: bro_prefit_fitidx
+  REAL (KIND=r8), private :: bro_prefit_var
+  REAL (KIND=r8), private, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
     bro_prefit_col, bro_prefit_dcol
 
   ! --------------------------------------------
   ! O3 prefitted column variables
   ! --------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN), PUBLIC :: o3_prefit_fname
-  INTEGER (KIND=i4), PUBLIC, DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_fitidx
-  REAL (KIND=r8), PUBLIC, DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_var
-  REAL (KIND=r8), PUBLIC, DIMENSION (o3_t1_idx:o3_t3_idx,nxtrack_max,0:nlines_max-1) :: &
+  CHARACTER (LEN=MAX_STR_LEN) :: o3_prefit_fname
+  INTEGER (KIND=i4), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_fitidx
+  REAL (KIND=r8), private, DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_var
+  REAL (KIND=r8), private, DIMENSION (o3_t1_idx:o3_t3_idx,nxtrack_max,0:nlines_max-1) :: &
     o3_prefit_col, o3_prefit_dcol
 
   ! --------------------------------------------
   ! LqH2O prefitted column variables CCM
   ! --------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN), PUBLIC :: lqh2o_prefit_fname
-  INTEGER (KIND=i4), PUBLIC :: lqh2o_prefit_fitidx
-  REAL (KIND=r8), PUBLIC :: lqh2o_prefit_var
-  REAL (KIND=r8), PUBLIC, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
+  CHARACTER (LEN=MAX_STR_LEN) :: lqh2o_prefit_fname
+  INTEGER (KIND=i4) :: lqh2o_prefit_fitidx
+  REAL (KIND=r8), private :: lqh2o_prefit_var
+  REAL (KIND=r8), private, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
     lqh2o_prefit_col, lqh2o_prefit_dcol
 
-  PRIVATE
-  PUBLIC read_prefit_columns, init_prefit_files
 CONTAINS
 
   SUBROUTINE init_prefit_files ( pge_idx, ntimes, nxtrack, errstat )
@@ -186,7 +192,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: locerrstat, i, iloop, it, nxtloc
+    INTEGER (KIND=i4) :: locerrstat, i!,iloop, it, nxtloc
     LOGICAL           :: yn_read_amf
     CHARACTER (LEN=12), PARAMETER :: col_str  = "ColumnAmount"
     CHARACTER (LEN=17), PARAMETER :: dcol_str = "ColumnUncertainty"
@@ -287,46 +293,6 @@ CONTAINS
 
     END SELECT
 
-    ! --------------------------------------------------------------------------
-    ! Shift the prefit-values to the proper index positions (e.g., spatial zoom)
-    ! --------------------------------------------------------------------------
-    DO iloop = 0, nloop-1
-
-      it = iline + iloop
-
-      ! ---------------------------------------------------------
-      ! Set the number of total (available) cross-track positions
-      ! ---------------------------------------------------------
-      nxtloc = nxtrack
-
-      ! ----------------
-      ! Shift BrO arrays
-      ! ----------------
-      IF ( yn_bro_prefit(1) ) THEN
-        bro_prefit_col (1:nxtloc,iloop) = bro_prefit_col (1:nxtloc,iloop)
-        bro_prefit_dcol(1:nxtloc,iloop) = bro_prefit_dcol(1:nxtloc,iloop)
-      END IF
-
-      ! ------------------
-      ! Shift lqH2O arrays
-      ! ------------------
-      IF ( yn_lqh2o_prefit(1) ) THEN
-        lqh2o_prefit_col (1:nxtloc,iloop) = lqh2o_prefit_col (1:nxtloc,iloop)
-        lqh2o_prefit_dcol(1:nxtloc,iloop) = lqh2o_prefit_dcol(1:nxtloc,iloop)
-      END IF
-
-      ! ---------------
-      ! Shift O3 arrays
-      ! ---------------
-      IF ( yn_o3_prefit(1) ) THEN
-        o3_prefit_col (o3_t1_idx:o3_t3_idx,1:nxtloc,iloop) = &
-          o3_prefit_col (o3_t1_idx:o3_t3_idx,1:nxtloc,iloop)
-        o3_prefit_dcol(o3_t1_idx:o3_t3_idx,1:nxtloc,iloop) = &
-          o3_prefit_dcol(o3_t1_idx:o3_t3_idx,1:nxtloc,iloop)
-      END IF
-
-    END DO
-
     RETURN
   END SUBROUTINE read_prefit_columns
 
@@ -407,7 +373,7 @@ CONTAINS
   END SUBROUTINE he5_read_prefit_columns
 
 !UNUSED!   FUNCTION he5_close_prefit_file ( swath_id, swath_file_id ) RESULT ( he5stat )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     !------------------------------------------------------------------------------
 !UNUSED!     ! This function detatches from the HE5 swath and closes the HE5 input file.
 !UNUSED!     !
@@ -417,35 +383,35 @@ CONTAINS
 !UNUSED!     !   swath_file_id  - ID of pre-fitted input swath file (for BrO or O3)
 !UNUSED!     !
 !UNUSED!     !------------------------------------------------------------------------------
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE OMSAO_he5_module
 !UNUSED!     USE OMSAO_errstat_module
-!UNUSED! 
+!UNUSED!
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------------------------------
 !UNUSED!     ! Name of this module/subroutine/function
 !UNUSED!     ! ---------------------------------------
 !UNUSED!     CHARACTER (LEN=21), PARAMETER :: modulename = 'he5_close_prefit_file'
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Input variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4), INTENT (IN) :: swath_id, swath_file_id
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Result variable
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4) :: he5stat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! --------------
 !UNUSED!     ! Local variable
 !UNUSED!     ! --------------
 !UNUSED!     INTEGER (KIND=i4) :: locerr
-!UNUSED! 
+!UNUSED!
 !UNUSED!     he5stat = pge_errstat_ok
 !UNUSED!     locerr  = pge_errstat_ok
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! -----------------------------------------------
 !UNUSED!     ! Detach from HE5 swath and close HE5 output file
 !UNUSED!     ! -----------------------------------------------
@@ -453,8 +419,122 @@ CONTAINS
 !UNUSED!     locerr = HE5_SWclose  ( swath_file_id )
 !UNUSED!     CALL error_check ( locerr, HE5_STAT_OK, pge_errstat_warning, &
 !UNUSED!       OMSAO_W_HE5SWCLOSE, modulename, vb_lev_default, he5stat )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     RETURN
 !UNUSED!   END FUNCTION he5_close_prefit_file
+
+  subroutine copy_prefit_values (prefit, pge_idx, ipix, iloop)
+    implicit none
+    type (prefit_type), intent(inout) :: prefit
+    integer (kind=i4), intent(in) :: pge_idx, ipix, iloop
+
+    select case (pge_idx)
+    case (pge_hcho_idx)
+      prefit%o3_col = o3_prefit_col (o3_t1_idx:o3_t3_idx,ipix,iloop)
+      prefit%o3_dcol = o3_prefit_dcol (o3_t1_idx:o3_t3_idx,ipix,iloop)
+      prefit%bro_col = bro_prefit_col (ipix,iloop)
+      prefit%bro_dcol = bro_prefit_dcol (ipix,iloop)
+    case (pge_gly_idx)
+      prefit%lqh2o_col = lqh2o_prefit_col (ipix,iloop)
+      prefit%lqh2o_dcol = lqh2o_prefit_dcol (ipix,iloop)
+    case default
+      !nothing
+    end select
+
+  end subroutine copy_prefit_values
+
+  subroutine apply_prefit_values (fitvar)
+    implicit none
+    real (kind=r8), dimension(:), intent(inout) :: fitvar
+    integer (kind=i4) :: j
+
+    IF ( yn_lqh2o_prefit(1) .AND. (.NOT. yn_lqh2o_prefit(2)) .AND. lqh2o_prefit_var /= 0.0_r8 ) &
+      fitvar(lqh2o_prefit_fitidx) = lqh2o_prefit_var
+
+    IF ( yn_bro_prefit(1) .AND. (.NOT. yn_bro_prefit(2)) .AND. bro_prefit_var /= 0.0_r8 ) &
+      fitvar(bro_prefit_fitidx) = bro_prefit_var
+
+    IF ( yn_o3_prefit(1)  .AND. (.NOT. yn_o3_prefit(2))  ) THEN
+      DO j = o3_t1_idx, o3_t3_idx
+        IF ( o3_prefit_var(j) /= 0.0_r8 ) fitvar(o3_prefit_fitidx(j)) = o3_prefit_var(j)
+      END DO
+    END IF
+
+  end subroutine apply_prefit_values
+
+  subroutine apply_prefit_values_and_bounds (prefit, pge_idx, lobnd, upbnd, fitvar, errstat)
+    use OMSAO_parameters_module, only: r8_missval
+    implicit none
+    type (prefit_type), intent(in) :: prefit
+    integer (kind=i4), intent(in) :: pge_idx
+    real (kind=r8), dimension(:), intent(inout) :: lobnd, upbnd, fitvar
+    integer, intent(inout) :: errstat
+    ! local
+    real (kind=r8) :: col_tmp, dcol_tmp
+    integer (kind=i4) :: j
+
+    if (errstat < 0) return
+
+    select case (pge_idx)
+      case (pge_hcho_idx)
+        ! BrO
+        IF ( yn_bro_prefit(1) ) THEN
+          bro_prefit_var = 0.0_r8
+          col_tmp = prefit%bro_col
+          dcol_tmp = prefit%bro_dcol
+          IF ( col_tmp > r8_missval ) THEN
+            fitvar(bro_prefit_fitidx) = col_tmp
+            IF ( yn_bro_prefit(2) ) THEN
+              lobnd(bro_prefit_fitidx) = col_tmp - 1.0_r8 * dcol_tmp
+              upbnd(bro_prefit_fitidx) = col_tmp + 1.0_r8 * dcol_tmp
+            ELSE
+              lobnd(bro_prefit_fitidx) = col_tmp
+              upbnd(bro_prefit_fitidx) = col_tmp
+              bro_prefit_var           = col_tmp
+            END IF
+          END IF
+        END IF
+        ! O3
+        IF ( yn_o3_prefit(1) ) THEN
+          o3_prefit_var(o3_t1_idx:o3_t3_idx) = 0.0_r8
+          DO j = o3_t1_idx, o3_t3_idx
+            col_tmp = prefit%o3_col(j)
+            dcol_tmp = prefit%o3_dcol(j)
+            IF ( col_tmp > r8_missval ) THEN
+              fitvar(o3_prefit_fitidx(j)) = col_tmp
+              IF ( yn_o3_prefit(2) ) THEN
+                lobnd(o3_prefit_fitidx(j)) = col_tmp - 2.0_r8 * dcol_tmp
+                upbnd(o3_prefit_fitidx(j)) = col_tmp + 2.0_r8 * dcol_tmp
+              ELSE
+                lobnd(o3_prefit_fitidx(j)) = col_tmp
+                upbnd(o3_prefit_fitidx(j)) = col_tmp
+                o3_prefit_var(j)           = col_tmp
+              END IF
+            END IF
+          END DO
+        END IF
+      case (pge_gly_idx)
+        ! liquid water
+        IF ( yn_lqh2o_prefit(1) ) THEN
+          lqh2o_prefit_var = 0.0_r8
+          col_tmp = prefit%lqh2o_col
+          dcol_tmp = prefit%lqh2o_dcol
+          IF ( col_tmp > r8_missval ) THEN
+            fitvar(lqh2o_prefit_fitidx) = col_tmp
+            IF ( yn_lqh2o_prefit(2) ) THEN
+              lobnd(lqh2o_prefit_fitidx) = col_tmp - 1.0_r8 * dcol_tmp
+              upbnd(lqh2o_prefit_fitidx) = col_tmp + 1.0_r8 * dcol_tmp
+            ELSE
+              lobnd(lqh2o_prefit_fitidx) = col_tmp
+              upbnd(lqh2o_prefit_fitidx) = col_tmp
+              lqh2o_prefit_var           = col_tmp
+            END IF
+          END IF
+        END IF
+      case default
+        ! nothing
+    end select
+
+  end subroutine apply_prefit_values_and_bounds
 
 END MODULE OMSAO_prefitcol_module

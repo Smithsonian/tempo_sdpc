@@ -8,7 +8,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
   USE OMSAO_precision_module,  ONLY: i4, r8, i2
   USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, MAX_STR_LEN, &
     nlines_max, nUTCdim, NXTRACK_MAX
-  USE OMSAO_indices_module,    ONLY: pge_hcho_idx, n_max_fitpars, pge_gly_idx
+  USE OMSAO_indices_module,    ONLY: n_max_fitpars
   USE OMSAO_variables_module,  ONLY:  &
     n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, fitvar_rad_init, fitvar_rad_saved
@@ -17,8 +17,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount, &
     omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,  &
     omi_radiance_errstat
-  USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files, &
-    yn_o3_prefit, yn_bro_prefit, yn_lqh2o_prefit
+  USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
   USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
@@ -132,9 +131,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
     ! --------------------------------
     ! Read pre-fitted molecule columns
     ! --------------------------------
-    IF ( ( .NOT. yn_radiance_reference                                    ) .AND. &
-      ( (pge_idx == pge_hcho_idx) .OR. (pge_idx == pge_gly_idx)        ) .AND. &
-      ANY( (/yn_o3_prefit(1), yn_bro_prefit(1), yn_lqh2o_prefit(1)/) ) ) THEN
+    IF (.NOT. yn_radiance_reference) then
       CALL read_prefit_columns ( pge_idx, nx, nblock, iline, locerrstat )
       errstat = MAX ( errstat, locerrstat )
       IF ( errstat >= pge_errstat_error ) RETURN

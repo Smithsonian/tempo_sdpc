@@ -13,16 +13,14 @@ CONTAINS
       pge_idx, ipix, num_fitres_loops, fitres_range, &
       n_rad_wvl_loc, rad_array,                                     &
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
-      o3fit_cols, o3fit_dcols, brofit_cols, brofit_dcols,           &
-      lqh2ofit_cols, lqh2ofit_dcols,                                &
+      prefit, o3fit_cols, o3fit_dcols,                              &
       target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out, &
       errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
       solar_idx, n_max_fitpars, wvl_idx, spc_idx, sig_idx, ccd_idx, &
-      max_calfit_idx, o3_t1_idx, o3_t3_idx,     &
-      pge_o3_idx, pge_hcho_idx, pge_gly_idx
+      max_calfit_idx, o3_t1_idx, o3_t3_idx,  pge_o3_idx
     USE OMSAO_parameters_module,   ONLY: &
       r8_missval, i2_missval, downweight
     USE OMSAO_variables_module,    ONLY:                                    &
@@ -34,10 +32,7 @@ CONTAINS
       n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
       tol, epsrel, epsabs, epsx
 
-    USE OMSAO_prefitcol_module, ONLY:                                       &
-      n_prefit_vars, yn_o3_prefit, yn_bro_prefit, bro_prefit_var,        &
-      o3_prefit_var, o3_prefit_fitidx, bro_prefit_fitidx,                &
-      yn_lqh2o_prefit,lqh2o_prefit_var,lqh2o_prefit_fitidx
+    USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
     USE omi_pge_fitting_aux, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
     USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
@@ -54,8 +49,8 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: &
       pge_idx, ipix, n_rad_wvl_loc, num_fitres_loops, fitres_range
-    REAL    (KIND=r8), INTENT (IN) :: brofit_cols, brofit_dcols
-    REAL    (KIND=r8), INTENT (IN) :: lqh2ofit_cols, lqh2ofit_dcols
+
+    type (prefit_type), intent(in) :: prefit
 
     ! -----------------------------
     ! (Possibly) Modified Variables
@@ -177,68 +172,8 @@ CONTAINS
     ! with the cross section normalization has already been done at the time when
     ! the pre-fitted columns are read in.
     ! ---------------------------------------------------------------------------
-    SELECT CASE ( pge_idx )
-    CASE( pge_hcho_idx )
-      ! ---
-      ! BrO
-      ! ---
-      IF ( yn_bro_prefit(1) ) THEN
-        bro_prefit_var = 0.0_r8
-        IF ( brofit_cols > r8_missval ) THEN
-          fitvar_rad(bro_prefit_fitidx) = brofit_cols
-          IF ( yn_bro_prefit(2) ) THEN
-            lo_radbnd(bro_prefit_fitidx) = brofit_cols - 1.0_r8 * brofit_dcols
-            up_radbnd(bro_prefit_fitidx) = brofit_cols + 1.0_r8 * brofit_dcols
-          ELSE
-            lo_radbnd(bro_prefit_fitidx) = brofit_cols
-            up_radbnd(bro_prefit_fitidx) = brofit_cols
-            bro_prefit_var               = brofit_cols
-          END IF
-        END IF
-      END IF
-      ! ---
-      ! O3
-      ! ---
-      IF ( yn_o3_prefit(1) ) THEN
-        o3_prefit_var(o3_t1_idx:o3_t3_idx) = 0.0_r8
-        DO j = o3_t1_idx, o3_t3_idx
-          IF ( o3fit_cols(j) > r8_missval ) THEN
-            fitvar_rad(o3_prefit_fitidx(j)) = o3fit_cols(j)
-            IF ( yn_o3_prefit(2) ) THEN
-              lo_radbnd(o3_prefit_fitidx(j)) = o3fit_cols(j) - 2.0_r8 * o3fit_dcols(j)
-              up_radbnd(o3_prefit_fitidx(j)) = o3fit_cols(j) + 2.0_r8 * o3fit_dcols(j)
-            ELSE
-              lo_radbnd(o3_prefit_fitidx(j)) = o3fit_cols(j)
-              up_radbnd(o3_prefit_fitidx(j)) = o3fit_cols(j)
-              o3_prefit_var(j)               = o3fit_cols(j)
-            END IF
-          END IF
-        END DO
-      END IF
 
-    CASE( pge_gly_idx )
-
-      ! ------------
-      ! Liquid Water
-      ! ------------
-      IF ( yn_lqh2o_prefit(1) ) THEN
-        lqh2o_prefit_var = 0.0_r8
-        IF ( lqh2ofit_cols > r8_missval ) THEN
-          fitvar_rad(lqh2o_prefit_fitidx) = lqh2ofit_cols
-          IF ( yn_lqh2o_prefit(2) ) THEN
-            lo_radbnd(lqh2o_prefit_fitidx) = lqh2ofit_cols - 1.0_r8 * lqh2ofit_dcols
-            up_radbnd(lqh2o_prefit_fitidx) = lqh2ofit_cols + 1.0_r8 * lqh2ofit_dcols
-          ELSE
-            lo_radbnd(lqh2o_prefit_fitidx) = lqh2ofit_cols
-            up_radbnd(lqh2o_prefit_fitidx) = lqh2ofit_cols
-            lqh2o_prefit_var               = lqh2ofit_cols
-          END IF
-        END IF
-      END IF
-
-    CASE DEFAULT
-      ! Do nothing
-    END SELECT
+    call apply_prefit_values_and_bounds (prefit, pge_idx, lo_radbnd, up_radbnd, fitvar_rad, errstat)
 
     ! -----------------------------------------------------------------
     ! Create a condensed array of fitting variables that only contains
