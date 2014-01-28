@@ -17,6 +17,8 @@ MODULE OMSAO_prefitcol_module
 
   public init_prefit_files, read_prefit_columns
   public copy_prefit_values, apply_prefit_values_and_bounds, apply_prefit_values
+  public assign_prefit_parameter_index
+
   type, public :: prefit_type
     real (kind=r8) :: bro_col, bro_dcol
     real (kind=r8) :: lqh2o_col, lqh2o_dcol
@@ -37,7 +39,7 @@ MODULE OMSAO_prefitcol_module
   ! BrO prefitted column variables
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: bro_prefit_fname
-  INTEGER (KIND=i4) :: bro_prefit_fitidx
+  INTEGER (KIND=i4), private :: bro_prefit_fitidx
   REAL (KIND=r8), private :: bro_prefit_var
   REAL (KIND=r8), private, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
     bro_prefit_col, bro_prefit_dcol
@@ -46,7 +48,7 @@ MODULE OMSAO_prefitcol_module
   ! O3 prefitted column variables
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: o3_prefit_fname
-  INTEGER (KIND=i4), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_fitidx
+  INTEGER (KIND=i4), private, DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_fitidx
   REAL (KIND=r8), private, DIMENSION (o3_t1_idx:o3_t3_idx) :: o3_prefit_var
   REAL (KIND=r8), private, DIMENSION (o3_t1_idx:o3_t3_idx,nxtrack_max,0:nlines_max-1) :: &
     o3_prefit_col, o3_prefit_dcol
@@ -55,7 +57,7 @@ MODULE OMSAO_prefitcol_module
   ! LqH2O prefitted column variables CCM
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: lqh2o_prefit_fname
-  INTEGER (KIND=i4) :: lqh2o_prefit_fitidx
+  INTEGER (KIND=i4), private :: lqh2o_prefit_fitidx
   REAL (KIND=r8), private :: lqh2o_prefit_var
   REAL (KIND=r8), private, DIMENSION (nxtrack_max,0:nlines_max-1) :: &
     lqh2o_prefit_col, lqh2o_prefit_dcol
@@ -422,6 +424,55 @@ CONTAINS
 !UNUSED!
 !UNUSED!     RETURN
 !UNUSED!   END FUNCTION he5_close_prefit_file
+
+  subroutine assign_prefit_parameter_index (icf_idx, param_index, fitvar, lobnd, upbnd, &
+                                            assigned_index, errstat)
+    implicit none
+    integer (kind=i4), intent(in) :: icf_idx, param_index
+    real (kind=r8), dimension(:), intent(in) :: fitvar, lobnd, upbnd
+    logical :: assigned_index
+    integer, intent(inout) :: errstat
+
+    if (errstat < 0) return
+
+    ! NOTE: The icf_idx passed to this routine is to be matched up with
+    !       the index associated with each particular molecule in the
+    !       input control file (ICF).  It is *not* to be matched up with
+    !       the PGE index associated with each molecule.
+    !       Be sure to use the correct indexing scheme!
+
+    assigned_index = .false.
+
+    select case (icf_idx)
+      case (bro_idx)
+        if (yn_bro_prefit(1) .and. &
+            (fitvar(param_index) /= 0.0_r8 .or. &
+             (lobnd(param_index) < upbnd(param_index)))) then
+          bro_prefit_fitidx = param_index
+          assigned_index = .true.
+        endif
+
+      case (lqh2o_idx)
+        if (yn_lqh2o_prefit(1) .and. &
+            (fitvar(param_index) /= 0.0_r8 .or. &
+             (lobnd(param_index) < upbnd(param_index)))) then
+          lqh2o_prefit_fitidx = param_index
+          assigned_index = .true.
+        endif
+
+      case (o3_t1_idx:o3_t3_idx)
+        if (yn_o3_prefit(1) .and. &
+            (fitvar(param_index) /= 0.0_r8 .or. &
+             (lobnd(param_index) < upbnd(param_index)))) then
+          o3_prefit_fitidx(icf_idx) = param_index
+          assigned_index = .true.
+        endif
+
+      case default
+        ! nothing
+    end select
+
+  end subroutine assign_prefit_parameter_index
 
   subroutine copy_prefit_values (prefit, pge_idx, ipix, iloop)
     implicit none

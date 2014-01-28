@@ -712,19 +712,16 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
 
   USE OMSAO_precision_module
   USE OMSAO_errstat_module
-  USE OMSAO_indices_module,      ONLY:                     &
+  USE OMSAO_indices_module,      ONLY:                  &
     max_rs_idx, max_calfit_idx, mns_idx, mxs_idx,       &
     calfit_titles,  radfit_titles,  refspec_titles,     &
     calfit_strings, radfit_strings, refspec_strings,    &
-    o3_t1_idx, o3_t3_idx, bro_idx, comm_idx, &
-    hwe_idx, asy_idx
+    comm_idx, hwe_idx, asy_idx
   USE OMSAO_variables_module,    ONLY: &
     n_fitvar_rad, all_radfit_idx, mask_fitvar_rad, fitvar_rad_init,         &
     lo_radbnd, up_radbnd, n_fincol_idx, n_mol_fit, fitcol_idx, fincol_idx,  &
     yn_common_iter, common_fitpos
-  USE OMSAO_prefitcol_module, ONLY:                                            &
-    o3_prefit_fitidx, bro_prefit_fitidx, yn_bro_prefit, yn_o3_prefit,       &
-    n_prefit_vars
+  USE OMSAO_prefitcol_module, ONLY:  assign_prefit_parameter_index, n_prefit_vars
   USE OMSAO_omidata_module,      ONLY: &
     correlation_names, correlation_names_concat, nclenfit
 
@@ -746,6 +743,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   ! Local Variables
   ! ---------------
   INTEGER (KIND=i4) :: i, j, k, idx, locerrstat
+  logical :: assigned_index
 
   ! CCM Fit Lineshape for every spectrum
   LOGICAL :: yn_fit_itf = .TRUE.
@@ -843,17 +841,9 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
       ! -------------------------------------------------------------------------
       ! Check for any indices that correspond to pre-fitted columns
       ! -------------------------------------------------------------------------
-      SELECT CASE ( i )
-      CASE ( bro_idx )
-        IF ( yn_bro_prefit(1) .AND. &
-            (fitvar_rad_init(idx+j) /= 0.0_r8 .OR. &
-             (lo_radbnd(idx+j) < up_radbnd(idx+j))) ) bro_prefit_fitidx = idx+j
-      CASE ( o3_t1_idx:o3_t3_idx )
-        IF ( yn_o3_prefit(1) .AND. &
-          (fitvar_rad_init(idx+j) /= 0.0_r8 .OR. &
-          (lo_radbnd(idx+j)       < up_radbnd(idx+j))) ) o3_prefit_fitidx(i) = idx+j
-      CASE DEFAULT
-      END SELECT
+      call assign_prefit_parameter_index (i, idx+j, fitvar_rad_init, lo_radbnd, up_radbnd, &
+                                          assigned_index, errstat)
+      if (assigned_index) n_prefit_vars = n_prefit_vars + 1
 
     END DO
 
