@@ -617,7 +617,7 @@ CONTAINS
   SUBROUTINE he5_write_radfit_output ( &
       pge_idx, iline, nXtrack, nblock, fpix, lpix, &
       all_fitted_columns, all_fitted_errors, correlation_columns,&
-      omi_fitspc, nt, errstat )
+      omi_fitspc, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: nxtrack_max, nUTCdim
@@ -651,14 +651,14 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, iline, nXtrack, nblock, fpix, lpix, nt
+    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, iline, nXtrack, nblock, fpix, lpix
     !REAL    (KIND=r8), INTENT (IN), DIMENSION (1:n_fitvar_rad,1:nXtrack,0:nblock-1) :: &
     !     all_fitted_columns, all_fitted_errors, correlation_columns
 
     ! CCM
     ! REAL (KIND=r8), INTENT (IN), DIMENSION(n_comm_wvl,nxtrack_max,4,0:nt-1) :: omi_fitspc
     REAL (KIND=r8), INTENT (IN), &
-      DIMENSION(n_rad_wvl_max,nxtrack_max,4,0:nt-1) :: omi_fitspc ! JED
+      DIMENSION(n_rad_wvl_max,nxtrack_max,4,0:nblock-1) :: omi_fitspc ! JED
 
     ! Temporary array
     !REAL (KIND=r8),DIMENSION(n_rad_wvl_max,nxtrack_max,0:nt-1) :: tmp_fitspc

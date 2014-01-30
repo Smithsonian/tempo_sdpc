@@ -2,103 +2,12 @@ MODULE omi_read_l1b_data
   INCLUDE 'hdf.f90'
 CONTAINS
 
-  SUBROUTINE omi_read_radiance_paras (l1bfile, rpt, errstat)
-
-    USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : MAX_STR_LEN
-    USE OMSAO_variables_module,  ONLY : l1b_channel, Radiance_Paras_Type
-    USE OMSAO_omidata_module,    ONLY : EarthSunDistance
-    USE OMSAO_errstat_module
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
-
-    IMPLICIT NONE
-
-    ! --------------
-    ! Input Variable
-    ! --------------
-    CHARACTER (LEN=*), INTENT (IN) :: l1bfile
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    TYPE(Radiance_Paras_Type), INTENT(OUT) :: rpt
-    INTEGER (KIND=i4),                             INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    TYPE (L1B_block_type) :: omi_data_block
-    INTEGER   (KIND=i4)   :: locerrstat, ntimes_small
-    !CHARACTER (LEN=MAX_STR_LEN) :: l1bswath
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_paras'
-
-    ! ------------------
-    ! External Functions
-    ! ------------------
-    !REAL    (KIND=r4) :: L1Bga_EarthSunDistance
-
-    ! --------------------------
-    ! Initialize OUTPUT variable
-    ! --------------------------
-    locerrstat = pge_errstat_ok
-    rpt%ntimes = 0 ; rpt%nxtrack = 0 ; rpt%nwavel_ccd = 0
-    rpt%l1bfilename = l1bfile
-
-    ! ---------------------------------------------------
-    ! Retrieve the swath in the current L1b radiance file
-    ! ---------------------------------------------------
-    CALL omi_xtract_swathname ( l1bfile, l1b_channel, rpt%swathname )
-
-    write (*,*) "DEBUG: In omi_read_radiance_paras, l1bfile=", &
-      TRIM(l1bfile), ", l1bswath=", TRIM(rpt%swathname)
-
-    ! ----------------------------------------------------------------------
-    ! Open data block called 'omi_data_block' with default size of 100 lines
-    ! ----------------------------------------------------------------------
-    locerrstat = L1Br_open ( omi_data_block, l1bfile, rpt%swathname, nL=1 )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_F_OPEN_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! -------------------------------
-    ! Get dimensions of current Swath
-    ! -------------------------------
-    locerrstat = L1Br_getSWdims ( omi_data_block, &
-                                 NumTimes_k=rpt%ntimes, nXtrack_k=rpt%nxtrack, &
-                                 NumTimesSmallPixel_k=ntimes_small, &
-                                 nWavel_k=rpt%nwavel_ccd )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_getSWdims failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerrstat = L1Br_close ( omi_data_block )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_warning, OMSAO_W_CLOS_L1B_FILE, &
-                      modulename//f_sep//"L1Br_close failed.", vb_lev_omidebug, errstat )
-
-    ! -------------------------------
-    ! Get EarthSunDistance
-    ! -------------------------------
-    EarthSunDistance = L1Bga_EarthSunDistance( l1bfile, rpt%swathname )
-
-    RETURN
-  END SUBROUTINE omi_read_radiance_paras
-
   SUBROUTINE omi_read_binning_factor ( &
       l1bfile, l1bswath, ntimes, binfac, yn_szoom, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_omidata_module,    ONLY : global_mode, szoom_mode
-    USE OMSAO_errstat_module
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
+    use l1bread
 
     IMPLICIT NONE
 
@@ -114,41 +23,19 @@ CONTAINS
     INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
     INTEGER (KIND=i1), DIMENSION (0:ntimes-1), INTENT (OUT)   :: binfac
     LOGICAL,           DIMENSION (0:ntimes-1), INTENT (OUT)   :: yn_szoom
+    !
+    type (L1B_Object_Type) :: l1bobj
 
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    TYPE (L1B_block_type) :: omi_data_block
-    INTEGER   (KIND=i4)   :: locerrstat, iline
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_binning_factor'
-
-    ! --------------------------
-    ! Initialize OUTPUT variable
-    ! --------------------------
-    locerrstat = pge_errstat_ok
+    if (errstat < 0) return
 
     write (*,*) "DEBUG: In omi_read_binning_factor, l1bfile=", &
       TRIM(l1bfile), ", l1bswath=", TRIM(l1bswath), ", ntimes=", ntimes
 
-    ! ----------------------------------------------------------------------
-    ! Open data block called 'omi_data_block' with size of nTimes lines
-    ! ----------------------------------------------------------------------
-    locerrstat = L1Br_open ( omi_data_block, l1bfile, l1bswath, nL=ntimes )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_F_OPEN_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! --------------------
-    ! Read binning factors
-    ! --------------------
-    DO iline = 0, ntimes-1
-      locerrstat = L1Br_getDATA ( omi_data_block, iline, ImageBinningFactor_k=binfac(iline) )
-    END DO
+    ! Allow error to flow
+    call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
+    call l1bread_get1d_i1 (l1bobj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
+    call l1bread_close (l1bobj)
+    if (errstat < 0) return
 
     ! ----------------------------------------------------------------------
     ! Check whether we have a Spatial Zoom granule, in which case we need to
@@ -157,13 +44,6 @@ CONTAINS
     IF ( ( INDEX(l1bfile, 'OML1BRUZ') > 0 ) .OR. &
         ( INDEX(l1bfile, 'OML1BRVZ') > 0 ) )    &
       binfac(0:ntimes-1) = global_mode
-
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerrstat = L1Br_close ( omi_data_block )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_warning, OMSAO_W_CLOS_L1B_FILE, &
-                      modulename//f_sep//"L1Br_close failed.", vb_lev_omidebug, errstat )
 
     ! ------------------------------------------------------------------------------
     ! Check for GLOBAL and SPATIAL ZOOM mode and set up arrays for index adjustment.
@@ -230,7 +110,7 @@ CONTAINS
     USE OMSAO_precision_module
     !USE OMSAO_indices_module, ONLY: pge_o3_idx
     USE OMSAO_parameters_module, ONLY: &
-      i1_missval, i2_missval, r4_missval, &
+      i2_missval, r4_missval, &
       min_zenith, min_azimuth, max_azimuth, &  ! "non-inclusive"
       max_latitude, max_longitude, &
       earth_radius_avg
@@ -243,9 +123,8 @@ CONTAINS
       rad_ccdpix_selection,                                                                   &
       omi_xtrflg_l1b, omi_xtrflg
     USE OMSAO_errstat_module
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
     USE angle_sat2toa, ONLY: gnome_angle_sat2toa
+    use l1bread
 
     IMPLICIT NONE
 
@@ -264,86 +143,50 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER   (KIND=i4)                           :: &
-      iloop, blockline, nwl, imin, imax, locerrstat, ix, icnt
+      iloop, imin, imax, ix, icnt
     REAL      (KIND=r4), DIMENSION (nxtrack)      :: tmp_sazm, tmp_vazm
-    REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack) :: tmp_wvl, tmp_spc, tmp_prc
-    INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack) :: tmp_flg
+    REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc, tmp_prc
+    INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
 
-    TYPE (L1B_block_type)  :: omi_data_block
+    type (L1B_Object_Type) :: l1bobj
 
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_lines'
+    omi_radiance_errstat = pge_errstat_ok
 
-    locerrstat = pge_errstat_ok
+    ! let errstat flow
+    call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
 
-    ! -----------------------------------------------------------
-    ! Open data block called 'omi_data_block' with default size of 100 lines
-    ! -----------------------------------------------------------
-    locerrstat = L1Br_open ( omi_data_block, l1bfile, omi_radiance_swathname, nL=nloop )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_F_OPEN_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
+    call l1bread_get1d_r8 (l1bobj, "Time", iline, nloop, omi_time, errstat)
+    call l1bread_get1d_r4 (l1bobj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
+    call l1bread_get2d_r4 (l1bobj, "Latitude", iline, nloop, omi_latitude, errstat)
+    call l1bread_get2d_r4 (l1bobj, "Longitude", iline, nloop, omi_longitude, errstat)
+    call l1bread_get2d_r4 (l1bobj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
+    call l1bread_get2d_r4 (l1bobj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
+    call l1bread_get2d_r4 (l1bobj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
+    call l1bread_get2d_r4 (l1bobj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
+    call l1bread_get2d_i2 (l1bobj, "TerrainHeight", iline, nloop, omi_height, errstat)
+    call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
+    call l1bread_get2d_i1 (l1bobj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
 
-    lineloop: DO iloop = 0, nloop-1
-      ! -------------------------------------------
-      ! The current scan line number we are reading
-      ! -------------------------------------------
-      blockline = iline + iloop
+    call l1bread_get3d_r4 (l1bobj, "Radiance", iline, nloop, tmp_spc, errstat)
+    call l1bread_get3d_r4 (l1bobj, "RadiancePrecision", iline, nloop, tmp_prc, errstat)
+    call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
+    call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
 
-      ! --------------------------------
-      ! Initialize all local data arrays
-      ! --------------------------------
-      omi_auraalt       (iloop)                        = r4_missval
-      omi_latitude      (1:nxtrack,iloop)              = r4_missval
-      omi_longitude     (1:nxtrack,iloop)              = r4_missval
-      omi_szenith       (1:nxtrack,iloop)              = r4_missval
-      omi_sazimuth      (1:nxtrack,iloop)              = r4_missval
-      omi_vzenith       (1:nxtrack,iloop)              = r4_missval
-      omi_vazimuth      (1:nxtrack,iloop)              = r4_missval
-      omi_razimuth      (1:nxtrack,iloop)              = r4_missval
-      omi_height        (1:nxtrack,iloop)              = i2_missval
-      omi_geoflg        (1:nxtrack,iloop)              = i2_missval
-      omi_xtrflg        (1:nxtrack,iloop)              = i2_missval
-      omi_xtrflg_l1b    (1:nxtrack,iloop)              = i1_missval
-      omi_radiance_spec (1:nwavel_ccd,1:nxtrack,iloop) = REAL ( r4_missval, KIND=r8 )
-      omi_radiance_prec (1:nwavel_ccd,1:nxtrack,iloop) = REAL ( r4_missval, KIND=r8 )
-      omi_radiance_qflg (1:nwavel_ccd,1:nxtrack,iloop) = i2_missval
-      omi_radiance_wavl (1:nwavel_ccd,1:nxtrack,iloop) = REAL ( r4_missval, KIND=r8 )
+    call l1bread_close (l1bobj)
+    if (errstat < 0) return
 
-      ! ---------------------------------------------------
-      ! Set error status of current line to O.K. by default
-      ! ---------------------------------------------------
-      omi_radiance_errstat (iloop) = pge_errstat_ok
-      locerrstat = L1Br_getGEOline ( omi_data_block, blockline,        &
-                                    Time_k                    = omi_time(iloop),                &
-                                    SpacecraftAltitude_k      = omi_auraalt(iloop),             &
-                                    Latitude_k                = omi_latitude(1:nxtrack,iloop),  &
-                                    Longitude_k               = omi_longitude(1:nxtrack,iloop), &
-                                    SolarZenithAngle_k        = omi_szenith(1:nxtrack,iloop),   &
-                                    SolarAzimuthAngle_k       = omi_sazimuth(1:nxtrack,iloop),  &
-                                    ViewingZenithAngle_k      = omi_vzenith(1:nxtrack,iloop),   &
-                                    ViewingAzimuthAngle_k     = omi_vazimuth(1:nxtrack,iloop),  &
-                                    TerrainHeight_k           = omi_height(1:nxtrack,iloop),    &
-                                    GroundPixelQualityFlags_k = omi_geoflg(1:nxtrack,iloop),    &
-                                    XTrackQualityFlags_k      = omi_xtrflg_l1b(1:nxtrack,iloop)   ) ! gga row anomaly
-      CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_READ_L1B_FILE, &
-                        modulename//f_sep//"L1Br_getGEOline failed.", vb_lev_default, errstat )
-
-      IF ( locerrstat /= omi_s_success ) omi_radiance_errstat(iloop) = pge_errstat_error
-
+    do iloop = 0, nloop-1
       ! --------------------------------------------------------
       ! Expand XTR Quality Flags to something easily parse-able.
       ! Assign Missing Values where necessary. gga
       ! --------------------------------------------------------
       CALL convert_xtqualflag_info ( &
-        nxtrack, omi_xtrflg_l1b(1:nxtrack,iloop), omi_xtrflg(1:nxtrack,iloop) )
+        nxtrack, omi_xtrflg_l1b(1:nxtrack,iloop), omi_xtrflg(1:nxtrack,iloop))
 
       ! --------------------------------------------------------------
       ! Check for missing data and reinitialize to PGEs local MissVals
       ! --------------------------------------------------------------
-      WHERE ( omi_height(1:nxtrack,iloop) <= i2_missval )
+      WHERE (omi_height(1:nxtrack,iloop) <= i2_missval )
         omi_height(1:nxtrack,iloop) = i2_missval
       ENDWHERE
       WHERE ( ABS(omi_latitude(1:nxtrack,iloop)) > max_latitude )
@@ -358,21 +201,18 @@ CONTAINS
       ! to maintain the information of the value of SZA even if it is out of
       ! the bounds required for the computation of AMFs
       ! ---------------------------------------------------------------------
-      WHERE ( &
-          omi_szenith(1:nxtrack,iloop) < min_zenith )
+      WHERE (omi_szenith(1:nxtrack,iloop) < min_zenith )
         omi_szenith(1:nxtrack,iloop) = r4_missval
       ENDWHERE
-      WHERE ( omi_vzenith(1:nxtrack,iloop) < min_zenith )
+      WHERE (omi_vzenith(1:nxtrack,iloop) < min_zenith )
         omi_vzenith(1:nxtrack,iloop) = r4_missval
       ENDWHERE
-      WHERE ( &
-          omi_sazimuth(1:nxtrack,iloop) < min_azimuth .OR. &
-          omi_sazimuth(1:nxtrack,iloop) > max_azimuth        )
+      WHERE ((omi_sazimuth(1:nxtrack,iloop) < min_azimuth) &
+             .or. (omi_sazimuth(1:nxtrack,iloop) > max_azimuth))
         omi_sazimuth(1:nxtrack,iloop) = r4_missval
       ENDWHERE
-      WHERE ( &
-          omi_vazimuth(1:nxtrack,iloop) < min_azimuth .OR. &
-          omi_vazimuth(1:nxtrack,iloop) > max_azimuth        )
+      WHERE ((omi_vazimuth(1:nxtrack,iloop) < min_azimuth) &
+             .or. (omi_vazimuth(1:nxtrack,iloop) > max_azimuth))
         omi_vazimuth(1:nxtrack,iloop) = r4_missval
       ENDWHERE
 
@@ -420,58 +260,27 @@ CONTAINS
       ! ----------------------------------------------
       ! Get radiances associated with wavelength range
       ! ----------------------------------------------
-      IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN
-        locerrstat = L1Br_getSIGline ( omi_data_block, blockline,   &
-                                      Signal_k            = tmp_spc(1:nwavel_ccd,1:nxtrack), &
-                                      SignalPrecision_k   = tmp_prc(1:nwavel_ccd,1:nxtrack), &
-                                      PixelQualityFlags_k = tmp_flg(1:nwavel_ccd,1:nxtrack), &
-                                      Wavelength_k        = tmp_wvl(1:nwavel_ccd,1:nxtrack), &
-                                      Nwl_k               = nwl                               )
-        CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_READ_L1B_FILE, &
-                          modulename//f_sep//"L1Br_getSIGline failed.", vb_lev_default, errstat )
+      DO ix = 1, nxtrack
+        imin = rad_ccdpix_selection(ix,1)
+        imax = rad_ccdpix_selection(ix,4)
+        icnt = imax - imin + 1
+        omi_radiance_wavl(1:icnt,ix,iloop) = REAL ( tmp_wvl(imin:imax,ix, iloop), KIND=r8 )
+        omi_radiance_spec(1:icnt,ix,iloop) = REAL ( tmp_spc(imin:imax,ix, iloop), KIND=r8 )
+        omi_radiance_prec(1:icnt,ix,iloop) = REAL ( tmp_prc(imin:imax,ix, iloop), KIND=r8 )
+        omi_radiance_qflg(1:icnt,ix,iloop) =        tmp_flg(imin:imax,ix, iloop)
+        omi_nwav_rad     (       ix,iloop) = icnt
+      END DO
 
-        IF ( locerrstat /= omi_s_success ) omi_radiance_errstat(iloop) = pge_errstat_error
-
-        DO ix = 1, nxtrack
-          imin = rad_ccdpix_selection(ix,1)
-          imax = rad_ccdpix_selection(ix,4)
-          icnt = imax - imin + 1
-          omi_radiance_wavl(1:icnt,ix,iloop) = REAL ( tmp_wvl(imin:imax,ix), KIND=r8 )
-          omi_radiance_spec(1:icnt,ix,iloop) = REAL ( tmp_spc(imin:imax,ix), KIND=r8 )
-          omi_radiance_prec(1:icnt,ix,iloop) = REAL ( tmp_prc(imin:imax,ix), KIND=r8 )
-          omi_radiance_qflg(1:icnt,ix,iloop) =        tmp_flg(imin:imax,ix)
-          omi_nwav_rad     (       ix,iloop) = icnt
-        END DO
-
-      END IF
-
-    END DO lineloop
-
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerrstat = L1Br_close ( omi_data_block )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_warning, OMSAO_W_CLOS_L1B_FILE, &
-                      modulename//f_sep//"L1Br_close failed.", vb_lev_omidebug, errstat )
-
-    ! --------------------------------------------
-    ! Return if we don't have and error free lines
-    ! --------------------------------------------
-    ! (isn't this a bit pointless at this location in the subroutine? tpk note to himself)
-    ! ------------------------------------------------------------------------------------
-    IF ( ALL ( omi_radiance_errstat(0:nloop-1) /= pge_errstat_ok ) ) RETURN
-
+    END DO
     RETURN
+
   END SUBROUTINE omi_read_radiance_lines
 
   SUBROUTINE omi_read_glint_ice_flags ( l1bfile, nx, nt, snow_ice_flg, glint_flg, errstat )
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: i2_missval
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname
-    USE OMSAO_errstat_module
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
+    use l1bread
 
     IMPLICIT NONE
 
@@ -490,28 +299,19 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4)               :: locerrstat, iline
-    INTEGER (KIND=i2), DIMENSION (nx) :: geoflg, land_water_flg
+    INTEGER   (KIND=i4)               :: iline
+    INTEGER (KIND=i2), DIMENSION (nx,0:nt-1) :: geoflg
+    INTEGER (KIND=i2), DIMENSION (nx) :: land_water_flg
+    type (L1B_Object_Type) :: l1bobj
 
-    TYPE (L1B_block_type)  :: omi_data_block
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_lines'
-
-    locerrstat = pge_errstat_ok
-
-    ! -----------------------------------------------------------
-    ! Open data block called 'omi_data_block' with default size of 100 lines
-    ! -----------------------------------------------------------
-    locerrstat = L1Br_open ( omi_data_block, l1bfile, omi_radiance_swathname, nL=nt )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_F_OPEN_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
+    ! let errstat flow
+    call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
+    call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
+    call l1bread_close (l1bobj)
+    if (errstat < 0) return
 
     ! ---------------------------------------------
-    ! Read geo flag and convert to snow/glint flags
+    ! convert to snow/glint flags
     ! ------------------------------------------------------------------------
     ! NOTE: GLINT_FLG and SNOW_ICE_FLG are defined on the whole swath because
     !       they are being used in the AMF computation routine. Hence we need
@@ -519,30 +319,15 @@ CONTAINS
     ! ------------------------------------------------------------------------
     DO iline = 0, nt-1
 
-      geoflg = i2_missval
-
-      locerrstat = L1Br_getGEOline (                                      &
-        omi_data_block, iline, GroundPixelQualityFlags_k = geoflg(1:nx) )
-      CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_READ_L1B_FILE, &
-                        modulename//f_sep//"L1Br_getGEOline failed.", vb_lev_default, errstat )
-
       CALL convert_gpqualflag_info (   &
         nx,                         &
-        geoflg        (1:nx),       &
+        geoflg        (1:nx, iline),       &
         land_water_flg(1:nx),       &
         glint_flg     (1:nx,iline), &
         snow_ice_flg  (1:nx,iline)    )
 
     END DO
 
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerrstat = L1Br_close ( omi_data_block )
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_warning, OMSAO_W_CLOS_L1B_FILE, &
-                      modulename//f_sep//"L1Br_close failed.", vb_lev_omidebug, errstat )
-
-    RETURN
   END SUBROUTINE omi_read_glint_ice_flags
 
   SUBROUTINE convert_gpqualflag_info ( &
@@ -744,11 +529,6 @@ CONTAINS
     ! Name of this module/subroutine
     ! ------------------------------
     !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_xtract_swathname'
-
-    ! ------------------
-    ! External Functions
-    ! ------------------
-    INTEGER (KIND=i4) :: swinqswath
 
     ! --------------------------
     ! Initialize OUTPUT variable

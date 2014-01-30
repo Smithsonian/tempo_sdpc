@@ -28,6 +28,7 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
   USE he5_output_tools, ONLY: he5_write_radfit_output
+  use errormodule
 
   IMPLICIT NONE
 
@@ -51,8 +52,6 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
   INTEGER (KIND=i4) :: nx, nt, nccd
-  ! CCM for looping
-  INTEGER (KIND=i4) :: i,j,k
 
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
@@ -64,7 +63,7 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   ! CCM Array to hold (1) Fitted Spec (2) Observed Spec (3) Spec Pos (4) Weight flags
   ! ---------------------------------------------------------------------------------
   REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4) :: fitspc_tmp
-  REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4,0:rpt_rr%ntimes-1) :: omi_fitspc
+  REAL (KIND=r8), DIMENSION (:,:,:,:), allocatable :: omi_fitspc
 
   ! -------------------------------------
   ! Correlations with main output product
@@ -80,6 +79,8 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1), INTENT(INOUT) :: &
     mem_latitude, mem_longitude, mem_sza, mem_vza, mem_height
   INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1), INTENT(INOUT) :: mem_fit_flag, mem_xtrflg
+
+  if (errstat < 0) return
 
   locerrstat = pge_errstat_ok
 
@@ -113,6 +114,16 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
     target_fit = 0.0_r8
     target_col = 0.0_r8
   END IF
+
+  if (.not.yn_commit) then
+    allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
+    if (locerrstat /= 0) then
+      errstat = -1
+      call err_message_error ("omi_pge_swathline_loops_mem: allocate failed", &
+                              errstat)
+      return
+    endif
+  endif
 
   ! ---------------------------------------------------------------------
   ! Loop over all scan lines, in multiples of NLINES_MAX (100 by default)
@@ -210,13 +221,16 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
         IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(addmsg)
 
         ! CCM Add omi_fitspc - Assignment problem - do an inefficient loop for now
-        DO i=1,n_rad_wvl
-          DO j=1,nxtrack_max
-            DO k=1,4
-              omi_fitspc(i,j,k,iloop) = fitspc_tmp(i,j,k)
-            ENDDO
-          ENDDO
-        ENDDO
+        !DO i=1,n_rad_wvl
+        !  DO j=1,nxtrack_max
+        !    DO k=1,4
+        !      omi_fitspc(i,j,k,iloop) = fitspc_tmp(i,j,k)
+        !    ENDDO
+        !  ENDDO
+        !ENDDO
+
+        if (.not.yn_commit) &
+          omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp (1:n_rad_wvl,:,:)
 
         ! ---------------------------------------------------------------
         ! Add fitted columns for possible removal from radiance reference
@@ -273,7 +287,7 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
         all_fitted_columns (1:n_fitvar_rad,1:nx,0:nblock-1), &
         all_fitted_errors  (1:n_fitvar_rad,1:nx,0:nblock-1), &
         correlation_columns(1:n_fitvar_rad,1:nx,0:nblock-1), &
-        omi_fitspc,nt,locerrstat )
+        omi_fitspc,locerrstat )
       errstat = MAX ( errstat, locerrstat )
 
     END IF

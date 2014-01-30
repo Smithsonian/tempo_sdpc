@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-void unbufferstdout_()
+void unbufferstdout_(void)
 {
-   /* atexit (abort); */
+   if (getenv ("OMIABORT") != NULL)
+     atexit (abort);
    setbuf(stdout,NULL);
 }

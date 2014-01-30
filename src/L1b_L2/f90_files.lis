@@ -12,7 +12,7 @@ gauss.f90
 hdfeos4_parameters.f90
 he5_output_tools.f90
 integration_routines.f90
-L1B_Reader_class.f90
+# L1B_Reader_class.f90
 metadata_tools.f90
 omi_pge_fitting_aux.f90
 omi_pge_fitting_process.f90
@@ -62,4 +62,4 @@ datafields.f90
 # addr_module.f90
 irradiance_data.f90
 errormodule.f90
-
+l1bread.f90

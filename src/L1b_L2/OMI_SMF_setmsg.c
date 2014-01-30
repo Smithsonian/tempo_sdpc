@@ -111,7 +111,14 @@ OMI_SMF_setmsg( PGSt_SMF_code  mnemonicstring,
                                            message string */
   char pval[PGSd_PC_VALUE_LENGTH_MAX];  /* used as buffer to get params
                                            from pcf */
-
+#if 0
+   (void) fprintf (stdout, "\
+OMI_SMF_setmsg: code=%ld, infostring=%s, function=%s, sev=%ld\n",
+		   (long) mnemonicstring, infostring, functionstring,
+		   (long) severity_code);
+   (void) fflush (stdout);
+   return PGS_S_SUCCESS;
+#endif
   /* Scode_threshold is not set, i.e., Scode_threshold = -1,
      need to read the Scode_threshold value from PCF */
   if( Scode_threshold == -1 )
@@ -135,23 +142,29 @@ OMI_SMF_setmsg( PGSt_SMF_code  mnemonicstring,
   local = (struct tm *) localtime( &t );
 
   /* Get message from seed file based on error mnemonic */
-  ret = PGS_SMF_GetMsgByCode( mnemonicstring, message );
-  if( ret != PGS_S_SUCCESS )
-     exit(1);
+   ret = PGS_SMF_GetMsgByCode( mnemonicstring, message );
+   if ( ret != PGS_S_SUCCESS )
+     {
+	(void) fprintf (stderr, "PGS_SMF_GetMsgByCode failed for %ld\n",
+			(long)mnemonicstring);
+	exit(1);
+     }
 
   /* Concatenate timestamp, and user massage with buffer message */
   sprintf( buf, "%s %s. %s", asctime(local), message, infostring );
 
   /* Write message to LogStatus */
   ret = PGS_SMF_SetDynamicMsg( mnemonicstring, buf, functionstring );
-  if( ret != PGS_S_SUCCESS )
-     exit(1);
+  if ((ret != PGS_S_SUCCESS)
+      /* Test for fatal error */
+      || (PGS_SMF_TestFatalLevel( mnemonicstring ) == PGS_TRUE))
+     {
+	fprintf (stderr, "Unable to set message string for code %ld: %s\n",
+		 (long)mnemonicstring, buf);
+	exit(1);
+     }
 
-  /* Test for fatal error */
-  if( PGS_SMF_TestFatalLevel( mnemonicstring ) == PGS_TRUE )
-     exit(1);
-  else
-     return 0;
+   return 0;
 }
 
 /* FORTRAN bindings */

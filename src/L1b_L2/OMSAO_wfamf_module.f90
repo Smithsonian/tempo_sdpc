@@ -276,6 +276,10 @@ CONTAINS
                            l2cfr, l2ctp, &
                            amfdiag  )
 
+      WHERE ((saocol <= r8_missval).or.(saodco<=r8_missval))
+        amfdiag = i2_missval
+      END WHERE
+
       ! --------------------------------------------------------
       ! Compute Scattering weights in the look up table grid but
       ! with the correct albedo. amfdiag is used to skip pixel

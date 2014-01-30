@@ -66,6 +66,9 @@ module hdfeos4_parameters
   integer   swrdattr
   external  swrdattr
 
+  integer swinqswath
+  external swinqswath
+
   integer HDFE_NOMERGE
   parameter (HDFE_NOMERGE=0)
   integer HDFE_AUTOMERGE

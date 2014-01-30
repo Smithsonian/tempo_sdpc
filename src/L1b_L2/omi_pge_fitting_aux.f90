@@ -1,4 +1,14 @@
 MODULE omi_pge_fitting_aux
+
+  use errormodule
+  private
+  public compute_common_mode, find_swathrange_by_latitude, read_latitude, &
+    find_swathline_by_latitude, check_wavelength_overlap, convert_tai_to_utc, &
+    find_swathline_range, finalize_common_mode, &
+    compute_fitting_statistics, compute_fitting_statistics_nohe5, &
+    omi_adjust_irradiance_data, omi_set_xtrpix_range, &
+    omi_set_fitting_parameters, set_input_pointer_and_versions
+
 CONTAINS
   SUBROUTINE omi_set_fitting_parameters ( pge_idx, errstat )
 
@@ -1740,70 +1750,39 @@ CONTAINS
     RETURN
   END SUBROUTINE find_swathrange_by_latitude
 
-  SUBROUTINE read_latitude (l1bfile, l1bswath, nt, nx, latr4 )
+  ! read_latitude reads all cross track latitudes for ntimes steps from tstart
+  SUBROUTINE read_latitude (l1bfile, l1bswath, tstart, ntimes, latr4, errstat )
 
-    USE OMSAO_parameters_module, ONLY: NLINES_MAX
     USE OMSAO_precision_module, ONLY: i4, r4
-    USE OMSAO_errstat_module
-    USE L1B_Reader_class, ONLY: L1B_block_type, L1Br_open, L1Br_getGEOline, &
-      L1Br_close
+    use l1bread, only: l1bread_open_swath, l1bread_close, L1B_Object_Type, &
+      l1bread_get2d_r4
 
-    IMPLICIT NONE
-
-    ! --------------------------------------------------------------------------
-    ! This subroutine returns a swath line number from an OMI swath
-    ! based on a given latitude. Subroutine arguments:
-    !
-    ! l1bfile .......... Level 1b file name
-    ! l1bswath ......... Level 1b swath name
-    ! nx ............... Number of cross-track entries in OMI swath
-    ! nt ............... Number of swath lines
-    ! latr4 ............ Latitude array to return
-    ! --------------------------------------------------------------------------
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
+    implicit none
     CHARACTER (LEN=*),     INTENT (IN) :: l1bfile, l1bswath
-    INTEGER (KIND=i4),     INTENT (IN) :: nt, nx
+    INTEGER (KIND=i4),     INTENT (IN) :: tstart, ntimes
+    integer, intent(inout) :: errstat
+    REAL    (KIND=r4), DIMENSION(:,:), INTENT (out) :: latr4
 
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL    (KIND=r4), DIMENSION(nx,0:nt-1), INTENT (out) :: latr4
+    type (L1B_Object_Type) :: l1bobj
 
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    TYPE (L1B_block_type)               :: omi_data_block
-    INTEGER (KIND=i4)                   :: locerr, iblock, iloop, iline, nloop
+    if (errstat < 0) return
 
-    ! ----------------------------------------------------------------------
-    ! Open data block called 'omi_data_block' with default size of 100 lines
-    ! ----------------------------------------------------------------------
-    locerr = L1Br_open ( omi_data_block, l1bfile, l1bswath, nL=nlines_max )
+    call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
+    if (errstat < 0) return
 
-    DO iblock = 0, nt-1, nlines_max
-      ! --------------------------------------------------------
-      ! Check if loop ends before n_times_loop max is exhausted.
-      ! --------------------------------------------------------
-      nloop = nlines_max
-      IF ( (iblock+nloop) > nt ) nloop = nt - iblock
-      IF ( nloop          > nt ) nloop = nt
+    if (size(latr4, 1) /= l1bobj%num_xtrack) then
+      call err_message_error ("read_latitude: nxtrack dimension is not correct", errstat)
+      call l1bread_close (l1bobj)
+      return
+    endif
 
-      DO iloop = 0, nloop-1
-        iline = iblock+iloop
-        locerr = L1Br_getGEOline ( omi_data_block, iline, Latitude_k=latr4(1:nx,iline) )
-      END DO
-    END DO
+    call l1bread_get2d_r4 (l1bobj, "latitude", tstart, ntimes, latr4, errstat)
 
-    ! --------------------------
-    ! Close data block structure
-    ! --------------------------
-    locerr = L1Br_close ( omi_data_block )
+    call l1bread_close (l1bobj)
 
-    RETURN
-  END SUBROUTINE read_latitude
+    return
+
+  end subroutine read_latitude
 
   SUBROUTINE compute_fitting_statistics_nohe5 ( &
       pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, &

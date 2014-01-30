@@ -91,7 +91,7 @@ CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
 F90SOURCES = $(shell grep -v '\#' f90_files.lis)
-CSOURCES   = $(shell cat c_files.lis)
+CSOURCES   = $(shell grep -v '\#' c_files.lis)
 LINKOBJS   = $(addprefix $(objdir)/,$(F90SOURCES:.f90=.o) $(CSOURCES:.c=.o))
 # F90SOURCES = @F90SOURCES@
 # CSOURCES   = @CSOURCES@
@@ -116,6 +116,8 @@ install:
 clean:
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod
 
+tags:
+	ctags $(F90SOURCES) $(CSOURCES)
 #-----------------------------------------------------------------
 # The hdf.f90 file contains numerous non-conforming tabs.
 # It's unlikely anyone will ever fix that in the HDF distribution,
@@ -167,3 +169,4 @@ ODIR = $(objdir)
 SDIR = $(srcdir)
 -include rules.inc
 
+.PHONY: tags

@@ -1,4 +1,9 @@
 MODULE omi_pge_fitting_process
+
+  use errormodule
+  private
+  public omi_pge_fitting
+
 CONTAINS
 SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
 
@@ -6,10 +11,11 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal
   USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
-    yn_radiance_reference, l1b_radref_filename
-  USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname
+    yn_radiance_reference, l1b_radref_filename, l1b_channel
+  USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
-  USE omi_read_l1b_data, ONLY: omi_read_radiance_paras
+  USE omi_read_l1b_data, ONLY: L1Bga_EarthSunDistance
+  use l1bread, only: l1bread_radiance_info
   USE OMSAO_errstat_module
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
   IMPLICIT NONE
@@ -49,7 +55,10 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   ! Get dimensions the L1B radiance granule
   ! -----------------------------------------------------------------------------------
   errstat = pge_errstat_ok
-  CALL omi_read_radiance_paras (l1b_rad_filename, rpt_rad, errstat)
+  CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+  if (errstat < 0) goto 666
+
+  EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
   omi_radiance_swathname = rpt_rad%swathname
 
   NrofScanLines        = rpt_rad%ntimes
@@ -66,7 +75,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
     rpt_rr%nwavel_ccd = rpt_rad%nwavel_ccd
     rpt_rr%swathname = rpt_rad%swathname
   ELSE
-    CALL omi_read_radiance_paras (l1b_radref_filename, rpt_rr, errstat)
+    CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
+    if (errstat < 0) goto 666
   ENDIF
 
   ! ----------------------------------------------------------------
@@ -105,7 +115,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
 END SUBROUTINE omi_pge_fitting
 
 SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
-                        n_max_rspec, pge_error_status)
+                        n_max_rspec, errstat)
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN
@@ -155,13 +165,13 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------
   ! Output variable
   ! ---------------
-  INTEGER (KIND=i4), INTENT (INOUT) :: pge_error_status
+  INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
   ! -------------------------
   ! Local variables (for now)
   ! -------------------------
   INTEGER   (KIND=i4) ::                                                 &
-    iline, first_line, last_line, errstat, first_wc_pix, last_wc_pix, &
+    iline, first_line, last_line, locerrstat, first_wc_pix, last_wc_pix, &
     first_pix, last_pix
   INTEGER (kind=i4) :: ntimes_rad, nxtrack_rad, nwavel_rad
   INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr
@@ -187,7 +197,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------------------------
   ! OMI L1b latitudes
   ! ----------------------------------------------------------
-  REAL (KIND=r4), DIMENSION (1:rpt_rad%nxtrack, 0:rpt_rad%ntimes-1) :: l1b_latitudes
+  REAL (KIND=r4), DIMENSION (:,:), allocatable :: l1b_rad_latitudes
 
   ! ------------------------------
   ! Name of this module/subroutine
@@ -202,6 +212,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !  he5_set_field_attributes, he5_write_global_attributes,    &
   !  he5_write_swath_attributes, he5_open_readwrite
 
+  if (errstat < 0) return
+
   ntimes_rad = rpt_rad%ntimes
   nxtrack_rad = rpt_rad%nxtrack
   nwavel_rad = rpt_rad%nwavel_ccd
@@ -215,8 +227,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! a proper set-up of those variables failes or is bypassed.
   ! ---------------------------------------------------------------
   first_pix = 1 ; last_pix = 1
-
-  errstat = pge_errstat_ok
 
   ! --------------------------------
   ! Name of the main output molecule
@@ -235,12 +245,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   CALL omi_read_binning_factor ( &
     TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
     ntimes_rad, omi_binfac, omi_yn_szoom, errstat )
+  if (errstat < 0) return
+
   CALL omi_set_xtrpix_range ( &
     ntimes_rad, nxtrack_rad, pixnum_lim(3:4),                         &
     omi_binfac, omi_xtrpix_range, &
     first_wc_pix, last_wc_pix, errstat )
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+
+  if (errstat < 0) return
 
   ! --------------------------------------------------------------------
   ! If the radiance reference is obtained from the same L1b file, we can
@@ -257,8 +269,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       ntimes_rr, nxtrack_rad, pixnum_lim(3:4),                                 &
       omi_binfac_rr, omi_xtrpix_range_rr, &
       first_wc_pix, last_wc_pix, errstat )
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+    if (errstat < 0) return
   ELSE
     omi_binfac_rr      (0:ntimes_rad-1)     = omi_binfac      (0:ntimes_rad-1)
     omi_yn_szoom_rr    (0:ntimes_rad-1)     = omi_yn_szoom    (0:ntimes_rad-1)
@@ -266,16 +277,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   END IF
 
   call irradiance_data_init (rpt_rad, errstat);
-  if (errstat < 0) &
-    goto 666
+  if (errstat < 0) return
+
   ! ---------------------------------------------------------------
   ! Solar wavelength calibration, done even when we use a composite
   ! solar spectrum to avoid un-initialized variables. However, no
   ! actual fitting is performed in the latter case.
   ! ---------------------------------------------------------------
   CALL xtrack_solar_calibration_loop ( first_wc_pix, last_wc_pix, errstat )
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+  if (errstat < 0) return
 
   ! ---------------------------------------------------------------
   ! No matter what, we need a swath line for radiance wavelength
@@ -297,9 +307,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   CALL omi_get_radiance_reference (rpt_rr, &
                                    omi_xtrpix_range_rr, &
                                    radiance_wavcal_lnums, errstat)
-
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+  if (errstat < 0) return
 
   ! ---------------------------------------------------------------
   ! The Climatology is going to be read here and kept in memory. If
@@ -315,11 +323,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------
   ! Initialization of HE5 output data fields
   ! ----------------------------------------
+
+  ! FIXME: error handling needs worked here
   errstat = HE5_Init_Swath ( l2_filename, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
+  if (errstat < 0) return
+
   CALL he5_initialize_datafields ( )
   errstat = HE5_Define_Fields ( pge_idx, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+  if (errstat < 0) return
 
   ! -----------------------------------------------------------------------------------
   ! If we are NOT using a radiance reference, then we need to read the
@@ -335,8 +346,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     CALL omi_read_radiance_lines (&
       l1b_rad_filename, iline, nxtrack_rad, ntimes_loop, &
       nwavel_rad, errstat )
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+    if (errstat < 0) return
   END IF
 
   ! -----------------------------------------------------
@@ -345,8 +355,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (                          &
     first_wc_pix, last_wc_pix, n_max_rspec, n_comm_wvl, errstat )
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+  if (errstat < 0) return
 
   ! --------------------------------------------------------------
   ! Terminate on not having any cross-track pixels left to process
@@ -354,7 +363,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   IF ( ALL ( omi_cross_track_skippix ) ) THEN
     CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_NOPIXEL, &
       modulename, vb_lev_default, errstat )
-    GO TO 666
+    GO TO 400
   END IF
 
   if (.not.yn_radiance_reference) then
@@ -380,7 +389,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
     CALL xtrack_radiance_reference_loop (                                   &
       yn_radiance_reference, yn_remove_target,                           &
-      nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, pge_error_status )
+      nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
+    if (errstat < 0) return
 
     ! -------------------------------------------------------------
     ! Write the output from solar/earthshine wavelength calibration
@@ -407,9 +417,18 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! read, particularly since the current algorithm settings would
   ! require it anyway.
   ! -----------------------------------------------------------------
+
+  allocate (l1b_rad_latitudes (1:nxtrack_rad, 0:ntimes_rad-1), stat=locerrstat)
+  if (locerrstat /= 0) then
+    call err_message_error (modulename // ": allocate failed", errstat)
+    return
+  endif
+
   CALL read_latitude ( &
     TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-    ntimes_rad, nxtrack_rad, l1b_latitudes)
+    0, ntimes_rad, l1b_rad_latitudes, errstat)
+
+  if (errstat < 0) return
 
   ! -----------------------------------------------------------------
   ! Now we enter the on-line computation of the common mode spectrum.
@@ -423,7 +442,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     yn_common_range = .FALSE.
     CALL find_swathline_range ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-      ntimes_rad, nxtrack_rad, l1b_latitudes,       &
+      ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
       common_latrange(1:2), yn_common_range, errstat             )
 
     ! -------------------------------------------------------------
@@ -456,7 +475,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       yn_common_range, &
       omi_xtrpix_range, &
       yn_radiance_reference, .FALSE., -1, &
-      yn_common_iter, pge_error_status )
+      .TRUE., errstat )
+
+    if (errstat < 0) return
 
     ! -----------------------------------------------------------------
     ! Reset first and last swath line number to non-common mode values.
@@ -473,8 +494,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! -------------------------------------------
     ! Write the just computed common mode to file
     ! -------------------------------------------
-    IF ( yn_diagnostic_run ) &
-      CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, pge_error_status )
+    IF ( yn_diagnostic_run ) then
+      CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, errstat )
+      if (errstat < 0) return
+    endif
 
   END IF
 
@@ -501,8 +524,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! -------------------------------------------------
     IF (.NOT. yn_radiance_reference ) THEN
       CALL read_prefit_columns ( pge_idx, nxtrack_rad, ntimes_loop, iline, errstat )
-      pge_error_status = MAX ( pge_error_status, errstat )
-      IF ( errstat >= pge_errstat_error ) GO TO 666
+      if (errstat < 0) return
     END IF
 
     ! ------------------------------
@@ -510,8 +532,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------
     CALL omi_read_radiance_lines ( &
       l1b_rad_filename, iline, nxtrack_rad, ntimes_loop, nwavel_rad, errstat )
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+    if (errstat < 0) return
 
     ! -----------------------------------------------
     ! Radiance Reference Fit (or WavCal Radiance Fit)
@@ -538,8 +559,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -------------------------------------------------------------------
   IF ( .NOT. (yn_radiance_reference .AND. yn_remove_target) ) THEN
     CALL he5_write_wavcal_output ( nxtrack_rr, first_pix, last_pix, errstat )
-    pge_error_status = MAX ( pge_error_status, errstat )
-    IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+    if (errstat < 0) return
   END IF
 
   ! ----------------------------------------------------------
@@ -564,7 +584,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       radfit_latrange(2) < +90.0_r4           ) THEN
       CALL find_swathline_range ( &
         TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-        ntimes_rad, nxtrack_rad, l1b_latitudes,       &
+        ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
         radfit_latrange(1:2), yn_radfit_range, errstat             )
     ELSE
       yn_radfit_range = .TRUE.
@@ -575,6 +595,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     yn_radfit_range = .TRUE.
   END IF
 
+  deallocate (l1b_rad_latitudes)
+
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
@@ -583,16 +605,13 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     yn_radfit_range,                           &
     omi_xtrpix_range,                      &
     yn_radiance_reference, .FALSE., -1,                       &
-    .FALSE., pge_error_status )
+    .FALSE., errstat)
+  if (errstat < 0) return
 
-  ! -------------------------------------------------------------
-  ! Here is the place to jump to in case some error has occurred.
-  ! Naturally, we also reach here when everything executed as it
-  ! was supposed to, but that doesn't matter, since we are not
-  ! taking any particular action at this point.
-  ! -------------------------------------------------------------
- 666 CONTINUE
-  IF ( pge_error_status >= pge_errstat_fatal ) RETURN
+  ! FIXME: Instead of jumping here, the following should be put
+  ! into a separate function, and that function called here and
+  ! where the goto happended.  --JED
+ 400 CONTINUE
 
   ! ----------------------------------------------
   ! This subroutine completes the following tasks:
@@ -608,41 +627,58 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------
   ! Write some attributes
   ! ---------------------
-  errstat = pge_errstat_ok
   errstat = he5_write_global_attributes( )
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"HE5_WRITE_GLOBAL_ATTRIBUTES", vb_lev_default, pge_error_status )
+  if (errstat < 0) then
+    call err_message_error (modulename//f_sep// &
+                            "he5_write_global_attributes failed", &
+                            errstat)
+    return
+  endif
 
-  errstat = pge_errstat_ok
   errstat = he5_write_swath_attributes ( pge_idx )
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"HE5_WRITE_SWATH_ATTRIBUTES", vb_lev_default, pge_error_status )
+  if (errstat < 0) then
+    call err_message_error (modulename//f_sep// &
+                            "he5_write_swath_attributes failed", &
+                            errstat)
+    return
+  endif
 
-  errstat = pge_errstat_ok
   errstat = he5_set_field_attributes   ( pge_idx )
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"HE5_SET_FIELD_ATTRIBUTES", vb_lev_default, pge_error_status )
+  if (errstat < 0) then
+    call err_message_error (modulename//f_sep// &
+                            "he5_set_field_attributes failed", &
+                            errstat)
+    return
+  endif
   ! -----------------
   ! Close output file
   ! -----------------
-  errstat = pge_errstat_ok
   errstat = he5_close_output_file ( pge_idx)
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"HE5_CLOSE_OUTPUT_FILE", vb_lev_default, pge_error_status )
+  if (errstat < 0) then
+    call err_message_error (modulename//f_sep// &
+                            "he5_close_output_file failed", &
+                            errstat)
+    return
+  endif
 
   ! ----------------------------------------
   ! Get Metadata from MCF, PCF, and L1B file
   ! ----------------------------------------
-  errstat = pge_errstat_ok
   CALL check_metadata_consistency ( errstat )
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"CHECK_METADATA_CONSISTENCY.", vb_lev_default, pge_error_status )
-  errstat = pge_errstat_ok
-  CALL set_l2_metadata ( pge_idx, errstat )
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"SET_L2_METADATA.", vb_lev_default, pge_error_status )
+  if (errstat < 0) then
+      call err_message_error (modulename//f_sep// &
+                            "check_metadata_consistency failed", &
+                            errstat)
+      return
+  endif
 
-  RETURN
+  CALL set_l2_metadata ( pge_idx, errstat )
+  if (errstat < 0) then
+      call err_message_error (modulename//f_sep// &
+                            "set_l2_metadata failed", &
+                            errstat)
+      return
+  endif
 
 END SUBROUTINE omi_fitting
 

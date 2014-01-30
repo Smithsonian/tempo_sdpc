@@ -24,7 +24,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
-
+  use errormodule
   IMPLICIT NONE
 
   ! ---------------
@@ -62,8 +62,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
   !REAL (KIND=r8), DIMENSION (n_comm_wvl,nxtrack_max,4) :: fitspc_tmp
   !REAL (KIND=r8), DIMENSION (n_comm_wvl,nxtrack_max,4,0:nt-1) :: omi_fitspc
   REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4) :: fitspc_tmp
-  REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4,0:rpt%ntimes-1) &
-    :: omi_fitspc
+  REAL (KIND=r8), DIMENSION (:,:,:,:), allocatable :: omi_fitspc
 
   ! -------------------------------------
   ! Correlations with main output product
@@ -72,6 +71,8 @@ SUBROUTINE omi_pge_swathline_loops ( &
     all_fitted_columns, all_fitted_errors, correlation_columns
 
   INTEGER (KIND=i4) nt, nx, nccd
+
+  if (errstat < 0) return
 
   locerrstat = pge_errstat_ok
   nt = rpt%ntimes
@@ -95,10 +96,22 @@ SUBROUTINE omi_pge_swathline_loops ( &
     target_col = 0.0_r8
   END IF
 
+  if (.not.yn_commit) then
+    allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
+    if (locerrstat /= 0) then
+      errstat = -1
+      call err_message_error ("omi_pge_swathline_loops_mem: allocate failed", &
+                              errstat)
+      return
+    endif
+  endif
+
   ! ---------------------------------------------------------------------
   ! Loop over all scan lines, in multiples of NLINES_MAX (100 by default)
   ! ---------------------------------------------------------------------
   ScanLines: DO iline = 0, nt-1, nlines_max
+
+    !IF (.NOT.yn_process(iline)) cycle
 
     ! ---------------------------------------------------------
     ! Check if loop ends before n_times_loop max is exhausted.
@@ -106,6 +119,11 @@ SUBROUTINE omi_pge_swathline_loops ( &
     ! ---------------------------------------------------------
     nblock = nlines_max
     IF ( (iline+nblock) > nt ) nblock = nt - iline
+    ! -----------------------------------------
+    ! Skip if we don't have anything to process
+    ! -----------------------------------------
+    IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
+
     ! ------------------------------
     ! Get NBLOCK radiance lines
     ! ------------------------------
@@ -126,7 +144,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
     ! -----------------------------------------
     ! Skip if we don't have anything to process
     ! -----------------------------------------
-    IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
+    !IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
 
     ! --------------------------------
     ! Read pre-fitted molecule columns
@@ -203,7 +221,8 @@ SUBROUTINE omi_pge_swathline_loops ( &
         !    ENDDO
         !  ENDDO
         !ENDDO
-        omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp(1:n_rad_wvl,:,:)
+        if (.not.yn_commit) &
+          omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp(1:n_rad_wvl,:,:)
 
         ! ---------------------------------------------------------------
         ! Add fitted columns for possible removal from radiance reference
@@ -246,7 +265,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
         all_fitted_columns (1:n_fitvar_rad,1:nx,0:nblock-1), &
         all_fitted_errors  (1:n_fitvar_rad,1:nx,0:nblock-1), &
         correlation_columns(1:n_fitvar_rad,1:nx,0:nblock-1), &
-        omi_fitspc,nt,locerrstat )
+        omi_fitspc,locerrstat )
       errstat = MAX ( errstat, locerrstat )
 
     END IF

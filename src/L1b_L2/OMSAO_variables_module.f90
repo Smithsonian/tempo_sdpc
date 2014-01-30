@@ -315,6 +315,7 @@ MODULE OMSAO_variables_module
     character (len=MAX_STR_LEN) :: l1bfilename
     integer (kind=i4)        :: ntimes, nxtrack, nwavel_ccd
     character (len=MAX_STR_LEN) :: swathname
+    character (len=MAX_STR_LEN) :: l1bchannel
   END TYPE Radiance_Paras_Type
 
   ! --------------------------------

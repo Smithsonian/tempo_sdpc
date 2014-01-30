@@ -108,7 +108,9 @@ CONTAINS
     endif
 
     CALL read_latitude (rpt_rr%l1bfilename, rpt_rr%swathname, &
-                        ntrr, nxrr, latr4)
+                        0, ntrr, latr4, errstat)
+    if (errstat < 0) &
+      return
 
     ! ----------------------------------------------------------------------
     ! Locate the swath line numbers corresponding the center of the latitude

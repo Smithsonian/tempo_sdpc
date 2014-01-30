@@ -39,9 +39,10 @@ CONTAINS
       saocol, saodco, saoamf, saomqf, pge_idx, n_max_rspec, &
       errstat)
 
-    USE omi_read_l1b_data, ONLY: omi_read_radiance_paras
+    USE l1bread, only: l1bread_radiance_info
     USE OMSAO_precision_module, ONLY: i4
-    USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, l1b_radref_filename
+    USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, &
+      l1b_radref_filename, l1b_channel
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
     USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
@@ -99,7 +100,10 @@ CONTAINS
     ! ---------------------------------------------------
     ! Obtain dimensions of the Radiance Reference granule
     ! ---------------------------------------------------
-    CALL omi_read_radiance_paras (l1b_radref_filename, rpt_rr, errstat)
+    CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, &
+                                rpt_rr, errstat)
+    if (errstat < 0) return
+
     nTimesRadRR  = rpt_rr%ntimes
     nXtrackRadRR = rpt_rr%nxtrack
     nWvlCCDrr    = rpt_rr%nwavel_ccd
@@ -293,12 +297,13 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: errstat, pge_idx, n_max_rspec
+    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, n_max_rspec
     TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt_rr
 
     ! Output Variables
     REAL (KIND=r8), DIMENSION (1:rpt_rr%nxtrack, 0:rpt_rr%ntimes-1), &
       INTENT(OUT) :: mem_correction
+    integer, intent(inout) :: errstat
 
     ! ---------------
     ! Local variables
@@ -378,7 +383,10 @@ CONTAINS
     ! ---------------------------------
     CALL read_latitude ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-      nTimesRadRR, nXtrackRadRR, mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1) )
+      0, nTimesRadRR, mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
+      errstat)
+    if (errstat < 0) &
+      return
 
     ! --------------------------------------------------
     ! Compute the common mode for the Radiance Reference

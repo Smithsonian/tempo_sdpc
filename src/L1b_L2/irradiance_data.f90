@@ -49,7 +49,7 @@ contains
     else if (yn_solmonthave) then
       call omi_read_monthly_average_irradiance (errstat)
     else
-      call omi_read_irradiance_data (errstat)
+      call read_irradiance_data (errstat)
     end if
 
   end subroutine irradiance_data_init
@@ -194,74 +194,35 @@ contains
 
   ! =========================================================================
 
-  SUBROUTINE omi_read_irradiance_data (errstat)
+  SUBROUTINE read_irradiance_data (errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: &
       l1b_irrad_filename, l1b_channel
-    !USE OMSAO_omidata_module,    ONLY: &
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
-    USE OMSAO_errstat_module
     USE sao_pge_utils, ONLY: array_locate_r4
 
-    IMPLICIT NONE
+    use l1bread
 
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    TYPE      (L1B_block_type)   :: omi_data_block
-    INTEGER   (KIND=i4)          :: &
-      nwl, nwavel, nxtrack, &
-      locerrstat, ix
-
+    implicit none
+    integer (kind=i4), intent (inout) :: errstat
+    !
+    integer :: locerrstat
+    integer (kind=i4) :: nwavel, ix, nxtrack
     real (kind=r4), dimension(:,:), allocatable :: &
       tmp_wavelengths, tmp_spectrum
     real (kind=r8), dimension(:,:), allocatable :: &
       wavelengths, spectrum
     integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
-    character (len=32) :: swathname
+    character (len=64) :: swathname
+    type (L1B_Object_Type) :: l1bobj
 
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    CHARACTER (LEN=24), PARAMETER :: modulename = 'omi_read_irradiance_data'
+    ! Allow errstat to flow
+    call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
+    call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
+    if (errstat < 0) return
 
-    locerrstat = pge_errstat_ok
-
-    SELECT CASE ( l1b_channel )
-    CASE ( 'UV1' )
-      swathname = 'Sun Volume UV-1 Swath'
-    CASE ( 'UV2' )
-      swathname = 'Sun Volume UV-2 Swath'
-    CASE ( 'VIS' )
-      swathname = 'Sun Volume VIS Swath'
-    case default
-      swathname = "Unsupported l1b_channel"
-    END SELECT
-
-    ! ------------------------------------------------------
-    ! Open data block structure with default size of 1 lines
-    ! ------------------------------------------------------
-    locerrstat = L1Br_open ( &
-      omi_data_block, l1b_irrad_filename, trim(swathname))
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_open failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! ----------------------------------
-    ! Obtain irradiance swath dimensions
-    ! ----------------------------------
-    locerrstat = L1Br_getSWdims ( omi_data_block, &
-                                 nXtrack_k=nxtrack, nWavel_k=nwavel)
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_getSWdims failed.", vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
+    nwavel = l1bobj%num_wavelengths
+    nxtrack = l1bobj%num_xtrack
 
     allocate (tmp_wavelengths(nwavel, nxtrack), stat=locerrstat)
     if (locerrstat == 0) then
@@ -277,28 +238,15 @@ contains
       endif
     endif
     if (locerrstat /= 0) then
-      errstat = -1
-      call err_message_error ("omi_read_irradiance_data: allocate failed", errstat)
-      locerrstat = L1Br_close (omi_data_block)
-      return
+      call err_message_error ("read_irradiance_data: allocate failed", errstat)
     endif
+    ! Allow errstat to flow through
+    call l1bread_get2d_r4 (l1bobj, "Irradiance", 0, 1, tmp_spectrum, errstat)
+    call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
+    call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
 
-    ! -----------------------------------------------------------------
-    ! Read Irradiances from L1b file. Only limit the upper end of the
-    ! spectrum because we want to save the pixel numbers and hence need
-    ! the wavelengths from the first detector pixel on.
-    ! -----------------------------------------------------------------
-    locerrstat = L1Br_getSIGline ( &
-      omi_data_block, 0, &
-      Signal_k = tmp_spectrum, &
-      PixelQualityFlags_k = tmp_qflags, &
-      Wavelength_k = tmp_wavelengths, &
-      Nwl_k               = nwl                       )
-
-    CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                      modulename//f_sep//"L1Br_getSIGline failed.", vb_lev_default, errstat )
-    locerrstat = L1Br_close (omi_data_block)
-    IF ( errstat >= pge_errstat_error ) RETURN
+    call l1bread_close (l1bobj)
+    if (errstat < 0) return
 
     ! -------------------------------
     ! Reverse arrays for UV-1 channel.
@@ -306,9 +254,9 @@ contains
     ! -------------------------------
     IF ( l1b_channel == 'UV1' ) THEN
       DO ix = 1, nxtrack
-        tmp_wavelengths(nwl:1:-1, ix) = tmp_wavelengths(1:nwl,ix)
-        tmp_spectrum(nwl:1:-1, ix) = tmp_spectrum(1:nwl,ix)
-        tmp_qflags(nwl:1:-1, ix) = tmp_qflags(1:nwl,ix)
+        tmp_wavelengths(nwavel:1:-1, ix) = tmp_wavelengths(1:nwavel,ix)
+        tmp_spectrum(nwavel:1:-1, ix) = tmp_spectrum(1:nwavel,ix)
+        tmp_qflags(nwavel:1:-1, ix) = tmp_qflags(1:nwavel,ix)
       END DO
     END IF
 
@@ -317,11 +265,12 @@ contains
     deallocate (tmp_wavelengths)
     deallocate (tmp_spectrum)
 
-    call package_irradiance_data (nwl, nxtrack, &
+    call package_irradiance_data (nwavel, nxtrack, &
                                   wavelengths, spectrum, tmp_qflags, &
                                   errstat)
-    RETURN
-  END SUBROUTINE omi_read_irradiance_data
+
+    return
+  end subroutine read_irradiance_data
 
   ! ========================================================================
 
