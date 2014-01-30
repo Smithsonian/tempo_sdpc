@@ -15,17 +15,17 @@ contains
                                elsunc_ctrl, cov_matrix, dim1_cov_matrix)
     implicit none
     real (kind=r8), dimension(num_params), intent(inout) :: params
-    real (kind=r8), dimension(num_residuals), intent(out) :: residuals
+    real (kind=r8), dimension(num_residuals), intent(inout) :: residuals
     integer (kind=i4), intent(in) :: num_params, num_residuals
     integer (kind=i4), intent(inout) :: elsunc_ctrl
     integer (kind=i4), intent(in) :: dim1_cov_matrix
-    real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(out) :: cov_matrix
+    real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
 
     ! local variables
     integer (kind=i4) :: return_status
 
     ! elsunc interprets the following return values of ctrl:
-    integer (kind=i4), parameter :: UNCOMPUTABLE = 1
+    integer (kind=i4), parameter :: UNCOMPUTABLE = -1
     integer (kind=i4), parameter :: JACOBIAN_NOT_AVAILABLE = 0
 
     ! 'this_optimizer' is a global
