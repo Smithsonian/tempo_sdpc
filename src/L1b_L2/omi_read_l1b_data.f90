@@ -116,7 +116,7 @@ CONTAINS
       earth_radius_avg
     USE OMSAO_variables_module,  ONLY: zatmos
     USE OMSAO_omidata_module,  ONLY: &
-      omi_radiance_swathname, omi_radiance_spec, omi_radiance_prec,  &
+      omi_radiance_swathname, omi_radiance_spec,  &
       omi_radiance_wavl, omi_radiance_qflg, omi_height, omi_geoflg, omi_latitude,             &
       omi_longitude, omi_szenith, omi_sazimuth, omi_vzenith, omi_vazimuth,                    &
       omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, omi_radiance_errstat,                &
@@ -145,7 +145,7 @@ CONTAINS
     INTEGER   (KIND=i4)                           :: &
       iloop, imin, imax, ix, icnt
     REAL      (KIND=r4), DIMENSION (nxtrack)      :: tmp_sazm, tmp_vazm
-    REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc, tmp_prc
+    REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc
     INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
 
     type (L1B_Object_Type) :: l1bobj
@@ -168,7 +168,6 @@ CONTAINS
     call l1bread_get2d_i1 (l1bobj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
 
     call l1bread_get3d_r4 (l1bobj, "Radiance", iline, nloop, tmp_spc, errstat)
-    call l1bread_get3d_r4 (l1bobj, "RadiancePrecision", iline, nloop, tmp_prc, errstat)
     call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
     call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
 
@@ -266,7 +265,6 @@ CONTAINS
         icnt = imax - imin + 1
         omi_radiance_wavl(1:icnt,ix,iloop) = REAL ( tmp_wvl(imin:imax,ix, iloop), KIND=r8 )
         omi_radiance_spec(1:icnt,ix,iloop) = REAL ( tmp_spc(imin:imax,ix, iloop), KIND=r8 )
-        omi_radiance_prec(1:icnt,ix,iloop) = REAL ( tmp_prc(imin:imax,ix, iloop), KIND=r8 )
         omi_radiance_qflg(1:icnt,ix,iloop) =        tmp_flg(imin:imax,ix, iloop)
         omi_nwav_rad     (       ix,iloop) = icnt
       END DO

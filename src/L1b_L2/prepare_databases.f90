@@ -1,5 +1,7 @@
 MODULE prepare_databases
   use errormodule
+  private
+  public prep_databases
 CONTAINS
 
 SUBROUTINE prepare_solar_refspec ( &

@@ -56,7 +56,6 @@ MODULE OMSAO_omidata_module
   ! -----------------------
   ! Arrays for OMI L1b data
   ! -----------------------
-  INTEGER (KIND=i2)                                                    :: omi_mflg
   REAL    (KIND=r4), DIMENSION (0:nlines_max-1)                        :: omi_auraalt
   REAL    (KIND=r8), DIMENSION (0:nlines_max-1)                        :: omi_time
   INTEGER (KIND=i4), DIMENSION (0:nlines_max-1)                        :: omi_radiance_errstat
@@ -67,7 +66,6 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_szenith, omi_sazimuth
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_vzenith, omi_vazimuth
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
-  REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_prec
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_wavl
   INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_qflg
   INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_ccdpix
