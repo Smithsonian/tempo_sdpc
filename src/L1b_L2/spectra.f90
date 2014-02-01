@@ -1,6 +1,10 @@
 MODULE spectra
   use OMSAO_precision_module, only : i4, r8
 
+  use OMSAO_indices_module, only : max_rs_idx, n_max_fitpars
+  logical, dimension(n_max_fitpars) :: param_frozen_at_zero
+  logical, dimension(max_rs_idx) :: database_j_is_zero
+
   interface
     subroutine earthshine_spectrum_interface (npts, avg_wavl, wavelengths, spectrum, params, is_doas)
       import i4, r8
@@ -70,7 +74,6 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   REAL    (KIND=r8), DIMENSION (npts)           :: database_j, fit_final_add_on
   REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
   REAL    (KIND=r8), DIMENSION (max_spec_pts)   :: sunpos_ss, sunspec_loc, sunspec_save
-
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
@@ -234,6 +237,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
 
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx .AND. j /= ring_idx ) THEN
+        if (database_j_is_zero(j)) cycle
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
         fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
       END IF
@@ -245,12 +249,15 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
     fit_final_add_on(j1:j2) = 0.0_r8
     DO j = 1, max_rs_idx
       IF ( j.eq.solar_idx ) CYCLE
+      if (database_j_is_zero(j)) cycle
       database_j(j1:j2) = database(j, j1:j2)
       ! -----------------------------
       ! Initial add-on contributions.
       ! -----------------------------
       i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-      fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database_j(j1:j2)
+      if (.not. param_frozen_at_zero(i)) then
+        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database_j(j1:j2)
+      endif
 
       ! -----------------------------
       ! Beer's law contributions.
@@ -260,12 +267,16 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
       ! This should shave a few seconds off the execution time.
       ! ---------------------------------------------------------------
       i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
-      sumexp(j1:j2) = sumexp(j1:j2) - rad_fitvar(i)*database_j(j1:j2)
+      if (.not. param_frozen_at_zero(i)) then
+        sumexp(j1:j2) = sumexp(j1:j2) - rad_fitvar(i)*database_j(j1:j2)
+      endif
 
       ! Final add-on contributions.
       i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-      fit_final_add_on(j1:j2) = fit_final_add_on(j1:j2) + &
-        rad_fitvar(i) * database_j(j1:j2)
+      if (.not. param_frozen_at_zero(i)) then
+        fit_final_add_on(j1:j2) = fit_final_add_on(j1:j2) + &
+          rad_fitvar(i) * database_j(j1:j2)
+      endif
     END DO
 
     WHERE ( sumexp(j1:j2) >= expmax )
@@ -534,8 +545,11 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx .AND. j /= ring_idx  .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
+        if (database_j_is_zero(j)) cycle
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        if (.not. param_frozen_at_zero(i)) then
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        endif
       END IF
     END DO
 
@@ -546,8 +560,11 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
+        if (database_j_is_zero(j)) cycle
         i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        if (.not. param_frozen_at_zero(i)) then
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        endif
       END IF
     END DO
     ! -----------------------------
@@ -560,17 +577,20 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
     sumexp(j1:j2) = 0.0_r8
     DO j = 1, max_rs_idx
       IF ( j /= solar_idx ) THEN
+        if (database_j_is_zero(j)) cycle
         tmpexp = 0.0_r8
         i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
-        IF ( j == o3_t1_idx .OR. j == o3_t2_idx .OR. j == o3_t3_idx ) THEN
-          k1 = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-          k2 = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-          tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2) *  &
-            (1.0_r8 + rad_fitvar(k1)*del(j1:j2) + &
-            rad_fitvar(k2)*del(j1:j2)*del(j1:j2))
-        ELSE
-          tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2)
-        END IF
+        if (.not.param_frozen_at_zero(i)) then
+          IF ( j == o3_t1_idx .OR. j == o3_t2_idx .OR. j == o3_t3_idx ) THEN
+            k1 = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+            k2 = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
+            tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2) *  &
+              (1.0_r8 + rad_fitvar(k1)*del(j1:j2) + &
+               rad_fitvar(k2)*del(j1:j2)*del(j1:j2))
+          ELSE
+            tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2)
+          END IF
+        endif
 
         WHERE ( tmpexp(j1:j2) >= expmax )
           tmpexp(j1:j2) = expmax
@@ -594,7 +614,10 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
       IF ( j /= solar_idx .AND. &
         j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
         i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-        fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        if (database_j_is_zero(j)) cycle
+        if (.not.param_frozen_at_zero(i)) then
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        endif
       END IF
     END DO
 

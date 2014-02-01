@@ -20,7 +20,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
       solar_idx, n_max_fitpars, wvl_idx, spc_idx, sig_idx, ccd_idx, &
-      max_calfit_idx, o3_t1_idx, o3_t3_idx,  pge_o3_idx
+      max_calfit_idx, max_rs_idx, o3_t1_idx, o3_t3_idx,  pge_o3_idx
     USE OMSAO_parameters_module,   ONLY: &
       r8_missval, i2_missval, downweight
     USE OMSAO_variables_module,    ONLY:                                    &
@@ -35,7 +35,8 @@ CONTAINS
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
     USE omi_pge_fitting_aux, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
-    USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
+    USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp, &
+            param_frozen_at_zero, database_j_is_zero
     IMPLICIT NONE
 
     ! *******************************************************************
@@ -208,6 +209,21 @@ CONTAINS
     else
       earthshine_spectrum => spectrum_earthshine
     endif
+
+    ! To improve computational efficiency, it's useful to avoid adding
+    ! spectrum model contributions that are all zeros.  To do that,
+    ! it helps to know which params are frozen at zero and which spectrum
+    ! model components are all zeros.
+    ! Note that defining database_j_is_zero by looking at only the wavelength
+    ! sub-range j1:j2 that's actually used seems like a good idea, but
+    ! doesn't gain anything in terms of efficiency because the range j1:j2
+    ! can change during the fit. The cost of updating database_j_is_zero on
+    ! every function evaluation cancels out the gain from avoiding the zeros.
+    param_frozen_at_zero = (fitvar_rad == 0.0_r8 .and. lo_radbnd == 0.0_r8 .and. up_radbnd == 0.0_r8)
+    database_j_is_zero = .true.
+    do j=1, max_rs_idx
+      database_j_is_zero(j) = size(database,2).eq.count(database(j,:)==0.0_r8)
+    enddo
 
     radfit_itnum = 0
     j = 0
