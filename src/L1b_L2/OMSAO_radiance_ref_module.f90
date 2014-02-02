@@ -11,7 +11,6 @@ MODULE OMSAO_radiance_ref_module
   PUBLIC omi_adjust_radiance_data, remove_target_from_radiance, &
     omi_get_radiance_reference, xtrack_radiance_reference_loop
 
-
 CONTAINS
 
   ! This function is called from omi_fitting with l1bfile=l1b_radref_filename.
@@ -143,11 +142,11 @@ CONTAINS
     ! If we don't find a working scan line, we have to fold
     ! -----------------------------------------------------
     IF ( ( .NOT. yn_have_scanline )               .OR. &
-      ( ANY ( .NOT. yn_have_limits(1:2) ) )    .OR. &
-      ( midpt_line < 0 )                       .OR. &
-      ( ANY ( radiance_reference_lnums < 0 ) )        ) THEN
+        ( ANY ( .NOT. yn_have_limits(1:2) ) )    .OR. &
+        ( midpt_line < 0 )                       .OR. &
+        ( ANY ( radiance_reference_lnums < 0 ) )        ) THEN
       CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-        modulename//f_sep//"Failed to find working radiance spectrum.", vb_lev_default, errstat )
+                        modulename//f_sep//"Failed to find working radiance spectrum.", vb_lev_default, errstat )
       RETURN
     END IF
 
@@ -214,7 +213,7 @@ CONTAINS
           !          conversion will result in a numeric overflow.
           ! -------------------------------------------------------------------
           CALL convert_2bytes_to_16bits ( nbits-1, nwrr, &
-            omi_radiance_qflg(1:nwrr,ix,iloop), qflg_bit(1:nwrr,0:nbits-2) )
+                                         omi_radiance_qflg(1:nwrr,ix,iloop), qflg_bit(1:nwrr,0:nbits-2) )
           ! --------------------------------------------------------------------
           ! Add contributions from various quality flags. Any CCD pixel that has
           ! a cumulative quality flag > 0 will be excluded form the averaging.
@@ -254,7 +253,7 @@ CONTAINS
             dumcount(ix,1:nwrr) = dumcount(ix,1:nwrr) + 1.0_r8
 
             IF ( omi_szenith(ix,iloop) /= r4_missval .AND. &
-              omi_vzenith(ix,iloop) /= r4_missval         ) THEN
+                omi_vzenith(ix,iloop) /= r4_missval         ) THEN
               omi_radref_sza(ix) = omi_radref_sza(ix) + omi_szenith(ix,iloop)
               omi_radref_vza(ix) = omi_radref_vza(ix) + omi_vzenith(ix,iloop)
               szacount      (ix) = szacount  (ix) + 1.0_r4
@@ -365,12 +364,13 @@ CONTAINS
       fpix, lpix, pge_idx, errstat )
 
     USE OMSAO_indices_module,    ONLY: &
-      wvl_idx, spc_idx, sig_idx, o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, shi_idx, &
-      squ_idx, solar_idx, ccd_idx, radref_idx, max_rs_idx, max_calfit_idx
+      spc_idx, wvl_idx, &
+      o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, shi_idx, &
+      squ_idx, solar_idx, radref_idx, max_rs_idx, max_calfit_idx
     USE OMSAO_parameters_module, ONLY:  &
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
-      database, curr_sol_spec, n_rad_wvl, curr_rad_spec, sol_wav_avg,                  &
+      database, curr_sol_spec, sol_wav_avg,                  &
       Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
@@ -408,7 +408,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: locerrstat, ipix, jpix, radfit_exval, radfit_itnum, i
+    INTEGER (KIND=i4) :: locerrstat, ipix, radfit_exval, radfit_itnum
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
@@ -421,6 +421,9 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nw)              :: solar_wgt
     REAL    (KIND=r8), DIMENSION (n_fincol_idx,1:nx) :: target_var
     integer (kind=i4) :: nwav_irrad
+    real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts
+    integer (kind=i4) :: num_adj_allocated, n_rad_wvl_loc
+    integer locerr
 
     !CHARACTER (LEN=30), PARAMETER :: modulename = 'xtrack_radiance_reference_loop'
 
@@ -457,7 +460,9 @@ CONTAINS
     omi_radref_rms   (1:nx)                  = r8_missval
     omi_radref_xtrcol(1:nx)                  = r8_missval
 
-    XTrackPix: DO jpix = fpix, lpix
+    num_adj_allocated = 0
+
+    XTrackPix: DO ipix = fpix, lpix
 
       locerrstat = pge_errstat_ok
 
@@ -466,7 +471,6 @@ CONTAINS
       ! when the slit function is computed: The CCD position based
       ! hyper-parameterization requires the knowledge of the row#.
       ! -----------------------------------------------------------
-      ipix = jpix
       curr_xtrack_pixnum = ipix
 
       ! ---------------------------------------------------------------------
@@ -477,6 +481,7 @@ CONTAINS
 
       n_database_wvl = n_omi_database_wvl(ipix)
       n_omi_radwvl   = omi_nwav_rad      (ipix,0)
+      n_rad_wvl_loc = n_omi_radwvl
 
       ! ---------------------------------------------------------------------------
       ! For each cross-track position we have to initialize the saved Shift&Squeeze
@@ -502,134 +507,147 @@ CONTAINS
       ! Catch the possibility that N_OMI_RADWVL > N_SOLAR_PTS
       ! -----------------------------------------------------
       IF ( n_omi_radwvl > n_solar_pts ) THEN
-        i = n_omi_radwvl - n_solar_pts
-        solar_wgt(n_solar_pts+1:n_solar_pts+i) = downweight
-        n_solar_pts = n_omi_radwvl
+        solar_wgt(n_solar_pts+1:n_omi_radwvl) = downweight
       END IF
 
       ! tpk: Should this be "> n_fitvar_rad"?
-      IF ( n_database_wvl > 0 .AND. n_omi_radwvl > 0 ) THEN
+      if ((n_database_wvl <= 0) .or. (n_rad_wvl_loc <= 0)) cycle
 
-        ! ----------------------------------------------
-        ! Restore DATABASE from OMI_DATABASE (see above)
-        ! ----------------------------------------------
-        database (1:max_rs_idx,1:n_database_wvl) = omi_database (1:max_rs_idx,1:n_database_wvl,ipix)
+      ! ----------------------------------------------
+      ! Restore DATABASE from OMI_DATABASE (see above)
+      ! ----------------------------------------------
+      database (1:max_rs_idx,1:n_database_wvl) = omi_database (1:max_rs_idx,1:n_database_wvl,ipix)
 
-        ! -----------------------------------------------------------------------
-        ! Restore solar fitting variables for across-track reference in Earthshine fitting
-        ! --------------------------------------------------------------------------------
-        sol_wav_avg = omi_radref_wav_avg (ipix)
-        Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
-        Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
-        curr_sol_spec(wvl_idx,1:n_database_wvl) = omi_database_wvl(1:n_database_wvl,ipix)
-        curr_sol_spec(spc_idx,1:n_database_wvl) = omi_database    (solar_idx,1:n_database_wvl,ipix)
-        ! --------------------------------------------------------------------------------
+      ! -----------------------------------------------------------------------
+      ! Restore solar fitting variables for across-track reference in Earthshine fitting
+      ! --------------------------------------------------------------------------------
+      sol_wav_avg = omi_radref_wav_avg (ipix)
+      Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
+      Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
+      curr_sol_spec(wvl_idx,1:n_database_wvl) = omi_database_wvl(1:n_database_wvl,ipix)
+      curr_sol_spec(spc_idx,1:n_database_wvl) = omi_database    (solar_idx,1:n_database_wvl,ipix)
+      ! --------------------------------------------------------------------------------
 
-        ! ---------------------------------------------------------------
-        ! If a Radiance Reference is being used, then it must be calibrated
-        ! rather than the swath line that has been read.
-        ! ---------------------------------------------------------------
-        IF ( do_radiance_reference ) THEN
-          omi_radiance_wavl(1:n_omi_radwvl,ipix,0) = omi_radref_wavl(1:n_omi_radwvl,ipix)
-          omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
-          omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
-        END IF
-
-        omi_xtrackpix_no = ipix
-
-        ! -------------------------------------------------------------------------
-        select_idx(1:4) = rad_ccdpix_selection(ipix,1:4)
-        exclud_idx(1:2) = rad_ccdpix_exclusion(ipix,1:2)
-        CALL omi_adjust_radiance_data ( & ! Set up generic fitting arrays
-          select_idx(1:4), exclud_idx(1:2),            &
-          n_omi_radwvl,                                &
-          omi_radiance_wavl   (1:n_omi_radwvl,ipix,0), &
-          omi_radiance_spec   (1:n_omi_radwvl,ipix,0), &
-          omi_radiance_qflg   (1:n_omi_radwvl,ipix,0), &
-          omi_radiance_ccdpix (1:n_omi_radwvl,ipix,0), &
-          n_solar_pts, solar_wgt(1:n_solar_pts),       &
-          n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_omi_radwvl), &
-          rad_spec_avg, yn_skip_pix )
-        ! NOTE: n_rad_wvl is altered by omi_adjust_radiance_data
-
-        ! --------------------------------------------------------------------
-        ! Update the weights for the Reference/Wavelength Calibration Radiance
-        ! --------------------------------------------------------------------
-        omi_radref_wght(1:n_omi_radwvl,ipix) = curr_rad_spec(sig_idx,1:n_omi_radwvl)
-
-        IF (.NOT. do_radiance_reference) THEN
-          call copy_prefit_values (prefit, pge_idx, ipix, 0)
-        ELSE
-          prefit%o3_col = 0.0_r8
-          prefit%o3_dcol = 0.0_r8
-        END IF
-
-        ! --------------------
-        ! The radiance fitting
-        ! --------------------
-        fitcol       = r8_missval
-        dfitcol      = r8_missval
-        radfit_exval = INT(i2_missval, KIND=i4)
-        radfit_itnum = INT(i2_missval, KIND=i4)
-        rms          = r8_missval
-
-        addmsg = ''
-        IF ((MAXVAL(curr_rad_spec(spc_idx,1:n_rad_wvl)) > 0.0_r8) &
-            .AND. (n_rad_wvl > n_fitvar_rad) &
-            .AND. (.NOT. yn_skip_pix)) THEN
-          is_bad_pixel     = .FALSE.
-
-          CALL fit_radiance ( &
-            pge_idx, ipix, ctrl_n_fitres_loop(radref_idx), &
-            ctrl_fitres_range(radref_idx), &
-            n_rad_wvl, curr_rad_spec(wvl_idx:ccd_idx,1:n_rad_wvl),                    &
-            fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,               &
-            prefit, o3fit_cols, o3fit_dcols,                                          &
-            target_var(1:n_fincol_idx,ipix),                                          &
-            allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
-            corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &
-            errstat)
-
-          IF ( is_bad_pixel ) CYCLE
-
-          WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'RADIANCE Reference #', ipix, &
-            ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
-            fitvar_rad(shi_idx), '; squeeze = ', fitvar_rad(squ_idx),&
-            '; exit val = ', radfit_exval, '; iter num = ', radfit_itnum
-        ELSE
-          WRITE (addmsg, '(A,I2,A)') 'RADIANCE Reference #', ipix, ': Skipped!'
-        END IF
-
-        ! ------------------
-        ! Report on progress
-        ! ------------------
-        CALL error_check ( &
-          0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), vb_lev_omidebug, errstat )
-        IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
-
-        ! -----------------------------------
-        ! Assign pixel values to final arrays
-        ! -----------------------------------
-        omi_radref_pars (1:max_calfit_idx,ipix) = fitvar_rad(1:max_calfit_idx)
-        omi_radref_xflag(ipix)                  = INT (radfit_exval, KIND=i2)
-        omi_radref_chisq(ipix)                  = chisquav
-        omi_radref_col  (ipix)                  = fitcol
-        omi_radref_dcol (ipix)                  = dfitcol
-        omi_radref_rms  (ipix)                  = rms
-
-        ! -------------------------------------------------------------------------
-        ! Remember weights for the reference radiance, to be used as starting point
-        ! in the regular radiance fitting
-        ! -------------------------------------------------------------------------
-        omi_radref_wght(1:n_rad_wvl,ipix) = curr_rad_spec(sig_idx,1:n_rad_wvl)
-
-        ! -----------------------------------------------
-        ! Update the solar spectrum entry in OMI_DATABASE
-        ! -----------------------------------------------
-        IF ( do_radiance_reference ) &
-          omi_database (solar_idx,1:n_rad_wvl,ipix) = omi_radref_spec(1:n_rad_wvl,ipix)
-
+      ! ---------------------------------------------------------------
+      ! If a Radiance Reference is being used, then it must be calibrated
+      ! rather than the swath line that has been read.
+      ! ---------------------------------------------------------------
+      IF ( do_radiance_reference ) THEN
+        omi_radiance_wavl(1:n_omi_radwvl,ipix,0) = omi_radref_wavl(1:n_omi_radwvl,ipix)
+        omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
+        omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
       END IF
+
+      omi_xtrackpix_no = ipix
+
+      ! -------------------------------------------------------------------------
+
+      ! reallocate buffers if needed
+      if (n_rad_wvl_loc > num_adj_allocated) then
+        if (num_adj_allocated > 0) then
+          deallocate (adj_wvls, adj_spec, adj_wgts)
+        endif
+        allocate (adj_wvls(n_rad_wvl_loc), adj_spec(n_rad_wvl_loc), adj_wgts(n_rad_wvl_loc), &
+                  stat=locerr)
+        if (locerr /= 0) then
+          call err_message_error ("xtrack_solar_calibration_loop: allocate failed", errstat)
+          return
+        endif
+        num_adj_allocated = n_rad_wvl_loc
+      endif
+
+      adj_wvls(1:n_rad_wvl_loc) = omi_radiance_wavl (1:n_rad_wvl_loc, ipix, 0)
+      adj_spec(1:n_rad_wvl_loc) = omi_radiance_spec (1:n_rad_wvl_loc, ipix, 0)
+      adj_wgts(1:n_rad_wvl_loc) = solar_wgt(1:n_rad_wvl_loc)
+
+      select_idx(1:4) = rad_ccdpix_selection(ipix,1:4)
+      exclud_idx(1:2) = rad_ccdpix_exclusion(ipix,1:2)
+
+      ! Set up generic fitting arrays
+      CALL omi_adjust_radiance_data ( & 
+        select_idx(1:4), exclud_idx(1:2),            &
+        n_rad_wvl_loc, &
+        adj_wvls(1:n_rad_wvl_loc), adj_spec(1:n_rad_wvl_loc), adj_wgts(1:n_rad_wvl_loc), &
+        omi_radiance_qflg   (1:n_omi_radwvl,ipix,0), &
+        omi_radiance_ccdpix (1:n_omi_radwvl,ipix,0), &
+        rad_spec_avg, yn_skip_pix )
+
+      ! --------------------------------------------------------------------
+      ! Update the weights for the Reference/Wavelength Calibration Radiance
+      ! --------------------------------------------------------------------
+      omi_radref_wght(1:n_rad_wvl_loc,ipix) = adj_wgts(1:n_rad_wvl_loc)
+
+      IF (.NOT. do_radiance_reference) THEN
+        call copy_prefit_values (prefit, pge_idx, ipix, 0)
+      ELSE
+        prefit%o3_col = 0.0_r8
+        prefit%o3_dcol = 0.0_r8
+      END IF
+
+      ! --------------------
+      ! The radiance fitting
+      ! --------------------
+      fitcol       = r8_missval
+      dfitcol      = r8_missval
+      radfit_exval = INT(i2_missval, KIND=i4)
+      radfit_itnum = INT(i2_missval, KIND=i4)
+      rms          = r8_missval
+
+      addmsg = ''
+      IF ((MAXVAL(adj_spec(1:n_rad_wvl_loc)) > 0.0_r8) &
+          .AND. (n_rad_wvl_loc > n_fitvar_rad) &
+          .AND. (.NOT. yn_skip_pix)) THEN
+        is_bad_pixel     = .FALSE.
+
+        CALL fit_radiance ( &
+          pge_idx, ipix, ctrl_n_fitres_loop(radref_idx), &
+          ctrl_fitres_range(radref_idx), &
+          n_rad_wvl_loc, adj_wvls, adj_spec, adj_wgts, &
+          fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,               &
+          prefit, o3fit_cols, o3fit_dcols,                                          &
+          target_var(1:n_fincol_idx,ipix),                                          &
+          allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
+          corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &
+          errstat)
+
+        IF ( is_bad_pixel ) CYCLE
+
+        WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'RADIANCE Reference #', ipix, &
+          ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
+          fitvar_rad(shi_idx), '; squeeze = ', fitvar_rad(squ_idx),&
+          '; exit val = ', radfit_exval, '; iter num = ', radfit_itnum
+      ELSE
+        WRITE (addmsg, '(A,I2,A)') 'RADIANCE Reference #', ipix, ': Skipped!'
+      END IF
+
+      ! ------------------
+      ! Report on progress
+      ! ------------------
+      CALL error_check ( &
+        0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), vb_lev_omidebug, errstat )
+      IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
+
+      ! -----------------------------------
+      ! Assign pixel values to final arrays
+      ! -----------------------------------
+      omi_radref_pars (1:max_calfit_idx,ipix) = fitvar_rad(1:max_calfit_idx)
+      omi_radref_xflag(ipix)                  = INT (radfit_exval, KIND=i2)
+      omi_radref_chisq(ipix)                  = chisquav
+      omi_radref_col  (ipix)                  = fitcol
+      omi_radref_dcol (ipix)                  = dfitcol
+      omi_radref_rms  (ipix)                  = rms
+
+      ! -------------------------------------------------------------------------
+      ! Remember weights for the reference radiance, to be used as starting point
+      ! in the regular radiance fitting
+      ! -------------------------------------------------------------------------
+      omi_radref_wght(1:n_rad_wvl_loc,ipix) = adj_wgts(1:n_rad_wvl_loc)
+
+      ! -----------------------------------------------
+      ! Update the solar spectrum entry in OMI_DATABASE
+      ! -----------------------------------------------
+      IF ( do_radiance_reference ) &
+        omi_database (solar_idx,1:n_rad_wvl_loc,ipix) = omi_radref_spec(1:n_rad_wvl_loc,ipix)
 
     END DO XTrackPix
 
@@ -794,16 +812,15 @@ CONTAINS
     RETURN
   END SUBROUTINE remove_target_from_radiance
 
-
   SUBROUTINE omi_adjust_radiance_data ( &
-      omi_ccdpix_idx, omi_ccdpix_exc, n_omi_radwvl_loc, omi_rad_wvl, &
-      omi_rad_spc, omi_rad_qflg, &
-      omi_rad_ccd, n_omi_irradwvl, curr_sol_weight, n_rad_wvl_loc, &
-      curr_rad_spec, rad_spec_avg, yn_skip_pix )
+      omi_ccdpix_idx, omi_ccdpix_exc, n_adj, &
+      adj_wvls, adj_spec, adj_wgts, &
+      omi_rad_qflg, &
+      omi_rad_ccd, &
+      rad_spec_avg, yn_skip_pix )
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,       ONLY: &
-      wvl_idx, spc_idx, sig_idx, ccd_idx, &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
     USE OMSAO_variables_module,     ONLY: yn_solar_comp, yn_spectrum_norm, &
@@ -817,21 +834,19 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                             INTENT (IN) :: n_omi_radwvl_loc, n_omi_irradwvl
+    INTEGER (KIND=i4),                             INTENT (IN) :: n_adj
     INTEGER (KIND=i4), DIMENSION (2),              INTENT (IN) :: omi_ccdpix_exc
     INTEGER (KIND=i4), DIMENSION (4),              INTENT (IN) :: omi_ccdpix_idx
-    INTEGER (KIND=i2), DIMENSION (n_omi_radwvl_loc),   INTENT (IN) :: omi_rad_qflg
-    REAL    (KIND=r8), DIMENSION (n_omi_radwvl_loc),   INTENT (IN) :: omi_rad_wvl, omi_rad_spc
-    REAL    (KIND=r8), DIMENSION (n_omi_irradwvl), INTENT (IN) :: curr_sol_weight
+    INTEGER (KIND=i2), DIMENSION (n_adj),   INTENT (IN) :: omi_rad_qflg
 
     ! ----------------
     ! Output variables
     ! ----------------
     LOGICAL,                                                INTENT (OUT) :: yn_skip_pix
-    INTEGER (KIND=i4),                                      INTENT (OUT) :: n_rad_wvl_loc
     REAL    (KIND=r8),                                      INTENT (OUT) :: rad_spec_avg
-    INTEGER (KIND=i4),  DIMENSION (n_omi_radwvl_loc),           INTENT (OUT) :: omi_rad_ccd
-    REAL    (KIND=r8),  DIMENSION (ccd_idx,1:n_omi_radwvl_loc), INTENT (OUT) :: curr_rad_spec
+    INTEGER (KIND=i4),  DIMENSION (n_adj),           INTENT (OUT) :: omi_rad_ccd
+    !REAL    (KIND=r8),  DIMENSION (ccd_idx,1:n_adj), INTENT (OUT) :: curr_rad_spec
+    real(kind=r8), dimension(n_adj), intent(inout) :: adj_wvls, adj_spec, adj_wgts
 
     ! ------------------
     ! Modified variables
@@ -845,24 +860,16 @@ CONTAINS
     INTEGER (KIND=i4)                                     :: &
       i, locerrstat, imin1, imax1, imin2, imax2, j1, j2
     LOGICAL                                               :: have_good_window
-    INTEGER (KIND=i2), DIMENSION (n_omi_radwvl_loc,0:nbits-1) :: rad_qflg_bit
-    INTEGER (KIND=i2), DIMENSION (n_omi_radwvl_loc)           :: rad_qflg_mask
-    REAL    (KIND=r8), DIMENSION (n_omi_radwvl_loc)           :: weightsum
+    INTEGER (KIND=i2), DIMENSION (n_adj,0:nbits-1) :: rad_qflg_bit
+    INTEGER (KIND=i2), DIMENSION (n_adj)           :: rad_qflg_mask
+    REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
 
     locerrstat  = pge_errstat_ok
     yn_skip_pix = .FALSE.
 
     imin1 = omi_ccdpix_idx(1) ; imax1 = omi_ccdpix_idx(4)  ! The total window
     imin2 = omi_ccdpix_idx(2) ; imax2 = omi_ccdpix_idx(3)  ! The fitting window
-
-    ! -------------------------------------------------------------
-    ! Assign radiance spectrum to generic variables that are passed
-    ! through the fitting routines down to the spectrum function.
-    ! -------------------------------------------------------------
-    n_rad_wvl_loc                          = n_omi_radwvl_loc
-    curr_rad_spec(wvl_idx,1:n_rad_wvl_loc) = omi_rad_wvl(1:n_rad_wvl_loc)
-    curr_rad_spec(spc_idx,1:n_rad_wvl_loc) = omi_rad_spc(1:n_rad_wvl_loc)
-    omi_rad_ccd  (        1:n_rad_wvl_loc) = (/ (i, i = imin1, imax1) /)
+    omi_rad_ccd (1:n_adj) = (/ (i, i = imin1, imax1) /)
 
     ! ---------------------------------------------------------
     ! Compute the weights. This is a bit tedious, as we have to
@@ -879,41 +886,40 @@ CONTAINS
     ! equal in both spectra. A reminder to ourselves: Check
     ! that this indeed the case!
     ! ---------------------------------------------------------
-    curr_rad_spec(sig_idx,1:n_rad_wvl_loc) = curr_sol_weight(1:n_rad_wvl_loc)
 
     ! ---------------------------------------
     ! (1) Anything outside the fitting window
     ! ---------------------------------------
     ! (the CCD indices are absolute positions, i.e., unlikely to be "1:n_sol_wvl")
     ! ----------------------------------------------------------------------------
-    IF ( imin2 > imin1 ) curr_rad_spec(sig_idx,1:imin2-imin1+1) = downweight
-    IF ( imax2 < imax1 ) curr_rad_spec(sig_idx,imax2-imin1+1:n_rad_wvl_loc) = downweight
+    IF ( imin2 > imin1 ) adj_wgts(1:imin2-imin1+1) = downweight
+    IF ( imax2 < imax1 ) adj_wgts(imax2-imin1+1:n_adj) = downweight
 
     ! ----------------------------------------------------------------------
     ! (2) Any window excluded by the user (specified in fitting control file
     ! ----------------------------------------------------------------------
     IF ( ALL ( omi_ccdpix_exc(1:2) > 0 ) ) THEN
       j1 = omi_ccdpix_exc(1) - imin1 + 1 ; j2 = omi_ccdpix_exc(2) - imin1 + 1
-      IF ( j1 >= 1 .AND. j2 <= n_rad_wvl_loc ) &
-        curr_rad_spec(sig_idx,j1:j2) = downweight
+      IF ( j1 >= 1 .AND. j2 <= n_adj ) &
+        adj_wgts(j1:j2) = downweight
     END IF
 
     ! ----------------------------------
     ! (3) Wavelengths in ascending order
     ! ----------------------------------
-    DO i = 2, n_rad_wvl_loc
-      IF ( curr_rad_spec(wvl_idx,i) <= curr_rad_spec(wvl_idx,i-1) ) THEN
-        curr_rad_spec(wvl_idx,i) = curr_rad_spec(wvl_idx,i-1) + 0.001_r8
-        curr_rad_spec(sig_idx,i) = downweight
+    DO i = 2, n_adj
+      IF ( adj_wvls(i) <= adj_wvls(i-1) ) THEN
+        adj_wvls(i) = adj_wvls(i-1) + 0.001_r8
+        adj_wgts(i) = downweight
       END IF
     END DO
 
     ! ---------------------------------
     ! (4) No missing values in spectrum
     ! ---------------------------------
-    WHERE ( curr_rad_spec(spc_idx,1:n_rad_wvl_loc) <= REAL( r4_missval, KIND=r8 ) )
-      curr_rad_spec(sig_idx,1:n_rad_wvl_loc) = downweight
-      curr_rad_spec(spc_idx,1:n_rad_wvl_loc) = 0.0_r8
+    WHERE ( adj_spec(1:n_adj) <= REAL( r4_missval, KIND=r8 ) )
+      adj_wgts(1:n_adj) = downweight
+      adj_spec(1:n_adj) = 0.0_r8
     END WHERE
 
     ! -------------------------------------------------------------------------------
@@ -932,9 +938,9 @@ CONTAINS
     ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
     !          conversion will result in a numeric overflow.
     ! -------------------------------------------------------------------
-    CALL convert_2bytes_to_16bits ( nbits-1, n_rad_wvl_loc, &
-                                   omi_rad_qflg(1:n_rad_wvl_loc), &
-                                   rad_qflg_bit(1:n_rad_wvl_loc,0:nbits-2) )
+    CALL convert_2bytes_to_16bits ( nbits-1, n_adj, &
+                                   omi_rad_qflg(1:n_adj), &
+                                   rad_qflg_bit(1:n_adj,0:nbits-2) )
 
     ! --------------------------------------------------------------------
     ! Add contributions from various quality flags. Any CCD pixel that has
@@ -942,31 +948,31 @@ CONTAINS
     !
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    rad_qflg_mask(1:n_rad_wvl_loc) = 0_i2
-    rad_qflg_mask(1:n_rad_wvl_loc) = rad_qflg_mask(1:n_rad_wvl_loc) + &
-      rad_qflg_bit(1:n_rad_wvl_loc,qflg_mis_idx) + &   ! Missing pixel
-      rad_qflg_bit(1:n_rad_wvl_loc,qflg_bad_idx) + &   ! Bad pixel
-      rad_qflg_bit(1:n_rad_wvl_loc,qflg_err_idx) !+ &   ! Processing error
-    !rad_qflg_bit(1:n_rad_wvl_loc,qflg_tra_idx) + &   ! Transient pixel
-    !rad_qflg_bit(1:n_rad_wvl_loc,qflg_rts_idx) + &   ! RTS pixel
-    !rad_qflg_bit(1:n_rad_wvl_loc,qflg_sat_idx)       ! Saturation
+    rad_qflg_mask(1:n_adj) = 0_i2
+    rad_qflg_mask(1:n_adj) = rad_qflg_mask(1:n_adj) + &
+      rad_qflg_bit(1:n_adj,qflg_mis_idx) + &   ! Missing pixel
+      rad_qflg_bit(1:n_adj,qflg_bad_idx) + &   ! Bad pixel
+      rad_qflg_bit(1:n_adj,qflg_err_idx) !+ &   ! Processing error
+    !rad_qflg_bit(1:n_adj,qflg_tra_idx) + &   ! Transient pixel
+    !rad_qflg_bit(1:n_adj,qflg_rts_idx) + &   ! RTS pixel
+    !rad_qflg_bit(1:n_adj,qflg_sat_idx)       ! Saturation
 
-    WHERE ( rad_qflg_mask(1:n_rad_wvl_loc) > 0_i2 )
-      curr_rad_spec(sig_idx,1:n_rad_wvl_loc) = downweight
-      curr_rad_spec(spc_idx,1:n_rad_wvl_loc) = 0.0_r8
+    WHERE ( rad_qflg_mask(1:n_adj) > 0_i2 )
+      adj_wgts(1:n_adj) = downweight
+      adj_spec(1:n_adj) = 0.0_r8
     END WHERE
 
     ! --------------------------------------------------
     ! Compute normalization factor for radiance spectrum
     ! --------------------------------------------------
     weightsum = 0.0_r8
-    WHERE ( curr_rad_spec(sig_idx,1:n_rad_wvl_loc) /= downweight )
+    WHERE ( adj_wgts(1:n_adj) /= downweight )
       weightsum = 1.0_r8
     END WHERE
 
     rad_spec_avg = SUM ( &
-      ABS(curr_rad_spec(spc_idx,1:n_rad_wvl_loc))*weightsum(1:n_rad_wvl_loc) ) / &
-      MAX(1.0_r8, SUM(weightsum(1:n_rad_wvl_loc)))
+      ABS(adj_spec(1:n_adj))*weightsum(1:n_adj) ) / &
+      MAX(1.0_r8, SUM(weightsum(1:n_adj)))
 
     IF ( rad_spec_avg == 0.0_r8 ) rad_spec_avg = 1.0_r8
 
@@ -977,19 +983,19 @@ CONTAINS
     ! be a large enough window to keep anything sensible and reject the real
     ! outliers.
     ! -------------------------------------------------------------------------
-    WHERE ( weightsum(1:n_rad_wvl_loc) /= 0.0_r8 .AND. &
-           ABS(curr_rad_spec(spc_idx,1:n_rad_wvl_loc)) >= 100.0_r8 * rad_spec_avg )
-      weightsum(1:n_rad_wvl_loc) = 0.0_r8
-      curr_rad_spec(sig_idx,1:n_rad_wvl_loc) = downweight
-      curr_rad_spec(spc_idx,1:n_rad_wvl_loc) = 0.0_r8
+    WHERE ( weightsum(1:n_adj) /= 0.0_r8 .AND. &
+           ABS(adj_spec(1:n_adj)) >= 100.0_r8 * rad_spec_avg )
+      weightsum(1:n_adj) = 0.0_r8
+      adj_wgts(1:n_adj) = downweight
+      adj_spec(1:n_adj) = 0.0_r8
     ENDWHERE
 
     ! ---------------------------------------------------------------------
     ! Recompute the radiance spectrum average, because it may have changed.
     ! ---------------------------------------------------------------------
     rad_spec_avg = SUM ( &
-      curr_rad_spec(spc_idx,1:n_rad_wvl_loc)*weightsum(1:n_rad_wvl_loc) ) / &
-      MAX(1.0_r8, SUM(weightsum(1:n_rad_wvl_loc)))
+      adj_spec(1:n_adj)*weightsum(1:n_adj) ) / &
+      MAX(1.0_r8, SUM(weightsum(1:n_adj)))
     IF ( rad_spec_avg <= 0.0_r8 ) THEN
       yn_skip_pix = .TRUE.
       rad_spec_avg = 1.0_r8
@@ -1015,7 +1021,7 @@ CONTAINS
           rad_spec_avg = 1.0_r8
         END IF
       END IF
-      curr_rad_spec(spc_idx,1:n_rad_wvl_loc) = curr_rad_spec(spc_idx,1:n_rad_wvl_loc) / rad_spec_avg
+      adj_spec(1:n_adj) = adj_spec(1:n_adj) / rad_spec_avg
     END IF
 
     RETURN

@@ -155,6 +155,8 @@ MODULE OMSAO_indices_module
     sin_idx = 13, hwe_idx = 14, asy_idx = 15, shi_idx = 16, squ_idx = 17,               &
     max_calfit_idx = squ_idx
 
+  integer (kind=i4), parameter :: MAX_CAL_PARMS = max_calfit_idx
+
   CHARACTER (LEN=3), DIMENSION (max_calfit_idx), PARAMETER :: calfit_strings = (/ &
     'bl0', 'bl1', 'bl2', 'bl3', 'bl4', 'bl5', 'sc0', 'sc1', 'sc2', 'sc3', 'sc4', &
     'sc5', 'sin', 'hwe', 'asy', 'shi', 'squ' /)

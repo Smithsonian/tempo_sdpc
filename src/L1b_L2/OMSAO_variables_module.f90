@@ -146,7 +146,7 @@ MODULE OMSAO_variables_module
   INTEGER (KIND=i4), DIMENSION (2)                      :: radiance_wavcal_lnums
   REAL    (KIND=r8), DIMENSION (ccd_idx, nwavel_max)    :: curr_rad_spec
   REAL    (KIND=r8), DIMENSION (ccd_idx, nwavel_max)    :: curr_sol_spec
-  REAL    (KIND=r8), DIMENSION (nwavel_max)             :: fitwavs, fitweights, currspec
+  REAL    (KIND=r8), DIMENSION (nwavel_max)             :: fitweights, fitwavs, currspec
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: rad_spec_wavcal, rad_wght_wavcal
 
   ! ----------------------------------------
@@ -229,12 +229,6 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: omi_slitfunc_fname
   LOGICAL                  :: yn_use_labslitfunc
-
-  ! ---------------------------------------------------------------------------
-  ! And this is the convolved solar spectrum. It is (re)initialized in the
-  ! solar fit routines only if the above shift&squeeze parameters have changed.
-  ! ---------------------------------------------------------------------------
-  REAL (KIND=r8), DIMENSION (max_spec_pts) :: solar_spec_convolved
 
   ! ---------------------------------------------------------
   ! Filenames specific for the AMF scheme in OMBRO and OMHCHO

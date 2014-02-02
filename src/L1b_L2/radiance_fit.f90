@@ -11,7 +11,7 @@ MODULE radiance_fit
 CONTAINS
   SUBROUTINE fit_radiance ( &
       pge_idx, ipix, num_fitres_loops, fitres_range, &
-      n_rad_wvl_loc, rad_array,                                     &
+      n_rad_wvl_loc, adj_wvls, adj_spec, adj_wgts, &
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       prefit, o3fit_cols, o3fit_dcols,                              &
       target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out, &
@@ -19,7 +19,7 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
-      solar_idx, n_max_fitpars, wvl_idx, spc_idx, sig_idx, ccd_idx, &
+      solar_idx, n_max_fitpars, &
       max_calfit_idx, max_rs_idx, o3_t1_idx, o3_t3_idx,  pge_o3_idx
     USE OMSAO_parameters_module,   ONLY: &
       r8_missval, i2_missval, downweight
@@ -56,8 +56,8 @@ CONTAINS
     ! -----------------------------
     ! (Possibly) Modified Variables
     ! -----------------------------
-    REAL (KIND=r8), DIMENSION (ccd_idx, n_rad_wvl_loc), INTENT (INOUT) &
-      :: rad_array
+    real (kind=r8), dimension (n_rad_wvl_loc), intent(inout) :: &
+      adj_wvls, adj_spec, adj_wgts
     REAL (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx), INTENT (INOUT) &
       :: o3fit_cols, o3fit_dcols
     integer, intent(inout) :: errstat
@@ -106,13 +106,14 @@ CONTAINS
     END IF
 
     ! ============================================================
-    ! Assign LL_RAD, LU_RAD, and SIG for each earthshine radiance
+    ! Assign LL_RAD, LU_RAD, and weights for each earthshine radiance
+    ! Assign LL_RAD, LU_RAD for earthshine radiance
     ! ============================================================
     ll_rad = fit_winwav_idx(2)  ;  lu_rad = fit_winwav_idx(3)
 
-    fitwavs   (1:n_rad_wvl_loc) = rad_array(wvl_idx,1:n_rad_wvl_loc)
-    currspec  (1:n_rad_wvl_loc) = rad_array(spc_idx,1:n_rad_wvl_loc)
-    fitweights(1:n_rad_wvl_loc) = rad_array(sig_idx,1:n_rad_wvl_loc)
+    fitwavs(1:n_rad_wvl_loc) = adj_wvls(1:n_rad_wvl_loc)
+    currspec(1:n_rad_wvl_loc) = adj_spec(1:n_rad_wvl_loc)
+    fitweights(1:n_rad_wvl_loc) = adj_wgts(1:n_rad_wvl_loc)
 
     ! ---------------------------------------------------------------
     ! High pass filtering for DOAS. First, take log (rad/irrad), then
@@ -316,7 +317,7 @@ CONTAINS
     ! --------------------------------------------------------------------
     ! Save fitting weights for possible use through radiance reference fit
     ! --------------------------------------------------------------------
-    rad_array(sig_idx,1:n_rad_wvl_loc) = fitweights(1:n_rad_wvl_loc)
+    adj_wgts(1:n_rad_wvl_loc) = fitweights(1:n_rad_wvl_loc)
 
     ! CCM save fitted spectrum
     fitspc_out(1:n_rad_wvl_loc) = fitspec(1:n_rad_wvl_loc)

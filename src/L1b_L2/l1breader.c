@@ -537,10 +537,10 @@ static int read_l1b_data (int swid, char *fieldname,
 			  void *data)
 {
    L1b_Data_Info_Type dinfo;
-
+#if 0
    fprintf (stdout, "read_l1b_data: swid=%d, track=%d, ntracks=%d, f=%s\n",
 	    swid, track, ntracks, fieldname); (void) fflush (stdout);
-
+#endif
    return read_l1b_data1 (swid, fieldname, track, ntracks,
 			  datatype, &data, &dinfo);
 }
