@@ -7,6 +7,16 @@ MODULE OMSAO_omidata_module
     o3_t1_idx, o3_t3_idx
   IMPLICIT NONE
 
+  type retrieval_type
+    ! 2d arrays are (nxtrack, 0:ntimes-1)
+    real (kind=r8), dimension(:,:), allocatable :: column_amount, column_uncertainty
+    real (kind=r8), dimension(:,:), allocatable :: rms
+    real (kind=r4), dimension(:,:), allocatable :: latitude, longitude, height
+    real (kind=r4), dimension(:,:), allocatable :: sza, vza
+    integer (kind=i2), dimension(:,:), allocatable :: fit_flag, xtr_flag
+    integer (kind=i4) :: nxtrack, ntimes
+  end type retrieval_type
+
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
   PRIVATE r4, r8, i4, i2, i1
   PRIVATE n_max_fitpars, max_rs_idx, max_calfit_idx, &
@@ -202,5 +212,63 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i1)            :: truezoom, fullswath
 
   INTEGER (KIND=i4) :: omi_l1b_idx
+
+contains
+
+  subroutine dealloc_retrieval_type (rt)
+    type (retrieval_type), intent(inout) :: rt
+    if (allocated (rt%column_amount)) deallocate (rt%column_amount)
+    if (allocated (rt%column_uncertainty)) deallocate (rt%column_uncertainty)
+    if (allocated (rt%rms)) deallocate (rt%rms)
+    if (allocated (rt%latitude)) deallocate (rt%latitude)
+    if (allocated (rt%longitude)) deallocate (rt%longitude)
+    if (allocated (rt%height)) deallocate (rt%height)
+    if (allocated (rt%sza)) deallocate (rt%sza)
+    if (allocated (rt%vza)) deallocate (rt%vza)
+    if (allocated (rt%fit_flag)) deallocate (rt%fit_flag)
+    if (allocated (rt%xtr_flag)) deallocate (rt%xtr_flag)
+  end subroutine dealloc_retrieval_type
+
+  subroutine alloc_retrieval_type (rt, nxtrack, ntimes, errstat)
+    use errormodule
+    use OMSAO_parameters_module, only: r4_missval, r8_missval, i2_missval
+    implicit none
+    type (retrieval_type), intent(inout) :: rt
+    integer (kind=i4), intent(in) :: nxtrack, ntimes
+    integer, intent(inout) :: errstat
+    integer :: locerrstat
+
+    if (errstat < 0) return
+
+    allocate ( &
+      rt%column_amount(nxtrack, 0:ntimes-1), &
+      rt%column_uncertainty(nxtrack, 0:ntimes-1), &
+      rt%rms(nxtrack, 0:ntimes-1), &
+      rt%latitude(nxtrack, 0:ntimes-1), &
+      rt%longitude(nxtrack, 0:ntimes-1), &
+      rt%height(nxtrack, 0:ntimes-1), &
+      rt%sza(nxtrack, 0:ntimes-1), &
+      rt%vza(nxtrack, 0:ntimes-1), &
+      rt%fit_flag(nxtrack, 0:ntimes-1), &
+      rt%xtr_flag(nxtrack, 0:ntimes-1), stat=locerrstat)
+    if (locerrstat /= 0) then
+      call err_message_error ("alloc_retrieval_type:  allocation failed", errstat)
+      return
+    endif
+    rt%nxtrack = nxtrack
+    rt%ntimes = ntimes
+
+    rt%column_amount = r8_missval
+    rt%column_uncertainty = r8_missval
+    rt%rms = r8_missval
+    rt%latitude = r4_missval
+    rt%longitude = r4_missval
+    rt%height = r4_missval
+    rt%sza = r4_missval
+    rt%vza = r4_missval
+    rt%fit_flag = i2_missval
+    rt%xtr_flag = i2_missval
+    
+  end subroutine alloc_retrieval_type
 
 END MODULE OMSAO_omidata_module

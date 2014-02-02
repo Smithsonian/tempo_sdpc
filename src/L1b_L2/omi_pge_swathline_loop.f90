@@ -46,9 +46,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
   ! ---------------
   INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
-  character (LEN=2) :: single_space
-  ! CCM for looping
-  !INTEGER (KIND=i4) :: i,j,k
+  INTEGER (KIND=i4) :: nt, nx, nccd
 
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
@@ -59,8 +57,6 @@ SUBROUTINE omi_pge_swathline_loops ( &
   ! ---------------------------------------------------------------------------------
   ! CCM Array to hold (1) Fitted Spec (2) Observed Spec (3) Spec Pos (4) Weight flags
   ! ---------------------------------------------------------------------------------
-  !REAL (KIND=r8), DIMENSION (n_comm_wvl,nxtrack_max,4) :: fitspc_tmp
-  !REAL (KIND=r8), DIMENSION (n_comm_wvl,nxtrack_max,4,0:nt-1) :: omi_fitspc
   REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4) :: fitspc_tmp
   REAL (KIND=r8), DIMENSION (:,:,:,:), allocatable :: omi_fitspc
 
@@ -69,8 +65,6 @@ SUBROUTINE omi_pge_swathline_loops ( &
   ! -------------------------------------
   REAL (KIND=r8), DIMENSION (n_fitvar_rad,rpt%nxtrack,0:nlines_max-1) :: &
     all_fitted_columns, all_fitted_errors, correlation_columns
-
-  INTEGER (KIND=i4) nt, nx, nccd
 
   if (errstat < 0) return
 
@@ -86,8 +80,6 @@ SUBROUTINE omi_pge_swathline_loops ( &
   all_fitted_errors  =  r8_missval
   correlation_columns = r8_missval
 
-  fitspc_tmp = r8_missval
-
   IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
     target_var = 0.0_r8
     targsum    = 0.0_r8
@@ -100,7 +92,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
     if (locerrstat /= 0) then
       errstat = -1
-      call err_message_error ("omi_pge_swathline_loops_mem: allocate failed", &
+      call err_message_error ("omi_pge_swathline_loops: allocate failed", &
                               errstat)
       return
     endif
@@ -110,8 +102,6 @@ SUBROUTINE omi_pge_swathline_loops ( &
   ! Loop over all scan lines, in multiples of NLINES_MAX (100 by default)
   ! ---------------------------------------------------------------------
   ScanLines: DO iline = 0, nt-1, nlines_max
-
-    !IF (.NOT.yn_process(iline)) cycle
 
     ! ---------------------------------------------------------
     ! Check if loop ends before n_times_loop max is exhausted.
@@ -140,11 +130,6 @@ SUBROUTINE omi_pge_swathline_loops ( &
     omi_column_uncert(1:nx,     0:nblock-1) = r8_missval
     omi_fit_rms      (1:nx,     0:nblock-1) = r8_missval
     omi_time_utc     (1:nUTCdim,0:nblock-1) = i2_missval
-
-    ! -----------------------------------------
-    ! Skip if we don't have anything to process
-    ! -----------------------------------------
-    !IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
 
     ! --------------------------------
     ! Read pre-fitted molecule columns
@@ -185,8 +170,7 @@ SUBROUTINE omi_pge_swathline_loops ( &
       ! ------------------
       addmsg = ''
       WRITE (addmsg,'(A,I5)') 'Working on scan line', omi_scanline_no
-      single_space = " "
-      estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), single_space, vb_lev_omidebug )
+      estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), " ", vb_lev_omidebug )
       !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
       IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN

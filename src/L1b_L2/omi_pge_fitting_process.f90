@@ -147,7 +147,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE fitting_loops, ONLY: xtrack_radiance_wvl_calibration
   USE metadata_tools, ONLY: check_metadata_consistency, set_l2_metadata
   USE omi_pge_postprocessing, ONLY: omi_pge_postprocess
-  USE omi_pge_swathline_loop, ONLY: omi_pge_swathline_loops
+  USE swathline_loop, ONLY: swathline_loops
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
     omi_cross_track_skippix, omi_radcal_xflag, &
@@ -470,7 +470,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     ! Interface to the loop over all swath lines
     ! ------------------------------------------
-    CALL omi_pge_swathline_loops ( &
+    CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
       yn_common_range, &
       omi_xtrpix_range, &
@@ -600,7 +600,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
-  CALL omi_pge_swathline_loops ( &
+  CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
     yn_radfit_range,                           &
     omi_xtrpix_range,                      &

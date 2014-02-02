@@ -276,8 +276,8 @@ CONTAINS
   SUBROUTINE Reference_Sector_radref_retrieval_and_median &
       (pge_idx, rpt_rr, n_max_rspec, errstat, mem_correction)
 
-    USE OMSAO_precision_module, ONLY: i1, i4, r4
-    USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r4_missval, r8_missval, &
+    USE OMSAO_precision_module, ONLY: i1, i4!, r4
+    USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r8_missval, & ! , r4_missval
       MAX_STR_LEN
     USE OMSAO_wfamf_module,     ONLY: amf_calculation_bis
     USE OMSAO_variables_module, ONLY: OMSAO_refseccor_cld_filename, voc_amf_filenames, &
@@ -287,10 +287,11 @@ CONTAINS
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
       finalize_common_mode, compute_fitting_statistics_nohe5
     USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags, omi_read_binning_factor
-    USE omi_pge_swathline_loop, ONLY: omi_pge_swathline_loops
-    USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
+    USE swathline_loop, ONLY: swathline_loops
+    !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
     USE OMSAO_errstat_module
-    USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
+    USE OMSAO_omidata_module, ONLY: omi_radiance_swathname, &
+      retrieval_type, alloc_retrieval_type, dealloc_retrieval_type      
 
     IMPLICIT NONE
 
@@ -312,16 +313,19 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (0:rpt_rr%ntimes-1,2)            :: omi_xtrpix_range_rr
     LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_radfitref_range
     CHARACTER(LEN=MAX_STR_LEN)                                     :: l1b_rad_save_filename
-    REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: &
-      mem_column_amount, mem_column_uncertainty, mem_amf, mem_rms
-    REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_latitude, mem_longitude, mem_sza, mem_vza, &
-      mem_height
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, refmqf, mem_xtrflg
+    REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_amf
+    !REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: &
+    !  mem_column_amount, mem_column_uncertainty, mem_rms
+    !REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_latitude, mem_longitude, mem_sza, mem_vza, &
+    !  mem_height
+    !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, mem_xtrflg
     INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint
+    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
     LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, yn_common_range
     INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)              :: binfac_rs
     LOGICAL                                                     :: yn_write
     INTEGER (KIND=i4) :: nTimesRadRR, nXtrackRadRR, nWvlCCDrr
+    type (retrieval_type) :: rt
 
     ! ------------------------
     ! Error handling variables
@@ -348,8 +352,11 @@ CONTAINS
     ! -----------------------
     ! Variable initialization
     ! -----------------------
-    mem_column_amount      = r8_missval
-    mem_column_uncertainty = r8_missval
+    call alloc_retrieval_type (rt, nXtrackRadRR, nTimesRadRR, locerrstat)
+    if (locerrstat /= 0) return
+
+    !mem_column_amount      = r8_missval
+    !mem_column_uncertainty = r8_missval
     ! ---------------------------------------------------
     ! mem_correction needs to be initialized to 0.0 since
     ! we want no correction if any of the two reference
@@ -358,17 +365,17 @@ CONTAINS
     mem_correction         = 0.0
     ! ---------------------------------------------------
     mem_amf                = r8_missval
-    mem_rms                = r8_missval
-    mem_latitude           = r4_missval
-    mem_longitude          = r4_missval
-    mem_sza                = r4_missval
-    mem_vza                = r4_missval
-    mem_fit_flag           = i2_missval
+    !mem_rms                = r8_missval
+    !mem_latitude           = r4_missval
+    !mem_longitude          = r4_missval
+    !mem_sza                = r4_missval
+    !mem_vza                = r4_missval
+    !mem_fit_flag           = i2_missval
     refmqf                 = i2_missval
-    mem_xtrflg             = i2_missval
+    !mem_xtrflg             = i2_missval
     mem_snow               = i2_missval
     mem_glint              = i2_missval
-    mem_height             = r4_missval
+    !mem_height             = r4_missval
 
     ! -----------------------------------------------------
     ! I want to perform the retrieval for the whole granule
@@ -383,7 +390,7 @@ CONTAINS
     ! ---------------------------------
     CALL read_latitude ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-      0, nTimesRadRR, mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
+      0, nTimesRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
       errstat)
     if (errstat < 0) &
       return
@@ -395,13 +402,13 @@ CONTAINS
     yn_common_range(0:nTimesRadRR-1) = .FALSE.
     CALL find_swathline_range ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)),  &
-      nTimesRadRR, nXtrackRadRR, mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
+      nTimesRadRR, nXtrackRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
       common_latrange(1:2), yn_common_range(0:nTimesRadRR-1), locerrstat        )
 
     ! ----------------------------------------------------------
     ! Interface to the loop over all swath lines for common mode
     ! ----------------------------------------------------------
-    CALL omi_pge_swathline_loops (                                    &
+    CALL swathline_loops (                                    &
       pge_idx, rpt_rr, n_max_rspec, &
       yn_common_range(0:nTimesRadRR-1),                           &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
@@ -417,22 +424,23 @@ CONTAINS
     ! --------------------------------------
     ! Interface to loop over all swath lines
     ! --------------------------------------
-    CALL omi_pge_swathline_loops_mem (                             &
+    CALL swathline_loops (                             &
       pge_idx, rpt_rr, n_max_rspec, &
       yn_radfitref_range(0:nTimesRadRR-1),                        &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
       yn_radiance_reference, .FALSE., -1,                         &
-      .TRUE., mem_column_amount(1:nXtrackRadRR,0:nTimesRadRR-1),  &
-      mem_column_uncertainty(1:nXtrackRadRR,0:nTimesRadRR-1),     &
-      mem_rms(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
-      mem_fit_flag(1:nXtrackRadRR,0:nTimesRadRR-1),               &
-      mem_xtrflg(1:nXtrackRadRR,0:nTimesRadRR-1),                 &
-      mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1),               &
-      mem_longitude(1:nXtrackRadRR,0:nTimesRadRR-1),              &
-      mem_sza(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
-      mem_vza(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
-      mem_height(1:nXtrackRadRR,0:nTimesRadRR-1),                 &
-      locerrstat)
+      .TRUE., locerrstat, retrieval=rt)
+      !mem_column_amount(1:nXtrackRadRR,0:nTimesRadRR-1),  &
+      !mem_column_uncertainty(1:nXtrackRadRR,0:nTimesRadRR-1),     &
+      !mem_rms(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
+      !mem_fit_flag(1:nXtrackRadRR,0:nTimesRadRR-1),               &
+      !mem_xtrflg(1:nXtrackRadRR,0:nTimesRadRR-1),                 &
+      !mem_latitude(1:nXtrackRadRR,0:nTimesRadRR-1),               &
+      !mem_longitude(1:nXtrackRadRR,0:nTimesRadRR-1),              &
+      !mem_sza(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
+      !mem_vza(1:nXtrackRadRR,0:nTimesRadRR-1),                    &
+      !mem_height(1:nXtrackRadRR,0:nTimesRadRR-1),                 &
+      !locerrstat)
 
     ! ------------------------------------------------------
     ! mem_column_uncertainty, men_latitude, mem_fit_flag and
@@ -472,23 +480,23 @@ CONTAINS
     voc_amf_filenames(voc_omicld_idx) = TRIM(ADJUSTL(OMSAO_refseccor_cld_filename))
 
     CALL amf_calculation_bis (                                            &
-      pge_idx, nTimesRadRR, nXtrackRadRR, mem_latitude, mem_longitude, &
-      mem_sza, mem_vza, mem_snow, mem_glint, omi_xtrpix_range_rr,      &
-      yn_szoom_rs, mem_column_amount, mem_column_uncertainty, mem_amf, &
-      mem_height, yn_write, locerrstat )
+      pge_idx, nTimesRadRR, nXtrackRadRR, rt%latitude, rt%longitude, &
+      rt%sza, rt%vza, mem_snow, mem_glint, omi_xtrpix_range_rr,      &
+      yn_szoom_rs, rt%column_amount, rt%column_uncertainty, mem_amf, &
+      rt%height, yn_write, locerrstat )
 
     ! --------------------------------------------------------
     ! Compute average fitting statistics and main quality flag
     ! --------------------------------------------------------
     CALL compute_fitting_statistics_nohe5 (                           &
       pge_idx, nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
-      mem_column_amount, mem_column_uncertainty, mem_rms,          &
-      mem_fit_flag, refmqf, locerrstat )
+      rt%column_amount, rt%column_uncertainty, rt%rms,          &
+      rt%fit_flag, refmqf, locerrstat )
 
     ! ------------------------------------------------
     ! Apply the background correction to Slant columns
     ! ------------------------------------------------
-    mem_column_amount = mem_column_amount * mem_amf
+    rt%column_amount = rt%column_amount * mem_amf
 
     ! -----------------------------------------------------
     ! Once we have the radiance reference retrievals we can
@@ -498,9 +506,11 @@ CONTAINS
     !     mem_column_amount, &! mem_column_uncertainty, mem_amf,
     !     mem_latitude, mem_longitude, mem_xtrflg, refmqf, locerrstat)
 
-    CALL compute_background_correction_bis(mem_column_amount, mem_correction, &
-      mem_latitude, mem_amf,                 &
+    CALL compute_background_correction_bis(rt%column_amount, mem_correction, &
+      rt%latitude, mem_amf,                 &
       nXtrackRadRR, nTimesRadRR, refmqf, locerrstat)
+
+    call dealloc_retrieval_type (rt)
 
     ! -------------------------------
     ! No more mess with the filenames
@@ -515,7 +525,7 @@ CONTAINS
 
   END SUBROUTINE Reference_Sector_radref_retrieval_and_median
 
-  SUBROUTINE compute_background_correction_bis(mem_column_amount, mem_correction, mem_latitude, mem_amf, &
+  SUBROUTINE compute_background_correction_bis(column_amount, correction, latitude, amf, &
       nXtrackRadRR, nTimesRadRR, refmqf, locerrstat)
 
     USE OMSAO_precision_module, ONLY: r4, i4
@@ -530,22 +540,22 @@ CONTAINS
     INTEGER (KIND=i4),                                           INTENT(IN) :: &
       nTimesRadRR, nXtrackRadRR
     REAL    (KIND=r8), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), INTENT(IN) :: &
-      mem_column_amount, mem_amf
+      column_amount, amf
     INTEGER (KIND=i2), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), INTENT(IN) :: refmqf
-    REAL    (KIND=r4), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), INTENT(IN) :: mem_latitude
+    REAL    (KIND=r4), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), INTENT(IN) :: latitude
 
     ! ------------------
     ! Modified variables
     ! ------------------
     INTEGER (KIND=i4), INTENT(INOUT) :: locerrstat
     REAL    (KIND=r8), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), INTENT(INOUT) :: &
-      mem_correction
+      correction
 
     ! ---------------
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: iline, itrack
-    REAL    (KIND=r8), DIMENSION(1)        :: Ref_column, latitude
+    REAL    (KIND=r8), DIMENSION(1)        :: Ref_column, latitude_r8
     REAL    (KIND=r8), DIMENSION(maxngrid) :: Ref_column_month
 
     ! -------------------
@@ -567,7 +577,7 @@ CONTAINS
         ! then cycle.
         ! -----------------------------------------------------
         IF (refmqf(itrack,iline) .NE. 0) CYCLE
-        latitude(1) = REAL(mem_latitude(itrack,iline), KIND=r8)
+        latitude_r8(1) = REAL(latitude(itrack,iline), KIND=r8)
         ! ---------------------------------------------------
         ! For the rest of the pixels find out the latitude,
         ! interpolate the reference column and substrack from
@@ -575,8 +585,8 @@ CONTAINS
         ! ---------------------------------------------------
         CALL ezspline_1d_interpolation ( INT(ngridpoints, KIND=i4),     &
           grid_lat(1:ngridpoints), Ref_column_month(1:ngridpoints), &
-          1, latitude(1), Ref_column(1), locerrstat )
-        mem_correction(itrack,iline) = mem_column_amount(itrack,iline) - ( Ref_column(1) * mem_amf(itrack,iline) )
+          1, latitude_r8(1), Ref_column(1), locerrstat )
+        correction(itrack,iline) = column_amount(itrack,iline) - ( Ref_column(1) * amf(itrack,iline) )
 
       END DO
     END DO

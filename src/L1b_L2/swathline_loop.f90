@@ -1,45 +1,43 @@
-MODULE omi_pge_swathline_loop_memory
+MODULE swathline_loop
 CONTAINS
-SUBROUTINE omi_pge_swathline_loops_mem (                               &
-    pge_idx, rpt_rr, n_max_rspec, yn_process,                     &
+SUBROUTINE swathline_loops (                               &
+    pge_idx, rpt, n_max_rspec, yn_process,                     &
     xtrange, yn_radiance_reference, yn_remove_target, ntargpol,         &
-    yn_commit, mem_column_amount, mem_column_uncertainty, mem_rms,      &
-    mem_fit_flag, mem_xtrflg, mem_latitude, mem_longitude, mem_sza,     &
-    mem_vza, mem_height, errstat)
+    yn_commit, errstat, retrieval)
 
-  USE OMSAO_precision_module,  ONLY: i4, r8, r4, i2
-  USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, &
-    MAX_STR_LEN, r4_missval, nlines_max, nUTCdim, NXTRACK_MAX
+  USE OMSAO_precision_module,  ONLY: i4, r8, i2, r4
+  USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, MAX_STR_LEN, &
+    nlines_max, nUTCdim, NXTRACK_MAX
   USE OMSAO_indices_module,    ONLY: n_max_fitpars
   USE OMSAO_variables_module,  ONLY:  &
-    n_fitvar_rad, l1b_rad_filename, &
-    verb_thresh_lev, n_fincol_idx, fincol_idx, n_rad_wvl, n_rad_wvl_max, &
-    Radiance_Paras_Type, fitvar_rad_init, fitvar_rad_saved
+    n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
+    n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, fitvar_rad_init, fitvar_rad_saved
   USE OMSAO_omidata_module,    ONLY:  &
     omi_scanline_no, omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
-    omi_column_uncert, omi_time_utc, omi_time, omi_latitude, omi_fit_rms,    &
+    omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &
     omi_radiance_errstat,  &
-    omi_szenith, omi_vzenith, omi_longitude, omi_xtrflg, omi_height
+    omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
+    retrieval_type
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
   USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
-  USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
+  USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
   use errormodule
-
   IMPLICIT NONE
 
   ! ---------------
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntargpol, n_max_rspec
-  TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt_rr
-  INTEGER (KIND=i4), DIMENSION (0:rpt_rr%ntimes-1,1:2),  INTENT (IN) :: xtrange
-  LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1),      INTENT (IN) :: yn_process
+  TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt
+  INTEGER (KIND=i4), DIMENSION (0:rpt%ntimes-1,1:2),  INTENT (IN) :: xtrange
+  LOGICAL,           DIMENSION (0:rpt%ntimes-1),      INTENT (IN) :: yn_process
   LOGICAL,           INTENT (IN) :: yn_commit, yn_radiance_reference, yn_remove_target
+  type (retrieval_type), optional, intent(inout) ::retrieval
 
   ! ------------------
   ! Modified variables
@@ -51,13 +49,13 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   ! ---------------
   INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
-  INTEGER (KIND=i4) :: nx, nt, nccd
+  INTEGER (KIND=i4) :: nt, nx, nccd
 
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
   ! ---------------------------------------------------------------
-  REAL (KIND=r8), DIMENSION (n_fincol_idx,1:rpt_rr%nxtrack) :: target_var, targsum, targcnt
-  REAL (KIND=r8), DIMENSION (1:rpt_rr%nxtrack)              :: target_fit, target_col
+  REAL (KIND=r8), DIMENSION (n_fincol_idx,1:rpt%nxtrack) :: target_var, targsum, targcnt
+  REAL (KIND=r8), DIMENSION (1:rpt%nxtrack)              :: target_fit, target_col
 
   ! ---------------------------------------------------------------------------------
   ! CCM Array to hold (1) Fitted Spec (2) Observed Spec (3) Spec Pos (4) Weight flags
@@ -68,25 +66,15 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   ! -------------------------------------
   ! Correlations with main output product
   ! -------------------------------------
-  REAL (KIND=r8), DIMENSION (n_fitvar_rad,rpt_rr%nxtrack,0:nlines_max-1) :: &
+  REAL (KIND=r8), DIMENSION (n_fitvar_rad,rpt%nxtrack,0:nlines_max-1) :: &
     all_fitted_columns, all_fitted_errors, correlation_columns
-
-  ! -----------------------------
-  ! Keeping the results in memory
-  ! -----------------------------
-  REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1), INTENT(INOUT) :: &
-    mem_column_amount, mem_column_uncertainty, mem_rms
-  REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1), INTENT(INOUT) :: &
-    mem_latitude, mem_longitude, mem_sza, mem_vza, mem_height
-  INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1), INTENT(INOUT) :: mem_fit_flag, mem_xtrflg
 
   if (errstat < 0) return
 
   locerrstat = pge_errstat_ok
-
-  nt = rpt_rr%ntimes
-  nx = rpt_rr%nxtrack
-  nccd = rpt_rr%nwavel_ccd
+  nt = rpt%ntimes
+  nx = rpt%nxtrack
+  nccd = rpt%nwavel_ccd
 
   ! --------------------------------
   ! Initialize fitting output arrays
@@ -94,18 +82,6 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
   all_fitted_columns  = r8_missval
   all_fitted_errors   = r8_missval
   correlation_columns = r8_missval
-
-  ! ------------------------
-  ! Initialize memory arrays
-  ! ------------------------
-  mem_column_amount      = r8_missval
-  mem_column_uncertainty = r8_missval
-  mem_rms                = r8_missval
-  mem_latitude           = r4_missval
-  mem_longitude          = r4_missval
-  mem_sza                = r4_missval
-  mem_vza                = r4_missval
-  mem_fit_flag           = i2_missval
 
   IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
     target_var = 0.0_r8
@@ -119,7 +95,7 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
     if (locerrstat /= 0) then
       errstat = -1
-      call err_message_error ("omi_pge_swathline_loops_mem: allocate failed", &
+      call err_message_error ("swathline_loops: allocate failed", &
                               errstat)
       return
     endif
@@ -136,6 +112,11 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
     ! ---------------------------------------------------------
     nblock = nlines_max
     IF ( (iline+nblock) > nt ) nblock = nt - iline
+    ! -----------------------------------------
+    ! Skip if we don't have anything to process
+    ! -----------------------------------------
+    IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
+
     ! ------------------------------
     ! Get NBLOCK radiance lines
     ! ------------------------------
@@ -153,15 +134,10 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
     omi_fit_rms      (1:nx,     0:nblock-1) = r8_missval
     omi_time_utc     (1:nUTCdim,0:nblock-1) = i2_missval
 
-    ! -----------------------------------------
-    ! Skip if we don't have anything to process
-    ! -----------------------------------------
-    IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
-
     ! --------------------------------
     ! Read pre-fitted molecule columns
     ! --------------------------------
-    IF (.NOT. yn_radiance_reference) THEN
+    IF (.NOT. yn_radiance_reference) then
       CALL read_prefit_columns ( pge_idx, nx, nblock, iline, locerrstat )
       errstat = MAX ( errstat, locerrstat )
       IF ( errstat >= pge_errstat_error ) RETURN
@@ -205,16 +181,20 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
         fpix = xtrange(omi_scanline_no,1)
         lpix = xtrange(omi_scanline_no,2)
 
-        CALL xtrack_radiance_fitting_loop (pge_idx, &
-          n_max_rspec, fpix, lpix, iloop,               &
+        ! One side effect of this routine is that the value of n_rad_wvl
+        ! will change.
+        CALL xtrack_radiance_fitting_loop ( &
+          pge_idx, n_max_rspec, fpix, lpix, iloop,               &
           n_fitvar_rad,                              &
           all_fitted_columns (1:n_fitvar_rad,fpix:lpix,iloop),   & !gga (1:nx to fpix:lpix)
           all_fitted_errors  (1:n_fitvar_rad,fpix:lpix,iloop),   & !gga (1:nx to fpix:lpix)
           correlation_columns(1:n_fitvar_rad,fpix:lpix,iloop),   & !gga (1:nx to fpix:lpix)
-          target_var(1:n_fincol_idx,fpix:lpix), locerrstat, fitspc_tmp, n_rad_wvl_max)
+          target_var(1:n_fincol_idx,fpix:lpix), locerrstat, &
+          fitspc_tmp, n_rad_wvl_max)
+
         ipix = (fpix+lpix)/2
         addmsg = ''
-        WRITE (addmsg,'(I5, I3,3(1PE15.5),I5)') omi_scanline_no, ipix, &
+        WRITE (addmsg,'(I5, I3, 3(1PE15.5),I5)') omi_scanline_no, ipix, &
           omi_column_amount(ipix, iloop), omi_column_uncert(ipix, iloop), &
           omi_fit_rms   (ipix, iloop), MAX(-1,omi_itnum_flag(ipix, iloop))
         estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )
@@ -252,20 +232,21 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
           END DO
         END IF
 
-        ! --------------------------------------------
-        ! Keeping the results of the fitting in memory
-        ! --------------------------------------------
-        mem_column_amount(fpix:lpix,omi_scanline_no)      = omi_column_amount(fpix:lpix,iloop)
-        mem_column_uncertainty(fpix:lpix,omi_scanline_no) = omi_column_uncert(fpix:lpix,iloop)
-        mem_rms(fpix:lpix,omi_scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
-        mem_latitude(fpix:lpix,omi_scanline_no)           = omi_latitude(fpix:lpix,iloop)
-        mem_longitude(fpix:lpix,omi_scanline_no)          = omi_longitude(fpix:lpix,iloop)
-        mem_sza(fpix:lpix,omi_scanline_no)                = omi_szenith(fpix:lpix,iloop)
-        mem_vza(fpix:lpix,omi_scanline_no)                = omi_vzenith(fpix:lpix,iloop)
-        mem_fit_flag(fpix:lpix,omi_scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
-        mem_xtrflg(fpix:lpix,omi_scanline_no)             = omi_xtrflg(fpix:lpix,iloop)
-        mem_height(fpix:lpix,omi_scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
-
+        ! -----------------------------------------------------
+        ! Optionally, keep the results of the fitting in memory
+        ! -----------------------------------------------------
+        if (present(retrieval)) then
+          retrieval%column_amount(fpix:lpix,omi_scanline_no)      = omi_column_amount(fpix:lpix,iloop)
+          retrieval%column_uncertainty(fpix:lpix,omi_scanline_no) = omi_column_uncert(fpix:lpix,iloop)
+          retrieval%rms(fpix:lpix,omi_scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
+          retrieval%latitude(fpix:lpix,omi_scanline_no)           = omi_latitude(fpix:lpix,iloop)
+          retrieval%longitude(fpix:lpix,omi_scanline_no)          = omi_longitude(fpix:lpix,iloop)
+          retrieval%sza(fpix:lpix,omi_scanline_no)                = omi_szenith(fpix:lpix,iloop)
+          retrieval%vza(fpix:lpix,omi_scanline_no)                = omi_vzenith(fpix:lpix,iloop)
+          retrieval%fit_flag(fpix:lpix,omi_scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
+          retrieval%xtr_flag(fpix:lpix,omi_scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
+          retrieval%height(fpix:lpix,omi_scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
+        endif
       END IF
 
       ! -----------------------
@@ -324,6 +305,6 @@ SUBROUTINE omi_pge_swathline_loops_mem (                               &
 
   RETURN
 
-END SUBROUTINE omi_pge_swathline_loops_mem
+END SUBROUTINE swathline_loops
 END MODULE
 
