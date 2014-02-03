@@ -11,7 +11,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal
   USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
-    yn_radiance_reference, l1b_radref_filename, l1b_channel
+    l1b_radref_filename, l1b_channel
+  use ctrlvars, only: yn_radiance_reference
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
   USE omi_read_l1b_data, ONLY: L1Bga_EarthSunDistance
@@ -124,11 +125,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     l1b_rad_filename, &
     l2_filename, pixnum_lim,    &
     radfit_latrange,                &
-    yn_diagnostic_run,              &
-    yn_common_iter, common_latrange,    &
+    common_latrange,    &
     radiance_wavcal_lnums, Radiance_Paras_Type, &
-    radiance_reference_lnums, l1b_radref_filename, yn_radiance_reference, &
-    yn_remove_target !, fitvar_rad_init, fitvar_rad_saved
+    radiance_reference_lnums, l1b_radref_filename
+  use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
+    yn_diagnostic_run, yn_remove_target
   USE OMSAO_he5_module,       ONLY:  pge_swath_name
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
@@ -475,7 +476,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       pge_idx, rpt_rad, n_max_rspec, &
       yn_common_range, &
       omi_xtrpix_range, &
-      yn_radiance_reference, .FALSE., -1, &
+      .FALSE., -1, &
       .TRUE., errstat )
 
     if (errstat < 0) return
@@ -605,7 +606,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     pge_idx, rpt_rad, n_max_rspec,     &
     yn_radfit_range,                           &
     omi_xtrpix_range,                      &
-    yn_radiance_reference, .FALSE., -1,                       &
+    .FALSE., -1,                       &
     .FALSE., errstat)
   if (errstat < 0) return
 

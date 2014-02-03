@@ -821,8 +821,7 @@ CONTAINS
     USE OMSAO_indices_module,       ONLY: &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
-    USE OMSAO_variables_module,     ONLY: yn_solar_comp, yn_spectrum_norm, &
-      yn_radiance_reference
+    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_solar_comp
     USE OMSAO_solcomp_module,       ONLY: solarcomp_pars
     USE OMSAO_errstat_module
     USE strutils, ONLY: convert_2bytes_to_16bits

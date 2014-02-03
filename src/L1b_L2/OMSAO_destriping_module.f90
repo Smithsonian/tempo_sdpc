@@ -5,7 +5,8 @@ MODULE OMSAO_destriping_module
   USE OMSAO_parameters_module, ONLY: &
     r8_missval, normweight, downweight, nxtrack_max, nlines_max
   USE OMSAO_variables_module,  ONLY: &
-    radfit_latrange, yn_diagnostic_run
+    radfit_latrange
+  use ctrlvars, only: yn_diagnostic_run
   USE OMSAO_median_module,     ONLY: median
   use optimizer_interface_module
   use errormodule

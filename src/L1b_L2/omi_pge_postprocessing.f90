@@ -18,7 +18,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
   USE OMSAO_errstat_module
-  USE OMSAO_variables_module, ONLY: yn_refseccor, yn_radiance_reference
+  use ctrlvars, only: yn_radiance_reference, yn_refseccor
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
   USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, Cmlat, Cmlon, CmETA, CmEp1

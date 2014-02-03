@@ -281,8 +281,7 @@ CONTAINS
       MAX_STR_LEN
     USE OMSAO_wfamf_module,     ONLY: amf_calculation_bis
     USE OMSAO_variables_module, ONLY: OMSAO_refseccor_cld_filename, voc_amf_filenames, &
-      Radiance_Paras_Type, common_latrange, l1b_rad_filename, l1b_radref_filename, &
-      yn_radiance_reference
+      Radiance_Paras_Type, common_latrange, l1b_rad_filename, l1b_radref_filename
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
       compute_fitting_statistics_nohe5
@@ -413,7 +412,7 @@ CONTAINS
       pge_idx, rpt_rr, n_max_rspec, &
       yn_common_range(0:nTimesRadRR-1),                           &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
-      yn_radiance_reference, .FALSE., -1,                         &
+      .FALSE., -1,                         &
       .TRUE., locerrstat)
 
     ! ---------------------------------------------------
@@ -429,7 +428,7 @@ CONTAINS
       pge_idx, rpt_rr, n_max_rspec, &
       yn_radfitref_range(0:nTimesRadRR-1),                        &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
-      yn_radiance_reference, .FALSE., -1,                         &
+      .FALSE., -1,                         &
       .TRUE., locerrstat, retrieval=rt)
       !mem_column_amount(1:nXtrackRadRR,0:nTimesRadRR-1),  &
       !mem_column_uncertainty(1:nXtrackRadRR,0:nTimesRadRR-1),     &

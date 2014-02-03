@@ -1,7 +1,8 @@
 MODULE control_module
 
-  PRIVATE is_end_of_input
-  PRIVATE locate_string_in_table
+  use ctrlvars
+  private
+  public read_fitting_control_file
 
 CONTAINS
 
@@ -68,20 +69,19 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     newshift_str, refseccor_str, scattweight_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
-    fitcol_idx, n_mol_fit, max_itnum_sol, max_itnum_rad, yn_smooth, yn_doas,            &
+    fitcol_idx, n_mol_fit, max_itnum_sol, max_itnum_rad,            &
     fitvar_sol_init, fitvar_rad_init,  fitvar_rad_saved, szamax,                        &
     zatmos, lo_sunbnd, up_sunbnd, lo_radbnd, up_radbnd,                      &
-    yn_use_labslitfunc, radwavcal_freq, tol, epsrel,  epsabs,  epsx, &
+    radwavcal_freq, tol, epsrel,  epsabs,  epsx, &
     pm_one, Undersample_Phase,     &
     ctrl_fit_winwav_lim, ctrl_fit_winexc_lim, pixnum_lim, radfit_latrange, &
     static_input_fnames, fitvar_rad_str, winwav_min, winwav_max,       &
     have_undersampling,                                                &
-    ctrl_n_fitres_loop, ctrl_fitres_range, l1b_channel, yn_solar_i0,                              &
-    yn_solar_comp, solar_comp_typ, yn_spectrum_norm, yn_common_iter,    &
-    common_fitpos, common_fitvar, common_latrange, yn_o3amf_cor, yn_diagnostic_run,     &
-    max_good_col, yn_solmonthave, yn_newshift, yn_refseccor, yn_sw, &
-    yn_radiance_reference, radref_latrange, yn_remove_target, target_npol
-
+    ctrl_n_fitres_loop, ctrl_fitres_range, l1b_channel, &
+    solar_comp_typ, &
+    common_fitpos, common_fitvar, common_latrange, &
+    max_good_col, &
+    radref_latrange, target_npol
   USE OMSAO_prefitcol_module, ONLY: yn_bro_prefit, yn_o3_prefit, yn_lqh2o_prefit
   USE OMSAO_destriping_module, ONLY: &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
@@ -588,7 +588,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
     modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
   IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) yn_sw
+  READ (fit_ctrl_unit, *) yn_scat_weights
 
   ! -------------------------------------------------------------------
   ! Unless we come up with a reason against it, the maximum good column
@@ -720,7 +720,8 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   USE OMSAO_variables_module,    ONLY: &
     n_fitvar_rad, all_radfit_idx, mask_fitvar_rad, fitvar_rad_init,         &
     lo_radbnd, up_radbnd, n_fincol_idx, n_mol_fit, fitcol_idx, fincol_idx,  &
-    yn_common_iter, common_fitpos
+    common_fitpos
+  use ctrlvars, only: yn_common_iter
   USE OMSAO_prefitcol_module, ONLY:  assign_prefit_parameter_index, n_prefit_vars
   USE OMSAO_omidata_module,      ONLY: &
     correlation_names, correlation_names_concat, nclenfit

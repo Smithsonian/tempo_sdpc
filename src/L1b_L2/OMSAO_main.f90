@@ -28,7 +28,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   use elsunc_interface_module, only : elsunc_optimizer
   use slitfunction, only : slitfunction_select, slitfunction_open
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
-  use OMSAO_variables_module, only : yn_use_labslitfunc
+  use ctrlvars, only: yn_use_labslitfunc
   IMPLICIT NONE
 
   ! ---------------

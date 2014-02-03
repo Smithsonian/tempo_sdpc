@@ -58,3 +58,4 @@ errormodule.f90
 l1bread.f90
 wavecal.f90
 commonmode.f90
+ctrlvars.f90

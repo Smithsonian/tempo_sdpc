@@ -33,8 +33,6 @@ MODULE OMSAO_variables_module
   ! -------------------------------------------------
   ! Variables defined in preamble of original program
   ! -------------------------------------------------
-  LOGICAL :: yn_smooth, yn_doas
-  LOGICAL :: yn_spectrum_norm
 
   INTEGER (KIND=I4), DIMENSION (n_max_fitpars)  :: mask_fitvar_rad, mask_fitvar_cal, all_radfit_idx
 
@@ -54,7 +52,7 @@ MODULE OMSAO_variables_module
   ! Variables related to Air Mass Factors
   ! -------------------------------------
   !INTEGER (KIND=I4)  :: n_amftab_dim, n_amftab_ang
-  LOGICAL            :: Have_AMF_Table, yn_o3amf_cor
+  LOGICAL            :: Have_AMF_Table
   !!REAL    (KIND=r8)  :: amf_esza_min, amf_esza_max
   !REAL    (KIND=r8)  :: amf_tab_wvl, amf_tab_alb
   !REAL    (KIND=r8), DIMENSION (n_amftab_ang_max, n_amftab_dim_max) :: amf_table_bro
@@ -228,7 +226,6 @@ MODULE OMSAO_variables_module
   ! Name of the tabulated OMI slit function data
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: omi_slitfunc_fname
-  LOGICAL                  :: yn_use_labslitfunc
 
   ! ---------------------------------------------------------
   ! Filenames specific for the AMF scheme in OMBRO and OMHCHO
@@ -240,24 +237,12 @@ MODULE OMSAO_variables_module
   ! Filename, logical and type indices for composite Solar Spectrum
   ! ---------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_solcomp_filename
-  LOGICAL                  :: yn_solar_comp
   INTEGER (KIND=i4)        :: solar_comp_typ, solar_comp_orb
 
   ! -------------------------------------------------------
   ! Filename and logical for solar monthly average spectrum
   ! -------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_solmonthave_filename
-  LOGICAL                  :: yn_solmonthave
-
-  ! -------------------------------
-  ! Logicals for Solar I0 correction
-  ! -------------------------------
-  LOGICAL           :: yn_solar_i0
-
-  ! ------------------------------------------------------
-  ! Logical for processing mode (diagnostic or production)
-  ! ------------------------------------------------------
-  LOGICAL           :: yn_diagnostic_run
 
   ! --------------------------------------------
   ! * Logical for Common Mode Iteration
@@ -265,7 +250,6 @@ MODULE OMSAO_variables_module
   ! * Array for initial fitting variables
   ! * Latitude range for common mode computation
   ! --------------------------------------------
-  LOGICAL                          :: yn_common_iter
   INTEGER (KIND=i4)                :: common_fitpos
   REAL    (KIND=r8), DIMENSION (3) :: common_fitvar
   REAL    (KIND=r4), DIMENSION (2) :: common_latrange
@@ -276,29 +260,21 @@ MODULE OMSAO_variables_module
   ! ---------------------------------------------------------------------
   CHARACTER (LEN=3) :: l1b_channel
 
-  ! -------------------------------------------------
-  ! Logical for newshift following Xiong comments gga
-  ! -------------------------------------------------
-  LOGICAL :: yn_newshift
-
   ! --------------------------------------------------------
   ! Filename and logical for Reference Sector Correction gga
   ! --------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_refseccor_filename
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_refseccor_cld_filename
-  LOGICAL :: yn_refseccor
 
   ! -----------------------------------------------------------------
   ! Logical for Scattering Weights, Gas Profile and Averaging Kernels
   ! Also filename
   ! -----------------------------------------------------------------
-  LOGICAL                  :: yn_sw
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_OMLER_filename
 
   ! -------------------------------------------------------
   ! Variables connected with  a radiance reference spectrum
   ! -------------------------------------------------------
-  LOGICAL                          :: yn_radiance_reference, yn_remove_target
   INTEGER (KIND=i4)                :: target_npol
   INTEGER (KIND=i4), DIMENSION (2) :: radiance_reference_lnums
   REAL    (KIND=r4), DIMENSION (2), TARGET :: radref_latrange

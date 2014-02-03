@@ -2,7 +2,7 @@ MODULE swathline_loop
 CONTAINS
 SUBROUTINE swathline_loops (                               &
     pge_idx, rpt, n_max_rspec, yn_process,                     &
-    xtrange, yn_radiance_reference, yn_remove_target, ntargpol,         &
+    xtrange, yn_remove_target, ntargpol,         &
     yn_commit, errstat, retrieval)
 
   USE OMSAO_precision_module,  ONLY: i4, r8, i2, r4
@@ -11,7 +11,9 @@ SUBROUTINE swathline_loops (                               &
   USE OMSAO_indices_module,    ONLY: n_max_fitpars
   USE OMSAO_variables_module,  ONLY:  &
     n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
-    n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, fitvar_rad_init, fitvar_rad_saved
+    n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, &
+    fitvar_rad_init, fitvar_rad_saved
+  use ctrlvars, only: yn_radiance_reference
   USE OMSAO_omidata_module,    ONLY:  &
     omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
@@ -36,7 +38,7 @@ SUBROUTINE swathline_loops (                               &
   TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt
   INTEGER (KIND=i4), DIMENSION (0:rpt%ntimes-1,1:2),  INTENT (IN) :: xtrange
   LOGICAL,           DIMENSION (0:rpt%ntimes-1),      INTENT (IN) :: yn_process
-  LOGICAL,           INTENT (IN) :: yn_commit, yn_radiance_reference, yn_remove_target
+  LOGICAL,           INTENT (IN) :: yn_commit, yn_remove_target
   type (retrieval_type), optional, intent(inout) ::retrieval
 
   ! ------------------

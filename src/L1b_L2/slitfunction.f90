@@ -55,19 +55,19 @@ contains
   end subroutine slitfunction_open
 
   subroutine slitfunction_convolve (num_wvl, wvl, spec, spec_conv, &
-                                    use_table, pixel, params, num_params, errstat)
+                                    pixel, params, num_params, errstat)
+    use ctrlvars, only: yn_use_labslitfunc
     implicit none
     integer (kind=i4), intent(in) :: num_wvl
     real (kind=r8), dimension(:), intent(in) :: wvl, spec
     real (kind=r8), dimension(:), intent(out) :: spec_conv
-    logical, intent(in) :: use_table
     integer (kind=i4), intent(in) :: pixel, num_params
     real (kind=r8), dimension(:), intent(in) :: params
     integer, intent(inout) :: errstat
 
     if (errstat < 0) return
 
-    if (use_table) then
+    if (yn_use_labslitfunc) then
       call sf_convolve (pixel, num_wvl, wvl, spec, spec_conv, errstat)
     else
       if (num_params /= 2) then

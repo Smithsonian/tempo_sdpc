@@ -86,9 +86,8 @@ contains
       bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, &
       sc2_idx, sc3_idx, sin_idx, hwe_idx, asy_idx, shi_idx, squ_idx
     USE OMSAO_variables_module,  ONLY: &
-      refspecs_original, yn_use_labslitfunc, &
-      yn_spectrum_norm, yn_newshift, &
-      curr_xtrack_pixnum
+      refspecs_original, curr_xtrack_pixnum
+    use ctrlvars, only: yn_spectrum_norm, yn_newshift
     use slitfunction, only : slitfunction_convolve
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_errstat_module
@@ -134,7 +133,7 @@ contains
     !     Now, after Xiong recommendation if yn_newfit equal true then (gga):
     !     Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
 
-    IF (yn_newshift .EQV. .true.) THEN ! gga
+    IF (yn_newshift) THEN ! gga
       solar_pos(1:npts) = solar_pos(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
         +  loc_cal_parms(shi_idx) - solar_wavel_avg * loc_cal_parms(squ_idx)
     ELSE ! gga
@@ -184,7 +183,7 @@ contains
       CALL slitfunction_convolve ( &
         npts, solar_pos(1:npts), solar_spec(1:npts), &
         saved_solar_spec_convolved(1:npts), &
-        yn_use_labslitfunc, curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
+        curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
         errstat)
       if (errstat < 0) return
     endif

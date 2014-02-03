@@ -6,10 +6,9 @@ MODULE spectra
   logical, dimension(max_rs_idx) :: database_j_is_zero
 
   interface
-    subroutine earthshine_spectrum_interface (npts, avg_wavl, wavelengths, spectrum, params, is_doas)
+    subroutine earthshine_spectrum_interface (npts, avg_wavl, wavelengths, spectrum, params)
       import i4, r8
       implicit none
-      logical, intent(in) :: is_doas
       integer (kind=i4), intent(in) :: npts
       real (kind=r8), intent(in) :: avg_wavl
       real (kind=r8), dimension(:), intent(inout) :: params
@@ -20,7 +19,7 @@ MODULE spectra
 
 CONTAINS
 
-SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas)
+SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
@@ -31,9 +30,9 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
   USE OMSAO_variables_module,  ONLY: &
     n_database_wvl, curr_sol_spec, fitweights, &
-    yn_solar_comp, yn_spectrum_norm, yn_newshift, &
-    yn_radiance_reference, database, &
-    curr_xtrack_pixnum
+    database, curr_xtrack_pixnum
+  use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, &
+    yn_doas, yn_newshift, yn_solar_comp
   USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
   USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
   USE cache_module, ONLY: saved_shift, saved_squeeze
@@ -46,7 +45,6 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   ! ===============
   ! Input variables
   ! ===============
-  LOGICAL,                              INTENT (IN)    :: doas
   INTEGER (KIND=i4),                    INTENT (IN)    :: npts
   REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
   REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
@@ -225,7 +223,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
 
   !     DOAS here - the spectrum to be fitted needs to be re-defined:
-  IF ( doas ) THEN
+  IF ( yn_doas ) THEN
 
     i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 
@@ -330,7 +328,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas
   RETURN
 END SUBROUTINE spectrum_earthshine
 
-SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar, doas)
+SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
@@ -342,9 +340,9 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
   USE OMSAO_variables_module,  ONLY: &
     n_database_wvl, curr_sol_spec, fitweights, &
-    yn_solar_comp, yn_spectrum_norm, yn_newshift, &
-    yn_radiance_reference, database, &
-    curr_xtrack_pixnum
+    database, curr_xtrack_pixnum
+  use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_doas, &
+    yn_solar_comp, yn_newshift
   USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
   USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
   USE cache_module, ONLY: saved_shift, saved_squeeze
@@ -357,7 +355,6 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   ! ===============
   ! Input variables
   ! ===============
-  LOGICAL,                              INTENT (IN)    :: doas
   INTEGER (KIND=i4),                    INTENT (IN)    :: npts
   REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
   REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
@@ -532,7 +529,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
 
   !     DOAS here - the spectrum to be fitted needs to be re-defined:
-  IF ( doas ) THEN
+  IF ( yn_doas ) THEN
 
     i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 

@@ -25,13 +25,13 @@ CONTAINS
       r8_missval, i2_missval, downweight
     USE OMSAO_variables_module,    ONLY:                                    &
       n_fincol_idx, fincol_idx, pm_one, database, &
-      yn_doas, yn_smooth, rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
+      rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
       lo_radbnd, up_radbnd, fitweights, currspec, fitwavs, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
-      all_radfit_idx, yn_o3amf_cor, &
+      all_radfit_idx, &
       n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
       tol, epsrel, epsabs, epsx
-
+    use ctrlvars, only: yn_smooth, yn_doas, yn_o3amf_cor
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
     USE commonmode, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
@@ -248,7 +248,7 @@ CONTAINS
       radfit_exval = return_status
 
       call earthshine_spectrum (n_rad_wvl_loc, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
-                                fitspec(1:n_rad_wvl_loc), fitvar_rad, yn_doas)
+                                fitspec(1:n_rad_wvl_loc), fitvar_rad)
 
       n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
       mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
@@ -493,7 +493,8 @@ CONTAINS
   subroutine earthshine_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
     use spectra, only: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
     use OMSAO_variables_module, only: rad_wav_avg, fitwavs, fitweights, &
-      currspec, fitvar_rad, yn_doas, yn_o3amf_cor
+      currspec, fitvar_rad
+    use ctrlvars, only: yn_o3amf_cor
     implicit none
     type(optimizer_type) :: this_optimizer
     real (kind=r8), dimension (:), intent(in) :: params
@@ -516,7 +517,7 @@ CONTAINS
     endif
     call earthshine_spectrum (num_residuals, rad_wav_avg, &
                               fitwavs(1:num_residuals), residuals(1:num_residuals), &
-                              fitvar_rad, yn_doas)
+                              fitvar_rad)
     residuals = (currspec(1:num_residuals) - residuals(1:num_residuals)) * fitweights(1:num_residuals)
 
     return_status = 0

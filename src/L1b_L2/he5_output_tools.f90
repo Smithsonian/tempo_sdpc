@@ -3,7 +3,9 @@ MODULE he5_output_tools
   USE OMSAO_indices_module, ONLY: n_voc_amf_luns
   USE OMSAO_precision_module, ONLY: i2, i4, r4, r8
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-  USE OMSAO_variables_module, ONLY: yn_diagnostic_run
+
+  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
+
   USE OMSAO_he5_module, ONLY: he5_start_2d, he5_stride_2d, he5_edge_2d, &
     he5_start_3d, he5_stride_3d, he5_edge_3d, &
     HE5T_NATIVE_DOUBLE, HE5T_NATIVE_FLOAT, HE5T_NATIVE_INT, &
@@ -71,7 +73,7 @@ CONTAINS
     USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
     USE OMSAO_he5_module
     USE OMSAO_errstat_module
-    USE OMSAO_variables_module, ONLY: n_fitvar_rad, yn_diagnostic_run
+    USE OMSAO_variables_module, ONLY: n_fitvar_rad
 
     IMPLICIT NONE
 
@@ -232,7 +234,6 @@ CONTAINS
       pge_hcho_idx, pge_gly_idx, pge_o3_idx, sao_molecule_names, &
       pge_h2o_idx
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-    USE OMSAO_variables_module,  ONLY: yn_diagnostic_run, yn_refseccor, yn_sw
     USE OMSAO_he5_module
     USE datafields, ONLY: comdata_he5fields, diagnostic_he5fields, &
       geo_he5fields, o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
@@ -358,7 +359,7 @@ CONTAINS
     ! (4) Scattering weights, gas profile averaging kernels
     ! and albedo gga
     ! -------------------------------------------------
-    IF (yn_sw) &
+    IF (yn_scat_weights) &
       call define_fields (pge_swath_id, 1, sw_he5fields, &
                           ntimes, nxtrack, nswlevels, errstat)
 
@@ -628,7 +629,6 @@ CONTAINS
 !      corr_didx,  corrcol_didx, correrr_didx, itnum_didx,  &
 !      fitwt_didx, posobs_didx,  spcobs_didx,  spcfit_didx, &
 !      spcres_didx
-    USE OMSAO_variables_module,  ONLY: yn_diagnostic_run
     USE OMSAO_omidata_module
     USE OMSAO_errstat_module
     USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
@@ -991,7 +991,7 @@ CONTAINS
     USE OMSAO_errstat_module
     !USE OMSAO_indices_module,   ONLY: commcnt_didx, commspc_didx, &
     !  commwvl_didx, ccdpix_didx
-    USE OMSAO_variables_module, ONLY: common_mode_spec, yn_diagnostic_run
+    USE OMSAO_variables_module, ONLY: common_mode_spec
     USE OMSAO_omidata_module,   ONLY: n_roff_dig
     USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
     USE datafields
@@ -1193,7 +1193,6 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: sao_molecule_names !, correlm_didx
     USE OMSAO_errstat_module
     USE OMSAO_parameters_module, ONLY: NLINES_MAX
-    USE OMSAO_variables_module,  ONLY: yn_diagnostic_run
     USE OMSAO_omidata_module,    ONLY: correlation_names_concat, nclenfit
     USE datafields, ONLY: avgcol_field, avgdcol_field, avgrms_field, &
       correlm_field, mainqa_field, maxcol_field
@@ -1461,7 +1460,6 @@ CONTAINS
       pge_hcho_idx, pge_gly_idx, pge_o3_idx, sao_molecule_names, &
       pge_h2o_idx
     !USE OMSAO_parameters_module, ONLY: r8_missval
-    USE OMSAO_variables_module,  ONLY: yn_diagnostic_run, yn_refseccor, yn_sw
     USE datafields
     USE OMSAO_errstat_module
 
@@ -1569,7 +1567,7 @@ CONTAINS
     ! Scattering weights, gas profile, averaging kernels
     ! and albedo attributes. gga
     ! --------------------------------------------------
-    IF (yn_sw) THEN
+    IF (yn_scat_weights) THEN
       CALL write_attributes (sw_he5fields, locerrstat)
     ENDIF
 

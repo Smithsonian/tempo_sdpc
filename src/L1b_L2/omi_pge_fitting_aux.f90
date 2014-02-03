@@ -293,8 +293,9 @@ CONTAINS
       o3_prefit_lun, bro_prefit_lun, lqh2o_prefit_lun,                        &
       voc_amf_luns, voc_omicld_idx, pge_h2o_idx
     USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input, input_versions
-    USE OMSAO_variables_module,    ONLY: yn_solar_comp, l1b_rad_filename, &
-      yn_radiance_reference, l1b_radref_filename
+    USE OMSAO_variables_module,    ONLY: l1b_rad_filename, &
+      l1b_radref_filename
+    use ctrlvars, only: yn_radiance_reference, yn_solar_comp
 
     IMPLICIT NONE
 
@@ -306,7 +307,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    LOGICAL :: yn_radref
+    LOGICAL :: do_radref
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -339,9 +340,9 @@ CONTAINS
         ( TRIM(ADJUSTL(l1b_rad_filename)) /= TRIM(ADJUSTL(l1b_radref_filename))) ) THEN
       n_lun_inp = n_lun_inp + 1
       lun_input(n_lun_inp) = l1b_radianceref_lun
-      yn_radref = .TRUE.
+      do_radref = .TRUE.
     ELSE
-      yn_radref = .FALSE.
+      do_radref = .FALSE.
     END IF
     ! --------------------
     ! (b) Solar Irradiance
@@ -412,13 +413,13 @@ CONTAINS
     ! we have to compose the pieces of information from various
     ! MetaData strings.
     ! ------------------------------------------------------------
-    CALL get_input_versions ( pge_idx, yn_solar_comp, yn_radref, input_versions )
+    CALL get_input_versions ( pge_idx, do_radref, input_versions )
     input_versions = TRIM(ADJUSTL(input_versions))
 
     RETURN
   END SUBROUTINE set_input_pointer_and_versions
 
-  SUBROUTINE get_input_versions (pge_idx, yn_solar_comp, yn_radref, input_versions )
+  SUBROUTINE get_input_versions (pge_idx, do_radref, input_versions )
 
     USE OMSAO_precision_module,  ONLY: i4
     USE OMSAO_indices_module,    ONLY: pge_hcho_idx, pge_gly_idx, pge_h2o_idx
@@ -428,6 +429,7 @@ CONTAINS
       mdata_string_values, mdata_voc_fields, mdata_omhcho_fields, &
       mdata_omhcho_values, mdata_voc_values, &
       mdata_omchocho_fields, mdata_omchocho_values
+    use ctrlvars, only: yn_solar_comp
 
     IMPLICIT NONE
 
@@ -435,7 +437,7 @@ CONTAINS
     ! Input variable
     ! --------------
     INTEGER,           INTENT (IN)  :: pge_idx
-    LOGICAL,           INTENT (IN)  :: yn_solar_comp, yn_radref
+    LOGICAL,           INTENT (IN)  :: do_radref
 
     ! ---------------
     ! Output variable
@@ -493,7 +495,7 @@ CONTAINS
     ! ----------------------------------
     ! Add the radiance reference granule
     ! ----------------------------------
-    IF ( yn_radref ) &
+    IF ( do_radref ) &
       input_versions = TRIM(ADJUSTL(input_versions)) // ' ' // &
       TRIM(ADJUSTL(rrf_name))//':'//TRIM(ADJUSTL(rrf_version))
 

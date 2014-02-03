@@ -18,7 +18,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: downweight, normweight, r4_missval
     USE OMSAO_indices_module,         ONLY: &
       qflg_mis_idx, qflg_bad_idx, qflg_err_idx
-    USE OMSAO_variables_module, ONLY: yn_spectrum_norm
+    use ctrlvars, only: yn_spectrum_norm
     USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
     USE strutils, ONLY: convert_2bytes_to_16bits
@@ -265,10 +265,10 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval
-    USE OMSAO_variables_module,  ONLY: yn_newshift, &
-      fitvar_cal, fitvar_cal_saved, &
+    USE OMSAO_variables_module,  ONLY: fitvar_cal, fitvar_cal_saved, &
       fitvar_sol_init, sol_wav_avg, &
       max_itnum_sol, up_sunbnd, lo_sunbnd
+    use ctrlvars, only: yn_newshift
     USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, &
       shi_idx, squ_idx, max_calfit_idx
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok

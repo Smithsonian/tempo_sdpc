@@ -12,7 +12,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   USE OMSAO_indices_module,    ONLY: solar_idx, us1_idx, us2_idx
   USE OMSAO_parameters_module, ONLY: max_spec_pts
   USE OMSAO_variables_module,  ONLY: &
-    refspecs_original, database, have_undersampling, yn_use_labslitfunc
+    refspecs_original, database, have_undersampling
   use slitfunction, only : slitfunction_convolve
   use errormodule
   USE OMSAO_errstat_module
@@ -70,7 +70,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   !  modulename//f_sep//'Convolution', vb_lev_default, errstat )
   !IF ( locerrstat >= pge_errstat_error ) RETURN
   call slitfunction_convolve (npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), &
-                              yn_use_labslitfunc, xtrack_pix, [hw1e, e_asym], 2, errstat)
+                              xtrack_pix, [hw1e, e_asym], 2, errstat)
   if (errstat < 0) return
 
   ! Phase1 calculation: Calculate spline derivatives for KPNO data
@@ -219,7 +219,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   USE OMSAO_indices_module,    ONLY: solar_idx, us1_idx, us2_idx
 !UNUSED!   USE OMSAO_parameters_module, ONLY: max_spec_pts
 !UNUSED!   USE OMSAO_variables_module,  ONLY: &
-!UNUSED!     refspecs_original, database, yn_use_labslitfunc
+!UNUSED!     refspecs_original, database
 !UNUSED!   USE OMSAO_slitfunction_module
 !UNUSED!   USE OMSAO_errstat_module
 !UNUSED!   USE sao_pge_utils, ONLY: interpolation

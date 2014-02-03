@@ -20,7 +20,8 @@ SUBROUTINE prepare_solar_refspec ( &
   USE OMSAO_indices_module,    ONLY: &
     max_rs_idx, solar_idx, ring_idx
   !USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-  USE OMSAO_variables_module,  ONLY: yn_doas, fit_winwav_idx, yn_smooth, database
+  USE OMSAO_variables_module,  ONLY: fit_winwav_idx, database
+  use ctrlvars, only: yn_smooth, yn_doas
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
   USE subtract_cubic, ONLY: cubic_subtract

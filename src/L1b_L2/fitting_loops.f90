@@ -17,8 +17,8 @@ CONTAINS
       verb_thresh_lev, Slit_Half_Width_1e, Slit_Asym_Factor, &
       sol_wav_avg, database, fitvar_cal, fitvar_cal_saved, &
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
-      yn_diagnostic_run, yn_radiance_reference, yn_solar_comp, &
       curr_xtrack_pixnum
+    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE OMSAO_omidata_module, ONLY: omi_nwav_radref, omi_nwav_rad, &

@@ -28,8 +28,8 @@ contains
 
   subroutine irradiance_data_init (rpt_rad, errstat)
 
-    use OMSAO_variables_module, only: Radiance_Paras_Type, &
-      yn_solar_comp, yn_solmonthave
+    use OMSAO_variables_module, only: Radiance_Paras_Type
+    use ctrlvars, only: yn_solar_comp, yn_solmonthave
     implicit none
     type(Radiance_Paras_Type), intent(in) :: rpt_rad
     integer, intent(inout) :: errstat

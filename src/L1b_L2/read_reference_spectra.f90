@@ -9,8 +9,9 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_parameters_module, ONLY: zerospec_string, r8_missval
   USE OMSAO_variables_module,  ONLY: &
     winwav_min, winwav_max, ReferenceSpectrum, refspecs_original, &
-    common_mode_spec, yn_solar_comp, solar_comp_typ,       &
-    OMSAO_solcomp_filename, l1b_channel, yn_common_iter
+    common_mode_spec, solar_comp_typ,       &
+    OMSAO_solcomp_filename, l1b_channel
+  use ctrlvars, only: yn_common_iter, yn_solar_comp
   USE datafields, ONLY: o3_prefit_he5fields
   USE OMSAO_solcomp_module, ONLY: soco_pars_read
   USE OMSAO_errstat_module
