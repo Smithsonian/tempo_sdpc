@@ -11,7 +11,7 @@ CONTAINS
   SUBROUTINE adjust_irradiance_data (irr, xtpix, irrad_ccd, &
                                      adj_wvl, adj_spec, adj_wgts, &
                                      avg_sol_wav, &
-                                     yn_skip_pix, errstat )
+                                     do_skip_pix, errstat )
 
     !USE sao_pge_utils, ONLY: print_array
     USE OMSAO_precision_module
@@ -35,7 +35,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    LOGICAL,                                               INTENT (OUT) :: yn_skip_pix
+    LOGICAL,                                               INTENT (OUT) :: do_skip_pix
     INTEGER (KIND=i4), DIMENSION (irr%nwaves(xtpix)),         INTENT (OUT) :: irrad_ccd
     real (kind=r8), dimension (irr%nwaves(xtpix)), intent(out) :: adj_wvl, adj_spec, adj_wgts
     real (kind=r8), intent(out) :: avg_sol_wav
@@ -66,7 +66,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix)) :: wvl_good, wvl_bad, spc_good, spc_bad
 
     locerrstat  = pge_errstat_ok
-    yn_skip_pix = .FALSE.
+    do_skip_pix = .FALSE.
 
     ! The total window
     imin1 = irr%ccdpix_selection (1,xtpix)
@@ -183,7 +183,7 @@ CONTAINS
     sol_spec_avg = SUM ( adj_spec(1:num_irr_wvl)*weightsum(1:num_irr_wvl) ) / &
       MAX(1.0_r8, SUM(weightsum(1:num_irr_wvl)))
     IF ( sol_spec_avg <= 0.0_r8 ) THEN
-      yn_skip_pix = .TRUE.
+      do_skip_pix = .TRUE.
       sol_spec_avg = 1.0_r8
     END IF
 
@@ -402,7 +402,7 @@ CONTAINS
     INTEGER   (KIND=i4)              :: locerrstat, ipix, solcal_exval, n_irradwvl
     CHARACTER (LEN=MAX_STR_LEN)         :: addmsg
     REAL      (KIND=r8)              :: chisquav, curr_sol_wav_avg
-    LOGICAL                          :: yn_skip_pix, is_bad_pixel
+    LOGICAL                          :: do_skip_pix, is_bad_pixel
     real (kind=r8), dimension(:), allocatable :: adj_wvl, adj_spec, adj_wgts
     integer (kind=i4) :: adj_len
     integer locerr
@@ -454,9 +454,9 @@ CONTAINS
         omi_irradiance_ccdpix(1:n_irradwvl,ipix), &
         adj_wvl, adj_spec, adj_wgts, &
         curr_sol_wav_avg, &
-        yn_skip_pix, locerrstat )
+        do_skip_pix, locerrstat )
 
-      IF ( yn_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
+      IF ( do_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
         errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''

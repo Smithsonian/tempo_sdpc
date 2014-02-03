@@ -1,9 +1,9 @@
 MODULE swathline_loop
 CONTAINS
 SUBROUTINE swathline_loops (                               &
-    pge_idx, rpt, n_max_rspec, yn_process,                     &
-    xtrange, yn_remove_target, ntargpol,         &
-    yn_commit, errstat, retrieval)
+    pge_idx, rpt, n_max_rspec, do_process_line,                     &
+    xtrange, do_remove_target, ntargpol,         &
+    in_common_mode_loop, errstat, retrieval_opt)
 
   USE OMSAO_precision_module,  ONLY: i4, r8, i2, r4
   USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, MAX_STR_LEN, &
@@ -37,9 +37,9 @@ SUBROUTINE swathline_loops (                               &
   INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntargpol, n_max_rspec
   TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt
   INTEGER (KIND=i4), DIMENSION (0:rpt%ntimes-1,1:2),  INTENT (IN) :: xtrange
-  LOGICAL,           DIMENSION (0:rpt%ntimes-1),      INTENT (IN) :: yn_process
-  LOGICAL,           INTENT (IN) :: yn_commit, yn_remove_target
-  type (retrieval_type), optional, intent(inout) ::retrieval
+  LOGICAL,           DIMENSION (0:rpt%ntimes-1),      INTENT (IN) :: do_process_line
+  LOGICAL,           INTENT (IN) :: in_common_mode_loop, do_remove_target
+  type (retrieval_type), optional, intent(inout) ::retrieval_opt
 
   ! ------------------
   ! Modified variables
@@ -85,7 +85,7 @@ SUBROUTINE swathline_loops (                               &
   all_fitted_errors   = r8_missval
   correlation_columns = r8_missval
 
-  IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
+  IF ( yn_radiance_reference .AND. do_remove_target ) THEN
     target_var = 0.0_r8
     targsum    = 0.0_r8
     targcnt    = 0.0_r8
@@ -93,7 +93,7 @@ SUBROUTINE swathline_loops (                               &
     target_col = 0.0_r8
   END IF
 
-  if (.not.yn_commit) then
+  if (.not.in_common_mode_loop) then
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
     if (locerrstat /= 0) then
       errstat = -1
@@ -117,7 +117,7 @@ SUBROUTINE swathline_loops (                               &
     ! -----------------------------------------
     ! Skip if we don't have anything to process
     ! -----------------------------------------
-    IF ( .NOT. ( ANY ( yn_process(iline:iline+nblock-1) ) ) ) CYCLE
+    IF ( .NOT. ( ANY ( do_process_line(iline:iline+nblock-1) ) ) ) CYCLE
 
     ! ------------------------------
     ! Get NBLOCK radiance lines
@@ -168,7 +168,7 @@ SUBROUTINE swathline_loops (                               &
       ! ----------------------------------------------------------
       ! Skip this line if it isn't in the list of those to process
       ! ----------------------------------------------------------
-      IF ( .NOT. yn_process(scanline_no) ) CYCLE
+      IF ( .NOT. do_process_line(scanline_no) ) CYCLE
 
       ! ------------------
       ! Report on progress
@@ -211,13 +211,13 @@ SUBROUTINE swathline_loops (                               &
         !  ENDDO
         !ENDDO
 
-        if (.not.yn_commit) &
+        if (.not.in_common_mode_loop) &
           omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp (1:n_rad_wvl,:,:)
 
         ! ---------------------------------------------------------------
         ! Add fitted columns for possible removal from radiance reference
         ! ---------------------------------------------------------------
-        IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
+        IF ( yn_radiance_reference .AND. do_remove_target ) THEN
           DO ipix = fpix, lpix
             IF ( &
               ( omi_fitconv_flag (ipix,iloop) > 0_i2       ) .AND. &
@@ -237,17 +237,17 @@ SUBROUTINE swathline_loops (                               &
         ! -----------------------------------------------------
         ! Optionally, keep the results of the fitting in memory
         ! -----------------------------------------------------
-        if (present(retrieval)) then
-          retrieval%column_amount(fpix:lpix,scanline_no)      = omi_column_amount(fpix:lpix,iloop)
-          retrieval%column_uncertainty(fpix:lpix,scanline_no) = omi_column_uncert(fpix:lpix,iloop)
-          retrieval%rms(fpix:lpix,scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
-          retrieval%latitude(fpix:lpix,scanline_no)           = omi_latitude(fpix:lpix,iloop)
-          retrieval%longitude(fpix:lpix,scanline_no)          = omi_longitude(fpix:lpix,iloop)
-          retrieval%sza(fpix:lpix,scanline_no)                = omi_szenith(fpix:lpix,iloop)
-          retrieval%vza(fpix:lpix,scanline_no)                = omi_vzenith(fpix:lpix,iloop)
-          retrieval%fit_flag(fpix:lpix,scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
-          retrieval%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
-          retrieval%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
+        if (present(retrieval_opt)) then
+          retrieval_opt%column_amount(fpix:lpix,scanline_no)      = omi_column_amount(fpix:lpix,iloop)
+          retrieval_opt%column_uncertainty(fpix:lpix,scanline_no) = omi_column_uncert(fpix:lpix,iloop)
+          retrieval_opt%rms(fpix:lpix,scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
+          retrieval_opt%latitude(fpix:lpix,scanline_no)           = omi_latitude(fpix:lpix,iloop)
+          retrieval_opt%longitude(fpix:lpix,scanline_no)          = omi_longitude(fpix:lpix,iloop)
+          retrieval_opt%sza(fpix:lpix,scanline_no)                = omi_szenith(fpix:lpix,iloop)
+          retrieval_opt%vza(fpix:lpix,scanline_no)                = omi_vzenith(fpix:lpix,iloop)
+          retrieval_opt%fit_flag(fpix:lpix,scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
+          retrieval_opt%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
+          retrieval_opt%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
         endif
       END IF
 
@@ -263,7 +263,7 @@ SUBROUTINE swathline_loops (                               &
     ! AMF calculation and update of fitting statistics only need to be
     ! done for the final round throught the common mode iteration loop
     ! ----------------------------------------------------------------
-    IF ( .NOT. yn_commit ) THEN
+    IF ( .NOT. in_common_mode_loop ) THEN
 
       CALL he5_write_radfit_output (                            &
         pge_idx, iline, nx, nblock, fpix, lpix,              &
@@ -280,12 +280,7 @@ SUBROUTINE swathline_loops (                               &
   ! -----------------------------------------
   ! Remove target gas from radiance reference
   ! -----------------------------------------
-  IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
-
-    ! -----------------------------------------------
-    ! Removing the target from the radiance reference
-    ! -----------------------------------------------
-    IF ( yn_remove_target ) THEN
+  IF ( yn_radiance_reference .AND. do_remove_target ) THEN
 
       WHERE ( targcnt > 0.0_r8 )
         targsum = targsum / targcnt
@@ -301,7 +296,6 @@ SUBROUTINE swathline_loops (                               &
       CALL remove_target_from_radiance (                              &
         nccd, fpix, lpix, n_fincol_idx, fincol_idx(1:2,1:n_fincol_idx),  &
         ntargpol, targsum(1:n_fincol_idx,fpix:lpix), target_fit(fpix:lpix) )
-    END IF
 
   END IF
 

@@ -66,8 +66,8 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i2), PARAMETER :: nbits = 16
-    LOGICAL                      :: yn_have_scanline
-    LOGICAL, DIMENSION (2)       :: yn_have_limits
+    LOGICAL                      :: have_scanline
+    LOGICAL, DIMENSION (2)       :: have_limits
 
     INTEGER (KIND=i4) :: fpix, lpix, midpt_line
     INTEGER (KIND=i4) :: nloop, j1, iline, ix, iloop, imin, imax, icnt
@@ -117,7 +117,7 @@ CONTAINS
     ! ----------------------------------------------------------------------
     CALL find_swathline_by_latitude ( &
       nxrr, 0, ntrr-1, latr4(1:nxrr,0:ntrr-1), lat_midpt, &
-      xtrange(0:ntrr-1,1:2), midpt_line, yn_have_scanline )
+      xtrange(0:ntrr-1,1:2), midpt_line, have_scanline )
 
     ! --------------------------------------------------------------------
     ! If lower and upper bounds of the radiance reference block to average
@@ -126,14 +126,14 @@ CONTAINS
     ! --------------------------------------------------------------------
     IF ( radref_latrange(1) == radref_latrange(2) ) THEN
       radiance_reference_lnums(1:2) = midpt_line
-      yn_have_limits(1:2)           = .TRUE.
+      have_limits(1:2)           = .TRUE.
     ELSE
       CALL find_swathline_by_latitude ( &
         nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
-        xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), yn_have_limits(1)   )
+        xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
       CALL find_swathline_by_latitude ( &
         nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
-        xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), yn_have_limits(2) )
+        xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
     END IF
 
     deallocate (latr4)
@@ -141,8 +141,8 @@ CONTAINS
     ! -----------------------------------------------------
     ! If we don't find a working scan line, we have to fold
     ! -----------------------------------------------------
-    IF ( ( .NOT. yn_have_scanline )               .OR. &
-        ( ANY ( .NOT. yn_have_limits(1:2) ) )    .OR. &
+    IF ( ( .NOT. have_scanline )               .OR. &
+        ( ANY ( .NOT. have_limits(1:2) ) )    .OR. &
         ( midpt_line < 0 )                       .OR. &
         ( ANY ( radiance_reference_lnums < 0 ) )        ) THEN
       CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
@@ -412,7 +412,7 @@ CONTAINS
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
-    LOGICAL                  :: yn_skip_pix
+    LOGICAL                  :: do_skip_pix
     CHARACTER (LEN=MAX_STR_LEN) :: addmsg
     LOGICAL                                          :: is_bad_pixel
     INTEGER (KIND=i4), DIMENSION (4)                 :: select_idx
@@ -568,7 +568,7 @@ CONTAINS
         adj_wvls(1:n_rad_wvl_loc), adj_spec(1:n_rad_wvl_loc), adj_wgts(1:n_rad_wvl_loc), &
         omi_radiance_qflg   (1:n_omi_radwvl,ipix,0), &
         omi_radiance_ccdpix (1:n_omi_radwvl,ipix,0), &
-        rad_spec_avg, yn_skip_pix )
+        rad_spec_avg, do_skip_pix )
 
       ! --------------------------------------------------------------------
       ! Update the weights for the Reference/Wavelength Calibration Radiance
@@ -594,7 +594,7 @@ CONTAINS
       addmsg = ''
       IF ((MAXVAL(adj_spec(1:n_rad_wvl_loc)) > 0.0_r8) &
           .AND. (n_rad_wvl_loc > n_fitvar_rad) &
-          .AND. (.NOT. yn_skip_pix)) THEN
+          .AND. (.NOT. do_skip_pix)) THEN
         is_bad_pixel     = .FALSE.
 
         CALL fit_radiance ( &
@@ -815,7 +815,7 @@ CONTAINS
       adj_wvls, adj_spec, adj_wgts, &
       omi_rad_qflg, &
       omi_rad_ccd, &
-      rad_spec_avg, yn_skip_pix )
+      rad_spec_avg, do_skip_pix )
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,       ONLY: &
@@ -839,7 +839,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    LOGICAL,                                                INTENT (OUT) :: yn_skip_pix
+    LOGICAL,                                                INTENT (OUT) :: do_skip_pix
     REAL    (KIND=r8),                                      INTENT (OUT) :: rad_spec_avg
     INTEGER (KIND=i4),  DIMENSION (n_adj),           INTENT (OUT) :: omi_rad_ccd
     !REAL    (KIND=r8),  DIMENSION (ccd_idx,1:n_adj), INTENT (OUT) :: curr_rad_spec
@@ -862,7 +862,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
 
     locerrstat  = pge_errstat_ok
-    yn_skip_pix = .FALSE.
+    do_skip_pix = .FALSE.
 
     imin1 = omi_ccdpix_idx(1) ; imax1 = omi_ccdpix_idx(4)  ! The total window
     imin2 = omi_ccdpix_idx(2) ; imax2 = omi_ccdpix_idx(3)  ! The fitting window
@@ -994,7 +994,7 @@ CONTAINS
       adj_spec(1:n_adj)*weightsum(1:n_adj) ) / &
       MAX(1.0_r8, SUM(weightsum(1:n_adj)))
     IF ( rad_spec_avg <= 0.0_r8 ) THEN
-      yn_skip_pix = .TRUE.
+      do_skip_pix = .TRUE.
       rad_spec_avg = 1.0_r8
     ELSE
       ! -----------------------------------------

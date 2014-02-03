@@ -36,7 +36,7 @@ MODULE OMSAO_pixelcorner_module
 
 CONTAINS
 
-  SUBROUTINE compute_pixel_corners ( ntimes, nxtrack, lat, lon, yn_szoom, errstat )
+  SUBROUTINE compute_pixel_corners ( ntimes, nxtrack, lat, lon, do_szoom, errstat )
 
     ! =======================================================
     ! Computes OMI pixel corner coordinates, start to finish:
@@ -56,7 +56,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                                    INTENT (IN) :: ntimes, nxtrack
     REAL    (KIND=r4), DIMENSION (1:nxtrack, 0:ntimes-1), INTENT (IN) :: lat, lon
-    LOGICAL,           DIMENSION (           0:ntimes-1), INTENT (IN) :: yn_szoom
+    LOGICAL,           DIMENSION (           0:ntimes-1), INTENT (IN) :: do_szoom
 
     ! ----------------
     ! Output variables
@@ -84,11 +84,11 @@ CONTAINS
     ! ---------------------------
     ! Check for spatial zoom mode
     ! ----------------------------------------------------------
-    ! YN_SZOOM is .TRUE. for rebinned "global" zoom mode only.
+    ! do_SZOOM is .TRUE. for rebinned "global" zoom mode only.
     ! Both global and true zoom mode have the regular amount of
     ! cross-track positions (i.e., 60).
     ! ----------------------------------------------------------
-    IF ( ANY(yn_szoom(0:nTimes-1)) ) THEN
+    IF ( ANY(do_szoom(0:nTimes-1)) ) THEN
       spix = gzoom_spix ; epix = gzoom_epix
     ELSE
       spix = 1          ; epix = nXtrack
@@ -102,7 +102,7 @@ CONTAINS
     CALL sphgeo_comp_pixel_corners (                                                &
       nxtloc, ntimes, lon(spix:epix,0:ntimes-1), lat(spix:epix,0:ntimes-1),      &
       corner_lon(spix-1:epix,0:ntimes), corner_lat(spix-1:epix,0:ntimes), estat, &
-      yn_omi_pixel_adjust_k=.FALSE. )
+      do_omi_pixel_adjust_k=.FALSE. )
 
     ! --------------------------------------------------------------------
     ! Write corner coordinates to L2 output file. Do this in chunks of no
@@ -512,7 +512,7 @@ CONTAINS
   END FUNCTION angle_minus_twopi
 
   SUBROUTINE sphgeo_comp_pixel_corners ( &
-      nxtrack, ntimes, lon, lat, clon, clat, estat, yn_omi_pixel_adjust_k )
+      nxtrack, ntimes, lon, lat, clon, clat, estat, do_omi_pixel_adjust_k )
 
     ! ------------------------------------------------------------------------
     ! Compute corner coordinates of ground pixels given only the pixel centers
@@ -526,7 +526,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                                    INTENT (IN) :: nxtrack, ntimes
     REAL    (KIND=r4), DIMENSION (1:nxtrack, 0:ntimes-1), INTENT (IN) :: lon, lat
-    LOGICAL, OPTIONAL,                                    INTENT (IN) :: yn_omi_pixel_adjust_k
+    LOGICAL, OPTIONAL,                                    INTENT (IN) :: do_omi_pixel_adjust_k
 
     ! -------------------------
     ! Output/modified variables
@@ -544,7 +544,7 @@ CONTAINS
     REAL    (KIND=r8)                                   :: a0, b0, c0, gam0, a, gam
     REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: lonrad, latrad
     REAL    (KIND=r8), DIMENSION (0:nxtrack,0:ntimes)   :: tmplat, tmplon
-    LOGICAL                                             :: yn_pixel_adjust_crosstrack
+    LOGICAL                                             :: do_pixel_adjust_crosstrack
 
     estat = pge_errstat_ok
 
@@ -558,8 +558,8 @@ CONTAINS
     ! Note that this adjustment is still experimental until the distortions around the
     ! poles have been solved. Hence the default is not to make this adjustment.
     ! --------------------------------------------------------------------------------
-    yn_pixel_adjust_crosstrack = .FALSE.
-    IF ( PRESENT (yn_omi_pixel_adjust_k) ) yn_pixel_adjust_crosstrack = yn_omi_pixel_adjust_k
+    do_pixel_adjust_crosstrack = .FALSE.
+    IF ( PRESENT (do_omi_pixel_adjust_k) ) do_pixel_adjust_crosstrack = do_omi_pixel_adjust_k
 
     ! ------------------------------------------------------------------
     ! Convert geolocation to radians; do everything in R8 rather than R4
@@ -673,7 +673,7 @@ CONTAINS
     !!!     somewhat by excluding pole-most latitudes (within 3 deg of pole), but this !!!
     !!!     still leaves some undesirable distortions.                                 !!!
     !!! ===============================================================================!!!
-    IF ( yn_pixel_adjust_crosstrack ) THEN
+    IF ( do_pixel_adjust_crosstrack ) THEN
       DO j = 0, ntimes
         ! -------------------------------------------------------------------
         ! From the center of the swath to lower cross-track pixel numbers

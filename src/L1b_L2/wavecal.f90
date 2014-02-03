@@ -105,7 +105,7 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    LOGICAL                                                 :: yn_full_range
+    LOGICAL                                                 :: did_full_range
     REAL    (KIND=r8), DIMENSION (npoints)                  :: del, sunspec_ss
     INTEGER (KIND=i4)                                       :: npts, errstat
     ! Shorthands for solar reference spectrum
@@ -201,7 +201,7 @@ contains
     CALL interpolation ( &
       npts, solar_pos(1:npts), saved_solar_spec_convolved(1:npts), &
       npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
-      yn_full_range, errstat )
+      did_full_range, errstat )
     if (errstat < 0) then
       call err_message_error ("interpolation failed while resampling to solar grid", errstat)
       return

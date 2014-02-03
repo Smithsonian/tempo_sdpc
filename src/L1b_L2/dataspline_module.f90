@@ -44,7 +44,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   ! ---------------
   ! Local variables
   ! ---------------
-  LOGICAL                                       :: yn_full_range
+  LOGICAL                                       :: did_full_range
   INTEGER (KIND=i4)                             :: idx, npts, locerrstat, iii, nsol, ios
   REAL    (KIND=r8)                             :: DU_load
   REAL    (KIND=r8), DIMENSION (n_max_rspec)    :: tmp_spec, tmp_wavl
@@ -144,7 +144,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
         CALL interpolation ( &
           npts, tmp_wavl(1:npts), tmp_spec(1:npts),                         &
           nsol, solar_wvl(1:nsol), xsec_i0_spc(1:nsol),                     &
-          'fillvalue', 0.0_r8, yn_full_range, locerrstat )
+          'fillvalue', 0.0_r8, did_full_range, locerrstat )
         ! ---------------------
         ! 2: Undo normalization
         ! ---------------------
@@ -209,13 +209,13 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       CALL interpolation ( &
         npts, tmp_wavl(1:npts), tmp_spec(1:npts),                         &
         n_radwvl, curr_rad_wvl(1:n_radwvl), dbase_loc(1:n_radwvl),        &
-        'fillvalue', 0.0_r8, yn_full_range, locerrstat )
+        'fillvalue', 0.0_r8, did_full_range, locerrstat )
 
       database(idx, 1:n_radwvl) = dbase_loc(1:n_radwvl)
       CALL error_check ( &
         locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL_REFSPEC, &
         modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_default, errstat )
-      IF ( .NOT. yn_full_range ) THEN
+      IF ( .NOT. did_full_range ) THEN
         CALL error_check ( &
           0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
           modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_develop, errstat )

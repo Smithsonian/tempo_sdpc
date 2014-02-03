@@ -525,7 +525,7 @@ REAL (KIND=KIND(1.0D0)) FUNCTION signdp ( x )
 END FUNCTION signdp
 
 SUBROUTINE interpolation ( &
-    n1, x1, y1, n2, x2, y2, filltype, fillval, yn_full_range, errstat )
+    n1, x1, y1, n2, x2, y2, filltype, fillval, did_full_range, errstat )
 
   USE OMSAO_precision_module
   USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_error
@@ -546,7 +546,7 @@ SUBROUTINE interpolation ( &
   ! ----------------
   INTEGER (KIND=i4),                 INTENT (INOUT) :: errstat
   REAL    (KIND=r8), DIMENSION (n2), INTENT (OUT)   :: y2
-  LOGICAL,                           INTENT (OUT)   :: yn_full_range
+  LOGICAL,                           INTENT (OUT)   :: did_full_range
 
   ! --------------
   ! Local variable
@@ -573,11 +573,11 @@ SUBROUTINE interpolation ( &
   ! -------------------------------------------------------------------------------
   ! Check whether we have the whole wavelength range. We don't set the error status
   ! variable for this case, because it is too insignificant to set non-Zero exit at
-  ! PGE termination. Instead, we check in the calling subroutine for YN_FULL_RANGE
+  ! PGE termination. Instead, we check in the calling subroutine for did_full_range
   ! and report this at higher verbosity thresholds.
   ! ------------------------------------------------------------------------------
-  yn_full_range = .TRUE.
-  IF ( imin /= 1 .OR. imax /= n2 ) yn_full_range = .FALSE.
+  did_full_range = .TRUE.
+  IF ( imin /= 1 .OR. imax /= n2 ) did_full_range = .FALSE.
 
   ! --------------------------------------------------------------------------
   ! Now that we know the first and last index to cover with the interpolation,

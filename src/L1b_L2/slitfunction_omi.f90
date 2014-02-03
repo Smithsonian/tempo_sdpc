@@ -355,7 +355,7 @@ CONTAINS
     REAL    (KIND=r8)                                :: sf_area
     REAL    (KIND=r8), DIMENSION (nwvl, n_sf_tabwvl) :: sf_wvals, sf_profiles
     REAL    (KIND=r8), DIMENSION (nwvl)              :: convtmp, xtmp, ytmp
-    LOGICAL                                          :: yn_full_range
+    LOGICAL                                          :: did_full_range
     INTEGER (KIND=i4)                                :: ntmp
     ! The MAX(,) dimension prevents array bound problems for small values of NWVL
     REAL    (KIND=r8), DIMENSION (MAX(n_sf_tabwvl,nwvl)) :: sfwvl_tmp, sfpro_tmp
@@ -435,7 +435,7 @@ CONTAINS
       CALL interpolation ( &
         ntmp, sfwvl_tmp(1:ntmp), sfpro_tmp(1:ntmp),   &
         k2-k1+1, wvl(k1:k2), convtmp(k1:k2), 'endpoints', 0.0_r8, &
-        yn_full_range, locerrstat )
+        did_full_range, locerrstat )
 
       ! ----------------------------------------------------------------------------
       ! Done interpolating, we perform the convolution of the spectrum with the slit

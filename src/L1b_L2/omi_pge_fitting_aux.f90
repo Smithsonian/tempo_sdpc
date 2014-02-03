@@ -693,7 +693,7 @@ CONTAINS
 
   SUBROUTINE check_wavelength_overlap ( &
       n_fitvar_rad, n_sol_wvl, irradiance_wvl, n_rad_wvl, radiance_wvl, &
-      yn_cycle_this_pix )
+      do_cycle_this_pix )
 
     USE OMSAO_precision_module,  ONLY: i4, r8
 
@@ -705,16 +705,16 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_rad_wvl), INTENT (IN) :: radiance_wvl
 
     ! Output variable
-    LOGICAL, INTENT (OUT) :: yn_cycle_this_pix
+    LOGICAL, INTENT (OUT) :: do_cycle_this_pix
 
     ! Local variables
     INTEGER (KIND=i4) :: j, n_overlap1, n_overlap2
 
-    yn_cycle_this_pix = .FALSE.
+    do_cycle_this_pix = .FALSE.
 
     IF ( radiance_wvl(1)         >= irradiance_wvl(n_sol_wvl) .OR. &
         radiance_wvl(n_rad_wvl) <= irradiance_wvl(1)                 ) THEN
-      yn_cycle_this_pix = .TRUE.
+      do_cycle_this_pix = .TRUE.
       RETURN
     END IF
 
@@ -724,7 +724,7 @@ CONTAINS
           radiance_wvl(j) <= irradiance_wvl(n_sol_wvl)         ) n_overlap1 = n_overlap1 + 1
     END DO
     IF ( n_overlap1 < n_fitvar_rad ) THEN
-      yn_cycle_this_pix = .TRUE.
+      do_cycle_this_pix = .TRUE.
       RETURN
     END IF
 
@@ -734,7 +734,7 @@ CONTAINS
           irradiance_wvl(j) <= radiance_wvl(n_rad_wvl)         ) n_overlap2 = n_overlap2 + 1
     END DO
     IF ( n_overlap2 < n_fitvar_rad ) THEN
-      yn_cycle_this_pix = .TRUE.
+      do_cycle_this_pix = .TRUE.
       RETURN
     END IF
 
@@ -937,7 +937,7 @@ CONTAINS
   END SUBROUTINE convert_tai_to_utc
 
   SUBROUTINE find_swathline_range ( &
-      l1bfile, l1bswath, nt, nx, l1blats, latrange, yn_in_range, errstat )
+      l1bfile, l1bswath, nt, nx, l1blats, latrange, in_range, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: pixnum_lim
@@ -962,7 +962,7 @@ CONTAINS
     ! -----------------------------
     ! Output and Modified variables
     ! -----------------------------
-    LOGICAL, DIMENSION (0:nt-1), INTENT (INOUT) :: yn_in_range
+    LOGICAL, DIMENSION (0:nt-1), INTENT (INOUT) :: in_range
     INTEGER (KIND=i4),           INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -1002,7 +1002,7 @@ CONTAINS
     CALL find_swathrange_by_latitude (                      &
       nt, nx, latrange(1), latrange(2),                  &
       l1blats(1:nx,0:nt-1), xtrange(0:nt-1,1:2), midlat, &
-      midnum, yn_in_range(0:nt-1)                        )
+      midnum, in_range(0:nt-1)                        )
 
     errstat = MAX ( errstat, locerrstat )
 
@@ -1010,7 +1010,7 @@ CONTAINS
   END SUBROUTINE find_swathline_range
 
   SUBROUTINE find_swathline_by_latitude ( &
-      nxrr, sline, eline, latr4, lat, xtrange, lnum, yn_found )
+      nxrr, sline, eline, latr4, lat, xtrange, lnum, was_found )
 
     USE OMSAO_precision_module, ONLY: i4, r4
     USE OMSAO_parameters_module, ONLY: r4_missval
@@ -1030,7 +1030,7 @@ CONTAINS
     ! lat .............. Latitude to locate
     ! xtrange .......... Number of valid cross-track positions in swath
     !                    (possibly smaller than nx)
-    ! yn_found ......... TRUE if line number has been found, FALSE otherwise
+    ! was_found ......... TRUE if line number has been found, FALSE otherwise
     ! --------------------------------------------------------------------------
 
     ! ---------------
@@ -1045,7 +1045,7 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i4), INTENT (OUT) :: lnum
-    LOGICAL,           INTENT (OUT) :: yn_found
+    LOGICAL,           INTENT (OUT) :: was_found
 
     ! ---------------
     ! Local variables
@@ -1059,14 +1059,14 @@ CONTAINS
     ! Initialize output variables
     ! ---------------------------
     lnum = -1
-    yn_found = .FALSE.
+    was_found = .FALSE.
 
     ! --------------------------------------------------------------------------
     ! First, start a bisection of the [0, NLINES-1] interval to find the closest
     ! match in latitude to the mipoint of the latitude regime to average.
     ! --------------------------------------------------------------------------
     j1 = sline ; j2 = eline-1  ;  icnt = 0
-    FindLine: DO WHILE ( .NOT. yn_found )
+    FindLine: DO WHILE ( .NOT. was_found )
       icnt  = icnt + 1
       iline = (j1 + j2) / 2
 
@@ -1099,7 +1099,7 @@ CONTAINS
         END IF
         IF ( ABS(j1 - j2) <= 2 ) THEN
           lnum = (j1 + j2) / 2
-          yn_found     = .TRUE.
+          was_found     = .TRUE.
           EXIT FindLine
         END IF
       ELSE
@@ -1119,7 +1119,7 @@ CONTAINS
     ! Now we fine-tune the retrieved scan line number by checking +/-2
     ! scan lines on either side.
     ! ----------------------------------------------------------------
-    IF ( yn_found ) THEN
+    IF ( was_found ) THEN
 
       ! -----------------------------------------------------------------------------
       ! MINDIFF will contain the smallest difference found; set to large value first.
@@ -1156,7 +1156,7 @@ CONTAINS
   END SUBROUTINE find_swathline_by_latitude
 
   SUBROUTINE find_swathrange_by_latitude ( &
-      nt, nx, latlow, latupp, latr4, xtrange, latmid, latnum, yn_in_range )
+      nt, nx, latlow, latupp, latr4, xtrange, latmid, latnum, in_range )
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: r4_missval
@@ -1177,7 +1177,7 @@ CONTAINS
     !                       (possibly smaller than nx)
     ! latmid .............. "Midpoint" latitude closest to average of latlow and latupp
     ! latnum .............. Swath line number of latmid
-    ! yn_in_range ......... TRUE if swath line latitude falls between latlow and latupp
+    ! in_range ......... TRUE if swath line latitude falls between latlow and latupp
     ! ---------------------------------------------------------------------------------
 
     ! ---------------
@@ -1192,7 +1192,7 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i4),           INTENT (OUT)   :: latnum
-    LOGICAL, DIMENSION (0:nt-1), INTENT (INOUT) :: yn_in_range
+    LOGICAL, DIMENSION (0:nt-1), INTENT (INOUT) :: in_range
 
     ! ---------------
     ! Local variables
@@ -1202,7 +1202,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION (nx) :: cntr4, latdiff, loclat
     REAL    (KIND=r4)                 :: diff, mindiff
     INTEGER (KIND=i4)                 :: fpix, lpix
-    LOGICAL                           :: yn_single_lat
+    LOGICAL                           :: is_single_lat
 
     ! -------------------------------------
     ! Initialize output and local variables
@@ -1213,8 +1213,8 @@ CONTAINS
     ! Check whether we are working with a finite latitude interval
     ! or with a single latitude
     ! ------------------------------------------------------------
-    yn_single_lat = .TRUE.
-    IF ( latlow /= latupp ) yn_single_lat = .FALSE.
+    is_single_lat = .TRUE.
+    IF ( latlow /= latupp ) is_single_lat = .FALSE.
 
     ! --------------------------------------------------------------------------
     ! Owing to the discontiguous nature of NRT L1b storage, we can't assume that
@@ -1257,7 +1257,7 @@ CONTAINS
       !           of the swath latitudes to the target latitude.
       ! -----------------------------------------------------------------
 
-      IF ( yn_single_lat ) THEN
+      IF ( is_single_lat ) THEN
         ! -----------------------------------------------------------------------
         ! Check 1: Single latitude. Skip if nothing is within the
         !          [LATMID-DLAT, LAMID+DLAT] interval
@@ -1286,9 +1286,9 @@ CONTAINS
           ANY ( loclat(fpix:lpix) <= latupp )       )  ) CYCLE
 
         ! -------------------------
-        ! Set yn_in_range to .TRUE.
+        ! Set in_range to .TRUE.
         ! -------------------------
-        yn_in_range(iline) = .TRUE.
+        in_range(iline) = .TRUE.
       END IF
 
     END DO GetRange
@@ -1297,8 +1297,8 @@ CONTAINS
     ! If working with a single latitude, set the
     ! corresponding line logical to .TRUE.
     ! ------------------------------------------
-    IF ( yn_single_lat .AND. latnum >= 0 .AND. latnum <= nt-1 ) &
-      yn_in_range(latnum) = .TRUE.
+    IF ( is_single_lat .AND. latnum >= 0 .AND. latnum <= nt-1 ) &
+      in_range(latnum) = .TRUE.
 
     RETURN
   END SUBROUTINE find_swathrange_by_latitude

@@ -515,7 +515,7 @@ CONTAINS
     RETURN
   END SUBROUTINE soco_get_dims
 
-  SUBROUTINE soco_compute ( yn_norm, ixt, nwvl, wvl, spc)
+  SUBROUTINE soco_compute ( do_norm, ixt, nwvl, wvl, spc)
 
     USE sao_pge_utils, ONLY: array_locate_r8
     IMPLICIT NONE
@@ -532,7 +532,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    LOGICAL,                             INTENT (IN) :: yn_norm
+    LOGICAL,                             INTENT (IN) :: do_norm
     INTEGER (KIND=i4),                   INTENT (IN) :: ixt, nwvl
     REAL    (KIND=r8), DIMENSION (nwvl), INTENT (IN) :: wvl
 
@@ -585,10 +585,10 @@ CONTAINS
 
     ! -----------------------------------------------------------------
     ! Multiply by norm of spectrum, unless spectrum is to be normalized
-    ! (YN_NORM = .TRUE.)
+    ! (do_norm = .TRUE.)
     ! -----------------------------------------------------------------
-    !!! tpk(11/09/2010) IF ( .NOT. yn_norm ) spc(1:nwvl) = spc(1:nwvl) * snorm
-    IF ( .NOT. yn_norm ) spc(1:nwvl) = spc(1:nwvl) * snorm
+    !!! tpk(11/09/2010) IF ( .NOT. do_norm ) spc(1:nwvl) = spc(1:nwvl) * snorm
+    IF ( .NOT. do_norm ) spc(1:nwvl) = spc(1:nwvl) * snorm
 
     ! -------------------------------------------------------------------
     ! Multiply by norm of spectrum anyway: It is better to take care of

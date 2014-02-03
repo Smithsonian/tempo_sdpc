@@ -3,7 +3,7 @@ MODULE omi_read_l1b_data
 CONTAINS
 
   SUBROUTINE omi_read_binning_factor ( &
-      l1bfile, l1bswath, ntimes, binfac, yn_szoom, errstat )
+      l1bfile, l1bswath, ntimes, binfac, is_szoom, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_omidata_module,    ONLY : global_mode, szoom_mode
@@ -22,7 +22,7 @@ CONTAINS
     ! ----------------
     INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
     INTEGER (KIND=i1), DIMENSION (0:ntimes-1), INTENT (OUT)   :: binfac
-    LOGICAL,           DIMENSION (0:ntimes-1), INTENT (OUT)   :: yn_szoom
+    LOGICAL,           DIMENSION (0:ntimes-1), INTENT (OUT)   :: is_szoom
     !
     type (L1B_Object_Type) :: l1bobj
 
@@ -49,9 +49,9 @@ CONTAINS
     ! Check for GLOBAL and SPATIAL ZOOM mode and set up arrays for index adjustment.
     ! ------------------------------------------------------------------------------
     WHERE ( binfac(0:ntimes-1) == szoom_mode )
-      yn_szoom (0:nTimes-1) = .TRUE.
+      is_szoom (0:nTimes-1) = .TRUE.
     ELSEWHERE
-      yn_szoom (0:nTimes-1) = .FALSE.
+      is_szoom (0:nTimes-1) = .FALSE.
     END WHERE
 
     RETURN

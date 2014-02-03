@@ -63,7 +63,7 @@ CONTAINS
     INTEGER   (KIND=i2)      :: radcal_itnum
     INTEGER   (KIND=i4)      :: locerrstat, ipix, radcal_exval, i, imax, n_ref_wvl !, nxtloc, xtr_add
     REAL      (KIND=r8)      :: chisquav, rad_spec_avg
-    LOGICAL                  :: yn_skip_pix, is_bad_pixel, yn_full_range
+    LOGICAL                  :: do_skip_pix, is_bad_pixel, did_full_range
     CHARACTER (LEN=MAX_STR_LEN) :: addmsg
     INTEGER (KIND=i4), DIMENSION (4)            :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
@@ -194,10 +194,10 @@ CONTAINS
         adj_wvls(1:adj_num), adj_spec(1:adj_num), adj_wgts(1:adj_num), &
         omi_radiance_qflg  (1:adj_num,ipix,0),  &
         omi_radiance_ccdpix(1:adj_num,ipix,0),  &
-        rad_spec_avg, yn_skip_pix )
+        rad_spec_avg, do_skip_pix )
 
       ! ------------------------------------------------------------------------------------
-      IF ( yn_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
+      IF ( do_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
         errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
@@ -318,7 +318,7 @@ CONTAINS
           Irr_Data%spectrum(1:imax,ipix),                           &
           adj_num, omi_database_wvl(1:adj_num,ipix),              &
           omi_database(solar_idx,1:adj_num,ipix),                   &
-          'endpoints', 0.0_r8, yn_full_range, locerrstat )
+          'endpoints', 0.0_r8, did_full_range, locerrstat )
 
         IF ( locerrstat >= pge_errstat_error ) THEN
           errstat = MAX ( errstat, locerrstat )
@@ -413,7 +413,7 @@ CONTAINS
     INTEGER (KIND=i4) :: locerrstat, ipix, radfit_exval, radfit_itnum
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
-    LOGICAL                                     :: yn_skip_pix, yn_cycle_this_pix
+    LOGICAL                                     :: do_skip_pix, do_cycle_this_pix
     LOGICAL                                     :: is_bad_pixel
     INTEGER (KIND=i4), DIMENSION (4)            :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
@@ -470,9 +470,9 @@ CONTAINS
         n_fitvar_rad,                                                &
         n_solar_pts,          solar_wvl (1:n_solar_pts),             &
         n_omi_radwvl, omi_radiance_wavl (1:n_omi_radwvl,ipix,iloop), &
-        yn_cycle_this_pix )
+        do_cycle_this_pix )
 
-      IF (yn_cycle_this_pix &
+      IF (do_cycle_this_pix &
           .or. (n_database_wvl <= 0) &
           .or. (n_omi_radwvl <= 0) ) cycle
 
@@ -522,7 +522,7 @@ CONTAINS
         adj_wvls(1:adj_num), adj_spec(1:adj_num), adj_wgts(1:adj_num), &
         omi_radiance_qflg  (1:n_omi_radwvl,ipix,iloop),          &
         omi_radiance_ccdpix(1:n_omi_radwvl,ipix,iloop),          &
-        rad_spec_avg, yn_skip_pix )
+        rad_spec_avg, do_skip_pix )
 
       n_rad_wvl = adj_num  !! FIXME: Gid rid of this global
 
@@ -539,7 +539,7 @@ CONTAINS
 
       IF ((MAXVAL(adj_spec(1:adj_num)) > 0.0_r8) &
           .and. (adj_num > n_fitvar_rad) &
-          .and. (.not. yn_skip_pix)) then
+          .and. (.not. do_skip_pix)) then
 
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &

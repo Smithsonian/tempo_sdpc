@@ -2219,7 +2219,7 @@ CONTAINS
   END FUNCTION he5_write_swath_attributes
 
   SUBROUTINE he5_check_for_compressibility ( &
-      nTimes, nXtrack, nSwLevels, field_dim, yn_compress_field, n_chunk_dim, chunk_dim )
+      nTimes, nXtrack, nSwLevels, field_dim, compress_field_ok, n_chunk_dim, chunk_dim )
 
     USE OMSAO_precision_module, ONLY: C_LONG
     USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
@@ -2279,14 +2279,14 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    LOGICAL,                                       INTENT (OUT) :: yn_compress_field
+    LOGICAL,                                       INTENT (OUT) :: compress_field_ok
     INTEGER (KIND=i4),                             INTENT (OUT) :: n_chunk_dim
     INTEGER (KIND=C_LONG), DIMENSION (n_field_maxdim), INTENT (OUT) :: chunk_dim
 
     ! ---------------------------
     ! Initialize output variables
     ! ---------------------------
-    yn_compress_field = .FALSE.
+    compress_field_ok = .FALSE.
     n_chunk_dim       = 0
     chunk_dim(1:3)    = 0
 
@@ -2325,48 +2325,48 @@ CONTAINS
     ! -------------------------------------------------------------------------
 
     IF ( field_dim == "nXtrack,2" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(nXtrack,KIND=C_LONG), INT(2,KIND=C_LONG) /)
     END IF
     IF ( field_dim == "nXtrack,nCommonWavl" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(nXtrack,KIND=C_LONG), INT(n_comm_wvl,KIND=C_LONG) /)
     END IF
     IF ( field_dim == "nXtrack,nTimes" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(nXtrack,KIND=C_LONG), INT(NLINES_MAX,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nXtrack+1,nTimes+1" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(nXtrack+1,KIND=C_LONG), INT(NLINES_MAX,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nWavCalPars,nXtrack" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(max_calfit_idx,KIND=C_LONG), INT(nXtrack,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nUTCdim,nTimes" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = (/ INT(nUTCdim,KIND=C_LONG), INT(nTimes,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nFitElements,nXtrack,nTimes" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 3
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(n_fitvar_rad,KIND=C_LONG), INT(nXtrack,KIND=C_LONG), INT(NLINES_MAX,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nXtrack,nTimes,nLevels" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 3
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(nXtrack,KIND=C_LONG), INT(NLINES_MAX,KIND=C_LONG), INT(nSwLevels,KIND=C_LONG) /)
@@ -2374,28 +2374,28 @@ CONTAINS
 
     ! CCM New fields
     IF ( field_dim == "nCommonWavl,nXtrack,nTimes" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 3
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(n_comm_wvl,KIND=C_LONG), INT(nXtrack,KIND=C_LONG), INT(NLINES_MAX,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nRfSpec,nwavel_max,nXtrack" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 3
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(max_rs_idx,KIND=C_LONG), INT(nwavel_max,KIND=C_LONG), INT(nXtrack,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nwavel_max,nXtrack" ) THEN
-      yn_compress_field = .TRUE.
+      compress_field_ok = .TRUE.
       n_chunk_dim = 2
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(nwavel_max,KIND=C_LONG), INT(nXtrack,KIND=C_LONG) /)
     END IF
 
     IF ( field_dim == "nRfSpec" ) THEN
-      yn_compress_field = .FALSE.
+      compress_field_ok = .FALSE.
       n_chunk_dim = 1
       chunk_dim(1:n_chunk_dim) = &
         (/ INT(max_rs_idx,KIND=C_LONG) /)

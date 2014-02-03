@@ -60,7 +60,7 @@ MODULE OMSAO_destriping_module
 CONTAINS
 
   SUBROUTINE xtrack_destriping (                           &
-      pge_idx, ntimes, nxtrack, yn_process, xtrange,      &
+      pge_idx, ntimes, nxtrack, do_process_line, xtrange,      &
       lat, saocol, & !saodco, saoamf, saofcf,
       saomqf, errstat )
 
@@ -72,7 +72,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                                 INTENT (IN) :: pge_idx, ntimes, nxtrack
-    LOGICAL,           DIMENSION (0:ntimes-1),         INTENT (IN) :: yn_process
+    LOGICAL,           DIMENSION (0:ntimes-1),         INTENT (IN) :: do_process_line
     INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
     REAL    (KIND=r4), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: lat
     !REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saodco
@@ -101,7 +101,7 @@ CONTAINS
     REAL    (KIND=r4)                                 :: midlat
     REAL    (KIND=r8)                                 :: xtr_median_med
     REAL    (KIND=r8), DIMENSION (nxtrack)            :: xtr_median, xtr_weight
-    LOGICAL,           DIMENSION (0:ntimes-1)         :: yn_dst_range
+    LOGICAL,           DIMENSION (0:ntimes-1)         :: dst_range
 
     if (errstat < 0) return
 
@@ -134,11 +134,11 @@ CONTAINS
     ! ------------------------------------------------------
     ! Determine any limiting range due to latitude selection
     ! ------------------------------------------------------
-    yn_dst_range(0:ntimes-1) = .FALSE.
+    dst_range(0:ntimes-1) = .FALSE.
     CALL find_swathrange_by_latitude (                               &
       ntimes, nxtrack, ctrdst_latrange(1), ctrdst_latrange(2),    &
       lat(1:nxtrack,0:ntimes-1), xtrange(0:ntimes-1,1:2), midlat, &
-      midnum, yn_dst_range(0:ntimes-1)                              )
+      midnum, dst_range(0:ntimes-1)                              )
 
     ! ----------------------------------------
     ! Set the range of swath lines to destripe
@@ -194,7 +194,7 @@ CONTAINS
         ! First condense the selected part for computation of median
         ! ----------------------------------------------------------
         CALL condense_columns_for_median (                                      &
-          ntimes, nxtrack, yn_process(0:ntimes-1), yn_dst_range(0:ntimes-1), &
+          ntimes, nxtrack, do_process_line(0:ntimes-1), dst_range(0:ntimes-1), &
           saocol(1:nxtrack,0:ntimes-1), saomqf(1:nxtrack,0:ntimes-1),        &
           ntmp, tmpcol(1:nxtrack,0:ntimes-1), tmpmqf(1:nxtrack,0:ntimes-1)     )
 
@@ -282,7 +282,7 @@ CONTAINS
         xtrack_striping_wgt(1:1) = downweight
 
         xtrack_norm = 0.0_r8
-        IF ( yn_process(it) .AND. SUM(xtrack_cnt(1:nxtrack)) > 0.0_r8 ) THEN
+        IF ( do_process_line(it) .AND. SUM(xtrack_cnt(1:nxtrack)) > 0.0_r8 ) THEN
 
           ! ------------------------
           ! Compute cross-track norm
@@ -333,7 +333,7 @@ CONTAINS
       ! First condense the selected part for computation of median
       ! ----------------------------------------------------------
       CALL condense_columns_for_median (                                      &
-        ntimes, nxtrack, yn_process(0:ntimes-1), yn_dst_range(0:ntimes-1), &
+        ntimes, nxtrack, do_process_line(0:ntimes-1), dst_range(0:ntimes-1), &
         saodst(1:nxtrack,0:ntimes-1), saomqf(1:nxtrack,0:ntimes-1),        &
         ntmp, tmpcol(1:nxtrack,0:ntimes-1), tmpmqf(1:nxtrack,0:ntimes-1)     )
       CALL xtrack_median_comp ( &
@@ -349,7 +349,7 @@ CONTAINS
           xtr_median = 1.0_r8
         END WHERE
         DO iii = 0, ntimes-1
-          IF ( .NOT. yn_process(iii) ) CYCLE
+          IF ( .NOT. do_process_line(iii) ) CYCLE
           xtrack_cor(1:nxtrack,iii) = xtr_median(1:nxtrack)
           xtrack_fit(          iii) = 0.0_r8
           WHERE ( saocol(1:nxtrack,iii) > r8_missval )
@@ -376,7 +376,7 @@ CONTAINS
         ! Remove the low-order polynomial bias from the fitted columns
         ! ------------------------------------------------------------
         DO it = nl0, nl1
-          IF ( .NOT. yn_process(it) ) CYCLE
+          IF ( .NOT. do_process_line(it) ) CYCLE
           saocol(1:nxtrack,it) = saocol(1:nxtrack,it) - xtrack_pfit(1:nxtrack)
         END DO
 
@@ -384,7 +384,7 @@ CONTAINS
         ! First condense the selected part for computation of median
         ! ----------------------------------------------------------
         CALL condense_columns_for_median (                                      &
-          ntimes, nxtrack, yn_process(0:ntimes-1), yn_dst_range(0:ntimes-1), &
+          ntimes, nxtrack, do_process_line(0:ntimes-1), dst_range(0:ntimes-1), &
           saocol(1:nxtrack,0:ntimes-1), saomqf(1:nxtrack,0:ntimes-1),        &
           ntmp, tmpcol(1:nxtrack,0:ntimes-1), tmpmqf(1:nxtrack,0:ntimes-1)     )
         CALL xtrack_median_comp ( &

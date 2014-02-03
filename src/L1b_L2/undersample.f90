@@ -35,7 +35,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! ---------------
   ! Local variables
   ! ---------------
-  LOGICAL                                     :: yn_full_range
+  LOGICAL                                     :: did_full_range
   REAL (KIND=r8), DIMENSION (2,n_sensor_pts)  :: underspec
   REAL (KIND=r8), DIMENSION (max_spec_pts)    :: &
     locwvl, locspec, specmod, tmpwav, over, under, resample
@@ -78,7 +78,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
 
   CALL interpolation (                                                                &
     npts, locwvl(1:npts), specmod(1:npts), n_sensor_pts, curr_wvl(1:n_sensor_pts), &
-    resample(1:n_sensor_pts), 'endpoints', 0.0_r8, yn_full_range, locerrstat )
+    resample(1:n_sensor_pts), 'endpoints', 0.0_r8, did_full_range, locerrstat )
   CALL error_check (                                                    &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename//f_sep//'Phase 1a', vb_lev_default, errstat )
@@ -87,7 +87,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! -------------------------------------------------------------
   ! Issue a warning if we don't have the full interpolation range
   ! -------------------------------------------------------------
-  IF ( .NOT. yn_full_range ) CALL error_check (           &
+  IF ( .NOT. did_full_range ) CALL error_check (           &
     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
     modulename//f_sep//'Phase 1a', vb_lev_develop, errstat )
 
@@ -105,7 +105,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
 
   CALL interpolation (                                                              &
     npts, locwvl(1:npts), specmod(1:npts), n_sensor_pts, tmpwav(1:n_sensor_pts), &
-    over(1:n_sensor_pts), 'endpoints', 0.0_r8, yn_full_range, locerrstat )
+    over(1:n_sensor_pts), 'endpoints', 0.0_r8, did_full_range, locerrstat )
   CALL error_check (                                                    &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename//f_sep//'Phase 1b', vb_lev_default, errstat )
@@ -114,14 +114,14 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! -------------------------------------------------------------
   ! Issue a warning if we don't have the full interpolation range
   ! -------------------------------------------------------------
-  !IF ( .NOT. yn_full_range ) CALL error_check (                 &
+  !IF ( .NOT. did_full_range ) CALL error_check (                 &
   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE,       &
   !     modulename//f_sep//'Phase 1b', vb_lev_omidebug, errstat )
 
   CALL interpolation (                                                                 &
     n_sensor_pts, curr_wvl(1:n_sensor_pts), resample(1:n_sensor_pts), n_sensor_pts, &
     tmpwav(1:n_sensor_pts), under(1:n_sensor_pts), 'endpoints', 0.0_r8,             &
-    yn_full_range, locerrstat )
+    did_full_range, locerrstat )
   CALL error_check (                                                    &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename//f_sep//'Phase 1c', vb_lev_default, errstat )
@@ -130,7 +130,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! -------------------------------------------------------------
   ! Issue a warning if we don't have the full interpolation range
   ! -------------------------------------------------------------
-  !IF ( .NOT. yn_full_range ) CALL error_check (                 &
+  !IF ( .NOT. did_full_range ) CALL error_check (                 &
   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE,       &
   !     modulename//f_sep//'Phase 1c', vb_lev_omidebug, errstat )
 
@@ -157,7 +157,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! --------------------------------------------------------------------------------------
   CALL interpolation (                                                                &
     npts, locwvl(1:npts), specmod(1:npts), n_sensor_pts, curr_wvl(1:n_sensor_pts), &
-    over(1:n_sensor_pts), 'endpoints', 0.0_r8, yn_full_range, locerrstat )
+    over(1:n_sensor_pts), 'endpoints', 0.0_r8, did_full_range, locerrstat )
   CALL error_check ( &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename//f_sep//'Phase 2a', vb_lev_default, errstat )
@@ -167,14 +167,14 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! -------------------------------------------------------------
   ! Issue a warning if we don't have the full interpolation range
   ! -------------------------------------------------------------
-  !IF ( .NOT. yn_full_range ) CALL error_check ( &
+  !IF ( .NOT. did_full_range ) CALL error_check ( &
   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
   !     modulename//f_sep//'Phase 2a', vb_lev_omidebug, errstat )
 
   CALL interpolation ( &
     n_sensor_pts, tmpwav(1:n_sensor_pts), resample(1:n_sensor_pts), n_sensor_pts, &
     curr_wvl(1:n_sensor_pts), under(1:n_sensor_pts), 'endpoints', 0.0_r8,         &
-    yn_full_range, locerrstat )
+    did_full_range, locerrstat )
   CALL error_check ( &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename//f_sep//'Phase 2b', vb_lev_default, errstat )
@@ -184,7 +184,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! -------------------------------------------------------------
   ! Issue a warning if we don't have the full interpolation range
   ! -------------------------------------------------------------
-  !IF ( .NOT. yn_full_range ) CALL error_check ( &
+  !IF ( .NOT. did_full_range ) CALL error_check ( &
   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
   !     modulename//f_sep//'Phase 2b', vb_lev_omidebug, errstat )
 
@@ -243,8 +243,8 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   ! ---------------
 !UNUSED!   ! Local variables
 !UNUSED!   ! ---------------
-!UNUSED!   LOGICAL                                     :: yn_full_range
-!UNUSED!   REAL (KIND=r8), DIMENSION (2,n_sensor_pts)  :: underspec
+!UNUSED!   LOGICAL                                     :: did_full_range
+!UNUSED!   REAL (KIND=r8), DIMENSION (n_sensor_pts,2)  :: underspec
 !UNUSED!   REAL (KIND=r8), DIMENSION (max_spec_pts)    :: &
 !UNUSED!     locwvl, locspec, specmod, tmpwav, over, under, resample
 !UNUSED! 
@@ -288,7 +288,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED! 
 !UNUSED!   CALL interpolation (                                                                &
 !UNUSED!     npts, locwvl(1:npts), specmod(1:npts), n_sensor_pts, curr_wvl(1:n_sensor_pts), &
-!UNUSED!     over(1:n_sensor_pts), 'endpoints', 0.0_r8, yn_full_range, locerrstat )
+!UNUSED!     over(1:n_sensor_pts), 'endpoints', 0.0_r8, did_full_range, locerrstat )
 !UNUSED!   CALL error_check (                                                    &
 !UNUSED!     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
 !UNUSED!     modulename//f_sep//'Phase 1a', vb_lev_default, errstat )
@@ -297,14 +297,14 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   ! -------------------------------------------------------------
 !UNUSED!   ! Issue a warning if we don't have the full interpolation range
 !UNUSED!   ! -------------------------------------------------------------
-!UNUSED!   IF ( .NOT. yn_full_range ) CALL error_check (           &
+!UNUSED!   IF ( .NOT. did_full_range ) CALL error_check (           &
 !UNUSED!     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
 !UNUSED!     modulename//f_sep//'Phase 1a', vb_lev_develop, errstat )
 !UNUSED! 
 !UNUSED!   ! Convolved High resolution solar to OMI solar grid
 !UNUSED!   CALL interpolation (                                                               &
 !UNUSED!     npts, locwvl(1:npts), specmod(1:npts), n_solar_pts, tmpwav(1:n_solar_pts), &
-!UNUSED!     resample(1:n_solar_pts), 'endpoints', 0.0_r8, yn_full_range, locerrstat )
+!UNUSED!     resample(1:n_solar_pts), 'endpoints', 0.0_r8, did_full_range, locerrstat )
 !UNUSED!   CALL error_check (                                                    &
 !UNUSED!     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
 !UNUSED!     modulename//f_sep//'Phase 1b', vb_lev_default, errstat )
@@ -313,7 +313,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   ! -------------------------------------------------------------
 !UNUSED!   ! Issue a warning if we don't have the full interpolation range
 !UNUSED!   ! -------------------------------------------------------------
-!UNUSED!   !IF ( .NOT. yn_full_range ) CALL error_check (                 &
+!UNUSED!   !IF ( .NOT. did_full_range ) CALL error_check (                 &
 !UNUSED!   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE,       &
 !UNUSED!   !     modulename//f_sep//'Phase 1b', vb_lev_omidebug, errstat )
 !UNUSED! 
@@ -321,7 +321,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   CALL interpolation (                                                                 &
 !UNUSED!     n_solar_pts, tmpwav(1:n_solar_pts), resample(1:n_solar_pts), n_sensor_pts, &
 !UNUSED!     curr_wvl(1:n_sensor_pts), under(1:n_sensor_pts), 'endpoints', 0.0_r8,             &
-!UNUSED!     yn_full_range, locerrstat )
+!UNUSED!     did_full_range, locerrstat )
 !UNUSED!   CALL error_check (                                                    &
 !UNUSED!     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
 !UNUSED!     modulename//f_sep//'Phase 1c', vb_lev_default, errstat )

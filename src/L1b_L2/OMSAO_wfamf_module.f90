@@ -146,9 +146,9 @@ CONTAINS
 
   SUBROUTINE amf_calculation_bis (            &
       pge_idx, nt, nx, lat, lon, sza, vza,   &
-      snow, glint, xtrange, yn_szoom,        &
+      snow, glint, xtrange, do_szoom,        &
       saocol, saodco, saoamf, terrain_height,&
-      yn_write, errstat                                )
+      do_write, errstat                                )
 
     ! =================================================================
     ! This subroutine computes the AMF factor using the following eleme
@@ -166,8 +166,8 @@ CONTAINS
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx, pge_idx
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, sza, vza, terrain_height
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
-    LOGICAL,           DIMENSION (     0:nt-1), INTENT (IN) :: yn_szoom
-    LOGICAL                                                 :: yn_write
+    LOGICAL,           DIMENSION (     0:nt-1), INTENT (IN) :: do_szoom
+    LOGICAL                                                 :: do_write
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
 
     ! -----------------------------
@@ -236,13 +236,13 @@ CONTAINS
       ! ---------------------------------------
       ! Write the albedo to the output file he5
       ! ---------------------------------------
-      IF (yn_write) CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)
+      IF (do_write) CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)
 
       ! -----------------------------
       ! Read the OMI L2 cloud product
       ! -----------------------------
       locerrstat = pge_errstat_ok
-      CALL amf_read_omiclouds ( nt, nx, yn_szoom, l2cfr, l2ctp, locerrstat )
+      CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, locerrstat )
       errstat = MAX ( errstat, locerrstat )
       IF ( locerrstat >= pge_errstat_error ) THEN
         l2cfr = r8_missval
@@ -260,7 +260,7 @@ CONTAINS
       ! -------------------------------------
       ! Write the climatology to the he5 file
       ! -------------------------------------
-      IF (yn_write) CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat)
+      IF (do_write) CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat)
 
       ! ------------------------------------------------------------------
       ! Read VLIDORT look up table. Variables are declared at module level
@@ -304,7 +304,7 @@ CONTAINS
       ! -----------------------------------------------------------------
       ! Write out scattering weights, altitude grid and averaging kernels
       ! -----------------------------------------------------------------
-      IF (yn_write) CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat)
+      IF (do_write) CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat)
 
     END IF
 
@@ -320,7 +320,7 @@ CONTAINS
     ! Write AMFs, AMF diagnosting, and AMF-adjusted
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
-    IF (yn_write) CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
+    IF (do_write) CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
       amfgeo, amfdiag, l2cfr, l2ctp, locerrstat )
 
     errstat = MAX ( errstat, locerrstat )
@@ -1573,7 +1573,7 @@ CONTAINS
 
   END SUBROUTINE read_vlidort
 
-  SUBROUTINE amf_read_omiclouds ( nt, nx, yn_szoom, l2cfr, l2ctp, errstat )
+  SUBROUTINE amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
 
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     USE OMSAO_indices_module,    ONLY: voc_omicld_idx
@@ -1588,7 +1588,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),           INTENT (IN) :: nt, nx
-    LOGICAL, DIMENSION (0:nt-1), INTENT (IN) :: yn_szoom
+    LOGICAL, DIMENSION (0:nt-1), INTENT (IN) :: do_szoom
     ! ----------------
     ! Output variables
     ! ----------------
@@ -1608,7 +1608,7 @@ CONTAINS
     CHARACTER (LEN=5)        :: addstr
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1) :: o4ctp
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: cfr, ctp
-    LOGICAL                  :: yn_raman_clouds
+    LOGICAL                  :: do_raman_clouds
 
     ! ---------------------------------------
     ! For accesing the file (local variables)
@@ -1651,10 +1651,10 @@ CONTAINS
     END IF
 
     IF ( INDEX( voc_amf_filenames(voc_omicld_idx), 'CLDRR' ) /= 0 ) THEN
-      yn_raman_clouds = .TRUE.
+      do_raman_clouds = .TRUE.
       addstr          = ""
     ELSE
-      yn_raman_clouds = .FALSE.
+      do_raman_clouds = .FALSE.
       addstr          = ""
     END IF
 
@@ -1692,7 +1692,7 @@ CONTAINS
     ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
     ! ---------------------------------------------------------------
     DO it = 0, nt-1
-      IF ( yn_szoom(it) .AND. &
+      IF ( do_szoom(it) .AND. &
         ALL ( cfr(gzoom_epix:nx,it) <= missval_cfr ) ) THEN
         cfr(gzoom_spix:gzoom_epix,it) = cfr(1:gzoom_npix,it)
         cfr(1:gzoom_spix-1,       it) = missval_cfr
@@ -1710,7 +1710,7 @@ CONTAINS
     ! ---------------------------------------------------------------------------
     ! (2) Cloud Pressure of type REAL*4 in Raman but INT*2 in O2-O2
     ! ---------------------------------------------------------------------------
-    IF ( yn_raman_clouds ) THEN
+    IF ( do_raman_clouds ) THEN
       locerrstat = HE5_SWrdfld ( &
         omicloud_swath_id, omicld_cpres_field//TRIM(ADJUSTL(addstr)),   &
         he5_start_2d, he5_stride_2d, he5_edge_2d, ctp(1:nx,0:nt-1) )
@@ -1729,7 +1729,7 @@ CONTAINS
     ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
     ! ---------------------------------------------------------------
     DO it = 0, nt-1
-      IF ( yn_szoom(it) .AND. &
+      IF ( do_szoom(it) .AND. &
         ALL ( ctp(gzoom_epix:nx,it) <= REAL(missval_ctp, KIND=r4) ) ) THEN
         ctp(gzoom_spix:gzoom_epix,it)  = ctp(1:gzoom_npix,it)
         ctp(1:gzoom_spix-1,       it)  = REAL(missval_ctp, KIND=r4)

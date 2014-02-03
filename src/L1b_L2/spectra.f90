@@ -61,7 +61,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
   ! ===============
   REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
   REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
-  LOGICAL                                       :: yn_full_range, yn_solsynth
+  LOGICAL                                       :: did_full_range, is_solsynth
   INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos
   REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
 
@@ -107,10 +107,10 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
   !          .AND. yn_reference_fit)) ) THEN
   ! The above test can be simplified to the following: --JED
   IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
-    yn_solsynth = .TRUE.
+    is_solsynth = .TRUE.
     soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
   ELSE
-    yn_solsynth = .FALSE.
+    is_solsynth = .FALSE.
     soco_shi = 0.0_r8
   END IF
 
@@ -149,7 +149,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
   ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
   ! ---------------------------------------------------------------------
   j1 = -1; j2 = -1
-  IF ( squeeze == 0.0_r8 .AND. yn_solsynth ) THEN
+  IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
     locwvl_shift(1:npts) = locwvl(1:npts) - shift
     CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
     CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
@@ -182,7 +182,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
 
     IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
 
-      IF ( squeeze == 0.0_r8 .AND. yn_solsynth ) THEN
+      IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
         CALL soco_compute ( &
           yn_spectrum_norm, curr_xtrack_pixnum, npts, &
           locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts) )
@@ -190,7 +190,7 @@ SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
         CALL interpolation (                                                 &
           n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
           npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
-          yn_full_range, errstat                                            )
+          did_full_range, errstat                                            )
         CALL error_check ( &
           errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL,      &
           modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
@@ -373,7 +373,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   ! ===============
   REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
   REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
-  LOGICAL                                       :: yn_full_range, yn_solsynth
+  LOGICAL                                       :: did_full_range, is_solsynth
   INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos, k1, k2
   REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
   REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, tmpexp, sumexp
@@ -416,10 +416,10 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   !          .AND. yn_reference_fit)) ) THEN
   ! The above test can be simplified to the following: --JED
   IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
-    yn_solsynth = .TRUE.
+    is_solsynth = .TRUE.
     soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
   ELSE
-    yn_solsynth = .FALSE.
+    is_solsynth = .FALSE.
     soco_shi = 0.0_r8
   END IF
 
@@ -449,7 +449,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
   ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
   ! ---------------------------------------------------------------------
   j1 = -1; j2 = -1
-  IF ( squeeze == 0.0_r8 .AND. yn_solsynth ) THEN
+  IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
     locwvl_shift(1:npts) = locwvl(1:npts) - shift
     CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
     CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
@@ -481,7 +481,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
 
     IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
 
-      IF ( squeeze == 0.0_r8 .AND. yn_solsynth ) THEN
+      IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
         CALL soco_compute ( &
           yn_spectrum_norm, curr_xtrack_pixnum, npts, &
           locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts))
@@ -489,7 +489,7 @@ SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar
         CALL interpolation (                                                         &
           n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
           npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
-          yn_full_range, errstat                                                   )
+          did_full_range, errstat                                                   )
         CALL error_check ( &
           errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
           modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &

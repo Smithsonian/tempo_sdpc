@@ -190,11 +190,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   INTEGER (KIND=i1), DIMENSION (0:rpt_rad%ntimes-1)   :: omi_binfac
   INTEGER (KIND=i4), DIMENSION (0:rpt_rad%ntimes-1,2) :: omi_xtrpix_range
   LOGICAL,           DIMENSION (0:rpt_rad%ntimes-1)   :: &
-    omi_yn_szoom, yn_common_range, yn_radfit_range
+    omi_is_szoom, is_common_range, do_radfit_range
 
   INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)   :: omi_binfac_rr
   INTEGER (KIND=i4), DIMENSION (0:rpt_rr%ntimes-1,2) :: omi_xtrpix_range_rr
-  LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)   :: omi_yn_szoom_rr
+  LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)   :: omi_is_szoom_rr
 
   ! ----------------------------------------------------------
   ! OMI L1b latitudes
@@ -246,7 +246,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -------------------------------------------------------------------
   CALL omi_read_binning_factor ( &
     TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-    ntimes_rad, omi_binfac, omi_yn_szoom, errstat )
+    ntimes_rad, omi_binfac, omi_is_szoom, errstat )
   if (errstat < 0) return
 
   CALL omi_set_xtrpix_range ( &
@@ -265,7 +265,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   IF ( TRIM(ADJUSTL(l1b_radref_filename)) /= TRIM(ADJUSTL(l1b_rad_filename)) ) THEN
     CALL omi_read_binning_factor ( &
       TRIM(ADJUSTL(l1b_radref_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-      ntimes_rr, omi_binfac_rr, omi_yn_szoom_rr, &
+      ntimes_rr, omi_binfac_rr, omi_is_szoom_rr, &
       errstat )
     CALL omi_set_xtrpix_range ( &
       ntimes_rr, nxtrack_rad, pixnum_lim(3:4),                                 &
@@ -274,7 +274,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     if (errstat < 0) return
   ELSE
     omi_binfac_rr      (0:ntimes_rad-1)     = omi_binfac      (0:ntimes_rad-1)
-    omi_yn_szoom_rr    (0:ntimes_rad-1)     = omi_yn_szoom    (0:ntimes_rad-1)
+    omi_is_szoom_rr    (0:ntimes_rad-1)     = omi_is_szoom    (0:ntimes_rad-1)
     omi_xtrpix_range_rr(0:ntimes_rad-1,1:2) = omi_xtrpix_range(0:ntimes_rad-1,1:2)
   END IF
 
@@ -441,11 +441,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! Set the logical YN array that determines which swath lines
     ! will be used in the common mode
     ! ----------------------------------------------------------
-    yn_common_range = .FALSE.
+    is_common_range = .FALSE.
     CALL find_swathline_range ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
       ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
-      common_latrange(1:2), yn_common_range, errstat             )
+      common_latrange(1:2), is_common_range, errstat             )
 
     ! -------------------------------------------------------------
     ! First and last swath line number will be overwritten. Hence
@@ -474,7 +474,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
-      yn_common_range, &
+      is_common_range, &
       omi_xtrpix_range, &
       .FALSE., -1, &
       .TRUE., errstat )
@@ -576,7 +576,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   IF ( pixnum_lim(1) > 0 ) first_line = MIN(pixnum_lim(1), last_line)
   IF ( pixnum_lim(2) > 0 ) last_line  = MAX( MIN(pixnum_lim(2), last_line), first_line )
 
-  yn_radfit_range = .FALSE.
+  do_radfit_range = .FALSE.
   IF ( first_line         > 0           .OR. &
     last_line          < ntimes_rad-1 .OR. &
     radfit_latrange(1) > -90.0_r4    .OR. &
@@ -587,14 +587,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       CALL find_swathline_range ( &
         TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
         ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
-        radfit_latrange(1:2), yn_radfit_range, errstat             )
+        radfit_latrange(1:2), do_radfit_range, errstat             )
     ELSE
-      yn_radfit_range = .TRUE.
-      IF ( first_line > 0           ) yn_radfit_range(0:first_line-1)          = .FALSE.
-      IF ( last_line  < ntimes_rad-1 ) yn_radfit_range(last_line+1:ntimes_rad-1) = .FALSE.
+      do_radfit_range = .TRUE.
+      IF ( first_line > 0           ) do_radfit_range(0:first_line-1)          = .FALSE.
+      IF ( last_line  < ntimes_rad-1 ) do_radfit_range(last_line+1:ntimes_rad-1) = .FALSE.
     END IF
   ELSE
-    yn_radfit_range = .TRUE.
+    do_radfit_range = .TRUE.
   END IF
 
   deallocate (l1b_rad_latitudes)
@@ -604,7 +604,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------------------
   CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
-    yn_radfit_range,                           &
+    do_radfit_range,                           &
     omi_xtrpix_range,                      &
     .FALSE., -1,                       &
     .FALSE., errstat)
@@ -623,8 +623,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------------------------
   CALL omi_pge_postprocess ( &
     l1b_rad_filename, pge_idx, ntimes_rad, nxtrack_rad,                    &
-    yn_radfit_range, omi_xtrpix_range, &
-    omi_yn_szoom, n_max_rspec, errstat                 )
+    do_radfit_range, omi_xtrpix_range, &
+    omi_is_szoom, n_max_rspec, errstat                 )
 
   ! ---------------------
   ! Write some attributes

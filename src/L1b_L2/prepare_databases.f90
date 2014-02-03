@@ -38,7 +38,7 @@ SUBROUTINE prepare_solar_refspec ( &
   ! ---------------
   ! Local variables
   ! ---------------
-  LOGICAL                                 :: yn_full_range
+  LOGICAL                                 :: did_full_range
   INTEGER (KIND=i4)                       :: j, ll_rad, lu_rad, locerrstat, n_sol_tmp
   REAL    (KIND=r8), DIMENSION (n_radpts) :: spline_sun
   REAL    (KIND=r8), DIMENSION (n_solpts) :: tmp_sol_spec, tmp_sol_wvl
@@ -85,12 +85,12 @@ SUBROUTINE prepare_solar_refspec ( &
   CALL interpolation ( &
     n_sol_tmp, tmp_sol_wvl(1:n_sol_tmp), tmp_sol_spec(1:n_sol_tmp),             &
     n_radpts, curr_rad_wvl(1:n_radpts), spline_sun(1:n_radpts),                 &
-    'endpoints', 0.0_r8, yn_full_range, locerrstat )
+    'endpoints', 0.0_r8, did_full_range, locerrstat )
   CALL error_check ( &
     locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
     modulename, vb_lev_default, errstat )
   IF ( errstat >= pge_errstat_error ) RETURN
-  IF ( .NOT. yn_full_range )   CALL error_check ( 0, 1, pge_errstat_warning, &
+  IF ( .NOT. did_full_range )   CALL error_check ( 0, 1, pge_errstat_warning, &
     OMSAO_W_INTERPOL_RANGE, modulename, vb_lev_develop, errstat )
 
   ! --------------------------------------------------------------------------

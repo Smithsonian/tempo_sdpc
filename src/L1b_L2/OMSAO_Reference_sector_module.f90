@@ -311,7 +311,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)                                           :: first_line, last_line
     INTEGER (KIND=i4), DIMENSION (0:rpt_rr%ntimes-1,2)            :: omi_xtrpix_range_rr
-    LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_radfitref_range
+    LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: radfitref_range_ok
     CHARACTER(LEN=MAX_STR_LEN)                                     :: l1b_rad_save_filename
     REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_amf
     !REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: &
@@ -321,7 +321,7 @@ CONTAINS
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, mem_xtrflg
     INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint
     INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
-    LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, yn_common_range
+    LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, common_range_ok
     INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)              :: binfac_rs
     LOGICAL                                                     :: yn_write
     INTEGER (KIND=i4) :: nTimesRadRR, nXtrackRadRR, nWvlCCDrr
@@ -381,7 +381,7 @@ CONTAINS
     ! I want to perform the retrieval for the whole granule
     ! -----------------------------------------------------
     first_line = 0  ;  last_line = nTimesRadRR-1
-    yn_radfitref_range = .TRUE.
+    radfitref_range_ok = .TRUE.
     omi_xtrpix_range_rr(0:nTimesRadRR-1,1) = 1
     omi_xtrpix_range_rr(0:nTimesRadRR-1,2) = nXtrackRadRR
 
@@ -399,18 +399,18 @@ CONTAINS
     ! Compute the common mode for the Radiance Reference
     ! granule
     ! --------------------------------------------------
-    yn_common_range(0:nTimesRadRR-1) = .FALSE.
+    common_range_ok(0:nTimesRadRR-1) = .FALSE.
     CALL find_swathline_range ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)),  &
       nTimesRadRR, nXtrackRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
-      common_latrange(1:2), yn_common_range(0:nTimesRadRR-1), locerrstat        )
+      common_latrange(1:2), common_range_ok(0:nTimesRadRR-1), locerrstat        )
 
     ! ----------------------------------------------------------
     ! Interface to the loop over all swath lines for common mode
     ! ----------------------------------------------------------
     CALL swathline_loops (                                    &
       pge_idx, rpt_rr, n_max_rspec, &
-      yn_common_range(0:nTimesRadRR-1),                           &
+      common_range_ok(0:nTimesRadRR-1),                           &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
       .FALSE., -1,                         &
       .TRUE., locerrstat)
@@ -426,10 +426,10 @@ CONTAINS
     ! --------------------------------------
     CALL swathline_loops (                             &
       pge_idx, rpt_rr, n_max_rspec, &
-      yn_radfitref_range(0:nTimesRadRR-1),                        &
+      radfitref_range_ok(0:nTimesRadRR-1),                        &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
       .FALSE., -1,                         &
-      .TRUE., locerrstat, retrieval=rt)
+      .TRUE., locerrstat, retrieval_opt=rt)
       !mem_column_amount(1:nXtrackRadRR,0:nTimesRadRR-1),  &
       !mem_column_uncertainty(1:nXtrackRadRR,0:nTimesRadRR-1),     &
       !mem_rms(1:nXtrackRadRR,0:nTimesRadRR-1),                    &

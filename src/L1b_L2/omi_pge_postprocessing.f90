@@ -1,7 +1,7 @@
 MODULE omi_pge_postprocessing
 CONTAINS
 SUBROUTINE omi_pge_postprocess ( &
-    l1bfile, pge_idx, ntimes, nxtrack, yn_process, xtrange, yn_szoom, n_max_rspec, errstat )
+    l1bfile, pge_idx, ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, errstat )
 
   ! ---------------------------------------------------------
   ! In this subroutine we collect all those computations that
@@ -34,7 +34,7 @@ SUBROUTINE omi_pge_postprocess ( &
   CHARACTER (LEN=*),                              INTENT (IN) :: l1bfile
   INTEGER (KIND=i4),                              INTENT (IN) :: ntimes, nxtrack, n_max_rspec, pge_idx
   INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),  INTENT (IN) :: xtrange
-  LOGICAL,           DIMENSION (0:ntimes-1),      INTENT (IN) :: yn_process, yn_szoom
+  LOGICAL,           DIMENSION (0:ntimes-1),      INTENT (IN) :: do_process_line, is_szoom
 
   ! -----------------
   ! Modified variable
@@ -50,7 +50,7 @@ SUBROUTINE omi_pge_postprocess ( &
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf, saomqf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg
-  LOGICAL                                             :: yn_write
+  LOGICAL                                             :: do_write
 
   ! --------------
   ! Error handling
@@ -74,7 +74,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------------------------
   ! Compute ground pixel corner latitudes and longitudes
   ! ----------------------------------------------------
-  CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, yn_szoom, locerrstat )
+  CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, locerrstat )
 
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
@@ -94,17 +94,17 @@ SUBROUTINE omi_pge_postprocess ( &
   ! -----------
   !!$  CALL amf_calculation (                             &
   !!$       pge_idx, ntimes, nxtrack, lat, lon, sza, vza, &
-  !!$       snow_ice_flg, glint_flg, xtrange, yn_szoom,   &
+  !!$       snow_ice_flg, glint_flg, xtrange, is_szoom,   &
   !!$       saocol, saodco, saoamf, locerrstat              )
 
   ! ----------------
   ! Comnpute AMF bis
   ! ----------------
-  yn_write = .TRUE.
+  do_write = .TRUE.
   CALL amf_calculation_bis (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza,     &
-    snow_ice_flg, glint_flg, xtrange, yn_szoom,       &
-    saocol, saodco, saoamf, thg, yn_write, &
+    snow_ice_flg, glint_flg, xtrange, is_szoom,       &
+    saocol, saodco, saoamf, thg, do_write, &
     locerrstat              )
 
   ! ----------------------------------
@@ -118,7 +118,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Apply cross-track destriping correction
   ! ---------------------------------------
   CALL xtrack_destriping (                                    &
-    pge_idx, ntimes, nxtrack, yn_process, xtrange,         &
+    pge_idx, ntimes, nxtrack, do_process_line, xtrange,         &
     lat, saocol, & !saodco, saoamf, saofcf,
     saomqf, locerrstat )
 
