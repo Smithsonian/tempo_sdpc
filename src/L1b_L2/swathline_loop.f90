@@ -13,7 +13,7 @@ SUBROUTINE swathline_loops (                               &
     n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, fitvar_rad_init, fitvar_rad_saved
   USE OMSAO_omidata_module,    ONLY:  &
-    omi_scanline_no, omi_blockline_no,                  &
+    omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
     omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &
     omi_radiance_errstat,  &
@@ -49,7 +49,7 @@ SUBROUTINE swathline_loops (                               &
   ! ---------------
   INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
-  INTEGER (KIND=i4) :: nt, nx, nccd
+  INTEGER (KIND=i4) :: nt, nx, nccd, scanline_no
 
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
@@ -159,27 +159,27 @@ SUBROUTINE swathline_loops (                               &
       ! Both values are initialized here.
       ! --------------------------------------------------------------------
       omi_blockline_no = iloop
-      omi_scanline_no  = iline+iloop
+      scanline_no  = iline+iloop
 
-      IF ( omi_scanline_no > nt-1 ) EXIT ScanLines
+      IF (scanline_no > nt-1 ) EXIT ScanLines
 
       ! ----------------------------------------------------------
       ! Skip this line if it isn't in the list of those to process
       ! ----------------------------------------------------------
-      IF ( .NOT. yn_process(omi_scanline_no) ) CYCLE
+      IF ( .NOT. yn_process(scanline_no) ) CYCLE
 
       ! ------------------
       ! Report on progress
       ! ------------------
       addmsg = ''
-      WRITE (addmsg,'(A,I5)') 'Working on scan line', omi_scanline_no
+      WRITE (addmsg,'(A,I5)') 'Working on scan line', scanline_no
       estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), " ", vb_lev_omidebug )
       !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
       IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN
 
-        fpix = xtrange(omi_scanline_no,1)
-        lpix = xtrange(omi_scanline_no,2)
+        fpix = xtrange(scanline_no,1)
+        lpix = xtrange(scanline_no,2)
 
         ! One side effect of this routine is that the value of n_rad_wvl
         ! will change.
@@ -194,7 +194,7 @@ SUBROUTINE swathline_loops (                               &
 
         ipix = (fpix+lpix)/2
         addmsg = ''
-        WRITE (addmsg,'(I5, I3, 3(1PE15.5),I5)') omi_scanline_no, ipix, &
+        WRITE (addmsg,'(I5, I3, 3(1PE15.5),I5)') scanline_no, ipix, &
           omi_column_amount(ipix, iloop), omi_column_uncert(ipix, iloop), &
           omi_fit_rms   (ipix, iloop), MAX(-1,omi_itnum_flag(ipix, iloop))
         estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )
@@ -236,16 +236,16 @@ SUBROUTINE swathline_loops (                               &
         ! Optionally, keep the results of the fitting in memory
         ! -----------------------------------------------------
         if (present(retrieval)) then
-          retrieval%column_amount(fpix:lpix,omi_scanline_no)      = omi_column_amount(fpix:lpix,iloop)
-          retrieval%column_uncertainty(fpix:lpix,omi_scanline_no) = omi_column_uncert(fpix:lpix,iloop)
-          retrieval%rms(fpix:lpix,omi_scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
-          retrieval%latitude(fpix:lpix,omi_scanline_no)           = omi_latitude(fpix:lpix,iloop)
-          retrieval%longitude(fpix:lpix,omi_scanline_no)          = omi_longitude(fpix:lpix,iloop)
-          retrieval%sza(fpix:lpix,omi_scanline_no)                = omi_szenith(fpix:lpix,iloop)
-          retrieval%vza(fpix:lpix,omi_scanline_no)                = omi_vzenith(fpix:lpix,iloop)
-          retrieval%fit_flag(fpix:lpix,omi_scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
-          retrieval%xtr_flag(fpix:lpix,omi_scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
-          retrieval%height(fpix:lpix,omi_scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
+          retrieval%column_amount(fpix:lpix,scanline_no)      = omi_column_amount(fpix:lpix,iloop)
+          retrieval%column_uncertainty(fpix:lpix,scanline_no) = omi_column_uncert(fpix:lpix,iloop)
+          retrieval%rms(fpix:lpix,scanline_no)                = omi_fit_rms(fpix:lpix,iloop)
+          retrieval%latitude(fpix:lpix,scanline_no)           = omi_latitude(fpix:lpix,iloop)
+          retrieval%longitude(fpix:lpix,scanline_no)          = omi_longitude(fpix:lpix,iloop)
+          retrieval%sza(fpix:lpix,scanline_no)                = omi_szenith(fpix:lpix,iloop)
+          retrieval%vza(fpix:lpix,scanline_no)                = omi_vzenith(fpix:lpix,iloop)
+          retrieval%fit_flag(fpix:lpix,scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
+          retrieval%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
+          retrieval%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
         endif
       END IF
 

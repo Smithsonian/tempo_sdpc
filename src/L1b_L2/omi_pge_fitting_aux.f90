@@ -6,7 +6,7 @@ MODULE omi_pge_fitting_aux
     find_swathline_by_latitude, check_wavelength_overlap, convert_tai_to_utc, &
     find_swathline_range, finalize_common_mode, &
     compute_fitting_statistics, compute_fitting_statistics_nohe5, &
-    omi_adjust_irradiance_data, omi_set_xtrpix_range, &
+    omi_set_xtrpix_range, &
     omi_set_fitting_parameters, set_input_pointer_and_versions
 
 CONTAINS

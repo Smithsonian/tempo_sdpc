@@ -385,7 +385,7 @@ CONTAINS
       omi_radiance_wavl, omi_radref_wavl, omi_radiance_spec, omi_radref_spec,&
       omi_radiance_qflg, omi_radref_qflg, omi_radiance_spec,                 &
       rad_ccdpix_selection, omi_radiance_ccdpix, rad_ccdpix_exclusion,       &
-      omi_xtrackpix_no, omi_radref_wght, omi_radref_pars,    &
+      omi_radref_wght, omi_radref_pars,    &
       omi_radref_xflag, omi_radref_chisq, omi_radref_col,  &
       omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol, omi_radref_wav_avg
     USE OMSAO_errstat_module
@@ -537,8 +537,6 @@ CONTAINS
         omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
         omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
       END IF
-
-      omi_xtrackpix_no = ipix
 
       ! -------------------------------------------------------------------------
 

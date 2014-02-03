@@ -167,7 +167,8 @@ MODULE OMSAO_omidata_module
   ! ---------------------------------------------------------
   ! OMI scan line, block line, and across-track pixel numbers
   ! ---------------------------------------------------------
-  INTEGER (KIND=i4) :: omi_scanline_no, omi_blockline_no, omi_xtrackpix_no
+  !INTEGER (KIND=i4) :: omi_scanline_no, omi_blockline_no, omi_xtrackpix_no
+  INTEGER (KIND=i4) :: omi_blockline_no
 
   ! ---------------------------
   ! OMI L2 output data QA flags

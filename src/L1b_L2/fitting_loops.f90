@@ -374,7 +374,7 @@ CONTAINS
       omi_fitconv_flag, omi_itnum_flag, omi_radfit_chisq, &
       omi_fit_rms, omi_radiance_spec, omi_column_amount, omi_column_uncert, &
       omi_o3_amount, omi_o3_uncert, n_omi_radwvl, &
-      omi_xtrackpix_no, omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
+      omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
       omi_radiance_qflg, omi_cross_track_skippix, omi_radref_wav_avg, &
       omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
     USE omi_pge_fitting_aux, ONLY: check_wavelength_overlap
@@ -493,9 +493,6 @@ CONTAINS
       curr_sol_spec(spc_idx,1:n_database_wvl) = omi_database    (solar_idx,1:n_database_wvl,ipix)
       ! --------------------------------------------------------------------------------
 
-      omi_xtrackpix_no = ipix
-
-      ! -------------------------------------------------------------------------
 
       ! reallocate buffers if needed
       if (adj_num > adj_num_allocated) then
