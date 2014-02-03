@@ -33,7 +33,7 @@ CONTAINS
       tol, epsrel, epsabs, epsx
 
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
-    USE omi_pge_fitting_aux, ONLY: compute_common_mode
+    USE commonmode, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
     USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp, &
             param_frozen_at_zero, database_j_is_zero

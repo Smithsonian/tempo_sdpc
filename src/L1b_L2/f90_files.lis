@@ -12,28 +12,22 @@ gauss.f90
 hdfeos4_parameters.f90
 he5_output_tools.f90
 integration_routines.f90
-# L1B_Reader_class.f90
 metadata_tools.f90
 omi_pge_fitting_aux.f90
 omi_pge_fitting_process.f90
 omi_pge_postprocessing.f90
 swathline_loop.f90
-# omi_pge_swathline_loop.f90
-# omi_pge_swathline_loop_memory.f90
 omi_parameters_module.f90
 omi_read_l1b_data.f90
-#OMSAO_amf_module.f90
 OMSAO_casestring_module.f90
 OMSAO_destriping_module.f90
 OMSAO_elsunc_fitting_module.f90
 OMSAO_errstat_module.f90
-#OMSAO_he5_datafields_module.f90
 OMSAO_he5_module.f90
 OMSAO_indices_module.f90
 OMSAO_linterpolation_module.f90
 OMSAO_main.f90
 OMSAO_median_module.f90
-#OMSAO_metadata_module.f90
 OMSAO_omidata_module.f90
 OMSAO_parameters_module.f90
 OMSAO_pixelcorner_module.f90
@@ -43,7 +37,6 @@ OMSAO_radiance_ref_module.f90
 OMSAO_Reference_sector_module.f90
 OMSAO_solar_wavcal_module.f90
 OMSAO_solcomp_module.f90
-#OMSAO_solmonthave_module.f90
 OMSAO_variables_module.f90
 OMSAO_wfamf_module.f90
 prepare_databases.f90
@@ -60,8 +53,8 @@ Szoom_Parameter_Module.f90
 SLATEC_davint.f90
 undersample.f90
 datafields.f90
-# addr_module.f90
 irradiance_data.f90
 errormodule.f90
 l1bread.f90
 wavecal.f90
+commonmode.f90

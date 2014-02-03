@@ -143,7 +143,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE omi_read_l1b_data, ONLY: omi_read_binning_factor, &
     omi_read_radiance_lines, omi_read_radiance_lines
   USE omi_pge_fitting_aux, ONLY: omi_set_xtrpix_range, &
-    read_latitude, find_swathline_range, finalize_common_mode
+    read_latitude, find_swathline_range
+  use commonmode, only: finalize_common_mode
   USE fitting_loops, ONLY: xtrack_radiance_wvl_calibration
   USE metadata_tools, ONLY: check_metadata_consistency, set_l2_metadata
   USE omi_pge_postprocessing, ONLY: omi_pge_postprocess

@@ -285,7 +285,8 @@ CONTAINS
       yn_radiance_reference
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
-      finalize_common_mode, compute_fitting_statistics_nohe5
+      compute_fitting_statistics_nohe5
+    use commonmode, only: finalize_common_mode
     USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags, omi_read_binning_factor
     USE swathline_loop, ONLY: swathline_loops
     !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem

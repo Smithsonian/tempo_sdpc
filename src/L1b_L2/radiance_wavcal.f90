@@ -23,7 +23,7 @@ SUBROUTINE radiance_wavecal ( &
     lo_radbnd, up_radbnd, &
     max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor, yn_newshift, sol_wav_avg
   USE OMSAO_errstat_module
-  USE omi_pge_fitting_aux, ONLY: compute_common_mode
+  USE commonmode, ONLY: compute_common_mode
   use wavecal
   use optimizer_interface_module, only: opt_convergence_good
   IMPLICIT NONE
