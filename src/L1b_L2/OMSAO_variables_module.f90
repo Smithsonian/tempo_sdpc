@@ -141,11 +141,7 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------------------------------------
   ! The current solar and radiance spectrum, including wavelengths and weights
   ! --------------------------------------------------------------------------
-  INTEGER (KIND=i4), DIMENSION (2)                      :: radiance_wavcal_lnums
-  REAL    (KIND=r8), DIMENSION (ccd_idx, nwavel_max)    :: curr_rad_spec
   REAL    (KIND=r8), DIMENSION (ccd_idx, nwavel_max)    :: curr_sol_spec
-  REAL    (KIND=r8), DIMENSION (nwavel_max)             :: fitweights, fitwavs, currspec
-  REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: rad_spec_wavcal, rad_wght_wavcal
 
   ! ----------------------------------------
   ! Pixel number limits:

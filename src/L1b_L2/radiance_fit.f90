@@ -1,14 +1,35 @@
 MODULE radiance_fit
   USE OMSAO_precision_module, only : i4, r8
+  use OMSAO_indices_module, only : max_rs_idx, n_max_fitpars
+  use OMSAO_parameters_module, only : nwavel_max
   use optimizer_interface_module
   use errormodule
 
   private
   public fit_radiance
 
-  INTEGER (KIND=i4), PARAMETER, PRIVATE :: forever = HUGE(1_i4)
+  interface
+    subroutine earthshine_spectrum_interface (npts, avg_wavl, wavelengths, spectrum, params)
+      import i4, r8
+      implicit none
+      integer (kind=i4), intent(in) :: npts
+      real (kind=r8), intent(in) :: avg_wavl
+      real (kind=r8), dimension(:), intent(inout) :: params
+      real (kind=r8), dimension(npts), intent(in) :: wavelengths
+      real (kind=r8), dimension(npts), intent(out) :: spectrum
+    end subroutine earthshine_spectrum_interface
+  end interface
+
+  type spectrum_type
+    real (kind=r8), dimension(nwavel_max) :: spec, wavs, weights
+  end type spectrum_type
+
+  type (spectrum_type) :: Spec
+  logical, dimension(n_max_fitpars) :: param_frozen_at_zero
+  logical, dimension(max_rs_idx)    :: database_j_is_zero
 
 CONTAINS
+
   SUBROUTINE fit_radiance ( &
       pge_idx, ipix, num_fitres_loops, fitres_range, &
       n_rad_wvl_loc, adj_wvls, adj_spec, adj_wgts, &
@@ -26,7 +47,7 @@ CONTAINS
     USE OMSAO_variables_module,    ONLY:                                    &
       n_fincol_idx, fincol_idx, pm_one, database, &
       rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
-      lo_radbnd, up_radbnd, fitweights, currspec, fitwavs, &
+      lo_radbnd, up_radbnd, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
       all_radfit_idx, &
       n_rad_wvl_max, fitvar_rad_init, fitvar_rad_saved, &
@@ -35,8 +56,6 @@ CONTAINS
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
     USE commonmode, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
-    USE spectra, ONLY: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp, &
-            param_frozen_at_zero, database_j_is_zero
     IMPLICIT NONE
 
     ! *******************************************************************
@@ -111,9 +130,9 @@ CONTAINS
     ! ============================================================
     ll_rad = fit_winwav_idx(2)  ;  lu_rad = fit_winwav_idx(3)
 
-    fitwavs(1:n_rad_wvl_loc) = adj_wvls(1:n_rad_wvl_loc)
-    currspec(1:n_rad_wvl_loc) = adj_spec(1:n_rad_wvl_loc)
-    fitweights(1:n_rad_wvl_loc) = adj_wgts(1:n_rad_wvl_loc)
+    Spec%wavs(1:n_rad_wvl_loc) = adj_wvls(1:n_rad_wvl_loc)
+    Spec%spec(1:n_rad_wvl_loc) = adj_spec(1:n_rad_wvl_loc)
+    Spec%weights(1:n_rad_wvl_loc) = adj_wgts(1:n_rad_wvl_loc)
 
     ! ---------------------------------------------------------------
     ! High pass filtering for DOAS. First, take log (rad/irrad), then
@@ -126,18 +145,18 @@ CONTAINS
     ! for Ring effect, above.
     ! ---------------------------------------------------------------
     IF ( yn_doas ) THEN
-      currspec(1:n_rad_wvl_loc) = LOG ( currspec(1:n_rad_wvl_loc) / database(solar_idx,1:n_rad_wvl_loc) )
-      CALL cubic_subtract_meas (fitwavs(1:n_rad_wvl_loc), n_rad_wvl_loc, currspec(1:n_rad_wvl_loc), ll_rad, lu_rad, errstat)
+      Spec%spec(1:n_rad_wvl_loc) = LOG ( Spec%spec(1:n_rad_wvl_loc) / database(solar_idx,1:n_rad_wvl_loc) )
+      CALL cubic_subtract_meas (Spec%wavs(1:n_rad_wvl_loc), n_rad_wvl_loc, Spec%spec(1:n_rad_wvl_loc), ll_rad, lu_rad, errstat)
       if (errstat < 0) return
-      currspec(1:n_rad_wvl_loc) = currspec(1:n_rad_wvl_loc) + LOG ( database(solar_idx,1:n_rad_wvl_loc) )
+      Spec%spec(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc) + LOG ( database(solar_idx,1:n_rad_wvl_loc) )
     END IF
 
     ! --------------------------------------------------------------------
     ! Apply smoothing (1/16,1/4,3/8,1/4,1/16); 2/98 uhe/ife recommendation
     ! --------------------------------------------------------------------
     IF ( yn_smooth ) THEN
-      tmp(1:n_rad_wvl_loc) = currspec(1:n_rad_wvl_loc)
-      currspec (3:n_rad_wvl_loc-2) = 0.375_r8 * tmp (3:n_rad_wvl_loc-2) +  &
+      tmp(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc)
+      Spec%spec (3:n_rad_wvl_loc-2) = 0.375_r8 * tmp (3:n_rad_wvl_loc-2) +  &
         0.25_r8   * (tmp (4:n_rad_wvl_loc-1) + tmp (2:n_rad_wvl_loc-3)) +  &
         0.0625_r8 * (tmp (5:n_rad_wvl_loc) + tmp (1:n_rad_wvl_loc-4))
     END IF
@@ -145,8 +164,8 @@ CONTAINS
     ! ---------------------------------------
     ! Compute average of radiance wavelengths
     ! ---------------------------------------
-    asum = SUM ( fitwavs(1:n_rad_wvl_loc) * ( fitweights(1:n_rad_wvl_loc)*fitweights(1:n_rad_wvl_loc) ) )
-    ssum = SUM (             1.0_r8   * ( fitweights(1:n_rad_wvl_loc)*fitweights(1:n_rad_wvl_loc) ) )
+    asum = SUM ( Spec%wavs(1:n_rad_wvl_loc) * ( Spec%weights(1:n_rad_wvl_loc)*Spec%weights(1:n_rad_wvl_loc) ) )
+    ssum = SUM (             1.0_r8   * ( Spec%weights(1:n_rad_wvl_loc)*Spec%weights(1:n_rad_wvl_loc) ) )
     rad_wav_avg = asum / ssum
 
     radfit_exval = 0
@@ -195,7 +214,8 @@ CONTAINS
     ! not, call it a bad pixel and return.
     ! --------------------------------------------------------------------
     IF ( (n_fitvar_rad-n_prefit_vars) >= n_rad_wvl_loc ) THEN
-      is_bad_pixel = .TRUE.  ;  RETURN
+      is_bad_pixel = .TRUE.
+      RETURN
     END IF
 
     covar_matrix = r8_missval
@@ -247,10 +267,10 @@ CONTAINS
       locitnum = opt%num_iterations
       radfit_exval = return_status
 
-      call earthshine_spectrum (n_rad_wvl_loc, rad_wav_avg, fitwavs(1:n_rad_wvl_loc), &
+      call earthshine_spectrum (n_rad_wvl_loc, rad_wav_avg, Spec%wavs(1:n_rad_wvl_loc), &
                                 fitspec(1:n_rad_wvl_loc), fitvar_rad)
 
-      n_nozero_wgt = MAX ( INT ( ANINT ( SUM(fitweights(1:n_rad_wvl_loc)) ) ), 1 )
+      n_nozero_wgt = MAX ( INT ( ANINT ( SUM(Spec%weights(1:n_rad_wvl_loc)) ) ), 1 )
       mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
       sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
       loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
@@ -290,7 +310,7 @@ CONTAINS
       endif
 
       WHERE ( ABS(fitres(1:n_rad_wvl_loc)) >= loclim )
-        fitweights(1:n_rad_wvl_loc) = downweight
+        Spec%weights(1:n_rad_wvl_loc) = downweight
       END WHERE
 
     enddo fit_loop
@@ -317,7 +337,7 @@ CONTAINS
     ! --------------------------------------------------------------------
     ! Save fitting weights for possible use through radiance reference fit
     ! --------------------------------------------------------------------
-    adj_wgts(1:n_rad_wvl_loc) = fitweights(1:n_rad_wvl_loc)
+    adj_wgts(1:n_rad_wvl_loc) = Spec%weights(1:n_rad_wvl_loc)
 
     ! CCM save fitted spectrum
     fitspc_out(1:n_rad_wvl_loc) = fitspec(1:n_rad_wvl_loc)
@@ -342,13 +362,13 @@ CONTAINS
       ! Update common mode spectrum
       ! ---------------------------
       CALL compute_common_mode ( &
-        .FALSE., ipix, n_rad_wvl_loc, fitwavs(1:n_rad_wvl_loc), &
+        .FALSE., ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
         fitres(1:n_rad_wvl_loc))
 
       ! =====================================================================
       ! Compute the actual number of radiance wavelengths used in the fitting
       ! =====================================================================
-      n_fitwav_rad = INT (SUM(1.0_r8 * fitweights(1:n_rad_wvl_loc)**2))
+      n_fitwav_rad = INT (SUM(1.0_r8 * Spec%weights(1:n_rad_wvl_loc)**2))
 
       ! --------------------------------------------------------------------------
       ! Assign total column. We have done the preliminary work with FITCOL_IDX and
@@ -491,9 +511,7 @@ CONTAINS
   END SUBROUTINE fit_radiance
 
   subroutine earthshine_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
-    use spectra, only: earthshine_spectrum_interface, spectrum_earthshine, spectrum_earthshine_o3exp
-    use OMSAO_variables_module, only: rad_wav_avg, fitwavs, fitweights, &
-      currspec, fitvar_rad
+    use OMSAO_variables_module, only: rad_wav_avg, fitvar_rad
     use ctrlvars, only: yn_o3amf_cor
     implicit none
     type(optimizer_type) :: this_optimizer
@@ -516,12 +534,645 @@ CONTAINS
       earthshine_spectrum => spectrum_earthshine
     endif
     call earthshine_spectrum (num_residuals, rad_wav_avg, &
-                              fitwavs(1:num_residuals), residuals(1:num_residuals), &
+                              Spec%wavs(1:num_residuals), residuals(1:num_residuals), &
                               fitvar_rad)
-    residuals = (currspec(1:num_residuals) - residuals(1:num_residuals)) * fitweights(1:num_residuals)
+    residuals = (Spec%spec(1:num_residuals) - residuals(1:num_residuals)) * Spec%weights(1:num_residuals)
 
     return_status = 0
 
   end subroutine earthshine_residuals
+
+  SUBROUTINE spectrum_earthshine (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
+
+    USE OMSAO_precision_module
+    USE OMSAO_indices_module, ONLY: &
+      max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
+      lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx,                   &
+      bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
+      sc3_idx, sin_idx, shi_idx, squ_idx
+    USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
+    USE OMSAO_variables_module,  ONLY: &
+      n_database_wvl, curr_sol_spec, &
+      database, curr_xtrack_pixnum
+    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, &
+      yn_doas, yn_newshift, yn_solar_comp
+    USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
+    USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
+    USE cache_module, ONLY: saved_shift, saved_squeeze
+    USE OMSAO_errstat_module
+    USE OMSAO_solcomp_module, ONLY: soco_compute
+    USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER (KIND=i4),                    INTENT (IN)    :: npts
+    REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
+    REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
+    REAL    (KIND=r8), DIMENSION (npts),  INTENT (IN)    :: locwvl
+    !REAL    (KIND=r8), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: database
+
+    ! ================
+    ! Output variables
+    ! ================
+    REAL (KIND=r8), DIMENSION (npts), INTENT (OUT) :: fit
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
+    REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
+    LOGICAL                                       :: did_full_range, is_solsynth
+    INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos
+    REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
+
+    ! Try to save some stack space by reusing some arrays via pointers.  --JED
+    REAL (KIND=r8), DIMENSION(npts), TARGET       :: tmpspace
+    REAL (KIND=r8), POINTER                       :: del(:), sunspec_ss(:), sumexp(:)
+    ! REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, sumexp
+    REAL    (KIND=r8), DIMENSION (npts)           :: database_j, fit_final_add_on
+    REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
+    REAL    (KIND=r8), DIMENSION (max_spec_pts)   :: sunpos_ss, sunspec_loc, sunspec_save
+    ! ------------------------------
+    ! Name of this subroutine/module
+    ! ------------------------------
+    CHARACTER (LEN=19), PARAMETER :: modulename = 'spectrum_earthshine'
+
+    SAVE sunspec_save
+
+    !     Calculate the spectrum:
+    !     First do the shift and squeeze. Shift by FITVAR(SHI_IDX), squeeze by
+    !     1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
+    !     OMI data.
+
+    errstat = pge_errstat_ok
+
+    ! ----------------------------------------------------------------------------
+    ! Here is a logical to determine whether we need to compute a "sythetic"
+    ! solar spectrum from the solar composite. The cases for YES are
+    !
+    ! (1) We are using the solar composite and are NOT doing a radiance reference
+    ! (2) We are using the solar composite and ARE doing a radiance reference, and
+    !     this happens to be the radiance reference fit.
+    ! ----------------------------------------------------------------------------
+    ! ---------------------------------------------------------------------
+    ! The solar composite spectrum may have an additional shift, which was
+    ! determined during the solar wavelength calibration. This needs to be
+    ! taken into account when computing the spectra. But careful: It should
+    ! NOT be added to the local wavelength array, since that is related to
+    ! the radiance only. The Solar Composite shift must be subtracted from
+    ! the wavelength array, hence the negative sign.
+    ! ---------------------------------------------------------------------
+    !IF (( yn_solar_comp .AND. (.NOT. yn_radiance_reference) ) &
+    !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
+    !          .AND. yn_reference_fit)) ) THEN
+    ! The above test can be simplified to the following: --JED
+    IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
+      is_solsynth = .TRUE.
+      soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
+    ELSE
+      is_solsynth = .FALSE.
+      soco_shi = 0.0_r8
+    END IF
+
+    shift   = rad_fitvar(shi_idx)
+    squeeze = rad_fitvar(squ_idx)
+
+    ! -------------------------------------
+    ! Dealing with any pre-fitted variables
+    ! -------------------------------------
+    call apply_prefit_values (rad_fitvar)
+
+    ! -----------------------------------------------------------------------------------------
+    ! Assign current solar spectrum to local arrays. This depends on whether we are using
+    ! actual measured solar spectra or solar composites. Since there is no point to interpolate
+    ! already interpolated spectra, we use the original solar composites here as base for the
+    ! interpolation to the final radiance wavelengths.
+    ! -----------------------------------------------------------------------------------------
+    n_sunpos                = n_database_wvl
+    sunpos_ss  (1:n_sunpos) = curr_sol_spec(wvl_idx, 1:n_sunpos)
+    sunspec_loc(1:n_sunpos) = curr_sol_spec(spc_idx, 1:n_sunpos)
+
+    ! ----------------------------------------------
+    ! Sort local arrays - important to pass EZspline
+    ! ----------------------------------------------
+    ! Most of the time, the array is already sorted.  Try to avoid the function
+    ! call overhead.  --JED
+    DO i=2, n_sunpos
+      IF (sunpos_ss(i-1) < sunpos_ss(i)) CYCLE
+      CALL array_sort_r8 ( n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos) )
+      EXIT
+    ENDDO
+
+    ! ---------------------------------------------------------------------
+    ! Apply Shift&Squeeze
+    ! Changed to include Xiong comments (gga) if yn_newshift equal .true. :
+    ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
+    ! ---------------------------------------------------------------------
+    j1 = -1; j2 = -1
+    IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
+      locwvl_shift(1:npts) = locwvl(1:npts) - shift
+      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
+    ELSE IF (yn_newshift) THEN !gga
+      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
+        shift - rad_wav_avg * squeeze
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 ) !gga
+    ELSE
+      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) + shift
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
+    END IF
+
+    sunspec_ss => tmpspace
+    ! ---------------------------------------------------------------------
+    ! Re-sample the solar reference spectrum to the current radiance grid
+    ! ---------------------------------------------------------------------
+    !
+    ! The endpoints may be problematic due to no-strict ascendence. If that
+    ! happens, exclude end-points.
+    ! ---------------------------------------------------------------------
+
+    IF ( j1 <= 0 .OR. j2 <= 0 ) THEN
+      CALL error_check ( &
+        0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
+        modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
+        vb_lev_default, errstat )
+    ELSE
+
+      IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
+
+        IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
+          CALL soco_compute ( &
+            yn_spectrum_norm, curr_xtrack_pixnum, npts, &
+            locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts) )
+        ELSE
+          CALL interpolation (                                                 &
+            n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
+            npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
+            did_full_range, errstat                                            )
+          CALL error_check ( &
+            errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL,      &
+            modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
+            vb_lev_default, errstat )
+        END IF
+        sunspec_save(1:npts) = sunspec_ss(1:npts)
+        saved_shift          = shift
+        saved_squeeze        = squeeze
+      ELSE
+        sunspec_ss(1:npts) = sunspec_save(1:npts)
+      END IF
+
+    END IF
+
+    ! Add up the contributions, with solar intensity as rad_fitvar(sin_idx), trace
+    ! species beginning at rad_fitvar(SQU_IDX+1), to include possible linear and
+    ! Beer's law forms.  Do these as linear-Beer's-linear. In order to
+    ! do DOAS I only need to be careful to include just linear
+    ! contributions, since I already high-pass filtered them.
+
+    IF ( j1 > 1    )  Spec%weights(1:j1-1)    = downweight
+    IF ( j2 < npts )  Spec%weights(j2+1:npts) = downweight
+
+    fit = 0.0_r8
+
+    ! ==================================================================
+    ! For BOAS or any wavelength calibration, we have the following line
+    ! ==================================================================
+
+    fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
+
+    !     DOAS here - the spectrum to be fitted needs to be re-defined:
+    IF ( yn_doas ) THEN
+
+      i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
+
+      fit(j1:j2) = &
+        ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
+        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
+        ! Ring adjustment
+        rad_fitvar(i) * (database(ring_idx, j1:j2) / sunspec_ss (j1:j2))
+
+      DO j = 1, max_rs_idx
+        IF ( j /= solar_idx .AND. j /= ring_idx ) THEN
+          if (database_j_is_zero(j)) cycle
+          i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+        END IF
+      END DO
+
+    ELSE
+      sumexp => tmpspace
+      sumexp(j1:j2) = 0.0_r8
+      fit_final_add_on(j1:j2) = 0.0_r8
+      DO j = 1, max_rs_idx
+        IF ( j.eq.solar_idx ) CYCLE
+        if (database_j_is_zero(j)) cycle
+        database_j(j1:j2) = database(j,j1:j2)
+        ! -----------------------------
+        ! Initial add-on contributions.
+        ! -----------------------------
+        i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+        if (.not. param_frozen_at_zero(i)) then
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database_j(j1:j2)
+        endif
+
+        ! -----------------------------
+        ! Beer's law contributions.
+        ! -----------------------------
+        ! ---------------------------------------------------------------
+        ! We sum over all contributions and take the EXP only at the end.
+        ! This should shave a few seconds off the execution time.
+        ! ---------------------------------------------------------------
+        i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
+        if (.not. param_frozen_at_zero(i)) then
+          sumexp(j1:j2) = sumexp(j1:j2) - rad_fitvar(i)*database_j(j1:j2)
+        endif
+
+        ! Final add-on contributions.
+        i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
+        if (.not. param_frozen_at_zero(i)) then
+          fit_final_add_on(j1:j2) = fit_final_add_on(j1:j2) + &
+            rad_fitvar(i) * database_j(j1:j2)
+        endif
+      END DO
+
+      WHERE ( sumexp(j1:j2) >= expmax )
+        sumexp(j1:j2) = expmax
+      ENDWHERE
+      WHERE ( sumexp(j1:j2) <= expmin )
+        sumexp(j1:j2) = expmin
+      ENDWHERE
+
+      fit(j1:j2) = fit(j1:j2) * EXP(sumexp(j1:j2)) + fit_final_add_on(j1:j2)
+
+    ENDIF
+
+    ! Add the scaling.
+    del => tmpspace
+    ! Use the form: A+BX+CX^2+DX^3 = A + X*(B + X*(C + X*D))
+    del(j1:j2) = locwvl(j1:j2) - rad_wav_avg
+    fit(j1:j2) = fit(j1:j2) &
+      * (rad_fitvar(sc0_idx) + &
+         del(j1:j2) * (rad_fitvar(sc1_idx) + &
+                       del(j1:j2) * (rad_fitvar(sc2_idx) + &
+                                     del(j1:j2) * rad_fitvar(sc3_idx))))
+
+    ! Add baseline parameters.
+    fit(j1:j2) = fit(j1:j2)                                        + &
+      rad_fitvar(bl0_idx)                                       + &
+      rad_fitvar(bl1_idx) * del(j1:j2)                          + &
+      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
+      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+
+    ! This form is better than the above, but introduces differences
+    ! in the last digits of the output, breaking simple-minded diff-based
+    ! regression tests.
+    !fit(j1:j2) = fit(j1:j2) + rad_fitvar(bl0_idx) &
+    !  + del(j1:j2) * (rad_fitvar(bl1_idx) + &
+    !                  del(j1:j2) * (rad_fitvar(bl2_idx) + &
+    !                                del(j1:j2) * rad_fitvar(bl3_idx)))
+
+    ! ----------------------------------------------------------------
+    ! Final sanity check: If the various multiplications and additions
+    ! have lead to NaN values, we set those to ZERO. This is somewhat
+    ! experimental, and if we come up with a better way of doing this,
+    ! then the logic below should be changed accordingly.
+    ! ----------------------------------------------------------------
+    !WHERE ( .NOT. ( fit(j1:j2) > -HUGE(1.0_r8) .AND. fit(j1:j2) < HUGE(1.0_r8) ) )!
+    !  fit(j1:j2) = 0.0_r8!
+    WHERE (.NOT. (abs(fit(j1:j2)) < HUGE(1.0_r8)))
+      fit(j1:j2) = 0.0_r8
+    END WHERE
+
+    RETURN
+  END SUBROUTINE spectrum_earthshine
+
+  SUBROUTINE spectrum_earthshine_o3exp (npts, rad_wav_avg, locwvl, fit, rad_fitvar)
+
+    USE OMSAO_precision_module
+    USE OMSAO_indices_module, ONLY: &
+      max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
+      lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx,                   &
+      bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
+      sc3_idx, sin_idx, shi_idx, squ_idx, &
+      o3_t1_idx, o3_t2_idx, o3_t3_idx
+    USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
+    USE OMSAO_variables_module,  ONLY: &
+      n_database_wvl, curr_sol_spec, &
+      database, curr_xtrack_pixnum
+    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_doas, &
+      yn_solar_comp, yn_newshift
+    USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
+    USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
+    USE cache_module, ONLY: saved_shift, saved_squeeze
+    USE OMSAO_errstat_module
+    USE OMSAO_solcomp_module, ONLY: soco_compute
+    USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER (KIND=i4),                    INTENT (IN)    :: npts
+    REAL    (KIND=r8),                    INTENT (IN)    :: rad_wav_avg
+    REAL    (KIND=r8), DIMENSION (:),     INTENT (INOUT) :: rad_fitvar
+    REAL    (KIND=r8), DIMENSION (npts),  INTENT (IN)    :: locwvl
+
+    !REAL    (KIND=r8), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: database
+    ! database was passed as an argument.  However, it came from the OMSAO_variables_module, and
+    ! had a very different size.
+    ! ================
+    ! Output variables
+    ! ================
+    REAL (KIND=r8), DIMENSION (npts), INTENT (OUT) :: fit
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
+    REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
+    LOGICAL                                       :: did_full_range, is_solsynth
+    INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos, k1, k2
+    REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
+    REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, tmpexp, sumexp
+    REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
+    REAL    (KIND=r8), DIMENSION (max_spec_pts)   :: sunpos_ss, sunspec_loc, sunspec_save
+
+    ! ------------------------------
+    ! Name of this subroutine/module
+    ! ------------------------------
+    CHARACTER (LEN=25), PARAMETER :: modulename = 'spectrum_earthshine_o3exp'
+
+    SAVE sunspec_save
+
+    !  Calculate the spectrum:
+    !  First do the shift and squeeze. Shift by FITVAR(SHI_IDX), squeeze by
+    !  1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
+    !  OMI data.
+
+    errstat = pge_errstat_ok
+
+    ! ----------------------------------------------------------------------------
+    ! Here is a logical to determine whether we need to compute a "sythetic"
+    ! solar spectrum from the solar composite. The cases for YES are
+    !
+    ! (1) We are using the solar composite and are NOT doing a radiance reference
+    ! (2) We are using the solar composite and ARE doing a radiance reference, and
+    !     this happens to be the radiance reference fit.
+    ! ----------------------------------------------------------------------------
+    ! ---------------------------------------------------------------------
+    ! The solar composite spectrum may have an additional shift, which was
+    ! determined during the solar wavelength calibration. This needs to be
+    ! taken into account when computing the spectra. But careful: It should
+    ! NOT be added to the local wavelength array, since that is related to
+    ! the radiance only. The Solar Composite shift must be subtracted from
+    ! the wavelength array, hence the negative sign.
+    ! ---------------------------------------------------------------------
+
+    !IF (( yn_solar_comp .AND. (.NOT. yn_radiance_reference) ) &
+    !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
+    !          .AND. yn_reference_fit)) ) THEN
+    ! The above test can be simplified to the following: --JED
+    IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
+      is_solsynth = .TRUE.
+      soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
+    ELSE
+      is_solsynth = .FALSE.
+      soco_shi = 0.0_r8
+    END IF
+
+    shift   = rad_fitvar(shi_idx)
+    squeeze = rad_fitvar(squ_idx)
+
+    call apply_prefit_values (rad_fitvar)
+
+    ! ---------------------------------------------------------------------------------
+    ! Assign current solar spectrum to local arrays. This depends on whether we are
+    ! using actual measured solar spectra or solar composites. Since there is no point
+    ! to interpolate already interpolated spectra, we use the original solar composites
+    ! here as base for the interpolation to the final radiance wavelengths.
+    ! ---------------------------------------------------------------------------------
+    n_sunpos                = n_database_wvl
+    sunpos_ss  (1:n_sunpos) = curr_sol_spec(wvl_idx, 1:n_sunpos)
+    sunspec_loc(1:n_sunpos) = curr_sol_spec(spc_idx, 1:n_sunpos)
+
+    ! ----------------------------------------------
+    ! Sort local arrays - important to pass EZspline
+    ! ----------------------------------------------
+    CALL array_sort_r8 ( n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos) )
+
+    ! ---------------------------------------------------------------------
+    ! Apply Shift&Squeeze
+    ! Changed to include Xiong comments (gga) if yn_newshift equal .true. :
+    ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
+    ! ---------------------------------------------------------------------
+    j1 = -1; j2 = -1
+    IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
+      locwvl_shift(1:npts) = locwvl(1:npts) - shift
+      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
+    ELSE IF (yn_newshift .EQV. .true.) THEN !gga
+      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
+        shift - rad_wav_avg * squeeze
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 ) !gga
+    ELSE
+      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) + shift
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
+    END IF
+
+    ! ---------------------------------------------------------------------
+    ! Re-sample the solar reference spectrum to the current radiance grid
+    ! ---------------------------------------------------------------------
+    !
+    ! The endpoints may be problematic due to no-strict ascendence. If that
+    ! happens, exclude end-points.
+    ! ---------------------------------------------------------------------
+
+    IF ( j1 <= 0 .OR. j2 <= 0 ) THEN
+      CALL error_check ( &
+        0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
+        modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
+        vb_lev_default, errstat )
+    ELSE
+
+      IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
+
+        IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
+          CALL soco_compute ( &
+            yn_spectrum_norm, curr_xtrack_pixnum, npts, &
+            locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts))
+        ELSE
+          CALL interpolation (                                                         &
+            n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
+            npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
+            did_full_range, errstat                                                   )
+          CALL error_check ( &
+            errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+            modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
+            vb_lev_default, errstat )
+        END IF
+
+        sunspec_save(1:npts) = sunspec_ss(1:npts)
+        saved_shift   = shift
+        saved_squeeze = squeeze
+      ELSE
+        sunspec_ss(1:npts) = sunspec_save(1:npts)
+      END IF
+
+    END IF
+
+    !     Add up the contributions, with solar intensity as rad_fitvar(sin_idx), trace
+    !     species beginning at rad_fitvar(SQU_IDX+1), to include possible linear and
+    !     Beer's law forms.  Do these as linear-Beer's-linear. In order to
+    !     do DOAS I only need to be careful to include just linear
+    !     contributions, since I already high-pass filtered them.
+
+    IF ( j1 > 1    )  Spec%weights(1:j1-1)    = downweight
+    IF ( j2 < npts )  Spec%weights(j2+1:npts) = downweight
+
+    fit = 0.0_r8
+
+    ! --------------------------------------------------------
+    ! Compute abcissae for exponential x-section modification:
+    ! Values between -1 and +1 on the fitting wavelength grid.
+    ! --------------------------------------------------------
+    del(j1:j2) = (locwvl(j1:j2) - locwvl(j1))/(locwvl(j2)-locwvl(j1)) - 0.5_r8
+
+    ! ==================================================================
+    ! For BOAS or any wavelength calibration, we have the following line
+    ! ==================================================================
+
+    fit(j1:j2) = rad_fitvar(sin_idx) * sunspec_ss(j1:j2)
+
+    !     DOAS here - the spectrum to be fitted needs to be re-defined:
+    IF ( yn_doas ) THEN
+
+      i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
+
+      fit(j1:j2) = &
+        ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
+        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
+        ! Ring adjustment
+        rad_fitvar(i) * (database(ring_idx, j1:j2) / sunspec_ss (j1:j2))
+
+      DO j = 1, max_rs_idx
+        IF ( j /= solar_idx .AND. j /= ring_idx  .AND. &
+            j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
+          if (database_j_is_zero(j)) cycle
+          i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+          if (.not. param_frozen_at_zero(i)) then
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+          endif
+        END IF
+      END DO
+
+    ELSE
+      ! -----------------------------
+      ! Initial add-on contributions.
+      ! -----------------------------
+      DO j = 1, max_rs_idx
+        IF ( j /= solar_idx .AND. &
+            j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
+          if (database_j_is_zero(j)) cycle
+          i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+          if (.not. param_frozen_at_zero(i)) then
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+          endif
+        END IF
+      END DO
+      ! -----------------------------
+      ! Beer's law contributions.
+      ! -----------------------------
+      ! ---------------------------------------------------------------
+      ! We sum over all contributions and take the EXP only at the end.
+      ! This should shave a few seconds off the execution time.
+      ! ---------------------------------------------------------------
+      sumexp(j1:j2) = 0.0_r8
+      DO j = 1, max_rs_idx
+        IF ( j /= solar_idx ) THEN
+          if (database_j_is_zero(j)) cycle
+          tmpexp = 0.0_r8
+          i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
+          if (.not.param_frozen_at_zero(i)) then
+            IF ( j == o3_t1_idx .OR. j == o3_t2_idx .OR. j == o3_t3_idx ) THEN
+              k1 = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
+              k2 = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
+              tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2) *  &
+                (1.0_r8 + rad_fitvar(k1)*del(j1:j2) + &
+                 rad_fitvar(k2)*del(j1:j2)*del(j1:j2))
+            ELSE
+              tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2)
+            END IF
+          endif
+
+          WHERE ( tmpexp(j1:j2) >= expmax )
+            tmpexp(j1:j2) = expmax
+          ENDWHERE
+          WHERE ( tmpexp(j1:j2) <= expmin )
+            tmpexp(j1:j2) = expmin
+          ENDWHERE
+          sumexp(j1:j2) = sumexp(j1:j2) - tmpexp(j1:j2)
+        END IF
+      END DO
+      WHERE ( sumexp(j1:j2) >= expmax )
+        sumexp(j1:j2) = expmax
+      ENDWHERE
+      WHERE ( sumexp(j1:j2) <= expmin )
+        sumexp(j1:j2) = expmin
+      ENDWHERE
+      fit(j1:j2) = fit(j1:j2) * EXP(sumexp(j1:j2))
+
+      ! Final add-on contributions.
+      DO j = 1, max_rs_idx
+        IF ( j /= solar_idx .AND. &
+            j /= o3_t1_idx .AND. j /= o3_t2_idx .AND. j /= o3_t3_idx ) THEN
+          i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
+          if (database_j_is_zero(j)) cycle
+          if (.not.param_frozen_at_zero(i)) then
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+          endif
+        END IF
+      END DO
+
+    END IF
+
+    ! ----------------------------------------
+    ! Compute abcissae for closure polynomials
+    ! ----------------------------------------
+    del(j1:j2) = locwvl(j1:j2) - rad_wav_avg
+
+    ! Add the scaling.
+    fit(j1:j2) = fit(j1:j2) * ( &
+      rad_fitvar(sc0_idx)                                       + &
+      rad_fitvar(sc1_idx) * del(j1:j2)                          + &
+      rad_fitvar(sc2_idx) * del(j1:j2)*del(j1:j2)               + &
+      rad_fitvar(sc3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2) )
+
+    ! Add baseline parameters.
+    fit(j1:j2) = fit(j1:j2)                                        + &
+      rad_fitvar(bl0_idx)                                       + &
+      rad_fitvar(bl1_idx) * del(j1:j2)                          + &
+      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
+      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+
+    ! ----------------------------------------------------------------
+    ! Final sanity check: If the various multiplications and additions
+    ! have lead to NaN values, we set those to ZERO. This is somewhat
+    ! experimental, and if we come up with a better way of doing this,
+    ! then the logic below should be changed accordingly.
+    ! ----------------------------------------------------------------
+    WHERE ( .NOT. ( fit(j1:j2) > -HUGE(1.0_r8) .AND. fit(j1:j2) < HUGE(1.0_r8) ) )
+      fit(j1:j2) = 0.0_r8
+    END WHERE
+
+    RETURN
+  END SUBROUTINE spectrum_earthshine_o3exp
 
 END MODULE

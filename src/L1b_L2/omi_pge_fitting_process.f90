@@ -126,7 +126,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     l2_filename, pixnum_lim,    &
     radfit_latrange,                &
     common_latrange,    &
-    radiance_wavcal_lnums, Radiance_Paras_Type, &
+    Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
     yn_diagnostic_run, yn_remove_target
@@ -177,6 +177,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     first_pix, last_pix
   INTEGER (kind=i4) :: ntimes_rad, nxtrack_rad, nwavel_rad
   INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr
+  INTEGER (KIND=i4), DIMENSION (2) :: radiance_wavcal_lnums
 
   ! ----------------------------------------------------------------------
   ! Swath dimensions and variables that aren't passed from calling routine

@@ -46,7 +46,6 @@ control_module.f90
 pcf_file_module.f90
 read_reference_spectra.f90
 sao_pge_utils.f90
-spectra.f90
 strutils.f90
 subtract_cubic.f90
 Szoom_Parameter_Module.f90
