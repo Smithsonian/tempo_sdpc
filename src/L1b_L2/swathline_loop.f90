@@ -84,6 +84,7 @@ SUBROUTINE swathline_loops (                               &
   all_fitted_columns  = r8_missval
   all_fitted_errors   = r8_missval
   correlation_columns = r8_missval
+  fitspc_tmp          = r8_missval
 
   IF ( yn_radiance_reference .AND. do_remove_target ) THEN
     target_var = 0.0_r8
@@ -101,6 +102,7 @@ SUBROUTINE swathline_loops (                               &
                               errstat)
       return
     endif
+    omi_fitspc = r8_missval
   endif
 
   ! ---------------------------------------------------------------------
