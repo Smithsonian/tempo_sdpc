@@ -8,7 +8,6 @@ angle_sat2toa.f90
 dataspline_module.f90
 ezspline_interpolation.f90
 fitting_loops.f90
-gauss.f90
 hdfeos4_parameters.f90
 he5_output_tools.f90
 integration_routines.f90
