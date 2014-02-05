@@ -17,11 +17,10 @@ SUBROUTINE prepare_solar_refspec ( &
   ! ***********************************************************
 
   USE OMSAO_precision_module
-  USE OMSAO_indices_module,    ONLY: &
-    max_rs_idx, solar_idx, ring_idx
+  USE OMSAO_indices_module, only: solar_idx, ring_idx
   !USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
   USE OMSAO_variables_module,  ONLY: fit_winwav_idx, database
-  use ctrlvars, only: yn_smooth, yn_doas
+  use ctrlvars, only: yn_doas
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
   USE subtract_cubic, ONLY: cubic_subtract
@@ -136,14 +135,8 @@ SUBROUTINE prepare_solar_refspec ( &
       database(ring_idx, 1:n_radpts) * spline_sun(1:n_radpts)
   END IF
 
-  IF ( yn_smooth ) database(1:max_rs_idx, 3:n_radpts-2) = &
-    0.375_r8  * database(1:max_rs_idx, 3:n_radpts-2)  +  &
-    0.25_r8   * (database(1:max_rs_idx, 4:n_radpts-1) + &
-    database(1:max_rs_idx, 2:n_radpts-3)) + &
-    0.0625_r8 * (database(1:max_rs_idx, 5:n_radpts)   + &
-    database(1:max_rs_idx, 1:n_radpts-4))
-
-  errstat = MAX ( errstat, locerrstat )
+  ! database smoothing moved to calling routine
+  !   -- it seemed out of place here --JED
 
   RETURN
 END SUBROUTINE prepare_solar_refspec
@@ -159,10 +152,13 @@ SUBROUTINE prep_databases ( &
 
   USE OMSAO_precision_module
   USE OMSAO_variables_module, ONLY: Slit_Half_Width_1e, Slit_Asym_Factor, &
-    Undersample_Phase, have_undersampling
+    Undersample_Phase, have_undersampling, database
   USE OMSAO_errstat_module
   USE dataspline_module, ONLY: dataspline
   USE undersample, ONLY: undersample_spectrum
+  use arrayutils, only: array_smooth
+  use OMSAO_indices_module, only: max_rs_idx
+  use ctrlvars, only: yn_smooth
   IMPLICIT NONE
 
   ! ---------------
@@ -180,7 +176,7 @@ SUBROUTINE prep_databases ( &
   ! ---------------
   ! Local variables
   ! ---------------
-  INTEGER (KIND=i4) :: locerrstat
+  INTEGER (KIND=i4) :: locerrstat, j
 
   locerrstat = pge_errstat_ok
 
@@ -215,6 +211,16 @@ SUBROUTINE prep_databases ( &
     curr_rad_wvl(1:n_rad_wvl), locerrstat )
   errstat = MAX ( errstat, locerrstat )
   IF ( errstat >= pge_errstat_error ) RETURN
+
+  ! smoothing moved here from prepare_solar_refspec
+
+  ! allow errstat to flow through
+  IF ( yn_smooth ) then
+    do j=1, max_rs_idx
+      call array_smooth (database(j,:), n_rad_wvl, errstat)
+    end do
+  end if
+  !if (errstat < 0) return
 
   RETURN
 END SUBROUTINE prep_databases

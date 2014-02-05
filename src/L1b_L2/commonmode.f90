@@ -96,7 +96,6 @@ contains
       common_mode_spec, fitvar_rad_init, lo_radbnd, up_radbnd,               &
       common_fitpos, common_latrange
     USE OMSAO_omidata_module,   ONLY:                                           &
-      common_spc, common_wvl, common_cnt, &
       rad_ccdpix_selection, omi_blockline_no, omi_latitude, n_comm_wvl
 
     IMPLICIT NONE
@@ -142,9 +141,9 @@ contains
       ! create a good rationale for them), but not without both
       ! spectrum and cound arrays starting from Zero
       ! -------------------------------------------------------------
-      common_wvl(xti, 1:nwvl) = fitwvl(1:nwvl)
-      common_cnt              = 0_i4
-      common_spc              = 0.0_r8
+      !common_wvl(xti, 1:nwvl) = fitwvl(1:nwvl)
+      !common_cnt              = 0_i4
+      !common_spc              = 0.0_r8
 
       common_mode_spec%nPoints      = n_comm_wvl
       common_mode_spec%RefSpecWavs  = 0.0_r8
@@ -167,8 +166,8 @@ contains
           IF ( comnorm == 0.0_r8 ) comnorm = 1.0_r8
         END IF
 
-        common_cnt(xti)        = common_cnt(xti) + 1
-        common_spc(xti,1:nwvl) = common_spc(xti,1:nwvl) + fitres(1:nwvl)/comnorm
+        !common_cnt(xti)        = common_cnt(xti) + 1
+        !common_spc(xti,1:nwvl) = common_spc(xti,1:nwvl) + fitres(1:nwvl)/comnorm
 
         common_mode_spec%RefSpecWavs(xti,1:nwvl)  = &
           common_mode_spec%RefSpecWavs(xti,1:nwvl) + fitwvl(1:nwvl)

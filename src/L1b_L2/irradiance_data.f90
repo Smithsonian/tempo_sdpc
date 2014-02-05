@@ -104,8 +104,8 @@ contains
                                       wavelengths, spectrum, qflags, &
                                       errstat)
     ! In this routine, only the first nwl wavelengths are meaningful.
-    use sao_pge_utils, only: find_inner_bounding_indices_r8, &
-      find_bounding_indices_r8
+    use arrayutils, only: array_find_inner_bounding_indices_r8, &
+      array_find_bounding_indices_r8
     use OMSAO_variables_module, only: &
       ctrl_fit_winexc_lim, ctrl_fit_winwav_lim
 
@@ -136,15 +136,15 @@ contains
     DO ix = 1, nxtrack
 
       ! Restrict wavelengths to selected wavelength fitting window
-      call find_bounding_indices_r8 (nwl, wavelengths(1:nwl, ix), &
-                                     ctrl_fit_winwav_lim(1), &
-                                     ctrl_fit_winwav_lim(2), &
-                                     ccdpix_sel (1,ix), ccdpix_sel(2,ix))
+      call array_find_bounding_indices_r8 (nwl, wavelengths(1:nwl, ix), &
+                                           ctrl_fit_winwav_lim(1), &
+                                           ctrl_fit_winwav_lim(2), &
+                                           ccdpix_sel (1,ix), ccdpix_sel(2,ix))
 
-      call find_bounding_indices_r8 (nwl, wavelengths(1:nwl, ix), &
-                                     ctrl_fit_winwav_lim(3), &
-                                     ctrl_fit_winwav_lim(4), &
-                                     ccdpix_sel (3,ix), ccdpix_sel(4,ix))
+      call array_find_bounding_indices_r8 (nwl, wavelengths(1:nwl, ix), &
+                                           ctrl_fit_winwav_lim(3), &
+                                           ctrl_fit_winwav_lim(4), &
+                                           ccdpix_sel (3,ix), ccdpix_sel(4,ix))
     end do
 
     max_nwavel = 1 + MAXVAL (ccdpix_sel(4, :) - ccdpix_sel(1,:))
@@ -180,7 +180,7 @@ contains
 
       if ( minval(ctrl_fit_winexc_lim(1:2)) > 0.0_r8 ) then
 
-        call find_inner_bounding_indices_r8 ( &
+        call array_find_inner_bounding_indices_r8 ( &
           nwl, wavelengths(1:nwl, ix), &
           ctrl_fit_winexc_lim(1), &
           ctrl_fit_winexc_lim(2), &
@@ -199,7 +199,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: &
       l1b_irrad_filename, l1b_channel
-    USE sao_pge_utils, ONLY: array_locate_r4
+    USE arrayutils, only: array_locate_r4
 
     use l1bread
 
@@ -284,7 +284,7 @@ contains
 
     USE OMSAO_parameters_module, ONLY: i2, i4, r8, N_FIT_WINWAV
     USE OMSAO_solcomp_module,    ONLY: soco_compute
-    USE sao_pge_utils, ONLY: array_locate_r8
+    USE arrayutils, only: array_locate_r8
     use OMSAO_variables_module, only: ctrl_fit_winwav_lim
     IMPLICIT NONE
     INTEGER (KIND=i4), INTENT (IN) :: nxtrack
@@ -366,7 +366,7 @@ contains
     USE OMSAO_omidata_module, only: EarthSunDistance
     USE OMSAO_indices_module,   ONLY: &
       OMSAO_solmonthave_lun
-    USE sao_pge_utils, ONLY: array_locate_r4
+    USE arrayutils, only: array_locate_r4
     USE OMSAO_errstat_module
     IMPLICIT NONE
 

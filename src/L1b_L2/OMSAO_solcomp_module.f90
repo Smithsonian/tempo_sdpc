@@ -59,7 +59,7 @@ CONTAINS
     USE OMSAO_he5_module, ONLY: HE5_SWopen, HE5_SWattach, HE5_SWrdfld, &
       HE5_SWrdlattr, HE5_SWdetach, HE5_SWclose, HE5_SWinqswath, &
       he5f_acc_rdonly
-    USE sao_pge_utils, ONLY: array_locate_r8
+    USE arrayutils, only: array_locate_r8
     USE OMSAO_errstat_module
     IMPLICIT NONE
 
@@ -517,7 +517,7 @@ CONTAINS
 
   SUBROUTINE soco_compute ( do_norm, ixt, nwvl, wvl, spc)
 
-    USE sao_pge_utils, ONLY: array_locate_r8
+    USE arrayutils, only: array_locate_r8
     IMPLICIT NONE
 
     ! ------------------------------------------------------------------------------

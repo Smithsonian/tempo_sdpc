@@ -41,7 +41,7 @@ CONTAINS
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE strutils, ONLY: convert_2bytes_to_16bits
-    USE sao_pge_utils, ONLY: array_locate_r8
+    USE arrayutils, only: array_locate_r8
     USE errormodule
     IMPLICIT NONE
 

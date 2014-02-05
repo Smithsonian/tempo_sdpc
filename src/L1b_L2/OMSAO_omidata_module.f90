@@ -99,8 +99,8 @@ MODULE OMSAO_omidata_module
   ! ----------------------------------------
   REAL    (KIND=r8), PARAMETER                              :: d_comm_wvl = 0.01_r8
   INTEGER (KIND=i4)                                         :: n_comm_wvl
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max)                :: common_cnt
-  REAL    (KIND=r8), DIMENSION (nxtrack_max,max_spec_pts)   :: common_spc, common_wvl
+  !INTEGER (KIND=i4), DIMENSION (nxtrack_max)                :: common_cnt
+  !REAL    (KIND=r8), DIMENSION (nxtrack_max,max_spec_pts)   :: common_spc, common_wvl
   REAL    (KIND=r8), DIMENSION (nxtrack_max,0:nlines_max-1) :: &
     omi_column_amount, omi_column_uncert, &
     omi_fit_rms, omi_radfit_chisq

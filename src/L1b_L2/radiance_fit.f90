@@ -57,6 +57,7 @@ CONTAINS
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, apply_prefit_values_and_bounds, n_prefit_vars
     USE commonmode, ONLY: compute_common_mode
     USE subtract_cubic, ONLY: cubic_subtract_meas
+    use arrayutils, only: array_smooth
     IMPLICIT NONE
 
     ! *******************************************************************
@@ -102,7 +103,7 @@ CONTAINS
     INTEGER (KIND=i4) :: n_fitwav_rad, locitnum, n_nozero_wgt
     REAL    (KIND=r8)                                         :: asum, ssum
     REAL    (KIND=r8)                                         :: mean, sdev, loclim, normfac, mfac
-    REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc)              :: fitres, fitspec, tmp
+    REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc)              :: fitres, fitspec
     REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar, lobnd, upbnd
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc, n_fitvar_rad) :: covar_matrix
 
@@ -155,12 +156,10 @@ CONTAINS
     ! --------------------------------------------------------------------
     ! Apply smoothing (1/16,1/4,3/8,1/4,1/16); 2/98 uhe/ife recommendation
     ! --------------------------------------------------------------------
-    IF ( yn_smooth ) THEN
-      tmp(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc)
-      Spec%spec (3:n_rad_wvl_loc-2) = 0.375_r8 * tmp (3:n_rad_wvl_loc-2) +  &
-        0.25_r8   * (tmp (4:n_rad_wvl_loc-1) + tmp (2:n_rad_wvl_loc-3)) +  &
-        0.0625_r8 * (tmp (5:n_rad_wvl_loc) + tmp (1:n_rad_wvl_loc-4))
-    END IF
+    if ( yn_smooth ) THEN
+      call array_smooth (spec%spec, n_rad_wvl_loc, errstat)
+      if (errstat < 0) return
+    endif
 
     ! ---------------------------------------
     ! Compute average of radiance wavelengths
@@ -562,7 +561,8 @@ CONTAINS
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_errstat_module
     USE OMSAO_solcomp_module, ONLY: soco_compute
-    USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8
+    USE sao_pge_utils, ONLY: interpolation
+    USE arrayutils, only: array_locate_r8, array_sort_r8
 
     IMPLICIT NONE
 
@@ -872,7 +872,8 @@ CONTAINS
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_errstat_module
     USE OMSAO_solcomp_module, ONLY: soco_compute
-    USE sao_pge_utils, ONLY: array_locate_r8, interpolation, array_sort_r8
+    USE sao_pge_utils, ONLY: interpolation
+    USE arrayutils, only: array_locate_r8, array_sort_r8
 
     IMPLICIT NONE
 

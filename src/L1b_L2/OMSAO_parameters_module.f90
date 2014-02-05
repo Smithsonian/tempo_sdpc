@@ -83,7 +83,7 @@ MODULE OMSAO_parameters_module
     1.0_r8 * dobson_units,& ! o3_tc
     1.0_r8 * dobson_units /)! noname
 
-  ! Logicals to do correction CCM
+  ! Logicals to do solar I0 correction CCM
   LOGICAL, DIMENSION(27), PARAMETER :: &
     yn_i0_spc = (/ .FALSE.,& ! solar
     .FALSE.,& ! ring

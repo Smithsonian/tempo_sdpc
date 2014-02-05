@@ -313,7 +313,8 @@ CONTAINS
 
   SUBROUTINE omi_slitfunc_convolve ( xtrack_pix, nwvl, wvl, spec, spec_conv, errstat )
 
-    USE sao_pge_utils, ONLY: array_locate_r8, interpolation
+    USE sao_pge_utils, ONLY: interpolation
+    use arrayutils, only: array_locate_r8
     USE integration_routines, ONLY: cubint_noerror
     USE OMSAO_errstat_module
     IMPLICIT NONE
