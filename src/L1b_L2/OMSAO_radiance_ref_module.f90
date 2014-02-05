@@ -359,8 +359,8 @@ CONTAINS
     RETURN
   END SUBROUTINE omi_get_radiance_reference
 
-  SUBROUTINE xtrack_radiance_reference_loop (     &
-      do_radiance_reference, do_remove_target, nx, nw, &
+  SUBROUTINE xtrack_radiance_reference_loop (&
+      do_remove_target, nx, nw, &
       fpix, lpix, pge_idx, errstat )
 
     USE OMSAO_indices_module,    ONLY: &
@@ -391,6 +391,7 @@ CONTAINS
     USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
     use irradiance_data, only: Irr_Data
+    use ctrlvars, only: yn_radiance_reference
 
     IMPLICIT NONE
 
@@ -398,7 +399,7 @@ CONTAINS
     ! Input Variables
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: pge_idx, nx, nw, fpix, lpix
-    LOGICAL,           INTENT (IN) :: do_radiance_reference, do_remove_target
+    LOGICAL,           INTENT (IN) :: do_remove_target
 
     ! -----------------
     ! Modified variable
@@ -447,7 +448,7 @@ CONTAINS
     ! ---------------------------------------------------
     ! Note that this initialization will overwrite valid
     ! results on any second call to this subroutine. This
-    ! happens, for example, when do_radiance_reference
+    ! happens, for example, when yn_radiance_reference
     ! and do_remove_target are selected simultaneously.
     ! In that case, however, we write the results to file
     ! before the second call.
@@ -516,6 +517,10 @@ CONTAINS
       ! ----------------------------------------------
       ! Restore DATABASE from OMI_DATABASE (see above)
       ! ----------------------------------------------
+      !
+      ! Note: In xtrack_radiance_wvl_calibration, the database array was
+      !       computed and then assigned to omi_database.  Here, it is
+      !       restored to for use in radiance fitting.  --JED
       database (1:n_database_wvl,1:max_rs_idx) = omi_database (1:n_database_wvl,ipix,1:max_rs_idx)
 
       ! -----------------------------------------------------------------------
@@ -532,7 +537,7 @@ CONTAINS
       ! If a Radiance Reference is being used, then it must be calibrated
       ! rather than the swath line that has been read.
       ! ---------------------------------------------------------------
-      IF ( do_radiance_reference ) THEN
+      IF ( yn_radiance_reference ) THEN
         omi_radiance_wavl(1:n_omi_radwvl,ipix,0) = omi_radref_wavl(1:n_omi_radwvl,ipix)
         omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
         omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
@@ -575,7 +580,7 @@ CONTAINS
       ! --------------------------------------------------------------------
       omi_radref_wght(1:n_rad_wvl_loc,ipix) = adj_wgts(1:n_rad_wvl_loc)
 
-      IF (.NOT. do_radiance_reference) THEN
+      IF (.NOT. yn_radiance_reference) THEN
         call copy_prefit_values (prefit, pge_idx, ipix, 0)
       ELSE
         prefit%o3_col = 0.0_r8
@@ -644,7 +649,7 @@ CONTAINS
       ! -----------------------------------------------
       ! Update the solar spectrum entry in OMI_DATABASE
       ! -----------------------------------------------
-      IF ( do_radiance_reference ) &
+      IF ( yn_radiance_reference ) &
         omi_database (1:n_rad_wvl_loc,ipix,solar_idx) = omi_radref_spec(1:n_rad_wvl_loc,ipix)
 
     END DO XTrackPix
@@ -653,7 +658,7 @@ CONTAINS
     ! Remove target gas from radiance reference
     ! -----------------------------------------
 
-    IF ( do_radiance_reference .AND. do_remove_target ) THEN
+    IF ( yn_radiance_reference .AND. do_remove_target ) THEN
       ! ----------------------------------------------------------------
       ! Removing the target gas from the radiance reference will alter
       ! OMI_RADREF_SPEC (1:NWVL,FPIX:LPIX). This is being passed to the

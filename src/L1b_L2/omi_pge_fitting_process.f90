@@ -390,8 +390,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     first_pix = omi_xtrpix_range_rr(iline,1)
     last_pix  = omi_xtrpix_range_rr(iline,2)
 
-    CALL xtrack_radiance_reference_loop (                                   &
-      yn_radiance_reference, yn_remove_target,                           &
+    CALL xtrack_radiance_reference_loop ( &
+      yn_remove_target, & ! note: yn_remove_target=TRUE here
       nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
     if (errstat < 0) return
 
@@ -549,8 +549,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! fitvar_rad_saved(1:n_max_fitpars ) = fitvar_rad_init(1:n_max_fitpars)
     ! Not needed --- xtrack_radiance_reference_loop does this.  --JED
     CALL xtrack_radiance_reference_loop ( &
-      yn_radiance_reference, .FALSE.,  &
-      nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
+      .FALSE., nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
 
   END IF
 
