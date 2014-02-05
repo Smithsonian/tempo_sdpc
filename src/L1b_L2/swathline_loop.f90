@@ -102,7 +102,7 @@ SUBROUTINE swathline_loops (                               &
                               errstat)
       return
     endif
-    omi_fitspc = r8_missval
+    omi_fitspc = 0.0_r8
   endif
 
   ! ---------------------------------------------------------------------
