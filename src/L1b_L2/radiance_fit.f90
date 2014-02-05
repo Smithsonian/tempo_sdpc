@@ -22,6 +22,7 @@ MODULE radiance_fit
 
   type spectrum_type
     real (kind=r8), dimension(nwavel_max) :: spec, wavs, weights
+    real (kind=r8) :: wav_avg
   end type spectrum_type
 
   type (spectrum_type) :: Spec
@@ -46,7 +47,7 @@ CONTAINS
       r8_missval, i2_missval, downweight
     USE OMSAO_variables_module,    ONLY:                                    &
       n_fincol_idx, fincol_idx, pm_one, database, &
-      rad_wav_avg, fitvar_rad, n_fitvar_rad,      &
+      fitvar_rad, n_fitvar_rad,      &
       lo_radbnd, up_radbnd, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
       all_radfit_idx, &
@@ -166,7 +167,7 @@ CONTAINS
     ! ---------------------------------------
     asum = SUM ( Spec%wavs(1:n_rad_wvl_loc) * ( Spec%weights(1:n_rad_wvl_loc)*Spec%weights(1:n_rad_wvl_loc) ) )
     ssum = SUM (             1.0_r8   * ( Spec%weights(1:n_rad_wvl_loc)*Spec%weights(1:n_rad_wvl_loc) ) )
-    rad_wav_avg = asum / ssum
+    Spec%wav_avg = asum / ssum
 
     radfit_exval = 0
 
@@ -267,7 +268,7 @@ CONTAINS
       locitnum = opt%num_iterations
       radfit_exval = return_status
 
-      call earthshine_spectrum (n_rad_wvl_loc, rad_wav_avg, Spec%wavs(1:n_rad_wvl_loc), &
+      call earthshine_spectrum (n_rad_wvl_loc, Spec%wav_avg, Spec%wavs(1:n_rad_wvl_loc), &
                                 fitspec(1:n_rad_wvl_loc), fitvar_rad)
 
       n_nozero_wgt = MAX ( INT ( ANINT ( SUM(Spec%weights(1:n_rad_wvl_loc)) ) ), 1 )
@@ -511,7 +512,7 @@ CONTAINS
   END SUBROUTINE fit_radiance
 
   subroutine earthshine_residuals (this_optimizer, params, num_params, residuals, num_residuals, return_status)
-    use OMSAO_variables_module, only: rad_wav_avg, fitvar_rad
+    use OMSAO_variables_module, only: fitvar_rad
     use ctrlvars, only: yn_o3amf_cor
     implicit none
     type(optimizer_type) :: this_optimizer
@@ -533,7 +534,7 @@ CONTAINS
     else
       earthshine_spectrum => spectrum_earthshine
     endif
-    call earthshine_spectrum (num_residuals, rad_wav_avg, &
+    call earthshine_spectrum (num_residuals, Spec%wav_avg, &
                               Spec%wavs(1:num_residuals), residuals(1:num_residuals), &
                               fitvar_rad)
     residuals = (Spec%spec(1:num_residuals) - residuals(1:num_residuals)) * Spec%weights(1:num_residuals)
