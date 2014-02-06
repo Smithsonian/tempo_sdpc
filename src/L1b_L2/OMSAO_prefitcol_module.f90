@@ -218,7 +218,7 @@ CONTAINS
 
         ptr_prefit => o3_prefit_he5fields % head
         ptr_prefit_uncert => o3_prefit_uncert_he5fields % head
-        i = 1
+        i = o3_t1_idx
         do while (associated(ptr_prefit) .and. associated(ptr_prefit_uncert))
           CALL he5_read_prefit_columns ( &
             o3fit_swath_id, nloop, nxtrack, iline, &
