@@ -791,9 +791,9 @@ CONTAINS
     USE OMSAO_he5_module, ONLY: pge_swath_id, he5_swwrfld, &
       he5_start_2d, he5_stride_2d, he5_edge_2d
     USE OMSAO_precision_module, ONLY: i4
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
     USE OMSAO_indices_module,   ONLY: pge_hcho_idx
-    USE sao_pge_utils, ONLY: roundoff_2darr_r8
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r8
     use datafields, only: rscol_field
     USE OMSAO_errstat_module
 
@@ -839,9 +839,9 @@ CONTAINS
     ! ----------------------------------------------------------------------
     IF (pge_idx .EQ. pge_hcho_idx) THEN
       colloc = column
-      CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
+      !CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(rscol_field)), &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
+                                he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
       errstat = MAX ( errstat, locerrstat )
 
       !colloc = uncertainty

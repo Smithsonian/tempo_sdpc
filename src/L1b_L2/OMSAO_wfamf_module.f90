@@ -2429,8 +2429,8 @@ CONTAINS
     ! This routines writes the albedos obtained from the OMLER climatolo
     ! gy to the output file.
     ! ==================================================================
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
-    USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
     use datafields, only: albedo_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
     USE OMSAO_errstat_module
@@ -2465,11 +2465,11 @@ CONTAINS
     he5_edge_2d   = (/ nx, nt /)
 
     colloc = albedo
-    CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
+    !CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-      TRIM(ADJUSTL(albedo_field)),             &
-      he5_start_2d, he5_stride_2d, he5_edge_2d,&
-      colloc(1:nx,0:nt-1) )
+                              TRIM(ADJUSTL(albedo_field)),             &
+                              he5_start_2d, he5_stride_2d, he5_edge_2d,&
+                              colloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
   END SUBROUTINE write_albedo_he5
@@ -2480,8 +2480,8 @@ CONTAINS
     ! This routines writes the Target Gas Profiles from the GEOS-Chem
     ! climatology to the output file.
     ! ===============================================================
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
-    USE sao_pge_utils, ONLY: roundoff_3darr_r8
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE sao_pge_utils, ONLY: roundoff_3darr_r8
     use datafields, only: clialtgrid_field, gasprofile_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
     USE OMSAO_errstat_module
@@ -2516,19 +2516,19 @@ CONTAINS
     he5_edge_3d   = (/ nx, nt, nl /)
 
     colloc = climatology
-    CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
+    !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-      TRIM(ADJUSTL(gasprofile_field)),         &
-      he5_start_3d, he5_stride_3d, he5_edge_3d,&
-      colloc(1:nx,0:nt-1,1:nl) )
+                              TRIM(ADJUSTL(gasprofile_field)),         &
+                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
+                              colloc(1:nx,0:nt-1,1:nl) )
     errstat = MAX ( errstat, locerrstat )
 
     colloc = cli_heights
-    CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
+    !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-      TRIM(ADJUSTL(clialtgrid_field)),         &
-      he5_start_3d, he5_stride_3d, he5_edge_3d,&
-      colloc(1:nx,0:nt-1,1:nl) )
+                              TRIM(ADJUSTL(clialtgrid_field)),         &
+                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
+                              colloc(1:nx,0:nt-1,1:nl) )
     errstat = MAX ( errstat, locerrstat )
 
   END SUBROUTINE write_climatology_he5
@@ -2538,8 +2538,8 @@ CONTAINS
     ! ===============================================================
     ! This routines writes the scattering weigths to the output file.
     ! ===============================================================
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
-    USE sao_pge_utils, ONLY: roundoff_3darr_r8
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE sao_pge_utils, ONLY: roundoff_3darr_r8
     use datafields, only: scaweights_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
     USE OMSAO_errstat_module
@@ -2575,11 +2575,11 @@ CONTAINS
     he5_edge_3d   = (/ nx, nt, nl /)
 
     colloc = scattw
-    CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
+    !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-      TRIM(ADJUSTL(scaweights_field)),         &
-      he5_start_3d, he5_stride_3d, he5_edge_3d,&
-      colloc(1:nx,0:nt-1,1:nl) )
+                              TRIM(ADJUSTL(scaweights_field)),         &
+                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
+                              colloc(1:nx,0:nt-1,1:nl) )
 
     !!$    colloc = akernels
     !!$    CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
@@ -2599,9 +2599,9 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_he5_module, ONLY: HE5_SWWRFLD
     USE OMSAO_errstat_module
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
     USE OMSAO_indices_module,   ONLY: pge_hcho_idx, pge_gly_idx
-    USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
     use datafields, only: amfcfr_field, amfctp_field, amfdiag_field, &
       amfgeo_field, amfmol_field, col_field, dcol_field
 
@@ -2660,18 +2660,18 @@ CONTAINS
     ! (2) Geometric AMF
     ! -----------------
     amfloc = REAL ( amfgeo, KIND=r4 )
-    CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfgeo_field)), &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+                              he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
     ! -----------------
     ! (3) Molecular AMF
     ! -----------------
     amfloc = REAL ( amfmol, KIND=r4 )
-    CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfmol_field)), &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+                              he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
     ! ----------------------------------------------------------
@@ -2679,15 +2679,15 @@ CONTAINS
     ! ----------------------------------------------------------
     IF ( pge_idx == pge_hcho_idx .OR. pge_idx == pge_gly_idx ) THEN
       amfloc = REAL ( amfcfr, KIND=r4 )
-      CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
+      !CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfcfr_field)), &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+                                he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
       errstat = MAX ( errstat, locerrstat )
 
       amfloc = REAL ( amfctp, KIND=r4 )
-      CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
+      !CALL roundoff_2darr_r4 ( n_roff_dig, nx, nt, amfloc(1:nx,0:nt-1) )
       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfctp_field)), &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+                                he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
       errstat = MAX ( errstat, locerrstat )
     END IF
 
@@ -2697,15 +2697,15 @@ CONTAINS
     !     but we have as yet to perform the rounding for any of them.
     ! -----------------------------------------------------------------------
     colloc = saocol
-    CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
+    !CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(col_field)), &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
+                              he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
     colloc = saodco
-    CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
+    !CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(dcol_field)), &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
+                              he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
     RETURN

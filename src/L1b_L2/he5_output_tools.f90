@@ -456,13 +456,13 @@ CONTAINS
 
   SUBROUTINE he5_write_wavcal_output ( nXtloc, fpix, lpix, errstat )
 
-    USE OMSAO_precision_module, ONLY: i4, r8, i8, C_LONG
-    USE OMSAO_indices_module,   ONLY: max_calfit_idx
+    USE OMSAO_precision_module, ONLY: i4, i8, C_LONG ! r8, 
+    !USE OMSAO_indices_module,   ONLY: max_calfit_idx
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module,   ONLY: &
-      n_roff_dig,                                            &
+      !n_roff_dig,                                            &
       omi_solcal_xflag,  omi_radcal_xflag, omi_radref_xflag, &
-      omi_solcal_pars,   omi_radcal_pars,  omi_radref_pars,  &
+      !omi_solcal_pars,   omi_radcal_pars,  omi_radref_pars,  &
       omi_radref_col,    omi_radref_dcol,  omi_radref_rms,   &
       omi_radref_xtrcol
     USE datafields, ONLY: rad_reffit_he5fields, &
@@ -471,7 +471,7 @@ CONTAINS
       swccf_field, rad_calfit_he5fields
 
     USE OMSAO_variables_module, ONLY: radref_latrange
-    USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8
     !use addr_module
 
     IMPLICIT NONE
@@ -494,8 +494,8 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                             :: locerrstat, i, j, npix
-    REAL    (KIND=r8), DIMENSION (max_calfit_idx) :: tmpr8
+    INTEGER (KIND=i4)                             :: locerrstat, i, npix!, j
+    !REAL    (KIND=r8), DIMENSION (max_calfit_idx) :: tmpr8
     type (Array_Container_Type) :: array_struct
 
     locerrstat = pge_errstat_ok
@@ -508,19 +508,19 @@ CONTAINS
     ! -------------------------------------------------------------------------------------------
     ! Write results for solar and radiance wavelength calibration, and the radiance reference fit
     ! -------------------------------------------------------------------------------------------
-    DO j = fpix, lpix
-      tmpr8(1:max_calfit_idx) = omi_solcal_pars(1:max_calfit_idx,j)
-      CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-      omi_solcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-
-      tmpr8(1:max_calfit_idx) = omi_radcal_pars(1:max_calfit_idx,j)
-      CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-      omi_radcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-
-      tmpr8(1:max_calfit_idx) = omi_radref_pars(1:max_calfit_idx,j)
-      CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-      omi_radref_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-    END DO
+    !DO j = fpix, lpix
+    !  tmpr8(1:max_calfit_idx) = omi_solcal_pars(1:max_calfit_idx,j)
+    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
+    !  omi_solcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
+    !
+    !  tmpr8(1:max_calfit_idx) = omi_radcal_pars(1:max_calfit_idx,j)
+    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
+    !  omi_radcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
+    !
+    !  tmpr8(1:max_calfit_idx) = omi_radref_pars(1:max_calfit_idx,j)
+    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
+    !  omi_radref_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
+    !END DO
 
     ! --------------------------------------------------
     ! There is only one variable in the data field array
@@ -576,10 +576,10 @@ CONTAINS
     ! ---------------------------------------------------------------------------
     ! Write results for column and column uncertainty from radiance reference fit
     ! ---------------------------------------------------------------------------
-    CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_col   (fpix:lpix) )
-    CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_dcol  (fpix:lpix) )
-    CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_rms   (fpix:lpix) )
-    CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_xtrcol(fpix:lpix) )
+    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_col   (fpix:lpix) )
+    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_dcol  (fpix:lpix) )
+    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_rms   (fpix:lpix) )
+    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_xtrcol(fpix:lpix) )
 
     he5_start_2d  = (/ 0, 0 /)
     he5_stride_2d = (/ 1, 0 /)
@@ -632,7 +632,7 @@ CONTAINS
 !      spcres_didx
     USE OMSAO_omidata_module
     USE OMSAO_errstat_module
-    USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
     USE datafields, ONLY: DataField_HE5, &
       o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
       auraalt_field, col_field, corr_field, corrcol_field, correrr_field, &
@@ -723,12 +723,12 @@ CONTAINS
     !       a different stride for writing. We write those ones first, then set
     !       the strides for the rest of the fields.
     ! ----------------------------------------------------------------------------
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_latitude (fpix:lpix,0:nblock-1) )
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_longitude(fpix:lpix,0:nblock-1) )
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_sazimuth (fpix:lpix,0:nblock-1) )
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_szenith  (fpix:lpix,0:nblock-1) )
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_vazimuth (fpix:lpix,0:nblock-1) )
-    CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_vzenith  (fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_latitude (fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_longitude(fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_sazimuth (fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_szenith  (fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_vazimuth (fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, npix, nblock, omi_vzenith  (fpix:lpix,0:nblock-1) )
 
     he5_start_2d  = (/ iline, 0 /) ;  he5_stride_2d = (/ 1, 0 /) ; he5_edge_2d = (/ nblock, 0 /)
     locerrstat = HE5_SWWRFLD ( pge_swath_id, auraalt_field,   he5_start_2d, he5_stride_2d, he5_edge_2d, &
@@ -787,7 +787,7 @@ CONTAINS
     ! Fitting RMS and EXIT values from fitting.
     ! The latter shows if convergence was achieved and how.
     ! -----------------------------------------------------
-    CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, omi_fit_rms(fpix:lpix,0:nblock-1) )
+    !CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, omi_fit_rms(fpix:lpix,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(fitrms_field)), &
                               he5_start_2d, he5_stride_2d, he5_edge_2d, omi_fit_rms(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(fitcon_field)), &
@@ -808,7 +808,7 @@ CONTAINS
       i = o3_t1_idx
       ptr => o3_prefit_he5fields%head
       do while (associated (ptr))
-        CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_amount(i,fpix:lpix,0:nblock-1))
+        !CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_amount(i,fpix:lpix,0:nblock-1))
         locerrstat = HE5_SWWRFLD (pge_swath_id, TRIM(ptr%name), &
                                   he5_start_2d, he5_stride_2d, he5_edge_2d, &
                                   omi_o3_amount(i,1:nXtrack,0:nblock-1))
@@ -819,7 +819,7 @@ CONTAINS
       i = o3_t1_idx
       ptr => o3_prefit_uncert_he5fields%head
       do while (associated (ptr))
-        CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_uncert(i,fpix:lpix,0:nblock-1))
+        !CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_uncert(i,fpix:lpix,0:nblock-1))
         locerrstat = HE5_SWWRFLD (pge_swath_id, TRIM(ptr%name), &
                                   he5_start_2d, he5_stride_2d, he5_edge_2d, &
                                   omi_o3_uncert(i,1:nXtrack,0:nblock-1))
@@ -847,11 +847,11 @@ CONTAINS
         locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(itnum_field)), &
                                   he5_start_2d, he5_stride_2d, he5_edge_2d, omi_itnum_flag(1:nXtrack,0:nblock-1) )
 
-      DO i = 1, n_fitvar_rad
-        CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, correlation_columns(i,fpix:lpix,0:nblock-1) )
-        CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, all_fitted_columns (i,fpix:lpix,0:nblock-1) )
-        CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, all_fitted_errors  (i,fpix:lpix,0:nblock-1) )
-      END DO
+      !DO i = 1, n_fitvar_rad
+      !  CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, correlation_columns(i,fpix:lpix,0:nblock-1) )
+      !  CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, all_fitted_columns (i,fpix:lpix,0:nblock-1) )
+      !  CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, all_fitted_errors  (i,fpix:lpix,0:nblock-1) )
+      !END DO
 
       he5_start_3d  = (/ 0,            0,      iline       /)
       he5_stride_3d = (/ 1,            1,      1           /)
@@ -929,7 +929,7 @@ CONTAINS
           !ENDDO
           !tmp_fitspc (ii, 1:nXtrack, 0:nblock-1) = omi_fitspc (ii, 1:nXtrack, 3, 0:nblock-1)
           tmp_fitspc(ii,:,:) = omi_fitspc (ii, 1:nXtrack, 3, 0:nblock-1)
-          CALL roundoff_2darr_r8 ( n_roff_dig, nXtrack, nblock, tmp_fitspc(ii,1:nXtrack,0:nblock-1) )
+        !  CALL roundoff_2darr_r8 ( n_roff_dig, nXtrack, nblock, tmp_fitspc(ii,1:nXtrack,0:nblock-1) )
         ENDDO
 
         locerrstat = HE5_SWWRFLD ( pge_swath_id,posobs_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
@@ -993,8 +993,8 @@ CONTAINS
     !USE OMSAO_indices_module,   ONLY: commcnt_didx, commspc_didx, &
     !  commwvl_didx, ccdpix_didx
     USE OMSAO_variables_module, ONLY: common_mode_spec
-    USE OMSAO_omidata_module,   ONLY: n_roff_dig
-    USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
+    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
+    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
     USE datafields
 
     IMPLICIT NONE
@@ -1046,8 +1046,8 @@ CONTAINS
     !   WRITE (22,'(0PF10.4, 1PE15.5)') locwvl(10,j1), locspc(10,j1)
     !END DO
 
-    CALL roundoff_2darr_r4 ( n_roff_dig, nXtrack, npts, locwvl (1:nXtrack,1:npts) )
-    CALL roundoff_2darr_r8 ( n_roff_dig, nXtrack, npts, locspc (1:nXtrack,1:npts) )
+    !CALL roundoff_2darr_r4 ( n_roff_dig, nXtrack, npts, locwvl (1:nXtrack,1:npts) )
+    !CALL roundoff_2darr_r8 ( n_roff_dig, nXtrack, npts, locspc (1:nXtrack,1:npts) )
 
     ! ------------------------------------------
     ! Common Mode Spectrum - Count for Averaging
