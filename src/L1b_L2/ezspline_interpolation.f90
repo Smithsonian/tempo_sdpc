@@ -17,8 +17,10 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                    INTENT (IN) :: n_in, n_out
-  REAL    (KIND=r8), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
-  REAL    (KIND=r8), DIMENSION (n_out), INTENT (IN) :: x_out
+  !REAL    (KIND=r8), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
+  !REAL    (KIND=r8), DIMENSION (n_out), INTENT (IN) :: x_out
+  REAL    (KIND=r8), DIMENSION (:),  INTENT (IN) :: x_in, y_in
+  REAL    (KIND=r8), DIMENSION (:), INTENT (IN) :: x_out
 
   ! ----------------
   ! Output variables
@@ -271,11 +273,16 @@ SUBROUTINE ezspline_2d_interpolation ( n1, n2, x1, x2, z_in, m1, m2, y1, y2, z_o
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                    INTENT (IN) :: n1, n2, m1, m2
-  REAL    (KIND=r8), DIMENSION (n1),    INTENT (IN) :: x1
-  REAL    (KIND=r8), DIMENSION (n2),    INTENT (IN) :: x2
-  REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (IN) :: z_in
-  REAL    (KIND=r8), DIMENSION (m1),    INTENT (IN) :: y1
-  REAL    (KIND=r8), DIMENSION (m2),    INTENT (IN) :: y2
+  !REAL    (KIND=r8), DIMENSION (n1),    INTENT (IN) :: x1
+  !REAL    (KIND=r8), DIMENSION (n2),    INTENT (IN) :: x2
+  !REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (IN) :: z_in
+  !REAL    (KIND=r8), DIMENSION (m1),    INTENT (IN) :: y1
+  !REAL    (KIND=r8), DIMENSION (m2),    INTENT (IN) :: y2
+  REAL    (KIND=r8), DIMENSION (:),    INTENT (IN) :: x1
+  REAL    (KIND=r8), DIMENSION (:),    INTENT (IN) :: x2
+  REAL    (KIND=r8), DIMENSION (:,:), INTENT (IN) :: z_in
+  REAL    (KIND=r8), DIMENSION (:),    INTENT (IN) :: y1
+  REAL    (KIND=r8), DIMENSION (:),    INTENT (IN) :: y2
 
   ! ----------------
   ! Output variables

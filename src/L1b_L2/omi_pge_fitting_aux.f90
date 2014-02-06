@@ -988,7 +988,8 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                                 INTENT (IN) :: nxrr, sline, eline
     REAL    (KIND=r4),                                 INTENT (IN) :: lat
-    INTEGER (KIND=i4), DIMENSION (sline:eline,2),      INTENT (IN) :: xtrange
+    !INTEGER (KIND=i4), DIMENSION (sline:eline,2),      INTENT (IN) :: xtrange
+    INTEGER (KIND=i4), DIMENSION (:,:),                INTENT (IN) :: xtrange
     REAL    (KIND=r4), DIMENSION (1:nxrr,sline:eline), INTENT (IN) :: latr4
 
     ! ----------------

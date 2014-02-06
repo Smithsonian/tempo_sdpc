@@ -2164,7 +2164,7 @@ CONTAINS
             !!$                         local_thg, local_sza, local_vza, &
             !!$                           status=status)
             CALL ezspline_2d_interpolation (vl_nsza,vl_nvza,re_sza,re_vza,Inte_clear(index_thg(1),:,:), &
-              one,one,ezlocal_sza(one),ezlocal_vza(one),Icr(one,one), &
+              one,one,ezlocal_sza(1:1),ezlocal_vza(1:1),Icr(one,one), &
               status)
             Icl = 0.0_r8
             !!$                Icl = linInterpol (                       &
@@ -2174,7 +2174,7 @@ CONTAINS
             !!$                         local_cld, local_sza, local_vza, &
             !!$                           status=status)
             CALL ezspline_2d_interpolation (vl_nsza,vl_nvza,re_sza,re_vza,Inte_cloud(index_cld(1),:,:), &
-              one,one,ezlocal_sza(one),ezlocal_vza(one),Icl(one,one), &
+              one,one,ezlocal_sza(1:1),ezlocal_vza(1:1),Icl(one,one), &
               status)
             crf = 0.0_r8
             crf = local_cfr * Icl(one,one) / &

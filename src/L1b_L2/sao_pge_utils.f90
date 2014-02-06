@@ -804,7 +804,8 @@ SUBROUTINE roundoff_1darr_r8 ( ndecim, ndim, r8value )
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
-  REAL    (KIND=r8), DIMENSION (ndim), INTENT (INOUT) :: r8value
+  !REAL    (KIND=r8), DIMENSION (ndim), INTENT (INOUT) :: r8value
+  REAL    (KIND=r8), DIMENSION (:), INTENT (INOUT) :: r8value
 
   INTEGER (KIND=i4) :: i
   !REAL    (KIND=r8) :: roundoff_r8
@@ -825,7 +826,8 @@ SUBROUTINE roundoff_1darr_r4 ( ndecim, ndim, r4value )
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
-  REAL    (KIND=r4), DIMENSION (ndim), INTENT (INOUT) :: r4value
+  !REAL    (KIND=r4), DIMENSION (ndim), INTENT (INOUT) :: r4value
+  REAL    (KIND=r4), DIMENSION (:), INTENT (INOUT) :: r4value
 
   INTEGER (KIND=i4) :: i
   !REAL    (KIND=r4) :: roundoff_r4
@@ -846,7 +848,8 @@ SUBROUTINE roundoff_2darr_r8 ( ndecim, n1, n2, r8value )
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
-  REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (INOUT) :: r8value
+  !REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (INOUT) :: r8value
+  REAL    (KIND=r8), DIMENSION (:,:), INTENT (INOUT) :: r8value
 
   INTEGER (KIND=i4) :: i, j
 
@@ -868,8 +871,8 @@ SUBROUTINE roundoff_2darr_r4 ( ndecim, n1, n2, r4value )
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
-  REAL    (KIND=r4), DIMENSION (n1,n2), INTENT (INOUT) :: r4value
-
+  !REAL    (KIND=r4), DIMENSION (n1,n2), INTENT (INOUT) :: r4value
+  REAL    (KIND=r4), DIMENSION (:,:), INTENT (INOUT) :: r4value
   INTEGER (KIND=i4) :: i, j
 
   DO i = 1, n1
@@ -890,7 +893,8 @@ SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                       INTENT (IN)    :: ndecim, n1, n2, n3
-  REAL    (KIND=r8), DIMENSION (n1,n2,n3), INTENT (INOUT) :: r8value
+  !REAL    (KIND=r8), DIMENSION (n1,n2,n3), INTENT (INOUT) :: r8value
+  REAL    (KIND=r8), DIMENSION (:,:,:), INTENT (INOUT) :: r8value
 
   INTEGER (KIND=i4) :: i, j, k
   !REAL    (KIND=r8) :: roundoff_r8

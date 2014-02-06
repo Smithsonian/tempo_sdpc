@@ -585,7 +585,7 @@ CONTAINS
         ! ---------------------------------------------------
         CALL ezspline_1d_interpolation ( INT(ngridpoints, KIND=i4),     &
           grid_lat(1:ngridpoints), Ref_column_month(1:ngridpoints), &
-          1, latitude_r8(1), Ref_column(1), locerrstat )
+          1, latitude_r8(1:1), Ref_column(1), locerrstat )
         correction(itrack,iline) = column_amount(itrack,iline) - ( Ref_column(1) * amf(itrack,iline) )
 
       END DO

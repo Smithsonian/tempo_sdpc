@@ -272,7 +272,8 @@ contains
     REAL(SP), dimension(dim1), intent(in) :: dimScale1
     REAL(SP), dimension(dim2), intent(in) :: dimScale2
     REAL(SP), dimension(dim3), intent(in) :: dimScale3
-    REAL(SP), dimension(dim1,dim2,dim3), intent(in) :: data3D
+    !REAL(SP), dimension(dim1,dim2,dim3), intent(in) :: data3D
+    REAL(SP), dimension(:,:,:), intent(in) :: data3D
     REAL(SP), intent(in) :: x1,x2,x3
     integer, intent(in), OPTIONAL :: node1_in, node2_in, node3_in
     integer, intent(out), OPTIONAL :: status

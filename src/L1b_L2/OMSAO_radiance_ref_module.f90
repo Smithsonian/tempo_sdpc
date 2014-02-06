@@ -130,10 +130,12 @@ CONTAINS
     ELSE
       CALL find_swathline_by_latitude ( &
         nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
-        xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
+        xtrange, radiance_reference_lnums(1), have_limits(1)   )
+        !xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
       CALL find_swathline_by_latitude ( &
         nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
-        xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
+        xtrange, radiance_reference_lnums(2), have_limits(2) )
+        !xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
     END IF
 
     deallocate (latr4)

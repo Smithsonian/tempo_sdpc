@@ -1113,8 +1113,10 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN)                                   :: nXtrack, npts, nRefSpec
-    REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack,nRefSpec) :: database_he5
-    REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack)          :: database_he5_wvl
+    !REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack,nRefSpec) :: database_he5
+    REAL    (KIND=r8), INTENT (IN), DIMENSION(:,:,:) :: database_he5
+    !REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack)          :: database_he5_wvl
+    REAL    (KIND=r8), INTENT (IN), DIMENSION(:,:)          :: database_he5_wvl
 
     ! ---------------
     ! Output variable
