@@ -245,7 +245,7 @@ MODULE OMSAO_indices_module
   ! ------------------------------------------------------------------------
   ! First define the number of SAO PGEs. We are fitting three molecules, so:
   ! ------------------------------------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: n_sao_pge = 4
+  !INTEGER (KIND=i4), PARAMETER :: n_sao_pge = 4
 
   ! -----------------------------------------------------------------
   ! The operational OMI environment assigns reference numbers to each

@@ -10,7 +10,7 @@ MODULE OMSAO_he5_module
     valid_max_i2, valid_max_i4, valid_min_r8, valid_max_r8, zero_r8, one_r8, &
     main_qa_min_flag_r8, main_qa_max_flag_r8
   USE OMSAO_indices_module,    ONLY: &
-    n_sao_pge, max_calfit_idx, sao_pge_min_idx, sao_pge_max_idx, &
+    max_calfit_idx, sao_pge_min_idx, sao_pge_max_idx, &
     o3_t1_idx, o3_t3_idx
 
   IMPLICIT NONE

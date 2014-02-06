@@ -1,7 +1,9 @@
 MODULE fitting_loops
+
   use errormodule
   private
   public xtrack_radiance_wvl_calibration, xtrack_radiance_fitting_loop
+
 CONTAINS
   SUBROUTINE xtrack_radiance_wvl_calibration (             &
       first_pix, last_pix, n_max_rspec, n_comm_wvl_out, errstat )
@@ -348,6 +350,56 @@ CONTAINS
     RETURN
   END SUBROUTINE xtrack_radiance_wvl_calibration
 
+  SUBROUTINE check_wavelength_overlap ( &
+      n_fitvar_rad, n_sol_wvl, irradiance_wvl, n_rad_wvl, radiance_wvl, &
+      do_cycle_this_pix )
+
+    USE OMSAO_precision_module,  ONLY: i4, r8
+
+    IMPLICIT NONE
+
+    ! Input variables
+    INTEGER (KIND=i4),                        INTENT (IN) :: n_sol_wvl, n_rad_wvl, n_fitvar_rad
+    REAL    (KIND=r8), DIMENSION (n_sol_wvl), INTENT (IN) :: irradiance_wvl
+    REAL    (KIND=r8), DIMENSION (n_rad_wvl), INTENT (IN) :: radiance_wvl
+
+    ! Output variable
+    LOGICAL, INTENT (OUT) :: do_cycle_this_pix
+
+    ! Local variables
+    INTEGER (KIND=i4) :: j, n_overlap1, n_overlap2
+
+    do_cycle_this_pix = .FALSE.
+
+    IF ( radiance_wvl(1)         >= irradiance_wvl(n_sol_wvl) .OR. &
+        radiance_wvl(n_rad_wvl) <= irradiance_wvl(1)                 ) THEN
+      do_cycle_this_pix = .TRUE.
+      RETURN
+    END IF
+
+    n_overlap1 = 0
+    DO j = 1, n_rad_wvl
+      IF ( radiance_wvl(j) >= irradiance_wvl(1)         .AND. &
+          radiance_wvl(j) <= irradiance_wvl(n_sol_wvl)         ) n_overlap1 = n_overlap1 + 1
+    END DO
+    IF ( n_overlap1 < n_fitvar_rad ) THEN
+      do_cycle_this_pix = .TRUE.
+      RETURN
+    END IF
+
+    n_overlap2 = 0
+    DO j = 1, n_sol_wvl
+      IF ( irradiance_wvl(j) >= radiance_wvl(1)         .AND. &
+          irradiance_wvl(j) <= radiance_wvl(n_rad_wvl)         ) n_overlap2 = n_overlap2 + 1
+    END DO
+    IF ( n_overlap2 < n_fitvar_rad ) THEN
+      do_cycle_this_pix = .TRUE.
+      RETURN
+    END IF
+
+    RETURN
+  END SUBROUTINE check_wavelength_overlap
+
   SUBROUTINE xtrack_radiance_fitting_loop (pge_idx, &
       n_max_rspec, first_pix, last_pix, iloop,                &
       n_fitvar_rad, allfit_cols, allfit_errs, corr_matrix, &
@@ -377,7 +429,6 @@ CONTAINS
       omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
       omi_radiance_qflg, omi_cross_track_skippix, omi_radref_wav_avg, &
       omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
-    USE omi_pge_fitting_aux, ONLY: check_wavelength_overlap
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance

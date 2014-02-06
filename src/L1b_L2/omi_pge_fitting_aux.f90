@@ -3,7 +3,7 @@ MODULE omi_pge_fitting_aux
   use errormodule
   private
   public find_swathrange_by_latitude, read_latitude, &
-    find_swathline_by_latitude, check_wavelength_overlap, convert_tai_to_utc, &
+    find_swathline_by_latitude, convert_tai_to_utc, &
     find_swathline_range, &
     compute_fitting_statistics, compute_fitting_statistics_nohe5, &
     omi_set_xtrpix_range, &
@@ -690,56 +690,6 @@ CONTAINS
 !UNUSED! 
 !UNUSED!     RETURN
 !UNUSED!   END SUBROUTINE compact_fitting_spectrum
-
-  SUBROUTINE check_wavelength_overlap ( &
-      n_fitvar_rad, n_sol_wvl, irradiance_wvl, n_rad_wvl, radiance_wvl, &
-      do_cycle_this_pix )
-
-    USE OMSAO_precision_module,  ONLY: i4, r8
-
-    IMPLICIT NONE
-
-    ! Input variables
-    INTEGER (KIND=i4),                        INTENT (IN) :: n_sol_wvl, n_rad_wvl, n_fitvar_rad
-    REAL    (KIND=r8), DIMENSION (n_sol_wvl), INTENT (IN) :: irradiance_wvl
-    REAL    (KIND=r8), DIMENSION (n_rad_wvl), INTENT (IN) :: radiance_wvl
-
-    ! Output variable
-    LOGICAL, INTENT (OUT) :: do_cycle_this_pix
-
-    ! Local variables
-    INTEGER (KIND=i4) :: j, n_overlap1, n_overlap2
-
-    do_cycle_this_pix = .FALSE.
-
-    IF ( radiance_wvl(1)         >= irradiance_wvl(n_sol_wvl) .OR. &
-        radiance_wvl(n_rad_wvl) <= irradiance_wvl(1)                 ) THEN
-      do_cycle_this_pix = .TRUE.
-      RETURN
-    END IF
-
-    n_overlap1 = 0
-    DO j = 1, n_rad_wvl
-      IF ( radiance_wvl(j) >= irradiance_wvl(1)         .AND. &
-          radiance_wvl(j) <= irradiance_wvl(n_sol_wvl)         ) n_overlap1 = n_overlap1 + 1
-    END DO
-    IF ( n_overlap1 < n_fitvar_rad ) THEN
-      do_cycle_this_pix = .TRUE.
-      RETURN
-    END IF
-
-    n_overlap2 = 0
-    DO j = 1, n_sol_wvl
-      IF ( irradiance_wvl(j) >= radiance_wvl(1)         .AND. &
-          irradiance_wvl(j) <= radiance_wvl(n_rad_wvl)         ) n_overlap2 = n_overlap2 + 1
-    END DO
-    IF ( n_overlap2 < n_fitvar_rad ) THEN
-      do_cycle_this_pix = .TRUE.
-      RETURN
-    END IF
-
-    RETURN
-  END SUBROUTINE check_wavelength_overlap
 
   SUBROUTINE omi_set_xtrpix_range (                 &
       nTimes, nXtrack, pixnum_limits, omi_binfac,  &
