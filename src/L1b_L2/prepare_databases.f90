@@ -109,11 +109,11 @@ SUBROUTINE prepare_solar_refspec ( &
   ! Now we are ready to assign the splined solar spectrum to
   ! its final array - DATABASE(solar_idx,*).
   ! --------------------------------------------------------
-  database(solar_idx,1:n_radpts) = spline_sun(1:n_radpts)
+  database(1:n_radpts,solar_idx) = spline_sun(1:n_radpts)
 
   ! =================================================================
   ! Note that the UNDERSAMPLING spectrum has already been assigned to
-  ! DATABASE(us1/2_idx,*) in the UNDERSPEC routine.
+  ! DATABASE(*,us1/2_idx) in the UNDERSPEC routine.
   ! =================================================================
 
   ! ---------------------------------------------------------------------
@@ -121,8 +121,8 @@ SUBROUTINE prepare_solar_refspec ( &
   ! (afterward, add solar spectrum back in order to divide by solar
   ! spectrum with altered wavelength calibration in subroutine spectrum).
   ! ---------------------------------------------------------------------
-  IF ( yn_doas ) database(ring_idx, 1:n_radpts) = &
-    database(ring_idx, 1:n_radpts) / spline_sun(1:n_radpts)
+  IF ( yn_doas ) database(1:n_radpts, ring_idx) = &
+    database(1:n_radpts, ring_idx) / spline_sun(1:n_radpts)
 
   ! ---------------------------------------------------------
   ! For the DOAS case, high-pass filter the reference spectra
@@ -131,8 +131,8 @@ SUBROUTINE prepare_solar_refspec ( &
     ll_rad = fit_winwav_idx(2) ; lu_rad = fit_winwav_idx(3)
     CALL cubic_subtract (curr_rad_wvl, n_radpts, ll_rad, lu_rad, errstat)
     if (errstat < 0) return
-    database(ring_idx, 1:n_radpts) = &
-      database(ring_idx, 1:n_radpts) * spline_sun(1:n_radpts)
+    database(1:n_radpts, ring_idx) = &
+      database(1:n_radpts, ring_idx) * spline_sun(1:n_radpts)
   END IF
 
   ! database smoothing moved to calling routine
@@ -217,7 +217,7 @@ SUBROUTINE prep_databases ( &
   ! allow errstat to flow through
   IF ( yn_smooth ) then
     do j=1, max_rs_idx
-      call array_smooth (database(j,:), n_rad_wvl, errstat)
+      call array_smooth (database(:,j), n_rad_wvl, errstat)
     end do
   end if
   !if (errstat < 0) return

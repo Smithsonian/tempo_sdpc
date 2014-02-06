@@ -104,7 +104,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
         ! Q: There is a common-mode spectrum for each cross-track pixel.
         !    Instead of using the first, would it be better to average them?
         !       --JED
-        refspecs_original(i)%RefSpecWavs(1:npts) = common_mode_spec%RefSpecWavs(1,1:npts)
+        refspecs_original(i)%RefSpecWavs(1:npts) = common_mode_spec%RefSpecWavs(1:npts,1)
       END IF
 
     CASE DEFAULT
@@ -583,8 +583,8 @@ SUBROUTINE read_commonmode_spec ( &
   common_orig%Title                = TRIM(ADJUSTL(rs_title))
   common_orig%Units                = TRIM(ADJUSTL(rs_units))
   DO i = 1, nxtrack_max
-    common_orig%RefSpecWavs(i,1:nspec) = x(i,1:nspec)
-    common_orig%RefSpecData(i,1:nspec) = y(i,1:nspec)
+    common_orig%RefSpecWavs(1:nspec,i) = x(i,1:nspec)
+    common_orig%RefSpecData(1:nspec,i) = y(i,1:nspec)
   END DO
 
   RETURN

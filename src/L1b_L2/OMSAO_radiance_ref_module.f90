@@ -516,7 +516,7 @@ CONTAINS
       ! ----------------------------------------------
       ! Restore DATABASE from OMI_DATABASE (see above)
       ! ----------------------------------------------
-      database (1:max_rs_idx,1:n_database_wvl) = omi_database (1:max_rs_idx,1:n_database_wvl,ipix)
+      database (1:n_database_wvl,1:max_rs_idx) = omi_database (1:n_database_wvl,ipix,1:max_rs_idx)
 
       ! -----------------------------------------------------------------------
       ! Restore solar fitting variables for across-track reference in Earthshine fitting
@@ -524,8 +524,8 @@ CONTAINS
       sol_wav_avg = omi_radref_wav_avg (ipix)
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
-      curr_sol_spec(wvl_idx,1:n_database_wvl) = omi_database_wvl(1:n_database_wvl,ipix)
-      curr_sol_spec(spc_idx,1:n_database_wvl) = omi_database    (solar_idx,1:n_database_wvl,ipix)
+      curr_sol_spec(1:n_database_wvl,wvl_idx) = omi_database_wvl(1:n_database_wvl,ipix)
+      curr_sol_spec(1:n_database_wvl,spc_idx) = omi_database    (1:n_database_wvl,ipix,solar_idx)
       ! --------------------------------------------------------------------------------
 
       ! ---------------------------------------------------------------
@@ -645,7 +645,7 @@ CONTAINS
       ! Update the solar spectrum entry in OMI_DATABASE
       ! -----------------------------------------------
       IF ( do_radiance_reference ) &
-        omi_database (solar_idx,1:n_rad_wvl_loc,ipix) = omi_radref_spec(1:n_rad_wvl_loc,ipix)
+        omi_database (1:n_rad_wvl_loc,ipix,solar_idx) = omi_radref_spec(1:n_rad_wvl_loc,ipix)
 
     END DO XTrackPix
 
@@ -791,7 +791,7 @@ CONTAINS
           yfloc = 0.0_r8
         END IF
 
-        tmpexp(1:nwvl) = yfloc * omi_database(k,1:nwvl,i)
+        tmpexp(1:nwvl) = yfloc * omi_database(1:nwvl,i,k)
         WHERE ( tmpexp >= MAXEXPONENT(1.0_r8) )
           tmpexp = MAXEXPONENT(1.0_r8) - 1.0_r8
         ENDWHERE

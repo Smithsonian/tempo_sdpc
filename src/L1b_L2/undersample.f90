@@ -5,7 +5,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   !     Convolves input spectrum with Gaussian slit function of specified
   !     HW1e, and samples at a particular input phase to give the OMI
   !     undersampling spectrum. This version calculates both phases of the
-  !     undersampling spectrum, phase1 - i.e., underspec (1, i) - being the
+  !     undersampling spectrum, phase1 - i.e., underspec (i, 1) - being the
   !     more common in OMI spectra.
 
   USE OMSAO_precision_module
@@ -36,7 +36,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! Local variables
   ! ---------------
   LOGICAL                                     :: did_full_range
-  REAL (KIND=r8), DIMENSION (2,n_sensor_pts)  :: underspec
+  REAL (KIND=r8), DIMENSION (n_sensor_pts,2)  :: underspec
   REAL (KIND=r8), DIMENSION (max_spec_pts)    :: &
     locwvl, locspec, specmod, tmpwav, over, under, resample
 
@@ -134,8 +134,8 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   !     0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE,       &
   !     modulename//f_sep//'Phase 1c', vb_lev_omidebug, errstat )
 
-  underspec(1,1:n_sensor_pts) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
-  resample (  1:n_sensor_pts) = over(1:n_sensor_pts)
+  underspec(1:n_sensor_pts,1) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
+  resample (1:n_sensor_pts  ) = over(1:n_sensor_pts)
 
   ! ------------------------------------------------
   ! Save spectra to final arrays for Undersampling 1
@@ -143,9 +143,9 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   refspecs_original(us1_idx)%nPoints                     = n_sensor_pts
   refspecs_original(us1_idx)%NormFactor                  = 1.0E+00_R8
   refspecs_original(us1_idx)%RefSpecWavs(1:n_sensor_pts) = tmpwav(1:n_sensor_pts)
-  refspecs_original(us1_idx)%RefSpecData(1:n_sensor_pts) = underspec(1,1:n_sensor_pts)
+  refspecs_original(us1_idx)%RefSpecData(1:n_sensor_pts) = underspec(1:n_sensor_pts,1)
 
-  database(us1_idx,1:n_sensor_pts) = underspec (1,1:n_sensor_pts)
+  database(1:n_sensor_pts,us1_idx) = underspec (1:n_sensor_pts,1)
 
   ! ---------------------------------------------------------
   ! If we haven't selected Undersampling 2 then we return now
@@ -191,7 +191,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! ------------------------------------
   ! Compute final undersampling spectrum
   ! ------------------------------------
-  underspec(2,1:n_sensor_pts) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
+  underspec(1:n_sensor_pts,2) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
 
   ! ------------------------------------------------
   ! Save spectra to final arrays for Undersampling 2
@@ -199,9 +199,9 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   refspecs_original(us2_idx)%nPoints                     = n_sensor_pts
   refspecs_original(us2_idx)%NormFactor                  = 1.0E+00_R8
   refspecs_original(us2_idx)%RefSpecWavs(1:n_sensor_pts) = curr_wvl(1:n_sensor_pts)
-  refspecs_original(us2_idx)%RefSpecData(1:n_sensor_pts) = underspec(2,1:n_sensor_pts)
+  refspecs_original(us2_idx)%RefSpecData(1:n_sensor_pts) = underspec(1:n_sensor_pts,2)
 
-  database(us2_idx,1:n_sensor_pts) = underspec (2,1:n_sensor_pts)
+  database(1:n_sensor_pts,us2_idx) = underspec (1:n_sensor_pts,2)
 
   RETURN
 END SUBROUTINE undersample_spectrum
@@ -212,7 +212,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   !     Convolves input spectrum with Gaussian slit function of specified
 !UNUSED!   !     HW1e, and samples at a particular input phase to give the OMI
 !UNUSED!   !     undersampling spectrum. This version calculates both phases of the
-!UNUSED!   !     undersampling spectrum, phase1 - i.e., underspec (1, i) - being the
+!UNUSED!   !     undersampling spectrum, phase1 - i.e., underspec (i, 1) - being the
 !UNUSED!   !     more common in OMI spectra.
 !UNUSED! 
 !UNUSED!   USE OMSAO_precision_module
@@ -328,7 +328,7 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   IF ( locerrstat >= pge_errstat_error ) RETURN
 !UNUSED! 
 !UNUSED!   ! Calculate undersample spectrum
-!UNUSED!   underspec(1,1:n_sensor_pts) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
+!UNUSED!   underspec(1:n_sensor_pts,1) = over(1:n_sensor_pts) - under(1:n_sensor_pts)
 !UNUSED! 
 !UNUSED!   ! ------------------------------------------------
 !UNUSED!   ! Save spectra to final arrays for Undersampling 1
@@ -336,16 +336,16 @@ END SUBROUTINE undersample_spectrum
 !UNUSED!   refspecs_original(us1_idx)%nPoints                     = n_sensor_pts
 !UNUSED!   refspecs_original(us1_idx)%NormFactor                  = 1.0E+00_R8
 !UNUSED!   refspecs_original(us1_idx)%RefSpecWavs(1:n_sensor_pts) = curr_wvl(1:n_sensor_pts)
-!UNUSED!   refspecs_original(us1_idx)%RefSpecData(1:n_sensor_pts) = underspec(1,1:n_sensor_pts)
+!UNUSED!   refspecs_original(us1_idx)%RefSpecData(1:n_sensor_pts) = underspec(1:n_sensor_pts,1)
 !UNUSED!   refspecs_original(us2_idx)%nPoints                     = n_sensor_pts
 !UNUSED!   refspecs_original(us2_idx)%NormFactor                  = 1.0E+00_R8
 !UNUSED!   refspecs_original(us2_idx)%RefSpecWavs(1:n_sensor_pts) = curr_wvl(1:n_sensor_pts)
-!UNUSED!   refspecs_original(us2_idx)%RefSpecData(1:n_sensor_pts) = underspec(1,1:n_sensor_pts)
+!UNUSED!   refspecs_original(us2_idx)%RefSpecData(1:n_sensor_pts) = underspec(1:n_sensor_pts,1)
 !UNUSED! 
 !UNUSED!   ! Save undersample spectrum to database, for compliance with previous versions
 !UNUSED!   ! it is saved to both under sample spectra but only one of them needs to be used.
-!UNUSED!   database(us1_idx,1:n_sensor_pts) = underspec (1,1:n_sensor_pts)
-!UNUSED!   database(us2_idx,1:n_sensor_pts) = underspec (1,1:n_sensor_pts)
+!UNUSED!   database(1:n_sensor_pts,us1_idx) = underspec (1:n_sensor_pts,1)
+!UNUSED!   database(1:n_sensor_pts,us2_idx) = underspec (1:n_sensor_pts,1)
 !UNUSED! 
 !UNUSED!   RETURN
 !UNUSED! END SUBROUTINE undersample_new

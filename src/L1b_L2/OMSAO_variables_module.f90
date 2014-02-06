@@ -46,7 +46,7 @@ MODULE OMSAO_variables_module
   REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: lo_radbnd, up_radbnd
   CHARACTER (LEN=6), DIMENSION (n_max_fitpars)  :: fitvar_rad_str, fitvar_sol_str
 
-  REAL    (KIND=r8), DIMENSION (max_rs_idx, nwavel_max) :: database
+  REAL    (KIND=r8), DIMENSION (nwavel_max, max_rs_idx) :: database
 
   ! -------------------------------------
   ! Variables related to Air Mass Factors
@@ -109,8 +109,8 @@ MODULE OMSAO_variables_module
     REAL      (KIND=r8), DIMENSION (2)                        :: FirstLastWav
     INTEGER   (KIND=I2), DIMENSION (nxtrack_max,2)            :: CCDPixel
     INTEGER   (KIND=I4), DIMENSION (nxtrack_max)              :: RefSpecCount
-    REAL      (KIND=r8), DIMENSION (nxtrack_max,max_spec_pts) :: RefSpecWavs
-    REAL      (KIND=r8), DIMENSION (nxtrack_max,max_spec_pts) :: RefSpecData
+    REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecWavs
+    REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecData
   END TYPE CommonModeSpectrum
 
   ! -------------------------------
@@ -141,7 +141,7 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------------------------------------
   ! The current solar and radiance spectrum, including wavelengths and weights
   ! --------------------------------------------------------------------------
-  REAL    (KIND=r8), DIMENSION (ccd_idx, nwavel_max)    :: curr_sol_spec
+  REAL    (KIND=r8), DIMENSION (nwavel_max, ccd_idx)    :: curr_sol_spec
 
   ! ----------------------------------------
   ! Pixel number limits:

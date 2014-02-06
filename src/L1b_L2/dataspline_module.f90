@@ -214,7 +214,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       n_radwvl, curr_rad_wvl(1:n_radwvl), dbase_loc(1:n_radwvl),        &
       'fillvalue', 0.0_r8, did_full_range, locerrstat )
 
-    database(idx, 1:n_radwvl) = dbase_loc(1:n_radwvl)
+    database(1:n_radwvl, idx) = dbase_loc(1:n_radwvl)
     CALL error_check ( &
       locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL_REFSPEC, &
       modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_default, errstat )

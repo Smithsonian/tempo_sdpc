@@ -143,8 +143,8 @@ MODULE OMSAO_omidata_module
     omi_solcal_xflag, omi_radcal_xflag, omi_radref_xflag
   REAL    (KIND=r8), DIMENSION (max_calfit_idx, nxtrack_max)         :: &
     omi_solcal_pars,  omi_radcal_pars,  omi_radref_pars
-  REAL    (KIND=r8), DIMENSION (max_rs_idx, nwavel_max, nxtrack_max) :: omi_database
-  REAL    (KIND=r8), DIMENSION (            nwavel_max, nxtrack_max) :: omi_database_wvl
+  REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max, max_rs_idx) :: omi_database
+  REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max            ) :: omi_database_wvl
   REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
     omi_solcal_chisq, omi_radcal_chisq, omi_radref_chisq, &

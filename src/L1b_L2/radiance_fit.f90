@@ -147,10 +147,10 @@ CONTAINS
     ! for Ring effect, above.
     ! ---------------------------------------------------------------
     IF ( yn_doas ) THEN
-      Spec%spec(1:n_rad_wvl_loc) = LOG ( Spec%spec(1:n_rad_wvl_loc) / database(solar_idx,1:n_rad_wvl_loc) )
+      Spec%spec(1:n_rad_wvl_loc) = LOG ( Spec%spec(1:n_rad_wvl_loc) / database(1:n_rad_wvl_loc,solar_idx) )
       CALL cubic_subtract_meas (Spec%wavs(1:n_rad_wvl_loc), n_rad_wvl_loc, Spec%spec(1:n_rad_wvl_loc), ll_rad, lu_rad, errstat)
       if (errstat < 0) return
-      Spec%spec(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc) + LOG ( database(solar_idx,1:n_rad_wvl_loc) )
+      Spec%spec(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc) + LOG ( database(1:n_rad_wvl_loc,solar_idx) )
     END IF
 
     ! --------------------------------------------------------------------
@@ -243,7 +243,7 @@ CONTAINS
     param_frozen_at_zero = (fitvar_rad == 0.0_r8 .and. lo_radbnd == 0.0_r8 .and. up_radbnd == 0.0_r8)
     database_j_is_zero = .true.
     do j=1, max_rs_idx
-      database_j_is_zero(j) = size(database,2).eq.count(database(j,:)==0.0_r8)
+      database_j_is_zero(j) = size(database,2).eq.count(database(:,j)==0.0_r8)
     enddo
 
     radfit_itnum = 0
@@ -653,8 +653,8 @@ CONTAINS
     ! interpolation to the final radiance wavelengths.
     ! -----------------------------------------------------------------------------------------
     n_sunpos                = n_database_wvl
-    sunpos_ss  (1:n_sunpos) = curr_sol_spec(wvl_idx, 1:n_sunpos)
-    sunspec_loc(1:n_sunpos) = curr_sol_spec(spc_idx, 1:n_sunpos)
+    sunpos_ss  (1:n_sunpos) = curr_sol_spec(1:n_sunpos, wvl_idx)
+    sunspec_loc(1:n_sunpos) = curr_sol_spec(1:n_sunpos, spc_idx)
 
     ! ----------------------------------------------
     ! Sort local arrays - important to pass EZspline
@@ -755,13 +755,13 @@ CONTAINS
         ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
         rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
         ! Ring adjustment
-        rad_fitvar(i) * (database(ring_idx, j1:j2) / sunspec_ss (j1:j2))
+        rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
 
       DO j = 1, max_rs_idx
         IF ( j /= solar_idx .AND. j /= ring_idx ) THEN
           if (database_j_is_zero(j)) cycle
           i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
-          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+          fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j1:j2,j)
         END IF
       END DO
 
@@ -772,7 +772,7 @@ CONTAINS
       DO j = 1, max_rs_idx
         IF ( j.eq.solar_idx ) CYCLE
         if (database_j_is_zero(j)) cycle
-        database_j(j1:j2) = database(j,j1:j2)
+        database_j(j1:j2) = database(j1:j2,j)
         ! -----------------------------
         ! Initial add-on contributions.
         ! -----------------------------
@@ -960,8 +960,8 @@ CONTAINS
     ! here as base for the interpolation to the final radiance wavelengths.
     ! ---------------------------------------------------------------------------------
     n_sunpos                = n_database_wvl
-    sunpos_ss  (1:n_sunpos) = curr_sol_spec(wvl_idx, 1:n_sunpos)
-    sunspec_loc(1:n_sunpos) = curr_sol_spec(spc_idx, 1:n_sunpos)
+    sunpos_ss  (1:n_sunpos) = curr_sol_spec(1:n_sunpos,wvl_idx)
+    sunspec_loc(1:n_sunpos) = curr_sol_spec(1:n_sunpos,spc_idx)
 
     ! ----------------------------------------------
     ! Sort local arrays - important to pass EZspline
@@ -1062,7 +1062,7 @@ CONTAINS
         ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
         rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
         ! Ring adjustment
-        rad_fitvar(i) * (database(ring_idx, j1:j2) / sunspec_ss (j1:j2))
+        rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
 
       DO j = 1, max_rs_idx
         IF ( j /= solar_idx .AND. j /= ring_idx  .AND. &
@@ -1070,7 +1070,7 @@ CONTAINS
           if (database_j_is_zero(j)) cycle
           i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
           if (.not. param_frozen_at_zero(i)) then
-            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j1:j2,j)
           endif
         END IF
       END DO
@@ -1085,7 +1085,7 @@ CONTAINS
           if (database_j_is_zero(j)) cycle
           i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
           if (.not. param_frozen_at_zero(i)) then
-            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j1:j2,j)
           endif
         END IF
       END DO
@@ -1106,11 +1106,11 @@ CONTAINS
             IF ( j == o3_t1_idx .OR. j == o3_t2_idx .OR. j == o3_t3_idx ) THEN
               k1 = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
               k2 = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
-              tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2) *  &
+              tmpexp(j1:j2) = rad_fitvar(i)*database(j1:j2,j) *  &
                 (1.0_r8 + rad_fitvar(k1)*del(j1:j2) + &
                  rad_fitvar(k2)*del(j1:j2)*del(j1:j2))
             ELSE
-              tmpexp(j1:j2) = rad_fitvar(i)*database(j,j1:j2)
+              tmpexp(j1:j2) = rad_fitvar(i)*database(j1:j2,j)
             END IF
           endif
 
@@ -1138,7 +1138,7 @@ CONTAINS
           i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
           if (database_j_is_zero(j)) cycle
           if (.not.param_frozen_at_zero(i)) then
-            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j,j1:j2)
+            fit(j1:j2) = fit(j1:j2) + rad_fitvar(i) * database(j1:j2,j)
           endif
         END IF
       END DO

@@ -3,6 +3,7 @@ MODULE he5_output_tools
   USE OMSAO_indices_module, ONLY: n_voc_amf_luns
   USE OMSAO_precision_module, ONLY: i2, i4, r4, r8
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
+  use errormodule, only : err_message_error
 
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
 
@@ -1016,11 +1017,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4)                            :: locerrstat, j1, j2
+    INTEGER   (KIND=i4)                            :: locerrstat, j1, j2, i
     INTEGER   (KIND=i2), DIMENSION (nXtrack,2)     :: locccd
     INTEGER   (KIND=i4), DIMENSION (nXtrack)       :: loccnt
-    REAL      (KIND=r4), DIMENSION (nXtrack, npts) :: locwvl
-    REAL      (KIND=r8), DIMENSION (nXtrack, npts) :: locspc
+    REAL      (KIND=r4), DIMENSION (nXtrack,npts)  :: locwvl
+    REAL      (KIND=r8), DIMENSION (nXtrack,npts)  :: locspc
 
     locerrstat = pge_errstat_ok
 
@@ -1035,8 +1036,11 @@ CONTAINS
     j2                       = nXtrack
     locccd(1:nXtrack,1:2)    =        common_mode_spec%CCDPixel    (j1:j2,1:2)
     loccnt(1:nXtrack)        =        common_mode_spec%RefSpecCount(j1:j2)
-    locspc(1:nXtrack,1:npts) =        common_mode_spec%RefSpecData (j1:j2,1:npts)
-    locwvl(1:nXtrack,1:npts) = REAL ( common_mode_spec%RefSpecWavs (j1:j2,1:npts), KIND=r4 )
+    do i=j1,j2
+      ! This re-ordering is done only to maintain back-compatible output ordering.
+      locspc(i,1:npts) =        common_mode_spec%RefSpecData (1:npts,i)
+      locwvl(i,1:npts) = REAL ( common_mode_spec%RefSpecWavs (1:npts,i), KIND=r4 )
+    enddo
 
     !DO j1 = 1, npts
     !   WRITE (22,'(0PF10.4, 1PE15.5)') locwvl(10,j1), locspc(10,j1)
@@ -1109,7 +1113,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN)                                   :: nXtrack, npts, nRefSpec
-    REAL    (KIND=r8), INTENT (IN), DIMENSION(nRefSpec,npts,nXtrack) :: database_he5
+    REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack,nRefSpec) :: database_he5
     REAL    (KIND=r8), INTENT (IN), DIMENSION(npts,nXtrack)          :: database_he5_wvl
 
     ! ---------------
@@ -1123,6 +1127,7 @@ CONTAINS
     INTEGER   (KIND=i4)                 :: locerrstat,ii
 
     REAL (KIND=r8), DIMENSION(nRefSpec) :: tmp_normfactor
+    real (kind=r8), dimension(:,:,:), allocatable :: db_old_order
 
     ! =============================================================================
     ! he5_write_omi_database starts here
@@ -1138,10 +1143,22 @@ CONTAINS
 
     ! Write refspec database
     ! FIXME IF( yn_output_diag(spdata_didx) ) THEN
-    if (yn_diagnostic_run) &
+    if (yn_diagnostic_run) then
+      allocate (db_old_order(nRefSpec,npts,nXtrack), stat=locerrstat)
+      if (locerrstat /= 0) then
+        call err_message_error ("he5_write_omi_database:  allocate failed", errstat)
+        return
+      endif
+      do ii=1,nRefSpec
+        db_old_order(ii,1:npts,1:nXtrack) = database_he5(1:npts,1:nXtrack,ii)
+      enddo
+      !FIXME - this re-ordered database copy is generated only to simplify
+      ! regression test comparisons with older versions of the code.
       locerrstat = HE5_SWWRFLD (pge_swath_id, spdata_field, &
                                 he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                database_he5 )
+                                db_old_order )  ! database_he5 )
+      deallocate(db_old_order)
+    endif
 
     ! Datablock
     he5_start_2d  = (/    0,       0 /)

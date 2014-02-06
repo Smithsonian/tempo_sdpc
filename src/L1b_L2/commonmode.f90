@@ -44,10 +44,10 @@ contains
       ! Average the wavelength and spectrum arrays
       ! ------------------------------------------
       k = MAX(1,common_mode_spec%RefSpecCount(i))
-      common_mode_spec%RefSpecWavs(i,1:j)  = &
-        common_mode_spec%RefSpecWavs(i,1:j) / REAL(k, KIND=r8)
-      common_mode_spec%RefSpecData(i,1:j)  = &
-        common_mode_spec%RefSpecData(i,1:j) / REAL(k, KIND=r8)
+      common_mode_spec%RefSpecWavs(1:j,i)  = &
+        common_mode_spec%RefSpecWavs(1:j,i) / REAL(k, KIND=r8)
+      common_mode_spec%RefSpecData(1:j,i)  = &
+        common_mode_spec%RefSpecData(1:j,i) / REAL(k, KIND=r8)
 
       ! ---------------------------------------
       ! Normalize the Common Mode Spectrum to 1
@@ -56,15 +56,15 @@ contains
       ! low weights, which otherwise skew the norm.
       ! --------------------------------------------------------
       comnorm = 1.0_r8
-      !comnorm = SUM(common_mode_spec%RefSpecData(i,1:j)) / REAL(k, KIND=r8)
+      !comnorm = SUM(common_mode_spec%RefSpecData(1:j,i)) / REAL(k, KIND=r8)
       !IF ( comnorm == 0.0_r8 ) comnorm = 1.0_r8
-      !common_mode_spec%RefSpecData(i,1:j) = &
-      !     common_mode_spec%RefSpecData(i,1:j) / comnorm
+      !common_mode_spec%RefSpecData(1:j,i) = &
+      !     common_mode_spec%RefSpecData(1:j,i) / comnorm
 
       ! -------------------------------------------------
       ! Assign the common mode to the OMI data base array
       ! -------------------------------------------------
-      omi_database(comm_idx,1:j,i) = common_mode_spec%RefSpecData(i,1:j)
+      omi_database(1:j,i,comm_idx) = common_mode_spec%RefSpecData(1:j,i)
 
       ! --------------------------------------------------------------
       ! Now assign a normalization factor to the original data base of
@@ -77,7 +77,7 @@ contains
     !WRITE (88,'(A,2I6)'), '#', 36, n_omi_database_wvl(36)
     !DO i = 1, n_omi_database_wvl(36)
     !   WRITE (88,'(0PF10.3, 1PE15.5)') &
-    !        common_mode_spec%RefSpecWavs(36,i), common_mode_spec%RefSpecData(36,i)
+    !        common_mode_spec%RefSpecWavs(i,36), common_mode_spec%RefSpecData(i,36)
     !END DO
 
     ! ------------------------------------
@@ -169,10 +169,10 @@ contains
         !common_cnt(xti)        = common_cnt(xti) + 1
         !common_spc(xti,1:nwvl) = common_spc(xti,1:nwvl) + fitres(1:nwvl)/comnorm
 
-        common_mode_spec%RefSpecWavs(xti,1:nwvl)  = &
-          common_mode_spec%RefSpecWavs(xti,1:nwvl) + fitwvl(1:nwvl)
-        common_mode_spec%RefSpecData(xti,1:nwvl)  = &
-          common_mode_spec%RefSpecData(xti,1:nwvl) + fitres(1:nwvl)/comnorm
+        common_mode_spec%RefSpecWavs(1:nwvl,xti)  = &
+          common_mode_spec%RefSpecWavs(1:nwvl,xti) + fitwvl(1:nwvl)
+        common_mode_spec%RefSpecData(1:nwvl,xti)  = &
+          common_mode_spec%RefSpecData(1:nwvl,xti) + fitres(1:nwvl)/comnorm
         common_mode_spec%RefSpecCount(xti)        = &
           common_mode_spec%RefSpecCount(xti) + 1
       END IF

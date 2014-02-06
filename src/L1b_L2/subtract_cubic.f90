@@ -105,7 +105,7 @@ CONTAINS
         blow(1:doas_npol) = 0.0_r8  ;  bupp(1:doas_npol) = 0.0_r8
 
         cubic_x(1:nfitted) = ptemp(1:nfitted)
-        cubic_y(1:nfitted) = database(i, 1+nlower-1:nfitted+nlower-1)
+        cubic_y(1:nfitted) = database(1+nlower-1:nfitted+nlower-1,i)
         cubic_w(1:nfitted) = sig(1:nfitted)
 
         par = 0.0_r8 ; f = 0.0_r8
@@ -115,7 +115,7 @@ CONTAINS
 
         cubic_x(1:npts) = x(1:npts)
         call eval_cubic (par(1:doas_npol), cubic_x(1:npts), cubic_y(1:npts))
-        database(i,1:npts) = database(i,1:npts) - cubic_y(1:npts)
+        database(1:npts,i) = database(1:npts,i) - cubic_y(1:npts)
       END IF
     END DO
 
