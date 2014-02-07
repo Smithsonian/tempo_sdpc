@@ -678,7 +678,7 @@ CONTAINS
   END SUBROUTINE xtrack_radiance_reference_loop
 
   SUBROUTINE remove_target_from_radiance (       &
-      nw, ipix, jpix, n_fincol_idx, fincol_idx, &
+      nw, ipix, jpix, n_loc_fincol_idx, loc_fincol_idx, &
       target_npol, target_var, target_fit         )
 
     ! USE OMSAO_indices_module,   ONLY: solar_idx
@@ -694,13 +694,13 @@ CONTAINS
     ! Input Variables
     ! ---------------
     INTEGER (KIND=i4),                                     INTENT (IN) :: &
-      nw, ipix, jpix, n_fincol_idx, target_npol
-    INTEGER (KIND=i4), DIMENSION (2,n_fincol_idx),         INTENT (IN) :: fincol_idx
+      nw, ipix, jpix, n_loc_fincol_idx, target_npol
+    INTEGER (KIND=i4), DIMENSION (2,n_loc_fincol_idx),         INTENT (IN) :: loc_fincol_idx
 
     ! ------------------
     ! Modified Variables
     ! ------------------
-    REAL (KIND=r8), DIMENSION (n_fincol_idx,ipix:jpix), INTENT (INOUT) :: target_var
+    REAL (KIND=r8), DIMENSION (n_loc_fincol_idx,ipix:jpix), INTENT (INOUT) :: target_var
     REAL (KIND=r8), DIMENSION              (ipix:jpix), INTENT (OUT)   :: target_fit
 
     ! ------------------------------
@@ -724,15 +724,15 @@ CONTAINS
 
     npol = target_npol
     nx   = jpix-ipix+1
-    DO j = 1, n_fincol_idx
-      k = fincol_idx(2,j)
+    DO j = 1, n_loc_fincol_idx
+      k = loc_fincol_idx(2,j)
 
       ! ----------------------------------------------------------------------
       ! If we can/have to, fit a cross-track polynomial to the fitted columns,
-      ! we do this individually for each FINCOL_IDX and remove the smoothed
+      ! we do this individually for each loc_fincol_idx and remove the smoothed
       ! column loading rather than the originally fitted one. In any case, YF
       ! will contain the column values to be removed. Hence the outer loop
-      ! over N_FINCOL_IDX rather than cross-track position.
+      ! over N_loc_fincol_idx rather than cross-track position.
       ! ----------------------------------------------------------------------
       nfit = 0
       DO i = ipix, jpix

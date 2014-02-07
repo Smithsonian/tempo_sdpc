@@ -110,14 +110,14 @@ contains
     INTEGER (KIND=i4)                                       :: npts, errstat
     ! Shorthands for solar reference spectrum
     REAL    (KIND=r8), DIMENSION (refspecs_original(solar_idx)%nPoints) :: &
-      solar_pos, solar_spec
+      solar_wvls, solar_spec
     real (kind=r8), dimension (MAX_SPEC_PTS), save :: &
       saved_solar_spec_convolved = 0.0_r8
 
     errstat = pge_errstat_ok
 
     npts               = refspecs_original(solar_idx)%nPoints
-    solar_pos (1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
+    solar_wvls(1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
     solar_spec(1:npts) = refspecs_original(solar_idx)%RefSpecData(1:npts)
     IF ( .NOT. yn_spectrum_norm ) &
       solar_spec(1:npts) = solar_spec(1:npts) * refspecs_original(solar_idx)%NormFactor
@@ -134,10 +134,10 @@ contains
     !     Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
 
     IF (yn_newshift) THEN ! gga
-      solar_pos(1:npts) = solar_pos(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
+      solar_wvls(1:npts) = solar_wvls(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
         +  loc_cal_parms(shi_idx) - solar_wavel_avg * loc_cal_parms(squ_idx)
     ELSE ! gga
-      solar_pos(1:npts) = solar_pos(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
+      solar_wvls(1:npts) = solar_wvls(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
         + loc_cal_parms(shi_idx)
     END IF
 
@@ -159,7 +159,7 @@ contains
     !    saved_shift   = loc_cal_parms(shi_idx)
     !    saved_solar_spec_convolved = 0.0_r8
     !    CALL omi_slitfunc_convolve (                                  &
-    !      curr_xtrack_pixnum, npts, solar_pos(1:npts),             &
+    !      curr_xtrack_pixnum, npts, solar_wvls(1:npts),             &
     !      solar_spec(1:npts), saved_solar_spec_convolved(1:npts), errstat )
     !    CALL error_check ( &
     !      errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
@@ -169,7 +169,7 @@ contains
     !ELSE
     !  CALL asymmetric_gaussian_sf (                                           &
     !    npts, loc_cal_parms(hwe_idx), loc_cal_parms(asy_idx),                    &
-    !    solar_pos(1:npts), solar_spec(1:npts), saved_solar_spec_convolved(1:npts) )
+    !    solar_wvls(1:npts), solar_spec(1:npts), saved_solar_spec_convolved(1:npts) )
     !END IF
 
     if (loc_cal_parms(squ_idx) /= saved_squeeze &
@@ -181,7 +181,7 @@ contains
       saved_shift   = loc_cal_parms(shi_idx)
       saved_solar_spec_convolved = 0.0_r8
       CALL slitfunction_convolve ( &
-        npts, solar_pos(1:npts), solar_spec(1:npts), &
+        npts, solar_wvls(1:npts), solar_spec(1:npts), &
         saved_solar_spec_convolved(1:npts), &
         curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
         errstat)
@@ -199,7 +199,7 @@ contains
     ! Re-sample the solar reference spectrum to the OMI grid
     ! ------------------------------------------------------
     CALL interpolation ( &
-      npts, solar_pos(1:npts), saved_solar_spec_convolved(1:npts), &
+      npts, solar_wvls(1:npts), saved_solar_spec_convolved(1:npts), &
       npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
       did_full_range, errstat )
     if (errstat < 0) then

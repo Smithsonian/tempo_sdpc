@@ -99,7 +99,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     procedure(earthshine_spectrum_interface), pointer :: earthshine_spectrum => null()
-    INTEGER (KIND=i4) :: i, j, idx, j1, j2, k1, k2, l, ll_rad, lu_rad, index
+    INTEGER (KIND=i4) :: i, j, idx, j1, j2, k1, k2, l, ll_rad, lu_rad, indx
     INTEGER (KIND=i4) :: n_fitwav_rad, locitnum, n_nozero_wgt
     REAL    (KIND=r8)                                         :: asum, ssum
     REAL    (KIND=r8)                                         :: mean, sdev, loclim, normfac, mfac
@@ -107,7 +107,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar, lobnd, upbnd
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc, n_fitvar_rad) :: covar_matrix
 
-    REAL    (KIND=r8) :: fitcol_saved
+    REAL    (KIND=r8) :: fitcol_saved, covar_xx
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
@@ -327,12 +327,15 @@ CONTAINS
     ! ith the other variables is kept
     ! ---------------------------------------------------------------------
     corrmat = r8_missval
-    index   = fincol_idx(1,1)
-    DO i = 1, n_fitvar_rad
-      IF (covar_matrix (i,i) .EQ. 0.0 .OR. covar_matrix(index,index) .EQ. 0.0) CYCLE
-      corrmat(i) = (covar_matrix (index, i ) &
-                    / SQRT( covar_matrix ( index, index ) * covar_matrix (i, i)))
-    END DO
+    indx   = fincol_idx(1,1)
+    covar_xx = covar_matrix(indx, indx)
+    if (covar_xx /= 0.0) then
+      DO i = 1, n_fitvar_rad
+        IF (covar_matrix (i,i) /= 0.0) cycle
+        corrmat(i) = (covar_matrix (indx, i ) &
+                      / SQRT(covar_xx * covar_matrix (i, i)))
+      END DO
+    endif
 
     ! --------------------------------------------------------------------
     ! Save fitting weights for possible use through radiance reference fit

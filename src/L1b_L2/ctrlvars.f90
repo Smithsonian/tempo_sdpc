@@ -5,7 +5,14 @@ module ctrlvars
   ! constants.
 
   logical, public :: yn_radiance_reference
+
   logical, public :: yn_common_iter
+  ! If TRUE, two passes will be made:  The first pass will perform fitting
+  !    and produce a common-mode spectrum.  The second pass will perform the
+  !    fitting using the derived common mode.
+  ! If FALSE, A common mode spectrum will be read from a file and used.
+
+
   logical, public :: yn_spectrum_norm
 
   ! Logical for newshift following Xiong comments -- gga
@@ -16,7 +23,13 @@ module ctrlvars
   logical, public :: yn_use_labslitfunc
   logical, public :: yn_solar_i0
   logical, public :: yn_diagnostic_run
-  logical, public :: yn_solar_comp  ! use solar composite spectrum
+
+  logical, public :: yn_solar_comp
+  ! If TRUE, read a composite solar spectrum from a file.
+  ! The solar_comp_typ determines the type to read.
+  integer, public :: solar_comp_typ
+
+
   logical, public :: yn_o3amf_cor
   logical, public :: yn_solmonthave
   logical, public :: yn_refseccor   !reference sector correction

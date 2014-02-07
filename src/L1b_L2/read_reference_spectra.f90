@@ -9,9 +9,9 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_parameters_module, ONLY: zerospec_string, r8_missval
   USE OMSAO_variables_module,  ONLY: &
     winwav_min, winwav_max, ReferenceSpectrum, refspecs_original, &
-    common_mode_spec, solar_comp_typ,       &
+    common_mode_spec, &
     OMSAO_solcomp_filename, l1b_channel
-  use ctrlvars, only: yn_common_iter, yn_solar_comp
+  use ctrlvars, only: yn_common_iter, yn_solar_comp, solar_comp_typ
   USE datafields, ONLY: o3_prefit_he5fields
   USE OMSAO_solcomp_module, ONLY: soco_pars_read
   USE OMSAO_errstat_module
@@ -105,7 +105,9 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
         !    Instead of using the first, would it be better to average them?
         !       --JED
         refspecs_original(i)%RefSpecWavs(1:npts) = common_mode_spec%RefSpecWavs(1:npts,1)
-      END IF
+      else
+        npts = 0
+      endif
 
     CASE DEFAULT
       CALL read_one_refspec ( &
@@ -167,6 +169,10 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
       errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
       modulename//f_sep//'Composite Solar Spectrum Parameters',       &
       vb_lev_default, pge_error_status )
+  ElSE
+    continue
+    ! In this case, the solar spectrum is read in later when the 
+    ! when irradiance data are read.  Can this be done here??? --JED
   END IF
 
   ! ------------------------------------
@@ -243,6 +249,8 @@ SUBROUTINE read_one_refspec ( &
     locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSPEC_FILE, &
     modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
   IF (  errstat /= pge_errstat_ok ) RETURN
+
+  write (*,*) "Reading reference spectrum from: ", trim(specname)
 
   ! --------------------------------------
   ! Skip comments header to start of table

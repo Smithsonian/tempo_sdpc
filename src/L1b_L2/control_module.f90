@@ -78,7 +78,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     static_input_fnames, fitvar_rad_str, winwav_min, winwav_max,       &
     have_undersampling,                                                &
     ctrl_n_fitres_loop, ctrl_fitres_range, l1b_channel, &
-    solar_comp_typ, &
     common_fitpos, common_fitvar, common_latrange, &
     max_good_col, &
     radref_latrange, target_npol
@@ -747,7 +746,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   logical :: assigned_index
 
   ! CCM Fit Lineshape for every spectrum
-  LOGICAL :: yn_fit_itf = .TRUE.
+  LOGICAL :: fit_lsf_for_every_spectrum = .TRUE.
 
   locerrstat = pge_errstat_ok
 
@@ -788,7 +787,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
 
     IF ( i == hwe_idx .OR. i == asy_idx ) THEN
 
-      IF ( .NOT. yn_fit_itf ) CYCLE
+      IF ( .NOT. fit_lsf_for_every_spectrum ) CYCLE
 
     END IF
 

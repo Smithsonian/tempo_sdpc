@@ -224,22 +224,16 @@ contains
     nwavel = l1bobj%num_wavelengths
     nxtrack = l1bobj%num_xtrack
 
-    allocate (tmp_wavelengths(nwavel, nxtrack), stat=locerrstat)
-    if (locerrstat == 0) then
-      allocate (tmp_spectrum(nwavel, nxtrack), stat=locerrstat)
-      if (locerrstat == 0) then
-        allocate (tmp_qflags (nwavel, nxtrack), stat = locerrstat)
-        if (locerrstat == 0) then
-          allocate (wavelengths (nwavel, nxtrack), stat = locerrstat)
-          if (locerrstat == 0) then
-            allocate (spectrum (nwavel, nxtrack), stat = locerrstat)
-          endif
-        endif
-      endif
-    endif
+    allocate (tmp_wavelengths(nwavel, nxtrack), &
+              tmp_spectrum(nwavel, nxtrack), &
+              tmp_qflags (nwavel, nxtrack), &
+              wavelengths (nwavel, nxtrack), &
+              spectrum (nwavel, nxtrack), &
+              stat=locerrstat)
     if (locerrstat /= 0) then
       call err_message_error ("read_irradiance_data: allocate failed", errstat)
     endif
+
     ! Allow errstat to flow through
     call l1bread_get2d_r4 (l1bobj, "Irradiance", 0, 1, tmp_spectrum, errstat)
     call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)

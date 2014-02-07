@@ -233,7 +233,7 @@ MODULE OMSAO_variables_module
   ! Filename, logical and type indices for composite Solar Spectrum
   ! ---------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_solcomp_filename
-  INTEGER (KIND=i4)        :: solar_comp_typ, solar_comp_orb
+  !INTEGER (KIND=i4)        :: solar_comp_orb
 
   ! -------------------------------------------------------
   ! Filename and logical for solar monthly average spectrum
