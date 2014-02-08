@@ -346,6 +346,35 @@ CONTAINS
     ! ----------------
     INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
 
+    ! Bits 0-3 are land/water
+    land_water_flg(1:nxtrack) = iand (omi_geoflg(1:nxtrack), 15_i2)
+
+    ! Bit 4 is glint
+    glint_flg(1:nxtrack) = iand (ishft(omi_geoflg(1:nxtrack), -4), 1_i2)
+
+    ! Bits 8-14 are snow/ice
+    snow_ice_flg(1:nxtrack) = iand (ishft(omi_geoflg(1:nxtrack), -8), 127_i2)
+
+  END SUBROUTINE convert_gpqualflag_info
+
+  SUBROUTINE unused_convert_gpqualflag_info ( &
+      nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
+
+    USE OMSAO_precision_module
+    USE strutils
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (IN) :: omi_geoflg
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
+
     ! ---------------
     ! Local variables
     ! ---------------
@@ -388,9 +417,56 @@ CONTAINS
     END DO
 
     RETURN
-  END SUBROUTINE convert_gpqualflag_info
+  END SUBROUTINE unused_convert_gpqualflag_info
 
-  SUBROUTINE convert_xtqualflag_info ( nxtrack, omi_xtrflg_l1b, omi_xtrflg )
+  SUBROUTINE convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
+
+    USE OMSAO_precision_module
+    USE strutils
+
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
+
+    ! -----------------
+    ! Modified variable
+    ! -----------------
+    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (INOUT) :: loc_xtrflg_l1b
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: loc_xtrflg
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i2), DIMENSION (3:7), PARAMETER :: &
+      add_value = INT((/ 10, 30, 100, 1000, 10000 /), kind=i2)
+    INTEGER (KIND=i4) :: i
+
+    ! The Row Anomaly Flags, Bits 0-2, add 1,2,4
+    loc_xtrflg(1:nxtrack) = iand (loc_xtrflg_l1b(1:nxtrack), 7_i1)
+    ! others:
+    !  Bit  Effect                      Added Value
+    !   3   Reserved for future use        10
+    !   4   wavelength-shift               30
+    !   5   blockage                      100
+    !   6   stray sunlight               1000
+    !   7   stray earth radiance        10000
+    ! ----------------------------------------------
+    do i = 3, 7
+      where (0 /= iand (loc_xtrflg_l1b(1:nxtrack), ishft (1_i1, i)))
+        loc_xtrflg(1:nxtrack) = loc_xtrflg(1:nxtrack) + add_value(i)
+      end where
+    end do
+    RETURN
+  END SUBROUTINE convert_xtqualflag_info
+
+  SUBROUTINE unused_convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: i1_missval, i2_missval
@@ -406,12 +482,12 @@ CONTAINS
     ! -----------------
     ! Modified variable
     ! -----------------
-    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (INOUT) :: omi_xtrflg_l1b
+    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (INOUT) :: loc_xtrflg_l1b
 
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: omi_xtrflg
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: loc_xtrflg
 
     ! ---------------
     ! Local variables
@@ -427,10 +503,10 @@ CONTAINS
 
     ! -----------------------------------------------------------------------
     ! Initialize output quantities. We can't initialize to "I2_MISSVAL" since
-    ! we will be recursively adding values to OMI_XTRFLG and hence have to
+    ! we will be recursively adding values to loc_xtrflg and hence have to
     ! start out from Zero.
     ! -----------------------------------------------------------------------
-    omi_xtrflg = 0_i2
+    loc_xtrflg = 0_i2
 
     ! --------------------------------------------------------
     ! Save input variable in TMP_FLG for modification; in that
@@ -439,10 +515,10 @@ CONTAINS
     tmp_bits = 0
     DO i = 1, nXtrack
 
-      IF ( omi_xtrflg_l1b(i) > -127_i1 .AND. omi_xtrflg_l1b(i) < 0_i1 ) THEN
-        tmp_flg(i) = INT ( omi_xtrflg_l1b(i), KIND=i2 ) + 256_i2
+      IF ( loc_xtrflg_l1b(i) > -127_i1 .AND. loc_xtrflg_l1b(i) < 0_i1 ) THEN
+        tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 ) + 256_i2
       ELSE
-        tmp_flg(i) = INT ( omi_xtrflg_l1b(i), KIND=i2 )
+        tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 )
       END IF
 
       ! -----------------------------------------------------------
@@ -450,10 +526,10 @@ CONTAINS
       ! outside the range of 8bit Integers. On 64 bit platforms it
       ! works perfectly fine.
       ! -----------------------------------------------------------
-      !IF ( omi_xtrflg_l1b(i) > -127_i1 .AND. omi_xtrflg_l1b(i) < 0_i1 ) THEN
-      !   tmp_flg(i) = INT ( IAND(omi_xtrflg_l1b(i),255), KIND=i2 )
+      !IF ( loc_xtrflg_l1b(i) > -127_i1 .AND. loc_xtrflg_l1b(i) < 0_i1 ) THEN
+      !   tmp_flg(i) = INT ( IAND(loc_xtrflg_l1b(i),255), KIND=i2 )
       !ELSE
-      !   tmp_flg(i) = INT ( omi_xtrflg_l1b(i), KIND=i2 )
+      !   tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 )
       !END IF
 
     END DO
@@ -462,7 +538,7 @@ CONTAINS
     ! -----------------------------------------------
     ! Save input variable in TMP_FLG for modification
     ! -----------------------------------------------
-    !tmp_flg(1:nxtrack) = omi_xtrflg_l1b(1:nxtrack)  ;  tmp_bits = 0
+    !tmp_flg(1:nxtrack) = loc_xtrflg_l1b(1:nxtrack)  ;  tmp_bits = 0
     ! gga
     CALL convert_2bytes_to_16bits ( &
       nbit, nxtrack, tmp_flg(1:nxtrack), tmp_bits(1:nxtrack,0:nbit-1) )
@@ -470,7 +546,7 @@ CONTAINS
     ! The Row Anomaly Flags, Bits 0-2
     ! ------------------------------------------------------------------
     DO i = 1, nxtrack
-      omi_xtrflg(i) = INT ( SUM(tmp_bits(i,0:2 )*three_bit(0:2)), KIND=i2 )
+      loc_xtrflg(i) = INT ( SUM(tmp_bits(i,0:2 )*three_bit(0:2)), KIND=i2 )
     END DO
 
     ! ----------------------------------------------
@@ -484,16 +560,16 @@ CONTAINS
     !   7   stray earth radiance        10000
     ! ----------------------------------------------
     DO i = 1, nxtrack
-      IF ( omi_xtrflg(i) < 0_i2 ) THEN
-        omi_xtrflg(i)     = i2_missval
-        omi_xtrflg_l1b(i) = i1_missval
+      IF ( loc_xtrflg(i) < 0_i2 ) THEN
+        loc_xtrflg(i)     = i2_missval
+        loc_xtrflg_l1b(i) = i1_missval
       ELSE
-        omi_xtrflg(i) = omi_xtrflg(i) + SUM(INT(tmp_bits(i,3:nbit-1),KIND=i2) * add_value(3:nbit-1))
+        loc_xtrflg(i) = loc_xtrflg(i) + SUM(INT(tmp_bits(i,3:nbit-1),KIND=i2) * add_value(3:nbit-1))
       END IF
     END DO
 
     RETURN
-  END SUBROUTINE convert_xtqualflag_info
+  END SUBROUTINE unused_convert_xtqualflag_info
 
   SUBROUTINE omi_xtract_swathname ( l1bfile, l1bchan, omiswath )
 

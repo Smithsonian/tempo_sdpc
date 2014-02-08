@@ -17,11 +17,10 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: downweight, normweight, r4_missval
     USE OMSAO_indices_module,         ONLY: &
-      qflg_mis_idx, qflg_bad_idx, qflg_err_idx
+      qual_flag_mis, qual_flag_bad, qual_flag_err
     use ctrlvars, only: yn_spectrum_norm
     USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
-    USE strutils, ONLY: convert_2bytes_to_16bits
     USE irradiance_data, only: Irradiance_Data_Type
 
     IMPLICIT NONE
@@ -48,15 +47,13 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i2), PARAMETER                            :: nbits = 16
     INTEGER (KIND=i4)                                       :: &
       i, j, locerrstat, imin1, imax1, imin2, imax2, j1, j2
     LOGICAL                                                 :: have_good_window
-    INTEGER (KIND=i2), DIMENSION (irr%nwaves(xtpix),0:nbits-1) :: irrad_qflg_bit
-    INTEGER (KIND=i2), DIMENSION (irr%nwaves(xtpix))           :: irrad_qflg_mask
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix))           :: weightsum
     REAL    (KIND=r8)                                       :: sol_spec_avg, asum, ssum
     INTEGER (KIND=i4) :: num_irr_wvl
+    integer (kind=i2) :: bad_qflg_mask
 
     ! ----------------------------------------------
     ! Variables for separating the good from the bad
@@ -116,32 +113,13 @@ CONTAINS
     ! ----------------------------------------------------------------------
     ! Find the pixel quality flags (not assigned correctly in the L1 product
     ! as of 13 September 2004 and thus not used yet; tpk note to himself)
-    ! ----------------------------------------------------------------------
-    ! -------------------------------------------------------------------
-    ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
-    !          conversion will result in a numeric overflow.
-    ! -------------------------------------------------------------------
-    CALL convert_2bytes_to_16bits (nbits-1, num_irr_wvl, &
-                                   irr%qflags(1:num_irr_wvl, xtpix), &
-                                   irrad_qflg_bit(1:num_irr_wvl,0:nbits-2) )
-
-    ! --------------------------------------------------------------------
-    ! Add contributions from various quality flags. Any CCD pixel that has
-    ! a cumulative quality flag > 0 will be excluded form the fitting.
-    !
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    irrad_qflg_mask(1:num_irr_wvl) = 0_i2
-    irrad_qflg_mask(1:num_irr_wvl) =                  &
-      irrad_qflg_bit(1:num_irr_wvl,qflg_mis_idx) + &   ! Missing pixel
-      irrad_qflg_bit(1:num_irr_wvl,qflg_bad_idx) + &   ! Bad pixel
-      irrad_qflg_bit(1:num_irr_wvl,qflg_err_idx) !+ &   ! Processing error
-    !irrad_qflg_bit(1:num_irr_wvl,qflg_rts_idx)       ! RTS
-
-    WHERE ( irrad_qflg_mask(1:num_irr_wvl) > 0_i2 )
+    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+    where (iand (irr%qflags(1:num_irr_wvl, xtpix), bad_qflg_mask) /= 0)
       adj_wgts(1:num_irr_wvl) = downweight
       adj_spec(1:num_irr_wvl) = 0.0_r8
-    END WHERE
+    end where
 
     ! -------------------------------------------------------------------------------
     ! Translate window limit wavelenghts into indices; making sure that Shift&Squeeze

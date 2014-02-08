@@ -232,6 +232,14 @@ MODULE OMSAO_indices_module
     qflg_rts_idx = 4, qflg_sat_idx = 5, qflg_noi_idx = 6, qflg_drk_idx = 7, &
     qflg_off_idx = 8, qflg_exp_idx = 9, qflg_str_idx = 10
 
+  integer (kind=i4), parameter :: &
+    qual_flag_mis = ishft(1,0), qual_flag_bad = ishft(1,1), &
+    qual_flag_err = ishft(1,2), qual_flag_tra = ishft(1,3), &
+    qual_flag_rts = ishft(1,4), qual_flag_sat = ishft(1,5), &
+    qual_flag_noi = ishft(1,6), qual_flag_drk = ishft(1,7), &
+    qual_flag_off = ishft(1,8), qual_flag_exp = ishft(1,9), &
+    qual_flag_str = ishft(1,10)
+
   ! =================================================================
   !
   ! This module defines a range of indices for the OMI SAO PGE fitting

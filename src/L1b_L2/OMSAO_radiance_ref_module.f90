@@ -27,7 +27,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: &
       r4_missval, downweight, normweight, nlines_max
     USE OMSAO_indices_module,    ONLY: &
-      qflg_mis_idx, qflg_bad_idx, qflg_err_idx
+      qual_flag_mis, qual_flag_bad, qual_flag_err
     USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, &
       ctrl_fit_winexc_lim, radiance_reference_lnums, radref_latrange, &
       Radiance_Paras_Type
@@ -40,7 +40,6 @@ CONTAINS
     USE OMSAO_errstat_module
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
-    USE strutils, ONLY: convert_2bytes_to_16bits
     USE arrayutils, only: array_locate_r8
     USE errormodule
     IMPLICIT NONE
@@ -65,7 +64,6 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i2), PARAMETER :: nbits = 16
     LOGICAL                      :: have_scanline
     LOGICAL, DIMENSION (2)       :: have_limits
 
@@ -83,10 +81,10 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd)           :: radref_wavl_ix
     REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack, rpt_rr%nwavel_ccd)     :: allcount, dumcount
     REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd      )     :: cntr8
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nwavel_ccd,0:nbits-1) :: qflg_bit
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nwavel_ccd)           :: qflg_mask
     integer :: locerrstat
     INTEGER (KIND=i4) :: ntrr, nxrr, nwrr
+    integer (kind=i2) :: bad_qflg_mask
+    real (kind=r8) :: sum_cntr8
 
     if (errstat < 0) return
 
@@ -175,6 +173,8 @@ CONTAINS
     radref_wavl = 0.0_r8  ;  radref_spec = 0.0_r8
     omi_radref_sza = 0.0_r4 ; omi_radref_vza = 0.0_r4
 
+    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+
     DO iline = radiance_reference_lnums(1), radiance_reference_lnums(2), nlines_max
 
       ! --------------------------------------------------------
@@ -203,48 +203,26 @@ CONTAINS
         fpix = xtrange(iline+iloop,1)
         lpix = xtrange(iline+iloop,2)
 
-        DO ix = 1, nxrr
-
-          IF ( (ix < fpix) .OR. (ix > lpix) ) CYCLE
-
-          ! ----------------------------
-          ! Find the pixel quality flags
-          ! ----------------------------
-          ! -------------------------------------------------------------------
-          ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
-          !          conversion will result in a numeric overflow.
-          ! -------------------------------------------------------------------
-          CALL convert_2bytes_to_16bits ( nbits-1, nwrr, &
-                                         omi_radiance_qflg(1:nwrr,ix,iloop), qflg_bit(1:nwrr,0:nbits-2) )
-          ! --------------------------------------------------------------------
-          ! Add contributions from various quality flags. Any CCD pixel that has
-          ! a cumulative quality flag > 0 will be excluded form the averaging.
-          ! --------------------------------------------------------------------
-          qflg_mask(1:nwrr) = 0_i2
-          qflg_mask(1:nwrr) = &
-            qflg_bit(1:nwrr,qflg_mis_idx) + &   ! Missing pixel
-            qflg_bit(1:nwrr,qflg_bad_idx) + &   ! Bad pixel
-            qflg_bit(1:nwrr,qflg_err_idx) !+ &   ! Processing error
-          !qflg_bit(1:nwrr,qflg_tra_idx) + &   ! Transient pixel
-          !qflg_bit(1:nwrr,qflg_rts_idx) + &   ! RTS pixel
-          !qflg_bit(1:nwrr,qflg_sat_idx)       ! Saturation
+        DO ix = fpix, lpix
 
           cntr8(1:nwrr) = 1.0_r8
-          WHERE ( qflg_mask(1:nwrr) > 0_i2 )
-            cntr8(1:nwrr) = 0.0_r8
-          END WHERE
 
+          where (iand(omi_radiance_qflg(1:nwrr,ix,iloop), bad_qflg_mask) /= 0)
+            cntr8(1:nwrr) = 0.0_r8
+          end where
+
+          sum_cntr8 = sum (cntr8)
+          if (sum_cntr8 > 0.0) then
           ! ------------------------------------
           ! Only proceed if we have a good value
           ! ------------------------------------
-          IF ( ANY ( cntr8(1:nwrr) > 0.0_r8 ) ) THEN
 
             omi_radiance_spec(1:nwrr,ix,iloop) = &
               omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr) * cntr8(1:nwrr)
 
-            specsum = SUM ( omi_radiance_spec(1:nwrr,ix,iloop) ) / SUM ( cntr8(1:nwrr) )
-            IF ( specsum == 0.0_r8 ) specsum = 1.0_r8
-
+            !specsum = SUM ( omi_radiance_spec(1:nwrr,ix,iloop) ) / sum_cntr8
+            !IF ( specsum == 0.0_r8 ) specsum = 1.0_r8
+            ! Why do the above if specsum is set to 1.0 below?? --JED
             specsum = 1.0_r8
 
             radref_spec(ix,1:nwrr) = &
@@ -825,13 +803,12 @@ CONTAINS
       rad_spec_avg, do_skip_pix )
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module,       ONLY: &
-      qflg_mis_idx, qflg_bad_idx, qflg_err_idx
+    USE OMSAO_indices_module,    ONLY: &
+      qual_flag_mis, qual_flag_bad, qual_flag_err
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
     use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_solar_comp
     USE OMSAO_solcomp_module,       ONLY: solarcomp_pars
     USE OMSAO_errstat_module
-    USE strutils, ONLY: convert_2bytes_to_16bits
 
     IMPLICIT NONE
 
@@ -860,13 +837,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i2), PARAMETER                          :: nbits = 16
     INTEGER (KIND=i4)                                     :: &
       i, locerrstat, imin1, imax1, imin2, imax2, j1, j2
     LOGICAL                                               :: have_good_window
-    INTEGER (KIND=i2), DIMENSION (n_adj,0:nbits-1) :: rad_qflg_bit
-    INTEGER (KIND=i2), DIMENSION (n_adj)           :: rad_qflg_mask
     REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
+    integer (kind=i2) :: bad_qflg_mask
 
     locerrstat  = pge_errstat_ok
     do_skip_pix = .FALSE.
@@ -935,33 +910,12 @@ CONTAINS
     ! -------------------------------------------------------------------------------
     have_good_window = .TRUE.
 
-    ! ----------------------------
-    ! Find the pixel quality flags
-    ! ----------------------------
-    ! -------------------------------------------------------------------
-    ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
-    !          conversion will result in a numeric overflow.
-    ! -------------------------------------------------------------------
-    CALL convert_2bytes_to_16bits ( nbits-1, n_adj, &
-                                   omi_rad_qflg(1:n_adj), &
-                                   rad_qflg_bit(1:n_adj,0:nbits-2) )
-
     ! --------------------------------------------------------------------
-    ! Add contributions from various quality flags. Any CCD pixel that has
-    ! a cumulative quality flag > 0 will be excluded form the fitting.
-    !
+    ! Find the pixel quality flags.
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    rad_qflg_mask(1:n_adj) = 0_i2
-    rad_qflg_mask(1:n_adj) = rad_qflg_mask(1:n_adj) + &
-      rad_qflg_bit(1:n_adj,qflg_mis_idx) + &   ! Missing pixel
-      rad_qflg_bit(1:n_adj,qflg_bad_idx) + &   ! Bad pixel
-      rad_qflg_bit(1:n_adj,qflg_err_idx) !+ &   ! Processing error
-    !rad_qflg_bit(1:n_adj,qflg_tra_idx) + &   ! Transient pixel
-    !rad_qflg_bit(1:n_adj,qflg_rts_idx) + &   ! RTS pixel
-    !rad_qflg_bit(1:n_adj,qflg_sat_idx)       ! Saturation
-
-    WHERE ( rad_qflg_mask(1:n_adj) > 0_i2 )
+    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+    WHERE (iand (omi_rad_qflg(1:n_adj), bad_qflg_mask) /= 0)
       adj_wgts(1:n_adj) = downweight
       adj_spec(1:n_adj) = 0.0_r8
     END WHERE
