@@ -297,9 +297,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4)               :: iline
     INTEGER (KIND=i2), DIMENSION (nx,0:nt-1) :: geoflg
-    INTEGER (KIND=i2), DIMENSION (nx) :: land_water_flg
     type (L1B_Object_Type) :: l1bobj
 
     ! let errstat flow
@@ -315,50 +313,17 @@ CONTAINS
     !       they are being used in the AMF computation routine. Hence we need
     !       to save the full array.
     ! ------------------------------------------------------------------------
-    write (*,*) "***********************************"
-    write (*,*) "reading snow ice info"
-    write (*,*) "***********************************"
-    DO iline = 0, nt-1
 
-      CALL convert_gpqualflag_info (   &
-        nx,                         &
-        geoflg        (1:nx, iline),       &
-        land_water_flg(1:nx),       &
-        glint_flg     (1:nx,iline), &
-        snow_ice_flg  (1:nx,iline)    )
-
-    END DO
-
-  END SUBROUTINE omi_read_glint_ice_flags
-
-  SUBROUTINE convert_gpqualflag_info ( &
-      nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
-
-    USE OMSAO_precision_module
-    USE strutils
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (IN) :: omi_geoflg
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
-
-    ! Bits 0-3 are land/water
-    land_water_flg(1:nxtrack) = iand (omi_geoflg(1:nxtrack), 15_i2)
+    ! Bits 0-3 are land/water -- not used here
+    ! land_water_flg = iand (geoflg, 15_i2)
 
     ! Bit 4 is glint
-    glint_flg(1:nxtrack) = iand (ishft(omi_geoflg(1:nxtrack), -4), 1_i2)
+    glint_flg = iand (ishft(geoflg, -4), 1_i2)
 
     ! Bits 8-14 are snow/ice
-    snow_ice_flg(1:nxtrack) = iand (ishft(omi_geoflg(1:nxtrack), -8), 127_i2)
+    snow_ice_flg  = iand (ishft(geoflg, -8), 127_i2)
 
-  END SUBROUTINE convert_gpqualflag_info
+  END SUBROUTINE omi_read_glint_ice_flags
 
   SUBROUTINE convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
 
