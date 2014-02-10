@@ -315,6 +315,9 @@ CONTAINS
     !       they are being used in the AMF computation routine. Hence we need
     !       to save the full array.
     ! ------------------------------------------------------------------------
+    write (*,*) "***********************************"
+    write (*,*) "reading snow ice info"
+    write (*,*) "***********************************"
     DO iline = 0, nt-1
 
       CALL convert_gpqualflag_info (   &
@@ -356,68 +359,6 @@ CONTAINS
     snow_ice_flg(1:nxtrack) = iand (ishft(omi_geoflg(1:nxtrack), -8), 127_i2)
 
   END SUBROUTINE convert_gpqualflag_info
-
-  SUBROUTINE unused_convert_gpqualflag_info ( &
-      nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
-
-    USE OMSAO_precision_module
-    USE strutils
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (IN) :: omi_geoflg
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i2),                PARAMETER      :: nbyte = 16
-    INTEGER (KIND=i2), DIMENSION (7), PARAMETER      :: seven_byte = INT((/ 1, 2, 4, 8, 16, 32, 64 /),KIND=i2)
-    INTEGER (KIND=i4)                                :: i
-    INTEGER (KIND=i2), DIMENSION (nxtrack)           :: tmp_flg
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:nbyte-1) :: tmp_bytes
-
-    ! ----------------------------
-    ! Initialize output quantities
-    ! ----------------------------
-    land_water_flg = 0 ; glint_flg = 0 ; snow_ice_flg = 0
-
-    ! -----------------------------------------------
-    ! Save input variable in TMP_FLG for modification
-    ! -----------------------------------------------
-    tmp_flg(1:nxtrack) = omi_geoflg(1:nxtrack)  ;  tmp_bytes = 0
-
-    ! -------------------------------------------------------------------
-    ! CAREFUL: Only 15 flags/positions (0:14) can be returned or else the
-    !          conversion will result in a numeric overflow.
-    ! -------------------------------------------------------------------
-    CALL convert_2bytes_to_16bits ( &
-      nbyte-1, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-2) )
-
-    ! ------------------------------
-    ! The Glint flag is easy: Byte 4
-    ! ------------------------------
-    glint_flg(1:nxtrack) = tmp_bytes(1:nxtrack,4)
-
-    ! ------------------------------------------------------------------
-    ! Land/Water and Ice require a bit more work. The BIT slices must be
-    ! multiplied with the corresponding powers of 2. The sum over this
-    ! product is the information we seek.
-    ! ------------------------------------------------------------------
-    DO i = 1, nxtrack
-      land_water_flg(i) = SUM(tmp_bytes(i,0:3 )*seven_byte(1:4))
-      snow_ice_flg  (i) = SUM(tmp_bytes(i,8:14)*seven_byte(1:7))
-    END DO
-
-    RETURN
-  END SUBROUTINE unused_convert_gpqualflag_info
 
   SUBROUTINE convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
 
@@ -465,111 +406,6 @@ CONTAINS
     end do
     RETURN
   END SUBROUTINE convert_xtqualflag_info
-
-  SUBROUTINE unused_convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
-
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: i1_missval, i2_missval
-    USE strutils
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
-
-    ! -----------------
-    ! Modified variable
-    ! -----------------
-    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (INOUT) :: loc_xtrflg_l1b
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: loc_xtrflg
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4),                       PARAMETER    :: nbit = 16
-    INTEGER (KIND=i1), DIMENSION (0:2),      PARAMETER    :: three_bit = INT((/ 1, 2, 4 /),KIND=i1)
-    INTEGER (KIND=i2), DIMENSION (3:nbit-1), PARAMETER    :: add_value = INT((/ 10, 30, 100, 1000, 10000, &
-                                                                              0,  0,   0,    0,     0, &
-                                                                              0,  0,   0 /), KIND=i2)
-    INTEGER (KIND=i4)                                     :: i
-    INTEGER (KIND=i2), DIMENSION (nxtrack)                :: tmp_flg
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:nbit-1)       :: tmp_bits
-
-    ! -----------------------------------------------------------------------
-    ! Initialize output quantities. We can't initialize to "I2_MISSVAL" since
-    ! we will be recursively adding values to loc_xtrflg and hence have to
-    ! start out from Zero.
-    ! -----------------------------------------------------------------------
-    loc_xtrflg = 0_i2
-
-    ! --------------------------------------------------------
-    ! Save input variable in TMP_FLG for modification; in that
-    ! process, perform a INT8 --> UINT8 conversion.
-    ! --------------------------------------------------------
-    tmp_bits = 0
-    DO i = 1, nXtrack
-
-      IF ( loc_xtrflg_l1b(i) > -127_i1 .AND. loc_xtrflg_l1b(i) < 0_i1 ) THEN
-        tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 ) + 256_i2
-      ELSE
-        tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 )
-      END IF
-
-      ! -----------------------------------------------------------
-      ! The code below fails on 32 bit platforms due to "255" being
-      ! outside the range of 8bit Integers. On 64 bit platforms it
-      ! works perfectly fine.
-      ! -----------------------------------------------------------
-      !IF ( loc_xtrflg_l1b(i) > -127_i1 .AND. loc_xtrflg_l1b(i) < 0_i1 ) THEN
-      !   tmp_flg(i) = INT ( IAND(loc_xtrflg_l1b(i),255), KIND=i2 )
-      !ELSE
-      !   tmp_flg(i) = INT ( loc_xtrflg_l1b(i), KIND=i2 )
-      !END IF
-
-    END DO
-
-    ! gga
-    ! -----------------------------------------------
-    ! Save input variable in TMP_FLG for modification
-    ! -----------------------------------------------
-    !tmp_flg(1:nxtrack) = loc_xtrflg_l1b(1:nxtrack)  ;  tmp_bits = 0
-    ! gga
-    CALL convert_2bytes_to_16bits ( &
-      nbit, nxtrack, tmp_flg(1:nxtrack), tmp_bits(1:nxtrack,0:nbit-1) )
-    ! ------------------------------------------------------------------
-    ! The Row Anomaly Flags, Bits 0-2
-    ! ------------------------------------------------------------------
-    DO i = 1, nxtrack
-      loc_xtrflg(i) = INT ( SUM(tmp_bits(i,0:2 )*three_bit(0:2)), KIND=i2 )
-    END DO
-
-    ! ----------------------------------------------
-    ! Add the other bit flags:
-    !
-    !  Bit  Effect                      Added Value
-    !   3   Reserved for future use        10
-    !   4   wavelength-shift               30
-    !   5   blockage                      100
-    !   6   stray sunlight               1000
-    !   7   stray earth radiance        10000
-    ! ----------------------------------------------
-    DO i = 1, nxtrack
-      IF ( loc_xtrflg(i) < 0_i2 ) THEN
-        loc_xtrflg(i)     = i2_missval
-        loc_xtrflg_l1b(i) = i1_missval
-      ELSE
-        loc_xtrflg(i) = loc_xtrflg(i) + SUM(INT(tmp_bits(i,3:nbit-1),KIND=i2) * add_value(3:nbit-1))
-      END IF
-    END DO
-
-    RETURN
-  END SUBROUTINE unused_convert_xtqualflag_info
 
   SUBROUTINE omi_xtract_swathname ( l1bfile, l1bchan, omiswath )
 
