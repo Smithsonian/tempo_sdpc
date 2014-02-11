@@ -172,11 +172,6 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   REAL (KIND=r8) :: tol,  epsrel,  epsabs,  epsx
 
-  ! ----------------------------------------
-  ! Variable for +1.0 or -1.0 multiplication
-  ! ----------------------------------------
-  REAL (KIND=r8) :: pm_one
-
   ! ----------------------------------------------------------------------
   ! Index for the fitting parameters carrying the fitted column value.
   !

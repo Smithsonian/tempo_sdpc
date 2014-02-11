@@ -73,7 +73,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
     fitvar_sol_init, fitvar_rad_init,  fitvar_rad_saved, szamax,                        &
     zatmos, lo_sunbnd, up_sunbnd, lo_radbnd, up_radbnd,                      &
     radwavcal_freq, tol, epsrel,  epsabs,  epsx, &
-    pm_one, Undersample_Phase,     &
+    Undersample_Phase,     &
     ctrl_fit_winwav_lim, ctrl_fit_winexc_lim, pixnum_lim, radfit_latrange, &
     static_input_fnames, fitvar_rad_str, winwav_min, winwav_max,       &
     have_undersampling,                                                &
@@ -619,12 +619,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
   END SELECT
 
   CALL find_radiance_fitting_variables ( errstat )
-
-  IF ( yn_doas ) THEN
-    pm_one     = -1.0_r8
-  ELSE
-    pm_one     =  1.0_r8
-  END IF
 
   ! -----------------------------------------------
   ! Close fitting control file, report SUCCESS read

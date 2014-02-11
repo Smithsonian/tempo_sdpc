@@ -121,16 +121,18 @@ SUBROUTINE prepare_solar_refspec ( &
   ! (afterward, add solar spectrum back in order to divide by solar
   ! spectrum with altered wavelength calibration in subroutine spectrum).
   ! ---------------------------------------------------------------------
-  IF ( yn_doas ) database(1:n_radpts, ring_idx) = &
-    database(1:n_radpts, ring_idx) / spline_sun(1:n_radpts)
+  IF ( yn_doas ) then
+    database(1:n_radpts, ring_idx) = &
+      database(1:n_radpts, ring_idx) / spline_sun(1:n_radpts)
 
-  ! ---------------------------------------------------------
-  ! For the DOAS case, high-pass filter the reference spectra
-  ! ---------------------------------------------------------
-  IF ( yn_doas ) THEN
+    ! -------------------------------------------------------------------
+    ! For the DOAS case, high-pass filter the reference spectra
+    !  (This fits and subtracts a cubic from all database(:,:) spectra)
+    ! -------------------------------------------------------------------
     ll_rad = fit_winwav_idx(2) ; lu_rad = fit_winwav_idx(3)
     CALL cubic_subtract (curr_rad_wvl, n_radpts, ll_rad, lu_rad, errstat)
     if (errstat < 0) return
+
     database(1:n_radpts, ring_idx) = &
       database(1:n_radpts, ring_idx) * spline_sun(1:n_radpts)
   END IF

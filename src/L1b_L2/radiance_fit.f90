@@ -46,7 +46,7 @@ CONTAINS
     USE OMSAO_parameters_module,   ONLY: &
       r8_missval, i2_missval, downweight
     USE OMSAO_variables_module,    ONLY:                                    &
-      n_fincol_idx, fincol_idx, pm_one, database, &
+      n_fincol_idx, fincol_idx, database, &
       fitvar_rad, n_fitvar_rad,      &
       lo_radbnd, up_radbnd, &
       fit_winwav_idx, mask_fitvar_rad, max_itnum_rad, refspecs_original, &
@@ -107,7 +107,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_max_fitpars)              :: fitvar, lobnd, upbnd
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_loc, n_fitvar_rad) :: covar_matrix
 
-    REAL    (KIND=r8) :: fitcol_saved, covar_xx
+    REAL    (KIND=r8) :: fitcol_saved, covar_xx, pm_one
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
@@ -374,8 +374,7 @@ CONTAINS
       n_fitwav_rad = INT (SUM(1.0_r8 * Spec%weights(1:n_rad_wvl_loc)**2))
 
       ! --------------------------------------------------------------------------
-      ! Assign total column. We have done the preliminary work with FITCOL_IDX and
-      ! PM_ONE, so we don't have to "IF DOAS" here.
+      ! Assign total column. We have done the preliminary work with FITCOL_IDX.
       !
       ! Reminder about the (admittedly confusing) variable names:
       !
@@ -395,6 +394,10 @@ CONTAINS
       !  TARGET_VAR     Saved fitting parameter values for possible use to remove
       !                 target gas from radiance reference
       ! --------------------------------------------------------------------------
+
+      pm_one = 1.0_r8
+      if (yn_doas) pm_one = -1.0_r8
+
       fitcol = 0.0_r8  ;  dfitcol = 0.0_r8 ; target_var = 1.0_r8
       DO i = 1, n_fincol_idx
         ! --------------------------------------------------
@@ -754,11 +757,10 @@ CONTAINS
 
       i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 
+      ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
       fit(j1:j2) = &
-        ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
-        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
-        ! Ring adjustment
-        rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
+        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) &
+        + rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
 
       DO j = 1, max_rs_idx
         IF ( j /= solar_idx .AND. j /= ring_idx ) THEN
@@ -1061,11 +1063,10 @@ CONTAINS
 
       i = max_calfit_idx + (ring_idx-1)*mxs_idx + ad1_idx
 
+      ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
       fit(j1:j2) = &
-        ! For DOAS, rad_fitvar(SIN_IDX) should == 1., and not be varied
-        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) + &
-        ! Ring adjustment
-        rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
+        rad_fitvar(sin_idx) * LOG ( sunspec_ss(j1:j2) ) &
+        + rad_fitvar(i) * (database(j1:j2, ring_idx) / sunspec_ss (j1:j2))
 
       DO j = 1, max_rs_idx
         IF ( j /= solar_idx .AND. j /= ring_idx  .AND. &
