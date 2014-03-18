@@ -1,0 +1,10 @@
+#-------------------------------------------------------------------------------
+# Makefile.deltas
+#
+# Definitions in this file override definitions in the main Makefile.
+# Keep the amount of overrides in this file to a minimum.
+#-------------------------------------------------------------------------------
+
+ADD_CF_FLAGS = -r8 -byteswapio -O -g
+
+#-------------------------------------------------------------------------------

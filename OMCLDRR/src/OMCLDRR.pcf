@@ -1,0 +1,115 @@
+?   SYSTEM RUNTIME PARAMETERS
+1
+1
+?   PRODUCT INPUT FILES
+! ./
+10301|leapsec.dat||||leapsec.dat|1
+10401|utcpole.dat||||utcpole.dat|1
+10402|earthfigure.dat||||earthfigure.dat|1
+299001|OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4||||OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4|1
+511001|OMCLDRR.MCF|../tbl||||1
+10601|de200.eos||||de200.eos|1
+10801|sc_tags.dat||||sc_tags.dat|1
+10250|MCF|||||1
+10252|GetAttr.temp|||||1
+10254|MCFWrite.temp|||||1
+?   PRODUCT OUTPUT FILES
+! ./
+520001|OMCLDRR-o07177.he5|||||1
+10255|asciidump|||||1
+?   SUPPORT INPUT FILES
+! ./
+510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v003-2007m0327t132404.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v003-2007m0327t132404.he4|1
+#510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0925t112907.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0925t112907.he4|1
+#510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0609t141033.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0609t141033.he4|1
+#510001|OMI-Aura_L1-OML1BIRR_2005m0308t1503-o03442_v002-2005m0401t160441.he4||||OMI-Aura_L1-OML1BIRR_2005m0308t1503-o03442_v002-2005m0401t160441.he4|1
+510003|terr_prs.txt|||||1
+510004|chl.txt|||||1
+#510005|refl360_toms_clim.txt|||||1
+510005|refl360_toms_clim_corr_cox_munk.txt|||||1
+510006|cld_mask_thresh.txt|||||1
+#510007|reference_spectra_uv2.txt|||||1
+#510007|reference_spectra.txt|||||1
+#510008|resids_392_398_opf8_cm.txt|||||1
+#510008|resids_392_398_irr2327.txt|||||1
+#510008|resids_392_398_gdps0.9_irr2327.txt|||||1
+#510008|resids_392_398_ecs2_earlygdps.txt|||||1
+#510010|ring_tab_omi_uv_z_p_all.dat|||||1
+#510010|ring_tab_omi_vis_z_p_all.dat|||||1
+#510010|ring_tab_gomi_z_p_all.dat|||||1
+510007|resids_346_356_ecs3.txt|||||1
+510008|resids_346_356_ecs3.txt|||||1
+#510007|resids_346_356_ecs2_earlygdps.txt|||||1
+#510008|resids_346_356_ecs2_lategdps.txt|||||1
+510009|o3_xsect_350.txt|||||1
+510010|ring_tab_omi_uv_z_p_all.dat|||||1
+510011|oc_raman_omi.dat|||||1
+510012|ler354_cox_munk.txt|||||1
+#510012|reflec_cal_3941.txt|||||1
+?   SUPPORT OUTPUT FILES 
+! ./
+10100|LogPGE|||||1
+10101|LogPGE|||||1
+10102|LogPGE|||||1
+10103|TmpStatus|||||1
+10104|TmpReport|||||1
+10105|TmpUser|||||1
+10110|MailFile|||||1
+10111|ShmMem|||||1
+?   USER DEFINED RUNTIME PARAMETERS
+10220|Toolkit version string|SCF  TK5.2.16
+200101|Granule Start Time|2000-06-06T01:12:00.376Z
+200102|INDEX GRANULE START|0
+200103|INDEX GRANULE END|15
+200104|tINTERVAL|2.000
+200100|SMF Verbosity Threshold|2
+200105|PGEVERSION|"1.9.0"
+200110|PROCESSINGCENTER|"OMIDAPS"
+200115|PROCESSINGHOST|"ominion123 Linux 2.4.14 RedHat 7.1"
+200120|REPROCESSINGACTUAL|"processed 1 time"
+200170|PROCESSINGLEVEL|"2"
+200175|INSTRUMENTNAME|"OMI"
+200180|OPERATIONMODE|"Test"
+200185|AUTHORAFFILIATION|"NASA/GSFC"
+200190|AUTHORNAME|"U.S. OMI Science Team"
+200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
+200200|ORBITNUMBER|07177
+200205|VERSIONID|3
+200300|Use Resid|1
+200303|Use Calibration Factor|0
+200302|Write Observations|0
+200301|Write Residuals|0
+200304|No Retrieval of Surface Pressure|0
+200305|No Retrieval of Pressure|0
+200306|Transient check|0         
+200307|wmin|345.5
+200308|wmax|354.5
+200309|do_o3|1
+#200310|Threshold orbit|06540
+200310|Threshold orbit|00000
+10109|TransmitFlag; 1=transmit,0=disable|0
+10106|RemoteHost|sandcrab
+10107|RemotePath|/usr/kwan/test/PC/data
+10108|EmailAddresses|kwan@eos.hitc.com
+10114|Logging Control; 0=disable logging, 1=enable logging|1
+10115|Trace Control; 0=no trace, 1=error trace, 2=full trace|0
+10116|Process ID logging; 0=don't log PID, 1=log PID|0
+10117|Disabled status level list (e.g. W S F)|0
+10118|Disabled seed list|0
+10119|Disabled status code list|0
+10120|ADEOS-II s/c reference time|0
+10121|ADEOS-II ground reference time|0
+10122|ADEOS-II s/c clock period|0
+10123|TRMM UTCF value|0
+10124|NASA PB5C time Epoch date (ASCII UTC)|0
+10507|ephemeris data quality flag mask|65536
+10508|attitude data quality flag mask|65536
+10911|ECS DEBUG; 0=normal, 1=debug|0
+10099|Local IP Address of 'ether'|155.157.31.87
+?   INTERMEDIATE INPUT
+! ./
+?   INTERMEDIATE OUTPUT
+! ./
+?   TEMPORARY I/O
+! ./
+?   END
