@@ -32,10 +32,10 @@ module MetadataModule
  INTEGER :: omi_smf_setmsg
  INTEGER :: pgs_MET_getPCAttr_I, pgs_MET_getPCAttr_d, pgs_MET_getPCAttr_s
  INTEGER :: pgs_MET_setAttr_I, pgs_MET_setAttr_d, pgs_MET_setAttr_s,          &
-	    pgs_MET_setmultiAttr_s
+            pgs_MET_setmultiAttr_s
  INTEGER :: pgs_met_init,pgs_met_write, pgs_pc_getreference, pgs_met_sfstart, &
-	    pgs_pc_getuniversalref, pgs_pc_getconfigdata, omi_localgranuleid, &
-	    pgs_met_sfend, pgs_met_remove
+            pgs_pc_getuniversalref, pgs_pc_getconfigdata, omi_localgranuleid, &
+            pgs_met_sfend, pgs_met_remove
 
  INTEGER :: i, status, returnstatus, version, sdid, Fil_Lun, ierr, j, ind, resid_id 
  integer, parameter :: nadd = 14, ninp = 9 
@@ -223,7 +223,7 @@ QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input)) ! n_missing cou
 
     returnstatus = PGS_PC_GetReference( Fil_Lun, version, buf )
       IF( returnstatus /= 0 ) THEN
-        WRITE( buf,'(A,I)' ) "get filename failed at LUN = ", Fil_Lun 
+        WRITE( buf,'(A,I0)' ) "get filename failed at LUN = ", Fil_Lun 
         ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, buf, "MetadataModule", 0 )
         GO TO 9999
       ELSE
