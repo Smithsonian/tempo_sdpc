@@ -7,7 +7,7 @@ subroutine read_solar_flux()
    use m_vars, ONLY: ws, fs, wmin2, wmax2, nsolwave, meas_qual_flg, &
             irr_quality_flagL, gomi, iprt, dist_rad, dist_irrad, config_irr 
    USE hdfeos4_parameters
-   USE L1b_reader_class
+   USE L1B_Reader_class
    USE m_LUN_set
    USE m_lambda_qual
    USE m_earth_sun_dist
@@ -108,7 +108,7 @@ subroutine read_solar_flux()
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
       "irr_quality_flagL allocation failure, PGE aborting, exit code = 1", &
       "read_solar_flux", 1 )
-       callexit(1)
+       call exit(1)
     END IF
 
    ALLOCATE( wavelengthL(nWavel,nXtrack), STAT=ierr )

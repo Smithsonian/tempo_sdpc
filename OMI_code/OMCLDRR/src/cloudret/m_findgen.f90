@@ -20,12 +20,12 @@ implicit none
 !        vector = findgen(length)
 !     
 ! !INPUT PARAMETERS:   
-integer, intent(in)	    :: length 
-!			length : length of vector to create
+integer, intent(in)            :: length 
+!                        length : length of vector to create
 !
 ! !OUTPUT PARAMETERS:  
-real, dimension(length) :: vector
-!			vector : vector filled with 0,1,2,...length-1
+real (KIND=8), dimension(length) :: vector
+!                        vector : vector filled with 0,1,2,...length-1
 !
 ! !SEE ALSO:  IDL documentation, indgen.f90
 !
@@ -38,7 +38,7 @@ real, dimension(length) :: vector
 
 !local variables
 !---------------
-integer				:: i
+integer                                :: i
 
 vector = (/ (i,i=0,length-1) /)
 end function findgen

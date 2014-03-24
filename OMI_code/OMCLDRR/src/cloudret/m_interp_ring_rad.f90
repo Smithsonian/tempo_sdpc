@@ -11,6 +11,8 @@ use m_cloud_pres_mod, ONLY: l,j,nt,i01a_clds, i0a_clds, tra_clds, nia_clds, &
     sz, satz, az, comp_all_ring
 use m_vars, ONLY: i01a, i0a, tra, nia, nra, sba, nba, k1bar, z1, z2
 use m_trilin
+!! Added matchons for degree->radians conversion in trig functions
+use mathcons, ONLY: deg2rad
    implicit none
 !-------------------------------------------------------------------------
 !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -41,15 +43,15 @@ use m_trilin
 !
 logical, dimension(:), intent(out) :: computed
 integer, intent(in) :: ix1
-real,    intent(in) :: reflec
-real, dimension(:), intent(inout), optional :: ring
-real, dimension(:), intent(inout) :: rad
-real, dimension(:), intent(inout), optional :: drad_tot_dr
+real (KIND=8),    intent(in) :: reflec
+real (KIND=8), dimension(:), intent(inout), optional :: ring
+real (KIND=8), dimension(:), intent(inout) :: rad
+real (KIND=8), dimension(:), intent(inout), optional :: drad_tot_dr
 character(len=50) :: myname='interp_ring_rad: '
 logical :: newtable = .true.
 integer :: lmin, jmin, kmin
-real :: refl2, r1, r2
-real, allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
+real (KIND=8) :: refl2, r1, r2
+real (KIND=8), allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
 
 !**************************************************************************
   if (.not. comp_all(ix1)) then
@@ -67,8 +69,12 @@ real, allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
     allocate(den2(nobs))
     den=(1-reflec*sba(ix1,ind))
     den2=den**2
-    r1=-3./8.*cosd(sz)*sind(sz)*sind(satz)*cosd(az)
-    r2=3./32.*sind(sz)**2*sind(satz)**2/cosd(satz)*cosd(2.0*az)
+!!! Apparently OMI code was built on fortran including trig functions in 
+!!! degrees, replace with radians version for gfortran
+!    r1=-3./8.*cosd(sz)*sind(sz)*sind(satz)*cosd(az)
+!    r2=3./32.*sind(sz)**2*sind(satz)**2/cosd(satz)*cosd(2.0*az)
+    r1=-3./8.*cos(sz*deg2rad)*sin(sz*deg2rad)*sin(satz*deg2rad)*cos(az*deg2rad)
+    r2=3./32.*sin(sz*deg2rad)**2*sin(satz*deg2rad)**2/cos(satz*deg2rad)*cos(2.0*az*deg2rad)
     rad = exp(i0a_clds(ix1,:)) + z1_clds(ix1,:)*r1 + &
        z2_clds(ix1,:)*r2 + &
        reflec*tra_clds(ix1,:) / den
@@ -118,14 +124,16 @@ use m_trilin
 use m_triquad
 use m_vars, ONLY: i0a, tra, sba, z1, z2
 use m_cloud_pres_mod, ONLY: l,j,nt, table, temp3D, sz, satz, az
+!!Added to allow change of trig functions from degrees to radians
+use mathcons, ONLY: deg2rad
 implicit none
 
 integer, intent(in) :: ix1
 integer, intent(in) :: ind
-real,    intent(out) :: i0, sb, tr
+real (KIND=8),    intent(out) :: i0, sb, tr
 
-real,    dimension(1) :: i01, tr1, z11, z21
-real                  :: R1, R2
+real (KIND=8),    dimension(1) :: i01, tr1, z11, z21
+real (KIND=8)                  :: R1, R2
 
 sb=sba(ix1,ind)
 temp3D => i0a (ix1,:,:,ind:ind)
@@ -136,9 +144,12 @@ temp3D => z2 (ix1,:,:,ind:ind)
  z21 = biquad(j,nt)
 temp3D => tra (ix1,:,:,ind:ind)
  tr1 = biquad(j,nt)
-r1=-3./8.*cosd(sz)*sind(sz)*sind(satz)
-r2=3./32.*sind(sz)**2*sind(satz)**2/cosd(satz)
-i0=exp(i01(1))+z11(1)*cosd(az)*R1+z21(1)*cosd(2.*az)*R2
+!!r1=-3./8.*cosd(sz)*sind(sz)*sind(satz)
+!!r2=3./32.*sind(sz)**2*sind(satz)**2/cosd(satz)
+!!i0=exp(i01(1))+z11(1)*cosd(az)*R1+z21(1)*cosd(2.*az)*R2
+r1=-3./8.*cos(sz*deg2rad)*sin(sz*deg2rad)*sin(satz*deg2rad)
+r2=3./32.*sin(sz*deg2rad)**2*sin(satz*deg2rad)**2/cos(satz*deg2rad)
+i0=exp(i01(1))+z11(1)*cos(az*deg2rad)*R1+z21(1)*cos(2.*az*deg2rad)*R2
 tr=tr1(1)
 
 end subroutine interp_rad

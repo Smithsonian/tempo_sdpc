@@ -28,11 +28,11 @@ implicit none
 !     
 ! !INPUT PARAMETERS:   
 integer, dimension(:), intent(in)   :: vectorin
-!			vectorin : input vector to average
+!                        vectorin : input vector to average
 !
 ! !OUTPUT PARAMETERS:  
-real 				    :: avg
-!			avg      : average of vectorin
+real (KIND=8)                                     :: avg
+!                        avg      : average of vectorin
 !
 ! !SEE ALSO:  IDL documentation 
 !
@@ -50,8 +50,8 @@ end function i_avg
 function r_avg(vectorin) result (avg)
 implicit none
 
-real, dimension(:), intent(in)	    :: vectorin
-real 				    :: avg
+real (KIND=8), dimension(:), intent(in)            :: vectorin
+real (KIND=8)                                    :: avg
 
   avg=sum(vectorin)/size(vectorin)
 
@@ -60,8 +60,8 @@ end function r_avg
 function r4_avg(vectorin) result (avg)
 implicit none
 
-real (kind=4), dimension(:), intent(in)	    :: vectorin
-real (kind=4)  				    :: avg
+real (kind=4), dimension(:), intent(in)            :: vectorin
+real (kind=4)                                      :: avg
 
   avg=sum(vectorin)/size(vectorin)
 
@@ -70,8 +70,8 @@ end function r4_avg
 function r_avg2D(vectorin) result (avg)
 implicit none
 
-real, dimension(:,:), intent(in)	    :: vectorin
-real 				            :: avg
+real (KIND=8), dimension(:,:), intent(in)            :: vectorin
+real (KIND=8)                                            :: avg
 
   avg=sum(reshape(vectorin,(/size(vectorin,1)*size(vectorin,2) /) )) &
      / (size(vectorin,1) * size(vectorin,2))

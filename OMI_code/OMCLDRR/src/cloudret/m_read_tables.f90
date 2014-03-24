@@ -15,7 +15,7 @@ subroutine read_tables (rc)
 
 ! !USES:
 !  read_tables reads precomputed tables needed for cloud
-!               parameter retrievals		
+!               parameter retrievals                
 !
 use m_vars, ONLY: w_grid, nwave2, nwave, & 
   wmin, wmax, &
@@ -62,7 +62,7 @@ include 'PGS_SMF.f'
 if (ex) then
 version = 1
 status = pgs_io_gen_openf ( ring_id, PGSd_IO_Gen_RSeqUnf, &
-	0,lun, version)
+        0,lun, version)
 if(status.ne.0) then
   ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening Ring table file', &
   'read_tables, module m_read_tables',1)

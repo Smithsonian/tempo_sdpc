@@ -21,21 +21,21 @@ implicit none
 ! !ROUTINE:  matmul1
 ! 
 ! !DESCRIPTION: calls fortran matmul, designed to work with .mm. operator
-!		c = a .mm. b (from c = a \# b in IDL)
+!                c = a .mm. b (from c = a \# b in IDL)
 !
 ! !CALLING SEQUENCE: 
 !
 !        c = matmul1(a,b)
 !     
 ! !INPUT PARAMETERS:   
-     real, dimension(:,:), intent(in) :: a
-!			a : 1st matrix operand
-     real, dimension(:,:), intent(in) :: b
-!			b : 2nd matrix operand
+     real (KIND=8), dimension(:,:), intent(in) :: a
+!                        a : 1st matrix operand
+     real (KIND=8), dimension(:,:), intent(in) :: b
+!                        b : 2nd matrix operand
 !
 ! !OUTPUT PARAMETERS:  
-     real, dimension(size(a,1),size(b,2))   :: c
-!			c : result matrix
+     real (KIND=8), dimension(size(a,1),size(b,2))   :: c
+!                        c : result matrix
 !
 ! !SEE ALSO:  IDL documentation
 !
@@ -64,22 +64,22 @@ implicit none
 ! !ROUTINE:  matmul2
 ! 
 ! !DESCRIPTION: calls fortran matmul, designed to work with .mm. operator
-!		c = a .mm. b (from c = a \# b in IDL), same as matmul1,
-!		but with matrix and vector
+!                c = a .mm. b (from c = a \# b in IDL), same as matmul1,
+!                but with matrix and vector
 !
 ! !CALLING SEQUENCE: 
 !
 !        c = matmul1(a,b)
 !     
 ! !INPUT PARAMETERS:   
-     real, dimension(:,:), intent(in) 	:: a
-!			a : 1st matrix operand
-     real, dimension(:),   intent(in) 	:: b
-!			b : 2nd vector operand
+     real (KIND=8), dimension(:,:), intent(in)         :: a
+!                        a : 1st matrix operand
+     real (KIND=8), dimension(:),   intent(in)         :: b
+!                        b : 2nd vector operand
 !
 ! !OUTPUT PARAMETERS:  
-     real, dimension(size(a,1))   	:: c
-!			c : result matrix
+     real (KIND=8), dimension(size(a,1))           :: c
+!                        c : result matrix
 !
 ! !SEE ALSO:  IDL documentation
 !
@@ -102,9 +102,9 @@ implicit none
    function matmul3 (a,b) result (c)
    implicit none
 
-     real, dimension(:),   intent(in) 	:: a
-     real, dimension(:,:), intent(in) 	:: b
-     real, dimension(size(b,2))   	:: c
+     real (KIND=8), dimension(:),   intent(in)         :: a
+     real (KIND=8), dimension(:,:), intent(in)         :: b
+     real (KIND=8), dimension(size(b,2))           :: c
 
      if (size(a,1) /= size(b,1) ) then
        print *,'incorrect matrix dimensions in .mm.'
@@ -117,9 +117,9 @@ implicit none
    function matmul4 (a,b) result (c)
     implicit none
 
-     real, dimension(:),   intent(in) 	:: a
-     real, dimension(:), intent(in) 	:: b
-     real, dimension(1)   		:: c
+     real (KIND=8), dimension(:),   intent(in)         :: a
+     real (KIND=8), dimension(:), intent(in)         :: b
+     real (KIND=8), dimension(1)                   :: c
 
      if (size(a,1) /= size(b,1) ) then
        print *,'incorrect matrix dimensions in .mm.'

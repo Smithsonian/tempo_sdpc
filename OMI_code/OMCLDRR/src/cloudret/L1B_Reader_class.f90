@@ -1168,9 +1168,9 @@ MODULE L1B_Reader_class
            RETURN
         ENDIF 
         
-	! Initialize L1B block to fill values
+        ! Initialize L1B block to fill values
 
-	ierr = init_l1b_blk(this)
+        ierr = init_l1b_blk(this)
 
         ! Read all L1B datasets
 
@@ -1797,13 +1797,13 @@ MODULE L1B_Reader_class
 !!
       FUNCTION L1Br_getGEOline(this, iLine, Time_k, SecondsInDay_k, &
                 SpacecraftLatitude_k, SpacecraftLongitude_k, &
-			    SpacecraftAltitude_k, &
-			    SolarElevation_k, SolarAzimuth_k, &
-			    SolarElevationMinimum_k, SolarElevationMaximum_k, &
-			    SolarAzimuthMinimum_k, SolarAzimuthMaximum_k, &
-			    Latitude_k, Longitude_k, SolarZenithAngle_k, &
+                            SpacecraftAltitude_k, &
+                            SolarElevation_k, SolarAzimuth_k, &
+                            SolarElevationMinimum_k, SolarElevationMaximum_k, &
+                            SolarAzimuthMinimum_k, SolarAzimuthMaximum_k, &
+                            Latitude_k, Longitude_k, SolarZenithAngle_k, &
                 SolarAzimuthAngle_k, ViewingZenithAngle_k, &
-			    ViewingAzimuthAngle_k, TerrainHeight_k, &
+                            ViewingAzimuthAngle_k, TerrainHeight_k, &
                 GroundPixelQualityFlags_k, XTrackQualityFlags_k ) RESULT (status)
                 !tpk TrueZoom_k ) RESULT (status)   ! tpk addition
 
@@ -2159,16 +2159,16 @@ MODULE L1B_Reader_class
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         INTEGER (KIND = 1), OPTIONAL, INTENT(OUT) :: MeasurementClass_k, &
-			      InstrumentConfigurationId_k, ExposureType_k, GainCode1_k, &
-			      GainCode2_k, GainCode3_k, GainCode4_k, DSGainCode_k, &
-			      LSLABF_k, USLABF_k, LDABF_k, UDABF_k, ImageBinningFactor_k
+                              InstrumentConfigurationId_k, ExposureType_k, GainCode1_k, &
+                              GainCode2_k, GainCode3_k, GainCode4_k, DSGainCode_k, &
+                              LSLABF_k, USLABF_k, LDABF_k, UDABF_k, ImageBinningFactor_k
         INTEGER (KIND = 2), OPTIONAL, INTENT(OUT) :: MeasurementQualityFlags_k, &
                               CalibrationSettings_k, GainSwitchingColumn1_k, &
-			      GainSwitchingColumn2_k, GainSwitchingColumn3_k, &
+                              GainSwitchingColumn2_k, GainSwitchingColumn3_k, &
                               SkipRows1_k, SkipRows2_k, SkipRows3_k, SkipRows4_k, &
                               BinnedImageRows_k, StopColumn_k
         REAL (KIND =4), OPTIONAL, INTENT(OUT) :: MasterClockPeriod_k, ExposureTime_k, &
-	                      ReadoutTime_k, DetectorTemperature_k, OpticalBenchTemperature_k
+                              ReadoutTime_k, DetectorTemperature_k, OpticalBenchTemperature_k
         INTEGER :: i
         INTEGER (KIND = 4) :: status
 
@@ -2247,7 +2247,7 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION calc_wl_pix(j, i, this, minwl, maxwl, wl_local, il, ih, &
-	                   Nwl_l) RESULT (status)
+                           Nwl_l) RESULT (status)
       INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
       TYPE (L1B_block_type), INTENT(INOUT) :: this
       INTEGER (KIND = 4), INTENT(IN) :: i, j
@@ -2308,7 +2308,7 @@ MODULE L1B_Reader_class
               RETURN
            ENDIF
  
-	   ! Set the lower bound based on wl_local and minwl
+           ! Set the lower bound based on wl_local and minwl
 
            IF(minwl < MINVAL(wl_local)) THEN
               il = 1
@@ -2331,7 +2331,7 @@ MODULE L1B_Reader_class
               RETURN
            ENDIF
  
-	   ! Set the upper bound based on wl_local and maxwl
+           ! Set the upper bound based on wl_local and maxwl
 
            IF(maxwl > MAXVAL(wl_local)) THEN
               ih = this%nWavel
@@ -2352,8 +2352,8 @@ MODULE L1B_Reader_class
 
         ! Loop through all wavelengths, and defind bounds based on minwl and maxwl
 
-	if (minwl < 0.0) minwl = 0.0
-	if (maxwl < 0.0) maxwl = 1000.0
+        if (minwl < 0.0) minwl = 0.0
+        if (maxwl < 0.0) maxwl = 1000.0
         DO k = 1, this%nWavel
            IF (wl_local(k) >= minwl .AND. wl_local(k) <= maxwl) THEN
               IF (il .EQ. 0) il = k
@@ -2410,7 +2410,7 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION calc_wl_line(j, this, minwl, maxwl, wl_local, il, ih, &
-	                   Nwl_l) RESULT (status)
+                           Nwl_l) RESULT (status)
       INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
       TYPE (L1B_block_type), INTENT(INOUT) :: this
       INTEGER (KIND = 4), INTENT(IN) :: j
@@ -2476,7 +2476,7 @@ MODULE L1B_Reader_class
               RETURN
            ENDIF
  
-	   ! Set the lower bound based on wl_local and minwl
+           ! Set the lower bound based on wl_local and minwl
 
            IF(minwl < MINVAL(wl_local)) THEN
               il = 1
@@ -2512,7 +2512,7 @@ MODULE L1B_Reader_class
               RETURN
            ENDIF
 
-	   ! Set the upper bound based on wl_local and maxwl
+           ! Set the upper bound based on wl_local and maxwl
 
            IF(maxwl > MAXVAL(wl_local)) THEN
               ih = this%nWavel
@@ -2545,8 +2545,8 @@ MODULE L1B_Reader_class
 
         ! Loop through all wavelengths, and defind bounds based on minwl and maxwl
 
-	if (minwl < 0.0) minwl = 0.0
-	if (maxwl < 0.0) maxwl = 1000.0
+        if (minwl < 0.0) minwl = 0.0
+        if (maxwl < 0.0) maxwl = 1000.0
         DO k = 1, this%nWavel
            DO i = 1, this%nXtrack
               IF (wl_local(k,i) >= minwl .AND. wl_local(k,i) <= maxwl) THEN
@@ -2655,7 +2655,7 @@ MODULE L1B_Reader_class
                               WavelengthCoefficient_k, WavelengthCoefficientPrec_k, &
                               WavelengthReferenceColumn_k, SmallPixelSignal_k, &
                               SmallPixelWavelength_k, NumberSmallPixelColumns_k, &
-	                      SmallPixelColumn_k) RESULT (status)
+                              SmallPixelColumn_k) RESULT (status)
         INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
 
         TYPE (L1B_block_type), INTENT(INOUT) :: this
@@ -2667,9 +2667,9 @@ MODULE L1B_Reader_class
         INTEGER (KIND = 1), OPTIONAL, INTENT(OUT) :: NumberSmallPixelColumns_k
         REAL (KIND = 4), OPTIONAL, DIMENSION(:), INTENT(OUT) :: Signal_k, &
                                              SignalPrecision_k, Wavelength_k, &
-					     WavelengthCoefficient_k, &
-					     WavelengthCoefficientPrec_k, &
-					     SmallPixelSignal_k, SmallPixelWavelength_k 
+                                             WavelengthCoefficient_k, &
+                                             WavelengthCoefficientPrec_k, &
+                                             SmallPixelSignal_k, SmallPixelWavelength_k 
         INTEGER (KIND = 2), OPTIONAL, DIMENSION(:), INTENT(OUT) :: &
                                              PixelQualityFlags_k, Mantissa_k, Precision_k
         INTEGER (KIND = 1), OPTIONAL, DIMENSION(:), INTENT(OUT) :: Exponent_k
@@ -2765,7 +2765,7 @@ MODULE L1B_Reader_class
            Wavelength_k(1:Nwl_l) = wl_local(il:ih)
         ENDIF
 
-	! Here is the raw data extraction
+        ! Here is the raw data extraction
 
         IF(PRESENT(Mantissa_k)) THEN
            IF(SIZE(Mantissa_k) < Nwl_l) THEN 
@@ -2806,8 +2806,8 @@ MODULE L1B_Reader_class
       IF(PRESENT(WavelengthCoefficient_k)) THEN
          IF(SIZE(WavelengthCoefficient_k) < this%nWavelCoef) THEN
             ierr = OMI_SMF_setmsg(OMI_E_INPUT, &
-		                    "input WavelengthCoefficient_k array too small", &
-				    "L1Br_getSIGpix", zero)
+                                    "input WavelengthCoefficient_k array too small", &
+                                    "L1Br_getSIGpix", zero)
             status = OMI_E_FAILURE
             RETURN
          ENDIF
@@ -2817,7 +2817,7 @@ MODULE L1B_Reader_class
       IF(PRESENT(WavelengthCoefficientPrec_k)) THEN
          IF(SIZE(WavelengthCoefficientPrec_k) < this%nWavelCoef) THEN
             ierr = OMI_SMF_setmsg(OMI_E_INPUT, &
-		                    "input WavelengthCoefficientPrec_k array too small",&
+                                    "input WavelengthCoefficientPrec_k array too small",&
                                     "L1Br_getSIGpix", zero)
             status = OMI_E_FAILURE
             RETURN
@@ -2948,10 +2948,10 @@ MODULE L1B_Reader_class
       FUNCTION L1Br_getSIGline(this, iLine, Wlmin_k, Wlmax_k, Signal_k, &
                              SignalPrecision_k, PixelQualityFlags_k, Wavelength_k, &
                              Nwl_k, Mantissa_k, Precision_k, Exponent_k, &
-			     WavelengthCoefficient_k, WavelengthCoefficientPrec_k, &
-			     WavelengthReferenceColumn_k, SmallPixelSignal_k, &
-			     SmallPixelWavelength_k, SmallPixelColumn_k, &
-			     NumberSmallPixelColumns_k) RESULT (status)
+                             WavelengthCoefficient_k, WavelengthCoefficientPrec_k, &
+                             WavelengthReferenceColumn_k, SmallPixelSignal_k, &
+                             SmallPixelWavelength_k, SmallPixelColumn_k, &
+                             NumberSmallPixelColumns_k) RESULT (status)
 !tpk       TrueZoom_k ) RESULT (status)     !tpk
         USE Szoom_Parameter_Module
         INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
@@ -2964,9 +2964,9 @@ MODULE L1B_Reader_class
         INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: Nwl_k
         REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT(OUT) :: Signal_k, &
                                              SignalPrecision_k, Wavelength_k, &
-					     WavelengthCoefficient_k, &
-					     WavelengthCoefficientPrec_k, &
-					     SmallPixelSignal_k, SmallPixelWavelength_k 
+                                             WavelengthCoefficient_k, &
+                                             WavelengthCoefficientPrec_k, &
+                                             SmallPixelSignal_k, SmallPixelWavelength_k 
         INTEGER (KIND = 2), OPTIONAL, DIMENSION(:,:), INTENT(OUT) :: &
                                              PixelQualityFlags_k, Mantissa_k, Precision_k
         INTEGER (KIND = 2), OPTIONAL, INTENT(OUT) :: WavelengthReferenceColumn_k
@@ -2978,10 +2978,10 @@ MODULE L1B_Reader_class
         REAL (KIND = 4),  DIMENSION(1:this%nWavel,1:this%nXtrack) :: tmp_Signal_k, &
                                              tmp_SignalPrecision_k, tmp_Wavelength_k
         REAL (KIND = 4),  DIMENSION(1:this%nWavelCoef, 1:this%nXtrack) :: &
-					     tmp_WavelengthCoefficient_k, &
-					     tmp_WavelengthCoefficientPrec_k
+                                             tmp_WavelengthCoefficient_k, &
+                                             tmp_WavelengthCoefficientPrec_k
         REAL (KIND = 4),  DIMENSION(1:this%nXtrack, 1:this%NumSmPixCol(iLine+1)) :: &
-					     tmp_SmallPixelSignal_k, tmp_SmallPixelWavelength_k 
+                                             tmp_SmallPixelSignal_k, tmp_SmallPixelWavelength_k 
         INTEGER (KIND = 2),  DIMENSION(1:this%nWavel,1:this%nXtrack) :: &
                                              tmp_PixelQualityFlags_k, tmp_Mantissa_k, tmp_Precision_k
         INTEGER (KIND = 1), DIMENSION(1:this%nWavel,1:this%nXtrack) :: tmp_Exponent_k
@@ -3335,7 +3335,7 @@ MODULE L1B_Reader_class
               IF(SIZE(SmallPixelSignal_k, 1) < this%nXtrack  .OR. &
                  SIZE(SmallPixelSignal_k, 2) < this%NumSmPixCol(iLine+1)) THEN
                  ierr = OMI_SMF_setmsg(OMI_E_INPUT, &
-		                    "input SmallPixelSignal_k array too small", &
+                                    "input SmallPixelSignal_k array too small", &
                                     "L1Br_getSIGline", zero)
                  status = OMI_E_FAILURE
                  RETURN
@@ -3365,7 +3365,7 @@ MODULE L1B_Reader_class
               IF(SIZE(SmallPixelWavelength_k, 1) < this%nXtrack  .OR. &
                  SIZE(SmallPixelWavelength_k, 2) < this%NumSmPixCol(iLine+1)) THEN
                  ierr = OMI_SMF_setmsg(OMI_E_INPUT, &
-		                    "input SmallPixelWavelength_k array too small", &
+                                    "input SmallPixelWavelength_k array too small", &
                                     "L1Br_getSIGline", zero)
                  status = OMI_E_FAILURE
                  RETURN
@@ -3936,7 +3936,7 @@ MODULE L1B_Reader_class
         ENDIF
         IF(fldflg .NE. 0) THEN
            status = OMI_E_FAILURE
-	   message = "Unable to read "//fieldname
+           message = "Unable to read "//fieldname
            ierr = OMI_SMF_setmsg(OMI_E_FAILURE, message, "L1Br_getDATAFIELDline", zero)
         ENDIF
 

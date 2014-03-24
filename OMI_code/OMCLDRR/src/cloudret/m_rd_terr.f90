@@ -23,12 +23,12 @@ implicit NONE
 ! !CALLING SEQUENCE: call rd_terr (lat, lon, terr_pres)
 !
 ! !INPUT PARAMETERS: 
-!real, dimension(:), intent(in)  :: lat, lon
+!real (KIND=8), dimension(:), intent(in)  :: lat, lon
 !                     lat     : latitude
 !                     lon     : longitude
 !
 ! !OUTPUT PARAMETERS:  
-!real, dimension(:), intent(out) :: terr_pres
+!real (KIND=8), dimension(:), intent(out) :: terr_pres
 !                     terr_pres      : terrain pressure
 !
 ! !SEE ALSO: 
@@ -53,7 +53,7 @@ include 'PGS_OMI_1900.f'
 include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
-real                       :: lont, latt
+real (KIND=8)                       :: lont, latt
 integer                    :: iret
    
 !=======================
@@ -61,7 +61,7 @@ integer                    :: iret
 !=======================
 if (.not. done_read_terr) then
   status = pgs_io_gen_openf ( terr_prs_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
 if(status.ne.0) then
   ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening terrain pressure file', &
   'rd_terr, module m_rd_terr',2)

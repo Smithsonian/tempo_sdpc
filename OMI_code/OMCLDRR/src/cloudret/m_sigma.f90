@@ -26,13 +26,13 @@ contains
 !        std = sigma(vectorin)
 !
 ! !INPUT PARAMETERS:
-     real, dimension(:)  :: ar1
+     real (KIND=8), dimension(:)  :: ar1
 !                       ar1 : input vector to find std deviation
-     real,    optional   :: avg1
+     real (KIND=8),    optional   :: avg1
      integer, optional   :: iprt
 !
 ! !OUTPUT PARAMETERS:
-     real                :: std
+     real (KIND=8)                :: std
 !                       std      :  std deviation
 !
 ! !SEE ALSO:  m_avg
@@ -49,7 +49,7 @@ contains
 ! the mean
 !    std = sqrt(sum( (ar1-avg(ar1))**2) /float(size(ar1)-1) )
 ! this is the function evaluated in the IDL sigma function
-    real :: avgarg
+    real (KIND=8) :: avgarg
 
      avgarg=avg(ar1)
 
@@ -102,7 +102,7 @@ contains
 ! the mean
 !    std = sqrt(sum( (ar1-avg(ar1))**2) /float(size(ar1)-1) )
 ! this is the function evaluated in the IDL sigma function
-    real :: avgarg
+    real (KIND=8) :: avgarg
 
      avgarg=avg(ar1)
 

@@ -50,7 +50,7 @@ MODULE m_HDFEOS_attr
              (/"PGEVERSION              ", "ProcessingCenter        ", &
                "InstrumentName          ", "ProcessingHost          ", &
                "ProcessLevel            ", "AuthorAffiliation       ", &
-               "AuthorName" /) 
+               "AuthorName              " /) 
          INTEGER (KIND=4), DIMENSION(npcfattr) :: lun
 
          CHARACTER( LEN = 200 ) :: StringValue, strTemp, OrbitData
@@ -127,7 +127,7 @@ MODULE m_HDFEOS_attr
            status = PGS_MET_getPCAttr_s( lun(di), version , "CoreMetadata.0", &
                                         "SHORTNAME", ShortName )
            IF( status /= PGS_S_SUCCESS ) THEN
-              WRITE( msg,'(A,I)' ) "get ShortName failed at LUN:", lun(di) 
+              WRITE( msg,'(A,I0)' ) "get ShortName failed at LUN:", lun(di) 
               ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                                     "CLDRR_writeGlobalAttribute", zero )
                call exit(1)
@@ -139,7 +139,7 @@ MODULE m_HDFEOS_attr
            status = PGS_MET_getPCAttr_s( lun(di), version , "CoreMetadata.0", &
                                          "PGEVERSION", InputPGEVersion )
            IF( status /= PGS_S_SUCCESS ) THEN
-              WRITE( msg,'(A,I)' ) "get InputPGEVersion failed at LUN:", lun(di) 
+              WRITE( msg,'(A,I0)' ) "get InputPGEVersion failed at LUN:", lun(di) 
               ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                                     "CLDRR_writeGlobalAttribute", zero )
                call exit(1)
@@ -174,7 +174,7 @@ MODULE m_HDFEOS_attr
          DO di = 1, npcfattr
            status = PGS_PC_GetConfigData( lun(di), StringValue )
            IF( status /= PGS_S_SUCCESS ) THEN
-              WRITE( msg,'(A,I)' ) "get from PCF failed at LUN = ", lun(di)
+              WRITE( msg,'(A,I0)' ) "get from PCF failed at LUN = ", lun(di)
               ierr = OMI_SMF_setmsg( status, msg, "CLDRR_writeGlobalAttribute", &
                                      zero )
               call exit(1)

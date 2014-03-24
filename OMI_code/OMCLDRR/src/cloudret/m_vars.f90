@@ -31,47 +31,51 @@ module m_vars
 integer :: retstatus
 character (len=200) :: flnm_out
 
-real, allocatable, dimension (:,:) :: reference_spec
-real, allocatable, dimension (:,:) :: reference_wave
-real, allocatable, dimension (:,:) :: resid_spec
-real, allocatable, dimension (:)   :: resid_wave
-real, allocatable, dimension (:)   :: cal_fact
-real, allocatable, dimension (:,:) :: reference_ring
-real, allocatable, dimension (:,:) :: reference_rad
-real, allocatable, dimension (:,:) :: ws ! solar wavelengths (nm)
-real, allocatable, dimension (:,:) :: fs ! solar irradiances
+real (KIND=8), allocatable, dimension (:,:) :: reference_spec
+real (KIND=8), allocatable, dimension (:,:) :: reference_wave
+real (KIND=8), allocatable, dimension (:,:) :: resid_spec
+real (KIND=8), allocatable, dimension (:)   :: resid_wave
+real (KIND=8), allocatable, dimension (:)   :: cal_fact
+real (KIND=8), allocatable, dimension (:,:) :: reference_ring
+real (KIND=8), allocatable, dimension (:,:) :: reference_rad
+real (KIND=8), allocatable, dimension (:,:) :: ws ! solar wavelengths (nm)
+real (KIND=8), allocatable, dimension (:,:) :: fs ! solar irradiances
 
 real (KIND = 4), dimension (:),     pointer :: wave_resid
 real (KIND = 4), dimension (:,:,:), pointer :: resid
-real (KIND = 4), dimension (:,:,:), pointer :: w1
-real (KIND = 4), dimension (:,:,:), pointer :: f1
-real (KIND = 4), dimension (:,:),   pointer :: w12d
-real (KIND = 4), dimension (:,:),   pointer :: f12d
+real (KIND = 4), dimension (:,:,:), allocatable :: w1
+real (KIND = 4), dimension (:,:,:), allocatable :: f1
+real (KIND = 4), dimension (:,:),   allocatable :: w12d
+real (KIND = 4), dimension (:,:),   allocatable :: f12d
 
 logical :: swap_geo = .false. !.true.
-real, pointer, dimension (:,:) :: thresholds
+real (KIND=8), allocatable, dimension (:,:) :: thresholds
 integer, pointer, dimension (:) :: npixels
-real, pointer, dimension (:) :: k1bar
-real, pointer, dimension (:,:) :: sba, nba
-real, pointer, dimension (:,:,:,:,:) :: i01a, nia
-real, pointer, dimension (:,:,:,:) :: tra, nra, i0a, z1, z2
-real (kind = 4), pointer, dimension (:,:) :: sza, azimuth, sat_zen, ai, reflect_cld
-real, pointer, dimension (:) :: w_grid, chlcl
-real (kind = 4), pointer, dimension (:,:) :: ps, refl, shifts, shifts2, squeezes
-real (kind = 4), pointer, dimension (:,:) :: ref_clr
-real (kind = 4), pointer, dimension (:,:) :: dIdR, fill
+real (KIND=8), pointer, dimension (:) :: k1bar
+real (KIND=8), pointer, dimension (:,:) :: sba, nba
+real (KIND=8), pointer, dimension (:,:,:,:,:) :: i01a, nia
+real (KIND=8), pointer, dimension (:,:,:,:) :: tra, nra, i0a, z1, z2
+real (kind = 4), allocatable, dimension (:,:) :: refl, azimuth, sza, sat_zen
+real (kind = 4), allocatable, dimension (:,:) :: ai, reflect_cld
+real (KIND=8), allocatable, dimension (:) :: w_grid, chlcl
+real (kind = 4), allocatable, dimension (:,:) :: ps
+real (kind = 4), allocatable, dimension (:,:) :: shifts, shifts2, squeezes
+real (kind = 4), allocatable, dimension (:,:) :: ref_clr
+real (kind = 4), allocatable, dimension (:,:) :: dIdR
+real (kind = 4), allocatable, dimension (:,:) :: fill
 integer (kind = 2), pointer,dimension(:,:) :: terr_height
-integer (kind = 2), pointer, dimension (:,:) :: qc, qc2 ! quality control flag
-integer (kind = 2), pointer, dimension (:,:) :: cloud_mask 
+integer (kind = 2), allocatable, dimension (:,:) :: qc, qc2 ! quality control flag
+!!integer (kind = 2), pointer, dimension (:,:) :: cloud_mask 
+integer (kind = 2), allocatable, dimension (:,:) :: cloud_mask 
 real (kind = 4), allocatable, dimension (:,:) :: sazimuth, vazimuth 
-real (kind = 4), pointer, dimension (:,:) :: lat, lon, &
+real (kind = 4), allocatable, dimension (:,:) :: lat, lon, &
     eff_cld_frac, eff_cld_frac2, rad_cld_frac
-real (kind = 4), pointer, dimension (:,:) :: chi_sqr, chi_sqr2, biases, biases2, stds, stds2, rms
+real (kind = 4), allocatable, dimension (:,:) :: chi_sqr, chi_sqr2, biases, biases2, stds, stds2, rms
 integer (kind = 2), pointer, dimension (:,:) :: smpx_nPix
 real (kind = 4), pointer, dimension (:,:) :: smpx_mean, smpx_stddev
 real (kind = 4), pointer, dimension (:,:) :: smpx_wavel
-real, pointer, dimension (:,:) ::  info
-logical, pointer, dimension (:) :: land_flg
+real (KIND=8), pointer, dimension (:,:) ::  info
+logical, allocatable, dimension (:) :: land_flg
 INTEGER (KIND = 2), DIMENSION(:,:), allocatable :: geoflg
 INTEGER (KIND = 1), DIMENSION(:,:), allocatable :: anomflg
 INTEGER (KIND = 2), dimension(:), allocatable :: mflg
@@ -81,16 +85,16 @@ integer (kind = 1) :: config_irr
 real (kind = 8), dimension(:), pointer :: time
 REAL (KIND = 4), DIMENSION(:,:), allocatable :: rad_precisionL
 INTEGER (KIND = 2), DIMENSION(:,:), allocatable :: quality_flagL, irr_quality_flagL
-real , dimension(:), allocatable :: theta, scan, phi, wgrid_out, sflx, pres
-real , dimension(:), allocatable :: scan_cal, wgrid_cal, time_cal
-real , dimension(:), allocatable :: refl_ref, psurf_ref, sza_ref, &
+real (KIND=8) , dimension(:), allocatable :: theta, scan, phi, wgrid_out, sflx, pres
+real (KIND=8) , dimension(:), allocatable :: scan_cal, wgrid_cal, time_cal
+real (KIND=8) , dimension(:), allocatable :: refl_ref, psurf_ref, sza_ref, &
                                     satz_ref, az_ref, lat_ref, lon_ref
-real , dimension(:,:,:), allocatable :: cal_table
+real (KIND=8) , dimension(:,:,:), allocatable :: cal_table
 real (kind = 4), dimension(:), allocatable :: wgrid_out2
 integer :: nwave, nwav
 
-real, dimension(:), allocatable, target :: w0
-real, dimension(:), allocatable, target :: f0
+real (KIND=8), dimension(:), allocatable, target :: w0
+real (KIND=8), dimension(:), allocatable, target :: f0
 
 integer :: npixs, nscanpos
 integer :: n_sol_spec=1
@@ -121,24 +125,24 @@ character(len=255), dimension(maxfiles) :: filenames
 !A(I,J)= corresponding albedo spectrum J at wavelength index I
 !          ie, A = (I/F)
 !=====================================================================
-!real, allocatable, dimension (:,:) :: A
+!real (KIND=8), allocatable, dimension (:,:) :: A
 
 real (kind=4), allocatable, dimension(:,:) :: cloud_pres, cld_pres2
 real (kind=4), allocatable, dimension(:,:) :: eta
 real (kind = 4), allocatable, dimension(:,:) :: chlorophyll
 
 integer :: ispec
-real    :: dx
+real (KIND=8)    :: dx
 integer ::  nsolwave
 integer :: err_code
 integer :: form=5
 
-real, dimension(:,:), pointer :: sol2, sol3
-real, dimension(:,:,:), pointer :: rad2,  rad3
-real, pointer, dimension(:,:) :: s2, s3
+real (KIND=8), dimension(:,:), pointer :: sol2, sol3
+real (KIND=8), dimension(:,:,:), pointer :: rad2,  rad3
+real (KIND=8), pointer, dimension(:,:) :: s2, s3
 real (kind = 4), allocatable, dimension(:,:) :: s2b, s3b
 real (kind = 4), pointer, dimension(:,:,:) :: rad2b, rad3b
-real :: wbeg, wend
+real (KIND=8) :: wbeg, wend
 integer :: iprt=0
 integer :: date
 character(len=255) :: ring_file_pre='ring_tab_omi_p'
@@ -156,18 +160,18 @@ logical :: no_ret_ps=.false.
 !logical :: no_ret_ps=.true.
 integer :: niter= 10 !6
 
-real :: cal_const
-real :: refl_chl_max = 0.40
-real :: refl_clr_oc = 0.10 !0.08
-real :: refl_clr = 0.11 !0.08 !0.15
-real :: refl_cld = 0.40 !0.80
-real :: refl_clr2 = 0.11! 0.15
-real :: refl_cld2 = 0.80
-real :: cld_frac_min = 0.05 ! 0.20 !0.15
-real :: cld_frac_max = 1.0
-real, parameter :: max_refl = 1.00
-real, parameter :: min_refl = 0.00
-real, parameter :: max_ai   = 1.00
+real (KIND=8) :: cal_const
+real (KIND=8) :: refl_chl_max = 0.40
+real (KIND=8) :: refl_clr_oc = 0.10 !0.08
+real (KIND=8) :: refl_clr = 0.11 !0.08 !0.15
+real (KIND=8) :: refl_cld = 0.40 !0.80
+real (KIND=8) :: refl_clr2 = 0.11! 0.15
+real (KIND=8) :: refl_cld2 = 0.80
+real (KIND=8) :: cld_frac_min = 0.05 ! 0.20 !0.15
+real (KIND=8) :: cld_frac_max = 1.0
+real (KIND=8), parameter :: max_refl = 1.00
+real (KIND=8), parameter :: min_refl = 0.00
+real (KIND=8), parameter :: max_ai   = 1.00
 integer, parameter :: min_refl_flag = 6
 integer, parameter :: bad_obs_flag = 7
 integer, parameter :: ai_flag = 8
@@ -187,15 +191,15 @@ real (KIND = 4) :: wmin= 391 !365.! 356.
 real (KIND = 4) :: wmax= 398.5
 real (KIND = 4) :: wmin2= 350 !365.! 356.
 real (KIND = 4) :: wmax2=405 !398.1
-real            :: wdelt=0.5
+real (KIND=8)            :: wdelt=0.5
 
 integer :: npres=5
 integer :: ntheta, nscan, nphi
 integer :: nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl
-real,   dimension(:,:,:,:), pointer :: oc_table
+real (KIND=8),   dimension(:,:,:,:), pointer :: oc_table
 real (kind = 4), dimension(:,:,:,:,:,:), allocatable :: oc_perms
 real (kind = 4), dimension(:), allocatable :: wgrid_out_oc
-real,   dimension(:), allocatable :: wgrid_oc
+real (KIND=8),   dimension(:), allocatable :: wgrid_oc
 real (kind = 8), dimension(:), allocatable :: theta_oc,scan_oc,phi_oc,ocrefl,chl
 logical :: read_resource_file
 !logical :: retrieve_chl_pres = .true. ! retrieve chl and pres when clear
@@ -215,10 +219,10 @@ integer :: ref_nlat=180
 integer :: ref_nlon=360
 integer :: ref_nmon=12
 integer,parameter :: ler_nsz=16, ler_nth=16, ler_nph=16
-real, dimension(ler_nsz) :: ler_sz
-real, dimension(ler_nth) :: ler_th
-real, dimension(ler_nph) :: ler_ph
-real, dimension(ler_nsz,ler_nth,ler_nph) :: ler354
+real (KIND=8), dimension(ler_nsz) :: ler_sz
+real (KIND=8), dimension(ler_nth) :: ler_th
+real (KIND=8), dimension(ler_nph) :: ler_ph
+real (KIND=8), dimension(ler_nsz,ler_nth,ler_nph) :: ler354
 logical :: done_read_terr = .false.
 logical :: done_read_refl = .false.
 integer, parameter :: nlat=361
@@ -236,40 +240,44 @@ logical :: do_no2 =.false.
 logical :: wr_shift=.true.
 logical :: shift=.true.
 logical :: do_short_wave=.true.
-real, dimension(:,:), allocatable :: no2
-real :: refl_l, refl_s
+real (KIND=8), dimension(:,:), allocatable :: no2
+real (KIND=8) :: refl_l, refl_s
 
-real    :: wave_short= 376.4 !346.8!340.4
-!real    :: wave_long = 395.5 !376.4 ! 390 where Ring close to 0, 
-!real    :: wave_long = 386.3 !376.4 ! 390 where Ring close to 0, 
-real    :: wave_long = 394.1 !376.4 ! 390 where Ring close to 0, 
+real (KIND=8)    :: wave_short= 376.4 !346.8!340.4
+!real (KIND=8)    :: wave_long = 395.5 !376.4 ! 390 where Ring close to 0, 
+!real (KIND=8)    :: wave_long = 386.3 !376.4 ! 390 where Ring close to 0, 
+real (KIND=8)    :: wave_long = 394.1 !376.4 ! 390 where Ring close to 0, 
                              ! old 386.3 !373.2 ! for GOMI 386.3! 
 logical :: ex
 logical :: write_geom= .true.
 logical :: write_ps  = .true. !.false.
-logical :: use_ref = .false. !.true.
-logical :: use_resid = .true. !.true.
-logical :: use_cal = .true.
-!logical :: use_resid = .false. !.true.
-logical :: use_spline = .false.
-!logical :: use_spline = .true.
+logical :: using_ref = .false. !.true.
+logical :: using_resid = .true. !.true.
+logical :: using_cal = .true.
+!logical :: using_resid = .false. !.true.
+logical :: using_spline = .false.
+!logical :: using_spline = .true.
 logical :: gomi=.false.
-!real    :: stddev_thresh=0.01 ! initial value based on GOME PMD
-real    :: stddev_thresh=0.001 ! initial value based on OMI small pix.
-real, parameter :: fill_value = -9999.0
-integer, parameter :: fill_value_int = 65535
-integer, parameter :: fill_value_int1 = 255
+!real (KIND=8)    :: stddev_thresh=0.01 ! initial value based on GOME PMD
+real (KIND=8)    :: stddev_thresh=0.001 ! initial value based on OMI small pix.
+real (KIND=8), parameter :: fill_value = -9999.0
+!!!Altered since m_write_ouput_data seems to expect these to be int*2 and int*1
+!!!and actual values seem to be non-science-related.
+!integer, parameter :: fill_value_int = 65535
+!integer, parameter :: fill_value_int1 = 255
+integer (KIND=2), parameter :: fill_value_int = 255
+integer (KIND=1), parameter :: fill_value_int1 = 15
 integer :: n_good_input = 0, n_good_output = 0, n_input = 0, n_missing = 0
 integer :: highqual = 80, badqual = 20
 integer, parameter :: min_wl = 10
-real :: cloud_pres_max = 1100.0, cld_frac = 0.02
+real (KIND=8) :: cloud_pres_max = 1100.0, cld_frac = 0.02
 
 real(kind=4) :: dist_rad, dist_irrad 
 logical :: cloud_clear=.false.!.true.
 integer :: ny=1, nx=1
 integer :: ll
 integer :: nfov=2
-real    :: wave_dpdf = 393.6 !nm
+real (KIND=8)    :: wave_dpdf = 393.6 !nm
 logical :: transient_check = .false. !.true.
 logical :: set_wmin = .false. !.true.
 logical :: set_wmax = .false. !.true.
@@ -278,8 +286,8 @@ logical :: do_o3=.false.
 logical :: write_fill=.true.
 logical :: do_zoom=.true.
 logical :: get_refl_clim=.true.
-real    :: wave_fill=352.6 ! nm wavelength to output filling in
-real, allocatable, dimension(:) :: wave_o3, xsect_o3
+real (KIND=8)    :: wave_fill=352.6 ! nm wavelength to output filling in
+real (KIND=8), allocatable, dimension(:) :: wave_o3, xsect_o3
 integer :: year, month, day
 
 real (kind = 4), dimension(:,:,:), allocatable :: toms_refl

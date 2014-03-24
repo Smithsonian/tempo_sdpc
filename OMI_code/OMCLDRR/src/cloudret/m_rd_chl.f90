@@ -11,24 +11,24 @@ use m_vars, ONLY: done_read_chl, chl2d, iprt, lat, lon, chlcl, iLine, nXtrack, f
 use m_LUN_set
 
 !*************************************************************************
-!	AUTHOR:  Joanna Joiner - original code, 
-!		modified by Alexander P. Vasilkov
+!        AUTHOR:  Joanna Joiner - original code, 
+!                modified by Alexander P. Vasilkov
 !
-! 	FUNCTION: get chlorophyll concentration (0.5X0.5 deg resolution)
+!         FUNCTION: get chlorophyll concentration (0.5X0.5 deg resolution)
 !
-! 	CALLING SEQUENCE: call rd_chl (lat, lon, chl_out)
+!         CALLING SEQUENCE: call rd_chl (lat, lon, chl_out)
 !
-! 	INPUT: 	lat    	latitude (-90.0,90.0)
-!              	lon     longitude (-180-180) -> (0.0,360.0)
+!         INPUT:         lat            latitude (-90.0,90.0)
+!                      lon     longitude (-180-180) -> (0.0,360.0)
 !
-! 	OUTPUT:  chl_out	chlorophyll concentration
+!         OUTPUT:  chl_out        chlorophyll concentration
 !
-!	HISTORY: Developed Nov. 15, 2001
+!        HISTORY: Developed Nov. 15, 2001
 !
 !***************************************************************************
 implicit none          
-!real, dimension(:), intent(in)  :: lat, lon
-!real, dimension(:), intent(out) :: chl_out
+!real (KIND=8), dimension(:), intent(in)  :: lat, lon
+!real (KIND=8), dimension(:), intent(out) :: chl_out
 
 !local variables
 
@@ -50,7 +50,7 @@ include 'PGS_SMF.f'
 !============================
 if (.not. done_read_chl) then
   status = pgs_io_gen_openf ( chl_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
 !  IF( status .NE. OMI_S_SUCCESS ) THEN
 if(status.ne.0) then
   ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening clorophyll file', &

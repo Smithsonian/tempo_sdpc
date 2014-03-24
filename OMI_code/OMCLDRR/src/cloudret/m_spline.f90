@@ -25,8 +25,8 @@ function spline2(x,y,t,sigma_in) result(spl)
 !        Result = SPLINE(X, Y, T [, Sigma])
 !
 ! INPUTS:
-real, dimension(:), intent(in) :: x, y, t
-real, intent(in), optional :: sigma_in
+real (KIND=8), dimension(:), intent(in) :: x, y, t
+real (KIND=8), intent(in), optional :: sigma_in
 !        X:        The abcissa vector. Values MUST be monotonically increasing.
 !
 !        Y:        The vector of ordinate values corresponding to X.
@@ -35,7 +35,7 @@ real, intent(in), optional :: sigma_in
 !                desired. The values of T MUST be monotonically increasing.
 !
 ! OPTIONAL INPUT PARAMETERS:
-real, dimension(size(t)) :: spl
+real (KIND=8), dimension(size(t)) :: spl
 !        Sigma:        The amount of "tension" that is applied to the curve. The 
 !                default value is 1.0. If sigma is close to 0, (e.g., .01),
 !                then effectively there is a cubic spline fit. If sigma
@@ -68,17 +68,17 @@ real, dimension(size(t)) :: spl
 !
 !-
 !
-!real, dimension(:), allocatable :: xx, yp
+!real (KIND=8), dimension(:), allocatable :: xx, yp
 !integer, dimension(:), allocatable :: subs, subs1
-real, dimension(0:size(x)*2-1) :: yp
-real, dimension(0:size(x)-1) :: xx
+real (KIND=8), dimension(0:size(x)*2-1) :: yp
+real (KIND=8), dimension(0:size(x)-1) :: xx
 integer, dimension(0:size(t)-1) :: subs, subs1
-real :: sigma, sigmap, dels, sinhs, sinhin, diag1, diagin
-real :: spdiag, delx2, dx2, diag2, s, exps
-!real, dimension(:), allocatable :: sinhs2, del1, del2, dels2, exps1, exps2, sinhd1, sinhd2
-real, dimension(0:size(t)-1) :: sinhs2, del1, del2, dels2, exps1, exps2, sinhd1, sinhd2
-real :: delx1, dx1, c1, c2, c3, slpp1, deln, delnm1, delnn
-real :: delx12, slppn
+real (KIND=8) :: sigma, sigmap, dels, sinhs, sinhin, diag1, diagin
+real (KIND=8) :: spdiag, delx2, dx2, diag2, s, exps
+!real (KIND=8), dimension(:), allocatable :: sinhs2, del1, del2, dels2, exps1, exps2, sinhd1, sinhd2
+real (KIND=8), dimension(0:size(t)-1) :: sinhs2, del1, del2, dels2, exps1, exps2, sinhd1, sinhd2
+real (KIND=8) :: delx1, dx1, c1, c2, c3, slpp1, deln, delnm1, delnn
+real (KIND=8) :: delx12, slppn
 integer :: nm1, np1, i, m, j, n
 
 !call pzeitbeg('nspline')
@@ -208,12 +208,11 @@ endif
 end  function spline2
 
 function spline1(x,y,t,sigma_in) result(spl)
-real, dimension(:), intent(in) :: x, y
-real, intent(in) :: t
-real, intent(in), optional :: sigma_in
-real :: spl
-
-      real, dimension(1)          :: dumu, dumr
+real (KIND=8), dimension(:), intent(in) :: x, y
+real (KIND=8), intent(in) :: t
+real (KIND=8), intent(in), optional :: sigma_in
+real (KIND=8) :: spl
+real (KIND=8), dimension(1)          :: dumu, dumr
 
      dumu(1) = t
      if (present(sigma_in)) then

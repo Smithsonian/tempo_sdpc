@@ -135,11 +135,11 @@ if (ex) then
 
   version = 1
 
-  returnstatus = pgs_pc_getconfigdata(use_resid_LUN,buf)
+  returnstatus = pgs_pc_getconfigdata(using_resid_LUN,buf)
   IF(returnstatus == 0 ) THEN
     read(buf,*) pcf_int
-    use_resid = pcf_int == 1
-    if (iprt >= 1) print *,'initialize: setting use_resid = ',use_resid
+    using_resid = pcf_int == 1
+    if (iprt >= 1) print *,'initialize: setting using_resid = ',using_resid
   endif
 
   returnstatus = pgs_pc_getconfigdata(write_resid_LUN,buf)
@@ -163,11 +163,11 @@ if (ex) then
     if (iprt >= 1) print *,'initialize: setting write_obs = ',write_obs
   endif
 
-  returnstatus = pgs_pc_getconfigdata(use_cal_LUN,buf)
+  returnstatus = pgs_pc_getconfigdata(using_cal_LUN,buf)
   IF(returnstatus == 0 ) THEN
     read(buf,*) pcf_int
-    use_cal = pcf_int == 1
-    if (iprt >= 1) print *,'initialize: setting use_cal   = ',use_cal
+    using_cal = pcf_int == 1
+    if (iprt >= 1) print *,'initialize: setting using_cal   = ',using_cal
   endif
 
   returnstatus = pgs_pc_getconfigdata(no_ret_ps_LUN,buf)

@@ -53,7 +53,7 @@ subroutine read_input_data(blk, rc)
 INTEGER :: il, i, lun=7, izoom
 character(len=1) :: buff
 character(len=255) :: buff1
-real :: bufn,bufn1,bufn2,bufn3
+real (KIND=8) :: bufn,bufn1,bufn2,bufn3
 logical :: old
 INTEGER (KIND = 4) :: PGS_TD_TAItoUTC !pgs_pc_getreference
 INTEGER (KIND = 1) :: imbin
@@ -217,7 +217,7 @@ if (form == 5) then ! use new l1b reader
 
 endif ! if iLine == 0
 
-call pzeitbeg('rd_geo')
+!call pzeitbeg('rd_geo')
 
 status = L1Br_getDATA ( blk, iLine-1, MeasurementQualityFlags_k=mflg(iLine), &
          MeasurementClass_k=meas_class(iLine), &
@@ -248,7 +248,7 @@ IF( status .NE. OMI_S_SUCCESS ) THEN
 END IF
 
 
-call pzeitend
+!call pzeitend
 
 call instr_config(ierr,izoom)
 if(iprt>1) print *,'instrum config compatability code',ierr,'izoom',izoom
@@ -315,7 +315,7 @@ if(btest(mflg(iLine),10)) meas_qual_flg(iLine)=IBSET(meas_qual_flg(iLine),4)
 
 !read a line of data
 !====================
-call pzeitbeg('rd_rad')
+!call pzeitbeg('rd_rad')
 status = L1Br_getSIGline( blk, iLine-1, Wlmin_k=wmin2, Wlmax_k=wmax2, &
                           Signal_k=f12d, &! rad_precisionL, &
                           PixelQualityFlags_k=quality_flagL, &
@@ -331,7 +331,7 @@ IF( status .NE. OMI_S_SUCCESS ) THEN
       call exit(1)
 END IF
 
-call pzeitend
+!call pzeitend
 
 if(iLine==start_line)  ll=1
 w1(0:nwl-1,:,ll)=w12d
@@ -375,9 +375,9 @@ endif ! start_line
 ! read solar flux
 !===================
 if (iLine == start_line) then
-  call pzeitbeg('rd_sol')
+!  call pzeitbeg('rd_sol')
   call read_solar_flux()
-  call pzeitend
+!  call pzeitend
   if (iprt > 1) then
     print *,'irradiance'
     do i=0,nsolwave-1
@@ -402,7 +402,7 @@ end subroutine read_input_data
 subroutine alloc_scan()
 
 use m_vars
-use L1B_reader_class
+use L1B_Reader_class
 
 implicit none
 
@@ -666,14 +666,14 @@ use m_find
 use mathcons
 implicit NONE     
 
-real, intent(in) :: wlmin, wlmax
+real (KIND=8), intent(in) :: wlmin, wlmax
 real(kind=4), dimension(:,:,:), intent(in) :: r
-real, dimension(:,:), intent(in) :: s
-real, dimension(:,:,:), pointer :: rad
-real, dimension(:,:), pointer :: sol
+real (KIND=8), dimension(:,:), intent(in) :: s
+real (KIND=8), dimension(:,:,:), pointer :: rad
+real (KIND=8), dimension(:,:), pointer :: sol
   
 integer :: imins, imaxs, imine, imaxe, n
-real :: dum
+real (KIND=8) :: dum
   
 
 n=size(r,dim=1)
@@ -698,11 +698,11 @@ subroutine rdgome( filename )
 
 !.....................................................................
 ! Set I/O parameters
-real, parameter :: wlmin2=313., wlmax2=405., wlmin3=410., wlmax3=500., &
+real (KIND=8), parameter :: wlmin2=313., wlmax2=405., wlmin3=410., wlmax3=500., &
  doppler=1.000019     !doppler WL shift (v=7.5km/sec, theta=40 deg )
 !.....................................................................
 character(len=*), intent(inout) :: filename
-real, dimension(:), pointer :: sza, glat, glon
+real (KIND=8), dimension(:), pointer :: sza, glat, glon
 
 real(kind=4) :: test
 integer :: recl

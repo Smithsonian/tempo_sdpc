@@ -20,8 +20,8 @@ function strpos (string, searchstr) result (position)
 !   Result = STRUPCASE(String)
 !     
 ! !INPUT PARAMETERS:   
-character(len=*), intent(in)		:: string
-character(len=*), intent(in)		:: searchstr
+character(len=*), intent(in)   :: string
+character(len=*), intent(in)   :: searchstr
 !
 ! !OUTPUT PARAMETERS:  
 integer :: position

@@ -59,7 +59,7 @@ include 'PGS_SMF.f'
 if (ex) then
 version = 1
 status = pgs_io_gen_openf ( ref_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
 if (iprt > 0) then
  print *,'read_references: trying to open reference file ',status, lun
 endif

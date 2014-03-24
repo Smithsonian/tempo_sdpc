@@ -17,7 +17,7 @@ subroutine read_resids
 !  read_resids reads precomputed resids spectra needed for cloud
 !               pressures
 !
-use m_vars, ONLY: nwav, nscanpos, resid_spec, resid_wave, iprt, use_resid
+use m_vars, ONLY: nwav, nscanpos, resid_spec, resid_wave, iprt, using_resid
 use m_LUN_set
       Implicit NONE
 
@@ -70,7 +70,7 @@ if (iprt > 0) then
  print *,'read_resids: trying to open resid file ',status, lun
 endif
 if(status.ne.0) then
-!use_resid=.false.
+!using_resid=.false.
   ierr = OMI_SMF_setmsg( status, &
                             "PGE aborting, exit code = 1", "read_resids", 1 ) 
  call exit(1)
@@ -131,12 +131,12 @@ include 'PGS_SMF.f'
 
 version = 1
 status = pgs_io_gen_openf ( o3_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
 if (iprt > 0) then
  print *,'read_o3: trying to open o3 file ',status, lun
 endif
 if(status.ne.0) then
-!use_resid=.false.
+!using_resid=.false.
   ierr = OMI_SMF_setmsg( status, &
                             "PGE aborting, exit code = 1", "read_o3", 1 ) 
  call exit(1)

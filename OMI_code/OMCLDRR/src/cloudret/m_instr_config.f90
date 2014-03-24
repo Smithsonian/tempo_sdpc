@@ -22,6 +22,7 @@ if(iprt>1) then
 endif
 
 ! simplified testing the zoom radiance measurements
+    ierr=0
     do i=1,4
       if(config_rad(iLine)==id1(i)) izoom=0
     enddo

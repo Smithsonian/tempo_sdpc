@@ -35,12 +35,12 @@ use m_cloud_pres_mod, ONLY: temp2D
 !-------------------------------------------------------------------------
 !
 integer, intent(in) :: ix1, ix2
-real,    intent(in) :: pres_int
-real, dimension(:), intent(out) :: rad, jacob
-real, dimension(:), intent(in) :: pres
-!real, dimension(:,:), intent(in) :: rads
-real :: temp1, temp2
-!real, dimension(:,:), pointer :: rads
+real (KIND=8),    intent(in) :: pres_int
+real (KIND=8), dimension(:), intent(out) :: rad, jacob
+real (KIND=8), dimension(:), intent(in) :: pres
+!real (KIND=8), dimension(:,:), intent(in) :: rads
+real (KIND=8) :: temp1, temp2
+!real (KIND=8), dimension(:,:), pointer :: rads
 
 character(len=50) :: myname='interp_pres: '
 integer :: i
@@ -99,12 +99,12 @@ subroutine interp_rads(ix1, ix2, pres, pres_int,  i0_1, i0_2, sb_1, sb_2, &
 !-------------------------------------------------------------------------
 !
 integer, intent(in)  :: ix1, ix2
-real,    intent(in)  :: pres_int, i0_1, i0_2, sb_1, sb_2, tr_1, tr_2
-real,    intent(out) :: i0, sb, tr 
-real, dimension(:), intent(in) :: pres
+real (KIND=8),    intent(in)  :: pres_int, i0_1, i0_2, sb_1, sb_2, tr_1, tr_2
+real (KIND=8),    intent(out) :: i0, sb, tr 
+real (KIND=8), dimension(:), intent(in) :: pres
 
 character(len=50) :: myname='interp_rads: '
-real :: temp
+real (KIND=8) :: temp
 !integer :: i
 
 !**************************************************************************

@@ -45,8 +45,8 @@ real (kind = 4), dimension(lbound(u,1):ubound(u,1)) :: r
 
 !Local variables
 !---------------
-real           d
-real           s1
+real (KIND=8)           d
+real (KIND=8)           s1
 integer        i, ix, m2
 integer        n, m
 
@@ -166,8 +166,8 @@ real (kind = 8), dimension(lbound(u,1):ubound(u,1)) :: r
 
 !Local variables
 !---------------
-real           d
-real           s1
+real (KIND=8)           d
+real (KIND=8)           s1
 integer        i, ix, m2
 integer        n, m
 
@@ -288,8 +288,8 @@ real (kind = 4), dimension(lbound(u,1):ubound(u,1)) :: r
 
 !Local variables
 !---------------
-real           d
-real           s1
+real (KIND=8)           d
+real (KIND=8)           s1
 integer        i, ix, m2
 integer        n, m
 

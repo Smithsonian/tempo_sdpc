@@ -11,12 +11,12 @@ function bilin( ix, jy ) result(xy)
 use m_cloud_pres_mod, ONLY: temp3D
 implicit NONE          ! *** IDL2F9O ***
 
-real, intent(in) :: ix, jy
-real, dimension(size(temp3D,dim=3)) :: xy
+real (KIND=8), intent(in) :: ix, jy
+real (KIND=8), dimension(size(temp3D,dim=3)) :: xy
 
 integer :: i, j, ip, jp, ii
-real :: dx, dy, dx1, dy1
-real :: d1, d2, d3, d4
+real (KIND=8) :: dx, dy, dx1, dy1
+real (KIND=8) :: d1, d2, d3, d4
 
         i=(ix) ; j=(jy)   
         ip=i+1   ;  jp=j+1   
@@ -50,11 +50,11 @@ function trilinear( zp,xp,yp ) result(interp)
 use m_cloud_pres_mod, ONLY: table, temp3D
 implicit NONE          
 
-real, dimension(size(table,dim=4)) :: interp
-real, intent(in) :: xp, yp, zp
+real (KIND=8), dimension(size(table,dim=4)) :: interp
+real (KIND=8), intent(in) :: xp, yp, zp
 
 integer :: iz, iz2
-real, dimension(size(table,dim=4)) :: interp1, interp2
+real (KIND=8), dimension(size(table,dim=4)) :: interp1, interp2
    
 !find bracketing z 
 !==============================
@@ -62,7 +62,7 @@ iz=zp
    
 !bounds check
 !============
-iz=maxval((/iz,1 /))   
+iz=maxval((/iz,1/))   
 ! JJ bug fix
 !OK for v1+ of OMCLDRR
 !iz=minval((/iz,size(table(1,1,:,1))-1/))   

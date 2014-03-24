@@ -25,12 +25,12 @@ function invert (amat, error) result (amatinv)
 !        amatinv = invert(amat)
 !     
 ! !INPUT PARAMETERS:   
-       real, dimension(:,:), intent(in) :: amat
+       real (KIND=8), dimension(:,:), intent(in) :: amat
        integer,              intent(out):: error
 !   amat : 2D matrix to invert
 !
 ! !OUTPUT PARAMETERS:  
-       real, dimension(lbound(amat,1):ubound(amat,1), &
+       real (KIND=8), dimension(lbound(amat,1):ubound(amat,1), &
                       lbound(amat,2):ubound(amat,2)) :: amatinv
 !   amatinv : 2D inverted matrix
 !
@@ -44,10 +44,10 @@ function invert (amat, error) result (amatinv)
 !-------------------------------------------------------------------------
 
        !integer, dimension (:), allocatable :: indx
-       !real, dimension (:,:), allocatable :: work
+       !real (KIND=8), dimension (:,:), allocatable :: work
        integer, dimension (size(amat,1)) :: indx
-       real, dimension (size(amat,1),size(amat,2)) :: work
-       real              :: d
+       real (KIND=8), dimension (size(amat,1),size(amat,2)) :: work
+       real (KIND=8)              :: d
        integer           :: j
        integer           :: nsampl
        integer           :: ierr
@@ -116,11 +116,11 @@ function invert (amat, error) result (amatinv)
 
       PARAMETER (NMAX=600,TINY=1.0E-20)
       integer n, np
-      real A(NP,NP)
+      real (KIND=8) A(NP,NP)
       integer INDX(NP), error
-      !real, dimension(:), allocatable :: VV
-      real, dimension(n) :: VV
-      real d
+      !real (KIND=8), dimension(:), allocatable :: VV
+      real (KIND=8), dimension(n) :: VV
+      real (KIND=8) d
 
       !allocate(vv(n))
       error=0
@@ -221,7 +221,13 @@ function invert (amat, error) result (amatinv)
 !-------------------------------------------------------------------------
 !
 
-      DIMENSION A(NP,NP),INDX(NP),B(NP)
+!!Added following parameter declarations since OMI code lacked them
+      integer N, NP, I, II, J
+      integer INDX(NP)
+      real (KIND=8) A(NP,NP), B(NP)
+!      DIMENSION A(NP,NP),INDX(NP),B(NP)
+
+
       II=0
       DO 12 I=1,N
         LL=INDX(I)

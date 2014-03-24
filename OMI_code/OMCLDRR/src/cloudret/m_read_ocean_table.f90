@@ -20,9 +20,9 @@ implicit none
 
 character(len=255) :: fn
 integer            :: i,j,k,l,m
-real, allocatable, dimension(:) :: oc_perms2
+real (KIND=8), allocatable, dimension(:) :: oc_perms2
 ! ocean Raman correction coefficient
-real, parameter :: coef = 1.5
+real (KIND=8), parameter :: coef = 1.5
 
 integer, parameter :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
@@ -33,11 +33,13 @@ include 'PGS_OMI_1900.f'
 include 'PGS_SMF.f'
 
 version = 1
+rc=0
 status = pgs_io_gen_openf ( oc_ram_id, PGSd_IO_Gen_RSeqUnf, &
-	0,lun, version)
+        0,lun, version)
 if(status.ne.0) then
   ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ocean table file', &
   'read_ocean_table, module m_read_ocean_table',2)
+  rc=1
   call exit(1)
 endif
 

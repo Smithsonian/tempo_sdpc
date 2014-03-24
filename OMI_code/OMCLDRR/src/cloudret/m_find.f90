@@ -26,14 +26,14 @@ implicit none
 !        index = find(mask, count)
 !     
 ! !INPUT PARAMETERS:   
-logical, dimension(:), 	intent(in)     	:: mask
-!			mask : mask vector
-integer, 		intent(in)   	:: count
-!			count: size of output vector
+logical, dimension(:),         intent(in)             :: mask
+!                        mask : mask vector
+integer,                 intent(in)           :: count
+!                        count: size of output vector
 !
 ! !OUTPUT PARAMETERS:  
-integer, dimension(count)		:: index
-!			index : vector of indices where mask is true
+integer, dimension(count)                :: index
+!                        index : vector of indices where mask is true
 !
 ! !SEE ALSO:  IDL documentation
 !
@@ -46,8 +46,8 @@ integer, dimension(count)		:: index
 
 !local variables
 !---------------
-integer					:: i
-integer					:: j
+integer                                        :: i
+integer                                        :: j
 
 !----------------------------------------------
 j = 1 
@@ -83,14 +83,14 @@ implicit none
 !        index = find(mask, counts)
 !     
 ! !INPUT PARAMETERS:   
-logical, dimension(:), 	intent(in)     	:: mask
-!			mask : mask vector
- integer, 		intent(out), optional :: counts
-!			counts: size of output vector
+logical, dimension(:),         intent(in)             :: mask
+!                        mask : mask vector
+ integer,                 intent(out), optional :: counts
+!                        counts: size of output vector
 !
 ! !OUTPUT PARAMETERS:  
-integer, dimension(:), pointer		:: index
-!			index : vector of indices where mask is true
+integer, dimension(:), pointer                :: index
+!                        index : vector of indices where mask is true
 !
 ! !SEE ALSO:  IDL documentation
 !
@@ -103,8 +103,8 @@ integer, dimension(:), pointer		:: index
 
 !local variables
 !---------------
-integer					:: i
-integer					:: j
+integer                                        :: i
+integer                                        :: j
 integer                                 :: tempsize
 integer                                 :: error
 integer                                 :: ncounts

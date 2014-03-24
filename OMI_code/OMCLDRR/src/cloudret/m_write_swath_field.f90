@@ -185,6 +185,9 @@
        write (6, *) fieldname,status,data(1),data(dims(1))
        end function put_data_1dr4
 
+
+
+
        function put_data_1di2(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
@@ -513,7 +516,7 @@ status = he5_swdefcomch(swid, HE5_HDFE_COMP_DEFLATE, compparm, chunk_rank, chunk
 !         write (6,*) status, 'after define dat ',fieldname
         endif
        endif
-       call pzeitbeg('wr2dfl')
+!       call pzeitbeg('wr2dfl')
 !       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
        status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
@@ -530,7 +533,7 @@ else
 endif
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       call pzeitend
+!       call pzeitend
        if (iprt2 >= 2) &
        write (6, *) fieldname,status,data(1,1),data(dims(1),dims(2))
        end function put_data_2dr4
@@ -546,7 +549,7 @@ endif
        character(len=*), intent(in) :: fieldname
        integer,   intent(in), optional :: iprt
        integer :: iprt2=0
-       real, dimension(:,:,:) :: data
+       real (KIND=8), dimension(:,:,:) :: data
        real (kind = 4), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
        integer, parameter :: dim=3

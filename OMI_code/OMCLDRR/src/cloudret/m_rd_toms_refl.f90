@@ -25,12 +25,12 @@ implicit NONE
 ! !CALLING SEQUENCE: call rd_toms_refl (lat, lon, terr_pres)
 !
 ! !INPUT PARAMETERS: 
-!real, dimension(:), intent(in)  :: lat, lon
+!real (KIND=8), dimension(:), intent(in)  :: lat, lon
 !                     lat     : latitude
 !                     lon     : longitude
 !
 ! !OUTPUT PARAMETERS:  
-!real, dimension(:), intent(out) :: terr_pres
+!real (KIND=8), dimension(:), intent(out) :: terr_pres
 !                     terr_pres      : terrain pressure
 !
 ! !SEE ALSO: 
@@ -54,9 +54,9 @@ include 'PGS_OMI_1900.f'
 include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
-real                       :: lont, latt
-real                       :: deltlat, deltlon
-real                       :: startlat, startlon
+real (KIND=8)                       :: lont, latt
+real (KIND=8)                       :: deltlat, deltlon
+real (KIND=8)                       :: startlat, startlon
 integer                    :: iret
 character(len=100)         :: txt
    
@@ -65,7 +65,7 @@ character(len=100)         :: txt
 !=======================
 if (.not. done_read_refl) then
   status = pgs_io_gen_openf ( refl_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
   if(status.ne.0) then
     ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening reflectivity file', &
     'rd_toms_refl, module m_rd_toms_refl',2)
@@ -89,7 +89,7 @@ if (.not. done_read_refl) then
   status = pgs_io_gen_closef (lun)
   if (iprt > 0) print *,'rd_toms_refl: closing reflectivity file, status :',status
   status = pgs_io_gen_openf ( ler354_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
   if(status.ne.0) then
     ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ler354_cox_munk file', &
     'rd_toms_refl, module m_rd_toms_refl',2)

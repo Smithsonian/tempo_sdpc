@@ -22,9 +22,9 @@ function str_replace (instring, searchstr, newstr) result (repl_str)
 !   Result = str_replace (instring, searchstr, newstr)
 !     
 ! !INPUT PARAMETERS:   
-character(len=*), intent(in)		:: instring
-character(len=*), intent(in)		:: searchstr
-character(len=*), intent(in)		:: newstr
+character(len=*), intent(in) :: instring
+character(len=*), intent(in) :: searchstr
+character(len=*), intent(in) :: newstr
 !
 ! !OUTPUT PARAMETERS:  
 character(len=len(instring)-len(searchstr)+len(newstr)) :: repl_str

@@ -24,7 +24,7 @@ contains
 !        arr2 = sortind(arr)
 !
 ! !INPUT PARAMETERS:
-      real, dimension(:) :: arr 
+      real (KIND=8), dimension(:) :: arr 
 !                       arr : input vector to sort
 !
 ! !OUTPUT PARAMETERS:
@@ -57,10 +57,10 @@ end function i_sortind
 
       SUBROUTINE indexx(n,arr,indx)
       INTEGER n,indx(n),M,NSTACK
-      REAL arr(n)
+      REAL (KIND=8) arr(n)
       PARAMETER (M=7,NSTACK=50)
       INTEGER i,indxt,ir,itemp,j,jstack,k,l,istack(NSTACK)
-      REAL a
+      REAL (KIND=8) a
       do 11 j=1,n
         indx(j)=j
 11    continue

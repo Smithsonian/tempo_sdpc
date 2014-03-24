@@ -109,18 +109,18 @@ use m_matmul
        implicit NONE          ! *** IDL2F9O ***
 
 integer, intent(in) :: ndegree
-real, intent(in), dimension(:) :: x,y
-real, intent(out), dimension(:), optional :: yfit
-real, intent(out), dimension(:), optional :: measure_errors
-!real, dimension(:), allocatable :: sdev, sdev2
-real, dimension(size(x)) :: sdev, sdev2
-!real, dimension(:,:), allocatable :: covar
-real, dimension(0:ndegree,0:ndegree) :: covar
-!real, dimension(:), allocatable :: b, z, wy
-real, dimension(0:ndegree) :: b
-real, dimension(size(x)) :: z, wy
-real, dimension(ndegree+1) :: res
-real :: sum1
+real (KIND=8), intent(in), dimension(:) :: x,y
+real (KIND=8), intent(out), dimension(:), optional :: yfit
+real (KIND=8), intent(out), dimension(:), optional :: measure_errors
+!real (KIND=8), dimension(:), allocatable :: sdev, sdev2
+real (KIND=8), dimension(size(x)) :: sdev, sdev2
+!real (KIND=8), dimension(:,:), allocatable :: covar
+real (KIND=8), dimension(0:ndegree,0:ndegree) :: covar
+!real (KIND=8), dimension(:), allocatable :: b, z, wy
+real (KIND=8), dimension(0:ndegree) :: b
+real (KIND=8), dimension(size(x)) :: z, wy
+real (KIND=8), dimension(ndegree+1) :: res
+real (KIND=8) :: sum1
 integer :: status
 integer :: n,m,p,k,j
 logical :: no_weight

@@ -27,12 +27,12 @@ contains
 !        bilinear_res = interpol(p, ix, iy)
 !     
 ! !INPUT PARAMETERS:   
-        real, dimension(:),    intent(in)           :: ixin, jyin
-        real, dimension(:),    intent(in), optional :: x, y
-        real, dimension(:,:),  intent(in)           :: p
+        real (KIND=8), dimension(:),    intent(in)           :: ixin, jyin
+        real (KIND=8), dimension(:),    intent(in), optional :: x, y
+        real (KIND=8), dimension(:,:),  intent(in)           :: p
 !
 ! !OUTPUT PARAMETERS:  
-        real, dimension(size(ixin))           ::  bilinear_res
+        real (KIND=8), dimension(size(ixin))           ::  bilinear_res
 !   bilinear_res : interpolated point(s)
 !
 ! !SEE ALSO:  IDL documentation
@@ -60,8 +60,8 @@ contains
 
 ! local variables
 !----------------
-        real,     dimension(:),  allocatable :: ix, jy
-        real,     dimension(:),  allocatable :: dx, dy, dx1, dy1
+        real (KIND=8),     dimension(:),  allocatable :: ix, jy
+        real (KIND=8),     dimension(:),  allocatable :: dx, dy, dx1, dy1
         integer,  dimension(:),  allocatable :: i, j 
         integer,  dimension(:),  allocatable :: ip, jp
         integer                              :: icnt, sizex
@@ -124,14 +124,14 @@ END  function bilineara
 
 FUNCTION BILINEAR1 (P,IXin,JYin, x, y ) result (bilinear_res)
 ! !INPUT PARAMETERS:   
-        real,                  intent(in)           :: ixin, jyin
-        real, dimension(:),    intent(in), optional :: x, y
-        real, dimension(:,:),  intent(in)           :: p
+        real (KIND=8),                  intent(in)           :: ixin, jyin
+        real (KIND=8), dimension(:),    intent(in), optional :: x, y
+        real (KIND=8), dimension(:,:),  intent(in)           :: p
 !
 ! !OUTPUT PARAMETERS:  
-        real ::  bilinear_res
+       real (KIND=8) ::  bilinear_res
 
-       real, dimension(1) :: bilin_interp, ixin_arr, jyin_arr
+       real (KIND=8), dimension(1) :: bilin_interp, ixin_arr, jyin_arr
 
        ixin_arr=ixin
        jyin_arr=jyin

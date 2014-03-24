@@ -2,7 +2,9 @@ module m_write_output_data_2pres
 
 contains
 
-subroutine write_output_data_2pres(outfile, swathname, ierr)
+!!!Removed ierr since code does nothing with it
+!subroutine write_output_data_2pres(outfile, swathname, ierr)
+subroutine write_output_data_2pres(outfile, swathname)
    use m_write_swath_field
    use m_vars
    implicit none
@@ -41,7 +43,7 @@ subroutine write_output_data_2pres(outfile, swathname, ierr)
 
 !ouputs
 !------
-       integer, intent(out) :: ierr
+!       integer, intent(out) :: ierr
 
 ! Declare the HDF-EOS file and swath identification numbers, and
 ! the status of the HDF-EOS functions calls.

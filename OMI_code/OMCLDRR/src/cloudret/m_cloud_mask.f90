@@ -76,7 +76,7 @@ subroutine cld_mask
    USE m_find
    USE hdfeos4_parameters
    !USE SmPx_reader_class
-   USE L1b_reader_class
+   USE L1B_Reader_class
    USE m_strpos
    USE m_vars, ONLY: cloud_mask, smpx_mean, smpx_stddev, smpx_wavel, &
         stddev_thresh, filename, input_data_path, iprt, smpx_nPix, &
@@ -132,12 +132,14 @@ subroutine cld_mask
    INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: geoflg
    integer :: indc, ind
    integer :: mins, maxs
-   real, dimension(maxcoadd,2) :: r1_ri
-   real, dimension(maxcoadd) :: sorted, D, E 
-   integer, dimension(maxcoadd) :: order
-   real, dimension(maxcoadd,maxcoadd) :: A
+   real (KIND=8), dimension(maxcoadd,2) :: r1_ri
+!!   real (KIND=4), dimension(maxcoadd) :: sorted, D, E 
+!!   integer, dimension(maxcoadd) :: order
+   real (KIND=4), dimension(maxcoadd) :: D, E 
+   integer, dimension(maxcoadd) :: order, sorted
+   real (KIND=4), dimension(maxcoadd,maxcoadd) :: A
    integer :: ndim
-   logical :: use_2_channels=.false.
+   logical :: using_2_channels=.false.
  
 ! obtain name of swath
   filenamen=trim(input_data_path)//filename
@@ -163,7 +165,7 @@ subroutine cld_mask
       STOP
    END IF
 
- if (use_2_channels) then
+ if (using_2_channels) then
   filenamen=trim(input_data_path)//filename_cm
   vis = strpos (filename_cm, 'BRUG') < 0 .and. strpos (filename_cm, 'BRUZ') < 0
   if (vis) then
@@ -280,7 +282,7 @@ subroutine cld_mask
                                "L1Brd_getSIGline failed", "cloud_mask", 0 )
          call exit(1)
       END IF
-     if (use_2_channels) then
+     if (using_2_channels) then
       !status = L1Br_getSIGline( blk2, iLine, NumberSmallPixelColumns_k=nPix2, &
       !                          SmallPixelSignal_k=smvaluesL2, &
       !                          SmallPixelWavelength_k=wavelengthL2)!, quality_flagL )
@@ -310,10 +312,10 @@ subroutine cld_mask
           !smpx_stddev(iTrack,iLine+1)=smpx_stddev(iTrack,iLine+1)/ &
           !mins=find(smvaluesL(iTrack,1:nPix) == &
           !  minval(smvaluesL(iTrack,1:nPix)),iprt=0)
-          if (use_2_channels) then
+          if (using_2_channels) then
            if (nPix > 2) then
              sorted(1:nPix)=smvaluesL(iTrack,1:nPix)
-             order(1:nPix)=sortind(sorted(1:nPix))
+             order(1:nPix)=i_sortind(sorted(1:nPix))
              sorted(1:nPix)=smvaluesL(iTrack,order(1:nPix))
              r1_ri(1:nPix-1,1)=(sorted(1)-sorted(2:nPix))/sorted(1)
              sorted(1:nPix)=smvaluesL2(iTrack,order(1:nPix))

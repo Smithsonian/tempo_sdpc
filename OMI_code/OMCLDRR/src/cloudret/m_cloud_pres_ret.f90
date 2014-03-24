@@ -37,13 +37,13 @@ use m_vars, ONLY: w_grid, ps, nwave2, cloud_mask, &
   squeeze, write_resid, niter, no_ret_ps, filename_resid, noret, simul, &
   shift, do_alloc, no2, do_no2, refl_chl_max, write_obs, lun_out_resid, &
   refl_l, refl_s, wave_short, wave_long, npres, lat, lon, write_resid_all, &
-  theta, scan, phi, use_spline, iLine, start_line, wdelt, w12d, f12d, pres,&
+  theta, scan, phi, using_spline, iLine, start_line, wdelt, w12d, f12d, pres,&
   geoflg, fill_value, n_good_input, n_good_output, n_missing, &
   retrieve_chl_pres, lun_out_cal, smpx_stddev, irr_quality_flagL, &
   quality_flagL, shifts, squeezes, refl_ref, sza_Ref, satz_ref, az_ref, &
   psurf_ref, reference_spec, reference_wave, reference_ring, do_o3, &
-  reference_rad, nscanpos, wave_resid, resid, use_resid, resid_spec, &
-  resid_wave, meas_qual_flg, cal_fact, use_cal, wave_dpdf, refl_cld2, &
+  reference_rad, nscanpos, wave_resid, resid, using_resid, resid_spec, &
+  resid_wave, meas_qual_flg, cal_fact, using_cal, wave_dpdf, refl_cld2, &
   wave_o3, xsect_o3, fill, write_fill, wave_fill, ref_clr, get_refl_clim, &
   ler_nsz, ler_sz, ler_nth, ler_th, ler_nph, ler_ph, ler354
 use m_cloud_pres_mod
@@ -52,8 +52,8 @@ use m_alloc2
 use m_lambda_qual
 implicit none
 
-real, intent(inout) :: refl_clr
-real, intent(inout) :: refl_cld
+real (KIND=8), intent(inout) :: refl_clr
+real (KIND=8), intent(inout) :: refl_cld
 include 'PGS_SMF.f'
 
 !*************************************************************************
@@ -187,7 +187,7 @@ endif ! check_rad
 
 !interpolate solar flux to table wavelengths 
 !===========================================
- if (use_spline) then
+ if (using_spline) then
    ngood=count(fs(:,ip) > 0)
    if (ngood /= size(fs(:,ip))) then
     if (ngood > 0) then
@@ -311,7 +311,7 @@ endif
   l=interpol(findgen(nphi)+1,phi,az)
   np0=interpol(findgen(npres)+1,pres,psurf)
 !  np0=minval((/np0,float(npres)/))
-  np0=minval((/np0,real(npres)/))
+  np0=minval((/np0,real(npres, KIND=8)/))
   nt_o=interpol(findgen(nthet_oc)+1,theta_oc,sz)
   j_o=interpol(findgen(nscan_oc)+1,scan_oc,satz)
   i_np0=nint(np0)
@@ -335,7 +335,7 @@ endif
   if (ngood > 0) then
    allocate(good(ngood))
    good=find2(w1p > 0. .and. f1p > 0.,ngood)
-   if (use_spline) then
+   if (using_spline) then
     y_obs=spline(w1p(good),f1p(good),waves)/sflx 
    else ! not spline
     y_obs=interpol(f1p(good),w1p(good),waves)/sflx !*pi
@@ -354,7 +354,7 @@ endif
 
 !check for good residuals and apply correction if required
 !=========================================================
- if (use_resid) then
+ if (using_resid) then
    if (size(resid_spec,dim=1) /= nobs) then
     ierr = OMI_SMF_setmsg( status, &
      "Incompatible resid table, not using corrections", "cloud_pres_ret", 1 )
@@ -362,7 +362,7 @@ endif
      y_obs=y_obs-resid_spec(:,ip+1)*y_obs
      y_obs1=y_obs1-resid_spec(:,ip+1)*y_obs1
    endif ! good residuals found
- endif ! use_resid
+ endif ! using_resid
 
   !initialize computed arrays to false
   !===================================
@@ -506,7 +506,7 @@ if (iter == 0 .or. cld_frac == 1 .or. cld_frac == 0) then
    endif
    i_obs_s=y_obs1(indt)
   endif
- if (use_cal) i_obs_l=i_obs_l+i_obs_l*cal_fact(ip+1)
+ if (using_cal) i_obs_l=i_obs_l+i_obs_l*cal_fact(ip+1)
  set_cld_frac=iter == 0
  if (do_mler) then 
   call get_ai_refl(refl_clr, refl_cld, iter, I_obs_l, I_obs_s, ip, &
@@ -776,7 +776,7 @@ endif
 if (shift) then
   !apply wavelength shift
   !----------------------
- if (use_spline) then
+ if (using_spline) then
   y_calc=spline(waves,y_calc_sh*sflx,waves+x(nst-1,1))/sflx   
  else
   y_calc=interpol(y_calc_sh*sflx,waves,waves+x(nst-1,1))/sflx   
@@ -795,7 +795,7 @@ if (shift) then
 
     ! this one shifts then squeezes shifted wavelengths
     !==================================================
-    if (use_spline) then
+    if (using_spline) then
      y_calc_squeeze=spline(waves,y_calc_sh*sflx, &
        (waves*x(1,1) - adj + x(nst-1,1)) ) /sflx   
     else

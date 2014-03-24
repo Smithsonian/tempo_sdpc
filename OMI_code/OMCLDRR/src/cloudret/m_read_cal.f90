@@ -17,7 +17,7 @@ subroutine read_cals (rc)
 !  read_cals reads precomputed resids spectra needed for cloud
 !               pressures
 !
-use m_vars, ONLY: nscanpos, cal_fact, iprt, use_cal
+use m_vars, ONLY: nscanpos, cal_fact, iprt, using_cal
                   
 use m_LUN_set
       Implicit NONE
@@ -52,8 +52,9 @@ include 'PGS_OMI_1900.f'
 include 'PGS_SMF.f'
 
 version = 1
+rc=0
 status = pgs_io_gen_openf ( cal_id, PGSd_IO_Gen_RSeqFrm, &
-	0,lun, version)
+        0,lun, version)
 if (iprt > 0) then
  print *,'read_cals: trying to open cal file ',status, lun
 endif
@@ -62,8 +63,9 @@ if(status.ne.0) then
 ! 'read_cals, module m_read_cals',1)
   ierr = OMI_SMF_setmsg( status, &
                             "PGE aborting, exit code = 1", "read_cals", 1 ) 
+  rc=1
  call exit(1)
- use_cal=.false.
+ using_cal=.false.
 else
  read(lun, *, err=100) text
  read(lun, *, err=100) nscanpos
@@ -92,6 +94,7 @@ return
    if (iprt > 0) print *,'read_cals: error reading file'
    ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
      "Error reading reflectivity calibration, PGE aborting, exit code = 1", "read_cals", 1 )
+      rc=1
       call exit(1)
 
 end subroutine read_cals

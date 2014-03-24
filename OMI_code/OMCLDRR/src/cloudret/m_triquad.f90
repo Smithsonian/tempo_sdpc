@@ -11,12 +11,12 @@ function interpol(ix,iy) result(p)
 use m_cloud_pres_mod, ONLY: temp3D
 implicit none
 
-real, intent(in) :: ix
+real (KIND=8), intent(in) :: ix
 integer, intent(in) :: iy
-real, dimension(size(temp3D,dim=3)) :: p
+real (KIND=8), dimension(size(temp3D,dim=3)) :: p
 
 integer :: s, ii
-real :: x0, x1, x2
+real (KIND=8) :: x0, x1, x2
 
         s=(ix) 
         s=maxval((/s,2/))
@@ -40,13 +40,13 @@ function biquad( ix, jy ) result(xy)
 use m_cloud_pres_mod, ONLY: temp3D
 implicit NONE          ! *** IDL2F9O ***
 
-real, intent(in) :: ix, jy
-real, dimension(size(temp3D,dim=3)) :: xy
+real (KIND=8), intent(in) :: ix, jy
+real (KIND=8), dimension(size(temp3D,dim=3)) :: xy
 
 integer :: i, j, ip, jp, ii, s
-real :: dx, dy, dx1, dy1
-real :: d1, d2, d3, d4
-real, dimension(size(temp3D,dim=3)) :: p0, p1, p2
+real (KIND=8) :: dx, dy, dx1, dy1
+real (KIND=8) :: d1, d2, d3, d4
+real (KIND=8), dimension(size(temp3D,dim=3)) :: p0, p1, p2
 integer :: y0, y1, y2
 
 
@@ -78,11 +78,11 @@ function triquad( zp,xp,yp ) result(interp)
 use m_cloud_pres_mod, ONLY: table, temp3D
 implicit NONE          
 
-real, dimension(size(table,dim=4)) :: interp
-real, intent(in) :: xp, yp, zp
+real (KIND=8), dimension(size(table,dim=4)) :: interp
+real (KIND=8), intent(in) :: xp, yp, zp
 
 integer :: iz, z0, z1, z2, s, ii
-real, dimension(size(table,dim=4)) :: interp0, interp1, interp2
+real (KIND=8), dimension(size(table,dim=4)) :: interp0, interp1, interp2
    
 !find bracketing z 
 !==============================

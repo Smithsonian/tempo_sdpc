@@ -61,24 +61,24 @@ integer (kind=4), external :: pgs_pc_getreference !, OMI_SMF_setmsg
 iLine=0
 !Initialize (read resource file)
 !===============================
-call pzeitbeg ('init')
+!call pzeitbeg ('init')
 if (iprt > 1) print *,'cloud_ret: initializing'
 call initialize(err_code)
-call pzeitend() !('init')
+!call pzeitend() !('init')
 
 !Read in pre-computed Ring and radiance data
 !===========================================
-call pzeitbeg ('read_tab')
+!call pzeitbeg ('read_tab')
   if (iprt > 1) print *,'cloud_ret: reading_tables'
   call read_tables(err_code)
   call read_ocean_table(err_code)
   call read_thresholds(err_code)
-  if (use_ref) call read_references(err_code)
-  if (use_resid) call read_resids
-  if (use_cal) call read_cals(err_code)
+  if (using_ref) call read_references(err_code)
+  if (using_resid) call read_resids
+  if (using_cal) call read_cals(err_code)
   if (do_o3) call read_o3
   !if (do_no2) call read_no2(err_code)
-call pzeitend() !('read_tab')
+!call pzeitend() !('read_tab')
 
 !Assign name and open output file
 !======================================
@@ -115,19 +115,19 @@ do ifile=1, nfiles
  !Get level 1 small pixel data and
  !compute cloud mask
  !===========================================================
- call pzeitbeg ('cld_mask')
+! call pzeitbeg ('cld_mask')
  if (iprt >= 1) print *,'cloud_ret: calling cld_mask'
  if(form==5 ) call cld_mask()
  if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
- call pzeitend() !('cld_mask')
+! call pzeitend() !('cld_mask')
 
  !Get level 1 input data: 
  !radiance and solar irradiance spectra
  !===========================================================
- call pzeitbeg ('read_inp')
+! call pzeitbeg ('read_inp')
  if (iprt > 1) print *,'cloud_ret: reading input data'
  call read_input_data(blk, err_code)
- call pzeitend() !('read_inp')
+! call pzeitend() !('read_inp')
  
  !loop over the # of lines
  !========================
@@ -142,17 +142,17 @@ do ifile=1, nfiles
   !Get level 1 input data: 
   !radiance and solar irradiance spectra
   !===========================================================
-  call pzeitbeg ('read_inp')
+!  call pzeitbeg ('read_inp')
   if (iprt > 1) print *,'cloud_ret: reading input data'
   if (form == 5) call read_input_data(blk, err_code)
   if(err_code >= 1) goto 999
-  call pzeitend() !('read_inp')
+!  call pzeitend() !('read_inp')
 
   endif ! start_line
 
   !get the climatological terrain pressure
   !=======================================
-  call pzeitbeg ('rd_terr')
+!  call pzeitbeg ('rd_terr')
   call rd_terr ()
 
   !get the surface reflectivity climatology 
@@ -165,12 +165,12 @@ do ifile=1, nfiles
   !=======================================
   call rd_chl ()
   land_flg=chlcl < 0.
-  call pzeitend() !('rd_terr')
+!  call pzeitend() !('rd_terr')
  enddo ! loop over ny
 
   !do the retrieval
   !=================
-   call pzeitbeg('ret_cld')
+!   call pzeitbeg('ret_cld')
 
   do i=1,n_products
 
@@ -226,7 +226,7 @@ do ifile=1, nfiles
       enddo ! ispec
      endif ! iprt >= 2
 
-   call pzeitend() !('ret_cld')
+!   call pzeitend() !('ret_cld')
 
   999 continue
 
@@ -235,13 +235,17 @@ do ifile=1, nfiles
 
  !Write the output 
  !=================
- call pzeitbeg ('writeout')
+! call pzeitbeg ('writeout')
  if (write_he5) then
-  call write_output_data(filename_out,outswathname,err_code)
+!!!removing err_code for write_output_data* since neither module does 
+!!! anything with the error parameter, and consequently I've removed it
+!  call write_output_data(filename_out,outswathname,err_code)
+  call write_output_data(filename_out,outswathname)
 ! if (n_products > 1)  &
-  call write_output_data_2pres(filename_out,outswathname,err_code)
+!  call write_output_data_2pres(filename_out,outswathname,err_code)
+  call write_output_data_2pres(filename_out,outswathname)
  endif
- call pzeitend() !('writeout')
+! call pzeitend() !('writeout')
 
  !Writing Metadata including LocalGranuleId
  !=========================================
@@ -261,7 +265,7 @@ enddo ! file loop
 
 !print out timing information
 !============================
-if (iprt >= 1) call pzeitpri(6)
+!if (iprt >= 1) call pzeitpri(6)
 
 !exit with normal status
 !=======================

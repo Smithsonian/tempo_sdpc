@@ -19,12 +19,12 @@ function indgen(length) result (vector)
 !        vector = indgen(length)
 !     
 ! !INPUT PARAMETERS:   
-integer, intent(in)	       :: length 
-!			length : length of vector to create
+integer, intent(in)               :: length 
+!                        length : length of vector to create
 !
 ! !OUTPUT PARAMETERS:  
 integer, dimension(length) :: vector
-!			vector : vector filled with 0,1,2,...length-1
+!                        vector : vector filled with 0,1,2,...length-1
 !
 ! !SEE ALSO:  IDL documentation, findgen.f90
 !
@@ -37,7 +37,7 @@ integer, dimension(length) :: vector
 
 !local variables
 !---------------
-integer				:: i
+integer                                :: i
 
 vector = (/ (i,i=0,length-1) /)
 

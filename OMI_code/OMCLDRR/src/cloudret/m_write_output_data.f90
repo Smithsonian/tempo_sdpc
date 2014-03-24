@@ -2,7 +2,9 @@ module m_write_output_data
 
 contains
 
-subroutine write_output_data(outfile, swathname, ierr)
+!!!removed ierr since code does nothing with it
+!subroutine write_output_data(outfile, swathname, ierr)
+subroutine write_output_data(outfile, swathname)
    use m_write_swath_field
    use m_vars
    implicit none
@@ -42,7 +44,7 @@ subroutine write_output_data(outfile, swathname, ierr)
 
 !ouputs
 !------
-       integer, intent(out) :: ierr
+!       integer, intent(out) :: ierr
 
 ! Declare the HDF-EOS file and swath identification numbers, and
 ! the status of the HDF-EOS functions calls.
@@ -70,6 +72,8 @@ subroutine write_output_data(outfile, swathname, ierr)
        real (kind = 8) :: misval_r8 = fill_value
        integer (kind = 2) :: misval_i2 = fill_value_int 
        integer (kind = 1) :: misval_i1 = fill_value_int1
+!       integer (kind = 4) :: misval_i2 = fill_value_int 
+!       integer (kind = 3) :: misval_i1 = fill_value_int1
 
 iLine1=iLine-start_line
 if (form == 5) then

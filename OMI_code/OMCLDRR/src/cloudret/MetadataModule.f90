@@ -16,7 +16,7 @@ module MetadataModule
  USE m_LUN_set
  USE m_vars, ONLY: cloud_pres, eff_cld_frac, n_good_input, n_good_output, &
                    highqual, badqual, cloud_pres_max, cld_frac_min, qc,   &
-                   n_input, n_missing, use_cal
+                   n_input, n_missing, using_cal
  USE  m_swathnames, ONLY: vis, visz
 
  IMPLICIT NONE
@@ -208,7 +208,7 @@ QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input)) ! n_missing cou
     IF(i==8)Fil_Lun=resid_id
     IF(i==9)Fil_Lun=refl_id
     IF(i==10) then 
-      if(use_cal) then 
+      if(using_cal) then 
         Fil_Lun=cal_id
       else
         supflnm(i)=''
