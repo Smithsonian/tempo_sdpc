@@ -88,8 +88,7 @@ no_cl_filename=.true.
 version = 1
 status = pgs_pc_getreference(L2_out,version,flnm_out)
 if(status.ne.0) then
-  ierr=OMI_SMF_setmsg(OMCLDRR_F_FAILURE,"error opening output L2 file, &
-  PGE aborting, exit code = 1", "program cloud_ret",0)
+  ierr=OMI_SMF_setmsg(OMCLDRR_F_FAILURE,"error opening output L2 file, PGE aborting, exit code = 1", "program cloud_ret",0)
   stop 1
 endif
 filename_out=trim(flnm_out)
@@ -215,8 +214,7 @@ do ifile=1, nfiles
      !write output 
      !============
      if (iprt >= 2) then
-      print *, 'cloud_ret: pix, CP, R, f, ps, sza, &
-        land, biases, stds, chl. fg, chl'
+      print *, 'cloud_ret: pix, CP, R, f, ps, sza, land, biases, stds, chl. fg, chl'
       do ispec=0, nXtrack-1
         write(6,106) ispec, cloud_pres(ispec,iLine), refl(ispec,iLine), &
          eff_cld_frac(ispec,iLine), ps(ispec,iLine), &
