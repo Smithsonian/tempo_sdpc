@@ -130,7 +130,7 @@ if (iprt > 0) print *,'initialize: file status ',ex
 if (ex) then
   version = 1
   status = pgs_pc_getreference ( L1B_LUN, version, filename)
-  if (iprt > 0) print *,trim(myname)//' get_pc_refrence status l1b filename',&
+  if (iprt > 0) print *,trim(myname)//' get_pc_reference status l1b filename',&
     status, trim(filename)
 
   version = 1

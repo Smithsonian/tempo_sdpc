@@ -51,23 +51,24 @@ use m_LUN_set
 integer :: i, j, k, l, m
 logical :: first
 
-integer, parameter :: lun=10
+!integer, parameter :: lun=10 !lun is an output of pgs_io_gen_openf, so can't be a parameter (I think?)
+integer :: lun
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, OMCLDRR_F_FAILURE
 include 'PGS_IO.f'
 include 'PGS_IO_1.f'
 include 'PGS_OMI_1900.f'
 include 'PGS_SMF.f'
+#next two lines added by EOS
+include 'PGS_PC.f'
+include 'PGS_PC_9.f'
 
 if (ex) then
 version = 1
-status = pgs_io_gen_openf ( ring_id, PGSd_IO_Gen_RSeqUnf, &
-        0,lun, version)
+status = PGS_IO_GEN_OPENF(ring_id, PGSd_IO_Gen_RSeqUnf,0,lun, version)
 if(status.ne.0) then
-  ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening Ring table file', &
-  'read_tables, module m_read_tables',1)
-  ierr = OMI_SMF_setmsg( status, &
-                            "PGE aborting, exit code = 1", "read_tables", 1 ) 
+  ierr = OMI_SMF_setmsg(status,"PGE aborting, exit code = 1","read_tables",1) 
+  ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,"error opening Ring table file","read_tables module m_read_tables",1)
  call exit(1)
 endif
 else
@@ -80,6 +81,11 @@ else
  endif
 endif
  read(lun, err=100) nwave, ntheta, nscan, nphi, npres !nrefl
+# nwave=(4000-3550)/2+1
+# npres=5
+# ntheta=10
+# nscan=6
+# nphi=7
  if (iprt >= 1) then
    print *,'read_tables: nwave,ntheta,nscan,nphi,npres'
    print *,nwave,ntheta,nscan,nphi,npres

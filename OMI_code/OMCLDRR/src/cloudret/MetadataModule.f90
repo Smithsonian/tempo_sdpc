@@ -298,7 +298,8 @@ enddo
   GO TO 9999
   ENDIF
 
-  returnstatus = omi_localgranuleid( 2, groups)
+!!!Temporarily disabled since I have no code that includes it
+!  returnstatus = omi_localgranuleid( 2, groups)
 
   returnstatus = pgs_met_write(groups(INVENTORY),'CoreMetadata',sdid)  
   returnstatus = pgs_met_write(groups(ARCHIVE),'ArchiveMetadata',sdid)

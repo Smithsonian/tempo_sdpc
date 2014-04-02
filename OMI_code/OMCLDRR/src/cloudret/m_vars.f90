@@ -248,7 +248,8 @@ real (KIND=8)    :: wave_short= 376.4 !346.8!340.4
 !real (KIND=8)    :: wave_long = 386.3 !376.4 ! 390 where Ring close to 0, 
 real (KIND=8)    :: wave_long = 394.1 !376.4 ! 390 where Ring close to 0, 
                              ! old 386.3 !373.2 ! for GOMI 386.3! 
-logical :: ex
+!logical :: ex= .true
+logical :: ex= .true.
 logical :: write_geom= .true.
 logical :: write_ps  = .true. !.false.
 logical :: using_ref = .false. !.true.

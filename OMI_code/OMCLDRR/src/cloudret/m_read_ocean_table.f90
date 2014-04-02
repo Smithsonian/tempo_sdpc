@@ -24,7 +24,9 @@ real (KIND=8), allocatable, dimension(:) :: oc_perms2
 ! ocean Raman correction coefficient
 real (KIND=8), parameter :: coef = 1.5
 
-integer, parameter :: lun=10
+!integer, parameter :: lun=10
+!lun is an output of pgs_io_gen_openf so cannot be parameter!
+integer :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version,ierr
 include 'PGS_IO.f'

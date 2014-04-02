@@ -57,7 +57,9 @@ real (KIND=8), dimension(:,:), allocatable :: z1_clds, z2_clds
 real (KIND=8), dimension(:,:), allocatable :: ntot
 real (KIND=8), dimension(:), allocatable :: o3_xsect
 real (KIND=8), dimension(:,:,:,:), pointer :: table
+!real (KIND=4), dimension(:,:,:,:), pointer :: table
 real (KIND=8), dimension(:,:,:), pointer :: temp3D
+!real (KIND=4), dimension(:,:,:), pointer :: temp3D
 real (KIND=8), dimension(:,:), pointer :: temp2D
 real (KIND=8) :: sz, satz, az
 
