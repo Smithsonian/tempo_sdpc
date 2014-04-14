@@ -7,6 +7,7 @@ contains
 subroutine write_output_data(outfile, swathname)
    use m_write_swath_field
    use m_vars
+   USE ISO_C_BINDING, ONLY: C_LONG
    implicit none
 !-------------------------------------------------------------------------
 !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -82,6 +83,7 @@ else
   nTime=nTimes
 endif
 
+
 !Create the file 
 !===============
 
@@ -104,15 +106,15 @@ endif
        if (iprt >= 1) &
        write (6,*) 'write_output_file: dimensions, nTimes ',nTimes, &
           ' nXtrack ',nXtrack
-       status = he5_swdefdim(swid,nTimesstr,nTimes)
+       status = he5_swdefdim(swid,nTimesstr,INT(nTimes, KIND=C_LONG))
        if (iprt >= 1) &
        write(6, *) status, 'after define nTimesstr'
-       status = he5_swdefdim(swid,nXtrackstr,nXtrack)
+       status = he5_swdefdim(swid,nXtrackstr,INT(nXtrack, KIND=C_LONG))
        if (iprt >= 1) &
        write(6, *) status, 'after define nXtrackstr'
        if (write_resid) then
          nWaveRes=size(wave_resid)
-         status = he5_swdefdim(swid,nWavestr,nWaveRes)
+         status = he5_swdefdim(swid,nWavestr,INT(nWaveRes, KIND=C_LONG))
          if (iprt >= 1) &
          write(6, *) status, 'after define nWavestr'
        endif

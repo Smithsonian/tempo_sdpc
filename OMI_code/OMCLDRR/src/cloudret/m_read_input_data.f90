@@ -73,6 +73,7 @@ integer, parameter :: nz=ez-sz+1
 include 'PGS_IO.f'
 include 'PGS_IO_1.f'
 INCLUDE 'PGS_SMF.f'
+include 'PGS_TD_3.f'
 include 'PGS_OMI_1900.f'
 include 'PGS_OMCLDRR_52251.f'
 !***********************************************************************
@@ -175,7 +176,7 @@ if (form == 5) then ! use new l1b reader
     squeeze=.true. 
    endif ! gomi
   endif ! not vis
- if (iprt >= 2) print *,'read_input_data: filename ',filenamen, swathname
+ if (iprt > 0) print *,'read_input_data: filename ',filenamen, swathname
 !**********************************************************************
    status = L1Br_open( blk, filenamen, swathname )
  if (iprt > 0)   print *,'read_input_data: opening l1b status ',status
@@ -184,9 +185,10 @@ if (form == 5) then ! use new l1b reader
       "PGE aborting, exit code = 1", "read_input_data", 1 )
       call exit(1)
    ELSE
-      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
+!     ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
+     ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
       "Opened Earth Radiance", "read_input_data", 1 )
-   END IF
+  END IF
 
 ! obtain sizes of dimensions defined in swath
    status = L1Br_getSWdims( blk, NumTimes_k=nTimes, nXtrack_k=nXtrack, &
@@ -203,7 +205,8 @@ if (form == 5) then ! use new l1b reader
       "PGE aborting, exit code = 1", "read_input_data", 1 )
       call exit(1)
  ELSE
-      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
+!      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
+      ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
       "Read Earth Radiance Dims", "read_input_data", 1 )
  END IF
 
@@ -272,7 +275,6 @@ where(azimuth(:,iLine) > 360.0) azimuth(:,iLine)=fill_value
 !==============================================================================
 if (iLine == start_line) then
    status = PGS_TD_TAItoUTC(time(1),DateTime)
-   if (iprt >= 1) print *, status, PGS_S_SUCCESS, DateTime
 
    IF(status .NE. PGS_S_SUCCESS) THEN
      ierr = OMI_SMF_setmsg(OMI_E_FAILURE, "TAI time conversion failed", &
@@ -282,7 +284,7 @@ if (iLine == start_line) then
   10 FORMAT (I4,1X,I2,1x,I2,17X)
      READ  (DateTime,10) Year, Month, Day
      WRITE( msg,* ) "Date is: ", Year, Month, Day
-     status = OMI_SMF_setmsg(OMCLDRR_S_SUCCESS, msg, "read_input_data", 1)
+     status = OMI_SMF_setmsg(PGS_S_SUCCESS, msg, "read_input_data", 1)
       if (iprt >= 1) print *, msg
    ENDIF
    if (iprt >= 3) print *,'wmin2 wmax2 ',wmin2,wmax2
@@ -334,8 +336,12 @@ END IF
 !call pzeitend
 
 if(iLine==start_line)  ll=1
-w1(0:nwl-1,:,ll)=w12d
-f1(0:nwl-1,:,ll)=f12d
+!Next two lines fail under gfortran
+!presuming goal is to copy over part of w12d and f12d, restrict input ranges
+!w1(0:nwl-1,:,ll)=w12d
+!f1(0:nwl-1,:,ll)=f12d
+w1(0:nwl-1,:,ll)=w12d(0:nwl-1,:)
+f1(0:nwl-1,:,ll)=f12d(0:nwl-1,:)
 w12d(nwl:nWavel-1,:)=0.
 f12d(nwl:nWavel-1,:)=0.
 
@@ -617,7 +623,9 @@ allocate (chi_sqr (0:nXtrack-1,nLines))      ; chi_sqr=fill_value
  if (allocated(chi_sqr2)) deallocate (chi_sqr2)
 allocate (chi_sqr2 (0:nXtrack-1,nLines))      ; chi_sqr2=fill_value
  if (allocated(land_flg)) deallocate (land_flg)
-allocate (land_flg(0:nXtrack-1)) ; land_flg=-1
+!allocate (land_flg(0:nXtrack-1)) ; land_flg=-1
+!!!land_flg is a logical. presumably -1 indicates false...
+allocate (land_flg(0:nXtrack-1)) ; land_flg=.FALSE.
 if (allocated(chlcl)) deallocate (chlcl)
 allocate (chlcl   (0:nXtrack-1)) ; chlcl=fill_value
 if (allocated(qc)) deallocate (qc)      

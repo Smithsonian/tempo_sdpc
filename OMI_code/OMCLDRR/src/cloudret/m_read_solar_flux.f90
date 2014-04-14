@@ -215,7 +215,8 @@ call bad_irrad_lambda(nXtrack)
   call EarthSunDist(filename,dist_irrad, dist_rad)
   fs(0:nsolwave-1,:)=fs(0:nsolwave-1,:)*(dist_irrad/dist_rad)**2
 
-      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
+!      ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
+      ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
       "Solar Irradiance", "read_solar_flux", 1 )
 
 end subroutine read_solar_flux

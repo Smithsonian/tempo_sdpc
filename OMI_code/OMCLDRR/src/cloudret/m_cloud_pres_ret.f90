@@ -99,6 +99,19 @@ endif ! do_alloc
 
 if (.not. noret) then
 
+!! Call to m_alloc above sets f1p and w1p to be fixed size (nwl) arrays 
+!! where nwl is the number of valid wavelengths in the first line of data
+!! But nwl can vary on later lines, leading to f1p being the wrong size. 
+!! so I think we need to set its size fresh each time - either that or
+!! we need to use a fixed number of wavelengths every time through.
+!! Next lines set array size to be nwl in current line
+!!       EJOS 9/4/14
+if(allocated(f1p)) deallocate(f1p)
+allocate(f1p(nwl))
+if(allocated(w1p)) deallocate(w1p)
+allocate(w1p(nwl))
+!print *,'sizes of f1p w1p f12d w12d',size(f1p),size(w1p),size(f12d),size(w12d),nwl 
+
 !profile loop
 !============
 do ip=0, nXtrack-1 
@@ -766,7 +779,10 @@ endif
 
   !fit polynomial to computed radiance and subtract 
   !------------------------------------------------
-  res=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
+  !array res has size 2, but result of poly_fit is size nterms+1=3
+  ! since res3 is not used below, safe to send result to res3?
+  !res=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
+  res3=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
   y_calc_sh=x(nst-1-nsh,1)+x(nst-2-nsh,1)*wavesd
   do ntm=2,nterms
     y_calc_sh=y_calc_sh+x(nst-1-nsh-ntm,1)*wavesp(ntm-1,:)

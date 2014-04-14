@@ -64,6 +64,7 @@
           missingvalue, title, units, geo, offset, iprt) &
           result(status)
 
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
@@ -77,9 +78,11 @@
        integer (kind = 4) :: status, numbertype
        integer, parameter :: dim=1
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) :: nn, n1=1, n11=11
 
        geofld=.false.
        if (present(iprt)) iprt2=iprt
@@ -109,14 +112,14 @@
        endif
 !       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 11, "Aura-Shared")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n11, "Aura-Shared")
        status = he5_swwrfld (swid, fieldname, &
           start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -126,8 +129,8 @@
        function put_data_1dr4(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        integer,   intent(in), optional :: offset
@@ -140,9 +143,11 @@
        integer (kind = 4) :: status, numbertype
        integer, parameter :: dim=1
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) :: nn, n1=1, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -169,16 +174,16 @@
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
        status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -191,8 +196,8 @@
        function put_data_1di2(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -205,9 +210,11 @@
        integer (kind = 4) :: status, numbertype
        integer, parameter :: dim=1
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) :: nn, n1=1, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -234,16 +241,16 @@
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -327,8 +334,8 @@
        function put_data_2di2(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -341,9 +348,11 @@
        integer, parameter :: dim=2
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) :: nn, n1=1, n11=11, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -371,19 +380,19 @@
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
 if(index(fieldname,'TerrainHeight')==1) then
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 11, "Aura-Shared")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n11, "Aura-Shared")
 else
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
 endif
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
@@ -394,8 +403,8 @@ endif
        function put_data_2di1(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -408,9 +417,11 @@ endif
        integer, parameter :: dim=2
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) :: nn, n1=1, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -438,14 +449,14 @@ endif
            dimname, " ", numbertype, merge)
         endif
        endif
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -455,8 +466,9 @@ endif
        function put_data_2dr4(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
-       implicit none
 
+       USE ISO_C_BINDING, ONLY: C_LONG
+       implicit none
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -469,14 +481,16 @@ endif
        integer, parameter :: dim=2
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
-       integer (kind=4), dimension(dim) :: chunk_dim
+       integer (KIND=C_LONG), dimension(dim) :: chunk_dim
        integer (kind=4) :: chunk_rank=2
        integer (kind=4), dimension(5) :: compparm
        integer (kind=4) :: he5_swdefchunk, he5_swdefcomch
        include 'hdfeos5.inc'
+       INTEGER (KIND=C_LONG) :: n1=1, nn, n11=11, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -519,17 +533,17 @@ status = he5_swdefcomch(swid, HE5_HDFE_COMP_DEFLATE, compparm, chunk_rank, chunk
 !       call pzeitbeg('wr2dfl')
 !       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
 if(index(fieldname,'Latitude')==1 .or. index(fieldname,'Longitude')==1) then
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 11, "Aura-Shared")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n11, "Aura-Shared")
 else
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
 endif
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
@@ -541,8 +555,8 @@ endif
        function put_data_3dr8(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -555,9 +569,11 @@ endif
        integer, parameter :: dim=3
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld,append
+       INTEGER (KIND=C_LONG) :: n1=1, nn, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -587,16 +603,16 @@ endif
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR,nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -607,8 +623,8 @@ endif
        function put_data_3dr4(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -621,9 +637,11 @@ endif
        integer, parameter :: dim=3
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld,append
+       integer (KIND=C_LONG) :: nn, n1=1, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -652,16 +670,16 @@ endif
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR,nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &
@@ -672,8 +690,8 @@ endif
        function put_data_3di2(swid,fieldname,dimname,data, &
           missingvalue, title, units,geo,offset,iprt) &
           result(status)
+       USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
-
        integer (kind = 4) he5_swwrfld, he5_swdefdfld, he5_swdefgfld, he5_swwrlattr, he5_swsetfill
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
@@ -686,9 +704,11 @@ endif
        integer, parameter :: dim=3
        integer, dimension(dim), intent(in), optional :: offset
        integer (kind = 4), dimension(dim) :: dims
-       integer (kind = 4) start(dim), stride(dim), edge(dim)
+!       integer (kind = 4) start(dim), stride(dim), edge(dim)
+       integer (KIND=C_LONG) start(dim), stride(dim), edge(dim)
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
+       integer (KIND=C_LONG) ::  nn, n1=1, n12=12
 
        geofld=.false.
        if (present(geo)) geofld=geo
@@ -717,16 +737,16 @@ endif
            dimname, " ", numbertype, merge)
         endif
        endif
-!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, 1, missingvalue)
+!       status = he5_swwrlattr(swid, fieldname, "_FillValue", numbertype, n1, missingvalue)
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, 1, missingvalue)
-       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, 1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
+       status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)
        status = he5_swwrlattr(swid, fieldname, "Units", HE5T_NATIVE_CHAR, nn, units)
-       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, 12, "OMI-Specific")
+       status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
        if (iprt2 >= 2) &

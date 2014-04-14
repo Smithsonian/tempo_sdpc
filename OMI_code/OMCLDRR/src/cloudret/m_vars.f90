@@ -261,7 +261,7 @@ logical :: using_spline = .false.
 logical :: gomi=.false.
 !real (KIND=8)    :: stddev_thresh=0.01 ! initial value based on GOME PMD
 real (KIND=8)    :: stddev_thresh=0.001 ! initial value based on OMI small pix.
-real (KIND=8), parameter :: fill_value = -9999.0
+real (KIND=4), parameter :: fill_value = -9999.0
 !!!Altered since m_write_ouput_data seems to expect these to be int*2 and int*1
 !!!and actual values seem to be non-science-related.
 !integer, parameter :: fill_value_int = 65535

@@ -42,7 +42,9 @@ implicit NONE
 
 !local variables
 !================
-integer, parameter :: lun=2 
+!integer, parameter :: lun=2 
+! lun cannot be a parameter as it's an output of pgs_io_gen_openf
+integer :: lun=2 
 
 !integer, parameter :: terr_prs_id = 510003
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg

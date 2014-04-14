@@ -48,7 +48,9 @@ use m_interp_pres
 integer :: i, ii
 character(len=100) :: text
 
-integer, parameter :: lun=11
+!integer, parameter :: lun=11
+! lun cannot be a parameter as it's an output of pgs_io_gen_openf
+integer :: lun=11
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, OMCLDRR_F_FAILURE
 include 'PGS_IO.f'

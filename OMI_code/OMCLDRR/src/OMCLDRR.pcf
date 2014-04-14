@@ -3,22 +3,24 @@
 1
 ?   PRODUCT INPUT FILES
 ! ./
-10301|leapsec.dat||||leapsec.dat|1
+10250|MCF|||||1
+10252|GetAttr.temp||||GetAttr.temp|1
+10254|MCFWrite.temp|||||1
+10301|leapsec.dat|../utd|||leapsec.dat|1
 10401|utcpole.dat||||utcpole.dat|1
 10402|earthfigure.dat||||earthfigure.dat|1
-299001|OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4||||OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4|1
-511001|OMCLDRR.MCF|../tbl||||1
 10601|de200.eos||||de200.eos|1
 10801|sc_tags.dat||||sc_tags.dat|1
-10250|MCF|||||1
-10252|GetAttr.temp|||||1
-10254|MCFWrite.temp|||||1
+299001|OMI-Aura_L1-OML1BRUG_2013m0531t2334-o47222_v003-2013m0601t053110.he4||||OMI-Aura_L1-OML1BRUG_2013m0531t2334-o47222_v003-2013m0601t053110.he4|1
+#299001|OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2011m0121t045703-p1.he4||||OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2011m0121t045703-p1.he4|1
+#299001|OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4||||OMI-Aura_L1-OML1BRUG_2005m1120t0230-o07177_v003-2007m0423t133919.he4|1
+511001|OMCLDRR.MCF|../tbl||||1
 ?   PRODUCT OUTPUT FILES
 ! ./
 520001|OMCLDRR-o07177.he5|||||1
 10255|asciidump|||||1
 ?   SUPPORT INPUT FILES
-! ./
+! ../tbl
 510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v003-2007m0327t132404.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v003-2007m0327t132404.he4|1
 #510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0925t112907.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0925t112907.he4|1
 #510001|OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0609t141033.he4||||OMI-Aura_L1-OML1BIRR_2004m1222t0122-o02327_v002-2005m0609t141033.he4|1
@@ -42,7 +44,7 @@
 #510007|resids_346_356_ecs2_earlygdps.txt|||||1
 #510008|resids_346_356_ecs2_lategdps.txt|||||1
 510009|o3_xsect_350.txt|||||1
-510010|ring_tab_omi_uv_z_p_all.dat|../tbl||||1
+510010|ring_tab_omi_uv_z_p_all.dat|||||1
 510011|oc_raman_omi.dat|||||1
 510012|ler354_cox_munk.txt|||||1
 #510012|reflec_cal_3941.txt|||||1
@@ -76,6 +78,13 @@
 200200|ORBITNUMBER|07177
 200205|VERSIONID|3
 200300|Use Resid|1
+#
+#200303|Use Calibration Factor|1
+#200302|Write Observations|1
+#200301|Write Residuals|1
+#200304|No Retrieval of Surface Pressure|0
+#200305|No Retrieval of Pressure|0
+#200306|Transient check|1         
 200303|Use Calibration Factor|0
 200302|Write Observations|0
 200301|Write Residuals|0

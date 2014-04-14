@@ -428,68 +428,68 @@ MODULE L1B_Reader_class
         ! error checking for each memory allocation to make
         ! sure memory is allocated successfully. 
 
-        IF (ASSOCIATED(this%Time)) DEALLOCATE(this%Time)
-        IF (ASSOCIATED(this%SecInDay)) DEALLOCATE(this%SecInDay)
-        IF (ASSOCIATED(this%ScLat)) DEALLOCATE(this%ScLat)
-        IF (ASSOCIATED(this%ScLon)) DEALLOCATE(this%ScLon)
-        IF (ASSOCIATED(this%ScAlt)) DEALLOCATE(this%ScAlt)
-        IF (ASSOCIATED(this%SolElevation)) DEALLOCATE(this%SolElevation)
-        IF (ASSOCIATED(this%SolElevMin)) DEALLOCATE(this%SolElevMin)
-        IF (ASSOCIATED(this%SolElevMax)) DEALLOCATE(this%SolElevMax)
-        IF (ASSOCIATED(this%SolAzimuth)) DEALLOCATE(this%SolAzimuth)
-        IF (ASSOCIATED(this%SolAziMin)) DEALLOCATE(this%SolAziMin)
-        IF (ASSOCIATED(this%SolAziMax)) DEALLOCATE(this%SolAziMax)
-        IF (ASSOCIATED(this%Lon)) DEALLOCATE(this%Lon)
-        IF (ASSOCIATED(this%Lat)) DEALLOCATE(this%Lat)
-        IF (ASSOCIATED(this%SolZenAng)) DEALLOCATE(this%SolZenAng)
-        IF (ASSOCIATED(this%SolAziAng)) DEALLOCATE(this%SolAziAng)
-        IF (ASSOCIATED(this%ViewZenAng)) DEALLOCATE(this%ViewZenAng)
-        IF (ASSOCIATED(this%ViewAziAng)) DEALLOCATE(this%ViewAziAng)
-        IF (ASSOCIATED(this%TerrainHeight)) DEALLOCATE(this%TerrainHeight)
-        IF (ASSOCIATED(this%GPQFlag)) DEALLOCATE(this%GPQFlag)
-        IF (ASSOCIATED(this%XTQFlag)) DEALLOCATE(this%XTQFlag)
-        IF (ASSOCIATED(this%RadMantissa)) DEALLOCATE(this%RadMantissa)
-        IF (ASSOCIATED(this%RadPrecision)) DEALLOCATE(this%RadPrecision)
-        IF (ASSOCIATED(this%PQFlag)) DEALLOCATE(this%PQFlag)
-        IF (ASSOCIATED(this%PFlag)) DEALLOCATE(this%PFlag)
-        IF (ASSOCIATED(this%RadExponent)) DEALLOCATE(this%RadExponent)
-        IF (ASSOCIATED(this%SmPixRad)) DEALLOCATE(this%SmPixRad)
-        IF (ASSOCIATED(this%SmPixWavelen)) DEALLOCATE(this%SmPixWavelen)
-        IF (ASSOCIATED(this%WavelenCoef)) DEALLOCATE(this%WavelenCoef)
-        IF (ASSOCIATED(this%WavelenPrec)) DEALLOCATE(this%WavelenPrec)
-        IF (ASSOCIATED(this%WavelenRefCol)) DEALLOCATE(this%WavelenRefCol)
-        IF (ASSOCIATED(this%Config)) DEALLOCATE(this%Config)
-        IF (ASSOCIATED(this%MeasClass)) DEALLOCATE(this%MeasClass)
-        IF (ASSOCIATED(this%NumSmPixCol)) DEALLOCATE(this%NumSmPixCol)
-        IF (ASSOCIATED(this%NumSmPix)) DEALLOCATE(this%NumSmPix)
-        IF (ASSOCIATED(this%ExposureType)) DEALLOCATE(this%ExposureType)
-        IF (ASSOCIATED(this%ImBinFact)) DEALLOCATE(this%ImBinFact)
-        IF (ASSOCIATED(this%GC1)) DEALLOCATE(this%GC1)
-        IF (ASSOCIATED(this%GC2)) DEALLOCATE(this%GC2)
-        IF (ASSOCIATED(this%GC3)) DEALLOCATE(this%GC3)
-        IF (ASSOCIATED(this%GC4)) DEALLOCATE(this%GC4)
-        IF (ASSOCIATED(this%DSGC)) DEALLOCATE(this%DSGC)
-        IF (ASSOCIATED(this%LSLABF)) DEALLOCATE(this%LSLABF)
-        IF (ASSOCIATED(this%USLABF)) DEALLOCATE(this%USLABF)
-        IF (ASSOCIATED(this%LDABF)) DEALLOCATE(this%LDABF)
-        IF (ASSOCIATED(this%UDABF)) DEALLOCATE(this%UDABF)
-        IF (ASSOCIATED(this%MQFlag)) DEALLOCATE(this%MQFlag)
-        IF (ASSOCIATED(this%CalSet)) DEALLOCATE(this%CalSet)
-        IF (ASSOCIATED(this%SmPixCol)) DEALLOCATE(this%SmPixCol)
-        IF (ASSOCIATED(this%GSC1)) DEALLOCATE(this%GSC1)
-        IF (ASSOCIATED(this%GSC2)) DEALLOCATE(this%GSC2)
-        IF (ASSOCIATED(this%GSC3)) DEALLOCATE(this%GSC3)
-        IF (ASSOCIATED(this%SR1)) DEALLOCATE(this%SR1)
-        IF (ASSOCIATED(this%SR2)) DEALLOCATE(this%SR2)
-        IF (ASSOCIATED(this%SR3)) DEALLOCATE(this%SR3)
-        IF (ASSOCIATED(this%SR4)) DEALLOCATE(this%SR4)
-        IF (ASSOCIATED(this%BinImgRows)) DEALLOCATE(this%BinImgRows)
-        IF (ASSOCIATED(this%StopColumn)) DEALLOCATE(this%StopColumn)
-        IF (ASSOCIATED(this%MasterClkPer)) DEALLOCATE(this%MasterClkPer)
-        IF (ASSOCIATED(this%ExpTime)) DEALLOCATE(this%ExpTime)
-        IF (ASSOCIATED(this%ReadTime)) DEALLOCATE(this%ReadTime)
-        IF (ASSOCIATED(this%DetcTemp)) DEALLOCATE(this%DetcTemp)
-        IF (ASSOCIATED(this%OptBenchTemp)) DEALLOCATE(this%OptBenchTemp)
+	!commands below were using deallocate, changed to nullify
+        IF (ASSOCIATED(this%SecInDay)) NULLIFY(this%SecInDay)
+        IF (ASSOCIATED(this%ScLat)) NULLIFY(this%ScLat)
+        IF (ASSOCIATED(this%ScLon)) NULLIFY(this%ScLon)
+        IF (ASSOCIATED(this%ScAlt)) NULLIFY(this%ScAlt)
+        IF (ASSOCIATED(this%SolElevation)) NULLIFY(this%SolElevation)
+        IF (ASSOCIATED(this%SolElevMin)) NULLIFY(this%SolElevMin)
+        IF (ASSOCIATED(this%SolElevMax)) NULLIFY(this%SolElevMax)
+        IF (ASSOCIATED(this%SolAzimuth)) NULLIFY(this%SolAzimuth)
+        IF (ASSOCIATED(this%SolAziMin)) NULLIFY(this%SolAziMin)
+        IF (ASSOCIATED(this%SolAziMax)) NULLIFY(this%SolAziMax)
+        IF (ASSOCIATED(this%Lon)) NULLIFY(this%Lon)
+        IF (ASSOCIATED(this%Lat)) NULLIFY(this%Lat)
+        IF (ASSOCIATED(this%SolZenAng)) NULLIFY(this%SolZenAng)
+        IF (ASSOCIATED(this%SolAziAng)) NULLIFY(this%SolAziAng)
+        IF (ASSOCIATED(this%ViewZenAng)) NULLIFY(this%ViewZenAng)
+        IF (ASSOCIATED(this%ViewAziAng)) NULLIFY(this%ViewAziAng)
+        IF (ASSOCIATED(this%TerrainHeight)) NULLIFY(this%TerrainHeight)
+        IF (ASSOCIATED(this%GPQFlag)) NULLIFY(this%GPQFlag)
+        IF (ASSOCIATED(this%XTQFlag)) NULLIFY(this%XTQFlag)
+        IF (ASSOCIATED(this%RadMantissa)) NULLIFY(this%RadMantissa)
+        IF (ASSOCIATED(this%RadPrecision)) NULLIFY(this%RadPrecision)
+        IF (ASSOCIATED(this%PQFlag)) NULLIFY(this%PQFlag)
+        IF (ASSOCIATED(this%PFlag)) NULLIFY(this%PFlag)
+        IF (ASSOCIATED(this%RadExponent)) NULLIFY(this%RadExponent)
+        IF (ASSOCIATED(this%SmPixRad)) NULLIFY(this%SmPixRad)
+        IF (ASSOCIATED(this%SmPixWavelen)) NULLIFY(this%SmPixWavelen)
+        IF (ASSOCIATED(this%WavelenCoef)) NULLIFY(this%WavelenCoef)
+        IF (ASSOCIATED(this%WavelenPrec)) NULLIFY(this%WavelenPrec)
+        IF (ASSOCIATED(this%WavelenRefCol)) NULLIFY(this%WavelenRefCol)
+        IF (ASSOCIATED(this%Config)) NULLIFY(this%Config)
+        IF (ASSOCIATED(this%MeasClass)) NULLIFY(this%MeasClass)
+        IF (ASSOCIATED(this%NumSmPixCol)) NULLIFY(this%NumSmPixCol)
+        IF (ASSOCIATED(this%NumSmPix)) NULLIFY(this%NumSmPix)
+        IF (ASSOCIATED(this%ExposureType)) NULLIFY(this%ExposureType)
+        IF (ASSOCIATED(this%ImBinFact)) NULLIFY(this%ImBinFact)
+        IF (ASSOCIATED(this%GC1)) NULLIFY(this%GC1)
+        IF (ASSOCIATED(this%GC2)) NULLIFY(this%GC2)
+        IF (ASSOCIATED(this%GC3)) NULLIFY(this%GC3)
+        IF (ASSOCIATED(this%GC4)) NULLIFY(this%GC4)
+        IF (ASSOCIATED(this%DSGC)) NULLIFY(this%DSGC)
+        IF (ASSOCIATED(this%LSLABF)) NULLIFY(this%LSLABF)
+        IF (ASSOCIATED(this%USLABF)) NULLIFY(this%USLABF)
+        IF (ASSOCIATED(this%LDABF)) NULLIFY(this%LDABF)
+        IF (ASSOCIATED(this%UDABF)) NULLIFY(this%UDABF)
+        IF (ASSOCIATED(this%MQFlag)) NULLIFY(this%MQFlag)
+        IF (ASSOCIATED(this%CalSet)) NULLIFY(this%CalSet)
+        IF (ASSOCIATED(this%SmPixCol)) NULLIFY(this%SmPixCol)
+        IF (ASSOCIATED(this%GSC1)) NULLIFY(this%GSC1)
+        IF (ASSOCIATED(this%GSC2)) NULLIFY(this%GSC2)
+        IF (ASSOCIATED(this%GSC3)) NULLIFY(this%GSC3)
+        IF (ASSOCIATED(this%SR1)) NULLIFY(this%SR1)
+        IF (ASSOCIATED(this%SR2)) NULLIFY(this%SR2)
+        IF (ASSOCIATED(this%SR3)) NULLIFY(this%SR3)
+        IF (ASSOCIATED(this%SR4)) NULLIFY(this%SR4)
+        IF (ASSOCIATED(this%BinImgRows)) NULLIFY(this%BinImgRows)
+        IF (ASSOCIATED(this%StopColumn)) NULLIFY(this%StopColumn)
+        IF (ASSOCIATED(this%MasterClkPer)) NULLIFY(this%MasterClkPer)
+        IF (ASSOCIATED(this%ExpTime)) NULLIFY(this%ExpTime)
+        IF (ASSOCIATED(this%ReadTime)) NULLIFY(this%ReadTime)
+        IF (ASSOCIATED(this%DetcTemp)) NULLIFY(this%DetcTemp)
+        IF (ASSOCIATED(this%OptBenchTemp)) NULLIFY(this%OptBenchTemp)
 
         ! What follows is the tedious memory allocation
 
@@ -846,6 +846,7 @@ MODULE L1B_Reader_class
 999     CONTINUE
         status = OMI_E_FAILURE
         ierr = OMI_SMF_setmsg(OMI_E_MEM_ALLOC, message, "L1Br_open", zero)
+	print *,'L1Br_open allocation fail'
         RETURN
         
       END FUNCTION L1Br_open 
@@ -2431,10 +2432,10 @@ MODULE L1B_Reader_class
       fflag = 0
       DO i = 1, this%nXtrack
         DO k = 1, this%nWavel
-           wl_local(k,i) = 1.0
-           DO q = 1, this%nWavelCoef
-              IF(this%WavelenCoef(q,i,j) .EQ. rfill) wl_local(k,i) = rfill
-           ENDDO
+         wl_local(k,i) = 1.0
+         DO q = 1, this%nWavelCoef
+            IF(this%WavelenCoef(q,i,j) .EQ. rfill) wl_local(k,i) = rfill
+         ENDDO
          fac = k-1-this%WavelenRefCol(j)
          IF (wl_local(k,i) > 0.0) THEN
             wl_local(k,i) = fac*this%WavelenCoef(this%nWavelCoef,i,j)
@@ -2442,9 +2443,9 @@ MODULE L1B_Reader_class
                wl_local(k,i) = fac*(wl_local(k,i) + this%WavelenCoef(q,i,j))
             ENDDO
             wl_local(k,i) = wl_local(k,i) + this%WavelenCoef(1,i,j)
-           ELSE
-              fflag = 1
-           ENDIF
+         ELSE
+            fflag = 1
+         ENDIF
         ENDDO
       ENDDO
 
@@ -4032,11 +4033,18 @@ MODULE L1B_Reader_class
 
         ! Calculate index into small pixel arrays
 
+! so far as I can understand, NumSmPix can only be 1,2,4 or 5. The loop below 
+!is used to create array indices to transerf values from array1(i,j) to 
+!array2(1:nPix). However, as written, i,j will always have a range 1 greater
+! than 1:nPix, so array2 will *always* be too small!
+!  SO: try setting j to be one less?
+
         i = 1
         do k = 1, iLine
            i = i + this%NumSmPix(k)
         enddo
-        j = i + nPix
+!        j = i + nPix 
+        j = i + nPix -1
 
         IF( PRESENT( Quality_k ) ) THEN
            IF( SIZE( Quality_k ) < this%nXtrack ) THEN 

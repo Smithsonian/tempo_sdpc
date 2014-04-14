@@ -43,7 +43,9 @@ use m_LUN_set
 integer :: i, j, l, m
 character(len=100) :: text
 
-integer, parameter :: lun=10
+!integer, parameter :: lun=10
+! lun is an output of pgs_io_gen_openf so cannot be a parameter
+integer :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, OMCLDRR_F_FAILURE
 include 'PGS_IO.f'

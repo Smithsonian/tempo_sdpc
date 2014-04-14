@@ -123,6 +123,8 @@ endif
 !check if PCF exists assuming PGE resides in $(PGE_NAME)/bin directory
 !---------------------------------------------------------------------
 rc=0
+status=1
+returnstatus=1
 if (iprt > 0) print *,'initialize: checking for pcf file'
 call getenv('PGS_PC_INFO_FILE',pcfpath)
 inquire(file=pcfpath,exist=ex)

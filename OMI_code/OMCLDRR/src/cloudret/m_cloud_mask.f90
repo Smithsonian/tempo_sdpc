@@ -407,8 +407,10 @@ subroutine cld_mask
                             "L1Br_close failed.", "cloud_mask", 0 )
       call exit(1)
    END IF
-   ierr = OMI_SMF_setmsg( OMI_S_SUCCESS, &
-                          "Test Done", "cloud_mask", 0 )
- 
+!   ierr = OMI_SMF_setmsg(OMI_S_SUCCESS, "Test Done", "cld_mask, m_cloud_mask", 0 )
+! Using OMI_S_SUCCESS this line fails with no errors, and I don't know why
+   ierr = OMI_SMF_setmsg(PGS_S_SUCCESS, "Test Done", "cld_mask, m_cloud_mask", 0 )
+
  end subroutine cld_mask
+
 end module m_cloud_mask

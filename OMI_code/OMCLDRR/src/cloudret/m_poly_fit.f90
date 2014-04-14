@@ -180,11 +180,10 @@ logical :: no_weight
         !print *, 'b' ,b
         !print *, 'covar' ,covar
         res = b .mm. covar  ! construct coefficients
-   
+
         ! compute optional output parameters.
-   
       if (present(yfit)) then
-        yfit = res(1) !res(ndegree+1)   
+        yfit = res(1) !res(ndegree+1)  
         do k = 2, ndegree+1
           yfit=yfit+res(k)*x**(k-1)
         enddo

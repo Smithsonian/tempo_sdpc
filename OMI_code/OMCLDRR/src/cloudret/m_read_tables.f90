@@ -51,7 +51,8 @@ use m_LUN_set
 integer :: i, j, k, l, m
 logical :: first
 
-!integer, parameter :: lun=10 !lun is an output of pgs_io_gen_openf, so can't be a parameter (I think?)
+!integer, parameter :: lun=10 
+!lun is an output of pgs_io_gen_openf, so can't be a parameter 
 integer :: lun
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, OMCLDRR_F_FAILURE
@@ -81,11 +82,6 @@ else
  endif
 endif
  read(lun, err=100) nwave, ntheta, nscan, nphi, npres !nrefl
-# nwave=(4000-3550)/2+1
-# npres=5
-# ntheta=10
-# nscan=6
-# nphi=7
  if (iprt >= 1) then
    print *,'read_tables: nwave,ntheta,nscan,nphi,npres'
    print *,nwave,ntheta,nscan,nphi,npres

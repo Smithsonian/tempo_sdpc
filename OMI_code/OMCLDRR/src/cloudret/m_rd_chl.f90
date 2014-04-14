@@ -32,7 +32,9 @@ implicit none
 
 !local variables
 
-integer, parameter :: lun=3
+!integer, parameter :: lun=3
+! lun cannot be a parameter as it's an output of pgs_io_gen_openf
+integer :: lun=3
 integer                    :: ip, i, j
 integer                    :: iret
 

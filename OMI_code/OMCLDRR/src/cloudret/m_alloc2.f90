@@ -47,8 +47,8 @@ if (allocated(x)) then
   deallocate(err_cov)
   deallocate(corr)
   deallocate(b_i)
-  deallocate(y_back)
 endif
+if(allocated(y_back)) deallocate(y_back)
 allocate(x(0:nst-1,1))
 allocate(x_fg(0:nst-1,1))
 allocate(h(0:nobs-1,0:nst-1))   

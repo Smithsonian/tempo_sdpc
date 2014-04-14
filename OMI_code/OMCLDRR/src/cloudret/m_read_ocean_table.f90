@@ -28,7 +28,7 @@ real (KIND=8), parameter :: coef = 1.5
 !lun is an output of pgs_io_gen_openf so cannot be parameter!
 integer :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version,ierr
+integer :: status, version, err_code
 include 'PGS_IO.f'
 include 'PGS_IO_1.f'
 include 'PGS_OMI_1900.f'
@@ -39,7 +39,7 @@ rc=0
 status = pgs_io_gen_openf ( oc_ram_id, PGSd_IO_Gen_RSeqUnf, &
         0,lun, version)
 if(status.ne.0) then
-  ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ocean table file', &
+  err_code=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ocean table file', &
   'read_ocean_table, module m_read_ocean_table',2)
   rc=1
   call exit(1)

@@ -138,14 +138,14 @@ do ifile=1, nfiles
 
   if(iLine > start_line) then
 
-  !Get level 1 input data: 
-  !radiance and solar irradiance spectra
-  !===========================================================
-!  call pzeitbeg ('read_inp')
-  if (iprt > 1) print *,'cloud_ret: reading input data'
-  if (form == 5) call read_input_data(blk, err_code)
-  if(err_code >= 1) goto 999
-!  call pzeitend() !('read_inp')
+    !Get level 1 input data: 
+    !radiance and solar irradiance spectra
+    !===========================================================
+    !call pzeitbeg ('read_inp')
+    if (iprt > 1) print *,'cloud_ret: reading input data'
+      if (form == 5) call read_input_data(blk, err_code)
+    if(err_code >= 1) goto 999
+    !call pzeitend() !('read_inp')
 
   endif ! start_line
 
@@ -172,7 +172,6 @@ do ifile=1, nfiles
 !   call pzeitbeg('ret_cld')
 
   do i=1,n_products
-
     if(i == 1) then
      refl_clr=0.15 ! just for testing, set back later
      refl_cld=0.80
@@ -214,7 +213,7 @@ do ifile=1, nfiles
      !write output 
      !============
      if (iprt >= 2) then
-      print *, 'cloud_ret: pix, CP, R, f, ps, sza, land, biases, stds, chl. fg, chl'
+      print *, 'cloud_ret: pix, CP, R, f, ps, sza, land, biases, stds, chl. fg, chl, ref. clr.'
       do ispec=0, nXtrack-1
         write(6,106) ispec, cloud_pres(ispec,iLine), refl(ispec,iLine), &
          eff_cld_frac(ispec,iLine), ps(ispec,iLine), &
@@ -236,7 +235,7 @@ do ifile=1, nfiles
 ! call pzeitbeg ('writeout')
  if (write_he5) then
 !!!removing err_code for write_output_data* since neither module does 
-!!! anything with the error parameter, and consequently I've removed it
+!!! anything with the error parameter
 !  call write_output_data(filename_out,outswathname,err_code)
   call write_output_data(filename_out,outswathname)
 ! if (n_products > 1)  &

@@ -43,7 +43,9 @@ implicit NONE
 
 !local variables
 !================
-integer, parameter :: lun=2 
+!integer, parameter :: lun=2 
+!lun cannot be a parameter since it's an output of pgs_io_gen_openf
+integer :: lun=2 
 
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status,ierr, version=1
@@ -83,8 +85,8 @@ if (.not. done_read_refl) then
   allocate(toms_refl(ref_nmon,ref_nlon,ref_nlat))
   read (lun,*,err=200)  ref_lons
   read (lun,*,err=200)  ref_lats
-  if (iprt > 0) print *, ref_lons
-  if (iprt > 0) print *, ref_lats
+  if (iprt > 1) print *, ref_lons  
+  if (iprt > 1) print *, ref_lats
   read (lun,*,err=200)  toms_refl
   status = pgs_io_gen_closef (lun)
   if (iprt > 0) print *,'rd_toms_refl: closing reflectivity file, status :',status
