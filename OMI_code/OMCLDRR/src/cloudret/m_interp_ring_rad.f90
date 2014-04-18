@@ -47,9 +47,9 @@ real (KIND=8),    intent(in) :: reflec
 real (KIND=8), dimension(:), intent(inout), optional :: ring
 real (KIND=8), dimension(:), intent(inout) :: rad
 real (KIND=8), dimension(:), intent(inout), optional :: drad_tot_dr
-character(len=50) :: myname='interp_ring_rad: '
-logical :: newtable = .true.
-integer :: lmin, jmin, kmin
+!character(len=50) :: myname='interp_ring_rad: '
+!logical :: newtable = .true.
+!integer :: lmin, jmin, kmin
 real (KIND=8) :: refl2, r1, r2
 real (KIND=8), allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
 
@@ -114,7 +114,7 @@ real (KIND=8), allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
   if (allocated(den)) deallocate(den)
   if (allocated(den2)) deallocate(den2)
 
-100 format(6f12.3)
+!100 format(6f12.3)
 
 end subroutine interp_ring_rad
 

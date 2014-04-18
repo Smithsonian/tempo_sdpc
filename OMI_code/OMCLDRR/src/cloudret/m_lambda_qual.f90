@@ -12,7 +12,7 @@ use m_find
 implicit none
 
 integer, intent(in) :: ip, iLine
-integer :: iw, iwobs
+integer :: iw                               !, iwobs
 integer :: iw_start, iw_end
 logical :: pxl_error, pxl_warning
 
@@ -73,7 +73,7 @@ implicit none
 
 integer, intent(in) :: nXtrack
 integer :: iw, ip
-integer :: iw_start, iw_end, iw_start2, iw_end2
+integer :: iw_start, iw_end              !, iw_start2, iw_end2
 logical, dimension(nsolwave,nXtrack) :: pxl_error
 logical :: pxl_warning
 

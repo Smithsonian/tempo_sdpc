@@ -42,7 +42,7 @@ real (KIND=8), dimension(:), intent(in) :: pres
 real (KIND=8) :: temp1, temp2
 !real (KIND=8), dimension(:,:), pointer :: rads
 
-character(len=50) :: myname='interp_pres: '
+!character(len=50) :: myname='interp_pres: '
 integer :: i
 
 !**************************************************************************

@@ -43,9 +43,10 @@ implicit NONE          ! *** IDL2F9O ***
 real (KIND=8), intent(in) :: ix, jy
 real (KIND=8), dimension(size(temp3D,dim=3)) :: xy
 
-integer :: i, j, ip, jp, ii, s
-real (KIND=8) :: dx, dy, dx1, dy1
-real (KIND=8) :: d1, d2, d3, d4
+!integer :: i, j, ip, jp
+integer :: ii, s
+!real (KIND=8) :: dx, dy, dx1, dy1
+!real (KIND=8) :: d1, d2, d3, d4
 real (KIND=8), dimension(size(temp3D,dim=3)) :: p0, p1, p2
 integer :: y0, y1, y2
 

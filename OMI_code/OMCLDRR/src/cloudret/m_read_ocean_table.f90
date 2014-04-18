@@ -18,8 +18,9 @@ implicit none
 
       integer, intent(out)         :: rc        ! Error return code:
 
-character(len=255) :: fn
-integer            :: i,j,k,l,m
+!character(len=255) :: fn
+!integer            :: i,j,k,l,m
+integer            :: i,j,m
 real (KIND=8), allocatable, dimension(:) :: oc_perms2
 ! ocean Raman correction coefficient
 real (KIND=8), parameter :: coef = 1.5

@@ -56,7 +56,7 @@ include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
 real (KIND=8)                       :: lont, latt
-integer                    :: iret
+!integer                    :: iret
    
 !=======================
 !read terrain data set

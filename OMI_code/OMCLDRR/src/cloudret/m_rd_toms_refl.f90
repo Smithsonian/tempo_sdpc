@@ -59,7 +59,7 @@ integer                    :: ipts, i, j
 real (KIND=8)                       :: lont, latt
 real (KIND=8)                       :: deltlat, deltlon
 real (KIND=8)                       :: startlat, startlon
-integer                    :: iret
+!integer                    :: iret
 character(len=100)         :: txt
    
 !=======================

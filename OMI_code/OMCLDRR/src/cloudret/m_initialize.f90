@@ -42,7 +42,7 @@ implicit none
 !EOP
 !-------------------------------------------------------------------------
 !
-integer :: i, j, iret
+integer :: i               !,j, iret
 integer :: iarg=0
 integer :: argc, iargc
 character(len=100) :: yesno
@@ -54,8 +54,9 @@ include 'PGS_PC_9.f'
 include 'PGS_SMF.f'
 include 'PGS_IO.f'
 include 'PGS_IO_1.f'
-integer(kind=4) :: pgs_pc_getnumberoffiles, pgs_pc_getreference, pgs_pc_getuniversalref
-integer(kind=4) :: returnstatus, pgs_pc_getconfigdata, pcf_int
+integer(kind=4), EXTERNAL :: pgs_pc_getnumberoffiles, pgs_pc_getreference
+integer(kind=4), EXTERNAL :: pgs_pc_getuniversalref, pgs_pc_getconfigdata
+integer(kind=4) :: returnstatus, pcf_int
 CHARACTER(LEN=200) :: buf
 !*********************************************************************
 
@@ -212,8 +213,8 @@ if (cloud_clear) ny=2
 !***********************************************************************
  
 return
-100 format(6f12.3)
-102 format(6i4)
+!100 format(6f12.3)
+!102 format(6i4)
 500 call ret_usage()
 
 end subroutine initialize

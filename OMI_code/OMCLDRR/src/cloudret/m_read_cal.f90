@@ -40,7 +40,7 @@ use m_LUN_set
 !
 !EOP
 !-------------------------------------------------------------------------
-integer :: i, ii
+!integer :: i, ii
 character(len=100) :: text
 
 !integer, parameter :: lun=11

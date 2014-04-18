@@ -109,7 +109,7 @@ contains
 12        CONTINUE
           M=N
 2         IF(M.NE.L)THEN
-            IF(ITER.EQ.30)PAUSE'too many iterations'
+!            IF(ITER.EQ.30)PAUSE'too many iterations'
             ITER=ITER+1
             G=(D(L+1)-D(L))/(2.*E(L))
             R=SQRT(G**2+1.)

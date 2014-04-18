@@ -91,11 +91,13 @@ subroutine cld_mask
    INCLUDE 'PGS_OMI_1900.f'
 
    INTEGER :: nPixold=2
-   INTEGER (KIND = 4) :: PixelQF
+!   INTEGER (KIND = 4) :: PixelQF
    INTEGER (KIND = 4), PARAMETER :: maxCoadd=5
 
 ! declaration of variables used in both examples
-   INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
+!   INTEGER (KIND = 4) :: pgs_pc_getreference
+!   INTEGER (KIND = 4) :: version
+   INTEGER (KIND = 4) :: status, ierr, &
                          nTimes, nXtrack, &
                          iLine, nTimesSmPx
    CHARACTER (LEN = 200) :: filenamen, swathname
@@ -103,35 +105,33 @@ subroutine cld_mask
 !  TYPE (SmPx_block_type) :: blk, blk2
    TYPE (L1b_block_type) :: blk, blk2
    INTEGER (KIND = 4), PARAMETER :: zero = 0
-   REAL (KIND = 8) :: tim
-   INTEGER (KIND = 2) :: mflg
-   !INTEGER (KIND = 1) :: nPix, nPix2
+!   REAL (KIND = 8) :: tim
+!   INTEGER (KIND = 2) :: mflg
+!   INTEGER (KIND = 1) :: nPix, nPix2
    INTEGER (KIND = 2) :: nPix, nPix2
    
  
 ! declaration of variables specific to Example 1
-   INTEGER (KIND = 4), PARAMETER :: SmPx_UV_FILE = 699010
-   REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: smvalues, wavelength
-   REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: smvalues2, wavelength2
-   INTEGER (KIND = 2) :: quality_flag
-   REAL (KIND = 4) :: lat, lon, &
-                      sza, saz, &
-                      vza, vaz
-   INTEGER (KIND = 2) :: hgt
-   INTEGER (KIND = 2) :: gflg
-   INTEGER (KIND = 4) :: iPix, i
+!   INTEGER (KIND = 4), PARAMETER :: SmPx_UV_FILE = 699010
+!   REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: smvalues, wavelength
+!   REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: smvalues2, wavelength2
+!   INTEGER (KIND = 2) :: quality_flag
+!   REAL (KIND = 4) :: lat, lon, sza, saz, vza, vaz
+!   INTEGER (KIND = 2) :: hgt
+!   INTEGER (KIND = 2) :: gflg
+!   INTEGER (KIND = 4) :: iPix, i
    INTEGER (KIND = 4) :: itrack
-   INTEGER (KIND = 4), DIMENSION(14) :: unpacked
+!   INTEGER (KIND = 4), DIMENSION(14) :: unpacked
  
 ! declaration of variables specific to Example 2
-   INTEGER (KIND = 4), PARAMETER :: SmPx_VIS_FILE = 699011
-   REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: smvaluesL, wavelengthL
-   REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: smvaluesL2, wavelengthL2
-   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: quality_flagL
-   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: height
-   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: geoflg
+!   INTEGER (KIND = 4), PARAMETER :: SmPx_VIS_FILE = 699011
+   REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: wavelengthL, wavelengthL2
+   REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: smvaluesL, smvaluesL2
+!   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: quality_flagL
+!   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: height
+!   INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: geoflg
    integer :: indc, ind
-   integer :: mins, maxs
+!   integer :: mins, maxs
    real (KIND=8), dimension(maxcoadd,2) :: r1_ri
 !!   real (KIND=4), dimension(maxcoadd) :: sorted, D, E 
 !!   integer, dimension(maxcoadd) :: order

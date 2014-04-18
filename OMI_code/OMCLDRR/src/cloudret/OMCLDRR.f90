@@ -273,14 +273,14 @@ call exit(0)
 
 !formats for print statements
 !============================
-100 format(i5,11e12.4)
-101 format(i5,6f10.2)
-102 format(6f10.2)
-103 format(6i10)
-105 format(6l10)
+!100 format(i5,11e12.4)
+!101 format(i5,6f10.2)
+!102 format(6f10.2)
+!103 format(6i10)
+!105 format(6l10)
 106 format(i5,5f8.3,l3,5e11.3,f8.3)
-107 format (6e12.3)
-108 format (2i6)
+!107 format (6e12.3)
+!108 format (2i6)
 
 END program OMCLDRR
 

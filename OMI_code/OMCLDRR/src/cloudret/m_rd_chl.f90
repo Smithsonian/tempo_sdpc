@@ -34,9 +34,9 @@ implicit none
 
 !integer, parameter :: lun=3
 ! lun cannot be a parameter as it's an output of pgs_io_gen_openf
-integer :: lun=3
+integer                    :: lun=3
 integer                    :: ip, i, j
-integer                    :: iret
+!integer                   :: iret
 
 !integer, parameter :: chl_id = 510004
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg

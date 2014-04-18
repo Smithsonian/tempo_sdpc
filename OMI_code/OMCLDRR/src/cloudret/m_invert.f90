@@ -50,7 +50,7 @@ function invert (amat, error) result (amatinv)
        real (KIND=8)              :: d
        integer           :: j
        integer           :: nsampl
-       integer           :: ierr
+!       integer           :: ierr
 
        nsampl=size(amat,1)
        if (nsampl /= size(amat,2)) then
@@ -114,7 +114,7 @@ function invert (amat, error) result (amatinv)
 !-------------------------------------------------------------------------
 !
 
-      PARAMETER (NMAX=600,TINY=1.0E-20)
+!      PARAMETER (NMAX=600,TINY=1.0E-20)
       integer n, np
       real (KIND=8) A(NP,NP)
       integer INDX(NP), error

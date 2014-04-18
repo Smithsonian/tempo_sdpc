@@ -40,7 +40,7 @@ use m_vars, ONLY: &
 !-------------------------------------------------------------------------
 !
 real (KIND=8), intent(in) :: refl_clr, refl_cld
-character(len=50) :: myname='get_ai_refl: '
+!character(len=50) :: myname='get_ai_refl: '
 
 integer, intent(in) :: iter, i
 real (KIND=8), intent(in) :: i_obs_l, i_obs_s
@@ -49,9 +49,10 @@ real (KIND=8), intent(in) :: i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, t
 logical, intent(in) :: set_cld_frac
 
 real (KIND=8) :: i_ray_l, i_ray_s, I_clr_l, I_cld_l, I_clr_s, I_cld_s
-real (KIND=8) :: I_clr_l2, I_cld_l2
-real (KIND=8) ::  eff_cld_frac_l, eff_cld_frac_l2
-logical :: do_short
+!real (KIND=8) :: I_clr_l2, I_cld_l2
+!real (KIND=8) ::  eff_cld_frac_l, eff_cld_frac_l2
+real (KIND=8) ::  eff_cld_frac_l
+!logical :: do_short
 
 !**************************************************************************
 

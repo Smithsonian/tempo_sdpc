@@ -35,7 +35,7 @@ use m_vars, ONLY: iprt, squeeze, lat, lon, sza, chlcl, cloud_clear, &
 !EOP
 !-------------------------------------------------------------------------
 !
-character(len=50) :: myname='print_ret: '
+!character(len=50) :: myname='print_ret: '
 
 !**************************************************************************
 

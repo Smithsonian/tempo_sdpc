@@ -52,9 +52,9 @@ subroutine write_output_data_2pres(outfile, swathname)
  
 ! Declare the HDF-EOS functions.
 !-------------------------------
-       integer (kind = 4) :: he5_swcreate, he5_swdefdim
+!       integer (kind = 4) :: he5_swcreate, he5_swdefdim
        integer, parameter :: HE5_ACC_RDWR=100
-       integer, parameter :: HE5_ACC_TRUNC=102
+!       integer, parameter :: HE5_ACC_TRUNC=102
        integer (kind = 4) :: he5_swopen, he5_swattach, he5_swdetach, he5_swclose
 
 !Local variables
@@ -62,7 +62,8 @@ subroutine write_output_data_2pres(outfile, swathname)
        character(len=255) :: nTimesstr="nTimes"
        character(len=255) :: nXtrackstr="nXtrack"
        character(len=255) :: dims2
-       integer            :: nTime, iLine1, nWaveRes
+       integer            :: nTime, iLine1
+!      integer            :: nWaveRes
        real (kind = 4) :: misval_r4 = fill_value
        integer (kind = 2) :: misval_i2 = fill_value_int 
 

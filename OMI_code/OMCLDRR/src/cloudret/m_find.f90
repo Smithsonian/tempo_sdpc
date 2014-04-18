@@ -105,8 +105,8 @@ integer, dimension(:), pointer                :: index
 !---------------
 integer                                        :: i
 integer                                        :: j
-integer                                 :: tempsize
-integer                                 :: error
+!integer                                 :: tempsize
+!integer                                 :: error
 integer                                 :: ncounts
 
 !----------------------------------------------

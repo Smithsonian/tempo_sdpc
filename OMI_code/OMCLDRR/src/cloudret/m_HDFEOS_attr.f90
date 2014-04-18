@@ -40,7 +40,7 @@ MODULE m_HDFEOS_attr
          INTEGER (KIND=4), PARAMETER :: npcfattr = 7
          INTEGER (KIND=4) :: nc, numtype 
          CHARACTER( LEN = 28 ) :: GranuleDAY0Z
-         CHARACTER( LEN = 1  ) :: char
+!         CHARACTER( LEN = 1  ) :: char
          REAL (KIND = 8 )      :: TAI93At0zOfGranule !!PGE
          CHARACTER( LEN = 200) :: ShortName, &
                                                         InputPGEVersion,&
@@ -53,7 +53,8 @@ MODULE m_HDFEOS_attr
                "AuthorName              " /) 
          INTEGER (KIND=4), DIMENSION(npcfattr) :: lun
 
-         CHARACTER( LEN = 200 ) :: StringValue, strTemp, OrbitData
+         CHARACTER( LEN = 200 ) :: StringValue, OrbitData
+!         CHARACTER( LEN = 200 ) :: strTemp
          INTEGER (KIND=4) :: version 
          INTEGER (KIND=4) :: status, ierr, di
          CHARACTER( LEN = 200 ) :: msg

@@ -23,7 +23,7 @@ subroutine read_solar_flux()
 
    INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
                          nTimes, nXtrack, nWavel, nWavelCoef, &
-                         iLine, nwl
+                         nwl        !,iLine
    CHARACTER (LEN = 200) :: filename, swathname
    TYPE (L1B_block_type) :: blk
    INTEGER (KIND = 4), PARAMETER :: zero = 0

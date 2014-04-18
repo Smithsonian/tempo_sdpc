@@ -1075,11 +1075,11 @@ endif ! noret
 !101 format (7f12.4)
 100 format (7f12.4)
 101 format (7e12.4)
-102 format (i5,f7.3,10e13.5)
+!102 format (i5,f7.3,10e13.5)
 103 format (i6,i3,f8.3,4e11.3,3f8.2,i12)
 105 format (7f9.3)
-106 format (2i6)
-107 format (i3,8f12.3)
+!106 format (2i6)
+!107 format (i3,8f12.3)
    
 ! ***********************************************************
 end subroutine cloud_pres_ret   
