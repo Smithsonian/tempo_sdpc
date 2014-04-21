@@ -53,11 +53,13 @@ subroutine write_HDFEOS_attr(outfile, swathname, ierr)
 ! Declare the HDF-EOS functions.
 !-------------------------------
   integer, parameter :: HE5_ACC_RDWR=100
-  integer, parameter :: HE5_ACC_TRUNC=102
+!  integer, parameter :: HE5_ACC_TRUNC=102
   integer (kind = 4) :: he5_swopen, he5_swattach, he5_swdetach, he5_swclose
-  integer (kind = 4) :: pgs_pc_getuniversalref, pgs_pc_getreference, pgs_met_getPCAttr_s
+  integer (kind = 4) :: pgs_pc_getreference, pgs_met_getPCAttr_s
+!  integer (kind = 4) :: pgs_pc_getuniversalref
   integer (kind = 4) :: OMI_SMF_setmsg 
-  integer (kind = 4) :: year, month, day, NumTimes, NumTimesSmallPix
+  integer (kind = 4) :: year, month, day
+!  integer (kind = 4) :: NumTimes, NumTimesSmallPix
 !Local variables
 !---------------
   character(len=255) :: rad_flnm, str_value, swn
@@ -74,6 +76,7 @@ subroutine write_HDFEOS_attr(outfile, swathname, ierr)
   IF(status /= 0 ) THEN
     status = OMI_SMF_setmsg(OMCLDRR_W_MET, "get L1B radiance filename failed", &
     "write_HDFEOS_attr", 0 )
+    ierr=status
   ENDIF
 
 !Write the global attribute
@@ -84,6 +87,7 @@ subroutine write_HDFEOS_attr(outfile, swathname, ierr)
   IF(status /= 0 ) THEN
     status = OMI_SMF_setmsg(OMCLDRR_F_FAILURE, "get RANGEBEGINNINGDATE failed", &
     "write_HDFEOS_attr", 0 )
+    ierr=status
   ENDIF
   read(str_value, '(i4,a1,i2,a1,i2)') year,buf,month,buf,day
 

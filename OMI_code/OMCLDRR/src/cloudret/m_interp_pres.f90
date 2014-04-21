@@ -103,7 +103,7 @@ real (KIND=8),    intent(in)  :: pres_int, i0_1, i0_2, sb_1, sb_2, tr_1, tr_2
 real (KIND=8),    intent(out) :: i0, sb, tr 
 real (KIND=8), dimension(:), intent(in) :: pres
 
-character(len=50) :: myname='interp_rads: '
+!character(len=50) :: myname='interp_rads: '
 real (KIND=8) :: temp
 !integer :: i
 

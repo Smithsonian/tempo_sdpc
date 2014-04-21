@@ -45,7 +45,7 @@ implicit none
 integer :: i               !,j, iret
 integer :: iarg=0
 integer :: argc, iargc
-character(len=100) :: yesno
+!character(len=100) :: yesno
 character*255 ::  argv
 character*255 ::  myname, pcfpath 
 !*********************************************************************

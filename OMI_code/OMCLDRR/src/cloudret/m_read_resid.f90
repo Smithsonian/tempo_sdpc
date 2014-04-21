@@ -32,7 +32,7 @@ character(len=100) :: text
 
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, lun
-!integer :: OMCLDRR_F_FAILURE
+integer :: OMCLDRR_F_FAILURE
 integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
 integer :: OrbitNumber, ThreshOrbitNumber
 character(len=200) :: buf
@@ -123,7 +123,8 @@ use m_LUN_set
 !EOP
 !-------------------------------------------------------------------------
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version, ierr, OMCLDRR_F_FAILURE, lun, nwav_o3
+integer :: status, version, ierr, lun, nwav_o3
+!integer :: OMCLDRR_F_FAILURE
 
 include 'PGS_IO.f'
 include 'PGS_IO_1.f'

@@ -304,7 +304,7 @@ MODULE L1B_Reader_class
         CHARACTER (LEN = *), INTENT(IN) :: fn, swn
         INTEGER (KIND = 4), OPTIONAL, INTENT(IN) :: nL
         INTEGER (KIND = 4) :: swfid, swid, status
-        INTEGER (KIND = 4) :: dum
+!        INTEGER (KIND = 4) :: dum
         CHARACTER (LEN = 256) :: message
         INTEGER (KIND = 4) :: getl1bblk
         EXTERNAL              getl1bblk
@@ -1812,7 +1812,8 @@ MODULE L1B_Reader_class
         INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER, PARAMETER :: i1 = 1
-        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1, szoom_mode = 4_i1
+        INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
+!        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         !tpk INTEGER (KIND = 1), INTENT(IN), OPTIONAL :: TrueZoom_k    !tpk
         REAL (KIND = 8), OPTIONAL, INTENT(OUT) :: Time_k
@@ -2257,7 +2258,7 @@ MODULE L1B_Reader_class
       REAL (KIND = 4), DIMENSION(:), INTENT(OUT) :: wl_local
 
       INTEGER (KIND = 4) :: status
-      INTEGER (KIND = 4) :: fflag, k, q
+      INTEGER (KIND = 4) :: fflag, k, q, i_foo(1)
       INTEGER (KIND = 4) :: fac
 
       ! First calculate the wavelength values based on the wavelength
@@ -2420,7 +2421,7 @@ MODULE L1B_Reader_class
       REAL (KIND = 4), DIMENSION(:,:), INTENT(OUT) :: wl_local
 
       INTEGER (KIND = 4) :: status
-      INTEGER (KIND = 4) :: fflag, i, k, q, i_foo(1)
+      INTEGER (KIND = 4) :: fflag, i, k, q        !, i_foo(1)
       INTEGER (KIND = 4) :: fac
 
 
@@ -2678,7 +2679,7 @@ MODULE L1B_Reader_class
         REAL (KIND = 4), DIMENSION(1:this%nWavel) :: wl_local
         INTEGER (KIND = 4) :: Nwl_l
         INTEGER :: i, j, k, q, l
-        INTEGER (KIND = 4) :: il, ih, i_foo(1)
+        INTEGER (KIND = 4) :: il, ih               !, i_foo(1)
         INTEGER (KIND = 4) :: status
         REAL (KIND = 4) :: minWl, maxWl
 
@@ -3461,7 +3462,7 @@ MODULE L1B_Reader_class
         INTEGER :: i, j, k, q
         INTEGER :: fac
         INTEGER :: iw, last_good
-        INTEGER (KIND = 4) :: il, ih, i_foo(1)
+        INTEGER (KIND = 4) :: il, ih             !, i_foo(1)
         REAL (KIND = 4) :: rad_il, rad_ih, frac, loc_max, loc_min
         INTEGER (KIND = 4) :: status
  
@@ -3659,7 +3660,8 @@ MODULE L1B_Reader_class
         INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER, PARAMETER :: i1 = 1
-        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1, szoom_mode = 4_i1
+        INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
+!        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         REAL (KIND = 4), DIMENSION(:), INTENT(IN) :: Wavelength_k
         !tpk INTEGER (KIND = 1), INTENT(IN), OPTIONAL :: TrueZoom_k    !tpk
@@ -3971,7 +3973,8 @@ MODULE L1B_Reader_class
         INCLUDE 'PGS_OMI_1900.f'  !!this external file defines the SmPx PGS error codes
         TYPE (L1B_block_type), INTENT( INOUT ) :: this
         INTEGER, PARAMETER :: i1 = 1
-        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1, szoom_mode = 4_i1
+        INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
+!        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1
         INTEGER (KIND = 4), INTENT( IN ) :: iLine 
         !tpk INTEGER (KIND = 1), INTENT(IN), OPTIONAL :: TrueZoom_k    !tpk
         REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT( OUT ) :: & 

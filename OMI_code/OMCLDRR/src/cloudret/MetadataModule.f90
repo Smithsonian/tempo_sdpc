@@ -34,8 +34,9 @@ module MetadataModule
  INTEGER :: pgs_MET_setAttr_I, pgs_MET_setAttr_d, pgs_MET_setAttr_s,          &
             pgs_MET_setmultiAttr_s
  INTEGER :: pgs_met_init,pgs_met_write, pgs_pc_getreference, pgs_met_sfstart, &
-            pgs_pc_getuniversalref, pgs_pc_getconfigdata, omi_localgranuleid, &
+            pgs_pc_getconfigdata, omi_localgranuleid, &
             pgs_met_sfend, pgs_met_remove
+! INTEGER :: pgs_pc_getuniversalref
 
  INTEGER :: i, status, returnstatus, version, sdid, Fil_Lun, ierr, j, ind, resid_id 
  integer, parameter :: nadd = 14, ninp = 9 
@@ -43,15 +44,16 @@ module MetadataModule
  INTEGER :: OrbitNumber, OrbitNumber_PCF, Qamissingdata , Qaboundsdata, VersionID, &
             QAPercentCloudCover, PerGoodQualData, ThreshOrbitNumber
 
- REAL(KIND=8) :: EqCrossLon,DeEqCrLon, AsEqCrLon
+ REAL(KIND=8) :: EqCrossLon
+! REAL(KIND=8) :: DeEqCrLon, AsEqCrLon
  
  CHARACTER(LEN=PGSd_MET_GROUP_NAME_L) :: GROUPS(PGSd_MET_NUM_OF_GROUPS)
  CHARACTER(LEN=100), DIMENSION(50) :: Objvalue  
  CHARACTER(LEN=100), DIMENSION(NADD) :: AddAttrNam, AddAttrVal                                     
  CHARACTER(LEN=100), DIMENSION(ninp) :: InputPnt,supflnm 
- CHARACTER(LEN=100), DIMENSION(2) :: LcInputID 
- CHARACTER(LEN=100) :: LocalInGrID ,DesCrRevision, LocalGrID, &
-                       OperationMode, value, L1B_AutQualFl
+! CHARACTER(LEN=100), DIMENSION(2) :: LcInputID 
+! CHARACTER(LEN=100) :: LocalInGrID, LocalGrID, DesCrRevision, OperationMode
+ CHARACTER(LEN=100) :: value, L1B_AutQualFl
  CHARACTER(LEN=200) :: buf
  CHARACTER(LEN=350) :: expl="Flag set to Passed if QAPercentHighQualityData >= 80%, "// &
                             "Flag set to Suspent if QAPercentHighQualityData >= 20%, "//& 

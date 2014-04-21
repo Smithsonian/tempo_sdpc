@@ -50,16 +50,17 @@ subroutine read_input_data(blk, rc)
 !-------------------------------------------------------------------------
 !
 
-INTEGER :: il, i, lun=7, izoom
-character(len=1) :: buff
-character(len=255) :: buff1
-real (KIND=8) :: bufn,bufn1,bufn2,bufn3
-logical :: old
+INTEGER :: i, izoom
+!INTEGER :: il, lun=7
+!character(len=1) :: buff
+!character(len=255) :: buff1
+!real (KIND=8) :: bufn,bufn1,bufn2,bufn3
+!logical :: old
 INTEGER (KIND = 4) :: PGS_TD_TAItoUTC !pgs_pc_getreference
 INTEGER (KIND = 1) :: imbin
-integer, parameter :: sz=16
-integer, parameter :: ez=45
-integer, parameter :: nz=ez-sz+1
+!integer, parameter :: sz=16
+!integer, parameter :: ez=45
+!integer, parameter :: nz=ez-sz+1
 
 ! declaration of variables used in both examples
    CHARACTER (LEN = 200) :: swathname,filenamen
@@ -376,7 +377,7 @@ else
  endif ! missing wavelength data
 endif ! start_line
 
-999 continue
+!999 continue
 
 ! read solar flux
 !===================
@@ -399,8 +400,8 @@ if (iLine == start_line) then
   if (wrt_solar) call write_solar()
 endif
 
-100 format(i6,6f10.1)
-101 format(i6,f10.1,e12.3)
+!100 format(i6,6f10.1)
+!101 format(i6,f10.1,e12.3)
 102 format(6f12.2) 
 
 end subroutine read_input_data
@@ -681,7 +682,7 @@ real (KIND=8), dimension(:,:,:), pointer :: rad
 real (KIND=8), dimension(:,:), pointer :: sol
   
 integer :: imins, imaxs, imine, imaxe, n
-real (KIND=8) :: dum
+!real (KIND=8) :: dum
   
 
 n=size(r,dim=1)
@@ -712,18 +713,19 @@ real (KIND=8), parameter :: wlmin2=313., wlmax2=405., wlmin3=410., wlmax3=500., 
 character(len=*), intent(inout) :: filename
 real (KIND=8), dimension(:), pointer :: sza, glat, glon
 
-real(kind=4) :: test
-integer :: recl
+!real(kind=4) :: test
+!integer :: recl
 integer :: ios, i
 integer :: lun1=1
-real(kind=4), allocatable, dimension(:) :: glint, pnum, utc, yearday, scan, sat_ht
+real(kind=4), allocatable, dimension(:) :: glint, pnum, utc, scan, sat_ht
 real(kind=4), allocatable, dimension(:) :: los, re, date
+!real(kind=4), allocatable, dimension(:) :: yearday
 logical :: eof
 real(kind=4), dimension(10) :: geoloc
 real(kind=4), dimension(6) :: losn, szan, szasc, lossc
 real(kind=4), dimension(3,16) :: pmd
-integer :: temp, filesize, pixsiz=15204
-integer :: j,k,npix
+integer :: temp, filesize, npix, pixsiz=15204
+!integer :: j,k
 real(kind=4) :: npixr
 
 !check for filesize appended onto end of filename
