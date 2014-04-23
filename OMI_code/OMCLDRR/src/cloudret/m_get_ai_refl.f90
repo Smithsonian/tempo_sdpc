@@ -68,6 +68,7 @@ real (KIND=8) ::  eff_cld_frac_l
   !get effective cloud fraction from IPA method
   !============================================
 if (set_cld_frac) then
+!print *,'refl_clr,refl_cld',refl_clr,refl_cld
   I_clr_l=i0_ls + (refl_clr*tr_ls)/(1-refl_clr*Sb_ls)
   I_cld_l=i0_l + (refl_cld*tr_l)/(1-refl_cld*Sb_l)
   eff_cld_frac_l=(i_obs_l-I_clr_l)/(I_cld_l-I_clr_l)
@@ -120,10 +121,11 @@ endif ! set_cld_frac
    !print *, i_obs_l!, i_obs_s
    write(6,101) refl_clr, refl_cld
    write(6,101) I_clr_l, I_cld_l, I_obs_l!, eff_cld_frac_l
-   !write(6,101) i0_ls, tr_ls, Sb_ls
-   !write(6,101) i0_l, tr_l, Sb_l
+   ! write(6,101) i0_ls, tr_ls, Sb_ls
+   ! write(6,101) i0_l, tr_l, Sb_l
    write(6,101) (i_obs_l-I_clr_l), (I_cld_l-I_clr_l), (i_obs_l-I_clr_l)/(I_cld_l-I_clr_l)
    write(6,101) I_clr_s, I_cld_s, I_obs_s!, eff_cld_frac_l
+print *,i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss),i0_s + (refl_cld*tr_s)/(1-refl_cld*Sb_s)
    !write(6,100) eff_cld_frac_l
    write(6,102) 
    !write(6,100) refl(i,iLine), ai(i,iLine), eff_cld_frac(i,iLine)

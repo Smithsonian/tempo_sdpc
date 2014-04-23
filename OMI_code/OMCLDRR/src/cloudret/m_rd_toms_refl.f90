@@ -9,7 +9,7 @@ subroutine rd_toms_refl( )
 
 use m_vars, ONLY: done_read_refl, iprt, lat, lon, toms_refl, ref_nmon, &
   iLine, nXtrack, ref_nlat, ref_nlon, ref_clr, ref_lats, ref_lons, month, &
-  ler_sz, ler_th, ler_ph, ler354
+  ler_sz, ler_th, ler_ph, ler354, startlat, startlon, deltlat, deltlon
 use m_LUN_set
 implicit NONE          
 
@@ -57,8 +57,12 @@ include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
 real (KIND=8)                       :: lont, latt
-real (KIND=8)                       :: deltlat, deltlon
-real (KIND=8)                       :: startlat, startlon
+!! Moving next two pairs of variables up to m_vars so they persist between
+!iterations, otherwise we get bogus values of reflectance from iteration 2
+!on to the end of the run.    EJOS 22/4/14
+!real (KIND=8)                       :: deltlat, deltlon
+!real (KIND=8)                       :: startlat, startlon
+
 !integer                    :: iret
 character(len=100)         :: txt
    
@@ -124,9 +128,9 @@ do ipts=1, nXtrack
  j=anint((lont-startlon)/deltlon)+1   
  if(j <= 0) j=1   
  if(j >= ref_nlon+1) j=1   
- !print *, 'rd_toms_refl : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &
+ ! print *, 'rd_toms_refl : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &
  !   i, j
- !print *, toms_refl(imon,j,i)
+ ! print *, toms_refl(month,j,i)
  ref_clr(ipts-1,iLine)=toms_refl(month,j,i)/100.
 enddo   ! ipts
    

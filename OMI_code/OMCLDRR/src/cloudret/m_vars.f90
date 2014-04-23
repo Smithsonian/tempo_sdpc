@@ -303,4 +303,9 @@ logical :: do_LER=.false.
 logical :: do_mler=.true.
 !logical :: write_ai=.true.
 logical :: write_ai=.false.
+
+!!brought up from m_rd_toms_refl, so allow values to persist over multiple
+!iterations of cloud_ret
+REAL (KIND=8) :: startlat,startlon,deltlat,deltlon
+
 end module m_vars
