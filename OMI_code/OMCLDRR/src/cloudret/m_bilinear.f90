@@ -62,6 +62,7 @@ contains
 !----------------
         real (KIND=8),     dimension(:),  allocatable :: ix, jy
         real (KIND=8),     dimension(:),  allocatable :: dx, dy, dx1, dy1
+        real (KIND=8), dimension(:,:),allocatable :: p0
         integer,  dimension(:),  allocatable :: i, j 
         integer,  dimension(:),  allocatable :: ip, jp
         integer                              :: icnt, sizex
@@ -80,6 +81,13 @@ contains
    allocate(dy(size(ix)))
    allocate(dx1(size(ix)))
    allocate(dy1(size(ix)))
+!! Based on comments above and in m_cloud_pres_ret, it looks like the range
+!! of p ought to start at zero, but as written it starts at 1, causing a
+!!runtime error when an index falls below 1. Adjusting to use an array with
+!!start indices of 0.  EJOS 23/4/14
+   allocate(p0(0:size(p,1)-1,0:size(p,2)-1))
+   p0=p
+
    if (present(x)) then
       ix=interpol(findgen(size(x))+1, x, ixin)
    else
@@ -96,8 +104,10 @@ contains
    J=JY
    IP=I+1  
    JP=J+1
-   where (i .ge. size(p,1)) ip=ip-1
-   where (j .ge. size(p,2)) jp=jp-1
+!   where (i .ge. size(p,1)) ip=ip-1
+!   where (j .ge. size(p,2)) jp=jp-1
+   where (i .ge. size(p0,1)-1) ip=ip-1
+   where (j .ge. size(p0,2)-1) jp=jp-1
 !   DX=IX-FLOAT(I) 
 !   DY=JY-FLOAT(J)
    DX=IX-real(I) 
@@ -105,10 +115,14 @@ contains
    DX1=(1.-DX) 
    DY1=(1.-DY) 
    do icnt=1, size(ix)
-    bilinear_res(icnt) = ( P(I(icnt),J(icnt))*DX1(icnt)*DY1(icnt) & 
-        + P(I(icnt),JP(icnt))*DX1(icnt)*DY(icnt)  &
-        + P(IP(icnt),J(icnt))*DX(icnt)*DY1(icnt)  &
-        + P(IP(icnt),JP(icnt))*DX(icnt)*DY(icnt))
+!    bilinear_res(icnt) = ( P(I(icnt),J(icnt))*DX1(icnt)*DY1(icnt) & 
+!        + P(I(icnt),JP(icnt))*DX1(icnt)*DY(icnt)  &
+!        + P(IP(icnt),J(icnt))*DX(icnt)*DY1(icnt)  &
+!        + P(IP(icnt),JP(icnt))*DX(icnt)*DY(icnt))
+    bilinear_res(icnt) = ( P0(I(icnt),J(icnt))*DX1(icnt)*DY1(icnt) & 
+        + P0(I(icnt),JP(icnt))*DX1(icnt)*DY(icnt)  &
+        + P0(IP(icnt),J(icnt))*DX(icnt)*DY1(icnt)  &
+        + P0(IP(icnt),JP(icnt))*DX(icnt)*DY(icnt))
    enddo
    deallocate(i)
    deallocate(j)
@@ -120,6 +134,7 @@ contains
    deallocate(dy1)
    deallocate(ix)
    deallocate(jy)
+   deallocate(p0)
 END  function bilineara 
 
 FUNCTION BILINEAR1 (P,IXin,JYin, x, y ) result (bilinear_res)
