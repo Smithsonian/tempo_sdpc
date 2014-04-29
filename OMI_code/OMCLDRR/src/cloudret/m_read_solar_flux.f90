@@ -62,6 +62,7 @@ subroutine read_solar_flux()
    if (iprt >= 2) then
     print *,'opening ',filename,' ',swathname
    endif
+print *,'solar: ',filename,swathname
    status = L1Br_open( blk, filename, swathname )
    IF( status .NE. OMI_S_SUCCESS ) THEN
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 

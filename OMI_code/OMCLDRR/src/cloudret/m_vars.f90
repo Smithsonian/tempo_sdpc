@@ -166,17 +166,17 @@ logical :: no_ret_ps=.false.
 integer :: niter= 10 !6
 
 real (KIND=8) :: cal_const
-real (KIND=8) :: refl_chl_max = 0.40
-real (KIND=8) :: refl_clr_oc = 0.10 !0.08
-real (KIND=8) :: refl_clr = 0.11 !0.08 !0.15
-real (KIND=8) :: refl_cld = 0.40 !0.80
-real (KIND=8) :: refl_clr2 = 0.11! 0.15
-real (KIND=8) :: refl_cld2 = 0.80
-real (KIND=8) :: cld_frac_min = 0.05 ! 0.20 !0.15
-real (KIND=8) :: cld_frac_max = 1.0
-real (KIND=8), parameter :: max_refl = 1.00
-real (KIND=8), parameter :: min_refl = 0.00
-real (KIND=8), parameter :: max_ai   = 1.00
+real (KIND=8) :: refl_chl_max = 0.40d0
+real (KIND=8) :: refl_clr_oc = 0.10d0 !0.08
+real (KIND=8) :: refl_clr = 0.11d0 !0.08 !0.15
+real (KIND=8) :: refl_cld = 0.40d0 !0.80
+real (KIND=8) :: refl_clr2 = 0.11d0 ! 0.15
+real (KIND=8) :: refl_cld2 = 0.80d0
+real (KIND=8) :: cld_frac_min = 0.05d0 ! 0.20 !0.15
+real (KIND=8) :: cld_frac_max = 1.0d0
+real (KIND=8), parameter :: max_refl = 1.00d0
+real (KIND=8), parameter :: min_refl = 0.00d0
+real (KIND=8), parameter :: max_ai   = 1.00d0
 integer, parameter :: min_refl_flag = 6
 integer, parameter :: bad_obs_flag = 7
 integer, parameter :: ai_flag = 8
@@ -196,7 +196,7 @@ real (KIND = 4) :: wmin= 391 !365.! 356.
 real (KIND = 4) :: wmax= 398.5
 real (KIND = 4) :: wmin2= 350 !365.! 356.
 real (KIND = 4) :: wmax2=405 !398.1
-real (KIND=8)            :: wdelt=0.5
+real (KIND=8)            :: wdelt=0.5d0
 
 integer :: npres=5
 integer :: ntheta, nscan, nphi
@@ -248,9 +248,9 @@ logical :: do_short_wave=.true.
 real (KIND=8), dimension(:,:), allocatable :: no2
 real (KIND=8) :: refl_l, refl_s
 
-real (KIND=8)    :: wave_short= 376.4 !346.8!340.4
-!real (KIND=8)    :: wave_long = 395.5 !376.4 ! 390 where Ring close to 0, 
-!real (KIND=8)    :: wave_long = 386.3 !376.4 ! 390 where Ring close to 0, 
+real (KIND=8)    :: wave_short= 376.4d0 !346.8!340.4
+!real (KIND=8)    :: wave_long = 395.5d0 !376.4 ! 390 where Ring close to 0, 
+!real (KIND=8)    :: wave_long = 386.3d0 !376.4 ! 390 where Ring close to 0, 
 real (KIND=8)    :: wave_long = 394.1 !376.4 ! 390 where Ring close to 0, 
                              ! old 386.3 !373.2 ! for GOMI 386.3! 
 !logical :: ex= .true
@@ -264,26 +264,25 @@ logical :: using_cal = .true.
 logical :: using_spline = .false.
 !logical :: using_spline = .true.
 logical :: gomi=.false.
-!real (KIND=8)    :: stddev_thresh=0.01 ! initial value based on GOME PMD
-real (KIND=8)    :: stddev_thresh=0.001 ! initial value based on OMI small pix.
+!real (KIND=8)    :: stddev_thresh=0.01d0 ! initial value based on GOME PMD
+real (KIND=8)    :: stddev_thresh=0.001d0 ! initial value based on OMI small pix.
 real (KIND=4), parameter :: fill_value = -9999.0
 !!!Altered since m_write_ouput_data seems to expect these to be int*2 and int*1
-!!!and actual values seem to be non-science-related.
 !integer, parameter :: fill_value_int = 65535
 !integer, parameter :: fill_value_int1 = 255
-integer (KIND=2), parameter :: fill_value_int = 255
-integer (KIND=1), parameter :: fill_value_int1 = 15
+integer (KIND=2), parameter :: fill_value_int = -1
+integer (KIND=1), parameter :: fill_value_int1 = -1
 integer :: n_good_input = 0, n_good_output = 0, n_input = 0, n_missing = 0
 integer :: highqual = 80, badqual = 20
 integer, parameter :: min_wl = 10
-real (KIND=8) :: cloud_pres_max = 1100.0, cld_frac = 0.02
+real (KIND=8) :: cloud_pres_max = 1100.0, cld_frac = 0.02d0
 
 real(kind=4) :: dist_rad, dist_irrad 
 logical :: cloud_clear=.false.!.true.
 integer :: ny=1, nx=1
 integer :: ll
 integer :: nfov=2
-real (KIND=8)    :: wave_dpdf = 393.6 !nm
+real (KIND=8)    :: wave_dpdf = 393.6d0 !nm
 logical :: transient_check = .false. !.true.
 logical :: set_wmin = .false. !.true.
 logical :: set_wmax = .false. !.true.
@@ -292,7 +291,7 @@ logical :: do_o3=.false.
 logical :: write_fill=.true.
 logical :: do_zoom=.true.
 logical :: get_refl_clim=.true.
-real (KIND=8)    :: wave_fill=352.6 ! nm wavelength to output filling in
+real (KIND=8)    :: wave_fill=352.6d0 ! nm wavelength to output filling in
 real (KIND=8), allocatable, dimension(:) :: wave_o3, xsect_o3
 integer :: year, month, day
 

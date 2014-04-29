@@ -173,11 +173,11 @@ do ifile=1, nfiles
 
   do i=1,n_products
     if(i == 1) then
-     refl_clr=0.15 ! just for testing, set back later
-     refl_cld=0.80
+     refl_clr=0.15d0 ! just for testing, set back later
+     refl_cld=0.80d0
     else
-     refl_clr=0.11
-     refl_cld=0.40
+     refl_clr=0.11d0
+     refl_cld=0.40d0
     endif
    
     if (.not. get_refl_clim) then
