@@ -92,8 +92,8 @@ return
 
 100 status = 1
    if (iprt > 0) print *,'read_cals: error reading file'
-   ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-     "Error reading reflectivity calibration, PGE aborting, exit code = 1", "read_cals", 1 )
+!   ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
+!     "Error reading reflectivity calibration, PGE aborting, exit code = 1", "read_cals", 1 )
       rc=1
       call exit(1)
 

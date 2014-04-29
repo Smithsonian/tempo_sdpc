@@ -12,7 +12,8 @@
       integer, parameter :: ler354_id = 510012
       integer, parameter :: IRR1B_file = 510001
       integer, parameter :: ring_id = 510010
-      integer, parameter :: cal_id = 510012
+#      integer, parameter :: cal_id = 510012
+      integer, parameter :: cal_id = 510013
       integer, parameter :: L1B_LUN=299001
       integer, parameter :: L1B_LUN_cm=299002
       integer, parameter :: MCF_LUN = 511001

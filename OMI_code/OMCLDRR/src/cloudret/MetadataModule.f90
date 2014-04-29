@@ -114,8 +114,9 @@ QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input)) ! n_missing cou
   returnstatus = pgs_pc_getconfigdata(OrbNum_LUN,buf)
   read(buf,*) OrbitNumber_PCF
   if(OrbitNumber /= OrbitNumber_PCF) then
-    ierr = OMI_SMF_setmsg(OMCLDRR_W_MET, &
-      "OrbitNumbers do not match", "MetadaModule", 0 )
+     print *,"RdWrmetadata: OrbitNumbers do not match"
+!    ierr = OMI_SMF_setmsg(OMCLDRR_W_MET, &
+!      "OrbitNumbers do not match", "MetadaModule", 0 )
   endif
 
   returnstatus = pgs_pc_getconfigdata(ThreshOrbNum_LUN,buf)
@@ -226,7 +227,7 @@ QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input)) ! n_missing cou
     returnstatus = PGS_PC_GetReference( Fil_Lun, version, buf )
       IF( returnstatus /= 0 ) THEN
         WRITE( buf,'(A,I0)' ) "get filename failed at LUN = ", Fil_Lun 
-        ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, buf, "MetadataModule", 0 )
+!        ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, buf, "MetadataModule", 0 )
         GO TO 9999
       ELSE
         j = INDEX( buf, '/', BACK = .TRUE. ) + 1
@@ -307,8 +308,9 @@ enddo
   returnstatus = pgs_met_write(groups(ARCHIVE),'ArchiveMetadata',sdid)
 
   IF(returnstatus /=0) THEN
-    ierr = OMI_SMF_setmsg( OMCLDRR_W_MET, "write ArchiveMetadata failed", &
-                              "MetadataModule", 0 )
+     print *,"write ArchiveMetadata failed"
+!    ierr = OMI_SMF_setmsg( OMCLDRR_W_MET, "write ArchiveMetadata failed", &
+!                              "MetadataModule", 0 )
   ENDIF
 
   returnstatus = pgs_met_sfend(sdid)
@@ -322,12 +324,13 @@ enddo
 9999 CONTINUE 
  
   IF (status /= OMI_S_SUCCESS) THEN
-    status = omi_smf_setmsg(OMI_E_GENERAL, &
-      'failed to read or write metadata', &
-      'RdWrmetadata', 1)
+     print *,'RdWrmetadata: failed to read or write metadata'
+!    status = omi_smf_setmsg(OMI_E_GENERAL, &
+!      'failed to read or write metadata', &
+!      'RdWrmetadata', 1)
   ELSE
-    status = omi_smf_setmsg(OMI_S_SUCCESS, &
-           'Metadata part Successfull', 'RdWrmetadata',1)
+!    status = omi_smf_setmsg(OMI_S_SUCCESS, &
+!           'Metadata part Successfull', 'RdWrmetadata',1)
     status = OMI_S_SUCCESS
   END IF                
  
