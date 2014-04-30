@@ -1,9 +1,9 @@
 # -*- sh -*-
 
-EXECUTABLE = L1b_L2
+EXECUTABLE = L1_trace_gas
 
 config_dir = @CONFIG_DIR@
-srcdir     = $(config_dir)/src/L1b_L2
+srcdir     = $(config_dir)/L1_trace_gas/src
 objdir     = $(srcdir)/objs
 msgdir     = $(srcdir)/msgs
 

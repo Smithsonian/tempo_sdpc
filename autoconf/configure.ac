@@ -1,4 +1,4 @@
-AC_INIT(src/L1b_L2/OMSAO_main.f90)
+AC_INIT(L1_trace_gas/src/OMSAO_main.f90)
 
 CONFIG_DIR=`pwd`
 AC_SUBST(CONFIG_DIR)
@@ -40,11 +40,11 @@ fi
 AC_SUBST(HDFEOS5_LIB)
 AC_SUBST(HDFEOS5_INC)
 
-JH_LIST_SOURCES(src/L1b_L2)
+JH_LIST_SOURCES(L1_trace_gas/src)
 
 AC_CONFIG_FILES([\
  Makefile:autoconf/Makefile.in \
- src/L1b_L2/Makefile:src/L1b_L2/Makefile.in \
+ L1_trace_gas/src/Makefile:L1_trace_gas/src/Makefile.in \
 ])
 AC_OUTPUT
 

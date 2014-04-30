@@ -1,17 +1,18 @@
 
-
-@SET_MAKE@
+SRCDIR = L1_trace_gas/src
 
 RM = /bin/rm
 
+@SET_MAKE@
+
 all:
-	cd src/L1b_L2; $(MAKE) all
+	cd $(SRCDIR); $(MAKE) all
 
 install:
-	cd src/L1b_L2; $(MAKE) install
+	cd $(SRCDIR); $(MAKE) install
 
 clean:
-	cd src/L1b_L2; $(MAKE) clean
+	cd $(SRCDIR); $(MAKE) clean
 
 confclean:
 	-$(RM) Makefile config.status config.log config.cache
