@@ -308,9 +308,9 @@ enddo
   returnstatus = pgs_met_write(groups(ARCHIVE),'ArchiveMetadata',sdid)
 
   IF(returnstatus /=0) THEN
-     print *,"write ArchiveMetadata failed"
-!    ierr = OMI_SMF_setmsg( OMCLDRR_W_MET, "write ArchiveMetadata failed", &
-!                              "MetadataModule", 0 )
+    print *,"write ArchiveMetadata failed"
+    ierr = OMI_SMF_setmsg( OMCLDRR_W_MET, "write ArchiveMetadata failed", &
+                              "MetadataModule", 0 )
   ENDIF
 
   returnstatus = pgs_met_sfend(sdid)
@@ -324,13 +324,13 @@ enddo
 9999 CONTINUE 
  
   IF (status /= OMI_S_SUCCESS) THEN
-     print *,'RdWrmetadata: failed to read or write metadata'
-!    status = omi_smf_setmsg(OMI_E_GENERAL, &
-!      'failed to read or write metadata', &
-!      'RdWrmetadata', 1)
+    print *,'RdWrmetadata: failed to read or write metadata'
+    status = omi_smf_setmsg(OMI_E_GENERAL, &
+      'failed to read or write metadata', &
+      'RdWrmetadata', 1)
   ELSE
-!    status = omi_smf_setmsg(OMI_S_SUCCESS, &
-!           'Metadata part Successfull', 'RdWrmetadata',1)
+    status = omi_smf_setmsg(OMI_S_SUCCESS, &
+           'Metadata part Successfull', 'RdWrmetadata',1)
     status = OMI_S_SUCCESS
   END IF                
  
