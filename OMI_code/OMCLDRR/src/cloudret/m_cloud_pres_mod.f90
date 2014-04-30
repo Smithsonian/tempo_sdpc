@@ -67,7 +67,7 @@ real (KIND=8) :: wavetol=0.25 !0.22! nm tolerance for marking observations as ba
 real (KIND=8) :: var_inv_cp=1./0.5d0**2
 real (KIND=8) :: var_inv_chl=1./0.5d0**2 !1./5.0**2
 real (KIND=8) :: var_inv_big=1./1e8**2
-real (KIND=8) :: var_inv_small=(1.d0/1e-30)**2 
+real (KIND=8) :: var_inv_small=(1.d0/1e-15)**2 
 real (KIND=8) :: var_inv_shift=1./0.05d0**2
 real (KIND=8) :: wave_min = 300.d0
 real (KIND=8) :: cld_frac, cld_frac_oc
