@@ -1,104 +1,35 @@
-#
-SAOPGE = OMCLDRR
+# -*- sh -*-
 
-ifeq ($(HOST),vex)
-   ROOT_DIR = /vex/d2/omi
-else
-   ROOT_DIR = /home/jedavis/sys/linux-x86_64
-#   ROOT_DIR = /home/jhouck/omi/install
-#    ROOT_DIR = /home/eosulliv/omi/hdfeos/install
-endif
+EXECUTABLE = L1_cloud
 
-# COMPILER_FAMILY = intel | gfortran
-#  OMIUTIL_SYSDIR = linux32 | linux64
-#
-# COMPILER_FAMILY = intel
-COMPILER_FAMILY = gfortran
-OMIUTIL_SYSDIR  = linux64
-INTEL_ROOT = /opt/intel
+include ../../Makefile.defines
 
-OPTROOT = $(ROOT_DIR)/$(COMPILER_FAMILY)
-OMIROOT = /home/eosulliv/omi/OMI_code
+srcdir     = $(config_dir)/L1_cloud/src
+objdir     = $(srcdir)/objs
+msgdir     = $(srcdir)/msgs
 
-#----------------------------------------------------------------
-# Ideally, you shouldn't need to change anything below this line,
-# unless maybe you want to change the compiler options.
-#----------------------------------------------------------------
+bindir     = $(prefix)/bin
 
-#OMISAOSHARED = $(OMIROOT)/OMI_SAO_Shared_VOCs/src
-OMCLDRR = $(OMIROOT)/$(SAOPGE)/src/cloudret
-MKF_DIR = $(OMIROOT)/build_OMCLDRR
+OMIUTIL    = $(OTS_ROOT)/sdptk/SDPTK5.2.18v1.00
 
-EXECUTABLE = $(SAOPGE).exe
+MODFLG     = -I
+MODOUTFLG  = -J
+LNFLAGS    = #
+ADDLIBD    = #
+ADDLIBS    = -Wl,-rpath=$(OTS_ROOT)/lib -lsz -lm -ldl
 
-PGEHOME    = $(OMIROOT)/$(SAOPGE)
-PGEOUTDIR  = $(PGEHOME)/out
-PGETMPDIR  = $(PGEHOME)/tmp
-PGETBLDIR  = $(PGEHOME)/tbl
-PGEBINDIR  = $(PGEHOME)/bin
-PGESRCDIR  = $(PGEHOME)/src/cloudret/
-PGSMSG     = $(PGEHOME)/bin
+FFLAGS  = $(MODFLG) ./ $(FCFLAGS) -fPIC
+CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran -fPIC
 
-# Note that some things below depend on the
-# environment configuration established here:
-#
-OMIUTIL = $(OPTROOT)/sdptk/SDPTK5.2.18v1.00
-IGNORE := $(shell bash -c "mkdir -p $(PGETMPDIR); source $(OMIUTIL)/TOOLKIT/bin/$(OMIUTIL_SYSDIR)/pgs-dev-env.ksh ; env | sed 's/^/export /' > $(PGETMPDIR)/sdptk_env")
-include $(PGETMPDIR)/sdptk_env
+#---------------------------------------------------------------
+# Ideally, you shouldn't need to change anything below this line
+#---------------------------------------------------------------
 
-PGS_PC_INFO_FILE = $(PGEHOME)/src/$(SAOPGE).pcf
-PGEVERSION = `grep PGEVERSION $(PGS_PC_INFO_FILE) | cut -d\| -f3 | tr -d \"`
-
-VPATH = $(PGESRCDIR):$(PGETMPDIR)   #:$(OMISAOSHARED)
+PGSHOME     = $(OMIUTIL)/TOOLKIT
 
 MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
-
-ifeq ($(COMPILER_FAMILY), gfortran)
-   CC = gcc
-   FC = gfortran
-
-   # GFORT_FLAGS = -Wall -Wextra -W -pedantic -fimplicit-none -Warray-bounds -Wno-unused -fcheck-array-temporaries
-   GFORT_FLAGS = -Wall -W -Wextra -Warray-bounds -Wno-unused-dummy-argument \
-                 -fbounds-check -fmax-errors=0 -fbacktrace \
-                 -fcheck-array-temporaries -fconvert=swap
-   # GFORT_FLAGS = -Wall -W -Warray-bounds -Wno-unused -fprofile-arcs -ftest-coverage -pg
-   # GFORT_OPT_FLAGS = -march=native -funroll-loops -O3
-   # GFORT_OPT_FLAGS = -march=native -g -O2
-   GFORT_OPT_FLAGS = -g
-   # ALL_FFLAGS = $(GFORT_OPT_FLAGS) -fPIC -static $(GFORT_FLAGS)
-   ALL_FFLAGS = $(GFORT_OPT_FLAGS) -fPIC $(GFORT_FLAGS)
-   MODCMPFLG  =
-   MODFLG     = -I#
-   MODOUTFLG  = -J#
-   ADDLIBD    =
-   ADDLIBS    = -Wl,-rpath=$(OPTROOT)/lib -lsz -lm -ldl
-   LNFLAGS    = # -lpg
-   CFLAGS     += -DLINUX -Df2cFortran -fPIC
-endif
-
-ifeq ($(COMPILER_FAMILY), intel)
-   FC        = $(INTEL_ROOT)/bin/ifort
-   CC        = $(INTEL_ROOT)/bin/icc
-   #FFLAGSopt = -xN -O3 -ip -no-prec-div -nowarn
-   #FFLAGSopt  = -O3 -static  -warn interfaces
-   FFLAGSopt  = -O3 -static
-   #FFLAGSdbg  = -g -C -traceback -check bounds -check format -check output_conversion -check uninit \
-   #             -warn -fp-stack-check -ftrapuv -debug -fpe0 -gen-interfaces -warn interfaces
-   #FFLAGSdbg  = -g -traceback -fpe0 -C -check noarg_temp_created -static
-   FFLAGSdbg  = -g -C -traceback -check bounds -check format -check output_conversion -check uninit \
-                -warn -fp-stack-check -ftrapuv -debug -fpe0 -fPIC -static
-   #FFLAGSprof = -O3 -p -prof-dir ../prof -opt-report-file ../prof/opti.log
-   ALL_FFLAGS = $(FFLAGSopt)
-   MODCMPFLG  =
-   MODFLG     = -I#
-   MODOUTFLG  = -module#
-   ADDLIBD    =
-   ADDLIBS    = -lsz -lm
-   LNFLAGS    = -static
-   CFLAGS     = -O3 -DLINUX -Df2cFortran
-endif
 
 PSPLINELIBS  = -lpspline -lezcdf
 NETCDFLIBS   = # -lnetcdf
@@ -107,31 +38,14 @@ HE5LIBS      = -lhe5_hdfeos -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
 PGSLIBS      = -lPGSTK
 OMILIBS      =
 
-OPTINCDIR=$(OPTROOT)/include
-OPTMODDIR=$(OPTROOT)/mod
-OPTLIBDIR=$(OPTROOT)/lib
-
-IFLAGS = -I$(OMIUTIL)/include -I$(OPTINCDIR) \
-         $(MODFLG)$(OPTMODDIR) $(MODFLG)$(OMIUTIL)/mod/$(OMIUTIL_SYSDIR) \
-         $(MODFLG)$(PGETMPDIR) -I$(PGETMPDIR) 
-LFLAGS = -L$(OMIUTIL)/lib/$(OMIUTIL_SYSDIR) $(ADDLIBD) -L$(PGETMPDIR)
-LIBS   = $(PSPLINELIBS) $(NETCDFLIBS)                \
-         $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
+OTS_INCDIR = $(OTS_ROOT)/include
+OTS_MODDIR = $(OTS_ROOT)/mod
+OTS_LIBDIR = $(OTS_ROOT)/lib
 
 NETCDFINC  = $(OMIUTIL)/netcdf/include
 NETCDFLIB  = $(OMIUTIL)/netcdf/lib
-PSPLINEMOD = $(OPTMODDIR)
-PSPLINELIB = $(OPTLIBDIR)
-
-IFLAGS = -I$(OMIUTIL)/include                     \
-         -I$(HDFEOS_INC)  $(MODFLG)$(HDFEOS_INC)  \
-         -I$(HDF5INC)     $(MODFLG)$(HDF5INC)     \
-         -I$(HDFINC)      $(MODFLG)$(HDFINC)      \
-         -I$(PGSINC)      $(MODFLG)$(PGSINC)      \
-         -I$(HDFEOS5_INC) $(MODFLG)$(HDFEOS5_INC) \
-         -I$(PGETMPDIR)   $(MODFLG)$(PGETMPDIR)   \
-         -I$(NETCDFINC)   $(MODFLG)$(NETCDFINC)   \
-                          $(MODFLG)$(PSPLINEMOD)
+PSPLINEMOD = $(OTS_MODDIR)
+PSPLINELIB = $(OTS_LIBDIR)
 
 IFLAGS = $(MODFLG)$(OMIUTIL)/include \
          $(MODFLG)$(HDFEOS_INC) \
@@ -139,143 +53,98 @@ IFLAGS = $(MODFLG)$(OMIUTIL)/include \
          $(MODFLG)$(HDFINC) \
          $(MODFLG)$(PGSINC) \
          $(MODFLG)$(HDFEOS5_INC) \
-         $(MODFLG)$(PGETMPDIR) \
+         $(MODFLG)$(objdir) \
          $(MODFLG)$(NETCDFINC) \
-	 $(MODFLG)$(PSPLINEMOD) 
+	 $(MODFLG)$(PSPLINEMOD)
 
-LFLAGS = -L$(PGETMPDIR) -L$(OMIUTIL)/lib                              \
+LFLAGS = -L$(objdir) -L$(OMIUTIL)/lib \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
          -L$(NETCDFLIB) -L$(PSPLINELIB) $(ADDLIBD)
 
-LIBS   = $(PSPLINELIBS) $(NETCDFLIBS)                \
+LIBS   = $(PSPLINELIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
 
-FFLAGS   = $(MODFLG) ./ $(ALL_FFLAGS)
-CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(PGETMPDIR)
+CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 
-#---------------------------------------------------------------
-#  Construct paths to most C and Fortran
-#  source and object files, excluding the main program OMCLDRR.f90:
-#
-#  f90_files.lis:  one filename per line, including .f90 suffix
-#    c_files.lis:  one filename per line, including .c suffix
-#---------------------------------------------------------------
-F90_FILE_LIST = $(MKF_DIR)/f90_files.lis
-C_FILE_LIST   = $(MKF_DIR)/c_files.lis
-
-F90SOURCES = $(shell cat $(F90_FILE_LIST))
-CSOURCES = $(shell cat $(C_FILE_LIST))
-
-F90SRCPATHS = $(addprefix $(OMCLDRR)/, $(F90SOURCES))
-CSRCPATHS = $(addprefix $(OMCLDRR)/, $(CSOURCES))
-
-F90OBJECTS = $(F90SOURCES:.f90=.o)
-COBJECTS = $(CSOURCES:.c=.o)
-
-LINKOBJS = $(addprefix $(PGETMPDIR)/,$(F90OBJECTS) $(COBJECTS))
+# During development, make it easy to change the list of source files.
+# For releases, use a static list of source files.
+F90SOURCES = $(shell grep -v '\#' f90_files.lis)
+CSOURCES   = $(shell grep -v '\#' c_files.lis)
+LINKOBJS   = $(addprefix $(objdir)/,$(F90SOURCES:.f90=.o) $(CSOURCES:.c=.o))
+# F90SOURCES = slitfunction.f90 slitfunction_omi.f90 slitfunction_asym_gaussian.f90 cache_module.f90 optimizer_interface_module.f90 elsunc_interface_module.f90 angle_sat2toa.f90 dataspline_module.f90 ezspline_interpolation.f90 fitting_loops.f90 hdfeos4_parameters.f90 he5_output_tools.f90 integration_routines.f90 metadata_tools.f90 omi_pge_fitting_aux.f90 omi_pge_fitting_process.f90 omi_pge_postprocessing.f90 swathline_loop.f90 omi_parameters_module.f90 omi_read_l1b_data.f90 OMSAO_casestring_module.f90 OMSAO_destriping_module.f90 OMSAO_elsunc_fitting_module.f90 OMSAO_errstat_module.f90 OMSAO_he5_module.f90 OMSAO_indices_module.f90 OMSAO_linterpolation_module.f90 OMSAO_main.f90 OMSAO_median_module.f90 OMSAO_omidata_module.f90 OMSAO_parameters_module.f90 OMSAO_pixelcorner_module.f90 OMSAO_precision_module.f90 OMSAO_prefitcol_module.f90 OMSAO_radiance_ref_module.f90 OMSAO_Reference_sector_module.f90 OMSAO_solar_wavcal_module.f90 OMSAO_solcomp_module.f90 OMSAO_variables_module.f90 OMSAO_wfamf_module.f90 prepare_databases.f90 radiance_fit.f90 radiance_wavcal.f90 control_module.f90 pcf_file_module.f90 read_reference_spectra.f90 sao_pge_utils.f90 strutils.f90 subtract_cubic.f90 Szoom_Parameter_Module.f90 SLATEC_davint.f90 undersample.f90 datafields.f90 irradiance_data.f90 errormodule.f90 l1bread.f90 wavecal.f90 commonmode.f90 ctrlvars.f90 arrayutils.f90 
+# CSOURCES   = OMI_SMF_setmsg.c unbufferSTDOUT.c l1breader.c 
+# LINKOBJS   = $(objdir)/arrayutils.o $(objdir)/ctrlvars.o $(objdir)/commonmode.o $(objdir)/wavecal.o $(objdir)/l1bread.o $(objdir)/errormodule.o $(objdir)/irradiance_data.o $(objdir)/datafields.o $(objdir)/undersample.o $(objdir)/SLATEC_davint.o $(objdir)/Szoom_Parameter_Module.o $(objdir)/subtract_cubic.o $(objdir)/strutils.o $(objdir)/sao_pge_utils.o $(objdir)/read_reference_spectra.o $(objdir)/pcf_file_module.o $(objdir)/control_module.o $(objdir)/radiance_wavcal.o $(objdir)/radiance_fit.o $(objdir)/prepare_databases.o $(objdir)/OMSAO_wfamf_module.o $(objdir)/OMSAO_variables_module.o $(objdir)/OMSAO_solcomp_module.o $(objdir)/OMSAO_solar_wavcal_module.o $(objdir)/OMSAO_Reference_sector_module.o $(objdir)/OMSAO_radiance_ref_module.o $(objdir)/OMSAO_prefitcol_module.o $(objdir)/OMSAO_precision_module.o $(objdir)/OMSAO_pixelcorner_module.o $(objdir)/OMSAO_parameters_module.o $(objdir)/OMSAO_omidata_module.o $(objdir)/OMSAO_median_module.o $(objdir)/OMSAO_main.o $(objdir)/OMSAO_linterpolation_module.o $(objdir)/OMSAO_indices_module.o $(objdir)/OMSAO_he5_module.o $(objdir)/OMSAO_errstat_module.o $(objdir)/OMSAO_elsunc_fitting_module.o $(objdir)/OMSAO_destriping_module.o $(objdir)/OMSAO_casestring_module.o $(objdir)/omi_read_l1b_data.o $(objdir)/omi_parameters_module.o $(objdir)/swathline_loop.o $(objdir)/omi_pge_postprocessing.o $(objdir)/omi_pge_fitting_process.o $(objdir)/omi_pge_fitting_aux.o $(objdir)/metadata_tools.o $(objdir)/integration_routines.o $(objdir)/he5_output_tools.o $(objdir)/hdfeos4_parameters.o $(objdir)/fitting_loops.o $(objdir)/ezspline_interpolation.o $(objdir)/dataspline_module.o $(objdir)/angle_sat2toa.o $(objdir)/elsunc_interface_module.o $(objdir)/optimizer_interface_module.o $(objdir)/cache_module.o $(objdir)/slitfunction_asym_gaussian.o $(objdir)/slitfunction_omi.o $(objdir)/slitfunction.o  $(objdir)/l1breader.o $(objdir)/unbufferSTDOUT.o $(objdir)/OMI_SMF_setmsg.o 
 
 #---------------------------------
 # Primary 'make' targets for users
-#   make [all|clean]
+#   make [all|install|clean]
 #---------------------------------
 
-RULES_FILE = $(MKF_DIR)/rules.inc
-#RULES_FILE = $(PGETMPDIR)/rules.inc
-
-all:	dirs messages $(RULES_FILE) $(EXECUTABLE)
-
-rules:
-	$(MKF_DIR)/mkrules.sh f90 $(F90SRCPATHS) > $(RULES_FILE)
-	$(MKF_DIR)/mkrules.sh c $(CSRCPATHS) >> $(RULES_FILE)
-
-$(EXECUTABLE):	$(LINKOBJS)
-	$(FC) $(PGEHOME)/src/cloudret/$(SAOPGE).f90 -o $(PGETMPDIR)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
-
-install:
-	$(CP) $(PGETMPDIR)/$(EXECUTABLE) $(PGEOUTDIR)
-
-clean:
-	-$(RM) $(PGETMPDIR)/*.o $(PGETMPDIR)/*.mod
-	-$(RM) $(RULES_FILE)
-
-# -----------------------------------------------------------------
-# The hdf.f90 file contains numerous non-conforming tabs.
-# It's unlikely anyone will ever fix that in the HDF distribution,
-# so I'll just fix it myself:
-# -----------------------------------------------------------------
-fix-hdf-tabs:
-	sed --in-place=_ 's,\t, ,g' $(OPTROOT)/include/hdf.f90
-
-emptydirs = $(PGETMPDIR) $(PGSMSG) $(PGEBINDIR) $(PGEOUTDIR) $(PGETBLDIR)
-SHELL=/bin/bash
-export SHELL
+all:	dirs messages $(EXECUTABLE)
 
 dirs:
-	@for d in $(emptydirs); do \
-	  if [ ! -d $$d ]; then \
-	      mkdir -p $$d ; \
-	  fi; \
-	done
+	mkdir -p $(objdir) $(msgdir)
 
-.f.o:
-	$(FC) -c $(FFLAGS) $(IFLAGS) $< -o $(PGETMPDIR)/$@
-	#$(FC) -c $(FFLAGS) $(IFLAGS) $< -o $@
-	#$(MV) -f $@ $(PGETMPDIR)/
+$(EXECUTABLE):	$(LINKOBJS)
+	$(FC) OMCLDRR.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
-.F.o:
-	$(FC) -c $(FFLAGS) $(IFLAGS) $< -o $(PGETMPDIR)/$@
-	#$(FC) -c $(FFLAGS) $(IFLAGS) $< -o $@
-	#$(MV) -f $@ $(PGETMPDIR)/
+install:
+	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)
+
+clean:
+	-$(RM) $(objdir)/*.o $(objdir)/*.mod
+
+tags:
+	ctags $(F90SOURCES) $(CSOURCES)
+#-----------------------------------------------------------------
+# The hdf.f90 file contains numerous non-conforming tabs.
+# It's unlikely anyone will ever fix that in the HDF distribution,
+# so we'll just fix it this way:
+#-----------------------------------------------------------------
+fix-hdf-tabs:
+	sed --in-place=_ 's,\t, ,g' $(OTS_ROOT)/include/hdf.f90
 
 # ---------------------------------------
 # The PGE and TOOLKIT error message files
 # ---------------------------------------
 
-#PGEPGSSRC = OMSAO_52500.t OMI_1900.t
 PGEPGSSRC = OMCLDRR_52251.t OMI_1900.t
-#PGEPGSCMP = PGS_OMCLDRR_52251.f PGS_OMI_1900.f PGS_OMI_1900.h
-PGEPGSCMP = PGS_OMCLDRR_52251.f PGS_OMI_1900.f PGS_OMI_1900.h
-TKPGSCMP =  PGS_1 PGS_3 PGS_4 PGS_5 PGS_6 PGS_7 PGS_9 PGS_11 \
-            PGS_12 PGS_13 PGS_14 PGS_15 PGS_10 PGS_101 
+PGEPGSCMP = $(msgdir)/PGS_OMCLDRR_52251 $(msgdir)/PGS_OMI_1900
+TKPGSCMP = PGS_9
 
-PGSHOME = $(OMIUTIL)/TOOLKIT/
-PGSMSG     = $(PGEHOME)/bin
-
-messages: pgemessages tkmessages
-
-pgemessages: $(PGEPGSCMP)
+messages: $(PGEPGSCMP) tkmessages
 
 tkmessages:
-	 @for tkpgs in $(TKPGSCMP); do                                 \
-	   if [ ! -e $(PGSMSG)/$$tkpgs ]; then                        \
-	      echo 'Copying' $$tkpgs 'to' $(PGSMSG);                  \
-	      touch $(PGSMSG)/$$tkpgs ; chmod u+w $(PGSMSG)/$$tkpgs;  \
-	      cp -p $(PGSHOME)/message/$$tkpgs $(PGSMSG)/;            \
-	   fi;                                                        \
-	 done
+	@for tkpgs in $(TKPGSCMP); do                                 \
+	  if [ ! -e $(msgdir)/$$tkpgs ]; then                        \
+	     echo 'Copying' $$tkpgs 'to' $(msgdir);                  \
+	     touch $(msgdir)/$$tkpgs ; chmod u+w $(msgdir)/$$tkpgs;  \
+	     $(CP) -p $(PGSHOME)/message/$$tkpgs $(msgdir)/;            \
+	  fi;                                                        \
+	done
 
-# ---------------------------------------------
-# Pattern rule for the creation of SMF messages
-# ---------------------------------------------
-PGS_%.f : %.t
-	$(PGSBIN)/smfcompile -r -f77 -f $< -o $(PGETMPDIR)/$@
-	#$(PGSBIN)/smfcompile -r -f77 -f $< -o $@
-	#$(MV) $(OMCLDRR)/$@ $(PGETMPDIR)/
-PGS_%.h : %.t
-	$(PGSBIN)/smfcompile -r      -f $< -o $(PGETMPDIR)/$@
-	#$(PGSBIN)/smfcompile -r      -f $< -o $@
-	#$(MV) $(OMCLDRR)/$@ $(PGETMPDIR)/
+# ----------------------------------------------------------------------
+# Pattern rule for the creation of SMF messages and associated .f and .h
+# ----------------------------------------------------------------------
+$(msgdir)/PGS_OMI_1900:
+	export PGSMSG="$(msgdir)" ; \
+	$(PGSBIN)/smfcompile -r -f77 -f OMI_1900.t ; \
+	$(PGSBIN)/smfcompile -r      -f OMI_1900.t
+$(msgdir)/PGS_OMCLDRR_52251:
+	export PGSMSG="$(msgdir)" ; \
+	$(PGSBIN)/smfcompile -r -f77 -f OMCLDRR_52251.t ; \
+	$(PGSBIN)/smfcompile -r      -f OMCLDRR_52251.t
 
-#-------------------------------------------------------
-# Auto-generate and include object file dependency rules
-#-------------------------------------------------------
+# ---- build dependencies ----
+# During development, the rules will be dynamically updated.
+# For releases, a static set of rules can be appended.
+Makefile:	rules.inc
+rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
+	f90depmod.sl -r $(F90SOURCES) > rules.inc
+	./mkrules.sh c $(CSOURCES) >> rules.inc
 
-$(RULES_FILE):
-	$(MKF_DIR)/mkrules.sh f90 $(F90SRCPATHS) > $(RULES_FILE)
-#	$(MKF_DIR)/mkrules.sh c $(CSRCPATHS) >> $(RULES_FILE)
+ODIR = $(objdir)
+SDIR = $(srcdir)
+-include rules.inc
 
-ODIR = $(PGETMPDIR)
-SDIR = $(OMCLDRR)
--include $(RULES_FILE)
-
-.PHONY:	rules.inc
+.PHONY: tags

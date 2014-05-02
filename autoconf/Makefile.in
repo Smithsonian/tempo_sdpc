@@ -1,18 +1,24 @@
 
-SRCDIR = L1_trace_gas/src
+@SET_MAKE@
 
 RM = /bin/rm
 
-@SET_MAKE@
+DIR_LIST=L1_trace_gas/src L1_cloud/src
 
 all:
-	cd $(SRCDIR); $(MAKE) all
+	for dir in $(DIR_LIST) ; do \
+	  (cd $$dir ; $(MAKE) all); \
+	done
 
 install:
-	cd $(SRCDIR); $(MAKE) install
+	for dir in $(DIR_LIST) ; do \
+	  (cd $$dir ; $(MAKE) install); \
+	done
 
 clean:
-	cd $(SRCDIR); $(MAKE) clean
+	for dir in $(DIR_LIST) ; do \
+	  (cd $$dir ; $(MAKE) clean); \
+	done
 
 confclean:
-	-$(RM) Makefile config.status config.log config.cache
+	-$(RM) Makefile Makefile.defines config.status config.log

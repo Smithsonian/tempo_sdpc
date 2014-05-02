@@ -42,9 +42,11 @@ AC_SUBST(HDFEOS5_INC)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 
+dnl L1_trace_gas/src/Makefile:L1_trace_gas/src/Makefile.in \
+
 AC_CONFIG_FILES([\
  Makefile:autoconf/Makefile.in \
- L1_trace_gas/src/Makefile:L1_trace_gas/src/Makefile.in \
+ Makefile.defines:autoconf/Makefile.defines.in \
 ])
 AC_OUTPUT
 

@@ -34,7 +34,7 @@ mkcrule(){
   base=$(basename $file .${ext})
 cat <<EOM
 \$(ODIR)/${base}.o:	\$(SDIR)/${base}.${ext}
-	\$(CC) -c \$(CFLAGS) \$(CINCFLGS) \$(SDIR)/${base}.${ext} -o \$(ODIR)/${base}.o
+	\$(CC) -c \$(CCFLAGS) \$(CINCFLGS) \$(SDIR)/${base}.${ext} -o \$(ODIR)/${base}.o
 EOM
 }
 
