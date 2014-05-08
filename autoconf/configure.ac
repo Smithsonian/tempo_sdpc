@@ -33,7 +33,7 @@ AC_ARG_WITH(hdfeos5,
   [  --with-hdfeos5[=DIR]      Use HDFEOS5 libraries installed in DIR],
   [jh_with_hdfeos5=$withval],
   [jh_with_hdfeos5=no])
-if ! test "x$jh_with_hdfeos" = "xno"; then
+if ! test "x$jh_with_hdfeos5" = "xno"; then
    HDFEOS5_LIB="$jh_with_hdfeos5/lib/$OMIUTIL_SYSDIR"
    HDFEOS5_INC="$jh_with_hdfeos5/include"
 fi
