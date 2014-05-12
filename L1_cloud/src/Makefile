@@ -110,7 +110,7 @@ fix-hdf-tabs:
 
 PGEPGSSRC = OMCLDRR_52251.t OMI_1900.t
 PGEPGSCMP = $(msgdir)/PGS_OMCLDRR_52251 $(msgdir)/PGS_OMI_1900
-TKPGSCMP = PGS_9
+TKPGSCMP = PGS_9 PGS_1
 
 messages: $(PGEPGSCMP) tkmessages
 
