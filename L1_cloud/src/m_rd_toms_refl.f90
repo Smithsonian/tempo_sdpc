@@ -11,6 +11,7 @@ use m_vars, ONLY: done_read_refl, iprt, lat, lon, toms_refl, ref_nmon, &
   iLine, nXtrack, ref_nlat, ref_nlon, ref_clr, ref_lats, ref_lons, month, &
   ler_sz, ler_th, ler_ph, ler354, startlat, startlon, deltlat, deltlon
 use m_LUN_set
+use m_pgs_include
 implicit NONE          
 
 !-------------------------------------------------------------------------
@@ -50,10 +51,10 @@ integer :: lun=2
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status,ierr, version=1
 
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
 real (KIND=8)                       :: lont, latt

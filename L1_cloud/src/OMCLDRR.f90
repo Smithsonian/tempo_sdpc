@@ -13,7 +13,7 @@ use m_write_output_data_2pres
 use m_cloud_pres_ret
 !use m_cloud_clear_ret
 use m_str_replace
-use m_num2string
+!use m_num2string
 use m_cloud_mask
 use m_read_thresholds
 use m_read_references
@@ -25,6 +25,7 @@ use m_LUN_set
 use L1B_Reader_class
 !use full_reader_class
 !use m_read_no2
+use m_pgs_include
 
     IMPLICIT NONE
   
@@ -47,11 +48,11 @@ use L1B_Reader_class
 !EOP
 
 !-------------------------------------------------------------------------
-include 'PGS_PC.f'
-include 'PGS_PC_9.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_OMCLDRR_52251.f'
-include 'PGS_SMF.f'
+!include 'PGS_PC.f'
+!include 'PGS_PC_9.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_OMCLDRR_52251.f'
+!include 'PGS_SMF.f'
 
 integer :: i
 integer (kind=4), external :: pgs_pc_getreference !, OMI_SMF_setmsg

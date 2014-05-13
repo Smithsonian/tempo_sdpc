@@ -9,6 +9,7 @@ subroutine rd_chl( )
 
 use m_vars, ONLY: done_read_chl, chl2d, iprt, lat, lon, chlcl, iLine, nXtrack, form
 use m_LUN_set
+use m_pgs_include
 
 !*************************************************************************
 !        AUTHOR:  Joanna Joiner - original code, 
@@ -41,10 +42,10 @@ integer                    :: ip, i, j
 !integer, parameter :: chl_id = 510004
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, ierr,version=1
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 !*****************************************************************
    

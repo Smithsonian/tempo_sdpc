@@ -9,6 +9,7 @@ subroutine write_HDFEOS_attr(outfile, swathname, ierr)
    use m_HDFEOS_attr
    use m_LUN_set
    use m_strpos
+   use m_pgs_include
 !**********************************
    implicit none
 !
@@ -40,10 +41,10 @@ subroutine write_HDFEOS_attr(outfile, swathname, ierr)
        integer, intent(out) :: ierr
 
 !include
- INCLUDE 'PGS_SMF.f'
- INCLUDE 'PGS_MET_13.f'
- INCLUDE 'PGS_OMI_1900.f'
- INCLUDE 'PGS_OMCLDRR_52251.f'
+! INCLUDE 'PGS_SMF.f'
+! INCLUDE 'PGS_MET_13.f'
+! INCLUDE 'PGS_OMI_1900.f'
+! INCLUDE 'PGS_OMCLDRR_52251.f'
 
 ! Declare the HDF-EOS file and swath identification numbers, and
 ! the status of the HDF-EOS functions calls.

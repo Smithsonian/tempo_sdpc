@@ -25,6 +25,7 @@ use m_vars, ONLY: nwav, nscanpos, reference_spec, reference_wave, &
 use m_LUN_set
 use m_interp_ring_rad
 use m_interp_pres
+use m_pgs_include
       Implicit NONE
 
 ! !INPUT PARAMETERS:
@@ -52,11 +53,11 @@ character(len=100) :: text
 ! lun cannot be a parameter as it's an output of pgs_io_gen_openf
 integer :: lun=11
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version, ierr, OMCLDRR_F_FAILURE
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+integer :: status, version, ierr
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 if (ex) then
 version = 1

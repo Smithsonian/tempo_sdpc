@@ -19,15 +19,17 @@ MODULE m_HDFEOS_attr
                                           GranuleDay ) &
                             RESULT( status )
          USE m_LUN_set
+         USE m_pgs_include
+         USE ISO_C_BINDING, ONLY: C_LONG
 !        INCLUDE 'PGS_TD.f'
-         INCLUDE 'PGS_TD_3.f'
-         INCLUDE 'PGS_MET.f'
- INCLUDE 'PGS_PC.f'
- INCLUDE 'PGS_PC_9.f'
- INCLUDE 'PGS_SMF.f'
- INCLUDE 'PGS_MET_13.f'
- INCLUDE 'PGS_OMI_1900.f'
- INCLUDE 'PGS_OMCLDRR_52251.f'
+!         INCLUDE 'PGS_TD_3.f'
+!         INCLUDE 'PGS_MET.f'
+! INCLUDE 'PGS_PC.f'
+! INCLUDE 'PGS_PC_9.f'
+! INCLUDE 'PGS_SMF.f'
+! INCLUDE 'PGS_MET_13.f'
+! INCLUDE 'PGS_OMI_1900.f'
+! INCLUDE 'PGS_OMCLDRR_52251.f'
 
     INTEGER(KIND=4), EXTERNAL :: OMI_SMF_setmsg, he5_ehwrglatt, PGS_MET_getPCAttr_s
     INTEGER(KIND=4), EXTERNAL :: PGS_PC_GetConfigData   
@@ -38,7 +40,7 @@ MODULE m_HDFEOS_attr
   integer (kind=4), intent(in) :: SW_fileid
 
          INTEGER (KIND=4), PARAMETER :: npcfattr = 7
-         INTEGER (KIND=4) :: nc, numtype 
+         INTEGER (KIND=C_LONG) :: nc, numtype 
          CHARACTER( LEN = 28 ) :: GranuleDAY0Z
 !         CHARACTER( LEN = 1  ) :: char
          REAL (KIND = 8 )      :: TAI93At0zOfGranule !!PGE
@@ -223,10 +225,13 @@ MODULE m_HDFEOS_attr
        END FUNCTION CLDRR_WriteGlobalAttr
 
        FUNCTION CLDRR_WriteSwathAttr( SW_id, fn, swn)  RESULT( status )
- INCLUDE 'PGS_SMF.f'
- INCLUDE 'PGS_MET_13.f'
- INCLUDE 'PGS_OMI_1900.f'
- INCLUDE 'PGS_OMCLDRR_52251.f'
+
+         USE ISO_C_BINDING, ONLY: C_LONG
+         USE m_pgs_include
+! INCLUDE 'PGS_SMF.f'
+! INCLUDE 'PGS_MET_13.f'
+! INCLUDE 'PGS_OMI_1900.f'
+! INCLUDE 'PGS_OMCLDRR_52251.f'
 
     INTEGER, EXTERNAL :: OMI_SMF_setmsg, he5_swwrattr, he5_ehwrglatt, PGS_MET_getPCAttr_s    
     INTEGER, EXTERNAL :: swopen, swattach, swrdattr, swdetach, swclose 
@@ -235,7 +240,8 @@ MODULE m_HDFEOS_attr
          CHARACTER( LEN=* ), INTENT(IN) :: fn, swn 
   integer (kind=4), intent(in) :: SW_id 
          INTEGER (KIND=4) :: ierr, status, swfid, swid
-         INTEGER (KIND=4) :: count, NumTimes, NumTimesSmallPix
+         INTEGER (KIND=C_LONG) :: count 
+         INTEGER (KIND=4) :: NumTimes, NumTimesSmallPix
   REAL (KIND=4) :: EarthSundistance
   character(len=200) :: VerticalCoordinate = 'Total Column'
 
@@ -335,8 +341,9 @@ MODULE m_HDFEOS_attr
 
    
        FUNCTION PGEVersion2PhaseScience( InputPGEVersion ) RESULT( PS )
-         INCLUDE 'PGS_MET.f'
- INCLUDE 'PGS_OMCLDRR_52251.f'
+         USE m_pgs_include
+!         INCLUDE 'PGS_MET.f'
+!         INCLUDE 'PGS_OMCLDRR_52251.f'
          CHARACTER( LEN=PGSd_MET_MAX_STRING_SET_L ) :: PS
          CHARACTER( LEN = * ), INTENT(IN) :: InputPGEVersion
          INTEGER (KIND=4) :: ii, di, ierr, OMI_SMF_setmsg 

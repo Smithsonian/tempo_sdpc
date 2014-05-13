@@ -13,6 +13,7 @@ subroutine read_input_data(blk, rc)
    use m_swathnames
    use m_strpos
    use m_instr_config
+   use m_pgs_include
 
    implicit none
 !-------------------------------------------------------------------------
@@ -71,12 +72,12 @@ INTEGER (KIND = 1) :: imbin
 
 
 !***********************************************************************
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-INCLUDE 'PGS_SMF.f'
-include 'PGS_TD_3.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_OMCLDRR_52251.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!INCLUDE 'PGS_SMF.f'
+!include 'PGS_TD_3.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_OMCLDRR_52251.f'
 !***********************************************************************
 
 rc=0
@@ -410,11 +411,12 @@ subroutine alloc_scan()
 
 use m_vars
 use L1B_Reader_class
+use m_pgs_include
 
 implicit none
 
-include 'PGS_OMI_1900.f'
-include 'PGS_OMCLDRR_52251.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_OMCLDRR_52251.f'
 
 ! allocate memory for arrays
    if (allocated(lat)) deallocate (lat)   

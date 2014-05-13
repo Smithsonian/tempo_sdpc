@@ -82,13 +82,14 @@ subroutine cld_mask
         stddev_thresh, filename, input_data_path, iprt, smpx_nPix, &
         npixels, thresholds, fill_value, noret, filename_cm
    USE m_swathnames
+   USE m_pgs_include
 
    IMPLICIT NONE
  
-   INCLUDE 'PGS_PC.f'
-   INCLUDE 'PGS_PC_9.f'
-   INCLUDE 'PGS_SMF.f'
-   INCLUDE 'PGS_OMI_1900.f'
+!   INCLUDE 'PGS_PC.f'
+!   INCLUDE 'PGS_PC_9.f'
+!   INCLUDE 'PGS_SMF.f'
+!   INCLUDE 'PGS_OMI_1900.f'
 
    INTEGER :: nPixold=2
 !   INTEGER (KIND = 4) :: PixelQF

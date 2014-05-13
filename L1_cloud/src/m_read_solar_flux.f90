@@ -12,14 +12,15 @@ subroutine read_solar_flux()
    USE m_lambda_qual
    USE m_earth_sun_dist
    USE m_swathnames
+   USE m_pgs_include
 
    IMPLICIT NONE
  
-   INCLUDE 'PGS_PC.f'
-   INCLUDE 'PGS_PC_9.f'
-   INCLUDE 'PGS_SMF.f'
-   INCLUDE 'PGS_OMI_1900.f'
-   INCLUDE 'PGS_OMCLDRR_52251.f'
+!   INCLUDE 'PGS_PC.f'
+!   INCLUDE 'PGS_PC_9.f'
+!   INCLUDE 'PGS_SMF.f'
+!   INCLUDE 'PGS_OMI_1900.f'
+!   INCLUDE 'PGS_OMCLDRR_52251.f'
 
    INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
                          nTimes, nXtrack, nWavel, nWavelCoef, &

@@ -20,6 +20,7 @@ subroutine read_thresholds (rc)
 use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, input_data_path, &
                   thresh_file, filename, ex, iprt,stddev_thresh 
 use m_LUN_set
+use m_pgs_include
       Implicit NONE
 
 ! !INPUT PARAMETERS:
@@ -47,11 +48,11 @@ character(len=100) :: text
 ! lun is an output of pgs_io_gen_openf so cannot be a parameter
 integer :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version, ierr, OMCLDRR_F_FAILURE
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+integer :: status, version, ierr
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 if (ex) then
 version = 1

@@ -18,8 +18,8 @@ subroutine read_cals (rc)
 !               pressures
 !
 use m_vars, ONLY: nscanpos, cal_fact, iprt, using_cal
-                  
 use m_LUN_set
+use m_pgs_include
       Implicit NONE
 
 ! !INPUT PARAMETERS:
@@ -45,11 +45,11 @@ character(len=100) :: text
 
 !integer, parameter :: lun=11
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version, ierr, OMCLDRR_F_FAILURE, lun
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+integer :: status, version, ierr, lun
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 version = 1
 rc=0

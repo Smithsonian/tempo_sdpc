@@ -2,9 +2,10 @@
 !---------------------------------------------------------------------
 ! This module provides the Object Names for Metadata               
 !--------------------------------------------------------------------- 
+ use m_pgs_include
 
  IMPLICIT NONE
- INCLUDE 'PGS_MET.f'
+! INCLUDE 'PGS_MET.f'
 
 ! INTEGER, PARAMETER :: ninvname=13
  INTEGER, PARAMETER :: ninvname=11

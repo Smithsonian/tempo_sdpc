@@ -9,6 +9,7 @@ subroutine initialize(rc)
 
 use m_vars
 use m_LUN_set
+use m_pgs_include
 implicit none
 !-------------------------------------------------------------------------
 !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -49,11 +50,11 @@ integer :: argc, iargc
 character*255 ::  argv
 character*255 ::  myname, pcfpath 
 !*********************************************************************
-include 'PGS_PC.f'
-include 'PGS_PC_9.f'
-include 'PGS_SMF.f'
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
+!include 'PGS_PC.f'
+!include 'PGS_PC_9.f'
+!include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
 integer(kind=4), EXTERNAL :: pgs_pc_getnumberoffiles, pgs_pc_getreference
 integer(kind=4), EXTERNAL :: pgs_pc_getuniversalref, pgs_pc_getconfigdata
 integer(kind=4) :: returnstatus, pcf_int

@@ -18,8 +18,8 @@ LNFLAGS    = #
 ADDLIBD    = #
 ADDLIBS    = -Wl,-rpath=$(OTS_ROOT)/lib -lsz -lm -ldl
 
-FFLAGS  = $(MODFLG) ./ $(FCFLAGS) -fPIC
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran -fPIC
+FFLAGS  = $(MODFLG) ./ $(FCFLAGS) -fconvert=swap -fPIC
+CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran -fPIC 
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line

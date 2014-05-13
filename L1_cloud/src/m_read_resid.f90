@@ -19,6 +19,7 @@ subroutine read_resids
 !
 use m_vars, ONLY: nwav, nscanpos, resid_spec, resid_wave, iprt, using_resid
 use m_LUN_set
+use m_pgs_include
       Implicit NONE
 
 ! !REVISION HISTORY:
@@ -32,14 +33,14 @@ character(len=100) :: text
 
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, lun
-integer :: OMCLDRR_F_FAILURE
+!integer :: OMCLDRR_F_FAILURE
 integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
 integer :: OrbitNumber, ThreshOrbitNumber
 character(len=200) :: buf
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 version = 1
 status = pgs_met_getPCAttr_i(L1B_LUN, version , "CoreMetadata.0", &
@@ -114,6 +115,7 @@ subroutine read_o3
 
 use m_vars, ONLY: wave_o3, xsect_o3, iprt
 use m_LUN_set
+use m_pgs_include
       Implicit NONE
 
 ! !REVISION HISTORY:
@@ -126,10 +128,10 @@ integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, ierr, lun, nwav_o3
 !integer :: OMCLDRR_F_FAILURE
 
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 version = 1
 status = pgs_io_gen_openf ( o3_id, PGSd_IO_Gen_RSeqFrm, &

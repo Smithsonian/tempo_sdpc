@@ -26,6 +26,7 @@ use m_vars, ONLY: w_grid, nwave2, nwave, &
 
 use m_find
 use m_LUN_set
+use m_pgs_include
 
       Implicit NONE
 
@@ -55,14 +56,13 @@ logical :: first
 !lun is an output of pgs_io_gen_openf, so can't be a parameter 
 integer :: lun
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-integer :: status, version, ierr, OMCLDRR_F_FAILURE
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
-#next two lines added by EOS
-include 'PGS_PC.f'
-include 'PGS_PC_9.f'
+integer :: status, version, ierr
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
+!include 'PGS_PC.f'
+!include 'PGS_PC_9.f'
 
 if (ex) then
 version = 1

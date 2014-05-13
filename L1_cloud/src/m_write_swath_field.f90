@@ -44,17 +44,19 @@
 !        module procedure put_data_3di1
        end interface
 
-       integer (kind = 4), parameter :: HE5_HDFE_NOMERGE=0
-       integer (kind = 4), parameter :: HE5_HDFE_AUTOMERGE=1
+       include 'hdfeos5.inc'
+
+!       integer (kind = 4), parameter :: HE5_HDFE_NOMERGE=0
+!       integer (kind = 4), parameter :: HE5_HDFE_AUTOMERGE=1
        integer (kind = 4), parameter :: merge=HE5_HDFE_NOMERGE
-       integer (kind = 4), parameter :: HE5T_NATIVE_DOUBLE=11
-       integer (kind = 4), parameter :: HE5T_NATIVE_FLOAT=10
-       integer (kind = 4), parameter :: HE5T_NATIVE_INT=0
-       integer (kind = 4), parameter :: HE5T_NATIVE_INT8=13
-       integer (kind = 4), parameter :: HE5T_NATIVE_UINT8=14
-       integer (kind = 4), parameter :: HE5T_NATIVE_INT16=15
-       integer (kind = 4), parameter :: HE5T_NATIVE_UINT16=16
-       integer (kind = 4), parameter :: HE5T_NATIVE_CHAR=56
+!       integer (kind = 4), parameter :: HE5T_NATIVE_DOUBLE=11
+!       integer (kind = 4), parameter :: HE5T_NATIVE_FLOAT=10
+!       integer (kind = 4), parameter :: HE5T_NATIVE_INT=0
+!       integer (kind = 4), parameter :: HE5T_NATIVE_INT8=13
+!       integer (kind = 4), parameter :: HE5T_NATIVE_UINT8=14
+!       integer (kind = 4), parameter :: HE5T_NATIVE_INT16=15
+!       integer (kind = 4), parameter :: HE5T_NATIVE_UINT16=16
+!       integer (kind = 4), parameter :: HE5T_NATIVE_CHAR=56
        real    (kind = 8), parameter :: off_set_default=0.
        real    (kind = 8), parameter :: scale_factor_default=1.
        integer (kind = 4) :: nn
@@ -489,7 +491,6 @@ endif
        integer (kind=4) :: chunk_rank=2
        integer (kind=4), dimension(5) :: compparm
        integer (kind=4) :: he5_swdefchunk, he5_swdefcomch
-       include 'hdfeos5.inc'
        INTEGER (KIND=C_LONG) :: n1=1, nn, n11=11, n12=12
 
        geofld=.false.

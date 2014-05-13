@@ -8,15 +8,16 @@ use m_vars, ONLY: gomi, iprt
 use m_LUN_set
 use m_swathnames
 use m_strpos
+use m_pgs_include
 
 implicit none
 
- INCLUDE 'PGS_TD_3.f'
- INCLUDE 'PGS_MET.f'
- INCLUDE 'PGS_SMF.f'
- INCLUDE 'PGS_MET_13.f'
- INCLUDE 'PGS_OMI_1900.f'
- INCLUDE 'PGS_OMCLDRR_52251.f'
+! INCLUDE 'PGS_TD_3.f'
+! INCLUDE 'PGS_MET.f'
+! INCLUDE 'PGS_SMF.f'
+! INCLUDE 'PGS_MET_13.f'
+! INCLUDE 'PGS_OMI_1900.f'
+! INCLUDE 'PGS_OMCLDRR_52251.f'
 
 character(len=*), intent(in) :: fn
 real(kind=4), intent(out) :: dist1, dist2

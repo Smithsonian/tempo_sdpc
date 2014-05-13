@@ -13,6 +13,7 @@ use m_vars, ONLY: nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl, &
  theta_oc,scan_oc,phi_oc,ocrefl,chl,iprt
 use m_interpol
 use m_LUN_set
+use m_pgs_include
 
 implicit none
 
@@ -30,10 +31,10 @@ real (KIND=8), parameter :: coef = 1.5
 integer :: lun=10
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status, version, err_code
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 version = 1
 rc=0

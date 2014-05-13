@@ -50,11 +50,12 @@ use m_cloud_pres_mod
 use m_alloc1
 use m_alloc2
 use m_lambda_qual
+use m_pgs_include
 implicit none
 
 real (KIND=8), intent(inout) :: refl_clr
 real (KIND=8), intent(inout) :: refl_cld
-include 'PGS_SMF.f'
+!include 'PGS_SMF.f'
 
 !*************************************************************************
 if (do_alloc) then

@@ -9,6 +9,7 @@ subroutine rd_terr( )
 
 use m_vars, ONLY: p_terr, done_read_terr, iprt, lat, lon, ps, iLine, nXtrack
 use m_LUN_set
+use m_pgs_include
 implicit NONE          
 
 !-------------------------------------------------------------------------
@@ -49,10 +50,10 @@ integer :: lun=2
 !integer, parameter :: terr_prs_id = 510003
 integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
 integer :: status,ierr, version=1
-include 'PGS_IO.f'
-include 'PGS_IO_1.f'
-include 'PGS_OMI_1900.f'
-include 'PGS_SMF.f'
+!include 'PGS_IO.f'
+!include 'PGS_IO_1.f'
+!include 'PGS_OMI_1900.f'
+!include 'PGS_SMF.f'
 
 integer                    :: ipts, i, j
 real (KIND=8)                       :: lont, latt

@@ -299,7 +299,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION L1Br_open(this, fn, swn, nL) RESULT (status)
         USE hdfeos4_parameters
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         CHARACTER (LEN = *), INTENT(IN) :: fn, swn
         INTEGER (KIND = 4), OPTIONAL, INTENT(IN) :: nL
@@ -880,7 +881,8 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION L1Br_getDIMsize(this, dimname) RESULT(size) 
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         CHARACTER (LEN = *), INTENT(IN) :: dimname
         INTEGER (KIND = 4) :: size
@@ -958,7 +960,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION L1Br_getSWdims(this, NumTimes_k, nXtrack_k, NumTimesSmallPixel_k, &
                                nWavel_k, nWavelCoef_k,fieldname_k) RESULT(status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: NumTimes_k
         INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: NumTimesSmallPixel_k
@@ -1010,7 +1013,8 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION init_l1b_blk(this) RESULT(status) 
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4) :: status
 
@@ -1109,7 +1113,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION fill_l1b_blk(this, iLine) RESULT(status) 
         USE hdfeos4_parameters
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         INTEGER (KIND = 4) :: status
@@ -1512,7 +1517,8 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION check_blk_pix(this, iLine, iPix, j, i) RESULT(status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine, iPix
         INTEGER (KIND = 4), INTENT(OUT) :: i, j
@@ -1585,7 +1591,8 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION check_blk_line(this, iLine, j) RESULT(status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         INTEGER (KIND = 4), INTENT(OUT) :: j
@@ -1688,7 +1695,8 @@ MODULE L1B_Reader_class
            ViewingAzimuthAngle_k, TerrainHeight_k, &
            GroundPixelQualityFlags_k, XTrackQualityFlags_k) RESULT (status)
       
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine, iPix
         REAL (KIND =8), OPTIONAL, INTENT(OUT) :: Time_k
@@ -1809,7 +1817,8 @@ MODULE L1B_Reader_class
                 !tpk TrueZoom_k ) RESULT (status)   ! tpk addition
 
         USE Szoom_Parameter_Module
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER, PARAMETER :: i1 = 1
         INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
@@ -2157,7 +2166,8 @@ MODULE L1B_Reader_class
            OpticalBenchTemperature_k, ImageBinningFactor_k, &
            BinnedImageRows_k, StopColumn_k) RESULT (status)
 
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine
         INTEGER (KIND = 1), OPTIONAL, INTENT(OUT) :: MeasurementClass_k, &
@@ -2250,7 +2260,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION calc_wl_pix(j, i, this, minwl, maxwl, wl_local, il, ih, &
                            Nwl_l) RESULT (status)
-      INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!      INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
       TYPE (L1B_block_type), INTENT(INOUT) :: this
       INTEGER (KIND = 4), INTENT(IN) :: i, j
       REAL (KIND = 4), INTENT(INOUT) :: minwl, maxwl
@@ -2413,7 +2424,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION calc_wl_line(j, this, minwl, maxwl, wl_local, il, ih, &
                            Nwl_l) RESULT (status)
-      INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!      INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
       TYPE (L1B_block_type), INTENT(INOUT) :: this
       INTEGER (KIND = 4), INTENT(IN) :: j
       REAL (KIND = 4), INTENT(INOUT) :: minwl, maxwl
@@ -2658,7 +2670,8 @@ MODULE L1B_Reader_class
                               WavelengthReferenceColumn_k, SmallPixelSignal_k, &
                               SmallPixelWavelength_k, NumberSmallPixelColumns_k, &
                               SmallPixelColumn_k) RESULT (status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
 
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine, iPix
@@ -2956,7 +2969,8 @@ MODULE L1B_Reader_class
                              NumberSmallPixelColumns_k) RESULT (status)
 !tpk       TrueZoom_k ) RESULT (status)     !tpk
         USE Szoom_Parameter_Module
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER, PARAMETER :: i1 = 1
 !        INTEGER (KIND=i1), PARAMETER :: global_mode = 8_i1
@@ -3450,7 +3464,8 @@ MODULE L1B_Reader_class
 !!
       FUNCTION L1Br_getSIGpixWL(this, iLine, iPix, Wavelength_k, Nwl_k, Signal_k, &
                                SignalPrecision_k, PixelQualityFlags_k) RESULT (status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4), INTENT(IN) :: iLine, iPix
         REAL (KIND = 4), DIMENSION(:), INTENT(IN) :: Wavelength_k
@@ -3657,7 +3672,8 @@ MODULE L1B_Reader_class
                                 SignalPrecision_k, PixelQualityFlags_k) RESULT (status)
        !tpk                                TrueZoom_k ) RESULT (status)        !tpk
         USE Szoom_Parameter_Module
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER, PARAMETER :: i1 = 1
         INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
@@ -3895,7 +3911,8 @@ MODULE L1B_Reader_class
       FUNCTION L1Br_getDATAFIELDline(filename, swathname, fieldname, Line, numtype, buf) &
                 RESULT(status) 
         USE hdfeos4_parameters
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         INTEGER (KIND = 4), INTENT(IN) :: Line, numtype
         CHARACTER (LEN = *), INTENT(IN) :: filename, swathname, fieldname
         REAL (KIND = 4), INTENT(OUT) :: buf
@@ -3970,7 +3987,8 @@ MODULE L1B_Reader_class
            Wavelength_k, Quality_k ) & !tpk,       & TrueZoom_k  )   &  !tpk
            RESULT (status)
         USE Szoom_Parameter_Module
-        INCLUDE 'PGS_OMI_1900.f'  !!this external file defines the SmPx PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !!this external file defines the SmPx PGS error codes
         TYPE (L1B_block_type), INTENT( INOUT ) :: this
         INTEGER, PARAMETER :: i1 = 1
         INTEGER (KIND=i1), PARAMETER :: szoom_mode = 4_i1
@@ -4152,7 +4170,8 @@ MODULE L1B_Reader_class
  !
 !!
       FUNCTION L1Br_close(this) RESULT(status)
-        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
+        USE m_pgs_include
+!        INCLUDE 'PGS_OMI_1900.f'  !defines the L1B PGS error codes
         TYPE (L1B_block_type), INTENT(INOUT) :: this
         INTEGER (KIND = 4) :: status
         status = OMI_S_SUCCESS
