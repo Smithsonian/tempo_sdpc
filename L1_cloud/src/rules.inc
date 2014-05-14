@@ -210,14 +210,12 @@ $(ODIR)/m_HDFEOS_attr.o: $(SDIR)/m_HDFEOS_attr.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_HDFEOS_attr.f90 -o $(ODIR)/m_HDFEOS_attr.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_input_data.o: $(SDIR)/m_read_input_data.f90 \
   $(ODIR)/L1B_Reader_class.o \
-  $(ODIR)/m_find.o \
   $(ODIR)/m_instr_config.o \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_read_solar_flux.o \
   $(ODIR)/m_strpos.o \
   $(ODIR)/m_swathnames.o \
-  $(ODIR)/m_vars.o \
-  $(ODIR)/mathcons.o
+  $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_input_data.f90 -o $(ODIR)/m_read_input_data.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_solar_flux.o: $(SDIR)/m_read_solar_flux.f90 \
   $(ODIR)/hdfeos4_parameters.o \
