@@ -292,7 +292,11 @@ contains
           i2_ler=i1_ler+1
           j=interpol(findgen(ler_nth)+1,ler_th,satz)
           l=interpol(findgen(ler_nph)+1,ler_ph,az)
+          !if(j < 1) print *,j,findgen(ler_nth)+1,ler_nth,ler_th,satz
+          !if(l < 1) print *,l,findgen(ler_nph)+1,ler_nph,ler_ph,az
           if(j < 0 .or. l < 0 .and. iprt > 0) print *,'negative input to bilinear interpolation of ler' 
+          !per Joanna Joiner, set a minium of j=1
+          if(j < 1) j=1.0
           int1_ler=bilinear(ler354(i1_ler,:,:),j,l)
           int2_ler=bilinear(ler354(i2_ler,:,:),j,l)
           refl_clr=refl_clr+(nt-i1_ler)*(int2_ler-int1_ler)+int1_ler
@@ -802,7 +806,7 @@ contains
               r_i(bad_obs(1:nbad))= var_inv_big
               new_r=.true.
               chisq_old=9999.   
-           endif ! nbad > 0
+            endif ! nbad > 0
           endif ! iter > 0
 
           !load transpose of Jacobian and multiply by
@@ -838,6 +842,7 @@ contains
             enddo ! ii
           endif
           err_cov = invert(err_cov,ierr)
+
           if (ierr == 0) then ! good retrieval
             y_back(:,1)=b_i * (x(:,1) - x_fg(:,1))   
             x = x + (err_cov .mm. ((htr .mm. y_resid) + y_back))
@@ -959,7 +964,7 @@ contains
         !preliminary estimate of number of good retrievals
         if( .not. ( btest(qc(ip,iLine),0) .or. btest(qc(ip,iLine),2) .or. btest(qc(ip,iLine),3) &
              .or. btest(qc(ip,iLine),4) .or. btest(qc(ip,iLine),6))) &
-             !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
+                                !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
              n_good_output = n_good_output + 1
 
         !print final result
