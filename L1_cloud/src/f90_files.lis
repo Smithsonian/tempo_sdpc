@@ -11,7 +11,6 @@ m_bilinear.f90
 m_cloud_mask.f90
 m_cloud_pres_mod.f90
 m_cloud_pres_ret.f90
-m_eigen.f90
 m_find.f90
 m_findgen.f90
 m_get_ai_refl.f90
@@ -38,7 +37,6 @@ m_read_resid.f90
 m_read_tables.f90
 m_read_thresholds.f90
 m_sigma.f90
-m_sortind.f90
 m_spline.f90
 m_str_replace.f90
 m_strpos.f90

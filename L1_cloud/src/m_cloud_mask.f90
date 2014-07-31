@@ -68,9 +68,24 @@ contains
     !
     !!-------------------------------------------------------------------------
 
+    !!-------------------------------------------------------------------
+    !
+    ! Ewan O'Sullivan 31Jul14
+    !
+    ! Commenting out all material relating to using_2_channels
+    !   It appears the code was originally designed to have the option to
+    !   use data from both the VIS and UV channels, but was then put into 
+    !   OMCLDRR which only uses UV. Possible the same code exists in 
+    !   OMCLDO2 and there uses only VIS? In any case, using_2_channels
+    !   code uses Numerical Recipes routines, and appears to be never called
+    !   since using_2_channels=.false.
+    !   EJOS 25/7/14
+    !
+    !!--------------------------------------------------------------------
+
     USE m_avg
-    USE m_sortind
-    USE m_eigen
+!    USE m_sortind
+!    USE m_eigen
     USE m_sigma
     USE m_matmul
     USE m_find
@@ -98,10 +113,10 @@ contains
          nTimes, nXtrack, &
          iLine, nTimesSmPx
     CHARACTER (LEN = 200) :: filenamen, swathname
-    TYPE (L1b_block_type) :: blk, blk2
+    TYPE (L1b_block_type) :: blk !, blk2
     INTEGER (KIND = 4), PARAMETER :: zero = 0
-    INTEGER (KIND = 2) :: nPix, nPix2
-    CHARACTER (LEN = 8) :: fmt101="(5e12.3)",fmt102="(5f12.3)"
+    INTEGER (KIND = 2) :: nPix !, nPix2
+!    CHARACTER (LEN = 8) :: fmt101="(5e12.3)",fmt102="(5f12.3)"
 
 
     ! declaration of variables specific to Example 1
@@ -111,12 +126,12 @@ contains
     REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: wavelengthL, wavelengthL2
     REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: smvaluesL, smvaluesL2
     integer :: indc, ind
-    real (KIND=8), dimension(maxcoadd,2) :: r1_ri
-    real (KIND=4), dimension(maxcoadd) :: D, E 
-    integer, dimension(maxcoadd) :: order, sorted
-    real (KIND=4), dimension(maxcoadd,maxcoadd) :: A
-    integer :: ndim
-    logical :: using_2_channels=.false.
+!    real (KIND=8), dimension(maxcoadd,2) :: r1_ri
+!    real (KIND=4), dimension(maxcoadd) :: D, E 
+!    integer, dimension(maxcoadd) :: order, sorted
+!    real (KIND=4), dimension(maxcoadd,maxcoadd) :: A
+!    integer :: ndim
+!    logical :: using_2_channels=.false.
 
     ! obtain name of swath
     filenamen=trim(input_data_path)//filename
@@ -142,24 +157,24 @@ contains
       STOP
     END IF
 
-    if (using_2_channels) then
-      filenamen=trim(input_data_path)//filename_cm
-      vis = strpos (filename_cm, 'BRUG') < 0 .and. strpos (filename_cm, 'BRUZ') < 0
-      if (vis) then
-        swathname = "Earth VIS Swath"
-      else
-        swathname = "Earth UV-2 Swath"
-      endif
-      if (iprt >= 2) print *,'cloud_mask: filename ',filenamen
-
-      ! open data block structure with default size of 1 lines
-      status = L1Br_open( blk2, filenamen, swathname)
-      IF( status .NE. OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( status, &
-             "L1Br_open2 failed.", "cloud_mask", 0 )
-        STOP
-      END IF
-    endif
+!    if (using_2_channels) then
+!      filenamen=trim(input_data_path)//filename_cm
+!      vis = strpos (filename_cm, 'BRUG') < 0 .and. strpos (filename_cm, 'BRUZ') < 0
+!      if (vis) then
+!        swathname = "Earth VIS Swath"
+!      else
+!        swathname = "Earth UV-2 Swath"
+!      endif
+!      if (iprt >= 2) print *,'cloud_mask: filename ',filenamen
+!
+!      ! open data block structure with default size of 1 lines
+!      status = L1Br_open( blk2, filenamen, swathname)
+!      IF( status .NE. OMI_S_SUCCESS ) THEN
+!        ierr = OMI_SMF_setmsg( status, &
+!             "L1Br_open2 failed.", "cloud_mask", 0 )
+!        STOP
+!      END IF
+!    endif
 
 
     ! obtain sizes of dimensions defined in swath
@@ -256,16 +271,16 @@ contains
              "L1Brd_getSIGline failed", "cloud_mask", 0 )
         call exit(1)
       END IF
-      if (using_2_channels) then
-        status = L1Br_getDATAline( blk2, iLine, nPix2, &
-             Data_k=smvaluesL2, &
-             Wavelength_k=wavelengthL2)!, quality_flagL )
-        IF( status .NE. OMI_S_SUCCESS ) THEN
-          ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-               "L1Brd_getSIGline2 failed", "cloud_mask", 0 )
-          call exit(1)
-        END IF
-      endif
+!      if (using_2_channels) then
+!        status = L1Br_getDATAline( blk2, iLine, nPix2, &
+!             Data_k=smvaluesL2, &
+!             Wavelength_k=wavelengthL2)!, quality_flagL )
+!        IF( status .NE. OMI_S_SUCCESS ) THEN
+!          ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
+!               "L1Brd_getSIGline2 failed", "cloud_mask", 0 )
+!          call exit(1)
+!        END IF
+!      endif
 
       ! science data processing
 
@@ -279,39 +294,39 @@ contains
 
           if (smpx_mean(iTrack,iLine+1) /= 0.) then
 
-            if (using_2_channels) then
-
-              if (nPix > 2) then
-                sorted(1:nPix)=smvaluesL(iTrack,1:nPix)
-                order(1:nPix)=i_sortind(sorted(1:nPix))
-                sorted(1:nPix)=smvaluesL(iTrack,order(1:nPix))
-                r1_ri(1:nPix-1,1)=(sorted(1)-sorted(2:nPix))/sorted(1)
-                sorted(1:nPix)=smvaluesL2(iTrack,order(1:nPix))
-                r1_ri(1:nPix-1,2)=(sorted(1)-sorted(2:nPix))/sorted(1)
-                A=r1_ri .mm. transpose(r1_ri)
-                ndim=nPix-1
-                call TRED2(A,ndim,maxcoadd,D,E)
-                call TQLI(D,E,ndim,maxcoadd,A)
-                call EIGSRT(D,A,ndim,maxcoadd)
-                smpx_stddev(iTrack,iLine+1) = d(1)/sum(d(1:npix))*100.
-                smpx_mean(iTrack,iLine+1) = d(1)
-                if (iprt >= 8) then
-                  print *, iTrack, smvaluesL(iTrack,order(1))
-                  write(6,fmt101) r1_ri(1:npix-1,1)/smvaluesL(iTrack,order(1))
-                  write(6,fmt101) r1_ri(1:npix-1,2)/smvaluesL2(iTrack,order(1))
-                  write(6,fmt102) d(1:npix-1)/sum(d(1:npix))*100. 
-                  write(6,fmt101) A(1:npix-1,1)
-                  write(6,fmt101) A(1:npix-1,2)
-                endif ! iprt 
-
-              endif ! npix > 2
-
-            else ! use only vis
+!            if (using_2_channels) then
+!
+!              if (nPix > 2) then
+!                sorted(1:nPix)=smvaluesL(iTrack,1:nPix)
+!                order(1:nPix)=i_sortind(sorted(1:nPix))
+!                sorted(1:nPix)=smvaluesL(iTrack,order(1:nPix))
+!                r1_ri(1:nPix-1,1)=(sorted(1)-sorted(2:nPix))/sorted(1)
+!                sorted(1:nPix)=smvaluesL2(iTrack,order(1:nPix))
+!                r1_ri(1:nPix-1,2)=(sorted(1)-sorted(2:nPix))/sorted(1)
+!                A=r1_ri .mm. transpose(r1_ri)
+!                ndim=nPix-1
+!                call TRED2(A,ndim,maxcoadd,D,E)
+!                call TQLI(D,E,ndim,maxcoadd,A)
+!                call EIGSRT(D,A,ndim,maxcoadd)
+!                smpx_stddev(iTrack,iLine+1) = d(1)/sum(d(1:npix))*100.
+!                smpx_mean(iTrack,iLine+1) = d(1)
+!                if (iprt >= 8) then
+!                  print *, iTrack, smvaluesL(iTrack,order(1))
+!                  write(6,fmt101) r1_ri(1:npix-1,1)/smvaluesL(iTrack,order(1))
+!                  write(6,fmt101) r1_ri(1:npix-1,2)/smvaluesL2(iTrack,order(1))
+!                  write(6,fmt102) d(1:npix-1)/sum(d(1:npix))*100. 
+!                  write(6,fmt101) A(1:npix-1,1)
+!                  write(6,fmt101) A(1:npix-1,2)
+!                endif ! iprt 
+!
+!              endif ! npix > 2
+!
+!            else ! use only vis
               smpx_stddev(iTrack,iLine+1)=abs(smvaluesL(iTrack,1)- &
                    smvaluesL(iTrack,nPix)) / &
                    smpx_mean(iTrack,iLine+1)
 
-            endif ! use 2 channels
+!            endif ! use 2 channels
           else ! mean was zero
             smpx_stddev(iTrack,iLine+1)=0.
           endif
