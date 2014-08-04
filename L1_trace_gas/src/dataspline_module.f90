@@ -48,7 +48,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   LOGICAL                                       :: did_full_range
   INTEGER (KIND=i4)                             :: idx, npts, locerrstat, iii, nsol, ios
   REAL    (KIND=r8)                             :: du_load
-  REAL    (KIND=r8), DIMENSION (n_max_rspec)    :: tmp_spec, tmp_wavl
+  REAL    (KIND=r8), DIMENSION (n_max_rspec)    :: tmp_spec, tmp_wavl, tmp_spec_copy
   REAL    (KIND=r8), DIMENSION (n_radwvl)       :: dbase_loc
   REAL    (KIND=r8), DIMENSION (:), ALLOCATABLE :: solar_spc, solar_wvl, solar_conv, xsec_i0_spc
 
@@ -190,8 +190,9 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       IF ( (idx == comm_idx) ) THEN
         tmp_spec(1:npts) = common_mode_spec%RefSpecData(xtrack_pix,1:npts)
       ELSE
+        tmp_spec_copy(1:npts) = tmp_spec(1:npts)
         CALL slitfunction_convolve ( &
-          npts, tmp_wavl(1:npts), tmp_spec(1:npts), tmp_spec(1:npts), &
+          npts, tmp_wavl(1:npts), tmp_spec_copy(1:npts), tmp_spec(1:npts), &
           xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
         !CALL convolve_data (                                                           &
         !  xtrack_pix, npts, tmp_wavl(1:npts), tmp_spec(1:npts), yn_use_labslitfunc, &
