@@ -2,11 +2,31 @@
 
 config_dir  = @CONFIG_DIR@
 prefix      = @prefix@
+
+CC           = @CC@
+CFLAGS       = @CFLAGS@
+LDFLAGS      = @LDFLAGS@ @DYNAMIC_LINK_FLAGS@
+DL_LIB       = @DYNAMIC_LINK_LIB@
+ELF_CC       = @ELF_CC@
+ELF_CFLAGS   = @ELF_CFLAGS@
+ELF_LINK     = @ELF_LINK@
+ELF_DEP_LIBS = @ELF_DEP_LIBS@
+
+FC           = @FC@
+FCFLAGS      = @FCFLAGS@
+ELF_FC       = @FC@
+ELF_F_LINK   = @ELF_F_LINK@
+
+INSTALL = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+MKINSDIR = $(config_dir)/autoconf/mkinsdir.sh
+
+RM = /bin/rm
+LN = /bin/ln -sf
+CP = /bin/cp
+
 OTS_ROOT    = @OTS_ROOT@
-CC          = @CC@
-FC          = @FC@
-CFLAGS      = @CFLAGS@
-FCFLAGS     = @FCFLAGS@
 HDFLIB      = @HDFLIB@
 HDFINC      = @HDFINC@
 HDF5LIB     = @HDF5LIB@
@@ -19,6 +39,5 @@ HDFEOS_INC  = @HDFEOS_INC@
 HDFEOS5_LIB = @HDFEOS5_LIB@
 HDFEOS5_INC = @HDFEOS5_INC@
 
-INSTALL = @INSTALL@
-INSTALL_DATA = @INSTALL_DATA@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
+SQLITE3_LIB  = @SQLITE3_LIB@ -lsqlite3
+SQLITE3_INC  = @SQLITE3_INC@
