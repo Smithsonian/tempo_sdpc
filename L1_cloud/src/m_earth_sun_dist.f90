@@ -24,7 +24,7 @@ contains
     character(len=200)  :: swn, filenm 
     integer (kind=4), parameter :: zero = 0
     integer (kind=4) :: OMI_SMF_setmsg, swopen, swattach, swrdattr, &
-                        swdetach, swclose
+         swdetach, swclose
     integer, parameter :: DFACC_READ = 1
     integer (kind=4) :: pgs_pc_getreference 
     integer (kind=4) :: swfid, swid, ierr
@@ -37,8 +37,8 @@ contains
            "get L1B name failed ", "EarthSunDist", zero )
     END IF
 
-    vis  = strpos (filenm, 'BRVG') > 0
-    visz = strpos (filenm, 'BRVZ') > 0
+    !    vis  = strpos (filenm, 'BRVG') > 0
+    !    visz = strpos (filenm, 'BRVZ') > 0
     uvsz = strpos (filenm, 'BRUZ') > 0
 
     ! if (visz) then
@@ -46,12 +46,13 @@ contains
     ! else if (uvsz) then
     !   swn = sunuv2swathz
     ! else if (vis) then
-    if (vis .or. visz) then
-      swn = sunvisswath
-    else
-      swn = sunuv2swath
-      if (gomi) swn = "Sun Volume UV-2 Swath"
-    endif
+
+    !    if (vis .or. visz) then
+    !      swn = sunvisswath
+    !    else
+    swn = sunuv2swath
+    !      if (gomi) swn = "Sun Volume UV-2 Swath"
+    !    endif
 
     if (iprt >= 2) print *,'earth_sun_dist: ',fn,swn
 
@@ -81,16 +82,23 @@ contains
     ierr = swdetach( swid )
     ierr = swclose( swfid )
 
-    if (visz) then
-      swn = visswathz
-    else if (uvsz) then
+    !    if (visz) then
+    !      swn = visswathz
+    !    else if (uvsz) then
+    !      swn = uv2swathz
+    !    else if (vis) then
+    !      swn = visswath
+    !    else
+    !      swn = uv2swath
+    !      if (gomi) swn = "Earth UV-2 Swath"
+    !    endif
+
+    if (uvsz) then
       swn = uv2swathz
-    else if (vis) then
-      swn = visswath
     else
       swn = uv2swath
-      if (gomi) swn = "Earth UV-2 Swath"
     endif
+
     if (iprt >= 2) print *,'earth_sun_dist: ',filenm,swn
 
     !! open the  swath file

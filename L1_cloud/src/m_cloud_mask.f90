@@ -135,15 +135,17 @@ contains
 
     ! obtain name of swath
     filenamen=trim(input_data_path)//filename
-    vis  = strpos (filename, 'BRVG') > 0
-    visz = strpos (filename, 'BRVZ') > 0
+!    vis  = strpos (filename, 'BRVG') > 0
+!    visz = strpos (filename, 'BRVZ') > 0
     uvsz = strpos (filename, 'BRUZ') > 0
-    if (visz) then
-      swathname = visswathz
-    else if (uvsz) then
+!    if (visz) then
+!      swathname = visswathz
+!    else if (uvsz) then
+!      swathname = uv2swathz
+!    else if (vis) then
+!      swathname = visswath
+    if (uvsz) then
       swathname = uv2swathz
-    else if (vis) then
-      swathname = visswath
     else
       swathname = uv2swath
     endif

@@ -77,19 +77,25 @@ contains
     if (iLine == 0) then
       !**********************************************************************
       filenamen=trim(input_data_path)//filename
-      vis  = strpos (filename, 'BRVG') > 0
-      visz = strpos (filename, 'BRVZ') > 0
+      !      vis  = strpos (filename, 'BRVG') > 0
+      !      visz = strpos (filename, 'BRVZ') > 0
       uvsz = strpos (filename, 'BRUZ') > 0
-      if (visz) then
-        swathname = visswathz
-      else if (uvsz) then
+      !      if (visz) then
+      !        swathname = visswathz
+      !      else if (uvsz) then
+      !        swathname = uv2swathz
+      !      else if (vis) then
+      !        swathname = visswath
+      !      else
+      !        swathname = uv2swath
+      !      endif
+      if (uvsz) then
         swathname = uv2swathz
-      else if (vis) then
-        swathname = visswath
       else
         swathname = uv2swath
       endif
-      gomi = index(filename, 'GOMI') > 0
+
+      !      gomi = index(filename, 'GOMI') > 0
       if (wrt_solar) then
         wmin=355
         wmax=500
@@ -98,31 +104,31 @@ contains
         wmin=383!360
         wmax=385!405
       endif
-      if (.not. vis .and. .not. visz) then
-        if (.not. gomi) then
-          wmin2 = 330.! 356.
-          wmax2 = 367.
-          if (.not. set_wmin) & 
+      !      if (.not. vis .and. .not. visz) then
+      !        if (.not. gomi) then
+      wmin2 = 330.! 356.
+      wmax2 = 367.
+      if (.not. set_wmin) & 
                                 !wmin = 345.5 
-               wmin = 358. !355.5 ! 356.
-          if (.not. set_wmax) & 
+           wmin = 358. !355.5 ! 356.
+      if (.not. set_wmax) & 
                                 !wmax = 354.5 
-               wmax = 363. !365. !362.5
-          if (wrt_solar) then
-            wmin2=310
-            wmax2=375
-          endif ! write_solar
-          wave_long=362.5 !353.4
-          wave_short=345.4
-        else
-          wmin = 355.! 356.
-          wmax = 365.
-          wave_long=364.0
-          wave_short=340.4
-          shift=.true.
-          squeeze=.true. 
-        endif ! gomi
-      endif ! not vis
+           wmax = 363. !365. !362.5
+      if (wrt_solar) then
+        wmin2=310
+        wmax2=375
+      endif ! write_solar
+      wave_long=362.5 !353.4
+      wave_short=345.4
+      !        else
+      !          wmin = 355.! 356.
+      !          wmax = 365.
+      !          wave_long=364.0
+      !          wave_short=340.4
+      !          shift=.true.
+      !          squeeze=.true. 
+      !        endif ! gomi
+      !      endif ! not vis
       if (iprt > 0) print *,'read_input_data: filename ',filenamen, swathname
       !**********************************************************************
       status = L1Br_open( blk, filenamen, swathname )
