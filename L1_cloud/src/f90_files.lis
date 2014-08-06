@@ -9,6 +9,7 @@ m_alloc2.f90
 m_avg.f90
 m_bilinear.f90
 m_cloud_mask.f90
+m_cloud_mask_proc.f90
 m_cloud_pres_mod.f90
 m_cloud_pres_ret.f90
 m_find.f90

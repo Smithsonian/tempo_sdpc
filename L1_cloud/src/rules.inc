@@ -30,17 +30,17 @@ $(ODIR)/m_bilinear.o: $(SDIR)/m_bilinear.f90 \
 $(ODIR)/m_cloud_mask.o: $(SDIR)/m_cloud_mask.f90 \
   $(ODIR)/hdfeos4_parameters.o \
   $(ODIR)/L1B_Reader_class.o \
-  $(ODIR)/m_avg.o \
-  $(ODIR)/m_eigen.o \
-  $(ODIR)/m_find.o \
-  $(ODIR)/m_matmul.o \
+  $(ODIR)/m_cloud_mask_proc.o \
   $(ODIR)/m_pgs_include.o \
-  $(ODIR)/m_sigma.o \
-  $(ODIR)/m_sortind.o \
   $(ODIR)/m_strpos.o \
   $(ODIR)/m_swathnames.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_cloud_mask.f90 -o $(ODIR)/m_cloud_mask.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_cloud_mask_proc.o: $(SDIR)/m_cloud_mask_proc.f90 \
+  $(ODIR)/m_avg.o \
+  $(ODIR)/m_find.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_cloud_mask_proc.f90 -o $(ODIR)/m_cloud_mask_proc.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cloud_pres_mod.o: $(SDIR)/m_cloud_pres_mod.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_cloud_pres_mod.f90 -o $(ODIR)/m_cloud_pres_mod.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cloud_pres_ret.o: $(SDIR)/m_cloud_pres_ret.f90 \
@@ -68,8 +68,6 @@ $(ODIR)/m_cloud_pres_ret.o: $(SDIR)/m_cloud_pres_ret.f90 \
   $(ODIR)/m_vars.o \
   $(ODIR)/mathcons.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_cloud_pres_ret.f90 -o $(ODIR)/m_cloud_pres_ret.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_eigen.o: $(SDIR)/m_eigen.f90
-	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_eigen.f90 -o $(ODIR)/m_eigen.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_find.o: $(SDIR)/m_find.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_find.f90 -o $(ODIR)/m_find.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_findgen.o: $(SDIR)/m_findgen.f90
@@ -173,8 +171,6 @@ $(ODIR)/m_read_thresholds.o: $(SDIR)/m_read_thresholds.f90 \
 $(ODIR)/m_sigma.o: $(SDIR)/m_sigma.f90 \
   $(ODIR)/m_avg.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_sigma.f90 -o $(ODIR)/m_sigma.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_sortind.o: $(SDIR)/m_sortind.f90
-	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_sortind.f90 -o $(ODIR)/m_sortind.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_spline.o: $(SDIR)/m_spline.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_spline.f90 -o $(ODIR)/m_spline.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_str_replace.o: $(SDIR)/m_str_replace.f90 \
