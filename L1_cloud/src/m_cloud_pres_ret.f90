@@ -464,7 +464,7 @@ contains
             !JJ need to make sure this is not a bad pixel!!!!!!!
             !===================================================
 
-            ! Aassumes the reflectivity wavelength is within the fitting window
+            ! Assumes the reflectivity wavelength is within the fitting window
             !==================================================================
             ngood=count(r_i /= var_inv_big)
             if (ngood > 0) then
@@ -506,11 +506,11 @@ contains
               if (using_cal) i_obs_l=i_obs_l+i_obs_l*cal_fact(ip+1)
               set_cld_frac=iter == 0
               if (do_mler) then 
-                call get_ai_refl(refl_clr, refl_cld, iter, I_obs_l, I_obs_s, ip, &
+                call get_ai_refl(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
                      i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, tr_ls, set_cld_frac, &
                      i0_ss,sb_ss,tr_ss)
               else
-                call get_f(refl_clr, refl_cld, iter, I_obs_l, I_obs_s, ip, &
+                call get_f(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
                      i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, tr_ls, set_cld_frac, &
                      i0_ss,sb_ss,tr_ss)
                 reflect_cld(ip,iLine)=refl_cld

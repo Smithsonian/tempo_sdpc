@@ -20,22 +20,26 @@ contains
     !
     ! !ROUTINE:  interp_ring_rad
     ! 
-    ! !DESCRIPTION: interp_ring_rad allocates/deallocates memory for 
-    !               retrievals		
+    ! !DESCRIPTION: interp_ring_rad computes radiance and atmospheric ring
+    !   for current pixel and pressure estimate
     !
-    ! !CALLING SEQUENCE: 
-    !
-    !        call interp_ring_rad
-    !     
     ! !INPUT PARAMETERS:   
+    !   ix1: cloud pressure index
+    !   reflec: reflectivity 
     !
     ! !OUTPUT PARAMETERS:  
+    !   computed: vector tracking whether ring and rad have been computed
+    !   rad: total reflected radiance at top of atmosphere, I think...
+    !   ring: ring effect factor
+    !   drad_tot_dr: change in reflected radiance with reflectance.
     !
     ! !SEE ALSO:  
+    !   Joiner et al 1995, Appl. Optics, 34, 4513
     !
     ! !REVISION HISTORY: 
     !
     !  05Jan01   Joiner     original fortran 90
+    !  12Aug14  O'Sullivan  added documentation, some guesswork involved
     !
     !EOP
     !-------------------------------------------------------------------------
@@ -90,6 +94,7 @@ contains
         if (present(drad_tot_dr)) then 
           allocate(dring_dr(nobs))
           allocate(drad_dr(nobs))
+          ! see Joiner et al (1995) eqn 31
           dring_dr=k1bar(ind)/rad*( (nra_clds(ix1,:)/den) + &
                reflec*nra_clds(ix1,:)*sba(ix1,ind)/den2 + &
                2*reflec*nba(ix1,ind)*tra_clds(ix1,:)/den2 + &
@@ -111,10 +116,39 @@ contains
 
   subroutine interp_rad (ix1,ind, i0, sb, tr)
 
+    !!------------------------------------------------------------------
+    !
+    ! interpolates various radiance-related parameters to their 
+    ! expected values for the satelite and solar zenith angle.
+    !
+    ! Some guesswork involved in meaning of parameters.
+    ! See also m_read_tables.f90
+    ! INPUT PARAMETERS
+    !  ix1: cloud pressure index
+    !  ind: wavelength index 
+    !  j: solar zenith angle index (theta)
+    !  nt: satellite zenith angle index (scan)
+    !  sz: solar zenith angle
+    !  satz: satellite zenith angle
+    !  az: satellite azimuth angle
+    !  i0a: backscattered intensity at top of atmosphere 
+    !  tra: transmittance factor ?
+    !  sba: fraction of intensity reflected by surface that is then
+    !       scattered back to surface by atmosphere?
+    !  z1: prop. to intensity from single scatterings?
+    !  z2: prop. to intensity from double scatterings?
+    ! OUTPUT PARAMETERS
+    !  i0: backscattered intensity in pixel
+    !  tr: transmittance factor in pixel?
+    !  sb: surface light lost to scattering in pixel?
+    !
+    !!------------------------------------------------------------------
+
     use m_trilin
     use m_triquad
     use m_vars, ONLY: i0a, tra, sba, z1, z2
-    use m_cloud_pres_mod, ONLY: l,j,nt, table, temp3D, sz, satz, az
+!    use m_cloud_pres_mod, ONLY: l,j,nt, table, temp3D, sz, satz, az
+    use m_cloud_pres_mod, ONLY: j,nt, temp3D, sz, satz, az
     use mathcons, ONLY: deg2rad
     implicit none
 

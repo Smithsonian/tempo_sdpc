@@ -7,7 +7,7 @@ module m_sigma
 
 contains
 
-  function  r_sigma(ar1, avg1, iprt) result(std)
+  function  r_sigma(ar1, avg1) result(std)
 
     use m_avg
     implicit none
@@ -26,13 +26,13 @@ contains
     !        std = sigma(vectorin)
     !
     ! !INPUT PARAMETERS:
-    real (KIND=8), dimension(:)  :: ar1
-    !                       ar1 : input vector to find std deviation
-    real (KIND=8),    optional   :: avg1
-    integer, optional            :: iprt
+    real (KIND=8), dimension(:), intent(in)  :: ar1
+    !   ar1 : input vector to find std deviation
+    real (KIND=8), optional, intent(out)     :: avg1
+    !   avg1: optional output of vector average
     !
     ! !OUTPUT PARAMETERS:
-    real (KIND=8)                :: std
+    real (KIND=8)              :: std
     !                       std      :  std deviation
     !
     ! !SEE ALSO:  m_avg
@@ -63,7 +63,7 @@ contains
 
 
 
-  function  r4_sigma(ar1, avg1, iprt) result(std)
+  function  r4_sigma(ar1, avg1) result(std)
 
     use m_avg
     implicit none
@@ -82,13 +82,13 @@ contains
     !        std = sigma(vectorin)
     !
     ! !INPUT PARAMETERS:
-    real (kind=4), dimension(:)  :: ar1
-    !                       ar1 : input vector to find std deviation
-    real (kind=4),    optional   :: avg1
-    integer, optional            :: iprt
+    real (kind=4), dimension(:), intent(in)  :: ar1
+    !   ar1 : input vector to find std deviation
+    real (kind=4), optional, intent(out)     :: avg1
+    !   avg1: optional output of vector average
     !
     ! !OUTPUT PARAMETERS:
-    real  (kind=4)               :: std
+    real (kind=4)                :: std
     !                       std      :  std deviation
     !
     ! !SEE ALSO:  m_avg
