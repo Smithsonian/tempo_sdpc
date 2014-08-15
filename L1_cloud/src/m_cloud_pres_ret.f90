@@ -35,7 +35,7 @@ contains
          retrieve_chl_cld, do_chl, land_flg, chlcl, chlorophyll, &
          cloud_fr_corr, nwl, refl_clr_oc, bad_obs_flag, eff_cld_frac2, &
          cld_pres2, reflect_cld, squeeze, write_resid, niter, no_ret_ps, &
-         filename_resid, noret, simul, shift, do_alloc, no2, do_no2, &
+         filename_resid, noret, shift, do_alloc, no2, do_no2, &
          refl_chl_max, write_obs, lun_out_resid, refl_l, refl_s, wave_short, &
          wave_long, npres, lat, lon, write_resid_all, theta, scan, phi, &
          using_spline, iLine, start_line, wdelt, w12d, f12d, pres, geoflg, &
@@ -195,7 +195,7 @@ contains
           else
             sflx=spline(ws(:,ip),fs(:,ip),waves)
           endif
-          sflx1=sflx
+
         else ! not spline
           ngood=count(fs(:,ip) > 0)
           if (ngood /= size(fs(:,ip))) then
@@ -210,7 +210,7 @@ contains
           else
             sflx=interpol(fs(:,ip),ws(:,ip),waves)
           endif
-          sflx1=sflx
+
         endif ! not spline
 
         bad_pix = BTEST(qc(ip,iLine),1) 
@@ -485,7 +485,7 @@ contains
                      tr_l1, tr_l2, i0_ls, sb_ls, tr_ls)
               endif
               i_obs_l=y_obs1(indt)
-              sflx_l=sflx1(indt)
+
               if (do_short_wave) then 
                 i_r=find1(abs(waves(good_obs(1:ngood))-wave_short) == &
                      minval(abs(waves(good_obs(1:ngood))-wave_short)) )
@@ -750,7 +750,7 @@ contains
 
           !fit polynomial to computed radiance and subtract 
           !------------------------------------------------
-          res3=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
+          res=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
           y_calc_sh=x(nst-1-nsh,1)+x(nst-2-nsh,1)*wavesd
           do ntm=2,nterms
             y_calc_sh=y_calc_sh+x(nst-1-nsh-ntm,1)*wavesp(ntm-1,:)

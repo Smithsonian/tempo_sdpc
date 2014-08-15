@@ -4,9 +4,9 @@ contains
 
   subroutine alloc1()
 
-    use m_vars, ONLY: simul, interp, nchl, chl, npres, w1, f1, w12d, f12d, &
+    use m_vars, ONLY: interp, nchl, chl, npres, w1, f1, w12d, f12d, &
          reference_ring, reference_rad, nscanpos, nTimes, wave_resid, resid, &
-         write_resid, nwl
+         write_resid, nwl!, simul
     use m_cloud_pres_mod
     implicit none
     !-------------------------------------------------------------------------
@@ -49,17 +49,11 @@ contains
       deallocate(f1p)
       deallocate(wave_diff)
       deallocate(sflx)
-      deallocate(sflx1)
       deallocate(bad_obs)
       deallocate(good_obs)
       deallocate(r_i)
-      deallocate(r_i_sol)
-      deallocate(ref_rad)
-      deallocate(ref_ring)
       deallocate(y_obs)
       deallocate(y_obs1)
-      deallocate(y_obs2)
-      deallocate(y_obs2b)
       deallocate(y_frac)
       deallocate(y_calc_squeeze)
       deallocate(y_calc)
@@ -71,9 +65,7 @@ contains
       deallocate(fit_rad)
       deallocate(rad_cld)
       deallocate(rad_clr)
-      deallocate(radring_clr)
       deallocate(rad_clr_oc)
-      deallocate(ring_cld2)
       deallocate(ring_cld)
       deallocate(ring_clr)
       deallocate(ring_oc)
@@ -84,7 +76,6 @@ contains
       deallocate(comp_clr)
       deallocate(comp_oc_clr)
       deallocate(rad_tot)
-      deallocate(rad_tot_noring)
       deallocate(ycalc)
       deallocate(wavesd)
       deallocate(o3_xsect)
@@ -101,7 +92,6 @@ contains
       deallocate(rad_clds)
       deallocate(rad_clrs)
       deallocate(ring_clrs)
-      deallocate(di_dr)
       deallocate(ring_ocs)
       deallocate(reference_ring)
       deallocate(reference_rad)
@@ -109,11 +99,8 @@ contains
         deallocate(wave_resid)
         deallocate(resid)
       endif
-      if (simul) then
-        deallocate(ring_sim)
-        deallocate(rad_sim)
-      endif
     endif ! allocated
+
     allocate(ind(0:nobs-1))
     allocate(waves(0:nobs-1))
     allocate(wavesp(nterms-1,0:nobs-1))
@@ -121,15 +108,11 @@ contains
     allocate(f1p(nwl))
     allocate(wave_diff(0:nobs-1))
     allocate(sflx(0:nobs-1))
-    allocate(sflx1(0:nobs-1))
     allocate(bad_obs(nobs)) 
     allocate(good_obs(nobs)) 
     allocate(r_i(0:nobs-1)) 
-    allocate(r_i_sol(0:nobs-1)) ; r_i_sol=0. 
     allocate(y_obs(0:nobs-1))   
     allocate(y_obs1(0:nobs-1))   
-    allocate(y_obs2(neta+1,nobs))   
-    allocate(y_obs2b(neta+1,nobs))   
     allocate(y_frac(0:nobs-1))   
     allocate(y_calc(0:nobs-1))   
     allocate(y_calc_sh(0:nobs-1))   
@@ -138,14 +121,10 @@ contains
     allocate(y_back(0:nobs-1,1))   
     allocate(jacob_dummy(0:nobs-1))   
     allocate(jacob_rad(0:nobs-1))   
-    allocate(ref_ring(0:nobs-1))   
-    allocate(ref_rad(0:nobs-1))   
     allocate(fit_rad(0:nobs-1))   
     allocate(rad_cld(0:nobs-1))   
     allocate(rad_clr(0:nobs-1))   
-    allocate(radring_clr(0:nobs-1))   
     allocate(rad_clr_oc(0:nobs-1))   
-    allocate(ring_cld2(0:nobs-1))   
     allocate(ring_cld(0:nobs-1))   
     allocate(ring_clr(0:nobs-1))   
     allocate(ring_oc(0:nobs-1))   
@@ -155,7 +134,6 @@ contains
     allocate(comp_all_ring(npres))
     allocate(chls(0:nchl-1)) ; chls=chl
     allocate(rad_tot(0:nobs-1))   
-    allocate(rad_tot_noring(0:nobs-1))   
     allocate(ycalc(0:nobs-1))   
     allocate(wavesd(0:nobs-1))
     allocate(o3_xsect(0:nobs-1))
@@ -171,7 +149,6 @@ contains
     allocate(rad_clds(npres,0:nobs-1))
     allocate(rad_clrs(npres,0:nobs-1))
     allocate(ring_clrs(npres,0:nobs-1))
-    allocate(di_dr(npres,0:nobs-1))
     allocate(comp_oc_clr(npres))
     allocate(comp_clr(npres))
     allocate(ring_ocs(nchl,0:nobs-1))
@@ -180,10 +157,6 @@ contains
     if (write_resid) then
       allocate(wave_resid(nobs)) ; wave_resid = 0.
       allocate(resid(nobs,nscanpos,nTimes)) ; resid=9999.
-    endif
-    if (simul) then
-      allocate(ring_sim(nobs))
-      allocate(rad_sim(nobs))
     endif
 
   end subroutine alloc1

@@ -59,10 +59,10 @@ contains
     if (iprt >= 6) print *,'chl ',chloro
     if (iprt >= 7 .and. iter == 1) then
       print *, iter, wave_long, wave_short
-      print *, 'np0, np, irc, ir, nt, j, l'
-      print *, np0, np, irc, ir, nt, j, l
-      print *, 'i_np0, nc, irco, nt_o, j_o, l_o'
-      print *, i_np0, nc, irco, nt_o, j_o, l_o
+      print *, 'np0, np, nt, j, l'
+      print *, np0, np, nt, j, l
+      print *, 'i_np0, nc, nt_o, j_o, l_o'
+      print *, i_np0, nc, nt_o, j_o, l_o
       print *, ind(0), ind(nobs-1)
       print *,'y_obs'
       write(6,fmt100) y_obs

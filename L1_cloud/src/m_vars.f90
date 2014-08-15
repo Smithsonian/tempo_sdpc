@@ -235,8 +235,8 @@ module m_vars
   integer            :: max_lines=0
   real (kind = 4), dimension(nlon,nlat) :: chl2d
   logical :: done_read_chl = .false.
-  !logical :: simul=.true. 
-  logical :: simul=.false.
+!  !logical :: simul=.true. 
+!  logical :: simul=.false.
   logical :: do_alloc=.true., do_alloc2=.true.
   logical :: write_he5=.true.
   logical :: do_no2 =.false.
