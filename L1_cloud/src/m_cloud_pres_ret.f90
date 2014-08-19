@@ -41,13 +41,14 @@ contains
          using_spline, iLine, start_line, wdelt, w12d, f12d, pres, geoflg, &
          fill_value, n_good_input, n_good_output, n_missing, &
          retrieve_chl_pres, lun_out_cal, smpx_stddev, irr_quality_flagL, &
-         quality_flagL, shifts, squeezes, refl_ref, sza_Ref, satz_ref, &
-         az_ref, psurf_ref, reference_spec, reference_wave, reference_ring, &
-         do_o3, reference_rad, nscanpos, wave_resid, resid, using_resid, &
+         quality_flagL, shifts, squeezes, &
+         do_o3,nscanpos, wave_resid, resid, using_resid, &
          resid_spec, resid_wave, meas_qual_flg, cal_fact, using_cal, &
          wave_dpdf, refl_cld2, wave_o3, xsect_o3, fill, write_fill, &
          wave_fill, ref_clr, get_refl_clim, ler_nsz, ler_sz, ler_nth, &
-         ler_th, ler_nph, ler_ph, ler354
+         ler_th, ler_nph, ler_ph, ler354!, &
+!         refl_ref, sza_Ref, satz_ref,  reference_rad, &
+!         az_ref, psurf_ref, reference_spec, reference_wave, reference_ring, 
     use m_cloud_pres_mod
     use m_alloc1
     use m_alloc2

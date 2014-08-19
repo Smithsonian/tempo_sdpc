@@ -16,7 +16,7 @@ program OMCLDRR
   !use m_num2string
   use m_cloud_mask
   use m_read_thresholds
-  use m_read_references
+  !use m_read_references
   use m_read_resid
   use m_read_cal
   use MetadataModule
@@ -71,7 +71,7 @@ program OMCLDRR
   call read_tables(err_code)
   call read_ocean_table(err_code)
   call read_thresholds(err_code)
-  if (using_ref) call read_references(err_code)
+  !if (using_ref) call read_references(err_code)
   if (using_resid) call read_resids
   if (using_cal) call read_cals(err_code)
   if (do_o3) call read_o3

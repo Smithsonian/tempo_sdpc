@@ -31,13 +31,9 @@ module m_vars
   integer :: retstatus
   character (len=200) :: flnm_out
 
-  real (KIND=8), allocatable, dimension (:,:) :: reference_spec
-  real (KIND=8), allocatable, dimension (:,:) :: reference_wave
   real (KIND=8), allocatable, dimension (:,:) :: resid_spec
   real (KIND=8), allocatable, dimension (:)   :: resid_wave
   real (KIND=8), allocatable, dimension (:)   :: cal_fact
-  real (KIND=8), allocatable, dimension (:,:) :: reference_ring
-  real (KIND=8), allocatable, dimension (:,:) :: reference_rad
   real (KIND=8), allocatable, dimension (:,:) :: ws ! solar wavelengths (nm)
   real (KIND=8), allocatable, dimension (:,:) :: fs ! solar irradiances
 
@@ -254,7 +250,6 @@ module m_vars
   logical :: ex= .true.
   logical :: write_geom= .true.
   logical :: write_ps  = .true. !.false.
-  logical :: using_ref = .false. !.true.
   logical :: using_resid = .true. !.true.
   logical :: using_cal = .true.
   !logical :: using_resid = .false. !.true.
@@ -298,5 +293,6 @@ module m_vars
   !used in m_rd_toms_refl, need values to persist over multiple
   !iterations of cloud_ret
   REAL (KIND=8) :: startlat,startlon,deltlat,deltlon
+
 
 end module m_vars

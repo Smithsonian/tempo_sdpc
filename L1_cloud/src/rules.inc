@@ -109,8 +109,6 @@ $(ODIR)/m_lambda_qual.o: $(SDIR)/m_lambda_qual.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_lambda_qual.f90 -o $(ODIR)/m_lambda_qual.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_matmul.o: $(SDIR)/m_matmul.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_matmul.f90 -o $(ODIR)/m_matmul.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_num2string.o: $(SDIR)/m_num2string.f90
-	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_num2string.f90 -o $(ODIR)/m_num2string.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_poly_fit.o: $(SDIR)/m_poly_fit.f90 \
   $(ODIR)/m_invert.o \
   $(ODIR)/m_matmul.o
@@ -145,13 +143,6 @@ $(ODIR)/m_read_ocean_table.o: $(SDIR)/m_read_ocean_table.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_ocean_table.f90 -o $(ODIR)/m_read_ocean_table.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_read_references.o: $(SDIR)/m_read_references.f90 \
-  $(ODIR)/m_interp_pres.o \
-  $(ODIR)/m_interp_ring_rad.o \
-  $(ODIR)/m_LUN_set.o \
-  $(ODIR)/m_pgs_include.o \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_references.f90 -o $(ODIR)/m_read_references.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_resid.o: $(SDIR)/m_read_resid.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \

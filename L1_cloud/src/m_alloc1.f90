@@ -5,8 +5,7 @@ contains
   subroutine alloc1()
 
     use m_vars, ONLY: interp, nchl, chl, npres, w12d, f12d, &
-         reference_ring, reference_rad, nscanpos, nTimes, wave_resid, resid, &
-         write_resid, nwl
+         nscanpos, nTimes, wave_resid, resid, write_resid, nwl
     use m_cloud_pres_mod
     implicit none
     !-------------------------------------------------------------------------
@@ -93,8 +92,6 @@ contains
       deallocate(rad_clrs)
       deallocate(ring_clrs)
       deallocate(ring_ocs)
-      deallocate(reference_ring)
-      deallocate(reference_rad)
       if (write_resid) then
         deallocate(wave_resid)
         deallocate(resid)
@@ -152,8 +149,6 @@ contains
     allocate(comp_oc_clr(npres))
     allocate(comp_clr(npres))
     allocate(ring_ocs(nchl,0:nobs-1))
-    allocate(reference_ring(nobs,nscanpos)) ; reference_ring=0.
-    allocate(reference_rad(nobs,nscanpos)) ; reference_rad=0.
     if (write_resid) then
       allocate(wave_resid(nobs)) ; wave_resid = 0.
       allocate(resid(nobs,nscanpos,nTimes)) ; resid=9999.
