@@ -4,9 +4,9 @@ contains
 
   subroutine alloc1()
 
-    use m_vars, ONLY: interp, nchl, chl, npres, w1, f1, w12d, f12d, &
+    use m_vars, ONLY: interp, nchl, chl, npres, w12d, f12d, &
          reference_ring, reference_rad, nscanpos, nTimes, wave_resid, resid, &
-         write_resid, nwl!, simul
+         write_resid, nwl
     use m_cloud_pres_mod
     implicit none
     !-------------------------------------------------------------------------

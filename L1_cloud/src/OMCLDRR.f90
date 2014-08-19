@@ -125,39 +125,36 @@ program OMCLDRR
 
     !loop over the # of lines
     !========================
-    do while (iLine+ny-1 <= nTimes) 
+    do while (iLine <= nTimes) 
       if (iprt >= 1) print *,'cloud_ret: processing iLine ',iLine,' of ', &
            nTimes
 
-      do ll=1, ny
-        if (ll > 1) iLine=iLine+1
 
-        if(iLine > start_line) then
+      if(iLine > start_line) then
 
-          !Get level 1 input data: 
-          !radiance and solar irradiance spectra
-          !===========================================================
-          if (iprt > 1) print *,'cloud_ret: reading input data'
-          call read_input_data(blk, err_code)
-          if(err_code >= 1) goto 999
+        !Get level 1 input data: 
+        !radiance and solar irradiance spectra
+        !===========================================================
+        if (iprt > 1) print *,'cloud_ret: reading input data'
+        call read_input_data(blk, err_code)
+        if(err_code >= 1) goto 999
 
-        endif ! start_line
+      endif ! start_line
 
-        !get the climatological terrain pressure
-        !=======================================
-        call rd_terr ()
+      !get the climatological terrain pressure
+      !=======================================
+      call rd_terr ()
 
-        !get the surface reflectivity climatology 
-        !=======================================
-        if (get_refl_clim) then
-          call rd_toms_refl ()
-        endif
+      !get the surface reflectivity climatology 
+      !=======================================
+      if (get_refl_clim) then
+        call rd_toms_refl ()
+      endif
 
-        !get the climatological chlorophyll
-        !=======================================
-        call rd_chl ()
-        land_flg=chlcl < 0.
-      enddo ! loop over ny
+      !get the climatological chlorophyll
+      !=======================================
+      call rd_chl ()
+      land_flg=chlcl < 0.
 
       !do the retrieval
       !=================
@@ -175,13 +172,8 @@ program OMCLDRR
           ref_clr(:,iLine)=refl_clr
         endif
 
-        !if (cloud_clear) then
-        ! if (iprt > 1) print *,'cloud_ret: cloud clearing'
-        ! call cloud_clear_ret(refl_clr, refl_cld)
-        !else
         if (iprt > 1) print *,'cloud_ret: retrieving cloud pressure'
         call cloud_pres_ret(refl_clr, refl_cld)
-        !endif
 
         if (i == 1) then
           cld_pres2(:,iLine)=cloud_pres(:,iLine)

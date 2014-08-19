@@ -1,7 +1,7 @@
 module m_initialize
 
-private
-public initialize
+  private
+  public initialize
 
 contains
 
@@ -117,7 +117,7 @@ contains
 
     !***********************************************************************
     !read OMCLDRR.pcf
-    !check if PCF exists assuming PGE resides in $(PGE_NAME)/bin directory
+    !check if PCF exists based on PGS_PC_INFO_FILE environment variable
     !---------------------------------------------------------------------
     rc=0
     status=1
@@ -129,7 +129,8 @@ contains
     if (ex) then
       version = 1
       status = pgs_pc_getreference ( L1B_LUN, version, filename)
-      if (iprt > 0) print *,trim(myname)//' get_pc_reference status l1b filename',&
+      if (iprt > 0) &
+           print *,trim(myname)//' get_pc_reference status l1b filename',&
            status, trim(filename)
 
       version = 1
@@ -187,7 +188,8 @@ contains
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         transient_check = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting transient_check = ',transient_check
+        if (iprt >= 1) print *,'initialize: setting transient_check = ', &
+             transient_check
       endif
 
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
@@ -204,7 +206,6 @@ contains
       endif
     endif
 
-    if (cloud_clear) ny=2
 
     !***********************************************************************
 

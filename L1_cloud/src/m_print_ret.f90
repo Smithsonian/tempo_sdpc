@@ -5,8 +5,9 @@ contains
   subroutine print_ret()
 
     use m_cloud_pres_mod
-    use m_vars, ONLY: iprt, squeeze, lat, lon, sza, chlcl, cloud_clear, &
-         wave_short, wave_long, iLine, cld_frac_min, refl_clr_oc, get_cloud_frac
+    use m_vars, ONLY: iprt, squeeze, lat, lon, sza, chlcl, & 
+         wave_short, wave_long, iLine, cld_frac_min, refl_clr_oc, &
+         get_cloud_frac
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -44,10 +45,8 @@ contains
       print *, 'chisq, bias, std'
       write(6,fmt101) chisq, bias, std   
       if (iter == 0) then
-        if (.not. cloud_clear) then
-          print *,'b_in '
-          write (6,fmt101) b_i
-        endif
+        print *,'b_i '
+        write (6,fmt101) b_i
         print *, 'lat, lon, sza, chl. clim.'
         write(6,fmt101) lat(ip+1,iLine), lon(ip+1,iLine), sza(ip,iLine), chlcl(ip)
         print *,'x_fg '

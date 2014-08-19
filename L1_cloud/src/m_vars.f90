@@ -43,8 +43,6 @@ module m_vars
 
   real (KIND = 4), dimension (:),     pointer :: wave_resid
   real (KIND = 4), dimension (:,:,:), pointer :: resid
-  real (KIND = 4), dimension (:,:,:), allocatable :: w1
-  real (KIND = 4), dimension (:,:,:), allocatable :: f1
   real (KIND = 4), dimension (:,:),   allocatable :: w12d
   real (KIND = 4), dimension (:,:),   allocatable :: f12d
 
@@ -266,9 +264,7 @@ module m_vars
   !real (KIND=8)    :: stddev_thresh=0.01d0 ! initial value based on GOME PMD
   real (KIND=8)    :: stddev_thresh=0.001d0 ! initial value based on OMI small pix.
   real (KIND=4), parameter :: fill_value = -9999.0
-!!!Altered since m_write_ouput_data seems to expect these to be int*2 and int*1
-  !integer, parameter :: fill_value_int = 65535
-  !integer, parameter :: fill_value_int1 = 255
+  !m_write_ouput_data seems to expect fill params to be int*2 and int*1
   integer (KIND=2), parameter :: fill_value_int = -1
   integer (KIND=1), parameter :: fill_value_int1 = -1
   integer :: n_good_input = 0, n_good_output = 0, n_input = 0, n_missing = 0
@@ -277,9 +273,6 @@ module m_vars
   real (KIND=8) :: cloud_pres_max = 1100.0, cld_frac = 0.02d0
 
   real(kind=4) :: dist_rad, dist_irrad 
-  logical :: cloud_clear=.false.!.true.
-  integer :: ny=1, nx=1
-  integer :: ll
   integer :: nfov=2
   real (KIND=8)    :: wave_dpdf = 393.6d0 !nm
   logical :: transient_check = .false. !.true.

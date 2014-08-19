@@ -95,17 +95,10 @@ contains
         swathname = uv2swath
       endif
 
-      !      gomi = index(filename, 'GOMI') > 0
       if (wrt_solar) then
         wmin=355
         wmax=500
       endif
-      if (cloud_clear) then
-        wmin=383!360
-        wmax=385!405
-      endif
-      !      if (.not. vis .and. .not. visz) then
-      !        if (.not. gomi) then
       wmin2 = 330.! 356.
       wmax2 = 367.
       if (.not. set_wmin) & 
@@ -281,13 +274,8 @@ contains
     END IF
 
 
-    if(iLine==start_line)  ll=1
-    !Next two lines fail under gfortran
-    !presuming goal is to copy over part of w12d and f12d, restrict input ranges
-    !w1(0:nwl-1,:,ll)=w12d
-    !f1(0:nwl-1,:,ll)=f12d
-    w1(0:nwl-1,:,ll)=w12d(0:nwl-1,:)
-    f1(0:nwl-1,:,ll)=f12d(0:nwl-1,:)
+!    if(iLine==start_line)  ll=1
+
     w12d(nwl:nWavel-1,:)=0.
     f12d(nwl:nWavel-1,:)=0.
 
@@ -297,11 +285,6 @@ contains
       print *, 'nwl, iLine, Wmin, Wmax'
       print *, nwl, iLine, Wmin, Wmax
     endif
-
-    !if (iprt >= 5) then
-    ! print *,'wavelength ',w1(:,:,iLine)
-    ! print *,'radiance ', f1(:,:,iLine)
-    !endif
 
     nwave=nwl
     if (iLine == start_line) then
@@ -459,29 +442,11 @@ contains
       call exit(1)
     END IF
 
-    if (allocated(w1)) deallocate (w1)
-    ALLOCATE( w1(0:nWavel-1,0:nXtrack-1,ny), STAT=ierr ) ; w1=0.
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
-           "wavelengthL allocation failure, PGE aborting, exit code = 1", &
-           "read_input_data", 1 )
-      call exit(1)
-    END IF
-
     if (allocated(w12d)) deallocate (w12d)
     ALLOCATE( w12d(0:nWavel-1,0:nXtrack-1), STAT=ierr )   ; w12d = 0.0
     IF( ierr .NE. zero ) THEN
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "wavelengthL allocation failure, PGE aborting, exit code = 1", &
-           "read_input_data", 1 )
-      call exit(1)
-    END IF
-
-    if (allocated(f1)) deallocate (f1)
-    ALLOCATE( f1(0:nWavel-1,0:nXtrack-1,ny), STAT=ierr ) ; f1=0.
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
-           "radianceL allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
       call exit(1)
     END IF
