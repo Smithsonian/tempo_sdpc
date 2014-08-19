@@ -146,7 +146,7 @@ static int convert_i32_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    int32 *i32 = (int32 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = i32[i];
    return 0;
@@ -166,7 +166,7 @@ static int convert_i16_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    int16 *i16 = (int16 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = i16[i];
    return 0;
@@ -196,7 +196,7 @@ static int convert_i8_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    int16 *i8 = (int16 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = i8[i];
    return 0;
@@ -238,7 +238,7 @@ static int convert_u32_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    uint32 *u32 = (uint32 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = u32[i];
    return 0;
@@ -258,7 +258,7 @@ static int convert_u16_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    uint16 *u16 = (uint16 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = u16[i];
    return 0;
@@ -288,7 +288,7 @@ static int convert_u8_f32 (int from, void *ap, int to, void *bp, size_t n)
 {
    size_t i;
    uint16 *u8 = (uint16 *)ap;
-   float64 *f32 = (float64 *)bp;
+   float32 *f32 = (float32 *)bp;
    (void) from; (void) to;
    for (i = 0; i < n; i++) f32[i] = u8[i];
    return 0;
