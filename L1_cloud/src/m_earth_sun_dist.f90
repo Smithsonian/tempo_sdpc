@@ -4,7 +4,7 @@ contains
 
   subroutine EarthSunDist(fn,dist1,dist2) 
 
-    use m_vars, ONLY: gomi, iprt
+    use m_vars, ONLY: iprt
     use m_LUN_set
     use m_swathnames
     use m_strpos
@@ -51,7 +51,6 @@ contains
     !      swn = sunvisswath
     !    else
     swn = sunuv2swath
-    !      if (gomi) swn = "Sun Volume UV-2 Swath"
     !    endif
 
     if (iprt >= 2) print *,'earth_sun_dist: ',fn,swn
@@ -90,7 +89,6 @@ contains
     !      swn = visswath
     !    else
     !      swn = uv2swath
-    !      if (gomi) swn = "Earth UV-2 Swath"
     !    endif
 
     if (uvsz) then

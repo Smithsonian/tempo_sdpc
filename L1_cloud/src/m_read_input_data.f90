@@ -113,15 +113,8 @@ contains
       endif ! write_solar
       wave_long=362.5 !353.4
       wave_short=345.4
-      !        else
-      !          wmin = 355.! 356.
-      !          wmax = 365.
-      !          wave_long=364.0
-      !          wave_short=340.4
-      !          shift=.true.
-      !          squeeze=.true. 
-      !        endif ! gomi
-      !      endif ! not vis
+
+
       if (iprt > 0) print *,'read_input_data: filename ',filenamen, swathname
       !**********************************************************************
       status = L1Br_open( blk, filenamen, swathname )
@@ -259,8 +252,7 @@ contains
     !read a line of data
     !====================
     status = L1Br_getSIGline( blk, iLine-1, Wlmin_k=wmin2, Wlmax_k=wmax2, &
-         Signal_k=f12d, &! rad_precisionL, &
-         PixelQualityFlags_k=quality_flagL, &
+         Signal_k=f12d, PixelQualityFlags_k=quality_flagL, &
          Wavelength_k=w12d, Nwl_k=nwl )
 
     !check if it was good and abort if bad
@@ -425,14 +417,6 @@ contains
       call exit(1)
     END IF
 
-    ALLOCATE( rad_precisionL(nWavel,nXtrack), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
-           "rad_precisionL allocation failure, PGE aborting, exit code = 1", &
-           "read_input_data", 1 )
-      call exit(1)
-    END IF
-
     ALLOCATE( quality_flagL(nWavel,nXtrack), STAT=ierr )
     quality_flagL=0
     IF( ierr .NE. zero ) THEN
@@ -511,8 +495,6 @@ contains
     allocate (cld_pres2(0:nXtrack-1,nLines))  ; cld_pres2=fill_value
     if (allocated(chlorophyll)) deallocate (chlorophyll)
     allocate (chlorophyll(0:nXtrack - 1,nLines)) ; chlorophyll=fill_value
-    if (allocated(eta)) deallocate (eta)  
-    allocate (eta(0:nXtrack - 1,nLines))         ; eta=fill_value
     if (allocated(biases)) deallocate (biases)  
     allocate (biases  (0:nXtrack-1,nLines))      ; biases=fill_value
     if (allocated(biases2)) deallocate (biases2)  
@@ -521,15 +503,11 @@ contains
     allocate (stds    (0:nXtrack-1,nLines))      ; stds=fill_value
     if (allocated(stds2)) deallocate (stds2) 
     allocate (stds2    (0:nXtrack-1,nLines))      ; stds2=fill_value
-    if (allocated(rms)) deallocate (rms)   
-    allocate (rms     (0:nXtrack-1,nLines))      ; rms=fill_value
     if (allocated(chi_sqr)) deallocate (chi_sqr)
     allocate (chi_sqr (0:nXtrack-1,nLines))      ; chi_sqr=fill_value
     if (allocated(chi_sqr2)) deallocate (chi_sqr2)
     allocate (chi_sqr2 (0:nXtrack-1,nLines))      ; chi_sqr2=fill_value
     if (allocated(land_flg)) deallocate (land_flg)
-    !allocate (land_flg(0:nXtrack-1)) ; land_flg=-1
-!!!land_flg is a logical. presumably -1 indicates false...
     allocate (land_flg(0:nXtrack-1)) ; land_flg=.FALSE.
     if (allocated(chlcl)) deallocate (chlcl)
     allocate (chlcl   (0:nXtrack-1)) ; chlcl=fill_value

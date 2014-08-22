@@ -27,28 +27,25 @@ contains
     use m_interp_pres
     use m_vars, ONLY: w_grid, ps, nwave2, cloud_mask, &
          eff_cld_frac, nXtrack, ws, fs, rad_cld_frac, do_LER, & 
-         iprt, interp, refl, cal_reflec, do_short_wave, do_mler, &
+         iprt, refl, cal_reflec, do_short_wave, do_mler, &
          ntheta, nscan, nphi, cloud_pres, sza, sat_zen, azimuth, qc, &
-         cal_const, cld_frac_min, ai, get_cloud_frac, wmin, wmax, biases, &
-         stds, rms, chi_sqr, oc_table, wgrid_oc, nwave_oc,nthet_oc,nscan_oc,&
+         cld_frac_min, ai, get_cloud_frac, wmin, wmax, biases, &
+         stds, chi_sqr, oc_table, wgrid_oc, nwave_oc,nthet_oc,nscan_oc,&
          nocrefl,nchl,theta_oc,scan_oc,phi_oc,ocrefl,chl, retrieve_chl_clr,&
          retrieve_chl_cld, do_chl, land_flg, chlcl, chlorophyll, &
          cloud_fr_corr, nwl, refl_clr_oc, bad_obs_flag, eff_cld_frac2, &
          cld_pres2, reflect_cld, squeeze, write_resid, niter, no_ret_ps, &
-         filename_resid, noret, shift, do_alloc, no2, do_no2, &
-         refl_chl_max, write_obs, lun_out_resid, refl_l, refl_s, wave_short, &
-         wave_long, npres, lat, lon, write_resid_all, theta, scan, phi, &
+         noret, shift, do_alloc, write_obs, refl_l, refl_s, wave_short, &
+         wave_long, npres, lat, lon, theta, scan, phi, &
          using_spline, iLine, start_line, wdelt, w12d, f12d, pres, geoflg, &
          fill_value, n_good_input, n_good_output, n_missing, &
-         retrieve_chl_pres, lun_out_cal, smpx_stddev, irr_quality_flagL, &
+         retrieve_chl_pres, smpx_stddev, irr_quality_flagL, &
          quality_flagL, shifts, squeezes, &
          do_o3,nscanpos, wave_resid, resid, using_resid, &
-         resid_spec, resid_wave, meas_qual_flg, cal_fact, using_cal, &
-         wave_dpdf, refl_cld2, wave_o3, xsect_o3, fill, write_fill, &
+         resid_spec, meas_qual_flg, cal_fact, using_cal, &
+         wave_o3, xsect_o3, fill, write_fill, &
          wave_fill, ref_clr, get_refl_clim, ler_nsz, ler_sz, ler_nth, &
-         ler_th, ler_nph, ler_ph, ler354!, &
-!         refl_ref, sza_Ref, satz_ref,  reference_rad, &
-!         az_ref, psurf_ref, reference_spec, reference_wave, reference_ring, 
+         ler_th, ler_nph, ler_ph, ler354 
     use m_cloud_pres_mod
     use m_alloc1
     use m_alloc2
@@ -448,7 +445,7 @@ contains
               ix1=ix1-1   
             endif
           endif
-          if (ix1 >= npres .and. interp <= 1) ix1=npres-1
+          if (ix1 >= npres) ix1=npres-1
           if ((np < ix1 .and. ix1 > 1) .or. ix1 == npres) then
             ix1=ix1-1
           endif

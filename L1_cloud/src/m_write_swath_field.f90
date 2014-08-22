@@ -180,7 +180,7 @@
 !       status = he5_swsetfill(swid, fieldname, numbertype, missingvalue)
        status = he5_swwrlattr(swid, fieldname, "MissingValue", numbertype, n1, missingvalue)
        status = he5_swwrlattr(swid, fieldname, "Offset", HE5T_NATIVE_DOUBLE, n1, off_set_default)
-       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, 1, scale_factor_default)
+       status = he5_swwrlattr(swid, fieldname, "ScaleFactor", HE5T_NATIVE_DOUBLE, n1, scale_factor_default)
        nn = len_trim(title)
        status = he5_swwrlattr(swid, fieldname, "Title", HE5T_NATIVE_CHAR, nn, title)
        nn = len_trim(units)

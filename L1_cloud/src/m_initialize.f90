@@ -83,37 +83,13 @@ contains
           iarg = iarg + 1
           call GetArg ( iArg, argv )
           read(argv,*,err=500) iprt
-        else if(index(argv,'-i ') > 0) then
-          if ( iarg+1 > argc ) call ret_usage()
-          iarg = iarg + 1
-          call GetArg ( iArg, argv )
-          read(argv,*,err=500) interp
-        else if(index(argv,'-rc ') > 0) then
-          if ( iarg+1 > argc ) call ret_usage()
-          iarg = iarg + 1
-          call GetArg ( iArg, argv )
-          read(argv,*,err=500) resource_file
-          read_resource_file=.true.
         else if(index(argv,'-noret ') > 0) then
           noret = .true.
-        else
-          if (nfiles < maxfiles) then
-            nfiles = nfiles + 1
-            filenames(nfiles) = argv
-          else
-            print *,'l1bnamelist: too many files ',i, maxfiles
-          endif
         endif
       enddo
     endif
 111 continue
 
-    !if no filename specified on command line, the set nfiles=1
-    !==========================================================
-    if (nfiles == 0) then
-      nfiles=1
-      no_cl_filename=.true. ! no command line filename
-    endif
 
     !***********************************************************************
     !read OMCLDRR.pcf
@@ -153,7 +129,7 @@ contains
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         do_o3 = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting write_resid = ',write_resid
+        if (iprt >= 1) print *,'initialize: setting do_o3 = ',do_o3
       endif
 
       returnstatus = pgs_pc_getconfigdata(write_obs_LUN,buf)
@@ -221,21 +197,16 @@ contains
 
     print *
     print *, &
-         'Usage:  cloud_ret.x [-p iprt] [-i interp] [-noret]'
-    print *, '[input files] '
+         'Usage:  cloud_ret.x [-p iprt] [-noret]'
     print *
     print *,  'where'
     print *
     print *, '-p  iprt    printout level flag (1:least amount of '
     print *, '             (printout, >1 more printouts, default=1)'
     print *, '                                             '
-    print *, '-i interp   interpolation level (2 lowest, 4 medium, 5 highest)'
-    print *
     print *, '-noret      do not actually perform retrieval (for testing)'    
     print *
-    print *, 'input files level 1b radiance files (process several at a time)'
-    print *
-    print *, 'Last Revised: 28 March 2002      (J. Joiner)  '
+    print *, "Last Revised: 20 August 2014      (E. O'Sullivan)  "
     print *
     call exit(7)
 

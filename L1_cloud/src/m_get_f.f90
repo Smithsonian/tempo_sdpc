@@ -7,9 +7,9 @@ contains
        sb_ls, tr_ls, set_cld_frac, i0_ss, sb_ss, tr_ss)
 
     use m_vars, ONLY: &
-         refl, ai, iprt, refl_l, dIdR, & 
-         min_refl, max_refl, min_refl_flag, ai_flag, qc, &
-         max_ai, eff_cld_frac, do_short_wave, iLine, cal_reflec, rad_cld_frac
+         refl, ai, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
+         ai_flag, qc, max_ai, eff_cld_frac, do_short_wave, iLine, &
+         cal_reflec, rad_cld_frac
 
     implicit none
     !-------------------------------------------------------------------------
@@ -149,7 +149,7 @@ contains
       if (eff_cld_frac(i,iLine) == 0. .or. eff_cld_frac(i,iLine) == 1.) then
         ! calculated short wavelength using retrieved reflectivity
         i_ray_s=i0_s + (refl_l*tr_s)/(1-refl_l*Sb_s)
-      elseif (eff_cld_frac(i,iLine) < 1.) then
+      else !if (eff_cld_frac(i,iLine) < 1.) then
         ! calculated short wavelength using retrieved effective cloud fraction
         I_cld_s=i0_s + (refl_cld*tr_s)/(1-refl_cld*Sb_s)
         i_ray_s=i_clr_s*(1-eff_cld_frac(i,iLine))+i_cld_s*eff_cld_frac(i,iLine)

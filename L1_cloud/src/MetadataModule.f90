@@ -15,7 +15,7 @@ module MetadataModule
      USE MetadatOBJModule
      USE m_LUN_set
      USE m_vars, ONLY: cloud_pres, eff_cld_frac, n_good_input, n_good_output, &
-          highqual, badqual, cloud_pres_max, cld_frac_min, qc,   &
+          highqual, badqual, cld_frac_min, qc,   &
           n_input, n_missing, using_cal
      USE m_swathnames, ONLY: vis, visz
      USE m_pgs_include
@@ -86,7 +86,6 @@ module MetadataModule
      ENDIF
 
      !preliminary estimates
-     !ind = count(cloud_pres > cloud_pres_max .or. cloud_pres < 0.0)
      ind = count(btest(qc(:,:),2) .or. btest(qc(:,:),3))
      QAboundsdata = nint( real(ind) / real(size(cloud_pres))*100.0)
 

@@ -16,7 +16,7 @@ contains
     ! Called by m_cloud_mask
     !
     ! INPUT VARIABLES
-    ! maxCoadd: mximum number of samll pixesl to coadd, =5 in m_cloud_mask
+    ! maxCoadd: maximum number of small pixels to coadd, =5 in m_cloud_mask
     ! nXtrack: Number of cross-track pixels, read in from data file by 
     !           m_cloud_mask
     ! iLine: along-track "scan" line number currently under consideration, 
