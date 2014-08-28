@@ -43,7 +43,8 @@ program OMCLDRR
   ! !REVISION HISTORY: 
   !
   !  05Jan01   Joiner     original fortran 90
-  !  28Mar02   Vasilkov   changes to read filename_out from PCF (marked with ****)
+  !  28Mar02   Vasilkov   changes to read filename_out from PCF (marked ****)
+  !  26Aug14   O'Sullivan tidying, simplification, annotation for TEMPO
   !
   !EOP
 
@@ -145,8 +146,14 @@ program OMCLDRR
     !do the retrieval
     !=================
 
-    refl_clr=0.15d0 ! just for testing, set back later
-    refl_cld=0.80d0
+    ! Note that the clear and cloudy reflectance values below (0.15/0.8)
+    ! over-ride those in m_vars, and disagree with Joiner & Vasilkov (2006).
+    ! However these values are required to produce results consistent 
+    ! with the OMI pipeline. refl_clr will be replaced by TOMS reflect.
+    ! climatology if get_refl_clim=.true. (as it usually is).
+    refl_clr=0.15d0 
+    refl_cld=0.80d0 
+
 
     if (.not. get_refl_clim) then
       ref_clr(:,iLine)=refl_clr

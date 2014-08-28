@@ -45,8 +45,8 @@ module m_vars
   ! input stages of code. Note: set in PCF file
   logical :: wrt_solar=.false. ! write out solar data and quit
   logical :: retrieve_chl_pres=.false. ! retrieve chl and pres when clear
-  logical :: retrieve_chl_clr=.false. ! retrieve only chl when clear (not cld pres)
-  logical :: retrieve_chl_cld=.false. ! proxy for ret. cld liq water when cloudy
+  logical :: retrieve_chl_clr=.true. ! retrieve only chl when clear (not cld pres)
+  logical :: retrieve_chl_cld=.false. ! try to retrieve chl in all pixels
   logical :: do_chl=.true. ! do chlorophyll correction only based on climatology
   logical :: cloud_fr_corr=.true. ! do cloud fraction corrections?
   logical :: done_read_terr=.false. ! has terrain pressure dataset been read?
@@ -264,11 +264,12 @@ module m_vars
   real (kind=4), allocatable, dimension(:,:) :: cloud_pres, cld_pres2
   !cloud pressure for O3
 
-
+  real (KIND=8) :: refl_clr=0.15d0!0.11d0 !clear sky reflectance
+  real (KIND=8) :: refl_cld=0.80d0!0.40d0 !cloud reflectance
+  ! Note that refl_clr and refl_cld were 0.11 and 0.4 in pipeline version
+  ! of m_vars, but were overwritten to the current values by OMCLDRR
   real (KIND=8) :: refl_l, refl_s ! reflectances at long and short wavel.
   real (KIND=8) :: refl_clr_oc=0.10d0 !0.08 !ocean reflectance
-  real (KIND=8) :: refl_clr=0.11d0 !0.08 !0.15 !clear sky reflectance
-  real (KIND=8) :: refl_cld=0.40d0 !0.80 !cloud reflectance
   real (KIND=8) :: cld_frac_min=0.05d0 !threshold for clear scene (?)
   real (KIND=8), parameter :: max_refl=1.00d0 ! max allowed reflectance
   real (KIND=8), parameter :: min_refl=0.00d0 ! min allowed reflectance

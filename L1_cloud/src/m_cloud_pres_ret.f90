@@ -1,3 +1,4 @@
+!Main processing code for cloud pressure and cloud fraction calculations
 module m_cloud_pres_ret
 
   private
@@ -7,6 +8,68 @@ module m_cloud_pres_ret
 contains
 
   subroutine cloud_pres_ret(refl_clr, refl_cld)
+
+    !!==================================================================
+    !
+    ! Subroutine cloud_pres_ret:
+    !
+    ! This is the main code performing the retrieval (via Chi^2 fit) 
+    ! of the primary cloud code data products:
+    !
+    ! Cloud Pressure for O3
+    ! Cloud Fraction for O3 
+    !
+    ! It also calculates a number of other output variables 
+    ! (in some cases via calls to other modules) including:
+    !
+    ! Convergence Factor
+    ! dIdR (Fractional Sensitivity of Radiance to Reflectivity)
+    ! Effective Filling-in
+    ! Radiative Cloud Fraction
+    ! Reflectivity
+    ! Residual Bias and Residual Standard Deviation
+    ! Wavelength Shift
+    !
+    ! It can also update:
+    !
+    ! Measurement Quality (flags)
+    ! Cloud Mask
+    !
+    ! There are a number of options which can generate additional outputs,
+    ! including:
+    !
+    ! Wavelength Squeeze
+    ! Aerosol Index (ai)
+    ! Oceanic Chlorophyll Concentration (normally a climatology is used)
+    ! 
+    ! INPUTS/OUTPUTS:
+    !
+    ! The two nominal input parameters refl_clr and refl_cld represent the 
+    ! reflectivity of the earth in clear or fully overcast conditions.
+    ! 
+    ! For documentation of all other parameters used, SEE:
+    ! m_cloud_pres_mod
+    ! m_vars 
+    ! and other modules called herein (m_get_f, m_get_ai_refl, etc.)
+    !
+    ! REFERENCES;
+    !
+    ! Primary (most useful):
+    ! Joiner et al. (1995) Applied Optica, 34, 4513
+    ! Joiner & Vasilkov (2006) IEEE Trans. Geo. and Rem. Sens., 44, 1272
+    ! Secondary:
+    ! Joiner & Bhartia (1995) J. of Geophys. Res., 100, 23109
+    ! Joiner et al. (2011) Atmos. Meas. Teach. Dscuss., 4, 6186
+    ! Sneep et al. (2008) J. of Geophys. Res., 113, D15S23
+    ! Optional Chlorophyll retrieval:
+    ! Joiner et al. (2004) J. of Geophy. Res., 109, D01109
+    !
+    ! AUTHORS:
+    ! 
+    ! Joiner & Vasilkov - original OMI code (probably c2001)
+    ! O'Sullivan (2014) - updates and documentation for TEMPO
+    !
+    !!====================================================================
 
     use mathcons
     use m_print_ret
@@ -25,32 +88,28 @@ contains
     use m_sigma
     use m_interp_ring_rad
     use m_interp_pres
-    use m_vars, ONLY: w_grid, ps, nwave2, cloud_mask, &
-         eff_cld_frac, nXtrack, ws, fs, rad_cld_frac, do_LER, & 
-         iprt, refl, cal_reflec, do_short_wave, do_mler, &
-         ntheta, nscan, nphi, cloud_pres, sza, sat_zen, azimuth, qc, &
-         cld_frac_min, ai, get_cloud_frac, wmin, wmax, biases, &
-         stds, chi_sqr, oc_table, wgrid_oc, nwave_oc,nthet_oc,nscan_oc,&
-         nocrefl,nchl,theta_oc,scan_oc,phi_oc,ocrefl,chl, retrieve_chl_clr,&
-         retrieve_chl_cld, do_chl, land_flg, chlcl, chlorophyll, &
-         cloud_fr_corr, nwl, refl_clr_oc, bad_obs_flag, eff_cld_frac2, &
-         cld_pres2, reflect_cld, squeeze, write_resid, niter, no_ret_ps, &
-         noret, shift, do_alloc, write_obs, refl_l, refl_s, wave_short, &
-         wave_long, npres, lat, lon, theta, scan, phi, &
-         using_spline, iLine, start_line, wdelt, w12d, f12d, pres, geoflg, &
-         fill_value, n_good_input, n_good_output, n_missing, &
-         retrieve_chl_pres, smpx_stddev, irr_quality_flagL, &
-         quality_flagL, shifts, squeezes, &
-         do_o3,nscanpos, wave_resid, resid, using_resid, &
-         resid_spec, meas_qual_flg, cal_fact, using_cal, &
-         wave_o3, xsect_o3, fill, write_fill, &
-         wave_fill, ref_clr, get_refl_clim, ler_nsz, ler_sz, ler_nth, &
-         ler_th, ler_nph, ler_ph, ler354 
-    use m_cloud_pres_mod
     use m_alloc1
     use m_alloc2
     use m_lambda_qual
     use m_pgs_include
+    use m_cloud_pres_mod
+    use m_vars, ONLY: ai, azimuth, bad_obs_flag, biases, cal_fact, &
+         chi_sqr, chl, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
+         cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
+         do_LER, do_mler, do_o3, do_short_wave, eff_cld_frac, &
+         eff_cld_frac2, f12d, fill, fill_value, fs, geoflg, &
+         get_cloud_frac, get_refl_clim, iLine, iprt, land_flg, lat, &
+         ler354, ler_nph, ler_nsz, ler_nth, ler_ph, ler_sz, ler_th, lon, &
+         meas_qual_flg, nchl, n_good_input, n_good_output, niter, &
+         n_missing, noret, no_ret_ps, nphi, npres, nscan, nscan_oc, &
+         ntheta, nthet_oc, nwl, nXtrack, oc_table, phi, pres, ps, qc, &
+         rad_cld_frac, ref_clr, refl, refl_clr_oc, reflect_cld, resid, &
+         resid_spec, retrieve_chl_cld, retrieve_chl_clr, retrieve_chl_pres, &
+         sat_zen, scan, scan_oc, shift, shifts, squeeze, squeezes, stds, &
+         sza, theta, theta_oc, using_cal, using_resid, using_spline, &
+         w12d, wave_fill, wave_long, wave_o3, wave_resid, wave_short, &
+         wdelt, w_grid, wmax, wmin, write_fill, write_obs, write_resid, &
+         ws, xsect_o3
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -58,7 +117,9 @@ contains
     !include 'PGS_SMF.f'
 
     !*************************************************************************
-    if (do_alloc) then
+    ! m_cloud_pres_ret is called within a loop in OMCLDRR. If this is the 
+    ! first iteration, allocate memory and set up wavelength arrays
+    if (do_alloc) then 
 
       ! get wavelengths for retrieval
       !==============================
@@ -96,6 +157,8 @@ contains
       do_alloc=.false.
     endif ! do_alloc
 
+    ! If we're actually doing the retrievals, rather than testing IO..
+    ! ================================================================
     if (.not. noret) then
 
       !f1p and w1p need to be allocated in each iteration to allow for
@@ -194,7 +257,7 @@ contains
             sflx=spline(ws(:,ip),fs(:,ip),waves)
           endif
 
-        else ! not spline
+        else ! not spline, use linear interpolation instead
           ngood=count(fs(:,ip) > 0)
           if (ngood /= size(fs(:,ip))) then
             if (ngood > 0) then
@@ -290,8 +353,6 @@ contains
           i2_ler=i1_ler+1
           j=interpol(findgen(ler_nth)+1,ler_th,satz)
           l=interpol(findgen(ler_nph)+1,ler_ph,az)
-          !if(j < 1) print *,j,findgen(ler_nth)+1,ler_nth,ler_th,satz
-          !if(l < 1) print *,l,findgen(ler_nph)+1,ler_nph,ler_ph,az
           if(j < 0 .or. l < 0 .and. iprt > 0) print *,'negative input to bilinear interpolation of ler' 
           !per Joanna Joiner, set a minium of j=1
           if(j < 1) j=1.0
@@ -474,13 +535,13 @@ contains
               ind0=ind(indt)
               call interp_rad(ix1,ind0, i0_l1, sb_l1, tr_l1)
               call interp_rad(ix2,ind0, i0_l2, sb_l2, tr_l2)
-              call interp_rads(ix1, ix2, pres, x(0,1), i0_l1, i0_l2, sb_l1, sb_l2, &
-                   tr_l1, tr_l2, i0_l, sb_l, tr_l)
+              call interp_rads(ix1, ix2, pres, x(0,1), i0_l1, i0_l2, sb_l1, &
+                   sb_l2, tr_l1, tr_l2, i0_l, sb_l, tr_l)
               if (iter == 0) then
                 call interp_rad(i0x1,ind0, i0_l1, sb_l1, tr_l1)
                 call interp_rad(i0x2,ind0, i0_l2, sb_l2, tr_l2)
-                call interp_rads(i0x1, i0x2, pres, psurf, i0_l1, i0_l2, sb_l1, sb_l2, &
-                     tr_l1, tr_l2, i0_ls, sb_ls, tr_ls)
+                call interp_rads(i0x1, i0x2, pres, psurf, i0_l1, i0_l2, sb_l1,&
+                     sb_l2, tr_l1, tr_l2, i0_ls, sb_ls, tr_ls)
               endif
               i_obs_l=y_obs1(indt)
 
@@ -491,13 +552,13 @@ contains
                 ind0=ind(indt)
                 call interp_rad(ix1,ind0, i0_s1, sb_s1, tr_s1)
                 call interp_rad(ix2,ind0, i0_s2, sb_s2, tr_s2)
-                call interp_rads(ix1, ix2, pres, x(0,1), i0_s1, i0_s2, sb_s1, sb_s2, &
-                     tr_s1, tr_s2, i0_s, sb_s, tr_s)
+                call interp_rads(ix1, ix2, pres, x(0,1), i0_s1, i0_s2, sb_s1,&
+                     sb_s2, tr_s1, tr_s2, i0_s, sb_s, tr_s)
                 if (iter == 0) then
                   call interp_rad(i0x1,ind0, i0_l1, sb_l1, tr_l1)
                   call interp_rad(i0x2,ind0, i0_l2, sb_l2, tr_l2)
-                  call interp_rads(i0x1, i0x2, pres, psurf, i0_l1, i0_l2, sb_l1, sb_l2, &
-                       tr_l1, tr_l2, i0_ss, sb_ss, tr_ss)
+                  call interp_rads(i0x1, i0x2, pres, psurf, i0_l1, i0_l2, &
+                       sb_l1, sb_l2, tr_l1, tr_l2, i0_ss, sb_ss, tr_ss)
                 endif
                 i_obs_s=y_obs1(indt)
               endif
@@ -505,12 +566,12 @@ contains
               set_cld_frac=iter == 0
               if (do_mler) then 
                 call get_ai_refl(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
-                     i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, tr_ls, set_cld_frac, &
-                     i0_ss,sb_ss,tr_ss)
+                     i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, &
+                     tr_ls, set_cld_frac, i0_ss,sb_ss,tr_ss)
               else
                 call get_f(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
-                     i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, tr_ls, set_cld_frac, &
-                     i0_ss,sb_ss,tr_ss)
+                     i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, &
+                     tr_ls, set_cld_frac, i0_ss,sb_ss,tr_ss)
                 reflect_cld(ip,iLine)=refl_cld
               endif
               reflec=refl(ip,iLine)
@@ -640,11 +701,13 @@ contains
             ic2=1
           endif
 
-          !compute radiance and atmospheric ring at lower cloud pressure boundary
-          !======================================================================
+          !compute radiance and atmospheric Ring at lower cloud press. bound
+          !=================================================================
           if (cld_frac == 1) computed=.false. ! recompute at new reflectivity
-          call interp_ring_rad(ix1,reflec_cld,computed,rad_clds(ix1,:),ring=ring_clds(ix1,:))
-          call interp_ring_rad(ix2,reflec_cld,computed,rad_clds(ix2,:),ring=ring_clds(ix2,:))
+          call interp_ring_rad(ix1,reflec_cld,computed,rad_clds(ix1,:),&
+               ring=ring_clds(ix1,:))
+          call interp_ring_rad(ix2,reflec_cld,computed,rad_clds(ix2,:),&
+               ring=ring_clds(ix2,:))
 
           if (add_oc .and. iter == 0) then
             call interp_ring_rad(i_np0,refl_oc,comp_oc_clr,rad_clr_oc)
@@ -683,7 +746,8 @@ contains
           call interp_pres(ix1, ix2, ring_cld, pres, x(0,1), h(:,0))
           temp2D=>rad_clds(ix1:ix2,:)
           call interp_pres(ix1, ix2, rad_cld, pres, x(0,1),jacob_rad)
-          if ( (eff_cld_frac2(ip,iLine) < 1.0 .or.& !cld_frac > cld_frac_min .and. &
+          if ( (eff_cld_frac2(ip,iLine) < 1.0 .or. & 
+               !cld_frac > cld_frac_min .and. &
                cld_frac < 1.0) .and. get_cloud_frac .and. .not. comp_clear) then
             temp2D=>ring_clrs(i0x1:i0x2,:)
             call interp_pres(i0x1, i0x2, ring_clr, pres, psurf, jacob_dummy)
@@ -862,7 +926,8 @@ contains
             !update for next iteration
             !=========================
             diff_chi=(chisq_old-chisq)/chisq_old
-            if (diff_chi < diff_chi_iter_max .and. abs(bias) > abs(bias_old) .and. .not. new_r) then
+            if (diff_chi < diff_chi_iter_max .and. &
+                 abs(bias) > abs(bias_old) .and. .not. new_r) then
               qc(ip,iLine)=IBSET(qc(ip,iLine),0)
             endif
             chisq_old=chisq   
@@ -896,7 +961,7 @@ contains
           corr=err_cov
           do ii=0, nst-1    
             do jj=0, nst-1
-              corr(ii,jj)=corr(ii,jj)/err_cov(ii,ii)**0.5/err_cov(jj,jj)**0.5   
+              corr(ii,jj)=corr(ii,jj)/err_cov(ii,ii)**0.5/err_cov(jj,jj)**0.5
             enddo ! jj   
           enddo ! ii   
           print *, 'error correlations'   
@@ -960,9 +1025,10 @@ contains
         endif
 
         !preliminary estimate of number of good retrievals
-        if( .not. ( btest(qc(ip,iLine),0) .or. btest(qc(ip,iLine),2) .or. btest(qc(ip,iLine),3) &
-             .or. btest(qc(ip,iLine),4) .or. btest(qc(ip,iLine),6))) &
-                                !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
+        if( .not. ( btest(qc(ip,iLine),0) .or. btest(qc(ip,iLine),2) &
+             .or. btest(qc(ip,iLine),3) .or. btest(qc(ip,iLine),4) &
+             .or. btest(qc(ip,iLine),6))) &
+             !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
              n_good_output = n_good_output + 1
 
         !print final result
@@ -999,7 +1065,7 @@ contains
         endif
 
       enddo    ! profile loop
-    else !no noret
+    else ! noret=.true. so we're only testing IO
       fill(:,iLine)=0.
       cloud_pres(:,iLine)=0.5
       cld_pres2(:,iLine)=0.5
@@ -1014,7 +1080,7 @@ contains
       biases(:,iLine)=9999.
       stds(:,iLine)=9999.
       chi_sqr(:,iLine)=9999.
-    endif ! noret
+    endif ! if (.not. noret)
 
 
     ! ***********************************************************
