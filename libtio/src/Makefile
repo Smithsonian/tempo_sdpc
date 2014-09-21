@@ -28,8 +28,8 @@ ELFDIR_ELF_LIB = $(elfdir)/$(ELFLIB_BUILD_NAME)#
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
 
-OFILES   = tio.o tio_l1b.o tio_err.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1b.o $(elfdir)/tio_err.o
+OFILES   = tio.o tio_l1.o tio_err.o
+ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1.o $(elfdir)/tio_err.o
 
 # --- Fortran interface
 ELFLIB_F = lib$(THIS_LIB)_f.so
@@ -132,8 +132,8 @@ distclean: clean
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio.c $(LIBS)
 
-$(elfdir)/tio_l1b.o:	$(srcdir)/tio_l1b.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1b.c $(LIBS)
+$(elfdir)/tio_l1.o:	$(srcdir)/tio_l1.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1.c $(LIBS)
 
 $(elfdir)/tio_err.o:	$(srcdir)/tio_err.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_err.c $(LIBS)

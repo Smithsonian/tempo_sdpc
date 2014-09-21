@@ -11,9 +11,55 @@
 
 #define EMPTY()
 
-int _pTIO_define_text_attrs (int grp, int varid, _pText_Attr_Type *attrs)
+int _pTIO_define_enum (int grp, const char *name,
+                       const _pEnum_Type *enum_table, int *enum_typeid)
 {
-   _pText_Attr_Type *a;
+   const _pEnum_Type *e;
+   int status;
+
+   if (NC_NOERR != (status = nc_def_enum (grp, NC_UINT, name, enum_typeid)))
+     {
+        _pTIO_err_verror_nc (status, "%s: defining enum %s", __func__, name);
+        return -1;
+     }
+
+   for (e = enum_table; e->name != NULL; e++)
+     {
+        status = nc_insert_enum (grp, *enum_typeid, e->name, &e->value);
+        if (status != NC_NOERR)
+          {
+             _pTIO_err_verror_nc (status, "%s: inserting value %s=%u for enum %s",
+                                  __func__, e->name ? e->name : "(null)",
+                                  e->value, name);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs)
+{
+   const _pInt_Attr_Type *a;
+   int status;
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        status = nc_put_att_int (grp, varid, a->name, NC_INT, 1, &a->value);
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status, "%s: defining int attribute %s",
+                                  __func__, a->name);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+int _pTIO_define_text_attrs (int grp, int varid, const _pText_Attr_Type *attrs)
+{
+   const _pText_Attr_Type *a;
    int status;
 
    for (a = attrs; a->name != NULL; a++)
@@ -32,7 +78,8 @@ int _pTIO_define_text_attrs (int grp, int varid, _pText_Attr_Type *attrs)
 }
 
 int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_type xtype,
-                                      int num_dims, int *dimids, _pText_Attr_Type *text_attrs,
+                                      int num_dims, const int *dimids,
+                                      const _pText_Attr_Type *text_attrs,
                                       int *pvarid)
 {
    int status, varid;
@@ -94,6 +141,33 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
      {
         _pTIO_err_verror_nc (status, "writing fill value to grp=%d varid=%d",
                              grp, varid);
+        return -1;
+     }
+
+   return 0;
+}
+
+int _pTIO_define_processing_level (int grp, enum TIO_Processing_Level level)
+{
+   int status, enum_typeid;
+   static _pEnum_Type enum_table[] =
+     {
+        {"0",  TIO_PROC_LEVEL_0},
+        {"1a", TIO_PROC_LEVEL_1A},
+        {"1b", TIO_PROC_LEVEL_1B},
+        {"1c", TIO_PROC_LEVEL_1C},
+        {"2",  TIO_PROC_LEVEL_2},
+        {"3",  TIO_PROC_LEVEL_3},
+        _pENUM_TABLE_END
+     };
+
+   if (-1 == _pTIO_define_enum (grp, "processing_level_enum", enum_table, &enum_typeid))
+     return -1;
+   status = nc_put_att (grp, NC_GLOBAL,
+                        "processing_level", enum_typeid, 1, &level);
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: defining processing_level attribute", __func__);
         return -1;
      }
 
@@ -360,7 +434,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
    if (NC_NOERR == status)
      {
         /* if the attribute exists, make sure we're writing
-         * the same type value
+         * a value of the same type.
          */
         if (xtype != file_atttype)
           {
@@ -408,7 +482,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
      }
 
    /* Use the netCDF type-safe interface so that netCDF
-    * performs any needed type conversion
+    * performs any needed type conversion for built-in types.
     */
    switch (xtype)
      {
@@ -445,12 +519,16 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
         status = nc_get_att_double (grp, varid, attname, (double *)att);
         break;
       default:
-        _pTIO_err_verror ("%s: reading attribute %s using invalid type (xtype=%d)",
-                          __func__, attname, xtype);
-        return -1;
+        if (NC_NOERR != (status = nc_get_att (grp, varid, attname, att)))
+          {
+             _pTIO_err_verror_nc (status, "%s: reading attribute %s in group %d using unrecognized typeid=%d",
+                                  __func__, attname, grp, xtype);
+             return -1;
+          }
+        /* drop */
      }
 
-   if (status != NC_NOERR)
+   if (NC_NOERR != status)
      {
         _pTIO_err_verror_nc (status, "%s: reading attribute %s in group %d",
                              __func__, attname, grp);

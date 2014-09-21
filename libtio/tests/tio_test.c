@@ -62,6 +62,8 @@ int main (void)
    int data_size = ntracks * nxtrack * ny;
    int err = 1;
    int track, num_write;
+   unsigned int processing_level;
+   int processing_level_type;
 
    /* nc_set_log_level(3); */
 
@@ -82,9 +84,9 @@ int main (void)
         goto cleanup;
      }
 
-   if (-1 == TIO_create_l1b_template (ncid, ntracks, nxtrack, ny))
+   if (-1 == TIO_create_l1_template (ncid, ntracks, nxtrack, ny))
      {
-        fprintf (stderr, "*** failed creating L1b template in %s\n", file);
+        fprintf (stderr, "*** failed creating L1 template in %s\n", file);
         goto cleanup;
      }
 
@@ -102,6 +104,7 @@ int main (void)
         goto cleanup;
      }
 
+   /* test writing to attributes */
    if (-1 == TIO_put_att (grp, field_name, attr_name, attr_type, attr_len, &attr))
      {
         fprintf (stderr, "*** TIO_put_att failed\n");
@@ -119,6 +122,15 @@ int main (void)
              fprintf (stderr, "*** expected attribute type mismatch error \n");
              goto cleanup;
           }
+     }
+
+   /* test writing to enum attributes */
+   processing_level = TIO_PROC_LEVEL_1C;
+   if ((-1 == TIO_inq_att (ncid, NULL, "processing_level", &processing_level_type, NULL))
+       || (-1 == TIO_put_att (ncid, NULL, "processing_level", processing_level_type, 1, &processing_level)))
+     {
+        fprintf (stderr, "*** error writing to enum attribute\n");
+        goto cleanup;
      }
 
    if (NC_NOERR != (status = nc_close (ncid)))
@@ -175,6 +187,19 @@ int main (void)
      {
         fprintf (stderr, "*** conversion read wrong attribute value\n");
         fprintf (stderr, "attr = %lld  attr_in_conversion=%u\n", attr, attr_in_conversion);
+        goto cleanup;
+     }
+
+   /* test reading enum attributes */
+   if (-1 == TIO_get_att (ncid, NULL, "processing_level", processing_level_type, &processing_level))
+     {
+        fprintf (stderr, "*** error reading enum attribute\n");
+        goto cleanup;
+     }
+   if (processing_level != TIO_PROC_LEVEL_1C)
+     {
+        fprintf (stderr, "*** error:  processing_level=%u expected %u\n",
+                 processing_level, TIO_PROC_LEVEL_1C);
         goto cleanup;
      }
 

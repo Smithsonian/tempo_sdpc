@@ -24,8 +24,9 @@ extern "C" {
 #define TIO_FLOAT  NC_FLOAT
 #define TIO_DOUBLE NC_DOUBLE
 
+#define TIO_L1_FORMAT_VERSION       "0.1"
 #define TIO_CF_CONVENTION_VERSION   "CF-1.6"
-#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00.0"
+#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00 UTC"
 
 #define TIO_DIM_NAME_CORNER         "corner"
 #define TIO_DIM_NAME_COV            "cov"
@@ -55,6 +56,7 @@ extern "C" {
 #define TIO_VAR_NAME_GYROBIAS       "gyro_bias"
 #define TIO_VAR_NAME_GYRORAW        "gyro_raw"
 #define TIO_VAR_NAME_GYROSCALE      "gyro_scale"
+#define TIO_VAR_NAME_INRQF          "inr_quality_flag"
 #define TIO_VAR_NAME_MOONPOS        "moon_position"
 #define TIO_VAR_NAME_PIXELSIZE      "pixel_size"
 #define TIO_VAR_NAME_PIXELSCALE     "pixel_scale"
@@ -70,6 +72,23 @@ extern "C" {
 #define TIO_VAR_NAME_TIME_MANEUVER  "time"
 #define TIO_VAR_NAME_TIME_SMA       "time"
 #define TIO_VAR_NAME_WAVELENGTH     "wavelength"
+
+enum TIO_INR_Status
+{
+   TIO_INR_NONE    = 0,
+   TIO_INR_INITIAL = 1,
+   TIO_INR_FINAL   = 2
+};
+
+enum TIO_Processing_Level
+{
+   TIO_PROC_LEVEL_0,
+   TIO_PROC_LEVEL_1A,
+   TIO_PROC_LEVEL_1B,
+   TIO_PROC_LEVEL_1C,
+   TIO_PROC_LEVEL_2,
+   TIO_PROC_LEVEL_3
+};
 
 typedef struct
 {
@@ -95,8 +114,8 @@ extern int TIO_put_att (int grp, const char *varname, const char *attname,
 extern int TIO_get_att (int grp, const char *varname, const char *attname,
                         int xtype, void *att);
 
-extern int TIO_create_l1b_template (int ncid, size_t num_steps,
-                                    size_t num_xtrack, size_t num_channels);
+extern int TIO_create_l1_template (int ncid, size_t num_steps,
+                                   size_t num_xtrack, size_t num_channels);
 
 #if 0
 {

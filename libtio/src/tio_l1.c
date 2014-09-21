@@ -32,10 +32,9 @@ typedef struct
 }
 Dim_Table_Type;
 
-static int define_globals (int grp, Dim_Table_Type *dim_table)
+static int define_global_dims (int grp, Dim_Table_Type *dim_table)
 {
    int status;
-   int dims[TIO_MAX_VAR_DIMS];
 
    /* Define global dimensions */
    status = nc_def_dim (grp, TIO_DIM_NAME_XTRACK, dim_table->xtrack.len, &dim_table->xtrack.id);
@@ -65,58 +64,60 @@ static int define_globals (int grp, Dim_Table_Type *dim_table)
    status = nc_def_dim (grp, TIO_DIM_NAME_COV, dim_table->cov.len, &dim_table->cov.id);
    if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
 
-   /* Define global coordinate variables */
+   return 0;
+}
+
+static int define_global_vars (int grp, Dim_Table_Type *dim_table)
+{
+   int status, varid;
+   int dims[TIO_MAX_VAR_DIMS];
+
+   /* coordinate variables */
+   dims[0] = dim_table->step.id;
+   status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
+   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+
+   dims[0] = dim_table->xtrack.id;
+   status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
+   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+
+   dims[0] = dim_table->corner.id;
+   status = nc_def_var (grp, TIO_DIM_NAME_CORNER, NC_INT, 1, dims, NULL);
+   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+
+   /* time */
      {
-        int ignore_id;
-
-        dims[0] = dim_table->step.id;
-        status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, &ignore_id);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-        dims[0] = dim_table->xtrack.id;
-        status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, &ignore_id);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-        dims[0] = dim_table->corner.id;
-        status = nc_def_var (grp, TIO_DIM_NAME_CORNER, NC_INT, 1, dims, &ignore_id);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-     }
-
-   /* Define global variables */
-     {
-        /* time */
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME, NC_FLOAT, 1, dims, time_attrs, NULL))
           return -1;
      }
 
+   /* exptime */
      {
-        /* exptime */
         static _pText_Attr_Type exptime_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPTIME, NC_FLOAT, 1, dims, exptime_attrs, NULL))
           return -1;
      }
 
+   /* pixel_size */
      {
-        /* pixel_size */
         static _pText_Attr_Type pixel_size_attrs[] =
           {
-             {"units", "micrometer"},
+             {"units", "micron"},
              {"comment", "pixel_size[i], applies to dimension i, where i=0 varies slowest"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         static float pixel_size[] = {_pTIO_PIXEL_YSIZE, _pTIO_PIXEL_XSIZE};
-        int varid;
 
         dims[0] = dim_table->xy_det.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSIZE, NC_FLOAT, 1, dims, pixel_size_attrs, &varid))
@@ -128,16 +129,15 @@ static int define_globals (int grp, Dim_Table_Type *dim_table)
           }
      }
 
+   /* pixel_scale */
      {
-        /* pixel_scale */
         static _pText_Attr_Type pixel_scale_attrs[] =
           {
              {"units", "microradian"},
              {"comment", "pixel_scale[i], applies to dimension i, where i=0 varies slowest"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         static float pixel_scale[] = {_pTIO_PIXEL_YSCALE, _pTIO_PIXEL_XSCALE};
-        int varid;
 
         dims[0] = dim_table->xy_det.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSCALE, NC_FLOAT, 1, dims, pixel_scale_attrs, &varid))
@@ -149,27 +149,75 @@ static int define_globals (int grp, Dim_Table_Type *dim_table)
           }
      }
 
-   /* Define global attributes */
+   return 0;
+}
+
+static int define_inr_status (int grp)
+{
+   int status, enum_typeid;
+   enum TIO_INR_Status inr_status;
+   static _pEnum_Type enum_table[] =
      {
-        static _pText_Attr_Type text_attrs[] =
-          {
-             {"Conventions", TIO_CF_CONVENTION_VERSION},
-             {"time_reference", TIO_TIME_REFERENCE_STRING},
-             TEXT_ATTRS_END
-          };
-        int zero_i = 0;
+        {"none", TIO_INR_NONE},
+        {"initial", TIO_INR_INITIAL},
+        {"final", TIO_INR_FINAL},
+        _pENUM_TABLE_END
+     };
 
-        if (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs))
-          return -1;
+   if (-1 == _pTIO_define_enum (grp, "inr_status_enum", enum_table, &enum_typeid))
+     return -1;
+   status = nc_put_att (grp, NC_GLOBAL, "inr_status", enum_typeid, 1,
+                        &inr_status);
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: defining inr_status attribute", __func__);
+        return -1;
+     }
 
-        status = nc_put_att_int (grp, NC_GLOBAL, "granule_seq_num", NC_INT, 1, &zero_i);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+   return 0;
+}
 
-        status = nc_put_att_int (grp, NC_GLOBAL, "processing_version", NC_INT, 1, &zero_i);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+static int define_global_attrs (int grp)
+{
+   static _pText_Attr_Type text_attrs[] =
+     {
+        {"Conventions", TIO_CF_CONVENTION_VERSION},
+        {"format_version", TIO_L1_FORMAT_VERSION},
+        {"time_reference", TIO_TIME_REFERENCE_STRING},
+        {"time_coverage_start", "2018-09-01T12:00:00 UTC"},
+        {"time_coverage_end", "2018-09-01T13:00:00 UTC"},
+        _pTEXT_ATTRS_END
+     };
+   static _pInt_Attr_Type int_attrs[] =
+     {
+        {"processing_version", 0},
+        {"last_granule_of_scan", 0},
+        {"granule_seq_num", 0},
+        _pINT_ATTRS_END
+     };
 
-        status = nc_put_att_int (grp, NC_GLOBAL, "last_granule_of_scan", NC_INT, 1, &zero_i);
-        if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+   if (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs))
+     return -1;
+
+   if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
+     return -1;
+
+   if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1B))
+     return -1;
+
+   if (-1 == define_inr_status (grp))
+     return -1;
+
+   return 0;
+}
+
+static int define_globals (int grp, Dim_Table_Type *dim_table)
+{
+   if ((-1 == define_global_dims (grp, dim_table))
+       || (-1 == define_global_vars (grp, dim_table))
+       || (-1 == define_global_attrs (grp)))
+     {
+        return -1;
      }
 
    return 0;
@@ -211,7 +259,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
           {
              {"units", "TBD"},
              {"coordinates", "longitude latitude spectral_channel"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -244,7 +292,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type wavelength_attrs[] =
           {
              {"units", "nm"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -279,7 +327,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
              {"units", "degrees_east"},
              {"long_name", "longitude"},
              {"bounds", "longitude_bounds"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -296,7 +344,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
              {"units", "degrees_north"},
              {"long_name", "latitude"},
              {"bounds", "latitude_bounds"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -314,7 +362,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
              {"long_name", "ellipsoid_altitude"},
              {"bounds", "ellipsoid_altitude_bounds"},
              {"coordinates", "longitude latitude"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -330,7 +378,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
           {
              {"units", "degrees_east"},
              {"long_name", "longitude bounds (SW,SE,NE,NW)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -347,7 +395,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
           {
              {"units", "degrees_north"},
              {"long_name", "latitude bounds (SW,SE,NE,NW)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -364,7 +412,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
           {
              {"units", "m"},
              {"long_name", "ellipsoid altitude at bounds (SW,SE,NE,NW)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -375,13 +423,28 @@ static int define_band_group (int parent_grp, const char *grp_name,
           return -1;
      }
 
+   /* inr flags */
+     {
+        static _pText_Attr_Type inrqf_attrs[] =
+          {
+             {"comment", "INR quality flag"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INRQF, NC_UINT, 2, dims, inrqf_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_UINT))
+          return -1;
+     }
+
    /* covariance */
      {
         static _pText_Attr_Type cov_attrs[] =
           {
              {"units", "km^2"},
              {"comment", "Unique elements of 2x2 symmetric covariance matrix, cov(0,0), cov(0,1), cov(1,1)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -397,7 +460,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type dqf_attrs[] =
           {
              {"comment", "Data quality flag"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -413,7 +476,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
           {
              {"units", "m"},
              {"coordinates", "longitude latitude"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
@@ -455,7 +518,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           {
              {"units", "km"},
              {"comment", "Satellite position in " COMMENT_WGS84},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
@@ -469,7 +532,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           {
              {"units", "km"},
              {"comment", "Sun position in " COMMENT_WGS84},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
@@ -483,7 +546,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           {
              {"units", "km"},
              {"comment", "Moon position in " COMMENT_WGS84},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
@@ -528,7 +591,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_EPHEM, NC_FLOAT, 1, dims, time_attrs, NULL))
@@ -540,7 +603,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type srp_attrs[] =
           {
              {"units", "microPascal"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         float solar_radiation_pressure = 9.08;  /* perfect reflectance, normal to surface */
         int varid;
@@ -559,7 +622,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           {
              {"units", "km"},
              {"comment", "Satellite position in " COMMENT_WGS84},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
         dims[1] = dim_table->xyz.id;
@@ -573,7 +636,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           {
              {"units", "km/s"},
              {"comment", "Satellite velocity in " COMMENT_WGS84},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
         dims[1] = dim_table->xyz.id;
@@ -618,7 +681,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_MANEUVER, NC_FLOAT, 1, dims, time_attrs, NULL))
@@ -631,7 +694,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
           {
              {"units", "m/s"},
              {"comment", "Velocity change in coordinates defined by satellite body axes (roll, pitch, yaw)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
         dims[1] = dim_table->xyz_sat.id;
@@ -676,7 +739,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_GYRO, NC_FLOAT, 1, dims, time_attrs, NULL))
@@ -689,7 +752,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           {
              {"units", "radians/s"},
              {"comment", "Roll, pitch, yaw rate"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
         dims[1] = dim_table->xyz_sat.id;
@@ -703,7 +766,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           {
              {"units", "radians/s"},
              {"comment", "Roll, pitch, yaw rate bias"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->xyz_sat.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYROBIAS, NC_FLOAT, 1, dims, gyro_bias_attrs, NULL))
@@ -716,7 +779,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           {
              {"units", "radians/s"},
              {"comment", "Roll, pitch, yaw rate scale"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->xyz_sat.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYROSCALE, NC_FLOAT, 1, dims, gyro_scale_attrs, NULL))
@@ -760,7 +823,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_SMA, NC_FLOAT, 1, dims, time_attrs, NULL))
@@ -773,7 +836,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
           {
              {"units", "radians"},
              {"comment", "Scan mirror pointing direction (East, North)"},
-             TEXT_ATTRS_END
+             _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
         dims[1] = dim_table->xy_sma.id;
@@ -850,8 +913,8 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-int TIO_create_l1b_template (int ncid, size_t num_steps, size_t num_xtrack,
-                             size_t num_channels)
+int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
+                            size_t num_channels)
 {
    Dim_Table_Type dim_table;
 
