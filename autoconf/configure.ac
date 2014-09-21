@@ -43,6 +43,17 @@ fi
 AC_SUBST(HDFEOS5_LIB)
 AC_SUBST(HDFEOS5_INC)
 
+AC_ARG_WITH(netcdf,
+  [  --with-netcdf[=DIR]       Use netCDF library installed in DIR],
+  [jh_with_netcdf=$withval],
+  [jh_with_netcdf=no])
+if ! test "x$jh_with_netcdf" = "xno"; then
+   NETCDF_LIB="$jh_with_netcdf/lib"
+   NETCDF_INC="$jh_with_netcdf/include"
+fi
+AC_SUBST(NETCDF_LIB)
+AC_SUBST(NETCDF_INC)
+
 JH_LIST_SOURCES(L1_trace_gas/src)
 
 AC_CONFIG_HEADER(include/config.h:include/config.hin)

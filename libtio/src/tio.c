@@ -1,0 +1,462 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <math.h>
+
+#include "netcdf.h"
+#include "tio.h"
+#include "_tio.h"
+
+#define EMPTY()
+
+int _pTIO_define_text_attrs (int grp, int varid, _pText_Attr_Type *attrs)
+{
+   _pText_Attr_Type *a;
+   int status;
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        size_t len = strlen(a->text) + 1;
+        status = nc_put_att_text (grp, varid, a->name, len, a->text);
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status, "%s: defining text attribute %s",
+                                  __func__, a->name);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_type xtype,
+                                      int num_dims, int *dimids, _pText_Attr_Type *text_attrs,
+                                      int *pvarid)
+{
+   int status, varid;
+
+   status = nc_def_var (grp, var_name, xtype, num_dims, dimids, &varid);
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: defining variable %s",
+                             __func__, var_name);
+        return -1;
+     }
+
+   if (text_attrs != NULL)
+     {
+        if (-1 == _pTIO_define_text_attrs (grp, varid, text_attrs))
+          return -1;
+     }
+
+   if (pvarid != NULL)
+     {
+        *pvarid = varid;
+     }
+
+   return 0;
+}
+
+int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
+{
+   int status;
+   void *pfill_value;
+   char fill_char = NC_FILL_CHAR;
+   short fill_short = NC_FILL_SHORT;
+   int fill_int = NC_FILL_INT;
+   unsigned int fill_uint = (unsigned int) -1;
+   float fill_float = NC_FILL_FLOAT;
+   double fill_double = NC_FILL_DOUBLE;
+
+   switch (xtype)
+     {
+      case NC_CHAR: pfill_value = &fill_char;
+        break;
+      case NC_SHORT: pfill_value = &fill_short;
+        break;
+      case NC_INT:  pfill_value = &fill_int;
+        break;
+      case NC_UINT:  pfill_value = &fill_uint;
+        break;
+      case NC_FLOAT: pfill_value = &fill_float;
+        break;
+      case NC_DOUBLE: pfill_value = &fill_double;
+        break;
+      default:
+        _pTIO_err_verror ("%s: invalid fill value type xtype=%d", xtype);
+        return -1;
+     }
+
+   status = nc_put_att (grp, varid, _FillValue, xtype, 1, pfill_value);
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "writing fill value to grp=%d varid=%d",
+                             grp, varid);
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
+{
+   int status, i;
+
+   if ((name == NULL) || (info == NULL))
+     {
+        _pTIO_err_verror ("%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_inq_varid (grp, name, &info->varid)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s in group %d",
+                             __func__, name, grp);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_inq_varndims (grp, info->varid, &info->ndims)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s in group %d",
+                             __func__, name, grp);
+        return -1;
+     }
+
+   /* convenient default for the ndims=0 case */
+   info->dimlens[0] = 1;
+
+   if (info->ndims == 0)
+     return 0;
+
+   if (NC_NOERR != (status = nc_inq_vardimid (grp, info->varid, info->dimids)))
+     {
+        _pTIO_err_verror_nc (status,
+                             "%s: accessing variable %s dimids in group %d",
+                             __func__, name, grp);
+        return -1;
+     }
+   for (i = 0; i < info->ndims; i++)
+     {
+        status = nc_inq_dimlen  (grp, info->dimids[i], &info->dimlens[i]);
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status,
+                                  "%s: accessing dimension %d length in group %d",
+                                  __func__, info->dimids[i], grp);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+/* #define TEST_WAVELENGTH_METHODS 1 */
+#ifdef TEST_WAVELENGTH_METHODS
+static int get_wavelengths (int grp, size_t start0, size_t count0, int xtype,
+                            void *data)
+{
+   fprintf (stderr, "=====> called get_wavelengths\n");
+   return 0;
+}
+static int put_wavelengths (int grp, size_t start0, size_t count0, int xtype,
+                            const void *data)
+{
+   fprintf (stderr, "=====> called put_wavelengths\n");
+   return 0;
+}
+#endif
+
+typedef struct
+{
+   char *name;
+   int (*get)(int, size_t, size_t, int,       void *);
+   int (*put)(int, size_t, size_t, int, const void *);
+}
+IO_Methods_Type;
+#define IO_METHODS_END {NULL,NULL,NULL}
+
+static const
+IO_Methods_Type *find_io_methods (const char *name,
+                                  const IO_Methods_Type *io_methods)
+{
+   const IO_Methods_Type *m;
+
+   if ((name == NULL) || (io_methods == NULL))
+     return NULL;
+
+   for (m = io_methods; m->name != NULL; m++)
+     {
+        if (0 == strcmp (name, m->name))
+          return m;
+     }
+
+   return NULL;
+}
+
+static IO_Methods_Type IO_Methods[] =
+{
+#ifdef TEST_WAVELENGTH_METHODS
+   {"wavelength", get_wavelengths, put_wavelengths},
+#endif
+   IO_METHODS_END
+};
+
+#define TIO_IO_VAR_SECTION(action,const_qual) \
+int TIO_##action##_var_section (int grp, const char *name, \
+                                size_t start0, size_t count0, int xtype, \
+                                const_qual void *data) \
+{ \
+   TIO_Var_Info_Type info; \
+   int status, varid, ndims; \
+   size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS]; \
+   const IO_Methods_Type *io_method; \
+ \
+   io_method = find_io_methods (name, (const IO_Methods_Type *)&IO_Methods); \
+   if (NULL != io_method) \
+     { \
+        return io_method->action (grp, start0, count0, xtype, data); \
+     } \
+ \
+   start[0] = start0; \
+   count[0] = count0; \
+ \
+   if (-1 == TIO_inq_var (grp, name, &info)) \
+     return -1; \
+ \
+   ndims = info.ndims; \
+   varid = info.varid; \
+ \
+   if (ndims <= 0) \
+     { \
+        _pTIO_err_verror ("%s: variable %s has ndims=%d", \
+                          __func__, name, ndims); \
+        return -1; \
+     } \
+   else if (ndims > 1) \
+     { \
+        int i; \
+        for (i = 1; i < ndims; i++) \
+          { \
+             start[i] = 0; \
+             count[i] = info.dimlens[i]; \
+          } \
+     } \
+ \
+   switch (xtype) \
+     { \
+      case NC_BYTE: \
+        /* drop */ \
+      case NC_CHAR: \
+        status = nc_##action##_vara_text (grp, varid, start, count, (const_qual char *)data); \
+        break; \
+      case NC_UBYTE: \
+        status = nc_##action##_vara_uchar (grp, varid, start, count, (const_qual unsigned char *)data); \
+        break; \
+      case NC_SHORT: \
+        status = nc_##action##_vara_short (grp, varid, start, count, (const_qual short *)data); \
+        break; \
+      case NC_USHORT: \
+        status = nc_##action##_vara_ushort (grp, varid, start, count, (const_qual unsigned short *)data); \
+        break; \
+      case NC_INT: \
+        status = nc_##action##_vara_int (grp, varid, start, count, (const_qual int *)data); \
+        break; \
+      case NC_UINT: \
+        status = nc_##action##_vara_uint (grp, varid, start, count, (const_qual unsigned int *)data); \
+        break; \
+      case NC_INT64: \
+        status = nc_##action##_vara_longlong (grp, varid, start, count, (const_qual long long *)data); \
+        break; \
+      case NC_UINT64: \
+        status = nc_##action##_vara_ulonglong (grp, varid, start, count, (const_qual unsigned long long *)data); \
+        break; \
+      case NC_FLOAT: \
+        status = nc_##action##_vara_float (grp, varid, start, count, (const_qual float *)data); \
+        break; \
+      case NC_DOUBLE: \
+        status = nc_##action##_vara_double (grp, varid, start, count, (const_qual double *)data); \
+        break; \
+      default: \
+        _pTIO_err_verror ("%s: accessing variable %s using invalid type (xtype=%d)", \
+                          __func__, name, xtype); \
+        return -1; \
+     } \
+ \
+   if (status != NC_NOERR) \
+     { \
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s in group %d", \
+                             __func__, name, grp); \
+        return -1; \
+     } \
+ \
+   return 0; \
+}
+
+TIO_IO_VAR_SECTION(get,EMPTY())
+TIO_IO_VAR_SECTION(put,const)
+#if 0
+}
+#endif
+
+int TIO_inq_att (int grp, const char *varname, const char *attname,
+                 int *xtype, size_t *len)
+{
+   int status, varid;
+
+   if (NULL == attname)
+     {
+        _pTIO_err_verror ("%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (varname == NULL)
+     varid = NC_GLOBAL;
+   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s",
+                             __func__, varname);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_inq_att (grp, varid, attname, xtype, len)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing attribute %s (varid=%d)",
+                             __func__, attname, varid);
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_put_att (int grp, const char *varname, const char *attname,
+                 int xtype, size_t len, const void *att)
+{
+   int status, varid;
+   int file_atttype;
+
+   if ((NULL == attname) || (att == NULL))
+     {
+        _pTIO_err_verror ("%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (varname == NULL)
+     varid = NC_GLOBAL;
+   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s",
+                             __func__, varname);
+        return -1;
+     }
+
+   /* Enforce attribute type-checking.
+    * By default, netCDF will happily overwrite an existing
+    * attribute with a different type value, but I don't think
+    * we want that behavior.
+    */
+   status = nc_inq_atttype (grp, varid, attname, &file_atttype);
+   if (NC_NOERR == status)
+     {
+        /* if the attribute exists, make sure we're writing
+         * the same type value
+         */
+        if (xtype != file_atttype)
+          {
+             _pTIO_err_verror ("%s: writing attribute %s: value type=%d, file value type=%d",
+                               __func__, attname, xtype, file_atttype);
+             return -1;
+          }
+     }
+   else if (NC_ENOTATT != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: attribute %s (varid=%d) query failed",
+                             __func__, attname, varid);
+        return -1;
+     }
+
+   status = nc_put_att (grp, varid, attname, xtype, len, att);
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: writing attribute %s (varid=%d)",
+                             __func__, attname, varid);
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_get_att (int grp, const char *varname, const char *attname,
+                 int xtype, void *att)
+{
+   int status, varid;
+
+   if ((NULL == attname) || (att == NULL))
+     {
+        _pTIO_err_verror ("%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (varname == NULL)
+     varid = NC_GLOBAL;
+   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
+     {
+        _pTIO_err_verror_nc (status, "%s: accessing variable %s",
+                             __func__, varname);
+        return -1;
+     }
+
+   /* Use the netCDF type-safe interface so that netCDF
+    * performs any needed type conversion
+    */
+   switch (xtype)
+     {
+      case NC_BYTE:
+        /* drop */
+      case NC_CHAR:
+        status = nc_get_att_text (grp, varid, attname, (char *)att);
+        break;
+      case NC_UBYTE:
+        status = nc_get_att_uchar (grp, varid, attname, (unsigned char *)att);
+        break;
+      case NC_SHORT:
+        status = nc_get_att_short (grp, varid, attname, (short *)att);
+        break;
+      case NC_USHORT:
+        status = nc_get_att_ushort (grp, varid, attname, (unsigned short *)att);
+        break;
+      case NC_INT:
+        status = nc_get_att_int (grp, varid, attname, (int *)att);
+        break;
+      case NC_UINT:
+        status = nc_get_att_uint (grp, varid, attname, (unsigned int *)att);
+        break;
+      case NC_INT64:
+        status = nc_get_att_longlong (grp, varid, attname, (long long *)att);
+        break;
+      case NC_UINT64:
+        status = nc_get_att_ulonglong (grp, varid, attname, (unsigned long long *)att);
+        break;
+      case NC_FLOAT:
+        status = nc_get_att_float (grp, varid, attname, (float *)att);
+        break;
+      case NC_DOUBLE:
+        status = nc_get_att_double (grp, varid, attname, (double *)att);
+        break;
+      default:
+        _pTIO_err_verror ("%s: reading attribute %s using invalid type (xtype=%d)",
+                          __func__, attname, xtype);
+        return -1;
+     }
+
+   if (status != NC_NOERR)
+     {
+        _pTIO_err_verror_nc (status, "%s: reading attribute %s in group %d",
+                             __func__, attname, grp);
+        return -1;
+     }
+
+   return 0;
+}
+
