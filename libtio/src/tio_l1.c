@@ -13,7 +13,7 @@
 
 #define COMMENT_WGS84 "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
 
-typedef struct
+struct _pDim_Table_Type
 {
    _pDim_Type channel;           /* dispersion direction */
    _pDim_Type xtrack;            /* pixel north-south spatial coordinate */
@@ -25,70 +25,32 @@ typedef struct
    _pDim_Type xyz;               /* WGS84 Cartesian spatial coordinates */
    _pDim_Type cov;               /* unique elements of a 2x2 symmetric matrix */
 
-   _pDim_Type time_ephemeris;  /* ephemeris data point times */
-   _pDim_Type time_maneuvers;  /* maneuver times */
-   _pDim_Type time_gyroscope;  /* gyroscope sample times */
-   _pDim_Type time_sma;        /* SMA DIT (differential impedance transducer) sample times */
-}
-Dim_Table_Type;
+   _pDim_Type time_ephemeris;    /* ephemeris data point times */
+   _pDim_Type time_maneuvers;    /* maneuver times */
+   _pDim_Type time_gyroscope;    /* gyroscope sample times */
+   _pDim_Type time_sma;          /* SMA DIT (differential impedance transducer) sample times */
+};
 
-typedef struct
+static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
 {
-   char *name;
-   size_t len_offset;
-   size_t id_offset;
-}
-Dim_Offsets_Type;
-
-static int define_dims_using_offsets (int grp, const Dim_Offsets_Type *offsets,
-                                      Dim_Table_Type *dim_table)
-{
-   const Dim_Offsets_Type *o;
-   char *p = (char *)dim_table;
-   int status;
-
-   for (o = offsets; o->name != NULL; o++)
-     {
-        status = nc_def_dim (grp, o->name, *(p + o->len_offset),
-                             (int *)(p + o->id_offset));
-        if (NC_NOERR != status)
-          {
-             _pTIO_err_verror_nc (status, "%s: defining dimension %s",
-                                  __func__, o->name);
-             return -1;
-          }
-     }
-
-   return 0;
-}
-
-static int define_global_dims (int grp, Dim_Table_Type *dim_table)
-{
-#define DIM_OFFSETS_END {NULL,0,0}
-#define DIM_OFFSET_ENTRY(name,field) \
-   {name, \
-        (offsetof(Dim_Table_Type,field) + offsetof(_pDim_Type,len)), \
-        (offsetof(Dim_Table_Type,field) + offsetof(_pDim_Type,id))}
-
-   static Dim_Offsets_Type dim_offsets[] =
+   static _pDim_Offsets_Type dim_offsets[] =
     {
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZ,xyz),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYSMA,xy_sma),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYDET,xy_det),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZSAT,xyz_sat),
-       DIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
-       DIM_OFFSETS_END
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZ,xyz),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYSMA,xy_sma),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYDET,xy_det),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZSAT,xyz_sat),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
+       _pDIM_OFFSETS_END
     };
 
-   /* Define global dimensions */
-   return define_dims_using_offsets (grp, dim_offsets, dim_table);
+   return _pTIO_define_dims_using_offsets (grp, dim_offsets, dim_table);
 }
 
-static int define_global_vars (int grp, const Dim_Table_Type *dim_table)
+static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
    int status, varid;
    int dims[TIO_MAX_VAR_DIMS];
@@ -232,7 +194,7 @@ static int define_global_attrs (int grp)
 }
 
 static int define_band_group (int parent_grp, const char *grp_name,
-                              const Dim_Table_Type *dim_table, int *grp_id)
+                              const _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
@@ -503,7 +465,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
 }
 
 static int define_geometry_group (int parent_grp, const char *grp_name,
-                                  const Dim_Table_Type *dim_table, int *grp_id)
+                                  const _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -571,7 +533,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
 }
 
 static int define_ephemeris_group (int parent_grp, const char *grp_name,
-                                   Dim_Table_Type *dim_table, int *grp_id)
+                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -661,7 +623,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 }
 
 static int define_maneuvers_group (int parent_grp, const char *grp_name,
-                                   Dim_Table_Type *dim_table, int *grp_id)
+                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -719,7 +681,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 }
 
 static int define_gyroscope_group (int parent_grp, const char *grp_name,
-                                   Dim_Table_Type *dim_table, int *grp_id)
+                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -803,7 +765,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 }
 
 static int define_mirror_group (int parent_grp, const char *grp_name,
-                                Dim_Table_Type *dim_table, int *grp_id)
+                                _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -861,7 +823,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 }
 
 static int define_telemetry_group (int parent_grp, const char *grp_name,
-                                   Dim_Table_Type *dim_table, int *grp_id)
+                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
 
@@ -890,7 +852,7 @@ static int define_telemetry_group (int parent_grp, const char *grp_name,
 }
 
 static int define_inr_input_group (int parent_grp, const char *grp_name,
-                                   Dim_Table_Type *dim_table, int *grp_id)
+                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
 
@@ -924,7 +886,7 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
 int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
                             size_t num_channels)
 {
-   Dim_Table_Type dim_table;
+   _pDim_Table_Type dim_table;
 
    dim_table.channel.len = num_channels;
    dim_table.xtrack.len = num_xtrack;

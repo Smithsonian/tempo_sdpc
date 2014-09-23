@@ -38,12 +38,30 @@ typedef struct
 }
 _pDim_Type;
 
+typedef struct _pDim_Table_Type _pDim_Table_Type;
+
+typedef struct
+{
+   char *name;
+   size_t len_offset;
+   size_t id_offset;
+}
+_pDim_Offsets_Type;
+#define _pDIM_OFFSETS_END {NULL,0,0}
+#define _pDIM_OFFSET_ENTRY(name,field) \
+   {name, \
+        (offsetof(_pDim_Table_Type,field) + offsetof(_pDim_Type,len)), \
+        (offsetof(_pDim_Table_Type,field) + offsetof(_pDim_Type,id))}
+
 extern void _pTIO_err_verror (const char *fmt, ...);
 extern void _pTIO_err_verror_nc (int status, const char *fmt, ...);
 extern int _pTIO_check_verror_nc (int status, int line, const char *file);
 
 extern int _pTIO_define_enum (int grp, const char *name,
                               const _pEnum_Type *enum_table, int *enum_typeid);
+
+extern int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
+                                            _pDim_Table_Type *dim_table);
 
 extern int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs);
 extern int _pTIO_define_text_attrs (int grp, int varid, const _pText_Attr_Type *attrs);

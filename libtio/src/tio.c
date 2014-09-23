@@ -11,6 +11,28 @@
 
 #define EMPTY()
 
+int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
+                                     _pDim_Table_Type *dim_table)
+{
+   const _pDim_Offsets_Type *o;
+   char *p = (char *)dim_table;
+   int status;
+
+   for (o = offsets; o->name != NULL; o++)
+     {
+        status = nc_def_dim (grp, o->name, *(size_t *)(p + o->len_offset),
+                             (int *)(p + o->id_offset));
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status, "%s: defining dimension %s",
+                                  __func__, o->name);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
 int _pTIO_define_enum (int grp, const char *name,
                        const _pEnum_Type *enum_table, int *enum_typeid)
 {
