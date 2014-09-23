@@ -1,6 +1,13 @@
 #ifndef __TIO_INTERNAL_INCLUDE__
 #define __TIO_INTERNAL_INCLUDE__ 1
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
+
 /* placeholder values -- FIXME */
 #define _pTIO_PIXEL_XSIZE    18.0  /* micron */
 #define _pTIO_PIXEL_YSIZE    18.0
@@ -72,4 +79,12 @@ extern int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_t
 
 extern int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype);
 extern int _pTIO_define_processing_level (int grp, enum TIO_Processing_Level level);
+
+#if 0
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
+
 #endif
