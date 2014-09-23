@@ -62,7 +62,7 @@ int main (void)
    int data_size = ntracks * nxtrack * ny;
    int err = 1;
    int track, num_write;
-   unsigned int processing_level;
+   int processing_level;
    int processing_level_type;
 
    /* nc_set_log_level(3); */

@@ -33,15 +33,15 @@ _pInt_Attr_Type;
 typedef struct
 {
    char *name;
-   unsigned int value;
+   int value;
 }
 _pEnum_Type;
 #define _pENUM_TABLE_END {NULL,0}
 
 typedef struct
 {
-   int id;      /* dim id from nc_def_dim */
-   size_t len;  /* fixed length of this dimension or NC_UNLIMITED */
+   int id;      /**< index assigned by nc_def_dim */
+   size_t len;  /**< fixed dimension size or NC_UNLIMITED */
 }
 _pDim_Type;
 
@@ -67,18 +67,25 @@ extern int _pTIO_check_verror_nc (int status, int line, const char *file);
 extern int _pTIO_define_enum (int grp, const char *name,
                               const _pEnum_Type *enum_table, int *enum_typeid);
 
-extern int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
+extern int _pTIO_define_dims_using_offsets (int grp,
+                                            const _pDim_Offsets_Type *offsets,
                                             _pDim_Table_Type *dim_table);
 
-extern int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs);
-extern int _pTIO_define_text_attrs (int grp, int varid, const _pText_Attr_Type *attrs);
+extern int _pTIO_define_int_attrs (int grp, int varid,
+                                   const _pInt_Attr_Type *attrs);
+
+extern int _pTIO_define_text_attrs (int grp, int varid,
+                                    const _pText_Attr_Type *attrs);
+
 extern int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_type xtype,
                                              int num_dims, const int *dimids,
                                              const _pText_Attr_Type *text_attrs,
                                              int *pvarid);
 
 extern int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype);
-extern int _pTIO_define_processing_level (int grp, enum TIO_Processing_Level level);
+
+extern int _pTIO_define_processing_level (int grp,
+                                          enum TIO_Processing_Level level);
 
 #if 0
 {

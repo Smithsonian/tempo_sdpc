@@ -39,7 +39,7 @@ int _pTIO_define_enum (int grp, const char *name,
    const _pEnum_Type *e;
    int status;
 
-   if (NC_NOERR != (status = nc_def_enum (grp, NC_UINT, name, enum_typeid)))
+   if (NC_NOERR != (status = nc_def_enum (grp, NC_INT, name, enum_typeid)))
      {
         _pTIO_err_verror_nc (status, "%s: defining enum %s", __func__, name);
         return -1;
@@ -50,7 +50,7 @@ int _pTIO_define_enum (int grp, const char *name,
         status = nc_insert_enum (grp, *enum_typeid, e->name, &e->value);
         if (status != NC_NOERR)
           {
-             _pTIO_err_verror_nc (status, "%s: inserting value %s=%u for enum %s",
+             _pTIO_err_verror_nc (status, "%s: inserting value %s=%d for enum %s",
                                   __func__, e->name ? e->name : "(null)",
                                   e->value, name);
              return -1;
