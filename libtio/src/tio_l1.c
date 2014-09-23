@@ -32,42 +32,63 @@ typedef struct
 }
 Dim_Table_Type;
 
-static int define_global_dims (int grp, Dim_Table_Type *dim_table)
+typedef struct
 {
+   char *name;
+   size_t len_offset;
+   size_t id_offset;
+}
+Dim_Offsets_Type;
+
+static int define_dims_using_offsets (int grp, const Dim_Offsets_Type *offsets,
+                                      Dim_Table_Type *dim_table)
+{
+   const Dim_Offsets_Type *o;
+   char *p = (char *)dim_table;
    int status;
 
-   /* Define global dimensions */
-   status = nc_def_dim (grp, TIO_DIM_NAME_XTRACK, dim_table->xtrack.len, &dim_table->xtrack.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_CHANNEL, dim_table->channel.len, &dim_table->channel.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_STEP, dim_table->step.len, &dim_table->step.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_CORNER, dim_table->corner.len, &dim_table->corner.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_XYZ, dim_table->xyz.len, &dim_table->xyz.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_XYSMA, dim_table->xy_sma.len, &dim_table->xy_sma.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_XYDET, dim_table->xy_det.len, &dim_table->xy_det.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_XYZSAT, dim_table->xyz_sat.len, &dim_table->xyz_sat.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   status = nc_def_dim (grp, TIO_DIM_NAME_COV, dim_table->cov.len, &dim_table->cov.id);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+   for (o = offsets; o->name != NULL; o++)
+     {
+        status = nc_def_dim (grp, o->name, *(p + o->len_offset),
+                             (int *)(p + o->id_offset));
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status, "%s: defining dimension %s",
+                                  __func__, o->name);
+             return -1;
+          }
+     }
 
    return 0;
 }
 
-static int define_global_vars (int grp, Dim_Table_Type *dim_table)
+static int define_global_dims (int grp, Dim_Table_Type *dim_table)
+{
+#define DIM_OFFSETS_END {NULL,0,0}
+#define DIM_OFFSET_ENTRY(name,field) \
+   {name, \
+        (offsetof(Dim_Table_Type,field) + offsetof(_pDim_Type,len)), \
+        (offsetof(Dim_Table_Type,field) + offsetof(_pDim_Type,id))}
+
+   static Dim_Offsets_Type dim_offsets[] =
+    {
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZ,xyz),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYSMA,xy_sma),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYDET,xy_det),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZSAT,xyz_sat),
+       DIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
+       DIM_OFFSETS_END
+    };
+
+   /* Define global dimensions */
+   return define_dims_using_offsets (grp, dim_offsets, dim_table);
+}
+
+static int define_global_vars (int grp, const Dim_Table_Type *dim_table)
 {
    int status, varid;
    int dims[TIO_MAX_VAR_DIMS];
@@ -152,10 +173,9 @@ static int define_global_vars (int grp, Dim_Table_Type *dim_table)
    return 0;
 }
 
-static int define_inr_status (int grp)
+static int define_inr_status (int grp, enum TIO_INR_Status inr_status)
 {
    int status, enum_typeid;
-   enum TIO_INR_Status inr_status;
    static _pEnum_Type enum_table[] =
      {
         {"none", TIO_INR_NONE},
@@ -202,29 +222,17 @@ static int define_global_attrs (int grp)
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
      return -1;
 
-   if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1B))
+   if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1A))
      return -1;
 
-   if (-1 == define_inr_status (grp))
+   if (-1 == define_inr_status (grp, TIO_INR_NONE))
      return -1;
-
-   return 0;
-}
-
-static int define_globals (int grp, Dim_Table_Type *dim_table)
-{
-   if ((-1 == define_global_dims (grp, dim_table))
-       || (-1 == define_global_vars (grp, dim_table))
-       || (-1 == define_global_attrs (grp)))
-     {
-        return -1;
-     }
 
    return 0;
 }
 
 static int define_band_group (int parent_grp, const char *grp_name,
-                              Dim_Table_Type *dim_table, int *grp_id)
+                              const Dim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
@@ -249,7 +257,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
@@ -495,7 +503,7 @@ static int define_band_group (int parent_grp, const char *grp_name,
 }
 
 static int define_geometry_group (int parent_grp, const char *grp_name,
-                                  Dim_Table_Type *dim_table, int *grp_id)
+                                  const Dim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
@@ -508,7 +516,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
@@ -576,13 +584,13 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_EPHEM, dim_table->time_ephemeris.len, &dim_table->time_ephemeris.id)))
      {
-        _pTIO_err_verror_nc (status, "defining dimension 'time' in group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
         return -1;
      }
 
@@ -666,13 +674,13 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_MANEUVER, dim_table->time_maneuvers.len, &dim_table->time_maneuvers.id)))
      {
-        _pTIO_err_verror_nc (status, "defining dimension 'time' in group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
         return -1;
      }
 
@@ -724,13 +732,13 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
      {
-        _pTIO_err_verror_nc (status, "defining dimension 'time' in group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
         return -1;
      }
 
@@ -808,13 +816,13 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_SMA, dim_table->time_sma.len, &dim_table->time_sma.id)))
      {
-        _pTIO_err_verror_nc (status, "defining dimension 'time' in group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
         return -1;
      }
 
@@ -865,7 +873,7 @@ static int define_telemetry_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
@@ -894,7 +902,7 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
         return -1;
      }
 
@@ -933,7 +941,9 @@ int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
    dim_table.time_gyroscope.len = NC_UNLIMITED;
    dim_table.time_sma.len = NC_UNLIMITED;
 
-   if ((-1 == define_globals (ncid, &dim_table))
+   if ((-1 == define_global_attrs (ncid))
+       || (-1 == define_global_dims (ncid, &dim_table))
+       || (-1 == define_global_vars (ncid, &dim_table))
        || (-1 == define_band_group (ncid, TIO_GRP_NAME_BAND1, &dim_table, NULL))
        || (-1 == define_band_group (ncid, TIO_GRP_NAME_BAND2, &dim_table, NULL))
        || (-1 == define_geometry_group (ncid, TIO_GRP_NAME_GEOMETRY, &dim_table, NULL))
