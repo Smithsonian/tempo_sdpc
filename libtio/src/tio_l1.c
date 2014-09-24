@@ -13,6 +13,10 @@
 
 #define COMMENT_WGS84 "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
 
+/* An instance of a _pDim_Table_Type struct is used as a lookup table
+ * for all the dimensions that are defined anywhere in the associated
+ * netCDF file.
+ */
 struct _pDim_Table_Type
 {
    _pDim_Type channel;           /* dispersion direction */
@@ -35,8 +39,6 @@ static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZ,xyz),
@@ -44,6 +46,18 @@ static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYDET,xy_det),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZSAT,xyz_sat),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
+       _pDIM_OFFSETS_END
+    };
+
+   return _pTIO_define_dims_using_offsets (grp, dim_offsets, dim_table);
+}
+
+static int define_radiance_group_dims (int grp, _pDim_Table_Type *dim_table)
+{
+   static _pDim_Offsets_Type dim_offsets[] =
+    {
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
+       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
        _pDIM_OFFSETS_END
     };
 
@@ -58,10 +72,6 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
    /* coordinate variables */
    dims[0] = dim_table->step.id;
    status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   dims[0] = dim_table->xtrack.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
    if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
 
    dims[0] = dim_table->corner.id;
@@ -193,8 +203,8 @@ static int define_global_attrs (int grp)
    return 0;
 }
 
-static int define_band_group (int parent_grp, const char *grp_name,
-                              const _pDim_Table_Type *dim_table, int *grp_id)
+static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
+                                  _pDim_Table_Type *dim_table, int *grp_id)
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
@@ -205,23 +215,35 @@ static int define_band_group (int parent_grp, const char *grp_name,
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
 
-   /* FIXME */
-   total_num = (dim_table->channel.len
-                * dim_table->xtrack.len
-                * dim_table->step.len);
-   deflate = (total_num > 1000000);
-
-   if (grp_name == NULL)
+   if (rg->name == NULL)
      {
         _pTIO_err_verror ("%s:  got NULL pointer", __func__);
         return -1;
      }
 
-   if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
+   if (NC_NOERR != (status = nc_def_grp (parent_grp, rg->name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, grp_name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, rg->name);
         return -1;
      }
+
+   /* group-local dimensions */
+   dim_table->xtrack.len = rg->num_xtrack;
+   dim_table->channel.len = rg->num_channels;
+
+   if (-1 == define_radiance_group_dims (grp, dim_table))
+     return -1;
+
+   /* group-local coordinate variables */
+   dims[0] = dim_table->xtrack.id;
+   status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
+   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+
+   /* FIXME */
+   total_num = (dim_table->channel.len
+                * dim_table->xtrack.len
+                * dim_table->step.len);
+   deflate = (total_num > 1000000);
 
    /* radiance */
      {
@@ -550,6 +572,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
+   /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_EPHEM, dim_table->time_ephemeris.len, &dim_table->time_ephemeris.id)))
      {
         _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
@@ -640,6 +663,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
+   /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_MANEUVER, dim_table->time_maneuvers.len, &dim_table->time_maneuvers.id)))
      {
         _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
@@ -698,6 +722,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
+   /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
      {
         _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
@@ -782,6 +807,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
+   /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_SMA, dim_table->time_sma.len, &dim_table->time_sma.id)))
      {
         _pTIO_err_verror_nc (status, "%s: defining dimension 'time' in group %s", __func__, grp_name);
@@ -883,13 +909,16 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
-                            size_t num_channels)
+int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
+                            TIO_Radiance_Group_Type *rgrps)
 {
    _pDim_Table_Type dim_table;
+   int i;
 
-   dim_table.channel.len = num_channels;
-   dim_table.xtrack.len = num_xtrack;
+   /* Initialize the dimension sizes that are known at this point.
+    * Other dimensions are group-specific and are initialized only
+    * when those groups are being defined.
+    */
    dim_table.step.len = num_steps;
    dim_table.corner.len = 4;
    dim_table.xy_det.len = 2;
@@ -897,7 +926,6 @@ int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
    dim_table.xyz_sat.len = 3;
    dim_table.xyz.len = 3;
    dim_table.cov.len = 3;
-
    dim_table.time_ephemeris.len = NC_UNLIMITED;
    dim_table.time_maneuvers.len = NC_UNLIMITED;
    dim_table.time_gyroscope.len = NC_UNLIMITED;
@@ -905,10 +933,22 @@ int TIO_create_l1_template (int ncid, size_t num_steps, size_t num_xtrack,
 
    if ((-1 == define_global_attrs (ncid))
        || (-1 == define_global_dims (ncid, &dim_table))
-       || (-1 == define_global_vars (ncid, &dim_table))
-       || (-1 == define_band_group (ncid, TIO_GRP_NAME_BAND1, &dim_table, NULL))
-       || (-1 == define_band_group (ncid, TIO_GRP_NAME_BAND2, &dim_table, NULL))
-       || (-1 == define_geometry_group (ncid, TIO_GRP_NAME_GEOMETRY, &dim_table, NULL))
+       || (-1 == define_global_vars (ncid, &dim_table)))
+     {
+        _pTIO_err_verror ("%s failed", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < num_rgrps; i++)
+     {
+        if (-1 == define_radiance_group (ncid, &rgrps[i], &dim_table, NULL))
+          {
+             _pTIO_err_verror ("%s failed defining radiance group %d", __func__, i);
+             return -1;
+          }
+     }
+
+   if ((-1 == define_geometry_group (ncid, TIO_GRP_NAME_GEOMETRY, &dim_table, NULL))
        || (-1 == define_inr_input_group (ncid, TIO_GRP_NAME_INRINPUT, &dim_table, NULL)))
      {
         _pTIO_err_verror ("%s failed", __func__);

@@ -46,9 +46,10 @@ static int compare_data (int n, float *out, float *in)
 int main (void)
 {
    int ncid, status, grp;
-   int ntracks=10, nxtrack=10, ny=10;
+#define NXTRACK       10
+#define NWAVELENGTHS  10   
+   int ntracks=10, nxtrack=NXTRACK, ny=NWAVELENGTHS;
    char file[] = "delete_me.nc";
-   char grp_name[] = TIO_GRP_NAME_BAND1;
    char field_name[] = TIO_VAR_NAME_RADIANCE;
    char attr_name[] = "foo";
    int field_type = TIO_FLOAT;
@@ -57,6 +58,7 @@ int main (void)
    long long attr = UINT_MAX;
    long long attr_in;
    unsigned int attr_in_conversion;
+   char *grp_name;
    float *data = NULL;
    float *data_in = NULL;
    int data_size = ntracks * nxtrack * ny;
@@ -64,6 +66,11 @@ int main (void)
    int track, num_write;
    int processing_level;
    int processing_level_type;
+   TIO_Radiance_Group_Type rgrps[] =
+     {
+        {"band_290_490_nm", NWAVELENGTHS, NXTRACK},
+        {"band_540_740_nm", NWAVELENGTHS, NXTRACK},
+     };
 
    /* nc_set_log_level(3); */
 
@@ -84,11 +91,13 @@ int main (void)
         goto cleanup;
      }
 
-   if (-1 == TIO_create_l1_template (ncid, ntracks, nxtrack, ny))
+   if (-1 == TIO_create_l1_template (ncid, ntracks, 2, rgrps))
      {
         fprintf (stderr, "*** failed creating L1 template in %s\n", file);
         goto cleanup;
      }
+
+   grp_name = rgrps[0].name;
 
    if (NC_NOERR != (status = nc_inq_grp_full_ncid (ncid, grp_name, &grp)))
      {

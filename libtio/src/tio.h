@@ -41,8 +41,6 @@ extern "C" {
 #define TIO_DIM_NAME_XYZ            "xyz"
 #define TIO_DIM_NAME_XYZSAT         "xyz_sat"
 
-#define TIO_GRP_NAME_BAND1          "band_290_490_nm"
-#define TIO_GRP_NAME_BAND2          "band_540_740_nm"
 #define TIO_GRP_NAME_GEOMETRY       "geometry"
 #define TIO_GRP_NAME_INRINPUT       "inr_input"
 #define TIO_GRP_NAME_EPHEMERIS      "ephemeris"
@@ -92,6 +90,14 @@ enum TIO_Processing_Level
    TIO_PROC_LEVEL_2,
    TIO_PROC_LEVEL_3
 };
+
+typedef struct
+{
+   char *name;
+   size_t num_xtrack;
+   size_t num_channels;
+}
+TIO_Radiance_Group_Type;
 
 typedef struct
 {
@@ -178,12 +184,12 @@ extern int TIO_get_att (int grp, const char *varname, const char *attname,
 /** Create a template Level 1 data file
  * @param  ncid          Index returned by nc_create
  * @param  num_steps     Number of mirror steps
- * @param  num_xtrack    Number of cross-track pixels
- * @param  num_channels  Number of spectral channels
+ * @param  num_rgrps     Number of radiance groups
+ * @param  rgrps         Array of TIO_Radiance_Group_Type structs
  * @return 0 on success, -1 on error
  */
-extern int TIO_create_l1_template (int ncid, size_t num_steps,
-                                   size_t num_xtrack, size_t num_channels);
+extern int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
+                                   TIO_Radiance_Group_Type *rgrps);
 
 #if 0
 {
