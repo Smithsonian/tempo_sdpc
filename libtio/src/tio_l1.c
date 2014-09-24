@@ -289,7 +289,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_WAVELENGTH, NC_DOUBLE, 3, dims, wavelength_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
@@ -308,7 +308,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
              return -1;
           }
 #endif
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_DOUBLE))
+        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
           return -1;
      }
 
