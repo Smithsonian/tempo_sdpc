@@ -66,8 +66,7 @@ static int define_radiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 
 static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
-   int status, varid;
-   int dims[TIO_MAX_VAR_DIMS];
+   int status, dims[TIO_MAX_VAR_DIMS];
 
    /* coordinate variables */
    dims[0] = dim_table->step.id;
@@ -83,6 +82,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
         static _pText_Attr_Type time_attrs[] =
           {
              {"units", "s"},
+             {"comment", "Exposure start time"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -95,51 +95,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
         static _pText_Attr_Type exptime_attrs[] =
           {
              {"units", "s"},
+             {"comment", "Exposure duration"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPTIME, NC_FLOAT, 1, dims, exptime_attrs, NULL))
           return -1;
-     }
-
-   /* pixel_size */
-     {
-        static _pText_Attr_Type pixel_size_attrs[] =
-          {
-             {"units", "micron"},
-             {"comment", "pixel_size[i], applies to dimension i, where i=0 varies slowest"},
-             _pTEXT_ATTRS_END
-          };
-        static float pixel_size[] = {_pTIO_PIXEL_YSIZE, _pTIO_PIXEL_XSIZE};
-
-        dims[0] = dim_table->xy_det.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSIZE, NC_FLOAT, 1, dims, pixel_size_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_size)))
-          {
-             _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
-             return -1;
-          }
-     }
-
-   /* pixel_scale */
-     {
-        static _pText_Attr_Type pixel_scale_attrs[] =
-          {
-             {"units", "microradian"},
-             {"comment", "pixel_scale[i], applies to dimension i, where i=0 varies slowest"},
-             _pTEXT_ATTRS_END
-          };
-        static float pixel_scale[] = {_pTIO_PIXEL_YSCALE, _pTIO_PIXEL_XSCALE};
-
-        dims[0] = dim_table->xy_det.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSCALE, NC_FLOAT, 1, dims, pixel_scale_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_scale)))
-          {
-             _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
-             return -1;
-          }
      }
 
    return 0;
@@ -245,6 +206,44 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
                 * dim_table->step.len);
    deflate = (total_num > 1000000);
 
+   /* pixel_size */
+     {
+        static _pText_Attr_Type pixel_size_attrs[] =
+          {
+             {"units", "micron"},
+             _pTEXT_ATTRS_END
+          };
+        static float pixel_size[] = {_pTIO_PIXEL_YSIZE, _pTIO_PIXEL_XSIZE};
+
+        dims[0] = dim_table->xy_det.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSIZE, NC_FLOAT, 1, dims, pixel_size_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_size)))
+          {
+             _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
+             return -1;
+          }
+     }
+
+   /* pixel_scale */
+     {
+        static _pText_Attr_Type pixel_scale_attrs[] =
+          {
+             {"units", "microradian"},
+             _pTEXT_ATTRS_END
+          };
+        static float pixel_scale[] = {_pTIO_PIXEL_YSCALE, _pTIO_PIXEL_XSCALE};
+
+        dims[0] = dim_table->xy_det.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSCALE, NC_FLOAT, 1, dims, pixel_scale_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_scale)))
+          {
+             _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
+             return -1;
+          }
+     }
+
    /* radiance */
      {
         static _pText_Attr_Type radiance_attrs[] =
@@ -318,6 +317,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "degrees_east"},
              {"long_name", "longitude"},
+             {"comment", "Longitude at pixel center"},
              {"bounds", "longitude_bounds"},
              _pTEXT_ATTRS_END
           };
@@ -335,6 +335,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "degrees_north"},
              {"long_name", "latitude"},
+             {"comment", "Latitude at pixel center"},
              {"bounds", "latitude_bounds"},
              _pTEXT_ATTRS_END
           };
@@ -352,6 +353,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "m"},
              {"long_name", "ellipsoid_altitude"},
+             {"comment", "Ellipsoid altitude at pixel center"},
              {"bounds", "ellipsoid_altitude_bounds"},
              {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END
@@ -370,6 +372,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "degrees_east"},
              {"long_name", "longitude bounds (SW,SE,NE,NW)"},
+             {"comment", " Longitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -387,6 +390,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "degrees_north"},
              {"long_name", "latitude bounds (SW,SE,NE,NW)"},
+             {"comment", "Latitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -404,6 +408,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           {
              {"units", "m"},
              {"long_name", "ellipsoid altitude at bounds (SW,SE,NE,NW)"},
+             {"comment", "Ellipsoid altitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
