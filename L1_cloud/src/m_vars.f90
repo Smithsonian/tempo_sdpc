@@ -45,7 +45,7 @@ module m_vars
   ! input stages of code. Note: set in PCF file
   logical :: wrt_solar=.false. ! write out solar data and quit
   logical :: retrieve_chl_pres=.false. ! retrieve chl and pres when clear
-  logical :: retrieve_chl_clr=.true. ! retrieve only chl when clear (not cld pres)
+  logical :: retrieve_chl_clr=.false. ! retrieve only chl when clear (not cld pres)
   logical :: retrieve_chl_cld=.false. ! try to retrieve chl in all pixels
   logical :: do_chl=.true. ! do chlorophyll correction only based on climatology
   logical :: cloud_fr_corr=.true. ! do cloud fraction corrections?

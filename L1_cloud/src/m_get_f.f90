@@ -90,6 +90,8 @@ contains
 
     I_clr_l=i0_ls + (refl_clr*tr_ls)/(1-refl_clr*Sb_ls)
     I_clr_s=i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss)
+    !to avoid an unitialized variable error
+    I_cld_l=I_clr_l
 
     if (set_cld_frac) then
 

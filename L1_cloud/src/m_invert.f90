@@ -114,10 +114,10 @@ function invert (amat, error) result (amatinv)
 !-------------------------------------------------------------------------
 !
 
-!      PARAMETER (NMAX=600,TINY=1.0E-20)
+      integer, PARAMETER :: TINY=1.0E-20
       integer n, np
       real (KIND=8) A(NP,NP)
-      integer INDX(NP), error
+      integer INDX(NP), error, I, IMAX
       !real (KIND=8), dimension(:), allocatable :: VV
       real (KIND=8), dimension(n) :: VV
       real (KIND=8) d
@@ -125,6 +125,7 @@ function invert (amat, error) result (amatinv)
       !allocate(vv(n))
       error=0
       D=1.
+      IMAX=N
       DO 12 I=1,N
         AAMAX=0.
         DO 11 J=1,N
