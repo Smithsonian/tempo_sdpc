@@ -23,10 +23,6 @@ struct _pDim_Table_Type
    _pDim_Type xtrack;            /* pixel north-south spatial coordinate */
    _pDim_Type step;              /* mirror step position */
    _pDim_Type corner;            /* pixel corner indices */
-   _pDim_Type xy_det;            /* detector coordinates */
-   _pDim_Type xy_sma;            /* scan mirror assembly (SMA) pointing direction */
-   _pDim_Type xyz_sat;           /* satellite body axis coordinates */
-   _pDim_Type xyz;               /* WGS84 Cartesian spatial coordinates */
    _pDim_Type cov;               /* unique elements of a 2x2 symmetric matrix */
 
    _pDim_Type time_ephemeris;    /* ephemeris data point times */
@@ -41,10 +37,6 @@ static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
     {
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZ,xyz),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYSMA,xy_sma),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYDET,xy_det),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XYZSAT,xyz_sat),
        _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
        _pDIM_OFFSETS_END
     };
@@ -116,7 +108,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
              _pTEXT_ATTRS_END
           };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GRANULE_FLAG, NC_UINT, 0, NULL, granule_flag_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
           return -1;
      }
 
@@ -247,7 +239,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
      {
         static _pText_Attr_Type pixel_size_row_attrs[] =
           {
-             {"units", "micron"},
+             {"units", "micrometer"},
              {"comment", "Physical detector pixel size along the row direction"},
              _pTEXT_ATTRS_END
           };
@@ -266,7 +258,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
      {
         static _pText_Attr_Type pixel_size_column_attrs[] =
           {
-             {"units", "micron"},
+             {"units", "micrometer"},
              {"comment", "Physical detector pixel size along the column direction"},
              _pTEXT_ATTRS_END
           };
@@ -517,9 +509,9 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INRQF, NC_UINT, 2, dims, inrqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INRQF, NC_INT, 2, dims, inrqf_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_UINT))
+        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
           return -1;
      }
 
@@ -549,9 +541,9 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DQF, NC_UINT, 2, dims, dqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DQF, NC_INT, 2, dims, dqf_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_UINT))
+        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
           return -1;
      }
 
@@ -582,7 +574,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
 static int define_geometry_group (int parent_grp, const char *grp_name,
                                   const _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -599,43 +591,97 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
 
    /* satellite position */
      {
-        static _pText_Attr_Type satpos_attrs[] =
+        static _pText_Attr_Type satpos_x_attrs[] =
           {
              {"units", "km"},
-             {"comment", "Satellite position in " COMMENT_WGS84},
+             {"long_name", "satellite X coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satpos_y_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "satellite Y coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satpos_z_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "satellite Z coordinate"},
+             {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_DOUBLE, 2, dims, satpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
           return -1;
      }
 
    /* sun position */
      {
-        static _pText_Attr_Type sunpos_attrs[] =
+        static _pText_Attr_Type sunpos_x_attrs[] =
           {
              {"units", "km"},
-             {"comment", "Sun position in " COMMENT_WGS84},
+             {"long_name", "Sun X coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type sunpos_y_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Sun Y coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type sunpos_z_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Sun Z coordinate"},
+             {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUNPOS, NC_DOUBLE, 2, dims, sunpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_X, NC_DOUBLE, 1, dims, sunpos_x_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_Y, NC_DOUBLE, 1, dims, sunpos_y_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_Z, NC_DOUBLE, 1, dims, sunpos_z_attrs, &varid))
           return -1;
      }
 
    /* moon position */
      {
-        static _pText_Attr_Type moonpos_attrs[] =
+        static _pText_Attr_Type moonpos_x_attrs[] =
           {
              {"units", "km"},
-             {"comment", "Moon position in " COMMENT_WGS84},
+             {"long_name", "Moon X coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type moonpos_y_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Moon Y coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type moonpos_z_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Moon Z coordinate"},
+             {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOONPOS, NC_DOUBLE, 2, dims, moonpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_X, NC_DOUBLE, 1, dims, moonpos_x_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_Y, NC_DOUBLE, 1, dims, moonpos_y_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_Z, NC_DOUBLE, 1, dims, moonpos_z_attrs, &varid))
           return -1;
      }
 
@@ -650,7 +696,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
 static int define_ephemeris_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -692,7 +738,6 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         float solar_radiation_pressure = 9.08;  /* perfect reflectance, normal to surface */
-        int varid;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SRP, NC_FLOAT, 0, NULL, srp_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &solar_radiation_pressure)))
@@ -704,29 +749,65 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 
    /* satellite position */
      {
-        static _pText_Attr_Type satpos_attrs[] =
+        static _pText_Attr_Type satpos_x_attrs[] =
           {
              {"units", "km"},
-             {"comment", "Satellite position in " COMMENT_WGS84},
+             {"long_name", "Satellite X coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satpos_y_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Satellite Y coordinate"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satpos_z_attrs[] =
+          {
+             {"units", "km"},
+             {"long_name", "Satellite Z coordinate"},
+             {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_DOUBLE, 2, dims, satpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
           return -1;
      }
 
    /* satellite velocity */
      {
-        static _pText_Attr_Type satvel_attrs[] =
+        static _pText_Attr_Type satvel_vx_attrs[] =
           {
              {"units", "km/s"},
-             {"comment", "Satellite velocity in " COMMENT_WGS84},
+             {"long_name", "Satellite X velocity"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satvel_vy_attrs[] =
+          {
+             {"units", "km/s"},
+             {"long_name", "Satellite Y velocity"},
+             {"comment", COMMENT_WGS84},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type satvel_vz_attrs[] =
+          {
+             {"units", "km/s"},
+             {"long_name", "Satellite Z velocity"},
+             {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATVEL, NC_DOUBLE, 2, dims, satvel_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VX, NC_DOUBLE, 1, dims, satvel_vx_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VY, NC_DOUBLE, 1, dims, satvel_vy_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VZ, NC_DOUBLE, 1, dims, satvel_vz_attrs, &varid))
           return -1;
      }
 
@@ -741,7 +822,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 static int define_maneuvers_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -777,15 +858,33 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 
    /* delta_v */
      {
-        static _pText_Attr_Type deltav_attrs[] =
+        static _pText_Attr_Type deltav_x_attrs[] =
           {
              {"units", "m/s"},
+             {"long_name", "satellite X delta-v"},
+             {"comment", "Velocity change in coordinates defined by satellite body axes (roll, pitch, yaw)"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type deltav_y_attrs[] =
+          {
+             {"units", "m/s"},
+             {"long_name", "satellite Y delta-v"},
+             {"comment", "Velocity change in coordinates defined by satellite body axes (roll, pitch, yaw)"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type deltav_z_attrs[] =
+          {
+             {"units", "m/s"},
+             {"long_name", "satellite Z delta-v"},
              {"comment", "Velocity change in coordinates defined by satellite body axes (roll, pitch, yaw)"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
-        dims[1] = dim_table->xyz_sat.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV, NC_FLOAT, 2, dims, deltav_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_X, NC_FLOAT, 1, dims, deltav_x_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_Y, NC_FLOAT, 1, dims, deltav_y_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_Z, NC_FLOAT, 1, dims, deltav_z_attrs, &varid))
           return -1;
      }
 
@@ -800,7 +899,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 static int define_gyroscope_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -834,43 +933,43 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           return -1;
      }
 
-   /* gyro_raw */
      {
-        static _pText_Attr_Type gyro_raw_attrs[] =
+        static _pText_Attr_Type roll_attrs[] =
           {
              {"units", "radians/s"},
-             {"comment", "Roll, pitch, yaw rate"},
+             {"comment", "Roll rate"},
              _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type pitch_attrs[] =
+          {
+             {"units", "radians/s"},
+             {"comment", "Pitch rate"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type yaw_attrs[] =
+          {
+             {"units", "radians/s"},
+             {"comment", "Yaw rate"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type gyro_attr[] =
+          {
+             {"bias", 0.0},
+             {"scale", 1.0},
+             _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        dims[1] = dim_table->xyz_sat.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRORAW, NC_FLOAT, 2, dims, gyro_raw_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_ROLL, NC_FLOAT, 1, dims, roll_attrs, &varid))
           return -1;
-     }
-
-   /* gyro_bias */
-     {
-        static _pText_Attr_Type gyro_bias_attrs[] =
-          {
-             {"units", "radians/s"},
-             {"comment", "Roll, pitch, yaw rate bias"},
-             _pTEXT_ATTRS_END
-          };
-        dims[0] = dim_table->xyz_sat.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYROBIAS, NC_FLOAT, 1, dims, gyro_bias_attrs, NULL))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
           return -1;
-     }
-
-   /* gyro_scale */
-     {
-        static _pText_Attr_Type gyro_scale_attrs[] =
-          {
-             {"units", "radians/s"},
-             {"comment", "Roll, pitch, yaw rate scale"},
-             _pTEXT_ATTRS_END
-          };
-        dims[0] = dim_table->xyz_sat.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYROSCALE, NC_FLOAT, 1, dims, gyro_scale_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_PITCH, NC_FLOAT, 1, dims, pitch_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_YAW, NC_FLOAT, 1, dims, yaw_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
           return -1;
      }
 
@@ -885,7 +984,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 static int define_mirror_group (int parent_grp, const char *grp_name,
                                 _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -921,15 +1020,22 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 
    /* dit */
      {
-        static _pText_Attr_Type dit_attrs[] =
+        static _pText_Attr_Type dit_east_attrs[] =
           {
              {"units", "radians"},
-             {"comment", "Scan mirror pointing direction (East, North)"},
+             {"comment", "Eastward angular coordinate of scan mirror pointing direction"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type dit_north_attrs[] =
+          {
+             {"units", "radians"},
+             {"comment", "Northward angular coordinate of scan mirror pointing direction"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        dims[1] = dim_table->xy_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SMADIT, NC_FLOAT, 2, dims, dit_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SMADIT_EAST, NC_FLOAT, 1, dims, dit_east_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SMADIT_NORTH, NC_FLOAT, 1, dims, dit_north_attrs, &varid))
           return -1;
      }
 
@@ -1014,10 +1120,6 @@ int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
     */
    dim_table.step.len = num_steps;
    dim_table.corner.len = 4;
-   dim_table.xy_det.len = 2;
-   dim_table.xy_sma.len = 2;
-   dim_table.xyz_sat.len = 3;
-   dim_table.xyz.len = 3;
    dim_table.cov.len = 3;
    dim_table.time_ephemeris.len = NC_UNLIMITED;
    dim_table.time_maneuvers.len = NC_UNLIMITED;

@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 /* placeholder values -- FIXME */
-#define _pTIO_PIXEL_SIZE_ROW       18.0   /* micron */
-#define _pTIO_PIXEL_SIZE_COLUMN    18.0   /* micron */
+#define _pTIO_PIXEL_SIZE_ROW       18.0   /* micrometer */
+#define _pTIO_PIXEL_SIZE_COLUMN    18.0   /* micrometer */
 #define _pTIO_PIXEL_SCALE_ROW      0.195  /* nm */
 #define _pTIO_PIXEL_SCALE_COLUMN   55.0   /* microradian */
 
