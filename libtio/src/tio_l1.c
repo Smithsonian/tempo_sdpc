@@ -66,15 +66,11 @@ static int define_radiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 
 static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
-   int status, dims[TIO_MAX_VAR_DIMS];
+   int status, varid, dims[TIO_MAX_VAR_DIMS];
 
    /* coordinate variables */
    dims[0] = dim_table->step.id;
    status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   dims[0] = dim_table->corner.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_CORNER, NC_INT, 1, dims, NULL);
    if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
 
    /* time */
@@ -86,7 +82,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME, NC_FLOAT, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -98,15 +94,36 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              {"comment", "Exposure duration"},
              _pTEXT_ATTRS_END
           };
+        static _pFloat_Attr_Type exptime_float_attrs[] =
+          {
+             {"valid_min",  0.0},
+             {"valid_max", 10.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPTIME, NC_FLOAT, 1, dims, exptime_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPTIME, NC_FLOAT, 1, dims, exptime_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, exptime_float_attrs))
+          return -1;
+     }
+
+   /* granule_flag */
+     {
+        static _pText_Attr_Type granule_flag_attrs[] =
+          {
+             {"flag_masks", "0x01, 0x02"},
+             {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
+             _pTEXT_ATTRS_END
+          };
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GRANULE_FLAG, NC_UINT, 0, NULL, granule_flag_attrs, NULL))
           return -1;
      }
 
    return 0;
 }
 
-static int define_inr_status (int grp, enum TIO_INR_Status inr_status)
+static int define_inr_status (int grp, int inr_status)
 {
    int status, enum_typeid;
    static _pEnum_Type enum_table[] =
@@ -144,7 +161,6 @@ static int define_global_attrs (int grp)
    static _pInt_Attr_Type int_attrs[] =
      {
         {"processing_version", 0},
-        {"last_granule_of_scan", 0},
         {"granule_seq_num", 0},
         _pINT_ATTRS_END
      };
@@ -167,6 +183,27 @@ static int define_global_attrs (int grp)
 static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
+   static _pFloat_Attr_Type lon_float_attrs[] =
+     {
+        {"valid_min", -180.0},
+        {"valid_max", +180.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   static _pFloat_Attr_Type lat_float_attrs[] =
+     {
+        {"valid_min", -90.0},
+        {"valid_max", +90.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   static _pFloat_Attr_Type ell_alt_float_attrs[] =
+     {
+        {"valid_min", -1.0e2},
+        {"valid_max", +1.0e4},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
    int shuffle=1, deflate_level=2, deflate;
@@ -206,38 +243,76 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
                 * dim_table->step.len);
    deflate = (total_num > 1000000);
 
-   /* pixel_size */
+   /* pixel_size_row */
      {
-        static _pText_Attr_Type pixel_size_attrs[] =
+        static _pText_Attr_Type pixel_size_row_attrs[] =
           {
              {"units", "micron"},
+             {"comment", "Physical detector pixel size along the row direction"},
              _pTEXT_ATTRS_END
           };
-        static float pixel_size[] = {_pTIO_PIXEL_YSIZE, _pTIO_PIXEL_XSIZE};
+        float pixel_size_row = _pTIO_PIXEL_SIZE_ROW;
 
-        dims[0] = dim_table->xy_det.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSIZE, NC_FLOAT, 1, dims, pixel_size_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SIZE_ROW, NC_FLOAT, 0, NULL, pixel_size_row_attrs, &varid))
           return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_size)))
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_size_row)))
           {
              _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
              return -1;
           }
      }
 
-   /* pixel_scale */
+   /* pixel_size_column */
      {
-        static _pText_Attr_Type pixel_scale_attrs[] =
+        static _pText_Attr_Type pixel_size_column_attrs[] =
           {
-             {"units", "microradian"},
+             {"units", "micron"},
+             {"comment", "Physical detector pixel size along the column direction"},
              _pTEXT_ATTRS_END
           };
-        static float pixel_scale[] = {_pTIO_PIXEL_YSCALE, _pTIO_PIXEL_XSCALE};
+        float pixel_size_column = _pTIO_PIXEL_SIZE_COLUMN;
 
-        dims[0] = dim_table->xy_det.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXELSCALE, NC_FLOAT, 1, dims, pixel_scale_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SIZE_COLUMN, NC_FLOAT, 0, NULL, pixel_size_column_attrs, &varid))
           return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, pixel_scale)))
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_size_column)))
+          {
+             _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
+             return -1;
+          }
+     }
+
+   /* pixel_scale_row */
+     {
+        static _pText_Attr_Type pixel_scale_row_attrs[] =
+          {
+             {"units", "nm"},
+             {"comment", "Nominal change in dispersed wavelength across one spectral pixel."},
+             _pTEXT_ATTRS_END
+          };
+        float pixel_scale_row = _pTIO_PIXEL_SCALE_ROW;
+
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
+          {
+             _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
+             return -1;
+          }
+     }
+
+   /* pixel_scale_column */
+     {
+        static _pText_Attr_Type pixel_scale_column_attrs[] =
+          {
+             {"units", "microradian"},
+             {"comment", "Nominal angular size of one spatial image pixel."},
+             _pTEXT_ATTRS_END
+          };
+        float pixel_scale_column = _pTIO_PIXEL_SCALE_COLUMN;
+
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
              _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
              return -1;
@@ -252,11 +327,18 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
              {"coordinates", "longitude latitude spectral_channel"},
              _pTEXT_ATTRS_END
           };
+        float radiance_fill = TIO_FILL_RADIANCE;
+
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_RADIANCE, NC_FLOAT, 3, dims, radiance_attrs, &varid))
           return -1;
+        if (NC_NOERR != (status = nc_put_att (grp, varid, _FillValue, NC_FLOAT, 1, &radiance_fill)))
+          {
+             _pTIO_err_verror_nc (status, "writing %s fill value to grp=%d", TIO_VAR_NAME_RADIANCE, grp);
+             return -1;
+          }
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
              _pTIO_err_verror_nc (status, "defining %s compression parameters", TIO_VAR_NAME_RADIANCE);
@@ -274,8 +356,6 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
              return -1;
           }
 #endif
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
-          return -1;
      }
 
    /* wavelength */
@@ -285,11 +365,21 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
              {"units", "nm"},
              _pTEXT_ATTRS_END
           };
+        static _pFloat_Attr_Type wavelength_float_attrs[] =
+          {
+             {"valid_min", TIO_FILL_FLOAT},
+             {"valid_max", TIO_FILL_FLOAT},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
           return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
+          return -1;
+
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
              _pTIO_err_verror_nc (status, "defining %s compression parameters", TIO_VAR_NAME_WAVELENGTH);
@@ -307,13 +397,11 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
              return -1;
           }
 #endif
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
-          return -1;
      }
 
    /* longitude */
      {
-        static _pText_Attr_Type lon_attrs[] =
+        static _pText_Attr_Type lon_text_attrs[] =
           {
              {"units", "degrees_east"},
              {"long_name", "longitude"},
@@ -323,15 +411,15 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "longitude", NC_FLOAT, 2, dims, lon_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, "longitude", NC_FLOAT, 2, dims, lon_text_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, lon_float_attrs))
           return -1;
      }
 
    /* latitude */
      {
-        static _pText_Attr_Type lat_attrs[] =
+        static _pText_Attr_Type lat_text_attrs[] =
           {
              {"units", "degrees_north"},
              {"long_name", "latitude"},
@@ -341,9 +429,9 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "latitude", NC_FLOAT, 2, dims, lat_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, "latitude", NC_FLOAT, 2, dims, lat_text_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, lat_float_attrs))
           return -1;
      }
 
@@ -362,7 +450,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         dims[1] = dim_table->xtrack.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, "ellipsoid_altitude", NC_FLOAT, 2, dims, ell_alt_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, ell_alt_float_attrs))
           return -1;
      }
 
@@ -371,8 +459,8 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         static _pText_Attr_Type lon_bnds_attrs[] =
           {
              {"units", "degrees_east"},
-             {"long_name", "longitude bounds (SW,SE,NE,NW)"},
-             {"comment", " Longitude at pixel corners"},
+             {"long_name", "longitude bounds (NE,NW,SW,SE)"},
+             {"comment", "Longitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -380,7 +468,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         dims[2] = dim_table->corner.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, "longitude_bounds", NC_FLOAT, 3, dims, lon_bnds_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, lon_float_attrs))
           return -1;
      }
 
@@ -389,7 +477,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         static _pText_Attr_Type lat_bnds_attrs[] =
           {
              {"units", "degrees_north"},
-             {"long_name", "latitude bounds (SW,SE,NE,NW)"},
+             {"long_name", "latitude bounds (NE,NW,SW,SE)"},
              {"comment", "Latitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
@@ -398,7 +486,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         dims[2] = dim_table->corner.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, "latitude_bounds", NC_FLOAT, 3, dims, lat_bnds_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, lat_float_attrs))
           return -1;
      }
 
@@ -407,7 +495,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         static _pText_Attr_Type ell_alt_bnds_attrs[] =
           {
              {"units", "m"},
-             {"long_name", "ellipsoid altitude at bounds (SW,SE,NE,NW)"},
+             {"long_name", "ellipsoid altitude at bounds (NE,NW,SW,SE)"},
              {"comment", "Ellipsoid altitude at pixel corners"},
              _pTEXT_ATTRS_END
           };
@@ -416,7 +504,7 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         dims[2] = dim_table->corner.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, "ellipsoid_altitude_bounds", NC_FLOAT, 3, dims, ell_alt_bnds_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, ell_alt_float_attrs))
           return -1;
      }
 
@@ -519,7 +607,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_FLOAT, 2, dims, satpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_DOUBLE, 2, dims, satpos_attrs, NULL))
           return -1;
      }
 
@@ -533,7 +621,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUNPOS, NC_FLOAT, 2, dims, sunpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUNPOS, NC_DOUBLE, 2, dims, sunpos_attrs, NULL))
           return -1;
      }
 
@@ -547,7 +635,7 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOONPOS, NC_FLOAT, 2, dims, moonpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOONPOS, NC_DOUBLE, 2, dims, moonpos_attrs, NULL))
           return -1;
      }
 
@@ -592,7 +680,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_EPHEM, NC_FLOAT, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -624,7 +712,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->time_ephemeris.id;
         dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_FLOAT, 2, dims, satpos_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATPOS, NC_DOUBLE, 2, dims, satpos_attrs, NULL))
           return -1;
      }
 
@@ -638,7 +726,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->time_ephemeris.id;
         dims[1] = dim_table->xyz.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATVEL, NC_FLOAT, 2, dims, satvel_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SATVEL, NC_DOUBLE, 2, dims, satvel_attrs, NULL))
           return -1;
      }
 
@@ -683,7 +771,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_MANEUVER, NC_FLOAT, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_MANEUVER, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -742,7 +830,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_GYRO, NC_FLOAT, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_GYRO, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -827,7 +915,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_SMA, NC_FLOAT, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 

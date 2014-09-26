@@ -9,10 +9,10 @@ extern "C" {
 #endif
 
 /* placeholder values -- FIXME */
-#define _pTIO_PIXEL_XSIZE    18.0  /* micron */
-#define _pTIO_PIXEL_YSIZE    18.0
-#define _pTIO_PIXEL_XSCALE   55.0  /* microradian */
-#define _pTIO_PIXEL_YSCALE   55.0
+#define _pTIO_PIXEL_SIZE_ROW       18.0   /* micron */
+#define _pTIO_PIXEL_SIZE_COLUMN    18.0   /* micron */
+#define _pTIO_PIXEL_SCALE_ROW      0.195  /* nm */
+#define _pTIO_PIXEL_SCALE_COLUMN   55.0   /* microradian */
 
 typedef struct
 {
@@ -29,6 +29,14 @@ typedef struct
 }
 _pInt_Attr_Type;
 #define _pINT_ATTRS_END  {NULL,0}
+
+typedef struct
+{
+   char *name;
+   float value;
+}
+_pFloat_Attr_Type;
+#define _pFLOAT_ATTRS_END  {NULL,0}
 
 typedef struct
 {
@@ -73,7 +81,8 @@ extern int _pTIO_define_dims_using_offsets (int grp,
 
 extern int _pTIO_define_int_attrs (int grp, int varid,
                                    const _pInt_Attr_Type *attrs);
-
+extern int _pTIO_define_float_attrs (int grp, int varid,
+                                     const _pFloat_Attr_Type *attrs);
 extern int _pTIO_define_text_attrs (int grp, int varid,
                                     const _pText_Attr_Type *attrs);
 
@@ -84,8 +93,7 @@ extern int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_t
 
 extern int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype);
 
-extern int _pTIO_define_processing_level (int grp,
-                                          enum TIO_Processing_Level level);
+extern int _pTIO_define_processing_level (int grp, int level);
 
 #if 0
 {

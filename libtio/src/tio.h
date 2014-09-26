@@ -17,7 +17,7 @@ extern "C" {
 #define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00 UTC"
 
 /* Maximum number of array dimensions */
-#define TIO_MAX_VAR_DIMS   7   
+#define TIO_MAX_VAR_DIMS   7
 
 #define TIO_BYTE   NC_BYTE
 #define TIO_CHAR   NC_CHAR
@@ -31,6 +31,7 @@ extern "C" {
 #define TIO_FLOAT  NC_FLOAT
 #define TIO_DOUBLE NC_DOUBLE
 
+/* File dimension names */
 #define TIO_DIM_NAME_CORNER         "corner"
 #define TIO_DIM_NAME_COV            "cov"
 #define TIO_DIM_NAME_STEP           "mirror_step"
@@ -41,6 +42,7 @@ extern "C" {
 #define TIO_DIM_NAME_XYZ            "xyz"
 #define TIO_DIM_NAME_XYZSAT         "xyz_sat"
 
+/* File group names */
 #define TIO_GRP_NAME_GEOMETRY       "geometry"
 #define TIO_GRP_NAME_INRINPUT       "inr_input"
 #define TIO_GRP_NAME_EPHEMERIS      "ephemeris"
@@ -49,30 +51,50 @@ extern "C" {
 #define TIO_GRP_NAME_GYROSCOPE      "gyroscope"
 #define TIO_GRP_NAME_MIRROR         "mirror"
 
-#define TIO_VAR_NAME_CLOUDTOPHEIGHT "cloud_top_height"
-#define TIO_VAR_NAME_COVARIANCE     "covariance"
-#define TIO_VAR_NAME_DELTAV         "delta_v"
-#define TIO_VAR_NAME_DQF            "data_quality_flag"
-#define TIO_VAR_NAME_EXPTIME        "exptime"
-#define TIO_VAR_NAME_GYROBIAS       "gyro_bias"
-#define TIO_VAR_NAME_GYRORAW        "gyro_raw"
-#define TIO_VAR_NAME_GYROSCALE      "gyro_scale"
-#define TIO_VAR_NAME_INRQF          "inr_quality_flag"
-#define TIO_VAR_NAME_MOONPOS        "moon_position"
-#define TIO_VAR_NAME_PIXELSIZE      "pixel_size"
-#define TIO_VAR_NAME_PIXELSCALE     "pixel_scale"
-#define TIO_VAR_NAME_RADIANCE       "radiance"
-#define TIO_VAR_NAME_SATPOS         "satellite_position"
-#define TIO_VAR_NAME_SATVEL         "satellite_velocity"
-#define TIO_VAR_NAME_SMADIT         "dit"
-#define TIO_VAR_NAME_SRP            "solar_radiation_pressure"
-#define TIO_VAR_NAME_SUNPOS         "sun_position"
-#define TIO_VAR_NAME_TIME           "time"
-#define TIO_VAR_NAME_TIME_EPHEM     "time"
-#define TIO_VAR_NAME_TIME_GYRO      "time"
-#define TIO_VAR_NAME_TIME_MANEUVER  "time"
-#define TIO_VAR_NAME_TIME_SMA       "time"
-#define TIO_VAR_NAME_WAVELENGTH     "wavelength"
+/* File variable names */
+#define TIO_VAR_NAME_CLOUDTOPHEIGHT      "cloud_top_height"
+#define TIO_VAR_NAME_COVARIANCE          "covariance"
+#define TIO_VAR_NAME_DELTAV              "delta_v"
+#define TIO_VAR_NAME_DQF                 "data_quality_flag"
+#define TIO_VAR_NAME_EXPTIME             "exptime"
+#define TIO_VAR_NAME_GRANULE_FLAG        "granule_flag"
+#define TIO_VAR_NAME_GYROBIAS            "gyro_bias"
+#define TIO_VAR_NAME_GYRORAW             "gyro_raw"
+#define TIO_VAR_NAME_GYROSCALE           "gyro_scale"
+#define TIO_VAR_NAME_INRQF               "inr_quality_flag"
+#define TIO_VAR_NAME_MOONPOS             "moon_position"
+#define TIO_VAR_NAME_PIXEL_SCALE_COLUMN  "pixel_scale_column"
+#define TIO_VAR_NAME_PIXEL_SCALE_ROW     "pixel_scale_row"
+#define TIO_VAR_NAME_PIXEL_SIZE_COLUMN   "pixel_size_column"
+#define TIO_VAR_NAME_PIXEL_SIZE_ROW      "pixel_size_row"
+#define TIO_VAR_NAME_RADIANCE            "radiance"
+#define TIO_VAR_NAME_SATPOS              "satellite_position"
+#define TIO_VAR_NAME_SATVEL              "satellite_velocity"
+#define TIO_VAR_NAME_SMADIT              "dit"
+#define TIO_VAR_NAME_SRP                 "solar_radiation_pressure"
+#define TIO_VAR_NAME_SUNPOS              "sun_position"
+#define TIO_VAR_NAME_TIME                "time"
+#define TIO_VAR_NAME_TIME_EPHEM          "time"
+#define TIO_VAR_NAME_TIME_GYRO           "time"
+#define TIO_VAR_NAME_TIME_MANEUVER       "time"
+#define TIO_VAR_NAME_TIME_SMA            "time"
+#define TIO_VAR_NAME_WAVELENGTH          "wavelength"
+
+/* fill values */
+#define TIO_FILL_BYTE    ((signed char)-127)
+#define TIO_FILL_CHAR    ((char)0)
+#define TIO_FILL_SHORT   ((short)-32767)
+#define TIO_FILL_INT     (-2147483647L)
+#define TIO_FILL_FLOAT   (9.9692099683868690e+36f) /* near 15 * 2^119 */
+#define TIO_FILL_DOUBLE  (9.9692099683868690e+36)
+#define TIO_FILL_UBYTE   (255)
+#define TIO_FILL_USHORT  (65535)
+#define TIO_FILL_UINT    (4294967295U)
+#define TIO_FILL_INT64   ((long long)-9223372036854775806LL)
+#define TIO_FILL_UINT64  ((unsigned long long)18446744073709551614ULL)
+#define TIO_FILL_STRING  ""
+
+#define TIO_FILL_RADIANCE  (-TIO_FILL_FLOAT)
 
 enum TIO_INR_Status
 {

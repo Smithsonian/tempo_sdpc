@@ -79,6 +79,25 @@ int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs)
    return 0;
 }
 
+int _pTIO_define_float_attrs (int grp, int varid, const _pFloat_Attr_Type *attrs)
+{
+   const _pFloat_Attr_Type *a;
+   int status;
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        status = nc_put_att_float (grp, varid, a->name, NC_FLOAT, 1, &a->value);
+        if (NC_NOERR != status)
+          {
+             _pTIO_err_verror_nc (status, "%s: defining float attribute %s",
+                                  __func__, a->name);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
 int _pTIO_define_text_attrs (int grp, int varid, const _pText_Attr_Type *attrs)
 {
    const _pText_Attr_Type *a;
@@ -132,12 +151,12 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
 {
    int status;
    void *pfill_value;
-   char fill_char = NC_FILL_CHAR;
-   short fill_short = NC_FILL_SHORT;
-   int fill_int = NC_FILL_INT;
+   char fill_char = TIO_FILL_CHAR;
+   short fill_short = TIO_FILL_SHORT;
+   int fill_int = TIO_FILL_INT;
    unsigned int fill_uint = (unsigned int) -1;
-   float fill_float = NC_FILL_FLOAT;
-   double fill_double = NC_FILL_DOUBLE;
+   float fill_float = TIO_FILL_FLOAT;
+   double fill_double = TIO_FILL_DOUBLE;
 
    switch (xtype)
      {
@@ -145,9 +164,9 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
         break;
       case NC_SHORT: pfill_value = &fill_short;
         break;
-      case NC_INT:  pfill_value = &fill_int;
+      case NC_INT: pfill_value = &fill_int;
         break;
-      case NC_UINT:  pfill_value = &fill_uint;
+      case NC_UINT: pfill_value = &fill_uint;
         break;
       case NC_FLOAT: pfill_value = &fill_float;
         break;
@@ -169,17 +188,17 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
    return 0;
 }
 
-int _pTIO_define_processing_level (int grp, enum TIO_Processing_Level level)
+int _pTIO_define_processing_level (int grp, int level)
 {
    int status, enum_typeid;
    static _pEnum_Type enum_table[] =
      {
-        {"0",  TIO_PROC_LEVEL_0},
-        {"1a", TIO_PROC_LEVEL_1A},
-        {"1b", TIO_PROC_LEVEL_1B},
-        {"1c", TIO_PROC_LEVEL_1C},
-        {"2",  TIO_PROC_LEVEL_2},
-        {"3",  TIO_PROC_LEVEL_3},
+        {"level-0",  TIO_PROC_LEVEL_0},
+        {"level-1a", TIO_PROC_LEVEL_1A},
+        {"level-1b", TIO_PROC_LEVEL_1B},
+        {"level-1c", TIO_PROC_LEVEL_1C},
+        {"level-2",  TIO_PROC_LEVEL_2},
+        {"level-3",  TIO_PROC_LEVEL_3},
         _pENUM_TABLE_END
      };
 
