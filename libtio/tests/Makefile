@@ -12,23 +12,26 @@ TIO_INC = -I$(srcdir)
 
 INCS   = $(TIO_INC) -I$(NETCDF_INC)
 LIBS   = $(TIO_LIB) -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdf -lm
-# INCS_F = -I$(elfdir)
-# LIBS_F = $(TIO_LIB) -lrefdb_f
+INCS_F = -I$(elfdir) -I$(NETCDF_INC)
+LIBS_F = $(TIO_LIB) -ltio_f -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdff
 
 COMPILE_CMD = $(CC) $(CFLAGS)
-# COMPILE_F_CMD = $(FC) $(FCFLAGS)
+COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-all:  tio_test
-check:	tio_test
-	@./tio_test 2> tio_test.log && echo ok && /bin/rm delete_me.nc tio_test.log
+all:  tio_test tio_test_f
+check:	tio_test tio_test_f
+	@./tio_test 2> tio_test.log && echo "C ok"
+	@./tio_test_f 2>> tio_test.log && echo "Fortran ok"
+	/bin/rm delete_me.nc tio_test.log
+	
 
 tio_test:	tio_test.c
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
 
-# tio_test_f:	tio_test_f.f90
-# 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)
+tio_test_f:	tio_test_f.f90
+	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)
 
 # ---------------------------------------------------------
 

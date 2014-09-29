@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <math.h>
 
+#include "cfortran.h"
+
 #include "netcdf.h"
 #include "tio.h"
 #include "_tio.h"
@@ -579,3 +581,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
    return 0;
 }
 
+/* Fortran bindings */
+
+FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_L1BVAR, tiof_get_l1bvar,
+            INT, STRING, INT, INT, INT, PVOID)

@@ -10,6 +10,9 @@ elfdir  = $(srcdir)/objs
 INCS = -I$(config_dir)/include -I$(NETCDF_INC)
 LIBS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdf
 
+MODS_F = -I$(NETCDF_INC)
+LIBS_F = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdff
+
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#
 ELF_MICRO_VERSION = 1#
@@ -51,7 +54,7 @@ ELFOBJS_F = $(elfdir)/tio_module.o
 # --------------------------------------------------------------------------
 
 all:	elf
-elf:	$(elfdir) $(ELFDIR_ELF_LIB) # $(ELFDIR_F_ELF_LIB)
+elf:	$(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
 $(elfdir):
 	-$(MKINSDIR) $(elfdir)
@@ -66,7 +69,7 @@ $(ELFDIR_ELF_LIB):	$(elfdir) $(ELFOBJS)
 
 $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS_F)
 	-$(RM) -f $(ELFDIR_F_ELF_LIB) $(elfdir)/$(ELFLIB_F_MAJOR) $(elfdir)/$(ELFLIB_F)
-	cd $(elfdir) && $(ELF_F_LINK_CMD) -o $(ELFLIB_F_BUILD_NAME) $(OFILES_F) $(LDFLAGS) $(LIBS) $(ELF_DEP_LIBS)
+	cd $(elfdir) && $(ELF_F_LINK_CMD) -o $(ELFLIB_F_BUILD_NAME) $(OFILES_F) $(LDFLAGS) $(LIBS_F) $(ELF_DEP_LIBS)
 	if [ $(ELFLIB_F_MAJOR) != $(ELFLIB_F_BUILD_NAME) ]; then \
 	  cd $(elfdir) && $(LN) $(ELFLIB_F_BUILD_NAME) $(ELFLIB_F_MAJOR); \
 	fi
@@ -85,7 +88,7 @@ install-header:
 	$(MKINSDIR) $(incdir)
 	@echo installing tio.h and tio_module.mod in $(incdir)/
 	$(INSTALL_DATA) $(srcdir)/tio.h $(incdir)
-#	$(INSTALL_DATA) $(elfdir)/tio_module.mod $(incdir)
+	$(INSTALL_DATA) $(elfdir)/tio_module.mod $(incdir)
 
 install-elf:
 	$(MKINSDIR) $(libdir)
@@ -138,5 +141,5 @@ $(elfdir)/tio_l1.o:	$(srcdir)/tio_l1.c
 $(elfdir)/tio_err.o:	$(srcdir)/tio_err.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_err.c $(LIBS)
 
-# $(elfdir)/tio_module.o:	$(srcdir)/tio_module.f90
-#	cd $(elfdir) && $(ELF_F_COMPILE_CMD) $(srcdir)/tio_module.f90
+$(elfdir)/tio_module.o:	$(srcdir)/tio_module.f90
+	cd $(elfdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/tio_module.f90
