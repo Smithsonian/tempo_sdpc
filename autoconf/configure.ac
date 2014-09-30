@@ -47,7 +47,10 @@ AC_ARG_WITH(netcdf,
   [  --with-netcdf[=DIR]       Use netCDF library installed in DIR],
   [jh_with_netcdf=$withval],
   [jh_with_netcdf=no])
-if ! test "x$jh_with_netcdf" = "xno"; then
+if test "x$jh_with_netcdf" = "xno"; then
+   NETCDF_LIB="\$(OTS_ROOT)/lib"
+   NETCDF_INC="\$(OTS_ROOT)/include"
+else
    NETCDF_LIB="$jh_with_netcdf/lib"
    NETCDF_INC="$jh_with_netcdf/include"
 fi

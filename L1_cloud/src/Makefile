@@ -10,8 +10,6 @@ msgdir     = $(srcdir)/msgs
 
 bindir     = $(prefix)/bin
 
-OMIUTIL    = $(OTS_ROOT)/sdptk/SDPTK5.2.18v1.00
-
 MODFLG     = -I
 MODOUTFLG  = -J
 LNFLAGS    = #

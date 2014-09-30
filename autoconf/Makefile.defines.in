@@ -27,6 +27,9 @@ LN = /bin/ln -sf
 CP = /bin/cp
 
 OTS_ROOT    = @OTS_ROOT@
+
+OMIUTIL     = $(OTS_ROOT)/sdptk/SDPTK5.2.18v1.00-jed
+
 HDFLIB      = @HDFLIB@
 HDFINC      = @HDFINC@
 HDF5LIB     = @HDF5LIB@
