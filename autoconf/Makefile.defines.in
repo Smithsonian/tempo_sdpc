@@ -1,21 +1,56 @@
 # -*- sh -*-
 
-config_dir  = @CONFIG_DIR@
-prefix      = @prefix@
+prefix     = @prefix@
+config_dir = @CONFIG_DIR@
 
-CC           = @CC@
-CFLAGS       = @CFLAGS@
-LDFLAGS      = @LDFLAGS@ @DYNAMIC_LINK_FLAGS@
-DL_LIB       = @DYNAMIC_LINK_LIB@
-ELF_CC       = @ELF_CC@
-ELF_CFLAGS   = @ELF_CFLAGS@
-ELF_LINK     = @ELF_LINK@
-ELF_DEP_LIBS = @ELF_DEP_LIBS@
+COMPILER_SUITE = @COMPILER_SUITE@
+OTS_ROOT       = @OTS_ROOT@
 
-FC           = @FC@
-FCFLAGS      = @FCFLAGS@
-ELF_FC       = @FC@
-ELF_F_LINK   = @ELF_F_LINK@
+SHELL=/bin/sh
+
+ifeq ($(COMPILER_SUITE), gfortran)
+  CC           = gcc
+  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran
+  LDFLAGS      = -Wl,--warn-common -Wl,-export-dynamic
+  DL_LIB       = -ldl
+  ELF_CC       = $(CC)
+  ELF_CFLAGS   = $(CCFLAGS) -fPIC
+  ELF_LINK     = $(CC) $(LDFLAGS) -shared -Wl,-O1 -Wl,-soname,$(ELFLIB_MAJOR)
+  ELF_DEP_LIBS = $(DL_LIB) -lm -lc
+#
+  FC           = gfortran
+  FCFLAGS      = $(FFLAGS) -fPIC
+  ELF_FC       = $(FC)
+  ELF_F_LINK   = $(CC) $(LDFLAGS) -shared -Wl,-O1 -Wl,-soname,$(ELFLIB_F_MAJOR)
+  MODFLG       = -I
+  MODOUTFLG    = -J
+  RPATH        = -Wl,-rpath=$(OTS_ROOT)/lib
+  FC_EXTRA_LIBS =#
+endif
+
+ifeq ($(COMPILER_SUITE), intel)
+  INTEL_ROOT   = /opt/intel
+  CC           = $(INTEL_ROOT)/bin/icc
+  CFLAGS       =#-debug -O0
+  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran
+  LDFLAGS      =#
+  DL_LIB       = -ldl
+  ELF_CC       = $(CC)
+  ELF_CFLAGS   = $(CCFLAGS) -fpic
+  ELF_LINK     = $(CC) $(LDFLAGS)
+  ELF_DEP_LIBS = $(DL_LIB) -lm -lc
+#
+  FC           = $(INTEL_ROOT)/bin/ifort
+  FFLAGS       =#-debug -O0
+  FCFLAGS      = $(FFLAGS) -fpic
+  ELF_FC       = $(FC)
+  ELF_F_LINK   = $(FC) $(LDFLAGS)
+  MODFLG       = -I
+  MODOUTFLG    = -module
+  LONG_BIT      = $(shell getconf LONG_BIT)
+  FC_EXTRA_LIBS = $(INTEL_ROOT)/lib/intel$(LONG_BIT)
+  RPATH        = -Wl,-rpath=$(FC_EXTRA_LIBS):$(HDFEOS5_LIB):$(HDFEOS_LIB):$(PGSLIB):$(HDF5LIB):$(HDFLIB)
+endif
 
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -25,8 +60,6 @@ MKINSDIR = $(config_dir)/autoconf/mkinsdir.sh
 RM = /bin/rm
 LN = /bin/ln -sf
 CP = /bin/cp
-
-OTS_ROOT    = @OTS_ROOT@
 
 OMIUTIL     = $(OTS_ROOT)/sdptk/SDPTK5.2.18v1.00-jed
 

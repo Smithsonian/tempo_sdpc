@@ -10,14 +10,19 @@ msgdir     = $(srcdir)/msgs
 
 bindir     = $(prefix)/bin
 
-MODFLG     = -I
-MODOUTFLG  = -J
 LNFLAGS    = #
 ADDLIBD    = #
-ADDLIBS    = -Wl,-rpath=$(OTS_ROOT)/lib -lsz -lm -ldl
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
 
-FFLAGS  = $(MODFLG) ./ $(FCFLAGS) -fconvert=swap -fPIC
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran -fPIC 
+ifeq ($(COMPILER_SUITE), gfortran)
+  FCONVERT = -fconvert=swap
+endif
+ifeq ($(COMPILER_SUITE), intel)
+  FCONVERT =
+endif
+
+FCFLAGS  = $(MODFLG) ./ $(FFLAGS) $(FCONVERT)
+CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -84,7 +89,7 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) OMCLDRR.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
+	$(FC) OMCLDRR.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
 install:
 	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)

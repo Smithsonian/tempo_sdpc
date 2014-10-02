@@ -10,14 +10,12 @@ msgdir     = $(srcdir)/msgs
 
 bindir     = $(prefix)/bin
 
-MODFLG     = -I
-MODOUTFLG  = -J
 LNFLAGS    = #
 ADDLIBD    = #
-ADDLIBS    = -Wl,-rpath=$(OTS_ROOT)/lib -lsz -lm -ldl
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
 
-FFLAGS  = $(MODFLG) ./ $(FCFLAGS) -fPIC
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran -fPIC
+FCFLAGS  = $(MODFLG) ./ $(FFLAGS)
+CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -84,7 +82,7 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
+	$(FC) main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
 install:
 	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)

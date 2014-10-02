@@ -586,17 +586,23 @@ dnl#}}}
 
 AC_DEFUN([JH_SDPTK_SETUP], #{{{
 [
+AC_ARG_WITH(compilers,
+  [  --with-compilers[=XXX]    Use compiler family gfortran or intel],
+  [jh_with_compilers=$withval],
+  [jh_with_compilers=no])
+if test "x$jh_with_compilers" = "xno"; then
+   COMPILER_SUITE=gfortran
+else
+   COMPILER_SUITE="$jh_with_compilers"
+fi
+AC_SUBST(COMPILER_SUITE)
+
 AC_ARG_WITH(otsroot,
   [  --with-otsroot[=DIR]      Use OTS libraries installed in DIR],
   [jh_with_otsroot=$withval],
   [jh_with_otsroot=no])
 if test "x$jh_with_otsroot" = "xno"; then
-   if test X"$GCC" = X"yes" ; then
-      COMPILER_FAMILY=gfortran
-   else
-      COMPILER_FAMILY=intel
-   fi
-   OTS_ROOT="/nfs/$HOST/d2/omi/install/$COMPILER_FAMILY"
+   OTS_ROOT="/nfs/$HOST/d2/omi/install/$COMPILER_SUITE"
 else
    OTS_ROOT="$jh_with_otsroot"
 fi

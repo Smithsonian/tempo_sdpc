@@ -8,21 +8,22 @@ AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_CANONICAL_HOST
 
-JD_ANSI_CC
-JD_ELF_COMPILER
+dnl JD_ANSI_CC
+dnl JD_ELF_COMPILER
 
-AC_SUBST(CC)
-AC_SUBST(CFLAGS)
+dnl AC_SUBST(CC)
+dnl AC_SUBST(CFLAGS)
 
-AC_PROG_FC
-AC_SUBST(FC)
-AC_SUBST(FCFLAGS)
+dnl AC_PROG_FC
+dnl AC_SUBST(FC)
+dnl AC_SUBST(FCFLAGS)
 
-JD_WITH_LIBRARY(sqlite3)
+dnl JD_WITH_LIBRARY(sqlite3)
+
 JH_SDPTK_SETUP
 
 AC_ARG_WITH(hdfeos,
-  [  --with-hdfeos[=DIR]      Use HDFEOS libraries installed in DIR],
+  [  --with-hdfeos[=DIR]       Use HDFEOS libraries installed in DIR],
   [jh_with_hdfeos=$withval],
   [jh_with_hdfeos=no])
 if ! test "x$jh_with_hdfeos" = "xno"; then
@@ -59,7 +60,7 @@ AC_SUBST(NETCDF_INC)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 
-AC_CONFIG_HEADER(include/config.h:include/config.hin)
+dnl AC_CONFIG_HEADER(include/config.h:include/config.hin)
 
 AC_CONFIG_FILES([\
  Makefile:autoconf/Makefile.in \
