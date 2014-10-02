@@ -305,15 +305,11 @@ contains
     swvl = ctrl_fit_winwav_lim(1) ; ewvl = ctrl_fit_winwav_lim(N_FIT_WINWAV)
     nwvl = INT ( (ewvl-swvl) / dwvl, KIND=i4 ) + 1
 
-    allocate (tmp_wavelengths(nwvl, nxtrack), stat=locerrstat)
-    if (locerrstat == 0) then
-      allocate (tmp_spectrum(nwvl, nxtrack), stat=locerrstat)
-      if (locerrstat == 0) then
-        allocate (tmp_qflags (nwvl, nxtrack), stat = locerrstat)
-      endif
-    endif
+    allocate (tmp_wavelengths(nwvl, nxtrack), &
+              tmp_spectrum(nwvl, nxtrack), &
+              tmp_qflags (nwvl, nxtrack), &
+              tmpwvl(0:nwvl-1), stat=locerrstat)
     if (locerrstat /= 0) then
-      errstat = -1
       call err_message_error ("omi_create_solcomp_irradiance: allocate failed", errstat)
       return
     endif
