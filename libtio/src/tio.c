@@ -198,7 +198,6 @@ int _pTIO_define_processing_level (int grp, int level)
         {"level-0",  TIO_PROC_LEVEL_0},
         {"level-1a", TIO_PROC_LEVEL_1A},
         {"level-1b", TIO_PROC_LEVEL_1B},
-        {"level-1c", TIO_PROC_LEVEL_1C},
         {"level-2",  TIO_PROC_LEVEL_2},
         {"level-3",  TIO_PROC_LEVEL_3},
         _pENUM_TABLE_END

@@ -11,7 +11,9 @@
 
 #define TIO_CHUNKSIZE_STEP 256
 
-#define COMMENT_WGS84 "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
+#define COMMENT_WGS84 \
+ "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
+#define COORDINATE_AT_EXPOSURE_START "coordinate at exposure start"
 
 /* An instance of a _pDim_Table_Type struct is used as a lookup table
  * for all the dimensions that are defined anywhere in the associated
@@ -235,44 +237,6 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
                 * dim_table->step.len);
    deflate = (total_num > 1000000);
 
-   /* pixel_size_row */
-     {
-        static _pText_Attr_Type pixel_size_row_attrs[] =
-          {
-             {"units", "micrometer"},
-             {"comment", "Physical detector pixel size along the row direction"},
-             _pTEXT_ATTRS_END
-          };
-        float pixel_size_row = _pTIO_PIXEL_SIZE_ROW;
-
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SIZE_ROW, NC_FLOAT, 0, NULL, pixel_size_row_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_size_row)))
-          {
-             _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
-             return -1;
-          }
-     }
-
-   /* pixel_size_column */
-     {
-        static _pText_Attr_Type pixel_size_column_attrs[] =
-          {
-             {"units", "micrometer"},
-             {"comment", "Physical detector pixel size along the column direction"},
-             _pTEXT_ATTRS_END
-          };
-        float pixel_size_column = _pTIO_PIXEL_SIZE_COLUMN;
-
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SIZE_COLUMN, NC_FLOAT, 0, NULL, pixel_size_column_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_size_column)))
-          {
-             _pTIO_err_verror_nc (status, "%s: writing pixel size", __func__);
-             return -1;
-          }
-     }
-
    /* pixel_scale_row */
      {
         static _pText_Attr_Type pixel_scale_row_attrs[] =
@@ -307,6 +271,25 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
              _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
+             return -1;
+          }
+     }
+
+   /* mirror_step_size */
+     {
+        static _pText_Attr_Type mirror_step_size_attrs[] =
+          {
+             {"units", "microradian"},
+             {"comment", "Nominal size of a mirror step from one scan position to the next."},
+             _pTEXT_ATTRS_END
+          };
+        float mirror_step_size = _pTIO_MIRROR_STEP_SIZE;
+
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &mirror_step_size)))
+          {
+             _pTIO_err_verror_nc (status, "%s: writing mirror step size", __func__);
              return -1;
           }
      }
@@ -594,21 +577,21 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type satpos_x_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "satellite X coordinate"},
+             {"long_name", "satellite X " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type satpos_y_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "satellite Y coordinate"},
+             {"long_name", "satellite Y " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type satpos_z_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "satellite Z coordinate"},
+             {"long_name", "satellite Z " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
@@ -626,21 +609,21 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type sunpos_x_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Sun X coordinate"},
+             {"long_name", "Sun X " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type sunpos_y_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Sun Y coordinate"},
+             {"long_name", "Sun Y " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type sunpos_z_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Sun Z coordinate"},
+             {"long_name", "Sun Z " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
@@ -658,21 +641,21 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
         static _pText_Attr_Type moonpos_x_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Moon X coordinate"},
+             {"long_name", "Moon X " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type moonpos_y_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Moon Y coordinate"},
+             {"long_name", "Moon Y " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type moonpos_z_attrs[] =
           {
              {"units", "km"},
-             {"long_name", "Moon Z coordinate"},
+             {"long_name", "Moon Z " COORDINATE_AT_EXPOSURE_START},
              {"comment", COMMENT_WGS84},
              _pTEXT_ATTRS_END
           };
@@ -730,21 +713,20 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           return -1;
      }
 
-   /* solar radiation pressure scalar */
+   /* Effective (cross-sectional) area to mass ratio,
+    * defined as: (1 + Cr)*A/m
+    *      where Cr = a reflection coefficient [dimensionless, 0 <= Cr <= 1]
+    *             A = satellite cross-sectional area [m^2]
+    *             m = satellite mass [kg]
+    */
      {
-        static _pText_Attr_Type srp_attrs[] =
+        static _pText_Attr_Type amr_attrs[] =
           {
-             {"units", "microPascal"},
+             {"units", "m^2/kg"},
              _pTEXT_ATTRS_END
           };
-        float solar_radiation_pressure = 9.08;  /* perfect reflectance, normal to surface */
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SRP, NC_FLOAT, 0, NULL, srp_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_AMR, NC_FLOAT, 0, NULL, amr_attrs, &varid))
           return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &solar_radiation_pressure)))
-          {
-             _pTIO_err_verror_nc (status, "%s: writing solar radiation pressure", __func__);
-             return -1;
-          }
      }
 
    /* satellite position */

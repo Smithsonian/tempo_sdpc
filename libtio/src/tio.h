@@ -54,19 +54,19 @@ extern "C" {
 #define TIO_VAR_NAME_DELTAV_Y            "delta_v_y"
 #define TIO_VAR_NAME_DELTAV_Z            "delta_v_z"
 #define TIO_VAR_NAME_DQF                 "data_quality_flag"
+#define TIO_VAR_NAME_AMR                 "effective_area_to_mass_ratio"
 #define TIO_VAR_NAME_EXPTIME             "exptime"
 #define TIO_VAR_NAME_GRANULE_FLAG        "granule_flag"
 #define TIO_VAR_NAME_GYRO_ROLL           "gyro_roll"
 #define TIO_VAR_NAME_GYRO_PITCH          "gyro_pitch"
 #define TIO_VAR_NAME_GYRO_YAW            "gyro_yaw"
 #define TIO_VAR_NAME_INRQF               "inr_quality_flag"
+#define TIO_VAR_MIRROR_STEP_SIZE         "mirror_step_size"
 #define TIO_VAR_NAME_MOON_X              "moon_X"
 #define TIO_VAR_NAME_MOON_Y              "moon_Y"
 #define TIO_VAR_NAME_MOON_Z              "moon_Z"
 #define TIO_VAR_NAME_PIXEL_SCALE_COLUMN  "pixel_scale_column"
 #define TIO_VAR_NAME_PIXEL_SCALE_ROW     "pixel_scale_row"
-#define TIO_VAR_NAME_PIXEL_SIZE_COLUMN   "pixel_size_column"
-#define TIO_VAR_NAME_PIXEL_SIZE_ROW      "pixel_size_row"
 #define TIO_VAR_NAME_RADIANCE            "radiance"
 #define TIO_VAR_NAME_SAT_X               "satellite_X"
 #define TIO_VAR_NAME_SAT_Y               "satellite_Y"
@@ -76,7 +76,6 @@ extern "C" {
 #define TIO_VAR_NAME_SAT_VZ              "satellite_velocity_Z"
 #define TIO_VAR_NAME_SMADIT_EAST         "dit_east"
 #define TIO_VAR_NAME_SMADIT_NORTH        "dit_north"
-#define TIO_VAR_NAME_SRP                 "solar_radiation_pressure"
 #define TIO_VAR_NAME_SUN_X               "sun_X"
 #define TIO_VAR_NAME_SUN_Y               "sun_Y"
 #define TIO_VAR_NAME_SUN_Z               "sun_Z"
@@ -115,7 +114,6 @@ enum TIO_Processing_Level
    TIO_PROC_LEVEL_0,
    TIO_PROC_LEVEL_1A,
    TIO_PROC_LEVEL_1B,
-   TIO_PROC_LEVEL_1C,
    TIO_PROC_LEVEL_2,
    TIO_PROC_LEVEL_3
 };
