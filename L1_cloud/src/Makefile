@@ -18,7 +18,7 @@ ifeq ($(COMPILER_SUITE), gfortran)
   FCONVERT = -fconvert=swap
 endif
 ifeq ($(COMPILER_SUITE), intel)
-  FCONVERT =
+  FCONVERT = -convert big_endian
 endif
 
 FCFLAGS  = $(MODFLG) ./ $(FFLAGS) $(FCONVERT)
