@@ -124,7 +124,7 @@ typedef struct
    size_t num_xtrack;
    size_t num_channels;
 }
-TIO_Radiance_Group_Type;
+TIO_Scan_Group_Type;
 
 typedef struct
 {
@@ -208,15 +208,15 @@ extern int TIO_put_att (int grp, const char *varname, const char *attname,
 extern int TIO_get_att (int grp, const char *varname, const char *attname,
                         int xtype, void *att);
 
-/** Create a template Level 1 data file
+/** Create a template Level 1 radiance data file
  * @param  ncid          Index returned by nc_create
  * @param  num_steps     Number of mirror steps
- * @param  num_rgrps     Number of radiance groups
- * @param  rgrps         Array of TIO_Radiance_Group_Type structs
+ * @param  num_sgrps     Number of scan groups
+ * @param  sgrps         Array of TIO_Scan_Group_Type structs
  * @return 0 on success, -1 on error
  */
-extern int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
-                                   TIO_Radiance_Group_Type *rgrps);
+extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                     TIO_Scan_Group_Type *sgrps);
 
 #if 0
 {

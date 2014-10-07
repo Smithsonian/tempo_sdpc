@@ -174,7 +174,7 @@ static int define_global_attrs (int grp)
    return 0;
 }
 
-static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
+static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
    static _pFloat_Attr_Type lon_float_attrs[] =
@@ -207,21 +207,21 @@ static int define_radiance_group (int parent_grp, TIO_Radiance_Group_Type *rg,
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
 
-   if (rg->name == NULL)
+   if (sg->name == NULL)
      {
         _pTIO_err_verror ("%s:  got NULL pointer", __func__);
         return -1;
      }
 
-   if (NC_NOERR != (status = nc_def_grp (parent_grp, rg->name, &grp)))
+   if (NC_NOERR != (status = nc_def_grp (parent_grp, sg->name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, rg->name);
+        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, sg->name);
         return -1;
      }
 
    /* group-local dimensions */
-   dim_table->xtrack.len = rg->num_xtrack;
-   dim_table->channel.len = rg->num_channels;
+   dim_table->xtrack.len = sg->num_xtrack;
+   dim_table->channel.len = sg->num_channels;
 
    if (-1 == define_radiance_group_dims (grp, dim_table))
      return -1;
@@ -1090,8 +1090,8 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
-                            TIO_Radiance_Group_Type *rgrps)
+int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
+                              TIO_Scan_Group_Type *sgrps)
 {
    _pDim_Table_Type dim_table;
    int i;
@@ -1116,9 +1116,9 @@ int TIO_create_l1_template (int ncid, size_t num_steps, int num_rgrps,
         return -1;
      }
 
-   for (i = 0; i < num_rgrps; i++)
+   for (i = 0; i < num_sgrps; i++)
      {
-        if (-1 == define_radiance_group (ncid, &rgrps[i], &dim_table, NULL))
+        if (-1 == define_radiance_group (ncid, &sgrps[i], &dim_table, NULL))
           {
              _pTIO_err_verror ("%s failed defining radiance group %d", __func__, i);
              return -1;
