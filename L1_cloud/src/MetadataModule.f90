@@ -314,12 +314,16 @@ module MetadataModule
      ENDIF
 
      returnstatus = pgs_met_sfend(sdid)
-     returnstatus = pgs_met_remove()
+!     returnstatus = pgs_met_remove()
 
      IF(returnstatus /=0) THEN
        status = OMI_E_GENERAL
        GO TO 9999
      ENDIF
+
+! Temporarily moved here since it fails under Intel build of SDPTK but 
+! seems to have no harmful consequences. Uncomment above if fixed.
+     returnstatus = pgs_met_remove()
 
 9999 CONTINUE 
 

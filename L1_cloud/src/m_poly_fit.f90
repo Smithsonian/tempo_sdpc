@@ -111,7 +111,7 @@ contains
     integer, intent(in) :: ndegree
     real (KIND=8), intent(in), dimension(:) :: x,y
     real (KIND=8), intent(out), dimension(:), optional :: yfit
-    real (KIND=8), intent(out), dimension(:), optional :: measure_errors
+    real (KIND=8), intent(in), dimension(:), optional :: measure_errors
     real (KIND=8), dimension(size(x)) :: sdev, sdev2
     real (KIND=8), dimension(0:ndegree,0:ndegree) :: covar
     real (KIND=8), dimension(0:ndegree) :: b
