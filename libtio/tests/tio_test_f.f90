@@ -4,7 +4,7 @@ program tio_test
   implicit none
 
   type (L1B_Object_Type) :: l1bobj
-  character (len=*), parameter :: filename = "delete_me.nc"
+  character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
   integer :: step0, num_steps
   real (kind=4), allocatable, dimension(:,:,:) :: radiance

@@ -22,9 +22,9 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 all:  tio_test tio_test_f
 check:	tio_test tio_test_f
-	@./tio_test 2> tio_test.log && echo "C ok"
-	@./tio_test_f 2>> tio_test.log && echo "Fortran ok"
-	/bin/rm delete_me.nc tio_test.log
+	@./tio_test 2> tio_test.log && echo "testing C...ok"
+	@./tio_test_f 2>> tio_test.log && echo "testing Fortran...ok"
+	/bin/rm delete_*.nc tio_test.log
 	
 
 tio_test:	tio_test.c

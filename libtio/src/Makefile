@@ -31,8 +31,8 @@ ELFDIR_ELF_LIB = $(elfdir)/$(ELFLIB_BUILD_NAME)#
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
 
-OFILES   = tio.o tio_l1_radiance.o tio_err.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_err.o
+OFILES   = tio.o tio_l1_radiance.o tio_l1_irradiance.o tio_err.o
+ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o $(elfdir)/tio_err.o
 
 # --- Fortran interface
 ELFLIB_F = lib$(THIS_LIB)_f.so
@@ -137,6 +137,9 @@ $(elfdir)/tio.o:	$(srcdir)/tio.c
 
 $(elfdir)/tio_l1_radiance.o:	$(srcdir)/tio_l1_radiance.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_radiance.c $(LIBS)
+
+$(elfdir)/tio_l1_irradiance.o:	$(srcdir)/tio_l1_irradiance.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_irradiance.c $(LIBS)
 
 $(elfdir)/tio_err.o:	$(srcdir)/tio_err.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_err.c $(LIBS)

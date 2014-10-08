@@ -61,12 +61,14 @@ extern "C" {
 #define TIO_VAR_NAME_GYRO_PITCH          "gyro_pitch"
 #define TIO_VAR_NAME_GYRO_YAW            "gyro_yaw"
 #define TIO_VAR_NAME_INRQF               "inr_quality_flag"
+#define TIO_VAR_NAME_IRRADIANCE          "irradiance"
 #define TIO_VAR_MIRROR_STEP_SIZE         "mirror_step_size"
 #define TIO_VAR_NAME_MOON_X              "moon_X"
 #define TIO_VAR_NAME_MOON_Y              "moon_Y"
 #define TIO_VAR_NAME_MOON_Z              "moon_Z"
 #define TIO_VAR_NAME_PIXEL_SCALE_COLUMN  "pixel_scale_column"
 #define TIO_VAR_NAME_PIXEL_SCALE_ROW     "pixel_scale_row"
+#define TIO_VAR_NAME_PQF                 "pixel_quality_flag"
 #define TIO_VAR_NAME_RADIANCE            "radiance"
 #define TIO_VAR_NAME_SAT_X               "satellite_X"
 #define TIO_VAR_NAME_SAT_Y               "satellite_Y"
@@ -101,6 +103,7 @@ extern "C" {
 #define TIO_FILL_STRING  ""
 
 #define TIO_FILL_RADIANCE  (-TIO_FILL_FLOAT)
+#define TIO_FILL_IRRADIANCE  (-TIO_FILL_FLOAT)
 
 enum TIO_INR_Status
 {
@@ -217,6 +220,16 @@ extern int TIO_get_att (int grp, const char *varname, const char *attname,
  */
 extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
                                      TIO_Scan_Group_Type *sgrps);
+
+/** Create a template Level 1 irradiance data file
+ * @param  ncid          Index returned by nc_create
+ * @param  num_steps     Number of mirror steps
+ * @param  num_sgrps     Number of scan groups
+ * @param  sgrps         Array of TIO_Scan_Group_Type structs
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                       TIO_Scan_Group_Type *sgrps);
 
 #if 0
 {

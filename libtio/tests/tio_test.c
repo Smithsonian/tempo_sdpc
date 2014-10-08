@@ -43,13 +43,9 @@ static int compare_data (int n, float *out, float *in)
    return 0;
 }
 
-int main (void)
+static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
-   int ncid, status, grp;
-#define NXTRACK       10
-#define NWAVELENGTHS  10   
-   int ntracks=10, nxtrack=NXTRACK, ny=NWAVELENGTHS;
-   char file[] = "delete_me.nc";
+   int ncid, status, grp, err=-1;
    char field_name[] = TIO_VAR_NAME_RADIANCE;
    char attr_name[] = "foo";
    int field_type = TIO_FLOAT;
@@ -62,15 +58,22 @@ int main (void)
    float *data = NULL;
    float *data_in = NULL;
    int data_size = ntracks * nxtrack * ny;
-   int err = 1;
    int track, num_write;
    int processing_level;
    int processing_level_type;
-   TIO_Radiance_Group_Type rgrps[] =
+   TIO_Scan_Group_Type sgrps[] =
      {
-        {"band_290_490_nm", NWAVELENGTHS, NXTRACK},
-        {"band_540_740_nm", NWAVELENGTHS, NXTRACK},
+        {"band_290_490_nm", 0, 0},
+        {"band_540_740_nm", 0, 0},
      };
+   int i, num_sgrps = sizeof (sgrps) / sizeof(sgrps[0]);
+
+   for (i = 0; i < num_sgrps; i++)
+     {
+        TIO_Scan_Group_Type *s = &sgrps[i];
+        s->num_xtrack = nxtrack;
+        s->num_channels = ny;
+     }
 
    /* nc_set_log_level(3); */
 
@@ -91,13 +94,13 @@ int main (void)
         goto cleanup;
      }
 
-   if (-1 == TIO_create_l1_template (ncid, ntracks, 2, rgrps))
+   if (-1 == TIO_l1_radiance_template (ncid, ntracks, num_sgrps, sgrps))
      {
-        fprintf (stderr, "*** failed creating L1 template in %s\n", file);
+        fprintf (stderr, "*** failed creating L1 radiance template in %s\n", file);
         goto cleanup;
      }
 
-   grp_name = rgrps[0].name;
+   grp_name = sgrps[0].name;
 
    if (NC_NOERR != (status = nc_inq_grp_full_ncid (ncid, grp_name, &grp)))
      {
@@ -134,7 +137,7 @@ int main (void)
      }
 
    /* test writing to enum attributes */
-   processing_level = TIO_PROC_LEVEL_1C;
+   processing_level = TIO_PROC_LEVEL_1A;
    if ((-1 == TIO_inq_att (ncid, NULL, "processing_level", &processing_level_type, NULL))
        || (-1 == TIO_put_att (ncid, NULL, "processing_level", processing_level_type, 1, &processing_level)))
      {
@@ -205,10 +208,10 @@ int main (void)
         fprintf (stderr, "*** error reading enum attribute\n");
         goto cleanup;
      }
-   if (processing_level != TIO_PROC_LEVEL_1C)
+   if (processing_level != TIO_PROC_LEVEL_1A)
      {
         fprintf (stderr, "*** error:  processing_level=%u expected %u\n",
-                 processing_level, TIO_PROC_LEVEL_1C);
+                 processing_level, TIO_PROC_LEVEL_1A);
         goto cleanup;
      }
 
@@ -232,6 +235,64 @@ int main (void)
 cleanup:
    free(data);
 
-   if (err) fprintf (stderr, "*** TEST FAILED\n");
+   if (err) fprintf (stderr, "*** TEST FAILED (test_l1_radiance)\n");
    return err;
+}
+
+static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int ny)
+{
+   int ncid, status, err=-1;
+   TIO_Scan_Group_Type sgrps[] =
+     {
+        {"band_290_490_nm", 0, 0},
+        {"band_540_740_nm", 0, 0},
+     };
+   int i, num_sgrps = sizeof (sgrps) / sizeof(sgrps[0]);
+
+   for (i = 0; i < num_sgrps; i++)
+     {
+        TIO_Scan_Group_Type *s = &sgrps[i];
+        s->num_xtrack = nxtrack;
+        s->num_channels = ny;
+     }
+
+   /* nc_set_log_level(3); */
+
+   if (NC_NOERR != (status = nc_create (file, NC_NETCDF4, &ncid)))
+     {
+        fprintf (stderr, "*** error opening %s (%s)\n",
+                 file, nc_strerror(status));
+        goto cleanup;
+     }
+
+   if (-1 == TIO_l1_irradiance_template (ncid, ntracks, num_sgrps, sgrps))
+     {
+        fprintf (stderr, "*** failed creating L1 irradiance template in %s\n", file);
+        goto cleanup;
+     }
+
+   if (NC_NOERR != (status = nc_close (ncid)))
+     {
+        fprintf (stderr, "*** error closing file %s\n", file);
+        goto cleanup;
+     }
+
+   err = 0;
+cleanup:
+
+   if (err) fprintf (stderr, "*** TEST FAILED (test_l1_irradiance)\n");
+   return err;
+}
+
+int main (void)
+{
+   int ntracks=10, nxtrack=10, ny=10;
+
+   if (test_l1_radiance ("delete_radiance.nc", ntracks, nxtrack, ny))
+     return 1;
+
+   if (test_l1_irradiance ("delete_irradiance.nc", ntracks, nxtrack, ny))
+     return 1;
+
+   return 0;
 }
