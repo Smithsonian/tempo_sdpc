@@ -200,12 +200,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      };
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
-   int shuffle=1, deflate_level=2, deflate;
-   size_t total_num;
+   int shuffle, deflate=1, deflate_level=1;
 #if 0
    int storage = NC_CHUNKED;
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
+
+   shuffle = deflate;
 
    if (sg->name == NULL)
      {
@@ -230,12 +231,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    dims[0] = dim_table->xtrack.id;
    status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
    if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
-
-   /* FIXME */
-   total_num = (dim_table->channel.len
-                * dim_table->xtrack.len
-                * dim_table->step.len);
-   deflate = (total_num > 1000000);
 
    /* pixel_scale_row */
      {

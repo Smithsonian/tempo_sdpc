@@ -138,7 +138,9 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
-   int shuffle=1, deflate_level=2, deflate=1;
+   int shuffle, deflate=1, deflate_level=1;
+
+   shuffle = deflate;
 
    if (sg->name == NULL)
      {
