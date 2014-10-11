@@ -29,14 +29,3 @@ void _pTIO_err_verror_nc (int status, const char *fmt, ...)
    va_end (ap);
    (void) fprintf (stderr, "\n(%s)\n", nc_strerror(status));
 }
-
-int _pTIO_check_verror_nc (int status, int line, const char *file)
-{
-   if (status == NC_NOERR)
-     return 0;
-
-   (void) fprintf (stderr, "**ERROR: %s:%d: %s\n",
-                   file, line, nc_strerror(status));
-
-   return 1;
-}

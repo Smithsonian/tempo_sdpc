@@ -51,7 +51,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
    /* coordinate variables */
    dims[0] = dim_table->step.id;
    status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: defining coordinate variable %s",
+                             __func__, TIO_DIM_NAME_STEP);
+        return -1;
+     }
 
    /* time */
      {
@@ -164,7 +169,12 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    /* group-local coordinate variables */
    dims[0] = dim_table->xtrack.id;
    status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
-   if (_pTIO_check_verror_nc (status, __LINE__, __FILE__)) return -1;
+   if (NC_NOERR != status)
+     {
+        _pTIO_err_verror_nc (status, "%s: defining coordinate variable %s",
+                             __func__, TIO_DIM_NAME_XTRACK);
+        return -1;
+     }
 
    /* pixel_scale_row */
      {
@@ -299,7 +309,7 @@ int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
     * Other dimensions are group-specific and are initialized only
     * when those groups are being defined.
     */
-   dim_table.step.len = num_steps;   
+   dim_table.step.len = num_steps;
 
    if ((-1 == define_global_attrs (ncid))
        || (-1 == define_global_dims (ncid, &dim_table))

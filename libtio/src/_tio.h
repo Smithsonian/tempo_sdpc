@@ -69,7 +69,6 @@ _pDim_Offsets_Type;
 
 extern void _pTIO_err_verror (const char *fmt, ...);
 extern void _pTIO_err_verror_nc (int status, const char *fmt, ...);
-extern int _pTIO_check_verror_nc (int status, int line, const char *file);
 
 extern int _pTIO_define_enum (int grp, const char *name,
                               const _pEnum_Type *enum_table, int *enum_typeid);
