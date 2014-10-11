@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "netcdf.h"
+#include "terr.h"
 #include "tio.h"
 #include "_tio.h"
 
@@ -53,8 +54,9 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
    status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
-        _pTIO_err_verror_nc (status, "%s: defining coordinate variable %s",
-                             __func__, TIO_DIM_NAME_STEP);
+        Terr_verror (TERR_IO_WRITE_ERROR,
+                     "%s: defining coordinate variable %s (%s)",
+                     __func__, TIO_DIM_NAME_STEP, nc_strerror(status));
         return -1;
      }
 
@@ -149,13 +151,14 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    if (sg->name == NULL)
      {
-        _pTIO_err_verror ("%s:  got NULL pointer", __func__);
+        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, sg->name, &grp)))
      {
-        _pTIO_err_verror_nc (status, "%s: defining group %s", __func__, sg->name);
+        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+                     __func__, sg->name, nc_strerror(status));
         return -1;
      }
 
@@ -171,8 +174,9 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
-        _pTIO_err_verror_nc (status, "%s: defining coordinate variable %s",
-                             __func__, TIO_DIM_NAME_XTRACK);
+        Terr_verror (TERR_IO_WRITE_ERROR,
+                     "%s: defining coordinate variable %s (%s)",
+                     __func__, TIO_DIM_NAME_XTRACK, nc_strerror(status));
         return -1;
      }
 
@@ -190,7 +194,8 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
           {
-             _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
+             Terr_verror (TERR_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
+                          __func__, nc_strerror(status));
              return -1;
           }
      }
@@ -209,7 +214,8 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
-             _pTIO_err_verror_nc (status, "%s: writing pixel scale", __func__);
+             Terr_verror (TERR_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
+                          __func__, nc_strerror(status));
              return -1;
           }
      }
@@ -236,12 +242,16 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_att (grp, varid, _FillValue, NC_FLOAT, 1, &irradiance_fill)))
           {
-             _pTIO_err_verror_nc (status, "writing %s fill value to grp=%d", TIO_VAR_NAME_IRRADIANCE, grp);
+             Terr_verror (TERR_IO_WRITE_ERROR,
+                          "writing %s fill value to grp=%d (%s)",
+                          TIO_VAR_NAME_IRRADIANCE, grp, nc_strerror(status));
              return -1;
           }
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
-             _pTIO_err_verror_nc (status, "defining %s compression parameters", TIO_VAR_NAME_IRRADIANCE);
+             Terr_verror (TERR_IO_WRITE_ERROR,
+                          "defining %s compression parameters for grp = %d (%s)",
+                          TIO_VAR_NAME_IRRADIANCE, grp, nc_strerror(status));
              return -1;
           }
      }
@@ -270,7 +280,9 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
-             _pTIO_err_verror_nc (status, "defining %s compression parameters", TIO_VAR_NAME_WAVELENGTH);
+             Terr_verror (TERR_IO_WRITE_ERROR,
+                          "defining %s compression parameters for grp %d (%s)",
+                          TIO_VAR_NAME_WAVELENGTH, grp, nc_strerror(status));
              return -1;
           }
      }
@@ -315,7 +327,7 @@ int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
        || (-1 == define_global_dims (ncid, &dim_table))
        || (-1 == define_global_vars (ncid, &dim_table)))
      {
-        _pTIO_err_verror ("%s failed", __func__);
+        Terr_verror (TERR_UNKNOWN_ERROR, "%s failed", __func__);
         return -1;
      }
 
@@ -323,7 +335,9 @@ int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
      {
         if (-1 == define_irradiance_group (ncid, &sgrps[i], &dim_table, NULL))
           {
-             _pTIO_err_verror ("%s failed defining irradiance group %d", __func__, i);
+             Terr_verror (TERR_IO_WRITE_ERROR,
+                          "%s failed defining irradiance group %d",
+                          __func__, i);
              return -1;
           }
      }

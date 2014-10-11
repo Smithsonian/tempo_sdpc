@@ -7,11 +7,17 @@ THIS_LIB = tio
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/objs
 
-INCS = -I$(config_dir)/include -I$(NETCDF_INC)
-LIBS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdf
+TERR_LIBPATHS    = -Wl,-rpath=$(TERR_DIR)/objs -L$(TERR_DIR)/objs
+NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
+INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
+
+INCS = -I$(config_dir)/include -I$(TERR_DIR) -I$(NETCDF_INC)
+LIBS = $(INSTALL_LIBPATHS) \
+       $(NETCDF_LIBPATHS) -lnetcdf \
+       $(TERR_LIBPATHS) -lterr
 
 MODS_F = -I$(NETCDF_INC)
-LIBS_F = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdff
+LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff
 
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#
@@ -31,8 +37,8 @@ ELFDIR_ELF_LIB = $(elfdir)/$(ELFLIB_BUILD_NAME)#
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
 
-OFILES   = tio.o tio_l1_radiance.o tio_l1_irradiance.o tio_err.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o $(elfdir)/tio_err.o
+OFILES   = tio.o tio_l1_radiance.o tio_l1_irradiance.o
+ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
 
 # --- Fortran interface
 ELFLIB_F = lib$(THIS_LIB)_f.so
@@ -116,8 +122,7 @@ install-elf-f:
 	@echo The links $(ELFLIB_F) and $(ELFLIB_F_MAJOR) to $(ELFLIB_F_BUILD_NAME) were also created.
 	@echo ""
 
-install-elf:	elf install-header install-elf # install-elf-f
-install:	install-elf
+install:	elf install-header install-elf install-elf-f
 
 # --------------------------------------------------------------------------
 # Housekeeping
@@ -140,9 +145,6 @@ $(elfdir)/tio_l1_radiance.o:	$(srcdir)/tio_l1_radiance.c
 
 $(elfdir)/tio_l1_irradiance.o:	$(srcdir)/tio_l1_irradiance.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_irradiance.c $(LIBS)
-
-$(elfdir)/tio_err.o:	$(srcdir)/tio_err.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_err.c $(LIBS)
 
 $(elfdir)/tio_module.o:	$(srcdir)/tio_module.f90
 	cd $(elfdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/tio_module.f90

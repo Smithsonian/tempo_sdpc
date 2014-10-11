@@ -7,13 +7,16 @@ THIS_LIB = tio
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/objs
 
-TIO_LIB = -Wl,-rpath=$(elfdir) -L$(elfdir) -ltio
 TIO_INC = -I$(srcdir)
 
+TIO_LIBPATHS = -Wl,-rpath=$(elfdir) -L$(elfdir)
+NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
+
 INCS   = $(TIO_INC) -I$(NETCDF_INC)
-LIBS   = $(TIO_LIB) -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdf -lm
+LIBS   = $(TIO_LIBPATHS) -ltio $(NETCDF_LIBPATHS) -lnetcdf -lm
+
 INCS_F = -I$(elfdir) -I$(NETCDF_INC)
-LIBS_F = $(TIO_LIB) -ltio_f -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB) -lnetcdff
+LIBS_F = $(TIO_LIBPATHS) -ltio -ltio_f $(NETCDF_LIBPATHS) -lnetcdff
 
 COMPILE_CMD = $(CC) $(CFLAGS)
 COMPILE_F_CMD = $(FC) $(FCFLAGS)
@@ -25,7 +28,6 @@ check:	tio_test tio_test_f
 	@./tio_test 2> tio_test.log && echo "testing C...ok"
 	@./tio_test_f 2>> tio_test.log && echo "testing Fortran...ok"
 	/bin/rm delete_*.nc tio_test.log
-	
 
 tio_test:	tio_test.c
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
