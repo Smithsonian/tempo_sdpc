@@ -16,8 +16,8 @@ LIBS = $(INSTALL_LIBPATHS) \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TERR_LIBPATHS) -lterr
 
-MODS_F = -I$(NETCDF_INC)
-LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff
+MODS_F = -I$(NETCDF_INC) -I$(TERR_DIR)/objs
+LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TERR_LIBPATHS) -lterr_f
 
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#
