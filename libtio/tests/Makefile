@@ -10,7 +10,7 @@ elfdir  = $(srcdir)/objs
 TIO_INC = -I$(srcdir)
 
 TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
-TERR_LIBPATHS   = -Wl,-rpath=$(TERR_DIR)/objs -L$(TERR_DIR)/objs
+TERR_LIBPATHS   = -Wl,-rpath=$(TERR_LIB) -L$(TERR_LIB)
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 
 INCS   = $(TIO_INC) -I$(NETCDF_INC)

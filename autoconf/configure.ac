@@ -58,6 +58,20 @@ fi
 AC_SUBST(NETCDF_LIB)
 AC_SUBST(NETCDF_INC)
 
+AC_ARG_WITH(terr,
+  [  --with-terr[=DIR]         Use terr library installed in DIR],
+  [jh_with_terr=$withval],
+  [jh_with_terr=no])
+if test "x$jh_with_terr" = "xno"; then
+   TERR_LIB="\$(TERR_DIR)/lib"
+   TERR_INC="\$(TERR_DIR)/include"
+else
+   TERR_LIB="$jh_with_terr/lib"
+   TERR_INC="$jh_with_terr/include"
+fi
+AC_SUBST(TERR_LIB)
+AC_SUBST(TERR_INC)
+
 JH_LIST_SOURCES(L1_trace_gas/src)
 
 dnl AC_CONFIG_HEADER(include/config.h:include/config.hin)
