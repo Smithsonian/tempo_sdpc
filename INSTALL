@@ -1,0 +1,27 @@
+1. Install required OTS software:
+
+   A collection of tar files containing most of the OTS packages
+   required by SDPC components is available from one of the CF
+   machines, e,g. mars, in:
+
+        /home/jhouck/omi/omi_ots/tarfiles.
+
+   Installation of these packages is automated by a revision-controlled
+   Makefile available from the git repository:
+
+         ssh://git@vex/~/ots_sdpc.git
+
+   The README file in the git repository contains installation
+   instructions.
+
+2. Install libterr
+
+   libterr is available from ssh://git@vex/~/libterr.git
+
+3. Run the configure script, compile and install like so:
+
+    ./configure  --prefix=$prefix \
+                 --with-otsroot=$otsroot \
+                 --with-terr=$terr_dir
+    make
+    make install
