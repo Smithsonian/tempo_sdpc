@@ -87,15 +87,15 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
-   /* exptime */
+   /* exposure_time */
      {
-        static _pText_Attr_Type exptime_attrs[] =
+        static _pText_Attr_Type exposure_time_attrs[] =
           {
              {"units", "s"},
              {"comment", "Exposure duration"},
              _pTEXT_ATTRS_END
           };
-        static _pFloat_Attr_Type exptime_float_attrs[] =
+        static _pFloat_Attr_Type exposure_time_float_attrs[] =
           {
              {"valid_min",  0.0},
              {"valid_max", 10.0},
@@ -103,9 +103,9 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPTIME, NC_FLOAT, 1, dims, exptime_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPOSURE_TIME, NC_FLOAT, 1, dims, exposure_time_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, exptime_float_attrs))
+        if (-1 == _pTIO_define_float_attrs (grp, varid, exposure_time_float_attrs))
           return -1;
      }
 

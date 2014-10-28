@@ -55,7 +55,7 @@ extern "C" {
 #define TIO_VAR_NAME_DELTAV_Z            "delta_v_z"
 #define TIO_VAR_NAME_DQF                 "data_quality_flag"
 #define TIO_VAR_NAME_AMR                 "effective_area_to_mass_ratio"
-#define TIO_VAR_NAME_EXPTIME             "exptime"
+#define TIO_VAR_NAME_EXPOSURE_TIME       "exposure_time"
 #define TIO_VAR_NAME_GRANULE_FLAG        "granule_flag"
 #define TIO_VAR_NAME_GYRO_ROLL           "gyro_roll"
 #define TIO_VAR_NAME_GYRO_PITCH          "gyro_pitch"
