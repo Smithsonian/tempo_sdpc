@@ -11,7 +11,8 @@ CONTAINS
 SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal
+  USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal, &
+    OMSAO_F_XTRMISRAD, vb_lev_default, error_check
   USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
     l1b_radref_filename, l1b_channel
@@ -20,7 +21,6 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
   USE omi_read_l1b_data, ONLY: L1Bga_EarthSunDistance
   !use l1bread, only: l1bread_radiance_info
-  USE OMSAO_errstat_module
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
   IMPLICIT NONE
 
