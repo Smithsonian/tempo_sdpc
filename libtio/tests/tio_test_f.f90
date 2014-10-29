@@ -3,7 +3,7 @@ program tio_test
   use tio_module
   implicit none
 
-  type (L1B_Object_Type) :: l1bobj
+  type (tiof_l1_object_type) :: l1bobj
   character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
   integer :: step0, num_steps
@@ -15,13 +15,13 @@ program tio_test
   call tiof_open (filename, l1bobj, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_open failed:  file='//filename
-    stop
+    stop 1
   endif
 
   call tiof_inq_group (l1bobj, groupname, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_group failed:  group='//groupname
-    stop
+    stop 2
   endif
 
   step0 = 5
@@ -31,7 +31,7 @@ program tio_test
   call tiof_get3d_r4 (l1bobj, "radiance", step0, num_steps, radiance, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_get3d_r4 failed'
-    stop
+    stop 3
   endif
 
   !write(*,*)radiance
@@ -40,7 +40,7 @@ program tio_test
   call tiof_close (l1bobj, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_close failed'
-    stop
+    stop 4
   endif
 
 end program tio_test
