@@ -18,9 +18,11 @@
 
    libterr is available from ssh://git@vex/~/libterr.git
 
-3. Run the configure script, compile and install like so:
+3. Run the configure script, compile and install as follows.
+   Choose compilers = gfortran | intel, then:
 
     ./configure  --prefix=$prefix \
+                 --with-compilers=$compilers \
                  --with-otsroot=$otsroot \
                  --with-terr=$terr_dir
     make
