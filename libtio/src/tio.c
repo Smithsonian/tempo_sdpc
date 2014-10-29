@@ -441,7 +441,7 @@ int TIO_inq_att (int grp, const char *varname, const char *attname,
         return -1;
      }
 
-   if (varname == NULL)
+   if ((varname == NULL) || (*varname == 0))
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
@@ -473,7 +473,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
         return -1;
      }
 
-   if (varname == NULL)
+   if ((varname == NULL) || (*varname == 0))
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
@@ -532,7 +532,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
         return -1;
      }
 
-   if (varname == NULL)
+   if ((varname == NULL) || (*varname == 0))
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
