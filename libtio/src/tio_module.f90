@@ -3,14 +3,20 @@ module tio_module
   use terr_module
   implicit none
 
-  integer (kind=4) :: tiof_get_l1bvar
-  external            tiof_get_l1bvar
+  integer, private, parameter :: &
+    i1 = selected_int_kind (2**1), &
+    i2 = selected_int_kind (2**2), &
+    i4 = selected_int_kind (2**3), &
+    i8 = selected_int_kind (2**4)
 
-  type, public :: L1B_Object_Type
-    integer (kind=4) :: fileid = -1
-    integer (kind=4) :: groupid = -1
-    integer (kind=4) :: num_times=0, num_xtrack=0, num_wavelengths=0
-  end type L1B_Object_Type
+  integer :: tiof_get_l1bvar, tiof_put_att1
+  external   tiof_get_l1bvar, tiof_put_att1
+
+  type, public :: tiof_l1_object_type
+    integer :: fileid = -1
+    integer :: groupid = -1
+    integer :: num_times=0, num_xtrack=0, num_wavelengths=0
+  end type tiof_l1_object_type
 
   private
 
@@ -49,11 +55,10 @@ contains
   subroutine tiof_open (file, l1bobj, errstat)
     implicit none
     character (len=*), intent(in) :: file
-    type (L1B_Object_Type), intent(out) :: l1bobj
+    type (tiof_l1_object_type), intent(out) :: l1bobj
     integer, intent(inout) :: errstat
 
-    integer (kind=4) :: fileid
-    integer :: status
+    integer :: fileid, status
 
     if (errstat < 0) return
 
@@ -65,6 +70,7 @@ contains
     endif
 
     l1bobj % fileid = fileid
+    l1bobj % groupid = fileid
 
     call get_dimlen (fileid, "mirror_step", l1bobj % num_times, errstat)
     if (errstat < 0) return
@@ -72,10 +78,12 @@ contains
 
   subroutine tiof_close (l1bobj, errstat)
     implicit none
-    type (L1B_Object_Type), intent(inout) :: l1bobj
+    type (tiof_l1_object_type), intent(inout) :: l1bobj
     integer, intent(inout) :: errstat
 
     integer :: status
+
+    if (errstat < 0) return
 
     if (l1bobj%fileid >= 0) then
       status = nf90_close (l1bobj % fileid)
@@ -89,7 +97,7 @@ contains
 
   subroutine tiof_inq_group (l1bobj, grpname, errstat)
     implicit none
-    type (L1B_Object_Type), intent(inout) :: l1bobj
+    type (tiof_l1_object_type), intent(inout) :: l1bobj
     character (len=*), intent(in) :: grpname
     integer, intent(inout) :: errstat
 
@@ -112,7 +120,7 @@ contains
 
   subroutine tiof_get1d_r8 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
     real (kind=8), dimension (:), intent(out) :: array
@@ -132,7 +140,7 @@ contains
 
   subroutine tiof_get3d_r4 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
     real (kind=4), dimension (:,:,:), intent(out) :: array
@@ -152,7 +160,7 @@ contains
 
   subroutine tiof_get2d_r4 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
     real (kind=4), dimension (:,:), intent(out) :: array
@@ -172,7 +180,7 @@ contains
 
   subroutine tiof_get1d_r4 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
     real (kind=4), dimension (:), intent(out) :: array
@@ -192,10 +200,10 @@ contains
 
   subroutine tiof_get3d_i2 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
-    integer (kind=2), dimension (:,:,:), intent(out) :: array
+    integer (kind=i2), dimension (:,:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
     integer :: err
@@ -212,10 +220,10 @@ contains
 
   subroutine tiof_get2d_i2 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
-    integer (kind=2), dimension (:,:), intent(out) :: array
+    integer (kind=i2), dimension (:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
     integer :: err
@@ -232,17 +240,17 @@ contains
 
   subroutine tiof_get2d_i1 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
-    integer (kind=1), dimension (:,:), intent(out) :: array
+    integer (kind=i1), dimension (:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
     integer :: err
 
     if (errstat < 0) return
 
-    err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_short, array)
+    err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_byte, array)
 
     if (err < 0) then
       call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
@@ -252,17 +260,17 @@ contains
 
   subroutine tiof_get1d_i1 (l1bobj, name, step0, numsteps, array, errstat)
     implicit none
-    type (L1B_Object_Type), intent(in) :: l1bobj
+    type (tiof_l1_object_type), intent(in) :: l1bobj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
-    integer (kind=1), dimension (:), intent(out) :: array
+    integer (kind=i1), dimension (:), intent(out) :: array
     integer, intent(inout) :: errstat
 
     integer :: err
 
     if (errstat < 0) return
 
-    err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_short, array)
+    err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_byte, array)
 
     if (err < 0) then
       call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
