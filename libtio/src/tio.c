@@ -603,3 +603,12 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
 
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_L1BVAR, tiof_get_l1bvar,
             INT, STRING, INT, INT, INT, PVOID)
+
+static int f_tio_put_att (int grp, const char *varname, const char *attname,
+                          int xtype, int len, const void *att)
+{
+   size_t len_s = (size_t) len;
+   return TIO_put_att (grp, varname, attname, xtype, len_s, att);
+}
+FCALLSCFUN6(INT, f_tio_put_att, TIOF_PUT_ATT1, tiof_put_att1,
+            INT, STRING, STRING, INT, INT, PVOID)
