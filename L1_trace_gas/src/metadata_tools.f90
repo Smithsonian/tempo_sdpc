@@ -239,7 +239,57 @@ MODULE metadata_tools
 
 CONTAINS
 
-  SUBROUTINE init_metadata (pge_idx, errstat )
+  subroutine init_metadata (pge_idx, errstat)
+    use OMSAO_indices_module, only : l1b_radiance_lun
+    use OMSAO_he5_module, only : granule_year, granule_month, granule_day
+    use OMSAO_parameters_module, only : MAX_STR_LEN
+    use netcdf
+    use tio_module
+    use terr_module
+    use errormodule
+    implicit none
+    integer (kind=i4), intent(in) :: pge_idx
+    integer, intent(inout) :: errstat
+    !local
+    integer (kind=i4), external :: PGS_PC_GetReference
+    character (len=MAX_STR_LEN) :: l1r_filename
+    character (len=MAX_STR_LEN) :: rbd_string
+    type (tiof_l1_object_type) :: tio_l1obj
+    integer :: pgs_status, version
+    integer :: ncerr
+
+    if (errstat < 0) return
+
+    version=1
+    pgs_status = PGS_PC_GetReference (l1b_radiance_lun, version, l1r_filename)
+    if (pgs_status /= 0) then
+      call err_message_error ("PGS_PC_GetReference: failed retrieving L1 radiance filename", errstat)
+      return
+    endif
+
+    write(*,*)'metadata_tools::init_metadata:  reading l1r_filename = '//trim(l1r_filename)
+
+    call tiof_open (l1r_filename, tio_l1obj, errstat)
+    if (errstat < 0) then
+      call terr_error (terr_io_open_error, "opening "//trim(l1r_filename), errstat)
+      return
+    endif
+
+    ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, "time_coverage_start", rbd_string)
+    if (ncerr /= nf90_noerr) then
+      call terr_error (terr_io_read_error, "*** reading global attribute time_coverage_start", errstat)
+      return
+    endif
+    call tiof_close (tio_l1obj, errstat)
+    if (errstat < 0) return
+
+    read (rbd_string, '(i4,1x,i2,1x,i2)') granule_year, granule_month, granule_day
+
+    write(*,*)'metadata_tools::init_metadata: granule_month = ',granule_month
+
+  end subroutine init_metadata
+
+  SUBROUTINE DISABLED_init_metadata (pge_idx, errstat )
 
     USE OMSAO_precision_module,   ONLY: i4
     USE OMSAO_indices_module,     ONLY: &
@@ -700,7 +750,7 @@ CONTAINS
     END DO get_opf
 
     RETURN
-  END SUBROUTINE init_metadata
+  END SUBROUTINE DISABLED_init_metadata
 
   SUBROUTINE check_metadata_consistency ( errstat )
 
@@ -731,6 +781,9 @@ CONTAINS
     INTEGER (KIND=i4) :: i, k, locerrstat
 
     locerrstat = pge_errstat_ok
+
+    write(*,*)'called metadata_tools::check_metadata_consistency - DISABLED - IMMEDIATE RETURN ***'
+    return
 
     ! -----------------------------------------------------------
     ! Checking for Orbit Number consistency. Sources: PCF and L1B.
@@ -848,6 +901,9 @@ CONTAINS
     CHARACTER (LEN=PGSd_MET_NAME_L), EXTERNAL :: upper_case
 
     locerrstat = pge_errstat_ok
+
+    write(*,*)'called metadata_tools::set_l2_metadata - DISABLED - IMMEDIATE RETURN ***'
+    return
 
     ! ----------------
     ! Get InputPointer
@@ -1507,6 +1563,9 @@ CONTAINS
     ! ---------------
     INTEGER   (KIND=i4) :: ipgos
     CHARACTER (LEN=3)   :: pstr, sstr
+
+    write(*,*)'called metadata_tools::set_automatic_quality_flag - DISABLED - IMMEDIATE RETURN ***'
+    return
 
     write (pstr, '(i0)') qa_percent_passed
     write (sstr, '(i0)') qa_percent_suspect

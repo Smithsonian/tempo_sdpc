@@ -1,10 +1,13 @@
 MODULE omi_pge_fitting_process
 
   use errormodule
+  use terr_module
+  use l1bread_utils
   private
   public omi_pge_fitting
 
 CONTAINS
+  
 SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
 
   USE OMSAO_precision_module
@@ -16,7 +19,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
   USE omi_read_l1b_data, ONLY: L1Bga_EarthSunDistance
-  use l1bread, only: l1bread_radiance_info
+  !use l1bread, only: l1bread_radiance_info
   USE OMSAO_errstat_module
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
   IMPLICIT NONE
@@ -56,7 +59,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   ! Get dimensions the L1B radiance granule
   ! -----------------------------------------------------------------------------------
   errstat = pge_errstat_ok
-  CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+  !CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+  call read_l1_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   if (errstat < 0) goto 666
 
   EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
@@ -76,7 +80,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
     rpt_rr%nwavel_ccd = rpt_rad%nwavel_ccd
     rpt_rr%swathname = rpt_rad%swathname
   ELSE
-    CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
+    !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
+    call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
     if (errstat < 0) goto 666
   ENDIF
 
@@ -473,6 +478,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     ! Interface to the loop over all swath lines
     ! ------------------------------------------
+    write(*,*)' omi_fitting: calling swathline_loops (common mode)'
     CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
       is_common_range, &
@@ -584,16 +590,19 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
     IF ( radfit_latrange(1) > -90.0_r4    .OR. &
       radfit_latrange(2) < +90.0_r4           ) THEN
+      write(*,*)' omi_fitting:  setting do_radfit_range:  call find_swathline_range (radiances)'
       CALL find_swathline_range ( &
         TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
         ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
         radfit_latrange(1:2), do_radfit_range, errstat             )
     ELSE
+      write(*,*)' omi_fitting: setting do_radfit_range:  applying first_line/last_line mask'
       do_radfit_range = .TRUE.
       IF ( first_line > 0           ) do_radfit_range(0:first_line-1)          = .FALSE.
       IF ( last_line  < ntimes_rad-1 ) do_radfit_range(last_line+1:ntimes_rad-1) = .FALSE.
     END IF
   ELSE
+    write(*,*)' omi_fitting: setting do_radfit_range:  all TRUE'
     do_radfit_range = .TRUE.
   END IF
 
@@ -602,6 +611,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
+  write(*,*)' omi_fitting: calling swathline_loops (radiances)'
   CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
     do_radfit_range,                           &

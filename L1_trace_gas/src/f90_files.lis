@@ -53,7 +53,8 @@ undersample.f90
 datafields.f90
 irradiance_data.f90
 errormodule.f90
-l1bread.f90
+# l1bread.f90
+l1bread_utils.f90
 wavecal.f90
 commonmode.f90
 ctrlvars.f90

@@ -1,6 +1,8 @@
 MODULE omi_pge_fitting_aux
 
   use errormodule
+  use terr_module
+
   private
   public find_swathrange_by_latitude, read_latitude, &
     find_swathline_by_latitude, convert_tai_to_utc, &
@@ -72,7 +74,8 @@ CONTAINS
     use optimizer_interface_module, only: &
       opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
       opt_convergence_good
-    USE metadata_tools,  ONLY:  QAPercentMissingData, QAPercentOutofBoundsData
+    USE metadata_tools,  ONLY:  QAPercentMissingData, QAPercentOutofBoundsData, &
+      set_automatic_quality_flag
     USE OMSAO_he5_module,       ONLY:  &
       NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
       NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
@@ -85,7 +88,6 @@ CONTAINS
     USE OMSAO_errstat_module,   ONLY: vb_lev_screen, pge_errstat_ok
     USE OMSAO_variables_module, ONLY: verb_thresh_lev, max_good_col
     USE he5_output_tools, ONLY: he5_write_fitting_statistics
-    USE metadata_tools, ONLY: set_automatic_quality_flag
 
     IMPLICIT NONE
 
@@ -413,13 +415,13 @@ CONTAINS
     ! we have to compose the pieces of information from various
     ! MetaData strings.
     ! ------------------------------------------------------------
-    CALL get_input_versions ( pge_idx, do_radref, input_versions )
-    input_versions = TRIM(ADJUSTL(input_versions))
+!DISABLED-jch    CALL get_input_versions ( pge_idx, do_radref, input_versions )
+!DISABLED-jch    input_versions = TRIM(ADJUSTL(input_versions))
 
     RETURN
   END SUBROUTINE set_input_pointer_and_versions
 
-  SUBROUTINE get_input_versions (pge_idx, do_radref, input_versions )
+  SUBROUTINE DISABLED_get_input_versions (pge_idx, do_radref, input_versions )
 
     USE OMSAO_precision_module,  ONLY: i4
     USE OMSAO_indices_module,    ONLY: pge_hcho_idx, pge_gly_idx, pge_h2o_idx
@@ -615,7 +617,7 @@ CONTAINS
     END SELECT
 
     RETURN
-  END SUBROUTINE get_input_versions
+  END SUBROUTINE DISABLED_get_input_versions
 
 !UNUSED!   SUBROUTINE omi_radiance_wvl_smoothing ( nxt, nwl, omi_radiance_wavl )
 !UNUSED! 
@@ -1258,8 +1260,9 @@ CONTAINS
   SUBROUTINE read_latitude (l1bfile, l1bswath, tstart, ntimes, latr4, errstat )
 
     USE OMSAO_precision_module, ONLY: i4, r4
-    use l1bread, only: l1bread_open_swath, l1bread_close, L1B_Object_Type, &
-      l1bread_get2d_r4
+    !use l1bread, only: l1bread_open_swath, l1bread_close, L1B_Object_Type, &
+    !  l1bread_get2d_r4
+    use tio_module
 
     implicit none
     CHARACTER (LEN=*),     INTENT (IN) :: l1bfile, l1bswath
@@ -1267,22 +1270,31 @@ CONTAINS
     integer, intent(inout) :: errstat
     REAL    (KIND=r4), DIMENSION(:,:), INTENT (out) :: latr4
 
-    type (L1B_Object_Type) :: l1bobj
+    !type (L1B_Object_Type) :: l1bobj
+    type (tiof_l1_object_type) :: tio_l1obj
 
     if (errstat < 0) return
 
-    call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
+    !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
+    !if (errstat < 0) return
+    !if (size(latr4, 1) /= l1bobj%num_xtrack) then
+    !  call err_message_error ("read_latitude: nxtrack dimension is not correct", errstat)
+    !  call l1bread_close (l1bobj)
+    !  return
+    !endif
+    !call l1bread_get2d_r4 (l1bobj, "latitude", tstart, ntimes, latr4, errstat)
+    !call l1bread_close (l1bobj)
+    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     if (errstat < 0) return
-
-    if (size(latr4, 1) /= l1bobj%num_xtrack) then
-      call err_message_error ("read_latitude: nxtrack dimension is not correct", errstat)
-      call l1bread_close (l1bobj)
+    if (size(latr4, 1) /= tio_l1obj%num_xtrack) then
+      call terr_error (terr_io_read_error, &
+                       "read_latitude: nxtrack dimension is not correct", errstat)
+      call tiof_close (tio_l1obj, errstat)
       return
     endif
-
-    call l1bread_get2d_r4 (l1bobj, "latitude", tstart, ntimes, latr4, errstat)
-
-    call l1bread_close (l1bobj)
+    call tiof_get2d_r4 (tio_l1obj, "latitude", tstart, ntimes, latr4, errstat)
+    call tiof_close (tio_l1obj, errstat)
 
     return
 
@@ -1298,7 +1310,9 @@ CONTAINS
     use optimizer_interface_module, only: &
       opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
       opt_convergence_good
-    USE metadata_tools, ONLY:  QAPercentMissingData, QAPercentOutofBoundsData
+    USE metadata_tools, ONLY:  QAPercentMissingData, QAPercentOutofBoundsData, &
+      set_automatic_quality_flag
+      
     USE OMSAO_he5_module,       ONLY:  &
       NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
       NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
@@ -1310,7 +1324,6 @@ CONTAINS
       AbsolutePercentMissingSamples
     USE OMSAO_errstat_module,   ONLY: vb_lev_screen, pge_errstat_ok
     USE OMSAO_variables_module, ONLY: verb_thresh_lev, max_good_col
-    USE metadata_tools, ONLY: set_automatic_quality_flag
 
     IMPLICIT NONE
 

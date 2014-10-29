@@ -2,6 +2,7 @@ module irradiance_data
 
   use OMSAO_precision_module, only: i2, i4, r4, r8
   use errormodule
+  use terr_module
   USE sao_pge_utils, ONLY: print_array
   implicit none
 
@@ -190,7 +191,7 @@ contains
 
     end do
 
-  end subroutine
+  end subroutine  
 
   ! =========================================================================
 
@@ -201,7 +202,9 @@ contains
       l1b_irrad_filename, l1b_channel
     USE arrayutils, only: array_locate_r4
 
-    use l1bread
+    !use l1bread
+    use l1bread_utils
+    use tio_module
 
     implicit none
     integer (kind=i4), intent (inout) :: errstat
@@ -214,15 +217,26 @@ contains
       wavelengths, spectrum
     integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
     character (len=64) :: swathname
-    type (L1B_Object_Type) :: l1bobj
+    !type (L1B_Object_Type) :: l1bobj
+    type (tiof_l1_object_type) :: tio_l1obj
 
-    ! Allow errstat to flow
-    call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
-    call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
     if (errstat < 0) return
 
-    nwavel = l1bobj%num_wavelengths
-    nxtrack = l1bobj%num_xtrack
+    ! Allow errstat to flow
+
+    write(*,*)'reading irradiances = '//trim(l1b_irrad_filename)
+
+    !call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
+    !call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
+    call tiof_open (l1b_irrad_filename, tio_l1obj, errstat)
+    call lookup_swathname (l1b_channel, swathname, errstat)
+    call tiof_inq_group (tio_l1obj, swathname, errstat)
+    if (errstat < 0) return
+
+    !nwavel = l1bobj%num_wavelengths
+    !nxtrack = l1bobj%num_xtrack
+    nwavel = tio_l1obj%num_wavelengths
+    nxtrack = tio_l1obj%num_xtrack
 
     allocate (tmp_wavelengths(nwavel, nxtrack), &
               tmp_spectrum(nwavel, nxtrack), &
@@ -235,11 +249,14 @@ contains
     endif
 
     ! Allow errstat to flow through
-    call l1bread_get2d_r4 (l1bobj, "Irradiance", 0, 1, tmp_spectrum, errstat)
-    call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
-    call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
-
-    call l1bread_close (l1bobj)
+    !call l1bread_get2d_r4 (l1bobj, "Irradiance", 0, 1, tmp_spectrum, errstat)
+    !call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
+    !call l1bread_close (l1bobj)
+    call tiof_get2d_r4 (tio_l1obj, "irradiance", 0, 1, tmp_spectrum, errstat)
+    call tiof_get2d_i2 (tio_l1obj, "pixel_quality_flag", 0, 1, tmp_qflags, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "wavelength", 0, 1, tmp_wavelengths, errstat)
+    call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
     ! -------------------------------

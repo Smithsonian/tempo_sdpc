@@ -27,8 +27,13 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
+TERR_LIB = $(prefix)/lib
+TIO_LIB  = $(prefix)/lib
+
 PSPLINELIBS  = -lpspline -lezcdf
-NETCDFLIBS   = # -lnetcdf
+TIOLIBS      = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio_f -ltio \
+               -Wl,-rpath=$(TERR_LIB) -L$(TERR_LIB) -lterr -lterr_f
+NETCDFLIBS   = -lnetcdf -lnetcdff
 HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
 HE5LIBS      = -lhe5_hdfeos -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
 PGSLIBS      = -lPGSTK
@@ -50,6 +55,7 @@ IFLAGS = $(MODFLG)$(OMIUTIL)/include \
          $(MODFLG)$(PGSINC) \
          $(MODFLG)$(HDFEOS5_INC) \
          $(MODFLG)$(objdir) \
+         $(MODFLG)$(TERR_INC) \
          $(MODFLG)$(NETCDFINC) \
 	 $(MODFLG)$(PSPLINEMOD)
 
@@ -57,7 +63,7 @@ LFLAGS = -L$(objdir) -L$(OMIUTIL)/lib \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
          -L$(NETCDFLIB) -L$(PSPLINELIB) $(ADDLIBD)
 
-LIBS   = $(PSPLINELIBS) $(NETCDFLIBS) \
+LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
 
 CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)

@@ -944,6 +944,9 @@ CONTAINS
     INTEGER   (KIND=i4)                      :: mslen, k, j1, j2, nsep
     CHARACTER (LEN=LEN(multi_swath))         :: tmpstr
 
+    write(*,*)'extract_swathname:  multi_swath=',multi_swath
+    write(*,*)'extract_swathname:  swathstr=',swathstr
+
     ! --------------------------
     ! Initialize output variable
     ! --------------------------

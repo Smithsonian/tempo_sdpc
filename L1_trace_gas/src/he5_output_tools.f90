@@ -1671,11 +1671,16 @@ CONTAINS
       END IF
     END DO
 
+    write(*,*)'SKIPPING output of metadata parameter=InputVersions'
+    if (.false.) then
     parname = "InputVersions"
     nlen48 = INT ( LEN_TRIM(ADJUSTL(input_versions)), KIND=C_LONG )
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
                             HE5T_NATIVE_CHAR, nlen48, TRIM(ADJUSTL(input_versions)) )
+    endif ! false
 
+    write(*,*)'SKIPPING output of metadata parameter=OrbitData'
+    if (.false.) then
     parname = "OrbitData"
     nlen48 = INT ( LEN_TRIM(ADJUSTL(l1b_orbitdata)), KIND=C_LONG )
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
@@ -1684,6 +1689,7 @@ CONTAINS
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
+    endif ! false
     parname = "GranuleDay"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), HE5T_NATIVE_INT, onecl, granule_day )
     CALL error_check ( &
@@ -1829,6 +1835,8 @@ CONTAINS
     ! -----------------------------
     ! Write STRING MetaData to file
     ! -----------------------------
+    write(*,*)'SKIPPING output of ArchivedMetadata'
+    if (.false.) then
     DO imd = 1, n_mdata_str
       IF ( TRIM(ADJUSTL(mdata_string_fields(2,imd))) == "arc" ) THEN
         nlen48 = INT ( LEN_TRIM(ADJUSTL(mdata_string_values(imd))), KIND=C_LONG )
@@ -1841,6 +1849,7 @@ CONTAINS
           vb_lev_default, he5stat )
       END IF
     END DO
+    endif !false
     ! -------------------
     ! Set DOUBLE MetaData
     ! -------------------

@@ -124,6 +124,7 @@ SUBROUTINE swathline_loops (                               &
     ! ------------------------------
     ! Get NBLOCK radiance lines
     ! ------------------------------
+    write(*,*)'swathline_loops calling omi_read_radiance_lines, iline=',iline
     CALL omi_read_radiance_lines (                   &
       l1b_rad_filename, iline, nx, nblock, nccd, locerrstat )
     ! -----------------------------------------------------------------------------------

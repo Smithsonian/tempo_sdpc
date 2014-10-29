@@ -189,6 +189,7 @@ CONTAINS
       ! Get NTIMES_LOOP radiance lines
       ! ------------------------------
       ! omi_read_radiance_lines also sets omi_nwav_rad
+      write(*,*)'omi_get_radiance_reference calling omi_read_radiance_lines, iline=',iline
       CALL omi_read_radiance_lines (              &
         rpt_rr%l1bfilename, iline, nxrr, nloop, nwrr, errstat )
 

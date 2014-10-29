@@ -1,5 +1,7 @@
 MODULE omi_read_l1b_data
+  use terr_module
   INCLUDE 'hdf.f90'
+
 CONTAINS
 
   SUBROUTINE omi_read_binning_factor ( &
@@ -7,7 +9,8 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_omidata_module,    ONLY : global_mode, szoom_mode
-    use l1bread
+    !use l1bread
+    use tio_module
 
     IMPLICIT NONE
 
@@ -24,7 +27,8 @@ CONTAINS
     INTEGER (KIND=i1), DIMENSION (0:ntimes-1), INTENT (OUT)   :: binfac
     LOGICAL,           DIMENSION (0:ntimes-1), INTENT (OUT)   :: is_szoom
     !
-    type (L1B_Object_Type) :: l1bobj
+    !type (L1B_Object_Type) :: l1bobj
+    type (tiof_l1_object_type) :: tio_l1obj
 
     if (errstat < 0) return
 
@@ -32,9 +36,13 @@ CONTAINS
       TRIM(l1bfile), ", l1bswath=", TRIM(l1bswath), ", ntimes=", ntimes
 
     ! Allow error to flow
-    call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
-    call l1bread_get1d_i1 (l1bobj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
-    call l1bread_close (l1bobj)
+    !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
+    !call l1bread_get1d_i1 (l1bobj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
+    !call l1bread_close (l1bobj)
+    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_inq_group (tio_l1obj, l1bswath, errstat)
+    call tiof_get1d_i1 (tio_l1obj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
+    call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
     ! ----------------------------------------------------------------------
@@ -124,7 +132,8 @@ CONTAINS
       omi_xtrflg_l1b, omi_xtrflg
     USE OMSAO_errstat_module
     USE angle_sat2toa, ONLY: gnome_angle_sat2toa
-    use l1bread
+    !use l1bread
+    use tio_module
 
     IMPLICIT NONE
 
@@ -148,30 +157,47 @@ CONTAINS
     REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc
     INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
 
-    type (L1B_Object_Type) :: l1bobj
+    !type (L1B_Object_Type) :: l1bobj
+    type (tiof_l1_object_type) :: tio_l1obj
 
     omi_radiance_errstat = pge_errstat_ok
 
+    write(*,*)'omi_read_radiance_lines: reading '//trim(omi_radiance_swathname)
     ! let errstat flow
-    call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
-
-    call l1bread_get1d_r8 (l1bobj, "Time", iline, nloop, omi_time, errstat)
-    call l1bread_get1d_r4 (l1bobj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
-    call l1bread_get2d_r4 (l1bobj, "Latitude", iline, nloop, omi_latitude, errstat)
-    call l1bread_get2d_r4 (l1bobj, "Longitude", iline, nloop, omi_longitude, errstat)
-    call l1bread_get2d_r4 (l1bobj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
-    call l1bread_get2d_r4 (l1bobj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
-    call l1bread_get2d_r4 (l1bobj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
-    call l1bread_get2d_r4 (l1bobj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
-    call l1bread_get2d_i2 (l1bobj, "TerrainHeight", iline, nloop, omi_height, errstat)
-    call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
-    call l1bread_get2d_i1 (l1bobj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
-
-    call l1bread_get3d_r4 (l1bobj, "Radiance", iline, nloop, tmp_spc, errstat)
-    call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
-    call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
-
-    call l1bread_close (l1bobj)
+    !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
+    !call l1bread_get1d_r8 (l1bobj, "Time", iline, nloop, omi_time, errstat)
+    !call l1bread_get1d_r4 (l1bobj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "Latitude", iline, nloop, omi_latitude, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "Longitude", iline, nloop, omi_longitude, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
+    !call l1bread_get2d_r4 (l1bobj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
+    !call l1bread_get2d_i2 (l1bobj, "TerrainHeight", iline, nloop, omi_height, errstat)
+    !call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
+    !call l1bread_get2d_i1 (l1bobj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
+    !call l1bread_get3d_r4 (l1bobj, "Radiance", iline, nloop, tmp_spc, errstat)
+    !call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
+    !call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
+    !call l1bread_close (l1bobj)
+    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_get1d_r8 (tio_l1obj, "time", iline, nloop, omi_time, errstat)
+    write(*,*)' tiof_inq_group: opening swath='//trim(omi_radiance_swathname)
+    call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
+    call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "latitude", iline, nloop, omi_latitude, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "longitude", iline, nloop, omi_longitude, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
+    call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", iline, nloop, omi_height, errstat)
+    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
+    call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
+    call tiof_get3d_r4 (tio_l1obj, "radiance", iline, nloop, tmp_spc, errstat)
+    call tiof_get3d_i2 (tio_l1obj, "data_quality_flag", iline, nloop, tmp_flg, errstat)
+    call tiof_get3d_r4 (tio_l1obj, "wavelength", iline, nloop, tmp_wvl, errstat)
+    call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
     do iloop = 0, nloop-1
@@ -278,7 +304,8 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname
-    use l1bread
+    !use l1bread
+    use tio_module
 
     IMPLICIT NONE
 
@@ -298,12 +325,17 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i2), DIMENSION (nx,0:nt-1) :: geoflg
-    type (L1B_Object_Type) :: l1bobj
+    !type (L1B_Object_Type) :: l1bobj
+    type (tiof_l1_object_type) :: tio_l1obj
 
     ! let errstat flow
-    call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
-    call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
-    call l1bread_close (l1bobj)
+    !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
+    !call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
+    !call l1bread_close (l1bobj)
+    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
+    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
+    call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
     ! ---------------------------------------------

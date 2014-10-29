@@ -39,7 +39,8 @@ CONTAINS
       saocol, saodco, saoamf, saomqf, pge_idx, n_max_rspec, &
       errstat)
 
-    USE l1bread, only: l1bread_radiance_info
+    !USE l1bread, only: l1bread_radiance_info
+    use l1bread_utils, only : read_l1_radiance_info
     USE OMSAO_precision_module, ONLY: i4
     USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, &
       l1b_radref_filename, l1b_channel
@@ -100,7 +101,9 @@ CONTAINS
     ! ---------------------------------------------------
     ! Obtain dimensions of the Radiance Reference granule
     ! ---------------------------------------------------
-    CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, &
+    !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, &
+    !                            rpt_rr, errstat)
+    call read_l1_radiance_info (l1b_radref_filename, l1b_channel, &
                                 rpt_rr, errstat)
     if (errstat < 0) return
 
