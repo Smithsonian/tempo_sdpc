@@ -377,7 +377,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
       case NC_BYTE: \
         /* drop */ \
       case NC_CHAR: \
-        status = nc_##action##_vara_text (grp, varid, start, count, (const_qual char *)data); \
+        status = nc_##action##_vara_schar (grp, varid, start, count, (const_qual signed char *)data); \
         break; \
       case NC_UBYTE: \
         status = nc_##action##_vara_uchar (grp, varid, start, count, (const_qual unsigned char *)data); \
@@ -549,7 +549,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
       case NC_BYTE:
         /* drop */
       case NC_CHAR:
-        status = nc_get_att_text (grp, varid, attname, (char *)att);
+        status = nc_get_att_schar (grp, varid, attname, (signed char *)att);
         break;
       case NC_UBYTE:
         status = nc_get_att_uchar (grp, varid, attname, (unsigned char *)att);
