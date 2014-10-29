@@ -29,9 +29,11 @@ CP = /bin/cp
 
 TERR_LIB = $(prefix)/lib
 TIO_LIB  = $(prefix)/lib
+TIO_SRC  = $(config_dir)/libtio/src
 
 PSPLINELIBS  = -lpspline -lezcdf
-TIOLIBS      = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio_f -ltio \
+TIOLIBS      = -Wl,-rpath=$(TIO_SRC)/objs -L$(TIO_SRC)/objs \
+               -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
                -Wl,-rpath=$(TERR_LIB) -L$(TERR_LIB) -lterr -lterr_f
 NETCDFLIBS   = -lnetcdf -lnetcdff
 HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
@@ -55,6 +57,7 @@ IFLAGS = $(MODFLG)$(OMIUTIL)/include \
          $(MODFLG)$(PGSINC) \
          $(MODFLG)$(HDFEOS5_INC) \
          $(MODFLG)$(objdir) \
+         $(MODFLG)$(TIO_SRC)/objs \
          $(MODFLG)$(TERR_INC) \
          $(MODFLG)$(NETCDFINC) \
 	 $(MODFLG)$(PSPLINEMOD)

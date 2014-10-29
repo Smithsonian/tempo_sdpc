@@ -14,7 +14,7 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 INCS = -I$(config_dir)/include -I$(TERR_INC) -I$(NETCDF_INC)
 LIBS = $(INSTALL_LIBPATHS) \
        $(NETCDF_LIBPATHS) -lnetcdf \
-       $(TERR_LIBPATHS) -lterr
+       $(TERR_LIBPATHS) -lterr $(RPATH)
 
 MODS_F = -I$(NETCDF_INC) -I$(TERR_INC)
 LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TERR_LIBPATHS) -lterr_f

@@ -31,9 +31,9 @@ endif
 ifeq ($(COMPILER_SUITE), intel)
   INTEL_ROOT   = /opt/intel
   CC           = $(INTEL_ROOT)/bin/icc
-  CFLAGS       =#-debug -O0
-  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran
-  LDFLAGS      =#
+  CFLAGS       = -debug -O0
+  CCFLAGS      = $(CFLAGS) -DLINUX -DINTEL_COMPILER
+  LDFLAGS      = -shared
   DL_LIB       = -ldl
   ELF_CC       = $(CC)
   ELF_CFLAGS   = $(CCFLAGS) -fpic
@@ -41,7 +41,7 @@ ifeq ($(COMPILER_SUITE), intel)
   ELF_DEP_LIBS = $(DL_LIB) -lm -lc
 #
   FC           = $(INTEL_ROOT)/bin/ifort
-  FFLAGS       =#-debug -O0
+  FFLAGS       = -debug -O0
   FCFLAGS      = $(FFLAGS) -fpic
   ELF_FC       = $(FC)
   ELF_F_LINK   = $(FC) $(LDFLAGS)
