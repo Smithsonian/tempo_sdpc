@@ -27,7 +27,6 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-TERR_LIB = $(prefix)/lib
 TIO_LIB  = $(prefix)/lib
 TIO_SRC  = $(config_dir)/libtio/src
 
