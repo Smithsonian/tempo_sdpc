@@ -9,6 +9,7 @@
 #include "terr.h"
 #include "tio.h"
 #include "_tio.h"
+#include "_tio_template.h"
 
 /* An instance of a _pDim_Table_Type struct is used as a lookup table
  * for all the dimensions that are defined anywhere in the associated
@@ -117,8 +118,8 @@ static int define_global_attrs (int grp)
         {"Conventions", TIO_CF_CONVENTION_VERSION},
         {"format_version", TIO_L1_FORMAT_VERSION},
         {"time_reference", TIO_TIME_REFERENCE_STRING},
-        {"time_coverage_start", "2018-09-01T12:00:00 UTC"},
-        {"time_coverage_end", "2018-09-01T13:00:00 UTC"},
+        {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
+        {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
