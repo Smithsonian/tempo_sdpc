@@ -813,6 +813,15 @@ CONTAINS
         sumexp(j1:j2) = expmin
       ENDWHERE
 
+      ! FIXME?? (jch):  Note that the common mode contribution is included in
+      ! fit_final_add_on(j1:j2), but after that, the model is then multiplied
+      ! by a scaling polynomial. As I understand it, the purpose of the common
+      ! mode is to take out features that consistently appear in the fit residuals.
+      ! For that reason, the common mode presumably represents an additive term
+      ! in the final model. Why then is it being multiplied by a scaling polynomial
+      ! that's a function of wavelength?
+      ! Shouldn't the common mode be added _after_ the scaling??
+
       fit(j1:j2) = fit(j1:j2) * EXP(sumexp(j1:j2)) + fit_final_add_on(j1:j2)
 
     ENDIF
