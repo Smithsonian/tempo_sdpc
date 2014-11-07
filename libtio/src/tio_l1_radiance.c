@@ -165,6 +165,8 @@ static int define_global_attrs (int grp)
      {
         {"processing_version", 0},
         {"granule_seq_num", 0},
+        {"scan_seq_num", 0},
+        {"granule_num", 0},
         _pINT_ATTRS_END
      };
 
@@ -297,7 +299,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float mirror_step_size = _pTIO_MIRROR_STEP_SIZE;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &mirror_step_size)))
           {
@@ -527,7 +529,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->cov.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_COVARIANCE, NC_FLOAT, 3, dims, cov_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INR_COVARIANCE, NC_FLOAT, 3, dims, cov_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
           return -1;
