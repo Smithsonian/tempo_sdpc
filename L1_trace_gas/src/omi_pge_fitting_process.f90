@@ -312,6 +312,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     write (*,*) "modify omi_get_radiance_reference to use omi_radiance_swathname"
     stop
   endif
+  call terr_trace (1, 'omi_fitting: calling omi_get_radiance_reference')
   CALL omi_get_radiance_reference (rpt_rr, &
                                    omi_xtrpix_range_rr, &
                                    radiance_wavcal_lnums, errstat)

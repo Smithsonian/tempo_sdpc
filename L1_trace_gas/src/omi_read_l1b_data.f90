@@ -187,10 +187,10 @@ CONTAINS
     call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
     call tiof_get2d_r4 (tio_l1obj, "latitude", iline, nloop, omi_latitude, errstat)
     call tiof_get2d_r4 (tio_l1obj, "longitude", iline, nloop, omi_longitude, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "solar_zenith_angle", iline, nloop, omi_szenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", iline, nloop, omi_sazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", iline, nloop, omi_vzenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", iline, nloop, omi_vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", iline, nloop, omi_height, errstat)
     call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
@@ -289,6 +289,7 @@ CONTAINS
         imin = rad_ccdpix_selection(ix,1)
         imax = rad_ccdpix_selection(ix,4)
         icnt = imax - imin + 1
+        ! FIXME (JCH) this can fail if icnt > declared size, nwavel_max
         omi_radiance_wavl(1:icnt,ix,iloop) = REAL ( tmp_wvl(imin:imax,ix, iloop), KIND=r8 )
         omi_radiance_spec(1:icnt,ix,iloop) = REAL ( tmp_spc(imin:imax,ix, iloop), KIND=r8 )
         omi_radiance_qflg(1:icnt,ix,iloop) =        tmp_flg(imin:imax,ix, iloop)

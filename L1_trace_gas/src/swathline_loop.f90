@@ -13,7 +13,7 @@ SUBROUTINE swathline_loops (                               &
     n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, &
     fitvar_rad_init, fitvar_rad_saved
-  use ctrlvars, only: yn_radiance_reference
+  use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run
   USE OMSAO_omidata_module,    ONLY:  &
     omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
@@ -52,6 +52,7 @@ SUBROUTINE swathline_loops (                               &
   INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
   INTEGER (KIND=i4) :: nt, nx, nccd, scanline_no
+  integer, parameter :: unit_column_amount=22
 
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
@@ -103,6 +104,10 @@ SUBROUTINE swathline_loops (                               &
       return
     endif
     omi_fitspc = 0.0_r8
+  endif
+
+  if (yn_diagnostic_run) then
+    open (unit=unit_column_amount, file='diag.column_amount')
   endif
 
   ! ---------------------------------------------------------------------
@@ -205,6 +210,10 @@ SUBROUTINE swathline_loops (                               &
         estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )
         IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(addmsg)
 
+        if (yn_diagnostic_run) then
+          write (unit_column_amount, '(a)')trim(addmsg)
+        endif
+
         ! CCM Add omi_fitspc - Assignment problem - do an inefficient loop for now
         !DO i=1,n_rad_wvl
         !  DO j=1,nxtrack_max
@@ -257,8 +266,11 @@ SUBROUTINE swathline_loops (                               &
       ! -----------------------
       ! Convert TAI to UTC time
       ! -----------------------
+      write(*,*)' *** skipping call to convert_tai_to_utc()'
+      if (.false.) then
       CALL convert_tai_to_utc ( &
         nUTCdim, omi_time(iloop), omi_time_utc(1:nUTCdim,iloop) )
+      endif
 
     END DO ScanLineBlock
 
@@ -279,6 +291,10 @@ SUBROUTINE swathline_loops (                               &
     END IF
 
   END DO ScanLines
+
+  if (yn_diagnostic_run) then
+    close (unit_column_amount)
+  endif
 
   ! -----------------------------------------
   ! Remove target gas from radiance reference

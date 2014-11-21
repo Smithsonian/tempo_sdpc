@@ -347,6 +347,7 @@ CONTAINS
   SUBROUTINE xtrack_solar_calibration_loop ( first_pix, last_pix, errstat )
 
     USE OMSAO_precision_module
+    use ctrlvars, only : yn_diagnostic_run
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
       omi_cross_track_skippix, &
@@ -384,6 +385,7 @@ CONTAINS
     real (kind=r8), dimension(:), allocatable :: adj_wvl, adj_spec, adj_wgts
     integer (kind=i4) :: adj_len
     integer locerr
+    integer, parameter :: unit_solar_wavcal = 20
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -400,6 +402,10 @@ CONTAINS
     ! ---------------------------------------------------------------
     ! Loop for solar wavelength calibration and slit function fitting
     ! ---------------------------------------------------------------
+
+    if (yn_diagnostic_run) then
+      open (unit=unit_solar_wavcal, file='diag.solar_wavcal')
+    endif
 
     adj_len = 0
     XtrackSolCal: DO ipix = first_pix, last_pix
@@ -486,6 +492,10 @@ CONTAINS
       Irr_Data%avg_wavelengths(ipix) = curr_sol_wav_avg
       omi_irradiance_wght(1:n_irradwvl,ipix) = adj_wgts(1:n_irradwvl)
 
+      if (yn_diagnostic_run) then
+        write(unit_solar_wavcal,'(i2,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
+      endif
+
       addmsg = ''
       WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'SOLAR FIT          #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
@@ -498,6 +508,10 @@ CONTAINS
 
     END DO XtrackSolCal
     errstat = MAX ( errstat, locerrstat )
+
+    if (yn_diagnostic_run) then
+      close (unit_solar_wavcal)
+    endif
 
     ! ----------------------------------------------------------------------------
     ! After the successful wavelength calibration of all cross-track solar spectra,

@@ -3,6 +3,7 @@ module wavecal
   use OMSAO_precision_module, only: i2, i4, r8
   use optimizer_interface_module
   use errormodule
+  use terr_module
   use OMSAO_variables_module, only: sol_wav_avg
   use OMSAO_indices_module, only: MAX_CAL_PARMS
 
@@ -282,6 +283,7 @@ contains
     integer (kind=i4), dimension(num_cal_parms) :: param_mask
     real (kind=r8), dimension (num_wavelengths) :: fitres
     integer :: num_fitvar
+    character (len=256) :: trace_msg
 
     if (errstat < 0) return
 
@@ -295,6 +297,9 @@ contains
       lobnd (num_fitvar) = min_cal_parms(i)
       upbnd (num_fitvar) = max_cal_parms(i)
     enddo
+
+    write (trace_msg, *)'wavecal_fit:  num_fitvar=',num_fitvar
+    call terr_trace (2, trace_msg)
 
     num_iterations_per_fit = num_iterations
     num_iterations = 0

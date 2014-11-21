@@ -185,6 +185,9 @@ CONTAINS
     do while (associated (ptr))
       if (.not. ptr%output) cycle
 
+      ! FIXME JCH: Chunk parameters assume OMI dimensions.
+      !   If the actual dimensions are smaller, many warnings/errors occur
+      if (.false.) then  
       CALL he5_check_for_compressibility ( &
         ntimes, nxtrack, nSwLevels, trim(ptr%dimensions), &
         compress_ok, n_chunk_dim, chunk_dim )
@@ -196,6 +199,7 @@ CONTAINS
         errstat = HE5_SWdefchunk(swid, n_chunk_dim, chunk_dim(1:n_chunk_dim) )
         errstat = HE5_SWdefcomp (swid, he5_nocomp_type, he5_nocomp_par )
       END IF
+      endif  ! FIXME JCH (chunk param issue)
 
       ptr%swath_id = swid
       CALL he5_set_fill_value (ptr, errstat )

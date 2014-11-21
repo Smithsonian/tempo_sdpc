@@ -4,6 +4,7 @@ MODULE radiance_fit
   use OMSAO_parameters_module, only : nwavel_max
   use optimizer_interface_module
   use errormodule
+  use terr_module
 
   private
   public fit_radiance
@@ -111,6 +112,7 @@ CONTAINS
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
+    character (len=128) :: trace_msg
 
     SAVE fitcol_saved
 
@@ -208,6 +210,9 @@ CONTAINS
       lobnd (i) = lo_radbnd(idx)
       upbnd (i) = up_radbnd(idx)
     END DO
+
+    write (trace_msg, *)'fit_radiance:  n_fitvar_rad=',n_fitvar_rad
+    call terr_trace (2, trace_msg)
 
     ! --------------------------------------------------------------------
     ! Check whether we enough spectral points to carry out the fitting. If

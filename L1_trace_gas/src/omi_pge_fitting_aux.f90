@@ -1007,6 +1007,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION (nxrr) :: cntr4, latdiff, loclat
     INTEGER (KIND=i4)                   :: &
       j1, j2, icnt, iline, fpix, lpix, locerr
+    character (len=256) :: trace_msg
 
     ! ---------------------------
     ! Initialize output variables
@@ -1018,16 +1019,27 @@ CONTAINS
     ! First, start a bisection of the [0, NLINES-1] interval to find the closest
     ! match in latitude to the mipoint of the latitude regime to average.
     ! --------------------------------------------------------------------------
+    ! FIXME (JCH) calling routine already provides eline=nlines-1, so
+    ! setting j2=eline-1 seems excessive.
     j1 = sline ; j2 = eline-1  ;  icnt = 0
     FindLine: DO WHILE ( .NOT. was_found )
       icnt  = icnt + 1
       iline = (j1 + j2) / 2
 
+      write(trace_msg, *)'find_swathline_by_latitude: looking for lat=', &
+        lat,' iline,j1,j2=',iline,j1,j2
+      call terr_trace (1, trace_msg)
+
       ! -----------------------------------------------------------------------
       ! Get first and last pixel.
       ! -----------------------------------------------------------------------
+      ! FIXME: (JCH) This can fail if iline=0. It works only if we have
+      !        enough latitude points to put the midpoint at iline>=1.
       fpix = xtrange(iline,1)
       lpix = xtrange(iline,2)
+
+      write(trace_msg, *)'find_swathline_by_latitude: fpix,lpix=',fpix,lpix
+      call terr_trace (1, trace_msg)
 
       IF ( iline < sline .OR. iline > eline ) THEN
         locerr = pge_errstat_error
