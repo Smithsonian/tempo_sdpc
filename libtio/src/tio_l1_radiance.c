@@ -503,6 +503,102 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
      }
 
+   /* solar zenith angle */
+     {
+        static _pText_Attr_Type sza_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "solar zenith angle"},
+             {"comment", "solar zenith angle at pixel center"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type sza_float_attrs[] =
+          {
+             {"valid_min",   0.0},
+             {"valid_max", +90.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SZ_ANGLE, NC_FLOAT, 2, dims, sza_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, sza_float_attrs))
+          return -1;
+     }
+
+   /* solar azimuth angle */
+     {
+        static _pText_Attr_Type saa_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "solar azimuth angle"},
+             {"comment", "solar azimuth angle at pixel center"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type saa_float_attrs[] =
+          {
+             {"valid_min", -180.0},
+             {"valid_max", +180.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SA_ANGLE, NC_FLOAT, 2, dims, saa_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, saa_float_attrs))
+          return -1;
+     }
+
+   /* viewing zenith angle */
+     {
+        static _pText_Attr_Type vza_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "viewing zenith angle"},
+             {"comment", "viewing zenith angle at pixel center"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type vza_float_attrs[] =
+          {
+             {"valid_min",   0.0},
+             {"valid_max", +90.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_VZ_ANGLE, NC_FLOAT, 2, dims, vza_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, vza_float_attrs))
+          return -1;
+     }
+
+   /* viewing azimuth angle */
+     {
+        static _pText_Attr_Type vaa_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "viewing azimuth angle"},
+             {"comment", "viewing azimuth angle at pixel center"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type vaa_float_attrs[] =
+          {
+             {"valid_min", -180.0},
+             {"valid_max", +180.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_float_attrs))
+          return -1;
+     }
+
    /* inr flags */
      {
         static _pText_Attr_Type inrqf_attrs[] =

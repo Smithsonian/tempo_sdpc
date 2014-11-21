@@ -78,6 +78,8 @@ extern "C" {
 #define TIO_VAR_NAME_SAT_VZ              "satellite_velocity_Z"
 #define TIO_VAR_NAME_SMADIT_EAST         "dit_east"
 #define TIO_VAR_NAME_SMADIT_NORTH        "dit_north"
+#define TIO_VAR_NAME_SZ_ANGLE            "solar_zenith_angle"
+#define TIO_VAR_NAME_SA_ANGLE            "solar_azimuth_angle"
 #define TIO_VAR_NAME_SUN_X               "sun_X"
 #define TIO_VAR_NAME_SUN_Y               "sun_Y"
 #define TIO_VAR_NAME_SUN_Z               "sun_Z"
@@ -86,6 +88,8 @@ extern "C" {
 #define TIO_VAR_NAME_TIME_GYRO           "gyro_time"
 #define TIO_VAR_NAME_TIME_MANEUVER       "maneuver_time"
 #define TIO_VAR_NAME_TIME_SMA            "sma_time"
+#define TIO_VAR_NAME_VZ_ANGLE            "viewing_zenith_angle"
+#define TIO_VAR_NAME_VA_ANGLE            "viewing_azimuth_angle"
 #define TIO_VAR_NAME_WAVELENGTH          "wavelength"
 
 /* fill values */
