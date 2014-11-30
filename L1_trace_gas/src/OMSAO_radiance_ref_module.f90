@@ -43,6 +43,7 @@ CONTAINS
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE arrayutils, only: array_locate_r8
     USE errormodule
+    use ctrlvars, only: yn_disable_omi_features
     IMPLICIT NONE
 
     ! ------------------------------
@@ -110,6 +111,13 @@ CONTAINS
     if (errstat < 0) &
       return
 
+    if (yn_disable_omi_features) then
+      radiance_reference_lnums(1) = 0
+      radiance_reference_lnums(2) = ntrr-1
+      have_limits(1:2) = .true.
+      midpt_line = 0
+      have_scanline = .true.
+    else
     ! ----------------------------------------------------------------------
     ! Locate the swath line numbers corresponding the center of the latitude
     ! range to average into radiance reference spectrum.
@@ -142,6 +150,7 @@ CONTAINS
         xtrange, radiance_reference_lnums(2), have_limits(2) )
         !xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
     END IF
+    endif
 
     deallocate (latr4)
 

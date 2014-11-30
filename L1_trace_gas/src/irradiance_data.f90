@@ -201,6 +201,7 @@ contains
     USE OMSAO_variables_module,  ONLY: &
       l1b_irrad_filename, l1b_channel
     USE arrayutils, only: array_locate_r4
+    use ctrlvars, only: yn_disable_omi_features
 
     !use l1bread
     use l1bread_utils
@@ -263,6 +264,7 @@ contains
     ! Reverse arrays for UV-1 channel.
     !   Why?  Are they stored in descending order?  --JED
     ! -------------------------------
+    if (.not.yn_disable_omi_features) then
     IF ( l1b_channel == 'UV1' ) THEN
       DO ix = 1, nxtrack
         tmp_wavelengths(nwavel:1:-1, ix) = tmp_wavelengths(1:nwavel,ix)
@@ -270,6 +272,7 @@ contains
         tmp_qflags(nwavel:1:-1, ix) = tmp_qflags(1:nwavel,ix)
       END DO
     END IF
+    endif
 
     wavelengths = real (tmp_wavelengths, kind=r8)
     spectrum = real (tmp_spectrum, kind=r8)

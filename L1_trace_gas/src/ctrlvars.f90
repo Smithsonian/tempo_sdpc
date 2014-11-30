@@ -40,4 +40,7 @@ module ctrlvars
 
   logical, public :: yn_remove_target
 
+  ! FIXME JCH temporary switch for tempo development
+  logical, public :: yn_disable_omi_features
+
 end module

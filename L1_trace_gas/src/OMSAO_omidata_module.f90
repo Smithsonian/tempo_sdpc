@@ -157,7 +157,7 @@ MODULE OMSAO_omidata_module
   ! OMI swath names
   ! ---------------
   CHARACTER (LEN=MAX_STR_LEN) :: omi_radiance_swathname, omi_irradiance_swathname
-  CHARACTER (LEN=MAX_STR_LEN) :: l1b_radiance_esdt
+  !CHARACTER (LEN=MAX_STR_LEN) :: l1b_radiance_esdt
 
   ! ------------------------------
   ! Distance between Earth and Sun

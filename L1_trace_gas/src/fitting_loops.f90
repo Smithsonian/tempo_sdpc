@@ -426,7 +426,7 @@ CONTAINS
       o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, &
       pge_o3_idx, & !pge_hcho_idx, &
       solar_idx, radfit_idx, & !pge_gly_idx, &
-      max_rs_idx
+      max_rs_idx,   max_calfit_idx,hcho_idx,mxs_idx,lbe_idx
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
@@ -629,8 +629,8 @@ CONTAINS
         IF ( is_bad_pixel ) CYCLE
 
         if (yn_diagnostic_run) then
-          write(unit_radiance_wavcal,'(i4,2x,i2,2x,1pe12.5)')iloop, &
-            ipix, fitvar_rad(shi_idx)
+          write(unit_radiance_wavcal,'(i4,2x,i2, 2(2x,1pe12.5))')iloop, &
+            ipix, fitvar_rad(shi_idx), fitvar_rad(max_calfit_idx + (hcho_idx-1)*mxs_idx + lbe_idx)
         endif
 
       END IF

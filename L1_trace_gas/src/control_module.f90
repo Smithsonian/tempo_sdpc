@@ -48,7 +48,8 @@ CONTAINS
 
   !---------------------------------------------------------------------------
 
-SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_status )
+SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
+                                      pge_error_status )
 
   ! ***********************************************************
   !
@@ -102,7 +103,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
   ! ---------------
   ! Output variable
   ! ---------------
-  CHARACTER (LEN=MAX_STR_LEN), INTENT (OUT)   :: l1b_radiance_esdt
+  !CHARACTER (LEN=MAX_STR_LEN), INTENT (OUT)   :: l1b_radiance_esdt
   INTEGER   (KIND=i4),      INTENT (INOUT) :: pge_error_status
 
   ! ---------------
@@ -183,9 +184,13 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
 
   READ (fit_ctrl_unit, '(A)') tmpchar
   tmpchar = lower_case ( TRIM(ADJUSTL(tmpchar)) )
+  yn_disable_omi_features = .false.
   IF ( TRIM(ADJUSTL(tmpchar)) == procmode_diag ) THEN
     yn_diagnostic_run = .TRUE.
-  ELSE
+  ELSE if ( trim(adjustl(tmpchar)) == 'diagnostic-tempo' ) then
+    yn_diagnostic_run = .true.
+    yn_disable_omi_features = .true.
+  else
     yn_diagnostic_run = .FALSE.
   END IF
 
@@ -609,14 +614,14 @@ SUBROUTINE read_fitting_control_file ( pge_idx, l1b_radiance_esdt, pge_error_sta
   ! wavelengths of the fitting window. Of course, the PCF must contain the
   ! corresponding file under the LUN associated with the radiance file.
   ! ----------------------------------------------------------------------
-  SELECT CASE ( l1b_channel )
-  CASE ( 'UV1' )
-    l1b_radiance_esdt  = 'OML1BRUG'
-  CASE ( 'UV2' )
-    l1b_radiance_esdt  = 'OML1BRUG'
-  CASE ( 'VIS' )
-    l1b_radiance_esdt  = 'OML1BRVG'
-  END SELECT
+  !SELECT CASE ( l1b_channel )
+  !CASE ( 'UV1' )
+  !  l1b_radiance_esdt  = 'OML1BRUG'
+  !CASE ( 'UV2' )
+  !  l1b_radiance_esdt  = 'OML1BRUG'
+  !CASE ( 'VIS' )
+  !  l1b_radiance_esdt  = 'OML1BRVG'
+  !END SELECT
 
   CALL find_radiance_fitting_variables ( errstat )
 

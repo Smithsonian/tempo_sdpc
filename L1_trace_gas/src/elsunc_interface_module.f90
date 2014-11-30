@@ -2,6 +2,7 @@ module elsunc_interface_module
   use optimizer_interface_module
   use OMSAO_elsunc_fitting_module
   use errormodule
+  use terr_module
   implicit none
 
   public elsunc_optimizer
@@ -22,7 +23,8 @@ contains
     real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
 
     ! local variables
-    integer (kind=i4) :: return_status
+    integer (kind=i4) :: return_status, trace_depth
+    character (len=1024) :: trace_msg
 
     ! elsunc interprets the following return values of ctrl:
     integer (kind=i4), parameter :: UNCOMPUTABLE = -1
@@ -66,6 +68,14 @@ contains
       elsunc_ctrl = UNCOMPUTABLE
     endif
 
+    trace_depth = terr_get_trace_depth()
+    if (trace_depth > 4) then
+      write(trace_msg,'(1pe12.5,15(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
+        params(1:num_params)
+      call terr_trace (trace_depth, trim(trace_msg))
+      call flush()
+    endif
+
   end subroutine elsunc_objective
 
  subroutine elsunc_optimizer (this, params, num_params, residuals, num_residuals, return_status, &
@@ -81,7 +91,11 @@ contains
    real (kind=r8), dimension (:,:), intent(out), optional :: optional_cov_matrix
 
    !local
-   real (kind=r8), dimension(num_residuals,num_params) :: cov_matrix
+
+   ! Because of the way the elsunc code re-uses the covariance matrix array,
+   ! the 2nd dimension of that array must have size >= 4. For details, look
+   ! at the usage of the 'c' array in subroutine SECUC in the elsunc code.
+   real (kind=r8), dimension(num_residuals,num_params + 4) :: cov_matrix
 
    ! elsunc specific objects
    integer (kind=i4), dimension (ELSUNC_NP) :: p

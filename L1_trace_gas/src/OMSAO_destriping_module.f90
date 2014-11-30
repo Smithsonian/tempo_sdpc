@@ -64,6 +64,7 @@ CONTAINS
       lat, saocol, & !saodco, saoamf, saofcf,
       saomqf, errstat )
 
+    use ctrlvars, only: yn_disable_omi_features
     USE omi_pge_fitting_aux, ONLY: find_swathrange_by_latitude
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     IMPLICIT NONE
@@ -134,11 +135,15 @@ CONTAINS
     ! ------------------------------------------------------
     ! Determine any limiting range due to latitude selection
     ! ------------------------------------------------------
+    if (yn_disable_omi_features) then
+      dst_range(0:ntimes-1) = .true.
+    else
     dst_range(0:ntimes-1) = .FALSE.
     CALL find_swathrange_by_latitude (                               &
       ntimes, nxtrack, ctrdst_latrange(1), ctrdst_latrange(2),    &
       lat(1:nxtrack,0:ntimes-1), xtrange(0:ntimes-1,1:2), midlat, &
       midnum, dst_range(0:ntimes-1)                              )
+  endif
 
     ! ----------------------------------------
     ! Set the range of swath lines to destripe

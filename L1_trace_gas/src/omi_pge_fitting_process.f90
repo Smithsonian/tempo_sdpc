@@ -134,7 +134,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
-    yn_diagnostic_run, yn_remove_target
+    yn_diagnostic_run, yn_remove_target, yn_disable_omi_features
   USE OMSAO_he5_module,       ONLY:  pge_swath_name
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
@@ -448,11 +448,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! Set the logical YN array that determines which swath lines
     ! will be used in the common mode
     ! ----------------------------------------------------------
+    if (yn_disable_omi_features) then
+      is_common_range = .true.
+    else
     is_common_range = .FALSE.
     CALL find_swathline_range ( &
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
       ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
       common_latrange(1:2), is_common_range, errstat             )
+    endif
 
     ! -------------------------------------------------------------
     ! First and last swath line number will be overwritten. Hence
@@ -479,7 +483,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     ! Interface to the loop over all swath lines
     ! ------------------------------------------
-    write(*,*)' omi_fitting: calling swathline_loops (common mode)'
+    call terr_trace (1, 'omi_fitting: calling swathline_loops (common mode)')
     CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
       is_common_range, &
@@ -579,6 +583,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------------------------
   ! First, set the range of swath lines to process
   ! ----------------------------------------------
+  if (yn_disable_omi_features) then
+    do_radfit_range = .true.
+  else
   first_line = 0  ;  last_line = ntimes_rad-1
   IF ( pixnum_lim(1) > 0 ) first_line = MIN(pixnum_lim(1), last_line)
   IF ( pixnum_lim(2) > 0 ) last_line  = MAX( MIN(pixnum_lim(2), last_line), first_line )
@@ -606,13 +613,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     write(*,*)' omi_fitting: setting do_radfit_range:  all TRUE'
     do_radfit_range = .TRUE.
   END IF
+  endif
 
   deallocate (l1b_rad_latitudes)
 
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
-  write(*,*)' omi_fitting: calling swathline_loops (radiances)'
+  call terr_trace (1, 'omi_fitting: calling swathline_loops (radiances)')
   CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
     do_radfit_range,                           &

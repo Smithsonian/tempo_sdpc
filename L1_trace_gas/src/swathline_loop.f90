@@ -29,6 +29,7 @@ SUBROUTINE swathline_loops (                               &
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
   use errormodule
+  use terr_module
   IMPLICIT NONE
 
   ! ---------------
@@ -266,7 +267,7 @@ SUBROUTINE swathline_loops (                               &
       ! -----------------------
       ! Convert TAI to UTC time
       ! -----------------------
-      write(*,*)' *** skipping call to convert_tai_to_utc()'
+      call terr_trace (1,' *** skipping call to convert_tai_to_utc()')
       if (.false.) then
       CALL convert_tai_to_utc ( &
         nUTCdim, omi_time(iloop), omi_time_utc(1:nUTCdim,iloop) )

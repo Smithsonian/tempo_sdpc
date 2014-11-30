@@ -294,7 +294,8 @@ CONTAINS
     !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname, &
-      retrieval_type, alloc_retrieval_type, dealloc_retrieval_type      
+      retrieval_type, alloc_retrieval_type, dealloc_retrieval_type
+    use ctrlvars, only: yn_disable_omi_features
 
     IMPLICIT NONE
 
@@ -398,6 +399,9 @@ CONTAINS
     if (errstat < 0) &
       return
 
+    if (yn_disable_omi_features) then
+      common_range_ok(0:nTimesRadRR-1) = .true.
+    else
     ! --------------------------------------------------
     ! Compute the common mode for the Radiance Reference
     ! granule
@@ -407,6 +411,7 @@ CONTAINS
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)),  &
       nTimesRadRR, nXtrackRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
       common_latrange(1:2), common_range_ok(0:nTimesRadRR-1), locerrstat        )
+    endif
 
     ! ----------------------------------------------------------
     ! Interface to the loop over all swath lines for common mode
