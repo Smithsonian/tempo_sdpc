@@ -76,7 +76,7 @@ module m_vars
   logical :: do_LER=.false. ! do Lambertian Equiv. Reflector version of calc.
   logical :: do_mler=.true. ! do Mixed LER version of calculation
   logical :: write_ai=.false. ! write out Aerosol Index?
-
+  logical :: test_solar=.false. ! use solar spectrum as input data?
 
   ! FILENAMES and PATHS
   character(len=255) :: solar_path='../out/' ! path used by write_solar
@@ -307,8 +307,8 @@ module m_vars
   ! cross-section table wavelength and relative flux 
   integer :: year, month, day ! observation date 
 
-
-
+  real (kind=4) :: add_shift=0.0 ! Optional wavelength shift, to be added
+                                 ! to solar spectrum if used as input
 
   !A(I,J)= corresponding albedo spectrum J at wavelength index I
   !          ie, A = (I/F)

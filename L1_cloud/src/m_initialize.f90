@@ -168,6 +168,20 @@ contains
              transient_check
       endif
 
+      returnstatus = pgs_pc_getconfigdata(test_solar_LUN,buf)
+      IF(returnstatus == 0 ) THEN
+        read(buf,*) pcf_int
+        test_solar = pcf_int == 1
+        if (iprt >= 1) print *,'initialize: setting test_solar = ', &
+             test_solar
+      endif
+
+      returnstatus = pgs_pc_getconfigdata(add_shift_LUN,buf)
+      IF(returnstatus == 0 ) THEN
+        read(buf,*) add_shift
+        if (iprt >= 1) print *,'initialize: setting add_shift = ',add_shift
+      endif
+
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmin

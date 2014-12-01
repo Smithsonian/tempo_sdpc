@@ -109,7 +109,7 @@ contains
          sza, theta, theta_oc, using_cal, using_resid, using_spline, &
          w12d, wave_fill, wave_long, wave_o3, wave_resid, wave_short, &
          wdelt, w_grid, wmax, wmin, write_fill, write_obs, write_resid, &
-         ws, xsect_o3
+         ws, xsect_o3, test_solar, add_shift
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -204,6 +204,13 @@ contains
         !=======================
         w1p = w12d(0:nwl-1,ip)
         r_i=0. ! set observation errors to zero
+
+        !switch to allow solar spectrum to be fed in as data, for testing
+        !================================================================
+        if (test_solar) then
+          w1p = ws(:,ip)-add_shift
+          f1p = fs(:,ip)
+        endif
 
         !check for bad radiances
         !=======================
