@@ -93,6 +93,7 @@ $(EXECUTABLE):	$(LINKOBJS)
 	$(FC) main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
 install:
+	mkdir -p $(bindir)
 	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)
 
 clean:
