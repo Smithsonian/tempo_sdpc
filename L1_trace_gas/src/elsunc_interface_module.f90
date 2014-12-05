@@ -70,7 +70,7 @@ contains
 
     trace_depth = terr_get_trace_depth()
     if (trace_depth > 4) then
-      write(trace_msg,'(1pe12.5,15(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
+      write(trace_msg,'(1pe12.5,75(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
         params(1:num_params)
       call terr_trace (trace_depth, trim(trace_msg))
       call flush()
