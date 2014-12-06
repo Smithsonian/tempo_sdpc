@@ -7,17 +7,17 @@ DIR_LIST=libtio/src L1_trace_gas/src L1_cloud/src
 
 all:
 	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) all); \
+	  (cd $$dir ; $(MAKE) all) || exit; \
 	done
 
 install:
 	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) install); \
+	  (cd $$dir ; $(MAKE) install) || exit; \
 	done
 
 clean:
 	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) clean); \
+	  (cd $$dir ; $(MAKE) clean) || exit; \
 	done
 
 confclean:
