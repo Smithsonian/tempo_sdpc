@@ -36,7 +36,7 @@ MODULE slitfunction_omi
   ! --------------------------------------------------
   INTEGER (KIND=i4), PARAMETER :: n_sf_cmax = 290, n_sf_rmax = 301
 
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max), PARAMETER :: sf_xtrack_center_rows = (/ &
+  INTEGER (KIND=i4), DIMENSION (60), PARAMETER :: sf_xtrack_center_rows = (/ &
     53,   61,  69,  77,  85,  93, 101, 109, 117, 125, 133, 141, 149, 157, 165, &
     173, 181, 189, 197, 205, 213, 221, 229, 237, 245, 253, 261, 269, 277, 285, &
     293, 301, 309, 317, 325, 333, 341, 349, 357, 365, 373, 381, 389, 397, 405, &
@@ -59,7 +59,7 @@ MODULE slitfunction_omi
   ! position (and hence slit function table entry) for zoom
   ! cross-track position j.
   ! ----------------------------------------------------------------
-  INTEGER (KIND=i4), DIMENSION (nxtrack_max), PARAMETER :: zoom2global_map = (/ &
+  INTEGER (KIND=i4), DIMENSION (60), PARAMETER :: zoom2global_map = (/ &
     16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24,      &
     24, 25, 25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 32, 32,      &
     33, 33, 34, 34, 35, 35, 36, 36, 37, 37, 38, 38, 39, 39, 40, 40, 41,      &
