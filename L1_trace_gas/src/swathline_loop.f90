@@ -205,7 +205,7 @@ SUBROUTINE swathline_loops (                               &
 
         ipix = (fpix+lpix)/2
         addmsg = ''
-        WRITE (addmsg,'(I5, I3, 3(1PE15.5),I5)') scanline_no, ipix, &
+        WRITE (addmsg,'(I5, 1x, I4, 3(1PE15.5),I5)') scanline_no, ipix, &
           omi_column_amount(ipix, iloop), omi_column_uncert(ipix, iloop), &
           omi_fit_rms   (ipix, iloop), MAX(-1,omi_itnum_flag(ipix, iloop))
         estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )

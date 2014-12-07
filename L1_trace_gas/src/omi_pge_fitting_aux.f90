@@ -272,7 +272,7 @@ CONTAINS
       WRITE (*, '(A, I7,A,I7,A,F7.1,A)')  'Statistics:   ', &
         MAX(NrofGoodOutputSamples,0), ' of ', MAX(NrofGoodInputSamples,0), ' converged - ', &
         MAX(PercentGoodOutputSamples, 0.0), '%'
-      WRITE (*, '(A, F7.1)') 'Nfitcol =', nfitcol
+      WRITE (*, '(A, F10.1)') 'Nfitcol =', nfitcol
     END IF
 
     CALL he5_write_fitting_statistics ( &

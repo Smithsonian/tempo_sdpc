@@ -245,11 +245,11 @@ CONTAINS
       ! ------------------------------------------------------------------------------------
 
       if (yn_diagnostic_run) then
-        write(unit_xtrack_wavcal,'(i2,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
+        write(unit_xtrack_wavcal,'(i4,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'RADIANCE Wavcal    #', ipix, &
+      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I5))') 'RADIANCE Wavcal    #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
         '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
         '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
@@ -629,7 +629,7 @@ CONTAINS
         IF ( is_bad_pixel ) CYCLE
 
         if (yn_diagnostic_run) then
-          write(unit_radiance_wavcal,'(i4,2x,i2, 2(2x,1pe12.5))')iloop, &
+          write(unit_radiance_wavcal,'(i4,2x,i4, 2(2x,1pe12.5))')iloop, &
             ipix, fitvar_rad(shi_idx), fitvar_rad(max_calfit_idx + (hcho_idx-1)*mxs_idx + lbe_idx)
         endif
 

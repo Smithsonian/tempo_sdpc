@@ -493,11 +493,11 @@ CONTAINS
       omi_irradiance_wght(1:n_irradwvl,ipix) = adj_wgts(1:n_irradwvl)
 
       if (yn_diagnostic_run) then
-        write(unit_solar_wavcal,'(i2,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
+        write(unit_solar_wavcal,'(i4,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I2,4(A,1PE10.3),2(A,I5))') 'SOLAR FIT          #', ipix, &
+      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I5))') 'SOLAR FIT          #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
         fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), '; exit val = ', &
         solcal_exval, '; iter num = ', solcal_itnum
