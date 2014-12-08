@@ -23,8 +23,8 @@ contains
     real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
 
     ! local variables
-    integer (kind=i4) :: return_status, trace_depth
-    character (len=1024) :: trace_msg
+    integer (kind=i4) :: return_status, log_level
+    character (len=1024) :: log_msg
 
     ! elsunc interprets the following return values of ctrl:
     integer (kind=i4), parameter :: UNCOMPUTABLE = -1
@@ -68,11 +68,11 @@ contains
       elsunc_ctrl = UNCOMPUTABLE
     endif
 
-    trace_depth = terr_get_trace_depth()
-    if (trace_depth > 4) then
-      write(trace_msg,'(1pe12.5,75(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
+    log_level = terr_get_log_level()
+    if (log_level > 4) then
+      write(log_msg,'(1pe12.5,75(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
         params(1:num_params)
-      call terr_trace (trace_depth, trim(trace_msg))
+      call terr_log (log_level, trim(log_msg))
       call flush()
     endif
 

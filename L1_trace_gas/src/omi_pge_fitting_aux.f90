@@ -1007,7 +1007,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION (nxrr) :: cntr4, latdiff, loclat
     INTEGER (KIND=i4)                   :: &
       j1, j2, icnt, iline, fpix, lpix, locerr
-    character (len=256) :: trace_msg
+    character (len=256) :: log_msg
 
     ! ---------------------------
     ! Initialize output variables
@@ -1026,9 +1026,9 @@ CONTAINS
       icnt  = icnt + 1
       iline = (j1 + j2) / 2
 
-      write(trace_msg, *)'find_swathline_by_latitude: looking for lat=', &
+      write(log_msg, *)'find_swathline_by_latitude: looking for lat=', &
         lat,' iline,j1,j2=',iline,j1,j2
-      call terr_trace (1, trace_msg)
+      call terr_log (1, log_msg)
 
       ! -----------------------------------------------------------------------
       ! Get first and last pixel.
@@ -1038,8 +1038,8 @@ CONTAINS
       fpix = xtrange(iline,1)
       lpix = xtrange(iline,2)
 
-      write(trace_msg, *)'find_swathline_by_latitude: fpix,lpix=',fpix,lpix
-      call terr_trace (1, trace_msg)
+      write(log_msg, *)'find_swathline_by_latitude: fpix,lpix=',fpix,lpix
+      call terr_log (1, log_msg)
 
       IF ( iline < sline .OR. iline > eline ) THEN
         locerr = pge_errstat_error

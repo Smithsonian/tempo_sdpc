@@ -108,7 +108,12 @@ SUBROUTINE swathline_loops (                               &
   endif
 
   if (yn_diagnostic_run) then
-    open (unit=unit_column_amount, file='diag.column_amount')
+    open (unit=unit_column_amount, file='diag.column_amount', iostat=locerrstat)
+      if (locerrstat /= 0) then
+        call terr_error (terr_io_open_error, &
+                         "error opening diag.column_amount", errstat)
+        return
+      endif
   endif
 
   ! ---------------------------------------------------------------------
@@ -267,7 +272,7 @@ SUBROUTINE swathline_loops (                               &
       ! -----------------------
       ! Convert TAI to UTC time
       ! -----------------------
-      call terr_trace (1,' *** skipping call to convert_tai_to_utc()')
+      call terr_log (1,' *** skipping call to convert_tai_to_utc()')
       if (.false.) then
       CALL convert_tai_to_utc ( &
         nUTCdim, omi_time(iloop), omi_time_utc(1:nUTCdim,iloop) )

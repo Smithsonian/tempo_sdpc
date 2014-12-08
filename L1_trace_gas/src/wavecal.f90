@@ -283,7 +283,7 @@ contains
     integer (kind=i4), dimension(num_cal_parms) :: param_mask
     real (kind=r8), dimension (num_wavelengths) :: fitres
     integer :: num_fitvar
-    character (len=256) :: trace_msg
+    character (len=256) :: log_msg
 
     if (errstat < 0) return
 
@@ -298,8 +298,8 @@ contains
       upbnd (num_fitvar) = max_cal_parms(i)
     enddo
 
-    write (trace_msg, *)'wavecal_fit:  num_fitvar=',num_fitvar
-    call terr_trace (2, trace_msg)
+    write (log_msg, *)'wavecal_fit:  num_fitvar=',num_fitvar
+    call terr_log (2, log_msg)
 
     num_iterations_per_fit = num_iterations
     num_iterations = 0

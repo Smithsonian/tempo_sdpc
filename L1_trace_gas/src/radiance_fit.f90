@@ -112,7 +112,7 @@ CONTAINS
 
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
-    character (len=128) :: trace_msg
+    character (len=128) :: log_msg
 
     SAVE fitcol_saved
 
@@ -211,8 +211,8 @@ CONTAINS
       upbnd (i) = up_radbnd(idx)
     END DO
 
-    write (trace_msg, *)'fit_radiance:  n_fitvar_rad=',n_fitvar_rad
-    call terr_trace (2, trace_msg)
+    write (log_msg, *)'fit_radiance:  n_fitvar_rad=',n_fitvar_rad
+    call terr_log (2, log_msg)
 
     ! --------------------------------------------------------------------
     ! Check whether we enough spectral points to carry out the fitting. If

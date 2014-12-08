@@ -1,6 +1,7 @@
 MODULE OMSAO_solar_wavcal_module
 
   use errormodule
+  use terr_module
   implicit none
 
   private
@@ -404,7 +405,12 @@ CONTAINS
     ! ---------------------------------------------------------------
 
     if (yn_diagnostic_run) then
-      open (unit=unit_solar_wavcal, file='diag.solar_wavcal')
+      open (unit=unit_solar_wavcal, file='diag.solar_wavcal', iostat=locerrstat)
+      if (locerrstat /= 0) then
+        call terr_error (terr_io_open_error, &
+                         "error opening diag.solar_wavcal", errstat)
+        return
+      endif
     endif
 
     adj_len = 0

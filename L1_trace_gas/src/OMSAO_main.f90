@@ -63,7 +63,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------
   pge_error_status = pge_errstat_ok
 
-  call terr_set_trace_depth (0)
+  call terr_set_log_level (0)
 
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered

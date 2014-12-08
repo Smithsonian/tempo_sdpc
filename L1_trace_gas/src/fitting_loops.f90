@@ -76,7 +76,7 @@ CONTAINS
     integer (kind=i4) :: adj_num, adj_num_allocated
     integer (kind=i4) :: n_irradwvl
     integer :: locerr
-    integer, parameter :: unit_xtrack_wavcal = 20    
+    integer, parameter :: unit_xtrack_wavcal = 20
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -97,9 +97,15 @@ CONTAINS
       n_comm_wvl_out = MAXVAL(omi_nwav_rad(first_pix:last_pix,0))
 
     if (yn_diagnostic_run) then
-      open (unit=unit_xtrack_wavcal, file='diag.xtrack_wavcal')
+      open (unit=unit_xtrack_wavcal, file='diag.xtrack_wavcal', &
+           iostat=locerrstat)
+      if (locerrstat /= 0) then
+        call terr_error (terr_io_open_error, &
+                         "error opening diag.xtrack_wavcal", errstat)
+        return
+      endif
     endif
-    
+
     adj_num_allocated = 0
     ! --------------------------------
     ! Loop over cross-track positions.
@@ -350,7 +356,7 @@ CONTAINS
 
     if (yn_diagnostic_run) then
       close (unit_xtrack_wavcal)
-    endif    
+    endif
 
     ! CCM Write splined/convolved databases if necessary
     IF( yn_diagnostic_run ) THEN
@@ -501,7 +507,13 @@ CONTAINS
     locerrstat = pge_errstat_ok
 
     if (yn_diagnostic_run) then
-      open (unit=unit_radiance_wavcal, file='diag.radiance_wavcal', access='append')
+      open (unit=unit_radiance_wavcal, file='diag.radiance_wavcal', access='append', &
+           iostat=locerrstat)
+      if (locerrstat /= 0) then
+        call terr_error (terr_io_open_error, &
+                         "error opening diag.radiance_wavcal", errstat)
+        return
+      endif
     endif
 
     !!!fitvar_rad_saved = fitvar_rad_init
@@ -565,7 +577,6 @@ CONTAINS
       curr_sol_spec(1:n_database_wvl,spc_idx) = omi_database    (1:n_database_wvl,ipix,solar_idx)
       ! --------------------------------------------------------------------------------
 
-
       ! reallocate buffers if needed
       if (adj_num > adj_num_allocated) then
         if (adj_num_allocated > 0) then
@@ -613,7 +624,7 @@ CONTAINS
           .and. (adj_num > n_fitvar_rad) &
           .and. (.not. do_skip_pix)) then
 
-        call terr_trace (2, 'fitting_loops: call fit_radiance')
+        call terr_log (2, 'fitting_loops: call fit_radiance')
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
           pge_idx, ipix, ctrl_n_fitres_loop(radfit_idx), &
@@ -662,7 +673,7 @@ CONTAINS
 
     if (yn_diagnostic_run) then
       close (unit_radiance_wavcal)
-    endif        
+    endif
 
     RETURN
   END SUBROUTINE xtrack_radiance_fitting_loop
