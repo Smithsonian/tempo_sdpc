@@ -5,7 +5,7 @@ MODULE omi_parameters_module
   ! Maximum OMI data/swath dimensions
   ! ---------------------------------
   INTEGER (KIND=i4), PARAMETER :: &
-    omi_nxtrack_max    =  60, &
+    omi_nxtrack_max    = 2048, & !60, &   ! JCH 2048 is required for TEMPO
     omi_nwavel_max     = 1024, &
     omi_nwavelcoef_max =   5
 
