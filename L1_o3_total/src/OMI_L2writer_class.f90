@@ -11,7 +11,7 @@ MODULE OMI_L2writer_class
     INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int8 = -127 
     INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint8 = 255
     INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int16 = -32767 
-    INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint16 = 32767   ! FIXME (JCH) original code used 65535 (arithmetic overflow)
+    INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint16 = -1
     REAL (KIND=4), PUBLIC :: fill_float32
     REAL (KIND=8), PUBLIC :: fill_float64
 
