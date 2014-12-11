@@ -3,7 +3,7 @@
 
 RM = /bin/rm
 
-DIR_LIST=libtio/src L1_trace_gas/src L1_cloud/src 
+DIR_LIST=libtio/src L1_trace_gas/src L1_cloud/src L1_o3_total/src
 
 all:
 	for dir in $(DIR_LIST) ; do \
