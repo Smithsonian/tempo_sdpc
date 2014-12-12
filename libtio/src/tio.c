@@ -182,7 +182,7 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
         break;
       default:
         Tell_verror (TELL_INVALID_PARM,
-                     "%s: invalid fill value type xtype=%d", xtype);
+                     "%s: invalid fill value type xtype=%d", __func__, xtype);
         return -1;
      }
 
@@ -601,7 +601,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
 
 /* Fortran bindings */
 
-FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_L1BVAR, tiof_get_l1bvar,
+FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
             INT, STRING, INT, INT, INT, PVOID)
 
 static int f_tio_put_att (int grp, const char *varname, const char *attname,

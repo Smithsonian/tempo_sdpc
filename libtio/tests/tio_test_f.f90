@@ -3,32 +3,39 @@ program tio_test
   use tio_module
   implicit none
 
-  type (tiof_l1_object_type) :: l1bobj
+  type (tiof_object_type) :: obj
   character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
-  integer :: step0, num_steps
+  integer :: step0, num_steps, num_wavelengths, num_xtrack
   real (kind=4), allocatable, dimension(:,:,:) :: radiance
   integer :: errstat
 
   errstat = 0
 
-  call tiof_open (filename, l1bobj, errstat)
+  call tiof_open (filename, obj, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_open failed:  file='//filename
     stop 1
   endif
 
-  call tiof_inq_group (l1bobj, groupname, errstat)
+  call tiof_inq_group (obj, groupname, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_group failed:  group='//groupname
     stop 2
   endif
 
+  call tiof_inq_dimlen (obj, "spectral_channel", num_wavelengths, errstat);
+  call tiof_inq_dimlen (obj, "xtrack", num_xtrack, errstat);
+  if (errstat < 0) then
+    write(*,*)'*** tiof_inq_dimlen failed:  group='//groupname
+    stop 2
+  endif
+
   step0 = 5
   num_steps = 2
-  allocate (radiance(l1bobj%num_wavelengths, l1bobj%num_xtrack, num_steps))
+  allocate (radiance(num_wavelengths, num_xtrack, num_steps))
 
-  call tiof_get3d_r4 (l1bobj, "radiance", step0, num_steps, radiance, errstat)
+  call tiof_get3d_r4 (obj, "radiance", step0, num_steps, radiance, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_get3d_r4 failed'
     stop 3
@@ -37,7 +44,7 @@ program tio_test
   !write(*,*)radiance
   deallocate (radiance)
 
-  call tiof_close (l1bobj, errstat)
+  call tiof_close (obj, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_close failed'
     stop 4
