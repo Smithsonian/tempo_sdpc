@@ -1283,7 +1283,8 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION(:,:), INTENT (out) :: latr4
 
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_l1_object_type) :: tio_l1obj
+    type (tiof_object_type) :: tio_l1obj
+    integer :: nxtrack
 
     if (errstat < 0) return
 
@@ -1298,8 +1299,9 @@ CONTAINS
     !call l1bread_close (l1bobj)
     call tiof_open (l1bfile, tio_l1obj, errstat)
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
     if (errstat < 0) return
-    if (size(latr4, 1) /= tio_l1obj%num_xtrack) then
+    if (size(latr4, 1) /= nxtrack) then
       call tell_error (tell_io_read_error, &
                        "read_latitude: nxtrack dimension is not correct", errstat)
       call tiof_close (tio_l1obj, errstat)

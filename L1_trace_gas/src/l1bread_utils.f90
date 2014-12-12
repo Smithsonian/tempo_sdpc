@@ -37,7 +37,7 @@ contains
     type(Radiance_Paras_Type), INTENT(out) :: rpt
     integer (kind=i4), intent (inout) :: errstat
 
-    type (tiof_l1_object_type) :: tio_l1obj
+    type (tiof_object_type) :: tio_l1obj
 
     if (errstat < 0) return
 
@@ -49,11 +49,10 @@ contains
     call tiof_open (l1bfile, tio_l1obj, errstat)
     call lookup_swathname (l1bchannel, rpt%swathname, errstat)
     call tiof_inq_group (tio_l1obj, rpt%swathname, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "mirror_step", rpt%ntimes, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "xtrack", rpt%nxtrack, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "spectral_channel", rpt%nwavel_ccd, errstat)
     if (errstat < 0) return
-
-    rpt%ntimes = tio_l1obj%num_times
-    rpt%nxtrack = tio_l1obj%num_xtrack
-    rpt%nwavel_ccd = tio_l1obj%num_wavelengths
     
     write (*,*) "DEBUG: In read_l1_radiance_info, l1bfile=", &
       trim(l1bfile), ", l1bswath=", trim(rpt%swathname)

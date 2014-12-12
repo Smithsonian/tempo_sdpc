@@ -219,7 +219,7 @@ contains
     integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
     character (len=64) :: swathname
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_l1_object_type) :: tio_l1obj
+    type (tiof_object_type) :: tio_l1obj
 
     if (errstat < 0) return
 
@@ -232,12 +232,12 @@ contains
     call tiof_open (l1b_irrad_filename, tio_l1obj, errstat)
     call lookup_swathname (l1b_channel, swathname, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
+    call tiof_inq_dimlen (tio_l1obj, "spectral_channel", nwavel, errstat)
     if (errstat < 0) return
 
     !nwavel = l1bobj%num_wavelengths
     !nxtrack = l1bobj%num_xtrack
-    nwavel = tio_l1obj%num_wavelengths
-    nxtrack = tio_l1obj%num_xtrack
 
     allocate (tmp_wavelengths(nwavel, nxtrack), &
               tmp_spectrum(nwavel, nxtrack), &
