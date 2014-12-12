@@ -15,46 +15,6 @@ MODULE OMSAO_he5_module
 
   IMPLICIT NONE
 
-  CHARACTER (LEN=12), PARAMETER :: aushar = "Aura-Shared ", omspec = "OMI-Specific"
-
-  ! -----------------------------------------------------------------
-  ! Blank strings of various lengths.
-  !
-  ! Some compilers don't allow to define CHARACTER PARAMETER arrays
-  ! which are initialized with field of unequal length. The following
-  ! are a few padding strings that we attach to shorter entries. Not
-  ! very stylish, but effective. Note that what matters is the LEN
-  ! declaration - we don't need to initialize the strings with the
-  ! appropriate number of blanks. Using "" is perfectly fine.
-  ! -----------------------------------------------------------------
-  CHARACTER (LEN=12), PARAMETER :: blk12 = ""
-  CHARACTER (LEN=13), PARAMETER :: blk13 = ""
-  CHARACTER (LEN=14), PARAMETER :: blk14 = ""
-  CHARACTER (LEN=16), PARAMETER :: blk16 = ""
-  CHARACTER (LEN=17), PARAMETER :: blk17 = ""
-  CHARACTER (LEN=19), PARAMETER :: blk19 = ""
-  CHARACTER (LEN=20), PARAMETER :: blk20 = ""
-  CHARACTER (LEN=21), PARAMETER :: blk21 = ""
-  CHARACTER (LEN=23), PARAMETER :: blk23 = ""
-  CHARACTER (LEN=25), PARAMETER :: blk25 = ""
-  CHARACTER (LEN=26), PARAMETER :: blk26 = ""
-  CHARACTER (LEN=27), PARAMETER :: blk27 = ""
-  CHARACTER (LEN=28), PARAMETER :: blk28 = ""
-  CHARACTER (LEN=29), PARAMETER :: blk29 = ""
-  CHARACTER (LEN=30), PARAMETER :: blk30 = ""
-  CHARACTER (LEN=31), PARAMETER :: blk31 = ""
-  CHARACTER (LEN=32), PARAMETER :: blk32 = ""
-  CHARACTER (LEN=33), PARAMETER :: blk33 = ""
-  CHARACTER (LEN=35), PARAMETER :: blk35 = ""
-  CHARACTER (LEN=38), PARAMETER :: blk38 = ""
-  CHARACTER (LEN=39), PARAMETER :: blk39 = ""
-  CHARACTER (LEN=40), PARAMETER :: blk40 = ""
-  CHARACTER (LEN=41), PARAMETER :: blk41 = ""
-  CHARACTER (LEN=43), PARAMETER :: blk43 = ""
-  CHARACTER (LEN=45), PARAMETER :: blk45 = ""
-  CHARACTER (LEN=48), PARAMETER :: blk48 = ""
-  CHARACTER (LEN=49), PARAMETER :: blk49 = ""
-
   ! ----------------------------------------------
   ! Swath IDs for current HE5 swath and swath file
   ! ----------------------------------------------
@@ -119,11 +79,6 @@ MODULE OMSAO_he5_module
     nwcp  = "nWavCalPars", &
     nxc   = "nXtrack", &
     nxcp1 = "nXtrack+1"  ! GGA
-
-  CHARACTER (LEN=14), PARAMETER :: nxtc  = nxc//","//ntc
-  CHARACTER (LEN=27), PARAMETER :: nfxtc = nfv//","//nxc//","//ntc
-  CHARACTER (LEN=19), PARAMETER :: nxwcp = nwcp//","//nxc
-  CHARACTER (LEN=22), PARAMETER :: nxtlc = nxc//","//ntc//","//nlc !GGA
 
   ! ------------------------------------------------------------------
   ! Integer variables for writing to swath data and geolocation fields
