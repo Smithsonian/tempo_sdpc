@@ -72,7 +72,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
     USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
     USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
-    USE OMSAO_he5_module
+    USE OMSAO_he5_module, only: he5_swopen, he5_swcreate, he5_swdefdim, he5f_acc_trunc
     USE OMSAO_errstat_module
     USE OMSAO_variables_module, ONLY: n_fitvar_rad
 
@@ -99,6 +99,23 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=C_LONG), PARAMETER :: onecl = 1, twocl = 2, fourcl = 4
     INTEGER   (KIND=i4) :: errstat
+
+    ! ----------------
+    ! Swath dimensions
+    ! ----------------
+    CHARACTER (LEN=*), PARAMETER :: &
+      ncv   = "nCharLenFitElements", &
+      ncwvl = "nCommonWavl", &
+      nfv   = "nFitElements", &
+      nlc   = "nLevels", &    ! GGA
+      nrspc = "nRfSpec", & !CCM
+      ntc   = "nTimes", &
+      ntcp1 = "nTimes+1", &   ! GGA
+      nutcd = "nUTCdim", &
+      nwalm = "nwavel_max", & !CCM
+      nwcp  = "nWavCalPars", &
+      nxc   = "nXtrack", &
+      nxcp1 = "nXtrack+1"  ! GGA
 
     he5stat = pge_errstat_ok
     errstat = pge_errstat_ok
@@ -187,7 +204,7 @@ CONTAINS
 
       ! FIXME JCH: Chunk parameters assume OMI dimensions.
       !   If the actual dimensions are smaller, many warnings/errors occur
-      if (.false.) then  
+      if (.false.) then
       CALL he5_check_for_compressibility ( &
         ntimes, nxtrack, nSwLevels, trim(ptr%dimensions), &
         compress_ok, n_chunk_dim, chunk_dim )
@@ -460,7 +477,7 @@ CONTAINS
 
   SUBROUTINE he5_write_wavcal_output ( nXtloc, fpix, lpix, errstat )
 
-    USE OMSAO_precision_module, ONLY: i4, i8, C_LONG ! r8, 
+    USE OMSAO_precision_module, ONLY: i4, i8, C_LONG ! r8,
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module,   ONLY: &

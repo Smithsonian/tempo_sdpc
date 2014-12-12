@@ -63,23 +63,6 @@ MODULE OMSAO_he5_module
   ! ----------------------
   CHARACTER (LEN=18), PUBLIC, PARAMETER :: vcoordinate_field = "VerticalCoordinate"
 
-  ! ----------------
-  ! Swath dimensions
-  ! ----------------
-  CHARACTER (LEN=*), PUBLIC, PARAMETER :: &
-    ncv   = "nCharLenFitElements", &
-    ncwvl = "nCommonWavl", &
-    nfv   = "nFitElements", &
-    nlc   = "nLevels", &    ! GGA
-    nrspc = "nRfSpec", & !CCM
-    ntc   = "nTimes", &
-    ntcp1 = "nTimes+1", &   ! GGA
-    nutcd = "nUTCdim", &
-    nwalm = "nwavel_max", & !CCM
-    nwcp  = "nWavCalPars", &
-    nxc   = "nXtrack", &
-    nxcp1 = "nXtrack+1"  ! GGA
-
   ! ------------------------------------------------------------------
   ! Integer variables for writing to swath data and geolocation fields
   ! ------------------------------------------------------------------
