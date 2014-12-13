@@ -16,7 +16,9 @@ module tio_module
   integer :: tiof_get_var_section, tiof_put_att1
   external   tiof_get_var_section, tiof_put_att1
 
-  integer, public, parameter :: tiof_max_name_len = 64
+  integer, public, parameter :: &
+    tiof_max_var_dims = 7, &
+    tiof_max_name_len = 64
 
   type, public :: tiof_object_type
     integer :: fileid = -1
@@ -26,6 +28,7 @@ module tio_module
   type, public :: tiof_dim_type
     character (len=tiof_max_name_len) :: name
     integer :: len = 0
+    integer :: len_name = 0
     integer :: dimid = -1
     type (tiof_dim_type), pointer :: next => null()
   end type
@@ -35,6 +38,25 @@ module tio_module
     type (tiof_dim_type), pointer :: head => null(), tail => null()
   end type
 
+  type, public :: tiof_var_type
+    character (len=tiof_max_name_len) :: name
+    integer :: len_name = 0
+    integer :: xtype = -1
+    integer :: varid = -1
+    character (len=tiof_max_name_len), pointer, dimension(:) :: dim_names => null()
+    integer, dimension(tiof_max_var_dims) :: dimids
+    integer :: rank = 0
+    integer :: deflate_level=0
+    logical :: contiguous = .true., shuffle=.false.
+    integer, dimension(tiof_max_var_dims) :: chunksizes
+    type (tiof_var_type), pointer :: next
+  end type
+
+  type, public :: tiof_varlist_type
+    integer :: num_items = 0
+    type (tiof_var_type), pointer :: head => null(), tail => null()
+  end type
+
   private
 
   public tiof_open, tiof_close, tiof_inq_group, tiof_inq_dimlen, &
@@ -42,7 +64,8 @@ module tio_module
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
     tiof_get2d_i2, tiof_get3d_i2, &
     tiof_get1d_i1, tiof_get2d_i1, &
-    tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims
+    tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims, &
+    tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars
 
 contains
 
@@ -309,8 +332,9 @@ contains
       return
     endif
     item % next => null()
-    item % name = adjustl(dim_name)
     item % len  = dim_len
+    item % name = adjustl(dim_name)
+    item % len_name = len_trim(item % name)
 
     if (associated(list%head)) then
       list % tail % next => item
@@ -331,7 +355,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_dim_type), pointer :: item => null()
-    character (len=:), pointer :: name_i
+    character (len=tiof_max_name_len) :: name_i
     integer :: i, len_i
 
     if (errstat < 0) return
@@ -346,12 +370,13 @@ contains
     do i=1, num
 
       item => list % head
-      name_i => names(i)
+      name_i = adjustl(names(i))
       len_i = len_trim(name_i)
 
       dimids(i) = -1
       search: do while (associated(item))
-        if (item % name == name_i(1:len_i)) then
+        if (item%len_name /= len_i) cycle
+        if (item % name(1:item%len_name) == name_i(1:len_i)) then
           dimids(i) = item % dimid
           exit search
         endif
@@ -386,8 +411,8 @@ contains
                              item % dimid)
       if (status /= nf90_noerr) then
         call terr_error (terr_io_error, "defining dimension " &
-                         //trim(adjustl(item % name))//" (" // &
-                         nf90_strerror(status)//") ", &
+                         //item % name(1:item%len_name)//" (" // &
+                         trim(nf90_strerror(status))//") ", &
                          errstat)
         return
       endif
@@ -395,5 +420,136 @@ contains
     enddo
 
   end subroutine tiof_def_dims
+
+  subroutine tiof_varlist_append (list, var_name, xtype, dimids, errstat, &
+                                  shuffle, deflate_level, contiguous, chunksizes)
+    implicit none
+    type (tiof_varlist_type), intent(inout) :: list
+    character (len=*), intent(in) :: var_name
+    integer, intent(in) :: xtype
+    integer, dimension(:), intent(in) :: dimids
+    integer, intent(inout) :: errstat
+    integer, optional, intent(in) :: deflate_level
+    logical, optional, intent(in) :: contiguous, shuffle
+    integer, optional, dimension(:), intent(in) :: chunksizes
+
+    ! local
+    type (tiof_var_type), pointer :: item
+    integer :: status
+
+    if (errstat < 0) return
+
+    allocate (item, stat=status)
+    if (status /= 0) then
+      call terr_error (terr_malloc_error, &
+                       "tiof_varlist_append:  allocate failed", errstat)
+      return
+    endif
+    item % next => null()
+    item % name = adjustl(var_name)
+    item % len_name = len_trim(item % name)
+    item % xtype = xtype
+    item % rank = size(dimids)
+    item%dimids(1:item%rank) = dimids(1:item%rank)
+
+    if (present(shuffle)) then
+      item % shuffle = shuffle
+    endif
+
+    if (present(deflate_level)) then
+      item % deflate_level = deflate_level
+    endif
+
+    if (present(contiguous)) then
+      item % contiguous = contiguous
+      if (present(chunksizes)) then
+        item % chunksizes(1:item%rank) = chunksizes(1:item%rank)
+      endif
+    endif
+
+    if (associated(list%head)) then
+      list % tail % next => item
+    else
+      list % head => item
+    endif
+    list % tail => item
+    list % num_items = list % num_items + 1
+
+  end subroutine tiof_varlist_append
+
+  subroutine tiof_varlist_lookup (list, name, varid, errstat)
+    implicit none
+    type (tiof_varlist_type), intent(in) :: list
+    character (len=*), intent(in) :: name
+    integer, intent(out) :: varid
+    integer, intent(inout) :: errstat
+
+    type (tiof_var_type), pointer :: item => null()
+    integer :: len_name
+
+    varid = -1
+
+    if (errstat < 0) return
+
+    if (.not.associated(list%head)) then
+      call terr_error (terr_invalid_parm, &
+                       "tiof_dimlist_lookup: null dimension list", &
+                       errstat)
+      return
+    endif
+
+    len_name = len_trim(name)
+
+    item => list % head
+
+    do while (associated(item))
+      if (item % len_name /= len_name) cycle
+      if (item % name(1:item%len_name) == name (1:len_name)) then
+        varid = item % varid
+        return
+      endif
+      item => item % next
+    enddo
+
+  end subroutine tiof_varlist_lookup
+
+  subroutine tiof_def_vars (obj, list, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_varlist_type), intent(in) :: list
+    integer, intent(inout) :: errstat
+
+    type (tiof_var_type), pointer :: item => null()
+    integer :: status
+
+    if (errstat < 0) return
+
+    if (.not.associated (list%head)) then
+      call terr_error (terr_invalid_parm, &
+                       "tiof_def_vars: null variable list", &
+                       errstat)
+      return
+    endif
+
+    item => list % head
+    do while (associated(item))
+      status = nf90_def_var (obj % groupid, item % name, item % xtype, &
+                             item % dimids(1:item%rank), &
+                             item % varid, &
+                             contiguous = item % contiguous, &
+                             chunksizes = item % chunksizes(1:item%rank), &
+                             deflate_level = item % deflate_level, &
+                             shuffle = item % shuffle)
+      if (status /= nf90_noerr) then
+        call terr_error (terr_io_error, "defining variable " &
+                         //item % name(1:item%len_name)//" (" // &
+                         trim(nf90_strerror(status))//") ", &
+                         errstat)
+        return
+      endif
+      item => item % next
+    enddo
+
+  end subroutine tiof_def_vars
 
 end module tio_module

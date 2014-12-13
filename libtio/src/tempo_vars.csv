@@ -1,3 +1,5 @@
+# level 1 variables
+#
 TEMPO_VAR_AMR,"effective_area_to_mass_ratio"
 TEMPO_VAR_CLOUDTOPHEIGHT,"cloud_top_height"
 TEMPO_VAR_DELTAV_X,"delta_v_x"
@@ -41,3 +43,7 @@ TEMPO_VAR_TIME_SMA,"sma_time"
 TEMPO_VAR_VZ_ANGLE,"viewing_zenith_angle"
 TEMPO_VAR_VA_ANGLE,"viewing_azimuth_angle"
 TEMPO_VAR_WAVELENGTH,"wavelength"
+#
+# level 2 variables
+#
+TEMPO_VAR_COLUMN_AMOUNT,"column_amount"
