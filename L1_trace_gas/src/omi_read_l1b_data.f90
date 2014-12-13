@@ -11,6 +11,7 @@ CONTAINS
     USE OMSAO_omidata_module,    ONLY : global_mode, szoom_mode
     !use l1bread
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE
 
@@ -39,7 +40,7 @@ CONTAINS
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
     !call l1bread_get1d_i1 (l1bobj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     call tiof_get1d_i1 (tio_l1obj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
     call tiof_close (tio_l1obj, errstat)
@@ -134,6 +135,7 @@ CONTAINS
     USE angle_sat2toa, ONLY: gnome_angle_sat2toa
     !use l1bread
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE
 
@@ -180,7 +182,7 @@ CONTAINS
     !call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
     !call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, "time", iline, nloop, omi_time, errstat)
     write(*,*)' tiof_inq_group: opening swath='//trim(omi_radiance_swathname)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
@@ -307,6 +309,7 @@ CONTAINS
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname
     !use l1bread
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE
 
@@ -333,7 +336,7 @@ CONTAINS
     !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
     !call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
     call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", 0, nt, geoflg, errstat)
     call tiof_close (tio_l1obj, errstat)

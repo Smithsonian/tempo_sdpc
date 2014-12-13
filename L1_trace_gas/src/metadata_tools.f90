@@ -269,7 +269,7 @@ CONTAINS
 
     write(*,*)'metadata_tools::init_metadata:  reading l1r_filename = '//trim(l1r_filename)
 
-    call tiof_open (l1r_filename, tio_l1obj, errstat)
+    call tiof_open (l1r_filename, tio_l1obj, nf90_nowrite, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_open_error, "opening "//trim(l1r_filename), errstat)
       return

@@ -206,6 +206,7 @@ contains
     !use l1bread
     use l1bread_utils
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     implicit none
     integer (kind=i4), intent (inout) :: errstat
@@ -229,7 +230,7 @@ contains
 
     !call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
     !call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
-    call tiof_open (l1b_irrad_filename, tio_l1obj, errstat)
+    call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
     call lookup_swathname (l1b_channel, swathname, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)

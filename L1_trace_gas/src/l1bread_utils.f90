@@ -31,6 +31,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY : Radiance_Paras_Type
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     implicit none
     character (len=*), intent (in) :: l1bfile, l1bchannel
@@ -46,7 +47,7 @@ contains
     rpt%l1bchannel = l1bchannel
 
     ! allow error to flow through
-    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call lookup_swathname (l1bchannel, rpt%swathname, errstat)
     call tiof_inq_group (tio_l1obj, rpt%swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, "mirror_step", rpt%ntimes, errstat)

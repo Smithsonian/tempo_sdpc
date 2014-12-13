@@ -1275,6 +1275,7 @@ CONTAINS
     !use l1bread, only: l1bread_open_swath, l1bread_close, L1B_Object_Type, &
     !  l1bread_get2d_r4
     use tio_module
+    use netcdf, only : nf90_nowrite
 
     implicit none
     CHARACTER (LEN=*),     INTENT (IN) :: l1bfile, l1bswath
@@ -1297,7 +1298,7 @@ CONTAINS
     !endif
     !call l1bread_get2d_r4 (l1bobj, "latitude", tstart, ntimes, latr4, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, errstat)
+    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
     if (errstat < 0) return
