@@ -38,16 +38,19 @@ contains
     call tiof_open (filename, obj, nf90_write, errstat)
     call tiof_def_dims (obj, dimlist, errstat)
 
-    call tiof_dimlist_lookup (dimlist, 2, &
+    call tiof_dimlist_lookup (dimlist, &
                               [tempo_dim_xtrack, tempo_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
-
-    call tiof_varlist_append (varlist, &
+                              
+    call tiof_varlist_append (varlist, errstat, &
                               tempo_var_column_amount, &  ! name
                               nf90_double,             &  ! xtype
-                              dimids_xtrack_step,      &  ! dimids
-                              errstat)
+                              dimids = dimids_xtrack_step,  &
+                              comment = "column amount", &
+                              units = "molec/cm2", &
+                              valid_range = [-1.e30_r8, 1.e30_r8] &
+                             )
 
     call tiof_def_vars (obj, varlist, errstat)
 
