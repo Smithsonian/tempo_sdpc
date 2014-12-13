@@ -12,10 +12,24 @@ module tio_module
   integer :: tiof_get_var_section, tiof_put_att1
   external   tiof_get_var_section, tiof_put_att1
 
+  integer, public, parameter :: tiof_max_name_len = 64
+
   type, public :: tiof_object_type
     integer :: fileid = -1
     integer :: groupid = -1
   end type tiof_object_type
+
+  type, public :: tiof_dim_type
+    character (len=tiof_max_name_len) :: name
+    integer :: len = 0
+    integer :: dimid = -1
+    type (tiof_dim_type), pointer :: next => null()
+  end type
+
+  type, public :: tiof_dimlist_type
+    integer :: num_items = 0
+    type (tiof_dim_type), pointer :: head => null(), tail => null()
+  end type
 
   private
 
@@ -23,21 +37,23 @@ module tio_module
     tiof_get1d_r8, &
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
     tiof_get2d_i2, tiof_get3d_i2, &
-    tiof_get1d_i1, tiof_get2d_i1
+    tiof_get1d_i1, tiof_get2d_i1, &
+    tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims
 
 contains
 
-  subroutine tiof_open (file, obj, errstat)
+  subroutine tiof_open (file, obj, open_mode, errstat)
     implicit none
     character (len=*), intent(in) :: file
     type (tiof_object_type), intent(out) :: obj
+    integer, intent(in) :: open_mode
     integer, intent(inout) :: errstat
 
     integer :: fileid, status
 
     if (errstat < 0) return
 
-    status = nf90_open (file, nf90_nowrite, fileid)
+    status = nf90_open (file, open_mode, fileid)
     if (status /= nf90_noerr) then
       call tell_error (tell_io_open_error, "opening file "//file//" ("//trim(nf90_strerror(status))//")", errstat)
       obj % fileid = -1
@@ -268,5 +284,112 @@ contains
       return
     endif
   end subroutine tiof_get1d_i1
+
+  subroutine tiof_dimlist_append (list, dim_name, dim_len, errstat)
+    implicit none
+    type (tiof_dimlist_type), intent(inout) :: list
+    character (len=*), intent(in) :: dim_name
+    integer, intent(in) :: dim_len
+    integer, intent(inout) :: errstat
+
+    ! local
+    type (tiof_dim_type), pointer :: item
+    integer :: status
+
+    if (errstat < 0) return
+
+    allocate (item, stat=status)
+    if (status /= 0) then
+      call terr_error (terr_malloc_error, &
+                       "tiof_dimlist_append:  allocate failed", errstat)
+      return
+    endif
+    item % next => null()
+    item % name = adjustl(dim_name)
+    item % len  = dim_len
+
+    if (associated(list%head)) then
+      list % tail % next => item
+    else
+      list % head => item
+    endif
+    list % tail => item
+    list % num_items = list % num_items + 1
+
+  end subroutine tiof_dimlist_append
+
+  subroutine tiof_dimlist_lookup (list, num, names, dimids, errstat)
+    implicit none
+    type (tiof_dimlist_type), intent(in) :: list
+    integer, intent(in) :: num
+    character (len=*), target, dimension(:), intent(in) :: names
+    integer, dimension(:), intent(out) :: dimids
+    integer, intent(inout) :: errstat
+
+    type (tiof_dim_type), pointer :: item => null()
+    character (len=:), pointer :: name_i
+    integer :: i, len_i
+
+    if (errstat < 0) return
+
+    if (.not.associated(list%head)) then
+      call terr_error (terr_invalid_parm, &
+                       "tiof_dimlist_lookup: null dimension list", &
+                       errstat)
+      return
+    endif
+
+    do i=1, num
+
+      item => list % head
+      name_i => names(i)
+      len_i = len_trim(name_i)
+
+      dimids(i) = -1
+      search: do while (associated(item))
+        if (item % name == name_i(1:len_i)) then
+          dimids(i) = item % dimid
+          exit search
+        endif
+        item => item % next
+      enddo search
+
+    enddo
+
+  end subroutine tiof_dimlist_lookup
+
+  subroutine tiof_def_dims (obj, list, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: list
+    integer, intent(inout) :: errstat
+
+    type (tiof_dim_type), pointer :: item => null()
+    integer :: status
+
+    if (errstat < 0) return
+
+    if (.not.associated (list%head)) then
+      call terr_error (terr_invalid_parm, &
+                       "tiof_def_dims: null dimension list", &
+                       errstat)
+      return
+    endif
+
+    item => list % head
+    do while (associated(item))
+      status = nf90_def_dim (obj % groupid, item % name, item % len, &
+                             item % dimid)
+      if (status /= nf90_noerr) then
+        call terr_error (terr_io_error, "defining dimension " &
+                         //trim(adjustl(item % name))//" (" // &
+                         nf90_strerror(status)//") ", &
+                         errstat)
+        return
+      endif
+      item => item % next
+    enddo
+
+  end subroutine tiof_def_dims
 
 end module tio_module
