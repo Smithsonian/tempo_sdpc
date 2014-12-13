@@ -14,6 +14,7 @@ program tio_test
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
+  type (tiof_attlist_type) :: foo_attlist
 
   errstat = 0
 
@@ -36,15 +37,37 @@ program tio_test
     stop 2
   endif
 
-  call tiof_dimlist_lookup (dimlist, 2, ["dim2", "dim1"], dimids, errstat)
+  call tiof_dimlist_lookup (dimlist, ["dim2", "dim1"], dimids, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_dimlist_lookup failed'
     stop 2
   endif
+  if (any(dimids < 0)) then
+    write (*,*)'*** tiof_dimlist_lookup:  dimids = ',dimids
+    stop 2
+  endif
 
-  call tiof_varlist_append (varlist, "foo", nf90_float, dimids, errstat, &
+  call tiof_attlist_append (foo_attlist, errstat, &
+                            "i4_attr", att_i4=[1,2,3,4])
+  call tiof_attlist_append (foo_attlist, errstat, &
+                            "r8_attr", att_r8=[1.234_8, 3.1415_8])
+  call tiof_attlist_append (foo_attlist, errstat, "text_attr", &
+                            att_text='This is a text attribute'// &
+                            ' that can wrap around if necessary')
+
+  call tiof_varlist_append (varlist, errstat, "scalar_int", nf90_int)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_varlist_append failed'
+    stop 2
+  endif
+
+  call tiof_varlist_append (varlist, errstat, "foo", nf90_float, &
+                            dimids = dimids, &
                             shuffle=.true., deflate_level=5, &
-                            contiguous=.false., chunksizes=[500,500])
+                            contiguous=.false., chunksizes=[500,500], &
+                            comment = "This is foo", &
+                            units = "foo-units", valid_range = [-10.0_8, 10.0_8], &
+                            attlist = foo_attlist)
   if (errstat < 0) then
     write (*,*)'*** tiof_varlist_append failed'
     stop 2

@@ -144,7 +144,7 @@ tempo-names:
 	for bn in $(NAME_FILE_BASENAMES) ; do \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %25s   %s\n",a[1],a[2])}' \
 	        $${bn}.csv > .$${bn}_h.tmp ; \
-	   awk 'NF && !/^#/ {split($$0,a,","); printf("character (len=:), public, parameter :: %25s = %s\n",tolower(a[1]),a[2])}' \
+	   awk 'NF && !/^#/ {split($$0,a,","); printf("character (len=tiof_max_name_len), public, parameter :: %25s = %s\n",tolower(a[1]),a[2])}' \
 	        $${bn}.csv > _$${bn}.inc ; \
 	done
 	sed -e '/@CSV_DIMS@/{r .tempo_dims_h.tmp' -e 'd}' \
