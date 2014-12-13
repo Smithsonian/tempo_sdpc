@@ -46,7 +46,7 @@ static int compare_data (int n, float *out, float *in)
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
    int ncid, status, grp, err=-1;
-   char field_name[] = TIO_VAR_NAME_RADIANCE;
+   char field_name[] = TEMPO_VAR_RADIANCE;
    char attr_name[] = "foo";
    int field_type = TIO_FLOAT;
    int attr_type_in, attr_type = TIO_INT64, attr_type_conversion = TIO_UINT;

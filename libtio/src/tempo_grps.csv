@@ -1,0 +1,7 @@
+TEMPO_GRP_GEOMETRY,"geometry"
+TEMPO_GRP_INRINPUT,"inr_input"
+TEMPO_GRP_EPHEMERIS,"ephemeris"
+TEMPO_GRP_MANEUVERS,"maneuvers"
+TEMPO_GRP_TELEMETRY,"telemetry"
+TEMPO_GRP_GYROSCOPE,"gyroscope"
+TEMPO_GRP_MIRROR,"mirror"

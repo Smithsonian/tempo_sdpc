@@ -26,7 +26,7 @@ static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_STEP,step),
        _pDIM_OFFSETS_END
     };
 
@@ -37,9 +37,9 @@ static int define_irradiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_STEP,step),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_XTRACK,xtrack),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_CHANNEL,channel),
        _pDIM_OFFSETS_END
     };
 
@@ -52,12 +52,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 
    /* coordinate variables */
    dims[0] = dim_table->step.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_STEP, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining coordinate variable %s (%s)",
-                     __func__, TIO_DIM_NAME_STEP, nc_strerror(status));
+                     __func__, TEMPO_DIM_STEP, nc_strerror(status));
         return -1;
      }
 
@@ -70,7 +70,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -90,7 +90,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPOSURE_TIME, NC_FLOAT, 1, dims, exposure_time_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_EXPOSURE_TIME, NC_FLOAT, 1, dims, exposure_time_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, exposure_time_float_attrs))
           return -1;
@@ -104,7 +104,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
              _pTEXT_ATTRS_END
           };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
           return -1;
      }
 
@@ -172,12 +172,12 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    /* group-local coordinate variables */
    dims[0] = dim_table->xtrack.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining coordinate variable %s (%s)",
-                     __func__, TIO_DIM_NAME_XTRACK, nc_strerror(status));
+                     __func__, TEMPO_DIM_XTRACK, nc_strerror(status));
         return -1;
      }
 
@@ -191,7 +191,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float pixel_scale_row = _pTIO_PIXEL_SCALE_ROW;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
           {
@@ -211,7 +211,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float pixel_scale_column = _pTIO_PIXEL_SCALE_COLUMN;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
@@ -239,20 +239,20 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_IRRADIANCE, NC_FLOAT, 3, dims, irradiance_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_IRRADIANCE, NC_FLOAT, 3, dims, irradiance_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_att (grp, varid, _FillValue, NC_FLOAT, 1, &irradiance_fill)))
           {
              Tell_verror (TELL_IO_WRITE_ERROR,
                           "writing %s fill value to grp=%d (%s)",
-                          TIO_VAR_NAME_IRRADIANCE, grp, nc_strerror(status));
+                          TEMPO_VAR_IRRADIANCE, grp, nc_strerror(status));
              return -1;
           }
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
              Tell_verror (TELL_IO_WRITE_ERROR,
                           "defining %s compression parameters for grp = %d (%s)",
-                          TIO_VAR_NAME_IRRADIANCE, grp, nc_strerror(status));
+                          TEMPO_VAR_IRRADIANCE, grp, nc_strerror(status));
              return -1;
           }
      }
@@ -274,7 +274,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
           return -1;
@@ -283,7 +283,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              Tell_verror (TELL_IO_WRITE_ERROR,
                           "defining %s compression parameters for grp %d (%s)",
-                          TIO_VAR_NAME_WAVELENGTH, grp, nc_strerror(status));
+                          TEMPO_VAR_WAVELENGTH, grp, nc_strerror(status));
              return -1;
           }
      }
@@ -298,7 +298,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PQF, NC_INT, 3, dims, pqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_INT, 3, dims, pqf_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
           return -1;

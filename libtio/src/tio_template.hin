@@ -1,0 +1,79 @@
+#ifndef __TIO_TEMPLATE_INCLUDE__
+#define __TIO_TEMPLATE_INCLUDE__ 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
+
+/* L1 File format version number */
+#define TIO_L1_FORMAT_VERSION  "0.1"
+
+#define TIO_CF_CONVENTION_VERSION   "CF-1.6"
+#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00 UTC"
+
+/* File dimension names */
+@CSV_DIMS@
+
+/* File group names */
+@CSV_GRPS@
+
+/* File variable names */
+@CSV_VARS@
+
+#define TIO_FILL_RADIANCE  (-TIO_FILL_FLOAT)
+#define TIO_FILL_IRRADIANCE  (-TIO_FILL_FLOAT)
+
+enum TIO_INR_Status
+{
+   TIO_INR_NONE    = 0,
+   TIO_INR_INITIAL = 1,
+   TIO_INR_FINAL   = 2
+};
+
+enum TIO_Processing_Level
+{
+   TIO_PROC_LEVEL_0,
+   TIO_PROC_LEVEL_1A,
+   TIO_PROC_LEVEL_1B,
+   TIO_PROC_LEVEL_2,
+   TIO_PROC_LEVEL_3
+};
+
+typedef struct
+{
+   char *name;
+   size_t num_xtrack;
+   size_t num_channels;
+}
+TIO_Scan_Group_Type;
+
+/** Create a template Level 1 radiance data file
+ * @param  ncid          Index returned by nc_create
+ * @param  num_steps     Number of mirror steps
+ * @param  num_sgrps     Number of scan groups
+ * @param  sgrps         Array of TIO_Scan_Group_Type structs
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                     TIO_Scan_Group_Type *sgrps);
+
+/** Create a template Level 1 irradiance data file
+ * @param  ncid          Index returned by nc_create
+ * @param  num_steps     Number of mirror steps
+ * @param  num_sgrps     Number of scan groups
+ * @param  sgrps         Array of TIO_Scan_Group_Type structs
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                       TIO_Scan_Group_Type *sgrps);
+#if 0
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -1,0 +1,5 @@
+TEMPO_DIM_CORNER,"corner"
+TEMPO_DIM_COV,"cov"
+TEMPO_DIM_STEP,"mirror_step"
+TEMPO_DIM_CHANNEL,"spectral_channel"
+TEMPO_DIM_XTRACK,"xtrack"

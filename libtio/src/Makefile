@@ -37,8 +37,9 @@ ELFDIR_ELF_LIB = $(elfdir)/$(ELFLIB_BUILD_NAME)#
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
 
-OFILES   = tio.o tio_l1_radiance.o tio_l1_irradiance.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
+OFILES   = tio.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o
+ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_template.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
+TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
 
 # --- Fortran interface
 ELFLIB_F = lib$(THIS_LIB)_f.so
@@ -60,7 +61,7 @@ ELFOBJS_F = $(elfdir)/tio_module.o
 # --------------------------------------------------------------------------
 
 all:	elf
-elf:	$(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
+elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
 $(elfdir):
 	-$(MKINSDIR) $(elfdir)
@@ -128,14 +129,39 @@ install:	elf install-header install-elf install-elf-f
 # Housekeeping
 # --------------------------------------------------------------------------
 
-clean:
+clean:	clean-tempo-names
 	-$(RM) -f .##* $(elfdir)/*
-distclean: clean
+distclean: clean distclean-tempo-names
 	-$(RM) -rf $(elfdir)
-
+	
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
+
+NAME_FILE_BASENAMES = tempo_dims tempo_grps tempo_vars
+
+tempo-names:
+	for bn in $(NAME_FILE_BASENAMES) ; do \
+	   awk 'NF {split($$0,a,","); printf("#define %25s   %s\n",a[1],a[2])}' \
+	        $${bn}.csv > .$${bn}_h.tmp ; \
+	   awk 'NF {split($$0,a,","); printf("character (len=:), public, parameter :: %25s = %s\n",tolower(a[1]),a[2])}' \
+	        $${bn}.csv > _$${bn}.inc ; \
+	done
+	sed -e '/@CSV_DIMS@/{r .tempo_dims_h.tmp' -e 'd}' \
+	    -e '/@CSV_GRPS@/{r .tempo_grps_h.tmp' -e 'd}' \
+	    -e '/@CSV_VARS@/{r .tempo_vars_h.tmp' -e 'd}' \
+	    $(srcdir)/tio_template.hin > $(TIO_TEMPLATE_INCLUDE)
+	sed -i -e '1i/* Generated from tio_template.hin by Makefile. Do not edit. */' \
+	     $(TIO_TEMPLATE_INCLUDE)
+
+clean-tempo-names:
+	for bn in $(NAME_FILE_BASENAMES) ; do \
+	   /bin/rm -f .$${bn}_h.tmp ; \
+	done
+distclean-tempo-names:	clean-tempo-names
+	for bn in $(NAME_FILE_BASENAMES) ; do \
+	   /bin/rm -f _$${bn}.inc $(TIO_TEMPLATE_INCLUDE) ; \
+	done
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio.c $(LIBS)

@@ -39,9 +39,9 @@ static int define_global_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_STEP,step),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CORNER,corner),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_COV,cov),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_STEP,step),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_CORNER,corner),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_COV,cov),
        _pDIM_OFFSETS_END
     };
 
@@ -52,8 +52,8 @@ static int define_radiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_XTRACK,xtrack),
-       _pDIM_OFFSET_ENTRY(TIO_DIM_NAME_CHANNEL,channel),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_XTRACK,xtrack),
+       _pDIM_OFFSET_ENTRY(TEMPO_DIM_CHANNEL,channel),
        _pDIM_OFFSETS_END
     };
 
@@ -66,12 +66,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 
    /* coordinate variables */
    dims[0] = dim_table->step.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_STEP, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining coordinate variable %s (%s)",
-                     __func__, TIO_DIM_NAME_STEP, nc_strerror(status));
+                     __func__, TEMPO_DIM_STEP, nc_strerror(status));
         return -1;
      }
 
@@ -84,7 +84,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -104,7 +104,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_EXPOSURE_TIME, NC_FLOAT, 1, dims, exposure_time_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_EXPOSURE_TIME, NC_FLOAT, 1, dims, exposure_time_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, exposure_time_float_attrs))
           return -1;
@@ -118,7 +118,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
              {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
              _pTEXT_ATTRS_END
           };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
           return -1;
      }
 
@@ -241,11 +241,11 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    /* group-local coordinate variables */
    dims[0] = dim_table->xtrack.id;
-   status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining coordinate variable %s (%s)",
-                     __func__, TIO_DIM_NAME_XTRACK, nc_strerror(status));
+                     __func__, TEMPO_DIM_XTRACK, nc_strerror(status));
         return -1;
      }
 
@@ -259,7 +259,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float pixel_scale_row = _pTIO_PIXEL_SCALE_ROW;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
           {
@@ -279,7 +279,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float pixel_scale_column = _pTIO_PIXEL_SCALE_COLUMN;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
@@ -299,7 +299,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float mirror_step_size = _pTIO_MIRROR_STEP_SIZE;
 
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &mirror_step_size)))
           {
@@ -322,18 +322,18 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_RADIANCE, NC_FLOAT, 3, dims, radiance_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_RADIANCE, NC_FLOAT, 3, dims, radiance_attrs, &varid))
           return -1;
         if (NC_NOERR != (status = nc_put_att (grp, varid, _FillValue, NC_FLOAT, 1, &radiance_fill)))
           {
              Tell_verror (TELL_IO_WRITE_ERROR, "writing %s fill value to grp=%d (%s)",
-                          TIO_VAR_NAME_RADIANCE, grp, nc_strerror(status));
+                          TEMPO_VAR_RADIANCE, grp, nc_strerror(status));
              return -1;
           }
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
              Tell_verror (TELL_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
-                          TIO_VAR_NAME_RADIANCE, nc_strerror(status));
+                          TEMPO_VAR_RADIANCE, nc_strerror(status));
              return -1;
           }
 #if 0
@@ -345,7 +345,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
             && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
           {
              Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
-                          TIO_VAR_NAME_RADIANCE, nc_strerror(status));
+                          TEMPO_VAR_RADIANCE, nc_strerror(status));
              return -1;
           }
 #endif
@@ -368,7 +368,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
           return -1;
@@ -376,7 +376,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
              Tell_verror (TELL_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
-                          TIO_VAR_NAME_WAVELENGTH, nc_strerror(status));
+                          TEMPO_VAR_WAVELENGTH, nc_strerror(status));
              return -1;
           }
 #if 0
@@ -388,7 +388,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
             && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
           {
              Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
-                          TIO_VAR_NAME_WAVELENGTH, nc_strerror(status));
+                          TEMPO_VAR_WAVELENGTH, nc_strerror(status));
              return -1;
           }
 #endif
@@ -521,7 +521,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SZ_ANGLE, NC_FLOAT, 2, dims, sza_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SZ_ANGLE, NC_FLOAT, 2, dims, sza_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, sza_float_attrs))
           return -1;
@@ -545,7 +545,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SA_ANGLE, NC_FLOAT, 2, dims, saa_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SA_ANGLE, NC_FLOAT, 2, dims, saa_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, saa_float_attrs))
           return -1;
@@ -569,7 +569,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_VZ_ANGLE, NC_FLOAT, 2, dims, vza_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VZ_ANGLE, NC_FLOAT, 2, dims, vza_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, vza_float_attrs))
           return -1;
@@ -593,7 +593,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_float_attrs))
           return -1;
@@ -608,7 +608,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INRQF, NC_INT, 2, dims, inrqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_INRQF, NC_INT, 2, dims, inrqf_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
           return -1;
@@ -625,7 +625,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->cov.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_INR_COVARIANCE, NC_FLOAT, 3, dims, cov_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_INR_COVARIANCE, NC_FLOAT, 3, dims, cov_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
           return -1;
@@ -641,7 +641,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DQF, NC_SHORT, 3, dims, dqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_DQF, NC_SHORT, 3, dims, dqf_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_SHORT))
           return -1;
@@ -657,7 +657,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_CLOUDTOPHEIGHT, NC_FLOAT, 2, dims, cloud_top_height_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_CLOUDTOPHEIGHT, NC_FLOAT, 2, dims, cloud_top_height_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_FLOAT))
           return -1;
@@ -714,11 +714,11 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
           return -1;
      }
 
@@ -746,11 +746,11 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_X, NC_DOUBLE, 1, dims, sunpos_x_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SUN_X, NC_DOUBLE, 1, dims, sunpos_x_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_Y, NC_DOUBLE, 1, dims, sunpos_y_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SUN_Y, NC_DOUBLE, 1, dims, sunpos_y_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SUN_Z, NC_DOUBLE, 1, dims, sunpos_z_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SUN_Z, NC_DOUBLE, 1, dims, sunpos_z_attrs, &varid))
           return -1;
      }
 
@@ -778,11 +778,11 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_X, NC_DOUBLE, 1, dims, moonpos_x_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_MOON_X, NC_DOUBLE, 1, dims, moonpos_x_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_Y, NC_DOUBLE, 1, dims, moonpos_y_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_MOON_Y, NC_DOUBLE, 1, dims, moonpos_y_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_MOON_Z, NC_DOUBLE, 1, dims, moonpos_z_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_MOON_Z, NC_DOUBLE, 1, dims, moonpos_z_attrs, &varid))
           return -1;
      }
 
@@ -814,7 +814,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
      }
 
    /* group-local dimensions */
-   if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_EPHEM, dim_table->time_ephemeris.len, &dim_table->time_ephemeris.id)))
+   if (NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_EPHEM, dim_table->time_ephemeris.len, &dim_table->time_ephemeris.id)))
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
@@ -830,7 +830,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -846,7 +846,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              {"units", "m^2/kg"},
              _pTEXT_ATTRS_END
           };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_AMR, NC_FLOAT, 0, NULL, amr_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_AMR, NC_FLOAT, 0, NULL, amr_attrs, &varid))
           return -1;
      }
 
@@ -874,11 +874,11 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
           return -1;
      }
 
@@ -906,11 +906,11 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VX, NC_DOUBLE, 1, dims, satvel_vx_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VX, NC_DOUBLE, 1, dims, satvel_vx_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VY, NC_DOUBLE, 1, dims, satvel_vy_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VY, NC_DOUBLE, 1, dims, satvel_vy_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SAT_VZ, NC_DOUBLE, 1, dims, satvel_vz_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VZ, NC_DOUBLE, 1, dims, satvel_vz_attrs, &varid))
           return -1;
      }
 
@@ -942,7 +942,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
      }
 
    /* group-local dimensions */
-   if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_MANEUVER, dim_table->time_maneuvers.len, &dim_table->time_maneuvers.id)))
+   if (NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_MANEUVER, dim_table->time_maneuvers.len, &dim_table->time_maneuvers.id)))
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
@@ -958,7 +958,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_MANEUVER, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_MANEUVER, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -986,11 +986,11 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_maneuvers.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_X, NC_FLOAT, 1, dims, deltav_x_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_DELTAV_X, NC_FLOAT, 1, dims, deltav_x_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_Y, NC_FLOAT, 1, dims, deltav_y_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_DELTAV_Y, NC_FLOAT, 1, dims, deltav_y_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_DELTAV_Z, NC_FLOAT, 1, dims, deltav_z_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_DELTAV_Z, NC_FLOAT, 1, dims, deltav_z_attrs, &varid))
           return -1;
      }
 
@@ -1022,7 +1022,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
      }
 
    /* group-local dimensions */
-   if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
+   if (NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
@@ -1038,7 +1038,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_GYRO, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -1068,15 +1068,15 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
              _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_ROLL, NC_FLOAT, 1, dims, roll_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_ROLL, NC_FLOAT, 1, dims, roll_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_PITCH, NC_FLOAT, 1, dims, pitch_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_PITCH, NC_FLOAT, 1, dims, pitch_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_GYRO_YAW, NC_FLOAT, 1, dims, yaw_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_YAW, NC_FLOAT, 1, dims, yaw_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
           return -1;
@@ -1110,7 +1110,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
      }
 
    /* group-local dimensions */
-   if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_SMA, dim_table->time_sma.len, &dim_table->time_sma.id)))
+   if (NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_SMA, dim_table->time_sma.len, &dim_table->time_sma.id)))
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
@@ -1126,7 +1126,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, NULL))
           return -1;
      }
 
@@ -1145,9 +1145,9 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SMADIT_EAST, NC_FLOAT, 1, dims, dit_east_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_EAST, NC_FLOAT, 1, dims, dit_east_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TIO_VAR_NAME_SMADIT_NORTH, NC_FLOAT, 1, dims, dit_north_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_NORTH, NC_FLOAT, 1, dims, dit_north_attrs, &varid))
           return -1;
      }
 
@@ -1177,8 +1177,8 @@ static int define_telemetry_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
-   if ((-1 == define_gyroscope_group (grp, TIO_GRP_NAME_GYROSCOPE, dim_table, NULL))
-       || (-1 == define_mirror_group (grp, TIO_GRP_NAME_MIRROR, dim_table, NULL)))
+   if ((-1 == define_gyroscope_group (grp, TEMPO_GRP_GYROSCOPE, dim_table, NULL))
+       || (-1 == define_mirror_group (grp, TEMPO_GRP_MIRROR, dim_table, NULL)))
      return -1;
 
    if (grp_id != NULL)
@@ -1207,9 +1207,9 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
-   if ((-1 == define_ephemeris_group (grp, TIO_GRP_NAME_EPHEMERIS, dim_table, NULL))
-       || (-1 == define_maneuvers_group (grp, TIO_GRP_NAME_MANEUVERS, dim_table, NULL))
-       || (-1 == define_telemetry_group (grp, TIO_GRP_NAME_TELEMETRY, dim_table, NULL)))
+   if ((-1 == define_ephemeris_group (grp, TEMPO_GRP_EPHEMERIS, dim_table, NULL))
+       || (-1 == define_maneuvers_group (grp, TEMPO_GRP_MANEUVERS, dim_table, NULL))
+       || (-1 == define_telemetry_group (grp, TEMPO_GRP_TELEMETRY, dim_table, NULL)))
      {
         return -1;
      }
@@ -1258,8 +1258,8 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
           }
      }
 
-   if ((-1 == define_geometry_group (ncid, TIO_GRP_NAME_GEOMETRY, &dim_table, NULL))
-       || (-1 == define_inr_input_group (ncid, TIO_GRP_NAME_INRINPUT, &dim_table, NULL)))
+   if ((-1 == define_geometry_group (ncid, TEMPO_GRP_GEOMETRY, &dim_table, NULL))
+       || (-1 == define_inr_input_group (ncid, TEMPO_GRP_INRINPUT, &dim_table, NULL)))
      {
         Tell_verror (TELL_UNKNOWN_ERROR, "%s failed", __func__);
         return -1;
