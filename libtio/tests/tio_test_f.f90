@@ -7,7 +7,6 @@ program tio_test
   character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
   integer :: step0, num_steps, num_wavelengths, num_xtrack
-  integer :: foo_varid
   integer, dimension(2) :: dimids
   real (kind=4), allocatable, dimension(:,:,:) :: radiance
   integer :: errstat
@@ -95,12 +94,6 @@ program tio_test
   call tiof_def_vars (obj, varlist, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_def_vars failed'
-    stop 3
-  endif
-
-  call tiof_varlist_lookup (varlist, "foo", foo_varid, errstat)
-  if (errstat < 0) then
-    write (*,*)'*** tiof_varlist_lookup failed'
     stop 3
   endif
 

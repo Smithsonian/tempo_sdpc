@@ -635,19 +635,15 @@ contains
 
   end subroutine tiof_varlist_append
 
-  subroutine tiof_varlist_lookup (list, name, varid, errstat)
+  subroutine tiof_varlist_lookup (list, name, var_ptr, errstat)
     implicit none
     type (tiof_varlist_type), intent(in) :: list
     character (len=*), intent(in) :: name
-    integer, intent(out) :: varid
+    type (tiof_var_type), pointer, intent(out) :: var_ptr => null()
     integer, intent(inout) :: errstat
 
     type (tiof_var_type), pointer :: item => null()
     integer :: len_name
-
-    varid = -1
-
-    if (errstat < 0) return
 
     if (.not.associated(list%head)) then
       call terr_error (terr_invalid_parm, &
@@ -663,14 +659,14 @@ contains
     do while (associated(item))
       if (item % len_name == len_name &
           .and. item % name(1:item%len_name) == name (1:len_name)) then
-        varid = item % varid
+        var_ptr => item
         return
       endif
       item => item % next
     enddo
 
   end subroutine tiof_varlist_lookup
-
+  
   subroutine tiof_def_vars (obj, list, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
