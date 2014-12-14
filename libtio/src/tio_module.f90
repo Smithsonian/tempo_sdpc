@@ -7,7 +7,7 @@ module tio_module
     tiof_max_var_dims = 7, &
     tiof_max_name_len = 64, &
     tiof_max_att_len = 256
-  
+
   include '_tempo_dims.inc'
   include '_tempo_grps.inc'
   include '_tempo_vars.inc'
@@ -65,7 +65,7 @@ module tio_module
     real (kind=8), dimension(2) :: valid_range = [0.0, 0.0]
     integer, dimension(tiof_max_var_dims) :: dimids
     integer :: deflate_level=0
-    logical :: contiguous = .true., shuffle=.false.
+    logical :: contiguous = .true., shuffle = .false.
     integer, dimension(tiof_max_var_dims) :: chunksizes
     type (tiof_attlist_type), pointer :: attlist => null()
     type (tiof_var_type), pointer :: next => null()
@@ -694,6 +694,14 @@ contains
       if (item % rank == 0) then
         status = nf90_def_var (obj % groupid, item % name, &
                                item % xtype, item % varid)
+      else if (item % rank == 1) then
+        status = nf90_def_var (obj % groupid, item % name, &
+                               item % xtype, &
+                               item % dimids(1:item%rank), &
+                               item % varid, &
+                               contiguous = item % contiguous, &
+                               deflate_level = item % deflate_level, &
+                               shuffle = item % shuffle)
       else
         status = nf90_def_var (obj % groupid, item % name, &
                                item % xtype, &

@@ -47,6 +47,18 @@ program tio_test
     stop 2
   endif
 
+  call tiof_varlist_append (varlist, errstat, "scalar_int", nf90_int)
+  call tiof_varlist_append (varlist, errstat, "dim1", nf90_int, &
+                            dimids=[dimids(2)], &
+                            comment="dim1 coordinate variable")
+  call tiof_varlist_append (varlist, errstat, "dim2", nf90_int, &
+                            dimids=[dimids(1)], &
+                            comment="dim2 coordinate variable")
+  if (errstat < 0) then
+    write (*,*)'*** tiof_varlist_append failed'
+    stop 2
+  endif
+
   call tiof_attlist_append (foo_attlist, errstat, &
                             "i4_attr", att_i4=[1,2,3,4])
   call tiof_attlist_append (foo_attlist, errstat, &
@@ -54,12 +66,6 @@ program tio_test
   call tiof_attlist_append (foo_attlist, errstat, "text_attr", &
                             att_text='This is a text attribute'// &
                             ' that can wrap around if necessary')
-
-  call tiof_varlist_append (varlist, errstat, "scalar_int", nf90_int)
-  if (errstat < 0) then
-    write (*,*)'*** tiof_varlist_append failed'
-    stop 2
-  endif
 
   call tiof_varlist_append (varlist, errstat, "foo", nf90_float, &
                             dimids = dimids, &
