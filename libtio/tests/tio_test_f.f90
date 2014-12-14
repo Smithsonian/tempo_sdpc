@@ -59,6 +59,19 @@ program tio_test
     stop 2
   endif
 
+  ! global variables
+  call tiof_def_vars (obj, varlist, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_def_vars failed'
+    stop 2
+  endif
+
+  call tiof_inq_group (obj, groupname, errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_inq_group failed:  group='//groupname
+    stop 3
+  endif
+
   call tiof_attlist_append (foo_attlist, errstat, &
                             "i4_attr", att_i4=[1,2,3,4])
   call tiof_attlist_append (foo_attlist, errstat, &
@@ -76,32 +89,32 @@ program tio_test
                             attlist = foo_attlist)
   if (errstat < 0) then
     write (*,*)'*** tiof_varlist_append failed'
-    stop 2
+    stop 3
   endif
 
   call tiof_def_vars (obj, varlist, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_def_vars failed'
-    stop 2
+    stop 3
   endif
 
   call tiof_varlist_lookup (varlist, "foo", foo_varid, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_varlist_lookup failed'
-    stop 2
+    stop 3
   endif
 
   call tiof_inq_group (obj, groupname, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_group failed:  group='//groupname
-    stop 2
+    stop 4
   endif
 
   call tiof_inq_dimlen (obj, "spectral_channel", num_wavelengths, errstat);
   call tiof_inq_dimlen (obj, "xtrack", num_xtrack, errstat);
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_dimlen failed:  group='//groupname
-    stop 2
+    stop 4
   endif
 
   step0 = 5
@@ -111,7 +124,7 @@ program tio_test
   call tiof_get3d_r4 (obj, "radiance", step0, num_steps, radiance, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_get3d_r4 failed'
-    stop 3
+    stop 4
   endif
 
   !write(*,*)radiance
