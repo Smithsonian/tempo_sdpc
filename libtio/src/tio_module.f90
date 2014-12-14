@@ -538,7 +538,7 @@ contains
       end select
 
       if (status /= nf90_noerr) then
-        call terr_error (terr_io_error, "defining dimension " &
+        call terr_error (terr_io_error, "defining attribute " &
                          //item % name(1:item%len_name)//" (" // &
                          trim(nf90_strerror(status))//") ", &
                          errstat)

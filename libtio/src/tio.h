@@ -86,39 +86,36 @@ extern int TIO_get_var_section (int grp, const char *name,
 
 /** Query the type and size of an attribute
  * @param  grp      Index of group containing the attribute
- * @param  varname  Name of the corresponding variable.
- *                  Use varname=NULL to query global attributes.
+ * @param  varid    Index of the corresponding variable.
  * @param  attname  Name of the attribute
  * @param  xtype    Pointer to attribute type
  * @param  len      Pointer to attribute length
  * @return 0 on success, -1 on error
  */
-extern int TIO_inq_att (int grp, const char *varname, const char *attname,
+extern int TIO_inq_att (int grp, int varid, const char *attname,
                         int *xtype, size_t *len);
 
 /** Write an attribute value
  * @param  grp      Index of group containing the attribute
- * @param  varname  Name of the corresponding variable.
- *                  Use varname=NULL to query global attributes.
+ * @param  varid    Index of the corresponding variable.
  * @param  attname  Name of the attribute
  * @param  xtype    Pointer to attribute type
  * @param  len      Pointer to attribute length
  * @param  att      Pointer to attribute value
  * @return 0 on success, -1 on error
  */
-extern int TIO_put_att (int grp, const char *varname, const char *attname,
+extern int TIO_put_att (int grp, int varid, const char *attname,
                         int xtype, size_t len, const void *att);
 
 /** Read an attribute value
  * @param  grp      Index of group containing the attribute
- * @param  varname  Name of the corresponding variable.
- *                  Use varname=NULL to query global attributes.
+ * @param  varid    Index of the corresponding variable.
  * @param  attname  Name of the attribute
  * @param  xtype    Pointer to attribute type
  * @param  att      Pointer to attribute value
  * @return 0 on success, -1 on error
  */
-extern int TIO_get_att (int grp, const char *varname, const char *attname,
+extern int TIO_get_att (int grp, int varid, const char *attname,
                         int xtype, void *att);
 
 #if 0

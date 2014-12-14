@@ -45,7 +45,7 @@ static int compare_data (int n, float *out, float *in)
 
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
-   int ncid, status, grp, err=-1;
+   int ncid, varid, status, grp, err=-1;
    char field_name[] = TEMPO_VAR_RADIANCE;
    char attr_name[] = "foo";
    int field_type = TIO_FLOAT;
@@ -117,7 +117,14 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test writing to attributes */
-   if (-1 == TIO_put_att (grp, field_name, attr_name, attr_type, attr_len, &attr))
+   if (NC_NOERR != (status = nc_inq_varid (grp, field_name, &varid)))
+     {
+        fprintf (stderr, "*** error finding variable %s in file %s (%s)\n",
+                 field_name, file, nc_strerror(status));
+        goto cleanup;
+     }
+   
+   if (-1 == TIO_put_att (grp, varid, attr_name, attr_type, attr_len, &attr))
      {
         fprintf (stderr, "*** TIO_put_att failed\n");
         goto cleanup;
@@ -129,7 +136,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      {
         int one=1;
         fprintf (stderr, "expect error here:\n");
-        if (0 == TIO_put_att (grp, field_name, attr_name, TIO_INT, attr_len, &one))
+        if (0 == TIO_put_att (grp, varid, attr_name, TIO_INT, attr_len, &one))
           {
              fprintf (stderr, "*** expected attribute type mismatch error \n");
              goto cleanup;
@@ -138,8 +145,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 
    /* test writing to enum attributes */
    processing_level = TIO_PROC_LEVEL_1A;
-   if ((-1 == TIO_inq_att (ncid, NULL, "processing_level", &processing_level_type, NULL))
-       || (-1 == TIO_put_att (ncid, NULL, "processing_level", processing_level_type, 1, &processing_level)))
+   if ((-1 == TIO_inq_att (ncid, NC_GLOBAL, "processing_level", &processing_level_type, NULL))
+       || (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_level", processing_level_type, 1, &processing_level)))
      {
         fprintf (stderr, "*** error writing to enum attribute\n");
         goto cleanup;
@@ -165,7 +172,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* check attribute propreties */
-   if (-1 == TIO_inq_att (grp, field_name, attr_name, &attr_type_in, &attr_len_in))
+   if (-1 == TIO_inq_att (grp, varid, attr_name, &attr_type_in, &attr_len_in))
      {
         fprintf (stderr, "*** TIO_inq_att failed\n");
         goto cleanup;
@@ -177,7 +184,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         fprintf (stderr, "attr_len = %lu  attr_len_in=%lu\n", attr_len, attr_len_in);
         goto cleanup;
      }
-   if (-1 == TIO_get_att (grp, field_name, attr_name, attr_type, &attr_in))
+   if (-1 == TIO_get_att (grp, varid, attr_name, attr_type, &attr_in))
      {
         fprintf (stderr, "*** TIO_get_att failed\n");
         goto cleanup;
@@ -190,7 +197,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test attribute type conversion */
-   if (-1 == TIO_get_att (grp, field_name, attr_name, attr_type_conversion, &attr_in_conversion))
+   if (-1 == TIO_get_att (grp, varid, attr_name, attr_type_conversion, &attr_in_conversion))
      {
         fprintf (stderr, "*** TIO_get_att failed\n");
         goto cleanup;
@@ -203,7 +210,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test reading enum attributes */
-   if (-1 == TIO_get_att (ncid, NULL, "processing_level", processing_level_type, &processing_level))
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "processing_level", processing_level_type, &processing_level))
      {
         fprintf (stderr, "*** error reading enum attribute\n");
         goto cleanup;

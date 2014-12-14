@@ -430,23 +430,14 @@ TIO_IO_VAR_SECTION(put,const)
 }
 #endif
 
-int TIO_inq_att (int grp, const char *varname, const char *attname,
+int TIO_inq_att (int grp, int varid, const char *attname,
                  int *xtype, size_t *len)
 {
-   int status, varid;
+   int status;
 
    if (NULL == attname)
      {
         Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
-        return -1;
-     }
-
-   if ((varname == NULL) || (*varname == 0))
-     varid = NC_GLOBAL;
-   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
-     {
-        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
-                             __func__, varname, nc_strerror(status));
         return -1;
      }
 
@@ -461,24 +452,15 @@ int TIO_inq_att (int grp, const char *varname, const char *attname,
    return 0;
 }
 
-int TIO_put_att (int grp, const char *varname, const char *attname,
+int TIO_put_att (int grp, int varid, const char *attname,
                  int xtype, size_t len, const void *att)
 {
-   int status, varid;
+   int status;
    int file_atttype;
 
    if ((NULL == attname) || (att == NULL))
      {
         Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
-        return -1;
-     }
-
-   if ((varname == NULL) || (*varname == 0))
-     varid = NC_GLOBAL;
-   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
-     {
-        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
-                     __func__, varname, nc_strerror(status));
         return -1;
      }
 
@@ -496,7 +478,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
         if (xtype != file_atttype)
           {
              Tell_verror (TELL_INVALID_PARM,
-                          "%s: writing attribute %s: value type=%d, file value type=%d",
+                          "%s: type mismatch: writing attribute %s: value type=%d, file value type=%d",
                           __func__, attname, xtype, file_atttype);
              return -1;
           }
@@ -521,23 +503,14 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
    return 0;
 }
 
-int TIO_get_att (int grp, const char *varname, const char *attname,
+int TIO_get_att (int grp, int varid, const char *attname,
                  int xtype, void *att)
 {
-   int status, varid;
+   int status;
 
    if ((NULL == attname) || (att == NULL))
      {
         Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
-        return -1;
-     }
-
-   if ((varname == NULL) || (*varname == 0))
-     varid = NC_GLOBAL;
-   else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
-     {
-        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
-                     __func__, varname, nc_strerror(status));
         return -1;
      }
 
@@ -604,11 +577,11 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
             INT, STRING, INT, INT, INT, PVOID)
 
-static int f_tio_put_att (int grp, const char *varname, const char *attname,
+static int f_tio_put_att (int grp, int varid, const char *attname,
                           int xtype, int len, const void *att)
 {
    size_t len_s = (size_t) len;
-   return TIO_put_att (grp, varname, attname, xtype, len_s, att);
+   return TIO_put_att (grp, varid, attname, xtype, len_s, att);
 }
 FCALLSCFUN6(INT, f_tio_put_att, TIOF_PUT_ATT1, tiof_put_att1,
-            INT, STRING, STRING, INT, INT, PVOID)
+            INT, INT, STRING, INT, INT, PVOID)
