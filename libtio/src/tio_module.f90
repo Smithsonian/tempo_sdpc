@@ -18,8 +18,8 @@ module tio_module
     i4 = selected_int_kind (2**3), &
     i8 = selected_int_kind (2**4)
 
-  integer :: tiof_get_var_section, tiof_put_att1
-  external   tiof_get_var_section, tiof_put_att1
+  integer :: tiof_get_var_section
+  external   tiof_get_var_section
 
   type, public :: tiof_object_type
     integer :: fileid = -1
