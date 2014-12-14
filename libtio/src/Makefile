@@ -133,7 +133,7 @@ clean:	clean-tempo-names
 	-$(RM) -f .##* $(elfdir)/*
 distclean: clean distclean-tempo-names
 	-$(RM) -rf $(elfdir)
-	
+
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
@@ -146,6 +146,8 @@ tempo-names:
 	        $${bn}.csv > .$${bn}_h.tmp ; \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("character (len=tiof_max_name_len), public, parameter :: %25s = %s\n",tolower(a[1]),a[2])}' \
 	        $${bn}.csv > _$${bn}.inc ; \
+	   sed -i -e "1i! Generated from $${bn}.csv by Makefile. Do not edit." \
+	        _$${bn}.inc ; \
 	done
 	sed -e '/@CSV_DIMS@/{r .tempo_dims_h.tmp' -e 'd}' \
 	    -e '/@CSV_GRPS@/{r .tempo_grps_h.tmp' -e 'd}' \
@@ -156,11 +158,11 @@ tempo-names:
 
 clean-tempo-names:
 	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   /bin/rm -f .$${bn}_h.tmp ; \
+	   $(RM) -f .$${bn}_h.tmp ; \
 	done
 distclean-tempo-names:	clean-tempo-names
 	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   /bin/rm -f _$${bn}.inc $(TIO_TEMPLATE_INCLUDE) ; \
+	   $(RM) -f _$${bn}.inc $(TIO_TEMPLATE_INCLUDE) ; \
 	done
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
