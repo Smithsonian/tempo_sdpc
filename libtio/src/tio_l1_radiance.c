@@ -399,14 +399,14 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type lon_text_attrs[] =
           {
              {"units", "degrees_east"},
-             {"long_name", "longitude"},
+             {"long_name", TEMPO_VAR_LONGITUDE},
              {"comment", "Longitude at pixel center"},
-             {"bounds", "longitude_bounds"},
+             {"bounds", TEMPO_VAR_LONGITUDE_BOUNDS},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "longitude", NC_FLOAT, 2, dims, lon_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_LONGITUDE, NC_FLOAT, 2, dims, lon_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, lon_float_attrs))
           return -1;
@@ -417,14 +417,14 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type lat_text_attrs[] =
           {
              {"units", "degrees_north"},
-             {"long_name", "latitude"},
+             {"long_name", TEMPO_VAR_LATITUDE},
              {"comment", "Latitude at pixel center"},
-             {"bounds", "latitude_bounds"},
+             {"bounds", TEMPO_VAR_LATITUDE_BOUNDS},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "latitude", NC_FLOAT, 2, dims, lat_text_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_LATITUDE, NC_FLOAT, 2, dims, lat_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, lat_float_attrs))
           return -1;
@@ -461,7 +461,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->corner.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "longitude_bounds", NC_FLOAT, 3, dims, lon_bnds_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_LONGITUDE_BOUNDS, NC_FLOAT, 3, dims, lon_bnds_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, lon_float_attrs))
           return -1;
@@ -479,7 +479,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->corner.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "latitude_bounds", NC_FLOAT, 3, dims, lat_bnds_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_LATITUDE_BOUNDS, NC_FLOAT, 3, dims, lat_bnds_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, lat_float_attrs))
           return -1;

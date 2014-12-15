@@ -103,8 +103,8 @@ program tio_test
     stop 4
   endif
 
-  call tiof_inq_dimlen (obj, "spectral_channel", num_wavelengths, errstat);
-  call tiof_inq_dimlen (obj, "xtrack", num_xtrack, errstat);
+  call tiof_inq_dimlen (obj, tempo_dim_channel, num_wavelengths, errstat);
+  call tiof_inq_dimlen (obj, tempo_dim_xtrack, num_xtrack, errstat);
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_dimlen failed:  group='//groupname
     stop 4
@@ -114,7 +114,7 @@ program tio_test
   num_steps = 2
   allocate (radiance(num_wavelengths, num_xtrack, num_steps))
 
-  call tiof_get3d_r4 (obj, "radiance", step0, num_steps, radiance, errstat)
+  call tiof_get3d_r4 (obj, tempo_var_radiance, step0, num_steps, radiance, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_get3d_r4 failed'
     stop 4
