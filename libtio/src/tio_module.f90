@@ -18,8 +18,8 @@ module tio_module
     i4 = selected_int_kind (2**3), &
     i8 = selected_int_kind (2**4)
 
-  integer :: tiof_get_var_section
-  external   tiof_get_var_section
+  integer :: tiof_get_var_section, tiof_put_var_section
+  external   tiof_get_var_section, tiof_put_var_section
 
   type, public :: tiof_object_type
     integer :: fileid = -1
@@ -78,7 +78,9 @@ module tio_module
 
   private
 
-  public tiof_open, tiof_close, tiof_inq_group, tiof_inq_dimlen, &
+  public tiof_create, tiof_open, tiof_close, &
+    tiof_put_var_section, tiof_get_var_section, &
+    tiof_inq_group, tiof_inq_dimlen, &
     tiof_get1d_r8, &
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
     tiof_get2d_i2, tiof_get3d_i2, &
@@ -88,6 +90,30 @@ module tio_module
     tiof_attlist_append, tiof_def_atts
 
 contains
+
+  subroutine tiof_create (obj, file, create_mode, errstat)
+    implicit none
+    type (tiof_object_type), intent(out) :: obj
+    character (len=*), intent(in) :: file
+    integer, intent(in) :: create_mode
+    integer, intent(inout) :: errstat
+
+    integer :: fileid, status
+
+    if (errstat < 0) return
+
+    status = nf90_create (file, create_mode, fileid)
+    if (status /= nf90_noerr) then
+      call terr_error (terr_io_open_error, "creating file "//file// &
+                       " ("//trim(nf90_strerror(status))//")", errstat)
+      obj % fileid = -1
+      return
+    endif
+
+    obj % fileid = fileid
+    obj % groupid = fileid
+
+  end subroutine tiof_create
 
   subroutine tiof_open (file, obj, open_mode, errstat)
     implicit none
@@ -666,7 +692,7 @@ contains
     enddo
 
   end subroutine tiof_varlist_lookup
-  
+
   subroutine tiof_def_vars (obj, list, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -691,6 +717,14 @@ contains
         status = nf90_def_var (obj % groupid, item % name, &
                                item % xtype, item % varid)
       else if (item % rank == 1) then
+        status = nf90_def_var (obj % groupid, item % name, &
+                               item % xtype, &
+                               item % dimids(1:item%rank), &
+                               item % varid, &
+                               contiguous = item % contiguous, &
+                               deflate_level = item % deflate_level, &
+                               shuffle = item % shuffle)
+      else if (item % contiguous) then
         status = nf90_def_var (obj % groupid, item % name, &
                                item % xtype, &
                                item % dimids(1:item%rank), &

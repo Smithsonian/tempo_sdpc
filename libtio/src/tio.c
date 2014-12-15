@@ -576,3 +576,5 @@ int TIO_get_att (int grp, int varid, const char *attname,
 
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
             INT, STRING, INT, INT, INT, PVOID)
+FCALLSCFUN6(INT, TIO_put_var_section, TIOF_PUT_VAR_SECTION, tiof_put_var_section,
+            INT, STRING, INT, INT, INT, PVOID)
