@@ -245,7 +245,7 @@ CONTAINS
     use OMSAO_parameters_module, only : MAX_STR_LEN
     use netcdf
     use tio_module
-    use terr_module
+    use tell_module
     use errormodule
     implicit none
     integer (kind=i4), intent(in) :: pge_idx
@@ -271,13 +271,13 @@ CONTAINS
 
     call tiof_open (l1r_filename, tio_l1obj, errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_open_error, "opening "//trim(l1r_filename), errstat)
+      call tell_error (tell_io_open_error, "opening "//trim(l1r_filename), errstat)
       return
     endif
 
     ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, "time_coverage_start", rbd_string)
     if (ncerr /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "*** reading global attribute time_coverage_start", errstat)
+      call tell_error (tell_io_read_error, "*** reading global attribute time_coverage_start", errstat)
       return
     endif
     call tiof_close (tio_l1obj, errstat)

@@ -10,17 +10,17 @@ elfdir  = $(srcdir)/objs
 TIO_INC = -I$(srcdir)
 
 TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
-TERR_LIBPATHS   = -Wl,-rpath=$(TERR_LIB) -L$(TERR_LIB)
+TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 
 INCS   = $(TIO_INC) -I$(NETCDF_INC)
 LIBS   = $(TIO_LIBPATHS) -ltio \
-         $(TERR_LIBPATHS) -lterr \
+         $(TELL_LIBPATHS) -ltell \
          $(NETCDF_LIBPATHS) -lnetcdf -lm
 
 INCS_F = -I$(elfdir) -I$(NETCDF_INC)
 LIBS_F = $(TIO_LIBPATHS) -ltio -ltio_f \
-         $(TERR_LIBPATHS) -lterr_f \
+         $(TELL_LIBPATHS) -ltell_f \
 	 $(NETCDF_LIBPATHS) -lnetcdff
 
 COMPILE_CMD = $(CC) $(CFLAGS)

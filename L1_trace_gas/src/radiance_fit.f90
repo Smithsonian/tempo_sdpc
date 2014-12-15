@@ -4,7 +4,7 @@ MODULE radiance_fit
   use OMSAO_parameters_module, only : nwavel_max
   use optimizer_interface_module
   use errormodule
-  use terr_module
+  use tell_module
 
   private
   public fit_radiance
@@ -212,7 +212,7 @@ CONTAINS
     END DO
 
     write (log_msg, *)'fit_radiance:  n_fitvar_rad=',n_fitvar_rad
-    call terr_log (2, log_msg)
+    call tell_log (2, log_msg)
 
     ! --------------------------------------------------------------------
     ! Check whether we enough spectral points to carry out the fitting. If

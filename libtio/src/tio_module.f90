@@ -1,6 +1,6 @@
 module tio_module
   use netcdf
-  use terr_module
+  use tell_module
   implicit none
 
   integer, private, parameter :: &
@@ -41,13 +41,13 @@ contains
 
     status = nf90_inq_dimid (grp, name, dimid)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
       return
     endif
 
     status = nf90_inquire_dimension (grp, dimid, len=dimlen)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
       return
     endif
   end subroutine get_dimlen
@@ -64,7 +64,7 @@ contains
 
     status = nf90_open (file, nf90_nowrite, fileid)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_open_error, "opening file "//file//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_open_error, "opening file "//file//" ("//trim(nf90_strerror(status))//")", errstat)
       l1bobj % fileid = -1
       return
     endif
@@ -88,7 +88,7 @@ contains
     if (l1bobj%fileid >= 0) then
       status = nf90_close (l1bobj % fileid)
       if (status /= nf90_noerr) then
-        call terr_error (terr_io_error, "closing file ("//trim(nf90_strerror(status))//")", errstat)
+        call tell_error (tell_io_error, "closing file ("//trim(nf90_strerror(status))//")", errstat)
       endif
       l1bobj % fileid = -1
       l1bobj % groupid = -1
@@ -107,7 +107,7 @@ contains
 
     status = nf90_inq_ncid (l1bobj % fileid, grpname, grp)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "accessing group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_read_error, "accessing group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
     endif
     l1bobj % groupid = grp
 
@@ -133,7 +133,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_double, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get1d_r8
@@ -153,7 +153,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_float, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get3d_r4
@@ -173,7 +173,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_float, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get2d_r4
@@ -193,7 +193,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_float, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get1d_r4
@@ -213,7 +213,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_short, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get3d_i2
@@ -233,7 +233,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_short, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get2d_i2
@@ -253,7 +253,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_byte, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get2d_i1
@@ -273,7 +273,7 @@ contains
     err = tiof_get_l1bvar (l1bobj % groupid, name, step0, numsteps, nf90_byte, array)
 
     if (err < 0) then
-      call terr_error (terr_io_read_error, "Unable to read " // name // " from L1b file", errstat)
+      call tell_error (tell_io_read_error, "Unable to read " // name // " from L1b file", errstat)
       return
     endif
   end subroutine tiof_get1d_i1

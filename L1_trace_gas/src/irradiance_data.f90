@@ -2,7 +2,7 @@ module irradiance_data
 
   use OMSAO_precision_module, only: i2, i4, r4, r8
   use errormodule
-  use terr_module
+  use tell_module
   USE sao_pge_utils, ONLY: print_array
   implicit none
 

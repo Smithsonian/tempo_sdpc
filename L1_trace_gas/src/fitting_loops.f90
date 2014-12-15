@@ -1,7 +1,7 @@
 MODULE fitting_loops
 
   use errormodule
-  use terr_module
+  use tell_module
 
   private
   public xtrack_radiance_wvl_calibration, xtrack_radiance_fitting_loop
@@ -100,7 +100,7 @@ CONTAINS
       open (unit=unit_xtrack_wavcal, file='diag.xtrack_wavcal', &
            iostat=locerrstat)
       if (locerrstat /= 0) then
-        call terr_error (terr_io_open_error, &
+        call tell_error (tell_io_open_error, &
                          "error opening diag.xtrack_wavcal", errstat)
         return
       endif
@@ -510,7 +510,7 @@ CONTAINS
       open (unit=unit_radiance_wavcal, file='diag.radiance_wavcal', access='append', &
            iostat=locerrstat)
       if (locerrstat /= 0) then
-        call terr_error (terr_io_open_error, &
+        call tell_error (tell_io_open_error, &
                          "error opening diag.radiance_wavcal", errstat)
         return
       endif
@@ -624,7 +624,7 @@ CONTAINS
           .and. (adj_num > n_fitvar_rad) &
           .and. (.not. do_skip_pix)) then
 
-        call terr_log (2, 'fitting_loops: call fit_radiance')
+        call tell_log (2, 'fitting_loops: call fit_radiance')
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
           pge_idx, ipix, ctrl_n_fitres_loop(radfit_idx), &

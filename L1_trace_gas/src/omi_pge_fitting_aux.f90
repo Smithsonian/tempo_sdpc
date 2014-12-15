@@ -1,7 +1,7 @@
 MODULE omi_pge_fitting_aux
 
   use errormodule
-  use terr_module
+  use tell_module
 
   private
   public find_swathrange_by_latitude, read_latitude, &
@@ -1028,7 +1028,7 @@ CONTAINS
 
       write(log_msg, *)'find_swathline_by_latitude: looking for lat=', &
         lat,' iline,j1,j2=',iline,j1,j2
-      call terr_log (1, log_msg)
+      call tell_log (1, log_msg)
 
       ! -----------------------------------------------------------------------
       ! Get first and last pixel.
@@ -1039,7 +1039,7 @@ CONTAINS
       lpix = xtrange(iline,2)
 
       write(log_msg, *)'find_swathline_by_latitude: fpix,lpix=',fpix,lpix
-      call terr_log (1, log_msg)
+      call tell_log (1, log_msg)
 
       IF ( iline < sline .OR. iline > eline ) THEN
         locerr = pge_errstat_error
@@ -1300,7 +1300,7 @@ CONTAINS
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     if (errstat < 0) return
     if (size(latr4, 1) /= tio_l1obj%num_xtrack) then
-      call terr_error (terr_io_read_error, &
+      call tell_error (tell_io_read_error, &
                        "read_latitude: nxtrack dimension is not correct", errstat)
       call tiof_close (tio_l1obj, errstat)
       return

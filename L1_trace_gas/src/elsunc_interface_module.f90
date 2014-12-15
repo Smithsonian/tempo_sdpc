@@ -2,7 +2,7 @@ module elsunc_interface_module
   use optimizer_interface_module
   use OMSAO_elsunc_fitting_module
   use errormodule
-  use terr_module
+  use tell_module
   implicit none
 
   public elsunc_optimizer
@@ -68,11 +68,11 @@ contains
       elsunc_ctrl = UNCOMPUTABLE
     endif
 
-    log_level = terr_get_log_level()
+    log_level = tell_get_log_level()
     if (log_level > 4) then
       write(log_msg,'(1pe12.5,75(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
         params(1:num_params)
-      call terr_log (log_level, trim(log_msg))
+      call tell_log (log_level, trim(log_msg))
       call flush()
     endif
 

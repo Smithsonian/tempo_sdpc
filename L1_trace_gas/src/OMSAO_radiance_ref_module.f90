@@ -4,7 +4,7 @@ MODULE OMSAO_radiance_ref_module
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN
   USE OMSAO_variables_module, ONLY: n_rad_wvl_max
   use errormodule
-  use terr_module
+  use tell_module
 
   IMPLICIT NONE
 
@@ -122,7 +122,7 @@ CONTAINS
     ! Locate the swath line numbers corresponding the center of the latitude
     ! range to average into radiance reference spectrum.
     ! ----------------------------------------------------------------------
-    call terr_log (1, 'omi_get_radiance_reference:  calling '// &
+    call tell_log (1, 'omi_get_radiance_reference:  calling '// &
                      'find_swathline_by_latitude (midpt_line)')
     CALL find_swathline_by_latitude ( &
       nxrr, 0, ntrr-1, latr4(1:nxrr,0:ntrr-1), lat_midpt, &
@@ -137,13 +137,13 @@ CONTAINS
       radiance_reference_lnums(1:2) = midpt_line
       have_limits(1:2)           = .TRUE.
     ELSE
-      call terr_log (1, 'omi_get_radiance_reference:  calling '// &
+      call tell_log (1, 'omi_get_radiance_reference:  calling '// &
                        'find_swathline_by_latitude (have_limits(1))')
       CALL find_swathline_by_latitude ( &
         nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
         xtrange, radiance_reference_lnums(1), have_limits(1)   )
         !xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
-      call terr_log (1, 'omi_get_radiance_reference:  calling '// &
+      call tell_log (1, 'omi_get_radiance_reference:  calling '// &
                        'find_swathline_by_latitude (have_limits(2))')
       CALL find_swathline_by_latitude ( &
         nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
@@ -599,7 +599,7 @@ CONTAINS
           .AND. (.NOT. do_skip_pix)) THEN
         is_bad_pixel     = .FALSE.
 
-        call terr_log (2, 'OMSAO_radiance_ref_module: call fit_radiance')
+        call tell_log (2, 'OMSAO_radiance_ref_module: call fit_radiance')
         CALL fit_radiance ( &
           pge_idx, ipix, ctrl_n_fitres_loop(radref_idx), &
           ctrl_fitres_range(radref_idx), &

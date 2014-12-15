@@ -1,5 +1,5 @@
 MODULE omi_read_l1b_data
-  use terr_module
+  use tell_module
   INCLUDE 'hdf.f90'
 
 CONTAINS

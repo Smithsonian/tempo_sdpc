@@ -624,8 +624,8 @@ LIBOBJS
 LINKOBJS
 CSOURCES
 F90SOURCES
-TERR_INC
-TERR_LIB
+TELL_INC
+TELL_LIB
 NETCDF_INC
 NETCDF_LIB
 PGSINC
@@ -711,7 +711,7 @@ with_otsroot
 with_hdfeos
 with_hdfeos5
 with_netcdf
-with_terr
+with_tell
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1337,7 +1337,7 @@ Optional Packages:
   --with-hdfeos=DIR       Use HDFEOS libraries installed in DIR
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
-  --with-terr=DIR         Use terr library installed in DIR
+  --with-tell=DIR         Use tell library installed in DIR
 
 Some influential environment variables:
   CC          C compiler command
@@ -3675,19 +3675,19 @@ fi
 
 
 
-# Check whether --with-terr was given.
-if test "${with_terr+set}" = set; then :
-  withval=$with_terr; jh_with_terr=$withval
+# Check whether --with-tell was given.
+if test "${with_tell+set}" = set; then :
+  withval=$with_tell; jh_with_tell=$withval
 else
-  jh_with_terr=no
+  jh_with_tell=no
 fi
 
-if test "x$jh_with_terr" = "xno"; then
-   TERR_LIB="\$(TERR_DIR)/lib"
-   TERR_INC="\$(TERR_DIR)/include"
+if test "x$jh_with_tell" = "xno"; then
+   TELL_LIB="\$(TELL_DIR)/lib"
+   TELL_INC="\$(TELL_DIR)/include"
 else
-   TERR_LIB="$jh_with_terr/lib"
-   TERR_INC="$jh_with_terr/include"
+   TELL_LIB="$jh_with_tell/lib"
+   TELL_INC="$jh_with_tell/include"
 fi
 
 

@@ -8,7 +8,7 @@
 #include "cfortran.h"
 
 #include "netcdf.h"
-#include "terr.h"
+#include "tell.h"
 #include "tio.h"
 #include "_tio.h"
 
@@ -27,7 +27,7 @@ int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
                              (int *)(p + o->id_offset));
         if (NC_NOERR != status)
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining dimension %s (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining dimension %s (%s)",
                           __func__, o->name, nc_strerror(status));
              return -1;
           }
@@ -44,7 +44,7 @@ int _pTIO_define_enum (int grp, const char *name,
 
    if (NC_NOERR != (status = nc_def_enum (grp, NC_INT, name, enum_typeid)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining enum %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining enum %s (%s)",
                      __func__, name, nc_strerror(status));
         return -1;
      }
@@ -54,7 +54,7 @@ int _pTIO_define_enum (int grp, const char *name,
         status = nc_insert_enum (grp, *enum_typeid, e->name, &e->value);
         if (status != NC_NOERR)
           {
-             Terr_verror (TERR_IO_WRITE_ERROR,
+             Tell_verror (TELL_IO_WRITE_ERROR,
                           "%s: inserting value %s=%d for enum %s (%s)",
                           __func__, e->name ? e->name : "(null)",
                           e->value, name, nc_strerror(status));
@@ -75,7 +75,7 @@ int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs)
         status = nc_put_att_int (grp, varid, a->name, NC_INT, 1, &a->value);
         if (NC_NOERR != status)
           {
-             Terr_verror (TERR_IO_WRITE_ERROR,
+             Tell_verror (TELL_IO_WRITE_ERROR,
                           "%s: defining int attribute %s (%s)",
                           __func__, a->name, nc_strerror(status));
              return -1;
@@ -95,7 +95,7 @@ int _pTIO_define_float_attrs (int grp, int varid, const _pFloat_Attr_Type *attrs
         status = nc_put_att_float (grp, varid, a->name, NC_FLOAT, 1, &a->value);
         if (NC_NOERR != status)
           {
-             Terr_verror (TERR_IO_WRITE_ERROR,
+             Tell_verror (TELL_IO_WRITE_ERROR,
                           "%s: defining float attribute %s (%s)",
                           __func__, a->name, nc_strerror(status));
              return -1;
@@ -116,7 +116,7 @@ int _pTIO_define_text_attrs (int grp, int varid, const _pText_Attr_Type *attrs)
         status = nc_put_att_text (grp, varid, a->name, len, a->text);
         if (NC_NOERR != status)
           {
-             Terr_verror (TERR_IO_WRITE_ERROR,
+             Tell_verror (TELL_IO_WRITE_ERROR,
                           "%s: defining text attribute %s (%s)",
                           __func__, a->name, nc_strerror(status));
              return -1;
@@ -136,7 +136,7 @@ int _pTIO_define_var_with_text_attrs (int grp, const char *var_name, nc_type xty
    status = nc_def_var (grp, var_name, xtype, num_dims, dimids, &varid);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
                      __func__, var_name, nc_strerror(status));
         return -1;
      }
@@ -181,7 +181,7 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
       case NC_DOUBLE: pfill_value = &fill_double;
         break;
       default:
-        Terr_verror (TERR_INVALID_PARM,
+        Tell_verror (TELL_INVALID_PARM,
                      "%s: invalid fill value type xtype=%d", xtype);
         return -1;
      }
@@ -189,7 +189,7 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
    status = nc_put_att (grp, varid, _FillValue, xtype, 1, pfill_value);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "writing fill value to grp=%d varid=%d (%s)",
                      grp, varid, nc_strerror(status));
         return -1;
@@ -217,7 +217,7 @@ int _pTIO_define_processing_level (int grp, int level)
                         "processing_level", enum_typeid, 1, &level);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining processing_level attribute (%s)",
                      __func__, nc_strerror(status));
         return -1;
@@ -232,13 +232,13 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 
    if ((name == NULL) || (info == NULL))
      {
-        Terr_verror (TERR_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_inq_varid (grp, name, &info->varid)))
      {
-        Terr_verror (TERR_IO_READ_ERROR,
+        Tell_verror (TELL_IO_READ_ERROR,
                      "%s: accessing variable %s in group %d (%s)",
                      __func__, name, grp, nc_strerror(status));
         return -1;
@@ -246,7 +246,7 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 
    if (NC_NOERR != (status = nc_inq_varndims (grp, info->varid, &info->ndims)))
      {
-        Terr_verror (TERR_IO_READ_ERROR,
+        Tell_verror (TELL_IO_READ_ERROR,
                      "%s: accessing variable %s in group %d (%s)",
                      __func__, name, grp, nc_strerror(status));
         return -1;
@@ -260,7 +260,7 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 
    if (NC_NOERR != (status = nc_inq_vardimid (grp, info->varid, info->dimids)))
      {
-        Terr_verror (TERR_IO_READ_ERROR,
+        Tell_verror (TELL_IO_READ_ERROR,
                      "%s: accessing variable %s dimids in group %d (%s)",
                      __func__, name, grp, nc_strerror(status));
         return -1;
@@ -270,7 +270,7 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
         status = nc_inq_dimlen  (grp, info->dimids[i], &info->dimlens[i]);
         if (NC_NOERR != status)
           {
-             Terr_verror (TERR_IO_READ_ERROR,
+             Tell_verror (TELL_IO_READ_ERROR,
                           "%s: accessing dimension %d length in group %d (%s)",
                           __func__, info->dimids[i], grp, nc_strerror(status));
              return -1;
@@ -358,7 +358,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
  \
    if (ndims <= 0) \
      { \
-        Terr_verror (TERR_INVALID_PARM, "%s: variable %s has ndims=%d", \
+        Tell_verror (TELL_INVALID_PARM, "%s: variable %s has ndims=%d", \
                      __func__, name, ndims); \
         return -1; \
      } \
@@ -407,7 +407,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
         status = nc_##action##_vara_double (grp, varid, start, count, (const_qual double *)data); \
         break; \
       default: \
-        Terr_verror (TERR_INVALID_PARM, \
+        Tell_verror (TELL_INVALID_PARM, \
                      "%s: accessing variable %s using invalid type (xtype=%d)", \
                      __func__, name, xtype); \
         return -1; \
@@ -415,7 +415,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
  \
    if (status != NC_NOERR) \
      { \
-        Terr_verror (TERR_IO_READ_ERROR, \
+        Tell_verror (TELL_IO_READ_ERROR, \
                      "%s: accessing variable %s in group %d (%s)", \
                      __func__, name, grp, nc_strerror(status)); \
         return -1; \
@@ -437,7 +437,7 @@ int TIO_inq_att (int grp, const char *varname, const char *attname,
 
    if (NULL == attname)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
      }
 
@@ -445,14 +445,14 @@ int TIO_inq_att (int grp, const char *varname, const char *attname,
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
-        Terr_verror (TERR_IO_READ_ERROR, "%s: accessing variable %s (%s)",
+        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
                              __func__, varname, nc_strerror(status));
         return -1;
      }
 
    if (NC_NOERR != (status = nc_inq_att (grp, varid, attname, xtype, len)))
      {
-        Terr_verror (TERR_IO_READ_ERROR,
+        Tell_verror (TELL_IO_READ_ERROR,
                      "%s: accessing attribute %s (varid=%d) (%s)",
                      __func__, attname, varid, nc_strerror(status));
         return -1;
@@ -469,7 +469,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
 
    if ((NULL == attname) || (att == NULL))
      {
-        Terr_verror (TERR_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
      }
 
@@ -477,7 +477,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
-        Terr_verror (TERR_IO_READ_ERROR, "%s: accessing variable %s (%s)",
+        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
                      __func__, varname, nc_strerror(status));
         return -1;
      }
@@ -495,7 +495,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
          */
         if (xtype != file_atttype)
           {
-             Terr_verror (TERR_INVALID_PARM,
+             Tell_verror (TELL_INVALID_PARM,
                           "%s: writing attribute %s: value type=%d, file value type=%d",
                           __func__, attname, xtype, file_atttype);
              return -1;
@@ -503,7 +503,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
      }
    else if (NC_ENOTATT != status)
      {
-        Terr_verror (TERR_IO_READ_ERROR,
+        Tell_verror (TELL_IO_READ_ERROR,
                      "%s: attribute %s (varid=%d) query failed (%s)",
                      __func__, attname, varid, nc_strerror(status));
         return -1;
@@ -512,7 +512,7 @@ int TIO_put_att (int grp, const char *varname, const char *attname,
    status = nc_put_att (grp, varid, attname, xtype, len, att);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: writing attribute %s (varid=%d) (%s)",
                      __func__, attname, varid, nc_strerror(status));
         return -1;
@@ -528,7 +528,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
 
    if ((NULL == attname) || (att == NULL))
      {
-        Terr_verror (TERR_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
      }
 
@@ -536,7 +536,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
      varid = NC_GLOBAL;
    else if (NC_NOERR != (status = nc_inq_varid (grp, varname, &varid)))
      {
-        Terr_verror (TERR_IO_READ_ERROR, "%s: accessing variable %s (%s)",
+        Tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s (%s)",
                      __func__, varname, nc_strerror(status));
         return -1;
      }
@@ -581,7 +581,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
       default:
         if (NC_NOERR != (status = nc_get_att (grp, varid, attname, att)))
           {
-             Terr_verror (TERR_IO_READ_ERROR,
+             Tell_verror (TELL_IO_READ_ERROR,
                           "%s: reading attribute %s in group %d using unrecognized typeid=%d (%s)",
                           __func__, attname, grp, xtype, nc_strerror(status));
              return -1;
@@ -591,7 +591,7 @@ int TIO_get_att (int grp, const char *varname, const char *attname,
 
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_READ_ERROR, "%s: reading attribute %s in group %d (%s)",
+        Tell_verror (TELL_IO_READ_ERROR, "%s: reading attribute %s in group %d (%s)",
                      __func__, attname, grp, nc_strerror(status));
         return -1;
      }

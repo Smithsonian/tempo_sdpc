@@ -29,7 +29,7 @@ SUBROUTINE swathline_loops (                               &
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
   use errormodule
-  use terr_module
+  use tell_module
   IMPLICIT NONE
 
   ! ---------------
@@ -110,7 +110,7 @@ SUBROUTINE swathline_loops (                               &
   if (yn_diagnostic_run) then
     open (unit=unit_column_amount, file='diag.column_amount', iostat=locerrstat)
       if (locerrstat /= 0) then
-        call terr_error (terr_io_open_error, &
+        call tell_error (tell_io_open_error, &
                          "error opening diag.column_amount", errstat)
         return
       endif
@@ -272,7 +272,7 @@ SUBROUTINE swathline_loops (                               &
       ! -----------------------
       ! Convert TAI to UTC time
       ! -----------------------
-      call terr_log (1,' *** skipping call to convert_tai_to_utc()')
+      call tell_log (1,' *** skipping call to convert_tai_to_utc()')
       if (.false.) then
       CALL convert_tai_to_utc ( &
         nUTCdim, omi_time(iloop), omi_time_utc(1:nUTCdim,iloop) )

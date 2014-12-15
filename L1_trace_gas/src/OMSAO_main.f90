@@ -19,7 +19,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   !USE OMSAO_indices_module,    ONLY: pge_bro_idx
   USE OMSAO_parameters_module
   USE OMSAO_errstat_module
-  use terr_module
+  use tell_module
   USE metadata_tools, ONLY: init_metadata
   USE omi_pge_fitting_aux, ONLY: set_input_pointer_and_versions
   USE pcf_file_module, ONLY: read_pcf_file
@@ -63,7 +63,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------
   pge_error_status = pge_errstat_ok
 
-  call terr_set_log_level (0)
+  call tell_set_log_level (0)
 
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered

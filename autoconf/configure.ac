@@ -58,19 +58,19 @@ fi
 AC_SUBST(NETCDF_LIB)
 AC_SUBST(NETCDF_INC)
 
-AC_ARG_WITH(terr,
-  [  --with-terr[=DIR]         Use terr library installed in DIR],
-  [jh_with_terr=$withval],
-  [jh_with_terr=no])
-if test "x$jh_with_terr" = "xno"; then
-   TERR_LIB="\$(TERR_DIR)/lib"
-   TERR_INC="\$(TERR_DIR)/include"
+AC_ARG_WITH(tell,
+  [  --with-tell[=DIR]         Use tell library installed in DIR],
+  [jh_with_tell=$withval],
+  [jh_with_tell=no])
+if test "x$jh_with_tell" = "xno"; then
+   TELL_LIB="\$(TELL_DIR)/lib"
+   TELL_INC="\$(TELL_DIR)/include"
 else
-   TERR_LIB="$jh_with_terr/lib"
-   TERR_INC="$jh_with_terr/include"
+   TELL_LIB="$jh_with_tell/lib"
+   TELL_INC="$jh_with_tell/include"
 fi
-AC_SUBST(TERR_LIB)
-AC_SUBST(TERR_INC)
+AC_SUBST(TELL_LIB)
+AC_SUBST(TELL_INC)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 

@@ -1,7 +1,7 @@
 MODULE omi_pge_fitting_process
 
   use errormodule
-  use terr_module
+  use tell_module
   use l1bread_utils
   private
   public omi_pge_fitting
@@ -312,7 +312,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     write (*,*) "modify omi_get_radiance_reference to use omi_radiance_swathname"
     stop
   endif
-  call terr_log (1, 'omi_fitting: calling omi_get_radiance_reference')
+  call tell_log (1, 'omi_fitting: calling omi_get_radiance_reference')
   CALL omi_get_radiance_reference (rpt_rr, &
                                    omi_xtrpix_range_rr, &
                                    radiance_wavcal_lnums, errstat)
@@ -483,7 +483,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     ! Interface to the loop over all swath lines
     ! ------------------------------------------
-    call terr_log (1, 'omi_fitting: calling swathline_loops (common mode)')
+    call tell_log (1, 'omi_fitting: calling swathline_loops (common mode)')
     CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
       is_common_range, &
@@ -620,7 +620,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
-  call terr_log (1, 'omi_fitting: calling swathline_loops (radiances)')
+  call tell_log (1, 'omi_fitting: calling swathline_loops (radiances)')
   CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
     do_radfit_range,                           &

@@ -7,17 +7,17 @@ THIS_LIB = tio
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/objs
 
-TERR_LIBPATHS    = -Wl,-rpath=$(TERR_LIB) -L$(TERR_LIB)
+TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 
-INCS = -I$(config_dir)/include -I$(TERR_INC) -I$(NETCDF_INC)
+INCS = -I$(config_dir)/include -I$(TELL_INC) -I$(NETCDF_INC)
 LIBS = $(INSTALL_LIBPATHS) \
        $(NETCDF_LIBPATHS) -lnetcdf \
-       $(TERR_LIBPATHS) -lterr $(RPATH)
+       $(TELL_LIBPATHS) -ltell $(RPATH)
 
-MODS_F = -I$(NETCDF_INC) -I$(TERR_INC)
-LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TERR_LIBPATHS) -lterr_f
+MODS_F = -I$(NETCDF_INC) -I$(TELL_INC)
+LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TELL_LIBPATHS) -ltell_f
 
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#

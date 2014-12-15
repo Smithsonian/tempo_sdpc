@@ -3,7 +3,7 @@ module wavecal
   use OMSAO_precision_module, only: i2, i4, r8
   use optimizer_interface_module
   use errormodule
-  use terr_module
+  use tell_module
   use OMSAO_variables_module, only: sol_wav_avg
   use OMSAO_indices_module, only: MAX_CAL_PARMS
 
@@ -299,7 +299,7 @@ contains
     enddo
 
     write (log_msg, *)'wavecal_fit:  num_fitvar=',num_fitvar
-    call terr_log (2, log_msg)
+    call tell_log (2, log_msg)
 
     num_iterations_per_fit = num_iterations
     num_iterations = 0

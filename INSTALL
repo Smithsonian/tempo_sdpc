@@ -14,9 +14,9 @@
    The README file in the git repository contains installation
    instructions.
 
-2. Install libterr
+2. Install libtell
 
-   libterr is available from ssh://git@vex/~/libterr.git
+   libtell is available from ssh://git@vex/~/libtell.git
 
 3. Run the configure script, compile and install as follows.
    Choose compilers = gfortran | intel, then:
@@ -24,6 +24,6 @@
     ./configure  --prefix=$prefix \
                  --with-compilers=$compilers \
                  --with-otsroot=$otsroot \
-                 --with-terr=$terr_dir
+                 --with-tell=$tell_dir
     make
     make install

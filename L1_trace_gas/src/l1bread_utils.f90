@@ -1,5 +1,5 @@
 module l1bread_utils
-  use terr_module
+  use tell_module
   use tio_module
   implicit none
   private
@@ -19,7 +19,7 @@ contains
     else if (l1b_channel == "UV2") then
       swathname = "band_540_740_nm"
     else
-      call terr_error (terr_internal_error, &
+      call tell_error (tell_internal_error, &
                        "*** read_irradiance_data:  Unsupported value l1b_channel="//l1b_channel, &
                        errstat)
     endif

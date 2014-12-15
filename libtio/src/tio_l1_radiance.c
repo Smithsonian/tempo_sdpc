@@ -6,7 +6,7 @@
 #include <math.h>
 
 #include "netcdf.h"
-#include "terr.h"
+#include "tell.h"
 #include "tio.h"
 #include "_tio.h"
 #include "_tio_template.h"
@@ -69,7 +69,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
    status = nc_def_var (grp, TIO_DIM_NAME_STEP, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining coordinate variable %s (%s)",
                      __func__, TIO_DIM_NAME_STEP, nc_strerror(status));
         return -1;
@@ -142,7 +142,7 @@ static int define_inr_status (int grp, int inr_status)
                         &inr_status);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining inr_status attribute (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining inr_status attribute (%s)",
                      __func__, nc_strerror(status));
         return -1;
      }
@@ -221,13 +221,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    if (sg->name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, sg->name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, sg->name, nc_strerror(status));
         return -1;
      }
@@ -244,7 +244,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    status = nc_def_var (grp, TIO_DIM_NAME_XTRACK, NC_INT, 1, dims, NULL);
    if (NC_NOERR != status)
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining coordinate variable %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining coordinate variable %s (%s)",
                      __func__, TIO_DIM_NAME_XTRACK, nc_strerror(status));
         return -1;
      }
@@ -263,7 +263,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
                           __func__, nc_strerror(status));
              return -1;
           }
@@ -283,7 +283,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
                           __func__, nc_strerror(status));
              return -1;
           }
@@ -303,7 +303,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_var_float (grp, varid, &mirror_step_size)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "%s: writing mirror step size (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing mirror step size (%s)",
                           __func__, nc_strerror(status));
              return -1;
           }
@@ -326,13 +326,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
         if (NC_NOERR != (status = nc_put_att (grp, varid, _FillValue, NC_FLOAT, 1, &radiance_fill)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "writing %s fill value to grp=%d (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "writing %s fill value to grp=%d (%s)",
                           TIO_VAR_NAME_RADIANCE, grp, nc_strerror(status));
              return -1;
           }
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
                           TIO_VAR_NAME_RADIANCE, nc_strerror(status));
              return -1;
           }
@@ -344,7 +344,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         if ((storage == NC_CHUNKED)
             && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
                           TIO_VAR_NAME_RADIANCE, nc_strerror(status));
              return -1;
           }
@@ -375,7 +375,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
         if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
                           TIO_VAR_NAME_WAVELENGTH, nc_strerror(status));
              return -1;
           }
@@ -387,7 +387,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         if ((storage == NC_CHUNKED)
             && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
+             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
                           TIO_VAR_NAME_WAVELENGTH, nc_strerror(status));
              return -1;
           }
@@ -679,13 +679,13 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -802,13 +802,13 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -816,7 +816,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
    /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_EPHEM, dim_table->time_ephemeris.len, &dim_table->time_ephemeris.id)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
@@ -930,13 +930,13 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -944,7 +944,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
    /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_MANEUVER, dim_table->time_maneuvers.len, &dim_table->time_maneuvers.id)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
@@ -1010,13 +1010,13 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -1024,7 +1024,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
    /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
@@ -1098,13 +1098,13 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -1112,7 +1112,7 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
    /* group-local dimensions */
    if (NC_NOERR != (status = nc_def_dim (grp, TIO_VAR_NAME_TIME_SMA, dim_table->time_sma.len, &dim_table->time_sma.id)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR,
+        Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
@@ -1166,13 +1166,13 @@ static int define_telemetry_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -1196,13 +1196,13 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
 
    if (grp_name == NULL)
      {
-        Terr_verror (TERR_INVALID_PARM, "%s:  got NULL pointer", __func__);
+        Tell_verror (TELL_INVALID_PARM, "%s:  got NULL pointer", __func__);
         return -1;
      }
 
    if (NC_NOERR != (status = nc_def_grp (parent_grp, grp_name, &grp)))
      {
-        Terr_verror (TERR_IO_WRITE_ERROR, "%s: defining group %s (%s)",
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining group %s (%s)",
                      __func__, grp_name, nc_strerror(status));
         return -1;
      }
@@ -1244,7 +1244,7 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
        || (-1 == define_global_dims (ncid, &dim_table))
        || (-1 == define_global_vars (ncid, &dim_table)))
      {
-        Terr_verror (TERR_UNKNOWN_ERROR, "%s failed", __func__);
+        Tell_verror (TELL_UNKNOWN_ERROR, "%s failed", __func__);
         return -1;
      }
 
@@ -1252,7 +1252,7 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
      {
         if (-1 == define_radiance_group (ncid, &sgrps[i], &dim_table, NULL))
           {
-             Terr_verror (TERR_IO_WRITE_ERROR,
+             Tell_verror (TELL_IO_WRITE_ERROR,
                           "%s failed defining radiance group %d", __func__, i);
              return -1;
           }
@@ -1261,7 +1261,7 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
    if ((-1 == define_geometry_group (ncid, TIO_GRP_NAME_GEOMETRY, &dim_table, NULL))
        || (-1 == define_inr_input_group (ncid, TIO_GRP_NAME_INRINPUT, &dim_table, NULL)))
      {
-        Terr_verror (TERR_UNKNOWN_ERROR, "%s failed", __func__);
+        Tell_verror (TELL_UNKNOWN_ERROR, "%s failed", __func__);
         return -1;
      }
 
