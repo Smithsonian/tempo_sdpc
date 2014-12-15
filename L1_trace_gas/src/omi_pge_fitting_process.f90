@@ -142,6 +142,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
+  use output_tools, only : create_output_file, close_output_file
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -332,6 +333,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------
   ! Initialization of HE5 output data fields
   ! ----------------------------------------
+
+  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, errstat)
+  if (errstat < 0) return
 
   ! FIXME: error handling needs worked here
   errstat = HE5_Init_Swath ( l2_filename, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
@@ -674,6 +678,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------
   ! Close output file
   ! -----------------
+  call close_output_file (errstat)
+  if (errstat < 0) return
+
   errstat = he5_close_output_file ( pge_idx)
   if (errstat < 0) then
     call err_message_error (modulename//f_sep// &

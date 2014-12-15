@@ -28,6 +28,7 @@ SUBROUTINE swathline_loops (                               &
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
+  use output_tools, only : write_radfit_output
   use errormodule
   use tell_module
   IMPLICIT NONE
@@ -285,6 +286,9 @@ SUBROUTINE swathline_loops (                               &
     ! done for the final round throught the common mode iteration loop
     ! ----------------------------------------------------------------
     IF ( .NOT. in_common_mode_loop ) THEN
+
+      call write_radfit_output (iline, nblock, nx, errstat)
+      if (errstat < 0) return
 
       CALL he5_write_radfit_output (                            &
         pge_idx, iline, nx, nblock, fpix, lpix,              &
