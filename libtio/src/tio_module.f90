@@ -106,7 +106,7 @@ contains
 
     status = nf90_create (file, create_mode, fileid)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_open_error, "creating file "//file// &
+      call tell_error (tell_io_open_error, "creating file "//file// &
                        " ("//trim(nf90_strerror(status))//")", errstat)
       obj % fileid = -1
       return
@@ -189,13 +189,13 @@ contains
 
     status = nf90_inq_dimid (obj % groupid, name, dimid)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
       return
     endif
 
     status = nf90_inquire_dimension (obj % groupid, dimid, len=dimlen)
     if (status /= nf90_noerr) then
-      call terr_error (terr_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
       return
     endif
   end subroutine tiof_inq_dimlen
@@ -275,7 +275,7 @@ contains
     err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_float, array)
 
     if (err < 0) then
-      call terr_error (terr_io_write_error, "Unable to write " // name // " from file", errstat)
+      call tell_error (tell_io_write_error, "Unable to write " // name // " from file", errstat)
       return
     endif
   end subroutine tiof_put2d_r4
@@ -295,7 +295,7 @@ contains
     err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
 
     if (err < 0) then
-      call terr_error (terr_io_write_error, "Unable to write " // name // " from file", errstat)
+      call tell_error (tell_io_write_error, "Unable to write " // name // " from file", errstat)
       return
     endif
   end subroutine tiof_put2d_r8  
@@ -335,7 +335,7 @@ contains
     err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_int, array)
 
     if (err < 0) then
-      call terr_error (terr_io_write_error, "Unable to write " // name // " from file", errstat)
+      call tell_error (tell_io_write_error, "Unable to write " // name // " from file", errstat)
       return
     endif
   end subroutine tiof_put1d_i4
@@ -435,7 +435,7 @@ contains
 
     allocate (item, stat=status)
     if (status /= 0) then
-      call terr_error (terr_malloc_error, &
+      call tell_error (tell_malloc_error, &
                        "tiof_dimlist_append:  allocate failed", errstat)
       return
     endif
@@ -468,7 +468,7 @@ contains
     if (errstat < 0) return
 
     if (.not.associated(list%head)) then
-      call terr_error (terr_invalid_parm, &
+      call tell_error (tell_invalid_parm, &
                        "tiof_dimlist_lookup: null dimension list", &
                        errstat)
       return
@@ -508,7 +508,7 @@ contains
     if (errstat < 0) return
 
     if (.not.associated (list%head)) then
-      call terr_error (terr_invalid_parm, &
+      call tell_error (tell_invalid_parm, &
                        "tiof_def_dims: null dimension list", &
                        errstat)
       return
@@ -519,7 +519,7 @@ contains
       status = nf90_def_dim (obj % groupid, item % name, item % len, &
                              item % dimid)
       if (status /= nf90_noerr) then
-        call terr_error (terr_io_error, "defining dimension " &
+        call tell_error (tell_io_error, "defining dimension " &
                          //item % name(1:item%len_name)//" (" // &
                          trim(nf90_strerror(status))//") ", &
                          errstat)
@@ -548,7 +548,7 @@ contains
 
     allocate (item, stat=status)
     if (status /= 0) then
-      call terr_error (terr_malloc_error, &
+      call tell_error (tell_malloc_error, &
                        "tiof_attlist_append:  allocate failed", errstat)
       return
     endif
@@ -561,7 +561,7 @@ contains
     if (present(att_i4)) then
       allocate (item % att_i4(size(att_i4)), stat=status)
       if (status /= 0) then
-        call terr_error (terr_malloc_error, &
+        call tell_error (tell_malloc_error, &
                          "tiof_attlist_append:  allocate failed", errstat)
       endif
       item % att_i4(:) = att_i4(:)
@@ -569,7 +569,7 @@ contains
     else if (present(att_r8)) then
       allocate (item % att_r8(size(att_r8)), stat=status)
       if (status /= 0) then
-        call terr_error (terr_malloc_error, &
+        call tell_error (tell_malloc_error, &
                          "tiof_attlist_append:  allocate failed", errstat)
       endif
       item % att_r8(:) = att_r8(:)
@@ -602,7 +602,7 @@ contains
     if (errstat < 0) return
 
     if (.not.associated (list%head)) then
-      call terr_error (terr_invalid_parm, &
+      call tell_error (tell_invalid_parm, &
                        "tiof_def_atts: null attribute list", &
                        errstat)
       return
@@ -619,14 +619,14 @@ contains
         case (nf90_int)
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_i4)
         case default
-          call terr_error (terr_invalid_parm, &
+          call tell_error (tell_invalid_parm, &
                            "tiof_def_atts: unsupported attribute type", &
                            errstat)
           return
       end select
 
       if (status /= nf90_noerr) then
-        call terr_error (terr_io_error, "defining attribute " &
+        call tell_error (tell_io_error, "defining attribute " &
                          //item % name(1:item%len_name)//" (" // &
                          trim(nf90_strerror(status))//") ", &
                          errstat)
@@ -663,7 +663,7 @@ contains
 
     allocate (item, stat=status)
     if (status /= 0) then
-      call terr_error (terr_malloc_error, &
+      call tell_error (tell_malloc_error, &
                        "tiof_varlist_append:  allocate failed", errstat)
       return
     endif
@@ -734,7 +734,7 @@ contains
     integer :: len_name
 
     if (.not.associated(list%head)) then
-      call terr_error (terr_invalid_parm, &
+      call tell_error (tell_invalid_parm, &
                        "tiof_dimlist_lookup: null dimension list", &
                        errstat)
       return
@@ -767,7 +767,7 @@ contains
     if (errstat < 0) return
 
     if (.not.associated (list%head)) then
-      call terr_error (terr_invalid_parm, &
+      call tell_error (tell_invalid_parm, &
                        "tiof_def_vars: null variable list", &
                        errstat)
       return
@@ -806,7 +806,7 @@ contains
       endif
 
       if (status /= nf90_noerr) then
-        call terr_error (terr_io_error, "defining variable " &
+        call tell_error (tell_io_error, "defining variable " &
                          //item % name(1:item%len_name)//" (" // &
                          trim(nf90_strerror(status))//") ", &
                          errstat)
@@ -816,8 +816,8 @@ contains
       if (item % have_comment) then
         status = nf90_put_att (obj % groupid, item % varid, "comment", item % comment)
         if (status /= nf90_noerr) then
-          errstat = terr_io_error
-          call terr_set_error (errstat)
+          errstat = tell_io_error
+          call tell_set_error (errstat)
           return
         endif
       endif
@@ -825,8 +825,8 @@ contains
       if (item % have_units) then
         status = nf90_put_att (obj % groupid, item % varid, "units", item % units)
         if (status /= nf90_noerr) then
-          errstat = terr_io_error
-          call terr_set_error (errstat)
+          errstat = tell_io_error
+          call tell_set_error (errstat)
           return
         endif
       endif
@@ -834,14 +834,14 @@ contains
       if (item % have_valid_range) then
         status = nf90_put_att (obj % groupid, item % varid, "valid_min", item % valid_range(1))
         if (status /= nf90_noerr) then
-          errstat = terr_io_error
-          call terr_set_error (errstat)
+          errstat = tell_io_error
+          call tell_set_error (errstat)
           return
         endif
         status = nf90_put_att (obj % groupid, item % varid, "valid_max", item % valid_range(2))
         if (status /= nf90_noerr) then
-          errstat = terr_io_error
-          call terr_set_error (errstat)
+          errstat = tell_io_error
+          call tell_set_error (errstat)
           return
         endif
       endif

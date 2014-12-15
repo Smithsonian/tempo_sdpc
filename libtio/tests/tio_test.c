@@ -6,6 +6,7 @@
 
 #include "netcdf.h"
 #include "tio.h"
+#include "tio_template.h"
 
 static float *generate_data (int n)
 {

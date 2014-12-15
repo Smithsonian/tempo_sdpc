@@ -8,8 +8,8 @@
 #include "netcdf.h"
 #include "tell.h"
 #include "tio.h"
+#include "tio_template.h"
 #include "_tio.h"
-#include "_tio_template.h"
 
 #define TIO_CHUNKSIZE_STEP 256
 

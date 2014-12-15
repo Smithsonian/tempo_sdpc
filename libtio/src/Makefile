@@ -168,6 +168,9 @@ distclean-tempo-names:	clean-tempo-names
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio.c $(LIBS)
 
+$(elfdir)/tio_template.o:	$(srcdir)/tio_template.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_template.c $(LIBS)
+
 $(elfdir)/tio_l1_radiance.o:	$(srcdir)/tio_l1_radiance.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_radiance.c $(LIBS)
 

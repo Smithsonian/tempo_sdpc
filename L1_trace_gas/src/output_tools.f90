@@ -1,6 +1,6 @@
 module output_tools
   use netcdf, only: nf90_clobber, nf90_netcdf4, nf90_int, nf90_float
-  use terr_module
+  use tell_module
   use tio_module
   use OMSAO_precision_module
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
@@ -59,7 +59,7 @@ contains
     ! create a file
     call tiof_create (obj, filename, ior(nf90_clobber,nf90_netcdf4), errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_write_error, &
+      call tell_error (tell_io_write_error, &
                        "create_output_file: creating file "//trim(filename), &
                        errstat)
       return
@@ -71,7 +71,7 @@ contains
     call tiof_dimlist_append (dimlist, tempo_dim_swt_levels, num_swlevels, errstat)
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_write_error, &
+      call tell_error (tell_io_write_error, &
                        "create_output_file: defining dimensions in "//trim(filename), &
                        errstat)
       return
@@ -132,7 +132,7 @@ contains
 
     call tiof_def_vars (obj, varlist, errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_write_error, &
+      call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
                        errstat)
       return
@@ -140,7 +140,7 @@ contains
 
     call write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_write_error, &
+      call tell_error (tell_io_write_error, &
                        "write_coordinate_vars: writing to "//trim(filename), &
                        errstat)
       return
@@ -167,7 +167,7 @@ contains
     call tiof_put2d_r4 (obj, tempo_var_latitude, iline, nblock, &
                         omi_latitude (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_write_error, "write_radfit_output: failed", errstat)
+      call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
     endif
 
@@ -181,7 +181,7 @@ contains
 
     call tiof_close (obj, errstat)
     if (errstat < 0) then
-      call terr_error (terr_io_error, "close_output_file failed", errstat)
+      call tell_error (tell_io_error, "close_output_file failed", errstat)
     endif
 
   end subroutine close_output_file

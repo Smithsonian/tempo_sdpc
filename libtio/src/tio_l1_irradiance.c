@@ -8,8 +8,8 @@
 #include "netcdf.h"
 #include "tell.h"
 #include "tio.h"
+#include "tio_template.h"
 #include "_tio.h"
-#include "_tio_template.h"
 
 /* An instance of a _pDim_Table_Type struct is used as a lookup table
  * for all the dimensions that are defined anywhere in the associated
