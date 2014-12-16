@@ -159,7 +159,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
     omi_cross_track_skippix, omi_radcal_xflag, &
-    omi_radiance_swathname
+    omi_radiance_swathname, initialize_io_var_structs
   USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
@@ -222,6 +222,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !  he5_write_swath_attributes, he5_open_readwrite
 
   if (errstat < 0) return
+
+  call initialize_io_var_structs ()
 
   ntimes_rad = rpt_rad%ntimes
   nxtrack_rad = rpt_rad%nxtrack

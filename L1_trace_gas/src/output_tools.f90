@@ -1,9 +1,10 @@
 module output_tools
-  use netcdf, only: nf90_clobber, nf90_netcdf4, nf90_int, nf90_float
+  use netcdf
   use tell_module
   use tio_module
   use OMSAO_precision_module
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
+  use OMSAO_omidata_module, only : input_vars_type, result_vars_type
 
   implicit none
   private
@@ -112,7 +113,7 @@ contains
                               tempo_var_latitude, &
                               nf90_float, &   ! data type in output file
                               dimids = dimids_xtrack_step,  &
-                              comment = "geodetic latitude at pixel center", &
+                              comment = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               attlist=att_latbnd &
@@ -124,7 +125,7 @@ contains
                               tempo_var_longitude, &
                               nf90_float, &   ! data type in output file
                               dimids = dimids_xtrack_step,  &
-                              comment = "geodetic longitude at pixel center", &
+                              comment = "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               attlist=att_lonbnd &
@@ -141,19 +142,20 @@ contains
     call write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
-                       "write_coordinate_vars: writing to "//trim(filename), &
+                       "create_output_file: writing coordinate variables to "//trim(filename), &
                        errstat)
       return
     endif
 
   end subroutine create_output_file
 
-  subroutine write_radfit_output (iline, nblock, nxtrack, errstat)
-    use OMSAO_omidata_module, only : omi_column_amount, &
-      omi_longitude, omi_latitude
+  subroutine write_radfit_output (iline, nblock, nxtrack, &
+                                  input_vars, result_vars, errstat)
     implicit none
 
     integer, intent(in) :: iline, nblock, nxtrack
+    type (input_vars_type), intent(in) :: input_vars
+    type (result_vars_type), intent(in) :: result_vars
     integer, intent(inout) :: errstat
 
     type (tiof_object_type), pointer :: obj => primary_output_file
@@ -161,11 +163,12 @@ contains
     if (errstat < 0) return
 
     call tiof_put2d_r8 (obj, tempo_var_column_amount, iline, nblock, &
-                        omi_column_amount (1:nxtrack, 0:nblock-1), errstat)
+                        result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
+
     call tiof_put2d_r4 (obj, tempo_var_longitude, iline, nblock, &
-                        omi_longitude (1:nxtrack, 0:nblock-1), errstat)
+                        input_vars % longitude (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tempo_var_latitude, iline, nblock, &
-                        omi_latitude (1:nxtrack, 0:nblock-1), errstat)
+                        input_vars % latitude (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return

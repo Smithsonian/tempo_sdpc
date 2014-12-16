@@ -20,7 +20,7 @@ SUBROUTINE swathline_loops (                               &
     omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &
     omi_radiance_errstat,  &
     omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
-    retrieval_type
+    retrieval_type, input_vars, result_vars
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
@@ -287,7 +287,7 @@ SUBROUTINE swathline_loops (                               &
     ! ----------------------------------------------------------------
     IF ( .NOT. in_common_mode_loop ) THEN
 
-      call write_radfit_output (iline, nblock, nx, errstat)
+      call write_radfit_output (iline, nblock, nx, input_vars, result_vars, errstat)
       if (errstat < 0) return
 
       CALL he5_write_radfit_output (                            &

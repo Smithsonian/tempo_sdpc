@@ -17,6 +17,26 @@ MODULE OMSAO_omidata_module
     integer (kind=i4) :: nxtrack, ntimes
   end type retrieval_type
 
+  ! FIXME: (JCH)
+  ! I've defined instances of input_vars_type and result_vars_type as a
+  ! crutch to help gather related module variables into structures without
+  ! making these changes everywhere at once.  New code can access needed
+  ! data through these structures, while old code can continue to work
+  ! unmodified, until it also gets updated to use these structures. Once
+  ! these structures are used everywhere, we can greatly reduce the
+  ! number of exported module symbols.
+  type, public :: input_vars_type
+    real(kind=r4), dimension(:,:), pointer :: latitude => null()
+    real(kind=r4), dimension(:,:), pointer :: longitude => null()
+  end type input_vars_type
+
+  type, public :: result_vars_type
+    real(kind=r8), dimension(:,:), pointer :: column_amount => null()
+  end type result_vars_type
+
+  type (input_vars_type) :: input_vars
+  type (result_vars_type) :: result_vars
+
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
   PRIVATE r4, r8, i4, i2, i1
   PRIVATE n_max_fitpars, max_rs_idx, max_calfit_idx, &
@@ -62,7 +82,7 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_xtrflg_l1b
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_geoflg, omi_xtrflg
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_height, land_water_flg
-  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_latitude, omi_longitude
+  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_szenith, omi_sazimuth
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_vzenith, omi_vazimuth
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
@@ -101,7 +121,7 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i4)                                         :: n_comm_wvl
   !INTEGER (KIND=i4), DIMENSION (nxtrack_max)                :: common_cnt
   !REAL    (KIND=r8), DIMENSION (nxtrack_max,max_spec_pts)   :: common_spc, common_wvl
-  REAL    (KIND=r8), DIMENSION (nxtrack_max,0:nlines_max-1)  :: &
+  REAL    (KIND=r8), DIMENSION (nxtrack_max,0:nlines_max-1), target  :: &
     omi_column_amount, omi_column_uncert, &
     omi_fit_rms, omi_radfit_chisq
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1) :: omi_razimuth
@@ -213,6 +233,19 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i4) :: omi_l1b_idx
 
 contains
+
+  subroutine initialize_io_var_structs ()
+    implicit none
+    ! FIXME: (JCH)  Eventually, these struct fields will be arrays and
+    ! not pointers and they'll probably be initialized elsewhere.  While
+    ! pointers are being used, we'll initialize them here.
+    ! Note that all the target objects have the 'target' attribute solely
+    ! to support these pointers.   If/when these pointers aren't needed
+    ! any longer, consider removing the 'target' attribute where necessary.
+    input_vars % latitude => omi_latitude
+    input_vars % longitude => omi_longitude
+    result_vars % column_amount => omi_column_amount
+  end subroutine initialize_io_var_structs
 
   subroutine dealloc_retrieval_type (rt)
     type (retrieval_type), intent(inout) :: rt
