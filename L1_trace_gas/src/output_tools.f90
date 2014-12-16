@@ -21,19 +21,21 @@ contains
     integer, intent(in) :: num_steps, num_xtrack
     integer, intent(inout) :: errstat
 
-    integer, dimension(num_xtrack) :: dim_xtrack
-    integer, dimension(num_steps) :: dim_step
+    integer, dimension(num_xtrack) :: xtrack_indices
+    integer, dimension(num_steps) :: step_indices
     integer :: i
 
     if (errstat < 0) return
 
-    ! FIXME: eventually, want: dim_step=[mirror_step_start, ..., mirror_step_end]
+    ! FIXME: eventually, this will be something like
+    ! step_indices=[mirror_step_beg, ..., mirror_step_end]
+    ! where mirror_step_beg/end are granule-specific
 
-    dim_step = [(i, i=0,num_steps-1)]
-    call tiof_put1d_i4 (obj, tempo_dim_step, 0, num_steps, dim_step, errstat)
+    step_indices = [(i, i=0,num_steps-1)]
+    call tiof_put1d_i4 (obj, tempo_dim_step, 0, num_steps, step_indices, errstat)
 
-    dim_xtrack = [(i, i=0,num_xtrack-1)]
-    call tiof_put1d_i4 (obj, tempo_dim_xtrack, 0, num_xtrack, dim_xtrack, errstat)
+    xtrack_indices = [(i, i=0,num_xtrack-1)]
+    call tiof_put1d_i4 (obj, tempo_dim_xtrack, 0, num_xtrack, xtrack_indices, errstat)
 
   end subroutine write_coordinate_vars
 
@@ -93,7 +95,7 @@ contains
     call tiof_varlist_append (varlist, errstat, tempo_dim_step, nf90_int, &
                              dimids=[dimids_xtrack_step(2)])
 
-    ! data field variables with their attribute lists:
+    ! data field variables with optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(tempo_var_longitude) &
                               //' '//trim(tempo_var_latitude))
