@@ -2,6 +2,7 @@ module tio_module
   use netcdf
   use tell_module
   implicit none
+  private
 
   integer, public, parameter :: &
     tiof_max_var_dims = 7, &
@@ -17,9 +18,6 @@ module tio_module
     i2 = selected_int_kind (2**2), &
     i4 = selected_int_kind (2**3), &
     i8 = selected_int_kind (2**4)
-
-  integer :: tiof_get_var_section, tiof_put_var_section
-  external   tiof_get_var_section, tiof_put_var_section
 
   type, public :: tiof_object_type
     integer :: fileid = -1
@@ -76,7 +74,8 @@ module tio_module
     type (tiof_var_type), pointer :: head => null(), tail => null()
   end type
 
-  private
+  integer :: tiof_get_var_section, tiof_put_var_section
+  external   tiof_get_var_section, tiof_put_var_section
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_var_section, tiof_get_var_section, &
@@ -298,8 +297,8 @@ contains
       call tell_error (tell_io_write_error, "Unable to write " // name // " from file", errstat)
       return
     endif
-  end subroutine tiof_put2d_r8  
-  
+  end subroutine tiof_put2d_r8
+
   subroutine tiof_get1d_r4 (obj, name, step0, numsteps, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
