@@ -135,24 +135,24 @@ MODULE OMSAO_he5_module
   !       as Global Attributes, since this is a much more painless
   !       state than any newly defined PSA.
   ! ---------------------------------------------------------------
-  INTEGER (KIND=i4), PUBLIC:: &
-    NrofScanLines                   = i4_missval,  &
-    NrofCrossTrackPixels            = i4_missval,  &
-    NrofInputSamples                = i4_missval,  &
-    NrofGoodInputSamples            = i4_missval,  &
-    NrofGoodOutputSamples           = i4_missval,  &
-    NrofMissingSamples              = i4_missval,  &
-    NrofSuspectOutputSamples        = i4_missval,  &
-    NrofBadOutputSamples            = i4_missval,  &
-    NrofConvergedSamples            = i4_missval,  &
-    NrofFailedConvergenceSamples    = i4_missval,  &
-    NrofExceededIterationsSamples   = i4_missval,  &
-    NrofOutofBoundsSamples          = i4_missval
-  REAL (KIND=r4), PUBLIC :: &
-    PercentGoodOutputSamples        = r4_missval,  &
-    PercentSuspectOutputSamples     = r4_missval,  &
-    PercentBadOutputSamples         = r4_missval,  &
-    AbsolutePercentMissingSamples   = r4_missval
+  !INTEGER (KIND=i4), PUBLIC:: &
+  !  NrofScanLines                   = i4_missval,  &
+  !  NrofCrossTrackPixels            = i4_missval,  &
+  !  NrofInputSamples                = i4_missval,  &
+  !  NrofGoodInputSamples            = i4_missval,  &
+  !  NrofGoodOutputSamples           = i4_missval,  &
+  !  NrofMissingSamples              = i4_missval,  &
+  !  NrofSuspectOutputSamples        = i4_missval,  &
+  !  NrofBadOutputSamples            = i4_missval,  &
+  !  NrofConvergedSamples            = i4_missval,  &
+  !  NrofFailedConvergenceSamples    = i4_missval,  &
+  !  NrofExceededIterationsSamples   = i4_missval,  &
+  !  NrofOutofBoundsSamples          = i4_missval
+  !REAL (KIND=r4), PUBLIC :: &
+  !  PercentGoodOutputSamples        = r4_missval,  &
+  !  PercentSuspectOutputSamples     = r4_missval,  &
+  !  PercentBadOutputSamples         = r4_missval,  &
+  !  AbsolutePercentMissingSamples   = r4_missval
 
   ! --------------------------------------------
   ! Variables for InputPointer and InputVersions

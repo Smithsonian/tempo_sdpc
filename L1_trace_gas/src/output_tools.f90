@@ -3,13 +3,12 @@ module output_tools
   use tell_module
   use tio_module
   use OMSAO_precision_module
-  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
-  use OMSAO_omidata_module, only : input_vars_type, result_vars_type
 
   implicit none
   private
 
-  public create_output_file, close_output_file, write_radfit_output
+  public create_output_file, close_output_file, write_radfit_output, &
+    write_fitting_statistics
 
   type (tiof_object_type), private, target :: primary_output_file
 
@@ -45,7 +44,7 @@ contains
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
     !USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
     !USE OMSAO_variables_module, ONLY: n_fitvar_rad
-
+    !use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels
@@ -132,6 +131,12 @@ contains
                               valid_range = [-180.0_r8, 180.0_r8], &
                               attlist=att_lonbnd &
                              )
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_main_dqf, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "main data quality flag", &
+                              valid_range = [-1.0_r8, 2.0_r8])
 
     call tiof_def_vars (obj, varlist, errstat)
     if (errstat < 0) then
@@ -153,6 +158,7 @@ contains
 
   subroutine write_radfit_output (iline, nblock, nxtrack, &
                                   input_vars, result_vars, errstat)
+    use OMSAO_omidata_module, only : input_vars_type, result_vars_type
     implicit none
 
     integer, intent(in) :: iline, nblock, nxtrack
@@ -177,6 +183,59 @@ contains
     endif
 
   end subroutine write_radfit_output
+
+  subroutine write_fitting_statistics (stats, errstat)
+    use omi_pge_fitting_aux, only : fitting_statistics_type
+    implicit none
+
+    type (fitting_statistics_type), intent(in) :: stats
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_attlist_type) :: attlist
+
+    call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", &
+                             att_i4=[stats % num_crosstrack_pixels])
+    call tiof_attlist_append (attlist, errstat, "num_scan_lines", &
+                             att_i4=[stats % num_scan_lines])
+    call tiof_attlist_append (attlist, errstat, "num_good_input", &
+                             att_i4=[stats % num_good_input])
+    call tiof_attlist_append (attlist, errstat, "num_good_output", &
+                             att_i4=[stats % num_good_output])
+    call tiof_attlist_append (attlist, errstat, "num_suspect_output", &
+                             att_i4=[stats % num_suspect_output])
+    call tiof_attlist_append (attlist, errstat, "num_bad_output", &
+                             att_i4=[stats % num_bad_output])
+    call tiof_attlist_append (attlist, errstat, "num_converged", &
+                             att_i4=[stats % num_converged])
+    call tiof_attlist_append (attlist, errstat, "num_failed_convergence", &
+                             att_i4=[stats % num_failed_convergence])
+    call tiof_attlist_append (attlist, errstat, "num_exceeded_iterations", &
+                             att_i4=[stats % num_exceeded_iterations])
+    call tiof_attlist_append (attlist, errstat, "num_out_of_bounds", &
+                             att_i4=[stats % num_out_of_bounds])
+    call tiof_attlist_append (attlist, errstat, "percent_good_output", &
+                             att_r4=[stats % percent_good_output])
+    call tiof_attlist_append (attlist, errstat, "percent_bad_output", &
+                             att_r4=[stats % percent_bad_output])
+    call tiof_attlist_append (attlist, errstat, "percent_suspect_output", &
+                             att_r4=[stats % percent_suspect_output])
+
+    call tiof_def_atts (obj, attlist, nf90_global, errstat)
+
+    call tiof_put2d_i2 (obj, tempo_var_main_dqf, 0, stats % num_scan_lines, &
+                        stats % quality_flag (1:stats % num_crosstrack_pixels, &
+                                              0:stats % num_scan_lines-1), &
+                        errstat)
+
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "write_fitting_statistics: writing fitting statistics", &
+                       errstat)
+      return
+    endif
+
+  end subroutine write_fitting_statistics
 
   subroutine close_output_file (errstat)
     implicit none

@@ -7,6 +7,7 @@ MODULE OMSAO_Reference_sector_module
   ! ------------------------------------------------------------------
 
   USE OMSAO_precision_module, ONLY: i2, r8
+  use tell_module
 
   IMPLICIT NONE
 
@@ -287,7 +288,7 @@ CONTAINS
       Radiance_Paras_Type, common_latrange, l1b_rad_filename, l1b_radref_filename
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
-      compute_fitting_statistics_nohe5
+      compute_fitting_statistics, fitting_statistics_type
     use commonmode, only: finalize_common_mode
     USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags, omi_read_binning_factor
     USE swathline_loop, ONLY: swathline_loops
@@ -324,12 +325,13 @@ CONTAINS
     !  mem_height
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, mem_xtrflg
     INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
+    !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
     LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, common_range_ok
     INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)              :: binfac_rs
     LOGICAL                                                     :: yn_write
     INTEGER (KIND=i4) :: nTimesRadRR, nXtrackRadRR, nWvlCCDrr
     type (retrieval_type) :: rt
+    type (fitting_statistics_type) :: ref_stats
 
     ! ------------------------
     ! Error handling variables
@@ -340,6 +342,8 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=64), PARAMETER :: modulename = &
     !  'Reference_Sector_radiance_reference_granule_retrieval' !JED fix
+
+    if (errstat < 0) return
 
     nTimesRadRR = rpt_rr%ntimes
     nXtrackRadRR = rpt_rr%nxtrack
@@ -359,6 +363,15 @@ CONTAINS
     call alloc_retrieval_type (rt, nXtrackRadRR, nTimesRadRR, locerrstat)
     if (locerrstat /= 0) return
 
+    allocate (ref_stats % quality_flag(rpt_rr%nxtrack,0:rpt_rr%ntimes-1), &
+              stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+                       "Reference_Sector_radiance_reference_granule_retrieval:  allocate failed", &
+                       errstat)
+      return
+    endif
+
     !mem_column_amount      = r8_missval
     !mem_column_uncertainty = r8_missval
     ! ---------------------------------------------------
@@ -375,7 +388,7 @@ CONTAINS
     !mem_sza                = r4_missval
     !mem_vza                = r4_missval
     !mem_fit_flag           = i2_missval
-    refmqf                 = i2_missval
+    ref_stats % quality_flag  = i2_missval
     !mem_xtrflg             = i2_missval
     mem_snow               = i2_missval
     mem_glint              = i2_missval
@@ -496,10 +509,10 @@ CONTAINS
     ! --------------------------------------------------------
     ! Compute average fitting statistics and main quality flag
     ! --------------------------------------------------------
-    CALL compute_fitting_statistics_nohe5 (                           &
+    CALL compute_fitting_statistics ( &
       pge_idx, nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
       rt%column_amount, rt%column_uncertainty, rt%rms,          &
-      rt%fit_flag, refmqf, locerrstat )
+      rt%fit_flag, ref_stats, locerrstat )
 
     ! ------------------------------------------------
     ! Apply the background correction to Slant columns
@@ -516,7 +529,7 @@ CONTAINS
 
     CALL compute_background_correction_bis(rt%column_amount, mem_correction, &
       rt%latitude, mem_amf,                 &
-      nXtrackRadRR, nTimesRadRR, refmqf, locerrstat)
+      nXtrackRadRR, nTimesRadRR, ref_stats % quality_flag, locerrstat)
 
     call dealloc_retrieval_type (rt)
 

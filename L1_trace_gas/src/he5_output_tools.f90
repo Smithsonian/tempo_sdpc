@@ -18,11 +18,11 @@ MODULE he5_output_tools
     o3fit_swath_file_id, o3fit_swath_id, vertical_coordinate, &
     pge_swath_file_id, lqh2ofit_swath_name, o3fit_swath_name, granule_day, &
     granule_month, granule_year, input_versions, l1b_orbitdata, &
-    NrofBadOutputSamples, NrofConvergedSamples, NrofCrossTrackPixels, &
-    NrofFailedConvergenceSamples, NrofExceededIterationsSamples, &
-    NrofGoodInputSamples, NrofGoodOutputSamples, NrofOutofBoundsSamples, &
-    NrofSuspectOutputSamples, PercentBadOutputSamples, NrofInputSamples, &
-    NrofScanLines, PercentGoodOutputSamples, PercentSuspectOutputSamples, &
+    !NrofBadOutputSamples, NrofConvergedSamples, NrofCrossTrackPixels, &
+    !NrofFailedConvergenceSamples, NrofExceededIterationsSamples, &
+    !NrofGoodInputSamples, NrofGoodOutputSamples, NrofOutofBoundsSamples, &
+    !NrofSuspectOutputSamples, PercentBadOutputSamples, NrofInputSamples, &
+    !NrofScanLines, PercentGoodOutputSamples, PercentSuspectOutputSamples, &
     TAI93At0zOfGranule, tai_attr, &
     HE5_SWrdfld, HE5_SWwrlattr, HE5_SWwrattr, HE5_SWsetfill, &
     HE5_SWdetach, HE5_SWclose, HE5_EHwrglatt, HE5_SWwrfld
@@ -1621,7 +1621,7 @@ CONTAINS
     RETURN
   END FUNCTION he5_set_field_attributes
 
-  FUNCTION he5_write_global_attributes ( ) RESULT ( he5stat )
+  FUNCTION he5_write_global_attributes (fit_stats) RESULT ( he5stat )
 
     !----------------------------------------------------------------------
     ! This function writes HDF Global Attributes defined by the PGE.
@@ -1650,8 +1650,11 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: &
       n_config_luns, yn_config_lun_autocopy, config_lun_strings, config_lun_values
     USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, ctrl_fit_winexc_lim
+    use omi_pge_fitting_aux, only : fitting_statistics_type
 
     IMPLICIT NONE
+
+    type (fitting_statistics_type), intent(in) :: fit_stats
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -1750,98 +1753,98 @@ CONTAINS
 
     parname = "NumberOfCrossTrackPixels"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofCrossTrackPixels )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_crosstrack_pixels )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfScanLines"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofScanLines )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_scan_lines)
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfInputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofInputSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_input )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfGoodInputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofGoodInputSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_good_input )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfGoodOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofGoodOutputSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_good_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfSuspectOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofSuspectOutputSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_suspect_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfBadOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofBadOutputSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_bad_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfConvergedSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofConvergedSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_converged )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfFailedConvergenceSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofFailedConvergenceSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_failed_convergence )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfExceededIterationsSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofExceededIterationsSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_exceeded_iterations )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "NumberOfOutOfBoundsSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_INT, onecl, NrofOutofBoundsSamples )
+                            HE5T_NATIVE_INT, onecl, fit_stats % num_out_of_bounds )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "PercentGoodOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_FLOAT, onecl, PercentGoodOutputSamples )
+                            HE5T_NATIVE_FLOAT, onecl, fit_stats % percent_good_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "PercentBadOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_FLOAT, onecl, PercentBadOutputSamples )
+                            HE5T_NATIVE_FLOAT, onecl, fit_stats % percent_bad_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )
 
     parname = "PercentSuspectOutputSamples"
     locerr = HE5_EHwrglatt ( pge_swath_file_id, TRIM(ADJUSTL(parname)), &
-                            HE5T_NATIVE_FLOAT, onecl, PercentSuspectOutputSamples )
+                            HE5T_NATIVE_FLOAT, onecl, fit_stats % percent_suspect_output )
     CALL error_check ( &
       locerr, HE5_STAT_OK, pge_errstat_warning, OMSAO_W_HE5EHWRGLATT, &
       modulename//f_sep//TRIM(ADJUSTL(parname)), vb_lev_default, he5stat )

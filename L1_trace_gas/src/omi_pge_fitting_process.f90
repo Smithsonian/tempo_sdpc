@@ -13,7 +13,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   USE OMSAO_precision_module
   USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal, &
     OMSAO_F_XTRMISRAD, vb_lev_default, error_check
-  USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
+  !USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
     l1b_radref_filename, l1b_channel
   use ctrlvars, only: yn_radiance_reference
@@ -66,8 +66,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
   omi_radiance_swathname = rpt_rad%swathname
 
-  NrofScanLines        = rpt_rad%ntimes
-  NrofCrossTrackPixels = rpt_rad%nxtrack
+  !NrofScanLines        = rpt_rad%ntimes
+  !NrofCrossTrackPixels = rpt_rad%nxtrack
 
   ! ---------------------------------------------------------------
   ! Dimensions for Radiance Reference granule
@@ -142,7 +142,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
-  use output_tools, only : create_output_file, close_output_file
+  use output_tools, only : create_output_file, close_output_file, &
+    write_fitting_statistics
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -150,7 +151,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE omi_read_l1b_data, ONLY: omi_read_binning_factor, &
     omi_read_radiance_lines, omi_read_radiance_lines
   USE omi_pge_fitting_aux, ONLY: omi_set_xtrpix_range, &
-    read_latitude, find_swathline_range
+    read_latitude, find_swathline_range, fitting_statistics_type
   use commonmode, only: finalize_common_mode
   USE fitting_loops, ONLY: xtrack_radiance_wvl_calibration
   USE metadata_tools, ONLY: check_metadata_consistency, set_l2_metadata
@@ -212,6 +213,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! Name of this module/subroutine
   ! ------------------------------
   CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
+  type (fitting_statistics_type) :: fit_stats
 
   ! ------------------
   ! External functions
@@ -647,14 +649,16 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !    (3) Apply cross-track destriping correction
   ! ---------------------------------------
   CALL omi_pge_postprocess ( &
-    l1b_rad_filename, pge_idx, ntimes_rad, nxtrack_rad,                    &
+    l1b_rad_filename, pge_idx, ntimes_rad, nxtrack_rad, &
     do_radfit_range, omi_xtrpix_range, &
-    omi_is_szoom, n_max_rspec, errstat                 )
+    omi_is_szoom, n_max_rspec, fit_stats, errstat )
 
   ! ---------------------
   ! Write some attributes
   ! ---------------------
-  errstat = he5_write_global_attributes( )
+  call write_fitting_statistics (fit_stats, errstat)
+  if (errstat < 0) return
+  errstat = he5_write_global_attributes (fit_stats)
   if (errstat < 0) then
     call err_message_error (modulename//f_sep// &
                             "he5_write_global_attributes failed", &

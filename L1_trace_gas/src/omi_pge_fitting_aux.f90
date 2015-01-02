@@ -2,14 +2,41 @@ MODULE omi_pge_fitting_aux
 
   use errormodule
   use tell_module
+  use OMSAO_precision_module,  ONLY: i2, i4, r4, r8
 
   private
   public find_swathrange_by_latitude, read_latitude, &
     find_swathline_by_latitude, convert_tai_to_utc, &
     find_swathline_range, &
-    compute_fitting_statistics, compute_fitting_statistics_nohe5, &
+    compute_fitting_statistics, &! compute_fitting_statistics_nohe5, &
     omi_set_xtrpix_range, &
     omi_set_fitting_parameters, set_input_pointer_and_versions
+
+  type, public :: fitting_statistics_type
+    ! quality_flag array is dimension(nxtrack,0:ntimes-1)
+    integer (kind=i2), dimension(:,:), allocatable :: quality_flag
+    real (kind=r8) :: col_avg = 0.0_r8
+    real (kind=r8) :: dcol_avg = 0.0_r8
+    real (kind=r8) :: rms_avg = 0.0_r8
+    integer (kind=i4) :: num_col = 0_i4
+    integer (kind=i4) :: num_scan_lines = 0_i4
+    integer (kind=i4) :: num_crosstrack_pixels = 0_i4
+    integer (kind=i4) :: num_input = 0_i4
+    integer (kind=i4) :: num_good_input = 0_i4
+    integer (kind=i4) :: num_good_output = 0_i4
+    integer (kind=i4) :: num_missing = 0_i4
+    integer (kind=i4) :: num_suspect_output = 0_i4
+    integer (kind=i4) :: num_bad_output = 0_i4
+    integer (kind=i4) :: num_converged = 0_i4
+    integer (kind=i4) :: num_failed_convergence = 0_i4
+    integer (kind=i4) :: num_exceeded_iterations = 0_i4
+    integer (kind=i4) :: num_out_of_bounds = 0_i4
+    real (kind=r4) :: percent_good_output = 0.0_r4
+    real (kind=r4) :: percent_suspect_output = 0.0_r4
+    real (kind=r4) :: percent_out_of_bounds = 0.0_r4
+    real (kind=r4) :: percent_bad_output = 0.0_r4
+    real (kind=r4) :: absolute_percent_missing = 0.0_r4
+  end type
 
 CONTAINS
   SUBROUTINE omi_set_fitting_parameters ( pge_idx, errstat )
@@ -66,28 +93,28 @@ CONTAINS
   END SUBROUTINE omi_set_fitting_parameters
 
   SUBROUTINE compute_fitting_statistics ( &
-      pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, saomqf, errstat )
+      pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, &
+                                         fit_stats, errstat )
 
-    USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
+    !USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
     use optimizer_interface_module, only: &
       opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
       opt_convergence_good
-    USE metadata_tools,  ONLY:  QAPercentMissingData, QAPercentOutofBoundsData, &
-      set_automatic_quality_flag
-    USE OMSAO_he5_module,       ONLY:  &
-      NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
-      NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
-      NrofExceededIterationsSamples, NrofOutofBoundsSamples, NrofMissingSamples, &
-      NrofGoodInputSamples, NrofSuspectOutputSamples, NrofBadOutputSamples,      &
-      NrofConvergedSamples, NrofFailedConvergenceSamples, &
-      PercentGoodOutputSamples, PercentSuspectOutputSamples, &
-      PercentBadOutputSamples, &
-      AbsolutePercentMissingSamples
-    USE OMSAO_errstat_module,   ONLY: vb_lev_screen, pge_errstat_ok
-    USE OMSAO_variables_module, ONLY: verb_thresh_lev, max_good_col
-    USE he5_output_tools, ONLY: he5_write_fitting_statistics
+    USE metadata_tools,  ONLY:  set_automatic_quality_flag !, QAPercentMissingData, QAPercentOutofBoundsData
+    !USE OMSAO_he5_module,       ONLY:  &
+    !  NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
+    !  NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
+    !  NrofExceededIterationsSamples, NrofOutofBoundsSamples, NrofMissingSamples, &
+    !  NrofGoodInputSamples, NrofSuspectOutputSamples, NrofBadOutputSamples,      &
+    !  NrofConvergedSamples, NrofFailedConvergenceSamples, &
+    !  PercentGoodOutputSamples, PercentSuspectOutputSamples, &
+    !  PercentBadOutputSamples, &
+    !  AbsolutePercentMissingSamples
+    USE OMSAO_errstat_module,   ONLY: pge_errstat_ok !, vb_lev_screen
+    USE OMSAO_variables_module, ONLY: max_good_col !, verb_thresh_lev
+    !USE he5_output_tools, ONLY: he5_write_fitting_statistics
 
     IMPLICIT NONE
 
@@ -102,7 +129,8 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (OUT) :: saomqf
+    !INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (OUT) :: saomqf
+    type (fitting_statistics_type), intent(inout) :: fit_stats
 
     ! -----------------
     ! Modified variable
@@ -113,9 +141,14 @@ CONTAINS
     ! Local variables
     ! ----------------
     INTEGER (KIND=i4) :: locerrstat, ix, it, spix, epix
-    REAL    (KIND=r4) :: PercentOutofBoundsSamples
-    REAL    (KIND=r8) :: fitcol_avg, rms_avg, dfitcol_avg, nfitcol
+    !REAL    (KIND=r4) :: PercentOutofBoundsSamples
+    REAL    (KIND=r8) :: col_avg, rms_avg, dcol_avg
     REAL    (KIND=r8) :: col2sig, col3sig
+    integer (kind=i4) :: num_col, &
+      num_good_input, num_good_output, num_missing, num_suspect_output, &
+      num_bad_output, num_converged, num_failed_convergence, num_exceeded_iterations, &
+      num_out_of_bounds
+    character (len=256) :: out_string
 
     locerrstat = pge_errstat_ok
 
@@ -123,24 +156,27 @@ CONTAINS
     ! The total number of input samples is simply the number of
     ! pixels in the granule
     ! ---------------------------------------------------------
-    NrofInputSamples = nxtrack*ntimes
+    fit_stats % num_input = nxtrack * ntimes
+    fit_stats % num_crosstrack_pixels = nxtrack
+    fit_stats % num_scan_lines = ntimes
 
     ! ------------------------------------------------------------------
     ! Compute all other fitting statistics variables over two nice loops
     ! ------------------------------------------------------------------
-    saomqf                        = i2_missval
-    NrofGoodInputSamples          = 0_i4
-    NrofGoodOutputSamples         = 0_i4
-    NrofSuspectOutputSamples      = 0_i4
-    NrofBadOutputSamples          = 0_i4
-    NrofOutOfBoundsSamples        = 0_i4
-    NrofConvergedSamples          = 0_i4
-    NrofFailedConvergenceSamples  = 0_i4
-    NrofExceededIterationsSamples = 0_i4
-    NrofMissingSamples            = 0_i4
+    fit_stats % quality_flag(:,:) = i2_missval
 
-    nfitcol    = 0.0_r8
-    fitcol_avg = 0.0_r8 ; rms_avg = 0.0_r8 ; dfitcol_avg = 0.0_r8
+    num_good_input          = 0_i4
+    num_good_output         = 0_i4
+    num_suspect_output      = 0_i4
+    num_bad_output          = 0_i4
+    num_out_of_bounds       = 0_i4
+    num_converged           = 0_i4
+    num_failed_convergence  = 0_i4
+    num_exceeded_iterations = 0_i4
+    num_missing             = 0_i4
+
+    num_col = 0_i4
+    col_avg = 0.0_r8 ; rms_avg = 0.0_r8 ; dcol_avg = 0.0_r8
     DO it = 0, ntimes-1
 
       spix = xtrange(it,1) ; epix = xtrange(it,2)
@@ -155,21 +191,21 @@ CONTAINS
         !           For this "sweet spot" we compute the average
         !           fitting statistics.
         ! ------------------------------------------------------
-        IF ( (saofcf(ix,it)   == opt_convergence_good) .AND. &
-            (saocol(ix,it)      >  r8_missval                       ) .AND. &
-            (ABS(saocol(ix,it)) <= max_good_col                     ) .AND. &
-            (col2sig            >= 0.0_r8                           ) ) THEN
+        IF ((saofcf(ix,it)    == opt_convergence_good) .AND. &
+            (saocol(ix,it)      >  r8_missval        ) .AND. &
+            (ABS(saocol(ix,it)) <= max_good_col      ) .AND. &
+            (col2sig            >= 0.0_r8            ) ) THEN
 
-          saomqf(ix,it) = main_qa_good
+          fit_stats % quality_flag(ix,it) = main_qa_good
 
-          NrofGoodInputSamples  = NrofGoodInputSamples   + 1
-          NrofConvergedSamples  = NrofConvergedSamples   + 1
-          NrofGoodOutputSamples = NrofGoodOutputSamples + 1
+          num_good_input = num_good_input + 1
+          num_converged = num_converged + 1
+          num_good_output = num_good_output + 1
 
-          fitcol_avg  = fitcol_avg  + saocol(ix,it)
-          dfitcol_avg = dfitcol_avg + saodco(ix,it)
-          rms_avg     = rms_avg     + saorms(ix,it)
-          nfitcol     = nfitcol     + 1.0_r8
+          col_avg  = col_avg  + saocol(ix,it)
+          dcol_avg = dcol_avg + saodco(ix,it)
+          rms_avg  = rms_avg  + saorms(ix,it)
+          num_col  = num_col + 1
 
           CYCLE
         END IF
@@ -180,20 +216,20 @@ CONTAINS
         !          pixels can count towards both the number of out-
         !          of bounds and the failed convergence samples.
         ! ----------------------------------------------------------
-        IF ( (saofcf(ix,it)      > i2_missval .AND. saofcf(ix,it) < 0_i2) .OR. &
-            (saocol(ix,it)      > r8_missval .AND. col3sig < 0.0_r8    ) ) THEN
+        IF ((saofcf(ix,it) > i2_missval .AND. saofcf(ix,it) < 0_i2) .OR. &
+            (saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8    ) ) THEN
 
-          saomqf(ix,it) = main_qa_bad
+          fit_stats % quality_flag(ix,it) = main_qa_bad
 
-          NrofGoodInputSamples = NrofGoodInputSamples + 1
-          NrofBadOutputSamples = NrofBadOutputSamples + 1
+          num_good_input = num_good_input + 1
+          num_bad_output = num_bad_output + 1
 
-          IF ( saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
-            NrofOutofBoundsSamples        = NrofOutofBoundsSamples        + 1
-          IF ( saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded ) &
-            NrofFailedConvergenceSamples  = NrofFailedConvergenceSamples  + 1
-          IF ( saofcf(ix,it) == opt_convergence_maxiter_exceeded)                      &
-            NrofExceededIterationsSamples = NrofExceededIterationsSamples + 1
+          IF (saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
+            num_out_of_bounds = num_out_of_bounds + 1
+          IF (saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded ) &
+            num_failed_convergence = num_failed_convergence  + 1
+          IF (saofcf(ix,it) == opt_convergence_maxiter_exceeded) &
+            num_exceeded_iterations = num_exceeded_iterations + 1
 
           CYCLE
         END IF
@@ -201,16 +237,16 @@ CONTAINS
         ! ----------------------------------------------------------
         ! The Ugly: Whatever is left (outside plain missing columns)
         ! ----------------------------------------------------------
-        IF ( saocol(ix,it) > r8_missval ) THEN
+        IF (saocol(ix,it) > r8_missval ) THEN
 
-          IF ( (saofcf(ix,it) == opt_convergence_suspect) .OR. &
-              (col2sig <  0.0_r8  .AND. col3sig >= 0.0_r8                      ) .OR. &
-              (ABS(saocol(ix,it)) > max_good_col                               ) ) THEN
+          IF ((saofcf(ix,it) == opt_convergence_suspect) .OR. &
+              (col2sig <  0.0_r8 .AND. col3sig >= 0.0_r8) .OR. &
+              (ABS(saocol(ix,it)) > max_good_col        ) ) THEN
 
-            saomqf(ix,it) = main_qa_suspect
+            fit_stats % quality_flag(ix,it) = main_qa_suspect
 
-            NrofGoodInputSamples     = NrofGoodInputSamples     + 1
-            NrofSuspectOutputSamples = NrofSuspectOutputSamples + 1
+            num_good_input     = num_good_input     + 1
+            num_suspect_output = num_suspect_output + 1
 
             CYCLE
           END IF
@@ -221,7 +257,7 @@ CONTAINS
           ! The Missing: Not processed because of either missing input
           !              or restrictions on lat, lon, sza, etc.
           ! ----------------------------------------------------------
-          NrofMissingSamples = NrofMissingSamples + 1
+          num_missing = num_missing + 1
 
         END IF
 
@@ -233,52 +269,67 @@ CONTAINS
     ! and write out the final statistics
     ! --------------------------------------------
 
-    IF ( nfitcol >= 1.0_r8 ) THEN
-      fitcol_avg  = fitcol_avg  / nfitcol
-      rms_avg     = rms_avg     / nfitcol
-      dfitcol_avg = dfitcol_avg / nfitcol
+    IF (num_col > 0) THEN
+      col_avg  = col_avg  / num_col
+      rms_avg  = rms_avg  / num_col
+      dcol_avg = dcol_avg / num_col
     END IF
 
-    PercentGoodOutputSamples      = 100_r4    * &
-      REAL(NrofGoodOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples,  KIND=r4) )
+    fit_stats % percent_good_output = 100_r4 * &
+      REAL(num_good_output, KIND=r4) / &
+      MAX ( 1.0_r4, REAL(num_good_input,  KIND=r4) )
 
-    PercentBadOutputSamples       = 100_r4        * &
-      REAL(NrofBadOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+    fit_stats % percent_bad_output = 100_r4 * &
+      REAL(num_bad_output, KIND=r4) / &
+      MAX ( 1.0_r4, REAL(num_good_input, KIND=r4) )
 
-    PercentSuspectOutputSamples   =  100.0_r4         * &
-      REAL(NrofSuspectOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+    fit_stats % percent_suspect_output = 100.0_r4 * &
+      REAL(num_suspect_output, KIND=r4) / &
+      MAX ( 1.0_r4, REAL(num_good_input, KIND=r4) )
 
-    PercentOutofBoundsSamples     =  100.0_r4         * &
-      REAL(NrofOutofBoundsSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+    fit_stats % percent_out_of_bounds = 100.0_r4 * &
+      REAL(num_out_of_bounds, KIND=r4) / &
+      MAX ( 1.0_r4, REAL(num_good_input, KIND=r4) )
 
-    AbsolutePercentMissingSamples = 100_r4 * &
-      REAL(NrofMissingSamples, KIND=r4) / &
-      MAX ( 1.0_4, REAL(NrofInputSamples, KIND=r4) )
+    fit_stats % absolute_percent_missing = 100_r4 * &
+      REAL(num_missing, KIND=r4) / &
+      MAX ( 1.0_4, REAL(fit_stats % num_input, KIND=r4) )
 
-    QAPercentMissingData     = NINT ( AbsolutePercentMissingSamples, KIND=i4 )
-    QAPercentOutofBoundsData = NINT ( PercentOutofBoundsSamples,     KIND=i4 )
+    !QAPercentMissingData     = NINT ( fit_stats % absolute_percent_missing, KIND=i4 )
+    !QAPercentOutofBoundsData = NINT ( fit_stats % percent_out_of_bounds,    KIND=i4 )
 
     ! ------------------------------------------------------------------------
     ! With the above information we can easily determine the Automatic QA Flag
     ! ------------------------------------------------------------------------
-    CALL set_automatic_quality_flag ( PercentGoodOutputSamples )
+    CALL set_automatic_quality_flag (fit_stats % percent_good_output)
 
-    IF ( verb_thresh_lev >= vb_lev_screen ) THEN
-      WRITE (*, '(A, 3(1PE15.5))')          'Col-DCol-RMS: ', fitcol_avg, dfitcol_avg, rms_avg
-      WRITE (*, '(A, I7,A,I7,A,F7.1,A)')  'Statistics:   ', &
-        MAX(NrofGoodOutputSamples,0), ' of ', MAX(NrofGoodInputSamples,0), ' converged - ', &
-        MAX(PercentGoodOutputSamples, 0.0), '%'
-      WRITE (*, '(A, F10.1)') 'Nfitcol =', nfitcol
-    END IF
+    !IF ( verb_thresh_lev >= vb_lev_screen ) THEN
+      WRITE (out_string, '(A, 3(1PE15.5))')'Col-DCol-RMS: ', col_avg, dcol_avg, rms_avg
+      call tell_log (0, out_string)
 
-    CALL he5_write_fitting_statistics ( &
-      pge_idx, max_good_col, nxtrack, ntimes, saomqf(1:nxtrack,0:ntimes-1), &
-      fitcol_avg, dfitcol_avg, rms_avg, locerrstat                            )
-    errstat = MAX ( locerrstat, errstat )
+      WRITE (out_string, '(A, I7,A,I7,A,F7.1,A)')'Statistics:   ', &
+        MAX(num_good_output,0), ' of ', MAX(num_good_input,0), ' converged - ', &
+        MAX(fit_stats % percent_good_output, 0.0), '%'
+      call tell_log (0, out_string)
+
+      WRITE (out_string, '(A, i10)') 'num_col =', num_col
+      call tell_log (0, out_string)
+    !END IF
+
+    fit_stats % col_avg  = col_avg
+    fit_stats % dcol_avg = dcol_avg
+    fit_stats % rms_avg  = rms_avg
+    fit_stats % num_col  = num_col
+
+    fit_stats % num_good_input          = num_good_input
+    fit_stats % num_good_output         = num_good_output
+    fit_stats % num_suspect_output      = num_suspect_output
+    fit_stats % num_bad_output          = num_bad_output
+    fit_stats % num_out_of_bounds       = num_out_of_bounds
+    fit_stats % num_converged           = num_converged
+    fit_stats % num_failed_convergence  = num_failed_convergence
+    fit_stats % num_exceeded_iterations = num_exceeded_iterations
+    fit_stats % num_missing             = num_missing
 
     RETURN
 
@@ -620,20 +671,20 @@ CONTAINS
   END SUBROUTINE DISABLED_get_input_versions
 
 !UNUSED!   SUBROUTINE omi_radiance_wvl_smoothing ( nxt, nwl, omi_radiance_wavl )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE OMSAO_precision_module, ONLY: i4, r4, r8
 !UNUSED!     USE SLATEC_davint, ONLY: dpolft
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Input Variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4), INTENT (IN) :: nxt, nwl
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ------------------
 !UNUSED!     ! Modified Variables
 !UNUSED!     ! ------------------
 !UNUSED!     REAL (KIND=r4), DIMENSION(nwl,nxt), INTENT (INOUT) :: omi_radiance_wavl
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ------------------------------
 !UNUSED!     ! Local Variables and Parameters
 !UNUSED!     ! ------------------------------
@@ -642,40 +693,40 @@ CONTAINS
 !UNUSED!     REAL    (KIND=r8)                  :: eps
 !UNUSED!     REAL    (KIND=r8), DIMENSION (nxt) :: x, y, w, yf
 !UNUSED!     REAL    (KIND=r8), DIMENSION (3*(nxt+max_deg+1)) :: a
-!UNUSED! 
+!UNUSED!
 !UNUSED!     x(1:nxt) = (/ (REAL(i,KIND=KIND(r8)), i = 1, nxt) /)
 !UNUSED!     w(1:nxt) = -1.0_r8
 !UNUSED!     eps      = 0.0_r8
-!UNUSED! 
+!UNUSED!
 !UNUSED!     DO i = 1, nwl
 !UNUSED!       y(1:nxt) = omi_radiance_wavl(i,1:nxt)
 !UNUSED!       CALL dpolft (nxt, x, y, w, max_deg, ndeg, eps, yf, ierr, a)
 !UNUSED!       omi_radiance_wavl(i,1:nxt) = REAL(yf(1:nxt),KIND=r4)
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!     RETURN
 !UNUSED!   END SUBROUTINE omi_radiance_wvl_smoothing
 
 !UNUSED!   SUBROUTINE compact_fitting_spectrum ( n_fit_wvl, curr_fit_spec )
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE OMSAO_precision_module,  ONLY: i4, r8
 !UNUSED!     USE OMSAO_indices_module,    ONLY: wvl_idx, sig_idx, ccd_idx
 !UNUSED!     USE OMSAO_parameters_module, ONLY: normweight
-!UNUSED! 
+!UNUSED!
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ------------------
 !UNUSED!     ! Modified variables
 !UNUSED!     ! ------------------
 !UNUSED!     INTEGER (KIND=i4),                                        INTENT (INOUT) :: n_fit_wvl
 !UNUSED!     REAL    (KIND=r8), DIMENSION (wvl_idx:ccd_idx,n_fit_wvl), INTENT (INOUT) :: curr_fit_spec
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Local variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4)                                        :: i, n_loc_wvl
 !UNUSED!     REAL    (KIND=r8), DIMENSION (wvl_idx:ccd_idx,n_fit_wvl) :: loc_fit_spec
-!UNUSED! 
+!UNUSED!
 !UNUSED!     n_loc_wvl = 0_i4  ;  loc_fit_spec = 0.0_r8
 !UNUSED!     DO i = 1, n_fit_wvl
 !UNUSED!       IF ( curr_fit_spec(sig_idx,i) == normweight ) THEN
@@ -683,13 +734,13 @@ CONTAINS
 !UNUSED!         loc_fit_spec(wvl_idx:ccd_idx,n_loc_wvl) = curr_fit_spec(wvl_idx:ccd_idx,i)
 !UNUSED!       END IF
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------------------
 !UNUSED!     ! Assign the output variables
 !UNUSED!     ! ---------------------------
 !UNUSED!     n_fit_wvl     = n_loc_wvl
 !UNUSED!     curr_fit_spec = loc_fit_spec
-!UNUSED! 
+!UNUSED!
 !UNUSED!     RETURN
 !UNUSED!   END SUBROUTINE compact_fitting_spectrum
 
@@ -1315,221 +1366,221 @@ CONTAINS
 
   end subroutine read_latitude
 
-  SUBROUTINE compute_fitting_statistics_nohe5 ( &
-      pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, &
-      saofcf, saomqf, errstat )
-
-    USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
-    USE OMSAO_parameters_module, ONLY: &
-      i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
-    use optimizer_interface_module, only: &
-      opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
-      opt_convergence_good
-    USE metadata_tools, ONLY:  QAPercentMissingData, QAPercentOutofBoundsData, &
-      set_automatic_quality_flag
-      
-    USE OMSAO_he5_module,       ONLY:  &
-      NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
-      NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
-      NrofExceededIterationsSamples, NrofOutofBoundsSamples, NrofMissingSamples, &
-      NrofGoodInputSamples, NrofSuspectOutputSamples, NrofBadOutputSamples,      &
-      NrofConvergedSamples, NrofFailedConvergenceSamples, &
-      PercentGoodOutputSamples, PercentSuspectOutputSamples, &
-      PercentBadOutputSamples, &
-      AbsolutePercentMissingSamples
-    USE OMSAO_errstat_module,   ONLY: vb_lev_screen, pge_errstat_ok
-    USE OMSAO_variables_module, ONLY: verb_thresh_lev, max_good_col
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntimes, nxtrack
-    INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
-    REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (OUT) :: saomqf
-
-    ! -----------------
-    ! Modified variable
-    ! -----------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ----------------
-    ! Local variables
-    ! ----------------
-    INTEGER (KIND=i4) :: locerrstat, ix, it, spix, epix
-    REAL    (KIND=r4) :: PercentOutofBoundsSamples
-    REAL    (KIND=r8) :: fitcol_avg, rms_avg, dfitcol_avg, nfitcol
-    REAL    (KIND=r8) :: col2sig, col3sig
-
-    locerrstat = pge_errstat_ok
-
-    ! ---------------------------------------------------------
-    ! The total number of input samples is simply the number of
-    ! pixels in the granule
-    ! ---------------------------------------------------------
-    NrofInputSamples = nxtrack*ntimes
-
-    ! ------------------------------------------------------------------
-    ! Compute all other fitting statistics variables over two nice loops
-    ! ------------------------------------------------------------------
-    saomqf                        = i2_missval
-    NrofGoodInputSamples          = 0_i4
-    NrofGoodOutputSamples         = 0_i4
-    NrofSuspectOutputSamples      = 0_i4
-    NrofBadOutputSamples          = 0_i4
-    NrofOutOfBoundsSamples        = 0_i4
-    NrofConvergedSamples          = 0_i4
-    NrofFailedConvergenceSamples  = 0_i4
-    NrofExceededIterationsSamples = 0_i4
-    NrofMissingSamples            = 0_i4
-
-    nfitcol    = 0.0_r8
-    fitcol_avg = 0.0_r8 ; rms_avg = 0.0_r8 ; dfitcol_avg = 0.0_r8
-    DO it = 0, ntimes-1
-
-      spix = xtrange(it,1) ; epix = xtrange(it,2)
-      DO ix = spix, epix
-
-        col2sig = saocol(ix,it)+2.0_r8*saodco(ix,it)
-        col3sig = saocol(ix,it)+3.0_r8*saodco(ix,it)
-
-        ! ------------------------------------------------------
-        ! The Good: Columns are postive within two sigma fitting
-        !           uncertainty and the fitting has converged.
-        !           For this "sweet spot" we compute the average
-        !           fitting statistics.
-        ! ------------------------------------------------------
-        IF ( (saofcf(ix,it) == opt_convergence_good) .AND. &
-            (saocol(ix,it)      >  r8_missval                       ) .AND. &
-            (ABS(saocol(ix,it)) <= max_good_col                     ) .AND. &
-            (col2sig            >= 0.0_r8                           ) ) THEN
-
-          saomqf(ix,it) = main_qa_good
-
-          NrofGoodInputSamples  = NrofGoodInputSamples   + 1
-          NrofConvergedSamples  = NrofConvergedSamples   + 1
-          NrofGoodOutputSamples = NrofGoodOutputSamples + 1
-
-          fitcol_avg  = fitcol_avg  + saocol(ix,it)
-          dfitcol_avg = dfitcol_avg + saodco(ix,it)
-          rms_avg     = rms_avg     + saorms(ix,it)
-          nfitcol     = nfitcol     + 1.0_r8
-          !write(*,'(1P3E15.5,2I5)') saocol(ix,it),saorms(ix,it), saodco(ix,it), ix, it
-
-          CYCLE
-        END IF
-
-        ! ----------------------------------------------------------
-        ! The Bad: Fitting hasn't converged or columns are negative
-        !          within three sigma fitting uncertainty. Note that
-        !          pixels can count towards both the number of out-
-        !          of bounds and the failed convergence samples.
-        ! ----------------------------------------------------------
-        IF ( (saofcf(ix,it)      > i2_missval .AND. saofcf(ix,it) < 0_i2) .OR. &
-            (saocol(ix,it)      > r8_missval .AND. col3sig < 0.0_r8    ) ) THEN
-
-          saomqf(ix,it) = main_qa_bad
-
-          NrofGoodInputSamples = NrofGoodInputSamples + 1
-          NrofBadOutputSamples = NrofBadOutputSamples + 1
-
-          IF ( saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
-            NrofOutofBoundsSamples        = NrofOutofBoundsSamples        + 1
-          IF ( saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded) &
-            NrofFailedConvergenceSamples  = NrofFailedConvergenceSamples  + 1
-          IF ( saofcf(ix,it) == opt_convergence_maxiter_exceeded)  &
-            NrofExceededIterationsSamples = NrofExceededIterationsSamples + 1
-
-          CYCLE
-        END IF
-
-        ! ----------------------------------------------------------
-        ! The Ugly: Whatever is left (outside plain missing columns)
-        ! ----------------------------------------------------------
-        IF ( saocol(ix,it) > r8_missval ) THEN
-
-          IF ( (saofcf(ix,it) == opt_convergence_suspect) .OR. &
-              (col2sig <  0.0_r8  .AND. col3sig >= 0.0_r8                      ) .OR. &
-              (ABS(saocol(ix,it)) > max_good_col                               ) ) THEN
-
-            saomqf(ix,it) = main_qa_suspect
-
-            NrofGoodInputSamples     = NrofGoodInputSamples     + 1
-            NrofSuspectOutputSamples = NrofSuspectOutputSamples + 1
-
-            CYCLE
-          END IF
-
-        ELSE
-
-          ! ----------------------------------------------------------
-          ! The Missing: Not processed because of either missing input
-          !              or restrictions on lat, lon, sza, etc.
-          ! ----------------------------------------------------------
-          NrofMissingSamples = NrofMissingSamples + 1
-
-        END IF
-
-      END DO
-    END DO
-
-    ! --------------------------------------------
-    ! Now we can compute averages and percentages,
-    ! and write out the final statistics
-    ! --------------------------------------------
-
-    IF ( nfitcol >= 1.0_r8 ) THEN
-      fitcol_avg  = fitcol_avg  / nfitcol
-      rms_avg     = rms_avg     / nfitcol
-      dfitcol_avg = dfitcol_avg / nfitcol
-    END IF
-
-    PercentGoodOutputSamples      = 100_r4    * &
-      REAL(NrofGoodOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples,  KIND=r4) )
-
-    PercentBadOutputSamples       = 100_r4        * &
-      REAL(NrofBadOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
-
-    PercentSuspectOutputSamples   =  100.0_r4         * &
-      REAL(NrofSuspectOutputSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
-
-    PercentOutofBoundsSamples     =  100.0_r4         * &
-      REAL(NrofOutofBoundsSamples, KIND=r4) / &
-      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
-
-    AbsolutePercentMissingSamples = 100_r4 * &
-      REAL(NrofMissingSamples, KIND=r4) / &
-      MAX ( 1.0_4, REAL(NrofInputSamples, KIND=r4) )
-
-    QAPercentMissingData     = NINT ( AbsolutePercentMissingSamples, KIND=i4 )
-    QAPercentOutofBoundsData = NINT ( PercentOutofBoundsSamples,     KIND=i4 )
-
-    ! ------------------------------------------------------------------------
-    ! With the above information we can easily determine the Automatic QA Flag
-    ! ------------------------------------------------------------------------
-    CALL set_automatic_quality_flag ( PercentGoodOutputSamples )
-
-    IF ( verb_thresh_lev >= vb_lev_screen ) THEN
-      WRITE (*, '(A, 3(1PE15.5))')          'Col-DCol-RMS: ', fitcol_avg, dfitcol_avg, rms_avg
-      WRITE (*, '(A, I7,A,I7,A,F7.1,A)')  'Statistics:   ', &
-        MAX(NrofGoodOutputSamples,0), ' of ', MAX(NrofGoodInputSamples,0), ' converged - ', &
-        MAX(PercentGoodOutputSamples, 0.0), '%'
-      WRITE (*, '(A, F7.1)') 'Nfitcol =', nfitcol
-    END IF
-
-    errstat = locerrstat
-    RETURN
-
-  END SUBROUTINE compute_fitting_statistics_nohe5
+!unused  SUBROUTINE compute_fitting_statistics_nohe5 ( &
+!unused      pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, &
+!unused      saofcf, saomqf, errstat )
+!unused
+!unused    USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
+!unused    USE OMSAO_parameters_module, ONLY: &
+!unused      i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
+!unused    use optimizer_interface_module, only: &
+!unused      opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
+!unused      opt_convergence_good
+!unused    USE metadata_tools, ONLY:  QAPercentMissingData, QAPercentOutofBoundsData, &
+!unused      set_automatic_quality_flag
+!unused
+!unused    USE OMSAO_he5_module,       ONLY:  &
+!unused      NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
+!unused      NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
+!unused      NrofExceededIterationsSamples, NrofOutofBoundsSamples, NrofMissingSamples, &
+!unused      NrofGoodInputSamples, NrofSuspectOutputSamples, NrofBadOutputSamples,      &
+!unused      NrofConvergedSamples, NrofFailedConvergenceSamples, &
+!unused      PercentGoodOutputSamples, PercentSuspectOutputSamples, &
+!unused      PercentBadOutputSamples, &
+!unused      AbsolutePercentMissingSamples
+!unused    USE OMSAO_errstat_module,   ONLY: vb_lev_screen, pge_errstat_ok
+!unused    USE OMSAO_variables_module, ONLY: verb_thresh_lev, max_good_col
+!unused
+!unused    IMPLICIT NONE
+!unused
+!unused    ! ---------------
+!unused    ! Input variables
+!unused    ! ---------------
+!unused    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntimes, nxtrack
+!unused    INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
+!unused    REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms
+!unused    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf
+!unused
+!unused    ! ----------------
+!unused    ! Output variables
+!unused    ! ----------------
+!unused    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (OUT) :: saomqf
+!unused
+!unused    ! -----------------
+!unused    ! Modified variable
+!unused    ! -----------------
+!unused    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+!unused
+!unused    ! ----------------
+!unused    ! Local variables
+!unused    ! ----------------
+!unused    INTEGER (KIND=i4) :: locerrstat, ix, it, spix, epix
+!unused    REAL    (KIND=r4) :: PercentOutofBoundsSamples
+!unused    REAL    (KIND=r8) :: fitcol_avg, rms_avg, dfitcol_avg, nfitcol
+!unused    REAL    (KIND=r8) :: col2sig, col3sig
+!unused
+!unused    locerrstat = pge_errstat_ok
+!unused
+!unused    ! ---------------------------------------------------------
+!unused    ! The total number of input samples is simply the number of
+!unused    ! pixels in the granule
+!unused    ! ---------------------------------------------------------
+!unused    NrofInputSamples = nxtrack*ntimes
+!unused
+!unused    ! ------------------------------------------------------------------
+!unused    ! Compute all other fitting statistics variables over two nice loops
+!unused    ! ------------------------------------------------------------------
+!unused    saomqf                        = i2_missval
+!unused    NrofGoodInputSamples          = 0_i4
+!unused    NrofGoodOutputSamples         = 0_i4
+!unused    NrofSuspectOutputSamples      = 0_i4
+!unused    NrofBadOutputSamples          = 0_i4
+!unused    NrofOutOfBoundsSamples        = 0_i4
+!unused    NrofConvergedSamples          = 0_i4
+!unused    NrofFailedConvergenceSamples  = 0_i4
+!unused    NrofExceededIterationsSamples = 0_i4
+!unused    NrofMissingSamples            = 0_i4
+!unused
+!unused    nfitcol    = 0.0_r8
+!unused    fitcol_avg = 0.0_r8 ; rms_avg = 0.0_r8 ; dfitcol_avg = 0.0_r8
+!unused    DO it = 0, ntimes-1
+!unused
+!unused      spix = xtrange(it,1) ; epix = xtrange(it,2)
+!unused      DO ix = spix, epix
+!unused
+!unused        col2sig = saocol(ix,it)+2.0_r8*saodco(ix,it)
+!unused        col3sig = saocol(ix,it)+3.0_r8*saodco(ix,it)
+!unused
+!unused        ! ------------------------------------------------------
+!unused        ! The Good: Columns are postive within two sigma fitting
+!unused        !           uncertainty and the fitting has converged.
+!unused        !           For this "sweet spot" we compute the average
+!unused        !           fitting statistics.
+!unused        ! ------------------------------------------------------
+!unused        IF ( (saofcf(ix,it) == opt_convergence_good) .AND. &
+!unused            (saocol(ix,it)      >  r8_missval                       ) .AND. &
+!unused            (ABS(saocol(ix,it)) <= max_good_col                     ) .AND. &
+!unused            (col2sig            >= 0.0_r8                           ) ) THEN
+!unused
+!unused          saomqf(ix,it) = main_qa_good
+!unused
+!unused          NrofGoodInputSamples  = NrofGoodInputSamples   + 1
+!unused          NrofConvergedSamples  = NrofConvergedSamples   + 1
+!unused          NrofGoodOutputSamples = NrofGoodOutputSamples + 1
+!unused
+!unused          fitcol_avg  = fitcol_avg  + saocol(ix,it)
+!unused          dfitcol_avg = dfitcol_avg + saodco(ix,it)
+!unused          rms_avg     = rms_avg     + saorms(ix,it)
+!unused          nfitcol     = nfitcol     + 1.0_r8
+!unused          !write(*,'(1P3E15.5,2I5)') saocol(ix,it),saorms(ix,it), saodco(ix,it), ix, it
+!unused
+!unused          CYCLE
+!unused        END IF
+!unused
+!unused        ! ----------------------------------------------------------
+!unused        ! The Bad: Fitting hasn't converged or columns are negative
+!unused        !          within three sigma fitting uncertainty. Note that
+!unused        !          pixels can count towards both the number of out-
+!unused        !          of bounds and the failed convergence samples.
+!unused        ! ----------------------------------------------------------
+!unused        IF ( (saofcf(ix,it)      > i2_missval .AND. saofcf(ix,it) < 0_i2) .OR. &
+!unused            (saocol(ix,it)      > r8_missval .AND. col3sig < 0.0_r8    ) ) THEN
+!unused
+!unused          saomqf(ix,it) = main_qa_bad
+!unused
+!unused          NrofGoodInputSamples = NrofGoodInputSamples + 1
+!unused          NrofBadOutputSamples = NrofBadOutputSamples + 1
+!unused
+!unused          IF ( saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
+!unused            NrofOutofBoundsSamples        = NrofOutofBoundsSamples        + 1
+!unused          IF ( saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded) &
+!unused            NrofFailedConvergenceSamples  = NrofFailedConvergenceSamples  + 1
+!unused          IF ( saofcf(ix,it) == opt_convergence_maxiter_exceeded)  &
+!unused            NrofExceededIterationsSamples = NrofExceededIterationsSamples + 1
+!unused
+!unused          CYCLE
+!unused        END IF
+!unused
+!unused        ! ----------------------------------------------------------
+!unused        ! The Ugly: Whatever is left (outside plain missing columns)
+!unused        ! ----------------------------------------------------------
+!unused        IF ( saocol(ix,it) > r8_missval ) THEN
+!unused
+!unused          IF ( (saofcf(ix,it) == opt_convergence_suspect) .OR. &
+!unused              (col2sig <  0.0_r8  .AND. col3sig >= 0.0_r8                      ) .OR. &
+!unused              (ABS(saocol(ix,it)) > max_good_col                               ) ) THEN
+!unused
+!unused            saomqf(ix,it) = main_qa_suspect
+!unused
+!unused            NrofGoodInputSamples     = NrofGoodInputSamples     + 1
+!unused            NrofSuspectOutputSamples = NrofSuspectOutputSamples + 1
+!unused
+!unused            CYCLE
+!unused          END IF
+!unused
+!unused        ELSE
+!unused
+!unused          ! ----------------------------------------------------------
+!unused          ! The Missing: Not processed because of either missing input
+!unused          !              or restrictions on lat, lon, sza, etc.
+!unused          ! ----------------------------------------------------------
+!unused          NrofMissingSamples = NrofMissingSamples + 1
+!unused
+!unused        END IF
+!unused
+!unused      END DO
+!unused    END DO
+!unused
+!unused    ! --------------------------------------------
+!unused    ! Now we can compute averages and percentages,
+!unused    ! and write out the final statistics
+!unused    ! --------------------------------------------
+!unused
+!unused    IF ( nfitcol >= 1.0_r8 ) THEN
+!unused      fitcol_avg  = fitcol_avg  / nfitcol
+!unused      rms_avg     = rms_avg     / nfitcol
+!unused      dfitcol_avg = dfitcol_avg / nfitcol
+!unused    END IF
+!unused
+!unused    PercentGoodOutputSamples      = 100_r4    * &
+!unused      REAL(NrofGoodOutputSamples, KIND=r4) / &
+!unused      MAX ( 1.0_r4, REAL(NrofGoodInputSamples,  KIND=r4) )
+!unused
+!unused    PercentBadOutputSamples       = 100_r4        * &
+!unused      REAL(NrofBadOutputSamples, KIND=r4) / &
+!unused      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+!unused
+!unused    PercentSuspectOutputSamples   =  100.0_r4         * &
+!unused      REAL(NrofSuspectOutputSamples, KIND=r4) / &
+!unused      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+!unused
+!unused    PercentOutofBoundsSamples     =  100.0_r4         * &
+!unused      REAL(NrofOutofBoundsSamples, KIND=r4) / &
+!unused      MAX ( 1.0_r4, REAL(NrofGoodInputSamples, KIND=r4) )
+!unused
+!unused    AbsolutePercentMissingSamples = 100_r4 * &
+!unused      REAL(NrofMissingSamples, KIND=r4) / &
+!unused      MAX ( 1.0_4, REAL(NrofInputSamples, KIND=r4) )
+!unused
+!unused    QAPercentMissingData     = NINT ( AbsolutePercentMissingSamples, KIND=i4 )
+!unused    QAPercentOutofBoundsData = NINT ( PercentOutofBoundsSamples,     KIND=i4 )
+!unused
+!unused    ! ------------------------------------------------------------------------
+!unused    ! With the above information we can easily determine the Automatic QA Flag
+!unused    ! ------------------------------------------------------------------------
+!unused    CALL set_automatic_quality_flag ( PercentGoodOutputSamples )
+!unused
+!unused    IF ( verb_thresh_lev >= vb_lev_screen ) THEN
+!unused      WRITE (*, '(A, 3(1PE15.5))')          'Col-DCol-RMS: ', fitcol_avg, dfitcol_avg, rms_avg
+!unused      WRITE (*, '(A, I7,A,I7,A,F7.1,A)')  'Statistics:   ', &
+!unused        MAX(NrofGoodOutputSamples,0), ' of ', MAX(NrofGoodInputSamples,0), ' converged - ', &
+!unused        MAX(PercentGoodOutputSamples, 0.0), '%'
+!unused      WRITE (*, '(A, F7.1)') 'Nfitcol =', nfitcol
+!unused    END IF
+!unused
+!unused    errstat = locerrstat
+!unused    RETURN
+!unused
+!unused  END SUBROUTINE compute_fitting_statistics_nohe5
 
 END MODULE

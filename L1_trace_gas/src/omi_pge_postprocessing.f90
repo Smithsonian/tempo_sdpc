@@ -1,7 +1,10 @@
 MODULE omi_pge_postprocessing
+  use tell_module
+  implicit none
 CONTAINS
 SUBROUTINE omi_pge_postprocess ( &
-    l1bfile, pge_idx, ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, errstat )
+    l1bfile, pge_idx, ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, &
+    fit_stats, errstat )
 
   ! ---------------------------------------------------------
   ! In this subroutine we collect all those computations that
@@ -22,9 +25,11 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
   USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, Cmlat, Cmlon, CmETA, CmEp1
-  USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read
+  USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
+    he5_write_fitting_statistics
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
-  USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics
+  USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
+  USE OMSAO_variables_module, ONLY: max_good_col
   use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field
   IMPLICIT NONE
 
@@ -39,6 +44,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! -----------------
   ! Modified variable
   ! -----------------
+  type (fitting_statistics_type), intent(inout) :: fit_stats
   INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
   ! ----------------
@@ -48,7 +54,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------
   REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1) :: lat, lon, sza, vza, thg
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
-  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf, saomqf
+  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg
   LOGICAL                                             :: do_write
 
@@ -110,17 +116,25 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------
   ! Compute average fitting statistics
   ! ----------------------------------
-  CALL compute_fitting_statistics (                      &
-    pge_idx, ntimes, nxtrack, xtrange,                &
-    saocol, saodco, saorms, saofcf, saomqf, locerrstat )
-
+  allocate (fit_stats%quality_flag (nxtrack, 0:ntimes-1), stat=errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_malloc_error, "omi_pge_postprocess:  allocate failed", errstat)
+    return
+  endif
+  CALL compute_fitting_statistics ( &
+    pge_idx, ntimes, nxtrack, xtrange, &
+    saocol, saodco, saorms, saofcf, fit_stats, locerrstat )
+  CALL he5_write_fitting_statistics ( &
+    pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
+    fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
+  errstat = max(locerrstat, errstat)
   ! ---------------------------------------
   ! Apply cross-track destriping correction
   ! ---------------------------------------
   CALL xtrack_destriping (                                    &
     pge_idx, ntimes, nxtrack, do_process_line, xtrange,         &
     lat, saocol, & !saodco, saoamf, saofcf,
-    saomqf, locerrstat )
+    fit_stats % quality_flag, locerrstat )
 
   ! ---------------------------------------------------------------
   ! Apply Reference Sector Correction; Only for HCHO retrieval !gga
@@ -128,7 +142,7 @@ SUBROUTINE omi_pge_postprocess ( &
   IF ((yn_refseccor) .AND. ( pge_idx == pge_hcho_idx ) .AND.  &
     (yn_radiance_reference)) THEN
     CALL Reference_Sector_correction (ntimes, nxtrack, & !xtrange, lat,
-      saocol, saodco, saoamf, saomqf, pge_idx, n_max_rspec, &
+      saocol, saodco, saoamf, fit_stats % quality_flag, pge_idx, n_max_rspec, &
       locerrstat)
   ENDIF
 
