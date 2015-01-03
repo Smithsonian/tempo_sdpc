@@ -43,6 +43,7 @@ module tio_module
     integer :: xtype = -1
     character (len=tiof_max_att_len) :: att_text
     integer (kind=i4), allocatable, dimension(:) :: att_i4
+    real (kind=4), allocatable, dimension(:) :: att_r4
     real (kind=8), allocatable, dimension(:) :: att_r8
     type (tiof_att_type), pointer :: next => null()
   end type
@@ -85,6 +86,7 @@ module tio_module
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
     tiof_put1d_i4, tiof_put2d_r4, &
     tiof_get2d_i2, tiof_get3d_i2, &
+    tiof_put2d_i2, &
     tiof_get1d_i1, tiof_get2d_i1, &
     tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims, &
     tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars, &
@@ -379,6 +381,26 @@ contains
     endif
   end subroutine tiof_get2d_i2
 
+  subroutine tiof_put2d_i2 (obj, name, step0, numsteps, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: step0, numsteps
+    integer (kind=i2), dimension (:,:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_short, array)
+
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // name // " from file", errstat)
+      return
+    endif
+  end subroutine tiof_put2d_i2
+  
   subroutine tiof_get2d_i1 (obj, name, step0, numsteps, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -530,12 +552,13 @@ contains
   end subroutine tiof_def_dims
 
   subroutine tiof_attlist_append (list, errstat, att_name, &
-                                  att_i4, att_r8, att_text)
+                                  att_i4, att_r4, att_r8, att_text)
     implicit none
     type (tiof_attlist_type), intent(inout) :: list
     character (len=*), intent(in) :: att_name
     integer, intent(inout) :: errstat
     integer (kind=i4), optional, dimension(:) :: att_i4
+    real (kind=4), optional, dimension(:) :: att_r4
     real (kind=8), optional, dimension(:) :: att_r8
     character (len=*), optional :: att_text
 
@@ -565,6 +588,14 @@ contains
       endif
       item % att_i4(:) = att_i4(:)
       item % xtype = nf90_int
+    else if (present(att_r4)) then
+      allocate (item % att_r4(size(att_r4)), stat=status)
+      if (status /= 0) then
+        call tell_error (tell_malloc_error, &
+                         "tiof_attlist_append:  allocate failed", errstat)
+      endif
+      item % att_r4(:) = att_r4(:)
+      item % xtype = nf90_float
     else if (present(att_r8)) then
       allocate (item % att_r8(size(att_r8)), stat=status)
       if (status /= 0) then
@@ -615,6 +646,8 @@ contains
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_text)
         case (nf90_double)
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_r8)
+        case (nf90_float)
+          status = nf90_put_att (obj % groupid, varid, item % name, item % att_r4)
         case (nf90_int)
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_i4)
         case default
