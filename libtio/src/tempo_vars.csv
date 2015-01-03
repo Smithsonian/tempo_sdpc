@@ -52,3 +52,4 @@ TEMPO_VAR_WAVELENGTH,"wavelength"
 # level 2 variables
 #
 TEMPO_VAR_COLUMN_AMOUNT,"column_amount"
+TEMPO_VAR_MAIN_DQF,"main_data_quality_flag"
