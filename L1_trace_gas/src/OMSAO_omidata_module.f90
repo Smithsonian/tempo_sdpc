@@ -26,12 +26,18 @@ MODULE OMSAO_omidata_module
   ! these structures are used everywhere, we can greatly reduce the
   ! number of exported module symbols.
   type, public :: input_vars_type
+    real(kind=r8), dimension(:), pointer :: time => null()
     real(kind=r4), dimension(:,:), pointer :: latitude => null()
     real(kind=r4), dimension(:,:), pointer :: longitude => null()
+    real(kind=r4), dimension(:,:), pointer :: solar_zenith => null()
+    real(kind=r4), dimension(:,:), pointer :: solar_azimuth => null()
+    real(kind=r4), dimension(:,:), pointer :: viewing_zenith => null()
+    real(kind=r4), dimension(:,:), pointer :: viewing_azimuth => null()
   end type input_vars_type
 
   type, public :: result_vars_type
     real(kind=r8), dimension(:,:), pointer :: column_amount => null()
+    real(kind=r8), dimension(:,:), pointer :: column_uncert => null()
   end type result_vars_type
 
   type (input_vars_type) :: input_vars
@@ -77,14 +83,14 @@ MODULE OMSAO_omidata_module
   ! Arrays for OMI L1b data
   ! -----------------------
   REAL    (KIND=r4), DIMENSION (0:nlines_max-1)                        :: omi_auraalt
-  REAL    (KIND=r8), DIMENSION (0:nlines_max-1)                        :: omi_time
+  REAL    (KIND=r8), DIMENSION (0:nlines_max-1), target                :: omi_time
   INTEGER (KIND=i4), DIMENSION (0:nlines_max-1)                        :: omi_radiance_errstat
   INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_xtrflg_l1b
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_geoflg, omi_xtrflg
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_height, land_water_flg
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
-  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_szenith, omi_sazimuth
-  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_vzenith, omi_vazimuth
+  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_szenith, omi_sazimuth
+  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_vzenith, omi_vazimuth
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
   REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_wavl
   INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_qflg
@@ -242,9 +248,16 @@ contains
     ! Note that all the target objects have the 'target' attribute solely
     ! to support these pointers.   If/when these pointers aren't needed
     ! any longer, consider removing the 'target' attribute where necessary.
+    input_vars % time => omi_time
     input_vars % latitude => omi_latitude
     input_vars % longitude => omi_longitude
+    input_vars % solar_zenith => omi_szenith
+    input_vars % solar_azimuth => omi_sazimuth
+    input_vars % viewing_zenith => omi_vzenith
+    input_vars % viewing_azimuth => omi_vazimuth
+    
     result_vars % column_amount => omi_column_amount
+    result_vars % column_uncert => omi_column_uncert
   end subroutine initialize_io_var_structs
 
   subroutine dealloc_retrieval_type (rt)

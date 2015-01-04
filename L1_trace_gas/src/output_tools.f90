@@ -7,8 +7,8 @@ module output_tools
   implicit none
   private
 
-  public create_output_file, close_output_file, write_radfit_output, &
-    write_fitting_statistics
+  public create_output_file, close_output_file, &
+    write_radfit_output, write_fitting_statistics
 
   type (tiof_object_type), private, target :: primary_output_file
 
@@ -100,37 +100,80 @@ contains
                               //' '//trim(tempo_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_column_amount, &
-                              nf90_float, &   ! data type in output file
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "column amount", &
                               units = "molec/cm2", &
                               valid_range = [-1.e30_r8, 1.e30_r8], &
-                              attlist=att_coord &
-                             )
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_column_uncert, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "column amount uncertainty", &
+                              units = "molec/cm2", &
+                              valid_range = [-1.e30_r8, 1.e30_r8], &
+                              attlist=att_coord)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_time, &
+                              nf90_double, &
+                              dimids = [dimids_xtrack_step(2)],  &
+                              comment = "exposure start time", &
+                              units = "s", &
+                              valid_range = [0.0_r8, 1.e30_r8])
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = tempo_var_latitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_latitude, &
-                              nf90_float, &   ! data type in output file
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
-                              attlist=att_latbnd &
-                             )
+                              attlist=att_latbnd)
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
                               att_text = tempo_var_longitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_longitude, &
-                              nf90_float, &   ! data type in output file
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
-                              attlist=att_lonbnd &
-                             )
+                              attlist=att_lonbnd)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_sz_angle, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "solar zenith angle at pixel center", &
+                              units = "degrees", &
+                              valid_range = [0.0_r8, 90.0_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_sa_angle, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "solar azimuth angle at pixel center", &
+                              units = "degrees", &
+                              valid_range = [-180.0_r8, 180.0_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_vz_angle, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "viewing zenith angle at pixel center", &
+                              units = "degrees", &
+                              valid_range = [0.0_r8, 90.0_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_va_angle, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "viewing azimuth angle at pixel center", &
+                              units = "degrees", &
+                              valid_range = [-180.0_r8, 180.0_r8])
+
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_main_dqf, &
                               nf90_short, &
@@ -170,13 +213,27 @@ contains
 
     if (errstat < 0) return
 
+    ! result_vars
     call tiof_put2d_r8 (obj, tempo_var_column_amount, iline, nblock, &
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_column_uncert, iline, nblock, &
+                        result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
 
+    ! input_vars
+    call tiof_put1d_r8 (obj, tempo_var_time, iline, nblock, &
+                        input_vars % time (0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tempo_var_longitude, iline, nblock, &
                         input_vars % longitude (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tempo_var_latitude, iline, nblock, &
                         input_vars % latitude (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r4 (obj, tempo_var_sz_angle, iline, nblock, &
+                        input_vars % solar_zenith (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r4 (obj, tempo_var_sa_angle, iline, nblock, &
+                        input_vars % solar_azimuth (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r4 (obj, tempo_var_vz_angle, iline, nblock, &
+                        input_vars % viewing_zenith (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r4 (obj, tempo_var_va_angle, iline, nblock, &
+                        input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
