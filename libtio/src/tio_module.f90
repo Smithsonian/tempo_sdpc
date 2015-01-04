@@ -82,7 +82,7 @@ module tio_module
     tiof_put_var_section, tiof_get_var_section, &
     tiof_inq_group, tiof_inq_dimlen, &
     tiof_get1d_r8, &
-                   tiof_put2d_r8, &
+    tiof_put1d_r8, tiof_put2d_r8, &
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
     tiof_put1d_i4, tiof_put2d_r4, &
     tiof_get2d_i2, tiof_get3d_i2, &
@@ -221,6 +221,26 @@ contains
     endif
   end subroutine tiof_get1d_r8
 
+  subroutine tiof_put1d_r8 (obj, name, step0, numsteps, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: step0, numsteps
+    real (kind=8), dimension (:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
+
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // name // " to file", errstat)
+      return
+    endif
+  end subroutine tiof_put1d_r8
+  
   subroutine tiof_get3d_r4 (obj, name, step0, numsteps, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
