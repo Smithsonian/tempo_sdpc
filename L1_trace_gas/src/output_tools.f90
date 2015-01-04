@@ -121,7 +121,7 @@ contains
                              )
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
-                              att_text = tempo_var_latitude_bounds)
+                              att_text = tempo_var_longitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_longitude, &
                               nf90_float, &   ! data type in output file
