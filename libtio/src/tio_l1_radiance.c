@@ -11,7 +11,8 @@
 #include "tio_template.h"
 #include "_tio.h"
 
-#define TIO_CHUNKSIZE_STEP 256
+#define TIO_CHUNKSIZE_STEP 1
+#define DO_CHUNKING        1
 
 #define COMMENT_WGS84 \
  "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
@@ -212,7 +213,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
    int shuffle, deflate=1, deflate_level=1;
-#if 0
+#ifdef DO_CHUNKING
    int storage = NC_CHUNKED;
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
@@ -336,7 +337,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                           TEMPO_VAR_RADIANCE, nc_strerror(status));
              return -1;
           }
-#if 0
+#ifdef DO_CHUNKING
         /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = dim_table->xtrack.len;
@@ -379,7 +380,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                           TEMPO_VAR_WAVELENGTH, nc_strerror(status));
              return -1;
           }
-#if 0
+#ifdef DO_CHUNKING
         /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = dim_table->xtrack.len;
