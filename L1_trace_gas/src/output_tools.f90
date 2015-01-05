@@ -43,8 +43,8 @@ contains
     !USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
     !USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
-    !USE OMSAO_variables_module, ONLY: n_fitvar_rad
-    !use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
+    !USE OMSAO_variables_module, ONLY: n_fitvar_rad, n_rad_wvl
+    use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels
@@ -116,6 +116,19 @@ contains
                               attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_fit_rms, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "fit rms", &
+                              valid_range = [0.0_r8, 1.e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_fit_convergence_flag, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "fit convergence flag", &
+                              valid_range = [-10.0_r8, 12344.0_r8])
+
+    call tiof_varlist_append (varlist, errstat, &
                               tempo_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
@@ -181,6 +194,15 @@ contains
                               comment = "main data quality flag", &
                               valid_range = [-1.0_r8, 2.0_r8])
 
+    if (yn_diagnostic_run) then
+      call tiof_varlist_append (varlist, errstat, &
+                                tempo_var_fit_iteration_count, &
+                                nf90_short, &
+                                dimids = dimids_xtrack_step,  &
+                                comment = "radiance fit iteration count", &
+                                valid_range = [0.0_r8, 32767.0_r8])      
+    endif
+
     call tiof_def_vars (obj, varlist, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -202,6 +224,7 @@ contains
   subroutine write_radfit_output (iline, nblock, nxtrack, &
                                   input_vars, result_vars, errstat)
     use OMSAO_omidata_module, only : input_vars_type, result_vars_type
+    use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
     implicit none
 
     integer, intent(in) :: iline, nblock, nxtrack
@@ -218,6 +241,15 @@ contains
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r8 (obj, tempo_var_column_uncert, iline, nblock, &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_fit_rms, iline, nblock, &
+                        result_vars % fit_rms (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_i2 (obj, tempo_var_fit_convergence_flag, iline, nblock, &
+                        result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
+    
+    if (yn_diagnostic_run) then
+      call tiof_put2d_i2 (obj, tempo_var_fit_iteration_count, iline, nblock, &
+                          result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
+    endif
 
     ! input_vars
     call tiof_put1d_r8 (obj, tempo_var_time, iline, nblock, &

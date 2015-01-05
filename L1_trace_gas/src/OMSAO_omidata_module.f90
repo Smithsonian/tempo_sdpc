@@ -38,6 +38,9 @@ MODULE OMSAO_omidata_module
   type, public :: result_vars_type
     real(kind=r8), dimension(:,:), pointer :: column_amount => null()
     real(kind=r8), dimension(:,:), pointer :: column_uncert => null()
+    real(kind=r8), dimension(:,:), pointer :: fit_rms => null()
+    integer(kind=i2), dimension(:,:), pointer :: fit_convergence_flag => null()
+    integer (kind=i2), dimension(:,:), pointer :: fit_iteration_count => null()
   end type result_vars_type
 
   type (input_vars_type) :: input_vars
@@ -131,8 +134,8 @@ MODULE OMSAO_omidata_module
     omi_column_amount, omi_column_uncert, &
     omi_fit_rms, omi_radfit_chisq
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1) :: omi_razimuth
-  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1) :: omi_fitconv_flag
-  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1) :: omi_itnum_flag
+  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1), target :: omi_fitconv_flag
+  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1), target :: omi_itnum_flag
 
   ! ----------------------------------------------------------------------------
   ! Correlations with main output product. Due to a bug in the HDF-EOS5 routines
@@ -258,6 +261,9 @@ contains
     
     result_vars % column_amount => omi_column_amount
     result_vars % column_uncert => omi_column_uncert
+    result_vars % fit_rms => omi_fit_rms
+    result_vars % fit_convergence_flag => omi_fitconv_flag
+    result_vars % fit_iteration_count => omi_itnum_flag
   end subroutine initialize_io_var_structs
 
   subroutine dealloc_retrieval_type (rt)

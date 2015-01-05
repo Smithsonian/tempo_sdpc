@@ -53,4 +53,7 @@ TEMPO_VAR_WAVELENGTH,"wavelength"
 #
 TEMPO_VAR_COLUMN_AMOUNT,"column_amount"
 TEMPO_VAR_COLUMN_UNCERT,"column_uncertainty"
+TEMPO_VAR_FIT_RMS,"fit_rms"
+TEMPO_VAR_FIT_CONVERGENCE_FLAG,"fit_convergence_flag"
+TEMPO_VAR_FIT_ITERATION_COUNT,"fit_iteration_count"
 TEMPO_VAR_MAIN_DQF,"main_data_quality_flag"
