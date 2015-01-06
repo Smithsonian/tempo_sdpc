@@ -38,13 +38,22 @@ MODULE OMSAO_omidata_module
   type, public :: result_vars_type
     real(kind=r8), dimension(:,:), pointer :: column_amount => null()
     real(kind=r8), dimension(:,:), pointer :: column_uncert => null()
-    real(kind=r8), dimension(:,:), pointer :: fit_rms => null()
+    real(kind=r8), dimension(:,:), pointer :: fit_rms_residual => null()
     integer(kind=i2), dimension(:,:), pointer :: fit_convergence_flag => null()
     integer (kind=i2), dimension(:,:), pointer :: fit_iteration_count => null()
   end type result_vars_type
 
   type (input_vars_type) :: input_vars
   type (result_vars_type) :: result_vars
+
+  type, public :: radfit_diagnostics_type
+    ! these arrays are dimension(n_fitvar_rad,num_xtrack,0:nblock-1):
+    real (kind=r8), dimension (:,:,:), pointer :: params => null()
+    real (kind=r8), dimension (:,:,:), pointer :: errors => null()
+    real (kind=r8), dimension (:,:,:), pointer :: correl => null()
+    ! this array is dimension(n_rad_wvl,num_xtrack,4,0:nblock-1):
+    real (kind=r8), dimension (:,:,:,:), pointer :: fitspc => null()
+  end type radfit_diagnostics_type
 
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
   PRIVATE r4, r8, i4, i2, i1
@@ -261,7 +270,7 @@ contains
     
     result_vars % column_amount => omi_column_amount
     result_vars % column_uncert => omi_column_uncert
-    result_vars % fit_rms => omi_fit_rms
+    result_vars % fit_rms_residual => omi_fit_rms
     result_vars % fit_convergence_flag => omi_fitconv_flag
     result_vars % fit_iteration_count => omi_itnum_flag
   end subroutine initialize_io_var_structs

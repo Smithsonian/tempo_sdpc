@@ -3,6 +3,7 @@ module output_tools
   use tell_module
   use tio_module
   use OMSAO_precision_module
+  use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
 
   implicit none
   private
@@ -38,13 +39,103 @@ contains
 
   end subroutine write_coordinate_vars
 
+  subroutine append_diagnostic_vars (obj, dimlist, errstat)
+    implicit none
+
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
+    integer, intent(inout) :: errstat
+
+    type (tiof_varlist_type) :: varlist
+    integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(3) :: dimids_var_xtrack_step, dimids_commwvl_xtrack_step
+
+    if (errstat < 0) return
+
+    ! lookup dimids for relevant array shapes
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_xtrack, tempo_dim_step], &
+                              dimids_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_fitvar, tempo_dim_xtrack, tempo_dim_step], &
+                              dimids_var_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_commwvl, tempo_dim_xtrack, tempo_dim_step], &
+                              dimids_commwvl_xtrack_step, &
+                              errstat)
+
+    ! append diagnostic variables
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_fit_iteration_count, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "radiance fit iteration count", &
+                              valid_range = [0.0_r8, 32767.0_r8])
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_params, &
+                              nf90_float, &
+                              dimids = dimids_var_xtrack_step, &
+                              comment = "fit parameter", &
+                              valid_range=[-1e30_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_errors, &
+                              nf90_float, &
+                              dimids = dimids_var_xtrack_step, &
+                              comment = "fit parameter uncertainty", &
+                              valid_range=[-1e30_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_correl, &
+                              nf90_float, &
+                              dimids = dimids_var_xtrack_step, &
+                              comment = "fit parameter correlation", &
+                              valid_range=[-1e30_r8, 1e30_r8])
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_measured_spectrum, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack_step, &
+                              comment = "measured spectrum", &
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = 2, &
+                              shuffle = .true.)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_measured_wavelengths, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack_step, &
+                              comment = "measured wavelength", &
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = 2, &
+                              shuffle = .true.)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_model_spectrum, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack_step, &
+                              comment = "model spectrum", &
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = 2, &
+                              shuffle = .true.)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_diag_fit_weights, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack_step, &
+                              comment = "spectrum fit weights", &
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = 2, &
+                              shuffle = .true.)
+
+    call tiof_def_vars (obj, varlist, errstat)
+
+  end subroutine append_diagnostic_vars
+
   subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
                                  errstat)
     !USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
-    !USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
-    !USE OMSAO_variables_module, ONLY: n_fitvar_rad, n_rad_wvl
-    use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
+    USE OMSAO_omidata_module,   ONLY: n_comm_wvl ! nclenfit
+    USE OMSAO_variables_module, ONLY: n_fitvar_rad
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels
@@ -70,7 +161,11 @@ contains
     ! Define a dimension list.
     call tiof_dimlist_append (dimlist, tempo_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tempo_dim_xtrack, num_xtrack, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_swt_levels, num_swlevels, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_swt_level, num_swlevels, errstat)
+    if (yn_diagnostic_run) then
+      call tiof_dimlist_append (dimlist, tempo_dim_fitvar, n_fitvar_rad, errstat)
+      call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
+    endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -116,10 +211,10 @@ contains
                               attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_fit_rms, &
+                              tempo_var_fit_rms_residual, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "fit rms", &
+                              comment = "fit rms residual", &
                               valid_range = [0.0_r8, 1.e30_r8])
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_fit_convergence_flag, &
@@ -194,15 +289,6 @@ contains
                               comment = "main data quality flag", &
                               valid_range = [-1.0_r8, 2.0_r8])
 
-    if (yn_diagnostic_run) then
-      call tiof_varlist_append (varlist, errstat, &
-                                tempo_var_fit_iteration_count, &
-                                nf90_short, &
-                                dimids = dimids_xtrack_step,  &
-                                comment = "radiance fit iteration count", &
-                                valid_range = [0.0_r8, 32767.0_r8])      
-    endif
-
     call tiof_def_vars (obj, varlist, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -219,17 +305,29 @@ contains
       return
     endif
 
+    if (yn_diagnostic_run) then
+      call append_diagnostic_vars (obj, dimlist, errstat)
+      if (errstat < 0) then
+        call tell_error (tell_io_write_error, &
+                         "create_output_file: defining diagnostic variables in "//trim(filename), &
+                         errstat)
+        return
+      endif
+    endif
+
   end subroutine create_output_file
 
-  subroutine write_radfit_output (iline, nblock, nxtrack, &
-                                  input_vars, result_vars, errstat)
-    use OMSAO_omidata_module, only : input_vars_type, result_vars_type
-    use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
+  subroutine write_radfit_output (iline, nblock, nxtrack, n_fitvar_rad, n_rad_wvl, &
+                                  input_vars, result_vars, radfit_diagnostics, &
+                                  errstat)
+    use OMSAO_omidata_module, only : input_vars_type, result_vars_type, &
+      radfit_diagnostics_type
     implicit none
 
-    integer, intent(in) :: iline, nblock, nxtrack
+    integer, intent(in) :: iline, nblock, nxtrack, n_fitvar_rad, n_rad_wvl
     type (input_vars_type), intent(in) :: input_vars
     type (result_vars_type), intent(in) :: result_vars
+    type (radfit_diagnostics_type), intent(in) :: radfit_diagnostics
     integer, intent(inout) :: errstat
 
     type (tiof_object_type), pointer :: obj => primary_output_file
@@ -241,14 +339,37 @@ contains
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r8 (obj, tempo_var_column_uncert, iline, nblock, &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_fit_rms, iline, nblock, &
-                        result_vars % fit_rms (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_fit_rms_residual, iline, nblock, &
+                        result_vars % fit_rms_residual (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_i2 (obj, tempo_var_fit_convergence_flag, iline, nblock, &
                         result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
-    
+
     if (yn_diagnostic_run) then
       call tiof_put2d_i2 (obj, tempo_var_fit_iteration_count, iline, nblock, &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
+
+      call tiof_put3d_r8 (obj, tempo_var_diag_params, iline, nblock, &
+                          radfit_diagnostics % params(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
+                          errstat)
+      call tiof_put3d_r8 (obj, tempo_var_diag_errors, iline, nblock, &
+                          radfit_diagnostics % errors(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
+                          errstat)
+      call tiof_put3d_r8 (obj, tempo_var_diag_correl, iline, nblock, &
+                          radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
+                          errstat)
+
+      call tiof_put3d_r8 (obj, tempo_var_diag_model_spectrum, iline, nblock, &
+                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1), &
+                          errstat)
+      call tiof_put3d_r8 (obj, tempo_var_diag_measured_spectrum, iline, nblock, &
+                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1), &
+                          errstat)
+      call tiof_put3d_r8 (obj, tempo_var_diag_measured_wavelengths, iline, nblock, &
+                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1), &
+                          errstat)
+      call tiof_put3d_r8 (obj, tempo_var_diag_fit_weights, iline, nblock, &
+                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1), &
+                          errstat)
     endif
 
     ! input_vars

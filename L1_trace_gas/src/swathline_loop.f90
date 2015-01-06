@@ -20,7 +20,7 @@ SUBROUTINE swathline_loops (                               &
     omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &
     omi_radiance_errstat,  &
     omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
-    retrieval_type, input_vars, result_vars
+    retrieval_type, input_vars, result_vars, radfit_diagnostics_type
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
@@ -66,13 +66,15 @@ SUBROUTINE swathline_loops (                               &
   ! CCM Array to hold (1) Fitted Spec (2) Observed Spec (3) Spec Pos (4) Weight flags
   ! ---------------------------------------------------------------------------------
   REAL (KIND=r8), DIMENSION (n_rad_wvl_max,nxtrack_max,4) :: fitspc_tmp
-  REAL (KIND=r8), DIMENSION (:,:,:,:), allocatable :: omi_fitspc
+  REAL (KIND=r8), DIMENSION (:,:,:,:), allocatable, target :: omi_fitspc
 
   ! -------------------------------------
   ! Correlations with main output product
   ! -------------------------------------
-  REAL (KIND=r8), DIMENSION (n_fitvar_rad,rpt%nxtrack,0:nlines_max-1) :: &
+  REAL (KIND=r8), DIMENSION (n_fitvar_rad,rpt%nxtrack,0:nlines_max-1), target :: &
     all_fitted_columns, all_fitted_errors, correlation_columns
+
+  type (radfit_diagnostics_type) :: radfit_diagnostics
 
   if (errstat < 0) return
 
@@ -287,7 +289,13 @@ SUBROUTINE swathline_loops (                               &
     ! ----------------------------------------------------------------
     IF ( .NOT. in_common_mode_loop ) THEN
 
-      call write_radfit_output (iline, nblock, nx, input_vars, result_vars, errstat)
+      radfit_diagnostics % params => all_fitted_columns
+      radfit_diagnostics % errors => all_fitted_errors
+      radfit_diagnostics % correl => correlation_columns
+      radfit_diagnostics % fitspc => omi_fitspc
+      call write_radfit_output (iline, nblock, nx, n_fitvar_rad, n_rad_wvl, &
+                                input_vars, result_vars, radfit_diagnostics, &
+                                errstat)
       if (errstat < 0) return
 
       CALL he5_write_radfit_output (                            &
