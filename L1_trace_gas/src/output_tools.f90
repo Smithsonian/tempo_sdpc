@@ -49,6 +49,8 @@ contains
     type (tiof_varlist_type) :: varlist
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_var_xtrack_step, dimids_commwvl_xtrack_step
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
 
     if (errstat < 0) return
 
@@ -79,19 +81,25 @@ contains
                               nf90_float, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter", &
-                              valid_range=[-1e30_r8, 1e30_r8])
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_errors, &
                               nf90_float, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter uncertainty", &
-                              valid_range=[-1e30_r8, 1e30_r8])
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_correl, &
                               nf90_float, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter correlation", &
-                              valid_range=[-1e30_r8, 1e30_r8])
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
 
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_measured_spectrum, &
@@ -99,32 +107,32 @@ contains
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
-                              deflate_level = 2, &
-                              shuffle = .true.)
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_measured_wavelengths, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured wavelength", &
                               valid_range=[-1e30_r8, 1e30_r8], &
-                              deflate_level = 2, &
-                              shuffle = .true.)
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_model_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "model spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
-                              deflate_level = 2, &
-                              shuffle = .true.)
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_fit_weights, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "spectrum fit weights", &
                               valid_range=[-1e30_r8, 1e30_r8], &
-                              deflate_level = 2, &
-                              shuffle = .true.)
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
 
     call tiof_def_vars (obj, varlist, errstat)
 
