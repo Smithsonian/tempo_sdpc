@@ -22,7 +22,6 @@ MODULE OMSAO_wfamf_module
     he5_start_2d, he5_edge_2d, he5_stride_2d, &
     he5_start_1d, he5_edge_1d, he5_stride_1d
 
-
   ! ====================================================================
   ! Wavelength dependent AMF factor specific variables
   ! ====================================================================
@@ -158,6 +157,9 @@ CONTAINS
     !     - VLIDORT calculated scattering weights
     ! =================================================================
     USE OMSAO_errstat_module
+    use OMSAO_omidata_module, only : amf_correction_type
+    use output_tools, only : write_albedo, write_gas_profile, &
+      write_scattering_weights, write_amf_correction
     IMPLICIT NONE
 
     ! ---------------
@@ -173,19 +175,21 @@ CONTAINS
     ! -----------------------------
     ! Output and modified variables
     ! -----------------------------
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: saocol, saodco, saoamf
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: saocol, saodco
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT), target :: saoamf
     INTEGER (KIND=i4),                          INTENT (INOUT) :: errstat
 
     ! ---------------
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                :: locerrstat, itt, spixx, epixx
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1)       :: amfdiag
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: amfgeo
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: l2cfr, l2ctp
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), target :: amfdiag
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo, cli_psurface
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology, cli_temperature, cli_heights
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw !, akernels
+    type (amf_correction_type) :: amf_corr
 
     locerrstat  = pge_errstat_ok
 
@@ -236,7 +240,11 @@ CONTAINS
       ! ---------------------------------------
       ! Write the albedo to the output file he5
       ! ---------------------------------------
-      IF (do_write) CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)
+      IF (do_write) then
+        CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
+        call write_albedo (albedo, nx, nt, errstat)
+        if (errstat < 0) return
+      endif
 
       ! -----------------------------
       ! Read the OMI L2 cloud product
@@ -260,7 +268,11 @@ CONTAINS
       ! -------------------------------------
       ! Write the climatology to the he5 file
       ! -------------------------------------
-      IF (do_write) CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat)
+      IF (do_write) then
+        CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+        call write_gas_profile (climatology, cli_heights, nx, nt, CmETA, errstat)
+        if (errstat < 0) return
+      endif
 
       ! ------------------------------------------------------------------
       ! Read VLIDORT look up table. Variables are declared at module level
@@ -304,7 +316,10 @@ CONTAINS
       ! -----------------------------------------------------------------
       ! Write out scattering weights, altitude grid and averaging kernels
       ! -----------------------------------------------------------------
-      IF (do_write) CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat)
+      IF (do_write) then
+        CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
+        call write_scattering_weights (scattw, nx, nt, CmETA, locerrstat)
+      endif
 
     END IF
 
@@ -320,8 +335,17 @@ CONTAINS
     ! Write AMFs, AMF diagnosting, and AMF-adjusted
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
-    IF (do_write) CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
-      amfgeo, amfdiag, l2cfr, l2ctp, locerrstat )
+    IF (do_write) then
+      CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
+                          amfgeo, amfdiag, l2cfr, l2ctp, locerrstat ) ! FIXME <-- (to be removed)
+      amf_corr % amf_molecule_specific => saoamf
+      amf_corr % amf_geometric => amfgeo
+      amf_corr % diagnostic_flag => amfdiag
+      amf_corr % cloud_fraction => l2cfr
+      amf_corr % cloud_pressure => l2ctp
+      call write_amf_correction (pge_idx, nx, nt, amf_corr, saocol, saodco, errstat)
+      if (errstat < 0) return
+    endif
 
     errstat = MAX ( errstat, locerrstat )
 
@@ -2321,7 +2345,6 @@ CONTAINS
     ! mwair     = 28.97_r8,
     ! du_to_cm2 = 2.6867773e+16_r8
     ! mwh2o     = 18.0_r8
-
 
     ! -------------------------------
     ! Air density conversion constant

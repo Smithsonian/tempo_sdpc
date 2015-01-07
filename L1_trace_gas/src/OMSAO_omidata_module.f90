@@ -55,6 +55,15 @@ MODULE OMSAO_omidata_module
     real (kind=r8), dimension (:,:,:,:), pointer :: fitspc => null()
   end type radfit_diagnostics_type
 
+  type, public :: amf_correction_type
+    ! 2d arrays have dimension (1:nxtrack,0:ntimes-1)
+    real (kind=r8), dimension (:,:), pointer :: amf_molecule_specific => null()
+    real (kind=r8), dimension (:,:), pointer :: amf_geometric => null()
+    real (kind=r8), dimension (:,:), pointer :: cloud_fraction => null()
+    real (kind=r8), dimension (:,:), pointer :: cloud_pressure => null()
+    integer (kind=i2), dimension (:,:), pointer :: diagnostic_flag => null()
+  end type amf_correction_type
+
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
   PRIVATE r4, r8, i4, i2, i1
   PRIVATE n_max_fitpars, max_rs_idx, max_calfit_idx, &

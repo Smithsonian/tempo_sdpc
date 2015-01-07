@@ -9,7 +9,9 @@ module output_tools
   private
 
   public create_output_file, close_output_file, &
-    write_radfit_output, write_fitting_statistics
+    write_radfit_output, write_fitting_statistics, &
+    write_albedo, write_gas_profile, write_scattering_weights, &
+    write_amf_correction
 
   type (tiof_object_type), private, target :: primary_output_file
 
@@ -38,6 +40,100 @@ contains
     call tiof_put1d_i4 (obj, tempo_dim_xtrack, 0, num_xtrack, xtrack_indices, errstat)
 
   end subroutine write_coordinate_vars
+
+  subroutine append_amf_vars (obj, dimlist, errstat)
+    implicit none
+
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
+    integer, intent(inout) :: errstat
+
+    type (tiof_varlist_type) :: varlist
+    integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(3) :: dimids_xtrack_step_levels
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
+
+    if (errstat < 0) return
+
+    ! lookup dimids for relevant array shapes
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_xtrack, tempo_dim_step], &
+                              dimids_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_xtrack, tempo_dim_step,tempo_dim_swt_level], &
+                              dimids_xtrack_step_levels, &
+                              errstat)
+
+    ! append amf variables
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_scattering_weights, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step_levels,  &
+                              comment = "scattering weights", &
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_climatology_levels, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step_levels,  &
+                              comment = "climatology levels", &
+                              units = "hPa", &
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_gas_profile, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step_levels,  &
+                              comment = "gas profile", &
+                              units = "ppb", &
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_albedo, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "albedo", &
+                              valid_range = [-1e30_r8, 1e30_r8])
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_molecule_specific, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "molecule-specific air mass factor (AMF)", &
+                              valid_range = [0.0_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_diagnostic_flag, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "diagnostic flag for molecule-specific air mass factor (AMF)", &
+                              valid_range = [-2.0_r8, 13127.0_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_geometric, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "geometric air mass factor (AMF)", &
+                              valid_range = [0.0_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_cloud_fraction, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "adjusted cloud fraction for AMF computation", &
+                              valid_range = [0.0_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_amf_cloud_pressure, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "adjusted cloud pressure for AMF computation", &
+                              valid_range = [0.0_r8, 1e30_r8])
+
+    call tiof_def_vars (obj, varlist, errstat)
+
+  end subroutine append_amf_vars
 
   subroutine append_diagnostic_vars (obj, dimlist, errstat)
     implicit none
@@ -313,6 +409,8 @@ contains
       return
     endif
 
+    call append_amf_vars (obj, dimlist, errstat)
+
     if (yn_diagnostic_run) then
       call append_diagnostic_vars (obj, dimlist, errstat)
       if (errstat < 0) then
@@ -454,6 +552,109 @@ contains
     endif
 
   end subroutine write_fitting_statistics
+
+  subroutine write_albedo (albedo, nxtrack, ntimes, errstat)
+    implicit none
+
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1), intent(in) :: albedo
+    integer, intent(in) :: nxtrack, ntimes
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+    call tiof_put2d_r8 (obj, tempo_var_amf_albedo, 0, ntimes, &
+                        albedo (1:nxtrack, 0:ntimes-1), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_albedo", errstat)
+      return
+    endif
+
+  end subroutine write_albedo
+
+  subroutine write_gas_profile (gas_profile, climatology_levels, &
+                                nxtrack, ntimes, nlevels, errstat)
+    implicit none
+
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: gas_profile
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: climatology_levels
+    integer, intent(in) :: nxtrack, ntimes, nlevels
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+    call tiof_put3d_r8 (obj, tempo_var_amf_gas_profile, 0, nlevels, &
+                        gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    call tiof_put3d_r8 (obj, tempo_var_amf_climatology_levels, 0, nlevels, &
+                        climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
+      return
+    endif
+
+  end subroutine write_gas_profile
+
+  subroutine write_scattering_weights (scattw, nxtrack, ntimes, nlevels, errstat)
+    implicit none
+
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: scattw
+    integer, intent(in) :: nxtrack, ntimes, nlevels
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+    call tiof_put3d_r8 (obj, tempo_var_amf_scattering_weights, 0, nlevels, &
+                        scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
+      return
+    endif
+
+  end subroutine write_scattering_weights
+
+  subroutine write_amf_correction (pge_idx, nxtrack, ntimes, amf_corr, &
+                                   amf_corr_column, amf_corr_column_uncertainty, &
+                                   errstat)
+    use OMSAO_omidata_module, only : amf_correction_type
+    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx
+    implicit none
+
+    integer, intent(in) :: pge_idx, nxtrack, ntimes
+    type (amf_correction_type), intent(in) :: amf_corr
+    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column
+    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column_uncertainty
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+
+    call tiof_put2d_i2 (obj, tempo_var_amf_diagnostic_flag, 0, ntimes, &
+                        amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_amf_geometric, 0, ntimes, &
+                        amf_corr % amf_geometric (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_amf_molecule_specific, 0, ntimes, &
+                        amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
+
+    if (pge_idx == pge_hcho_idx .or. pge_idx == pge_gly_idx) then
+      call tiof_put2d_r8 (obj, tempo_var_amf_cloud_fraction, 0, ntimes, &
+                          amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
+      call tiof_put2d_r8 (obj, tempo_var_amf_cloud_pressure, 0, ntimes, &
+                          amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
+    endif
+
+    call tiof_put2d_r8 (obj, tempo_var_column_amount, 0, ntimes, &
+                        amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_column_uncert, 0, ntimes, &
+                        amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_amf_correction", errstat)
+      return
+    endif
+
+  end subroutine write_amf_correction
 
   subroutine close_output_file (errstat)
     implicit none

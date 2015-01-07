@@ -51,6 +51,15 @@ TEMPO_VAR_WAVELENGTH,"wavelength"
 #
 # level 2 variables
 #
+TEMPO_VAR_AMF_ALBEDO,"albedo"
+TEMPO_VAR_AMF_CLIMATOLOGY_LEVELS,"climatology_levels"
+TEMPO_VAR_AMF_DIAGNOSTIC_FLAG,"amf_diagnostic_flag"
+TEMPO_VAR_AMF_CLOUD_FRACTION,"amf_cloud_fraction"
+TEMPO_VAR_AMF_CLOUD_PRESSURE,"amf_cloud_pressure"
+TEMPO_VAR_AMF_GAS_PROFILE,"gas_profile"
+TEMPO_VAR_AMF_GEOMETRIC,"amf_geometric"
+TEMPO_VAR_AMF_MOLECULE_SPECIFIC,"amf_molecule_specific"
+TEMPO_VAR_AMF_SCATTERING_WEIGHTS,"scattering_weights"
 TEMPO_VAR_COLUMN_AMOUNT,"column_amount"
 TEMPO_VAR_COLUMN_UNCERT,"column_uncertainty"
 TEMPO_VAR_DIAG_PARAMS,"fit_parameter"
