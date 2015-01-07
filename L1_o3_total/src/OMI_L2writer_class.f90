@@ -26,7 +26,7 @@ MODULE OMI_L2writer_class
     PUBLIC  :: L2_createFile
     PUBLIC  :: L2_setupSwath
     PUBLIC  :: L2_writeBlock
-    PUBLIC  :: L2_copyWriteBlock
+!    PUBLIC  :: L2_copyWriteBlock
     PUBLIC  :: L2_setDFattrs
     PUBLIC  :: L2_defSWgeofields
     PUBLIC  :: L2_defSWdatafields
@@ -497,76 +497,76 @@ MODULE OMI_L2writer_class
          RETURN
        END FUNCTION L2_writeBlock
 
-       FUNCTION L2_copyWriteBlock( swathID, this, iLine, nLw ) RESULT( status )
-
-         USE ISO_C_BINDING, ONLY: C_LONG
-
-         TYPE (L2_generic_type), INTENT( INOUT ) :: this
-         INTEGER (KIND = 4), INTENT( IN ) :: iLine
-         INTEGER (KIND = 4), INTENT( IN ), OPTIONAL :: nLw
-         INTEGER (KIND = 4), INTENT( IN ) :: swathID
-         INTEGER (KIND = 4) :: ierr, status
-         INTEGER (KIND = 4) :: ii, jj, id, k, rank, nL
-         !INTEGER (KIND=4 ), DIMENSION(3) :: start, stride, edge
-         INTEGER (KIND= C_LONG), DIMENSION(3) :: start, stride, edge
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-
-         IF( .NOT. this%initialized ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                  "input block not initialized", &
-                                  "L2_writeBlock", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         IF( iLine < 0 .OR. iLine >= this%nTotLine ) THEN
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "iLine out of range", "L2_writeBlock", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ELSE
-            this%iLine = iLine
-         ENDIF
-
-         IF( (iLine + this%nLine) > this%nTotLine ) THEN
-            nL = this%nTotLine - iLine
-         ELSE
-            nL = this%nLine
-         ENDIF
-         this%eLine = this%iLine + nL - 1
-         IF( PRESENT( nLw ) ) THEN
-            IF( nL > nLw ) nL = nLw
-         ENDIF
-
-         stride(:) = 1
-         DO id = 1, this%nFields
-           rank = this%rank(id)
-           DO k = 1, rank
-             IF( k == rank ) THEN
-                start(k) = iLine
-                edge(k)  = nL
-             ELSE
-                start(k) = 0
-                edge(k)  = this%dims(id,k)
-             ENDIF
-           ENDDO
-
-           ii = this%accuBlkSize(id-1)+1
-           jj = this%accuBlkSize(id)
-           status = HE5_swwrfld( swathID, this%fieldname(id), &
-                                 start, stride, edge, this%data(ii:jj) )
-           IF( status == -1 ) THEN
-              WRITE( msg,'(A)' ) "Write "//TRIM(this%fieldname(id))//&
-                                  " failed."
-              ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg,"L2_writeBlock",zero )
-              status = OZT_E_FAILURE
-              RETURN
-           ENDIF
-
-         ENDDO
-         status = OZT_S_SUCCESS
-         RETURN
-       END FUNCTION L2_copyWriteBlock
+!       FUNCTION L2_copyWriteBlock( swathID, this, iLine, nLw ) RESULT( status )
+!
+!         USE ISO_C_BINDING, ONLY: C_LONG
+!
+!         TYPE (L2_generic_type), INTENT( INOUT ) :: this
+!         INTEGER (KIND = 4), INTENT( IN ) :: iLine
+!         INTEGER (KIND = 4), INTENT( IN ), OPTIONAL :: nLw
+!         INTEGER (KIND = 4), INTENT( IN ) :: swathID
+!         INTEGER (KIND = 4) :: ierr, status
+!         INTEGER (KIND = 4) :: ii, jj, id, k, rank, nL
+!         !INTEGER (KIND=4 ), DIMENSION(3) :: start, stride, edge
+!         INTEGER (KIND= C_LONG), DIMENSION(3) :: start, stride, edge
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         IF( .NOT. this%initialized ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                  "input block not initialized", &
+!                                  "L2_writeBlock", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         IF( iLine < 0 .OR. iLine >= this%nTotLine ) THEN
+!            ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "iLine out of range", "L2_writeBlock", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ELSE
+!            this%iLine = iLine
+!         ENDIF
+!
+!         IF( (iLine + this%nLine) > this%nTotLine ) THEN
+!            nL = this%nTotLine - iLine
+!         ELSE
+!            nL = this%nLine
+!         ENDIF
+!         this%eLine = this%iLine + nL - 1
+!         IF( PRESENT( nLw ) ) THEN
+!            IF( nL > nLw ) nL = nLw
+!         ENDIF
+!
+!         stride(:) = 1
+!         DO id = 1, this%nFields
+!           rank = this%rank(id)
+!           DO k = 1, rank
+!             IF( k == rank ) THEN
+!                start(k) = iLine
+!                edge(k)  = nL
+!             ELSE
+!                start(k) = 0
+!                edge(k)  = this%dims(id,k)
+!             ENDIF
+!           ENDDO
+!
+!           ii = this%accuBlkSize(id-1)+1
+!           jj = this%accuBlkSize(id)
+!           status = HE5_swwrfld( swathID, this%fieldname(id), &
+!                                 start, stride, edge, this%data(ii:jj) )
+!           IF( status == -1 ) THEN
+!              WRITE( msg,'(A)' ) "Write "//TRIM(this%fieldname(id))//&
+!                                  " failed."
+!              ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg,"L2_writeBlock",zero )
+!              status = OZT_E_FAILURE
+!              RETURN
+!           ENDIF
+!
+!         ENDDO
+!         status = OZT_S_SUCCESS
+!         RETURN
+!       END FUNCTION L2_copyWriteBlock
 
        SUBROUTINE L2_disposeBlockW( this )
          TYPE (L2_generic_type), INTENT( INOUT ) :: this

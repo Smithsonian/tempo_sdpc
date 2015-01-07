@@ -16,10 +16,10 @@ MODULE OMI_L2reader_class
     PUBLIC  :: L2_readBlock
     PUBLIC  :: L2_getSWdim
     PUBLIC  :: L2_getLine
-    PUBLIC  :: L2_getNvADJinfo
-    PUBLIC  :: L2_getNvADJ
-    PUBLIC  :: L2_getYMD
-    PUBLIC  :: L2_getEarthSunDistance
+!    PUBLIC  :: L2_getNvADJinfo
+!    PUBLIC  :: L2_getNvADJ
+!    PUBLIC  :: L2_getYMD
+!    PUBLIC  :: L2_getEarthSunDistance
     PUBLIC  :: L2_disposeBlock
 
     CONTAINS
@@ -88,139 +88,139 @@ MODULE OMI_L2reader_class
          RETURN 
        END FUNCTION L2_getFileNames
 
-       FUNCTION L2_getYMD( L2_filename, Year, Month, Day ) RESULT( status )
-         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
-         INTEGER (KIND=4), INTENT(OUT) :: Year, Month, Day
-         INTEGER (KIND=4) :: status, ierr
-         INTEGER (KIND=4) :: SW_fileid 
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!       FUNCTION L2_getYMD( L2_filename, Year, Month, Day ) RESULT( status )
+!         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
+!         INTEGER (KIND=4), INTENT(OUT) :: Year, Month, Day
+!         INTEGER (KIND=4) :: status, ierr
+!         INTEGER (KIND=4) :: SW_fileid 
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
+!         IF( SW_fileid == -1 ) THEN
+!            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getYMD",zero)
+!            status = OZT_E_FAILURE
+!            RETURN 
+!         ENDIF
+!
+!         ierr = he5_ehrdglatt( SW_fileid, "GranuleDay", Day )
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleDay" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getYMD", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         ierr = he5_ehrdglatt( SW_fileid, "GranuleMonth", Month )
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleMonth" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getYMD", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!         
+!         ierr = he5_ehrdglatt( SW_fileid, "GranuleYear", Year )
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleYear" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getYMD", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!         ierr = HE5_SWclose( SW_fileid )
+!         status = OZT_S_SUCCESS
+!         RETURN
+!       END FUNCTION L2_getYMD
 
-         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
-         IF( SW_fileid == -1 ) THEN
-            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getYMD",zero)
-            status = OZT_E_FAILURE
-            RETURN 
-         ENDIF
+!       FUNCTION L2_getNvADJinfo( L2_filename, nWvc, nXtc ) RESULT( status )
+!         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
+!         INTEGER (KIND=4), INTENT(OUT) :: nWvc, nXtc
+!         INTEGER (KIND=4) :: status, ierr, numberType, count
+!         INTEGER (KIND=4) :: SW_fileid 
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
+!         IF( SW_fileid == -1 ) THEN
+!            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
+!            status = OZT_E_FAILURE
+!            RETURN 
+!         ENDIF
+!         ierr = he5_ehglattinf( SW_fileid, "WavelengthOfAdjustment", &
+!                                numberType,  count )
+!
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehglattinf:"// "WavelengthOfAdjustment" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
+!            status = OZT_E_FAILURE
+!            ierr = HE5_SWclose( SW_fileid )
+!            RETURN
+!         ELSE
+!            nWvc = count
+!         ENDIF
+!
+!         ierr = he5_ehglattinf( SW_fileid, "NVXAdjustment", numberType, count)
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehglattinf:"// "NVXAdjustment" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
+!            status = OZT_E_FAILURE
+!            ierr = HE5_SWclose( SW_fileid )
+!            RETURN
+!         ELSE
+!            nXtc = count/nWvc
+!         ENDIf
+!         ierr = HE5_SWclose( SW_fileid )
+!         status = OZT_S_SUCCESS
+!         RETURN
+!       END FUNCTION L2_getNvADJinfo
 
-         ierr = he5_ehrdglatt( SW_fileid, "GranuleDay", Day )
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleDay" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getYMD", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         ierr = he5_ehrdglatt( SW_fileid, "GranuleMonth", Month )
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleMonth" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getYMD", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-         
-         ierr = he5_ehrdglatt( SW_fileid, "GranuleYear", Year )
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleYear" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getYMD", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-         ierr = HE5_SWclose( SW_fileid )
-         status = OZT_S_SUCCESS
-         RETURN
-       END FUNCTION L2_getYMD
-
-       FUNCTION L2_getNvADJinfo( L2_filename, nWvc, nXtc ) RESULT( status )
-         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
-         INTEGER (KIND=4), INTENT(OUT) :: nWvc, nXtc
-         INTEGER (KIND=4) :: status, ierr, numberType, count
-         INTEGER (KIND=4) :: SW_fileid 
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-
-         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
-         IF( SW_fileid == -1 ) THEN
-            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
-            status = OZT_E_FAILURE
-            RETURN 
-         ENDIF
-         ierr = he5_ehglattinf( SW_fileid, "WavelengthOfAdjustment", &
-                                numberType,  count )
-
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehglattinf:"// "WavelengthOfAdjustment" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
-            status = OZT_E_FAILURE
-            ierr = HE5_SWclose( SW_fileid )
-            RETURN
-         ELSE
-            nWvc = count
-         ENDIF
-
-         ierr = he5_ehglattinf( SW_fileid, "NVXAdjustment", numberType, count)
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehglattinf:"// "NVXAdjustment" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJinfo",zero)
-            status = OZT_E_FAILURE
-            ierr = HE5_SWclose( SW_fileid )
-            RETURN
-         ELSE
-            nXtc = count/nWvc
-         ENDIf
-         ierr = HE5_SWclose( SW_fileid )
-         status = OZT_S_SUCCESS
-         RETURN
-       END FUNCTION L2_getNvADJinfo
-
-       FUNCTION L2_getNvADJ( L2_filename, crwl, swpcr ) RESULT( status )
-         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
-         REAL(KIND = 4), DIMENSION(:,:), INTENT(OUT) :: swpcr
-         REAL(KIND = 4), DIMENSION(:), INTENT(OUT) :: crwl
-         INTEGER (KIND=4) :: status, ierr
-         INTEGER (KIND=4) :: SW_fileid 
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-
-         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
-         IF( SW_fileid == -1 ) THEN
-            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJ",zero)
-            status = OZT_E_FAILURE
-            RETURN 
-         ENDIF
-
-         ierr = he5_ehrdglatt( SW_fileid, "WavelengthOfAdjustment", crwl )
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "WavelengthOfAdjustment" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getNvADJ", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         ierr = he5_ehrdglatt( SW_fileid, "NVXAdjustment", swpcr )
-         IF( ierr == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "NVXAdjustment" //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getNvADJ", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         ierr = HE5_SWclose( SW_fileid )
-         status = OZT_S_SUCCESS
-         RETURN
-       END FUNCTION L2_getNvADJ
+!       FUNCTION L2_getNvADJ( L2_filename, crwl, swpcr ) RESULT( status )
+!         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
+!         REAL(KIND = 4), DIMENSION(:,:), INTENT(OUT) :: swpcr
+!         REAL(KIND = 4), DIMENSION(:), INTENT(OUT) :: crwl
+!         INTEGER (KIND=4) :: status, ierr
+!         INTEGER (KIND=4) :: SW_fileid 
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
+!         IF( SW_fileid == -1 ) THEN
+!            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getNvADJ",zero)
+!            status = OZT_E_FAILURE
+!            RETURN 
+!         ENDIF
+!
+!         ierr = he5_ehrdglatt( SW_fileid, "WavelengthOfAdjustment", crwl )
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "WavelengthOfAdjustment" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getNvADJ", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         ierr = he5_ehrdglatt( SW_fileid, "NVXAdjustment", swpcr )
+!         IF( ierr == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "NVXAdjustment" //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getNvADJ", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         ierr = HE5_SWclose( SW_fileid )
+!         status = OZT_S_SUCCESS
+!         RETURN
+!       END FUNCTION L2_getNvADJ
 
        FUNCTION L2_newBlock( this, filename, swathname, fieldlist, nL, &
                              he5accessTag ) RESULT( status )
@@ -565,46 +565,46 @@ MODULE OMI_L2reader_class
          this%initialized = .FALSE.
        END SUBROUTINE L2_disposeBlock
        
-       FUNCTION L2_getEarthSunDistance( L2_filename, L2_swathname, &
-                                        EarthSunDistance) RESULT( status )
-         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename, L2_swathname
-         REAL (KIND=4), INTENT(OUT)      :: EarthSunDistance
-         INTEGER (KIND=4) :: status, ierr
-         INTEGER (KIND=4) :: SW_fileid, SW_id
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-
-         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
-         IF( SW_fileid == -1 ) THEN
-            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
-            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getEarthSunDistance",zero)
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         !! attach the swath
-         SW_id = he5_swattach( SW_fileid, L2_swathname )
-         IF( SW_id == -1 ) THEN
-            WRITE( msg,'(A)' ) "he5_swattach:"// TRIM(L2_swathname) //&
-                               " failed in file " // TRIM(L2_filename )
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
-                                  "L2_getEarthSunDistance", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         status = he5_swrdattr( SW_id, "EarthSunDistance", EarthSunDistance )
-         IF( status == -1 ) THEN
-            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, &
-                            "Read Swath Attribute EarthSunDistance failed.", &
-                            "L2_getEarthSunDistance", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-
-         ierr = HE5_SWdetach( SW_id )
-         ierr = HE5_SWclose( SW_fileid )
-         status = OZT_S_SUCCESS
-         RETURN
-       END FUNCTION L2_getEarthSunDistance
+!       FUNCTION L2_getEarthSunDistance( L2_filename, L2_swathname, &
+!                                        EarthSunDistance) RESULT( status )
+!         CHARACTER( LEN = * ), INTENT(IN) :: L2_filename, L2_swathname
+!         REAL (KIND=4), INTENT(OUT)      :: EarthSunDistance
+!         INTEGER (KIND=4) :: status, ierr
+!         INTEGER (KIND=4) :: SW_fileid, SW_id
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         SW_fileid = HE5_SWopen( L2_filename, HE5F_ACC_RDONLY )
+!         IF( SW_fileid == -1 ) THEN
+!            WRITE( msg,'(A)' ) "HE5_SWopen:"// TRIM(L2_filename) // " failed."
+!            ierr = OMI_SMF_setmsg(OZT_E_HDFEOS,msg,"L2_getEarthSunDistance",zero)
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         !! attach the swath
+!         SW_id = he5_swattach( SW_fileid, L2_swathname )
+!         IF( SW_id == -1 ) THEN
+!            WRITE( msg,'(A)' ) "he5_swattach:"// TRIM(L2_swathname) //&
+!                               " failed in file " // TRIM(L2_filename )
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, msg, &
+!                                  "L2_getEarthSunDistance", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         status = he5_swrdattr( SW_id, "EarthSunDistance", EarthSunDistance )
+!         IF( status == -1 ) THEN
+!            ierr = OMI_SMF_setmsg( OZT_E_HDFEOS, &
+!                            "Read Swath Attribute EarthSunDistance failed.", &
+!                            "L2_getEarthSunDistance", zero )
+!            status = OZT_E_FAILURE
+!            RETURN
+!         ENDIF
+!
+!         ierr = HE5_SWdetach( SW_id )
+!         ierr = HE5_SWclose( SW_fileid )
+!         status = OZT_S_SUCCESS
+!         RETURN
+!       END FUNCTION L2_getEarthSunDistance
 
 END MODULE OMI_L2reader_class

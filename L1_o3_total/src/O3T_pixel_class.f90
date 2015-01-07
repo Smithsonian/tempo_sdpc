@@ -33,7 +33,7 @@ MODULE O3T_pixel_class
     REAL (KIND = 8),PARAMETER::RADtoDEG=57.29577951308232087679815481410517
 
     PUBLIC :: O3T_pixgeo_set
-    PUBLIC :: O3T_pixrefl_set
+!    PUBLIC :: O3T_pixrefl_set
     
     TYPE, PUBLIC :: O3T_pixgeo_type
       ! values assocaitated with a set of solar and viwing zenith angles.
@@ -117,13 +117,13 @@ MODULE O3T_pixel_class
 
       END FUNCTION O3T_pixgeo_set
 
-      FUNCTION O3T_pixrefl_set( grref, clref, clfrac ) RESULT(this)
-        REAL(KIND=4), INTENT(IN) :: grref, clref, clfrac
-        TYPE(O3T_pixcover_type) :: this
-        this%grref = grref
-        this%clref = clref
-        this%clfrac = clfrac
-        this%ref = (1.0-clfrac)*grref + clfrac*clref
-      END FUNCTION O3T_pixrefl_set
+!      FUNCTION O3T_pixrefl_set( grref, clref, clfrac ) RESULT(this)
+!        REAL(KIND=4), INTENT(IN) :: grref, clref, clfrac
+!        TYPE(O3T_pixcover_type) :: this
+!        this%grref = grref
+!        this%clref = clref
+!        this%clfrac = clfrac
+!        this%ref = (1.0-clfrac)*grref + clfrac*clref
+!      END FUNCTION O3T_pixrefl_set
 
 END MODULE O3T_pixel_class

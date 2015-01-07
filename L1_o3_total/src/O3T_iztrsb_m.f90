@@ -45,7 +45,7 @@ MODULE O3T_iztrsb_m
     INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0
 
     PUBLIC  :: O3T_iztrsb
-    PUBLIC  :: O3T_iztrsbp
+!    PUBLIC  :: O3T_iztrsbp
 
     CONTAINS
 
@@ -122,50 +122,50 @@ MODULE O3T_iztrsb_m
         status = OZT_S_SUCCESS
       END FUNCTION O3T_iztrsb
 
-      FUNCTION O3T_iztrsbp( nv, iwl, iprof, pixGEO, coefs, &
-                            ezgrp, tgrp, sbgrp, knbgrp, &
-                            ezclp, tclp, sbclp, knbclp ) RESULT( status)
-        INTEGER (KIND=4), INTENT(IN) :: iwl, iprof
-        TYPE (nvalLUT_t), INTENT(IN) :: nv
-        TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
-        TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
-        REAL (KIND=4), INTENT(OUT) :: ezgrp, tgrp, sbgrp, knbgrp, &
-                                      ezclp, tclp, sbclp, knbclp 
-        INTEGER (KIND=4) :: status, ierr
-        INTEGER :: ipres
-        REAL (KIND=4), DIMENSION(nv%npres) :: ezofp, tofp, sbofp, knbofp
-        REAL (KIND=8) :: fac
-
-        DO ipres = 1, nv%npres 
-          status = O3T_lpoly_interp1( nv, ipres, iwl, iprof, pixGEO, &
-                              coefs, ezofp(ipres), tofp(ipres), sbofp(ipres), &
-                              knbofp(ipres) )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, "interpolation error", &
-                                   "O3T_iztrsb", zero )
-             RETURN
-          ENDIF
-        ENDDO 
-
-        ezgrp  = SUM(  ezofp*coefs%pgrp ) 
-         tgrp  = SUM(   tofp*coefs%pgrp ) 
-        sbgrp  = SUM(  sbofp*coefs%pgrp ) 
-        knbgrp = SUM( knbofp*coefs%pgrp )
-        IF( pixGEO%pcp >= 0.25 ) THEN 
-           ezclp = SUM(  ezofp*coefs%pclp ) 
-            tclp = SUM(   tofp*coefs%pclp ) 
-           sbclp = SUM(  sbofp*coefs%pclp ) 
-          knbclp = SUM( knbofp*coefs%pclp )
-        ELSE                                            ! linear extrapolation
-           fac  = (pixGEO%log_pcp-nv%presLog(3)) &
-                 /(nv%presLog(4) -nv%presLog(3))
-           ezclp = fac*( ezofp(4)- ezofp(3))+ ezofp(3)
-            tclp = fac*(  tofp(4)-  tofp(3))+  tofp(3)
-           sbclp = fac*( sbofp(4)- sbofp(3))+ sbofp(3)
-          knbclp = fac*(knbofp(4)-knbofp(3))+knbofp(3)
-        ENDIF
-        status = OZT_S_SUCCESS
-      END FUNCTION O3T_iztrsbp
+!      FUNCTION O3T_iztrsbp( nv, iwl, iprof, pixGEO, coefs, &
+!                            ezgrp, tgrp, sbgrp, knbgrp, &
+!                            ezclp, tclp, sbclp, knbclp ) RESULT( status)
+!        INTEGER (KIND=4), INTENT(IN) :: iwl, iprof
+!        TYPE (nvalLUT_t), INTENT(IN) :: nv
+!        TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
+!        TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
+!        REAL (KIND=4), INTENT(OUT) :: ezgrp, tgrp, sbgrp, knbgrp, &
+!                                      ezclp, tclp, sbclp, knbclp 
+!        INTEGER (KIND=4) :: status, ierr
+!        INTEGER :: ipres
+!        REAL (KIND=4), DIMENSION(nv%npres) :: ezofp, tofp, sbofp, knbofp
+!        REAL (KIND=8) :: fac
+!
+!        DO ipres = 1, nv%npres 
+!          status = O3T_lpoly_interp1( nv, ipres, iwl, iprof, pixGEO, &
+!                              coefs, ezofp(ipres), tofp(ipres), sbofp(ipres), &
+!                              knbofp(ipres) )
+!          IF( status .NE. OZT_S_SUCCESS ) THEN
+!             ierr = OMI_SMF_setmsg( OZT_E_INPUT, "interpolation error", &
+!                                   "O3T_iztrsb", zero )
+!             RETURN
+!          ENDIF
+!        ENDDO 
+!
+!        ezgrp  = SUM(  ezofp*coefs%pgrp ) 
+!         tgrp  = SUM(   tofp*coefs%pgrp ) 
+!        sbgrp  = SUM(  sbofp*coefs%pgrp ) 
+!        knbgrp = SUM( knbofp*coefs%pgrp )
+!        IF( pixGEO%pcp >= 0.25 ) THEN 
+!           ezclp = SUM(  ezofp*coefs%pclp ) 
+!            tclp = SUM(   tofp*coefs%pclp ) 
+!           sbclp = SUM(  sbofp*coefs%pclp ) 
+!          knbclp = SUM( knbofp*coefs%pclp )
+!        ELSE                                            ! linear extrapolation
+!           fac  = (pixGEO%log_pcp-nv%presLog(3)) &
+!                 /(nv%presLog(4) -nv%presLog(3))
+!           ezclp = fac*( ezofp(4)- ezofp(3))+ ezofp(3)
+!            tclp = fac*(  tofp(4)-  tofp(3))+  tofp(3)
+!           sbclp = fac*( sbofp(4)- sbofp(3))+ sbofp(3)
+!          knbclp = fac*(knbofp(4)-knbofp(3))+knbofp(3)
+!        ENDIF
+!        status = OZT_S_SUCCESS
+!      END FUNCTION O3T_iztrsbp
 
 !!Description:
 !   FUNCTION O3T_lpoly_interp1

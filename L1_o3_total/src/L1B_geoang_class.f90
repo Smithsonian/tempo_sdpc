@@ -27,7 +27,7 @@ MODULE L1B_geoang_class
    USE UTIL_tools_class
    IMPLICIT NONE
    PUBLIC  :: L1Bga_open, L1Bga_close
-   PUBLIC  :: L1Bga_getSWdims
+!   PUBLIC  :: L1Bga_getSWdims
    PUBLIC  :: L1Bga_getLine
 
    PRIVATE :: fill_geoang_blk
@@ -206,25 +206,25 @@ MODULE L1B_geoang_class
  !    nTimes: total number of lines in the swath
  !    nXtrack: number of cross-track pixels in the swath
 !!
-      FUNCTION L1Bga_getSWdims( this, nTimes_k, nXtrack_k ) RESULT( status )
-        TYPE (L1B_geoang_type), INTENT( INOUT ) :: this
-        INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: nTimes_k
-        INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: nXtrack_k
-        INTEGER (KIND = 4) :: status
-
-        IF( .NOT. this%initialized ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "input block not initialized", &
-                                 "L1Bga_getSWdims", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( PRESENT( nTimes_k     ) ) nTimes_k     = this%nTimes
-        IF( PRESENT( nXtrack_k    ) ) nXtrack_k    = this%nXtrack
-        status = OZT_S_SUCCESS
-        RETURN
-      END FUNCTION L1Bga_getSWdims
+!      FUNCTION L1Bga_getSWdims( this, nTimes_k, nXtrack_k ) RESULT( status )
+!        TYPE (L1B_geoang_type), INTENT( INOUT ) :: this
+!        INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: nTimes_k
+!        INTEGER (KIND = 4), OPTIONAL, INTENT(OUT) :: nXtrack_k
+!        INTEGER (KIND = 4) :: status
+!
+!        IF( .NOT. this%initialized ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "input block not initialized", &
+!                                 "L1Bga_getSWdims", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( PRESENT( nTimes_k     ) ) nTimes_k     = this%nTimes
+!        IF( PRESENT( nXtrack_k    ) ) nXtrack_k    = this%nXtrack
+!        status = OZT_S_SUCCESS
+!        RETURN
+!      END FUNCTION L1Bga_getSWdims
 
 !! Private function: fill_geoang_blk
  !    This is a private function which is only used by other functions 

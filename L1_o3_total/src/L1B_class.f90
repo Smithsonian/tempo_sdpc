@@ -24,5 +24,5 @@
 MODULE L1B_class
    USE L1B_geoang_class
    USE L1B_radirr_class
-   USE L1B_smlpix_class
+!   USE L1B_smlpix_class
 END MODULE L1B_class

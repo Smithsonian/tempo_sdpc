@@ -60,7 +60,7 @@ MODULE O3T_irrad_class
     PUBLIC  :: O3T_getIRR
     PUBLIC  :: O3T_freeIRR
     PUBLIC  :: O3T_AdjustIRREarthSun
-    PUBLIC  :: O3T_irrRepair
+!    PUBLIC  :: O3T_irrRepair
 
     CONTAINS
 
@@ -221,37 +221,37 @@ MODULE O3T_irrad_class
          ENDIF
        END SUBROUTINE O3T_AdjustIRREarthSun
 
-       SUBROUTINE O3T_irrRepair
-         INTEGER (KIND = 4 ) :: iX, iwl
-
-         DO iX = 1, SIZE( irrQAflags, 2 )
-           DO iwl = 1, SIZE( irrQAflags, 1 )
-             IF( IBITS( irrQAflags(iwl,iX), 0, 3 ) > 0 ) THEN
-                IF( iX == 1 ) THEN
-                   irradiance(iwl,iX) = irradiance(iwl,iX+1)
-                   irrQAflags(iwl,iX) = irrQAflags(iwl,iX+1)
-                ELSE IF( iX == SIZE( irrQAflags, 2 ) ) THEN
-                   irradiance(iwl,iX) = irradiance(iwl,iX-1)
-                   irrQAflags(iwl,iX) = irrQAflags(iwl,iX-1)
-                ELSE
-                   IF( IBITS( irrQAflags(iwl,iX-1), 0, 3 ) == 0 .AND. &
-                       IBITS( irrQAflags(iwl,iX+1), 0, 3 ) == 0 ) THEN
-                      irrQAflags(iwl,iX) = IOR( irrQAflags(iwl,iX-1), &
-                                                irrQAflags(iwl,iX+1) )
-
-                      irradiance(iwl,iX) = 0.5*( irradiance(iwl,iX-1) + &
-                                                 irradiance(iwl,iX+1) )
-                   ELSE IF( IBITS( irrQAflags(iwl,iX-1), 0, 3 ) == 0 ) THEN
-                      irrQAflags(iwl,iX) = irrQAflags(iwl,iX-1)
-                      irradiance(iwl,iX) = irradiance(iwl,iX-1)
-                   ELSE IF( IBITS( irrQAflags(iwl,iX+1), 0, 3 ) == 0 ) THEN
-                      irrQAflags(iwl,iX) = irrQAflags(iwl,iX+1)
-                      irradiance(iwl,iX) = irradiance(iwl,iX+1)
-                   ENDIF
-                ENDIF
-             ENDIF
-           ENDDO
-         ENDDO
-       END SUBROUTINE O3T_irrRepair
+!       SUBROUTINE O3T_irrRepair
+!         INTEGER (KIND = 4 ) :: iX, iwl
+!
+!         DO iX = 1, SIZE( irrQAflags, 2 )
+!           DO iwl = 1, SIZE( irrQAflags, 1 )
+!             IF( IBITS( irrQAflags(iwl,iX), 0, 3 ) > 0 ) THEN
+!                IF( iX == 1 ) THEN
+!                   irradiance(iwl,iX) = irradiance(iwl,iX+1)
+!                   irrQAflags(iwl,iX) = irrQAflags(iwl,iX+1)
+!                ELSE IF( iX == SIZE( irrQAflags, 2 ) ) THEN
+!                   irradiance(iwl,iX) = irradiance(iwl,iX-1)
+!                   irrQAflags(iwl,iX) = irrQAflags(iwl,iX-1)
+!                ELSE
+!                   IF( IBITS( irrQAflags(iwl,iX-1), 0, 3 ) == 0 .AND. &
+!                       IBITS( irrQAflags(iwl,iX+1), 0, 3 ) == 0 ) THEN
+!                      irrQAflags(iwl,iX) = IOR( irrQAflags(iwl,iX-1), &
+!                                                irrQAflags(iwl,iX+1) )
+!
+!                      irradiance(iwl,iX) = 0.5*( irradiance(iwl,iX-1) + &
+!                                                 irradiance(iwl,iX+1) )
+!                   ELSE IF( IBITS( irrQAflags(iwl,iX-1), 0, 3 ) == 0 ) THEN
+!                      irrQAflags(iwl,iX) = irrQAflags(iwl,iX-1)
+!                      irradiance(iwl,iX) = irradiance(iwl,iX-1)
+!                   ELSE IF( IBITS( irrQAflags(iwl,iX+1), 0, 3 ) == 0 ) THEN
+!                      irrQAflags(iwl,iX) = irrQAflags(iwl,iX+1)
+!                      irradiance(iwl,iX) = irradiance(iwl,iX+1)
+!                   ENDIF
+!                ENDIF
+!             ENDIF
+!           ENDDO
+!         ENDDO
+!       END SUBROUTINE O3T_irrRepair
        
 END MODULE O3T_irrad_class

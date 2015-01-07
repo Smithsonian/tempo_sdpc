@@ -6,7 +6,6 @@ L1B_geoang_class.f90
 L1B_getNames_m.f90
 L1B_metaData_class.f90
 L1B_radirr_class.f90
-L1B_smlpix_class.f90
 L2_attr_class.f90
 L2_data_structure.f90
 L2_metaData_class.f90
@@ -39,6 +38,5 @@ OMI_SMF_class.f90
 PGS_MET_class.f90
 PGS_PC_class.f90
 PGS_TD_class.f90
-UTIL_lh4_class.f90
 UTIL_lh5_class.f90
 UTIL_tools_class.f90

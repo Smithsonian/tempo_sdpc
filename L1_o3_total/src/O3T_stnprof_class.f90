@@ -86,7 +86,7 @@ MODULE O3T_stnprof_class
 
     PUBLIC  :: O3T_stnprof_idxf
     PUBLIC  :: O3T_ozfraction
-    PUBLIC  :: O3T_stnprof
+!    PUBLIC  :: O3T_stnprof
     PUBLIC  :: O3T_stnprof_1stG
     PUBLIC  :: O3T_prof_check
 
@@ -202,77 +202,77 @@ MODULE O3T_stnprof_class
 ! University of Maryland Baltimore County
 !!END Description:
 
-     FUNCTION O3T_stnprof( latitude, ozone, stnprof ) RESULT( status )
-       REAL (KIND=4), INTENT(IN) :: latitude, ozone
-       REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: stnprof
-       REAL (KIND=4), DIMENSION(SIZE(stnprof)) :: stnprm
-       INTEGER (KIND=4) :: nlayer
-       INTEGER (KIND=4) :: status, ierr
-       REAL (KIND=4) :: abslat, latfrac, ozfrac
-       INTEGER (KIND=4) :: ilat
-       INTEGER (KIND=4) :: indm1, indm2
-       INTEGER (KIND=4) :: indl1, indl2
-       INTEGER (KIND=4) :: indh1, indh2
-       CHARACTER (LEN =255) :: msg
-
-       status = OZT_S_SUCCESS
-       nlayer = SIZE( stnprof )
-
-       IF( nlayer < NLYR ) THEN
-          status = OZT_E_FAILURE
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "array stnprof size too small", &
-                                 "O3T_stnprof", zero )
-          RETURN
-       ENDIF
-    
-       abslat = ABS( latitude )
-       ! Estimate standard profile for given ozone and latitude
-       ! by interpolating a mid latitude standard profile
-       IF( abslat >= 20.0 .AND. abslat <= 60.0 ) THEN
-          ilat = 2
-          indm1 = O3T_stnprof_idxf( ozone, ilat ) 
-          indm2 = indm1 + 1
-          ozfrac = O3T_ozfraction( ozone, indm1 )
-          stnprm = stdprf(:,indm1)+ozfrac*(stdprf(:,indm2)-stdprf(:,indm1))
-       ENDIF
-
-       ! low to mid latitude interpolation
-       IF( abslat < 45.0 ) THEN
-          ilat = 1
-          indl1 = O3T_stnprof_idxf( ozone, ilat ) 
-          indl2 = indl1 + 1
-          ozfrac = O3T_ozfraction( ozone, indl1 )
-          stnprof = stdprf(:,indl1)+ozfrac*(stdprf(:,indl2)-stdprf(:,indl1))
-
-          IF( abslat > 20.0 ) THEN
-             latfrac = (abslat - 20.0)/25.0    ! 25.0 = (45.0-20.0)
-             stnprof = stnprof + latfrac*(stnprm - stnprof)
-          ENDIF
-       ELSE
-          ilat = 3
-          indh1 = O3T_stnprof_idxf( ozone, ilat ) 
-          indh2 = indh1 + 1
-          ozfrac = O3T_ozfraction( ozone, indh1 )
-          stnprof = stdprf(:,indh1)+ozfrac*(stdprf(:,indh2)-stdprf(:,indh1))
-!         write(*,*) 'indh1, indh2 =', indh1, indh2
-!         write(*,*) 'stnprof =', stnprof
-
-          IF( abslat < 60.0 ) THEN
-             latfrac = (abslat - 45.0)/15.0    ! 15.0 = (60.0-45.0)
-             stnprof = stnprm + latfrac*(stnprof - stnprm)
-          ENDIF
-       ENDIF
-!      write(*,*) 'stnprof =', stnprof
-
-       IF( ABS( SUM(stnprof(1:NLYR)) - ozone ) > 0.1 ) THEN
-          WRITE( msg, * ) 'non-linearity error in stnprf:', &
-                          'SUM(stnprof) =',  SUM(stnprof(1:NLYR)), &
-                          'Input Ozone  =',  ozone, &
-                          'difference   =',   SUM(stnprof(1:NLYR)) - ozone   
-          ierr = OMI_SMF_setmsg( OZT_W_GENERAL, msg, "O3T_stnprof", zero )
-       ENDIF
-
-     END FUNCTION O3T_stnprof
+!     FUNCTION O3T_stnprof( latitude, ozone, stnprof ) RESULT( status )
+!       REAL (KIND=4), INTENT(IN) :: latitude, ozone
+!       REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: stnprof
+!       REAL (KIND=4), DIMENSION(SIZE(stnprof)) :: stnprm
+!       INTEGER (KIND=4) :: nlayer
+!       INTEGER (KIND=4) :: status, ierr
+!       REAL (KIND=4) :: abslat, latfrac, ozfrac
+!       INTEGER (KIND=4) :: ilat
+!       INTEGER (KIND=4) :: indm1, indm2
+!       INTEGER (KIND=4) :: indl1, indl2
+!       INTEGER (KIND=4) :: indh1, indh2
+!       CHARACTER (LEN =255) :: msg
+!
+!       status = OZT_S_SUCCESS
+!       nlayer = SIZE( stnprof )
+!
+!       IF( nlayer < NLYR ) THEN
+!          status = OZT_E_FAILURE
+!          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "array stnprof size too small", &
+!                                 "O3T_stnprof", zero )
+!          RETURN
+!       ENDIF
+!    
+!       abslat = ABS( latitude )
+!       ! Estimate standard profile for given ozone and latitude
+!       ! by interpolating a mid latitude standard profile
+!       IF( abslat >= 20.0 .AND. abslat <= 60.0 ) THEN
+!          ilat = 2
+!          indm1 = O3T_stnprof_idxf( ozone, ilat ) 
+!          indm2 = indm1 + 1
+!          ozfrac = O3T_ozfraction( ozone, indm1 )
+!          stnprm = stdprf(:,indm1)+ozfrac*(stdprf(:,indm2)-stdprf(:,indm1))
+!       ENDIF
+!
+!       ! low to mid latitude interpolation
+!       IF( abslat < 45.0 ) THEN
+!          ilat = 1
+!          indl1 = O3T_stnprof_idxf( ozone, ilat ) 
+!          indl2 = indl1 + 1
+!          ozfrac = O3T_ozfraction( ozone, indl1 )
+!          stnprof = stdprf(:,indl1)+ozfrac*(stdprf(:,indl2)-stdprf(:,indl1))
+!
+!          IF( abslat > 20.0 ) THEN
+!             latfrac = (abslat - 20.0)/25.0    ! 25.0 = (45.0-20.0)
+!             stnprof = stnprof + latfrac*(stnprm - stnprof)
+!          ENDIF
+!       ELSE
+!          ilat = 3
+!          indh1 = O3T_stnprof_idxf( ozone, ilat ) 
+!          indh2 = indh1 + 1
+!          ozfrac = O3T_ozfraction( ozone, indh1 )
+!          stnprof = stdprf(:,indh1)+ozfrac*(stdprf(:,indh2)-stdprf(:,indh1))
+!!         write(*,*) 'indh1, indh2 =', indh1, indh2
+!!         write(*,*) 'stnprof =', stnprof
+!
+!          IF( abslat < 60.0 ) THEN
+!             latfrac = (abslat - 45.0)/15.0    ! 15.0 = (60.0-45.0)
+!             stnprof = stnprm + latfrac*(stnprof - stnprm)
+!          ENDIF
+!       ENDIF
+!!      write(*,*) 'stnprof =', stnprof
+!
+!       IF( ABS( SUM(stnprof(1:NLYR)) - ozone ) > 0.1 ) THEN
+!          WRITE( msg, * ) 'non-linearity error in stnprf:', &
+!                          'SUM(stnprof) =',  SUM(stnprof(1:NLYR)), &
+!                          'Input Ozone  =',  ozone, &
+!                          'difference   =',   SUM(stnprof(1:NLYR)) - ozone   
+!          ierr = OMI_SMF_setmsg( OZT_W_GENERAL, msg, "O3T_stnprof", zero )
+!       ENDIF
+!
+!     END FUNCTION O3T_stnprof
 
      FUNCTION O3T_stnprof_1stG( estozn, iplow, fgprf, dxdomega ) &
                                 RESULT( status )

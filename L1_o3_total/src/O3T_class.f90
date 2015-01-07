@@ -57,7 +57,7 @@ MODULE O3T_class
 
     PUBLIC  :: O3T_nvalm
     PUBLIC  :: O3T_step1
-    PUBLIC  :: O3T_step2, O3T_step2_omps
+    PUBLIC  :: O3T_step2!, O3T_step2_omps
     PUBLIC  :: O3T_step3
     PUBLIC  :: O3T_calcRefl
     PUBLIC  :: O3T_oznot
@@ -71,7 +71,7 @@ MODULE O3T_class
     PUBLIC  :: O3T_descendQ
     PUBLIC  :: O3T_getSatName
     PRIVATE :: O3T_dndomega
-    PRIVATE :: initRefl
+!    PRIVATE :: initRefl
     PRIVATE :: O3T_rcf1
     PRIVATE :: O3T_rcf2
 
@@ -504,153 +504,153 @@ MODULE O3T_class
 
       END FUNCTION O3T_step2
 
-      FUNCTION O3T_step2_omps(iwl_oz, iwl_refl, iplow, &
-                              pixGEO, pixSURF, aprftm, aprfoz, &
-                              coefs, stp1oz, res_stp1, dndomega_t, dndr,  &
-                              absrfl, stp2oz, res_stp2, dr, stp2prf, eff, &
-                              stp2oz_valid, skipit, dNdT)  RESULT( status )
-
-        ! Description: 
-        !     It is a clone of O3T_step2(), except a caller now must supply
-        !     apriori temperature profile and apiori ozone profile (namely 
-        !     aprftm(:) and aprfoz(:) respectively) to this function as 
-        !     input arguments. They are for a pixel of interest.
-        !
-        !     As a result, we no longer have use for the jday input, nor the
-        !     need to call the private function O3T_getshp(). The shape is
-        !     calculated simply by:  delshp(:) = aprfoz(:) - fgprf(:)
-        !
-        ! [JYLI @ Sun Feb 13 09:37:59 EST 2011]
-
-        INTEGER (KIND=4), INTENT(IN) :: iwl_oz, iwl_refl
-        TYPE (O3T_pixgeo_type), INTENT(INOUT) :: pixGEO
-        TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
-        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: aprftm
-        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: aprfoz
-        TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
-        INTEGER (KIND=4), INTENT(IN) :: iplow
-        REAL (KIND=4), INTENT(IN) :: stp1oz
-        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: res_stp1, dndomega_t, dndr
-        REAL (KIND=4), DIMENSION(:), OPTIONAL, INTENT(OUT) :: dNdT
-        LOGICAL, INTENT(IN) :: absrfl
-        REAL (KIND=4), INTENT(OUT) :: stp2oz, dr
-        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: res_stp2
-        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: stp2prf, eff
-        LOGICAL, INTENT(OUT) :: stp2oz_valid
-        LOGICAL, INTENT(INOUT) :: skipit
-
-        INTEGER (KIND=4) :: iprof
-        INTEGER :: ierr, status
- 
-        REAL (KIND=4), DIMENSION(nwl_com) :: dndomega 
-        REAL (KIND=4), DIMENSION(NLYR) :: fgprf, dxdomega
-        REAL (KIND=4), DIMENSION(NLYR) :: delshp
-        REAL (KIND=4), DIMENSION(nwl_com, NLYR) :: dndx, delnT 
-
-
-        IF( SIZE( res_stp1 ) .NE. SIZE( res_stp2 ) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                "res_stp1 and res_stp2 array size not equal", &
-                                "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( SIZE( stp2prf ) < NLYR .OR. SIZE( eff ) < NLYR )  THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "stp2prf[] and eff array size too small", &
-                                 "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( SIZE( aprftm ) < NLYR )  THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "aprftm[] array size too small", &
-                                 "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( SIZE( aprfoz ) < NLYR )  THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "aprfoz[] array size too small", &
-                                 "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        !! The quantity dndomega calculated from O3T_dndx is not
-        !! used at all in the function. It is discarded. While 
-        !! dndomega_t passed into function is used instead.
-
-        status = O3T_dndx( iplow, stp1oz, coefs, pixGEO, pixSURF, &
-                           dndx, dndomega )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                                 "Calculated DNDX failed", &
-                                 "O3T_step2", zero )
-           RETURN
-        ENDIF
-
-        ! determine first guess profile and dxdomega
-        status = O3T_stnprof_1stG( stp1oz, iplow, fgprf, dxdomega )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                    "O3T_stnprof_1stG:determine first guess profile failed", &
-                    "O3T_step2", zero )
-           RETURN
-        ENDIF
-
-        ! calculate temperature adjustments
-        status = O3T_delnbyT( dndx, fgprf, fgtmp, aprftm, delnT, dNdT )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_delnbyT: calculate temperature adjustment failed", &
-                     "O3T_step2", zero )
-           RETURN
-        ENDIF
-
-        ! determine apriori profile shape
-        IF( ANY(aprfoz(1:NLYR) < 0.0) ) THEN ! trap negative O3 value
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                     "Unable to determine apriori profile shape", &
-                     "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-        delshp(1:NLYR) = aprfoz(1:NLYR) - fgprf(1:NLYR)
- 
-        ! calculate step 2 ozone
-        stp2oz = stp1oz    !initialized to step 1 ozone
-        stp2oz_valid = .FALSE.
- 
-        status = O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, fgtmp, &
-                            dndx, delnT, dndomega_t, dndr, dxdomega, &
-                            aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_stp2oz: determine step 2 ozone failed", &
-                     "O3T_step2", zero )
-           RETURN
-        ENDIF
-        IF( stp2oz > 0.0 .AND. stp2oz < 900.0 )  THEN
-           stp2oz_valid = .TRUE.
-        ELSE
-           skipit = .TRUE.  !! temporay disabled for comparison wtih v806
-        ENDIF
-
-        status = O3T_resadj( iwl_refl, res_stp1, dndr, dndx, delnT, &
-                             fgprf, stp2prf, dr, res_stp2 )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_resadj: determine step 2 residue failed", &
-                     "O3T_step2", zero )
-           RETURN
-        ENDIF
-        pixSURF%ref =  pixSURF%ref + dr
-
-      END FUNCTION O3T_step2_omps
+!      FUNCTION O3T_step2_omps(iwl_oz, iwl_refl, iplow, &
+!                              pixGEO, pixSURF, aprftm, aprfoz, &
+!                              coefs, stp1oz, res_stp1, dndomega_t, dndr,  &
+!                              absrfl, stp2oz, res_stp2, dr, stp2prf, eff, &
+!                              stp2oz_valid, skipit, dNdT)  RESULT( status )
+!
+!        ! Description: 
+!        !     It is a clone of O3T_step2(), except a caller now must supply
+!        !     apriori temperature profile and apiori ozone profile (namely 
+!        !     aprftm(:) and aprfoz(:) respectively) to this function as 
+!        !     input arguments. They are for a pixel of interest.
+!        !
+!        !     As a result, we no longer have use for the jday input, nor the
+!        !     need to call the private function O3T_getshp(). The shape is
+!        !     calculated simply by:  delshp(:) = aprfoz(:) - fgprf(:)
+!        !
+!        ! [JYLI @ Sun Feb 13 09:37:59 EST 2011]
+!
+!        INTEGER (KIND=4), INTENT(IN) :: iwl_oz, iwl_refl
+!        TYPE (O3T_pixgeo_type), INTENT(INOUT) :: pixGEO
+!        TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
+!        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: aprftm
+!        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: aprfoz
+!        TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
+!        INTEGER (KIND=4), INTENT(IN) :: iplow
+!        REAL (KIND=4), INTENT(IN) :: stp1oz
+!        REAL (KIND=4), DIMENSION(:), INTENT(IN) :: res_stp1, dndomega_t, dndr
+!        REAL (KIND=4), DIMENSION(:), OPTIONAL, INTENT(OUT) :: dNdT
+!        LOGICAL, INTENT(IN) :: absrfl
+!        REAL (KIND=4), INTENT(OUT) :: stp2oz, dr
+!        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: res_stp2
+!        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: stp2prf, eff
+!        LOGICAL, INTENT(OUT) :: stp2oz_valid
+!        LOGICAL, INTENT(INOUT) :: skipit
+!
+!        INTEGER (KIND=4) :: iprof
+!        INTEGER :: ierr, status
+! 
+!        REAL (KIND=4), DIMENSION(nwl_com) :: dndomega 
+!        REAL (KIND=4), DIMENSION(NLYR) :: fgprf, dxdomega
+!        REAL (KIND=4), DIMENSION(NLYR) :: delshp
+!        REAL (KIND=4), DIMENSION(nwl_com, NLYR) :: dndx, delnT 
+!
+!
+!        IF( SIZE( res_stp1 ) .NE. SIZE( res_stp2 ) ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                "res_stp1 and res_stp2 array size not equal", &
+!                                "O3T_step2", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( SIZE( stp2prf ) < NLYR .OR. SIZE( eff ) < NLYR )  THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "stp2prf[] and eff array size too small", &
+!                                 "O3T_step2", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( SIZE( aprftm ) < NLYR )  THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "aprftm[] array size too small", &
+!                                 "O3T_step2", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( SIZE( aprfoz ) < NLYR )  THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "aprfoz[] array size too small", &
+!                                 "O3T_step2", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        !! The quantity dndomega calculated from O3T_dndx is not
+!        !! used at all in the function. It is discarded. While 
+!        !! dndomega_t passed into function is used instead.
+!
+!        status = O3T_dndx( iplow, stp1oz, coefs, pixGEO, pixSURF, &
+!                           dndx, dndomega )
+!        IF( status .NE. OZT_S_SUCCESS ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
+!                                 "Calculated DNDX failed", &
+!                                 "O3T_step2", zero )
+!           RETURN
+!        ENDIF
+!
+!        ! determine first guess profile and dxdomega
+!        status = O3T_stnprof_1stG( stp1oz, iplow, fgprf, dxdomega )
+!        IF( status .NE. OZT_S_SUCCESS ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
+!                    "O3T_stnprof_1stG:determine first guess profile failed", &
+!                    "O3T_step2", zero )
+!           RETURN
+!        ENDIF
+!
+!        ! calculate temperature adjustments
+!        status = O3T_delnbyT( dndx, fgprf, fgtmp, aprftm, delnT, dNdT )
+!        IF( status .NE. OZT_S_SUCCESS ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
+!                     "O3T_delnbyT: calculate temperature adjustment failed", &
+!                     "O3T_step2", zero )
+!           RETURN
+!        ENDIF
+!
+!        ! determine apriori profile shape
+!        IF( ANY(aprfoz(1:NLYR) < 0.0) ) THEN ! trap negative O3 value
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                     "Unable to determine apriori profile shape", &
+!                     "O3T_step2", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!        delshp(1:NLYR) = aprfoz(1:NLYR) - fgprf(1:NLYR)
+! 
+!        ! calculate step 2 ozone
+!        stp2oz = stp1oz    !initialized to step 1 ozone
+!        stp2oz_valid = .FALSE.
+! 
+!        status = O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, fgtmp, &
+!                            dndx, delnT, dndomega_t, dndr, dxdomega, &
+!                            aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz )
+!        IF( status .NE. OZT_S_SUCCESS ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
+!                     "O3T_stp2oz: determine step 2 ozone failed", &
+!                     "O3T_step2", zero )
+!           RETURN
+!        ENDIF
+!        IF( stp2oz > 0.0 .AND. stp2oz < 900.0 )  THEN
+!           stp2oz_valid = .TRUE.
+!        ELSE
+!           skipit = .TRUE.  !! temporay disabled for comparison wtih v806
+!        ENDIF
+!
+!        status = O3T_resadj( iwl_refl, res_stp1, dndr, dndx, delnT, &
+!                             fgprf, stp2prf, dr, res_stp2 )
+!        IF( status .NE. OZT_S_SUCCESS ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
+!                     "O3T_resadj: determine step 2 residue failed", &
+!                     "O3T_step2", zero )
+!           RETURN
+!        ENDIF
+!        pixSURF%ref =  pixSURF%ref + dr
+!
+!      END FUNCTION O3T_step2_omps
 
 
 !! Step 3:
@@ -1429,11 +1429,11 @@ MODULE O3T_class
 
       END FUNCTION O3T_glnchk
 
-      SUBROUTINE initRefl( grref, clref )
-        REAL (KIND=4), INTENT(OUT) :: grref, clref
-        grref = 0.15
-        clref = 0.80
-      END SUBROUTINE initRefl
+!      SUBROUTINE initRefl( grref, clref )
+!        REAL (KIND=4), INTENT(OUT) :: grref, clref
+!        grref = 0.15
+!        clref = 0.80
+!      END SUBROUTINE initRefl
       
 !!Description:
 ! PRIVATE FUNCTION O3T_rad

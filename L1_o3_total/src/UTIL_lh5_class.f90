@@ -60,7 +60,7 @@ MODULE UTIL_lh5_class
 
     PUBLIC :: UTIL_lh5_inquire
     PUBLIC :: UTIL_lh5_selectDS
-    PUBLIC :: UTIL_lh5_createDS
+!    PUBLIC :: UTIL_lh5_createDS
     PUBLIC :: UTIL_lh5_disposeDS
 
     CONTAINS
@@ -202,57 +202,57 @@ MODULE UTIL_lh5_class
         RETURN
       END FUNCTION UTIL_lh5_selectDS
 
-      FUNCTION UTIL_lh5_createDS( file_id, ds ) RESULT (status)
-        INTEGER (HID_T), INTENT( IN )  :: file_id 
-        TYPE (DSh5_T), INTENT( INOUT ) :: ds 
-        INTEGER(HID_T) :: dataspace     ! Dataspace identifier
-        INTEGER (KIND = 4) :: status
-        INTEGER          :: class
-        INTEGER (SIZE_T) :: size
-        INTEGER          :: irank, rank;
-        INTEGER(HSIZE_T), DIMENSION(MAXRANK) :: dims, maxdims
-        INTEGER (HID_T)  :: datatype 
-        INTEGER          :: error, ierr
-        CHARACTER (LEN =255) :: msg
-
-        status = OZT_S_SUCCESS
-
-        IF( ds%datatype < 0 ) THEN
-           status = OZT_E_FAILURE
-           WRITE( msg,* ) "valid datatype must be set before creation: ",&
-                           ds%name
-           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                  "UTIL_lh5_createDS", zero )
-           RETURN
-        ENDIF
-
-        !
-        ! Create the data space for the  dataset.
-        !
-        CALL h5screate_simple_f(ds%rank, ds%dims, ds%dataspace, error )
-        IF( error < zero ) THEN
-           status = OZT_E_FAILURE
-           WRITE( msg,* ) "h5screate_simple_f failed on dataset: ", ds%name
-           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                 "UTIL_lh5_createDS", zero )
-           RETURN
-        ENDIF
-
-        !
-        ! Create the dataset with default properties.
-        !
-        CALL h5dcreate_f(file_id, ds%name, ds%datatype, ds%dataspace, &
-                         ds%dataset_id, error)
-           
-        IF( error < zero ) THEN
-           status = OZT_E_FAILURE
-           WRITE( msg,* ) "h5dcreate_f dataspace failed on dataset: ", ds%name
-           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                 "UTIL_lh5_createDS", zero )
-           RETURN
-        ENDIF
-
-      END FUNCTION UTIL_lh5_createDS
+!      FUNCTION UTIL_lh5_createDS( file_id, ds ) RESULT (status)
+!        INTEGER (HID_T), INTENT( IN )  :: file_id 
+!        TYPE (DSh5_T), INTENT( INOUT ) :: ds 
+!        INTEGER(HID_T) :: dataspace     ! Dataspace identifier
+!        INTEGER (KIND = 4) :: status
+!        INTEGER          :: class
+!        INTEGER (SIZE_T) :: size
+!        INTEGER          :: irank, rank;
+!        INTEGER(HSIZE_T), DIMENSION(MAXRANK) :: dims, maxdims
+!        INTEGER (HID_T)  :: datatype 
+!        INTEGER          :: error, ierr
+!        CHARACTER (LEN =255) :: msg
+!
+!        status = OZT_S_SUCCESS
+!
+!        IF( ds%datatype < 0 ) THEN
+!           status = OZT_E_FAILURE
+!           WRITE( msg,* ) "valid datatype must be set before creation: ",&
+!                           ds%name
+!           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
+!                                  "UTIL_lh5_createDS", zero )
+!           RETURN
+!        ENDIF
+!
+!        !
+!        ! Create the data space for the  dataset.
+!        !
+!        CALL h5screate_simple_f(ds%rank, ds%dims, ds%dataspace, error )
+!        IF( error < zero ) THEN
+!           status = OZT_E_FAILURE
+!           WRITE( msg,* ) "h5screate_simple_f failed on dataset: ", ds%name
+!           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
+!                                 "UTIL_lh5_createDS", zero )
+!           RETURN
+!        ENDIF
+!
+!        !
+!        ! Create the dataset with default properties.
+!        !
+!        CALL h5dcreate_f(file_id, ds%name, ds%datatype, ds%dataspace, &
+!                         ds%dataset_id, error)
+!           
+!        IF( error < zero ) THEN
+!           status = OZT_E_FAILURE
+!           WRITE( msg,* ) "h5dcreate_f dataspace failed on dataset: ", ds%name
+!           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
+!                                 "UTIL_lh5_createDS", zero )
+!           RETURN
+!        ENDIF
+!
+!      END FUNCTION UTIL_lh5_createDS
 
       FUNCTION UTIL_lh5_get1DIK4( ds, data_out, start, count ) RESULT (status)
         TYPE (DSh5_T), INTENT( IN ) :: ds 

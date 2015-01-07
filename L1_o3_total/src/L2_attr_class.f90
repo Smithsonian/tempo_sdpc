@@ -392,33 +392,33 @@ MODULE L2_attr_class
          status = OZT_S_SUCCESS
        END FUNCTION OMI_writeSwathAttribute
 
-       FUNCTION PGEVersion2PhaseScience( InputPGEVersion ) RESULT( PS )
-         CHARACTER( LEN=PGSd_MET_MAX_STRING_SET_L ) :: PS
-         CHARACTER( LEN = * ), INTENT(IN) :: InputPGEVersion
-         INTEGER (KIND=4) :: ii, di, ierr 
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-
-         !! search for the two '.' in the PGE version string like 11.22.33.44, 
-         !! and extract it the part before the second '.', in the above example
-         !! it would be 11.22. If there is only one '.' in the stirng, return
-         !! the whole string. If there is no '.', return error.
-         ii = INDEX( InputPGEVersion, '.' )
-         PS = InputPGEVersion( ii+1: )
-         di = INDEX( PS, '.' )
-         IF( di >= 1 ) THEN
-            ii = ii -1 + di
-         ELSE
-            ii = LEN( InputPGEVersion )
-         ENDIF
-
-         PS = InputPGEVersion(1:ii) 
-         IF( ii <= 1 ) THEN
-            WRITE( msg,'(A)' ) "InputPGEVersion:"//InputPGEVersion //&
-                               "does not have the right format xx.xx.xx"
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                                  "PGEVersion2PhaseScience", zero )
-            RETURN
-         ENDIF
-       END FUNCTION PGEVersion2PhaseScience
+!       FUNCTION PGEVersion2PhaseScience( InputPGEVersion ) RESULT( PS )
+!         CHARACTER( LEN=PGSd_MET_MAX_STRING_SET_L ) :: PS
+!         CHARACTER( LEN = * ), INTENT(IN) :: InputPGEVersion
+!         INTEGER (KIND=4) :: ii, di, ierr 
+!         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+!
+!         !! search for the two '.' in the PGE version string like 11.22.33.44, 
+!         !! and extract it the part before the second '.', in the above example
+!         !! it would be 11.22. If there is only one '.' in the stirng, return
+!         !! the whole string. If there is no '.', return error.
+!         ii = INDEX( InputPGEVersion, '.' )
+!         PS = InputPGEVersion( ii+1: )
+!         di = INDEX( PS, '.' )
+!         IF( di >= 1 ) THEN
+!            ii = ii -1 + di
+!         ELSE
+!            ii = LEN( InputPGEVersion )
+!         ENDIF
+!
+!         PS = InputPGEVersion(1:ii) 
+!         IF( ii <= 1 ) THEN
+!            WRITE( msg,'(A)' ) "InputPGEVersion:"//InputPGEVersion //&
+!                               "does not have the right format xx.xx.xx"
+!            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
+!                                  "PGEVersion2PhaseScience", zero )
+!            RETURN
+!         ENDIF
+!       END FUNCTION PGEVersion2PhaseScience
 
 END MODULE L2_attr_class

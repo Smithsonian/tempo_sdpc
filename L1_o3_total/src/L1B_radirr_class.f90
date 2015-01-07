@@ -37,7 +37,7 @@ MODULE L1B_radirr_class
    PUBLIC  :: L1B_extractMqa
    PUBLIC  :: L1B_getIRRnmqa
    PUBLIC  :: L1B_selectIRR
-   PUBLIC  :: L1Bri_getLineWC
+!   PUBLIC  :: L1Bri_getLineWC
 
    PRIVATE :: fill_rad_blk
    PRIVATE :: fill_irr_blk
@@ -1503,67 +1503,67 @@ MODULE L1B_radirr_class
  !
  !    status: the return PGS_SMF status value
 !!
-      FUNCTION L1Bri_getLineWC( this, iLine, WlCoef, nWavelCoef, RefCol ) &
-                                RESULT (status)
-        TYPE (L1B_radirr_type), INTENT( INOUT ) :: this
-        INTEGER (KIND = 4), INTENT( IN ) :: iLine 
-        INTEGER (KIND = 4), INTENT( OUT ) :: nWavelCoef
-        INTEGER (KIND = 2), INTENT( OUT ) :: RefCol
-        REAL (KIND = 4), DIMENSION(:,:), INTENT( OUT ) :: WlCoef 
-
-        INTEGER :: i, j, k, di, ic
-        INTEGER (KIND = 4) :: Nwl_l
-        INTEGER (KIND = 4) :: status
-        CHARACTER (LEN = MAX_NAME_LENGTH ) :: msg
-
-        status = OZT_S_SUCCESS
-        IF( .NOT. this%initialized ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "input block not initialized", &
-                                 "L1Bri_getLineWC", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( iLine < 0 .OR. iLine >= this%nTimes ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "iLine out of range", &
-                                 "L1Bri_getLineWC", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        IF( iLine < this%iLine .OR. iLine > this%eLine ) THEN
-           IF( INDEX( this%swathname, "Earth" ) > 0 ) THEN
-              status = fill_rad_blk( this, iLine )
-           ELSE IF( INDEX( this%swathname, "Sun" ) > 0 ) THEN
-              status = fill_irr_blk( this, iLine )
-           ELSE
-              WRITE( msg,'(A)' ) "Unknow swathname:" // TRIM( this%swathname )
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "L1Bri_getLineWC", zero )
-              status = OZT_E_FAILURE
-              RETURN
-           ENDIF
-
-           IF( status .NE. OZT_S_SUCCESS ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_DATA_BLOCK, "retrieve data block", &
-                                    "L1Bri_getLineWC", zero )
-              RETURN
-           ENDIF
-        ENDIF
-
-        nWavelCoef = this%nWavelCoef
-        IF( SIZE( WlCoef, 2 ) /= this%nXtrack .OR. &
-            SIZE( WlCoef, 1 ) /= nWavelCoef  ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "WlCoef size not good", &
-                                 "L1Bri_getLineWC", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
-
-        j = iLine - this%iLine + 1
-        RefCol = this%wRefCol(j)   
-        WlCoef(:,:) = this%wCof(:,:,j)
-        RETURN
-      END FUNCTION L1Bri_getLineWC
+!      FUNCTION L1Bri_getLineWC( this, iLine, WlCoef, nWavelCoef, RefCol ) &
+!                                RESULT (status)
+!        TYPE (L1B_radirr_type), INTENT( INOUT ) :: this
+!        INTEGER (KIND = 4), INTENT( IN ) :: iLine 
+!        INTEGER (KIND = 4), INTENT( OUT ) :: nWavelCoef
+!        INTEGER (KIND = 2), INTENT( OUT ) :: RefCol
+!        REAL (KIND = 4), DIMENSION(:,:), INTENT( OUT ) :: WlCoef 
+!
+!        INTEGER :: i, j, k, di, ic
+!        INTEGER (KIND = 4) :: Nwl_l
+!        INTEGER (KIND = 4) :: status
+!        CHARACTER (LEN = MAX_NAME_LENGTH ) :: msg
+!
+!        status = OZT_S_SUCCESS
+!        IF( .NOT. this%initialized ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
+!                                 "input block not initialized", &
+!                                 "L1Bri_getLineWC", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( iLine < 0 .OR. iLine >= this%nTimes ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "iLine out of range", &
+!                                 "L1Bri_getLineWC", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        IF( iLine < this%iLine .OR. iLine > this%eLine ) THEN
+!           IF( INDEX( this%swathname, "Earth" ) > 0 ) THEN
+!              status = fill_rad_blk( this, iLine )
+!           ELSE IF( INDEX( this%swathname, "Sun" ) > 0 ) THEN
+!              status = fill_irr_blk( this, iLine )
+!           ELSE
+!              WRITE( msg,'(A)' ) "Unknow swathname:" // TRIM( this%swathname )
+!              ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "L1Bri_getLineWC", zero )
+!              status = OZT_E_FAILURE
+!              RETURN
+!           ENDIF
+!
+!           IF( status .NE. OZT_S_SUCCESS ) THEN
+!              ierr = OMI_SMF_setmsg( OZT_E_DATA_BLOCK, "retrieve data block", &
+!                                    "L1Bri_getLineWC", zero )
+!              RETURN
+!           ENDIF
+!        ENDIF
+!
+!        nWavelCoef = this%nWavelCoef
+!        IF( SIZE( WlCoef, 2 ) /= this%nXtrack .OR. &
+!            SIZE( WlCoef, 1 ) /= nWavelCoef  ) THEN
+!           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "WlCoef size not good", &
+!                                 "L1Bri_getLineWC", zero )
+!           status = OZT_E_FAILURE
+!           RETURN
+!        ENDIF
+!
+!        j = iLine - this%iLine + 1
+!        RefCol = this%wRefCol(j)   
+!        WlCoef(:,:) = this%wCof(:,:,j)
+!        RETURN
+!      END FUNCTION L1Bri_getLineWC
 
 END MODULE L1B_radirr_class
