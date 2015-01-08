@@ -366,7 +366,7 @@ contains
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(in) :: step0, numsteps
-    integer (kind=i4), dimension (:), intent(out) :: array
+    integer (kind=i4), dimension (:), intent(in) :: array
     integer, intent(inout) :: errstat
 
     integer :: err
