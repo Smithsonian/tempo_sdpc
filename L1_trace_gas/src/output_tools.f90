@@ -730,6 +730,10 @@ contains
                         common_mode % ccdpixel (1:nxtrack,1:2), errstat)
     call tiof_put1d_i4 (obj, tempo_var_common_mode_count, 0, nxtrack, &
                         common_mode % refspeccount (1:nxtrack), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_common_mode", errstat)
+      return
+    endif
 
   end subroutine write_common_mode
 
