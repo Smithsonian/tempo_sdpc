@@ -100,7 +100,7 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------
   ! TYPE declaration for Common Mode Spectrum
   ! -----------------------------------------
-  TYPE, PUBLIC :: CommonModeSpectrum
+  TYPE, PUBLIC :: common_mode_spectrum_type
     CHARACTER (LEN=MAX_STR_LEN)                                  :: Title, Units
     CHARACTER (LEN=MAX_STR_LEN)                                  :: FileName
     CHARACTER (LEN=MAX_STR_LEN)                                  :: FittingIdxName
@@ -111,13 +111,13 @@ MODULE OMSAO_variables_module
     INTEGER   (KIND=I4), DIMENSION (nxtrack_max)              :: RefSpecCount
     REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecWavs
     REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecData
-  END TYPE CommonModeSpectrum
+  END TYPE common_mode_spectrum_type
 
   ! -------------------------------
   ! Array for all Reference Spectra
   ! -------------------------------
   TYPE (ReferenceSpectrum),  DIMENSION (max_rs_idx) :: refspecs_original
-  TYPE (CommonModeSpectrum)                         :: common_mode_spec
+  TYPE (common_mode_spectrum_type)                  :: common_mode_spec
 
   ! -------------------------------------------
   ! A special beast: The undersampling spectrum

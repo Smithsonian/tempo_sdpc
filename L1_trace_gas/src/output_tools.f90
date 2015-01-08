@@ -9,7 +9,7 @@ module output_tools
   private
 
   public create_output_file, close_output_file, &
-    write_radfit_output, write_fitting_statistics, &
+    write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_gas_profile, write_scattering_weights, &
     write_amf_correction
 
@@ -40,6 +40,55 @@ contains
     call tiof_put1d_i4 (obj, tempo_dim_xtrack, 0, num_xtrack, xtrack_indices, errstat)
 
   end subroutine write_coordinate_vars
+
+  subroutine append_common_mode_vars (obj, dimlist, errstat)
+    implicit none
+
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
+    integer, intent(inout) :: errstat
+
+    type (tiof_varlist_type) :: varlist
+    integer, dimension(2) :: dimids_commwvl_xtrack, dimids_xtrack_pair
+
+    ! Define dimid arrays associated with common data field shapes.
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_commwvl, tempo_dim_xtrack], &
+                              dimids_commwvl_xtrack, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tempo_dim_xtrack, tempo_dim_pair], &
+                              dimids_xtrack_pair, &
+                              errstat)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_common_mode_spectrum, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack,  &
+                              comment = "common mode spectrum", &
+                              valid_range = [-1e30_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_common_mode_wavelengths, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack,  &
+                              comment = "common mode wavelengths", &
+                              valid_range = [-1e30_r8, 1e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_common_mode_count, &
+                              nf90_int, &
+                              dimids = [dimids_commwvl_xtrack(2)],  &
+                              comment = "common mode spectrum averaging count", &
+                              valid_range = [0.0_r8, 2147483647.0_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tempo_var_common_mode_ccd_pixel_range, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_pair,  &
+                              comment = "first and last ccd pixel number fitted", &
+                              valid_range = [0.0_r8, 1024.0_r8])
+
+    call tiof_def_vars (obj, varlist, errstat)
+
+  end subroutine append_common_mode_vars
 
   subroutine append_amf_vars (obj, dimlist, errstat)
     implicit none
@@ -235,14 +284,14 @@ contains
   end subroutine append_diagnostic_vars
 
   subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
-                                 errstat)
+                                 n_comm_wvl, errstat)
     !USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
-    USE OMSAO_omidata_module,   ONLY: n_comm_wvl ! nclenfit
+    !USE OMSAO_omidata_module,   ONLY: n_comm_wvl, nclenfit
     USE OMSAO_variables_module, ONLY: n_fitvar_rad
     implicit none
     character (len=*), intent(in) :: filename
-    integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels
+    integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels, n_comm_wvl
     integer, intent(inout) :: errstat
 
     type (tiof_object_type), pointer :: obj => primary_output_file
@@ -266,9 +315,10 @@ contains
     call tiof_dimlist_append (dimlist, tempo_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tempo_dim_xtrack, num_xtrack, errstat)
     call tiof_dimlist_append (dimlist, tempo_dim_swt_level, num_swlevels, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_pair, 2, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
     if (yn_diagnostic_run) then
       call tiof_dimlist_append (dimlist, tempo_dim_fitvar, n_fitvar_rad, errstat)
-      call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
     endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat < 0) then
@@ -412,6 +462,7 @@ contains
     call append_amf_vars (obj, dimlist, errstat)
 
     if (yn_diagnostic_run) then
+      call append_common_mode_vars (obj, dimlist, errstat)
       call append_diagnostic_vars (obj, dimlist, errstat)
       if (errstat < 0) then
         call tell_error (tell_io_write_error, &
@@ -645,6 +696,8 @@ contains
                           amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
     endif
 
+    ! Note that we're over-writing the column amount variable in the file
+    ! (to which we previously wrote the slant column values).
     call tiof_put2d_r8 (obj, tempo_var_column_amount, 0, ntimes, &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, tempo_var_column_uncert, 0, ntimes, &
@@ -655,6 +708,30 @@ contains
     endif
 
   end subroutine write_amf_correction
+
+  subroutine write_common_mode (nxtrack, ncommwvl, common_mode, errstat)
+    use OMSAO_variables_module, only : common_mode_spectrum_type
+    implicit none
+
+    integer (kind=i4), intent(in) :: nxtrack, ncommwvl
+    type (common_mode_spectrum_type), intent(in) :: common_mode
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+    if (.not.yn_diagnostic_run) return
+
+    call tiof_put2d_r8 (obj, tempo_var_common_mode_spectrum, 0, nxtrack, &
+                        common_mode % refspecdata (1:ncommwvl,1:nxtrack), errstat)
+    call tiof_put2d_r8 (obj, tempo_var_common_mode_wavelengths, 0, nxtrack, &
+                        common_mode % refspecwavs (1:ncommwvl,1:nxtrack), errstat)
+    call tiof_put2d_i2 (obj, tempo_var_common_mode_ccd_pixel_range, 0, 2, &
+                        common_mode % ccdpixel (1:nxtrack,1:2), errstat)
+    call tiof_put1d_i4 (obj, tempo_var_common_mode_count, 0, nxtrack, &
+                        common_mode % refspeccount (1:nxtrack), errstat)
+
+  end subroutine write_common_mode
 
   subroutine close_output_file (errstat)
     implicit none

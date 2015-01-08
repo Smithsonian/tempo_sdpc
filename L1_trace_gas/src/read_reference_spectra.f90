@@ -400,7 +400,7 @@ SUBROUTINE read_commonmode_spec ( &
 
   USE OMSAO_precision_module,   ONLY: r8, i4
   USE OMSAO_parameters_module,  ONLY: MAX_STR_LEN, max_spec_pts, NXTRACK_MAX
-  USE OMSAO_variables_module,   ONLY: CommonModeSpectrum
+  USE OMSAO_variables_module,   ONLY: common_mode_spectrum_type
   USE OMSAO_errstat_module
 
   IMPLICIT NONE
@@ -416,7 +416,7 @@ SUBROUTINE read_commonmode_spec ( &
   ! Output Parameters
   ! -----------------
   INTEGER (KIND=i4),         INTENT (INOUT) :: errstat
-  TYPE (CommonModeSpectrum), INTENT (OUT)   :: common_orig
+  TYPE (common_mode_spectrum_type), INTENT (OUT)   :: common_orig
 
   ! ----------------
   ! Local Variables
