@@ -132,7 +132,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     radfit_latrange,                &
     common_latrange,    &
     Radiance_Paras_Type, &
-    radiance_reference_lnums, l1b_radref_filename
+    radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
     yn_diagnostic_run, yn_remove_target, yn_disable_omi_features
   USE OMSAO_he5_module,       ONLY:  pge_swath_name
@@ -143,7 +143,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   use output_tools, only : create_output_file, close_output_file, &
-    write_fitting_statistics
+    write_fitting_statistics, write_common_mode
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -334,16 +334,21 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! use the number of levels in the climatology as the number of le
   ! vels of the reported scattering weights.
   ! ---------------------------------------------------------------
+  call tell_log (1, 'omi_fitting: calling omi_read_climatology')
   CALL omi_read_climatology (pge_idx, errstat )
 
   ! ----------------------------------------
   ! Initialization of HE5 output data fields
   ! ----------------------------------------
 
-  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, errstat)
+  write(logmsg,'(a,i4)')'omi_fitting: calling create_output_file, n_comm_wvl=',n_comm_wvl
+  call tell_log (1, logmsg)
+  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, n_comm_wvl, &
+                           errstat)
   if (errstat < 0) return
-
-  ! FIXME: error handling needs worked here
+  ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
+  !        netcdf output file creation occurs a bit later after some output dimensions
+  !        have been determined
   errstat = HE5_Init_Swath ( l2_filename, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
   if (errstat < 0) return
 
@@ -371,10 +376,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------------------------------------------
   ! Across-track loop for radiance wavelength calibration
   ! -----------------------------------------------------
+  write(logmsg,'(a,i4)')'omi_fitting: calling xtrack_radiance_wvl_calibration, n_comm_wvl=',n_comm_wvl
+  call tell_log (1, logmsg)
   omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (                          &
     first_wc_pix, last_wc_pix, n_max_rspec, n_comm_wvl, errstat )
   if (errstat < 0) return
+  write(logmsg,'(a,i4)')'omi_fitting: calling xtrack_radiance_wvl_calibration, n_comm_wvl=',n_comm_wvl
+  call tell_log (1, logmsg)
 
   ! --------------------------------------------------------------
   ! Terminate on not having any cross-track pixels left to process
@@ -521,7 +530,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! Write the just computed common mode to file
     ! -------------------------------------------
     IF ( yn_diagnostic_run ) then
-      CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, errstat )
+      write(logmsg,'(a,i4)')'omi_fitting: writing out common mode, n_comm_wvl=',n_comm_wvl
+      call tell_log (1, logmsg)
+      CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, errstat ) ! FIXME <-- (to be removed)
+      call write_common_mode (nxtrack_rad, n_comm_wvl, common_mode_spec, errstat)
       if (errstat < 0) return
     endif
 

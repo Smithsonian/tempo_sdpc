@@ -1,4 +1,5 @@
 module commonmode
+  use tell_module
   implicit none
   private
   public compute_common_mode, finalize_common_mode
@@ -88,7 +89,7 @@ contains
   end subroutine finalize_common_mode
 
   SUBROUTINE compute_common_mode ( &
-      do_reference_fit, xti, nwvl, fitwvl, fitres)
+      do_reference_fit, xti, nwvl, fitwvl, fitres, errstat)
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_indices_module,   ONLY: max_calfit_idx, comm_idx, mxs_idx
@@ -106,14 +107,18 @@ contains
     LOGICAL,                             INTENT (IN) :: do_reference_fit
     INTEGER (KIND=i4),                   INTENT (IN) :: xti, nwvl
     REAL    (KIND=r8), DIMENSION (nwvl), INTENT (IN) :: fitwvl, fitres
+    integer, intent(inout) :: errstat
 
     ! ---------------
     ! Local Variables
     ! ---------------
     INTEGER (KIND=i4) :: i
     REAL    (KIND=r8) :: comnorm
+    character (len=128) :: errmsg
 
     !CHARACTER (LEN=19), PARAMETER :: modulename = 'compute_common_mode'
+
+    if (errstat < 0) return
 
     IF ( do_reference_fit ) THEN
       ! -------------------------------------------------------------
@@ -160,6 +165,17 @@ contains
       IF ( omi_latitude(xti,omi_blockline_no) >= common_latrange(1) .AND. &
           omi_latitude(xti,omi_blockline_no) <= common_latrange(2)         )  THEN
 
+        ! the summed spectra should all have the same number of data points
+        if (common_mode_spec % num_wavelengths(xti) == 0) then
+          common_mode_spec % num_wavelengths(xti) = nwvl
+        else if (nwvl /= common_mode_spec % num_wavelengths(xti)) then
+          write (errmsg, '(a,i4,a,i4,a,i4)')'compute_common_mode:  (xti=',xti, &
+            ') expected nwvl=', common_mode_spec % num_wavelengths(xti), &
+            ', got nwvl=',nwvl
+          call tell_error (tell_runtime_error, errmsg, errstat)
+          return
+        endif
+
         comnorm = 1.0_r8
         IF ( nwvl > 0 ) THEN
           comnorm = SUM(ABS(fitres(1:nwvl)))/REAL(nwvl, KIND=r8)
@@ -175,6 +191,7 @@ contains
           common_mode_spec%RefSpecData(1:nwvl,xti) + fitres(1:nwvl)/comnorm
         common_mode_spec%RefSpecCount(xti)        = &
           common_mode_spec%RefSpecCount(xti) + 1
+
       END IF
     END IF
 

@@ -92,9 +92,17 @@ CONTAINS
     ! -------------------------------------------------
     ! Set the number of wavelengths for the common mode
     ! -------------------------------------------------
-    n_comm_wvl_out = MAXVAL ( omi_nwav_radref(first_pix:last_pix) )
-    IF ( MAXVAL(omi_nwav_rad(first_pix:last_pix,0)) > n_comm_wvl_out ) &
-      n_comm_wvl_out = MAXVAL(omi_nwav_rad(first_pix:last_pix,0))
+    !
+    ! FIXME! (JCH) I'm commenting this out for now.
+    !              If n_comm_wvl is redefined in this way, then the netcdf
+    !              common mode output fails because of the seemingly pointless
+    !              change in array shape.
+    !              The best solution may be to change the common mode calculation
+    !              to avoid using global data like n_comm_wvl and common_mode_spec.
+    !
+    !n_comm_wvl_out = MAXVAL ( omi_nwav_radref(first_pix:last_pix) )
+    !IF ( MAXVAL(omi_nwav_rad(first_pix:last_pix,0)) > n_comm_wvl_out ) &
+    !  n_comm_wvl_out = MAXVAL(omi_nwav_rad(first_pix:last_pix,0))
 
     if (yn_diagnostic_run) then
       open (unit=unit_xtrack_wavcal, file='diag.xtrack_wavcal', &
@@ -636,7 +644,7 @@ CONTAINS
           target_var(1:n_fincol_idx,ipix), &
           allfit_cols(1:n_fitvar_rad,ipix), allfit_errs(1:n_fitvar_rad,ipix), &
           corr_matrix(1:n_fitvar_rad,ipix), is_bad_pixel, fitspc(1:adj_num), &
-          errstat)
+          .false., errstat)
 
         IF ( is_bad_pixel ) CYCLE
 

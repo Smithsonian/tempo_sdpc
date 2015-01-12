@@ -111,6 +111,7 @@ MODULE OMSAO_variables_module
     INTEGER   (KIND=I4), DIMENSION (nxtrack_max)              :: RefSpecCount
     REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecWavs
     REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecData
+    integer   (kind=i4), dimension (nxtrack_max)              :: num_wavelengths = 0
   END TYPE common_mode_spectrum_type
 
   ! -------------------------------

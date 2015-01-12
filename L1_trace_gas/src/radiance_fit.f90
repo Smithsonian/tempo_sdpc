@@ -38,7 +38,7 @@ CONTAINS
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       prefit, o3fit_cols, o3fit_dcols,                              &
       target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out, &
-      errstat)
+      do_reference_fit, errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
@@ -74,6 +74,7 @@ CONTAINS
       pge_idx, ipix, n_rad_wvl_loc, num_fitres_loops, fitres_range
 
     type (prefit_type), intent(in) :: prefit
+    logical, intent(in) :: do_reference_fit
 
     ! -----------------------------
     ! (Possibly) Modified Variables
@@ -370,8 +371,9 @@ CONTAINS
       ! Update common mode spectrum
       ! ---------------------------
       CALL compute_common_mode ( &
-        .FALSE., ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
-        fitres(1:n_rad_wvl_loc))
+        do_reference_fit, ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
+        fitres(1:n_rad_wvl_loc), errstat)
+      if (errstat < 0) return
 
       ! =====================================================================
       ! Compute the actual number of radiance wavelengths used in the fitting

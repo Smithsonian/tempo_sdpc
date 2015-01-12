@@ -610,7 +610,7 @@ CONTAINS
           target_var(1:n_fincol_idx,ipix),                                          &
           allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
           corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &
-          errstat)
+          .true., errstat)
 
         IF ( is_bad_pixel ) CYCLE
 
