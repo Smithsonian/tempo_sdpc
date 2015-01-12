@@ -283,50 +283,16 @@ contains
 
   end subroutine append_diagnostic_vars
 
-  subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
-                                 n_comm_wvl, errstat)
-    !USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
-    !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
-    !USE OMSAO_omidata_module,   ONLY: n_comm_wvl, nclenfit
-    USE OMSAO_variables_module, ONLY: n_fitvar_rad
+  subroutine append_column_vars (obj, dimlist, errstat)
     implicit none
-    character (len=*), intent(in) :: filename
-    integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels, n_comm_wvl
-    integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
-    type (tiof_dimlist_type) :: dimlist
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
+    type (integer), intent(inout) :: errstat
+
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     integer, dimension(2) :: dimids_xtrack_step
-
-    if (errstat < 0) return
-
-    ! create a file
-    call tiof_create (obj, filename, ior(nf90_clobber,nf90_netcdf4), errstat)
-    if (errstat < 0) then
-      call tell_error (tell_io_write_error, &
-                       "create_output_file: creating file "//trim(filename), &
-                       errstat)
-      return
-    endif
-
-    ! Define a dimension list.
-    call tiof_dimlist_append (dimlist, tempo_dim_step, num_steps, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_xtrack, num_xtrack, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_swt_level, num_swlevels, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_pair, 2, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
-    if (yn_diagnostic_run) then
-      call tiof_dimlist_append (dimlist, tempo_dim_fitvar, n_fitvar_rad, errstat)
-    endif
-    call tiof_def_dims (obj, dimlist, errstat)
-    if (errstat < 0) then
-      call tell_error (tell_io_write_error, &
-                       "create_output_file: defining dimensions in "//trim(filename), &
-                       errstat)
-      return
-    endif
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
@@ -444,6 +410,52 @@ contains
                               valid_range = [-1.0_r8, 2.0_r8])
 
     call tiof_def_vars (obj, varlist, errstat)
+
+  end subroutine append_column_vars
+
+  subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
+                                 n_comm_wvl, errstat)
+    !USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
+    !USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
+    !USE OMSAO_omidata_module,   ONLY: n_comm_wvl, nclenfit
+    USE OMSAO_variables_module, ONLY: n_fitvar_rad
+    implicit none
+    character (len=*), intent(in) :: filename
+    integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels, n_comm_wvl
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_dimlist_type) :: dimlist
+
+    if (errstat < 0) return
+
+    ! create a file
+    call tiof_create (obj, filename, ior(nf90_clobber,nf90_netcdf4), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file: creating file "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    ! Define a dimension list.
+    call tiof_dimlist_append (dimlist, tempo_dim_step, num_steps, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_swt_level, num_swlevels, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_pair, 2, errstat)
+    call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
+    if (yn_diagnostic_run) then
+      call tiof_dimlist_append (dimlist, tempo_dim_fitvar, n_fitvar_rad, errstat)
+    endif
+    call tiof_def_dims (obj, dimlist, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file: defining dimensions in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    call append_column_vars (obj, dimlist, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
@@ -460,6 +472,12 @@ contains
     endif
 
     call append_amf_vars (obj, dimlist, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file: defining amf variables in "//trim(filename), &
+                       errstat)
+      return
+    endif
 
     if (yn_diagnostic_run) then
       call append_common_mode_vars (obj, dimlist, errstat)
