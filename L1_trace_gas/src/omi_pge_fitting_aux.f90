@@ -1080,7 +1080,7 @@ CONTAINS
 
       write(log_msg, *)'find_swathline_by_latitude: looking for lat=', &
         lat,' iline,j1,j2=',iline,j1,j2
-      call tell_log (1, log_msg)
+      call tell_log (3, log_msg)
 
       ! -----------------------------------------------------------------------
       ! Get first and last pixel.
@@ -1091,7 +1091,7 @@ CONTAINS
       lpix = xtrange(iline,2)
 
       write(log_msg, *)'find_swathline_by_latitude: fpix,lpix=',fpix,lpix
-      call tell_log (1, log_msg)
+      call tell_log (3, log_msg)
 
       IF ( iline < sline .OR. iline > eline ) THEN
         locerr = pge_errstat_error

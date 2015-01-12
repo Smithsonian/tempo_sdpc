@@ -107,6 +107,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Comnpute AMF bis
   ! ----------------
   do_write = .TRUE.
+  call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation_bis')
   CALL amf_calculation_bis (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza,     &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
@@ -121,6 +122,7 @@ SUBROUTINE omi_pge_postprocess ( &
     call tell_error (tell_malloc_error, "omi_pge_postprocess:  allocate failed", errstat)
     return
   endif
+  call tell_log (1, 'omi_pge_postprocess:  calling compute_fitting_statistics')
   CALL compute_fitting_statistics ( &
     pge_idx, ntimes, nxtrack, xtrange, &
     saocol, saodco, saorms, saofcf, fit_stats, locerrstat )
@@ -131,6 +133,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ---------------------------------------
   ! Apply cross-track destriping correction
   ! ---------------------------------------
+  call tell_log (1, 'omi_pge_postprocess:  calling xtrack_destriping')
   CALL xtrack_destriping (                                    &
     pge_idx, ntimes, nxtrack, do_process_line, xtrange,         &
     lat, saocol, & !saodco, saoamf, saofcf,
@@ -141,6 +144,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ---------------------------------------------------------------
   IF ((yn_refseccor) .AND. ( pge_idx == pge_hcho_idx ) .AND.  &
     (yn_radiance_reference)) THEN
+    call tell_log (1, 'omi_pge_postprocess:  calling Reference_Sector_correction')
     CALL Reference_Sector_correction (ntimes, nxtrack, & !xtrange, lat,
       saocol, saodco, saoamf, fit_stats % quality_flag, pge_idx, n_max_rspec, &
       locerrstat)

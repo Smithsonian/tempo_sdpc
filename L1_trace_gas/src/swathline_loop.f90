@@ -10,7 +10,7 @@ SUBROUTINE swathline_loops (                               &
     nlines_max, nUTCdim, NXTRACK_MAX
   USE OMSAO_indices_module,    ONLY: n_max_fitpars
   USE OMSAO_variables_module,  ONLY:  &
-    n_fitvar_rad, l1b_rad_filename, verb_thresh_lev, n_fincol_idx, fincol_idx, &
+    n_fitvar_rad, l1b_rad_filename, n_fincol_idx, fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, &
     fitvar_rad_init, fitvar_rad_saved
   use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run
@@ -51,7 +51,7 @@ SUBROUTINE swathline_loops (                               &
   ! ---------------
   ! Local variables
   ! ---------------
-  INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, estat, locerrstat
+  INTEGER   (KIND=i4)      :: iline, iloop, nblock, fpix, lpix, ipix, locerrstat
   CHARACTER (LEN=MAX_STR_LEN) :: addmsg
   INTEGER (KIND=i4) :: nt, nx, nccd, scanline_no
   integer, parameter :: unit_column_amount=22
@@ -75,6 +75,7 @@ SUBROUTINE swathline_loops (                               &
     all_fitted_columns, all_fitted_errors, correlation_columns
 
   type (radfit_diagnostics_type) :: radfit_diagnostics
+  character (len=128) :: logmsg
 
   if (errstat < 0) return
 
@@ -138,9 +139,9 @@ SUBROUTINE swathline_loops (                               &
     ! ------------------------------
     ! Get NBLOCK radiance lines
     ! ------------------------------
-    write(*,*)'swathline_loops calling omi_read_radiance_lines, iline=',iline
-    CALL omi_read_radiance_lines (                   &
-      l1b_rad_filename, iline, nx, nblock, nccd, locerrstat )
+    write (logmsg,'(a,i4)')'swathline_loops: calling omi_read_radiance_lines, iline=',iline
+    call tell_log (1, logmsg)
+    CALL omi_read_radiance_lines (l1b_rad_filename, iline, nx, nblock, nccd, locerrstat )
     ! -----------------------------------------------------------------------------------
 
     ! ------------------------------------------
@@ -190,9 +191,9 @@ SUBROUTINE swathline_loops (                               &
       ! ------------------
       ! Report on progress
       ! ------------------
-      addmsg = ''
       WRITE (addmsg,'(A,I5)') 'Working on scan line', scanline_no
-      estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), " ", vb_lev_omidebug )
+      call tell_log (2, trim(addmsg))
+      !estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), " ", vb_lev_omidebug )
       !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
       IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN
@@ -216,8 +217,9 @@ SUBROUTINE swathline_loops (                               &
         WRITE (addmsg,'(I5, 1x, I4, 3(1PE15.5),I5)') scanline_no, ipix, &
           omi_column_amount(ipix, iloop), omi_column_uncert(ipix, iloop), &
           omi_fit_rms   (ipix, iloop), MAX(-1,omi_itnum_flag(ipix, iloop))
-        estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )
-        IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(addmsg)
+        call tell_log (2, trim(addmsg))
+        !estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(addmsg), " ", vb_lev_omidebug )
+        !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(addmsg)
 
         if (yn_diagnostic_run) then
           write (unit_column_amount, '(a)')trim(addmsg)

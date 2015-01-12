@@ -73,7 +73,6 @@ contains
       write(log_msg,'(1pe12.5,75(1x,1pe12.5))')sum(residuals(1:num_residuals)**2), &
         params(1:num_params)
       call tell_log (log_level, trim(log_msg))
-      call flush()
     endif
 
   end subroutine elsunc_objective

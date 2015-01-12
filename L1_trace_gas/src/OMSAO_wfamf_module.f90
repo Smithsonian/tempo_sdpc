@@ -2356,6 +2356,8 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=11), PARAMETER :: modulename = 'compute_amf'
 
+    if (errstat < 0) return
+
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------

@@ -1,5 +1,7 @@
 MODULE pcf_file_module
 
+  use tell_module
+  implicit none
   character (LEN=13), parameter :: modulename = 'read_pcf_file'
   private modulename
 
@@ -46,7 +48,9 @@ CONTAINS
 
     locerr = pgs_smf_teststatuslevel (locerr)
 
-    write (*,*) "pgs_get_reference: lun=", lun, ", lunstr=", TRIM(lunstr), " version=", version, " file=", trim(file)
+    write (errstr,'(a,i9,a,a,a,i4,a,a)')"pgs_get_reference: lun=", lun, ", lunstr=", TRIM(lunstr), &
+      " version=", version, " file=", trim(file)
+    call tell_log (1, errstr)
 
     file = ADJUSTL(file)
     filelen = LEN_TRIM(file)

@@ -87,6 +87,7 @@ CONTAINS
     INTEGER (KIND=i4) :: ntrr, nxrr, nwrr
     integer (kind=i2) :: bad_qflg_mask
     real (kind=r8) :: sum_cntr8
+    character (len=128) :: logmsg
 
     if (errstat < 0) return
 
@@ -122,7 +123,7 @@ CONTAINS
     ! Locate the swath line numbers corresponding the center of the latitude
     ! range to average into radiance reference spectrum.
     ! ----------------------------------------------------------------------
-    call tell_log (1, 'omi_get_radiance_reference:  calling '// &
+    call tell_log (3, 'omi_get_radiance_reference:  calling '// &
                      'find_swathline_by_latitude (midpt_line)')
     CALL find_swathline_by_latitude ( &
       nxrr, 0, ntrr-1, latr4(1:nxrr,0:ntrr-1), lat_midpt, &
@@ -137,13 +138,13 @@ CONTAINS
       radiance_reference_lnums(1:2) = midpt_line
       have_limits(1:2)           = .TRUE.
     ELSE
-      call tell_log (1, 'omi_get_radiance_reference:  calling '// &
+      call tell_log (3, 'omi_get_radiance_reference:  calling '// &
                        'find_swathline_by_latitude (have_limits(1))')
       CALL find_swathline_by_latitude ( &
         nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
         xtrange, radiance_reference_lnums(1), have_limits(1)   )
         !xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
-      call tell_log (1, 'omi_get_radiance_reference:  calling '// &
+      call tell_log (3, 'omi_get_radiance_reference:  calling '// &
                        'find_swathline_by_latitude (have_limits(2))')
       CALL find_swathline_by_latitude ( &
         nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
@@ -205,9 +206,9 @@ CONTAINS
       ! Get NTIMES_LOOP radiance lines
       ! ------------------------------
       ! omi_read_radiance_lines also sets omi_nwav_rad
-      write(*,*)'omi_get_radiance_reference calling omi_read_radiance_lines, iline=',iline
-      CALL omi_read_radiance_lines (              &
-        rpt_rr%l1bfilename, iline, nxrr, nloop, nwrr, errstat )
+      write(logmsg,'(a,i4)')'omi_get_radiance_reference: calling omi_read_radiance_lines, iline=',iline
+      call tell_log (1, logmsg)
+      CALL omi_read_radiance_lines (rpt_rr%l1bfilename, iline, nxrr, nloop, nwrr, errstat )
 
       ! Global used to set the dimension of fitspc
       n_rad_wvl_max = MAXVAL(omi_nwav_rad(:,0))
@@ -624,9 +625,10 @@ CONTAINS
       ! ------------------
       ! Report on progress
       ! ------------------
-      CALL error_check ( &
-        0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), vb_lev_omidebug, errstat )
-      IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
+      call tell_log (1, addmsg)
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), vb_lev_omidebug, errstat )
+      !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
       ! -----------------------------------
       ! Assign pixel values to final arrays

@@ -7,7 +7,7 @@ MODULE omi_pge_fitting_process
   public omi_pge_fitting
 
 CONTAINS
-  
+
 SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
 
   USE OMSAO_precision_module
@@ -214,6 +214,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------
   CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
   type (fitting_statistics_type) :: fit_stats
+  character (len=256) :: logmsg
 
   ! ------------------
   ! External functions
@@ -317,6 +318,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     write (*,*) "modify omi_get_radiance_reference to use omi_radiance_swathname"
     stop
   endif
+  call flush()
   call tell_log (1, 'omi_fitting: calling omi_get_radiance_reference')
   CALL omi_get_radiance_reference (rpt_rr, &
                                    omi_xtrpix_range_rr, &
@@ -404,6 +406,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     first_pix = omi_xtrpix_range_rr(iline,1)
     last_pix  = omi_xtrpix_range_rr(iline,2)
 
+    call tell_log (1, 'omi_fitting:  calling xtrack_radiance_reference_loop (1)')
     CALL xtrack_radiance_reference_loop ( &
       yn_remove_target, & ! note: yn_remove_target=TRUE here
       nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
@@ -491,7 +494,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! ------------------------------------------
     ! Interface to the loop over all swath lines
     ! ------------------------------------------
-    call tell_log (1, 'omi_fitting: calling swathline_loops (common mode)')
+    call flush()
+    call tell_log (1, 'omi_fitting: calling swathline_loops (common mode)-------------------------------')
     CALL swathline_loops ( &
       pge_idx, rpt_rad, n_max_rspec, &
       is_common_range, &
@@ -567,6 +571,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! -------------------------------------
     ! fitvar_rad_saved(1:n_max_fitpars ) = fitvar_rad_init(1:n_max_fitpars)
     ! Not needed --- xtrack_radiance_reference_loop does this.  --JED
+    call tell_log (1, 'omi_fitting:  calling xtrack_radiance_reference_loop (2)')
     CALL xtrack_radiance_reference_loop ( &
       .FALSE., nxtrack_rr, nwavel_rr, first_pix, last_pix, pge_idx, errstat )
 
@@ -606,19 +611,19 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
     IF ( radfit_latrange(1) > -90.0_r4    .OR. &
       radfit_latrange(2) < +90.0_r4           ) THEN
-      write(*,*)' omi_fitting:  setting do_radfit_range:  call find_swathline_range (radiances)'
+      !write(*,*)' omi_fitting:  setting do_radfit_range:  call find_swathline_range (radiances)'
       CALL find_swathline_range ( &
         TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
         ntimes_rad, nxtrack_rad, l1b_rad_latitudes,       &
         radfit_latrange(1:2), do_radfit_range, errstat             )
     ELSE
-      write(*,*)' omi_fitting: setting do_radfit_range:  applying first_line/last_line mask'
+      !write(*,*)' omi_fitting: setting do_radfit_range:  applying first_line/last_line mask'
       do_radfit_range = .TRUE.
       IF ( first_line > 0           ) do_radfit_range(0:first_line-1)          = .FALSE.
       IF ( last_line  < ntimes_rad-1 ) do_radfit_range(last_line+1:ntimes_rad-1) = .FALSE.
     END IF
   ELSE
-    write(*,*)' omi_fitting: setting do_radfit_range:  all TRUE'
+    !write(*,*)' omi_fitting: setting do_radfit_range:  all TRUE'
     do_radfit_range = .TRUE.
   END IF
   endif
@@ -628,7 +633,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------------------
   ! Interface to the loop over all swath lines
   ! ------------------------------------------
-  call tell_log (1, 'omi_fitting: calling swathline_loops (radiances)')
+  call flush()
+  call tell_log (1, 'omi_fitting: calling swathline_loops (radiances)----------------------------')
   CALL swathline_loops ( &
     pge_idx, rpt_rad, n_max_rspec,     &
     do_radfit_range,                           &
@@ -648,11 +654,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !    (2) Compute AMFs
   !    (3) Apply cross-track destriping correction
   ! ---------------------------------------
+  call flush()
+  call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
   CALL omi_pge_postprocess ( &
     l1b_rad_filename, pge_idx, ntimes_rad, nxtrack_rad, &
     do_radfit_range, omi_xtrpix_range, &
     omi_is_szoom, n_max_rspec, fit_stats, errstat )
 
+  call flush()
+  call tell_log (1, 'omi_fitting:  writing output...')
   ! ---------------------
   ! Write some attributes
   ! ---------------------

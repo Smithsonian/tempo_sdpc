@@ -158,13 +158,17 @@ CONTAINS
     REAL      (KIND=r4), DIMENSION (nxtrack)      :: tmp_sazm, tmp_vazm
     REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc
     INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
+    character (len=128) :: logmsg
 
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_object_type) :: tio_l1obj
 
     omi_radiance_errstat = pge_errstat_ok
 
-    write(*,*)'omi_read_radiance_lines: reading '//trim(omi_radiance_swathname)
+    write (logmsg, '(a,i4,a)')'omi_read_radiance_lines: iline=',iline, &
+      ' reading swathname='//trim(omi_radiance_swathname)//' file='//trim(l1bfile)
+    call tell_log (2, logmsg)
+
     ! let errstat flow
     !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
     !call l1bread_get1d_r8 (l1bobj, "Time", iline, nloop, omi_time, errstat)
@@ -184,7 +188,6 @@ CONTAINS
     !call l1bread_close (l1bobj)
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, tempo_var_time, iline, nloop, omi_time, errstat)
-    write(*,*)' tiof_inq_group: opening swath='//trim(omi_radiance_swathname)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
     call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
     call tiof_get2d_r4 (tio_l1obj, tempo_var_latitude, iline, nloop, omi_latitude, errstat)

@@ -67,7 +67,8 @@ SUBROUTINE radiance_wavecal ( &
   !  "wavelength update only" branch)
   ! ------------------------------------------
   CALL compute_common_mode ( &
-    .TRUE., ipix, n_rad_wvl, adj_wvls(1:n_rad_wvl), adj_spec(1:n_rad_wvl))
+    .TRUE., ipix, n_rad_wvl, adj_wvls(1:n_rad_wvl), adj_spec(1:n_rad_wvl), errstat)
+  if (errstat < 0) return
 
   ! -------------------------------------------------------------
   ! Initialize the fitting variables. FITVAR_CAL_SAVED has been

@@ -259,10 +259,11 @@ CONTAINS
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
         '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
         '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
-      CALL error_check ( &
-        0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), &
-        vb_lev_omidebug, locerrstat )
-      IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
+      call tell_log (1, addmsg)
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), &
+      !  vb_lev_omidebug, locerrstat )
+      !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
       ! ---------------------------------
       ! Save crucial variables for output
