@@ -84,7 +84,8 @@ module tio_module
     tiof_get1d_r8, &
     tiof_put1d_r8, tiof_put2d_r8, tiof_put3d_r8, &
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
-    tiof_put1d_i4, tiof_put2d_r4, &
+                   tiof_put2d_r4, &
+    tiof_put1d_i4, &
     tiof_get2d_i2, tiof_get3d_i2, &
     tiof_put2d_i2, &
     tiof_get1d_i1, tiof_get2d_i1, &
@@ -515,12 +516,14 @@ contains
 
   end subroutine tiof_dimlist_append
 
-  subroutine tiof_dimlist_lookup (list, names, dimids, errstat)
+  subroutine tiof_dimlist_lookup (list, names, dimids, errstat, &
+                                  dimsizes)
     implicit none
     type (tiof_dimlist_type), intent(in) :: list
     character (len=*), dimension(:), intent(in) :: names
     integer, dimension(:), intent(out) :: dimids
     integer, intent(inout) :: errstat
+    integer, optional, intent(inout), dimension(size(dimids)) :: dimsizes
 
     type (tiof_dim_type), pointer :: item => null()
     character (len=tiof_max_name_len) :: name_i
@@ -537,6 +540,10 @@ contains
 
     num = size(names)
 
+    if (present (dimsizes)) then
+      dimsizes(1:num) = -1
+    endif
+
     do i=1, num
 
       item => list % head
@@ -548,6 +555,9 @@ contains
         if (item%len_name == len_i &
             .and. item % name(1:item%len_name) == name_i(1:len_i)) then
           dimids(i) = item % dimid
+          if (present(dimsizes)) then
+            dimsizes(i) = item % len
+          endif
           exit search
         endif
         item => item % next
