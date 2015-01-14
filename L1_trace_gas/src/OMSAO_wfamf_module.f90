@@ -157,6 +157,7 @@ CONTAINS
     !     - VLIDORT calculated scattering weights
     ! =================================================================
     USE OMSAO_errstat_module
+    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
       write_scattering_weights, write_amf_correction
@@ -190,6 +191,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology, cli_temperature, cli_heights
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw !, akernels
     type (amf_correction_type) :: amf_corr
+    logical :: yn_write_cloud_variables
 
     locerrstat  = pge_errstat_ok
 
@@ -343,7 +345,9 @@ CONTAINS
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
-      call write_amf_correction (pge_idx, nx, nt, amf_corr, saocol, saodco, errstat)
+      yn_write_cloud_variables = (pge_idx == pge_hcho_idx) .or. (pge_idx == pge_gly_idx)
+      call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
+                                 yn_write_cloud_variables, errstat)
       if (errstat < 0) return
     endif
 

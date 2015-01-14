@@ -683,17 +683,17 @@ contains
 
   end subroutine write_scattering_weights
 
-  subroutine write_amf_correction (pge_idx, nxtrack, ntimes, amf_corr, &
+  subroutine write_amf_correction (nxtrack, ntimes, amf_corr, &
                                    amf_corr_column, amf_corr_column_uncertainty, &
-                                   errstat)
+                                   yn_write_cloud_variables, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
-    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx
     implicit none
 
-    integer, intent(in) :: pge_idx, nxtrack, ntimes
+    integer, intent(in) :: nxtrack, ntimes
     type (amf_correction_type), intent(in) :: amf_corr
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column_uncertainty
+    logical, intent(in) :: yn_write_cloud_variables
     integer, intent(inout) :: errstat
 
     type (tiof_object_type), pointer :: obj => primary_output_file
@@ -707,7 +707,7 @@ contains
     call tiof_put2d_r8 (obj, tempo_var_amf_molecule_specific, 0, ntimes, &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
 
-    if (pge_idx == pge_hcho_idx .or. pge_idx == pge_gly_idx) then
+    if (yn_write_cloud_variables) then
       call tiof_put2d_r8 (obj, tempo_var_amf_cloud_fraction, 0, ntimes, &
                           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
       call tiof_put2d_r8 (obj, tempo_var_amf_cloud_pressure, 0, ntimes, &
