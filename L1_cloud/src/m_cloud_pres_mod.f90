@@ -135,7 +135,6 @@ module m_cloud_pres_mod
   !  which can trigger the need to update the jacobians
   logical :: check_solar=.true. !check for bad solar irradiances
   logical :: check_rad=.true.  !check for bad radiances
-  logical :: ret_chl  ! retrieve chlorophyll?
   logical :: add_oc   ! include ocean Ring effect?
   logical :: comp_clear  !only compute cloud-free pixels (?)
   logical :: bad_pix  !switch used in counting excluded pixels

@@ -44,9 +44,6 @@ module m_vars
   logical :: noret=.false. ! do not perform retrievals, just test 
   ! input stages of code. Note: set in PCF file
   logical :: wrt_solar=.false. ! write out solar data and quit
-  logical :: retrieve_chl_pres=.false. ! retrieve chl and pres when clear
-  logical :: retrieve_chl_clr=.false. ! retrieve only chl when clear (not cld pres)
-  logical :: retrieve_chl_cld=.false. ! try to retrieve chl in all pixels
   logical :: do_chl=.true. ! do chlorophyll correction only based on climatology
   logical :: cloud_fr_corr=.true. ! do cloud fraction corrections?
   logical :: done_read_terr=.false. ! has terrain pressure dataset been read?
@@ -62,7 +59,6 @@ module m_vars
   logical :: write_geom= .true. ! write out viewing geometry parameters
   logical :: write_ps =.true. ! write out surface (terrain) pressure
   logical :: using_resid=.true. ! read in residual (soft cal) data?
-  logical :: using_cal=.true. ! read in calibration file? set from PCF
   logical :: using_spline=.false. ! use spline rather than linear 
   ! interpolation in m_cloud_pres_ret?
   logical :: transient_check=.false. ! check for transients in input 
@@ -75,7 +71,6 @@ module m_vars
   logical :: get_refl_clim=.true. ! read & use TOMS reflectance clim?
   logical :: do_LER=.false. ! do Lambertian Equiv. Reflector version of calc.
   logical :: do_mler=.true. ! do Mixed LER version of calculation
-  logical :: write_ai=.false. ! write out Aerosol Index?
   logical :: test_solar=.false. ! use solar spectrum as input data?
 
   ! FILENAMES and PATHS
@@ -106,7 +101,6 @@ module m_vars
   INTEGER (KIND=2), DIMENSION(:,:), allocatable :: quality_flagL, irr_quality_flagL
   ! radiance and irradiance quality flags
   integer, parameter :: min_refl_flag=6 ! flag for violations of min_refl
-  integer, parameter :: ai_flag=8 ! flag for violations of max_ai
   integer, parameter :: bad_obs_flag=7 ! flag for spectr in which more
   ! than 50% of fluxes are bad
 
@@ -209,7 +203,6 @@ module m_vars
 
   real (KIND=8), allocatable, dimension (:,:) :: resid_spec !residual
   ! spectrum used for "soft calibration"
-  real (KIND=8), allocatable, dimension (:)   :: cal_fact !calib. factor
 
   real (KIND=4), dimension (:),     pointer :: wave_resid ! wavelength
   ! grid for output residual spectrum
@@ -222,9 +215,8 @@ module m_vars
   real (KIND=8), pointer, dimension (:,:,:,:,:) :: i01a, nia
   real (KIND=8), pointer, dimension (:,:,:,:) :: tra, nra, i0a, z1, z2
   real (kind=4), allocatable, dimension (:,:) :: refl, azimuth, sza, sat_zen
-  ! reflectance, staellite azimuth, solar zenith angle, satellite zenith
-  real (kind=4), allocatable, dimension (:,:) :: ai, reflect_cld ! Aerosol
-  ! Index, Cloud reflectivity
+  ! reflectance, satellite azimuth, solar zenith angle, satellite zenith
+  real (kind=4), allocatable, dimension (:,:) :: reflect_cld ! Cloud reflectivity
   real (KIND=8), allocatable, dimension (:) :: w_grid, chlcl ! wavelength
   ! grid, chlorophyll concentration
   real (kind=4), allocatable, dimension (:,:) :: ps ! output terrain pressure 
@@ -273,7 +265,6 @@ module m_vars
   real (KIND=8) :: cld_frac_min=0.05d0 !threshold for clear scene (?)
   real (KIND=8), parameter :: max_refl=1.00d0 ! max allowed reflectance
   real (KIND=8), parameter :: min_refl=0.00d0 ! min allowed reflectance
-  real (KIND=8), parameter :: max_ai  =1.00d0 ! max allowed aerosol index
 
   real (KIND=4) :: wmin= 391 ! min wavelength in nm. Set by PCF
   real (KIND=4) :: wmax= 398.5 ! max wavelength in nm. Set by PCF

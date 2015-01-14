@@ -7,9 +7,9 @@ contains
        sb_ls, tr_ls, set_cld_frac, i0_ss, sb_ss, tr_ss)
 
     use m_vars, ONLY: &
-         refl, ai, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
-         ai_flag, qc, max_ai, eff_cld_frac, do_short_wave, iLine, &
-         cal_reflec, rad_cld_frac
+         refl, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
+         qc, eff_cld_frac, do_short_wave, iLine, &
+         cal_reflec, rad_cld_frac 
 
     implicit none
     !-------------------------------------------------------------------------
@@ -38,9 +38,7 @@ contains
     !   tr_*: fractional transmittance of atmosphere?
     !   set_cld_frac: if true, calculate cloud fraction.
     !   min_refl, max_refl: minimum & maximum allowed reflectance (fixed)
-    !   max_ai: maximum allowed aerosol index (fixed)
     !   min_refl_flag: flag value for violations of min_refl (fixed)
-    !   ai_flag: flag value for violations of max_ai (fixed)
     !   do_short_wave: include shortest wavelength bound in calculations?
     !   cal_reflec: calculate dIdR (radiance reflectance sensitivity)?
     !   iprt: verbosity level
@@ -48,7 +46,6 @@ contains
     ! !OUTPUT PARAMETERS:  
     !   refl: retreived reflectivity (array over whole swath)
     !   refl_l: retreived reflectivity in current pixel
-    !   ai: aerosol index
     !   dIdR: Radiance (fractional) reflectance sensitivity
     !   qc: quality control array containing flags
     !   eff_cld_frac: effective cloud fraction
@@ -74,7 +71,7 @@ contains
          sb_ls, tr_ls, i0_ss, sb_ss, tr_ss
     logical, intent(in) :: set_cld_frac
     ! local variables
-    real (KIND=8) :: i_ray_l, i_ray_s, I_clr_l, I_cld_l, I_clr_s, I_cld_s
+    real (KIND=8) ::  I_clr_l, I_cld_l, I_clr_s, I_cld_s
     real (KIND=8) ::  eff_cld_frac_l
 
     !**************************************************************************
@@ -119,31 +116,12 @@ contains
       qc(i,iLine) = IBSET(qc(i,iLine),min_refl_flag)
     endif
 
-    !retrieve the aerosol index
-    !===========================
-    if (do_short_wave) then
-      i_ray_l=i_obs_l
-      if (eff_cld_frac(i,iLine) == 0. .or. eff_cld_frac(i,iLine) == 1.) then
-        ! calculated short wavelength using retrieved reflectivity
-        i_ray_s=i0_s + (refl_l*tr_s)/(1-refl_l*Sb_s)
-      else !if (eff_cld_frac(i,iLine) < 1.) then 
-        ! calculated short wavelength using retrieved effective cloud fraction
-        I_clr_s=i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss)
-        I_cld_s=i0_s + (refl_cld*tr_s)/(1-refl_cld*Sb_s)
-        i_ray_s=i_clr_s*(1-eff_cld_frac(i,iLine))+i_cld_s*eff_cld_frac(i,iLine)
-      endif
-      ai(i,iLine)=-100.*(log10(i_obs_s/i_obs_l) - log10(i_ray_s/i_ray_l))
-      if (ai(i,iLine) > max_ai) then
-        qc(i,iLine) = IBSET(qc(i,iLine),ai_flag)
-      endif
-    endif
 
     if (iprt >= 3) then
       print *, refl_clr, refl_cld
       print *, I_clr_l, I_cld_l, I_obs_l!, eff_cld_frac_l
       print *, (i_obs_l-I_clr_l), (I_cld_l-I_clr_l), &
            (i_obs_l-I_clr_l)/(I_cld_l-I_clr_l)
-      print *, I_clr_s, I_cld_s, I_obs_s!, eff_cld_frac_l
       print *,i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss),i0_s + &
            (refl_cld*tr_s)/(1-refl_cld*Sb_s)
       print *,'get_ai_refl: rad_cld_frac, eff_cld_frac, refl'

@@ -78,24 +78,6 @@ contains
       endif
       print *,'ring_cld'
       write(6,fmt100) ring_cld
-      if (add_oc .and. ((.not. ret_chl .and. iter == 0) .or. ret_chl)) then
-        if (ret_chl .and. reflec < 0.2) then
-          print *,'refl_clr_oc, refl_oc, reflec ',refl_clr_oc, refl_oc, reflec
-          print *,'ring_ocs 1 ',ic1
-          write(6,fmt100) ring_ocs(ic1,:)
-          print *,'ring_ocs 2 ',ic2
-          write(6,fmt100) ring_ocs(ic2,:)
-          print *,'ring_oc'
-          write(6,fmt100) ring_oc
-          print *,'rad_clr_oc'
-          write(6,fmt100) rad_clr_oc
-          if (ret_chl) then
-            print *,'h_chl'
-            write(6,fmt100) h(:,nst-nterms-2-nsh)
-          endif
-          !stop
-        endif
-      endif
       print *, 'ix1, ix2, np, x(0,1), psurf,iter,  ip'
       print *, ix1, ix2, np, x(0,1), psurf,iter,  ip
       print *,'rad_clds 1 ',ix1
@@ -108,10 +90,6 @@ contains
       write(6,fmt100) ring_clds(ix2,:)
       print *,'h(0,*)'
       write(6,fmt100) h(:,0)
-      if (ret_chl) then
-        print *,'h(chloro,*)'
-        write(6,fmt101) h(:,nst-nterms-2-nsh)
-      endif
       if (squeeze) then
         print *,'h(1,*)'
         write(6,fmt100) h(:,1)

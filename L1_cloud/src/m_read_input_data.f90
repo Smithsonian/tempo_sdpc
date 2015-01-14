@@ -481,8 +481,6 @@ contains
     allocate (ps      (0:nXtrack-1,nLines))      ; ps=fill_value
     if (allocated(ref_clr)) deallocate (ref_clr)     
     allocate (ref_clr      (0:nXtrack-1,nLines))      ; ref_clr=fill_value
-    if (allocated(ai)) deallocate (ai)      
-    allocate (ai      (0:nXtrack-1,nLines))      ; ai=fill_value
     if (allocated(reflect_cld)) deallocate (reflect_cld)      
     allocate (reflect_cld      (0:nXtrack-1,nLines)) ; reflect_cld=fill_value
     if (allocated(rad_cld_frac)) deallocate (rad_cld_frac)

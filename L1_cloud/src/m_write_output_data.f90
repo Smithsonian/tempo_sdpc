@@ -224,11 +224,6 @@ contains
            dims2, dIdR, misval_r4, "Radiance (fractional) refl. sens.", "NoUnits", &
            offset=(/0,0/),iprt=iprt)
     endif
-    if (write_ai) then
-      status = put_data (swid, "UVAerosolIndex", &
-           dims2, ai, misval_r4, "Aerosol Index", "NoUnits", &
-           offset=(/0,0/), iprt=iprt)
-    endif
     if (.not. do_mler) then
       status = put_data (swid, "Cloud_reflectivity", &
            dims2, reflect_cld, misval_r4, "Cloud reflectivity", "NoUnits", &

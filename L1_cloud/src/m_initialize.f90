@@ -139,13 +139,6 @@ contains
         if (iprt >= 1) print *,'initialize: setting write_obs = ',write_obs
       endif
 
-      returnstatus = pgs_pc_getconfigdata(using_cal_LUN,buf)
-      IF(returnstatus == 0 ) THEN
-        read(buf,*) pcf_int
-        using_cal = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting using_cal   = ',using_cal
-      endif
-
       returnstatus = pgs_pc_getconfigdata(no_ret_ps_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int

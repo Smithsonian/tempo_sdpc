@@ -39,8 +39,6 @@ contains
     ! including:
     !
     ! Wavelength Squeeze
-    ! Aerosol Index (ai)
-    ! Oceanic Chlorophyll Concentration (normally a climatology is used)
     ! 
     ! INPUTS/OUTPUTS:
     !
@@ -93,7 +91,7 @@ contains
     use m_lambda_qual
     use m_pgs_include
     use m_cloud_pres_mod
-    use m_vars, ONLY: ai, azimuth, bad_obs_flag, biases, cal_fact, &
+    use m_vars, ONLY: azimuth, bad_obs_flag, biases, & 
          chi_sqr, chl, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
          cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
          do_LER, do_mler, do_o3, do_short_wave, eff_cld_frac, &
@@ -104,12 +102,11 @@ contains
          n_missing, noret, no_ret_ps, nphi, npres, nscan, nscan_oc, &
          ntheta, nthet_oc, nwl, nXtrack, oc_table, phi, pres, ps, qc, &
          rad_cld_frac, ref_clr, refl, refl_clr_oc, reflect_cld, resid, &
-         resid_spec, retrieve_chl_cld, retrieve_chl_clr, retrieve_chl_pres, &
-         sat_zen, scan, scan_oc, shift, shifts, squeeze, squeezes, stds, &
-         sza, theta, theta_oc, using_cal, using_resid, using_spline, &
-         w12d, wave_fill, wave_long, wave_o3, wave_resid, wave_short, &
-         wdelt, w_grid, wmax, wmin, write_fill, write_obs, write_resid, &
-         ws, xsect_o3, test_solar, add_shift
+         resid_spec, sat_zen, scan, scan_oc, shift, shifts, squeeze, &
+         squeezes, stds, sza, theta, theta_oc, using_resid, & 
+         using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
+         wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
+         write_resid, ws, xsect_o3, test_solar, add_shift
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -137,7 +134,8 @@ contains
           write(6,'(7f12.4)') w_grid
         endif
         ierr = OMI_SMF_setmsg( status, & 
-             "no valid wavelengths, PGE aborting, exit code = 1", "cloud_pres_ret", 1 )
+             "no valid wavelengths, PGE aborting, exit code = 1", &
+             "cloud_pres_ret", 1 )
         call exit(1)
       endif ! nobs > 0
 
@@ -290,17 +288,9 @@ contains
         ! get number of elements in state vector
         !========================================
         chloro=chlcl(ip)
-        ret_chl = ((retrieve_chl_clr .or. retrieve_chl_pres)  .and. &
-             chloro > 0.) .or. retrieve_chl_cld 
-        if (ret_chl) then
-          add_oc = .true.
-          nst=nterms+3
-          nchlr=1
-        else
-          add_oc = .false.
-          nst=nterms+2
-          nchlr=0
-        endif
+        add_oc = .false.
+        nst=nterms+2
+        nchlr=0
         if (shift) then
           nst=nst+1
           nsh=1
@@ -339,9 +329,6 @@ contains
             if (squeeze) then
               b_i(1)=var_inv_big
             endif
-          endif
-          if (ret_chl) then
-            b_i(nst-nterms-2-nsh)=var_inv_chl!var_inv_big
           endif
           if (do_o3) then
             b_i(nst-nterms-nsh-2-nchlr)=var_inv_big
@@ -421,7 +408,8 @@ contains
         if (using_resid) then
           if (size(resid_spec,dim=1) /= nobs) then
             ierr = OMI_SMF_setmsg( status, &
-                 "Incompatible resid table, not using corrections", "cloud_pres_ret", 1 )
+                 "Incompatible resid table, not using corrections", &
+                 "cloud_pres_ret", 1 )
           else ! good residuals found
             y_obs=y_obs-resid_spec(:,ip+1)*y_obs
             y_obs1=y_obs1-resid_spec(:,ip+1)*y_obs1
@@ -452,7 +440,6 @@ contains
         do ntm=1, nterms
           x(nst-1-nsh-ntm,1)=res3(ntm+1) ! wavelength scale factor
         enddo
-        if (ret_chl)   x(nst-nterms-2-nsh,1)=chloro ! chlorophyll climatology
         x(0,1)=0.7 ! Cloud pressure in atmospheres
         if (no_ret_ps) x(0,1)=psurf
 
@@ -569,7 +556,6 @@ contains
                 endif
                 i_obs_s=y_obs1(indt)
               endif
-              if (using_cal) i_obs_l=i_obs_l+i_obs_l*cal_fact(ip+1)
               set_cld_frac=iter == 0
               if (do_mler) then 
                 call get_ai_refl(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
@@ -620,13 +606,9 @@ contains
                 !=================================
                 x_fg=x
 
-                !Determine whether or not to retrieve chlorophyll or
-                !do correction based on reflectivity (cloud fraction?)
+                !Do correction based on reflectivity (cloud fraction?)
                 !====================================================
                 cld_frac_oc = eff_cld_frac(ip,iLine)
-                if (ret_chl .and. cld_frac_oc >= 1.) then
-                  b_i(nst-nterms-2-nsh)=var_inv_small !var_inv_big
-                endif
                 add_oc = add_oc .or. (.not. land_flg(ip) .and. do_chl .and. &
                      cld_frac_oc < 1.) 
                 if (add_oc) then
@@ -660,34 +642,13 @@ contains
             refl_oc=refl_clr_oc
           endif
 
-          !if retrieving chlorophyll without surface pressure
-          !and clear scene, set background
-          !error of "scene pressure" to a large number so won't retrieve it
-          !================================================================
-          if ((cld_frac_oc <= cld_frac_min  &
-               .and. retrieve_chl_clr .and. add_oc .and. &
-               .not. retrieve_chl_pres) .or. no_ret_ps) then
-            b_i(0)=var_inv_small !1./1e-15**2
-          else
-            b_i(0)=var_inv_big
-          endif
 
-          !bracket the chlorophyll between min and max
-          !==============================================
-          if (ret_chl) then
-            if(x(nst-nterms-2-nsh,1) < chls(0)) then
-              x(nst-nterms-2-nsh,1)=chls(0)   
-            elseif(x(nst-nterms-2-nsh,1) > chls(nchl-1)) then
-              x(nst-nterms-2-nsh,1)=chls(nchl-1)   
-            endif
-          endif
+          b_i(0)=var_inv_big
+
 
           !bracket the chlorophyll index
           !=================================
           if (add_oc) then
-            if (ret_chl) then
-              chloro=x(nst-nterms-2-nsh,1)
-            endif
             nc=interpol(findgen(nchl)+1,chls,chloro)   
             ic1=nc
             if (ic1 > nchl-1) then
@@ -754,7 +715,7 @@ contains
           temp2D=>rad_clds(ix1:ix2,:)
           call interp_pres(ix1, ix2, rad_cld, pres, x(0,1),jacob_rad)
           if ( (eff_cld_frac2(ip,iLine) < 1.0 .or. & 
-               !cld_frac > cld_frac_min .and. &
+                                !cld_frac > cld_frac_min .and. &
                cld_frac < 1.0) .and. get_cloud_frac .and. .not. comp_clear) then
             temp2D=>ring_clrs(i0x1:i0x2,:)
             call interp_pres(i0x1, i0x2, ring_clr, pres, psurf, jacob_dummy)
@@ -762,11 +723,10 @@ contains
             call interp_pres(i0x1, i0x2, rad_clr, pres, psurf, jacob_dummy)
             comp_clear=.true.
           endif ! get_cloud_frac
-          if (add_oc .and. ((.not. ret_chl .and. iter == 0) .or. ret_chl)) then
+          if (add_oc .and. (iter == 0)) then
             temp2D=>ring_ocs(ic1:ic2,:)
             call interp_pres(ic1, ic2, ring_oc, chls, chloro, jacob_dummy)
             new_hcl=ic1_old /= ic1 
-            if (ret_chl .and. new_hcl) h(:,nst-nterms-2-nsh)=jacob_dummy
           endif
 
           !update cloud pressure jacobian if necessary
@@ -784,20 +744,6 @@ contains
             !(accounted for in polynomial)
             !===============================================
             h(:,0)=h(:,0)+(jacob_rad-fit_rad)*(1+ring_cld)*cld_frac
-          endif
-
-          !update chlorophyll jacobian if necessary
-          !===========================================
-          if (ret_chl) then
-            if (new_hcl) then
-              if (cloud_fr_corr) then 
-                h(:,nst-nterms-2-nsh)=h(:,nst-nterms-2-nsh)*(1-cld_frac_oc)*rad_clr_oc
-              else
-                h(:,nst-nterms-2-nsh)=h(:,nst-nterms-2-nsh)*(1-reflec)**2*rad_clr_oc
-              endif ! cloud_fr_corr
-            endif ! new_hcl
-          else
-            new_hcl=.false.
           endif
 
           !compute cloudy radiance as function of cloud fraction
@@ -890,9 +836,6 @@ contains
           else
             if (new_h) then
               htr(0,:)=h(:,0)*r_i   
-            endif
-            if  (new_hcl .and. ret_chl) then
-              htr(nst-nterms-2-nsh,:)=h(:,nst-nterms-2-nsh)*r_i   
             endif
             if (shift) then
               htr(nst-1,:)=h(:,nst-1)*r_i
@@ -990,11 +933,7 @@ contains
         if (squeeze) then
           squeezes(ip,iLine)=x(1,1)
         endif
-        if (ret_chl) then
-          chlorophyll(ip,iLine)=x(nst-nterms-2-nsh,1)
-        else
-          chlorophyll(ip,iLine)=chlcl(ip)
-        endif
+        chlorophyll(ip,iLine)=chlcl(ip)
         biases(ip,iLine)=bias
         stds(ip,iLine)=std
         chi_sqr(ip,iLine)=chisq
@@ -1035,7 +974,7 @@ contains
         if( .not. ( btest(qc(ip,iLine),0) .or. btest(qc(ip,iLine),2) &
              .or. btest(qc(ip,iLine),3) .or. btest(qc(ip,iLine),4) &
              .or. btest(qc(ip,iLine),6))) &
-             !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
+                                !.or. btest(qc(ip,iLine),7) .or. btest(qc(ip,iLine),8))) &
              n_good_output = n_good_output + 1
 
         !print final result
@@ -1076,7 +1015,6 @@ contains
       fill(:,iLine)=0.
       cloud_pres(:,iLine)=0.5
       cld_pres2(:,iLine)=0.5
-      ai(:,iLine)=1. 
       do ip=0, nXtrack-1 
         chlorophyll(ip,iLine)=chlcl(ip)
       enddo

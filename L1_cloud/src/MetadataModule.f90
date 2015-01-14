@@ -16,7 +16,7 @@ module MetadataModule
      USE m_LUN_set
      USE m_vars, ONLY: cloud_pres, eff_cld_frac, n_good_input, n_good_output, &
           highqual, badqual, cld_frac_min, qc,   &
-          n_input, n_missing, using_cal
+          n_input, n_missing !, using_cal
      USE m_swathnames, ONLY: vis, visz
      USE m_pgs_include
 
@@ -211,12 +211,8 @@ module MetadataModule
        IF(i==8)Fil_Lun=resid_id
        IF(i==9)Fil_Lun=refl_id
        IF(i==10) then 
-         if(using_cal) then 
-           Fil_Lun=cal_id
-         else
-           supflnm(i)=''
-           go to 50
-         endif
+         supflnm(i)=''
+         go to 50
        ENDIF
        version = 1
        !!  if( i > 5) then
@@ -314,15 +310,15 @@ module MetadataModule
      ENDIF
 
      returnstatus = pgs_met_sfend(sdid)
-!     returnstatus = pgs_met_remove()
+     !     returnstatus = pgs_met_remove()
 
      IF(returnstatus /=0) THEN
        status = OMI_E_GENERAL
        GO TO 9999
      ENDIF
 
-! Temporarily moved here since it fails under Intel build of SDPTK but 
-! seems to have no harmful consequences. Uncomment above if fixed.
+     ! Temporarily moved here since it fails under Intel build of SDPTK but 
+     ! seems to have no harmful consequences. Uncomment above if fixed.
      returnstatus = pgs_met_remove()
 
 9999 CONTINUE 

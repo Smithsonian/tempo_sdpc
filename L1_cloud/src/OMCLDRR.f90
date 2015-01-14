@@ -11,20 +11,14 @@ program OMCLDRR
   use m_write_output_data
   use m_write_output_data_2pres
   use m_cloud_pres_ret
-  !use m_cloud_clear_ret
   use m_str_replace
-  !use m_num2string
   use m_cloud_mask
   use m_read_thresholds
-  !use m_read_references
   use m_read_resid
-  use m_read_cal
   use MetadataModule
   use m_write_HDFEOS_attr 
   use m_LUN_set
   use L1B_Reader_class
-  !use full_reader_class
-  !use m_read_no2
   use m_pgs_include
 
   IMPLICIT NONE
@@ -71,11 +65,8 @@ program OMCLDRR
   call read_tables(err_code)
   call read_ocean_table(err_code)
   call read_thresholds(err_code)
-  !if (using_ref) call read_references(err_code)
   if (using_resid) call read_resids
-  if (using_cal) call read_cals(err_code)
   if (do_o3) call read_o3
-  !if (do_no2) call read_no2(err_code)
 
   !Assign name and open output file
   !======================================
