@@ -369,7 +369,7 @@ CONTAINS
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
       database, curr_sol_spec, sol_wav_avg,                  &
-      Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, verb_thresh_lev,  &
+      Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, & !verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
       n_rad_wvl_max, target_npol, &

@@ -8,7 +8,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
     pge_o3_idx, o3_t1_idx, comm_idx
   USE OMSAO_parameters_module, ONLY: zerospec_string, r8_missval
   USE OMSAO_variables_module,  ONLY: &
-    winwav_min, winwav_max, ReferenceSpectrum, refspecs_original, &
+    winwav_min, winwav_max, reference_spectrum_type, refspecs_original, &
     common_mode_spec, &
     OMSAO_solcomp_filename, l1b_channel
   use ctrlvars, only: yn_common_iter, yn_solar_comp, solar_comp_typ
@@ -190,7 +190,7 @@ SUBROUTINE read_one_refspec ( &
   USE OMSAO_precision_module,   ONLY: r8, i4
   USE OMSAO_indices_module,     ONLY: ring_idx
   USE OMSAO_parameters_module,  ONLY: MAX_STR_LEN, max_spec_pts
-  USE OMSAO_variables_module,   ONLY: ReferenceSpectrum, l1b_channel
+  USE OMSAO_variables_module,   ONLY: reference_spectrum_type, l1b_channel
   USE OMSAO_errstat_module
 
   IMPLICIT NONE
@@ -207,7 +207,7 @@ SUBROUTINE read_one_refspec ( &
   ! -----------------
   INTEGER (KIND=i4),        INTENT (OUT)   :: nspec
   INTEGER (KIND=i4),        INTENT (INOUT) :: errstat
-  TYPE (ReferenceSpectrum), INTENT (OUT)   :: refspec_orig
+  TYPE (reference_spectrum_type), INTENT (OUT)   :: refspec_orig
 
   ! ----------------
   ! Local Variables

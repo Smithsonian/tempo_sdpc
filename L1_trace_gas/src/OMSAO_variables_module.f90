@@ -86,7 +86,7 @@ MODULE OMSAO_variables_module
   ! -------------------------------------
   ! TYPE declaration for Reference Specta
   ! -------------------------------------
-  TYPE, PUBLIC :: ReferenceSpectrum
+  TYPE, PUBLIC :: reference_spectrum_type
     CHARACTER (LEN=MAX_STR_LEN)                      :: Title, Units
     CHARACTER (LEN=MAX_STR_LEN)                      :: FileName
     CHARACTER (LEN=MAX_STR_LEN)                      :: FittingIdxName
@@ -95,7 +95,7 @@ MODULE OMSAO_variables_module
     REAL      (KIND=r8), DIMENSION (2)            :: FirstLastWav
     REAL      (KIND=r8), DIMENSION (max_spec_pts) :: RefSpecWavs
     REAL      (KIND=r8), DIMENSION (max_spec_pts) :: RefSpecData
-  END TYPE ReferenceSpectrum
+  END TYPE reference_spectrum_type
 
   ! -----------------------------------------
   ! TYPE declaration for Common Mode Spectrum
@@ -117,7 +117,7 @@ MODULE OMSAO_variables_module
   ! -------------------------------
   ! Array for all Reference Spectra
   ! -------------------------------
-  TYPE (ReferenceSpectrum),  DIMENSION (max_rs_idx) :: refspecs_original
+  TYPE (reference_spectrum_type),  DIMENSION (max_rs_idx) :: refspecs_original
   TYPE (common_mode_spectrum_type)                  :: common_mode_spec
 
   ! -------------------------------------------

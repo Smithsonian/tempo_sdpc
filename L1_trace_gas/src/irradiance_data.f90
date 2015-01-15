@@ -213,11 +213,11 @@ contains
     !
     integer :: locerrstat
     integer (kind=i4) :: nwavel, ix, nxtrack
-    real (kind=r4), dimension(:,:), allocatable :: &
+    real (kind=r4), dimension(:,:,:), allocatable :: &
       tmp_wavelengths, tmp_spectrum
     real (kind=r8), dimension(:,:), allocatable :: &
       wavelengths, spectrum
-    integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
+    integer (kind=i2), dimension (:,:,:), allocatable :: tmp_qflags
     character (len=64) :: swathname
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_object_type) :: tio_l1obj
@@ -240,9 +240,9 @@ contains
     !nwavel = l1bobj%num_wavelengths
     !nxtrack = l1bobj%num_xtrack
 
-    allocate (tmp_wavelengths(nwavel, nxtrack), &
-              tmp_spectrum(nwavel, nxtrack), &
-              tmp_qflags (nwavel, nxtrack), &
+    allocate (tmp_wavelengths(nwavel, nxtrack,1), &
+              tmp_spectrum(nwavel, nxtrack,1), &
+              tmp_qflags (nwavel, nxtrack,1), &
               wavelengths (nwavel, nxtrack), &
               spectrum (nwavel, nxtrack), &
               stat=locerrstat)
@@ -255,9 +255,9 @@ contains
     !call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
     !call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_get2d_r4 (tio_l1obj, "irradiance", 0, 1, tmp_spectrum, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "pixel_quality_flag", 0, 1, tmp_qflags, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "wavelength", 0, 1, tmp_wavelengths, errstat)
+    call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], [1,-1,-1], tmp_spectrum, errstat)
+    call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], [1,-1,-1], tmp_qflags, errstat)
+    call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,-1,-1], tmp_wavelengths, errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
@@ -268,20 +268,20 @@ contains
     if (.not.yn_disable_omi_features) then
     IF ( l1b_channel == 'UV1' ) THEN
       DO ix = 1, nxtrack
-        tmp_wavelengths(nwavel:1:-1, ix) = tmp_wavelengths(1:nwavel,ix)
-        tmp_spectrum(nwavel:1:-1, ix) = tmp_spectrum(1:nwavel,ix)
-        tmp_qflags(nwavel:1:-1, ix) = tmp_qflags(1:nwavel,ix)
+        tmp_wavelengths(nwavel:1:-1, ix,1) = tmp_wavelengths(1:nwavel,ix,1)
+        tmp_spectrum(nwavel:1:-1, ix,1) = tmp_spectrum(1:nwavel,ix,1)
+        tmp_qflags(nwavel:1:-1, ix,1) = tmp_qflags(1:nwavel,ix,1)
       END DO
     END IF
     endif
 
-    wavelengths = real (tmp_wavelengths, kind=r8)
-    spectrum = real (tmp_spectrum, kind=r8)
+    wavelengths = real (tmp_wavelengths(:,:,1), kind=r8)
+    spectrum = real (tmp_spectrum(:,:,1), kind=r8)
     deallocate (tmp_wavelengths)
     deallocate (tmp_spectrum)
 
     call package_irradiance_data (nwavel, nxtrack, &
-                                  wavelengths, spectrum, tmp_qflags, &
+                                  wavelengths, spectrum, tmp_qflags(:,:,1), &
                                   errstat)
 
     return

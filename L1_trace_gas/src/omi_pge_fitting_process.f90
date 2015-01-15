@@ -124,11 +124,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
                         n_max_rspec, errstat)
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN
-  USE OMSAO_indices_module,    ONLY: sao_molecule_names
+  USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN, nwavel_max
+  USE OMSAO_indices_module,    ONLY: sao_molecule_names, max_rs_idx
   USE OMSAO_variables_module,  ONLY: &
     l1b_rad_filename, &
-    l2_filename, pixnum_lim,    &
+    l2_filename, pixnum_lim, n_fitvar_rad,   &
     radfit_latrange,                &
     common_latrange,    &
     Radiance_Paras_Type, &
@@ -343,7 +343,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   write(logmsg,'(a,i4)')'omi_fitting: calling create_output_file, n_comm_wvl=',n_comm_wvl
   call tell_log (1, logmsg)
-  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, n_comm_wvl, &
+  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, &
+                           n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                            errstat)
   if (errstat < 0) return
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
@@ -380,7 +381,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   call tell_log (1, logmsg)
   omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (                          &
-    first_wc_pix, last_wc_pix, n_max_rspec, n_comm_wvl, errstat )
+    first_wc_pix, last_wc_pix, nxtrack_rad, n_max_rspec, n_comm_wvl, errstat )
   if (errstat < 0) return
   write(logmsg,'(a,i4)')'omi_fitting: calling xtrack_radiance_wvl_calibration, n_comm_wvl=',n_comm_wvl
   call tell_log (1, logmsg)

@@ -357,7 +357,7 @@ CONTAINS
     USE OMSAO_indices_module, ONLY: &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
-    USE OMSAO_variables_module,  ONLY: verb_thresh_lev, Slit_Half_Width_1e, &
+    USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, & ! verb_thresh_lev, 
       Slit_Asym_Factor, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum

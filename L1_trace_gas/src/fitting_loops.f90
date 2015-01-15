@@ -8,7 +8,7 @@ MODULE fitting_loops
 
 CONTAINS
   SUBROUTINE xtrack_radiance_wvl_calibration (             &
-      first_pix, last_pix, n_max_rspec, n_comm_wvl_out, errstat )
+      first_pix, last_pix, nxtrack, n_max_rspec, n_comm_wvl_out, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
@@ -18,10 +18,10 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, normweight, &
       NWAVEL_MAX, NXTRACK_MAX
     USE OMSAO_variables_module,  ONLY:  &
-      verb_thresh_lev, Slit_Half_Width_1e, Slit_Asym_Factor, &
+      Slit_Half_Width_1e, Slit_Asym_Factor, &  ! verb_thresh_lev, 
       sol_wav_avg, database, fitvar_cal, fitvar_cal_saved, &
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
-      curr_xtrack_pixnum
+      curr_xtrack_pixnum, refspecs_original
     use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
@@ -38,6 +38,7 @@ CONTAINS
     USE prepare_databases, ONLY: prep_databases
     USE OMSAO_errstat_module
     USE he5_output_tools, ONLY: he5_write_omi_database
+    use output_tools, only : write_refspec_database
     USE sao_pge_utils, ONLY: interpolation
     USE radiance_wavcal, ONLY: radiance_wavecal
     USE irradiance_data, ONLY: Irr_Data
@@ -49,7 +50,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: first_pix, last_pix, n_max_rspec
+    INTEGER (KIND=i4), INTENT (IN) :: first_pix, last_pix, nxtrack, n_max_rspec
 
     ! ---------------
     ! Output variable
@@ -73,7 +74,7 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
     REAL    (KIND=r8), DIMENSION (n_max_rspec) :: ref_wvl, ref_spc, ref_wgt
     real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts
-    integer (kind=i4) :: adj_num, adj_num_allocated
+    integer (kind=i4) :: adj_num, adj_num_allocated, adj_num_max
     integer (kind=i4) :: n_irradwvl
     integer :: locerr
     integer, parameter :: unit_xtrack_wavcal = 20
@@ -115,6 +116,7 @@ CONTAINS
     endif
 
     adj_num_allocated = 0
+    adj_num_max = 0
     ! --------------------------------
     ! Loop over cross-track positions.
     ! --------------------------------
@@ -141,6 +143,7 @@ CONTAINS
       n_irradwvl = Irr_Data % nwaves(ipix)
       n_omi_radwvl   = omi_nwav_rad  (ipix,0)
       adj_num = n_omi_radwvl
+      if (adj_num > adj_num_max) adj_num_max = adj_num
 
       ! -----------------------------------------------------------------
       ! tpk: Should the following be "> n_fitvar_rad"??? No, because that
@@ -370,9 +373,22 @@ CONTAINS
     ! CCM Write splined/convolved databases if necessary
     IF( yn_diagnostic_run ) THEN
       ! omi_database maybe omi_database_wvl?
-      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &
+      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &  ! FIXME <-- (to be removed)
                                   omi_database_wvl(1:adj_num, 1:nxtrack_max), &
                                   max_rs_idx, adj_num, nxtrack_max, errstat)
+      ! JCH:  I don't think adj_num should be used to define the subarrays that
+      ! get written out because it's value might have changed with each
+      ! pass through the above loop.  I added adj_num_max and will use that.
+      call write_refspec_database (omi_database(:,:,:), &
+                                   omi_database_wvl(:,:), &
+                                   refspecs_original(1:max_rs_idx), &
+                                   max_rs_idx, adj_num_max, nxtrack, errstat)
+      if (errstat < 0) then
+        call tell_error (tell_io_write_error, &
+                         'xtrack_radiance_wvl_calibration: error writing refspec database', &
+                         errstat)
+        return
+      endif
     ENDIF
 
     errstat = MAX ( errstat, locerrstat )
