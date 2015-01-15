@@ -183,13 +183,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     iline, first_line, last_line, locerrstat, first_wc_pix, last_wc_pix, &
     first_pix, last_pix
   INTEGER (kind=i4) :: ntimes_rad, nxtrack_rad, nwavel_rad
-  INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr
+  INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr, extension_dot
   INTEGER (KIND=i4), DIMENSION (2) :: radiance_wavcal_lnums
 
   ! ----------------------------------------------------------------------
   ! Swath dimensions and variables that aren't passed from calling routine
   ! ----------------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: molname
+  character (len=1024) :: l2_filename_netcdf
 
   ! ----------------------------------------------------------
   ! Variables and parameters associated with Spatial Zoom data
@@ -341,9 +342,19 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! Initialization of HE5 output data fields
   ! ----------------------------------------
 
-  write(logmsg,'(a,i4)')'omi_fitting: calling create_output_file, n_comm_wvl=',n_comm_wvl
+  ! FIXME: for now, we'll define the netcdf output file name by
+  ! changing the file extension.
+  extension_dot = index(l2_filename,".",.true.) ! find rightmost '.'
+  if (extension_dot > 1) then
+    l2_filename_netcdf = l2_filename(1:extension_dot-1)//".nc"
+  else
+    l2_filename_netcdf = "l2_output.nc"
+  endif
+
+  write(logmsg,'(a,i4,a)')'omi_fitting: n_comm_wvl=',n_comm_wvl, &
+    ', calling create_output_file: '//trim(l2_filename_netcdf)
   call tell_log (1, logmsg)
-  call create_output_file ("l2_output.nc", ntimes_rad, nxtrack_rad, CmETA, &
+  call create_output_file (l2_filename_netcdf, ntimes_rad, nxtrack_rad, CmETA, &
                            n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                            errstat)
   if (errstat < 0) return
