@@ -59,29 +59,27 @@ extern int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info);
 /** Write a section of an N-dimensional variable
  * @param  grp     Index of group containing the variable
  * @param  name    Variable name string
- * @param  start0  Write data to the file starting at this value of the
- *                 slowest varying array index
- * @param  count0  Count of slowest varying array index to write
+ * @param  start   Offsets to start of data block to write
+ * @param  count   Dimensions of data block to write
  * @param  xtype   Type of values to write
  * @param  data    Pointer to the array to be written
  * @return 0 on success, -1 on error
  */
-extern int TIO_put_var_section (int grp, const char *name,
-                                size_t start0, size_t count0, int xtype,
+extern int TIO_put_var_section (int grp, const char *name, 
+                                int *start, int *count, int xtype,
                                 const void *data);
 
 /** Read a section of an N-dimensional variable
  * @param  grp     Index of group containing the variable
  * @param  name    Variable name string
- * @param  start0  Read data from the file starting at this value of the
- *                 slowest varying array index
- * @param  count0  Count of slowest varying array index to read
+ * @param  start   Offsets to start of data block to read
+ * @param  count   Dimensions of data block to read
  * @param  xtype   Type of values to be read
  * @param  data    Pointer to the array that will receive the input
  * @return 0 on success, -1 on error
  */
 extern int TIO_get_var_section (int grp, const char *name,
-                                size_t start0, size_t count0, int xtype,
+                                int *start, int *count, int xtype,
                                 void *data);
 
 /** Query the type and size of an attribute

@@ -254,13 +254,13 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 
 /* #define TEST_WAVELENGTH_METHODS 1 */
 #ifdef TEST_WAVELENGTH_METHODS
-static int get_wavelengths (int grp, size_t start0, size_t count0, int xtype,
+static int get_wavelengths (int grp, int *start, int *count, int xtype,
                             void *data)
 {
    fprintf (stderr, "=====> called get_wavelengths\n");
    return 0;
 }
-static int put_wavelengths (int grp, size_t start0, size_t count0, int xtype,
+static int put_wavelengths (int grp, int *start, int *count, int xtype,
                             const void *data)
 {
    fprintf (stderr, "=====> called put_wavelengths\n");
@@ -271,8 +271,8 @@ static int put_wavelengths (int grp, size_t start0, size_t count0, int xtype,
 typedef struct
 {
    char *name;
-   int (*get)(int, size_t, size_t, int,       void *);
-   int (*put)(int, size_t, size_t, int, const void *);
+   int (*get)(int, int *, int *, int,       void *);
+   int (*put)(int, int *, int *, int, const void *);
 }
 IO_Methods_Type;
 #define IO_METHODS_END {NULL,NULL,NULL}
@@ -305,22 +305,19 @@ static IO_Methods_Type IO_Methods[] =
 
 #define TIO_IO_VAR_SECTION(action,const_qual) \
 int TIO_##action##_var_section (int grp, const char *name, \
-                                size_t start0, size_t count0, int xtype, \
+                                int *istart, int *icount, int xtype, \
                                 const_qual void *data) \
 { \
    TIO_Var_Info_Type info; \
-   int status, varid, ndims; \
+   int status, varid, ndims, i; \
    size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS]; \
    const IO_Methods_Type *io_method; \
  \
    io_method = find_io_methods (name, (const IO_Methods_Type *)&IO_Methods); \
    if (NULL != io_method) \
      { \
-        return io_method->action (grp, start0, count0, xtype, data); \
+        return io_method->action (grp, istart, icount, xtype, data); \
      } \
- \
-   start[0] = start0; \
-   count[0] = count0; \
  \
    if (-1 == TIO_inq_var (grp, name, &info)) \
      return -1; \
@@ -334,14 +331,17 @@ int TIO_##action##_var_section (int grp, const char *name, \
                      __func__, name, ndims); \
         return -1; \
      } \
-   else if (ndims > 1) \
+ \
+   for (i = 0; i < TIO_MAX_VAR_DIMS; i++) \
      { \
-        int i; \
-        for (i = 1; i < ndims; i++) \
-          { \
-             start[i] = 0; \
-             count[i] = info.dimlens[i]; \
-          } \
+        start[i] = 0; \
+        count[i] = 0; \
+     } \
+ \
+   for (i = 0; i < ndims; i++) \
+     { \
+        start[i] = (size_t) istart[i]; \
+        count[i] = (icount[i] >= 0) ? (size_t) icount[i] : info.dimlens[i]; \
      } \
  \
    switch (xtype) \
@@ -398,6 +398,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
 
 TIO_IO_VAR_SECTION(get,EMPTY())
 TIO_IO_VAR_SECTION(put,const)
+
 #if 0
 }
 #endif
@@ -547,6 +548,6 @@ int TIO_get_att (int grp, int varid, const char *attname,
 /* Fortran bindings */
 
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
-            INT, STRING, INT, INT, INT, PVOID)
+            INT, STRING, PINT, PINT, INT, PVOID)
 FCALLSCFUN6(INT, TIO_put_var_section, TIOF_PUT_VAR_SECTION, tiof_put_var_section,
-            INT, STRING, INT, INT, INT, PVOID)
+            INT, STRING, PINT, PINT, INT, PVOID)

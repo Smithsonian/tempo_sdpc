@@ -59,7 +59,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    float *data = NULL;
    float *data_in = NULL;
    int data_size = ntracks * nxtrack * ny;
-   int track, num_write;
+   int start[3], count[3];
    int processing_level;
    int processing_level_type;
    TIO_Scan_Group_Type sgrps[] =
@@ -78,8 +78,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 
    /* nc_set_log_level(3); */
 
-   track = 0;
-   num_write = ntracks;
+   start[0] = 0;       start[1] = 0;       start[2] = 0;
+   count[0] = ntracks; count[1] = nxtrack; count[2] = ny;
 
    if (NULL == (data = generate_data (2 * data_size)))
      {
@@ -110,7 +110,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   if (-1 == TIO_put_var_section (grp, field_name, track, num_write, field_type, data))
+   if (-1 == TIO_put_var_section (grp, field_name, start, count, field_type, data))
      {
         fprintf (stderr, "*** failed writing field %s in file %s\n",
                  field_name, file);
@@ -224,7 +224,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test variable input */
-   if (-1 == TIO_get_var_section (grp, field_name, track, num_write, field_type, data_in))
+   if (-1 == TIO_get_var_section (grp, field_name, start, count, field_type, data_in))
      {
         fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
                  field_name, file, nc_strerror(status));
@@ -294,7 +294,7 @@ cleanup:
 
 int main (void)
 {
-   int ntracks=10, nxtrack=10, ny=10;
+   int ntracks=8, nxtrack=6, ny=5;
 
    if (test_l1_radiance ("delete_radiance.nc", ntracks, nxtrack, ny))
      return 1;

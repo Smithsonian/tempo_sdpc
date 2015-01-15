@@ -6,10 +6,12 @@ program tio_test
   type (tiof_object_type) :: obj
   character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
-  integer :: step0, num_steps, num_wavelengths, num_xtrack
+  integer :: num_wavelengths, num_xtrack, num_steps
   integer, dimension(2) :: dimids
-  real (kind=4), allocatable, dimension(:,:,:) :: radiance
-  integer :: errstat
+  integer, dimension(3) :: start, edge
+  real (kind=4), allocatable, dimension(:,:,:) :: radiance, rx
+  integer :: errstat, i,j,k, iwave_start
+  real (kind=4) :: n
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
@@ -105,28 +107,149 @@ program tio_test
 
   call tiof_inq_dimlen (obj, tempo_dim_channel, num_wavelengths, errstat);
   call tiof_inq_dimlen (obj, tempo_dim_xtrack, num_xtrack, errstat);
+  call tiof_inq_dimlen (obj, tempo_dim_step, num_steps, errstat);
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_dimlen failed:  group='//groupname
     stop 4
   endif
 
-  step0 = 5
-  num_steps = 2
-  allocate (radiance(num_wavelengths, num_xtrack, num_steps))
-
-  call tiof_get3d_r4 (obj, tempo_var_radiance, step0, num_steps, radiance, errstat)
-  if (errstat < 0) then
-    write(*,*)'*** tiof_get3d_r4 failed'
+  allocate (radiance(num_wavelengths, num_xtrack, num_steps), &
+            rx(num_wavelengths,num_xtrack,num_steps), &
+           stat=errstat)
+  if (errstat /= 0) then
+    write(*,*)'*** allocate failed'
     stop 4
   endif
 
-  !write(*,*)radiance
-  deallocate (radiance)
+  ! indices in C order, so first is slowest, last changes quickest
+  n = 0.0
+  do k=0,num_steps-1
+    do j=0,num_xtrack-1
+      do i=0,num_wavelengths-1
+        rx(i+1,j+1,k+1) = n
+        n = n + 1.0
+      enddo
+    enddo
+  enddo
+
+  ! Test reading sub-arrays
+  ! read test
+  start = [2, 0, 0]
+  edge  = [2, num_xtrack, num_wavelengths]
+  radiance(:,:,:) = 0.0
+  call tiof_get3d_r4 (obj, tempo_var_radiance, start, edge, radiance, errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_get3d_r4 failed '
+    stop 5
+  endif
+  call compare_arrays
+
+  ! read test
+  start = [0, 0, 0]
+  edge  = [num_steps, num_xtrack/2, num_wavelengths]
+  radiance(:,:,:) = 0.0
+  call tiof_get3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      radiance(:,1:num_xtrack/2,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_get3d_r4 failed '
+    stop 5
+  endif
+  call compare_arrays
+
+  ! read test
+  start = [0, 0, num_wavelengths/2]
+  edge  = [num_steps, num_xtrack, num_wavelengths/2]
+  radiance(:,:,:) = 0.0
+  call tiof_get3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      radiance(1:num_wavelengths/2,:,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_get3d_r4 failed '
+    stop 5
+  endif
+  call compare_arrays
+
+  ! Test writing sub-arrays
+
+  ! write/read test
+  start = [0, 0, 0]
+  edge  = [num_steps, num_xtrack/2, num_wavelengths]
+  rx = -1 * rx;
+  call tiof_put3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      rx(:,1:num_xtrack/2,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_put3d_r4 failed '
+    stop 6
+  endif
+  radiance(:,:,:) = 0.0
+  call tiof_get3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      radiance(:,1:num_xtrack/2,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_get3d_r4 failed '
+    stop 6
+  endif
+  call compare_arrays
+
+  ! write/read test
+  iwave_start = 2   ! starting wavelength index to write out (fortran, 1-based)
+  start = [0, 0, iwave_start-1]
+  edge  = [num_steps, num_xtrack, num_wavelengths-iwave_start+1]
+  rx = -1 * rx;
+  call tiof_put3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      rx(iwave_start:num_wavelengths,:,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_put3d_r4 failed '
+    stop 6
+  endif
+  radiance(:,:,:) = 0.0
+  call tiof_get3d_r4 (obj, tempo_var_radiance, start, edge, &
+                      radiance(1:num_wavelengths-iwave_start+1,:,:), errstat)
+  if (errstat < 0) then
+    write(*,*)'*** tiof_get3d_r4 failed '
+    stop 6
+  endif
+  call compare_arrays
+
+  deallocate (radiance,rx)
 
   call tiof_close (obj, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_close failed'
     stop 4
   endif
+
+contains
+
+  subroutine write_arrays ()
+    integer :: i,j,k=1
+    do k=0,edge(1)-1
+      do j=0,edge(2)-1
+        do i=0,edge(3)-1
+          write(*,'(i3,i3,i3,a,f6.1,a,f6.1)')i,j,k, &
+            ": rx=", rx(1+start(3)+i,1+start(2)+j,1+start(1)+k), &
+            " r=", radiance(1+i,1+j,1+k)
+        enddo
+      enddo
+    enddo
+    write(*,*)'radiance:'
+    do k=1,num_steps
+      do j=1,num_xtrack
+        do i=1,num_wavelengths
+          write(*,'(i3,i3,i3,2x,f6.1)')i,j,k,radiance(i,j,k)
+        enddo
+      enddo
+    enddo
+  end subroutine write_arrays
+
+  subroutine compare_arrays ()
+    implicit none
+    if (any (rx(1+start(3):start(3)+edge(3), &
+                1+start(2):start(2)+edge(2), &
+                1+start(1):start(1)+edge(1)) &
+             /= radiance(1:edge(3),1:edge(2),1:edge(1)))) then
+      write(*,*)'*** unexpected input radiance values'
+      call write_arrays
+      stop 5
+    endif
+  end subroutine compare_arrays
 
 end program tio_test

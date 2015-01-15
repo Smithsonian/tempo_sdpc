@@ -84,7 +84,7 @@ module tio_module
     tiof_get1d_r8, &
     tiof_put1d_r8, tiof_put2d_r8, tiof_put3d_r8, &
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
-                   tiof_put2d_r4, &
+                   tiof_put2d_r4, tiof_put3d_r4, &
     tiof_put1d_i4, &
     tiof_get2d_i2, tiof_get3d_i2, &
     tiof_put2d_i2, &
@@ -202,11 +202,11 @@ contains
     endif
   end subroutine tiof_inq_dimlen
 
-  subroutine tiof_get1d_r8 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get1d_r8 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=8), dimension (:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -214,7 +214,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_double, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -222,11 +222,11 @@ contains
     endif
   end subroutine tiof_get1d_r8
 
-  subroutine tiof_put1d_r8 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put1d_r8 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=8), dimension (:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -234,7 +234,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_double, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " to file", errstat)
@@ -242,11 +242,11 @@ contains
     endif
   end subroutine tiof_put1d_r8
 
-  subroutine tiof_get3d_r4 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get3d_r4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=4), dimension (:,:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -254,7 +254,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_float, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_float, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -262,11 +262,31 @@ contains
     endif
   end subroutine tiof_get3d_r4
 
-  subroutine tiof_get2d_r4 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put3d_r4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
+    real (kind=4), dimension (:,:,:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_float, array)
+
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " to file", errstat)
+      return
+    endif
+  end subroutine tiof_put3d_r4
+  
+  subroutine tiof_get2d_r4 (obj, name, start, edge, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=4), dimension (:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -274,7 +294,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_float, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_float, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -282,11 +302,11 @@ contains
     endif
   end subroutine tiof_get2d_r4
 
-  subroutine tiof_put2d_r4 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put2d_r4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=4), dimension (:,:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -294,7 +314,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_float, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_float, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " from file", errstat)
@@ -302,11 +322,11 @@ contains
     endif
   end subroutine tiof_put2d_r4
 
-  subroutine tiof_put2d_r8 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put2d_r8 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=8), dimension (:,:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -314,7 +334,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_double, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " from file", errstat)
@@ -322,11 +342,11 @@ contains
     endif
   end subroutine tiof_put2d_r8
 
-  subroutine tiof_put3d_r8 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put3d_r8 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=8), dimension (:,:,:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -334,7 +354,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_double, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_double, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " to file", errstat)
@@ -342,11 +362,11 @@ contains
     endif
   end subroutine tiof_put3d_r8
 
-  subroutine tiof_get1d_r4 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get1d_r4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     real (kind=4), dimension (:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -354,7 +374,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_float, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_float, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -362,11 +382,11 @@ contains
     endif
   end subroutine tiof_get1d_r4
 
-  subroutine tiof_put1d_i4 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put1d_i4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i4), dimension (:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -374,7 +394,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_int, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_int, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " from file", errstat)
@@ -382,11 +402,11 @@ contains
     endif
   end subroutine tiof_put1d_i4
 
-  subroutine tiof_get3d_i2 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get3d_i2 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i2), dimension (:,:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -394,7 +414,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_short, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_short, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -402,11 +422,11 @@ contains
     endif
   end subroutine tiof_get3d_i2
 
-  subroutine tiof_get2d_i2 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get2d_i2 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i2), dimension (:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -414,7 +434,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_short, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_short, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -422,11 +442,11 @@ contains
     endif
   end subroutine tiof_get2d_i2
 
-  subroutine tiof_put2d_i2 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_put2d_i2 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i2), dimension (:,:), intent(in) :: array
     integer, intent(inout) :: errstat
 
@@ -434,7 +454,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_put_var_section (obj % groupid, name, step0, numsteps, nf90_short, array)
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_short, array)
 
     if (err < 0) then
       call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " from file", errstat)
@@ -442,11 +462,11 @@ contains
     endif
   end subroutine tiof_put2d_i2
 
-  subroutine tiof_get2d_i1 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get2d_i1 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i1), dimension (:,:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -454,7 +474,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_byte, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_byte, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
@@ -462,11 +482,11 @@ contains
     endif
   end subroutine tiof_get2d_i1
 
-  subroutine tiof_get1d_i1 (obj, name, step0, numsteps, array, errstat)
+  subroutine tiof_get1d_i1 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, intent(in) :: step0, numsteps
+    integer, dimension(:), intent(in) :: start, edge
     integer (kind=i1), dimension (:), intent(out) :: array
     integer, intent(inout) :: errstat
 
@@ -474,7 +494,7 @@ contains
 
     if (errstat < 0) return
 
-    err = tiof_get_var_section (obj % groupid, name, step0, numsteps, nf90_byte, array)
+    err = tiof_get_var_section (obj % groupid, name, start, edge, nf90_byte, array)
 
     if (err < 0) then
       call tell_error (tell_io_read_error, "Unable to read " // trim(name) // " from file", errstat)
