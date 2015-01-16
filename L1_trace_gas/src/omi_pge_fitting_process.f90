@@ -143,7 +143,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   use output_tools, only : create_output_file, close_output_file, &
-    write_fitting_statistics, write_common_mode
+    write_fitting_statistics, write_common_mode, write_wavcal_output
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -160,7 +160,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
     omi_cross_track_skippix, omi_radcal_xflag, &
-    omi_radiance_swathname, initialize_io_var_structs
+    omi_radiance_swathname, initialize_io_var_structs, result_vars
   USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
@@ -439,7 +439,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! overwritten in the call to XTRACK_RADIANCE_REFERENCE_LOOP
     ! below, hence we need to write them out here.
     ! -------------------------------------------------------------
-    CALL he5_write_wavcal_output ( nxtrack_rad, first_pix, last_pix, errstat )
+    CALL he5_write_wavcal_output ( nxtrack_rad, first_pix, last_pix, errstat ) ! FIXME (to be removed)
+    call write_wavcal_output (result_vars, nxtrack_rad, errstat)
+    if (errstat < 0) return
 
   END IF
 
@@ -608,8 +610,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! information only BEFORE the target has been removed.
   ! -------------------------------------------------------------------
   IF ( .NOT. (yn_radiance_reference .AND. yn_remove_target) ) THEN
-    CALL he5_write_wavcal_output ( nxtrack_rr, first_pix, last_pix, errstat )
+    CALL he5_write_wavcal_output ( nxtrack_rr, first_pix, last_pix, errstat ) ! FIXME (to be removed)
     if (errstat < 0) return
+    call write_wavcal_output (result_vars, nxtrack_rr, errstat)
+    if (errstat < 0) return
+    
   END IF
 
   ! ----------------------------------------------------------

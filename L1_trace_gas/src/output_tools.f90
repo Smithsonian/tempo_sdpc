@@ -9,7 +9,7 @@ module output_tools
   implicit none
   private
 
-  public create_output_file, close_output_file, &
+  public create_output_file, close_output_file, write_wavcal_output, &
     write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_gas_profile, write_scattering_weights, &
     write_amf_correction, write_refspec_database
@@ -480,6 +480,72 @@ contains
 
   end subroutine append_column_vars
 
+  subroutine append_wavcal_vars (obj, dimlist, errstat)
+    implicit none
+
+    type (tiof_object_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
+    type (integer), intent(inout) :: errstat
+
+    type (tiof_varlist_type) :: varlist
+    integer, dimension(1) :: dimid_xtrack
+
+    call tiof_dimlist_lookup (dimlist, [tg_dim_xtrack], dimid_xtrack, errstat)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_solcal_convergence_flag, &
+                              nf90_short, &
+                              dimids = dimid_xtrack,  &
+                              comment = "solar wavelength calibration convergence flag", &
+                              valid_range = [-10.0_r8, 12344.0_r8], &
+                              fillvalue = fill_short)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radcal_convergence_flag, &
+                              nf90_short, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance wavelength calibration convergence flag", &
+                              valid_range = [-10.0_r8, 12344.0_r8], &
+                              fillvalue = fill_short)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radref_convergence_flag, &
+                              nf90_short, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance reference fit convergence flag", &
+                              valid_range = [-10.0_r8, 12344.0_r8], &
+                              fillvalue = fill_short)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radref_column_amount, &
+                              nf90_double, &
+                              dimids = dimid_xtrack, &
+                              comment = "radiance reference fit column amount", &
+                              units = "molec/cm2", &
+                              valid_range = [-1.e30_r8, 1.e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radref_column_uncert, &
+                              nf90_double, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance reference fit column uncert", &
+                              units = "molec/cm2", &
+                              valid_range = [0.0_r8, 1.e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radref_column_xtrfit, &
+                              nf90_double, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance reference fit column XTR fit", &
+                              units = "molec/cm2", &
+                              valid_range = [0.0_r8, 1.e30_r8])
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radref_fit_rms, &
+                              nf90_double, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance reference fit RMS", &
+                              valid_range = [0.0_r8, 1.e30_r8])
+
+    call tiof_def_vars (obj, varlist, errstat)
+
+  end subroutine append_wavcal_vars
+
   subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
                                  n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                                  errstat)
@@ -523,6 +589,7 @@ contains
     endif
 
     call append_column_vars (obj, dimlist, errstat)
+    call append_wavcal_vars (obj, dimlist, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
@@ -635,6 +702,38 @@ contains
     endif
 
   end subroutine write_radfit_output
+
+  subroutine write_wavcal_output (result_vars, nxtrack, errstat)
+    use OMSAO_omidata_module, only : result_vars_type
+    implicit none
+    type(result_vars_type), intent(in) :: result_vars
+    integer, intent(in) :: nxtrack
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+
+    call tiof_put1d_i2 (obj, tg_var_solcal_convergence_flag, [0], [nxtrack], &
+                        result_vars % solcal_convergence_flag (1:nxtrack), errstat)
+    call tiof_put1d_i2 (obj, tg_var_radcal_convergence_flag, [0], [nxtrack], &
+                        result_vars % radcal_convergence_flag (1:nxtrack), errstat)
+    call tiof_put1d_i2 (obj, tg_var_radref_convergence_flag, [0], [nxtrack], &
+                        result_vars % radref_convergence_flag (1:nxtrack), errstat)
+    call tiof_put1d_r8 (obj, tg_var_radref_column_amount, [0], [nxtrack], &
+                        result_vars % radref_column_amount (1:nxtrack), errstat)
+    call tiof_put1d_r8 (obj, tg_var_radref_column_uncert, [0], [nxtrack], &
+                        result_vars % radref_column_uncert (1:nxtrack), errstat)
+    call tiof_put1d_r8 (obj, tg_var_radref_column_xtrfit, [0], [nxtrack], &
+                        result_vars % radref_column_xtrfit (1:nxtrack), errstat)
+    call tiof_put1d_r8 (obj, tg_var_radref_fit_rms, [0], [nxtrack], &
+                        result_vars % radref_fit_rms (1:nxtrack), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "write_wavcal_output: failed", errstat)
+      return
+    endif
+
+  end subroutine write_wavcal_output
 
   subroutine write_fitting_statistics (stats, errstat)
     use omi_pge_fitting_aux, only : fitting_statistics_type

@@ -26,21 +26,28 @@ MODULE OMSAO_omidata_module
   ! these structures are used everywhere, we can greatly reduce the
   ! number of exported module symbols.
   type, public :: input_vars_type
-    real(kind=r8), dimension(:), pointer :: time => null()
-    real(kind=r4), dimension(:,:), pointer :: latitude => null()
-    real(kind=r4), dimension(:,:), pointer :: longitude => null()
-    real(kind=r4), dimension(:,:), pointer :: solar_zenith => null()
-    real(kind=r4), dimension(:,:), pointer :: solar_azimuth => null()
-    real(kind=r4), dimension(:,:), pointer :: viewing_zenith => null()
-    real(kind=r4), dimension(:,:), pointer :: viewing_azimuth => null()
+    real (kind=r8), dimension(:), pointer :: time => null()
+    real (kind=r4), dimension(:,:), pointer :: latitude => null()
+    real (kind=r4), dimension(:,:), pointer :: longitude => null()
+    real (kind=r4), dimension(:,:), pointer :: solar_zenith => null()
+    real (kind=r4), dimension(:,:), pointer :: solar_azimuth => null()
+    real (kind=r4), dimension(:,:), pointer :: viewing_zenith => null()
+    real (kind=r4), dimension(:,:), pointer :: viewing_azimuth => null()
   end type input_vars_type
 
   type, public :: result_vars_type
-    real(kind=r8), dimension(:,:), pointer :: column_amount => null()
-    real(kind=r8), dimension(:,:), pointer :: column_uncert => null()
-    real(kind=r8), dimension(:,:), pointer :: fit_rms_residual => null()
+    real (kind=r8), dimension(:,:), pointer :: column_amount => null()
+    real (kind=r8), dimension(:,:), pointer :: column_uncert => null()
+    real (kind=r8), dimension(:,:), pointer :: fit_rms_residual => null()
     integer(kind=i2), dimension(:,:), pointer :: fit_convergence_flag => null()
     integer (kind=i2), dimension(:,:), pointer :: fit_iteration_count => null()
+    integer (kind=i2), dimension(:), pointer :: solcal_convergence_flag => null()
+    integer (kind=i2), dimension(:), pointer :: radcal_convergence_flag => null()
+    integer (kind=i2), dimension(:), pointer :: radref_convergence_flag => null()
+    real (kind=r8), dimension(:), pointer :: radref_column_amount => null()
+    real (kind=r8), dimension(:), pointer :: radref_column_uncert => null()
+    real (kind=r8), dimension(:), pointer :: radref_column_xtrfit => null()
+    real (kind=r8), dimension(:), pointer :: radref_fit_rms => null()
   end type result_vars_type
 
   type (input_vars_type) :: input_vars
@@ -282,6 +289,13 @@ contains
     result_vars % fit_rms_residual => omi_fit_rms
     result_vars % fit_convergence_flag => omi_fitconv_flag
     result_vars % fit_iteration_count => omi_itnum_flag
+    result_vars % solcal_convergence_flag => omi_solcal_xflag
+    result_vars % radcal_convergence_flag => omi_radcal_xflag
+    result_vars % radref_convergence_flag => omi_radref_xflag
+    result_vars % radref_column_amount => omi_radref_col
+    result_vars % radref_column_uncert => omi_radref_dcol
+    result_vars % radref_column_xtrfit => omi_radref_xtrcol
+    result_vars % radref_fit_rms => omi_radref_rms
   end subroutine initialize_io_var_structs
 
   subroutine dealloc_retrieval_type (rt)
