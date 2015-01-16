@@ -11,6 +11,7 @@ CONTAINS
     USE OMSAO_omidata_module,    ONLY : global_mode, szoom_mode
     !use l1bread
     use tio_module
+    use tg_names_module
     use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE
@@ -135,6 +136,7 @@ CONTAINS
     USE angle_sat2toa, ONLY: gnome_angle_sat2toa
     !use l1bread
     use tio_module
+    use tg_names_module
     use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE
@@ -187,21 +189,21 @@ CONTAINS
     !call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
     !call l1bread_close (l1bobj)
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_get1d_r8 (tio_l1obj, tempo_var_time, [iline], [nloop], omi_time, errstat)
+    call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
     call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], [nloop], omi_auraalt, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_latitude, [iline,0], [nloop,-1], omi_latitude, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_longitude, [iline,0], [nloop,-1], omi_longitude, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_sz_angle, [iline,0], [nloop,-1], omi_szenith, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_sa_angle, [iline,0], [nloop,-1], omi_sazimuth, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_vz_angle, [iline,0], [nloop,-1], omi_vzenith, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tempo_var_va_angle, [iline,0], [nloop,-1], omi_vazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [iline,0], [nloop,-1], omi_latitude, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_longitude, [iline,0], [nloop,-1], omi_longitude, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_sz_angle, [iline,0], [nloop,-1], omi_szenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_sa_angle, [iline,0], [nloop,-1], omi_sazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_vz_angle, [iline,0], [nloop,-1], omi_vzenith, errstat)
+    call tiof_get2d_r4 (tio_l1obj, tg_var_va_angle, [iline,0], [nloop,-1], omi_vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", [iline,0], [nloop,-1], omi_height, errstat)
     call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [iline,0], [nloop,-1], omi_geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], [nloop,-1], omi_xtrflg_l1b, errstat)
-    call tiof_get3d_r4 (tio_l1obj, tempo_var_radiance, [iline,0,0], [nloop,-1,-1], tmp_spc, errstat)
-    call tiof_get3d_i2 (tio_l1obj, tempo_var_dqf, [iline,0,0], [nloop,-1,-1], tmp_flg, errstat)
-    call tiof_get3d_r4 (tio_l1obj, tempo_var_wavelength, [iline,0,0], [nloop,-1,-1], tmp_wvl, errstat)
+    call tiof_get3d_r4 (tio_l1obj, tg_var_radiance, [iline,0,0], [nloop,-1,-1], tmp_spc, errstat)
+    call tiof_get3d_i2 (tio_l1obj, tg_var_dqf, [iline,0,0], [nloop,-1,-1], tmp_flg, errstat)
+    call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,-1,-1], tmp_wvl, errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
@@ -312,6 +314,7 @@ CONTAINS
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname
     !use l1bread
     use tio_module
+    use tg_names_module
     use netcdf, only : nf90_nowrite
 
     IMPLICIT NONE

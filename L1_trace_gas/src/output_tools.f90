@@ -2,6 +2,7 @@ module output_tools
   use netcdf
   use tell_module
   use tio_module
+  use tg_names_module
   use OMSAO_precision_module
   use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
 
@@ -40,10 +41,10 @@ contains
     ! where mirror_step_beg/end are granule-specific
 
     step_indices = [(i, i=0,num_steps-1)]
-    call tiof_put1d_i4 (obj, tempo_dim_step, [0], [num_steps], step_indices, errstat)
+    call tiof_put1d_i4 (obj, tg_dim_step, [0], [num_steps], step_indices, errstat)
 
     xtrack_indices = [(i, i=0,num_xtrack-1)]
-    call tiof_put1d_i4 (obj, tempo_dim_xtrack, [0], [num_xtrack], xtrack_indices, errstat)
+    call tiof_put1d_i4 (obj, tg_dim_xtrack, [0], [num_xtrack], xtrack_indices, errstat)
 
   end subroutine write_coordinate_vars
 
@@ -59,36 +60,36 @@ contains
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_commwvl, tempo_dim_xtrack], &
+                              [tg_dim_commwvl, tg_dim_xtrack], &
                               dimids_commwvl_xtrack, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_xtrack, tempo_dim_pair], &
+                              [tg_dim_xtrack, tg_dim_pair], &
                               dimids_xtrack_pair, &
                               errstat)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_common_mode_spectrum, &
+                              tg_var_common_mode_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack,  &
                               comment = "common mode spectrum", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_common_mode_wavelengths, &
+                              tg_var_common_mode_wavelengths, &
                               nf90_float, &
                               dimids = dimids_commwvl_xtrack,  &
                               comment = "common mode wavelengths", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_common_mode_count, &
+                              tg_var_common_mode_count, &
                               nf90_int, &
                               dimids = [dimids_commwvl_xtrack(2)],  &
                               comment = "common mode spectrum averaging count", &
                               valid_range = [0.0_r8, 2147483647.0_r8])
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_common_mode_ccd_pixel_range, &
+                              tg_var_common_mode_ccd_pixel_range, &
                               nf90_short, &
                               dimids = dimids_xtrack_pair,  &
                               comment = "first and last ccd pixel number fitted", &
@@ -115,17 +116,17 @@ contains
 
     ! lookup dimids for relevant array shapes
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_xtrack, tempo_dim_step], &
+                              [tg_dim_xtrack, tg_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_xtrack, tempo_dim_step,tempo_dim_swt_level], &
+                              [tg_dim_xtrack, tg_dim_step,tg_dim_swt_level], &
                               dimids_xtrack_step_levels, &
                               errstat)
 
     ! append amf variables
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_scattering_weights, &
+                              tg_var_amf_scattering_weights, &
                               nf90_double, &
                               dimids = dimids_xtrack_step_levels,  &
                               comment = "scattering weights", &
@@ -133,7 +134,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_climatology_levels, &
+                              tg_var_amf_climatology_levels, &
                               nf90_double, &
                               dimids = dimids_xtrack_step_levels,  &
                               comment = "climatology levels", &
@@ -142,7 +143,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_gas_profile, &
+                              tg_var_amf_gas_profile, &
                               nf90_double, &
                               dimids = dimids_xtrack_step_levels,  &
                               comment = "gas profile", &
@@ -151,38 +152,38 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_albedo, &
+                              tg_var_amf_albedo, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "albedo", &
                               valid_range = [-1e30_r8, 1e30_r8])
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_molecule_specific, &
+                              tg_var_amf_molecule_specific, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "molecule-specific air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8])
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_diagnostic_flag, &
+                              tg_var_amf_diagnostic_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "diagnostic flag for molecule-specific air mass factor (AMF)", &
                               valid_range = [-2.0_r8, 13127.0_r8])
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_geometric, &
+                              tg_var_amf_geometric, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "geometric air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8])
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_cloud_fraction, &
+                              tg_var_amf_cloud_fraction, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "adjusted cloud fraction for AMF computation", &
                               valid_range = [0.0_r8, 1e30_r8])
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_amf_cloud_pressure, &
+                              tg_var_amf_cloud_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "adjusted cloud pressure for AMF computation", &
@@ -211,29 +212,29 @@ contains
 
     ! lookup dimids for relevant array shapes
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_xtrack, tempo_dim_step], &
+                              [tg_dim_xtrack, tg_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_fitvar, tempo_dim_xtrack, tempo_dim_step], &
+                              [tg_dim_fitvar, tg_dim_xtrack, tg_dim_step], &
                               dimids_var_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_commwvl, tempo_dim_xtrack, tempo_dim_step], &
+                              [tg_dim_commwvl, tg_dim_xtrack, tg_dim_step], &
                               dimids_commwvl_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_refwavl, tempo_dim_xtrack, tempo_dim_refspec], &
+                              [tg_dim_refwavl, tg_dim_xtrack, tg_dim_refspec], &
                               dimids_refwavl_xtrack_refspec, &
                               errstat, dimsizes = dimsizes_refwavl_xtrack_refspec)
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_refwavl, tempo_dim_xtrack], &
+                              [tg_dim_refwavl, tg_dim_xtrack], &
                               dimids_refwavl_xtrack, &
                               errstat)
 
     ! append diagnostic variables
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_fit_iteration_count, &
+                              tg_var_fit_iteration_count, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "radiance fit iteration count", &
@@ -241,7 +242,7 @@ contains
                               fillvalue = fill_short)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_params, &
+                              tg_var_diag_params, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter", &
@@ -250,7 +251,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_errors, &
+                              tg_var_diag_errors, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter uncertainty", &
@@ -259,7 +260,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_correl, &
+                              tg_var_diag_correl, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter correlation", &
@@ -269,7 +270,7 @@ contains
                               shuffle = shuffle)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_measured_spectrum, &
+                              tg_var_diag_measured_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured spectrum", &
@@ -278,7 +279,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_measured_wavelengths, &
+                              tg_var_diag_measured_wavelengths, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured wavelength", &
@@ -287,7 +288,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_model_spectrum, &
+                              tg_var_diag_model_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "model spectrum", &
@@ -296,7 +297,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_diag_fit_weights, &
+                              tg_var_diag_fit_weights, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "spectrum fit weights", &
@@ -309,7 +310,7 @@ contains
     chunksizes(2) = min(dimsizes_refwavl_xtrack_refspec(2), 1024)   ! xtrack dimension
     chunksizes(3) = 1                                               ! refspec dimension
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_refspec, &
+                              tg_var_refspec, &
                               nf90_double, &
                               dimids = dimids_refwavl_xtrack_refspec, &
                               comment = "reference spectra used in the fitting process", &
@@ -319,7 +320,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_refspec_wavelength, &
+                              tg_var_refspec_wavelength, &
                               nf90_double, &
                               dimids = dimids_refwavl_xtrack, &
                               comment = "reference spectra wavelengths", &
@@ -328,7 +329,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_refspec_norm, &
+                              tg_var_refspec_norm, &
                               nf90_double, &
                               dimids = [dimids_refwavl_xtrack_refspec(3) ], &
                               comment = "reference spectra normalization factors", &
@@ -353,7 +354,7 @@ contains
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
-                              [tempo_dim_xtrack, tempo_dim_step], &
+                              [tg_dim_xtrack, tg_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
 
@@ -361,17 +362,17 @@ contains
     ! and attributes:
 
     ! netcdf coordinate variables:
-    call tiof_varlist_append (varlist, errstat, tempo_dim_xtrack, nf90_int, &
+    call tiof_varlist_append (varlist, errstat, tg_dim_xtrack, nf90_int, &
                              dimids=[dimids_xtrack_step(1)])
-    call tiof_varlist_append (varlist, errstat, tempo_dim_step, nf90_int, &
+    call tiof_varlist_append (varlist, errstat, tg_dim_step, nf90_int, &
                              dimids=[dimids_xtrack_step(2)])
 
     ! data field variables with optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(tempo_var_longitude) &
-                              //' '//trim(tempo_var_latitude))
+                              att_text = trim(tg_var_longitude) &
+                              //' '//trim(tg_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_column_amount, &
+                              tg_var_column_amount, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "column amount", &
@@ -379,7 +380,7 @@ contains
                               valid_range = [-1.e30_r8, 1.e30_r8], &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_column_uncert, &
+                              tg_var_column_uncert, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "column amount uncertainty", &
@@ -388,14 +389,14 @@ contains
                               attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_fit_rms_residual, &
+                              tg_var_fit_rms_residual, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit rms residual", &
                               valid_range = [0.0_r8, 1.e30_r8], &
                               fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_fit_convergence_flag, &
+                              tg_var_fit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit convergence flag", &
@@ -403,7 +404,7 @@ contains
                               fillvalue = fill_short)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_time, &
+                              tg_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
                               comment = "exposure start time", &
@@ -412,9 +413,9 @@ contains
                               fillvalue = fill_double)
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
-                              att_text = tempo_var_latitude_bounds)
+                              att_text = tg_var_latitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_latitude, &
+                              tg_var_latitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "latitude at pixel center", &
@@ -424,9 +425,9 @@ contains
                               attlist=att_latbnd)
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
-                              att_text = tempo_var_longitude_bounds)
+                              att_text = tg_var_longitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_longitude, &
+                              tg_var_longitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "longitude at pixel center", &
@@ -436,7 +437,7 @@ contains
                               attlist=att_lonbnd)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_sz_angle, &
+                              tg_var_sz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "solar zenith angle at pixel center", &
@@ -444,7 +445,7 @@ contains
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_sa_angle, &
+                              tg_var_sa_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "solar azimuth angle at pixel center", &
@@ -452,7 +453,7 @@ contains
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_vz_angle, &
+                              tg_var_vz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing zenith angle at pixel center", &
@@ -460,7 +461,7 @@ contains
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_va_angle, &
+                              tg_var_va_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing azimuth angle at pixel center", &
@@ -469,7 +470,7 @@ contains
                               fillvalue = fill_float)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tempo_var_main_dqf, &
+                              tg_var_main_dqf, &
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "main data quality flag", &
@@ -503,15 +504,15 @@ contains
     endif
 
     ! Define a dimension list.
-    call tiof_dimlist_append (dimlist, tempo_dim_step, num_steps, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_xtrack, num_xtrack, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_swt_level, num_swlevels, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_pair, 2, errstat)
-    call tiof_dimlist_append (dimlist, tempo_dim_commwvl, n_comm_wvl, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
     if (yn_diagnostic_run) then
-      call tiof_dimlist_append (dimlist, tempo_dim_fitvar, n_fitvar_rad, errstat)
-      call tiof_dimlist_append (dimlist, tempo_dim_refwavl, nwavel_max, errstat)
-      call tiof_dimlist_append (dimlist, tempo_dim_refspec, max_rs_idx, errstat)
+      call tiof_dimlist_append (dimlist, tg_dim_fitvar, n_fitvar_rad, errstat)
+      call tiof_dimlist_append (dimlist, tg_dim_refwavl, nwavel_max, errstat)
+      call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
     endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat < 0) then
@@ -576,57 +577,57 @@ contains
     if (errstat < 0) return
 
     ! result_vars
-    call tiof_put2d_r8 (obj, tempo_var_column_amount, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, -1], &
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_column_uncert, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, -1], &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_fit_rms_residual, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_fit_rms_residual, [iline,0], [nblock, -1], &
                         result_vars % fit_rms_residual (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_i2 (obj, tempo_var_fit_convergence_flag, [iline,0], [nblock, -1], &
+    call tiof_put2d_i2 (obj, tg_var_fit_convergence_flag, [iline,0], [nblock, -1], &
                         result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_put2d_i2 (obj, tempo_var_fit_iteration_count, [iline,0], [nblock, -1], &
+      call tiof_put2d_i2 (obj, tg_var_fit_iteration_count, [iline,0], [nblock, -1], &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
 
-      call tiof_put3d_r8 (obj, tempo_var_diag_params, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_params, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % params(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tempo_var_diag_errors, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_errors, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % errors(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tempo_var_diag_correl, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_correl, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
-      call tiof_put3d_r8 (obj, tempo_var_diag_model_spectrum, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tempo_var_diag_measured_spectrum, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tempo_var_diag_measured_wavelengths, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tempo_var_diag_fit_weights, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1), &
                           errstat)
     endif
 
     ! input_vars
-    call tiof_put1d_r8 (obj, tempo_var_time, [iline], [nblock], &
+    call tiof_put1d_r8 (obj, tg_var_time, [iline], [nblock], &
                         input_vars % time (0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_longitude, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_longitude, [iline,0], [nblock,-1], &
                         input_vars % longitude (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_latitude, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_latitude, [iline,0], [nblock,-1], &
                         input_vars % latitude (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_sz_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_sz_angle, [iline,0], [nblock,-1], &
                         input_vars % solar_zenith (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_sa_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_sa_angle, [iline,0], [nblock,-1], &
                         input_vars % solar_azimuth (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_vz_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_vz_angle, [iline,0], [nblock,-1], &
                         input_vars % viewing_zenith (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tempo_var_va_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_va_angle, [iline,0], [nblock,-1], &
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
@@ -674,7 +675,7 @@ contains
 
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
 
-    call tiof_put2d_i2 (obj, tempo_var_main_dqf, [0,0], [stats % num_scan_lines,-1], &
+    call tiof_put2d_i2 (obj, tg_var_main_dqf, [0,0], [stats % num_scan_lines,-1], &
                         stats % quality_flag (1:stats % num_crosstrack_pixels, &
                                               0:stats % num_scan_lines-1), &
                         errstat)
@@ -698,7 +699,7 @@ contains
     type (tiof_object_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
-    call tiof_put2d_r8 (obj, tempo_var_amf_albedo, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,-1], &
                         albedo (1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_albedo", errstat)
@@ -719,9 +720,9 @@ contains
     type (tiof_object_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
-    call tiof_put3d_r8 (obj, tempo_var_amf_gas_profile, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,-1,-1], &
                         gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
-    call tiof_put3d_r8 (obj, tempo_var_amf_climatology_levels, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,-1,-1], &
                         climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
@@ -740,7 +741,7 @@ contains
     type (tiof_object_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
-    call tiof_put3d_r8 (obj, tempo_var_amf_scattering_weights, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,-1,-1], &
                         scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
@@ -766,25 +767,25 @@ contains
 
     if (errstat < 0) return
 
-    call tiof_put2d_i2 (obj, tempo_var_amf_diagnostic_flag, [0,0], [ntimes,-1], &
+    call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,-1], &
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_amf_geometric, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_geometric, [0,0], [ntimes,-1], &
                         amf_corr % amf_geometric (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_amf_molecule_specific, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes,-1], &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_write_cloud_variables) then
-      call tiof_put2d_r8 (obj, tempo_var_amf_cloud_fraction, [0,0], [ntimes,-1], &
+      call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,-1], &
                           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
-      call tiof_put2d_r8 (obj, tempo_var_amf_cloud_pressure, [0,0], [ntimes,-1], &
+      call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,-1], &
                           amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
     endif
 
     ! Note that we're over-writing the column amount variable in the file
     ! (to which we previously wrote the slant column values).
-    call tiof_put2d_r8 (obj, tempo_var_column_amount, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes,-1], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_column_uncert, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes,-1], &
                         amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_amf_correction", errstat)
@@ -806,13 +807,13 @@ contains
     if (errstat < 0) return
     if (.not.yn_diagnostic_run) return
 
-    call tiof_put2d_r8 (obj, tempo_var_common_mode_spectrum, [0,0], [nxtrack,-1], &
+    call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,-1], &
                         common_mode % refspecdata (1:ncommwvl,1:nxtrack), errstat)
-    call tiof_put2d_r8 (obj, tempo_var_common_mode_wavelengths, [0,0], [nxtrack,-1], &
+    call tiof_put2d_r8 (obj, tg_var_common_mode_wavelengths, [0,0], [nxtrack,-1], &
                         common_mode % refspecwavs (1:ncommwvl,1:nxtrack), errstat)
-    call tiof_put2d_i2 (obj, tempo_var_common_mode_ccd_pixel_range, [0,0], [2,-1], &
+    call tiof_put2d_i2 (obj, tg_var_common_mode_ccd_pixel_range, [0,0], [2,-1], &
                         common_mode % ccdpixel (1:nxtrack,1:2), errstat)
-    call tiof_put1d_i4 (obj, tempo_var_common_mode_count, [0], [nxtrack], &
+    call tiof_put1d_i4 (obj, tg_var_common_mode_count, [0], [nxtrack], &
                         common_mode % refspeccount (1:nxtrack), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_common_mode", errstat)
@@ -840,13 +841,13 @@ contains
     ! Loop avoids creation of temporary array that may exceed process address space,
     ! causing a segv.  This can happen, when nxtrack is large, e.g. 2048.
     do i=1,nrefspec
-      call tiof_put3d_r8 (obj, tempo_var_refspec, [i-1,0,0], [1, nxtrack, npts], &
+      call tiof_put3d_r8 (obj, tg_var_refspec, [i-1,0,0], [1, nxtrack, npts], &
                           db(1:npts, 1:nxtrack, i:i), errstat)
     enddo
 
-    call tiof_put2d_r8 (obj, tempo_var_refspec_wavelength, [0,0], [nxtrack, npts], &
+    call tiof_put2d_r8 (obj, tg_var_refspec_wavelength, [0,0], [nxtrack, npts], &
                         db_wvl(1:npts, 1:nxtrack), errstat)
-    call tiof_put1d_r8 (obj, tempo_var_refspec_norm, [0], [nrefspec], &
+    call tiof_put1d_r8 (obj, tg_var_refspec_norm, [0], [nrefspec], &
                         refspec (1:nrefspec) % normfactor, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_refspec_database", errstat)

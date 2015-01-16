@@ -49,6 +49,7 @@ sao_pge_utils.f90
 strutils.f90
 subtract_cubic.f90
 SLATEC_davint.f90
+tg_names_module.f90
 undersample.f90
 datafields.f90
 irradiance_data.f90
