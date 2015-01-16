@@ -15,6 +15,12 @@ module output_tools
 
   type (tiof_object_type), private, target :: primary_output_file
 
+  ! using fill values from the original code simplifies diffing output files
+  real (kind=8), private, parameter :: &
+    fill_short = -30000, &
+    fill_float = -1.0e30, &
+    fill_double = -1.0e30
+
 contains
 
   subroutine write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
@@ -66,13 +72,15 @@ contains
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack,  &
                               comment = "common mode spectrum", &
-                              valid_range = [-1e30_r8, 1e30_r8])
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_common_mode_wavelengths, &
-                              nf90_double, &
+                              nf90_float, &
                               dimids = dimids_commwvl_xtrack,  &
                               comment = "common mode wavelengths", &
-                              valid_range = [-1e30_r8, 1e30_r8])
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_common_mode_count, &
                               nf90_int, &
@@ -229,30 +237,34 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "radiance fit iteration count", &
-                              valid_range = [0.0_r8, 32767.0_r8])
+                              valid_range = [0.0_r8, 32767.0_r8], &
+                              fillvalue = fill_short)
 
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_params, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_errors, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter uncertainty", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_diag_correl, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter correlation", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
 
@@ -262,6 +274,7 @@ contains
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
@@ -270,6 +283,7 @@ contains
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured wavelength", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
@@ -278,6 +292,7 @@ contains
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "model spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
@@ -286,6 +301,7 @@ contains
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "spectrum fit weights", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
 
@@ -298,6 +314,7 @@ contains
                               dimids = dimids_refwavl_xtrack_refspec, &
                               comment = "reference spectra used in the fitting process", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
@@ -307,6 +324,7 @@ contains
                               dimids = dimids_refwavl_xtrack, &
                               comment = "reference spectra wavelengths", &
                               valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
@@ -354,7 +372,7 @@ contains
                               //' '//trim(tempo_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_column_amount, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "column amount", &
                               units = "molec/cm2", &
@@ -362,7 +380,7 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_column_uncert, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "column amount uncertainty", &
                               units = "molec/cm2", &
@@ -371,16 +389,18 @@ contains
 
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_fit_rms_residual, &
-                              nf90_float, &
+                              nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit rms residual", &
-                              valid_range = [0.0_r8, 1.e30_r8])
+                              valid_range = [0.0_r8, 1.e30_r8], &
+                              fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_fit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit convergence flag", &
-                              valid_range = [-10.0_r8, 12344.0_r8])
+                              valid_range = [-10.0_r8, 12344.0_r8], &
+                              fillvalue = fill_short)
 
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_time, &
@@ -388,7 +408,8 @@ contains
                               dimids = [dimids_xtrack_step(2)],  &
                               comment = "exposure start time", &
                               units = "s", &
-                              valid_range = [0.0_r8, 1.e30_r8])
+                              valid_range = [0.0_r8, 1.e30_r8], &
+                              fillvalue = fill_double)
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = tempo_var_latitude_bounds)
@@ -399,6 +420,7 @@ contains
                               comment = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
+                              fillvalue = fill_float, &
                               attlist=att_latbnd)
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
@@ -410,6 +432,7 @@ contains
                               comment = "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float, &
                               attlist=att_lonbnd)
 
     call tiof_varlist_append (varlist, errstat, &
@@ -418,28 +441,32 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "solar zenith angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [0.0_r8, 90.0_r8])
+                              valid_range = [0.0_r8, 90.0_r8], &
+                              fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_sa_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "solar azimuth angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [-180.0_r8, 180.0_r8])
+                              valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_vz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing zenith angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [0.0_r8, 90.0_r8])
+                              valid_range = [0.0_r8, 90.0_r8], &
+                              fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_va_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing azimuth angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [-180.0_r8, 180.0_r8])
+                              valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float)
 
     call tiof_varlist_append (varlist, errstat, &
                               tempo_var_main_dqf, &
