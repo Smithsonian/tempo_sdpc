@@ -59,13 +59,16 @@ module tio_module
     integer :: xtype = -1
     integer :: varid = -huge(1)
     integer :: rank = 0
-    logical :: have_comment=.false., have_units=.false., have_valid_range=.false.
+    logical :: have_comment=.false., have_units=.false., have_valid_range=.false., &
+      have_fillvalue = .false.
     character (len=tiof_max_att_len) :: comment, units
     real (kind=8), dimension(2) :: valid_range = [0.0, 0.0]
     integer, dimension(tiof_max_var_dims) :: dimids
-    integer :: deflate_level=0
+    integer :: deflate_level = 0
     logical :: contiguous = .true., shuffle = .false.
     integer, dimension(tiof_max_var_dims) :: chunksizes = 0
+    integer :: no_fill = 0
+    real (kind=8) :: fillvalue
     type (tiof_attlist_type), pointer :: attlist => null()
     type (tiof_var_type), pointer :: next => null()
   end type
@@ -281,7 +284,7 @@ contains
       return
     endif
   end subroutine tiof_put3d_r4
-  
+
   subroutine tiof_get2d_r4 (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -743,6 +746,7 @@ contains
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
                                   comment, units, valid_range, &
+                                  no_fill, fillvalue, &
                                   attlist)
     implicit none
     type (tiof_varlist_type), intent(inout) :: list
@@ -754,7 +758,9 @@ contains
     logical, optional, intent(in) :: contiguous, shuffle
     integer, optional, dimension(:), intent(in) :: chunksizes
     character (len=*), optional, intent(in) :: comment, units
-    real (kind=8), optional, dimension(2) :: valid_range
+    real (kind=8), optional, dimension(2), intent(in) :: valid_range
+    integer, optional, intent(in) :: no_fill
+    real (kind=8), optional, intent(in) :: fillvalue
     type (tiof_attlist_type), optional, target, intent(in) :: attlist
 
     ! local
@@ -813,6 +819,33 @@ contains
     if (present(valid_range)) then
       item % have_valid_range = .true.
       item % valid_range = valid_range(1:2)
+    endif
+
+    if (present(no_fill)) then
+      item % no_fill = no_fill
+      item % have_fillvalue = (no_fill /= 0)
+    endif
+
+    select case (xtype)
+      case (nf90_double)
+        item % fillvalue = nf90_fill_double
+      case (nf90_float)
+        item % fillvalue = nf90_fill_float
+      case (nf90_int)
+        item % fillvalue = nf90_fill_int
+      case (nf90_short)
+        item % fillvalue = nf90_fill_short
+      case (nf90_byte)
+        item % fillvalue = nf90_fill_byte
+      case (nf90_char)
+        item % fillvalue = nf90_fill_byte
+      case default
+        item % fillvalue = nf90_fill_double
+    end select
+
+    if (present(fillvalue)) then
+      item % have_fillvalue = .true.
+      item % fillvalue = fillvalue
     endif
 
     if (present(attlist)) then
@@ -912,6 +945,30 @@ contains
                          trim(nf90_strerror(status))//") ", &
                          errstat)
         return
+      endif
+
+      if (item % have_fillvalue) then
+        select case (item % xtype)
+          case (nf90_double)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, item % fillvalue)
+          case (nf90_float)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, real(item % fillvalue, kind=4))
+          case (nf90_int)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=4))
+          case (nf90_short)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=2))
+          case (nf90_byte)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
+          case (nf90_char)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
+          case default
+            call tell_error (tell_runtime_error, "tio_def_vars:  unsupported fill value type", errstat)
+        end select
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
       endif
 
       if (item % have_comment) then
