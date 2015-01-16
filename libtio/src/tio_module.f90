@@ -89,8 +89,8 @@ module tio_module
     tiof_get1d_r4, tiof_get2d_r4, tiof_get3d_r4, &
                    tiof_put2d_r4, tiof_put3d_r4, &
     tiof_put1d_i4, &
-    tiof_get2d_i2, tiof_get3d_i2, &
-    tiof_put2d_i2, &
+                   tiof_get2d_i2, tiof_get3d_i2, &
+    tiof_put1d_i2, tiof_put2d_i2, &
     tiof_get1d_i1, tiof_get2d_i1, &
     tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims, &
     tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars, &
@@ -484,6 +484,26 @@ contains
       return
     endif
   end subroutine tiof_get2d_i1
+
+  subroutine tiof_put1d_i2 (obj, name, start, edge, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, dimension(:), intent(in) :: start, edge
+    integer (kind=i2), dimension (:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, start, edge, nf90_short, array)
+
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // trim(name) // " from file", errstat)
+      return
+    endif
+  end subroutine tiof_put1d_i2
 
   subroutine tiof_get1d_i1 (obj, name, start, edge, array, errstat)
     implicit none
