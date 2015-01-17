@@ -109,7 +109,7 @@ contains
 
     if (errstat < 0) return
 
-    status = nf90_create (file, create_mode, fileid)
+    status = nf90_create (file, ior (create_mode, nf90_netcdf4), fileid)
     if (status /= nf90_noerr) then
       call tell_error (tell_io_open_error, "creating file "//file// &
                        " ("//trim(nf90_strerror(status))//")", errstat)
