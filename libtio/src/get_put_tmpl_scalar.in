@@ -1,22 +1,21 @@
 !
-!> @ioaction@ a @dim@d array @iodir@ a @dim@d variable of type @ftype@ (kind=@fkind@)
-  subroutine tiof_@action@@dim@d_@type@ (obj, name, start, edge, array, errstat)
+!> @ioaction@ a scalar variable of type @ftype@ (kind=@fkind@)
+  subroutine tiof_@action@_@type@ (obj, name, value, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
     character (len=*), intent(in) :: name
-    integer, dimension(:), intent(in) :: start, edge
-    @ftype@ (kind=@fkind@), dimension (@colons@), intent(@intent@) :: array
+    @ftype@ (kind=@fkind@), intent(@intent@) :: value
     integer, intent(inout) :: errstat
 
-    integer :: err
+    integer :: err, start=0, edge=0
 
     if (errstat < 0) return
 
     err = tiof_@action@_var_section (obj % groupid, name, start, edge, &
-                                     @ntype@, array)
+                                     @ntype@, value)
     if (err < 0) then
       call tell_error (tell_io_@ioaction@_error, "Unable to @ioaction@ " // &
                        trim(name) // " @iodir@ file", errstat)
       return
     endif
-  end subroutine tiof_@action@@dim@d_@type@
+  end subroutine tiof_@action@_@type@

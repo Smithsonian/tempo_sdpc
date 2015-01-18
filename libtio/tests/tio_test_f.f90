@@ -11,6 +11,7 @@ program tio_test
   integer, dimension(3) :: start, edge
   real (kind=4), allocatable, dimension(:,:,:) :: radiance, rx
   integer :: errstat, i,j,k, iwave_start
+  integer :: scalar_int=12345, scalar_int_read=0
   real (kind=4) :: n
 
   type (tiof_dimlist_type) :: dimlist
@@ -64,6 +65,21 @@ program tio_test
   call tiof_def_vars (obj, varlist, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_def_vars failed'
+    stop 2
+  endif
+
+  call tiof_put_i4 (obj, "scalar_int", scalar_int, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_put_i4 failed'
+    stop 2
+  endif
+  call tiof_get_i4 (obj, "scalar_int", scalar_int_read, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_get_i4 failed'
+    stop 2
+  endif
+  if (scalar_int_read /= scalar_int) then
+    write (*,*)'*** I/O of scalar variables failed'
     stop 2
   endif
 

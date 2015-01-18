@@ -64,7 +64,7 @@ all:	autogen elf
 elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
 autogen:	get_put_code.inc
-get_put_code.inc:	get_put_tmpl.in
+get_put_code.inc:	get_put_tmpl.in get_put_tmpl_scalar.in get_put_autogen.sh
 	./get_put_autogen.sh
 
 $(elfdir):

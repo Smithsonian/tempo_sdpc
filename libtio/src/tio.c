@@ -325,7 +325,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
    ndims = info.ndims; \
    varid = info.varid; \
  \
-   if (ndims <= 0) \
+   if (ndims < 0) \
      { \
         Tell_verror (TELL_INVALID_PARM, "%s: variable %s has ndims=%d", \
                      __func__, name, ndims); \

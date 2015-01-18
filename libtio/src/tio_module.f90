@@ -1,3 +1,17 @@
+!> Fortran interface module
+!! @sa get_put_code.inc
+!!
+!! @details
+!! **Error handling:**
+!!
+!! All member functions take an integer error code, \a errstat.
+!! When the input \a errstat is negative, the function returns
+!! immediately, with \a errstat unchanged. On return, \a errstat<0
+!! indicates that an error occured. Error messages and global error
+!! status are handled using libtell. Additional information on the
+!! type of error that occurred may be available from the global error
+!! status, via \a tell_get_error and \a tell_copy_strerror.
+!
 module tio_module
   use netcdf
   use tell_module
@@ -19,70 +33,79 @@ module tio_module
     i4 = selected_int_kind (2**3), &
     i8 = selected_int_kind (2**4)
 
+  !> File object
   type, public :: tiof_object_type
     integer :: fileid = -1
     integer :: groupid = -1
   end type tiof_object_type
 
+  !> Dimension object
   type, public :: tiof_dim_type
-    character (len=tiof_max_name_len) :: name
+    character (len=tiof_max_name_len) :: name  !< dimension name
     integer :: len_name = 0
     integer :: len = 0
-    integer :: dimid = -huge(1)
-    type (tiof_dim_type), pointer :: next => null()
+    integer :: dimid = -huge(1)   !< dimension id assigned by netCDF
+    type (tiof_dim_type), private, pointer :: next => null()
   end type
 
+  !> Dimension object list
   type, public :: tiof_dimlist_type
     integer :: num_items = 0
-    type (tiof_dim_type), pointer :: head => null(), tail => null()
+    type (tiof_dim_type), private, pointer :: head => null(), tail => null()
   end type
 
+  !> Attribute object
   type, public :: tiof_att_type
-    character (len=tiof_max_name_len) :: name
+    character (len=tiof_max_name_len) :: name  !< attribute name
     integer :: len_name = 0
-    integer :: xtype = -1
+    integer :: xtype = -1       !< attribute value data type
     character (len=tiof_max_att_len) :: att_text
     integer (kind=i4), allocatable, dimension(:) :: att_i4
     real (kind=4), allocatable, dimension(:) :: att_r4
     real (kind=8), allocatable, dimension(:) :: att_r8
-    type (tiof_att_type), pointer :: next => null()
+    type (tiof_att_type), private, pointer :: next => null()
   end type
 
+  !> Attribute object list
   type, public :: tiof_attlist_type
     integer :: num_items = 0
-    type (tiof_att_type), pointer :: head => null(), tail => null()
+    type (tiof_att_type), private, pointer :: head => null(), tail => null()
   end type
 
+  !> Variable object
   type, public :: tiof_var_type
-    character (len=tiof_max_name_len) :: name
+    character (len=tiof_max_name_len) :: name  !< variable name
     integer :: len_name = 0
-    integer :: xtype = -1
-    integer :: varid = -huge(1)
-    integer :: rank = 0
-    logical :: have_comment=.false., have_units=.false., have_valid_range=.false., &
-      have_fillvalue = .false.
-    character (len=tiof_max_att_len) :: comment, units
-    real (kind=8), dimension(2) :: valid_range = [0.0, 0.0]
-    integer, dimension(tiof_max_var_dims) :: dimids
-    integer :: deflate_level = 0
-    logical :: contiguous = .true., shuffle = .false.
-    integer, dimension(tiof_max_var_dims) :: chunksizes = 0
-    integer :: no_fill = 0
-    real (kind=8) :: fillvalue
-    type (tiof_attlist_type), pointer :: attlist => null()
-    type (tiof_var_type), pointer :: next => null()
+    integer :: xtype = -1          !< variable external data type
+    integer :: varid = -huge(1)    !< variable id assigned by netCDF
+    integer :: rank = 0            !< number of dimensions
+    integer, dimension(tiof_max_var_dims) :: dimids  !< ordered list of dimension ids
+    character (len=tiof_max_att_len) :: comment  !< attribute: comment
+    character (len=tiof_max_att_len) :: units    !< attribute: units
+    real (kind=8), dimension(2) :: valid_range = [0.0, 0.0]  !< attribute: valid_min, valid_max
+    integer :: deflate_level = 0   !< attribute: compression deflate level
+    logical :: shuffle = .false.   !< attribute: compress with shuffle?
+    logical :: contiguous = .true. !< attribute: use contiguous storage?
+    integer, dimension(tiof_max_var_dims) :: chunksizes = 0  !< attribute: chunk sizes
+    integer :: no_fill = 0         !< attribute: if non-zero, turn off auto-fill
+    real (kind=8) :: fillvalue     !< attribute: fill value
+    logical, private :: have_comment=.false., have_units=.false., &
+      have_valid_range=.false., have_fillvalue = .false.
+    type (tiof_attlist_type), private, pointer :: attlist => null()
+    type (tiof_var_type), private, pointer :: next => null()
   end type
 
+  !> Variable object list
   type, public :: tiof_varlist_type
     integer :: num_items = 0
-    type (tiof_var_type), pointer :: head => null(), tail => null()
+    type (tiof_var_type), private, pointer :: head => null(), tail => null()
   end type
 
   integer :: tiof_get_var_section, tiof_put_var_section
   external   tiof_get_var_section, tiof_put_var_section
+  public     tiof_put_var_section, tiof_get_var_section
 
   public tiof_create, tiof_open, tiof_close, &
-    tiof_put_var_section, tiof_get_var_section, &
     tiof_inq_group, tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims, &
     tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars, &
@@ -94,6 +117,7 @@ contains
 
   include 'get_put_code.inc'
 
+  !> Create a new netcdf4/HDF5 file
   subroutine tiof_create (obj, file, create_mode, errstat)
     implicit none
     type (tiof_object_type), intent(out) :: obj
@@ -118,6 +142,7 @@ contains
 
   end subroutine tiof_create
 
+  !> Open an existing netcdf4/HDF5 file
   subroutine tiof_open (file, obj, open_mode, errstat)
     implicit none
     character (len=*), intent(in) :: file
@@ -141,6 +166,7 @@ contains
 
   end subroutine tiof_open
 
+  !> Close a netcdf4/HDF5 file
   subroutine tiof_close (obj, errstat)
     implicit none
     type (tiof_object_type), intent(inout) :: obj
@@ -160,6 +186,7 @@ contains
     endif
   end subroutine tiof_close
 
+  !> Associate an open file object with a specific group
   subroutine tiof_inq_group (obj, grpname, errstat)
     implicit none
     type (tiof_object_type), intent(inout) :: obj
@@ -177,6 +204,7 @@ contains
     obj % groupid = grp
   end subroutine tiof_inq_group
 
+  !> Inquire the size of a dimension
   subroutine tiof_inq_dimlen (obj, name, dimlen, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -201,6 +229,7 @@ contains
     endif
   end subroutine tiof_inq_dimlen
 
+  !> Append a new dimension object to a dimension list
   subroutine tiof_dimlist_append (list, dim_name, dim_len, errstat)
     implicit none
     type (tiof_dimlist_type), intent(inout) :: list
@@ -235,6 +264,8 @@ contains
 
   end subroutine tiof_dimlist_append
 
+  !> Retrieve information about an array of dimension objects
+  !! from a dimension list
   subroutine tiof_dimlist_lookup (list, names, dimids, errstat, &
                                   dimsizes)
     implicit none
@@ -286,6 +317,12 @@ contains
 
   end subroutine tiof_dimlist_lookup
 
+  !> Write a dimension list to a file
+  !! @details
+  !! As each dimension object (\a tiof_dim_type) is written
+  !! to the file, the assigned id number is saved in the
+  !! \a dimid field.
+  !! @sa tiof_dimlist_lookup
   subroutine tiof_def_dims (obj, list, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -320,6 +357,7 @@ contains
 
   end subroutine tiof_def_dims
 
+  !> Append a new attribute object to an attribute list
   subroutine tiof_attlist_append (list, errstat, att_name, &
                                   att_i4, att_r4, att_r8, att_text)
     implicit none
@@ -388,6 +426,7 @@ contains
 
   end subroutine tiof_attlist_append
 
+  !> Write an attribute list to a file
   subroutine tiof_def_atts (obj, list, varid, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
@@ -439,6 +478,7 @@ contains
 
   end subroutine tiof_def_atts
 
+  !> Append a new variable object to a variable list
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
                                   comment, units, valid_range, &
@@ -558,6 +598,7 @@ contains
 
   end subroutine tiof_varlist_append
 
+  !> Retrieve a variable object from a given variable list
   subroutine tiof_varlist_lookup (list, name, var_ptr, errstat)
     implicit none
     type (tiof_varlist_type), intent(in) :: list
@@ -590,6 +631,12 @@ contains
 
   end subroutine tiof_varlist_lookup
 
+  !> Write a variable list to a file
+  !! @details
+  !! As each variable object (\a tiof_var_type) is written
+  !! to the file, the assigned id number is saved in the
+  !! \a varid field.
+  !! @sa tiof_varlist_lookup
   subroutine tiof_def_vars (obj, list, errstat)
     implicit none
     type (tiof_object_type), intent(in) :: obj
