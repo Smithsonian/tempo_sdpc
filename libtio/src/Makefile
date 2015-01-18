@@ -60,8 +60,12 @@ ELFOBJS_F = $(elfdir)/tio_module.o
 # Rules
 # --------------------------------------------------------------------------
 
-all:	elf
+all:	autogen elf
 elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
+
+autogen:	get_put_code.inc
+get_put_code.inc:	get_put_tmpl.in
+	./get_put_autogen.sh
 
 $(elfdir):
 	-$(MKINSDIR) $(elfdir)
