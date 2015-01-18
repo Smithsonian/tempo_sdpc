@@ -561,7 +561,7 @@ contains
     if (errstat < 0) return
 
     ! create a file
-    call tiof_create (obj, filename, ior(nf90_clobber,nf90_netcdf4), errstat)
+    call tiof_create (obj, filename, nf90_clobber, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: creating file "//trim(filename), &
