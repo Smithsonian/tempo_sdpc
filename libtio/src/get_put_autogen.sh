@@ -1,7 +1,7 @@
 #! /bin/sh
 
-template_scalar="get_put_tmpl_scalar.in"
-template="get_put_tmpl.in"
+template_scalar="get_put_scalar.in"
+template_array="get_put_array.in"
 out_code="get_put_code.inc"
 out_decl="get_put_decl.inc"
 
@@ -65,7 +65,7 @@ expand_template_scalar(){
   echo "public tiof_${act}_${typ}" >> $out_decl
 }
 
-expand_template(){
+expand_template_array(){
   act=$1
   typ=$2
   dim=$3
@@ -82,7 +82,7 @@ expand_template(){
       -e s/@intent@/$intent/g \
       -e s/@ioaction@/$ioaction/g \
       -e s/@iodir@/$iodir/g \
-      $template >> $out_code
+      $template_array >> $out_code
 
   echo "public tiof_${act}${dim}d_${typ}" >> $out_decl
 }
@@ -101,8 +101,8 @@ done
 colons=":"
 for dim in $dim_list ; do
   for typ in $type_list; do
-    expand_template "get" $typ $dim $colons
-    expand_template "put" $typ $dim $colons
+    expand_template_array "get" $typ $dim $colons
+    expand_template_array "put" $typ $dim $colons
   done
   colons="${colons},:"
 done
