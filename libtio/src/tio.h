@@ -24,6 +24,7 @@ extern "C" {
 #define TIO_UINT64 NC_UINT64
 #define TIO_FLOAT  NC_FLOAT
 #define TIO_DOUBLE NC_DOUBLE
+#define TIO_STRING NC_STRING
 
 /* fill values */
 #define TIO_FILL_BYTE    ((signed char)-127)

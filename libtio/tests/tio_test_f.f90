@@ -1,7 +1,15 @@
 program tio_test
   use netcdf
   use tio_module
+  use iso_c_binding, only : c_null_char
   implicit none
+
+  integer, parameter :: dim_strlen_size = 32, dim_name_size = 20
+  character (len=dim_strlen_size), parameter :: dim_strlen = "strlen"
+  character (len=dim_strlen_size), parameter :: dim_name = "name"
+  integer, dimension(2) :: list_of_names_dimids
+  character (len=dim_strlen_size), dimension(dim_name_size) :: list_of_names, &
+    input_names
 
   type (tiof_object_type) :: obj
   character (len=*), parameter :: filename = "delete_radiance.nc"
@@ -22,6 +30,8 @@ program tio_test
 
   call tiof_dimlist_append (dimlist, "dim1", 10000, errstat)
   call tiof_dimlist_append (dimlist, "dim2", 20000, errstat)
+  call tiof_dimlist_append (dimlist, dim_strlen, dim_strlen_size, errstat)
+  call tiof_dimlist_append (dimlist, dim_name, dim_name_size, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_dimlist_append failed'
     stop 1
@@ -40,6 +50,8 @@ program tio_test
   endif
 
   call tiof_dimlist_lookup (dimlist, ["dim2", "dim1"], dimids, errstat)
+  call tiof_dimlist_lookup (dimlist, [dim_strlen, dim_name], &
+                            list_of_names_dimids, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_dimlist_lookup failed'
     stop 2
@@ -53,6 +65,12 @@ program tio_test
   call tiof_varlist_append (varlist, errstat, "dim1", nf90_int, &
                             dimids=[dimids(2)], &
                             comment="dim1 coordinate variable")
+  call tiof_varlist_append (varlist, errstat, "list_of_names", nf90_char, &
+                            dimids=list_of_names_dimids, &
+                            comment="A list of names")
+  call tiof_varlist_append (varlist, errstat, "list_of_strings", nf90_string, &
+                            dimids=[list_of_names_dimids(2)], &
+                            comment="A list of names")
   call tiof_varlist_append (varlist, errstat, "dim2", nf90_int, &
                             dimids=[dimids(1)], &
                             comment="dim2 coordinate variable")
@@ -82,6 +100,54 @@ program tio_test
     write (*,*)'*** I/O of scalar variables failed'
     stop 2
   endif
+
+  list_of_names(:)(:) = ' '
+  input_names(:)(:) = ' '
+  list_of_names(1) = "Fred"
+  list_of_names(2) = "Barney"
+  list_of_names(3) = "Aunt Bea"
+  ! write names as text
+  call tiof_put1d_text (obj, "list_of_names", 0, 3, list_of_names, errstat)
+  if (errstat /= 0) then
+    write(*,*)'*** tiof_put1d_text failed'
+    stop 3
+  endif
+  call tiof_get1d_text (obj, "list_of_names", 0, 3, input_names, errstat)
+  if (errstat /= 0) then
+    write(*,*)'*** tiof_get1d_text failed'
+    stop 3
+  endif
+  do i=1,3
+    if (trim(list_of_names(i)) /= trim(input_names(i))) then
+      write(*,*)'*** string I/O mismatch:'
+      write(*,*)' wrote:(', trim(list_of_names(i)),') i=',i
+      write(*,*)' read:(', trim(input_names(i)),')'
+      stop 3
+    endif
+  enddo
+  ! write names as strings
+  input_names(:)(:) = ' '
+  do i=1,3
+    list_of_names(i) = trim(list_of_names(i))//c_null_char
+  enddo
+  call tiof_put1d_string (obj, "list_of_strings", 0, 3, list_of_names, errstat)
+  if (errstat /= 0) then
+    write(*,*)'*** tiof_put1d_string failed'
+    stop 3
+  endif
+  call tiof_get1d_string (obj, "list_of_strings", 0, 3, input_names, errstat)
+  if (errstat /= 0) then
+    write(*,*)'*** tiof_get1d_string failed'
+    stop 3
+  endif
+  do i=1,3
+    if (trim(list_of_names(i)) /= trim(input_names(i))) then
+      write(*,*)'*** string I/O mismatch:'
+      write(*,*)' wrote:(', trim(list_of_names(i)),') i=',i
+      write(*,*)' read:(', trim(input_names(i)),')'
+      stop 3
+    endif
+  enddo
 
   call tiof_inq_group (obj, groupname, errstat)
   if (errstat < 0) then

@@ -346,9 +346,10 @@ int TIO_##action##_var_section (int grp, const char *name, \
  \
    switch (xtype) \
      { \
-      case NC_BYTE: \
-        /* drop */ \
       case NC_CHAR: \
+        status = nc_##action##_vara_text (grp, varid, start, count, (const_qual char *)data); \
+        break; \
+      case NC_BYTE: \
         status = nc_##action##_vara_schar (grp, varid, start, count, (const_qual signed char *)data); \
         break; \
       case NC_UBYTE: \
@@ -377,6 +378,9 @@ int TIO_##action##_var_section (int grp, const char *name, \
         break; \
       case NC_DOUBLE: \
         status = nc_##action##_vara_double (grp, varid, start, count, (const_qual double *)data); \
+        break; \
+      case NC_STRING: \
+        status = nc_##action##_vara_string (grp, varid, start, count, (const_qual char **)data); \
         break; \
       default: \
         Tell_verror (TELL_INVALID_PARM, \

@@ -111,11 +111,140 @@ module tio_module
     tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars, &
     tiof_attlist_append,                      tiof_def_atts
 
+  public tiof_put1d_text, tiof_get1d_text
+  public tiof_put1d_string, tiof_get1d_string
   include 'get_put_decl.inc'
 
 contains
 
   include 'get_put_code.inc'
+
+  !> write a 1d array of strings as a 2D array of characters
+  subroutine tiof_put1d_text (obj, name, start, edge, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: start, edge
+    character (len=*), dimension (:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, [start,0], [edge, -1], &
+                                nf90_char, array)
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // &
+                       trim(name) // " to file", errstat)
+      return
+    endif
+  end subroutine tiof_put1d_text
+
+  !> read a 1d array of strings stored as a 2D array of characters
+  subroutine tiof_get1d_text (obj, name, start, edge, array, errstat)
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: start, edge
+    character (len=*), dimension (:), intent(out) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_get_var_section (obj % groupid, name, [start,0], [edge, -1], &
+                                nf90_char, array)
+    if (err < 0) then
+      call tell_error (tell_io_read_error, "Unable to read " // &
+                       trim(name) // " from file", errstat)
+      return
+    endif
+  end subroutine tiof_get1d_text
+
+  !> write a 1d array of strings as null-terminated strings
+  subroutine tiof_put1d_string (obj, name, start, edge, array, errstat)
+    use iso_c_binding, only: c_ptr, c_loc, c_char, c_null_char
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: start, edge
+    character (len=*), dimension (:), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err, i, num
+    character(len=len(array)), dimension(:), allocatable, target :: copy
+    type(c_ptr), dimension(:), allocatable :: ptrs
+
+    if (errstat < 0) return
+
+    num = size(array)
+    allocate (ptrs(num), copy(num), stat=err)
+    if (err /= 0) then
+      errstat = tell_malloc_error
+      call tell_set_error (tell_malloc_error)
+      return
+    endif
+
+    do i=1,num
+      copy(i) = trim(array(i))//c_null_char
+      ptrs(i) = c_loc(copy(i))
+    enddo
+
+    err = tiof_put_var_section (obj % groupid, name, [start], [edge], &
+                                nf90_string, ptrs)
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // &
+                       trim(name) // " to file", errstat)
+      return
+    endif
+  end subroutine tiof_put1d_string
+
+  !> read a 1d array of strings stored as null-terminated strings
+  subroutine tiof_get1d_string (obj, name, start, edge, array, errstat)
+    use iso_c_binding, only: c_ptr, c_null_ptr, c_f_pointer, c_null_char
+    implicit none
+    type (tiof_object_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(in) :: start, edge
+    character (len=*), dimension (:), intent(out) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err, num, i, k, alen
+    type(c_ptr), dimension(size(array)) :: ptrs
+    character (len=size(array)), pointer :: fptr ! => null()
+
+    if (errstat < 0) return
+
+    fptr => null()
+    ptrs(:) = c_null_ptr
+    err = tiof_get_var_section (obj % groupid, name, [start], [edge], &
+                                nf90_string, ptrs)
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to read " // &
+                       trim(name) // " from file", errstat)
+      return
+    endif
+
+    num = size(array)
+    alen = len(array)
+    do i=1,num
+      call c_f_pointer (ptrs(i), fptr)
+      if (associated(fptr)) then
+        array(i)(1:alen) = ' '
+        k = min(index(fptr, c_null_char), alen)
+        array(i)(1:k) = fptr(1:k)
+        ! FIXME?: Netcdf allocated memory for these strings, and
+        ! that memory must be freed here.  Unfortunately, netcdf
+        ! provides no fortran interface for a function to free that
+        ! memory. I could write a fortran wrapper for nc_free_string(),
+        ! but deallocate seems to work just as well.
+        deallocate(fptr)
+      endif
+    enddo
+
+  end subroutine tiof_get1d_string
 
   !> Create a new netcdf4/HDF5 file
   subroutine tiof_create (obj, file, create_mode, errstat)
