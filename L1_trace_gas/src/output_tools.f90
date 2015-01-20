@@ -916,7 +916,6 @@ contains
     type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
-    if (.not.yn_diagnostic_run) return
 
     call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,-1], &
                         common_mode % refspecdata (1:ncommwvl,1:nxtrack), errstat)
@@ -947,7 +946,6 @@ contains
     integer :: i
 
     if (errstat < 0) return
-    if (.not.yn_diagnostic_run) return
 
     ! Loop avoids creation of temporary array that may exceed process address space,
     ! causing a segv.  This can happen, when nxtrack is large, e.g. 2048.
