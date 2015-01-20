@@ -188,7 +188,7 @@ contains
     endif
 
     do i=1,num
-      copy(i) = trim(array(i))//c_null_char
+      copy(i) = trim(adjustl(array(i)))//c_null_char
       ptrs(i) = c_loc(copy(i))
     enddo
 
