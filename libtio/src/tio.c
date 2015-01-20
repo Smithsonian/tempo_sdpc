@@ -496,9 +496,10 @@ int TIO_get_att (int grp, int varid, const char *attname,
     */
    switch (xtype)
      {
-      case NC_BYTE:
-        /* drop */
       case NC_CHAR:
+        status = nc_get_att_text (grp, varid, attname, (char *)att);
+        break;
+      case NC_BYTE:
         status = nc_get_att_schar (grp, varid, attname, (signed char *)att);
         break;
       case NC_UBYTE:
@@ -527,6 +528,9 @@ int TIO_get_att (int grp, int varid, const char *attname,
         break;
       case NC_DOUBLE:
         status = nc_get_att_double (grp, varid, attname, (double *)att);
+        break;
+      case NC_STRING:
+        status = nc_get_att_string (grp, varid, attname, (char **)att);
         break;
       default:
         if (NC_NOERR != (status = nc_get_att (grp, varid, attname, att)))
