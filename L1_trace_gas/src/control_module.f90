@@ -1,6 +1,7 @@
 MODULE control_module
 
   use ctrlvars
+  use tell_module
   private
   public read_fitting_control_file
 
@@ -174,6 +175,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! --------------------------------------------------------------
   ! Position cursor to read processing mode. Set YN_DIAGNOSTIC_RUN
   ! to .TRUE. if "diagnostic" is selected as processing mode.
+  ! Also set yn_disable_omi_features to .true. if TEMPO mode is selected.
   ! --------------------------------------------------------------
   REWIND ( fit_ctrl_unit )
   CALL skip_to_filemark ( fit_ctrl_unit, procline_str, tmpchar, file_read_stat )
@@ -184,15 +186,21 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
 
   READ (fit_ctrl_unit, '(A)') tmpchar
   tmpchar = lower_case ( TRIM(ADJUSTL(tmpchar)) )
-  yn_disable_omi_features = .false.
   IF ( TRIM(ADJUSTL(tmpchar)) == procmode_diag ) THEN
     yn_diagnostic_run = .TRUE.
-  ELSE if ( trim(adjustl(tmpchar)) == 'diagnostic-tempo' ) then
-    yn_diagnostic_run = .true.
-    yn_disable_omi_features = .true.
-  else
+  ELSE
     yn_diagnostic_run = .FALSE.
   END IF
+
+  ! Use TEMPO mode?
+  READ (fit_ctrl_unit, '(A)') tmpchar
+  tmpchar = lower_case ( TRIM(ADJUSTL(tmpchar)) )
+  if ( trim(adjustl(tmpchar)) == 'tempo' ) then
+    call tell_log (1, "using TEMPO mode")
+    yn_disable_omi_features = .true.
+  else
+    yn_disable_omi_features = .false.
+  endif
 
   ! ------------------------------------------------
   ! Position cursor to read general input parameters
