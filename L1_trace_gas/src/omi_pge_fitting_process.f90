@@ -158,7 +158,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE omi_pge_postprocessing, ONLY: omi_pge_postprocess
   USE swathline_loop, ONLY: swathline_loops
   use datafields, only: he5_initialize_datafields
-  USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, &
+  USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, correlation_names, &
     omi_cross_track_skippix, omi_radcal_xflag, &
     omi_radiance_swathname, initialize_io_var_structs, result_vars
   USE irradiance_data, only: irradiance_data_init
@@ -695,7 +695,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------
   ! Write some attributes
   ! ---------------------
-  call write_fitting_statistics (fit_stats, errstat)
+  call write_fitting_statistics (fit_stats, correlation_names, n_fitvar_rad, errstat)
   if (errstat < 0) return
   errstat = he5_write_global_attributes (fit_stats)
   if (errstat < 0) then

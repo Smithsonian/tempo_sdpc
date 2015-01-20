@@ -306,6 +306,10 @@ contains
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_diag_param_names, &
+                              nf90_string, &
+                              dimids = [dimids_var_xtrack_step(1)])
 
     chunksizes(1) = dimsizes_refwavl_xtrack_refspec(1)              ! wavelength dimension
     chunksizes(2) = min(dimsizes_refwavl_xtrack_refspec(2), 1024)   ! xtrack dimension
@@ -747,11 +751,13 @@ contains
 
   end subroutine write_wavcal_output
 
-  subroutine write_fitting_statistics (stats, errstat)
+  subroutine write_fitting_statistics (stats, param_names, num_params, errstat)
     use omi_pge_fitting_aux, only : fitting_statistics_type
     implicit none
 
     type (fitting_statistics_type), intent(in) :: stats
+    character (len=*), dimension (:), intent(in) :: param_names
+    integer, intent(in) :: num_params
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => primary_output_file
@@ -790,6 +796,11 @@ contains
                         stats % quality_flag (1:stats % num_crosstrack_pixels, &
                                               0:stats % num_scan_lines-1), &
                         errstat)
+
+    if (yn_diagnostic_run) then
+      call tiof_put1d_string (obj, tg_var_diag_param_names, 0, num_params, &
+                              param_names(1:num_params), errstat)
+    endif
 
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -982,7 +993,7 @@ contains
                        errstat)
       return
     endif
-    
+
   end subroutine write_reference_sector_corrected_column
 
   subroutine close_output_file (errstat)
