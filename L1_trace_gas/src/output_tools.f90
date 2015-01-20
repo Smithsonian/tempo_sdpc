@@ -4,7 +4,7 @@ module output_tools
   use tio_module
   use tg_names_module
   use OMSAO_precision_module
-  use ctrlvars, only: yn_diagnostic_run !, yn_refseccor, yn_scat_weights
+  use ctrlvars, only: yn_diagnostic_run, yn_refseccor !, yn_scat_weights
 
   implicit none
   private
@@ -12,7 +12,8 @@ module output_tools
   public create_output_file, close_output_file, write_wavcal_output, &
     write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_gas_profile, write_scattering_weights, &
-    write_amf_correction, write_refspec_database
+    write_amf_correction, write_refspec_database, &
+    write_reference_sector_corrected_column
 
   type (tiof_object_type), private, target :: primary_output_file
 
@@ -475,6 +476,17 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "main data quality flag", &
                               valid_range = [-1.0_r8, 2.0_r8])
+
+    if (yn_refseccor) then
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_refseccor_vertical_column, &
+                                nf90_double, &
+                                dimids = dimids_xtrack_step, &
+                                comment = "reference sector corrected vertical_column", &
+                                units = "molec/cm2", &
+                                valid_range = [-1e30_r8, 1e30_r8], &
+                                fillvalue = fill_double)
+    endif
 
     call tiof_def_vars (obj, varlist, errstat)
 
@@ -954,6 +966,26 @@ contains
     endif
 
   end subroutine write_refspec_database
+
+  subroutine write_reference_sector_corrected_column (nxtrack, ntimes, column, errstat)
+    implicit none
+    integer (kind=i4), intent(in) :: nxtrack, ntimes
+    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: column
+    integer, intent(inout) :: errstat
+
+    type (tiof_object_type), pointer :: obj => primary_output_file
+
+    if (errstat < 0) return
+
+    call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, -1], &
+                        column(1:nxtrack, 0:ntimes-1), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_reference_sector_corrected_column", &
+                       errstat)
+      return
+    endif
+    
+  end subroutine write_reference_sector_corrected_column
 
   subroutine close_output_file (errstat)
     implicit none

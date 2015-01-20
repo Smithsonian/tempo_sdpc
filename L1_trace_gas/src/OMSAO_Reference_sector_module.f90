@@ -46,6 +46,8 @@ CONTAINS
     USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, &
       l1b_radref_filename, l1b_channel
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
+    use OMSAO_indices_module, only : pge_hcho_idx
+    use output_tools, only : write_reference_sector_corrected_column
     USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
     ! This subroutine is a wrapper for the Reference Background corre
@@ -87,6 +89,8 @@ CONTAINS
     ! Name of this module/subroutine
     ! ------------------------------
     !CHARACTER (LEN=27), PARAMETER :: modulename = 'Reference_sector_correction'
+
+    if (errstat < 0) return
 
     locerrstat = pge_errstat_ok
 
@@ -158,10 +162,14 @@ CONTAINS
     ! Final step to output the results, the new reference
     ! sector corrected total columns
     ! ---------------------------------------------------
-    CALL he5_write_reference_sector_corrected_column &
+    CALL he5_write_reference_sector_corrected_column &   ! FIXME <-- (to be removed)
       (pge_idx, &
        ntimes, nxtrack, int_saocol, &!int_saodco,
        locerrstat)
+    if (pge_idx == pge_hcho_idx) then
+      call write_reference_sector_corrected_column (nxtrack, ntimes, int_saocol, errstat)
+      if (errstat < 0) return
+    endif
 
     errstat = MAX ( errstat, locerrstat )
 
