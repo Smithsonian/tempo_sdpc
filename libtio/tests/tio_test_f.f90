@@ -11,7 +11,7 @@ program tio_test
   character (len=dim_strlen_size), dimension(dim_name_size) :: list_of_names, &
     input_names
 
-  type (tiof_object_type) :: obj
+  type (tiof_file_type) :: obj
   character (len=*), parameter :: filename = "delete_radiance.nc"
   character (len=*), parameter :: groupname = "band_290_490_nm"
   integer :: num_wavelengths, num_xtrack, num_steps

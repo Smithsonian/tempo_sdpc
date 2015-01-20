@@ -254,7 +254,7 @@ CONTAINS
     integer (kind=i4), external :: PGS_PC_GetReference
     character (len=MAX_STR_LEN) :: l1r_filename
     character (len=MAX_STR_LEN) :: rbd_string
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
     integer :: pgs_status, version
     integer :: ncerr
 

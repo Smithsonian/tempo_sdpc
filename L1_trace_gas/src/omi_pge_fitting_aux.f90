@@ -1336,7 +1336,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION(:,:), INTENT (out) :: latr4
 
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
     integer :: nxtrack
 
     if (errstat < 0) return

@@ -2,7 +2,7 @@
 !> @ioaction@ a @dim@d array @iodir@ a @dim@d variable of type @ftype@ (kind=@fkind@)
   subroutine tiof_@action@@dim@d_@type@ (obj, name, start, edge, array, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, dimension(:), intent(in) :: start, edge
     @ftype@ (kind=@fkind@), dimension (@colons@), intent(@intent@) :: array

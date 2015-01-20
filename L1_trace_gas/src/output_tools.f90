@@ -15,7 +15,7 @@ module output_tools
     write_amf_correction, write_refspec_database, &
     write_reference_sector_corrected_column
 
-  type (tiof_object_type), private, target :: primary_output_file
+  type (tiof_file_type), private, target :: primary_output_file
 
   ! using fill values from the original code simplifies diffing output files
   real (kind=8), private, parameter :: &
@@ -27,7 +27,7 @@ contains
 
   subroutine write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     integer, intent(in) :: num_steps, num_xtrack
     integer, intent(inout) :: errstat
 
@@ -52,7 +52,7 @@ contains
   subroutine append_common_mode_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -103,7 +103,7 @@ contains
   subroutine append_amf_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -197,7 +197,7 @@ contains
   subroutine append_diagnostic_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -345,7 +345,7 @@ contains
   subroutine append_column_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     type (integer), intent(inout) :: errstat
 
@@ -495,7 +495,7 @@ contains
   subroutine append_wavcal_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     type (integer), intent(inout) :: errstat
 
@@ -567,7 +567,7 @@ contains
       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
     type (tiof_dimlist_type) :: dimlist
 
     if (errstat < 0) return
@@ -651,7 +651,7 @@ contains
     type (radfit_diagnostics_type), intent(in) :: radfit_diagnostics
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
 
@@ -722,7 +722,7 @@ contains
     integer, intent(in) :: nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
 
@@ -754,7 +754,7 @@ contains
     type (fitting_statistics_type), intent(in) :: stats
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
     type (tiof_attlist_type) :: attlist
 
     call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", &
@@ -807,7 +807,7 @@ contains
     integer, intent(in) :: nxtrack, ntimes
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
     call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,-1], &
@@ -828,7 +828,7 @@ contains
     integer, intent(in) :: nxtrack, ntimes, nlevels
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
     call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,-1,-1], &
@@ -849,7 +849,7 @@ contains
     integer, intent(in) :: nxtrack, ntimes, nlevels
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
     call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,-1,-1], &
@@ -874,7 +874,7 @@ contains
     logical, intent(in) :: yn_write_cloud_variables
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
 
@@ -913,7 +913,7 @@ contains
     type (common_mode_spectrum_type), intent(in) :: common_mode
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
     if (.not.yn_diagnostic_run) return
@@ -943,7 +943,7 @@ contains
     integer (kind=i4), intent(in) :: nrefspec, npts, nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
     integer :: i
 
     if (errstat < 0) return
@@ -973,7 +973,7 @@ contains
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: column
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     if (errstat < 0) return
 
@@ -991,7 +991,7 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    type (tiof_object_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => primary_output_file
 
     call tiof_close (obj, errstat)
     if (errstat < 0) then

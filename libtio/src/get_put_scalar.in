@@ -2,7 +2,7 @@
 !> @ioaction@ a scalar variable of type @ftype@ (kind=@fkind@)
   subroutine tiof_@action@_@type@ (obj, name, value, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     @ftype@ (kind=@fkind@), intent(@intent@) :: value
     integer, intent(inout) :: errstat

@@ -30,7 +30,7 @@ CONTAINS
     LOGICAL,           DIMENSION (0:ntimes-1), INTENT (OUT)   :: is_szoom
     !
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
 
     if (errstat < 0) return
 
@@ -163,7 +163,7 @@ CONTAINS
     character (len=128) :: logmsg
 
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
 
     omi_radiance_errstat = pge_errstat_ok
 
@@ -336,7 +336,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i2), DIMENSION (nx,0:nt-1) :: geoflg
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
 
     ! let errstat flow
     !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)

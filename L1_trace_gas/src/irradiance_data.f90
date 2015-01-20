@@ -220,7 +220,7 @@ contains
     integer (kind=i2), dimension (:,:,:), allocatable :: tmp_qflags
     character (len=64) :: swathname
     !type (L1B_Object_Type) :: l1bobj
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
 
     if (errstat < 0) return
 

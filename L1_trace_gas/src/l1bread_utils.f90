@@ -38,7 +38,7 @@ contains
     type(Radiance_Paras_Type), INTENT(out) :: rpt
     integer (kind=i4), intent (inout) :: errstat
 
-    type (tiof_object_type) :: tio_l1obj
+    type (tiof_file_type) :: tio_l1obj
 
     if (errstat < 0) return
 

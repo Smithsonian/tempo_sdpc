@@ -34,10 +34,10 @@ module tio_module
     i8 = selected_int_kind (2**4)
 
   !> File object
-  type, public :: tiof_object_type
+  type, public :: tiof_file_type
     integer :: fileid = -1
     integer :: groupid = -1
-  end type tiof_object_type
+  end type tiof_file_type
 
   !> Dimension object
   type, public :: tiof_dim_type
@@ -122,7 +122,7 @@ contains
   !> write a 1d array of strings as a 2D array of characters
   subroutine tiof_put1d_text (obj, name, start, edge, array, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(in) :: start, edge
     character (len=*), dimension (:), intent(in) :: array
@@ -144,7 +144,7 @@ contains
   !> read a 1d array of strings stored as a 2D array of characters
   subroutine tiof_get1d_text (obj, name, start, edge, array, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(in) :: start, edge
     character (len=*), dimension (:), intent(out) :: array
@@ -167,7 +167,7 @@ contains
   subroutine tiof_put1d_string (obj, name, start, edge, array, errstat)
     use iso_c_binding, only: c_ptr, c_loc, c_char, c_null_char
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(in) :: start, edge
     character (len=*), dimension (:), intent(in) :: array
@@ -205,7 +205,7 @@ contains
   subroutine tiof_get1d_string (obj, name, start, edge, array, errstat)
     use iso_c_binding, only: c_ptr, c_null_ptr, c_f_pointer, c_null_char
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(in) :: start, edge
     character (len=*), dimension (:), intent(out) :: array
@@ -249,7 +249,7 @@ contains
   !> Create a new netcdf4/HDF5 file
   subroutine tiof_create (obj, file, create_mode, errstat)
     implicit none
-    type (tiof_object_type), intent(out) :: obj
+    type (tiof_file_type), intent(out) :: obj
     character (len=*), intent(in) :: file
     integer, intent(in) :: create_mode
     integer, intent(inout) :: errstat
@@ -275,7 +275,7 @@ contains
   subroutine tiof_open (file, obj, open_mode, errstat)
     implicit none
     character (len=*), intent(in) :: file
-    type (tiof_object_type), intent(out) :: obj
+    type (tiof_file_type), intent(out) :: obj
     integer, intent(in) :: open_mode
     integer, intent(inout) :: errstat
 
@@ -298,7 +298,7 @@ contains
   !> Close a netcdf4/HDF5 file
   subroutine tiof_close (obj, errstat)
     implicit none
-    type (tiof_object_type), intent(inout) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     integer, intent(inout) :: errstat
 
     integer :: status
@@ -318,7 +318,7 @@ contains
   !> Associate an open file object with a specific group
   subroutine tiof_inq_group (obj, grpname, errstat)
     implicit none
-    type (tiof_object_type), intent(inout) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     character (len=*), intent(in) :: grpname
     integer, intent(inout) :: errstat
 
@@ -336,7 +336,7 @@ contains
   !> Inquire the size of a dimension
   subroutine tiof_inq_dimlen (obj, name, dimlen, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: name
     integer, intent(out) :: dimlen
     integer, intent(inout) :: errstat
@@ -454,7 +454,7 @@ contains
   !! @sa tiof_dimlist_lookup
   subroutine tiof_def_dims (obj, list, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: list
     integer, intent(inout) :: errstat
 
@@ -558,7 +558,7 @@ contains
   !> Write an attribute list to a file
   subroutine tiof_def_atts (obj, list, varid, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_attlist_type), intent(in) :: list
     integer, intent(in) :: varid
     integer, intent(inout) :: errstat
@@ -768,7 +768,7 @@ contains
   !! @sa tiof_varlist_lookup
   subroutine tiof_def_vars (obj, list, errstat)
     implicit none
-    type (tiof_object_type), intent(in) :: obj
+    type (tiof_file_type), intent(in) :: obj
     type (tiof_varlist_type), intent(in) :: list
     integer, intent(inout) :: errstat
 
