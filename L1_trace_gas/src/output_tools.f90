@@ -4,7 +4,7 @@ module output_tools
   use tio_module
   use tg_names_module
   use OMSAO_precision_module
-  use ctrlvars, only: yn_diagnostic_run, yn_refseccor !, yn_scat_weights
+  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
 
   implicit none
   private
@@ -109,7 +109,8 @@ contains
 
     type (tiof_varlist_type) :: varlist
     integer, dimension(2) :: dimids_xtrack_step
-    integer, dimension(3) :: dimids_xtrack_step_levels
+    integer, dimension(3) :: dimids_xtrack_step_levels, dimsizes_xtrack_step_levels
+    integer, dimension(3) :: chunksizes
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
@@ -123,9 +124,13 @@ contains
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_xtrack, tg_dim_step,tg_dim_swt_level], &
                               dimids_xtrack_step_levels, &
-                              errstat)
+                              errstat, dimsizes = dimsizes_xtrack_step_levels)
 
     ! append amf variables
+    chunksizes(1) = min(dimsizes_xtrack_step_levels(1), 128)  ! xtrack dimension
+    chunksizes(2) = min(dimsizes_xtrack_step_levels(2), 128)  ! step dimension
+    chunksizes(3) = dimsizes_xtrack_step_levels(3)            ! level dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_scattering_weights, &
                               nf90_double, &
@@ -133,7 +138,8 @@ contains
                               comment = "scattering weights", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_climatology_levels, &
                               nf90_double, &
@@ -142,7 +148,8 @@ contains
                               units = "hPa", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
                               nf90_double, &
@@ -151,7 +158,8 @@ contains
                               units = "ppb", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_albedo, &
                               nf90_double, &
@@ -203,9 +211,10 @@ contains
 
     type (tiof_varlist_type) :: varlist
     integer, dimension(2) :: dimids_xtrack_step, dimids_refwavl_xtrack
-    integer, dimension(3) :: dimids_var_xtrack_step, dimids_commwvl_xtrack_step
-    integer, dimension(3) :: dimids_refwavl_xtrack_refspec, dimsizes_refwavl_xtrack_refspec, &
-      chunksizes(3)
+    integer, dimension(3) :: dimids_var_xtrack_step, dimsizes_var_xtrack_step
+    integer, dimension(3) :: dimids_commwvl_xtrack_step, dimsizes_commwvl_xtrack_step
+    integer, dimension(3) :: dimids_refwavl_xtrack_refspec, dimsizes_refwavl_xtrack_refspec
+    integer, dimension(3) :: chunksizes
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
@@ -219,11 +228,11 @@ contains
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_fitvar, tg_dim_xtrack, tg_dim_step], &
                               dimids_var_xtrack_step, &
-                              errstat)
+                              errstat, dimsizes = dimsizes_var_xtrack_step)
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_commwvl, tg_dim_xtrack, tg_dim_step], &
                               dimids_commwvl_xtrack_step, &
-                              errstat)
+                              errstat, dimsizes = dimsizes_commwvl_xtrack_step)
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_refwavl, tg_dim_xtrack, tg_dim_refspec], &
                               dimids_refwavl_xtrack_refspec, &
@@ -242,6 +251,10 @@ contains
                               valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short)
 
+    chunksizes(1) = dimsizes_var_xtrack_step(1)  ! var dimension
+    chunksizes(2) = dimsizes_var_xtrack_step(2)  ! xtrack dimension
+    chunksizes(3) = 1                            ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_params, &
                               nf90_double, &
@@ -250,7 +263,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_errors, &
                               nf90_double, &
@@ -259,7 +273,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_correl, &
                               nf90_double, &
@@ -268,8 +283,13 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_commwvl_xtrack_step(1)            ! wavelength dimension
+    chunksizes(2) = min(dimsizes_commwvl_xtrack_step(2),1024)  ! xtrack dimension
+    chunksizes(3) = 1                                          ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_measured_spectrum, &
                               nf90_double, &
@@ -278,7 +298,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_measured_wavelengths, &
                               nf90_double, &
@@ -287,7 +308,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_model_spectrum, &
                               nf90_double, &
@@ -296,7 +318,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_fit_weights, &
                               nf90_double, &
@@ -305,7 +328,8 @@ contains
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle)
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_param_names, &
                               nf90_string, &
@@ -314,6 +338,7 @@ contains
     chunksizes(1) = dimsizes_refwavl_xtrack_refspec(1)              ! wavelength dimension
     chunksizes(2) = min(dimsizes_refwavl_xtrack_refspec(2), 1024)   ! xtrack dimension
     chunksizes(3) = 1                                               ! refspec dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_refspec, &
                               nf90_double, &
@@ -621,12 +646,14 @@ contains
       return
     endif
 
-    call append_amf_vars (obj, dimlist, errstat)
-    if (errstat < 0) then
-      call tell_error (tell_io_write_error, &
-                       "create_output_file: defining amf variables in "//trim(filename), &
-                       errstat)
-      return
+    if (yn_scat_weights) then
+      call append_amf_vars (obj, dimlist, errstat)
+      if (errstat < 0) then
+        call tell_error (tell_io_write_error, &
+                         "create_output_file: defining amf variables in "//trim(filename), &
+                         errstat)
+        return
+      endif
     endif
 
     if (yn_diagnostic_run) then
