@@ -376,7 +376,7 @@ contains
 
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
-    type (integer), intent(inout) :: errstat
+    integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
@@ -526,7 +526,7 @@ contains
 
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
-    type (integer), intent(inout) :: errstat
+    integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
     integer, dimension(1) :: dimid_xtrack
