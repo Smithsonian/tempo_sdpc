@@ -30,6 +30,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   use slitfunction, only : slitfunction_select, slitfunction_open
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
   use ctrlvars, only: yn_use_labslitfunc
+  use OMSAO_omidata_module, only : initialize_omidata_structs
+  use OMSAO_variables_module, only : allocate_refspec_storage
   IMPLICIT NONE
 
   ! ---------------
@@ -68,6 +70,12 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered
   ! ----------------------------------------------------------------------------
+
+  call allocate_refspec_storage (errstat)
+  if (errstat < 0) return
+
+  call initialize_omidata_structs (errstat)
+  if (errstat < 0) return  
 
   call optimizer_set_default_method (elsunc_optimizer)
   call slitfunction_select (omi_slitfunc_read, omi_slitfunc_convolve)

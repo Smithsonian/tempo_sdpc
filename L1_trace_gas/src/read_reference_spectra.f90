@@ -1,4 +1,6 @@
 MODULE read_reference_spectra
+  use tell_module
+  implicit none
 CONTAINS
 SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
 
@@ -422,9 +424,12 @@ SUBROUTINE read_commonmode_spec ( &
   ! Local Variables
   ! ----------------
   INTEGER (KIND=i4) :: i, ixt, ios, funit, file_read_stat, j1, j2, nskip, nspec
-  INTEGER (KIND=i4), DIMENSION (max_spec_pts)             :: irev
-  REAL    (KIND=r8), DIMENSION (max_spec_pts)             :: xtmp, ytmp
-  REAL    (KIND=r8), DIMENSION (NXTRACK_MAX,max_spec_pts) :: x, y
+  !INTEGER (KIND=i4), DIMENSION (max_spec_pts)             :: irev
+  INTEGER (KIND=i4), DIMENSION (:), allocatable            :: irev
+  !REAL    (KIND=r8), DIMENSION (max_spec_pts)             :: xtmp, ytmp
+  REAL    (KIND=r8), DIMENSION (:), allocatable            :: xtmp, ytmp
+  !REAL    (KIND=r8), DIMENSION (NXTRACK_MAX,max_spec_pts) :: x, y
+  REAL    (KIND=r8), DIMENSION (:,:), allocatable          :: x, y
   CHARACTER (LEN=MAX_STR_LEN)                                :: lastline, rs_title, rs_units
   REAL    (KIND=r8)                                       :: xdum, rs_temp, ddum, specnorm
 
@@ -444,7 +449,20 @@ SUBROUTINE read_commonmode_spec ( &
   INTEGER (KIND=i4), EXTERNAL :: &
     pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
+  if (errstat < 0) return
+
   locerrstat = pge_errstat_ok
+
+  allocate (x(nxtrack_max,max_spec_pts), &
+            y(nxtrack_max,max_spec_pts), &
+            irev(max_spec_pts), &
+            xtmp(max_spec_pts), &
+            ytmp(max_spec_pts), stat=errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_malloc_error, "read_commonmode_spec:  allocate failed", &
+                     errstat)
+    return
+  endif
 
   nspec = 0; rs_temp = 0.0_r8
   x = 0.0_r8 ; y = 0.0_r8

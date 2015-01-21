@@ -119,10 +119,14 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_szenith, omi_sazimuth
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_vzenith, omi_vazimuth
-  REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
-  REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_wavl
-  INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_qflg
-  INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_ccdpix
+  !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
+  REAL    (KIND=r8), DIMENSION (:,:,:), allocatable :: omi_radiance_spec
+  !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_wavl
+  REAL    (KIND=r8), DIMENSION (:,:,:), allocatable :: omi_radiance_wavl
+  !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_qflg
+  INTEGER (KIND=i2), DIMENSION (:,:,:), allocatable :: omi_radiance_qflg
+  !INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_ccdpix
+  INTEGER (KIND=i4), DIMENSION (:,:,:), allocatable :: omi_radiance_ccdpix
   INTEGER (KIND=i2), DIMENSION (nUTCdim,0:nlines_max-1)                :: omi_time_utc
 
   ! ---------------------------------------------------------------
@@ -130,11 +134,14 @@ MODULE OMSAO_omidata_module
   ! outside the "nlines_max" loops and hence need to be defined on
   ! the maximum swath dimensions.
   ! ---------------------------------------------------------------
-  INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_ccdpix
-  INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_radref_qflg
-  REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: &
-    omi_irradiance_wght, &
-    omi_radref_spec, omi_radref_wavl, omi_radref_wght
+  !INTEGER (KIND=i4), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_ccdpix
+  INTEGER (KIND=i4), DIMENSION (:,:), allocatable :: omi_irradiance_ccdpix
+  !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_radref_qflg
+  INTEGER (KIND=i2), DIMENSION (:,:), allocatable :: omi_radref_qflg
+  !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: &
+  !  omi_irradiance_wght, omi_radref_spec, omi_radref_wavl, omi_radref_wght
+  REAL    (KIND=r8), DIMENSION (:,:), allocatable :: &
+    omi_irradiance_wght, omi_radref_spec, omi_radref_wavl, omi_radref_wght
   !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: &
   !  omi_irradiance_prec, omi_irradiance_wavl, omi_irradiance_spec, &
   !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: omi_irradiance_qflg
@@ -197,8 +204,10 @@ MODULE OMSAO_omidata_module
     omi_solcal_xflag, omi_radcal_xflag, omi_radref_xflag
   REAL    (KIND=r8), DIMENSION (max_calfit_idx, nxtrack_max)         :: &
     omi_solcal_pars,  omi_radcal_pars,  omi_radref_pars
-  REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max, max_rs_idx) :: omi_database
-  REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max            ) :: omi_database_wvl
+  !REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max, max_rs_idx) :: omi_database
+  REAL    (KIND=r8), DIMENSION (:,:,:), allocatable                  :: omi_database
+  !REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max            ) :: omi_database_wvl
+  REAL    (KIND=r8), DIMENSION (:,:), allocatable                    :: omi_database_wvl
   REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
     omi_solcal_chisq, omi_radcal_chisq, omi_radref_chisq, &
@@ -268,8 +277,32 @@ MODULE OMSAO_omidata_module
 
 contains
 
-  subroutine initialize_io_var_structs ()
+  subroutine initialize_omidata_structs (errstat)
+    use tell_module
     implicit none
+    integer, intent(inout) :: errstat
+
+    if (errstat < 0) return
+
+    allocate (omi_radiance_spec(nwavel_max,nxtrack_max,0:nlines_max-1), &
+              omi_radiance_wavl(nwavel_max,nxtrack_max,0:nlines_max-1), &
+              omi_radiance_qflg(nwavel_max,nxtrack_max,0:nlines_max-1), &
+              omi_radiance_ccdpix(nwavel_max,nxtrack_max,0:nlines_max-1), &
+              omi_irradiance_ccdpix(nwavel_max,nxtrack_max),&
+              omi_radref_qflg(nwavel_max, nxtrack_max), &
+              omi_irradiance_wght(nwavel_max, nxtrack_max), &
+              omi_radref_spec(nwavel_max, nxtrack_max), &
+              omi_radref_wavl(nwavel_max, nxtrack_max), &
+              omi_radref_wght(nwavel_max, nxtrack_max), &
+              omi_database(nwavel_max, nxtrack_max, max_rs_idx), &
+              omi_database_wvl (nwavel_max, nxtrack_max), &
+              stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "initialize_omidata_structs:  allocate failed", &
+                       errstat)
+      return
+    endif
+              
     ! FIXME: (JCH)  Eventually, these struct fields will be arrays and
     ! not pointers and they'll probably be initialized elsewhere.  While
     ! pointers are being used, we'll initialize them here.
@@ -296,7 +329,7 @@ contains
     result_vars % radref_column_uncert => omi_radref_dcol
     result_vars % radref_column_xtrfit => omi_radref_xtrcol
     result_vars % radref_fit_rms => omi_radref_rms
-  end subroutine initialize_io_var_structs
+  end subroutine initialize_omidata_structs
 
   subroutine dealloc_retrieval_type (rt)
     type (retrieval_type), intent(inout) :: rt

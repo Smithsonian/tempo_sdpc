@@ -107,18 +107,24 @@ MODULE OMSAO_variables_module
     INTEGER   (KIND=I4)                                       :: nPoints
     REAL      (KIND=r8)                                       :: NormFactor, Temperature
     REAL      (KIND=r8), DIMENSION (2)                        :: FirstLastWav
-    INTEGER   (KIND=I2), DIMENSION (nxtrack_max,2)            :: CCDPixel
-    INTEGER   (KIND=I4), DIMENSION (nxtrack_max)              :: RefSpecCount
-    REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecWavs
-    REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecData
-    integer   (kind=i4), dimension (nxtrack_max)              :: num_wavelengths = 0
+    !INTEGER   (KIND=I2), DIMENSION (nxtrack_max,2)            :: CCDPixel
+    INTEGER   (KIND=I2), DIMENSION (:,:), allocatable          :: CCDPixel
+    !INTEGER   (KIND=I4), DIMENSION (nxtrack_max)              :: RefSpecCount
+    INTEGER   (KIND=I4), DIMENSION (:), allocatable            :: RefSpecCount
+    !REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecWavs
+    REAL      (KIND=r8), DIMENSION (:,:), allocatable          :: RefSpecWavs
+    !REAL      (KIND=r8), DIMENSION (max_spec_pts,nxtrack_max) :: RefSpecData
+    REAL      (KIND=r8), DIMENSION (:,:), allocatable          :: RefSpecData
+    !integer   (kind=i4), dimension (nxtrack_max)              :: num_wavelengths = 0
+    integer   (kind=i4), dimension (:), allocatable            :: num_wavelengths
   END TYPE common_mode_spectrum_type
 
   ! -------------------------------
   ! Array for all Reference Spectra
   ! -------------------------------
-  TYPE (reference_spectrum_type),  DIMENSION (max_rs_idx) :: refspecs_original
-  TYPE (common_mode_spectrum_type)                  :: common_mode_spec
+  !TYPE (reference_spectrum_type),  DIMENSION (max_rs_idx) :: refspecs_original
+  TYPE (reference_spectrum_type),  DIMENSION (:), allocatable :: refspecs_original
+  TYPE (common_mode_spectrum_type)                            :: common_mode_spec
 
   ! -------------------------------------------
   ! A special beast: The undersampling spectrum
@@ -284,5 +290,42 @@ MODULE OMSAO_variables_module
   ! Current cross-track pixel number
   ! --------------------------------
   INTEGER (KIND=i4) :: curr_xtrack_pixnum
+
+contains
+
+  subroutine allocate_refspec_storage (errstat)
+    use tell_module
+    implicit none
+    integer, intent(inout) :: errstat
+    if (errstat < 0) return
+    allocate (refspecs_original(max_rs_idx), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "allocate_refspec_storage: allocate failed", &
+                       errstat)
+      return
+    endif
+  end subroutine allocate_refspec_storage
+
+  subroutine allocate_common_mode_storage (cms, errstat)
+    use tell_module
+    implicit none
+    type (common_mode_spectrum_type), intent(inout) :: cms
+    integer, intent(inout) :: errstat
+    if (errstat < 0) return
+
+    allocate (cms % RefSpecWavs(max_spec_pts, nxtrack_max), &
+              cms % RefSpecData(max_spec_pts, nxtrack_max), &
+              cms % CCDPixel (nxtrack_max, 2), &
+              cms % RefSpecCount (nxtrack_max), &
+              cms % num_wavelengths (nxtrack_max), &
+              stat = errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "allocate_common_mode_storage: allocate failed", &
+                       errstat)
+      return      
+    endif
+    cms % num_wavelengths(:) = 0
+    
+  end subroutine allocate_common_mode_storage
 
 END MODULE OMSAO_variables_module

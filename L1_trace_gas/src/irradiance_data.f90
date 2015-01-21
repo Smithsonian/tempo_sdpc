@@ -390,8 +390,10 @@ contains
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: funit, ios, dummy, ix, jw, nwavel, iw
-    REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: tmp_spc, tmp_wvl, tmp_prc
-    INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: tmp_flg, tmp_n
+    !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: tmp_spc, tmp_wvl, tmp_prc
+    REAL    (KIND=r8), DIMENSION (:,:), allocatable :: tmp_spc, tmp_wvl, tmp_prc
+    !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: tmp_flg, tmp_n
+    INTEGER (KIND=i2), DIMENSION (:,:), allocatable :: tmp_flg, tmp_n
     ! ------------------------------
     ! Astronomical unit AU in meters
     ! ------------------------------
@@ -588,6 +590,16 @@ contains
     ! ---------------------------------------------
     sun_earth_distance = EarthSunDistance / AU_m
 
+    allocate (tmp_spc(nwavel_max,nxtrack_max), &
+              tmp_wvl(nwavel_max,nxtrack_max), &
+              tmp_prc(nwavel_max,nxtrack_max), &
+              tmp_flg(nwavel_max,nxtrack_max), &
+              tmp_n(nwavel_max,nxtrack_max), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "omi_read_monthly_average_irradiance:  allocate failed", &
+                       errstat)
+      return
+    endif
     ! ---------------------------------------------------------------
     ! Work out which channel we are interested on, UV1, UV2 or VIS
     ! Find out number of wavelengths and number of cross track pixels
@@ -636,6 +648,9 @@ contains
     call package_irradiance_data (nwavel, nxtrack, &
                                   tmp_wvl, tmp_spc, tmp_flg, &
                                   errstat)
+
+    ! FIXME (JCH) tmp_n unused??
+    deallocate (tmp_spc,tmp_wvl,tmp_prc,tmp_flg, tmp_n)
 
   END SUBROUTINE omi_read_monthly_average_irradiance
 

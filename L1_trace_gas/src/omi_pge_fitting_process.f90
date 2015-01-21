@@ -131,7 +131,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     l2_filename, pixnum_lim, n_fitvar_rad,   &
     radfit_latrange,                &
     common_latrange,    &
-    Radiance_Paras_Type, &
+    Radiance_Paras_Type, allocate_common_mode_storage, &
     radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
     yn_diagnostic_run, yn_remove_target, yn_disable_omi_features
@@ -160,7 +160,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   use datafields, only: he5_initialize_datafields
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, correlation_names, &
     omi_cross_track_skippix, omi_radcal_xflag, &
-    omi_radiance_swathname, initialize_io_var_structs, result_vars
+    omi_radiance_swathname, result_vars
   USE irradiance_data, only: irradiance_data_init
 
   IMPLICIT NONE
@@ -227,7 +227,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   if (errstat < 0) return
 
-  call initialize_io_var_structs ()
+  call allocate_common_mode_storage (common_mode_spec, errstat)
+  if (errstat < 0) return
 
   ntimes_rad = rpt_rad%ntimes
   nxtrack_rad = rpt_rad%nxtrack
