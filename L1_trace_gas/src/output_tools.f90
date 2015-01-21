@@ -596,10 +596,12 @@ contains
       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
     type (tiof_dimlist_type) :: dimlist
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     ! create a file
     call tiof_create (obj, filename, nf90_clobber, errstat)
@@ -682,9 +684,11 @@ contains
     type (radfit_diagnostics_type), intent(in) :: radfit_diagnostics
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     ! result_vars
     call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, -1], &
@@ -753,9 +757,11 @@ contains
     integer, intent(in) :: nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     call tiof_put1d_i2 (obj, tg_var_solcal_convergence_flag, [0], [nxtrack], &
                         result_vars % solcal_convergence_flag (1:nxtrack), errstat)
@@ -787,8 +793,10 @@ contains
     integer, intent(in) :: num_params
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
     type (tiof_attlist_type) :: attlist
+
+    obj => primary_output_file
 
     call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", &
                              att_i4=[stats % num_crosstrack_pixels])
@@ -845,9 +853,12 @@ contains
     integer, intent(in) :: nxtrack, ntimes
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
+
     call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,-1], &
                         albedo (1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
@@ -866,9 +877,12 @@ contains
     integer, intent(in) :: nxtrack, ntimes, nlevels
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
+
     call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,-1,-1], &
                         gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,-1,-1], &
@@ -887,9 +901,12 @@ contains
     integer, intent(in) :: nxtrack, ntimes, nlevels
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
+
     call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,-1,-1], &
                         scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     if (errstat < 0) then
@@ -912,9 +929,11 @@ contains
     logical, intent(in) :: yn_write_cloud_variables
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,-1], &
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
@@ -951,9 +970,11 @@ contains
     type (common_mode_spectrum_type), intent(in) :: common_mode
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,-1], &
                         common_mode % refspecdata (1:ncommwvl,1:nxtrack), errstat)
@@ -980,10 +1001,12 @@ contains
     integer (kind=i4), intent(in) :: nrefspec, npts, nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
     integer :: i
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     ! Loop avoids creation of temporary array that may exceed process address space,
     ! causing a segv.  This can happen, when nxtrack is large, e.g. 2048.
@@ -1009,9 +1032,11 @@ contains
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: column
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
 
     if (errstat < 0) return
+
+    obj => primary_output_file
 
     call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, -1], &
                         column(1:nxtrack, 0:ntimes-1), errstat)
@@ -1027,7 +1052,9 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => primary_output_file
+    type (tiof_file_type), pointer :: obj => null()
+
+    obj => primary_output_file
 
     call tiof_close (obj, errstat)
     if (errstat < 0) then
