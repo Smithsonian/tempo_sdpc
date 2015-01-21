@@ -304,7 +304,6 @@ CONTAINS
     CALL set_automatic_quality_flag (fit_stats % percent_good_output)
 
     !IF ( verb_thresh_lev >= vb_lev_screen ) THEN
-      call flush()
       WRITE (out_string, '(A, 3(1PE15.5))')'Col-DCol-RMS: ', col_avg, dcol_avg, rms_avg
       call tell_log (0, out_string)
 
