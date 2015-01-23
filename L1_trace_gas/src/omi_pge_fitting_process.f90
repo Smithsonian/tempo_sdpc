@@ -622,7 +622,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! First, set the range of swath lines to process
   ! ----------------------------------------------
   if (yn_disable_omi_features) then
-    do_radfit_range = .true.
+    first_line = 0
+    last_line = ntimes_rad - 1
+    if ((0 <= pixnum_lim(1)) &
+        .and. (pixnum_lim(1) < ntimes_rad)) first_line = pixnum_lim(1)
+    if ((first_line <= pixnum_lim(2)) &
+        .and. (pixnum_lim(2) < ntimes_rad)) last_line = pixnum_lim(2)
+    do_radfit_range(:) = .false.
+    do_radfit_range(first_line:last_line) = .true.
   else
   first_line = 0  ;  last_line = ntimes_rad-1
   IF ( pixnum_lim(1) > 0 ) first_line = MIN(pixnum_lim(1), last_line)
