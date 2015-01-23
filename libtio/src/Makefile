@@ -144,7 +144,11 @@ distclean: clean distclean-tempo-names
 
 NAME_FILE_BASENAMES = tempo_dims tempo_grps tempo_vars
 
-tempo-names:
+NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))
+NAME_FILE_TARGETS = $(addsuffix .inc, $(addprefix _, $(NAME_FILE_BASENAMES))) \
+           $(TIO_TEMPLATE_INCLUDE)
+tempo-names:	$(NAME_FILE_TARGETS)
+$(NAME_FILE_TARGETS):	$(NAME_FILE_SOURCES)
 	for bn in $(NAME_FILE_BASENAMES) ; do \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %25s   %s\n",a[1],a[2])}' \
 	        $${bn}.csv > .$${bn}_h.tmp ; \

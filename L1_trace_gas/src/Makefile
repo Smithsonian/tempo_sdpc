@@ -155,7 +155,10 @@ $(msgdir)/PGS_52500:
 NAME_FILE_BASENAMES = tg_names_dim tg_names_var
 NAME_INCLUDE = tg_names.h
 
-tg-names:
+NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))
+NAME_FILE_TARGETS = $(addsuffix .inc, $(NAME_FILE_BASENAMES)) $(NAME_INCLUDE)
+tg-names:	$(NAME_FILE_TARGETS)
+$(NAME_FILE_TARGETS):	$(NAME_FILE_SOURCES)
 	for bn in $(NAME_FILE_BASENAMES) ; do \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %35s   %s\n",a[1],a[2])}' \
 	        $${bn}.csv > .$${bn}_h.tmp ; \
