@@ -679,8 +679,9 @@ CONTAINS
 
     ! CCM
     ! REAL (KIND=r8), INTENT (IN), DIMENSION(n_comm_wvl,nxtrack_max,4,0:nt-1) :: omi_fitspc
-    REAL (KIND=r8), INTENT (IN), &
-      DIMENSION(n_rad_wvl_max,nxtrack_max,4,0:nblock-1) :: omi_fitspc ! JED
+    !REAL (KIND=r8), INTENT (IN), &
+    !  DIMENSION(n_rad_wvl_max,nxtrack_max,4,0:nblock-1) :: omi_fitspc ! JED
+    REAL (KIND=r8), INTENT (IN), DIMENSION(:,:,:,:), allocatable :: omi_fitspc  ! JCH
 
     ! Temporary array
     !REAL (KIND=r8),DIMENSION(n_rad_wvl_max,nxtrack_max,0:nt-1) :: tmp_fitspc

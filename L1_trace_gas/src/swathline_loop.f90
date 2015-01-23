@@ -100,7 +100,7 @@ SUBROUTINE swathline_loops (                               &
     target_col = 0.0_r8
   END IF
 
-  if (.not.in_common_mode_loop) then
+  if (yn_diagnostic_run .and. (.not.in_common_mode_loop)) then
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
     if (locerrstat /= 0) then
       errstat = -1
@@ -234,7 +234,7 @@ SUBROUTINE swathline_loops (                               &
         !  ENDDO
         !ENDDO
 
-        if (.not.in_common_mode_loop) &
+        if (yn_diagnostic_run .and. (.not.in_common_mode_loop)) &
           omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp (1:n_rad_wvl,:,:)
 
         ! ---------------------------------------------------------------
