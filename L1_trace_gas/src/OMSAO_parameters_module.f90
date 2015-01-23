@@ -238,11 +238,9 @@ MODULE OMSAO_parameters_module
     nwavelcoef_max = omi_nwavelcoef_max
 
   INTEGER (KIND=i4), PARAMETER :: nUTCdim =  6
-  INTEGER (KIND=i4), PARAMETER :: nlines_max = 1 ! was 100 for OMI
-  ! FIXME (JCH)  For TEMPO, we require nxtrack_max=2048.
-  ! With that value for nxtrack_max, then the "small" memory
-  ! model for X86_64 then restricts us to nlines_max<=11,
-  ! otherwise 32-bit offsets cannot span the static memory space
-  ! that the code currently allocates.
+  INTEGER (KIND=i4), PARAMETER :: nlines_max = 1
+  ! For OMI, nlines_max=100 improves I/O efficiency, allowing the
+  ! code to run significantly faster.  However, nlines_max=1 may be
+  ! enough for TEMPo, given the much larger cross-track dimension.
 
 END MODULE OMSAO_parameters_module

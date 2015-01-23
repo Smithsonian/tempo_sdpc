@@ -295,7 +295,7 @@ contains
               omi_radref_wavl(nwavel_max, nxtrack_max), &
               omi_radref_wght(nwavel_max, nxtrack_max), &
               omi_database(nwavel_max, nxtrack_max, max_rs_idx), &
-              omi_database_wvl (nwavel_max, nxtrack_max), &
+              omi_database_wvl(nwavel_max, nxtrack_max), &
               stat=errstat)
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, "initialize_omidata_structs:  allocate failed", &
