@@ -31,7 +31,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
   use ctrlvars, only: yn_use_labslitfunc
   use OMSAO_omidata_module, only : initialize_omidata_structs
-  use OMSAO_variables_module, only : allocate_refspec_storage
+  use OMSAO_variables_module, only : allocate_refspec_storage, &
+    allocate_common_mode_storage, common_mode_spec
   IMPLICIT NONE
 
   ! ---------------
@@ -72,6 +73,10 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------------------------------------------------------
 
   call allocate_refspec_storage (errstat)
+  if (errstat < 0) return
+
+  ! allocate common mode here in case we read in common mode (see read_ref_spectra)
+  call allocate_common_mode_storage (common_mode_spec, errstat)
   if (errstat < 0) return
 
   call initialize_omidata_structs (errstat)

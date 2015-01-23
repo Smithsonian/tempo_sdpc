@@ -131,7 +131,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     l2_filename, pixnum_lim, n_fitvar_rad,   &
     radfit_latrange,                &
     common_latrange,    &
-    Radiance_Paras_Type, allocate_common_mode_storage, &
+    Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
     yn_diagnostic_run, yn_remove_target, yn_disable_omi_features
@@ -225,9 +225,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !  he5_set_field_attributes, he5_write_global_attributes,    &
   !  he5_write_swath_attributes, he5_open_readwrite
 
-  if (errstat < 0) return
-
-  call allocate_common_mode_storage (common_mode_spec, errstat)
   if (errstat < 0) return
 
   ntimes_rad = rpt_rad%ntimes
