@@ -29,7 +29,6 @@ SUBROUTINE swathline_loops (                               &
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
   USE he5_output_tools, ONLY: he5_write_radfit_output
   use output_tools, only : write_radfit_output
-  use errormodule
   use tell_module
   IMPLICIT NONE
 
@@ -103,9 +102,7 @@ SUBROUTINE swathline_loops (                               &
   if (yn_diagnostic_run .and. (.not.in_common_mode_loop)) then
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
     if (locerrstat /= 0) then
-      errstat = -1
-      call err_message_error ("swathline_loops: allocate failed", &
-                              errstat)
+      call tell_error (tell_malloc_error, "swathline_loops: allocate failed", errstat)
       return
     endif
     omi_fitspc = 0.0_r8

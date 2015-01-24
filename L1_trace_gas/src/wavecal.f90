@@ -2,7 +2,6 @@ module wavecal
 
   use OMSAO_precision_module, only: i2, i4, r8
   use optimizer_interface_module
-  use errormodule
   use tell_module
   use OMSAO_variables_module, only: sol_wav_avg
   use OMSAO_indices_module, only: MAX_CAL_PARMS
@@ -39,7 +38,7 @@ contains
 
     allocate(cal_wavelengths(n), cal_spectrum(n), cal_weights(n), stat=locerr)
     if (locerr /= 0) then
-      call err_message_error ("allocate_module_variables: allocate failed", errstat)
+      call tell_error (tell_malloc_error, "allocate_module_variables: allocate failed", errstat)
       return
     endif
 
@@ -204,7 +203,7 @@ contains
       npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
       did_full_range, errstat )
     if (errstat < 0) then
-      call err_message_error ("interpolation failed while resampling to solar grid", errstat)
+      call tell_error (tell_runtime_error, "spectrum_solar: interpolation failed while resampling to solar grid", errstat)
       return
     endif
 
@@ -278,7 +277,6 @@ contains
     INTEGER (KIND=i4)  :: i, idx, n_nozero_wgt, num_iterations_per_fit
     REAL    (KIND=r8)  :: mean, sdev, loclim
     type(optimizer_type) :: opt
-    integer (kind=i4) :: return_status
     real (kind=r8), dimension(num_cal_parms) :: fitvar, lobnd, upbnd
     integer (kind=i4), dimension(num_cal_parms) :: param_mask
     real (kind=r8), dimension (num_wavelengths) :: fitres
@@ -327,15 +325,15 @@ contains
     ! thinking before it can replace a simple window determined empirically
     ! from fitting lots of spectra.
     ! ---------------------------------------------------------------------
-    call optimizer_open (opt, wavecal_residuals, num_fitvar, return_status, &
+    call optimizer_open (opt, wavecal_residuals, num_fitvar, errstat, &
                          mode=opt_bounded, tol=tol, epsabs=epsabs, &
                          epsrel=epsrel, epsx=epsx, &
                          param_min = lobnd(1:num_fitvar), &
                          param_max = upbnd(1:num_fitvar), &
                          param_mask = param_mask(1:num_fitvar), &
                          max_num_iterations = num_iterations_per_fit)
-    if (return_status < 0) then
-      call err_message_error ("radiance_wavecal: optimizer_open failed", errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "radiance_wavecal: optimizer_open failed", errstat)
       goto 666
     endif
 
@@ -375,9 +373,9 @@ contains
 
     enddo fit_loop
 
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      call err_message_error ("radiance_wavecal: optimizer_close failed", errstat)
+    call optimizer_close (opt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "radiance_wavecal: optimizer_close failed", errstat)
       goto 666
     endif
 

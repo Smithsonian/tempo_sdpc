@@ -1,6 +1,5 @@
 MODULE OMSAO_solar_wavcal_module
 
-  use errormodule
   use tell_module
   implicit none
 
@@ -430,7 +429,7 @@ CONTAINS
         allocate (adj_wvl(n_irradwvl), adj_spec(n_irradwvl), adj_wgts(n_irradwvl), &
                   stat=locerr)
         if (locerr /= 0) then
-          call err_message_error ("xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
           return
         endif
         adj_len = n_irradwvl

@@ -1,6 +1,5 @@
 MODULE fitting_loops
 
-  use errormodule
   use tell_module
 
   private
@@ -202,7 +201,7 @@ CONTAINS
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
                   stat=locerr)
         if (locerr /= 0) then
-          call err_message_error ("xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
           return
         endif
         adj_num_allocated = adj_num
@@ -610,7 +609,7 @@ CONTAINS
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
                   stat=locerr)
         if (locerr /= 0) then
-          call err_message_error ("xtrack_radiance_fitting_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_radiance_fitting_loop: allocate failed", errstat)
           return
         endif
         adj_num_allocated = adj_num

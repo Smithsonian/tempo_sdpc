@@ -1,7 +1,7 @@
 MODULE subtract_cubic
   USE OMSAO_precision_module, ONLY: r8, i4
   use optimizer_interface_module
-  use errormodule
+  use tell_module
 
   REAL (KIND=r8), DIMENSION (:), ALLOCATABLE :: cubic_x, cubic_y, cubic_w
 
@@ -56,7 +56,6 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (max_spec_pts)           :: f
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: par
     type(optimizer_type) :: opt
-    integer (kind=i4) :: return_status
 
     if (errstat < 0) return
 
@@ -91,10 +90,10 @@ CONTAINS
       ptemp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
-    call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
+    call optimizer_open (opt, cubic_objective, doas_npol, errstat, &
                          mode=opt_unbounded, max_num_iterations=5)
-    if (return_status < 0) then
-      call err_message_error ("cubic_subtract:  optimizer_open failed", errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "cubic_subtract:  optimizer_open failed", errstat)
       return
     endif
 
@@ -119,9 +118,9 @@ CONTAINS
       END IF
     END DO
 
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      call err_message_error ("cubic_subtract:  optimizer_close failed", errstat)
+    call optimizer_close (opt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "cubic_subtract:  optimizer_close failed", errstat)
       return
     endif
 
@@ -165,7 +164,6 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (doas_npol)         :: blow, bupp
     REAL    (KIND=r8), DIMENSION (npoints)           :: f
     type(optimizer_type) :: opt
-    integer (kind=i4) :: return_status
 
     if (errstat < 0) return
 
@@ -195,10 +193,10 @@ CONTAINS
       ptmp(i) = locwvl(i+nlower-1) - locavg
     END DO
 
-    call optimizer_open (opt, cubic_objective, doas_npol, return_status, &
+    call optimizer_open (opt, cubic_objective, doas_npol, errstat, &
                          mode=opt_unbounded, max_num_iterations=5)
-    if (return_status < 0) then
-      call err_message_error ("cubic_subtract_meas:  optimizer_open failed", errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "cubic_subtract_meas:  optimizer_open failed", errstat)
       return
     endif
 
@@ -221,9 +219,9 @@ CONTAINS
     call opt%optimize (opt, r, doas_npol, f(1:nfitted), nfitted, exval)
     chisq2 = SUM  ( f(1:nfitted)**2 ) ! This gives the same CHI**2 as the NR routines
 
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      call err_message_error ("cubic_subtract_meas:  optimizer_close failed", errstat)
+    call optimizer_close (opt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "cubic_subtract_meas:  optimizer_close failed", errstat)
       return
     endif
 

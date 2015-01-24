@@ -3,7 +3,6 @@ MODULE radiance_fit
   use OMSAO_indices_module, only : max_rs_idx, n_max_fitpars
   use OMSAO_parameters_module, only : nwavel_max
   use optimizer_interface_module
-  use errormodule
   use tell_module
 
   private
@@ -255,14 +254,14 @@ CONTAINS
     radfit_itnum = 0
     j = 0
 
-    call optimizer_open (opt, earthshine_residuals, n_fitvar_rad, return_status, &
+    call optimizer_open (opt, earthshine_residuals, n_fitvar_rad, errstat, &
                          mode=opt_bounded, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
                          param_min = lobnd(1:n_fitvar_rad), &
                          param_max = upbnd(1:n_fitvar_rad), &
                          param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
                          max_num_iterations = max_itnum_rad)
-    if (return_status < 0) then
-      call err_message_error ("fit_radiance: optimizer_open failed", errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "fit_radiance: optimizer_open failed", errstat)
       return
     endif
 
@@ -321,9 +320,9 @@ CONTAINS
 
     enddo fit_loop
 
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      call err_message_error ("fit_radiance: optimizer_close failed", errstat)
+    call optimizer_close (opt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "fit_radiance: optimizer_close failed", errstat)
       return
     endif
 

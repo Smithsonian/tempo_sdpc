@@ -3,7 +3,7 @@ MODULE he5_output_tools
   USE OMSAO_indices_module, ONLY: n_voc_amf_luns
   USE OMSAO_precision_module, ONLY: i2, i4, r4, r8
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-  use errormodule, only : err_message_error
+  use tell_module
 
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
 
@@ -1170,7 +1170,7 @@ CONTAINS
     if (yn_diagnostic_run) then
       allocate (db_old_order(nRefSpec,npts,nXtrack), stat=locerrstat)
       if (locerrstat /= 0) then
-        call err_message_error ("he5_write_omi_database:  allocate failed", errstat)
+        call tell_error (tell_malloc_error, "he5_write_omi_database:  allocate failed", errstat)
         return
       endif
       do ii=1,nRefSpec

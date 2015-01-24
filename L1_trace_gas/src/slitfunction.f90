@@ -1,5 +1,5 @@
 module slitfunction
-  use errormodule
+  use tell_module
   use slitfunction_asym_gaussian
   use OMSAO_precision_module, only : i4, r8
   implicit none
@@ -48,7 +48,7 @@ contains
 
     call sf_init (errstat)
     if (errstat < 0) then
-      call err_message_error ("slitfunction_open: failed", errstat)
+      call tell_error (tell_runtime_error, "slitfunction_open: failed", errstat)
       return
     endif
 
@@ -71,14 +71,14 @@ contains
       call sf_convolve (pixel, num_wvl, wvl, spec, spec_conv, errstat)
     else
       if (num_params /= 2) then
-        call err_message_error ("slitfunction_convolve: analytic slit function requires num_params=2", errstat)
+        call tell_error (tell_invalid_parm, "slitfunction_convolve: analytic slit function requires num_params=2", errstat)
         return
       endif
       call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
     endif
 
     if (errstat < 0) then
-      call err_message_error ("slitfunction_convolve: convolution failed", errstat)
+      call tell_error (tell_runtime_error, "slitfunction_convolve: convolution failed", errstat)
       return
     endif
 

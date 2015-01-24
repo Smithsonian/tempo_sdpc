@@ -1,6 +1,5 @@
 MODULE omi_pge_fitting_aux
 
-  use errormodule
   use tell_module
   use OMSAO_precision_module,  ONLY: i2, i4, r4, r8
 
@@ -1343,7 +1342,7 @@ CONTAINS
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
     !if (errstat < 0) return
     !if (size(latr4, 1) /= l1bobj%num_xtrack) then
-    !  call err_message_error ("read_latitude: nxtrack dimension is not correct", errstat)
+    !  call tell_error (tell_runtime_error, "read_latitude: nxtrack dimension is not correct", errstat)
     !  call l1bread_close (l1bobj)
     !  return
     !endif

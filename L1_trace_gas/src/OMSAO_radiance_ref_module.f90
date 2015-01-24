@@ -3,7 +3,6 @@ MODULE OMSAO_radiance_ref_module
   USE OMSAO_precision_module, ONLY: i2, i4, r4, r8
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN
   USE OMSAO_variables_module, ONLY: n_rad_wvl_max
-  use errormodule
   use tell_module
 
   IMPLICIT NONE
@@ -42,7 +41,6 @@ CONTAINS
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE arrayutils, only: array_locate_r8
-    USE errormodule
     use ctrlvars, only: yn_disable_omi_features
     IMPLICIT NONE
 
@@ -102,8 +100,7 @@ CONTAINS
 
     ALLOCATE (latr4(1:nxrr,0:ntrr-1), STAT=locerrstat)
     if (locerrstat /= 0) then
-      errstat = -1
-      call err_message_error ("omi_get_radiance_reference: allocate failed", errstat)
+      call tell_error (tell_malloc_error, "omi_get_radiance_reference: allocate failed", errstat)
       return
     endif
 
@@ -551,7 +548,7 @@ CONTAINS
         allocate (adj_wvls(n_rad_wvl_loc), adj_spec(n_rad_wvl_loc), adj_wgts(n_rad_wvl_loc), &
                   stat=locerr)
         if (locerr /= 0) then
-          call err_message_error ("xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
           return
         endif
         num_adj_allocated = n_rad_wvl_loc

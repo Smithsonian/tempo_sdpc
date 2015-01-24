@@ -9,7 +9,7 @@ MODULE OMSAO_destriping_module
   use ctrlvars, only: yn_diagnostic_run
   USE OMSAO_median_module,     ONLY: median
   use optimizer_interface_module
-  use errormodule
+  use tell_module
 
   IMPLICIT NONE
 
@@ -743,23 +743,23 @@ CONTAINS
       nfit = 4
     END IF
 
-    call optimizer_open (opt, xtrack_striping_objective, nfit, return_status, &
+    call optimizer_open (opt, xtrack_striping_objective, nfit, errstat, &
                          mode=opt_bounded, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
                          max_num_iterations=ctr_fitfunc_calls)
-    if (return_status < 0) then
-      call err_message_error ("xtrack_striping_fit: optimizer_open failed", errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "xtrack_striping_fit: optimizer_open failed", errstat)
       return
     endif
 
     exval = 0
     call opt%optimize (opt, fitpar(1:nfit), nfit, f(1:nxtrack), nxtrack, exval)
 
-    call optimizer_close (opt, return_status)
-    if (return_status < 0) then
-      call err_message_error ("xtrack_striping_fit: optimizer_close failed", errstat)
+    call optimizer_close (opt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "xtrack_striping_fit: optimizer_close failed", errstat)
       return
     endif
-    
+
     chisq = SUM  ( f(1:nxtrack)**2 ) ! This gives the same CHI**2 as the NR routines
 
     a_stripe = fitpar(1)

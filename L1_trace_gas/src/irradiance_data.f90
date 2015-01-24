@@ -1,7 +1,6 @@
 module irradiance_data
 
   use OMSAO_precision_module, only: i2, i4, r4, r8
-  use errormodule
   use tell_module
   USE sao_pge_utils, ONLY: print_array
   implicit none
@@ -68,36 +67,25 @@ contains
 
     if (errstat < 0) return
 
-    allocate (idt%qflags(max_nwave, nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%wavelengths(max_nwave, nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%spectrum(max_nwave, nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%nwaves(nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%avg_wavelengths(nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%ccdpix_selection(4, nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
-
-    allocate (idt%ccdpix_exclusion(2, nxtrack), stat=locerr)
-    if (locerr /= 0) goto 666
+    allocate (idt%qflags(max_nwave, nxtrack), &
+              idt%wavelengths(max_nwave, nxtrack), &
+              idt%spectrum(max_nwave, nxtrack), &
+              idt%nwaves(nxtrack), &
+              idt%avg_wavelengths(nxtrack), &
+              idt%ccdpix_selection(4, nxtrack), &
+              idt%ccdpix_exclusion(2, nxtrack), &
+              stat=locerr)
+    if (locerr /= 0) then
+      call tell_error (tell_malloc_error, &
+                       "allocate_irr_data_type: allocate failed", &
+                       errstat)
+      return
+    endif
 
     idt%max_nwave = max_nwave
     idt%nxtrack = nxtrack
-    return
 
- 666 call err_message_error ("allocate_irr_data_type: allocate failed", &
-                             errstat)
-    return
-
-  end subroutine
+  end subroutine allocate_irr_data_type
 
   ! =========================================================================
 
@@ -124,8 +112,7 @@ contains
 
     allocate (ccdpix_sel (4, nxtrack), stat = locerrstat)
     if (locerrstat < 0) then
-      call err_message_error ("allocate_irr_data_type: allocate failed", &
-                              errstat)
+      call tell_error (tell_malloc_error, "allocate_irr_data_type: allocate failed", errstat)
       return
     endif
     ccdpix_sel = -1
@@ -191,7 +178,7 @@ contains
 
     end do
 
-  end subroutine  
+  end subroutine
 
   ! =========================================================================
 
@@ -247,7 +234,8 @@ contains
               spectrum (nwavel, nxtrack), &
               stat=locerrstat)
     if (locerrstat /= 0) then
-      call err_message_error ("read_irradiance_data: allocate failed", errstat)
+      call tell_error (tell_malloc_error, "read_irradiance_data: allocate failed", errstat)
+      return
     endif
 
     ! Allow errstat to flow through
@@ -259,7 +247,11 @@ contains
     call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], [1,-1,-1], tmp_qflags, errstat)
     call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,-1,-1], tmp_wavelengths, errstat)
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) return
+    if (errstat < 0) then
+      call tell_error (tell_runtime_error, "read_irradiance_data:  failed reading irradiance data", &
+                       errstat)
+      return
+    endif
 
     ! -------------------------------
     ! Reverse arrays for UV-1 channel.
@@ -331,7 +323,7 @@ contains
               tmp_qflags (nwvl, nxtrack), &
               tmpwvl(0:nwvl-1), stat=locerrstat)
     if (locerrstat /= 0) then
-      call err_message_error ("omi_create_solcomp_irradiance: allocate failed", errstat)
+      call tell_error (tell_malloc_error, "omi_create_solcomp_irradiance: allocate failed", errstat)
       return
     endif
 

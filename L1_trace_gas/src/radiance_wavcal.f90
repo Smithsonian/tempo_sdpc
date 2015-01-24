@@ -1,7 +1,5 @@
 MODULE radiance_wavcal
 
-  use errormodule
-
   private
   public radiance_wavecal
 

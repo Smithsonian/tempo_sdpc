@@ -28,7 +28,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   USE OMSAO_errstat_module
   use slitfunction, only : slitfunction_convolve
   USE sao_pge_utils, ONLY: interpolation
-  use errormodule, only: err_message_error
+  use tell_module
   IMPLICIT NONE
 
   ! ---------------
@@ -68,7 +68,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
     allocate (solar_spc(1:nsol), solar_wvl(1:nsol), solar_conv(1:nsol), &
               xsec_i0_spc(1:nsol), STAT=ios)
     if (ios /= 0) then
-      call err_message_error (modulename // ": allocate failed", errstat)
+      call tell_error (tell_malloc_error, modulename // ": allocate failed", errstat)
       return
     endif
 

@@ -346,8 +346,8 @@ contains
   end subroutine dealloc_retrieval_type
 
   subroutine alloc_retrieval_type (rt, nxtrack, ntimes, errstat)
-    use errormodule
     use OMSAO_parameters_module, only: r4_missval, r8_missval, i2_missval
+    use tell_module
     implicit none
     type (retrieval_type), intent(inout) :: rt
     integer (kind=i4), intent(in) :: nxtrack, ntimes
@@ -368,7 +368,7 @@ contains
       rt%fit_flag(nxtrack, 0:ntimes-1), &
       rt%xtr_flag(nxtrack, 0:ntimes-1), stat=locerrstat)
     if (locerrstat /= 0) then
-      call err_message_error ("alloc_retrieval_type:  allocation failed", errstat)
+      call tell_error (tell_malloc_error, "alloc_retrieval_type:  allocation failed", errstat)
       return
     endif
     rt%nxtrack = nxtrack

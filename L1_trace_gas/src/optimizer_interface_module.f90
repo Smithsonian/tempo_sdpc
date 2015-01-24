@@ -1,6 +1,6 @@
 module optimizer_interface_module
   USE OMSAO_precision_module, only : i4, r8
-  use errormodule
+  use tell_module
   implicit none
 
   ! This module is intended to provide a generic optimizer interface
@@ -8,7 +8,7 @@ module optimizer_interface_module
   ! Example:
   !
   !  type (optimizer_type) :: opt
-  !  call optimizer_open (opt, objective, num_params, return_status, &
+  !  call optimizer_open (opt, objective, num_params, errstat, &
   !                       optimizer_method=method, &
   !                       param_min=pmin, param_max=pmax, param_mask=mask, &
   !                       mode=mode, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
@@ -16,13 +16,13 @@ module optimizer_interface_module
   !                       max_num_iterations=max_itnum)
   !  call opt%optimize (opt, params, num_params, residuals, num_residuals, return_status, &
   !                     cov_matrix=c)
-  !  call optimizer_close (opt, return_status)
+  !  call optimizer_close (opt, errstat)
   !
   !  For optimizer_open and optimizer_close:
-  !                return_status < 0 means failure
-  !                return_status >= 0 means success
-  !  opt%optimize depends on the particular implementation,
-  !  but should adhere to the same convention.
+  !                errstat < 0 means failure
+  !                errstat >= 0 means success
+  !  The value of opt%optimize return_status depends on the particular
+  !  optimizer's implementation, but should adhere to the same convention.
 
   public
 
@@ -82,7 +82,7 @@ module optimizer_interface_module
  end interface
 
  procedure(optimizer_interface), private, pointer :: default_optimizer_method => null()
- 
+
 contains
 
   subroutine optimizer_set_default_method (optimizer_method)
@@ -91,17 +91,16 @@ contains
     default_optimizer_method => optimizer_method
   end subroutine optimizer_set_default_method
 
-  subroutine optimizer_close (this, return_status)
+  subroutine optimizer_close (this, errstat)
     implicit none
     type(optimizer_type) :: this
-    integer (kind=i4), intent(out) :: return_status
+    integer, intent(inout) :: errstat
     if (allocated(this%param_mask)) deallocate (this%param_mask)
     if (allocated(this%param_min)) deallocate (this%param_min)
     if (allocated(this%param_max)) deallocate (this%param_max)
-    return_status = 0
   end subroutine optimizer_close
 
-  subroutine optimizer_open (this, objective, num_params, return_status, &
+  subroutine optimizer_open (this, objective, num_params, errstat, &
                              optimizer_method, &
                              mode, tol, epsabs, epsrel, epsx, &
                              param_min, param_max, param_mask, &
@@ -112,7 +111,7 @@ contains
     type(optimizer_type) :: this
     procedure(objective_interface) :: objective
     integer (kind=i4), intent(in) :: num_params
-    integer (kind=i4), intent(out) :: return_status
+    integer, intent(inout) :: errstat
     ! optional parameters
     procedure(optimizer_interface), optional :: optimizer_method
     integer (kind=i4), intent(in), optional :: mode
@@ -125,10 +124,8 @@ contains
     ! local variables
     integer (kind=i4) :: i, status
 
-    return_status = -1
-
     if (num_params < 1) then
-      call err_message_error ("optimizer_open:  invalid number of parameters", return_status)
+      call tell_error (tell_invalid_parm, "optimizer_open:  invalid number of parameters", errstat)
       return
     endif
 
@@ -175,13 +172,13 @@ contains
     if (status == 0) allocate (this%param_max(num_params), stat=status)
     if (status == 0) allocate (this%param_mask(num_params), stat=status)
     if (status /= 0) then
-      call err_message_error ("optimizer_open:  allocate failed", return_status)
+      call tell_error (tell_malloc_error, "optimizer_open:  allocate failed", errstat)
       return
     endif
 
     if (present(param_min)) then
       if (size(param_min) < num_params) then
-        call err_message_error ("optimizer_open:  invalid param_min array", return_status)
+        call tell_error (tell_invalid_parm, "optimizer_open:  invalid param_min array", errstat)
         return
       endif
       this%param_min = param_min
@@ -191,7 +188,7 @@ contains
 
     if (present(param_max)) then
       if (size(param_max) < num_params) then
-        call err_message_error ("optimizer_open:  invalid param_max array", return_status)
+        call tell_error (tell_invalid_parm, "optimizer_open:  invalid param_max array", errstat)
         return
       endif
       this%param_max = param_max
@@ -201,7 +198,7 @@ contains
 
     if (present(param_mask)) then
       if (size(param_mask) < num_params) then
-        call err_message_error ("optimizer_open:  invalid param_mask array", return_status)
+        call tell_error (tell_invalid_parm, "optimizer_open:  invalid param_mask array", errstat)
         return
       endif
       this%param_mask = param_mask
@@ -225,7 +222,6 @@ contains
     this%num_fun_calls = 0
     this%num_jac_calls = 0
 
-    return_status = 0
   end subroutine optimizer_open
 
 end module optimizer_interface_module

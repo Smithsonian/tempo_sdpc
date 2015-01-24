@@ -14,7 +14,6 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   USE OMSAO_variables_module,  ONLY: &
     refspecs_original, database, have_undersampling
   use slitfunction, only : slitfunction_convolve
-  use errormodule
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
 

@@ -246,7 +246,6 @@ CONTAINS
     use netcdf
     use tio_module
     use tell_module
-    use errormodule
     implicit none
     integer (kind=i4), intent(in) :: pge_idx
     integer, intent(inout) :: errstat
@@ -263,7 +262,7 @@ CONTAINS
     version=1
     pgs_status = PGS_PC_GetReference (l1b_radiance_lun, version, l1r_filename)
     if (pgs_status /= 0) then
-      call err_message_error ("PGS_PC_GetReference: failed retrieving L1 radiance filename", errstat)
+      call tell_error (tell_io_read_error, "PGS_PC_GetReference: failed retrieving L1 radiance filename", errstat)
       return
     endif
 

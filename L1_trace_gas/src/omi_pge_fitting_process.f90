@@ -1,6 +1,5 @@
 MODULE omi_pge_fitting_process
 
-  use errormodule
   use tell_module
   use l1bread_utils
   private
@@ -460,7 +459,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   allocate (l1b_rad_latitudes (1:nxtrack_rad, 0:ntimes_rad-1), stat=locerrstat)
   if (locerrstat /= 0) then
-    call err_message_error (modulename // ": allocate failed", errstat)
+    call tell_error (tell_malloc_error, modulename // ": allocate failed", errstat)
     return
   endif
 
@@ -697,27 +696,27 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------
   call write_fitting_statistics (fit_stats, correlation_names, n_fitvar_rad, errstat)
   if (errstat < 0) return
-  errstat = he5_write_global_attributes (fit_stats)
+  errstat = he5_write_global_attributes (fit_stats) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call err_message_error (modulename//f_sep// &
-                            "he5_write_global_attributes failed", &
-                            errstat)
+    call tell_error (tell_io_write_error, modulename//f_sep// &
+                     "he5_write_global_attributes failed", &
+                     errstat)
     return
   endif
 
-  errstat = he5_write_swath_attributes ( pge_idx )
+  errstat = he5_write_swath_attributes ( pge_idx ) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call err_message_error (modulename//f_sep// &
-                            "he5_write_swath_attributes failed", &
-                            errstat)
+    call tell_error (tell_io_write_error, modulename//f_sep// &
+                     "he5_write_swath_attributes failed", &
+                     errstat)
     return
   endif
 
-  errstat = he5_set_field_attributes   ( pge_idx )
+  errstat = he5_set_field_attributes ( pge_idx ) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call err_message_error (modulename//f_sep// &
-                            "he5_set_field_attributes failed", &
-                            errstat)
+    call tell_error (tell_io_write_error, modulename//f_sep// &
+                     "he5_set_field_attributes failed", &
+                     errstat)
     return
   endif
   ! -----------------
@@ -726,11 +725,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   call close_output_file (errstat)
   if (errstat < 0) return
 
-  errstat = he5_close_output_file ( pge_idx)
+  errstat = he5_close_output_file ( pge_idx)  ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call err_message_error (modulename//f_sep// &
-                            "he5_close_output_file failed", &
-                            errstat)
+    call tell_error (tell_io_error, modulename//f_sep// &
+                     "he5_close_output_file failed", &
+                     errstat)
     return
   endif
 
@@ -739,17 +738,17 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------
   CALL check_metadata_consistency ( errstat )
   if (errstat < 0) then
-      call err_message_error (modulename//f_sep// &
-                            "check_metadata_consistency failed", &
-                            errstat)
+      call tell_error (tell_application_error, modulename//f_sep// &
+                       "check_metadata_consistency failed", &
+                       errstat)
       return
   endif
 
   CALL set_l2_metadata ( pge_idx, errstat )
   if (errstat < 0) then
-      call err_message_error (modulename//f_sep// &
-                            "set_l2_metadata failed", &
-                            errstat)
+      call tell_error (tell_io_write_error, modulename//f_sep// &
+                       "set_l2_metadata failed", &
+                       errstat)
       return
   endif
 
