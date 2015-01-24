@@ -331,6 +331,16 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
+                              tg_var_diag_fit_residuals, &
+                              nf90_double, &
+                              dimids = dimids_commwvl_xtrack_step, &
+                              comment = "spectrum fit residuals", &
+                              valid_range=[-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
+    call tiof_varlist_append (varlist, errstat, &
                               tg_var_diag_param_names, &
                               nf90_string, &
                               dimids = [dimids_var_xtrack_step(1)])
@@ -685,6 +695,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()
+    real (kind=r8), dimension(1:n_rad_wvl, 1:nxtrack, 0:nblock-1) :: residuals
 
     if (errstat < 0) return
 
@@ -726,6 +737,14 @@ contains
       call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, [iline,0,0], [nblock,-1,-1], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1), &
                           errstat)
+
+      residuals(:,:,:) = &
+        radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1) - &
+        radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1)
+
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, [iline,0,0], [nblock,-1,-1], &
+                          residuals, errstat)
+
     endif
 
     ! input_vars
