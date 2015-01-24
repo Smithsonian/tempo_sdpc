@@ -37,7 +37,7 @@ CONTAINS
   SUBROUTINE cubic_subtract ( locwvl, npts, ll_rad, lu_rad, errstat )
 
     USE OMSAO_indices_module,        ONLY : max_rs_idx, solar_idx
-    USE OMSAO_parameters_module,     ONLY : max_spec_pts, doas_npol
+    USE OMSAO_parameters_module,     ONLY : doas_npol
     USE OMSAO_variables_module,      ONLY : database
 
     IMPLICIT NONE
@@ -53,7 +53,7 @@ CONTAINS
     ! optimization variables
     INTEGER (KIND=i4)                                     :: exval
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: blow, bupp
-    REAL    (KIND=r8), DIMENSION (max_spec_pts)           :: f
+    REAL    (KIND=r8), DIMENSION (npts)                   :: f
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: par
     type(optimizer_type) :: opt
 

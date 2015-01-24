@@ -313,8 +313,8 @@ contains
     integer, intent(inout) :: errstat
     if (errstat < 0) return
 
-    allocate (cms % RefSpecWavs(max_spec_pts, nxtrack_max), &
-              cms % RefSpecData(max_spec_pts, nxtrack_max), &
+    allocate (cms % RefSpecWavs(nwavel_max, nxtrack_max), &
+              cms % RefSpecData(nwavel_max, nxtrack_max), &
               cms % CCDPixel (nxtrack_max, 2), &
               cms % RefSpecCount (nxtrack_max), &
               cms % num_wavelengths (nxtrack_max), &

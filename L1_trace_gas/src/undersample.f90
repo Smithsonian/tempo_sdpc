@@ -10,12 +10,12 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module,    ONLY: solar_idx, us1_idx, us2_idx
-  USE OMSAO_parameters_module, ONLY: max_spec_pts
   USE OMSAO_variables_module,  ONLY: &
     refspecs_original, database, have_undersampling
   use slitfunction, only : slitfunction_convolve
   USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
+  use tell_module
 
   IMPLICIT NONE
 
@@ -36,10 +36,13 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! ---------------
   LOGICAL                                     :: did_full_range
   REAL (KIND=r8), DIMENSION (n_sensor_pts,2)  :: underspec
-  REAL (KIND=r8), DIMENSION (max_spec_pts)    :: &
+  !REAL (KIND=r8), DIMENSION (max_spec_pts)    :: &
+  !  locwvl, locspec, specmod, tmpwav, over, under, resample
+  REAL (KIND=r8), DIMENSION (:), allocatable    :: &          ! JCH
     locwvl, locspec, specmod, tmpwav, over, under, resample
 
   INTEGER (KIND=i4) :: npts, locerrstat
+  integer :: num_alloc
 
   ! ------------------------------
   ! Name of this subroutine/module
@@ -54,6 +57,18 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! Assign solar reference spectrum to local variables
   ! ==================================================
   npts            = refspecs_original(solar_idx)%nPoints
+
+  num_alloc = max(npts, n_sensor_pts)
+  allocate (locwvl(num_alloc), locspec(num_alloc), &
+            specmod(num_alloc), tmpwav(num_alloc), &
+            over(num_alloc), under(num_alloc), &
+            resample(num_alloc), stat=locerrstat)
+  if (locerrstat /= 0) then
+    call tell_error (tell_malloc_error, "undersample: allocate failed", &
+                     errstat)
+    return
+  endif
+
   locwvl (1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
   locspec(1:npts) = refspecs_original(solar_idx)%RefSpecData(1:npts)
 
