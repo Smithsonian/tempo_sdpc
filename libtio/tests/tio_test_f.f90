@@ -299,6 +299,10 @@ program tio_test
     stop 4
   endif
 
+  call tiof_dimlist_free (dimlist)
+  call tiof_varlist_free (varlist)
+  call tiof_attlist_free (foo_attlist)
+
 contains
 
   subroutine write_arrays ()

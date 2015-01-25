@@ -107,9 +107,9 @@ module tio_module
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_inq_group, tiof_inq_dimlen, &
-    tiof_dimlist_append, tiof_dimlist_lookup, tiof_def_dims, &
-    tiof_varlist_append, tiof_varlist_lookup, tiof_def_vars, &
-    tiof_attlist_append,                      tiof_def_atts
+    tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
+    tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
+    tiof_attlist_append, tiof_attlist_free, tiof_def_atts
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -393,6 +393,22 @@ contains
 
   end subroutine tiof_dimlist_append
 
+  !> Free list of dimension objects (tiof_dimlist_type)
+  subroutine tiof_dimlist_free (dimlist)
+    implicit none
+    type (tiof_dimlist_type), intent(inout) :: dimlist
+    type (tiof_dim_type), pointer :: item => null()
+
+    do while (associated(dimlist % head))
+      item => dimlist % head % next
+      deallocate (dimlist % head)
+      dimlist % head => item
+    enddo
+    dimlist % tail => null()
+    dimlist % head => null()
+
+  end subroutine tiof_dimlist_free
+
   !> Retrieve information about an array of dimension objects
   !! from a dimension list
   subroutine tiof_dimlist_lookup (list, names, dimids, errstat, &
@@ -554,6 +570,22 @@ contains
     list % num_items = list % num_items + 1
 
   end subroutine tiof_attlist_append
+
+  !> Free list of attribute objects (tiof_attlist_type)
+  subroutine tiof_attlist_free (attlist)
+    implicit none
+    type (tiof_attlist_type), intent(inout) :: attlist
+    type (tiof_att_type), pointer :: item => null()
+
+    do while (associated(attlist % head))
+      item => attlist % head % next
+      deallocate (attlist % head)
+      attlist % head => item
+    enddo
+    attlist % tail => null()
+    attlist % head => null()
+
+  end subroutine tiof_attlist_free  
 
   !> Write an attribute list to a file
   subroutine tiof_def_atts (obj, list, varid, errstat)
@@ -726,6 +758,22 @@ contains
     list % num_items = list % num_items + 1
 
   end subroutine tiof_varlist_append
+
+  !> Free list of variable objects (tiof_varlist_type)
+  subroutine tiof_varlist_free (varlist)
+    implicit none
+    type (tiof_varlist_type), intent(inout) :: varlist
+    type (tiof_var_type), pointer :: item => null()
+
+    do while (associated(varlist % head))
+      item => varlist % head % next
+      deallocate (varlist % head)
+      varlist % head => item
+    enddo
+    varlist % tail => null()
+    varlist % head => null()
+
+  end subroutine tiof_varlist_free  
 
   !> Retrieve a variable object from a given variable list
   subroutine tiof_varlist_lookup (list, name, var_ptr, errstat)
