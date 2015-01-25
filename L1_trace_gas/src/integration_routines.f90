@@ -1,4 +1,6 @@
 MODULE integration_routines
+  implicit none
+  private g8
 CONTAINS
   ! ********************************************************************
   !
@@ -2699,6 +2701,35 @@ CONTAINS
   !JCH   return
   !JCH end function gamma
 
+  function g8 (x,h,func)
+    USE OMSAO_precision_module, ONLY: r8
+    implicit none
+    real (kind=r8), intent(in) :: x, h
+    real (kind=r8) :: g8
+    interface
+      real (kind=r8) function func (r)
+        USE OMSAO_precision_module, ONLY: r8
+        implicit none
+        real (kind=r8), intent(in) :: r
+      end function func
+    end interface
+    real ( KIND = r8 ), parameter :: w1 = 3.62683783378361983E-01_r8
+    real ( KIND = r8 ), parameter :: w2 = 3.13706645877887287E-01_r8
+    real ( KIND = r8 ), parameter :: w3 = 2.22381034453374471E-01_r8
+    real ( KIND = r8 ), parameter :: w4 = 1.01228536290376259E-01_r8
+    real ( KIND = r8 ), parameter :: x1 = 1.83434642495649805E-01_r8
+    real ( KIND = r8 ), parameter :: x2 = 5.25532409916328986E-01_r8
+    real ( KIND = r8 ), parameter :: x3 = 7.96666477413626740E-01_r8
+    real ( KIND = r8 ), parameter :: x4 = 9.60289856497536232E-01_r8
+
+    g8 = h * ( ( &
+      w1 * ( func ( x - x1 * h ) + func ( x + x1 * h ) )   &
+      + w2 * ( func ( x - x2 * h ) + func ( x + x2 * h ) ) ) &
+      + ( w3 * ( func ( x - x3 * h ) + func ( x + x3 * h ) )   &
+         + w4 * ( func ( x - x4 * h ) + func ( x + x4 * h ) ) ) )
+    
+  end function g8
+
   subroutine gaus8 ( func, a, b, err, result, ierr )
 
     !*****************************************************************************80
@@ -2792,11 +2823,11 @@ CONTAINS
     real ( KIND = r8 ) err
     real ( KIND = r8 ) est
     real ( KIND = r8 ), external :: func
-    real ( KIND = r8 ) g8
+    !real ( KIND = r8 ) g8
     real ( KIND = r8 ) gl
     real ( KIND = r8 ) glr
     real ( KIND = r8 ) gr(30)
-    real ( KIND = r8 ) h
+    !real ( KIND = r8 ) h
     real ( KIND = r8 ) hh(30)
     integer, save :: icall = 0
     integer ierr
@@ -2816,23 +2847,15 @@ CONTAINS
     real ( KIND = r8 ) tol
     real ( KIND = r8 ) vl(30)
     real ( KIND = r8 ) vr
-    real ( KIND = r8 ), save :: w1 = 3.62683783378361983E-01_r8
-    real ( KIND = r8 ), save :: w2 = 3.13706645877887287E-01_r8
-    real ( KIND = r8 ), save :: w3 = 2.22381034453374471E-01_r8
-    real ( KIND = r8 ), save :: w4 = 1.01228536290376259E-01_r8
-    real ( KIND = r8 ) x
-    real ( KIND = r8 ), save :: x1 = 1.83434642495649805E-01_r8
-    real ( KIND = r8 ), save :: x2 = 5.25532409916328986E-01_r8
-    real ( KIND = r8 ), save :: x3 = 7.96666477413626740E-01_r8
-    real ( KIND = r8 ), save :: x4 = 9.60289856497536232E-01_r8
+    !real ( KIND = r8 ) x
     !
     !  Warning!  Statement function!
     !
-    g8(x,h) = h * ( ( &
-      w1 * ( func ( x - x1 * h ) + func ( x + x1 * h ) )   &
-      + w2 * ( func ( x - x2 * h ) + func ( x + x2 * h ) ) ) &
-      + ( w3 * ( func ( x - x3 * h ) + func ( x + x3 * h ) )   &
-         + w4 * ( func ( x - x4 * h ) + func ( x + x4 * h ) ) ) )
+    !g8(x,h) = h * ( ( &
+    !  w1 * ( func ( x - x1 * h ) + func ( x + x1 * h ) )   &
+    !  + w2 * ( func ( x - x2 * h ) + func ( x + x2 * h ) ) ) &
+    !  + ( w3 * ( func ( x - x3 * h ) + func ( x + x3 * h ) )   &
+    !     + w4 * ( func ( x - x4 * h ) + func ( x + x4 * h ) ) ) )
 
     if ( a == b ) then
       err = 0.0_r8
@@ -2902,7 +2925,7 @@ CONTAINS
     aa(1) = a
     lr(1) = 1
     l = 1
-    est = g8 ( aa(l) + 2.0_r8 * hh(l), 2.0_r8 * hh(l) )
+    est = g8 ( aa(l) + 2.0_r8 * hh(l), 2.0_r8 * hh(l), func )
     k = 8
     area = abs ( est )
     ef = 0.5_r8
@@ -2912,8 +2935,8 @@ CONTAINS
     !
  20 continue
 
-    gl = g8 ( aa(l) + hh(l), hh(l) )
-    gr(l) = g8 ( aa(l) + 3.0_r8 * hh(l), hh(l) )
+    gl = g8 ( aa(l) + hh(l), hh(l), func )
+    gr(l) = g8 ( aa(l) + 3.0_r8 * hh(l), hh(l), func )
     k = k + 16
     area = area + ( abs ( gl ) + abs ( gr(l) ) - abs ( est ) )
 

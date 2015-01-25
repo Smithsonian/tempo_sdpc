@@ -30,7 +30,7 @@ MODULE datafields
   ! Field Name Constants-- use these instead of literals
 
   ! Swath geolocation fields
-  type (Datafield_List_Type), public :: Geo_he5fields
+  type (Datafield_List_Type), public, save :: Geo_he5fields
   character (len=*), public, parameter :: &
     auraalt_field = "SpacecraftAltitude", &
     time_field    = "Time", &
@@ -47,7 +47,7 @@ MODULE datafields
     extr_field    = "XtrackQualityFlagsExpanded"
 
   ! Common Mode data fields
-  type (Datafield_List_Type), public :: comdata_he5fields
+  type (Datafield_List_Type), public, save :: comdata_he5fields
   character (len=*), parameter, public :: &
     amfmol_field   = "AirMassFactor", &
     amfdiag_field  = "AirMassFactorDiagnosticFlag", &
@@ -68,16 +68,16 @@ MODULE datafields
     pxclon_field   = "PixelCornerLongitudes", &
     pxarea_field   = "PixelArea"
 
-  type (Datafield_List_Type), public :: sol_calfit_he5fields
+  type (Datafield_List_Type), public, save :: sol_calfit_he5fields
   character (len=*), parameter, public :: &
     swccf_field    = "SolarWavCalConvergenceFlag"
 
-  type (Datafield_List_Type), public :: rad_calfit_he5fields
+  type (Datafield_List_Type), public, save :: rad_calfit_he5fields
   character (len=*), parameter, public :: &
     rwccf_field    = "RadianceWavCalConvergenceFlag", &
     rwclr_field    = "RadianceWavCalLatitudeRange"
 
-  type (Datafield_List_Type), public :: rad_reffit_he5fields
+  type (Datafield_List_Type), public, save :: rad_reffit_he5fields
   character (len=*), parameter, public :: &
     rrcf_field     = "RadianceReferenceConvergenceFlag", &
     rrlr_field     = "RadianceReferenceLatitudeRange", &
@@ -87,7 +87,7 @@ MODULE datafields
     rrrms_field    = "RadianceReferenceFittingRMS"
 
   ! Swath data fields, additional for "diagnostic" runs
-  type (Datafield_List_Type), public :: diagnostic_he5fields
+  type (Datafield_List_Type), public, save :: diagnostic_he5fields
   character (len=*), parameter, public :: &
     ccdpix_field   = "CCDPixelRange", &
     commcnt_field  = "CommonModeCount", &
@@ -108,13 +108,13 @@ MODULE datafields
     xtrcor_field   = "CrossTrackStripeCorrection"
 
   ! Swath data fields unique to OMHCHO and OMCHOCHO
-  type (Datafield_List_Type), public :: voc_he5fields
+  type (Datafield_List_Type), public, save :: voc_he5fields
   character (len=*), parameter, public :: &
     amfcfr_field   = "AMFCloudFraction", &
     amfctp_field   = "AMFCloudPressure"
 
   ! Special data fields for wavelength-modified AMF fitting
-  type (Datafield_List_Type), public :: wmamf_he5fields
+  type (Datafield_List_Type), public, save :: wmamf_he5fields
   character (len=*), parameter, public :: &
     adalb_field     = "AdjustedSceneAlbedo", &
     scol_field      = "SlantColumnAmount", &
@@ -124,26 +124,26 @@ MODULE datafields
     sfitcon_field   = "SlantFitConvergenceFlag"
 
   ! Swath data fields for Reference Sector -- GGA
-  type (Datafield_List_Type), public :: rs_he5fields
+  type (Datafield_List_Type), public, save :: rs_he5fields
   character (len=*), parameter, public :: &
     rscol_field     = "ReferenceSectorCorrectedVerticalColumn", &
     rscod_field     = "ReferenceSectorCorrectedUncertainty"
 
   ! Swath data field for Scattering Weights, Gas Profile Averaging Kernels and albedo -- GGA
-  type (Datafield_List_Type), public :: sw_he5fields
+  type (Datafield_List_Type), public, save :: sw_he5fields
   character (len=*), parameter, public :: &
     scaweights_field = "ScatteringWeights", &
     clialtgrid_field = "ClimatologyLevels", &
     gasprofile_field = "GasProfile", &
     albedo_field     = "Albedo"
 
-  type (Datafield_List_Type), public :: o3_prefit_he5fields
+  type (Datafield_List_Type), public, save :: o3_prefit_he5fields
   character (len=*), parameter, public :: &
     slantcol_temp1_field = "SlantColumnAmountTemperatureT1", &
     slantcol_temp2_field = "SlantColumnAmountTemperatureT2", &
     slantcol_temp3_field = "SlantColumnAmountTemperatureT3"
 
-  type (Datafield_List_Type), public :: o3_prefit_uncert_he5fields
+  type (Datafield_List_Type), public, save :: o3_prefit_uncert_he5fields
   character (len=*), parameter, public :: &
     slantcol_dtemp1_field = "SlantColumnUncertaintyTemperatureT1", &
     slantcol_dtemp2_field = "SlantColumnUncertaintyTemperatureT2", &

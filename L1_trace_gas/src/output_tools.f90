@@ -15,7 +15,7 @@ module output_tools
     write_amf_correction, write_refspec_database, &
     write_reference_sector_corrected_column
 
-  type (tiof_file_type), private, target :: primary_output_file
+  type (tiof_file_type), private, save, target :: primary_output_file
 
   ! using fill values from the original code simplifies diffing output files
   real (kind=8), private, parameter :: &
@@ -879,8 +879,8 @@ contains
   subroutine write_albedo (albedo, nxtrack, ntimes, errstat)
     implicit none
 
-    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1), intent(in) :: albedo
     integer, intent(in) :: nxtrack, ntimes
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1), intent(in) :: albedo
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()
@@ -902,9 +902,9 @@ contains
                                 nxtrack, ntimes, nlevels, errstat)
     implicit none
 
+    integer, intent(in) :: nxtrack, ntimes, nlevels
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: gas_profile
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: climatology_levels
-    integer, intent(in) :: nxtrack, ntimes, nlevels
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()
@@ -927,8 +927,8 @@ contains
   subroutine write_scattering_weights (scattw, nxtrack, ntimes, nlevels, errstat)
     implicit none
 
-    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: scattw
     integer, intent(in) :: nxtrack, ntimes, nlevels
+    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: scattw
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()

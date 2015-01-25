@@ -124,7 +124,7 @@ MODULE OMSAO_variables_module
   ! -------------------------------
   !TYPE (reference_spectrum_type),  DIMENSION (max_rs_idx) :: refspecs_original
   TYPE (reference_spectrum_type),  DIMENSION (:), allocatable :: refspecs_original
-  TYPE (common_mode_spectrum_type)                            :: common_mode_spec
+  TYPE (common_mode_spectrum_type), save                      :: common_mode_spec
 
   ! -------------------------------------------
   ! A special beast: The undersampling spectrum

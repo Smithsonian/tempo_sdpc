@@ -1528,7 +1528,7 @@ CONTAINS
     vl_I2 = reshape (tmpspc_r4d5, dims5, order=perm5)
     CALL h5dread_f(Ir_did, H5T_NATIVE_REAL, tmpspc_r4d5, hI0_dim, hdferr)
     vl_Ir = reshape (tmpspc_r4d5, dims5, order=perm5)
-    where (ISNAN(vl_Ir))
+    where (vl_Ir /= vl_Ir)    ! isnan is preferable, but non-standard
       vl_Ir = 0.0
     end where
 

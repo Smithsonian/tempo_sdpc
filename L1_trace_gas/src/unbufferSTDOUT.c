@@ -6,3 +6,9 @@ void unbufferstdout_(void)
      atexit (abort);
    setbuf(stdout,NULL);
 }
+
+void c_exit_ (int status)
+{
+   exit (status);
+}
+

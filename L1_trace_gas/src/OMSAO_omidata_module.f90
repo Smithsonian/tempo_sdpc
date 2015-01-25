@@ -50,8 +50,8 @@ MODULE OMSAO_omidata_module
     real (kind=r8), dimension(:), pointer :: radref_fit_rms => null()
   end type result_vars_type
 
-  type (input_vars_type) :: input_vars
-  type (result_vars_type) :: result_vars
+  type (input_vars_type), save :: input_vars
+  type (result_vars_type), save :: result_vars
 
   type, public :: radfit_diagnostics_type
     ! these arrays are dimension(n_fitvar_rad,num_xtrack,0:nblock-1):

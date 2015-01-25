@@ -6,6 +6,6 @@ PROGRAM main
 
   CALL OMSAO_main ( exit_value )
 
-  CALL EXIT (exit_value)
+  call c_exit (exit_value)
   STOP
 END PROGRAM main
