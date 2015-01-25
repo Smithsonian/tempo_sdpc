@@ -238,9 +238,10 @@ MODULE OMSAO_parameters_module
     nwavelcoef_max = omi_nwavelcoef_max
 
   INTEGER (KIND=i4), PARAMETER :: nUTCdim =  6
-  INTEGER (KIND=i4), PARAMETER :: nlines_max = 1
-  ! For OMI, nlines_max=100 improves I/O efficiency, allowing the
-  ! code to run significantly faster.  However, nlines_max=1 may be
-  ! enough for TEMPo, given the much larger cross-track dimension.
+  INTEGER (KIND=i4), PARAMETER :: nlines_max = 10
+  ! For OMI (nxtrack_max=60), nlines_max=100 was used, but may not
+  ! be optimal.
+  ! For TEMPO (nxtrack_max=2048), nlines_max<=10 keeps the run-time
+  ! memory requirement below ~2GB.
 
 END MODULE OMSAO_parameters_module
