@@ -97,6 +97,7 @@ contains
                               valid_range = [0.0_r8, 1024.0_r8])
 
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
   end subroutine append_common_mode_vars
 
@@ -199,6 +200,7 @@ contains
                               valid_range = [0.0_r8, 1e30_r8])
 
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
   end subroutine append_amf_vars
 
@@ -378,6 +380,7 @@ contains
                               shuffle = shuffle)
 
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
   end subroutine append_diagnostic_vars
 
@@ -528,6 +531,10 @@ contains
     endif
 
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_latbnd)
+    call tiof_attlist_free (att_lonbnd)
 
   end subroutine append_column_vars
 
@@ -594,6 +601,7 @@ contains
                               valid_range = [0.0_r8, 1.e30_r8])
 
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
   end subroutine append_wavcal_vars
 
@@ -678,6 +686,8 @@ contains
         return
       endif
     endif
+
+    call tiof_dimlist_free (dimlist)
 
   end subroutine create_output_file
 
@@ -845,6 +855,7 @@ contains
                              att_r4=[stats % percent_suspect_output])
 
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_attlist_free (attlist)
 
     call tiof_put2d_i2 (obj, tg_var_main_dqf, [0,0], [stats % num_scan_lines,-1], &
                         stats % quality_flag (1:stats % num_crosstrack_pixels, &
