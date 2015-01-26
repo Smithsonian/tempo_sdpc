@@ -88,10 +88,10 @@ MODULE OMSAO_variables_module
   ! -------------------------------------
   TYPE, PUBLIC :: reference_spectrum_type
     CHARACTER (LEN=MAX_STR_LEN)                      :: Title, Units
-    CHARACTER (LEN=MAX_STR_LEN)                      :: FileName
+    CHARACTER (LEN=MAX_STR_LEN)                      :: FileName=''
     CHARACTER (LEN=MAX_STR_LEN)                      :: FittingIdxName
-    INTEGER   (KIND=I4)                           :: nPoints
-    REAL      (KIND=r8)                           :: NormFactor, Temperature
+    INTEGER   (KIND=I4)                           :: nPoints=0
+    REAL      (KIND=r8)                           :: NormFactor=1.0_r8, Temperature
     REAL      (KIND=r8), DIMENSION (2)            :: FirstLastWav
     REAL      (KIND=r8), DIMENSION (max_spec_pts) :: RefSpecWavs
     REAL      (KIND=r8), DIMENSION (max_spec_pts) :: RefSpecData
@@ -105,7 +105,7 @@ MODULE OMSAO_variables_module
     CHARACTER (LEN=MAX_STR_LEN)                                  :: FileName
     CHARACTER (LEN=MAX_STR_LEN)                                  :: FittingIdxName
     INTEGER   (KIND=I4)                                       :: nPoints
-    REAL      (KIND=r8)                                       :: NormFactor, Temperature
+    REAL      (KIND=r8)                                       :: NormFactor=1.0_r8, Temperature
     REAL      (KIND=r8), DIMENSION (2)                        :: FirstLastWav
     !INTEGER   (KIND=I2), DIMENSION (nxtrack_max,2)            :: CCDPixel
     INTEGER   (KIND=I2), DIMENSION (:,:), allocatable          :: CCDPixel

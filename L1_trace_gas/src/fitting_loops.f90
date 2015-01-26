@@ -182,6 +182,10 @@ CONTAINS
       ! rather than the swath line that has been read.
       ! ---------------------------------------------------------------
       IF ( yn_radiance_reference ) THEN
+        n_omi_radwvl = omi_nwav_radref(ipix)   ! JCH let's get the array length right
+        adj_num = n_omi_radwvl
+        if (adj_num > adj_num_max) adj_num_max = adj_num
+
         omi_radiance_wavl(1:adj_num,ipix,0) = omi_radref_wavl(1:adj_num,ipix)
         omi_radiance_spec(1:adj_num,ipix,0) = omi_radref_spec(1:adj_num,ipix)
         omi_radiance_qflg(1:adj_num,ipix,0) = omi_radref_qflg(1:adj_num,ipix)
@@ -201,7 +205,7 @@ CONTAINS
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
                   stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_radiance_wvl_calibration: allocate failed", errstat)
           return
         endif
         adj_num_allocated = adj_num

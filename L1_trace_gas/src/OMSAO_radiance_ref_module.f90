@@ -374,7 +374,7 @@ CONTAINS
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, copy_prefit_values
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
-      omi_nwav_rad, n_omi_database_wvl, &
+      omi_nwav_rad, n_omi_database_wvl, omi_nwav_radref, &
       omi_cross_track_skippix, n_omi_radwvl, &
       omi_database, omi_database_wvl, omi_solcal_pars,      &
       omi_radiance_wavl, omi_radref_wavl, omi_radiance_spec, omi_radref_spec,&
@@ -533,6 +533,8 @@ CONTAINS
       ! rather than the swath line that has been read.
       ! ---------------------------------------------------------------
       IF ( yn_radiance_reference ) THEN
+        n_omi_radwvl = omi_nwav_radref(ipix) ! JCH: let's get the array length right
+        n_rad_wvl_loc = n_omi_radwvl
         omi_radiance_wavl(1:n_omi_radwvl,ipix,0) = omi_radref_wavl(1:n_omi_radwvl,ipix)
         omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
         omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
@@ -548,7 +550,7 @@ CONTAINS
         allocate (adj_wvls(n_rad_wvl_loc), adj_spec(n_rad_wvl_loc), adj_wgts(n_rad_wvl_loc), &
                   stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, "xtrack_radiance_reference_loop: allocate failed", errstat)
           return
         endif
         num_adj_allocated = n_rad_wvl_loc
@@ -794,11 +796,11 @@ CONTAINS
         END IF
 
         tmpexp(1:nwvl) = yfloc * omi_database(1:nwvl,i,k)
-        WHERE ( tmpexp >= MAXEXPONENT(1.0_r8) )
-          tmpexp = MAXEXPONENT(1.0_r8) - 1.0_r8
+        WHERE ( tmpexp(1:nwvl) >= MAXEXPONENT(1.0_r8) )
+          tmpexp(1:nwvl) = MAXEXPONENT(1.0_r8) - 1.0_r8
         ENDWHERE
-        WHERE ( tmpexp <= MINEXPONENT(1.0_r8) )
-          tmpexp = MINEXPONENT(1.0_r8) + 1.0_r8
+        WHERE ( tmpexp(1:nwvl) <= MINEXPONENT(1.0_r8) )
+          tmpexp(1:nwvl) = MINEXPONENT(1.0_r8) + 1.0_r8
         ENDWHERE
 
         omi_radref_spec(1:nwvl,i) = omi_radref_spec(1:nwvl,i) * &
