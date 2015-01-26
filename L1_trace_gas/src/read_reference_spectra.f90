@@ -209,7 +209,7 @@ SUBROUTINE read_one_refspec ( &
   ! -----------------
   INTEGER (KIND=i4),        INTENT (OUT)   :: nspec
   INTEGER (KIND=i4),        INTENT (INOUT) :: errstat
-  TYPE (reference_spectrum_type), INTENT (OUT)   :: refspec_orig
+  TYPE (reference_spectrum_type), INTENT (inout)   :: refspec_orig
 
   ! ----------------
   ! Local Variables
@@ -418,7 +418,7 @@ SUBROUTINE read_commonmode_spec ( &
   ! Output Parameters
   ! -----------------
   INTEGER (KIND=i4),         INTENT (INOUT) :: errstat
-  TYPE (common_mode_spectrum_type), INTENT (OUT)   :: common_orig
+  TYPE (common_mode_spectrum_type), INTENT (inout)   :: common_orig
 
   ! ----------------
   ! Local Variables

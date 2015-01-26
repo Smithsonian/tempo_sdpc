@@ -88,7 +88,7 @@ MODULE OMSAO_variables_module
   ! -------------------------------------
   TYPE, PUBLIC :: reference_spectrum_type
     CHARACTER (LEN=MAX_STR_LEN)                      :: Title, Units
-    CHARACTER (LEN=MAX_STR_LEN)                      :: FileName=''
+    CHARACTER (LEN=MAX_STR_LEN)                      :: FileName
     CHARACTER (LEN=MAX_STR_LEN)                      :: FittingIdxName
     INTEGER   (KIND=I4)                           :: nPoints=0
     REAL      (KIND=r8)                           :: NormFactor=1.0_r8, Temperature
