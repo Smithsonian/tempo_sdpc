@@ -65,6 +65,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! Set PGE_ERROR_STATUS to O.K.
   ! ----------------------------
   pge_error_status = pge_errstat_ok
+  errstat = 0
 
   call tell_set_log_level (1)
 
