@@ -7,8 +7,11 @@ void unbufferstdout_(void)
    setbuf(stdout,NULL);
 }
 
-void c_exit_ (int status)
+void c_exit_ (int *status)
 {
-   exit (status);
+   if (status)
+     exit (*status);
+   else
+     exit (0);
 }
 
