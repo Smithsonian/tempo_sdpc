@@ -382,6 +382,7 @@ CONTAINS
       ! JCH:  I don't think adj_num should be used to define the subarrays that
       ! get written out because it's value might have changed with each
       ! pass through the above loop.  I added adj_num_max and will use that.
+      ! (Note that this makes the he5 and netcdf output files different.)
       call write_refspec_database (omi_database(:,:,:), &
                                    omi_database_wvl(:,:), &
                                    refspecs_original(1:max_rs_idx), &

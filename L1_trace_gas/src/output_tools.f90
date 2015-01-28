@@ -13,7 +13,8 @@ module output_tools
     write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_gas_profile, write_scattering_weights, &
     write_amf_correction, write_refspec_database, &
-    write_reference_sector_corrected_column
+    write_reference_sector_corrected_column, &
+    read_geofields, read_column_results
 
   type (tiof_file_type), private, save, target :: primary_output_file
 
@@ -173,7 +174,8 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "molecule-specific air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8])
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_diagnostic_flag, &
                               nf90_short, &
@@ -421,6 +423,7 @@ contains
                               comment = "column amount", &
                               units = "molec/cm2", &
                               valid_range = [-1.e30_r8, 1.e30_r8], &
+                              fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_column_uncert, &
@@ -429,6 +432,7 @@ contains
                               comment = "column amount uncertainty", &
                               units = "molec/cm2", &
                               valid_range = [-1.e30_r8, 1.e30_r8], &
+                              fillvalue = fill_double, &
                               attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1102,5 +1106,62 @@ contains
     endif
 
   end subroutine close_output_file
+
+  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thgt, errstat)
+    use OMSAO_precision_module, only : i2, i4, r4
+    use tio_module
+    implicit none
+
+    integer (kind=i4), intent(in) :: ntimes, nxtrack
+    ! these arrays are (1:nxtrack,0:ntimes-1)
+    real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, thgt
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj => null()
+    integer (kind=i2), dimension(nxtrack,0:ntimes-1) :: i2_thgt
+
+    obj => primary_output_file
+
+    call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat, errstat)
+    call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon, errstat)
+    call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza, errstat)
+    call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza, errstat)
+    call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_read_error, "in read_geofields", errstat)
+      return
+    endif
+
+    thgt = real(i2_thgt,kind=r4)
+
+  end subroutine read_geofields
+
+  subroutine read_column_results (ntimes, nxtrack, col, col_unc, rms, amf, &
+                                  convergence_flag, errstat)
+    use OMSAO_precision_module, only : i2, r8
+    use tio_module
+    implicit none
+
+    integer (kind=i4), intent(in) :: ntimes, nxtrack
+    ! these arrays are (1:nxtrack,0:ntimes-1)
+    real (kind=r8), dimension(:,:), intent(inout) :: col, col_unc, rms, amf
+    integer (kind=i2), dimension(:,:) :: convergence_flag
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj => null()
+
+    obj => primary_output_file
+
+    call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col, errstat)
+    call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc, errstat)
+    call tiof_get2d_r8 (obj, tg_var_fit_rms_residual, [0,0], [ntimes, nxtrack], rms, errstat)
+    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf, errstat)
+    call tiof_get2d_i2 (obj, tg_var_fit_convergence_flag, [0,0], [ntimes, nxtrack], convergence_flag, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_read_error, "in read_column_results", errstat)
+      return
+    endif
+
+  end subroutine read_column_results
 
 end module output_tools

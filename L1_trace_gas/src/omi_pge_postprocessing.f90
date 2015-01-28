@@ -1,7 +1,10 @@
 MODULE omi_pge_postprocessing
   use tell_module
   implicit none
+  private
+  public omi_pge_postprocess
 CONTAINS
+
 SUBROUTINE omi_pge_postprocess ( &
     l1bfile, pge_idx, ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, &
     fit_stats, errstat )
@@ -27,6 +30,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, Cmlat, Cmlon, CmETA, CmEp1
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics
+  use output_tools, only : read_geofields, read_column_results
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col
@@ -63,6 +67,8 @@ SUBROUTINE omi_pge_postprocess ( &
   ! --------------
   INTEGER (KIND=i4) :: locerrstat
 
+  if (errstat < 0) return
+
   ! -------------------------
   ! Initialize error variable
   ! -------------------------
@@ -71,11 +77,17 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
   ! ----------------------------------------
+  if (.false.) then
+    ! FIXME (to be removed)
   CALL  saopge_geofield_read ( ntimes, nxtrack, lat_field,  lat, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, lon_field,  lon, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, sza_field,  sza, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
+  else
+    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, errstat)
+    if (errstat < 0) return
+  endif
 
   ! ----------------------------------------------------
   ! Compute ground pixel corner latitudes and longitudes
@@ -85,15 +97,22 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
   ! ----------------------------------------
-  CALL saopge_columninfo_read (                 &
+  if (.false.) then
+  CALL saopge_columninfo_read (                 &  ! FIXME (<--- to be removed)
     ntimes, nxtrack, saocol, saodco, saorms, &
     saoamf, saofcf, locerrstat                 )
+  else
+    call read_column_results (ntimes, nxtrack, saocol, saodco, saorms, &
+                              saoamf, saofcf, errstat)
+    if (errstat < 0) return
+  endif
 
   ! ----------------------------------
   ! Read L1b glint and snow/ice flags
   ! ----------------------------------
   CALL omi_read_glint_ice_flags ( &
     l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, errstat )
+  if (errstat < 0) return
 
   ! -----------
   ! Compute AMF
