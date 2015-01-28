@@ -33,6 +33,7 @@ MODULE OMSAO_omidata_module
     real (kind=r4), dimension(:,:), pointer :: solar_azimuth => null()
     real (kind=r4), dimension(:,:), pointer :: viewing_zenith => null()
     real (kind=r4), dimension(:,:), pointer :: viewing_azimuth => null()
+    integer (kind=i2), dimension(:,:), pointer :: terrain_height => null()
   end type input_vars_type
 
   type, public :: result_vars_type
@@ -115,7 +116,7 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i4), DIMENSION (0:nlines_max-1)                        :: omi_radiance_errstat
   INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_xtrflg_l1b
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_geoflg, omi_xtrflg
-  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_height, land_water_flg
+  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_height, land_water_flg
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_szenith, omi_sazimuth
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_vzenith, omi_vazimuth
@@ -316,6 +317,7 @@ contains
     input_vars % solar_azimuth => omi_sazimuth
     input_vars % viewing_zenith => omi_vzenith
     input_vars % viewing_azimuth => omi_vazimuth
+    input_vars % terrain_height => omi_height
     
     result_vars % column_amount => omi_column_amount
     result_vars % column_uncert => omi_column_uncert

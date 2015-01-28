@@ -511,6 +511,14 @@ contains
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_terrain_height, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "terrain height", &
+                              units = "m", &
+                              valid_range = [-1000.0_r8, 10000.0_r8], &
+                              fillvalue = fill_short)
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_main_dqf, &
@@ -772,6 +780,8 @@ contains
                         input_vars % viewing_zenith (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tg_var_va_angle, [iline,0], [nblock,-1], &
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,-1], &
+                        input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
