@@ -453,76 +453,77 @@ CONTAINS
     RETURN
   END SUBROUTINE convert_xtqualflag_info
 
-  SUBROUTINE omi_xtract_swathname ( l1bfile, l1bchan, omiswath )
+!unused   SUBROUTINE omi_xtract_swathname ( l1bfile, l1bchan, omiswath )
+!unused 
+!unused     USE OMSAO_precision_module
+!unused 
+!unused     USE OMSAO_parameters_module, ONLY : MAX_STR_LEN
+!unused     USE hdfeos4_parameters
+!unused     USE strutils
+!unused 
+!unused     IMPLICIT NONE
+!unused 
+!unused     ! --------------
+!unused     ! Input Variable
+!unused     ! --------------
+!unused     CHARACTER (LEN=*), INTENT (IN) :: l1bfile
+!unused     CHARACTER (LEN=3), INTENT (IN) :: l1bchan
+!unused 
+!unused     ! ----------------
+!unused     ! Output variables
+!unused     ! ----------------
+!unused     CHARACTER (LEN=*), INTENT (OUT) :: omiswath
+!unused 
+!unused     ! ---------------
+!unused     ! Local variables
+!unused     ! ---------------
+!unused     INTEGER   (KIND=i4)      :: is, ie
+!unused     INTEGER   (KIND=i4)      :: swfid, nswath, strbufsize, xswath
+!unused     CHARACTER (LEN=MAX_STR_LEN) :: swathlist
+!unused 
+!unused     ! ------------------------------
+!unused     ! Name of this module/subroutine
+!unused     ! ------------------------------
+!unused     !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_xtract_swathname'
+!unused 
+!unused     ! --------------------------
+!unused     ! Initialize OUTPUT variable
+!unused     ! --------------------------
+!unused     omiswath = '?'
+!unused 
+!unused     ! ---------------------------------------------------------
+!unused     ! Inquire about the swaths in the current L1b radiance file
+!unused     ! ---------------------------------------------------------
+!unused     swfid  = SWOpen     ( l1bfile, DFACC_READ )
+!unused     swathlist="" !JED
+!unused     nswath = SWInqswath ( l1bfile, swathlist, strbufsize )
+!unused     xswath = SWClose    ( swfid )
+!unused 
+!unused     ! --------------------------------------------------------------------
+!unused     ! Extract the swath name we need. Either there is one one swath in the
+!unused     ! file (VIS) or there are two (UV-1, UV-2)
+!unused     ! --------------------------------------------------------------------
+!unused     is = 1
+!unused     SELECT CASE ( nswath )
+!unused     CASE ( 1 )
+!unused       is = 1 ; ie = strbufsize
+!unused     CASE ( 2 )
+!unused       CALL find_endstring ( strbufsize, swathlist, 1, ie )
+!unused       SELECT CASE ( l1bchan )
+!unused       CASE ( 'UV1' )
+!unused         is = 1 ; ie = ie-1
+!unused       CASE ( 'UV2' )
+!unused         is = ie+1 ; ie = strbufsize
+!unused       CASE DEFAULT
+!unused         ! Nothing to do here except to fold
+!unused       END SELECT
+!unused     CASE DEFAULT
+!unused       ! Nothing to do here except to fold.
+!unused     END SELECT
+!unused 
+!unused     omiswath = TRIM(ADJUSTL(swathlist(is:ie)))
+!unused 
+!unused     RETURN
+!unused   END SUBROUTINE omi_xtract_swathname
 
-    USE OMSAO_precision_module
-
-    USE OMSAO_parameters_module, ONLY : MAX_STR_LEN
-    USE hdfeos4_parameters
-    USE strutils
-
-    IMPLICIT NONE
-
-    ! --------------
-    ! Input Variable
-    ! --------------
-    CHARACTER (LEN=*), INTENT (IN) :: l1bfile
-    CHARACTER (LEN=3), INTENT (IN) :: l1bchan
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    CHARACTER (LEN=*), INTENT (OUT) :: omiswath
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER   (KIND=i4)      :: is, ie
-    INTEGER   (KIND=i4)      :: swfid, nswath, strbufsize, xswath
-    CHARACTER (LEN=MAX_STR_LEN) :: swathlist
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_xtract_swathname'
-
-    ! --------------------------
-    ! Initialize OUTPUT variable
-    ! --------------------------
-    omiswath = '?'
-
-    ! ---------------------------------------------------------
-    ! Inquire about the swaths in the current L1b radiance file
-    ! ---------------------------------------------------------
-    swfid  = SWOpen     ( l1bfile, DFACC_READ )
-    swathlist="" !JED
-    nswath = SWInqswath ( l1bfile, swathlist, strbufsize )
-    xswath = SWClose    ( swfid )
-
-    ! --------------------------------------------------------------------
-    ! Extract the swath name we need. Either there is one one swath in the
-    ! file (VIS) or there are two (UV-1, UV-2)
-    ! --------------------------------------------------------------------
-    is = 1
-    SELECT CASE ( nswath )
-    CASE ( 1 )
-      is = 1 ; ie = strbufsize
-    CASE ( 2 )
-      CALL find_endstring ( strbufsize, swathlist, 1, ie )
-      SELECT CASE ( l1bchan )
-      CASE ( 'UV1' )
-        is = 1 ; ie = ie-1
-      CASE ( 'UV2' )
-        is = ie+1 ; ie = strbufsize
-      CASE DEFAULT
-        ! Nothing to do here except to fold
-      END SELECT
-    CASE DEFAULT
-      ! Nothing to do here except to fold.
-    END SELECT
-
-    omiswath = TRIM(ADJUSTL(swathlist(is:ie)))
-
-    RETURN
-  END SUBROUTINE omi_xtract_swathname
 END MODULE
