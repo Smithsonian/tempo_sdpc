@@ -6,8 +6,8 @@ MODULE fitting_loops
   public xtrack_radiance_wvl_calibration, xtrack_radiance_fitting_loop
 
 CONTAINS
-  SUBROUTINE xtrack_radiance_wvl_calibration (             &
-      first_pix, last_pix, nxtrack, n_max_rspec, n_comm_wvl_out, errstat )
+  SUBROUTINE xtrack_radiance_wvl_calibration (first_pix, last_pix, &
+                                              nxtrack, n_max_rspec, errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
@@ -54,7 +54,7 @@ CONTAINS
     ! ---------------
     ! Output variable
     ! ---------------
-    INTEGER (KIND=i4), INTENT (OUT) :: n_comm_wvl_out
+    !INTEGER (KIND=i4), INTENT (OUT) :: n_comm_wvl_out
 
     ! -----------------
     ! Modified variable

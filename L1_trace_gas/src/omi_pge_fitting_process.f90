@@ -386,14 +386,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------------------------------------------
   ! Across-track loop for radiance wavelength calibration
   ! -----------------------------------------------------
-  write(logmsg,'(a,i4)')'omi_fitting: calling xtrack_radiance_wvl_calibration, n_comm_wvl=',n_comm_wvl
-  call tell_log (1, logmsg)
+  call tell_log (1, 'omi_fitting: calling xtrack_radiance_wvl_calibration')
   omi_radcal_xflag = i2_missval
-  CALL xtrack_radiance_wvl_calibration (                          &
-    first_wc_pix, last_wc_pix, nxtrack_rad, n_max_rspec, n_comm_wvl, errstat )
+  CALL xtrack_radiance_wvl_calibration (first_wc_pix, last_wc_pix, &
+                                        nxtrack_rad, n_max_rspec, errstat )
   if (errstat < 0) return
-  write(logmsg,'(a,i4)')'omi_fitting: calling xtrack_radiance_wvl_calibration, n_comm_wvl=',n_comm_wvl
-  call tell_log (1, logmsg)
 
   ! --------------------------------------------------------------
   ! Terminate on not having any cross-track pixels left to process
