@@ -8,6 +8,8 @@ $(ODIR)/MetadatOBJModule.o: $(SDIR)/MetadatOBJModule.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/MetadatOBJModule.f90 -o $(ODIR)/MetadatOBJModule.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/Szoom_Parameter_Module.o: $(SDIR)/Szoom_Parameter_Module.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/Szoom_Parameter_Module.f90 -o $(ODIR)/Szoom_Parameter_Module.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/cld_names_module.o: $(SDIR)/cld_names_module.f90
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/cld_names_module.f90 -o $(ODIR)/cld_names_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/hdfeos4_parameters.o: $(SDIR)/hdfeos4_parameters.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/hdfeos4_parameters.f90 -o $(ODIR)/hdfeos4_parameters.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_LUN_set.o: $(SDIR)/m_LUN_set.f90
@@ -182,6 +184,10 @@ $(ODIR)/m_write_output_data_2pres.o: $(SDIR)/m_write_output_data_2pres.f90 \
   $(ODIR)/m_vars.o \
   $(ODIR)/m_write_swath_field.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_write_output_data_2pres.f90 -o $(ODIR)/m_write_output_data_2pres.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_write_output_data_tio.o: $(SDIR)/m_write_output_data_tio.f90 \
+  $(ODIR)/cld_names_module.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_write_output_data_tio.f90 -o $(ODIR)/m_write_output_data_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_write_swath_field.o: $(SDIR)/m_write_swath_field.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_write_swath_field.f90 -o $(ODIR)/m_write_swath_field.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/mathcons.o: $(SDIR)/mathcons.f90

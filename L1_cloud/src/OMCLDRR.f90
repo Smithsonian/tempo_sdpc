@@ -10,6 +10,7 @@ program OMCLDRR
   use m_read_ocean_table
   use m_write_output_data
   use m_write_output_data_2pres
+  use m_write_output_data_tio
   use m_cloud_pres_ret
   use m_str_replace
   use m_cloud_mask
@@ -51,6 +52,10 @@ program OMCLDRR
 
   integer (kind=4), external :: pgs_pc_getreference !, OMI_SMF_setmsg
   TYPE (L1B_block_type) :: blk
+
+  integer (kind=4) :: ext_index
+  character(len=255) :: filename_out_nc
+
   !************************************************************************
 
   iLine=0
@@ -180,10 +185,22 @@ program OMCLDRR
     iLine=iLine+1
   enddo ! iLine loop
 
-  !Write the output 
-  !=================
+  !Write an output .he5 file
+  !=========================
   call write_output_data(filename_out,outswathname)
   call write_output_data_2pres(filename_out,outswathname)
+
+  !Write out an output .nc file
+  !============================
+  ext_index=index(filename_out,'.he5')
+  filename_out_nc=filename_out(1:ext_index-1)//'.nc'
+  if (write_resid) then
+    call create_output_file(filename_out_nc,nTimes,nXtrack,err_code, &
+         size(wave_resid))
+  else
+    call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
+  endif
+  call close_output_file(err_code)
 
   !Writing Metadata including LocalGranuleId
   !=========================================

@@ -151,7 +151,7 @@ contains
     allocate(ring_ocs(nchl,0:nobs-1))
     if (write_resid) then
       allocate(wave_resid(nobs)) ; wave_resid = 0.
-      allocate(resid(nobs,nscanpos,nTimes)) ; resid=9999.
+      allocate(resid(nobs,nscanpos,nTimes)) ; resid=-9999.
     endif
 
   end subroutine alloc1

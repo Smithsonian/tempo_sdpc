@@ -1,0 +1,34 @@
+#
+# level 1 variables
+#
+CLD_VAR_DQF,"ground_pixel_quality_flag"
+CLD_VAR_LATITUDE,"latitude"
+CLD_VAR_LONGITUDE,"longitude"
+CLD_VAR_SZ_ANGLE,"solar_zenith_angle"
+CLD_VAR_TIME,"time"
+CLD_VAR_VZ_ANGLE,"viewing_zenith_angle"
+CLD_VAR_RA_ANGLE,"relative_azimuth_angle"
+#
+# level 2 variables
+#
+CLD_VAR_CLOUD_MASK,"cloud_mask"
+CLD_VAR_CHLOROPHYLL,"chlorophyll"
+CLD_VAR_TERR_HEIGHT,"terrain_height"
+CLD_VAR_TERR_PRESS,"terrain_pressure"
+CLD_VAR_CLD_PRESS,"cloud_pressure_for_O3"
+CLD_VAR_CLD_FRAC,"cloud_fraction_for_O3"
+CLD_VAR_RAD_CLD_FRAC,"radiative_cloud_fraction"
+CLD_VAR_MQF,"measurement_quality_flag"
+CLD_VAR_PQF,"processing_quality_flag"
+CLD_VAR_WAV_SHIFT,"wavelength_shift"
+CLD_VAR_WAV_SQUEEZE,"wavelength_squeeze"
+CLD_VAR_SURFACE_REFLEC,"surface_reflectivity"
+CLD_VAR_CLD_REFLEC,"cloud_reflectivity"
+CLD_VAR_REFLEC,"reflectivity"
+CLD_VAR_FILLING_IN,"filling_in_factor"
+CLD_VAR_WAV_RESID,"residual_wavelengths"
+CLD_VAR_RESID,"residuals"
+CLD_VAR_DIDR,"dIdR"
+CLD_VAR_RESID_BIAS,"residual_bias"
+CLD_VAR_RESID_STDDEV,"residual_standard_deviation"
+CLD_VAR_CONVERGENCE_FACTOR,"convergence_factor"
