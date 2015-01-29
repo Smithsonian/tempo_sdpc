@@ -18,7 +18,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   use ctrlvars, only: yn_radiance_reference
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
-  USE omi_read_l1b_data, ONLY: L1Bga_EarthSunDistance
+  USE omi_read_l1b_data, ONLY: read_earth_sun_distance !L1Bga_EarthSunDistance
   !use l1bread, only: l1bread_radiance_info
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
   IMPLICIT NONE
@@ -62,7 +62,9 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   call read_l1_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   if (errstat < 0) goto 666
 
-  EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
+  !EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
+  call read_earth_sun_distance (l1b_rad_filename, EarthSunDistance, errstat)
+  if (errstat < 0) goto 666
   omi_radiance_swathname = rpt_rad%swathname
 
   !NrofScanLines        = rpt_rad%ntimes

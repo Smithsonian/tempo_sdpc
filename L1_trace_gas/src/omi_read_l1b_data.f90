@@ -2,6 +2,10 @@ MODULE omi_read_l1b_data
   use tell_module
   INCLUDE 'hdf.f90'
 
+  private
+  public omi_read_binning_factor, read_earth_sun_distance, &
+    omi_read_radiance_lines, omi_read_glint_ice_flags
+
 CONTAINS
 
   SUBROUTINE omi_read_binning_factor ( &
@@ -67,52 +71,87 @@ CONTAINS
     RETURN
   END SUBROUTINE omi_read_binning_factor
 
-  FUNCTION L1Bga_EarthSunDistance( he4filename, swathname ) RESULT( ESdistance )
+  subroutine read_earth_sun_distance (filename, dist, errstat)
+    use tio_module
+    use netcdf
+    use OMSAO_parameters_module, only : r4
+    implicit none
+    character (len=*), intent(in) :: filename
+    real (kind=r4), intent(out) :: dist
+    integer, intent(inout) :: errstat
 
-    USE OMSAO_precision_module
-    IMPLICIT NONE
+    type (tiof_file_type) :: obj
+    integer :: status
 
-    ! ---------------
-    ! Input Variables
-    ! ---------------
-    CHARACTER (LEN=*), INTENT(IN) :: he4filename, swathname
+    if (errstat < 0) return
 
-    ! ---------------
-    ! Result Variable
-    ! ---------------
-    REAL (KIND=r4) :: ESdistance
+    call tiof_open (filename, obj, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, "Error opening file: "//trim(filename), errstat)
+      return
+    endif
 
-    ! ---------------
-    ! Local Variables
-    ! ---------------
-    INTEGER (KIND=i4) :: swfid, swid, status
+    status = nf90_get_att (obj % fileid, nf90_global, "earth_sun_distance", dist)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, &
+                       "Error reading earth-sun distance from file"//trim(filename), &
+                       errstat)
+    endif
 
-    ! ------------------
-    ! External Functions
-    ! ------------------
-    INTEGER (KIND=i4) :: swopen, swattach, swrdattr, swdetach, swclose
+    call tiof_close (obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, "Error closing file: "//trim(filename), errstat)
+      return
+    endif
 
-    ESdistance = -1.0_r4
+  end subroutine read_earth_sun_distance
 
-    swfid = swopen( he4filename, DFACC_READ )
-
-    IF( swfid /=  -1) THEN
-      swid = swattach( swfid, swathname )
-      IF( swid /= -1 ) THEN
-        status = swrdattr( swid, "EarthSunDistance", ESdistance )
-        !IF( status == -1 ) THEN
-        !   WRITE(msg,'(A)') "Get swath attribute EarthSunDistance"// &
-        !        "failed from "//TRIM(swathname)//","  // &
-        !        TRIM( he4filename )
-        !   ierr = OMI_SMF_setmsg( OZT_E_INPUT,  msg, &
-        !        "L1Bga_EarthSunDistance", zero )
-        !ENDIF
-        status = swdetach(swid)
-      ENDIF
-      status = swclose(swfid)
-    ENDIF
-
-  END FUNCTION L1Bga_EarthSunDistance
+!unused  FUNCTION L1Bga_EarthSunDistance( he4filename, swathname ) RESULT( ESdistance )
+!unused
+!unused     USE OMSAO_precision_module
+!unused     IMPLICIT NONE
+!unused
+!unused     ! ---------------
+!unused     ! Input Variables
+!unused     ! ---------------
+!unused     CHARACTER (LEN=*), INTENT(IN) :: he4filename, swathname
+!unused
+!unused     ! ---------------
+!unused     ! Result Variable
+!unused     ! ---------------
+!unused     REAL (KIND=r4) :: ESdistance
+!unused
+!unused     ! ---------------
+!unused     ! Local Variables
+!unused     ! ---------------
+!unused     INTEGER (KIND=i4) :: swfid, swid, status
+!unused
+!unused     ! ------------------
+!unused     ! External Functions
+!unused     ! ------------------
+!unused     INTEGER (KIND=i4) :: swopen, swattach, swrdattr, swdetach, swclose
+!unused
+!unused     ESdistance = -1.0_r4
+!unused
+!unused     swfid = swopen( he4filename, DFACC_READ )
+!unused
+!unused     IF( swfid /=  -1) THEN
+!unused       swid = swattach( swfid, swathname )
+!unused       IF( swid /= -1 ) THEN
+!unused         status = swrdattr( swid, "EarthSunDistance", ESdistance )
+!unused         !IF( status == -1 ) THEN
+!unused         !   WRITE(msg,'(A)') "Get swath attribute EarthSunDistance"// &
+!unused         !        "failed from "//TRIM(swathname)//","  // &
+!unused         !        TRIM( he4filename )
+!unused         !   ierr = OMI_SMF_setmsg( OZT_E_INPUT,  msg, &
+!unused         !        "L1Bga_EarthSunDistance", zero )
+!unused         !ENDIF
+!unused         status = swdetach(swid)
+!unused       ENDIF
+!unused       status = swclose(swfid)
+!unused     ENDIF
+!unused
+!unused   END FUNCTION L1Bga_EarthSunDistance
 
   SUBROUTINE omi_read_radiance_lines ( &
       l1bfile, iline, nxtrack, nloop, nwavel_ccd, errstat )
