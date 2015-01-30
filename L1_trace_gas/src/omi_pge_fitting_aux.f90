@@ -149,6 +149,7 @@ CONTAINS
       num_out_of_bounds
     character (len=256) :: out_string
 
+    if (errstat < 0) return
     locerrstat = pge_errstat_ok
 
     ! ---------------------------------------------------------
