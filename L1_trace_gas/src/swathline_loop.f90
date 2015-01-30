@@ -1,4 +1,5 @@
 MODULE swathline_loop
+    logical, private, save :: warn_about_skipping_tai_conversion = .true. ! FIXME <- will eventually get rid of this.
 CONTAINS
 SUBROUTINE swathline_loops (                               &
     pge_idx, rpt, n_max_rspec, do_process_line,                     &
@@ -274,7 +275,10 @@ SUBROUTINE swathline_loops (                               &
       ! -----------------------
       ! Convert TAI to UTC time
       ! -----------------------
-      call tell_log (1,' *** skipping call to convert_tai_to_utc()')
+      if (warn_about_skipping_tai_conversion) then
+        call tell_log (1,' *** skipping call to convert_tai_to_utc()')
+        warn_about_skipping_tai_conversion = .false.
+      endif
       if (.false.) then
       CALL convert_tai_to_utc ( &
         nUTCdim, omi_time(iloop), omi_time_utc(1:nUTCdim,iloop) )
