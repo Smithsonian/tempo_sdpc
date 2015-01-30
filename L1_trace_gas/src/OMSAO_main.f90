@@ -18,7 +18,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   USE OMSAO_precision_module
   !USE OMSAO_indices_module,    ONLY: pge_bro_idx
   USE OMSAO_parameters_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   use tell_module
   USE metadata_tools, ONLY: init_metadata
   USE omi_pge_fitting_aux, ONLY: set_input_pointer_and_versions
@@ -38,12 +38,12 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ---------------
   ! Output variable
   ! ---------------
-  INTEGER (KIND=i4), INTENT (OUT) :: exit_value
+  INTEGER (KIND=i4), INTENT (inout) :: exit_value
 
   ! -------------------------
   ! Name of module/subroutine
   ! -------------------------
-  CHARACTER (LEN=10), PARAMETER :: modulename = 'OMSAO_main'
+  !CHARACTER (LEN=10), PARAMETER :: modulename = 'OMSAO_main'
 
   ! ------------------------------------------------------------------
   ! The general PGE error status variable. This is a relatively late
@@ -51,7 +51,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! it is envisaged that it will be used ubiquitously througout the
   ! PGE once the PGE developer gets around to implementing it as such.
   ! ------------------------------------------------------------------
-  INTEGER   (KIND=i4)      :: errstat, pge_error_status, pge_idx
+  INTEGER   (KIND=i4)      :: errstat, pge_idx !pge_error_status
   CHARACTER (LEN=12) :: pge_name
 
   ! --------------------------------------------------------------------
@@ -61,10 +61,12 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! --------------------------------------------------------------------
   INTEGER (KIND=i4) :: n_max_rspec
 
+  exit_value = -1   ! early return will indicate an error has occured
+
   ! ----------------------------
   ! Set PGE_ERROR_STATUS to O.K.
   ! ----------------------------
-  pge_error_status = pge_errstat_ok
+  !pge_error_status = pge_errstat_ok
   errstat = 0
 
   call tell_set_log_level (1)
@@ -81,36 +83,29 @@ SUBROUTINE OMSAO_main ( exit_value )
   if (errstat < 0) return
 
   call initialize_omidata_structs (errstat)
-  if (errstat < 0) return  
+  if (errstat < 0) return
 
   call optimizer_set_default_method (elsunc_optimizer)
   call slitfunction_select (omi_slitfunc_read, omi_slitfunc_convolve)
 
-  errstat = pge_errstat_ok
-  ! ---------------------------------------------------------------------------
-  CALL read_pcf_file (pge_idx, pge_name, errstat )   ! Read PCF file
-  ! ---------------------------------------------------------------------------
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"READ_PCF_FILE.", vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) GOTO 666
+  !errstat = pge_errstat_ok
+  CALL read_pcf_file (pge_idx, pge_name, errstat )
+  if (errstat < 0) return
+  !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
+  !  modulename//f_sep//"READ_PCF_FILE.", vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) GOTO 666
 
-  errstat = pge_errstat_ok
-  ! ------------------------------------------------------------
   CALL init_metadata (pge_idx, errstat )  ! Initialize MetaData
-  ! ------------------------------------------------------------
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"INIT_METADATA.", vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
+  if (errstat < 0) return
+  !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
+  !  modulename//f_sep//"INIT_METADATA.", vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
 
-  errstat = pge_errstat_ok
-  ! ----------------------------------------------------------------------------------------
   CALL read_ref_spectra ( pge_idx, n_max_rspec, errstat )     ! Read reference spectra
-  ! ----------------------------------------------------------------------------------------
-  CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
-    modulename//f_sep//"READ_REFERENCE_SPECTRA.", vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
-
-  errstat = pge_errstat_ok
+  if (errstat < 0) return
+  !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
+  !  modulename//f_sep//"READ_REFERENCE_SPECTRA.", vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
 
   ! ------------------------------------------------------------------------------------
   !CALL omi_slitfunc_read ( errstat )                   ! Read OMI slit function
@@ -119,25 +114,24 @@ SUBROUTINE OMSAO_main ( exit_value )
   !  modulename//f_sep//"OMI_SLITFUNC_READ.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
   call slitfunction_open (errstat, use_table=yn_use_labslitfunc)
-  if (errstat < 0) goto 666
+  if (errstat < 0) return
 
   ! ---------------------------------------------
   ! Set number of InputPointers and InputVersions
   ! ---------------------------------------------
   CALL set_input_pointer_and_versions ( pge_idx )
 
-  errstat = pge_errstat_ok
-  ! --------------------------------------------------------------------------------------------
   CALL omi_pge_fitting  ( pge_idx, n_max_rspec, errstat )   ! Where all the work is done
-  ! --------------------------------------------------------------------------------------------
-  CALL error_check ( errstat, pge_errstat_warning, errstat, OMSAO_A_SUBROUTINE, &
-    modulename//f_sep//"OMI_PGE_FITTING_PROCESS.", vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
+  if (errstat < 0) return
+  !CALL error_check ( errstat, pge_errstat_warning, errstat, OMSAO_A_SUBROUTINE, &
+  !  modulename//f_sep//"OMI_PGE_FITTING_PROCESS.", vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
 
   ! ------------------------------------
   ! Write END_OF_RUN message to log file
   ! ------------------------------------
-  666 CALL pge_error_status_exit ( pge_error_status, exit_value )
+ !666 CALL pge_error_status_exit ( pge_error_status, exit_value )
+  exit_value = 0
 
   RETURN
 END SUBROUTINE OMSAO_main
