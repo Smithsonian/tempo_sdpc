@@ -437,6 +437,8 @@ CONTAINS
     ! ----------------------------------------------------------
     ! Interface to the loop over all swath lines for common mode
     ! ----------------------------------------------------------
+    call tell_log (1, "Reference_Sector_radiance_reference_granule_retrieval:  "// &
+                   "calling swathline_loops (common mode)")
     CALL swathline_loops (                                    &
       pge_idx, rpt_rr, n_max_rspec, &
       common_range_ok(0:nTimesRadRR-1),                           &
@@ -453,6 +455,8 @@ CONTAINS
     ! --------------------------------------
     ! Interface to loop over all swath lines
     ! --------------------------------------
+    call tell_log (1, "Reference_Sector_radiance_reference_granule_retrieval:  "// &
+                   "calling swathline_loops (rad. reference)")
     CALL swathline_loops (                             &
       pge_idx, rpt_rr, n_max_rspec, &
       radfitref_range_ok(0:nTimesRadRR-1),                        &
