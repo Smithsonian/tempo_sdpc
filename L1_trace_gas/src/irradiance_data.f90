@@ -213,7 +213,7 @@ contains
 
     ! Allow errstat to flow
 
-    write(*,*)'reading irradiances = '//trim(l1b_irrad_filename)
+    call tell_log (1, 'reading irradiances = '//trim(l1b_irrad_filename))
 
     !call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
     !call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
