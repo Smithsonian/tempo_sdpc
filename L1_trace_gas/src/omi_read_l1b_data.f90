@@ -35,11 +35,13 @@ CONTAINS
     !
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
+    character (len=128) :: logmsg
 
     if (errstat < 0) return
 
-    write (*,*) "DEBUG: In omi_read_binning_factor, l1bfile=", &
-      TRIM(l1bfile), ", l1bswath=", TRIM(l1bswath), ", ntimes=", ntimes
+    write (logmsg, '(a, i5)')"DEBUG: In omi_read_binning_factor, l1bfile="// &
+      TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", ntimes=", ntimes
+    call tell_log (1, logmsg)
 
     ! Allow error to flow
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
