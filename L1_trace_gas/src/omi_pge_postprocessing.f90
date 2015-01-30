@@ -27,7 +27,8 @@ SUBROUTINE omi_pge_postprocess ( &
   use ctrlvars, only: yn_radiance_reference, yn_refseccor
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
-  USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, Cmlat, Cmlon, CmETA, CmEp1
+  USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, &
+    wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics
   use output_tools, only : read_geofields, read_column_results
@@ -131,7 +132,8 @@ SUBROUTINE omi_pge_postprocess ( &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza,     &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
     saocol, saodco, saoamf, thg, do_write, &
-    locerrstat              )
+    errstat              )
+  if (errstat < 0) return
 
   ! ----------------------------------
   ! Compute average fitting statistics
@@ -169,12 +171,8 @@ SUBROUTINE omi_pge_postprocess ( &
       locerrstat)
   ENDIF
 
-  ! --------------------------------
-  ! Deallocate Climatology variables
-  ! --------------------------------
-  CALL climatology_allocate ( "d", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
-
-  errstat = MAX ( errstat, locerrstat )
+  ! Deallocate AMF variables
+  CALL wfamf_deallocate ()
 
   RETURN
 END SUBROUTINE omi_pge_postprocess

@@ -7,6 +7,7 @@ MODULE OMSAO_wfamf_module
   ! ====================================================================
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r4_missval, r8_missval
+  use tell_module
   USE OMSAO_he5_module, ONLY: pge_swath_id, &
     he5_start_4d, he5_edge_4d, he5_stride_4d, &
     he5_start_3d, he5_edge_3d, he5_stride_3d, &
@@ -14,20 +15,38 @@ MODULE OMSAO_wfamf_module
     he5_start_1d, he5_edge_1d, he5_stride_1d
 
   IMPLICIT NONE
-  PRIVATE i2, i4, r4, r8, C_LONG
-  PRIVATE MAX_STR_LEN, i2_missval, r4_missval, r8_missval
-  PRIVATE pge_swath_id, &
-    he5_start_4d, he5_edge_4d, he5_stride_4d, &
-    he5_start_3d, he5_edge_3d, he5_stride_3d, &
-    he5_start_2d, he5_edge_2d, he5_stride_2d, &
-    he5_start_1d, he5_edge_1d, he5_stride_1d
+  private
+
+  public omi_read_climatology, amf_calculation_bis, climatology_allocate, &
+    wfamf_deallocate
+
+  ! ---------
+  ! PCF stuff
+  ! ---------
+  INTEGER(KIND=i4), PARAMETER, public :: wfamf_table_lun = 700250
+  INTEGER(KIND=i4), PARAMETER, public :: climatology_lun = 700270
+  CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_wfamf_table_filename
+  CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_climatology_filename
+
+  ! -----------------------------
+  ! Dimensions of the climatology
+  ! -----------------------------
+  INTEGER (KIND=i4), public :: Cmlat, Cmlon, CmETA, CmEp1
+
+  !PRIVATE i2, i4, r4, r8, C_LONG
+  !PRIVATE MAX_STR_LEN, i2_missval, r4_missval, r8_missval
+  !PRIVATE pge_swath_id, &
+  !  he5_start_4d, he5_edge_4d, he5_stride_4d, &
+  !  he5_start_3d, he5_edge_3d, he5_stride_3d, &
+  !  he5_start_2d, he5_edge_2d, he5_stride_2d, &
+  !  he5_start_1d, he5_edge_1d, he5_stride_1d
 
   ! ====================================================================
   ! Wavelength dependent AMF factor specific variables
   ! ====================================================================
-  LOGICAL                                      :: yn_amf_wfmod
-  INTEGER                                      :: amf_wfmod_idx
-  REAL(KIND=r8)                                :: amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, amf_alb_cld, amf_max_sza
+  LOGICAL, public       :: yn_amf_wfmod
+  INTEGER, public       :: amf_wfmod_idx
+  REAL(KIND=r8), public :: amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, amf_alb_cld, amf_max_sza
 
   ! ---------------------------------------
   ! Data obtained from the climatology file
@@ -67,7 +86,7 @@ MODULE OMSAO_wfamf_module
   REAL(KIND=r4), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: vl_I0, vl_I1, vl_I2, vl_Ir
   REAL(KIND=r4), DIMENSION(:,:,:),       ALLOCATABLE :: vl_Sb
   REAL(KIND=r4), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: vl_dI0, vl_dI1, vl_dI2, vl_dIr
-  REAL(KIND=r4)                                                                         :: vl_Factor
+  REAL(KIND=r4)                                      :: vl_Factor
 
   !!$  INTEGER(KIND=i4), PARAMETER :: vl_wavmax = 100, &
   !!$                                 vl_premax =   6, &
@@ -113,24 +132,11 @@ MODULE OMSAO_wfamf_module
   ! -------------------
   INTEGER(KIND=i4) :: vl_nozo, vl_ncld, vl_nsza, vl_nvza, vl_nwav, vl_nalt
 
-  ! ---------
-  ! PCF stuff
-  ! ---------
-  INTEGER(KIND=i4), PARAMETER :: wfamf_table_lun = 700250
-  INTEGER(KIND=i4), PARAMETER :: climatology_lun = 700270
-  CHARACTER(LEN=MAX_STR_LEN)     :: OMSAO_wfamf_table_filename
-  CHARACTER(LEN=MAX_STR_LEN)     :: OMSAO_climatology_filename
-
-  ! -----------------------------
-  ! Dimensions of the climatology
-  ! -----------------------------
-  INTEGER (KIND=i4) :: Cmlat, Cmlon, CmETA, CmEp1
-
   ! -----------------------
   ! To find the right swath
   ! -----------------------
-  INTEGER   (KIND=i4),                    PARAMETER, PRIVATE :: nmonths = 12
-  CHARACTER (LEN=9), DIMENSION (nmonths), PARAMETER, PRIVATE :: &
+  INTEGER   (KIND=i4),                    PARAMETER :: nmonths = 12
+  CHARACTER (LEN=9), DIMENSION (nmonths), PARAMETER :: &
     months = (/ &
     'January  ', 'February ', 'March    ', 'April    ', &
     'May      ', 'June     ', 'July     ', 'August   ', &
@@ -139,9 +145,15 @@ MODULE OMSAO_wfamf_module
   ! ---------------------------
   ! 32bit/64bit C_LONG integers
   ! ---------------------------
-  INTEGER (KIND=C_LONG), PARAMETER, PRIVATE :: zerocl = 0, onecl = 1
+  INTEGER (KIND=C_LONG), PARAMETER :: zerocl = 0, onecl = 1
 
 CONTAINS
+
+  subroutine wfamf_deallocate ()
+    implicit none
+    call climatology_deallocate()
+    call vlidort_deallocate()
+  end subroutine wfamf_deallocate
 
   SUBROUTINE amf_calculation_bis (            &
       pge_idx, nt, nx, lat, lon, sza, vza,   &
@@ -156,7 +168,7 @@ CONTAINS
     !     - GEOS Chem climatology
     !     - VLIDORT calculated scattering weights
     ! =================================================================
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok!, pge_errstat_error
     use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
@@ -193,6 +205,7 @@ CONTAINS
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
 
+    if (errstat < 0) return
     locerrstat  = pge_errstat_ok
 
     ! ------------------------------------
@@ -237,7 +250,7 @@ CONTAINS
       ! ----------------------------------------------------
       ! Read OMLER albedo database stored in variable albedo
       ! ----------------------------------------------------
-      CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, locerrstat)
+      CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, errstat)
 
       ! ---------------------------------------
       ! Write the albedo to the output file he5
@@ -251,10 +264,9 @@ CONTAINS
       ! -----------------------------
       ! Read the OMI L2 cloud product
       ! -----------------------------
-      locerrstat = pge_errstat_ok
-      CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, locerrstat )
-      errstat = MAX ( errstat, locerrstat )
-      IF ( locerrstat >= pge_errstat_error ) THEN
+      !locerrstat = pge_errstat_ok
+      CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
+      IF ( errstat < 0) THEN
         l2cfr = r8_missval
         l2ctp = r8_missval
       END IF
@@ -265,7 +277,7 @@ CONTAINS
       ! It was read there to obtain the dimensions of the number of levels.
       ! ---------------------------------------------------------------------
       CALL omi_climatology (climatology, cli_heights, cli_psurface, cli_temperature, lat, lon, &
-        nt, nx, xtrange, locerrstat)
+        nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -278,8 +290,14 @@ CONTAINS
 
       ! ------------------------------------------------------------------
       ! Read VLIDORT look up table. Variables are declared at module level
+      ! (Input is read only on the first pass.  Subsequent passes use
+      ! cached values)
       ! ------------------------------------------------------------------
-      CALL read_vlidort (locerrstat)
+      CALL read_vlidort (errstat)
+      if (errstat < 0) then
+        call vlidort_deallocate()
+        return
+      endif
 
       ! ----------------------------------------------------------------------
       ! amfdiag is used to keep track of the pixels were enough information is
@@ -298,14 +316,9 @@ CONTAINS
       ! Compute Scattering weights in the look up table grid but
       ! with the correct albedo. amfdiag is used to skip pixel
       ! ---------------------------------------------------------
-      CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, cli_heights, amfdiag, &
-        scattw)
-
-      ! ----------------------------
-      ! Deallocate Vlidort variables
-      ! ----------------------------
-
-      ! CALL vlidort_allocate ("d", vl_nozo, vl_ncld, vl_nsza, vl_nvza, vl_nwav, vl_nalt, errstat)
+      CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
+                          terrain_height, cli_heights, amfdiag, &
+                          scattw)
 
       ! -----------------------------------------------------------------
       ! Work out the AMF using the scattering weights and the climatology
@@ -320,7 +333,8 @@ CONTAINS
       ! -----------------------------------------------------------------
       IF (do_write) then
         CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
-        call write_scattering_weights (scattw, nx, nt, CmETA, locerrstat)
+        call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
+        if (errstat < 0) return
       endif
 
     END IF
@@ -351,19 +365,17 @@ CONTAINS
       if (errstat < 0) return
     endif
 
-    errstat = MAX ( errstat, locerrstat )
-
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (climatology, local_heights, local_psurf, local_temperature, &
-      lat, lon, nt, nx, xtrange, locerrstat)
+      lat, lon, nt, nx, xtrange, errstat)
 
     ! =========================================
     ! Extract Gas climatology to granule pixels
     ! No interpolation or something like that,
     ! Just pick the closest model grid
     ! =========================================
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     IMPLICIT NONE
 
     ! ---------------
@@ -376,7 +388,7 @@ CONTAINS
     ! ------------------
     ! Modified variables
     ! ------------------
-    INTEGER (KIND=i4),                                INTENT (INOUT) :: locerrstat
+    INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
     REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology, local_temperature, local_heights
     REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1),        INTENT (INOUT) :: local_psurf
 
@@ -393,7 +405,8 @@ CONTAINS
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
+    if (errstat < 0) return
 
     ! ------------------------------------------------------------
     ! Find the Climatology corresponding to each lat and lon pixel
@@ -439,7 +452,7 @@ CONTAINS
     USE OMSAO_he5_module, ONLY: granule_month, he5f_acc_rdonly, &
       HE5_SWOPEN, HE5_SWattach, HE5_SWrdfld, HE5_SWrdlattr, &
       he5_swinqswath, HE5_swinqdflds
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok, he5_stat_fail
     IMPLICIT NONE
 
     INTEGER (KIND=i4), INTENT (IN) :: pge_idx
@@ -451,8 +464,8 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4)         :: nswath, locerrstat, swath_id, swath_file_id, swlen, he5stat, &
-      ismonth, ndatafields
+    INTEGER   (KIND=i4)         :: nswath, swath_id, swath_file_id, swlen, he5stat, &
+      ndatafields
     INTEGER   (KIND=i4), DIMENSION(10) :: datafield_rank, datafield_type
     INTEGER   (KIND=C_LONG)     :: nswathcl, Cmlatcl, Cmloncl, CmETAcl, CmEp1cl
     CHARACTER (LEN=   MAX_STR_LEN) :: swath_file, locswathname, gasdatafieldname, datafield_name
@@ -472,24 +485,33 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_climatology'
+    !CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_climatology'
 
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
+    if (errstat < 0) return
+
+    !ismonth    = granule_month
+    if (granule_month < 1 .OR. granule_month > nmonths) then
+      call tell_error (tell_runtime_error, "omi_read_climatology: invalid month", &
+                       errstat)
+      return
+    endif
 
     swath_file = TRIM(ADJUSTL(OMSAO_climatology_filename))
-    ismonth    = granule_month
 
     ! --------------------------------------------------------------
     ! Open he5 OMI climatology and check SWATH_FILE_ID (-1 if error)
     ! --------------------------------------------------------------
     swath_file_id = HE5_SWOPEN (swath_file, he5f_acc_rdonly)
     IF (swath_file_id == he5_stat_fail) THEN
-      CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5SWOPEN, modulename, &
-        vb_lev_default, locerrstat)
-      errstat = MAX (errstat, locerrstat)
+      call tell_error (tell_io_open_error, "omi_read_climatology: opening climatology file"//trim(swath_file), &
+                       errstat)
+      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5SWOPEN, modulename, &
+      !  vb_lev_default, locerrstat)
+      !errstat = MAX (errstat, locerrstat)
       RETURN
     END IF
 
@@ -511,11 +533,13 @@ CONTAINS
       ! ---------------------------------------------------------------------------
       ! Check if we found the correct swath name. If not, report an error and exit.
       ! ---------------------------------------------------------------------------
-      IF ( INDEX (TRIM(ADJUSTL(locswathname)),TRIM(ADJUSTL(months(ismonth)))) == 0 ) THEN
-        CALL error_check ( &
-          0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
-          vb_lev_default, locerrstat )
-        errstat = MAX ( errstat, locerrstat )
+      IF ( INDEX (TRIM(ADJUSTL(locswathname)),TRIM(ADJUSTL(months(granule_month)))) == 0 ) THEN
+        call tell_error (tell_runtime_error, "omi_read_climatology: finding month in "// &
+                         trim(locswathname), errstat)
+        !CALL error_check ( &
+        !  0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
+        !  vb_lev_default, locerrstat )
+        !errstat = MAX ( errstat, locerrstat )
         RETURN
       END IF
     ELSE
@@ -527,21 +551,24 @@ CONTAINS
     ! -----------------------------
     swath_id = HE5_SWattach ( swath_file_id, TRIM(ADJUSTL(locswathname)) )
     IF ( swath_id == he5_stat_fail ) THEN
-      CALL error_check ( &
-        0, 1, pge_errstat_error, OMSAO_E_HE5SWATTACH, modulename, vb_lev_default, locerrstat )
-      errstat = MAX ( errstat, locerrstat )
+      call tell_error (tell_io_error, "omi_read_climatology: attaching to swath "// &
+                       trim(locswathname), errstat)
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_error, OMSAO_E_HE5SWATTACH, modulename, vb_lev_default, locerrstat )
+      !errstat = MAX ( errstat, locerrstat )
       RETURN
     END IF
 
     ! ------------------------------------
     ! Read dimensions of Climatology swath
     ! ------------------------------------
-    locerrstat = pge_errstat_ok
-    CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
-    IF ( ismonth < 1 .OR. ismonth > nmonths .OR. locerrstat /= pge_errstat_ok ) THEN
-      errstat = MAX ( errstat, locerrstat )
-      RETURN
-    END IF
+    !locerrstat = pge_errstat_ok
+    CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmEp1, errstat )
+    if (errstat < 0) return
+    !IF ( ismonth < 1 .OR. ismonth > nmonths .OR. locerrstat /= pge_errstat_ok ) THEN
+    !  errstat = MAX ( errstat, locerrstat )
+    !  RETURN
+    !END IF
 
     ! ----------------------------------------------------------------------------
     ! Create KIND=4/KIND=8 variables. We have to use those dimensions a few times
@@ -556,13 +583,14 @@ CONTAINS
     ! ---------------------------
     ! Allocate Climatology arrays
     ! ---------------------------
-    locerrstat = pge_errstat_ok
-    CALL climatology_allocate ( "a", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
-    IF ( locerrstat /= pge_errstat_ok ) THEN
-      errstat = MAX ( errstat, locerrstat )
-      CALL climatology_allocate ( "d", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
-      RETURN
-    END IF
+    !locerrstat = pge_errstat_ok
+    CALL climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
+    if (errstat < 0) return
+    !IF ( locerrstat /= pge_errstat_ok ) THEN
+    !  errstat = MAX ( errstat, locerrstat )
+    !  CALL climatology_allocate ( "d", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
+    !  RETURN
+    !END IF
 
     ! -------------------------------
     ! Read dimension-defining arrays
@@ -578,9 +606,13 @@ CONTAINS
       he5_start_1d, he5_stride_1d, he5_edge_1d, Ap(1:CmEp1) )
     he5stat = HE5_SWrdfld ( swath_id, cli_Bp_field, &
       he5_start_1d, he5_stride_1d, he5_edge_1d, Bp(1:CmEp1) )
-    IF ( he5stat /= pge_errstat_ok ) &
-      CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      modulename//f_sep//'Climatology arrays access failed.', vb_lev_default, errstat )
+    IF ( he5stat /= pge_errstat_ok ) then
+      call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology arrays", &
+                       errstat)
+      return
+      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !modulename//f_sep//'Climatology arrays access failed.', vb_lev_default, errstat )
+    endif
 
     ! -----------------------------------------------
     ! Read dimension-defining scale factor attributes
@@ -589,9 +621,13 @@ CONTAINS
     he5stat = HE5_SWrdlattr ( swath_id, cli_lon_field, "ScaleFactor", scale_lon )
     he5stat = HE5_SWrdlattr ( swath_id, cli_Ap_field,  "ScaleFactor", scale_Ap )
     he5stat = HE5_SWrdlattr ( swath_id, cli_Bp_field,  "ScaleFactor", scale_Bp )
-    IF ( he5stat /= pge_errstat_ok ) &
-      CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      modulename//f_sep//'Climatology attributes access failed.', vb_lev_default, errstat )
+    IF ( he5stat /= pge_errstat_ok ) then
+      call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology attributes", &
+                       errstat)
+      return
+      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !modulename//f_sep//'Climatology attributes access failed.', vb_lev_default, errstat )
+    endif
 
     ! -----------------------------------
     ! Apply scaling factors to geo fields
@@ -631,9 +667,13 @@ CONTAINS
     he5stat = HE5_SWrdlattr ( swath_id, cli_Temperature_field, "ScaleFactor", scale_Temperature )
     !!$    he5stat = HE5_SWrdlattr ( swath_id, cli_Heights_field,     "ScaleFactor", scale_Height      )
 
-    IF ( he5stat /= pge_errstat_ok ) &
-      CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      modulename//f_sep//'Climatology data fields access failed.', vb_lev_default, errstat )
+    IF ( he5stat /= pge_errstat_ok ) then
+      call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology data fields", &
+                       errstat)
+      return
+      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !modulename//f_sep//'Climatology data fields access failed.', vb_lev_default, errstat )
+    endif
 
     ! -----------------------------------------------------------------------
     ! Finding out the data field for the gas of interest (.eq. to target gas)
@@ -647,11 +687,14 @@ CONTAINS
     ! Check if we found the correct swath name. If not, report an error and exit.
     ! ---------------------------------------------------------------------------
     IF ( INDEX (TRIM(ADJUSTL(gasdatafieldname)),TRIM(ADJUSTL(sao_molecule_names(pge_idx)))) == 0 ) THEN
-      CALL error_check ( &
-        0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
-        vb_lev_default, locerrstat )
-      WRITE(*,*) "Climatology file does not contain data for ", sao_molecule_names(pge_idx)
-      errstat = MAX ( errstat, locerrstat )
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
+      !  vb_lev_default, locerrstat )
+      !WRITE(*,*) "Climatology file does not contain data for ", sao_molecule_names(pge_idx)
+      !errstat = MAX ( errstat, locerrstat )
+      call tell_error (tell_runtime_error, "omi_read_climatology: climatology file "// &
+                       "does not contain data for "// trim(sao_molecule_names(pge_idx)), &
+                       errstat)
       RETURN
     END IF
 
@@ -692,7 +735,7 @@ CONTAINS
       winwav_min, winwav_max
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation, &
       ezspline_2d_interpolation
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : he5_stat_fail, pge_errstat_ok
     USE OMSAO_he5_module, ONLY: granule_month, he5f_acc_rdonly, HE5_GDOPEN, &
       HE5_GDattach, HE5_GDRDFLD, HE5_GDRDLATTR, HE5_GDDETACH, HE5_GDclose
 
@@ -753,12 +796,13 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=16), PARAMETER :: modulename = 'omi_omler_albedo'
+    !CHARACTER (LEN=16), PARAMETER :: modulename = 'omi_omler_albedo'
 
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
     locerrstat = pge_errstat_ok
+    if (errstat < 0) return
 
     grid_file = TRIM(ADJUSTL(OMSAO_OMLER_filename))
 
@@ -767,9 +811,11 @@ CONTAINS
     ! -------------------------------------------------------------------------------
     grid_file_id = HE5_GDOPEN (grid_file, he5f_acc_rdonly)
     IF (grid_file_id == he5_stat_fail) THEN
-      CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDOPEN, modulename, &
-        vb_lev_default, locerrstat)
-      errstat = MAX (errstat, locerrstat)
+      call tell_error (tell_io_open_error, "omi_omler_albedo: opening Omler grid file"//trim(grid_file), &
+                       errstat)
+      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDOPEN, modulename, &
+      !  vb_lev_default, locerrstat)
+      !errstat = MAX (errstat, locerrstat)
       RETURN
     END IF
 
@@ -778,15 +824,28 @@ CONTAINS
     ! ----------------------------------------------
     grid_id = HE5_GDattach (grid_file_id, grid_name)
     IF (grid_id == he5_stat_fail) THEN
-      CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDATTACH, modulename, &
-        vb_lev_default, locerrstat)
-      errstat = MAX( errstat, locerrstat)
+      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDATTACH, modulename, &
+      !  vb_lev_default, locerrstat)
+      !errstat = MAX( errstat, locerrstat)
+      call tell_error (tell_io_read_error, "omi_omler_albedo: attaching to Omler grid file"// &
+                       trim(grid_file), errstat)
+      return
     END IF
+
+    ALLOCATE (OMLER_longitude(OMLER_n_longitudes), &
+              OMLER_latitude(OMLER_n_latitudes), &
+              OMLER_wvl(OMLER_n_wavelenghts), &
+              OMLER_albedo(OMLER_n_longitudes, OMLER_n_latitudes, 1,1), &
+              stat=locerrstat)
+    if (locerrstat /= 0) then
+      call tell_error (tell_malloc_error, "omi_omler_albedo:  allocate failed", &
+                       errstat)
+      return
+    endif
 
     ! -------------------------
     ! Read longitude data field
     ! -------------------------
-    ALLOCATE (OMLER_longitude(OMLER_n_longitudes))
     he5_start_1d = 0; he5_stride_1d = 1; he5_edge_1d = OMLER_n_longitudes
     locerrstat = HE5_GDRDFLD(grid_id, "Longitude", he5_start_1d, he5_stride_1d, &
       he5_edge_1d, OMLER_longitude)
@@ -795,7 +854,6 @@ CONTAINS
     ! ------------------------
     ! Read latitude data field
     ! ------------------------
-    ALLOCATE (OMLER_latitude(OMLER_n_latitudes))
     he5_start_1d = 0; he5_stride_1d = 1; he5_edge_1d = OMLER_n_latitudes
     locerrstat = HE5_GDRDFLD(grid_id, "Latitude", he5_start_1d, he5_stride_1d, &
       he5_edge_1d, OMLER_latitude)
@@ -804,7 +862,6 @@ CONTAINS
     ! ---------------------------
     ! Read wavelenghts data field
     ! ---------------------------
-    ALLOCATE (OMLER_wvl(OMLER_n_wavelenghts))
     he5_start_1d = 0; he5_stride_1d = 1; he5_edge_1d = OMLER_n_wavelenghts
     locerrstat = HE5_GDRDFLD(grid_id, "Wavelength", he5_start_1d, he5_stride_1d, &
       he5_edge_1d, OMLER_wvl)
@@ -818,17 +875,20 @@ CONTAINS
     maxwvl = MAXLOC(OMLER_wvl, OMLER_wvl .LE. REAL(winwav_max,KIND=r4))
     OMnwvl = maxwvl(1)-minwvl(1)+1
 
+    allocate (OMLER_monthly_albedo(OMLER_n_longitudes, OMLER_n_latitudes, OMnwvl,1), &
+              OMLER_wvl_albedo(OMLER_n_longitudes, OMLER_n_latitudes, OMnwvl,1), &
+              stat=locerrstat)
+    if (locerrstat /= 0) then
+      call tell_error (tell_malloc_error, "omi_omler_albedo:  allocate failed", &
+                       errstat)
+      return
+    endif
+
     ! ---------------------------
     ! Read the albedo data field:
     ! -Month
     ! -Selected wavelenghts
     ! ---------------------------
-    ALLOCATE (OMLER_monthly_albedo(OMLER_n_longitudes, &
-      OMLER_n_latitudes, OMnwvl,1))
-    ALLOCATE (OMLER_wvl_albedo(OMLER_n_longitudes,     &
-      OMLER_n_latitudes, OMnwvl,1))
-    ALLOCATE (OMLER_albedo(OMLER_n_longitudes,         &
-      OMLER_n_latitudes, 1,1))
 
     month = granule_month - 1
 
@@ -858,10 +918,13 @@ CONTAINS
     ! -------------------------------------------
     locerrstat = HE5_GDclose ( grid_file_id)
     IF ( locerrstat == he5_stat_fail) THEN
-      CALL error_check (0, 1, pge_errstat_error, OMSAO_W_HE5GDCLOSE, modulename, &
-        vb_lev_default, locerrstat)
-      errstat = MAX (errstat, locerrstat)
-      RETURN
+      call tell_error (tell_io_error, "omi_omler_albedo: closing Omler grid file"// &
+                       trim(grid_file), errstat)
+      return
+      !CALL error_check (0, 1, pge_errstat_error, OMSAO_W_HE5GDCLOSE, modulename, &
+      !  vb_lev_default, locerrstat)
+      !errstat = MAX (errstat, locerrstat)
+      !RETURN
     END IF
 
     OMLER_wvl_albedo = REAL(offset, KIND = r8) +          &
@@ -972,8 +1035,8 @@ CONTAINS
     INTEGER   (KIND=i4)                      :: mslen, k, j1, j2, nsep
     CHARACTER (LEN=LEN(multi_swath))         :: tmpstr
 
-    write(*,*)'extract_swathname:  multi_swath=',multi_swath
-    write(*,*)'extract_swathname:  swathstr=',swathstr
+    call tell_log (1, 'extract_swathname:  multi_swath='//trim(multi_swath))
+    call tell_log (1, 'extract_swathname:  swathstr='//swathstr)
 
     ! --------------------------
     ! Initialize output variable
@@ -1024,7 +1087,7 @@ CONTAINS
     ! Return dimensions of Climatology
     ! --------------------------------
     USE OMSAO_he5_module, ONLY: HE5_SWinqdims
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     ! ---------------
     ! Input variables
@@ -1048,6 +1111,7 @@ CONTAINS
     INTEGER   (KIND=C_LONG), DIMENSION(0:maxdim) :: dim_arraycl
     CHARACTER (LEN=10*maxdim)                    :: dim_chars
 
+    if (errstat < 0) return
     ! ---------------------------
     ! Initialize output variables
     ! ---------------------------
@@ -1060,7 +1124,8 @@ CONTAINS
     ndimcl = HE5_SWinqdims  ( swath_id, dim_chars, dim_arraycl(0:maxdim) )
     ndim   = INT ( ndimcl, KIND=i4 )
     IF ( ndim <= 0 ) THEN
-      errstat = MAX ( errstat, pge_errstat_error )
+      call tell_error (tell_runtime_error, "in climatology_getdim", errstat)
+      !errstat = MAX ( errstat, pge_errstat_error )
       RETURN
     END IF
     dim_array(0:maxdim) = INT ( dim_arraycl(0:maxdim), KIND=i4 )
@@ -1107,16 +1172,20 @@ CONTAINS
     RETURN
   END SUBROUTINE climatology_getdim
 
-  SUBROUTINE climatology_allocate ( ad, Cmlat, Cmlon, CmETA, CmEp1, errstat )
+  subroutine climatology_deallocate ()
+    implicit none
+     deallocate (latvals, lonvals, Ap, Bp, Temperature, &
+                 Gas_profiles, Psurface)
+  end subroutine climatology_deallocate
 
-    USE OMSAO_casestring_module, ONLY: lower_case
-    USE OMSAO_errstat_module
+  SUBROUTINE climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
+
+    !USE OMSAO_errstat_module
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
-    CHARACTER (LEN=1), INTENT (IN) :: ad
     INTEGER (KIND=i4), INTENT (IN) :: Cmlat, Cmlon, CmETA, CmEp1
 
     ! ------------------
@@ -1128,148 +1197,75 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER   (KIND=i4) :: estat
-    CHARACTER (LEN=1)   :: adlow
 
-    estat = pge_errstat_ok
+    if (errstat < 0) return
 
-    ! ------------------------------------------
-    ! Make sure AD ("a" or "d") is in lower case
-    ! ------------------------------------------
-    adlow = lower_case ( ad )
-
-    SELECT CASE ( adlow )
-    CASE ('a')
-      ALLOCATE (latvals (Cmlat),                 STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (lonvals (Cmlon),                 STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (Ap      (CmEp1),                 STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (Bp      (CmEp1),                 STAT=estat ) ; errstat = MAX ( errstat, estat )
-      !!$       ALLOCATE (Heights (Cmlon, Cmlat, CmETA),     STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (Temperature (Cmlon, Cmlat, CmETA), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (Gas_profiles(Cmlon, Cmlat, CmETA), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (Psurface(Cmlon,Cmlat),            STAT=estat ) ; errstat = MAX ( errstat, estat )
-    CASE ('d')
-      IF ( ALLOCATED ( latvals      ) )  DEALLOCATE ( latvals      )
-      IF ( ALLOCATED ( lonvals      ) )  DEALLOCATE ( lonvals      )
-      IF ( ALLOCATED ( Ap           ) )  DEALLOCATE ( Ap           )
-      IF ( ALLOCATED ( Bp           ) )  DEALLOCATE ( Bp           )
-      !!$       IF ( ALLOCATED ( Heights      ) )  DEALLOCATE ( Heights      )
-      IF ( ALLOCATED ( Temperature  ) )  DEALLOCATE ( Temperature  )
-      IF ( ALLOCATED ( Gas_profiles ) )  DEALLOCATE ( Gas_profiles )
-      IF ( ALLOCATED ( Psurface     ) )  DEALLOCATE ( Psurface     )
-    CASE DEFAULT
-      ! Whatever. Nothing to be done here
-    END SELECT
+    ALLOCATE (latvals (Cmlat), &
+              lonvals (Cmlon), &
+              Ap      (CmEp1), &
+              Bp      (CmEp1), &
+              Temperature (Cmlon, Cmlat, CmETA), &
+              Gas_profiles(Cmlon, Cmlat, CmETA), &
+              Psurface(Cmlon,Cmlat), STAT=estat ) ;
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, "climatology_allocate: failed", errstat)
+      return
+    endif
 
     RETURN
   END SUBROUTINE climatology_allocate
 
   SUBROUTINE vlidort_deallocate ()
-
     implicit none
-
-    IF ( ALLOCATED ( vl_OzC0 ) )  DEALLOCATE ( vl_OzC0 )
-    IF ( ALLOCATED ( vl_OzC1 ) )  DEALLOCATE ( vl_OzC1 )
-    IF ( ALLOCATED ( vl_OzC2 ) )  DEALLOCATE ( vl_OzC2 )
-
-    IF ( ALLOCATED ( vl_pre  ) )  DEALLOCATE ( vl_pre  )
-    IF ( ALLOCATED ( vl_sza  ) )  DEALLOCATE ( vl_sza  )
-    IF ( ALLOCATED ( vl_vza  ) )  DEALLOCATE ( vl_vza  )
-    IF ( ALLOCATED ( vl_wav  ) )  DEALLOCATE ( vl_wav  )
-    IF ( ALLOCATED ( vl_toms ) )  DEALLOCATE ( vl_toms )
-
-    IF ( ALLOCATED ( vl_air ) )  DEALLOCATE ( vl_air )
-    IF ( ALLOCATED ( vl_alt ) )  DEALLOCATE ( vl_alt )
-    IF ( ALLOCATED ( vl_ozo ) )  DEALLOCATE ( vl_ozo )
-    IF ( ALLOCATED ( vl_tem ) )  DEALLOCATE ( vl_tem )
-
-    IF ( ALLOCATED ( vl_I0 ) )  DEALLOCATE ( vl_I0 )
-    IF ( ALLOCATED ( vl_I1 ) )  DEALLOCATE ( vl_I1 )
-    IF ( ALLOCATED ( vl_I2 ) )  DEALLOCATE ( vl_I2 )
-    IF ( ALLOCATED ( vl_Ir ) )  DEALLOCATE ( vl_Ir )
-    IF ( ALLOCATED ( vl_Sb ) )  DEALLOCATE ( vl_Sb )
-
-    IF ( ALLOCATED ( vl_dI0 ) )  DEALLOCATE ( vl_dI0 )
-    IF ( ALLOCATED ( vl_dI1 ) )  DEALLOCATE ( vl_dI1 )
-    IF ( ALLOCATED ( vl_dI2 ) )  DEALLOCATE ( vl_dI2 )
-    IF ( ALLOCATED ( vl_dIr ) )  DEALLOCATE ( vl_dIr )
-
+    deallocate (vl_OzC0, vl_OzC1, vl_OzC2, vl_pre, vl_sza, vl_vza, &
+                vl_wav, vl_toms, vl_air, vl_alt, vl_ozo, vl_tem, &
+                vl_I0, vl_I1, vl_I2, vl_Ir, vl_Sb, &
+                vl_dI0, vl_dI1, vl_dI2, vl_dIr)
   END SUBROUTINE
 
-  SUBROUTINE vlidort_allocate ( ad, anozo, ancld, ansza, anvza, anwav, analt, errstat )
-
-    USE OMSAO_casestring_module, ONLY: lower_case
-    USE OMSAO_errstat_module
+  SUBROUTINE vlidort_allocate (anozo, ancld, ansza, anvza, anwav, analt, errstat)
     IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    CHARACTER (LEN=1), INTENT (IN) :: ad
     INTEGER (KIND=i4), INTENT (IN) :: anozo, ancld, ansza, anvza, anwav, analt
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
-    ! ---------------
-    ! Local variables
-    ! ---------------
     INTEGER   (KIND=i4) :: estat
-    CHARACTER (LEN=1)   :: adlow
 
-    estat = pge_errstat_ok
+    if (errstat < 0) return
 
-    ! ------------------------------------------
-    ! Make sure AD ("a" or "d") is in lower case
-    ! ------------------------------------------
-    adlow = lower_case ( ad )
+    ALLOCATE (vl_OzC0(anwav), &
+              vl_OzC1(anwav), &
+              vl_OzC2(anwav), &
+              vl_pre(ancld), &
+              vl_sza(ansza), &
+              vl_vza(anvza), &
+              vl_wav(anwav), &
+              vl_toms(anozo), &
+              vl_air(anozo,ancld,analt), &
+              vl_alt(anozo,ancld,analt), &
+              vl_ozo(anozo,ancld,analt), &
+              vl_tem(anozo,ancld,analt), &
+              !vl_I0(anozo,ancld,ansza,anvza,anwav), &
+              !vl_I1(anozo,ancld,ansza,anvza,anwav), &
+              !vl_I2(anozo,ancld,ansza,anvza,anwav), &
+              !vl_Ir(anozo,ancld,ansza,anvza,anwav), &
+              vl_I0(anvza,ansza,ancld,anwav,anozo), &
+              vl_I1(anvza,ansza,ancld,anwav,anozo), &
+              vl_I2(anvza,ansza,ancld,anwav,anozo), &
+              vl_Ir(anvza,ansza,ancld,anwav,anozo), &
+              vl_Sb(anozo,ancld,anwav), &
+              !vl_dI0(anozo,ancld,ansza,anvza,anwav,analt), &
+              !vl_dI1(anozo,ancld,ansza,anvza,anwav,analt), &
+              !vl_dI2(anozo,ancld,ansza,anvza,anwav,analt), &
+              !vl_dIr(anozo,ancld,ansza,anvza,anwav,analt), &
+              vl_dI0(analt,anvza,ansza,ancld,anwav,anozo), &
+              vl_dI1(analt,anvza,ansza,ancld,anwav,anozo), &
+              vl_dI2(analt,anvza,ansza,ancld,anwav,anozo), &
+              vl_dIr(analt,anvza,ansza,ancld,anwav,anozo), STAT=estat )
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, "vlidort_allocate: failed", errstat)
+      return
+    endif
 
-    SELECT CASE ( adlow )
-    CASE ('a')
-      ALLOCATE (vl_OzC0(anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_OzC1(anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_OzC2(anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )
-
-      ALLOCATE (vl_pre(ancld), STAT=estat )  ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_sza(ansza), STAT=estat )  ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_vza(anvza), STAT=estat )  ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_wav(anwav), STAT=estat )  ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_toms(anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )
-
-      ALLOCATE (vl_air(anozo,ancld,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_alt(anozo,ancld,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_ozo(anozo,ancld,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_tem(anozo,ancld,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )
-
-      !ALLOCATE (vl_I0(anozo,ancld,ansza,anvza,anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_I1(anozo,ancld,ansza,anvza,anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_I2(anozo,ancld,ansza,anvza,anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_Ir(anozo,ancld,ansza,anvza,anwav), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      ALLOCATE (vl_I0(anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_I1(anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_I2(anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )
-      ALLOCATE (vl_Ir(anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )
-
-      ALLOCATE (vl_Sb(anozo,ancld,anwav), STAT=estat )             ; errstat = MAX ( errstat, estat )
-
-      !ALLOCATE (vl_dI0(anozo,ancld,ansza,anvza,anwav,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_dI1(anozo,ancld,ansza,anvza,anwav,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_dI2(anozo,ancld,ansza,anvza,anwav,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      !ALLOCATE (vl_dIr(anozo,ancld,ansza,anvza,anwav,analt), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      ALLOCATE (vl_dI0(analt,anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      ALLOCATE (vl_dI1(analt,anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      ALLOCATE (vl_dI2(analt,anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-      ALLOCATE (vl_dIr(analt,anvza,ansza,ancld,anwav,anozo), STAT=estat ) ; errstat = MAX ( errstat, estat )!
-
-    CASE ('d')
-      call vlidort_deallocate ()
-
-    CASE DEFAULT
-      ! Whatever. Nothing to be done here
-    END SELECT
-
-    RETURN
   END SUBROUTINE vlidort_allocate
 
   SUBROUTINE compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
@@ -1342,7 +1338,7 @@ CONTAINS
       h5dread_f, h5sget_simple_extent_dims_f, h5open_f, h5tcopy_f, &
       h5tset_size_f, h5dclose_f, h5fopen_f, h5fclose_f, &
       H5F_ACC_RDONLY_F, H5T_NATIVE_CHARACTER, H5T_NATIVE_REAL
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -1392,7 +1388,14 @@ CONTAINS
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    errstat = pge_errstat_ok
+    if (errstat < 0) return
+    !errstat = pge_errstat_ok
+
+    filename = TRIM(ADJUSTL(OMSAO_wfamf_table_filename))
+    if (filename .eq. cached_filename) then
+      call tell_log (1, "read_vlidort: using cached data from "//trim(filename))
+      return
+    endif
 
     ! ---------------------------------
     ! Initialize hdf5 FORTRAN Interface
@@ -1401,14 +1404,6 @@ CONTAINS
       CALL h5open_f(hdferr)
       h5inited = .TRUE.
     endif
-
-    filename = TRIM(ADJUSTL(OMSAO_wfamf_table_filename))
-    if (filename .eq. cached_filename) then
-      ! write (*,*) "Using cached data from ", filename
-      return
-    endif
-
-    call vlidort_deallocate ()
 
     ! ------------------
     ! Dataset data types
@@ -1429,10 +1424,11 @@ CONTAINS
     ! -------------------
     ! Opening input TABLE
     ! -------------------
-    CALL h5fopen_f(filename, H5F_ACC_RDONLY_F, &
-      input_file_id, hdferr)
+    CALL h5fopen_f(filename, H5F_ACC_RDONLY_F, input_file_id, hdferr)
     IF (hdferr .eq. -1) THEN
-      WRITE(*,100) 'ERROR: Opening '//filename
+      call tell_error (tell_io_open_error, 'opening '//trim(filename), &
+                       errstat)
+      return
     END IF
 
     ! --------------------------------------------------------------------------
@@ -1499,7 +1495,12 @@ CONTAINS
     vl_nwav = INT(hdI0_dim(5), KIND=i4)
     vl_nalt = INT(hdI0_dim(6), KIND=i4)
 
-    CALL vlidort_allocate ("a", vl_nozo, vl_ncld, vl_nsza, vl_nvza, vl_nwav, vl_nalt, errstat)
+    CALL vlidort_allocate (vl_nozo, vl_ncld, vl_nsza, vl_nvza, vl_nwav, vl_nalt, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_malloc_error, "read_vlidort: allocate failed", &
+                       errstat)
+      return
+    endif
 
     ! ----------------------------------------------------
     ! Read from the h5 file all these small size variables
@@ -1514,9 +1515,12 @@ CONTAINS
     CALL h5dread_f(vza_did, H5T_NATIVE_REAL,  vl_vza(1:vl_nvza),  hvza_dim, hdferr)
     CALL h5dread_f(wav_did, H5T_NATIVE_REAL,  vl_wav(1:vl_nwav),  hwav_dim, hdferr)
 
-    ! FIXME: This routines does not properly handle allocation failures  --JED
     ALLOCATE (tmpspc_r4d5(vl_nozo,vl_ncld,vl_nsza,vl_nvza,vl_nwav), STAT=estat)
-    errstat=MAX(errstat,estat)
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, "read_vlidort: allocate failed", &
+                       errstat)
+      return
+    endif
 
     perm5 = (/ 5, 3, 2, 1, 4 /)
     dims5 = (/ vl_nvza, vl_nsza, vl_ncld, vl_nwav, vl_nozo /)
@@ -1541,7 +1545,11 @@ CONTAINS
     CALL h5dread_f(Fac_did, H5T_NATIVE_REAL,  vl_Factor, hfac_dim, hdferr)
 
     ALLOCATE (tmpspc_r4d6(vl_nozo,vl_ncld,vl_nsza,vl_nvza,vl_nwav,vl_nalt), STAT=estat)
-    errstat=MAX(errstat,estat)
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, "read_vlidort: allocate failed", &
+                       errstat)
+      return
+    endif
 
     perm6 = (/ 6, 4, 3, 2, 5, 1 /)
     dims6 = (/ vl_nalt, vl_nvza, vl_nsza, vl_ncld, vl_nwav, vl_nozo /)
@@ -1600,8 +1608,6 @@ CONTAINS
 
     errstat = hdferr
 
-    100 FORMAT (A)
-
   END SUBROUTINE read_vlidort
 
   SUBROUTINE amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
@@ -1611,7 +1617,7 @@ CONTAINS
     USE OMSAO_omidata_module,    ONLY: gzoom_spix, gzoom_epix, gzoom_npix
     USE OMSAO_he5_module, ONLY: HE5_SWrdlattr, HE5_SWrdfld, HE5_SWinqdims, &
       he5_init_input_file
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok
 
     IMPLICIT NONE
 
@@ -1659,7 +1665,7 @@ CONTAINS
     ! ----------------------
     ! Name of the subroutine
     ! ----------------------
-    CHARACTER (LEN=22), PARAMETER :: modulename = 'amf_read_omiclouds'
+    !CHARACTER (LEN=22), PARAMETER :: modulename = 'amf_read_omiclouds'
 
     locerrstat = pge_errstat_ok
 
@@ -1676,8 +1682,10 @@ CONTAINS
     ! different value for nt (=1). Thus we skip the test.
     ! ------------------------------------------------------------------------
     IF ( locerrstat /= pge_errstat_ok ) THEN
-      CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-        modulename//f_sep//'OMIL2 access failed.', vb_lev_default, errstat )
+      call tell_error (tell_io_error, "amf_read_omiclouds:  reading cloud file"// &
+                       trim(voc_amf_filenames(voc_omicld_idx)), errstat)
+      !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !  modulename//f_sep//'OMIL2 access failed.', vb_lev_default, errstat )
       RETURN
     END IF
 
@@ -1715,9 +1723,13 @@ CONTAINS
     locerrstat = HE5_SWrdfld ( &
       omicloud_swath_id, omicld_cfrac_field//TRIM(ADJUSTL(addstr)),   &
       he5_start_2d, he5_stride_2d, he5_edge_2d, cfr(1:nx,0:nt-1) )
-    IF ( locerrstat /= pge_errstat_ok ) &
-      CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      modulename//f_sep//'OMIL2 CFR access failed.', vb_lev_default, errstat )
+    IF ( locerrstat /= pge_errstat_ok ) then
+      !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !modulename//f_sep//'OMIL2 CFR access failed.', vb_lev_default, errstat )
+      call tell_error (tell_io_read_error, "amf_read_omiclouds: reading cloud fraction", &
+                       errstat)
+      return
+    endif
 
     ! ---------------------------------------------------------------
     ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
@@ -1756,6 +1768,14 @@ CONTAINS
       ctp(1:nx,0:nt-1) = REAL ( o4ctp(1:nx,0:nt-1), KIND=r4 )
     END IF
 
+    IF ( locerrstat /= pge_errstat_ok ) then
+      !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
+      !modulename//f_sep//'OMIL2 CTP access failed.', vb_lev_default, errstat )
+      call tell_error (tell_io_read_error, "amf_read_omiclouds: reading cloud top pressure", &
+                       errstat)
+      return
+    endif
+
     ! ---------------------------------------------------------------
     ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
     ! ---------------------------------------------------------------
@@ -1774,10 +1794,6 @@ CONTAINS
     WHERE ( ctp > REAL(missval_ctp, KIND=r4) )
       l2ctp = l2ctp * scale_ctp + offset_ctp
     END WHERE
-
-    IF ( locerrstat /= pge_errstat_ok ) &
-      CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      modulename//f_sep//'OMIL2 CTP access failed.', vb_lev_default, errstat )
 
     ! ------------------------------------------------
     ! Force the cloud parameters into physical bounds.
@@ -1812,7 +1828,7 @@ CONTAINS
 
     USE OMSAO_parameters_module, only: i2_missval
     USE OMSAO_omidata_module,   ONLY: omi_oobview_amf, omi_glint_add, omi_bigsza_amf
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -1862,9 +1878,8 @@ CONTAINS
     ! Check that the value in amf_wvl is within the range of the
     ! suplied scattering weights file.
     ! ----------------------------------------------------------
-    IF ( &
-      (amf_wvl  .LT. MINVAL(vl_wav) ) .OR. &
-      (amf_wvl2 .GT. MAXVAL(vl_wav) ) ) THEN
+    IF ((amf_wvl  .LT. MINVAL(vl_wav) ) .OR. &
+        (amf_wvl2 .GT. MAXVAL(vl_wav) ) ) THEN
       RETURN
     END IF
 
@@ -1959,9 +1974,9 @@ CONTAINS
       scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol
-    USE OMSAO_variables_module, ONLY: verb_thresh_lev
+    !USE OMSAO_variables_module, ONLY: verb_thresh_lev
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     IMPLICIT NONE
 
     ! ---------------
@@ -1998,6 +2013,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION(1,1)     :: Icr, Icl
     REAL    (KIND=r8), DIMENSION(CmETA)   :: local_chg
     REAL    (kind=8),  PARAMETER :: d2r = 3.141592653589793d0/180.0  !! JED fix
+    character (len=72) :: logmsg
     ! -----------------------------------
     ! Find look up table wavelength index
     ! No interpolation, closest available
@@ -2302,7 +2318,9 @@ CONTAINS
         END WHERE
 
       END DO ! End loop xtrack
-      IF ( verb_thresh_lev .GE. vb_lev_screen ) WRITE(*,*) 'Scattering weights line', itime
+      write(logmsg, '(a,1x,i5)')'Scattering weights line', itime
+      call tell_log (1, logmsg)
+      !IF ( verb_thresh_lev .GE. vb_lev_screen ) WRITE(*,*) 'Scattering weights line', itime
 
     END DO ! End loop lines
 
@@ -2465,7 +2483,7 @@ CONTAINS
     !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
     use datafields, only: albedo_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     IMPLICIT NONE
 
     ! ---------------
@@ -2490,7 +2508,7 @@ CONTAINS
     INTEGER (KIND=i4)                          :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1) :: colloc
 
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     he5_start_2d  = (/ 0, 0 /)
     he5_stride_2d = (/ 1, 1 /)
@@ -2516,7 +2534,7 @@ CONTAINS
     !USE sao_pge_utils, ONLY: roundoff_3darr_r8
     use datafields, only: clialtgrid_field, gasprofile_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     IMPLICIT NONE
 
     ! ---------------
@@ -2541,7 +2559,7 @@ CONTAINS
     INTEGER (KIND=i4)                               :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,1:nl) :: colloc
 
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     he5_start_3d  = (/ 0, 0, 0 /)
     he5_stride_3d = (/ 1, 1, 1 /)
@@ -2574,7 +2592,7 @@ CONTAINS
     !USE sao_pge_utils, ONLY: roundoff_3darr_r8
     use datafields, only: scaweights_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -2599,8 +2617,6 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)                               :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,1:nl) :: colloc
-
-    locerrstat = pge_errstat_ok
 
     he5_start_3d  = (/ 0, 0, 0 /)
     he5_stride_3d = (/ 1, 1, 1 /)
@@ -2629,8 +2645,9 @@ CONTAINS
       amfcfr, amfctp, errstat )
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
-    USE OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    USE OMSAO_errstat_module
+    USE OMSAO_he5_module, ONLY: HE5_SWWRFLD, he5_start_2d, he5_stride_2d, &
+      he5_edge_2d
+    USE OMSAO_errstat_module, only : pge_errstat_ok
     !USE OMSAO_omidata_module,   ONLY: n_roff_dig
     USE OMSAO_indices_module,   ONLY: pge_hcho_idx, pge_gly_idx
     !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
