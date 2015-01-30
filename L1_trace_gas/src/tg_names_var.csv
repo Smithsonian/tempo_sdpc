@@ -2,6 +2,7 @@
 # level 1 variables
 #
 TG_VAR_DQF,"data_quality_flag"
+TG_VAR_EARTH_SUN_DISTANCE,"earth_sun_distance"
 TG_VAR_IRRADIANCE,"irradiance"
 TG_VAR_LATITUDE,"latitude"
 TG_VAR_LATITUDE_BOUNDS,"latitude_bounds"

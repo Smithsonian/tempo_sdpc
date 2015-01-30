@@ -73,7 +73,8 @@ CONTAINS
 
   subroutine read_earth_sun_distance (filename, dist, errstat)
     use tio_module
-    use netcdf
+    use tg_names_module
+    use netcdf, only : nf90_nowrite
     use OMSAO_parameters_module, only : r4
     implicit none
     character (len=*), intent(in) :: filename
@@ -81,7 +82,6 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     type (tiof_file_type) :: obj
-    integer :: status
 
     if (errstat < 0) return
 
@@ -91,8 +91,8 @@ CONTAINS
       return
     endif
 
-    status = nf90_get_att (obj % fileid, nf90_global, "earth_sun_distance", dist)
-    if (status /= nf90_noerr) then
+    call tiof_get_r4 (obj, tg_var_earth_sun_distance, dist, errstat)
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
                        "Error reading earth-sun distance from file"//trim(filename), &
                        errstat)
