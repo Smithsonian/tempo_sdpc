@@ -16,6 +16,7 @@ extern "C" {
 /* default values for template files */
 #define _pTIO_TIME_COVERAGE_START   "2019-01-01T12:00:00 UTC"
 #define _pTIO_TIME_COVERAGE_END     "2019-01-01T13:00:00 UTC"
+#define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 
 typedef struct
 {

@@ -108,6 +108,25 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
+   /* earth_sun_distance */
+     {
+        static _pText_Attr_Type earth_sun_distance_attrs[] =
+          {
+             {"units", "m"},
+             {"comment", "Earth sun distance"},
+             _pTEXT_ATTRS_END
+          };
+        float earth_sun_distance = _pTIO_EARTH_SUN_DISTANCE;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_EARTH_SUN_DISTANCE, NC_FLOAT, 0, NULL, earth_sun_distance_attrs, &varid))
+          return -1;
+        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &earth_sun_distance)))
+          {
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing earth sun distance (%s)",
+                          __func__, nc_strerror(status));
+             return -1;
+          }
+     }
+
    return 0;
 }
 
