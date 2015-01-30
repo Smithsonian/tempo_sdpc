@@ -50,7 +50,7 @@ CONTAINS
   !---------------------------------------------------------------------------
 
 SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
-                                      pge_error_status )
+                                      errstat) !pge_error_status )
 
   ! ***********************************************************
   !
@@ -88,7 +88,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
     ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
   USE OMSAO_casestring_module, ONLY: lower_case
-  USE OMSAO_errstat_module
+  USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
   USE OMSAO_wfamf_module, ONLY: &
     yn_amf_wfmod, amf_wfmod_idx, amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, &
     amf_alb_cld, amf_max_sza
@@ -105,7 +105,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Output variable
   ! ---------------
   !CHARACTER (LEN=MAX_STR_LEN), INTENT (OUT)   :: l1b_radiance_esdt
-  INTEGER   (KIND=i4),      INTENT (INOUT) :: pge_error_status
+  !INTEGER   (KIND=i4),      INTENT (INOUT) :: pge_error_status
+  integer, intent(inout) :: errstat
 
   ! ---------------
   ! Local variables
@@ -119,19 +120,19 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  CHARACTER (LEN=25), PARAMETER :: modulename = 'read_fitting_control_file'
+  !CHARACTER (LEN=25), PARAMETER :: modulename = 'read_fitting_control_file'
 
   ! ========================
   ! Error handling variables
   ! ========================
-  INTEGER (KIND=i4) :: errstat, version
+  INTEGER (KIND=i4) :: locerrstat, version
 
   ! =================================
   ! External OMI and Toolkit routines
   ! =================================
   INTEGER (KIND=i4) :: pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
-  errstat = pge_errstat_ok
+  if (errstat < 0) return
 
   ! ---------------------------
   ! Initialize output variables
@@ -145,32 +146,47 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Open fitting control file
   ! -------------------------
   version = 1
-  errstat = PGS_IO_GEN_OPENF ( &
+  locerrstat = PGS_IO_GEN_OPENF ( &
     pge_static_input_luns(icf_idx), PGSd_IO_Gen_RSeqFrm, 0, &
     fit_ctrl_unit, version )
-  errstat = PGS_SMF_TESTSTATUSLEVEL(errstat)
-  CALL error_check ( &
-    errstat, PGS_SMF_MASK_LEV_S, pge_errstat_fatal, OMSAO_F_OPEN_FITCTRL_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))), &
-    vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_open_error, "opening fit control file: "// &
+                     trim(adjustl(static_input_fnames(icf_idx))), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, PGS_SMF_MASK_LEV_S, pge_errstat_fatal, OMSAO_F_OPEN_FITCTRL_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))), &
+  !  vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   ! -----------------------------------------------
   ! Position cursor to read molecule name(s) to fit
   ! -----------------------------------------------
   REWIND ( fit_ctrl_unit )
   CALL skip_to_filemark ( fit_ctrl_unit, molline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//molline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(molline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//molline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, '(A)') tmpchar
-  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
-  CALL error_check ( &
-    errstat, pge_errstat_ok, pge_errstat_fatal, OMSAO_F_GET_MOLFITNAME, &
-    modulename, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, locerrstat )
+  if (locerrstat < 0) then
+    call tell_error (tell_io_read_error, "reading fit control file entry: "// &
+                     trim(molline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pge_errstat_ok, pge_errstat_fatal, OMSAO_F_GET_MOLFITNAME, &
+  !  modulename, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   ! --------------------------------------------------------------
   ! Position cursor to read processing mode. Set YN_DIAGNOSTIC_RUN
@@ -179,10 +195,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! --------------------------------------------------------------
   REWIND ( fit_ctrl_unit )
   CALL skip_to_filemark ( fit_ctrl_unit, procline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//procline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(procline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//procline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, '(A)') tmpchar
   tmpchar = lower_case ( TRIM(ADJUSTL(tmpchar)) )
@@ -207,10 +228,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, genline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//genline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(genline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//genline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_smooth
   READ (fit_ctrl_unit, *) yn_doas
@@ -234,10 +260,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, scpline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(scpline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_solar_comp
   IF ( yn_solar_comp ) READ (fit_ctrl_unit,*) solar_comp_typ
@@ -247,10 +278,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -----------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, solmonthave_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(solmonthave_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_solmonthave
 
@@ -258,9 +294,13 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Check than only one or non of yn_solar_comp are yn_solmonthva are set True
   ! --------------------------------------------------------------------------
   IF ( yn_solar_comp .AND. yn_solmonthave ) THEN
-    CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_F_SOLCOM_VS_SOLAVE, &
-                      modulename, vb_lev_gt1mb, errstat )
-    IF ( pge_error_status >= pge_errstat_error ) RETURN
+    call tell_error (tell_usage_error, &
+                     "Unsupported option: both yn_solar_comp, yn_solmonthave=.true.", &
+                     errstat)
+    return
+    !CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_F_SOLCOM_VS_SOLAVE, &
+    !                  modulename, vb_lev_gt1mb, errstat )
+    !IF ( pge_error_status >= pge_errstat_error ) RETURN
   END IF
 
   ! -------------------------------------------------------
@@ -268,10 +308,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, nrmline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//nrmline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(nrmline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//nrmline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_spectrum_norm
 
@@ -282,10 +327,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, comline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//comline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(comline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//comline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_common_iter
   IF ( yn_common_iter ) READ (fit_ctrl_unit, *) common_latrange
@@ -295,10 +345,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, rrsline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//rrsline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(rrsline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//rrsline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) yn_radiance_reference
   READ (fit_ctrl_unit, *) yn_remove_target, target_npol
@@ -309,10 +364,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ----------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, socline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//socline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(socline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//socline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, *) max_itnum_sol
 
@@ -348,10 +408,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, racline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//racline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(racline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//racline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   ! --------------------------------------------------------------------
   ! Special logicals for HCHO - O3 and BrO prefits. Two-dimensional:
@@ -414,10 +479,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, wfmod_amf_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//wfmod_amf_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(wfmod_amf_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//wfmod_amf_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_amf_wfmod, amf_wfmod_idx
   READ (fit_ctrl_unit, *) amf_alb_lnd, amf_alb_sno, amf_alb_cld
   IF ( .NOT. yn_amf_wfmod ) READ (fit_ctrl_unit, *) amf_wvl, amf_wvl2, amf_max_sza
@@ -427,10 +497,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, o3amf_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//o3amf_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(o3amf_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//o3amf_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_o3amf_cor
 
   ! ---------------------------------------------------------
@@ -438,10 +513,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, rafline_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//rafline_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(rafline_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//rafline_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   ! ------------------------------------------------------------------------
   ! By default we set the undersampling spectrum to FALSE. Only if we select
@@ -450,11 +530,17 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ------------------------------------------------------------------------
   have_undersampling = .FALSE.
   getpars: DO j = 1, max_rs_idx
-    READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) tmpchar
-    CALL error_check ( &
-      errstat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-      modulename//f_sep//"radiance fitting parameters", vb_lev_default, pge_error_status )
-    IF ( pge_error_status >= pge_errstat_error ) RETURN
+    READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=file_read_stat) tmpchar
+    if (file_read_stat /= 0) then
+      call tell_error (tell_io_read_error, &
+                       "reading fit control file: reading radiance fitting parameters", &
+                       errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+    !  modulename//f_sep//"radiance fitting parameters", vb_lev_default, pge_error_status )
+    !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
     IF (is_end_of_input (tmpchar)) EXIT getpars
     !check_for_endofinput ( TRIM(ADJUSTL(tmpchar)), yn_eoi )
@@ -510,10 +596,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, wavwindow_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//wavwindow_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(wavwindow_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//wavwindow_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) l1b_channel
   READ (fit_ctrl_unit, *) ctrl_fit_winwav_lim(1:N_FIT_WINWAV), ctrl_fit_winexc_lim(1:2)
 
@@ -528,10 +619,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, fitresconst_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//fitresconst_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(fitresconst_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//fitresconst_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) ctrl_fitres_range(solcal_idx), ctrl_n_fitres_loop(solcal_idx)
   READ (fit_ctrl_unit, *) ctrl_fitres_range(radcal_idx), ctrl_n_fitres_loop(radcal_idx)
   READ (fit_ctrl_unit, *) ctrl_fitres_range(radref_idx), ctrl_n_fitres_loop(radref_idx)
@@ -542,10 +638,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, maxgoodcol_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//maxgoodcol_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(maxgoodcol_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//maxgoodcol_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) max_good_col
 
   ! ---------------------------------------------------------------------------
@@ -558,10 +659,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ---------------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, destriping_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(destriping_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_run_destriping
   READ (fit_ctrl_unit, *) yn_remove_ctrbias, ctr_bias_pol
   READ (fit_ctrl_unit, *) ctr_pol_base, ctr_pol_scal, ctr_pol_patt
@@ -574,10 +680,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! --------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, newshift_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(newshift_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_newshift
 
   ! -------------------------------------------------------------------
@@ -585,10 +696,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, refseccor_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(refseccor_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_refseccor
 
   ! ------------------------------------------------------------------
@@ -596,10 +712,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! ------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
   CALL skip_to_filemark ( fit_ctrl_unit, scattweight_str, tmpchar, file_read_stat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-    modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(scattweight_str), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
+  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
+  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_scat_weights
 
   ! -------------------------------------------------------------------
@@ -614,7 +735,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   winwav_min = MINVAL((/ ctrl_fit_winwav_lim(1:N_FIT_WINWAV) /))
   winwav_max = MAXVAL((/ ctrl_fit_winwav_lim(1:N_FIT_WINWAV) /))
 
-  errstat = pge_errstat_ok
+  !errstat = pge_errstat_ok
 
   ! ----------------------------------------------------------------------
   ! At this point we check whether we have to read from UV2 or VIS file.
@@ -636,17 +757,24 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! -----------------------------------------------
   ! Close fitting control file, report SUCCESS read
   ! -----------------------------------------------
-  errstat = PGS_IO_GEN_CLOSEF ( fit_ctrl_unit )
-  errstat = PGS_SMF_TESTSTATUSLEVEL(errstat)
-  CALL error_check ( &
-    errstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_FITCTRL_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))),               &
-    vb_lev_default, pge_error_status )
-
-  CALL error_check ( &
-    0, 1, pge_errstat_ok, OMSAO_S_READ_FITCTRL_FILE,                &
-    modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))), &
-    vb_lev_default, pge_error_status )
+  locerrstat = PGS_IO_GEN_CLOSEF ( fit_ctrl_unit )
+  locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_error, "closing fit control file: "// &
+                     trim(adjustl(static_input_fnames(icf_idx))), errstat)
+    return
+  endif
+  call tell_log (1, "Finished read fitting control file: "// &
+                 trim(adjustl(static_input_fnames(icf_idx))))
+  !CALL error_check ( &
+  !  errstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_FITCTRL_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))),               &
+  !  vb_lev_default, pge_error_status )
+  !
+  !CALL error_check ( &
+  !  0, 1, pge_errstat_ok, OMSAO_S_READ_FITCTRL_FILE,                &
+  !  modulename//f_sep//TRIM(ADJUSTL(static_input_fnames(icf_idx))), &
+  !  vb_lev_default, pge_error_status )
 
   RETURN
 END SUBROUTINE read_fitting_control_file
@@ -656,7 +784,7 @@ SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
   USE OMSAO_precision_module,  ONLY: i4
   USE OMSAO_indices_module,    ONLY: refspec_strings, max_rs_idx
   USE OMSAO_parameters_module, ONLY: max_mol_fit
-  USE OMSAO_errstat_module,    ONLY: pge_errstat_error, pge_errstat_ok
+  !USE OMSAO_errstat_module,    ONLY: pge_errstat_error, pge_errstat_ok
   USE strutils, ONLY: get_substring
   IMPLICIT NONE
 
@@ -668,8 +796,9 @@ SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
   ! ================
   ! Output variables
   ! ================
-  INTEGER (KIND=i4),                          INTENT (OUT) :: errstat, n_mol_fit
+  INTEGER (KIND=i4),                          INTENT (OUT) :: n_mol_fit
   INTEGER (KIND=i4), DIMENSION (max_mol_fit), INTENT (OUT) :: fitcol_idx
+  integer, intent(inout) :: errstat
 
   ! ===============
   ! Local variables
@@ -678,7 +807,7 @@ SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
   LOGICAL                      :: yn_eoc
   CHARACTER (LEN=LEN(tmpchar)) :: tmpsub, local_tmpchar
 
-  errstat = pge_errstat_ok
+  if (errstat < 0) return
 
   ! ----------------------------
   ! Initialize output quantities
@@ -709,7 +838,7 @@ SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
     END IF
     IF ( yn_eoc ) EXIT getmolnames
   END DO getmolnames
-  IF ( n_mol_fit == 0 .OR. ALL(fitcol_idx == 0) ) errstat = pge_errstat_error
+  IF ( n_mol_fit == 0 .OR. ALL(fitcol_idx == 0) ) errstat = -1
 
   RETURN
 END SUBROUTINE get_mols_for_fitting
@@ -717,7 +846,7 @@ END SUBROUTINE get_mols_for_fitting
 SUBROUTINE find_radiance_fitting_variables ( errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   USE OMSAO_indices_module,      ONLY:                  &
     max_rs_idx, max_calfit_idx, mns_idx, mxs_idx,       &
     calfit_titles,  radfit_titles,  refspec_titles,     &
@@ -749,13 +878,14 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   ! ---------------
   ! Local Variables
   ! ---------------
-  INTEGER (KIND=i4) :: i, j, k, idx, locerrstat
+  INTEGER (KIND=i4) :: i, j, k, idx !, locerrstat
   logical :: assigned_index
 
   ! CCM Fit Lineshape for every spectrum
   LOGICAL :: fit_lsf_for_every_spectrum = .TRUE.
 
-  locerrstat = pge_errstat_ok
+  if (errstat < 0) return
+  !locerrstat = pge_errstat_ok
 
   ! -------------------------------------------------------------
   ! Find the indices of those variables that are actually varied
@@ -850,6 +980,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
       ! -------------------------------------------------------------------------
       call assign_prefit_parameter_index (i, idx+j, fitvar_rad_init, lo_radbnd, up_radbnd, &
                                           assigned_index, errstat)
+      if (errstat < 0) return
       if (assigned_index) n_prefit_vars = n_prefit_vars + 1
 
     END DO
@@ -898,7 +1029,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   END DO
   nclenfit = LEN_TRIM(ADJUSTL(correlation_names_concat))
 
-  errstat = MAX ( errstat, locerrstat )
+  !errstat = MAX ( errstat, locerrstat )
 
   RETURN
 END SUBROUTINE find_radiance_fitting_variables
