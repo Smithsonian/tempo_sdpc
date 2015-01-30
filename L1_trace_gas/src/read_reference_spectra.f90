@@ -2,7 +2,7 @@ MODULE read_reference_spectra
   use tell_module
   implicit none
 CONTAINS
-SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
+SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
 
   USE OMSAO_precision_module
   USE OMSAO_indices_module,    ONLY: &
@@ -16,7 +16,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   use ctrlvars, only: yn_common_iter, yn_solar_comp, solar_comp_typ
   USE datafields, ONLY: o3_prefit_he5fields
   USE OMSAO_solcomp_module, ONLY: soco_pars_read
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   use datafields, only: o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
     Datafield_HE5
 
@@ -25,7 +25,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  CHARACTER (LEN=22), PARAMETER :: modulename = 'read_reference_spectra'
+  !CHARACTER (LEN=22), PARAMETER :: modulename = 'read_reference_spectra'
 
   ! ---------------
   ! Input variables
@@ -36,12 +36,12 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   ! Output variables
   ! ----------------
   INTEGER (KIND=i4), INTENT (OUT)   :: n_max_rspec
-  INTEGER (KIND=i4), INTENT (INOUT) :: pge_error_status
+  !INTEGER (KIND=i4), INTENT (INOUT) :: pge_error_status
 
   ! ------------------------
   ! Error handling variables
   ! ------------------------
-  INTEGER (KIND=i4) :: errstat
+  INTEGER, intent(inout) :: errstat
 
   ! ---------------
   ! Local variables
@@ -49,7 +49,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   INTEGER (KIND=i4) :: i, npts
   type(Datafield_HE5), pointer :: ptr
 
-  errstat = pge_errstat_ok
+  if (errstat < 0) return
 
   ! -------------------------------------------------------------
   ! This variable will hold the maximum number of spectral points
@@ -80,7 +80,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
       cycle
     endif
 
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
     SELECT CASE ( i )
     CASE ( comm_idx )
       IF ( .NOT. yn_common_iter ) THEN
@@ -90,6 +90,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
         CALL read_commonmode_spec ( &
           pge_static_input_luns(i), refspecs_original(i)%FileName, &
           winwav_min, winwav_max, common_mode_spec, errstat )
+        if (errstat < 0) return
 
         ! ----------------------------------------------------------------
         ! REFSPECs_ORIGINAL must know the number of spectral points, since
@@ -115,6 +116,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
       CALL read_one_refspec ( &
         i, pge_static_input_luns(i), refspecs_original(i)%FileName, &
         winwav_min, winwav_max, refspecs_original(i), npts, errstat )
+      if (errstat < 0) return
 
     END SELECT
 
@@ -123,10 +125,10 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
     ! --------------------------------------------
     n_max_rspec = MAX ( npts, n_max_rspec )
 
-    CALL error_check ( &
-      errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-      modulename//f_sep//TRIM(ADJUSTL(refspecs_original(i)%FileName)),       &
-      vb_lev_default, pge_error_status )
+    !CALL error_check ( &
+    !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+    !  modulename//f_sep//TRIM(ADJUSTL(refspecs_original(i)%FileName)),       &
+    !  vb_lev_default, pge_error_status )
 
     ! Move this outside loop
     !IF ( pge_idx == pge_o3_idx .AND. ( i==o3_t1_idx .OR. i==o3_t2_idx .OR. i==o3_t3_idx ) ) &
@@ -160,28 +162,34 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, pge_error_status )
   ! ingested here since it is used in a similar way than all the others.
   ! -----------------------------------------------------------------------
   IF ( yn_solar_comp ) THEN
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
     CALL soco_pars_read ( &
       OMSAO_solcomp_filename, solar_comp_typ, l1b_channel, &
       winwav_min, winwav_max, errstat )
     !v002 CALL soco_pars_read ( &
     !v002      OMSAO_solcomp_filename, solar_comp_typ-1, solar_comp_orb, l1b_channel, &
     !v002      l1br_opf_version, winwav_min, winwav_max, errstat )
-    CALL error_check ( &
-      errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-      modulename//f_sep//'Composite Solar Spectrum Parameters',       &
-      vb_lev_default, pge_error_status )
+    if (errstat < 0) then
+      call tell_error (tell_io_read_error, "reading composite solar spectrum parameters", &
+                       errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+    !  modulename//f_sep//'Composite Solar Spectrum Parameters',       &
+    !  vb_lev_default, pge_error_status )
   ElSE
     continue
-    ! In this case, the solar spectrum is read in later when the 
+    ! In this case, the solar spectrum is read in later when the
     ! when irradiance data are read.  Can this be done here??? --JED
   END IF
 
   ! ------------------------------------
   ! Report successful reading of spectra
   ! ------------------------------------
-  CALL error_check ( 0, 1, pge_errstat_ok, OMSAO_S_READ_REFSPEC_FILE, &
-    modulename, vb_lev_stmdebug, pge_error_status )
+  !CALL error_check ( 0, 1, pge_errstat_ok, OMSAO_S_READ_REFSPEC_FILE, &
+  !  modulename, vb_lev_stmdebug, pge_error_status )
+  call tell_log (1, "Finished reading reference spectra")
 
   RETURN
 END SUBROUTINE read_ref_spectra
@@ -193,7 +201,7 @@ SUBROUTINE read_one_refspec ( &
   USE OMSAO_indices_module,     ONLY: ring_idx
   USE OMSAO_parameters_module,  ONLY: MAX_STR_LEN, max_spec_pts
   USE OMSAO_variables_module,   ONLY: reference_spectrum_type, l1b_channel
-  USE OMSAO_errstat_module
+  USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
 
   IMPLICIT NONE
 
@@ -223,7 +231,7 @@ SUBROUTINE read_one_refspec ( &
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  CHARACTER (LEN=16), PARAMETER :: modulename = 'read_one_refspec'
+  !CHARACTER (LEN=16), PARAMETER :: modulename = 'read_one_refspec'
 
   ! ------------------------
   ! Error handling variables
@@ -236,7 +244,8 @@ SUBROUTINE read_one_refspec ( &
   INTEGER (KIND=i4), EXTERNAL :: &
     pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
-  locerrstat = pge_errstat_ok
+  if (errstat < 0) return
+  !locerrstat = pge_errstat_ok
 
   nspec = 0; rs_temp = 0.0_r8
   x = 0.0_r8 ; y = 0.0_r8
@@ -247,22 +256,32 @@ SUBROUTINE read_one_refspec ( &
   version = 1
   locerrstat = PGS_IO_GEN_OPENF ( omi_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
   locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-  CALL error_check ( &
-    locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_open_error, "opening reference spectrum file: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
-  write (*,*) "Reading reference spectrum from: ", trim(specname)
+  call tell_log (1, "Reading reference spectrum from: "//trim(specname))
 
   ! --------------------------------------
   ! Skip comments header to start of table
   ! --------------------------------------
   nskip = 0; file_read_stat = 0
   CALL skip_headerlines ( funit, '#', 'read', nskip, lastline, errstat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (errstat < 0) then
+    call tell_error (tell_io_read_error, "skipping ref. spectrum header comment lines: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! -----------------------------------------------------------------------
   ! Read dimension, start&end wavelength, and norm of spectrum; note that
@@ -272,10 +291,15 @@ SUBROUTINE read_one_refspec ( &
   rs_title = TRIM(ADJUSTL(lastline))
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_units
   READ (UNIT=funit, FMT=*, IOSTAT=file_read_stat) rs_temp, specnorm, ddum, ddum, nspec
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading ref. spectrum header lines: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! ---------------------------------------------------------------------
   ! Find first and last index to read, based on WINWAV_MIN and WINWAV_MAX
@@ -284,10 +308,13 @@ SUBROUTINE read_one_refspec ( &
   getidx: DO i = 1, nspec
     READ (UNIT=funit, FMT=*, IOSTAT=ios) xdum
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_io_read_error, "reading ref. spectrum: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
     IF ( xdum <= winwav_min )               j1 = i
     IF ( xdum >= winwav_max .AND. j2 == 0 ) j2 = i
@@ -299,10 +326,13 @@ SUBROUTINE read_one_refspec ( &
   ! Check for maximum number of spectral points
   ! -------------------------------------------
   IF ( j2-j1+1 > max_spec_pts ) THEN
-    CALL error_check ( &
-      0, 0, pge_errstat_error, OMSAO_E_REFSPEC_MAXPTS, &
-      modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-    IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, "too many spectral points in ref. spectrum: "// &
+                       trim(specname), errstat)
+      return
+    !CALL error_check ( &
+    !  0, 0, pge_errstat_error, OMSAO_E_REFSPEC_MAXPTS, &
+    !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+    !IF (  errstat /= pge_errstat_ok ) RETURN
   END IF
   ! --------------------------------------------------------------------------
   ! Rewind file, skip to start of table line, and re-read first entry as dummy
@@ -312,7 +342,7 @@ SUBROUTINE read_one_refspec ( &
   ! --------------------------------------
   ! Skip comments header to start of table
   ! --------------------------------------
-  CALL skip_headerlines ( funit, '#', 'skip', nskip, lastline, errstat )
+  CALL skip_headerlines ( funit, '#', 'skip', nskip, lastline, errstat)
 
   ! -----------------------------------------------
   ! Read dimension, start&end, and norm of spectrum
@@ -320,10 +350,15 @@ SUBROUTINE read_one_refspec ( &
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_title
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_units
   READ (UNIT=funit, FMT=*,     IOSTAT=file_read_stat) rs_temp, specnorm, ddum, ddum, nspec
-  CALL error_check ( &
-    ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_runtime_error, "reading ref. spectrum header: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! -------------------------------------------------
   ! Skip first J1-1 lines, then read J1 to J2 entries
@@ -331,10 +366,14 @@ SUBROUTINE read_one_refspec ( &
   DO i = 1, j1-1
     READ (UNIT=funit, FMT=*, IOSTAT=ios) xdum
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, &
+                       "skipping ref. spectrum lines outside spectral window: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
   END DO
   DO i = j1, j2
@@ -351,10 +390,14 @@ SUBROUTINE read_one_refspec ( &
       READ (UNIT=funit, FMT=*, IOSTAT=ios) x(i-j1+1), y(i-j1+1)
     END IF
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, &
+                       "reading ref. spectrum lines: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
   END DO
 
@@ -363,9 +406,14 @@ SUBROUTINE read_one_refspec ( &
   ! -----------------------------------------------
   locerrstat = PGS_IO_GEN_CLOSEF ( funit )
   locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-  CALL error_check ( &
-    locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_error, "closing ref. spectrum file: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
 
   ! ------------------------------------------------------------
   ! Reassign number of spectral points and first/last wavelength
@@ -403,7 +451,7 @@ SUBROUTINE read_commonmode_spec ( &
   USE OMSAO_precision_module,   ONLY: r8, i4
   USE OMSAO_parameters_module,  ONLY: MAX_STR_LEN, max_spec_pts, NXTRACK_MAX
   USE OMSAO_variables_module,   ONLY: common_mode_spectrum_type
-  USE OMSAO_errstat_module
+  USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
 
   IMPLICIT NONE
 
@@ -436,7 +484,7 @@ SUBROUTINE read_commonmode_spec ( &
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  CHARACTER (LEN=20), PARAMETER :: modulename = 'read_commonmode_spec'
+  !CHARACTER (LEN=20), PARAMETER :: modulename = 'read_commonmode_spec'
 
   ! ------------------------
   ! Error handling variables
@@ -451,7 +499,7 @@ SUBROUTINE read_commonmode_spec ( &
 
   if (errstat < 0) return
 
-  locerrstat = pge_errstat_ok
+  !locerrstat = pge_errstat_ok
 
   allocate (x(nxtrack_max,max_spec_pts), &
             y(nxtrack_max,max_spec_pts), &
@@ -473,20 +521,30 @@ SUBROUTINE read_commonmode_spec ( &
   version = 1
   locerrstat = PGS_IO_GEN_OPENF ( omi_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
   locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-  CALL error_check ( &
-    locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_open_error, "opening common mode file: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! --------------------------------------
   ! Skip comments header to start of table
   ! --------------------------------------
   nskip = 0; file_read_stat = 0
   CALL skip_headerlines ( funit, '#', 'read', nskip, lastline, errstat )
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (errstat < 0) then
+    call tell_error (tell_io_read_error, "skipping common mode header comment lines: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! -----------------------------------------------------------------------
   ! Read dimension, start&end wavelength, and norm of spectrum; note that
@@ -496,10 +554,15 @@ SUBROUTINE read_commonmode_spec ( &
   rs_title = TRIM(ADJUSTL(lastline))
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_units
   READ (UNIT=funit, FMT=*, IOSTAT=file_read_stat) rs_temp, specnorm, ddum, ddum, nspec
-  CALL error_check ( &
-    file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading ref. spectrum header lines: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  file_read_stat, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! ---------------------------------------------------------------------
   ! Find first and last index to read, based on WINWAV_MIN and WINWAV_MAX
@@ -508,10 +571,14 @@ SUBROUTINE read_commonmode_spec ( &
   getidx: DO i = 1, nspec
     READ (UNIT=funit, FMT=*, IOSTAT=ios) xdum
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, &
+                       "reading comm mode spectrum lines: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
     IF ( xdum <= winwav_min )               j1 = i
     IF ( xdum >= winwav_max .AND. j2 == 0 ) j2 = i
@@ -523,10 +590,14 @@ SUBROUTINE read_commonmode_spec ( &
   ! Check for maximum number of spectral points
   ! -------------------------------------------
   IF ( j2-j1+1 > max_spec_pts ) THEN
-    CALL error_check ( &
-      0, 0, pge_errstat_error, OMSAO_E_REFSPEC_MAXPTS, &
-      modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-    IF (  errstat /= pge_errstat_ok ) RETURN
+    call tell_error (tell_runtime_error, &
+                     "too many spectral points in common mode spectrum: "// &
+                     trim(specname), errstat)
+    return
+    !CALL error_check ( &
+    !  0, 0, pge_errstat_error, OMSAO_E_REFSPEC_MAXPTS, &
+    !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+    !IF (  errstat /= pge_errstat_ok ) RETURN
   END IF
   ! --------------------------------------------------------------------------
   ! Rewind file, skip to start of table line, and re-read first entry as dummy
@@ -544,10 +615,16 @@ SUBROUTINE read_commonmode_spec ( &
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_title
   READ (UNIT=funit, FMT='(A)', IOSTAT=file_read_stat) rs_units
   READ (UNIT=funit, FMT=*,     IOSTAT=file_read_stat) rs_temp, specnorm, ddum, ddum, nspec
-  CALL error_check ( &
-    ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-  IF (  errstat /= pge_errstat_ok ) RETURN
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, &
+                     "reading common mode spectrum header lines: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  !IF (  errstat /= pge_errstat_ok ) RETURN
 
   ! -------------------------------------------------
   ! Skip first J1-1 lines, then read J1 to J2 entries
@@ -555,19 +632,27 @@ SUBROUTINE read_commonmode_spec ( &
   DO i = 1, j1-1
     READ (UNIT=funit, FMT=*, IOSTAT=ios) xdum
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, &
+                       "skipping common mode spectrum lines outside spectral window: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
   END DO
   DO i = j1, j2
     READ (UNIT=funit, FMT=*, IOSTAT=ios) (x(ixt,i-j1+1), y(ixt,i-j1+1), ixt=1, nxtrack_max)
     IF ( i /= nspec .AND. ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_runtime_error, &
+                       "reading common mode spectrum lines: "// &
+                       trim(specname), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
   END DO
 
@@ -576,9 +661,14 @@ SUBROUTINE read_commonmode_spec ( &
   ! -----------------------------------------------
   locerrstat = PGS_IO_GEN_CLOSEF ( funit )
   locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-  CALL error_check ( &
-    locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSPEC_FILE, &
-    modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
+  if (locerrstat > pgs_smf_mask_lev_s) then
+    call tell_error (tell_io_error, "closing common mode spectrum file: "// &
+                     trim(specname), errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSPEC_FILE, &
+  !  modulename//f_sep//TRIM(ADJUSTL(specname)), vb_lev_default, errstat )
 
   ! ------------------------------------------------------------
   ! Reassign number of spectral points and first/last wavelength
@@ -620,7 +710,7 @@ SUBROUTINE skip_headerlines ( funit, hstr, read_or_skip, nhead, lastline, errsta
 
   USE OMSAO_precision_module, ONLY: i4
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   IMPLICIT NONE
 
   ! ---------------
@@ -641,6 +731,8 @@ SUBROUTINE skip_headerlines ( funit, hstr, read_or_skip, nhead, lastline, errsta
   ! ---------------
   INTEGER (KIND=i4) :: i, iskip, file_read_stat
 
+  if (errstat < 0) return
+
   SELECT CASE ( read_or_skip )
   CASE ( 'read' )
     iskip = 0 ; file_read_stat = 0
@@ -656,8 +748,14 @@ SUBROUTINE skip_headerlines ( funit, hstr, read_or_skip, nhead, lastline, errsta
       END IF
     END DO skiplines
     nhead = iskip
-    errstat = pge_errstat_ok
-    IF ( file_read_stat /= 0 ) errstat = pge_errstat_error
+    !errstat = pge_errstat_ok
+    IF ( file_read_stat /= 0 ) then
+      !errstat = pge_errstat_error
+      call tell_error (tell_io_read_error, &
+                       "in read_reference_spectra::skip_headerlines", &
+                       errstat)
+      return
+    endif
   CASE ( 'skip' )
     DO i = 1, nhead
       READ (UNIT=funit, FMT='(A)') lastline
