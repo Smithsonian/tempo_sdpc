@@ -54,9 +54,9 @@ contains
     call tiof_inq_dimlen (tio_l1obj, "xtrack", rpt%nxtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, "spectral_channel", rpt%nwavel_ccd, errstat)
     if (errstat < 0) return
-    
-    write (*,*) "DEBUG: In read_l1_radiance_info, l1bfile=", &
-      trim(l1bfile), ", l1bswath=", trim(rpt%swathname)
+
+    call tell_log (1, "DEBUG: In read_l1_radiance_info, l1bfile="// &
+                   trim(l1bfile)//", l1bswath="//trim(rpt%swathname))
     
     call tiof_close (tio_l1obj, errstat)
 
