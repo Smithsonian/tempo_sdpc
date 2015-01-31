@@ -66,7 +66,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   ! --------------------------------------
   IF ( yn_solar_i0 ) THEN
 
-    call tell_log (1, "dataspline: convolve for solar i0")
+    call tell_log (2, "dataspline: convolve for solar i0")
     allocate (solar_spc(1:nsol), solar_wvl(1:nsol), solar_conv(1:nsol), &
               xsec_i0_spc(1:nsol), STAT=ios)
     if (ios /= 0) then
@@ -141,7 +141,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
 
       write (logmsg, '(a, i4, a, i9)')"dataspline: i0, convolve ref. spectrum ", &
         idx, " ("//trim(refspec_strings(idx))//"), npts = ",npts
-      call tell_log (1, logmsg)
+      call tell_log (2, logmsg)
 
       du_load = solar_i0_scd(idx)
 
@@ -199,7 +199,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
         tmp_spec_copy(1:npts) = tmp_spec(1:npts)
         write (logmsg, '(a, i4, a)')"dataspline: convolve ref. spectrum ", idx, &
           " ("//trim(refspec_strings(idx))//")"
-        call tell_log (1, logmsg)
+        call tell_log (2, logmsg)
         CALL slitfunction_convolve ( &
           npts, tmp_wavl(1:npts), tmp_spec_copy(1:npts), tmp_spec(1:npts), &
           xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
@@ -221,7 +221,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
     ! ----------------------------------------------------------------------------
     write (logmsg, '(a, i4, a)')"dataspline: interpolate ", idx, &
       " ("//trim(refspec_strings(idx))//") "
-    call tell_log (1, logmsg)
+    call tell_log (2, logmsg)
     CALL interpolation ( &
       npts, tmp_wavl(1:npts), tmp_spec(1:npts),                         &
       n_radwvl, curr_rad_wvl(1:n_radwvl), dbase_loc(1:n_radwvl),        &
