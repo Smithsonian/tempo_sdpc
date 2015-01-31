@@ -15,9 +15,9 @@ CONTAINS
       shi_idx, squ_idx, solar_idx,    &
       radcal_idx
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, normweight, &
-      NWAVEL_MAX, NXTRACK_MAX
+      NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
-      Slit_Half_Width_1e, Slit_Asym_Factor, &  ! verb_thresh_lev, 
+      Slit_Half_Width_1e, Slit_Asym_Factor, &  ! verb_thresh_lev,
       sol_wav_avg, database, fitvar_cal, fitvar_cal_saved, &
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
@@ -320,6 +320,10 @@ CONTAINS
       omi_database (1:adj_num,ipix,1:max_rs_idx) = database (1:adj_num,1:max_rs_idx)
       n_omi_database_wvl(ipix) = adj_num
       omi_database_wvl(1:adj_num, ipix) = adj_wvls(1:adj_num)
+      if (adj_num < adj_num_max) then
+        omi_database (adj_num+1:adj_num_max,ipix,1:max_rs_idx) = r8_missval
+        omi_database_wvl (adj_num+1:adj_num_max, ipix) = r8_missval
+      endif
 
       ! ----------------------------------------------------------------------
       ! Update the radiance reference with the wavelength calibrated values.
@@ -383,8 +387,8 @@ CONTAINS
       ! get written out because it's value might have changed with each
       ! pass through the above loop.  I added adj_num_max and will use that.
       ! (Note that this makes the he5 and netcdf output files different.)
-      call write_refspec_database (omi_database(:,:,:), &
-                                   omi_database_wvl(:,:), &
+      call write_refspec_database (omi_database(1:adj_num_max,1:nxtrack_max,1:max_rs_idx), &
+                                   omi_database_wvl(1:adj_num_max,1:nxtrack_max), &
                                    refspecs_original(1:max_rs_idx), &
                                    max_rs_idx, adj_num_max, nxtrack, errstat)
       if (errstat < 0) then

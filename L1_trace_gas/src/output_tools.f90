@@ -747,16 +747,16 @@ contains
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
                           radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1), &
                           errstat)
 
@@ -764,7 +764,7 @@ contains
         radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1) - &
         radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
                           residuals, errstat)
 
     endif
@@ -1118,21 +1118,21 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()
-    integer (kind=i2), dimension(nxtrack,0:ntimes-1) :: i2_thgt
+    integer (kind=i2), dimension(nxtrack,ntimes) :: i2_thgt
 
     obj => primary_output_file
 
-    call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat, errstat)
-    call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon, errstat)
-    call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza, errstat)
-    call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza, errstat)
-    call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt, errstat)
+    call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, "in read_geofields", errstat)
       return
     endif
 
-    thgt = real(i2_thgt,kind=r4)
+    thgt(1:nxtrack,1:ntimes) = real(i2_thgt(1:nxtrack,1:ntimes),kind=r4)
 
   end subroutine read_geofields
 
@@ -1152,11 +1152,11 @@ contains
 
     obj => primary_output_file
 
-    call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col, errstat)
-    call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc, errstat)
-    call tiof_get2d_r8 (obj, tg_var_fit_rms_residual, [0,0], [ntimes, nxtrack], rms, errstat)
-    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf, errstat)
-    call tiof_get2d_i2 (obj, tg_var_fit_convergence_flag, [0,0], [ntimes, nxtrack], convergence_flag, errstat)
+    call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_fit_rms_residual, [0,0], [ntimes, nxtrack], rms(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_i2 (obj, tg_var_fit_convergence_flag, [0,0], [ntimes, nxtrack], convergence_flag(1:nxtrack,1:ntimes), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, "in read_column_results", errstat)
       return

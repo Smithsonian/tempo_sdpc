@@ -1359,7 +1359,7 @@ CONTAINS
       call tiof_close (tio_l1obj, errstat)
       return
     endif
-    call tiof_get2d_r4 (tio_l1obj, "latitude", [tstart,0], [ntimes,-1], latr4, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "latitude", [tstart,0], [ntimes,-1], latr4(1:nxtrack,1:ntimes), errstat)
     call tiof_close (tio_l1obj, errstat)
 
     return
