@@ -1120,6 +1120,8 @@ contains
     type (tiof_file_type), pointer :: obj => null()
     integer (kind=i2), dimension(nxtrack,ntimes) :: i2_thgt
 
+    if (errstat < 0) return
+
     obj => primary_output_file
 
     call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat(1:nxtrack,1:ntimes), errstat)
@@ -1149,6 +1151,8 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj => null()
+
+    if (errstat < 0) return
 
     obj => primary_output_file
 
