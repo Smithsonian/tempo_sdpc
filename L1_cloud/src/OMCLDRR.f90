@@ -21,6 +21,7 @@ program OMCLDRR
   use m_LUN_set
   use L1B_Reader_class
   use m_pgs_include
+  use tell_module
 
   IMPLICIT NONE
 
@@ -200,7 +201,17 @@ program OMCLDRR
   else
     call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
   endif
+  if (err_code < 0) then
+    call tell_error (tell_io_write_error, &
+           "create_output_file: failed", &
+           err_code)
+  endif
   call close_output_file(err_code)
+  if (err_code < 0) then
+    call tell_error (tell_io_write_error, &
+           "close_output_file: failed", &
+           err_code)
+  endif
 
   !Writing Metadata including LocalGranuleId
   !=========================================

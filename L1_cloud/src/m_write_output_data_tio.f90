@@ -20,33 +20,6 @@ module m_write_output_data_tio
 
 contains 
 
-!  subroutine write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
-!    implicit none
-!    type (tiof_file_type), intent(in) :: obj
-!    integer, intent(in) :: num_steps, num_xtrack
-!    integer, intent(inout) :: errstat
-!
-!    integer, dimension(num_xtrack) :: xtrack_indices
-!    integer, dimension(num_steps) :: step_indices
-!    integer :: i
-!
-!    if (errstat < 0) return
-!
-!    ! FIXME: eventually, this will be something like
-!    ! step_indices=[mirror_step_beg, ..., mirror_step_end]
-!    ! where mirror_step_beg/end are granule-specific
-!
-!    step_indices = [(i, i=0,num_steps-1)]
-!    call tiof_put1d_i4 (obj, cld_dim_step, [0], [num_steps], &
-!         step_indices, errstat)
-!
-!    xtrack_indices = [(i, i=0,num_xtrack-1)]
-!    call tiof_put1d_i4 (obj, cld_dim_xtrack, [0], [num_xtrack], &
-!         xtrack_indices, errstat)
-!
-!  end subroutine write_coordinate_vars
- 
-
   subroutine write_coordinate_vars (obj, num_steps, num_xtrack, &
        errstat, num_wavel)
     implicit none
@@ -60,9 +33,15 @@ contains
     integer, dimension(:), allocatable :: wavel_indices
     integer :: i
 
-    if (present(num_wavel)) allocate(wavel_indices(num_wavel))
-
     if (errstat < 0) return
+
+    if (present(num_wavel)) allocate(wavel_indices(num_wavel), stat=errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+           "write_coordinate_vars: unable to allocate num_wavel", &
+           errstat)
+      return
+    endif
 
     ! FIXME: eventually, this will be something like
     ! step_indices=[mirror_step_beg, ..., mirror_step_end]
@@ -203,12 +182,14 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_geo
     integer, dimension(2) :: dimids_xtrack_step
-    integer, dimension(:), allocatable :: dimids_wavel_xtrack_step
+    integer, dimension(3) :: dimids_wavel_xtrack_step
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
+
+    if (errstat < 0) return
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
@@ -216,7 +197,6 @@ contains
                               dimids_xtrack_step, &
                               errstat)
     if (write_resid) then
-      allocate(dimids_wavel_xtrack_step(3))
       call tiof_dimlist_lookup (dimlist, &
                               [cld_dim_wavel, cld_dim_xtrack, cld_dim_step], &
                               dimids_wavel_xtrack_step, &
@@ -311,7 +291,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "terrain height", &
                               units = "m", &
-                              valid_range = [0.0_r8, 10000.0_r8], &
+                              valid_range = [-1000.0_r8, 10000.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_geo)
     ! note that using a nf90_short causes the flags to be written out wrong
@@ -325,6 +305,12 @@ contains
                               fillvalue = fill_short, &
                               attlist=att_geo)
     call tiof_def_vars (obj, varlist, errstat)
+
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "write_geo_struct: failed", &
+           errstat)
+      return
+    endif
 
   end subroutine write_geo_struct
 
@@ -390,16 +376,17 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_cld
     integer, dimension(2) :: dimids_xtrack_step
-    integer, dimension(:), allocatable :: dimids_wavel_xtrack_step
+    integer, dimension(3) :: dimids_wavel_xtrack_step
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
 
+    if (errstat < 0) return
+
     ! Define dimid arrays associated with common data field shapes
     if (write_resid) then
-      allocate(dimids_wavel_xtrack_step(3))
       call tiof_dimlist_lookup (dimlist, &
                          [cld_dim_wavel, cld_dim_xtrack, cld_dim_step], &
                          dimids_wavel_xtrack_step, &
@@ -419,7 +406,6 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "cloud mask", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 3.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_cld)
@@ -461,7 +447,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "cloud fraction for O3", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -472,7 +457,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "radiative cloud fraction", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -484,7 +468,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "wavelength shift", &
                               units = "nm", &
-                              valid_range = [-1000.0_r8, 1000.0_r8], &
+                              valid_range = [-100.0_r8, 100.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -494,7 +478,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "surface reflectivity climatology", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -505,7 +488,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "reflectivity", &
-                              units = "NoUnits", &
                               valid_range = [-10.0_r8, 10.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -516,7 +498,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "residual bias", &
-                              units = "NoUnits", &
                               valid_range = [-1000.0_r8, 1000.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -527,7 +508,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "residual standard deviation", &
-                              units = "NoUnits", &
                               valid_range = [-1000.0_r8, 1000.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -538,7 +518,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "convergence factor", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1e38_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -549,7 +528,6 @@ contains
                               nf90_short, &
                               dimids = [dimids_xtrack_step(2)],  &
                               comment = "measurement quality flags", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 65536.0_r8], &
                               fillvalue = fill_short, &
                               deflate_level = deflate_level, &
@@ -560,7 +538,6 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "processing quality flags", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 65536.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_cld)
@@ -570,7 +547,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "wavelength squeeze", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 10.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -583,7 +559,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "effective filling in", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -619,7 +594,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "cloud reflectivity", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -632,7 +606,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "radiance (fractional) refl. sens.", &
-                              units = "NoUnits", &
                               valid_range = [0.0_r8, 100.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -642,6 +615,11 @@ contains
  
     call tiof_def_vars (obj, varlist, errstat)
 
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "write_cloud_struct: failed", &
+           errstat)
+      return
+    endif
   end subroutine write_cloud_struct
 
 
@@ -754,7 +732,7 @@ contains
     integer, intent(inout) :: errstat
     integer :: Qamissingdata , Qaboundsdata, QAPercentCloudCover, &
          PerGoodQualData, ind
-    character(len=350) :: expl="Flag set to Passed if "// &
+    character(len=*), parameter :: expl="Flag set to Passed if "// &
          "QAPercentHighQualityData >= 80%, "// &
          "Flag set to Suspect if percent high quality data >= 20%, "//& 
          "or L1B AutomaticQualityFlag not set to Passed, "//         &
@@ -802,6 +780,11 @@ contains
 
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
 
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "write_metadata: failed", &
+           errstat)
+      return
+    endif
 
   end subroutine write_metadata
 
