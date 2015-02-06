@@ -308,6 +308,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! reference, then we are still doing a radiance calibration and
   ! need to make sure that we are using a radiance from the current
   ! granule.
+  ! JCH:  The radiance reference also yields a value for n_comm_wvl
+  !       that accounts for the fit window definition.
   ! ---------------------------------------------------------------
 
   ! Should radiance and radiance-ref swathnames be equal?  The original

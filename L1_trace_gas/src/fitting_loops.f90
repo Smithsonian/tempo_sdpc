@@ -93,12 +93,9 @@ CONTAINS
     ! Set the number of wavelengths for the common mode
     ! -------------------------------------------------
     !
-    ! FIXME! (JCH) I'm commenting this out for now.
-    !              If n_comm_wvl is redefined in this way, then the netcdf
-    !              common mode output fails because of the seemingly pointless
-    !              change in array shape.
-    !              The best solution may be to change the common mode calculation
-    !              to avoid using global data like n_comm_wvl and common_mode_spec.
+    !JCH: The value of n_comm_wvl should have been correctly determined
+    !     already, in a way that accounts for the fitting window size,
+    !     so there's no need to re-define it in this way.
     !
     !n_comm_wvl_out = MAXVAL ( omi_nwav_radref(first_pix:last_pix) )
     !IF ( MAXVAL(omi_nwav_rad(first_pix:last_pix,0)) > n_comm_wvl_out ) &
