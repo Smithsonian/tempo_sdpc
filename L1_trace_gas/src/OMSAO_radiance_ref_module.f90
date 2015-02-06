@@ -232,8 +232,11 @@ CONTAINS
           ! Only proceed if we have a good value
           ! ------------------------------------
 
+            !omi_radiance_spec(1:nwrr,ix,iloop) = &
+            !  omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr) * cntr8(1:nwrr)
+            ! Since cntr8(:) is either 0 or 1, why square it?? -- JCH
             omi_radiance_spec(1:nwrr,ix,iloop) = &
-              omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr) * cntr8(1:nwrr)
+              omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr)
 
             !specsum = SUM ( omi_radiance_spec(1:nwrr,ix,iloop) ) / sum_cntr8
             !IF ( specsum == 0.0_r8 ) specsum = 1.0_r8
