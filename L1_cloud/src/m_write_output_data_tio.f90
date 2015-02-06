@@ -324,7 +324,7 @@ contains
     integer, intent(in) :: num_xtrack, num_steps
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -637,7 +637,7 @@ contains
     integer, intent(in), optional :: num_wavel
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
