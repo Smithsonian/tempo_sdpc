@@ -186,6 +186,7 @@ CONTAINS
     allcount    = 0.0_r8  ;  dumcount    = 0.0_r8  ;  szacount = 0.0_r4
     radref_wavl = 0.0_r8  ;  radref_spec = 0.0_r8
     omi_radref_sza = 0.0_r4 ; omi_radref_vza = 0.0_r4
+    n_rad_wvl_max = 0
 
     bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
 
@@ -206,7 +207,8 @@ CONTAINS
       CALL omi_read_radiance_lines (rpt_rr%l1bfilename, iline, nxrr, nloop, nwrr, errstat )
 
       ! Global used to set the dimension of fitspc
-      n_rad_wvl_max = MAXVAL(omi_nwav_rad(:,0))
+      !n_rad_wvl_max = MAXVAL(omi_nwav_rad(:,0))  ! <-- looks wrong to me (JCH)
+      n_rad_wvl_max = MAX(n_rad_wvl_max, MAXVAL(omi_nwav_rad(:,0)))
 
       DO iloop = 0, nloop-1
 
