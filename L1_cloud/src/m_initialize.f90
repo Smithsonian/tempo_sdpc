@@ -175,6 +175,14 @@ contains
         if (iprt >= 1) print *,'initialize: setting add_shift = ',add_shift
       endif
 
+      returnstatus = pgs_pc_getconfigdata(using_spline_LUN,buf)
+      IF(returnstatus == 0 ) THEN
+        read(buf,*) pcf_int
+        using_spline = pcf_int == 1
+        if (iprt >= 1) print *,'initialize: setting using_spline = ', &
+             using_spline
+      endif
+
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmin
