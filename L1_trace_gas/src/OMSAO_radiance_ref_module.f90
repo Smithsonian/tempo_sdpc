@@ -195,9 +195,7 @@ CONTAINS
       ! Check if loop ends before n_times_loop max is exhausted,
       ! or if we are outside the FIRST_LINE -> LAST_LINE range.
       ! --------------------------------------------------------
-      nloop = MIN( nlines_max, radiance_reference_lnums(2)-radiance_reference_lnums(1)+1 )
-
-      IF ( (iline+nloop) > ntrr  )  nloop = ntrr - iline
+      nloop = min(nlines_max, radiance_reference_lnums(2)-iline+1)
 
       ! ------------------------------
       ! Get NTIMES_LOOP radiance lines
@@ -564,7 +562,7 @@ CONTAINS
       exclud_idx(1:2) = rad_ccdpix_exclusion(ipix,1:2)
 
       ! Set up generic fitting arrays
-      CALL omi_adjust_radiance_data ( & 
+      CALL omi_adjust_radiance_data ( &
         select_idx(1:4), exclud_idx(1:2),            &
         n_rad_wvl_loc, &
         adj_wvls(1:n_rad_wvl_loc), adj_spec(1:n_rad_wvl_loc), adj_wgts(1:n_rad_wvl_loc), &
