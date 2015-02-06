@@ -97,8 +97,9 @@ libdir = $(prefix)/lib
 
 install-header:
 	$(MKINSDIR) $(incdir)
-	@echo installing tio.h and tio_module.mod in $(incdir)/
+	@echo installing headers in $(incdir)/
 	$(INSTALL_DATA) $(srcdir)/tio.h $(incdir)
+	$(INSTALL_DATA) $(srcdir)/tio_template.h $(incdir)
 	$(INSTALL_DATA) $(elfdir)/tio_module.mod $(incdir)
 
 install-elf:
