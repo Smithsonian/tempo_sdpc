@@ -502,7 +502,7 @@ CONTAINS
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I5))') 'SOLAR FIT          #', ipix, &
+      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'SOLAR FIT          #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
         fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), '; exit val = ', &
         solcal_exval, '; iter num = ', solcal_itnum

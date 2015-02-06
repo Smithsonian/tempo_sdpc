@@ -266,7 +266,7 @@ CONTAINS
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I5))') 'RADIANCE Wavcal    #', ipix, &
+      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
         '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
         '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum

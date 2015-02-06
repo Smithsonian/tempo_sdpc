@@ -616,7 +616,7 @@ CONTAINS
 
         IF ( is_bad_pixel ) CYCLE
 
-        WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I5))') 'RADIANCE Reference #', ipix, &
+        WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'RADIANCE Reference #', ipix, &
           ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
           fitvar_rad(shi_idx), '; squeeze = ', fitvar_rad(squ_idx),&
           '; exit val = ', radfit_exval, '; iter num = ', radfit_itnum
