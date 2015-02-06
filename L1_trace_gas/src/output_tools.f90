@@ -724,26 +724,26 @@ contains
     obj => primary_output_file
 
     ! result_vars
-    call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, nxtrack], &
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, nxtrack], &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_fit_rms_residual, [iline,0], [nblock, -1], &
+    call tiof_put2d_r8 (obj, tg_var_fit_rms_residual, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_rms_residual (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_i2 (obj, tg_var_fit_convergence_flag, [iline,0], [nblock, -1], &
+    call tiof_put2d_i2 (obj, tg_var_fit_convergence_flag, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_put2d_i2 (obj, tg_var_fit_iteration_count, [iline,0], [nblock, -1], &
+      call tiof_put2d_i2 (obj, tg_var_fit_iteration_count, [iline,0], [nblock, nxtrack], &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_params, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_params, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % params(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_errors, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_errors, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % errors(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_correl, [iline,0,0], [nblock,-1,-1], &
+      call tiof_put3d_r8 (obj, tg_var_diag_correl, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
@@ -772,19 +772,19 @@ contains
     ! input_vars
     call tiof_put1d_r8 (obj, tg_var_time, [iline], [nblock], &
                         input_vars % time (0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_longitude, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_longitude, [iline,0], [nblock,nxtrack], &
                         input_vars % longitude (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_latitude, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_latitude, [iline,0], [nblock,nxtrack], &
                         input_vars % latitude (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_sz_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_sz_angle, [iline,0], [nblock,nxtrack], &
                         input_vars % solar_zenith (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_sa_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_sa_angle, [iline,0], [nblock,nxtrack], &
                         input_vars % solar_azimuth (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_vz_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_vz_angle, [iline,0], [nblock,nxtrack], &
                         input_vars % viewing_zenith (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r4 (obj, tg_var_va_angle, [iline,0], [nblock,-1], &
+    call tiof_put2d_r4 (obj, tg_var_va_angle, [iline,0], [nblock,nxtrack], &
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,-1], &
+    call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
@@ -838,6 +838,7 @@ contains
 
     type (tiof_file_type), pointer :: obj => null()
     type (tiof_attlist_type) :: attlist
+    integer :: ncp, nsl
 
     obj => primary_output_file
 
@@ -871,9 +872,10 @@ contains
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
     call tiof_attlist_free (attlist)
 
-    call tiof_put2d_i2 (obj, tg_var_main_dqf, [0,0], [stats % num_scan_lines,-1], &
-                        stats % quality_flag (1:stats % num_crosstrack_pixels, &
-                                              0:stats % num_scan_lines-1), &
+    ncp = stats % num_crosstrack_pixels
+    nsl = stats % num_scan_lines
+    call tiof_put2d_i2 (obj, tg_var_main_dqf, [0,0], [nsl,ncp], &
+                        stats % quality_flag (1:ncp, 0:nsl-1), &
                         errstat)
 
     if (yn_diagnostic_run) then
@@ -903,7 +905,7 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,nxtrack], &
                         albedo (1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_albedo", errstat)
@@ -927,9 +929,9 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,ntimes,nxtrack], &
                         gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
-    call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,ntimes,nxtrack], &
                         climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
@@ -951,7 +953,7 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,-1,-1], &
+    call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,ntimes,nxtrack], &
                         scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
@@ -979,25 +981,25 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,-1], &
+    call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,nxtrack], &
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_amf_geometric, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_geometric, [0,0], [ntimes,nxtrack], &
                         amf_corr % amf_geometric (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes,nxtrack], &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_write_cloud_variables) then
-      call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,-1], &
+      call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,nxtrack], &
                           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
-      call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,-1], &
+      call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
                           amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
     endif
 
     ! Note that we're over-writing the column amount variable in the file
     ! (to which we previously wrote the slant column values).
-    call tiof_put2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes,-1], &
+    call tiof_put2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes,nxtrack], &
                         amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_amf_correction", errstat)
@@ -1006,11 +1008,11 @@ contains
 
   end subroutine write_amf_correction
 
-  subroutine write_common_mode (nxtrack, ncommwvl, common_mode, errstat)
+  subroutine write_common_mode (nxtrack, n_comm_wvl, common_mode, errstat)
     use OMSAO_variables_module, only : common_mode_spectrum_type
     implicit none
 
-    integer (kind=i4), intent(in) :: nxtrack, ncommwvl
+    integer (kind=i4), intent(in) :: nxtrack, n_comm_wvl
     type (common_mode_spectrum_type), intent(in) :: common_mode
     integer, intent(inout) :: errstat
 
@@ -1020,11 +1022,11 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,-1], &
-                        common_mode % refspecdata (1:ncommwvl,1:nxtrack), errstat)
-    call tiof_put2d_r8 (obj, tg_var_common_mode_wavelengths, [0,0], [nxtrack,-1], &
-                        common_mode % refspecwavs (1:ncommwvl,1:nxtrack), errstat)
-    call tiof_put2d_i2 (obj, tg_var_common_mode_ccd_pixel_range, [0,0], [2,-1], &
+    call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,n_comm_wvl], &
+                        common_mode % refspecdata (1:n_comm_wvl,1:nxtrack), errstat)
+    call tiof_put2d_r8 (obj, tg_var_common_mode_wavelengths, [0,0], [nxtrack,n_comm_wvl], &
+                        common_mode % refspecwavs (1:n_comm_wvl,1:nxtrack), errstat)
+    call tiof_put2d_i2 (obj, tg_var_common_mode_ccd_pixel_range, [0,0], [2,nxtrack], &
                         common_mode % ccdpixel (1:nxtrack,1:2), errstat)
     call tiof_put1d_i4 (obj, tg_var_common_mode_count, [0], [nxtrack], &
                         common_mode % refspeccount (1:nxtrack), errstat)
@@ -1082,7 +1084,7 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, -1], &
+    call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, nxtrack], &
                         column(1:nxtrack, 0:ntimes-1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_reference_sector_corrected_column", &

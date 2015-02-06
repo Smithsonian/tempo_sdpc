@@ -243,9 +243,12 @@ contains
     !call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
     !call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], [1,-1,-1], tmp_spectrum(:,1:nxtrack,1:1), errstat)
-    call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], [1,-1,-1], tmp_qflags(:,1:nxtrack,1:1), errstat)
-    call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,-1,-1], tmp_wavelengths(:,1:nxtrack,1:1), errstat)
+    call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], [1,nxtrack,nwavel], &
+                        tmp_spectrum(:,1:nxtrack,1:1), errstat)
+    call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], [1,nxtrack,-1], &
+                        tmp_qflags(:,1:nxtrack,1:1), errstat)
+    call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,nxtrack,nwavel], &
+                        tmp_wavelengths(:,1:nxtrack,1:1), errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_runtime_error, "read_irradiance_data:  failed reading irradiance data", &
