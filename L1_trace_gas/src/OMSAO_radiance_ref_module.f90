@@ -413,7 +413,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
     LOGICAL                  :: do_skip_pix
     CHARACTER (LEN=MAX_STR_LEN) :: addmsg
-    LOGICAL                                          :: is_bad_pixel
+    LOGICAL                                          :: is_bad_pixel, yn_reference_fit
     INTEGER (KIND=i4), DIMENSION (4)                 :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)                 :: exclud_idx
     INTEGER (KIND=i4)                                :: n_solar_pts
@@ -601,6 +601,7 @@ CONTAINS
           .AND. (n_rad_wvl_loc > n_fitvar_rad) &
           .AND. (.NOT. do_skip_pix)) THEN
         is_bad_pixel     = .FALSE.
+        yn_reference_fit = .true.
 
         call tell_log (2, 'OMSAO_radiance_ref_module: call fit_radiance')
         CALL fit_radiance ( &
@@ -612,7 +613,7 @@ CONTAINS
           target_var(1:n_fincol_idx,ipix),                                          &
           allfit_cols_tmp(1:n_fitvar_rad), allfit_errs_tmp(1:n_fitvar_rad),         &
           corr_matrix_tmp(1:n_fitvar_rad), is_bad_pixel, fitspctmp, &
-          .true., errstat)
+          yn_reference_fit, errstat)
 
         IF ( is_bad_pixel ) CYCLE
 

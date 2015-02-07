@@ -37,7 +37,7 @@ CONTAINS
       fitcol, rms, dfitcol, radfit_exval, radfit_itnum, chisquav,   &
       prefit, o3fit_cols, o3fit_dcols,                              &
       target_var, allfit, allerr, corrmat, is_bad_pixel, fitspc_out, &
-      do_reference_fit, errstat)
+      yn_reference_fit, errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,      ONLY: &
@@ -73,7 +73,7 @@ CONTAINS
       pge_idx, ipix, n_rad_wvl_loc, num_fitres_loops, fitres_range
 
     type (prefit_type), intent(in) :: prefit
-    logical, intent(in) :: do_reference_fit
+    logical, intent(in) :: yn_reference_fit
 
     ! -----------------------------
     ! (Possibly) Modified Variables
@@ -369,9 +369,11 @@ CONTAINS
       ! ---------------------------
       ! Update common mode spectrum
       ! ---------------------------
-      CALL compute_common_mode ( &
-        do_reference_fit, ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
-        fitres(1:n_rad_wvl_loc), errstat)
+      if (.not.yn_reference_fit) then
+        CALL compute_common_mode ( &
+          yn_reference_fit, ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
+          fitres(1:n_rad_wvl_loc), errstat)
+      endif
       if (errstat < 0) return
 
       ! =====================================================================
@@ -504,7 +506,7 @@ CONTAINS
       ! -------------------------------------------------------------------
       !IF ( (radfit_exval == opt_convergence_good) .AND. &
       !     (fitcol+1.0_r8*dfitcol >= 0.0_r8)                    .AND. &
-      !     ( .NOT. do_reference_fit )                                  )  THEN
+      !     ( .NOT. yn_reference_fit )                                  )  THEN
       !   fitvar_rad_saved(1:n_max_fitpars) = fitvar_rad(1:n_max_fitpars)
       !ELSE
       fitvar_rad_saved(1:n_max_fitpars) = fitvar_rad_init(1:n_max_fitpars)

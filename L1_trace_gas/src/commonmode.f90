@@ -89,7 +89,7 @@ contains
   end subroutine finalize_common_mode
 
   SUBROUTINE compute_common_mode ( &
-      do_reference_fit, xti, nwvl, fitwvl, fitres, errstat)
+      yn_reference_fit, xti, nwvl, fitwvl, fitres, errstat)
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_indices_module,   ONLY: max_calfit_idx, comm_idx, mxs_idx
@@ -104,7 +104,7 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    LOGICAL,                             INTENT (IN) :: do_reference_fit
+    LOGICAL,                             INTENT (IN) :: yn_reference_fit
     INTEGER (KIND=i4),                   INTENT (IN) :: xti, nwvl
     REAL    (KIND=r8), DIMENSION (nwvl), INTENT (IN) :: fitwvl, fitres
     integer, intent(inout) :: errstat
@@ -120,7 +120,7 @@ contains
 
     if (errstat < 0) return
 
-    IF ( do_reference_fit ) THEN
+    IF ( yn_reference_fit ) THEN
       ! -------------------------------------------------------------
       ! The Radiance Reference Fit branch saves the wavelength values
       ! and initializes the count and spectrum arrays for the current

@@ -517,7 +517,7 @@ CONTAINS
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     LOGICAL                                     :: do_skip_pix, do_cycle_this_pix
-    LOGICAL                                     :: is_bad_pixel
+    LOGICAL                                     :: is_bad_pixel, yn_reference_fit
     INTEGER (KIND=i4), DIMENSION (4)            :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
     INTEGER (KIND=i4)                           :: n_solar_pts
@@ -654,6 +654,13 @@ CONTAINS
           .and. (adj_num > n_fitvar_rad) &
           .and. (.not. do_skip_pix)) then
 
+        ! FIXME(?) JCH: in the original code, yn_reference_fit=.false.
+        ! occurred _after_ the call to fit_radiance.  In other words,
+        ! yn_reference_fit was uninitialized at the time it was passed
+        ! to fit_radiance.  I assume the intent was to call fit_radiance
+        ! with yn_reference_fit=.false.
+        yn_reference_fit = .false.
+
         call tell_log (2, 'fitting_loops: call fit_radiance')
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
@@ -665,7 +672,7 @@ CONTAINS
           target_var(1:n_fincol_idx,ipix), &
           allfit_cols(1:n_fitvar_rad,ipix), allfit_errs(1:n_fitvar_rad,ipix), &
           corr_matrix(1:n_fitvar_rad,ipix), is_bad_pixel, fitspc(1:adj_num), &
-          .false., errstat)
+          yn_reference_fit, errstat)
 
         IF ( is_bad_pixel ) CYCLE
 
