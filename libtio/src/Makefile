@@ -175,7 +175,11 @@ distclean-tempo-names:	clean-tempo-names
 	done
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio.c $(LIBS)
+	git_commit="(unknown)" ; \
+	if test -d $(config_dir)/.git ; then \
+	   git_commit=`git rev-parse --verify HEAD` ; \
+	fi ; \
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) -DGIT_COMMIT_HASH='"'$${git_commit}'"' $(srcdir)/tio.c $(LIBS)
 
 $(elfdir)/tio_template.o:	$(srcdir)/tio_template.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_template.c $(LIBS)

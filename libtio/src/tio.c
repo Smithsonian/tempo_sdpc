@@ -13,6 +13,7 @@
 #include "_tio.h"
 
 #define EMPTY()
+#define _pTIO_STR(s) #s
 
 int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
                                      _pDim_Table_Type *dim_table)
@@ -553,9 +554,32 @@ int TIO_get_att (int grp, int varid, const char *attname,
    return 0;
 }
 
+int TIO_put_git_commit_hash (int grp, const char *attname)
+{
+   const char hash[] = GIT_COMMIT_HASH ;
+   const char *name = "tio_commit";
+   int status;
+
+   if ((attname != NULL) && (*attname != 0) && (*attname != ' '))
+     name = attname;
+
+   status = nc_put_att_text (grp, NC_GLOBAL, name, strlen(hash), hash);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: writing git commit hash (%s)",
+                     __func__, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
 /* Fortran bindings */
 
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
             INT, STRING, PINT, PINT, INT, PVOID)
 FCALLSCFUN6(INT, TIO_put_var_section, TIOF_PUT_VAR_SECTION, tiof_put_var_section,
             INT, STRING, PINT, PINT, INT, PVOID)
+FCALLSCFUN2(INT, TIO_put_git_commit_hash, TIO_F_PUT_GIT_HASH, tio_f_put_git_hash,
+            INT, STRING)

@@ -101,11 +101,12 @@ module tio_module
     type (tiof_var_type), private, pointer :: head => null(), tail => null()
   end type
 
-  integer :: tiof_get_var_section, tiof_put_var_section
-  external   tiof_get_var_section, tiof_put_var_section
-  public     tiof_put_var_section, tiof_get_var_section
+  integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash
+  external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash
+  public     tiof_put_var_section, tiof_get_var_section, tio_f_put_git_hash
 
   public tiof_create, tiof_open, tiof_close, &
+    tiof_put_git_commit_hash, &
     tiof_inq_group, tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
@@ -118,6 +119,23 @@ module tio_module
 contains
 
   include 'get_put_code.inc'
+
+  subroutine tiof_put_git_commit_hash (obj, errstat, name)
+    use iso_c_binding, only : c_null_ptr, c_null_char
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout):: errstat
+    character (len=*), optional, intent(in) :: name
+
+    if (errstat < 0) return
+
+    if (present(name)) then
+      errstat = tio_f_put_git_hash (obj % groupid, trim(adjustl(name))//c_null_char)
+    else
+      errstat = tio_f_put_git_hash (obj % groupid, c_null_ptr)
+    endif
+
+  end subroutine
 
   !> write a 1d array of strings as a 2D array of characters
   subroutine tiof_put1d_text (obj, name, start, edge, array, errstat)

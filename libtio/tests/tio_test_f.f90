@@ -86,6 +86,12 @@ program tio_test
     stop 2
   endif
 
+  call tiof_put_git_commit_hash (obj, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_put_git_commit_hash failed'
+    stop 2
+  endif
+
   call tiof_put_i4 (obj, "scalar_int", scalar_int, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_put_i4 failed'

@@ -117,6 +117,13 @@ extern int TIO_put_att (int grp, int varid, const char *attname,
 extern int TIO_get_att (int grp, int varid, const char *attname,
                         int xtype, void *att);
 
+/** Write a global attribute containing the git commit hash
+ * @param  ncid     File ncid
+ * @param  attname  Name of the attribute (uses default if NULL)
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_put_git_commit_hash (int ncid, const char *attname);
+
 #if 0
 {
 #endif
