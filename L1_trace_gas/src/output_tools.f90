@@ -642,6 +642,8 @@ contains
       return
     endif
 
+    call tiof_put_git_commit_hash (obj, errstat)
+
     ! Define a dimension list.
     call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
