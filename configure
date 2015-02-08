@@ -649,6 +649,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+SDPTK_VERSION
 OTS_ROOT
 COMPILER_SUITE
 host_os
@@ -708,6 +709,7 @@ ac_user_opts='
 enable_option_checking
 with_compilers
 with_otsroot
+with_sdptk_version
 with_hdfeos
 with_hdfeos5
 with_netcdf
@@ -1334,6 +1336,7 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-compilers=XXX    Use compiler family gfortran or intel
   --with-otsroot=DIR      Use OTS libraries installed in DIR
+  --with-sdptk-version=S  SDPTK version string (e.g. 5.2.19v1.00)
   --with-hdfeos=DIR       Use HDFEOS libraries installed in DIR
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
@@ -3560,6 +3563,21 @@ if test "x$jh_with_otsroot" = "xno"; then
    OTS_ROOT="/nfs/$HOST/d2/omi/install/$COMPILER_SUITE"
 else
    OTS_ROOT="$jh_with_otsroot"
+fi
+
+
+
+# Check whether --with-sdptk-version was given.
+if test "${with_sdptk_version+set}" = set; then :
+  withval=$with_sdptk_version; jh_with_sdptk_version=$withval
+else
+  jh_with_sdptk_version=no
+fi
+
+if test "x$jh_with_sdptk_version" = "xno"; then
+   SDPTK_VERSION="5.2.19v1.00"
+else
+   SDPTK_VERSION="$jh_with_sdptk_version"
 fi
 
 

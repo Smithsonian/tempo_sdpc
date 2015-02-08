@@ -608,6 +608,17 @@ else
 fi
 AC_SUBST(OTS_ROOT)
 
+AC_ARG_WITH(sdptk-version,
+  [  --with-sdptk-version[=S]  SDPTK version string (e.g. 5.2.19v1.00)],
+  [jh_with_sdptk_version=$withval],
+  [jh_with_sdptk_version=no])
+if test "x$jh_with_sdptk_version" = "xno"; then
+   SDPTK_VERSION="5.2.19v1.00"
+else
+   SDPTK_VERSION="$jh_with_sdptk_version"
+fi
+AC_SUBST(SDPTK_VERSION)
+
 AC_CHECK_SIZEOF(long)
 if test "$ac_cv_sizeof_long" -eq 4 ; then
    OMIUTIL_SYSDIR=linux32
