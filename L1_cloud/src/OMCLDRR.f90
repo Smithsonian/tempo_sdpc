@@ -6,6 +6,7 @@ program OMCLDRR
   use m_rd_toms_refl
   use m_initialize
   use m_read_input_data
+  use m_read_input_data_tio
   use m_read_tables
   use m_read_ocean_table
   use m_write_output_data
@@ -54,8 +55,8 @@ program OMCLDRR
   integer (kind=4), external :: pgs_pc_getreference !, OMI_SMF_setmsg
   TYPE (L1B_block_type) :: blk
 
-  integer (kind=4) :: ext_index
-  character(len=255) :: filename_out_nc
+  integer (kind=4) :: ext_index, errstat
+  character(len=255) :: filename_out_nc, filename_in_nc
 
   !************************************************************************
 
@@ -64,6 +65,7 @@ program OMCLDRR
   !===============================
   if (iprt > 1) print *,'cloud_ret: initializing'
   call initialize(err_code)
+
 
   !Read in pre-computed Ring and radiance data
   !===========================================
@@ -105,7 +107,14 @@ program OMCLDRR
   !radiance and solar irradiance spectra
   !===========================================================
   if (iprt > 1) print *,'cloud_ret: reading input data'
-  call read_input_data(blk, err_code)
+  !he5 version
+!  call read_input_data(blk, err_code)
+  !netCDF version
+  ext_index=index(filename,'.he4')
+ print *, filename
+  filename_in_nc=filename(1:ext_index-1)//'.nc'
+  call read_input_data_tio(filename_in_nc, errstat)
+call exit(0)
 
   !loop over the # of lines
   !========================
@@ -120,8 +129,15 @@ program OMCLDRR
       !radiance and solar irradiance spectra
       !===========================================================
       if (iprt > 1) print *,'cloud_ret: reading input data'
+      !he5 version
       call read_input_data(blk, err_code)
       if(err_code >= 1) goto 999
+      !netCDF version
+      call read_input_data_tio(filename_in_nc, errstat)
+      if(errstat > 0) goto 999
+      
+      ext_index=index(filename_out,'.he5')
+      filename_in_nc=filename_out(1:ext_index-1)//'.nc'
 
     endif ! start_line
 
