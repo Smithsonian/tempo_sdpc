@@ -19,7 +19,7 @@ program tio_test
   integer, dimension(3) :: start, edge
   real (kind=4), allocatable, dimension(:,:,:) :: radiance, rx
   integer :: errstat, i,j,k, iwave_start
-  integer :: scalar_int=12345, scalar_int_read=0
+  integer :: scalar_int=-12345, scalar_int_read=0
   real (kind=4) :: n
 
   type (tiof_dimlist_type) :: dimlist
@@ -62,6 +62,7 @@ program tio_test
   endif
 
   call tiof_varlist_append (varlist, errstat, "scalar_int", nf90_int)
+  call tiof_varlist_append (varlist, errstat, "scalar_uint", nf90_uint)
   call tiof_varlist_append (varlist, errstat, "dim1", nf90_int, &
                             dimids=[dimids(2)], &
                             comment="dim1 coordinate variable")
@@ -107,6 +108,21 @@ program tio_test
     stop 2
   endif
 
+  call tiof_put_ui4 (obj, "scalar_uint", scalar_int, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_put_ui4 failed'
+    stop 2
+  endif
+  call tiof_get_ui4 (obj, "scalar_uint", scalar_int_read, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_get_ui4 failed'
+    stop 2
+  endif
+  if (scalar_int_read /= scalar_int) then
+    write (*,*)'*** I/O of scalar variables failed'
+    stop 2
+  endif
+  
   list_of_names(:)(:) = ' '
   input_names(:)(:) = ' '
   list_of_names(1) = "Fred"

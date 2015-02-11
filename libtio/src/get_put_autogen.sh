@@ -28,11 +28,23 @@ expand_type(){
          ftype=integer
          fkind=i1
          ;;
+   ui1 ) ntype=nf90_ubyte
+         ftype=integer
+         fkind=i1
+         ;;
     i2 ) ntype=nf90_short
          ftype=integer
          fkind=i2
          ;;
+   ui2 ) ntype=nf90_ushort
+         ftype=integer
+         fkind=i2
+         ;;
     i4 ) ntype=nf90_int
+         ftype=integer
+         fkind=i4
+         ;;
+   ui4 ) ntype=nf90_uint
          ftype=integer
          fkind=i4
          ;;
@@ -91,7 +103,7 @@ echo '! Auto-generated file -- do not edit.' > $out_decl
 echo '! Auto-generated file -- do not edit.' > $out_code
 
 dim_list="1 2 3"
-type_list="i1 i2 i4 r4 r8"
+type_list="i1 ui1 i2 ui2 i4 ui4 r4 r8"
 
 for typ in $type_list; do
   expand_template_scalar "get" $typ

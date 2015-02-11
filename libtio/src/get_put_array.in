@@ -1,5 +1,5 @@
 !
-!> @ioaction@ a @dim@d array @iodir@ a @dim@d variable of type @ftype@ (kind=@fkind@)
+!> @ioaction@ a @dim@d array @iodir@ a @dim@d variable of type @ftype@ (kind=@fkind@) as type @ntype@
   subroutine tiof_@action@@dim@d_@type@ (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj

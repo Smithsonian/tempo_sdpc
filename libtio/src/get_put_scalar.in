@@ -1,5 +1,5 @@
 !
-!> @ioaction@ a scalar variable of type @ftype@ (kind=@fkind@)
+!> @ioaction@ a scalar variable of type @ftype@ (kind=@fkind@) as type @ntype@
   subroutine tiof_@action@_@type@ (obj, name, value, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
