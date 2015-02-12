@@ -74,6 +74,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered
   ! ----------------------------------------------------------------------------
+  call maybe_setenv_msgenv (errstat)
+  if (errstat < 0) return
 
   call allocate_refspec_storage (errstat)
   if (errstat < 0) return

@@ -10,6 +10,7 @@ msgdir     = $(srcdir)/msgs
 
 bindir     = $(prefix)/bin
 incdir     = $(prefix)/include
+msgs_installdir = $(prefix)/msgs
 
 LNFLAGS    = #
 ADDLIBD    = #
@@ -71,6 +72,9 @@ LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
 
 CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 
+unbufferSTDOUT_DEFINES = -DMSG_DIR='"'$(msgs_installdir)'"'
+unbufferSTDOUT_INCS = -I$(TELL_INC)
+
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
 F90SOURCES = $(shell grep -v '\#' f90_files.lis)
@@ -103,7 +107,14 @@ install-header:
 	@echo installing $(NAME_INCLUDE) in $(incdir)/
 	$(INSTALL_DATA) $(srcdir)/$(NAME_INCLUDE) $(incdir)/$(NAME_INCLUDE)
 
-install:	install-executable install-header
+install-msgs:
+	mkdir -p $(msgs_installdir)
+	@echo installing message files in $(msgs_installdir)/
+	for m in $(MESSAGE_FILES) ; do \
+	   $(INSTALL_DATA) $(srcdir)/msgs/$$m $(msgs_installdir)/$$m ; \
+	done
+
+install:	install-executable install-header install-msgs
 
 clean:	clean-tg-names
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod
@@ -121,6 +132,8 @@ fix-hdf-tabs:
 # ---------------------------------------
 # The PGE and TOOLKIT error message files
 # ---------------------------------------
+
+MESSAGE_FILES = PGS_9 PGS_1900 PGS_52500
 
 PGEPGSSRC = OMSAO_52500.t OMI_1900.t
 PGEPGSCMP = $(msgdir)/PGS_52500 $(msgdir)/PGS_1900
