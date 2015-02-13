@@ -81,7 +81,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=31), PARAMETER :: modulename = 'xtrack_radiance_wvl_calibration'
+    !CHARACTER (LEN=31), PARAMETER :: modulename = 'xtrack_radiance_wvl_calibration'
 
     if (errstat < 0) return
 
@@ -227,10 +227,11 @@ CONTAINS
         errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'SKIPPING cross track pixel #', ipix
-        CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-                          modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-                          locerrstat )
+        WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
+        call tell_log (0, addmsg)
+        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
+        !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
+        !                  locerrstat )
         CYCLE
       END IF
 
@@ -253,10 +254,11 @@ CONTAINS
         errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'SKIPPING cross track pixel #', ipix
-        CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-                          modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-                          locerrstat )
+        WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
+        call tell_log (0, addmsg)
+        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
+        !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
+        !                  locerrstat )
         CYCLE
       END IF
       ! ------------------------------------------------------------------------------------
@@ -359,10 +361,11 @@ CONTAINS
           errstat = MAX ( errstat, locerrstat )
           omi_cross_track_skippix (ipix) = .TRUE.
           addmsg = ''
-          WRITE (addmsg, '(A,I2)') 'SKIPPING cross track pixel #', ipix
-          CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-                            modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-                            locerrstat )
+          WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
+          call tell_log (0, addmsg)
+          !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
+          !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
+          !                  locerrstat )
           CYCLE
         END IF
 
@@ -661,7 +664,7 @@ CONTAINS
         ! with yn_reference_fit=.false.
         yn_reference_fit = .false.
 
-        call tell_log (2, 'fitting_loops: call fit_radiance')
+        call tell_log (2, 'xtrack_radiance_fitting_loop: call fit_radiance')
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
           pge_idx, ipix, ctrl_n_fitres_loop(radfit_idx), &

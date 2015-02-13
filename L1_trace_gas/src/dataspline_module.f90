@@ -228,13 +228,20 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       'fillvalue', 0.0_r8, did_full_range, locerrstat )
 
     database(1:n_radwvl, idx) = dbase_loc(1:n_radwvl)
-    CALL error_check ( &
-      locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL_REFSPEC, &
-      modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_default, errstat )
+    if (locerrstat > pge_errstat_ok) then
+      call tell_error (tell_runtime_error, &
+                       "dataspline: failed interpolating "//trim(refspec_strings(idx)), &
+                       errstat)
+    endif
+    !CALL error_check ( &
+    !  locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL_REFSPEC, &
+    !  modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_default, errstat )
     IF ( .NOT. did_full_range ) THEN
-      CALL error_check ( &
-        0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
-        modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_develop, errstat )
+      call tell_log (2, "WARNING: dataspline: interpolation found "// &
+                     "incomplete wavelength range: "//trim(refspec_strings(idx)))
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(refspec_strings(idx))), vb_lev_develop, errstat )
     END IF
   END DO
 
