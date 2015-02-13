@@ -25,7 +25,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
     lo_radbnd, up_radbnd
   use ctrlvars, only: yn_solar_i0
   USE OMSAO_omidata_module, ONLY : omi_solcal_pars
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   use slitfunction, only : slitfunction_convolve
   USE sao_pge_utils, ONLY: interpolation
   use tell_module
@@ -55,9 +55,9 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   CHARACTER (LEN=11), PARAMETER :: modulename = 'dataspline'
   character (len=72) :: logmsg
 
-  locerrstat = pge_errstat_ok
-
   if (errstat < 0) return
+  
+  locerrstat = 0 ! pge_errstat_ok
 
   nsol = refspecs_original(solar_idx)%nPoints
 
@@ -228,7 +228,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       'fillvalue', 0.0_r8, did_full_range, locerrstat )
 
     database(1:n_radwvl, idx) = dbase_loc(1:n_radwvl)
-    if (locerrstat > pge_errstat_ok) then
+    if (locerrstat > 0) then
       call tell_error (tell_runtime_error, &
                        "dataspline: failed interpolating "//trim(refspec_strings(idx)), &
                        errstat)

@@ -10,7 +10,7 @@ CONTAINS
 SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module, only : pge_errstat_ok
 
   IMPLICIT NONE
 
@@ -43,7 +43,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
 
   if (errstat < 0) return
 
-  locerrstat     = pge_errstat_ok
+  locerrstat     = 0 !pge_errstat_ok
   y_out(1:n_out) = 0.0_r8
 
   BCS1 = (/  0,  0 /) ! not a knot
@@ -52,7 +52,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   ! Initialize/allocate memory
   ! --------------------------
   CALL EZspline_init (spline_o, n_in, BCS1, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_interpolation: initialization failed", &
@@ -76,7 +76,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   ! Setting up interpolation ...
   ! ----------------------------
   CALL EZspline_setup(spline_o, f, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_interpolation: setup failed", &
@@ -92,7 +92,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   z1 = REAL ( x_out, KIND=ezs_r8 )
 
   CALL EZspline_interp (spline_o, n_out, z1, fz, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_interpolation: interpolation failed", &
@@ -111,7 +111,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   ! Clean up and free up memory
   ! ---------------------------
   CALL Ezspline_free (spline_o, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_interpolation: error freeing memory", &
                      errstat)
@@ -126,7 +126,7 @@ END SUBROUTINE ezspline_1d_interpolation
 SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
 
   IMPLICIT NONE
 
@@ -153,7 +153,7 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
 
   if (errstat < 0) return
 
-  locerrstat     = pge_errstat_ok
+  locerrstat     = 0 !pge_errstat_ok
 
   BCS1 = (/  0,  0 /) ! not a knot
 
@@ -161,7 +161,7 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   ! Initialize/allocate memory
   ! --------------------------
   CALL EZspline_init (spline_o, n_in, BCS1, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_setup_only: initialization failed", &
@@ -185,7 +185,7 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   ! Setting up interpolation ...
   ! ----------------------------
   CALL EZspline_setup(spline_o, f, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_setup_only: setup failed", &
@@ -201,7 +201,7 @@ END SUBROUTINE ezspline_1d_setup_only
 SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
 
   IMPLICIT NONE
 
@@ -229,7 +229,7 @@ SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
 
   if (errstat < 0) return
 
-  locerrstat     = pge_errstat_ok
+  locerrstat     = 0 !pge_errstat_ok
   y_out(1:n_out) = 0.0_r8
 
   BCS1 = (/  0,  0 /) ! not a knot
@@ -240,7 +240,7 @@ SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
   z1 = REAL ( x_out, KIND=ezs_r8 )
 
   CALL EZspline_interp (spline_o, n_out, z1, fz, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_ipol_only: interpolation failed", &
@@ -261,7 +261,7 @@ END SUBROUTINE ezspline_1d_ipol_only
 SUBROUTINE ezspline_1d_memfree ( spline_o, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
 
   IMPLICIT NONE
 
@@ -276,12 +276,12 @@ SUBROUTINE ezspline_1d_memfree ( spline_o, errstat )
   ! ------------------------------
   INTEGER (KIND=i4) :: locerrstat
 
-  locerrstat     = pge_errstat_ok
+  locerrstat     = 0 !pge_errstat_ok
   ! ---------------------------
   ! Clean up and free up memory
   ! ---------------------------
   CALL Ezspline_free (spline_o, locerrstat)
-  IF ( locerrstat /= pge_errstat_ok ) THEN
+  IF ( locerrstat /= 0 ) THEN
     call tell_error (tell_runtime_error, &
                      "ezspline_1d_memfree: error freeing memory", &
                      errstat)
@@ -296,7 +296,7 @@ END SUBROUTINE ezspline_1d_memfree
 SUBROUTINE ezspline_2d_interpolation ( n1, n2, x1, x2, z_in, m1, m2, y1, y2, z_out, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_warning, pge_errstat_error
 
   IMPLICIT NONE
 
@@ -397,7 +397,7 @@ SUBROUTINE ezspline_3d_interpolation ( &
     n1, n2, n3, x1, x2, x3, z_in, m1, m2, m3, y1, y2, y3, z_out, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_warning, pge_errstat_error
 
   IMPLICIT NONE
 
