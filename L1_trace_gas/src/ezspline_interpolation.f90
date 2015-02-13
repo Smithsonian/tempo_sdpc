@@ -2,6 +2,7 @@ MODULE ezspline_interpolation
 
   USE EZspline_obj
   USE EZspline
+  use tell_module
   private
   public ezspline_1d_interpolation, ezspline_2d_interpolation
 
@@ -40,6 +41,8 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
 
   INTEGER (KIND=i4) :: locerrstat
 
+  if (errstat < 0) return
+
   locerrstat     = pge_errstat_ok
   y_out(1:n_out) = 0.0_r8
 
@@ -51,8 +54,11 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   CALL EZspline_init (spline_o, n_in, BCS1, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Init", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_interpolation: initialization failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Init", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -72,8 +78,11 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   CALL EZspline_setup(spline_o, f, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Setup", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_interpolation: setup failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Setup", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -85,8 +94,11 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   CALL EZspline_interp (spline_o, n_out, z1, fz, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Interp", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_interpolation: interpolation failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Interp", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -100,8 +112,11 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
   ! ---------------------------
   CALL Ezspline_free (spline_o, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
-      "EZspline_free", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_interpolation: error freeing memory", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
+    !  "EZspline_free", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -136,6 +151,8 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   INTEGER (KIND=i4),     DIMENSION (2)     :: BCS1(2)
   INTEGER (KIND=i4)                        :: locerrstat
 
+  if (errstat < 0) return
+
   locerrstat     = pge_errstat_ok
 
   BCS1 = (/  0,  0 /) ! not a knot
@@ -146,8 +163,11 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   CALL EZspline_init (spline_o, n_in, BCS1, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Init", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_setup_only: initialization failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Init", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -167,8 +187,11 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   CALL EZspline_setup(spline_o, f, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Setup", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_setup_only: setup failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Setup", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -204,6 +227,8 @@ SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
   INTEGER (KIND=i4),     DIMENSION (2)     :: BCS1(2)
   INTEGER (KIND=i4)                        :: locerrstat
 
+  if (errstat < 0) return
+
   locerrstat     = pge_errstat_ok
   y_out(1:n_out) = 0.0_r8
 
@@ -217,8 +242,11 @@ SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
   CALL EZspline_interp (spline_o, n_out, z1, fz, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
     CALL Ezspline_free (spline_o, locerrstat)
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-      "EZspline_Interp", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_ipol_only: interpolation failed", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+    !  "EZspline_Interp", vb_lev_default, errstat )
     RETURN
   END IF
 
@@ -254,8 +282,11 @@ SUBROUTINE ezspline_1d_memfree ( spline_o, errstat )
   ! ---------------------------
   CALL Ezspline_free (spline_o, locerrstat)
   IF ( locerrstat /= pge_errstat_ok ) THEN
-    CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
-      "EZspline_free", vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "ezspline_1d_memfree: error freeing memory", &
+                     errstat)
+    !CALL error_check ( locerrstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_INTERPOL, &
+    !  "EZspline_free", vb_lev_default, errstat )
     RETURN
   END IF
 
