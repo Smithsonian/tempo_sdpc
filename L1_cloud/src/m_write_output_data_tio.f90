@@ -57,7 +57,7 @@ contains
 
     if (present(num_wavel)) then
       wavel_indices = [(i, i=0,num_wavel-1)]
-      call tiof_put1d_i4 (obj, cld_dim_wavel, [0], [num_wavel], &
+      call tiof_put1d_i4 (obj, cld_dim_channel, [0], [num_wavel], &
          wavel_indices, errstat)
     endif
 
@@ -94,7 +94,7 @@ contains
     call tiof_dimlist_append (dimlist, cld_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, cld_dim_xtrack, num_xtrack, errstat)
     if (write_resid) then
-      call tiof_dimlist_append (dimlist, cld_dim_wavel, num_wavel, errstat)
+      call tiof_dimlist_append (dimlist, cld_dim_channel, num_wavel, errstat)
     endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat < 0) then
@@ -198,9 +198,9 @@ contains
                               errstat)
     if (write_resid) then
       call tiof_dimlist_lookup (dimlist, &
-                              [cld_dim_wavel, cld_dim_xtrack, cld_dim_step], &
-                              dimids_wavel_xtrack_step, &
-                              errstat)
+                             [cld_dim_channel, cld_dim_xtrack, cld_dim_step], &
+                             dimids_wavel_xtrack_step, &
+                             errstat)
     endif
 
     ! Make a list of variables with their dimension ids and attributes:
@@ -211,7 +211,7 @@ contains
     call tiof_varlist_append (varlist, errstat, cld_dim_step, nf90_int, &
                              dimids=[dimids_xtrack_step(2)])
     if (write_resid) then
-      call tiof_varlist_append (varlist, errstat, cld_dim_wavel, nf90_int, &
+      call tiof_varlist_append (varlist, errstat, cld_dim_channel, nf90_int, &
                              dimids=[dimids_wavel_xtrack_step(1)])
     endif
 
@@ -297,7 +297,7 @@ contains
     ! note that using a nf90_short causes the flags to be written out wrong
     ! should be nf90_ushort, but the fill value is unsupported...
     call tiof_varlist_append (varlist, errstat, &
-                              cld_var_dqf, &
+                              cld_var_gpqf, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "ground pixel quality flag", &
@@ -352,7 +352,7 @@ contains
     call tiof_put2d_i2 (obj, cld_var_terr_height, [0,0], &
          [-1, -1], terr_height(1:num_xtrack,1:num_steps), errstat)
 
-    call tiof_put2d_i2 (obj, cld_var_dqf, [0,0], &
+    call tiof_put2d_i2 (obj, cld_var_gpqf, [0,0], &
          [-1, -1], geoflg(1:num_xtrack,1:num_steps), errstat)
 
     if (errstat < 0) then
@@ -388,7 +388,7 @@ contains
     ! Define dimid arrays associated with common data field shapes
     if (write_resid) then
       call tiof_dimlist_lookup (dimlist, &
-                         [cld_dim_wavel, cld_dim_xtrack, cld_dim_step], &
+                         [cld_dim_channel, cld_dim_xtrack, cld_dim_step], &
                          dimids_wavel_xtrack_step, &
                          errstat)
     endif

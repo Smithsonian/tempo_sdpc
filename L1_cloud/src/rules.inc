@@ -207,8 +207,6 @@ $(ODIR)/m_read_input_data.o: $(SDIR)/m_read_input_data.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_input_data.f90 -o $(ODIR)/m_read_input_data.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_input_data_tio.o: $(SDIR)/m_read_input_data_tio.f90 \
   $(ODIR)/cld_names_module.o \
-  $(ODIR)/m_instr_config.o \
-  $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_strpos.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_input_data_tio.f90 -o $(ODIR)/m_read_input_data_tio.o $(MODOUTFLG) $(ODIR)

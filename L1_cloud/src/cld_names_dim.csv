@@ -1,3 +1,3 @@
 CLD_DIM_STEP,"mirror_step","mirror step"
 CLD_DIM_XTRACK,"xtrack","cross-track (north-south)"
-CLD_DIM_WAVEL,"wavelength","wavelength"
+CLD_DIM_CHANNEL,"spectral_channel","spectral channel (east-west)"
