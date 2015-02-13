@@ -181,7 +181,8 @@ CONTAINS
     USE OMSAO_variables_module, ONLY: OMSAO_refseccor_filename
     USE OMSAO_indices_module,   ONLY: OMSAO_refseccor_lun
     USE OMSAO_precision_module, ONLY: i4
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok, pgs_smf_mask_lev_s, &
+      pgsd_io_gen_rseqfrm
 
     IMPLICIT NONE
     ! ------------------
@@ -327,7 +328,7 @@ CONTAINS
     USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags, omi_read_binning_factor
     USE swathline_loop, ONLY: swathline_loops
     !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_error
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname, &
       retrieval_type, alloc_retrieval_type, dealloc_retrieval_type
     use ctrlvars, only: yn_disable_omi_features
@@ -590,7 +591,7 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: r4, i4
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
     USE OMSAO_he5_module, ONLY: granule_month
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok
     IMPLICIT NONE
 
     ! ---------------
@@ -854,7 +855,8 @@ CONTAINS
     USE OMSAO_indices_module,   ONLY: pge_hcho_idx
     !USE sao_pge_utils, ONLY: roundoff_2darr_r8
     use datafields, only: rscol_field
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_error, &
+      he5_stat_ok, omsao_e_he5swwrfld, vb_lev_default, error_check
 
     IMPLICIT NONE
 
