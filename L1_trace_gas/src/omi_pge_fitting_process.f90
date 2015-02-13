@@ -219,7 +219,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
+  !CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
   type (fitting_statistics_type) :: fit_stats
   character (len=256) :: logmsg
 
@@ -616,7 +616,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     if (errstat < 0) return
     call write_wavcal_output (result_vars, nxtrack_rr, errstat)
     if (errstat < 0) return
-    
+
   END IF
 
   ! ----------------------------------------------------------

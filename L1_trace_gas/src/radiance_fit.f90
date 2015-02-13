@@ -573,7 +573,7 @@ CONTAINS
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
     USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
     USE cache_module, ONLY: saved_shift, saved_squeeze
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE OMSAO_solcomp_module, ONLY: soco_compute
     USE sao_pge_utils, ONLY: interpolation
     USE arrayutils, only: array_locate_r8, array_sort_r8
@@ -613,7 +613,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
-    CHARACTER (LEN=19), PARAMETER :: modulename = 'spectrum_earthshine'
+    !CHARACTER (LEN=19), PARAMETER :: modulename = 'spectrum_earthshine'
 
     SAVE sunspec_save
 
@@ -622,7 +622,7 @@ CONTAINS
     !     1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
     !     OMI data.
 
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
 
     ! ----------------------------------------------------------------------------
     ! Here is a logical to determine whether we need to compute a "sythetic"
@@ -712,10 +712,13 @@ CONTAINS
     ! ---------------------------------------------------------------------
 
     IF ( j1 <= 0 .OR. j2 <= 0 ) THEN
-      CALL error_check ( &
-        0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
-        modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
-        vb_lev_default, errstat )
+      call tell_log (1, "WARNING: spectrum_earthshine: interpolation found"// &
+                     " incomplete wavelength range, resampling to radiance grid "// &
+                     "-- no solar spectrum!!!")
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
+      !  modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
+      !  vb_lev_default, errstat )
     ELSE
 
       IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
@@ -728,11 +731,17 @@ CONTAINS
           CALL interpolation (                                                 &
             n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
-            did_full_range, errstat                                            )
-          CALL error_check ( &
-            errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL,      &
-            modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
-            vb_lev_default, errstat )
+            did_full_range, errstat)
+          if (errstat < 0) then
+            call tell_error (tell_runtime_error, &
+                             "spectrum_earthshine: interpolation failed: "// &
+                             "resampling to radiance grid", errstat)
+            return
+          endif
+          !CALL error_check ( &
+          !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL,      &
+          !  modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
+          !  vb_lev_default, errstat )
         END IF
         sunspec_save(1:npts) = sunspec_ss(1:npts)
         saved_shift          = shift
@@ -892,7 +901,7 @@ CONTAINS
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
     USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
     USE cache_module, ONLY: saved_shift, saved_squeeze
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE OMSAO_solcomp_module, ONLY: soco_compute
     USE sao_pge_utils, ONLY: interpolation
     USE arrayutils, only: array_locate_r8, array_sort_r8
@@ -930,7 +939,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
-    CHARACTER (LEN=25), PARAMETER :: modulename = 'spectrum_earthshine_o3exp'
+    !CHARACTER (LEN=25), PARAMETER :: modulename = 'spectrum_earthshine_o3exp'
 
     SAVE sunspec_save
 
@@ -939,7 +948,7 @@ CONTAINS
     !  1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
     !  OMI data.
 
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
 
     ! ----------------------------------------------------------------------------
     ! Here is a logical to determine whether we need to compute a "sythetic"
@@ -1020,10 +1029,13 @@ CONTAINS
     ! ---------------------------------------------------------------------
 
     IF ( j1 <= 0 .OR. j2 <= 0 ) THEN
-      CALL error_check ( &
-        0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
-        modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
-        vb_lev_default, errstat )
+      call tell_log (1, "WARNING: spectrum_earthshine_o3exp: interpolation found"// &
+                     " incomplete wavelength range, resampling to radiance grid "// &
+                     "-- no solar spectrum!!!")
+      !CALL error_check ( &
+      !  0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
+      !  modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
+      !  vb_lev_default, errstat )
     ELSE
 
       IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
@@ -1036,11 +1048,17 @@ CONTAINS
           CALL interpolation (                                                         &
             n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
-            did_full_range, errstat                                                   )
-          CALL error_check ( &
-            errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-            modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
-            vb_lev_default, errstat )
+            did_full_range, errstat)
+          if (errstat < 0) then
+            call tell_error (tell_runtime_error, &
+                             "spectrum_earthshine_o3exp: interpolation failed: "// &
+                             "resampling to radiance grid", errstat)
+            return
+          endif
+          !CALL error_check ( &
+          !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+          !  modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
+          !  vb_lev_default, errstat )
         END IF
 
         sunspec_save(1:npts) = sunspec_ss(1:npts)
