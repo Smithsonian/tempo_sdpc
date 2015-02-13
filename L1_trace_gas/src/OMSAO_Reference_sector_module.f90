@@ -207,7 +207,9 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=35), PARAMETER :: modulename = 'Read_reference_sector_concentration'
+    !CHARACTER (LEN=35), PARAMETER :: modulename = 'Read_reference_sector_concentration'
+
+    if (errstat < 0) return
 
     locerrstat = pge_errstat_ok
 
@@ -224,10 +226,16 @@ CONTAINS
     version = 1
     locerrstat = PGS_IO_GEN_OPENF ( OMSAO_refseccor_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
     locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    CALL error_check ( &
-      locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSECCOR_FILE, &
-      modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
-    IF (  errstat /= pge_errstat_ok ) RETURN
+    if (locerrstat > pgs_smf_mask_lev_s) then
+      call tell_error (tell_io_open_error, &
+                       "opening ref. sector concentrations file: "// &
+                       trim(OMSAO_refseccor_filename), errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_REFSECCOR_FILE, &
+    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
+    !IF (  errstat /= pge_errstat_ok ) RETURN
 
     ! ------------
     ! Reading file
@@ -238,10 +246,14 @@ CONTAINS
     skip_header: DO WHILE (file_header .EQV. .TRUE.)
       READ (UNIT=funit, FMT='(A)', IOSTAT=ios) header_line
       IF ( ios /= 0 ) THEN
-        CALL error_check ( &
-          ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
-          modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
-        IF (  errstat /= pge_errstat_ok ) RETURN
+        call tell_error (tell_io_read_error, &
+                         "reading ref. sector concentrations file: "// &
+                         trim(OMSAO_refseccor_filename), errstat)
+        return
+        !CALL error_check ( &
+        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
+        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
+        !IF (  errstat /= pge_errstat_ok ) RETURN
       END IF
       IF (header_line(1:1) /= hstr) THEN
         file_header = .FALSE.
@@ -253,10 +265,14 @@ CONTAINS
     ! -----------------------------------------------
     READ (UNIT=funit, FMT='(I5)', IOSTAT=ios) ngridpoints
     IF ( ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_io_read_error, &
+                       "reading ref. sector concentrations file: "// &
+                       trim(OMSAO_refseccor_filename), errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
     ! ---------------------------------------------------------
@@ -266,10 +282,14 @@ CONTAINS
       READ (UNIT=funit, FMT='(F6.2,2x,12(1x,E14.7))', IOSTAT=ios) grid_lat(igrid), &
         Reference_sector_concentration(igrid, 1:12)
       IF ( ios /= 0 ) THEN
-        CALL error_check ( &
-          ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
-          modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
-        IF (  errstat /= pge_errstat_ok ) RETURN
+        call tell_error (tell_io_read_error, &
+                         "reading ref. sector concentrations file: "// &
+                         trim(OMSAO_refseccor_filename), errstat)
+        return
+        !CALL error_check ( &
+        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_REFSECCOR_FILE, &
+        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
+        !IF (  errstat /= pge_errstat_ok ) RETURN
       END IF
     END DO
 
@@ -278,10 +298,16 @@ CONTAINS
     ! -----------------------------------------------
     locerrstat = PGS_IO_GEN_CLOSEF ( funit )
     locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    CALL error_check ( &
-      locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSECCOR_FILE, &
-      modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
-    IF ( errstat >= pge_errstat_error ) RETURN
+    if (locerrstat > pgs_smf_mask_lev_s) then
+      call tell_error (tell_io_error, &
+                       "closing ref. sector concentrations file: "// &
+                       trim(OMSAO_refseccor_filename), errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_REFSECCOR_FILE, &
+    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_refseccor_filename)), vb_lev_default, errstat )
+    !IF ( errstat >= pge_errstat_error ) RETURN
 
   END SUBROUTINE Read_reference_sector_concentration
 
@@ -629,11 +655,11 @@ CONTAINS
 !UNUSED!   SUBROUTINE compute_background_median(nTimesRadRR, nXtrackRadRR, &
 !UNUSED!       mem_column_amount, & !mem_column_uncertainty, mem_amf,
 !UNUSED!       mem_latitude, mem_longitude, mem_xtrflg, refmqf, locerrstat)
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE OMSAO_median_module, ONLY: median
-!UNUSED! 
+!UNUSED!
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Input variables
 !UNUSED!     ! ---------------
@@ -645,12 +671,12 @@ CONTAINS
 !UNUSED!       INTENT(IN) :: mem_latitude, mem_longitude
 !UNUSED!     INTEGER (KIND=i2), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1), &
 !UNUSED!       INTENT(IN) :: refmqf, mem_xtrflg
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ------------------
 !UNUSED!     ! Modified variables
 !UNUSED!     ! ------------------
 !UNUSED!     INTEGER (KIND=i4), INTENT(INOUT) :: locerrstat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Local variables
 !UNUSED!     ! ---------------
@@ -662,15 +688,15 @@ CONTAINS
 !UNUSED!     INTEGER (KIND=i2), DIMENSION (nXtrackRadRR,0:nTimesRadRR-1) &
 !UNUSED!       :: yn_median
 !UNUSED!     INTEGER (KIND=i4)                           :: npixels, ipixel
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! -------------------
 !UNUSED!     ! Routine starts here
 !UNUSED!     ! -------------------
-!UNUSED! 
+!UNUSED!
 !UNUSED!     locerrstat = pge_errstat_ok
-!UNUSED! 
+!UNUSED!
 !UNUSED!     background_level = r8_missval
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ----------------------------------------------------------------
 !UNUSED!     ! Computing the median of all the pixels of the radiance reference
 !UNUSED!     ! granule within two consequtive latitudes of the background conce
@@ -686,13 +712,13 @@ CONTAINS
 !UNUSED!       grid(igrid) = (180.0_r8 / (REAL(ngridpoints+1, KIND=r8)) * &
 !UNUSED!         (REAL(igrid, KIND=r8))) - 90.0_r8
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!     DO igrid = 1, ngridpoints
-!UNUSED! 
+!UNUSED!
 !UNUSED!       column_amounts        = 0.0_r8
 !UNUSED!       yn_median             = 0_i2
 !UNUSED!       into_median           = 0.0_r8
-!UNUSED! 
+!UNUSED!
 !UNUSED!       ! -------------------------------------------------------------------
 !UNUSED!       ! Finging pixels in the granule between grid(igrid) and grid(igrid+1)
 !UNUSED!       ! Mid point is grid_lat(igrid).
@@ -717,26 +743,26 @@ CONTAINS
 !UNUSED!       IF (npixels .GT. 0) THEN
 !UNUSED!         background_level(igrid) = median(npixels, into_median(1:npixels))
 !UNUSED!       END IF
-!UNUSED! 
+!UNUSED!
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!   END SUBROUTINE COMPUTE_BACKGROUND_median
 
 !UNUSED!   SUBROUTINE compute_background_correction(locerrstat)
-!UNUSED! 
+!UNUSED!
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     INTEGER (KIND=i4), INTENT (INOUT) :: locerrstat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Local variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i2) :: igrid
-!UNUSED! 
+!UNUSED!
 !UNUSED!     locerrstat = pge_errstat_ok
-!UNUSED! 
+!UNUSED!
 !UNUSED!     background_correction = 0.0_r8
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ----------------------------------------
 !UNUSED!     ! Month we are dealing with: granule_month
 !UNUSED!     ! Working out the difference between the r
@@ -747,52 +773,52 @@ CONTAINS
 !UNUSED!       IF (background_level(igrid) .NE. r8_missval) THEN
 !UNUSED!         background_correction(igrid) = background_level(igrid) - &
 !UNUSED!           Reference_sector_concentration(igrid,granule_month)
-!UNUSED! 
+!UNUSED!
 !UNUSED!       END IF
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!   END SUBROUTINE compute_background_correction
 
 !UNUSED!   SUBROUTINE aply_background_correction(ntimes, nxtrack, saocol, &! saodco,
 !UNUSED!                                         saomqf, latitude, locerrstat)
-!UNUSED! 
+!UNUSED!
 !UNUSED!     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
 !UNUSED!     IMPLICIT NONE
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Input variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4), INTENT (IN) :: ntimes, nxtrack
 !UNUSED!     REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (IN) :: latitude
 !UNUSED!     INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (IN) :: saomqf
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ------------------
 !UNUSED!     ! Modified variables
 !UNUSED!     ! ------------------
 !UNUSED!     REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (INOUT) :: saocol
 !UNUSED!     !REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (INOUT) :: saodco
 !UNUSED!     INTEGER (KIND=i4),                                   INTENT (INOUT) :: locerrstat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     ! ---------------
 !UNUSED!     ! Local variables
 !UNUSED!     ! ---------------
 !UNUSED!     INTEGER (KIND=i4) :: itimes, itrack
 !UNUSED!     REAL    (KIND=r8), DIMENSION(1) :: correction, out_lat
-!UNUSED! 
+!UNUSED!
 !UNUSED!     locerrstat = pge_errstat_ok
 !UNUSED!     !npixels = 1
-!UNUSED! 
+!UNUSED!
 !UNUSED!     DO itrack = 1, nxtrack
 !UNUSED!       DO itimes = 0, ntimes-1
-!UNUSED! 
+!UNUSED!
 !UNUSED!         correction(1) = 0.0_r8
-!UNUSED! 
+!UNUSED!
 !UNUSED!         ! ----------------------------------------------
 !UNUSED!         ! Only to be applied if the main quality flag is
 !UNUSED!         ! OK: .EQ. 0
 !UNUSED!         ! ----------------------------------------------
 !UNUSED!         IF (saomqf(itrack,itimes) .EQ. 0) THEN
-!UNUSED! 
+!UNUSED!
 !UNUSED!           ! ----------------------------------------------
 !UNUSED!           ! For each pixel, take the background_correction
 !UNUSED!           ! and interpolate it to latitude(itrack, itimes)
@@ -802,18 +828,18 @@ CONTAINS
 !UNUSED!             grid_lat, background_correction,                       &
 !UNUSED!             1, out_lat(1), correction(1), &
 !UNUSED!             locerrstat )
-!UNUSED! 
+!UNUSED!
 !UNUSED!           ! ---------------------------------------------------------
 !UNUSED!           ! And apply the result of the interpolation to the original
 !UNUSED!           ! saocol
 !UNUSED!           ! ---------------------------------------------------------
 !UNUSED!           saocol(itrack,itimes) = saocol(itrack,itimes) - correction(1)
-!UNUSED! 
+!UNUSED!
 !UNUSED!         END IF
-!UNUSED! 
+!UNUSED!
 !UNUSED!       END DO
 !UNUSED!     END DO
-!UNUSED! 
+!UNUSED!
 !UNUSED!   END SUBROUTINE aply_background_correction
 
   SUBROUTINE he5_write_reference_sector_corrected_column &
