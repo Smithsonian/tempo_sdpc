@@ -373,7 +373,8 @@ contains
     USE OMSAO_indices_module,   ONLY: &
       OMSAO_solmonthave_lun
     USE arrayutils, only: array_locate_r4
-    USE OMSAO_errstat_module
+    USE OMSAO_errstat_module, only: pge_errstat_ok, pgs_smf_mask_lev_s, &
+      pgsd_io_gen_rseqfrm
     IMPLICIT NONE
 
     ! ----------------
@@ -425,7 +426,7 @@ contains
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_monthly_average_irradiance'
+    !CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_monthly_average_irradiance'
 
     if (errstat < 0) return
 
@@ -439,10 +440,16 @@ contains
     version = 1
     locerrstat = PGS_IO_GEN_OPENF ( OMSAO_solmonthave_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
     locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    CALL error_check ( &
-      locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_SOLMONAVE_FILE, &
-      modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-    IF (  errstat /= pge_errstat_ok ) RETURN
+    if (locerrstat > pgs_smf_mask_lev_s) then
+      call tell_error (tell_io_open_error, &
+                       "opening solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                       errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_SOLMONAVE_FILE, &
+    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+    !IF (  errstat /= pge_errstat_ok ) RETURN
 
     ! --------------------------------
     ! Reading the monthly average file
@@ -451,10 +458,14 @@ contains
     ! -----------
     READ(UNIT=funit, FMT=*, IOSTAT=ios) nxUV1, nwUV1
     IF ( ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_io_read_error, &
+                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                       errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
     ALLOCATE (comUV1(nwUV1,3,nxUV1))
@@ -464,10 +475,14 @@ contains
 
       READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
       IF ( ios /= 0 ) THEN
-        CALL error_check ( &
-          ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        IF (  errstat /= pge_errstat_ok ) RETURN
+        call tell_error (tell_io_read_error, &
+                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                         errstat)
+        return
+        !CALL error_check ( &
+        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+        !IF (  errstat /= pge_errstat_ok ) RETURN
       END IF
 
       DO jw = 1, nwUV1
@@ -475,11 +490,15 @@ contains
         READ(UNIT=funit, FMT=*, IOSTAT=ios) comUV1(jw,1,ix), &
           comUV1(jw,2,ix), comUV1(jw,3,ix), dummy, ncomUV1(jw,ix)
         IF ( ios /= 0 ) THEN
-          CALL error_check ( &
-            ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-            modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-            vb_lev_default, errstat )
-          IF (  errstat /= pge_errstat_ok ) RETURN
+          call tell_error (tell_io_read_error, &
+                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                           errstat)
+          return
+          !CALL error_check ( &
+          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
+          !  vb_lev_default, errstat )
+          !IF (  errstat /= pge_errstat_ok ) RETURN
         END IF
 
       END DO
@@ -491,10 +510,14 @@ contains
     ! -----------
     READ(UNIT=funit, FMT=*, IOSTAT=ios) nxUV2, nwUV2
     IF ( ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_io_read_error, &
+                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                       errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
     ALLOCATE (comUV2(nwUV2,3,nxUV2))
@@ -504,10 +527,14 @@ contains
 
       READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
       IF ( ios /= 0 ) THEN
-        CALL error_check ( &
-          ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        IF (  errstat /= pge_errstat_ok ) RETURN
+        call tell_error (tell_io_read_error, &
+                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                         errstat)
+        return
+        !CALL error_check ( &
+        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+        !IF (  errstat /= pge_errstat_ok ) RETURN
       END IF
 
       DO jw = 1, nwUV2
@@ -515,11 +542,15 @@ contains
         READ(UNIT=funit, FMT=*, IOSTAT=ios) comUV2(jw,1,ix), comUV2(jw,2,ix), comUV2(jw,3,ix), &
           dummy, ncomUV2(jw,ix)
         IF ( ios /= 0 ) THEN
-          CALL error_check ( &
-            ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-            modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-            vb_lev_default, errstat )
-          IF (  errstat /= pge_errstat_ok ) RETURN
+          call tell_error (tell_io_read_error, &
+                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                           errstat)
+          return
+          !CALL error_check ( &
+          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
+          !  vb_lev_default, errstat )
+          !IF (  errstat /= pge_errstat_ok ) RETURN
         END IF
 
       END DO
@@ -531,10 +562,14 @@ contains
     ! -----------
     READ(UNIT=funit, FMT=*, IOSTAT=ios) nxVIS, nwVIS
     IF ( ios /= 0 ) THEN
-      CALL error_check ( &
-        ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      IF (  errstat /= pge_errstat_ok ) RETURN
+      call tell_error (tell_io_read_error, &
+                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                       errstat)
+      return
+      !CALL error_check ( &
+      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+      !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
     ALLOCATE (comVIS(nwVIS,3,nxVIS))
@@ -544,10 +579,14 @@ contains
 
       READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
       IF ( ios /= 0 ) THEN
-        CALL error_check ( &
-          ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        IF (  errstat /= pge_errstat_ok ) RETURN
+        call tell_error (tell_io_read_error, &
+                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                         errstat)
+        return
+        !CALL error_check ( &
+        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+        !IF (  errstat /= pge_errstat_ok ) RETURN
       END IF
 
       DO jw = 1, nwVIS
@@ -555,11 +594,15 @@ contains
         READ(UNIT=funit, FMT=*, IOSTAT=ios) comVIS(jw,1,ix), comVIS(jw,2,ix), comVIS(jw,3,ix), &
           dummy, ncomVIS(jw,ix)
         IF ( ios /= 0 ) THEN
-          CALL error_check ( &
-            ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-            modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-            vb_lev_default, errstat )
-          IF (  errstat /= pge_errstat_ok ) RETURN
+          call tell_error (tell_io_read_error, &
+                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                           errstat)
+          return
+          !CALL error_check ( &
+          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
+          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
+          !  vb_lev_default, errstat )
+          !IF (  errstat /= pge_errstat_ok ) RETURN
         END IF
 
       END DO
@@ -571,11 +614,17 @@ contains
     ! -----------------------------------------------
     locerrstat = PGS_IO_GEN_CLOSEF ( funit )
     locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    CALL error_check ( &
-      locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_SOLMONAVE_FILE, &
-      modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-
-    IF ( errstat >= pge_errstat_error ) RETURN
+    if (locerrstat > pgs_smf_mask_lev_s) then
+      call tell_error (tell_io_error, &
+                       "closing solar monthly average file "//trim(OMSAO_solmonthave_filename), &
+                       errstat)
+      return
+    endif
+    !CALL error_check ( &
+    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_SOLMONAVE_FILE, &
+    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
+    !
+    !IF ( errstat >= pge_errstat_error ) RETURN
 
     ! ---------------------------------------------
     ! Now is time to convert EarthSunDistance to AU
