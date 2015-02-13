@@ -7,11 +7,11 @@ MODULE omi_pge_fitting_process
 
 CONTAINS
 
-SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
+SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal, &
-    OMSAO_F_XTRMISRAD, vb_lev_default, error_check
+  !USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal, &
+  !  OMSAO_F_XTRMISRAD, vb_lev_default, error_check
   !USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
     l1b_radref_filename, l1b_channel
@@ -31,33 +31,35 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   ! ---------------
   ! Output variable
   ! ---------------
-  INTEGER (KIND=i4), INTENT (INOUT) :: pge_error_status
+  INTEGER (KIND=i4), INTENT (INOUT) :: errstat !pge_error_status
 
   ! ---------------
   ! Local variables
   ! ---------------
-  INTEGER (KIND=i4) :: errstat
+  !INTEGER (KIND=i4) :: errstat
   TYPE(Radiance_Paras_Type) :: rpt_rad, rpt_rr
 
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_pge_fitting_process'
+  !CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_pge_fitting_process'
 
-  pge_error_status = pge_errstat_ok
+  if (errstat < 0) return
+  !pge_error_status = pge_errstat_ok
 
   ! -------------------------------------------------------------------------------------
   ! Set the swath name of various ESDTs
   ! -------------------------------------------------------------------------------------
   CALL omi_set_fitting_parameters ( pge_idx, errstat )
+  if (errstat < 0) goto 666
   ! -------------------------------------------------------------------------------------
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error ) GO TO 666
+  !pge_error_status = MAX ( pge_error_status, errstat )
+  !IF ( pge_error_status >= pge_errstat_error ) GO TO 666
 
   ! -----------------------------------------------------------------------------------
   ! Get dimensions the L1B radiance granule
   ! -----------------------------------------------------------------------------------
-  errstat = pge_errstat_ok
+  !errstat = pge_errstat_ok
   !CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   call read_l1_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   if (errstat < 0) goto 666
@@ -90,18 +92,21 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   ! Number of cross-track positions must be the same; fold otherwise
   ! ----------------------------------------------------------------
   IF ( rpt_rad%nxtrack /= rpt_rr%nxtrack ) THEN
-    CALL error_check ( 0, 1, pge_errstat_fatal, OMSAO_F_XTRMISRAD, &
-                      modulename, vb_lev_default, errstat )
+    call tell_error (tell_runtime_error, &
+                     "Cross-track position different between L1b radiance granules", &
+                     errstat)
+    !CALL error_check ( 0, 1, pge_errstat_fatal, OMSAO_F_XTRMISRAD, &
+    !                  modulename, vb_lev_default, errstat )
     GO TO 666
   END IF
 
   ! -----------------------------------------------------------------------------------
-  pge_error_status = MAX ( pge_error_status, errstat )
-  IF ( pge_error_status >= pge_errstat_error )  GO TO 666
+  !pge_error_status = MAX ( pge_error_status, errstat )
+  !IF ( pge_error_status >= pge_errstat_error )  GO TO 666
   ! -----------------------------------------------------------------
-  CALL omi_fitting (pge_idx, rpt_rad, rpt_rr, n_max_rspec, pge_error_status)
-
-  IF ( pge_error_status >= pge_errstat_fatal ) GO TO 666
+  CALL omi_fitting (pge_idx, rpt_rad, rpt_rr, n_max_rspec, errstat) !pge_error_status)
+  if (errstat < 0) goto 666
+  !IF ( pge_error_status >= pge_errstat_fatal ) GO TO 666
 
   ! -------------------------------------------------------------
   ! Here is the place to jump to in case some error has occurred.
@@ -116,7 +121,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, pge_error_status )
   ! -------------------------------------------------
   CALL soco_pars_deallocate (errstat)
 
-  IF ( pge_error_status >= pge_errstat_fatal ) RETURN
+  !IF ( pge_error_status >= pge_errstat_fatal ) RETURN
 
   RETURN
 END SUBROUTINE omi_pge_fitting
@@ -141,7 +146,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
     xtrack_radiance_reference_loop
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   use output_tools, only : create_output_file, close_output_file, &
     write_fitting_statistics, write_common_mode, write_wavcal_output
@@ -398,14 +403,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! Terminate on not having any cross-track pixels left to process
   ! --------------------------------------------------------------
   IF ( ALL ( omi_cross_track_skippix ) ) THEN
-    CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_NOPIXEL, &
-      modulename, vb_lev_default, errstat )
+    call tell_log (0, "omi_fitting: no valid cross-track positions to process")
+    !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_NOPIXEL, &
+    !  modulename, vb_lev_default, errstat )
     GO TO 400
   END IF
 
   if (.not.yn_radiance_reference) then
     call init_prefit_files (pge_idx, ntimes_rad, nxtrack_rad, errstat)
-    if ( errstat >= pge_errstat_error ) return
+    if (errstat < 0) return
   endif
 
   ! ---------------------------------------------------------------------
@@ -460,7 +466,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   allocate (l1b_rad_latitudes (1:nxtrack_rad, 0:ntimes_rad-1), stat=locerrstat)
   if (locerrstat /= 0) then
-    call tell_error (tell_malloc_error, modulename // ": allocate failed", errstat)
+    call tell_error (tell_malloc_error, "omi_fitting: allocate failed", errstat)
     return
   endif
 
@@ -699,24 +705,24 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   if (errstat < 0) return
   errstat = he5_write_global_attributes (fit_stats) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call tell_error (tell_io_write_error, modulename//f_sep// &
-                     "he5_write_global_attributes failed", &
+    call tell_error (tell_io_write_error, &
+                     "omi_fitting: he5_write_global_attributes failed", &
                      errstat)
     return
   endif
 
   errstat = he5_write_swath_attributes ( pge_idx ) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call tell_error (tell_io_write_error, modulename//f_sep// &
-                     "he5_write_swath_attributes failed", &
+    call tell_error (tell_io_write_error, &
+                     "omi_fitting: he5_write_swath_attributes failed", &
                      errstat)
     return
   endif
 
   errstat = he5_set_field_attributes ( pge_idx ) ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call tell_error (tell_io_write_error, modulename//f_sep// &
-                     "he5_set_field_attributes failed", &
+    call tell_error (tell_io_write_error, &
+                     "omi_fitting: he5_set_field_attributes failed", &
                      errstat)
     return
   endif
@@ -728,8 +734,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   errstat = he5_close_output_file ( pge_idx)  ! FIXME <-- (to be removed)
   if (errstat < 0) then
-    call tell_error (tell_io_error, modulename//f_sep// &
-                     "he5_close_output_file failed", &
+    call tell_error (tell_io_error, &
+                     "omi_fitting: he5_close_output_file failed", &
                      errstat)
     return
   endif
@@ -739,16 +745,16 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ----------------------------------------
   CALL check_metadata_consistency ( errstat )
   if (errstat < 0) then
-      call tell_error (tell_application_error, modulename//f_sep// &
-                       "check_metadata_consistency failed", &
+      call tell_error (tell_application_error, &
+                       "omi_fitting: check_metadata_consistency failed", &
                        errstat)
       return
   endif
 
   CALL set_l2_metadata ( pge_idx, errstat )
   if (errstat < 0) then
-      call tell_error (tell_io_write_error, modulename//f_sep// &
-                       "set_l2_metadata failed", &
+      call tell_error (tell_io_write_error, &
+                       "omi_fitting: set_l2_metadata failed", &
                        errstat)
       return
   endif

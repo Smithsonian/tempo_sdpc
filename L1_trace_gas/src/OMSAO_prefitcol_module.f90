@@ -12,6 +12,7 @@ MODULE OMSAO_prefitcol_module
   USE OMSAO_indices_module,    ONLY: &
     o3_t1_idx, o3_t2_idx, o3_t3_idx, bro_idx, lqh2o_idx, &
     pge_hcho_idx, pge_gly_idx
+  use tell_module
 
   IMPLICIT NONE
 
@@ -66,7 +67,7 @@ CONTAINS
 
   SUBROUTINE init_prefit_files ( pge_idx, ntimes, nxtrack, errstat )
 
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE OMSAO_he5_module, ONLY: &
       o3fit_swath_id,    o3fit_swath_file_id,    o3fit_swath_name,  &
       brofit_swath_id,   brofit_swath_file_id,   brofit_swath_name, &
@@ -88,9 +89,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: locerrstat, ntimes_o3, nxtrack_o3, ntimes_bro, nxtrack_bro
+    INTEGER (KIND=i4) :: ntimes_o3, nxtrack_o3, ntimes_bro, nxtrack_bro ! locerrstat, 
     INTEGER (KIND=i4) :: ntimes_lqh2o, nxtrack_lqh2o
-    CHARACTER (LEN=17), PARAMETER :: modulename = 'init_prefit_files'
+    !CHARACTER (LEN=17), PARAMETER :: modulename = 'init_prefit_files'
+
+    if (errstat < 0) return
 
     ! ---------------------------
     ! Initialize output variables
@@ -113,32 +116,40 @@ CONTAINS
       ! ----------
       ! O3 prefits
       ! ----------
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
       IF ( yn_o3_prefit(1) ) THEN
         CALL he5_init_input_file ( &
           o3_prefit_fname, o3fit_swath_name, o3fit_swath_id, o3fit_swath_file_id, &
           ntimes_o3, nxtrack_o3, errstat )
-        IF ( ntimes_o3 /= ntimes .OR. nxtrack_o3 /= nxtrack ) THEN
-          locerrstat = pge_errstat_error
-          CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
-            modulename//f_sep//"O3 access failed.", vb_lev_default, errstat )
+        IF ( errstat < 0 .or. ntimes_o3 /= ntimes .OR. nxtrack_o3 /= nxtrack ) THEN
+          !locerrstat = pge_errstat_error
+          !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
+          !  modulename//f_sep//"O3 access failed.", vb_lev_default, errstat )
           yn_o3_prefit = .FALSE.
+          call tell_error (tell_io_read_error, &
+                           "init_prefit_files: failed reading O3 prefit", &
+                           errstat)
+          return
         END IF
       END IF
 
       ! -----------
       ! BrO prefits
       ! -----------
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
       IF ( yn_bro_prefit(1) ) THEN
         CALL he5_init_input_file ( &
           bro_prefit_fname, brofit_swath_name, brofit_swath_id, &
-          brofit_swath_file_id, ntimes_bro, nxtrack_bro, locerrstat )
-        IF ( ntimes_bro /= ntimes .OR. nxtrack_bro /= nxtrack ) THEN
-          locerrstat = pge_errstat_error
-          CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
-            modulename//f_sep//"BrO access failed.", vb_lev_default, errstat )
+          brofit_swath_file_id, ntimes_bro, nxtrack_bro, errstat) !locerrstat )
+        IF (errstat < 0 .or.  ntimes_bro /= ntimes .OR. nxtrack_bro /= nxtrack ) THEN
+          !locerrstat = pge_errstat_error
+          !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
+          !  modulename//f_sep//"BrO access failed.", vb_lev_default, errstat )
           yn_bro_prefit = .FALSE.
+          call tell_error (tell_io_read_error, &
+                           "init_prefit_files: failed reading BrO prefit", &
+                           errstat)
+          return
         END IF
       END IF
 
@@ -148,16 +159,20 @@ CONTAINS
       ! lqH2O prefits
       ! -------------
 
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
       IF ( yn_lqh2o_prefit(1) ) THEN
         CALL he5_init_input_file ( &
           lqh2o_prefit_fname, lqh2ofit_swath_name, lqh2ofit_swath_id, &
-          lqh2ofit_swath_file_id, ntimes_lqh2o, nxtrack_lqh2o, locerrstat )
-        IF ( ntimes_lqh2o /= ntimes .OR. nxtrack_lqh2o /= nxtrack ) THEN
-          locerrstat = pge_errstat_error
-          CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
-            modulename//f_sep//"lqH2O access failed.", vb_lev_default, errstat )
+          lqh2ofit_swath_file_id, ntimes_lqh2o, nxtrack_lqh2o, errstat) ! locerrstat )
+        IF (errstat < 0 .or. ntimes_lqh2o /= ntimes .OR. nxtrack_lqh2o /= nxtrack ) THEN
+          !locerrstat = pge_errstat_error
+          !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
+          !  modulename//f_sep//"lqH2O access failed.", vb_lev_default, errstat )
           yn_lqh2o_prefit = .FALSE.
+          call tell_error (tell_io_read_error, &
+                           "init_prefit_files: failed reading lqH2O prefit", &
+                           errstat)
+          return
         END IF
       END IF
 
@@ -177,7 +192,7 @@ CONTAINS
       o3fit_swath_id,  &
       brofit_swath_id,   &
       lqh2ofit_swath_id
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -194,7 +209,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: locerrstat, i!,iloop, it, nxtloc
+    INTEGER (KIND=i4) :: i !, locerrstat, iloop, it, nxtloc
     LOGICAL           :: yn_read_amf
     CHARACTER (LEN=12), PARAMETER :: col_str  = "ColumnAmount"
     CHARACTER (LEN=17), PARAMETER :: dcol_str = "ColumnUncertainty"
@@ -202,6 +217,8 @@ CONTAINS
     TYPE(DataField_HE5), pointer :: ptr_prefit, ptr_prefit_uncert
 
     !CHARACTER (LEN=19), PARAMETER :: modulename = 'read_prefit_columns'
+
+    if (errstat < 0) return
 
     ! -----------------------------------
     ! Read prefits for specific retrieval
@@ -212,7 +229,7 @@ CONTAINS
       ! ---------------------------------------------
       ! O3 prefitted columns and column uncertainties
       ! ---------------------------------------------
-      yn_read_amf = .FALSE. ; locerrstat = pge_errstat_ok
+      yn_read_amf = .FALSE. !; locerrstat = pge_errstat_ok
       IF ( yn_o3_prefit(1) ) THEN
         o3_prefit_col = 0.0_r8  ;  o3_prefit_dcol = 0.0_r8
 
@@ -226,8 +243,9 @@ CONTAINS
             o3_prefit_col (i,1:nxtrack,0:nloop-1), &
             len_trim(ptr_prefit_uncert%name), trim(ptr_prefit_uncert%name), &
             o3_prefit_dcol(i,1:nxtrack,0:nloop-1), &
-            yn_read_amf, locerrstat )
-          errstat = MAX( errstat, locerrstat )
+            yn_read_amf, errstat) !locerrstat )
+          !errstat = MAX( errstat, locerrstat )
+          if (errstat < 0) return
 
           ! ----------------------------------------------------------------------
           ! Multiply O3 columns with normalization factor to return to true values
@@ -247,14 +265,15 @@ CONTAINS
       ! -----------------------------------------------
       ! BrO prefitted columns and column uncertainties
       ! -----------------------------------------------
-      yn_read_amf = .TRUE. ; locerrstat = pge_errstat_ok
+      yn_read_amf = .TRUE. !; locerrstat = pge_errstat_ok
       IF ( yn_bro_prefit(1) ) THEN
         CALL he5_read_prefit_columns (                                 &
           brofit_swath_id, nloop, nxtrack, iline,                   &
           lcolstr,   col_str, bro_prefit_col (1:nxtrack,0:nloop-1), &
           ldcolstr, dcol_str, bro_prefit_dcol(1:nxtrack,0:nloop-1), &
-          yn_read_amf, locerrstat )
-        errstat = MAX( errstat, locerrstat )
+          yn_read_amf, errstat) ! locerrstat )
+        !errstat = MAX( errstat, locerrstat )
+        if (errstat < 0) return
 
         ! -----------------------------------------------------------------------
         ! Multiply BrO columns with normalization factor to return to true values
@@ -273,14 +292,15 @@ CONTAINS
       ! lqH2O prefitted columns and column uncertainties
       ! ------------------------------------------------
       ! ccm - Retrieved "Slant Columns"
-      yn_read_amf = .FALSE. ; locerrstat = pge_errstat_ok
+      yn_read_amf = .FALSE. !; locerrstat = pge_errstat_ok
       IF ( yn_lqh2o_prefit(1) ) THEN
         CALL he5_read_prefit_columns (                                 &
           lqh2ofit_swath_id, nloop, nxtrack, iline,                   &
           lcolstr,   col_str, lqh2o_prefit_col (1:nxtrack,0:nloop-1), &
           ldcolstr, dcol_str, lqh2o_prefit_dcol(1:nxtrack,0:nloop-1), &
-          yn_read_amf, locerrstat )
-        errstat = MAX( errstat, locerrstat )
+          yn_read_amf, errstat) ! locerrstat )
+        !errstat = MAX( errstat, locerrstat )
+        if (errstat < 0) return
 
         ! -------------------------------------------------------------------------
         ! Multiply lqH2O columns with normalization factor to return to true values
@@ -306,14 +326,14 @@ CONTAINS
     USE OMSAO_he5_module, ONLY: he5_start_2d, he5_stride_2d, he5_edge_2d, &
       HE5_SWrdfld
     USE datafields, ONLY: amfmol_field
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'he5_read_prefit_columns'
+    !CHARACTER (LEN=23), PARAMETER :: modulename = 'he5_read_prefit_columns'
 
     ! ---------------
     ! Input variables
@@ -336,7 +356,8 @@ CONTAINS
     INTEGER (KIND=i4) :: locerrstat
     REAL    (KIND=r8), DIMENSION (nxtrack_mol, 0:ntimes_mol-1) :: amf
 
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
+    if (errstat < 0) return
 
     ! ----------------------------------------------------
     ! Read current data block fitting output from HE5 file
@@ -368,8 +389,14 @@ CONTAINS
     ! ------------------
     ! Check error status
     ! ------------------
-    CALL error_check ( locerrstat, HE5_STAT_OK, pge_errstat_error, &
-      OMSAO_E_HE5SWRDFLD, modulename, vb_lev_default, errstat )
+    !CALL error_check ( locerrstat, HE5_STAT_OK, pge_errstat_error, &
+    !  OMSAO_E_HE5SWRDFLD, modulename, vb_lev_default, errstat )
+    if (locerrstat > 0) then
+      call tell_error (tell_io_read_error, &
+                       "he5_read_prefit_columns: failed reading prefit columns", &
+                       errstat)
+      return
+    endif
 
     RETURN
   END SUBROUTINE he5_read_prefit_columns
