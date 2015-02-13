@@ -170,7 +170,7 @@ CONTAINS
       omi_radiance_swathname, omi_radiance_spec,  &
       omi_radiance_wavl, omi_radiance_qflg, omi_height, omi_geoflg, omi_latitude,             &
       omi_longitude, omi_szenith, omi_sazimuth, omi_vzenith, omi_vazimuth,                    &
-      omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, omi_radiance_errstat,                &
+      omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, & !omi_radiance_errstat,                &
       rad_ccdpix_selection,                                                                   &
       omi_xtrflg_l1b, omi_xtrflg
     USE OMSAO_errstat_module
@@ -206,7 +206,7 @@ CONTAINS
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
 
-    omi_radiance_errstat = pge_errstat_ok
+    !omi_radiance_errstat(:) = pge_errstat_ok
 
     write (logmsg, '(a,i4,a)')'omi_read_radiance_lines: iline=',iline, &
       ' reading swathname='//trim(omi_radiance_swathname)//' file='//trim(l1bfile)

@@ -18,12 +18,11 @@ SUBROUTINE swathline_loops (                               &
   USE OMSAO_omidata_module,    ONLY:  &
     omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
-    omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &
-    omi_radiance_errstat,  &
+    omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &    !omi_radiance_errstat, 
     omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
     retrieval_type, input_vars, result_vars, radfit_diagnostics_type
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
   USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
@@ -79,7 +78,7 @@ SUBROUTINE swathline_loops (                               &
 
   if (errstat < 0) return
 
-  locerrstat = pge_errstat_ok
+  locerrstat = 0 ! pge_errstat_ok
   nt = rpt%ntimes
   nx = rpt%nxtrack
   nccd = rpt%nwavel_ccd
@@ -156,9 +155,10 @@ SUBROUTINE swathline_loops (                               &
     ! Read pre-fitted molecule columns
     ! --------------------------------
     IF (.NOT. yn_radiance_reference) then
-      CALL read_prefit_columns ( pge_idx, nx, nblock, iline, locerrstat )
-      errstat = MAX ( errstat, locerrstat )
-      IF ( errstat >= pge_errstat_error ) RETURN
+      CALL read_prefit_columns ( pge_idx, nx, nblock, iline, errstat) !locerrstat )
+      if (errstat < 0) return
+      !errstat = MAX ( errstat, locerrstat )
+      !IF ( errstat >= pge_errstat_error ) RETURN
     END IF
 
     ! -------------------------------------
@@ -194,7 +194,7 @@ SUBROUTINE swathline_loops (                               &
       !estat = OMI_SMF_setmsg ( OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), " ", vb_lev_omidebug )
       !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
-      IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN
+      !always true -> IF ( omi_radiance_errstat(iloop) /= pge_errstat_error ) THEN
 
         fpix = xtrange(scanline_no,1)
         lpix = xtrange(scanline_no,2)
@@ -270,7 +270,7 @@ SUBROUTINE swathline_loops (                               &
           retrieval_opt%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
           retrieval_opt%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
         endif
-      END IF
+      !always true -> END IF
 
       ! -----------------------
       ! Convert TAI to UTC time
