@@ -7,7 +7,7 @@ MODULE OMSAO_pixelcorner_module
   ! =========================================================================== !
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   !USE L1B_Reader_class
   USE OMSAO_parameters_module, ONLY: r8_missval, nlines_max
   USE OMSAO_omidata_module,    ONLY: gzoom_spix, gzoom_epix
@@ -73,7 +73,7 @@ CONTAINS
 
     !CHARACTER (LEN=21), PARAMETER :: modulename = 'compute_pixel_corners'
 
-    errstat = pge_errstat_ok
+    errstat = 0 ! pge_errstat_ok
 
     !! --------------------------------------------------------------------
     !! Read Latitudes and Longitudes from HE5 files (properly dimensioned!)
@@ -546,7 +546,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (0:nxtrack,0:ntimes)   :: tmplat, tmplon
     LOGICAL                                             :: do_pixel_adjust_crosstrack
 
-    estat = pge_errstat_ok
+    estat = 0 ! pge_errstat_ok
 
     ! --------------------------------------------------------------------------------
     ! Check whether we want to perform some pixel adjustment. This is an issue for

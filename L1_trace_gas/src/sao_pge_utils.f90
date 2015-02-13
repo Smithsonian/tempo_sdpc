@@ -1,4 +1,6 @@
 MODULE sao_pge_utils
+  use tell_module
+  implicit none
 
 CONTAINS
 ! ================================================================================
@@ -61,7 +63,7 @@ SUBROUTINE get_pge_ident (in_name, out_idx, out_name, errstat)
 
   USE OMSAO_precision_module, ONLY: i4
   USE OMSAO_indices_module, ONLY: sao_pge_names, sao_pge_min_idx, sao_pge_max_idx
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
 
   IMPLICIT NONE
 
@@ -80,14 +82,16 @@ SUBROUTINE get_pge_ident (in_name, out_idx, out_name, errstat)
   ! --------------
   ! Local variable
   ! --------------
-  INTEGER (KIND=i4) :: i, locerrstat
+  INTEGER (KIND=i4) :: i !, locerrstat
+
+  if (errstat < 0) return
 
   ! ---------------------------
   ! Initialize variables
   ! ---------------------------
   out_idx = -1
   out_name(1:1) = '?'
-  locerrstat = pge_errstat_ok
+  !locerrstat = pge_errstat_ok
 
   ! -------------------------------------------------
   ! Find name and index by looping over all SAO PGEs.
@@ -101,42 +105,42 @@ SUBROUTINE get_pge_ident (in_name, out_idx, out_name, errstat)
     END IF
   END DO getpge
 
-  IF ( (out_idx == -1) .OR. (out_name(1:1) == '?' ))  &
-    locerrstat = pge_errstat_error
-
-  errstat = MAX ( errstat, locerrstat )
+  IF ( (out_idx == -1) .OR. (out_name(1:1) == '?' )) then
+    call tell_set_error (tell_runtime_error) !locerrstat = pge_errstat_error
+  endif
+  !errstat = MAX ( errstat, locerrstat )
   RETURN
 
 END SUBROUTINE get_pge_ident
 
-SUBROUTINE pge_error_message ( errstat, ok_msg, warn_msg, err_msg )
-
-  ! ====================================================================
-  ! Check PGE error status and report appropriate message. STOP on error
-  ! ====================================================================
-  USE OMSAO_precision_module, ONLY: i4
-  USE OMSAO_errstat_module
-
-  IMPLICIT NONE
-
-  ! ---------------
-  ! Input variables
-  ! ---------------
-  INTEGER   (KIND=i4), INTENT (IN) :: errstat
-  CHARACTER (LEN=*),   INTENT (IN) :: ok_msg, warn_msg, err_msg
-
-  SELECT CASE ( errstat )
-  CASE ( pge_errstat_ok )
-    WRITE (*, '(A)') TRIM(ADJUSTL(ok_msg))
-  CASE ( pge_errstat_warning )
-    WRITE (*, '(A,A)') 'WARNING: ', TRIM(ADJUSTL(warn_msg))
-  CASE ( pge_errstat_error )
-    WRITE (*, '(A,A)') 'ERROR: ', TRIM(ADJUSTL(err_msg))
-    STOP 1
-  END SELECT
-
-  RETURN
-END SUBROUTINE pge_error_message
+!unused SUBROUTINE pge_error_message ( errstat, ok_msg, warn_msg, err_msg )
+!unused 
+!unused   ! ====================================================================
+!unused   ! Check PGE error status and report appropriate message. STOP on error
+!unused   ! ====================================================================
+!unused   USE OMSAO_precision_module, ONLY: i4
+!unused   USE OMSAO_errstat_module
+!unused 
+!unused   IMPLICIT NONE
+!unused 
+!unused   ! ---------------
+!unused   ! Input variables
+!unused   ! ---------------
+!unused   INTEGER   (KIND=i4), INTENT (IN) :: errstat
+!unused   CHARACTER (LEN=*),   INTENT (IN) :: ok_msg, warn_msg, err_msg
+!unused 
+!unused   SELECT CASE ( errstat )
+!unused   CASE ( pge_errstat_ok )
+!unused     WRITE (*, '(A)') TRIM(ADJUSTL(ok_msg))
+!unused   CASE ( pge_errstat_warning )
+!unused     WRITE (*, '(A,A)') 'WARNING: ', TRIM(ADJUSTL(warn_msg))
+!unused   CASE ( pge_errstat_error )
+!unused     WRITE (*, '(A,A)') 'ERROR: ', TRIM(ADJUSTL(err_msg))
+!unused     STOP 1
+!unused   END SELECT
+!unused 
+!unused   RETURN
+!unused END SUBROUTINE pge_error_message
 
 !JCH - A character function must not be declared to return a value with LEN=*.
 !JCH - On the other hand, this function is equivalent to

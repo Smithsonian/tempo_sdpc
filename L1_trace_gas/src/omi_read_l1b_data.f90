@@ -173,7 +173,7 @@ CONTAINS
       omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, & !omi_radiance_errstat,                &
       rad_ccdpix_selection,                                                                   &
       omi_xtrflg_l1b, omi_xtrflg
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE angle_sat2toa, ONLY: gnome_angle_sat2toa
     !use l1bread
     use tio_module

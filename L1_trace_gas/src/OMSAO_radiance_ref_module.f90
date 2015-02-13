@@ -389,7 +389,7 @@ CONTAINS
       omi_radref_wght, omi_radref_pars,    &
       omi_radref_xflag, omi_radref_chisq, omi_radref_col,  &
       omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol, omi_radref_wav_avg
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
     use irradiance_data, only: Irr_Data
     use ctrlvars, only: yn_radiance_reference
@@ -410,7 +410,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: locerrstat, ipix, radfit_exval, radfit_itnum
+    INTEGER (KIND=i4) :: ipix, radfit_exval, radfit_itnum ! locerrstat, 
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
@@ -441,7 +441,7 @@ CONTAINS
     ! -------------------------
     ! Initialize some variables
     ! -------------------------
-    locerrstat          = pge_errstat_ok
+    !locerrstat          = pge_errstat_ok
     xtrack_fitres_limit = 0.0_r8
     target_var          = r8_missval
     fitvar_rad_saved    = fitvar_rad_init
@@ -466,7 +466,7 @@ CONTAINS
 
     XTrackPix: DO ipix = fpix, lpix
 
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
 
       ! -----------------------------------------------------------
       ! The current cross-track pixel number is required further on
@@ -676,7 +676,7 @@ CONTAINS
 
     END IF
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE xtrack_radiance_reference_loop
@@ -834,7 +834,7 @@ CONTAINS
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
     use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_solar_comp
     USE OMSAO_solcomp_module,       ONLY: solarcomp_pars
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -864,12 +864,12 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                     :: &
-      i, locerrstat, imin1, imax1, imin2, imax2, j1, j2
+      i, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat, 
     LOGICAL                                               :: have_good_window
     REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
     integer (kind=i2) :: bad_qflg_mask
 
-    locerrstat  = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
     do_skip_pix = .FALSE.
 
     imin1 = omi_ccdpix_idx(1) ; imax1 = omi_ccdpix_idx(4)  ! The total window
