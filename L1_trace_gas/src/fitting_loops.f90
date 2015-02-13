@@ -35,7 +35,7 @@ CONTAINS
       omi_database_wvl, omi_radref_wav_avg, &
       omi_solcal_pars
     USE prepare_databases, ONLY: prep_databases
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE he5_output_tools, ONLY: he5_write_omi_database
     use output_tools, only : write_refspec_database
     USE sao_pge_utils, ONLY: interpolation
@@ -85,7 +85,7 @@ CONTAINS
 
     if (errstat < 0) return
 
-    locerrstat = pge_errstat_ok
+    locerrstat = 0 !pge_errstat_ok
 
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
 
@@ -118,7 +118,7 @@ CONTAINS
     ! --------------------------------
     XTrackWavCal: DO ipix = first_pix, last_pix
 
-      locerrstat = pge_errstat_ok
+      locerrstat = 0 ! pge_errstat_ok
 
       curr_xtrack_pixnum = ipix
 
@@ -223,8 +223,8 @@ CONTAINS
         rad_spec_avg, do_skip_pix )
 
       ! ------------------------------------------------------------------------------------
-      IF ( do_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
-        errstat = MAX ( errstat, locerrstat )
+      IF (do_skip_pix) then ! .OR. locerrstat >= pge_errstat_error ) THEN
+        !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
         WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
@@ -248,10 +248,10 @@ CONTAINS
         adj_wvls(1:adj_num), adj_spec(1:adj_num), &
         adj_wgts(1:adj_num), &
         ctrl_n_fitres_loop(radcal_idx), ctrl_fitres_range(radcal_idx), &
-        radcal_exval, radcal_itnum, chisquav, is_bad_pixel, locerrstat )
+        radcal_exval, radcal_itnum, chisquav, is_bad_pixel, errstat) !locerrstat )
 
-      IF ( is_bad_pixel .OR. locerrstat >= pge_errstat_error ) THEN
-        errstat = MAX ( errstat, locerrstat )
+      IF ( is_bad_pixel .OR. errstat < 0) then !locerrstat >= pge_errstat_error ) THEN
+        !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
         WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
@@ -308,10 +308,10 @@ CONTAINS
       ! ----------------------------------------------------
       Call prep_databases ( &
         ipix, n_ref_wvl, ref_wvl(1:n_ref_wvl), ref_spc(1:n_ref_wvl), &
-        adj_num, adj_wvls(1:adj_num), n_max_rspec, locerrstat )
+        adj_num, adj_wvls(1:adj_num), n_max_rspec, errstat) ! locerrstat )
       ! --------------------------------------------------------------------------------
-
-      IF ( locerrstat >= pge_errstat_error ) EXIT XTrackWavCal
+      if (errstat < 0) exit XTrackWavCal
+      !IF ( locerrstat >= pge_errstat_error ) EXIT XTrackWavCal
 
       ! ---------------------------------------------------------
       ! Save DATABASE in OMI_DATABASE for radiance fitting loops.
@@ -355,10 +355,10 @@ CONTAINS
           Irr_Data%spectrum(1:imax,ipix),                           &
           adj_num, omi_database_wvl(1:adj_num,ipix),              &
           omi_database(1:adj_num,ipix,solar_idx),                   &
-          'endpoints', 0.0_r8, did_full_range, locerrstat )
+          'endpoints', 0.0_r8, did_full_range, errstat) ! locerrstat )
 
-        IF ( locerrstat >= pge_errstat_error ) THEN
-          errstat = MAX ( errstat, locerrstat )
+        IF (errstat < 0) then ! locerrstat >= pge_errstat_error ) THEN
+          !errstat = MAX ( errstat, locerrstat )
           omi_cross_track_skippix (ipix) = .TRUE.
           addmsg = ''
           WRITE (addmsg, '(A,I2)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
@@ -399,7 +399,7 @@ CONTAINS
       endif
     ENDIF
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE xtrack_radiance_wvl_calibration
@@ -484,7 +484,7 @@ CONTAINS
       omi_radiance_qflg, omi_cross_track_skippix, omi_radref_wav_avg, &
       omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
     use ctrlvars, only : yn_diagnostic_run
 
@@ -537,7 +537,8 @@ CONTAINS
 
     !CHARACTER (LEN=28), PARAMETER :: modulename = 'xtrack_radiance_fitting_loop'
 
-    locerrstat = pge_errstat_ok
+    if (errstat < 0) return
+    locerrstat = 0 ! pge_errstat_ok
 
     if (yn_diagnostic_run) then
       open (unit=unit_radiance_wavcal, file='diag.radiance_wavcal', access='append', &
@@ -562,7 +563,7 @@ CONTAINS
       ! ---------------------------------------------------------------------
       IF ( omi_cross_track_skippix(ipix) .OR. szamax < omi_szenith(ipix,iloop) ) CYCLE
 
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
 
       n_database_wvl = n_omi_database_wvl(ipix)
       n_omi_radwvl = omi_nwav_rad (ipix,iloop)
@@ -709,7 +710,7 @@ CONTAINS
 
     END DO XTrackPix
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     if (yn_diagnostic_run) then
       close (unit_radiance_wavcal)

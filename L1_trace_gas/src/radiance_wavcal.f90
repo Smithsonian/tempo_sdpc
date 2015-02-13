@@ -21,7 +21,7 @@ SUBROUTINE radiance_wavecal ( &
     lo_radbnd, up_radbnd, &
     max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor, sol_wav_avg
   use ctrlvars, only: yn_newshift
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   USE commonmode, ONLY: compute_common_mode
   use wavecal
   use optimizer_interface_module, only: opt_convergence_good
@@ -45,7 +45,7 @@ SUBROUTINE radiance_wavecal ( &
   ! ---------------
   ! Local variables
   ! ---------------
-  INTEGER (KIND=i4)  :: locerrstat, locitnum
+  INTEGER (KIND=i4)  :: locitnum ! locerrstat, 
 
   if (errstat < 0) return
 
@@ -53,7 +53,7 @@ SUBROUTINE radiance_wavecal ( &
 
   ! Select and wavelength calibrate radiance spectrum
 
-  locerrstat = pge_errstat_ok
+  !locerrstat = pge_errstat_ok
 
   radcal_exval = i4_missval
   radcal_itnum = i2_missval
@@ -134,7 +134,7 @@ SUBROUTINE radiance_wavecal ( &
   ! it doesn't make sense yet to update the error variable. We'll do
   ! it anyway to make ourselves feel better.
   ! -----------------------------------------------------------------
-  IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
+  !IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
 
   RETURN
 
