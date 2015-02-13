@@ -90,7 +90,7 @@ contains
     use ctrlvars, only: yn_spectrum_norm, yn_newshift
     use slitfunction, only : slitfunction_convolve
     USE cache_module, ONLY: saved_shift, saved_squeeze
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE sao_pge_utils, ONLY: interpolation
     use OMSAO_parameters_module, only: MAX_SPEC_PTS
 
@@ -114,7 +114,7 @@ contains
     real (kind=r8), dimension (MAX_SPEC_PTS), save :: &
       saved_solar_spec_convolved = 0.0_r8
 
-    errstat = pge_errstat_ok
+    errstat = 0 !pge_errstat_ok
 
     npts               = refspecs_original(solar_idx)%nPoints
     solar_wvls(1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
