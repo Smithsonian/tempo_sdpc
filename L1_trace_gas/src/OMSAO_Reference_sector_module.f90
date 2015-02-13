@@ -48,7 +48,7 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
     use OMSAO_indices_module, only : pge_hcho_idx
     use output_tools, only : write_reference_sector_corrected_column
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
     ! This subroutine is a wrapper for the Reference Background corre
     ! ction
@@ -92,7 +92,7 @@ CONTAINS
 
     if (errstat < 0) return
 
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     int_saocol   = saocol
     int_saodco   = saodco
@@ -171,7 +171,7 @@ CONTAINS
       if (errstat < 0) return
     endif
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
   END SUBROUTINE Reference_Sector_correction
 

@@ -19,7 +19,7 @@ CONTAINS
     USE OMSAO_indices_module,         ONLY: &
       qual_flag_mis, qual_flag_bad, qual_flag_err
     use ctrlvars, only: yn_spectrum_norm
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
     USE irradiance_data, only: Irradiance_Data_Type
 
@@ -48,7 +48,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                       :: &
-      i, j, locerrstat, imin1, imax1, imin2, imax2, j1, j2
+      i, j, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat, 
     LOGICAL                                                 :: have_good_window
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix))           :: weightsum
     REAL    (KIND=r8)                                       :: sol_spec_avg, asum, ssum
@@ -62,7 +62,9 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (irr%nwaves(xtpix)) :: bad_idx
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix)) :: wvl_good, wvl_bad, spc_good, spc_bad
 
-    locerrstat  = pge_errstat_ok
+    if (errstat < 0) return
+
+    !locerrstat  = pge_errstat_ok
     do_skip_pix = .FALSE.
 
     ! The total window
@@ -200,7 +202,8 @@ CONTAINS
     IF ( nbad > 0 ) THEN
       CALL ezspline_1d_interpolation (                      &
         ngood, wvl_good(1:ngood), spc_good(1:ngood),     &
-        nbad, wvl_bad(1:nbad), spc_bad(1:nbad), locerrstat )
+        nbad, wvl_bad(1:nbad), spc_bad(1:nbad), errstat) !locerrstat )
+      if (errstat < 0) return
       DO i = 1, nbad
         j = bad_idx(i)
         adj_spec(j) = spc_bad(i)
@@ -223,7 +226,7 @@ CONTAINS
     j1 = j1 - imin1 + 1    ; j2 = j2 - imin1 + 1
     IF ( j1 >= 1 .AND. j2 <= num_irr_wvl ) adj_wgts(j1:j2) = downweight
 
-    IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
+    !IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE adjust_irradiance_data
@@ -249,7 +252,7 @@ CONTAINS
     use ctrlvars, only: yn_newshift
     USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, &
       shi_idx, squ_idx, max_calfit_idx
-    USE OMSAO_errstat_module, ONLY: pge_errstat_ok
+    !USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     use optimizer_interface_module, only: opt_convergence_good
     use wavecal
 
@@ -278,13 +281,13 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)  :: locerrstat, locitnum
+    INTEGER (KIND=i4)  :: locitnum !locerrstat, 
 
     ! ----------------------------------------------------------------
     ! Initialize local error status variable; note that error handling
     ! is rudimentary in this subroutine - no error is reported.
     ! ----------------------------------------------------------------
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     solcal_exval = i4_missval
     solcal_itnum = i2_missval
@@ -360,7 +363,7 @@ CONTAINS
       Slit_Asym_Factor, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     use irradiance_data, only : Irr_Data
 
     IMPLICIT NONE
@@ -390,7 +393,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=29), PARAMETER :: modulename = 'xtrack_solar_calibration_loop'
+    !CHARACTER (LEN=29), PARAMETER :: modulename = 'xtrack_solar_calibration_loop'
 
     if (errstat < 0) return
 
@@ -415,7 +418,7 @@ CONTAINS
     adj_len = 0
     XtrackSolCal: DO ipix = first_pix, last_pix
 
-      locerrstat = pge_errstat_ok
+      !locerrstat = pge_errstat_ok
 
       curr_xtrack_pixnum = ipix
 
@@ -443,16 +446,17 @@ CONTAINS
         omi_irradiance_ccdpix(1:n_irradwvl,ipix), &
         adj_wvl, adj_spec, adj_wgts, &
         curr_sol_wav_avg, &
-        do_skip_pix, locerrstat )
+        do_skip_pix, errstat) !locerrstat )
 
-      IF ( do_skip_pix .OR. locerrstat >= pge_errstat_error ) THEN
-        errstat = MAX ( errstat, locerrstat )
+      IF ( do_skip_pix .OR. errstat < 0) then !locerrstat >= pge_errstat_error ) THEN
+        !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'SKIPPING cross track pixel #', ipix
-        CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-                          modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-                          locerrstat )
+        WRITE (addmsg, '(A,I2)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
+        call tell_log (0, addmsg)
+        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
+        !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
+        !                  locerrstat )
         CYCLE
       END IF
 
@@ -463,19 +467,20 @@ CONTAINS
         adj_wvl, adj_spec, adj_wgts, &
         Slit_Half_Width_1e, &
         Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, &
-        is_bad_pixel, locerrstat )
+        is_bad_pixel, errstat) ! locerrstat )
       ! solar_fit modifies the following variables:
       !   adj_wvl, adj_spec, adj_wgts, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
       !   solcal_itnum, chisquav, is_bad_pixel, locerrstat
 
-      IF ( is_bad_pixel .OR. locerrstat >= pge_errstat_error ) THEN
-        errstat = MAX ( errstat, locerrstat )
+      IF ( is_bad_pixel .OR. errstat < 0) then ! locerrstat >= pge_errstat_error ) THEN
+        !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'SKIPPING cross track pixel #', ipix
-        CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-          modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-          locerrstat )
+        WRITE (addmsg, '(A,I2)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
+        call tell_log (0, addmsg)
+        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
+        !  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
+        !  locerrstat )
         CYCLE
       END IF
 
@@ -513,7 +518,7 @@ CONTAINS
       !IF ( verb_thresh_lev >= vb_lev_screen  ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
     END DO XtrackSolCal
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     if (yn_diagnostic_run) then
       close (unit_solar_wavcal)
@@ -532,7 +537,7 @@ CONTAINS
     ! !! CALL solar_xtrack_average ( &
     ! !!     first_pix, last_pix, MAXVAL(omi_nwav_irrad(first_pix:last_pix)),  errstat )
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE xtrack_solar_calibration_loop

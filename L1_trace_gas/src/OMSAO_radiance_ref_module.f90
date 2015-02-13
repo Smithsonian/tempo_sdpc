@@ -37,7 +37,7 @@ CONTAINS
       omi_radref_qflg, omi_radref_sza, omi_radref_vza, omi_radref_wght, &
       rad_ccdpix_exclusion, n_comm_wvl, &
       omi_nwav_rad, omi_radref_wav_avg
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE arrayutils, only: array_locate_r8
@@ -47,7 +47,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    CHARACTER (LEN=*), PARAMETER :: modulename = 'omi_get_radiance_reference' ! JED fixed
+    !CHARACTER (LEN=*), PARAMETER :: modulename = 'omi_get_radiance_reference' ! JED fixed
 
     ! ---------------
     ! Input variables
@@ -152,15 +152,18 @@ CONTAINS
 
     deallocate (latr4)
 
-    ! -----------------------------------------------------
-    ! If we don't find a working scan line, we have to fold
-    ! -----------------------------------------------------
+    ! ------------------------------------------
+    ! If we don't find a working scan line, fail
+    ! ------------------------------------------
     IF ( ( .NOT. have_scanline )               .OR. &
         ( ANY ( .NOT. have_limits(1:2) ) )    .OR. &
         ( midpt_line < 0 )                       .OR. &
         ( ANY ( radiance_reference_lnums < 0 ) )        ) THEN
-      CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
-                        modulename//f_sep//"Failed to find working radiance spectrum.", vb_lev_default, errstat )
+      call tell_error (tell_runtime_error, &
+                       "omi_get_radiance_reference: failed to find working radiance spectrum", &
+                       errstat)
+      !CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_E_READ_L1B_FILE, &
+      !                  modulename//f_sep//"Failed to find working radiance spectrum.", vb_lev_default, errstat )
       RETURN
     END IF
 
