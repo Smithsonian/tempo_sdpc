@@ -43,7 +43,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: l1b_channel
     USE OMSAO_he5_module,        ONLY: swath_base_name, pge_swath_name
-    USE OMSAO_errstat_module,    ONLY: pge_errstat_ok
+    !USE OMSAO_errstat_module,    ONLY: pge_errstat_ok
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname, omi_irradiance_swathname
     USE OMSAO_indices_module,    ONLY: sao_molecule_names
 
@@ -57,17 +57,18 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER (KIND=i4), INTENT (OUT) :: errstat
+    INTEGER (KIND=i4), INTENT (inout) :: errstat
 
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
     !CHARACTER (LEN=26), PARAMETER :: modulename = 'omi_set_fitting_parameters'
 
+    if (errstat < 0) return
     ! --------------------------
     ! Initialize OUTPUT variable
     ! --------------------------
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
 
     ! ---------------------------------------------------------------------
     ! Name of solar, earthshine, and L2 swaths (normally obtained from PCF)
@@ -111,7 +112,7 @@ CONTAINS
     !  PercentGoodOutputSamples, PercentSuspectOutputSamples, &
     !  PercentBadOutputSamples, &
     !  AbsolutePercentMissingSamples
-    USE OMSAO_errstat_module,   ONLY: pge_errstat_ok !, vb_lev_screen
+    !USE OMSAO_errstat_module,   ONLY: pge_errstat_ok !, vb_lev_screen
     USE OMSAO_variables_module, ONLY: max_good_col !, verb_thresh_lev
     !USE he5_output_tools, ONLY: he5_write_fitting_statistics
 
@@ -139,7 +140,7 @@ CONTAINS
     ! ----------------
     ! Local variables
     ! ----------------
-    INTEGER (KIND=i4) :: locerrstat, ix, it, spix, epix
+    INTEGER (KIND=i4) :: ix, it, spix, epix ! locerrstat, 
     !REAL    (KIND=r4) :: PercentOutofBoundsSamples
     REAL    (KIND=r8) :: col_avg, rms_avg, dcol_avg
     REAL    (KIND=r8) :: col2sig, col3sig
@@ -150,7 +151,7 @@ CONTAINS
     character (len=256) :: out_string
 
     if (errstat < 0) return
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     ! ---------------------------------------------------------
     ! The total number of input samples is simply the number of
@@ -751,7 +752,7 @@ CONTAINS
 
     USE OMSAO_precision_module,  ONLY: i1, i4
     USE OMSAO_omidata_module,    ONLY: szoom_mode, global_mode, gzoom_spix, gzoom_epix
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
@@ -823,12 +824,14 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)          :: first_pix, last_pix, i, locerrstat
+    INTEGER (KIND=i4)          :: first_pix, last_pix, i !, locerrstat
 
     ! -----------------------
     ! Name of this subroutine
     ! -----------------------
     !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_set_xtrpix_range'
+
+    if (errstat < 0) return
 
     ! ---------------------------
     ! Initialize return variables
@@ -837,7 +840,7 @@ CONTAINS
     first_wc_pix                     = -1
     last_wc_pix                      = -1
 
-    locerrstat = pge_errstat_ok
+    !locerrstat = pge_errstat_ok
 
     ! ------------------------------------------
     ! Find the range of XT pixels to process
@@ -870,7 +873,7 @@ CONTAINS
       omi_xtrpix_range(i,2) = last_wc_pix
     END DO
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
     RETURN
   END SUBROUTINE omi_set_xtrpix_range
 
@@ -944,7 +947,7 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: pixnum_lim
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     USE omi_read_l1b_data, ONLY: omi_read_binning_factor
 
     IMPLICIT NONE
@@ -971,25 +974,28 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                          :: estat, fpix, lpix, midnum, locerrstat
+    INTEGER (KIND=i4)                          :: fpix, lpix, midnum !, locerrstat, estat
     REAL    (KIND=r4)                          :: midlat
     INTEGER (KIND=i4), DIMENSION (0:nt-1, 1:2) :: xtrange
     INTEGER (KIND=i1), DIMENSION (0:nt-1)      :: binfac
     LOGICAL,           DIMENSION (0:nt-1)      :: ynzoom
 
-    locerrstat = pge_errstat_ok
-    estat      = pge_errstat_ok
+    if (errstat < 0) return
+    !locerrstat = pge_errstat_ok
+    !estat      = pge_errstat_ok
 
     ! ----------------------------------------------------------------
     ! Read preparatory arrays for determining the range of swath lines
     ! that fall within the desired latitude interval.
     ! ----------------------------------------------------------------
     CALL omi_read_binning_factor ( &
-      l1bfile, l1bswath, nt, binfac(0:nt-1), ynzoom(0:nt-1), estat )
+      l1bfile, l1bswath, nt, binfac(0:nt-1), ynzoom(0:nt-1), errstat )
 
     CALL omi_set_xtrpix_range ( &
       nt, nx, pixnum_lim(3:4), binfac(0:nt-1), &
-      xtrange(0:nt-1,1:2), fpix, lpix, estat    )
+      xtrange(0:nt-1,1:2), fpix, lpix, errstat    )
+
+    if (errstat < 0) return
 
     ! ----------------------------------------------------------------------
     ! Determine the range of swath line numbers that go into the radiance
@@ -1007,7 +1013,7 @@ CONTAINS
       l1blats(1:nx,0:nt-1), xtrange(0:nt-1,1:2), midlat, &
       midnum, in_range(0:nt-1)                        )
 
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
 
     RETURN
   END SUBROUTINE find_swathline_range
@@ -1017,7 +1023,7 @@ CONTAINS
 
     USE OMSAO_precision_module, ONLY: i4, r4
     USE OMSAO_parameters_module, ONLY: r4_missval
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
     !USE L1B_Reader_class
 
     IMPLICIT NONE
@@ -1057,7 +1063,7 @@ CONTAINS
     REAL    (KIND=r4)                   :: diff, mindiff
     REAL    (KIND=r4), DIMENSION (nxrr) :: cntr4, latdiff, loclat
     INTEGER (KIND=i4)                   :: &
-      j1, j2, icnt, iline, fpix, lpix, locerr
+      j1, j2, icnt, iline, fpix, lpix !, locerr
     character (len=256) :: log_msg
 
     ! ---------------------------
@@ -1093,7 +1099,7 @@ CONTAINS
       call tell_log (3, log_msg)
 
       IF ( iline < sline .OR. iline > eline ) THEN
-        locerr = pge_errstat_error
+        !unused! locerr = pge_errstat_error
         EXIT FindLine
       END IF
 
@@ -1176,7 +1182,7 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: r4_missval
-    USE OMSAO_errstat_module
+    !USE OMSAO_errstat_module
 
     IMPLICIT NONE
 

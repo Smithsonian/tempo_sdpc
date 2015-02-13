@@ -23,7 +23,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_precision_module
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   use ctrlvars, only: yn_radiance_reference, yn_refseccor
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
@@ -73,7 +73,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! -------------------------
   ! Initialize error variable
   ! -------------------------
-  locerrstat = pge_errstat_ok
+  locerrstat = 0 ! pge_errstat_ok
 
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
@@ -93,7 +93,8 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------------------------
   ! Compute ground pixel corner latitudes and longitudes
   ! ----------------------------------------------------
-  CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, locerrstat )
+  CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, errstat) ! locerrstat )
+  if (errstat < 0) return
 
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
@@ -146,11 +147,12 @@ SUBROUTINE omi_pge_postprocess ( &
   call tell_log (1, 'omi_pge_postprocess:  calling compute_fitting_statistics')
   CALL compute_fitting_statistics ( &
     pge_idx, ntimes, nxtrack, xtrange, &
-    saocol, saodco, saorms, saofcf, fit_stats, locerrstat )
-  CALL he5_write_fitting_statistics ( &
+    saocol, saodco, saorms, saofcf, fit_stats, errstat) ! locerrstat )
+  if (errstat < 0) return
+  CALL he5_write_fitting_statistics ( &  ! FIXME <--- to be removed
     pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
     fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
-  errstat = max(locerrstat, errstat)
+  !errstat = max(locerrstat, errstat)
   ! ---------------------------------------
   ! Apply cross-track destriping correction
   ! ---------------------------------------
@@ -158,7 +160,7 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL xtrack_destriping (                                    &
     pge_idx, ntimes, nxtrack, do_process_line, xtrange,         &
     lat, saocol, & !saodco, saoamf, saofcf,
-    fit_stats % quality_flag, locerrstat )
+    fit_stats % quality_flag, errstat) ! locerrstat )
 
   ! ---------------------------------------------------------------
   ! Apply Reference Sector Correction; Only for HCHO retrieval !gga
@@ -168,7 +170,7 @@ SUBROUTINE omi_pge_postprocess ( &
     call tell_log (1, 'omi_pge_postprocess:  calling Reference_Sector_correction')
     CALL Reference_Sector_correction (ntimes, nxtrack, & !xtrange, lat,
       saocol, saodco, saoamf, fit_stats % quality_flag, pge_idx, n_max_rspec, &
-      locerrstat)
+      errstat) ! locerrstat)
   ENDIF
 
   ! Deallocate AMF variables

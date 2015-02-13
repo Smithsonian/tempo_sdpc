@@ -61,7 +61,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER (KIND=i4), INTENT (OUT) :: errstat
+    INTEGER (KIND=i4), INTENT (inout) :: errstat
 
     ! ---------------
     ! Local variables
@@ -73,7 +73,8 @@ CONTAINS
 
     !CHARACTER (LEN=21), PARAMETER :: modulename = 'compute_pixel_corners'
 
-    errstat = 0 ! pge_errstat_ok
+    if (errstat < 0) return
+    !errstat = pge_errstat_ok
 
     !! --------------------------------------------------------------------
     !! Read Latitudes and Longitudes from HE5 files (properly dimensioned!)
