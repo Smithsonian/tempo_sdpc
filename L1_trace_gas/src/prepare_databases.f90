@@ -1,4 +1,7 @@
 MODULE prepare_databases
+  use tell_module
+  implicit none
+
   private
   public prep_databases
 CONTAINS
@@ -20,7 +23,7 @@ SUBROUTINE prepare_solar_refspec ( &
   !USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
   USE OMSAO_variables_module,  ONLY: fit_winwav_idx, database
   use ctrlvars, only: yn_doas
-  USE OMSAO_errstat_module
+  !USE OMSAO_errstat_module
   USE sao_pge_utils, ONLY: interpolation
   USE subtract_cubic, ONLY: cubic_subtract
   IMPLICIT NONE
@@ -37,18 +40,18 @@ SUBROUTINE prepare_solar_refspec ( &
   ! Local variables
   ! ---------------
   LOGICAL                                 :: did_full_range
-  INTEGER (KIND=i4)                       :: j, ll_rad, lu_rad, locerrstat, n_sol_tmp
+  INTEGER (KIND=i4)                       :: j, ll_rad, lu_rad, n_sol_tmp ! locerrstat, 
   REAL    (KIND=r8), DIMENSION (n_radpts) :: spline_sun
   REAL    (KIND=r8), DIMENSION (n_solpts) :: tmp_sol_spec, tmp_sol_wvl
 
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=21), PARAMETER :: modulename = 'prepare_solar_refspec'
+  !CHARACTER (LEN=21), PARAMETER :: modulename = 'prepare_solar_refspec'
 
   if (errstat < 0) return
 
-  locerrstat = pge_errstat_ok
+  !locerrstat = pge_errstat_ok
 
   ! ---------------------------------------------
   ! Spline irradiance spectrum onto radiance grid
@@ -83,13 +86,22 @@ SUBROUTINE prepare_solar_refspec ( &
   CALL interpolation ( &
     n_sol_tmp, tmp_sol_wvl(1:n_sol_tmp), tmp_sol_spec(1:n_sol_tmp),             &
     n_radpts, curr_rad_wvl(1:n_radpts), spline_sun(1:n_radpts),                 &
-    'endpoints', 0.0_r8, did_full_range, locerrstat )
-  CALL error_check ( &
-    locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-    modulename, vb_lev_default, errstat )
-  IF ( errstat >= pge_errstat_error ) RETURN
-  IF ( .NOT. did_full_range )   CALL error_check ( 0, 1, pge_errstat_warning, &
-    OMSAO_W_INTERPOL_RANGE, modulename, vb_lev_develop, errstat )
+    'endpoints', 0.0_r8, did_full_range, errstat) ! locerrstat )
+  if (errstat < 0) then
+    call tell_error (tell_runtime_error, &
+                     "prepare_solar_refspec: interpolation failed", &
+                     errstat)
+    return
+  endif
+  !CALL error_check ( &
+  !  locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
+  !  modulename, vb_lev_default, errstat )
+  !IF ( errstat >= pge_errstat_error ) RETURN
+  IF ( .NOT. did_full_range )   then
+    call tell_log (2, "prepare_solar_refspec: interpolation found incomplete wavelength range")
+    !CALL error_check ( 0, 1, pge_errstat_warning, &
+    !                  OMSAO_W_INTERPOL_RANGE, modulename, vb_lev_develop, errstat )
+  endif
 
   ! --------------------------------------------------------------------------
   ! Finally, we have to check whether we encountered any bad solar pixels. The
