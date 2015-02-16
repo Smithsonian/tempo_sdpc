@@ -274,7 +274,7 @@ contains
     integer (kind=i4), intent(out) :: exit_value
     integer, intent(inout) :: errstat
     !
-    INTEGER (KIND=i4)  :: i, idx, n_nozero_wgt, num_iterations_per_fit
+    INTEGER (KIND=i4)  :: i, idx, n_nozero_wgt, num_iterations_per_fit, fit_loop_limit
     REAL    (KIND=r8)  :: mean, sdev, loclim
     type(optimizer_type) :: opt
     real (kind=r8), dimension(num_cal_parms) :: fitvar, lobnd, upbnd
@@ -338,8 +338,9 @@ contains
     endif
 
     loclim = 0.0_r8
-
-    fit_loop: do i=0, n_refits
+    
+    fit_loop_limit = MAX(n_refits, 0)
+    fit_loop: do i=0, fit_loop_limit
 
       if (i /= 0) then
         where (abs(fitres(1:num_wavelengths)) > loclim )
