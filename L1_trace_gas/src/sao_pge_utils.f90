@@ -532,7 +532,7 @@ SUBROUTINE interpolation ( &
     n1, x1, y1, n2, x2, y2, filltype, fillval, did_full_range, errstat )
 
   USE OMSAO_precision_module
-  USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_error
+  !USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_error
   USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
   use arrayutils, only: array_locate_r8
   IMPLICIT NONE
@@ -556,10 +556,11 @@ SUBROUTINE interpolation ( &
   ! --------------
   ! Local variable
   ! --------------
-  INTEGER (KIND=i4)                 :: locerrstat, imin, imax, nloc
+  INTEGER (KIND=i4)                 :: imin, imax, nloc !, locerrstat
   REAL    (KIND=r8), DIMENSION (n2) :: xtmp, ytmp
 
-  locerrstat = pge_errstat_ok
+  if (errstat < 0) return
+  !locerrstat = 0 ! pge_errstat_ok
 
   ! -------------------------------
   ! Initialize interpolation output
@@ -600,20 +601,24 @@ SUBROUTINE interpolation ( &
   ! ------------------------------------------------------------------
   SELECT CASE ( nloc )
   CASE ( :3 ) ! Less than 4 data points available for interpolation
-    errstat = pge_errstat_error
+    !errstat = -1 ! pge_errstat_error
+    call tell_error (tell_runtime_error, &
+                     "interpolation: less than 4 data points available for interpolation", &
+                     errstat)
     RETURN
   CASE DEFAULT
     xtmp(1:nloc) = x2(imin:imax)
     CALL ezspline_1d_interpolation (                &
       n1,   x1  (1:n1),   y1  (1:n1),            &
-      nloc, xtmp(1:nloc), ytmp(1:nloc), locerrstat )
+      nloc, xtmp(1:nloc), ytmp(1:nloc), errstat) ! locerrstat )
+    if (errstat < 0) return
     y2(imin:imax) = ytmp(1:nloc)
     CALL fill_nonoverlap ( n2, y2(1:n2), imin, imax, filltype, fillval )
     ! -----------------------------------------------------------------
     ! If we have non-zero exit status, something must have gone wrong
     ! in the interpolation. Set PGE_ERROR_STATUS to ERROR in this case.
     ! -----------------------------------------------------------------
-    errstat = MAX ( errstat, locerrstat )
+    !errstat = MAX ( errstat, locerrstat )
   END SELECT
 
   RETURN
