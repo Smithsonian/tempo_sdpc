@@ -149,7 +149,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   use output_tools, only : create_output_file, close_output_file, &
-    write_fitting_statistics, write_common_mode, write_wavcal_output
+    write_fitting_statistics, write_common_mode, write_wavcal_output, &
+    write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -191,7 +192,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   INTEGER (kind=i4) :: ntimes_rad, nxtrack_rad, nwavel_rad
   INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr, extension_dot
   INTEGER (KIND=i4), DIMENSION (2) :: radiance_wavcal_lnums
-
+  real (kind=r8), dimension(:,:), allocatable :: save_solcal_wvl, save_solcal_resid, &
+    save_radcal_wvl, save_radcal_resid
+  
   ! ----------------------------------------------------------------------
   ! Swath dimensions and variables that aren't passed from calling routine
   ! ----------------------------------------------------------------------
@@ -303,7 +306,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! solar spectrum to avoid un-initialized variables. However, no
   ! actual fitting is performed in the latter case.
   ! ---------------------------------------------------------------
-  CALL xtrack_solar_calibration_loop ( first_wc_pix, last_wc_pix, errstat )
+  CALL xtrack_solar_calibration_loop (first_wc_pix, last_wc_pix, &
+                                      save_solcal_wvl, save_solcal_resid, errstat)
   if (errstat < 0) return
 
   ! ---------------------------------------------------------------
@@ -363,6 +367,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
                            n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                            errstat)
   if (errstat < 0) return
+
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
   !        netcdf output file creation occurs a bit later after some output dimensions
   !        have been determined
@@ -396,8 +401,24 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   call tell_log (1, 'omi_fitting: calling xtrack_radiance_wvl_calibration')
   omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (first_wc_pix, last_wc_pix, &
-                                        nxtrack_rad, n_max_rspec, errstat )
+                                        nxtrack_rad, n_max_rspec, &
+                                        save_radcal_wvl, save_radcal_resid, &
+                                        errstat )
   if (errstat < 0) return
+
+  if (yn_diagnostic_run) then
+    call write_solar_wavecal_diagnostics (nwavel_max, nxtrack_rad, &
+                                          save_solcal_wvl, save_solcal_resid, &
+                                          errstat)
+    call write_radiance_wavecal_diagnostics (nwavel_max, nxtrack_rad, &
+                                             save_radcal_wvl, save_radcal_resid, &
+                                             errstat)
+    if (errstat < 0) return
+    ! FIXME: in diagnostic mode, there's a memory leak
+    ! if we don't make it to this deallocate statement.
+    deallocate (save_solcal_wvl, save_solcal_resid, &
+                save_radcal_wvl, save_radcal_resid)
+  endif
 
   ! --------------------------------------------------------------
   ! Terminate on not having any cross-track pixels left to process

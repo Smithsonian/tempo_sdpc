@@ -247,7 +247,7 @@ contains
   ! On input, it is that value of the maximum number of iterations per fit.
   ! On output, it will set to the total number of iterations for all fits.
   subroutine wavecal_fit ( &
-      wavelengths, spectrum, weights, &
+      wavelengths, spectrum, weights, residuals, &
       num_wavelengths, avg_wavelength, &
       loc_cal_parms, min_cal_parms, max_cal_parms, num_cal_parms, &
       n_refits, sdev_factor, &
@@ -262,7 +262,7 @@ contains
     real (kind=r8), intent(in), dimension(num_wavelengths) :: &
       wavelengths, spectrum
     real (kind=r8), intent(inout), dimension(num_wavelengths) :: &
-      weights
+      weights, residuals
     real (kind=r8), intent(in) :: avg_wavelength, sdev_factor
     real (kind=r8), dimension(num_cal_parms), intent(inout) ::loc_cal_parms
     real (kind=r8), dimension(num_cal_parms), intent(in) :: &
@@ -333,12 +333,12 @@ contains
                          param_mask = param_mask(1:num_fitvar), &
                          max_num_iterations = num_iterations_per_fit)
     if (errstat < 0) then
-      call tell_error (tell_runtime_error, "radiance_wavecal: optimizer_open failed", errstat)
+      call tell_error (tell_runtime_error, "wavecal_fit: optimizer_open failed", errstat)
       goto 666
     endif
 
     loclim = 0.0_r8
-    
+
     fit_loop_limit = MAX(n_refits, 0)
     fit_loop: do i=0, fit_loop_limit
 
@@ -376,7 +376,7 @@ contains
 
     call optimizer_close (opt, errstat)
     if (errstat < 0) then
-      call tell_error (tell_runtime_error, "radiance_wavecal: optimizer_close failed", errstat)
+      call tell_error (tell_runtime_error, "wavecal_fit: optimizer_close failed", errstat)
       goto 666
     endif
 
@@ -386,6 +386,7 @@ contains
       loc_cal_parms(idx) = fitvar(i)
     enddo
     weights(1:num_wavelengths) = cal_weights(1:num_wavelengths)
+    residuals(1:num_wavelengths) = fitres(1:num_wavelengths)
     ! drop
 
  666 continue

@@ -14,6 +14,8 @@ module output_tools
     write_albedo, write_gas_profile, write_scattering_weights, &
     write_amf_correction, write_refspec_database, &
     write_reference_sector_corrected_column, &
+    write_solar_wavecal_diagnostics, &
+    write_radiance_wavecal_diagnostics, &
     read_geofields, read_column_results
 
   type (tiof_file_type), private, save, target :: primary_output_file
@@ -559,8 +561,44 @@ contains
 
     type (tiof_varlist_type) :: varlist
     integer, dimension(1) :: dimid_xtrack
+    integer, dimension(2) :: dimids_refwavl_xtrack
 
     call tiof_dimlist_lookup (dimlist, [tg_dim_xtrack], dimid_xtrack, errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tg_dim_refwavl, tg_dim_xtrack], &
+                              dimids_refwavl_xtrack, &
+                              errstat)
+
+    if (yn_diagnostic_run) then
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_solcal_wavelengths, &
+                                nf90_double, &
+                                dimids = dimids_refwavl_xtrack,  &
+                                comment = "solar wavecal wavelengths", &
+                                valid_range = [100.0_r8, 1000.0_r8], &
+                                fillvalue = fill_double)
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_solcal_residuals, &
+                                nf90_double, &
+                                dimids = dimids_refwavl_xtrack,  &
+                                comment = "solar wavecal residuals", &
+                                valid_range = [-1e30_r8, 1e30_r8], &
+                                fillvalue = fill_double)
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_radcal_wavelengths, &
+                                nf90_double, &
+                                dimids = dimids_refwavl_xtrack,  &
+                                comment = "radiance wavecal wavelengths", &
+                                valid_range = [100.0_r8, 1000.0_r8], &
+                                fillvalue = fill_double)
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_radcal_residuals, &
+                                nf90_double, &
+                                dimids = dimids_refwavl_xtrack,  &
+                                comment = "radiance wavecal residuals", &
+                                valid_range = [-1e30_r8, 1e30_r8], &
+                                fillvalue = fill_double)
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_solcal_convergence_flag, &
@@ -1096,6 +1134,54 @@ contains
 
   end subroutine write_reference_sector_corrected_column
 
+  subroutine write_solar_wavecal_diagnostics (nwaves, nxtrack, waves, resid, &
+                                              errstat)
+    implicit none
+    integer, intent(in) :: nwaves, nxtrack
+    real (kind=r8), dimension(:,:), intent(in) :: waves, resid
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj => null()
+
+    if (errstat < 0) return
+
+    obj => primary_output_file
+
+    call tiof_put2d_r8 (obj, tg_var_solcal_wavelengths, [0,0], [nxtrack, nwaves], &
+                        waves (1:nwaves,1:nxtrack), errstat)
+    call tiof_put2d_r8 (obj, tg_var_solcal_residuals, [0,0], [nxtrack, nwaves], &
+                        resid (1:nwaves,1:nxtrack), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_solar_wavecal_diagnostics", errstat)
+      return
+    endif
+
+  end subroutine write_solar_wavecal_diagnostics
+
+  subroutine write_radiance_wavecal_diagnostics (nwaves, nxtrack, waves, resid, &
+                                                 errstat)
+    implicit none
+    integer, intent(in) :: nwaves, nxtrack
+    real (kind=r8), dimension(:,:), intent(in) :: waves, resid
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj => null()
+
+    if (errstat < 0) return
+
+    obj => primary_output_file
+
+    call tiof_put2d_r8 (obj, tg_var_radcal_wavelengths, [0,0], [nxtrack, nwaves], &
+                        waves (1:nwaves,1:nxtrack), errstat)
+    call tiof_put2d_r8 (obj, tg_var_radcal_residuals, [0,0], [nxtrack, nwaves], &
+                        resid (1:nwaves,1:nxtrack), errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "in write_radiance_wavecal_diagnostics", errstat)
+      return
+    endif
+
+  end subroutine write_radiance_wavecal_diagnostics
+  
   subroutine close_output_file (errstat)
     implicit none
     integer, intent(inout) :: errstat

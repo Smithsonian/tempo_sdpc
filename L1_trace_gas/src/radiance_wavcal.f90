@@ -5,7 +5,7 @@ MODULE radiance_wavcal
 
 CONTAINS
 SUBROUTINE radiance_wavecal ( &
-    ipix, n_rad_wvl, adj_wvls, adj_spec, adj_wgts, &
+    ipix, n_rad_wvl, adj_wvls, adj_spec, adj_wgts, adj_resid, &
     n_fitres_loop, fitres_range, &
     radcal_exval, radcal_itnum, chisquav, &
     is_bad_pixel, errstat )
@@ -40,7 +40,7 @@ SUBROUTINE radiance_wavecal ( &
   INTEGER (KIND=i4),                                INTENT (OUT)   :: radcal_exval
   REAL    (KIND=r8),                                INTENT (OUT)   :: chisquav
   INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
-  real (kind=r8), dimension(n_rad_wvl), intent(inout) :: adj_wvls, adj_spec, adj_wgts
+  real (kind=r8), dimension(n_rad_wvl), intent(inout) :: adj_wvls, adj_spec, adj_wgts, adj_resid
 
   ! ---------------
   ! Local variables
@@ -92,7 +92,7 @@ SUBROUTINE radiance_wavecal ( &
 
   ! on input, set locitnum to the max per fit, upon output it will be set to the total
   locitnum = max_itnum_sol
-  call wavecal_fit (adj_wvls, adj_spec, adj_wgts, n_rad_wvl, sol_wav_avg, &
+  call wavecal_fit (adj_wvls, adj_spec, adj_wgts, adj_resid, n_rad_wvl, sol_wav_avg, &
                     fitvar_cal, lo_radbnd, up_radbnd, max_calfit_idx, &
                     n_fitres_loop, real(fitres_range, kind=r8), &
                     is_bad_pixel, locitnum, chisquav, radcal_exval, errstat)

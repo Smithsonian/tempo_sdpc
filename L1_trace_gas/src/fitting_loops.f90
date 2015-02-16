@@ -7,7 +7,9 @@ MODULE fitting_loops
 
 CONTAINS
   SUBROUTINE xtrack_radiance_wvl_calibration (first_pix, last_pix, &
-                                              nxtrack, n_max_rspec, errstat)
+                                              nxtrack, n_max_rspec, &
+                                              save_wvl, save_resid, &
+                                              errstat)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
@@ -59,6 +61,7 @@ CONTAINS
     ! -----------------
     ! Modified variable
     ! -----------------
+    real (kind=r8), dimension(:,:), allocatable, intent(inout) :: save_wvl, save_resid
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -72,7 +75,7 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (4)            :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
     REAL    (KIND=r8), DIMENSION (n_max_rspec) :: ref_wvl, ref_spc, ref_wgt
-    real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts
+    real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts, adj_resid
     integer (kind=i4) :: adj_num, adj_num_allocated, adj_num_max
     integer (kind=i4) :: n_irradwvl
     integer :: locerr
@@ -85,7 +88,7 @@ CONTAINS
 
     if (errstat < 0) return
 
-    locerrstat = 0 !pge_errstat_ok
+    !locerrstat = 0 !pge_errstat_ok
 
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
 
@@ -111,6 +114,20 @@ CONTAINS
       endif
     endif
 
+    if (yn_diagnostic_run) then
+      allocate (save_wvl(nwavel_max,nxtrack), &
+                save_resid(nwavel_max,nxtrack), &
+                stat=locerrstat)
+      if (locerrstat /= 0) then
+        call tell_error (tell_malloc_error, &
+                         "xtrack_radiance_wvl_calibration: allocate failed", &
+                         errstat)
+        return
+      endif
+      save_wvl(:,:) = r8_missval
+      save_resid(:,:) = r8_missval
+    endif
+
     adj_num_allocated = 0
     adj_num_max = 0
     ! --------------------------------
@@ -118,7 +135,7 @@ CONTAINS
     ! --------------------------------
     XTrackWavCal: DO ipix = first_pix, last_pix
 
-      locerrstat = 0 ! pge_errstat_ok
+      !locerrstat = 0 ! pge_errstat_ok
 
       curr_xtrack_pixnum = ipix
 
@@ -197,14 +214,17 @@ CONTAINS
       ! reallocate buffers if needed
       if (adj_num > adj_num_allocated) then
         if (adj_num_allocated > 0) then
-          deallocate (adj_wvls, adj_spec, adj_wgts)
+          deallocate (adj_wvls, adj_spec, adj_wgts, adj_resid)
         endif
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
-                  stat=locerr)
+                  adj_resid(adj_num), stat=locerr)
         if (locerr /= 0) then
           call tell_error (tell_malloc_error, "xtrack_radiance_wvl_calibration: allocate failed", errstat)
           return
         endif
+        adj_wvls(1:adj_num) = r8_missval
+        adj_spec(1:adj_num) = r8_missval
+        adj_wvls(1:adj_num) = r8_missval
         adj_num_allocated = adj_num
       endif
       adj_wvls(1:adj_num) = omi_radiance_wavl (1:adj_num, ipix, 0)
@@ -246,9 +266,14 @@ CONTAINS
       CALL radiance_wavecal ( & ! Radiance wavelength calibration
         ipix, adj_num, &
         adj_wvls(1:adj_num), adj_spec(1:adj_num), &
-        adj_wgts(1:adj_num), &
+        adj_wgts(1:adj_num), adj_resid(1:adj_num), &
         ctrl_n_fitres_loop(radcal_idx), ctrl_fitres_range(radcal_idx), &
         radcal_exval, radcal_itnum, chisquav, is_bad_pixel, errstat) !locerrstat )
+
+      if (yn_diagnostic_run) then
+        save_wvl(1:adj_num,ipix) = adj_wvls(1:adj_num)
+        save_resid(1:adj_num,ipix) = adj_resid(1:adj_num)
+      endif
 
       IF ( is_bad_pixel .OR. errstat < 0) then !locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )

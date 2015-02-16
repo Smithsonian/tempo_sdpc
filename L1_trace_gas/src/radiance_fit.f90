@@ -622,7 +622,7 @@ CONTAINS
     !     1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
     !     OMI data.
 
-    !errstat = pge_errstat_ok
+    errstat = 0 !pge_errstat_ok
 
     ! ----------------------------------------------------------------------------
     ! Here is a logical to determine whether we need to compute a "sythetic"

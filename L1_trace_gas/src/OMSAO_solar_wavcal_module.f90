@@ -48,7 +48,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                       :: &
-      i, j, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat, 
+      i, j, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat,
     LOGICAL                                                 :: have_good_window
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix))           :: weightsum
     REAL    (KIND=r8)                                       :: sol_spec_avg, asum, ssum
@@ -233,7 +233,7 @@ CONTAINS
 
   SUBROUTINE solar_fit ( &
       n_fitres_loop, fitres_range, n_irradwvl, avg_sol_wav, &
-      sol_wvl, sol_spec, sol_wgts, &
+      sol_wvl, sol_spec, sol_wgts, sol_resid, &
       hw1e, e_asym, solcal_exval, solcal_itnum, chisquav, &
       is_bad_pixel, errstat )
 
@@ -276,12 +276,12 @@ CONTAINS
     ! ------------------
     LOGICAL,                                                   INTENT (OUT)   :: is_bad_pixel
     INTEGER (KIND=i4),                                         INTENT (INOUT) :: errstat
-    real (kind=r8), dimension(:), intent(inout) :: sol_wvl, sol_spec, sol_wgts
+    real (kind=r8), dimension(:), intent(inout) :: sol_wvl, sol_spec, sol_wgts, sol_resid
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)  :: locitnum !locerrstat, 
+    INTEGER (KIND=i4)  :: locitnum !locerrstat,
 
     ! ----------------------------------------------------------------
     ! Initialize local error status variable; note that error handling
@@ -311,7 +311,7 @@ CONTAINS
 
     ! upon input loclim is the max per fit, on output it will be the total number
     locitnum = max_itnum_sol
-    call wavecal_fit (sol_wvl, sol_spec, sol_wgts, n_irradwvl, avg_sol_wav, &
+    call wavecal_fit (sol_wvl, sol_spec, sol_wgts, sol_resid, n_irradwvl, avg_sol_wav, &
                       fitvar_cal, lo_sunbnd, up_sunbnd, max_calfit_idx, &
                       n_fitres_loop, real(fitres_range, kind=r8), &
                       is_bad_pixel, locitnum, chisquav, solcal_exval, errstat)
@@ -347,8 +347,8 @@ CONTAINS
 
   END SUBROUTINE solar_fit
 
-  SUBROUTINE xtrack_solar_calibration_loop ( first_pix, last_pix, errstat )
-
+  SUBROUTINE xtrack_solar_calibration_loop (first_pix, last_pix, &
+                                            save_wvl, save_resid, errstat)
     USE OMSAO_precision_module
     use ctrlvars, only : yn_diagnostic_run
     USE cache_module, ONLY: saved_shift, saved_squeeze
@@ -358,8 +358,9 @@ CONTAINS
       omi_irradiance_wght, omi_irradiance_ccdpix
     USE OMSAO_indices_module, ONLY: &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
-    USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
-    USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, & ! verb_thresh_lev, 
+    USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN, &
+      nwavel_max, nxtrack_max
+    USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, & ! verb_thresh_lev,
       Slit_Asym_Factor, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum
@@ -375,6 +376,7 @@ CONTAINS
     ! -----------------
     ! Modified variable
     ! -----------------
+    real (kind=r8), dimension(:,:), allocatable, intent(inout) :: save_wvl, save_resid
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -385,7 +387,7 @@ CONTAINS
     CHARACTER (LEN=MAX_STR_LEN)         :: addmsg
     REAL      (KIND=r8)              :: chisquav, curr_sol_wav_avg
     LOGICAL                          :: do_skip_pix, is_bad_pixel
-    real (kind=r8), dimension(:), allocatable :: adj_wvl, adj_spec, adj_wgts
+    real (kind=r8), dimension(:), allocatable :: adj_wvl, adj_spec, adj_wgts, adj_resid
     integer (kind=i4) :: adj_len
     integer locerr
     integer, parameter :: unit_solar_wavcal = 20
@@ -415,6 +417,18 @@ CONTAINS
       endif
     endif
 
+    if (yn_diagnostic_run) then
+      allocate (save_wvl(nwavel_max, nxtrack_max), &
+                save_resid(nwavel_max, nxtrack_max), stat=locerrstat)
+      if (locerrstat /= 0) then
+        call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", &
+                         errstat)
+        return
+      endif
+      save_wvl(:,:) = r8_missval
+      save_resid(:,:) = r8_missval
+    endif
+
     adj_len = 0
     XtrackSolCal: DO ipix = first_pix, last_pix
 
@@ -427,9 +441,10 @@ CONTAINS
       IF ( n_irradwvl <= 0 ) CYCLE
       if (n_irradwvl > adj_len) then
         if (adj_len > 0) then
-          deallocate (adj_wvl, adj_spec, adj_wgts)
+          deallocate (adj_wvl, adj_spec, adj_wgts, adj_resid)
         endif
         allocate (adj_wvl(n_irradwvl), adj_spec(n_irradwvl), adj_wgts(n_irradwvl), &
+                  adj_resid(n_irradwvl), &
                   stat=locerr)
         if (locerr /= 0) then
           call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
@@ -464,13 +479,18 @@ CONTAINS
       CALL solar_fit ( &   ! Solar wavelength calibration
         ctrl_n_fitres_loop(solcal_idx), ctrl_fitres_range(solcal_idx), n_irradwvl, &
         curr_sol_wav_avg, &
-        adj_wvl, adj_spec, adj_wgts, &
+        adj_wvl, adj_spec, adj_wgts, adj_resid, &
         Slit_Half_Width_1e, &
         Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, &
         is_bad_pixel, errstat) ! locerrstat )
       ! solar_fit modifies the following variables:
       !   adj_wvl, adj_spec, adj_wgts, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
       !   solcal_itnum, chisquav, is_bad_pixel, locerrstat
+
+      if (yn_diagnostic_run) then
+        save_wvl(1:n_irradwvl,ipix) = adj_wvl(1:n_irradwvl)
+        save_resid(1:n_irradwvl,ipix) = adj_resid(1:n_irradwvl)
+      endif
 
       IF ( is_bad_pixel .OR. errstat < 0) then ! locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
