@@ -247,7 +247,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval
     USE OMSAO_variables_module,  ONLY: fitvar_cal, fitvar_cal_saved, &
-      fitvar_sol_init, sol_wav_avg, &
+      fitvar_sol_init, & !sol_wav_avg, 
       max_itnum_sol, up_sunbnd, lo_sunbnd
     use ctrlvars, only: yn_newshift
     USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, &
@@ -332,9 +332,19 @@ CONTAINS
     ! Save shifted&squeezed wavelength array, and the fitting weights
     ! ---------------------------------------------------------------
     if (yn_newshift) then !gga
+      ! JCH: <comment-start>
+      !      This is the assignment from the old code.
+      !      I think 'sol_wav_avg' was supposed to be 'avg_sol_wav'.  When
+      !      I made that replacement, the computed numbers didn't change, so I 
+      !      got rid of the reference to 'sol_wav_avg' from OMSAO_variables_module.
+      !sol_wvl(1:n_irradwvl) = &
+      !  (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
+      !   + sol_wav_avg * fitvar_cal_saved(squ_idx)) &
+      !  / (1.0_r8 + fitvar_cal_saved(squ_idx))
+      ! JCH: <comment-end>
       sol_wvl(1:n_irradwvl) = &
         (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
-         + sol_wav_avg * fitvar_cal_saved(squ_idx)) &
+         + avg_sol_wav * fitvar_cal_saved(squ_idx)) &    
         / (1.0_r8 + fitvar_cal_saved(squ_idx))
     endif
     ! ------------------------------------------------

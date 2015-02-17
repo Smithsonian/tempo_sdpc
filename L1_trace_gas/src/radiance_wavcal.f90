@@ -19,7 +19,7 @@ SUBROUTINE radiance_wavecal ( &
   USE OMSAO_variables_module,   ONLY: &
     fitvar_cal, fitvar_rad_init, fitvar_sol_init, fitvar_cal_saved, &
     lo_radbnd, up_radbnd, &
-    max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor, sol_wav_avg
+    max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor!, sol_wav_avg
   use ctrlvars, only: yn_newshift
   !USE OMSAO_errstat_module
   USE commonmode, ONLY: compute_common_mode
@@ -46,6 +46,7 @@ SUBROUTINE radiance_wavecal ( &
   ! Local variables
   ! ---------------
   INTEGER (KIND=i4)  :: locitnum ! locerrstat, 
+  real (kind=r8) :: sol_wav_avg
 
   if (errstat < 0) return
 
@@ -89,6 +90,12 @@ SUBROUTINE radiance_wavecal ( &
   fitvar_cal(asy_idx) = Slit_Asym_Factor
   lo_radbnd (asy_idx) = Slit_Asym_Factor
   up_radbnd (asy_idx) = Slit_Asym_Factor
+
+  ! -----------------------------------------------------
+  ! Assign the solar average wavelength - the wavelength
+  ! calibration will not converge without it!
+  ! -----------------------------------------------------
+  sol_wav_avg = SUM (adj_wvls(1:n_rad_wvl) ) / REAL(n_rad_wvl,KIND=r8)
 
   ! on input, set locitnum to the max per fit, upon output it will be set to the total
   locitnum = max_itnum_sol

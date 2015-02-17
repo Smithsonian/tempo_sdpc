@@ -3,7 +3,7 @@ module wavecal
   use OMSAO_precision_module, only: i2, i4, r8
   use optimizer_interface_module
   use tell_module
-  use OMSAO_variables_module, only: sol_wav_avg
+  !use OMSAO_variables_module, only: sol_wav_avg
   use OMSAO_indices_module, only: MAX_CAL_PARMS
 
   implicit none
@@ -13,6 +13,8 @@ module wavecal
 
   private
   public wavecal_fit
+
+  real (kind=r8), private :: private_avg_wavelength
 
 contains
 
@@ -65,7 +67,7 @@ contains
       cal_parms(idx) = params(i)
     END DO
 
-    CALL spectrum_solar (num_wavelengths, sol_wav_avg, &
+    CALL spectrum_solar (num_wavelengths, private_avg_wavelength, & !sol_wav_avg, &
                          cal_wavelengths(1:num_wavelengths), &
                          residuals(1:num_wavelengths), cal_parms)
 
@@ -317,7 +319,8 @@ contains
                                     num_wavelengths, errstat)
     if (errstat < 0) return
     cal_parms(1:num_cal_parms) = loc_cal_parms(1:num_cal_parms)
-    sol_wav_avg = avg_wavelength
+
+    private_avg_wavelength = avg_wavelength   !sol_wav_avg = avg_wavelength
 
     ! ---------------------------------------------------------------------
     ! Attempt to standardize the re-iteration with spectral points excluded

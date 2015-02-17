@@ -36,7 +36,7 @@ CONTAINS
       omi_szenith, omi_vzenith, omi_nwav_radref, omi_radref_spec, omi_radref_wavl,   &
       omi_radref_qflg, omi_radref_sza, omi_radref_vza, omi_radref_wght, &
       rad_ccdpix_exclusion, n_comm_wvl, &
-      omi_nwav_rad, omi_radref_wav_avg
+      omi_nwav_rad !, omi_radref_wav_avg
     !USE OMSAO_errstat_module
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
@@ -323,8 +323,7 @@ CONTAINS
       ! Re-assign the average solar wavelength variable, sinfe from here
       ! on we are concerned with radiances.
       ! -----------------------------------------------------------------
-      omi_radref_wav_avg(ix) = &
-        SUM( omi_radref_wavl(1:icnt,ix) ) / REAL(icnt, KIND=r8)
+      !JCH -> unused: omi_radref_wav_avg(ix) = SUM( omi_radref_wavl(1:icnt,ix) ) / REAL(icnt, KIND=r8)
 
       ! ------------------------------------------------------------------
       ! Set weights and quality flags to "bad" for missing spectral points
@@ -371,7 +370,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY:  &
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
-      database, curr_sol_spec, sol_wav_avg,                  &
+      database, curr_sol_spec,     & ! sol_wav_avg,
       Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, & !verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
@@ -388,7 +387,7 @@ CONTAINS
       rad_ccdpix_selection, omi_radiance_ccdpix, rad_ccdpix_exclusion,       &
       omi_radref_wght, omi_radref_pars,    &
       omi_radref_xflag, omi_radref_chisq, omi_radref_col,  &
-      omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol, omi_radref_wav_avg
+      omi_radref_rms, omi_radref_dcol, omi_radref_xtrcol !, omi_radref_wav_avg
     !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
     use irradiance_data, only: Irr_Data
@@ -527,7 +526,7 @@ CONTAINS
       ! -----------------------------------------------------------------------
       ! Restore solar fitting variables for across-track reference in Earthshine fitting
       ! --------------------------------------------------------------------------------
-      sol_wav_avg = omi_radref_wav_avg (ipix)
+      ! sol_wav_avg = omi_radref_wav_avg (ipix)   ! JCH - no need to set this here.
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
       curr_sol_spec(1:n_database_wvl,wvl_idx) = omi_database_wvl(1:n_database_wvl,ipix)

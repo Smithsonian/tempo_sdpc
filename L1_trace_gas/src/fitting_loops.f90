@@ -20,7 +20,7 @@ CONTAINS
       NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
       Slit_Half_Width_1e, Slit_Asym_Factor, &  ! verb_thresh_lev,
-      sol_wav_avg, database, fitvar_cal, fitvar_cal_saved, &
+      database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg, 
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
     use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp
@@ -34,7 +34,7 @@ CONTAINS
       omi_radcal_pars, omi_radcal_xflag, &
       omi_radcal_chisq, &
       omi_radref_wght, omi_database, n_omi_database_wvl, &
-      omi_database_wvl, omi_radref_wav_avg, &
+      omi_database_wvl, & ! omi_radref_wav_avg,
       omi_solcal_pars
     USE prepare_databases, ONLY: prep_databases
     !USE OMSAO_errstat_module
@@ -168,7 +168,7 @@ CONTAINS
       ! Restore solar fitting variables for across-track reference in
       ! Earthshine fitting. Use the Radiance References if appropriate.
       ! ---------------------------------------------------------------
-      sol_wav_avg = omi_radref_wav_avg(ipix)
+      !sol_wav_avg = omi_radref_wav_avg(ipix)    ! JCH: no need to set this here
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
 
@@ -255,12 +255,6 @@ CONTAINS
         CYCLE
       END IF
 
-      ! -----------------------------------------------------
-      ! Assign the solar average wavelength - the wavelength
-      ! calibration will not converge without it!
-      ! -----------------------------------------------------
-      sol_wav_avg = &
-        SUM (adj_wvls(1:adj_num) ) / REAL(adj_num,KIND=r8)
       is_bad_pixel = .FALSE.
 
       CALL radiance_wavecal ( & ! Radiance wavelength calibration
@@ -494,7 +488,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
-      database, curr_sol_spec, n_rad_wvl, sol_wav_avg, &
+      database, curr_sol_spec, n_rad_wvl, & ! sol_wav_avg, 
       Slit_Half_Width_1e, Slit_Asym_Factor,     &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
       szamax, n_fincol_idx, curr_xtrack_pixnum, fitvar_rad
@@ -506,7 +500,7 @@ CONTAINS
       omi_fit_rms, omi_radiance_spec, omi_column_amount, omi_column_uncert, &
       omi_o3_amount, omi_o3_uncert, n_omi_radwvl, &
       omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
-      omi_radiance_qflg, omi_cross_track_skippix, omi_radref_wav_avg, &
+      omi_radiance_qflg, omi_cross_track_skippix, & ! omi_radref_wav_avg,
       omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     !USE OMSAO_errstat_module
@@ -629,7 +623,7 @@ CONTAINS
       ! Note that, for the YN_SOLAR_COMP case, some variables have been assigned already
       ! in the XTRACK_RADIANCE_WAVCAL loop.
       ! ---------------------------------------------------------------------------------
-      sol_wav_avg                             = omi_radref_wav_avg(ipix)
+      !sol_wav_avg                             = omi_radref_wav_avg(ipix)  ! JCH: no need to set this here
       Slit_Half_Width_1e                     = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor                       = omi_solcal_pars(asy_idx,ipix)
       curr_sol_spec(1:n_database_wvl,wvl_idx) = omi_database_wvl(1:n_database_wvl,ipix)

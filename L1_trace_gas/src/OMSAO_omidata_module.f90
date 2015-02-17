@@ -209,7 +209,7 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r8), DIMENSION (:,:,:), allocatable                  :: omi_database
   !REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max            ) :: omi_database_wvl
   REAL    (KIND=r8), DIMENSION (:,:), allocatable                    :: omi_database_wvl
-  REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
+  !JCH -> unused: REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
     omi_solcal_chisq, omi_radcal_chisq, omi_radref_chisq, &
     omi_radref_col,   omi_radref_dcol,  omi_radref_rms,   &
