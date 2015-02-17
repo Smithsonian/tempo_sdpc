@@ -267,6 +267,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -313,6 +315,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -361,6 +365,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -407,6 +413,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -455,6 +463,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -501,6 +511,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -549,6 +561,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -595,6 +609,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -643,6 +659,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -689,6 +707,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -737,6 +757,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -783,6 +805,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -832,6 +856,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -878,6 +904,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -926,6 +954,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -972,6 +1002,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1020,6 +1052,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -1066,6 +1100,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1114,6 +1150,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1160,6 +1198,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1208,6 +1248,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1254,6 +1296,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1302,6 +1346,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1348,6 +1394,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1397,6 +1445,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -1443,6 +1493,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1491,6 +1543,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -1537,6 +1591,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1585,6 +1641,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before read: ",&
@@ -1631,6 +1689,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1679,6 +1739,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(1) :: dimsm
         
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1725,6 +1787,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 2
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(2) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1773,6 +1837,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(3) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1819,6 +1885,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 4
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(4) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
@@ -1867,6 +1935,8 @@ MODULE UTIL_lh5_class
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(5) :: dimsm
 
+        status = OZT_S_SUCCESS
+
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE
            WRITE( msg,* ) "dataset must be selected before write: ",&
@@ -1913,6 +1983,8 @@ MODULE UTIL_lh5_class
         INTEGER :: rankm = 6
         INTEGER(HID_T) :: memspace 
         INTEGER(HSIZE_T), DIMENSION(6) :: dimsm
+
+        status = OZT_S_SUCCESS
 
         IF( ds%dataset_id < zero ) THEN
            status = OZT_E_FAILURE

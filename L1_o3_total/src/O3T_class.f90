@@ -1586,6 +1586,8 @@ MODULE O3T_class
         LOGICAL (KIND=4), SAVE :: firsttime = .TRUE.
         INTEGER (KIND=4), EXTERNAL :: r4Fill
 
+        status = OZT_S_SUCCESS
+
         IF( firsttime ) THEN
            ierr = r4Fill( fill_float32 )
            firsttime = .FALSE.
@@ -1625,6 +1627,8 @@ MODULE O3T_class
         REAL (KIND=4), SAVE :: fill_float32
         LOGICAL (KIND=4), SAVE :: firsttime = .TRUE.
         INTEGER (KIND=4), EXTERNAL :: r4Fill
+
+        status = OZT_S_SUCCESS
 
         IF( firsttime ) THEN
            ierr = r4Fill( fill_float32 )
