@@ -15,11 +15,11 @@ CONTAINS
     INTEGER(KIND=4) :: version
     CHARACTER(LEN=PGS_SMF_MAX_MSG_SIZE) :: msg,stryear,strdoy
     INTEGER(KIND=4), PARAMETER :: zero = 0
-    CHARACTER(LEN=128) :: filename
+    !CHARACTER(LEN=128) :: filename
     INTEGER(KIND=4) :: i
     INTEGER(KIND=4), INTENT(IN) :: year, doy
     INTEGER(KIND=4), DIMENSION(:,:), ALLOCATABLE :: anomflg_3
-    CHARACTER(LEN=20) :: FUNCTIONNAME = "get_anomflg_3"
+    !CHARACTER(LEN=20) :: FUNCTIONNAME = "get_anomflg_3"
     INTEGER(KIND = 4) ::  fid, swid
 
     INTEGER(KIND = 4) :: start1(1), stride1(1), edge1(1)

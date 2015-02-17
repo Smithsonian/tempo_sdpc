@@ -50,7 +50,7 @@ OMI_pixGetTerPres( float  latitude,
    float  fx, fy;
    float  foo;
    int    lg_y, lg_x;
-   float  frac;
+   /* float  frac; */
   
    if( firsttime == -1 )
    {   
@@ -59,7 +59,7 @@ OMI_pixGetTerPres( float  latitude,
       char            terrainpresfn[PGSd_PC_VALUE_LENGTH_MAX];
       char            msg[PGS_SMF_MAX_MSG_SIZE];
       int32           sd_fid;
-      int32           im, status = -1;
+      int32           /* im, */ status = -1;
 
       file_v = 1;
       /* get the Land Cover names */

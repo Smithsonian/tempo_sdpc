@@ -21,7 +21,7 @@ OMI_localGranuleID( char          *RangeBeginningDateTime,
                     char          *localGranuleID )
 {
   PGSt_SMF_status returnStatus;
-  PGSt_SMF_status code;             /* status code returned by
+  /* PGSt_SMF_status code; */         /* status code returned by
                                          PGS_SMF_GetMsg() */
   char msg[PGS_SMF_MAX_MSGBUF_SIZE]={0};
                           /* holds the message string associated with

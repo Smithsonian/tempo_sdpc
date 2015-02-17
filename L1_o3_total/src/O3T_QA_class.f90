@@ -51,7 +51,7 @@ MODULE O3T_QA_class
         INTEGER (KIND=1) :: mqaL2
         INTEGER (KIND = 1) :: mesL_error, mesL_warning 
         INTEGER (KIND = 1) :: rebinF, saaF, maneuverF 
-        INTEGER (KIND = 1) :: mqaL_error
+        !INTEGER (KIND = 1) :: mqaL_error
 
         mesL_error = L1B_extractMqa( mqaL1B, mesL_warning, &
                                      rebinF, saaF, maneuverF  )
@@ -205,7 +205,7 @@ MODULE O3T_QA_class
         INTEGER (KIND=2), INTENT(INOUT) :: QAflags, radBadPixflgs
         INTEGER (KIND=1), INTENT(INOUT) :: algflg
         INTEGER (KIND=1), INTENT(IN) :: anomflg ! L1B flag
-        INTEGER (KIND=1) :: mask7 = 7 ! mask for bits 0-2 
+        !INTEGER (KIND=1) :: mask7 = 7 ! mask for bits 0-2 
         INTEGER (KIND=4), INTENT(IN) :: anomflg_3 ! O3 derived flag
         TYPE (L2PARAM_T), INTENT(INOUT) :: L2param
         LOGICAL, INTENT(IN) :: descendQ, PclimQ

@@ -69,7 +69,7 @@ MODULE O3T_L2output_class
     CONTAINS
        FUNCTION O3T_initL2out( wl_com ) RESULT( status )
          REAL (KIND = 4), DIMENSION(:), INTENT(IN), OPTIONAL :: wl_com
-         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+         !CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
          INTEGER (KIND=4) :: status, ierr
          INTEGER (KIND=4) :: nwl_com
 
@@ -122,7 +122,7 @@ MODULE O3T_L2output_class
          TYPE (L2_generic_type), INTENT( INOUT ) :: geoblk, datablk
          INTEGER (KIND=4), INTENT(IN) :: iT
          INTEGER (KIND=4) :: ig, id, Ls, Le, bsize
-         REAL (KIND=4), DIMENSION(nXtrack_rad) :: R4Array
+         !REAL (KIND=4), DIMENSION(nXtrack_rad) :: R4Array
 
          DO ig = 1, geoblk%nFields
            bsize = geoblk%lineSize(ig)
@@ -191,10 +191,10 @@ MODULE O3T_L2output_class
          REAL (KIND=4), INTENT(IN) :: stp1oz, stp2oz, stp3oz, &
                                       oz_cld, aerind, so2ind 
 
-         INTEGER (KIND=4) :: id, is, ie, Ls, Le, bsize
+         INTEGER (KIND=4) :: id, Ls, Le, bsize ! , is, ie
          INTEGER (KIND=4) :: LL
-         INTEGER (KIND=1) :: I1temp
-         INTEGER (KIND=2) :: I2temp
+         !INTEGER (KIND=1) :: I1temp
+         !INTEGER (KIND=2) :: I2temp
          REAL    (KIND=4) :: R4temp
          REAL    (KIND=4), DIMENSION( nWavel  ) :: R4wlArray
 
@@ -265,8 +265,8 @@ MODULE O3T_L2output_class
          INTEGER (KIND=2), INTENT(IN) :: QAflags, radBadPixflgs
          INTEGER (KIND=4) :: id, is, ie, Ls, Le, bsize
          INTEGER (KIND=4) :: LL
-         INTEGER (KIND=1) :: I1temp
-         INTEGER (KIND=2) :: I2temp
+         !INTEGER (KIND=1) :: I1temp
+         !INTEGER (KIND=2) :: I2temp
          REAL    (KIND=4) :: R4temp
          REAL    (KIND=4), DIMENSION( nWavel  ) :: R4wlArray
          REAL    (KIND=4), DIMENSION( nLayers ) :: R4lyrArray

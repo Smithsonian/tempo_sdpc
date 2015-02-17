@@ -48,11 +48,11 @@
 PROGRAM O3T_mainNVAdj
     USE O3T_irrad_class  ! contains irradiance parameters
     USE O3T_radgeo_class ! contains radiance and geolocation parameters
-    USE O3T_nval_class, ONLY: wl_com, nwl_com, nvELS, nvRRS, &
+    USE O3T_nval_class, ONLY: wl_com, nwl_com, nvRRS, &  ! , nvELS
                               iwl_ozone, iwl_refl_l, iwl_refl_h, iwl_mix, &
                               O3T_nval_setup, O3T_nval_dispose, &
                               O3T_getLambdaSet
-    USE O3T_dndx_class, ONLY: nwl_sub, O3T_dndx_setup, O3T_dndx_dispose
+    USE O3T_dndx_class, ONLY: O3T_dndx_setup, O3T_dndx_dispose ! nwl_sub, 
     USE O3T_cloudPres_class
     USE O3T_apriori_class
     USE O3T_lpolycoef_class
@@ -76,7 +76,7 @@ PROGRAM O3T_mainNVAdj
     USE m_anomflg
 
     IMPLICIT NONE
-    INTEGER (KIND=4), PARAMETER :: zero = 0, one = 1, two = 2, four = 4
+    INTEGER (KIND=4), PARAMETER :: zero = 0, one = 1!, two = 2, four = 4
     INTEGER (KIND=4), PARAMETER :: nLinesPerWrite = 100
     INTEGER (KIND=4), PARAMETER :: nGeoF = 15, nDatF = 25, nwlA = 4
     INTEGER (KIND=4), DIMENSION(5) :: dims
@@ -103,7 +103,7 @@ PROGRAM O3T_mainNVAdj
     INTEGER (KIND=4) :: mcfLUN
     REAL (KIND=4) :: doz_limit = 5.0, guesoz, stp1oz, stp2oz, stp3oz, dr 
     REAL (KIND=4), DIMENSION(NLYR) :: stp2prf, eff, aprfoz
-    REAL (KIND=4)  :: aerind, so2ind, soilim, pathl, oz_cld, cloudcov = 0.0
+    REAL (KIND=4)  :: aerind, so2ind, soilim, pathl, oz_cld !, cloudcov = 0.0
     INTEGER (KIND=4), DIMENSION(4) :: iso2w
     REAL (KIND=4), DIMENSION(5) :: o3abs, so2abs
 
@@ -120,8 +120,8 @@ PROGRAM O3T_mainNVAdj
     INTEGER (KIND=4) :: iwl, iX, iLine, iLine_s, iLine_b, iLine_e, iT, ii, nLw, iLat
     INTEGER (KIND=4) :: pixID
     INTEGER (KIND=4) :: status, ierr
-    INTEGER (KIND=4) :: version
-    INTEGER (KIND=4) :: orbitNumber = 999
+    !INTEGER (KIND=4) :: version
+    !INTEGER (KIND=4) :: orbitNumber = 999
 
     INTEGER (KIND=4) :: numfiles
     CHARACTER (LEN=PGSd_PC_FILE_PATH_MAX), DIMENSION(100) :: L1B_filenames
@@ -143,7 +143,7 @@ PROGRAM O3T_mainNVAdj
     INTEGER(KIND = 4) :: il, ih
     REAL(KIND = 4) :: frac
     REAL(KIND=4), PARAMETER :: EPSILON10=1.0E-4
-    CHARACTER(LEN=128) :: filename
+    !CHARACTER(LEN=128) :: filename
 
     !! test snowice source option
     status = PGS_PC_GetConfigData( SNOWICESOURCE_LUN, msg )

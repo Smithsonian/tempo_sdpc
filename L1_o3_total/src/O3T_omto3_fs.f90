@@ -306,7 +306,7 @@ MODULE O3T_omto3_fs
                     "TOMS-OMI-Shared              ",                      & 
                      -1, HE5T_NATIVE_UINT16, 2, (/ -1, -1, -1 /))
                      
-   TYPE (DFHE5_T) :: df_RadianceBadPixelFlagAccepted =                 	  &
+   TYPE (DFHE5_T) :: df_RadianceBadPixelFlagAccepted =                    &
            DFHE5_T( 0.0, 65534.0, 1.0D0, 0.0D0,                           & 
                     "RadianceBadPixelFlagAccepted ",                      &
                     "nXtrack,nTimes               ",                      &

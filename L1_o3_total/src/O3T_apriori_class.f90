@@ -55,7 +55,7 @@ MODULE O3T_apriori_class
 
      FUNCTION O3T_apriori_rd( ) RESULT( status )
        INCLUDE 'PGS_IO.f'
-       INCLUDE 'PGS_IO_1.f'
+       !INCLUDE 'PGS_IO_1.f'
        INTEGER (KIND=4), EXTERNAL :: pgs_io_gen_openf, pgs_io_gen_closef
        INTEGER (KIND=4) :: file_version, record_length, &
                            climoz_handle, climtm_handle
@@ -135,8 +135,8 @@ MODULE O3T_apriori_class
        REAL (KIND=4), INTENT(IN) :: latitude
        INTEGER (KIND=4), INTENT(IN) :: jday
        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: aprftm_k
-       INTEGER (KIND=4) :: status, ierr, ios
-       CHARACTER (LEN =255) :: msg
+       INTEGER (KIND=4) :: status, ierr !, ios
+       !CHARACTER (LEN =255) :: msg
        INTEGER :: l1, l2, m1, m2
        REAL (KIND=4) :: fracl, xmon, fracm
 

@@ -74,7 +74,7 @@ MODULE L2_attr_class
          !INTEGER (KIND=4) :: nc, numtype 
          INTEGER (KIND=C_LONG) :: nc, numtype 
          CHARACTER( LEN = 28 ) :: GranuleDAY0Z
-         CHARACTER( LEN = 1  ) :: char
+         !CHARACTER( LEN = 1  ) :: char
          REAL (KIND = 8 )      :: TAI93At0zOfGranule !!PGE
          CHARACTER( LEN = PGSd_MET_MAX_STRING_SET_L) :: ShortName, &
                                                         InputPGEVersion,&
@@ -88,10 +88,10 @@ MODULE L2_attr_class
                "AuthorName              " /) 
          INTEGER (KIND=4), DIMENSION(npcfattr) :: lun
 
-         CHARACTER( LEN = PGSd_PC_VALUE_LENGTH_MAX ) :: StringValue, strTemp
+         CHARACTER( LEN = PGSd_PC_VALUE_LENGTH_MAX ) :: StringValue!, strTemp
          INTEGER (KIND=4) :: version 
          INTEGER (KIND=4) :: status, ierr, di
-         INTEGER (KIND=4) :: SW_fileid, SW_id
+         INTEGER (KIND=4) :: SW_fileid !, SW_id
 
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
 

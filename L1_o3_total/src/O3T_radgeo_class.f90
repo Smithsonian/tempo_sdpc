@@ -70,8 +70,8 @@ MODULE O3T_radgeo_class
          CHARACTER( LEN = * ), INTENT(IN) :: L1B_filename, L1B_swathname
          REAL (KIND = 4), DIMENSION(:), INTENT(IN), OPTIONAL :: wl_com
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-         INTEGER (KIND=4) :: iLine
-         INTEGER (KIND=4) :: version
+         !INTEGER (KIND=4) :: iLine
+         !INTEGER (KIND=4) :: version
          INTEGER (KIND=4) :: status, ierr
 
          !! clean up everything before proceed

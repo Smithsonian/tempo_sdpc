@@ -69,9 +69,9 @@ MODULE O3T_lpolycoef_class
       FUNCTION O3T_lpoly_cden( this ) RESULT (status)
         TYPE (O3T_lpoly_cden_type), INTENT( OUT ) :: this
         INTEGER (KIND = 4) :: status
-        INTEGER  :: np, i,j,k
+        INTEGER  :: np, j !,k, i,
         INTEGER  :: ierr
-        REAL (KIND = 8) :: xdenom
+        !REAL (KIND = 8) :: xdenom
  
         IF( .NOT. nval_read ) THEN
            status = OZT_E_FAILURE

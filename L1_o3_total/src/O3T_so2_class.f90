@@ -134,7 +134,7 @@ MODULE O3T_so2_class
         REAL (KIND=4), DIMENSION(5) :: abs_rat, dwav, snso
         REAL (KIND=4), DIMENSION(6) :: sens, resn
         REAL (KIND=4) :: sens13, sens23, snso13, snso23, resn13, resn23
-        INTEGER (KIND=4) :: di
+        !INTEGER (KIND=4) :: di
 
         abs_rat(1:5) = so2abs(1:5)/o3abs(1:5)
         ! calculate separation between wavls and reflectivity wavl.

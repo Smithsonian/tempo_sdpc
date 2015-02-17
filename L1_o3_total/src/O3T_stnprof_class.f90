@@ -309,7 +309,7 @@ MODULE O3T_stnprof_class
        REAL (KIND=4), DIMENSION(:), INTENT(INOUT) :: o3prof
        REAL (KIND=4), DIMENSION(:), INTENT(IN)    :: o3prof_base
        REAL (KIND=4), DIMENSION(SIZE(o3prof_base)):: ratio
-       INTEGER (KIND=4), DIMENSION(1) :: ml
+       !INTEGER (KIND=4), DIMENSION(1) :: ml
        INTEGER (KIND=4) :: i, j, l, nL 
        INTEGER (KIND=4) :: status, ierr
        CHARACTER (LEN =255) :: msg

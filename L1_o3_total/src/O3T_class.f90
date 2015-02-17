@@ -231,12 +231,12 @@ MODULE O3T_class
         INTEGER (KIND=1), INTENT(INOUT) :: algflg
         LOGICAL, INTENT(INOUT) :: skipit
         LOGICAL, INTENT(OUT) :: absrfl, maxitr, stp1oz_valid
-        INTEGER (KIND=4) :: iphigh, iprof 
+        INTEGER (KIND=4) :: iphigh !, iprof
         INTEGER (KIND=4) :: ilat 
         INTEGER (KIND=4) :: iter, itermax
         LOGICAL (KIND=4) :: first_call
         REAL (KIND=4) :: ozonin, estozn 
-        REAL (KIND=4) :: dndoz_r, dndoz_o, dr, doz_limit_l
+        REAL (KIND=4) :: dndoz_r, dndoz_o, doz_limit_l! , dr
         INTEGER :: ierr, status
 
         IF( SIZE( xnvalm ) < nwl_com ) THEN
@@ -403,7 +403,7 @@ MODULE O3T_class
         LOGICAL, INTENT(OUT) :: stp2oz_valid
         LOGICAL, INTENT(INOUT) :: skipit
 
-        INTEGER (KIND=4) :: iprof
+        !INTEGER (KIND=4) :: iprof
         INTEGER :: ierr, status
  
         REAL (KIND=4), DIMENSION(nwl_com) :: dndomega 
@@ -902,8 +902,8 @@ MODULE O3T_class
         REAL (KIND=4) :: omeglo, omeghi
         REAL (KIND=4) :: ezgcor, trgcor, sbgro, knbgro, &
                          ezccor, trccor, sbclo, knbclo
-        INTEGER (KIND=4), SAVE :: ip_l = -1, ip_u = -1, pixel_id = -32767, &
-                                  iwl_s = -1
+        INTEGER (KIND=4), SAVE :: ip_l = -1, pixel_id = -32767, &
+                                  iwl_s = -1 !, ip_u = -1
         INTEGER (KIND=4) :: ioz, iprof
         INTEGER (KIND=4) :: status, ierr
         CHARACTER (LEN =255) :: msg
@@ -1195,7 +1195,7 @@ MODULE O3T_class
                                                    delshp, dxdomega 
         REAL(KIND=4) :: dn_at_wloz, dn_at_wlrefl, crrcto, domega
         REAL(KIND=4),DIMENSION(SIZE(eff)) :: crrctx
-        INTEGER(KIND=4) :: ierr, status
+        INTEGER(KIND=4) :: status ! ierr, 
         
         status = OZT_S_SUCCESS
         IF( absrfl ) THEN
@@ -1305,7 +1305,7 @@ MODULE O3T_class
         REAL( KIND=4 ),DIMENSION(SIZE(fgprf)) :: tmpprf
         INTEGER( KIND=4 ) :: i,j,k,l
         REAL( KIND=4 ) :: foz, flt, fmn
-        INTEGER( KIND=4 ) :: status, ierr
+        INTEGER( KIND=4 ) :: status!, ierr
      
         ! determine interpolation indices
         j = ( estozn - 25.0 )/50.0 - 1

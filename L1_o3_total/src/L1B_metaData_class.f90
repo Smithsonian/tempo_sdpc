@@ -60,9 +60,9 @@ MODULE L1B_metaData_class
         TYPE (L1BECSMETA_T), INTENT(OUT) :: L1BcoreArch
         INTEGER (KIND=4), INTENT(OUT) :: year, month, day, jday
         INTEGER (KIND=4), INTENT(IN), OPTIONAL :: version_in
-        INTEGER (KIND=4) :: iName, status
+        INTEGER (KIND=4) :: status ! iName, 
         INTEGER (KIND=4) :: ierr, version
-        CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: dummyName, dummyValue
+        CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: dummyName!, dummyValue
         INTEGER (KIND=4) :: counter_r
         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
         CHARACTER( LEN = 1 ) :: foo

@@ -111,7 +111,7 @@ CONTAINS
     INTEGER(KIND = 4) :: start1(1), stride1(1), edge1(1)
     INTEGER(KIND = 4) :: start2(1), stride2(1), edge2(1)
     INTEGER(KIND = 4) :: start3(3), stride3(3), edge3(3)
-    INTEGER(KIND=4) :: i,ji, iw, isw, is, j
+    INTEGER(KIND=4) :: iw, isw, is !, j, i, ji
     INTEGER(KIND = 4) :: status, ierr, version
 
     data is/0/

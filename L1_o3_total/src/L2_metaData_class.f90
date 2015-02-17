@@ -107,7 +107,7 @@ MODULE L2_metaData_class
         CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: dummyName, dummyValue
         CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: ShortName
         INTEGER (KIND=4) :: HE5id
-        CHARACTER( LEN = 28 ) :: RangeBeginningDateTime, ProductionDateTime
+        CHARACTER( LEN = 28 ) :: RangeBeginningDateTime!, ProductionDateTime
         CHARACTER( LEN=PGSd_MET_GROUP_NAME_L ) :: GROUPS(PGSd_MET_NUM_OF_GROUPS)
         CHARACTER( LEN=PGS_SMF_MAX_MSG_SIZE ) :: msg
         CHARACTER( LEN = 28 ) :: L1BRadDateTime, L1BIrrDateTime

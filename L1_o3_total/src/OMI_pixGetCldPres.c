@@ -60,7 +60,7 @@ OMI_pixGetCldPres( float  latitude,
 
    static float dlat, dlon;
    float  fx, fy;
-   float  foo0, foo1, foo2;
+   float  /* foo0, */ foo1, foo2;
    int    lg_y, lg_x;
    int    dday, mm_cur, mm_pre; 
    float  frac;

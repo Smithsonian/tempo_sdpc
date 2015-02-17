@@ -89,11 +89,11 @@ MODULE O3T_dndx_class
 
       INTEGER (HID_T) :: file_id
       INTEGER (KIND = 4) :: status
-      INTEGER :: ip_lut, is, ie, iprof, ilyr, error, ierr, i_foo(1)
+      INTEGER :: ip_lut, iprof, ilyr, error, ierr, i_foo(1) ! is, ie, 
       INTEGER :: iwl, ipres, isza, ivza
       INTEGER (KIND=4) :: nvzaP, nszaP, nprofP, nwlLUTP, npresP 
-      INTEGER :: iwl_max
-      INTEGER, DIMENSION(6) :: data_dims
+      !INTEGER :: iwl_max
+      !INTEGER, DIMENSION(6) :: data_dims
       TYPE (DSH5_T), DIMENSION(np_dndx_read) :: lut_parameters
       INTEGER, DIMENSION(np_dndx_read) :: rank_dndx = (/ 6,6,6,6,4,1 /) 
       INTEGER :: count6d
@@ -103,7 +103,7 @@ MODULE O3T_dndx_class
       REAL (KIND = 4), DIMENSION(:,:,:,:), ALLOCATABLE :: sb_t
       REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: wl_t
       CHARACTER ( LEN = 200 ) :: msg
-      INTEGER (HID_T)  :: datatype
+      !INTEGER (HID_T)  :: datatype
       INTEGER :: version
 
       IF( .NOT. nval_read ) THEN

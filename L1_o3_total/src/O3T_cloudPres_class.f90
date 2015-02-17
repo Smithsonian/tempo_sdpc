@@ -206,7 +206,7 @@ MODULE O3T_cloudPres_class
        END SUBROUTINE O3T_getOMICldPress
 
        SUBROUTINE O3T_freeCLD
-         INTEGER (KIND=4) :: status
+         !INTEGER (KIND=4) :: status
          IF( ALLOCATED( lineMem       ) ) DEALLOCATE( lineMem       )
          IF( ALLOCATED( CloudFraction ) ) DEALLOCATE( CloudFraction )
          IF( ALLOCATED( CloudPressureI2 ) ) DEALLOCATE( CloudPressureI2 )

@@ -98,7 +98,7 @@ MODULE UTIL_lh5_class
         INTEGER (KIND = 4) :: status
         INTEGER          :: class
         INTEGER (SIZE_T) :: size
-        INTEGER          :: irank, rank;
+        INTEGER          :: rank !, irank
         INTEGER(HSIZE_T), DIMENSION(MAXRANK) :: dims, maxdims
         INTEGER (HID_T)  :: datatype 
         INTEGER          :: error, ierr

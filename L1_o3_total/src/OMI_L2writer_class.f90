@@ -183,9 +183,9 @@ MODULE OMI_L2writer_class
          TYPE (DFHE5_T), DIMENSION(:), INTENT(IN) :: gfList
          INTEGER (KIND=4) :: ig, NG, status, ierr
          INTEGER (KIND=4) :: ifld, nflds
-         INTEGER (KIND=4), DIMENSION(HE5_DTSETRANKMAX) :: dims
+         !INTEGER (KIND=4), DIMENSION(HE5_DTSETRANKMAX) :: dims
          INTEGER (KIND=4), DIMENSION(HE5_FLDNUMBERMAX) :: rank, ntype
-         CHARACTER( LEN = MAX_STR_LEN ) :: dimlist, maxdimlist
+         !CHARACTER( LEN = MAX_STR_LEN ) :: dimlist, maxdimlist
          CHARACTER( LEN = 4096 ) :: fieldlist
          CHARACTER( LEN = 1 ) :: delim = ','
          CHARACTER ( LEN = 256 ), DIMENSION(HE5_FLDNUMBERMAX) :: outstrs
@@ -229,8 +229,8 @@ MODULE OMI_L2writer_class
          TYPE (DFHE5_T), DIMENSION(:), INTENT(IN) :: dfList
          INTEGER (KIND=4) :: id, ND, status, ierr
          INTEGER (KIND=4) :: ifld, nflds
-         INTEGER (KIND=4), DIMENSION(HE5_DTSETRANKMAX) :: dims
-         CHARACTER( LEN = MAX_STR_LEN ) :: dimlist, maxdimlist
+         !INTEGER (KIND=4), DIMENSION(HE5_DTSETRANKMAX) :: dims
+         !CHARACTER( LEN = MAX_STR_LEN ) :: dimlist, maxdimlist
          INTEGER (KIND=4), DIMENSION(HE5_FLDNUMBERMAX) :: rank, ntype
          CHARACTER( LEN = 4096 ) :: fieldlist
          CHARACTER( LEN = 1 ) :: delim = ','
@@ -570,7 +570,7 @@ MODULE OMI_L2writer_class
 
        SUBROUTINE L2_disposeBlockW( this )
          TYPE (L2_generic_type), INTENT( INOUT ) :: this
-         INTEGER (KIND=4) :: ierr
+         !INTEGER (KIND=4) :: ierr
          this%nDims   = 0
          this%nFields = 0
          this%iLine   = -1

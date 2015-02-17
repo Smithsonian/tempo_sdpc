@@ -80,7 +80,7 @@ MODULE O3T_irrad_class
          REAL (KIND = 4), DIMENSION(:), INTENT(IN), OPTIONAL :: wl_com
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
          INTEGER (KIND=4) :: iLine
-         INTEGER (KIND=4) :: status, status1, ierr
+         INTEGER (KIND=4) :: status, ierr ! , status1
          INTEGER (KIND=4) :: nWavelCoef_irr
          TYPE (L1B_radirr_type) :: irr_blk
 

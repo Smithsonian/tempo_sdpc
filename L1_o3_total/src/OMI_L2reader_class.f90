@@ -228,7 +228,7 @@ MODULE OMI_L2reader_class
          INTEGER (KIND=4), INTENT(IN), OPTIONAL :: he5accessTag
          CHARACTER( LEN = * ), INTENT(IN) :: filename, swathname, fieldlist
          TYPE (L2_generic_type), INTENT( OUT ) :: this
-         INTEGER (KIND=4) :: id, k, rankID
+         INTEGER (KIND=4) :: id, rankID ! , k
          CHARACTER( LEN = MAX_STR_LEN ) :: dimlist, maxdimlist
          INTEGER (KIND=4) :: ntype
          INTEGER (KIND=4) :: he5accessTag_l

@@ -116,9 +116,9 @@ CONTAINS
 
     INTEGER (HID_T) :: file_id
     INTEGER (KIND = 4) :: status
-    INTEGER :: ip_nval, is, ie, iprof, error, ierr, i_foo(1)
-    INTEGER :: iwl, ipres, isza, ivza
-    INTEGER, DIMENSION(5) :: data_dims
+    INTEGER :: ip_nval, error, ierr, i_foo(1) ! ie, iprof, is,
+    !INTEGER :: iwl, ipres, isza, ivza 
+    !INTEGER, DIMENSION(5) :: data_dims
     TYPE (DSH5_T), DIMENSION(np_nval_read) :: nval_parameters
     INTEGER, DIMENSION(np_nval_read) :: rank_nval =  &
          (/ 1,1,1,5,5,5,5,5,3,1,1,1,1 /)
@@ -128,7 +128,7 @@ CONTAINS
     REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: wl_t, c0_t, c1_t, c2_t 
     CHARACTER ( LEN = 200 ) :: msg
     CHARACTER ( LEN = 20 ) :: FUNCTIONNAME = "O3T_nval_setup"
-    INTEGER (HID_T)  :: datatype
+    !INTEGER (HID_T)  :: datatype
     INTEGER :: version
 
     !! get the nval table filename and path

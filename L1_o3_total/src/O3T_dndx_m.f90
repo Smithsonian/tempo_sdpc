@@ -65,7 +65,7 @@ MODULE O3T_dndx_m
         REAL (KIND=4), DIMENSION(2,NLYR,nwl_sub) :: dxnv
         REAL (KIND=4) :: omeglo, omeghi, ozfrac, clfrac  
         REAL (KIND=4) :: grref, clref, ref
-        REAL (KIND=4) :: q_unper
+        !REAL (KIND=4) :: q_unper
         REAL (KIND=8) :: pc, fac_pcl
                       
         status = OZT_S_SUCCESS
