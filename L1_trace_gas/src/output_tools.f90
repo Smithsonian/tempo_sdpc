@@ -250,7 +250,7 @@ contains
 
     ! append diagnostic variables
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_fit_iteration_count, &
+                              tg_var_radfit_iteration_count, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "radiance fit iteration count", &
@@ -262,7 +262,7 @@ contains
     chunksizes(3) = 1                            ! step dimension
     ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_params, &
+                              tg_var_radfit_params, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter", &
@@ -272,7 +272,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_errors, &
+                              tg_var_radfit_errors, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter uncertainty", &
@@ -282,7 +282,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_correl, &
+                              tg_var_radfit_correl, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
                               comment = "fit parameter correlation", &
@@ -297,7 +297,7 @@ contains
     chunksizes(3) = 1                                          ! step dimension
     ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_measured_spectrum, &
+                              tg_var_radfit_measured_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured spectrum", &
@@ -307,7 +307,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_measured_wavelengths, &
+                              tg_var_radfit_measured_wavelengths, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "measured wavelength", &
@@ -317,7 +317,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_model_spectrum, &
+                              tg_var_radfit_model_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "model spectrum", &
@@ -327,7 +327,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_fit_weights, &
+                              tg_var_radfit_weights, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "spectrum fit weights", &
@@ -337,7 +337,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_fit_residuals, &
+                              tg_var_radfit_residuals, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
                               comment = "spectrum fit residuals", &
@@ -347,7 +347,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_diag_param_names, &
+                              tg_var_radfit_param_names, &
                               nf90_string, &
                               dimids = [dimids_var_xtrack_step(1)])
 
@@ -438,14 +438,14 @@ contains
                               attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_fit_rms_residual, &
+                              tg_var_radfit_rms_residual, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit rms residual", &
                               valid_range = [0.0_r8, 1.e30_r8], &
                               fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_fit_convergence_flag, &
+                              tg_var_radfit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit convergence flag", &
@@ -770,22 +770,22 @@ contains
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, nxtrack], &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_fit_rms_residual, [iline,0], [nblock, nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_radfit_rms_residual, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_rms_residual (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_i2 (obj, tg_var_fit_convergence_flag, [iline,0], [nblock, nxtrack], &
+    call tiof_put2d_i2 (obj, tg_var_radfit_convergence_flag, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_put2d_i2 (obj, tg_var_fit_iteration_count, [iline,0], [nblock, nxtrack], &
+      call tiof_put2d_i2 (obj, tg_var_radfit_iteration_count, [iline,0], [nblock, nxtrack], &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_params, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj, tg_var_radfit_params, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % params(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_errors, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj, tg_var_radfit_errors, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % errors(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_correl, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj, tg_var_radfit_correl, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
@@ -794,17 +794,17 @@ contains
       waves   => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1)
       weights => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, &
+      call tiof_put3d_r8 (obj, tg_var_radfit_model_spectrum, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], model, errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, &
+      call tiof_put3d_r8 (obj, tg_var_radfit_measured_spectrum, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], meas, errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, &
+      call tiof_put3d_r8 (obj, tg_var_radfit_measured_wavelengths, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl],  waves, errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, &
+      call tiof_put3d_r8 (obj, tg_var_radfit_weights, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], weights, errstat)
 
       residuals(:,:,:) = meas - model
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, &
+      call tiof_put3d_r8 (obj, tg_var_radfit_residuals, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], residuals, errstat)
     endif
 
@@ -918,7 +918,7 @@ contains
                         errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_put1d_string (obj, tg_var_diag_param_names, 0, num_params, &
+      call tiof_put1d_string (obj, tg_var_radfit_param_names, 0, num_params, &
                               param_names(1:num_params), errstat)
     endif
 
@@ -1247,9 +1247,10 @@ contains
 
     call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc(1:nxtrack,1:ntimes), errstat)
-    call tiof_get2d_r8 (obj, tg_var_fit_rms_residual, [0,0], [ntimes, nxtrack], rms(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_radfit_rms_residual, [0,0], [ntimes, nxtrack], rms(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
-    call tiof_get2d_i2 (obj, tg_var_fit_convergence_flag, [0,0], [ntimes, nxtrack], convergence_flag(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_i2 (obj, tg_var_radfit_convergence_flag, [0,0], [ntimes, nxtrack], &
+                        convergence_flag(1:nxtrack,1:ntimes), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, "in read_column_results", errstat)
       return
