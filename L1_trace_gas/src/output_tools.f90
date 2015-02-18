@@ -758,6 +758,8 @@ contains
 
     type (tiof_file_type), pointer :: obj => null()
     real (kind=r8), dimension(1:n_rad_wvl, 1:nxtrack, 0:nblock-1) :: residuals
+    real (kind=r8), dimension(:,:,:), pointer :: &
+      waves => null(), meas => null(), model => null(), weights => null()
 
     if (errstat < 0) return
 
@@ -787,26 +789,23 @@ contains
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
-                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1), &
-                          errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
-                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1), &
-                          errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
-                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1), &
-                          errstat)
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
-                          radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1), &
-                          errstat)
+      model   => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1)
+      meas    => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1)
+      waves   => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1)
+      weights => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1)
 
-      residuals(:,:,:) = &
-        radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 2, 0:nblock-1) - &
-        radfit_diagnostics % fitspc (1:n_rad_wvl, 1:nxtrack, 1, 0:nblock-1)
+      call tiof_put3d_r8 (obj, tg_var_diag_model_spectrum, &
+                          [iline,0,0], [nblock,nxtrack,n_rad_wvl], model, errstat)
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_spectrum, &
+                          [iline,0,0], [nblock,nxtrack,n_rad_wvl], meas, errstat)
+      call tiof_put3d_r8 (obj, tg_var_diag_measured_wavelengths, &
+                          [iline,0,0], [nblock,nxtrack,n_rad_wvl],  waves, errstat)
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_weights, &
+                          [iline,0,0], [nblock,nxtrack,n_rad_wvl], weights, errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, [iline,0,0], [nblock,nxtrack,n_rad_wvl], &
-                          residuals, errstat)
-
+      residuals(:,:,:) = meas - model
+      call tiof_put3d_r8 (obj, tg_var_diag_fit_residuals, &
+                          [iline,0,0], [nblock,nxtrack,n_rad_wvl], residuals, errstat)
     endif
 
     ! input_vars
@@ -1181,7 +1180,7 @@ contains
     endif
 
   end subroutine write_radiance_wavecal_diagnostics
-  
+
   subroutine close_output_file (errstat)
     implicit none
     integer, intent(inout) :: errstat
