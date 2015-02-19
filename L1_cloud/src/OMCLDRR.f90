@@ -108,12 +108,14 @@ program OMCLDRR
   !===========================================================
   if (iprt > 1) print *,'cloud_ret: reading input data'
   !he5 version
-  call read_input_data(blk, err_code)
+  if (read_he4) call read_input_data(blk, err_code)
   !netCDF version
-  ext_index=index(filename,'.he4')
-  filename_in_nc=filename(1:ext_index-1)//'.nc'
-  iLine=iLine-1 
-  call read_input_data_tio(filename_in_nc, errstat)
+  if (read_nc) then
+    ext_index=index(filename,'.he4')
+    filename_in_nc=filename(1:ext_index-1)//'.nc'
+    if (read_he4) iLine=iLine-1 
+    call read_input_data_tio(filename_in_nc, errstat)
+  endif
 
   !loop over the # of lines
   !========================
@@ -129,12 +131,16 @@ program OMCLDRR
       !===========================================================
       if (iprt > 1) print *,'cloud_ret: reading input data'
       !he5 version
-      call read_input_data(blk, err_code)
-      if(err_code >= 1) goto 999
+      if (read_he4) then
+        call read_input_data(blk, err_code)
+        if(err_code >= 1) goto 999
+      endif
       !netCDF version
-      call read_input_data_tio(filename_in_nc, errstat)
-      if(errstat < 0) goto 999
-      
+      if (read_nc) then
+        call read_input_data_tio(filename_in_nc, errstat)
+        if(errstat < 0) goto 999
+      endif
+ 
     endif ! start_line
 
     !get the climatological terrain pressure

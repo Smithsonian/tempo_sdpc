@@ -72,6 +72,8 @@ module m_vars
   logical :: do_LER=.false. ! do Lambertian Equiv. Reflector version of calc.
   logical :: do_mler=.true. ! do Mixed LER version of calculation
   logical :: test_solar=.false. ! use solar spectrum as input data?
+  logical :: read_he4=.true.
+  logical :: read_nc=.true.
 
   ! FILENAMES and PATHS
   character(len=255) :: solar_path='../out/' ! path used by write_solar
