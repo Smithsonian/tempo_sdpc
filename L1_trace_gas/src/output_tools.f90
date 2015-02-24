@@ -664,7 +664,7 @@ contains
       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
     type (tiof_dimlist_type) :: dimlist
 
     if (errstat < 0) return
@@ -756,10 +756,9 @@ contains
     type (radfit_diagnostics_type), intent(in) :: radfit_diagnostics
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
     real (kind=r8), dimension(1:n_rad_wvl, 1:nxtrack, 0:nblock-1) :: residuals
-    real (kind=r8), dimension(:,:,:), pointer :: &
-      waves => null(), meas => null(), model => null(), weights => null()
+    real (kind=r8), dimension(:,:,:), pointer :: waves, meas, model, weights
 
     if (errstat < 0) return
 
@@ -839,7 +838,7 @@ contains
     integer, intent(in) :: nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -875,7 +874,7 @@ contains
     integer, intent(in) :: num_params
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
     type (tiof_attlist_type) :: attlist
     integer :: ncp, nsl
 
@@ -938,7 +937,7 @@ contains
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1), intent(in) :: albedo
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -962,7 +961,7 @@ contains
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: climatology_levels
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -986,7 +985,7 @@ contains
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: scattw
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1014,7 +1013,7 @@ contains
     logical, intent(in) :: yn_write_cloud_variables
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1055,7 +1054,7 @@ contains
     type (common_mode_spectrum_type), intent(in) :: common_mode
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1086,7 +1085,7 @@ contains
     integer (kind=i4), intent(in) :: nrefspec, npts, nxtrack
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
     integer :: i
 
     if (errstat < 0) return
@@ -1117,7 +1116,7 @@ contains
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: column
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1140,7 +1139,7 @@ contains
     real (kind=r8), dimension(:,:), intent(in) :: waves, resid
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1164,7 +1163,7 @@ contains
     real (kind=r8), dimension(:,:), intent(in) :: waves, resid
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
@@ -1185,7 +1184,7 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     obj => primary_output_file
 
@@ -1206,7 +1205,7 @@ contains
     real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, thgt
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
     integer (kind=i2), dimension(nxtrack,ntimes) :: i2_thgt
 
     if (errstat < 0) return
@@ -1239,7 +1238,7 @@ contains
     integer (kind=i2), dimension(:,:) :: convergence_flag
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
 
