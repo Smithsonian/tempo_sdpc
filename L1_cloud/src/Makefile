@@ -51,12 +51,14 @@ OTS_INCDIR = $(OTS_ROOT)/include
 OTS_MODDIR = $(OTS_ROOT)/mod
 OTS_LIBDIR = $(OTS_ROOT)/lib
 
-NETCDFINC  = $(OMIUTIL)/netcdf/include
-NETCDFLIB  = $(OMIUTIL)/netcdf/lib
+#NETCDFINC  = $(OMIUTIL)/netcdf/include
+#NETCDFLIB  = $(OMIUTIL)/netcdf/lib
+NETCDFINC = $(OTS_INCDIR)
+NETCDFLIB = $(OTS_LIBDIR)
 PSPLINEMOD = $(OTS_MODDIR)
 PSPLINELIB = $(OTS_LIBDIR)
 
-IFLAGS = $(MODFLG)$(OMIUTIL)/include \
+IFLAGS = $(MODFLG)$(OMIUTIL)/TOOLKIT/include \
          $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(HDF5INC) \
          $(MODFLG)$(HDFINC) \
