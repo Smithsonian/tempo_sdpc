@@ -231,7 +231,7 @@ contains
 
     integer :: err, num, i, k, alen
     type(c_ptr), dimension(size(array)) :: ptrs
-    character (len=size(array)), pointer :: fptr ! => null()
+    character (len=size(array)), pointer :: fptr
 
     if (errstat < 0) return
 
@@ -415,7 +415,7 @@ contains
   subroutine tiof_dimlist_free (dimlist)
     implicit none
     type (tiof_dimlist_type), intent(inout) :: dimlist
-    type (tiof_dim_type), pointer :: item => null()
+    type (tiof_dim_type), pointer :: item
 
     do while (associated(dimlist % head))
       item => dimlist % head % next
@@ -438,7 +438,7 @@ contains
     integer, intent(inout) :: errstat
     integer, optional, intent(inout), dimension(size(dimids)) :: dimsizes
 
-    type (tiof_dim_type), pointer :: item => null()
+    type (tiof_dim_type), pointer :: item
     character (len=tiof_max_name_len) :: name_i
     integer :: i, num, len_i
 
@@ -492,7 +492,7 @@ contains
     type (tiof_dimlist_type), intent(in) :: list
     integer, intent(inout) :: errstat
 
-    type (tiof_dim_type), pointer :: item => null()
+    type (tiof_dim_type), pointer :: item
     integer :: status
 
     if (errstat < 0) return
@@ -593,7 +593,7 @@ contains
   subroutine tiof_attlist_free (attlist)
     implicit none
     type (tiof_attlist_type), intent(inout) :: attlist
-    type (tiof_att_type), pointer :: item => null()
+    type (tiof_att_type), pointer :: item
 
     do while (associated(attlist % head))
       item => attlist % head % next
@@ -613,7 +613,7 @@ contains
     integer, intent(in) :: varid
     integer, intent(inout) :: errstat
 
-    type (tiof_att_type), pointer :: item => null()
+    type (tiof_att_type), pointer :: item
     integer :: status
 
     if (errstat < 0) return
@@ -781,7 +781,7 @@ contains
   subroutine tiof_varlist_free (varlist)
     implicit none
     type (tiof_varlist_type), intent(inout) :: varlist
-    type (tiof_var_type), pointer :: item => null()
+    type (tiof_var_type), pointer :: item
 
     do while (associated(varlist % head))
       item => varlist % head % next
@@ -798,11 +798,13 @@ contains
     implicit none
     type (tiof_varlist_type), intent(in) :: list
     character (len=*), intent(in) :: name
-    type (tiof_var_type), pointer, intent(out) :: var_ptr => null()
+    type (tiof_var_type), pointer, intent(out) :: var_ptr
     integer, intent(inout) :: errstat
 
-    type (tiof_var_type), pointer :: item => null()
+    type (tiof_var_type), pointer :: item
     integer :: len_name
+
+    var_ptr => null()
 
     if (.not.associated(list%head)) then
       call tell_error (tell_invalid_parm, &
@@ -838,7 +840,7 @@ contains
     type (tiof_varlist_type), intent(in) :: list
     integer, intent(inout) :: errstat
 
-    type (tiof_var_type), pointer :: item => null()
+    type (tiof_var_type), pointer :: item
     integer :: status
 
     if (errstat < 0) return
