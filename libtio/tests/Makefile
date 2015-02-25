@@ -16,12 +16,12 @@ NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INCS   = $(TIO_INC) -I$(NETCDF_INC)
 LIBS   = $(TIO_LIBPATHS) -ltio \
          $(TELL_LIBPATHS) -ltell \
-         $(NETCDF_LIBPATHS) -lnetcdf -lm
+         $(NETCDF_LIBPATHS) -lnetcdf $(RPATH) -lm
 
 INCS_F = -I$(elfdir) -I$(NETCDF_INC)
 LIBS_F = $(TIO_LIBPATHS) -ltio -ltio_f \
          $(TELL_LIBPATHS) -ltell_f \
-	 $(NETCDF_LIBPATHS) -lnetcdff
+	 $(NETCDF_LIBPATHS) -lnetcdff $(RPATH)
 
 COMPILE_CMD = $(CC) $(CFLAGS)
 COMPILE_F_CMD = $(FC) $(FCFLAGS)
