@@ -5,7 +5,7 @@
    (ifort/icc) compilers are currently supported.  The installation
    scripts use a variable to indicate which compilers to use:
 
-      $compilers = gfortran | intel
+      $compilers = gnu | intel
 
    Before compiling and installing the software, it's necessary to
    choose directories to manage the source code and the files to be

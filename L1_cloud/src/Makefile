@@ -8,13 +8,14 @@ srcdir     = $(config_dir)/L1_cloud/src
 objdir     = $(srcdir)/objs
 msgdir     = $(srcdir)/msgs
 
+incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
 
 LNFLAGS    = #
 ADDLIBD    = #
 ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
 
-ifeq ($(COMPILER_SUITE), gfortran)
+ifeq ($(COMPILER_SUITE), gnu)
   FCONVERT = -fconvert=swap
 endif
 ifeq ($(COMPILER_SUITE), intel)

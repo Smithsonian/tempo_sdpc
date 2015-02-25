@@ -1334,7 +1334,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-compilers=XXX    Use compiler family gfortran or intel
+  --with-compilers=XXX    Use compiler family gnu or intel
   --with-otsroot=DIR      Use OTS libraries installed in DIR
   --with-sdptk-version=S  SDPTK version string (e.g. 5.2.19v1.00)
   --with-hdfeos=DIR       Use HDFEOS libraries installed in DIR
@@ -3545,7 +3545,7 @@ else
 fi
 
 if test "x$jh_with_compilers" = "xno"; then
-   COMPILER_SUITE=gfortran
+   COMPILER_SUITE=gnu
 else
    COMPILER_SUITE="$jh_with_compilers"
 fi

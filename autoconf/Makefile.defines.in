@@ -8,7 +8,7 @@ OTS_ROOT       = @OTS_ROOT@
 
 SHELL=/bin/sh
 
-ifeq ($(COMPILER_SUITE), gfortran)
+ifeq ($(COMPILER_SUITE), gnu)
   CC           = gcc
   CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran
   LDFLAGS      = -Wl,--warn-common -Wl,-export-dynamic

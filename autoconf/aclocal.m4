@@ -587,11 +587,11 @@ dnl#}}}
 AC_DEFUN([JH_SDPTK_SETUP], #{{{
 [
 AC_ARG_WITH(compilers,
-  [  --with-compilers[=XXX]    Use compiler family gfortran or intel],
+  [  --with-compilers[=XXX]    Use compiler family gnu or intel],
   [jh_with_compilers=$withval],
   [jh_with_compilers=no])
 if test "x$jh_with_compilers" = "xno"; then
-   COMPILER_SUITE=gfortran
+   COMPILER_SUITE=gnu
 else
    COMPILER_SUITE="$jh_with_compilers"
 fi
