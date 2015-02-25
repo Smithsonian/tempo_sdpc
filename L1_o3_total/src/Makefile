@@ -97,6 +97,8 @@ install:
 clean:
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod PGS_OZT_52050.f PGS_OZT_52050.h
 
+distclean:	clean
+
 tags:
 	ctags $(F90SOURCES) $(CSOURCES)
 #-----------------------------------------------------------------

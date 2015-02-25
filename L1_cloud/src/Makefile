@@ -115,6 +115,8 @@ install:	install-executable install-header
 
 clean:  clean-cld-names
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod
+        
+distclean:	clean        
 
 tags:
 	ctags $(F90SOURCES) $(CSOURCES)
