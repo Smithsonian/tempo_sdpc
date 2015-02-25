@@ -1,29 +1,84 @@
-1. Install required OTS software:
+0. Choose source and installation target directories:
 
-   A collection of tar files containing most of the OTS packages
+   These instructions assume that you have 'git' installed, along with
+   a working set of compilers.  GNU (gfortran/gcc) and Intel
+   (ifort/icc) compilers are currently supported.  The installation
+   scripts use a variable to indicate which compilers to use:
+
+      $compilers = gfortran | intel
+
+   Before compiling and installing the software, it's necessary to
+   choose directories to manage the source code and the files to be
+   installed.  Note that the installation step is required.  Do not
+   install the packages in the same directory as the source code.
+
+   For the purpose of these instructions, we will define the following
+   path variables:
+      $otsdir = target installation directory for external libraries
+      $srcdir = directory to hold the SDPC source code directories
+      $prefix = target SDPC installation directory (should
+                 be different from $otsdir)
+
+   For example, a reasonable choice might be:
+       otsdir = $HOME/tempo/ots
+       srcdir = $HOME/tempo/git
+       prefix = $HOME/tempo/sdpc
+       compilers = intel
+
+1. Install the required external libraries:
+
+   A collection of tar files containing most of the external packages
    required by SDPC components is available from one of the CF
    machines, e,g. mars, in:
 
-        /home/jhouck/omi/omi_ots/tarfiles.
+        /home/jhouck/tempo/ots_sdpc/tarfiles
 
    Installation of these packages is automated by a revision-controlled
-   Makefile available from the git repository:
+   Makefile available from a git repository:
 
-         ssh://git@vex/~/ots_sdpc.git
+      cd $srcdir
+      git clone git://vex.cfa.harvard.edu/git/ots_sdpc.git .
 
    The README file in the git repository contains installation
    instructions.
 
-2. Install libtell
+2. Install libtell:
 
-   libtell is available from ssh://git@vex/~/libtell.git
+   If you haven't already done so, clone the libtell repository:
 
-3. Run the configure script, compile and install as follows.
-   Choose compilers = gfortran | intel, then:
+      cd $srcdir
+      git clone git://vex.cfa.harvard.edu/git/libtell.git .
 
-    ./configure  --prefix=$prefix \
-                 --with-compilers=$compilers \
-                 --with-otsroot=$otsroot \
-                 --with-tell=$tell_dir
+   Unless you have a reason for doing otherwise, you probably want
+   to compile the 'master' branch:
+
+      cd libtell.git
+      git checkout master
+
+   The INSTALL file in the git repository contains installation
+   instructions.
+
+3. Install the programs in the sdpc repository:
+
+   If you haven't already done so, clone the source code repository:
+
+      cd $srcdir
+      git clone git://vex.cfa.harvard.edu/git/sdpc.git .
+
+   Unless you have a reason for doing otherwise, you probably want
+   to compile the 'devel' branch:
+
+      cd sdpc.git
+      git checkout devel
+
+   To compile and install the current devel branch:
+
+    ./configure --prefix=$prefix \
+                --with-compilers=$compilers \
+                --with-otsroot=$otsdir/$compilers
     make
     make install
+
+   Note that the configure command line shown above assumes that
+   the tell library has been installed in $prefix and that the
+   external libraries have been installed in $otsdir/$compilers.
