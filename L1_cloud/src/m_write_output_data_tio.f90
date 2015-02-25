@@ -74,7 +74,7 @@ contains
     integer (kind=4), intent(in), optional :: num_wavel
     integer (kind=4), intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj 
     type (tiof_dimlist_type) :: dimlist
     
     if (errstat < 0) return
@@ -159,7 +159,7 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj  => null()
+    type (tiof_file_type), pointer :: obj 
 
     obj => primary_output_file
 
@@ -331,29 +331,33 @@ contains
     obj => primary_output_file
 
     call tiof_put2d_r4 (obj, cld_var_latitude, [0,0], &
-         [-1, -1], lat(1:num_xtrack,1:num_steps), errstat)
+         [num_steps, num_xtrack], lat(1:num_xtrack,1:num_steps), errstat)
 
 !    where(lon(:,:) > 180.d0) lon(:,:) = lon(:,:) -360.d0
     call tiof_put2d_r4 (obj, cld_var_longitude, [0,0], &
-         [-1, -1], lon(1:num_xtrack,1:num_steps), errstat)
+         [num_steps, num_xtrack], lon(1:num_xtrack,1:num_steps), errstat)
 
     call tiof_put1d_r8 (obj, cld_var_time, [0], [num_steps], &
                         time (1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_sz_angle, [0,0], &
-         [-1, -1], sza(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps, num_xtrack], sza(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_vz_angle, [0,0], &
-         [-1, -1], sat_zen(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps, num_xtrack], sat_zen(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
     call tiof_put2d_r4 (obj, cld_var_ra_angle, [0,0], &
-         [-1, -1], azimuth(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps, num_xtrack], azimuth(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
     call tiof_put2d_i2 (obj, cld_var_terr_height, [0,0], &
-         [-1, -1], terr_height(1:num_xtrack,1:num_steps), errstat)
+         [num_steps, num_xtrack], terr_height(1:num_xtrack,1:num_steps), &
+         errstat)
 
     call tiof_put2d_i2 (obj, cld_var_gpqf, [0,0], &
-         [-1, -1], geoflg(1:num_xtrack,1:num_steps), errstat)
+         [num_steps, num_xtrack], geoflg(1:num_xtrack,1:num_steps), &
+         errstat)
 
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_geo_data: failed", errstat)
@@ -644,78 +648,85 @@ contains
     obj => primary_output_file
 
     call tiof_put2d_i2 (obj, cld_var_cloud_mask, [0,0], &
-         [-1, -1], cloud_mask(1:num_xtrack,1:num_steps), errstat)
+         [num_steps, num_xtrack], cloud_mask(1:num_xtrack,1:num_steps), &
+         errstat)
 
     call tiof_put2d_r4 (obj, cld_var_chlorophyll, [0,0], &
-         [-1, -1], chlorophyll(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], chlorophyll(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
 !    ps=ps*1013.25
     call tiof_put2d_r4 (obj, cld_var_terr_press, [0,0], &
-         [-1, -1], ps(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], ps(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_cld_press, [0,0], &
-         [-1, -1], cld_pres2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], cld_pres2(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
     call tiof_put2d_r4 (obj, cld_var_cld_frac, [0,0], &
-         [-1, -1], eff_cld_frac2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], eff_cld_frac2(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
     call tiof_put2d_r4 (obj, cld_var_rad_cld_frac, [0,0], &
-         [-1, -1], rad_cld_frac(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], rad_cld_frac(0:num_xtrack-1,1:num_steps), &
+         errstat)
 
     call tiof_put2d_r4 (obj, cld_var_surface_reflec, [0,0], &
-         [-1, -1], ref_clr(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], ref_clr(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_reflec, [0,0], &
-         [-1, -1], refl(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], refl(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put1d_i2 (obj, cld_var_mqf, [0], &
          [-1], meas_qual_flg(1:num_steps), errstat)
 
     call tiof_put2d_i2 (obj, cld_var_pqf, [0,0], &
-         [-1, -1], qc2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_resid_bias, [0,0], &
-         [-1, -1], biases2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], biases2(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_resid_stddev, [0,0], &
-         [-1, -1], stds2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], stds2(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_convergence_factor, [0,0], &
-         [-1, -1], chi_sqr2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], chi_sqr2(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_wav_shift, [0,0], &
-         [-1, -1], shifts2(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], shifts2(0:num_xtrack-1,1:num_steps), errstat)
 
     if (squeeze) then
       call tiof_put2d_r4 (obj, cld_var_wav_squeeze, [0,0], &
-         [-1, -1], squeezes(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], squeezes(0:num_xtrack-1,1:num_steps), errstat)
     endif
 
     if (write_fill) then
       call tiof_put2d_r4 (obj, cld_var_filling_in, [0,0], &
-         [-1, -1], fill(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], fill(0:num_xtrack-1,1:num_steps), errstat)
     endif
 
     if (write_resid) then
       call tiof_put1d_r4 (obj, cld_var_wav_resid, [0], &
-         [-1], wave_resid(1:num_wavel), errstat)
+         [num_wavel], wave_resid(1:num_wavel), errstat)
       call tiof_put3d_r4 (obj, cld_var_resid, [0,0,0], &
-         [-1, -1, -1], resid(1:num_wavel,1:num_xtrack,1:num_steps), errstat)
+         [num_steps,num_xtrack,num_wavel], &
+         resid(1:num_wavel,1:num_xtrack,1:num_steps), errstat)
     endif
 
     if (.not. do_mler) then
       call tiof_put2d_r4 (obj, cld_var_cld_reflec, [0,0], &
-         [-1, -1], reflect_cld(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], reflect_cld(0:num_xtrack-1,1:num_steps), &
+         errstat)
     endif
 
     if (cal_reflec) then
       call tiof_put2d_r4 (obj, cld_var_didr, [0,0], &
-         [-1, -1], dIdR(0:num_xtrack-1,1:num_steps), errstat)
+         [num_steps,num_xtrack], dIdR(0:num_xtrack-1,1:num_steps), errstat)
     endif
 
 
     if (errstat < 0) then
-      call tell_error (tell_io_write_error, "write_geo_data: failed", errstat)
+      call tell_error (tell_io_write_error, "write_cloud_data: failed", errstat)
       return
     endif
 
@@ -739,7 +750,7 @@ contains
          "otherwise Flag set to Failed"
     character(len=10) :: value
 
-    type (tiof_file_type), pointer :: obj => null()
+    type (tiof_file_type), pointer :: obj 
     type (tiof_attlist_type) :: attlist
 
     obj => primary_output_file

@@ -1,6 +1,7 @@
 #
 # level 1 variables
 #
+CLD_VAR_ELLIP_ALT,"ellipsoid_altitude"
 CLD_VAR_DQF,"data_quality_flag"
 CLD_VAR_EARTH_SUN_DISTANCE,"earth_sun_distance"
 CLD_VAR_GPQF,"ground_pixel_quality_flag"
@@ -10,8 +11,10 @@ CLD_VAR_LONGITUDE,"longitude"
 CLD_VAR_PIXELQF,"pixel_quality_flag"
 CLD_VAR_RADIANCE,"radiance"
 CLD_VAR_RA_ANGLE,"relative_azimuth_angle"
+CLD_VAR_SA_ANGLE,"solar_azimuth_angle"
 CLD_VAR_SZ_ANGLE,"solar_zenith_angle"
 CLD_VAR_TIME,"time"
+CLD_VAR_VA_ANGLE,"viewing_azimuth_angle"
 CLD_VAR_VZ_ANGLE,"viewing_zenith_angle"
 CLD_VAR_WAVELENGTH,"wavelength"
 #

@@ -131,9 +131,9 @@ contains
 
     call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_irrl1obj, swathname, errstat)
-    call tiof_inq_dimlen (tio_irrl1obj, "xtrack", nXtrack, errstat)
-    call tiof_inq_dimlen (tio_irrl1obj, "mirror_step", nTimes, errstat)
-    call tiof_inq_dimlen (tio_irrl1obj, "spectral_channel", nWavel, errstat)
+    call tiof_inq_dimlen (tio_irrl1obj, cld_dim_xtrack, nXtrack, errstat)
+    call tiof_inq_dimlen (tio_irrl1obj, cld_dim_step, nTimes, errstat)
+    call tiof_inq_dimlen (tio_irrl1obj, cld_dim_channel, nWavel, errstat)
     if(iprt > 0) then
       print *,'read_solar_data_tio: nTimes, nXtrack, nWavel'
       print *, nTimes,nXtrack,nWavel
@@ -178,11 +178,11 @@ contains
     call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_irrl1obj, swathname, errstat)
     call tiof_get3d_r4 (tio_irrl1obj, cld_var_irradiance, [0,0,0], &
-         [1,-1,-1], tio_rad, errstat)
+         [1,nXtrack,nWavel], tio_rad, errstat)
     call tiof_get3d_r4 (tio_irrl1obj, cld_var_wavelength, [0,0,0], &
-         [1,-1,-1], tio_wvl, errstat)
+         [1,nXtrack, nWavel], tio_wvl, errstat)
     call tiof_get3d_i2 (tio_irrl1obj, cld_var_pixelqf, [0,0,0], &
-         [1,-1,-1], tio_flg, errstat)
+         [1,nXtrack, nWavel], tio_flg, errstat)
     call tiof_close (tio_irrl1obj, errstat)
 
     if (errstat < 0) then
@@ -321,7 +321,7 @@ contains
 
 
 
-  !FIX ME: VIOLATES RULE THAT SUBROUTINES SHOULD NOT END MAIN PROGRAM
+  !FIXME: VIOLATES RULE THAT SUBROUTINES SHOULD NOT END MAIN PROGRAM
   subroutine write_solar_tio(errstat)
   !write out solar data to a file and quit
     use m_vars, only: solar_path, sfile, nsolwave, ws, fs
@@ -438,7 +438,7 @@ contains
 
 
     ! First check wavelengths for fill values and set fflag if found
-    ! FIX ME: ought to use the actual fill value, but 0-10000 is quicker
+    ! FIXME: ought to use the actual fill value, but 0-10000 is quicker
     fflag = 0
     do i = 1, nXtrack
       do k = 1, nWavel

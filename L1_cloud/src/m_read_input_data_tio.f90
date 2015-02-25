@@ -149,8 +149,12 @@ contains
          .or. btest(mflg(iLine),11)) &
          meas_qual_flg(iLine)=ibset(meas_qual_flg(iLine),2)
 
-    if(btest(mflg(iLine),7)) meas_qual_flg(iLine)=ibset(meas_qual_flg(iLine),3)
-    if(btest(mflg(iLine),10)) meas_qual_flg(iLine)=ibset(meas_qual_flg(iLine),4)
+    if (btest(mflg(iLine),7)) then
+      meas_qual_flg(iLine) = ibset(meas_qual_flg(iLine),3)
+    endif
+    if (btest(mflg(iLine),10)) then
+      meas_qual_flg(iLine) = ibset(meas_qual_flg(iLine),4)
+    endif
 
     !Read in radiance data 
     call read_cld_rad_data(l1bfile, tio_l1obj, swathname, errstat)
@@ -239,9 +243,9 @@ contains
 
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
-    call tiof_inq_dimlen (tio_l1obj, "xtrack", nXtrack, errstat)
-    call tiof_inq_dimlen (tio_l1obj, "mirror_step", nTimes, errstat)
-    call tiof_inq_dimlen (tio_l1obj, "spectral_channel", nWavel, errstat)
+    call tiof_inq_dimlen (tio_l1obj, cld_dim_xtrack, nXtrack, errstat)
+    call tiof_inq_dimlen (tio_l1obj, cld_dim_step, nTimes, errstat)
+    call tiof_inq_dimlen (tio_l1obj, cld_dim_channel, nWavel, errstat)
     if(iprt > 0) then
       print *,'read_input_data_tio: nTimes, nXtrack, nWavel'
       print *, nTimes,nXtrack,nWavel
@@ -288,24 +292,24 @@ contains
     call tiof_get1d_r8 (tio_l1obj, cld_var_time, [iLine-1], [1], &
          tio_time, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_latitude, [iLine-1,0], [1,-1], &
-         tio_lat, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_longitude, [iLine-1,0], [1,-1], &
-         tio_lon, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_sz_angle, [iLine-1,0], [1,-1], &
-         tio_sza, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [iLine-1,0], &
-         [1,-1], tio_sazimuth, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_vz_angle, [iLine-1,0], [1,-1], &
-         tio_sat_zen, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [iLine-1,0], &
-         [1,-1], tio_vazimuth, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", [iLine-1,0], &
-         [1,-1], tio_terr_height, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_latitude, [iLine-1,0], &
+         [1,nXtrack], tio_lat, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_longitude, [iLine-1,0], &
+         [1,nXtrack], tio_lon, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_sz_angle, [iLine-1,0], &
+         [1,nXtrack], tio_sza, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_sa_angle, [iLine-1,0], &
+         [1,nXtrack], tio_sazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_vz_angle, [iLine-1,0], &
+         [1,nXtrack], tio_sat_zen, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_va_angle, [iLine-1,0], &
+         [1,nXtrack], tio_vazimuth, errstat)
+    call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [iLine-1,0], &
+         [1,nXtrack], tio_terr_height, errstat)
     call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [iLine-1,0], &
-         [1,-1], tio_geoflg, errstat)
+         [1,nXtrack], tio_geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iLine-1,0], &
-         [1,-1], tio_anomflg, errstat)
+         [1,nXtrack], tio_anomflg, errstat)
     call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [iLine-1], &
          [1], tio_mflg, errstat)
     call tiof_close (tio_l1obj, errstat)
@@ -347,6 +351,7 @@ contains
     terr_height(:,iLine)=tio_terr_height(:,1)
     geoflg(:,iLine)=tio_geoflg(:,1)
     anomflg(:,iLine)=tio_anomflg(:,1)
+
     !Calculate relative azimuth angle
     azimuth(:,iLine)=sazimuth(:,iLine)+180.0-vazimuth(:,iLine)
     where(azimuth(:,iLine) < -180.) azimuth(:,iLine)=azimuth(:,iLine)+360.
@@ -376,29 +381,29 @@ contains
     if (errstat < 0) return
 
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_get1d_r8 (tio_l1obj, cld_var_time, [0], [-1], &
+    call tiof_get1d_r8 (tio_l1obj, cld_var_time, [0], [nLines], &
          time, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_latitude, [0,0], [-1,-1], &
-         lat, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_longitude, [0,0], [-1,-1], &
-         lon, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_sz_angle, [0,0], [-1,-1], &
-         sza, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
-         [-1,-1], sazimuth, errstat)
-    call tiof_get2d_r4 (tio_l1obj, cld_var_vz_angle, [0,0], [-1,-1], &
-         sat_zen, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
-         [-1,-1], vazimuth, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", [0,0], &
-         [-1,-1], terr_height, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [0,0], &
-         [-1,-1], geoflg, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_latitude, [0,0], &
+         [nLines,nXtrack], lat, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_longitude, [0,0], &
+         [nLines,nXtrack], lon, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_sz_angle, [0,0], &
+         [nLines,nXtrack], sza, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_sa_angle, [0,0], &
+         [nLines,nXtrack], sazimuth, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_vz_angle, [0,0], &
+         [nLines,nXtrack], sat_zen, errstat)
+    call tiof_get2d_r4 (tio_l1obj, cld_var_va_angle, [0,0], &
+         [nLines,nXtrack], vazimuth, errstat)
+    call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [0,0], &
+         [nLines,nXtrack], terr_height, errstat)
+    call tiof_get2d_i2 (tio_l1obj, cld_var_gpqf, [0,0], &
+         [nLines,nXtrack], geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
-         [-1,-1], anomflg, errstat)
+         [nLines,nXtrack], anomflg, errstat)
     call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [0], &
-         [-1], mflg, errstat)
+         [nLines], mflg, errstat)
     call tiof_close (tio_l1obj, errstat)
 
     if (errstat < 0) then
@@ -446,11 +451,11 @@ contains
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_get3d_r4 (tio_l1obj, cld_var_radiance, [iLine-1,0,0], &
-         [1,-1,-1], tio_rad, errstat)
+         [1,nXtrack,nWavel], tio_rad, errstat)
     call tiof_get3d_r4 (tio_l1obj, cld_var_wavelength, [iLine-1,0,0], &
-         [1,-1,-1], tio_wvl, errstat)
+         [1,nXtrack,nWavel], tio_wvl, errstat)
     call tiof_get3d_i2 (tio_l1obj, cld_var_dqf, [iLine-1,0,0], &
-         [1,-1,-1], tio_flg, errstat)
+         [1,nXtrack,nWavel], tio_flg, errstat)
     call tiof_close (tio_l1obj, errstat)
 
     if (errstat < 0) then
@@ -515,8 +520,48 @@ contains
 
     if (errstat < 0) return
 
-    if (allocated(lat)) deallocate (lat)   
-    allocate( lat(nXtrack,nLines), STAT=errstat )
+    allocate(lat(nXtrack,nLines), &
+         lon(nXtrack,nLines), &
+         sza(0:nXtrack-1,nLines), &
+         sat_zen(0:nXtrack-1,nLines), &
+         sazimuth(nXtrack,nLines), &
+         vazimuth(nXtrack,nLines), &
+         terr_height(nXtrack,nLines), &
+         geoflg(nXtrack,nLines), &
+         anomflg(nXtrack,nLines), &
+         mflg(nLines), &
+         quality_flagL(nWavel,nXtrack), &
+         w12d(0:nWavel-1,0:nXtrack-1), &
+         f12d(0:nWavel-1,0:nXtrack-1), &
+         time(nLines), & 
+         meas_qual_flg(nLines), &
+         cloud_pres(0:nXtrack-1,nLines), &
+         azimuth(0:nXtrack-1,nLines), &
+         refl(0:nXtrack-1,nLines), &
+         dIdR(0:nXtrack-1,nLines), &
+         ps(0:nXtrack-1,nLines), &
+         ref_clr(0:nXtrack-1,nLines), &
+         reflect_cld(0:nXtrack-1,nLines), &
+         rad_cld_frac(0:nXtrack-1,nLines), &
+         eff_cld_frac(0:nXtrack-1,nLines), &
+         eff_cld_frac2(0:nXtrack-1,nLines), &
+         cld_pres2(0:nXtrack-1,nLines), &
+         chlorophyll(0:nXtrack-1,nLines), &
+         biases(0:nXtrack-1,nLines), &
+         biases2(0:nXtrack-1,nLines), &
+         stds(0:nXtrack-1,nLines), &
+         stds2(0:nXtrack-1,nLines), &
+         chi_sqr(0:nXtrack-1,nLines), &
+         chi_sqr2(0:nXtrack-1,nLines), &
+         land_flg(0:nXtrack-1), &
+         chlcl(0:nXtrack-1), &
+         qc(0:nXtrack-1,nLines), &
+         qc2(0:nXtrack-1,nLines), &
+         fill(0:nXtrack-1,nLines), &
+         shifts(0:nXtrack-1,nLines), &
+         shifts2(0:nXtrack-1,nLines), &
+         squeezes(0:nXtrack-1,nLines), &
+         stat=errstat)
     if (errstat < 0) then
             call tell_error (tell_malloc_error, &
            "alloc_scan: allocation failure: lat", &
@@ -524,365 +569,37 @@ contains
       return
     endif
 
-    if (allocated(lon)) deallocate (lon)   
-    allocate( lon(nXtrack,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: lon", &
-           errstat)
-      return
-    endif
-
-    if (allocated(sza)) deallocate (sza)
-    allocate( sza(0:nXtrack-1,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: sza", &
-           errstat)
-      return
-    endif
-
-    if (allocated(sat_zen)) deallocate (sat_zen)
-    allocate( sat_zen(0:nXtrack-1,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: sat_zen", &
-           errstat)
-      return
-    endif
-
-    if (allocated(sazimuth)) deallocate (sazimuth)
-    allocate( sazimuth(nXtrack,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: sazimuth", &
-           errstat)
-      return
-    endif
-
-    if (allocated(vazimuth)) deallocate (vazimuth)
-    allocate( vazimuth(nXtrack,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: vazimuth", &
-           errstat)
-      return
-    endif
-
-    if (associated(terr_height)) nullify (terr_height)
-    allocate( terr_height(nXtrack,nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: terr_height", &
-           errstat)
-      return
-    endif
-
-    if (allocated(geoflg)) deallocate (geoflg)
-    allocate( geoflg(nXtrack,nLines), STAT=errstat ) ; geoflg=0 
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: geoflg", &
-           errstat)
-      return
-    endif
-
-    if (allocated(anomflg)) deallocate (anomflg)
-    allocate( anomflg(nXtrack,nLines), STAT=errstat ) ; anomflg=0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: anomflg", &
-           errstat)
-      return
-    endif
-
-    if (allocated(mflg)) deallocate (mflg)
-    allocate( mflg(nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: mflg", &
-           errstat)
-      return
-    endif
-
-    if (allocated(quality_flagL)) deallocate (quality_flagL)
-    allocate( quality_flagL(nWavel,nXtrack), STAT=errstat ) ; quality_flagL=0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: quality_flagL", &
-           errstat)
-      return
-    endif
-
-    if (allocated(w12d)) deallocate (w12d)
-    allocate( w12d(0:nWavel-1,0:nXtrack-1), STAT=errstat )   ; w12d = 0.0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: w12d", &
-           errstat)
-      return
-    endif
-
-    if (allocated(f12d)) deallocate (f12d)
-    allocate( f12d(0:nWavel-1,0:nXtrack-1), STAT=errstat ) ; f12d=0.
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: f12d", &
-           errstat)
-      return
-    endif
-
-    if (associated(time)) nullify (time)
-    allocate( time(nLines), STAT=errstat )
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: time", &
-           errstat)
-      return
-    endif
-
-    if (allocated(meas_qual_flg)) deallocate (meas_qual_flg)
-    allocate  (meas_qual_flg(nLines)) ; meas_qual_flg = 0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: meas_qual_flg", &
-           errstat)
-      return
-    endif
-
-    if (allocated(cloud_pres)) deallocate (cloud_pres)
-    allocate (cloud_pres (0:nXtrack - 1,nLines)) ; cloud_pres=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: cloud_pres", &
-           errstat)
-      return
-    endif
-
-    if (allocated(azimuth)) deallocate (azimuth)
-    allocate (azimuth (0:nXtrack-1,nLines))      ; azimuth=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: azimuth", &
-           errstat)
-      return
-    endif
-
-    if (allocated(refl)) deallocate (refl)  
-    allocate (refl    (0:nXtrack-1,nLines))      ; refl=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: refl", &
-           errstat)
-      return
-    endif
-
-    if (allocated(dIdR)) deallocate (dIdR)  
-    allocate (dIdR    (0:nXtrack-1,nLines))      ; dIdR=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: dIdR", &
-           errstat)
-      return
-    endif
-
-    if (allocated(ps)) deallocate (ps)     
-    allocate (ps      (0:nXtrack-1,nLines))      ; ps=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: ps", &
-           errstat)
-      return
-    endif
-
-    if (allocated(ref_clr)) deallocate (ref_clr)     
-    allocate (ref_clr      (0:nXtrack-1,nLines))      ; ref_clr=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: ref_clr", &
-           errstat)
-      return
-    endif
-
-    if (allocated(reflect_cld)) deallocate (reflect_cld)      
-    allocate (reflect_cld      (0:nXtrack-1,nLines)) ; reflect_cld=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: reflect_cld", &
-           errstat)
-      return
-    endif
-
-    if (allocated(rad_cld_frac)) deallocate (rad_cld_frac)
-    allocate (rad_cld_frac(0:nXtrack-1,nLines))  ; rad_cld_frac=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: rad_cld_frac", &
-           errstat)
-      return
-    endif
-
-    if (allocated(eff_cld_frac)) deallocate (eff_cld_frac)
-    allocate (eff_cld_frac(0:nXtrack-1,nLines))  ; eff_cld_frac=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: eff_cld_frac", &
-           errstat)
-      return
-    endif
-
-    if (allocated(eff_cld_frac2)) deallocate (eff_cld_frac2)
-    allocate (eff_cld_frac2(0:nXtrack-1,nLines))  ; eff_cld_frac2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: eff_cld_frac2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(cld_pres2)) deallocate (cld_pres2)
-    allocate (cld_pres2(0:nXtrack-1,nLines))  ; cld_pres2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: cld_pres2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(chlorophyll)) deallocate (chlorophyll)
-    allocate (chlorophyll(0:nXtrack - 1,nLines)) ; chlorophyll=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: chlorophyll", &
-           errstat)
-      return
-    endif
-
-    if (allocated(biases)) deallocate (biases)  
-    allocate (biases  (0:nXtrack-1,nLines))      ; biases=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: biases", &
-           errstat)
-      return
-    endif
-
-    if (allocated(biases2)) deallocate (biases2)  
-    allocate (biases2  (0:nXtrack-1,nLines))      ; biases2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: biases2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(stds)) deallocate (stds) 
-    allocate (stds    (0:nXtrack-1,nLines))      ; stds=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: stds", &
-           errstat)
-      return
-    endif
-
-    if (allocated(stds2)) deallocate (stds2) 
-    allocate (stds2    (0:nXtrack-1,nLines))      ; stds2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: stds2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(chi_sqr)) deallocate (chi_sqr)
-    allocate (chi_sqr (0:nXtrack-1,nLines))      ; chi_sqr=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: chi_sqr", &
-           errstat)
-      return
-    endif
-
-    if (allocated(chi_sqr2)) deallocate (chi_sqr2)
-    allocate (chi_sqr2 (0:nXtrack-1,nLines))      ; chi_sqr2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: chi_qsr2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(land_flg)) deallocate (land_flg)
-    allocate (land_flg(0:nXtrack-1)) ; land_flg=.FALSE.
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: land_flg", &
-           errstat)
-      return
-    endif
-
-    if (allocated(chlcl)) deallocate (chlcl)
-    allocate (chlcl   (0:nXtrack-1)) ; chlcl=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: chlcl", &
-           errstat)
-      return
-    endif
-
-    if (allocated(qc)) deallocate (qc)      
-    allocate (qc      (0:nXtrack-1,nLines)) ; qc=0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: qc", &
-           errstat)
-      return
-    endif
-
-    if (allocated(qc2)) deallocate (qc2)      
-    allocate (qc2      (0:nXtrack-1,nLines)) ; qc2=0
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: qc2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(fill)) deallocate (fill)      
-    allocate (fill    (0:nXtrack-1,nLines)) ; fill=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: fill", &
-           errstat)
-      return
-    endif
-
-    if (allocated(shifts)) deallocate (shifts)      
-    allocate (shifts  (0:nXtrack-1,nLines)) ; shifts=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: shifts", &
-           errstat)
-      return
-    endif
-
-    if (allocated(shifts2)) deallocate (shifts2)      
-    allocate (shifts2  (0:nXtrack-1,nLines)) ; shifts2=fill_value
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: shifts2", &
-           errstat)
-      return
-    endif
-
-    if (allocated(squeezes)) deallocate (squeezes)      
-    allocate (squeezes(0:nXtrack-1,nLines)) ; squeezes=1
-    if (errstat < 0) then
-            call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: squeezes", &
-           errstat)
-      return
-    endif
+    geoflg=0 
+    anomflg=0
+    quality_flagL=0
+    w12d = 0.0
+    f12d=0.
+    meas_qual_flg = 0
+    cloud_pres=fill_value
+    azimuth=fill_value
+    dIdR=fill_value
+    ps=fill_value
+    ref_clr=fill_value
+    reflect_cld=fill_value
+    rad_cld_frac=fill_value
+    eff_cld_frac=fill_value
+    eff_cld_frac2=fill_value
+    cld_pres2=fill_value
+    chlorophyll=fill_value
+    biases=fill_value
+    biases2=fill_value
+    stds=fill_value
+    stds2=fill_value
+    chi_sqr=fill_value
+    chi_sqr2=fill_value
+    land_flg=.FALSE.
+    chlcl=fill_value
+    qc=0
+    qc2=0
+    fill=fill_value
+    shifts=fill_value
+    shifts2=fill_value
+    squeezes=1
 
   end subroutine alloc_scan
 

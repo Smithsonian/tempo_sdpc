@@ -223,12 +223,14 @@ program OMCLDRR
     call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
            err_code)
+    call exit(1)
   endif
   call close_output_file(err_code)
   if (err_code < 0) then
     call tell_error (tell_io_write_error, &
            "close_output_file: failed", &
            err_code)
+    call exit(1)
   endif
 
   !Writing Metadata including LocalGranuleId
