@@ -1340,7 +1340,7 @@ Optional Packages:
   --with-hdfeos=DIR       Use HDFEOS libraries installed in DIR
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
-  --with-tell=DIR         Use tell library installed in DIR
+  --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3701,8 +3701,8 @@ else
 fi
 
 if test "x$jh_with_tell" = "xno"; then
-   TELL_LIB="\$(TELL_DIR)/lib"
-   TELL_INC="\$(TELL_DIR)/include"
+   TELL_LIB="\$(prefix)/lib"
+   TELL_INC="\$(prefix)/include"
 else
    TELL_LIB="$jh_with_tell/lib"
    TELL_INC="$jh_with_tell/include"

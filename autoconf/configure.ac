@@ -59,12 +59,12 @@ AC_SUBST(NETCDF_LIB)
 AC_SUBST(NETCDF_INC)
 
 AC_ARG_WITH(tell,
-  [  --with-tell[=DIR]         Use tell library installed in DIR],
+  [  --with-tell[=DIR]         Use tell library installed in DIR (default:$prefix)],
   [jh_with_tell=$withval],
   [jh_with_tell=no])
 if test "x$jh_with_tell" = "xno"; then
-   TELL_LIB="\$(TELL_DIR)/lib"
-   TELL_INC="\$(TELL_DIR)/include"
+   TELL_LIB="\$(prefix)/lib"
+   TELL_INC="\$(prefix)/include"
 else
    TELL_LIB="$jh_with_tell/lib"
    TELL_INC="$jh_with_tell/include"
