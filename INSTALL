@@ -37,7 +37,7 @@
    Makefile available from a git repository:
 
       cd $srcdir
-      git clone git://vex.cfa.harvard.edu/git/ots_sdpc.git .
+      git clone git://vex.cfa.harvard.edu/git/ots_sdpc.git
 
    The README file in the git repository contains installation
    instructions.
@@ -47,12 +47,12 @@
    If you haven't already done so, clone the libtell repository:
 
       cd $srcdir
-      git clone git://vex.cfa.harvard.edu/git/libtell.git .
+      git clone git://vex.cfa.harvard.edu/git/libtell.git
 
    Unless you have a reason for doing otherwise, you probably want
    to compile the 'master' branch:
 
-      cd libtell.git
+      cd libtell
       git checkout master
 
    The INSTALL file in the git repository contains installation
@@ -63,12 +63,12 @@
    If you haven't already done so, clone the source code repository:
 
       cd $srcdir
-      git clone git://vex.cfa.harvard.edu/git/sdpc.git .
+      git clone git://vex.cfa.harvard.edu/git/sdpc.git
 
    Unless you have a reason for doing otherwise, you probably want
    to compile the 'devel' branch:
 
-      cd sdpc.git
+      cd sdpc
       git checkout devel
 
    To compile and install the current devel branch:
