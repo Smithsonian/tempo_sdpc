@@ -52,15 +52,10 @@ OTS_INCDIR = $(OTS_ROOT)/include
 OTS_MODDIR = $(OTS_ROOT)/mod
 OTS_LIBDIR = $(OTS_ROOT)/lib
 
-#NETCDFINC  = $(OMIUTIL)/netcdf/include
-#NETCDFLIB  = $(OMIUTIL)/netcdf/lib
-NETCDFINC = $(OTS_INCDIR)
-NETCDFLIB = $(OTS_LIBDIR)
 PSPLINEMOD = $(OTS_MODDIR)
 PSPLINELIB = $(OTS_LIBDIR)
 
-IFLAGS = $(MODFLG)$(OMIUTIL)/TOOLKIT/include \
-         $(MODFLG)$(HDFEOS_INC) \
+IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(HDF5INC) \
          $(MODFLG)$(HDFINC) \
          $(MODFLG)$(PGSINC) \
@@ -68,12 +63,12 @@ IFLAGS = $(MODFLG)$(OMIUTIL)/TOOLKIT/include \
          $(MODFLG)$(objdir) \
          $(MODFLG)$(TIO_SRC)/objs \
          $(MODFLG)$(TELL_INC) \
-         $(MODFLG)$(NETCDFINC) \
+         $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD)
 
-LFLAGS = -L$(objdir) -L$(OMIUTIL)/lib \
+LFLAGS = -L$(objdir) \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
-         -L$(NETCDFLIB) -L$(PSPLINELIB) $(ADDLIBD)
+         -L$(NETCDF_LIB) -L$(PSPLINELIB) $(ADDLIBD)
 
 LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
