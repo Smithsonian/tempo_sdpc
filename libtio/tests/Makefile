@@ -34,10 +34,10 @@ check:	tio_test tio_test_f
 	@./tio_test_f 2>> tio_test.log && echo "testing Fortran...ok"
 	/bin/rm delete_*.nc tio_test.log
 
-tio_test:	tio_test.c
+tio_test:
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
 
-tio_test_f:	tio_test_f.f90
+tio_test_f:
 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)
 
 # ---------------------------------------------------------
@@ -47,4 +47,4 @@ clean:
 distclean: clean
 	-$(RM) -f tio_test tio_test_f
 
-.PHONY: clean distclean check
+.PHONY: clean distclean check tio_test tio_test_f
