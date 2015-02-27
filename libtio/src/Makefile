@@ -5,7 +5,7 @@ include ../../Makefile.defines
 THIS_LIB = tio
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
-elfdir  = $(srcdir)/objs
+elfdir  = $(srcdir)/$(archobjs)
 
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)

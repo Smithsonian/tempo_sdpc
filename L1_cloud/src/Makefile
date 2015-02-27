@@ -5,7 +5,7 @@ EXECUTABLE = L1_cloud
 include ../../Makefile.defines
 
 srcdir     = $(config_dir)/L1_cloud/src
-objdir     = $(srcdir)/objs
+objdir     = $(srcdir)/$(archobjs)
 msgdir     = $(srcdir)/msgs
 
 incdir     = $(prefix)/include
@@ -37,9 +37,10 @@ CP = /bin/cp
 
 TIO_LIB  = $(prefix)/lib
 TIO_SRC  = $(config_dir)/libtio/src
+TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 
 PSPLINELIBS  = -lpspline -lezcdf
-TIOLIBS      = -Wl,-rpath=$(TIO_SRC)/objs -L$(TIO_SRC)/objs \
+TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
                -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f
 NETCDFLIBS   = -lnetcdf -lnetcdff
@@ -61,7 +62,7 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(PGSINC) \
          $(MODFLG)$(HDFEOS5_INC) \
          $(MODFLG)$(objdir) \
-         $(MODFLG)$(TIO_SRC)/objs \
+         $(MODFLG)$(TIO_SRC_OBJDIR) \
          $(MODFLG)$(TELL_INC) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD)
@@ -113,6 +114,7 @@ clean:  clean-cld-names
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod
         
 distclean:	clean        
+	-$(RM) -rf $(objdir)
 
 tags:
 	ctags $(F90SOURCES) $(CSOURCES)

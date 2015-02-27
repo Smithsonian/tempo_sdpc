@@ -5,7 +5,7 @@ EXECUTABLE = L1_o3_total
 include ../../Makefile.defines
 
 srcdir     = $(config_dir)/L1_o3_total/src
-objdir     = $(srcdir)/objs
+objdir     = $(srcdir)/$(archobjs)
 msgdir     = $(srcdir)/msgs
 
 bindir     = $(prefix)/bin
@@ -95,6 +95,7 @@ clean:
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod PGS_OZT_52050.f PGS_OZT_52050.h
 
 distclean:	clean
+	-$(RM) -rf $(objdir)
 
 tags:
 	ctags $(F90SOURCES) $(CSOURCES)

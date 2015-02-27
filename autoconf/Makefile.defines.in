@@ -8,6 +8,8 @@ OTS_ROOT       = @OTS_ROOT@
 
 SHELL=/bin/sh
 
+archobjs = $(COMPILER_SUITE)objs
+
 ifeq ($(COMPILER_SUITE), gnu)
   CC           = gcc
   CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran

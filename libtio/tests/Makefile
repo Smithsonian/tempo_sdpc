@@ -5,7 +5,7 @@ include ../../Makefile.defines
 THIS_LIB = tio
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
-elfdir  = $(srcdir)/objs
+elfdir  = $(srcdir)/$(archobjs)
 
 TIO_INC = -I$(srcdir)
 
