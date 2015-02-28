@@ -4,74 +4,62 @@ EXECUTABLE = L1_trace_gas
 
 include ../../Makefile.defines
 
-srcdir     = $(config_dir)/L1_trace_gas/src
-objdir     = $(srcdir)/$(archobjs)
-msgdir     = $(srcdir)/msgs
+srcdir = $(config_dir)/L1_trace_gas/src
+objdir = $(srcdir)/$(archobjs)
+msgdir = $(srcdir)/msgs
 
-bindir     = $(prefix)/bin
-incdir     = $(prefix)/include
+bindir = $(prefix)/bin
+incdir = $(prefix)/include
 msgs_installdir = $(prefix)/msgs
 
-LNFLAGS    = #
-ADDLIBD    = #
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
-
-FCFLAGS  = $(MODFLG) ./ $(FFLAGS)
+FCFLAGS = -I ./ $(FFLAGS)
 CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
+LNFLAGS = #
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
 #---------------------------------------------------------------
 
-PGSHOME     = $(OMIUTIL)/TOOLKIT
-
 MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-TIO_LIB  = $(prefix)/lib
-TIO_SRC  = $(config_dir)/libtio/src
-TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
+LDPATH  = -Wl,-rpath=$(TIOSRC_OBJS):$(TIO_LIB):$(TELL_LIB) $(RPATH) 
 
-PSPLINELIBS  = -lpspline -lezcdf
-TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
-               -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
-               -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f
-NETCDFLIBS   = -lnetcdf -lnetcdff
-HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
-HE5LIBS      = -lhe5_hdfeos -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
-PGSLIBS      = -lPGSTK
-OMILIBS      =
+TIO_LIB     = $(prefix)/lib
+TIO_SRC     = $(config_dir)/libtio/src
+TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
+TIOINCS     = -I$(TIOSRC_OBJS)
+TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
-OTS_INCDIR = $(OTS_ROOT)/include
-OTS_MODDIR = $(OTS_ROOT)/mod
-OTS_LIBDIR = $(OTS_ROOT)/lib
+TELLINCS    = -I$(TELL_INC)
+TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
 
-PSPLINEMOD = $(OTS_MODDIR)
-PSPLINELIB = $(OTS_LIBDIR)
+PSPLINEMODS = -I$(OTS_ROOT)/mod
+PSPLINELIBS = -L$(OTS_ROOT)/lib -lpspline -lezcdf
 
-IFLAGS = $(MODFLG)$(HDFEOS_INC) \
-         $(MODFLG)$(HDF5INC) \
-         $(MODFLG)$(HDFINC) \
-         $(MODFLG)$(PGSINC) \
-         $(MODFLG)$(HDFEOS5_INC) \
-         $(MODFLG)$(objdir) \
-         $(MODFLG)$(TIO_SRC_OBJDIR) \
-         $(MODFLG)$(TELL_INC) \
-         $(MODFLG)$(NETCDF_INC) \
-	 $(MODFLG)$(PSPLINEMOD)
+NETCDFINCS  = -I$(NETCDF_INC)
+NETCDFLIBS  = -L$(NETCDF_LIB) -lnetcdf -lnetcdff
 
-LFLAGS = -L$(objdir) \
-         -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
-         -L$(NETCDF_LIB) -L$(PSPLINELIB) $(ADDLIBD)
+HE5INCS     = -I$(HDF5INC) -I$(HDFEOS5_INC)
+HE5LIBS     = -L$(HDF5LIB) -L$(HDFEOS5_LIB) -lhe5_hdfeos -lGctp -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
 
-LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
-         $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
+ZLIBS       = -L$(OTS_ROOT)/lib -lsz -lz
 
-CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
+PGSINCS     = -I$(PGSINC)
+PGSLIBS     = -L$(PGSLIB) -lPGSTK
+
+IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
+         $(NETCDFINCS) $(HE5INCS) $(PGSINCS)
+
+LIBS   = $(LDPATH) $(TIOLIBS) $(TELLLIBS) $(PSPLINELIBS) \
+         $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
+         -lm $(DL_LIB)
+
+CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS)
 
 unbufferSTDOUT_DEFINES = -DMSG_DIR='"'$(msgs_installdir)'"'
-unbufferSTDOUT_INCS = -I$(TELL_INC)
+unbufferSTDOUT_INCS    = $(TELLINCS)
 
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
@@ -90,7 +78,8 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
+	$(FC) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) -o $(objdir)/$(EXECUTABLE) \
+        main.f90 $(LINKOBJS) $(LIBS)
 
 install-executable:
 	mkdir -p $(bindir)
@@ -119,17 +108,11 @@ distclean:	clean
 
 tags:
 	ctags $(F90SOURCES) $(CSOURCES)
-#-----------------------------------------------------------------
-# The hdf.f90 file contains numerous non-conforming tabs.
-# It's unlikely anyone will ever fix that in the HDF distribution,
-# so we'll just fix it this way:
-#-----------------------------------------------------------------
-fix-hdf-tabs:
-	sed --in-place=_ 's,\t, ,g' $(OTS_ROOT)/include/hdf.f90
 
 # ---------------------------------------
 # The PGE and TOOLKIT error message files
 # ---------------------------------------
+PGSHOME = $(OMIUTIL)/TOOLKIT
 
 MESSAGE_FILES = PGS_9 PGS_1900 PGS_52500
 
