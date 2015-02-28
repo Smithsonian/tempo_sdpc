@@ -619,12 +619,16 @@ else
 fi
 AC_SUBST(SDPTK_VERSION)
 
-AC_CHECK_SIZEOF(long)
-if test "$ac_cv_sizeof_long" -eq 4 ; then
-   OMIUTIL_SYSDIR=linux32
-elif test "$ac_cv_sizeof_long" -eq 8 ; then
-   OMIUTIL_SYSDIR=linux64
-fi
+dnl Until the COMPILER_SUITE stuff is removed, it is preferable
+dnl to avoid compiling a C program to check sizeof(long). 
+dnl Maybe getconf is an acceptable alternative for now?
+OMIUTIL_SYSDIR=linux`getconf LONG_BIT`
+dnl AC_CHECK_SIZEOF(long)
+dnl if test "$ac_cv_sizeof_long" -eq 4 ; then
+dnl    OMIUTIL_SYSDIR=linux32
+dnl elif test "$ac_cv_sizeof_long" -eq 8 ; then
+dnl    OMIUTIL_SYSDIR=linux64
+dnl fi
 
 dnl # Let's try to avoid running this stupid ksh setup script:
 dnl OMIUTIL="$OTS_ROOT/sdptk/SDPTK5.2.18v1.00"
