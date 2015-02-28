@@ -1,6 +1,6 @@
 MODULE omi_read_l1b_data
   use tell_module
-  INCLUDE 'hdf.f90'
+!  INCLUDE 'hdf.f90'
 
   private
   public omi_read_binning_factor, read_earth_sun_distance, &
