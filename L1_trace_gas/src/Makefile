@@ -30,7 +30,7 @@ TIO_LIB     = $(prefix)/lib
 TIO_SRC     = $(config_dir)/libtio/src
 TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
-TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
+TIOLIBS     = -L$(TIO_LIB) -L$(TIOSRC_OBJS) -ltio_f -ltio
 
 TELLINCS    = -I$(TELL_INC)
 TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
