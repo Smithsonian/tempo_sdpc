@@ -114,9 +114,9 @@ function invert (amat, error) result (amatinv)
 !-------------------------------------------------------------------------
 !
 
-      integer, PARAMETER :: TINY=1.0E-20
+      real (kind=8), PARAMETER :: TINY=1.0E-20
       integer n, np
-      real (KIND=8) A(NP,NP)
+      real (KIND=8) A(NP,NP), SUM, AAMAX, DUM, B(NP)
       integer INDX(NP), error, I, IMAX
       !real (KIND=8), dimension(:), allocatable :: VV
       real (KIND=8), dimension(n) :: VV

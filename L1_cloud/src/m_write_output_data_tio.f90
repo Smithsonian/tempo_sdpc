@@ -33,10 +33,10 @@ contains
     integer, dimension(:), allocatable :: wavel_indices
     integer :: i
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     if (present(num_wavel)) allocate(wavel_indices(num_wavel), stat=errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "write_coordinate_vars: unable to allocate num_wavel", &
            errstat)
@@ -77,18 +77,20 @@ contains
     type (tiof_file_type), pointer :: obj 
     type (tiof_dimlist_type) :: dimlist
     
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
     ! create the file
     call tiof_create (obj, outfile_nc, nf90_clobber, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: creating file "//trim(outfile_nc), &
            errstat)
       return
     endif
+
+    call tiof_put_git_commit_hash (obj, errstat)
 
     ! define the dimension list
     call tiof_dimlist_append (dimlist, cld_dim_step, num_steps, errstat)
@@ -97,7 +99,7 @@ contains
       call tiof_dimlist_append (dimlist, cld_dim_channel, num_wavel, errstat)
     endif
     call tiof_def_dims (obj, dimlist, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: defining dimensions in "//trim(outfile_nc), &
            errstat)
@@ -107,7 +109,7 @@ contains
     ! geolocation & cloud variable definitions
     call write_geo_struct (obj, dimlist, errstat)
     call write_cloud_struct (obj, dimlist, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: writing variables to "//trim(outfile_nc), &
            errstat)
@@ -121,7 +123,7 @@ contains
     else
       call write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
     endif
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: writing coordinate variables to "//trim(outfile_nc), &
            errstat)
@@ -135,7 +137,7 @@ contains
     else
       call write_cloud_data (obj, num_steps, num_xtrack, errstat)
     endif
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: writing data to "//trim(outfile_nc), &
            errstat)
@@ -144,13 +146,15 @@ contains
 
     !metadata
     call write_metadata (errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: writing metadata to "//trim(outfile_nc), &
            errstat)
       return
     endif
 
+    !Free dimension list
+    call tiof_dimlist_free (dimlist)
 
   end subroutine create_output_file
 
@@ -164,7 +168,7 @@ contains
     obj => primary_output_file
 
     call tiof_close (obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_error, "close_output_file failed", errstat)
     endif
 
@@ -189,7 +193,7 @@ contains
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
@@ -305,8 +309,10 @@ contains
                               fillvalue = fill_short, &
                               attlist=att_geo)
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_geo)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_geo_struct: failed", &
            errstat)
       return
@@ -326,7 +332,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -359,7 +365,7 @@ contains
          [num_steps, num_xtrack], geoflg(1:num_xtrack,1:num_steps), &
          errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_geo_data: failed", errstat)
       return
     endif
@@ -387,7 +393,7 @@ contains
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! Define dimid arrays associated with common data field shapes
     if (write_resid) then
@@ -618,8 +624,10 @@ contains
     endif
  
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_cld)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_cloud_struct: failed", &
            errstat)
       return
@@ -643,7 +651,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -725,7 +733,7 @@ contains
     endif
 
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_cloud_data: failed", errstat)
       return
     endif
@@ -755,7 +763,7 @@ contains
 
     obj => primary_output_file
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! calculate quality stats
     ind = count(btest(qc(:,:),2) .or. btest(qc(:,:),3))
@@ -790,8 +798,9 @@ contains
          "automatic_quality_flag_explanation", att_text=expl)
 
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_attlist_free (attlist)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_metadata: failed", &
            errstat)
       return

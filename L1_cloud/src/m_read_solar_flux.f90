@@ -121,7 +121,7 @@ contains
     !  Initialize all local data arrays
 
     irradianceL(1:nWavel,1:nXtrack) = -1.0
-    irr_quality_flagL(1:nWavel,1:nXtrack) = -1.0
+    irr_quality_flagL(1:nWavel,1:nXtrack) = -1
     wavelengthL(1:nWavel,1:nXtrack) = -1.0
 
     status = L1Br_getDATA( blk, 0, &

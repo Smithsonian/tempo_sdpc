@@ -81,14 +81,14 @@ contains
 
     do ipts=1, nXtrack
       latt=-lat(ipts,iLine)
-      i=anint((latt+90.0)/0.5)+1   
+      i=anint((latt+90.0)/0.5, kind=4)+1   
       if (i == 361) i=360
       if(lon(ipts,iLine) < 0) then 
         lont=lon(ipts,iLine)+360 
       else 
         lont=lon(ipts,iLine)   
       endif
-      j=anint((lont)/0.5)+1   
+      j=anint((lont)/0.5, kind=4)+1   
       if(j == 721) j=1   
       !print *, 'rd_terr : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &
       !   i, j!, ps(ipts)

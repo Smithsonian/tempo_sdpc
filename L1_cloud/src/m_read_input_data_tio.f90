@@ -31,12 +31,12 @@ contains
 
     !local variables
     character (len=200) :: filenamepath, swathname
-    integer (kind = 4) :: PGS_TD_TAItoUTC, i
+    integer (kind = 4) :: i
     logical :: uvswath
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !set file path+name, swath name
     filenamepath=trim(input_data_path)//l1bfile
@@ -44,6 +44,7 @@ contains
     if (uvswath) then
       swathname = "band_540_740_nm"
     else
+      errstat=-1
       call tell_error (tell_invalid_parm, &
            "read_input_data_tio: input file is not OMI L1 UV swath", &
            errstat)
@@ -74,7 +75,7 @@ contains
 
       !open file, read variable dimension sizes
       call read_cld_dimensions(l1bfile, tio_l1obj, swathname, errstat)
-      if(errstat < 0) then 
+      if(errstat /= 0) then 
         call tell_error (tell_io_read_error, &
              "read_cld_dimensions: failed", &
              errstat)
@@ -93,7 +94,7 @@ contains
         !Allocate arrays for variables to be read in
         if (iprt >= 1) print *,'read_input_data_tio: calling alloc_scan'
         call alloc_scan(errstat)
-        if(errstat < 0) then 
+        if(errstat /= 0) then 
           call tell_error (tell_malloc_error, &
                "alloc_scan: failed", &
                errstat)
@@ -103,7 +104,7 @@ contains
 
     !Read in all geolocation data at once
 !    call read_cld_geo_data2(l1bfile, tio_l1obj, swathname, errstat)
-!    if(errstat < 0) then 
+!    if(errstat /= 0) then 
 !      call tell_error (tell_io_read_error, &
 !           "read_cld_geo_data2: failed", &
 !           errstat)
@@ -119,7 +120,7 @@ contains
 
     !Read in geolocation data line by line
     call read_cld_geo_data(l1bfile, tio_l1obj, swathname, errstat)
-    if(errstat < 0) then 
+    if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_cld_geo_data: failed", &
            errstat)
@@ -158,7 +159,7 @@ contains
 
     !Read in radiance data 
     call read_cld_rad_data(l1bfile, tio_l1obj, swathname, errstat)
-    if(errstat < 0) then 
+    if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_cld_rad_data: failed", &
            errstat)
@@ -195,7 +196,7 @@ contains
     !===================
     if (iLine == start_line) then
       call read_solar_data_tio(errstat)
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_io_read_error, &
              "read_solar_data_tio: failed", &
              errstat)
@@ -213,7 +214,7 @@ contains
     if (iLine == start_line) then
       if (wrt_solar) then
         call write_solar_tio(errstat)
-        if (errstat < 0) then
+        if (errstat /= 0) then
           call tell_error (tell_io_read_error, &
                "write_solar_tio: failed", &
                errstat)
@@ -239,8 +240,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
-
+    if (errstat /= 0) return
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_xtrack, nXtrack, errstat)
@@ -252,7 +252,7 @@ contains
     endif
     call tiof_close (tio_l1obj, errstat)
     
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
            "read_cld_dimensions: failed to open L1B file", &
            errstat)
@@ -265,7 +265,7 @@ contains
   subroutine read_cld_geo_data(l1bfile, tio_l1obj, swathname, errstat)
     !read geolocation data from netCDF input file
     use m_vars, only: iLine, time, lat, lon, sza, sazimuth, sat_zen, &
-         vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
+         vazimuth, terr_height, geoflg, anomflg, mflg, nXtrack, &
          azimuth, fill_value, read_he4
 
     implicit none
@@ -286,7 +286,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, cld_var_time, [iLine-1], [1], &
@@ -314,7 +314,7 @@ contains
          [1], tio_mflg, errstat)
     call tiof_close (tio_l1obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_cld_geo_data: failed to read geolocation data", &
            errstat)
@@ -365,9 +365,9 @@ contains
 
   subroutine read_cld_geo_data2(l1bfile, tio_l1obj, swathname, errstat)
     !read geolocation data from netCDF input file
-    use m_vars, only: iLine, time, lat, lon, sza, sazimuth, sat_zen, &
+    use m_vars, only: time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
-         azimuth, fill_value, read_he4
+         azimuth, fill_value
 
     implicit none
     !input variables
@@ -378,7 +378,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, cld_var_time, [0], [nLines], &
@@ -406,7 +406,7 @@ contains
          [nLines], mflg, errstat)
     call tiof_close (tio_l1obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_cld_geo_data: failed to read geolocation data", &
            errstat)
@@ -445,7 +445,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !open file, read wavelength, radiance, flag values
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
@@ -458,7 +458,7 @@ contains
          [1,nXtrack,nWavel], tio_flg, errstat)
     call tiof_close (tio_l1obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_cld_rad_data: failed to read radiance data", &
            errstat)
@@ -467,9 +467,9 @@ contains
 
     !Determine limits of wavelength window
     wl_local(:,:)=tio_wvl(:,:,1)
-    errstat=calc_wl_line(iLine, nXtrack, nWavel, wmin2, wmax2, wl_local, &
+    errstat=calc_wl_line(nXtrack, nWavel, wmin2, wmax2, wl_local, &
          il, ih, nwl)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_cld_rad_data: calc_wl_line: failed", &
            errstat)
@@ -518,7 +518,7 @@ contains
     implicit none
     integer (kind=4), intent (inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate(lat(nXtrack,nLines), &
          lon(nXtrack,nLines), &
@@ -562,7 +562,7 @@ contains
          shifts2(0:nXtrack-1,nLines), &
          squeezes(0:nXtrack-1,nLines), &
          stat=errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
             call tell_error (tell_malloc_error, &
            "alloc_scan: allocation failure: lat", &
            errstat)

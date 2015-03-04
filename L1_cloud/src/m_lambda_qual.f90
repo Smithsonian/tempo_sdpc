@@ -4,8 +4,7 @@ contains
 
   subroutine bad_rad_lambda(ip, iLine)
 
-    use m_vars, ONLY: nwave, quality_flagL, qc, wmin, wmax, iprt, &
-         transient_check
+    use m_vars, ONLY: quality_flagL, qc, wmin, wmax, transient_check
     use m_cloud_pres_mod, ONLY: f1p, w1p
     use m_find
 

@@ -93,8 +93,7 @@ contains
     USE L1B_Reader_class
     USE m_strpos
     USE m_vars, ONLY: cloud_mask, smpx_mean, smpx_stddev, smpx_wavel, &
-         stddev_thresh, filename, input_data_path, iprt, smpx_nPix, &
-         npixels, thresholds, fill_value, noret
+         filename, input_data_path, iprt, smpx_nPix, fill_value
     USE m_swathnames
     USE m_pgs_include
 

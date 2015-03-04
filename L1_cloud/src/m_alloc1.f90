@@ -4,7 +4,7 @@ contains
 
   subroutine alloc1()
 
-    use m_vars, ONLY: nchl, chl, npres, w12d, f12d, & 
+    use m_vars, ONLY: nchl, chl, npres, & 
          nscanpos, nTimes, wave_resid, resid, write_resid, nwl
     use m_cloud_pres_mod
     implicit none

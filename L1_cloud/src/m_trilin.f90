@@ -18,12 +18,16 @@ integer :: i, j, ip, jp, ii
 real (KIND=8) :: dx, dy, dx1, dy1
 real (KIND=8) :: d1, d2, d3, d4
 
-        i=(ix) ; j=(jy)   
-        ip=i+1   ;  jp=j+1   
+        i=int(ix, kind=4) 
+        j=int(jy, kind=4)   
+        ip=i+1   
+        jp=j+1   
         ip=minval((/ip,size(temp3D(:,1,1))/))   
         jp=minval((/jp,size(temp3D(1,:,1))/))   
-        dx=ix-i ; dy=jy-j   
-        dx1=1.-dx ; dy1=1.-dy   
+        dx=ix-i 
+        dy=jy-j   
+        dx1=1.-dx 
+        dy1=1.-dy   
         d1=dx1*dy1
         d2=dx1*dy
         d3=dx *dy1
@@ -58,7 +62,7 @@ real (KIND=8), dimension(size(table,dim=4)) :: interp1, interp2
    
 !find bracketing z 
 !==============================
-iz=zp
+iz=int(zp)
    
 !bounds check
 !============

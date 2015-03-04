@@ -8,7 +8,7 @@ contains
 
     use m_vars, ONLY: &
          refl, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
-         qc, eff_cld_frac, do_short_wave, iLine, &
+         qc, eff_cld_frac, iLine, &
          cal_reflec, rad_cld_frac 
 
     implicit none
@@ -71,7 +71,7 @@ contains
          sb_ls, tr_ls, i0_ss, sb_ss, tr_ss
     logical, intent(in) :: set_cld_frac
     ! local variables
-    real (KIND=8) ::  I_clr_l, I_cld_l, I_clr_s, I_cld_s
+    real (KIND=8) ::  I_clr_l, I_cld_l
     real (KIND=8) ::  eff_cld_frac_l
 
     !**************************************************************************
@@ -80,10 +80,11 @@ contains
     !=========================
     refl_l = (i_obs_l - i0_l)/(tr_l+(i_obs_l-i0_l)*Sb_l)
     if (cal_reflec) &
-         dIdR(i,iLine)= &
+         dIdR(i,iLine)= real(&
          (tr_l/(1-refl_l*Sb_l)+refl_l*tr_l*Sb_l/ &
-         (1-refl_l*Sb_l)**2)/i_obs_l
-    refl(i,iLine)=refl_l
+         (1-refl_l*Sb_l)**2)/i_obs_l &
+         , kind=4)
+    refl(i,iLine)=real(refl_l, kind=4)
 
     !get effective cloud fraction from IPA method
     !============================================
@@ -91,7 +92,7 @@ contains
       I_clr_l=i0_ls + (refl_clr*tr_ls)/(1-refl_clr*Sb_ls)
       I_cld_l=i0_l + (refl_cld*tr_l)/(1-refl_cld*Sb_l)
       eff_cld_frac_l=(i_obs_l-I_clr_l)/(I_cld_l-I_clr_l)
-      eff_cld_frac(i,iLine)= eff_cld_frac_l
+      eff_cld_frac(i,iLine)= real(eff_cld_frac_l, kind=4)
       if (eff_cld_frac(i,iLine) > 1. .or. i_obs_l > I_cld_l) then
         eff_cld_frac(i,iLine) = 1.
       elseif (eff_cld_frac(i,iLine) < 0.) then
@@ -100,7 +101,8 @@ contains
         ! else
         !refl(i,iLine)=refl_clr*(1-eff_cld_frac(i,iLine)) + refl_cld*eff_cld_frac(i,iLine)
       endif
-      rad_cld_frac(i,iLine) = eff_cld_frac(i,iLine)*I_cld_l/i_obs_l
+      rad_cld_frac(i,iLine) = &
+           real(eff_cld_frac(i,iLine)*I_cld_l/i_obs_l , kind=4) 
       if (rad_cld_frac(i,iLine) > 1. .or. i_obs_l > I_cld_l) then
         rad_cld_frac(i,iLine) = 1.
       elseif (rad_cld_frac(i,iLine) < 0.) then

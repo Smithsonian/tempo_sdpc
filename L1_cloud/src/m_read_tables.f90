@@ -19,7 +19,6 @@ contains
     !               parameter retrievals                
     !
     use m_vars, ONLY: w_grid, nwave2, nwave, & 
-         wmin, wmax, &
          ntheta, nscan, nphi, iprt, theta, scan, phi, &
          sflx, wgrid_out, npres, pres,  &
          k1bar, sba, nba, i01a, i0a, tra, nia, nra, out_path, ring_file_pre, &

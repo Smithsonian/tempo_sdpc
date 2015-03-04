@@ -104,8 +104,8 @@ contains
     else
       jy=jyin
     endif
-    I=IX
-    J=JY
+    I=int(IX)
+    J=int(JY)
     IP=I+1  
     JP=J+1
     where (i .ge. size(p,1)) ip=ip-1

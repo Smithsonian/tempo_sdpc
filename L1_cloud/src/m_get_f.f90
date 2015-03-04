@@ -8,7 +8,7 @@ contains
 
     use m_vars, ONLY: &
          refl, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
-         qc, eff_cld_frac, do_short_wave, iLine, &
+         qc, eff_cld_frac, iLine, &
          cal_reflec, rad_cld_frac 
 
     implicit none
@@ -73,17 +73,18 @@ contains
          sb_ls, tr_ls, i0_ss, sb_ss, tr_ss
     logical, intent(in) :: set_cld_frac
     !local variables
-    real (KIND=8) :: I_clr_l, I_cld_l, I_clr_s, I_cld_s
+    real (KIND=8) :: I_clr_l, I_cld_l, I_clr_s
     real (KIND=8) ::  ratio_obs, ratio_clr
 
     !**************************************************************************
 
     refl_l = (i_obs_l - i0_l)/(tr_l+(i_obs_l-i0_l)*Sb_l)
     if (cal_reflec) &
-         dIdR(i,iLine)= &
+         dIdR(i,iLine)= real( &
          (tr_l/(1-refl_l*Sb_l)+refl_l*tr_l*Sb_l/ &
-         (1-refl_l*Sb_l)**2)/i_obs_l
-    refl(i,iLine)=refl_l
+         (1-refl_l*Sb_l)**2)/i_obs_l &
+         , kind=4)
+    refl(i,iLine)=real(refl_l, kind=4)
 
     I_clr_l=i0_ls + (refl_clr*tr_ls)/(1-refl_clr*Sb_ls)
     I_clr_s=i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss)
@@ -102,7 +103,7 @@ contains
 
       !retrieve the opacity fraction
       !=============================
-      eff_cld_frac(i,iLine)=(ratio_obs-ratio_clr)/(1-ratio_clr) 
+      eff_cld_frac(i,iLine)=real((ratio_obs-ratio_clr)/(1-ratio_clr), kind=4)
       if (eff_cld_frac(i,iLine) > 1.) then
         eff_cld_frac(i,iLine) = 1.
       elseif (eff_cld_frac(i,iLine) < 0.) then
@@ -112,7 +113,8 @@ contains
       !get radiative cloud fraction
       !============================
       I_cld_l=(i_obs_l-i_clr_l*(1-eff_cld_frac(i,iLine)))/eff_cld_frac(i,iLine)
-      rad_cld_frac(i,iLine) = eff_cld_frac(i,iLine)*I_cld_l/i_obs_l
+      rad_cld_frac(i,iLine) = &
+           real(eff_cld_frac(i,iLine)*I_cld_l/i_obs_l, kind=4)
 
       !Alternatives
       !============

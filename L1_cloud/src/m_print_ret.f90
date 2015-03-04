@@ -6,8 +6,7 @@ contains
 
     use m_cloud_pres_mod
     use m_vars, ONLY: iprt, squeeze, lat, lon, sza, chlcl, & 
-         wave_short, wave_long, iLine, cld_frac_min, refl_clr_oc, &
-         get_cloud_frac
+         wave_short, wave_long, iLine, cld_frac_min, get_cloud_frac
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !

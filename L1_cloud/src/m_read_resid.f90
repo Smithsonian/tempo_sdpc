@@ -17,7 +17,7 @@ contains
     ! !USES: read_resids reads precomputed resids spectra needed for cloud
     !               pressures
     !
-    use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt, using_resid
+    use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt
     use m_LUN_set
     use m_pgs_include
     Implicit NONE

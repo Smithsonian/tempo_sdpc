@@ -63,8 +63,8 @@ contains
     endif
 
     do ip=1, nXtrack !size(lat,dim=2)
-      i=anint((lat(ip,iLine)+90.0)/0.5)+1  
-      j=anint((lon(ip,iLine)+180.0)/0.5)+1
+      i=anint((lat(ip,iLine)+90.0)/0.5, kind=4)+1  
+      j=anint((lon(ip,iLine)+180.0)/0.5, kind=4)+1
       if(j <= 0) j=1
       if(j == 721) j=1   
       chlcl(ip-1)=chl2d(j,i)   

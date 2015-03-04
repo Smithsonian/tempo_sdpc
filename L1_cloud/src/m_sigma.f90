@@ -32,7 +32,7 @@ contains
     !   avg1: optional output of vector average
     !
     ! !OUTPUT PARAMETERS:
-    real (KIND=8)              :: std
+    real (KIND=8)               :: std
     !                       std      :  std deviation
     !
     ! !SEE ALSO:  m_avg
@@ -43,18 +43,18 @@ contains
     !EOP
     !-------------------------------------------------------------------------
 
-    !! LOCAL PARAMETERS: none
+    !! LOCAL PARAMETERS:
+    real (KIND=8) :: avgarg
 
     ! note this is the correct standard deviation when estimating
     ! the mean
     !    std = sqrt(sum( (ar1-avg(ar1))**2) /float(size(ar1)-1) )
     ! this is the function evaluated in the IDL sigma function
-    real (KIND=8) :: avgarg
 
     avgarg=avg(ar1)
 
     !     std = sqrt(sum( (ar1-avgarg)**2) /float(size(ar1)) )
-    std = sqrt(sum( (ar1-avgarg)**2) /real(size(ar1)) )
+    std = sqrt(sum( (ar1-avgarg)**2) /real(size(ar1), kind=8) )
 
     if (present(avg1)) avg1=avgarg
 
@@ -100,17 +100,17 @@ contains
     !-------------------------------------------------------------------------
 
     !! LOCAL PARAMETERS: none
+    real (KIND=4) :: avgarg
 
     ! note this is the correct standard deviation when estimating
     ! the mean
     !    std = sqrt(sum( (ar1-avg(ar1))**2) /float(size(ar1)-1) )
     ! this is the function evaluated in the IDL sigma function
-    real (KIND=8) :: avgarg
 
     avgarg=avg(ar1)
 
     !     std = sqrt(sum( (ar1-avgarg)**2) /float(size(ar1)) )
-    std = sqrt(sum( (ar1-avgarg)**2) /real(size(ar1)) )
+    std = sqrt(sum( (ar1-avgarg)**2) /real(size(ar1), kind=4) )
 
     if (present(avg1)) avg1=avgarg
 

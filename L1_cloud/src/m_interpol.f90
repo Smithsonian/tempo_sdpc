@@ -65,7 +65,7 @@ contains
     ix=1 !lbound(v,1)
     do i= 1, ubound(u,1)
       d = s1 * (u(i)-x(ix))
-      if (d == 0) then
+      if (d == 0.d0) then
         r(i)=v(ix)
       else
         if (d > 0) then
@@ -188,7 +188,7 @@ contains
     ix=1 !lbound(v,1)
     do i= 1, ubound(u,1)
       d = s1 * (u(i)-x(ix))
-      if (d == 0) then
+      if (d == 0.d0) then
         r(i)=v(ix)
       else
         if (d > 0) then

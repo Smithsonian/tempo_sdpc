@@ -12,8 +12,8 @@ contains
 
   subroutine read_solar_data_tio(errstat)
     !read in a netCDF irradiance file
-    use m_vars, only: ws, fs, nsolwave, ierr, iprt, status, &
-         dist_rad, dist_irrad, filename
+    use m_vars, only: fs, nsolwave, iprt, status, dist_rad, dist_irrad, &
+         filename
     use m_lambda_qual
     use m_LUN_set
     use m_pgs_include
@@ -29,12 +29,11 @@ contains
          ext_index
     character (len = 200) :: filename_sol, filename_sol_nc, swathname, &
          filename_rad_nc
-    real (kind = 4) :: wl_vis_beg, wl_vis_end
 
     type (tiof_file_type) :: tio_irrl1obj
 
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! obtain name of IRR1B data file
     version = 1
@@ -58,7 +57,7 @@ contains
     endif
     call read_sol_dimensions(filename_sol_nc, tio_irrl1obj, swathname, &
          nTimes, nXtrack, nWavel, errstat)
-    if(errstat < 0) then 
+    if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_sol_dimensions: failed", &
            errstat)
@@ -67,7 +66,7 @@ contains
 
     ! Read and test measurement quality flags 
     call read_sol_mflg(filename_sol_nc, tio_irrl1obj, swathname, errstat)
-    if(errstat < 0) then 
+    if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_sol_mflg: ended with error", &
            errstat)
@@ -76,34 +75,37 @@ contains
 
     !Read in solar data
     call read_sol_data(filename_sol_nc, tio_irrl1obj, swathname, &
-         nTimes, nXtrack, nWavel, errstat)
-    if(errstat < 0) then 
+         nXtrack, nWavel, errstat)
+    if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_sol_data: failed", &
            errstat)
       return
     endif
 
+
     !set processing quality_flags
     call bad_irrad_lambda(nXtrack)
 
     !correction for earth-sun distance
-    ext_index=index(filename,'.he4')
-    filename_rad_nc=filename(1:ext_index-1)//'.nc'
-    call read_earth_sun_distance(filename_rad_nc,dist_rad,errstat)
-    if (errstat < 0) then
-      call tell_error (tell_io_error, &
-           "read_earth_sun_distance: failed for radiance file", &
-           errstat)
-      return
-    endif
     call read_earth_sun_distance(filename_sol_nc,dist_irrad,errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_error, &
            "read_earth_sun_distance: failed for irradiance file", &
            errstat)
       return
     endif
+
+    ext_index=index(filename,'.he4')
+    filename_rad_nc=filename(1:ext_index-1)//'.nc'
+    call read_earth_sun_distance(filename_rad_nc,dist_rad,errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "read_earth_sun_distance: failed for radiance file", &
+           errstat)
+      return
+    endif
+
     fs(0:nsolwave-1,:)=fs(0:nsolwave-1,:)*(dist_irrad/dist_rad)**2
 
 
@@ -127,7 +129,7 @@ contains
 
     type (tiof_file_type) :: tio_irrl1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_irrl1obj, swathname, errstat)
@@ -140,7 +142,7 @@ contains
     endif
     call tiof_close (tio_irrl1obj, errstat)
     
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
            "read_sol_dimensions: failed to open L1B file", &
            errstat)
@@ -151,7 +153,7 @@ contains
 
 
   subroutine read_sol_data(filename_sol_nc, tio_irrl1obj, swathname, &
-       nTimes, nXtrack, nWavel, errstat)
+       nXtrack, nWavel, errstat)
     !read irradiance data from netCDF solar file
     use m_vars, only: wmin2, wmax2, ws, fs, nsolwave, iprt, ierr, &
          dist_rad, dist_irrad, irr_quality_flagL, read_he4
@@ -160,19 +162,18 @@ contains
     !input variables
     character (len=*), intent (in) :: filename_sol_nc 
     character (len=200), intent (in) :: swathname
-    integer (kind=4), intent (in) :: nXtrack, nTimes, nWavel
+    integer (kind=4), intent (in) :: nXtrack, nWavel
     !output variables
     integer (kind=4), intent (inout) :: errstat
     !local variables
     real (kind=4), dimension(nWavel, nXtrack, 1) :: tio_wvl, tio_rad
     real (kind=4), dimension(nWavel, nXtrack) :: wl_local, tio_rad2
     integer (kind=2), dimension(nWavel,nXtrack, 1) :: tio_flg
-    integer (kind=4) :: ih, il, i, j, ext_index
-    integer (kind=4), parameter :: iLine_sol=0
+    integer (kind=4) :: ih, il, i, j
 
     type (tiof_file_type) :: tio_irrl1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !open file, read wavelength, radiance, flag values
     call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
@@ -185,7 +186,7 @@ contains
          [1,nXtrack, nWavel], tio_flg, errstat)
     call tiof_close (tio_irrl1obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_sol_data: failed to read irradiance data", &
            errstat)
@@ -194,9 +195,9 @@ contains
 
     !Determine limits of wavelength window
     wl_local(:,:)=tio_wvl(:,:,1)
-    errstat=calc_wl_line(iLine_sol, nXtrack, nWavel, wmin2, wmax2, wl_local, &
+    errstat=calc_wl_line(nXtrack, nWavel, wmin2, wmax2, wl_local, &
          il, ih, nsolwave)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_error, &
            "read_sol_data: calc_wl_line: failed", &
            errstat)
@@ -237,7 +238,7 @@ contains
              errstat)
         return
       end if
-      irr_quality_flagL(1:nWavel,1:nXtrack) = -1.0
+      irr_quality_flagL(1:nWavel,1:nXtrack) = -1
 
     endif
 
@@ -287,7 +288,7 @@ contains
 
     type (tiof_file_type) :: tio_irrl1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_irrl1obj, swathname, errstat)
@@ -295,7 +296,7 @@ contains
          [1], mflg, errstat)
     call tiof_close (tio_irrl1obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_sol_mflg: unable to read Measurement Quality Flags", &
            errstat)
@@ -330,7 +331,7 @@ contains
     integer (kind=4) :: ios, i, errstat
     character(len=80) :: sfile2
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     sfile2=trim(solar_path)//trim(sfile)
     open(1,file=sfile2,form='formatted',status='unknown',action='write',iostat=ios)
@@ -367,7 +368,7 @@ contains
 
     type (tiof_file_type) :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (filename_nc, obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
@@ -425,17 +426,16 @@ contains
  !    February 2014   E. O'Sullivan   Adapted for use with TEMPO
  !
 !!
-  function calc_wl_line(j, nXtrack, nWavel, minwl, maxwl, wl_local, &
+  function calc_wl_line(nXtrack, nWavel, minwl, maxwl, wl_local, &
        il, ih, Nwl_l) result (errstat)
-    integer (kind = 4), intent(in) :: j
     real (kind = 4), intent(inout) :: minwl, maxwl
     integer (kind = 4), intent(out) :: il, ih, Nwl_l
     real (kind = 4), dimension(:,:), intent(inout) :: wl_local
 
     integer (kind = 4) :: errstat
-    integer (kind = 4) :: fflag, i, k, q        
-    integer (kind = 4) :: fac
+    integer (kind = 4) :: fflag, i, k     
 
+    errstat=0
 
     ! First check wavelengths for fill values and set fflag if found
     ! FIXME: ought to use the actual fill value, but 0-10000 is quicker

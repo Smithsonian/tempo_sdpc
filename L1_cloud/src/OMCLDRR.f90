@@ -60,6 +60,7 @@ program OMCLDRR
 
   !************************************************************************
 
+  errstat=0
   iLine=0
   !Initialize (read resource file)
   !===============================
@@ -115,6 +116,12 @@ program OMCLDRR
     filename_in_nc=filename(1:ext_index-1)//'.nc'
     if (read_he4) iLine=iLine-1 
     call read_input_data_tio(filename_in_nc, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+           "read_input_data failed on first line, exiting", &
+           err_code)
+      call exit(1)
+    endif
   endif
 
   !loop over the # of lines
@@ -138,7 +145,7 @@ program OMCLDRR
       !netCDF version
       if (read_nc) then
         call read_input_data_tio(filename_in_nc, errstat)
-        if(errstat < 0) goto 999
+        if(errstat /= 0) goto 999
       endif
  
     endif ! start_line
@@ -171,7 +178,7 @@ program OMCLDRR
 
 
     if (.not. get_refl_clim) then
-      ref_clr(:,iLine)=refl_clr
+      ref_clr(:,iLine)=real(refl_clr, kind=4)
     endif
 
     if (iprt > 1) print *,'cloud_ret: retrieving cloud pressure'
@@ -219,14 +226,14 @@ program OMCLDRR
   else
     call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
   endif
-  if (err_code < 0) then
+  if (err_code /= 0) then
     call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
            err_code)
     call exit(1)
   endif
   call close_output_file(err_code)
-  if (err_code < 0) then
+  if (err_code /= 0) then
     call tell_error (tell_io_write_error, &
            "close_output_file: failed", &
            err_code)

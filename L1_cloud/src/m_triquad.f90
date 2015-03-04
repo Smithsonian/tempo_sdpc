@@ -19,7 +19,7 @@ contains
     integer :: s, ii
     real (KIND=8) :: x0, x1, x2
 
-    s=(ix) 
+    s=int(ix) 
     s=maxval((/s,2/))
     s=minval((/s,size(temp3D(:,1,1))-1/))   
     x1=s
@@ -49,7 +49,7 @@ contains
     integer :: y0, y1, y2
 
 
-    s=(jy) 
+    s=int(jy) 
     s=maxval((/s,2/))
     s=minval((/s,size(temp3D(1,:,1))-1/))   
     y1=s
@@ -82,7 +82,7 @@ contains
 
     !find bracketing z 
     !==============================
-    s=(zp) 
+    s=int(zp) 
     s=maxval((/s,2/))
     s=minval((/s,size(temp3D(1,:,1))-1/))   
     z1=s
@@ -100,7 +100,7 @@ contains
 
     !now interpolate in z
     !======================
-    iz=zp
+    iz=int(zp)
     do ii=1, size(interp)
       interp(ii) = interp0(ii) * (iz-z1) * (iz-z2) / ((z0-z1) * (z0-z2)) + &
            interp1(ii) * (iz-z0) * (iz-z2) / ((z1-z0) * (z1-z2)) + &

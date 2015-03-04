@@ -92,7 +92,7 @@ contains
     use m_pgs_include
     use m_cloud_pres_mod
     use m_vars, ONLY: azimuth, bad_obs_flag, biases, & 
-         chi_sqr, chl, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
+         chi_sqr, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
          cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
          do_LER, do_mler, do_o3, do_short_wave, eff_cld_frac, &
          eff_cld_frac2, f12d, fill, fill_value, fs, geoflg, &
@@ -173,7 +173,13 @@ contains
         !do some initialization
         !=======================
         sz=sza(ip,iLine)
-        f1p = f12d(0:nwl-1,ip)
+        !switch to allow use of solar spectrum as input, for testing
+        !===========================================================
+        if (.not. test_solar) then
+          f1p = f12d(0:nwl-1,ip)
+        else
+          f1p = fs(:,ip)
+        endif
 
         !check for missing or bad geolocation data
         !=========================================
@@ -200,14 +206,13 @@ contains
 
         !do more initialization
         !=======================
-        w1p = w12d(0:nwl-1,ip)
         r_i=0. ! set observation errors to zero
-
-        !switch to allow solar spectrum to be fed in as data, for testing
+        !if testing with solar spectrum allow articfical wavelength shift
         !================================================================
-        if (test_solar) then
+        if (.not. test_solar) then
+          w1p = w12d(0:nwl-1,ip)
+        else
           w1p = ws(:,ip)-add_shift
-          f1p = fs(:,ip)
         endif
 
         !check for bad radiances
@@ -343,7 +348,7 @@ contains
         if(.not.land_flg(ip) .and. refl_clr .lt. refl_ice) then
           nt=interpol(findgen(ler_nsz)+1,ler_sz,sz)
           if(nt < 0 .and. iprt > 0) print *,'negative nt in interpolation of ler sza'
-          i1_ler=nt
+          i1_ler=int(nt)
           i2_ler=i1_ler+1
           j=interpol(findgen(ler_nth)+1,ler_th,satz)
           l=interpol(findgen(ler_nph)+1,ler_ph,az)
@@ -369,7 +374,7 @@ contains
 
         !bracket the surface pressure
         !=================================
-        i0x1=np0
+        i0x1=int(np0)
         ixd=abs(i0x1-np0)   
         if (ixd < delx) then 
           if (i0x1 < npres-1 .and. (i0x1 < np0 .or. i0x1 == 1)) then 
@@ -448,8 +453,8 @@ contains
         iter=0   
         chisq_old=9999.   
         diff_chi=9999.   
-        ix1_old=9999.
-        ic1_old=9999.
+        ix1_old=9999
+        ic1_old=9999
 
         !Construct observation error covariance
         !======================================
@@ -491,7 +496,7 @@ contains
           !bracket the cloud pressure index
           !=================================
           np=interpol(findgen(npres)+1,pres,x(0,1))   
-          ix1=np
+          ix1=int(np)
           ixd=abs(ix1-np)   
           if (ixd < delx) then 
             if (ix1 < npres-1 .and. (ix1 < np .or. ix1 == 1)) then 
@@ -565,7 +570,7 @@ contains
                 call get_f(refl_clr, refl_cld, I_obs_l, I_obs_s, ip, &
                      i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, sb_ls, &
                      tr_ls, set_cld_frac, i0_ss,sb_ss,tr_ss)
-                reflect_cld(ip,iLine)=refl_cld
+                reflect_cld(ip,iLine)=real(refl_cld, kind=4)
               endif
               reflec=refl(ip,iLine)
               if (reflec > 1) then
@@ -623,7 +628,7 @@ contains
               if (cld_frac == 1.) then
                 reflec_cld=reflec
               else
-                reflec_cld=refl_cld
+                reflec_cld=real(refl_cld, kind=4)
               endif
 
             else  ! no good pixels
@@ -650,7 +655,7 @@ contains
           !=================================
           if (add_oc) then
             nc=interpol(findgen(nchl)+1,chls,chloro)   
-            ic1=nc
+            ic1=int(nc)
             if (ic1 > nchl-1) then
               ic1 = nchl-1
             elseif (ic1 < 1) then
@@ -923,20 +928,22 @@ contains
         !store cloud pressure
         !====================
         if (.not. do_LER)  then
-          cloud_pres(ip,iLine)=x(0,1)
+          cloud_pres(ip,iLine)=real(x(0,1), kind=4)
         else
-          cloud_pres(ip,iLine)=(x(0,1)-psurf*(1-rad_cld_frac(ip,iLine)))/rad_cld_frac(ip,iLine)
+          cloud_pres(ip,iLine)=real( &
+            (x(0,1)-psurf*(1-rad_cld_frac(ip,iLine)))/rad_cld_frac(ip,iLine) &
+               , kind=4)
         endif
         if (shift) then
-          shifts(ip,iLine)=x(nst-1,1)
+          shifts(ip,iLine)=real(x(nst-1,1), kind=4)
         endif
         if (squeeze) then
-          squeezes(ip,iLine)=x(1,1)
+          squeezes(ip,iLine)=real(x(1,1), kind=4)
         endif
-        chlorophyll(ip,iLine)=chlcl(ip)
-        biases(ip,iLine)=bias
-        stds(ip,iLine)=std
-        chi_sqr(ip,iLine)=chisq
+        chlorophyll(ip,iLine)=real(chlcl(ip), kind=4)
+        biases(ip,iLine)=real(bias, kind=4)
+        stds(ip,iLine)=real(std, kind=4)
+        chi_sqr(ip,iLine)=real(chisq, kind=4)
 
         if (count(r_i == var_inv_big) >= nobs/2) &
              qc(ip,iLine)=IBSET(qc(ip,iLine),bad_obs_flag)
@@ -986,12 +993,12 @@ contains
         !======================================
         if (write_resid) then
           if (wave_resid(1) == 0) then
-            wave_resid=waves
+            wave_resid=real(waves, kind=4)
           endif
           if (write_obs) then
-            resid(:,ip+1,iLine)=y_obs
+            resid(:,ip+1,iLine)=real(y_obs, kind=4)
           else
-            resid(:,ip+1,iLine)=y_resid(:,1)
+            resid(:,ip+1,iLine)=real(y_resid(:,1), kind=4)
           endif
         endif
 
@@ -1000,13 +1007,15 @@ contains
 
         if (write_fill) then
           ind1 = find1 (abs(waves - wave_fill) == minval(abs(waves - wave_fill)) ) - 1
-          fill(ip,iLine) = cld_frac*rad_cld(ind1)*(ring_cld(ind1))
+          fill(ip,iLine) = &
+               real(cld_frac*rad_cld(ind1)*(ring_cld(ind1)), kind=4)
           elastic=cld_frac*rad_cld(ind1)
           if ( cld_frac < 1.0 .and. get_cloud_frac) then
-            fill(ip,iLine) = fill(ip,iLine) + (1-cld_frac)*rad_clr(ind1)*(ring_clr(ind1))
+            fill(ip,iLine) = fill(ip,iLine) + &
+                 real((1-cld_frac)*rad_clr(ind1)*(ring_clr(ind1)), kind=4)
             elastic=elastic +  (1-cld_frac)*rad_clr(ind1)
           endif
-          fill(ip,iLine) = fill(ip,iLine)/elastic
+          fill(ip,iLine) = fill(ip,iLine)/real(elastic, kind=4)
           !print *,'filling-in wavelength ',waves(ind1), fill(ip,iLine)
         endif
 
@@ -1016,7 +1025,7 @@ contains
       cloud_pres(:,iLine)=0.5
       cld_pres2(:,iLine)=0.5
       do ip=0, nXtrack-1 
-        chlorophyll(ip,iLine)=chlcl(ip)
+        chlorophyll(ip,iLine)=real(chlcl(ip), kind=4)
       enddo
       refl(:,iLine)=0.1
       rad_cld_frac(:,iLine)=1.
