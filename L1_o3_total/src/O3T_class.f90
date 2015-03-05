@@ -683,7 +683,7 @@ MODULE O3T_class
            RETURN
         ENDIF
 
-        pathl  = 1.0/pixGEO%cos_sza + 1.0/pixGEO%cos_vza
+        pathl  = real(1.0/pixGEO%cos_sza + 1.0/pixGEO%cos_vza , kind=4)
         ozpath = pathl * stp2oz 
 
         stp3oz = stp2oz
@@ -978,8 +978,9 @@ MODULE O3T_class
 
         IF( clfrac > 0.0 .AND. pixSURF%surface_category == 0 &  !! cloudy ocean
            .AND. first_call ) THEN
-           psi = ACOS(pixGEO%cos_sza*pixGEO%cos_vza &
-                    + pixGEO%sin_sza*pixGEO%sin_vza*pixGEO%cphi )*RADtoDEG
+           psi = real( ACOS(pixGEO%cos_sza*pixGEO%cos_vza &
+                    + pixGEO%sin_sza*pixGEO%sin_vza*pixGEO%cphi ) &
+                    *RADtoDEG , kind=4)
            
            IF( psi < 20.0 ) THEN 
               den =  alb  - ezgcor                 !! compute Refl331 assuming
@@ -1060,9 +1061,9 @@ MODULE O3T_class
       END FUNCTION O3T_calcRefl
 
       FUNCTION O3T_residue( iplow, estozn, xnvalm, &
-                            coefs, pixGEO, pixSURF, &
-                            n_residue, dndomega_t, dndr, nlambda ) &
-                            RESULT( status )
+           coefs, pixGEO, pixSURF, &
+           n_residue, dndomega_t, dndr, nlambda ) &
+           RESULT( status )
         INTEGER (KIND=4), INTENT(IN) :: iplow
         INTEGER (KIND=4), OPTIONAL, INTENT(IN) :: nlambda
         REAL (KIND=4), INTENT(IN) :: estozn
@@ -1072,9 +1073,9 @@ MODULE O3T_class
         TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
         REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: n_residue, dndomega_t, dndr
         REAL (KIND=4), DIMENSION(2) :: ezgr, tgr, sbgr, knbgr, &
-                                       ezcl, tcl, sbcl, knbcl
+             ezcl, tcl, sbcl, knbcl
         REAL (KIND=4), DIMENSION(2) :: radgr, radcl, xnval, pxnval, &
-                                       rsbgr, rsbcl
+             rsbgr, rsbcl
         REAL (KIND=4), DIMENSION(SIZE(xnvalm)) :: xnvalc, pxnvalc
         INTEGER (KIND=4) :: status, ierr
         INTEGER (KIND=4) :: iwl, nwl, ioz, iprof
@@ -1091,84 +1092,84 @@ MODULE O3T_class
         pclfrac= pixSURF%pclfrac
         ref    = pixSURF%ref
         pref   = pixSURF%pref
- 
+
         IF( SIZE( xnvalm ) .NE. SIZE( n_residue ) .OR. &
-            SIZE( xnvalm ) .NE. SIZE( dndomega_t ) .OR. &
-            SIZE( xnvalm ) .NE. SIZE( dndr ) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
-                                 "O3T_residue", zero )
-           status = OZT_E_FAILURE
-           RETURN
+             SIZE( xnvalm ) .NE. SIZE( dndomega_t ) .OR. &
+             SIZE( xnvalm ) .NE. SIZE( dndr ) ) THEN
+          ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
+               "O3T_residue", zero )
+          status = OZT_E_FAILURE
+          RETURN
         ENDIF
 
         IF( PRESENT( nlambda ) ) THEN 
-           nwl = nlambda
-           IF( nwl > SIZE(xnvalm) ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'nlambda too large', &
-                                     "O3T_residue", zero )
-               status = OZT_E_FAILURE
-               RETURN
-            ENDIF
+          nwl = nlambda
+          IF( nwl > SIZE(xnvalm) ) THEN
+            ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'nlambda too large', &
+                 "O3T_residue", zero )
+            status = OZT_E_FAILURE
+            RETURN
+          ENDIF
         ELSE
-           nwl = SIZE( xnvalm )
-           IF( nwl > nwl_com ) nwl = nwl_com
+          nwl = SIZE( xnvalm )
+          IF( nwl > nwl_com ) nwl = nwl_com
         ENDIF
 
         DO iwl = 1, nwl
           iprof = iplow
           DO ioz = 1, 2
             status = O3T_iztrsb( nvRRS, iwl, iprof, pixGEO, coefs, &
-                                 ezgr(ioz), tgr(ioz), sbgr(ioz), knbgr(ioz), &
-                                 ezcl(ioz), tcl(ioz), sbcl(ioz), knbcl(ioz) )
+                 ezgr(ioz), tgr(ioz), sbgr(ioz), knbgr(ioz), &
+                 ezcl(ioz), tcl(ioz), sbcl(ioz), knbcl(ioz) )
             iprof = iprof + 1
             IF( status .NE. OZT_S_SUCCESS ) THEN
-               ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
-                                     "O3T_residue", zero )
-               RETURN
+              ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
+                   "O3T_residue", zero )
+              RETURN
             ENDIF
           ENDDO
 
           IF( clfrac <= 0.0 ) THEN
-             rsbgr(:) = ref/( 1.0-ref*sbgr(:) )
-             radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
-             xnval(:) = -LOG10(radgr(:))
+            rsbgr(:) = ref/( 1.0-ref*sbgr(:) )
+            radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
+            xnval(:) = -LOG10(radgr(:))
 
-             rsbgr(:) = pref/( 1.0-pref*sbgr(:) )
-             radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
-             pxnval(:)= -LOG10(radgr(:))
-             pixSURF%rcf1 = 0.0
-             pixSURF%rcf2 = 0.0
+            rsbgr(:) = pref/( 1.0-pref*sbgr(:) )
+            radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
+            pxnval(:)= -LOG10(radgr(:))
+            pixSURF%rcf1 = 0.0
+            pixSURF%rcf2 = 0.0
           ELSE IF( clfrac >= 1.0 ) THEN
-             rsbcl(:) = ref/( 1.0-ref*sbcl(:) )
-             radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
-             xnval(:) = -LOG10(radcl(:))
+            rsbcl(:) = ref/( 1.0-ref*sbcl(:) )
+            radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
+            xnval(:) = -LOG10(radcl(:))
 
-             rsbcl(:) = pref/( 1.0-pref*sbcl(:) )
-             radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
-             pxnval(:)= -LOG10(radcl(:))
-             pixSURF%rcf1 = 1.0
-             pixSURF%rcf2 = 1.0
+            rsbcl(:) = pref/( 1.0-pref*sbcl(:) )
+            radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
+            pxnval(:)= -LOG10(radcl(:))
+            pixSURF%rcf1 = 1.0
+            pixSURF%rcf2 = 1.0
           ELSE 
-             rsbgr(:) = grref/( 1.0-grref*sbgr(:) )
-             rsbcl(:) = clref/( 1.0-clref*sbcl(:) )
+            rsbgr(:) = grref/( 1.0-grref*sbgr(:) )
+            rsbcl(:) = clref/( 1.0-clref*sbcl(:) )
 
-             radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
-             radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
+            radgr(:) = ezgr(:)+tgr(:)*rsbgr(:)*(1.0+knbgr(:)*rsbgr(:) )
+            radcl(:) = ezcl(:)+tcl(:)*rsbcl(:)*(1.0+knbcl(:)*rsbcl(:) )
 
-             IF( iwl == pixSURF%iwl_refl_l ) THEN
-                xnval(:) = -LOG10(radcl(:))
-                Ic331    =  xnval(1) + (  xnval(2)- xnval(1) )*ozfrac
-                Ic331    = 10.0**(-Ic331)
-                Im331    = 10.0**(-xnvalm(iwl))
-                !! Compute Radiative Cloud Fraction based on Ic331 & Im331
-                ierr     = O3T_rcf1( Ic331, Im331, pixSURF ) 
-             ELSE IF( iwl == pixSURF%iwl_refl_h ) THEN
-                Rm360    = PI*10.0**(-xnvalm(iwl))/pixGEO%cos_sza
-                ierr     = O3T_rcf2( Rc360, Rm360, pixSURF ) 
-             ENDIF
+            IF( iwl == pixSURF%iwl_refl_l ) THEN
+              xnval(:) = -LOG10(radcl(:))
+              Ic331    =  xnval(1) + (  xnval(2)- xnval(1) )*ozfrac
+              Ic331    = 10.0**(-Ic331)
+              Im331    = 10.0**(-xnvalm(iwl))
+              !! Compute Radiative Cloud Fraction based on Ic331 & Im331
+              ierr     = O3T_rcf1( Ic331, Im331, pixSURF ) 
+            ELSE IF( iwl == pixSURF%iwl_refl_h ) THEN
+              Rm360    = real(PI*10.0**(-xnvalm(iwl))/pixGEO%cos_sza , kind=4)
+              ierr     = O3T_rcf2( Rc360, Rm360, pixSURF ) 
+            ENDIF
 
-             xnval(:) = -LOG10(  clfrac*radcl(:) + (1.0- clfrac)*radgr(:) ) 
-             pxnval(:)= -LOG10( pclfrac*radcl(:) + (1.0-pclfrac)*radgr(:) ) 
+            xnval(:) = -LOG10(  clfrac*radcl(:) + (1.0- clfrac)*radgr(:) ) 
+            pxnval(:)= -LOG10( pclfrac*radcl(:) + (1.0-pclfrac)*radgr(:) ) 
           ENDIF
           xnvalc(iwl)    =  xnval(1) + (  xnval(2)- xnval(1) )*ozfrac
           pxnvalc(iwl)   = pxnval(1) + ( pxnval(2)-pxnval(1) )*ozfrac
@@ -1263,7 +1264,7 @@ MODULE O3T_class
         REAL(KIND=4) :: pc, clfrac, fteran
         REAL(KIND=4) :: fcloud
 
-        pc = pixGEO%pc
+        pc = real(pixGEO%pc, kind=4)
         fteran = pixGEO%fteran
         clfrac = pixSURF%clfrac
 
@@ -1308,19 +1309,19 @@ MODULE O3T_class
         INTEGER( KIND=4 ) :: status!, ierr
      
         ! determine interpolation indices
-        j = ( estozn - 25.0 )/50.0 - 1
+        j = int(( estozn - 25.0 )/50.0 - 1)
         IF( j <    1 ) j = 1
         IF( j >=  10 ) j = 9
         IF( ABS( latitude ) <=  65 .AND. j <  3 ) j = 3
         IF( ABS( latitude ) <=  35 .AND. j >= 5 ) j = 4
         foz = ( estozn - toz(j) )/50.0
         
-        k = ( latitude + 85.0)/10.0 + 1
+        k = int(( latitude + 85.0)/10.0 + 1)
         IF( k <   1 ) k =  1
         IF( k >= 18 ) k = 17
         flt = ( latitude - rlats(k) )/10.0
  
-        l = jday/30.5 + 0.51
+        l = int(jday/30.5 + 0.51)
         IF( l < 1 .OR. l > 12 ) l = 12
         If( jday >= 15 ) THEN
            fmn = (jday-((l-1)*30.5+15.0))/((l*30.5+15.0)-((l-1)*30.5+15.0))

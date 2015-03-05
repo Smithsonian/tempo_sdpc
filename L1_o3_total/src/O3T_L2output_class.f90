@@ -124,9 +124,9 @@ MODULE O3T_L2output_class
          INTEGER (KIND=4) :: ig, id, Ls, Le, bsize
          !REAL (KIND=4), DIMENSION(nXtrack_rad) :: R4Array
 
-         DO ig = 1, geoblk%nFields
-           bsize = geoblk%lineSize(ig)
-           Ls    = geoblk%accuBlkSize(ig-1) + (iT-1)*bsize
+         DO ig = 1, int(geoblk%nFields, kind=4)
+           bsize = int(geoblk%lineSize(ig), kind=4)
+           Ls    = int(geoblk%accuBlkSize(ig-1), kind=4) + (iT-1)*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
 
@@ -164,8 +164,8 @@ MODULE O3T_L2output_class
          ENDDO
 
          DO id = 1, 2
-           bsize = datablk%lineSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + (iT-1)*bsize
+           bsize = int(datablk%lineSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + (iT-1)*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            IF( id == 1 ) THEN
@@ -200,8 +200,8 @@ MODULE O3T_L2output_class
 
          DO id = 3, 24
            LL    = (iT-1)*nXtrack_rad + (iX-1)     !! 0 based index
-           bsize = datablk%pixSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + LL*bsize
+           bsize = int(datablk%pixSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + LL*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            IF(      id == 3 ) THEN
@@ -275,8 +275,8 @@ MODULE O3T_L2output_class
          ie = 15
          DO id = is, ie
            LL    = (iT-1)*nXtrack_rad + (iX-1)     !! 0 based index
-           bsize = datablk%pixSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + LL*bsize
+           bsize = int(datablk%pixSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + LL*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            IF(      id == 3 ) THEN
@@ -296,8 +296,8 @@ MODULE O3T_L2output_class
          R4wlArray(:) = fill_float32
          DO id = is, ie   !! 3-D datafields: nWavel,nXtrack,nTimes
            LL    = (iT-1)*nXtrack_rad + (iX-1)     !! 0 based index
-           bsize = datablk%pixSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + LL*bsize
+           bsize = int(datablk%pixSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + LL*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            IF( id == is+1 ) THEN
@@ -312,8 +312,8 @@ MODULE O3T_L2output_class
          R4lyrArray(:) = fill_float32
          DO id = is, ie   !! 3-D datafields: nLayers,nXtrack,nTimes
            LL    = (iT-1)*nXtrack_rad + (iX-1)     !! 0 based index
-           bsize = datablk%pixSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + LL*bsize
+           bsize = int(datablk%pixSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + LL*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            datablk%data( Ls:Le ) = TRANSFER( R4lyrArray,  I1, bsize )
@@ -327,8 +327,8 @@ MODULE O3T_L2output_class
          INTEGER (KIND=4), INTENT(IN) :: iT
          INTEGER (KIND=4) :: id, Ls, Le, bsize
          DO id = 25, 25
-           bsize = datablk%lineSize(id)
-           Ls    = datablk%accuBlkSize(id-1) + (iT-1)*bsize
+           bsize = int(datablk%lineSize(id), kind=4)
+           Ls    = int(datablk%accuBlkSize(id-1), kind=4) + (iT-1)*bsize
            Le    = Ls + bsize
            Ls    = Ls + 1       !! fortran index scheme
            datablk%data( Ls:Le ) = TRANSFER( mqaL2,  I1, bsize )

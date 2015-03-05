@@ -286,7 +286,7 @@ MODULE OMI_L2reader_class
          !! Find out the dimension size, the rank, and the datatype and 
          !! and byte size for each of the field (geo or data).
          this%SumElmSize = 0
-         DO id = 1, this%nFields
+         DO id = 1, int(this%nFields , kind=4)
            ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
                                  this%dims(id,:), ntype, dimlist, maxdimlist )
 
@@ -356,8 +356,8 @@ MODULE OMI_L2reader_class
          this%SumLineSize = 0
          this%accuLineSize(0) = 0
          this%accuBlkSize(0) = 0
-         DO id = 1, this%nFields
-           rankID = this%rank(id)
+         DO id = 1, int(this%nFields , kind=4)
+           rankID = int(this%rank(id) , kind=4)
            IF( rankID == 1 ) THEN
                this%pixSize(id) = this%elmSize(id)
               this%lineSize(id) = this%elmSize(id)
@@ -422,15 +422,15 @@ MODULE OMI_L2reader_class
          ENDIF
 
          IF( (iLine + this%nLine) > this%nTotLine ) THEN
-            nL = this%nTotLine - iLine
+            nL = int(this%nTotLine, kind=4) - iLine
          ELSE
-            nL = this%nLine
+            nL = int(this%nLine, kind=4)
          ENDIF
          this%eLine = this%iLine + nL - 1
 
          stride(:) = 1
-         DO id = 1, this%nFields
-           rank = this%rank(id) 
+         DO id = 1, int(this%nFields , kind=4)
+           rank = int(this%rank(id) , kind=4)
            DO k = 1, rank
              IF( k == rank ) THEN
                 start(k) = iLine
@@ -441,8 +441,8 @@ MODULE OMI_L2reader_class
              ENDIF
            ENDDO
                  
-           ii = this%accuBlkSize(id-1)+1
-           jj = this%accuBlkSize(id)
+           ii = int(this%accuBlkSize(id-1)+1 , kind=4)
+           jj = int(this%accuBlkSize(id) , kind=4)
            status = HE5_swrdfld( this%swathID, this%fieldname(id), &
                                  start, stride, edge, this%data(ii:jj) )
            IF( status == -1 ) THEN
@@ -498,13 +498,13 @@ MODULE OMI_L2reader_class
             RETURN
          ENDIF
 
-         j = iLine - this%iLine 
-         DO id = 1, this%nFields
-           ii = this%accuBlkSize(id-1)+j*this%lineSize(id)
-           jj = ii + this%lineSize(id)
+         j = int(iLine - this%iLine , kind=4)
+         DO id = 1, int(this%nFields, kind=4)
+           ii = int(this%accuBlkSize(id-1)+j*this%lineSize(id) , kind=4)
+           jj = ii + int(this%lineSize(id), kind=4)
            ii = ii + 1  !! Fortran index 
-           ll = this%accuLineSize(id-1) + 1
-           nn = this%accuLineSize(id)
+           ll = int(this%accuLineSize(id-1), kind=4) + 1
+           nn = int(this%accuLineSize(id), kind=4)
            lineMem(ll:nn) = this%data(ii:jj)  
          ENDDO   
          RETURN
@@ -537,7 +537,7 @@ MODULE OMI_L2reader_class
       
          DO id = 1, nd
            IF( TRIM(dimname) == TRIM( dimnamesArray(id) ) ) THEN 
-              dimsize = this%dimSizes(id) 
+              dimsize = int(this%dimSizes(id) , kind=4)
               RETURN
            ENDIF
          ENDDO

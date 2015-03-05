@@ -102,22 +102,22 @@ MODULE O3T_iztrsb_m
           ENDIF
         ENDDO 
 
-        ezgr  = SUM(  ezofp*coefs%pgr ) 
-         tgr  = SUM(   tofp*coefs%pgr ) 
-        sbgr  = SUM(  sbofp*coefs%pgr ) 
-        knbgr = SUM( knbofp*coefs%pgr )
+        ezgr  = real(SUM(  ezofp*coefs%pgr ) , kind=4)
+         tgr  = real(SUM(   tofp*coefs%pgr ) , kind=4)
+        sbgr  = real(SUM(  sbofp*coefs%pgr ) , kind=4)
+        knbgr = real(SUM( knbofp*coefs%pgr ) , kind=4)
         IF( pixGEO%pc >= 0.25 ) THEN 
-           ezcl = SUM(  ezofp*coefs%pcl ) 
-            tcl = SUM(   tofp*coefs%pcl ) 
-           sbcl = SUM(  sbofp*coefs%pcl ) 
-          knbcl = SUM( knbofp*coefs%pcl )
+           ezcl = real(SUM(  ezofp*coefs%pcl ) , kind=4)
+            tcl = real(SUM(   tofp*coefs%pcl ) , kind=4)
+           sbcl = real(SUM(  sbofp*coefs%pcl ) , kind=4)
+          knbcl = real(SUM( knbofp*coefs%pcl ) , kind=4)
         ELSE                                            ! linear extrapolation
            fac  = (pixGEO%log_pc-nv%presLog(3)) &
                  /(nv%presLog(4)-nv%presLog(3))
-           ezcl = fac*( ezofp(4)- ezofp(3))+ ezofp(3)
-            tcl = fac*(  tofp(4)-  tofp(3))+  tofp(3)
-           sbcl = fac*( sbofp(4)- sbofp(3))+ sbofp(3)
-          knbcl = fac*(knbofp(4)-knbofp(3))+knbofp(3)
+           ezcl = real(fac*( ezofp(4)- ezofp(3))+ ezofp(3) , kind=4)
+            tcl = real(fac*(  tofp(4)-  tofp(3))+  tofp(3) , kind=4)
+           sbcl = real(fac*( sbofp(4)- sbofp(3))+ sbofp(3) , kind=4)
+          knbcl = real(fac*(knbofp(4)-knbofp(3))+knbofp(3) , kind=4)
         ENDIF
         status = OZT_S_SUCCESS
       END FUNCTION O3T_iztrsb
@@ -262,10 +262,10 @@ MODULE O3T_iztrsb_m
       inot = 10.0** inot
       ione = zone * pixGEO%p1 * inot
       itwo = ztwo * pixGEO%pr * pixGEO%p1 * inot
-      tr   = tran * inot
-      knb  = knr2
+      tr   = real((tran * inot), kind=4) 
+      knb  = real(knr2, kind=4)
  
-      ezero = inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi
+      ezero = real((inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi), kind=4)
       LL = (ipres-1)*nv%n3size(2)+(iwl-1)*nv%n3size(3)+iprof
       sb    = nv%sb(LL)
       status = OZT_S_SUCCESS

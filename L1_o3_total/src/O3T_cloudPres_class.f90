@@ -140,8 +140,8 @@ MODULE O3T_cloudPres_class
    
             status = L2_newBlock( cld_blk, TRIM(CLD_filename(1)), &
                                   TRIM(cld_swathlist), TRIM(cld_parameterlist) )
-            np_cld = cld_blk%nFields
-            als(0:np_cld) = cld_blk%accuLineSize(0:np_cld)
+            np_cld = int(cld_blk%nFields , kind=4)
+            als(0:np_cld) = int(cld_blk%accuLineSize(0:np_cld) , kind=4)
    
             nXtrack_cld = L2_getSWdim( cld_blk, 'nXtrack' )
             nTimes_cld  = L2_getSWdim( cld_blk, 'nTimes'  )

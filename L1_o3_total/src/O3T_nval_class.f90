@@ -196,11 +196,11 @@ CONTAINS
       ENDIF
     ENDDO
 
-    nvzaT  = nval_parameters(4)%dims(1)
-    nszaT  = nval_parameters(4)%dims(2)
-    nprofT = nval_parameters(4)%dims(3)
-    nwlLUT = nval_parameters(4)%dims(4)
-    npresT = nval_parameters(4)%dims(5)
+    nvzaT  = int(nval_parameters(4)%dims(1), kind=4)
+    nszaT  = int(nval_parameters(4)%dims(2), kind=4)
+    nprofT = int(nval_parameters(4)%dims(3), kind=4)
+    nwlLUT = int(nval_parameters(4)%dims(4), kind=4)
+    npresT = int(nval_parameters(4)%dims(5), kind=4)
 
     ! storeage space for the all the layers, all profiles, all 
     ! wavelengths, all pressures, all solar and view angles

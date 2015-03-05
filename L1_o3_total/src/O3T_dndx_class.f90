@@ -173,12 +173,12 @@ MODULE O3T_dndx_class
           ENDIF
       ENDDO
 
-      nvzaP  = lut_parameters(1)%dims(1)
-      nszaP  = lut_parameters(1)%dims(2)
-      nprofP = lut_parameters(1)%dims(3)
-      nwlLUTP= lut_parameters(1)%dims(4)
-      npresP = lut_parameters(1)%dims(5)
-      nlyrT  = lut_parameters(1)%dims(6)
+      nvzaP  = int(lut_parameters(1)%dims(1), kind=4)
+      nszaP  = int(lut_parameters(1)%dims(2), kind=4)
+      nprofP = int(lut_parameters(1)%dims(3), kind=4)
+      nwlLUTP= int(lut_parameters(1)%dims(4), kind=4)
+      npresP = int(lut_parameters(1)%dims(5), kind=4)
+      nlyrT  = int(lut_parameters(1)%dims(6), kind=4)
 
       IF( nvzaP /= nvzaT .OR. nszaP /= nszaT .OR. npresP /= npresT &
           .OR. nprofP /= nprofT .OR. nwlLUTP /= nwlLUT ) THEN

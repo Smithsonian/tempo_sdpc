@@ -117,10 +117,10 @@ MODULE O3T_lpolyinterp_class
                 LL   = LL + 1
               ENDDO
             ENDDO
-            inot(ilyr,ipres,iwl) = i0_s
-            zone(ilyr,ipres,iwl) = z1_s
-            ztwo(ilyr,ipres,iwl) = z2_s
-            tran(ilyr,ipres,iwl) = tr_s
+            inot(ilyr,ipres,iwl) = real(i0_s, kind=4)
+            zone(ilyr,ipres,iwl) = real(z1_s, kind=4)
+            ztwo(ilyr,ipres,iwl) = real(z2_s, kind=4)
+            tran(ilyr,ipres,iwl) = real(tr_s, kind=4)
             L2 = L2pw0 + ilyr
               sb(ilyr,ipres,iwl) = sb_d(L2)
           ENDDO
@@ -128,10 +128,10 @@ MODULE O3T_lpolyinterp_class
       ENDDO 
 
        inot = 10.0** inot
-       ione = zone * inot * pixGEO%p1
-       itwo = ztwo * inot * pixGEO%pr * pixGEO%p1
+       ione = real(zone * inot * pixGEO%p1 , kind=4)
+       itwo = real(ztwo * inot * pixGEO%pr * pixGEO%p1 , kind=4)
        tr   = tran * inot
-       ezero = inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi
+       ezero = real(inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi , kind=4)
        status = OZT_S_SUCCESS
     END FUNCTION O3T_lpoly_interpPLW
 

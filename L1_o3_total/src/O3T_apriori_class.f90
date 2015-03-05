@@ -144,14 +144,14 @@ MODULE O3T_apriori_class
        !
        ! -- compute indeces for bracketing months and latitudes
        !
-       l1 = (latitude + 85.0) / 10.0 + 1.0
+       l1 = int((latitude + 85.0) / 10.0 + 1.0)
        IF(l1  <=  0) l1 = 1
        IF(l1  >= 18) l1 = 17
        l2 = l1 + 1
        fracl = (latitude - lat_ctrs(l1)) / (lat_ctrs(l2) - lat_ctrs(l1))
  
        xmon = (jday + 15.25) / 30.5
-       m1 = xmon
+       m1 = int(xmon)
        m2 = m1 + 1
        fracm = xmon - m1
        if(m1 == 0) m1 = 12

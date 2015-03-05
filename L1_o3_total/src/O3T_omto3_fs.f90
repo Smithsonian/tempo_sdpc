@@ -311,7 +311,7 @@ MODULE O3T_omto3_fs
                     "RadianceBadPixelFlagAccepted ",                      &
                     "nXtrack,nTimes               ",                      &
                     "NoUnits                      ",                      &
-                    "Radiance Bad Pixel Flag Accepted",	                  & 
+                    "Radiance Bad Pixel Flag Accepted",                   & 
                     "OMI-Specific                 ",                      & 
                      -1, HE5T_NATIVE_UINT16, 2, (/ -1, -1, -1 /))
                      

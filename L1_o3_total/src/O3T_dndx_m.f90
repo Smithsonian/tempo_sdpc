@@ -105,36 +105,41 @@ MODULE O3T_dndx_m
           IF( clfrac <= 0.0 ) THEN 
              Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
              DO iwl = 1, nwl_sub
-               Ltot(:,iwl)=(/(SUM( Lgr_npres(ii,:,iwl)*coefs%pgr), ii=1,nlyrT)/)
+               Ltot(:,iwl)= real( &
+                    (/(SUM( Lgr_npres(ii,:,iwl)*coefs%pgr), ii=1,nlyrT)/) &
+                    , kind=4)
              ENDDO 
           ELSE IF( clfrac >= 1.0 ) THEN
              Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
              IF( pc < 0.25 ) THEN
                 DO iwl = 1, nwl_sub
-                  Ltot(:,iwl) = fac_pcl*(Lcl_npres(:,4,iwl) &
-                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl)
+                  Ltot(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
+                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl) &
+                              , kind=4)
                 ENDDO
              ELSE
                 DO iwl = 1, nwl_sub
-                  Ltot(:,iwl) = (/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
-                                   ii=1,nlyrT) /)
+                  Ltot(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
+                                   ii=1,nlyrT) /), kind=4)
                 ENDDO
              ENDIF 
           ELSE
              Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
              Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
              DO iwl = 1, nwl_sub
-               Lgr(:,iwl)=(/(SUM(Lgr_npres(ii,:,iwl)*coefs%pgr),ii=1,nlyrT)/)
+               Lgr(:,iwl)=real((/(SUM(Lgr_npres(ii,:,iwl)*coefs%pgr), &
+                    ii=1,nlyrT)/), kind=4)
              ENDDO
              IF( pc < 0.25 ) THEN
                 DO iwl = 1, nwl_sub
-                  Lcl(:,iwl) = fac_pcl*(Lcl_npres(:,4,iwl) &
-                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl)
+                  Lcl(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
+                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl), &
+                              kind=4)
                 ENDDO
              ELSE
                 DO iwl = 1, nwl_sub
-                  Lcl(:,iwl) = (/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
-                                  ii=1,nlyrT) /)
+                  Lcl(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
+                                  ii=1,nlyrT) /), kind=4)
                 ENDDO
              ENDIF 
              Ltot = clfrac*Lcl + (1.0-clfrac)*Lgr
