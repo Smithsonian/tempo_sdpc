@@ -1,4 +1,5 @@
 MODULE OMI_L2writer_class
+   USE ISO_C_BINDING, ONLY: C_LONG
     USE L2_data_structure
     USE HE5_class
     USE UTIL_tools_class
@@ -283,6 +284,7 @@ MODULE OMI_L2writer_class
          INTEGER (KIND=4), INTENT(IN) :: SW_fileid, SW_id
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
          INTEGER, EXTERNAL :: HE5Tget_size
+integer (KIND=C_LONG), dimension(3) :: temp
          this%filename  = filename
          this%swathname = swathname
          this%sw_fid    = SW_fileid
@@ -314,7 +316,9 @@ MODULE OMI_L2writer_class
          DO id = 1, this%nFields
            this%fieldname(id) = fieldList(id)%name  
            ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
-                                 this%dims(id,:), ntype, dimlist, maxdimlist )
+                                 temp(:), ntype, dimlist, maxdimlist )
+!                                 this%dims(id,:), ntype, dimlist, maxdimlist )
+this%dims(id,:)=temp(:)
 
            IF( ierr == - 1 ) THEN
               WRITE( msg, '(A)') "HE5_SWfldinfo failed for "// &
@@ -409,7 +413,7 @@ MODULE OMI_L2writer_class
          ENDDO
 
          IF( this%accuBlkSize(this%nFields) > 0 ) THEN
-            IF( ASSOCIATED( this%data ) ) DEALLOCATE( this%data )
+            IF( ASSOCIATED( this%data ) ) nullify( this%data )
             ALLOCATE( this%data( this%accuBlkSize(this%nFields) ), STAT = ierr )
             IF( ierr /= zero ) THEN
                status = OZT_E_FAILURE

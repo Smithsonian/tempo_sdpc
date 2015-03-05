@@ -733,7 +733,7 @@ PROGRAM O3T_mainNVAdj
         hgt                = height(iX)
         pt                 = ptArray(iX)/Pc_max
         pc                 = pcArray(iX)/Pc_max
-        ilat               = (lat+90)/5+1
+        ilat               = (int(lat)+90)/5+1
 
         IF (ilat > 36) ilat=36
 

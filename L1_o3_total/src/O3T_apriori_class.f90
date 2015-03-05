@@ -77,7 +77,8 @@ MODULE O3T_apriori_class
        ELSE
           DO kmonth = 1, 12
             DO jlat = 1, nlat_ctrs
-              READ( climoz_handle, "(1X,'Month = ',I2,' Latitude = ',F6.1)", &
+              !READ( climoz_handle, "(1X,'Month = ',I2,' Latitude = ',F6.1)", &
+              READ( climoz_handle, "(9X,I2,12X,F6.1)", &
                                      IOSTAT = ios ) mnth, rlats(jlat)
               IF( ios /= zero ) THEN
                  status = OZT_E_FAILURE

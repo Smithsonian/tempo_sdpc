@@ -242,10 +242,10 @@ MODULE L1B_radirr_class
         !! error checking for each memory allocation to make
         !! sure memory is allocated successfully. 
 
-        IF( ASSOCIATED( this%Lmsa ) ) DEALLOCATE( this%Lmsa )
-        IF( ASSOCIATED( this%Lpsa ) ) DEALLOCATE( this%Lpsa )
-        IF( ASSOCIATED( this%Lqau ) ) DEALLOCATE( this%Lqau )
-        IF( ASSOCIATED( this%Lexp ) ) DEALLOCATE( this%Lexp )
+        IF( ASSOCIATED( this%Lmsa ) ) nullify( this%Lmsa )
+        IF( ASSOCIATED( this%Lpsa ) ) nullify( this%Lpsa )
+        IF( ASSOCIATED( this%Lqau ) ) nullify( this%Lqau )
+        IF( ASSOCIATED( this%Lexp ) ) nullify( this%Lexp )
 
         ALLOCATE( this%Lmsa(this%nWavel,this%nXtrack,this%nLine), &
                   this%Lpsa(this%nWavel,this%nXtrack,this%nLine), &
@@ -259,11 +259,11 @@ MODULE L1B_radirr_class
            RETURN
         ENDIF 
 
-        IF( ASSOCIATED( this%wCof          ) ) DEALLOCATE( this%wCof          )
-        IF( ASSOCIATED( this%wPcf          ) ) DEALLOCATE( this%wPcf          )
-        IF( ASSOCIATED( this%wRefCol       ) ) DEALLOCATE( this%wRefCol       )
-        IF( ASSOCIATED( this%MeasurementQF ) ) DEALLOCATE( this%MeasurementQF )
-        IF( ASSOCIATED( this%instId        ) ) DEALLOCATE( this%instId        )
+        IF( ASSOCIATED( this%wCof          ) ) nullify( this%wCof          )
+        IF( ASSOCIATED( this%wPcf          ) ) nullify( this%wPcf          )
+        IF( ASSOCIATED( this%wRefCol       ) ) nullify( this%wRefCol       )
+        IF( ASSOCIATED( this%MeasurementQF ) ) nullify( this%MeasurementQF )
+        IF( ASSOCIATED( this%instId        ) ) nullify( this%instId        )
 
         ALLOCATE( this%wCof(this%nWavelCoef,this%nXtrack,this%nLine), &
                   this%wPcf(this%nWavelCoef,this%nXtrack,this%nLine), &
