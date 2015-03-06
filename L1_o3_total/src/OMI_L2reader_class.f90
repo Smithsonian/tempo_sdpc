@@ -1,4 +1,5 @@
 MODULE OMI_L2reader_class
+    USE ISO_C_BINDING, ONLY: C_LONG
     USE L2_data_structure
     USE HE5_class
     USE UTIL_tools_class
@@ -234,6 +235,7 @@ MODULE OMI_L2reader_class
          INTEGER (KIND=4) :: he5accessTag_l
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
          INTEGER (KIND=4) :: status, ierr
+         INTEGER (KIND=C_LONG), DIMENSION(3) :: temp_dims
 
          this%filename  = filename 
          this%swathname = swathname
@@ -288,7 +290,9 @@ MODULE OMI_L2reader_class
          this%SumElmSize = 0
          DO id = 1, int(this%nFields , kind=4)
            ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
-                                 this%dims(id,:), ntype, dimlist, maxdimlist )
+!                                 this%dims(id,:), ntype, dimlist, maxdimlist )
+                                 temp_dims(:), ntype, dimlist, maxdimlist )
+           this%dims(id,:) = temp_dims(:)
 
            IF( ierr == - 1 ) THEN
               WRITE( msg, '(A)') "HE5_SWfldinfo failed for "// &

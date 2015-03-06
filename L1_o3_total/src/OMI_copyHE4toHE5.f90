@@ -16,6 +16,7 @@ MODULE OMI_copyHE4toHE5_class
    LOGICAL (KIND=4 ), DIMENSION(NMAX), PRIVATE :: skipit 
    INTEGER (KIND=4 ), DIMENSION(NMAX), PRIVATE :: ntype, nbytes, count, rank
    INTEGER (KIND=4 ), DIMENSION(NMAX,7), PRIVATE :: dims 
+   INTEGER (KIND=4 ), DIMENSION(7), PRIVATE :: temp_dims 
    !INTEGER (KIND=4 ), DIMENSION(7), PRIVATE :: start, stride, edge
    INTEGER (KIND=C_LONG ), DIMENSION(7), PRIVATE :: start, stride, edge
    INTEGER (KIND=4 ), DIMENSION(0:NMAX), PRIVATE :: nBytesAccu
@@ -104,8 +105,9 @@ MODULE OMI_copyHE4toHE5_class
 
         nBytesAccu(0) = 0 
         DO i = 1, ninflds
-          status = swfldinfo( SWid4, fieldName(i), rank(i), dims(i,:), &
+          status = swfldinfo( SWid4, fieldName(i), rank(i), temp_dims(:), &
                               ntype(i), dimlist(i) )
+          dims(i,:)=temp_dims(:)
           IF( status == FAIL ) THEN
              WRITE( msg,'(A)' ) "Can't get info "// TRIM( fieldName(i) ) //&
                                 " from "// TRIM(swathname4) // TRIM(swathFN4)//&

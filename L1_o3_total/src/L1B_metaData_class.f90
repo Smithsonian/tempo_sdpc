@@ -67,6 +67,10 @@ MODULE L1B_metaData_class
         CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
         CHARACTER( LEN = 1 ) :: foo
         INTEGER (KIND=4), EXTERNAL :: day_of_year
+        ! to avoid array temporary, temporary arrays...
+        CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L), &
+                     DIMENSION(20) :: temp
+        REAL(KIND=8), DIMENSION(6) :: temp_GRingPointLongitude
 
         L1BMETADATA_READ = .FALSE.
 
@@ -327,11 +331,14 @@ MODULE L1B_metaData_class
 
           !! empty string Array before it is read in from L1B metadata
           L1BcoreArch%L1BpsaValues(counter_r,:) = "";
+          temp(:) = ""
           version = 1
           status = PGS_MET_getPCAttr_s( l1b_file_lun, version,  &
                                         inventoryMetadataName,  &
                                         dummyName,              &
-                                        L1BcoreArch%L1BpsaValues(counter_r,:) )
+!                                        L1BcoreArch%L1BpsaValues(counter_r,:) )
+                                        temp)
+          L1BcoreArch%L1BpsaValues(counter_r,:) = temp
           IF( status /= PGS_S_SUCCESS ) THEN
              ierr = OMI_SMF_setmsg( OZT_E_INPUT, "GEt PSA value failed", &
                                    "L1B_getCoreArchivedMetaData", zero )
@@ -352,10 +359,15 @@ MODULE L1B_metaData_class
              status = OZT_E_FAILURE
              RETURN
           ENDIF
+          
+          if (counter_r <= 30) then
           status = PGS_MET_getPCAttr_s( l1b_file_lun, version,               &
                                         inventoryMetadataName,               &
                                         dummyName,                           &
                                         L1BcoreArch%L1BpsaNames(counter_r) )
+          else
+            status=-1
+          endif
         END DO
 
 
@@ -366,7 +378,9 @@ MODULE L1B_metaData_class
         status = PGS_MET_getPCAttr_d( l1b_file_lun, version,               &
                                       inventoryMetadataName,               &
                                       dummyName,                           &
-                                L1BcoreArch%GRingPointLongitude(counter_r,:) )
+!                                L1BcoreArch%GRingPointLongitude(counter_r,:) )
+                                      temp_GRingPointLongitude(:))
+        L1BcoreArch%GRingPointLongitude(counter_r,:) = temp_GRingPointLongitude(:)
         DO WHILE( status == PGS_S_SUCCESS )
           IF( counter_r < 10 ) THEN
              WRITE( dummyName, '(A,I1)') "GRINGPOINTLATITUDE.", counter_r

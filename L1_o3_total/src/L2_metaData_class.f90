@@ -102,7 +102,7 @@ MODULE L2_metaData_class
         INTEGER, EXTERNAL :: OMI_localGranuleID
         CHARACTER( LEN = PGSd_PC_FILE_PATH_MAX ) :: localGranuleID, &
                                                     L2_filename 
-        INTEGER (KIND=4) :: in_s, ii, version, ierr
+        INTEGER (KIND=4) :: in_s, ii, version, ierr, jj
         INTEGER (KIND=4) :: counter_w, nStr, nVal
         CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: dummyName, dummyValue
         CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L) :: ShortName
@@ -112,6 +112,15 @@ MODULE L2_metaData_class
         CHARACTER( LEN=PGS_SMF_MAX_MSG_SIZE ) :: msg
         CHARACTER( LEN = 28 ) :: L1BRadDateTime, L1BIrrDateTime
         REAL (KIND=8) :: L1BRadTAI93, L1BIrrTAI93
+        ! To avoid array temporaries, temporary arrays...
+        CHARACTER(LEN=PGSd_MET_MAX_STRING_SET_L), &
+                DIMENSION(20) :: temp_L1BpsaValues
+        integer (kind=4), dimension(16) :: temp_QFCounters
+        real (kind=8), dimension(5) :: temp_ZLatRange
+        ! Round off Zonal Ozone min & max to avoid differences
+        ! in output under different compilers
+        integer (kind=4), dimension(5) :: roundZOmin, roundZOmax
+        real (kind=8), dimension(5) :: tempZOmin, tempZOmax
 
         inputPointer(:) = ""
         DO ii = 1, SIZE(LUNinputPointer) 
@@ -474,9 +483,15 @@ MODULE L2_metaData_class
           !! figure out the number of strings in the metadata, and
           !! write the exact same number of stings in the L2 metadata.
           nStr = 0
-          DO WHILE( LEN_TRIM(L1BRadCoreArch%L1BpsaValues(ii,nStr+1))  > 0 )
-            nStr = nStr + 1
-          ENDDO
+          !Allows counter to go above array limit, so replace
+!          DO WHILE( LEN_TRIM(L1BRadCoreArch%L1BpsaValues(ii,nStr+1))  > 0 )
+!            nStr = nStr + 1
+!          ENDDO
+          do jj=1,20
+            if (LEN_TRIM(L1BRadCoreArch%L1BpsaValues(ii,jj)) > 0) then
+              nStr = nStr + 1
+            endif
+          enddo
 
           IF( counter_w < 10 ) THEN
             WRITE( dummyName, '(A,I1)') "PARAMETERVALUE.", counter_w
@@ -484,10 +499,12 @@ MODULE L2_metaData_class
             WRITE( dummyName, '(A,I2)') "PARAMETERVALUE.", counter_w
           ENDIF
 
+          temp_L1BpsaValues(:) = L1BRadCoreArch%L1BpsaValues(ii,:) 
           status = PGS_MET_SetMultiAttr_s( GROUPS(INVENTORY), &
                                            TRIM( dummyName ), &
                                            nStr, &
-                                           L1BRadCoreArch%L1BpsaValues(ii,:) )
+!                                           L1BRadCoreArch%L1BpsaValues(ii,:) )
+                                           temp_L1BpsaValues(:))
           counter_w = counter_w + 1 
         END DO 
 
@@ -718,33 +735,50 @@ MODULE L2_metaData_class
            ENDIF
 
            nqfc = SIZE( L2_Parameters(1)%QualityFlagsCounters(1,:) )
+           temp_QFCounters(:) = L2_Parameters(1)%QualityFlagsCounters(1,:) 
            status = PGS_MET_SetMultiAttr_i( GROUPS(ARCHIVE), &
                       "AlgorithmPath1QualityFlagCounts", &
-                      nqfc, L2_Parameters(1)%QualityFlagsCounters(1,:) )
+!                      nqfc, L2_Parameters(1)%QualityFlagsCounters(1,:) )
+                      nqfc, temp_QFCounters(:) )
 
+           temp_QFCounters(:)=L2_Parameters(1)%QualityFlagsCounters(2,:)
            status = PGS_MET_SetMultiAttr_i( GROUPS(ARCHIVE), &
                       "AlgorithmPath2QualityFlagCounts", &
-                      nqfc, L2_Parameters(1)%QualityFlagsCounters(2,:) )
+!                      nqfc, L2_Parameters(1)%QualityFlagsCounters(2,:) )
+                      nqfc, temp_QFCounters(:) )
 
+           temp_QFCounters(:) = L2_Parameters(1)%QualityFlagsCounters(3,:)
            status = PGS_MET_SetMultiAttr_i( GROUPS(ARCHIVE), &
                       "AlgorithmPath3QualityFlagCounts", &
-                      nqfc, L2_Parameters(1)%QualityFlagsCounters(3,:) )
+!                      nqfc, L2_Parameters(1)%QualityFlagsCounters(3,:) )
+                      nqfc, temp_QFCounters(:) )
 
+           temp_ZLatRange(:) = L2_Parameters(1)%ZonalLatRange(1,:)
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalLatitudeMinimum", &
-                      nZones, L2_Parameters(1)%ZonalLatRange(1,:) )
+!                      nZones, L2_Parameters(1)%ZonalLatRange(1,:) )
+                      nZones, temp_ZLatRange(:) )
 
+           temp_ZLatRange(:) = L2_Parameters(1)%ZonalLatRange(2,:)
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalLatitudeMaximum", &
-                      nZones, L2_Parameters(1)%ZonalLatRange(2,:) )
+!                      nZones, L2_Parameters(1)%ZonalLatRange(2,:) )
+                      nZones, temp_ZLatRange(:) )
 
+           ! rounding
+           roundZOmin=ANINT(L2_Parameters(1)%ZonalOzoneMin*100.0)
+           tempZOmin=real(roundZOmin, kind=8)/100.0d0
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalOzoneMinimum", &
-                      nZones, L2_Parameters(1)%ZonalOzoneMin )
+!                      nZones, L2_Parameters(1)%ZonalOzoneMin )
+                      nZones, tempZOmin)
 
+           roundZOmax=ANINT(L2_Parameters(1)%ZonalOzoneMax*100.0)
+           tempZOmax=real(roundZOmax, kind=8)/100.0d0
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalOzoneMaximum", &
-                      nZones, L2_Parameters(1)%ZonalOzoneMax )
+!                      nZones, L2_Parameters(1)%ZonalOzoneMax )
+                      nZones, tempZOmax)
 
            IF( INDEX( TRIM(ShortName), "TOMS" ) == 0 ) THEN
               I4foo = NINT( 100.0*L2_Parameters(1)%NumberOfIrradianceMissing/&
