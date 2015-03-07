@@ -146,7 +146,7 @@ $(msgdir)/PGS_52500:
 #
 # Name tables
 #
-NAME_FILE_BASENAMES = tg_names_dim tg_names_var
+NAME_FILE_BASENAMES = tg_names_dim tg_names_var tg_names_grp
 NAME_INCLUDE = tg_names.h
 
 NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))

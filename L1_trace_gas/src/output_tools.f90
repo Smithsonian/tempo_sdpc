@@ -28,17 +28,29 @@ module output_tools
 
 contains
 
-  subroutine write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
+  subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
     implicit none
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(in) :: num_steps, num_xtrack
     integer, intent(inout) :: errstat
 
+    type (tiof_varlist_type) :: varlist
     integer, dimension(num_xtrack) :: xtrack_indices
     integer, dimension(num_steps) :: step_indices
-    integer :: i
+    integer :: i, dimids(2)
 
     if (errstat < 0) return
+
+    call tiof_dimlist_lookup (dimlist, [tg_dim_xtrack, tg_dim_step], dimids, errstat)
+
+    ! netcdf coordinate variables:
+    call tiof_varlist_append (varlist, errstat, tg_dim_xtrack, nf90_int, &
+                             dimids=[dimids(1)])
+    call tiof_varlist_append (varlist, errstat, tg_dim_step, nf90_int, &
+                             dimids=[dimids(2)])
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
     ! FIXME: eventually, this will be something like
     ! step_indices=[mirror_step_beg, ..., mirror_step_end]
@@ -391,11 +403,11 @@ contains
   subroutine append_column_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist
+    type (tiof_varlist_type) :: varlist, varlist_geo, varlist_qa
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     integer, dimension(2) :: dimids_xtrack_step
 
@@ -407,12 +419,6 @@ contains
 
     ! Construct a list of variables with their associated dimension ids
     ! and attributes:
-
-    ! netcdf coordinate variables:
-    call tiof_varlist_append (varlist, errstat, tg_dim_xtrack, nf90_int, &
-                             dimids=[dimids_xtrack_step(1)])
-    call tiof_varlist_append (varlist, errstat, tg_dim_step, nf90_int, &
-                             dimids=[dimids_xtrack_step(2)])
 
     ! data field variables with optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
@@ -436,15 +442,35 @@ contains
                               valid_range = [-1.e30_r8, 1.e30_r8], &
                               fillvalue = fill_double, &
                               attlist=att_coord)
-
     call tiof_varlist_append (varlist, errstat, &
+                              tg_var_main_dqf, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "main data quality flag", &
+                              valid_range = [-1.0_r8, 2.0_r8])
+    if (yn_refseccor) then
+      call tiof_varlist_append (varlist, errstat, &
+                                tg_var_refseccor_vertical_column, &
+                                nf90_double, &
+                                dimids = dimids_xtrack_step, &
+                                comment = "reference sector corrected vertical_column", &
+                                units = "molec/cm2", &
+                                valid_range = [-1e30_r8, 1e30_r8], &
+                                fillvalue = fill_double)
+    endif
+    call tiof_push_group (obj, tg_grp_product, errstat)
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist)
+
+    call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radfit_rms_residual, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit rms residual", &
                               valid_range = [0.0_r8, 1.e30_r8], &
                               fillvalue = fill_double)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radfit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
@@ -452,7 +478,12 @@ contains
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
 
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
+    call tiof_def_vars (obj, varlist_qa, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist_qa)
+
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
@@ -463,7 +494,7 @@ contains
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = tg_var_latitude_bounds)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_latitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -475,7 +506,7 @@ contains
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
                               att_text = tg_var_longitude_bounds)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_longitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -485,7 +516,7 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_lonbnd)
 
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_sz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -493,7 +524,7 @@ contains
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_sa_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -501,7 +532,7 @@ contains
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_vz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -509,7 +540,7 @@ contains
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_va_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -517,7 +548,7 @@ contains
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_terrain_height, &
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
@@ -526,26 +557,11 @@ contains
                               valid_range = [-1000.0_r8, 10000.0_r8], &
                               fillvalue = fill_short)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_main_dqf, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "main data quality flag", &
-                              valid_range = [-1.0_r8, 2.0_r8])
+    call tiof_push_group (obj, tg_grp_geolocation, errstat)
+    call tiof_def_vars (obj, varlist_geo, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist_geo)
 
-    if (yn_refseccor) then
-      call tiof_varlist_append (varlist, errstat, &
-                                tg_var_refseccor_vertical_column, &
-                                nf90_double, &
-                                dimids = dimids_xtrack_step, &
-                                comment = "reference sector corrected vertical_column", &
-                                units = "molec/cm2", &
-                                valid_range = [-1e30_r8, 1e30_r8], &
-                                fillvalue = fill_double)
-    endif
-
-    call tiof_def_vars (obj, varlist, errstat)
-    call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
@@ -555,11 +571,11 @@ contains
   subroutine append_wavcal_vars (obj, dimlist, errstat)
     implicit none
 
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist
+    type (tiof_varlist_type) :: varlist, varlist_diag, varlist_qa
     integer, dimension(1) :: dimid_xtrack
     integer, dimension(2) :: dimids_refwavl_xtrack
 
@@ -570,57 +586,74 @@ contains
                               errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_varlist_append (varlist, errstat, &
+      call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_solcal_wavelengths, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
                                 comment = "solar wavecal wavelengths", &
                                 valid_range = [100.0_r8, 1000.0_r8], &
                                 fillvalue = fill_double)
-      call tiof_varlist_append (varlist, errstat, &
+      call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_solcal_residuals, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
                                 comment = "solar wavecal residuals", &
                                 valid_range = [-1e30_r8, 1e30_r8], &
                                 fillvalue = fill_double)
-      call tiof_varlist_append (varlist, errstat, &
+      call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_radcal_wavelengths, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
                                 comment = "radiance wavecal wavelengths", &
                                 valid_range = [100.0_r8, 1000.0_r8], &
                                 fillvalue = fill_double)
-      call tiof_varlist_append (varlist, errstat, &
+      call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_radcal_residuals, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
                                 comment = "radiance wavecal residuals", &
                                 valid_range = [-1e30_r8, 1e30_r8], &
                                 fillvalue = fill_double)
+
+      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
+      call tiof_def_vars (obj, varlist_diag, errstat)
+      call tiof_pop_group (obj, errstat)
+      call tiof_varlist_free (varlist_diag)
+      if (errstat < 0) return
     endif
 
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_solcal_convergence_flag, &
                               nf90_short, &
                               dimids = dimid_xtrack,  &
                               comment = "solar wavelength calibration convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radcal_convergence_flag, &
                               nf90_short, &
                               dimids = dimid_xtrack,  &
                               comment = "radiance wavelength calibration convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radref_convergence_flag, &
                               nf90_short, &
                               dimids = dimid_xtrack,  &
                               comment = "radiance reference fit convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
+    call tiof_varlist_append (varlist_qa, errstat, &
+                              tg_var_radref_fit_rms, &
+                              nf90_double, &
+                              dimids = dimid_xtrack,  &
+                              comment = "radiance reference fit RMS", &
+                              valid_range = [0.0_r8, 1.e30_r8])
+
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
+    call tiof_def_vars (obj, varlist_qa, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist_qa)
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radref_column_amount, &
@@ -643,17 +676,41 @@ contains
                               comment = "radiance reference fit column XTR fit", &
                               units = "molec/cm2", &
                               valid_range = [0.0_r8, 1.e30_r8])
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_radref_fit_rms, &
-                              nf90_double, &
-                              dimids = dimid_xtrack,  &
-                              comment = "radiance reference fit RMS", &
-                              valid_range = [0.0_r8, 1.e30_r8])
 
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist)
 
   end subroutine append_wavcal_vars
+
+  subroutine append_fit_stats (obj, errstat)
+    implicit none
+
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout) :: errstat
+
+    type (tiof_varlist_type) :: varlist
+
+    if (errstat < 0) return
+
+    call tiof_varlist_append (varlist, errstat, "num_crosstrack_pixels", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_scan_lines", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_good_input", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_good_output", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_suspect_output", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_bad_output", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_converged", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_failed_convergence", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_exceeded_iterations", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "num_out_of_bounds", nf90_int)
+    call tiof_varlist_append (varlist, errstat, "percent_good_output", nf90_float)
+    call tiof_varlist_append (varlist, errstat, "percent_bad_output", nf90_float)
+    call tiof_varlist_append (varlist, errstat, "percent_suspect_output", nf90_float)
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
+
+  end subroutine append_fit_stats
 
   subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
                                  n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
@@ -671,7 +728,7 @@ contains
 
     obj => primary_output_file
 
-    ! create a file
+    ! Create a file.
     call tiof_create (obj, filename, nf90_clobber, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -682,6 +739,22 @@ contains
 
     call tiof_put_git_commit_hash (obj, errstat)
 
+    ! Create default groups.
+    call tiof_def_group (obj, tg_grp_product, errstat)
+    call tiof_def_group (obj, tg_grp_geolocation, errstat)
+    call tiof_def_group (obj, tg_grp_support_data, errstat)
+    call tiof_def_group (obj, tg_grp_qa_stats, errstat)
+    call tiof_def_group (obj, tg_grp_metadata, errstat)
+    if (yn_diagnostic_run) then
+      call tiof_def_group (obj, tg_grp_diagnostic, errstat)
+    endif
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file:  defining groups in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
     ! Define a dimension list.
     call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
@@ -689,6 +762,7 @@ contains
     call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
     if (yn_diagnostic_run) then
+      ! For simplicity, use one dimlist for all groups
       call tiof_dimlist_append (dimlist, tg_dim_fitvar, n_fitvar_rad, errstat)
       call tiof_dimlist_append (dimlist, tg_dim_refwavl, nwavel_max, errstat)
       call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
@@ -701,16 +775,7 @@ contains
       return
     endif
 
-    call append_column_vars (obj, dimlist, errstat)
-    call append_wavcal_vars (obj, dimlist, errstat)
-    if (errstat < 0) then
-      call tell_error (tell_io_write_error, &
-                       "create_output_file: defining variables in "//trim(filename), &
-                       errstat)
-      return
-    endif
-
-    call write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
+    call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: writing coordinate variables to "//trim(filename), &
@@ -718,8 +783,24 @@ contains
       return
     endif
 
+    ! Define variables roughly in order of importance to aid users
+    ! viewing the file with an application like ncdump
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
+    call append_fit_stats (obj, errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call append_column_vars (obj, dimlist, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file: defining variables in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
     if (yn_scat_weights) then
+      call tiof_push_group (obj, tg_grp_support_data, errstat)
       call append_amf_vars (obj, dimlist, errstat)
+      call tiof_pop_group (obj, errstat)
       if (errstat < 0) then
         call tell_error (tell_io_write_error, &
                          "create_output_file: defining amf variables in "//trim(filename), &
@@ -728,9 +809,19 @@ contains
       endif
     endif
 
+    call append_wavcal_vars (obj, dimlist, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file: defining variables in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
     if (yn_diagnostic_run) then
+      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
       call append_common_mode_vars (obj, dimlist, errstat)
       call append_diagnostic_vars (obj, dimlist, errstat)
+      call tiof_pop_group (obj, errstat)
       if (errstat < 0) then
         call tell_error (tell_io_write_error, &
                          "create_output_file: defining diagnostic variables in "//trim(filename), &
@@ -765,16 +856,22 @@ contains
     obj => primary_output_file
 
     ! result_vars
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, nxtrack], &
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, nxtrack], &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
     call tiof_put2d_r8 (obj, tg_var_radfit_rms_residual, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_rms_residual (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_i2 (obj, tg_var_radfit_convergence_flag, [iline,0], [nblock, nxtrack], &
                         result_vars % fit_convergence_flag (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_pop_group (obj, errstat)
 
     if (yn_diagnostic_run) then
+      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
       call tiof_put2d_i2 (obj, tg_var_radfit_iteration_count, [iline,0], [nblock, nxtrack], &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
 
@@ -805,9 +902,11 @@ contains
       residuals(:,:,:) = meas - model
       call tiof_put3d_r8 (obj, tg_var_radfit_residuals, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], residuals, errstat)
+      call tiof_pop_group (obj, errstat)
     endif
 
     ! input_vars
+    call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, tg_var_time, [iline], [nblock], &
                         input_vars % time (0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tg_var_longitude, [iline,0], [nblock,nxtrack], &
@@ -824,6 +923,8 @@ contains
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
@@ -844,20 +945,26 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
     call tiof_put1d_i2 (obj, tg_var_solcal_convergence_flag, [0], [nxtrack], &
                         result_vars % solcal_convergence_flag (1:nxtrack), errstat)
     call tiof_put1d_i2 (obj, tg_var_radcal_convergence_flag, [0], [nxtrack], &
                         result_vars % radcal_convergence_flag (1:nxtrack), errstat)
     call tiof_put1d_i2 (obj, tg_var_radref_convergence_flag, [0], [nxtrack], &
                         result_vars % radref_convergence_flag (1:nxtrack), errstat)
+    call tiof_put1d_r8 (obj, tg_var_radref_fit_rms, [0], [nxtrack], &
+                        result_vars % radref_fit_rms (1:nxtrack), errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put1d_r8 (obj, tg_var_radref_column_amount, [0], [nxtrack], &
                         result_vars % radref_column_amount (1:nxtrack), errstat)
     call tiof_put1d_r8 (obj, tg_var_radref_column_uncert, [0], [nxtrack], &
                         result_vars % radref_column_uncert (1:nxtrack), errstat)
     call tiof_put1d_r8 (obj, tg_var_radref_column_xtrfit, [0], [nxtrack], &
                         result_vars % radref_column_xtrfit (1:nxtrack), errstat)
-    call tiof_put1d_r8 (obj, tg_var_radref_fit_rms, [0], [nxtrack], &
-                        result_vars % radref_fit_rms (1:nxtrack), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "write_wavcal_output: failed", errstat)
       return
@@ -875,50 +982,47 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
-    type (tiof_attlist_type) :: attlist
     integer :: ncp, nsl
 
     obj => primary_output_file
 
-    call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", &
-                             att_i4=[stats % num_crosstrack_pixels])
-    call tiof_attlist_append (attlist, errstat, "num_scan_lines", &
-                             att_i4=[stats % num_scan_lines])
-    call tiof_attlist_append (attlist, errstat, "num_good_input", &
-                             att_i4=[stats % num_good_input])
-    call tiof_attlist_append (attlist, errstat, "num_good_output", &
-                             att_i4=[stats % num_good_output])
-    call tiof_attlist_append (attlist, errstat, "num_suspect_output", &
-                             att_i4=[stats % num_suspect_output])
-    call tiof_attlist_append (attlist, errstat, "num_bad_output", &
-                             att_i4=[stats % num_bad_output])
-    call tiof_attlist_append (attlist, errstat, "num_converged", &
-                             att_i4=[stats % num_converged])
-    call tiof_attlist_append (attlist, errstat, "num_failed_convergence", &
-                             att_i4=[stats % num_failed_convergence])
-    call tiof_attlist_append (attlist, errstat, "num_exceeded_iterations", &
-                             att_i4=[stats % num_exceeded_iterations])
-    call tiof_attlist_append (attlist, errstat, "num_out_of_bounds", &
-                             att_i4=[stats % num_out_of_bounds])
-    call tiof_attlist_append (attlist, errstat, "percent_good_output", &
-                             att_r4=[stats % percent_good_output])
-    call tiof_attlist_append (attlist, errstat, "percent_bad_output", &
-                             att_r4=[stats % percent_bad_output])
-    call tiof_attlist_append (attlist, errstat, "percent_suspect_output", &
-                             att_r4=[stats % percent_suspect_output])
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
+    call tiof_put_i4 (obj, "num_crosstrack_pixels", stats % num_crosstrack_pixels, errstat)
+    call tiof_put_i4 (obj, "num_scan_lines", stats % num_scan_lines, errstat)
+    call tiof_put_i4 (obj, "num_good_input", stats % num_good_input, errstat)
+    call tiof_put_i4 (obj, "num_good_output", stats % num_good_output, errstat)
+    call tiof_put_i4 (obj, "num_suspect_output", stats % num_suspect_output, errstat)
+    call tiof_put_i4 (obj, "num_bad_output", stats % num_bad_output, errstat)
+    call tiof_put_i4 (obj, "num_converged", stats % num_converged, errstat)
+    call tiof_put_i4 (obj, "num_failed_convergence", stats % num_failed_convergence, errstat)
+    call tiof_put_i4 (obj, "num_exceeded_iterations", stats % num_exceeded_iterations, errstat)
+    call tiof_put_i4 (obj, "num_out_of_bounds", stats % num_out_of_bounds, errstat)
+    call tiof_put_r4 (obj, "percent_good_output", stats % percent_good_output, errstat)
+    call tiof_put_r4 (obj, "percent_bad_output", stats % percent_bad_output, errstat)
+    call tiof_put_r4 (obj, "percent_suspect_output", stats % percent_suspect_output, errstat)
+    call tiof_pop_group (obj, errstat)
 
-    call tiof_def_atts (obj, attlist, nf90_global, errstat)
-    call tiof_attlist_free (attlist)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "write_fitting_statistics: writing fitting statistics", &
+                       errstat)
+      return
+    endif
 
     ncp = stats % num_crosstrack_pixels
     nsl = stats % num_scan_lines
+
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_put2d_i2 (obj, tg_var_main_dqf, [0,0], [nsl,ncp], &
                         stats % quality_flag (1:ncp, 0:nsl-1), &
                         errstat)
+    call tiof_pop_group (obj, errstat)
 
     if (yn_diagnostic_run) then
+      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
       call tiof_put1d_string (obj, tg_var_radfit_param_names, 0, num_params, &
                               param_names(1:num_params), errstat)
+      call tiof_pop_group (obj, errstat)
     endif
 
     if (errstat < 0) then
@@ -943,8 +1047,10 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,nxtrack], &
                         albedo (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_albedo", errstat)
       return
@@ -967,10 +1073,12 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,ntimes,nxtrack], &
                         gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,ntimes,nxtrack], &
                         climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
       return
@@ -991,8 +1099,10 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,ntimes,nxtrack], &
                         scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
       return
@@ -1019,6 +1129,7 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,nxtrack], &
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, tg_var_amf_geometric, [0,0], [ntimes,nxtrack], &
@@ -1032,13 +1143,17 @@ contains
       call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
                           amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
     endif
+    call tiof_pop_group (obj, errstat)
 
     ! Note that we're over-writing the column amount variable in the file
     ! (to which we previously wrote the slant column values).
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_put2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes,nxtrack], &
                         amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_amf_correction", errstat)
       return
@@ -1060,6 +1175,7 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,n_comm_wvl], &
                         common_mode % refspecdata (1:n_comm_wvl,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_common_mode_wavelengths, [0,0], [nxtrack,n_comm_wvl], &
@@ -1068,6 +1184,8 @@ contains
                         common_mode % ccdpixel (1:nxtrack,1:2), errstat)
     call tiof_put1d_i4 (obj, tg_var_common_mode_count, [0], [nxtrack], &
                         common_mode % refspeccount (1:nxtrack), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_common_mode", errstat)
       return
@@ -1092,6 +1210,8 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
+
     ! Loop avoids creation of temporary array that may exceed process address space,
     ! causing a segv.  This can happen, when nxtrack is large, e.g. 2048.
     do i=1,nrefspec
@@ -1103,6 +1223,9 @@ contains
                         db_wvl(1:npts, 1:nxtrack), errstat)
     call tiof_put1d_r8 (obj, tg_var_refspec_norm, [0], [nrefspec], &
                         refspec (1:nrefspec) % normfactor, errstat)
+
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_refspec_database", errstat)
       return
@@ -1122,8 +1245,11 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, nxtrack], &
                         column(1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_reference_sector_corrected_column", &
                        errstat)
@@ -1145,10 +1271,13 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_solcal_wavelengths, [0,0], [nxtrack, nwaves], &
                         waves (1:nwaves,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_solcal_residuals, [0,0], [nxtrack, nwaves], &
                         resid (1:nwaves,1:nxtrack), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_solar_wavecal_diagnostics", errstat)
       return
@@ -1169,10 +1298,13 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_radcal_wavelengths, [0,0], [nxtrack, nwaves], &
                         waves (1:nwaves,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_radcal_residuals, [0,0], [nxtrack, nwaves], &
                         resid (1:nwaves,1:nxtrack), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "in write_radiance_wavecal_diagnostics", errstat)
       return
@@ -1212,11 +1344,14 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_read_error, "in read_geofields", errstat)
       return
@@ -1244,12 +1379,21 @@ contains
 
     obj => primary_output_file
 
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc(1:nxtrack,1:ntimes), errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
     call tiof_get2d_r8 (obj, tg_var_radfit_rms_residual, [0,0], [ntimes, nxtrack], rms(1:nxtrack,1:ntimes), errstat)
-    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_i2 (obj, tg_var_radfit_convergence_flag, [0,0], [ntimes, nxtrack], &
                         convergence_flag(1:nxtrack,1:ntimes), errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
+    call tiof_pop_group (obj, errstat)
+
     if (errstat < 0) then
       call tell_error (tell_io_read_error, "in read_column_results", errstat)
       return
