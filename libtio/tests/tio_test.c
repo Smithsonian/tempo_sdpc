@@ -44,6 +44,51 @@ static int compare_data (int n, float *out, float *in)
    return 0;
 }
 
+static int test_def_grp (int ncid)
+{
+   int ignore_grp;
+
+   if (-1 == TIO_def_grp (ncid, "xxx", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   if (-1 == TIO_def_grp (ncid, "xxx/a/b/c", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   /* duplicate and trailing slashes are ignored */
+   if (-1 == TIO_def_grp (ncid, "/xxx/a//qqq/r/", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   /* no-op if path already exists */
+   if (-1 == TIO_def_grp (ncid, "/xxx/a/qqq/r", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   if (-1 == TIO_def_grp (ncid, "/xxx/a/zzz//", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   if (-1 == TIO_def_grp (ncid, "/", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   if (-1 == TIO_def_grp (ncid, "///", &ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+
+   return 0;
+}
+
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
    int ncid, varid, status, grp, err=-1;
@@ -95,6 +140,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
+   if (-1 == test_def_grp (ncid))
+        goto cleanup;
+
    if (-1 == TIO_l1_radiance_template (ncid, ntracks, num_sgrps, sgrps))
      {
         fprintf (stderr, "*** failed creating L1 radiance template in %s\n", file);
@@ -124,7 +172,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
                  field_name, file, nc_strerror(status));
         goto cleanup;
      }
-   
+
    if (-1 == TIO_put_att (grp, varid, attr_name, attr_type, attr_len, &attr))
      {
         fprintf (stderr, "*** TIO_put_att failed\n");

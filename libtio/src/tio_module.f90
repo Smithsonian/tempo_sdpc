@@ -35,8 +35,9 @@ module tio_module
 
   !> File object
   type, public :: tiof_file_type
-    integer :: fileid = -1
-    integer :: groupid = -1
+    integer :: fileid
+    integer :: groupid
+    integer, private :: grp_stack(10), grp_stack_depth
   end type tiof_file_type
 
   !> Dimension object
@@ -101,13 +102,17 @@ module tio_module
     type (tiof_var_type), private, pointer :: head => null(), tail => null()
   end type
 
-  integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash
-  external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash
-  public     tiof_put_var_section, tiof_get_var_section, tio_f_put_git_hash
+  integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
+    tio_f_def_grp
+  external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
+    tio_f_def_grp
+  public     tiof_put_var_section, tiof_get_var_section, tio_f_put_git_hash, &
+    tio_f_def_grp
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
-    tiof_inq_group, tiof_inq_dimlen, &
+    tiof_def_group, tiof_push_group, tiof_pop_group, tiof_inq_group, &
+    tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts
@@ -119,6 +124,44 @@ module tio_module
 contains
 
   include 'get_put_code.inc'
+
+  subroutine push_group (obj, groupid, errstat)
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    integer, intent(in) :: groupid
+    integer, intent(inout) :: errstat
+
+    if (errstat < 0) return
+
+    if (obj % grp_stack_depth == size (obj % grp_stack)) then
+      call tell_error (tell_internal_error, "push_group:  stack depth exceeded", errstat)
+      return
+    endif
+
+    obj % grp_stack_depth = obj % grp_stack_depth + 1
+    obj % grp_stack (obj % grp_stack_depth) = obj % groupid
+    obj % groupid = groupid
+
+  end subroutine push_group
+
+  subroutine pop_group (obj, groupid, errstat)
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    integer, intent(out) :: groupid
+    integer, intent(inout) :: errstat
+
+    if (errstat < 0) return
+
+    if (obj % grp_stack_depth == 0) then
+      groupid = -1
+      return
+    endif
+
+    groupid = obj % groupid
+    obj % groupid = obj % grp_stack (obj % grp_stack_depth)
+    obj % grp_stack_depth = obj % grp_stack_depth - 1
+
+  end subroutine pop_group
 
   subroutine tiof_put_git_commit_hash (obj, errstat, name)
     use iso_c_binding, only : c_null_ptr, c_null_char
@@ -286,6 +329,7 @@ contains
 
     obj % fileid = fileid
     obj % groupid = fileid
+    obj % grp_stack_depth = 0
 
   end subroutine tiof_create
 
@@ -310,6 +354,7 @@ contains
 
     obj % fileid = fileid
     obj % groupid = fileid
+    obj % grp_stack_depth = 0
 
   end subroutine tiof_open
 
@@ -330,8 +375,32 @@ contains
       endif
       obj % fileid = -1
       obj % groupid = -1
+      obj % grp_stack_depth = 0
     endif
+
   end subroutine tiof_close
+
+  !> Define a new group
+  subroutine tiof_def_group (obj, grpname, errstat, groupid)
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    character (len=*), intent(in) :: grpname
+    integer, intent(inout) :: errstat
+    integer, optional, intent(out) :: groupid
+
+    integer :: status, grp
+
+    if (errstat < 0) return
+
+    status = tio_f_def_grp (obj % groupid, grpname, grp)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_write_error, "creating group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
+      return
+    endif
+
+    if (present(groupid)) groupid = grp
+
+  end subroutine tiof_def_group
 
   !> Associate an open file object with a specific group
   subroutine tiof_inq_group (obj, grpname, errstat)
@@ -344,12 +413,65 @@ contains
 
     if (errstat < 0) return
 
-    status = nf90_inq_ncid (obj % fileid, grpname, grp)
+    if (len(grpname) == 0) then
+      status = nf90_inq_ncid (obj % groupid, grpname, grp)
+    else if (grpname(1:1) == '/') then
+      status = nf90_inq_grp_full_ncid (obj % fileid, grpname, grp)
+    else
+      status = nf90_inq_ncid (obj % groupid, grpname, grp)
+    endif
+
     if (status /= nf90_noerr) then
       call tell_error (tell_io_read_error, "accessing group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
+      return
     endif
+
     obj % groupid = grp
+    obj % grp_stack_depth = 0  ! reset the stack
+
   end subroutine tiof_inq_group
+
+  !> Associate an open file object with a specific group, saving the current group
+  subroutine tiof_push_group (obj, grpname, errstat)
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    character (len=*), intent(in) :: grpname
+    integer, intent(inout) :: errstat
+
+    integer :: status, grp
+
+    if (errstat < 0) return
+
+    if (len(grpname) == 0) then
+      status = nf90_inq_ncid (obj % groupid, grpname, grp)
+    else if (grpname(1:1) == '/') then
+      status = nf90_inq_grp_full_ncid (obj % fileid, grpname, grp)
+    else
+      status = nf90_inq_ncid (obj % groupid, grpname, grp)
+    endif
+
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, "accessing group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
+      return
+    endif
+
+    call push_group (obj, grp, errstat)
+
+  end subroutine tiof_push_group
+
+  !> Restore the groupid saved by the most recent call to tiof_push_group
+  subroutine tiof_pop_group (obj, errstat)
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    integer, intent(inout) :: errstat
+
+    integer :: prev_grp
+
+    !if (errstat < 0) return
+
+    call pop_group (obj, prev_grp, errstat)
+
+  end subroutine tiof_pop_group
 
   !> Inquire the size of a dimension
   subroutine tiof_inq_dimlen (obj, name, dimlen, errstat)
@@ -603,7 +725,7 @@ contains
     attlist % tail => null()
     attlist % head => null()
 
-  end subroutine tiof_attlist_free  
+  end subroutine tiof_attlist_free
 
   !> Write an attribute list to a file
   subroutine tiof_def_atts (obj, list, varid, errstat)
@@ -791,7 +913,7 @@ contains
     varlist % tail => null()
     varlist % head => null()
 
-  end subroutine tiof_varlist_free  
+  end subroutine tiof_varlist_free
 
   !> Retrieve a variable object from a given variable list
   subroutine tiof_varlist_lookup (list, name, var_ptr, errstat)

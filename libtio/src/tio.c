@@ -554,6 +554,70 @@ int TIO_get_att (int grp, int varid, const char *attname,
    return 0;
 }
 
+int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
+{
+   char delim = '/';
+   const char *p;
+   unsigned int len;
+
+   if ((path == NULL) || (new_ncid == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   for (p = path; *p != 0; p += len)
+     {
+        char buf[TIO_MAX_NAME_LEN];
+        int status, ncid;
+        const char *end;
+
+        while (*p == delim) p++;
+
+        end = strchr (p, delim);
+        if (end == NULL)
+          {
+             end = p + strlen(p);
+          }
+        len = end - p;
+
+        if (len == 0) break;
+
+        if (len + 1 > sizeof(buf))
+          {
+             Tell_verror (TELL_INVALID_PARM, "%s: group name is too long: %s", __func__, p);
+             return -1;
+          }
+        strncpy (buf, p, len);
+        buf[len] = 0;
+
+        /* Does this group exist already? */
+        status = nc_inq_grp_ncid (parent_ncid, buf, &ncid);
+        if (NC_ENOGRP == status)
+          {
+             /* If the group doesn't exist, create it */
+             status = nc_def_grp (parent_ncid, buf, &ncid);
+             if (NC_NOERR != status)
+               {
+                  Tell_verror (TELL_IO_WRITE_ERROR, "%s: creating group %s (%s)",
+                               __func__, buf, nc_strerror (status));
+                  return -1;
+               }
+          }
+        else if (NC_NOERR != status)
+          {
+             Tell_verror (TELL_IO_READ_ERROR, "%s: accessing group %s (%s)",
+                          __func__, buf, nc_strerror (status));
+             return -1;
+          }
+
+        parent_ncid = ncid;
+        *new_ncid = ncid;
+     }
+
+   return 0;
+}
+
 int TIO_put_git_commit_hash (int grp, const char *attname)
 {
    const char hash[] = GIT_COMMIT_HASH ;
@@ -583,3 +647,5 @@ FCALLSCFUN6(INT, TIO_put_var_section, TIOF_PUT_VAR_SECTION, tiof_put_var_section
             INT, STRING, PINT, PINT, INT, PVOID)
 FCALLSCFUN2(INT, TIO_put_git_commit_hash, TIO_F_PUT_GIT_HASH, tio_f_put_git_hash,
             INT, STRING)
+FCALLSCFUN3(INT, TIO_def_grp, TIO_F_DEF_GRP, tio_f_def_grp,
+            INT, STRING, PINT)

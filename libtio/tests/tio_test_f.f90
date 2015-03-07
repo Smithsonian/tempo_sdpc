@@ -203,7 +203,7 @@ program tio_test
     stop 3
   endif
 
-  call tiof_inq_group (obj, groupname, errstat)
+  call tiof_inq_group (obj, "/"//groupname, errstat)
   if (errstat < 0) then
     write(*,*)'*** tiof_inq_group failed:  group='//groupname
     stop 4

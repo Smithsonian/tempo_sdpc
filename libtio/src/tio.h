@@ -13,6 +13,9 @@ extern "C" {
 /* Maximum number of array dimensions */
 #define TIO_MAX_VAR_DIMS   7
 
+/* Maximum name length */
+#define TIO_MAX_NAME_LEN  128
+
 #define TIO_BYTE   NC_BYTE
 #define TIO_CHAR   NC_CHAR
 #define TIO_UBYTE  NC_UBYTE
@@ -123,6 +126,14 @@ extern int TIO_get_att (int grp, int varid, const char *attname,
  * @return 0 on success, -1 on error
  */
 extern int TIO_put_git_commit_hash (int ncid, const char *attname);
+
+/** Define a group
+ * @param  parent_ncid  The ncid that will contain the new group
+ * @param  path         The path to the new group
+ * @param  new_ncid     The ncid of the new group
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid);
 
 #if 0
 {
