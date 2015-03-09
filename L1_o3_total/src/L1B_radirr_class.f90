@@ -140,6 +140,18 @@ MODULE L1B_radirr_class
         INTEGER (KIND = 4) :: swfid, swid, status
         CHARACTER (LEN = MAX_NAME_LENGTH ) :: msg
         
+        !! nullify pointers so we don't run into allocation issues later
+        nullify(this%Lmsa)
+        nullify(this%Lpsa)
+        nullify(this%Lqau)
+        nullify(this%Lexp)
+        nullify(this%wCof)
+        nullify(this%wPcf)
+        nullify(this%wRefCol)
+        nullify(this%MeasurementQF)
+        nullify(this%instId)
+        
+
         !! open the L1B swath file
         swfid = swopen( fn, DFACC_READ )
         IF( swfid < zero ) THEN
@@ -242,10 +254,10 @@ MODULE L1B_radirr_class
         !! error checking for each memory allocation to make
         !! sure memory is allocated successfully. 
 
-        IF( ASSOCIATED( this%Lmsa ) ) nullify( this%Lmsa )
-        IF( ASSOCIATED( this%Lpsa ) ) nullify( this%Lpsa )
-        IF( ASSOCIATED( this%Lqau ) ) nullify( this%Lqau )
-        IF( ASSOCIATED( this%Lexp ) ) nullify( this%Lexp )
+        IF( ASSOCIATED( this%Lmsa ) ) deallocate( this%Lmsa )
+        IF( ASSOCIATED( this%Lpsa ) ) deallocate( this%Lpsa )
+        IF( ASSOCIATED( this%Lqau ) ) deallocate( this%Lqau )
+        IF( ASSOCIATED( this%Lexp ) ) deallocate( this%Lexp )
 
         ALLOCATE( this%Lmsa(this%nWavel,this%nXtrack,this%nLine), &
                   this%Lpsa(this%nWavel,this%nXtrack,this%nLine), &
@@ -259,11 +271,11 @@ MODULE L1B_radirr_class
            RETURN
         ENDIF 
 
-        IF( ASSOCIATED( this%wCof          ) ) nullify( this%wCof          )
-        IF( ASSOCIATED( this%wPcf          ) ) nullify( this%wPcf          )
-        IF( ASSOCIATED( this%wRefCol       ) ) nullify( this%wRefCol       )
-        IF( ASSOCIATED( this%MeasurementQF ) ) nullify( this%MeasurementQF )
-        IF( ASSOCIATED( this%instId        ) ) nullify( this%instId        )
+        IF( ASSOCIATED( this%wCof          ) ) deallocate( this%wCof          )
+        IF( ASSOCIATED( this%wPcf          ) ) deallocate( this%wPcf          )
+        IF( ASSOCIATED( this%wRefCol       ) ) deallocate( this%wRefCol       )
+        IF( ASSOCIATED( this%MeasurementQF ) ) deallocate( this%MeasurementQF )
+        IF( ASSOCIATED( this%instId        ) ) deallocate( this%instId        )
 
         ALLOCATE( this%wCof(this%nWavelCoef,this%nXtrack,this%nLine), &
                   this%wPcf(this%nWavelCoef,this%nXtrack,this%nLine), &

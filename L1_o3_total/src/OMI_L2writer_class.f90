@@ -289,6 +289,8 @@ MODULE OMI_L2writer_class
          this%swathname = swathname
          this%sw_fid    = SW_fileid
          this%swathID   = SW_id
+         !! nullify pointer to avoid later allocation issues
+         nullify(this%data)
 
          !! get the dimensions associated with this swath
          this%nDims = HE5_SWinqdims( this%swathID, this%dimnames, &
@@ -415,7 +417,7 @@ MODULE OMI_L2writer_class
          ENDDO
 
          IF( this%accuBlkSize(this%nFields) > 0 ) THEN
-            IF( ASSOCIATED( this%data ) ) nullify( this%data )
+            IF( ASSOCIATED( this%data ) ) deallocate( this%data )
             ALLOCATE( this%data( this%accuBlkSize(this%nFields) ), STAT = ierr )
             IF( ierr /= zero ) THEN
                status = OZT_E_FAILURE
