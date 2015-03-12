@@ -62,6 +62,7 @@ module tio_module
     integer :: xtype = -1       !< attribute value data type
     character (len=tiof_max_att_len) :: att_text
     integer (kind=i4), allocatable, dimension(:) :: att_i4
+    integer (kind=i8), allocatable, dimension(:) :: att_i8
     real (kind=4), allocatable, dimension(:) :: att_r4
     real (kind=8), allocatable, dimension(:) :: att_r8
     type (tiof_att_type), private, pointer :: next => null()
@@ -644,12 +645,13 @@ contains
 
   !> Append a new attribute object to an attribute list
   subroutine tiof_attlist_append (list, errstat, att_name, &
-                                  att_i4, att_r4, att_r8, att_text)
+                                  att_i4, att_i8, att_r4, att_r8, att_text)
     implicit none
     type (tiof_attlist_type), intent(inout) :: list
     character (len=*), intent(in) :: att_name
     integer, intent(inout) :: errstat
     integer (kind=i4), optional, dimension(:) :: att_i4
+    integer (kind=i8), optional, dimension(:) :: att_i8
     real (kind=4), optional, dimension(:) :: att_r4
     real (kind=8), optional, dimension(:) :: att_r8
     character (len=*), optional :: att_text
@@ -680,6 +682,14 @@ contains
       endif
       item % att_i4(:) = att_i4(:)
       item % xtype = nf90_int
+    else if (present(att_i8)) then
+      allocate (item % att_i8(size(att_i8)), stat=status)
+      if (status /= 0) then
+        call tell_error (tell_malloc_error, &
+                         "tiof_attlist_append:  allocate failed", errstat)
+      endif
+      item % att_i8(:) = att_i8(:)
+      item % xtype = nf90_int64
     else if (present(att_r4)) then
       allocate (item % att_r4(size(att_r4)), stat=status)
       if (status /= 0) then
@@ -759,6 +769,8 @@ contains
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_r4)
         case (nf90_int)
           status = nf90_put_att (obj % groupid, varid, item % name, item % att_i4)
+        case (nf90_int64)
+          status = nf90_put_att (obj % groupid, varid, item % name, item % att_i8)
         case default
           call tell_error (tell_invalid_parm, &
                            "tiof_def_atts: unsupported attribute type", &
@@ -1015,6 +1027,8 @@ contains
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, item % fillvalue)
           case (nf90_float)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, real(item % fillvalue, kind=4))
+          case (nf90_int64)
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=8))
           case (nf90_int)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=4))
           case (nf90_short)
