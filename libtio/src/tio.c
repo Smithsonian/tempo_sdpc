@@ -639,6 +639,121 @@ int TIO_put_git_commit_hash (int grp, const char *attname)
    return 0;
 }
 
+#define CONVERT_TO(to_type_name,to_type) \
+static int convert_to_##to_type (int from_type, void *from_value, to_type_name *to_value) \
+{ \
+   to_type_name value; \
+ \
+   switch (from_type) \
+     { \
+      case NC_BYTE: value = *(signed char *)from_value; break; \
+      case NC_SHORT: value = *(short *)from_value; break; \
+      case NC_INT: value = *(int *)from_value; break; \
+      case NC_INT64: value = *(long long *)from_value; break; \
+      case NC_UBYTE: value = *(unsigned char *)from_value; break; \
+      case NC_USHORT: value = *(unsigned short *)from_value; break; \
+      case NC_UINT: value = *(unsigned int *)from_value; break; \
+      case NC_UINT64: value = *(unsigned long long *)from_value; break; \
+      case NC_FLOAT: value = *(float *)from_value; break; \
+      case NC_DOUBLE: value = *(double *)from_value; break; \
+      default: \
+        Tell_verror (TELL_INVALID_PARM, "%s: unsupported type from_type=%d\n", \
+                     __func__, from_type); \
+        return -1; \
+     } \
+ \
+   *to_value = value; \
+ \
+   return 0; \
+}
+CONVERT_TO(signed char,i1)
+CONVERT_TO(unsigned char,ui1)
+CONVERT_TO(short,i2)
+CONVERT_TO(unsigned short,ui2)
+CONVERT_TO(int,i4)
+CONVERT_TO(unsigned int,ui4)
+CONVERT_TO(long long,i8)
+CONVERT_TO(unsigned long long,ui8)
+CONVERT_TO(float,r4)
+CONVERT_TO(double,r8)
+
+int TIO_get_fill_value (int grp, const char *name, int type, void *value)
+{
+   int varid, file_type, no_fill, status, return_status = -1;
+   void *fill = NULL;
+
+   if ((name == NULL) || (value == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NULL == (fill = malloc (8)))
+     {
+        Tell_set_error (TELL_MALLOC_ERROR);
+        return -1;
+     }
+
+   if ((NC_NOERR != (status = nc_inq_varid (grp, name, &varid)))
+       || (NC_NOERR != (status = nc_inq_vartype (grp, varid, &file_type)))
+       || (NC_NOERR != (status = nc_inq_var_fill (grp, varid, &no_fill, fill))))
+     {
+        Tell_verror (TELL_RUNTIME_ERROR, "%s: getting fill value for %s (%s)\n",
+                     __func__, name, nc_strerror(status));
+        goto cleanup;
+     }
+
+   switch (type)
+     {
+      case NC_BYTE:
+        status = convert_to_i1 (file_type, fill, (signed char *)value);
+        break;
+      case NC_UBYTE:
+        status = convert_to_ui1 (file_type, fill, (unsigned char *)value);
+        break;
+      case NC_SHORT:
+        status = convert_to_i2 (file_type, fill, (short *)value);
+        break;
+      case NC_USHORT:
+        status = convert_to_ui2 (file_type, fill, (unsigned short *)value);
+        break;
+      case NC_INT:
+        status = convert_to_i4 (file_type, fill, (int *)value);
+        break;
+      case NC_UINT:
+        status = convert_to_ui4 (file_type, fill, (unsigned int *)value);
+        break;
+      case NC_INT64:
+        status = convert_to_i8 (file_type, fill, (long long *)value);
+        break;
+      case NC_UINT64:
+        status = convert_to_ui8 (file_type, fill, (unsigned long long *)value);
+        break;
+      case NC_FLOAT:
+        status = convert_to_r4 (file_type, fill, (float *)value);
+        break;
+      case NC_DOUBLE:
+        status = convert_to_r8 (file_type, fill, (double *)value);
+        break;
+      default:
+        Tell_verror (TELL_INVALID_PARM, "%s: unsupported destination type = %d\n",
+                     __func__, type);
+        goto cleanup;
+     }
+
+   if (status)
+     {
+        Tell_verror (TELL_RUNTIME_ERROR, "%s: converting %s fill value to type = %d\n",
+                     __func__, name, type);
+        goto cleanup;
+     }
+
+   return_status = 0;
+cleanup:
+   free (fill);
+   return return_status;
+}
+
 /* Fortran bindings */
 
 FCALLSCFUN6(INT, TIO_get_var_section, TIOF_GET_VAR_SECTION, tiof_get_var_section,
@@ -649,3 +764,5 @@ FCALLSCFUN2(INT, TIO_put_git_commit_hash, TIO_F_PUT_GIT_HASH, tio_f_put_git_hash
             INT, STRING)
 FCALLSCFUN3(INT, TIO_def_grp, TIO_F_DEF_GRP, tio_f_def_grp,
             INT, STRING, PINT)
+FCALLSCFUN4(INT, TIO_get_fill_value, TIO_F_GET_FILL_VALUE, tio_f_get_fill_value,
+            INT, STRING, INT, PVOID)

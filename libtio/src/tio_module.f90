@@ -104,11 +104,9 @@ module tio_module
   end type
 
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
-    tio_f_def_grp
+    tio_f_def_grp, tio_f_get_fill_value
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
-    tio_f_def_grp
-  public     tiof_put_var_section, tiof_get_var_section, tio_f_put_git_hash, &
-    tio_f_def_grp
+    tio_f_def_grp, tio_f_get_fill_value
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &

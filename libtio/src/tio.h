@@ -69,7 +69,7 @@ extern int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info);
  * @param  data    Pointer to the array to be written
  * @return 0 on success, -1 on error
  */
-extern int TIO_put_var_section (int grp, const char *name, 
+extern int TIO_put_var_section (int grp, const char *name,
                                 int *start, int *count, int xtype,
                                 const void *data);
 
@@ -134,6 +134,15 @@ extern int TIO_put_git_commit_hash (int ncid, const char *attname);
  * @return 0 on success, -1 on error
  */
 extern int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid);
+
+/** Read the fill value of a named variable and convert it to a specified type
+ * @param  grp    The group containing the variable
+ * @param  name   The variable name
+ * @param  type   The desired netcdf variable type, e.g. NC_INT, NC_FLOAT
+ * @param  value  Pointer to the resulting fill value
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_get_fill_value (int grp, const char *name, int type, void *value);
 
 #if 0
 {
