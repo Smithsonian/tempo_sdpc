@@ -5,6 +5,7 @@ program tio_test
   implicit none
 
   integer, parameter :: dim_strlen_size = 32, dim_name_size = 20
+  integer, parameter :: dim1_size = 5, dim2_size = 7
   character (len=dim_strlen_size), parameter :: dim_strlen = "strlen"
   character (len=dim_strlen_size), parameter :: dim_name = "name"
   integer, dimension(2) :: list_of_names_dimids
@@ -18,18 +19,31 @@ program tio_test
   integer, dimension(2) :: dimids
   integer, dimension(3) :: start, edge
   real (kind=4), allocatable, dimension(:,:,:) :: radiance, rx
+  real (kind=4), dimension(dim1_size,dim2_size) :: fv
+  real (kind=4), dimension(dim1_size) :: iv
+  integer (kind=2), dimension(dim1_size) :: iv_in_i2
+  integer (kind=4), dimension(dim1_size) :: iv_in_i4
+  integer (kind=8), dimension(dim1_size) :: iv_in_i8
+  real (kind=4), dimension(dim1_size) :: rv_in_r4
+  real (kind=8), dimension(dim1_size) :: rv_in_r8
+  real (kind=8), parameter :: fill_value_r4 = 1.25e30, fill_value_r8 = 2.55e30, &
+    fill_value_i2 = -9999.0, fill_value_i4 = -99999.0, fill_value_i8 = -1.0e12
+  real (kind=4), parameter :: replace_fill_r4=1.0e20, iv_value = 1234.0
+  integer (kind=2), parameter ::  replace_fill_i2=-15000
+  integer (kind=4), parameter ::  replace_fill_i4=-55000
+  integer (kind=8), parameter ::  replace_fill_i8=-95000
   integer :: errstat, i,j,k, iwave_start
   integer :: scalar_int=-12345, scalar_int_read=0
   real (kind=4) :: n
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
-  type (tiof_attlist_type) :: foo_attlist
+  type (tiof_attlist_type) :: fv_attlist
 
   errstat = 0
 
-  call tiof_dimlist_append (dimlist, "dim1", 10000, errstat)
-  call tiof_dimlist_append (dimlist, "dim2", 20000, errstat)
+  call tiof_dimlist_append (dimlist, "dim1", dim1_size, errstat)
+  call tiof_dimlist_append (dimlist, "dim2", dim2_size, errstat)
   call tiof_dimlist_append (dimlist, dim_strlen, dim_strlen_size, errstat)
   call tiof_dimlist_append (dimlist, dim_name, dim_name_size, errstat)
   if (errstat < 0) then
@@ -49,7 +63,7 @@ program tio_test
     stop 2
   endif
 
-  call tiof_dimlist_lookup (dimlist, ["dim2", "dim1"], dimids, errstat)
+  call tiof_dimlist_lookup (dimlist, ["dim1", "dim2"], dimids, errstat)
   call tiof_dimlist_lookup (dimlist, [dim_strlen, dim_name], &
                             list_of_names_dimids, errstat)
   if (errstat < 0) then
@@ -122,7 +136,7 @@ program tio_test
     write (*,*)'*** I/O of scalar variables failed'
     stop 2
   endif
-  
+
   list_of_names(:)(:) = ' '
   input_names(:)(:) = ' '
   list_of_names(1) = "Fred"
@@ -177,21 +191,37 @@ program tio_test
     stop 3
   endif
 
-  call tiof_attlist_append (foo_attlist, errstat, &
+  call tiof_attlist_append (fv_attlist, errstat, &
                             "i4_attr", att_i4=[1,2,3,4])
-  call tiof_attlist_append (foo_attlist, errstat, &
+  call tiof_attlist_append (fv_attlist, errstat, &
                             "r8_attr", att_r8=[1.234_8, 3.1415_8])
-  call tiof_attlist_append (foo_attlist, errstat, "text_attr", &
+  call tiof_attlist_append (fv_attlist, errstat, "text_attr", &
                             att_text='This is a text attribute'// &
                             ' that can wrap around if necessary')
 
-  call tiof_varlist_append (varlist, errstat, "foo", nf90_float, &
+  call tiof_varlist_append (varlist, errstat, "fv", nf90_float, &
                             dimids = dimids, &
+                            fillvalue = fill_value_r4, &
                             shuffle=.true., deflate_level=5, &
-                            contiguous=.false., chunksizes=[500,500], &
-                            comment = "This is foo", &
-                            units = "foo-units", valid_range = [-10.0_8, 10.0_8], &
-                            attlist = foo_attlist)
+                            contiguous=.false., chunksizes=[1,dim1_size], &
+                            comment = "This is fv", &
+                            units = "fv-units", valid_range = [-10.0_8, 10.0_8], &
+                            attlist = fv_attlist)
+  call tiof_varlist_append (varlist, errstat, "iv_i2", nf90_short, &
+                            dimids=[dimids(1)], &
+                            fillvalue = fill_value_i2)
+  call tiof_varlist_append (varlist, errstat, "iv_i4", nf90_int, &
+                            dimids=[dimids(1)], &
+                            fillvalue = fill_value_i4)
+  call tiof_varlist_append (varlist, errstat, "iv_i8", nf90_int64, &
+                            dimids=[dimids(1)], &
+                            fillvalue = fill_value_i8)
+  call tiof_varlist_append (varlist, errstat, "rv_r4", nf90_float, &
+                            dimids=[dimids(1)], &
+                            fillvalue = fill_value_r4)
+  call tiof_varlist_append (varlist, errstat, "rv_r8", nf90_double, &
+                            dimids=[dimids(1)], &
+                            fillvalue = fill_value_r8)
   if (errstat < 0) then
     write (*,*)'*** tiof_varlist_append failed'
     stop 3
@@ -201,6 +231,141 @@ program tio_test
   if (errstat < 0) then
     write (*,*)'*** tiof_def_vars failed'
     stop 3
+  endif
+
+  ! First, test integer I/O and replacing fill values:
+
+  iv = iv_value
+  call tiof_put1d_i2 (obj, "iv_i2", [0], [dim1_size/2], int(iv,kind=2), errstat)
+  call tiof_put1d_i4 (obj, "iv_i4", [0], [dim1_size/2], int(iv,kind=4), errstat)
+  call tiof_put1d_i8 (obj, "iv_i8", [0], [dim1_size/2], int(iv,kind=8), errstat)
+  if (errstat < 0) then
+    write (*,*)'*** failed: writing iv arrays'
+    stop 3
+  endif
+
+  ! First try reading the same type that was written to the file
+  call tiof_get1d_i2 (obj, "iv_i2", [0], [dim1_size], iv_in_i2, errstat, &
+                      replace_fill=replace_fill_i2)
+  if (errstat < 0) then
+    write(*,*)'*** error reading iv_i2'
+    stop
+  endif
+  if (any(iv_in_i2(1:dim1_size/2) /= int(iv_value,kind=2)) &
+      .or. any(iv_in_i2(1+dim1_size/2:) /= int(replace_fill_i2,kind=2))) then
+    write(*,*)'*** unexpected iv_i2 values'
+    stop 3
+  endif
+  call tiof_get1d_i4 (obj, "iv_i4", [0], [dim1_size], iv_in_i4, errstat, &
+                      replace_fill=replace_fill_i4)
+  if (errstat < 0) then
+    write(*,*)'*** error reading iv_i4'
+    stop
+  endif
+  if (any(iv_in_i4(1:dim1_size/2) /= int(iv_value,kind=4)) &
+      .or. any(iv_in_i4(1+dim1_size/2:) /= int(replace_fill_i4,kind=4))) then
+    write(*,*)'*** unexpected iv_i4 values'
+    stop 3
+  endif
+  call tiof_get1d_i8 (obj, "iv_i8", [0], [dim1_size], iv_in_i8, errstat, &
+                      replace_fill=replace_fill_i8)
+  if (errstat < 0) then
+    write(*,*)'*** error reading iv_i8'
+    stop
+  endif
+  if (any(iv_in_i8(1:dim1_size/2) /= int(iv_value,kind=8)) &
+      .or. any(iv_in_i8(1+dim1_size/2:) /= int(replace_fill_i8,kind=8))) then
+    write(*,*)'*** unexpected iv_i8 values'
+    stop 3
+  endif
+
+  ! First try reading a larger type than was written to the file
+  call tiof_get1d_i4 (obj, "iv_i2", [0], [dim1_size], iv_in_i4, errstat, &
+                      replace_fill=replace_fill_i4)
+  if (errstat < 0) then
+    write(*,*)'*** error reading iv_i2'
+    stop
+  endif
+  if (any(iv_in_i4(1:dim1_size/2) /= int(iv_value,kind=4)) &
+      .or. any(iv_in_i4(1+dim1_size/2:) /= int(replace_fill_i4,kind=4))) then
+    write(*,*)'*** unexpected iv_i2 values'
+    !write(*,*)iv_in_i4
+    stop 3
+  endif
+
+  ! Now, test floating point I/O and replacing fill values:
+  iv = iv_value
+  call tiof_put1d_r4 (obj, "rv_r4", [0], [dim1_size/2], real(iv,kind=4), errstat)
+  call tiof_put1d_r8 (obj, "rv_r8", [0], [dim1_size/2], real(iv,kind=8), errstat)
+  if (errstat < 0) then
+    write (*,*)'*** failed: writing iv arrays'
+    stop 3
+  endif
+
+  ! First try reading the same type that was written to the file
+  call tiof_get1d_r4 (obj, "rv_r4", [0], [dim1_size], rv_in_r4, errstat, &
+                      replace_fill=real(replace_fill_i4,kind=4))
+  if (errstat < 0) then
+    write(*,*)'*** error reading rv_r4'
+    stop
+  endif
+  if (any(rv_in_r4(1:dim1_size/2) /= real(iv_value,kind=4)) &
+      .or. any(rv_in_r4(1+dim1_size/2:) /= real(replace_fill_i4,kind=4))) then
+    write(*,*)'*** unexpected rv_r4 values'
+    stop 3
+  endif
+  call tiof_get1d_r8 (obj, "rv_r8", [0], [dim1_size], rv_in_r8, errstat, &
+                      replace_fill=real(replace_fill_i4,kind=8))
+  if (errstat < 0) then
+    write(*,*)'*** error reading rv_r8'
+    stop
+  endif
+  if (any(rv_in_r8(1:dim1_size/2) /= real(iv_value,kind=8)) &
+      .or. any(rv_in_r8(1+dim1_size/2:) /= real(replace_fill_i4,kind=8))) then
+    write(*,*)'*** unexpected rv_r8 values'
+    stop 3
+  endif
+
+  ! First try reading a larger type than was written to the file
+  call tiof_get1d_r8 (obj, "rv_r4", [0], [dim1_size], rv_in_r8, errstat, &
+                      replace_fill=real(replace_fill_i4,kind=8))
+  if (errstat < 0) then
+    write(*,*)'*** error reading rv_r4'
+    stop
+  endif
+  if (any(rv_in_r8(1:dim1_size/2) /= real(iv_value,kind=8)) &
+      .or. any(rv_in_r8(1+dim1_size/2:) /= real(replace_fill_i4,kind=8))) then
+    write(*,*)'*** unexpected rv_r4 values'
+    !write(*,*)rv_in_r8
+    stop 3
+  endif
+
+  fv = 0.0
+  fv(1:dim1_size,1:dim2_size/2) = 1.0e3
+  !write(*,'(7(1pe9.3,1x))')transpose(fv)
+  call tiof_put2d_r4 (obj, "fv", [0,0], [dim2_size/2, dim1_size], fv, errstat)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_put2d_r4 failed: writing fv'
+    stop 4
+  endif
+
+  call tiof_get2d_r4 (obj, "fv", &
+                      [0,0], [dim2_size, dim1_size], &
+                      fv, errstat, replace_fill=replace_fill_r4)
+  !write(*,'(7(1pe9.3,1x))')transpose(fv)
+  if (errstat < 0) then
+    write (*,*)'*** tiof_get2d_r4 failed: reading fv'
+    stop 4
+  endif
+  if (any (fv(1:dim1_size,1:dim2_size/2) /= 1.0e3)) then
+    write(*,*)'*** tiof_get2d_r4: non-fill values were modified!'
+    !write(*,'(7(1pe9.3,1x))')transpose(fv)
+    stop 4
+  endif
+  if (any (fv(1:dim1_size,1+dim2_size/2:dim2_size) /= replace_fill_r4)) then
+    write (*,*)'*** tiof_get2d_r4 failed: fv has unexpected fill values'
+    !write(*,'(7(1pe9.3,1x))')transpose(fv)
+    stop 4
   endif
 
   call tiof_inq_group (obj, "/"//groupname, errstat)
@@ -323,7 +488,7 @@ program tio_test
 
   call tiof_dimlist_free (dimlist)
   call tiof_varlist_free (varlist)
-  call tiof_attlist_free (foo_attlist)
+  call tiof_attlist_free (fv_attlist)
 
 contains
 

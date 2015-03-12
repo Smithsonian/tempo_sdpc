@@ -1,0 +1,22 @@
+!
+!> Write a @dim@d array of type @ftype@ (kind=@fkind@) as type @ntype@
+  subroutine tiof_put@dim@d_@type@ (obj, name, start, edge, array, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, dimension(:), intent(in) :: start, edge
+    @ftype@ (kind=@fkind@), dimension (@colons@), intent(in) :: array
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_put_var_section (obj % groupid, name, start, edge, &
+                                     @ntype@, array)
+    if (err < 0) then
+      call tell_error (tell_io_write_error, "Unable to write " // &
+                       trim(name) // " to file", errstat)
+      return
+    endif
+  end subroutine tiof_put@dim@d_@type@

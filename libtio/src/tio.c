@@ -666,16 +666,16 @@ static int convert_to_##to_type (int from_type, void *from_value, to_type_name *
  \
    return 0; \
 }
-CONVERT_TO(signed char,i1)
-CONVERT_TO(unsigned char,ui1)
-CONVERT_TO(short,i2)
-CONVERT_TO(unsigned short,ui2)
-CONVERT_TO(int,i4)
-CONVERT_TO(unsigned int,ui4)
-CONVERT_TO(long long,i8)
-CONVERT_TO(unsigned long long,ui8)
-CONVERT_TO(float,r4)
-CONVERT_TO(double,r8)
+CONVERT_TO(signed char,byte)
+CONVERT_TO(unsigned char,ubyte)
+CONVERT_TO(short,short)
+CONVERT_TO(unsigned short,ushort)
+CONVERT_TO(int,int)
+CONVERT_TO(unsigned int,uint)
+CONVERT_TO(long long,int64)
+CONVERT_TO(unsigned long long,uint64)
+CONVERT_TO(float,float)
+CONVERT_TO(double,double)
 
 int TIO_get_fill_value (int grp, const char *name, int type, void *value)
 {
@@ -706,34 +706,34 @@ int TIO_get_fill_value (int grp, const char *name, int type, void *value)
    switch (type)
      {
       case NC_BYTE:
-        status = convert_to_i1 (file_type, fill, (signed char *)value);
+        status = convert_to_byte (file_type, fill, (signed char *)value);
         break;
       case NC_UBYTE:
-        status = convert_to_ui1 (file_type, fill, (unsigned char *)value);
+        status = convert_to_ubyte (file_type, fill, (unsigned char *)value);
         break;
       case NC_SHORT:
-        status = convert_to_i2 (file_type, fill, (short *)value);
+        status = convert_to_short (file_type, fill, (short *)value);
         break;
       case NC_USHORT:
-        status = convert_to_ui2 (file_type, fill, (unsigned short *)value);
+        status = convert_to_ushort (file_type, fill, (unsigned short *)value);
         break;
       case NC_INT:
-        status = convert_to_i4 (file_type, fill, (int *)value);
+        status = convert_to_int (file_type, fill, (int *)value);
         break;
       case NC_UINT:
-        status = convert_to_ui4 (file_type, fill, (unsigned int *)value);
+        status = convert_to_uint (file_type, fill, (unsigned int *)value);
         break;
       case NC_INT64:
-        status = convert_to_i8 (file_type, fill, (long long *)value);
+        status = convert_to_int64 (file_type, fill, (long long *)value);
         break;
       case NC_UINT64:
-        status = convert_to_ui8 (file_type, fill, (unsigned long long *)value);
+        status = convert_to_uint64 (file_type, fill, (unsigned long long *)value);
         break;
       case NC_FLOAT:
-        status = convert_to_r4 (file_type, fill, (float *)value);
+        status = convert_to_float (file_type, fill, (float *)value);
         break;
       case NC_DOUBLE:
-        status = convert_to_r8 (file_type, fill, (double *)value);
+        status = convert_to_double (file_type, fill, (double *)value);
         break;
       default:
         Tell_verror (TELL_INVALID_PARM, "%s: unsupported destination type = %d\n",

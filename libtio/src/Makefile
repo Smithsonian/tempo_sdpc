@@ -64,7 +64,9 @@ all:	autogen elf
 elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
 autogen:	get_put_code.inc
-get_put_code.inc:	get_put_array.in get_put_scalar.in get_put_autogen.sh
+
+AUTOGEN_IN = get_array_int.in get_array_real.in put_array.in get_put_scalar.in
+get_put_code.inc:	$(AUTOGEN_IN) get_put_autogen.sh
 	./get_put_autogen.sh
 
 $(elfdir):
@@ -86,7 +88,7 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS_F)
 	fi
 	cd $(elfdir) && $(LN) $(ELFLIB_F_BUILD_NAME) $(ELFLIB_F)
 
-.PHONY: clean distclean all install check
+.PHONY: clean distclean all install check autogen
 
 # --------------------------------------------------------------------------
 # Installation

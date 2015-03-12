@@ -1,7 +1,5 @@
 #! /bin/sh
 
-template_scalar="get_put_scalar.in"
-template_array="get_put_array.in"
 out_code="get_put_code.inc"
 out_decl="get_put_decl.inc"
 
@@ -48,6 +46,14 @@ expand_type(){
          ftype=integer
          fkind=i4
          ;;
+    i8 ) ntype=nf90_int64
+         ftype=integer
+         fkind=i8
+         ;;
+   ui8 ) ntype=nf90_uint64
+         ftype=integer
+         fkind=i8
+         ;;
     r4 ) ntype=nf90_float
          ftype=real
          fkind=4
@@ -60,8 +66,9 @@ expand_type(){
 }
 
 expand_template_scalar(){
-  act=$1
-  typ=$2
+  template=$1
+  act=$2
+  typ=$3
   expand_action $act
   expand_type $typ
   sed -e s/@type@/$typ/g \
@@ -72,16 +79,17 @@ expand_template_scalar(){
       -e s/@intent@/$intent/g \
       -e s/@ioaction@/$ioaction/g \
       -e s/@iodir@/$iodir/g \
-      $template_scalar >> $out_code
-
-  echo "public tiof_${act}_${typ}" >> $out_decl
+      $template >> $out_code
+      
+  echo "public tiof_${act}_${typ}" >> $out_decl      
 }
 
 expand_template_array(){
-  act=$1
-  typ=$2
-  dim=$3
-  colons=$4
+  template=$1
+  act=$2
+  typ=$3
+  dim=$4
+  colons=$5
   expand_action $act
   expand_type $typ
   sed -e s/@type@/$typ/g \
@@ -94,28 +102,36 @@ expand_template_array(){
       -e s/@intent@/$intent/g \
       -e s/@ioaction@/$ioaction/g \
       -e s/@iodir@/$iodir/g \
-      $template_array >> $out_code
+      $template >> $out_code
 
   echo "public tiof_${act}${dim}d_${typ}" >> $out_decl
 }
 
+dim_list="1 2 3"
+uint_type_list="ui1 ui2 ui4 ui8"  # but Fortran doesn't have unsigned types...
+int_type_list="i1 i2 i4 i8 $uint_type_list"
+real_type_list="r4 r8"
+type_list="$int_type_list $real_type_list"
+
 echo '! Auto-generated file -- do not edit.' > $out_decl
 echo '! Auto-generated file -- do not edit.' > $out_code
 
-dim_list="1 2 3"
-type_list="i1 ui1 i2 ui2 i4 ui4 r4 r8"
-
+template_scalar="get_put_scalar.in"
 for typ in $type_list; do
-  expand_template_scalar "get" $typ
-  expand_template_scalar "put" $typ
+  expand_template_scalar $template_scalar "get" $typ
+  expand_template_scalar $template_scalar "put" $typ
 done
 
 colons=":"
 for dim in $dim_list ; do
+  for typ in $int_type_list; do
+    expand_template_array "get_array_int.in" "get" $typ $dim $colons
+  done
+  for typ in $real_type_list; do
+    expand_template_array "get_array_real.in" "get" $typ $dim $colons
+  done
   for typ in $type_list; do
-    expand_template_array "get" $typ $dim $colons
-    expand_template_array "put" $typ $dim $colons
+    expand_template_array "put_array.in" "put" $typ $dim $colons
   done
   colons="${colons},:"
 done
-

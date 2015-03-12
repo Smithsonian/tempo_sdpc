@@ -1,0 +1,34 @@
+!
+!> Read a @dim@d array of type @ntype@ into variable of type @ftype@ (kind=@fkind@)
+  subroutine tiof_get@dim@d_@type@ (obj, name, start, edge, array, errstat, replace_fill)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, dimension(:), intent(in) :: start, edge
+    @ftype@ (kind=@fkind@), dimension (@colons@), intent(out) :: array
+    integer, intent(inout) :: errstat
+    @ftype@ (kind=@fkind@), optional, intent(in) :: replace_fill
+
+    @ftype@ (kind=@fkind@) :: fill_value
+    integer :: err
+
+    if (errstat < 0) return
+
+    err = tiof_get_var_section (obj % groupid, name, start, edge, @ntype@, array)
+    if (err < 0) then
+      call tell_error (tell_io_read_error, "Unable to read " // &
+                       trim(name) // " from file", errstat)
+      return
+    endif
+
+    if (present(replace_fill)) then
+      err = tio_f_get_fill_value (obj % groupid, name, @ntype@, fill_value)
+      if (err < 0) then
+        call tell_error (tell_runtime_error, "Getting fill value for "//trim(name), errstat)
+        return
+      endif
+
+      where (array == fill_value) array = replace_fill
+    endif
+
+  end subroutine tiof_get@dim@d_@type@
