@@ -16,7 +16,7 @@ module output_tools
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
     write_radiance_wavecal_diagnostics, &
-    read_geofields, read_column_results
+    read_geofields, read_column_results, read_cloud_params
 
   type (tiof_file_type), private, save, target :: primary_output_file
 
@@ -1400,5 +1400,53 @@ contains
     endif
 
   end subroutine read_column_results
+
+  subroutine read_cloud_params (cloud_file, ntimes, nxtrack, cloud_fraction, &
+                                cloud_top_pressure, errstat)
+    use OMSAO_parameters_module, only : r8_missval
+    implicit none
+    character (len=*), intent(in) :: cloud_file
+    integer (kind=i4), intent(in) :: ntimes, nxtrack
+    real (kind=r8), dimension (1:nxtrack,0:ntimes-1), intent(out) :: cloud_fraction, cloud_top_pressure
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type) :: cld
+    character (len=128) :: logmsg
+
+    if (errstat < 0) return
+
+    call tiof_open (cloud_file, cld, nf90_nowrite, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_open_error, "read_cloud_params: opening file "//trim(cloud_file), &
+                       errstat)
+      return
+    endif
+
+    write(logmsg,'(a,i6,i6,a)')'Reading cloud file, ntimes,nxtrack=', &
+      ntimes, nxtrack, ' file = '//trim(cloud_file)
+    call tell_log (1, logmsg)
+
+    call tiof_get2d_r8 (cld, "cloud_pressure_for_O3", [0,0], [ntimes,nxtrack], &
+                        cloud_top_pressure, errstat, replace_fill=r8_missval)
+    call tiof_get2d_r8 (cld, "cloud_fraction_for_O3", [0,0], [ntimes,nxtrack], &
+                        cloud_fraction, errstat, replace_fill=r8_missval)
+    call tiof_close (cld, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_read_error, "read_cloud_params: reading file "//trim(cloud_file), &
+                       errstat)
+      return
+    endif
+
+    ! Force the cloud parameters into physical bounds, avoiding missing data
+    where (cloud_fraction > r8_missval .and. cloud_fraction < 0.0_r8)
+      cloud_fraction = 0.0_r8
+    elsewhere (cloud_fraction > 1.0_r8)
+      cloud_fraction = 1.0_r8
+    endwhere
+    where (cloud_top_pressure > r8_missval .and. cloud_top_pressure < 0.0_r8)
+      cloud_top_pressure = 0.0_r8
+    endwhere
+
+  end subroutine read_cloud_params
 
 end module output_tools

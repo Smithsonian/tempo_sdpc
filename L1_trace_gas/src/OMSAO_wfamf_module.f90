@@ -169,10 +169,12 @@ CONTAINS
     !     - VLIDORT calculated scattering weights
     ! =================================================================
     USE OMSAO_errstat_module, only : pge_errstat_ok!, pge_errstat_error
-    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx
+    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx, voc_omicld_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
       write_scattering_weights, write_amf_correction
+    USE OMSAO_variables_module,  ONLY: voc_amf_filenames
+    use output_tools, only: read_cloud_params
     IMPLICIT NONE
 
     ! ---------------
@@ -204,6 +206,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw !, akernels
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
+    character (len=256) :: cloud_file
 
     if (errstat < 0) return
     locerrstat  = pge_errstat_ok
@@ -265,11 +268,22 @@ CONTAINS
       ! Read the OMI L2 cloud product
       ! -----------------------------
       !locerrstat = pge_errstat_ok
-      CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
-      IF ( errstat < 0) THEN
-        l2cfr = r8_missval
-        l2ctp = r8_missval
-      END IF
+
+      cloud_file = voc_amf_filenames(voc_omicld_idx)
+      if (0 /= index (cloud_file, ".he5", .true.)) then
+        ! FIXME: amf_read_omiclouds to be removed
+        CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
+      else if (0 /= index (cloud_file, ".nc", .true.)) then
+        call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+      else
+        call tell_error (tell_runtime_error, "unexpected cloud file extension", errstat)
+        return
+      endif
+      if (errstat < 0) then
+        call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
+        return
+      endif
+      call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
 
       ! ---------------------------------------------------------------------
       ! The climatology has already been read, inside omi_pge_fitting_process
@@ -1217,10 +1231,12 @@ CONTAINS
 
   SUBROUTINE vlidort_deallocate ()
     implicit none
-    deallocate (vl_OzC0, vl_OzC1, vl_OzC2, vl_pre, vl_sza, vl_vza, &
-                vl_wav, vl_toms, vl_air, vl_alt, vl_ozo, vl_tem, &
-                vl_I0, vl_I1, vl_I2, vl_Ir, vl_Sb, &
-                vl_dI0, vl_dI1, vl_dI2, vl_dIr)
+    if (allocated(vl_OzC0)) then
+      deallocate (vl_OzC0, vl_OzC1, vl_OzC2, vl_pre, vl_sza, vl_vza, &
+                  vl_wav, vl_toms, vl_air, vl_alt, vl_ozo, vl_tem, &
+                  vl_I0, vl_I1, vl_I2, vl_Ir, vl_Sb, &
+                  vl_dI0, vl_dI1, vl_dI2, vl_dIr)
+    endif
   END SUBROUTINE
 
   SUBROUTINE vlidort_allocate (anozo, ancld, ansza, anvza, anwav, analt, errstat)
@@ -1641,7 +1657,8 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)        :: it, nt_loc, nx_loc, locerrstat
     REAL    (KIND=r4)        :: scale_cfr, offset_cfr, missval_cfr, scale_ctp, offset_ctp
-    INTEGER (KIND=i2)        :: missval_ctp
+    !INTEGER (KIND=i2)       :: missval_ctp
+    real (kind=r4)           :: missval_ctp
     CHARACTER (LEN=5)        :: addstr
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1) :: o4ctp
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: cfr, ctp
@@ -1691,7 +1708,7 @@ CONTAINS
 
     IF ( INDEX( voc_amf_filenames(voc_omicld_idx), 'CLDRR' ) /= 0 ) THEN
       do_raman_clouds = .TRUE.
-      addstr          = ""
+      addstr          = "forO3"
     ELSE
       do_raman_clouds = .FALSE.
       addstr          = ""
@@ -1703,7 +1720,7 @@ CONTAINS
     scale_cfr = 1.0_r4 ; offset_cfr = 0.0_r4 ; missval_cfr = 0.0_r4
     locerrstat = HE5_SWrdlattr ( omicloud_swath_id, omicld_cfrac_field//TRIM(ADJUSTL(addstr)), 'MissingValue', missval_cfr )
 
-    scale_ctp = 1.0_r4 ; offset_ctp = 0.0_r4 ; missval_ctp = 0
+    scale_ctp = 1.0_r4 ; offset_ctp = 0.0_r4 ; missval_ctp = 0.0_r4 ! 0
     locerrstat = HE5_SWrdlattr ( omicloud_swath_id, omicld_cpres_field//TRIM(ADJUSTL(addstr)), 'MissingValue', missval_ctp )
 
     ! -----------------------
