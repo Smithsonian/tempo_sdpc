@@ -375,7 +375,7 @@ contains
 
   subroutine write_cloud_struct(obj, dimlist, errstat)
     use m_vars, only: squeeze, write_fill, write_resid, cal_reflec, &
-         do_mler
+         do_mler, do_cloud_mask
 
     implicit none
 
@@ -411,14 +411,6 @@ contains
     call tiof_attlist_append (att_cld, errstat, "coordinates", &
                               att_text = trim(cld_var_longitude) &
                               //' '//trim(cld_var_latitude))
-    call tiof_varlist_append (varlist, errstat, &
-                              cld_var_cloud_mask, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "cloud mask", &
-                              valid_range = [0.0_r8, 3.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist=att_cld)
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_chlorophyll, &
                               nf90_float, &
@@ -551,6 +543,16 @@ contains
                               valid_range = [0.0_r8, 65536.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_cld)
+    if (do_cloud_mask) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_cloud_mask, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "cloud mask", &
+                              valid_range = [0.0_r8, 3.0_r8], &
+                              fillvalue = fill_short, &
+                              attlist=att_cld)
+    endif
     if (squeeze) then
       call tiof_varlist_append (varlist, errstat, &
                               cld_var_wav_squeeze, &
@@ -641,7 +643,7 @@ contains
          do_mler, cloud_mask, rad_cld_frac, ps, shifts2, squeezes, &
          ref_clr, fill, wave_resid, resid, dIdR, reflect_cld, &
          refl, meas_qual_flg, biases2, stds2, chi_sqr2, chlorophyll, &
-         cld_pres2, eff_cld_frac2, qc2
+         cld_pres2, eff_cld_frac2, qc2, do_cloud_mask
     
     implicit none
 
@@ -655,9 +657,11 @@ contains
 
     obj => primary_output_file
 
-    call tiof_put2d_i2 (obj, cld_var_cloud_mask, [0,0], &
+    if (do_cloud_mask) then
+      call tiof_put2d_i2 (obj, cld_var_cloud_mask, [0,0], &
          [num_steps, num_xtrack], cloud_mask(1:num_xtrack,1:num_steps), &
          errstat)
+    endif
 
     call tiof_put2d_r4 (obj, cld_var_chlorophyll, [0,0], &
          [num_steps,num_xtrack], chlorophyll(0:num_xtrack-1,1:num_steps), &

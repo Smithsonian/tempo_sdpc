@@ -106,7 +106,7 @@ contains
          squeezes, stds, sza, theta, theta_oc, using_resid, & 
          using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
          wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
-         write_resid, ws, xsect_o3, test_solar, add_shift
+         write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -962,7 +962,7 @@ contains
         !update the cloud mask, if no contrast and high reflectivity
         !============================================================
         !to do, add more QC checks
-        if (allocated(cloud_mask)) then
+        if ((do_cloud_mask) .and. (allocated(cloud_mask))) then
           if (cloud_mask(ip+1,iLine) == 0 .and. reflec > refl_cld_mask) then
             if (.not.(btest(qc(ip,iLine),5))) then
               cloud_mask(ip+1,iLine) = 1

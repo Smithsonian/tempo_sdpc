@@ -100,9 +100,14 @@ program OMCLDRR
   !Get level 1 small pixel data and
   !compute cloud mask
   !===========================================================
-  if (iprt >= 1) print *,'cloud_ret: calling cld_mask'
-  call cld_mask()
-  if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
+  if (.not. read_he4) do_cloud_mask = .false.
+  if (do_cloud_mask) then
+    if (iprt >= 1) print *,'cloud_ret: calling cld_mask'
+    call cld_mask()
+    if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
+  else
+    if (iprt >= 1) print *,'skipping cloud mask'
+  endif
 
   !Get level 1 input data: 
   !radiance and solar irradiance spectra

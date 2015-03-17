@@ -171,7 +171,7 @@ contains
          dims2, rad_cld_frac, misval_r4, "Radiative Cloud Fraction", &
          "NoUnits", &
          offset=(/0,0/), iprt=iprt)
-    if (allocated(cloud_mask)) then 
+    if ((do_cloud_mask) .and. (allocated(cloud_mask))) then 
       status = put_data (swid, "CloudMask", &
            dims2, cloud_mask, misval_i2, "Cloud Mask", "NoUnits", &
            offset=(/0,0/), iprt=iprt)
