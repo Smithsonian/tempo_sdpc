@@ -157,7 +157,7 @@ $(msgdir)/PGS_OMCLDRR_52251:
 #
 # Name tables
 #
-NAME_FILE_BASENAMES = cld_names_dim cld_names_var
+NAME_FILE_BASENAMES = cld_names_dim cld_names_var cld_names_grp
 NAME_INCLUDE = cld_names.h
 
 cld-names:

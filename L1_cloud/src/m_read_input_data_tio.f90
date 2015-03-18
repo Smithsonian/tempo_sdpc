@@ -17,7 +17,7 @@ contains
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
          mflg, n_input, n_missing, nwl, w12d, qc, nwave, min_wl, &
-         ws, fs, nsolwave, read_he4
+         ws, fs, nsolwave, read_he4, status, Year, Month, Day, time
     use m_strpos
     use m_read_solar_data_tio
 
@@ -30,8 +30,11 @@ contains
     integer (kind=4), intent (inout) :: errstat
 
     !local variables
-    character (len=200) :: filenamepath, swathname
+    character (len = 200) :: filenamepath, swathname
+    character (len = 128) :: log_msg
+    character (len = 30) :: DateTime
     integer (kind = 4) :: i
+    integer (kind = 4) :: PGS_TD_TAItoUTC 
     logical :: uvswath
 
     type (tiof_file_type) :: tio_l1obj
@@ -102,15 +105,35 @@ contains
         endif
       endif
 
-    !Read in all geolocation data at once
-!    call read_cld_geo_data2(l1bfile, tio_l1obj, swathname, errstat)
-!    if(errstat /= 0) then 
-!      call tell_error (tell_io_read_error, &
-!           "read_cld_geo_data2: failed", &
-!           errstat)
-!      return
-!    endif
-!    if(iprt >=2) print *,'read_cld_geo_data2: success'
+      !If not reading he4, read in all geolocation data at once
+      if (.not. read_he4) then
+        call read_cld_geo_data2(l1bfile, tio_l1obj, swathname, errstat)
+        if(errstat /= 0) then 
+          call tell_error (tell_io_read_error, &
+               "read_cld_geo_data2: failed", &
+               errstat)
+          return
+        endif
+        if(iprt >=2) print *,'read_cld_geo_data2: success'
+      endif
+
+      !Need the month in order to read in correct calibration climatologies
+      !FIXME - eventually we'll want to remove dependence on PGS_TD_TAItoUTC
+      status = PGS_TD_TAItoUTC(time(1),DateTime)
+
+      if(status /= 0) then
+        call tell_error (tell_io_read_error, &
+               "read_input_data_tio: TAI time conversion failed", &
+               errstat)
+        month=1
+      else
+        read  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
+        write (log_msg, *) "Date is: ", Year, Month, Day
+        call tell_log (1, log_msg)
+        if (iprt >= 1) print *,log_msg
+      endif
+      if (iprt >= 3) print *,'wmin2 wmax2 ',wmin2,wmax2
+
 
     endif !iLine == 0
 
@@ -118,19 +141,20 @@ contains
     !----------------------------------------------------------------
     ! For each line of the input file
 
-    !Read in geolocation data line by line
-    call read_cld_geo_data(l1bfile, tio_l1obj, swathname, errstat)
-    if(errstat /= 0) then 
-      call tell_error (tell_io_read_error, &
-           "read_cld_geo_data: failed", &
-           errstat)
-      return
+    !If reading he4 and netCDF, read in geolocation data line by line
+    if (read_he4) then
+      call read_cld_geo_data(l1bfile, tio_l1obj, swathname, errstat)
+      if(errstat /= 0) then 
+        call tell_error (tell_io_read_error, &
+             "read_cld_geo_data: failed", &
+             errstat)
+        return
+      endif
+      if(iprt >=2) print *,'read_cld_geo_data: success'
     endif
-    if(iprt >=2) print *,'read_cld_geo_data: success'
 
     !Keep track of number of value input
     n_input = n_input + nXtrack
-
 
 
     !Check data quality flags, if data missing set radiance error flag
@@ -182,7 +206,7 @@ contains
     else 
       !check for missing data
       if (nwl > nWavel .or. nwl < min_wl) then
-        qc(:,iLine) = IBSET(qc(:,iLine),14)
+        qc(:,iLine) = ibset(qc(:,iLine),14)
         n_missing = n_missing + nXtrack 
         errstat=-1
         if (iprt >= 1) print *,'missing line ',iLine, nwl, nWavel, min_wl
@@ -398,7 +422,7 @@ contains
          [nLines,nXtrack], vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [0,0], &
          [nLines,nXtrack], terr_height, errstat)
-    call tiof_get2d_i2 (tio_l1obj, cld_var_gpqf, [0,0], &
+    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [0,0], &
          [nLines,nXtrack], geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
          [nLines,nXtrack], anomflg, errstat)
@@ -408,7 +432,7 @@ contains
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
-           "read_cld_geo_data: failed to read geolocation data", &
+           "read_cld_geo_data2: failed to read geolocation data", &
            errstat)
       return
     endif
@@ -592,7 +616,7 @@ contains
     stds2=fill_value
     chi_sqr=fill_value
     chi_sqr2=fill_value
-    land_flg=.FALSE.
+    land_flg=.false.
     chlcl=fill_value
     qc=0
     qc2=0
@@ -602,7 +626,6 @@ contains
     squeezes=1
 
   end subroutine alloc_scan
-
 
 
 

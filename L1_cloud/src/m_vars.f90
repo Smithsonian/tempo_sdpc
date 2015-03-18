@@ -72,8 +72,8 @@ module m_vars
   logical :: do_LER=.false. ! do Lambertian Equiv. Reflector version of calc.
   logical :: do_mler=.true. ! do Mixed LER version of calculation
   logical :: test_solar=.false. ! use solar spectrum as input data?
-  logical :: read_he4=.true. ! read he4 input file?
-  logical :: read_nc=.true. ! read netCDF input file?
+  logical :: read_he4=.true. ! read/write he4 input & he5 output files?
+  logical :: read_nc=.true. ! read/write netCDF input/output files?
   logical :: do_cloud_mask=.true. ! create cloud mask product?
 
   ! FILENAMES and PATHS

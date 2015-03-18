@@ -152,7 +152,7 @@ program OMCLDRR
         call read_input_data_tio(filename_in_nc, errstat)
         if(errstat /= 0) goto 999
       endif
- 
+
     endif ! start_line
 
     !get the climatological terrain pressure
@@ -218,46 +218,53 @@ program OMCLDRR
 
   !Write an output .he5 file
   !=========================
-  call write_output_data(filename_out,outswathname)
-  call write_output_data_2pres(filename_out,outswathname)
+  if (read_he4) then
+    call write_output_data(filename_out,outswathname)
+    call write_output_data_2pres(filename_out,outswathname)
+  endif
 
   !Write out an output .nc file
   !============================
-  ext_index=index(filename_out,'.he5')
-  filename_out_nc=filename_out(1:ext_index-1)//'.nc'
-  if (write_resid) then
-    call create_output_file(filename_out_nc,nTimes,nXtrack,err_code, &
-         size(wave_resid))
-  else
-    call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
-  endif
-  if (err_code /= 0) then
-    call tell_error (tell_io_write_error, &
+  if (read_nc) then
+    ext_index=index(filename_out,'.he5')
+    filename_out_nc=filename_out(1:ext_index-1)//'.nc'
+    if (write_resid) then
+      call create_output_file(filename_out_nc,nTimes,nXtrack,err_code, &
+           size(wave_resid))
+    else
+      call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
+    endif
+    if (err_code /= 0) then
+      call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
            err_code)
-    call exit(1)
-  endif
-  call close_output_file(err_code)
-  if (err_code /= 0) then
-    call tell_error (tell_io_write_error, &
+      call exit(1)
+    endif
+    call close_output_file(err_code)
+    if (err_code /= 0) then
+      call tell_error (tell_io_write_error, &
            "close_output_file: failed", &
            err_code)
-    call exit(1)
+      call exit(1)
+    endif
+    if (iprt > 0) print *,'netCDF file output successfully'
   endif
 
   !Writing Metadata including LocalGranuleId
   !=========================================
-  call write_HDFEOS_attr(filename_out,outswathname,err_code)
-  retstatus = RdWrMetadata(filename_out)
+  if (read_he4) then
+    call write_HDFEOS_attr(filename_out,outswathname,err_code)
+    retstatus = RdWrMetadata(filename_out)
 
-  ! close data block structure
-  status = L1Br_close( blk )
-  IF( status .NE. OMI_S_SUCCESS ) THEN
-    ierr = OMI_SMF_setmsg( status, &
-         "L1Br_close failed, PGE aborting, exit code = 1", &
-         "OMCLDRR_2pres", 1 )
-    call exit(1)
-  END IF
+    ! close data block structure
+    status = L1Br_close( blk )
+    IF( status .NE. OMI_S_SUCCESS ) THEN
+      ierr = OMI_SMF_setmsg( status, &
+           "L1Br_close failed, PGE aborting, exit code = 1", &
+           "OMCLDRR_2pres", 1 )
+      call exit(1)
+    END IF
+  endif
 
 
 

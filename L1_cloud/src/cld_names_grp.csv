@@ -1,0 +1,6 @@
+CLD_GRP_DIAGNOSTIC,"/diagnostic"
+CLD_GRP_GEOLOCATION,"/geolocation"
+CLD_GRP_METADATA,"/metadata"
+CLD_GRP_PRODUCT,"/product"
+CLD_GRP_QA_STATS,"/qa_statistics"
+CLD_GRP_SUPPORT_DATA,"/support_data"

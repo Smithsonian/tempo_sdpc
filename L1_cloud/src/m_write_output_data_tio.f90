@@ -20,17 +20,22 @@ module m_write_output_data_tio
 
 contains 
 
-  subroutine write_coordinate_vars (obj, num_steps, num_xtrack, &
+  subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, &
        errstat, num_wavel)
+    use m_vars, only: write_resid
     implicit none
     type (tiof_file_type), intent(in) :: obj
+    type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(in) :: num_steps, num_xtrack
     integer, intent(in), optional :: num_wavel
     integer, intent(inout) :: errstat
 
+    type (tiof_varlist_type) :: varlist
     integer, dimension(num_xtrack) :: xtrack_indices
     integer, dimension(num_steps) :: step_indices
     integer, dimension(:), allocatable :: wavel_indices
+    integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(3) :: dimids_wavel_xtrack_step
     integer :: i
 
     if (errstat /= 0) return
@@ -42,6 +47,32 @@ contains
            errstat)
       return
     endif
+
+    ! Define dimid arrays associated with common data field shapes.
+    call tiof_dimlist_lookup (dimlist, &
+                              [cld_dim_xtrack, cld_dim_step], &
+                              dimids_xtrack_step, &
+                              errstat)
+    if (write_resid) then
+      call tiof_dimlist_lookup (dimlist, &
+                             [cld_dim_channel, cld_dim_xtrack, cld_dim_step], &
+                             dimids_wavel_xtrack_step, &
+                             errstat)
+    endif
+
+    ! Make a list of variables with their dimension ids and attributes:
+
+    ! netcdf coordinate variables:
+    call tiof_varlist_append (varlist, errstat, cld_dim_xtrack, nf90_int, &
+                             dimids=[dimids_xtrack_step(1)])
+    call tiof_varlist_append (varlist, errstat, cld_dim_step, nf90_int, &
+                             dimids=[dimids_xtrack_step(2)])
+    if (write_resid) then
+      call tiof_varlist_append (varlist, errstat, cld_dim_channel, nf90_int, &
+                             dimids=[dimids_wavel_xtrack_step(1)])
+    endif
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_varlist_free (varlist)
 
     ! FIXME: eventually, this will be something like
     ! step_indices=[mirror_step_beg, ..., mirror_step_end]
@@ -92,6 +123,22 @@ contains
 
     call tiof_put_git_commit_hash (obj, errstat)
 
+    ! Create default groups.
+    call tiof_def_group (obj, cld_grp_product, errstat)
+    call tiof_def_group (obj, cld_grp_geolocation, errstat)
+    call tiof_def_group (obj, cld_grp_support_data, errstat)
+    call tiof_def_group (obj, cld_grp_qa_stats, errstat)
+    call tiof_def_group (obj, cld_grp_metadata, errstat)
+    if (write_resid) then
+      call tiof_def_group (obj, cld_grp_diagnostic, errstat)
+    endif
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_output_file:  defining groups in "//trim(outfile_nc), &
+                       errstat)
+      return
+    endif
+
     ! define the dimension list
     call tiof_dimlist_append (dimlist, cld_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, cld_dim_xtrack, num_xtrack, errstat)
@@ -106,26 +153,26 @@ contains
       return
     endif
 
+    ! coordinate variables
+    if (write_resid) then
+      call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat, &
+           num_wavel)
+    else
+      call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
+    endif
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+           "create_output_file: writing coordinate variables to "//trim(outfile_nc), &
+           errstat)
+      return
+    endif
+
     ! geolocation & cloud variable definitions
     call write_geo_struct (obj, dimlist, errstat)
     call write_cloud_struct (obj, dimlist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: writing variables to "//trim(outfile_nc), &
-           errstat)
-      return
-    endif
-
-    ! coordinate variables
-    if (write_resid) then
-      call write_coordinate_vars (obj, num_steps, num_xtrack, errstat, &
-           num_wavel)
-    else
-      call write_coordinate_vars (obj, num_steps, num_xtrack, errstat)
-    endif
-    if (errstat /= 0) then
-      call tell_error (tell_io_write_error, &
-           "create_output_file: writing coordinate variables to "//trim(outfile_nc), &
            errstat)
       return
     endif
@@ -179,7 +226,7 @@ contains
     use m_vars, only: write_resid
     implicit none
 
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -208,17 +255,6 @@ contains
     endif
 
     ! Make a list of variables with their dimension ids and attributes:
-
-    ! netcdf coordinate variables:
-    call tiof_varlist_append (varlist, errstat, cld_dim_xtrack, nf90_int, &
-                             dimids=[dimids_xtrack_step(1)])
-    call tiof_varlist_append (varlist, errstat, cld_dim_step, nf90_int, &
-                             dimids=[dimids_xtrack_step(2)])
-    if (write_resid) then
-      call tiof_varlist_append (varlist, errstat, cld_dim_channel, nf90_int, &
-                             dimids=[dimids_wavel_xtrack_step(1)])
-    endif
-
 
     ! Geolocation Fields with optional attribute lists
     call tiof_attlist_append (att_geo, errstat, "coordinates", &
@@ -308,7 +344,9 @@ contains
                               valid_range = [0.0_r8, 65535.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_geo)
+    call tiof_push_group (obj, cld_grp_geolocation, errstat)
     call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_geo)
 
@@ -335,6 +373,8 @@ contains
     if (errstat /= 0) return
 
     obj => primary_output_file
+
+    call tiof_push_group (obj, cld_grp_geolocation, errstat)
 
     call tiof_put2d_r4 (obj, cld_var_latitude, [0,0], &
          [num_steps, num_xtrack], lat(1:num_xtrack,1:num_steps), errstat)
@@ -365,6 +405,8 @@ contains
          [num_steps, num_xtrack], geoflg(1:num_xtrack,1:num_steps), &
          errstat)
 
+    call tiof_pop_group (obj, errstat)
+
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_geo_data: failed", errstat)
       return
@@ -375,11 +417,11 @@ contains
 
   subroutine write_cloud_struct(obj, dimlist, errstat)
     use m_vars, only: squeeze, write_fill, write_resid, cal_reflec, &
-         do_mler, do_cloud_mask
+         do_mler, do_cloud_mask, cloud_mask
 
     implicit none
 
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -411,6 +453,46 @@ contains
     call tiof_attlist_append (att_cld, errstat, "coordinates", &
                               att_text = trim(cld_var_longitude) &
                               //' '//trim(cld_var_latitude))
+
+    !Product group
+    call tiof_varlist_append (varlist, errstat, &
+                              cld_var_cld_press, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "cloud pressure for O3", &
+                              units = "hPa", &
+                              valid_range = [-1000.0_r8, 10000.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    call tiof_varlist_append (varlist, errstat, &
+                              cld_var_cld_frac, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "cloud fraction for O3", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    if (do_cloud_mask .and. allocated(cloud_mask)) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_cloud_mask, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "cloud mask", &
+                              valid_range = [0.0_r8, 3.0_r8], &
+                              fillvalue = fill_short, &
+                              attlist=att_cld)
+    endif
+
+    call tiof_push_group (obj, cld_grp_product, errstat)
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist)
+
+    !Support data group
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_chlorophyll, &
                               nf90_float, &
@@ -429,27 +511,6 @@ contains
                               comment = "terrain pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 2000.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    call tiof_varlist_append (varlist, errstat, &
-                              cld_var_cld_press, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "cloud pressure for O3", &
-                              units = "hPa", &
-                              valid_range = [-1000.0_r8, 10000.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    call tiof_varlist_append (varlist, errstat, &
-                              cld_var_cld_frac, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "cloud fraction for O3", &
-                              valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -496,6 +557,71 @@ contains
                               shuffle = shuffle, &
                               attlist=att_cld)
     call tiof_varlist_append (varlist, errstat, &
+                              cld_var_mqf, &
+                              nf90_short, &
+                              dimids = [dimids_xtrack_step(2)],  &
+                              comment = "measurement quality flags", &
+                              valid_range = [0.0_r8, 65536.0_r8], &
+                              fillvalue = fill_short, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    if (squeeze) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_wav_squeeze, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "wavelength squeeze", &
+                              valid_range = [0.0_r8, 10.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    endif
+    if (write_fill) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_filling_in, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "effective filling in", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    endif
+    if (.not. do_mler) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_cld_reflec, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "cloud reflectivity", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    endif
+    if (cal_reflec) then
+      call tiof_varlist_append (varlist, errstat, &
+                              cld_var_didr, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "radiance (fractional) refl. sens.", &
+                              valid_range = [0.0_r8, 100.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_cld)
+    endif
+
+    call tiof_push_group (obj, cld_grp_support_data, errstat)
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist)
+
+    !QA_statistics group
+    call tiof_varlist_append (varlist, errstat, &
                               cld_var_resid_bias, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -526,16 +652,6 @@ contains
                               shuffle = shuffle, &
                               attlist=att_cld)
     call tiof_varlist_append (varlist, errstat, &
-                              cld_var_mqf, &
-                              nf90_short, &
-                              dimids = [dimids_xtrack_step(2)],  &
-                              comment = "measurement quality flags", &
-                              valid_range = [0.0_r8, 65536.0_r8], &
-                              fillvalue = fill_short, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    call tiof_varlist_append (varlist, errstat, &
                               cld_var_pqf, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
@@ -543,40 +659,13 @@ contains
                               valid_range = [0.0_r8, 65536.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_cld)
-    if (do_cloud_mask) then
-      call tiof_varlist_append (varlist, errstat, &
-                              cld_var_cloud_mask, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "cloud mask", &
-                              valid_range = [0.0_r8, 3.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist=att_cld)
-    endif
-    if (squeeze) then
-      call tiof_varlist_append (varlist, errstat, &
-                              cld_var_wav_squeeze, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "wavelength squeeze", &
-                              valid_range = [0.0_r8, 10.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    endif
-    if (write_fill) then
-      call tiof_varlist_append (varlist, errstat, &
-                              cld_var_filling_in, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "effective filling in", &
-                              valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    endif
+
+    call tiof_push_group (obj, cld_grp_qa_stats, errstat)
+    call tiof_def_vars (obj, varlist, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist)
+
+    !Diagnostic group
     if (write_resid) then
       call tiof_varlist_append (varlist, errstat, &
                               cld_var_wav_resid, &
@@ -599,34 +688,13 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
-    endif
-    if (.not. do_mler) then
-      call tiof_varlist_append (varlist, errstat, &
-                              cld_var_cld_reflec, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "cloud reflectivity", &
-                              valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    endif
-    if (cal_reflec) then
-      call tiof_varlist_append (varlist, errstat, &
-                              cld_var_didr, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "radiance (fractional) refl. sens.", &
-                              valid_range = [0.0_r8, 100.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_cld)
-    endif
  
-    call tiof_def_vars (obj, varlist, errstat)
-    call tiof_varlist_free (varlist)
+      call tiof_push_group (obj, cld_grp_diagnostic, errstat)
+      call tiof_def_vars (obj, varlist, errstat)
+      call tiof_pop_group (obj, errstat)
+      call tiof_varlist_free (varlist)
+    endif
+
     call tiof_attlist_free (att_cld)
 
     if (errstat /= 0) then
@@ -643,7 +711,7 @@ contains
          do_mler, cloud_mask, rad_cld_frac, ps, shifts2, squeezes, &
          ref_clr, fill, wave_resid, resid, dIdR, reflect_cld, &
          refl, meas_qual_flg, biases2, stds2, chi_sqr2, chlorophyll, &
-         cld_pres2, eff_cld_frac2, qc2, do_cloud_mask
+         cld_pres2, eff_cld_frac2, qc2, do_cloud_mask, read_he4
     
     implicit none
 
@@ -657,19 +725,13 @@ contains
 
     obj => primary_output_file
 
-    if (do_cloud_mask) then
+    !Product group
+    call tiof_push_group (obj, cld_grp_product, errstat)
+    if (do_cloud_mask .and. allocated(cloud_mask)) then
       call tiof_put2d_i2 (obj, cld_var_cloud_mask, [0,0], &
          [num_steps, num_xtrack], cloud_mask(1:num_xtrack,1:num_steps), &
          errstat)
     endif
-
-    call tiof_put2d_r4 (obj, cld_var_chlorophyll, [0,0], &
-         [num_steps,num_xtrack], chlorophyll(0:num_xtrack-1,1:num_steps), &
-         errstat)
-
-!    ps=ps*1013.25
-    call tiof_put2d_r4 (obj, cld_var_terr_press, [0,0], &
-         [num_steps,num_xtrack], ps(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_cld_press, [0,0], &
          [num_steps,num_xtrack], cld_pres2(0:num_xtrack-1,1:num_steps), &
@@ -678,6 +740,19 @@ contains
     call tiof_put2d_r4 (obj, cld_var_cld_frac, [0,0], &
          [num_steps,num_xtrack], eff_cld_frac2(0:num_xtrack-1,1:num_steps), &
          errstat)
+
+    call tiof_pop_group (obj, errstat)
+
+    !Support_data group
+    call tiof_push_group (obj, cld_grp_support_data, errstat)
+
+    call tiof_put2d_r4 (obj, cld_var_chlorophyll, [0,0], &
+         [num_steps,num_xtrack], chlorophyll(0:num_xtrack-1,1:num_steps), &
+         errstat)
+
+    if (.not. read_he4) ps=ps*1013.25
+    call tiof_put2d_r4 (obj, cld_var_terr_press, [0,0], &
+         [num_steps,num_xtrack], ps(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_rad_cld_frac, [0,0], &
          [num_steps,num_xtrack], rad_cld_frac(0:num_xtrack-1,1:num_steps), &
@@ -692,18 +767,6 @@ contains
     call tiof_put1d_i2 (obj, cld_var_mqf, [0], &
          [-1], meas_qual_flg(1:num_steps), errstat)
 
-    call tiof_put2d_i2 (obj, cld_var_pqf, [0,0], &
-         [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
-
-    call tiof_put2d_r4 (obj, cld_var_resid_bias, [0,0], &
-         [num_steps,num_xtrack], biases2(0:num_xtrack-1,1:num_steps), errstat)
-
-    call tiof_put2d_r4 (obj, cld_var_resid_stddev, [0,0], &
-         [num_steps,num_xtrack], stds2(0:num_xtrack-1,1:num_steps), errstat)
-
-    call tiof_put2d_r4 (obj, cld_var_convergence_factor, [0,0], &
-         [num_steps,num_xtrack], chi_sqr2(0:num_xtrack-1,1:num_steps), errstat)
-
     call tiof_put2d_r4 (obj, cld_var_wav_shift, [0,0], &
          [num_steps,num_xtrack], shifts2(0:num_xtrack-1,1:num_steps), errstat)
 
@@ -717,14 +780,6 @@ contains
          [num_steps,num_xtrack], fill(0:num_xtrack-1,1:num_steps), errstat)
     endif
 
-    if (write_resid) then
-      call tiof_put1d_r4 (obj, cld_var_wav_resid, [0], &
-         [num_wavel], wave_resid(1:num_wavel), errstat)
-      call tiof_put3d_r4 (obj, cld_var_resid, [0,0,0], &
-         [num_steps,num_xtrack,num_wavel], &
-         resid(1:num_wavel,1:num_xtrack,1:num_steps), errstat)
-    endif
-
     if (.not. do_mler) then
       call tiof_put2d_r4 (obj, cld_var_cld_reflec, [0,0], &
          [num_steps,num_xtrack], reflect_cld(0:num_xtrack-1,1:num_steps), &
@@ -735,6 +790,36 @@ contains
       call tiof_put2d_r4 (obj, cld_var_didr, [0,0], &
          [num_steps,num_xtrack], dIdR(0:num_xtrack-1,1:num_steps), errstat)
     endif
+
+    call tiof_pop_group (obj, errstat)
+
+    !QA_statistics group
+    call tiof_push_group (obj, cld_grp_qa_stats, errstat)
+    call tiof_put2d_i2 (obj, cld_var_pqf, [0,0], &
+         [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
+
+    call tiof_put2d_r4 (obj, cld_var_resid_bias, [0,0], &
+         [num_steps,num_xtrack], biases2(0:num_xtrack-1,1:num_steps), errstat)
+
+    call tiof_put2d_r4 (obj, cld_var_resid_stddev, [0,0], &
+         [num_steps,num_xtrack], stds2(0:num_xtrack-1,1:num_steps), errstat)
+
+    call tiof_put2d_r4 (obj, cld_var_convergence_factor, [0,0], &
+         [num_steps,num_xtrack], chi_sqr2(0:num_xtrack-1,1:num_steps), errstat)
+
+    call tiof_pop_group (obj, errstat)
+
+    !Diagnostic group
+    if (write_resid) then
+      call tiof_push_group (obj, cld_grp_diagnostic, errstat)
+      call tiof_put1d_r4 (obj, cld_var_wav_resid, [0], &
+         [num_wavel], wave_resid(1:num_wavel), errstat)
+      call tiof_put3d_r4 (obj, cld_var_resid, [0,0,0], &
+         [num_steps,num_xtrack,num_wavel], &
+         resid(1:num_wavel,1:num_xtrack,1:num_steps), errstat)
+      call tiof_pop_group (obj, errstat)
+    endif
+
 
 
     if (errstat /= 0) then
@@ -801,7 +886,9 @@ contains
     call tiof_attlist_append (attlist, errstat, &
          "automatic_quality_flag_explanation", att_text=expl)
 
+    call tiof_push_group (obj, cld_grp_qa_stats, errstat)
     call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_pop_group (obj, errstat)
     call tiof_attlist_free (attlist)
 
     if (errstat /= 0) then
