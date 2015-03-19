@@ -17,7 +17,7 @@ contains
     ! !USES: read_resids reads precomputed resids spectra needed for cloud
     !               pressures
     !
-    use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt
+    use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt, read_he4
     use m_LUN_set
     use m_pgs_include
     Implicit NONE
@@ -43,15 +43,31 @@ contains
     !include 'PGS_SMF.f'
 
     version = 1
-    status = pgs_met_getPCAttr_i(L1B_LUN, version , "CoreMetadata.0", &
-         "OrbitNumber.1",OrbitNumber)
-    IF(status /= 0 ) THEN
-      ierr = OMI_SMF_setmsg( status, &
-           "Warning: Could not get orbit number", "read_resids", 1 )
-      ! "PGE aborting, exit code = 1", "read_resids", 1 )
-      !call exit(1)
-      OrbitNumber=1
-    ENDIF
+    !If reading from he4 input, get orbit number
+    if (read_he4) then
+      status = pgs_met_getPCAttr_i(L1B_LUN, version , "CoreMetadata.0", &
+           "OrbitNumber.1",OrbitNumber)
+      IF(status /= 0 ) THEN
+        ierr = OMI_SMF_setmsg( status, &
+             "Warning: Could not get orbit number", "read_resids", 1 )
+        ! "PGE aborting, exit code = 1", "read_resids", 1 )
+        !call exit(1)
+        OrbitNumber=1
+      ENDIF
+    else !use the orbit number in the PCF file
+      status = pgs_pc_getconfigdata(OrbNum_LUN,buf)
+      read(buf,*) OrbitNumber
+      if (status /= 0) then
+        ierr = OMI_SMF_setmsg( status, &
+             "Warning: Could not get orbit number from PCF", "read_resids", 1 )
+      endif
+      if (iprt >= 1) then
+        print *,'read_resids: using orbit number from PCF ',OrbitNumber
+      endif
+    endif
+
+
+
 
     status = pgs_pc_getconfigdata(ThreshOrbNum_LUN,buf)
     IF(status /= 0 ) THEN
