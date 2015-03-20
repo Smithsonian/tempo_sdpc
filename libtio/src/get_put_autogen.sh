@@ -126,11 +126,21 @@ colons=":"
 for dim in $dim_list ; do
   for typ in $int_type_list; do
     expand_template_array "get_array_int.in" "get" $typ $dim $colons
+    expand_template_array "put_array.in" "put" $typ $dim $colons
   done
   for typ in $real_type_list; do
     expand_template_array "get_array_real.in" "get" $typ $dim $colons
+    expand_template_array "put_array.in" "put" $typ $dim $colons
   done
-  for typ in $type_list; do
+  colons="${colons},:"
+done
+
+# support >3D arrays of selected types:
+big_dim_list="4 5 6"
+colons=":,:,:,:"
+for dim in $big_dim_list; do
+  for typ in $real_type_list; do
+    expand_template_array "get_array_real.in" "get" $typ $dim $colons
     expand_template_array "put_array.in" "put" $typ $dim $colons
   done
   colons="${colons},:"
