@@ -175,6 +175,7 @@ CONTAINS
       write_scattering_weights, write_amf_correction
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
+    use ctrlvars, only : yn_do_he5_output
     IMPLICIT NONE
 
     ! ---------------
@@ -259,7 +260,9 @@ CONTAINS
       ! Write the albedo to the output file he5
       ! ---------------------------------------
       IF (do_write) then
-        CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
+        if (yn_do_he5_output) then
+          CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
+        endif
         call write_albedo (albedo, nx, nt, errstat)
         if (errstat < 0) return
       endif
@@ -297,7 +300,9 @@ CONTAINS
       ! Write the climatology to the he5 file
       ! -------------------------------------
       IF (do_write) then
-        CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+        if (yn_do_he5_output) then
+          CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+        endif
         call write_gas_profile (climatology, cli_heights, nx, nt, CmETA, errstat)
         if (errstat < 0) return
       endif
@@ -346,7 +351,9 @@ CONTAINS
       ! Write out scattering weights, altitude grid and averaging kernels
       ! -----------------------------------------------------------------
       IF (do_write) then
-        CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
+        if (yn_do_he5_output) then
+          CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
+        endif
         call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
         if (errstat < 0) return
       endif
@@ -366,8 +373,10 @@ CONTAINS
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
     IF (do_write) then
-      CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
-                          amfgeo, amfdiag, l2cfr, l2ctp, locerrstat ) ! FIXME <-- (to be removed)
+      if (yn_do_he5_output) then
+        CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
+                            amfgeo, amfdiag, l2cfr, l2ctp, locerrstat ) ! FIXME <-- (to be removed)
+      endif
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_geometric => amfgeo
       amf_corr % diagnostic_flag => amfdiag

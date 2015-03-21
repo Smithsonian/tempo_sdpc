@@ -29,7 +29,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   use elsunc_interface_module, only : elsunc_optimizer
   use slitfunction, only : slitfunction_select, slitfunction_open
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
-  use ctrlvars, only: yn_use_labslitfunc
+  use ctrlvars, only: yn_use_labslitfunc, yn_do_he5_output
   use OMSAO_omidata_module, only : initialize_omidata_structs
   use OMSAO_variables_module, only : allocate_refspec_storage, &
     allocate_common_mode_storage, common_mode_spec
@@ -53,6 +53,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ------------------------------------------------------------------
   INTEGER   (KIND=i4)      :: errstat, pge_idx !pge_error_status
   CHARACTER (LEN=12) :: pge_name
+  integer :: env_variable_status
 
   ! --------------------------------------------------------------------
   ! Maximum number of points in any reference spectrum. This is used for
@@ -70,6 +71,10 @@ SUBROUTINE OMSAO_main ( exit_value )
   errstat = 0
 
   call tell_set_log_level (1)
+
+  ! Do he5 output unless this environment variable is set.
+  call get_environment_variable ("TG_NO_HE5_OUTPUT", status=env_variable_status)
+  yn_do_he5_output = (env_variable_status == 1 .or. env_variable_status == 2)
 
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered

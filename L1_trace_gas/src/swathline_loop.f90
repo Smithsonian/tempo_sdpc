@@ -14,7 +14,7 @@ SUBROUTINE swathline_loops (                               &
     n_fitvar_rad, l1b_rad_filename, n_fincol_idx, fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, &
     fitvar_rad_init, fitvar_rad_saved
-  use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run
+  use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_do_he5_output
   USE OMSAO_omidata_module,    ONLY:  &
     omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
@@ -301,13 +301,15 @@ SUBROUTINE swathline_loops (                               &
                                 errstat)
       if (errstat < 0) return
 
-      CALL he5_write_radfit_output (                            &
-        pge_idx, iline, nx, nblock, fpix, lpix,              &
-        all_fitted_columns (1:n_fitvar_rad,1:nx,0:nblock-1), &
-        all_fitted_errors  (1:n_fitvar_rad,1:nx,0:nblock-1), &
-        correlation_columns(1:n_fitvar_rad,1:nx,0:nblock-1), &
-        omi_fitspc,locerrstat )
-      errstat = MAX ( errstat, locerrstat )
+      if (yn_do_he5_output) then
+        CALL he5_write_radfit_output (                            &
+          pge_idx, iline, nx, nblock, fpix, lpix,              &
+          all_fitted_columns (1:n_fitvar_rad,1:nx,0:nblock-1), &
+          all_fitted_errors  (1:n_fitvar_rad,1:nx,0:nblock-1), &
+          correlation_columns(1:n_fitvar_rad,1:nx,0:nblock-1), &
+          omi_fitspc,locerrstat )
+        errstat = MAX ( errstat, locerrstat )
+      endif
 
     END IF
 

@@ -40,7 +40,7 @@ module ctrlvars
 
   logical, public :: yn_remove_target
 
-  ! FIXME JCH temporary switch for tempo development
-  logical, public :: yn_disable_omi_features
+  ! FIXME JCH temporary switches for tempo development
+  logical, public :: yn_disable_omi_features, yn_do_he5_output
 
 end module

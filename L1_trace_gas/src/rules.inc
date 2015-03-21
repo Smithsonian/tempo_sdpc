@@ -248,6 +248,7 @@ $(ODIR)/OMSAO_parameters_module.o: $(SDIR)/OMSAO_parameters_module.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/OMSAO_parameters_module.f90 -o $(ODIR)/OMSAO_parameters_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_pixelcorner_module.o: $(SDIR)/OMSAO_pixelcorner_module.f90 \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/datafields.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
@@ -327,6 +328,7 @@ $(ODIR)/OMSAO_variables_module.o: $(SDIR)/OMSAO_variables_module.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/OMSAO_variables_module.f90 -o $(ODIR)/OMSAO_variables_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_wfamf_module.o: $(SDIR)/OMSAO_wfamf_module.f90 \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/datafields.o \
   $(ODIR)/ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \

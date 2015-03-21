@@ -48,6 +48,7 @@ CONTAINS
     use datafields, only: pxclat_field, pxclon_field
     USE OMSAO_he5_module, ONLY:  he5_start_2d, he5_stride_2d, &
       he5_edge_2d, pge_swath_id, HE5_SWWRFLD
+    use ctrlvars, only : yn_do_he5_output
 
     IMPLICIT NONE
 
@@ -128,11 +129,15 @@ CONTAINS
       he5_edge_2d   = (/ nxtrack+1, nchunk /)
 
       cor_latlon(0:nxtrack,1:nchunk) = REAL(corner_lat(0:nxtrack,iline:iline+nchunk-1), KIND=r4 )
-      estat = HE5_SWWRFLD ( pge_swath_id, pxclat_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
-        cor_latlon(0:nxtrack,1:nchunk) )
+      if (yn_do_he5_output) then
+        estat = HE5_SWWRFLD ( pge_swath_id, pxclat_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
+                             cor_latlon(0:nxtrack,1:nchunk) )
+      endif
       cor_latlon(0:nxtrack,1:nchunk) = REAL(corner_lon(0:nxtrack,iline:iline+nchunk-1), KIND=r4 )
-      estat = HE5_SWWRFLD ( pge_swath_id, pxclon_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
-        cor_latlon(0:nxtrack,1:nchunk) )
+      if (yn_do_he5_output) then
+        estat = HE5_SWWRFLD ( pge_swath_id, pxclon_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
+                             cor_latlon(0:nxtrack,1:nchunk) )
+      endif
 
     END DO
     !DEALLOCATE (cor_latlon)

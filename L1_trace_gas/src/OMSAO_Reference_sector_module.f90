@@ -48,6 +48,7 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
     use OMSAO_indices_module, only : pge_hcho_idx
     use output_tools, only : write_reference_sector_corrected_column
+    use ctrlvars, only : yn_do_he5_output
     !USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
     ! This subroutine is a wrapper for the Reference Background corre
@@ -162,10 +163,12 @@ CONTAINS
     ! Final step to output the results, the new reference
     ! sector corrected total columns
     ! ---------------------------------------------------
-    CALL he5_write_reference_sector_corrected_column &   ! FIXME <-- (to be removed)
-      (pge_idx, &
-       ntimes, nxtrack, int_saocol, &!int_saodco,
-       locerrstat)
+    if (yn_do_he5_output) then
+      CALL he5_write_reference_sector_corrected_column &   ! FIXME <-- (to be removed)
+        (pge_idx, &
+         ntimes, nxtrack, int_saocol, &!int_saodco,
+         locerrstat)
+    endif
     if (pge_idx == pge_hcho_idx) then
       call write_reference_sector_corrected_column (nxtrack, ntimes, int_saocol, errstat)
       if (errstat < 0) return

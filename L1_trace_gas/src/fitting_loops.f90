@@ -23,7 +23,7 @@ CONTAINS
       database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg, 
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
-    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp
+    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp, yn_do_he5_output
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE OMSAO_omidata_module, ONLY: omi_nwav_radref, omi_nwav_rad, &
@@ -397,7 +397,7 @@ CONTAINS
     endif
 
     ! CCM Write splined/convolved databases if necessary
-    IF( yn_diagnostic_run ) THEN
+    IF( yn_diagnostic_run .and. yn_do_he5_output) THEN
       ! omi_database maybe omi_database_wvl?
       CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &  ! FIXME <-- (to be removed)
                                   omi_database_wvl(1:adj_num, 1:nxtrack_max), &

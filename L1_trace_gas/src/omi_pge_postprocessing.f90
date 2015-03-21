@@ -24,7 +24,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
   !USE OMSAO_errstat_module
-  use ctrlvars, only: yn_radiance_reference, yn_refseccor
+  use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
   USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, &
@@ -149,9 +149,11 @@ SUBROUTINE omi_pge_postprocess ( &
     pge_idx, ntimes, nxtrack, xtrange, &
     saocol, saodco, saorms, saofcf, fit_stats, errstat) ! locerrstat )
   if (errstat < 0) return
-  CALL he5_write_fitting_statistics ( &  ! FIXME <--- to be removed
-    pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
-    fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
+  if (yn_do_he5_output) then
+    CALL he5_write_fitting_statistics ( &  ! FIXME <--- to be removed
+      pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
+      fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
+  endif
   !errstat = max(locerrstat, errstat)
   ! ---------------------------------------
   ! Apply cross-track destriping correction

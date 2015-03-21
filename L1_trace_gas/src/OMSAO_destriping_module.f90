@@ -1029,6 +1029,7 @@ CONTAINS
       he5_start_2d, he5_stride_2d, he5_edge_2d, &
       pge_swath_id, he5_swwrfld !,yn_output_diag
     use datafields, only: dstrcol_field, xtrcor_field
+    use ctrlvars, only : yn_do_he5_output
     IMPLICIT NONE
 
     ! ---------------
@@ -1064,14 +1065,16 @@ CONTAINS
       ! -------------
       ! Write columns
       ! -------------
-      locerrstat = HE5_SWwrfld ( pge_swath_id, TRIM(ADJUSTL(dstrcol_field)),         &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, saocol(1:nxtrack,iline:iline+ntimes_loop-1) )
+      if (yn_do_he5_output) then
+        locerrstat = HE5_SWwrfld ( pge_swath_id, TRIM(ADJUSTL(dstrcol_field)),         &
+                                  he5_start_2d, he5_stride_2d, he5_edge_2d, saocol(1:nxtrack,iline:iline+ntimes_loop-1) )
+      endif
 
       ! ----------------------------------------------
       ! Write X-Track pattern ("diagnostic" runs only)
       ! ----------------------------------------------
       !FIXME IF ( yn_diagnostic_run .AND. yn_output_diag(xtrcor_didx) )                 &
-      if (yn_diagnostic_run) &
+      if (yn_diagnostic_run .and. yn_do_he5_output) &
         locerrstat = HE5_SWwrfld ( pge_swath_id, TRIM(ADJUSTL(xtrcor_field)), &
         he5_start_2d, he5_stride_2d, he5_edge_2d, xtrack_cor(1:nxtrack,iline:iline+ntimes_loop-1) )
     END DO

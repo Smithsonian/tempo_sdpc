@@ -140,7 +140,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
-    yn_diagnostic_run, yn_remove_target, yn_disable_omi_features
+    yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, yn_do_he5_output
   USE OMSAO_he5_module,       ONLY:  pge_swath_name
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
@@ -371,12 +371,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
   !        netcdf output file creation occurs a bit later after some output dimensions
   !        have been determined
-  errstat = HE5_Init_Swath ( l2_filename, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
-  if (errstat < 0) return
-
-  CALL he5_initialize_datafields ( )
-  errstat = HE5_Define_Fields ( pge_idx, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
-  if (errstat < 0) return
+  if (yn_do_he5_output) then
+    errstat = HE5_Init_Swath ( l2_filename, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
+    if (errstat < 0) return
+    
+    CALL he5_initialize_datafields ( )
+    errstat = HE5_Define_Fields ( pge_idx, pge_swath_name, ntimes_rad, nxtrack_rad, CmETA )
+    if (errstat < 0) return
+  endif
 
   ! -----------------------------------------------------------------------------------
   ! If we are NOT using a radiance reference, then we need to read the
@@ -463,7 +465,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! overwritten in the call to XTRACK_RADIANCE_REFERENCE_LOOP
     ! below, hence we need to write them out here.
     ! -------------------------------------------------------------
-    CALL he5_write_wavcal_output ( nxtrack_rad, first_pix, last_pix, errstat ) ! FIXME (to be removed)
+    if (yn_do_he5_output) then
+      CALL he5_write_wavcal_output ( nxtrack_rad, first_pix, last_pix, errstat ) ! FIXME (to be removed)
+    endif
     call write_wavcal_output (result_vars, nxtrack_rad, errstat)
     if (errstat < 0) return
 
@@ -569,7 +573,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     IF ( yn_diagnostic_run ) then
       write(logmsg,'(a,i4)')'omi_fitting: writing out common mode, n_comm_wvl=',n_comm_wvl
       call tell_log (1, logmsg)
-      CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, errstat ) ! FIXME <-- (to be removed)
+      if (yn_do_he5_output) then
+        CALL he5_write_common_mode ( nxtrack_rad, n_comm_wvl, errstat ) ! FIXME <-- (to be removed)
+      endif
       call write_common_mode (nxtrack_rad, n_comm_wvl, common_mode_spec, errstat)
       if (errstat < 0) return
     endif
@@ -633,8 +639,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! information only BEFORE the target has been removed.
   ! -------------------------------------------------------------------
   IF ( .NOT. (yn_radiance_reference .AND. yn_remove_target) ) THEN
-    CALL he5_write_wavcal_output ( nxtrack_rr, first_pix, last_pix, errstat ) ! FIXME (to be removed)
-    if (errstat < 0) return
+    if (yn_do_he5_output) then
+      CALL he5_write_wavcal_output ( nxtrack_rr, first_pix, last_pix, errstat ) ! FIXME (to be removed)
+      if (errstat < 0) return
+    endif
     call write_wavcal_output (result_vars, nxtrack_rr, errstat)
     if (errstat < 0) return
 
@@ -724,28 +732,34 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------
   call write_fitting_statistics (fit_stats, correlation_names, n_fitvar_rad, errstat)
   if (errstat < 0) return
-  errstat = he5_write_global_attributes (fit_stats) ! FIXME <-- (to be removed)
-  if (errstat < 0) then
-    call tell_error (tell_io_write_error, &
-                     "omi_fitting: he5_write_global_attributes failed", &
-                     errstat)
-    return
+  if (yn_do_he5_output) then
+    errstat = he5_write_global_attributes (fit_stats) ! FIXME <-- (to be removed)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "omi_fitting: he5_write_global_attributes failed", &
+                       errstat)
+      return
+    endif
   endif
 
-  errstat = he5_write_swath_attributes ( pge_idx ) ! FIXME <-- (to be removed)
-  if (errstat < 0) then
-    call tell_error (tell_io_write_error, &
-                     "omi_fitting: he5_write_swath_attributes failed", &
-                     errstat)
-    return
+  if (yn_do_he5_output) then
+    errstat = he5_write_swath_attributes ( pge_idx ) ! FIXME <-- (to be removed)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "omi_fitting: he5_write_swath_attributes failed", &
+                       errstat)
+      return
+    endif
   endif
 
-  errstat = he5_set_field_attributes ( pge_idx ) ! FIXME <-- (to be removed)
-  if (errstat < 0) then
-    call tell_error (tell_io_write_error, &
-                     "omi_fitting: he5_set_field_attributes failed", &
-                     errstat)
-    return
+  if (yn_do_he5_output) then
+    errstat = he5_set_field_attributes ( pge_idx ) ! FIXME <-- (to be removed)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "omi_fitting: he5_set_field_attributes failed", &
+                       errstat)
+      return
+    endif
   endif
   ! -----------------
   ! Close output file
@@ -753,12 +767,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   call close_output_file (errstat)
   if (errstat < 0) return
 
-  errstat = he5_close_output_file ( pge_idx)  ! FIXME <-- (to be removed)
-  if (errstat < 0) then
-    call tell_error (tell_io_error, &
-                     "omi_fitting: he5_close_output_file failed", &
-                     errstat)
-    return
+  if (yn_do_he5_output) then
+    errstat = he5_close_output_file ( pge_idx)  ! FIXME <-- (to be removed)
+    if (errstat < 0) then
+      call tell_error (tell_io_error, &
+                       "omi_fitting: he5_close_output_file failed", &
+                       errstat)
+      return
+    endif
   endif
 
   ! ----------------------------------------
