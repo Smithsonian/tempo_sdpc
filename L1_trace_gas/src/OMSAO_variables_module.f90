@@ -325,6 +325,7 @@ contains
       return      
     endif
     cms % num_wavelengths(:) = 0
+    cms % CCDPixel (:,:) = 0
     
   end subroutine allocate_common_mode_storage
 
