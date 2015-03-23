@@ -83,6 +83,13 @@ contains
           iarg = iarg + 1
           call GetArg ( iArg, argv )
           read(argv,*,err=500) iprt
+        else if(index(argv,'-nc_swath ') > 0) then
+          if ( iarg+1 > argc ) call ret_usage()
+          iarg = iarg + 1
+          call GetArg ( iArg, argv )
+          read(argv,*,err=500) nc_swathname
+        else if(index(argv,'-nc_only ') > 0) then
+          read_he4 = .false.
         else if(index(argv,'-noret ') > 0) then
           noret = .true.
         endif
@@ -99,7 +106,7 @@ contains
     status=1
     returnstatus=1
     if (iprt > 0) print *,'initialize: checking for pcf file'
-    call getenv('PGS_PC_INFO_FILE',pcfpath)
+    call get_environment_variable('PGS_PC_INFO_FILE',pcfpath)
     inquire(file=pcfpath,exist=ex)
     if (iprt > 0) print *,'initialize: file status ',ex
     if (ex) then
@@ -219,6 +226,11 @@ contains
     print *, '-p  iprt    printout level flag (1:least amount of '
     print *, '             (printout, >1 more printouts, default=1)'
     print *, '                                             '
+    print *, '-nc_swath <swathname> override the default netCDF'
+    print *, '                      swathname'
+    print *
+    print *, '-nc_only    read and write netCDF files only, no he4/5'
+    print *
     print *, '-noret      do not actually perform retrieval (for testing)'    
     print *
     print *, "Last Revised: 20 August 2014      (E. O'Sullivan)  "

@@ -17,7 +17,8 @@ contains
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
          mflg, n_input, n_missing, nwl, w12d, qc, nwave, min_wl, &
-         ws, fs, nsolwave, read_he4, status, Year, Month, Day, time
+         ws, fs, nsolwave, read_he4, status, Year, Month, Day, time, &
+         nc_swathname
     use m_strpos
     use m_read_solar_data_tio
 
@@ -35,7 +36,6 @@ contains
     character (len = 30) :: DateTime
     integer (kind = 4) :: i
     integer (kind = 4) :: PGS_TD_TAItoUTC 
-    logical :: uvswath
 
     type (tiof_file_type) :: tio_l1obj
 
@@ -43,16 +43,8 @@ contains
 
     !set file path+name, swath name
     filenamepath=trim(input_data_path)//l1bfile
-    uvswath = strpos (l1bfile, 'BRUG') > 0
-    if (uvswath) then
-      swathname = "band_540_740_nm"
-    else
-      errstat=-1
-      call tell_error (tell_invalid_parm, &
-           "read_input_data_tio: input file is not OMI L1 UV swath", &
-           errstat)
-      return
-    endif
+    swathname = trim(nc_swathname)
+
     if (iLine == 0) then
       !-----------------------------------------------------------------
       !If on first line, perform some setup

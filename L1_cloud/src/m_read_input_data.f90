@@ -79,7 +79,7 @@ contains
       filenamen=trim(input_data_path)//filename
       !      vis  = strpos (filename, 'BRVG') > 0
       !      visz = strpos (filename, 'BRVZ') > 0
-      uvsz = strpos (filename, 'BRUZ') > 0
+      !      uvsz = strpos (filename, 'BRUZ') > 0
       !      if (visz) then
       !        swathname = visswathz
       !      else if (uvsz) then
@@ -89,11 +89,11 @@ contains
       !      else
       !        swathname = uv2swath
       !      endif
-      if (uvsz) then
-        swathname = uv2swathz
-      else
+      !if (uvsz) then
+      !  swathname = uv2swathz
+      !else
         swathname = uv2swath
-      endif
+      !endif
 
       if (wrt_solar) then
         wmin=355

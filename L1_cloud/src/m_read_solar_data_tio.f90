@@ -13,7 +13,7 @@ contains
   subroutine read_solar_data_tio(errstat)
     !read in a netCDF irradiance file
     use m_vars, only: fs, nsolwave, iprt, status, dist_rad, dist_irrad, &
-         filename
+         filename, nc_swathname
     use m_lambda_qual
     use m_LUN_set
     use m_pgs_include
@@ -49,7 +49,7 @@ contains
     filename_sol_nc=filename_sol(1:ext_index-1)//'.nc'
 
     !open IRR1B file
-    swathname="band_540_740_nm"
+    swathname=trim(nc_swathname)
 
     if (iprt >= 2) then
       print *,'read_solar_data_tio: opening ',trim(filename_sol_nc),' ', &

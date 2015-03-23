@@ -89,7 +89,7 @@ module m_vars
   character(len=255) :: outswathname='Cloud Product' ! in output file
   character(len=255) :: ring_file_pre='ring_tab_omi_p' !Ring effect table
   character(len=255) :: ring_file_suf='.dat' !Rifng effect table suffix
- 
+  character(len=255) :: nc_swathname='band_540_740_nm' !netCDF input swathname
 
   ! FLAGS
   logical, allocatable, dimension (:) :: land_flg ! pixel on land?
