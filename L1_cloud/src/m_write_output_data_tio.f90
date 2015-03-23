@@ -203,6 +203,16 @@ contains
     !Free dimension list
     call tiof_dimlist_free (dimlist)
 
+    !Close the netCDF file
+    call close_output_file (errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "create_output_file: unable to close file "//trim(outfile_nc), &
+           errstat)
+      return
+    endif
+
+
   end subroutine create_output_file
 
 
