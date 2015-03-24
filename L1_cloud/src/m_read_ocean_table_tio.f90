@@ -1,12 +1,12 @@
 ! Read in netCDF Ocean Ring effect reference data
-module m_read_ocean_data_tio
+module m_read_ocean_table_tio
 
   private
-  public read_ocean_data_tio
+  public read_ocean_table_tio
 
 contains
 
-  subroutine read_ocean_data_tio (errstat)
+  subroutine read_ocean_table_tio (errstat)
 
     use m_vars, only: nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl, &
          oc_perms, nwave2, wgrid_out_oc, wgrid_oc, oc_table, w_grid, &
@@ -88,9 +88,9 @@ contains
            wgrid_oc(nwave_oc), ocrefl(nocrefl), chl(nchl), stat=errstat)
     endif
     !Temporary arrays for value checking
-    allocate (oc_perms(nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl), &
-         wgrid_out_oc(nwave_oc), theta_oc(nthet_oc), scan_oc(nscan_oc), &
-         phi_oc(nphi_oc), wgrid_oc(nwave_oc), ocrefl(nocrefl), chl(nchl), &
+    allocate (t_oc_perms(nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl), &
+         t_wgrid_out_oc(nwave_oc), t_theta_oc(nthet_oc), t_scan_oc(nscan_oc), &
+         t_phi_oc(nphi_oc), t_ocrefl(nocrefl), t_chl(nchl), &
          stat=errstat)
 
     if (errstat /= 0) then
@@ -101,10 +101,10 @@ contains
     endif
 
     !Read in data
-    call tiof_get6d_r4 (tio_oc_obj, "oc_perms", [0,0,0,0,0,0], &
-       [nchl, nocrefl, nphi_oc, nscan_oc, nthet_oc, nwave_oc], &
-       t_oc_perms(1:nwave_oc,1:nthet_oc,1:nscan_oc,1:nphi_oc,1:nocrefl,1:nchl), &
-       errstat)
+!    call tiof_get6d_r4 (tio_oc_obj, "oc_perms", [0,0,0,0,0,0], &
+!       [nchl, nocrefl, nphi_oc, nscan_oc, nthet_oc, nwave_oc], &
+!       t_oc_perms(1:nwave_oc,1:nthet_oc,1:nscan_oc,1:nphi_oc,1:nocrefl,1:nchl), &
+!       errstat)
     call tiof_get1d_r8 (tio_oc_obj, "chl", [0], [nchl], &
          t_chl (1:nchl), errstat)
     call tiof_get1d_r8 (tio_oc_obj, "ocrefl", [0], [nocrefl], &
@@ -134,9 +134,7 @@ contains
     if (any(abs(t_phi_oc - phi_oc) > tol)) print *, "mismatch: phi_oc"
     if (any(abs(t_scan_oc - scan_oc) > tol)) print *, "mismatch: scan_oc"
     if (any(abs(t_theta_oc - theta_oc) > tol)) print *, "mismatch: theta_oc"
-    if (any(abs(t_wgrid_out_oc - wgrid_out_oc) > tol)) &
-         print *, "mismatch: wgrid_out_oc"
-    if (any(abs(t_oc_perms - oc_perms) > tol)) print *, "mismatch: oc_perms"
+!    if (any(abs(t_oc_perms - oc_perms) > tol)) print *, "mismatch: oc_perms"
 
     !Temporary: copy values
     chl = t_chl
@@ -145,7 +143,7 @@ contains
     scan_oc = t_scan_oc
     theta_oc = t_theta_oc
     wgrid_out_oc = t_wgrid_out_oc
-    oc_perms = t_oc_perms
+!    oc_perms = t_oc_perms
 
     ! Reformatting
     wgrid_oc=wgrid_out_oc
@@ -172,7 +170,7 @@ contains
     deallocate(oc_perms)
     deallocate(wgrid_out_oc)
 
-    end subroutine read_ocean_data_tio
+    end subroutine read_ocean_table_tio
 
-end module m_read_ocean_data_tio
+end module m_read_ocean_table_tio
  

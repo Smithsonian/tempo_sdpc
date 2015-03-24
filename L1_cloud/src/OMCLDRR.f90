@@ -81,7 +81,7 @@ program OMCLDRR
 
   !Assign name and open output file
   !======================================
-  if (ex .and. read_he4) then
+  if (ex) then
     version = 1
     status = pgs_pc_getreference(L2_out,version,flnm_out)
     if(status.ne.0) then
