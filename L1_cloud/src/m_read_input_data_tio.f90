@@ -580,7 +580,7 @@ contains
          stat=errstat)
     if (errstat /= 0) then
             call tell_error (tell_malloc_error, &
-           "alloc_scan: allocation failure: lat", &
+           "alloc_scan: allocation failure", &
            errstat)
       return
     endif

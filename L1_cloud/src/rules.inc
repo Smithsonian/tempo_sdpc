@@ -140,6 +140,12 @@ $(ODIR)/m_read_ocean_table.o: $(SDIR)/m_read_ocean_table.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_ocean_table.f90 -o $(ODIR)/m_read_ocean_table.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_ocean_table_tio.o: $(SDIR)/m_read_ocean_table_tio.f90 \
+  $(ODIR)/m_interpol.o \
+  $(ODIR)/m_LUN_set.o \
+  $(ODIR)/m_pgs_include.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_ocean_table_tio.f90 -o $(ODIR)/m_read_ocean_table_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_resid.o: $(SDIR)/m_read_resid.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \
