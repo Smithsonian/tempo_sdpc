@@ -8,7 +8,6 @@ program OMCLDRR
   use m_read_input_data
   use m_read_input_data_tio
   use m_read_tables
-  use m_read_ocean_table
   use m_read_ocean_table_tio
   use m_write_output_data
   use m_write_output_data_2pres
@@ -73,7 +72,6 @@ program OMCLDRR
   !===========================================
   if (iprt > 1) print *,'cloud_ret: reading_tables'
   call read_tables(err_code)
-  call read_ocean_table(err_code)
   call read_ocean_table_tio(err_code)
   call read_thresholds(err_code)
   if (using_resid) call read_resids

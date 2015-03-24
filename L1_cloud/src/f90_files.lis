@@ -31,7 +31,6 @@ m_print_ret.f90
 m_rd_chl.f90
 m_rd_terr.f90
 m_rd_toms_refl.f90
-m_read_ocean_table.f90
 m_read_ocean_table_tio.f90
 m_read_resid.f90
 m_read_tables.f90
