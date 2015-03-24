@@ -593,6 +593,7 @@ contains
     meas_qual_flg = 0
     cloud_pres=fill_value
     azimuth=fill_value
+    refl=fill_value
     dIdR=fill_value
     ps=fill_value
     ref_clr=fill_value
@@ -618,8 +619,6 @@ contains
     squeezes=1
 
   end subroutine alloc_scan
-
-
 
 
 end module m_read_input_data_tio

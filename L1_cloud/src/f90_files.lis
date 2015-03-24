@@ -33,7 +33,7 @@ m_rd_terr.f90
 m_rd_toms_refl.f90
 m_read_ocean_table_tio.f90
 m_read_resid.f90
-m_read_tables.f90
+m_read_tables_tio.f90
 m_read_thresholds.f90
 m_sigma.f90
 m_spline.f90

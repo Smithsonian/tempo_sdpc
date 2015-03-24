@@ -7,7 +7,7 @@ program OMCLDRR
   use m_initialize
   use m_read_input_data
   use m_read_input_data_tio
-  use m_read_tables
+  use m_read_tables_tio
   use m_read_ocean_table_tio
   use m_write_output_data
   use m_write_output_data_2pres
@@ -71,8 +71,15 @@ program OMCLDRR
   !Read in pre-computed Ring and radiance data
   !===========================================
   if (iprt > 1) print *,'cloud_ret: reading_tables'
-  call read_tables(err_code)
+  call read_tables_tio(err_code)
   call read_ocean_table_tio(err_code)
+    if (err_code /= 0) then
+      call tell_error (tell_io_read_error, &
+           "Failed to read Ring-effect tables", &
+           err_code)
+      call exit(1)
+    endif
+  
   call read_thresholds(err_code)
   if (using_resid) call read_resids
   if (do_o3) call read_o3

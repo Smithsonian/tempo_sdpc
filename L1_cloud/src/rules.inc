@@ -151,6 +151,11 @@ $(ODIR)/m_read_tables.o: $(SDIR)/m_read_tables.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_tables.f90 -o $(ODIR)/m_read_tables.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_tables_tio.o: $(SDIR)/m_read_tables_tio.f90 \
+  $(ODIR)/m_LUN_set.o \
+  $(ODIR)/m_pgs_include.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_read_tables_tio.f90 -o $(ODIR)/m_read_tables_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_thresholds.o: $(SDIR)/m_read_thresholds.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \
