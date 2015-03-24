@@ -108,7 +108,7 @@ CONTAINS
     ! -----------------------
     ! Initialize error status
     ! -----------------------
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
 
     ! -----------------------------------------------------------
     ! Open HE5 output file and check SWATH_FILE_ID ( -1 if error)
@@ -616,7 +616,7 @@ CONTAINS
     ! -----------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
-    errstat = pge_errstat_ok
+    !errstat = pge_errstat_ok
 
     ! ------------------------------------
     ! De-allocate memory for global arrays
