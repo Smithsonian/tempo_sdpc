@@ -15,14 +15,14 @@ LNFLAGS    = #
 ADDLIBD    = #
 ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
 
-ifeq ($(COMPILER_SUITE), gnu)
-  FCONVERT = -fconvert=swap
-endif
-ifeq ($(COMPILER_SUITE), intel)
-  FCONVERT = -convert big_endian
-endif
+#ifeq ($(COMPILER_SUITE), gnu)
+#  FCONVERT = -fconvert=swap
+#endif
+#ifeq ($(COMPILER_SUITE), intel)
+#  FCONVERT = -convert big_endian
+#endif
 
-FCFLAGS  = $(MODFLG) ./ $(FFLAGS) $(FCONVERT)
+FCFLAGS  = $(MODFLG) ./ $(FFLAGS) #$(FCONVERT)
 CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
 
 #---------------------------------------------------------------
