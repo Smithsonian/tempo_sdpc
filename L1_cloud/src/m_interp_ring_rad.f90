@@ -4,7 +4,8 @@ module m_interp_ring_rad
 
 contains
 
-  subroutine interp_ring_rad(ix1,reflec,computed, rad, ring, drad_tot_dr)
+  subroutine interp_ring_rad(ix1,reflec,computed, rad, ring, drad_tot_dr, &
+       errstat)
 
     use m_cloud_pres_mod, ONLY: l,j,nt,i01a_clds, i0a_clds, tra_clds, &
          nia_clds, nra_clds, ind, nobs, ntot, table, temp3D, comp_all, &
@@ -12,6 +13,7 @@ contains
     use m_vars, ONLY: i01a, i0a, tra, nia, nra, sba, nba, k1bar, z1, z2
     use m_trilin
     use mathcons, ONLY: deg2rad
+    use tell_module
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -39,13 +41,15 @@ contains
     ! !REVISION HISTORY: 
     !
     !  05Jan01   Joiner     original fortran 90
-    !  12Aug14  O'Sullivan  added documentation, some guesswork involved
+    !  12Aug14  O'Sullivan  added documentation, updated for TEMPO
     !
     !EOP
     !-------------------------------------------------------------------------
     !
     logical, dimension(:), intent(out) :: computed
     integer, intent(in) :: ix1
+    integer, intent(inout) :: errstat
+
     real (KIND=8),    intent(in) :: reflec
     real (KIND=8), dimension(:), intent(inout), optional :: ring
     real (KIND=8), dimension(:), intent(inout) :: rad
@@ -54,6 +58,9 @@ contains
     real (KIND=8), allocatable, dimension(:) :: den, den2, dring_dr, drad_dr
 
     !**************************************************************************
+
+    if (errstat /= 0) return
+
     if (.not. comp_all(ix1)) then
       temp3D => i0a (ix1,:,:,ind(0):ind(nobs-1))
       i0a_clds(ix1,:) = bilin(j,nt)
@@ -65,8 +72,14 @@ contains
       tra_clds(ix1,:) = bilin(j,nt)
     endif
     if (.not. computed(ix1)) then
-      allocate(den(nobs))
-      allocate(den2(nobs))
+      allocate(den(nobs), den2(nobs), stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "interp_ring_rad: allocation failure", &
+             errstat)
+        return
+      endif
+
       den=(1-reflec*sba(ix1,ind))
       den2=den**2
       r1=-3./8.*cos(sz*deg2rad)*sin(sz*deg2rad)*sin(satz*deg2rad)*cos(az*deg2rad)
@@ -74,7 +87,9 @@ contains
       rad = exp(i0a_clds(ix1,:)) + z1_clds(ix1,:)*r1 + &
            z2_clds(ix1,:)*r2 + &
            reflec*tra_clds(ix1,:) / den
+
     endif
+
     if (present(ring)) then
       if (.not. comp_all_ring(ix1)) then
         table => i01a(ix1,:,:,:,ind(0):ind(nobs-1))
@@ -92,8 +107,15 @@ contains
              / rad
         ring=i01a_clds(ix1,:)/rad+k1bar(ind)*ntot(ix1,:)
         if (present(drad_tot_dr)) then 
-          allocate(dring_dr(nobs))
-          allocate(drad_dr(nobs))
+          if (allocated(dring_dr)) deallocate(dring_dr, drad_dr, stat=errstat)
+          allocate(dring_dr(nobs), drad_dr(nobs), stat=errstat)
+          if (errstat /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "interp_ring_rad: allocation failure", &
+                 errstat)
+            return
+          endif
+
           ! see Joiner et al (1995) eqn 31
           dring_dr=k1bar(ind)/rad*( (nra_clds(ix1,:)/den) + &
                reflec*nra_clds(ix1,:)*sba(ix1,ind)/den2 + &
@@ -101,15 +123,18 @@ contains
                2*refl2*nba(ix1,ind)*tra_clds(ix1,:)*sba(ix1,ind)/(den2*den) )
           drad_dr=tra_clds(ix1,:)/den+reflec*tra_clds(ix1,:)*sba(ix1,ind)/den2
           drad_tot_dr=drad_dr*(1+ring) + rad*dring_dr
-          deallocate(dring_dr)
-          deallocate(drad_dr)
         endif
       endif ! if not computed
     endif ! if present(ring)
     computed(ix1) = .true.
     comp_all(ix1) = .true.
-    if (allocated(den)) deallocate(den)
-    if (allocated(den2)) deallocate(den2)
+    if (allocated(den)) deallocate(den, den2, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "interp_ring_rad: deallocation failure", &
+           errstat)
+      return
+    endif
 
 
   end subroutine interp_ring_rad

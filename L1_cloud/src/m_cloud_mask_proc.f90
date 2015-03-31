@@ -4,7 +4,7 @@ module m_cloud_mask_proc
 contains
 
   subroutine cloud_mask_proc(nXtrack, nPix, iLine, maxCoadd, &
-       wavelengthL, smvaluesL)
+       wavelengthL, smvaluesL, errstat)
     !!------------------------------------------------------------------
     !
     ! Carries out data processing stage of cloud mask generation,
@@ -54,6 +54,7 @@ contains
     implicit none
 
     !input variables
+    integer, intent(inout) :: errstat
     integer (KIND = 4), intent(in) :: maxCoadd, nXtrack, iLine
     integer (KIND = 2), intent(in) :: nPix
     real (KIND = 4), dimension(nXtrack,maxCoadd), intent(in) :: wavelengthL, &
@@ -61,6 +62,9 @@ contains
     !local variables
     integer (KIND = 4) :: ind, indc, iTrack
     integer (KIND = 2) :: nPixold=2
+
+
+    if (errstat /= 0) return
 
     !Data processing loop
     do iTrack=1, nXtrack

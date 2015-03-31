@@ -5,11 +5,12 @@ module m_initialize
 
 contains
 
-  subroutine initialize(rc)
+  subroutine initialize(errstat)
 
     use m_vars
     use m_LUN_set
     use m_pgs_include
+    use tell_module
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -28,38 +29,34 @@ contains
     ! !INPUT PARAMETERS: none (in modules)   
     !
     ! !OUTPUT PARAMETERS:  
-    integer, intent(out)         :: rc        ! Error return code:
+    integer, intent(inout)         :: errstat        ! Error return code:
     !  0   all is well
-    !  1   files not found
+    !  -1  problem
     !
     ! !SEE ALSO:  
     !
     ! !REVISION HISTORY: 
     !
-    !  05Jan01   Joiner     original fortran 90
-    !  14Mar02   Vasilkov   modified to read OMCTPo.pcf, modifications 
+    !  05Jan01  Joiner      original fortran 90
+    !  14Mar02  Vasilkov    modified to read OMCTPo.pcf, modifications 
     !			marked with **********
+    !  23Mar15  O'Sullivan  updating for TEMPO
     !
     !EOP
     !-------------------------------------------------------------------------
     !
-    integer :: i               !,j, iret
+    integer :: i               
     integer :: iarg=0
     integer :: argc, iargc
     character*255 ::  argv
     character*255 ::  myname, pcfpath 
-    !*********************************************************************
-    !include 'PGS_PC.f'
-    !include 'PGS_PC_9.f'
-    !include 'PGS_SMF.f'
-    !include 'PGS_IO.f'
-    !include 'PGS_IO_1.f'
-    !*********************************************************************
     integer(kind=4), EXTERNAL :: pgs_pc_getnumberoffiles, pgs_pc_getreference
     integer(kind=4), EXTERNAL :: pgs_pc_getuniversalref, pgs_pc_getconfigdata
     integer(kind=4) :: returnstatus, pcf_int
     CHARACTER(LEN=200) :: buf
     !*********************************************************************
+
+    if (errstat /= 0) return
 
     myname = trim('initialize: ')
 
@@ -102,7 +99,6 @@ contains
     !read OMCLDRR.pcf
     !check if PCF exists based on PGS_PC_INFO_FILE environment variable
     !---------------------------------------------------------------------
-    rc=0
     status=1
     returnstatus=1
     if (iprt > 0) print *,'initialize: checking for pcf file'
@@ -202,6 +198,16 @@ contains
         if (iprt >= 1) print *,'initialize: setting wmax = ',wmax
         set_wmax=.true.
       endif
+
+    else  !ex=.false., PCF does not exist or environment variable not set
+
+      if (iprt > 0) print *, 'm_initialize: PCF file not found'
+      errstat=-1
+      call tell_error (tell_io_error, &
+           "read_cld_dimensions: failed", &
+           errstat)
+      return
+
     endif
 
 
@@ -219,7 +225,7 @@ contains
 
     print *
     print *, &
-         'Usage:  cloud_ret.x [-p iprt] [-noret]'
+      'Usage:  cloud_ret.x [-p iprt] [-nc_swath swathname] [-noret] [-nc_only]'
     print *
     print *,  'where'
     print *
@@ -235,7 +241,7 @@ contains
     print *
     print *, "Last Revised: 20 August 2014      (E. O'Sullivan)  "
     print *
-    call exit(7)
+    call exit(-1)
 
   end subroutine ret_usage
 

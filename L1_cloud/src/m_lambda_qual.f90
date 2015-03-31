@@ -11,7 +11,7 @@ contains
     implicit none
 
     integer, intent(in) :: ip, iLine
-    integer :: iw                               !, iwobs
+    integer :: iw                    
     integer :: iw_start, iw_end
     logical :: pxl_error, pxl_warning
 

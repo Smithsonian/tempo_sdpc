@@ -2,9 +2,10 @@ module m_alloc2
 
 contains
 
-  subroutine alloc2()
+  subroutine alloc2(errstat)
 
     use m_cloud_pres_mod
+    use tell_module
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -27,35 +28,49 @@ contains
     !
     ! !REVISION HISTORY: 
     !
-    !  05Jan01   Joiner     original fortran 90
+    !  05Jan01   Joiner      original fortran 90
+    !  26Mar15   O'Sullivan  update for TEMPO
     !
     !EOP
     !-------------------------------------------------------------------------
-    !
-    !character(len=50) :: myname='alloc2: '
 
-    !**************************************************************************
+    integer, intent(inout) :: errstat
 
+    if (errstat /= 0) return
+
+
+    !deallocate memory
+    !=================
     if (allocated(x)) then
-      !deallocate memory
-      !=================
-      deallocate(x)
-      deallocate(x_fg)
-      deallocate(h)
-      deallocate(htr)
-      deallocate(err_cov)
-      deallocate(corr)
-      deallocate(b_i)
+      deallocate(x, x_fg, h, htr, err_cov, corr, b_i, stat=errstat)
     endif
-    if(allocated(y_back)) deallocate(y_back)
-    allocate(x(0:nst-1,1))
-    allocate(x_fg(0:nst-1,1))
-    allocate(h(0:nobs-1,0:nst-1))   
-    allocate(htr(0:nst-1,0:nobs-1))   
-    allocate(err_cov(0:nst-1,0:nst-1))   
-    allocate(corr(0:nst-1,0:nst-1))   
-    allocate(b_i(0:nst-1)) 
-    allocate(y_back(0:nst-1,1)) 
+    if(allocated(y_back)) deallocate(y_back, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "alloc2: deallocation failure", &
+           errstat)
+      return
+    endif
+
+
+    !Allocate memory
+    allocate(x(0:nst-1,1), &
+         x_fg(0:nst-1,1), &
+         h(0:nobs-1,0:nst-1), &
+         htr(0:nst-1,0:nobs-1), &   
+         err_cov(0:nst-1,0:nst-1), &   
+         corr(0:nst-1,0:nst-1), &   
+         b_i(0:nst-1), & 
+         y_back(0:nst-1,1), &
+         stat=errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "alloc2: allocation failure", &
+           errstat)
+      return
+    endif
+
 
   end subroutine alloc2
 

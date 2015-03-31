@@ -67,7 +67,7 @@ contains
              'read_references, module m_read_references',1)
         ierr = OMI_SMF_setmsg( status, &
              "PGE aborting, exit code = 1", "read_references", 1 ) 
-        call exit(1)
+        call exit(-1)
       endif
     else
       filename=trim(input_data_path)//trim(thresh_file)
@@ -124,7 +124,7 @@ contains
     if (iprt > 0) print *,'read_references: error reading file'
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
          "Error reading reference table, PGE aborting, exit code = 1", "read_references", 1 )
-    call exit(1)
+    call exit(-1)
 
   end subroutine read_references
 

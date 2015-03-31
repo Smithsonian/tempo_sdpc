@@ -65,26 +65,32 @@ program OMCLDRR
   !Initialize (read resource file)
   !===============================
   if (iprt > 1) print *,'cloud_ret: initializing'
-  call initialize(err_code)
+  call initialize(errstat)
 
 
   !Read in pre-computed Ring and radiance data
   !===========================================
   if (iprt > 1) print *,'cloud_ret: reading_tables'
-  call read_tables_tio(err_code)
-  call read_ocean_table_tio(err_code)
-    if (err_code /= 0) then
-      call tell_error (tell_io_read_error, &
-           "Failed to read Ring-effect tables", &
-           err_code)
-      call exit(1)
-    endif
-  
-  call read_thresholds(err_code)
-  if (using_resid) call read_resids
-  if (do_o3) call read_o3
+  call read_tables_tio(errstat)
+  call read_ocean_table_tio(errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_io_error, &
+         "Failed to read Ring-effect tables", &
+         errstat)
+    call exit(-1)
+  endif
 
-  !Assign name and open output file
+  call read_thresholds(errstat)
+  if (using_resid) call read_resids(errstat)
+  if (do_o3) call read_o3(errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_io_error, &
+         "Failure in reading thresholds, residuals, or O3 cross-section", &
+         errstat)
+    call exit(-1)
+  endif
+
+  !Assign output file name
   !======================================
   if (ex) then
     version = 1
@@ -93,7 +99,7 @@ program OMCLDRR
       ierr=OMI_SMF_setmsg(OMCLDRR_F_FAILURE, &
            "error opening output L2 file, PGE aborting, exit code = 1", &
            "program cloud_ret",0)
-      stop 1
+      call exit(-1)
     endif
     filename_out=trim(flnm_out)
     if (iprt > 1) print *,'cloud_ret: status',status,' output filename ',&
@@ -110,8 +116,15 @@ program OMCLDRR
   if (.not. read_he4) do_cloud_mask = .false.
   if (do_cloud_mask) then
     if (iprt >= 1) print *,'cloud_ret: calling cld_mask'
-    call cld_mask()
-    if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
+    call cld_mask(errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "Failure to generate cloud mask", &
+           errstat)
+      call exit(-1)
+    else
+      if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
+    endif
   else
     if (iprt >= 1) print *,'skipping cloud mask'
   endif
@@ -121,19 +134,19 @@ program OMCLDRR
   !===========================================================
   if (iprt > 1) print *,'cloud_ret: reading input data'
   !he5 version
-  if (read_he4) call read_input_data(blk, err_code)
+  if (read_he4) call read_input_data(blk, errstat)
   !netCDF version
   if (read_nc) then
     ext_index=index(filename,'.he4')
     filename_in_nc=filename(1:ext_index-1)//'.nc'
     if (read_he4) iLine=iLine-1 
     call read_input_data_tio(filename_in_nc, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_write_error, &
-           "read_input_data failed on first line, exiting", &
-           err_code)
-      call exit(1)
-    endif
+  endif
+  if (errstat /= 0) then
+    call tell_error (tell_io_error, &
+         "Failed to input first line of data, exiting", &
+         errstat)
+    call exit(-1)
   endif
 
   !loop over the # of lines
@@ -151,8 +164,8 @@ program OMCLDRR
       if (iprt > 1) print *,'cloud_ret: reading input data'
       !he5 version
       if (read_he4) then
-        call read_input_data(blk, err_code)
-        if(err_code >= 1) goto 999
+        call read_input_data(blk, errstat)
+        if(errstat /= 0) goto 999
       endif
       !netCDF version
       if (read_nc) then
@@ -164,17 +177,35 @@ program OMCLDRR
 
     !get the climatological terrain pressure
     !=======================================
-    call rd_terr ()
+    call rd_terr (errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "Error opening terrain height file, exiting", &
+           errstat)
+      call exit(-1)
+    endif
 
     !get the surface reflectivity climatology 
     !=======================================
     if (get_refl_clim) then
-      call rd_toms_refl ()
+      call rd_toms_refl (errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_io_error, &
+             "Error opening surface reflectivity file, exiting", &
+             errstat)
+        call exit(-1)
+      endif
     endif
 
     !get the climatological chlorophyll
     !=======================================
-    call rd_chl ()
+    call rd_chl (errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "Error opening chlorophyll file, exiting", &
+           errstat)
+      call exit(-1)
+    endif
     land_flg=chlcl < 0.
 
     !do the retrieval
@@ -194,8 +225,14 @@ program OMCLDRR
     endif
 
     if (iprt > 1) print *,'cloud_ret: retrieving cloud pressure'
-    call cloud_pres_ret(refl_clr, refl_cld)
-
+    call cloud_pres_ret(refl_clr, refl_cld, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_application_error, &
+           "cloud_pres_ret: failed, exiting", &
+           errstat)
+      call exit(-1)
+    endif
+ 
     cld_pres2(:,iLine)=cloud_pres(:,iLine)
     eff_cld_frac2(:,iLine)=eff_cld_frac(:,iLine)
     qc2(:,iLine)=qc(:,iLine)
@@ -236,23 +273,23 @@ program OMCLDRR
     ext_index=index(filename_out,'.he5')
     filename_out_nc=filename_out(1:ext_index-1)//'.nc'
     if (write_resid) then
-      call create_output_file(filename_out_nc,nTimes,nXtrack,err_code, &
+      call create_output_file(filename_out_nc,nTimes,nXtrack,errstat, &
            size(wave_resid))
     else
-      call create_output_file(filename_out_nc,nTimes,nXtrack,err_code)
+      call create_output_file(filename_out_nc,nTimes,nXtrack,errstat)
     endif
-    if (err_code /= 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
-           err_code)
-      call exit(1)
+           errstat)
+      call exit(-1)
     endif
-    call close_output_file(err_code)
-    if (err_code /= 0) then
+    call close_output_file(errstat)
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "close_output_file: failed", &
-           err_code)
-      call exit(1)
+           errstat)
+      call exit(-1)
     endif
     if (iprt > 0) print *,'netCDF file output successfully'
   endif
@@ -269,7 +306,7 @@ program OMCLDRR
       ierr = OMI_SMF_setmsg( status, &
            "L1Br_close failed, PGE aborting, exit code = 1", &
            "OMCLDRR_2pres", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
   endif
 

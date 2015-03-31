@@ -5,15 +5,17 @@ module m_rd_chl
 
 contains
 
-  subroutine rd_chl( )   
+  subroutine rd_chl (errstat)   
 
-    use m_vars, ONLY: done_read_chl, chl2d, iprt, lat, lon, chlcl, iLine, nXtrack
+    use m_vars, ONLY: done_read_chl, chl2d, iprt, lat, lon, chlcl, iLine, &
+         nXtrack
     use m_LUN_set
     use m_pgs_include
 
     !*************************************************************************
     !        AUTHOR:  Joanna Joiner - original code, 
     !                modified by Alexander P. Vasilkov
+    !                updated for TEMPO by E. O'Sullivan
     !
     !         FUNCTION: get chlorophyll concentration (0.5X0.5 deg resolution)
     !
@@ -26,33 +28,30 @@ contains
     !
     !        HISTORY: Developed Nov. 15, 2001
     !
-    !***************************************************************************
+    !**************************************************************************
     implicit none          
 
+    integer, intent(inout) :: errstat
     !local variables
     integer                    :: lun=3
     integer                    :: ip, i, j
-
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-    integer :: status, ierr,version=1
+    integer :: status, ierr,version
 
-    !*****************************************************************
-    !include 'PGS_IO.f'
-    !include 'PGS_IO_1.f'
-    !include 'PGS_OMI_1900.f'
-    !include 'PGS_SMF.f'
-    !*****************************************************************
+    version = 1
+
+    if (errstat /= 0) return
 
     !read in chlorophyll data set
     !============================
     if (.not. done_read_chl) then
       status = pgs_io_gen_openf ( chl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
-      !  IF( status .NE. OMI_S_SUCCESS ) THEN
       if(status.ne.0) then
         ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening clorophyll file', &
              'rd_chl, module m_rd_chl',2)
-        call exit(1)
+        errstat = -1
+        return
       endif
 
       if (iprt > 0) print *,'rd_chl: opening chl file, status ',status

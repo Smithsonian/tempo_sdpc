@@ -2,7 +2,7 @@ module m_cloud_mask
 
 contains
 
-  subroutine cld_mask
+  subroutine cld_mask (errstat)
     !!-------------------------------------------------------------------------
     !
     ! subtoutine cld_mask:
@@ -88,26 +88,30 @@ contains
     !
     !!--------------------------------------------------------------------
 
-    USE m_cloud_mask_proc
-    USE hdfeos4_parameters
-    USE L1B_Reader_class
-    USE m_strpos
-    USE m_vars, ONLY: cloud_mask, smpx_mean, smpx_stddev, smpx_wavel, &
+    use m_cloud_mask_proc
+    use hdfeos4_parameters
+    use L1B_Reader_class
+    use m_strpos
+    use m_vars, only: cloud_mask, smpx_mean, smpx_stddev, smpx_wavel, &
          filename, input_data_path, iprt, smpx_nPix, fill_value
-    USE m_swathnames
-    USE m_pgs_include
+    use m_swathnames
+    use m_pgs_include
+    use tell_module
 
-    IMPLICIT NONE
+    implicit none
+
+    integer, intent (inout) :: errstat
 
     !Local variables
-    INTEGER (KIND = 4), PARAMETER :: maxCoadd=5
-    INTEGER (KIND = 4) :: status, ierr, nTimes, nXtrack, iLine, nTimesSmPx
-    CHARACTER (LEN = 200) :: filenamen, swathname
-    TYPE (L1b_block_type) :: blk 
-    INTEGER (KIND = 4), PARAMETER :: zero = 0
-    INTEGER (KIND = 2) :: nPix 
-    REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: wavelengthL, wavelengthL2
-    REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: smvaluesL, smvaluesL2
+    integer (KIND = 4), parameter :: maxCoadd=5
+    integer (KIND = 4) :: status, ierr, nTimes, nXtrack, iLine, nTimesSmPx
+    character (LEN = 200) :: filenamen, swathname
+    type (L1b_block_type) :: blk 
+    integer (KIND = 2) :: nPix 
+    real (KIND = 4), dimension(:,:), allocatable :: wavelengthL, wavelengthL2
+    real (KIND = 4), dimension(:,:), allocatable :: smvaluesL, smvaluesL2
+
+    if (errstat /= 0) return
 
     ! obtain name of swath
     filenamen=trim(input_data_path)//filename
@@ -122,139 +126,85 @@ contains
 
     ! open data block structure with default size of 1 lines
     status = L1Br_open( blk, filenamen, swathname)!, valname )
-    IF( status .NE. OMI_S_SUCCESS ) THEN
+    if( status .ne. OMI_S_SUCCESS ) then
       ierr = OMI_SMF_setmsg( status, &
            "L1Br_open failed,"//trim(filenamen), "cloud_mask", 0 )
-      STOP
-    END IF
+      stop
+    end if
 
 
     ! obtain sizes of dimensions defined in swath
     status = L1Br_getSWdims( blk,  NumTimes_k=nTimes, nXtrack_k=nXtrack, &
          NumTimesSmallPixel_k=nTimesSmPx )
-    IF( status .NE. OMI_S_SUCCESS ) THEN
+    if( status .ne. OMI_S_SUCCESS ) then
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
            "L1Br_getSWdims failed.", "cloud_mask", 0 )
-      call exit(1)
+      errstat = -1
+      return
     else if (iprt > 2) then
       print *,' cloud_mask: nTimes, nXtrack, nTimesSmPx', &
            nTimes, nXtrack, nTimesSmPx
-    END IF
+    end if
 
-    ALLOCATE( smvaluesL(nXtrack,maxCoadd), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smvaluesL allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
-
-    ALLOCATE( smvaluesL2(nXtrack,maxCoadd), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smvaluesL2 allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
-
-    ALLOCATE( wavelengthL(nXtrack,maxCoadd), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "wavelengthL allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
-
-    ALLOCATE( wavelengthL2(nXtrack,maxCoadd), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "wavelengthL2 allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
-
-    ALLOCATE( cloud_mask(nXtrack,nTimes), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "cloud_mask allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    ELSE
-      cloud_mask=2
-    END IF
-
-    ALLOCATE( smpx_mean(nXtrack,nTimes), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smpx_mean allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    ELSE
-      smpx_mean=fill_value
-    END IF
-
-    ALLOCATE( smpx_stddev(nXtrack,nTimes), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smpx_stddev allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    ELSE
-      smpx_stddev=fill_value
-    END IF
-
-    ALLOCATE( smpx_nPix(nXtrack,nTimes), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smpx_nPix allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    ELSE
-      smpx_nPix=0
-    END IF
-
-    ALLOCATE( smpx_wavel(nXtrack,nTimes), STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smpx_wavel allocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
+    !Allocate arrays
+    allocate(smvaluesL(nXtrack,maxCoadd), &
+         smvaluesL2(nXtrack,maxCoadd), &
+         wavelengthL(nXtrack,maxCoadd), &
+         wavelengthL2(nXtrack,maxCoadd), &
+         cloud_mask(nXtrack,nTimes), &
+         smpx_mean(nXtrack,nTimes), &
+         smpx_wavel(nXtrack,nTimes), &
+         smpx_stddev(nXtrack,nTimes), &
+         smpx_nPix(nXtrack,nTimes), stat=errstat )
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "cloud_mask: failed to allocate memory", &
+           errstat)
+      return
+    endif
+    cloud_mask=2
+    smpx_mean=fill_value
+    smpx_stddev=fill_value
+    smpx_nPix=0
 
     !Loop over all scan lines
-    DO iLine = 0, nTimes-1
+    do iLine = 0, nTimes-1
 
       if (iprt >= 7) print *,'cloud_mask: reading data from line ',iLine
       status = L1Br_getDATAline( blk, iLine, nPix, &
            Data_k=smvaluesL, &
            Wavelength_k=wavelengthL)!, quality_flagL )
-      IF( status .NE. OMI_S_SUCCESS ) THEN
+      if( status .ne. OMI_S_SUCCESS ) then
         ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
              "L1Brd_getSIGline failed", "cloud_mask", 0 )
-        call exit(1)
-      END IF
+        errstat = -1
+        return
+      end if
 
       !Science data processing
       call cloud_mask_proc(nXtrack, nPix, iLine, maxCoadd, &
-       wavelengthL, smvaluesL)
+           wavelengthL, smvaluesL, errstat)
 
 
-    END DO ! loop over iLine
+    end do ! loop over iLine
 
     ! deallocate memory
-
-    DEALLOCATE( smvaluesL, STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "smvaluesL deallocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
-
-    DEALLOCATE( wavelengthL, STAT=ierr )
-    IF( ierr .NE. zero ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_MEM_ALLOC, &
-           "wavelengthL deallocation failure", "cloud_mask", 0 )
-      call exit(1)
-    END IF
+    deallocate (smvaluesL,wavelengthL, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "cloud_mask: failed to deallocate memory", &
+           errstat)
+      return
+    endif
 
     ! close data block structure
     status = L1Br_close( blk )
-    IF( status .NE. OMI_S_SUCCESS ) THEN
+    if( status .ne. OMI_S_SUCCESS ) then
       ierr = OMI_SMF_setmsg( status, &
            "L1Br_close failed.", "cloud_mask", 0 )
-      call exit(1)
-    END IF
+      errstat = -1
+      return
+    end if
     ierr = OMI_SMF_setmsg(PGS_S_SUCCESS, "Test Done", "cld_mask, m_cloud_mask", 0 )
 
   end subroutine cld_mask

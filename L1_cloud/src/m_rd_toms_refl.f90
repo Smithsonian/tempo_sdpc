@@ -5,13 +5,15 @@ module m_rd_toms_refl
 
 contains
 
-  subroutine rd_toms_refl( )   
+  subroutine rd_toms_refl (errstat)   
 
     use m_vars, ONLY: done_read_refl, iprt, lat, lon, toms_refl, ref_nmon, &
-         iLine, nXtrack, ref_nlat, ref_nlon, ref_clr, ref_lats, ref_lons, month, &
-         ler_sz, ler_th, ler_ph, ler354, startlat, startlon, deltlat, deltlon
+         iLine, nXtrack, ref_nlat, ref_nlon, ref_clr, ref_lats, ref_lons, &
+         month, ler_sz, ler_th, ler_ph, ler354, startlat, startlon, deltlat, &
+         deltlon
     use m_LUN_set
     use m_pgs_include
+    use tell_module
     implicit NONE          
 
     !-------------------------------------------------------------------------
@@ -38,18 +40,23 @@ contains
     !
     ! !REVISION HISTORY:
     !
-    !  01Aug07   Joiner     Original code 
+    !  01Aug07   Joiner      Original code
+    !  26Mar15   O'Sullivan  Update for TEMPO
     !!EOP
     !-------------------------------------------------------------------------
+    integer, intent(inout) :: errstat
 
     !local variables
     !================
     integer :: lun=2 
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status,ierr, version=1
-    integer                    :: ipts, i, j
-    real (KIND=8)                       :: lont, latt
-    character(len=100)         :: txt
+    integer :: ipts, i, j
+    real (KIND=8) :: lont, latt
+    character(len=100) :: txt
+
+
+    if (errstat /= 0) return
 
     !=======================
     !read terrain data set
@@ -58,40 +65,57 @@ contains
       status = pgs_io_gen_openf ( refl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening reflectivity file', &
+        ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN, &
+             'error opening reflectivity file', &
              'rd_toms_refl, module m_rd_toms_refl',2)
-        call exit(1)
+        errstat = -1
+        return
       endif
-      if (iprt > 0) print *,'rd_toms_refl: opening reflectivity file, status :',status
+      if (iprt > 0) print *, &
+           'rd_toms_refl: opening reflectivity file, status :',status
       read (lun,*,err=200)  txt
       if (iprt > 0) print *, txt
       read (lun,*,err=200)  txt
       if (iprt > 0) print *, txt
       read (lun,*,err=200)  ref_nlon, ref_nlat, ref_nmon
       if (iprt > 0) print *, ref_nlon, ref_nlat, ref_nmon
-      allocate(ref_lats(ref_nlat))
-      allocate(ref_lons(ref_nlon))
-      allocate(toms_refl(ref_nmon,ref_nlon,ref_nlat))
+
+      !Allocate memory, read in data
+      allocate(ref_lats(ref_nlat), ref_lons(ref_nlon), &
+           toms_refl(ref_nmon,ref_nlon,ref_nlat), stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "rd_toms_refl: failed to allocate memory", &
+             errstat)
+        errstat = -1
+        return
+      endif
       read (lun,*,err=200)  ref_lons
       read (lun,*,err=200)  ref_lats
+
       if (iprt > 1) print *, ref_lons  
       if (iprt > 1) print *, ref_lats
       read (lun,*,err=200)  toms_refl
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *,'rd_toms_refl: closing reflectivity file, status :',status
+      if (iprt > 0) print *, &
+           'rd_toms_refl: closing reflectivity file, status :',status
+
       status = pgs_io_gen_openf ( ler354_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
         ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ler354_cox_munk file', &
              'rd_toms_refl, module m_rd_toms_refl',2)
-        call exit(1)
+        errstat = -1
+        return
       endif
+
       read (lun,*,err=201) ler_sz
       read (lun,*,err=201) ler_th
       read (lun,*,err=201) ler_ph
       read (lun,*,err=201) ler354
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *,'rd_toms_refl: closing ler354_cox_munk file, status :',status
+      if (iprt > 0) print *, &
+           'rd_toms_refl: closing ler354_cox_munk file, status :',status
       done_read_refl=.true.
       deltlat=ref_nlat/180.
       deltlon=ref_nlon/360.

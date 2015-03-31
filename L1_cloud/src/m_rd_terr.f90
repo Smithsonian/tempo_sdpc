@@ -5,7 +5,7 @@ module m_rd_terr
 
 contains
 
-  subroutine rd_terr( )   
+  subroutine rd_terr (errstat)   
 
     use m_vars, ONLY: p_terr, done_read_terr, iprt, lat, lon, ps, &
          iLine, nXtrack
@@ -37,28 +37,24 @@ contains
     !
     ! !REVISION HISTORY:
     !
-    !  01Oct96   Joiner     Original code 
-    !  19Mar02   Vasilkov   To read filenames from PCF!
+    !  01Oct96   Joiner       Original code 
+    !  19Mar02   Vasilkov     To read filenames from PCF!
+    !  26Mar15   O'Sullivan   Update for TEMPO
     !!EOP
     !-------------------------------------------------------------------------
+    integer, intent (inout) :: errstat
 
     !local variables
     !================
-    !integer, parameter :: lun=2 
-    ! lun cannot be a parameter as it's an output of pgs_io_gen_openf
     integer :: lun=2 
-
-    !integer, parameter :: terr_prs_id = 510003
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
-    integer :: status,ierr, version=1
-    !include 'PGS_IO.f'
-    !include 'PGS_IO_1.f'
-    !include 'PGS_OMI_1900.f'
-    !include 'PGS_SMF.f'
+    integer :: status,ierr, version
+    integer :: ipts, i, j
+    real (KIND=8) :: lont, latt
 
-    integer                    :: ipts, i, j
-    real (KIND=8)                       :: lont, latt
-    !integer                    :: iret
+    version = 1
+    
+    if (errstat /= 0) return
 
     !=======================
     !read terrain data set
@@ -70,7 +66,8 @@ contains
         ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN, & 
              'error opening terrain pressure file', &
              'rd_terr, module m_rd_terr',2)
-        call exit(1)
+        errstat = -1
+        return
       endif
       if (iprt > 0) print *,'rd_terr: opening terrain file, status :',status
       read (lun,*,err=200)  p_terr

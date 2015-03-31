@@ -7,7 +7,7 @@ module m_cloud_pres_ret
 
 contains
 
-  subroutine cloud_pres_ret(refl_clr, refl_cld)
+  subroutine cloud_pres_ret(refl_clr, refl_cld, errstat)
 
     !!==================================================================
     !
@@ -90,6 +90,7 @@ contains
     use m_alloc2
     use m_lambda_qual
     use m_pgs_include
+    use tell_module
     use m_cloud_pres_mod
     use m_vars, ONLY: azimuth, bad_obs_flag, biases, & 
          chi_sqr, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
@@ -111,7 +112,10 @@ contains
 
     real (KIND=8), intent(inout) :: refl_clr
     real (KIND=8), intent(inout) :: refl_cld
-    !include 'PGS_SMF.f'
+    integer, intent(inout) :: errstat
+
+
+    if (errstat /= 0) return
 
     !*************************************************************************
     ! m_cloud_pres_ret is called within a loop in OMCLDRR. If this is the 
@@ -124,7 +128,13 @@ contains
 
       !allocate memory
       !===============
-      call alloc1()
+      call alloc1(errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "alloc1: failured", &
+             errstat)
+        return
+      endif
       if (nobs > 0) then
         ind=find2(w_grid >= wmin+wdelt .and. w_grid <= wmax-wdelt,nobs)   
       else
@@ -136,7 +146,8 @@ contains
         ierr = OMI_SMF_setmsg( status, & 
              "no valid wavelengths, PGE aborting, exit code = 1", &
              "cloud_pres_ret", 1 )
-        call exit(1)
+        errstat = -1
+        return
       endif ! nobs > 0
 
       !get wavelengths to use in retrieval and initialize arrays
@@ -161,10 +172,16 @@ contains
 
       !f1p and w1p need to be allocated in each iteration to allow for
       !variation in number of valid wavelengths (nwl)
-      if(allocated(f1p)) deallocate(f1p)
-      allocate(f1p(nwl))
-      if(allocated(w1p)) deallocate(w1p)
-      allocate(w1p(nwl))
+      if(allocated(f1p)) deallocate(f1p, stat=errstat)
+      if(allocated(w1p)) deallocate(w1p, stat=errstat)
+      allocate(f1p(nwl), w1p(nwl), stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "cloud_pres_ret: allocation failure", &
+             errstat)
+        return
+      endif
+
 
       !profile loop
       !============
@@ -223,12 +240,21 @@ contains
             do i=0, nobs-1
               counts=count(abs(ws(:,ip) - waves(i)) < wavetol)
               if (counts > 0) then
-                if (allocated(indw)) deallocate(indw)
-                allocate(indw(counts))
+
+                if (allocated(indw)) deallocate(indw, stat=errstat)
+                allocate(indw(counts), stat=errstat)
+                if (errstat /= 0) then
+                  call tell_error (tell_malloc_error, &
+                       "cloud_pres_ret: allocation failure", &
+                       errstat)
+                  return
+                endif
+
                 indw=find2(abs(ws(:,ip) - waves(i)) < wavetol,counts)
                 if (any(fs(indw-1,ip) == 0.)) then
                   r_i(i)=var_inv_big
                 endif ! if bad data found
+
               endif! if wavelengths found
             enddo ! loop over wavelengths
           endif ! if bad solar data found
@@ -239,12 +265,21 @@ contains
             do i=0, nobs-1
               counts=count(abs(w1p - waves(i)) < wavetol)
               if (counts > 0) then
-                if (allocated(indw)) deallocate(indw)
-                allocate(indw(counts))
+
+                if (allocated(indw)) deallocate(indw, stat=errstat)
+                allocate(indw(counts), stat=errstat)
+                if (errstat /= 0) then
+                  call tell_error (tell_malloc_error, &
+                       "cloud_pres_ret: allocation failure", &
+                       errstat)
+                  return
+                endif
+
                 indw=find2(abs(w1p - waves(i)) < wavetol,counts)
                 if (any(f1p(indw) == 0.)) then
                   r_i(i)=var_inv_big
                 endif ! bad data found
+
               endif ! wavelengths found
             enddo ! loop over wavelengths
           endif ! check_rad
@@ -256,10 +291,16 @@ contains
           ngood=count(fs(:,ip) > 0)
           if (ngood /= size(fs(:,ip))) then
             if (ngood > 0) then
-              allocate(good(ngood))
+              if (allocated(good)) deallocate(good, stat=errstat)
+              allocate(good(ngood), stat=errstat)
+              if (errstat /= 0) then
+                call tell_error (tell_malloc_error, &
+                     "cloud_pres_ret: allocation failure", &
+                     errstat)
+                return
+              endif
               good=find2(fs(:,ip) > 0,ngood)-1
               sflx=spline(ws(good,ip),fs(good,ip),waves)
-              deallocate(good)
             else
               qc(ip,iLine)=IBSET(qc(ip,iLine),1)
             endif
@@ -271,10 +312,16 @@ contains
           ngood=count(fs(:,ip) > 0)
           if (ngood /= size(fs(:,ip))) then
             if (ngood > 0) then
-              allocate(good(ngood))
+              if (allocated(good)) deallocate(good, stat=errstat)
+              allocate(good(ngood), stat=errstat)
+              if (errstat /= 0) then
+                call tell_error (tell_malloc_error, &
+                     "cloud_pres_ret: allocation failure", &
+                     errstat)
+                return
+              endif
               good=find2(fs(:,ip) > 0,ngood)-1
               sflx=interpol(fs(good,ip),ws(good,ip),waves)
-              deallocate(good)
             else
               qc(ip,iLine)=IBSET(qc(ip,iLine),1)
             endif
@@ -309,7 +356,13 @@ contains
 
         !allocate memory
         !===============
-        call alloc2()
+        call alloc2(errstat)
+        if (errstat /= 0) then
+          call tell_error (tell_malloc_error, &
+               "alloc2: failed, exiting", &
+               errstat)
+          return
+        endif
 
         !profile independent Jacobian
         !============================
@@ -389,7 +442,14 @@ contains
         !============================
         ngood=count(w1p > 0. .and. f1p > 0.)
         if (ngood > 0) then
-          allocate(good(ngood))
+          if (allocated(good)) deallocate(good, stat=errstat)
+          allocate(good(ngood), stat=errstat)
+          if (errstat /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "cloud_pres_ret: allocation failure", &
+                 errstat)
+            return
+          endif
           good=find2(w1p > 0. .and. f1p > 0.,ngood)
           if (using_spline) then
             y_obs=spline(w1p(good),f1p(good),waves)/sflx 
@@ -397,7 +457,6 @@ contains
             y_obs=interpol(f1p(good),w1p(good),waves)/sflx !*pi
           endif ! not spline
           y_obs1=y_obs*pi
-          deallocate(good)
         else ! no good data found
           qc(ip,iLine)=IBSET(qc(ip,iLine),1)
         endif ! no good data found
@@ -678,21 +737,29 @@ contains
           !=================================================================
           if (cld_frac == 1) computed=.false. ! recompute at new reflectivity
           call interp_ring_rad(ix1,reflec_cld,computed,rad_clds(ix1,:),&
-               ring=ring_clds(ix1,:))
+               ring=ring_clds(ix1,:), errstat=errstat)
           call interp_ring_rad(ix2,reflec_cld,computed,rad_clds(ix2,:),&
-               ring=ring_clds(ix2,:))
+               ring=ring_clds(ix2,:), errstat=errstat)
 
           if (add_oc .and. iter == 0) then
-            call interp_ring_rad(i_np0,refl_oc,comp_oc_clr,rad_clr_oc)
+            call interp_ring_rad(i_np0,refl_oc,comp_oc_clr,rad_clr_oc, &
+                 errstat=errstat)
           endif
 
           if ( (eff_cld_frac2(ip,iLine) < 1.0 .or. & !cld_frac > cld_frac_min .and. &
                cld_frac < 1.0) .and. get_cloud_frac) then
             call interp_ring_rad(i0x1,refl_clr, comp_clr, rad_clrs(i0x1,:), &
-                 ring=ring_clrs(i0x1,:))
+                 ring=ring_clrs(i0x1,:), errstat=errstat)
             call interp_ring_rad(i0x2,refl_clr, comp_clr, rad_clrs(i0x2,:), &
-                 ring=ring_clrs(i0x2,:))
+                 ring=ring_clrs(i0x2,:), errstat=errstat)
           endif ! get_cloud_frac
+
+          if (errstat /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "interp_ring_rad: failed, exiting", &
+                 errstat)
+            return
+          endif
 
           !compute ocean filling lower chlorophyll boundary
           !================================================
@@ -931,7 +998,7 @@ contains
           cloud_pres(ip,iLine)=real(x(0,1), kind=4)
         else
           cloud_pres(ip,iLine)=real( &
-            (x(0,1)-psurf*(1-rad_cld_frac(ip,iLine)))/rad_cld_frac(ip,iLine) &
+               (x(0,1)-psurf*(1-rad_cld_frac(ip,iLine)))/rad_cld_frac(ip,iLine) &
                , kind=4)
         endif
         if (shift) then

@@ -2,7 +2,7 @@ module m_read_resid
 
 contains
 
-  subroutine read_resids 
+  subroutine read_resids (errstat) 
 
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -20,27 +20,28 @@ contains
     use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt, read_he4
     use m_LUN_set
     use m_pgs_include
+    use tell_module
     Implicit NONE
 
     ! !REVISION HISTORY:
     !
-    !  25aug04   Joiner     original fortran 90
+    !  25aug04   Joiner      original fortran 90
+    !  26mar15   O'Sullivan  updated for TEMPO
     !
     !EOP
     !-------------------------------------------------------------------------
-    integer :: i                       !, ii
-    character(len=100) :: text
+    integer, intent(inout) :: errstat
 
+    !local variables
+    integer :: i                       
+    character(len=100) :: text
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr, lun
-    !integer :: OMCLDRR_F_FAILURE
     integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
     integer :: OrbitNumber, ThreshOrbitNumber
     character(len=200) :: buf
-    !include 'PGS_IO.f'
-    !include 'PGS_IO_1.f'
-    !include 'PGS_OMI_1900.f'
-    !include 'PGS_SMF.f'
+
+    if (errstat /= 0) return
 
     version = 1
     !If reading from he4 input, get orbit number
@@ -50,8 +51,6 @@ contains
       IF(status /= 0 ) THEN
         ierr = OMI_SMF_setmsg( status, &
              "Warning: Could not get orbit number", "read_resids", 1 )
-        ! "PGE aborting, exit code = 1", "read_resids", 1 )
-        !call exit(1)
         OrbitNumber=1
       ENDIF
     else !use the orbit number in the PCF file
@@ -80,18 +79,21 @@ contains
 
     version = 1
     if(OrbitNumber .le. ThreshOrbitNumber) then 
-      status = pgs_io_gen_openf ( resid_id_early, PGSd_IO_Gen_RSeqFrm, 0,lun, version) 
+      status = pgs_io_gen_openf (resid_id_early, PGSd_IO_Gen_RSeqFrm, &
+           0,lun, version) 
     else 
-      status = pgs_io_gen_openf ( resid_id_late, PGSd_IO_Gen_RSeqFrm, 0,lun, version)
+      status = pgs_io_gen_openf (resid_id_late, PGSd_IO_Gen_RSeqFrm, &
+           0,lun, version)
     endif
+
     if (iprt > 0) then
       print *,'read_resids: trying to open resid file ',status, lun
     endif
+
     if(status.ne.0) then
-      !using_resid=.false.
       ierr = OMI_SMF_setmsg( status, &
            "PGE aborting, exit code = 1", "read_resids", 1 ) 
-      call exit(1)
+      call exit(-1)
     else
       read(lun, *, err=100) text
       read(lun, *, err=100) nscanpos, nwav
@@ -105,7 +107,13 @@ contains
       !constant value in case file not found
       !===================================================
       if (.not. allocated(resid_spec)) then
-        allocate(resid_spec(nwav,nscanpos))
+        allocate(resid_spec(nwav,nscanpos), stat=errstat)
+        if (errstat /= 0) then
+          call tell_error (tell_malloc_error, &
+               "read_resids: failed to allocate memory", &
+               errstat)
+          return
+        endif
       endif
       do i=1, nwav
         read(lun, *, err=100) resid_spec(i,1:nscanpos) 
@@ -122,31 +130,29 @@ contains
     if (iprt > 0) print *,'read_resids: error reading file'
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
          "Error reading resid table, PGE aborting, exit code = 1", "read_resids", 1 )
-    call exit(1)
+    call exit(-1)
 
   end subroutine read_resids
 
-  subroutine read_o3
+  subroutine read_o3 (errstat)
 
     use m_vars, ONLY: wave_o3, xsect_o3, iprt
     use m_LUN_set
     use m_pgs_include
+    use tell_module
     Implicit NONE
 
     ! !REVISION HISTORY:
     !
-    !  25aug04   Joiner     original fortran 90
+    !  25aug04   Joiner      original fortran 90
+    !  26mar15   O'Sullivan  update for TEMPO
     !
     !EOP
     !-------------------------------------------------------------------------
+    integer, intent(inout) :: errstat
+    !local variables
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr, lun, nwav_o3
-    !integer :: OMCLDRR_F_FAILURE
-
-    !include 'PGS_IO.f'
-    !include 'PGS_IO_1.f'
-    !include 'PGS_OMI_1900.f'
-    !include 'PGS_SMF.f'
 
     version = 1
     status = pgs_io_gen_openf ( o3_id, PGSd_IO_Gen_RSeqFrm, &
@@ -155,10 +161,9 @@ contains
       print *,'read_o3: trying to open o3 file ',status, lun
     endif
     if(status.ne.0) then
-      !using_resid=.false.
       ierr = OMI_SMF_setmsg( status, &
            "PGE aborting, exit code = 1", "read_o3", 1 ) 
-      call exit(1)
+      call exit(-1)
     else
       read(lun, *, err=100) nwav_o3
       if (iprt >= 1) then
@@ -170,9 +175,15 @@ contains
       !constant value in case file not found
       !===================================================
       if (.not. allocated(wave_o3)) then
-        allocate(wave_o3(nwav_o3))
-        allocate(xsect_o3(nwav_o3))
+        allocate(wave_o3(nwav_o3), xsect_o3(nwav_o3), stat=errstat)
+        if (errstat /= 0) then
+          call tell_error (tell_malloc_error, &
+               "read_resids: failed to allocate memory", &
+               errstat)
+          return
+        endif
       endif
+
       read(lun, *, err=100) wave_o3
       read(lun, *, err=100) xsect_o3
       if (iprt >= 2) print *, 'read_o3: ', wave_o3
@@ -186,6 +197,13 @@ contains
 
 100 status = 1
     if (iprt > 0) print *,'read_o3: error reading file'
+    errstat = -1
+    call tell_error (tell_io_read_error, &
+         "read_o3: failed to read O3 cross-section file", &
+         errstat)
+    return
+
+
   end subroutine read_o3
 
 end module m_read_resid
