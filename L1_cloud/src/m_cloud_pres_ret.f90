@@ -131,7 +131,7 @@ contains
       call alloc1(errstat)
       if (errstat /= 0) then
         call tell_error (tell_malloc_error, &
-             "alloc1: failured", &
+             "alloc1: failure", &
              errstat)
         return
       endif
@@ -144,7 +144,7 @@ contains
           write(6,'(7f12.4)') w_grid
         endif
         ierr = OMI_SMF_setmsg( status, & 
-             "no valid wavelengths, PGE aborting, exit code = 1", &
+             "no valid wavelengths, PGE aborting", &
              "cloud_pres_ret", 1 )
         errstat = -1
         return

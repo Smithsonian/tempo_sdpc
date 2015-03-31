@@ -11,6 +11,7 @@ contains
 
     use m_interpol
     use m_findgen
+    use tell_module
     implicit none
 
     !-------------------------------------------------------------------------
@@ -70,6 +71,7 @@ contains
     integer,  dimension(:),  allocatable :: i, j 
     integer,  dimension(:),  allocatable :: ip, jp
     integer                              :: icnt, sizex
+    integer                              :: errstat
     !if p indexed from zero
     !        real (KIND=8), dimension(:,:),allocatable :: p0
 
@@ -77,16 +79,33 @@ contains
 
     sizex=size(ixin)
 
-    allocate(ix(sizex))
-    allocate(jy(size(ix)))
-    allocate(i(size(ix)))
-    allocate(j(size(ix)))
-    allocate(ip(size(ix)))
-    allocate(jp(size(ix)))
-    allocate(dx(size(ix)))
-    allocate(dy(size(ix)))
-    allocate(dx1(size(ix)))
-    allocate(dy1(size(ix)))
+    allocate(ix(sizex), stat=errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "bilineara: failured to allocate ix", &
+           errstat)
+      call exit(-1)
+    endif
+
+    allocate(jy(size(ix)), &
+         i(size(ix)), &
+         j(size(ix)), &
+         ip(size(ix)), &
+         jp(size(ix)), &
+         dx(size(ix)), &
+         dy(size(ix)), &
+         dx1(size(ix)), &
+         dy1(size(ix)), &
+         stat=errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "bilineara: allocation failure", &
+           errstat)
+      call exit(-1)
+    endif
+
 
     !if p indexed from zero
     !   allocate(p0(0:size(p,1)-1,0:size(p,2)-1))
@@ -130,18 +149,20 @@ contains
       !        + P0(IP(icnt),J(icnt))*DX(icnt)*DY1(icnt)  &
       !        + P0(IP(icnt),JP(icnt))*DX(icnt)*DY(icnt))
     enddo
-    deallocate(i)
-    deallocate(j)
-    deallocate(ip)
-    deallocate(jp)
-    deallocate(dx)
-    deallocate(dy)
-    deallocate(dx1)
-    deallocate(dy1)
-    deallocate(ix)
-    deallocate(jy)
+
+    deallocate(i, j, ip, jp, dx, dy, dx1, dy1, ix, jy, stat=errstat)
     !if p indexed from zero
     !   deallocate(p0)
+
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "bilineara: deallocation failure", &
+           errstat)
+      call exit(-1)
+    endif
+
+
+
   END  function bilineara
 
 FUNCTION BILINEAR1 (P,IXin,JYin, x, y ) result (bilinear_res)

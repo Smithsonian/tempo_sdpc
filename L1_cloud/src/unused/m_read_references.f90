@@ -45,8 +45,6 @@ contains
     integer :: i, ii
     character(len=100) :: text
 
-    !integer, parameter :: lun=11
-    ! lun cannot be a parameter as it's an output of pgs_io_gen_openf
     integer :: lun=11
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr
@@ -66,8 +64,9 @@ contains
         ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening reference table file', &
              'read_references, module m_read_references',1)
         ierr = OMI_SMF_setmsg( status, &
-             "PGE aborting, exit code = 1", "read_references", 1 ) 
-        call exit(-1)
+             "PGE aborting", "read_references", 1 ) 
+        errstat = -1
+        return
       endif
     else
       filename=trim(input_data_path)//trim(thresh_file)
@@ -123,8 +122,9 @@ contains
 100 status = 1
     if (iprt > 0) print *,'read_references: error reading file'
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-         "Error reading reference table, PGE aborting, exit code = 1", "read_references", 1 )
-    call exit(-1)
+         "Error reading reference table, PGE aborting", "read_references", 1 )
+    errstat = -1
+    return
 
   end subroutine read_references
 

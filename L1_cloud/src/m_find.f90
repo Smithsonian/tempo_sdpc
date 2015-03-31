@@ -64,6 +64,8 @@ contains
 
   function find1(mask,iprt) result (index)
 
+    use tell_module
+
     implicit none
 
     logical, dimension(:),  intent(in)      :: mask
@@ -71,7 +73,7 @@ contains
     integer                                 :: index, iprt1
 
     integer, dimension(1) :: temp
-    integer :: n
+    integer :: n, errstat
     integer, dimension(:), allocatable :: temp2
 
     iprt1=1
@@ -85,10 +87,19 @@ contains
         print *,'find: WARNING, found more than 1 value'
         print *,'taking the first'
       endif
-      allocate(temp2(n))
+
+      if (allocated(temp2))  deallocate(temp2, stat=errstat)
+      allocate(temp2(n), stat=errstat)
+
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "find1: allocation failed", &
+             errstat)
+        call exit(-1)
+      endif
+
       temp2 = find2(mask,n)
       index=temp2(1)
-      deallocate(temp2)
     endif
 
   end function find1

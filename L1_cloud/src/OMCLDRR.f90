@@ -282,8 +282,9 @@ program OMCLDRR
       call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
            errstat)
-      call exit(-1)
     endif
+    ! Even if create_output_file fails, try to close file to make sure we
+    ! don't exit with a half-written file open.
     call close_output_file(errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &

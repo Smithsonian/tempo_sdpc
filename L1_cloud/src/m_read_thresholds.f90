@@ -17,8 +17,8 @@ contains
     !  read_thresholds reads precomputed thresholds needed for cloud
     !               mask
     !
-    use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, input_data_path, &
-         thresh_file, filename, ex, iprt,stddev_thresh 
+    use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, ex, iprt, &
+         stddev_thresh 
     use m_LUN_set
     use m_pgs_include
     use tell_module
@@ -62,8 +62,9 @@ contains
       ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening threshold table file', &
            'read_thresholds, module m_read_thresholds',1)
       ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting, exit code = -1", "read_thresholds", 1 ) 
-      call exit(-1)
+           "PGE aborting", "read_thresholds", 1 ) 
+      errstat = -1
+      return
     endif
     !    else
     !      filename=trim(input_data_path)//trim(thresh_file)
@@ -114,8 +115,9 @@ contains
 100 status = 1
     if (iprt > 0) print *,'read_thresholds: error reading file'
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-         "Error reading threshold table, PGE aborting, exit code = -1", "read_thresholds", 1 )
-    call exit(-1)
+         "Error reading threshold table, PGE aborting", "read_thresholds", 1 )
+    errstat = -1
+    return
 
   end subroutine read_thresholds
 

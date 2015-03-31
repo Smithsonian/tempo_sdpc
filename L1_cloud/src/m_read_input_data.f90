@@ -122,7 +122,7 @@ contains
       IF( status .NE. OMI_S_SUCCESS ) THEN
         ierr = OMI_SMF_setmsg( status, & 
              "PGE aborting, exit code = 1", "read_input_data", 1 )
-        call exit(1)
+        call exit(-1)
       ELSE
         !     ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
         ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
@@ -142,7 +142,7 @@ contains
       IF( status .NE. OMI_S_SUCCESS ) THEN
         ierr = OMI_SMF_setmsg( status, & 
              "PGE aborting, exit code = 1", "read_input_data", 1 )
-        call exit(1)
+        call exit(-1)
       ELSE
         !      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
         ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
@@ -168,7 +168,7 @@ contains
            "L1Brd_getDATA failed", "read_input_data", 1 )
       ierr = OMI_SMF_setmsg( status, & 
            "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     status = L1Br_getGEOline( blk, iLine-1, Time_k=time(iLine), & 
@@ -184,7 +184,7 @@ contains
            "L1Brd_getGEOline failed", "read_input_data", 1 )
       ierr = OMI_SMF_setmsg( status, & 
            "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
 
@@ -262,7 +262,7 @@ contains
            "L1Br_getSIGline failed", "read_input_data", 1 )
       ierr = OMI_SMF_setmsg( status, & 
            "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
 
@@ -337,7 +337,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "latitude allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(lon)) deallocate (lon)   
@@ -346,7 +346,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "longitude allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(sza)) deallocate (sza)
@@ -355,7 +355,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, & 
            "szenith allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(sat_zen)) deallocate (sat_zen)
@@ -364,7 +364,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, & 
            "vzenith allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( sazimuth(nXtrack,nLines), STAT=ierr )
@@ -372,7 +372,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "sazimuth allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( vazimuth(nXtrack,nLines), STAT=ierr )
@@ -380,7 +380,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "vazimuth allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( terr_height(nXtrack,nLines), STAT=ierr )
@@ -388,7 +388,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "terrain height allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( geoflg(nXtrack,nLines), STAT=ierr )
@@ -397,7 +397,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "geoflg allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( anomflg(nXtrack,nLines), STAT=ierr )
@@ -406,7 +406,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "anomflg allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( mflg(nLines), STAT=ierr )
@@ -414,7 +414,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "measflg allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( quality_flagL(nWavel,nXtrack), STAT=ierr )
@@ -423,7 +423,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "quality_flagL allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(w12d)) deallocate (w12d)
@@ -432,7 +432,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "wavelengthL allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(f12d)) deallocate (f12d)
@@ -441,7 +441,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "radianceL allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( time(nLines), STAT=ierr )
@@ -449,7 +449,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "Time allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     ALLOCATE( meas_class(nLines), STAT=ierr )
@@ -457,14 +457,14 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "MeasurementClass allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
     ALLOCATE( config_rad(nLines), STAT=ierr )
     IF( ierr .NE. zero ) THEN
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "InstrumentConfigurationID allocation failure, PGE aborting, exit code = 1", &
            "read_input_data", 1 )
-      call exit(1)
+      call exit(-1)
     END IF
 
     if (allocated(meas_qual_flg)) deallocate (meas_qual_flg)

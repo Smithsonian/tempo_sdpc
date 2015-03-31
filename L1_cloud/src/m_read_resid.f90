@@ -92,8 +92,9 @@ contains
 
     if(status.ne.0) then
       ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting, exit code = 1", "read_resids", 1 ) 
-      call exit(-1)
+           "PGE aborting", "read_resids", 1 ) 
+      errstat = -1
+      return
     else
       read(lun, *, err=100) text
       read(lun, *, err=100) nscanpos, nwav
@@ -129,8 +130,9 @@ contains
 100 status = 1
     if (iprt > 0) print *,'read_resids: error reading file'
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-         "Error reading resid table, PGE aborting, exit code = 1", "read_resids", 1 )
-    call exit(-1)
+         "Error reading resid table, PGE aborting", "read_resids", 1 )
+    errstat = -1
+    return
 
   end subroutine read_resids
 
@@ -154,6 +156,8 @@ contains
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr, lun, nwav_o3
 
+    if (errstat /= 0) return
+
     version = 1
     status = pgs_io_gen_openf ( o3_id, PGSd_IO_Gen_RSeqFrm, &
          0,lun, version)
@@ -162,8 +166,9 @@ contains
     endif
     if(status.ne.0) then
       ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting, exit code = 1", "read_o3", 1 ) 
-      call exit(-1)
+           "PGE aborting", "read_o3", 1 ) 
+      errstat = -1
+      return
     else
       read(lun, *, err=100) nwav_o3
       if (iprt >= 1) then
