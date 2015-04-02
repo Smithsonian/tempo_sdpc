@@ -60,7 +60,7 @@ MODULE m_HDFEOS_attr
           WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleDay" // " failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN 
         ENDIF
 
@@ -72,7 +72,7 @@ MODULE m_HDFEOS_attr
           WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleMonth" // " failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN 
         ENDIF
 
@@ -84,7 +84,7 @@ MODULE m_HDFEOS_attr
           WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "GranuleYear" // " failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN 
         ENDIF
 
@@ -96,7 +96,7 @@ MODULE m_HDFEOS_attr
             WRITE( msg,'(A)' ) "he5_ehwrglatt Time error:"// GranuleDAY0Z
             ierr = OMI_SMF_setmsg(omcldrr_f_hdfeos, msg, &
                  "CLDRR_writeGlobalAttribute", zero )
-            call exit(-1)
+            stop 1
             RETURN 
           ENDIF
         ENDIF
@@ -109,7 +109,7 @@ MODULE m_HDFEOS_attr
           WRITE( msg,'(A)' ) "he5_ehwrglatt:"// "TAI93At0zOfGranule" // " failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN 
         ENDIF
 
@@ -123,7 +123,7 @@ MODULE m_HDFEOS_attr
             WRITE( msg,'(A,I0)' ) "get ShortName failed at LUN:", lun(di) 
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                  "CLDRR_writeGlobalAttribute", zero )
-            call exit(-1)
+            stop 1
             return
           ENDIF
           InputVersions = TRIM(InputVersions) // " " // TRIM(ShortName) // ":"
@@ -135,7 +135,7 @@ MODULE m_HDFEOS_attr
             WRITE( msg,'(A,I0)' ) "get InputPGEVersion failed at LUN:", lun(di) 
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                  "CLDRR_writeGlobalAttribute", zero )
-            call exit(-1)
+            stop 1
             return
           ENDIF
 
@@ -154,7 +154,7 @@ MODULE m_HDFEOS_attr
                InputVersions //" failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN 
         ENDIF
 
@@ -170,7 +170,7 @@ MODULE m_HDFEOS_attr
             WRITE( msg,'(A,I0)' ) "get from PCF failed at LUN = ", lun(di)
             ierr = OMI_SMF_setmsg( status, msg, "CLDRR_writeGlobalAttribute", &
                  zero )
-            call exit(-1)
+            stop 1
             RETURN
           ENDIF
 
@@ -186,7 +186,7 @@ MODULE m_HDFEOS_attr
                    TRIM( globalAttributeName_PCF(di)) // " failed "
               ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                    "CLDRR_writeGlobalAttribute", zero )
-              call exit(-1)
+              stop 1
               RETURN 
             ENDIF
           ENDIF
@@ -207,7 +207,7 @@ MODULE m_HDFEOS_attr
           WRITE( msg,'(A)' ) "he5_ehwrglatt OrbitData failed "
           ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, msg, &
                "CLDRR_writeGlobalAttribute", zero )
-          call exit(-1)
+          stop 1
           RETURN
         ENDIF
 
@@ -291,7 +291,7 @@ MODULE m_HDFEOS_attr
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, &
                                    "Write Swath Attribute NumTimes failed.", &
                                    "CLDRR_writeSwathAttribute", zero )
-            call exit(-1)
+            stop 1
             RETURN 
          ENDIF
 
@@ -302,7 +302,7 @@ MODULE m_HDFEOS_attr
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, &
                                    "Write Swath Attribute NumTimesSmallPix failed.", &
                                    "CLDRR_writeSwathAttribute", zero )
-            call exit(-1)
+            stop 1
             RETURN 
          ENDIF
 
@@ -312,7 +312,7 @@ MODULE m_HDFEOS_attr
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, &
                             "Write Swath Attribute EarthSundistance failed.", &
                             "CLDRR_writeSwathAttribute", zero )
-            call exit(-1)
+            stop 1
             RETURN 
          ENDIF
 
@@ -323,7 +323,7 @@ MODULE m_HDFEOS_attr
             ierr = OMI_SMF_setmsg( omcldrr_f_hdfeos, &
                            "Write Swath Attribute VerticalCoordinate failed.", &
                            "CLDRR_writeSwathAttribute", zero )
-            call exit(-1)
+            stop 1
             RETURN 
          ENDIF
        END FUNCTION CLDRR_WriteSwathAttr

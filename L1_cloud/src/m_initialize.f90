@@ -241,7 +241,8 @@ contains
     print *
     print *, "Last Revised: 20 August 2014      (E. O'Sullivan)  "
     print *
-    call exit(-1)
+
+    stop 1
 
   end subroutine ret_usage
 

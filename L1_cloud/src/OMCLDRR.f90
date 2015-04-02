@@ -77,7 +77,7 @@ program OMCLDRR
     call tell_error (tell_io_error, &
          "Failed to read Ring-effect tables", &
          errstat)
-    call exit(-1)
+    stop 1
   endif
 
   call read_thresholds(errstat)
@@ -87,7 +87,7 @@ program OMCLDRR
     call tell_error (tell_io_error, &
          "Failure in reading thresholds, residuals, or O3 cross-section", &
          errstat)
-    call exit(-1)
+    stop 1
   endif
 
   !Assign output file name
@@ -99,7 +99,7 @@ program OMCLDRR
       ierr=OMI_SMF_setmsg(OMCLDRR_F_FAILURE, &
            "error opening output L2 file, PGE aborting, exit code = 1", &
            "program cloud_ret",0)
-      call exit(-1)
+      stop 1
     endif
     filename_out=trim(flnm_out)
     if (iprt > 1) print *,'cloud_ret: status',status,' output filename ',&
@@ -121,7 +121,7 @@ program OMCLDRR
       call tell_error (tell_io_error, &
            "Failure to generate cloud mask", &
            errstat)
-      call exit(-1)
+      stop 1
     else
       if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
     endif
@@ -146,7 +146,7 @@ program OMCLDRR
     call tell_error (tell_io_error, &
          "Failed to input first line of data, exiting", &
          errstat)
-    call exit(-1)
+    stop 1
   endif
 
   !loop over the # of lines
@@ -182,7 +182,7 @@ program OMCLDRR
       call tell_error (tell_io_error, &
            "Error opening terrain height file, exiting", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
 
     !get the surface reflectivity climatology 
@@ -193,7 +193,7 @@ program OMCLDRR
         call tell_error (tell_io_error, &
              "Error opening surface reflectivity file, exiting", &
              errstat)
-        call exit(-1)
+        stop 1
       endif
     endif
 
@@ -204,7 +204,7 @@ program OMCLDRR
       call tell_error (tell_io_error, &
            "Error opening chlorophyll file, exiting", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
     land_flg=chlcl < 0.
 
@@ -230,7 +230,7 @@ program OMCLDRR
       call tell_error (tell_application_error, &
            "cloud_pres_ret: failed, exiting", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
  
     cld_pres2(:,iLine)=cloud_pres(:,iLine)
@@ -290,7 +290,7 @@ program OMCLDRR
       call tell_error (tell_io_write_error, &
            "close_output_file: failed", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
     if (iprt > 0) print *,'netCDF file output successfully'
   endif
@@ -307,7 +307,7 @@ program OMCLDRR
       ierr = OMI_SMF_setmsg( status, &
            "L1Br_close failed, PGE aborting, exit code = 1", &
            "OMCLDRR_2pres", 1 )
-      call exit(-1)
+      stop 1
     END IF
   endif
 
@@ -318,7 +318,7 @@ program OMCLDRR
   status = omi_smf_setmsg(OMI_S_SUCCESS, &
        'PGE finishes normally, exit code = 0  ', 'cloud_ret',0)
   status = OMI_S_SUCCESS                                                      
-  call exit(0)
+  stop
 
 
 END program OMCLDRR

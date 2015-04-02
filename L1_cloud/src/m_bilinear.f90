@@ -85,7 +85,7 @@ contains
       call tell_error (tell_malloc_error, &
            "bilineara: failured to allocate ix", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
 
     allocate(jy(size(ix)), &
@@ -103,7 +103,7 @@ contains
       call tell_error (tell_malloc_error, &
            "bilineara: allocation failure", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
 
 
@@ -158,7 +158,7 @@ contains
       call tell_error (tell_malloc_error, &
            "bilineara: deallocation failure", &
            errstat)
-      call exit(-1)
+      stop 1
     endif
 
 

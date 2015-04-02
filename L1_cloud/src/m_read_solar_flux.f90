@@ -44,7 +44,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
            "get IRR1B_FILE name failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ! open data block structure with default size of 1 lines
@@ -66,7 +66,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
            "L1Br_open failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ! obtain sizes of dimensions defined in swath
@@ -76,7 +76,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
            "IRR1Br_getSWdims failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     else
       if (iprt .ge. 2) print *,'read_solar_flux: nwavel, nwavelcoef, nXtrack ', &
            nWavel, nWavelCoef, nXtrack, nTimes
@@ -89,7 +89,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, & 
            "irradianceL allocation failure, PGE aborting", &
            "read_solar_flux", 1 )      
-      call exit(-1)
+      stop 1
     END IF
 
     IF (ALLOCATED (irr_quality_flagL)) then
@@ -98,7 +98,7 @@ contains
         ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
              "irr_quality_flagL deallocation failure, PGE aborting", &
              "read_solar_flux", 1 )
-        call exit(-1)
+        stop 1
       END IF
     END IF
     ALLOCATE( irr_quality_flagL(nWavel,nXtrack), STAT=ierr )
@@ -107,7 +107,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "irr_quality_flagL allocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ALLOCATE( wavelengthL(nWavel,nXtrack), STAT=ierr )
@@ -115,7 +115,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "wavelengthL allocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     !  Initialize all local data arrays
@@ -130,7 +130,7 @@ contains
       ierr = OMI_SMF_setmsg( status, &
            "L1Brd_getDATA failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ! testing MeasurementQualityFlags
@@ -139,7 +139,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
            "MeasurementQualityFlags: error, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     endif
 
     !JJ to Sasha check it, checking bit 10 twice, should check 11?
@@ -155,7 +155,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
            "L1Brd_getSIGline failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     nsolwave=nwl
@@ -166,7 +166,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "solar wave allocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ALLOCATE( fs(0:nsolwave-1,0:nXtrack-1), STAT=ierr )
@@ -174,7 +174,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "solar flux allocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ws(0:nsolwave-1,:)=wavelengthL(1:nsolwave,:)
@@ -190,7 +190,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "irradianceL deallocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
 
@@ -199,7 +199,7 @@ contains
       ierr = OMI_SMF_setmsg( OMCLDRR_F_MEM_ALLOC, &
            "wavelengthL deallocation failure, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     ! close data block structure
@@ -208,7 +208,7 @@ contains
       ierr = OMI_SMF_setmsg( status, &
            "L1Br_close failed, PGE aborting", &
            "read_solar_flux", 1 )
-      call exit(-1)
+      stop 1
     END IF
 
     call EarthSunDist(filename,dist_irrad, dist_rad)

@@ -95,7 +95,7 @@ contains
         call tell_error (tell_malloc_error, &
              "find1: allocation failed", &
              errstat)
-        call exit(-1)
+        stop 1
       endif
 
       temp2 = find2(mask,n)
