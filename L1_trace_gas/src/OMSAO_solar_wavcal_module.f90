@@ -477,7 +477,7 @@ CONTAINS
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
+        WRITE (addmsg, '(A,I5)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
         call tell_log (0, addmsg)
         !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
         !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
@@ -506,7 +506,7 @@ CONTAINS
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
-        WRITE (addmsg, '(A,I2)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
+        WRITE (addmsg, '(A,I5)') 'xtrack_solar_calibration_loop: SKIPPING cross track pixel #', ipix
         call tell_log (0, addmsg)
         !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
         !  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &

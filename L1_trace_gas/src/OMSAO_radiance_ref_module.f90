@@ -624,7 +624,7 @@ CONTAINS
           fitvar_rad(shi_idx), '; squeeze = ', fitvar_rad(squ_idx),&
           '; exit val = ', radfit_exval, '; iter num = ', radfit_itnum
       ELSE
-        WRITE (addmsg, '(A,I2,A)') 'RADIANCE Reference #', ipix, ': Skipped!'
+        WRITE (addmsg, '(A,I5,A)') 'RADIANCE Reference #', ipix, ': Skipped!'
       END IF
 
       ! ------------------
