@@ -21,15 +21,19 @@ contains
   ! !INPUT PARAMETERS:   
   !> @param   refl_clr  reflectance of a clear pixel (fixed) 
   !> @param   refl_cld  reflectance of clouds (fixed)
-  !  i  cross-track pixel index (ip in m_cloud_pres_ret)
+  !> @param   i  cross-track pixel index (ip in m_cloud_pres_ret)
   !  iLine  along-swath scan row index
-  !> @param   i_obs_l, i_obs_s  normalized flux for longest (l) or shortest (s)
-  !>                     "good" wavelength
-  !> @param   i0_*  backscattered intensity at top of atmosphere?
-  !> @param   sb_*  fraction of intensity reflected by surface that is then
+  !> @param   i_obs_l normalized flux for longest "good" wavelength (l)
+  !> @param   i_obs_s normalized flux for shortest "good" wavelength (s)
+  !> @param   i0_l  backscattered intensity at top of atmosphere?
+  !> @param   i0_s  backscattered intensity at top of atmosphere?
+  !> @param   sb_l  fraction of intensity reflected by surface that is then
   !>         scattered back to surface by atmosphere?
-  !> @param   tr_*  fractional transmittance of atmosphere?
-  !  set_cld_frac  if true, calculate cloud fraction.
+  !> @param   sb_s  fraction of intensity reflected by surface that is then
+  !>         scattered back to surface by atmosphere?
+  !> @param   tr_l  fractional transmittance of atmosphere?
+  !> @param   tr_s  fractional transmittance of atmosphere?
+  !> @param   set_cld_frac  if true, calculate cloud fraction.
   !  min_refl, max_refl  minimum & maximum allowed reflectance (fixed)
   !  min_refl_flag  flag value for violations of min_refl (fixed)
   !  do_short_wave  include shortest wavelength bound in calculations?

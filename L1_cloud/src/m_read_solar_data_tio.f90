@@ -485,7 +485,7 @@ contains
   !-------------------------------------------------------------------------
   function calc_wl_line(nXtrack, nWavel, minwl, maxwl, wl_local, &
        il, ih, Nwl_l) result (errstat)
-    integer (kind=4) intent(in) :: nXtrack, nWavel
+    integer (kind=4), intent(in) :: nXtrack, nWavel
     real (kind = 4), intent(inout) :: minwl, maxwl
     integer (kind = 4), intent(out) :: il, ih, Nwl_l
     real (kind = 4), dimension(:,:), intent(inout) :: wl_local
