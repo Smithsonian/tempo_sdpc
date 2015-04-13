@@ -1,4 +1,4 @@
-!Main processing code for cloud pressure and cloud fraction calculations
+!>Main processing routine for cloud pressure and cloud fraction calculations
 module m_cloud_pres_ret
 
   private
@@ -7,67 +7,74 @@ module m_cloud_pres_ret
 
 contains
 
+  !!==================================================================
+  !
+  ! Subroutine cloud_pres_ret:
+  !
+  !> @brief
+  !> This is the main code performing the retrieval (via Chi^2 fit) 
+  !> of the primary cloud code data products:
+  !>
+  !> Cloud Pressure for O3\n
+  !> Cloud Fraction for O3\n
+  !>
+  !> It also calculates a number of other output variables 
+  !> (in some cases via calls to other modules) including:
+  !>
+  !> Convergence Factor\n
+  !> dIdR (Fractional Sensitivity of Radiance to Reflectivity)\n
+  !> Effective Filling-in\n
+  !> Radiative Cloud Fraction\n
+  !> Reflectivity\n
+  !> Residual Bias and Residual Standard Deviation\n
+  !> Wavelength Shift\n
+  !>
+  !> It can also update:
+  !>
+  !> Measurement Quality (flags)\n
+  !> Cloud Mask\n
+  !>
+  !> There are a number of options which can generate additional outputs,
+  !> including:
+  !>
+  !> Wavelength Squeeze\n
+  !> 
+  !> INPUTS/OUTPUTS:
+  !>
+  !> The two nominal input parameters refl_clr and refl_cld represent the 
+  !> reflectivity of the earth in clear or fully overcast conditions.
+  !> 
+  !> For documentation of all other parameters used, SEE:\n
+  !> m_cloud_pres_mod\n
+  !> m_vars \n
+  !> and other modules called herein (m_get_f, m_get_ai_refl, etc.)\n
+  !>
+  !> REFERENCES;
+  !>
+  !> Primary (most useful):\n
+  !> Joiner et al. (1995) Applied Optica, 34, 4513\n
+  !> Joiner & Vasilkov (2006) IEEE Trans. Geo. and Rem. Sens., 44, 1272\n
+  !>
+  !> Secondary:\n
+  !> Joiner & Bhartia (1995) J. of Geophys. Res., 100, 23109\n
+  !> Joiner et al. (2011) Atmos. Meas. Teach. Dscuss., 4, 6186\n
+  !> Sneep et al. (2008) J. of Geophys. Res., 113, D15S23\n
+  !> Optional Chlorophyll retrieval:\n
+  !> Joiner et al. (2004) J. of Geophy. Res., 109, D01109\n
+  !
+  ! AUTHORS:
+  ! 
+  !> @author Joiner & Vasilkov - original OMI code (probably c2001)
+  !> @author O'Sullivan (2014) - updates and documentation for TEMPO
+  !
+  ! VARIABLES:
+  !
+  !> @param refl_clr surface reflectivity of cloud free pixels
+  !> @param refl_cld reflectivity of completely cloud filled pixels
+  !> @param errstat Error return code, non-zero indicates problem
+  !
+  !!====================================================================
   subroutine cloud_pres_ret(refl_clr, refl_cld, errstat)
-
-    !!==================================================================
-    !
-    ! Subroutine cloud_pres_ret:
-    !
-    ! This is the main code performing the retrieval (via Chi^2 fit) 
-    ! of the primary cloud code data products:
-    !
-    ! Cloud Pressure for O3
-    ! Cloud Fraction for O3 
-    !
-    ! It also calculates a number of other output variables 
-    ! (in some cases via calls to other modules) including:
-    !
-    ! Convergence Factor
-    ! dIdR (Fractional Sensitivity of Radiance to Reflectivity)
-    ! Effective Filling-in
-    ! Radiative Cloud Fraction
-    ! Reflectivity
-    ! Residual Bias and Residual Standard Deviation
-    ! Wavelength Shift
-    !
-    ! It can also update:
-    !
-    ! Measurement Quality (flags)
-    ! Cloud Mask
-    !
-    ! There are a number of options which can generate additional outputs,
-    ! including:
-    !
-    ! Wavelength Squeeze
-    ! 
-    ! INPUTS/OUTPUTS:
-    !
-    ! The two nominal input parameters refl_clr and refl_cld represent the 
-    ! reflectivity of the earth in clear or fully overcast conditions.
-    ! 
-    ! For documentation of all other parameters used, SEE:
-    ! m_cloud_pres_mod
-    ! m_vars 
-    ! and other modules called herein (m_get_f, m_get_ai_refl, etc.)
-    !
-    ! REFERENCES;
-    !
-    ! Primary (most useful):
-    ! Joiner et al. (1995) Applied Optica, 34, 4513
-    ! Joiner & Vasilkov (2006) IEEE Trans. Geo. and Rem. Sens., 44, 1272
-    ! Secondary:
-    ! Joiner & Bhartia (1995) J. of Geophys. Res., 100, 23109
-    ! Joiner et al. (2011) Atmos. Meas. Teach. Dscuss., 4, 6186
-    ! Sneep et al. (2008) J. of Geophys. Res., 113, D15S23
-    ! Optional Chlorophyll retrieval:
-    ! Joiner et al. (2004) J. of Geophy. Res., 109, D01109
-    !
-    ! AUTHORS:
-    ! 
-    ! Joiner & Vasilkov - original OMI code (probably c2001)
-    ! O'Sullivan (2014) - updates and documentation for TEMPO
-    !
-    !!====================================================================
 
     use mathcons
     use m_print_ret

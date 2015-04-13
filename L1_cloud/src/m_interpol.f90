@@ -1,3 +1,22 @@
+!>Linear interpolation routines
+!
+!-------------------------------------------------------------------------
+! 
+! !DESCRIPTION: 
+!> @brief Linear interpolation, similar to IDL routine
+!>               extrapolate outside input range
+!
+! !INPUT PARAMETERS:   
+!> @param v[in] input ordinate vector
+!> @param x[in] input abcissa vector
+!> @param u[in] abcissa values for output vector r
+! !OUTPUT PARAMETERS:  
+!> @param r[out] output ordinate vector
+!
+!> @author  02Mar96   Joiner     Original code.
+!> @author  13Aug97   Joiner     Update to fortran 90
+!
+!-------------------------------------------------------------------------
 module m_interpol 
 
   interface interpol

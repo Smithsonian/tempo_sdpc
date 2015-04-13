@@ -1,18 +1,29 @@
+!>Variables and parameters used by m_cloud_pres_ret and related code
+!
+! all variable descriptions added by E. O'Sullivan, 13-15Aug14,
+! some guesswork involved.
+!
+!> @param sz_max  maximum solar zenith angle
+!> @param bad_thresh maximum acceptable fractional error on observed flux
+!> @param refl_cld_mask reflectance threshold above which pixels are added to 
+!! cloud mask 
+!> @param cld_mask_press_diff threshold for identifying regions of 
+!! ice & snow from unphysical pressure results, though this check is 
+!! commented out of m_cloud_pres_mod
+!> @param nbad number of pixels with bad fluxes (large errors)
+!> @param bad_obs vector identifying pixels with bad flux measurements
+!> @param good_obs vector identifying pixels with bad flux measurements
+!> @param nterms initail number of terms in state vector
+!> @param nst number of terms in state vector (=nterms +2,3 or 4)
+!> @param ntm iteration index used with nterms
+!------------------------------------------------------------------------
 module m_cloud_pres_mod
 
-  !!-------------------------------------------------------------------
-  !
-  ! Variables and parameters used by m_cloud_pres_ret and related code
-  !
-  ! all variable descriptions added by E. O'Sullivan, 13-15Aug14,
-  ! some guesswork involved.
-  !
-  !!-------------------------------------------------------------------
 
   INTEGER(KIND=4), EXTERNAL :: OMI_SMF_setmsg
   integer :: status, NISE 
-  real (KIND=8), parameter :: sz_max=86d0 !max solar zenith
-  real (KIND=8), parameter :: bad_thresh=0.02d0 !maximum acceptable
+  real (KIND=8), parameter :: sz_max=86d0 ! maximum solar zenith angle
+  real (KIND=8), parameter :: bad_thresh=0.02d0 !maximum acceptable 
   !fractional error on observed flux
   real (KIND=8), parameter :: refl_cld_mask=0.4d0 !reflectance threshold
   !above which pixels are added to cloud mask 

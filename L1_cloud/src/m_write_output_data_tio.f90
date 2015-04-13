@@ -1,4 +1,4 @@
-!subroutines to write out L2 Cloud netCDF file
+!>Subroutines to write out L2 Cloud netCDF file
 module m_write_output_data_tio
   use netcdf
   use tio_module
@@ -20,6 +20,18 @@ module m_write_output_data_tio
 
 contains 
 
+  !>Write coordinate variables into L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] obj file object to be written into
+  !> @param[in] dimlist list of dimension parameters
+  !> @param[in] num_steps size of dimension in scan direction
+  !> @param[in] num_xtrack size of dimension across scan direction
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !> @param[in] num_wavel size of spectral dimension
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, &
        errstat, num_wavel)
     use m_vars, only: write_resid
@@ -95,7 +107,17 @@ contains
   end subroutine write_coordinate_vars
 
 
-
+  !>Top-level subroutine to create and populate an L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] outfile_nc name of L2 netCDF file to be written
+  !> @param[in] num_steps size of dimension in scan direction
+  !> @param[in] num_xtrack size of dimension across scan direction
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !> @param[in] num_wavel size of spectral dimension
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine create_output_file (outfile_nc, num_steps, num_xtrack, &
        errstat, num_wavel)
     use m_vars, only: write_resid
@@ -216,6 +238,13 @@ contains
   end subroutine create_output_file
 
 
+  !>Close L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine close_output_file (errstat)
     implicit none
     integer, intent(inout) :: errstat
@@ -232,6 +261,15 @@ contains
   end subroutine close_output_file
 
 
+  !> Create the structure for the geolocation data in L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] obj file object to be written into
+  !> @param[in] dimlist list of dimension parameters
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_geo_struct(obj, dimlist, errstat)
     use m_vars, only: write_resid
     implicit none
@@ -369,6 +407,16 @@ contains
   end subroutine write_geo_struct
 
 
+  !> Write geolocation data into L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] obj file object to be written into
+  !> @param[in] num_steps size of dimension in scan direction
+  !> @param[in] num_xtrack size of dimension across scan direction
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_geo_data(obj, num_steps, num_xtrack, errstat)
     use m_vars, only: lat, lon, time, sza, sat_zen, azimuth, terr_height, &
          geoflg
@@ -425,6 +473,15 @@ contains
   end subroutine write_geo_data
 
 
+  !> Create cloud data structure in L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] obj file object to be written into
+  !> @param[in] dimlist list of dimension parameters
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_cloud_struct(obj, dimlist, errstat)
     use m_vars, only: squeeze, write_fill, write_resid, cal_reflec, &
          do_mler, do_cloud_mask, cloud_mask
@@ -715,6 +772,17 @@ contains
   end subroutine write_cloud_struct
 
 
+  !>Write out cloud data into L2 Cloud netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] obj file object to be written into
+  !> @param[in] num_steps size of dimension in scan direction
+  !> @param[in] num_xtrack size of dimension across scan direction
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !> @param[in] num_wavel size of spectral dimension
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_cloud_data(obj, num_steps, num_xtrack, errstat, &
        num_wavel)
     use m_vars, only: squeeze, write_fill, write_resid, cal_reflec, &
@@ -840,7 +908,14 @@ contains
   end subroutine write_cloud_data
 
 
-  ! proof of concept for now
+  !>Add some basic metadata to L2 Cloud netCDF file. 
+  !>Proof of concept for now
+  !-----------------------------------------------------------------------
+  !
+  !> @param errstat error tracking code, non-zero indiactes problem
+  !
+  !> @author E. O'Sullivan   March 2015
+  !-----------------------------------------------------------------------
   subroutine write_metadata (errstat)
     use m_vars, only: qc, cloud_pres, eff_cld_frac, cld_frac_min, &
          n_good_input, n_good_output, n_missing, n_input, &

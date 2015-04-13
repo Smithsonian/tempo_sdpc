@@ -1,3 +1,59 @@
+!>Cubic spline interpolation routines
+!
+!------------------------------------------------------------------------
+! NAME:
+!        SPLINE
+!
+! PURPOSE:
+!        This function performs cubic spline interpolation.
+!
+! CATEGORY:
+!        Interpolation - E1.
+!
+! CALLING SEQUENCE:
+!        Result = SPLINE(X, Y, T [, Sigma])
+!
+!> RESTRICTIONS:
+!>       Abcissa values must be monotonically increasing.
+!
+! EXAMPLE:
+!        The commands below show a typical use of SPLINE:
+!
+!            X = [2.,3.,4.]          ;X values of original function
+!            Y = (X-3)^2             ;Make a quadratic
+!            T = FINDGEN(20)/10.+2   ;Values for interpolated points.
+!                                    ;twenty values from 2 to 3.9.
+!            Z = SPLINE(X,Y,T)       ;Do the interpolation.
+!
+!
+!
+! INPUTS:
+!> @param[in]  x  The abcissa vector. Values MUST be monotonically increasing.
+!
+!> @param[in]  y  The vector of ordinate values corresponding to X.
+!
+!> @param[in]  t  The vector of abcissae values for which the ordinate is 
+!>             desired. The values of T MUST be monotonically increasing.
+!
+! OPTIONAL INPUT PARAMETERS:
+!> @param  sigma_in[in,optional] The amount of "tension" that is applied 
+!>            to the curve. 
+!>            The default value is 1.0. If sigma is close to 0, (e.g., .01),
+!>            then effectively there is a cubic spline fit. If sigma
+!>            is large, (e.g., greater than 10), then the fit will be like
+!>            a polynomial interpolation.
+!
+! OUTPUTS:
+!> @param[out] spl a vector of interpolated ordinates.
+!>        Result(i) = value of the function at T(i).
+!
+! MODIFICATION HISTORY:
+!> @author  Walter W. Jones, Naval Research Laboratory, Sept 26, 1976.
+!   Reviewer: Sidney Prahl, Texas Instruments.
+!   Adapted for IDL: DMS, Research Systems, March, 1983.
+!> @author   Converted to f90: Joanna Joiner, March 2001
+!
+!--------------------------------------------------------------------------
 module m_spline
 
   interface spline
@@ -9,65 +65,15 @@ contains
 
   function spline2(x,y,t,sigma_in) result(spl)   
 
-    implicit NONE          ! *** IDL2F9O ***
-
-    !+
-    ! NAME:
-    !        SPLINE
-    !
-    ! PURPOSE:
-    !        This function performs cubic spline interpolation.
-    !
-    ! CATEGORY:
-    !        Interpolation - E1.
-    !
-    ! CALLING SEQUENCE:
-    !        Result = SPLINE(X, Y, T [, Sigma])
-    !
+    implicit NONE  
     ! INPUTS:
     real (KIND=8), dimension(:), intent(in) :: x, y, t
-    real (KIND=8), intent(in), optional :: sigma_in
-    !     X:     The abcissa vector. Values MUST be monotonically increasing.
-    !
-    !     Y:     The vector of ordinate values corresponding to X.
-    !
-    !     T:     The vector of abcissae values for which the ordinate is 
-    !             desired. The values of T MUST be monotonically increasing.
-    !
     ! OPTIONAL INPUT PARAMETERS:
-    real (KIND=8), dimension(size(t)) :: spl
-    !     Sigma: The amount of "tension" that is applied to the curve. The 
-    !            default value is 1.0. If sigma is close to 0, (e.g., .01),
-    !            then effectively there is a cubic spline fit. If sigma
-    !            is large, (e.g., greater than 10), then the fit will be like
-    !            a polynomial interpolation.
-    !
+    real (KIND=8), intent(in), optional :: sigma_in
     ! OUTPUTS:
-    !        SPLINE returns a vector of interpolated ordinates.
-    !        Result(i) = value of the function at T(i).
-    !
-    ! RESTRICTIONS:
-    !        Abcissa values must be monotonically increasing.
-    !
-    ! EXAMPLE:
-    !        The commands below show a typical use of SPLINE:
-    !
-    !            X = [2.,3.,4.]          ;X values of original function
-    !            Y = (X-3)^2             ;Make a quadratic
-    !            T = FINDGEN(20)/10.+2   ;Values for interpolated points.
-    !                                    ;twenty values from 2 to 3.9.
-    !            Z = SPLINE(X,Y,T)       ;Do the interpolation.
-    !
-    !
-    !
-    ! MODIFICATION HISTORY:
-    !   Author:  Walter W. Jones, Naval Research Laboratory, Sept 26, 1976.
-    !   Reviewer: Sidney Prahl, Texas Instruments.
-    !   Adapted for IDL: DMS, Research Systems, March, 1983.
-    !   Converted to f90: Joanna Joiner, March 2001
-    !
-    !-
-    !
+    real (KIND=8), dimension(size(t)) :: spl
+
+    ! LOCAL VARIABLES
     real (KIND=8), dimension(0:size(x)*2-1) :: yp
     real (KIND=8), dimension(0:size(x)-1) :: xx
     integer, dimension(0:size(t)-1) :: subs, subs1

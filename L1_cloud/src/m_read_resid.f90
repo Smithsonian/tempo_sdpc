@@ -1,7 +1,10 @@
+!>Routines to read in averaged residuals and Ozone cross-section references
 module m_read_resid
 
 contains
 
+  !>Read precomputed averaged residuals reference file.
+  !>Used to perform "soft calibration".
   subroutine read_resids (errstat) 
 
     !-------------------------------------------------------------------------
@@ -136,6 +139,8 @@ contains
 
   end subroutine read_resids
 
+
+  !>Read in Ozone cross-section reference file
   subroutine read_o3 (errstat)
 
     use m_vars, ONLY: wave_o3, xsect_o3, iprt

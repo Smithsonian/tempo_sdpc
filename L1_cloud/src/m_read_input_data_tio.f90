@@ -1,4 +1,4 @@
-!read input data from L1B netCDF file
+!> Read input radiance and geolocation data from L1B netCDF file
 module m_read_input_data_tio
   use cld_names_module
   use tio_module
@@ -11,8 +11,16 @@ module m_read_input_data_tio
 
 contains
 
+  !> Top-level subroutine to read in an L1B netCDF radiance file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1bfile filename for L1B netCDF radiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_input_data_tio(l1bfile, errstat)
-    !read in a netCDF radiance file
+
     use m_vars, only: iprt, input_data_path, iLine, wrt_solar, wmin, wmax, &
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
@@ -25,7 +33,7 @@ contains
     implicit none
 
     !input variables
-    character (len=*), intent (in) :: l1bfile 
+    character (len=*), intent (in) :: l1bfile   
 
     !output variables
     integer (kind=4), intent (inout) :: errstat
@@ -242,8 +250,18 @@ contains
   end subroutine read_input_data_tio
 
 
+  !>Open netCDF radiance file and get dimensions
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1bfile filename for L1B netCDF radiance file
+  !> @param tio_l1obj L1B radiance file object
+  !> @param[in] swathname swath name in L1B netCDF radiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_cld_dimensions(l1bfile, tio_l1obj, swathname, errstat)
-    !open netCDF radiance file and get dimensions
+
     use m_vars, only: nXtrack, nTimes, nWavel, iprt
 
     implicit none
@@ -278,8 +296,18 @@ contains
   end subroutine read_cld_dimensions
  
 
+  !>Read one line of geolocation data from netCDF radiance file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1bfile filename for L1B netCDF radiance file
+  !> @param tio_l1obj L1B radiance file object
+  !> @param[in] swathname swath name in L1B netCDF radiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_cld_geo_data(l1bfile, tio_l1obj, swathname, errstat)
-    !read geolocation data from netCDF input file
+
     use m_vars, only: iLine, time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nXtrack, &
          azimuth, fill_value, read_he4
@@ -379,8 +407,18 @@ contains
   end subroutine read_cld_geo_data
 
 
+  !>Read all geolocation data from netCDF radiance file in one pass
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1bfile filename for L1B netCDF radiance file
+  !> @param tio_l1obj L1B radiance file object
+  !> @param[in] swathname swath name in L1B netCDF radiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_cld_geo_data2(l1bfile, tio_l1obj, swathname, errstat)
-    !read geolocation data from netCDF input file
+
     use m_vars, only: time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
          azimuth, fill_value
@@ -441,8 +479,18 @@ contains
 
 
 
+  !>Read one line of radiance data from netCDF input file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1bfile filename for L1B netCDF radiance file
+  !> @param tio_l1obj L1B radiance file object
+  !> @param[in] swathname swath name in L1B netCDF radiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_cld_rad_data(l1bfile, tio_l1obj, swathname, errstat)
-    !read radiance data from netCDF input file
+
     use m_vars, only: iLine, wmin2, wmax2, nwl, f12d, w12d, quality_flagL, &
          nWavel, nXtrack, read_he4
     use m_read_solar_data_tio, only: calc_wl_line
@@ -520,9 +568,15 @@ contains
 
 
 
-
+  !>Allocate memory for input radiance variables 
+  !---------------------------------------------------------------------
+  !
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine alloc_scan(errstat)
-  !allocate memory for variables 
+
     use m_vars, only: lat, lon, sza, sat_zen, sazimuth, vazimuth, azimuth, &
          terr_height, geoflg, anomflg, mflg, quality_flagL, w12d, f12d, &
          time, meas_qual_flg, cloud_pres, refl, dIdR, ps, ref_clr, &

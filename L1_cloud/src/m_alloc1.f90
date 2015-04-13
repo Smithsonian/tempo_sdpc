@@ -1,7 +1,27 @@
+!>Main memory allocation subroutine
 module m_alloc1
 
 contains
 
+  !-------------------------------------------------------------------------
+  ! !ROUTINE:  alloc1
+  ! 
+  !  DESCRIPTION:
+  !> alloc1 allocates/deallocates memory for retrievals
+  !
+  ! !CALLING SEQUENCE: 
+  !
+  !        call alloc1
+  !     
+  ! !INPUT PARAMETERS:   
+  !> @param errstat error reporting integer, non-zero = failure
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author  05Jan01   Joiner      original fortran 90
+  !> @author  26Mar15   O'Sullivan  updated for TEMPO
+  !
+  !-------------------------------------------------------------------------
   subroutine alloc1(errstat)
 
     use m_vars, ONLY: nchl, chl, npres, & 
@@ -9,32 +29,6 @@ contains
     use m_cloud_pres_mod
     use tell_module
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  alloc1
-    ! 
-    ! !DESCRIPTION: alloc1 allocates/deallocates memory for retrievals
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        call alloc1
-    !     
-    ! !INPUT PARAMETERS:   
-    !
-    ! !OUTPUT PARAMETERS:  
-    !
-    ! !SEE ALSO:  
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner      original fortran 90
-    !  26Mar15   O'Sullivan  updated for TEMPO
-    !
-    !EOP
-    !-------------------------------------------------------------------------
 
     integer, intent(inout) :: errstat
 

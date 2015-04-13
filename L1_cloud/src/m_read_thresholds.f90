@@ -1,22 +1,30 @@
+!>Read thresholds reference file needed for cloud mask computation
 module m_read_thresholds
 
+  private
+  public read_thresholds
+
 contains
+
   !-------------------------------------------------------------------------
-  !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
+  !
+  ! !USES:
+  !  read_thresholds reads precomputed thresholds needed for cloud
+  !               mask
+  !
+  ! !OUTPUT PARAMETERS:
+  !
+  !> @param errstat Error return code, non-zero indicates problem
+  ! !DESCRIPTION: 
+  !
+  ! !REVISION HISTORY:
+  !
+  !> @author  25aug04   Joiner      original fortran 90
+  !> @author  26mar15   O'Sullivan  updating for TEMPO
+  !
   !-------------------------------------------------------------------------
-  !BOP
-  !
-  ! !IROUTINE:  read_thresholds
-  !                
-  !
-  ! !INTERFACE:
-  !
   subroutine read_thresholds (errstat)
 
-    ! !USES:
-    !  read_thresholds reads precomputed thresholds needed for cloud
-    !               mask
-    !
     use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, ex, iprt, &
          stddev_thresh 
     use m_LUN_set
@@ -26,22 +34,11 @@ contains
 
     ! !INPUT PARAMETERS:
     !
-
     ! !OUTPUT PARAMETERS:
     !
-
     integer, intent(inout)         :: errstat        ! Error return code:
     !  0   all is well
     !  -1   files not found
-
-    ! !DESCRIPTION: 
-    !
-    ! !REVISION HISTORY:
-    !
-    !  25aug04   Joiner      original fortran 90
-    !  26mar15   O'Sullivan  updating for TEMPO
-    !
-    !EOP
     !-------------------------------------------------------------------------
     integer :: i, j, l, m
     character(len=100) :: text

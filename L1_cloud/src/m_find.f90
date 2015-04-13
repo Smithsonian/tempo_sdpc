@@ -1,3 +1,31 @@
+!>Return vector of indices for which input expression is true/non-zero
+!
+!-------------------------------------------------------------------------
+!
+! !ROUTINE:  find
+! 
+! !DESCRIPTION: 
+!> similar to IDL's "where" function, but needs to know
+!> the dimension of the output (can get from "count")
+!
+! !CALLING SEQUENCE: 
+!
+!        index = find(mask, count)
+!     
+! !INPUT PARAMETERS:   
+!> @param mask[in]  mask vector
+!> @param count[in] size of output vector
+!
+! !OUTPUT PARAMETERS:  
+!> @param index[out] vector of indices where mask is true
+!
+! !SEE ALSO:  IDL documentation
+!
+! !REVISION HISTORY: 
+!
+!> @author  13Aug97   Joiner     original code
+!
+!-------------------------------------------------------------------------
 module m_find
 
   public
@@ -5,40 +33,13 @@ module m_find
 contains
 
   function find2(mask,count) result (index)
+
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  find
-    ! 
-    ! !DESCRIPTION: similar to IDL's "where" function, but needs to know
-    !               the dimension of the output (can get from "count")
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        index = find(mask, count)
-    !     
     ! !INPUT PARAMETERS:   
     logical, dimension(:),         intent(in)             :: mask
-    !                        mask : mask vector
     integer,                 intent(in)           :: count
-    !                        count: size of output vector
-    !
     ! !OUTPUT PARAMETERS:  
     integer, dimension(count)                :: index
-    !                        index : vector of indices where mask is true
-    !
-    ! !SEE ALSO:  IDL documentation
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  13Aug97   Joiner     original code
-    !
-    !EOP
-    !-------------------------------------------------------------------------
-
     !local variables
     !---------------
     integer                                        :: i

@@ -1,38 +1,35 @@
+!>Memory allocation for matrices (covariance, jacobians, etc)
 module m_alloc2
 
 contains
 
+  !-------------------------------------------------------------------------
+  !
+  ! !ROUTINE:  alloc2
+  ! 
+  ! !DESCRIPTION: 
+  !> alloc2 allocates/deallocates memory for matrices (covariance, 
+  !! jacobians, etc)
+  !
+  ! !CALLING SEQUENCE: 
+  !
+  !        call alloc2
+  !     
+  ! !INPUT PARAMETERS:   
+  !> @param errstat error reporting integer, non-zero = failure
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author   05Jan01   Joiner      original fortran 90
+  !> @author   26Mar15   O'Sullivan  updated for TEMPO
+  !
+  !EOP
+  !-------------------------------------------------------------------------
   subroutine alloc2(errstat)
 
     use m_cloud_pres_mod
     use tell_module
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  alloc2
-    ! 
-    ! !DESCRIPTION: alloc2 allocates/deallocates memory for retrievals	    
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        call alloc2
-    !     
-    ! !INPUT PARAMETERS:   
-    !
-    ! !OUTPUT PARAMETERS:  
-    !
-    ! !SEE ALSO:  
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner      original fortran 90
-    !  26Mar15   O'Sullivan  update for TEMPO
-    !
-    !EOP
-    !-------------------------------------------------------------------------
 
     integer, intent(inout) :: errstat
 

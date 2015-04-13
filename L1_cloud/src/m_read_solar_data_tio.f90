@@ -1,4 +1,4 @@
-!read solar data from L1B netCDF file
+!>Read L1B solar irradiance netCDF file
 module m_read_solar_data_tio
   use cld_names_module
   use tio_module
@@ -10,8 +10,15 @@ module m_read_solar_data_tio
 
 contains
 
+  !>Top-level subroutine to read in a netCDF irradiance file
+  !---------------------------------------------------------------------
+  !
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_solar_data_tio(errstat)
-    !read in a netCDF irradiance file
+
     use m_vars, only: fs, nsolwave, iprt, status, dist_rad, dist_irrad, &
          filename, nc_swathname
     use m_lambda_qual
@@ -113,9 +120,22 @@ contains
 
 
 
+  !>Open netCDF irradiance file and get dimensions
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] filename_sol_nc filename for L1B netCDF irradiance file
+  !> @param tio_irrl1obj L1B irradiance file object
+  !> @param[in] swathname swath name in L1B netCDF irradiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !> @param[out] nTimes  size of dimension in direction of scan
+  !> @param[out] nXtrack  size of dimension across direction of scan
+  !> @param[out] nWavel  size of spectral dimension
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_sol_dimensions(filename_sol_nc, tio_irrl1obj, swathname, &
        nTimes, nXtrack, nWavel, errstat)
-    !open netCDF irradiance file and get dimensions
+
     use m_vars, only: iprt
 
     implicit none
@@ -141,7 +161,7 @@ contains
       print *, nTimes,nXtrack,nWavel
     endif
     call tiof_close (tio_irrl1obj, errstat)
-    
+
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
            "read_sol_dimensions: failed to open L1B file", &
@@ -152,9 +172,21 @@ contains
   end subroutine read_sol_dimensions
 
 
+  !>Read irradiance data from netCDF file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] filename_sol_nc filename for L1B netCDF irradiance file
+  !> @param tio_irrl1obj L1B irradiance file object
+  !> @param[in] swathname swath name in L1B netCDF irradiance file
+  !> @param[in] errstat error handling integer, non-zero indicates failure
+  !> @param[in] nXtrack  size of dimension across direction of scan
+  !> @param[in] nWavel  size of spectral dimension
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_sol_data(filename_sol_nc, tio_irrl1obj, swathname, &
        nXtrack, nWavel, errstat)
-    !read irradiance data from netCDF solar file
+
     use m_vars, only: wmin2, wmax2, ws, fs, nsolwave, iprt, ierr, &
          dist_rad, dist_irrad, irr_quality_flagL, read_he4
 
@@ -272,9 +304,19 @@ contains
 
 
 
+  !>Read measurement quality flag from netCDF irradiance file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] filename_sol_nc filename for L1B netCDF irradiance file
+  !> @param tio_irrl1obj L1B irradiance file object
+  !> @param[in] swathname swath name in L1B netCDF irradiance file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_sol_mflg(filename_sol_nc, tio_irrl1obj, swathname, &
        errstat)
-    !read measurement quality flag from netCDF solar file
+
     use m_vars, only: meas_qual_flg
 
     implicit none
@@ -322,9 +364,14 @@ contains
 
 
 
-  !FIXME: VIOLATES RULE THAT SUBROUTINES SHOULD NOT END MAIN PROGRAM
+  !>Write out solar data to a file and quit
+  !---------------------------------------------------------------------
+  !
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine write_solar_tio(errstat)
-  !write out solar data to a file and quit
     use m_vars, only: solar_path, sfile, nsolwave, ws, fs
 
     !local variables
@@ -352,15 +399,24 @@ contains
       close (1) 
 
       stop
-      
+
       return
     endif
 
   end subroutine write_solar_tio
 
 
+  !>Read earth-sun distance from a netCDF radiance or irradiance file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] filename_nc filename for L1B netCDF rad or irrad file
+  !> @param errstat error handling integer, non-zero indicates failure
+  !> @param[out] dist  Sun-Earth distance
+  !
+  !> @author E. O'Sullivan March 2015
+  !---------------------------------------------------------------------
   subroutine read_earth_sun_distance (filename_nc, dist, errstat)
-  ! read earth-sun distance from a netCDF radiance or irradiance file
+
     implicit none
     character (len=*), intent(in) :: filename_nc
     real (kind=4), intent(out) :: dist
@@ -379,8 +435,8 @@ contains
     call tiof_get_r4 (obj, cld_var_earth_sun_distance, dist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
-                       "Error reading earth-sun distance from file"//trim(filename_nc), &
-                       errstat)
+           "Error reading earth-sun distance from file"//trim(filename_nc), &
+           errstat)
     endif
 
     call tiof_close (obj, errstat)
@@ -392,42 +448,44 @@ contains
   end subroutine read_earth_sun_distance
 
 
-!! Private function: calc_wl_line
- !
- ! Functionality:
- !
- !   This function calculates the wavelengths values for a specific line
- !   and returns those values, plus the limits of the specified wavelength
- !   range.
- !
- ! Calling Arguments:
- !
- ! Inputs:
- !
- !    i         Index into L1B structure, line number
- !    this      L1B block
- !    minwl     minimum wavelength requested
- !    maxwl     maximum wavelength requested
- !
- ! Outputs:
- !
- !    wl_local  wavelength values calculated from L1B coefficients
- !    il        index of lower bound of wavelength range (in wl_local)
- !    ih        index of upper bound of wavelength range (in wl_local)
- !    Nwl_l     number of wavelengths in range
- !
- !    status    the return PGS_SMF status value
- !
- ! Change History:
- !
- !    Date            Author          Modifications
- !    ====            ======          =============
- !    January 2005    Jeremy Warner   Original Source
- !    February 2014   E. O'Sullivan   Adapted for use with TEMPO
- !
-!!
+  !-----------------------------------------------------------------------
+  !! Private function: calc_wl_line
+  !
+  ! Functionality:
+  !
+  !>   This function calculates the wavelengths values for a specific line
+  !>   and returns those values, plus the limits of the specified wavelength
+  !>   range.
+  !
+  ! Calling Arguments:
+  !
+  ! Inputs:
+  !
+  !> @param[in] nXtrack  size of dimension across direction of scan
+  !> @param[in] nWavel   size of spectral dimension
+  !> @param    minwl     minimum wavelength requested
+  !> @param    maxwl     maximum wavelength requested
+  !
+  ! Outputs:
+  !
+  !> @param wl_local  wavelength values calculated from L1B coefficients
+  !> @param[out] il   index of lower bound of wavelength range (in wl_local)
+  !> @param[out] ih   index of upper bound of wavelength range (in wl_local)
+  !> @param[out] Nwl_l     number of wavelengths in range
+  !
+  !    status    the return PGS_SMF status value
+  !
+  ! Change History:
+  !
+  !    Date            Author          Modifications
+  !    ====            ======          =============
+  !> @author    January 2005    Jeremy Warner   Original Source
+  !> @author    February 2014   E. O'Sullivan   Adapted for use with TEMPO
+  !
+  !-------------------------------------------------------------------------
   function calc_wl_line(nXtrack, nWavel, minwl, maxwl, wl_local, &
        il, ih, Nwl_l) result (errstat)
+    integer (kind=4) intent(in) :: nXtrack, nWavel
     real (kind = 4), intent(inout) :: minwl, maxwl
     integer (kind = 4), intent(out) :: il, ih, Nwl_l
     real (kind = 4), dimension(:,:), intent(inout) :: wl_local
@@ -444,7 +502,7 @@ contains
       do k = 1, nWavel
         if (wl_local(k,i) .lt. 0.0 .or. wl_local(k,i) .gt. 10000.0) then
           fflag = 1
-       endif
+        endif
       enddo
     enddo
 

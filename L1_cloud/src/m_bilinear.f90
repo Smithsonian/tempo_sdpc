@@ -1,9 +1,63 @@
+!>Bilinear interpolation routines
+!
+!-------------------------------------------------------------------------
+!
+! !ROUTINE:  bilinear
+! 
+! !DESCRIPTION: 
+!> bilinear interpolation, similar to IDL routine\n
+!
+! !CALLING SEQUENCE: 
+!
+!        bilinear_res = bilinear(p, ixin, iyin, x, y)
+!     
+! !COMMENTS FROM IDL VERSION
+!>     IX must satisfy the expression,\n
+!>
+!>      0 <= MIN(IX) < N0  and 0 < MAX(IX) <= N0\n
+!>
+!>     where N0 is the total number of subscripts in the first dimension
+!>     of P.\n
+!>
+!>     JY must satisfy the expression,\n
+!>
+!>      0 <= MIN(JY) < M0  and 0 < MAX(JY) <= M0\n
+!>
+!>     where M0 is the total number of subscripts in the second dimension
+!>     of P.\n
+!
+! !SIDE EFFECTS:
+!>     Note: If x and y are not specified, the grid coordinates are
+!>     taken to be 1, 2, 3, .... 
+!
+! !INPUT PARAMETERS:   
+!> @param ixin[in]
+!> @param jyin[in]
+!> @param x[in]
+!> @param y[in]
+!> @param p[in] input array
+!
+! !OUTPUT PARAMETERS:  
+!> @param bilinear_res[out] interpolated point(s)
+!
+! !SEE ALSO:  IDL documentation
+!
+! !REVISION HISTORY: 
+!
+!> @author 13Aug96   Joiner       Original code converted from IDL code
+!> @author 31Jul14   O'Sullivan   Updated for TEMPO.
+! 
+! Comments below suggest code should allow array P to have indexed from 0, but
+! J.Joiner insists it should be indexed from 1. Code added to allow index=0, 
+! but commented out for now.
+!
+!---------------------------------------------------------------------
 module m_bilinear
 
-interface bilinear
-  module procedure bilineara
-  module procedure bilinear1
-end interface 
+  interface bilinear
+    module procedure bilineara
+    module procedure bilinear1
+  end interface
 
 contains
 
@@ -14,19 +68,6 @@ contains
     use tell_module
     implicit none
 
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  bilinear
-    ! 
-    ! !DESCRIPTION: bilinear interpolation, similar to IDL routine
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        bilinear_res = bilinear(p, ixin, iyin, x, y)
-    !     
     ! !INPUT PARAMETERS:   
     real (KIND=8), dimension(:),    intent(in)           :: ixin, jyin
     real (KIND=8), dimension(:),    intent(in), optional :: x, y
@@ -34,37 +75,7 @@ contains
     !
     ! !OUTPUT PARAMETERS:  
     real (KIND=8), dimension(size(ixin))           ::  bilinear_res
-    !   bilinear_res : interpolated point(s)
-    !
-    ! !SEE ALSO:  IDL documentation
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  13Aug96   Joiner       Original code converted from IDL code
-    !  31Jul14   O'Sullivan   Tidied up for TEMPO. Comments below suggest code 
-    !                         should allow array P to have indexed from 0, but
-    !                         J.Joiner insists it should be indexed from 1.
-    !                         Code added to allow index=0, but commented out
-    !                         for now.
-    !
-    ! !COMMENTS FROM IDL VERSION
-    !     IX must satisfy the expression,
-    !      0 <= MIN(IX) < N0  and 0 < MAX(IX) <= N0
-    !     where N0 is the total number of subscripts in the first dimension
-    !     of P.
-    !
-    !     JY must satisfy the expression,
-    !      0 <= MIN(JY) < M0  and 0 < MAX(JY) <= M0
-    !     where M0 is the total number of subscripts in the second dimension
-    !     of P.
-    !
-    ! !SIDE EFFECTS:
-    !     Note: If x and y are not specified, the grid coordinates are
-    !     taken to be 1, 2, 3, .... 
-    !
-    !EOP
-    !---------------------------------------------------------------------
-
+ 
     ! local variables
     real (KIND=8),     dimension(:),  allocatable :: ix, jy
     real (KIND=8),     dimension(:),  allocatable :: dx, dy, dx1, dy1
@@ -165,26 +176,26 @@ contains
 
   END  function bilineara
 
-FUNCTION BILINEAR1 (P,IXin,JYin, x, y ) result (bilinear_res)
-! !INPUT PARAMETERS:   
-        real (KIND=8),                  intent(in)           :: ixin, jyin
-        real (KIND=8), dimension(:),    intent(in), optional :: x, y
-        real (KIND=8), dimension(:,:),  intent(in)           :: p
-!
-! !OUTPUT PARAMETERS:  
-       real (KIND=8) ::  bilinear_res
+  FUNCTION BILINEAR1 (P,IXin,JYin, x, y ) result (bilinear_res)
+    ! !INPUT PARAMETERS:   
+    real (KIND=8),                  intent(in)           :: ixin, jyin
+    real (KIND=8), dimension(:),    intent(in), optional :: x, y
+    real (KIND=8), dimension(:,:),  intent(in)           :: p
+    !
+    ! !OUTPUT PARAMETERS:  
+    real (KIND=8) ::  bilinear_res
 
-       real (KIND=8), dimension(1) :: bilin_interp, ixin_arr, jyin_arr
+    real (KIND=8), dimension(1) :: bilin_interp, ixin_arr, jyin_arr
 
-       ixin_arr=ixin
-       jyin_arr=jyin
-       if (present(x) .and. present(y)) then
-         bilin_interp=bilinear(p,ixin_arr,jyin_arr,x=x,y=y)
-       else
-         bilin_interp=bilinear(p,ixin_arr,jyin_arr)
-       endif
-       bilinear_res=bilin_interp(1)
+    ixin_arr=ixin
+    jyin_arr=jyin
+    if (present(x) .and. present(y)) then
+      bilin_interp=bilinear(p,ixin_arr,jyin_arr,x=x,y=y)
+    else
+      bilin_interp=bilinear(p,ixin_arr,jyin_arr)
+    endif
+    bilinear_res=bilin_interp(1)
 
-END  function bilinear1 
+  END  function bilinear1
 
 end module m_bilinear

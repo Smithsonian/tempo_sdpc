@@ -1,3 +1,24 @@
+!>Routines to find standard deviation of vectors
+!
+!-------------------------------------------------------------------------
+!
+! !DESCRIPTION:  finds std dev of a vector (not a matrix)
+!
+! !CALLING SEQUENCE:
+!
+!        std = sigma(vectorin)
+!
+!> @param   ar1[in]  input vector to find std deviation
+!> @param   avg1[out] optional output of vector average
+!> @param    std[out]        std deviation
+
+! !SEE ALSO:  m_avg
+!
+! !REVISION HISTORY:
+!
+!> @author  21Oct97   M. Karki     Original code.
+!
+!-------------------------------------------------------------------------
 module m_sigma
 
   interface sigma
@@ -7,40 +28,18 @@ module m_sigma
 
 contains
 
+  !>Standard dev of a real_8 vector
   function  r_sigma(ar1, avg1) result(std)
 
     use m_avg
     implicit none
 
     !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE: sigma 
-    !
-    ! !DESCRIPTION:  finds std dev of a vector (not a matrix)
-    !
-    ! !CALLING SEQUENCE:
-    !
-    !        std = sigma(vectorin)
-    !
     ! !INPUT PARAMETERS:
     real (KIND=8), dimension(:), intent(in)  :: ar1
-    !   ar1 : input vector to find std deviation
-    real (KIND=8), optional, intent(out)     :: avg1
-    !   avg1: optional output of vector average
-    !
     ! !OUTPUT PARAMETERS:
+    real (KIND=8), optional, intent(out)     :: avg1
     real (KIND=8)               :: std
-    !                       std      :  std deviation
-    !
-    ! !SEE ALSO:  m_avg
-    !
-    ! !REVISION HISTORY:
-    !
-    !  21Oct97   M. Karki     Original code.
-    !EOP
     !-------------------------------------------------------------------------
 
     !! LOCAL PARAMETERS:
@@ -62,41 +61,18 @@ contains
 
 
 
-
+  !>Standard dev of a real_4 vector
   function  r4_sigma(ar1, avg1) result(std)
 
     use m_avg
     implicit none
 
     !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE: sigma 
-    !
-    ! !DESCRIPTION:  finds std dev of a vector (not a matrix)
-    !
-    ! !CALLING SEQUENCE:
-    !
-    !        std = sigma(vectorin)
-    !
     ! !INPUT PARAMETERS:
     real (kind=4), dimension(:), intent(in)  :: ar1
-    !   ar1 : input vector to find std deviation
-    real (kind=4), optional, intent(out)     :: avg1
-    !   avg1: optional output of vector average
-    !
     ! !OUTPUT PARAMETERS:
+    real (kind=4), optional, intent(out)     :: avg1
     real (kind=4)                :: std
-    !                       std      :  std deviation
-    !
-    ! !SEE ALSO:  m_avg
-    !
-    ! !REVISION HISTORY:
-    !
-    !  21Oct97   M. Karki     Original code.
-    !EOP
     !-------------------------------------------------------------------------
 
     !! LOCAL PARAMETERS: none

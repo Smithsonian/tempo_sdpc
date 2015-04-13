@@ -1,4 +1,10 @@
-! Read in netCDF Ocean Ring effect reference data
+!> Read in netCDF Ocean Ring effect reference data
+!---------------------------------------------------------------------
+!
+!> @param errstat[inout] error handling integer, non-zero indicates failure
+!
+!> @author E. O'Sullivan March 2015
+!---------------------------------------------------------------------
 module m_read_ocean_table_tio
 
   private
@@ -79,9 +85,9 @@ contains
     ! Allocate memory - first arrays that should be unallocated
     allocate(oc_perms(nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl), &
          oc_perms2(nwave_oc), wgrid_out_oc(nwave_oc), &
-      oc_table(nthet_oc,nscan_oc,nchl,nwave2), &
-           theta_oc(nthet_oc), scan_oc(nscan_oc), phi_oc(nphi_oc), &
-           wgrid_oc(nwave_oc), ocrefl(nocrefl), chl(nchl), stat=errstat)
+         oc_table(nthet_oc,nscan_oc,nchl,nwave2), &
+         theta_oc(nthet_oc), scan_oc(nscan_oc), phi_oc(nphi_oc), &
+         wgrid_oc(nwave_oc), ocrefl(nocrefl), chl(nchl), stat=errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, &
@@ -92,9 +98,9 @@ contains
 
     !Read in data
     call tiof_get6d_r4 (tio_oc_obj, "oc_perms", [0,0,0,0,0,0], &
-       [nchl, nocrefl, nphi_oc, nscan_oc, nthet_oc, nwave_oc], &
-       oc_perms(1:nwave_oc,1:nthet_oc,1:nscan_oc,1:nphi_oc,1:nocrefl,1:nchl), &
-       errstat)
+         [nchl, nocrefl, nphi_oc, nscan_oc, nthet_oc, nwave_oc], &
+         oc_perms(1:nwave_oc,1:nthet_oc,1:nscan_oc,1:nphi_oc,1:nocrefl,1:nchl), &
+         errstat)
     call tiof_get1d_r8 (tio_oc_obj, "chl", [0], [nchl], &
          chl (1:nchl), errstat)
     call tiof_get1d_r8 (tio_oc_obj, "ocrefl", [0], [nocrefl], &
@@ -143,7 +149,7 @@ contains
     deallocate(oc_perms)
     deallocate(wgrid_out_oc)
 
-    end subroutine read_ocean_table_tio
+  end subroutine read_ocean_table_tio
 
 end module m_read_ocean_table_tio
- 
+

@@ -1,10 +1,34 @@
+!>Routines to read operating settings, and print usage statement if incorrect
 module m_initialize
 
-  private
-  public initialize
+  private ret_usage
+  public initialize 
 
 contains
 
+  !>Read operating settings from PCF file, and optionally from command line
+  !-------------------------------------------------------------------------
+  !
+  ! !ROUTINE:  initialize
+  ! 
+  ! !CALLING SEQUENCE: 
+  !
+  !        call initialize
+  !     
+  ! !INPUT PARAMETERS: none (in modules)   
+  !> @param errstat error return code, non-zero indicates failure
+  !
+  ! !OUTPUT PARAMETERS:  
+  !
+  ! !SEE ALSO:  
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author  05Jan01  Joiner      original fortran 90
+  !> @author  14Mar02  Vasilkov    modified to read OMCTPo.pcf
+  !>  23Mar15  O'Sullivan  updating for TEMPO
+  !
+  !-------------------------------------------------------------------------
   subroutine initialize(errstat)
 
     use m_vars
@@ -13,38 +37,12 @@ contains
     use tell_module
     implicit none
     !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  initialize
-    ! 
-    ! !DESCRIPTION: initialize reads level 1b data including
-    !		solar irradiance and observed radiance
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        call initialize
-    !     
     ! !INPUT PARAMETERS: none (in modules)   
-    !
-    ! !OUTPUT PARAMETERS:  
     integer, intent(inout)         :: errstat        ! Error return code:
     !  0   all is well
     !  -1  problem
-    !
-    ! !SEE ALSO:  
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01  Joiner      original fortran 90
-    !  14Mar02  Vasilkov    modified to read OMCTPo.pcf, modifications 
-    !			marked with **********
-    !  23Mar15  O'Sullivan  updating for TEMPO
-    !
-    !EOP
     !-------------------------------------------------------------------------
-    !
+    ! Local variables
     integer :: i               
     integer :: iarg=0
     integer :: argc, iargc
@@ -218,14 +216,15 @@ contains
 
   end subroutine initialize
 
-  !*****************************************************************************
+  !****************************************************************************
+  !>Print usage statement to the command line
   subroutine ret_usage()
 
     implicit none
 
     print *
     print *, &
-      'Usage:  cloud_ret.x [-p iprt] [-nc_swath swathname] [-noret] [-nc_only]'
+         'Usage:  cloud_ret.x [-p iprt] [-nc_swath swathname] [-noret] [-nc_only]'
     print *
     print *,  'where'
     print *

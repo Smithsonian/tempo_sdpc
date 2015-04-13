@@ -1,3 +1,27 @@
+!>Print out Jacobian and other retrieval parameters, for debugging
+!
+!-------------------------------------------------------------------------
+!
+! !ROUTINE:  print_ret
+! 
+! !DESCRIPTION: print_ret prints out Jacobian and other parameters of
+!               retrievals		
+!
+! !CALLING SEQUENCE: 
+!
+!        call print_ret
+!     
+! !INPUT PARAMETERS:   
+!
+! !OUTPUT PARAMETERS:  
+!
+! !SEE ALSO:  
+!
+! !REVISION HISTORY: 
+!
+!> @author  05Jan01   Joiner     original fortran 90
+!
+!-------------------------------------------------------------------------
 module m_print_ret
 
 contains
@@ -8,32 +32,6 @@ contains
     use m_vars, ONLY: iprt, squeeze, lat, lon, sza, chlcl, & 
          wave_short, wave_long, iLine, cld_frac_min, get_cloud_frac
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  print_ret
-    ! 
-    ! !DESCRIPTION: print_ret prints out Jacobian and other parameters of
-    !               retrievals		
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        call print_ret
-    !     
-    ! !INPUT PARAMETERS:   
-    !
-    ! !OUTPUT PARAMETERS:  
-    !
-    ! !SEE ALSO:  
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner     original fortran 90
-    !
-    !EOP
-    !-------------------------------------------------------------------------
     !
     !formats for write statements
     character (len=8) :: fmt100="(6f12.5)", fmt101="(6e12.3)"

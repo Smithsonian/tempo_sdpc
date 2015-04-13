@@ -1,39 +1,39 @@
+!>Interpolation routines for pressure, radiance
 module m_interp_pres
 
 contains
 
+  !-------------------------------------------------------------------------
+  !
+  ! !ROUTINE:  interp_pres
+  ! 
+  ! !DESCRIPTION: 
+  !> Interpolate 3rd param at chosen wavelength to match
+  !> pressure, and update jacobian 
+  !
+  ! !INPUT PARAMETERS:   
+  !> @param[in]   ix1  cloud pressure index
+  !> @param[in]   ix2  cloud pressure index+1
+  !> @param[in]   pres_int  current value of pressure
+  !> @param[in]   pres  vector of pressures to interpolate against
+  !
+  ! !OUTPUT PARAMETERS:  
+  !> @param[out] rad  total reflected radiance at top of atmosphere (I think)
+  !> @param[out] jacob  jacobian
+  !
+  ! !SEE ALSO:  
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author  05Jan01   Joiner     original fortran 90
+  !> @author  12Aug14  O'Sullivan  added documentation, 
+  !>                               some guesswork involved
+  !
+  !-------------------------------------------------------------------------
   subroutine interp_pres(ix1, ix2, rad, pres, pres_int, jacob)
 
     use m_cloud_pres_mod, ONLY: temp2D
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  interp_pres
-    ! 
-    ! !DESCRIPTION: interpolate 3rd param at chosen wavelength to match
-    !    pressure, and update jacobian (I think)
-    !
-    ! !INPUT PARAMETERS:   
-    !   ix1, ix2: cloud pressure index, index+1
-    !   pres_int: current value of pressure
-    !   pres: vector of pressures to interpolate against
-    !
-    ! !OUTPUT PARAMETERS:  
-    !   rad: total reflected radiance at top of atmosphere (I think)
-    !   jacob: jacobian
-    !
-    ! !SEE ALSO:  
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner     original fortran 90
-    !  12Aug14  O'Sullivan  added documentation, some guesswork involved
-    !
-    !EOP
-    !-------------------------------------------------------------------------
 
     ! input/output variables
     integer, intent(in) :: ix1, ix2
@@ -65,43 +65,44 @@ contains
 
 
 
+  !-------------------------------------------------------------------------
+  !
+  ! !ROUTINE:  interp_rads
+  ! 
+  ! !DESCRIPTION: 
+  !> Interpolates radiance parameters to match the
+  !>               current pressure value (or so it appears)
+  !
+  ! !INPUT PARAMETERS:   
+  !> @param[in]    ix1 cloud pressure index
+  !> @param[in]    ix2 cloud pressure index+1
+  !> @param[in]   pres vector of pressure values
+  !> @param[in]   pres_int current pressure value
+  !> @param[in]   i0_1 backscattered intensity for ix1
+  !> @param[in]   i0_2 backscattered intensity for ix2
+  !> @param[in]   tr_1 transmittance factor for ix1 ?
+  !> @param[in]   tr_2 transmittance factor for ix2 ?
+  !> @param[in]   sb_1 surface light lost to scattering for ix1 ?
+  !> @param[in]   sb_2 surface light lost to scattering for ix2 ?
+  !
+  ! !OUTPUT PARAMETERS:  
+  !> @param[out]   i0  backscattered intensity in pixel
+  !> @param[out]   tr  transmittance factor in pixel?
+  !> @param[out]   sb  surface light lost to scattering in pixel?
+  !
+  ! !SEE ALSO:  
+  !   m_read_tables.f90
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author  05Jan01   Joiner     original fortran 90
+  !> @author  12Aug14  O'Sullivan  added documentation, some guesswork involved
+  !
+  !-------------------------------------------------------------------------
   subroutine interp_rads(ix1, ix2, pres, pres_int,  i0_1, i0_2, sb_1, sb_2, &
        tr_1, tr_2, i0, sb, tr )
 
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  interp_rads
-    ! 
-    ! !DESCRIPTION: interpolates radiance parameters to match the
-    !               current pressure value (or so it appears)
-    !
-    ! !INPUT PARAMETERS:   
-    !   ix1, ix2: cloud pressure index, and index+1
-    !   pres: vector of pressure values
-    !   pres_int: current pressure value
-    !   i0_1, i0_2: backscattered intensity for ix1, ix2
-    !   tr_1, tr_2: transmittance factor for ix1, ix2 ?
-    !   sb_1, sb_2: surface light lost to scattering for ix1, ix2 ?
-    !
-    ! !OUTPUT PARAMETERS:  
-    !   i0: backscattered intensity in pixel
-    !   tr: transmittance factor in pixel?
-    !   sb: surface light lost to scattering in pixel?
-    !
-    ! !SEE ALSO:  
-    !   m_read_tables.f90
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner     original fortran 90
-    !  12Aug14  O'Sullivan  added documentation, some guesswork involved
-    !
-    !EOP
-    !-------------------------------------------------------------------------
 
     !input/ouput variables
     integer, intent(in)  :: ix1, ix2

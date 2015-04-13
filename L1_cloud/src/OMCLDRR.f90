@@ -1,3 +1,5 @@
+!>Retrieve cloud parameters via measurements of reflectance and 
+!>Raman scattering
 program OMCLDRR
 
   use m_vars
@@ -13,7 +15,6 @@ program OMCLDRR
   use m_write_output_data_2pres
   use m_write_output_data_tio
   use m_cloud_pres_ret
-  use m_str_replace
   use m_cloud_mask
   use m_read_thresholds
   use m_read_resid
@@ -27,35 +28,22 @@ program OMCLDRR
   IMPLICIT NONE
 
   !-------------------------------------------------------------------------
-  !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-  !-------------------------------------------------------------------------
-  !BOP
-  !
-  ! !PROGRAM:  cloud_ret
-  ! 
-  ! !DESCRIPTION: main driver for OMI cloud product retrieval
-  !		
-  ! !SEE ALSO:  
-  !
   ! !REVISION HISTORY: 
   !
   !  05Jan01   Joiner     original fortran 90
   !  28Mar02   Vasilkov   changes to read filename_out from PCF (marked ****)
   !  26Aug14   O'Sullivan tidying, simplification, annotation for TEMPO
-  !
-  !EOP
-
   !-------------------------------------------------------------------------
-  !include 'PGS_PC.f'
-  !include 'PGS_PC_9.f'
-  !include 'PGS_OMI_1900.f'
-  !include 'PGS_OMCLDRR_52251.f'
-  !include 'PGS_SMF.f'
 
-  integer (kind=4), external :: pgs_pc_getreference !, OMI_SMF_setmsg
+  integer (kind=4), external :: pgs_pc_getreference 
+  !>@param blk Defined type for passing L1B he4 input data from
   TYPE (L1B_block_type) :: blk
 
+  !>@param errstat integer error code used throughout program
+  !>@param ext_index integer position of extension in filename string
   integer (kind=4) :: ext_index, errstat
+  !>@param filename_out_nc netCDF output filename
+  !>@param filename_out_nc netCDF input filename
   character(len=255) :: filename_out_nc, filename_in_nc
 
   !************************************************************************

@@ -1,4 +1,33 @@
-! Read in netCDF format Ring-effect reference data
+!> Read in netCDF format Ring-effect reference data
+!
+!------------------------------------------------------------------------
+!
+!>   See Joiner et al. (1995), Appl. Optics, p.4513
+!>   for more details of the approach used to create the table.
+!
+!   Variable descriptions, some guesswork involved:
+!> @param errstat[inout] error reporting integer, non-zero indicates problem
+!> @param   i0a: backscattered intensity at top of atmosphere
+!> @param   i01a: ?
+!> @param   z1: proportional to singly-scattered radiation?
+!> @param   z2: proportional to twice-scattered radiation?
+!> @param   k1bar: filling-in factor from singly-scattered photons
+!> @param   nba, nia, nra: See Joiner et al eqns 26-30, avg number of 
+!>      scatterings for reflected surface radiance scattered back
+!>      to the groups (nba), radiation scattered back by the atmosphere 
+!>      before it reaches the ground (nia) and radiation reflected by
+!>      the ground and transmitted by the atmosphere (nra)?
+!> @param   sba: component of reflected surface radiance that is reflected
+!>        back to the ground by the atmosphere
+!> @param   tra: surface radiance transmittance factor?
+!
+! !REVISION HISTORY:
+!
+!> @author  05Jan01   Joiner     original fortran 90
+!> @author   12Aug02   Vasilkov   read filenames from PCF
+!> @author  07Aug14   O'Sullivan added variable descriptions
+!
+!------------------------------------------------------------------------
 module m_read_tables_tio
 
   private
@@ -17,22 +46,6 @@ contains
     use tell_module
     use netcdf, only : nf90_nowrite
 
-    ! !DECRIPTION: See Joiner et al. (1995), Appl. Optics, p.4513
-    !   for more details of the approach used to create the table.
-    !   Variable descriptions, some guesswork involved:
-    !   i0a: backscattered intensity at top of atmosphere
-    !   i01a: ?
-    !   z1: proportional to singly-scattered radiation?
-    !   z2: proportional to twice-scattered radiation?
-    !   k1bar: filling-in factor from singly-scattered photons
-    !   nba, nia, nra: See Joiner et al eqns 26-30, avg number of 
-    !      scatterings for reflected surface radiance scattered back
-    !      to the groups (nba), radiation scattered back by the atmosphere 
-    !      before it reaches the ground (nia) and radiation reflected by
-    !      the ground and transmitted by the atmosphere (nra)?
-    !   sba: component of reflected surface radiance that is reflected
-    !        back to the ground by the atmosphere
-    !   tra: surface radiance transmittance factor?
 
     implicit none
 

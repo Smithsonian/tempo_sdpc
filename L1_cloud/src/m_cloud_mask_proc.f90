@@ -1,50 +1,54 @@
-!Determine cloud status based on std.dev of small pixel values
+!>Create cloud mask based on std.dev of small pixel values
+!
+!------------------------------------------------------------------
+!
+!> Carries out data processing stage of cloud mask generation,
+!> calculating std. dev. of small pixel values and comparing them
+!> to preset thresholds.\n
+!>
+!> Taken out of m_cloud Mask to separate processing from I/O\n
+!>
+!> Called by m_cloud_mask\n
+!>
+!> INPUT VARIABLES\n
+!>
+!> maxCoadd: maximum number of small pixels to coadd, =5 in m_cloud_mask\n
+!> nXtrack: Number of cross-track pixels, read in from data file by 
+!>           m_cloud_mask\n
+!> iLine: along-track "scan" line number currently under consideration, 
+!>         m_cloud_mask_proc is called once for each line\n
+!> nPix: number of small pixel columns in this scan line\n
+!> wavelengthL: small pixel wavelength\n
+!> smvaluesL: small pixel values\n
+!>
+!> INPUT/OUTPUT VARIABLES FROM M_VARS\n
+!>
+!> smpx_nPix: number of small pixels in each full-size pixel\n
+!> smpx_wavel: average of small pixel wavelengths in each full pixel\n
+!> smpx_mean: mean of smvaluesL in each full-size pixel\n
+!> smpx_stddev: standard deviataion of smvaluesL in each full pixel\n
+!> cloud_mask: mask value (0=clear, 1=cloud, 2=no data, 3=nPix changed)\n
+!> thresholds: Standard deviation thresholds to compare with smpx_stddev
+!>             pixels above threshold contain cloud\n
+!> npixels: valid nPix values for which thresholds exist, read from
+!>          header of threshold file by m_read_thresholds, =2,4,5\n
+!
+! LOCAL VARIABLES
+!
+! iTrack: cross-track pixel index
+! indc: is nPix value valid? 1=yes, continue with processing
+! ind: index for accessing thresholds values.
+! nPixold: used to flag pixels where nPix changes (it should be const)
+!
+!> @author  O'Sullivan, 05 August 2014
+! 
+!!------------------------------------------------------------------
 module m_cloud_mask_proc
 
 contains
 
   subroutine cloud_mask_proc(nXtrack, nPix, iLine, maxCoadd, &
        wavelengthL, smvaluesL, errstat)
-    !!------------------------------------------------------------------
-    !
-    ! Carries out data processing stage of cloud mask generation,
-    ! calculating std. dev. of small pixel values and comparing them
-    ! to preset thresholds.
-    !
-    ! Taken out of m_cloud Mask to separate processing from I/O
-    !
-    ! Called by m_cloud_mask
-    !
-    ! INPUT VARIABLES
-    ! maxCoadd: maximum number of small pixels to coadd, =5 in m_cloud_mask
-    ! nXtrack: Number of cross-track pixels, read in from data file by 
-    !           m_cloud_mask
-    ! iLine: along-track "scan" line number currently under consideration, 
-    !         m_cloud_mask_proc is called once for each line
-    ! nPix: number of small pixel columns in this scan line
-    ! wavelengthL: small pixel wavelength
-    ! smvaluesL: small pixel values
-    !
-    ! INPUT/OUTPUT VARIABLES FROM M_VARS
-    ! smpx_nPix: number of small pixels in each full-size pixel
-    ! smpx_wavel: average of small pixel wavelengths in each full pixel
-    ! smpx_mean: mean of smvaluesL in each full-size pixel
-    ! smpx_stddev: standard deviataion of smvaluesL in each full pixel
-    ! cloud_mask: mask value (0=clear, 1=cloud, 2=no data, 3=nPix changed)
-    ! thresholds: Standard deviation thresholds to compare with smpx_stddev
-    !             pixels above threshold contain cloud
-    ! npixels: valid nPix values for which thresholds exist, read from
-    !          header of threshold file by m_read_thresholds, =2,4,5
-    !
-    ! LOCAL VARIABLES
-    ! iTrack: cross-track pixel index
-    ! indc: is nPix value valid? 1=yes, continue with processing
-    ! ind: index for accessing thresholds values.
-    ! nPixold: used to flag pixels where nPix changes (it should be const)
-    !
-    ! Author: O'Sullivan, 05 August 2014
-    !
-    !!------------------------------------------------------------------
 
     use m_avg
     use m_find

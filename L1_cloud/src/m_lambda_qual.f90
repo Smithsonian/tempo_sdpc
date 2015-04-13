@@ -1,7 +1,12 @@
+!>Routines for setting quality flags
 module m_lambda_qual
+
+  private
+  public bad_rad_lambda, bad_irrad_lambda
 
 contains
 
+  !>Set radiance quality flags
   subroutine bad_rad_lambda(ip, iLine)
 
     use m_vars, ONLY: quality_flagL, qc, wmin, wmax, transient_check
@@ -63,6 +68,7 @@ contains
 
   end subroutine bad_rad_lambda
 
+  !>Set irradiance quality flags
   subroutine bad_irrad_lambda(nXtrack)
 
     use m_vars, ONLY: irr_quality_flagL, qc, nsolwave, ws, fs, wmin, wmax, &

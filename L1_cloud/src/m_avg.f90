@@ -1,3 +1,29 @@
+!>Vector averaging routines
+! 
+!-------------------------------------------------------------------------
+!
+! !ROUTINE:  i_avg, r_avg
+! 
+! !DESCRIPTION: 
+!> similar to IDL avg function (from code 916 userlib)
+!! finds average of a vector (not a matrix)
+!
+! !CALLING SEQUENCE: 
+!
+!        avg = i_avg(vectorin)
+!     
+! !INPUT PARAMETERS:   
+!> @param vectorin  input vector to average
+!
+! !OUTPUT PARAMETERS:  
+!> @return avg average of vectorin
+!
+! !SEE ALSO:  IDL documentation 
+!
+! !REVISION HISTORY: 
+!
+! @author  13Aug96   Joiner     Original code.
+!----------------------------------------------
 module m_avg
 
   interface avg
@@ -9,43 +35,20 @@ module m_avg
 
 contains
 
+  !>Average integer vector
   function i_avg(vectorin) result (avg)
 
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  i_avg, r_avg
-    ! 
-    ! !DESCRIPTION: similar to IDL avg function (from code 916 userlib)
-    !               finds average of a vector (not a matrix)
-    !
-    ! !CALLING SEQUENCE: 
-    !
-    !        avg = i_avg(vectorin)
-    !     
     ! !INPUT PARAMETERS:   
     integer, dimension(:), intent(in)   :: vectorin
-    !                        vectorin : input vector to average
-    !
     ! !OUTPUT PARAMETERS:  
     real (KIND=8)                       :: avg
-    !                        avg      : average of vectorin
-    !
-    ! !SEE ALSO:  IDL documentation 
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  13Aug96   Joiner     Original code.
-    !EOP
-    !----------------------------------------------
 
     avg=sum(vectorin)/real(size(vectorin))
 
   end function i_avg
 
+  !>Average real_8 vector
   function r_avg(vectorin) result (avg)
     implicit none
 
@@ -56,6 +59,7 @@ contains
 
   end function r_avg
 
+  !>Average real_4 vector
   function r4_avg(vectorin) result (avg)
     implicit none
 
@@ -66,6 +70,7 @@ contains
 
   end function r4_avg
 
+  !>Average real_8 2D matrix
   function r_avg2D(vectorin) result (avg)
     implicit none
 

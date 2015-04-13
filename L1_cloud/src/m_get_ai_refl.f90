@@ -1,6 +1,57 @@
+!>Calculate relative cloud fraction using MLER method
 module m_get_ai_refl
 
+  private
+  public get_ai_refl
+
 contains
+
+  !--------------------------------------------------------------------
+  !
+  !> DESCRIPTION: get_ai_refl calculates radiative cloud fraction, 
+  !>   cloud reflectivity, aerosol index, etc., using the 
+  !>   Mixed Lambert-Equivalent Reflectivity (MLER) concept and
+  !>   Independent Pixel Approximation (IPA). Assumes that a partly 
+  !>   cloudy pixel is the sum of a mix of cloudy and clear sub-pixels.\n
+  !
+  !> REFERENCE:\n  
+  !>   Joiner & Vasilkov (2006), IEEE transactions on geoscience and 
+  !>     remote sensing, 44, 1272, section III B.
+  !-------------------------------------------------------------------------
+  ! !INPUT PARAMETERS:   
+  !> @param refl_clr  reflectance of a clear pixel (fixed) 
+  !> @param refl_cld  reflectance of clouds (fixed)
+  !  i  cross-track pixel index (ip in m_cloud_pres_ret)
+  !  iLine  along-swath scan row index
+  !> @param i_obs_l  normalized flux for longest (l) "good" wavelength
+  !> @param i_obs_s  normalized flux for shortest (s) "good" wavelength
+  !> @param i0_*  backscattered intensity at top of atmosphere?
+  !> @param sb_*  fraction of intensity reflected by surface that is then
+  !>         scattered back to surface by atmosphere?
+  !> @param tr_*  fractional transmittance of atmosphere?
+  !  set_cld_frac  if true, calculate cloud fraction.
+  !  min_refl, max_refl  minimum & maximum allowed reflectance (fixed)
+  !  min_refl_flag  flag value for violations of min_refl (fixed)
+  !  do_short_wave  include shortest wavelength bound in calculations?
+  !  cal_reflec  calculate dIdR (radiance reflectance sensitivity)?
+  !  iprt  verbosity level
+  !
+  ! !OUTPUT PARAMETERS:  
+  !  refl  retreived reflectivity (array over whole swath)
+  !  refl_l  retreived reflectivity in current pixel
+  !  dIdR  Radiance (fractional) reflectance sensitivity
+  !  qc  quality control array containing flags
+  !  eff_cld_frac  effective cloud fraction
+  !  rad_cld_frac  radiative cloud fraction
+  !
+  !
+  ! !REVISION HISTORY: 
+  !
+  !> @author  05Jan01   Joiner     original fortran 90
+  !> @author 13Aug14  O'Sullivan  added documentation, 
+  !>                              some guesswork involved
+  !
+  !-------------------------------------------------------------------------
 
   subroutine get_ai_refl(refl_clr, refl_cld, i_obs_l, i_obs_s, i, &
        i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, &
@@ -12,57 +63,7 @@ contains
          cal_reflec, rad_cld_frac 
 
     implicit none
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !BOP
-    !
-    ! !ROUTINE:  get_ai_refl
-    ! 
-    ! !DESCRIPTION: get_ai_refl calculates radiative cloud fraction, 
-    !   cloud reflectivity, aerosol index, etc., using the 
-    !   Mixed Lambert-Equivalent Reflectivity (MLER) concept and
-    !   Independent Pixel Approximation (IPA). Assumes that a partly 
-    !   cloudy pixel is the sum of a mix of cloudy and clear sub-pixels.
-    !
-    ! !INPUT PARAMETERS:   
-    !   refl_clr: reflectance of a clear pixel (fixed) 
-    !   refl_cld: reflectance of clouds (fixed)
-    !   i: cross-track pixel index (ip in m_cloud_pres_ret)
-    !   iLine: along-swath scan row index
-    !   i_obs_l, i_obs_s: normalized flux for longest (l) or shortest (s)
-    !                     "good" wavelength
-    !   i0_*: backscattered intensity at top of atmosphere?
-    !   sb_*: fraction of intensity reflected by surface that is then
-    !         scattered back to surface by atmosphere?
-    !   tr_*: fractional transmittance of atmosphere?
-    !   set_cld_frac: if true, calculate cloud fraction.
-    !   min_refl, max_refl: minimum & maximum allowed reflectance (fixed)
-    !   min_refl_flag: flag value for violations of min_refl (fixed)
-    !   do_short_wave: include shortest wavelength bound in calculations?
-    !   cal_reflec: calculate dIdR (radiance reflectance sensitivity)?
-    !   iprt: verbosity level
-    !
-    ! !OUTPUT PARAMETERS:  
-    !   refl: retreived reflectivity (array over whole swath)
-    !   refl_l: retreived reflectivity in current pixel
-    !   dIdR: Radiance (fractional) reflectance sensitivity
-    !   qc: quality control array containing flags
-    !   eff_cld_frac: effective cloud fraction
-    !   rad_cld_frac: radiative cloud fraction
-    !
-    ! !SEE ALSO:  
-    !   Joiner & Vasilkov (2006), IEEE transactions on geoscience and 
-    !     remote sensing, 44, 1272, section III B.
-    !
-    ! !REVISION HISTORY: 
-    !
-    !  05Jan01   Joiner     original fortran 90
-    !  13Aug14  O'Sullivan  added documentation, some guesswork involved
-    !
-    !EOP
-    !-------------------------------------------------------------------------
-    !
+
     ! input/ouput variables
     real (KIND=8), intent(in) :: refl_clr, refl_cld
     integer, intent(in) :: i

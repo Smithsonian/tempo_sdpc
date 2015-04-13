@@ -1,3 +1,4 @@
+!>Biquadratic and triquadratic interpolation routines
 module m_triquad
 
   private
@@ -35,6 +36,7 @@ contains
 
 
 
+  !> Biquadratic interpolation
   function biquad( ix, jy ) result(xy)   
 
     use m_cloud_pres_mod, ONLY: temp3D
@@ -67,7 +69,7 @@ contains
   end  function biquad
 
 
-
+  !>Triquadratic interpolation
   function triquad( zp,xp,yp ) result(interp) 
 
     use m_cloud_pres_mod, ONLY: table, temp3D

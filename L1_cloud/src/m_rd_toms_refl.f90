@@ -1,3 +1,27 @@
+!>Read TOMS surface reflectivity climatology reference file
+!
+!-------------------------------------------------------------------------
+!
+! !ROUTINE: rd_toms_refl
+!
+! !DESCRIPTION: get TOMS reflectivity climatology
+!
+! !CALLING SEQUENCE: call rd_toms_refl (lat, lon, terr_pres)
+!
+! !INPUT PARAMETERS: 
+!> @param  lat[in]      latitude
+!> @param  lon[in]      longitude
+!
+! !OUTPUT PARAMETERS:  
+!> @param  terr_pres[out]     terrain pressure
+!
+! !SEE ALSO: 
+!
+! !REVISION HISTORY:
+!
+!> @author  01Aug07   Joiner      Original code
+!> @author  26Mar15   O'Sullivan  Update for TEMPO
+!-------------------------------------------------------------------------
 module m_rd_toms_refl
 
   private
@@ -16,34 +40,6 @@ contains
     use tell_module
     implicit NONE          
 
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !!BOP
-    !
-    ! !ROUTINE: rd_toms_refl
-    !
-    ! !DESCRIPTION: get TOMS reflectivity climatology
-    !
-    ! !CALLING SEQUENCE: call rd_toms_refl (lat, lon, terr_pres)
-    !
-    ! !INPUT PARAMETERS: 
-    !real (KIND=8), dimension(:), intent(in)  :: lat, lon
-    !                     lat     : latitude
-    !                     lon     : longitude
-    !
-    ! !OUTPUT PARAMETERS:  
-    !real (KIND=8), dimension(:), intent(out) :: terr_pres
-    !                     terr_pres      : terrain pressure
-    !
-    ! !SEE ALSO: 
-    !
-    ! !REVISION HISTORY:
-    !
-    !  01Aug07   Joiner      Original code
-    !  26Mar15   O'Sullivan  Update for TEMPO
-    !!EOP
-    !-------------------------------------------------------------------------
     integer, intent(inout) :: errstat
 
     !local variables

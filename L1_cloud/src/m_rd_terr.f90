@@ -1,3 +1,28 @@
+!>Read terrain pressure climatology reference file
+!
+!-------------------------------------------------------------------------
+!
+! !ROUTINE: rd_terr
+!
+!> DESCRIPTION: get terrain pressure (0.5X0.5 deg resolution)
+!
+! !CALLING SEQUENCE: call rd_terr (lat, lon, terr_pres)
+!
+! !INPUT PARAMETERS: 
+!> @param lat[in]      latitude
+!> @param lon[in]      longitude
+!
+! !OUTPUT PARAMETERS:  
+!> @param terr_pres[out]       terrain pressure
+!
+! !SEE ALSO: 
+!
+! !REVISION HISTORY:
+!
+!> @author  01Oct96   Joiner       Original code 
+!> @author  19Mar02   Vasilkov     To read filenames from PCF!
+!> @author  26Mar15   O'Sullivan   Update for TEMPO
+!-------------------------------------------------------------------------
 module m_rd_terr
 
   private
@@ -13,35 +38,6 @@ contains
     use m_pgs_include
     implicit NONE          
 
-    !-------------------------------------------------------------------------
-    !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
-    !-------------------------------------------------------------------------
-    !!BOP
-    !
-    ! !ROUTINE: rd_terr
-    !
-    ! !DESCRIPTION: get terrain pressure (0.5X0.5 deg resolution)
-    !
-    ! !CALLING SEQUENCE: call rd_terr (lat, lon, terr_pres)
-    !
-    ! !INPUT PARAMETERS: 
-    !real (KIND=8), dimension(:), intent(in)  :: lat, lon
-    !                     lat     : latitude
-    !                     lon     : longitude
-    !
-    ! !OUTPUT PARAMETERS:  
-    !real (KIND=8), dimension(:), intent(out) :: terr_pres
-    !                     terr_pres      : terrain pressure
-    !
-    ! !SEE ALSO: 
-    !
-    ! !REVISION HISTORY:
-    !
-    !  01Oct96   Joiner       Original code 
-    !  19Mar02   Vasilkov     To read filenames from PCF!
-    !  26Mar15   O'Sullivan   Update for TEMPO
-    !!EOP
-    !-------------------------------------------------------------------------
     integer, intent (inout) :: errstat
 
     !local variables
@@ -53,7 +49,7 @@ contains
     real (KIND=8) :: lont, latt
 
     version = 1
-    
+
     if (errstat /= 0) return
 
     !=======================

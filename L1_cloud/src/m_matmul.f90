@@ -1,3 +1,24 @@
+!>Matrix multiplication routines
+!
+!-------------------------------------------------------------------------
+! 
+!> DESCRIPTION: calls fortran matmul, designed to work with .mm. operator
+!>                c = a .mm. b (from c = a \# b in IDL)
+!     
+! !INPUT PARAMETERS:   
+!> @param a  1st matrix operand
+!> @param b  2nd matrix operand
+!
+! !OUTPUT PARAMETERS:  
+!> @param c  result matrix
+!
+! !SEE ALSO:  IDL documentation
+!
+! !REVISION HISTORY: 
+!
+!> @author  13Aug97   Joiner     original fortran 90
+!
+!-------------------------------------------------------------------------
 module m_matmul
 
   public 
@@ -11,6 +32,7 @@ module m_matmul
 
 contains
 
+  !> Multiply two matrices
   function matmul1 (a,b) result (c)
     implicit none
     !-------------------------------------------------------------------------
@@ -35,15 +57,13 @@ contains
     !
     ! !OUTPUT PARAMETERS:  
     real (KIND=8), dimension(size(a,1),size(b,2))   :: c
-    !                        c : result matrix
     !
     ! !SEE ALSO:  IDL documentation
     !
     ! !REVISION HISTORY: 
     !
-    !  13Aug97   Joiner     original fortran 90
+    !> @author  13Aug97   Joiner     original fortran 90
     !
-    !EOP
     !-------------------------------------------------------------------------
 
     if (size(a,2) /= size(b,1) ) then
@@ -56,6 +76,7 @@ contains
 
 
 
+  !> Multiply matrix and vector
   function matmul2 (a,b) result (c)
     implicit none
     !-------------------------------------------------------------------------
@@ -103,7 +124,7 @@ contains
 
 
 
-
+  !> Multiply vector and matrix
   function matmul3 (a,b) result (c)
     implicit none
 
@@ -120,7 +141,7 @@ contains
   end function matmul3
 
 
-
+  !> Multiply two vectors
   function matmul4 (a,b) result (c)
     implicit none
 

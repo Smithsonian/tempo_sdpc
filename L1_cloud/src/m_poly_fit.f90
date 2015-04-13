@@ -1,20 +1,21 @@
+!>Perform a least-square polynomial fit with optional error estimates
 module m_poly_fit   
 
   private
   public poly_fit
 
 contains
-  ! $Id$
-  !+
+
+  !-------------------------------------------------------------------------
   ! NAME:
   !        POLY_FIT
   !
   ! PURPOSE:
-  !       Perform a least-square polynomial fit with optional error estimates.
-  !
-  !       This routine uses matrix inversion.  A newer version of this routine,
-  !       SVDFIT, uses Singular Value Decomposition.  The SVD technique is more
-  !       flexible, but slower.
+  !>  Perform a least-square polynomial fit with optional error estimates.\n
+  !>
+  !>  This routine uses matrix inversion.  A newer version of this routine,
+  !>  SVDFIT, uses Singular Value Decomposition.  The SVD technique is more
+  !>  flexible, but slower.
   !
   ! CATEGORY:
   !        Curve fitting.
@@ -23,14 +24,16 @@ contains
   !   Result = POLY_FIT(X, Y, Degree)
   !
   ! INPUTS:
-  !   X:  The independent variable vector.
+  !> @param[in]  x  The independent variable vector.
   !
-  !   Y:  The dependent variable vector, should be same length as x.
+  !> @param[in]  y  The dependent variable vector, should be same length as x.
   !
-  !   Degree: The degree of the polynomial to fit.
+  !> @param[in]  ndegree The degree of the polynomial to fit.
+  !> @param[in]  measure_errors Measurement uncertainties on y
   !
   ! OUTPUTS:
-  !       POLY_FIT returns a vector of coefficients with a length of NDegree+1.
+  !> @param[out]  yfit   vector of calculated y values
+  !> @result  res:    vector of coefficients with a length of NDegree+1.
   !
   ! KEYWORDS:
   !   CHISQ:   Sum of squared errors divided by MEASURE_ERRORS if specified.
@@ -78,8 +81,8 @@ contains
   !        None.
   !
   ! MODIFICATION HISTORY:
-  !        Written by: George Lawrence, LASP, University of Colorado,
-  !                December, 1981.
+  !> @author  Written by: George Lawrence, LASP, University of Colorado,
+  !>                December, 1981.
   !
   !        Adapted to VAX IDL by: David Stern, Jan, 1982.
   !       Modified:    GGS, RSI, March 1996

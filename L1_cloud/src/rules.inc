@@ -160,9 +160,6 @@ $(ODIR)/m_sigma.o: $(SDIR)/m_sigma.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_sigma.f90 -o $(ODIR)/m_sigma.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_spline.o: $(SDIR)/m_spline.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_spline.f90 -o $(ODIR)/m_spline.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_str_replace.o: $(SDIR)/m_str_replace.f90 \
-  $(ODIR)/m_strpos.o
-	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_str_replace.f90 -o $(ODIR)/m_str_replace.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_strpos.o: $(SDIR)/m_strpos.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_strpos.f90 -o $(ODIR)/m_strpos.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_swathnames.o: $(SDIR)/m_swathnames.f90

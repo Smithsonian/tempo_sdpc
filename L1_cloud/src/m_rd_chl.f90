@@ -1,3 +1,24 @@
+!>Read chlorophyll concentration climatology reference file
+!
+!--------------------------------------------------------------------------
+!> @author Joanna Joiner - original code, 
+!> @author modified by Alexander P. Vasilkov
+!> @author updated for TEMPO by E. O'Sullivan
+!
+!         FUNCTION: get chlorophyll concentration (0.5X0.5 deg resolution)
+!
+!         CALLING SEQUENCE: call rd_chl (lat, lon, chl_out)
+!
+!         INPUT:         
+!> @param lat[in]            latitude (-90.0,90.0)
+!> @param lon[in]     longitude (-180-180) -> (0.0,360.0)
+!
+!         OUTPUT:  
+!> @param chl_out[out]        chlorophyll concentration
+!
+!        HISTORY: Developed Nov. 15, 2001
+!
+!--------------------------------------------------------------------------
 module m_rd_chl
 
   private
@@ -12,23 +33,6 @@ contains
     use m_LUN_set
     use m_pgs_include
 
-    !*************************************************************************
-    !        AUTHOR:  Joanna Joiner - original code, 
-    !                modified by Alexander P. Vasilkov
-    !                updated for TEMPO by E. O'Sullivan
-    !
-    !         FUNCTION: get chlorophyll concentration (0.5X0.5 deg resolution)
-    !
-    !         CALLING SEQUENCE: call rd_chl (lat, lon, chl_out)
-    !
-    !         INPUT:         lat            latitude (-90.0,90.0)
-    !                      lon     longitude (-180-180) -> (0.0,360.0)
-    !
-    !         OUTPUT:  chl_out        chlorophyll concentration
-    !
-    !        HISTORY: Developed Nov. 15, 2001
-    !
-    !**************************************************************************
     implicit none          
 
     integer, intent(inout) :: errstat
