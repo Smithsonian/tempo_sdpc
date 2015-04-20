@@ -101,8 +101,8 @@ extern int TIO_inq_att (int grp, int varid, const char *attname,
  * @param  grp      Index of group containing the attribute
  * @param  varid    Index of the corresponding variable.
  * @param  attname  Name of the attribute
- * @param  xtype    Pointer to attribute type
- * @param  len      Pointer to attribute length
+ * @param  xtype    Attribute type
+ * @param  len      Attribute length
  * @param  att      Pointer to attribute value
  * @return 0 on success, -1 on error
  */
@@ -113,7 +113,7 @@ extern int TIO_put_att (int grp, int varid, const char *attname,
  * @param  grp      Index of group containing the attribute
  * @param  varid    Index of the corresponding variable.
  * @param  attname  Name of the attribute
- * @param  xtype    Pointer to attribute type
+ * @param  xtype    Attribute type
  * @param  att      Pointer to attribute value
  * @return 0 on success, -1 on error
  */
@@ -130,7 +130,7 @@ extern int TIO_put_git_commit_hash (int ncid, const char *attname);
 /** Define a group
  * @param  parent_ncid  The ncid that will contain the new group
  * @param  path         The path to the new group
- * @param  new_ncid     The ncid of the new group
+ * @param  new_ncid     Pointer to ncid of the new group
  * @return 0 on success, -1 on error
  */
 extern int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid);
@@ -139,7 +139,7 @@ extern int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid);
  * @param  grp    The group containing the variable
  * @param  name   The variable name
  * @param  type   The desired netcdf variable type, e.g. NC_INT, NC_FLOAT
- * @param  value  Pointer to the resulting fill value
+ * @param  value  Pointer to the returned fill value
  * @return 0 on success, -1 on error
  */
 extern int TIO_get_fill_value (int grp, const char *name, int type, void *value);
