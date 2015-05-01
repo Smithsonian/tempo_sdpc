@@ -56,6 +56,8 @@ MODULE O3T_radgeo_class
     TYPE (L1B_geoang_type) :: geo_blk
     TYPE (L1B_radirr_type) :: rad_blk
 
+    type (l1b_radgeo_type) :: radgeo_blk
+
     INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0, one = 1, two = 2
     INTEGER (KIND=4), PARAMETER, PRIVATE :: three = 3, four =4, five = 5
 
@@ -63,6 +65,62 @@ MODULE O3T_radgeo_class
     PUBLIC  :: O3T_freeRAD
 
     CONTAINS
+
+ subroutine o3t_tio_initrad (this, filename, groupname, errstat)
+   use l1b_tio_class
+   use tell_module
+   implicit none
+   type (l1b_tio_type), intent(inout) :: this
+   character (len=*), intent(in) :: filename, groupname
+   integer, intent(inout) :: errstat
+
+   integer :: ext, ierr
+
+   if (errstat < 0) return
+
+   ! FIXME hack filename
+   ext = index (filename, ".he4", back=.true.)
+   call l1b_tio_open (this, trim(filename(1:ext))//"nc", "band_540_740_nm", errstat)
+   if (errstat < 0) then
+     call tell_error (tell_io_open_error, &
+                      "o3t_tio_initrad: opening "//trim(filename(1:ext))//"nc", &
+                      errstat)
+     return
+   endif
+
+   call l1b_tio_getdims (this, nTimes_rad, nXtrack_rad, nWavel_rad, errstat)
+   nTimesSmallPixel_rad = -1  ! OMI-legacy: code will fail if this is set to 0
+   call l1b_tio_earthsun_distance (this, EarthSunDistance, errstat)
+   call l1b_tio_init_rad (this, radgeo_blk, errstat)
+   if (errstat /= 0) then
+     call tell_error (tell_runtime_error, "o3t_tio_initrad: initializing radiances", errstat)
+     return
+   endif
+
+   allocate (latitude (nXtrack_rad), &
+             longitude (nXtrack_rad), &
+             szenith (nXtrack_rad), &
+             sazimuth (nXtrack_rad), &
+             vzenith (nXtrack_rad), &
+             vazimuth (nXtrack_rad), &
+             phiArray( nXtrack_rad ), &
+             ptArray( nXtrack_rad ), &
+             pcArray( nXtrack_rad ), &
+             PclimQ( nXtrack_rad ), &
+             snowIceArray( nXtrack_rad ), &
+             height( nXtrack_rad ), &
+             geoflg( nXtrack_rad ), &
+             anomflg( nXtrack_rad ), &
+             radiance (nWavel_rad, nXtrack_rad), &
+             radWavelength (nWavel_rad, nXtrack_rad), &
+             radQAflags (nWavel_rad, nXtrack_rad), stat=ierr)
+   if (ierr /= 0) then
+     call tell_error (tell_malloc_error, "o3t_tio_initrad: allocate failed", errstat)
+     return
+   endif
+
+ end subroutine
+      
        FUNCTION O3T_initRAD( L1B_filename, L1B_swathname, wl_com ) &
                 RESULT( status )
          USE OMI_LUN_set      ! define Logical Unit for Input and Output

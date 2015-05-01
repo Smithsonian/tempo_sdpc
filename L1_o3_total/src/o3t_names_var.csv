@@ -1,0 +1,26 @@
+#
+# level 1 variables
+#
+O3T_VAR_DQF,"data_quality_flag"
+O3T_VAR_PQF,"pixel_quality_flag"
+O3T_VAR_GEOFLG,"GroundPixelQualityFlags"
+O3T_VAR_ANOMFLG,"XTrackQualityFlags"
+O3T_VAR_EARTH_SUN_DISTANCE,"earth_sun_distance"
+O3T_VAR_IRRADIANCE,"irradiance"
+O3T_VAR_LATITUDE,"latitude"
+O3T_VAR_LATITUDE_BOUNDS,"latitude_bounds"
+O3T_VAR_LONGITUDE,"longitude"
+O3T_VAR_LONGITUDE_BOUNDS,"longitude_bounds"
+O3T_VAR_RADIANCE,"radiance"
+O3T_VAR_SZ_ANGLE,"solar_zenith_angle"
+O3T_VAR_SA_ANGLE,"solar_azimuth_angle"
+O3T_VAR_TIME,"time"
+O3T_VAR_TERRAIN_HEIGHT,"terrain_height"
+O3T_VAR_VZ_ANGLE,"viewing_zenith_angle"
+O3T_VAR_VA_ANGLE,"viewing_azimuth_angle"
+O3T_VAR_WAVELENGTH,"wavelength"
+#
+# level 2 variables
+#
+O3T_VAR_MQF,"MeasurementQualityFlags"
+O3T_VAR_INSTID,"InstrumentConfigurationId"

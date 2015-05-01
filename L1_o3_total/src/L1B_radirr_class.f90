@@ -298,11 +298,14 @@ MODULE L1B_radirr_class
            RETURN
         ENDIF 
 
-        EPSILON10 = 10*EPSILON(1.0)
         this%initialized = .TRUE.
         status = OZT_S_SUCCESS
         RETURN      
-      END FUNCTION L1Bri_open 
+      END FUNCTION L1Bri_open
+
+      subroutine define_global_epsilon10
+        EPSILON10 = 10*EPSILON(1.0)
+      end subroutine
 
 !! 2. L1Bri_getSWdims
 
@@ -864,6 +867,8 @@ MODULE L1B_radirr_class
         REAL (KIND = 4) :: ri_il, ri_ih, frac
         INTEGER (KIND = 4) :: status
         CHARACTER (LEN = MAX_NAME_LENGTH ) :: msg
+
+        call define_global_epsilon10
 
         status = OZT_S_SUCCESS
         IF( .NOT. this%initialized ) THEN
@@ -1432,6 +1437,8 @@ MODULE L1B_radirr_class
         INTEGER (KIND = 4 ) :: iw, Nwl, Nwl_com, nXtrack, i, il, ih
         INTEGER (KIND = 4) :: status
         REAL (KIND = 4) :: frac
+
+        call define_global_epsilon10
 
         status = OZT_S_SUCCESS
         Nwl_com = SIZE( wl_com        )

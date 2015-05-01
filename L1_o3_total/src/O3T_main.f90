@@ -4,16 +4,16 @@
 !!Description:
 !
 !  PROGRAM O3T_mainNVAdj
-! 
-!  This is the main program that implements the three-step process of 
+!
+!  This is the main program that implements the three-step process of
 !  successive improvement of the estimation of total column amount ozone.
 !  Step 1: The alogrithm uses an pair of wavelengths to derive an estimation
 !  of the column amount ozone. This is done by iterative deriving reflectivity
 !  from 331 nm and ozone from the single B wavelength 318nm, until the N-values
 !  at this pair are the same for the measurements and for the calculation using
-!  the reflectivity and ozone values. 
-!  Step 2: Ozone and temperature climatologies are applied at all levels to 
-!  account for seasonal ad latitudinal variations in profile shape. 
+!  the reflectivity and ozone values.
+!  Step 2: Ozone and temperature climatologies are applied at all levels to
+!  account for seasonal ad latitudinal variations in profile shape.
 !  Step 3: The step 2 ozone estimation is modified to correct for wavelength
 !  dependent effects (torpospheric aerosol and sun glint) and local upper level
 !  profile shape effects.
@@ -23,9 +23,9 @@
 !
 !!Output Parameters:
 ! None
-! 
+!
 !!Return
-! None 
+! None
 !
 !!Revision History:
 ! Initial version 03/26/2002  Kai Yang/UMBC
@@ -36,11 +36,11 @@
 ! Space Flight Center, under NASA Task 916-003-1
 !
 !!References and Credits
-! Written by 
-! Kai Yang 
+! Written by
+! Kai Yang
 ! University of Maryland Baltimore County
 ! email: Kai.Yang-1@nasa.gov
-! 
+!
 !!Design Notes
 !
 !!END
@@ -52,7 +52,7 @@ PROGRAM O3T_mainNVAdj
                               iwl_ozone, iwl_refl_l, iwl_refl_h, iwl_mix, &
                               O3T_nval_setup, O3T_nval_dispose, &
                               O3T_getLambdaSet
-    USE O3T_dndx_class, ONLY: O3T_dndx_setup, O3T_dndx_dispose ! nwl_sub, 
+    USE O3T_dndx_class, ONLY: O3T_dndx_setup, O3T_dndx_dispose ! nwl_sub,
     USE O3T_cloudPres_class
     USE O3T_apriori_class
     USE O3T_lpolycoef_class
@@ -62,7 +62,7 @@ PROGRAM O3T_mainNVAdj
     USE O3T_QA_class
     USE O3T_const
     USE O3T_so2_class
-    USE OMI_SMF_class    ! include PGE specific messages and OMI_SMF_setmsg 
+    USE OMI_SMF_class    ! include PGE specific messages and OMI_SMF_setmsg
     USE L1B_getNames_m
     USE OMI_LUN_set
     USE O3T_omto3_fs
@@ -101,14 +101,14 @@ PROGRAM O3T_mainNVAdj
     TYPE (L2PARAM_T), DIMENSION(1) :: L2_parameters
     INTEGER (KIND=4), DIMENSION(11):: LUNinputPointer
     INTEGER (KIND=4) :: mcfLUN
-    REAL (KIND=4) :: doz_limit = 5.0, guesoz, stp1oz, stp2oz, stp3oz, dr 
+    REAL (KIND=4) :: doz_limit = 5.0, guesoz, stp1oz, stp2oz, stp3oz, dr
     REAL (KIND=4), DIMENSION(NLYR) :: stp2prf, eff, aprfoz
     REAL (KIND=4)  :: aerind, so2ind, soilim, pathl, oz_cld !, cloudcov = 0.0
     INTEGER (KIND=4), DIMENSION(4) :: iso2w
     REAL (KIND=4), DIMENSION(5) :: o3abs, so2abs
 
     REAL (KIND=4)  :: latPre, latNow
-    LOGICAL :: absrfl, skipit, maxitr, descendQ, nXevenQ 
+    LOGICAL :: absrfl, skipit, maxitr, descendQ, nXevenQ
     LOGICAL :: stp1oz_valid, stp2oz_valid
     INTEGER (KIND=4) :: iwl_oz, iwl_refl, iplow
     INTEGER (KIND=4), DIMENSION(nwlA) :: iwlArray
@@ -116,7 +116,7 @@ PROGRAM O3T_mainNVAdj
     INTEGER (KIND=2) :: QAflags = 0, radBadPixflgs = 0, errflgs = 0
     INTEGER (KIND=4) :: year, month, day, jday
     INTEGER (KIND=2) :: nise_flag
-    LOGICAL :: radLMissing = .FALSE., instIDmismatch = .FALSE., bit7Q = .FALSE. 
+    LOGICAL :: radLMissing = .FALSE., instIDmismatch = .FALSE., bit7Q = .FALSE.
     INTEGER (KIND=4) :: iwl, iX, iLine, iLine_s, iLine_b, iLine_e, iT, ii, nLw, iLat
     INTEGER (KIND=4) :: pixID
     INTEGER (KIND=4) :: status, ierr
@@ -145,6 +145,11 @@ PROGRAM O3T_mainNVAdj
     REAL(KIND=4), PARAMETER :: EPSILON10=1.0E-4
     !CHARACTER(LEN=128) :: filename
 
+    logical :: use_tio = .true.
+    type (l1b_tio_type) :: rad_file_obj
+    integer :: errstat
+    errstat = 0
+
     !! test snowice source option
     status = PGS_PC_GetConfigData( SNOWICESOURCE_LUN, msg )
     IF( status /= PGS_S_SUCCESS ) THEN    ! default ="Climatology"
@@ -159,16 +164,16 @@ PROGRAM O3T_mainNVAdj
 
     status = O3T_nval_setup( OMTO3_NVAL_LUN, nvRRS  )
     IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "Read NVAL LUT failed, PGE aborting, exit code = 1." 
+       WRITE( msg,'(A)' ) "Read NVAL LUT failed, PGE aborting, exit code = 1."
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     ENDIF
     status = O3T_getLambdaSet()
 
-    !! read in DNDX table 
+    !! read in DNDX table
     status = O3T_dndx_setup( wl_cutoff )
     IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "Read DNDX LUT failed, PGE aborting, exit code = 1." 
+       WRITE( msg,'(A)' ) "Read DNDX LUT failed, PGE aborting, exit code = 1."
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     ENDIF
@@ -177,7 +182,7 @@ PROGRAM O3T_mainNVAdj
     status = O3T_lpoly_cden( LUT_cden_blk )
     IF( status /= OZT_S_SUCCESS ) THEN
        WRITE( msg,'(A)' ) "Setup denominator for coef, " // &
-                          "PGE aborting, exit code = 1." 
+                          "PGE aborting, exit code = 1."
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     ENDIF
@@ -216,12 +221,17 @@ PROGRAM O3T_mainNVAdj
     END IF
 
     !! read the L1B irradiance file
-    status = O3T_getIRR(IRR_filename, IRR_swathname)
-    IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "O3T_getIRR failed, PGE aborting, exit code = 1." 
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+    if (use_tio) then
+      call o3t_tio_getirr (IRR_filename, IRR_swathname, errstat)
+      if (errstat < 0) stop 1
+    else
+      status = O3T_getIRR(IRR_filename, IRR_swathname)
+      IF( status /= OZT_S_SUCCESS ) THEN
+        WRITE( msg,'(A)' ) "O3T_getIRR failed, PGE aborting, exit code = 1."
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      END IF
+    endif
 
     !! open the L1B radiance file
     status = L1B_getNames( L1B_UV_FILE_LUN, numfiles, L1B_filenames, &
@@ -245,19 +255,25 @@ PROGRAM O3T_mainNVAdj
        UV_swathname = "Earth UV-2 Swath"
     ENDIF
 
-    status = O3T_initRAD( UV_filename, UV_swathname )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "O3T_initRAD failed, PGE aborting, exit code = 1." 
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+    if (use_tio) then
+      call o3t_tio_initrad (rad_file_obj, UV_filename, UV_swathname, errstat)
+      if (errstat < 0) stop 1
+    else
+      status = O3T_initRAD( UV_filename, UV_swathname )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        WRITE( msg,'(A)' ) "O3T_initRAD failed, PGE aborting, exit code = 1."
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      END IF
+    endif
+
     !! Earth Sun distance Adjustment of IRR values to the date of radiance
     !! measurement because IRR and RUG measurment may be quite diferent in time.
     CALL O3T_AdjustIRREarthSun( EarthSundistance )
 
-    !! setup storage for L2 output parameters, number of wavlengths in 
+    !! setup storage for L2 output parameters, number of wavlengths in
     !! output is determined by the fixed output wavelength grid, while nXtrack,
-    !! and nTimes are determined by input L1B. 
+    !! and nTimes are determined by input L1B.
     status = O3T_initL2out( wl_com )
 
     !! get the irradiance QA flags and precision at the fixed output
@@ -288,14 +304,14 @@ PROGRAM O3T_mainNVAdj
     END IF
 
     !! Process Global Mode data only, skip any zoom mode data
-    !! Note: variables names used here are meant to be used 
-    !! somewhre else with specific meaning. But it is ok burrow these 
+    !! Note: variables names used here are meant to be used
+    !! somewhre else with specific meaning. But it is ok burrow these
     !! variables to be used here.
     ii = LEN_TRIM( L1BUV2coreArch%ShortName )
     IF( L1BUV2coreArch%ShortName(ii:ii) == 'Z' ) THEN
 
        WRITE( msg,'(A,I9,A)' ) "PGE skip zoom mode orbit", &
-                              L1BUV2coreArch%orbitNumber,& 
+                              L1BUV2coreArch%orbitNumber,&
                               "PGE finishes normally, exit code = 0"
        ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, FUNCTIONNAME, zero )
 
@@ -307,8 +323,8 @@ PROGRAM O3T_mainNVAdj
     !   IF( ii <= 0 ) EXIT
     !   IF( INDEX( L1BUV2coreArch%L1BpsaNames(iLine), &
     !              "InstrumentConfigurationIDs" ) > 0 ) THEN
-    !      DO iX = 1, Nelm_MAX 
-    !        ii = LEN_TRIM( L1BUV2coreArch%L1BpsaValues(iLine,iX) ) 
+    !      DO iX = 1, Nelm_MAX
+    !        ii = LEN_TRIM( L1BUV2coreArch%L1BpsaValues(iLine,iX) )
     !        IF( ii <= 0 ) EXIT
     !        READ( L1BUV2coreArch%L1BpsaValues(iLine,iX), '(I)'), pixID
     !        IF( pixID == 0 .OR. pixID == 1 .OR. &
@@ -324,7 +340,7 @@ PROGRAM O3T_mainNVAdj
     !        ENDIF
     !      ENDDO
     !   ENDIF
-    ! ENDDO 
+    ! ENDDO
 
     status = O3T_initCLD( CloudPressureSource )
 
@@ -338,10 +354,10 @@ PROGRAM O3T_mainNVAdj
     status = OmiNvalueCorr( L1BUV2coreArch%orbitNumber, wl_cor, swpcr )
 
     !! read in climatology data
-    status = O3T_apriori_rd() 
+    status = O3T_apriori_rd()
     IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "Read climatology data failed, " // & 
-                          "PGE aborting, exit code = 1." 
+       WRITE( msg,'(A)' ) "Read climatology data failed, " // &
+                          "PGE aborting, exit code = 1."
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     ENDIF
@@ -416,7 +432,7 @@ PROGRAM O3T_mainNVAdj
          nwl_com*nxtrack*calblk%elmSize(1) )
 
     DO iwl = 1, nWvc
-      il = iwl 
+      il = iwl
       il = hunt( wl_com(1:nwl_com), wl_cor(iwl), il )
       IF( il == 0 .OR. il == nwl_com ) THEN
          !! wl_cor outside wl_com range
@@ -441,7 +457,7 @@ PROGRAM O3T_mainNVAdj
             CALL EXIT(1)
          ENDIF
       ENDIF
-      iwlSub(iwl) = ih 
+      iwlSub(iwl) = ih
     ENDDO
 
     iLine_b = 0
@@ -467,7 +483,7 @@ PROGRAM O3T_mainNVAdj
 
     !! now starting defining the geo fields and data fields with one
     !! "nTime" as one of its dimensions.
-    gf_omto3(:) = (/ gf_GroundPixelQualityFlags, &      
+    gf_omto3(:) = (/ gf_GroundPixelQualityFlags, &
                      gf_Latitude               , &
                      gf_Longitude              , &
                      gf_SolarZenithAngle       , &
@@ -476,17 +492,17 @@ PROGRAM O3T_mainNVAdj
                      gf_ViewingAzimuthAngle    , &
                      gf_RelativeAzimuthAngle   , &
                      gf_TerrainHeight          , &
-                     gf_Time                   , &      
+                     gf_Time                   , &
                      gf_SecondsInDay           , &
                      gf_SpacecraftLatitude     , &
                      gf_SpacecraftLongitude    , &
                      gf_SpacecraftAltitude     , &
-                     gf_XTrackQualityFlags     /)       
+                     gf_XTrackQualityFlags     /)
 
-    df_omto3(:) = (/ df_CloudPressure,           & 
-                     df_TerrainPressure,         & 
-                     df_AlgorithmFlags,          & 
-                     df_QualityFlags,            & 
+    df_omto3(:) = (/ df_CloudPressure,           &
+                     df_TerrainPressure,         &
+                     df_AlgorithmFlags,          &
+                     df_QualityFlags,            &
                      df_RadianceBadPixelFlagAccepted,&
                      df_fc,                      &
                      df_CloudFraction,           &
@@ -550,8 +566,8 @@ PROGRAM O3T_mainNVAdj
        CALL EXIT(1)
     END IF
 
-    !! ------- now begin processing ------- 
-    
+    !! ------- now begin processing -------
+
     !! determine descendQ flag in the beginning of the granule
     IF( MOD( nXtrack_rad, 2 ) == 0 ) THEN
        nXevenQ = .TRUE.
@@ -560,10 +576,17 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     iLine = 0
-    status = L1Bga_getLine( geo_blk, iLine, time, &
+    if (use_tio) then
+      call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                           szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                           errstat)
+      if (errstat < 0) stop 1
+    else
+      status = L1Bga_getLine( geo_blk, iLine, time, &
                              latitude, longitude, &
                              szenith, sazimuth, vzenith, vazimuth, &
                              height, geoflg )
+    endif
 
     IF( nXevenQ ) THEN
        latPre = (latitude(nXtrack_rad/2-1) + latitude(nXtrack_rad/2))*0.5
@@ -572,17 +595,25 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     iLine = 1
-    status = L1Bga_getLine( geo_blk, iLine, time, &
+    if (use_tio) then
+      call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                           szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                           errstat)
+      if (errstat < 0) stop 1
+    else
+      status = L1Bga_getLine( geo_blk, iLine, time, &
                              latitude, longitude, &
                              szenith, sazimuth, vzenith, vazimuth, &
                              height, geoflg )
+    endif
+
     IF( nXevenQ ) THEN
        latNow = (latitude(nXtrack_rad/2-1) + latitude(nXtrack_rad/2))*0.5
     ELSE
        latNow = latitude((nXtrack_rad-1)/2)
     ENDIF
     descendQ = O3T_descendQ( latPre, latNow )
-    
+
     L2_parameters(1)%NumberOfInputSamples          = nTimes_rad*nXtrack_rad
     L2_parameters(1)%NumberOfGoodInputSamples      = 0
     L2_parameters(1)%NumberOfLargeSZAInputSamples  = 0
@@ -618,20 +649,27 @@ PROGRAM O3T_mainNVAdj
     iLine_e = nTimes_rad-1
     DO iLine = iLine_b, iLine_e
 
-      status = L1Bga_getLine( geo_blk, iLine, time, &
+      if (use_tio) then
+        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                             szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                             errstat, anomflg)
+        if (errstat < 0) stop 1
+      else
+        status = L1Bga_getLine( geo_blk, iLine, time, &
                                latitude, longitude, &
                                szenith, sazimuth, vzenith, vazimuth, &
                                height, geoflg, anomflg, sInD, scLat, scLon, scHgt )
-      IF( status /=  OZT_S_SUCCESS ) THEN
-         WRITE( msg,'(A)' ) "L1Bga_getLine failed, " // &
-                            "PGE aborting, exit code = 1."
-         ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-         CALL EXIT(1)
-      END IF
+        IF( status /=  OZT_S_SUCCESS ) THEN
+          WRITE( msg,'(A)' ) "L1Bga_getLine failed, " // &
+            "PGE aborting, exit code = 1."
+          ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+          CALL EXIT(1)
+        END IF
+      endif
 
       phiArray(1:nXtrack_rad ) =  &
          (/ ( adjustDEG(180.0+sazimuth(iX)-vazimuth(iX)), iX =1,nXtrack_rad ) /)
-      
+
       DO iX = 1, nXtrack_rad
         status = OMI_pixGetTerPres( latitude(iX), longitude(iX), ptArray(iX) )
         status = OMI_pixGetSnowIce( latitude(iX), longitude(iX), &
@@ -661,7 +699,7 @@ PROGRAM O3T_mainNVAdj
            ELSE IF( TRIM(CloudPressureSource) == '"OMCLDRR"' ) THEN
               cld_errflg = IBITS( ProcessingQualityFlags(iX),0, 3 ) &
                          + IBITS( ProcessingQualityFlags(iX),6, 2 ) &
-                         + IBITS( ProcessingQualityFlags(iX),14,2 ) 
+                         + IBITS( ProcessingQualityFlags(iX),14,2 )
            ENDIF
            !! if cloud pressure not good, either by its quality flag
            !! or by the cloud fraction, use climatology cloud pressure instead.
@@ -684,22 +722,28 @@ PROGRAM O3T_mainNVAdj
       ENDIF
 
       iT = MOD( iLine, nLinesPerWrite ) + 1
-      !! All geolocation information read from the input L1B is copied 
+      !! All geolocation information read from the input L1B is copied
       !! to the output file, no modification is done to geo info before
-      !! written out the L2 output.  
+      !! written out the L2 output.
       CALL O3T_L2setGeoLine( iT, geoblk, datablk )
 
-      status = L1Bri_getLine( rad_blk, iLine, &
-                              RadIrr_k = radiance, &
-                              RadIrrPrecision_k = radPrecision, &
-                              PixelQualityFlags_k = radQAflags, &
-                              Wavelength_k = radWavelength )
-      IF( status /=  OZT_S_SUCCESS ) THEN
-         WRITE( msg,'(A)' ) "L1Bri_getLineWL failed, " // &
-                            "PGE aborting, exit code = 1."
-         ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-         CALL EXIT(1)
-      END IF
+      if (use_tio) then
+        call l1b_tio_getrad (rad_file_obj, radgeo_blk, iLine, errstat, &
+                             radiance, radWavelength, radQAflags)
+        if (errstat < 0) stop 1
+      else
+        status = L1Bri_getLine( rad_blk, iLine, &
+                               RadIrr_k = radiance, &
+                               RadIrrPrecision_k = radPrecision, &
+                               PixelQualityFlags_k = radQAflags, &
+                               Wavelength_k = radWavelength )
+        IF( status /=  OZT_S_SUCCESS ) THEN
+          WRITE( msg,'(A)' ) "L1Bri_getLineWL failed, " // &
+            "PGE aborting, exit code = 1."
+          ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+          CALL EXIT(1)
+        END IF
+      endif
 
       !! get radiance QA flags and precision at the fixed output
       !! wavelength grid.
@@ -718,7 +762,7 @@ PROGRAM O3T_mainNVAdj
          descendQ = O3T_descendQ( latPre, latNow )
          latPre = latNow
       ENDIF
-      
+
       iwlArray = (/ iwl_mix, iwl_ozone, iwl_refl_l, iwl_refl_h /)
 
       DO iX = 1, nXtrack_rad
@@ -755,7 +799,7 @@ PROGRAM O3T_mainNVAdj
         ! check instrument configuration id
         status = L1Bri_getInstConfigId(  rad_blk, iLine, instId_rad )
 
-        QAflags = 0 
+        QAflags = 0
         radBadPixflgs = 0
         skipit = ( instid_rad /= 0 .AND. &
                    instid_rad /= 1 .AND. &
@@ -772,7 +816,7 @@ PROGRAM O3T_mainNVAdj
         !! calculates xnvalm no matter what QAflags is set for the pixel.
         status = O3T_nvalm( irrWavelength(:,iX), irradiance(:,iX),  &
                             radWavelength(:,iX),   radiance(:,iX),  &
-                            wl_com(:), xnvalm(:) ) 
+                            wl_com(:), xnvalm(:) )
         IF( skipit .OR. status /= OZT_S_SUCCESS  ) THEN
            IF( pixSURF%isnow == 10 ) algflg = algflg + 10
            errflgs = 7
@@ -828,7 +872,6 @@ PROGRAM O3T_mainNVAdj
         ELSE
            guesoz = stp3oz
         ENDIF
-
         status = O3T_step1( iwl_oz, iwl_refl_l, iwl_refl_h, xnvalm, pixGEO, &
                            pixSURF, coefs, iwl_refl, iplow, guesoz, stp1oz, &
                            res_stp1, dndomega_t, dndr, algflg, absrfl,maxitr, &
@@ -949,11 +992,11 @@ PROGRAM O3T_mainNVAdj
       ELSE
          radLmissing = .FALSE.
       ENDIF
-  
+
       instIDmismatch = O3T_instIDsCheck( TRIM(L1BUV2coreArch%ShortName), &
-                                         mqa_rad, instID_rad, instID_irr ) 
+                                         mqa_rad, instID_rad, instID_irr )
       mqaL2          = O3T_setMqaL2( mqa_rad, radLMissing, instIDmismatch, &
-                                     bit7Q, L2_parameters(1) ) 
+                                     bit7Q, L2_parameters(1) )
       CALL O3T_L2setMqaLine( iT, mqaL2, datablk )
 
       IF( iT == nLinesPerWrite ) THEN
@@ -964,9 +1007,9 @@ PROGRAM O3T_mainNVAdj
          status = L2_writeBlock( geoblk,  iLine_s, nLw )
          status = L2_writeBlock( datablk, iLine_s, nLw )
          iLine_s = iLine_s + nLw
-         iT = 0 ! When nTimes = n*nLinesPerWrite (n is an integer), iT = 
-                ! nLinesPerWrite at the end of the loop (not equal to zero). 
-                ! This would induce the the last write outside of the iLine 
+         iT = 0 ! When nTimes = n*nLinesPerWrite (n is an integer), iT =
+                ! nLinesPerWrite at the end of the loop (not equal to zero).
+                ! This would induce the the last write outside of the iLine
                 ! loop. Setting iT = 0 would avoid this extra write.
       ENDIF
     ENDDO  ! iLine end loop for Along Track index
@@ -1007,7 +1050,7 @@ PROGRAM O3T_mainNVAdj
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     ENDIF
-    
+
     ! free memory used for anomaly flag
     DEALLOCATE(anomflg_3)
 
@@ -1022,7 +1065,7 @@ PROGRAM O3T_mainNVAdj
     IF( IRR_FILE_TYPE == "Backup" ) THEN
        L2_parameters(1)%BackupSolarProductUsed = 1
     ELSE
-       L2_parameters(1)%BackupSolarProductUsed = 0 
+       L2_parameters(1)%BackupSolarProductUsed = 0
     ENDIF
 
     IF( TRIM(L1BUV2coreArch%ShortName) == "OML1BRUZ" ) THEN
@@ -1046,13 +1089,13 @@ PROGRAM O3T_mainNVAdj
        LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                 O3_CLIM_LUN,     TM_CLIM_LUN,       &
                                 TERRAINPRES_LUN, CLOUDPRES_LUN,     &
-                                OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     & 
+                                OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
                                 OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
        status = L2_setCoreArchMetaData( OMTO3_L2_LUN , L1BUV2coreArch, &
                                 L1BIRRcoreArch, LUNinputPointer(1:11), &
                                 mcfLUN, L2_parameters )
     ENDIF
-   
+
     !! Write global attribute
     status = OMI_writeGlobalAttribute( OMTO3_fn, year, month, day, &
                                        LUNinputPointer(1:2) )
@@ -1069,7 +1112,7 @@ PROGRAM O3T_mainNVAdj
       status = OMI_readHE4fields( L1B_UV_FILE_LUN, "UV-2", msg )
       status = OMI_cpwtHE5fields( OMTO3_L2_LUN, "Column Amount O3" )
     ENDIF
-  
+
     !! copy some HE4 swath attributes and write to HE5 global attributes
     !! mainly for TOMS processing.
     IF( INDEX( L1BUV2coreArch%ShortName, "TOMS" ) > 0 ) THEN

@@ -7,7 +7,8 @@ $(ODIR)/HE5_class.o: $(SDIR)/HE5_class.f90
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/HE5_class.f90 -o $(ODIR)/HE5_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L1B_class.o: $(SDIR)/L1B_class.f90 \
   $(ODIR)/L1B_geoang_class.o \
-  $(ODIR)/L1B_radirr_class.o
+  $(ODIR)/L1B_radirr_class.o \
+  $(ODIR)/l1b_tio_class.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/L1B_class.f90 -o $(ODIR)/L1B_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L1B_geoang_class.o: $(SDIR)/L1B_geoang_class.f90 \
   $(ODIR)/HE4_class.o \
@@ -33,6 +34,9 @@ $(ODIR)/L1B_radirr_class.o: $(SDIR)/L1B_radirr_class.f90 \
   $(ODIR)/PGS_PC_class.o \
   $(ODIR)/UTIL_tools_class.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/L1B_radirr_class.f90 -o $(ODIR)/L1B_radirr_class.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/l1b_tio_class.o: $(SDIR)/l1b_tio_class.f90 \
+  $(ODIR)/o3t_names_module.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/l1b_tio_class.f90 -o $(ODIR)/l1b_tio_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L2_attr_class.o: $(SDIR)/L2_attr_class.f90 \
   $(ODIR)/HE5_class.o \
   $(ODIR)/L1B_metaData_class.o \
@@ -64,6 +68,8 @@ $(ODIR)/m_nvalc.o: $(SDIR)/m_nvalc.f90 \
   $(ODIR)/PGS_PC_class.o \
   $(ODIR)/UTIL_tools_class.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/m_nvalc.f90 -o $(ODIR)/m_nvalc.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/o3t_names_module.o: $(SDIR)/o3t_names_module.f90
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/o3t_names_module.f90 -o $(ODIR)/o3t_names_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/O3T_apriori_class.o: $(SDIR)/O3T_apriori_class.f90 \
   $(ODIR)/O3T_stnprof_class.o \
   $(ODIR)/OMI_LUN_set.o \
@@ -158,6 +164,7 @@ $(ODIR)/O3T_QA_class.o: $(SDIR)/O3T_QA_class.f90 \
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/O3T_QA_class.f90 -o $(ODIR)/O3T_QA_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/O3T_radgeo_class.o: $(SDIR)/O3T_radgeo_class.f90 \
   $(ODIR)/L1B_class.o \
+  $(ODIR)/l1b_tio_class.o \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMI_SMF_class.o \
   $(ODIR)/PGS_PC_class.o

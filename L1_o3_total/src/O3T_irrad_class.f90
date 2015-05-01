@@ -4,7 +4,7 @@
 !!Description:
 !
 !  MODULE O3T_irrad_class
-! 
+!
 ! read in solar irradiance from either normal or backup solar irradiance files.
 !
 !!Input Parameters:
@@ -12,9 +12,9 @@
 !
 !!Output Parameters:
 ! None
-! 
+!
 !!Return
-! None 
+! None
 !
 !!Revision History:
 ! Initial version 03/26/2002  Kai Yang/UMBC
@@ -25,22 +25,24 @@
 ! Space Flight Center, under NASA Task 916-003-1
 !
 !!References and Credits
-! Written by 
-! Kai Yang 
+! Written by
+! Kai Yang
 ! University of Maryland Baltimore County
 ! email: Kai.Yang-1@nasa.gov
-! 
+!
 !!Design Notes
 !
 !!END
 !!****************************************************************************
 MODULE O3T_irrad_class
-    USE L1B_class    ! L1B_class contains module to read OMI L1B 
+    USE L1B_class    ! L1B_class contains module to read OMI L1B
                      ! geolocation, radiance, and irradiance parameters
     USE HE4_class
-    USE PGS_PC_class ! define PGSd_PC_FILE_PATH_MAX, and pgs_pc functions 
+    USE PGS_PC_class ! define PGSd_PC_FILE_PATH_MAX, and pgs_pc functions
                      ! include PGS_SMF.f define PGS_SMF_MAX_MSG_SIZE
     USE OMI_SMF_class    ! include PGE specific messages and OMI_SMF_setmsg
+    use tell_module
+
     IMPLICIT NONE
     REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: irradiance, &
                                                     irrPrecision, &
@@ -64,13 +66,59 @@ MODULE O3T_irrad_class
 
     CONTAINS
 
+ subroutine o3t_tio_getirr (filename, groupname, errstat)
+   implicit none
+   character (len=*), intent(in) :: filename, groupname
+   integer, intent(inout) :: errstat
+
+   type (l1b_tio_type) :: ft
+   integer :: ext, ierr
+
+   if (errstat < 0) return
+
+   ! FIXME hack filename
+   ext = index (filename, ".he4", back=.true.)
+   call l1b_tio_open (ft, trim(filename(1:ext))//"nc", "band_540_740_nm", errstat)
+   if (errstat < 0) then
+     call tell_error (tell_io_open_error, &
+                      "o3t_tio_getirr: opening "//trim(filename(1:ext))//"nc", &
+                      errstat)
+     return
+   endif
+
+   call l1b_tio_getdims (ft, nTimes_irr, nXtrack_irr, nWavel_irr, errstat)
+   call l1b_tio_earthsun_distance (ft, EarthSunDistanceIRR, errstat)
+
+   if (allocated(irradiance)) deallocate (irradiance)
+   if (allocated(irrqaflags)) deallocate (irrqaflags)
+   if (allocated(irrwavelength)) deallocate (irrwavelength)
+
+   allocate (irradiance (nWavel_irr, nXtrack_irr), &
+             irrqaflags (nWavel_irr, nXtrack_irr), &
+             irrwavelength (nWavel_irr, nXtrack_irr), stat=ierr)
+   if (ierr /= 0) then
+     call tell_error (tell_malloc_error, "o3t_tio_getirr: allocate failed", errstat)
+     return
+   endif
+
+   call l1b_tio_get_irr (ft, irradiance, irrWavelength, irrQAflags, &
+                         irrMeasurementFlags, instID_irr, errstat)
+
+   call l1b_tio_close (ft, errstat)
+   if (errstat < 0) then
+     call tell_error (tell_runtime_error, "o3t_tio_getirr: failed", errstat)
+     return
+   endif
+
+ end subroutine
+
 !!
 !  In general, two solar files is stage, one is the daily solar meassurement,
-!  and the other is the back-up solar irradiance file. This function first 
+!  and the other is the back-up solar irradiance file. This function first
 !  decide which of these two IRR files will be used in the processing
 !  based on the quality flags in the file. Then if the optional input wl_com
-!  is presnet, the solar irradiance values is interpolated to the wl_com, 
-!  otherwise it is directly read from the IRR file. 
+!  is presnet, the solar irradiance values is interpolated to the wl_com,
+!  otherwise it is directly read from the IRR file.
 !!
        FUNCTION O3T_getIRR( IRR_filename, IRR_swathname, wl_com ) &
                             RESULT( status )
@@ -121,7 +169,7 @@ MODULE O3T_irrad_class
             ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, "O3T_getIRR", four )
          ENDIF
 
-         !! set nWavel_irr to the input Wl array size, 
+         !! set nWavel_irr to the input Wl array size,
          !! if input wavelength is used.
          IF( PRESENT( wl_com ) ) THEN
             nWavel_irr = SIZE( wl_com )
@@ -131,7 +179,7 @@ MODULE O3T_irrad_class
          ENDIF
 
          ! allocate memory for arrays
-         CALL O3T_freeIRR 
+         CALL O3T_freeIRR
          ALLOCATE( irradiance(nWavel_irr,nXtrack_irr), &
                    irrPrecision(nWavel_irr,nXtrack_irr), &
                    irrQAflags(nWavel_irr,nXtrack_irr), &
@@ -163,7 +211,7 @@ MODULE O3T_irrad_class
                                     RadIrr_k = irradiance, &
                                     RadIrrPrecision_k =irrPrecision, &
                                     PixelQualityFlags_k = irrQAflags, &
-                                    Wavelength_k = irrWavelength ) 
+                                    Wavelength_k = irrWavelength )
               IF( status /= OZT_S_SUCCESS ) THEN
                  ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
                                "L1Bri_getLine failed.", "O3T_getIRR", zero )
@@ -182,12 +230,12 @@ MODULE O3T_irrad_class
          !! close data irradiance block structure
          status = L1Bri_close( irr_blk )
          IF( status /= OZT_S_SUCCESS ) THEN
-            WRITE( msg,'(A)' ) "L1Bri_close failed." 
+            WRITE( msg,'(A)' ) "L1Bri_close failed."
             ierr = OMI_SMF_setmsg( status, msg, "O3T_getIRR", zero )
             status = OZT_E_FAILURE
             RETURN
          ENDIF
-         
+
          !! Replace solar data with unusable QA flags with those that
          !! have usable QA flags in the adjacent scan position.
     !!!!!CALL O3T_irrRepair
@@ -212,7 +260,7 @@ MODULE O3T_irrad_class
          ELSE
             Ratio = EarthSunDistanceIRR/EarthSunDistanceRAD
             IF( 0.5 < Ratio .AND. Ratio < 1.5 ) THEN
-               irradiance = irradiance*Ratio**2 
+               irradiance = irradiance*Ratio**2
             ELSE
                WRITE( msg,'(A,F10.4,A)' ) "EarthSunDistance Ratio= ", &
                      Ratio, ", out of range, no adjustment are made to IRR"
@@ -253,5 +301,5 @@ MODULE O3T_irrad_class
 !           ENDDO
 !         ENDDO
 !       END SUBROUTINE O3T_irrRepair
-       
+
 END MODULE O3T_irrad_class

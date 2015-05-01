@@ -1,0 +1,5 @@
+O3T_DIM_CORNER,"corner","pixel corners"
+O3T_DIM_STEP,"mirror_step","mirror step"
+O3T_DIM_CHANNEL,"spectral_channel","spectral channel (east-west)"
+O3T_DIM_FITVAR,"fitvar","fit parameters"
+O3T_DIM_XTRACK,"xtrack","cross-track (north-south)"
