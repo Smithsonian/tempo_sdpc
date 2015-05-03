@@ -46,6 +46,7 @@
 !!END
 !!****************************************************************************
 PROGRAM O3T_mainNVAdj
+    use iso_c_binding, only : c_null_char
     USE O3T_irrad_class  ! contains irradiance parameters
     USE O3T_radgeo_class ! contains radiance and geolocation parameters
     USE O3T_nval_class, ONLY: wl_com, nwl_com, nvRRS, &  ! , nvELS
@@ -74,6 +75,7 @@ PROGRAM O3T_mainNVAdj
     USE L2_attr_class
     USE m_nvalc
     USE m_anomflg
+    use l2_tio_class
 
     IMPLICIT NONE
     INTEGER (KIND=4), PARAMETER :: zero = 0, one = 1!, two = 2, four = 4
@@ -145,10 +147,30 @@ PROGRAM O3T_mainNVAdj
     REAL(KIND=4), PARAMETER :: EPSILON10=1.0E-4
     !CHARACTER(LEN=128) :: filename
 
-    logical :: use_tio = .true.
     type (l1b_tio_type) :: rad_file_obj
-    integer :: errstat
+    logical :: use_he5_out = .false., use_tio_in = .true., use_tio_out = .true.
+    character (len=1024) :: nc_l2_filename
+    character (len=32) :: arg
+    integer :: errstat, version, ext, iarg
+
+    iarg = 0
+    do
+      call get_command_argument (iarg, arg)
+      if (len_trim(arg) == 0) exit
+      if (trim(arg) == "+he5_out") then
+        use_he5_out = .true.
+      else if (trim(arg) == "-nc_in") then
+        use_tio_in = .false.
+      else if (trim(arg) == "-nc_out") then
+        use_tio_out = .false.
+      endif
+      iarg = iarg + 1
+    enddo
+
     errstat = 0
+
+    ierr = r4Fill( fill_float32 )
+    ierr = r8Fill( fill_float64 )
 
     !! test snowice source option
     status = PGS_PC_GetConfigData( SNOWICESOURCE_LUN, msg )
@@ -221,7 +243,7 @@ PROGRAM O3T_mainNVAdj
     END IF
 
     !! read the L1B irradiance file
-    if (use_tio) then
+    if (use_tio_in) then
       call o3t_tio_getirr (IRR_filename, IRR_swathname, errstat)
       if (errstat < 0) stop 1
     else
@@ -255,7 +277,7 @@ PROGRAM O3T_mainNVAdj
        UV_swathname = "Earth UV-2 Swath"
     ENDIF
 
-    if (use_tio) then
+    if (use_tio_in) then
       call o3t_tio_initrad (rad_file_obj, UV_filename, UV_swathname, errstat)
       if (errstat < 0) stop 1
     else
@@ -373,9 +395,29 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     !! Create the L2 output file
+    if (use_he5_out) &
     status = L2_createFile( OMTO3_L2_LUN, OMTO3_fn )
 
+    if (use_tio_out) then
+      !! Get the L2 file name from the PCF.
+      version = 1
+      status = PGS_PC_getreference (OMTO3_L2_LUN, version, OMTO3_fn)
+      IF( status /= PGS_S_SUCCESS) THEN
+        call tell_error (tell_runtime_error, "reading L2 file name from PCF file", errstat)
+        stop 1
+      endif
+      ext = index (OMTO3_fn, '.he5', back=.true.)
+      if (ext /= 0) then
+        nc_l2_filename = OMTO3_fn(:ext)//'nc'//c_null_char
+      else
+        nc_l2_filename = OMTO3_fn !assume filename is ok as-is.
+      endif
+      call l2_tio_create (nc_l2_filename, nTimes_rad, nXtrack_rad, NLYR, nwl_com, errstat)
+      if (errstat < 0) stop 1
+    endif
+
     !! Create or setup the swath in the L2 output file
+    if (use_he5_out) then
     dimList = "nWavel,nXtrack,nTimes,nLayers,nTimesSmallPixel"
     dims(1:5) = (/ nwl_com,nXtrack_rad,nTimes_rad,NLYR,nTimesSmallPixel_rad /)
     status = L2_setupSwath( OMTO3_fn, dimList, dims, OMTO3_SWATH_LUN, &
@@ -430,6 +472,7 @@ PROGRAM O3T_mainNVAdj
 
     calblk%data(:) = TRANSFER( swpcr(:,:),  I1, &
          nwl_com*nxtrack*calblk%elmSize(1) )
+    endif  ! end if (use_he5_out)
 
     DO iwl = 1, nWvc
       il = iwl
@@ -463,6 +506,12 @@ PROGRAM O3T_mainNVAdj
     iLine_b = 0
     iLine_s = iLine_b
 
+    if (use_tio_out) then
+      call l2_tio_write_etc (nwl_com, wl_com, nXtrack, swpcr, errstat)
+      if (errstat < 0) stop 1
+    endif
+
+    if (use_he5_out) then
     status = L2_writeBlock( wlblk, iLine_s, nwl_com )
     CALL L2_disposeBlockW( wlblk   )
     status = L2_writeBlock( calblk, iLine_s, 720 )
@@ -565,6 +614,7 @@ PROGRAM O3T_mainNVAdj
                               FUNCTIONNAME, zero )
        CALL EXIT(1)
     END IF
+    endif ! end if (use_he5_out)
 
     !! ------- now begin processing -------
 
@@ -576,9 +626,9 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     iLine = 0
-    if (use_tio) then
+    if (use_tio_in) then
       call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
-                           szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                           szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                            errstat)
       if (errstat < 0) stop 1
     else
@@ -595,9 +645,9 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     iLine = 1
-    if (use_tio) then
+    if (use_tio_in) then
       call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
-                           szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                           szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                            errstat)
       if (errstat < 0) stop 1
     else
@@ -649,9 +699,9 @@ PROGRAM O3T_mainNVAdj
     iLine_e = nTimes_rad-1
     DO iLine = iLine_b, iLine_e
 
-      if (use_tio) then
+      if (use_tio_in) then
         call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
-                             szenith, sazimuth, vzenith, vazimuth, geoflg, &
+                             szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                              errstat, anomflg)
         if (errstat < 0) stop 1
       else
@@ -725,9 +775,15 @@ PROGRAM O3T_mainNVAdj
       !! All geolocation information read from the input L1B is copied
       !! to the output file, no modification is done to geo info before
       !! written out the L2 output.
+      if (use_he5_out) &
       CALL O3T_L2setGeoLine( iT, geoblk, datablk )
 
-      if (use_tio) then
+      if (use_tio_out) then
+        call l2_tio_write_geo (iLine, nXtrack_rad, errstat)
+        if (errstat < 0) stop 1
+      endif
+
+      if (use_tio_in) then
         call l1b_tio_getrad (rad_file_obj, radgeo_blk, iLine, errstat, &
                              radiance, radWavelength, radQAflags)
         if (errstat < 0) stop 1
@@ -797,7 +853,13 @@ PROGRAM O3T_mainNVAdj
         ENDIF
 
         ! check instrument configuration id
-        status = L1Bri_getInstConfigId(  rad_blk, iLine, instId_rad )
+        if (use_tio_in) then
+          call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
+                                instid=instId_rad)
+          if (errstat < 0) stop 1
+        else
+          status = L1Bri_getInstConfigId(  rad_blk, iLine, instId_rad )
+        endif
 
         QAflags = 0
         radBadPixflgs = 0
@@ -818,11 +880,17 @@ PROGRAM O3T_mainNVAdj
                             radWavelength(:,iX),   radiance(:,iX),  &
                             wl_com(:), xnvalm(:) )
         IF( skipit .OR. status /= OZT_S_SUCCESS  ) THEN
-           IF( pixSURF%isnow == 10 ) algflg = algflg + 10
+           IF( pixSURF%isnow == 10 ) algflg = algflg + 10_1
            errflgs = 7
            QAflags = QAflags + errflgs
+           if (use_he5_out) &
            CALL O3T_L2fillDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, &
                                    radBadPixflgs, datablk )
+           if (use_tio_out) then
+             call l2_tio_write_skipped_fields (iLine, iX, nwl_com, &
+                                               algflg, QAflags, radBadPixflgs, errstat)
+             if (errstat < 0) stop 1
+           endif
            CALL O3T_QAcounter( algflg, QAflags, &
                                L2_parameters(1)%QualityFlagsCounters )
            CYCLE
@@ -844,11 +912,17 @@ PROGRAM O3T_mainNVAdj
            WRITE( msg,'(A)' ) "Calculate poly coefficient failed, " // &
                               "Skip to next pixel"
            ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-           IF( pixSURF%isnow == 10 ) algflg = algflg + 10
+           IF( pixSURF%isnow == 10 ) algflg = algflg + 10_1
            errflgs = 7
            QAflags = QAflags + errflgs
+           if (use_he5_out) &
            CALL O3T_L2fillDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, &
                                    radBadPixflgs, datablk )
+           if (use_tio_out) then
+             call l2_tio_write_skipped_fields (iLine, iX, nwl_com, &
+                                               algflg, QAflags, radBadPixflgs, errstat)
+             if (errstat < 0) stop 1
+           endif
            CALL O3T_QAcounter( algflg, QAflags, &
                                L2_parameters(1)%QualityFlagsCounters )
            CYCLE
@@ -892,8 +966,14 @@ PROGRAM O3T_mainNVAdj
               L2_parameters(1)%NumberOfStep1InvalidSamples = &
               L2_parameters(1)%NumberOfStep1InvalidSamples + 1
            ENDIF
+           if (use_he5_out) &
            CALL O3T_L2fillDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, &
                                    radBadPixflgs, datablk )
+           if (use_tio_out) then
+             call l2_tio_write_skipped_fields (iLine, iX, nwl_com, &
+                                               algflg, QAflags, radBadPixflgs, errstat)
+             if (errstat < 0) stop 1
+           endif
            CALL O3T_QAcounter( algflg, QAflags, &
                                L2_parameters(1)%QualityFlagsCounters )
            CYCLE
@@ -915,8 +995,14 @@ PROGRAM O3T_mainNVAdj
            ENDIF
            errflgs = 7
            QAflags = QAflags + errflgs
+           if (use_he5_out) &
            CALL O3T_L2fillDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, &
                                    radBadPixflgs, datablk )
+           if (use_tio_out) then
+             call l2_tio_write_skipped_fields (iLine, iX, nwl_com, &
+                                               algflg, QAflags, radBadPixflgs, errstat)
+             if (errstat < 0) stop 1
+           endif
            CALL O3T_QAcounter( algflg, QAflags, &
                                L2_parameters(1)%QualityFlagsCounters )
            CYCLE
@@ -933,8 +1019,14 @@ PROGRAM O3T_mainNVAdj
         IF( status /= OZT_S_SUCCESS ) THEN
            errflgs = 7
            QAflags = QAflags + errflgs
+           if (use_he5_out) &
            CALL O3T_L2fillDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, &
                                    radBadPixflgs, datablk )
+           if (use_tio_out) then
+             call l2_tio_write_skipped_fields (iLine, iX, nwl_com, &
+                                               algflg, QAflags, radBadPixflgs, errstat)
+             if (errstat < 0) stop 1
+           endif
            CALL O3T_QAcounter( algflg, QAflags, &
                                L2_parameters(1)%QualityFlagsCounters )
            CYCLE
@@ -953,7 +1045,7 @@ PROGRAM O3T_mainNVAdj
            so2ind = fill_float32
         ENDIF
 
-        IF( pixSURF%isnow == 10 ) algflg = algflg + 10
+        IF( pixSURF%isnow == 10 ) algflg = algflg + 10_1
 
         ! calculate Ozone below fractional cloud
         oz_cld = O3T_blwcld( stp2prf, pixGEO, pixSURF )
@@ -977,14 +1069,28 @@ PROGRAM O3T_mainNVAdj
         ENDIF
 
         !! store data in data fields output block
+        if (use_he5_out) &
         CALL O3T_L2setDataPix( iT, iX, nwl_com, NLYR, algflg, QAflags, radBadPixflgs, &
                                stp1oz, stp2oz, stp3oz, oz_cld, aerind, so2ind,&
                                pixSURF, eff, aprfoz, datablk )
+        if (use_tio_out) then
+          call l2_tio_write_fields (iLine, iX, nwl_com, NLYR, &
+                                    algflg, QAflags, radBadPixflgs, &
+                                    stp1oz, stp2oz, stp3oz, oz_cld, aerind, so2ind, &
+                                    pixSURF, eff, aprfoz, errstat)
+          if (errstat < 0) stop 1
+        endif
         CALL O3T_zonalMinMax( QAflags, lat, stp3oz, L2_parameters(1) )
 
       ENDDO ! iX end loop for Cross Track index
 
-      status = L1Bri_getMeasurementQF( rad_blk, iLine, mqa_rad    )
+      if (use_tio_in) then
+        call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
+                              mqf=mqa_rad)
+        if (errstat < 0) stop 1
+      else
+        status = L1Bri_getMeasurementQF( rad_blk, iLine, mqa_rad    )
+      endif
 
       IF( nXtrack_rad == &
           O3T_nMissing( iwlArray, radQAflags(:,:) ) ) THEN
@@ -997,15 +1103,23 @@ PROGRAM O3T_mainNVAdj
                                          mqa_rad, instID_rad, instID_irr )
       mqaL2          = O3T_setMqaL2( mqa_rad, radLMissing, instIDmismatch, &
                                      bit7Q, L2_parameters(1) )
+      if (use_he5_out) &
       CALL O3T_L2setMqaLine( iT, mqaL2, datablk )
+
+      if (use_tio_out) then
+        call l2_tio_write_mqf (iLine, mqaL2, errstat)
+        if (errstat < 0) stop 1
+      endif
 
       IF( iT == nLinesPerWrite ) THEN
          nLw = nLinesPerWrite
          IF( nLw > (iLine - iLine_s + 1 ) ) THEN
             nLw = iLine - iLine_s + 1
          ENDIF
+         if (use_he5_out) then
          status = L2_writeBlock( geoblk,  iLine_s, nLw )
          status = L2_writeBlock( datablk, iLine_s, nLw )
+         endif
          iLine_s = iLine_s + nLw
          iT = 0 ! When nTimes = n*nLinesPerWrite (n is an integer), iT =
                 ! nLinesPerWrite at the end of the loop (not equal to zero).
@@ -1017,15 +1131,24 @@ PROGRAM O3T_mainNVAdj
     !! write the last blocks of data (if any)
     IF( iT /= 0 ) THEN
        nLw = iT
+       if (use_he5_out) then
        status = L2_writeBlock( geoblk,  iLine_s, nLw )
        status = L2_writeBlock( datablk, iLine_s, nLw )
+       endif
     ENDIF
 
     !! writing finished, close the L2 file
+    if (use_he5_out) then
     CALL L2_disposeBlockW( geoblk  )
     CALL L2_disposeBlockW( datablk )
     ierr = HE5_SWdetach( OMTO3_swid )
     ierr = HE5_SWclose( OMTO3_fileid )
+    endif
+
+    if (use_tio_out) then
+      call l2_tio_close (errstat)
+      if (errstat < 0) stop 1
+    endif
 
     !! free the allocated memory
     CALL O3T_freeIRR
@@ -1076,6 +1199,7 @@ PROGRAM O3T_mainNVAdj
 
     !! Read the input file names from the PCF file and
     !! use these files as the input pointer for the L2 output
+    if (use_he5_out) then
     IF( TRIM(CloudPressureSource) == '"Climatology"' ) THEN
        LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                  O3_CLIM_LUN,     TM_CLIM_LUN,      &
@@ -1119,6 +1243,7 @@ PROGRAM O3T_mainNVAdj
        status = OMI_readHE4swAttr( L1B_UV_FILE_LUN )
        status = OMI_cpwtHE5glAttr( OMTO3_L2_LUN    )
     ENDIF
+    endif ! end if (use_he5_out)
 
     !! write the final message
     ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, &

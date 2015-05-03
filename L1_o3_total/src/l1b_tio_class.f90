@@ -24,7 +24,7 @@ module l1b_tio_class
     real (kind=4), dimension(:,:), allocatable :: lon, lat, sza, saz, vza, vaz
     real (kind=4), dimension(:,:,:), allocatable :: radiance, wavelength
     integer (kind=2), dimension(:,:,:), allocatable :: qa_flags
-    integer (kind=2), dimension(:,:), allocatable :: geoflg
+    integer (kind=2), dimension(:,:), allocatable :: geoflg, hgt
     integer (kind=1), dimension(:,:), allocatable :: anomflg
     integer (kind=2), dimension(:), allocatable :: measurement_quality_flags
     integer (kind=1), dimension(:), allocatable :: instid
@@ -33,7 +33,7 @@ module l1b_tio_class
 
   public l1b_tio_open, l1b_tio_close, l1b_tio_getdims, l1b_tio_get_irr, &
     l1b_tio_earthsun_distance, l1b_tio_init_rad, l1b_tio_getrad, &
-    l1b_tio_getgeo
+    l1b_tio_get_etc, l1b_tio_getgeo
 
 contains
 
@@ -68,7 +68,7 @@ contains
     implicit none
     type(l1b_tio_type), intent(inout) :: this
     integer, intent(inout) :: errstat
-
+    if (errstat < 0) continue  ! no-op
     this % num_steps = -1
     this % num_xtrack = -1
     this % num_wavelengths = -1
@@ -94,7 +94,7 @@ contains
     type (l1b_tio_type), intent(inout) :: this
     real (kind=4), intent(out) :: distance
     integer, intent(inout) :: errstat
-
+    if (errstat < 0) return
     distance = this % distance
   end subroutine
 
@@ -187,6 +187,7 @@ contains
               rg % saz (nx, ns), &
               rg % vza (nx, ns), &
               rg % vaz (nx, ns), &
+              rg % hgt (nx, ns), &
               rg % geoflg (nx, ns), &
               rg % anomflg (nx, ns), &
               rg % radiance (nw, nx, nl), &
@@ -211,8 +212,10 @@ contains
                         rg % vza(1:nx,1:ns), errstat)
     call tiof_get2d_r4 (this % ft, o3t_var_va_angle, [0,0], [ns,nx], &
                         rg % vaz(1:nx,1:ns), errstat)
-    call tiof_get2d_i2 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
-                        rg % geoflg(1:nx,1:ns), errstat)
+    call tiof_get2d_i2 (this % ft, o3t_var_terrain_height, [0,0], [ns,nx], &
+                        rg % hgt(1:nx,1:ns), errstat)
+    call tiof_get2d_ui2 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
+                         rg % geoflg(1:nx,1:ns), errstat)
     call tiof_get2d_ui1 (this % ft, o3t_var_anomflg, [0,0], [ns,nx], &
                         rg % anomflg(1:nx,1:ns), errstat)
     if (errstat /= 0) then
@@ -244,6 +247,10 @@ contains
     nx = this % num_xtrack
     nw = this % num_wavelengths
 
+    call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [iline], [num_read], &
+                        rg % measurement_quality_flags (1:num_read), errstat)
+    call tiof_get1d_ui1 (this % ft, o3t_var_instid, [iline], [num_read], &
+                        rg % instid (1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_wavelength, [iline,0,0], [num_read,nx,nw], &
                         rg % wavelength(1:nw,1:nx,1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_radiance, [iline,0,0], [num_read,nx,nw], &
@@ -310,15 +317,35 @@ contains
 
   end subroutine
 
+  subroutine l1b_tio_get_etc (this, rg, iline, errstat, instid, mqf)
+    implicit none
+    type (l1b_tio_type), intent(inout) :: this
+    type (l1b_radgeo_type), intent(inout) :: rg
+    integer, intent(in) :: iline
+    integer (kind=1), optional, intent(out) :: instid
+    integer (kind=2), optional, intent(out) :: mqf
+    integer, intent(inout) :: errstat
+
+    integer :: j
+    
+    call maybe_load_new_block (this, rg, iline, errstat)
+    if (errstat < 0) return
+
+    j  = iline - rg % beg_line + 1
+    if (present(instid)) instid = rg % instid (j)
+    if (present(mqf)) mqf = rg % measurement_quality_flags (j)
+
+  end subroutine
+  
   subroutine l1b_tio_getgeo (this, rg, iline, lat, lon, &
-                             sza, saz, vza, vaz, geoflg, errstat, &
+                             sza, saz, vza, vaz, height, geoflg, errstat, &
                              anomflg)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
     real (kind=4), dimension(:), intent(out) :: lat, lon, sza, saz, vza, vaz
-    integer (kind=2), dimension(:), intent(out) :: geoflg
+    integer (kind=2), dimension(:), intent(out) :: height, geoflg
     integer (kind=1), dimension(:), intent(out), optional :: anomflg
     integer, intent(inout) :: errstat
 
@@ -342,6 +369,7 @@ contains
     saz(1:nx) = rg % saz(1:nx, i)
     vza(1:nx) = rg % vza(1:nx, i)
     vaz(1:nx) = rg % vaz(1:nx, i)
+    height(1:nx) = rg % hgt (1:nx, i)
     geoflg(1:nx) = rg % geoflg(1:nx, i)
 
     if (present(anomflg)) then

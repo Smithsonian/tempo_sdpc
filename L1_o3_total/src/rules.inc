@@ -37,6 +37,12 @@ $(ODIR)/L1B_radirr_class.o: $(SDIR)/L1B_radirr_class.f90 \
 $(ODIR)/l1b_tio_class.o: $(SDIR)/l1b_tio_class.f90 \
   $(ODIR)/o3t_names_module.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/l1b_tio_class.f90 -o $(ODIR)/l1b_tio_class.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/l2_tio_class.o: $(SDIR)/l2_tio_class.f90 \
+  $(ODIR)/O3T_L2output_class.o \
+  $(ODIR)/o3t_names_module.o \
+  $(ODIR)/O3T_pixel_class.o \
+  $(ODIR)/O3T_radgeo_class.o
+	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/l2_tio_class.f90 -o $(ODIR)/l2_tio_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L2_attr_class.o: $(SDIR)/L2_attr_class.f90 \
   $(ODIR)/HE5_class.o \
   $(ODIR)/L1B_metaData_class.o \
