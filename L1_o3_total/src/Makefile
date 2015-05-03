@@ -8,7 +8,9 @@ srcdir     = $(config_dir)/L1_o3_total/src
 objdir     = $(srcdir)/$(archobjs)
 msgdir     = $(srcdir)/msgs
 
-bindir     = $(prefix)/bin
+bindir = $(prefix)/bin
+incdir = $(prefix)/include
+msgs_installdir = $(prefix)/msgs
 
 LNFLAGS    = #
 ADDLIBD    = #
@@ -90,8 +92,24 @@ dirs:
 $(EXECUTABLE):	$(LINKOBJS)
 	$(FC) O3T_main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LIBS)
 
-install:
+install-executable:
+	mkdir -p $(bindir)
+	@echo installing $(EXECUTABLE) in $(bindir)/        
 	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)
+
+install-header:
+	mkdir -p $(incdir)
+	@echo installing $(NAME_INCLUDE) in $(incdir)/
+	$(INSTALL_DATA) $(srcdir)/$(NAME_INCLUDE) $(incdir)/$(NAME_INCLUDE)
+
+install-msgs:
+	mkdir -p $(msgs_installdir)
+	@echo installing message files in $(msgs_installdir)/
+	for m in $(MESSAGE_FILES) ; do \
+	   $(INSTALL_DATA) $(srcdir)/msgs/$$m $(msgs_installdir)/$$m ; \
+	done
+
+install:	install-executable install-header install-msgs
 
 clean:	clean-o3t-names
 	-$(RM) $(objdir)/*.o $(objdir)/*.mod PGS_OZT_52050.f PGS_OZT_52050.h
@@ -112,6 +130,8 @@ fix-hdf-tabs:
 # ---------------------------------------
 # The PGE and TOOLKIT error message files
 # ---------------------------------------
+
+MESSAGE_FILES = PGS_9 PGS_1 PGS_52050
 
 PGEPGSSRC = OZT_52050.t
 PGEPGSCMP = $(msgdir)/PGS_OZT_52050
