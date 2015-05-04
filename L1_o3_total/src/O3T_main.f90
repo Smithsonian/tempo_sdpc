@@ -148,10 +148,12 @@ PROGRAM O3T_mainNVAdj
     !CHARACTER(LEN=128) :: filename
 
     type (l1b_tio_type) :: rad_file_obj
+    type (tio_cloud_type) :: cloud_blk
     logical :: use_he5_out = .false., use_tio_in = .true., use_tio_out = .true.
     character (len=1024) :: nc_l2_filename
     character (len=32) :: arg
     integer :: errstat, version, ext, iarg
+    integer :: cloud_pressure_source
 
     iarg = 0
     do
@@ -215,7 +217,6 @@ PROGRAM O3T_mainNVAdj
        status = L1B_getNames( BACKUP_L1BIRR_LUN, numfiles, L1B_filenames, &
                            L1B_swathlist )
     ENDIF
-
     IF( numfiles /= 1 ) THEN
        WRITE( msg,'(A)' ) "Number of IRR file not equal to 1, " // &
                           "PGE aborting, exit code = 1."
@@ -364,7 +365,18 @@ PROGRAM O3T_mainNVAdj
     !   ENDIF
     ! ENDDO
 
-    status = O3T_initCLD( CloudPressureSource )
+    if (use_tio_in) then
+      call cld_open (cloud_blk, cloud_pressure_source, errstat)
+      if (errstat < 0) stop 1
+    else
+      status = O3T_initCLD( CloudPressureSource )
+      cloud_pressure_source = cldpres_climatology
+      if (TRIM(CloudPressureSource) == '"OMCLDO2"') then
+        cloud_pressure_source = cldpres_o2
+      else if (TRIM(CloudPressureSource) == '"OMCLDRR"') then
+        cloud_pressure_source = cldpres_rr
+      endif
+    endif
 
     ! Read anomaly flags
     status= GET_ANOMFLG_3(year,jday,anomflg_3)
@@ -726,7 +738,7 @@ PROGRAM O3T_mainNVAdj
                                           year, month, day, snowIceArray(iX) )
       ENDDO
 
-      IF( TRIM(CloudPressureSource) == '"Climatology"' ) THEN
+      IF (cloud_pressure_source == cldpres_climatology) THEN
          DO iX = 1, nXtrack_rad
            status = OMI_pixGetCldPres( latitude(iX), longitude(iX), &
                                                year, month, day, pcArray(iX) )
@@ -741,12 +753,17 @@ PROGRAM O3T_mainNVAdj
            IF( ptArray(iX) < pcArray(iX)) pcArray(iX) = ptArray(iX)
          ENDDO
       ELSE
-         CALL O3T_getOMICldPress( iLine, pcArray, nXtrack_rad )
+        if (use_tio_in) then
+          call cld_get_pressure (cloud_blk, iLine, pcArray, errstat)
+          if (errstat < 0) stop 1
+        else
+          CALL O3T_getOMICldPress( iLine, pcArray, nXtrack_rad )
+        endif
          PclimQ(1:nXtrack_rad) = .FALSE.
          DO iX = 1, nXtrack_rad
-           IF( TRIM(CloudPressureSource) == '"OMCLDO2"' ) THEN
+           if (cloud_pressure_source == cldpres_o2) then
               cld_errflg = IBITS( ProcessingQualityFlags(iX),5,7 )
-           ELSE IF( TRIM(CloudPressureSource) == '"OMCLDRR"' ) THEN
+           else if (cloud_pressure_source == cldpres_rr) then
               cld_errflg = IBITS( ProcessingQualityFlags(iX),0, 3 ) &
                          + IBITS( ProcessingQualityFlags(iX),6, 2 ) &
                          + IBITS( ProcessingQualityFlags(iX),14,2 )
@@ -1153,7 +1170,12 @@ PROGRAM O3T_mainNVAdj
     !! free the allocated memory
     CALL O3T_freeIRR
     CALL O3T_freeRAD
-    CALL O3T_freeCLD
+    if (use_tio_in) then
+      call cld_close (cloud_blk, errstat)
+      if (errstat < 0) stop 1
+    else
+      CALL O3T_freeCLD
+    endif
     CALL O3T_freeL2out
 
     !! free coefficient denominator data block
@@ -1200,7 +1222,7 @@ PROGRAM O3T_mainNVAdj
     !! Read the input file names from the PCF file and
     !! use these files as the input pointer for the L2 output
     if (use_he5_out) then
-    IF( TRIM(CloudPressureSource) == '"Climatology"' ) THEN
+    IF (cloud_pressure_source == cldpres_climatology) THEN
        LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                  O3_CLIM_LUN,     TM_CLIM_LUN,      &
                                  TERRAINPRES_LUN, CLOUDPRES_LUN,    &

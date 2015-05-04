@@ -95,6 +95,7 @@ $(ODIR)/O3T_class.o: $(SDIR)/O3T_class.f90 \
   $(ODIR)/UTIL_tools_class.o
 	$(FC) -c $(FFLAGS) $(IFLAGS) $(SDIR)/O3T_class.f90 -o $(ODIR)/O3T_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/O3T_cloudPres_class.o: $(SDIR)/O3T_cloudPres_class.f90 \
+  $(ODIR)/o3t_names_module.o \
   $(ODIR)/OMI_L2reader_class.o \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMI_SMF_class.o \
