@@ -96,16 +96,19 @@ MODULE O3T_irrad_class
    call l1b_tio_earthsun_distance (ft, EarthSunDistanceIRR, errstat)
 
    if (allocated(irradiance)) deallocate (irradiance)
+   if (allocated(irrprecision)) deallocate (irrprecision)
    if (allocated(irrqaflags)) deallocate (irrqaflags)
    if (allocated(irrwavelength)) deallocate (irrwavelength)
 
    allocate (irradiance (nWavel_irr, nXtrack_irr), &
+             irrprecision (nWavel_irr, nXtrack_irr), &
              irrqaflags (nWavel_irr, nXtrack_irr), &
              irrwavelength (nWavel_irr, nXtrack_irr), stat=ierr)
    if (ierr /= 0) then
      call tell_error (tell_malloc_error, "o3t_tio_getirr: allocate failed", errstat)
      return
    endif
+   irrprecision(:,:) = 0.0
 
    call l1b_tio_get_irr (ft, irradiance, irrWavelength, irrQAflags, &
                          irrMeasurementFlags, instID_irr, errstat)

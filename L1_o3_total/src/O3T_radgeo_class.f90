@@ -118,12 +118,14 @@ MODULE O3T_radgeo_class
              geoflg( nXtrack_rad ), &
              anomflg( nXtrack_rad ), &
              radiance (nWavel_rad, nXtrack_rad), &
+             radprecision (nWavel_rad, nXtrack_rad), &
              radWavelength (nWavel_rad, nXtrack_rad), &
              radQAflags (nWavel_rad, nXtrack_rad), stat=ierr)
    if (ierr /= 0) then
      call tell_error (tell_malloc_error, "o3t_tio_initrad: allocate failed", errstat)
      return
    endif
+   radprecision (:,:) = 0.0
 
  end subroutine
       
