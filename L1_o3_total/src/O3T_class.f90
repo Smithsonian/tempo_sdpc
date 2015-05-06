@@ -756,6 +756,7 @@ MODULE O3T_class
         lb_found = .FALSE.
         ub_found = .FALSE.
         radcl = 0.0
+        radgr = 0.0
 
         DO
           status = O3T_iztrsb( nvRRS, iwl_oz, iprof, pixGEO, coefs,  &
