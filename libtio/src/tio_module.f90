@@ -365,8 +365,6 @@ contains
 
     integer :: status
 
-    if (errstat < 0) return
-
     if (obj%fileid >= 0) then
       status = nf90_close (obj % fileid)
       if (status /= nf90_noerr) then
@@ -1036,7 +1034,9 @@ contains
           case (nf90_char)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
           case default
-            call tell_error (tell_runtime_error, "tio_def_vars:  unsupported fill value type", errstat)
+            call tell_error (tell_runtime_error, &
+                             "tio_def_vars:  unsupported fill value type: "//item%name(1:item%len_name), &
+                             errstat)
         end select
         if (status /= nf90_noerr) then
           errstat = tell_io_error
