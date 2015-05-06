@@ -13,11 +13,16 @@ module l1b_tio_class
     private
     type (tiof_file_type) :: ft
     character (len=1024) :: filename
-    character (len=tiof_max_name_len) :: groupname
     integer :: num_steps
     integer :: num_xtrack
     integer :: num_wavelengths
     real (kind=4) :: distance   ! earth-sun distance
+  end type
+
+  type, public :: l1b_metadata_type
+    integer :: year, month, day, jday
+    integer :: orbit_number
+    character (len=32) :: shortname
   end type
 
   type, public :: l1b_radgeo_type
@@ -33,7 +38,7 @@ module l1b_tio_class
 
   public l1b_tio_open, l1b_tio_close, l1b_tio_getdims, l1b_tio_get_irr, &
     l1b_tio_earthsun_distance, l1b_tio_init_rad, l1b_tio_getrad, &
-    l1b_tio_get_etc, l1b_tio_getgeo
+    l1b_tio_get_etc, l1b_tio_getgeo, l1b_tio_get_metadata
 
 contains
 
@@ -51,6 +56,8 @@ contains
                        "l1b_tio_open:  opening "//trim(filename), errstat)
       return
     endif
+
+    this % filename = filename
 
     call tiof_get_r4 (this % ft, o3t_var_earth_sun_distance, this % distance, errstat)
     call tiof_inq_dimlen (this % ft, o3t_dim_step, this % num_steps, errstat)
@@ -73,7 +80,6 @@ contains
     this % num_xtrack = -1
     this % num_wavelengths = -1
     this % filename = ''
-    this % groupname = ''
   end subroutine
 
   subroutine l1b_tio_getdims (this, num_steps, num_xtrack, num_wavelengths, errstat)
@@ -100,6 +106,7 @@ contains
 
   subroutine l1b_tio_get_irr (this, irr, wavelength, qaflags, &
                               measurement_quality_flag, instid, errstat)
+    use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
     implicit none
     type (l1b_tio_type), intent(inout) :: this
     real (kind=4), dimension(:,:), intent(out) :: irr, wavelength
@@ -108,7 +115,7 @@ contains
     integer (kind=1), intent(out) :: instid
     integer, intent(inout) :: errstat
 
-    integer :: nx, nw, status
+    integer :: nx, nw, status, instid_varid
     real (kind=4), dimension(:,:,:), allocatable :: &
       tmp_wavelengths, tmp_spectrum
     integer (kind=2), dimension(:,:,:), allocatable :: tmp_qflags
@@ -139,6 +146,17 @@ contains
       return
     endif
 
+    ! FIXME:  This instid stuff is here only to support tests with OMI data.
+    !         Maybe it will eventually go away?
+    status = nf90_inq_varid (this%ft%groupid, o3t_var_instid, instid_varid)
+    if (status == nf90_noerr) then
+      call tiof_get1d_ui1 (this % ft, o3t_var_instid, [0], [1], &
+                           tmp_instid(1:1), errstat)
+      instid = tmp_instid(1)
+    else
+      instid = 0_1
+    endif
+
     call tiof_get3d_r4 (this % ft, o3t_var_wavelength, [0,0,0], [1,nx,nw], &
                         tmp_wavelengths(:,1:nx,1:1), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_irradiance, [0,0,0], [1,nx,nw], &
@@ -146,7 +164,6 @@ contains
     call tiof_get3d_ui2 (this % ft, o3t_var_pqf, [0,0,0], [1,nx,nw], &
                         tmp_qflags(:,1:nx,1:1), errstat)
     call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [0], [1], tmp_mqf(1:1), errstat)
-    call tiof_get1d_ui1 (this % ft, o3t_var_instid, [0], [1], tmp_instid(1:1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, &
                        'l1b_tio_get_irr: failed reading irradiance: '//trim(this % filename), &
@@ -158,7 +175,6 @@ contains
     wavelength(1:nw, 1:nx) = tmp_wavelengths(1:nw, 1:nx, 1)
     qaflags(1:nw, 1:nx) = tmp_qflags (1:nw, 1:nx, 1)
     measurement_quality_flag = tmp_mqf(1)
-    instid = tmp_instid(1)
 
   end subroutine
 
@@ -226,13 +242,14 @@ contains
   end subroutine
 
   subroutine load_radiance_block (this, rg, iline, errstat)
+    use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
     implicit none
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
     integer, intent(inout) :: errstat
 
-    integer :: num_read, nx, nw
+    integer :: num_read, nx, nw, status, instid_varid
 
     if (errstat < 0) return
 
@@ -247,10 +264,18 @@ contains
     nx = this % num_xtrack
     nw = this % num_wavelengths
 
+    ! FIXME:  This instid stuff is here only to support tests with OMI data.
+    !         Maybe it will eventually go away?
+    status = nf90_inq_varid (this%ft%groupid, o3t_var_instid, instid_varid)
+    if (status == nf90_noerr) then
+      call tiof_get1d_ui1 (this % ft, o3t_var_instid, [iline], [num_read], &
+                           rg % instid (1:num_read), errstat)
+    else
+      rg % instid (1:num_read) = 0_1
+    endif
+
     call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [iline], [num_read], &
                         rg % measurement_quality_flags (1:num_read), errstat)
-    call tiof_get1d_ui1 (this % ft, o3t_var_instid, [iline], [num_read], &
-                        rg % instid (1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_wavelength, [iline,0,0], [num_read,nx,nw], &
                         rg % wavelength(1:nw,1:nx,1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_radiance, [iline,0,0], [num_read,nx,nw], &
@@ -327,7 +352,7 @@ contains
     integer, intent(inout) :: errstat
 
     integer :: j
-    
+
     call maybe_load_new_block (this, rg, iline, errstat)
     if (errstat < 0) return
 
@@ -336,7 +361,7 @@ contains
     if (present(mqf)) mqf = rg % measurement_quality_flags (j)
 
   end subroutine
-  
+
   subroutine l1b_tio_getgeo (this, rg, iline, lat, lon, &
                              sza, saz, vza, vaz, height, geoflg, errstat, &
                              anomflg)
@@ -375,6 +400,70 @@ contains
     if (present(anomflg)) then
       anomflg(1:nx) = rg % anomflg(1:nx, i)
     endif
+
+  end subroutine
+
+  subroutine l1b_tio_get_metadata (obj, m, errstat)
+    use netcdf
+    use iso_c_binding, only : c_null_char
+    implicit none
+    type (l1b_tio_type), intent(inout) :: obj
+    type (l1b_metadata_type), intent(out) :: m
+    integer, intent(inout) :: errstat
+
+    character (len=64) :: tmpstr
+    integer :: ncid, ierr, status, i_null
+    integer (kind=4), external :: day_of_year
+
+    if (errstat < 0) return
+
+    ncid = obj % ft % fileid
+
+    status = nf90_inquire_attribute (ncid, nf90_global, "omi_shortname")
+    if (status == nf90_noerr) then
+      status = nf90_get_att (ncid, nf90_global, "omi_shortname", tmpstr)
+      if (status /= nf90_noerr) then
+        call tell_error (tell_io_read_error, &
+                         "reading 'omi_shortname' from file: "//trim(obj % filename), &
+                         errstat)
+        return
+      endif
+      i_null = index (tmpstr, c_null_char)
+      if (i_null > 0) tmpstr = tmpstr(1:i_null-1)
+      m % shortname = tmpstr(1:len(m%shortname))
+    else
+      m % shortname = ''
+    endif
+
+    status = nf90_inquire_attribute (ncid, nf90_global, "omi_orbit_number")
+    if (status == nf90_noerr) then
+      status = nf90_get_att (ncid, nf90_global, "omi_orbit_number", m % orbit_number)
+      if (status /= nf90_noerr) then
+        call tell_error (tell_io_read_error, &
+                         "reading 'omi_orbit_number' from file: "//trim(obj % filename), &
+                       errstat)
+        return
+      endif
+    else
+      m % orbit_number = -1
+    endif
+
+    status = nf90_get_att (ncid, nf90_global, "time_coverage_start", tmpstr)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, &
+                       "reading 'time_coverage_start' from file: "//trim(obj % filename), &
+                       errstat)
+      return
+    endif
+
+    read (tmpstr, '(i4,1x,i2,1x,i2)', iostat=ierr) m % year, m % month, m % day
+    if (ierr /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "parsing time_coverage_start='"//trim(tmpstr)//"'", &
+                       errstat)
+      return
+    endif
+    m % jday = day_of_year (m % year, m % month, m % day)
 
   end subroutine
 

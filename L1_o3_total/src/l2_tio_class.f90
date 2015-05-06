@@ -624,7 +624,7 @@ contains
     implicit none
     integer, intent(in) :: nwavel, nxtrack
     real (kind=4), dimension(:), intent(in) :: wl_com
-    real (kind=4), dimension(:,:), intent(in) :: swpcr
+    real (kind=4), dimension(:,:), allocatable, intent(in) :: swpcr
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -640,10 +640,12 @@ contains
     call tiof_pop_group (obj, errstat)
 
     ! support_data group
-    call tiof_push_group (obj, o3t_grp_support_data, errstat)
-    call tiof_put2d_r4 (obj, o3t_var_cal_adjustment, [0,0], [nxtrack, nwavel], &
-                        swpcr(1:nwavel,1:nxtrack), errstat)
-    call tiof_pop_group (obj, errstat)
+    if (allocated (swpcr)) then
+      call tiof_push_group (obj, o3t_grp_support_data, errstat)
+      call tiof_put2d_r4 (obj, o3t_var_cal_adjustment, [0,0], [nxtrack, nwavel], &
+                          swpcr(1:nwavel,1:nxtrack), errstat)
+      call tiof_pop_group (obj, errstat)
+    endif
 
   end subroutine
 

@@ -75,15 +75,21 @@ MODULE O3T_radgeo_class
    integer, intent(inout) :: errstat
 
    integer :: ext, ierr
+   character (len=len(filename)) :: file_name
 
    if (errstat < 0) return
 
    ! FIXME hack filename
    ext = index (filename, ".he4", back=.true.)
-   call l1b_tio_open (this, trim(filename(1:ext))//"nc", "band_540_740_nm", errstat)
+   if (ext > 0) then
+     file_name = filename(1:ext)//"nc"
+   else
+     file_name = filename
+   endif
+   call l1b_tio_open (this, trim(file_name), groupname, errstat)
    if (errstat < 0) then
      call tell_error (tell_io_open_error, &
-                      "o3t_tio_initrad: opening "//trim(filename(1:ext))//"nc", &
+                      "o3t_tio_initrad: opening "//trim(file_name), &
                       errstat)
      return
    endif

@@ -108,7 +108,7 @@ MODULE O3T_QA_class
         INTEGER(KIND=1) :: rebinF
         INTEGER(KIND=4) :: l 
         LOGICAL :: instIDmismatch
-        
+
         rebinF = IBITS( mqa_rad, 7, 1 )
         l = LEN_TRIM( ShortName_rad )
 
@@ -121,7 +121,7 @@ MODULE O3T_QA_class
            IF( rebinF == 0 ) THEN
               IF( instID_rad == 0 .OR. instID_rad == 1 .OR. &
                   instID_rad == 2 .OR. instID_rad == 7 ) THEN
-                 instIDmismatch = .FALSE. 
+                 instIDmismatch = .FALSE.
                  RETURN
               ELSE
                  instIDmismatch = .TRUE. 

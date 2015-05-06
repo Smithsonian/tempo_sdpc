@@ -100,7 +100,7 @@ MODULE L1B_metaData_class
                  year, foo, month, foo, day
            jday = day_of_year( year, month, day )
            WRITE( msg, '(A, I5,I3,I3,I4)' ) "(y,m,d) = ", &
-                       year, month, day, jday 
+                       year, month, day, jday
            ierr = OMI_SMF_setmsg( OZT_W_GENERAL, msg, &
                                   "L1B_getCoreArchivedMetaData",four )
         ELSE

@@ -72,16 +72,22 @@ MODULE O3T_irrad_class
    integer, intent(inout) :: errstat
 
    type (l1b_tio_type) :: ft
+   character (len=len(filename)) :: file_name
    integer :: ext, ierr
 
    if (errstat < 0) return
 
    ! FIXME hack filename
    ext = index (filename, ".he4", back=.true.)
-   call l1b_tio_open (ft, trim(filename(1:ext))//"nc", "band_540_740_nm", errstat)
+   if (ext > 0) then
+     file_name = filename(1:ext)//"nc"
+   else
+     file_name = filename
+   endif
+   call l1b_tio_open (ft, trim(file_name), groupname, errstat)
    if (errstat < 0) then
      call tell_error (tell_io_open_error, &
-                      "o3t_tio_getirr: opening "//trim(filename(1:ext))//"nc", &
+                      "o3t_tio_getirr: opening "//trim(file_name), &
                       errstat)
      return
    endif

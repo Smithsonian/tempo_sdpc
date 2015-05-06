@@ -148,12 +148,15 @@ PROGRAM O3T_mainNVAdj
     !CHARACTER(LEN=128) :: filename
 
     type (l1b_tio_type) :: rad_file_obj
+    type (l1b_metadata_type) :: rad_metadata
     type (tio_cloud_type) :: cloud_blk
     logical :: use_he5_out = .false., use_tio_in = .true., use_tio_out = .true.
+    logical :: have_omi_data = .true.
+    logical :: did_so2_setup = .false.
     character (len=1024) :: nc_l2_filename
-    character (len=32) :: arg
-    integer :: errstat, version, ext, iarg
-    integer :: cloud_pressure_source
+    character (len=32) :: arg, rad_shortname
+    integer :: errstat, version, ext, iarg, orbit_number
+    integer :: cloud_pressure_source, anomflg_3_ix_ilat
 
     iarg = 0
     do
@@ -165,6 +168,8 @@ PROGRAM O3T_mainNVAdj
         use_tio_in = .false.
       else if (trim(arg) == "-nc_out") then
         use_tio_out = .false.
+      else if (trim(arg) == "tempo") then
+        have_omi_data = .false.
       endif
       iarg = iarg + 1
     enddo
@@ -211,40 +216,54 @@ PROGRAM O3T_mainNVAdj
        CALL EXIT(1)
     ENDIF
 
-    status = L1B_getNames( L1B_IRR_FILE_LUN, numfiles, L1B_filenames, &
-                           L1B_swathlist )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       status = L1B_getNames( BACKUP_L1BIRR_LUN, numfiles, L1B_filenames, &
-                           L1B_swathlist )
-    ENDIF
-    IF( numfiles /= 1 ) THEN
-       WRITE( msg,'(A)' ) "Number of IRR file not equal to 1, " // &
-                          "PGE aborting, exit code = 1."
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    ENDIF
+    if (use_tio_in) then
+      version = 1
+      status = PGS_PC_getreference (L1B_IRR_FILE_LUN, version, IRR_filename)
+      if (status /= PGS_S_SUCCESS ) then
+        call tell_error (tell_runtime_error, "reading irradiance file name", errstat)
+        stop 1
+      endif
+    else
+      status = L1B_getNames( L1B_IRR_FILE_LUN, numfiles, L1B_filenames, &
+                            L1B_swathlist )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        status = L1B_getNames( BACKUP_L1BIRR_LUN, numfiles, L1B_filenames, &
+                              L1B_swathlist )
+      ENDIF
+      IF( numfiles /= 1 ) THEN
+        WRITE( msg,'(A)' ) "Number of IRR file not equal to 1, " // &
+          "PGE aborting, exit code = 1."
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      ENDIF
 
-    !! Select Irradiance file
-    status = L1B_selectIRR( "UV-2", USED_L1BIRR_LUN, &
-                            IRR_filename, IRR_swathname, &
-                            IRR_FILE_TYPE, NORMAL_L1BIRR_MISSING,  &
-                            irr_error, irr_warning, irr_any )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "Get IRR file or Swath Name failed, "// &
-                          "PGE aborting, exit code = 1."
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    ENDIF
-    IF( irr_error > 0 ) THEN
-       WRITE( msg,'(A)' ) "One or more MeasurementQualityflags was set to "// &
-             "Eorror in irradiance file:"// TRIM(IRR_filename) // &
-             ". Alternative file should be staged. PGE aborting, exit code = 1."
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+      !! Select Irradiance file
+      status = L1B_selectIRR( "UV-2", USED_L1BIRR_LUN, &
+                             IRR_filename, IRR_swathname, &
+                             IRR_FILE_TYPE, NORMAL_L1BIRR_MISSING,  &
+                             irr_error, irr_warning, irr_any )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        WRITE( msg,'(A)' ) "Get IRR file or Swath Name failed, "// &
+          "PGE aborting, exit code = 1."
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      ENDIF
+      IF( irr_error > 0 ) THEN
+        WRITE( msg,'(A)' ) "One or more MeasurementQualityflags was set to "// &
+          "Eorror in irradiance file:"// TRIM(IRR_filename) // &
+          ". Alternative file should be staged. PGE aborting, exit code = 1."
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      END IF
+    endif ! end if (use_tio_in)
 
     !! read the L1B irradiance file
     if (use_tio_in) then
+      if (have_omi_data) then
+        IRR_swathname = "band_540_740_nm"
+      else
+        IRR_swathname = "band_290_490_nm"
+      endif
       call o3t_tio_getirr (IRR_filename, IRR_swathname, errstat)
       if (errstat < 0) stop 1
     else
@@ -257,6 +276,14 @@ PROGRAM O3T_mainNVAdj
     endif
 
     !! open the L1B radiance file
+    if (use_tio_in) then
+      version = 1
+      status = PGS_PC_getreference (L1B_UV_FILE_LUN, version, UV_filename)
+      if (status /= PGS_S_SUCCESS ) then
+        call tell_error (tell_runtime_error, "reading radiance file name", errstat)
+        stop 1
+      endif
+    else
     status = L1B_getNames( L1B_UV_FILE_LUN, numfiles, L1B_filenames, &
                            L1B_swathlist )
     IF( numfiles /= 1 ) THEN
@@ -277,8 +304,14 @@ PROGRAM O3T_mainNVAdj
     ELSE
        UV_swathname = "Earth UV-2 Swath"
     ENDIF
+    endif ! end if (use_tio_in)
 
     if (use_tio_in) then
+      if (have_omi_data) then
+        UV_swathname = "band_540_740_nm"
+      else
+        UV_swathname = "band_290_490_nm"
+      endif
       call o3t_tio_initrad (rad_file_obj, UV_filename, UV_swathname, errstat)
       if (errstat < 0) stop 1
     else
@@ -304,6 +337,24 @@ PROGRAM O3T_mainNVAdj
     status = L1Bri_interpWL( irrWavelength, irrQAflags, wl_com, &
                              irrQAflags_com, irrPrecision, irrPrecision_com )
 
+    if (use_tio_in) then
+      call l1b_tio_get_metadata (rad_file_obj, rad_metadata, errstat)
+      if (errstat < 0) stop 1
+      year  = rad_metadata % year
+      month = rad_metadata % month
+      day   = rad_metadata % day
+      jday  = rad_metadata % jday
+      orbit_number  = rad_metadata % orbit_number
+      rad_shortname = rad_metadata % shortname
+      ii = len_trim (rad_shortname)
+      if (have_omi_data) then
+        if (rad_shortname(ii:ii) == 'Z') then
+          write (msg,'(A,I9,A)')"skip zoom mode orbit ", orbit_number, ": normal exit"
+          call tell_log (0, msg)
+          stop 0
+        endif
+      endif
+    else
     !! read metadata from L1B irradiance file
     status = L1B_getCoreArchivedMetaData( USED_L1BIRR_LUN, &
                                           L1BIRRcoreArch, &
@@ -325,13 +376,15 @@ PROGRAM O3T_mainNVAdj
        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
        CALL EXIT(1)
     END IF
+    orbit_number = L1BUV2coreArch % orbitNumber
+    rad_shortname = L1BUV2coreArch%ShortName(1:len(rad_shortname))
 
     !! Process Global Mode data only, skip any zoom mode data
     !! Note: variables names used here are meant to be used
     !! somewhre else with specific meaning. But it is ok burrow these
     !! variables to be used here.
-    ii = LEN_TRIM( L1BUV2coreArch%ShortName )
-    IF( L1BUV2coreArch%ShortName(ii:ii) == 'Z' ) THEN
+    ii = LEN_TRIM(rad_shortname)
+    IF(rad_shortname(ii:ii) == 'Z' ) THEN
 
        WRITE( msg,'(A,I9,A)' ) "PGE skip zoom mode orbit", &
                               L1BUV2coreArch%orbitNumber,&
@@ -340,6 +393,7 @@ PROGRAM O3T_mainNVAdj
 
        CALL EXIT(0)
     ENDIF
+    endif
 
     ! DO iLine = 1, NL1Bpsa_MAX
     !   ii = LEN_TRIM( L1BUV2coreArch%L1BpsaNames(iLine) )
@@ -379,13 +433,19 @@ PROGRAM O3T_mainNVAdj
     endif
 
     ! Read anomaly flags
-    status= GET_ANOMFLG_3(year,jday,anomflg_3)
+    if (have_omi_data) then
+      status= GET_ANOMFLG_3(year,jday,anomflg_3)
 
-    status = OmiNVCinfo()
-    ALLOCATE(wl_cor(nWvc))
-    ALLOCATE(iwlSub(nWvc))
-    ALLOCATE(swpcr(nWvc,nXtc))
-    status = OmiNvalueCorr( L1BUV2coreArch%orbitNumber, wl_cor, swpcr )
+      status = OmiNVCinfo()
+      ALLOCATE(wl_cor(nWvc), &
+               iwlSub(nWvc), &
+               swpcr(nWvc,nXtc), stat=ierr)
+      if (ierr /= 0) then
+        call tell_error (tell_malloc_error, "malloc failed", errstat)
+        stop 1
+      endif
+      status = OmiNvalueCorr(orbit_number, wl_cor, swpcr )
+    endif
 
     !! read in climatology data
     status = O3T_apriori_rd()
@@ -396,15 +456,18 @@ PROGRAM O3T_mainNVAdj
        CALL EXIT(1)
     ENDIF
 
-    !! setup coefficient for so2 index calculations
-    satname = O3T_getSatName( L1BUV2coreArch%ShortName, OMTO3_NVAL_LUN )
-    status = O3_so2_setCoef( satname, o3abs, so2abs, iso2w, wl_com, soilim )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       WRITE( msg,'(A)' ) "Set coefficient for SOI failed, " // &
-                          "PGE aborting, exit code = 1."
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    ENDIF
+    did_so2_setup = .false.
+    if (have_omi_data) then
+      !! setup coefficient for so2 index calculations
+      satname = O3T_getSatName( rad_shortname, OMTO3_NVAL_LUN )
+      status = O3_so2_setCoef( satname, o3abs, so2abs, iso2w, wl_com, soilim )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        WRITE( msg,'(A)' ) "Set coefficient for SOI failed, "
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, FUNCTIONNAME, zero )
+        CALL EXIT(1)
+      ENDIF
+      did_so2_setup = .true.
+    endif
 
     !! Create the L2 output file
     if (use_he5_out) &
@@ -524,27 +587,27 @@ PROGRAM O3T_mainNVAdj
     endif
 
     if (use_he5_out) then
-    status = L2_writeBlock( wlblk, iLine_s, nwl_com )
-    CALL L2_disposeBlockW( wlblk   )
-    status = L2_writeBlock( calblk, iLine_s, 720 )
-    CALL L2_disposeBlockW( calblk  )
+      status = L2_writeBlock( wlblk, iLine_s, nwl_com )
+      CALL L2_disposeBlockW( wlblk   )
+      status = L2_writeBlock( calblk, iLine_s, 720 )
+      CALL L2_disposeBlockW( calblk  )
 
-    IF( TRIM(L1BUV2coreArch%ShortName) == "OML1BRUG" ) THEN
-       df_copy(:) = (/ df_NumberSmallPixelColumns,  &
-                       df_SmallPixelColumn       ,  &
-                       df_InstrumentConfigurationId /)
-       status = L2_defSWdatafields( OMTO3_swid, df_copy )
-       IF( status /= OZT_S_SUCCESS ) THEN
+      IF( TRIM(rad_shortname) == "OML1BRUG" ) THEN
+        df_copy(:) = (/ df_NumberSmallPixelColumns,  &
+                      df_SmallPixelColumn       ,  &
+                      df_InstrumentConfigurationId /)
+        status = L2_defSWdatafields( OMTO3_swid, df_copy )
+        IF( status /= OZT_S_SUCCESS ) THEN
           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_defSWdatafields failed,"//&
-                                 "PGE aborting, exit code = 1.", &
-                                 FUNCTIONNAME, zero )
+                                "PGE aborting, exit code = 1.", &
+                                FUNCTIONNAME, zero )
           CALL EXIT(1)
-       END IF
-    ENDIF
+        END IF
+      ENDIF
 
-    !! now starting defining the geo fields and data fields with one
-    !! "nTime" as one of its dimensions.
-    gf_omto3(:) = (/ gf_GroundPixelQualityFlags, &
+      !! now starting defining the geo fields and data fields with one
+      !! "nTime" as one of its dimensions.
+      gf_omto3(:) = (/ gf_GroundPixelQualityFlags, &
                      gf_Latitude               , &
                      gf_Longitude              , &
                      gf_SolarZenithAngle       , &
@@ -560,7 +623,7 @@ PROGRAM O3T_mainNVAdj
                      gf_SpacecraftAltitude     , &
                      gf_XTrackQualityFlags     /)
 
-    df_omto3(:) = (/ df_CloudPressure,           &
+      df_omto3(:) = (/ df_CloudPressure,           &
                      df_TerrainPressure,         &
                      df_AlgorithmFlags,          &
                      df_QualityFlags,            &
@@ -586,46 +649,46 @@ PROGRAM O3T_mainNVAdj
                      df_LayerEfficiency,         &
                      df_MeasurementQualityFlags /)
 
-    !! define the geofield in the L2 output file
-    status = L2_defSWgeofields( OMTO3_swid, gf_omto3 )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_defSWgeofields failed," // &
+      !! define the geofield in the L2 output file
+      status = L2_defSWgeofields( OMTO3_swid, gf_omto3 )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_defSWgeofields failed," // &
                               "PGE aborting, exit code = 1.", &
                               FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+        CALL EXIT(1)
+      END IF
 
-    !! define the datafield in the L2 output file
-    status = L2_defSWdatafields( OMTO3_swid, df_omto3 )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_defSWdatafields failed," // &
+      !! define the datafield in the L2 output file
+      status = L2_defSWdatafields( OMTO3_swid, df_omto3 )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_defSWdatafields failed," // &
                               "PGE aborting, exit code = 1.", &
                               FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+        CALL EXIT(1)
+      END IF
 
-    !! Allocate the memory for storing the L2 output information for a block.
-    !! The memory allocated before for the wl_com is deallocated and
-    !! reallocated for the new df_omto3 data fields.
-    status = L2_newBlockW( geoblk, OMTO3_fn, OMTO3_swathname, &
-                           OMTO3_fileid, OMTO3_swid, gf_omto3, &
-                           nLinesPerWrite )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_newBlockW for Geo failed,"//&
+      !! Allocate the memory for storing the L2 output information for a block.
+      !! The memory allocated before for the wl_com is deallocated and
+      !! reallocated for the new df_omto3 data fields.
+      status = L2_newBlockW( geoblk, OMTO3_fn, OMTO3_swathname, &
+                            OMTO3_fileid, OMTO3_swid, gf_omto3, &
+                            nLinesPerWrite )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_newBlockW for Geo failed,"//&
                               "PGE aborting, exit code = 1.", &
                               FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+        CALL EXIT(1)
+      END IF
 
-    status = L2_newBlockW( datablk, OMTO3_fn, OMTO3_swathname, &
-                           OMTO3_fileid, OMTO3_swid, df_omto3, &
-                           nLinesPerWrite )
-    IF( status /= OZT_S_SUCCESS ) THEN
-       ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_newBlockW for Data failed,"//&
+      status = L2_newBlockW( datablk, OMTO3_fn, OMTO3_swathname, &
+                            OMTO3_fileid, OMTO3_swid, df_omto3, &
+                            nLinesPerWrite )
+      IF( status /= OZT_S_SUCCESS ) THEN
+        ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "L2_newBlockW for Data failed,"//&
                               "PGE aborting, exit code = 1.", &
                               FUNCTIONNAME, zero )
-       CALL EXIT(1)
-    END IF
+        CALL EXIT(1)
+      END IF
     endif ! end if (use_he5_out)
 
     !! ------- now begin processing -------
@@ -759,8 +822,8 @@ PROGRAM O3T_mainNVAdj
         else
           CALL O3T_getOMICldPress( iLine, pcArray, nXtrack_rad )
         endif
-         PclimQ(1:nXtrack_rad) = .FALSE.
-         DO iX = 1, nXtrack_rad
+        PclimQ(1:nXtrack_rad) = .FALSE.
+        DO iX = 1, nXtrack_rad
            if (cloud_pressure_source == cldpres_o2) then
               cld_errflg = IBITS( ProcessingQualityFlags(iX),5,7 )
            else if (cloud_pressure_source == cldpres_rr) then
@@ -792,8 +855,9 @@ PROGRAM O3T_mainNVAdj
       !! All geolocation information read from the input L1B is copied
       !! to the output file, no modification is done to geo info before
       !! written out the L2 output.
-      if (use_he5_out) &
-      CALL O3T_L2setGeoLine( iT, geoblk, datablk )
+      if (use_he5_out) then
+        CALL O3T_L2setGeoLine( iT, geoblk, datablk )
+      endif
 
       if (use_tio_out) then
         call l2_tio_write_geo (iLine, nXtrack_rad, errstat)
@@ -880,17 +944,22 @@ PROGRAM O3T_mainNVAdj
 
         QAflags = 0
         radBadPixflgs = 0
+        if (have_omi_data) then
+          anomflg_3_ix_ilat = anomflg_3(iX,ilat)
+        else
+          anomflg_3_ix_ilat = 0
+        endif
         skipit = ( instid_rad /= 0 .AND. &
-                   instid_rad /= 1 .AND. &
-                   instid_rad /= 2 .AND. &
-                   instid_rad /= 7 ) .OR. &
-                   O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg(iX), anomflg_3(iX,ilat), algflg, &
-                                   L2_parameters(1), descendQ, PclimQ(iX), &
-                                   sza_p, geoflg(iX), iwlArray, &
-                                   radQAflags_com(:,IX), &
-                                   irrQAflags_com(:,IX), &
-                                   radPrecision_com(:,IX), &
-                                   irrPrecision_com(:,IX) )
+                  instid_rad /= 1 .AND. &
+                  instid_rad /= 2 .AND. &
+                  instid_rad /= 7 ) .OR. &
+                  O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg(iX), anomflg_3_ix_ilat, algflg, &
+                                 L2_parameters(1), descendQ, PclimQ(iX), &
+                                 sza_p, geoflg(iX), iwlArray, &
+                                 radQAflags_com(:,IX), &
+                                 irrQAflags_com(:,IX), &
+                                 radPrecision_com(:,IX), &
+                                 irrPrecision_com(:,IX) )
 
         !! calculates xnvalm no matter what QAflags is set for the pixel.
         status = O3T_nvalm( irrWavelength(:,iX), irradiance(:,iX),  &
@@ -918,7 +987,9 @@ PROGRAM O3T_mainNVAdj
            ENDIF
         ENDIF
 !!!
-        xnvalm(iwlSub(1:nWvc)) = xnvalm(iwlSub(1:nWvc)) + swpcr(1:nWvc, IX)/100.
+        if (allocated(swpcr)) then
+          xnvalm(iwlSub(1:nWvc)) = xnvalm(iwlSub(1:nWvc)) + swpcr(1:nWvc, IX)/100.
+        endif
 !!!
 
         pixID  = iX + nXtrack_rad*iLine
@@ -1055,7 +1126,7 @@ PROGRAM O3T_mainNVAdj
                        / dndr(iwl_refl_h)
 
         ! calculate SO2 index
-        IF( pathl < 3.5 ) THEN
+        IF( pathl < 3.5 .and. did_so2_setup) THEN
            so2ind = O3_so2_index( wl_com, dndomega_t, res_stp3, &
                                   iso2w, o3abs, so2abs )
         ELSE
@@ -1116,10 +1187,14 @@ PROGRAM O3T_mainNVAdj
          radLmissing = .FALSE.
       ENDIF
 
-      instIDmismatch = O3T_instIDsCheck( TRIM(L1BUV2coreArch%ShortName), &
-                                         mqa_rad, instID_rad, instID_irr )
-      mqaL2          = O3T_setMqaL2( mqa_rad, radLMissing, instIDmismatch, &
-                                     bit7Q, L2_parameters(1) )
+      if (have_omi_data) then
+        instIDmismatch = O3T_instIDsCheck( TRIM(rad_shortname), &
+                                          mqa_rad, instID_rad, instID_irr )
+      else
+        instIDmismatch = .false.
+      endif
+      mqaL2 = O3T_setMqaL2( mqa_rad, radLMissing, instIDmismatch, &
+                           bit7Q, L2_parameters(1) )
       if (use_he5_out) &
       CALL O3T_L2setMqaLine( iT, mqaL2, datablk )
 
@@ -1156,10 +1231,10 @@ PROGRAM O3T_mainNVAdj
 
     !! writing finished, close the L2 file
     if (use_he5_out) then
-    CALL L2_disposeBlockW( geoblk  )
-    CALL L2_disposeBlockW( datablk )
-    ierr = HE5_SWdetach( OMTO3_swid )
-    ierr = HE5_SWclose( OMTO3_fileid )
+      CALL L2_disposeBlockW( geoblk  )
+      CALL L2_disposeBlockW( datablk )
+      ierr = HE5_SWdetach( OMTO3_swid )
+      ierr = HE5_SWclose( OMTO3_fileid )
     endif
 
     if (use_tio_out) then
@@ -1197,7 +1272,9 @@ PROGRAM O3T_mainNVAdj
     ENDIF
 
     ! free memory used for anomaly flag
-    DEALLOCATE(anomflg_3)
+    if (have_omi_data) then
+      DEALLOCATE(anomflg_3)
+    endif
 
     L2_parameters(1)%Name = "Total Column Ozone"
 
@@ -1213,7 +1290,7 @@ PROGRAM O3T_mainNVAdj
        L2_parameters(1)%BackupSolarProductUsed = 0
     ENDIF
 
-    IF( TRIM(L1BUV2coreArch%ShortName) == "OML1BRUZ" ) THEN
+    IF( TRIM(rad_shortname) == "OML1BRUZ" ) THEN
        mcfLUN = OMTO3Z_MCF_LUN
     ELSE
        mcfLUN = OMTO3_MCF_LUN
@@ -1222,49 +1299,49 @@ PROGRAM O3T_mainNVAdj
     !! Read the input file names from the PCF file and
     !! use these files as the input pointer for the L2 output
     if (use_he5_out) then
-    IF (cloud_pressure_source == cldpres_climatology) THEN
-       LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
+      IF (cloud_pressure_source == cldpres_climatology) THEN
+        LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                  O3_CLIM_LUN,     TM_CLIM_LUN,      &
                                  TERRAINPRES_LUN, CLOUDPRES_LUN,    &
                                  OMTO3_NVAL_LUN,  OMTO3_DNDX_LUN,   &
                                  nvCORR_LUN, ANOMFLG3_LUN /)
-       status = L2_setCoreArchMetaData( OMTO3_L2_LUN , L1BUV2coreArch, &
-                                 L1BIRRcoreArch, LUNinputPointer(1:10), &
-                                 mcfLUN, L2_parameters )
-    ELSE
-       LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
+        status = L2_setCoreArchMetaData( OMTO3_L2_LUN , L1BUV2coreArch, &
+                                        L1BIRRcoreArch, LUNinputPointer(1:10), &
+                                        mcfLUN, L2_parameters )
+      ELSE
+        LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                 O3_CLIM_LUN,     TM_CLIM_LUN,       &
                                 TERRAINPRES_LUN, CLOUDPRES_LUN,     &
                                 OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
                                 OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
-       status = L2_setCoreArchMetaData( OMTO3_L2_LUN , L1BUV2coreArch, &
-                                L1BIRRcoreArch, LUNinputPointer(1:11), &
-                                mcfLUN, L2_parameters )
-    ENDIF
+        status = L2_setCoreArchMetaData( OMTO3_L2_LUN , L1BUV2coreArch, &
+                                        L1BIRRcoreArch, LUNinputPointer(1:11), &
+                                        mcfLUN, L2_parameters )
+      ENDIF
 
-    !! Write global attribute
-    status = OMI_writeGlobalAttribute( OMTO3_fn, year, month, day, &
-                                       LUNinputPointer(1:2) )
+      !! Write global attribute
+      status = OMI_writeGlobalAttribute( OMTO3_fn, year, month, day, &
+                                        LUNinputPointer(1:2) )
 
-    !! Write Swath attribute
-    status = OMI_writeSwathAttribute( OMTO3_fn, OMTO3_swathname, &
-                                      nTimes_rad, nTimesSmallPixel_rad, &
-                                      EarthSundistance, "Total Column" )
+      !! Write Swath attribute
+      status = OMI_writeSwathAttribute( OMTO3_fn, OMTO3_swathname, &
+                                       nTimes_rad, nTimesSmallPixel_rad, &
+                                       EarthSundistance, "Total Column" )
 
-    !! copy some L1B data fileds to L2 output, should be for OMI only.
-    IF( TRIM(L1BUV2coreArch%ShortName) == "OML1BRUG" ) THEN
-      msg = "NumberSmallPixelColumns,SmallPixelColumn," // &
-            "InstrumentConfigurationId"
-      status = OMI_readHE4fields( L1B_UV_FILE_LUN, "UV-2", msg )
-      status = OMI_cpwtHE5fields( OMTO3_L2_LUN, "Column Amount O3" )
-    ENDIF
+      !! copy some L1B data fileds to L2 output, should be for OMI only.
+      IF( TRIM(rad_shortname) == "OML1BRUG" ) THEN
+        msg = "NumberSmallPixelColumns,SmallPixelColumn," // &
+          "InstrumentConfigurationId"
+        status = OMI_readHE4fields( L1B_UV_FILE_LUN, "UV-2", msg )
+        status = OMI_cpwtHE5fields( OMTO3_L2_LUN, "Column Amount O3" )
+      ENDIF
 
-    !! copy some HE4 swath attributes and write to HE5 global attributes
-    !! mainly for TOMS processing.
-    IF( INDEX( L1BUV2coreArch%ShortName, "TOMS" ) > 0 ) THEN
-       status = OMI_readHE4swAttr( L1B_UV_FILE_LUN )
-       status = OMI_cpwtHE5glAttr( OMTO3_L2_LUN    )
-    ENDIF
+      !! copy some HE4 swath attributes and write to HE5 global attributes
+      !! mainly for TOMS processing.
+      IF( INDEX( rad_shortname, "TOMS" ) > 0 ) THEN
+        status = OMI_readHE4swAttr( L1B_UV_FILE_LUN )
+        status = OMI_cpwtHE5glAttr( OMTO3_L2_LUN    )
+      ENDIF
     endif ! end if (use_he5_out)
 
     !! write the final message
