@@ -11,10 +11,10 @@ archobjs = $(COMPILER_SUITE)objs
 SHELL=/bin/sh
 
 ifeq ($(COMPILER_SUITE), gnu)
-  LDFLAGS      = $(LFLAGS) -Wl,--warn-common -Wl,-export-dynamic
+  LDFLAGS      = $(LFLAGS) -Wl,-export-dynamic
 
   CC           = gcc
-  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran
+  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran -Wno-missing-prototypes -Wno-c++-compat
   DL_LIB       = -ldl
   ELF_CC       = $(CC)
   ELF_CFLAGS   = $(CCFLAGS) -fPIC
@@ -22,7 +22,7 @@ ifeq ($(COMPILER_SUITE), gnu)
   ELF_DEP_LIBS = $(DL_LIB) -lm -lc
 #
   FC           = gfortran
-  FCFLAGS      = $(FFLAGS) -fPIC
+  FCFLAGS      = $(FFLAGS) -fPIC -Wno-compare-reals
   ELF_FC       = $(FC)
   ELF_F_LINK   = $(CC) $(LDFLAGS) -shared -Wl,-O1 -Wl,-soname,$(ELFLIB_F_MAJOR)
   MODFLG       = -I
