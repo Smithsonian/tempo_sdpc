@@ -23,7 +23,7 @@ LIBS_F = $(TIO_LIBPATHS) -ltio -ltio_f \
          $(TELL_LIBPATHS) -ltell_f \
 	 $(NETCDF_LIBPATHS) -lnetcdff $(RPATH)
 
-COMPILE_CMD = $(CC) $(CFLAGS)
+COMPILE_CMD = $(CC) $(CCFLAGS)
 COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------

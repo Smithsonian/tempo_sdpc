@@ -11,19 +11,8 @@ msgdir     = $(srcdir)/msgs
 incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
 
-LNFLAGS    = #
 ADDLIBD    = #
 ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
-
-#ifeq ($(COMPILER_SUITE), gnu)
-#  FCONVERT = -fconvert=swap
-#endif
-#ifeq ($(COMPILER_SUITE), intel)
-#  FCONVERT = -convert big_endian
-#endif
-
-FCFLAGS  = $(MODFLG) ./ $(FFLAGS) #$(FCONVERT)
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -93,7 +82,7 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) OMCLDRR.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
+	$(FC) OMCLDRR.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LDFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
 install-executable:
 	mkdir -p $(bindir)
@@ -108,8 +97,8 @@ install-header:
 install:	install-executable install-header
 
 clean:  clean-cld-names
-	-$(RM) $(objdir)/*.o $(objdir)/*.mod
-        
+	-$(RM) $(objdir)/*
+
 distclean:	clean        
 	-$(RM) -rf $(objdir)
 
@@ -189,7 +178,7 @@ distclean-cld-names:	clean-cld-names
 # For releases, a static set of rules can be appended.
 Makefile:	rules.inc
 rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
-	f90depmod.sl -r $(F90SOURCES) > rules.inc
+	$(DEPMOD) -r $(F90SOURCES) > rules.inc
 	./mkrules.sh c $(CSOURCES) >> rules.inc
 
 ODIR = $(objdir)

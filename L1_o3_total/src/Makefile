@@ -12,19 +12,8 @@ bindir = $(prefix)/bin
 incdir = $(prefix)/include
 msgs_installdir = $(prefix)/msgs
 
-LNFLAGS    = #
 ADDLIBD    = #
 ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
-
-ifeq ($(COMPILER_SUITE), gnu)
-  FCONVERT = -fconvert=swap
-endif
-ifeq ($(COMPILER_SUITE), intel)
-  FCONVERT = -convert big_endian
-endif
-
-FCFLAGS  = $(MODFLG) ./ $(FFLAGS) $(FCONVERT)
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -90,7 +79,7 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) O3T_main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) $(LIBS)
+	$(FC) O3T_main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LDFLAGS) $(FCFLAGS) $(IFLAGS) $(LIBS)
 
 install-executable:
 	mkdir -p $(bindir)
@@ -112,7 +101,7 @@ install-msgs:
 install:	install-executable install-header install-msgs
 
 clean:	clean-o3t-names
-	-$(RM) $(objdir)/*.o $(objdir)/*.mod PGS_OZT_52050.f PGS_OZT_52050.h
+	-$(RM) $(objdir)/* PGS_OZT_52050.f PGS_OZT_52050.h
 
 distclean:	clean distclean-o3t-names
 	-$(RM) -rf $(objdir)
@@ -194,7 +183,7 @@ distclean-o3t-names:	clean-o3t-names
 # For releases, a static set of rules can be appended.
 Makefile:	rules.inc
 rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
-	f90depmod.sl -r $(F90SOURCES) > rules.inc
+	$(DEPMOD) -r $(F90SOURCES) > rules.inc
 	./mkrules.sh c $(CSOURCES) >> rules.inc
 
 ODIR = $(objdir)

@@ -12,10 +12,6 @@ bindir = $(prefix)/bin
 incdir = $(prefix)/include
 msgs_installdir = $(prefix)/msgs
 
-FCFLAGS = -I ./ $(FFLAGS)
-CCFLAGS = $(CFLAGS) -DLINUX -Df2cFortran
-LNFLAGS = #
-
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
 #---------------------------------------------------------------
@@ -78,7 +74,7 @@ dirs:
 	mkdir -p $(objdir) $(msgdir)
 
 $(EXECUTABLE):	$(LINKOBJS)
-	$(FC) $(LNFLAGS) $(FCFLAGS) $(IFLAGS) -o $(objdir)/$(EXECUTABLE) \
+	$(FC) $(LDFLAGS) $(FCFLAGS) $(IFLAGS) -o $(objdir)/$(EXECUTABLE) \
         main.f90 $(LINKOBJS) $(LIBS)
 
 install-executable:
@@ -101,7 +97,7 @@ install-msgs:
 install:	install-executable install-header install-msgs
 
 clean:	clean-tg-names
-	-$(RM) $(objdir)/*.o $(objdir)/*.mod
+	-$(RM) $(objdir)/*
 
 distclean:	clean
 	-$(RM) -rf $(objdir)
@@ -181,7 +177,7 @@ distclean-tg-names:	clean-tg-names
 # For releases, a static set of rules can be appended.
 Makefile:	rules.inc
 rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
-	f90depmod.sl -r $(F90SOURCES) > rules.inc
+	$(DEPMOD) -r $(F90SOURCES) > rules.inc
 	./mkrules.sh c $(CSOURCES) >> rules.inc
 
 ODIR = $(objdir)

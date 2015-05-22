@@ -25,7 +25,7 @@ mkfortranrule(){
 
 cat <<EOM
 \$(ODIR)/${base}.o:	\$(SDIR)/${base}.${ext} ${mod_deps}
-	\$(FC) -c \$(FFLAGS) \$(IFLAGS) \$(SDIR)/${base}.${ext} -o \$(ODIR)/${base}.o \$(MODOUTFLG) \$(ODIR)
+	\$(FC) -c \$(FCFLAGS) \$(IFLAGS) \$(SDIR)/${base}.${ext} -o \$(ODIR)/${base}.o \$(MODOUTFLG) \$(ODIR)
 EOM
 }
 
