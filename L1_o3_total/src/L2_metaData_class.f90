@@ -766,14 +766,14 @@ MODULE L2_metaData_class
                       nZones, temp_ZLatRange(:) )
 
            ! rounding
-           roundZOmin=ANINT(L2_Parameters(1)%ZonalOzoneMin*100.0)
+           roundZOmin=int(ANINT(L2_Parameters(1)%ZonalOzoneMin*100.0),kind(roundZOmin))
            tempZOmin=real(roundZOmin, kind=8)/100.0d0
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalOzoneMinimum", &
 !                      nZones, L2_Parameters(1)%ZonalOzoneMin )
                       nZones, tempZOmin)
 
-           roundZOmax=ANINT(L2_Parameters(1)%ZonalOzoneMax*100.0)
+           roundZOmax=int(ANINT(L2_Parameters(1)%ZonalOzoneMax*100.0),kind(roundZOmax))
            tempZOmax=real(roundZOmax, kind=8)/100.0d0
            status = PGS_MET_SetMultiAttr_d( GROUPS(ARCHIVE), &
                       "ZonalOzoneMaximum", &

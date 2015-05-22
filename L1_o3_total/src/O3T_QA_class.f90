@@ -109,7 +109,7 @@ MODULE O3T_QA_class
         INTEGER(KIND=4) :: l 
         LOGICAL :: instIDmismatch
 
-        rebinF = IBITS( mqa_rad, 7, 1 )
+        rebinF = int(IBITS( mqa_rad, 7, 1 ),kind(rebinF))
         l = LEN_TRIM( ShortName_rad )
 
         IF( ShortName_rad(l:l) == 'G' ) THEN
@@ -428,7 +428,7 @@ MODULE O3T_QA_class
         INTEGER (KIND=4) :: iz
         INTEGER( KIND=1 ) :: errflgs
 
-        errflgs = IBITS( QAflags, 0, 4 )
+        errflgs = int(IBITS( QAflags, 0, 4 ),kind(errflgs))
         IF( errflgs == 0 .OR. errflgs == 1 .OR. &
             errflgs == 8 .OR. errflgs == 9 ) THEN
            DO iz = 1, nZones

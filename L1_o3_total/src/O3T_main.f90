@@ -825,11 +825,12 @@ PROGRAM O3T_mainNVAdj
         PclimQ(1:nXtrack_rad) = .FALSE.
         DO iX = 1, nXtrack_rad
            if (cloud_pressure_source == cldpres_o2) then
-              cld_errflg = IBITS( ProcessingQualityFlags(iX),5,7 )
+              cld_errflg = int(IBITS( ProcessingQualityFlags(iX),5,7 ),kind(cld_errflg))
            else if (cloud_pressure_source == cldpres_rr) then
-              cld_errflg = IBITS( ProcessingQualityFlags(iX),0, 3 ) &
-                         + IBITS( ProcessingQualityFlags(iX),6, 2 ) &
-                         + IBITS( ProcessingQualityFlags(iX),14,2 )
+              cld_errflg = int(IBITS( ProcessingQualityFlags(iX),0, 3 ) &
+                               + IBITS( ProcessingQualityFlags(iX),6, 2 ) &
+                               + IBITS( ProcessingQualityFlags(iX),14,2 ), &
+                               kind(cld_errflg))
            ENDIF
            !! if cloud pressure not good, either by its quality flag
            !! or by the cloud fraction, use climatology cloud pressure instead.
@@ -1016,7 +1017,7 @@ PROGRAM O3T_mainNVAdj
            CYCLE
         ENDIF
 
-        pixSURF%landsea_mask = IBITS( geoflg(iX), 0, 4 )
+        pixSURF%landsea_mask = int(IBITS( geoflg(iX), 0, 4 ),kind(pixSURF%landsea_mask))
         IF( pixSURF%landsea_mask /= 1 .AND. pixSURF%landsea_mask /= 3 ) THEN
            pixSURF%surface_category = 0
         ELSE

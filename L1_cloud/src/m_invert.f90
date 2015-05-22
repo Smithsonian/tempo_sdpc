@@ -116,7 +116,7 @@ function invert (amat, error) result (amatinv)
 
       real (kind=8), PARAMETER :: TINY=1.0E-20
       integer n, np
-      real (KIND=8) A(NP,NP), SUM, AAMAX, DUM, B(NP)
+      real (KIND=8) A(NP,NP), SUM, AAMAX, DUM!, B(NP)
       integer INDX(NP), error, I, IMAX
       !real (KIND=8), dimension(:), allocatable :: VV
       real (KIND=8), dimension(n) :: VV
@@ -225,7 +225,7 @@ function invert (amat, error) result (amatinv)
 !!Added following parameter declarations since OMI code lacked them
       integer N, NP, I, II, J
       integer INDX(NP)
-      real (KIND=8) A(NP,NP), B(NP)
+      real (KIND=8) A(NP,NP), B(NP), SUM
 !      DIMENSION A(NP,NP),INDX(NP),B(NP)
 
 

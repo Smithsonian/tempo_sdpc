@@ -663,8 +663,8 @@ MODULE OMI_L2writer_class
          nc = 2
          SELECT CASE( df%datatype )
            CASE ( HE5T_NATIVE_INT8 )
-             range_int8(1) = NINT(df%ValidRange_l)
-             range_int8(2) = NINT(df%ValidRange_h)
+             range_int8(1) = int(NINT(df%ValidRange_l),kind(range_int8(1)))
+             range_int8(2) = int(NINT(df%ValidRange_h),kind(range_int8(2)))
              status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
                                      HE5T_NATIVE_UINT8, nc, range_int8 )      
              IF( status == -1 ) THEN
@@ -684,8 +684,8 @@ MODULE OMI_L2writer_class
              ENDIF
 
            CASE ( HE5T_NATIVE_UINT8 )
-             range_int8(1) = NINT(df%ValidRange_l)
-             range_int8(2) = NINT(df%ValidRange_h)
+             range_int8(1) = int(NINT(df%ValidRange_l),kind(range_int8(1)))
+             range_int8(2) = int(NINT(df%ValidRange_h),kind(range_int8(2)))
              status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
                                      df%datatype, nc, range_int8 )      
              IF( status == -1 ) THEN
@@ -703,8 +703,8 @@ MODULE OMI_L2writer_class
                 ierr=OMI_SMF_setmsg( OZT_E_HDFEOS,msg,"L2_setDFattrs",zero )
              ENDIF
            CASE ( HE5T_NATIVE_INT16 )
-             range_int16(1) = NINT(df%ValidRange_l)
-             range_int16(2) = NINT(df%ValidRange_h)
+             range_int16(1) = int(NINT(df%ValidRange_l),kind(range_int16(1)))
+             range_int16(2) = int(NINT(df%ValidRange_h),kind(range_int16(2)))
              status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
                                      df%datatype, nc, range_int16 )      
              IF( status == -1 ) THEN
@@ -722,8 +722,8 @@ MODULE OMI_L2writer_class
                 ierr=OMI_SMF_setmsg( OZT_E_HDFEOS,msg,"L2_setDFattrs",zero )
              ENDIF
            CASE ( HE5T_NATIVE_UINT16 )
-             range_int16(1) = NINT(df%ValidRange_l)
-             range_int16(2) = NINT(df%ValidRange_h)
+             range_int16(1) = int(NINT(df%ValidRange_l),kind(range_int16(1)))
+             range_int16(2) = int(NINT(df%ValidRange_h),kind(range_int16(2)))
              status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
                                      df%datatype, nc, range_int16 )      
              IF( status == -1 ) THEN

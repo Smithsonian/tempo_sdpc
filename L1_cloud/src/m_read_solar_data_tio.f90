@@ -4,9 +4,10 @@ module m_read_solar_data_tio
   use tio_module
   use tell_module
   use netcdf, only : nf90_nowrite
+  implicit none
+  private
 
   public read_solar_data_tio, write_solar_tio, calc_wl_line
-  private read_sol_dimensions, read_sol_data, read_earth_sun_dist
 
 contains
 

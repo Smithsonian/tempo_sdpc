@@ -123,14 +123,14 @@ contains
 
     do ipts=1, nXtrack
       latt=lat(ipts,iLine)
-      i=anint((startlat-latt)/deltlat, kind=4)+1   
+      i=int(anint((startlat-latt)/deltlat),kind(i))+1
       if (i <= 0) i=1
       if (i >= ref_nlat+1) i=ref_nlat
       lont=lon(ipts,iLine)   
       if(lont > 180.) then 
         lont=lont-360 
       endif
-      j=anint((lont-startlon)/deltlon, kind=4)+1   
+      j=int(anint((lont-startlon)/deltlon),kind(j))+1
       if(j <= 0) j=1   
       if(j >= ref_nlon+1) j=1   
       ! print *, 'rd_toms_refl : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &

@@ -13,7 +13,7 @@ subroutine instr_config(ierr, izoom)
 
    integer, intent(out) :: ierr, izoom
    integer :: i 
-   integer (kind=1), dimension(4) :: id1=(/0,1,2,7/)  
+   integer (kind=1), dimension(4) :: id1=(/0_1,1_1,2_1,7_1/)
 !   integer (kind=1), dimension(7) :: id2=(/42,43,44,49,56,57,58/)  
 
 izoom=1

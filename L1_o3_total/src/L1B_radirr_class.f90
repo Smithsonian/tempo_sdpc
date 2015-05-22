@@ -1164,7 +1164,7 @@ MODULE L1B_radirr_class
         j = iLine - this%iLine + 1
         instId = this%instId(j)
         mQF    = this%MeasurementQF(j)
-        IF( PRESENT( rebinningFlg ) ) rebinningFlg = IBITS( mQF, 7, 1 )
+        IF( PRESENT( rebinningFlg ) ) rebinningFlg = int(IBITS( mQF, 7, 1 ),kind(rebinningFlg))
         status = OZT_S_SUCCESS
 
       END FUNCTION L1Bri_getInstConfigId
@@ -1199,15 +1199,15 @@ MODULE L1B_radirr_class
         DO di = 1, 16
           SELECT CASE ( bittype(di) )
             CASE( 'E' )
-              mqaL_error   = mqaL_error  +IBITS( measurementQAflags, di, 1 )
+              mqaL_error   = mqaL_error + int(IBITS( measurementQAflags, di, 1),kind(mqaL_error))
             CASE( 'W' )
-              mqaL_warning = mqaL_warning+IBITS( measurementQAflags, di, 1 )
+              mqaL_warning = mqaL_warning + int(IBITS( measurementQAflags, di, 1),kind(mqaL_warning))
             CASE( 'R' )
-              IF( PRESENT( rebinF ) ) rebinF = IBITS( measurementQAflags,di,1 )
+              IF( PRESENT( rebinF ) ) rebinF = int(IBITS( measurementQAflags,di,1),kind(rebinF))
             CASE( 'S' )
-              IF( PRESENT( saaF   ) ) saaF   = IBITS( measurementQAflags,di,1 )
+              IF( PRESENT( saaF   ) ) saaF   = int(IBITS( measurementQAflags,di,1),kind(saaF))
             CASE( 'M' )
-              IF(PRESENT(maneuverF))maneuverF= IBITS( measurementQAflags,di,1 )
+              IF(PRESENT(maneuverF))maneuverF= int(IBITS( measurementQAflags,di,1 ),kind(maneuverF))
             CASE DEFAULT
               CYCLE
            END SELECT
