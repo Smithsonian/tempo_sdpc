@@ -17,7 +17,7 @@ day_of_year( int year,
 {
    int i, leap;
 
-   leap = (year%4 == 0 && year%100 != 0 || year%400 == 0);
+   leap = (((year%4 == 0) && (year%100 != 0)) || (year%400 == 0));
 
    for( i =1; i < month; i++ )
        day += daytab[leap][i];
@@ -37,7 +37,7 @@ OMI_mmddInterp( int  year,
    float frac;
 
    doy = day_of_year( year, month, day );
-   leap = (year%4 == 0 && year%100 != 0 || year%400 == 0);
+   leap = ((year%4 == 0) && (year%100 != 0)) || (year%400 == 0);
    if( doy <= bindoy[leap][month] )
    { *mm_cur = month; 
      *mm_pre = month-1; 

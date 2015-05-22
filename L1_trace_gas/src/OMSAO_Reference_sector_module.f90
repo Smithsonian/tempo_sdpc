@@ -29,8 +29,8 @@ MODULE OMSAO_Reference_sector_module
   ! ------------------------------------------------------------------
 
   INTEGER (KIND=i2), PRIVATE, PARAMETER               :: maxngrid = 1000
-  REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid)    :: grid_lat, background_correction, &
-    background_level
+  REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid)    :: grid_lat!, background_correction, &
+    !background_level
   REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid,12) :: Reference_sector_concentration
   INTEGER (KIND=i2), PRIVATE  :: ngridpoints
 

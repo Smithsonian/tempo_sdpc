@@ -601,7 +601,7 @@ CONTAINS
 
   SUBROUTINE soco_pars_deallocate ( errstat )
 
-    USE OMSAO_errstat_module, ONLY: pge_errstat_ok
+    !USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     !USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN
     IMPLICIT NONE
 

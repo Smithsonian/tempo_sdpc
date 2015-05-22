@@ -220,7 +220,7 @@ MODULE metadata_tools
   ! Parameters and variables for L2 Metadata initialization
   ! -------------------------------------------------------
   CHARACTER (LEN=PGSd_MET_GROUP_NAME_L), DIMENSION (PGSd_MET_NUM_OF_GROUPS) :: mcf_groups
-  CHARACTER (LEN=PGSd_PC_FILE_PATH_MAX)                                     :: l2_local_granule_id
+  !CHARACTER (LEN=PGSd_PC_FILE_PATH_MAX)                                     :: l2_local_granule_id
 
   ! -------------------------------------------------
   ! STRING variables for various purposes:
@@ -1589,48 +1589,48 @@ CONTAINS
     RETURN
   END SUBROUTINE set_automatic_quality_flag
 
-  SUBROUTINE get_l1br_opf_version ( l1br_opf_version )
-
-    USE OMSAO_precision_module,   ONLY: i4
-    USE OMSAO_indices_module,     ONLY: l1b_radiance_lun
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Output variable
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (OUT) :: l1br_opf_version
-
-    ! ------------------------------------------------------------
-    ! Variables for the extraction of the L1B radiance OPF version
-    ! ------------------------------------------------------------
-    INTEGER   (KIND=i4), PARAMETER  :: n_ipp = 20
-    INTEGER   (KIND=i4)             :: idx, md_stat, imd, version
-
-    CHARACTER (LEN=PGSd_MET_NAME_L), DIMENSION (n_ipp) :: l1br_inputp
-    CHARACTER (LEN=PGSd_MET_NAME_L)                    :: tmp_string
-    CHARACTER (LEN=4)                                  :: opf_string
-
-    INTEGER (KIND=i4), EXTERNAL :: PGS_MET_getPCAttr_s
-
-    ! -----------------------------
-    ! Read L1B radiance OPF version
-    ! -----------------------------
-    md_stat = PGS_MET_getPCAttr_s ( &
-      l1b_radiance_lun, version, TRIM(ADJUSTL(cmd_str//'.0')), 'INPUTPOINTER', l1br_inputp )
-
-    l1br_opf_version = -1 ; version = 1
-    get_opf: DO imd = 1, n_ipp
-      tmp_string = l1br_inputp(imd)
-
-      idx        = INDEX ( tmp_string, 'OML1BOPF' )
-      IF ( idx > 0 ) THEN
-        opf_string = tmp_string(idx+10:idx+14)
-        READ ( opf_string, '(I4)') l1br_opf_version
-      END IF
-      IF ( l1br_opf_version > 0 ) EXIT get_opf
-    END DO get_opf
-
-    RETURN
-  END SUBROUTINE get_l1br_opf_version
+!unused  SUBROUTINE get_l1br_opf_version ( l1br_opf_version )
+!unused
+!unused    USE OMSAO_precision_module,   ONLY: i4
+!unused    USE OMSAO_indices_module,     ONLY: l1b_radiance_lun
+!unused    IMPLICIT NONE
+!unused
+!unused    ! ---------------
+!unused    ! Output variable
+!unused    ! ---------------
+!unused    INTEGER (KIND=i4), INTENT (OUT) :: l1br_opf_version
+!unused
+!unused    ! ------------------------------------------------------------
+!unused    ! Variables for the extraction of the L1B radiance OPF version
+!unused    ! ------------------------------------------------------------
+!unused    INTEGER   (KIND=i4), PARAMETER  :: n_ipp = 20
+!unused    INTEGER   (KIND=i4)             :: idx, md_stat, imd, version
+!unused
+!unused    CHARACTER (LEN=PGSd_MET_NAME_L), DIMENSION (n_ipp) :: l1br_inputp
+!unused    CHARACTER (LEN=PGSd_MET_NAME_L)                    :: tmp_string
+!unused    CHARACTER (LEN=4)                                  :: opf_string
+!unused
+!unused    INTEGER (KIND=i4), EXTERNAL :: PGS_MET_getPCAttr_s
+!unused
+!unused    ! -----------------------------
+!unused    ! Read L1B radiance OPF version
+!unused    ! -----------------------------
+!unused    md_stat = PGS_MET_getPCAttr_s ( &
+!unused      l1b_radiance_lun, version, TRIM(ADJUSTL(cmd_str//'.0')), 'INPUTPOINTER', l1br_inputp )
+!unused
+!unused    l1br_opf_version = -1 ; version = 1
+!unused    get_opf: DO imd = 1, n_ipp
+!unused      tmp_string = l1br_inputp(imd)
+!unused
+!unused      idx        = INDEX ( tmp_string, 'OML1BOPF' )
+!unused      IF ( idx > 0 ) THEN
+!unused        opf_string = tmp_string(idx+10:idx+14)
+!unused        READ ( opf_string, '(I4)') l1br_opf_version
+!unused      END IF
+!unused      IF ( l1br_opf_version > 0 ) EXIT get_opf
+!unused    END DO get_opf
+!unused
+!unused    RETURN
+!unused  END SUBROUTINE get_l1br_opf_version
 
 END MODULE
