@@ -11,10 +11,11 @@ archobjs = $(COMPILER_SUITE)objs
 SHELL=/bin/sh
 
 ifeq ($(COMPILER_SUITE), gnu)
-  LDFLAGS      = $(LFLAGS) -Wl,-export-dynamic
+  COMMON_FLAGS =# --coverage
+  LDFLAGS      = $(COMMON_FLAGS) $(LFLAGS) -Wl,-export-dynamic
 
   CC           = gcc
-  CCFLAGS      = $(CFLAGS) -DLINUX -Df2cFortran -Wno-missing-prototypes -Wno-c++-compat
+  CCFLAGS      = $(COMMON_FLAGS) $(CFLAGS) -DLINUX -Df2cFortran -Wno-missing-prototypes -Wno-c++-compat
   DL_LIB       = -ldl
   ELF_CC       = $(CC)
   ELF_CFLAGS   = $(CCFLAGS) -fPIC
@@ -22,7 +23,7 @@ ifeq ($(COMPILER_SUITE), gnu)
   ELF_DEP_LIBS = $(DL_LIB) -lm -lc
 #
   FC           = gfortran
-  FCFLAGS      = $(FFLAGS) -fPIC -Wno-compare-reals
+  FCFLAGS      = $(COMMON_FLAGS) $(FFLAGS) -fPIC -Wno-compare-reals
   ELF_FC       = $(FC)
   ELF_F_LINK   = $(CC) $(LDFLAGS) -shared -Wl,-O1 -Wl,-soname,$(ELFLIB_F_MAJOR)
   MODFLG       = -I
@@ -33,10 +34,11 @@ endif
 
 ifeq ($(COMPILER_SUITE), intel)
   INTEL_ROOT   = /opt/intel
-  LDFLAGS      = $(LFLAGS) -shared
+  COMMON_FLAGS =#
+  LDFLAGS      = $(COMMON_FLAGS) $(LFLAGS) -shared
 
   CC           = $(INTEL_ROOT)/bin/icc
-  CCFLAGS      = $(CFLAGS) -DLINUX -DINTEL_COMPILER
+  CCFLAGS      = $(COMMON_FLAGS) $(CFLAGS) -DLINUX -DINTEL_COMPILER
   DL_LIB       = -ldl
   ELF_CC       = $(CC)
   ELF_CFLAGS   = $(CCFLAGS) -fpic
@@ -44,7 +46,7 @@ ifeq ($(COMPILER_SUITE), intel)
   ELF_DEP_LIBS = $(DL_LIB) -lm -lc
 #
   FC           = $(INTEL_ROOT)/bin/ifort
-  FCFLAGS      = $(FFLAGS) -fpic
+  FCFLAGS      = $(COMMON_FLAGS) $(FFLAGS) -fpic
   ELF_FC       = $(FC)
   ELF_F_LINK   = $(FC) $(LDFLAGS)
   MODFLG       = -I
