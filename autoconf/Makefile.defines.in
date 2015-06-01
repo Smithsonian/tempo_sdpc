@@ -35,20 +35,20 @@ endif
 ifeq ($(COMPILER_SUITE), intel)
   INTEL_ROOT   = /opt/intel
   COMMON_FLAGS =#
-  LDFLAGS      = $(COMMON_FLAGS) $(LFLAGS) -shared
+  LDFLAGS      = $(COMMON_FLAGS) $(LFLAGS)
 
   CC           = $(INTEL_ROOT)/bin/icc
-  CCFLAGS      = $(COMMON_FLAGS) $(CFLAGS) -DLINUX -DINTEL_COMPILER
+  CCFLAGS      = $(COMMON_FLAGS) $(CFLAGS) -fpic -DLINUX -Df2cFortran
   DL_LIB       = -ldl
   ELF_CC       = $(CC)
-  ELF_CFLAGS   = $(CCFLAGS) -fpic
-  ELF_LINK     = $(CC) $(LDFLAGS)
+  ELF_CFLAGS   = $(CCFLAGS)
+  ELF_LINK     = $(CC) $(LDFLAGS) -shared
   ELF_DEP_LIBS = $(DL_LIB) -lm -lc
 #
   FC           = $(INTEL_ROOT)/bin/ifort
   FCFLAGS      = $(COMMON_FLAGS) $(FFLAGS) -fpic
   ELF_FC       = $(FC)
-  ELF_F_LINK   = $(FC) $(LDFLAGS)
+  ELF_F_LINK   = $(FC) $(LDFLAGS) -shared
   MODFLG       = -I
   MODOUTFLG    = -module
   LONG_BIT      = $(shell getconf LONG_BIT)
