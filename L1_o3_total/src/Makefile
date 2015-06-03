@@ -60,7 +60,7 @@ LIBS   = $(LDPATH) $(TIOLIBS) $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(HE4LIBS) $(ZLIBS) $(PGSLIBS) \
          -lm $(DL_LIB)
 
-CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS) $(HE4INCS) $(HDFEOS_INC)
+CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS) $(HE4INCS)
 
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
