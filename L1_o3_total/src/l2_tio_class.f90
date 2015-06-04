@@ -27,17 +27,12 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_coord
     integer, dimension(2) :: dimids_xtrack_step
-    integer, dimension(3) :: dimids_wavel_xtrack_step
 
     if (errstat < 0) return
 
     call tiof_dimlist_lookup (dimlist, &
                               [o3t_dim_xtrack, o3t_dim_step], &
                               dimids_xtrack_step, &
-                              errstat)
-    call tiof_dimlist_lookup (dimlist, &
-                              [o3t_dim_wavelength, o3t_dim_xtrack, o3t_dim_step], &
-                              dimids_wavel_xtrack_step, &
                               errstat)
 
     ! Construct a list of variables with their associated dimension ids
@@ -65,21 +60,13 @@ contains
                               valid_range = [0.0_8, 254.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
-                              o3t_var_wavelength, &
-                              nf90_float, &
-                              dimids = [dimids_wavel_xtrack_step(1)], &
-                              comment = "wavelength", &
-                              units = "nm", &
-                              valid_range = [300.0_8, 400.0_8], &
-                              fillvalue = fill_float)
-
-    call tiof_varlist_append (varlist, errstat, &
                               o3t_var_radiative_cloudfrac, &
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "radiative cloud fraction = fc*Ic331/Im331", &
                               valid_range = [0.0_8, 1.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_cloudfrac_param, &
@@ -87,7 +74,8 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "mixed LER model (cloud fraction) parameter", &
                               valid_range = [0.0_8, 1.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_quality_flag, &
@@ -111,7 +99,8 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "SO2 index", &
                               valid_range = [-300.0_8, 300.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_uv_aerosol_index, &
@@ -119,7 +108,8 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "UV aerosol index", &
                               valid_range = [-30.0_8, 30.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_def_vars (obj, varlist, errstat)
 
@@ -135,6 +125,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
+    type (tiof_attlist_type) :: att_coord
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, dimids_wavel_xtrack_step
 
@@ -157,6 +148,19 @@ contains
     ! and attributes:
 
     ! data field variables with optional attribute lists:
+    call tiof_attlist_append (att_coord, errstat, "coordinates", &
+                              att_text = trim(o3t_var_longitude) &
+                              //' '//trim(o3t_var_latitude))
+
+    call tiof_varlist_append (varlist, errstat, &
+                              o3t_var_lut_wavelength, &
+                              nf90_float, &
+                              dimids = [dimids_wavel_xtrack_step(1)], &
+                              comment = "lookup table wavelength", &
+                              units = "nm", &
+                              valid_range = [300.0_8, 400.0_8], &
+                              fillvalue = fill_float)
+
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_cloud_pressure, &
                               nf90_float, &
@@ -164,7 +168,8 @@ contains
                               comment = "effective cloud pressure", &
                               units = "hPA", &
                               valid_range = [0.0_8, 1013.25_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_terrain_pressure, &
@@ -173,7 +178,8 @@ contains
                               comment = "terrain pressure", &
                               units = "hPA", &
                               valid_range = [0.0_8, 1013.25_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_algorithm_flags, &
@@ -228,7 +234,8 @@ contains
                               comment = "effective surface reflectivity at 331 nm", &
                               units = "percent", &
                               valid_range = [-15.0_8, 115.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_reflectivity_360, &
@@ -237,7 +244,8 @@ contains
                               comment = "effective surface reflectivity at 360 nm", &
                               units = "percent", &
                               valid_range = [-15.0_8, 115.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_residual, &
@@ -286,7 +294,8 @@ contains
                               comment = "step 1 ozone solution", &
                               units = "DU", &
                               valid_range = [50.0_8, 700.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_step2_o3, &
@@ -295,7 +304,8 @@ contains
                               comment = "step 2 ozone solution", &
                               units = "DU", &
                               valid_range = [50.0_8, 700.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_cal_adjustment, &
@@ -308,6 +318,7 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
 
     call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_coord)
   end subroutine
 
   subroutine append_geolocation_vars (obj, dimlist, errstat)
@@ -317,7 +328,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_latbnd, att_lonbnd
+    type (tiof_attlist_type) :: att_latbnd, att_lonbnd, att_coord
     integer, dimension(2) :: dimids_xtrack_step
 
     if (errstat < 0) return
@@ -364,6 +375,9 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_lonbnd)
 
+    call tiof_attlist_append (att_coord, errstat, "coordinates", &
+                              att_text = trim(o3t_var_longitude) &
+                              //' '//trim(o3t_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_sz_angle, &
                               nf90_float, &
@@ -371,7 +385,8 @@ contains
                               comment = "solar zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_8, 180.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_sa_angle, &
                               nf90_float, &
@@ -379,7 +394,8 @@ contains
                               comment = "solar azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_8, 180.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_vz_angle, &
                               nf90_float, &
@@ -387,7 +403,8 @@ contains
                               comment = "viewing zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_8, 70.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_va_angle, &
                               nf90_float, &
@@ -395,7 +412,8 @@ contains
                               comment = "viewing azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_8, 180.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_relaz_angle, &
                               nf90_float, &
@@ -403,7 +421,8 @@ contains
                               comment = "relative azimuth angle (sun + 180 - view)", &
                               units = "degrees", &
                               valid_range = [-180.0_8, 180.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_terrain_height, &
@@ -412,7 +431,8 @@ contains
                               comment = "terrain height", &
                               units = "m", &
                               valid_range = [-200.0_8, 10000.0_8], &
-                              fillvalue = fill_short)
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_geoflg, &
@@ -432,30 +452,34 @@ contains
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
+    call tiof_attlist_free (att_coord)
 
   end subroutine
 
-  subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
+  subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, num_layers, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
-    integer, intent(in) :: num_steps, num_xtrack
+    integer, intent(in) :: num_steps, num_xtrack, num_layers
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
     integer, dimension(num_xtrack) :: xtrack_indices
     integer, dimension(num_steps) :: step_indices
-    integer :: i, dimids(2)
+    integer, dimension(num_layers) :: layer_indices
+    integer :: i, dimids(3)
 
     if (errstat < 0) return
 
-    call tiof_dimlist_lookup (dimlist, [o3t_dim_xtrack, o3t_dim_step], dimids, errstat)
+    call tiof_dimlist_lookup (dimlist, [o3t_dim_xtrack, o3t_dim_step, o3t_dim_layer], dimids, errstat)
 
     ! netcdf coordinate variables:
     call tiof_varlist_append (varlist, errstat, o3t_dim_xtrack, nf90_int, &
                              dimids=[dimids(1)])
     call tiof_varlist_append (varlist, errstat, o3t_dim_step, nf90_int, &
                              dimids=[dimids(2)])
+    call tiof_varlist_append (varlist, errstat, o3t_dim_layer, nf90_int, &
+                             dimids=[dimids(3)])
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
 
@@ -468,6 +492,9 @@ contains
 
     xtrack_indices = [(i, i=0,num_xtrack-1)]
     call tiof_put1d_i4 (obj, o3t_dim_xtrack, [0], [num_xtrack], xtrack_indices, errstat)
+
+    layer_indices = [(i, i=0,num_layers-1)]
+    call tiof_put1d_i4 (obj, o3t_dim_layer, [0], [num_layers], layer_indices, errstat)
 
   end subroutine write_coordinate_vars
 
@@ -528,7 +555,7 @@ contains
       return
     endif
 
-    call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
+    call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, num_layers, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "l2_tio_create: writing coordinate variables to "//trim(filename), &
@@ -613,19 +640,15 @@ contains
 
     obj => primary_output_file
 
-    ! product group
-    call tiof_push_group (obj, o3t_grp_product, errstat)
-    call tiof_put1d_r4 (obj, o3t_var_wavelength, [0], [nwavel], &
-                        wl_com(1:nwavel), errstat)
-    call tiof_pop_group (obj, errstat)
-
     ! support_data group
+    call tiof_push_group (obj, o3t_grp_support_data, errstat)
+    call tiof_put1d_r4 (obj, o3t_var_lut_wavelength, [0], [nwavel], &
+                        wl_com(1:nwavel), errstat)
     if (allocated (swpcr)) then
-      call tiof_push_group (obj, o3t_grp_support_data, errstat)
       call tiof_put2d_r4 (obj, o3t_var_cal_adjustment, [0,0], [nxtrack, nwavel], &
                           swpcr(1:nwavel,1:nxtrack), errstat)
-      call tiof_pop_group (obj, errstat)
     endif
+    call tiof_pop_group (obj, errstat)
 
   end subroutine
 
