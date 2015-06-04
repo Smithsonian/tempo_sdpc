@@ -62,7 +62,6 @@ contains
                               nf90_ubyte, &
                               dimids = [dimids_xtrack_step(2)], &
                               comment = "measurement quality flag", &
-                              units = "", &
                               valid_range = [0.0_8, 254.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
@@ -79,7 +78,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "radiative cloud fraction = fc*Ic331/Im331", &
-                              units = "", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float)
 
@@ -88,7 +86,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "mixed LER model (cloud fraction) parameter", &
-                              units = "", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float)
 
@@ -97,7 +94,6 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "quality flags", &
-                              units = "", &
                               valid_range = [0.0_8, 65534.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
@@ -114,7 +110,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "SO2 index", &
-                              units = "", &
                               valid_range = [-300.0_8, 300.0_8], &
                               fillvalue = fill_float)
 
@@ -123,7 +118,6 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "UV aerosol index", &
-                              units = "", &
                               valid_range = [-30.0_8, 30.0_8], &
                               fillvalue = fill_float)
 
@@ -186,7 +180,6 @@ contains
                               nf90_ubyte, &
                               dimids = dimids_xtrack_step, &
                               comment = "algorithm flags", &
-                              units = "", &
                               valid_range = [0.0_8, 13.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
@@ -194,7 +187,6 @@ contains
                               nf90_float, &
                               dimids = dimids_layer_xtrack_step, &
                               comment = "a priori ozone profile", &
-                              units = "", &
                               valid_range = [0.0_8, 125.0_8], &
                               fillvalue = fill_float)
 
@@ -203,7 +195,6 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "radiance bad pixel flag accepted", &
-                              units = "", &
                               valid_range = [0.0_8, 65534.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
@@ -211,7 +202,6 @@ contains
                               nf90_float, &
                               dimids = dimids_layer_xtrack_step, &
                               comment = "algorithmic layer efficiency", &
-                              units = "", &
                               valid_range = [0.0_8, 10.0_8], &
                               fillvalue = fill_float)
 
@@ -220,7 +210,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "reflectivity sensitivity ratio", &
-                              units = "", &
                               valid_range = [-200.0_8, 0.0_8], &
                               fillvalue = fill_float)
 
@@ -229,7 +218,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "measured N-value", &
-                              units = "", &
                               valid_range = [0.0_8, 600.0_8], &
                               fillvalue = fill_float)
 
@@ -238,7 +226,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "effective surface reflectivity at 331 nm", &
-                              units = "%", &
+                              units = "percent", &
                               valid_range = [-15.0_8, 115.0_8], &
                               fillvalue = fill_float)
 
@@ -247,7 +235,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "effective surface reflectivity at 360 nm", &
-                              units = "%", &
+                              units = "percent", &
                               valid_range = [-15.0_8, 115.0_8], &
                               fillvalue = fill_float)
 
@@ -256,7 +244,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "N-value residual", &
-                              units = "", &
                               valid_range = [-32.0_8, 32.0_8], &
                               fillvalue = fill_float)
 
@@ -265,7 +252,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "step 1 N-value residual", &
-                              units = "", &
                               valid_range = [-32.0_8, 32.0_8], &
                               fillvalue = fill_float)
 
@@ -274,7 +260,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "step 2 N-value residual", &
-                              units = "", &
                               valid_range = [-32.0_8, 32.0_8], &
                               fillvalue = fill_float)
 
@@ -283,7 +268,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "ozone sensitivity ratio, dN/dOmega", &
-                              units = "", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float)
 
@@ -292,7 +276,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "ozone weighted temperature sensitivity ratio, dN/dT", &
-                              units = "", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float)
 
@@ -319,7 +302,6 @@ contains
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step(1:2), &
                               comment = "calibration adjustment", &
-                              units = "", &
                               valid_range = [-10.0_8, 10.0_8], &
                               fillvalue = fill_float)
 
@@ -437,7 +419,6 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "ground pixel quality flag", &
-                              units = "", &
                               valid_range = [0.0_8, 65534.0_8])
 
     call tiof_varlist_append (varlist, errstat, &
@@ -445,7 +426,6 @@ contains
                               nf90_ubyte, &
                               dimids = dimids_xtrack_step, &
                               comment = "cross-track quality flag", &
-                              units = "", &
                               valid_range = [0.0_8, 254.0_8])
 
     call tiof_def_vars (obj, varlist, errstat)
