@@ -273,7 +273,7 @@ contains
 
     integer :: err, num, i, k, alen
     type(c_ptr), dimension(size(array)) :: ptrs
-    character (len=size(array)), pointer :: fptr
+    character (len=len(array(1))), pointer :: fptr
 
     if (errstat < 0) return
 
@@ -293,7 +293,8 @@ contains
       call c_f_pointer (ptrs(i), fptr)
       if (associated(fptr)) then
         array(i)(1:alen) = ' '
-        k = min(index(fptr, c_null_char), alen)
+        k = index(fptr, c_null_char)
+        if (k == 0 .or. k > alen) k = alen
         array(i)(1:k) = fptr(1:k)
         ! FIXME?: Netcdf allocated memory for these strings, and
         ! that memory must be freed here.  Unfortunately, netcdf
@@ -1023,13 +1024,13 @@ contains
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, item % fillvalue)
           case (nf90_float)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, real(item % fillvalue, kind=4))
-          case (nf90_int64)
+          case (nf90_int64, nf90_uint64)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=8))
-          case (nf90_int)
+          case (nf90_int, nf90_uint)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=4))
-          case (nf90_short)
+          case (nf90_short, nf90_ushort)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=2))
-          case (nf90_byte)
+          case (nf90_byte, nf90_ubyte)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
           case (nf90_char)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))

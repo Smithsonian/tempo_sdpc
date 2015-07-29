@@ -20,6 +20,20 @@ dnl AC_SUBST(FCFLAGS)
 
 dnl JD_WITH_LIBRARY(sqlite3)
 
+CFLAGS_COV=""
+FCFLAGS_COV=""
+LDFLAGS_COV=""
+AC_ARG_ENABLE([gcov],
+  AS_HELP_STRING([--enable-gcov], [Do not use for production code!]))
+AS_IF([test "x$enable_gcov" = "xyes"], [
+  CFLAGS_COV="--coverage"
+  FCFLAGS_COV="--coverage"
+  LDFLAGS_COV="--coverage"
+])
+AC_SUBST(CFLAGS_COV)
+AC_SUBST(FCFLAGS_COV)
+AC_SUBST(LDFLAGS_COV)
+
 JH_SDPTK_SETUP
 
 AC_ARG_WITH(hdfeos,
