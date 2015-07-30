@@ -18,11 +18,12 @@ program ftest1
   end interface
 
   interface
-    subroutine check_read (filename, values, start, edge, &
+    subroutine check_read (filename, values, max_dims, start, edge, &
                            fillvalue, strings, errstat)
       implicit none
       character (len=*), intent(in) :: filename
       real (kind=8), dimension(:), intent(in) :: values
+      integer, intent(in) :: max_dims
       integer, dimension(:), intent(in) :: start, edge
       real (kind=8), intent(in) :: fillvalue
       character (len=*), dimension(:), intent(in) :: strings
@@ -66,13 +67,26 @@ program ftest1
 
   start(:) = 0
   edge(:) = dimlens(:)
-  call check_read (filename, values, start, edge, &
+  call check_read (filename, values, max_dims, start, edge, &
                    fillvalue_in, strings, errstat)
   if (errstat < 0) stop 1
 
   deallocate (values)
 
 end program
+
+subroutine expected_fail (errstat)
+  implicit none
+  integer, intent(inout) :: errstat
+
+  if (errstat < 0) then
+    errstat = 0
+    return
+  endif
+  write (*,*) "*** expected failure did not occur!!"
+  stop 1
+
+end subroutine
 
 subroutine create_group (obj, errstat)
   use tell_module
@@ -179,12 +193,443 @@ subroutine read_from_group (obj, errstat)
 
 end subroutine read_from_group
 
+subroutine test_put_errors (obj, max_dims, errstat)
+  use tell_module
+  use tio_module
+  implicit none
+  type (tiof_file_type), intent(inout) :: obj
+  integer, intent(in) :: max_dims
+  integer, intent(inout) :: errstat
+
+  integer, dimension(max_dims) :: start, edge
+  real (kind=8), dimension(max_dims) :: values
+  character (len=1), dimension(max_dims) :: strings
+  character (len=*), parameter :: absent = "absent"
+
+  if (errstat < 0) return
+
+  call tell_push_queue ()
+
+  start(:) = 0
+  edge(:) = 1
+  values(:) = 0.0
+  strings(:) = " "
+
+  call tiof_put_i1 (obj, absent, int(values(1),kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put_i2 (obj, absent, int(values(1),kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put_i4 (obj, absent, int(values(1),kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put_i8 (obj, absent, int(values(1),kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put_ui1 (obj, absent, int(values(1),kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put_ui2 (obj, absent, int(values(1),kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put_ui4 (obj, absent, int(values(1),kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put_ui8 (obj, absent, int(values(1),kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put_r4 (obj, absent, real(values(1),kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put_r8 (obj, absent, real(values(1),kind=8), errstat)
+  call expected_fail (errstat)
+
+  call tiof_put1d_text (obj, absent, start(1), edge(1), &
+                        strings, errstat)
+  call expected_fail (errstat)
+  call tiof_put1d_string (obj, absent, start(1), edge(1), &
+                          strings, errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=1)
+  call tiof_put1d_i1 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_i1 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_i1 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=1), errstat)
+  call expected_fail (errstat)
+
+  call tiof_put1d_ui1 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_ui1 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=1), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_ui1 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=1), errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=2)
+  call tiof_put1d_i2 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_i2 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_i2 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=2), errstat)
+  call expected_fail (errstat)
+
+  call tiof_put1d_ui2 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_ui2 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=2), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_ui2 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=2), errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=4)
+  call tiof_put1d_i4 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_i4 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_i4 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=4), errstat)
+  call expected_fail (errstat)
+
+  call tiof_put1d_ui4 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_ui4 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_ui4 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=4), errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=8)
+  call tiof_put1d_i8 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_i8 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_i8 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=8), errstat)
+  call expected_fail (errstat)
+
+  call tiof_put1d_ui8 (obj, absent, start(1:1), edge(1:1), &
+                      int(values,kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_ui8 (obj, absent, start(1:2), edge(1:2), &
+                      int(reshape(values, edge(1:2)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_ui8 (obj, absent, start(1:3), edge(1:3), &
+                      int(reshape(values, edge(1:3)), kind=8), errstat)
+  call expected_fail (errstat)
+
+  ! real (kind=4)
+  call tiof_put1d_r4 (obj, absent, start(1:1), edge(1:1), &
+                      real(values,kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_r4 (obj, absent, start(1:2), edge(1:2), &
+                      real(reshape(values, edge(1:2)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_r4 (obj, absent, start(1:3), edge(1:3), &
+                      real(reshape(values, edge(1:3)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put4d_r4 (obj, absent, start(1:4), edge(1:4), &
+                      real(reshape(values, edge(1:4)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put5d_r4 (obj, absent, start(1:5), edge(1:5), &
+                      real(reshape(values, edge(1:5)), kind=4), errstat)
+  call expected_fail (errstat)
+  call tiof_put6d_r4 (obj, absent, start(1:6), edge(1:6), &
+                      real(reshape(values, edge(1:6)), kind=4), errstat)
+  call expected_fail (errstat)
+
+  ! real (kind=8)
+  call tiof_put1d_r8 (obj, absent, start(1:1), edge(1:1), &
+                      real(values,kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put2d_r8 (obj, absent, start(1:2), edge(1:2), &
+                      real(reshape(values, edge(1:2)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put3d_r8 (obj, absent, start(1:3), edge(1:3), &
+                      real(reshape(values, edge(1:3)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put4d_r8 (obj, absent, start(1:4), edge(1:4), &
+                      real(reshape(values, edge(1:4)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put5d_r8 (obj, absent, start(1:5), edge(1:5), &
+                      real(reshape(values, edge(1:5)), kind=8), errstat)
+  call expected_fail (errstat)
+  call tiof_put6d_r8 (obj, absent, start(1:6), edge(1:6), &
+                      real(reshape(values, edge(1:6)), kind=8), errstat)
+  call expected_fail (errstat)
+
+  call tell_pop_queue (1)
+
+end subroutine test_put_errors
+
+subroutine test_get_errors (obj, max_dims, errstat)
+  use tell_module
+  use tio_module
+  implicit none
+  type (tiof_file_type), intent(inout) :: obj
+  integer, intent(in) :: max_dims
+  integer, intent(inout) :: errstat
+
+  character (len=*), parameter :: absent = "absent"
+  integer, dimension(max_dims) :: start, edge
+  integer (kind=1) :: i1s
+  integer (kind=2) :: i2s
+  integer (kind=4) :: i4s
+  integer (kind=8) :: i8s
+  real (kind=4) :: r4s
+  real (kind=8) :: r8s
+  character (len=1), dimension(1) :: strings
+  integer (kind=1) :: i1_1d(1), i1_2d(1,1), i1_3d(1,1,1)
+  integer (kind=2) :: i2_1d(1), i2_2d(1,1), i2_3d(1,1,1)
+  integer (kind=4) :: i4_1d(1), i4_2d(1,1), i4_3d(1,1,1)
+  integer (kind=8) :: i8_1d(1), i8_2d(1,1), i8_3d(1,1,1)
+  real (kind=4) :: &
+    r4_1d(1), r4_2d(1,1), r4_3d(1,1,1), &
+    r4_4d(1,1,1,1), r4_5d(1,1,1,1,1), r4_6d(1,1,1,1,1,1)
+  real (kind=8) :: &
+    r8_1d(1), r8_2d(1,1), r8_3d(1,1,1), &
+    r8_4d(1,1,1,1), r8_5d(1,1,1,1,1), r8_6d(1,1,1,1,1,1)
+
+  if (errstat < 0) return
+
+  call tell_push_queue ()
+
+  start(:) = 0
+  edge(:) = 1
+
+  call tiof_get_i1 (obj, absent, i1s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_i2 (obj, absent, i2s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_i4 (obj, absent, i4s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_i8 (obj, absent, i8s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_ui1 (obj, absent, i1s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_ui2 (obj, absent, i2s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_ui4 (obj, absent, i4s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_ui8 (obj, absent, i8s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_r4 (obj, absent, r4s, errstat)
+  call expected_fail (errstat)
+  call tiof_get_r8 (obj, absent, r8s, errstat)
+  call expected_fail (errstat)
+
+  call tiof_get1d_text (obj, absent, start(1), edge(1), &
+                        strings, errstat)
+  call expected_fail (errstat)
+  call tiof_get1d_string (obj, absent, start(1), edge(1), &
+                          strings, errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=1)
+  call tiof_get1d_i1 (obj, absent, start(1:1), edge(1:1), &
+                      i1_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_i1 (obj, absent, start(1:2), edge(1:2), &
+                      i1_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_i1 (obj, absent, start(1:3), edge(1:3), &
+                      i1_3d, errstat)
+  call expected_fail (errstat)
+
+  call tiof_get1d_ui1 (obj, absent, start(1:1), edge(1:1), &
+                      i1_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_ui1 (obj, absent, start(1:2), edge(1:2), &
+                      i1_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_ui1 (obj, absent, start(1:3), edge(1:3), &
+                      i1_3d, errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=2)
+  call tiof_get1d_i2 (obj, absent, start(1:1), edge(1:1), &
+                      i2_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_i2 (obj, absent, start(1:2), edge(1:2), &
+                      i2_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_i2 (obj, absent, start(1:3), edge(1:3), &
+                      i2_3d, errstat)
+  call expected_fail (errstat)
+
+  call tiof_get1d_ui2 (obj, absent, start(1:1), edge(1:1), &
+                      i2_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_ui2 (obj, absent, start(1:2), edge(1:2), &
+                      i2_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_ui2 (obj, absent, start(1:3), edge(1:3), &
+                      i2_3d, errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=4)
+  call tiof_get1d_i4 (obj, absent, start(1:1), edge(1:1), &
+                      i4_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_i4 (obj, absent, start(1:2), edge(1:2), &
+                      i4_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_i4 (obj, absent, start(1:3), edge(1:3), &
+                      i4_3d, errstat)
+  call expected_fail (errstat)
+
+  call tiof_get1d_ui4 (obj, absent, start(1:1), edge(1:1), &
+                      i4_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_ui4 (obj, absent, start(1:2), edge(1:2), &
+                      i4_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_ui4 (obj, absent, start(1:3), edge(1:3), &
+                      i4_3d, errstat)
+  call expected_fail (errstat)
+
+  ! integer (kind=8)
+  call tiof_get1d_i8 (obj, absent, start(1:1), edge(1:1), &
+                      i8_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_i8 (obj, absent, start(1:2), edge(1:2), &
+                      i8_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_i8 (obj, absent, start(1:3), edge(1:3), &
+                      i8_3d, errstat)
+  call expected_fail (errstat)
+
+  call tiof_get1d_ui8 (obj, absent, start(1:1), edge(1:1), &
+                      i8_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_ui8 (obj, absent, start(1:2), edge(1:2), &
+                      i8_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_ui8 (obj, absent, start(1:3), edge(1:3), &
+                      i8_3d, errstat)
+  call expected_fail (errstat)
+
+  ! real (kind=4)
+  call tiof_get1d_r4 (obj, absent, start(1:1), edge(1:1), &
+                      r4_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_r4 (obj, absent, start(1:2), edge(1:2), &
+                      r4_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_r4 (obj, absent, start(1:3), edge(1:3), &
+                      r4_3d, errstat)
+  call expected_fail (errstat)
+  call tiof_get4d_r4 (obj, absent, start(1:4), edge(1:4), &
+                      r4_4d, errstat)
+  call expected_fail (errstat)
+  call tiof_get5d_r4 (obj, absent, start(1:5), edge(1:5), &
+                      r4_5d, errstat)
+  call expected_fail (errstat)
+  call tiof_get6d_r4 (obj, absent, start(1:6), edge(1:6), &
+                      r4_6d, errstat)
+  call expected_fail (errstat)
+
+  ! real (kind=8)
+  call tiof_get1d_r8 (obj, absent, start(1:1), edge(1:1), &
+                      r8_1d, errstat)
+  call expected_fail (errstat)
+  call tiof_get2d_r8 (obj, absent, start(1:2), edge(1:2), &
+                      r8_2d, errstat)
+  call expected_fail (errstat)
+  call tiof_get3d_r8 (obj, absent, start(1:3), edge(1:3), &
+                      r8_3d, errstat)
+  call expected_fail (errstat)
+  call tiof_get4d_r8 (obj, absent, start(1:4), edge(1:4), &
+                      r8_4d, errstat)
+  call expected_fail (errstat)
+  call tiof_get5d_r8 (obj, absent, start(1:5), edge(1:5), &
+                      r8_5d, errstat)
+  call expected_fail (errstat)
+  call tiof_get6d_r8 (obj, absent, start(1:6), edge(1:6), &
+                      r8_6d, errstat)
+  call expected_fail (errstat)
+
+  call tell_pop_queue (1)
+
+end subroutine test_get_errors
+
+subroutine test_open_errors (errstat)
+  use tell_module
+  use tio_module
+  use netcdf
+  implicit none
+  integer, intent(inout) :: errstat
+
+  type (tiof_file_type) :: obj
+
+  call tell_push_queue ()
+
+  ! FIXME: As a test, I tried creating /dev/full (the directory,
+  !         not a file _in_ the directory).
+  !        tiof_create succeeded (!) but I got a segv when the
+  !        program exited.  Since netcdf didnt catch this,
+  !        the library probably should.
+
+  ! FIXME: netcdf doesn't catch this either:
+  !call tiof_create (obj, "/dev/full/xxx", nf90_clobber, errstat)
+  !call expected_fail (errstat)
+
+  call tiof_open ("/tmp/absent", obj, nf90_nowrite, errstat)
+  call expected_fail (errstat)
+
+  call tell_pop_queue (1)
+
+end subroutine test_open_errors
+
+subroutine test_usage_errors (obj, errstat)
+  use tio_module
+  implicit none
+  type (tiof_file_type), intent(inout) :: obj
+  integer, intent(inout) :: errstat
+
+  integer :: dimlen
+
+  if (errstat < 0) return
+
+  call tell_push_queue ()
+
+  ! this doesn't cause an error, but it does exercise
+  ! some special case code
+  call tiof_pop_group (obj, errstat)
+
+  call tiof_inq_dimlen (obj, "absent", dimlen, errstat)
+  call expected_fail (errstat)
+
+  call tell_pop_queue (1)
+
+end subroutine test_usage_errors
+
 subroutine check_create (filename, values, max_dims, dimlens, &
                          fillvalue, strings, errstat)
   use tell_module
   use tio_module
   use netcdf
   implicit none
+
+  interface
+    subroutine test_put_errors (obj, max_dims, errstat)
+      use tio_module
+      implicit none
+      type (tiof_file_type), intent(inout) :: obj
+      integer, intent(in) :: max_dims
+      integer, intent(inout) :: errstat
+    end subroutine
+  end interface
+
   character (len=*), intent(in) :: filename
   real (kind=8), dimension(:), intent(in) :: values
   real (kind=8), intent(in) :: fillvalue
@@ -197,7 +642,7 @@ subroutine check_create (filename, values, max_dims, dimlens, &
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
 
-  integer, dimension(max_dims) :: dimids
+  integer, dimension(max_dims) :: dimids, dimsizes
   character (len=2), dimension(max_dims) :: dimnames
   character (len=2), dimension(max_dims) :: anames
 
@@ -234,8 +679,13 @@ subroutine check_create (filename, values, max_dims, dimlens, &
     endif
   enddo
 
+  call test_open_errors (errstat)
+
   call tiof_create (obj, filename, nf90_clobber, errstat)
   call tiof_put_git_commit_hash (obj, errstat)
+  call tiof_put_git_commit_hash (obj, errstat, "")  ! exercise option
+
+  call test_usage_errors (obj, errstat)
 
   call tiof_def_dims (obj, dimlist, errstat)
   if (errstat < 0) then
@@ -243,9 +693,17 @@ subroutine check_create (filename, values, max_dims, dimlens, &
     return
   endif
 
-  call tiof_dimlist_lookup (dimlist, dimnames, dimids, errstat)
+  ! don't need sizes, but exercise the code anyway
+  call tiof_dimlist_lookup (dimlist, dimnames, dimids, errstat, &
+                            dimsizes)
   if (errstat < 0) then
     call tell_error (tell_runtime_error, "dimlist lookup failed", errstat);
+    return
+  endif
+  if (any(dimsizes /= dimlens)) then
+    call tell_error (tell_runtime_error, &
+                     "dimlist lookup returned incorrect dimsizes", &
+                     errstat)
     return
   endif
 
@@ -284,6 +742,20 @@ subroutine check_create (filename, values, max_dims, dimlens, &
       endif
     enddo
   enddo
+
+  ! exercise variable attributes
+  call tiof_varlist_append (varlist, errstat, "many_attributes", &
+                            nf90_int, &
+                            dimids=[dimids(max_dims)], &
+                            fillvalue=fillvalue, &
+                            contiguous=.false., &
+                            chunksizes=[2], &
+                            shuffle=.false., &
+                            deflate_level=1, &
+                            units="whatever", &
+                            valid_range=[0.0_8,999.0_8], &
+                            no_fill=1, &
+                            comment="comment: xxx")
 
   call tiof_def_vars (obj, varlist, errstat)
   if (errstat < 0) then
@@ -438,6 +910,8 @@ subroutine check_create (filename, values, max_dims, dimlens, &
     return
   endif
 
+  call test_put_errors (obj, max_dims, errstat)
+
   call create_group (obj, errstat)
   if (errstat < 0) then
     call tell_error (tell_runtime_error, "failed creating group", errstat)
@@ -455,15 +929,26 @@ subroutine check_create (filename, values, max_dims, dimlens, &
 
 end subroutine
 
-subroutine check_read (filename, values, start, edge, &
+subroutine check_read (filename, values, max_dims, start, edge, &
                        fillvalue, strings, errstat)
   use tell_module
   use tio_module
   use netcdf
   implicit none
 
+  interface
+    subroutine test_get_errors (obj, max_dims, errstat)
+      use tio_module
+      implicit none
+      type (tiof_file_type), intent(inout) :: obj
+      integer, intent(in) :: max_dims
+      integer, intent(inout) :: errstat
+    end subroutine
+  end interface
+
   character (len=*), intent(in) :: filename
   real (kind=8), dimension(:), intent(in) :: values
+  integer, intent(in) :: max_dims
   integer, dimension(:), intent(in) :: start, edge
   real (kind=8), intent(in) :: fillvalue
   character (len=*), dimension(:), intent(in) :: strings
@@ -945,10 +1430,7 @@ subroutine check_read (filename, values, start, edge, &
     return
   endif
 
-  if (errstat < 0) then
-    call tell_error (tell_io_read_error, "r8 read failed", errstat)
-    return
-  endif
+  call test_get_errors (obj, max_dims, errstat)
 
   call read_from_group (obj, errstat)
   if (errstat < 0) then

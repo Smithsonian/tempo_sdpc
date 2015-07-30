@@ -20,7 +20,7 @@ LIBS   = $(TIO_LIBPATHS) -ltio \
 
 INCS_F = -I$(elfdir) -I$(NETCDF_INC) -I$(TELL_INC)
 LIBS_F = $(TIO_LIBPATHS) -ltio -ltio_f \
-         $(TELL_LIBPATHS) -ltell_f \
+         $(TELL_LIBPATHS) -ltell_f -ltell \
 	 $(NETCDF_LIBPATHS) -lnetcdff $(RPATH)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
