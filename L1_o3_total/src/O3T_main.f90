@@ -175,6 +175,7 @@ PROGRAM O3T_mainNVAdj
     enddo
 
     errstat = 0
+    call tell_open ("L1_o3_total", 0)
 
     ierr = r4Fill( fill_float32 )
     ierr = r8Fill( fill_float64 )
@@ -1350,5 +1351,6 @@ PROGRAM O3T_mainNVAdj
                            "PGE finishes normally, exit code = 0",&
                            FUNCTIONNAME, zero )
 
+    call tell_close ()
     CALL EXIT(0)
 END PROGRAM O3T_mainNVAdj

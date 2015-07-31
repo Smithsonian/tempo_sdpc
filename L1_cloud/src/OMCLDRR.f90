@@ -49,6 +49,8 @@ program OMCLDRR
   !************************************************************************
 
   errstat=0
+  call tell_open ("L1_cloud", 0)
+
   iLine=0
   !Initialize (read resource file)
   !===============================
@@ -300,12 +302,14 @@ program OMCLDRR
   endif
 
 
-
   !exit with normal status
   !=======================
   status = omi_smf_setmsg(OMI_S_SUCCESS, &
        'PGE finishes normally, exit code = 0  ', 'cloud_ret',0)
-  status = OMI_S_SUCCESS                                                      
+  status = OMI_S_SUCCESS
+
+  call tell_close()
+
   stop
 
 
