@@ -1,0 +1,67 @@
+/**
+@mainpage libtio Manual
+
+@section Introduction
+
+The libtio library (tio = "TEMPO I/O") provides an interface layer
+between application programs and the lower level I/O library.
+This interface layer provides the following features:
+- By packaging common operation sequences, it should help reduce code
+  duplication.
+- It helps ensure uniform handling of errors from the lower level
+  I/O library.
+- It facilitates tracing of all file I/O, for debugging and performance
+  measurement.
+- When variables are stored in a parameterized form, the library can
+  handle the conversion between internal and external representations,
+  hiding irrelevant storage parameterization details from the application.
+
+@section Overview
+
+The libtio library provides both C and Fortran interfaces to perform
+HDF5 I/O via the netcdf4 library. The libtio C and Fortran interfaces
+are quite different because they meet different needs and because they
+work within the differing strengths and weaknesses of the two
+languages.
+
+To use libtio effectively, it will be helpful to know something about
+both netcdf4 and HDF5.  A brief overview will be given here; for lower
+level details, refer to the extensive documentation available on the
+web:
+  - <a href="http://www.unidata.ucar.edu/software/netcdf/docs/index-413.html">netcdf4</a>
+  - <a href="http://www.hdfgroup.org/HDF5/doc/">HDF5</a>
+
+Conceptually, libtio deals with the following objects: netcdf4/HDF5
+files, groups, dimensions, variables, and attributes.  A netcdf4/HDF5
+file contains a tree of named groups, analogous to a directory tree.
+A group may contain variables, dimensions, attributes, and other
+groups.  Depending on the context, each object may be referenced
+either by name or by using an integer code assigned by the HDF5
+library.
+
+A variable can be a scalar or a multidimensional array of numeric or
+text data.  The shape of a multidimensional variable is defined by an
+ordered list of dimensions.  Each dimension has a name and an
+associated size which may be fixed at the time the file is created or
+variable, changing as data is written to the file.
+
+One or more attributes may be attached to each variable or group. An
+attribute contains text or numeric metadata about the associated
+variable or group and may be either scalar- or array-valued.
+
+Note that the internal data type of a variable need not be the same as
+the "external" data type (the data type used when the variable is
+written to an HDF5 file).  When the internal and external data types
+differ, the library will automatically attempt to perform the
+necessary type conversion.
+
+@section fortran_interface Fortran Interface
+
+The Fortran interface is defined in \ref tio_module.
+
+@section c_interface C Interface
+
+The primary C interface is defined in \ref tio.h.  Some TEMPO
+specific features are defined in \ref tio_template.h.
+
+*/
