@@ -63,12 +63,12 @@ tio_test_f:
 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)
 
 ftest1:
-	$(COMPILE_F_CMD) -o ftest1 $(INCS_F) ftest1.f90 $(LIBS_F)
+	$(COMPILE_F_CMD) -o ftest1 $(INCS_F) ftest1_module.f90 ftest1.f90 $(LIBS_F)
 
 # ---------------------------------------------------------
 
 clean:
-	-$(RM) -f .##* *.o
+	-$(RM) -f .##* *.o *.mod
 covclean:
 	-$(RM) -f *.gcda *.gcno *.info
 	-$(RM) -rf lcov.dir
