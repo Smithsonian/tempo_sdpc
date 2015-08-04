@@ -630,18 +630,18 @@ contains
   !> Free list of dimension objects
   !! @param[inout] list  Dimension list object, \a type(tiof_dimlist_type)
   !! @see tiof_dimlist_append
-  subroutine tiof_dimlist_free (dimlist)
+  subroutine tiof_dimlist_free (list)
     implicit none
-    type (tiof_dimlist_type), intent(inout) :: dimlist
+    type (tiof_dimlist_type), intent(inout) :: list
     type (tiof_dim_type), pointer :: item
 
-    do while (associated(dimlist % head))
-      item => dimlist % head % next
-      deallocate (dimlist % head)
-      dimlist % head => item
+    do while (associated(list % head))
+      item => list % head % next
+      deallocate (list % head)
+      list % head => item
     enddo
-    dimlist % tail => null()
-    dimlist % head => null()
+    list % tail => null()
+    list % head => null()
 
   end subroutine tiof_dimlist_free
 

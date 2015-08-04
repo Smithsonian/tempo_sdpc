@@ -63,11 +63,11 @@ extern int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info);
 /*! Write a block of values to an N-dimensional array variable.
  * @param[in] grp  Group identifier
  * @param[in] name  Variable name.
- * @param[in] istart  Starting offset in each dimension of the block to be
+ * @param[in] start  Starting offset in each dimension of the block to be
  *                    written to, with dimensions specified in C-order, so that
  *                    \a istart[0] varies slowest and \a istart[num_dims-1]
  *                    varies fastest.
- * @param[in] icount Count of values in each dimension of the block to be written to.
+ * @param[in] count Count of values in each dimension of the block to be written to.
  * @param[in] type   Internal data type in which the variable values are stored.
  *                   If this differs from the external type stored in the
  *                   file, type conversion will be attempted.
@@ -81,11 +81,11 @@ extern int TIO_put_var_section (int grp, const char *name,
 /*! Read a block of values from an N-dimensional array variable.
  * @param[in] grp  Group identifier
  * @param[in] name  Variable name.
- * @param[in] istart  Starting offset in each dimension of the block to be read,
+ * @param[in] start  Starting offset in each dimension of the block to be read,
  *                    with dimensions specified in C-order, so that
  *                    \a istart[0] varies slowest and \a istart[N-1]
  *                    varies fastest.
- * @param[in] icount Count of values in each dimension of the block to be read.
+ * @param[in] count Count of values in each dimension of the block to be read.
  * @param[in] type   Internal data type in which to store variable values.
  *                   If this differs from the external type stored in the
  *                   file, type conversion will be attempted.
