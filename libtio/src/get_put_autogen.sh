@@ -56,11 +56,11 @@ expand_type(){
          ;;
     r4 ) ntype=nf90_float
          ftype=real
-         fkind=4
+         fkind=r4
          ;;
     r8 ) ntype=nf90_double
          ftype=real
-         fkind=8
+         fkind=r8
          ;;
   esac
 }

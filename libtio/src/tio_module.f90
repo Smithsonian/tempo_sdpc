@@ -21,7 +21,8 @@ module tio_module
   integer, public, parameter :: &
     tiof_max_var_dims = 7, &
     tiof_max_name_len = 64, &
-    tiof_max_att_len = 256
+    tiof_max_att_len = 256, &
+    tiof_max_grp_stack = 10
 
   include '_tempo_dims.inc'
   include '_tempo_grps.inc'
@@ -31,13 +32,16 @@ module tio_module
     i1 = selected_int_kind (2**1), &
     i2 = selected_int_kind (2**2), &
     i4 = selected_int_kind (2**3), &
-    i8 = selected_int_kind (2**4)
+    i8 = selected_int_kind (2**4), &
+    r4 = kind(1.0), &
+    r8 = selected_real_kind (2*precision(1.0_r4))
 
   !> File object
   type, public :: tiof_file_type
     integer :: fileid
     integer :: groupid
-    integer, private :: grp_stack(10), grp_stack_depth
+    integer, private, dimension(tiof_max_grp_stack) :: grp_stack
+    integer, private :: grp_stack_depth
   end type tiof_file_type
 
   !> Dimension object
@@ -63,8 +67,8 @@ module tio_module
     character (len=tiof_max_att_len) :: att_text
     integer (kind=i4), allocatable, dimension(:) :: att_i4
     integer (kind=i8), allocatable, dimension(:) :: att_i8
-    real (kind=4), allocatable, dimension(:) :: att_r4
-    real (kind=8), allocatable, dimension(:) :: att_r8
+    real (kind=r4), allocatable, dimension(:) :: att_r4
+    real (kind=r8), allocatable, dimension(:) :: att_r8
     type (tiof_att_type), private, pointer :: next => null()
   end type
 
@@ -84,15 +88,18 @@ module tio_module
     integer, dimension(tiof_max_var_dims) :: dimids  !< ordered list of dimension ids
     character (len=tiof_max_att_len) :: comment  !< attribute: comment
     character (len=tiof_max_att_len) :: units    !< attribute: units
-    real (kind=8), dimension(2) :: valid_range = [0.0, 0.0]  !< attribute: valid_min, valid_max
+    real (kind=r8), dimension(2) :: valid_range = [0.0, 0.0]  !< attribute: valid_min, valid_max
     integer :: deflate_level = 0   !< attribute: compression deflate level
     logical :: shuffle = .false.   !< attribute: compress with shuffle?
     logical :: contiguous = .true. !< attribute: use contiguous storage?
     integer, dimension(tiof_max_var_dims) :: chunksizes = 0  !< attribute: chunk sizes
     integer :: no_fill = 0         !< attribute: if non-zero, turn off auto-fill
-    real (kind=8) :: fillvalue     !< attribute: fill value
-    logical, private :: have_comment=.false., have_units=.false., &
-      have_valid_range=.false., have_fillvalue = .false.
+    real (kind=r8) :: fillvalue     !< attribute: fill value
+    logical, private :: &
+      have_comment=.false., &
+      have_units=.false., &
+      have_valid_range=.false., &
+      have_fillvalue = .false.
     type (tiof_attlist_type), private, pointer :: attlist => null()
     type (tiof_var_type), private, pointer :: next => null()
   end type
@@ -162,6 +169,10 @@ contains
 
   end subroutine pop_group
 
+  !> Write an attribute containing the current git commit SHA1 hash string
+  !! @param[in]    obj     File type object, \a type(tiof_file_type)
+  !! @param[inout] errstat Integer error status code.
+  !! @param[in]    name    Attribute name (optional, default="tio_commit")
   subroutine tiof_put_git_commit_hash (obj, errstat, name)
     use iso_c_binding, only : c_null_ptr, c_null_char
     implicit none
@@ -176,10 +187,18 @@ contains
     else
       errstat = tio_f_put_git_hash (obj % groupid, c_null_ptr)
     endif
-
   end subroutine
 
   !> write a 1d array of strings as a 2D array of characters
+  !! @param[in] obj   File type object, \a type(tiof_file_type)
+  !! @param[in] name  Name of output variable, of type \a nf90_char.
+  !! @param[in] start Offset from the beginning of the array in the
+  !!                  output file where the first of the data values
+  !!                  should be written.
+  !! @param[in] edge  Number of data values to write
+  !! @param[in] array  Array of data values to write out.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_get1d_text, tiof_put1d_string
   subroutine tiof_put1d_text (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -202,6 +221,15 @@ contains
   end subroutine tiof_put1d_text
 
   !> read a 1d array of strings stored as a 2D array of characters
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] name  Name of variable to read, of type \a nf90_char.
+  !! @param[in] start Offset from the beginning of the array in the
+  !!                  output file where the first of the data values
+  !!                  should be read.
+  !! @param[in] edge  Number of data values to read.
+  !! @param[out] array   Array to store data values read in.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_put1d_text, tiof_get1d_string
   subroutine tiof_get1d_text (obj, name, start, edge, array, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -224,6 +252,15 @@ contains
   end subroutine tiof_get1d_text
 
   !> write a 1d array of strings as null-terminated strings
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] name  Name of output variable, of type \a nf90_string.
+  !! @param[in] start Offset from the beginning of the array in the
+  !!                  output file where the first of the data values
+  !!                  should be written.
+  !! @param[in] edge  Number of data values to write
+  !! @param[in] array Array of data values to write out.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_get1d_string, tiof_put1d_text
   subroutine tiof_put1d_string (obj, name, start, edge, array, errstat)
     use iso_c_binding, only: c_ptr, c_loc, c_char, c_null_char
     implicit none
@@ -262,6 +299,15 @@ contains
   end subroutine tiof_put1d_string
 
   !> read a 1d array of strings stored as null-terminated strings
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] name  Name of input variable, of type \a nf90_string.
+  !! @param[in] start Offset from the beginning of the array in the
+  !!                  output file where the first of the data values
+  !!                  should be read.
+  !! @param[in] edge  Number of data values to read.
+  !! @param[in] array Array of data values to read in.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_put1d_string, tiof_get1d_text
   subroutine tiof_get1d_string (obj, name, start, edge, array, errstat)
     use iso_c_binding, only: c_ptr, c_null_ptr, c_f_pointer, c_null_char
     implicit none
@@ -308,6 +354,11 @@ contains
   end subroutine tiof_get1d_string
 
   !> Create a new netcdf4/HDF5 file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] file  Name of file to create
+  !! @param[in] create_mode  Creation mode flags. For details, see \a nf90_create
+  !! @param[inout] errstat  Integer error status code
+  !! @see tiof_open, tiof_close
   subroutine tiof_create (obj, file, create_mode, errstat)
     implicit none
     type (tiof_file_type), intent(out) :: obj
@@ -334,6 +385,11 @@ contains
   end subroutine tiof_create
 
   !> Open an existing netcdf4/HDF5 file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] file  Name of file to open
+  !! @param[in] open_mode  Open mode flags. For details, see \a nf90_open
+  !! @param[inout] errstat  Integer error status code
+  !! @see tiof_create, tiof_close
   subroutine tiof_open (file, obj, open_mode, errstat)
     implicit none
     character (len=*), intent(in) :: file
@@ -359,6 +415,9 @@ contains
   end subroutine tiof_open
 
   !> Close a netcdf4/HDF5 file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[inout] errstat  Integer error status code
+  !! @see tiof_open, tiof_create
   subroutine tiof_close (obj, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -379,6 +438,17 @@ contains
   end subroutine tiof_close
 
   !> Define a new group
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] grpname  Name of group to create.  The group name
+  !!                  may specify a path, e.g. /a/b/c/grp.
+  !!                  Any intermediate groups that don't already
+  !!                 exist in the file will also be created.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @param[out]  groupid   (optional) Integer identifier of the newly
+  !!                    created group.  If multiple groups were created,
+  !!                    the returned group identifier refers to the
+  !!                    most deeply nested group.
+  !! @see tiof_inq_group, tiof_push_group
   subroutine tiof_def_group (obj, grpname, errstat, groupid)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -401,6 +471,11 @@ contains
   end subroutine tiof_def_group
 
   !> Associate an open file object with a specific group
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] grpname  Name of group to associate with.
+  !!             Subsequent I/O will involve the named group.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_push_group
   subroutine tiof_inq_group (obj, grpname, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -430,6 +505,14 @@ contains
   end subroutine tiof_inq_group
 
   !> Associate an open file object with a specific group, saving the current group
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] grpname  Name of group to associate with.
+  !!             Subsequent I/O will involve the named group.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @details
+  !!   The implementation uses a fixed-size stack of size \a tiof_max_grp_stack
+  !!   to save previously visited groups.
+  !! @see tiof_pop_group
   subroutine tiof_push_group (obj, grpname, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -458,6 +541,9 @@ contains
   end subroutine tiof_push_group
 
   !> Restore the groupid saved by the most recent call to tiof_push_group
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_push_group
   subroutine tiof_pop_group (obj, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -472,6 +558,11 @@ contains
   end subroutine tiof_pop_group
 
   !> Inquire the size of a dimension
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] name  Dimension name.
+  !! @param[out] dimlen  Dimension size.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_def_dims, tiof_dimlist_append
   subroutine tiof_inq_dimlen (obj, name, dimlen, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -497,6 +588,11 @@ contains
   end subroutine tiof_inq_dimlen
 
   !> Append a new dimension object to a dimension list
+  !! @param[inout] list  Dimension list object, \a type(tiof_dimlist_type)
+  !! @param[in] dim_name  Dimension name.
+  !! @param[out] dim_len  Dimension size.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_dimlist_free, tiof_def_dims
   subroutine tiof_dimlist_append (list, dim_name, dim_len, errstat)
     implicit none
     type (tiof_dimlist_type), intent(inout) :: list
@@ -531,7 +627,9 @@ contains
 
   end subroutine tiof_dimlist_append
 
-  !> Free list of dimension objects (tiof_dimlist_type)
+  !> Free list of dimension objects
+  !! @param[inout] list  Dimension list object, \a type(tiof_dimlist_type)
+  !! @see tiof_dimlist_append
   subroutine tiof_dimlist_free (dimlist)
     implicit none
     type (tiof_dimlist_type), intent(inout) :: dimlist
@@ -549,6 +647,12 @@ contains
 
   !> Retrieve information about an array of dimension objects
   !! from a dimension list
+  !! @param[inout] list  Dimension list object, \a type(tiof_dimlist_type)
+  !! @param[in] names[]  Dimension name array.
+  !! @param[out] dimids[]  Dimension identifier array.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @param[out] dimsizes[]  (optional) Dimension size array.
+  !! @see tiof_dimlist_append
   subroutine tiof_dimlist_lookup (list, names, dimids, errstat, &
                                   dimsizes)
     implicit none
@@ -601,11 +705,15 @@ contains
   end subroutine tiof_dimlist_lookup
 
   !> Write a dimension list to a file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] list  Dimension list object, \a type(tiof_dimlist_type)
+  !! @param[inout]  errstat  Integer error status code.
   !! @details
-  !! As each dimension object (\a tiof_dim_type) is written
-  !! to the file, the assigned id number is saved in the
-  !! \a dimid field.
-  !! @sa tiof_dimlist_lookup
+  !! As each dimension object (of type \a tiof_dim_type) on the list
+  !! is written to the file, the assigned dimension identifer value
+  !! is saved in the \a dimid field of the \a tiof_dim_type
+  !! object.
+  !! @see tiof_dimlist_append, tiof_dimlist_lookup
   subroutine tiof_def_dims (obj, list, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -641,6 +749,15 @@ contains
   end subroutine tiof_def_dims
 
   !> Append a new attribute object to an attribute list
+  !! @param[inout] list  Attribute list object, \a type(tiof_attlist_type)
+  !! @param[inout]  errstat  Integer error status code.
+  !! @param[in] att_name  Attribute name.
+  !! @param[in] att_text[] (optional) text attribute value array
+  !! @param[in] att_i4[]   (optional) 32-bit integer attribute value array
+  !! @param[in] att_i8[]   (optional) 64-bit integer attribute value array
+  !! @param[in] att_r4[]   (optional) 32-bit real attribute value array
+  !! @param[in] att_r8[]   (optional) 64-bit real attribute value array
+  !! @see tiof_attlist_free, tiof_def_atts
   subroutine tiof_attlist_append (list, errstat, att_name, &
                                   att_i4, att_i8, att_r4, att_r8, att_text)
     implicit none
@@ -649,8 +766,8 @@ contains
     integer, intent(inout) :: errstat
     integer (kind=i4), optional, dimension(:) :: att_i4
     integer (kind=i8), optional, dimension(:) :: att_i8
-    real (kind=4), optional, dimension(:) :: att_r4
-    real (kind=8), optional, dimension(:) :: att_r8
+    real (kind=r4), optional, dimension(:) :: att_r4
+    real (kind=r8), optional, dimension(:) :: att_r8
     character (len=*), optional :: att_text
 
     ! local
@@ -735,6 +852,13 @@ contains
   end subroutine tiof_attlist_free
 
   !> Write an attribute list to a file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] list  Attribute list object, \a type(tiof_attlist_type)
+  !! @param[in] varid  Integer identifier of the file variable
+  !!                   to receive the attributes, or \a nf90_global,
+  !!                   for file-global attributes.
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_attlist_append
   subroutine tiof_def_atts (obj, list, varid, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -789,6 +913,29 @@ contains
   end subroutine tiof_def_atts
 
   !> Append a new variable object to a variable list
+  !! @param[inout] list  Variable list object, \a type(tiof_varlist_type)
+  !! @param[inout]  errstat  Integer error status code.
+  !! @param[in] var_name  Variable name.
+  !! @param[in] xtype  External data type (see \a nf90_def_var).
+  !! @param[in] dimids  (optional) Vector of dimension identifiers, ordered
+  !!                    as in C, with the last, rightmost index varying
+  !!                    fastest.
+  !! @param[in] shuffle  (optional) If \a .true., turn on the shuffle filter.
+  !!                     [default = .false.]
+  !! @param[in] deflate_level (optional) If non-zero, turn on file compression
+  !!                          using this deflate level.h. [default = 0]
+  !! @param[in] contiguous  (optional) If .true., then use contiguous storage
+  !!                        [default = .false.]
+  !! @param[in] chunksizes (optional) If present, use chunked storage, with
+  !!                       the provided chunk sizes.
+  !! @param[in] comment  (optional) Comment text.
+  !! @param[in] units  (optional) Physical units of the variable.
+  !! @param[in] valid_range (optional) minimum and maximum valid values
+  !! @param[in] no_fill  (optional) If non-zero, do not initialize the variable
+  !!                     by writing fill values.
+  !! @param[in] fillvalue  (optional) Fill value to use for uninitialized values.
+  !! @param[in] attlist (optional) Object of type \a tiof_varlist_type
+  !! @see tiof_def_vars, tiof_varlist_free, tiof_varlist_lookup
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
                                   comment, units, valid_range, &
@@ -804,9 +951,9 @@ contains
     logical, optional, intent(in) :: contiguous, shuffle
     integer, optional, dimension(:), intent(in) :: chunksizes
     character (len=*), optional, intent(in) :: comment, units
-    real (kind=8), optional, dimension(2), intent(in) :: valid_range
+    real (kind=r8), optional, dimension(2), intent(in) :: valid_range
     integer, optional, intent(in) :: no_fill
-    real (kind=8), optional, intent(in) :: fillvalue
+    real (kind=r8), optional, intent(in) :: fillvalue
     type (tiof_attlist_type), optional, target, intent(in) :: attlist
 
     ! local
@@ -908,7 +1055,9 @@ contains
 
   end subroutine tiof_varlist_append
 
-  !> Free list of variable objects (tiof_varlist_type)
+  !> Free list of variable objects
+  !! @param[inout] varlist  Object of type \a tiof_varlist_type
+  !! @see tiof_varlist_append
   subroutine tiof_varlist_free (varlist)
     implicit none
     type (tiof_varlist_type), intent(inout) :: varlist
@@ -925,6 +1074,11 @@ contains
   end subroutine tiof_varlist_free
 
   !> Retrieve a variable object from a given variable list
+  !! @param[inout] list  Variable list object, \a type(tiof_varlist_type)
+  !! @param[in] name  Variable name
+  !! @param[out] var_ptr  Pointer to object of type \a tiof_var_type
+  !! @param[inout] errstat  Error status code.
+  !! @see tiof_varlist_append
   subroutine tiof_varlist_lookup (list, name, var_ptr, errstat)
     implicit none
     type (tiof_varlist_type), intent(in) :: list
@@ -960,11 +1114,14 @@ contains
   end subroutine tiof_varlist_lookup
 
   !> Write a variable list to a file
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] list  Variable list object, \a type(tiof_varlist_type)
+  !! @param[inout]  errstat  Integer error status code.
   !! @details
   !! As each variable object (\a tiof_var_type) is written
   !! to the file, the assigned id number is saved in the
-  !! \a varid field.
-  !! @sa tiof_varlist_lookup
+  !! \a varid field of that object.
+  !! @see tiof_varlist_lookup, tiof_varlist_append
   subroutine tiof_def_vars (obj, list, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
@@ -1023,17 +1180,17 @@ contains
           case (nf90_double)
             status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, item % fillvalue)
           case (nf90_float)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, real(item % fillvalue, kind=4))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, real(item % fillvalue, kind=r4))
           case (nf90_int64, nf90_uint64)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=8))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=i8))
           case (nf90_int, nf90_uint)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=4))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=i4))
           case (nf90_short, nf90_ushort)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=2))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=i2))
           case (nf90_byte, nf90_ubyte)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=i1))
           case (nf90_char)
-            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=1))
+            status = nf90_def_var_fill (obj % groupid, item % varid, item % no_fill, int(item % fillvalue, kind=i1))
           case default
             call tell_error (tell_runtime_error, &
                              "tio_def_vars:  unsupported fill value type: "//item%name(1:item%len_name), &
