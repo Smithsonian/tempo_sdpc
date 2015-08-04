@@ -15,6 +15,11 @@ check:
 	  (cd $$dir ; $(MAKE) check) || exit; \
 	done
 
+docs:
+	for dir in $(DIR_LIST) ; do \
+	  (cd $$dir ; $(MAKE) docs) || exit; \
+	done
+
 install:
 	for dir in $(DIR_LIST) ; do \
 	  (cd $$dir ; $(MAKE) install) || exit; \
