@@ -60,30 +60,40 @@ TIO_Var_Info_Type;
  */
 extern int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info);
 
-/** Write a section of an N-dimensional variable
- * @param  grp     Index of group containing the variable
- * @param  name    Variable name string
- * @param  start   Offsets to start of data block to write
- * @param  count   Dimensions of data block to write
- * @param  xtype   Type of values to write
- * @param  data    Pointer to the array to be written
- * @return 0 on success, -1 on error
+/*! Write a block of values to an N-dimensional array variable.
+ * @param[in] grp  Group identifier
+ * @param[in] name  Variable name.
+ * @param[in] istart  Starting offset in each dimension of the block to be
+ *                    written to, with dimensions specified in C-order, so that
+ *                    \a istart[0] varies slowest and \a istart[num_dims-1]
+ *                    varies fastest.
+ * @param[in] icount Count of values in each dimension of the block to be written to.
+ * @param[in] type   Internal data type in which the variable values are stored.
+ *                   If this differs from the external type stored in the
+ *                   file, type conversion will be attempted.
+ * @param[out] data  Address where block of variable values will be stored.
+ * @return 0 indicates success, -1 indicates failure.
  */
 extern int TIO_put_var_section (int grp, const char *name,
-                                int *start, int *count, int xtype,
+                                int *start, int *count, int type,
                                 const void *data);
 
-/** Read a section of an N-dimensional variable
- * @param  grp     Index of group containing the variable
- * @param  name    Variable name string
- * @param  start   Offsets to start of data block to read
- * @param  count   Dimensions of data block to read
- * @param  xtype   Type of values to be read
- * @param  data    Pointer to the array that will receive the input
- * @return 0 on success, -1 on error
+/*! Read a block of values from an N-dimensional array variable.
+ * @param[in] grp  Group identifier
+ * @param[in] name  Variable name.
+ * @param[in] istart  Starting offset in each dimension of the block to be read,
+ *                    with dimensions specified in C-order, so that
+ *                    \a istart[0] varies slowest and \a istart[N-1]
+ *                    varies fastest.
+ * @param[in] icount Count of values in each dimension of the block to be read.
+ * @param[in] type   Internal data type in which to store variable values.
+ *                   If this differs from the external type stored in the
+ *                   file, type conversion will be attempted.
+ * @param[out] data  Address where block of variable values will be stored.
+ * @return 0 indicates success, -1 indicates failure.
  */
 extern int TIO_get_var_section (int grp, const char *name,
-                                int *start, int *count, int xtype,
+                                int *start, int *count, int type,
                                 void *data);
 
 /** Query the type and size of an attribute
