@@ -149,7 +149,9 @@ $(msgdir)/PGS_OMCLDRR_52251:
 NAME_FILE_BASENAMES = cld_names_dim cld_names_var cld_names_grp
 NAME_INCLUDE = cld_names.h
 
-cld-names:
+NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))
+NAME_FILE_TARGETS = $(addsuffix .inc, $(NAME_FILE_BASENAMES)) $(NAME_INCLUDE)
+cld-names:	$(NAME_FILE_TARGETS)
 	for bn in $(NAME_FILE_BASENAMES) ; do \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %35s   %s\n",a[1],a[2])}' \
 	        $${bn}.csv > .$${bn}_h.tmp ; \
@@ -185,4 +187,4 @@ ODIR = $(objdir)
 SDIR = $(srcdir)
 -include rules.inc
 
-.PHONY: tags
+.PHONY: tags cld-names $(NAME_FILE_TARGETS)

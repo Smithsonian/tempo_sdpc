@@ -190,4 +190,4 @@ ODIR = $(objdir)
 SDIR = $(srcdir)
 -include rules.inc
 
-.PHONY: tags
+.PHONY: tags o3t-names $(NAME_FILE_TARGETS)
