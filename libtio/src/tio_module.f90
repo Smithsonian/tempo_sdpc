@@ -1,5 +1,10 @@
 !> Fortran interface module
-!! @sa get_put_code.inc
+!! @file
+!! @ingroup tio_module
+!! @sa get_put_code.inc (Scalar and array variable get/put functions)
+!! @sa _tempo_dims.inc  (TEMPO file dimension names)
+!! @sa _tempo_grps.inc  (TEMPO file group names)
+!! @sa _tempo_vars.inc  (TEMPO file variable names)
 !!
 !! @details
 !! **Error handling:**

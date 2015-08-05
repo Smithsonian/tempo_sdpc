@@ -113,8 +113,8 @@ int_type_list="i1 i2 i4 i8 $uint_type_list"
 real_type_list="r4 r8"
 type_list="$int_type_list $real_type_list"
 
-echo '! Auto-generated file -- do not edit.' > $out_decl
-echo '! Auto-generated file -- do not edit.' > $out_code
+echo "!> Auto-generated file -- do not edit.\n!! @file\n!! @addtogroup tio_module" > $out_decl
+echo "!> Auto-generated file -- do not edit.\n!! @file\n!! @addtogroup tio_module" > $out_code
 
 template_scalar="get_put_scalar.in"
 for typ in $type_list; do

@@ -1,3 +1,6 @@
+/*! @file
+ *  @brief Internal interfaces (private)
+ */
 #ifndef __TIO_INTERNAL_INCLUDE__
 #define __TIO_INTERNAL_INCLUDE__ 1
 

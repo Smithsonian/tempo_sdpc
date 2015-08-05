@@ -1,4 +1,6 @@
-/*! \file */
+/** @file
+ *  @brief Core C functions
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>

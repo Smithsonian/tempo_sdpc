@@ -1,3 +1,6 @@
+/*! @file
+ *  @brief C public interface
+ */
 #ifndef __TIO_INCLUDE_H__
 #define __TIO_INCLUDE_H__ 1
 

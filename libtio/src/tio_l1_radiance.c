@@ -1,3 +1,6 @@
+/** @file
+ *  @brief TEMPO Level 1 radiance file template generation
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
