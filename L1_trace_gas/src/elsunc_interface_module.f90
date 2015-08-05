@@ -1,3 +1,5 @@
+!> Interface module for ELSUNC optimizer
+!! @file
 module elsunc_interface_module
   use optimizer_interface_module
   use OMSAO_elsunc_fitting_module
@@ -11,6 +13,18 @@ module elsunc_interface_module
 
 contains
 
+  !> Objective function called by ELSUNC optimizer
+  !! @details
+  !! This function uses the parameters passed by the ELSUNC optimizer
+  !! to call the objective function through the generic interface
+  !! provided by \a optimizer_interface_module.
+  !! @param[inout] params  Array of fit parameter values
+  !! @param[in] num_params  Number of fit parameters
+  !! @param[inout] residuals  Residuals from evaluating the objective function
+  !! @param[in] num_residuals  Number of residuals
+  !! @param[inout] elsunc_ctrl   ELSUNC integer control parameter
+  !! @param[inout] cov_matrix   Covariance matrix
+  !! @param[in]  dim1_cov_matrix  Leading dimension of covariance matrix array
   subroutine elsunc_objective (params, num_params, residuals, num_residuals, &
                                elsunc_ctrl, cov_matrix, dim1_cov_matrix)
     implicit none
@@ -76,8 +90,9 @@ contains
 
   end subroutine elsunc_objective
 
- subroutine elsunc_optimizer (this, params, num_params, residuals, num_residuals, return_status, &
-                              optional_cov_matrix)
+  !> Generic Interface function to call the ELSUNC optimizer
+  subroutine elsunc_optimizer (this, params, num_params, residuals, num_residuals, return_status, &
+                               optional_cov_matrix)
    implicit none
    ! positional parameters
    type (optimizer_type) :: this
@@ -157,5 +172,4 @@ contains
    endif
 
  end subroutine elsunc_optimizer
-
 end module elsunc_interface_module

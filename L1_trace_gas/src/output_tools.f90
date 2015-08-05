@@ -1,3 +1,10 @@
+!> NetCDF output functions
+!! @file
+!! @note Ideally, \a use statements in this module will provide
+!!       access only to subroutines, type definitions, and compile-time
+!!       constants. All variables should be passed via the subroutine
+!!       parameter argument lists.
+
 module output_tools
   use netcdf
   use tell_module
@@ -709,9 +716,18 @@ contains
     call tiof_varlist_append (varlist, errstat, "percent_suspect_output", nf90_float)
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
-
   end subroutine append_fit_stats
 
+  !> Create netCDF format Level 2 product file
+  !! @param[in] filename   netCDF output file name
+  !! @param[in] num_steps  Number of scan steps
+  !! @param[in] num_xtrack  Number of cross-track pixels
+  !! @param[in] num_swlevels  Number of height levels used in AMF climatologies
+  !! @param[in] n_comm_wvl  Number of common-mode wavelengths
+  !! @param[in] nwavel_max  Maximum number of reference spectrum wavelengths
+  !! @param[in] max_rs_idx  Maximum reference spectrum index
+  !! @param[in] n_fitvar_rad  Number of radiance spectrum fit variables
+  !! @param[inout]  errstat  Error status variable
   subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
                                  n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                                  errstat)
@@ -831,9 +847,20 @@ contains
     endif
 
     call tiof_dimlist_free (dimlist)
-
   end subroutine create_output_file
 
+  !> Write a block of radiance fit results to Level 2 product file
+  !! @param[in] iline   Starting scan line index of block
+  !! @param[in] nblock  Number of scan lines in block
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] n_fitvar_rad  Number of fit variables in radiance spectrum model
+  !! @param[in] n_rad_wvl  Number of wavelengths in fitted spectral range
+  !! @param[in] input_vars  Structure containing variables read from input files
+  !!                        and copied to the output file unmodified.
+  !!                        For now, it's mostly geolocation variables.
+  !! @param[in] result_vars  Structure containing radiance fit results.
+  !! @param[in] radfit_diagnostics Structure containing radiance fit diagnostics.
+  !! @param[inout] errstat  Error status variable
   subroutine write_radfit_output (iline, nblock, nxtrack, n_fitvar_rad, n_rad_wvl, &
                                   input_vars, result_vars, radfit_diagnostics, &
                                   errstat)
@@ -929,9 +956,12 @@ contains
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
     endif
-
   end subroutine write_radfit_output
 
+  !> Write wavelength calibration to Level 2 product file
+  !! @param[in] result_vars Structure containing radiance fit results.
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[inout] errstat  Error status variable
   subroutine write_wavcal_output (result_vars, nxtrack, errstat)
     use OMSAO_omidata_module, only : result_vars_type
     implicit none
@@ -969,9 +999,13 @@ contains
       call tell_error (tell_io_write_error, "write_wavcal_output: failed", errstat)
       return
     endif
-
   end subroutine write_wavcal_output
 
+  !> Write radiance fit QA statistics to Level 2 product file
+  !! @param[in] stats  Structure containing radiance fit QA statistics
+  !! @param[in] param_names  Array of fit parameter names
+  !! @param[in] num_params Number of fit parameters
+  !! @param[inout] errstat  Error status variable
   subroutine write_fitting_statistics (stats, param_names, num_params, errstat)
     use omi_pge_fitting_aux, only : fitting_statistics_type
     implicit none
@@ -1031,9 +1065,13 @@ contains
                        errstat)
       return
     endif
-
   end subroutine write_fitting_statistics
 
+  !> Write AMF albedo to Level 2 product file
+  !! @param[in] albedo  Surface albedo used in AMF calculation
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] ntimes  Number of scans
+  !! @param[inout] errstat  Error status variable
   subroutine write_albedo (albedo, nxtrack, ntimes, errstat)
     implicit none
 
@@ -1055,9 +1093,16 @@ contains
       call tell_error (tell_io_write_error, "in write_albedo", errstat)
       return
     endif
-
   end subroutine write_albedo
 
+  !> Write AMF vertical gas profile climatology to Level 2 product file
+  !! @param[in] gas_profile  Column density vertical profile climatology for each pixel
+  !!                     [molecules/cm^2].
+  !! @param[in] climatology_levels  Altitude [km] coordinate for each gas profile point.
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] ntimes  Number of scans
+  !! @param[in] nlevels  Number of altitudes in vertical profile climatology
+  !! @param[inout] errstat  Error status variable
   subroutine write_gas_profile (gas_profile, climatology_levels, &
                                 nxtrack, ntimes, nlevels, errstat)
     implicit none
@@ -1083,9 +1128,14 @@ contains
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
       return
     endif
-
   end subroutine write_gas_profile
 
+  !> Write AMF scattering weights to Level 2 product file
+  !! @param[in] scattw Scattering weights
+  !! @param nxtrack  Number of cross-track pixels
+  !! @param ntimes  Number of scans
+  !! @param nlevels  Number of altitudes in vertical profile climatology
+  !! @param errstat  Error status variable
   subroutine write_scattering_weights (scattw, nxtrack, ntimes, nlevels, errstat)
     implicit none
 
@@ -1107,9 +1157,17 @@ contains
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
       return
     endif
-
   end subroutine write_scattering_weights
 
+  !> Write AMF correction to Level 2 product file
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] ntimes Number of scans
+  !! @param[in] amf_corr Air mass factor (AMF) correction
+  !! @param[in] amf_corr_column  AMF-corrected column density
+  !! @param[in] amf_corr_column_uncertainty  Uncertainty in AMF-corrected column density
+  !! @param[in] yn_write_cloud_variables   If \a .true., write cloud variables
+  !!                                      to Level 2 product file
+  !! @param[inout] errstat  Error status variable
   subroutine write_amf_correction (nxtrack, ntimes, amf_corr, &
                                    amf_corr_column, amf_corr_column_uncertainty, &
                                    yn_write_cloud_variables, errstat)
@@ -1161,6 +1219,13 @@ contains
 
   end subroutine write_amf_correction
 
+  !> Write common-mode spectral to Level 2 product file
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] n_comm_wvl  Number of common-mode wavelengths
+  !! @param[in] common_mode  Structure containing common-mode spectra.
+  !! @param[inout]  errstat  Error status variable
+  !! @details
+  !! Common-mode spectra are essentially average fit residuals.
   subroutine write_common_mode (nxtrack, n_comm_wvl, common_mode, errstat)
     use OMSAO_variables_module, only : common_mode_spectrum_type
     implicit none
@@ -1193,6 +1258,16 @@ contains
 
   end subroutine write_common_mode
 
+  !> Write reference spectra to Level 2 product file
+  !! @param[in] db  Array of reference spectrum values
+  !! @param[in] db_wvl  Array of reference spectrum wavelength grids
+  !! @param[in] refspec  Structure containing reference spectra on the
+  !!                     original wavelength grid, with normalization
+  !!                     factors during the fit.
+  !! @param[in] nrefspec Number of reference spectra
+  !! @param[in] npts  Number of wavelength points
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[inout]  errstat  Error status variable
   subroutine write_refspec_database (db, db_wvl, refspec, &
                                      nrefspec, npts, nxtrack, errstat)
     use OMSAO_variables_module, only : reference_spectrum_type
@@ -1233,6 +1308,11 @@ contains
 
   end subroutine write_refspec_database
 
+  !> Write reference sector corrected column to Level 2 product file
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] ntimes Number of scans
+  !! @param[in] column Reference sector corrected column density
+  !! @param[inout] errstat  Error status variable
   subroutine write_reference_sector_corrected_column (nxtrack, ntimes, column, errstat)
     implicit none
     integer (kind=i4), intent(in) :: nxtrack, ntimes
@@ -1258,6 +1338,12 @@ contains
 
   end subroutine write_reference_sector_corrected_column
 
+  !> Write solar wavelength calibration diagnostics to Level 2 product file
+  !! @param[in] nwaves  Number of wavelength points
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] waves  Wavelength grids
+  !! @param[in] resid  Residuals from wavelength calibration best-fit.
+  !! @param[inout] errstat  Error status variable
   subroutine write_solar_wavecal_diagnostics (nwaves, nxtrack, waves, resid, &
                                               errstat)
     implicit none
@@ -1285,6 +1371,12 @@ contains
 
   end subroutine write_solar_wavecal_diagnostics
 
+  !> Write radiance wavelength calibration diagnostics to Level 2 product file
+  !! @param[in] nwaves  Number of wavelength points
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] waves  Wavelength grids
+  !! @param[in] resid  Residuals from wavelength calibration best-fit.
+  !! @param[inout] errstat  Error status variable
   subroutine write_radiance_wavecal_diagnostics (nwaves, nxtrack, waves, resid, &
                                                  errstat)
     implicit none
@@ -1312,6 +1404,8 @@ contains
 
   end subroutine write_radiance_wavecal_diagnostics
 
+  !> Close Level 2 product file
+  !! @param[inout] errstat  Error status variable
   subroutine close_output_file (errstat)
     implicit none
     integer, intent(inout) :: errstat
@@ -1327,6 +1421,15 @@ contains
 
   end subroutine close_output_file
 
+  !> Read geolocation fields
+  !! @param[in] ntimes  Number of scans
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[inout] lat   Latitude [deg]
+  !! @param[inout] lon   Longitude [deg]
+  !! @param[inout] sza   Solar zenith angle [deg]
+  !! @param[inout] vza   Viewing zenith angle [deg]
+  !! @param[inout] thgt  Terrain height
+  !! @param[inout] errstat  Error status variable
   subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thgt, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
     use tio_module
@@ -1361,6 +1464,15 @@ contains
 
   end subroutine read_geofields
 
+  !> Read fit results from Level 2 product file
+  !! @param[in] ntimes  Number of scans
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[inout] col  Column density
+  !! @param[inout] col_unc  Uncertainty in column density
+  !! @param[inout] rms  Radiance fit RMS residual
+  !! @param[inout] amf  Air mass factor (AMF)
+  !! @param[inout] convergence_flag  Convergence flag
+  !! @param[inout] errstat  Error status variable
   subroutine read_column_results (ntimes, nxtrack, col, col_unc, rms, amf, &
                                   convergence_flag, errstat)
     use OMSAO_precision_module, only : i2, r8
@@ -1401,6 +1513,14 @@ contains
 
   end subroutine read_column_results
 
+  !> Read cloud parameters from Level 2 cloud product file.
+  !! @param[in] cloud_file  Name of Level 2 cloud product file
+  !! @param[in] ntimes Number of scans
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[out] cloud_fraction  Cloud fraction
+  !! @param[out] cloud_top_pressure  Cloud "top" pressure where the definition
+  !!                               of "top" depends on the cloud product.
+  !! @param[inout] errstat  Error status variable
   subroutine read_cloud_params (cloud_file, ntimes, nxtrack, cloud_fraction, &
                                 cloud_top_pressure, errstat)
     use OMSAO_parameters_module, only : r8_missval

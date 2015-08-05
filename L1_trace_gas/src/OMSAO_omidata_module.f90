@@ -17,6 +17,7 @@ MODULE OMSAO_omidata_module
     integer (kind=i4) :: nxtrack, ntimes
   end type retrieval_type
 
+  !> Input variables
   ! FIXME: (JCH)
   ! I've defined instances of input_vars_type and result_vars_type as a
   ! crutch to help gather related module variables into structures without
@@ -36,6 +37,7 @@ MODULE OMSAO_omidata_module
     integer (kind=i2), dimension(:,:), pointer :: terrain_height => null()
   end type input_vars_type
 
+  !> Radiance fit results
   type, public :: result_vars_type
     real (kind=r8), dimension(:,:), pointer :: column_amount => null()
     real (kind=r8), dimension(:,:), pointer :: column_uncert => null()
@@ -54,6 +56,7 @@ MODULE OMSAO_omidata_module
   type (input_vars_type), save :: input_vars
   type (result_vars_type), save :: result_vars
 
+  !> Radiance fit diagnostics
   type, public :: radfit_diagnostics_type
     ! these arrays are dimension(n_fitvar_rad,num_xtrack,0:nblock-1):
     real (kind=r8), dimension (:,:,:), pointer :: params => null()

@@ -97,9 +97,7 @@ MODULE OMSAO_variables_module
     REAL      (KIND=r8), DIMENSION (max_spec_pts) :: RefSpecData
   END TYPE reference_spectrum_type
 
-  ! -----------------------------------------
-  ! TYPE declaration for Common Mode Spectrum
-  ! -----------------------------------------
+  !> common mode spectrum type
   TYPE, PUBLIC :: common_mode_spectrum_type
     CHARACTER (LEN=MAX_STR_LEN)                                  :: Title, Units
     CHARACTER (LEN=MAX_STR_LEN)                                  :: FileName

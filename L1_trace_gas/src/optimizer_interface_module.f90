@@ -1,46 +1,58 @@
+!> Optimizer interface module
+!! @file
+!! @details
+!! This module is intended to provide a generic optimizer interface
+!!
+!! Example:
+!!
+!! @code
+!!  type (optimizer_type) :: opt
+!!  call optimizer_open (opt, objective, num_params, errstat, &
+!!                       optimizer_method=method, &
+!!                       param_min=pmin, param_max=pmax, param_mask=mask, &
+!!                       mode=mode, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
+!!                       max_num_fun_calls=max_nfc,
+!!                       max_num_iterations=max_itnum)
+!!  call opt%optimize (opt, params, num_params, residuals, num_residuals, return_status, &
+!!                     cov_matrix=c)
+!!  call optimizer_close (opt, errstat)
+!! @endcode
+!
+!!  For \a optimizer_open and \a optimizer_close:
+!!  @verbatim
+!!                errstat < 0 means failure
+!!                errstat >= 0 means success
+!!  @endverbatim
+!!  The value of \a opt%optimize \a return_status depends on the particular
+!!  optimizer's implementation, but should adhere to the same convention.
 module optimizer_interface_module
   USE OMSAO_precision_module, only : i4, r8
   use tell_module
   implicit none
 
-  ! This module is intended to provide a generic optimizer interface
-  !
-  ! Example:
-  !
-  !  type (optimizer_type) :: opt
-  !  call optimizer_open (opt, objective, num_params, errstat, &
-  !                       optimizer_method=method, &
-  !                       param_min=pmin, param_max=pmax, param_mask=mask, &
-  !                       mode=mode, tol=tol, epsrel=epsrel, epsabs=epsabs, epsx=epsx, &
-  !                       max_num_fun_calls=max_nfc,
-  !                       max_num_iterations=max_itnum)
-  !  call opt%optimize (opt, params, num_params, residuals, num_residuals, return_status, &
-  !                     cov_matrix=c)
-  !  call optimizer_close (opt, errstat)
-  !
-  !  For optimizer_open and optimizer_close:
-  !                errstat < 0 means failure
-  !                errstat >= 0 means success
-  !  The value of opt%optimize return_status depends on the particular
-  !  optimizer's implementation, but should adhere to the same convention.
-
   public
 
-  ! exit codes
+  !> exit codes
   integer (kind=i4), parameter :: &
     opt_convergence_failed=-2, &
     opt_convergence_maxiter_exceeded=-1, &
     opt_convergence_suspect=0, &
     opt_convergence_good=1
 
-  ! modes
+  !> optimization modes
   integer (kind=i4), parameter :: opt_unbounded=0, opt_bounded=1
 
+  !> optimizer object type definition
   type optimizer_type
+    !> pointer to optimization procedure
     procedure(optimizer_interface), nopass, pointer :: optimize
+    !> pointer to procedure to evaluate the objective function
     procedure(objective_interface), nopass, pointer :: objective
+    !> Absolute and relative convergence tolerances
     real    (kind=r8) :: tol, epsrel, epsabs, epsx
+    !> Allowed range for each fit parameter
     real    (kind=r8), dimension(:), allocatable :: param_min, param_max
+    !> Variable fit parameter index array
     integer (kind=i4), dimension(:), allocatable :: param_mask
     integer (kind=i4) :: mode
     integer (kind=i4) :: num_params
@@ -49,6 +61,7 @@ module optimizer_interface_module
     integer (kind=i4) :: num_jac_calls
   end type optimizer_type
 
+  !> optimizer interface
   interface
     subroutine optimizer_interface (this, params, num_params, residuals, num_residuals, return_status, &
                                    cov_matrix)
@@ -69,6 +82,7 @@ module optimizer_interface_module
    end subroutine optimizer_interface
  end interface
 
+ !> objective function interface
  interface
    subroutine objective_interface (this, params, num_params, residuals, num_residuals, return_status)
      import i4, r8, optimizer_type
@@ -85,12 +99,17 @@ module optimizer_interface_module
 
 contains
 
+  !> Define the default optimization method
+  !! @param[in] optimizer_method  Optimization procedure.
   subroutine optimizer_set_default_method (optimizer_method)
     implicit none
     procedure(optimizer_interface) :: optimizer_method
     default_optimizer_method => optimizer_method
   end subroutine optimizer_set_default_method
 
+  !> Release any resources associated with this \a optimizer_type instance
+  !! @param[inout] this  The current \a optimizer_type instance
+  !! @param[inout] errstat Error status variable
   subroutine optimizer_close (this, errstat)
     implicit none
     type(optimizer_type) :: this
@@ -100,6 +119,31 @@ contains
     if (allocated(this%param_max)) deallocate (this%param_max)
   end subroutine optimizer_close
 
+  !> Initialize an instance of \a optimizer_type
+  !! @param[inout] this  The current \a optimizer_type instance
+  !! @param[in] objective  The objective function to be optimized
+  !! @param[in] num_params  Number of fit parameters
+  !! @param[inout] errstat Error status variable
+  !! @param[in]   optimizer_method  (Optional) optimization procedure.
+  !!                 If not specified, the default optimization procedure
+  !!                 will be used.
+  !! @param[in]  mode  (Optional) Optimizer mode selection.
+  !! @param[in]  tol   (Optional) Convergence tolerance.
+  !!                   Precise usage depends on the optimizer selection.
+  !! @param[in]  epsabs   (Optional) Absolute convergence tolerance.
+  !!                   Precise usage depends on the optimizer selection.
+  !! @param[in]  epsrel   (Optional) Relative convergence tolerance.
+  !!                   Precise usage depends on the optimizer selection.
+  !! @param[in]  epsx   (Optional) Parameter value relative convergence tolerance.
+  !!                   Precise usage depends on the optimizer selection.
+  !! @param[in]  param_min[] (Optional) Minimum allowed parameter value.
+  !! @param[in]  param_max[] (Optional) Minimum allowed parameter value.
+  !! @param[in]  param_mask[] (Optional) Array of non-frozen parameter indices.
+  !! @param[in]  max_num_fun_calls  (Optional) Maximum allowed number of
+  !!                        of times the objective function may be evaluated.
+  !! @param[in]  max_num_iterations  (Optional) Maximum number of times the
+  !!                       optimizer's inner loop may be executed.
+  !!                   Precise usage depends on the optimizer selection.
   subroutine optimizer_open (this, objective, num_params, errstat, &
                              optimizer_method, &
                              mode, tol, epsabs, epsrel, epsx, &

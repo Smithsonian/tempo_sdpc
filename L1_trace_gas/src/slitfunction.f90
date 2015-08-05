@@ -1,3 +1,8 @@
+!> Generic slit-function object
+!! @file
+!! @details
+!! This module defines a generic interface for convolving
+!! a spectrum with a slit function.
 module slitfunction
   use tell_module
   use slitfunction_asym_gaussian

@@ -11,6 +11,7 @@ MODULE omi_pge_fitting_aux
     omi_set_xtrpix_range, &
     omi_set_fitting_parameters, set_input_pointer_and_versions
 
+  !> Radiance fit QA statistics
   type, public :: fitting_statistics_type
     ! quality_flag array is dimension(nxtrack,0:ntimes-1)
     integer (kind=i2), dimension(:,:), allocatable :: quality_flag
