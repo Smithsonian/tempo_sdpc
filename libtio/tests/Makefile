@@ -34,7 +34,7 @@ all:  $(EXECUTABLES)
 
 check:	$(EXECUTABLES)
 	@./tio_test 2> c.test.log && echo "testing C...ok"
-#	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
+	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
 	@./ftest1 2> ftest1.test.log && echo "running ftest1...ok"
 	-/bin/rm delete_*.nc ftest1.nc *.test.log
 
