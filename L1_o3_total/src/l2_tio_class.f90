@@ -1,3 +1,5 @@
+!> Level 2 data product output functions
+!! @file
 module l2_tio_class
   use netcdf
   use tell_module
@@ -498,6 +500,13 @@ contains
 
   end subroutine write_coordinate_vars
 
+  !> Create netCDF format Level 2 product file
+  !! @param[in] filename   output netCDF file name
+  !! @param[in] num_steps  Number of scan steps
+  !! @param[in] num_xtrack  Number of cross-strack pixels
+  !! @param[in] num_layers  Number of vertical profile layers in forward model
+  !! @param[in] num_wavel  Number of wavelengths
+  !! @param[inout] errstat   Error status variable
   subroutine l2_tio_create (filename, num_steps, num_xtrack, &
                             num_layers, num_wavel, errstat)
     implicit none
@@ -612,6 +621,8 @@ contains
 
   end subroutine
 
+  !> Close Level 2 product file
+  !! @param[inout] errstat Error status variable
   subroutine l2_tio_close (errstat)
     implicit none
     integer, intent(inout) :: errstat
@@ -627,6 +638,12 @@ contains
 
   end subroutine
 
+  !> Write calibration adjustment variables to Level 2 product file
+  !! @param[in] nwavel  Number of wavelengths
+  !! @param[in] wl_com  Wavelengths
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] swpcr  N-value correction for given year and day
+  !! @param[inout] errstat  Error status variable
   subroutine l2_tio_write_etc (nwavel, wl_com, nxtrack, swpcr, errstat)
     implicit none
     integer, intent(in) :: nwavel, nxtrack
@@ -652,6 +669,12 @@ contains
 
   end subroutine
 
+  !> Write scan line geolocation variables to Level 2 product file
+  !! @param[in] iline  Scan line index
+  !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[inout] errstat  Error status variable
+  !! @details
+  !! The geolocation variables are passed via the \a O3T_radgeo_class module.
   subroutine l2_tio_write_geo (iline, nxtrack, errstat)
     use O3T_radgeo_class
     implicit none
@@ -711,6 +734,24 @@ contains
 
   end subroutine
 
+  !> Write intermediate variables to Level 2 product file
+  !! @param[in]  iline   scan line index
+  !! @param[in]  ix      cross-track pixel index
+  !! @param[in]  nwavel  Number of wavelengths
+  !! @param[in]  nlayers  Number of vertical profile layers
+  !! @param[in]  algflg   Algorithm convergence flag
+  !! @param[in]  qaflags  Quality assurance flags
+  !! @param[in]  radbadpixflgs  Radiance bad pixel flags
+  !! @param[in]  stp1oz   Step 1 ozone column
+  !! @param[in]  stp2oz   Step 2 ozone column
+  !! @param[in]  stp3oz   Step 3 ozone column
+  !! @param[in]  oz_cld   Ozone column below fractional cloud
+  !! @param[in]  aerind   Aerosol index
+  !! @param[in]  so2ind   Sulfur dioxide index
+  !! @param[in]  pixsurf  Pixel surface land cover metadata
+  !! @param[in]  eff      Layer efficiency factor
+  !! @param[in]  aprfoz   A-priori ozone profile
+  !! @param[inout] errstat  Error status flag
   subroutine l2_tio_write_fields (iline, ix, nwavel, nlayers, &
                                   algflg, qaflags, radbadpixflgs, &
                                   stp1oz, stp2oz, stp3oz, oz_cld, aerind, so2ind, &
@@ -801,6 +842,14 @@ contains
 
   end subroutine
 
+  !> Write parameters for skipped pixels to L2 product file
+  !! @param[in]  iline   scan line index
+  !! @param[in]  ix      cross-track pixel index
+  !! @param[in]  nwavel  Number of wavelengths
+  !! @param[in]  algflg   Algorithm convergence flag
+  !! @param[in]  qaflags  Quality assurance flags
+  !! @param[in]  radbadpixflgs  Radiance bad pixel flags
+  !! @param[inout] errstat  Error status flag
   subroutine l2_tio_write_skipped_fields (iline, ix, nwavel, &
                                           algflg, qaflags, radbadpixflgs, errstat)
     use O3T_L2output_class, only : xnvalm
@@ -846,6 +895,10 @@ contains
 
   end subroutine
 
+  !> Write measurement quality flag to L2 product file
+  !! @param[in]  iline   scan line index
+  !! @param[in]  mqf     measurement quality flag.
+  !! @param[inout]  errstat  Error status variable.
   subroutine l2_tio_write_mqf (iline, mqf, errstat)
     implicit none
     integer, intent(in) :: iline

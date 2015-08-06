@@ -6,7 +6,7 @@ check:
 	#cd tests; $(MAKE) check
 
 docs:
-	#cd doc; $(MAKE) docs
+	cd doc; $(MAKE) docs
 
 install:
 	cd src; $(MAKE) install
@@ -14,9 +14,9 @@ install:
 clean:
 	cd src; $(MAKE) clean
 	#cd tests; $(MAKE) clean
-	#cd doc; $(MAKE) clean
+	cd doc; $(MAKE) clean
 
 distclean:	clean
 	cd src; $(MAKE) distclean
 	#cd tests; $(MAKE) distclean
-	#cd doc; $(MAKE) distclean
+	cd doc; $(MAKE) distclean

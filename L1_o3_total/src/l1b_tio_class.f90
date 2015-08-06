@@ -1,3 +1,9 @@
+!> Level 1 data input functions
+!! @file
+!! @note Ideally, \a use statements in this module will provide
+!!       access only to subroutines, type definitions, and compile-time
+!!       constants. All variables should be passed via the subroutine
+!!       parameter argument lists.
 module l1b_tio_class
   use netcdf
   use tio_module
@@ -8,7 +14,8 @@ module l1b_tio_class
 
   integer, parameter :: nblock = 10 ! default number of lines in a block
 
-  ! opaque type
+  !> Level 1 file object
+  !! @note This is an opaque data type.
   type, public :: l1b_tio_type
     private
     type (tiof_file_type) :: ft
@@ -19,12 +26,14 @@ module l1b_tio_class
     real (kind=4) :: distance   ! earth-sun distance
   end type
 
+  !> Level 1 metadata object
   type, public :: l1b_metadata_type
     integer :: year, month, day, jday
     integer :: orbit_number
     character (len=32) :: shortname
   end type
 
+  !> geolocated radiance spectra
   type, public :: l1b_radgeo_type
     real (kind=4), dimension(:,:), allocatable :: lon, lat, sza, saz, vza, vaz
     real (kind=4), dimension(:,:,:), allocatable :: radiance, wavelength
@@ -42,6 +51,11 @@ module l1b_tio_class
 
 contains
 
+  !> Open Level 1 data product file
+  !! @param[inout]  this  Level 1 file object
+  !! @param[in] filename  Level 1 data product file name
+  !! @param[in] groupname  Name of group to open
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_open (this, filename, groupname, errstat)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
@@ -71,6 +85,9 @@ contains
     endif
   end subroutine
 
+  !> Close Level 1 data product file
+  !! @param[inout]  this  Level 1 file object
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_close (this, errstat)
     implicit none
     type(l1b_tio_type), intent(inout) :: this
@@ -82,6 +99,12 @@ contains
     this % filename = ''
   end subroutine
 
+  !> Get dimension sizes from an open \a l1b_tio_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[out]  num_steps  Number of scan steps
+  !! @param[out]  num_xtrack  Number of cross-track pixels
+  !! @param[out] num_wavelengths Number of wavelengths
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_getdims (this, num_steps, num_xtrack, num_wavelengths, errstat)
     implicit none
     type(l1b_tio_type), intent(inout) :: this
@@ -95,6 +118,10 @@ contains
     num_wavelengths = this % num_wavelengths
   end subroutine
 
+  !> Get Earth-Sun distance from an open \a l1b_tio_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[out] distance  Earth-Sun distance
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_earthsun_distance (this, distance, errstat)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
@@ -104,6 +131,14 @@ contains
     distance = this % distance
   end subroutine
 
+  !> Read irradiance spectra from an open \a l1b_tio_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[out] irr  Array of irradiance spectra, one for each cross-track pixel.
+  !! @param[out] wavelength  Array of irradiance wavelength grids, one for each cross-track pixel.
+  !! @param[out] qaflags  Array of quality assurance flags, one for each spectral bin.
+  !! @param[out] measurement_quality_flag  Measurement quality flag
+  !! @param[out] instid  Instrument id
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_get_irr (this, irr, wavelength, qaflags, &
                               measurement_quality_flag, instid, errstat)
     use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
@@ -178,6 +213,15 @@ contains
 
   end subroutine
 
+  !> Initialize an \a l1b_radgeo_type object using an open \a l1b_tio_type
+  !! @param[inout] this  Level 1 file object
+  !! @param[inout] rg  The \a l1b_radgeo_type object to initialize
+  !! @param[inout] errstat  Error status variable
+  !! @details
+  !! For efficiency, radiance spectra will be loaded in blocks.
+  !! The \a l1b_radgeo_type object is initialized by allocating space
+  !! for all variables, defining the number of radiance spectra per cached
+  !! block (for processing efficiency), and loading the geolocation variables.
   subroutine l1b_tio_init_rad (this, rg, errstat)
     implicit none
     type(l1b_tio_type), intent(inout), target :: this
@@ -241,6 +285,15 @@ contains
 
   end subroutine
 
+  !> Load a block of radiance spectra into an initialized \a l1b_radgeo_type object
+  !! @param[inout] this  Level 1 file object
+  !! @param[inout] rg  The \a l1b_radgeo_type object to receive the spectra
+  !! @param[in]  iline  Index of first scan line to read.
+  !! @param[inout] errstat  Error status variable
+  !! @details
+  !! Note that as each block is loaded into the cache, the
+  !! \a l1b_radgeo_type object records the beginning and ending scan lines
+  !! that were loaded.
   subroutine load_radiance_block (this, rg, iline, errstat)
     use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
     implicit none
@@ -317,6 +370,18 @@ contains
 
   end subroutine
 
+  !> Copy radiance spectra for a scan line from an \a l1b_radgeo_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[inout] rg  The \a l1b_radgeo_type object
+  !! @param[in]  iline  The scan line to copy.
+  !! @param[inout] errstat  Error status variable
+  !! @param[out] radiance  Array of radiance spectra, one for each cross-track pixel.
+  !! @param[out] wavelength  Array of radiance wavelength grids, one for each cross-track pixel.
+  !! @param[out] qa_flags  Array of quality assurance flags, one for each spectral bin.
+  !! @details
+  !! If \a iline isn't in the block cached
+  !! by the \a l1b_radgeo_type object, a block of spectra at
+  !! \a iline will be loaded from the open Level 1 file (\a this).
   subroutine l1b_tio_getrad (this, rg, iline, errstat, &
                              radiance, wavelength, qa_flags)
     implicit none
@@ -342,6 +407,18 @@ contains
 
   end subroutine
 
+  !> Copy the measurement quality flag and instrument id for a scan line
+  !! from an \a l1b_radgeo_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[inout] rg  The \a l1b_radgeo_type object
+  !! @param[in]  iline  The scan line to copy.
+  !! @param[inout] errstat  Error status variable
+  !! @param[out] instid  (Optional) Instrument ID
+  !! @param[out] mqf  (Optional) Measurement quality flag
+  !! @details
+  !! If \a iline isn't in the block cached
+  !! by the \a l1b_radgeo_type object, a block of spectra at
+  !! \a iline will be loaded from the open Level 1 file (\a this).
   subroutine l1b_tio_get_etc (this, rg, iline, errstat, instid, mqf)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
@@ -362,6 +439,24 @@ contains
 
   end subroutine
 
+  !> Copy geolocation data for a scan line from an \a l1b_radgeo_type object
+  !! @param[inout]  this  Level 1 file object
+  !! @param[inout] rg  The \a l1b_radgeo_type object
+  !! @param[in]  iline  The scan line to copy.
+  !! @param[out] lat  Latitude for each cross-track pixel
+  !! @param[out] lon  Longitude for each cross-track pixel
+  !! @param[out] sza  Solar zenith angle for each cross-track pixel
+  !! @param[out] saz  Solar azimuth angle for each cross-track pixel
+  !! @param[out] vza  Viewing zenith angle for each cross-track pixel
+  !! @param[out] vaz  Viewing azimuth angle for each cross-track pixel
+  !! @param[out] height  Terrain height for each cross-track pixel
+  !! @param[out] geoflg  Geolocation flag for each cross-track pixel
+  !! @param[inout] errstat  Error status variable
+  !! @param[out] anomflg  (Optional) Anomaly flag for each cross-track pixel
+  !! @details
+  !! If \a iline isn't in the block cached
+  !! by the \a l1b_radgeo_type object, a block of spectra at
+  !! \a iline will be loaded from the open Level 1 file (\a this).
   subroutine l1b_tio_getgeo (this, rg, iline, lat, lon, &
                              sza, saz, vza, vaz, height, geoflg, errstat, &
                              anomflg)
@@ -403,6 +498,10 @@ contains
 
   end subroutine
 
+  !> Read selected metadata attributes from a Level 1 product file
+  !! @param[inout] obj   Level 1 file object
+  !! @param[out]  m     Metadata object
+  !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_get_metadata (obj, m, errstat)
     use netcdf
     use iso_c_binding, only : c_null_char
