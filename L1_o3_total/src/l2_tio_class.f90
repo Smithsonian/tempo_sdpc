@@ -130,6 +130,10 @@ contains
     type (tiof_attlist_type) :: att_coord
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, dimids_wavel_xtrack_step
+    integer, dimension(3) :: dimsizes_layer_xtrack_step, dimsizes_wavel_xtrack_step
+    integer, dimension(3) :: chunksizes
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
 
     if (errstat < 0) return
 
@@ -140,11 +144,11 @@ contains
     call tiof_dimlist_lookup (dimlist, &
                               [o3t_dim_layer, o3t_dim_xtrack, o3t_dim_step], &
                               dimids_layer_xtrack_step, &
-                              errstat)
+                              errstat, dimsizes = dimsizes_layer_xtrack_step)
     call tiof_dimlist_lookup (dimlist, &
                               [o3t_dim_wavelength, o3t_dim_xtrack, o3t_dim_step], &
                               dimids_wavel_xtrack_step, &
-                              errstat)
+                              errstat, dimsizes = dimsizes_wavel_xtrack_step)
 
     ! Construct a list of variables with their associated dimension ids
     ! and attributes:
@@ -190,13 +194,20 @@ contains
                               comment = "algorithm flags", &
                               valid_range = [0.0_8, 13.0_8])
 
+    chunksizes(1) = dimsizes_layer_xtrack_step(1)            ! layer dimension
+    chunksizes(2) = min(dimsizes_layer_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_apriori_layer_o3, &
                               nf90_float, &
                               dimids = dimids_layer_xtrack_step, &
                               comment = "a priori ozone profile", &
                               valid_range = [0.0_8, 125.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_radbpix_flag_accepted, &
@@ -205,29 +216,50 @@ contains
                               comment = "radiance bad pixel flag accepted", &
                               valid_range = [0.0_8, 65534.0_8])
 
+    chunksizes(1) = dimsizes_layer_xtrack_step(1)            ! layer dimension
+    chunksizes(2) = min(dimsizes_layer_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_layer_efficiency, &
                               nf90_float, &
                               dimids = dimids_layer_xtrack_step, &
                               comment = "algorithmic layer efficiency", &
                               valid_range = [0.0_8, 10.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_dndr, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "reflectivity sensitivity ratio", &
                               valid_range = [-200.0_8, 0.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_nvalue, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "measured N-value", &
                               valid_range = [0.0_8, 600.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_reflectivity_331, &
@@ -249,45 +281,80 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_residual, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "N-value residual", &
                               valid_range = [-32.0_8, 32.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_residual_step1, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "step 1 N-value residual", &
                               valid_range = [-32.0_8, 32.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_residual_step2, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "step 2 N-value residual", &
                               valid_range = [-32.0_8, 32.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_sensitivity, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "ozone sensitivity ratio, dN/dOmega", &
                               valid_range = [0.0_8, 1.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
+    chunksizes(1) = dimsizes_wavel_xtrack_step(1)            ! wavel dimension
+    chunksizes(2) = min(dimsizes_wavel_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = 1                                        ! step dimension
+    ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_temp_sensitivity_ratio, &
                               nf90_float, &
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "ozone weighted temperature sensitivity ratio, dN/dT", &
                               valid_range = [0.0_8, 1.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_step1_o3, &
