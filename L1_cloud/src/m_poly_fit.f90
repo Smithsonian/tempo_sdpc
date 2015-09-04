@@ -107,7 +107,8 @@ contains
   function poly_fit( x, y, ndegree, &   
        yfit, measure_errors ) result(res)   
 
-    use m_invert
+!    use m_invert
+    use m_invert2
     use m_matmul
     implicit NONE          ! *** IDL2F9O ***
 
@@ -162,9 +163,9 @@ contains
     enddo    ! end of p loop, construction of covar and b
 
 
-    covar = invert(covar,status)   
+    covar = invert2(covar,status)   
 
-    !endif   
+    !endif  
 
     res = b .mm. covar  ! construct coefficients
 

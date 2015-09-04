@@ -58,7 +58,7 @@ $(ODIR)/m_cloud_pres_ret.o: $(SDIR)/m_cloud_pres_ret.f90 \
   $(ODIR)/m_interp_pres.o \
   $(ODIR)/m_interp_ring_rad.o \
   $(ODIR)/m_interpol.o \
-  $(ODIR)/m_invert.o \
+  $(ODIR)/m_invert2.o \
   $(ODIR)/m_lambda_qual.o \
   $(ODIR)/m_matmul.o \
   $(ODIR)/m_pgs_include.o \
@@ -102,8 +102,8 @@ $(ODIR)/m_interp_ring_rad.o: $(SDIR)/m_interp_ring_rad.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_interp_ring_rad.f90 -o $(ODIR)/m_interp_ring_rad.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_interpol.o: $(SDIR)/m_interpol.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_interpol.f90 -o $(ODIR)/m_interpol.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_invert.o: $(SDIR)/m_invert.f90
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_invert.f90 -o $(ODIR)/m_invert.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_invert2.o: $(SDIR)/m_invert2.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_invert2.f90 -o $(ODIR)/m_invert2.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_lambda_qual.o: $(SDIR)/m_lambda_qual.f90 \
   $(ODIR)/m_cloud_pres_mod.o \
   $(ODIR)/m_find.o \
@@ -112,7 +112,7 @@ $(ODIR)/m_lambda_qual.o: $(SDIR)/m_lambda_qual.f90 \
 $(ODIR)/m_matmul.o: $(SDIR)/m_matmul.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_matmul.f90 -o $(ODIR)/m_matmul.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_poly_fit.o: $(SDIR)/m_poly_fit.f90 \
-  $(ODIR)/m_invert.o \
+  $(ODIR)/m_invert2.o \
   $(ODIR)/m_matmul.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_poly_fit.f90 -o $(ODIR)/m_poly_fit.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_print_ret.o: $(SDIR)/m_print_ret.f90 \

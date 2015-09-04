@@ -23,7 +23,7 @@ m_instr_config.f90
 m_interp_pres.f90
 m_interp_ring_rad.f90
 m_interpol.f90
-m_invert.f90
+m_invert2.f90
 m_lambda_qual.f90
 m_matmul.f90
 m_poly_fit.f90

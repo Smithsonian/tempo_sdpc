@@ -80,7 +80,8 @@ contains
     use m_print_ret
     use m_get_ai_refl
     use m_get_f
-    use m_invert
+!    use m_invert
+    use m_invert2
     use m_find
     use m_findgen
     use m_indgen
@@ -932,7 +933,7 @@ contains
               err_cov(ii,ii) = err_cov(ii,ii) + b_i(ii)
             enddo ! ii
           endif
-          err_cov = invert(err_cov,ierr)
+          err_cov = invert2(err_cov,ierr)
 
           if (ierr == 0) then ! good retrieval
             y_back(:,1)=b_i * (x(:,1) - x_fg(:,1))   
