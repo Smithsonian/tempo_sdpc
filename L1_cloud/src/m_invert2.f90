@@ -1,4 +1,4 @@
-!Performs matrix inversion by LU decomposition, using LAPACK routines
+!>Perform matrix inversion by LU decomposition, using LAPACK routines
 module m_invert2
 
 use tell_module
@@ -19,9 +19,10 @@ contains
     !
     ! !ROUTINE:  invert2
     ! 
-    ! !DESCRIPTION: matrix inversion interface to LAPACK routines,
-    !               performing inversion by LU decomposition.
-    !               Replaces m_invert, which used Numerical Recipes code
+    ! !DESCRIPTION: 
+    !>  Matrix inversion interface to LAPACK routines,
+    !>  performing inversion by LU decomposition.
+    !>  Replaces m_invert, which used Numerical Recipes code
     !
     ! !CALLING SEQUENCE: 
     !
@@ -29,22 +30,26 @@ contains
     !     
     ! !INPUT PARAMETERS:   
     real (KIND=8), dimension(:,:), intent(in) :: amat
-    !   amat : 2D matrix to invert
-    integer,              intent(out):: error
-    !   Note that error value is determined by the LAPACK routines
-    !    DGETRF and DGETRI.
-    !    error < 1 => illegal element value in matrix
-    !    error >1 => singular matrix
+    !> @param[in]   amat   2D matrix to invert
     !
     ! !OUTPUT PARAMETERS:  
+    integer,              intent(out):: error
+    !> @param[out]  error  non-zero value indicates matrix inversion failed
+    !>/verbatim
+    !>   Note that error value is determined by the LAPACK routines
+    !>    DGETRF and DGETRI.
+    !>    error <1 => illegal element value in matrix
+    !>    error >1 => singular matrix
+    !>/endverbatim
+    !
     real (KIND=8), dimension(lbound(amat,1):ubound(amat,1), &
          lbound(amat,2):ubound(amat,2)) :: amatinv
-    !   amatinv : 2D inverted matrix
+    !> @param   amatinv   2D inverted matrix
     !
     ! !REVISION HISTORY: 
     !
-    !  31Jul14   O'Sullivan    Initial version
-    !   4Aug15   O'Sullivan    Bought LAPACK and BLAS routines into module
+    !> @author  31Jul14   O'Sullivan    Initial version
+    !>   4Aug15   O'Sullivan    Brought LAPACK and BLAS routines into module
     !
     !EOP
     !-------------------------------------------------------------------------
@@ -59,15 +64,15 @@ contains
     nsampl=size(amat,1)
     lwork=nsampl**2
 
+    amatinv=0.d0
+    temp=amat
+
     if (nsampl /= size(amat,2)) then
       error=-1
       call tell_error(tell_runtime_error, &
            "invert2 can't invert a non-square matrix", error)
       return
     endif
-
-    amatinv=0.d0
-    temp=amat
 
     call dgetrf(nsampl, nsampl, temp, nsampl, indx, error)
     if (error == 0) then
@@ -207,7 +212,7 @@ contains
 !     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            I, IWS, J, JB, JJ, JP, LDWORK, LWKOPT, NB, &
-                        NBMIN, NN
+                        NBMIN, NN, errstat
 !     ..
 !     .. External Functions ..
 !      INTEGER            ILAENV
@@ -237,7 +242,8 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !        CALL XERBLA( 'DGETRI', -INFO )
-         call tell_error(tell_invalid_parm,'DGETRI', -INFO)
+         errstat=-1*INFO
+         call tell_error(tell_invalid_parm,'DGETRI', errstat)
          RETURN
       ELSE IF( LQUERY ) THEN
          RETURN
@@ -446,7 +452,7 @@ contains
 !     ..
 !     .. Local Scalars ..
       LOGICAL            NOUNIT, UPPER
-      INTEGER            J, JB, NB, NN
+      INTEGER            J, JB, NB, NN, errstat
 !     ..
 !     .. External Functions ..
 !     LOGICAL            LSAME
@@ -477,7 +483,8 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DTRTRI', -INFO )
-         call tell_error(tell_invalid_parm,'DTRTRI', -INFO)
+         errstat=-1*INFO
+         call tell_error(tell_invalid_parm,'DTRTRI', errstat)
          RETURN
       END IF
 !
@@ -675,7 +682,7 @@ contains
 !     ..
 !     .. Local Scalars ..
       LOGICAL            NOUNIT, UPPER
-      INTEGER            J
+      INTEGER            J, errstat
       DOUBLE PRECISION   AJJ
 !     ..
 !     .. External Functions ..
@@ -706,7 +713,8 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DTRTI2', -INFO )
-         call tell_error(tell_invalid_parm,,'DTRTI2', -INFO)
+         errstat=-1*INFO
+         call tell_error(tell_invalid_parm,'DTRTI2', errstat)
          RETURN
       END IF
 !
@@ -2606,10 +2614,9 @@ contains
 !      INTEGER            IEEECK !, IPARMQ
 !      EXTERNAL           IEEECK, IPARMQ
 !
-!     Invalid value for ISPEC
-      ISPEC=ISPEC*1
 !
       if (ILAENV.NE.1) then
+        print *,'inputs:',ISPEC, NAME, OPTS, N1, N2, N3, N4
         ILAENV = -1
         RETURN
       endif
@@ -3070,7 +3077,7 @@ contains
       PARAMETER          ( ONE = 1.0D+0 )
 !     ..
 !     .. Local Scalars ..
-      INTEGER            I, IINFO, J, JB, NB
+      INTEGER            I, IINFO, J, JB, NB, errstat
 !     ..
 !     .. External Subroutines ..
 !     EXTERNAL           DGEMM, DGETF2, DLASWP, DTRSM!, XERBLA
@@ -3096,7 +3103,8 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DGETRF', -INFO )
-        call tell_error(tell_invalid_parm,'DGETRF', -INFO)
+        errstat=-1*INFO
+        call tell_error(tell_invalid_parm,'DGETRF', errstat)
         RETURN
       END IF
 !
@@ -3281,7 +3289,7 @@ contains
 !     ..
 !     .. Local Scalars ..
       DOUBLE PRECISION   SFMIN 
-      INTEGER            I, J, JP
+      INTEGER            I, J, JP, errstat
 !     ..
 !     .. External Functions ..
 !     DOUBLE PRECISION   DLAMCH      
@@ -3308,7 +3316,8 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DGETF2', -INFO )
-         call tell_error(tell_invalid_parm,'DGETF2', -INFO)
+         errstat=-1*INFO
+         call tell_error(tell_invalid_parm,'DGETF2', errstat)
          RETURN
       END IF
 !
