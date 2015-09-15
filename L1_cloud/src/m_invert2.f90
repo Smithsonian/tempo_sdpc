@@ -18,21 +18,21 @@ contains
     !BOP
     !
     ! !ROUTINE:  invert2
-    ! 
-    ! !DESCRIPTION: 
+    !
+    ! !DESCRIPTION:
     !>  Matrix inversion interface to LAPACK routines,
     !>  performing inversion by LU decomposition.
     !>  Replaces m_invert, which used Numerical Recipes code
     !
-    ! !CALLING SEQUENCE: 
+    ! !CALLING SEQUENCE:
     !
     !        amatinv = invert(amat)
-    !     
-    ! !INPUT PARAMETERS:   
+    ! 
+    ! !INPUT PARAMETERS:
     real (KIND=8), dimension(:,:), intent(in) :: amat
     !> @param[in]   amat   2D matrix to invert
     !
-    ! !OUTPUT PARAMETERS:  
+    ! !OUTPUT PARAMETERS:
     integer,              intent(out):: error
     !> @param[out]  error  non-zero value indicates matrix inversion failed
     !>/verbatim
@@ -46,7 +46,7 @@ contains
          lbound(amat,2):ubound(amat,2)) :: amatinv
     !> @param   amatinv   2D inverted matrix
     !
-    ! !REVISION HISTORY: 
+    ! !REVISION HISTORY:
     !
     !> @author  31Jul14   O'Sullivan    Initial version
     !>   4Aug15   O'Sullivan    Brought LAPACK and BLAS routines into module
@@ -85,7 +85,7 @@ contains
   end function invert2
 
 
-! everything below this taken from LAPACK and BLAS libraries, 
+! everything below this taken from LAPACK and BLAS libraries,
 ! with minor editing
 !------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGETRI( N, A, LDA, IPIV, WORK, LWORK, INFO )
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER            INFO, LDA, LWORK, N
 !       ..
@@ -103,7 +103,7 @@ contains
 !       INTEGER            IPIV( * )
 !       DOUBLE PRECISION   A( LDA, * ), WORK( * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -178,10 +178,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -341,7 +341,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DTRTRI( UPLO, DIAG, N, A, LDA, INFO )
-! 
+!
 !       .. Scalar Arguments ..
 !       CHARACTER          DIAG, UPLO
 !       INTEGER            INFO, LDA, N
@@ -349,7 +349,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION   A( LDA, * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -419,10 +419,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -570,7 +570,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DTRTI2( UPLO, DIAG, N, A, LDA, INFO )
-! 
+!
 !       .. Scalar Arguments ..
 !       CHARACTER          DIAG, UPLO
 !       INTEGER            INFO, LDA, N
@@ -578,7 +578,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION   A( LDA, * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -649,10 +649,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date September 2012
 !
@@ -770,14 +770,14 @@ contains
 !  ===========
 !
 !       SUBROUTINE DSWAP(N,DX,INCX,DY,INCY)
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER INCX,INCY,N
 !       ..
 !       .. Array Arguments ..
 !       DOUBLE PRECISION DX(*),DY(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -791,10 +791,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -888,7 +888,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DTRMM(SIDE,UPLO,TRANSA,DIAG,M,N,ALPHA,A,LDA,B,LDB)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION ALPHA
 !       INTEGER LDA,LDB,M,N
@@ -897,7 +897,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),B(LDB,*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -1030,10 +1030,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -1297,7 +1297,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DSCAL(N,DA,DX,INCX)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION DA
 !       INTEGER INCX,N
@@ -1305,7 +1305,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION DX(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -1319,10 +1319,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -1403,7 +1403,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DTRMV(UPLO,TRANS,DIAG,N,A,LDA,X,INCX)
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER INCX,LDA,N
 !       CHARACTER DIAG,TRANS,UPLO
@@ -1411,7 +1411,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),X(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -1514,10 +1514,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -1738,7 +1738,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION ALPHA,BETA
 !       INTEGER K,LDA,LDB,LDC,M,N
@@ -1747,7 +1747,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),B(LDB,*),C(LDC,*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -1890,10 +1890,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -2119,7 +2119,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGEMV(TRANS,M,N,ALPHA,A,LDA,X,INCX,BETA,Y,INCY)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION ALPHA,BETA
 !       INTEGER INCX,INCY,LDA,M,N
@@ -2128,7 +2128,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),X(*),Y(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -2239,10 +2239,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -2301,7 +2301,7 @@ contains
 !     Test the input parameters.
 !
       info = 0
-      IF (.NOT.lsame(trans,'N') .AND. .NOT.lsame(trans,'T') & 
+      IF (.NOT.lsame(trans,'N') .AND. .NOT.lsame(trans,'T') &
            .AND. .NOT.lsame(trans,'C')) THEN
           info = 1
       ELSE IF (m.LT.0) THEN
@@ -2447,12 +2447,12 @@ contains
 !  ===========
 !
 !       INTEGER FUNCTION ILAENV( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
-! 
+!
 !       .. Scalar Arguments ..
 !       CHARACTER*( * )    NAME, OPTS
 !       INTEGER            ISPEC, N1, N2, N3, N4
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -2555,10 +2555,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -2615,8 +2615,10 @@ contains
 !      EXTERNAL           IEEECK, IPARMQ
 !
 !
-      if (ILAENV.NE.1) then
+      if (ISPEC > 16) then
         print *,'inputs:',ISPEC, NAME, OPTS, N1, N2, N3, N4
+      endif
+      if (ILAENV.NE.1) then
         ILAENV = -1
         RETURN
       endif
@@ -2841,8 +2843,8 @@ contains
 
 !  =========== DOCUMENTATION ===========
 !
-! Online html documentation available at 
-!            http://www.netlib.org/lapack/explore-html/ 
+! Online html documentation available at
+!            http://www.netlib.org/lapack/explore-html/
 !
 !  Definition:
 !  ===========
@@ -2852,7 +2854,7 @@ contains
 !     .. Scalar Arguments ..
 !      CHARACTER          CA, CB
 !     ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -2878,10 +2880,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -2968,7 +2970,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGETRF( M, N, A, LDA, IPIV, INFO )
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER            INFO, LDA, M, N
 !       ..
@@ -2976,7 +2978,7 @@ contains
 !       INTEGER            IPIV( * )
 !       DOUBLE PRECISION   A( LDA, * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -3045,10 +3047,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -3179,7 +3181,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGETF2( M, N, A, LDA, IPIV, INFO )
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER            INFO, LDA, M, N
 !       ..
@@ -3187,7 +3189,7 @@ contains
 !       INTEGER            IPIV( * )
 !       DOUBLE PRECISION   A( LDA, * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -3256,10 +3258,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date September 2012
 !
@@ -3288,11 +3290,11 @@ contains
       PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
 !     ..
 !     .. Local Scalars ..
-      DOUBLE PRECISION   SFMIN 
+      DOUBLE PRECISION   SFMIN
       INTEGER            I, J, JP, errstat
 !     ..
 !     .. External Functions ..
-!     DOUBLE PRECISION   DLAMCH      
+!     DOUBLE PRECISION   DLAMCH
 !     INTEGER            IDAMAX
 !     EXTERNAL           DLAMCH, IDAMAX
 !     ..
@@ -3325,9 +3327,9 @@ contains
 !
       IF( M.EQ.0 .OR. N.EQ.0 )   RETURN
 !
-!     Compute machine safe minimum 
-! 
-      SFMIN = DLAMCH('S')  
+!     Compute machine safe minimum
+!
+      SFMIN = DLAMCH('S')
 !
       DO 10 J = 1, MIN( M, N )
 !
@@ -3343,15 +3345,15 @@ contains
 !
 !           Compute elements J+1:M of J-th column.
 !
-            IF( J.LT.M ) THEN 
-               IF( ABS(A( J, J )) .GE. SFMIN ) THEN 
-                  CALL DSCAL( M-J, ONE / A( J, J ), A( J+1, J ), 1 ) 
-               ELSE 
-                 DO 20 I = 1, M-J 
-                    A( J+I, J ) = A( J+I, J ) / A( J, J ) 
-   20            CONTINUE 
-               END IF 
-            END IF 
+            IF( J.LT.M ) THEN
+               IF( ABS(A( J, J )) .GE. SFMIN ) THEN
+                  CALL DSCAL( M-J, ONE / A( J, J ), A( J+1, J ), 1 )
+               ELSE
+                 DO 20 I = 1, M-J
+                    A( J+I, J ) = A( J+I, J ) / A( J, J )
+   20            CONTINUE
+               END IF
+            END IF
 !
          ELSE IF( INFO.EQ.0 ) THEN
 !
@@ -3378,7 +3380,7 @@ contains
 !  ===========
 !
 !      DOUBLE PRECISION FUNCTION DLAMCH( CMACH )
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -3420,10 +3422,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -3521,7 +3523,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DLASWP( N, A, LDA, K1, K2, IPIV, INCX )
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER            INCX, K1, K2, LDA, N
 !       ..
@@ -3529,7 +3531,7 @@ contains
 !       INTEGER            IPIV( * )
 !       DOUBLE PRECISION   A( LDA, * )
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -3595,10 +3597,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date September 2012
 !
@@ -3698,7 +3700,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DTRSM(SIDE,UPLO,TRANSA,DIAG,M,N,ALPHA,A,LDA,B,LDB)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION ALPHA
 !       INTEGER LDA,LDB,M,N
@@ -3707,7 +3709,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),B(LDB,*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -3801,7 +3803,7 @@ contains
 !> \param[in] A
 !> \verbatim
 !>          A is DOUBLE PRECISION array of DIMENSION ( LDA, k ),
-!>           where k is m when SIDE = 'L' or 'l'  
+!>           where k is m when SIDE = 'L' or 'l'
 !>             and k is n when SIDE = 'R' or 'r'.
 !>           Before entry  with  UPLO = 'U' or 'u',  the  leading  k by k
 !>           upper triangular part of the array  A must contain the upper
@@ -3843,10 +3845,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -4138,14 +4140,14 @@ contains
 !  ===========
 !
 !       INTEGER FUNCTION IDAMAX(N,DX,INCX)
-! 
+!
 !       .. Scalar Arguments ..
 !       INTEGER INCX,N
 !       ..
 !       .. Array Arguments ..
 !       DOUBLE PRECISION DX(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -4158,10 +4160,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
@@ -4240,7 +4242,7 @@ contains
 !  ===========
 !
 !       SUBROUTINE DGER(M,N,ALPHA,X,INCX,Y,INCY,A,LDA)
-! 
+!
 !       .. Scalar Arguments ..
 !       DOUBLE PRECISION ALPHA
 !       INTEGER INCX,INCY,LDA,M,N
@@ -4248,7 +4250,7 @@ contains
 !       .. Array Arguments ..
 !       DOUBLE PRECISION A(LDA,*),X(*),Y(*)
 !       ..
-!  
+!
 !
 !> \par Purpose:
 !  =============
@@ -4335,10 +4337,10 @@ contains
 !  Authors:
 !  ========
 !
-!> \author Univ. of Tennessee 
-!> \author Univ. of California Berkeley 
-!> \author Univ. of Colorado Denver 
-!> \author NAG Ltd. 
+!> \author Univ. of Tennessee
+!> \author Univ. of California Berkeley
+!> \author Univ. of Colorado Denver
+!> \author NAG Ltd.
 !
 !> \date November 2011
 !
