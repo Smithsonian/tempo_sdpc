@@ -63,6 +63,9 @@ ELFOBJS_F = $(elfdir)/tio_module.o
 all:	autogen elf
 elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
+tags:
+	ctags $(patsubst %.o,%.c,$(OFILES)) $(patsubst %.o,%.f90,$(OFILES_F))
+
 autogen:	get_put_code.inc
 
 AUTOGEN_IN = get_array_int.in get_array_real.in put_array.in get_put_scalar.in
@@ -147,7 +150,8 @@ distclean: clean distclean-tempo-names
 
 NAME_FILE_BASENAMES = tempo_dims tempo_grps tempo_vars
 
-NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))
+NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES)) \
+           $(TIO_TEMPLATE_INCLUDE)in
 NAME_FILE_TARGETS = $(addsuffix .inc, $(addprefix _, $(NAME_FILE_BASENAMES))) \
            $(TIO_TEMPLATE_INCLUDE)
 tempo-names:	$(NAME_FILE_TARGETS)
