@@ -12,7 +12,7 @@ extern "C" {
 #define TIO_L1_FORMAT_VERSION  "0.1"
 
 #define TIO_CF_CONVENTION_VERSION   "CF-1.6"
-#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00 UTC"
+#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00Z"
 
 /* File dimension names */
 @CSV_DIMS@

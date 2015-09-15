@@ -32,10 +32,13 @@ struct _pDim_Table_Type
    _pDim_Type step;              /* mirror step position */
    _pDim_Type corner;            /* pixel corner indices */
    _pDim_Type cov;               /* unique elements of a 2x2 symmetric matrix */
+   _pDim_Type gyro_axis;         /* will use either 3 or 4 depending on Host */
+   _pDim_Type bias_axis;         /* 3 axes */
 
    _pDim_Type time_ephemeris;    /* ephemeris data point times */
    _pDim_Type time_maneuvers;    /* maneuver times */
    _pDim_Type time_gyroscope;    /* gyroscope sample times */
+   _pDim_Type time_bias;         /* gyroscope bias sample times */
    _pDim_Type time_sma;          /* SMA DIT (differential impedance transducer) sample times */
 };
 
@@ -296,7 +299,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type pixel_scale_column_attrs[] =
           {
-             {"units", "microradian"},
+             {"units", "microradians"},
              {"comment", "Nominal angular size of one spatial image pixel."},
              _pTEXT_ATTRS_END
           };
@@ -316,7 +319,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type mirror_step_size_attrs[] =
           {
-             {"units", "microradian"},
+             {"units", "microradians"},
              {"comment", "Nominal size of a mirror step from one scan position to the next."},
              _pTEXT_ATTRS_END
           };
@@ -809,6 +812,20 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
           return -1;
      }
 
+   /* Sun angle */
+     {
+        static _pText_Attr_Type sun_angle_attrs[] =
+          {
+             {"units", "radians"},
+             {"long_name", "Sun cone angle from boresight"},
+             {"comment", "Angle between the sun and the boresight of the instrument at the exposure start"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SUN_ANGLE, NC_DOUBLE, 1, dims, sun_angle_attrs, &varid))
+          return -1;
+     }
+
    if (grp_id != NULL)
      {
         *grp_id = grp;
@@ -1028,7 +1045,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 static int define_gyroscope_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp, varid;
+   int status, grp;
    int dims[TIO_MAX_VAR_DIMS];
 
    if (grp_name == NULL)
@@ -1045,7 +1062,11 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
      }
 
    /* group-local dimensions */
-   if (NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
+   if ((NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_GYRO, dim_table->time_gyroscope.len, &dim_table->time_gyroscope.id)))
+       ||(NC_NOERR != (status = nc_def_dim (grp, TEMPO_VAR_TIME_GYRO_BIAS, dim_table->time_bias.len, &dim_table->time_bias.id)))
+       ||(NC_NOERR != (status = nc_def_dim (grp, TEMPO_DIM_GYRO_AXIS, dim_table->gyro_axis.len, &dim_table->gyro_axis.id)))
+       ||(NC_NOERR != (status = nc_def_dim (grp, TEMPO_DIM_BIAS_AXIS, dim_table->bias_axis.len, &dim_table->bias_axis.id)))
+       )
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: defining dimension 'time' in group %s (%s)",
@@ -1053,55 +1074,55 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
-   /* time coordinate variable */
+   /* gyro time coordinate */
      {
-        static _pText_Attr_Type time_attrs[] =
+        static _pText_Attr_Type gyro_time_attrs[] =
           {
              {"units", "s"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, gyro_time_attrs, NULL))
           return -1;
      }
 
+   /* gyro output */
      {
-        static _pText_Attr_Type roll_attrs[] =
+        static _pText_Attr_Type output_attrs[] =
           {
-             {"units", "radians/s"},
-             {"comment", "Roll rate"},
+             {"units", "counts"},
+             {"comment", "Raw gyro output in telemetry counts"},
              _pTEXT_ATTRS_END
-          };
-        static _pText_Attr_Type pitch_attrs[] =
-          {
-             {"units", "radians/s"},
-             {"comment", "Pitch rate"},
-             _pTEXT_ATTRS_END
-          };
-        static _pText_Attr_Type yaw_attrs[] =
-          {
-             {"units", "radians/s"},
-             {"comment", "Yaw rate"},
-             _pTEXT_ATTRS_END
-          };
-        static _pFloat_Attr_Type gyro_attr[] =
-          {
-             {"bias", 0.0},
-             {"scale", 1.0},
-             _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_ROLL, NC_FLOAT, 1, dims, roll_attrs, &varid))
+        dims[1] = dim_table->gyro_axis.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_OUTPUT, NC_INT, 2, dims, output_attrs, NULL))
           return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
+     }
+
+   /* gyro bias time coordinate */
+     {
+        static _pText_Attr_Type bias_time_attrs[] =
+          {
+             {"units", "s"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->time_bias.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO_BIAS, NC_DOUBLE, 1, dims, bias_time_attrs, NULL))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_PITCH, NC_FLOAT, 1, dims, pitch_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
-          return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_YAW, NC_FLOAT, 1, dims, yaw_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, gyro_attr))
+     }
+
+   /* gyro bias */
+     {
+        static _pText_Attr_Type bias_attrs[] =
+          {
+             {"units", "microradian/s"},
+             {"comment", "Gyro bias estimate resolved along spacecraft body axes"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->time_bias.id;
+        dims[1] = dim_table->bias_axis.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_BIAS, NC_FLOAT, 2, dims, bias_attrs, NULL))
           return -1;
      }
 
@@ -1153,24 +1174,45 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
           return -1;
      }
 
-   /* dit */
+   /* dit processed */
      {
-        static _pText_Attr_Type dit_east_attrs[] =
+        static _pText_Attr_Type dit_scanx_attrs[] =
           {
-             {"units", "radians"},
-             {"comment", "Eastward angular coordinate of scan mirror pointing direction"},
+             {"units", "microradians"},
+             {"comment", "Filtered estimated control axis-x scan position"},
              _pTEXT_ATTRS_END
           };
-        static _pText_Attr_Type dit_north_attrs[] =
+        static _pText_Attr_Type dit_scany_attrs[] =
           {
-             {"units", "radians"},
-             {"comment", "Northward angular coordinate of scan mirror pointing direction"},
+             {"units", "microradians"},
+             {"comment", "Filtered estimated control axis-y scan position"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_EAST, NC_FLOAT, 1, dims, dit_east_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_SCANX, NC_FLOAT, 1, dims, dit_scanx_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_NORTH, NC_FLOAT, 1, dims, dit_north_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_SCANY, NC_FLOAT, 1, dims, dit_scany_attrs, &varid))
+          return -1;
+     }
+
+   /* dit raw */
+     {
+        static _pText_Attr_Type dit_rawx_attrs[] =
+          {
+             {"units", "counts"},
+             {"comment", "Filtered raw DIT readout for sensor axis-x DIT pair"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type dit_rawy_attrs[] =
+          {
+             {"units", "counts"},
+             {"comment", "Filtered raw DIT readout for sensor axis-y DIT pair"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->time_sma.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_RAWX, NC_FLOAT, 1, dims, dit_rawx_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_RAWY, NC_FLOAT, 1, dims, dit_rawy_attrs, &varid))
           return -1;
      }
 
@@ -1258,9 +1300,12 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
    dim_table.step.len = num_steps;
    dim_table.corner.len = 4;
    dim_table.cov.len = 3;
+   dim_table.gyro_axis.len = 4;
+   dim_table.bias_axis.len = 3;
    dim_table.time_ephemeris.len = NC_UNLIMITED;
    dim_table.time_maneuvers.len = NC_UNLIMITED;
    dim_table.time_gyroscope.len = NC_UNLIMITED;
+   dim_table.time_bias.len = NC_UNLIMITED;
    dim_table.time_sma.len = NC_UNLIMITED;
 
    if ((-1 == define_global_attrs (ncid))
