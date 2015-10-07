@@ -361,7 +361,7 @@ private define get_file_deps (file)
 	       }
 	     if (s.module_name != NULL)
 	       {
-		  () = fprintf (stderr, "***WARNING: %s: multiple modules in a single file are not supported\n");
+		  () = fprintf (stderr, "***WARNING: %s: multiple modules in a single file are not supported\n", file);
 		  in_module = -1;
 		  continue;
 	       }
