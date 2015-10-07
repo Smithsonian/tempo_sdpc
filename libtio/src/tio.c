@@ -13,10 +13,14 @@
 #include "netcdf.h"
 #include "tell.h"
 #include "tio.h"
+#include "tio_template.h"
 #include "_tio.h"
 
 #define EMPTY()
 #define _pTIO_STR(s) #s
+
+#define TIO_MALLOC malloc
+#define TIO_FREE free
 
 int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
                                      _pDim_Table_Type *dim_table)
@@ -272,11 +276,286 @@ static int put_wavelengths (int grp, int *start, int *count, int type,
 }
 #endif
 
+/* floats in the range [10^xp_min, 10^xp_max] are mapped to a signed short int
+ * [-32767,+32767], with -32768 reserved to indicate missing data.
+ */
+#define SHORT_MIN_VALID (-32767)
+#define SHORT_MISSING   (-32768)
+static int cvt_short_log10_to_float (int num, short *iu, float *u,
+                                     float xp_min, float xp_max,
+                                     float u_missing)
+{
+   float p = 0.5 * (xp_max - xp_min);
+   int i;
+
+   for (i = 0; i < num; i++)
+     {
+        if (iu[i] != SHORT_MISSING)
+          {
+             u[i] = pow(10.0, xp_max + p * (iu[i] / ((float)SHORT_MIN_VALID) - 1.0));
+          }
+        else u[i] = u_missing;
+     }
+
+   return 0;
+}
+
+static int cvt_float_to_short_log10 (int num, short *iu, float *u,
+                                     float xp_min, float xp_max,
+                                     float u_missing)
+{
+   float p = 0.5 * (xp_max - xp_min);
+   int missing_is_nan = isnan(u_missing);
+   int i;
+
+   for (i = 0; i < num; i++)
+     {
+        int missing = (u[i] == u_missing) || (missing_is_nan && isnan(u[i]));
+        if (missing == 0)
+          {
+             short s = SHORT_MIN_VALID * (1.0 - (xp_max - log10 (u[i])) / p);
+             iu[i] = (s == SHORT_MISSING) ? s+1 : s;
+          }
+        else iu[i] = SHORT_MISSING;
+     }
+
+   return 0;
+}
+
+static int cvt_float_to_type (int num, const float *f, int type, void *v)
+{
+   double *dbl = (double *)v;
+   int i;
+
+   if (type != NC_DOUBLE)
+     {
+        Tell_verror (TELL_USAGE_ERROR,
+                     "%s: Conversion from float to type=%d is not supported",
+                     __func__, type);
+        return -1;
+     }
+
+   for (i = 0; i < num; i++)
+     {
+        dbl[i] = (double) f[i];
+     }
+
+   return 0;
+}
+
+static int cvt_type_to_float (int num, float *f, int type, const void *v)
+{
+   double *dbl = (double *)v;
+   int i;
+
+   if (type != NC_DOUBLE)
+     {
+        Tell_verror (TELL_USAGE_ERROR,
+                     "%s: Conversion from type=%d to float is not supported",
+                     __func__, type);
+        return -1;
+     }
+
+   for (i = 0; i < num; i++)
+     {
+        f[i] = (float) dbl[i];
+     }
+
+   return 0;
+}
+
+static int get_relerr_params (int grp, int varid,
+                              float *xp_min, float *xp_max, float *u_missing)
+{
+   int status;
+
+   if (   (NC_NOERR != (status = nc_get_att_float (grp, varid, RELERR_MIN_LOG10, xp_min)))
+       || (NC_NOERR != (status = nc_get_att_float (grp, varid, RELERR_MAX_LOG10, xp_max)))
+       || (NC_NOERR != (status = nc_get_att_float (grp, varid, RELERR_MISSING, u_missing))))
+     {
+        Tell_verror (TELL_IO_READ_ERROR,
+                     "%s: reading attributes %s, %s, %s in group %d (%s)",
+                     __func__,
+                     RELERR_MIN_LOG10, RELERR_MAX_LOG10, RELERR_MISSING,
+                     grp, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int get_relerr (int grp, const int *istart, const int *icount, int type,
+                       void *data, const char *name)
+{
+   TIO_Var_Info_Type info;
+   size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
+   short *short_relerr = NULL;
+   float *float_relerr = NULL;
+   float xp_min, xp_max, u_missing;
+   int status, i, num;
+   int malloced_temp_float = 0;
+   int return_status = -1;
+
+   if (-1 == TIO_inq_var (grp, name, &info))
+     return -1;
+
+   /* read attributes containing xp_min, xp_max, u_missing */
+   if (-1 == get_relerr_params (grp, info.varid, &xp_min, &xp_max, &u_missing))
+     return -1;
+
+   /* read the relative error packed into a short int representation */
+   num = icount[0];
+   for (i = 1; i < info.ndims; i++)
+     num *= icount[i];
+   for (i = 0; i < info.ndims; i++)
+     {
+        start[i] = istart[i];
+        count[i] = icount[i];
+     }
+
+   if (NULL == (short_relerr = (short *) TIO_MALLOC (num * sizeof(*short_relerr))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_get_vara_short (grp, info.varid, start, count, short_relerr)))
+     {
+        Tell_verror (TELL_IO_READ_ERROR,
+                     "%s: accessing variable %s in group %d (%s)",
+                     __func__, name, grp, nc_strerror(status));
+        goto free_and_return;
+     }
+
+   /* unpack the short int representation into a float */
+   if (type == NC_FLOAT)
+     float_relerr = (float *)data;
+   else
+     {
+        if (NULL == (float_relerr = (float *) TIO_MALLOC (num * sizeof(*float_relerr))))
+          {
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto free_and_return;
+          }
+        malloced_temp_float = 1;
+     }
+
+   if (-1 == cvt_short_log10_to_float (num, short_relerr, float_relerr,
+                                       xp_min, xp_max, u_missing))
+     goto free_and_return;
+
+   TIO_FREE(short_relerr);
+   short_relerr = NULL;
+
+   if (type != NC_FLOAT)
+     {
+        /*  (optionally) convert the float to 'type' */
+        if (-1 == cvt_float_to_type (num, float_relerr, type, data))
+          goto free_and_return;
+     }
+
+   return_status = 0;
+free_and_return:
+   TIO_FREE (short_relerr);
+   if (malloced_temp_float) TIO_FREE (float_relerr);
+   return return_status;
+}
+static int put_relerr (int grp, const int *istart, const int *icount, int type,
+                       const void *data, const char *name)
+{
+   TIO_Var_Info_Type info;
+   size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
+   short *short_relerr = NULL;
+   float *float_relerr = NULL;
+   float xp_min, xp_max, u_missing;
+   int status, i, num;
+   int malloced_temp_float = 0;
+   int return_status = -1;
+
+   if (-1 == TIO_inq_var (grp, name, &info))
+     return -1;
+
+   /* read attributes containing xp_min, xp_max, u_missing */
+   if (-1 == get_relerr_params (grp, info.varid, &xp_min, &xp_max, &u_missing))
+     return -1;
+
+   num = icount[0];
+   for (i = 1; i < info.ndims; i++)
+     num *= icount[i];
+   for (i = 0; i < info.ndims; i++)
+     {
+        start[i] = istart[i];
+        count[i] = icount[i];
+     }
+
+   if (type == NC_FLOAT)
+     float_relerr = (float *) data;
+   else
+     {
+        /* (optionally) convert 'type' to float */
+        if (NULL == (float_relerr = (float *) TIO_MALLOC (num * sizeof(*float_relerr))))
+          {
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto free_and_return;
+          }
+        malloced_temp_float = 1;
+        if (-1 == cvt_type_to_float (num, float_relerr, type, data))
+          goto free_and_return;
+     }
+
+   /* pack the float relative error into a short int representation */
+   if (NULL == (short_relerr = (short *) TIO_MALLOC (num * sizeof(*short_relerr))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+   if (-1 == cvt_float_to_short_log10 (num, short_relerr, float_relerr,
+                                       xp_min, xp_max, u_missing))
+     goto free_and_return;
+
+   /* write the short int representation. */
+   if (NC_NOERR != (status = nc_put_vara_short (grp, info.varid, start, count, short_relerr)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: accessing variable %s in group %d (%s)",
+                     __func__, name, grp, nc_strerror(status));
+        goto free_and_return;
+     }
+
+   return_status = 0;
+free_and_return:
+   TIO_FREE(short_relerr);
+   if (malloced_temp_float) TIO_FREE(float_relerr);
+   return return_status;
+}
+
+static int get_irr_relerr (int grp, const int *start, const int *count,
+                           int type, void *data)
+{
+   return get_relerr (grp, start, count, type, data, TEMPO_VAR_IRRADIANCE_ERROR);
+}
+static int put_irr_relerr (int grp, const int *start, const int *count,
+                           int type, const void *data)
+{
+   return put_relerr (grp, start, count, type, data, TEMPO_VAR_IRRADIANCE_ERROR);
+}
+
+static int get_rad_relerr (int grp, const int *start, const int *count,
+                           int type, void *data)
+{
+   return get_relerr (grp, start, count, type, data, TEMPO_VAR_RADIANCE_ERROR);
+}
+static int put_rad_relerr (int grp, const int *start, const int *count,
+                           int type, const void *data)
+{
+   return put_relerr (grp, start, count, type, data, TEMPO_VAR_RADIANCE_ERROR);
+}
+
 typedef struct
 {
    char *name;
-   int (*get)(int, int *, int *, int,       void *);
-   int (*put)(int, int *, int *, int, const void *);
+   int (*get)(int, const int *, const int *, int,       void *);
+   int (*put)(int, const int *, const int *, int, const void *);
 }
 IO_Methods_Type;
 #define IO_METHODS_END {NULL,NULL,NULL}
@@ -304,6 +583,8 @@ static IO_Methods_Type IO_Methods[] =
 #ifdef TEST_WAVELENGTH_METHODS
    {"wavelength", get_wavelengths, put_wavelengths},
 #endif
+   {TEMPO_VAR_RADIANCE_ERROR, get_rad_relerr, put_rad_relerr},
+   {TEMPO_VAR_IRRADIANCE_ERROR, get_irr_relerr, put_irr_relerr},
    IO_METHODS_END
 };
 

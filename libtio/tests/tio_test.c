@@ -3,6 +3,7 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <float.h>
 
 #include "netcdf.h"
 #include "tio.h"
@@ -27,18 +28,49 @@ static float *generate_data (int n)
    return y;
 }
 
+static float *generate_relerr (int n, float xp_min, float xp_max,
+                               float u_missing)
+{
+   int i;
+   float *y;
+
+   if (NULL == (y = (float *) malloc (n * sizeof(*y))))
+     {
+        fprintf (stderr, "*** malloc failed\n");
+        return NULL;
+     }
+
+   for (i = 0; i < n; i++)
+     {
+        float xp = xp_min + i * (xp_max - xp_min) / (n-1.0);
+        y[i] = pow (10.0, xp);
+     }
+   y[n/2] = u_missing;
+
+   return y;
+}
+
 static int compare_data (int n, float *out, float *in)
 {
    int i;
 
    for (i = 0; i < n; i++)
      {
-        if (in[i] != out[i])
-          {
-             fprintf (stderr, "*** error:  data[%d] %15.10e != %15.10e\n",
-                      i, in[i], out[i]);
-             return -1;
-          }
+        if (isnan(out[i]) && (0 == isnan(in[i])))
+          break;
+
+        if (out[i] == 0.0 && abs(in[i]) > FLT_EPSILON)
+          break;
+
+        if (abs(in[i] - out[i]) > FLT_EPSILON * fabs(in[i]))
+          break;
+     }
+
+   if (i < n)
+     {
+        fprintf (stderr, "*** error:  data[%d] in=%15.10e != out=%15.10e\n",
+                 i, in[i], out[i]);
+        return -1;
      }
 
    return 0;
@@ -92,7 +124,8 @@ static int test_def_grp (int ncid)
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
    int ncid, varid, status, grp, err=-1;
-   char field_name[] = TEMPO_VAR_RADIANCE;
+   char data_name[] = TEMPO_VAR_RADIANCE;
+   char relerr_name[] = TEMPO_VAR_RADIANCE_ERROR;
    char attr_name[] = "foo";
    int field_type = TIO_FLOAT;
    int attr_type_in, attr_type = TIO_INT64, attr_type_conversion = TIO_UINT;
@@ -101,8 +134,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    long long attr_in;
    unsigned int attr_in_conversion;
    char *grp_name;
-   float *data = NULL;
-   float *data_in = NULL;
+   float *data = NULL, *relerr = NULL;
+   float *data_in = NULL, *relerr_in = NULL;
+   double *dbl_relerr=NULL;
    int data_size = ntracks * nxtrack * ny;
    int start[3], count[3];
    int processing_level;
@@ -126,12 +160,30 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    start[0] = 0;       start[1] = 0;       start[2] = 0;
    count[0] = ntracks; count[1] = nxtrack; count[2] = ny;
 
-   if (NULL == (data = generate_data (2 * data_size)))
+   if ((NULL == (data = generate_data (data_size)))
+       || (NULL == (relerr = generate_relerr (data_size, -4.0, 2.0, -TIO_FILL_FLOAT))))
      {
         fprintf (stderr, "*** error generating data\n");
         return -1;
      }
-   data_in = data + data_size;
+
+   if (NULL == (data_in = (float *) malloc (2 * data_size * sizeof(float))))
+     {
+        fprintf (stderr, "*** malloc failed\n");
+        goto cleanup;
+     }
+   memset ((char *)data_in, 0, 2 * data_size * sizeof(float));
+   relerr_in = data_in + data_size;
+
+   if (NULL == (dbl_relerr = (double *) malloc (data_size * sizeof(double))))
+     {
+        fprintf (stderr, "*** malloc failed\n");
+        goto cleanup;
+     }
+   for (i = 0; i < data_size; i++)
+     {
+        dbl_relerr[i] = (double) relerr[i];
+     }
 
    if (NC_NOERR != (status = nc_create (file, NC_NETCDF4, &ncid)))
      {
@@ -158,18 +210,32 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   if (-1 == TIO_put_var_section (grp, field_name, start, count, field_type, data))
+   if (-1 == TIO_put_var_section (grp, data_name, start, count, field_type, data))
      {
-        fprintf (stderr, "*** failed writing field %s in file %s\n",
-                 field_name, file);
+        fprintf (stderr, "*** failed writing %s in file %s\n",
+                 data_name, file);
+        goto cleanup;
+     }
+   /* write as a float */
+   if (-1 == TIO_put_var_section (grp, relerr_name, start, count, field_type, relerr))
+     {
+        fprintf (stderr, "*** failed writing %s in file %s\n",
+                 relerr_name, file);
+        goto cleanup;
+     }
+   /* write again as a double, just to exercise the type conversion code */
+   if (-1 == TIO_put_var_section (grp, relerr_name, start, count, TIO_DOUBLE, dbl_relerr))
+     {
+        fprintf (stderr, "*** failed writing %s in file %s\n",
+                 relerr_name, file);
         goto cleanup;
      }
 
    /* test writing to attributes */
-   if (NC_NOERR != (status = nc_inq_varid (grp, field_name, &varid)))
+   if (NC_NOERR != (status = nc_inq_varid (grp, data_name, &varid)))
      {
         fprintf (stderr, "*** error finding variable %s in file %s (%s)\n",
-                 field_name, file, nc_strerror(status));
+                 data_name, file, nc_strerror(status));
         goto cleanup;
      }
 
@@ -272,14 +338,30 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test variable input */
-   if (-1 == TIO_get_var_section (grp, field_name, start, count, field_type, data_in))
+   if (-1 == TIO_get_var_section (grp, data_name, start, count, field_type, data_in))
      {
         fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
-                 field_name, file, nc_strerror(status));
+                 data_name, file, nc_strerror(status));
         goto cleanup;
      }
    if (compare_data (data_size, data, data_in))
      goto cleanup;
+
+   if (-1 == TIO_get_var_section (grp, relerr_name, start, count, field_type, relerr_in))
+     {
+        fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
+                 relerr_name, file, nc_strerror(status));
+        goto cleanup;
+     }
+   if (compare_data (data_size, relerr, relerr_in))
+     goto cleanup;
+   /* read as a double just to exercise the conversion code */
+   if (-1 == TIO_get_var_section (grp, relerr_name, start, count, TIO_DOUBLE, dbl_relerr))
+     {
+        fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
+                 relerr_name, file, nc_strerror(status));
+        goto cleanup;
+     }
 
    if (NC_NOERR != (status = nc_close (ncid)))
      {
@@ -290,6 +372,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    err = 0;
 cleanup:
    free(data);
+   free(data_in);
+   free(relerr);
+   free(dbl_relerr);
 
    if (err) fprintf (stderr, "*** TEST FAILED (test_l1_radiance)\n");
    return err;
