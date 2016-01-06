@@ -169,6 +169,7 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
    void *pfill_value;
    char fill_char = TIO_FILL_CHAR;
    short fill_short = TIO_FILL_SHORT;
+   unsigned short fill_ushort = TIO_FILL_USHORT;
    int fill_int = TIO_FILL_INT;
    unsigned int fill_uint = (unsigned int) -1;
    float fill_float = TIO_FILL_FLOAT;
@@ -179,6 +180,8 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
       case NC_CHAR: pfill_value = &fill_char;
         break;
       case NC_SHORT: pfill_value = &fill_short;
+        break;
+      case NC_USHORT: pfill_value = &fill_ushort;
         break;
       case NC_INT: pfill_value = &fill_int;
         break;
