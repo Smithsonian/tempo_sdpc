@@ -698,6 +698,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type inrqf_attrs[] =
           {
              {"comment", "INR quality flag"},
+             {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -725,19 +726,35 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
      }
 
-   /* data quality flag */
+   /* pixel quality flag */
      {
-        static _pText_Attr_Type dqf_attrs[] =
+        static _pText_Attr_Type pqf_attrs[] =
           {
-             {"comment", "Data quality flag"},
+             {"comment", "Pixel quality flag"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_DQF, NC_SHORT, 3, dims, dqf_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_SHORT, 3, dims, pqf_attrs, &varid))
           return -1;
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_SHORT))
+          return -1;
+     }
+
+   /* ground pixel quality flag */
+     {
+        static _pText_Attr_Type gpqf_attrs[] =
+          {
+             {"comment", "Ground pixel quality flag"},
+             {"coordinates", "longitude latitude"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_USHORT, 2, dims, gpqf_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_USHORT))
           return -1;
      }
 
