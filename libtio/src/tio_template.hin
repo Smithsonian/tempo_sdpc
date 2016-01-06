@@ -12,7 +12,35 @@ extern "C" {
 #define TIO_L1_FORMAT_VERSION  "0.1"
 
 #define TIO_CF_CONVENTION_VERSION   "CF-1.6"
-#define TIO_TIME_REFERENCE_STRING   "1970-01-01T00:00:00Z"
+
+#define TIO_TIME_REFERENCE_STRING   "2000-01-01T12:00:00Z"
+
+/* To simplify anomaly resolution, choose the TEMPO epoch to be the
+   same as the instrument on-board time epoch.  The CDS time code that
+   appears in the secondary header of the CCSDS packets is referenced
+   to the OBT epoch. Requirement GIF-297 in Ball document 2419038,
+   "Remote Electronics Subsystem (RES) Specification for the
+   Instrument Space Products Geostationary UV-VIS Dispersive Imaging
+   Spectrometers", states that "The on-board time (OBT) epoch shall be
+   12:00, January 1, 2000 UTC.".
+
+   Note that the CDS time code epoch is offset from the J2000.0
+   standard epoch by 64.184 seconds.
+
+   Following USNO Circular No. 179, 2005 Oct 20, page 9, the
+   J2000.0 standard epoch is defined as follows:
+   1) J2000.0 is 2000 January 1, 12h TT (JD 2451545.0 TT) at the
+      geocenter, where TT = Terrestrial Time.
+   2) TT = TAI + 32.184 sec, where TAI = International Atomic Time.
+   3) Between 1999-2005, TAI = UTC + 32 sec, where
+       UTC = Coordinated Universal Time.
+   Therefore, on Jan 1, 2000, the UTC of the epoch is:
+    UTC = TAI - 32
+        = (TT - 32.184) - 32
+        = 12:00:00 - 64.184
+        = 11:59:00 -  4.184
+        = 11:58:55.816
+*/
 
 /* File dimension names */
 @CSV_DIMS@
