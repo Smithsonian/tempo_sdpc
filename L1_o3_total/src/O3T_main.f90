@@ -1,4 +1,4 @@
-!!****************************************************************************
+!****************************************************************************
 !!F90
 !
 !!Description:
@@ -224,6 +224,7 @@ PROGRAM O3T_mainNVAdj
         call tell_error (tell_runtime_error, "reading irradiance file name", errstat)
         stop 1
       endif
+      USED_L1BIRR_LUN = L1B_IRR_FILE_LUN ! For back-compatibility
     else
       status = L1B_getNames( L1B_IRR_FILE_LUN, numfiles, L1B_filenames, &
                             L1B_swathlist )
@@ -1300,7 +1301,7 @@ PROGRAM O3T_mainNVAdj
 
     !! Read the input file names from the PCF file and
     !! use these files as the input pointer for the L2 output
-    if (use_he5_out) then
+    if (use_he5_out .and. .not. use_tio_in) then
       IF (cloud_pressure_source == cldpres_climatology) THEN
         LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
                                  O3_CLIM_LUN,     TM_CLIM_LUN,      &
@@ -1344,7 +1345,7 @@ PROGRAM O3T_mainNVAdj
         status = OMI_readHE4swAttr( L1B_UV_FILE_LUN )
         status = OMI_cpwtHE5glAttr( OMTO3_L2_LUN    )
       ENDIF
-    endif ! end if (use_he5_out)
+    endif ! end if (use_he5_out...)
 
     !! write the final message
     ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, &
