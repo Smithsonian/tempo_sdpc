@@ -572,7 +572,7 @@ subroutine check_create (filename, values, max_dims, dimlens, &
   character (len=2), dimension(max_dims) :: anames
 
   integer, parameter :: max_types = 10
-  character (len=2), dimension(*), parameter :: type_prefixes = &
+  character (len=2), dimension(max_types), parameter :: type_prefixes = &
     ["sb","ss","si","sj", &  !   signed byte, short, int, int64
      "ub","us","ui","uj", &  ! unsigned byte, short, int, int64
      "rf","rd"]              ! float, double
