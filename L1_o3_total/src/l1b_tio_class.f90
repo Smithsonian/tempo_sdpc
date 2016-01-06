@@ -333,7 +333,7 @@ contains
                         rg % wavelength(1:nw,1:nx,1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_radiance, [iline,0,0], [num_read,nx,nw], &
                         rg % radiance(1:nw,1:nx,1:num_read), errstat)
-    call tiof_get3d_ui2 (this % ft, o3t_var_dqf, [iline,0,0], [num_read,nx,nw], &
+    call tiof_get3d_ui2 (this % ft, o3t_var_pqf, [iline,0,0], [num_read,nx,nw], &
                         rg % qa_flags(1:nw,1:nx,1:num_read), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, &

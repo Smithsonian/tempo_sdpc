@@ -719,7 +719,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_cld)
     call tiof_varlist_append (varlist, errstat, &
-                              cld_var_pqf, &
+                              cld_var_proc_qf, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "processing quality flags", &
@@ -873,7 +873,7 @@ contains
 
     !QA_statistics group
     call tiof_push_group (obj, cld_grp_qa_stats, errstat)
-    call tiof_put2d_i2 (obj, cld_var_pqf, [0,0], &
+    call tiof_put2d_i2 (obj, cld_var_proc_qf, [0,0], &
          [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
 
     call tiof_put2d_r4 (obj, cld_var_resid_bias, [0,0], &

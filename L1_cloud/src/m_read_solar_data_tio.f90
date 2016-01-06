@@ -215,7 +215,7 @@ contains
          [1,nXtrack,nWavel], tio_rad, errstat)
     call tiof_get3d_r4 (tio_irrl1obj, cld_var_wavelength, [0,0,0], &
          [1,nXtrack, nWavel], tio_wvl, errstat)
-    call tiof_get3d_i2 (tio_irrl1obj, cld_var_pixelqf, [0,0,0], &
+    call tiof_get3d_i2 (tio_irrl1obj, cld_var_pqf, [0,0,0], &
          [1,nXtrack, nWavel], tio_flg, errstat)
     call tiof_close (tio_irrl1obj, errstat)
 

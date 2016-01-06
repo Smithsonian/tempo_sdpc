@@ -1,9 +1,8 @@
 #
 # level 1 variables
 #
-O3T_VAR_DQF,"data_quality_flag"
 O3T_VAR_PQF,"pixel_quality_flag"
-O3T_VAR_GEOFLG,"GroundPixelQualityFlags"
+O3T_VAR_GEOFLG,"ground_pixel_quality_flag"
 O3T_VAR_ANOMFLG,"XTrackQualityFlags"
 O3T_VAR_EARTH_SUN_DISTANCE,"earth_sun_distance"
 O3T_VAR_IRRADIANCE,"irradiance"

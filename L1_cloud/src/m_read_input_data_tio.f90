@@ -350,7 +350,7 @@ contains
          [1,nXtrack], tio_vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [iLine-1,0], &
          [1,nXtrack], tio_terr_height, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [iLine-1,0], &
+    call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [iLine-1,0], &
          [1,nXtrack], tio_geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iLine-1,0], &
          [1,nXtrack], tio_anomflg, errstat)
@@ -452,7 +452,7 @@ contains
          [nLines,nXtrack], vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [0,0], &
          [nLines,nXtrack], terr_height, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [0,0], &
+    call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [0,0], &
          [nLines,nXtrack], geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
          [nLines,nXtrack], anomflg, errstat)
@@ -518,7 +518,7 @@ contains
          [1,nXtrack,nWavel], tio_rad, errstat)
     call tiof_get3d_r4 (tio_l1obj, cld_var_wavelength, [iLine-1,0,0], &
          [1,nXtrack,nWavel], tio_wvl, errstat)
-    call tiof_get3d_i2 (tio_l1obj, cld_var_dqf, [iLine-1,0,0], &
+    call tiof_get3d_i2 (tio_l1obj, cld_var_pqf, [iLine-1,0,0], &
          [1,nXtrack,nWavel], tio_flg, errstat)
     call tiof_close (tio_l1obj, errstat)
 

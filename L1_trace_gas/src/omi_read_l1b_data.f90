@@ -247,13 +247,13 @@ CONTAINS
                         omi_vazimuth(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", [iline,0], [nloop,nxtrack], &
                         omi_height(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [iline,0], [nloop,nxtrack], &
+    call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
                         omi_geoflg(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], [nloop,nxtrack], &
                         omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
     call tiof_get3d_r4 (tio_l1obj, tg_var_radiance, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_spc(:,1:nxtrack,0:nloop-1), errstat)
-    call tiof_get3d_i2 (tio_l1obj, tg_var_dqf, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
+    call tiof_get3d_i2 (tio_l1obj, tg_var_pqf, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_flg(:,1:nxtrack,0:nloop-1), errstat)
     call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
@@ -397,7 +397,7 @@ CONTAINS
     !call l1bread_close (l1bobj)
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
-    call tiof_get2d_i2 (tio_l1obj, "GroundPixelQualityFlags", [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
+    call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat < 0) return
 
