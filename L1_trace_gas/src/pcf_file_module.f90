@@ -2,7 +2,7 @@ MODULE pcf_file_module
 
   use tell_module
   implicit none
-  character (LEN=:), parameter :: modulename = 'read_pcf_file'
+  character (LEN=*), parameter :: modulename = 'read_pcf_file'
   private modulename
 
 CONTAINS
