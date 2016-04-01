@@ -423,6 +423,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         {_FillValue, TIO_FILL_FLOAT},
         _pFLOAT_ATTRS_END
      };
+   static _pFloat_Attr_Type terr_hgt_float_attrs[] =
+     {
+        {"valid_min", -1.0e2},
+        {"valid_max", +1.0e4},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
    int shuffle, deflate=1, deflate_level=1;
@@ -706,17 +713,36 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type ell_alt_attrs[] =
           {
              {"units", "m"},
-             {"long_name", "ellipsoid_altitude"},
+             {"long_name", TEMPO_VAR_ELL_ALTITUDE},
              {"comment", "Ellipsoid altitude at pixel center"},
-             {"bounds", "ellipsoid_altitude_bounds"},
+             {"bounds", TEMPO_VAR_ELL_ALTITUDE_BOUNDS},
              {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "ellipsoid_altitude", NC_FLOAT, 2, dims, ell_alt_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_ELL_ALTITUDE, NC_FLOAT, 2, dims, ell_alt_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, ell_alt_float_attrs))
+          return -1;
+     }
+
+   /* terrain height */
+     {
+        static _pText_Attr_Type terr_hgt_attrs[] =
+          {
+             {"units", "m"},
+             {"long_name", TEMPO_VAR_TERR_HEIGHT},
+             {"comment", "Terrain height at pixel center"},
+             {"bounds", TEMPO_VAR_TERR_HEIGHT_BOUNDS},
+             {"coordinates", "longitude latitude"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT, NC_FLOAT, 2, dims, terr_hgt_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, terr_hgt_float_attrs))
           return -1;
      }
 
@@ -768,9 +794,27 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->corner.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "ellipsoid_altitude_bounds", NC_FLOAT, 3, dims, ell_alt_bnds_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_ELL_ALTITUDE_BOUNDS, NC_FLOAT, 3, dims, ell_alt_bnds_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, ell_alt_float_attrs))
+          return -1;
+     }
+
+   /* terrain height bounds */
+     {
+        static _pText_Attr_Type terr_hgt_bnds_attrs[] =
+          {
+             {"units", "m"},
+             {"long_name", "terrain height at bounds (NE,NW,SW,SE)"},
+             {"comment", "Terrain height at pixel corners"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        dims[2] = dim_table->corner.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_FLOAT, 3, dims, terr_hgt_bnds_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, terr_hgt_float_attrs))
           return -1;
      }
 
@@ -779,7 +823,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type sza_text_attrs[] =
           {
              {"units", "degrees"},
-             {"long_name", "solar zenith angle"},
+             {"long_name", TEMPO_VAR_SZ_ANGLE},
              {"comment", "solar zenith angle at pixel center"},
              _pTEXT_ATTRS_END
           };
@@ -803,7 +847,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type saa_text_attrs[] =
           {
              {"units", "degrees"},
-             {"long_name", "solar azimuth angle"},
+             {"long_name", TEMPO_VAR_SA_ANGLE},
              {"comment", "solar azimuth angle at pixel center"},
              _pTEXT_ATTRS_END
           };
@@ -827,8 +871,9 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type vza_text_attrs[] =
           {
              {"units", "degrees"},
-             {"long_name", "viewing zenith angle"},
+             {"long_name", TEMPO_VAR_VZ_ANGLE},
              {"comment", "viewing zenith angle at pixel center"},
+             {"bounds", TEMPO_VAR_VZ_ANGLE_BOUNDS},
              _pTEXT_ATTRS_END
           };
         static _pFloat_Attr_Type vza_float_attrs[] =
@@ -846,13 +891,39 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
      }
 
+   /* viewing zenith angle bounds */
+     {
+        static _pText_Attr_Type vza_bnds_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "viewing zenith angle at bounds (NE,NW,SW,SE)"},
+             {"comment", "viewing zenith angle at pixel corners"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type vza_bnds_float_attrs[] =
+          {
+             {"valid_min",   0.0},
+             {"valid_max", +90.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        dims[2] = dim_table->corner.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VZ_ANGLE_BOUNDS, NC_FLOAT, 3, dims, vza_bnds_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, vza_bnds_float_attrs))
+          return -1;
+     }
+
    /* viewing azimuth angle */
      {
         static _pText_Attr_Type vaa_text_attrs[] =
           {
              {"units", "degrees"},
-             {"long_name", "viewing azimuth angle"},
+             {"long_name", TEMPO_VAR_VA_ANGLE},
              {"comment", "viewing azimuth angle at pixel center"},
+             {"bounds", TEMPO_VAR_VA_ANGLE_BOUNDS},
              _pTEXT_ATTRS_END
           };
         static _pFloat_Attr_Type vaa_float_attrs[] =
@@ -867,6 +938,31 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_float_attrs))
+          return -1;
+     }
+
+   /* viewing azimuth angle bounds */
+     {
+        static _pText_Attr_Type vaa_bnds_text_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "viewing azimuth angle at bounds (NE,NW,SW,SE)"},
+             {"comment", "viewing azimuth angle at pixel corners"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type vaa_bnds_float_attrs[] =
+          {
+             {"valid_min", -180.0},
+             {"valid_max", +180.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        dims[1] = dim_table->xtrack.id;
+        dims[2] = dim_table->corner.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VA_ANGLE_BOUNDS, NC_FLOAT, 3, dims, vaa_bnds_text_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_bnds_float_attrs))
           return -1;
      }
 
