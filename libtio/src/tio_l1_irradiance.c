@@ -259,7 +259,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type irradiance_attrs[] =
           {
-             {"units", "TBD"},
+             {"units", "W/m^2/nm/sr"},
              {"ancillary_variables", TEMPO_VAR_IRRADIANCE_ERROR},
              _pTEXT_ATTRS_END
           };

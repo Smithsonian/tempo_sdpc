@@ -19,7 +19,7 @@
 #define DO_CHUNKING        1
 
 #define COMMENT_WGS84 \
- "Earth-centered WGS84 Cartesian coordinates (z = North Pole, xy=equator, x = prime meridian)"
+ "Earth-centered WGS84 Cartesian coordinates (z=North Pole, y=equator, x=prime meridian)"
 #define COORDINATE_AT_EXPOSURE_START "coordinate at exposure start"
 
 #define RADIANCE_RELERR_LOG10_MIN  (-4.0)
@@ -534,7 +534,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type radiance_attrs[] =
           {
-             {"units", "TBD"},
+             {"units", "W/m^2/nm/sr"},
              {"coordinates", "longitude latitude spectral_channel"},
              {"ancillary_variables", TEMPO_VAR_RADIANCE_ERROR},
              _pTEXT_ATTRS_END
