@@ -26,6 +26,17 @@ extern "C" {
 #define RELERR_MAX_LOG10  "max_log10"
 #define RELERR_MISSING    "missing"
 
+#define TIO_MALLOC malloc
+#define TIO_FREE free
+
+typedef struct _pName_Int_Pair_Type _pName_Int_Pair_Type;
+struct _pName_Int_Pair_Type
+{
+   int value;
+   char name[TIO_MAX_NAME_LEN];
+};
+#define _pNAME_INT_LIST_END  {0,""}
+
 typedef struct
 {
    char *name;
@@ -37,10 +48,13 @@ _pText_Attr_Type;
 typedef struct
 {
    char *name;
-   int value;
+   int num_values;
+#define MAX_NUM_INT_ATTRS  8
+   int value[MAX_NUM_INT_ATTRS];
 }
 _pInt_Attr_Type;
-#define _pINT_ATTRS_END  {NULL,0}
+#define _pINT_ATTRS_END   {NULL,0, {0,0,0,0,0,0,0,0}}
+#define MAKE_INT_ATTR1(n,v0) {n, 1, {v0,0,0,0,0, 0,0,0}}
 
 typedef struct
 {
@@ -103,6 +117,11 @@ extern int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype);
 
 extern int _pTIO_define_processing_level (int grp, int level);
 
+extern int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
+                                      int *pnum_values,
+                                      char **pnames, int **pvalues);
+extern int _pEmit_Var_Pixel_Quality_Flag (int grp,
+                                          _pDim_Table_Type *dim_table);
 #if 0
 {
 #endif

@@ -157,8 +157,8 @@ static int define_global_attrs (int grp)
      };
    static _pInt_Attr_Type int_attrs[] =
      {
-        {"processing_version", 0},
-        {"granule_seq_num", 0},
+        MAKE_INT_ATTR1("processing_version", 0),
+        MAKE_INT_ATTR1("granule_seq_num", 0),
         _pINT_ATTRS_END
      };
 
@@ -372,20 +372,8 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      }
 
    /* pixel quality flags */
-     {
-        static _pText_Attr_Type pqf_attrs[] =
-          {
-             {"comment", "Pixel quality flag"},
-             _pTEXT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_INT, 3, dims, pqf_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
-          return -1;
-     }
+   if (-1 == _pEmit_Var_Pixel_Quality_Flag (grp, dim_table))
+     return -1;
 
    if (grp_id != NULL)
      {

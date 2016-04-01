@@ -200,10 +200,10 @@ static int define_global_attrs (int grp)
      };
    static _pInt_Attr_Type int_attrs[] =
      {
-        {"processing_version", 0},
-        {"granule_seq_num", 0},
-        {"scan_seq_num", 0},
-        {"granule_num", 0},
+        MAKE_INT_ATTR1("processing_version", 0),
+        MAKE_INT_ATTR1("granule_seq_num", 0),
+        MAKE_INT_ATTR1("scan_seq_num", 0),
+        MAKE_INT_ATTR1("granule_num", 0),
         _pINT_ATTRS_END
      };
 
@@ -220,6 +220,182 @@ static int define_global_attrs (int grp)
      return -1;
 
    return 0;
+}
+
+static _pName_Int_Pair_Type PQF_Pairs[] =
+{
+   {1<< 0, "missing_data"},
+   {1<< 1, "bad_pixel"},
+   {1<< 2, "processing_error"},
+   {1<< 3, "transient_pixel"},
+   {1<< 4, "rts_pixel"},
+   {1<< 5, "saturated"},
+   {1<< 6, "noise_underflow"},
+   {1<< 7, "dark_corr_error"},
+   {1<< 8, "offset_corr_error"},
+   {1<< 9, "smear_corr_error"},
+   {1<<10, "straylight_corr_error"},
+   {1<<11, "nonlinear_range"},
+   _pNAME_INT_LIST_END
+};
+
+int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
+{
+   static _pText_Attr_Type pqf_attrs[] =
+     {
+        {"comment", "Pixel quality flag"},
+        _pTEXT_ATTRS_END
+     };
+   int status, varid, dims[3], num_masks, len;
+   int *flag_masks = NULL;
+   char *flag_meanings = NULL;
+   int error_status = -1;
+
+   dims[0] = dim_table->step.id;
+   dims[1] = dim_table->xtrack.id;
+   dims[2] = dim_table->channel.id;
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_SHORT, 3, dims, pqf_attrs, &varid))
+     return error_status;
+   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_SHORT))
+     return error_status;
+
+   if (-1 == _pTIOMake_Name_Int_Arrays (PQF_Pairs, &num_masks, &flag_meanings,
+                                        &flag_masks))
+     {
+        Tell_verror (TELL_INTERNAL_ERROR,
+                     "%s: creating pixel_quality_flag mask arrays",
+                     __func__);
+        return error_status;
+     }
+
+   status = nc_put_att_int (grp, varid, "flag_masks", NC_SHORT,
+                            num_masks, flag_masks);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining int attribute %s (%s)",
+                     __func__, "flag_masks", nc_strerror(status));
+        goto cleanup_and_return;
+     }
+
+   len = strlen (flag_meanings) + 1;
+   status = nc_put_att_text (grp, varid, "flag_meanings", len, flag_meanings);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining int attribute %s (%s)",
+                     __func__, "flag_meanings", nc_strerror(status));
+        goto cleanup_and_return;
+     }
+
+   error_status = 0;
+cleanup_and_return:
+   TIO_FREE(flag_meanings);
+   TIO_FREE(flag_masks);
+
+   return error_status;
+}
+
+static _pName_Int_Pair_Type GPQF_Pairs[] =
+{  /* bit 0-3 = MODIS land/water mask (?) */
+  { 0,     "shallow_ocean"},
+  { 1,     "land"},
+  { 2,     "shallow_inland_water"},
+  { 3,     "shoreline"},
+  { 4,     "intermittent_water"},
+  { 5,     "deep_inland_water"},
+  { 6,     "continental_shelf_ocean"},
+  { 7,     "deep_ocean"},
+  {15,     "land_water_error"},
+   /* bits 4-7 = misc */
+  {1<<4,   "sun_glint_possibility"},
+  {1<<5,   "solar_eclipse_possibility"},
+   /* bits 8-15 = 8-bit NISE SSM/I-SSMIS EASE-grid snow/ice flags */
+  { 0,     "snow_free_land"},
+  /* (1-100) = sea ice concentration (%) */
+  {101<<8, "permanent_ice"},
+  {103<<8, "snow"},
+  {252<<8, "mixed_pixels_at_coastline"},
+  {253<<8, "suspect_ice_value"},
+  {254<<8, "corners_undefined"},
+  {255<<8, "ocean"},
+   /* bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1 */
+  {  0,       "water"},
+  {  1<<16,   "evergreen_needleleaf_forest"},
+  {  2<<16,   "evergreen_broadleaf_forest"},
+  {  3<<16,   "deciduous_needleleaf_forest"},
+  {  4<<16,   "deciduous_broadleaf_forest"},
+  {  5<<16,   "mixed_forest"},
+  {  6<<16,   "closed_shrublands"},
+  {  7<<16,   "open_shrublands"},
+  {  8<<16,   "woody_savannas"},
+  {  9<<16,   "savannas"},
+  { 10<<16,   "grasslands"},
+  { 11<<16,   "permanent_wetlands"},
+  { 12<<16,   "croplands"},
+  { 13<<16,   "urban_and_built_up"},
+  { 14<<16,   "cropland_natural_vegetation_mosaic"},
+  { 15<<16,   "snow_and_ice"},
+  { 16<<16,   "barren_or_sparsely_vegetated"},
+  {254<<16,   "unclassified"},
+  {255<<16,   "fill_value"},
+  _pNAME_INT_LIST_END
+};
+
+static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_table)
+{
+   static _pText_Attr_Type gpqf_attrs[] =
+     {
+        {"comment", "Ground pixel quality flag"},
+        {"coordinates", "longitude latitude"},
+        _pTEXT_ATTRS_END
+     };
+   int status, varid, dims[2], num_values, len;
+   int *flag_values = NULL;
+   char *flag_meanings = NULL;
+   int error_status = -1;
+
+   dims[0] = dim_table->step.id;
+   dims[1] = dim_table->xtrack.id;
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_INT, 2, dims, gpqf_attrs, &varid))
+     return error_status;
+   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
+     return error_status;
+
+   if (-1 == _pTIOMake_Name_Int_Arrays (GPQF_Pairs, &num_values, &flag_meanings,
+                                        &flag_values))
+     {
+        Tell_verror (TELL_INTERNAL_ERROR,
+                     "%s: creating ground_pixel_quality_flag value arrays",
+                     __func__);
+        return error_status;
+     }
+
+   status = nc_put_att_int (grp, varid, "flag_values", NC_INT, num_values, flag_values);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining int attribute %s (%s)",
+                     __func__, "flag_values", nc_strerror(status));
+        goto cleanup_and_return;
+     }
+
+   len = strlen (flag_meanings) + 1;
+   status = nc_put_att_text (grp, varid, "flag_meanings", len, flag_meanings);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining int attribute %s (%s)",
+                     __func__, "flag_meanings", nc_strerror(status));
+        goto cleanup_and_return;
+     }
+
+   error_status = 0;
+cleanup_and_return:
+   TIO_FREE(flag_meanings);
+   TIO_FREE(flag_values);
+
+   return error_status;
 }
 
 static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
@@ -727,36 +903,12 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      }
 
    /* pixel quality flag */
-     {
-        static _pText_Attr_Type pqf_attrs[] =
-          {
-             {"comment", "Pixel quality flag"},
-             _pTEXT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_SHORT, 3, dims, pqf_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_SHORT))
-          return -1;
-     }
+   if (-1 == _pEmit_Var_Pixel_Quality_Flag (grp, dim_table))
+     return -1;
 
    /* ground pixel quality flag */
-     {
-        static _pText_Attr_Type gpqf_attrs[] =
-          {
-             {"comment", "Ground pixel quality flag"},
-             {"coordinates", "longitude latitude"},
-             _pTEXT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_USHORT, 2, dims, gpqf_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_USHORT))
-          return -1;
-     }
+   if (-1 == emit_var_ground_pixel_quality_flag (grp, dim_table))
+     return -1;
 
    /* cloud top height */
      {

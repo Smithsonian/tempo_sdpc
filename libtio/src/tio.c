@@ -19,8 +19,67 @@
 #define EMPTY()
 #define _pTIO_STR(s) #s
 
-#define TIO_MALLOC malloc
-#define TIO_FREE free
+int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
+                               int *pnum_values, char **pnames, int **pvalues)
+{
+   _pName_Int_Pair_Type *p;
+   int total_len, num, i;
+   int *values = NULL;
+   char *names = NULL;
+   char *s, *end;
+
+   num = total_len = 0;
+   p = array;
+
+   while (1)
+     {
+        if (p->name[0] == 0)
+          break;
+        total_len += strlen(p->name);
+        num += 1;
+        p++;
+     }
+
+   /* add room for num-1 spaces, plus 1 trailing null character */
+   total_len += num;
+
+   if ((NULL == (values = (int *) TIO_MALLOC (num * sizeof(int))))
+       || (NULL == (names = (char *) TIO_MALLOC (total_len * sizeof(char)))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        TIO_FREE(values);
+        TIO_FREE(names);
+        return -1;
+     }
+
+   s = names;
+   end = names + total_len;
+
+   for (i = 0; i < num; i++)
+     {
+        int len;
+        p = &array[i];
+
+        values[i] = p->value;
+
+        len = strlen(p->name);
+        strcpy (s, p->name);
+        s += len;
+
+        if (s+1 < end)
+          {
+             *s = ' ';
+             s++;
+          }
+        else *s = 0;
+     }
+
+   *pnum_values = num;
+   *pnames = names;
+   *pvalues = values;
+
+   return 0;
+}
 
 int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
                                      _pDim_Table_Type *dim_table)
@@ -80,7 +139,7 @@ int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs)
 
    for (a = attrs; a->name != NULL; a++)
      {
-        status = nc_put_att_int (grp, varid, a->name, NC_INT, 1, &a->value);
+        status = nc_put_att_int (grp, varid, a->name, NC_INT, a->num_values, a->value);
         if (NC_NOERR != status)
           {
              Tell_verror (TELL_IO_WRITE_ERROR,
