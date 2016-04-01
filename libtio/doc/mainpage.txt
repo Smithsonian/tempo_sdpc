@@ -28,7 +28,7 @@ To use libtio effectively, it will be helpful to know something about
 both netcdf4 and HDF5.  A brief overview will be given here; for lower
 level details, refer to the extensive documentation available on the
 web:
-  - <a href="http://www.unidata.ucar.edu/software/netcdf/docs/index-413.html">netcdf4</a>
+  - <a href="http://www.unidata.ucar.edu/software/netcdf/docs/netcdf_documentation.html">netcdf4</a>
   - <a href="http://www.hdfgroup.org/HDF5/doc/">HDF5</a>
 
 Conceptually, libtio deals with the following objects: netcdf4/HDF5
