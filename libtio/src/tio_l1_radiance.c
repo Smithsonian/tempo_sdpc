@@ -8,8 +8,9 @@
 #include <stddef.h>
 #include <math.h>
 
-#include "netcdf.h"
-#include "tell.h"
+#include <netcdf.h>
+#include <tell.h>
+
 #include "tio.h"
 #include "tio_template.h"
 #include "_tio.h"
@@ -1529,6 +1530,8 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
 {
    _pDim_Table_Type dim_table;
    int i;
+
+   memset ((char *)&dim_table, 0, sizeof (dim_table));
 
    /* Initialize the dimension sizes that are known at this point.
     * Other dimensions are group-specific and are initialized only

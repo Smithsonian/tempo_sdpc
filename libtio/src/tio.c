@@ -8,10 +8,10 @@
 #include <stddef.h>
 #include <math.h>
 
-#include "cfortran.h"
+#include <cfortran.h>
+#include <netcdf.h>
+#include <tell.h>
 
-#include "netcdf.h"
-#include "tell.h"
 #include "tio.h"
 #include "tio_template.h"
 #include "_tio.h"
@@ -970,6 +970,9 @@ int TIO_put_git_commit_hash (int grp, const char *attname)
    const char *name = "tio_commit";
    int status;
 
+   /* Use a default attribute name when the supplied attribute
+    * name is either NULL, empty, or begins with a space.
+    */
    if ((attname != NULL) && (*attname != 0) && (*attname != ' '))
      name = attname;
 
@@ -1034,7 +1037,7 @@ int TIO_get_fill_value (int grp, const char *name, int type, void *value)
         return -1;
      }
 
-   if (NULL == (fill = malloc (8)))
+   if (NULL == (fill = TIO_MALLOC (8)))
      {
         Tell_set_error (TELL_MALLOC_ERROR);
         return -1;

@@ -8,8 +8,9 @@
 #include <stddef.h>
 #include <math.h>
 
-#include "netcdf.h"
-#include "tell.h"
+#include <netcdf.h>
+#include <tell.h>
+
 #include "tio.h"
 #include "tio_template.h"
 #include "_tio.h"
