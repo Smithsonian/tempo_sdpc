@@ -1050,6 +1050,38 @@ static int define_geometry_group (int parent_grp, const char *grp_name,
         return -1;
      }
 
+   /* boresight unit vector */
+     {
+        static _pText_Attr_Type boresight1_attrs[] =
+          {
+             {"units", ""},
+             {"long_name", "Boresight unit vector component along GN&C roll axis"},
+             {"comment", "Boresight unit vector component along GN&C roll axis"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type boresight2_attrs[] =
+          {
+             {"units", ""},
+             {"long_name", "Boresight unit vector component along GN&C pitch axis"},
+             {"comment", "Boresight unit vector component along GN&C pitch axis"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type boresight3_attrs[] =
+          {
+             {"units", ""},
+             {"long_name", "Boresight unit vector component along GN&C yaw axis"},
+             {"comment", "Boresight unit vector component along GN&C yaw axis"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_BORESIGHT1, NC_DOUBLE, 1, dims, boresight1_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_BORESIGHT2, NC_DOUBLE, 1, dims, boresight2_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_BORESIGHT3, NC_DOUBLE, 1, dims, boresight3_attrs, &varid))
+          return -1;
+     }
+
    /* satellite position */
      {
         static _pText_Attr_Type satpos_x_attrs[] =

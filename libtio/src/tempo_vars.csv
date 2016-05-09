@@ -2,6 +2,9 @@
 # level 1 variables
 #
 TEMPO_VAR_AMR,"effective_area_to_mass_ratio"
+TEMPO_VAR_BORESIGHT1,"boresight1"
+TEMPO_VAR_BORESIGHT2,"boresight2"
+TEMPO_VAR_BORESIGHT3,"boresight3"
 TEMPO_VAR_CLOUDTOPHEIGHT,"cloud_top_height"
 TEMPO_VAR_DELTAV_X,"delta_v_x"
 TEMPO_VAR_DELTAV_Y,"delta_v_y"
