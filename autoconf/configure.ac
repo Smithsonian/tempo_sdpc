@@ -72,6 +72,20 @@ fi
 AC_SUBST(NETCDF_LIB)
 AC_SUBST(NETCDF_INC)
 
+AC_ARG_WITH(proj,
+  [  --with-proj[=DIR]         Use proj4 library installed in DIR],
+  [jh_with_proj=$withval],
+  [jh_with_proj=no])
+if test "x$jh_with_proj" = "xno"; then
+   PROJ_LIB="\$(OTS_ROOT)/lib"
+   PROJ_INC="\$(OTS_ROOT)/include"
+else
+   PROJ_LIB="$jh_with_proj/lib"
+   PROJ_INC="$jh_with_proj/include"
+fi
+AC_SUBST(PROJ_LIB)
+AC_SUBST(PROJ_INC)
+
 AC_ARG_WITH(tell,
   [  --with-tell[=DIR]         Use tell library installed in DIR (default:$prefix)],
   [jh_with_tell=$withval],

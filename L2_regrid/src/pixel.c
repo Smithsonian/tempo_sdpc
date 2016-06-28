@@ -1,0 +1,488 @@
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <tell.h>
+#include "poly.h"
+#include "pixel.h"
+
+#ifndef REALLOC
+# define REALLOC realloc
+#endif
+
+#ifndef MALLOC
+# define MALLOC malloc
+#endif
+
+#ifndef FREE
+# define FREE free
+#endif
+
+#define NUM_OVERLAPS_HINT  4
+
+typedef struct
+{
+   double *area;
+   int *src_index;
+   int num_overlaps;
+   int num_alloc;
+}
+Pixel_Overlap_Type;
+
+struct Pixel_Regrid_Type
+{
+   Pixel_Overlap_Type **overlap;
+   int num_dest_pixels;
+};
+
+static void free_overlap (Pixel_Overlap_Type *o)
+{
+   if (NULL == o)
+     return;
+   FREE(o->area);
+   FREE(o->src_index);
+   FREE(o);
+}
+
+static Pixel_Overlap_Type *new_overlap (void)
+{
+   Pixel_Overlap_Type *o = NULL;
+   int n = NUM_OVERLAPS_HINT;
+
+   if (NULL == (o = (Pixel_Overlap_Type *)MALLOC (sizeof *o)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   if ((NULL == (o->area = (double *)MALLOC (n * sizeof(double))))
+       || (NULL == (o->src_index = (int *)MALLOC (n * sizeof(int)))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_overlap (o);
+        return NULL;
+     }
+
+   o->num_overlaps = 0;
+   o->num_alloc = n;
+
+   return o;
+}
+
+static int realloc_overlap (Pixel_Overlap_Type *o, int new_n)
+{
+   double *area = NULL;
+   int *src_index = NULL;
+
+   if ((NULL == (area = (double *) REALLOC (o->area, new_n * sizeof(double))))
+       || (NULL == (src_index = (int *) REALLOC (o->src_index, new_n * sizeof(int)))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: realloc failed", __func__);
+        FREE(area);
+        return -1;
+     }
+
+   o->area = area;
+   o->src_index = src_index;
+   o->num_alloc = new_n;
+
+   return 0;
+}
+
+static int push_overlap (Pixel_Overlap_Type *o, double area, int src_index)
+{
+   int n = o->num_overlaps;
+
+   if (n == o->num_alloc)
+     {
+        if (-1 == realloc_overlap (o, 2*o->num_alloc))
+          return -1;
+     }
+
+   o->area[n] = area;
+   o->src_index[n] = src_index;
+   o->num_overlaps++;
+
+   return 0;
+}
+
+void Pixel_list_free (Pixel_List_Type *g)
+{
+   if (g == NULL)
+     return;
+
+   if (g->poly != NULL)
+     {
+        int i;
+        for (i = 0; i < g->num_polys; i++)
+          {
+             Polygon_free (g->poly[i]);
+          }
+        FREE(g->poly);
+     }
+   FREE(g);
+}
+
+Pixel_List_Type *Pixel_list_new (int num_polys, int num_sides)
+{
+   Pixel_List_Type *g = NULL;
+   int i;
+
+   if (NULL == (g = (Pixel_List_Type *) MALLOC (sizeof (*g))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   g->poly = (Polygon_Type **) MALLOC (num_polys * sizeof (Polygon_Type *));
+   if (g->poly == NULL)
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+
+   g->num_polys = num_polys;
+   for (i = 0; i < num_polys; i++)
+     {
+        if (NULL == (g->poly[i] = Polygon_new (num_sides)))
+          goto free_and_return;
+     }
+
+   return g;
+free_and_return:
+   Pixel_list_free (g);
+   return NULL;
+}
+
+int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
+                       double **x_corners, double **y_corners)
+{
+   double xsize = g->xmax - g->xmin;
+   double ysize = g->ymax - g->ymin;
+   double dx = xsize / g->nx;
+   double dy = ysize / g->ny;
+   double xmin = g->xmin;
+   double ymin = g->ymin;
+   int num_pixels = g->nx * g->ny;
+   int nx = g->nx;
+   double *xs=NULL, *ys=NULL;
+   double *x, *y;
+   int k, status = -1;
+
+   if ((NULL == (xs = (double *) MALLOC (4*num_pixels * sizeof(double))))
+       || (NULL == (ys = (double *) MALLOC (4*num_pixels * sizeof(double)))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+
+   for (k = 0; k < num_pixels; k++)
+     {
+        int ix = k % nx;
+        int iy = k / nx;
+
+        x = xs + 4*k;
+        y = ys + 4*k;
+        x[0] = xmin + ix * dx;
+        y[0] = ymin + iy * dy;
+        x[1] = x[0] + dx;
+        y[1] = y[0];
+        x[2] = x[1];
+        y[2] = y[1] + dy;
+        x[3] = x[0];
+        y[3] = y[2];
+     }
+
+   *x_corners = xs;
+   *y_corners = ys;
+
+   status = 0;
+free_and_return:
+   if (status)
+     {
+        FREE(xs);
+        FREE(ys);
+     }
+
+   return status;
+}
+
+static int poly_fill (const Pixel_Grid_Param_Type *dest,
+                      int ix, int iy, double dx, double dy,
+                      Polygon_Type *p)
+{
+   double x[4], y[4];
+
+   x[0] = dest->xmin + ix * dx;
+   x[1] = x[0] + dx;
+   x[2] = x[1];
+   x[3] = x[0];
+
+   y[0] = dest->ymin + iy * dy;
+   y[1] = y[0];
+   y[2] = y[0] + dy;
+   y[3] = y[2];
+
+   return Polygon_set (p, 4, x, y);
+}
+
+/* assume array overlap[dest->num_polys] already allocated */
+static int find_overlap_areas
+(const Pixel_List_Type *src_area, const Pixel_Grid_Param_Type *dest,
+    const Pixel_List_Type *src_lookup, const Pixel_List_Type *dest_area,
+    Pixel_Overlap_Type **overlap)
+{
+   Polygon_Type *dest_poly = NULL;
+   Polygon_Clip_Type *cl = NULL;
+   double xsize, ysize, dx, dy;
+   int have_dest_polygons;
+   int src_index, num_src_dest_overlap = 0;
+
+   xsize = dest->xmax - dest->xmin;
+   ysize = dest->ymax - dest->ymin;
+
+   dx = xsize / dest->nx;
+   dy = ysize / dest->ny;
+
+   have_dest_polygons = (dest_area != NULL);
+
+   if (have_dest_polygons == 0)
+     {
+        if (NULL == (dest_poly = Polygon_new (4)))
+          return -1;
+     }
+
+   if (NULL == (cl = Polygon_open_clip ()))
+     return -1;
+
+   if (src_lookup == NULL)
+     src_lookup = src_area;
+
+   /* partition each source polygon
+    * among overlapping destination polygons
+    */
+   for (src_index = 0; src_index < src_area->num_polys; src_index++)
+     {
+        Polygon_Type *src_poly_area = src_area->poly[src_index];
+        Polygon_Type *src_poly_lookup = src_lookup->poly[src_index];
+        double xmn, xmx, ymn, ymx;
+        int i, j, imn, imx, jmn, jmx;
+
+        Polygon_bbox (src_poly_lookup, &xmn, &xmx, &ymn, &ymx);
+
+        /* Does source polygon bbox overlap destination grid anywhere? */
+        if ((xmn > dest->xmax) || (xmx < dest->xmin)
+            || (ymn > dest->ymax) || (ymx < dest->ymin))
+          {
+             continue;
+          }
+
+        num_src_dest_overlap++;
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+        /* clip bounding box */
+        xmn = MAX(xmn, dest->xmin);
+        xmx = MIN(xmx, dest->xmax);
+        ymn = MAX(ymn, dest->ymin);
+        ymx = MIN(ymx, dest->ymax);
+
+        /* find destination cell index range */
+        imn = (int) floor((xmn - dest->xmin) / dx);
+        imx = (int) round((xmx - dest->xmin) / dx);
+        jmn = (int) floor((ymn - dest->ymin) / dy);
+        jmx = (int) round((ymx - dest->ymin) / dy);
+
+        for (j = jmn; j < jmx; j++)
+          {
+             for (i = imn; i < imx; i++)
+               {
+                  Polygon_Type *p = NULL;
+                  int dest_poly_index = i + j * dest->nx;
+                  double overlap_area;
+
+                  if (have_dest_polygons)
+                    {
+                       dest_poly = dest_area->poly[dest_poly_index];
+                    }
+                  else
+                    {
+                       if (-1 == poly_fill (dest, i, j, dx, dy, dest_poly))
+                         return -1;
+                    }
+
+                  if (NULL == (p = Polygon_clip (cl, src_poly_area, dest_poly)))
+                    return -1;
+                  overlap_area = Polygon_area (p);
+                  Polygon_free (p);
+
+                  if (overlap_area > 0.0)
+                    {
+                       Pixel_Overlap_Type *o = overlap[dest_poly_index];
+                       if (NULL == o)
+                         {
+                            if (NULL == (o = new_overlap()))
+                              return -1;
+                            overlap[dest_poly_index] = o;
+                         }
+                       if (-1 == push_overlap (o, overlap_area, src_index))
+                         return -1;
+                    }
+               }
+          }
+     }
+
+   Polygon_close_clip (cl);
+   if (have_dest_polygons == 0)
+     {
+        Polygon_free (dest_poly);
+     }
+
+   if (num_src_dest_overlap == 0)
+     {
+        Tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: destination grid does not overlap source grid",
+                     __func__);
+        return 1;
+     }
+
+   return 0;
+}
+
+void Pixel_close_regrid (Pixel_Regrid_Type *r)
+{
+   if (r == NULL)
+     return;
+
+   if (r->overlap)
+     {
+        int n = r->num_dest_pixels;
+        while (n-- > 0)
+          {
+             free_overlap (r->overlap[n]);
+          }
+        FREE(r->overlap);
+     }
+
+   FREE(r);
+}
+
+Pixel_Regrid_Type *
+Pixel_open_regrid (const Pixel_List_Type *src_area, const Pixel_Grid_Param_Type *dest,
+                   const Pixel_List_Type *src_lookup, const Pixel_List_Type *dest_area)
+{
+   Pixel_Regrid_Type *r = NULL;
+   int len_overlap, num_dest, overlap_status;
+
+   if (NULL == (r = (Pixel_Regrid_Type *) MALLOC (sizeof *r)))
+     return NULL;
+
+   num_dest = dest->nx * dest->ny;
+   len_overlap = num_dest * sizeof (Pixel_Overlap_Type *);
+   if (NULL == (r->overlap = (Pixel_Overlap_Type **) MALLOC (len_overlap)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        Pixel_close_regrid (r);
+        return NULL;
+     }
+   r->num_dest_pixels = num_dest;
+   memset ((char *)r->overlap, 0, len_overlap);
+
+   overlap_status = find_overlap_areas (src_area, dest,
+                                        src_lookup, dest_area, r->overlap);
+   switch (overlap_status)
+     {
+      case 0:  /* success */
+        break;
+      case 1:  /* no overlaps */
+        FREE(r->overlap);
+        r->overlap = NULL;
+        break;
+      default:
+        Pixel_close_regrid (r);
+        r = NULL;
+        break;
+     }
+
+   return r;
+}
+
+/* assume dest array is initalized to INDEF */
+int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
+                  double *dest, Pixel_Overlap_Info_Type **pinfo)
+{
+   Pixel_Overlap_Info_Type *info = NULL;
+   int i;
+
+   /* Quick return if source and destination grids don't overlap. */
+   if (r->overlap == NULL)
+     {
+        if (pinfo) *pinfo = NULL;
+        return 0;
+     }
+
+   if (pinfo)
+     {
+        int len = r->num_dest_pixels * sizeof(Pixel_Overlap_Info_Type);
+        if (NULL == (info = (Pixel_Overlap_Info_Type *)MALLOC (len)))
+          {
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             return -1;
+          }
+        for (i = 0; i < r->num_dest_pixels; i++)
+          {
+             Pixel_Overlap_Info_Type *oi = info + i;
+             oi->num_overlaps = 0;
+             oi->min = DBL_MAX;
+             oi->max = -DBL_MAX;
+          }
+     }
+
+   for (i = 0; i < r->num_dest_pixels; i++)
+     {
+        Pixel_Overlap_Type *o = r->overlap[i];
+        double a_sum, awt_sum;
+        int j;
+
+        if (o == NULL)
+          continue;
+
+        a_sum = awt_sum = 0.0;
+
+        for (j = 0; j < o->num_overlaps; j++)
+          {
+             int k = o->src_index[j];
+             if (src_mask[k] == 0)
+               {
+                  double a = o->area[j];
+                  awt_sum += a * src[k];
+                  a_sum   += a;
+                  if (info)
+                    {
+                       Pixel_Overlap_Info_Type *oi = info + i;
+                       double src_k = src[k];
+                       oi->num_overlaps++;
+                       if (src_k < oi->min)
+                         oi->min = src_k;
+                       else if (src_k > oi->max)
+                         oi->max = src_k;
+                    }
+               }
+          }
+
+        if (a_sum > 0.0)
+          {
+             dest[i] = awt_sum / a_sum;
+          }
+     }
+
+   if (pinfo)
+     {
+        *pinfo = info;
+     }
+
+   return 0;
+}
