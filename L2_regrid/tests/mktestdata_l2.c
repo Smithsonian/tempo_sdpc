@@ -13,17 +13,17 @@
 
 #define BUFSIZE 1024
 
-#define GEO_ALTITUDE   35785831.0
+#define GEO_ALTITUDE   35785831.0   /* meters */
 
-#define SAT_LONGITUDE  -100.0      /* deg */
-#define AIM_TILT          5.53     /* deg, away from nadir, >0 is northward */
-#define AIM_AZIMUTH       4.50     /* deg, >0 is CW rotation, eastward from north */
-#define AIM_LONGITUDE   -96.9657   /* deg */
-#define AIM_LATITUDE     33.9239   /* deg */
+#define SAT_LONGITUDE  -100.0       /* deg */
+#define AIM_TILT          5.53      /* deg, away from nadir, >0 is northward */
+#define AIM_AZIMUTH       4.50      /* deg, >0 is CW rotation, eastward from north */
+#define AIM_LONGITUDE   -96.9657    /* deg */
+#define AIM_LATITUDE     33.9239    /* deg */
 
-#define CCD_PIXEL_SIZE    41.79e-6      /* radians */
-#define MIRROR_STEP_SIZE  114.0e-6      /* radians */
-#define SLIT_WIDTH        120.0e-6      /* radians */
+#define CCD_PIXEL_SIZE    41.79e-6  /* radians */
+#define MIRROR_STEP_SIZE  114.0e-6  /* radians */
+#define SLIT_WIDTH        120.0e-6  /* radians */
 
 #if 1
 #define NUM_STEPS  1280
@@ -158,7 +158,7 @@ static Slit_Pixel_List_Type *new_slit_grid (int n)
 
 static int make_slit_grid (Obs_Type *o, Slit_Pixel_List_Type *g, int slit_pos)
 {
-   double x0, y0, y1, dy, hdx, hdy;
+   double xoff, yoff, x0, y0, y1, dy, hdx, hdy, cs, sn;
    double *g_x0, *g_x1, *x, *y;
    int i, k, n, status;
 
@@ -167,12 +167,37 @@ static int make_slit_grid (Obs_Type *o, Slit_Pixel_List_Type *g, int slit_pos)
    g_x0 = g->x0;
    g_x1 = g->x1;
 
-   /* Make detector grid with corners of rectangular pixels */
+   /* Make detector grid of the corners of rectangular "pixels"
+    * for a single mirror position.
+    *
+    * Note that pixels in the field of regard (FOR) will overlap
+    * in X direction because
+    *        pixel spacing (= mirror step size)
+    * is smaller than
+    *        pixel width (= slit width).
+    * In the Y direction, the pixel size is just the
+    * angular size of a physical CCD pixel, with no overlaps.
+    */
    dy = o->pixel_size;
 
-   x0 = o->x_bs + o->step_size * (o->num_steps/2 - slit_pos);
-   y0 = o->y_bs - dy * o->num_pixels/2;
+   /* Angular offset of southern-most end of the slit grid from the
+    * boresight location. */
+   xoff = o->step_size * (o->num_steps/2 - slit_pos);
+   yoff = - dy * o->num_pixels/2;
 
+   /* Account for the rotation of the instrument mounting
+    * about the boresight by AIM_AZIMUTH. */
+   cs = cos(-AIM_AZIMUTH * DEG_TO_RAD);
+   sn = sin(-AIM_AZIMUTH * DEG_TO_RAD);
+   xoff = xoff * cs + yoff * sn;
+   yoff = xoff * (-sn) + yoff * cs;
+
+   /* Shift to get absolute tpers coordinates of the slit grid
+    * southern-most end (tpers = tilted perspective projection). */
+   x0 = xoff + o->x_bs;
+   y0 = yoff + o->y_bs;
+
+   /* pixel half-width, half-height */
    hdx = 0.5 * o->slit_width;
    hdy = 0.5 * dy;
 
@@ -200,7 +225,7 @@ static int make_slit_grid (Obs_Type *o, Slit_Pixel_List_Type *g, int slit_pos)
    g->num_pixels = o->num_pixels;
    g->slit_pos = slit_pos;
 
-   /* Project pixel corners onto Earth's surface
+   /* Project FOR pixel corners onto Earth's surface
     * (Notice that I'm exploiting the fact that both
     *  pixel centers and corners are packed into the same array.)
     */
