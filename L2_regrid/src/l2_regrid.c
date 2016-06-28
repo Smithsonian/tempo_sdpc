@@ -65,7 +65,9 @@ new_regrid_buffer (const int *src_dims, const Pixel_Grid_Param_Type *dest)
    rb->num_src = rb->num_step * rb->num_xtrack;
    rb->num_dest = dest->nx * dest->ny;
 
-   len = rb->num_src * rb->num_dest * sizeof(double);
+   /* Note that rb->src_values and rb->dest_values
+    * share a single malloced space */
+   len = (rb->num_src + rb->num_dest) * sizeof(double);
    len_mask = rb->num_src * sizeof(int);
 
    if ((NULL == (rb->src_values = (double *)MALLOC (len)))
@@ -176,11 +178,11 @@ static int read_dest_grid_params (FILE *fp, Pixel_Grid_Param_Type *dest)
 
    /* longitude [deg] */
    dest->xmin = -150.0;
-   dest->nx = 2000;
+   dest->nx = 2200;
    dest->xmax = dest->xmin + dest->nx * pixel_size_deg;
    /* latitude [deg] */
    dest->ymin = 17.0;
-   dest->ny = 860;
+   dest->ny = 900;
    dest->ymax = dest->ymin + dest->ny * pixel_size_deg;
 
    return 0;
