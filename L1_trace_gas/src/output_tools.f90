@@ -31,7 +31,7 @@ module output_tools
   real (kind=8), private, parameter :: &
     fill_short = -30000, &
     fill_float = -1.0e30, &
-    fill_double = -1.0e30
+    fill_double = -1.0e30_r8
 
 contains
 
