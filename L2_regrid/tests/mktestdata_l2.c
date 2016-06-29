@@ -49,6 +49,7 @@ typedef struct
    double pixel_size;
    int num_steps;
    int num_pixels;
+   int num_granules;
 }
 Obs_Type;
 
@@ -116,6 +117,7 @@ static int open_obs (Obs_Type *o)
         return -1;
      }
 
+   o->num_granules = NUM_GRANULES;
    o->num_steps = NUM_STEPS;
    o->num_pixels = NUM_PIXELS;
    o->step_size = MIRROR_STEP_SIZE;   /* mirror step size [radians] */
@@ -283,15 +285,16 @@ int main (void)
    int ncid, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
    int id_lon, id_lat, id_column;
-   int num_steps_per_granule = NUM_STEPS / NUM_GRANULES;
-   int granule, num_granules = NUM_GRANULES;
-   int i, step, status = 1;
+   int num_steps_per_granule, granule, i, step;
+   int status = 1;
 
    if (-1 == open_obs (&o))
      return 1;
 
    if (NULL == (g = new_slit_grid (o.num_pixels)))
      return 1;
+
+   num_steps_per_granule = o.num_steps / o.num_granules;
 
    if ((NULL == (column = (double *) MALLOC (o.num_pixels * sizeof(double))))
        || (NULL == (xtrack = (int *) MALLOC (o.num_pixels * sizeof(int)))))
@@ -303,7 +306,7 @@ int main (void)
      }
 
    step = 0;
-   for (granule = 0; granule < num_granules; granule++)
+   for (granule = 0; granule < o.num_granules; granule++)
      {
         char outfile[BUFSIZE];
         int n;

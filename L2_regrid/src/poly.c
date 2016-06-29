@@ -107,7 +107,7 @@ int Polygon_add (Polygon_Type *p, double x, double y)
    return 0;
 }
 
-int Polygon_set (Polygon_Type *p, int n, double *x, double *y)
+int Polygon_set (Polygon_Type *p, int n, const double *x, const double *y)
 {
    double *p_v;
    int i;

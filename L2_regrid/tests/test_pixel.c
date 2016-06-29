@@ -36,7 +36,7 @@ static int debug_print (FILE *fp, const char *fmt, ...)
 static int test_regrid (int nx_src, int ny_src, float bin_factor,
                         double pixel_xoverlap,
                         double xshift, double yshift,
-                        int silence_expected_error)
+                        int expect_no_overlaps)
 {
    Pixel_Grid_Param_Type dest_grid_params;
    Pixel_List_Type *src_pixel_list = NULL;
@@ -46,7 +46,8 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    double x0 = 0.0, dx = 1.0/nx_src;
    double y0 = 0.0, dy = 1.0/ny_src;
    double src_sum, dest_sum, expected_dest_sum;
-   int num_src, nx_dest, ny_dest, num_dest;
+   double *xcnr = NULL, *ycnr = NULL;
+   int num_src, nx_dest, ny_dest, num_dest, num_overlaps;
    int i, *src_mask= NULL;
    int status = -1;
 
@@ -63,6 +64,9 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      }
 
    if (NULL == (src_pixel_list = Pixel_list_new (num_src, 4)))
+     goto return_status;
+
+   if (-1 == Pixel_list_use_src_index (src_pixel_list))
      goto return_status;
 
    for (i = 0; i < num_src; i++)
@@ -82,7 +86,8 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         src_values[i] = 1.0;
         src_mask[i] = 0;
 
-        if (-1 == Polygon_set (src_pixel_list->poly[i], 4, x, y))
+        if ((-1 == Pixel_list_set_vertices (src_pixel_list, i, 4, x, y))
+            || (-1 == Pixel_list_set_src_index (src_pixel_list, i, i)))
           goto return_status;
      }
 
@@ -93,15 +98,20 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    dest_grid_params.nx = nx_dest;
    dest_grid_params.ny = ny_dest;
 
-   if (silence_expected_error)
-     Tell_push_queue();
-
-   if (NULL == (r = Pixel_open_regrid (src_pixel_list, &dest_grid_params,
-                                       NULL, NULL)))
+   if (-1 == Pixel_grid_arrays (&dest_grid_params, &xcnr, &ycnr))
      goto return_status;
 
-   if (silence_expected_error)
-     Tell_pop_queue(1);
+   if (NULL == (r = Pixel_open_regrid (&dest_grid_params, NULL)))
+     goto return_status;
+
+   if (-1 == (num_overlaps = Pixel_find_overlaps (r, src_pixel_list, NULL)))
+     goto return_status;
+
+   if (expect_no_overlaps && (num_overlaps == 0))
+     {
+        status = 0;
+        goto return_status;
+     }
 
    /* Pixel_regrid assumes that dest_values initialized to fill value */
    for (i = 0; i < num_dest; i++)
@@ -147,8 +157,6 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
                  dest_sum, expected_dest_sum);
      }
 
-   Pixel_close_regrid (r);
-
    status = 0;
 return_status:
 
@@ -156,7 +164,10 @@ return_status:
    FREE(src_mask);
    FREE(dest_values);
    FREE(info);
+   FREE(xcnr);
+   FREE(ycnr);
    Pixel_list_free (src_pixel_list);
+   Pixel_close_regrid (r);
    return status;
 }
 

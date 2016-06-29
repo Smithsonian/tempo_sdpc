@@ -30,49 +30,10 @@ typedef struct
 {
    Pixel_List_Type *pixel_lookup;
    Pixel_List_Type *pixel_area;
-   int num_step;
-   int num_xtrack;
+   int num_xtrack;      /* assume all granules have the same num_xtrack */
+   int num_step;        /* num_steps in this granule */
 }
 Source_Pixel_List_Type;
-
-int map_strings (const char **str, int n,
-                 int (*do_task)(const char *, void *),
-                 void *client_data)
-{
-   int i;
-   for (i = 0; i < n; i++)
-     {
-        if (-1 == do_task (str[i], client_data))
-          return -1;
-     }
-
-   return 0;
-}
-
-static int count_pixels (const char *file, void *cl)
-{
-   Source_Pixel_List_Type *src = (Source_Pixel_List_Type *)cl;
-   TIO_Var_Info_Type info_step, info_xtrack;
-   int status, ncid;
-
-   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
-     {
-        Tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading (%s)",
-                     __func__, file, nc_strerror(status));
-        return -1;
-     }
-
-   if ((-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &info_step))
-       || (-1 == TIO_inq_var (ncid, TEMPO_DIM_XTRACK, &info_xtrack)))
-     return -1;
-
-   src->num_step += info_step.dimlens[0];
-   src->num_xtrack = info_xtrack.dimlens[0];
-
-   (void) nc_close (ncid);
-
-   return 0;
-}
 
 static int longlat_to_albers (double *lon, double *lat, int n)
 {
@@ -125,7 +86,6 @@ static int pack_pixel_list (Pixel_List_Type *pixel_list,
         int pix_xtrack = i % num_xtrack;
         int pix_step_index = i / num_xtrack;
         int pix = pix_xtrack + step[pix_step_index] * num_xtrack;
-        Polygon_Type *p = pixel_list->poly[pix];
         double *x = xs + 4*i;
         double *y = ys + 4*i;
         int j;
@@ -137,42 +97,79 @@ static int pack_pixel_list (Pixel_List_Type *pixel_list,
           }
         if (j == 4)
           {
-             if (-1 == Polygon_set (p, 4, x, y))
+             if ((-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
+                 || (-1 == Pixel_list_set_src_index (pixel_list, i, pix)))
                return -1;
+
           }
      }
 
    return 0;
 }
 
-static int read_pixel_bounds (int ncid, Source_Pixel_List_Type *src)
+static void free_source_pixel_list (Source_Pixel_List_Type *src)
 {
+   if (src == NULL)
+     return;
+   Pixel_list_free(src->pixel_area);
+   Pixel_list_free(src->pixel_lookup);
+   FREE(src);
+}
+
+static Source_Pixel_List_Type *read_source_file (const char *file)
+{
+   Source_Pixel_List_Type *src = NULL;
    TIO_Var_Info_Type vi;
-   int start[3], count[3];
-   int num_steps, num_pixels, len_bounds;
+   int ncid, start[3], count[3];
+   int num_pixels, num_sides, len_bounds;
    double *lon_bounds = NULL, *lat_bounds = NULL;
    double *albers_x_bounds, *albers_y_bounds;
    int *step = NULL;
-   int status = -1;
+   int status;
 
-   if (-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &vi))
-     return -1;
+   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
+     {
+        Tell_verror (TELL_IO_OPEN_ERROR,
+                     "%s: opening %s for reading (%s)",
+                     __func__, file, nc_strerror(status));
+        return NULL;
+     }
 
-   num_steps = vi.dimlens[0];
+   status = -1;
 
-   if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
+   if (NULL == (src = (Source_Pixel_List_Type *) MALLOC (sizeof *src)))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
+        goto free_and_return;
+     }
+   src->pixel_area = NULL;
+   src->pixel_lookup = NULL;
+
+   if (-1 == TIO_inq_var (ncid, TEMPO_DIM_XTRACK, &vi))
+     goto free_and_return;
+   src->num_xtrack = vi.dimlens[0];
+
+   /* read mirror step index array */
+
+   if (-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &vi))
+     goto free_and_return;
+   src->num_step = vi.dimlens[0];
+
+   if (NULL == (step = (int *) MALLOC (src->num_step * sizeof (int))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
      }
 
    start[0] = 0;
-   count[0] = num_steps;
+   count[0] = src->num_step;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, step))
      goto free_and_return;
 
-   num_pixels = num_steps * src->num_xtrack;
+   /* read lon/lat bounds arrays */
+
+   num_pixels = src->num_step * src->num_xtrack;
    len_bounds = 4 * num_pixels * sizeof(double);
 
    if ((NULL == (lon_bounds = (double *) MALLOC (len_bounds)))
@@ -185,7 +182,7 @@ static int read_pixel_bounds (int ncid, Source_Pixel_List_Type *src)
    start[0] = 0;
    start[1] = 0;
    start[2] = 0;
-   count[0] = num_steps;
+   count[0] = src->num_step;
    count[1] = src->num_xtrack;
    count[2] = 4;
 
@@ -196,6 +193,21 @@ static int read_pixel_bounds (int ncid, Source_Pixel_List_Type *src)
      {
         goto free_and_return;
      }
+
+   /* Pack pixel vertices into pixel list structures */
+
+   /* Zero-length polygons will indicate lines of sight that
+    * have invalid lon-lat coordinates -- usually because
+    * they don't intersect the earth. */
+   num_sides = 0;
+
+   if ((NULL == (src->pixel_area = Pixel_list_new (num_pixels, num_sides)))
+       || (NULL == (src->pixel_lookup = Pixel_list_new (num_pixels, num_sides))))
+     goto free_and_return;
+
+   if ((-1 == Pixel_list_use_src_index (src->pixel_area))
+       || (-1 == Pixel_list_use_src_index (src->pixel_lookup)))
+     goto free_and_return;
 
    if (-1 == pack_pixel_list (src->pixel_lookup,
                               lon_bounds, lat_bounds, num_pixels,
@@ -220,72 +232,10 @@ static int read_pixel_bounds (int ncid, Source_Pixel_List_Type *src)
 
    status = 0;
 free_and_return:
+   nc_close (ncid);
    FREE(lon_bounds);
    FREE(lat_bounds);
    FREE(step);
-
-   return status;
-}
-
-static int read_file_pixels (const char *file, void *cl)
-{
-   Source_Pixel_List_Type *src = (Source_Pixel_List_Type *)cl;
-   int ncid, status;
-
-   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
-     {
-        Tell_verror (TELL_IO_OPEN_ERROR,
-                     "%s: opening %s for reading (%s)",
-                     __func__, file, nc_strerror(status));
-        return -1;
-     }
-
-   status = read_pixel_bounds (ncid, src);
-   (void) nc_close (ncid);
-
-   return status;
-}
-
-static void free_source_pixel_list (Source_Pixel_List_Type *src)
-{
-   if (src == NULL)
-     return;
-   Pixel_list_free(src->pixel_area);
-   Pixel_list_free(src->pixel_lookup);
-   FREE(src);
-}
-
-static Source_Pixel_List_Type *
-read_source_pixel_list (const char **files, int num_files)
-{
-   Source_Pixel_List_Type *src = NULL;
-   int num_src_pixels, num_sides=0, status = -1;
-
-   if (NULL == (src = (Source_Pixel_List_Type *) MALLOC (sizeof *src)))
-     return NULL;
-   src->num_step = 0;
-   src->num_xtrack = 0;
-   src->pixel_lookup = NULL;
-   src->pixel_area = NULL;
-
-   if (-1 == map_strings (files, num_files, count_pixels, src))
-     goto free_and_return;
-
-   /* Zero-length polygons will indicate lines of sight that
-    * have invalid lon-lat coordinates -- usually because
-    * they don't intersect the earth. */
-   num_sides = 0;
-   num_src_pixels = src->num_step * src->num_xtrack;
-
-   if ((NULL == (src->pixel_area = Pixel_list_new (num_src_pixels, num_sides)))
-       || (NULL == (src->pixel_lookup = Pixel_list_new (num_src_pixels, num_sides))))
-     goto free_and_return;
-
-   if (-1 == map_strings (files, num_files, read_file_pixels, src))
-     goto free_and_return;
-
-   status = 0;
-free_and_return:
    if (status)
      {
         free_source_pixel_list (src);
@@ -293,6 +243,65 @@ free_and_return:
      }
 
    return src;
+}
+
+static int
+find_all_pixel_overlaps (Pixel_Regrid_Type *r,
+                         const char **files, int num_files,
+                         int *src_dims)
+{
+   Source_Pixel_List_Type *src = NULL;
+   int i, num_steps_total, num_xtrack;
+
+   num_steps_total = 0;
+   num_xtrack = -1;
+
+   /* Loop over granule files, and accumulate contributions
+    * to the pixel overlap array in each destination pixel.
+    */
+
+   for (i = 0; i < num_files; i++)
+     {
+        int num_overlaps;
+
+        free_source_pixel_list (src);
+        if (NULL == (src = read_source_file (files[i])))
+          break;
+
+        num_steps_total += src->num_step;
+
+        if (num_xtrack < 0)
+          num_xtrack = src->num_xtrack;
+        else if (num_xtrack != src->num_xtrack)
+          {
+             Tell_verror (TELL_APPLICATION_ERROR,
+                          "%s: unexpected num_xtrack = %d (expected %d)",
+                          __func__, src->num_xtrack, num_xtrack);
+             break;
+          }
+
+        num_overlaps = Pixel_find_overlaps (r, src->pixel_area,
+                                            src->pixel_lookup);
+        if (num_overlaps < 0)
+          break;
+        else if (num_overlaps == 0)
+          {
+             /* FIXME:  should this be a warning message? */
+             Tell_verror (TELL_UNKNOWN_ERROR,
+                          "%s: no contribution to target grid from %s",
+                          __func__, files[i]);
+          }
+     }
+
+   free_source_pixel_list (src);
+
+   if (i != num_files)
+     return -1;
+
+   src_dims[0] = num_steps_total;
+   src_dims[1] = num_xtrack;
+
+   return 0;
 }
 
 static Pixel_List_Type *
@@ -318,8 +327,7 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
 
    for (i = 0; i < num_pixels; i++)
      {
-        Polygon_Type *p = pixel_list->poly[i];
-        if (-1 == Polygon_set (p, 4, x, y))
+        if (-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
           goto free_and_return;
         x += 4;
         y += 4;
@@ -339,31 +347,25 @@ free_and_return:
 }
 
 Pixel_Regrid_Type *
-Regrid_open (const char **files, int num_files, int *src_dims,
-             const Pixel_Grid_Param_Type *dest)
+Regrid_open (const char **files, int num_files, 
+             const Pixel_Grid_Param_Type *dest, int *src_dims)
 {
    Pixel_Regrid_Type *r = NULL;
    Pixel_List_Type *dest_pixel_area = NULL;
-   Source_Pixel_List_Type *src = NULL;
    int status = -1;
 
    if (NULL == (dest_pixel_area = dest_pixel_area_coords (dest)))
      goto free_and_return;
 
-   if (NULL == (src = read_source_pixel_list (files, num_files)))
+   if (NULL == (r = Pixel_open_regrid (dest, dest_pixel_area)))
      goto free_and_return;
 
-   src_dims[0] = src->num_step;
-   src_dims[1] = src->num_xtrack;
-
-   if (NULL == (r = Pixel_open_regrid (src->pixel_area, dest,
-                                       src->pixel_lookup, dest_pixel_area)))
+   if (-1 == find_all_pixel_overlaps (r, files, num_files, src_dims))
      goto free_and_return;
 
    status = 0;
 free_and_return:
    Pixel_list_free (dest_pixel_area);
-   free_source_pixel_list (src);
    if (status)
      {
         Pixel_close_regrid (r);

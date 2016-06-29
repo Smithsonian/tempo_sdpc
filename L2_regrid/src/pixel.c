@@ -31,9 +31,18 @@ typedef struct
 }
 Pixel_Overlap_Type;
 
+struct Pixel_List_Type
+{
+   Polygon_Type **poly;
+   int *src_index;      /* NULL if no indirection needed */
+   int num_polys;
+};
+
 struct Pixel_Regrid_Type
 {
    Pixel_Overlap_Type **overlap;
+   const Pixel_Grid_Param_Type *dest;
+   const Pixel_List_Type *dest_area;
    int num_dest_pixels;
 };
 
@@ -108,52 +117,75 @@ static int push_overlap (Pixel_Overlap_Type *o, double area, int src_index)
    return 0;
 }
 
-void Pixel_list_free (Pixel_List_Type *g)
+void Pixel_list_free (Pixel_List_Type *lst)
 {
-   if (g == NULL)
+   if (lst == NULL)
      return;
 
-   if (g->poly != NULL)
+   if (lst->poly != NULL)
      {
         int i;
-        for (i = 0; i < g->num_polys; i++)
+        for (i = 0; i < lst->num_polys; i++)
           {
-             Polygon_free (g->poly[i]);
+             Polygon_free (lst->poly[i]);
           }
-        FREE(g->poly);
+        FREE(lst->poly);
      }
-   FREE(g);
+   FREE(lst->src_index);
+   FREE(lst);
 }
 
 Pixel_List_Type *Pixel_list_new (int num_polys, int num_sides)
 {
-   Pixel_List_Type *g = NULL;
+   Pixel_List_Type *lst = NULL;
    int i;
 
-   if (NULL == (g = (Pixel_List_Type *) MALLOC (sizeof (*g))))
+   if (NULL == (lst = (Pixel_List_Type *) MALLOC (sizeof (*lst))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
 
-   g->poly = (Polygon_Type **) MALLOC (num_polys * sizeof (Polygon_Type *));
-   if (g->poly == NULL)
+   lst->poly = (Polygon_Type **) MALLOC (num_polys * sizeof (Polygon_Type *));
+   if (lst->poly == NULL)
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto free_and_return;
      }
 
-   g->num_polys = num_polys;
+   lst->num_polys = num_polys;
    for (i = 0; i < num_polys; i++)
      {
-        if (NULL == (g->poly[i] = Polygon_new (num_sides)))
+        if (NULL == (lst->poly[i] = Polygon_new (num_sides)))
           goto free_and_return;
      }
 
-   return g;
+   lst->src_index = NULL;
+
+   return lst;
 free_and_return:
-   Pixel_list_free (g);
+   Pixel_list_free (lst);
    return NULL;
+}
+
+int Pixel_list_use_src_index (Pixel_List_Type *lst)
+{
+   lst->src_index = (int *) MALLOC (lst->num_polys * sizeof(int));
+   return lst->src_index ? 0 : -1;
+}
+
+int Pixel_list_set_src_index (Pixel_List_Type *lst, int i, int src_index)
+{
+   if (lst->src_index == NULL)
+     return -1;
+   lst->src_index[i] = src_index;
+   return 0;
+}
+
+int Pixel_list_set_vertices (Pixel_List_Type *lst, int pix, int n,
+                             const double *x, const double *y)
+{
+   return Polygon_set (lst->poly[pix], n, x, y);
 }
 
 int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
@@ -229,16 +261,18 @@ static int poly_fill (const Pixel_Grid_Param_Type *dest,
 }
 
 /* assume array overlap[dest->num_polys] already allocated */
-static int find_overlap_areas
-(const Pixel_List_Type *src_area, const Pixel_Grid_Param_Type *dest,
-    const Pixel_List_Type *src_lookup, const Pixel_List_Type *dest_area,
-    Pixel_Overlap_Type **overlap)
+int Pixel_find_overlaps (Pixel_Regrid_Type *r,
+                         const Pixel_List_Type *src_area,
+                         const Pixel_List_Type *src_lookup)
 {
+   const Pixel_Grid_Param_Type *dest = r->dest;
+   const Pixel_List_Type *dest_area = r->dest_area;
+   Pixel_Overlap_Type **overlap = r->overlap;
    Polygon_Type *dest_poly = NULL;
    Polygon_Clip_Type *cl = NULL;
    double xsize, ysize, dx, dy;
    int have_dest_polygons;
-   int src_index, num_src_dest_overlap = 0;
+   int k, num_src_dest_overlap = 0;
 
    xsize = dest->xmax - dest->xmin;
    ysize = dest->ymax - dest->ymin;
@@ -263,10 +297,10 @@ static int find_overlap_areas
    /* partition each source polygon
     * among overlapping destination polygons
     */
-   for (src_index = 0; src_index < src_area->num_polys; src_index++)
+   for (k = 0; k < src_area->num_polys; k++)
      {
-        Polygon_Type *src_poly_area = src_area->poly[src_index];
-        Polygon_Type *src_poly_lookup = src_lookup->poly[src_index];
+        Polygon_Type *src_poly_area = src_area->poly[k];
+        Polygon_Type *src_poly_lookup = src_lookup->poly[k];
         double xmn, xmx, ymn, ymx;
         int i, j, imn, imx, jmn, jmx;
 
@@ -321,6 +355,7 @@ static int find_overlap_areas
 
                   if (overlap_area > 0.0)
                     {
+                       int src_index;
                        Pixel_Overlap_Type *o = overlap[dest_poly_index];
                        if (NULL == o)
                          {
@@ -328,6 +363,8 @@ static int find_overlap_areas
                               return -1;
                             overlap[dest_poly_index] = o;
                          }
+                       src_index = ((src_area->src_index == NULL) ? k :
+                                    src_area->src_index[k]);
                        if (-1 == push_overlap (o, overlap_area, src_index))
                          return -1;
                     }
@@ -341,15 +378,7 @@ static int find_overlap_areas
         Polygon_free (dest_poly);
      }
 
-   if (num_src_dest_overlap == 0)
-     {
-        Tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: destination grid does not overlap source grid",
-                     __func__);
-        return 1;
-     }
-
-   return 0;
+   return num_src_dest_overlap;
 }
 
 void Pixel_close_regrid (Pixel_Regrid_Type *r)
@@ -371,11 +400,13 @@ void Pixel_close_regrid (Pixel_Regrid_Type *r)
 }
 
 Pixel_Regrid_Type *
-Pixel_open_regrid (const Pixel_List_Type *src_area, const Pixel_Grid_Param_Type *dest,
-                   const Pixel_List_Type *src_lookup, const Pixel_List_Type *dest_area)
+Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
+                   const Pixel_List_Type *dest_area)
 {
    Pixel_Regrid_Type *r = NULL;
-   int len_overlap, num_dest, overlap_status;
+   int len_overlap, num_dest;
+
+   /* dest_area == NULL is ok */
 
    if (NULL == (r = (Pixel_Regrid_Type *) MALLOC (sizeof *r)))
      return NULL;
@@ -388,24 +419,12 @@ Pixel_open_regrid (const Pixel_List_Type *src_area, const Pixel_Grid_Param_Type 
         Pixel_close_regrid (r);
         return NULL;
      }
-   r->num_dest_pixels = num_dest;
+
    memset ((char *)r->overlap, 0, len_overlap);
 
-   overlap_status = find_overlap_areas (src_area, dest,
-                                        src_lookup, dest_area, r->overlap);
-   switch (overlap_status)
-     {
-      case 0:  /* success */
-        break;
-      case 1:  /* no overlaps */
-        FREE(r->overlap);
-        r->overlap = NULL;
-        break;
-      default:
-        Pixel_close_regrid (r);
-        r = NULL;
-        break;
-     }
+   r->dest = dest;
+   r->dest_area = dest_area;
+   r->num_dest_pixels = num_dest;
 
    return r;
 }
