@@ -146,8 +146,8 @@ cleanup_and_return:
 }
 
 static int
-regrid_variable (Value_Buffer_Type *vb, const char *var_name,
-                 const Pixel_Regrid_Type *r, const char **files, int num_files)
+regrid_variable (const Pixel_Regrid_Type *r, Value_Buffer_Type *vb,
+                 const char *var_name, const char **files, int num_files)
 {
    double *vb_dest_values = vb->dest_values;
    int i, vb_num_dest = vb->num_dest;
@@ -300,8 +300,8 @@ cleanup_and_exit:
    return 0;
 }
 
-static int write_variable (int ncid, const char *var_name,
-                           const Value_Buffer_Type *value_buf)
+static int write_variable (int ncid, const Value_Buffer_Type *value_buf,
+                           const char *var_name)
 {
    TIO_Var_Info_Type vi;
    const char coord_lonlat[] = "longitude latitude";
@@ -374,12 +374,10 @@ static int make_l3_product (const Product_Type *prod, const Pixel_Grid_Param_Typ
 
    for (i = 0; i < prod->num_var_names; i++)
      {
-        if (-1 == regrid_variable (value_buf, prod->var_names[i], r,
+        if (-1 == regrid_variable (r, value_buf, prod->var_names[i],
                                    prod->input_files, prod->num_input_files))
-          {
-             goto return_status;
-          }
-        if (-1 == write_variable (ncid, prod->var_names[i], value_buf))
+          goto return_status;
+        if (-1 == write_variable (ncid, value_buf, prod->var_names[i]))
           goto return_status;
      }
 

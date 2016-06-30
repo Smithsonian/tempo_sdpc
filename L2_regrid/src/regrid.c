@@ -28,7 +28,9 @@
 
 typedef struct
 {
+   /* polygon vertices in coordinates that facilitate coordinate lookup */
    Pixel_List_Type *pixel_lookup;
+   /* polygon vertices in coordinates that facilitate area calculation */
    Pixel_List_Type *pixel_area;
    int num_xtrack;      /* assume all granules have the same num_xtrack */
    int num_step;        /* num_steps in this granule */
@@ -116,7 +118,7 @@ static void free_source_pixel_list (Source_Pixel_List_Type *src)
    FREE(src);
 }
 
-static Source_Pixel_List_Type *read_source_file (const char *file)
+static Source_Pixel_List_Type *read_pixel_vertices (const char *file)
 {
    Source_Pixel_List_Type *src = NULL;
    TIO_Var_Info_Type vi;
@@ -209,6 +211,8 @@ static Source_Pixel_List_Type *read_source_file (const char *file)
        || (-1 == Pixel_list_use_src_index (src->pixel_lookup)))
      goto free_and_return;
 
+   /* pixel_lookup coordinates will be used to determine which
+    * destination pixels overlap each source pixel */
    if (-1 == pack_pixel_list (src->pixel_lookup,
                               lon_bounds, lat_bounds, num_pixels,
                               step, src->num_xtrack))
@@ -216,6 +220,10 @@ static Source_Pixel_List_Type *read_source_file (const char *file)
         goto free_and_return;
      }
 
+   /* The Albers equal-area conic projection yields polygons that
+    * have the same area they had on the ellipsoid, but with vertices
+    * defined in planar Cartesian coordinates where the area is
+    * easier to compute */
    if (-1 == longlat_to_albers (lon_bounds, lat_bounds, 4*num_pixels))
      goto free_and_return;
    /* NOTE: coordinate projection is done in place, so after the call,
@@ -223,6 +231,7 @@ static Source_Pixel_List_Type *read_source_file (const char *file)
    albers_x_bounds = lon_bounds;
    albers_y_bounds = lat_bounds;
 
+   /* pixel_area coordinates will be used to compute pixel overlap areas */
    if (-1 == pack_pixel_list (src->pixel_area,
                               albers_x_bounds, albers_y_bounds, num_pixels,
                               step, src->num_xtrack))
@@ -265,7 +274,7 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r,
         int num_overlaps;
 
         free_source_pixel_list (src);
-        if (NULL == (src = read_source_file (files[i])))
+        if (NULL == (src = read_pixel_vertices (files[i])))
           break;
 
         num_steps_total += src->num_step;
@@ -316,6 +325,10 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
    if (-1 == Pixel_grid_arrays (dest, &xs, &ys))
      return NULL;
 
+   /* The Albers equal-area conic projection yields polygons that
+    * have the same area they had on the ellipsoid, but with vertices
+    * defined in planar Cartesian coordinates where the area is
+    * easier to compute */
    if (-1 == longlat_to_albers (xs, ys, 4*num_pixels))
      goto free_and_return;
 
@@ -347,7 +360,7 @@ free_and_return:
 }
 
 Pixel_Regrid_Type *
-Regrid_open (const char **files, int num_files, 
+Regrid_open (const char **files, int num_files,
              const Pixel_Grid_Param_Type *dest, int *src_dims)
 {
    Pixel_Regrid_Type *r = NULL;

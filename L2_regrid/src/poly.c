@@ -286,33 +286,6 @@ static int poly_edge_clip (const Polygon_Type *in,
    return 0;
 }
 
-void Polygon_close_clip (Polygon_Clip_Type *cl)
-{
-   if (cl == NULL)
-     return;
-   Polygon_free (cl->p1);
-   FREE(cl);
-}
-
-Polygon_Clip_Type *Polygon_open_clip (void)
-{
-   Polygon_Clip_Type *cl;
-
-   if (NULL == (cl = (Polygon_Clip_Type *)MALLOC (sizeof *cl)))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-
-   if (NULL == (cl->p1 = Polygon_new (4)))
-     {
-        Polygon_close_clip (cl);
-        return NULL;
-     }
-
-   return cl;
-}
-
 /* Sutherland-Hodgman (convex) polygon clipping algorithm */
 Polygon_Type *Polygon_clip (Polygon_Clip_Type *cl,
                             const Polygon_Type *in,
@@ -324,6 +297,7 @@ Polygon_Type *Polygon_clip (Polygon_Clip_Type *cl,
    double *cv, *cv_end;
    int status = -1;
 
+   /* Use temp space allocated by Polygon_open_clip */
    p1 = cl->p1;
 
    if (NULL == (p2 = Polygon_new (in->n)))
@@ -366,4 +340,31 @@ free_and_return:
      }
 
    return p2;
+}
+
+void Polygon_close_clip (Polygon_Clip_Type *cl)
+{
+   if (cl == NULL)
+     return;
+   Polygon_free (cl->p1);
+   FREE(cl);
+}
+
+Polygon_Clip_Type *Polygon_open_clip (void)
+{
+   Polygon_Clip_Type *cl;
+
+   if (NULL == (cl = (Polygon_Clip_Type *)MALLOC (sizeof *cl)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   if (NULL == (cl->p1 = Polygon_new (4)))
+     {
+        Polygon_close_clip (cl);
+        return NULL;
+     }
+
+   return cl;
 }
