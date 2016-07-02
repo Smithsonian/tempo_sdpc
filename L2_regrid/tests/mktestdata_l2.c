@@ -11,7 +11,11 @@
 #define MALLOC  malloc
 #define FREE    free
 
-#define BUFSIZE 1024
+#define BUFSIZE      1024
+#define __MAX_VAR_DIMS 7
+
+#define LOCAL_DIM_SIZE1  3
+#define LOCAL_DIM_SIZE2  2
 
 #define GEO_ALTITUDE   35785831.0   /* meters */
 
@@ -269,23 +273,41 @@ static int use_compression (int ncid, int varid)
    return nc_def_var_deflate (ncid, varid, shuffle, deflate, deflate_level);
 }
 
+static int put_lonlat_atts (int ncid, int id_var)
+{
+   const char coord_lonlat[] = "longitude latitude";
+   const char bounds_lonlat[] = "longitude_bounds latitude_bounds";
+   int status;
+   status = nc_put_att_text (ncid, id_var, "coordinates", strlen(coord_lonlat), coord_lonlat);
+   if (NC_NOERR != status) return status;
+   status = nc_put_att_text (ncid, id_var, "bounds", strlen(bounds_lonlat), bounds_lonlat);
+   return status;
+}
+
+static int put_att_text (int ncid, int id_var,
+                         const char *name, const char *text)
+{
+   return nc_put_att_text (ncid, id_var, name, strlen(text), text);
+}
+
 int main (void)
 {
    Obs_Type o = {0};
    Slit_Pixel_List_Type *g = NULL;
-   const char coord_lonlat[] = "longitude latitude";
-   const char bounds_lonlat[] = "longitude_bounds latitude_bounds";
    const char units_lon[] = "degrees_east";
    const char units_lat[] = "degrees_north";
    int coord_type = NC_FLOAT;
-   double *column = NULL;
+   double *var0 = NULL, *var1 = NULL, *var2 = NULL, *var3 = NULL;
    int *xtrack = NULL;
-   int dims[3];
-   size_t i_sizet, start[3], count[3];
+   int dims[__MAX_VAR_DIMS], dimid_corner;
+   size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
    int ncid, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
-   int id_lon, id_lat, id_column;
+   int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3;
    int num_steps_per_granule, granule, i, step;
+   int dimid_local1, num_local1 = LOCAL_DIM_SIZE1;
+   int dimid_local2, num_local2 = LOCAL_DIM_SIZE2;
+   int num_var2, num_var3;
    int status = 1;
 
    if (-1 == open_obs (&o))
@@ -296,8 +318,14 @@ int main (void)
 
    num_steps_per_granule = o.num_steps / o.num_granules;
 
-   if ((NULL == (column = (double *) MALLOC (o.num_pixels * sizeof(double))))
-       || (NULL == (xtrack = (int *) MALLOC (o.num_pixels * sizeof(int)))))
+   num_var2 = o.num_pixels * num_local1;
+   num_var3 = o.num_pixels * num_local1 * num_local2;
+   if ((NULL == (xtrack = (int *) MALLOC (o.num_pixels * sizeof(int))))
+       || (NULL == (var0 = (double *) MALLOC (o.num_pixels * sizeof(double))))
+       || (NULL == (var1 = (double *) MALLOC (o.num_pixels * sizeof(double))))
+       || (NULL == (var2 = (double *) MALLOC (num_var2 * sizeof(double))))
+       || (NULL == (var3 = (double *) MALLOC (num_var3 * sizeof(double))))
+      )
      return 1;
 
    for (i = 0; i < o.num_pixels; i++)
@@ -322,7 +350,11 @@ int main (void)
         status = nc_create (outfile, NC_NETCDF4, &ncid);
         NC_CHECK_STATUS(status);
 
-        status = nc_def_dim (ncid, "corner", 4, &dims[2]);
+        status = nc_def_dim (ncid, "local1", num_local1, &dimid_local1);
+        NC_CHECK_STATUS(status);
+        status = nc_def_dim (ncid, "local2", num_local2, &dimid_local2);
+        NC_CHECK_STATUS(status);
+        status = nc_def_dim (ncid, "corner", 4, &dimid_corner);
         NC_CHECK_STATUS(status);
         status = nc_def_dim (ncid, "xtrack", o.num_pixels, &dims[1]);
         NC_CHECK_STATUS(status);
@@ -331,15 +363,6 @@ int main (void)
         status = nc_def_var (ncid, "mirror_step", NC_INT, 1, &dims[0], &id_step);
         NC_CHECK_STATUS(status);
         status = nc_def_var (ncid, "xtrack", NC_INT, 1, &dims[1], &id_xtrack);
-        NC_CHECK_STATUS(status);
-
-        status = nc_def_var (ncid, "column", NC_FLOAT, 2, dims, &id_column);
-        NC_CHECK_STATUS(status);
-        status = use_compression (ncid, id_column);
-        NC_CHECK_STATUS(status);
-        status = nc_put_att_text (ncid, id_column, "coordinates", strlen(coord_lonlat), coord_lonlat);
-        NC_CHECK_STATUS(status);
-        status = nc_put_att_text (ncid, id_column, "bounds", strlen(bounds_lonlat), bounds_lonlat);
         NC_CHECK_STATUS(status);
 
         status = nc_def_var (ncid, "longitude", coord_type, 2, dims, &id_lon);
@@ -356,6 +379,7 @@ int main (void)
         status = nc_put_att_text (ncid, id_lat, "units", strlen(units_lat), units_lat);
         NC_CHECK_STATUS(status);
 
+        dims[2] = dimid_corner;
         status = nc_def_var (ncid, "longitude_bounds", coord_type, 3, dims, &id_lon_bounds);
         NC_CHECK_STATUS(status);
         status = use_compression (ncid, id_lon_bounds);
@@ -363,11 +387,51 @@ int main (void)
         status = nc_put_att_text (ncid, id_lon_bounds, "units", strlen(units_lon), units_lon);
         NC_CHECK_STATUS(status);
 
+        dims[2] = dimid_corner;
         status = nc_def_var (ncid, "latitude_bounds", coord_type, 3, dims, &id_lat_bounds);
         NC_CHECK_STATUS(status);
         status = use_compression (ncid, id_lat_bounds);
         NC_CHECK_STATUS(status);
         status = nc_put_att_text (ncid, id_lat_bounds, "units", strlen(units_lat), units_lat);
+        NC_CHECK_STATUS(status);
+
+        status = nc_def_var (ncid, "var0", NC_FLOAT, 2, dims, &id_var0);
+        NC_CHECK_STATUS(status);
+        status = use_compression (ncid, id_var0);
+        NC_CHECK_STATUS(status);
+        status = put_lonlat_atts (ncid, id_var0);
+        NC_CHECK_STATUS(status);
+        status = put_att_text (ncid, id_var0, "comment", "This is var0");
+        NC_CHECK_STATUS(status);
+
+        status = nc_def_var (ncid, "var1", NC_FLOAT, 2, dims, &id_var1);
+        NC_CHECK_STATUS(status);
+        status = use_compression (ncid, id_var1);
+        NC_CHECK_STATUS(status);
+        status = put_lonlat_atts (ncid, id_var1);
+        NC_CHECK_STATUS(status);
+        status = put_att_text (ncid, id_var1, "comment", "This is var1");
+        NC_CHECK_STATUS(status);
+
+        dims[2] = dimid_local1;
+        status = nc_def_var (ncid, "var2", NC_FLOAT, 3, dims, &id_var2);
+        NC_CHECK_STATUS(status);
+        status = use_compression (ncid, id_var2);
+        NC_CHECK_STATUS(status);
+        status = put_lonlat_atts (ncid, id_var2);  /* FIXME: 3rd dimension? */
+        NC_CHECK_STATUS(status);
+        status = put_att_text (ncid, id_var2, "comment", "This is var2");
+        NC_CHECK_STATUS(status);
+
+        dims[2] = dimid_local1;
+        dims[3] = dimid_local2;
+        status = nc_def_var (ncid, "var3", NC_FLOAT, 4, dims, &id_var3);
+        NC_CHECK_STATUS(status);
+        status = use_compression (ncid, id_var3);
+        NC_CHECK_STATUS(status);
+        status = put_lonlat_atts (ncid, id_var3);  /* FIXME: other dimensions? */
+        NC_CHECK_STATUS(status);
+        status = put_att_text (ncid, id_var3, "comment", "This is var3");
         NC_CHECK_STATUS(status);
 
         start[0] = 0;
@@ -387,13 +451,23 @@ int main (void)
 
              for (j = 0; j < o.num_pixels; j++)
                {
-#if 0
-                  double r = hypot (j - o.num_pixels*0.5,
-                                    step - o.num_steps*0.5);
-                  column[j] = 100.0 * exp(-r/(o.num_steps*0.25));
-#else
-                  column[j] = 1.0 * ((step/10) % 10);
-#endif
+                  int k, m, nm;
+
+                  var0[j] = 1.0 * ((step/16) % 16);
+                  var1[j] = 1.0 * ((j/16) % 16);
+
+                  for (k = 0; k < num_local1; k++)
+                    {
+                       var2[k + j * num_local1] =
+                         1.0 * (((k*128 + j + step)/16) % 16);
+                    }
+
+                  nm = num_local1 * num_local2;
+                  for (m = 0; m < nm; m++)
+                    {
+                       var3[m + j*nm] =
+                         1.0 * ((((o.num_pixels-j) + m*step)/16) % 16);
+                    }
                }
 
              start[0] = i;    /* step */
@@ -413,7 +487,17 @@ int main (void)
              NC_CHECK_STATUS(status);
              status = nc_put_vara_double (ncid, id_lat, start, count, g->x1);
              NC_CHECK_STATUS(status);
-             status = nc_put_vara_double (ncid, id_column, start, count, column);
+             status = nc_put_vara_double (ncid, id_var0, start, count, var0);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_double (ncid, id_var1, start, count, var1);
+             NC_CHECK_STATUS(status);
+             start[2] = 0;
+             count[2] = num_local1;
+             status = nc_put_vara_double (ncid, id_var2, start, count, var2);
+             NC_CHECK_STATUS(status);
+             start[3] = 0;
+             count[3] = num_local2;
+             status = nc_put_vara_double (ncid, id_var3, start, count, var3);
              NC_CHECK_STATUS(status);
 
              step++;
@@ -434,7 +518,10 @@ cleanup_and_exit:
         fprintf (stderr, "*** ERROR: %s\n", nc_strerror(status));
      }
 
-   FREE(column);
+   FREE(var0);
+   FREE(var1);
+   FREE(var2);
+   FREE(var3);
    FREE(xtrack);
    free_slit_grid (g);
    close_obs (&o);

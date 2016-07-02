@@ -257,7 +257,7 @@ free_and_return:
 static int
 find_all_pixel_overlaps (Pixel_Regrid_Type *r,
                          const char **files, int num_files,
-                         int *src_dims)
+                         int *src_num_steps, int *src_num_xtrack)
 {
    Source_Pixel_List_Type *src = NULL;
    int i, num_steps_total, num_xtrack;
@@ -307,8 +307,8 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r,
    if (i != num_files)
      return -1;
 
-   src_dims[0] = num_steps_total;
-   src_dims[1] = num_xtrack;
+   *src_num_steps = num_steps_total;
+   *src_num_xtrack = num_xtrack;
 
    return 0;
 }
@@ -360,8 +360,9 @@ free_and_return:
 }
 
 Pixel_Regrid_Type *
-Regrid_open (const char **files, int num_files,
-             const Pixel_Grid_Param_Type *dest, int *src_dims)
+Regrid_open (const Pixel_Grid_Param_Type *dest,
+             const char **files, int num_files,
+             int *src_num_steps, int *src_num_xtrack)
 {
    Pixel_Regrid_Type *r = NULL;
    Pixel_List_Type *dest_pixel_area = NULL;
@@ -373,7 +374,8 @@ Regrid_open (const char **files, int num_files,
    if (NULL == (r = Pixel_open_regrid (dest, dest_pixel_area)))
      goto free_and_return;
 
-   if (-1 == find_all_pixel_overlaps (r, files, num_files, src_dims))
+   if (-1 == find_all_pixel_overlaps (r, files, num_files,
+                                      src_num_steps, src_num_xtrack))
      goto free_and_return;
 
    status = 0;

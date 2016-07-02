@@ -46,8 +46,8 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = poly.o pixel.o regrid.o
-ELFOBJS  = $(elfdir)/poly.o $(elfdir)/pixel.o $(elfdir)/regrid.o
+OFILES   = poly.o pixel.o regrid.o var.o
+ELFOBJS  = $(elfdir)/poly.o $(elfdir)/pixel.o $(elfdir)/regrid.o $(elfdir)/var.o
 
 # --------------------------------------------------------------------------
 # Rules
@@ -124,6 +124,9 @@ $(elfdir)/pixel.o:	$(srcdir)/pixel.c
 
 $(elfdir)/regrid.o:	$(srcdir)/regrid.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/regrid.c
+
+$(elfdir)/var.o:	$(srcdir)/var.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/var.c
 
 $(elfdir)/l2_regrid.o:	$(srcdir)/l2_regrid.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/l2_regrid.c

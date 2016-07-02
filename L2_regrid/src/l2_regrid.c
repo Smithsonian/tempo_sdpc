@@ -1,4 +1,5 @@
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include "poly.h"
 #include "pixel.h"
 #include "regrid.h"
+#include "var.h"
 
 #ifndef REALLOC
 # define REALLOC realloc
@@ -24,152 +26,6 @@
 #ifndef FREE
 # define FREE free
 #endif
-
-typedef struct
-{
-   const char *var_name;
-   double *src_values;
-   double *dest_values;
-   int *src_mask;
-   int num_step;
-   int num_xtrack;
-   int num_src;
-   int num_dest;
-}
-Value_Buffer_Type;
-
-static void free_value_buffer (Value_Buffer_Type *vb)
-{
-   if (vb == NULL)
-     return;
-   FREE(vb->src_values);
-   FREE(vb->src_mask);
-   FREE(vb);
-}
-
-static Value_Buffer_Type *
-new_value_buffer (const Pixel_Grid_Param_Type *dest, const int *src_dims)
-{
-   Value_Buffer_Type *vb = NULL;
-   int len, len_mask;
-
-   if (NULL == (vb = (Value_Buffer_Type *)MALLOC (sizeof *vb)))
-     return NULL;
-
-   vb->src_values = NULL;
-   vb->src_mask = NULL;
-
-   vb->num_step = src_dims[0];
-   vb->num_xtrack = src_dims[1];
-
-   vb->num_src = vb->num_step * vb->num_xtrack;
-   vb->num_dest = dest->nx * dest->ny;
-
-   /* Note that vb->src_values and vb->dest_values
-    * share a single malloced space */
-   len = (vb->num_src + vb->num_dest) * sizeof(double);
-   len_mask = vb->num_src * sizeof(int);
-
-   if ((NULL == (vb->src_values = (double *)MALLOC (len)))
-       || (NULL == (vb->src_mask = (int *) MALLOC (len_mask))))
-     {
-        free_value_buffer (vb);
-        return NULL;
-     }
-   vb->dest_values = vb->src_values + vb->num_src;
-
-   memset ((char *)vb->src_mask, 0, len_mask);
-
-   return vb;
-}
-
-static int read_var_values (Value_Buffer_Type *vb, const char *file)
-{
-   TIO_Var_Info_Type vi;
-   int i, start[3], count[3], ncid, num_steps, num_pixels;
-   int *step = NULL;
-   double *var = NULL;
-   int status = -1;
-
-   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
-     return -1;
-
-   if (-1 == TIO_inq_var (ncid, vb->var_name, &vi))
-     goto cleanup_and_return;
-
-   num_steps = vi.dimlens[0];
-
-   if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto cleanup_and_return;
-     }
-
-   start[0] = 0;
-   count[0] = num_steps;
-   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
-                                  start, count, TIO_INT, step))
-     goto cleanup_and_return;
-
-   num_pixels = num_steps * vb->num_xtrack;
-
-   if (NULL == (var = (double *) MALLOC (num_pixels * sizeof(double))))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto cleanup_and_return;
-     }
-
-   start[0] = 0;
-   start[1] = 0;
-   count[0] = num_steps;
-   count[1] = vb->num_xtrack;
-
-   if (-1 == TIO_get_var_section (ncid, vb->var_name,
-                                  start, count, TIO_DOUBLE, var))
-     goto cleanup_and_return;
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        int pix_xtrack = i % vb->num_xtrack;
-        int pix_step_index = i / vb->num_xtrack;
-        int pix = pix_xtrack + step[pix_step_index] * vb->num_xtrack;
-        vb->src_values[pix] = var[i];
-     }
-
-   status = 0;
-cleanup_and_return:
-   FREE(step);
-   FREE(var);
-   nc_close (ncid);
-
-   return status;
-}
-
-static int
-regrid_variable (const Pixel_Regrid_Type *r, Value_Buffer_Type *vb,
-                 const char *var_name, const char **files, int num_files)
-{
-   double *vb_dest_values = vb->dest_values;
-   int i, vb_num_dest = vb->num_dest;
-
-   vb->var_name = var_name;
-
-   for (i = 0; i < num_files; i++)
-     {
-        if (-1 == read_var_values (vb, files[i]))
-          return -1;
-     }
-
-   /* Pixel_regrid assumes dest_values is initialized to <invalid> */
-   for (i = 0; i < vb_num_dest; i++)
-     {
-        vb_dest_values[i] = HUGE_VAL;
-     }
-
-   /* result returned in vb->dest_values */
-   return Pixel_regrid (r, vb->src_values, vb->src_mask,
-                        vb->dest_values, NULL);
-}
 
 static int read_dest_grid_params (FILE *fp, Pixel_Grid_Param_Type *dest)
 {
@@ -211,7 +67,7 @@ enum {
  */
 
 static const char *__Test_Product_Var_Names[] = {
-   "column"
+   "var0", "var1", "var2", "var3"
 };
 static const char *__Test_Product_File_Names[] = {
    "/tmp/test_l2l3_g00_grid.nc",
@@ -230,137 +86,17 @@ static struct Product_Type Product_List[] =
 {
    {PRODUCT_TYPE_TEST,
         "test_l3_out.nc",
-        1, __Test_Product_Var_Names,
+        4, __Test_Product_Var_Names,
        10, __Test_Product_File_Names},
    {0,NULL,0,NULL,0,NULL}
 };
 
-#define NC_CHECK_STATUS(s) \
-   do {if (NC_NOERR != (s)) goto cleanup_and_exit; } while (0);
-
-static int write_lonlat_grid (int ncid, const Pixel_Grid_Param_Type *dest)
+static int make_l3_product (const Product_Type *prod,
+                            const Pixel_Grid_Param_Type *dest,
+                            const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb)
 {
-   const char units_lon[] = "degrees_east";
-   const char units_lat[] = "degrees_north";
-   double *lon=NULL, *lat=NULL;
-   double dlon, dlat;
-   int dim_lon, id_lon;
-   int dim_lat, id_lat;
-   size_t start, count;
-   int i, status;
-
-   if ((NULL == (lon = (double *)MALLOC (dest->nx * sizeof(double))))
-       || (NULL == (lat = (double *)MALLOC (dest->ny * sizeof(double)))))
-     {
-        goto cleanup_and_exit;
-     }
-
-   dlon = (dest->xmax - dest->xmin) / dest->nx;
-   dlat = (dest->ymax - dest->ymin) / dest->ny;
-   for (i = 0; i < dest->nx; i++)
-     {
-        lon[i] = dest->xmin + (i + 0.5) * dlon;
-     }
-   for (i = 0; i < dest->ny; i++)
-     {
-        lat[i] = dest->ymin + (i + 0.5) * dlat;
-     }
-
-   /* FIXME!! should be using libtio!!  */
-   status = nc_def_dim (ncid, TEMPO_VAR_LONGITUDE, dest->nx, &dim_lon);
-   NC_CHECK_STATUS(status);
-   status = nc_def_dim (ncid, TEMPO_VAR_LATITUDE, dest->ny, &dim_lat);
-   NC_CHECK_STATUS(status);
-
-   status = nc_def_var (ncid, TEMPO_VAR_LONGITUDE, NC_FLOAT, 1, &dim_lon, &id_lon);
-   NC_CHECK_STATUS(status);
-   status = nc_put_att_text (ncid, id_lon, "units", strlen(units_lon), units_lon);
-   NC_CHECK_STATUS(status);
-
-   status = nc_def_var (ncid, TEMPO_VAR_LATITUDE, NC_FLOAT, 1, &dim_lat, &id_lat);
-   NC_CHECK_STATUS(status);
-   status = nc_put_att_text (ncid, id_lat, "units", strlen(units_lat), units_lat);
-   NC_CHECK_STATUS(status);
-
-   start = 0;
-   count = dest->nx;
-   status = nc_put_vara_double (ncid, id_lon, &start, &count, lon);
-   NC_CHECK_STATUS(status);
-
-   start = 0;
-   count = dest->ny;
-   status = nc_put_vara_double (ncid, id_lat, &start, &count, lat);
-   NC_CHECK_STATUS(status);
-
-cleanup_and_exit:
-
-   FREE(lon);
-   FREE(lat);
-
-   return 0;
-}
-
-static int write_variable (int ncid, const Value_Buffer_Type *value_buf,
-                           const char *var_name)
-{
-   TIO_Var_Info_Type vi;
-   const char coord_lonlat[] = "longitude latitude";
-   size_t start[2], count[2];
-   int lon_dimlen, lon_dimid;
-   int lat_dimlen, lat_dimid;
-   int status, id_var, i, dims[2];
-   double *values = value_buf->dest_values;
-   float fill_float = -NC_FILL_FLOAT;
-   int shuffle=1, deflate=1, deflate_level=1;
-
-   if (-1 == TIO_inq_var(ncid, TEMPO_VAR_LONGITUDE, &vi))
-     return -1;
-   lon_dimlen = vi.dimlens[0];
-   lon_dimid = vi.dimids[0];
-   if (-1 == TIO_inq_var(ncid, TEMPO_VAR_LATITUDE, &vi))
-     return -1;
-   lat_dimlen = vi.dimlens[0];
-   lat_dimid = vi.dimids[0];
-
-   dims[0] = lat_dimid;
-   dims[1] = lon_dimid;
-   status = nc_def_var (ncid, var_name, NC_FLOAT, 2, dims, &id_var);
-   NC_CHECK_STATUS(status);
-   status = nc_put_att_text (ncid, id_var, "coordinates", strlen(coord_lonlat), coord_lonlat);
-   NC_CHECK_STATUS(status);
-   status = nc_def_var_fill(ncid, id_var, 0, &fill_float);
-   NC_CHECK_STATUS(status);
-   status = nc_def_var_deflate (ncid, id_var, shuffle, deflate, deflate_level);
-   NC_CHECK_STATUS(status);
-
-   for (i = 0; i < value_buf->num_dest; i++)
-     {
-        if (0 == isfinite(values[i]))
-          values[i] = fill_float;
-     }
-
-   start[0] = 0;
-   start[1] = 0;
-   count[0] = lat_dimlen;
-   count[1] = lon_dimlen;
-   status = nc_put_vara_double (ncid, id_var, start, count, value_buf->dest_values);
-   NC_CHECK_STATUS(status);
-
-cleanup_and_exit:
-   if (status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: writing variable '%s' (%s)\n",
-                     __func__, var_name, nc_strerror(status));
-     }
-
-   return status ? -1 : 0;
-}
-
-static int make_l3_product (const Product_Type *prod, const Pixel_Grid_Param_Type *dest,
-                            const Pixel_Regrid_Type *r, Value_Buffer_Type *value_buf)
-{
-   int ncid, i, close_status, status = -1;
+   int ncid=INT_MAX, ncid_infile=INT_MAX, i, close_status;
+   int status = -1;
 
    if (NC_NOERR != (status = nc_create (prod->outfile, NC_NETCDF4, &ncid)))
      {
@@ -369,20 +105,33 @@ static int make_l3_product (const Product_Type *prod, const Pixel_Grid_Param_Typ
         return -1;
      }
 
-   if (-1 == write_lonlat_grid (ncid, dest))
+   if (-1 == Var_write_lonlat_grid (ncid, dest))
      goto return_status;
+
+   /* The first input file establishes each variable's dimensionality */
+   status = nc_open (prod->input_files[0], NC_NOWRITE, &ncid_infile);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s (%s)",
+                     __func__, prod->input_files[0], nc_strerror(status));
+        goto return_status;
+     }
 
    for (i = 0; i < prod->num_var_names; i++)
      {
-        if (-1 == regrid_variable (r, value_buf, prod->var_names[i],
-                                   prod->input_files, prod->num_input_files))
+        if (-1 == Var_apply_regrid (r, vb, prod->var_names[i],
+                                    prod->input_files, prod->num_input_files))
           goto return_status;
-        if (-1 == write_variable (ncid, value_buf, prod->var_names[i]))
+        if (-1 == Var_write_values (ncid, vb, ncid_infile, prod->var_names[i]))
           goto return_status;
      }
 
    status = 0;
 return_status:
+   if (ncid_infile != INT_MAX)
+     {
+        (void) nc_close (ncid_infile);
+     }
    if (NC_NOERR != (close_status = nc_close(ncid)))
      {
         Tell_verror (TELL_IO_ERROR, "%s: closing %s (%s)",
@@ -397,10 +146,11 @@ int main (int argc, const char **argv)
 {
    Pixel_Grid_Param_Type dest;
    Pixel_Regrid_Type *r = NULL;
-   Value_Buffer_Type *value_buf = NULL;
+   Var_Value_Buffer_Type *vb = NULL;
    Product_Type *prod;
    const char **grid_files;
-   int src_dims[2], num_grid_files, status = 1;
+   int num_grid_files, src_num_step, src_num_xtrack;
+   int status = 1;
 
    num_grid_files = argc-1;
    grid_files     = argv+1;
@@ -408,27 +158,23 @@ int main (int argc, const char **argv)
    if (-1 == read_dest_grid_params (NULL, &dest))
      goto return_status;
 
-   if (NULL == (r = Regrid_open (grid_files, num_grid_files, &dest, src_dims)))
+   if (NULL == (r = Regrid_open (&dest, grid_files, num_grid_files,
+                                 &src_num_step, &src_num_xtrack)))
      goto return_status;
 
-   /* value_buf gets re-used in looping over variables/files */
-   if (NULL == (value_buf = new_value_buffer (&dest, src_dims)))
+   if (NULL == (vb = Var_new_value_buffer (dest.nx, dest.ny,
+                                           src_num_step, src_num_xtrack)))
      goto return_status;
 
-   /* FIXME:  The same area weights should work for all L2 products produced
-    * in the same scan so, in principle, we could loop over all the L2 products
-    * and not just the set we used to derive the weights.
-    * Each L2 product implies a set of variables to be regridded.
-    */
    for (prod = Product_List; prod->var_names != NULL; prod++)
      {
-        if (-1 == make_l3_product (prod, &dest, r, value_buf))
+        if (-1 == make_l3_product (prod, &dest, r, vb))
           goto return_status;
      }
 
    status = 0;
 return_status:
-   free_value_buffer (value_buf);
+   Var_free_value_buffer (vb);
    Regrid_close (r);
 
    return status;
