@@ -78,11 +78,17 @@ static int compare_data (int n, float *out, float *in)
 
 static int test_def_grp (int ncid)
 {
-   int ignore_grp;
+   int grp, ignore_grp;
 
    if (-1 == TIO_def_grp (ncid, "xxx", &ignore_grp))
      {
         fprintf (stderr, "*** TIO_def_grp failed\n");
+        return -1;
+     }
+   if ((-1 == TIO_inq_grp (ncid, "xxx", &grp))
+       || (grp != ignore_grp))
+     {
+        fprintf (stderr, "*** TIO_inq_grp failed\n");
         return -1;
      }
    if (-1 == TIO_def_grp (ncid, "xxx/a/b/c", &ignore_grp))
@@ -117,6 +123,98 @@ static int test_def_grp (int ncid)
         fprintf (stderr, "*** TIO_def_grp failed\n");
         return -1;
      }
+
+   return 0;
+}
+
+static int test_dims (int ncid)
+{
+   const char dimname[] = "test_dim";
+   size_t len, test_dimlen = 128;
+   int test_dimid, id;
+   char buf[TIO_MAX_NAME_LEN];
+
+   if (-1 == TIO_def_dim (ncid, dimname, test_dimlen, &test_dimid))
+     return -1;
+
+   if (-1 == TIO_inq_dimid (ncid, dimname, &id))
+     return -1;
+   if (id != test_dimid)
+     {
+        fprintf (stderr, "*** TIO_inq_dimid failed\n");
+        return -1;
+     }
+
+   if (-1 == TIO_inq_dimname (ncid, test_dimid, buf))
+     return -1;
+   if (0 != strcmp (buf, dimname))
+     {
+        fprintf (stderr, "*** TIO_inq_dimname failed\n");
+        return -1;
+     }
+
+   if (-1 == TIO_inq_dim (ncid, dimname, &id, &len))
+     return -1;
+   if ((id != test_dimid) || (len != test_dimlen))
+     {
+        fprintf (stderr, "*** TIO_inq_dim failed\n");
+        return -1;
+     }
+
+   return 0;
+}
+
+static int dontcopy_attr (const char *attr)
+{
+   return (0 == strcmp (attr, "_FillValue"));
+}
+
+static int test_def_var (int ncid, const char *name, int type)
+{
+   TIO_Var_Info_Type vi, vi2;
+   TIO_Attr_Text_Type attrs[] =
+     {
+        {"test_attr1", "This is an attribute test"},
+        {"test_attr2", "This is another attribute test"}
+     };
+   const char test_name[] = "test_var";
+   int i, test_id, dimids_ok;
+
+   if (-1 == TIO_inq_var (ncid, name, &vi))
+     return -1;
+
+   if (-1 == TIO_def_var (ncid, test_name, type, vi.ndims, vi.dimids, &test_id))
+     return -1;
+
+   if (-1 == TIO_put_text_attrs (ncid, test_id, attrs))
+     return -1;
+
+   if (-1 == TIO_inq_var (ncid, name, &vi2))
+     return -1;
+   dimids_ok = 1;
+   for (i = 0; i < vi.ndims; i++)
+     {
+        if (vi.dimids[i] != vi2.dimids[i])
+          {
+             dimids_ok = 0;
+             break;
+          }
+     }
+   if ((vi2.ndims != vi.ndims) || (dimids_ok == 0))
+     {
+        fprintf (stderr, "*** ERROR: TIO_def_var/TIO_inq_var are inconsistent!\n");
+        return -1;
+     }
+
+   if (-1 == TIO_def_var_deflate (ncid, test_id, 1, 1, 1))
+     return -1;
+
+   if (-1 == TIO_def_var_fill (ncid, test_id, 1, NULL))
+     return -1;
+
+   if (-1 == TIO_copy_attrs (ncid, vi.varid, dontcopy_attr,
+                             ncid, test_id))
+     return -1;
 
    return 0;
 }
@@ -185,12 +283,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         dbl_relerr[i] = (double) relerr[i];
      }
 
-   if (NC_NOERR != (status = nc_create (file, NC_NETCDF4, &ncid)))
-     {
-        fprintf (stderr, "*** error opening %s (%s)\n",
-                 file, nc_strerror(status));
-        goto cleanup;
-     }
+   if (-1 == TIO_create (file, NC_NETCDF4, &ncid))
+     goto cleanup;
 
    if (-1 == test_def_grp (ncid))
         goto cleanup;
@@ -209,6 +303,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
                  grp_name, file, nc_strerror(status));
         goto cleanup;
      }
+
+   if (-1 == test_dims (ncid))
+     goto cleanup;
 
    if (-1 == TIO_put_var_section (grp, data_name, start, count, field_type, data))
      {
@@ -230,6 +327,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
                  relerr_name, file);
         goto cleanup;
      }
+
+   if (-1 == test_def_var (grp, relerr_name, field_type))
+     goto cleanup;
 
    /* test writing to attributes */
    if (NC_NOERR != (status = nc_inq_varid (grp, data_name, &varid)))
@@ -267,17 +367,11 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   if (NC_NOERR != (status = nc_close (ncid)))
-     {
-        fprintf (stderr, "*** error closing file %s\n", file);
-        goto cleanup;
-     }
+   if (-1 == TIO_close (ncid))
+     goto cleanup;
 
-   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
-     {
-        fprintf (stderr, "*** error opening file %s\n", file);
-        goto cleanup;
-     }
+   if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
+     goto cleanup;
 
    if (NC_NOERR != (status = nc_inq_grp_full_ncid (ncid, grp_name, &grp)))
      {
@@ -363,11 +457,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   if (NC_NOERR != (status = nc_close (ncid)))
-     {
-        fprintf (stderr, "*** error closing file %s\n", file);
-        goto cleanup;
-     }
+   if (-1 == TIO_close (ncid))
+     goto cleanup;
 
    err = 0;
 cleanup:
@@ -382,7 +473,7 @@ cleanup:
 
 static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int ny)
 {
-   int ncid, status, err=-1;
+   int ncid, err=-1;
    TIO_Scan_Group_Type sgrps[] =
      {
         {"band_290_490_nm", 0, 0},
@@ -399,12 +490,8 @@ static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int n
 
    /* nc_set_log_level(3); */
 
-   if (NC_NOERR != (status = nc_create (file, NC_NETCDF4, &ncid)))
-     {
-        fprintf (stderr, "*** error opening %s (%s)\n",
-                 file, nc_strerror(status));
-        goto cleanup;
-     }
+   if (-1 == TIO_create (file, NC_NETCDF4, &ncid))
+     goto cleanup;
 
    if (-1 == TIO_l1_irradiance_template (ncid, ntracks, num_sgrps, sgrps))
      {
@@ -412,11 +499,8 @@ static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int n
         goto cleanup;
      }
 
-   if (NC_NOERR != (status = nc_close (ncid)))
-     {
-        fprintf (stderr, "*** error closing file %s\n", file);
-        goto cleanup;
-     }
+   if (-1 == TIO_close (ncid))
+     goto cleanup;
 
    err = 0;
 cleanup:

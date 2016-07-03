@@ -55,6 +55,43 @@ typedef struct
 }
 TIO_Var_Info_Type;
 
+typedef struct
+{
+   char *name;
+   char *text;
+}
+TIO_Attr_Text_Type;
+
+/** Create a file
+ * @param[in]  path   Path to file
+ * @param[in]  cmode  Create mode
+ * @param[out] ncid   Pointer to id number
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_create (const char *path, int cmode, int *ncid);
+
+/** Open an existing file
+ * @param[in]  path   Path to existing file
+ * @param[in]  omode  Open mode
+ * @param[out] ncid   Pointer to id number of opened file
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_open (const char *path, int omode, int *ncid);
+
+/** Close an open file
+ * @param[in] ncid   Id number of currently open file
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_close (int ncid);
+
+/** Get id of a group given the full path to it
+ * @param[in]  parent_ncid   File index
+ * @param[in]  path          Full name path to the group
+ * @param[out] grp           group index
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_inq_grp (int parent_ncid, const char *path, int *grp);
+
 /** Get information about a variable using its name.
  * @param  grp    Index of group containing the variable
  * @param  name   Variable name string
@@ -122,6 +159,16 @@ extern int TIO_inq_att (int grp, int varid, const char *attname,
 extern int TIO_put_att (int grp, int varid, const char *attname,
                         int xtype, size_t len, const void *att);
 
+/** Write multiple text attributes
+ * @param[in]  grp      Index of group containing the attribute
+ * @param[in]  varid    Index of the corresponding variable.
+ * @param[in]  attrs    Pointer to array of TIO_Attr_Text_Type
+ *                      (last element has attr->name=NULL)
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_put_text_attrs (int grp, int varid,
+                               const TIO_Attr_Text_Type *attrs);
+
 /** Read an attribute value
  * @param  grp      Index of group containing the attribute
  * @param  varid    Index of the corresponding variable.
@@ -132,6 +179,46 @@ extern int TIO_put_att (int grp, int varid, const char *attname,
  */
 extern int TIO_get_att (int grp, int varid, const char *attname,
                         int xtype, void *att);
+
+/** Copy variable attributes between ncids
+ * @param  ncid_infile     Input ncid
+ * @param  id_var_infile   Input variable id (in input ncid)
+ * @param  dontcopy_attr   (Optional) Pointer to function that
+ *                         indicates whether or not an attribute
+ *                         should be copied.
+ * @param  ncid            Output ncid.
+ * @param  id_var          Output variable id (in output ncid).
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_copy_attrs (int ncid_infile, int id_var_infile,
+                           int (*dontcopy_attr)(const char *),
+                           int ncid, int id_var);
+
+/** Read the name of the dimension with a given dimid.
+ * @param[in]   ncid     File ncid
+ * @param[in]   dimid    Id number of the dimension
+ * @param[out]  dimname  dimension name
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_inq_dimname (int grp, int dimid, char *dimname);
+
+/** Read the id number of a named dimension.
+ * @param[in]   ncid     File ncid
+ * @param[in]   dimname  dimension name
+ * @param[out]  dimid    Id number of the dimension
+ * @return same as nc_inq_dimid
+ */
+extern int TIO_inq_dimid (int grp, const char *dimname, int *dimid);
+
+/** Read the id number and size of a named dimension.
+ * @param[in]   ncid     File ncid
+ * @param[in]   dimname  dimension name
+ * @param[out]  dimid    Id number of the dimension
+ * @param[out]  dimlen    size of the dimension
+ * @return same as nc_inq_dimid and nc_inq_dimlen
+ */
+extern int TIO_inq_dim (int grp, const char *dimname,
+                        int *dimid, size_t *dimlen);
 
 /** Write a global attribute containing the git commit hash
  * @param  ncid     File ncid
@@ -147,6 +234,47 @@ extern int TIO_put_git_commit_hash (int ncid, const char *attname);
  * @return 0 on success, -1 on error
  */
 extern int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid);
+
+/** Define a dimension
+ * @param[in]   ncid         The ncid that will contain the dimension
+ * @param[in]   dimname      The name of the dimension
+ * @param[in]   dimlen       The size_t size of the dimension, or NC_UNLIMITED
+ * @param[out]  dimid        The id number of the new dimension
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_dim (int ncid, const char *dimname, size_t dimlen, int *dimid);
+
+/** Define a variable
+ * @param[in]   ncid      The ncid that will contain the variable
+ * @param[in]   name      The name of the variable
+ * @param[in]   type      The type of the variable
+ * @param[in]   num_dims  The number of dimensions
+ * @param[in]   dimids    The id number of each of the dimensions
+ * @param[out]  varid     The id number of the new variable
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_var (int ncid, const char *name, int type,
+                        int num_dims, const int *dimids, int *varid);
+
+/** Define a variable's fill value
+ * @param  grp         The group containing the variable
+ * @param  varid       Variable id number
+ * @param  no_fill     When no_fill mode is non-zero, fill values will not be written
+ * @param  fill_value  Pointer to the fill value
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_var_fill (int grp, int varid, int no_fill, void *fill_value);
+
+/** Define a variable's deflate values
+ * @param  grp            The group containing the variable
+ * @param  varid          Variable id number
+ * @param  shuffle        Non-zero to use shuffle
+ * @param  deflate        Non-zero to use compresson
+ * @param  deflate_level  Compression level to use
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_var_deflate (int grp, int varid,
+                                int shuffle, int deflate, int deflate_level);
 
 /** Read the fill value of a named variable and convert it to a specified type
  * @param  grp    The group containing the variable

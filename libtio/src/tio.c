@@ -268,6 +268,60 @@ int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype)
    return 0;
 }
 
+int TIO_create (const char *path, int cmode, int *ncid)
+{
+   int status;
+
+   if ((path == NULL) || (ncid == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_create (path, cmode, ncid)))
+     {
+        Tell_verror (TELL_IO_OPEN_ERROR, "%s: creating %s (%s)",
+                     __func__, path, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_open (const char *path, int omode, int *ncid)
+{
+   int status;
+
+   if ((path == NULL) || (ncid == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_open (path, omode, ncid)))
+     {
+        Tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s (%s)",
+                     __func__, path, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_close (int ncid)
+{
+   int status;
+
+   if (NC_NOERR != (status = nc_close (ncid)))
+     {
+        Tell_verror (TELL_IO_ERROR, "%s: closing file %d (%s)",
+                     __func__, ncid, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
 int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 {
    int status, i;
@@ -900,6 +954,26 @@ int TIO_get_att (int grp, int varid, const char *attname,
    return 0;
 }
 
+int TIO_inq_grp (int parent_ncid, const char *path, int *grp)
+{
+   int status;
+
+   if ((path == NULL) || (grp == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_inq_grp_full_ncid (parent_ncid, path, grp)))
+     {
+        Tell_verror (TELL_IO_READ_ERROR, "%s: reading group path %s (%s)",
+                     __func__, path, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
 int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
 {
    char delim = '/';
@@ -910,6 +984,19 @@ int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
      {
         Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
+     }
+
+   if ((*path == delim) && (*(path+1) == 0))
+     {
+        int status = nc_inq_grp_full_ncid (parent_ncid, path, new_ncid);
+        if (NC_NOERR != status)
+          {
+             Tell_verror (TELL_IO_READ_ERROR,
+                          "%s: accessing id of root group (%s)",
+                          __func__, nc_strerror (status));
+             return -1;
+          }
+        return 0;
      }
 
    for (p = path; *p != 0; p += len)
@@ -962,6 +1049,200 @@ int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
      }
 
    return 0;
+}
+
+int TIO_def_dim (int ncid, const char *name, size_t len, int *id)
+{
+   int status;
+
+   if ((name == NULL) || (id == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_def_dim (ncid, name, len, id)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining dimension %s (%s)",
+                     __func__, name, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_def_var (int ncid, const char *name, int type,
+                 int num_dims, const int *dimids, int *varid)
+{
+   int status;
+
+   if ((name == NULL) || (dimids == NULL) || (varid == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_def_var (ncid, name, type, num_dims, dimids, varid)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                     __func__, name, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_def_var_fill (int grp, int varid, int no_fill, void *fill_value)
+{
+   int status;
+
+   status = nc_def_var_fill (grp, varid, no_fill, fill_value);
+   if (status != NC_NOERR)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: setting fill value for varid=%d (%s)",
+                     __func__, varid, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_def_var_deflate (int grp, int varid,
+                         int shuffle, int deflate, int deflate_level)
+{
+   int status;
+
+   status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level);
+   if (status != NC_NOERR)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: setting deflate values for varid=%d (%s)",
+                     __func__, varid, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_put_text_attrs (int grp, int varid, const TIO_Attr_Text_Type *attrs)
+{
+   const TIO_Attr_Text_Type *a;
+   int status;
+
+   if (attrs == NULL)
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        status = nc_put_att_text (grp, varid, a->name, strlen(a->text), a->text);
+        if (status != NC_NOERR)
+          {
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing text attribute %s (%s)",
+                          __func__, a->name, nc_strerror (status));
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+int TIO_copy_attrs (int ncid_infile, int id_var_infile,
+                    int (*dontcopy_attr)(const char *),
+                    int ncid, int id_var)
+{
+   char attname[TIO_MAX_NAME_LEN];
+   int status, attnum, num_atts;
+
+   status = nc_inq_varnatts (ncid_infile, id_var_infile, &num_atts);
+   if (NC_NOERR != status)
+     {
+        Tell_verror (TELL_IO_READ_ERROR,
+                     "%s: reading number of attributes for variable id=%d (%s)",
+                     __func__, id_var_infile, nc_strerror (status));
+        return -1;
+     }
+
+   for (attnum = 0; attnum < num_atts; attnum++)
+     {
+        status = nc_inq_attname (ncid_infile, id_var_infile, attnum, attname);
+        if (NC_NOERR != status)
+          {
+             Tell_verror (TELL_IO_READ_ERROR,
+                          "%s: reading attribute %d=%s (%s)",
+                          __func__, attnum, attname,
+                          nc_strerror (status));
+             return -1;
+          }
+        if ((NULL != dontcopy_attr) && (1 == dontcopy_attr (attname)))
+          continue;
+        status = nc_copy_att (ncid_infile, id_var_infile, attname,
+                              ncid, id_var);
+        if (NC_NOERR != status)
+          {
+             Tell_verror (TELL_IO_READ_ERROR,
+                          "%s: copying attribute %s (%s)",
+                          __func__, attname, nc_strerror (status));
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
+int TIO_inq_dimname (int grp, int dimid, char *dimname)
+{
+   int status;
+
+   if (dimname == NULL)
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != (status = nc_inq_dimname (grp, dimid, dimname)))
+     {
+        Tell_verror (TELL_IO_READ_ERROR, "%s: reading dimension %d name (%s)",
+                     __func__, dimid, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_inq_dimid (int grp, const char *dimname, int *dimid)
+{
+   if ((dimname == NULL) || (dimid == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   /* For such a low-level operation, it seems better to
+    * _not_ generate an error message by default */
+   return nc_inq_dimid (grp, dimname, dimid);
+}
+
+int TIO_inq_dim (int grp, const char *dimname, int *dimid, size_t *dimlen)
+{
+   int status;
+   if ((dimname == NULL) || (dimid == NULL) || (dimlen == NULL))
+     {
+        Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
+        return -1;
+     }
+
+   /* For such a low-level operation, it seems better to
+    * _not_ generate an error message by default */
+
+   status = nc_inq_dimid (grp, dimname, dimid);
+   if (NC_NOERR != status)
+     return status;
+
+   return nc_inq_dimlen (grp, *dimid, dimlen);
 }
 
 int TIO_put_git_commit_hash (int grp, const char *attname)
