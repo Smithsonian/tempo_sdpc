@@ -16,12 +16,13 @@ TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 REGRID_LIBPATHS  = -Wl,-rpath=$(elfdir) -L$(elfdir)
 PROJ_LIBPATHS    = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
+LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
-INCS = -I$(config_dir)/include -I$(TELL_INC) -I$(TIO_INC) -I$(NETCDF_INC)
-LIBS = $(INSTALL_LIBPATHS) \
+INCS = -I$(config_dir)/include -I$(LIBCONFIG_INC) -I$(TELL_INC) -I$(TIO_INC) -I$(NETCDF_INC)
+LIBS = $(INSTALL_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig \
        $(TIO_LIBPATHS) -ltio \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell $(RPATH)

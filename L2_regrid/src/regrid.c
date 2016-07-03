@@ -256,7 +256,7 @@ free_and_return:
 
 static int
 find_all_pixel_overlaps (Pixel_Regrid_Type *r,
-                         const char **files, int num_files,
+                         char **files, int num_files,
                          const char *lonlat_grp,
                          int *src_num_steps, int *src_num_xtrack)
 {
@@ -362,7 +362,7 @@ free_and_return:
 
 Pixel_Regrid_Type *
 Regrid_open (const Pixel_Grid_Param_Type *dest,
-             const char **files, int num_files, const char *lonlat_grp,
+             char **files, int num_files, const char *lonlat_grp,
              int *src_num_steps, int *src_num_xtrack)
 {
    Pixel_Regrid_Type *r = NULL;

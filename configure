@@ -589,6 +589,8 @@ CSOURCES
 F90SOURCES
 TELL_INC
 TELL_LIB
+LIBCONFIG_INC
+LIBCONFIG_LIB
 PROJ_INC
 PROJ_LIB
 NETCDF_INC
@@ -673,6 +675,7 @@ with_hdfeos
 with_hdfeos5
 with_netcdf
 with_proj
+with_libconfig
 with_tell
 '
       ac_precious_vars='build_alias
@@ -1301,6 +1304,7 @@ Optional Packages:
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
   --with-proj=DIR         Use proj4 library installed in DIR
+  --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
 
 Report bugs to the package provider.
@@ -2118,6 +2122,24 @@ if test "x$jh_with_proj" = "xno"; then
 else
    PROJ_LIB="$jh_with_proj/lib"
    PROJ_INC="$jh_with_proj/include"
+fi
+
+
+
+
+# Check whether --with-libconfig was given.
+if test "${with_libconfig+set}" = set; then :
+  withval=$with_libconfig; jh_with_libconfig=$withval
+else
+  jh_with_libconfig=no
+fi
+
+if test "x$jh_with_libconfig" = "xno"; then
+   LIBCONFIG_LIB="\$(OTS_ROOT)/lib"
+   LIBCONFIG_INC="\$(OTS_ROOT)/include"
+else
+   LIBCONFIG_LIB="$jh_with_libconfig/lib"
+   LIBCONFIG_INC="$jh_with_libconfig/include"
 fi
 
 

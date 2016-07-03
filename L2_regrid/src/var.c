@@ -234,14 +234,15 @@ static void copy_to_strided (int num, int stride,
 }
 
 static int parse_var_path (const char *var_path,
-                           char **grp_path, const char **var_name)
+                           char **pgrp_path, char **pvar_name)
 {
+   char *grp_path = NULL, *var_name = NULL;
    const char *p;
 
    if (NULL == (p = strrchr (var_path, '/')))
      {
-        *grp_path = NULL;
-        *var_name = var_path;
+        grp_path = NULL;
+        var_name = strdup (var_path);
      }
    else
      {
@@ -256,19 +257,30 @@ static int parse_var_path (const char *var_path,
 
         len = p - var_path;
         cpy[len] = 0;
-        *grp_path = cpy;
-        *var_name = p + 1;
+        grp_path = cpy;
+        var_name = strdup (p + 1);
      }
+
+   if (var_name == NULL)
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        FREE(grp_path);
+        grp_path = NULL;
+        return -1;
+     }
+
+   *pgrp_path = grp_path;
+   *pvar_name = var_name;
 
    return 0;
 }
 
 int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                      const char *var_path, const char **files, int num_files)
+                      const char *var_path, char **files, int num_files)
 {
    double *src_values = NULL;
    double *dest_values;
-   const char *var_name;
+   char *var_name = NULL;
    char *grp_path = NULL;
    int i, ncid, status = -1;
 
@@ -357,6 +369,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
 
 free_and_return:
    FREE(grp_path);
+   FREE(var_name);
 
    if (vb->num_values_per_pixel > 1)
      {
@@ -449,11 +462,14 @@ cleanup_and_exit:
 
 static int dontcopy_attr (const char *attname)
 {
-   const char *do_not_copy_list[] = {"bounds", NULL};
-   const char **a;
-   for (a = do_not_copy_list; *a != NULL; a++)
+   const char *lst[] = {
+      "bounds"
+   };
+   int i, n = sizeof(lst)/sizeof(*lst);
+
+   for (i = 0; i < n; i++)
      {
-        if (0 == strcmp (*a, attname))
+        if (0 == strcmp (lst[i], attname))
           return 1;
      }
 
@@ -485,9 +501,8 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
                       int ncid_infile, const char *in_var_path)
 {
    TIO_Var_Info_Type vi;
-   const char *in_var_name, *out_var_name;
-   char *in_grp_path = NULL;
-   char *out_grp_path = NULL;
+   char *in_var_name=NULL, *out_var_name=NULL;
+   char *in_grp_path = NULL, *out_grp_path = NULL;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
    size_t lon_dimlen, lat_dimlen;
    int lon_dimid, lat_dimid;
@@ -565,7 +580,9 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
 
    status = 0;
 free_and_return:
-   FREE(out_grp_path);
+   FREE(in_var_name);
    FREE(in_grp_path);
+   FREE(out_var_name);
+   FREE(out_grp_path);
    return status;
 }

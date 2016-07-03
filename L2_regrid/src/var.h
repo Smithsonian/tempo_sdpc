@@ -13,6 +13,6 @@ extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
                              const char *out_var_name,
                              int ncid_infile, const char *in_var_name);
 extern int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                             const char *var_name, const char **files, int num_files);
+                             const char *var_name, char **files, int num_files);
 
 #endif 
