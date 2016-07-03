@@ -51,8 +51,14 @@ struct Product_Type
 {
    int type;
    const char *outfile;
+
+   const char *in_lonlat_grp;
+   const char *out_lonlat_grp;
+
    int num_var_names;
-   const char **var_names;
+   const char **in_var_names;
+   const char **out_var_names;
+
    int num_input_files;
    const char **input_files;
 };
@@ -66,9 +72,13 @@ enum {
  * testing. (I hope this was obvious.)
  */
 
-static const char *__Test_Product_Var_Names[] = {
-   "var0", "var1", "var2", "var3"
+static const char *__Test_Product_In_Var_Names[] = {
+   "var0", "var1", "/test_group/var2", "/test_group/var3"
 };
+static const char *__Test_Product_Out_Var_Names[] = {
+   "var0", "var1", "/foo/bar/var2", "/foo/baz/var3"
+};
+
 static const char *__Test_Product_File_Names[] = {
    "/tmp/test_l2l3_g00_grid.nc",
    "/tmp/test_l2l3_g01_grid.nc",
@@ -86,43 +96,37 @@ static struct Product_Type Product_List[] =
 {
    {PRODUCT_TYPE_TEST,
         "test_l3_out.nc",
-        4, __Test_Product_Var_Names,
+        "/",    /* input file group containing lon-lat variables */
+        "/geometry",   /* output file group containing lon-lat variables */
+        4, __Test_Product_In_Var_Names, __Test_Product_Out_Var_Names,
        10, __Test_Product_File_Names},
-   {0,NULL,0,NULL,0,NULL}
+   {0,NULL,NULL,NULL,0,NULL,NULL,0,NULL}
 };
 
 static int make_l3_product (const Product_Type *prod,
                             const Pixel_Grid_Param_Type *dest,
                             const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb)
 {
-   int ncid=INT_MAX, ncid_infile=INT_MAX, i, close_status;
+   int ncid=INT_MAX, ncid_infile=INT_MAX, i;
    int status = -1;
 
-   if (NC_NOERR != (status = nc_create (prod->outfile, NC_NETCDF4, &ncid)))
-     {
-        Tell_verror (TELL_IO_OPEN_ERROR, "%s: creating %s (%s)",
-                     __func__, prod->outfile, nc_strerror(status));
-        return -1;
-     }
+   if (-1 == TIO_create (prod->outfile, NC_NETCDF4, &ncid))
+     return -1;
 
-   if (-1 == Var_write_lonlat_grid (ncid, dest))
+   if (-1 == Var_write_lonlat_grid (ncid, prod->out_lonlat_grp, dest))
      goto return_status;
 
    /* The first input file establishes each variable's dimensionality */
-   status = nc_open (prod->input_files[0], NC_NOWRITE, &ncid_infile);
-   if (NC_NOERR != status)
-     {
-        Tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s (%s)",
-                     __func__, prod->input_files[0], nc_strerror(status));
-        goto return_status;
-     }
+   if (-1 == TIO_open (prod->input_files[0], NC_NOWRITE, &ncid_infile))
+     goto return_status;
 
    for (i = 0; i < prod->num_var_names; i++)
      {
-        if (-1 == Var_apply_regrid (r, vb, prod->var_names[i],
+        if (-1 == Var_apply_regrid (r, vb, prod->in_var_names[i],
                                     prod->input_files, prod->num_input_files))
           goto return_status;
-        if (-1 == Var_write_values (ncid, vb, ncid_infile, prod->var_names[i]))
+        if (-1 == Var_write_values (ncid, vb, prod->out_var_names[i],
+                                    ncid_infile, prod->in_var_names[i]))
           goto return_status;
      }
 
@@ -130,14 +134,10 @@ static int make_l3_product (const Product_Type *prod,
 return_status:
    if (ncid_infile != INT_MAX)
      {
-        (void) nc_close (ncid_infile);
+        (void) TIO_close (ncid_infile);
      }
-   if (NC_NOERR != (close_status = nc_close(ncid)))
-     {
-        Tell_verror (TELL_IO_ERROR, "%s: closing %s (%s)",
-                     __func__, prod->outfile, nc_strerror(close_status));
-        return -1;
-     }
+   if (-1 == TIO_close(ncid))
+     return -1;
 
    return status;
 }
@@ -159,6 +159,7 @@ int main (int argc, const char **argv)
      goto return_status;
 
    if (NULL == (r = Regrid_open (&dest, grid_files, num_grid_files,
+                                 Product_List->in_lonlat_grp,
                                  &src_num_step, &src_num_xtrack)))
      goto return_status;
 
@@ -166,7 +167,7 @@ int main (int argc, const char **argv)
                                            src_num_step, src_num_xtrack)))
      goto return_status;
 
-   for (prod = Product_List; prod->var_names != NULL; prod++)
+   for (prod = Product_List; prod->in_var_names != NULL; prod++)
      {
         if (-1 == make_l3_product (prod, &dest, r, vb))
           goto return_status;

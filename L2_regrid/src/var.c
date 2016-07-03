@@ -28,7 +28,6 @@
 
 typedef struct
 {
-   const char *var_name;
    double *src_values;
    double *dest_values;
    int *src_mask;
@@ -52,7 +51,8 @@ void Var_free_value_buffer (Var_Value_Buffer_Type *vb)
 }
 
 Var_Value_Buffer_Type *
-Var_new_value_buffer (int dest_nx, int dest_ny, int src_num_step, int src_num_xtrack)
+Var_new_value_buffer (int dest_nx, int dest_ny,
+                      int src_num_step, int src_num_xtrack)
 {
    Var_Value_Buffer_Type *vb = NULL;
    int len, len_mask;
@@ -99,13 +99,14 @@ Var_new_value_buffer (int dest_nx, int dest_ny, int src_num_step, int src_num_xt
    return vb;
 }
 
-static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb)
+static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb,
+                                    const char *var_name)
 {
    TIO_Var_Info_Type vi;
    double *tmp;
    int i, need_num, len, num_src_values;
 
-   if (-1 == TIO_inq_var (ncid, vb->var_name, &vi))
+   if (-1 == TIO_inq_var (ncid, var_name, &vi))
      return -1;
 
    vb->num_dims = vi.ndims;
@@ -138,7 +139,8 @@ static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb)
    return 0;
 }
 
-static int read_var_values (int ncid, Var_Value_Buffer_Type *vb)
+static int read_var_values (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
+                            const char *var_name)
 {
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
    int i, num_steps, num_pixels, num_values;
@@ -181,7 +183,7 @@ static int read_var_values (int ncid, Var_Value_Buffer_Type *vb)
         goto cleanup_and_return;
      }
 
-   if (-1 == TIO_get_var_section (ncid, vb->var_name,
+   if (-1 == TIO_get_var_section (var_grp, var_name,
                                   start, count, TIO_DOUBLE, var))
      goto cleanup_and_return;
 
@@ -231,34 +233,78 @@ static void copy_to_strided (int num, int stride,
      }
 }
 
-int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                      const char *var_name, const char **files, int num_files)
+static int parse_var_path (const char *var_path,
+                           char **grp_path, const char **var_name)
 {
-   double *src_values, *dest_values;
-   int i, ncid, status = -1;
+   const char *p;
 
-   vb->var_name = var_name;
-
-   for (i = 0; i < num_files; i++)
+   if (NULL == (p = strrchr (var_path, '/')))
      {
-        int open_status;
-        if (NC_NOERR != (open_status = nc_open (files[i], NC_NOWRITE, &ncid)))
+        *grp_path = NULL;
+        *var_name = var_path;
+     }
+   else
+     {
+        char *cpy = NULL;
+        int len;
+
+        if (NULL == (cpy = strdup (var_path)))
           {
-             Tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s (%s)",
-                          __func__, files[i], nc_strerror(open_status));
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              return -1;
           }
 
+        len = p - var_path;
+        cpy[len] = 0;
+        *grp_path = cpy;
+        *var_name = p + 1;
+     }
+
+   return 0;
+}
+
+int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
+                      const char *var_path, const char **files, int num_files)
+{
+   double *src_values = NULL;
+   double *dest_values;
+   const char *var_name;
+   char *grp_path = NULL;
+   int i, ncid, status = -1;
+
+   if (-1 == parse_var_path (var_path, &grp_path, &var_name))
+     return -1;
+
+   for (i = 0; i < num_files; i++)
+     {
+        int grp;
+
+        if (-1 == TIO_open (files[i], NC_NOWRITE, &ncid))
+          goto free_and_return;
+
+        if (grp_path)
+          {
+             if (-1 == TIO_inq_grp (ncid, grp_path, &grp))
+               goto free_and_return;
+          }
+        else grp = ncid;
+
         if (i == 0)
           {
-             if (-1 == maybe_realloc_value_buf (ncid, vb))
-               return -1;
+             if (-1 == maybe_realloc_value_buf (grp, vb, var_name))
+               {
+                  (void) TIO_close (ncid);
+                  goto free_and_return;
+               }
           }
 
-        if (-1 == read_var_values (ncid, vb))
-          return -1;
+        if (-1 == read_var_values (ncid, grp, vb, var_name))
+          {
+             (void) TIO_close (ncid);
+             goto free_and_return;
+          }
 
-        (void) nc_close (ncid);
+        (void) TIO_close (ncid);
      }
 
    /* Regridded result will be returned in vb->dest_values.
@@ -277,7 +323,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
         if (NULL == (src_values = (double *)MALLOC (len * sizeof(double))))
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             return -1;
+             goto free_and_return;
           }
         dest_values = src_values + vb->num_src_pixels;
      }
@@ -309,6 +355,9 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
         status = 0;
      }
 
+free_and_return:
+   FREE(grp_path);
+
    if (vb->num_values_per_pixel > 1)
      {
         FREE(src_values);
@@ -317,25 +366,25 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
    return status;
 }
 
-#define NC_CHECK_STATUS(s) \
-   do {if (NC_NOERR != (s)) goto cleanup_and_exit; } while (0);
-
-#define RETURN_STATUS_ONERR(s) \
-   do {if (NC_NOERR != (s)) { \
-         fprintf (stderr, "*** ERROR: %s\n", nc_strerror(s)); \
-         return s; \
-       }} while (0);
-
-int Var_write_lonlat_grid (int ncid, const Pixel_Grid_Param_Type *dest)
+int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
+                           const Pixel_Grid_Param_Type *dest)
 {
-   const char units_lon[] = "degrees_east";
-   const char units_lat[] = "degrees_north";
+   static TIO_Attr_Text_Type lon_attrs[] =
+     {
+        {"units", "degrees_east"},
+        {NULL,NULL}
+     };
+   static TIO_Attr_Text_Type lat_attrs[] =
+     {
+        {"units", "degrees_north"},
+        {NULL,NULL}
+     };
    double *lon=NULL, *lat=NULL;
    double dlon, dlat;
    int dim_lon, id_lon;
    int dim_lat, id_lat;
-   size_t start, count;
-   int i, status;
+   int grp, start, count;
+   int i, status = -1;
 
    if ((NULL == (lon = (double *)MALLOC (dest->nx * sizeof(double))))
        || (NULL == (lat = (double *)MALLOC (dest->ny * sizeof(double)))))
@@ -355,40 +404,50 @@ int Var_write_lonlat_grid (int ncid, const Pixel_Grid_Param_Type *dest)
         lat[i] = dest->ymin + (i + 0.5) * dlat;
      }
 
-   status = nc_def_dim (ncid, TEMPO_VAR_LONGITUDE, dest->nx, &dim_lon);
-   NC_CHECK_STATUS(status);
-   status = nc_def_dim (ncid, TEMPO_VAR_LATITUDE, dest->ny, &dim_lat);
-   NC_CHECK_STATUS(status);
+   /* assume dimensions are global even when lon-lat variables
+    * are in a group */
 
-   status = nc_def_var (ncid, TEMPO_VAR_LONGITUDE, NC_FLOAT, 1, &dim_lon, &id_lon);
-   NC_CHECK_STATUS(status);
-   status = nc_put_att_text (ncid, id_lon, "units", strlen(units_lon), units_lon);
-   NC_CHECK_STATUS(status);
+   if ((-1 == TIO_def_dim (ncid, TEMPO_VAR_LONGITUDE, dest->nx, &dim_lon))
+       || (-1 == TIO_def_dim (ncid, TEMPO_VAR_LATITUDE, dest->ny, &dim_lat)))
+     goto cleanup_and_exit;
 
-   status = nc_def_var (ncid, TEMPO_VAR_LATITUDE, NC_FLOAT, 1, &dim_lat, &id_lat);
-   NC_CHECK_STATUS(status);
-   status = nc_put_att_text (ncid, id_lat, "units", strlen(units_lat), units_lat);
-   NC_CHECK_STATUS(status);
+   if (lonlat_grp)
+     {
+        if (-1 == TIO_def_grp (ncid, lonlat_grp, &grp))
+          goto cleanup_and_exit;
+     }
+   else grp = ncid;
+
+   if ((-1 == TIO_def_var (grp, TEMPO_VAR_LONGITUDE, NC_FLOAT, 1, &dim_lon, &id_lon))
+       || (-1 == TIO_put_text_attrs (grp, id_lon, lon_attrs)))
+     goto cleanup_and_exit;
+
+   if ((-1 == TIO_def_var (grp, TEMPO_VAR_LATITUDE, NC_FLOAT, 1, &dim_lat, &id_lat))
+       || (-1 == TIO_put_text_attrs (grp, id_lat, lat_attrs)))
+     goto cleanup_and_exit;
 
    start = 0;
    count = dest->nx;
-   status = nc_put_vara_double (ncid, id_lon, &start, &count, lon);
-   NC_CHECK_STATUS(status);
+   if (-1 == TIO_put_var_section (grp, TEMPO_VAR_LONGITUDE,
+                                  &start, &count, TIO_DOUBLE, lon))
+     goto cleanup_and_exit;
 
    start = 0;
    count = dest->ny;
-   status = nc_put_vara_double (ncid, id_lat, &start, &count, lat);
-   NC_CHECK_STATUS(status);
+   if (-1 == TIO_put_var_section (grp, TEMPO_VAR_LATITUDE,
+                                  &start, &count, TIO_DOUBLE, lat))
+     goto cleanup_and_exit;
 
+   status = 0;
 cleanup_and_exit:
 
    FREE(lon);
    FREE(lat);
 
-   return 0;
+   return status;
 }
 
-static int dontcopy_attribute (const char *attname)
+static int dontcopy_attr (const char *attname)
 {
    const char *do_not_copy_list[] = {"bounds", NULL};
    const char **a;
@@ -401,89 +460,86 @@ static int dontcopy_attribute (const char *attname)
    return 0;
 }
 
-static int copy_var_atts (int ncid_infile, int id_var_infile,
-                          int ncid, int id_var)
-{
-   char attname[TIO_MAX_NAME_LEN];
-   int status, attnum, num_atts;
-
-   status = nc_inq_varnatts (ncid_infile, id_var_infile, &num_atts);
-   RETURN_STATUS_ONERR(status);
-   for (attnum = 0; attnum < num_atts; attnum++)
-     {
-        status = nc_inq_attname (ncid_infile, id_var_infile, attnum, attname);
-        RETURN_STATUS_ONERR(status);
-        if (dontcopy_attribute (attname))
-          continue;
-        status = nc_copy_att (ncid_infile, id_var_infile, attname,
-                              ncid, id_var);
-        RETURN_STATUS_ONERR(status);
-     }
-
-   return 0;
-}
-
-static int check_extra_dims (int ncid_infile, const TIO_Var_Info_Type *vi,
-                             int ncid, int *dims)
+static int copy_extra_dims (int ncid_infile, const TIO_Var_Info_Type *vi,
+                            int ncid, int *dims)
 {
    char dimname[TIO_MAX_NAME_LEN];
-   int i, status;
+   int i;
    for (i = 2; i < vi->ndims; i++)
      {
-        status = nc_inq_dimname (ncid_infile, vi->dimids[i], dimname);
-        RETURN_STATUS_ONERR(status);
-        /* does this dimension already exist in the output file? */
-        status = nc_inq_dimid (ncid, dimname, &dims[i]);
-        if (status == NC_NOERR)
+        if (-1 == TIO_inq_dimname (ncid_infile, vi->dimids[i], dimname))
+          return -1;
+        /* If this dimension already exists in the output file,
+         * record the dimid and continue.  Otherwise, create it. */
+        if (0 == TIO_inq_dimid (ncid, dimname, &dims[i]))
           continue;
-        status = nc_def_dim (ncid, dimname, vi->dimlens[i], &dims[i]);
-        RETURN_STATUS_ONERR(status);
+        if (-1 == TIO_def_dim (ncid, dimname, vi->dimlens[i], &dims[i]))
+          return -1;
      }
 
    return 0;
 }
 
 int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
-               int ncid_infile, const char *var_name)
+                      const char *out_var_path,
+                      int ncid_infile, const char *in_var_path)
 {
    TIO_Var_Info_Type vi;
-   size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
-   int lon_dimlen, lon_dimid;
-   int lat_dimlen, lat_dimid;
-   int status, i, dims[TIO_MAX_VAR_DIMS];
-   int id_var, num_dest_values;
+   const char *in_var_name, *out_var_name;
+   char *in_grp_path = NULL;
+   char *out_grp_path = NULL;
+   int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
+   size_t lon_dimlen, lat_dimlen;
+   int lon_dimid, lat_dimid;
+   int i, dims[TIO_MAX_VAR_DIMS];
+   int in_grp, in_varid, out_grp, out_varid, num_dest_values;
    float fill_float = -NC_FILL_FLOAT;
    int shuffle=1, deflate=1, deflate_level=1;
+   int status = -1;
 
-   if (-1 == TIO_inq_var(ncid, TEMPO_VAR_LONGITUDE, &vi))
+   if ((-1 == parse_var_path (in_var_path, &in_grp_path, &in_var_name))
+       || (-1 == parse_var_path (out_var_path, &out_grp_path, &out_var_name)))
+     goto free_and_return;
+
+   if (in_grp_path)
+     {
+        if (-1 == TIO_inq_grp (ncid_infile, in_grp_path, &in_grp))
+          goto free_and_return;
+     }
+   else in_grp = ncid_infile;
+
+   if (out_grp_path)
+     {
+        if (-1 == TIO_def_grp (ncid, out_grp_path, &out_grp))
+          goto free_and_return;
+     }
+   else out_grp = ncid;
+
+   if (-1 == TIO_inq_var (in_grp, in_var_name, &vi))
+     goto free_and_return;
+
+   in_varid = vi.varid;
+
+   if (vi.ndims > 2)
+     {
+        if (-1 == copy_extra_dims (ncid_infile, &vi, ncid, dims))
+          goto free_and_return;
+     }
+
+   if ((0 != TIO_inq_dim (ncid, TEMPO_VAR_LONGITUDE, &lon_dimid, &lon_dimlen))
+       || (0 != TIO_inq_dim (ncid, TEMPO_VAR_LATITUDE, &lat_dimid, &lat_dimlen)))
      return -1;
-   lon_dimlen = vi.dimlens[0];
-   lon_dimid = vi.dimids[0];
-   if (-1 == TIO_inq_var(ncid, TEMPO_VAR_LATITUDE, &vi))
-     return -1;
-   lat_dimlen = vi.dimlens[0];
-   lat_dimid = vi.dimids[0];
 
    dims[0] = lat_dimid;
    dims[1] = lon_dimid;
 
-   if (-1 == TIO_inq_var (ncid_infile, var_name, &vi))
-     return -1;
-
-   if (vi.ndims > 2)
+   if ((-1 == TIO_def_var (out_grp, out_var_name, NC_FLOAT, vb->num_dims, dims, &out_varid))
+       || (-1 == TIO_def_var_fill (out_grp, out_varid, 0, &fill_float))
+       || (-1 == TIO_def_var_deflate (out_grp, out_varid, shuffle, deflate, deflate_level))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, out_grp, out_varid)))
      {
-        status = check_extra_dims (ncid_infile, &vi, ncid, dims);
-        NC_CHECK_STATUS(status);
+        goto free_and_return;
      }
-
-   status = nc_def_var (ncid, var_name, NC_FLOAT, vi.ndims, dims, &id_var);
-   NC_CHECK_STATUS(status);
-   status = nc_def_var_fill(ncid, id_var, 0, &fill_float);
-   NC_CHECK_STATUS(status);
-   status = nc_def_var_deflate (ncid, id_var, shuffle, deflate, deflate_level);
-   NC_CHECK_STATUS(status);
-   status = copy_var_atts (ncid_infile, vi.varid, ncid, id_var);
-   NC_CHECK_STATUS(status);
 
    num_dest_values = vb->num_dest_pixels * vb->num_values_per_pixel;
 
@@ -503,16 +559,13 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
      {
         count[i] = vb->dimlens[i];
      }
-   status = nc_put_vara_double (ncid, id_var, start, count, vb->dest_values);
-   NC_CHECK_STATUS(status);
+   if (-1 == TIO_put_var_section (out_grp, out_var_name, start, count,
+                                  TIO_DOUBLE, vb->dest_values))
+     goto free_and_return;
 
-cleanup_and_exit:
-   if (status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: writing variable '%s' (%s)\n",
-                     __func__, var_name, nc_strerror(status));
-     }
-
-   return status ? -1 : 0;
+   status = 0;
+free_and_return:
+   FREE(out_grp_path);
+   FREE(in_grp_path);
+   return status;
 }

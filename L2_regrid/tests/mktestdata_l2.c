@@ -301,7 +301,7 @@ int main (void)
    int *xtrack = NULL;
    int dims[__MAX_VAR_DIMS], dimid_corner;
    size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
-   int ncid, id_step, id_xtrack;
+   int ncid, grp, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
    int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3;
    int num_steps_per_granule, granule, i, step;
@@ -348,6 +348,9 @@ int main (void)
         fprintf (stderr, "Writing %s\n", outfile);
 
         status = nc_create (outfile, NC_NETCDF4, &ncid);
+        NC_CHECK_STATUS(status);
+
+        status = nc_def_grp (ncid, "test_group", &grp);
         NC_CHECK_STATUS(status);
 
         status = nc_def_dim (ncid, "local1", num_local1, &dimid_local1);
@@ -414,25 +417,27 @@ int main (void)
         NC_CHECK_STATUS(status);
 
         dims[2] = dimid_local1;
-        status = nc_def_var (ncid, "var2", NC_FLOAT, 3, dims, &id_var2);
+        status = nc_def_var (grp, "var2", NC_FLOAT, 3, dims, &id_var2);
         NC_CHECK_STATUS(status);
-        status = use_compression (ncid, id_var2);
+        status = use_compression (grp, id_var2);
         NC_CHECK_STATUS(status);
-        status = put_lonlat_atts (ncid, id_var2);  /* FIXME: 3rd dimension? */
+        status = put_lonlat_atts (grp, id_var2);  /* FIXME: 3rd dimension? */
         NC_CHECK_STATUS(status);
-        status = put_att_text (ncid, id_var2, "comment", "This is var2");
+        status = put_att_text (grp, id_var2, "comment", "This is var2");
         NC_CHECK_STATUS(status);
 
         dims[2] = dimid_local1;
         dims[3] = dimid_local2;
-        status = nc_def_var (ncid, "var3", NC_FLOAT, 4, dims, &id_var3);
+        status = nc_def_var (grp, "var3", NC_FLOAT, 4, dims, &id_var3);
         NC_CHECK_STATUS(status);
-        status = use_compression (ncid, id_var3);
+        status = use_compression (grp, id_var3);
         NC_CHECK_STATUS(status);
-        status = put_lonlat_atts (ncid, id_var3);  /* FIXME: other dimensions? */
+        status = put_lonlat_atts (grp, id_var3);  /* FIXME: other dimensions? */
         NC_CHECK_STATUS(status);
-        status = put_att_text (ncid, id_var3, "comment", "This is var3");
+        status = put_att_text (grp, id_var3, "comment", "This is var3");
         NC_CHECK_STATUS(status);
+
+        /* ------- end of definitions ------- */
 
         start[0] = 0;
         count[0] = o.num_pixels;
@@ -493,11 +498,11 @@ int main (void)
              NC_CHECK_STATUS(status);
              start[2] = 0;
              count[2] = num_local1;
-             status = nc_put_vara_double (ncid, id_var2, start, count, var2);
+             status = nc_put_vara_double (grp, id_var2, start, count, var2);
              NC_CHECK_STATUS(status);
              start[3] = 0;
              count[3] = num_local2;
-             status = nc_put_vara_double (ncid, id_var3, start, count, var3);
+             status = nc_put_vara_double (grp, id_var3, start, count, var3);
              NC_CHECK_STATUS(status);
 
              step++;

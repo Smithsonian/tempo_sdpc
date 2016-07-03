@@ -118,24 +118,23 @@ static void free_source_pixel_list (Source_Pixel_List_Type *src)
    FREE(src);
 }
 
-static Source_Pixel_List_Type *read_pixel_vertices (const char *file)
+static Source_Pixel_List_Type *
+read_pixel_vertices (const char *file, const char *lonlat_grp)
 {
    Source_Pixel_List_Type *src = NULL;
    TIO_Var_Info_Type vi;
-   int ncid, start[3], count[3];
+   int ncid, grp, start[3], count[3];
    int num_pixels, num_sides, len_bounds;
    double *lon_bounds = NULL, *lat_bounds = NULL;
    double *albers_x_bounds, *albers_y_bounds;
    int *step = NULL;
    int status;
 
-   if (NC_NOERR != (status = nc_open (file, NC_NOWRITE, &ncid)))
-     {
-        Tell_verror (TELL_IO_OPEN_ERROR,
-                     "%s: opening %s for reading (%s)",
-                     __func__, file, nc_strerror(status));
-        return NULL;
-     }
+   if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
+     return NULL;
+
+   if (-1 == TIO_inq_grp (ncid, lonlat_grp, &grp))
+     return NULL;
 
    status = -1;
 
@@ -147,11 +146,12 @@ static Source_Pixel_List_Type *read_pixel_vertices (const char *file)
    src->pixel_area = NULL;
    src->pixel_lookup = NULL;
 
+   /* assume xtrack, mirror_step dimensions and coordinate variables
+    * are file-global */
+
    if (-1 == TIO_inq_var (ncid, TEMPO_DIM_XTRACK, &vi))
      goto free_and_return;
    src->num_xtrack = vi.dimlens[0];
-
-   /* read mirror step index array */
 
    if (-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &vi))
      goto free_and_return;
@@ -188,9 +188,9 @@ static Source_Pixel_List_Type *read_pixel_vertices (const char *file)
    count[1] = src->num_xtrack;
    count[2] = 4;
 
-   if ((-1 == TIO_get_var_section (ncid, TEMPO_VAR_LONGITUDE_BOUNDS,
+   if ((-1 == TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS,
                                    start, count, TIO_DOUBLE, lon_bounds))
-       || (-1 == TIO_get_var_section (ncid, TEMPO_VAR_LATITUDE_BOUNDS,
+       || (-1 == TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS,
                                       start, count, TIO_DOUBLE, lat_bounds)))
      {
         goto free_and_return;
@@ -241,7 +241,7 @@ static Source_Pixel_List_Type *read_pixel_vertices (const char *file)
 
    status = 0;
 free_and_return:
-   nc_close (ncid);
+   (void) TIO_close (ncid);
    FREE(lon_bounds);
    FREE(lat_bounds);
    FREE(step);
@@ -257,6 +257,7 @@ free_and_return:
 static int
 find_all_pixel_overlaps (Pixel_Regrid_Type *r,
                          const char **files, int num_files,
+                         const char *lonlat_grp,
                          int *src_num_steps, int *src_num_xtrack)
 {
    Source_Pixel_List_Type *src = NULL;
@@ -274,7 +275,7 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r,
         int num_overlaps;
 
         free_source_pixel_list (src);
-        if (NULL == (src = read_pixel_vertices (files[i])))
+        if (NULL == (src = read_pixel_vertices (files[i], lonlat_grp)))
           break;
 
         num_steps_total += src->num_step;
@@ -361,7 +362,7 @@ free_and_return:
 
 Pixel_Regrid_Type *
 Regrid_open (const Pixel_Grid_Param_Type *dest,
-             const char **files, int num_files,
+             const char **files, int num_files, const char *lonlat_grp,
              int *src_num_steps, int *src_num_xtrack)
 {
    Pixel_Regrid_Type *r = NULL;
@@ -374,7 +375,7 @@ Regrid_open (const Pixel_Grid_Param_Type *dest,
    if (NULL == (r = Pixel_open_regrid (dest, dest_pixel_area)))
      goto free_and_return;
 
-   if (-1 == find_all_pixel_overlaps (r, files, num_files,
+   if (-1 == find_all_pixel_overlaps (r, files, num_files, lonlat_grp,
                                       src_num_steps, src_num_xtrack))
      goto free_and_return;
 
