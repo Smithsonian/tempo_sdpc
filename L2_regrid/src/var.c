@@ -386,6 +386,47 @@ free_and_return:
    return status;
 }
 
+static int write_grid_1d (int ncid, int grp, const char *name,
+                          double xmin, double xmax, int num,
+                          const TIO_Attr_Text_Type *attrs)
+{
+   int i, dim_id, var_id, start, count;
+   double *x = NULL;
+   double dx;
+
+   /* assume dimensions are global even when lon-lat variables
+    * are in a group */
+   if (-1 == TIO_def_dim (ncid, name, num, &dim_id))
+     return -1;
+
+   if ((-1 == TIO_def_var (grp, name, NC_FLOAT, 1, &dim_id, &var_id))
+       || (-1 == TIO_put_text_attrs (grp, dim_id, attrs)))
+     return -1;
+
+   if (NULL == (x = (double *)MALLOC (num * sizeof(double))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   dx = (xmax - xmin) / num;
+   for (i = 0; i < num; i++)
+     {
+        x[i] = xmin + (i + 0.5) * dx;
+     }
+
+   start = 0;
+   count = num;
+   if (-1 == TIO_put_var_section (grp, name, &start, &count, TIO_DOUBLE, x))
+     {
+        FREE(x);
+        return -1;
+     }
+
+   FREE(x);
+   return 0;
+}
+
 int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
                            const Pixel_Grid_Param_Type *dest)
 {
@@ -399,72 +440,23 @@ int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
         {"units", "degrees_north"},
         {NULL,NULL}
      };
-   double *lon=NULL, *lat=NULL;
-   double dlon, dlat;
-   int dim_lon, id_lon;
-   int dim_lat, id_lat;
-   int grp, start, count;
-   int i, status = -1;
-
-   if ((NULL == (lon = (double *)MALLOC (dest->nx * sizeof(double))))
-       || (NULL == (lat = (double *)MALLOC (dest->ny * sizeof(double)))))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto cleanup_and_exit;
-     }
-
-   dlon = (dest->xmax - dest->xmin) / dest->nx;
-   dlat = (dest->ymax - dest->ymin) / dest->ny;
-   for (i = 0; i < dest->nx; i++)
-     {
-        lon[i] = dest->xmin + (i + 0.5) * dlon;
-     }
-   for (i = 0; i < dest->ny; i++)
-     {
-        lat[i] = dest->ymin + (i + 0.5) * dlat;
-     }
-
-   /* assume dimensions are global even when lon-lat variables
-    * are in a group */
-
-   if ((-1 == TIO_def_dim (ncid, TEMPO_VAR_LONGITUDE, dest->nx, &dim_lon))
-       || (-1 == TIO_def_dim (ncid, TEMPO_VAR_LATITUDE, dest->ny, &dim_lat)))
-     goto cleanup_and_exit;
+   int grp = ncid;
 
    if (lonlat_grp)
      {
         if (-1 == TIO_def_grp (ncid, lonlat_grp, &grp))
-          goto cleanup_and_exit;
+          return -1;
      }
-   else grp = ncid;
 
-   if ((-1 == TIO_def_var (grp, TEMPO_VAR_LONGITUDE, NC_FLOAT, 1, &dim_lon, &id_lon))
-       || (-1 == TIO_put_text_attrs (grp, id_lon, lon_attrs)))
-     goto cleanup_and_exit;
+   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LONGITUDE,
+                             dest->xmin, dest->xmax, dest->nx, lon_attrs))
+     return -1;
 
-   if ((-1 == TIO_def_var (grp, TEMPO_VAR_LATITUDE, NC_FLOAT, 1, &dim_lat, &id_lat))
-       || (-1 == TIO_put_text_attrs (grp, id_lat, lat_attrs)))
-     goto cleanup_and_exit;
+   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LATITUDE,
+                             dest->ymin, dest->ymax, dest->ny, lat_attrs))
+     return -1;
 
-   start = 0;
-   count = dest->nx;
-   if (-1 == TIO_put_var_section (grp, TEMPO_VAR_LONGITUDE,
-                                  &start, &count, TIO_DOUBLE, lon))
-     goto cleanup_and_exit;
-
-   start = 0;
-   count = dest->ny;
-   if (-1 == TIO_put_var_section (grp, TEMPO_VAR_LATITUDE,
-                                  &start, &count, TIO_DOUBLE, lat))
-     goto cleanup_and_exit;
-
-   status = 0;
-cleanup_and_exit:
-
-   FREE(lon);
-   FREE(lat);
-
-   return status;
+   return 0;
 }
 
 static int dontcopy_attr (const char *attname)
