@@ -37,6 +37,12 @@ typedef struct
 }
 Source_Pixel_List_Type;
 
+/* The Albers equal-area conic projection preserves areas
+ * but in general, polygon edges do not project into
+ * straight lines.  For "sufficiently small" polygons,
+ * the polygon area computed _assuming_ straight edges
+ * is "sufficiently accurate".
+ */
 static int longlat_to_albers (double *lon, double *lat, int n)
 {
    projPJ albers = NULL, longlat = NULL;
@@ -219,10 +225,6 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
         goto free_and_return;
      }
 
-   /* The Albers equal-area conic projection yields polygons that
-    * have the same area they had on the ellipsoid, but with vertices
-    * defined in planar Cartesian coordinates where the area is
-    * easier to compute */
    if (-1 == longlat_to_albers (lon_bounds, lat_bounds, 4*num_pixels))
      goto free_and_return;
    /* NOTE: coordinate projection is done in place, so after the call,
@@ -325,10 +327,6 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
    if (-1 == Pixel_grid_arrays (dest, &xs, &ys))
      return NULL;
 
-   /* The Albers equal-area conic projection yields polygons that
-    * have the same area they had on the ellipsoid, but with vertices
-    * defined in planar Cartesian coordinates where the area is
-    * easier to compute */
    if (-1 == longlat_to_albers (xs, ys, 4*num_pixels))
      goto free_and_return;
 
