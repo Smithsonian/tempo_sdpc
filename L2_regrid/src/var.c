@@ -98,6 +98,7 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
 
    memset ((char *)vb->src_mask, 0, len_mask);
 
+#if 0
    len = vb->num_dest_pixels * sizeof(Pixel_Overlap_Info_Type);
    if (NULL == (vb->overlap_info = (Pixel_Overlap_Info_Type *)MALLOC (len)))
      {
@@ -105,6 +106,9 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
         Var_free_value_buffer (vb);
         return NULL;
      }
+#else
+   vb->overlap_info = NULL;
+#endif
 
    return vb;
 }

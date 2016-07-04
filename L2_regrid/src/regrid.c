@@ -102,7 +102,6 @@ static int pack_pixel_list (Pixel_List_Type *pixel_list,
              if ((-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
                  || (-1 == Pixel_list_set_src_index (pixel_list, i, pix)))
                return -1;
-
           }
      }
 
