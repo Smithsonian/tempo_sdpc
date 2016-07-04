@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <poly.h>
 #include <netcdf.h>
@@ -29,15 +30,11 @@
 #define MIRROR_STEP_SIZE  114.0e-6  /* radians */
 #define SLIT_WIDTH        120.0e-6  /* radians */
 
-#if 1
-#define NUM_STEPS  1280
-#define NUM_PIXELS 2048
-#else
-#define NUM_STEPS  40
-#define NUM_PIXELS 25
-#endif
+#define NUM_STEPS    1280
+#define NUM_PIXELS   2048
+#define NUM_GRANULES   10
 
-#define NUM_GRANULES  10
+#define OUTPUT_DIR    "."
 
 #define NC_CHECK_STATUS(s) \
    do {if (NC_NOERR != (s)) goto cleanup_and_exit; } while (0);
@@ -102,7 +99,8 @@ static int init_proj (Obs_Type *o)
    return 0;
 }
 
-static int open_obs (Obs_Type *o)
+static int open_obs (Obs_Type *o,
+                     int num_steps, int num_pixels, int num_granules)
 {
    double x = AIM_LONGITUDE;
    double y = AIM_LATITUDE;
@@ -121,9 +119,10 @@ static int open_obs (Obs_Type *o)
         return -1;
      }
 
-   o->num_granules = NUM_GRANULES;
-   o->num_steps = NUM_STEPS;
-   o->num_pixels = NUM_PIXELS;
+   o->num_granules = num_granules;
+   o->num_steps = num_steps;
+   o->num_pixels = num_pixels;
+
    o->step_size = MIRROR_STEP_SIZE;   /* mirror step size [radians] */
    o->slit_width = SLIT_WIDTH;        /* spectrometer slit width [radians] */
    o->pixel_size = CCD_PIXEL_SIZE;    /* N/S pixel size [radians] */
@@ -290,7 +289,18 @@ static int put_att_text (int ncid, int id_var,
    return nc_put_att_text (ncid, id_var, name, strlen(text), text);
 }
 
-int main (void)
+static void usage (int argc, char **argv)
+{
+   (void) argc;
+   fprintf (stderr, "Usage: %s [args]\n", argv[0]);
+   fprintf (stderr, "Options:\n");
+   fprintf (stderr, "  -o <out_dir>         Path to output directory [%s]\n", OUTPUT_DIR);
+   fprintf (stderr, "  -g <num_granules>    Number of granules [%d]\n", NUM_GRANULES);
+   fprintf (stderr, "  -m <num_steps>       Number of mirror steps [%d]\n", NUM_STEPS);
+   fprintf (stderr, "  -p <num_pixels>      Number of pixels along slit [%d]\n", NUM_PIXELS);
+}
+
+int main (int argc, char **argv)
 {
    Obs_Type o = {0};
    Slit_Pixel_List_Type *g = NULL;
@@ -307,10 +317,57 @@ int main (void)
    int num_steps_per_granule, granule, i, step;
    int dimid_local1, num_local1 = LOCAL_DIM_SIZE1;
    int dimid_local2, num_local2 = LOCAL_DIM_SIZE2;
-   int num_var2, num_var3;
+   int num_steps = NUM_STEPS;
+   int num_pixels = NUM_PIXELS;
+   int num_granules = NUM_GRANULES;
+   int c, num_var2, num_var3;
+   const char *out_dir = OUTPUT_DIR;
    int status = 1;
 
-   if (-1 == open_obs (&o))
+   while ((c = getopt (argc, argv, "g:m:o:p:")) != -1)
+     {
+        switch (c)
+          {
+           case 'g':
+             if ((1 != sscanf (optarg, "%d", &num_granules))
+                 || (num_granules < 1 || NUM_STEPS < num_granules))
+               {
+                  fprintf (stderr, "*** invalid num_granules=%d\n", num_granules);
+                  return 1;
+               }
+             break;
+           case 'm':
+             if ((1 != sscanf (optarg, "%d", &num_steps))
+                 || (num_steps < 1 || NUM_STEPS < num_steps))
+               {
+                  fprintf (stderr, "*** invalid num_steps=%d\n", num_steps);
+                  return 1;
+               }
+             break;
+           case 'o':
+             out_dir = optarg;
+             break;
+           case 'p':
+             if ((1 != sscanf (optarg, "%d", &num_pixels))
+                 || (num_pixels < 1) || (NUM_PIXELS < num_pixels))
+               {
+                  fprintf (stderr, "*** invalid num_pixels=%d\n", num_pixels);
+                  return 1;
+               }
+             break;
+
+           case '?':
+             fprintf (stderr, "Unknown option -%c'.\n", optopt);
+             usage (argc, argv);
+             return 1;
+
+           default:
+             usage (argc, argv);
+             return 0;
+          }
+     }
+
+   if (-1 == open_obs (&o, num_steps, num_pixels, num_granules))
      return 1;
 
    if (NULL == (g = new_slit_grid (o.num_pixels)))
@@ -339,7 +396,7 @@ int main (void)
         char outfile[BUFSIZE];
         int n;
 
-        n = sprintf (outfile, "/tmp/test_l2l3_g%02d_grid.nc", granule);
+        n = sprintf (outfile, "%s/test_l2l3_g%02d_grid.nc", out_dir, granule);
         if (n >= BUFSIZE)
           {
              fprintf (stderr, "**** sprintf failed!!\n");
