@@ -246,18 +246,11 @@ static int parse_var_path (const char *var_path,
      }
    else
      {
-        char *cpy = NULL;
-        int len;
-
-        if (NULL == (cpy = strdup (var_path)))
+        if (NULL == (grp_path = strndup (var_path, p-var_path)))
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              return -1;
           }
-
-        len = p - var_path;
-        cpy[len] = 0;
-        grp_path = cpy;
         var_name = strdup (p + 1);
      }
 
