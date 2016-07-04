@@ -38,6 +38,7 @@ typedef struct
    int num_dest_pixels;          /* number of lon/lat pixels in destination grid */
    int num_values_per_pixel;
    int num_alloc_values;
+   Pixel_Overlap_Info_Type *overlap_info;
 }
 Var_Value_Buffer_Type;
 
@@ -47,6 +48,7 @@ void Var_free_value_buffer (Var_Value_Buffer_Type *vb)
      return;
    FREE(vb->src_values);
    FREE(vb->src_mask);
+   FREE(vb->overlap_info);
    FREE(vb);
 }
 
@@ -95,6 +97,14 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
    vb->dest_values = vb->src_values + vb->num_src_pixels;
 
    memset ((char *)vb->src_mask, 0, len_mask);
+
+   len = vb->num_dest_pixels * sizeof(Pixel_Overlap_Info_Type);
+   if (NULL == (vb->overlap_info = (Pixel_Overlap_Info_Type *)MALLOC (len)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        Var_free_value_buffer (vb);
+        return NULL;
+     }
 
    return vb;
 }
@@ -346,7 +356,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
              dest_values[j] = HUGE_VAL;
           }
         if (-1 == Pixel_regrid (r, src_values, vb->src_mask,
-                                dest_values, NULL))
+                                dest_values, vb->overlap_info))
           {
              break;
           }

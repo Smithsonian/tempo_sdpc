@@ -431,26 +431,16 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
 
 /* assume dest array is initalized to INDEF */
 int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
-                  double *dest, Pixel_Overlap_Info_Type **pinfo)
+                  double *dest, Pixel_Overlap_Info_Type *info)
 {
-   Pixel_Overlap_Info_Type *info = NULL;
    int i;
 
    /* Quick return if source and destination grids don't overlap. */
    if (r->overlap == NULL)
-     {
-        if (pinfo) *pinfo = NULL;
-        return 0;
-     }
+     return 0;
 
-   if (pinfo)
+   if (info)  /* info == NULL is ok */
      {
-        int len = r->num_dest_pixels * sizeof(Pixel_Overlap_Info_Type);
-        if (NULL == (info = (Pixel_Overlap_Info_Type *)MALLOC (len)))
-          {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             return -1;
-          }
         for (i = 0; i < r->num_dest_pixels; i++)
           {
              Pixel_Overlap_Info_Type *oi = info + i;
@@ -496,11 +486,6 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
           {
              dest[i] = awt_sum / a_sum;
           }
-     }
-
-   if (pinfo)
-     {
-        *pinfo = info;
      }
 
    return 0;

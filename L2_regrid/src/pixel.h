@@ -45,7 +45,7 @@ Pixel_find_overlaps (Pixel_Regrid_Type *r,
 
 extern int
 Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
-              double *dest, Pixel_Overlap_Info_Type **pinfo);
+              double *dest, Pixel_Overlap_Info_Type *info);
 
 extern void Pixel_close_regrid (Pixel_Regrid_Type *r);
 

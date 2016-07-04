@@ -113,13 +113,16 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
+   if (NULL == (info = (Pixel_Overlap_Info_Type *) MALLOC (num_dest * sizeof(*info))))
+     goto return_status;
+
    /* Pixel_regrid assumes that dest_values initialized to fill value */
    for (i = 0; i < num_dest; i++)
      {
         dest_values[i] = DBL_MAX;
      }
 
-   if (-1 == Pixel_regrid (r, src_values, src_mask, dest_values, &info))
+   if (-1 == Pixel_regrid (r, src_values, src_mask, dest_values, info))
      goto return_status;
 
    src_sum = 0.0;
