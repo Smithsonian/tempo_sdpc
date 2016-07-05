@@ -1,3 +1,4 @@
+#include "defs.h"
 #include <float.h>
 #include <limits.h>
 #include <math.h>
@@ -16,18 +17,6 @@
 #include "pixel.h"
 #include "regrid.h"
 #include "var.h"
-
-#ifndef REALLOC
-# define REALLOC realloc
-#endif
-
-#ifndef MALLOC
-# define MALLOC malloc
-#endif
-
-#ifndef FREE
-# define FREE free
-#endif
 
 #define DEFAULT_PARAM_FILE  "l2_regrid.cfg"
 

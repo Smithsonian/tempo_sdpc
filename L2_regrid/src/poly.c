@@ -1,3 +1,4 @@
+#include "defs.h"
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -5,18 +6,6 @@
 
 #include <tell.h>
 #include "poly.h"
-
-#ifndef REALLOC
-# define REALLOC realloc
-#endif
-
-#ifndef MALLOC
-# define MALLOC malloc
-#endif
-
-#ifndef FREE
-# define FREE free
-#endif
 
 struct Polygon_Type
 {

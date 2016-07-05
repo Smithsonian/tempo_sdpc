@@ -1,3 +1,4 @@
+#include "defs.h"
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -13,18 +14,6 @@
 #include "poly.h"
 #include "pixel.h"
 #include "regrid.h"
-
-#ifndef REALLOC
-# define REALLOC realloc
-#endif
-
-#ifndef MALLOC
-# define MALLOC malloc
-#endif
-
-#ifndef FREE
-# define FREE free
-#endif
 
 typedef struct
 {

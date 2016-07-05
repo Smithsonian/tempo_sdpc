@@ -1,3 +1,4 @@
+#include "defs.h"
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -7,18 +8,6 @@
 #include <tell.h>
 #include "poly.h"
 #include "pixel.h"
-
-#ifndef REALLOC
-# define REALLOC realloc
-#endif
-
-#ifndef MALLOC
-# define MALLOC malloc
-#endif
-
-#ifndef FREE
-# define FREE free
-#endif
 
 #define NUM_OVERLAPS_HINT  4
 
