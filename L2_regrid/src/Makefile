@@ -1,5 +1,7 @@
 # -*- make -*-
 
+EXECUTABLE = L2_regrid
+
 include ../../Makefile.defines
 
 THIS_LIB = regrid
@@ -54,11 +56,11 @@ ELFOBJS  = $(elfdir)/poly.o $(elfdir)/pixel.o $(elfdir)/regrid.o $(elfdir)/var.o
 # Rules
 # --------------------------------------------------------------------------
 
-all:	elf $(elfdir)/l2_regrid
+all:	elf $(elfdir)/$(EXECUTABLE)
 elf:	$(elfdir) $(ELFDIR_ELF_LIB)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES))
+	ctags $(patsubst %.o,%.c,$(OFILES) l2_regrid.o)
 
 $(elfdir):
 	-$(MKINSDIR) $(elfdir)
@@ -77,13 +79,14 @@ $(ELFDIR_ELF_LIB):	$(elfdir) $(ELFOBJS)
 # Installation
 # --------------------------------------------------------------------------
 
+bindir = $(prefix)/bin
 incdir = $(prefix)/include
 libdir = $(prefix)/lib
 
-install-header:
-	$(MKINSDIR) $(incdir)
-	@echo installing headers in $(incdir)/
-	$(INSTALL_DATA) $(srcdir)/tio.h $(incdir)
+install-executable:
+	mkdir -p $(bindir)
+	@echo installing $(EXECUTABLE) in $(bindir)/
+	$(INSTALL_PROGRAM) $(elfdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)
 
 install-elf:
 	$(MKINSDIR) $(libdir)
@@ -98,7 +101,7 @@ install-elf:
 	@echo The links $(ELFLIB) and $(ELFLIB_MAJOR) to $(ELFLIB_BUILD_NAME) were also created.
 	@echo ""
 
-install:	elf install-header install-elf
+install:	elf install-elf install-executable
 
 # --------------------------------------------------------------------------
 # Housekeeping
@@ -113,8 +116,8 @@ distclean: clean
 # Object Rules
 # --------------------------------------------------------------------------
 
-$(elfdir)/l2_regrid:	$(elfdir)/l2_regrid.o
-	$(COMPILE_CMD) -o $(elfdir)/l2_regrid $(elfdir)/l2_regrid.o \
+$(elfdir)/$(EXECUTABLE):	$(ELFDIR_ELF_LIB) $(elfdir)/l2_regrid.o
+	$(COMPILE_CMD) -o $(elfdir)/$(EXECUTABLE) $(elfdir)/l2_regrid.o \
 	    $(INCS) $(EXTRA_INCS) $(REGRID_LIBPATHS) -lregrid $(LIBS) $(EXTRA_LIBS) -lm
 
 $(elfdir)/poly.o:	$(srcdir)/poly.c
