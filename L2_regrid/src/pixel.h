@@ -1,6 +1,10 @@
 #ifndef __REGRID_PIXEL_H__
 #define __REGRID_PIXEL_H__ 1
 
+/** @file pixel.h
+ *  @brief Manipulate pixel lists
+ */
+
 typedef struct
 {
    double xmin, xmax;

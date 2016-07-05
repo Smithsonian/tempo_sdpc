@@ -1,3 +1,7 @@
+/** @file l2_regrid.c
+ *  @brief Main program; parameter file parsing
+ */
+
 #include "defs.h"
 #include <float.h>
 #include <limits.h>

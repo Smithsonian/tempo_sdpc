@@ -1,6 +1,11 @@
 #ifndef __REGRID_GEOM_H__
 #define __REGRID_GEOM_H__ 1
 
+/** @file poly.h
+ *  @brief Manipulate polygons, compute polygon areas,
+ *       clip one polygon with another.
+ */
+
 typedef struct Polygon_Type Polygon_Type;
 typedef struct Polygon_Clip_Type Polygon_Clip_Type;
 

@@ -1,6 +1,10 @@
 #ifndef __REGRID_VAR_H
 #define __REGRID_VAR_H 1
 
+/** @file var.h
+ *  @brief Apply regridding weights to selected variables.
+ */
+
 typedef struct Var_Value_Buffer_Type Var_Value_Buffer_Type;
 
 extern Var_Value_Buffer_Type *

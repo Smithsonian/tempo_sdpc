@@ -1,0 +1,181 @@
+/**
+@mainpage L2_regrid
+
+@section Synopsis
+
+\verbatim
+   L2_regrid [param-file]
+\endverbatim
+
+@section Description
+
+\em L2_regrid generates Level 3 data products by regridding selected
+variables from Level 2 data products onto a fixed grid of longitude
+and geodetic latitude. Variables are regridded using a conservative
+scheme in which the value of each Level 3 target pixel is defined as
+an area-weighted mean of the Level 2 pixels that overlap it. All Level
+2 data products that share the same spatial grid from a single TEMPO
+scan may be regridded at the same time.
+
+\em L2_regrid is controlled by a parameter file which may be
+provided as an optional command-line argument.  If no parameter
+file is specified on the command-line, \em L2_regrid reads
+\em l2_regrid.cfg from the current directory.
+
+Here is an example parameter file:
+\verbatim
+# L2_regrid configuration file
+
+version = "1.0"
+
+#
+# min, delta in degrees
+#
+target_grid: {
+   longitude = {delta = 0.05; min = -150.0; num = 2200;};
+   latitude  = {delta = 0.05; min =   17.0; num =  900;};
+};
+
+#
+# Add an include file for each supported data product
+#
+supported_data_products: {
+   @include "test.cfg"
+};
+\endverbatim
+
+The parameter file contains the following fields:
+  \li \em version  Parameter file format version number.
+
+  \li \em target_grid Specifies the longitude-latitude grids
+                      for the output Level 3 data product.
+
+  \li \em supported_data_products Contains a list of structures, one
+                 for each supported data product.  For convenience,
+                 each supported data product may be defined in a
+                 separate parameter file.  <b>Note that the spatial grids
+                 from the first set of data products
+                 define the overlap-area weights that will be re-used
+                 to regrid all the input files of all product types.</b>
+                 For this reason, all input Level 2 files should have the same
+                 spatial gridding (e.g. come from the same scan).
+
+In this example, the file \em test.cfg contains the following:
+\verbatim
+test:
+{
+  name = "test";
+  # Files should have a product identifier.
+
+  output_file = "test_l3_out.nc";
+  # This should be a filename template
+
+  longlat_group = {in = "/";  out = "/geometry";};
+
+  vars = (
+     { in = "var0"; out = "var0";},
+     { in = "var1"; out = "var1";},
+     { in = "/test_group/var2"; out = "/foo/bar/var2";},
+     { in = "/test_group/var3"; out = "/foo/baz/var3";}
+  );
+
+  input_files= [
+    @include "test_files.lst"
+  ];
+}
+\endverbatim
+
+The name of the structure, \em test, should be unique to distinguish
+it from all other structures in the \em supported_data_products list.
+The fields are defined in the following way:
+
+ \li \em name  The name of this data product.
+
+ \li \em output_file  A template for generating the output file name.
+
+ \li \em longlat_group The input-file group that contains the \em
+                       longitude_bounds and \em latitude_bounds
+                       variables is \em longlat_group.in. The
+                       output-file group that will hold the \em
+                       longitude and \em latitude variables
+                       is \em longitude_bounds.out.
+
+ \li \em vars  A list of variables to be regridded, with the \em in field
+              giving the full path to the variable in the input file,
+              and the \em out field giving the full path to the variable
+              in the output file.
+
+ \li \em input_files The names of the input Level 2 files to be
+             regridded. The files should all be of the same data
+             product type and should come from a single East-West
+             scan.
+
+The file \em test_files.list contains a comma-separated list of
+quoted file names, such as:
+\verbatim
+    "/tmp/test_l2l3_g00_grid.nc"
+  , "/tmp/test_l2l3_g01_grid.nc"
+  , "/tmp/test_l2l3_g02_grid.nc"
+  , "/tmp/test_l2l3_g03_grid.nc"
+  , "/tmp/test_l2l3_g04_grid.nc"
+  , "/tmp/test_l2l3_g05_grid.nc"
+  , "/tmp/test_l2l3_g06_grid.nc"
+  , "/tmp/test_l2l3_g07_grid.nc"
+  , "/tmp/test_l2l3_g08_grid.nc"
+  , "/tmp/test_l2l3_g09_grid.nc"
+\endverbatim
+
+@section computing_areas Computation of pixel overlap areas
+
+Each Level 2 or Level 3 data product pixel is defined by specifying
+the longitude and geodetic latitude coordinates of four vertices on
+the WGS84 ellipsoid. In the general case, computation of the area of
+an arbitrary polygon on an ellipsoid is nontrivial, and depends on the
+precise definition of the polygon edges.  In general, an edge of a
+polygon on an ellipsoid may be a segment of a geodesic, a great
+ellipse (analogous to a great circle), a loxodrome (a line of constant
+bearing), or any arbitrary curve.
+
+In the nominal (virtual) detector plane, a TEMPO Level 2 pixel is
+rectangular, with the width defined by the angular size of a single
+mirror step, and the height defined by the angular field of view of a
+single detector pixel.  In these coordinates, the virtual detector
+plane grid directly corresponds to (may be overlaid without distortion
+upon) the tilted perspective projection of the WGS84 ellipsoid seen by
+a geostationary satellite at a specified longitude, and with the
+instrument boresight aimed at a fixed point on the surface. Projecting
+this virtual detector plane rectangular grid onto the ellipsoid
+surface, each surface pixel edge then corresponds to the intersection
+of a plane with the WGS84 ellipsoid.
+
+In contrast, a TEMPO Level 3 pixel is rectangular in longitude and
+geodetic latitude coordinates, so the eastern and western edges are
+meridian lines, and the northern and southern edges are parallels of
+geodetic latitude.
+
+Because computational geometry is easier in the plane than on the
+ellipsoid, it is useful to apply an Albers Equal-Area Conic
+projection, and then solve the problems of polygon clipping and
+polygon area computation in the planar projection. Because the Albers
+Equal-Area Conic projection preserves region areas exactly, the area
+of a region computed in the planar projection is guaranteed to be the
+same as the area of the same region computed in ellipsoidal
+coordinates.
+
+The primary practical difficulty with this approach is that, in the
+projected planar coordinates, the edges of the polygons (Level 2 and
+Level 3 pixels) are not all straight lines. In the Albers projection,
+the eastern and western edges of the Level 3 polygons (meridian lines)
+are straight lines, but the northern and southern edges (parallels of
+geodetic latitude) are arcs of circles.  However, because the geometry
+of all the polygon edges is well-defined, it is possible to define
+each polygon edge in detail by generating many finely-spaced sample
+points along its length to ensure that every edge is accurately placed
+in the Albers projected coordinates. In this way, by \a densifying the
+polygon edges as needed, the computed polygon area can be made as
+accurate as necessary. Furthermore, when a projected polygon is
+sufficiently small, only a negligible error is incurred when the
+polygon area is computed under the assumption that all its edges are
+straight.
+
+*/
