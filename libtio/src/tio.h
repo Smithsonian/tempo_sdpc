@@ -49,6 +49,7 @@ extern "C" {
 typedef struct
 {
    int varid;   /**< variable ids assigned by nc_def_var */
+   int type;    /**< storage data type */
    int ndims;   /**< number of dimensions */
    int dimids[TIO_MAX_VAR_DIMS];      /**< dimension ids assigned by nc_def_dim */
    size_t dimlens[TIO_MAX_VAR_DIMS];  /**< dimension sizes */
@@ -263,7 +264,16 @@ extern int TIO_def_var (int ncid, const char *name, int type,
  * @param  fill_value  Pointer to the fill value
  * @return 0 on success, -1 on error
  */
-extern int TIO_def_var_fill (int grp, int varid, int no_fill, void *fill_value);
+extern int TIO_def_var_fill (int grp, int varid, int no_fill, const void *fill_value);
+
+/** Query a variable's fill value
+ * @param  grp         The group containing the variable
+ * @param  varid       Variable id number
+ * @param  no_fill     When no_fill mode is non-zero, fill values will not be written
+ * @param  fill_value  Pointer to the fill value
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_inq_var_fill (int grp, int varid, int *no_fill, void *fill_value);
 
 /** Define a variable's deflate values
  * @param  grp            The group containing the variable

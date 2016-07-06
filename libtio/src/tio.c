@@ -340,6 +340,14 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
         return -1;
      }
 
+   if (NC_NOERR != (status = nc_inq_vartype (grp, info->varid, &info->type)))
+     {
+        Tell_verror (TELL_IO_READ_ERROR,
+                     "%s: accessing variable %s in group %d (%s)",
+                     __func__, name, grp, nc_strerror(status));
+        return -1;
+     }
+
    if (NC_NOERR != (status = nc_inq_varndims (grp, info->varid, &info->ndims)))
      {
         Tell_verror (TELL_IO_READ_ERROR,
@@ -1092,7 +1100,7 @@ int TIO_def_var (int ncid, const char *name, int type,
    return 0;
 }
 
-int TIO_def_var_fill (int grp, int varid, int no_fill, void *fill_value)
+int TIO_def_var_fill (int grp, int varid, int no_fill, const void *fill_value)
 {
    int status;
 
@@ -1101,6 +1109,22 @@ int TIO_def_var_fill (int grp, int varid, int no_fill, void *fill_value)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
                      "%s: setting fill value for varid=%d (%s)",
+                     __func__, varid, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int TIO_inq_var_fill (int grp, int varid, int *no_fill, void *fill_value)
+{
+   int status;
+
+   status = nc_inq_var_fill (grp, varid, no_fill, fill_value);
+   if (status != NC_NOERR)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: getting fill value for varid=%d (%s)",
                      __func__, varid, nc_strerror (status));
         return -1;
      }
