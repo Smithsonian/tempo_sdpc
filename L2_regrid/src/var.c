@@ -496,7 +496,9 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
    int lon_dimid, lat_dimid;
    int i, dims[TIO_MAX_VAR_DIMS];
    int in_grp, in_varid, out_grp, out_varid, num_dest_values;
-   float fill_float = -NC_FILL_FLOAT;
+   unsigned char fill_value[8];
+   double fill_double;
+   int in_no_fill;
    int shuffle=1, deflate=1, deflate_level=1;
    int status = -1;
 
@@ -536,8 +538,9 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
    dims[0] = lat_dimid;
    dims[1] = lon_dimid;
 
-   if ((-1 == TIO_def_var (out_grp, out_var_name, NC_FLOAT, vb->num_dims, dims, &out_varid))
-       || (-1 == TIO_def_var_fill (out_grp, out_varid, 0, &fill_float))
+   if ((-1 == TIO_def_var (out_grp, out_var_name, vi.type, vb->num_dims, dims, &out_varid))
+       || (-1 == TIO_inq_var_fill (in_grp, in_varid, &in_no_fill, (void *)fill_value))
+       || (-1 == TIO_def_var_fill (out_grp, out_varid, in_no_fill, (void *)fill_value))
        || (-1 == TIO_def_var_deflate (out_grp, out_varid, shuffle, deflate, deflate_level))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, out_grp, out_varid)))
      {
@@ -546,10 +549,13 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
 
    num_dest_values = vb->num_dest_pixels * vb->num_values_per_pixel;
 
-   for (i = 0; i < num_dest_values; i++)
+   if (0 == TIO_get_fill_value (in_grp, in_var_name, TIO_DOUBLE, &fill_double))
      {
-        if (0 == isfinite(vb->dest_values[i]))
-          vb->dest_values[i] = fill_float;
+        for (i = 0; i < num_dest_values; i++)
+          {
+             if (0 == isfinite(vb->dest_values[i]))
+               vb->dest_values[i] = fill_double;
+          }
      }
 
    for (i = 0; i < vb->num_dims; i++)

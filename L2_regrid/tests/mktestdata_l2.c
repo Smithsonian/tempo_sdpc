@@ -308,12 +308,13 @@ int main (int argc, char **argv)
    const char units_lat[] = "degrees_north";
    int coord_type = NC_FLOAT;
    double *var0 = NULL, *var1 = NULL, *var2 = NULL, *var3 = NULL;
+   short *var4 = NULL;
    int *xtrack = NULL;
    int dims[__MAX_VAR_DIMS], dimid_corner;
    size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
    int ncid, grp, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
-   int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3;
+   int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3, id_var4;
    int num_steps_per_granule, granule, i, step;
    int dimid_local1, num_local1 = LOCAL_DIM_SIZE1;
    int dimid_local2, num_local2 = LOCAL_DIM_SIZE2;
@@ -382,6 +383,7 @@ int main (int argc, char **argv)
        || (NULL == (var1 = (double *) MALLOC (o.num_pixels * sizeof(double))))
        || (NULL == (var2 = (double *) MALLOC (num_var2 * sizeof(double))))
        || (NULL == (var3 = (double *) MALLOC (num_var3 * sizeof(double))))
+       || (NULL == (var4 = (short *) MALLOC (o.num_pixels * sizeof(short))))
       )
      return 1;
 
@@ -473,6 +475,15 @@ int main (int argc, char **argv)
         status = put_att_text (ncid, id_var1, "comment", "This is var1");
         NC_CHECK_STATUS(status);
 
+        status = nc_def_var (ncid, "var4", NC_SHORT, 2, dims, &id_var4);
+        NC_CHECK_STATUS(status);
+        status = use_compression (ncid, id_var4);
+        NC_CHECK_STATUS(status);
+        status = put_lonlat_atts (ncid, id_var4);
+        NC_CHECK_STATUS(status);
+        status = put_att_text (ncid, id_var4, "comment", "This is var4");
+        NC_CHECK_STATUS(status);
+
         dims[2] = dimid_local1;
         status = nc_def_var (grp, "var2", NC_FLOAT, 3, dims, &id_var2);
         NC_CHECK_STATUS(status);
@@ -517,6 +528,7 @@ int main (int argc, char **argv)
 
                   var0[j] = 1.0 * ((step/16) % 16);
                   var1[j] = 1.0 * ((j/16) % 16);
+                  var4[j] = (step/16) % 16;
 
                   for (k = 0; k < num_local1; k++)
                     {
@@ -553,6 +565,8 @@ int main (int argc, char **argv)
              NC_CHECK_STATUS(status);
              status = nc_put_vara_double (ncid, id_var1, start, count, var1);
              NC_CHECK_STATUS(status);
+             status = nc_put_vara_short (ncid, id_var4, start, count, var4);
+             NC_CHECK_STATUS(status);
              start[2] = 0;
              count[2] = num_local1;
              status = nc_put_vara_double (grp, id_var2, start, count, var2);
@@ -584,6 +598,7 @@ cleanup_and_exit:
    FREE(var1);
    FREE(var2);
    FREE(var3);
+   FREE(var4);
    FREE(xtrack);
    free_slit_grid (g);
    close_obs (&o);
