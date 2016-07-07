@@ -1,4 +1,5 @@
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +38,13 @@
 #define OUTPUT_DIR    "."
 
 #define NC_CHECK_STATUS(s) \
-   do {if (NC_NOERR != (s)) goto cleanup_and_exit; } while (0);
+   do { \
+      if (NC_NOERR != (s)) \
+        { \
+           fprintf (stderr, "*** NC_ERROR = %d on line %d\n", s, __LINE__); \
+           goto cleanup_and_exit; \
+        } \
+   } while (0);
 
 typedef struct
 {
@@ -309,19 +316,27 @@ int main (int argc, char **argv)
    int coord_type = NC_FLOAT;
    double *var0 = NULL, *var1 = NULL, *var2 = NULL, *var3 = NULL;
    short *var4 = NULL;
+   const char *bitfield_names[] =
+     {"bitfield0","bitfield1", "bitfield2", "bitfield3"};
+   int bitfield_types[] = {NC_INT64, NC_UINT, NC_SHORT, NC_UBYTE};
+   long long *bitfield0 = NULL;
+   unsigned int *bitfield1 = NULL;
+   short *bitfield2 = NULL;
+   unsigned char  *bitfield3 = NULL;
    int *xtrack = NULL;
    int dims[__MAX_VAR_DIMS], dimid_corner;
    size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
    int ncid, grp, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
    int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3, id_var4;
+   int id_bitfield[4];
    int num_steps_per_granule, granule, i, step;
    int dimid_local1, num_local1 = LOCAL_DIM_SIZE1;
    int dimid_local2, num_local2 = LOCAL_DIM_SIZE2;
    int num_steps = NUM_STEPS;
    int num_pixels = NUM_PIXELS;
    int num_granules = NUM_GRANULES;
-   int c, num_var2, num_var3;
+   int b, c, num_var2, num_var3;
    const char *out_dir = OUTPUT_DIR;
    int status = 1;
 
@@ -384,6 +399,10 @@ int main (int argc, char **argv)
        || (NULL == (var2 = (double *) MALLOC (num_var2 * sizeof(double))))
        || (NULL == (var3 = (double *) MALLOC (num_var3 * sizeof(double))))
        || (NULL == (var4 = (short *) MALLOC (o.num_pixels * sizeof(short))))
+       || (NULL == (bitfield0 = (long long *) MALLOC (o.num_pixels * sizeof(long long))))
+       || (NULL == (bitfield1 = (unsigned int *) MALLOC (o.num_pixels * sizeof(int))))
+       || (NULL == (bitfield2 = (short *) MALLOC (o.num_pixels * sizeof(short))))
+       || (NULL == (bitfield3 = (unsigned char *) MALLOC (o.num_pixels * sizeof(char))))
       )
      return 1;
 
@@ -484,6 +503,18 @@ int main (int argc, char **argv)
         status = put_att_text (ncid, id_var4, "comment", "This is var4");
         NC_CHECK_STATUS(status);
 
+        for (b = 0; b < 4; b++)
+          {
+             status = nc_def_var (ncid, bitfield_names[b], bitfield_types[b], 2, dims, &id_bitfield[b]);
+             NC_CHECK_STATUS(status);
+             status = use_compression (ncid, id_bitfield[b]);
+             NC_CHECK_STATUS(status);
+             status = put_lonlat_atts (ncid, id_bitfield[b]);
+             NC_CHECK_STATUS(status);
+             status = put_att_text (ncid, id_bitfield[b], "comment", "This is a bitfield");
+             NC_CHECK_STATUS(status);
+          }
+
         dims[2] = dimid_local1;
         status = nc_def_var (grp, "var2", NC_FLOAT, 3, dims, &id_var2);
         NC_CHECK_STATUS(status);
@@ -525,10 +556,30 @@ int main (int argc, char **argv)
              for (j = 0; j < o.num_pixels; j++)
                {
                   int k, m, nm;
+                  int use_fill_value = ((abs(j-o.num_pixels/2) < 256)
+                                        && (abs(step - o.num_steps/2) < 64));
 
-                  var0[j] = 1.0 * ((step/16) % 16);
-                  var1[j] = 1.0 * ((j/16) % 16);
-                  var4[j] = (step/16) % 16;
+                  if (use_fill_value)
+                    {
+                       var0[j] = NC_FILL_FLOAT;
+                       var1[j] = NC_FILL_FLOAT;
+                       var4[j] = NC_FILL_SHORT;
+                       bitfield0[j] = NC_FILL_INT64;
+                       bitfield1[j] = NC_FILL_UINT;
+                       bitfield2[j] = NC_FILL_SHORT;
+                       bitfield3[j] = NC_FILL_UBYTE;
+                    }
+                  else
+                    {
+                       var0[j] = 1.0 * ((step/16) % 16);
+                       var1[j] = 1.0 * ((j/16) % 16);
+                       var4[j] = (step/16) % 16;
+
+                       bitfield0[j] = ((step % 32) < 16) ? 0x03 : 0x0c;
+                       bitfield1[j] = bitfield0[j];
+                       bitfield2[j] = bitfield0[j];
+                       bitfield3[j] = bitfield0[j];
+                    }
 
                   for (k = 0; k < num_local1; k++)
                     {
@@ -566,6 +617,14 @@ int main (int argc, char **argv)
              status = nc_put_vara_double (ncid, id_var1, start, count, var1);
              NC_CHECK_STATUS(status);
              status = nc_put_vara_short (ncid, id_var4, start, count, var4);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_longlong (ncid, id_bitfield[0], start, count, bitfield0);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_uint (ncid, id_bitfield[1], start, count, bitfield1);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_short (ncid, id_bitfield[2], start, count, bitfield2);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_ubyte (ncid, id_bitfield[3], start, count, bitfield3);
              NC_CHECK_STATUS(status);
              start[2] = 0;
              count[2] = num_local1;

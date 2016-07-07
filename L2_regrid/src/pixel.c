@@ -418,9 +418,8 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
    return r;
 }
 
-/* assume dest array is initalized to INDEF */
-int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
-                  double *dest, Pixel_Overlap_Info_Type *info)
+int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
+                  double fill_value, const double *src, double *dest)
 {
    int i;
 
@@ -428,22 +427,13 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
    if (r->overlap == NULL)
      return 0;
 
-   if (info)  /* info == NULL is ok */
-     {
-        for (i = 0; i < r->num_dest_pixels; i++)
-          {
-             Pixel_Overlap_Info_Type *oi = info + i;
-             oi->num_overlaps = 0;
-             oi->min = DBL_MAX;
-             oi->max = -DBL_MAX;
-          }
-     }
-
    for (i = 0; i < r->num_dest_pixels; i++)
      {
         Pixel_Overlap_Type *o = r->overlap[i];
         double a_sum, awt_sum;
         int j;
+
+        dest[i] = fill_value;
 
         if (o == NULL)
           continue;
@@ -458,16 +448,6 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
                   double a = o->area[j];
                   awt_sum += a * src[k];
                   a_sum   += a;
-                  if (info)
-                    {
-                       Pixel_Overlap_Info_Type *oi = info + i;
-                       double src_k = src[k];
-                       oi->num_overlaps++;
-                       if (src_k < oi->min)
-                         oi->min = src_k;
-                       else if (src_k > oi->max)
-                         oi->max = src_k;
-                    }
                }
           }
 
@@ -478,4 +458,77 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
      }
 
    return 0;
+}
+
+#define REGRID_BYTES(typestr, type) \
+static int regrid_bytes_##typestr (const Pixel_Regrid_Type *r, const int *src_mask, \
+                                   const type *fill_value, const type *src, type *dest) \
+{ \
+   type or_all; \
+   int i; \
+ \
+   /* Quick return if source and destination grids don't overlap. */ \
+   if (r->overlap == NULL) \
+     return 0; \
+ \
+   for (i = 0; i < r->num_dest_pixels; i++) \
+     { \
+        Pixel_Overlap_Type *o = r->overlap[i]; \
+        int j; \
+ \
+        dest[i] = *fill_value; \
+ \
+        if (o == NULL) \
+          continue; \
+ \
+        or_all = (type) 0; \
+ \
+        for (j = 0; j < o->num_overlaps; j++) \
+          { \
+             int k = o->src_index[j]; \
+             if (src_mask[k] == 0) \
+               { \
+                  or_all |= src[k]; \
+               } \
+          } \
+        dest[i] = or_all; \
+     } \
+ \
+   return 0; \
+}
+
+REGRID_BYTES(uint64, unsigned long long)
+REGRID_BYTES(uint,   unsigned int)
+REGRID_BYTES(ushort, unsigned short)
+REGRID_BYTES(ubyte,  unsigned char)
+REGRID_BYTES(int64, long long)
+REGRID_BYTES(int,   int)
+REGRID_BYTES(short, short)
+REGRID_BYTES(byte,  char)
+
+int Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
+                        int value_type, const void *fill_value,
+                        const void *src, void *dest)
+{
+   switch (value_type)
+     {
+      case VALUE_IS_UINT64:
+        return regrid_bytes_uint64 (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_UINT:
+        return regrid_bytes_uint   (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_USHORT:
+        return regrid_bytes_ushort (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_UBYTE:
+        return regrid_bytes_ubyte  (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_INT64:
+        return regrid_bytes_int64 (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_INT:
+        return regrid_bytes_int   (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_SHORT:
+        return regrid_bytes_short (r, src_mask, fill_value, src, dest);
+      case VALUE_IS_BYTE:
+        return regrid_bytes_byte  (r, src_mask, fill_value, src, dest);
+     }
+
+   return -1;
 }

@@ -5,6 +5,19 @@
  *  @brief Manipulate pixel lists
  */
 
+enum
+{
+   VALUE_IS_DOUBLE = 0,
+   VALUE_IS_BYTE,
+   VALUE_IS_UBYTE,
+   VALUE_IS_SHORT,
+   VALUE_IS_USHORT,
+   VALUE_IS_INT,
+   VALUE_IS_UINT,
+   VALUE_IS_INT64,
+   VALUE_IS_UINT64
+};
+
 typedef struct
 {
    double xmin, xmax;
@@ -13,13 +26,6 @@ typedef struct
    int ny;
 }
 Pixel_Grid_Param_Type;
-
-typedef struct
-{
-   int num_overlaps;
-   double min, max;
-}
-Pixel_Overlap_Info_Type;
 
 typedef struct Pixel_List_Type Pixel_List_Type;
 typedef struct Pixel_Regrid_Type Pixel_Regrid_Type;
@@ -48,8 +54,12 @@ Pixel_find_overlaps (Pixel_Regrid_Type *r,
                      const Pixel_List_Type *src_lookup);
 
 extern int
-Pixel_regrid (const Pixel_Regrid_Type *r, double *src, int *src_mask,
-              double *dest, Pixel_Overlap_Info_Type *info);
+Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
+              double fill_value, const double *src, double *dest);
+extern int
+Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
+                    int value_type, const void *fill_value,
+                    const void *src, void *dest);
 
 extern void Pixel_close_regrid (Pixel_Regrid_Type *r);
 

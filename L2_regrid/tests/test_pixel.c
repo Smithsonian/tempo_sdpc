@@ -41,7 +41,6 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    Pixel_Grid_Param_Type dest_grid_params;
    Pixel_List_Type *src_pixel_list = NULL;
    Pixel_Regrid_Type *r = NULL;
-   Pixel_Overlap_Info_Type *info = NULL;
    double *src_values=NULL, *dest_values=NULL;
    double x0 = 0.0, dx = 1.0/nx_src;
    double y0 = 0.0, dy = 1.0/ny_src;
@@ -113,16 +112,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
-   if (NULL == (info = (Pixel_Overlap_Info_Type *) MALLOC (num_dest * sizeof(*info))))
-     goto return_status;
-
-   /* Pixel_regrid assumes that dest_values initialized to fill value */
-   for (i = 0; i < num_dest; i++)
-     {
-        dest_values[i] = DBL_MAX;
-     }
-
-   if (-1 == Pixel_regrid (r, src_values, src_mask, dest_values, info))
+   if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values))
      goto return_status;
 
    src_sum = 0.0;
@@ -133,24 +123,19 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      }
 
    dest_sum = 0.0;
-   if (info != NULL)
+   for (i = 0; i < num_dest; i++)
      {
-        for (i = 0; i < num_dest; i++)
+        debug_print (stderr, "dest[%2d] = %15.6e\n",
+                     i, dest_values[i]);
+        if (dest_values[i] != DBL_MAX)
           {
-             Pixel_Overlap_Info_Type *oi = info + i;
-             debug_print (stderr, "dest[%2d] = %15.6e  %d overlaps\n",
-                          i, dest_values[i],
-                          oi->num_overlaps);
-             if (dest_values[i] != DBL_MAX)
-               {
-                  dest_sum += dest_values[i];
-               }
+             dest_sum += dest_values[i];
           }
      }
 
    expected_dest_sum = ((num_dest * (src_sum/num_src)
                          * (1.0 - fabs(xshift)) * (1.0 - fabs(yshift))));
-   if ((expected_dest_sum < 0.0) || (info == NULL))
+   if (expected_dest_sum < 0.0)
      expected_dest_sum = 0.0;
    debug_print (stdout, "dest_sum = %g  expected_dest_sum = %g\n",
                 dest_sum, expected_dest_sum);
@@ -166,7 +151,6 @@ return_status:
    FREE(src_values);
    FREE(src_mask);
    FREE(dest_values);
-   FREE(info);
    FREE(xcnr);
    FREE(ycnr);
    Pixel_list_free (src_pixel_list);

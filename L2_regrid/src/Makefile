@@ -73,7 +73,7 @@ $(ELFDIR_ELF_LIB):	$(elfdir) $(ELFOBJS)
 	fi
 	cd $(elfdir) && $(LN) $(ELFLIB_BUILD_NAME) $(ELFLIB)
 
-.PHONY: clean distclean all install check
+.PHONY: clean distclean all install check tags
 
 # --------------------------------------------------------------------------
 # Installation

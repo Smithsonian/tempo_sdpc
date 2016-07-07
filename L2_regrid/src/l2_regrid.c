@@ -38,6 +38,7 @@ struct Product_Type
    int num_var_names;
    char **in_var_names;
    char **out_var_names;
+   int *value_types;
 
    int num_input_files;
    char **input_files;
@@ -57,6 +58,7 @@ static void free_product_type (Product_Type *p)
         FREE(p->in_var_names);
      }
 
+   FREE(p->value_types);
    FREE(p->name);
    FREE(p->outfile);
    FREE(p->in_lonlat_grp);
@@ -68,7 +70,7 @@ static Product_Type *new_product_type (int num_var_names,
                                        int num_input_files)
 {
    Product_Type *p = NULL;
-   int num_strings;
+   int i, num_strings;
 
    if (NULL == (p = (Product_Type *) MALLOC (sizeof *p)))
      {
@@ -91,6 +93,17 @@ static Product_Type *new_product_type (int num_var_names,
         return NULL;
      }
    memset ((char *)p->in_var_names, 0, num_strings * sizeof(char *));
+
+   if (NULL == (p->value_types = (int *) MALLOC (num_var_names * sizeof(int))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_product_type (p);
+        return NULL;
+     }
+   for (i = 0; i < num_var_names; i++)
+     {
+        p->value_types[i] = VALUE_IS_DOUBLE;
+     }
 
    p->out_var_names = p->in_var_names + num_var_names;
    p->input_files = p->out_var_names + num_var_names;
@@ -140,6 +153,29 @@ static int init_dest_grid (const config_setting_t *setting,
    return 0;
 }
 
+static int set_value_type (int bitfield_type, int *value_type)
+{
+   switch (bitfield_type)
+     {
+      case  8: *value_type = VALUE_IS_UINT64; break;
+      case -8: *value_type = VALUE_IS_INT64; break;
+      case  4: *value_type = VALUE_IS_UINT; break;
+      case -4: *value_type = VALUE_IS_INT; break;
+      case  2: *value_type = VALUE_IS_USHORT; break;
+      case -2: *value_type = VALUE_IS_SHORT; break;
+      case  1: *value_type = VALUE_IS_UBYTE; break;
+      case -1: *value_type = VALUE_IS_BYTE; break;
+      case  0: *value_type = VALUE_IS_DOUBLE; break;
+      default:
+        Tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: unsupported value bitfield_size=%d", __func__, bitfield_type);
+        return -1;
+        break;
+     }
+
+   return 0;
+}
+
 static Product_Type *init_product_type (const config_setting_t *setting)
 {
    Product_Type *prod = NULL;
@@ -174,6 +210,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
    for (i = 0; i < num_vars; i++)
      {
         const char *in_name, *out_name;
+        int bitfield_status, bitfield_type;
         if ((NULL == (s = config_setting_get_elem (vars, i)))
             || (CONFIG_TRUE != config_setting_lookup_string (s, "in", &in_name))
             || (CONFIG_TRUE != config_setting_lookup_string (s, "out", &out_name)))
@@ -183,6 +220,15 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              free_product_type (prod);
              return NULL;
           }
+        bitfield_status = config_setting_lookup_int (s, "bitfield_size", &bitfield_type);
+        if (bitfield_status != CONFIG_TRUE)
+          prod->value_types[i] = VALUE_IS_DOUBLE;
+        else if (-1 == set_value_type (bitfield_type, &prod->value_types[i]))
+          {
+             free_product_type(prod);
+             return NULL;
+          }
+
         if ((NULL == (prod->in_var_names[i] = strdup (in_name)))
             || (NULL == (prod->out_var_names[i] = strdup (out_name))))
           {
@@ -323,7 +369,7 @@ static int make_l3_product (const Product_Type *prod,
 
    for (i = 0; i < prod->num_var_names; i++)
      {
-        if (-1 == Var_apply_regrid (r, vb, prod->in_var_names[i],
+        if (-1 == Var_apply_regrid (r, vb, prod->value_types[i], prod->in_var_names[i],
                                     prod->input_files, prod->num_input_files))
           goto return_status;
         if (-1 == Var_write_values (ncid, vb, prod->out_var_names[i],
