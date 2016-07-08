@@ -168,7 +168,7 @@ static int set_value_type (int bitfield_type, int *value_type)
       case  0: *value_type = VALUE_IS_DOUBLE; break;
       default:
         Tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: unsupported value bitfield_size=%d", __func__, bitfield_type);
+                     "%s: unsupported value bitfield_type=%d", __func__, bitfield_type);
         return -1;
         break;
      }
@@ -220,7 +220,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              free_product_type (prod);
              return NULL;
           }
-        bitfield_status = config_setting_lookup_int (s, "bitfield_size", &bitfield_type);
+        bitfield_status = config_setting_lookup_int (s, "bitfield_type", &bitfield_type);
         if (bitfield_status != CONFIG_TRUE)
           prod->value_types[i] = VALUE_IS_DOUBLE;
         else if (-1 == set_value_type (bitfield_type, &prod->value_types[i]))
@@ -319,7 +319,7 @@ static int parse_param_file (const char *cfg_file,
    if (-1 == init_dest_grid (s, dest))
         goto cleanup_and_return;
 
-   if (NULL == (s = config_lookup (&cfg, "supported_data_products")))
+   if (NULL == (s = config_lookup (&cfg, "data_products")))
      goto cleanup_and_return;
 
    num_products = config_setting_length (s);
