@@ -30,13 +30,16 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = test_poly test_pixel mktestdata_l2
+EXECUTABLES = test_poly test_pixel mktestdata_l2 test_area
 
 all:  $(EXECUTABLES)
 
 check:	$(EXECUTABLES)
 	@./test_poly && echo "testing poly...ok"
 	@./test_pixel && echo "testing pixel...ok"
+
+check-area:   test_area
+	./test_area
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
@@ -61,6 +64,9 @@ test_poly:
 
 test_pixel:
 	$(COMPILE_CMD) -o test_pixel $(INCS) test_pixel.c $(LIBS) -lm
+
+test_area:
+	$(COMPILE_CMD) -o test_area $(INCS) $(EXTRA_INCS) test_area.c $(LIBS) $(EXTRA_LIBS) -lm
 
 mktestdata_l2:
 	$(COMPILE_CMD) -o mktestdata_l2 mktestdata_l2.c $(EXTRA_INCS) $(INCS) $(EXTRA_LIBS) $(LIBS) -lm
