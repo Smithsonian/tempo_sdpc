@@ -21,8 +21,6 @@ typedef struct
    Pixel_List_Type *pixel_lookup;
    /* polygon vertices in coordinates that facilitate area calculation */
    Pixel_List_Type *pixel_area;
-   int num_xtrack;      /* assume all granules have the same num_xtrack */
-   int num_step;        /* num_steps in this granule */
 }
 Source_Pixel_List_Type;
 
@@ -118,7 +116,7 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
    Source_Pixel_List_Type *src = NULL;
    TIO_Var_Info_Type vi;
    int ncid, grp, start[3], count[3];
-   int num_pixels, num_sides, len_bounds;
+   int num_steps, num_xtrack, num_pixels, num_sides, len_bounds;
    double *lon_bounds = NULL, *lat_bounds = NULL;
    double *albers_x_bounds, *albers_y_bounds;
    int *step = NULL;
@@ -145,27 +143,27 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
 
    if (-1 == TIO_inq_var (ncid, TEMPO_DIM_XTRACK, &vi))
      goto free_and_return;
-   src->num_xtrack = vi.dimlens[0];
+   num_xtrack = vi.dimlens[0];
 
    if (-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &vi))
      goto free_and_return;
-   src->num_step = vi.dimlens[0];
+   num_steps = vi.dimlens[0];
 
-   if (NULL == (step = (int *) MALLOC (src->num_step * sizeof (int))))
+   if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto free_and_return;
      }
 
    start[0] = 0;
-   count[0] = src->num_step;
+   count[0] = num_steps;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, step))
      goto free_and_return;
 
    /* read lon/lat bounds arrays */
 
-   num_pixels = src->num_step * src->num_xtrack;
+   num_pixels = num_steps * num_xtrack;
    len_bounds = 4 * num_pixels * sizeof(double);
 
    if ((NULL == (lon_bounds = (double *) MALLOC (len_bounds)))
@@ -178,8 +176,8 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
    start[0] = 0;
    start[1] = 0;
    start[2] = 0;
-   count[0] = src->num_step;
-   count[1] = src->num_xtrack;
+   count[0] = num_steps;
+   count[1] = num_xtrack;
    count[2] = 4;
 
    if ((-1 == TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS,
@@ -209,7 +207,7 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
     * destination pixels overlap each source pixel */
    if (-1 == pack_pixel_list (src->pixel_lookup,
                               lon_bounds, lat_bounds, num_pixels,
-                              step, src->num_xtrack))
+                              step, num_xtrack))
      {
         goto free_and_return;
      }
@@ -224,7 +222,7 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
    /* pixel_area coordinates will be used to compute pixel overlap areas */
    if (-1 == pack_pixel_list (src->pixel_area,
                               albers_x_bounds, albers_y_bounds, num_pixels,
-                              step, src->num_xtrack))
+                              step, num_xtrack))
      {
         goto free_and_return;
      }
@@ -245,16 +243,11 @@ free_and_return:
 }
 
 static int
-find_all_pixel_overlaps (Pixel_Regrid_Type *r,
-                         char **files, int num_files,
-                         const char *lonlat_grp,
-                         int *src_num_steps, int *src_num_xtrack)
+find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
+                         const char *lonlat_grp)
 {
    Source_Pixel_List_Type *src = NULL;
-   int i, num_steps_total, num_xtrack;
-
-   num_steps_total = 0;
-   num_xtrack = -1;
+   int i;
 
    /* Loop over granule files, and accumulate contributions
     * to the pixel overlap array in each destination pixel.
@@ -267,18 +260,6 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r,
         free_source_pixel_list (src);
         if (NULL == (src = read_pixel_vertices (files[i], lonlat_grp)))
           break;
-
-        num_steps_total += src->num_step;
-
-        if (num_xtrack < 0)
-          num_xtrack = src->num_xtrack;
-        else if (num_xtrack != src->num_xtrack)
-          {
-             Tell_verror (TELL_APPLICATION_ERROR,
-                          "%s: unexpected num_xtrack = %d (expected %d)",
-                          __func__, src->num_xtrack, num_xtrack);
-             break;
-          }
 
         num_overlaps = Pixel_find_overlaps (r, src->pixel_area,
                                             src->pixel_lookup);
@@ -296,10 +277,12 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r,
    free_source_pixel_list (src);
 
    if (i != num_files)
-     return -1;
-
-   *src_num_steps = num_steps_total;
-   *src_num_xtrack = num_xtrack;
+     {
+        Tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: unexpected error on input %s",
+                     __func__, files[i]);
+        return -1;
+     }
 
    return 0;
 }
@@ -348,8 +331,7 @@ free_and_return:
 
 Pixel_Regrid_Type *
 Regrid_open (const Pixel_Grid_Param_Type *dest,
-             char **files, int num_files, const char *lonlat_grp,
-             int *src_num_steps, int *src_num_xtrack)
+             char **files, int num_files, const char *lonlat_grp)
 {
    Pixel_Regrid_Type *r = NULL;
    Pixel_List_Type *dest_pixel_area = NULL;
@@ -361,8 +343,7 @@ Regrid_open (const Pixel_Grid_Param_Type *dest,
    if (NULL == (r = Pixel_open_regrid (dest, dest_pixel_area)))
      goto free_and_return;
 
-   if (-1 == find_all_pixel_overlaps (r, files, num_files, lonlat_grp,
-                                      src_num_steps, src_num_xtrack))
+   if (-1 == find_all_pixel_overlaps (r, files, num_files, lonlat_grp))
      goto free_and_return;
 
    status = 0;

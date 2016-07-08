@@ -139,7 +139,7 @@ void Var_free_value_buffer (Var_Value_Buffer_Type *vb)
 
 Var_Value_Buffer_Type *
 Var_new_value_buffer (int dest_nx, int dest_ny,
-                      int src_num_step, int src_num_xtrack)
+                      int src_num_steps, int src_num_xtrack)
 {
    Var_Value_Buffer_Type *vb = NULL;
    int len_src, len_dest, len_mask;
@@ -154,7 +154,7 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
    vb->src_values.d = NULL;
    vb->dest_values.d = NULL;
 
-   vb->num_step = src_num_step;
+   vb->num_step = src_num_steps;
    vb->num_xtrack = src_num_xtrack;
 
    vb->num_src_pixels = vb->num_step * vb->num_xtrack;
@@ -164,7 +164,7 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
     * a 2D array with one value per spatial pixel */
    vb->num_values_per_pixel = 1;
    vb->num_dims = 2;
-   vb->dimlens[0] = src_num_step;
+   vb->dimlens[0] = src_num_steps;
    vb->dimlens[1] = src_num_xtrack;
 
    len_mask = vb->num_src_pixels * sizeof(int);
@@ -576,8 +576,10 @@ static void copy_to_strided_dest (Var_Value_Buffer_Type *vb, int i, Value_Ptr_Ty
      }
 }
 
-int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                      int value_type, const char *var_path, char **files, int num_files)
+int Var_apply_regrid (const Pixel_Regrid_Type *r,
+                      Var_Value_Buffer_Type *vb,
+                      int value_type, const char *var_path,
+                      char **files, int num_files)
 {
    Value_Ptr_Type src_values, dest_values;
    int i, regrid_by_averaging, status = -1;
