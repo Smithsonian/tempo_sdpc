@@ -135,6 +135,26 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
  */
 extern void Pixel_close_regrid (Pixel_Regrid_Type *r);
 
+/** Track the largest source coordinates yet referenced
+ * @param   r               Pixel_Regrid_Type structure
+ * @param   src_max_step    Max mirror_step so far
+ * @param   src_max_xtrack  Max xtrack pixel so far
+ *
+ * When the input source grid is read in pieces, the code
+ * infers the source grid's full size by tracking the largest
+ * coordinates yet referenced.
+ */
+extern void Pixel_regrid_grow_srcdims (Pixel_Regrid_Type *r,
+                                       int src_max_step, int src_max_xtrack);
+
+/** Query the inferred minimum source grid dimensions
+ * @param   r               Pixel_Regrid_Type structure
+ * @param   num_src_step    Minimum inferred mirror step dimension
+ * @param   num_src_xtrack  Minimum inferred xtrack dimension
+ */
+extern void Pixel_regrid_get_srcdims (const Pixel_Regrid_Type *r,
+                                      int *num_src_step, int *num_src_xtrack);
+
 /** Generate a polygon overlap structure containing, for each
  *  destination pixel, a list of all overlapping source pixels
  *  and the corresponding overlap area.

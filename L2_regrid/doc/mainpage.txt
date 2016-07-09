@@ -32,14 +32,12 @@ Here is an example parameter file:
 
 version = "1.0"
 
-src_dims: {num_steps = 1280; num_xtrack = 2048};
-
 #
 # min, delta in degrees
 #
 target_grid: {
-   longitude = {delta = 0.05; min = -150.0; num = 2200;};
-   latitude  = {delta = 0.05; min =   17.0; num =  900;};
+   longitude = {delta = 0.05; min = -155.0; num = 2611;};
+   latitude  = {delta = 0.05; min =   17.0; num =  940;};
 };
 
 #
@@ -52,11 +50,6 @@ data_products: {
 
 The parameter file contains the following fields:
   \li \c version  Parameter file format version number.
-
-  \li \c src_dims  The expected dimensions of the input field of regard.
-                   Specifying the dimensions on input simplifies
-                   processing in cases where some input data is
-                   missing (e.g. one or more granules are missing).
 
   \li \c target_grid Specifies the longitude-latitude grids
                       for the output Level 3 data product.

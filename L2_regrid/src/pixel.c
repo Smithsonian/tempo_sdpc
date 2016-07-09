@@ -33,6 +33,8 @@ struct Pixel_Regrid_Type
    const Pixel_Grid_Param_Type *dest;
    const Pixel_List_Type *dest_area;
    int num_dest_pixels;
+   int num_src_step;
+   int num_src_xtrack;
 };
 
 static void free_overlap (Pixel_Overlap_Type *o)
@@ -388,6 +390,24 @@ void Pixel_close_regrid (Pixel_Regrid_Type *r)
    FREE(r);
 }
 
+void Pixel_regrid_grow_srcdims (Pixel_Regrid_Type *r,
+                                int src_max_step, int src_max_xtrack)
+{
+   int src_num_step = src_max_step + 1;
+   int src_num_xtrack = src_max_xtrack + 1;
+   if (src_num_step > r->num_src_step)
+     r->num_src_step = src_num_step;
+   if (src_num_xtrack > r->num_src_xtrack)
+     r->num_src_xtrack = src_num_xtrack;
+}
+
+void Pixel_regrid_get_srcdims (const Pixel_Regrid_Type *r,
+                               int *num_src_step, int *num_src_xtrack)
+{
+   *num_src_step = r->num_src_step;
+   *num_src_xtrack = r->num_src_xtrack;
+}
+
 Pixel_Regrid_Type *
 Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
                    const Pixel_List_Type *dest_area)
@@ -414,6 +434,9 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
    r->dest = dest;
    r->dest_area = dest_area;
    r->num_dest_pixels = num_dest;
+
+   r->num_src_step = 0;
+   r->num_src_xtrack = 0;
 
    return r;
 }

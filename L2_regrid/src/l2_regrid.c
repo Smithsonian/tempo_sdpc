@@ -121,19 +121,6 @@ static void free_product_list (Product_Type *plist)
      }
 }
 
-static int lookup_src_dims (const config_setting_t *s,
-                            int *src_num_steps, int *src_num_xtrack)
-{
-   if ((CONFIG_TRUE != config_setting_lookup_int (s, "num_steps", src_num_steps))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_xtrack", src_num_xtrack)))
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: defining source grid dimensions", __func__);
-        return -1;
-     }
-   return 0;
-}
-
 static int lookup_grid_spec (const config_setting_t *s,
                              int *num, double *min, double *max)
 {
@@ -302,8 +289,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
 
 static int parse_param_file (const char *cfg_file,
                              Pixel_Grid_Param_Type *dest,
-                             Product_Type **product_list,
-                             int *src_num_steps, int *src_num_xtrack)
+                             Product_Type **product_list)
 {
    Product_Type *plist = NULL;
    config_t cfg;
@@ -321,17 +307,6 @@ static int parse_param_file (const char *cfg_file,
                      config_error_line(&cfg), config_error_text(&cfg));
         goto cleanup_and_return;
      }
-
-   if (NULL == (s = config_lookup (&cfg, "src_dims")))
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing src_dims in param file: %s",
-                     __func__, cfg_file);
-        goto cleanup_and_return;
-     }
-
-   if (-1 == lookup_src_dims (s, src_num_steps, src_num_xtrack))
-     goto cleanup_and_return;
 
    if (NULL == (s = config_lookup (&cfg, "target_grid")))
      {
@@ -430,8 +405,7 @@ int main (int argc, char **argv)
    if (argc > 1)
      param_file = argv[1];
 
-   if (-1 == parse_param_file (param_file, &dest, &product_list,
-                               &src_num_steps, &src_num_xtrack))
+   if (-1 == parse_param_file (param_file, &dest, &product_list))
      return 1;
 
    /* Compute pixel overlaps using the first set of products */
@@ -441,6 +415,8 @@ int main (int argc, char **argv)
                     prod->in_lonlat_grp);
    if (NULL == r)
      goto return_status;
+
+   Pixel_regrid_get_srcdims (r, &src_num_steps, &src_num_xtrack);
 
    vb = Var_new_value_buffer (dest.nx, dest.ny,
                               src_num_steps, src_num_xtrack);

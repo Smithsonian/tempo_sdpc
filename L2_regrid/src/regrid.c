@@ -21,6 +21,8 @@ typedef struct
    Pixel_List_Type *pixel_lookup;
    /* polygon vertices in coordinates that facilitate area calculation */
    Pixel_List_Type *pixel_area;
+   int max_step;
+   int max_xtrack;
 }
 Source_Pixel_List_Type;
 
@@ -110,6 +112,57 @@ static void free_source_pixel_list (Source_Pixel_List_Type *src)
    FREE(src);
 }
 
+static Source_Pixel_List_Type *new_source_pixel_list (void)
+{
+   Source_Pixel_List_Type *src = NULL;
+
+   if (NULL == (src = (Source_Pixel_List_Type *) MALLOC (sizeof *src)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   src->pixel_area = NULL;
+   src->pixel_lookup = NULL;
+   src->max_step = 0;
+   src->max_xtrack = 0;
+
+   return src;
+}
+
+static int record_max_xtrack (int ncid, int num_xtrack, int *max_xtrack)
+{
+   int i, mx, start[2], count[2];
+   int *xtrack = NULL;
+
+   if (NULL == (xtrack = (int *) MALLOC (num_xtrack * sizeof (int))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   start[0] = 0;
+   count[0] = num_xtrack;
+   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_XTRACK,
+                                  start, count, TIO_INT, xtrack))
+     {
+        FREE(xtrack);
+        return -1;
+     }
+
+   mx = 0;
+   for (i = 0; i < num_xtrack; i++)
+     {
+        if (xtrack[i] > mx)
+          mx = xtrack[i];
+     }
+   FREE(xtrack);
+
+   *max_xtrack = mx;
+
+   return 0;
+}
+
 static Source_Pixel_List_Type *
 read_pixel_vertices (const char *file, const char *lonlat_grp)
 {
@@ -120,7 +173,7 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
    double *lon_bounds = NULL, *lat_bounds = NULL;
    double *albers_x_bounds, *albers_y_bounds;
    int *step = NULL;
-   int status;
+   int i, status;
 
    if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
      return NULL;
@@ -129,14 +182,6 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
      return NULL;
 
    status = -1;
-
-   if (NULL == (src = (Source_Pixel_List_Type *) MALLOC (sizeof *src)))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto free_and_return;
-     }
-   src->pixel_area = NULL;
-   src->pixel_lookup = NULL;
 
    /* assume xtrack, mirror_step dimensions and coordinate variables
     * are file-global */
@@ -149,6 +194,9 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
      goto free_and_return;
    num_steps = vi.dimlens[0];
 
+   if (NULL == (src = new_source_pixel_list ()))
+     goto free_and_return;
+
    if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -159,6 +207,16 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
    count[0] = num_steps;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, step))
+     goto free_and_return;
+
+   for (i = 0; i < num_steps; i++)
+     {
+        if (step[i] > src->max_step)
+          src->max_step = step[i];
+     }
+
+   /* this is a bit paranoid */
+   if (-1 == record_max_xtrack (ncid, num_xtrack, &src->max_xtrack))
      goto free_and_return;
 
    /* read lon/lat bounds arrays */
@@ -260,6 +318,8 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
         free_source_pixel_list (src);
         if (NULL == (src = read_pixel_vertices (files[i], lonlat_grp)))
           break;
+
+        Pixel_regrid_grow_srcdims (r, src->max_step, src->max_xtrack);
 
         num_overlaps = Pixel_find_overlaps (r, src->pixel_area,
                                             src->pixel_lookup);
