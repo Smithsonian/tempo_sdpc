@@ -1,9 +1,12 @@
+#include <limits.h>
 #include <float.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <netcdf.h>
 
 #include <tell.h>
 #include <poly.h>
@@ -33,6 +36,79 @@ static int debug_print (FILE *fp, const char *fmt, ...)
    return status;
 }
 
+/* Note that we don't check the output of Pixel_regrid_bytes...
+ * These bitfield tests are mainly intended to improve code coverage.
+ * The floating point regridding logic is verified by other tests,
+ * and the bitfields share a lot of that.
+ */
+#define BITFIELD_TEST_TYPE(type,fillsym,typestr) \
+static int type##_bitfield_test (const Pixel_Regrid_Type *r, int num_src, int num_dest, \
+                                 const int *src_mask) \
+{ \
+   typestr *a = NULL, *src, *dest; \
+   typestr fill_value = NC_FILL_##fillsym; \
+   int i, num = num_src + num_dest; \
+ \
+   if (NULL == (a = (typestr *)MALLOC (num * sizeof(*a)))) \
+     return -1; \
+   src = a; \
+   dest = a + num_src; \
+ \
+   for (i = 0; i < num_src; i++) \
+     { \
+        src[i] = 1; \
+     } \
+   for (i = 0; i < num_dest; i++) \
+     { \
+        dest[i] = fill_value; \
+     } \
+ \
+   if (-1 == Pixel_regrid_bytes (r, src_mask, VALUE_IS_##fillsym, &fill_value, \
+                                 src, dest)) \
+     { \
+        FREE(a); \
+        return -1; \
+     } \
+ \
+   FREE(a); \
+   return 0; \
+}
+
+BITFIELD_TEST_TYPE(ul,UINT64,unsigned long long)
+BITFIELD_TEST_TYPE(ui,UINT,unsigned int)
+BITFIELD_TEST_TYPE(us,USHORT,unsigned short)
+BITFIELD_TEST_TYPE(uc,UBYTE,unsigned char)
+BITFIELD_TEST_TYPE(l,INT64,long long)
+BITFIELD_TEST_TYPE(i,INT,int)
+BITFIELD_TEST_TYPE(s,SHORT,short)
+BITFIELD_TEST_TYPE(c,BYTE,char)
+
+typedef int Bitfield_Test_Type (const Pixel_Regrid_Type *, int, int, const int *);
+
+static Bitfield_Test_Type *Bitfield_Tests[] = {
+   &ul_bitfield_test,
+   &ui_bitfield_test,
+   &us_bitfield_test,
+   &uc_bitfield_test,
+   &l_bitfield_test,
+   &i_bitfield_test,
+   &s_bitfield_test,
+   &c_bitfield_test,
+   NULL
+};
+
+static int test_bitfields (const Pixel_Regrid_Type *r, int num_src, int num_dest,
+                           const int *src_mask)
+{
+   Bitfield_Test_Type **btest;
+   for (btest = Bitfield_Tests; *btest != NULL; btest++)
+     {
+        if (-1 == (*btest) (r, num_src, num_dest, src_mask))
+          return -1;
+     }
+   return 0;
+}
+
 static int test_regrid (int nx_src, int ny_src, float bin_factor,
                         double pixel_xoverlap,
                         double xshift, double yshift,
@@ -47,6 +123,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    double src_sum, dest_sum, expected_dest_sum;
    double *xcnr = NULL, *ycnr = NULL;
    int num_src, nx_dest, ny_dest, num_dest, num_overlaps;
+   int new_num_step, new_num_xtrack;
    int i, *src_mask= NULL;
    int status = -1;
 
@@ -112,6 +189,12 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
+   if (-1 == test_bitfields (r, num_src, num_dest, src_mask))
+     {
+        fprintf (stderr, "*** Error: bitfield test failed\n");
+        goto return_status;
+     }
+
    if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values))
      goto return_status;
 
@@ -143,6 +226,16 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      {
         fprintf (stderr, "*** FAIL: dest_sum=%g (expected %g)\n",
                  dest_sum, expected_dest_sum);
+        goto return_status;
+     }
+
+   Pixel_regrid_grow_srcdims (r, INT_MAX-1, INT_MAX-1);
+   Pixel_regrid_get_srcdims (r, &new_num_step, &new_num_xtrack);
+   if ((new_num_step != INT_MAX) || (new_num_xtrack != INT_MAX))
+     {
+        fprintf (stderr, "*** FAIL: new_num_step=%d new_num_xtrack=%d, expected INT_MAX\n",
+                 new_num_step, new_num_xtrack);
+        goto return_status;
      }
 
    status = 0;

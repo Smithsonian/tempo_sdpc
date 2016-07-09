@@ -330,20 +330,29 @@ int main (int argc, char **argv)
    int coord_type = NC_FLOAT;
    double *var0 = NULL, *var1 = NULL, *var2 = NULL, *var3 = NULL;
    short *var4 = NULL;
-   const char *bitfield_names[] =
-     {"bitfield0","bitfield1", "bitfield2", "bitfield3"};
-   int bitfield_types[] = {NC_INT64, NC_UINT, NC_SHORT, NC_UBYTE};
-   long long *bitfield0 = NULL;
-   unsigned int *bitfield1 = NULL;
-   short *bitfield2 = NULL;
-   unsigned char  *bitfield3 = NULL;
+   const char *bitfield_names[] = {
+      "ul_bitfield","ui_bitfield", "us_bitfield", "uc_bitfield",
+       "l_bitfield", "i_bitfield",  "s_bitfield",  "c_bitfield"
+     };
+   int bitfield_types[] = {
+      NC_UINT64, NC_UINT, NC_USHORT, NC_UBYTE,
+       NC_INT64,  NC_INT,  NC_SHORT,  NC_BYTE
+   };
+   unsigned long long *ul_bitfield = NULL;
+   unsigned int       *ui_bitfield = NULL;
+   unsigned short     *us_bitfield = NULL;
+   unsigned char      *uc_bitfield = NULL;
+   long long          * l_bitfield = NULL;
+   int                * i_bitfield = NULL;
+   short              * s_bitfield = NULL;
+   signed char        * c_bitfield = NULL;
+   int id_bitfield[8];
    int *xtrack = NULL;
    int dims[__MAX_VAR_DIMS], dimid_corner;
    size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
    int ncid, grp, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
    int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3, id_var4;
-   int id_bitfield[4];
    int num_steps_per_granule, granule, i, step;
    int dimid_local1, num_local1 = LOCAL_DIM_SIZE1;
    int dimid_local2, num_local2 = LOCAL_DIM_SIZE2;
@@ -414,10 +423,14 @@ int main (int argc, char **argv)
        || (NULL == (var2 = (double *) MALLOC (num_var2 * sizeof(double))))
        || (NULL == (var3 = (double *) MALLOC (num_var3 * sizeof(double))))
        || (NULL == (var4 = (short *) MALLOC (o.num_pixels * sizeof(short))))
-       || (NULL == (bitfield0 = (long long *) MALLOC (o.num_pixels * sizeof(long long))))
-       || (NULL == (bitfield1 = (unsigned int *) MALLOC (o.num_pixels * sizeof(int))))
-       || (NULL == (bitfield2 = (short *) MALLOC (o.num_pixels * sizeof(short))))
-       || (NULL == (bitfield3 = (unsigned char *) MALLOC (o.num_pixels * sizeof(char))))
+       || (NULL == (ul_bitfield = (unsigned long long *) MALLOC (o.num_pixels * sizeof(long long))))
+       || (NULL == (ui_bitfield = (unsigned int *) MALLOC (o.num_pixels * sizeof(int))))
+       || (NULL == (us_bitfield = (unsigned short *) MALLOC (o.num_pixels * sizeof(short))))
+       || (NULL == (uc_bitfield = (unsigned char *) MALLOC (o.num_pixels * sizeof(char))))
+       || (NULL == ( l_bitfield = (long long *) MALLOC (o.num_pixels * sizeof(long long))))
+       || (NULL == ( i_bitfield = (int *) MALLOC (o.num_pixels * sizeof(int))))
+       || (NULL == ( s_bitfield = (short *) MALLOC (o.num_pixels * sizeof(short))))
+       || (NULL == ( c_bitfield = (signed char *) MALLOC (o.num_pixels * sizeof(char))))
       )
      return 1;
 
@@ -521,7 +534,7 @@ int main (int argc, char **argv)
         status = put_att_text (ncid, id_var4, "comment", "This is var4");
         NC_CHECK_STATUS(status);
 
-        for (b = 0; b < 4; b++)
+        for (b = 0; b < 8; b++)
           {
              status = nc_def_var (ncid, bitfield_names[b], bitfield_types[b], 2, dims, &id_bitfield[b]);
              NC_CHECK_STATUS(status);
@@ -584,21 +597,31 @@ int main (int argc, char **argv)
                        var0[j] = NC_FILL_FLOAT;
                        var1[j] = NC_FILL_FLOAT;
                        var4[j] = NC_FILL_SHORT;
-                       bitfield0[j] = NC_FILL_INT64;
-                       bitfield1[j] = NC_FILL_UINT;
-                       bitfield2[j] = NC_FILL_SHORT;
-                       bitfield3[j] = NC_FILL_UBYTE;
+                       ul_bitfield[j] = NC_FILL_UINT64;
+                       ui_bitfield[j] = NC_FILL_UINT;
+                       us_bitfield[j] = NC_FILL_USHORT;
+                       uc_bitfield[j] = NC_FILL_UBYTE;
+                       l_bitfield[j]  = NC_FILL_INT64;
+                       i_bitfield[j]  = NC_FILL_INT;
+                       s_bitfield[j]  = NC_FILL_SHORT;
+                       c_bitfield[j]  = NC_FILL_BYTE;
                     }
                   else
                     {
+                       unsigned long long ullb;
                        var0[j] = 1.0 * ((step/pattern_scale) % 16);
                        var1[j] = 1.0 * ((j/pattern_scale) % 16);
                        var4[j] = (step/pattern_scale) % 16;
 
-                       bitfield0[j] = ((step % 32) < 16) ? 0x03 : 0x0c;
-                       bitfield1[j] = bitfield0[j];
-                       bitfield2[j] = bitfield0[j];
-                       bitfield3[j] = bitfield0[j];
+                       ullb = ((step % 32) < 16) ? 0x03 : 0x0c;
+                       ul_bitfield[j] = ullb;
+                       ui_bitfield[j] = ullb;
+                       us_bitfield[j] = ullb;
+                       uc_bitfield[j] = ullb;
+                       l_bitfield[j]  = ullb;
+                       i_bitfield[j]  = ullb;
+                       s_bitfield[j]  = ullb;
+                       c_bitfield[j]  = ullb;
                     }
 
                   for (k = 0; k < num_local1; k++)
@@ -638,13 +661,21 @@ int main (int argc, char **argv)
              NC_CHECK_STATUS(status);
              status = nc_put_vara_short (ncid, id_var4, start, count, var4);
              NC_CHECK_STATUS(status);
-             status = nc_put_vara_longlong (ncid, id_bitfield[0], start, count, bitfield0);
+             status = nc_put_vara_ulonglong (ncid, id_bitfield[0], start, count, ul_bitfield);
              NC_CHECK_STATUS(status);
-             status = nc_put_vara_uint (ncid, id_bitfield[1], start, count, bitfield1);
+             status = nc_put_vara_uint (ncid, id_bitfield[1], start, count, ui_bitfield);
              NC_CHECK_STATUS(status);
-             status = nc_put_vara_short (ncid, id_bitfield[2], start, count, bitfield2);
+             status = nc_put_vara_ushort (ncid, id_bitfield[2], start, count, us_bitfield);
              NC_CHECK_STATUS(status);
-             status = nc_put_vara_ubyte (ncid, id_bitfield[3], start, count, bitfield3);
+             status = nc_put_vara_ubyte (ncid, id_bitfield[3], start, count, uc_bitfield);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_longlong (ncid, id_bitfield[4], start, count, l_bitfield);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_int (ncid, id_bitfield[5], start, count, i_bitfield);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_short (ncid, id_bitfield[6], start, count, s_bitfield);
+             NC_CHECK_STATUS(status);
+             status = nc_put_vara_schar (ncid, id_bitfield[7], start, count, c_bitfield);
              NC_CHECK_STATUS(status);
              start[2] = 0;
              count[2] = num_local1;
@@ -684,6 +715,14 @@ cleanup_and_exit:
    FREE(var3);
    FREE(var4);
    FREE(xtrack);
+   FREE(ul_bitfield);
+   FREE(ui_bitfield);
+   FREE(us_bitfield);
+   FREE(uc_bitfield);
+   FREE( l_bitfield);
+   FREE( i_bitfield);
+   FREE( s_bitfield);
+   FREE( c_bitfield);
    free_slit_grid (g);
    close_obs (&o);
 
