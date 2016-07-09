@@ -296,6 +296,20 @@ static int put_att_text (int ncid, int id_var,
    return nc_put_att_text (ncid, id_var, name, strlen(text), text);
 }
 
+static void update_bbox (Slit_Pixel_List_Type *g, double *bbox)
+{
+   int i, n = g->num_pixels;
+   for (i = 0; i < n; i++)
+     {
+        double *lon = g->x0_bounds + 4*i;
+        double *lat = g->x1_bounds + 4*i;
+        if ((fabs(lon[0]) < 360.0) && (lon[0] < bbox[0])) bbox[0] = lon[0];
+        if ((fabs(lon[1]) < 360.0) && (lon[1] > bbox[1])) bbox[1] = lon[1];
+        if ((fabs(lat[0]) <  90.0) && (lat[0] < bbox[2])) bbox[2] = lat[0];
+        if ((fabs(lat[2]) <  90.0) && (lat[2] > bbox[3])) bbox[3] = lat[2];
+     }
+}
+
 static void usage (int argc, char **argv)
 {
    (void) argc;
@@ -336,7 +350,8 @@ int main (int argc, char **argv)
    int num_steps = NUM_STEPS;
    int num_pixels = NUM_PIXELS;
    int num_granules = NUM_GRANULES;
-   int b, c, num_var2, num_var3;
+   int b, c, num_var2, num_var3, pattern_scale;
+   double bbox[4] = {DBL_MAX, -DBL_MAX, DBL_MAX, -DBL_MAX};
    const char *out_dir = OUTPUT_DIR;
    int status = 1;
 
@@ -410,6 +425,9 @@ int main (int argc, char **argv)
      {
         xtrack[i] = i;
      }
+
+   pattern_scale = o.num_steps / 32;
+   if (pattern_scale == 0) pattern_scale = 1;
 
    step = 0;
    for (granule = 0; granule < o.num_granules; granule++)
@@ -553,11 +571,13 @@ int main (int argc, char **argv)
              if (-1 == make_slit_grid (&o, g, step))
                goto cleanup_and_exit;
 
+             update_bbox (g, bbox);
+
              for (j = 0; j < o.num_pixels; j++)
                {
                   int k, m, nm;
-                  int use_fill_value = ((abs(j-o.num_pixels/2) < 256)
-                                        && (abs(step - o.num_steps/2) < 64));
+                  int use_fill_value = ((abs(j-0.25*o.num_pixels) < 0.1*o.num_pixels)
+                                        && (abs(step - 0.75*o.num_steps) < 0.1*o.num_steps));
 
                   if (use_fill_value)
                     {
@@ -571,9 +591,9 @@ int main (int argc, char **argv)
                     }
                   else
                     {
-                       var0[j] = 1.0 * ((step/16) % 16);
-                       var1[j] = 1.0 * ((j/16) % 16);
-                       var4[j] = (step/16) % 16;
+                       var0[j] = 1.0 * ((step/pattern_scale) % 16);
+                       var1[j] = 1.0 * ((j/pattern_scale) % 16);
+                       var4[j] = (step/pattern_scale) % 16;
 
                        bitfield0[j] = ((step % 32) < 16) ? 0x03 : 0x0c;
                        bitfield1[j] = bitfield0[j];
@@ -584,14 +604,14 @@ int main (int argc, char **argv)
                   for (k = 0; k < num_local1; k++)
                     {
                        var2[k + j * num_local1] =
-                         1.0 * (((k*128 + j + step)/16) % 16);
+                         1.0 * (((k*128 + j + step)/pattern_scale) % 16);
                     }
 
                   nm = num_local1 * num_local2;
                   for (m = 0; m < nm; m++)
                     {
                        var3[m + j*nm] =
-                         1.0 * ((((o.num_pixels-j) + m*step)/16) % 16);
+                         1.0 * ((((o.num_pixels-j) + m*step)/pattern_scale) % 16);
                     }
                }
 
@@ -645,6 +665,11 @@ int main (int argc, char **argv)
 
         ncid = -1;
      }
+
+   fprintf (stdout,
+            "Bounding box:\nlon: %9.4f, %9.4f => %2d (0.05 deg steps)\nlat: %9.4f, %9.4f => %2d\n",
+            bbox[0], bbox[1], (int) ceil((bbox[1]-bbox[0])/0.05),
+            bbox[2], bbox[3], (int) ceil((bbox[3]-bbox[2])/0.05));
 
    status = 0;
 cleanup_and_exit:
