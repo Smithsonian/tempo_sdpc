@@ -186,6 +186,14 @@ static Product_Type *init_product_type (const config_setting_t *setting)
    if (setting == NULL)
      return NULL;
 
+   if ((CONFIG_TRUE != config_setting_lookup_string (setting, "name", &name))
+       || (CONFIG_TRUE != config_setting_lookup_string (setting, "output_file", &outfile)))
+     {
+        Tell_verror (TELL_INVALID_PARM_ERROR, "%s", __func__);
+        free_product_type (prod);
+        return NULL;
+     }
+
    input_files = config_setting_get_member (setting, "input_files");
    if (NULL == input_files)
      {
@@ -195,6 +203,12 @@ static Product_Type *init_product_type (const config_setting_t *setting)
      }
    num_input_files = config_setting_length (input_files);
 
+   if (num_input_files == 0)
+     {
+        Tell_verror (TELL_USAGE_ERROR, "product %s: No input files", name);
+        return NULL;
+     }
+
    vars = config_setting_get_member (setting, "vars");
    if (NULL == vars)
      {
@@ -203,6 +217,13 @@ static Product_Type *init_product_type (const config_setting_t *setting)
         return NULL;
      }
    num_vars = config_setting_length (vars);
+
+   if (num_vars == 0)
+     {
+        Tell_verror (TELL_USAGE_ERROR,
+                     "product %s: No variables to regrid", name);
+        return NULL;
+     }
 
    if (NULL == (prod = new_product_type (num_vars, num_input_files)))
      return NULL;
@@ -254,14 +275,6 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              free_product_type (prod);
              return NULL;
           }
-     }
-
-   if ((CONFIG_TRUE != config_setting_lookup_string (setting, "name", &name))
-       || (CONFIG_TRUE != config_setting_lookup_string (setting, "output_file", &outfile)))
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR, "%s", __func__);
-        free_product_type (prod);
-        return NULL;
      }
 
    if ((NULL == (longlat_group = config_setting_get_member (setting, "longlat_group")))
