@@ -126,7 +126,7 @@ static int open_obs (Obs_Type *o,
         return -1;
      }
 
-   o->num_granules = num_granules;
+   o->num_granules = (num_steps > num_granules) ? num_granules : 1;
    o->num_steps = num_steps;
    o->num_pixels = num_pixels;
 
