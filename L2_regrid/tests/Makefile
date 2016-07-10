@@ -35,8 +35,9 @@ EXECUTABLES = test_poly test_pixel mktestdata_l2 test_area
 all:  $(EXECUTABLES)
 
 check:	$(EXECUTABLES)
-	@./test_poly && echo "testing poly...ok"
-	@./test_pixel && echo "testing pixel...ok"
+	@./test_poly && echo "tested poly...ok"
+	@./test_pixel && echo "tested pixel...ok"
+	@./test_run.sh && echo "tested L2_regrid...ok"
 
 check-area:   test_area
 	./test_area
@@ -75,6 +76,8 @@ mktestdata_l2:
 
 clean:
 	-$(RM) -f .##* *.o *.mod
+	-$(RM) -f tmp/*
+	-rmdir tmp
 covclean:
 	-$(RM) -f *.gcda *.gcno *.info
 	-$(RM) -rf lcov.dir
