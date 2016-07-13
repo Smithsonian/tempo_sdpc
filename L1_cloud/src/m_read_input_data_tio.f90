@@ -348,7 +348,7 @@ contains
          [1,nXtrack], tio_sat_zen, errstat)
     call tiof_get2d_r4 (tio_l1obj, cld_var_va_angle, [iLine-1,0], &
          [1,nXtrack], tio_vazimuth, errstat)
-    call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [iLine-1,0], &
+    call tiof_get2d_i2 (tio_l1obj, cld_var_terr_height, [iLine-1,0], &
          [1,nXtrack], tio_terr_height, errstat)
     call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [iLine-1,0], &
          [1,nXtrack], tio_geoflg, errstat)
@@ -450,7 +450,7 @@ contains
          [nLines,nXtrack], sat_zen, errstat)
     call tiof_get2d_r4 (tio_l1obj, cld_var_va_angle, [0,0], &
          [nLines,nXtrack], vazimuth, errstat)
-    call tiof_get2d_i2 (tio_l1obj, cld_var_ellip_alt, [0,0], &
+    call tiof_get2d_i2 (tio_l1obj, cld_var_terr_height, [0,0], &
          [nLines,nXtrack], terr_height, errstat)
     call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [0,0], &
          [nLines,nXtrack], geoflg, errstat)

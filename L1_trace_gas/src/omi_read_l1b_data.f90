@@ -245,7 +245,7 @@ CONTAINS
                         omi_vzenith(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_r4 (tio_l1obj, tg_var_va_angle, [iline,0], [nloop,nxtrack], &
                         omi_vazimuth(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_i2 (tio_l1obj, "ellipsoid_altitude", [iline,0], [nloop,nxtrack], &
+    call tiof_get2d_i2 (tio_l1obj, tg_var_terrain_height, [iline,0], [nloop,nxtrack], &
                         omi_height(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
                         omi_geoflg(1:nxtrack,0:nloop-1), errstat)
