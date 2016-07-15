@@ -10,7 +10,7 @@ srcdir  = $(config_dir)/L2_regrid/src
 elfdir  = $(srcdir)/$(archobjs)
 
 TIO_INC = $(config_dir)/libtio/src
-TIO_LIB = $(config_dir)/libtio/$(elfdir)
+TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
