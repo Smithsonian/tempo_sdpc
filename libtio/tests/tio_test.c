@@ -172,10 +172,11 @@ static int dontcopy_attr (const char *attr)
 static int test_def_var (int ncid, const char *name, int type)
 {
    TIO_Var_Info_Type vi, vi2;
-   TIO_Attr_Text_Type attrs[] =
+   static TIO_Attr_Text_Type attrs[] =
      {
         {"test_attr1", "This is an attribute test"},
-        {"test_attr2", "This is another attribute test"}
+        {"test_attr2", "This is another attribute test"},
+        {NULL,NULL}
      };
    const char test_name[] = "test_var";
    int i, test_id, dimids_ok;
