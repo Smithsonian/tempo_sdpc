@@ -334,37 +334,23 @@ cleanup_and_return:
    return status;
 }
 
-static int parse_var_path (const char *var_path,
-                           char **pgrp_path, char **pvar_name)
+/* parse_var_path must be able to write to var_path */
+static int parse_var_path (char *var_path,
+                           char **grp_path, char **var_name)
 {
-   char *grp_path = NULL, *var_name = NULL;
-   const char *p;
+   char *p;
 
    if (NULL == (p = strrchr (var_path, '/')))
      {
-        grp_path = NULL;
-        var_name = strdup (var_path);
+        *grp_path = NULL;
+        *var_name = var_path;
      }
    else
      {
-        if (NULL == (grp_path = strndup (var_path, p-var_path)))
-          {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             return -1;
-          }
-        var_name = strdup (p + 1);
+        *p = 0;
+        *var_name = p + 1;
+        *grp_path = var_path;
      }
-
-   if (var_name == NULL)
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        FREE(grp_path);
-        grp_path = NULL;
-        return -1;
-     }
-
-   *pgrp_path = grp_path;
-   *pvar_name = var_name;
 
    return 0;
 }
@@ -372,12 +358,21 @@ static int parse_var_path (const char *var_path,
 static int read_var_values (Var_Value_Buffer_Type *vb, const char *var_path,
                             char **files, int num_files)
 {
+   char *var_path_copy = NULL;
    char *grp_path = NULL;
    char *var_name = NULL;
-   int i, ncid, status = -1;
+   int i, len, ncid, status = -1;
 
-   if (-1 == parse_var_path (var_path, &grp_path, &var_name))
-     return -1;
+   len = strlen (var_path) + 1;
+   if (NULL == (var_path_copy = (char *) MALLOC (len * sizeof(char))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memcpy (var_path_copy, var_path, len);
+
+   if (-1 == parse_var_path (var_path_copy, &grp_path, &var_name))
+     goto free_and_return;
 
    for (i = 0; i < num_files; i++)
      {
@@ -406,8 +401,7 @@ static int read_var_values (Var_Value_Buffer_Type *vb, const char *var_path,
    status = 0;
 free_and_return:
    (void) TIO_close (ncid);
-   FREE(grp_path);
-   FREE(var_name);
+   FREE(var_path_copy);
 
    return status;
 }
@@ -766,18 +760,37 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
                       int ncid_infile, const char *in_var_path)
 {
    TIO_Var_Info_Type vi;
+   char *in_var_path_copy=NULL, *out_var_path_copy=NULL;
    char *in_var_name=NULL, *out_var_name=NULL;
    char *in_grp_path = NULL, *out_grp_path = NULL;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
    size_t lon_dimlen, lat_dimlen;
-   int lon_dimid, lat_dimid;
+   int lon_dimid, lat_dimid, len_in_var_path, len_out_var_path;
    int i, dims[TIO_MAX_VAR_DIMS];
    int in_grp, in_varid, out_grp, out_varid, out_type;
    int in_no_fill, shuffle=1, deflate=1, deflate_level=1;
    int status = -1;
 
-   if ((-1 == parse_var_path (in_var_path, &in_grp_path, &in_var_name))
-       || (-1 == parse_var_path (out_var_path, &out_grp_path, &out_var_name)))
+   /* To facilitate parsing group/var names, we first make
+    * a copy of each path string that we can safely write to */
+   len_in_var_path = strlen(in_var_path) + 1;
+   if (NULL == (in_var_path_copy = (char *) MALLOC (len_in_var_path)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memcpy (in_var_path_copy, in_var_path, len_in_var_path);
+   if (-1 == parse_var_path (in_var_path_copy, &in_grp_path, &in_var_name))
+     goto free_and_return;
+
+   len_out_var_path = strlen(out_var_path) + 1;
+   if (NULL == (out_var_path_copy = (char *) MALLOC (len_out_var_path)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+   memcpy (out_var_path_copy, out_var_path, len_out_var_path);
+   if (-1 == parse_var_path (out_var_path_copy, &out_grp_path, &out_var_name))
      goto free_and_return;
 
    if (in_grp_path)
@@ -838,9 +851,8 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
 
    status = 0;
 free_and_return:
-   FREE(in_var_name);
-   FREE(in_grp_path);
-   FREE(out_var_name);
-   FREE(out_grp_path);
+   FREE(in_var_path_copy);
+   FREE(out_var_path_copy);
+
    return status;
 }

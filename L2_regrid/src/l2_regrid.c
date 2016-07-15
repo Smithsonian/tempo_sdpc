@@ -176,6 +176,19 @@ static int set_value_type (int bitfield_type, int *value_type)
    return 0;
 }
 
+static char *malloc_strcpy (const char *s)
+{
+   char *cpy = NULL;
+   int len = strlen(s) + 1;
+   if (NULL == (cpy = (char *) MALLOC (len)))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memcpy (cpy, s, len);
+   return cpy;
+}
+
 static Product_Type *init_product_type (const config_setting_t *setting)
 {
    Product_Type *prod = NULL;
@@ -250,8 +263,8 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              return NULL;
           }
 
-        if ((NULL == (prod->in_var_names[i] = strdup (in_name)))
-            || (NULL == (prod->out_var_names[i] = strdup (out_name))))
+        if ((NULL == (prod->in_var_names[i] = malloc_strcpy (in_name)))
+            || (NULL == (prod->out_var_names[i] = malloc_strcpy (out_name))))
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
@@ -269,7 +282,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              free_product_type (prod);
              return NULL;
           }
-        if (NULL == (prod->input_files[i] = strdup (file)))
+        if (NULL == (prod->input_files[i] = malloc_strcpy (file)))
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
@@ -287,10 +300,10 @@ static Product_Type *init_product_type (const config_setting_t *setting)
         return NULL;
      }
 
-   if ((NULL == (prod->name = strdup (name)))
-       || (NULL == (prod->outfile = strdup (outfile)))
-       || (NULL == (prod->in_lonlat_grp = strdup (in_grp)))
-       || (NULL == (prod->out_lonlat_grp = strdup (out_grp))))
+   if ((NULL == (prod->name = malloc_strcpy (name)))
+       || (NULL == (prod->outfile = malloc_strcpy (outfile)))
+       || (NULL == (prod->in_lonlat_grp = malloc_strcpy (in_grp)))
+       || (NULL == (prod->out_lonlat_grp = malloc_strcpy (out_grp))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_product_type (prod);
