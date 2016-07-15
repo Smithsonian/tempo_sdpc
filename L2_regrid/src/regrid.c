@@ -15,6 +15,9 @@
 #include "pixel.h"
 #include "regrid.h"
 
+#define IS_FINITE(x) (((x)==(x)) && (fabs(x)<DBL_MAX))
+#define VALID_POINT(x,y) (IS_FINITE(x) && IS_FINITE(y))
+
 typedef struct
 {
    /* polygon vertices in coordinates that facilitate coordinate lookup */
@@ -89,7 +92,7 @@ static int pack_pixel_list (Pixel_List_Type *pixel_list,
 
         for (j = 0; j < 4; j++)
           {
-             if ((0 == isfinite(x[j])) || (0 == isfinite(y[j])))
+             if (0 == VALID_POINT(x[j],y[j]))
                break;
           }
         if (j == 4)

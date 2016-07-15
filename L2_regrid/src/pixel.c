@@ -251,6 +251,34 @@ static int poly_fill (const Pixel_Grid_Param_Type *dest,
    return Polygon_set (p, 4, x, y);
 }
 
+static double my_round (double x)
+{
+   double xf, xi;
+
+   xf = modf (x, &xi);                 /* x = xi + xf */
+   if (xi > 0)
+     {
+        if (xf >= 0.5)
+          return xi + 1.0;
+     }
+   else if (xi < 0)
+     {
+        if (xf <= -0.5)
+          return xi - 1.0;
+     }
+   else if (xf < 0)                    /* xi=0 */
+     {
+        if (xf <= -0.5)
+          return -1.0;
+     }
+   else if (xf >= 0.5)                 /* xi=0 */
+     return 1.0;
+
+   return xi;
+}
+/* C99 provides round, but for now, avoid requiring C99 */
+#define ROUND(x) my_round(x)
+
 /* assume array overlap[dest->num_polys] already allocated */
 int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                          const Pixel_List_Type *src_area,
@@ -317,9 +345,9 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
 
         /* find destination cell index range */
         imn = (int) floor((xmn - dest->xmin) / dx);
-        imx = (int) round((xmx - dest->xmin) / dx);
+        imx = (int) ROUND((xmx - dest->xmin) / dx);
         jmn = (int) floor((ymn - dest->ymin) / dy);
-        jmx = (int) round((ymx - dest->ymin) / dy);
+        jmx = (int) ROUND((ymx - dest->ymin) / dy);
 
         for (j = jmn; j < jmx; j++)
           {
