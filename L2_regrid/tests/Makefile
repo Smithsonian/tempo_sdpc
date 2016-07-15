@@ -37,7 +37,7 @@ all:  $(EXECUTABLES)
 check:	$(EXECUTABLES)
 	@./test_poly && echo "tested poly...ok"
 	@./test_pixel && echo "tested pixel...ok"
-	@./test_run.sh && echo "tested L2_regrid...ok"
+	@./test_run.sh $(elfdir)/L2_regrid && echo "tested L2_regrid...ok"
 
 check-area:   test_area
 	./test_area
