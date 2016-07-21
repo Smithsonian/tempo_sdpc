@@ -49,6 +49,7 @@ struct Var_Value_Buffer_Type
    Value_Ptr_Type src_values;
    Value_Ptr_Type dest_values;
    Fill_Value_Type fill_value;
+   Pixel_Stats_Type *src_value_stats;
    int value_type;
    int *src_mask;
    int num_dims, dimlens[TIO_MAX_VAR_DIMS];
@@ -134,6 +135,7 @@ void Var_free_value_buffer (Var_Value_Buffer_Type *vb)
    FREE(vb->src_values.d);
    FREE(vb->dest_values.d);
    FREE(vb->src_mask);
+   Pixel_stats_free (vb->src_value_stats);
    FREE(vb);
 }
 
@@ -159,6 +161,12 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
 
    vb->num_src_pixels = vb->num_step * vb->num_xtrack;
    vb->num_dest_pixels = dest_nx * dest_ny;
+
+   if (NULL == (vb->src_value_stats = Pixel_stats_new (vb->num_dest_pixels)))
+     {
+        Var_free_value_buffer (vb);
+        return NULL;
+     }
 
    /* The most common level 2 variable to regrid is
     * a 2D array with one value per spatial pixel */
@@ -570,9 +578,8 @@ static void copy_to_strided_dest (Var_Value_Buffer_Type *vb, int i, Value_Ptr_Ty
      }
 }
 
-int Var_apply_regrid (const Pixel_Regrid_Type *r,
-                      Var_Value_Buffer_Type *vb,
-                      int value_type, const char *var_path,
+int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
+                      int value_type, const char *var_path, int want_qa,
                       char **files, int num_files)
 {
    Value_Ptr_Type src_values, dest_values;
@@ -612,7 +619,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r,
 
    for (i = 0; i < vb->num_values_per_pixel; i++)
      {
-        int rstatus;
+        int rstatus, qstatus;
         copy_from_strided_src (vb, i, src_values);
         if (regrid_by_averaging)
           {
@@ -628,6 +635,19 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r,
         if (rstatus)
           break;
         copy_to_strided_dest (vb, i, dest_values);
+
+        if (want_qa == 0)
+          continue;
+        if ((regrid_by_averaging == 0)
+            || (vb->num_values_per_pixel != 1))
+          {
+             Tell_verror (TELL_INTERNAL_ERROR, "%s: action not supported",
+                          __func__);
+             break;
+          }
+        qstatus = Pixel_regrid_stat (r, vb->src_mask,
+                                     src_values.d, vb->src_value_stats);
+        if (qstatus) break;
      }
 
    if (i == vb->num_values_per_pixel)
@@ -755,8 +775,83 @@ static int copy_extra_dims (int ncid_infile, const TIO_Var_Info_Type *vi,
    return 0;
 }
 
+static int write_src_value_stats (int ncid, int in_grp, int in_varid,
+                                  const char *var_qa_label, int in_type,
+                                  const int *dims, int *count,
+                                  const Pixel_Stats_Type *st)
+{
+   char num_buf[TIO_MAX_NAME_LEN];
+   char min_buf[TIO_MAX_NAME_LEN];
+   char max_buf[TIO_MAX_NAME_LEN];
+   int start[TIO_MAX_VAR_DIMS];
+   int *num_samples=NULL;
+   double *min_sample=NULL, *max_sample=NULL;
+   int i, qa_grp, num_varid, min_varid, max_varid, num_pixels;
+   double fill_minmax;
+   int fill_num = PIXEL_INIT_NUM_SAMPLES;
+
+   if (-1 == TIO_def_grp (ncid, TEMPO_GRP_QA_STATISTICS, &qa_grp))
+     return -1;
+
+   if ((   snprintf (num_buf, sizeof(num_buf), "num_%s_samples", var_qa_label)
+           >= TIO_MAX_NAME_LEN)
+       || (snprintf (min_buf, sizeof(min_buf), "min_%s_sample", var_qa_label)
+           >= TIO_MAX_NAME_LEN)
+       || (snprintf (max_buf, sizeof(max_buf), "max_%s_sample", var_qa_label)
+           >= TIO_MAX_NAME_LEN))
+     {
+        Tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: QA label string is too long: %s",
+                     __func__, var_qa_label);
+        return -1;
+     }
+
+   if ((-1 == TIO_def_var (qa_grp, num_buf, NC_INT, 2, dims, &num_varid))
+       || (-1 == TIO_def_var_fill (qa_grp, num_varid, 0, &fill_num)))
+     return -1;
+   if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, 2, dims, &min_varid))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid)))
+     return -1;
+   if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, 2, dims, &max_varid))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid)))
+     return -1;
+
+   fill_minmax = FLT_MAX; /* It's important to provide a default */
+   if (-1 == TIO_inq_var_fill (in_grp, in_varid, NULL, &fill_minmax))
+     return -1;
+
+   if (-1 == Pixel_stats_get (st, &num_pixels, &num_samples,
+                              &min_sample, &max_sample))
+     {
+        return -1;
+     }
+
+   for (i = 0; i < num_pixels; i++)
+     {
+        if (min_sample[i] == PIXEL_INIT_MIN_SAMPLE)
+          min_sample[i] = fill_minmax;
+        if (max_sample[i] == PIXEL_INIT_MAX_SAMPLE)
+          max_sample[i] = fill_minmax;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+
+   if ((   -1 == TIO_put_var_section (qa_grp, num_buf, start, count,
+                                      NC_INT, num_samples))
+       || (-1 == TIO_put_var_section (qa_grp, min_buf, start, count,
+                                      NC_DOUBLE, min_sample))
+       || (-1 == TIO_put_var_section (qa_grp, max_buf, start, count,
+                                      NC_DOUBLE, max_sample)))
+     {
+        return -1;
+     }
+
+   return 0;
+}
+
 int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
-                      const char *out_var_path,
+                      const char *out_var_path, const char *var_qa_label,
                       int ncid_infile, const char *in_var_path)
 {
    TIO_Var_Info_Type vi;
@@ -848,6 +943,13 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
        || (-1 == TIO_put_var_section (out_grp, out_var_name, start, count,
                                       out_type, vb->dest_values.d)))
      goto free_and_return;
+
+   if (var_qa_label)
+     {
+        if (-1 == write_src_value_stats (ncid, in_grp, in_varid, var_qa_label,
+                                         vi.type, dims, count, vb->src_value_stats))
+          goto free_and_return;
+     }
 
    status = 0;
 free_and_return:

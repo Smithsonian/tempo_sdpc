@@ -54,6 +54,9 @@ extern int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
  *                    the regridded variable values to write out.
  * @param[in]  out_var_path  The full path to the output variable
  *                           in the output netCDF file.
+ * @param[in] var_qa_label  Pointer to a text label to be used
+ *                          as part of QA variable names.
+ *                          NULL when no QA variables are to be generated.
  * @param[in] ncid_infile  Integer file identifier of an open,
  *                         read-only netCDF input file.
  * @param[in] in_var_path   The full path to the input variable
@@ -62,6 +65,7 @@ extern int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
  */
 extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
                              const char *out_var_path,
+                             const char *var_qa_label,
                              int ncid_infile, const char *in_var_path);
 
 /** Regrid a specified variable using a specified polygon overlap
@@ -74,6 +78,8 @@ extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
  * @param[in] value_type  The type of the variable to be regridded.
  * @param[in] var_path  The full path of the variable to be regridded,
  *                      as it appears in the netCDF input files.
+ * @param[in] want_qa  Logical flag, non-zero indicates that
+ *                     QA statistics should be gathered.
  * @param[in] files     An array of input file names.
  * @param[in] num_files  The number of input files.
  * @return 0 on success, -1 on error
@@ -84,7 +90,7 @@ extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
 extern int Var_apply_regrid (const Pixel_Regrid_Type *r,
                              Var_Value_Buffer_Type *vb,
                              int value_type, const char *var_path,
-                             char **files, int num_files);
+                             int want_qa, char **files, int num_files);
 
 #if 0
 {

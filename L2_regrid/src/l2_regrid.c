@@ -38,6 +38,7 @@ struct Product_Type
    int num_var_names;
    char **in_var_names;
    char **out_var_names;
+   char **var_qa_labels;
    int *value_types;
 
    int num_input_files;
@@ -50,7 +51,7 @@ static void free_product_type (Product_Type *p)
 
    if (p->in_var_names)
      {
-        int num_shared = 2 * p->num_var_names + p->num_input_files;
+        int num_shared = 3 * p->num_var_names + p->num_input_files;
         for (i = 0; i < num_shared; i++)
           {
              FREE(p->in_var_names[i]);
@@ -83,7 +84,7 @@ static Product_Type *new_product_type (int num_var_names,
    p->num_var_names = num_var_names;
    p->num_input_files = num_input_files;
 
-   num_strings = 2 * num_var_names + num_input_files;
+   num_strings = 3 * num_var_names + num_input_files;
 
    p->in_var_names = (char **) MALLOC (num_strings * sizeof (char *));
    if (NULL == p->in_var_names)
@@ -106,7 +107,8 @@ static Product_Type *new_product_type (int num_var_names,
      }
 
    p->out_var_names = p->in_var_names + num_var_names;
-   p->input_files = p->out_var_names + num_var_names;
+   p->var_qa_labels = p->out_var_names + num_var_names;
+   p->input_files = p->var_qa_labels + num_var_names;
 
    return p;
 }
@@ -243,17 +245,23 @@ static Product_Type *init_product_type (const config_setting_t *setting)
 
    for (i = 0; i < num_vars; i++)
      {
-        const char *in_name, *out_name;
+        const char *in_name, *out_name, *var_qa_label;
         int bitfield_status, bitfield_type;
         if ((NULL == (s = config_setting_get_elem (vars, i)))
-            || (CONFIG_TRUE != config_setting_lookup_string (s, "in", &in_name))
-            || (CONFIG_TRUE != config_setting_lookup_string (s, "out", &out_name)))
+            || (CONFIG_TRUE != config_setting_lookup_string (s, "in", &in_name)))
           {
              Tell_verror (TELL_INVALID_PARM_ERROR,
                           "%s: accessing vars element i=%d", __func__, i);
              free_product_type (prod);
              return NULL;
           }
+
+        if (CONFIG_TRUE != config_setting_lookup_string (s, "out", &out_name))
+          out_name = in_name;
+
+        if (CONFIG_TRUE != config_setting_lookup_string (s, "qa", &var_qa_label))
+          var_qa_label = NULL;
+
         bitfield_status = config_setting_lookup_int (s, "bitfield_type", &bitfield_type);
         if (bitfield_status != CONFIG_TRUE)
           prod->value_types[i] = VALUE_IS_DOUBLE;
@@ -265,6 +273,15 @@ static Product_Type *init_product_type (const config_setting_t *setting)
 
         if ((NULL == (prod->in_var_names[i] = malloc_strcpy (in_name)))
             || (NULL == (prod->out_var_names[i] = malloc_strcpy (out_name))))
+          {
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             free_product_type (prod);
+             return NULL;
+          }
+
+        if (var_qa_label == NULL)
+          prod->var_qa_labels[i] = NULL;
+        else if (NULL == (prod->var_qa_labels[i] = malloc_strcpy (var_qa_label)))
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
@@ -291,14 +308,16 @@ static Product_Type *init_product_type (const config_setting_t *setting)
      }
 
    if ((NULL == (longlat_group = config_setting_get_member (setting, "longlat_group")))
-       || (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "in", &in_grp))
-       || (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "out", &out_grp)))
+       || (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "in", &in_grp)))
      {
         Tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing longlat_group", __func__);
         free_product_type (prod);
         return NULL;
      }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "out", &out_grp))
+     out_grp = in_grp;
 
    if ((NULL == (prod->name = malloc_strcpy (name)))
        || (NULL == (prod->outfile = malloc_strcpy (outfile)))
@@ -395,10 +414,13 @@ static int make_l3_product (const Product_Type *prod,
 
    for (i = 0; i < prod->num_var_names; i++)
      {
-        if (-1 == Var_apply_regrid (r, vb, prod->value_types[i], prod->in_var_names[i],
+        int want_qa = (prod->var_qa_labels[i] != NULL);
+        if (-1 == Var_apply_regrid (r, vb, prod->value_types[i],
+                                    prod->in_var_names[i], want_qa,
                                     prod->input_files, prod->num_input_files))
           goto return_status;
         if (-1 == Var_write_values (ncid, vb, prod->out_var_names[i],
+                                    prod->var_qa_labels[i],
                                     ncid_infile, prod->in_var_names[i]))
           goto return_status;
      }

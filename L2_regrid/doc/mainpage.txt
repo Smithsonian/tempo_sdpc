@@ -77,13 +77,13 @@ test:
   longlat_group = {in = "/";  out = "/geometry";};
 
   vars = (
-     { in = "var0"; out = "var0";},
-     { in = "var1"; out = "var1";},
-     { in = "var4"; out = "var4";},
-     { in = "bitfield0"; out = "bitfield0";  bitfield_type=-8},
-     { in = "bitfield1"; out = "bitfield1";  bitfield_type= 4},
-     { in = "bitfield2"; out = "bitfield2";  bitfield_type=-2},
-     { in = "bitfield3"; out = "bitfield3";  bitfield_type= 1},
+     { in = "var0"; qa = "var0";},
+     { in = "var1";},
+     { in = "var4";},
+     { in = "bitfield0"; bitfield_type=-8},
+     { in = "bitfield1"; bitfield_type= 4},
+     { in = "bitfield2"; bitfield_type=-2},
+     { in = "bitfield3"; bitfield_type= 1},
      { in = "/test_group/var2"; out = "/foo/bar/var2";},
      { in = "/test_group/var3"; out = "/foo/baz/var3";}
   );
@@ -100,27 +100,44 @@ structures in the list have the same name, an error message will be
 generated and processing will halt. The fields are defined in the
 following way:
 
- \li \c name  The name of this data product.
+ \li \b name  The name of this data product.
 
- \li \c output_file  A template for generating the output file name.
+ \li \b output_file  A template for generating the output file name.
 
- \li \c longlat_group The input-file group that contains the \c
-                       longitude_bounds and \c latitude_bounds
-                       variables is \c longlat_group.in. The
-                       output-file group that will hold the \c
-                       longitude and \c latitude variables
-                       is \c longitude_bounds.out.
+ \li \b longlat_group The input-file group that contains the \em
+                       longitude_bounds and \em latitude_bounds
+                       variables is \em longlat_group.in. The
+                       output-file group that will hold the \em
+                       longitude and \em latitude variables
+                       is \em longitude_bounds.out.
 
- \li \c vars  A list of variables to be regridded, with the '\c in' field
-              giving the full path to the variable in the input file,
-              and the '\c out' field giving the full path to the variable
-              in the output file.  The optional field \c bitfield_type,
-              is present when the variable should be treated as an
-              integer bitfield.  The value of \c bitfield_type is the length
-              of the bitfield in bytes.  A negative value indicates
-              a signed integer value.
+ \li \b vars  A list of variables to be regridded.  Each variable is
+              described by a set of named parameters.
+              The following variable description parameters are required:
+              <ul>
+              <li> \b in gives the full path to the variable
+                   in the input file.
+              </ul>
+              The following variable description parameters are
+              optional:
+              <ul>
+              <li> \b out gives the full path to the variable
+                   in the output file, in case that differs from the
+                   input file path.
+              <li> \b bitfield_type indicates that the
+                   variable should be treated as an integer bitfield.
+                   The value of \c bitfield_type is the length of the
+                   bitfield in bytes.  A negative value indicates a
+                   signed integer value.
+              <li> \b qa, indicates that QA
+                   statistics should collected for the variable.
+                   The results are written to the \c qa_statistics
+                   group in the output file using variable names
+                   that contain the string provided by the
+                   \c qa parameter value.
+              </ul>
 
- \li \c input_files The names of the input Level 2 files to be
+ \li \b input_files The names of the input Level 2 files to be
              regridded. The files should all be of the same data
              product type and should come from a single East-West
              scan.

@@ -18,9 +18,6 @@ LIBS   = $(REGRID_LIBPATHS) -lregrid \
          $(TELL_LIBPATHS) -ltell \
          $(NETCDF_LIBPATHS) -lnetcdf $(RPATH) -lm
 
-PROJ_DIR = $(HOME)/sys/$(SYS_CARCH)
-PROJ_INC = $(PROJ_DIR)/include
-PROJ_LIB = $(PROJ_DIR)/lib
 PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 
 EXTRA_INCS = -I$(PROJ_INC)
