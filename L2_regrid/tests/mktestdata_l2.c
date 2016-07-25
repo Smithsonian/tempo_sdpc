@@ -217,7 +217,7 @@ static int make_slit_grid (Obs_Type *o, Slit_Pixel_List_Type *g, int slit_pos)
    k = 0;
    for (i = 0; i < o->num_pixels; i++)
      {
-        y1 = y0 + i*dy;
+        y1 = y0 + (o->num_pixels-1-i)*dy;
 
         g_x0[i] = x0;
         g_x1[i] = y1;
@@ -350,7 +350,7 @@ int main (int argc, char **argv)
    int id_bitfield[8];
    int *xtrack = NULL;
    int dims[__MAX_VAR_DIMS], dimid_corner;
-   size_t i_sizet, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
+   size_t step_start, start[__MAX_VAR_DIMS], count[__MAX_VAR_DIMS];
    int ncid, grp, id_step, id_xtrack;
    int id_lon_bounds, id_lat_bounds;
    int id_lon, id_lat, id_var0, id_var1, id_var2, id_var3, id_var4;
@@ -362,6 +362,7 @@ int main (int argc, char **argv)
    int num_granules = NUM_GRANULES;
    int b, c, num_var2, num_var3, pattern_scale;
    double bbox[4] = {DBL_MAX, -DBL_MAX, DBL_MAX, -DBL_MAX};
+   float float_fill = NC_FILL_FLOAT, float_valid_min = 0.0, float_valid_max;
    const char *out_dir = OUTPUT_DIR;
    int status = 1;
 
@@ -447,7 +448,13 @@ int main (int argc, char **argv)
    for (granule = 0; granule < o.num_granules; granule++)
      {
         char outfile[BUFSIZE];
-        int n;
+        int n, num_steps_left, num_steps_this_granule;
+
+        num_steps_left = o.num_steps - granule * num_steps_per_granule;
+        if (num_steps_left < num_steps_per_granule)
+          num_steps_this_granule = num_steps_left;
+        else
+          num_steps_this_granule = num_steps_per_granule;
 
         n = sprintf (outfile, "%s/test_l2l3_g%02d_grid.nc", out_dir, granule);
         if (n >= BUFSIZE)
@@ -471,7 +478,7 @@ int main (int argc, char **argv)
         NC_CHECK_STATUS(status);
         status = nc_def_dim (ncid, "xtrack", o.num_pixels, &dims[1]);
         NC_CHECK_STATUS(status);
-        status = nc_def_dim (ncid, "mirror_step", num_steps_per_granule, &dims[0]);
+        status = nc_def_dim (ncid, "mirror_step", num_steps_this_granule, &dims[0]);
         NC_CHECK_STATUS(status);
         status = nc_def_var (ncid, "mirror_step", NC_INT, 1, &dims[0], &id_step);
         NC_CHECK_STATUS(status);
@@ -509,6 +516,13 @@ int main (int argc, char **argv)
         NC_CHECK_STATUS(status);
 
         status = nc_def_var (ncid, "var0", NC_FLOAT, 2, dims, &id_var0);
+        NC_CHECK_STATUS(status);
+        status = nc_put_att_float (ncid, id_var0, "valid_min", NC_FLOAT, 1, &float_valid_min);
+        NC_CHECK_STATUS(status);
+        float_valid_max = 1280.0;
+        status = nc_put_att_float (ncid, id_var0, "valid_max", NC_FLOAT, 1, &float_valid_max);
+        NC_CHECK_STATUS(status);
+        status = nc_def_var_fill (ncid, id_var0, 0, &float_fill);
         NC_CHECK_STATUS(status);
         status = use_compression (ncid, id_var0);
         NC_CHECK_STATUS(status);
@@ -575,12 +589,9 @@ int main (int argc, char **argv)
         status = nc_put_vara_int (ncid, id_xtrack, &start[0], &count[0], xtrack);
         NC_CHECK_STATUS(status);
 
-        for (i = 0; i < num_steps_per_granule; i++)
+        for (i = 0; i < num_steps_this_granule; i++)
           {
              int j;
-
-             if (step == o.num_steps)
-               break;
 
              if (-1 == make_slit_grid (&o, g, step))
                goto cleanup_and_exit;
@@ -610,7 +621,7 @@ int main (int argc, char **argv)
                   else
                     {
                        unsigned long long ullb;
-                       var0[j] = 1.0 * ((step/pattern_scale) % 16);
+                       var0[j] = 1.0 * (step + j/128);
                        var1[j] = 1.0 * ((j/pattern_scale) % 16);
                        var4[j] = (step/pattern_scale) % 16;
 
@@ -639,14 +650,15 @@ int main (int argc, char **argv)
                     }
                }
 
-             start[0] = i;    /* step */
-             start[1] = 0;    /* xtrack */
-             start[2] = 0;    /* corner */
+             step_start = i;
+
+             start[0] = step_start;    /* step */
+             start[1] = 0;             /* xtrack */
+             start[2] = 0;             /* corner */
              count[0] = 1;
              count[1] = o.num_pixels;
              count[2] = 4;
-             i_sizet = i;
-             status = nc_put_vara_int (ncid, id_step, &i_sizet, &count[0], &step);
+             status = nc_put_vara_int (ncid, id_step, &step_start, &count[0], &step);
              NC_CHECK_STATUS(status);
              status = nc_put_vara_double (ncid, id_lon_bounds, start, count, g->x0_bounds);
              NC_CHECK_STATUS(status);
