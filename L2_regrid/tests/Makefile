@@ -34,6 +34,7 @@ all:  $(EXECUTABLES)
 check:	$(EXECUTABLES)
 	@./test_poly && echo "tested poly...ok"
 	@./test_pixel && echo "tested pixel...ok"
+	@./test_cfg.sh $(archobjs) && echo "test param...ok"
 	@./test_run.sh $(elfdir)/L2_regrid && echo "tested L2_regrid...ok"
 
 check-area:   test_area
@@ -73,8 +74,8 @@ mktestdata_l2:
 
 clean:
 	-$(RM) -f .##* *.o *.mod
-	-$(RM) -f tmp/*
-	-rmdir tmp
+	-$(RM) -f tmp/* tmp_cfgtest/*
+	-rmdir tmp tmp_cfgtest
 covclean:
 	-$(RM) -f *.gcda *.gcno *.info
 	-$(RM) -rf lcov.dir

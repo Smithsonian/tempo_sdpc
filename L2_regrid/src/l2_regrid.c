@@ -47,11 +47,12 @@ struct Product_Type
 
 static void free_product_type (Product_Type *p)
 {
-   int i;
+   if (p == NULL)
+     return;
 
    if (p->in_var_names)
      {
-        int num_shared = 3 * p->num_var_names + p->num_input_files;
+        int i, num_shared = 3 * p->num_var_names + p->num_input_files;
         for (i = 0; i < num_shared; i++)
           {
              FREE(p->in_var_names[i]);
@@ -172,7 +173,6 @@ static int set_value_type (int bitfield_type, int *value_type)
         Tell_verror (TELL_APPLICATION_ERROR,
                      "%s: unsupported value bitfield_type=%d", __func__, bitfield_type);
         return -1;
-        break;
      }
 
    return 0;
