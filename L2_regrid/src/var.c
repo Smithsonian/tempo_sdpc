@@ -261,11 +261,18 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
    TIO_Var_Info_Type vi;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
    int i, num_steps, num_pixels, num_values, bytes_per_value, in_type;
+   size_t step_dimlen;
+   int step_dimid;
    int *step = NULL;
    unsigned char *var = NULL;
    int status = -1;
 
-   num_steps = vb->dimlens[0];
+   /* num_steps may vary among granules */
+   if (0 != TIO_inq_dim (ncid, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
+     return -1;
+
+   num_steps = step_dimlen;
+   vb->dimlens[0] = step_dimlen;
 
    if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
      {
@@ -816,9 +823,13 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid)))
      return -1;
 
-   fill_minmax = FLT_MAX; /* It's important to provide a default */
+   /* We need a fill value; try get one from the input file */
+   fill_minmax = FLT_MAX;
    if (-1 == TIO_inq_var_fill (in_grp, in_varid, NULL, &fill_minmax))
      return -1;
+   /* Apparently, it's necessary to enforce consistency */
+   if ((in_type == NC_FLOAT) && (fill_minmax > FLT_MAX))
+     fill_minmax = FLT_MAX;
 
    if (-1 == Pixel_stats_get (st, &num_pixels, &num_samples,
                               &min_sample, &max_sample))
@@ -826,12 +837,21 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
         return -1;
      }
 
+#define IS_BAD_VALUE(x) ((in_type == NC_FLOAT) \
+                         && (isnan(x) || isinf(x) || (fabs(x) > FLT_MAX)))
+
    for (i = 0; i < num_pixels; i++)
      {
-        if (min_sample[i] == PIXEL_INIT_MIN_SAMPLE)
-          min_sample[i] = fill_minmax;
-        if (max_sample[i] == PIXEL_INIT_MAX_SAMPLE)
-          max_sample[i] = fill_minmax;
+        if ((min_sample[i] == PIXEL_INIT_MIN_SAMPLE)
+            || IS_BAD_VALUE(min_sample[i]))
+          {
+             min_sample[i] = fill_minmax;
+          }
+        if ((max_sample[i] == PIXEL_INIT_MAX_SAMPLE)
+            || IS_BAD_VALUE(max_sample[i]))
+          {
+             max_sample[i] = fill_minmax;
+          }
      }
 
    start[0] = 0;
