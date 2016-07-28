@@ -6,7 +6,8 @@ MODULE omi_pge_postprocessing
 CONTAINS
 
 SUBROUTINE omi_pge_postprocess ( &
-    l1bfile, pge_idx, ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, &
+    l1bfile, omi_radiance_swathname, pge_idx, &
+    ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, &
     fit_stats, errstat )
 
   ! ---------------------------------------------------------
@@ -31,7 +32,7 @@ SUBROUTINE omi_pge_postprocess ( &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics
-  use output_tools, only : read_geofields, read_column_results
+  use output_tools, only : read_geofields, read_column_results, copy_pixel_corners
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col
@@ -41,7 +42,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ---------------
   ! Input variables
   ! ---------------
-  CHARACTER (LEN=*),                              INTENT (IN) :: l1bfile
+  CHARACTER (LEN=*),                              INTENT (IN) :: l1bfile, omi_radiance_swathname
   INTEGER (KIND=i4),                              INTENT (IN) :: ntimes, nxtrack, n_max_rspec, pge_idx
   INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),  INTENT (IN) :: xtrange
   LOGICAL,           DIMENSION (0:ntimes-1),      INTENT (IN) :: do_process_line, is_szoom
@@ -62,6 +63,7 @@ SUBROUTINE omi_pge_postprocess ( &
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg
   LOGICAL                                             :: do_write
+  logical :: corners_copied
 
   ! --------------
   ! Error handling
@@ -90,15 +92,14 @@ SUBROUTINE omi_pge_postprocess ( &
     if (errstat < 0) return
   endif
 
-  ! ----------------------------------------------------
-  ! Compute ground pixel corner latitudes and longitudes
-  ! ----------------------------------------------------
-  CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, errstat) ! locerrstat )
+  call copy_pixel_corners (l1bfile, omi_radiance_swathname, &
+                           ntimes, nXtrack, corners_copied, errstat)
   if (errstat < 0) return
+  if (.not.corners_copied) then
+    CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, errstat)
+    if (errstat < 0) return
+  endif
 
-  ! ----------------------------------------
-  ! Read geolocation fields (Lat/Lon/SZA/VZA
-  ! ----------------------------------------
   if (.false.) then
   CALL saopge_columninfo_read (                 &  ! FIXME (<--- to be removed)
     ntimes, nxtrack, saocol, saodco, saorms, &

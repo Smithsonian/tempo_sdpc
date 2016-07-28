@@ -22,7 +22,7 @@ module output_tools
     write_amf_correction, write_refspec_database, &
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
-    write_radiance_wavecal_diagnostics, &
+    write_radiance_wavecal_diagnostics, copy_pixel_corners, &
     read_geofields, read_column_results, read_cloud_params
 
   type (tiof_file_type), private, save, target :: primary_output_file
@@ -59,10 +59,8 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
 
-    ! FIXME: eventually, this will be something like
-    ! step_indices=[mirror_step_beg, ..., mirror_step_end]
-    ! where mirror_step_beg/end are granule-specific
-
+    ! mirror step indices may be overwritten later by copying from the input
+    ! radiance file.
     step_indices = [(i, i=0,num_steps-1)]
     call tiof_put1d_i4 (obj, tg_dim_step, [0], [num_steps], step_indices, errstat)
 
@@ -417,11 +415,16 @@ contains
     type (tiof_varlist_type) :: varlist, varlist_geo, varlist_qa
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(3) :: dimids_corner_xtrack_step
 
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_xtrack, tg_dim_step], &
                               dimids_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [tg_dim_corner, tg_dim_xtrack, tg_dim_step], &
+                              dimids_corner_xtrack_step, &
                               errstat)
 
     ! Construct a list of variables with their associated dimension ids
@@ -510,6 +513,14 @@ contains
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_latbnd)
+    call tiof_varlist_append (varlist_geo, errstat, &
+                              tg_var_latitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              comment = "latitude at pixel corners (SW,SE,NE,NW)", &
+                              units = "degrees_north", &
+                              valid_range = [-90.0_r8, 90.0_r8], &
+                              fillvalue = fill_float)
 
     call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
                               att_text = tg_var_longitude_bounds)
@@ -522,6 +533,14 @@ contains
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_lonbnd)
+    call tiof_varlist_append (varlist_geo, errstat, &
+                              tg_var_longitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              comment = "longitude at pixel corners (SW,SE,NE,NW)", &
+                              units = "degrees_east", &
+                              valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float)
 
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_sz_angle, &
@@ -552,6 +571,14 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing azimuth angle at pixel center", &
+                              units = "degrees", &
+                              valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float)
+    call tiof_varlist_append (varlist_geo, errstat, &
+                              tg_var_relative_azimuth, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "relative azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
@@ -774,6 +801,7 @@ contains
     ! Define a dimension list.
     call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_corner, 4, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
@@ -877,6 +905,9 @@ contains
     type (tiof_file_type), pointer :: obj
     real (kind=r8), dimension(1:n_rad_wvl, 1:nxtrack, 0:nblock-1) :: residuals
     real (kind=r8), dimension(:,:,:), pointer :: waves, meas, model, weights
+    real (kind=r4), dimension(1:nxtrack,0:nblock-1) :: relative_azimuth
+    integer :: i,j
+    real (kind=r4) :: razi, sazi, vazi
 
     if (errstat < 0) return
 
@@ -932,6 +963,24 @@ contains
       call tiof_pop_group (obj, errstat)
     endif
 
+    ! Compute relative azimuth angle
+    relative_azimuth(:,:) = fill_float
+    do j=0,nblock-1
+      do i=1,nxtrack
+        vazi = input_vars % viewing_azimuth(i,j)
+        sazi = input_vars % solar_azimuth(i,j)
+        if (abs(vazi) <= 360.0 .and. abs(sazi) <= 360.0) then
+          razi = vazi - sazi
+          if (razi > 180.0) then
+            razi = razi - 360.0
+          else if (razi < -180.0) then
+            razi = razi + 360.0
+          endif
+          relative_azimuth(i,j) = razi
+        endif
+      enddo
+    enddo
+
     ! input_vars
     call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, tg_var_time, [iline], [nblock], &
@@ -948,6 +997,8 @@ contains
                         input_vars % viewing_zenith (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tg_var_va_angle, [iline,0], [nblock,nxtrack], &
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_r4 (obj, tg_var_relative_azimuth, [iline,0], [nblock,nxtrack], &
+                        relative_azimuth (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     call tiof_pop_group (obj, errstat)
@@ -1420,6 +1471,85 @@ contains
     endif
 
   end subroutine close_output_file
+
+  subroutine copy_pixel_corners (l1bfile, rad_group, ntimes, nxtrack, &
+                                 corners_copied, errstat)
+    implicit none
+    character (len=*), intent(in) :: l1bfile, rad_group
+    integer (kind=4), intent(in) :: ntimes, nxtrack
+    logical, intent(out) :: corners_copied
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+    integer, dimension(ntimes) :: step_indices
+    real (kind=4), dimension(4,1:nxtrack,1:ntimes) :: tmp
+
+    if (errstat < 0) return
+
+    corners_copied = .false.
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_open_error, "copy_pixel_corners: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    ! Back-compatibility:
+    ! If there's a problem reading mirror step indices,
+    ! return errstat=0, corners_copied=.false.
+    call tell_push_queue
+    call tiof_get1d_i4 (l1b, tg_dim_step, [0], [ntimes], step_indices, errstat)
+    if (errstat < 0) then
+      call tell_pop_queue (1)
+      errstat = 0
+      return
+    endif
+    call tell_pop_queue (0)
+
+    ! use pixel corners associated with the radiances being fitted
+    call tiof_push_group (l1b, rad_group, errstat)
+
+    ! Back-compatibility:
+    ! If there's a problem reading pixel corners,
+    ! return errstat=0, corners_copied=.false.
+    call tell_push_queue
+    call tiof_get3d_r4 (l1b, tg_var_latitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+    if (errstat < 0) then
+      call tell_pop_queue (1)
+      errstat = 0
+      return
+    endif
+    call tell_pop_queue (0)
+
+    obj => primary_output_file
+
+    ! copy mirror step indices from input radiance file
+    call tiof_push_group (obj, "/", errstat)
+    call tiof_put1d_i4 (obj, tg_dim_step, [0], [ntimes], step_indices, errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_geolocation, errstat)
+    call tiof_put3d_r4 (obj, tg_var_latitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+    call tiof_get3d_r4 (l1b, tg_var_longitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+    call tiof_put3d_r4 (obj, tg_var_longitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+
+    call tiof_close (l1b, errstat)
+    if (errstat < 0) then
+      call tiof_pop_group (obj, errstat)
+      call tell_error (tell_io_read_error, "copy_pixel_corners: reading file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_pop_group (obj, errstat)
+
+  end subroutine copy_pixel_corners
 
   !> Read geolocation fields
   !! @param[in] ntimes  Number of scans

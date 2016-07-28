@@ -722,7 +722,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ---------------------------------------
   call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
   CALL omi_pge_postprocess ( &
-    l1b_rad_filename, pge_idx, ntimes_rad, nxtrack_rad, &
+    l1b_rad_filename, omi_radiance_swathname, pge_idx, &
+    ntimes_rad, nxtrack_rad, &
     do_radfit_range, omi_xtrpix_range, &
     omi_is_szoom, n_max_rspec, fit_stats, errstat )
   if (errstat < 0) return
