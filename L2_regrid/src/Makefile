@@ -23,7 +23,7 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
-INCS = -I$(config_dir)/include -I$(LIBCONFIG_INC) -I$(TELL_INC) -I$(TIO_INC) -I$(NETCDF_INC)
+INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
 LIBS = $(INSTALL_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig \
        $(TIO_LIBPATHS) -ltio \
        $(NETCDF_LIBPATHS) -lnetcdf \
