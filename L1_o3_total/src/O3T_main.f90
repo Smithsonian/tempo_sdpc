@@ -155,6 +155,7 @@ PROGRAM O3T_mainNVAdj
     logical :: did_so2_setup = .false.
     character (len=1024) :: nc_l2_filename
     character (len=32) :: arg, rad_shortname
+    integer (kind=4) :: step_index
     integer :: errstat, version, ext, iarg, orbit_number
     integer :: cloud_pressure_source, anomflg_3_ix_ilat
 
@@ -705,6 +706,7 @@ PROGRAM O3T_mainNVAdj
     iLine = 0
     if (use_tio_in) then
       call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                           lat_bounds, lon_bounds, step_index, &
                            szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                            errstat)
       if (errstat < 0) stop 1
@@ -724,6 +726,7 @@ PROGRAM O3T_mainNVAdj
     iLine = 1
     if (use_tio_in) then
       call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                           lat_bounds, lon_bounds, step_index, &
                            szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                            errstat)
       if (errstat < 0) stop 1
@@ -778,6 +781,7 @@ PROGRAM O3T_mainNVAdj
 
       if (use_tio_in) then
         call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+                             lat_bounds, lon_bounds, step_index, &
                              szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
                              errstat, anomflg)
         if (errstat < 0) stop 1
@@ -863,7 +867,7 @@ PROGRAM O3T_mainNVAdj
       endif
 
       if (use_tio_out) then
-        call l2_tio_write_geo (iLine, nXtrack_rad, errstat)
+        call l2_tio_write_geo (iLine, step_index, nXtrack_rad, errstat)
         if (errstat < 0) stop 1
       endif
 

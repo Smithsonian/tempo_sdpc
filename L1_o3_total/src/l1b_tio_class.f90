@@ -36,7 +36,9 @@ module l1b_tio_class
   !> geolocated radiance spectra
   type, public :: l1b_radgeo_type
     real (kind=4), dimension(:,:), allocatable :: lon, lat, sza, saz, vza, vaz
+    real (kind=4), dimension(:,:,:), allocatable :: lon_bounds, lat_bounds
     real (kind=4), dimension(:,:,:), allocatable :: radiance, wavelength
+    integer (kind=4), dimension(:), allocatable :: step_indices
     integer (kind=2), dimension(:,:,:), allocatable :: qa_flags
     integer (kind=2), dimension(:,:), allocatable :: geoflg, hgt
     integer (kind=1), dimension(:,:), allocatable :: anomflg
@@ -228,7 +230,7 @@ contains
     type(l1b_radgeo_type), intent(inout) :: rg
     integer, intent(inout) :: errstat
 
-    integer :: nx, ns, nw, nl, ierr
+    integer :: i, nx, ns, nw, nl, ierr
 
     if (errstat < 0) return
 
@@ -243,6 +245,8 @@ contains
 
     allocate (rg % lon (nx, ns), &
               rg % lat (nx, ns), &
+              rg % lon_bounds (4, nx, ns), &
+              rg % lat_bounds (4, nx, ns), &
               rg % sza (nx, ns), &
               rg % saz (nx, ns), &
               rg % vza (nx, ns), &
@@ -252,6 +256,7 @@ contains
               rg % anomflg (nx, ns), &
               rg % radiance (nw, nx, nl), &
               rg % wavelength (nw, nx, nl), &
+              rg % step_indices (ns), &
               rg % qa_flags (nw, nx, nl), &
               rg % measurement_quality_flags (nl), &
               rg % instid (nl), stat = ierr)
@@ -260,10 +265,27 @@ contains
       return
     endif
 
+    ! If present, read mirror step indices from input radiance file
+    call tell_push_queue
+    call tiof_push_group (this % ft, "/", errstat)
+    call tiof_get1d_i4 (this % ft, o3t_dim_step, [0], [ns], &
+                        rg % step_indices(1:ns), errstat)
+    if (errstat == 0) then
+      call tell_pop_queue(0)
+    else
+      rg % step_indices(1:ns) = [(i, i=0,ns-1)]
+      call tell_pop_queue (1)
+    endif
+    call tiof_pop_group (this % ft, errstat)
+
     call tiof_get2d_r4 (this % ft, o3t_var_longitude, [0,0], [ns,nx], &
                         rg % lon(1:nx,1:ns), errstat)
     call tiof_get2d_r4 (this % ft, o3t_var_latitude, [0,0], [ns,nx], &
                         rg % lat(1:nx,1:ns), errstat)
+    call tiof_get3d_r4 (this % ft, o3t_var_longitude_bounds, [0,0,0], [ns,nx,4], &
+                        rg % lon_bounds(1:4,1:nx,1:ns), errstat)
+    call tiof_get3d_r4 (this % ft, o3t_var_latitude_bounds, [0,0,0], [ns,nx,4], &
+                        rg % lat_bounds(1:4,1:nx,1:ns), errstat)
     call tiof_get2d_r4 (this % ft, o3t_var_sz_angle, [0,0], [ns,nx], &
                         rg % sza(1:nx,1:ns), errstat)
     call tiof_get2d_r4 (this % ft, o3t_var_sa_angle, [0,0], [ns,nx], &
@@ -445,6 +467,9 @@ contains
   !! @param[in]  iline  The scan line to copy.
   !! @param[out] lat  Latitude for each cross-track pixel
   !! @param[out] lon  Longitude for each cross-track pixel
+  !! @param[out] lat_bounds  Latitude corners for each cross-track pixel
+  !! @param[out] lon_bounds  Longitude corners for each cross-track pixel
+  !! @param[out] step_index  Mirror step index
   !! @param[out] sza  Solar zenith angle for each cross-track pixel
   !! @param[out] saz  Solar azimuth angle for each cross-track pixel
   !! @param[out] vza  Viewing zenith angle for each cross-track pixel
@@ -458,6 +483,7 @@ contains
   !! by the \a l1b_radgeo_type object, a block of spectra at
   !! \a iline will be loaded from the open Level 1 file (\a this).
   subroutine l1b_tio_getgeo (this, rg, iline, lat, lon, &
+                             lat_bounds, lon_bounds, step_index, &
                              sza, saz, vza, vaz, height, geoflg, errstat, &
                              anomflg)
     implicit none
@@ -465,6 +491,8 @@ contains
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
     real (kind=4), dimension(:), intent(out) :: lat, lon, sza, saz, vza, vaz
+    real (kind=4), dimension(:,:), intent(out) :: lat_bounds, lon_bounds
+    integer (kind=4) :: step_index
     integer (kind=2), dimension(:), intent(out) :: height, geoflg
     integer (kind=1), dimension(:), intent(out), optional :: anomflg
     integer, intent(inout) :: errstat
@@ -485,6 +513,9 @@ contains
 
     lat(1:nx) = rg % lat(1:nx, i)
     lon(1:nx) = rg % lon(1:nx, i)
+    lat_bounds(1:4,1:nx) = rg % lat_bounds(1:4, 1:nx, i)
+    lon_bounds(1:4,1:nx) = rg % lon_bounds(1:4, 1:nx, i)
+    step_index = rg % step_indices (i)
     sza(1:nx) = rg % sza(1:nx, i)
     saz(1:nx) = rg % saz(1:nx, i)
     vza(1:nx) = rg % vza(1:nx, i)

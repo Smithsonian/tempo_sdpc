@@ -40,6 +40,7 @@ MODULE O3T_radgeo_class
                                                   vzenith, vazimuth, &
                                                   phiArray, ptArray, pcArray, &
                                                   snowIceArray
+    REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: lat_bounds, lon_bounds
     LOGICAL(KIND=4), DIMENSION(:), ALLOCATABLE :: PclimQ
     INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: height
     INTEGER (KIND = 2), DIMENSION(:), ALLOCATABLE :: geoflg
@@ -51,7 +52,7 @@ MODULE O3T_radgeo_class
     INTEGER (KIND = 2) :: mqa_rad
     INTEGER (KIND = 1) :: instID_rad
     INTEGER (KIND = 4) :: nTimes_rad, nXtrack_rad, nWavel_rad
-    INTEGER (KIND = 4) :: nWavelCoef_rad, nTimesSmallPixel_rad 
+    INTEGER (KIND = 4) :: nWavelCoef_rad, nTimesSmallPixel_rad
     REAL (KIND = 4) :: EarthSunDistance
     TYPE (L1B_geoang_type) :: geo_blk
     TYPE (L1B_radirr_type) :: rad_blk
@@ -105,6 +106,8 @@ MODULE O3T_radgeo_class
 
    allocate (latitude (nXtrack_rad), &
              longitude (nXtrack_rad), &
+             lon_bounds (4, nXtrack_rad), &
+             lat_bounds (4, nXtrack_rad), &
              szenith (nXtrack_rad), &
              sazimuth (nXtrack_rad), &
              vzenith (nXtrack_rad), &
@@ -220,6 +223,8 @@ MODULE O3T_radgeo_class
          INTEGER (KIND=4) :: status
          IF( ALLOCATED( latitude      ) ) DEALLOCATE( latitude      )
          IF( ALLOCATED( longitude     ) ) DEALLOCATE( longitude     )
+         IF( ALLOCATED( lat_bounds    ) ) DEALLOCATE( lat_bounds    )
+         IF( ALLOCATED( lon_bounds    ) ) DEALLOCATE( lon_bounds    )
          IF( ALLOCATED( szenith       ) ) DEALLOCATE( szenith       )
          IF( ALLOCATED( sazimuth      ) ) DEALLOCATE( sazimuth      )
          IF( ALLOCATED( vzenith       ) ) DEALLOCATE( vzenith       )

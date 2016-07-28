@@ -399,12 +399,17 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_latbnd, att_lonbnd, att_coord
     integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(3) :: dimids_corner_xtrack_step
 
     if (errstat < 0) return
 
     call tiof_dimlist_lookup (dimlist, &
                               [o3t_dim_xtrack, o3t_dim_step], &
                               dimids_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [o3t_dim_corner, o3t_dim_xtrack, o3t_dim_step], &
+                              dimids_corner_xtrack_step, &
                               errstat)
 
     ! Construct a list of variables with their associated dimension ids
@@ -443,6 +448,24 @@ contains
                               valid_range = [-180.0_8, 180.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_lonbnd)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              o3t_var_latitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              comment = "latitude at pixel corners (sw,se,ne,nw)", &
+                              units = "degrees_north", &
+                              valid_range = [-90.0_8, 90.0_8], &
+                              fillvalue = fill_float)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              o3t_var_longitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              comment = "longitude at pixel corners (sw,se,ne,nw)", &
+                              units = "degrees_east", &
+                              valid_range = [-180.0_8, 180.0_8], &
+                              fillvalue = fill_float)
 
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(o3t_var_longitude) &
@@ -552,10 +575,8 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
 
-    ! FIXME: eventually, this will be something like
-    ! step_indices=[mirror_step_beg, ..., mirror_step_end]
-    ! where mirror_step_beg/end are granule-specific
-
+    ! mirror step indices may be overwritten later by copying from the input
+    ! radiance file
     step_indices = [(i, i=0,num_steps-1)]
     call tiof_put1d_i4 (obj, o3t_dim_step, [0], [num_steps], step_indices, errstat)
 
@@ -621,6 +642,7 @@ contains
     ! Define a dimension list.
     call tiof_dimlist_append (dimlist, o3t_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, o3t_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, o3t_dim_corner, 4, errstat)
     call tiof_dimlist_append (dimlist, o3t_dim_layer, num_layers, errstat)
     call tiof_dimlist_append (dimlist, o3t_dim_wavelength, num_wavel, errstat)
     call tiof_def_dims (obj, dimlist, errstat)
@@ -742,10 +764,10 @@ contains
   !! @param[inout] errstat  Error status variable
   !! @details
   !! The geolocation variables are passed via the \a O3T_radgeo_class module.
-  subroutine l2_tio_write_geo (iline, nxtrack, errstat)
+  subroutine l2_tio_write_geo (iline, step_index, nxtrack, errstat)
     use O3T_radgeo_class
     implicit none
-    integer, intent(in) :: iline, nxtrack
+    integer, intent(in) :: iline, step_index, nxtrack
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -753,6 +775,11 @@ contains
     if (errstat < 0) return
 
     obj => primary_output_file
+
+    ! main group
+    call tiof_push_group (obj, "/", errstat)
+    call tiof_put1d_i4 (obj, o3t_dim_step, [iline], [1], [step_index], errstat)
+    call tiof_pop_group (obj, errstat)
 
     ! geolocation group
     call tiof_push_group (obj, o3t_grp_geolocation, errstat)
@@ -763,6 +790,10 @@ contains
                         latitude(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_longitude, [iline,0], [1, nxtrack], &
                         longitude(1:nxtrack), errstat)
+    call tiof_put2d_r4 (obj, o3t_var_latitude_bounds, [iline,0,0], [1, nxtrack,4], &
+                        lat_bounds(1:4,1:nxtrack), errstat)
+    call tiof_put2d_r4 (obj, o3t_var_longitude_bounds, [iline,0,0], [1, nxtrack,4], &
+                        lon_bounds(1:4,1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_sz_angle, [iline,0], [1, nxtrack], &
                         szenith(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_sa_angle, [iline,0], [1, nxtrack], &
