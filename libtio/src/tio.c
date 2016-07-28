@@ -712,7 +712,7 @@ static IO_Methods_Type IO_Methods[] =
    IO_METHODS_END
 };
 
-#define TIO_IO_VAR_SECTION(action,const_qual) \
+#define TIO_IO_VAR_SECTION(action,error_num,const_qual) \
 int TIO_##action##_var_section (int grp, const char *name, \
                                 int *istart, int *icount, int type, \
                                 const_qual void *data) \
@@ -800,7 +800,7 @@ int TIO_##action##_var_section (int grp, const char *name, \
  \
    if (status != NC_NOERR) \
      { \
-        Tell_verror (TELL_IO_READ_ERROR, \
+        Tell_verror (error_num, \
                      "%s: accessing variable %s in group %d (%s)", \
                      __func__, name, grp, nc_strerror(status)); \
         return -1; \
@@ -809,8 +809,8 @@ int TIO_##action##_var_section (int grp, const char *name, \
    return 0; \
 }
 
-TIO_IO_VAR_SECTION(get,EMPTY())
-TIO_IO_VAR_SECTION(put,const)
+TIO_IO_VAR_SECTION(get,TELL_IO_READ_ERROR,EMPTY())
+TIO_IO_VAR_SECTION(put,TELL_IO_WRITE_ERROR,const)
 
 #if 0
 }
