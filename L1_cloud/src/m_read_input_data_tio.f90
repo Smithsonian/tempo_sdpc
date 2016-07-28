@@ -122,9 +122,12 @@ contains
       status = PGS_TD_TAItoUTC(time(1),DateTime)
 
       if(status /= 0) then
-        call tell_error (tell_io_read_error, &
-               "read_input_data_tio: TAI time conversion failed", &
-               errstat)
+        call tell_log (1, "read_input_data_tio: TAI time conversion failed")
+        !FIXME - generate a log message instead of an error
+        !        to facilitate processing low-fidelity test data.
+        !call tell_error (tell_io_read_error, &
+        !       "read_input_data_tio: TAI time conversion failed", &
+        !       errstat)
         month=1
       else
         read  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
