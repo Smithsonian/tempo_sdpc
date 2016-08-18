@@ -3,6 +3,7 @@
 include ../../Makefile.defines
 
 THIS_LIB = tio
+EXECUTABLES = mkgranule_name mkgranule_ident
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
@@ -10,6 +11,8 @@ elfdir  = $(srcdir)/$(archobjs)
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
+
+TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
 INCS = -I$(config_dir)/include -I$(TELL_INC) -I$(NETCDF_INC)
 LIBS = $(INSTALL_LIBPATHS) \
@@ -37,6 +40,8 @@ ELFDIR_ELF_LIB = $(elfdir)/$(ELFLIB_BUILD_NAME)#
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
 
+COMPILE_CMD = $(CC) $(CCFLAGS)
+
 OFILES   = tio.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o
 ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_template.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
 TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
@@ -60,7 +65,7 @@ ELFOBJS_F = $(elfdir)/tio_module.o
 # Rules
 # --------------------------------------------------------------------------
 
-all:	autogen elf
+all:	autogen elf $(EXECUTABLES)
 elf:	tempo-names $(elfdir) $(ELFDIR_ELF_LIB) $(ELFDIR_F_ELF_LIB)
 
 tags:
@@ -91,7 +96,8 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS_F)
 	fi
 	cd $(elfdir) && $(LN) $(ELFLIB_F_BUILD_NAME) $(ELFLIB_F)
 
-.PHONY: clean distclean all install check autogen get_put_code.inc
+.PHONY: clean distclean tags all install check autogen get_put_code.inc \
+        $(EXECUTABLES)
 
 # --------------------------------------------------------------------------
 # Installation
@@ -99,6 +105,7 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS_F)
 
 incdir = $(prefix)/include
 libdir = $(prefix)/lib
+bindir = $(prefix)/bin
 
 install-header:
 	$(MKINSDIR) $(incdir)
@@ -133,7 +140,14 @@ install-elf-f:
 	@echo The links $(ELFLIB_F) and $(ELFLIB_F_MAJOR) to $(ELFLIB_F_BUILD_NAME) were also created.
 	@echo ""
 
-install:	elf install-header install-elf install-elf-f
+install-execs:
+	$(MKINSDIR) $(bindir)
+	@echo installing $(EXECUTABLES) in $(bindir)/
+	for exec in $(EXECUTABLES) ; do \
+	   $(INSTALL_PROGRAM) $${exec} $(bindir)/$${exec} ; \
+	done
+
+install:	elf install-header install-elf install-elf-f install-execs
 
 # --------------------------------------------------------------------------
 # Housekeeping
@@ -142,7 +156,7 @@ install:	elf install-header install-elf install-elf-f
 clean:	clean-tempo-names
 	-$(RM) -f .##* $(elfdir)/*
 distclean: clean distclean-tempo-names
-	-$(RM) -rf $(elfdir)
+	-$(RM) -rf $(elfdir) $(EXECUTABLES)
 
 # --------------------------------------------------------------------------
 # Object Rules
@@ -179,6 +193,14 @@ distclean-tempo-names:	clean-tempo-names
 	for bn in $(NAME_FILE_BASENAMES) ; do \
 	   $(RM) -f _$${bn}.inc $(TIO_TEMPLATE_INCLUDE) ; \
 	done
+
+mkgranule_name:
+	$(COMPILE_CMD) -o mkgranule_name $(INCS) mkgranule_name.c \
+	     $(TIO_LIBPATHS) -ltio $(LIBS)
+
+mkgranule_ident:
+	$(COMPILE_CMD) -o mkgranule_ident $(INCS) mkgranule_ident.c \
+	     $(TIO_LIBPATHS) -ltio $(LIBS)
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	git_commit="(unknown)" ; \

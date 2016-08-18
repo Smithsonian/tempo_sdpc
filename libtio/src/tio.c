@@ -817,8 +817,9 @@ TIO_IO_VAR_SECTION(put,TELL_IO_WRITE_ERROR,const)
 #endif
 
 int TIO_inq_att (int grp, int varid, const char *attname,
-                 int *xtype, size_t *len)
+                 int *xtype, int *len)
 {
+   size_t len_size_t;
    int status;
 
    if (NULL == attname)
@@ -827,7 +828,7 @@ int TIO_inq_att (int grp, int varid, const char *attname,
         return -1;
      }
 
-   if (NC_NOERR != (status = nc_inq_att (grp, varid, attname, xtype, len)))
+   if (NC_NOERR != (status = nc_inq_att (grp, varid, attname, xtype, &len_size_t)))
      {
         Tell_verror (TELL_IO_READ_ERROR,
                      "%s: accessing attribute %s (varid=%d) (%s)",
@@ -835,14 +836,17 @@ int TIO_inq_att (int grp, int varid, const char *attname,
         return -1;
      }
 
+   if (len) *len = len_size_t;
+
    return 0;
 }
 
 int TIO_put_att (int grp, int varid, const char *attname,
-                 int xtype, size_t len, const void *att)
+                 int xtype, int len, const void *att)
 {
    int status;
    int file_atttype;
+   size_t len_size_t;
 
    if ((NULL == attname) || (att == NULL))
      {
@@ -877,7 +881,8 @@ int TIO_put_att (int grp, int varid, const char *attname,
         return -1;
      }
 
-   status = nc_put_att (grp, varid, attname, xtype, len, att);
+   len_size_t = len;
+   status = nc_put_att (grp, varid, attname, xtype, len_size_t, att);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,

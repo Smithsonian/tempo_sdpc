@@ -150,7 +150,6 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"format_version", TIO_L1_FORMAT_VERSION},
         {"time_reference", TIO_TIME_REFERENCE_STRING},
         {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
         {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
@@ -158,6 +157,7 @@ static int define_global_attrs (int grp)
      };
    static _pInt_Attr_Type int_attrs[] =
      {
+        MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
         MAKE_INT_ATTR1("processing_version", 0),
         MAKE_INT_ATTR1("granule_seq_num", 0),
         _pINT_ATTRS_END

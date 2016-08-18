@@ -52,14 +52,19 @@ program tio_test
   call tiof_dimlist_append (dimlist, "dim2", dim2_size, errstat)
   call tiof_dimlist_append (dimlist, dim_strlen, dim_strlen_size, errstat)
   call tiof_dimlist_append (dimlist, dim_name, dim_name_size, errstat)
-  if (errstat < 0) then
+  if (errstat /= 0) then
     write (*,*)'*** tiof_dimlist_append failed'
     stop 1
   endif
 
   call tiof_open (filename, obj, nf90_write, errstat)
-  if (errstat < 0) then
+  if (errstat /= 0) then
     write(*,*)'*** tiof_open failed:  file='//filename
+    stop 2
+  endif
+
+  call test_granule_ident (obj, errstat)
+  if (errstat /= 0) then
     stop 2
   endif
 
@@ -497,6 +502,49 @@ program tio_test
   call tiof_attlist_free (fv_attlist)
 
 contains
+
+  subroutine test_granule_ident (obj, errstat)
+    use iso_c_binding, only : c_null_char
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type) :: obj_to
+    character (len=1024) :: namebuf
+
+    if (errstat /= 0) return
+
+    namebuf = repeat('X',len(namebuf))
+    call tiof_filename_from_granule (obj, "test"//c_null_char, 1, &
+                                     namebuf, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: generating filename'
+      return
+    endif
+
+    call tiof_create (obj_to, namebuf, nf90_clobber, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: creating output file, errstat=',errstat
+      return
+    endif
+
+    call tiof_copy_granule_ident (obj, obj_to, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: copying granule label'
+      return
+    endif
+
+    call tiof_label_product (obj_to, "XXX", 2, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: labeling granule'
+      return
+    endif
+
+    call tiof_close (obj_to, errstat)
+
+    call execute_command_line ('/bin/rm '//namebuf)
+
+  end subroutine test_granule_ident
 
   subroutine write_arrays ()
     integer :: i,j,k=1

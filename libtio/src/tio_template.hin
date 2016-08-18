@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /* L1 File format version number */
-#define TIO_L1_FORMAT_VERSION  "0.1"
+#define TIO_L1_FORMAT_VERSION  2
 
 #define TIO_CF_CONVENTION_VERSION   "CF-1.6"
 
@@ -100,6 +100,18 @@ extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
  */
 extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
                                        TIO_Scan_Group_Type *sgrps);
+
+extern int TIO_copy_granule_ident (int ncid_from, int ncid_to);
+extern int TIO_filename_from_granule (int ncid, const char *label, int version,
+                                      char *buf, int bufsize);
+extern int TIO_label_granule (int ncid, const char *product_type, int version);
+
+typedef struct TIO_Scan_Ident_Type TIO_Scan_Ident_Type;
+extern TIO_Scan_Ident_Type *TIO_new_scan_ident (void);
+extern void TIO_free_scan_ident (TIO_Scan_Ident_Type *lst);
+extern int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst);
+extern int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst);
+
 #if 0
 {
 #endif

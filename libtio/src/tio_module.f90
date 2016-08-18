@@ -116,9 +116,11 @@ module tio_module
   end type
 
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
-    tio_f_def_grp, tio_f_get_fill_value
+    tio_f_def_grp, tio_f_get_fill_value, &
+    tio_f_copy_granule_ident, tio_f_filename_from_granule, tio_f_label_product
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
-    tio_f_def_grp, tio_f_get_fill_value
+    tio_f_def_grp, tio_f_get_fill_value, &
+    tio_f_copy_granule_ident, tio_f_filename_from_granule, tio_f_label_product
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -126,7 +128,8 @@ module tio_module
     tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
-    tiof_attlist_append, tiof_attlist_free, tiof_def_atts
+    tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
+    tiof_copy_granule_ident, tiof_filename_from_granule, tiof_label_product
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -192,6 +195,52 @@ contains
     else
       errstat = tio_f_put_git_hash (obj % groupid, c_null_ptr)
     endif
+  end subroutine
+
+  subroutine tiof_copy_granule_ident (obj_from, obj_to, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj_from, obj_to
+    integer, intent(inout):: errstat
+
+    if (errstat < 0) return
+    errstat = tio_f_copy_granule_ident (obj_from % fileid, obj_to % fileid)
+  end subroutine
+
+  subroutine tiof_filename_from_granule (obj, label, version, name, errstat)
+    use iso_c_binding, only : c_char, c_null_char
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    character(kind=c_char,len=*), intent(in) :: label
+    integer, intent(in) :: version
+    character(kind=c_char,len=*), intent(inout) :: name
+    integer, intent(inout):: errstat
+
+    integer :: n
+
+    if (errstat < 0) return
+    n = tio_f_filename_from_granule (obj % fileid, label, &
+                                     version, name, len(name))
+    if (n >= len(name)) then
+      call tell_error (tell_runtime_error, &
+                       "Filename string was truncated: "//trim(name), &
+                       errstat)
+      return
+    endif
+    name = trim(name)//c_null_char
+  end subroutine
+
+  subroutine tiof_label_product (obj, product_type, version, errstat)
+    use iso_c_binding, only : c_null_char
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    character (len=*), intent(in) :: product_type
+    integer, intent(in) :: version
+    integer, intent(inout):: errstat
+
+    if (errstat /= 0) return
+    errstat = tio_f_label_product (obj % fileid, &
+                                   trim(adjustl(product_type))//c_null_char, &
+                                   version)
   end subroutine
 
   !> write a 1d array of strings as a 2D array of characters

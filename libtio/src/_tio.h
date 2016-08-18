@@ -122,6 +122,24 @@ extern int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
                                       char **pnames, int **pvalues);
 extern int _pEmit_Var_Pixel_Quality_Flag (int grp,
                                           _pDim_Table_Type *dim_table);
+
+#define MAX_ISOTIME_LEN 32
+/*      MAX_ISOTIME_LEN must hold:  yyyy-mm-ddThh:mm:ss.sssZ */
+
+typedef struct _pTIO_Granule_Ident_Type _pTIO_Granule_Ident_Type;
+struct _pTIO_Granule_Ident_Type
+{
+   _pTIO_Granule_Ident_Type *next;
+   int scan_seq_num;
+   int granule_seq_num;
+   int granule_num;
+   char tstart_str[MAX_ISOTIME_LEN];
+   char tend_str[MAX_ISOTIME_LEN];
+};
+
+extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
+extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
+
 #if 0
 {
 #endif

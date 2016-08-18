@@ -19,6 +19,9 @@ extern "C" {
 /* Maximum name length */
 #define TIO_MAX_NAME_LEN  128
 
+/* Maximum product short name length */
+#define TIO_MAX_SHORT_NAME_LEN  16
+
 #define TIO_BYTE   NC_BYTE
 #define TIO_CHAR   NC_CHAR
 #define TIO_UBYTE  NC_UBYTE
@@ -146,7 +149,7 @@ extern int TIO_get_var_section (int grp, const char *name,
  * @return 0 on success, -1 on error
  */
 extern int TIO_inq_att (int grp, int varid, const char *attname,
-                        int *xtype, size_t *len);
+                        int *xtype, int *len);
 
 /** Write an attribute value
  * @param  grp      Index of group containing the attribute
@@ -158,7 +161,7 @@ extern int TIO_inq_att (int grp, int varid, const char *attname,
  * @return 0 on success, -1 on error
  */
 extern int TIO_put_att (int grp, int varid, const char *attname,
-                        int xtype, size_t len, const void *att);
+                        int xtype, int len, const void *att);
 
 /** Write multiple text attributes
  * @param[in]  grp      Index of group containing the attribute

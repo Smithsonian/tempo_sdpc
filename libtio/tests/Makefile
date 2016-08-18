@@ -32,7 +32,7 @@ EXECUTABLES = tio_test tio_test_f ftest1
 
 all:  $(EXECUTABLES)
 
-check:	$(EXECUTABLES)
+check:
 	@./tio_test 2> c.test.log && echo "testing C...ok"
 	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
 	@./ftest1 2> ftest1.test.log && echo "running ftest1...ok"

@@ -226,9 +226,12 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    char data_name[] = TEMPO_VAR_RADIANCE;
    char relerr_name[] = TEMPO_VAR_RADIANCE_ERROR;
    char attr_name[] = "foo";
+#define BUFSIZE 1024
+   char namebuf[BUFSIZE];
+   int target_ncid, read_scan_seq_num, scan_seq_num;
    int field_type = TIO_FLOAT;
    int attr_type_in, attr_type = TIO_INT64, attr_type_conversion = TIO_UINT;
-   size_t attr_len = 1, attr_len_in;
+   int attr_len = 1, attr_len_in;
    long long attr = UINT_MAX;
    long long attr_in;
    unsigned int attr_in_conversion;
@@ -246,6 +249,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         {"band_540_740_nm", 0, 0},
      };
    int i, num_sgrps = sizeof (sgrps) / sizeof(sgrps[0]);
+   TIO_Scan_Ident_Type *scan_ident = NULL;
 
    for (i = 0; i < num_sgrps; i++)
      {
@@ -381,7 +385,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   /* check attribute propreties */
+   /* check attribute properties */
    if (-1 == TIO_inq_att (grp, varid, attr_name, &attr_type_in, &attr_len_in))
      {
         fprintf (stderr, "*** TIO_inq_att failed\n");
@@ -391,7 +395,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      {
         fprintf (stderr, "*** mismatched attr properties\n");
         fprintf (stderr, "attr_type = %d  attr_type_in=%d\n", attr_type, attr_type_in);
-        fprintf (stderr, "attr_len = %lu  attr_len_in=%lu\n", attr_len, attr_len_in);
+        fprintf (stderr, "attr_len  = %d  attr_len_in =%d\n", attr_len, attr_len_in);
         goto cleanup;
      }
    if (-1 == TIO_get_att (grp, varid, attr_name, attr_type, &attr_in))
@@ -458,6 +462,59 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
+   /* test granule id functions */
+   if (-1 == TIO_filename_from_granule (ncid, "test", 1, namebuf, sizeof(namebuf)))
+     {
+        fprintf (stderr, "*** Error generating filename from granule id\n");
+        goto cleanup;
+     }
+
+   if (NULL == (scan_ident = TIO_new_scan_ident ()))
+     goto cleanup;
+
+   if (-1 == TIO_attach_granule_ident (ncid, scan_ident))
+     goto cleanup;
+
+   if (-1 == TIO_create (namebuf, NC_NETCDF4, &target_ncid))
+     {
+        fprintf (stderr, "*** Error creating file %s\n", namebuf);
+        goto cleanup;
+     }
+
+   if (-1 == TIO_copy_granule_ident (ncid, target_ncid))
+     {
+        fprintf (stderr, "*** Error copying granule id to %s\n", namebuf);
+        goto cleanup;
+     }
+
+   if (-1 == TIO_label_product (target_ncid, "just testing", 1))
+     {
+        fprintf (stderr, "*** Error labeling granule %s\n", namebuf);
+        goto cleanup;
+     }
+
+   if ((0 != TIO_get_att (target_ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &read_scan_seq_num))
+       || (0 != TIO_get_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &scan_seq_num)))
+     {
+        fprintf (stderr, "*** Error reading scan_seq_num\n");
+        goto cleanup;
+     }
+   if (read_scan_seq_num != scan_seq_num)
+     {
+        fprintf (stderr,
+                 "*** Error: value mismatch: read_scan_seq_num=%d scan_seq_num=%d\n",
+                 read_scan_seq_num, scan_seq_num);
+        goto cleanup;
+     }
+
+   if (-1 == TIO_write_scan_ident (target_ncid, scan_ident))
+     goto cleanup;
+
+   if (-1 == TIO_close (target_ncid))
+     goto cleanup;
+
+   (void) remove (namebuf);
+
    if (-1 == TIO_close (ncid))
      goto cleanup;
 
@@ -467,6 +524,7 @@ cleanup:
    free(data_in);
    free(relerr);
    free(dbl_relerr);
+   TIO_free_scan_ident (scan_ident);
 
    if (err) fprintf (stderr, "*** TEST FAILED (test_l1_radiance)\n");
    return err;
