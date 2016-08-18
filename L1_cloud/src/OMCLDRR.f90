@@ -45,6 +45,7 @@ program OMCLDRR
   !>@param filename_out_nc netCDF output filename
   !>@param filename_out_nc netCDF input filename
   character(len=255) :: filename_out_nc, filename_in_nc
+  integer, parameter :: processing_version = 1  ! FIXME should be input param
 
   !************************************************************************
 
@@ -271,6 +272,12 @@ program OMCLDRR
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: failed", &
+           errstat)
+    endif
+    call copy_hdr_metadata (filename_in_nc, errstat)
+    call label_output_file ("cldrr", processing_version, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "failed writing metadata", &
            errstat)
     endif
     ! Even if create_output_file fails, try to close file to make sure we

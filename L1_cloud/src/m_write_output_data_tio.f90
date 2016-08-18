@@ -10,7 +10,8 @@ module m_write_output_data_tio
   private
 
   public create_output_file, close_output_file, write_coordinate_vars, &
-       write_geo_struct, write_geo_data, write_cloud_struct!, write_cloud_data
+       write_geo_struct, write_geo_data, write_cloud_struct, &
+       copy_hdr_metadata, label_output_file!, write_cloud_data
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -225,15 +226,14 @@ contains
     !Free dimension list
     call tiof_dimlist_free (dimlist)
 
-    !Close the netCDF file
-    call close_output_file (errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_error, &
-           "create_output_file: unable to close file "//trim(outfile_nc), &
-           errstat)
-      return
-    endif
-
+    !!Close the netCDF file
+    !call close_output_file (errstat)
+    !if (errstat /= 0) then
+    !  call tell_error (tell_io_error, &
+    !       "create_output_file: unable to close file "//trim(outfile_nc), &
+    !       errstat)
+    !  return
+    !endif
 
   end subroutine create_output_file
 
@@ -984,5 +984,47 @@ contains
 
   end subroutine write_metadata
 
+  subroutine copy_hdr_metadata (l1bfile, errstat)
+    implicit none
+    character (len=*), intent(in) :: l1bfile
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_open_error, &
+                       "copy_hdr_metadata: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_copy_granule_ident (l1b, obj, errstat)
+    call tiof_close (l1b, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "copy_hdr_metadata: copying from "//trim(l1bfile), &
+                       errstat)
+    endif
+
+  end subroutine copy_hdr_metadata
+
+  subroutine label_output_file (label, processing_version, errstat)
+    implicit none
+    character (len=*), intent(in) :: label
+    integer, intent(in) :: processing_version
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+    call tiof_label_product (obj, label, processing_version, errstat)
+  end subroutine label_output_file
 
 end module m_write_output_data_tio
