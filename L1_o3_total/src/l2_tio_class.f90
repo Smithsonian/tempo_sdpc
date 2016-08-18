@@ -10,7 +10,8 @@ module l2_tio_class
 
   public l2_tio_create, l2_tio_close, &
     l2_tio_write_etc, l2_tio_write_geo, l2_tio_write_fields, &
-    l2_tio_write_skipped_fields, l2_tio_write_mqf
+    l2_tio_write_skipped_fields, l2_tio_write_mqf, &
+    l2_tio_copy_metadata, l2_tio_label_output_file
 
   type (tiof_file_type), private, save, target :: primary_output_file
 
@@ -726,6 +727,37 @@ contains
     endif
 
   end subroutine
+
+  subroutine l2_tio_copy_metadata (l1b, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: l1b
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_copy_granule_ident (l1b, obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, "copying L1 metadata to output file", &
+                       errstat)
+    endif
+
+  end subroutine l2_tio_copy_metadata
+
+  subroutine l2_tio_label_output_file (label, processing_version, errstat)
+    implicit none
+    character (len=*), intent(in) :: label
+    integer, intent(in) :: processing_version
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+    call tiof_label_product (obj, label, processing_version, errstat)
+  end subroutine l2_tio_label_output_file
 
   !> Write calibration adjustment variables to Level 2 product file
   !! @param[in] nwavel  Number of wavelengths

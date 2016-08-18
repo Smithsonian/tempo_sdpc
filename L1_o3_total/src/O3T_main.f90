@@ -158,6 +158,8 @@ PROGRAM O3T_mainNVAdj
     integer (kind=4) :: step_index
     integer :: errstat, version, ext, iarg, orbit_number
     integer :: cloud_pressure_source, anomflg_3_ix_ilat
+    ! FIXME processing_version should be an input parameter
+    integer, parameter :: processing_version = 1
 
     iarg = 0
     do
@@ -492,6 +494,9 @@ PROGRAM O3T_mainNVAdj
       endif
       call l2_tio_create (nc_l2_filename, nTimes_rad, nXtrack_rad, NLYR, nwl_com, errstat)
       if (errstat < 0) stop 1
+      call l2_tio_copy_metadata (l1b_file_object(rad_file_obj), errstat)
+      call l2_tio_label_output_file ("o3t", processing_version, errstat)
+      if (errstat /= 0) stop 1
     endif
 
     !! Create or setup the swath in the L2 output file

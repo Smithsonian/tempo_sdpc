@@ -49,9 +49,18 @@ module l1b_tio_class
 
   public l1b_tio_open, l1b_tio_close, l1b_tio_getdims, l1b_tio_get_irr, &
     l1b_tio_earthsun_distance, l1b_tio_init_rad, l1b_tio_getrad, &
-    l1b_tio_get_etc, l1b_tio_getgeo, l1b_tio_get_metadata
+    l1b_tio_get_etc, l1b_tio_getgeo, l1b_tio_get_metadata, l1b_file_object
 
 contains
+
+  function l1b_file_object (this) result(obj)
+    implicit none
+    type (l1b_tio_type), intent(in) :: this
+    type (tiof_file_type) :: obj
+
+    obj = this % ft
+
+  end function l1b_file_object
 
   !> Open Level 1 data product file
   !! @param[inout]  this  Level 1 file object
