@@ -150,7 +150,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
   use output_tools, only : create_output_file, close_output_file, &
     write_fitting_statistics, write_common_mode, write_wavcal_output, &
-    write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics
+    write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics, &
+    label_output_file
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
     he5_close_output_file, he5_set_field_attributes, &
     he5_write_global_attributes, he5_write_swath_attributes, &
@@ -225,6 +226,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
   type (fitting_statistics_type) :: fit_stats
   character (len=256) :: logmsg
+  integer, parameter :: processing_version = 1 ! FIXME - should be input
 
   ! ------------------
   ! External functions
@@ -367,6 +369,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
                            n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                            errstat)
   if (errstat < 0) return
+
+  call label_output_file (molname, processing_version, errstat)
+  if (errstat /= 0) return
 
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
   !        netcdf output file creation occurs a bit later after some output dimensions

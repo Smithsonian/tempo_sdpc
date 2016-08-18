@@ -23,6 +23,7 @@ module output_tools
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
     write_radiance_wavecal_diagnostics, copy_pixel_corners, &
+    copy_metadata, label_output_file, &
     read_geofields, read_column_results, read_cloud_params
 
   type (tiof_file_type), private, save, target :: primary_output_file
@@ -1550,6 +1551,46 @@ contains
     call tiof_pop_group (obj, errstat)
 
   end subroutine copy_pixel_corners
+
+  subroutine copy_metadata (l1bfile, errstat)
+    implicit none
+    character (len=*), intent(in) :: l1bfile
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_open_error, "copy_metadata: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_copy_granule_ident (l1b, obj, errstat)
+    call tiof_close (l1b, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, "copy_metadata: copying from "//trim(l1bfile), &
+                       errstat)
+    endif
+  end subroutine copy_metadata
+
+  subroutine label_output_file (label, processing_version, errstat)
+    implicit none
+    character (len=*), intent(in) :: label
+    integer, intent(in) :: processing_version
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+    call tiof_label_product (obj, label, processing_version, errstat)
+  end subroutine label_output_file
 
   !> Read geolocation fields
   !! @param[in] ntimes  Number of scans

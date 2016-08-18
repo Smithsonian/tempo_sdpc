@@ -32,7 +32,8 @@ SUBROUTINE omi_pge_postprocess ( &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics
-  use output_tools, only : read_geofields, read_column_results, copy_pixel_corners
+  use output_tools, only : read_geofields, read_column_results, &
+    copy_pixel_corners, copy_metadata
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col
@@ -91,6 +92,9 @@ SUBROUTINE omi_pge_postprocess ( &
     call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, errstat)
     if (errstat < 0) return
   endif
+
+  call copy_metadata (l1bfile, errstat)
+  if (errstat /= 0) return
 
   call copy_pixel_corners (l1bfile, omi_radiance_swathname, &
                            ntimes, nXtrack, corners_copied, errstat)
