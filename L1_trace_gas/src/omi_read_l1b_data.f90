@@ -35,7 +35,7 @@ CONTAINS
     !
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
-    character (len=128) :: logmsg
+    character (len=256) :: logmsg
 
     if (errstat < 0) return
 
