@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include <tell.h>
 #include <netcdf.h>
@@ -31,6 +32,7 @@ struct Product_Type
 
    char *name;
    char *outfile;
+   int processing_version;
 
    char *in_lonlat_grp;
    char *out_lonlat_grp;
@@ -196,16 +198,26 @@ static Product_Type *init_product_type (const config_setting_t *setting)
    Product_Type *prod = NULL;
    config_setting_t *s, *vars, *longlat_group, *input_files;
    const char *name, *outfile, *in_grp, *out_grp;
-   int i, num_vars, num_input_files;
+   int i, num_vars, num_input_files, processing_version;
 
    if (setting == NULL)
      return NULL;
 
-   if ((CONFIG_TRUE != config_setting_lookup_string (setting, "name", &name))
-       || (CONFIG_TRUE != config_setting_lookup_string (setting, "output_file", &outfile)))
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "name", &name))
      {
-        Tell_verror (TELL_INVALID_PARM_ERROR, "%s", __func__);
-        free_product_type (prod);
+        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing name", __func__);
+        return NULL;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "output_file", &outfile))
+     {
+        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing output_file", __func__);
+        return NULL;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (setting, "processing_version", &processing_version))
+     {
+        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing processing_version", __func__);
         return NULL;
      }
 
@@ -242,6 +254,8 @@ static Product_Type *init_product_type (const config_setting_t *setting)
 
    if (NULL == (prod = new_product_type (num_vars, num_input_files)))
      return NULL;
+
+   prod->processing_version = processing_version;
 
    for (i = 0; i < num_vars; i++)
      {
@@ -397,7 +411,9 @@ cleanup_and_return:
 
 static int make_l3_product (const Product_Type *prod,
                             const Pixel_Grid_Param_Type *dest,
-                            const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb)
+                            const Pixel_Regrid_Type *r,
+                            Var_Value_Buffer_Type *vb,
+                            TIO_Scan_Ident_Type *lst)
 {
    int ncid=INT_MAX, ncid_infile=INT_MAX, i;
    int status = -1;
@@ -406,6 +422,13 @@ static int make_l3_product (const Product_Type *prod,
      return -1;
 
    if (-1 == Var_write_lonlat_grid (ncid, prod->out_lonlat_grp, dest))
+     goto return_status;
+
+   if ((lst != NULL)
+       && (-1 == TIO_write_scan_ident (ncid, lst)))
+     goto return_status;
+
+   if (-1 == TIO_label_product (ncid, prod->name, prod->processing_version))
      goto return_status;
 
    /* The first input file establishes each variable's dimensionality */
@@ -437,18 +460,69 @@ return_status:
    return status;
 }
 
+static TIO_Scan_Ident_Type *
+read_scan_ident (char **input_files, int num_input_files, const char *name)
+{
+   TIO_Scan_Ident_Type *lst = NULL;
+   int i;
+
+   if (NULL == (lst = TIO_new_scan_ident ()))
+     return NULL;
+
+   for (i = 0; i < num_input_files; i++)
+     {
+        int ncid, status;
+        if (-1 == TIO_open (input_files[i], NC_NOWRITE, &ncid))
+          goto free_and_return;
+        if (name != NULL)
+          {
+             /* If we have a product_type name,
+              * then every granule should match it */
+             char buf[TIO_MAX_NAME_LEN];
+             if (-1 == TIO_get_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, buf))
+               goto free_and_return;
+             if (0 != strcasecmp (buf, name))
+               {
+                  Tell_verror (TELL_APPLICATION_ERROR,
+                               "%s: product_type mismatch: expected %s got %s",
+                               __func__, name, buf);
+                  goto free_and_return;
+               }
+          }
+        status = TIO_attach_granule_ident (ncid, lst);
+        (void) TIO_close (ncid);
+        if (status < 0)
+          goto free_and_return;
+     }
+
+   return lst;
+
+free_and_return:
+   TIO_free_scan_ident (lst);
+   return NULL;
+}
+
 int main (int argc, char **argv)
 {
    const char *param_file = DEFAULT_PARAM_FILE;
    Var_Value_Buffer_Type *vb = NULL;
+   TIO_Scan_Ident_Type *lst = NULL;
    Pixel_Regrid_Type *r = NULL;
    Product_Type *product_list = NULL;
    Product_Type *prod = NULL;
    Pixel_Grid_Param_Type dest;
    int src_num_steps, src_num_xtrack;
+   int expect_scan_ident = 1;
    int status = 1;
 
    Tell_open ("L2_regrid", -1, -1);
+
+   if (0 == strcmp (argv[1], "--noident"))
+     {
+        expect_scan_ident = 0;
+        argv++;
+        argc--;
+     }
 
    if (argc > 1)
      param_file = argv[1];
@@ -473,8 +547,13 @@ int main (int argc, char **argv)
 
    for (prod = product_list; prod != NULL; prod = prod->next)
      {
-        if (-1 == make_l3_product (prod, &dest, r, vb))
+        if ((expect_scan_ident != 0)
+            && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name))))
           goto return_status;
+        if (-1 == make_l3_product (prod, &dest, r, vb, lst))
+          goto return_status;
+        TIO_free_scan_ident (lst);
+        lst = NULL;
      }
 
    status = 0;
@@ -482,6 +561,7 @@ return_status:
    free_product_list (product_list);
    Var_free_value_buffer (vb);
    Regrid_close (r);
+   TIO_free_scan_ident (lst);
 
    return status;
 }
