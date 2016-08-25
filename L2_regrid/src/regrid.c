@@ -330,7 +330,6 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
           break;
         else if (num_overlaps == 0)
           {
-             /* FIXME:  should this be a warning message? */
              Tell_verror (TELL_UNKNOWN_ERROR,
                           "%s: no contribution to target grid from %s",
                           __func__, files[i]);
