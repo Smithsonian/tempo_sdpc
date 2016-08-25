@@ -528,13 +528,15 @@ static int get_relerr (int grp, const int *istart, const int *icount, int type,
      return -1;
 
    /* read the relative error packed into a short int representation */
-   num = icount[0];
-   for (i = 1; i < info.ndims; i++)
-     num *= icount[i];
    for (i = 0; i < info.ndims; i++)
      {
         start[i] = istart[i];
-        count[i] = icount[i];
+        count[i] = (icount[i] >= 0) ? (size_t) icount[i] : info.dimlens[i];
+     }
+   num = count[0];
+   for (i = 1; i < info.ndims; i++)
+     {
+        num *= count[i];
      }
 
    if (NULL == (short_relerr = (short *) TIO_MALLOC (num * sizeof(*short_relerr))))
@@ -603,13 +605,15 @@ static int put_relerr (int grp, const int *istart, const int *icount, int type,
    if (-1 == get_relerr_params (grp, info.varid, &xp_min, &xp_max, &u_missing))
      return -1;
 
-   num = icount[0];
-   for (i = 1; i < info.ndims; i++)
-     num *= icount[i];
    for (i = 0; i < info.ndims; i++)
      {
         start[i] = istart[i];
-        count[i] = icount[i];
+        count[i] = (icount[i] >= 0) ? (size_t) icount[i] : info.dimlens[i];
+     }
+   num = count[0];
+   for (i = 1; i < info.ndims; i++)
+     {
+        num *= count[i];
      }
 
    if (type == NC_FLOAT)
