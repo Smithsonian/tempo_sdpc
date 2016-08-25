@@ -101,15 +101,68 @@ extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
 extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
                                        TIO_Scan_Group_Type *sgrps);
 
+/** Copy granule identification metadata from one netcdf file to another
+ * @param  ncid_from     Index of source netcdf file
+ * @param  ncid_to       Index of destination netcdf file
+ * @return 0 on success, -1 on error
+ */
 extern int TIO_copy_granule_ident (int ncid_from, int ncid_to);
+
+/** Generate a filename string using granule identification metadata
+ *  in a netcdf file header.
+ * @param  ncid          Index of source netcdf file
+ * @param  label         Label string to include in the filename string
+ * @param  version       Processing version number to include in the filename string
+ * @param  buf           Buffer to hold the output filename string
+ * @param  bufsize       Size of the output filename buffer
+ * @return 0 on success, -1 on error
+ *
+ * Note that the label string can be either a valid label, or a format
+ * definition such as "%s".  The latter is useful for creating a filename
+ * template string.
+ */
 extern int TIO_filename_from_granule (int ncid, const char *label, int version,
                                       char *buf, int bufsize);
-extern int TIO_label_granule (int ncid, const char *product_type, int version);
+
+/** Write product_type and processing version metadata to a netcdf header
+ * @param  ncid          Index of destination netcdf file
+ * @param  product_type  Product type string, e.g. "l1_rad", or "l2_no2"
+ * @param  version       Processing version number
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_label_product (int ncid, const char *product_type, int version);
 
 typedef struct TIO_Scan_Ident_Type TIO_Scan_Ident_Type;
+
+/** Allocate a new TIO_Scan_Ident_Type object
+ * @return TIO_Scan_Ident_Type pointer on success,
+ *         NULL on error
+ *
+ * To avoid memory leaks, the pointer must eventually be freed by
+ * TIO_free_scan_ident
+ */
 extern TIO_Scan_Ident_Type *TIO_new_scan_ident (void);
+
+/** Free an allocated TIO_Scan_Ident_Type object
+ * @param  lst            TIO_Scan_Ident_Type object allocated by a call
+ *                        to TIO_new_scan_ident
+ */
 extern void TIO_free_scan_ident (TIO_Scan_Ident_Type *lst);
+
+/** Append granule identification metadata to a TIO_Scan_Ident_Type object
+ * @param  ncid           Index of source netcdf file
+ * @param  lst            TIO_Scan_Ident_Type object allocated by a call
+ *                        to TIO_new_scan_ident
+ * @return 0 on success, -1 on error
+ */
 extern int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst);
+
+/** Write scan identification metadata to a netcdf file
+ * @param  ncid           Index of destination netcdf file
+ * @param  lst            TIO_Scan_Ident_Type object allocated by a call
+ *                        to TIO_new_scan_ident
+ * @return 0 on success, -1 on error
+ */
 extern int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst);
 
 #if 0
