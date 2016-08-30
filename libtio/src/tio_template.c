@@ -283,7 +283,7 @@ static int timet_from_timestr (const char *timestr, time_t *ptimet)
 int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
 {
    _pTIO_Granule_Ident_Type *beg=NULL, *end=NULL, *gid;
-   time_t tt_beg=LLONG_MAX, tt_end=0;
+   time_t tt_beg=LONG_MAX, tt_end=0;
    size_t len;
 
    if (lst == NULL)
