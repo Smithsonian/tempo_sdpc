@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <tell.h>
-
+#include <getopt.h>
 #include <netcdf.h>
+
+#include <tell.h>
 
 #include "tio.h"
 #include "tio_template.h"

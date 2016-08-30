@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include <netcdf.h>
 #include <tell.h>
