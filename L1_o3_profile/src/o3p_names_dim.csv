@@ -1,0 +1,16 @@
+#L1 dimensions
+O3P_DIM_CHANNEL, "spectral_channel", "spectral channel (east-west)"
+O3P_DIM_XTRACK,"xtrack","cross-track (north-south)"
+O3P_DIM_STEP,"mirror_step","mirror step"
+
+#L2 dimensions
+O3P_DIM_CORNER, "corner", "pixel corners"
+O3P_DIM_LAYER, "layer", "atmospheric layer (top down)"
+O3P_DIM_LAYERP1, "layer_plus1", "atmospheric and surface layer (top down)"
+O3P_DIM_FITVAR, "fit_variables", "fit variables"
+O3P_DIM_PARAM, "non_gas_variables", "non-gas fit variables"
+O3P_DIM_WINDOWS, "fitting_windows", "fitting windows"
+O3P_DIM_ELMS, "noise_elements", "noise elements"
+O3P_DIM_WAVL_MAX, "max_wavelengths", "max wavelengths"
+O3P_DIM_GAS, "gases", "fitted gases"
+O3P_DIM_AEROS_WAVL, "aerosol_wavelengths", "aerosol wavelengths"

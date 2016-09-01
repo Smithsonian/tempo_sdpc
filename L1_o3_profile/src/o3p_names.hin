@@ -1,0 +1,24 @@
+#ifndef __O3P_NAMES_INCLUDE__
+#define __O3P_NAMES_INCLUDE__ 1
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#if 0
+}
+#endif
+
+/* File dimension names */
+@CSV_DIMS@
+
+/* File variable names */
+@CSV_VARS@
+
+#if 0
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
+
+#endif
