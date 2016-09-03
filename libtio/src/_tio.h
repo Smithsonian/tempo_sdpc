@@ -21,11 +21,6 @@ extern "C" {
 #define _pTIO_TIME_COVERAGE_END     "2019-01-01T13:00:00Z"
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 
-/* variable attribute names for internal use */
-#define RELERR_MIN_LOG10  "min_log10"
-#define RELERR_MAX_LOG10  "max_log10"
-#define RELERR_MISSING    "missing"
-
 #define TIO_MALLOC malloc
 #define TIO_FREE free
 

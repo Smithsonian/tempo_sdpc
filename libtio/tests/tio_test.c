@@ -28,8 +28,7 @@ static float *generate_data (int n)
    return y;
 }
 
-static float *generate_relerr (int n, float xp_min, float xp_max,
-                               float u_missing)
+static float *generate_err (int n, float err)
 {
    int i;
    float *y;
@@ -42,10 +41,8 @@ static float *generate_relerr (int n, float xp_min, float xp_max,
 
    for (i = 0; i < n; i++)
      {
-        float xp = xp_min + i * (xp_max - xp_min) / (n-1.0);
-        y[i] = pow (10.0, xp);
+        y[i] = err;
      }
-   y[n/2] = u_missing;
 
    return y;
 }
@@ -224,7 +221,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
    int ncid, varid, status, grp, err=-1;
    char data_name[] = TEMPO_VAR_RADIANCE;
-   char relerr_name[] = TEMPO_VAR_RADIANCE_ERROR;
+   char err_name[] = TEMPO_VAR_RADIANCE_ERROR;
    char attr_name[] = "foo";
 #define BUFSIZE 1024
    char namebuf[BUFSIZE];
@@ -236,9 +233,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    long long attr_in;
    unsigned int attr_in_conversion;
    char *grp_name;
-   float *data = NULL, *relerr = NULL;
-   float *data_in = NULL, *relerr_in = NULL;
-   double *dbl_relerr=NULL;
+   float *data = NULL, *data_err = NULL;
+   float *data_in = NULL, *data_err_in = NULL;
+   double *dbl_err=NULL;
    int data_size = ntracks * nxtrack * ny;
    int start[3], count[3];
    int processing_level;
@@ -264,7 +261,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    count[0] = ntracks; count[1] = nxtrack; count[2] = ny;
 
    if ((NULL == (data = generate_data (data_size)))
-       || (NULL == (relerr = generate_relerr (data_size, -4.0, 2.0, -TIO_FILL_FLOAT))))
+       || (NULL == (data_err = generate_err (data_size, 1.e-4))))
      {
         fprintf (stderr, "*** error generating data\n");
         return -1;
@@ -276,16 +273,16 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
    memset ((char *)data_in, 0, 2 * data_size * sizeof(float));
-   relerr_in = data_in + data_size;
+   data_err_in = data_in + data_size;
 
-   if (NULL == (dbl_relerr = (double *) malloc (data_size * sizeof(double))))
+   if (NULL == (dbl_err = (double *) malloc (data_size * sizeof(double))))
      {
         fprintf (stderr, "*** malloc failed\n");
         goto cleanup;
      }
    for (i = 0; i < data_size; i++)
      {
-        dbl_relerr[i] = (double) relerr[i];
+        dbl_err[i] = (double) data_err[i];
      }
 
    if (-1 == TIO_create (file, NC_NETCDF4, &ncid))
@@ -319,21 +316,21 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
    /* write as a float */
-   if (-1 == TIO_put_var_section (grp, relerr_name, start, count, field_type, relerr))
+   if (-1 == TIO_put_var_section (grp, err_name, start, count, field_type, data_err))
      {
         fprintf (stderr, "*** failed writing %s in file %s\n",
-                 relerr_name, file);
+                 err_name, file);
         goto cleanup;
      }
    /* write again as a double, just to exercise the type conversion code */
-   if (-1 == TIO_put_var_section (grp, relerr_name, start, count, TIO_DOUBLE, dbl_relerr))
+   if (-1 == TIO_put_var_section (grp, err_name, start, count, TIO_DOUBLE, dbl_err))
      {
         fprintf (stderr, "*** failed writing %s in file %s\n",
-                 relerr_name, file);
+                 err_name, file);
         goto cleanup;
      }
 
-   if (-1 == test_def_var (grp, relerr_name, field_type))
+   if (-1 == test_def_var (grp, err_name, field_type))
      goto cleanup;
 
    /* test writing to attributes */
@@ -446,19 +443,19 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    if (compare_data (data_size, data, data_in))
      goto cleanup;
 
-   if (-1 == TIO_get_var_section (grp, relerr_name, start, count, field_type, relerr_in))
+   if (-1 == TIO_get_var_section (grp, err_name, start, count, field_type, data_err_in))
      {
         fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
-                 relerr_name, file, nc_strerror(status));
+                 err_name, file, nc_strerror(status));
         goto cleanup;
      }
-   if (compare_data (data_size, relerr, relerr_in))
+   if (compare_data (data_size, data_err, data_err_in))
      goto cleanup;
    /* read as a double just to exercise the conversion code */
-   if (-1 == TIO_get_var_section (grp, relerr_name, start, count, TIO_DOUBLE, dbl_relerr))
+   if (-1 == TIO_get_var_section (grp, err_name, start, count, TIO_DOUBLE, dbl_err))
      {
         fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
-                 relerr_name, file, nc_strerror(status));
+                 err_name, file, nc_strerror(status));
         goto cleanup;
      }
 
@@ -522,8 +519,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 cleanup:
    free(data);
    free(data_in);
-   free(relerr);
-   free(dbl_relerr);
+   free(data_err);
+   free(dbl_err);
    TIO_free_scan_ident (scan_ident);
 
    if (err) fprintf (stderr, "*** TEST FAILED (test_l1_radiance)\n");
