@@ -449,6 +449,11 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
                  err_name, file, nc_strerror(status));
         goto cleanup;
      }
+   /* Note that data_err is modified in-place on output
+    * (to make compression more efficient), but data_err_in
+    * is _not_ modified on input -- so the comparison is
+    * expected to work.
+    */
    if (compare_data (data_size, data_err, data_err_in))
      goto cleanup;
    /* read as a double just to exercise the conversion code */
@@ -456,6 +461,14 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      {
         fprintf (stderr, "*** error reading variable %s from file %s (%s)\n",
                  err_name, file, nc_strerror(status));
+        goto cleanup;
+     }
+   /* exercise the I/O method enable/disable function */
+   if ((0 != _TIO_set_io_method_enable (err_name, 0, 0))
+       || (0 != _TIO_set_io_method_enable (err_name, 1, 1))
+       || (-1 != _TIO_set_io_method_enable ("nonexistent", 1, 1)))
+     {
+        fprintf (stderr, "*** Error controlling per-variable I/O methods\n");
         goto cleanup;
      }
 

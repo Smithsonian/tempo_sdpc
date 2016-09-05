@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <math.h>
+#include <float.h>
 
 #include <cfortran.h>
 #include <netcdf.h>
@@ -15,6 +16,7 @@
 #include "tio.h"
 #include "tio_template.h"
 #include "_tio.h"
+#include "tio_ppc.h"
 
 #define EMPTY()
 #define _pTIO_STR(s) #s
@@ -386,20 +388,23 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 
 /* #define TEST_WAVELENGTH_METHODS 1 */
 #ifdef TEST_WAVELENGTH_METHODS
-static int get_wavelengths (int grp, int *start, int *count, int type,
-                            void *data)
+static int get_wavelengths (int grp, int *start, int *count,
+                            int type, void *data, const char *name,
+                            void *client_data)
 {
    fprintf (stderr, "=====> called get_wavelengths\n");
    return 0;
 }
-static int put_wavelengths (int grp, int *start, int *count, int type,
-                            const void *data)
+static int put_wavelengths (int grp, int *start, int *count,
+                            int type, const void *data, const char *name,
+                            void *client_data)
 {
    fprintf (stderr, "=====> called put_wavelengths\n");
    return 0;
 }
 #endif
 
+#if 0
 static int cvt_float_to_type (int num, const float *f, int type, void *v)
 {
    double *dbl = (double *)v;
@@ -420,6 +425,7 @@ static int cvt_float_to_type (int num, const float *f, int type, void *v)
 
    return 0;
 }
+#endif
 
 static int cvt_type_to_float (int num, float *f, int type, const void *v)
 {
@@ -442,20 +448,105 @@ static int cvt_type_to_float (int num, float *f, int type, const void *v)
    return 0;
 }
 
+static int put_float_nsd (int grp, const int *istart, const int *icount,
+                          int type, const void *data, const char *name,
+                          void *client_data)
+{
+   TIO_Var_Info_Type info;
+   size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
+   const char nsd_att_name[] = "number_of_significant_digits";
+   float *float_error = NULL;
+   float missing_value = FLT_MAX;
+   int status, i, num, nsd;
+   int malloced_temp_float = 0;
+   int return_status = -1;
+
+   if (client_data == NULL)
+     {
+        Tell_verror (TELL_INTERNAL_ERROR, "%s: NULL client_data pointer",
+                     __func__);
+        return -1;
+     }
+   nsd = *(int *)client_data;
+
+   if (-1 == TIO_inq_var (grp, name, &info))
+     return -1;
+
+   for (i = 0; i < info.ndims; i++)
+     {
+        start[i] = istart[i];
+        count[i] = (icount[i] >= 0) ? (size_t) icount[i] : info.dimlens[i];
+     }
+   num = count[0];
+   for (i = 1; i < info.ndims; i++)
+     {
+        num *= count[i];
+     }
+
+   if (type == NC_FLOAT)
+     float_error = (float *) data;
+   else
+     {
+        /* (optionally) convert 'type' to float */
+        if (NULL == (float_error = (float *) TIO_MALLOC (num * sizeof(*float_error))))
+          {
+             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto free_and_return;
+          }
+        malloced_temp_float = 1;
+        if (-1 == cvt_type_to_float (num, float_error, type, data))
+          goto free_and_return;
+     }
+
+   if (-1 == TIO_inq_var_fill (grp, info.varid, NULL, (void *)&missing_value))
+     goto free_and_return;
+
+   /* Replace the least-significant bits with either zeros or ones.
+    * The modified values will compress better. */
+   if (0 != _pTIO_ppc_f32_bitmask (nsd, _pTIO_PPC_METHOD_ALT, num, float_error, &missing_value))
+     goto free_and_return;
+
+   if (NC_NOERR != (status = nc_put_vara_float (grp, info.varid, start, count, float_error)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: accessing variable %s in group %d (%s)",
+                     __func__, name, grp, nc_strerror(status));
+        goto free_and_return;
+     }
+   if (NC_NOERR != (status = nc_put_att_int (grp, info.varid, nsd_att_name, NC_INT, 1, &nsd)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: writing attribute %s of %s in group %d (%s)",
+                     __func__, nsd_att_name, name, grp, nc_strerror(status));
+        goto free_and_return;
+     }
+
+   return_status = 0;
+free_and_return:
+   if (malloced_temp_float) TIO_FREE(float_error);
+   return return_status;
+}
+
 typedef struct
 {
    char *name;
-   int (*get)(int, const int *, const int *, int,       void *);
-   int (*put)(int, const int *, const int *, int, const void *);
+   int (*get)(int, const  int *, const int *,
+              int,       void *, const char *, void *);
+   void *get_client_data;
+   int get_enable;
+   int (*put)(int, const  int *, const int *,
+              int, const void *, const char *, void *);
+   void *put_client_data;
+   int put_enable;
 }
 IO_Methods_Type;
-#define IO_METHODS_END {NULL,NULL,NULL}
+#define IO_METHODS_END {NULL, NULL,NULL,0, NULL,NULL,0}
 
-static const
+static
 IO_Methods_Type *find_io_methods (const char *name,
-                                  const IO_Methods_Type *io_methods)
+                                  IO_Methods_Type *io_methods)
 {
-   const IO_Methods_Type *m;
+   IO_Methods_Type *m;
 
    if ((name == NULL) || (io_methods == NULL))
      return NULL;
@@ -469,13 +560,36 @@ IO_Methods_Type *find_io_methods (const char *name,
    return NULL;
 }
 
+static int Radiance_Error_Num_Significant_Digits = 2;
+
 static IO_Methods_Type IO_Methods[] =
 {
 #ifdef TEST_WAVELENGTH_METHODS
-   {"wavelength", get_wavelengths, put_wavelengths},
+   {"wavelength",
+        get_wavelengths, NULL, 1,
+        put_wavelengths, NULL, 1},
 #endif
+   {TEMPO_VAR_RADIANCE_ERROR,
+        NULL, NULL, 0,
+        put_float_nsd, &Radiance_Error_Num_Significant_Digits, 1},
+   {TEMPO_VAR_IRRADIANCE_ERROR,
+        NULL, NULL, 0,
+        put_float_nsd, &Radiance_Error_Num_Significant_Digits, 1},
    IO_METHODS_END
 };
+
+int _TIO_set_io_method_enable (const char *name,
+                               int get_enable, int put_enable)
+{
+   IO_Methods_Type *io_method;
+
+   io_method = find_io_methods (name, IO_Methods);
+   if (io_method == NULL)
+     return -1;
+   io_method->get_enable = get_enable;
+   io_method->put_enable = put_enable;
+   return 0;
+}
 
 #define TIO_IO_VAR_SECTION(action,error_num,const_qual) \
 int TIO_##action##_var_section (int grp, const char *name, \
@@ -485,12 +599,14 @@ int TIO_##action##_var_section (int grp, const char *name, \
    TIO_Var_Info_Type info; \
    int status, varid, ndims, i; \
    size_t start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS]; \
-   const IO_Methods_Type *io_method; \
+   IO_Methods_Type *io_method; \
  \
-   io_method = find_io_methods (name, (const IO_Methods_Type *)&IO_Methods); \
-   if (NULL != io_method) \
+   io_method = find_io_methods (name, IO_Methods); \
+   if ((NULL != io_method) && (io_method->action##_enable != 0) \
+       && (NULL != io_method->action)) \
      { \
-        return io_method->action (grp, istart, icount, type, data); \
+        return io_method->action (grp, istart, icount, type, data, name, \
+                                  io_method->action##_client_data); \
      } \
  \
    if (-1 == TIO_inq_var (grp, name, &info)) \

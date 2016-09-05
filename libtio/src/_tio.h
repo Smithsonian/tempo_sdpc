@@ -11,6 +11,9 @@ extern "C" {
 }
 #endif
 
+#include <time.h>
+#include <netcdf.h>
+
 /* placeholder values -- FIXME */
 #define _pTIO_PIXEL_SCALE_ROW      0.195  /* nm */
 #define _pTIO_PIXEL_SCALE_COLUMN   55.0   /* microradian */

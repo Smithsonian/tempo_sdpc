@@ -42,8 +42,8 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = tio.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_template.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
+OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o
+ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_ppc.o $(elfdir)/tio_template.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
 TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
 
 # --- Fortran interface
@@ -208,6 +208,9 @@ $(elfdir)/tio.o:	$(srcdir)/tio.c
 	   git_commit=`git rev-parse --verify HEAD` ; \
 	fi ; \
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) -DGIT_COMMIT_HASH='"'$${git_commit}'"' $(srcdir)/tio.c $(LIBS)
+
+$(elfdir)/tio_ppc.o:	$(srcdir)/tio_ppc.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_ppc.c $(LIBS)
 
 $(elfdir)/tio_template.o:	$(srcdir)/tio_template.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_template.c $(LIBS)

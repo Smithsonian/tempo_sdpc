@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <netcdf.h>
 
 /* Maximum number of array dimensions */
 #define TIO_MAX_VAR_DIMS   7
@@ -139,6 +140,17 @@ extern int TIO_put_var_section (int grp, const char *name,
 extern int TIO_get_var_section (int grp, const char *name,
                                 int *start, int *count, int type,
                                 void *data);
+
+/** Enable or disable variable-specific I/O methods
+ * @param  name        Name of the variable
+ * @param  get_enable  Control the variable-specific input method:
+ *                     non-zero to enable, zero to disable.
+ * @param  put_enable  Control the variable-specific output method:
+ *                     non-zero to enable, zero to disable.
+ * @return 0 indicates success, -1 indicates the variable name is unrecognized
+ */
+extern int _TIO_set_io_method_enable (const char *name,
+                                      int get_enable, int put_enable);
 
 /** Query the type and size of an attribute
  * @param  grp      Index of group containing the attribute

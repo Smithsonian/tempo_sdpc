@@ -7,13 +7,13 @@ THIS_LIB = tio
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
 
-TIO_INC = -I$(srcdir)
+TIO_INC = $(srcdir)
 
 TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 
-INCS   = $(TIO_INC) -I$(NETCDF_INC)
+INCS   = -I$(TIO_INC) -I$(TELL_INC) -I$(NETCDF_INC)
 LIBS   = $(TIO_LIBPATHS) -ltio \
          $(TELL_LIBPATHS) -ltell \
          $(NETCDF_LIBPATHS) -lnetcdf $(RPATH) -lm
@@ -28,7 +28,7 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = tio_test tio_test_f ftest1
+EXECUTABLES = tio_test tio_test_f ftest1 ppc_test
 
 all:  $(EXECUTABLES)
 
@@ -36,19 +36,20 @@ check:	$(EXECUTABLES)
 	@./tio_test 2> c.test.log && echo "testing C...ok"
 	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
 	@./ftest1 2> ftest1.test.log && echo "running ftest1...ok"
-	-/bin/rm delete_*.nc ftest1.nc *.test.log
+	@./ppc_test > ppc_test.out && diff ppc_test.out ppc_test.chk && echo "running ppc_test...ok"
+	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
 coverage:	$(EXECUTABLES)
 	# zero all execution counters
-	lcov -z -d $(GCDA_FILES_DIR)
+	lcov -z -d $(GCDA_FILES_DIR) -d .
 	# create baseline coverage data file
-	lcov -c -i -d $(GCDA_FILES_DIR) -o base.info
+	lcov -c -i -d $(GCDA_FILES_DIR) -d . -o base.info
 	# perform test
 	$(MAKE) check
 	# create test coverage data file
-	lcov -c -d $(GCDA_FILES_DIR) -o test_cov.info
+	lcov -c -d $(GCDA_FILES_DIR) -d . -o test_cov.info
 	# combine baseline and test coverage data
 	lcov -a base.info -a test_cov.info -o total.info
 	# remove selected paths from coverage statistics
@@ -58,6 +59,9 @@ coverage:	$(EXECUTABLES)
 
 tio_test:
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
+
+ppc_test:
+	$(COMPILE_CMD) -o ppc_test $(INCS) -DSELF_TEST ../src/tio_ppc.c $(LIBS)
 
 tio_test_f:
 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)
