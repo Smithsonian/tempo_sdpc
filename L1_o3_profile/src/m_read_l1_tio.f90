@@ -144,11 +144,13 @@ contains
     if (read_irrad) then
       rad_param_name = o3p_var_irradiance
       !prec_param_name = o3p_var_irradiance_prec
-      prec_param_name = o3p_var_irradiance_relerr
+      !prec_param_name = o3p_var_irradiance_relerr
+      prec_param_name = o3p_var_irradiance_error
     else
       rad_param_name = o3p_var_radiance
       !prec_param_name = o3p_var_radiance_prec
-      prec_param_name = o3p_var_radiance_relerr
+      !prec_param_name = o3p_var_radiance_relerr
+      prec_param_name = o3p_var_radiance_error
     endif
 
     call tiof_push_group (tio_l1obj, swathname, errstat)
@@ -188,8 +190,8 @@ contains
       return
     endif
 
-    ! convert relative error to actual error
-    tio_prec(1:nw,1:nx,1) = tio_rad(1:nw,1:nx,1)*tio_prec(1:nw,1:nx,1)
+    ! if using relerr convert relative error to actual error
+    !tio_prec(1:nw,1:nx,1) = tio_rad(1:nw,1:nx,1)*tio_prec(1:nw,1:nx,1)
 
     ! shift data into output arrays
     radiance(1:nw,1:nx) = tio_rad(1:nw,1:nx,1)
