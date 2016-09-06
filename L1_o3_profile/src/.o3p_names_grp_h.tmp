@@ -1,6 +1,0 @@
-#define                  O3P_GRP_DIAGNOSTIC   "/diagnostic"
-#define                 O3P_GRP_GEOLOCATION   "/geolocation"
-#define                    O3P_GRP_METADATA   "/metadata"
-#define                     O3P_GRP_PRODUCT   "/product"
-#define                    O3P_GRP_QA_STATS   "/qa_statistics"
-#define                O3P_GRP_SUPPORT_DATA   "/support_data"
