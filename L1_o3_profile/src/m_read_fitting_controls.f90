@@ -923,9 +923,10 @@ contains
 ! Obsolete
     ! Read date from radiance file (used for correcting sun-earth 
     ! distance when using backupirradiance)
-!    i = INDEX(l1_inputs_fname_rad, '-o') -14
-!    omiraddate = l1_inputs_fname_rad(i : i + 8)
-
+    if (use_he5_in) then
+      i = INDEX(l1_inputs_fname_rad, '-o') -14
+      omiraddate = l1_inputs_fname_rad(i : i + 8)
+    endif
     ! ------------------------------------------------
     ! Check for consistency of pixel limits to process
     ! ------------------------------------------------
