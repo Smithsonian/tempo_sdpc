@@ -78,7 +78,6 @@ contains
 
     !Check dimensions are consistent with input radiance data
     if (nstep_loc /= nstep .OR. nxtrack_loc /= nxtrack) then
-print *, nstep_loc, nstep, nxtrack_loc, nxtrack
       call tell_error (tell_io_error, &
            "inconsistent dimensions between radiance and cloud files", &
            errstat)

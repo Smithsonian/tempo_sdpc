@@ -69,7 +69,10 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i2), DIMENSION (0:nlines_max-1)                        :: omi_saa_flag
 !  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            ::  &
 !       omi_height, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg
-  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            ::  &
+!  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            ::  &
+!       land_water_flg, glint_flg, snow_ice_flg
+! modified to prevent array over-runs in pixelcorner calculations
+  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:ntimes_max-1)            ::  &
        land_water_flg, glint_flg, snow_ice_flg
 !  INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1)            ::  omi_xtrackqflg
   INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1) :: rowanomaly_flg,&
