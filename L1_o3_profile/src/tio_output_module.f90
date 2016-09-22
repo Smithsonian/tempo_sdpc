@@ -2062,7 +2062,7 @@ contains
     integer (kind=4) :: i, j
     integer (kind=4) :: num_elms, num_layer, num_fitvar, num_aeros_wavl, &
          num_gas, num_param, num_layerp1, num_wav_max
-    real (KIND=4), dimension(0:nlay-1)      :: tmp1D_layer
+    real (KIND=4), dimension(0:nlay)      :: tmp1D_layer
     real (KIND=4), dimension(n_max_fitpars) :: tmp1D_fitvar
     real (KIND=4), dimension(max_fit_pts)   :: tmp1D_fitpts
     real (KIND=4), dimension(maxwin)        :: tmp1D_numwin
@@ -2091,7 +2091,7 @@ contains
     num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
          numwin * 2 * radnhtrunc
 
-    tmp1D_layer(0:nlay-1)          = real(fill_double, kind=4)
+    tmp1D_layer(0:nlay)          = real(fill_double, kind=4)
     tmp1D_numwin(1:numwin)       = real(fill_double, kind=4)
     tmp1D_num(1:numwin)          = int(fill_uint8, kind=4)
     tmp1D_fitvar(1:n_fitvar_rad) = real(fill_double, kind=4)
@@ -2162,11 +2162,11 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
          [tmp1D_layer(0)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay-1), errstat)
+         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay-1), errstat)
+         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay-1), errstat)
+         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof, [iline, ipix, 0], &
          [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &

@@ -429,7 +429,7 @@ contains
         ! Get dimensions of netCDF and open for reading line-by-line
         if (use_tio_in) then
           errstat = 0 ! FIXME - remove when libtell more widely used
-          call read_L1_dims_tio (l1_irrad_filename_nc, nc_irrad_swathname(1),&
+          call read_L1_dims_tio (l1_irrad_filename_nc, nc_irrad_swathname(is),&
                nstep = tio_nt, nxtrack = tio_nx, errstat = errstat) 
           if (errstat /= 0) then
             call tell_error (tell_io_error, &
@@ -439,8 +439,8 @@ contains
           endif
 
           if (use_he5_in) then
-            if (nt /= tio_nt) print *, 'mismatch: nt'
-            if (nx /= tio_nx) print *, 'mismatch: nx'
+            if (nt /= tio_nt) print *, 'mismatch: nt', nt, tio_nt
+            if (nx /= tio_nx) print *, 'mismatch: nx', nx, tio_nx
           endif
           nt = tio_nt
           nx = tio_nx
@@ -510,9 +510,11 @@ contains
             if (tio_mflg /= mflg) print *, 'irrad mismatch: mflg'
             do k=j, j+nwls(ch)-1
               do l=1, size(omi_irradiance_spec, dim=2)
-                if (tio_spec(k,l).ne.omi_irradiance_spec(k,l)) &
+                if (tio_spec(k,l).ne.omi_irradiance_spec(k,l) .and. &
+                   (tio_spec(k,l).gt.0).and.(omi_irradiance_spec(k,l).gt.0)) &
                      print *, 'irrad mismatch: spec'
-                if (tio_prec(k,l).ne.omi_irradiance_prec(k,l)) &
+                if (tio_prec(k,l).ne.omi_irradiance_prec(k,l) .and. &
+                   (tio_prec(k,l).gt.0).and.(omi_irradiance_prec(k,l).gt.0)) &
                      print *, 'irrad mismatch: prec'
                 if (tio_qflg(k,l).ne.omi_irradiance_qflg(k,l)) &
                      print *, 'irrad mismatch: qflg'
@@ -1537,9 +1539,11 @@ contains
               endif
               do k=j, j+nwls(ch)-1
                 do l=1, size(tmp_rspec, dim=2)
-                  if (tio_rspec(k,l).ne.tmp_rspec(k,l)) &
+                  if (tio_rspec(k,l).ne.tmp_rspec(k,l) .and. &
+                       (tio_rspec(k,l).gt.0) .and. (tmp_rspec(k,l).gt.0)) &
                     print *, 'mismatch:rspec', tio_rspec(k,l), tmp_rspec(k,l)
-                  if (tio_rprec(k,l).ne.tmp_rprec(k,l)) &
+                  if (tio_rprec(k,l).ne.tmp_rprec(k,l) .and. &
+                       (tio_rprec(k,l).gt.0) .and. (tmp_rprec(k,l).gt.0)) &
                     print *, 'mismatch:rprec', tio_rprec(k,l), tmp_rprec(k,l)
                   if (tio_rqflg(k,l).ne.tmp_rqflg(k,l)) &
                     print *, 'mismatch:rqflg', tio_rqflg(k,l), tmp_rqflg(k,l)

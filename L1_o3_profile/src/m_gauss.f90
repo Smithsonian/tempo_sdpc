@@ -511,14 +511,17 @@ contains
     !     normalize so that sum = 1.
 
     slitsum = 1.0 ;  slit0 = 1.0
-    i = 1  ;  num_slit = 0
-    DO WHILE ( num_slit <= npoints )
+!    i = 1  ;  num_slit = 0
+    num_slit = 0
+!    DO WHILE ( num_slit <= npoints )
+    DO i = 1, npoints 
       slit (i) = EXP (emult * (delwvl * i)**2)
       slitsum = slitsum + 2.0 * slit (i)
       IF (slit (i) <= slit_trunc_limit ) EXIT 
-      i = i + 1
+!      i = i + 1
     ENDDO
-    num_slit = i
+!    num_slit = i
+    num_slit = i - 1
 
     slit0 = slit0 / slitsum
     slit(1:num_slit) = slit(1:num_slit) / slitsum
@@ -529,7 +532,8 @@ contains
     DO i = 1, npoints
       DO j = 1, num_slit
         nlo = i - j 
-        IF (nlo < 1) nlo = -nlo + 2 
+!        IF (nlo < 1) nlo = -nlo + 2 
+        IF (nlo < 1) nlo = -nlo + 1
         nhi = i + j
         IF ( nhi > npoints ) nhi = npoints - MOD(nhi, npoints)
         specmod(i) = specmod(i) + slit(j) * ( specarr(nlo) + specarr(nhi) )
