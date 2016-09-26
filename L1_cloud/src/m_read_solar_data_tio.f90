@@ -5,8 +5,9 @@ module m_read_solar_data_tio
   use tell_module
   use netcdf, only : nf90_nowrite
   implicit none
-  private
 
+  private read_earth_sun_distance, read_sol_dimensions, read_sol_data, &
+       read_sol_mflg
   public read_solar_data_tio, write_solar_tio, calc_wl_line
 
 contains
@@ -93,7 +94,7 @@ contains
 
 
     !set processing quality_flags
-    call bad_irrad_lambda(nXtrack)
+    call bad_irrad_lambda(nXtrack, errstat)
 
     !correction for earth-sun distance
     call read_earth_sun_distance(filename_sol_nc,dist_irrad,errstat)
@@ -480,8 +481,7 @@ contains
   !> @param[out] il   index of lower bound of wavelength range (in wl_local)
   !> @param[out] ih   index of upper bound of wavelength range (in wl_local)
   !> @param[out] Nwl_l     number of wavelengths in range
-  !
-  !    status    the return PGS_SMF status value
+  !> @param[out] errstat   status value, non-zero indicates failure
   !
   ! Change History:
   !

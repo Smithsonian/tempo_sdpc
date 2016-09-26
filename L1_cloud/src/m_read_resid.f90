@@ -38,7 +38,7 @@ contains
     !local variables
     integer :: i                       
     character(len=100) :: text
-    integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
+    integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status, version, ierr, lun
     integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
     integer :: OrbitNumber, ThreshOrbitNumber
@@ -52,16 +52,16 @@ contains
       status = pgs_met_getPCAttr_i(L1B_LUN, version , "CoreMetadata.0", &
            "OrbitNumber.1",OrbitNumber)
       IF(status /= 0 ) THEN
-        ierr = OMI_SMF_setmsg( status, &
-             "Warning: Could not get orbit number", "read_resids", 1 )
+        call tell_error(tell_io_read_error, &
+             "read_resid: could not get orbit number from L1 file", errstat)
         OrbitNumber=1
       ENDIF
     else !use the orbit number in the PCF file
       status = pgs_pc_getconfigdata(OrbNum_LUN,buf)
       read(buf,*) OrbitNumber
       if (status /= 0) then
-        ierr = OMI_SMF_setmsg( status, &
-             "Warning: Could not get orbit number from PCF", "read_resids", 1 )
+        call tell_error(tell_io_read_error, &
+             "read_resid: could not get orbit number from PCF", errstat)
       endif
       call tell_log(2,'read_resids: using orbit number from PCF')
       write(logmsg,"(A12,I4)") 'OrbitNumber:',OrbitNumber
@@ -72,8 +72,8 @@ contains
 
     status = pgs_pc_getconfigdata(ThreshOrbNum_LUN,buf)
     IF(status /= 0 ) THEN
-      ierr = OMI_SMF_setmsg( status, &
-           "Error getting ThreshOrbNum", "read_resids", 1 )
+      call tell_error(tell_io_read_error, &
+           "read_resid: could not thershold orbit number from PCF", errstat)
       ThreshOrbitNumber=999999
     ELSE
       read(buf,*) ThreshOrbitNumber
@@ -94,9 +94,9 @@ contains
     call tell_log(1,logmsg)
 
     if(status.ne.0) then
-      ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting", "read_resids", 1 ) 
       errstat = -1
+      call tell_error(tell_io_open_error, &
+           "read_resid: unable to open resid file", errstat)
       return
     else
       read(lun, *, err=100) text
@@ -130,10 +130,9 @@ contains
     return
 
 100 status = 1
-    call tell_log(1,'read_resids: error reading file')
-    ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-         "Error reading resid table, PGE aborting", "read_resids", 1 )
     errstat = -1
+    call tell_error(tell_io_read_error,'read_resids: error reading file', &
+         errstat)
     return
 
   end subroutine read_resids
@@ -157,7 +156,7 @@ contains
     !-------------------------------------------------------------------------
     integer, intent(inout) :: errstat
     !local variables
-    integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
+    integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status, version, ierr, lun, nwav_o3
     character (len=200) :: logmsg
 
@@ -171,9 +170,9 @@ contains
     write(logmsg,"(I6,I12)") status, lun
     call tell_log(1,logmsg)
     if(status.ne.0) then
-      ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting", "read_o3", 1 ) 
       errstat = -1
+      call tell_error(tell_io_open_error, &
+           "read_o3: failed to open O3 file", errstat)
       return
     else
       read(lun, *, err=100) nwav_o3

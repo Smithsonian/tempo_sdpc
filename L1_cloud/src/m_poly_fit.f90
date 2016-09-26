@@ -110,6 +110,8 @@ contains
 !    use m_invert
     use m_invert2
     use m_matmul
+    use tell_module
+
     implicit NONE          ! *** IDL2F9O ***
 
     integer, intent(in) :: ndegree
@@ -123,12 +125,14 @@ contains
     real (KIND=8), dimension(ndegree+1) :: res
     real (KIND=8) :: sum1
     integer :: status
+    integer :: errstat = 1
     integer :: n,m,p,k,j
     logical :: no_weight
 
     n = size(x)   
     if(n /= size(y)) then 
-      print *, 'x and y must have same number of elements.'   
+      call tell_error(tell_usage_error, &
+           "poly_fit: x and y must have same number of elements", errstat)
       return
     endif
     m = ndegree + 1           ! # of elements in coeff vec

@@ -99,7 +99,7 @@ contains
   !> @author  12Aug14  O'Sullivan  added documentation, some guesswork involved
   !
   !-------------------------------------------------------------------------
-  subroutine interp_rads(ix1, ix2, pres, pres_int,  i0_1, i0_2, sb_1, sb_2, &
+  subroutine interp_rads(ix1, ix2, pres, pres_int, i0_1, i0_2, sb_1, sb_2, &
        tr_1, tr_2, i0, sb, tr )
 
     implicit none

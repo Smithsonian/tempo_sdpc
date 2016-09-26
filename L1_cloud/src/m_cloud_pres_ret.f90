@@ -151,10 +151,9 @@ contains
              'cloud_pres_ret: min and max wavelengths ',wmin, wmax
         call tell_log(1,logmsg)
 !        if (iprt >= 1) write(6,'(7f12.4)') w_grid
-        ierr = OMI_SMF_setmsg( status, & 
-             "no valid wavelengths, PGE aborting", &
-             "cloud_pres_ret", 1 )
         errstat = -1
+        call tell_error(tell_unknown_error, &
+             "cloud_pres_ret: no valid wavelengths", errstat)
         return
       endif ! nobs > 0
 
@@ -242,7 +241,7 @@ contains
 
         !check for bad radiances
         !=======================
-        call bad_rad_lambda(ip, iLine)
+        call bad_rad_lambda(ip, iLine, errstat)
         if (check_solar) then
           if (btest(qc(ip,iLine),11)) then
             do i=0, nobs-1
@@ -480,9 +479,9 @@ contains
         !=========================================================
         if (using_resid) then
           if (size(resid_spec,dim=1) /= nobs) then
-            ierr = OMI_SMF_setmsg( status, &
-                 "Incompatible resid table, not using corrections", &
-                 "cloud_pres_ret", 1 )
+            call tell_error(tell_io_error, &
+                 "cloud_pres_ret: incompatible resid table, not using corrections", &
+                 errstat)
           else ! good residuals found
             y_obs=y_obs-resid_spec(:,ip+1)*y_obs
             y_obs1=y_obs1-resid_spec(:,ip+1)*y_obs1

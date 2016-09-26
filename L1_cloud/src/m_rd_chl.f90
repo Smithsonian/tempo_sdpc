@@ -40,7 +40,7 @@ contains
     !local variables
     integer                    :: lun=3
     integer                    :: ip, i, j
-    integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
+    integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status, ierr,version
     character (len=128) :: logmsg
 
@@ -54,9 +54,9 @@ contains
       status = pgs_io_gen_openf ( chl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening clorophyll file', &
-             'rd_chl, module m_rd_chl',2)
         errstat = -1
+        call tell_error (tell_io_open_error, &
+             "rd_chl: error opening clorophyll file", errstat)
         return
       endif
 
@@ -79,8 +79,11 @@ contains
     enddo   ! ip
 
     return
-200 print *, 'rd_chl: error reading chlorophyll file'
-    chl2d=0.
+
+    !FIXME - should this failure cause the code to abort?
+200 call tell_error(tell_io_read_error, &
+         'rd_chl: error reading chlorophyll file', errstat)
+    chl2d=0.d0
 
   end subroutine rd_chl
 

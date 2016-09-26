@@ -108,7 +108,7 @@ contains
 
     !Local variables
     integer (KIND = 4), parameter :: maxCoadd=5
-    integer (KIND = 4) :: status, ierr, nTimes, nXtrack, iLine, nTimesSmPx
+    integer (KIND = 4) :: status, nTimes, nXtrack, iLine, nTimesSmPx
     character (LEN = 200) :: filenamen, swathname, logmsg
     type (L1b_block_type) :: blk 
     integer (KIND = 2) :: nPix 
@@ -132,9 +132,10 @@ contains
     ! open data block structure with default size of 1 lines
     status = L1Br_open( blk, filenamen, swathname)!, valname )
     if( status .ne. OMI_S_SUCCESS ) then
-      ierr = OMI_SMF_setmsg( status, &
-           "L1Br_open failed,"//trim(filenamen), "cloud_mask", 0 )
-      stop
+      errstat = -1
+      call tell_error(tell_io_open_error,"cloud_mask: L1Br_open failed", &
+           errstat)
+      return
     end if
 
 
@@ -142,9 +143,9 @@ contains
     status = L1Br_getSWdims( blk,  NumTimes_k=nTimes, nXtrack_k=nXtrack, &
          NumTimesSmallPixel_k=nTimesSmPx )
     if( status .ne. OMI_S_SUCCESS ) then
-      ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-           "L1Br_getSWdims failed.", "cloud_mask", 0 )
       errstat = -1
+      call tell_error(tell_io_read_error,"cloud_mask: L1Br_getSWdims failed", &
+           errstat)
       return
     else 
       call tell_log(3,'cloud_mask: nTimes, nXtrack, nTimesSmPx')
@@ -182,9 +183,9 @@ contains
            Data_k=smvaluesL, &
            Wavelength_k=wavelengthL)!, quality_flagL )
       if( status .ne. OMI_S_SUCCESS ) then
-        ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-             "L1Brd_getSIGline failed", "cloud_mask", 0 )
         errstat = -1
+        call tell_error(tell_io_read_error, &
+             "cloud_mask: L1Br_getDATAline failed", errstat)
         return
       end if
 
@@ -207,12 +208,11 @@ contains
     ! close data block structure
     status = L1Br_close( blk )
     if( status .ne. OMI_S_SUCCESS ) then
-      ierr = OMI_SMF_setmsg( status, &
-           "L1Br_close failed.", "cloud_mask", 0 )
       errstat = -1
+      call tell_error(tell_io_error,"cloud_mask: L1Br_close failed", errstat)
       return
     end if
-    ierr = OMI_SMF_setmsg(PGS_S_SUCCESS, "Test Done", "cld_mask, m_cloud_mask", 0 )
+    call tell_log(1,'cloud_mask finished successfully')
 
   end subroutine cld_mask
 

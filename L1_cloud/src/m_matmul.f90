@@ -21,6 +21,12 @@
 !-------------------------------------------------------------------------
 module m_matmul
 
+  use tell_module
+
+  implicit none
+
+  integer (kind=4) :: error
+
   public 
 
   interface operator (.mm.)
@@ -67,7 +73,8 @@ contains
     !-------------------------------------------------------------------------
 
     if (size(a,2) /= size(b,1) ) then
-      print *,'incorrect matrix dimensions in .mm.'
+      call tell_error (tell_usage_error, &
+           "matmul1: incorrect matrix dimensions in .mm.", error)
       return
     endif
     c = matmul(a, b)
@@ -115,7 +122,8 @@ contains
 
 
     if (size(a,2) /= size(b,1) ) then
-      print *,'incorrect matrix dimensions in .mm.'
+      call tell_error (tell_usage_error, &
+           "matmul2: incorrect matrix dimensions in .mm.", error)
       return
     endif
     c = matmul(a, b)
@@ -133,7 +141,8 @@ contains
     real (KIND=8), dimension(size(b,2))               :: c
 
     if (size(a,1) /= size(b,1) ) then
-      print *,'incorrect matrix dimensions in .mm.'
+      call tell_error (tell_usage_error, &
+           "matmul3: incorrect matrix dimensions in .mm.", error)
       return
     endif
     c = matmul(a, b)
@@ -150,7 +159,8 @@ contains
     real (KIND=8), dimension(1)                     :: c
 
     if (size(a,1) /= size(b,1) ) then
-      print *,'incorrect matrix dimensions in .mm.'
+      call tell_error (tell_usage_error, &
+           "matmul4: incorrect matrix dimensions in .mm.", error)
       return
     endif
     c = dot_product(a, b)

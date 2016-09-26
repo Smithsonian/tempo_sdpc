@@ -2,7 +2,7 @@ module m_read_solar_flux
 
 contains
 
-  subroutine read_solar_flux()
+  subroutine read_solar_flux(errstat)
 
     use m_vars, ONLY: ws, fs, wmin2, wmax2, nsolwave, meas_qual_flg, &
          irr_quality_flagL, dist_rad, dist_irrad, config_irr 
@@ -23,6 +23,8 @@ contains
     !   INCLUDE 'PGS_OMI_1900.f'
     !   INCLUDE 'PGS_OMCLDRR_52251.f'
 
+    integer (kind=4), intent(in) :: errstat
+
     INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
          nTimes, nXtrack, nWavel, nWavelCoef, &
          nwl        !,iLine
@@ -34,6 +36,9 @@ contains
     REAL (KIND = 4), DIMENSION(:,:), ALLOCATABLE :: irradianceL, &
          wavelengthL
     REAL (KIND = 4) :: Wl_vis_beg, Wl_vis_end
+
+    if (errstat /= 0) return
+
 
     Wl_vis_beg = wmin2 
     Wl_vis_end = wmax2
@@ -184,7 +189,7 @@ contains
     fs(0:nsolwave-1,:)=irradianceL(1:nsolwave,:)
 
     !set processing qulity flags
-    call bad_irrad_lambda(nXtrack)
+    call bad_irrad_lambda(nXtrack,errstat)
 
     ! deallocate memory
 

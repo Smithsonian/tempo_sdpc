@@ -87,7 +87,7 @@ program OMCLDRR
     version = 1
     status = pgs_pc_getreference(L2_out,version,flnm_out)
     if(status.ne.0) then
-      errstat=1
+      errstat=-1
       call tell_error(tell_io_open_error, &
            "error opening output L2 file, L1_cloud aborting, exit code = 1", &
            errstat)
@@ -303,7 +303,7 @@ program OMCLDRR
     ! close data block structure
     status = L1Br_close( blk )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      errstat=1
+      errstat=-1
       call tell_error(tell_io_error, &
            "L1Br_close failed, L1_cloud aborting, exit code = 1", &
            errstat)
@@ -314,7 +314,7 @@ program OMCLDRR
 
   !exit with normal status
   !=======================
-  call tell_log(0,"L1_cloud finished normally")
+  call tell_log(1,"L1_cloud finished normally")
 
   call tell_close()
 

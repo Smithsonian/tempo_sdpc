@@ -45,7 +45,7 @@ contains
     !local variables
     !================
     integer :: lun=2 
-    integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
+    integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status,ierr, version=1
     integer :: ipts, i, j
     real (KIND=8) :: lont, latt
@@ -61,10 +61,9 @@ contains
       status = pgs_io_gen_openf ( refl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN, &
-             'error opening reflectivity file', &
-             'rd_toms_refl, module m_rd_toms_refl',2)
         errstat = -1
+        call tell_error(tell_io_open_error, &
+             "rd_toms_refl: error opening reflectivity file", errstat)
         return
       endif
       write(logmsg,"(A49, I4)") &
@@ -102,9 +101,9 @@ contains
       status = pgs_io_gen_openf ( ler354_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening ler354_cox_munk file', &
-             'rd_toms_refl, module m_rd_toms_refl',2)
         errstat = -1
+        call tell_error(tell_io_open_error, &
+             "rd_toms_refl: error opening ler354_cox_munk file", errstat)
         return
       endif
 
@@ -114,7 +113,7 @@ contains
       read (lun,*,err=201) ler354
       status = pgs_io_gen_closef (lun)
       write(logmsg,"(A52, I4)") &
-           'rd_toms_refl: opening ler354_cox_munk file, status :',status
+           'rd_toms_refl: closing ler354_cox_munk file, status :',status
       call tell_log(1,logmsg)
       done_read_refl=.true.
       deltlat=ref_nlat/180.
@@ -144,10 +143,15 @@ contains
     enddo   ! ipts
 
     return
-200 print *, 'rd_toms_refl: error reading reflectivity file'
-    toms_refl=0.
-201 print *, 'rd_toms_refl: error reading Cox-Munk LER file'
-    ler354=0.
+
+    !FIXME - should either of these failures cause the code to abort?
+200 call tell_error(tell_io_read_error, &
+         "rd_toms_refl: error reading reflectivity file", errstat)
+    toms_refl=0.d0
+
+201 call tell_error(tell_io_read_error, &
+    'rd_toms_refl: error reading Cox-Munk LER file', errstat)
+    ler354=0.d0
 
   end subroutine rd_toms_refl
 

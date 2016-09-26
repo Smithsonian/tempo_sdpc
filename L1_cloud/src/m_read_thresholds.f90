@@ -43,7 +43,7 @@ contains
     integer :: i, j, l, m
     character(len=100) :: text, logmsg
     integer :: lun=10
-    integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
+    integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status, version, ierr
 
     if (errstat /= 0) return
@@ -57,11 +57,9 @@ contains
     write(logmsg,"(I6,I5)") status, lun
     call tell_log(1,logmsg)
     if(status.ne.0) then
-      ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening threshold table file', &
-           'read_thresholds, module m_read_thresholds',1)
-      ierr = OMI_SMF_setmsg( status, &
-           "PGE aborting", "read_thresholds", 1 ) 
       errstat = -1
+      call tell_error(tell_io_open_error, &
+           "read_thresholds: error opening threshold table file", errstat)
       return
     endif
     !    else
@@ -110,10 +108,9 @@ contains
     return
 
 100 status = 1
-    call tell_log(1,'read_thresholds: error reading file')
-    ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
-         "Error reading threshold table, PGE aborting", "read_thresholds", 1 )
     errstat = -1
+    call tell_error(tell_io_read_error, &
+         'read_thresholds: error reading file', errstat)
     return
 
   end subroutine read_thresholds

@@ -6,7 +6,7 @@ module m_read_input_data
 
 contains
 
-  subroutine read_input_data(blk, rc)
+  subroutine read_input_data(blk, errstat)
 
     use m_vars
     use L1B_Reader_class
@@ -35,7 +35,7 @@ contains
     ! !INPUT PARAMETERS:   
     !
     ! !OUTPUT PARAMETERS:  
-    integer, intent(out)         :: rc        ! Error return code:
+    integer, intent(out)         :: errstat        ! Error return code:
     !  0   all is well
     !  1   files not found
     !
@@ -73,7 +73,7 @@ contains
     !include 'PGS_OMCLDRR_52251.f'
     !***********************************************************************
 
-    rc=0
+    if (errstat /= 0) return
 
     if (iLine == 0) then
       !**********************************************************************
@@ -123,13 +123,12 @@ contains
       write(logmsg,"(A36, I12)")'read_input_data: opening l1b status ',status
       call tell_log(1,logmsg)
       IF( status .NE. OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( status, & 
-             "PGE aborting, exit code = 1", "read_input_data", 1 )
-        call exit(-1)
+        errstat = -1
+        call tell_error(tell_io_open_error, &
+             "read_input_data: L1Br_open failed", errstat)
+        return
       ELSE
-        !     ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
-        ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
-             "Opened Earth Radiance", "read_input_data", 1 )
+        call tell_log(1,'read_input_data: opened radiance file')
       END IF
 
       ! obtain sizes of dimensions defined in swath
@@ -149,13 +148,12 @@ contains
         nTimes=max_lines+start_line
       endif
       IF( status .NE. OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( status, & 
-             "PGE aborting, exit code = 1", "read_input_data", 1 )
-        call exit(-1)
+        errstat = -1
+        call tell_error(tell_io_read_error, &
+             "read_input_data: L1Br_getSWdims failed", errstat)
+        return
       ELSE
-        !      ierr = OMI_SMF_setmsg( OMCLDRR_S_SUCCESS, &
-        ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &
-             "Read Earth Radiance Dims", "read_input_data", 1 )
+        call tell_log(1,'read_input_data: read radiance dimensions')
       END IF
 
       !*********************************************************************
@@ -173,11 +171,10 @@ contains
          InstrumentConfigurationID_k=config_rad(iLine), &
          ImageBinningFactor_k=imbin )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-           "L1Brd_getDATA failed", "read_input_data", 1 )
-      ierr = OMI_SMF_setmsg( status, & 
-           "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(-1)
+      errstat = -1
+      call tell_error(tell_io_read_error, &
+           "read_input_data: L1Br_getDATA failed", errstat)
+      return
     END IF
 
     status = L1Br_getGEOline( blk, iLine-1, Time_k=time(iLine), & 
@@ -189,11 +186,10 @@ contains
     !Geoflag_k=geoflg(:,iLine), MeasFlag_k=mflg(iLine), &
     !MeasClass_k=meas_class(iLine), Config_k=config_rad(iLine) , ImgBinFact_k=imbin )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-           "L1Brd_getGEOline failed", "read_input_data", 1 )
-      ierr = OMI_SMF_setmsg( status, & 
-           "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(-1)
+      errstat = -1
+      call tell_error(tell_io_read_error, &
+           "read_input_data: L1Br_getGEOline failed", errstat)
+      return
     END IF
 
 
@@ -203,12 +199,12 @@ contains
          ierr,'izoom',izoom
     call tell_log(2,logmsg)
 
-    !check for skipping the zoom mode
-    if(izoom==1 .and. .not. do_zoom) then
-      ierr = OMI_SMF_setmsg( OMCLDRR_W_ZOOM, &
-           "zoom mode measurements skipped ", "read_input_data", 1 )
-      call exit(0)  
-    endif
+!    !check for skipping the zoom mode
+!    if(izoom==1 .and. .not. do_zoom) then
+!      ierr = OMI_SMF_setmsg( OMCLDRR_W_ZOOM, &
+!           "zoom mode measurements skipped ", "read_input_data", 1 )
+!      call exit(0)  
+!    endif
 
     !JJ - is the 180 correct?
     azimuth(:,iLine)=sazimuth(:,iLine)+180.0-vazimuth(:,iLine)
@@ -224,13 +220,13 @@ contains
       status = PGS_TD_TAItoUTC(time(1),DateTime)
 
       IF(status .NE. PGS_S_SUCCESS) THEN
-        ierr = OMI_SMF_setmsg(OMI_E_FAILURE, "TAI time conversion failed", &
-             "read_input_data", 0)
+        call tell_error (tell_application_error, &
+             "TAI time conversion failed", errstat)
         month=1
       ELSE
         READ  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
         WRITE( msg,* ) "Date is: ", Year, Month, Day
-        status = OMI_SMF_setmsg(PGS_S_SUCCESS, msg, "read_input_data", 1)
+!        status = OMI_SMF_setmsg(PGS_S_SUCCESS, msg, "read_input_data", 1)
         call tell_log(1,msg)
       ENDIF
       write(logmsg,"(A12,2F7.3)") 'wmin2 wmax2 ',wmin2,wmax2
@@ -247,7 +243,7 @@ contains
       ! ===================================================================  
       meas_qual_flg(iLine)=IBSET(meas_qual_flg(iLine),1)
       n_missing = n_missing + nXtrack 
-      rc=1
+!      rc=1
       write(logmsg,"(A13,I6,4L2)") 'missing line ',iLine, &
            btest(mflg(iLine),0), btest(mflg(iLine),1), &
            btest(mflg(iLine),3), btest(mflg(iLine),12)
@@ -272,11 +268,10 @@ contains
     !check if it was good and abort if bad
     !=====================================
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      ierr = OMI_SMF_setmsg( OMI_E_FAILURE, &
-           "L1Br_getSIGline failed", "read_input_data", 1 )
-      ierr = OMI_SMF_setmsg( status, & 
-           "PGE aborting, exit code = 1", "read_input_data", 1 )
-      call exit(-1)
+      errstat = -1
+      call tell_error(tell_io_read_error, &
+           "read_input_data: L1Br_getSIGline failed", errstat)
+      return
     END IF
 
 
@@ -305,7 +300,7 @@ contains
       if (nwl > nWavel .or. nwl < min_wl) then
         qc(:,iLine) = IBSET(qc(:,iLine),14)
         n_missing = n_missing + nXtrack 
-        rc=2
+!        rc=2
         write(logmsg,"(A13,4I6)") 'missing line ',iLine, nwl, nWavel, min_wl
         call tell_log(1,logmsg)
 !        if (iprt >= 3) then
@@ -318,7 +313,7 @@ contains
     !===================
     if (iLine == start_line) then
       !  call pzeitbeg('rd_sol')
-      call read_solar_flux()
+      call read_solar_flux(errstat)
       !  call pzeitend
       call tell_log(3,'irradiance')
       do i=0,nsolwave-1

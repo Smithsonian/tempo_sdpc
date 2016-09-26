@@ -7,7 +7,7 @@ module m_lambda_qual
 contains
 
   !>Set radiance quality flags
-  subroutine bad_rad_lambda(ip, iLine)
+  subroutine bad_rad_lambda(ip, iLine, errstat)
 
     use m_vars, ONLY: quality_flagL, qc, wmin, wmax, transient_check
     use m_cloud_pres_mod, ONLY: f1p, w1p
@@ -15,11 +15,12 @@ contains
 
     implicit none
 
-    integer, intent(in) :: ip, iLine
+    integer, intent(in) :: ip, iLine, errstat
     integer :: iw                    
     integer :: iw_start, iw_end
     logical :: pxl_error, pxl_warning
 
+    if (errstat /= 0) return
 
     !find starting and ending wavelengths
     !====================================
@@ -69,7 +70,7 @@ contains
   end subroutine bad_rad_lambda
 
   !>Set irradiance quality flags
-  subroutine bad_irrad_lambda(nXtrack)
+  subroutine bad_irrad_lambda(nXtrack, errstat)
 
     use m_vars, ONLY: irr_quality_flagL, qc, nsolwave, ws, fs, wmin, wmax, &
          transient_check 
@@ -78,13 +79,15 @@ contains
 
     implicit none
 
-    integer, intent(in) :: nXtrack
+    integer, intent(in) :: nXtrack, errstat
     integer :: iw, ip
     integer :: iw_start, iw_end              !, iw_start2, iw_end2
     logical, dimension(nsolwave,nXtrack) :: pxl_error
     logical :: pxl_warning
     character (len=128) :: logmsg
 
+
+    if (errstat /= 0) return
 
     do ip=0,nXtrack-1
 
