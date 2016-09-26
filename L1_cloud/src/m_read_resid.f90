@@ -20,7 +20,7 @@ contains
     ! !USES: read_resids reads precomputed resids spectra needed for cloud
     !               pressures
     !
-    use m_vars, ONLY: nwav, nscanpos, resid_spec, iprt, read_he4
+    use m_vars, ONLY: nwav, nscanpos, resid_spec, read_he4
     use m_LUN_set
     use m_pgs_include
     use tell_module
@@ -42,7 +42,7 @@ contains
     integer :: status, version, ierr, lun
     integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
     integer :: OrbitNumber, ThreshOrbitNumber
-    character(len=200) :: buf
+    character(len=200) :: buf, logmsg
 
     if (errstat /= 0) return
 
@@ -63,9 +63,8 @@ contains
         ierr = OMI_SMF_setmsg( status, &
              "Warning: Could not get orbit number from PCF", "read_resids", 1 )
       endif
-      if (iprt >= 1) then
-        print *,'read_resids: using orbit number from PCF ',OrbitNumber
-      endif
+      call tell_log(2,'read_resids: using orbit number from PCF')
+      write(logmsg,"(A12,I4)") 'OrbitNumber:',OrbitNumber
     endif
 
 
@@ -89,9 +88,10 @@ contains
            0,lun, version)
     endif
 
-    if (iprt > 0) then
-      print *,'read_resids: trying to open resid file ',status, lun
-    endif
+    call tell_log(1,'read_resids: trying to open resid file')
+    call tell_log(1,'read_resids: status, lun')
+    write(logmsg,"(I6,I12)") status, lun
+    call tell_log(1,logmsg)
 
     if(status.ne.0) then
       ierr = OMI_SMF_setmsg( status, &
@@ -101,11 +101,10 @@ contains
     else
       read(lun, *, err=100) text
       read(lun, *, err=100) nscanpos, nwav
-      if (iprt >= 1) then
-        print *,text
-        print *,'read_resids: nscanpos, nwav'
-        print *,nscanpos, nwav
-      endif
+      call tell_log(1,text)
+      call tell_log(1,'read_resids: nscanpos, nwav')
+      write(logmsg,"(2I4)") nscanpos, nwav
+      call tell_log(1,logmsg)
 
       !allocate the resid table, but fill with default
       !constant value in case file not found
@@ -121,17 +120,17 @@ contains
       endif
       do i=1, nwav
         read(lun, *, err=100) resid_spec(i,1:nscanpos) 
-        if (iprt >= 2) print *, 'read_resids: ',i, resid_spec(i,1:nscanpos)
+!        if (iprt >= 2) print *, 'read_resids: ',i, resid_spec(i,1:nscanpos)
       enddo
 
       status = pgs_io_gen_closef (lun)
-      if (iprt > 2) print *,'read_resids: done reading file'
+      call tell_log(2,'read_resids: done reading file')
     endif
 
     return
 
 100 status = 1
-    if (iprt > 0) print *,'read_resids: error reading file'
+    call tell_log(1,'read_resids: error reading file')
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
          "Error reading resid table, PGE aborting", "read_resids", 1 )
     errstat = -1
@@ -143,7 +142,7 @@ contains
   !>Read in Ozone cross-section reference file
   subroutine read_o3 (errstat)
 
-    use m_vars, ONLY: wave_o3, xsect_o3, iprt
+    use m_vars, ONLY: wave_o3, xsect_o3
     use m_LUN_set
     use m_pgs_include
     use tell_module
@@ -160,15 +159,17 @@ contains
     !local variables
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr, lun, nwav_o3
+    character (len=200) :: logmsg
 
     if (errstat /= 0) return
 
     version = 1
     status = pgs_io_gen_openf ( o3_id, PGSd_IO_Gen_RSeqFrm, &
          0,lun, version)
-    if (iprt > 0) then
-      print *,'read_o3: trying to open o3 file ',status, lun
-    endif
+    call tell_log(1,'read_o3: trying to open o3 file')
+    call tell_log(1,'status, lun')
+    write(logmsg,"(I6,I12)") status, lun
+    call tell_log(1,logmsg)
     if(status.ne.0) then
       ierr = OMI_SMF_setmsg( status, &
            "PGE aborting", "read_o3", 1 ) 
@@ -176,10 +177,8 @@ contains
       return
     else
       read(lun, *, err=100) nwav_o3
-      if (iprt >= 1) then
-        print *,'read_o3: nwav_o3'
-        print *, nwav_o3
-      endif
+      write(logmsg,"(A18,I4)")'read_o3: nwav_o3= ',nwav_o3
+      call tell_log(1,logmsg)
 
       !allocate the resid table, but fill with default
       !constant value in case file not found
@@ -196,17 +195,17 @@ contains
 
       read(lun, *, err=100) wave_o3
       read(lun, *, err=100) xsect_o3
-      if (iprt >= 2) print *, 'read_o3: ', wave_o3
-      if (iprt >= 2) print *, 'read_o3: ', xsect_o3
+!      if (iprt >= 2) print *, 'read_o3: ', wave_o3
+!      if (iprt >= 2) print *, 'read_o3: ', xsect_o3
 
       status = pgs_io_gen_closef (lun)
-      if (iprt > 2) print *,'read_o3: done reading file'
+      call tell_log(2,'read_o3: done reading file')
     endif
 
     return
 
 100 status = 1
-    if (iprt > 0) print *,'read_o3: error reading file'
+    call tell_log(1,'read_o3: error reading file')
     errstat = -1
     call tell_error (tell_io_read_error, &
          "read_o3: failed to read O3 cross-section file", &

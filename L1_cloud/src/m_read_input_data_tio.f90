@@ -21,7 +21,7 @@ contains
   !---------------------------------------------------------------------
   subroutine read_input_data_tio(l1bfile, errstat)
 
-    use m_vars, only: iprt, input_data_path, iLine, wrt_solar, wmin, wmax, &
+    use m_vars, only: input_data_path, iLine, wrt_solar, wmin, wmax, &
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
          mflg, n_input, n_missing, nwl, w12d, qc, nwave, min_wl, &
@@ -40,7 +40,7 @@ contains
 
     !local variables
     character (len = 200) :: filenamepath, swathname
-    character (len = 128) :: log_msg
+    character (len = 128) :: logmsg
     character (len = 30) :: DateTime
     integer (kind = 4) :: i
     integer (kind = 4) :: PGS_TD_TAItoUTC 
@@ -57,8 +57,9 @@ contains
       !-----------------------------------------------------------------
       !If on first line, perform some setup
 
-      if (iprt > 0) print *,'read_input_data_tio: filename ', &
+      write(logmsg,"(A30, 3A)")'read_input_data_tio: filename ', &
            trim(filenamepath), '   ', trim(swathname)
+      call tell_log(1,logmsg)
       !MAY ALREADY DONE IN he4 READ
       if (.not. read_he4) then
         !set wavelength bounds
@@ -86,8 +87,10 @@ contains
       endif
 
       iLine=start_line
-      if (max_lines > 0 .and. iprt > 0) then
-        print *,'read_input_data_tio: changing nTimes to ',max_lines
+      if (max_lines > 0) then
+        write(logmsg,"(A40, I6)") 'read_input_data_tio: changing nTimes to ',&
+             max_lines
+        call tell_log(1,logmsg)
         nTimes=max_lines+start_line
       endif
       nLines=nTimes
@@ -95,7 +98,7 @@ contains
       !MAY ALREADY BEDONE DURING he4 READ
       if (.not. read_he4) then
         !Allocate arrays for variables to be read in
-        if (iprt >= 1) print *,'read_input_data_tio: calling alloc_scan'
+        call tell_log(1,'read_input_data_tio: calling alloc_scan')
         call alloc_scan(errstat)
         if(errstat /= 0) then 
           call tell_error (tell_malloc_error, &
@@ -114,7 +117,7 @@ contains
                errstat)
           return
         endif
-        if(iprt >=2) print *,'read_cld_geo_data2: success'
+        call tell_log(2,'read_cld_geo_data2: success')
       endif
 
       !Need the month in order to read in correct calibration climatologies
@@ -131,11 +134,11 @@ contains
         month=1
       else
         read  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
-        write (log_msg, *) "Date is: ", Year, Month, Day
-        call tell_log (1, log_msg)
-        if (iprt >= 1) print *,log_msg
+        write (logmsg, *) "Date is: ", Year, Month, Day
+        call tell_log (1, logmsg)
       endif
-      if (iprt >= 3) print *,'wmin2 wmax2 ',wmin2,wmax2
+      write (logmsg,"(A10,2F7.2)") 'wmin2 wmax2 ',wmin2,wmax2
+      call tell_log(3,logmsg)
 
 
     endif !iLine == 0
@@ -153,7 +156,7 @@ contains
              errstat)
         return
       endif
-      if(iprt >=2) print *,'read_cld_geo_data: success'
+      call tell_log(2,'read_cld_geo_data: success')
     endif
 
     !Keep track of number of value input
@@ -165,10 +168,10 @@ contains
          .or. btest(mflg(iLine),3) .or. btest(mflg(iLine),12)) then
       meas_qual_flg(iLine)=ibset(meas_qual_flg(iLine),1)
       n_missing = n_missing + nXtrack 
-      if (iprt >= 1) then
-        print *,'missing line ',iLine, btest(mflg(iLine),0), &
-             btest(mflg(iLine),1), btest(mflg(iLine),3), btest(mflg(iLine),12)
-      endif
+      write(logmsg,"(A13,I6,4L2)") 'missing line ',iLine, &
+           btest(mflg(iLine),0), btest(mflg(iLine),1), &
+           btest(mflg(iLine),3), btest(mflg(iLine),12)
+      call tell_log(1,logmsg)
     endif
     !Set internal measurement quality flags
     if(btest(mflg(iLine),2) .or. btest(mflg(iLine),4) &
@@ -192,30 +195,33 @@ contains
            errstat)
       return
     endif
-    if(iprt > 1) print *,'read_cld_rad_data: success'
+    call tell_log(2,'read_cld_rad_data: success')
 
     !Print check of wavelengths
-    if (iprt >= 1 .and. iLine == start_line) then
-      print *, 'nwl, iLine, wmin, wmax'
-      print *, nwl, iLine, wmin, wmax
+    if (iLine == start_line) then
+      call tell_log(1,'nwl, iLine, wmin, wmax')
+      write(logmsg,"(2I6,2F7.3)") nwl, iLine, wmin, wmax
+      call tell_log(1,logmsg)
     endif
 
     nwave=nwl
 
-    if (iLine == start_line) then
-      if (iprt >= 3) then
-        write(6,"(6f12.2)") w12d(0:nwl-1,0)
-      endif
-    else 
+    if (iLine /= start_line) then
+!    if (iLine == start_line) then
+!      if (iprt >= 3) then
+!        write(6,"(6f12.2)") w12d(0:nwl-1,0)
+!      endif
+!    else 
       !check for missing data
       if (nwl > nWavel .or. nwl < min_wl) then
         qc(:,iLine) = ibset(qc(:,iLine),14)
         n_missing = n_missing + nXtrack 
         errstat=-1
-        if (iprt >= 1) print *,'missing line ',iLine, nwl, nWavel, min_wl
-        if (iprt >= 3) then
-          write(6,"(6f12.2)") w12d(0:nwl-1,0)
-        endif
+        write (logmsg,"(A13, 4I6)") 'missing line ',iLine, nwl, nWavel, min_wl
+        call tell_log(1,logmsg)
+!        if (iprt >= 3) then
+!          write(6,"(6f12.2)") w12d(0:nwl-1,0)
+!        endif
       endif ! missing wavelength data
     endif ! start_line
 
@@ -229,12 +235,11 @@ contains
              errstat)
         return
       endif
-      if (iprt > 1) then
-        print *,'irradiance'
-        do i=0,nsolwave-1
-          write(*,'(i4,2e12.4)') i,ws(i,0),fs(i,0)
-        enddo
-      endif ! iprt > 1
+      call tell_log(3,'irradiance')
+      do i=0,nsolwave-1
+        write(logmsg,'(i4,2e12.4)') i,ws(i,0),fs(i,0)
+        call tell_log(3,logmsg)
+      enddo
     endif ! iLine==start_line
 
     ! option to write out solar data and quit
@@ -265,7 +270,7 @@ contains
   !---------------------------------------------------------------------
   subroutine read_cld_dimensions(l1bfile, tio_l1obj, swathname, errstat)
 
-    use m_vars, only: nXtrack, nTimes, nWavel, iprt
+    use m_vars, only: nXtrack, nTimes, nWavel
 
     implicit none
     !input variables
@@ -277,16 +282,20 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
+    !local variables
+    character (len=128) :: logmsg
+
     if (errstat /= 0) return
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_xtrack, nXtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_step, nTimes, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_channel, nWavel, errstat)
-    if(iprt > 0) then
-      print *,'read_input_data_tio: nTimes, nXtrack, nWavel'
-      print *, nTimes,nXtrack,nWavel
-    endif
+
+    call tell_log(1,'read_input_data_tio: nTimes, nXtrack, nWavel')
+    write(logmsg,"(3I6)")nTimes,nXtrack,nWavel
+    call tell_log(1,logmsg)
+
     call tiof_close (tio_l1obj, errstat)
     
     if (errstat /= 0) then
@@ -370,19 +379,24 @@ contains
 
     !Test array values match he4 version
     if (read_he4) then
-      if(time(iLine).ne.tio_time(1)) print *,'mismatch:time'
-      if(mflg(iLine).ne.tio_mflg(1)) print *,'mismatch:mflg'
+      if(time(iLine).ne.tio_time(1)) call tell_log(0,'mismatch:time')
+      if(mflg(iLine).ne.tio_mflg(1)) call tell_log(0,'mismatch:mflg')
       do i=1,nXtrack
-        if(lat(i,iLine).ne.tio_lat(i,1)) print *,'mismatch:lat'
-        if(lon(i,iLine).ne.tio_lon(i,1)) print *,'mismatch:lon'
-        if(sza(i-1,iLine).ne.tio_sza(i,1)) print *,'mismatch:sza'
-        if(sazimuth(i,iLine).ne.tio_sazimuth(i,1)) print *,'mismatch:sazimuth'
-        if(vazimuth(i,iLine).ne.tio_vazimuth(i,1)) print *,'mismatch:vazimuth'
-        if(sat_zen(i-1,iLine).ne.tio_sat_zen(i,1)) print *,'mismatch:sat_zen'
+        if(lat(i,iLine).ne.tio_lat(i,1)) call tell_log(0,'mismatch:lat')
+        if(lon(i,iLine).ne.tio_lon(i,1)) call tell_log(0,'mismatch:lon')
+        if(sza(i-1,iLine).ne.tio_sza(i,1)) call tell_log(0,'mismatch:sza')
+        if(sazimuth(i,iLine).ne.tio_sazimuth(i,1)) &
+             call tell_log(0,'mismatch:sazimuth')
+        if(vazimuth(i,iLine).ne.tio_vazimuth(i,1)) &
+             call tell_log(0,'mismatch:vazimuth')
+        if(sat_zen(i-1,iLine).ne.tio_sat_zen(i,1)) &
+             call tell_log(0,'mismatch:sat_zen')
         if(terr_height(i,iLine).ne.tio_terr_height(i,1)) &
-             print *,'mismatch:terr_height'
-        if(geoflg(i,iLine).ne.tio_geoflg(i,1)) print *,'mismatch:geoflg'
-        if(anomflg(i,iLine).ne.tio_anomflg(i,1)) print *,'mismatch:anomflg'
+             call tell_log(0,'mismatch:terr_height')
+        if(geoflg(i,iLine).ne.tio_geoflg(i,1)) &
+             call tell_log(0,'mismatch:geoflg')
+        if(anomflg(i,iLine).ne.tio_anomflg(i,1)) &
+             call tell_log(0,'mismatch:anomflg')
       enddo
     endif
 
@@ -547,12 +561,14 @@ contains
       !Test array values match he4 version
       do i=1,nXtrack
         do j=1,nwl
-          if(f12d(j-1,i-1).ne.tio_rad(il+j-1,i,1)) print *,'mismatch: rad'
+          if(f12d(j-1,i-1).ne.tio_rad(il+j-1,i,1)) &
+               call tell_log(0,'mismatch: rad')
           !NB match to precision of wavelength values
           if(w12d(j-1,i-1)-tio_wvl(il+j-1,i,1).ge.4e-5) then
-            print *,'mismatch: wvl',w12d(j-1,i-1)-tio_wvl(il+j-1,i,1)
+            call tell_log(0,'mismatch: wvl')
           endif
-          if(quality_flagL(j,i).ne.tio_flg(il+j-1,i,1)) print *,'mismatch: flg'
+          if(quality_flagL(j,i).ne.tio_flg(il+j-1,i,1)) &
+               call tell_log(0,'mismatch: flg')
         enddo
       enddo
     endif

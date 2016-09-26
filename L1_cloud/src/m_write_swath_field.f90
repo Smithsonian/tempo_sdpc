@@ -29,6 +29,7 @@
 !EOP
 !-------------------------------------------------------------------------
 !
+       use tell_module
 
        interface put_data
          module procedure put_data_1dr8
@@ -45,6 +46,7 @@
        end interface
 
        include 'hdfeos5.inc'
+
 
 !       integer (kind = 4), parameter :: HE5_HDFE_NOMERGE=0
 !       integer (kind = 4), parameter :: HE5_HDFE_AUTOMERGE=1
@@ -63,7 +65,7 @@
        contains
 
        function put_data_1dr8(swid,fieldname,dimname,data, &
-          missingvalue, title, units, geo, offset, iprt) &
+          missingvalue, title, units, geo, offset) &
           result(status)
 
        USE ISO_C_BINDING, ONLY: C_LONG
@@ -73,8 +75,6 @@
        integer,   intent(in), optional :: offset
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        real (kind = 8), dimension(:) :: data
        real (kind = 8), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -85,9 +85,9 @@
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) :: nn, n1=1, n11=11
+       character (len=128) :: logmsg
 
        geofld=.false.
-       if (present(iprt)) iprt2=iprt
        if (present(geo)) geofld=geo
        start = 0
        stride = 1
@@ -124,12 +124,12 @@
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n11, "Aura-Shared")
        status = he5_swwrfld (swid, fieldname, &
           start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1),data(dims(1))
+       write(logmsg,*) fieldname,status,data(1),data(dims(1))
+       call tell_log(2, logmsg)
        end function put_data_1dr8
 
        function put_data_1dr4(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -138,8 +138,6 @@
        integer,   intent(in), optional :: offset
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        real (kind = 4), dimension(:) :: data
        real (kind = 4), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -150,10 +148,10 @@
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) :: nn, n1=1, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -188,15 +186,15 @@
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1),data(dims(1))
+       write(logmsg,*) fieldname,status,data(1),data(dims(1))
+       call tell_log(2, logmsg)
        end function put_data_1dr4
 
 
 
 
        function put_data_1di2(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -205,8 +203,6 @@
        logical, intent(in), optional :: geo
        integer,   intent(in), optional :: offset
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        integer (kind = 2), dimension(:) :: data
        integer (kind = 2), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -217,10 +213,10 @@
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) :: nn, n1=1, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -255,8 +251,8 @@
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1),data(dims(1))
+       write(logmsg,*) fieldname,status,data(1),data(dims(1))
+       call tell_log(2, logmsg)
        end function put_data_1di2
 
 
@@ -334,7 +330,7 @@
 
 
        function put_data_2di2(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -342,8 +338,6 @@
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        integer (kind = 2), dimension(:,:) :: data
        integer (kind = 2), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -355,10 +349,10 @@
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) :: nn, n1=1, n11=11, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -398,12 +392,14 @@ else
 endif
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1),data(dims(1),dims(2))
+       write(logmsg,*) fieldname,status,data(1,1),data(dims(1),dims(2))
+       call tell_log(2, logmsg)
        end function put_data_2di2
 
+
+
        function put_data_2di1(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -411,8 +407,6 @@ endif
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        integer (kind = 1), dimension(:,:) :: data
        integer (kind = 1), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -424,10 +418,10 @@ endif
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) :: nn, n1=1, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -461,12 +455,14 @@ endif
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1),data(dims(1),dims(2))
+       write(logmsg,*) fieldname,status,data(1,1),data(dims(1),dims(2))
+       call tell_log(2, logmsg)
        end function put_data_2di1
 
+
+
        function put_data_2dr4(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
 
        USE ISO_C_BINDING, ONLY: C_LONG
@@ -475,8 +471,6 @@ endif
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        real (kind = 4), dimension(:,:) :: data
        real (kind = 4), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -492,10 +486,10 @@ endif
        integer (kind=4), dimension(5) :: compparm
        integer (kind=4) :: he5_swdefchunk, he5_swdefcomch
        INTEGER (KIND=C_LONG) :: n1=1, nn, n11=11, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -549,12 +543,14 @@ endif
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
 !       call pzeitend
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1),data(dims(1),dims(2))
+       write(logmsg,*) fieldname,status,data(1,1),data(dims(1),dims(2))
+       call tell_log(2, logmsg)
        end function put_data_2dr4
 
+
+
        function put_data_3dr8(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -562,8 +558,6 @@ endif
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        real (KIND=8), dimension(:,:,:) :: data
        real (kind = 4), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -575,10 +569,10 @@ endif
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld,append
        INTEGER (KIND=C_LONG) :: n1=1, nn, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -616,13 +610,15 @@ endif
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1,1), &
+       write(logmsg,*) fieldname,status,data(1,1,1), &
            data(dims(1),dims(2),dims(3))
+       call tell_log(2, logmsg)
        end function put_data_3dr8
 
+
+
        function put_data_3dr4(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -630,8 +626,6 @@ endif
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        real (kind = 4), dimension(:,:,:) :: data
        real (kind = 4), intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -643,10 +637,10 @@ endif
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld,append
        integer (KIND=C_LONG) :: nn, n1=1, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -683,13 +677,15 @@ endif
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1,1), &
+       write(logmsg,*) fieldname,status,data(1,1,1), &
            data(dims(1),dims(2),dims(3))
+       call tell_log(2, logmsg)
        end function put_data_3dr4
 
+
+
        function put_data_3di2(swid,fieldname,dimname,data, &
-          missingvalue, title, units,geo,offset,iprt) &
+          missingvalue, title, units,geo,offset) &
           result(status)
        USE ISO_C_BINDING, ONLY: C_LONG
        implicit none
@@ -697,8 +693,6 @@ endif
        integer (kind = 4), intent(in) :: swid
        logical, intent(in), optional :: geo
        character(len=*), intent(in) :: fieldname
-       integer,   intent(in), optional :: iprt
-       integer :: iprt2=0
        integer , dimension(:,:,:) :: data
        integer , intent(in) :: missingvalue
        integer (kind = 4) :: status, numbertype
@@ -710,10 +704,10 @@ endif
        character(len=*), intent(in) :: dimname, title, units
        logical :: geofld, append
        integer (KIND=C_LONG) ::  nn, n1=1, n12=12
+       character (len=128) :: logmsg
 
        geofld=.false.
        if (present(geo)) geofld=geo
-       if (present(iprt)) iprt2=iprt
        start = 0
        stride = 1
        dims(1)=size(data,dim=1)
@@ -750,9 +744,9 @@ endif
        status = he5_swwrlattr(swid, fieldname, "UniqueFieldDefinition", HE5T_NATIVE_CHAR, n12, "OMI-Specific")
        status = he5_swwrfld (swid, fieldname, &
            start, stride, edge, data)
-       if (iprt2 >= 2) &
-       write (6, *) fieldname,status,data(1,1,1), &
+       write(logmsg,*) fieldname,status,data(1,1,1), &
            data(dims(1),dims(2),dims(3))
+       call tell_log(2, logmsg)
        end function put_data_3di2
 
 !      function put_data_3di1(swid,fieldname,dimname,data,geo) result(status)

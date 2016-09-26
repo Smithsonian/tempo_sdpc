@@ -38,7 +38,6 @@ contains
   !  min_refl_flag  flag value for violations of min_refl (fixed)
   !  do_short_wave  include shortest wavelength bound in calculations?
   !  cal_reflec  calculate dIdR (radiance reflectance sensitivity)?
-  !  iprt  verbosity level
   !
   ! !OUTPUT PARAMETERS:  
   !  refl  retreived reflectivity (array over whole swath)
@@ -59,10 +58,9 @@ contains
        i0_l, i0_s, sb_l, sb_s, tr_l, tr_s, i0_ls, &
        sb_ls, tr_ls, set_cld_frac, i0_ss, sb_ss, tr_ss)
 
-    use m_vars, ONLY: &
-         refl, iprt, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
-         qc, eff_cld_frac, iLine, &
-         cal_reflec, rad_cld_frac 
+    use m_vars, ONLY: refl, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
+         qc, eff_cld_frac, iLine, cal_reflec, rad_cld_frac 
+    use tell_module
 
     implicit none
 
@@ -77,6 +75,7 @@ contains
     !local variables
     real (KIND=8) :: I_clr_l, I_cld_l, I_clr_s
     real (KIND=8) ::  ratio_obs, ratio_clr
+    character (len=128) :: logmsg
 
     !**************************************************************************
 
@@ -146,14 +145,17 @@ contains
     endif
 
 
-    if (iprt >= 3) then
-      print *,'get_f: refl_clr, refl_cld'
-      print *, refl_clr, refl_cld
-      print *,'get_f: ratio_clr, ratio_obs'
-      print *, ratio_clr, ratio_obs
-      print *,'get_f: refl, ai, eff_cld_frac'
-      print *, refl(i,iLine), eff_cld_frac(i,iLine)
-    endif
+    call tell_log(4,'get_f: refl_clr, refl_cld')
+    write(logmsg,*) refl_clr, refl_cld
+    call tell_log(4,logmsg)
+    call tell_log(4,'get_f: ratio_clr, ratio_obs')
+    write(logmsg,*) ratio_clr, ratio_obs
+    call tell_log(4,logmsg)
+    call tell_log(4,'get_f: refl, ai, eff_cld_frac')
+    write(logmsg,*) refl(i,iLine), eff_cld_frac(i,iLine)
+    call tell_log(4,logmsg)
+
+
 
 
   end subroutine get_f

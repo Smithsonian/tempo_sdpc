@@ -32,10 +32,11 @@ contains
 
   subroutine rd_terr (errstat)   
 
-    use m_vars, ONLY: p_terr, done_read_terr, iprt, lat, lon, ps, &
+    use m_vars, ONLY: p_terr, done_read_terr, lat, lon, ps, &
          iLine, nXtrack
     use m_LUN_set
     use m_pgs_include
+    use tell_module
     implicit NONE          
 
     integer, intent (inout) :: errstat
@@ -47,6 +48,7 @@ contains
     integer :: status,ierr, version
     integer :: ipts, i, j
     real (KIND=8) :: lont, latt
+    character (len=128) :: logmsg
 
     version = 1
 
@@ -65,10 +67,14 @@ contains
         errstat = -1
         return
       endif
-      if (iprt > 0) print *,'rd_terr: opening terrain file, status :',status
+      write(logmsg,"(A39, I4)") 'rd_terr: opening terrain file, status :',&
+           status
+      call tell_log(1,logmsg)
       read (lun,*,err=200)  p_terr
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *,'rd_terr: closing terrain file, status :',status
+      write(logmsg,"(A39, I4)") 'rd_terr: closing terrain file, status :',&
+           status
+      call tell_log(1,logmsg)
       done_read_terr=.true.
     endif
 

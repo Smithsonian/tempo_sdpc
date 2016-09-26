@@ -7,7 +7,7 @@ contains
 
 subroutine instr_config(ierr, izoom)
 
-   use m_vars, ONLY: iLine, iprt, config_rad, config_irr, mflg
+   use m_vars, ONLY: iLine, config_rad, config_irr, mflg
 
    implicit none
 
@@ -17,9 +17,9 @@ subroutine instr_config(ierr, izoom)
 !   integer (kind=1), dimension(7) :: id2=(/42,43,44,49,56,57,58/)  
 
 izoom=1
-if(iprt>1) then 
-  print *,'config_irr',config_irr,' config_rad',config_rad(iLine),'rebinning flag',btest(mflg(iLine),7)
-endif
+!if(iprt>1) then 
+!  print *,'config_irr',config_irr,' config_rad',config_rad(iLine),'rebinning flag',btest(mflg(iLine),7)
+!endif
 
 ! simplified testing the zoom radiance measurements
     ierr=0

@@ -43,11 +43,12 @@ contains
     !  -1  problem
     !-------------------------------------------------------------------------
     ! Local variables
-    integer :: i               
+    integer :: i
+    integer :: iprt=0   ! verbosity level
     integer :: iarg=0
     integer :: argc, iargc
-    character*255 ::  argv
-    character*255 ::  myname, pcfpath 
+    character*255 ::  argv, logmsg
+    character*255 ::  pcfpath 
     integer(kind=4), EXTERNAL :: pgs_pc_getnumberoffiles, pgs_pc_getreference
     integer(kind=4), EXTERNAL :: pgs_pc_getuniversalref, pgs_pc_getconfigdata
     integer(kind=4) :: returnstatus, pcf_int
@@ -56,42 +57,39 @@ contains
 
     if (errstat /= 0) return
 
-    myname = trim('initialize: ')
 
     !===============================
     ! read command line information
     ! and do argument check
     !===============================
     argc = iargc()
-    if ( argc < 0 ) then
-      print *, trim(myname)//' not enough inputs'
-      call ret_usage()
-    else
-      do i = 1, 32767
+    do i = 1, 32767
+      iarg = iarg + 1
+      if ( iarg > argc ) go to 111
+      call GetArg ( iArg, argv )
+      if(index(argv,'-h ') > 0) then
+        call ret_usage()
+      else if(index(argv,'-p ') > 0) then
+        if ( iarg+1 > argc ) call ret_usage()
         iarg = iarg + 1
-        if ( iarg > argc ) go to 111
         call GetArg ( iArg, argv )
-        if(index(argv,'-h ') > 0) then
-          call ret_usage()
-        else if(index(argv,'-p ') > 0) then
-          if ( iarg+1 > argc ) call ret_usage()
-          iarg = iarg + 1
-          call GetArg ( iArg, argv )
-          read(argv,*,err=500) iprt
-        else if(index(argv,'-nc_swath ') > 0) then
-          if ( iarg+1 > argc ) call ret_usage()
-          iarg = iarg + 1
-          call GetArg ( iArg, argv )
-          read(argv,*,err=500) nc_swathname
-        else if(index(argv,'-nc_only ') > 0) then
-          read_he4 = .false.
-        else if(index(argv,'-noret ') > 0) then
-          noret = .true.
-        endif
-      enddo
-    endif
+        read(argv,*,err=500) iprt
+      else if(index(argv,'-nc_swath ') > 0) then
+        if ( iarg+1 > argc ) call ret_usage()
+        iarg = iarg + 1
+        call GetArg ( iArg, argv )
+        read(argv,*,err=500) nc_swathname
+      else if(index(argv,'-nc_only ') > 0) then
+        read_he4 = .false.
+      else if(index(argv,'-noret ') > 0) then
+        noret = .true.
+      endif
+    enddo
 111 continue
 
+
+    ! Set logging level from iprt
+    call tell_set_log_level(iprt)
 
     !***********************************************************************
     !read OMCLDRR.pcf
@@ -99,16 +97,19 @@ contains
     !---------------------------------------------------------------------
     status=1
     returnstatus=1
-    if (iprt > 0) print *,'initialize: checking for pcf file'
+    call tell_log(1,'initialize: checking for pcf file')
     call get_environment_variable('PGS_PC_INFO_FILE',pcfpath)
     inquire(file=pcfpath,exist=ex)
-    if (iprt > 0) print *,'initialize: file status ',ex
+    write(logmsg,"(A,L1)") 'initialize: file status ',ex
+    call tell_log(1,logmsg)
     if (ex) then
       version = 1
       status = pgs_pc_getreference ( L1B_LUN, version, filename)
-      if (iprt > 0) &
-           print *,trim(myname)//' get_pc_reference status l1b filename',&
-           status, trim(filename)
+      write(logmsg,"(A12,A24,I1)") 'initialize: ', &
+           'get_pc_reference status ',status
+      call tell_log(1,logmsg)
+      write(logmsg,"(A13,A)") 'l1b filename ',trim(filename)
+      call tell_log(1,logmsg)
 
       version = 1
 
@@ -116,90 +117,111 @@ contains
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         using_resid = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting using_resid = ',using_resid
+        write(logmsg,"(A34,L1)") 'initialize: setting using_resid = ', &
+             using_resid
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(write_resid_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         write_resid = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting write_resid = ',write_resid
+        write(logmsg,"(A34,L1)") 'initialize: setting write_resid = ', &
+             write_resid
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(do_o3_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         do_o3 = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting do_o3 = ',do_o3
+        write(logmsg,"(A28,L1)") 'initialize: setting do_o3 = ', &
+             do_o3
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(write_obs_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         write_obs = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting write_obs = ',write_obs
+        write(logmsg,"(A32,L1)") 'initialize: setting write_obs = ', &
+             write_obs
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(no_ret_ps_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         no_ret_ps = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting no_ret_ps = ',no_ret_ps
+        write(logmsg,"(A32,L1)") 'initialize: setting no_ret_ps = ', &
+             no_ret_ps
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(no_ret_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         noret = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting noret = ',noret
+        write(logmsg,"(A28,L1)") 'initialize: setting noret = ', &
+             noret
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(transient_chk,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         transient_check = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting transient_check = ', &
+        write(logmsg,"(A38,L1)") 'initialize: setting transient_check = ', &
              transient_check
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(test_solar_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         test_solar = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting test_solar = ', &
+        write(logmsg,"(A33,L1)") 'initialize: setting test_solar = ', &
              test_solar
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(add_shift_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) add_shift
-        if (iprt >= 1) print *,'initialize: setting add_shift = ',add_shift
+        write(logmsg,"(A32,L1)") 'initialize: setting add_shift = ', &
+             add_shift
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(using_spline_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
         using_spline = pcf_int == 1
-        if (iprt >= 1) print *,'initialize: setting using_spline = ', &
+        write(logmsg,"(A35,L1)") 'initialize: setting using_spline = ', &
              using_spline
+        call tell_log(1,logmsg)
       endif
 
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmin
-        if (iprt >= 1) print *,'initialize: setting wmin = ',wmin
+        write(logmsg,"(A27,L1)") 'initialize: setting wmin = ', &
+             wmin
+        call tell_log(1,logmsg)
         set_wmin=.true.
       endif
       returnstatus = pgs_pc_getconfigdata(wmax_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmax
-        if (iprt >= 1) print *,'initialize: setting wmax = ',wmax
+        write(logmsg,"(A27,L1)") 'initialize: setting wmax = ', &
+             wmin
+        call tell_log(1,logmsg)
         set_wmax=.true.
       endif
 
     else  !ex=.false., PCF does not exist or environment variable not set
 
-      if (iprt > 0) print *, 'm_initialize: PCF file not found'
+      call tell_log(1,'initialize: PCF file not found')
       errstat=-1
       call tell_error (tell_io_error, &
            "read_cld_dimensions: failed", &

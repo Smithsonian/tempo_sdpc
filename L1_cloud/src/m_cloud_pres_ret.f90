@@ -77,7 +77,6 @@ contains
   subroutine cloud_pres_ret(refl_clr, refl_cld, errstat)
 
     use mathcons
-    use m_print_ret
     use m_get_ai_refl
     use m_get_f
 !    use m_invert
@@ -105,7 +104,7 @@ contains
          cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
          do_LER, do_mler, do_o3, do_short_wave, eff_cld_frac, &
          eff_cld_frac2, f12d, fill, fill_value, fs, geoflg, &
-         get_cloud_frac, get_refl_clim, iLine, iprt, land_flg, lat, &
+         get_cloud_frac, get_refl_clim, iLine, land_flg, lat, &
          ler354, ler_nph, ler_nsz, ler_nth, ler_ph, ler_sz, ler_th, lon, &
          meas_qual_flg, nchl, n_good_input, n_good_output, niter, &
          n_missing, noret, no_ret_ps, nphi, npres, nscan, nscan_oc, &
@@ -122,6 +121,8 @@ contains
     real (KIND=8), intent(inout) :: refl_cld
     integer, intent(inout) :: errstat
 
+    !local vraiables
+    character (len=128) :: logmsg
 
     if (errstat /= 0) return
 
@@ -146,11 +147,10 @@ contains
       if (nobs > 0) then
         ind=find2(w_grid >= wmin+wdelt .and. w_grid <= wmax-wdelt,nobs)   
       else
-        if (iprt >= 1) then
-          print *,'cloud_pres_ret: min and max wavelengths ',wmin, wmax
-          print *,'cloud_pres_ret: w_grid'
-          write(6,'(7f12.4)') w_grid
-        endif
+        write(logmsg,"(A40,2X,F7.3,2X,F7.3)") &
+             'cloud_pres_ret: min and max wavelengths ',wmin, wmax
+        call tell_log(1,logmsg)
+!        if (iprt >= 1) write(6,'(7f12.4)') w_grid
         ierr = OMI_SMF_setmsg( status, & 
              "no valid wavelengths, PGE aborting", &
              "cloud_pres_ret", 1 )
@@ -408,12 +408,13 @@ contains
 
         if(.not.land_flg(ip) .and. refl_clr .lt. refl_ice) then
           nt=interpol(findgen(ler_nsz)+1,ler_sz,sz)
-          if(nt < 0 .and. iprt > 0) print *,'negative nt in interpolation of ler sza'
+          if(nt < 0) call tell_log(1,'negative nt in interpolation of ler sza')
           i1_ler=int(nt)
           i2_ler=i1_ler+1
           j=interpol(findgen(ler_nth)+1,ler_th,satz)
           l=interpol(findgen(ler_nph)+1,ler_ph,az)
-          if(j < 0 .or. l < 0 .and. iprt > 0) print *,'negative input to bilinear interpolation of ler' 
+          if(j < 0 .or. l < 0) call tell_log(1, &
+               'negative input to bilinear interpolation of ler')
           !per Joanna Joiner, set a minium of j=1
           if(j < 1) j=1.0
           int1_ler=bilinear(ler354(i1_ler,:,:),j,l)
@@ -976,29 +977,29 @@ contains
           endif ! matrix inversion check
           !print out results
           !=================
-          if (iprt >= 3) call print_ret()
+!          if (iprt >= 3) call print_ret()
 
         enddo    ! iter loop
 
         !print out retrieval error covariance
         !====================================
         ! print *, 'standard deviations'   
-        if (iprt >= 4) then
-          do i=0, size(err_cov(:,0))-1 
-            write(6,'(7e12.4)') err_cov(i,i)**0.5   
-          enddo ! i
-
-          corr=err_cov
-          do ii=0, nst-1    
-            do jj=0, nst-1
-              corr(ii,jj)=corr(ii,jj)/err_cov(ii,ii)**0.5/err_cov(jj,jj)**0.5
-            enddo ! jj   
-          enddo ! ii   
-          print *, 'error correlations'   
-          do jj=0, nst-1
-            write(6,'(7f9.3)') corr(:,jj)
-          enddo ! jj   
-        endif ! iprt >= 4
+!        if (iprt >= 4) then
+!          do i=0, size(err_cov(:,0))-1 
+!            write(6,'(7e12.4)') err_cov(i,i)**0.5   
+!          enddo ! i
+!
+!          corr=err_cov
+!          do ii=0, nst-1    
+!            do jj=0, nst-1
+!              corr(ii,jj)=corr(ii,jj)/err_cov(ii,ii)**0.5/err_cov(jj,jj)**0.5
+!            enddo ! jj   
+!          enddo ! ii   
+!          print *, 'error correlations'   
+!          do jj=0, nst-1
+!            write(6,'(7f9.3)') corr(:,jj)
+!          enddo ! jj   
+!        endif ! iprt >= 4
 
         !store cloud pressure
         !====================
@@ -1061,9 +1062,10 @@ contains
 
         !print final result
         !==================
-        if (iprt >= 2) write(6,'(i6,i3,f8.3,4e11.3,3f8.2,i12)') ip, iter, &
+        write(logmsg,'(i6,i3,f8.3,4e11.3,3f8.2,i12)') ip, iter, &
              cloud_pres(ip,iLine), x(nst-1,1), bias, std, &
              chlorophyll(ip,iLine), chlcl(ip), reflec
+        call tell_log(2,logmsg)
         !write file for residuals if write_resid
         !======================================
         if (write_resid) then

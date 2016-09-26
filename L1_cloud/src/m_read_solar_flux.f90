@@ -5,7 +5,7 @@ contains
   subroutine read_solar_flux()
 
     use m_vars, ONLY: ws, fs, wmin2, wmax2, nsolwave, meas_qual_flg, &
-         irr_quality_flagL, iprt, dist_rad, dist_irrad, config_irr 
+         irr_quality_flagL, dist_rad, dist_irrad, config_irr 
     USE hdfeos4_parameters
     USE L1B_Reader_class
     USE m_LUN_set
@@ -13,6 +13,7 @@ contains
     USE m_earth_sun_dist
     USE m_swathnames
     USE m_pgs_include
+    use tell_module
 
     IMPLICIT NONE
 
@@ -25,7 +26,7 @@ contains
     INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
          nTimes, nXtrack, nWavel, nWavelCoef, &
          nwl        !,iLine
-    CHARACTER (LEN = 200) :: filename, swathname
+    CHARACTER (LEN = 200) :: filename, swathname, logmsg
     TYPE (L1B_block_type) :: blk
     INTEGER (KIND = 4), PARAMETER :: zero = 0
     INTEGER (KIND = 2) :: mflg
@@ -58,9 +59,9 @@ contains
     else
       swathname = sunuv2swath 
     endif
-    if (iprt >= 2) then
-      print *,'opening ',filename,' ',swathname
-    endif
+    write(logmsg,*)'read_solar_flux: opening ',trim(filename),' ',&
+         trim(swathname)
+    call tell_log(2,logmsg)
     status = L1Br_open( blk, filename, swathname )
     IF( status .NE. OMI_S_SUCCESS ) THEN
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
@@ -78,8 +79,9 @@ contains
            "read_solar_flux", 1 )
       stop 1
     else
-      if (iprt .ge. 2) print *,'read_solar_flux: nwavel, nwavelcoef, nXtrack ', &
-           nWavel, nWavelCoef, nXtrack, nTimes
+      call tell_log(2,'read_solar_flux: nwavel, nwavelcoef, nXtrack')
+      write(logmsg,"(4I6)") nWavel, nWavelCoef, nXtrack, nTimes
+      call tell_log(2,logmsg)
     END IF
 
     ! allocate memory for arrays
@@ -159,7 +161,8 @@ contains
     END IF
 
     nsolwave=nwl
-    if (iprt .ge. 2) print *,'nsolwave ',nsolwave
+    write(logmsg,"(A9,I6)") 'nsolwave ',nsolwave
+    call tell_log(2,logmsg)
 
     ALLOCATE( ws(0:nsolwave-1,0:nXtrack-1), STAT=ierr )
     IF( ierr .NE. zero ) THEN

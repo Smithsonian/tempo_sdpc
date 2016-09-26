@@ -16,7 +16,7 @@ contains
 
     use m_vars, only: nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl, &
          oc_perms, nwave2, wgrid_out_oc, wgrid_oc, oc_table, w_grid, &
-         theta_oc,scan_oc,phi_oc,ocrefl,chl,iprt
+         theta_oc,scan_oc,phi_oc,ocrefl,chl
     use m_interpol
     use m_LUN_set
     use m_pgs_include
@@ -35,7 +35,7 @@ contains
     real (KIND=8), parameter :: coef = 1.5
     integer :: i, j, m, ext_index
     integer :: version, status, pgs_pc_getreference
-    character (len=128) :: oc_fn_nc, oc_fn
+    character (len=128) :: oc_fn_nc, oc_fn, logmsg
     type (tiof_file_type) :: tio_oc_obj
 
 
@@ -77,10 +77,11 @@ contains
       return
     endif
 
-    if (iprt >= 1) then
-      print *, 'read_ocean_table_tio: nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl'
-      print *, nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl
-    endif
+    call tell_log(1,'read_ocean_table_tio:')
+    call tell_log(1,'nwave_oc, nthet_oc, nscan_oc, nphi_oc, nocrefl, nchl')
+    write(logmsg,"(I8,2I10,2I9,I5)") nwave_oc, nthet_oc, nscan_oc, nphi_oc, &
+         nocrefl, nchl
+    call tell_log(1,logmsg)
 
     ! Allocate memory - first arrays that should be unallocated
     allocate(oc_perms(nwave_oc,nthet_oc,nscan_oc,nphi_oc,nocrefl,nchl), &
@@ -136,13 +137,13 @@ contains
       enddo
     enddo
 
-    ! Debugging output
-    if (iprt >= 6) then
-      print *,'ocean_table wavelengths'
-      write(6,'(6f12.3)') wgrid_out_oc
-      print *,'ocean_table_new (%)'
-      write(6,'(6f12.3)') oc_table(1,1,1,:)*100
-    endif
+!    ! Debugging output
+!    if (iprt >= 6) then
+!      print *,'ocean_table wavelengths'
+!      write(6,'(6f12.3)') wgrid_out_oc
+!      print *,'ocean_table_new (%)'
+!      write(6,'(6f12.3)') oc_table(1,1,1,:)*100
+!    endif
 
     ! Deallocate unnecessary arrays
     deallocate(oc_perms2)

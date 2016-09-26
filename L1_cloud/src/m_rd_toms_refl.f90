@@ -31,7 +31,7 @@ contains
 
   subroutine rd_toms_refl (errstat)   
 
-    use m_vars, ONLY: done_read_refl, iprt, lat, lon, toms_refl, ref_nmon, &
+    use m_vars, ONLY: done_read_refl, lat, lon, toms_refl, ref_nmon, &
          iLine, nXtrack, ref_nlat, ref_nlon, ref_clr, ref_lats, ref_lons, &
          month, ler_sz, ler_th, ler_ph, ler354, startlat, startlon, deltlat, &
          deltlon
@@ -49,7 +49,7 @@ contains
     integer :: status,ierr, version=1
     integer :: ipts, i, j
     real (KIND=8) :: lont, latt
-    character(len=100) :: txt
+    character(len=100) :: txt, logmsg
 
 
     if (errstat /= 0) return
@@ -67,14 +67,16 @@ contains
         errstat = -1
         return
       endif
-      if (iprt > 0) print *, &
+      write(logmsg,"(A49, I4)") &
            'rd_toms_refl: opening reflectivity file, status :',status
+      call tell_log(1,logmsg)
       read (lun,*,err=200)  txt
-      if (iprt > 0) print *, txt
+      call tell_log(1,txt)
       read (lun,*,err=200)  txt
-      if (iprt > 0) print *, txt
+      call tell_log(1,txt)
       read (lun,*,err=200)  ref_nlon, ref_nlat, ref_nmon
-      if (iprt > 0) print *, ref_nlon, ref_nlat, ref_nmon
+      write(logmsg,"(3I6)") ref_nlon, ref_nlat, ref_nmon
+      call tell_log(1,logmsg)
 
       !Allocate memory, read in data
       allocate(ref_lats(ref_nlat), ref_lons(ref_nlon), &
@@ -89,12 +91,13 @@ contains
       read (lun,*,err=200)  ref_lons
       read (lun,*,err=200)  ref_lats
 
-      if (iprt > 1) print *, ref_lons  
-      if (iprt > 1) print *, ref_lats
+!      if (iprt > 1) print *, ref_lons  
+!      if (iprt > 1) print *, ref_lats
       read (lun,*,err=200)  toms_refl
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *, &
+      write(logmsg,"(A49, I4)") &
            'rd_toms_refl: closing reflectivity file, status :',status
+      call tell_log(1,logmsg)
 
       status = pgs_io_gen_openf ( ler354_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
@@ -110,8 +113,9 @@ contains
       read (lun,*,err=201) ler_ph
       read (lun,*,err=201) ler354
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *, &
-           'rd_toms_refl: closing ler354_cox_munk file, status :',status
+      write(logmsg,"(A52, I4)") &
+           'rd_toms_refl: opening ler354_cox_munk file, status :',status
+      call tell_log(1,logmsg)
       done_read_refl=.true.
       deltlat=ref_nlat/180.
       deltlon=ref_nlon/360.

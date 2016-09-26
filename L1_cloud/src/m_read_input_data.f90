@@ -15,6 +15,7 @@ contains
     use m_strpos
     use m_instr_config
     use m_pgs_include
+    use tell_module
 
     implicit none
     !-------------------------------------------------------------------------
@@ -57,7 +58,7 @@ contains
     INTEGER (KIND = 4) :: PGS_TD_TAItoUTC 
     INTEGER (KIND = 1) :: imbin
 
-    CHARACTER (LEN = 200) :: swathname,filenamen
+    CHARACTER (LEN = 200) :: swathname,filenamen, logmsg
     CHARACTER (LEN = 30) :: DateTime
     CHARACTER (LEN = 70) :: msg
 
@@ -114,11 +115,13 @@ contains
       wave_long=362.5 !353.4
       wave_short=345.4
 
-
-      if (iprt > 0) print *,'read_input_data: filename ',filenamen, swathname
+      call tell_log(1, 'read_input_data: filename, swathname')
+      write(logmsg,*) trim(filenamen),'  ', trim(swathname)
+      call tell_log(1, logmsg)
       !**********************************************************************
       status = L1Br_open( blk, filenamen, swathname )
-      if (iprt > 0)   print *,'read_input_data: opening l1b status ',status
+      write(logmsg,"(A36, I12)")'read_input_data: opening l1b status ',status
+      call tell_log(1,logmsg)
       IF( status .NE. OMI_S_SUCCESS ) THEN
         ierr = OMI_SMF_setmsg( status, & 
              "PGE aborting, exit code = 1", "read_input_data", 1 )
@@ -132,11 +135,17 @@ contains
       ! obtain sizes of dimensions defined in swath
       status = L1Br_getSWdims( blk, NumTimes_k=nTimes, nXtrack_k=nXtrack, &
            nWavel_k=nWavel, nWavelCoef_k=nWavelCoef )
-      if(iprt > 0) print *,'read_input_data: nTimes, nXtrack, nWavel, nWavelCoef '
-      if(iprt > 0) print *, nTimes,nXtrack,nWavel,nWavelCoef
+
+      call tell_log(1,'read_input_data:') 
+      call tell_log(1,'nTimes, nXtrack, nWavel, nWavelCoef')
+      write(logmsg,"(4I6)") nTimes,nXtrack,nWavel,nWavelCoef
+      call tell_log(1,logmsg)
+
       iLine=start_line
-      if (max_lines > 0 .and. iprt > 0) then
-        print *,'read_input_data: changing nTimes to ',max_lines
+      if (max_lines > 0) then
+        write(logmsg,"(A36, I6)") 'read_input_data: changing nTimes to ', &
+             max_lines
+        call tell_log(1,logmsg)
         nTimes=max_lines+start_line
       endif
       IF( status .NE. OMI_S_SUCCESS ) THEN
@@ -190,7 +199,9 @@ contains
 
 
     call instr_config(ierr,izoom)
-    if(iprt>1) print *,'instrum config compatability code',ierr,'izoom',izoom
+    write(logmsg,"(A33,I6,A6,I6)") 'instrum config compatability code', &
+         ierr,'izoom',izoom
+    call tell_log(2,logmsg)
 
     !check for skipping the zoom mode
     if(izoom==1 .and. .not. do_zoom) then
@@ -220,9 +231,10 @@ contains
         READ  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
         WRITE( msg,* ) "Date is: ", Year, Month, Day
         status = OMI_SMF_setmsg(PGS_S_SUCCESS, msg, "read_input_data", 1)
-        if (iprt >= 1) print *, msg
+        call tell_log(1,msg)
       ENDIF
-      if (iprt >= 3) print *,'wmin2 wmax2 ',wmin2,wmax2
+      write(logmsg,"(A12,2F7.3)") 'wmin2 wmax2 ',wmin2,wmax2
+      call tell_log(3,logmsg)
     endif ! get month
 
     n_input = n_input + nXtrack
@@ -236,8 +248,10 @@ contains
       meas_qual_flg(iLine)=IBSET(meas_qual_flg(iLine),1)
       n_missing = n_missing + nXtrack 
       rc=1
-      if (iprt >= 1) print *,'missing line ',iLine, btest(mflg(iLine),0), btest(mflg(iLine),1), &
+      write(logmsg,"(A13,I6,4L2)") 'missing line ',iLine, &
+           btest(mflg(iLine),0), btest(mflg(iLine),1), &
            btest(mflg(iLine),3), btest(mflg(iLine),12)
+      call tell_log(2,logmsg)
     endif
 
     ! check other MeasurementQualityFlags and set our measurement quality flag
@@ -273,27 +287,30 @@ contains
 
     !print check of wavelengths
     !==================================
-    if (iprt >= 1 .and. iLine == start_line) then
-      print *, 'nwl, iLine, Wmin, Wmax'
-      print *, nwl, iLine, Wmin, Wmax
+    if (iLine == start_line) then
+      call tell_log(1,'nwl, iLine, Wmin, Wmax')
+      write(logmsg,"(2I6,2F7.3)") nwl, iLine, Wmin, Wmax
+      call tell_log(1,logmsg)
     endif
 
     nwave=nwl
-    if (iLine == start_line) then
-      if (iprt >= 3) then
-        write(6,"(6f12.2)") w12d(0:nwl-1,0)
-      endif
-    else 
+    if (iLine /= start_line) then
+!    if (iLine == start_line) then
+!      if (iprt >= 3) then
+!        write(6,"(6f12.2)") w12d(0:nwl-1,0)
+!      endif
+!    else 
       !check for missing data
       !=======================
       if (nwl > nWavel .or. nwl < min_wl) then
         qc(:,iLine) = IBSET(qc(:,iLine),14)
         n_missing = n_missing + nXtrack 
         rc=2
-        if (iprt >= 1) print *,'missing line ',iLine, nwl, nWavel, min_wl
-        if (iprt >= 3) then
-          write(6,"(6f12.2)") w12d(0:nwl-1,0)
-        endif
+        write(logmsg,"(A13,4I6)") 'missing line ',iLine, nwl, nWavel, min_wl
+        call tell_log(1,logmsg)
+!        if (iprt >= 3) then
+!          write(6,"(6f12.2)") w12d(0:nwl-1,0)
+!        endif
       endif ! missing wavelength data
     endif ! start_line
 
@@ -303,12 +320,11 @@ contains
       !  call pzeitbeg('rd_sol')
       call read_solar_flux()
       !  call pzeitend
-      if (iprt > 1) then
-        print *,'irradiance'
-        do i=0,nsolwave-1
-          write(*,'(i4,2e12.4)') i,ws(i,0),fs(i,0)
-        enddo
-      endif ! iprt > 1
+      call tell_log(3,'irradiance')
+      do i=0,nsolwave-1
+        write(logmsg,'(i4,2e12.4)') i,ws(i,0),fs(i,0)
+        call tell_log(3,logmsg)
+      enddo
     endif ! iLine==start_line
 
     !************************************************************************

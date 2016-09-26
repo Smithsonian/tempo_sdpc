@@ -25,7 +25,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine read_thresholds (errstat)
 
-    use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, ex, iprt, &
+    use m_vars, ONLY: npixs, nscanpos, thresholds, npixels, ex, &
          stddev_thresh 
     use m_LUN_set
     use m_pgs_include
@@ -41,7 +41,7 @@ contains
     !  -1   files not found
     !-------------------------------------------------------------------------
     integer :: i, j, l, m
-    character(len=100) :: text
+    character(len=100) :: text, logmsg
     integer :: lun=10
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, version, ierr
@@ -52,9 +52,10 @@ contains
     version = 1
     status = pgs_io_gen_openf ( thresh_id, PGSd_IO_Gen_RSeqFrm, &
          0,lun, version)
-    if (iprt > 0) then
-      print *,'read_thresholds: trying to open threshold file ',status, lun
-    endif
+    call tell_log(1,'read_thresholds: trying to open threshold file')
+    call tell_log(1,'status, lun')
+    write(logmsg,"(I6,I5)") status, lun
+    call tell_log(1,logmsg)
     if(status.ne.0) then
       ierr=OMI_SMF_setmsg(OMI_E_FILE_OPEN,'error opening threshold table file', &
            'read_thresholds, module m_read_thresholds',1)
@@ -74,11 +75,10 @@ contains
     !    endif
     read(lun, *, err=100) text
     read(lun, *, err=100) npixs, nscanpos
-    if (iprt >= 1) then
-      print *,text
-      print *,'read_thresholds: npixs,nscanpos'
-      print *,npixs,nscanpos
-    endif
+    call tell_log(1,text)
+    call tell_log(1,'read_thresholds: npixs,nscanpos')
+    write(logmsg,"(2I4)") npixs,nscanpos
+    call tell_log(1,logmsg)
 
     !allocate the threshold table, but fill with default
     !constant value in case file not found
@@ -97,7 +97,7 @@ contains
     do i=1, npixs
       do j=1, nscanpos
         read(lun, *, err=100) l, m, thresholds(i, j) 
-        if (iprt > 3) print *, l, m, i, j, thresholds(i, j)
+!        if (iprt > 3) print *, l, m, i, j, thresholds(i, j)
       enddo
     enddo
 
@@ -110,7 +110,7 @@ contains
     return
 
 100 status = 1
-    if (iprt > 0) print *,'read_thresholds: error reading file'
+    call tell_log(1,'read_thresholds: error reading file')
     ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, &
          "Error reading threshold table, PGE aborting", "read_thresholds", 1 )
     errstat = -1

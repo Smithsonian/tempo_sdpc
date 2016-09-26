@@ -20,7 +20,7 @@ contains
   !---------------------------------------------------------------------
   subroutine read_solar_data_tio(errstat)
 
-    use m_vars, only: fs, nsolwave, iprt, status, dist_rad, dist_irrad, &
+    use m_vars, only: fs, nsolwave, status, dist_rad, dist_irrad, &
          filename, nc_swathname
     use m_lambda_qual
     use m_LUN_set
@@ -36,7 +36,7 @@ contains
     integer (kind = 4) :: pgs_pc_getreference, nTimes, nXtrack, nWavel, &
          ext_index
     character (len = 200) :: filename_sol, filename_sol_nc, swathname, &
-         filename_rad_nc
+         filename_rad_nc, logmsg
 
     type (tiof_file_type) :: tio_irrl1obj
 
@@ -59,10 +59,10 @@ contains
     !open IRR1B file
     swathname=trim(nc_swathname)
 
-    if (iprt >= 2) then
-      print *,'read_solar_data_tio: opening ',trim(filename_sol_nc),' ', &
-           trim(swathname)
-    endif
+    write(logmsg,*) 'read_solar_data_tio: opening ',trim(filename_sol_nc), &
+         ' ', trim(swathname)
+    call tell_log(2,logmsg)
+
     call read_sol_dimensions(filename_sol_nc, tio_irrl1obj, swathname, &
          nTimes, nXtrack, nWavel, errstat)
     if(errstat /= 0) then 
@@ -137,7 +137,6 @@ contains
   subroutine read_sol_dimensions(filename_sol_nc, tio_irrl1obj, swathname, &
        nTimes, nXtrack, nWavel, errstat)
 
-    use m_vars, only: iprt
 
     implicit none
     !input variables
@@ -148,6 +147,9 @@ contains
     integer (kind=4), intent (inout) :: errstat
     integer (kind=4), intent (out) :: nTimes, nXtrack, nWavel
 
+    !local variables
+    character (len=128) :: logmsg
+
     type (tiof_file_type) :: tio_irrl1obj
 
     if (errstat /= 0) return
@@ -157,10 +159,9 @@ contains
     call tiof_inq_dimlen (tio_irrl1obj, cld_dim_xtrack, nXtrack, errstat)
     call tiof_inq_dimlen (tio_irrl1obj, cld_dim_step, nTimes, errstat)
     call tiof_inq_dimlen (tio_irrl1obj, cld_dim_channel, nWavel, errstat)
-    if(iprt > 0) then
-      print *,'read_solar_data_tio: nTimes, nXtrack, nWavel'
-      print *, nTimes,nXtrack,nWavel
-    endif
+    call tell_log(1,'read_solar_data_tio: nTimes, nXtrack, nWavel')
+    write(logmsg,"(3I6)") nTimes,nXtrack,nWavel
+    call tell_log(1,logmsg)
     call tiof_close (tio_irrl1obj, errstat)
 
     if (errstat /= 0) then
@@ -188,7 +189,7 @@ contains
   subroutine read_sol_data(filename_sol_nc, tio_irrl1obj, swathname, &
        nXtrack, nWavel, errstat)
 
-    use m_vars, only: wmin2, wmax2, ws, fs, nsolwave, iprt, ierr, &
+    use m_vars, only: wmin2, wmax2, ws, fs, nsolwave, ierr, &
          dist_rad, dist_irrad, irr_quality_flagL, read_he4
 
     implicit none
@@ -203,6 +204,7 @@ contains
     real (kind=4), dimension(nWavel, nXtrack) :: wl_local, tio_rad2
     integer (kind=2), dimension(nWavel,nXtrack, 1) :: tio_flg
     integer (kind=4) :: ih, il, i, j
+    character (len=128) :: logmsg
 
     type (tiof_file_type) :: tio_irrl1obj
 
@@ -237,7 +239,8 @@ contains
       return
     endif
 
-    if (iprt .ge. 2) print *,'nsolwave ',nsolwave
+    write(logmsg,"(A9,I6)") 'nsolwave ',nsolwave
+    call tell_log(2,logmsg)
 
     !MAY ALREADY BE DONE IN he4 READ
     if (.not. read_he4) then
@@ -283,14 +286,18 @@ contains
         do j=1,nsolwave
           !NB match to precision of corrected irradiances
           if(fs(j-1,i-1)-tio_rad2(il+j-1,i).ge.1e8) then
-            if (iprt >= 1) print *,'mismatch: irrad',i,j,fs(j-1,i-1)-tio_rad2(il+j-1,i)
+            write(logmsg,*) 'mismatch: irrad', i, j, &
+                 fs(j-1,i-1)-tio_rad2(il+j-1,i)
+            call tell_log(1,logmsg)
           endif
           !NB match to precision of wavelength values
           if(ws(j-1,i-1)-tio_wvl(il+j-1,i,1).ge.4e-5) then
-            print *,'mismatch: solar wvl',ws(j-1,i-1)-tio_wvl(il+j-1,i,1)
+            write(logmsg,*) 'mismatch: solar wvl', &
+                 ws(j-1,i-1)-tio_wvl(il+j-1,i,1)
+            call tell_log(1,logmsg)
           endif
           if(irr_quality_flagL(j,i).ne.tio_flg(il+j-1,i,1)) &
-               print *,'mismatch: irrad flag'
+               call tell_log(1,'mismatch: irrad flag')
         enddo
       enddo
     endif

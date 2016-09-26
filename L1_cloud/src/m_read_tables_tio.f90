@@ -37,7 +37,7 @@ contains
 
   subroutine read_tables_tio (errstat)
 
-    use m_vars, ONLY: w_grid, nwave2, nwave, ntheta, nscan, nphi, iprt, &
+    use m_vars, ONLY: w_grid, nwave2, nwave, ntheta, nscan, nphi, &
          theta, scan, phi, sflx, wgrid_out, npres, pres,  k1bar, sba, nba, &
          i01a, i0a, tra, nia, nra, z1, z2
     use m_LUN_set
@@ -55,7 +55,7 @@ contains
     !local variables
     integer :: ext_index
     integer :: status, version, pgs_pc_getreference
-    character (len=128) :: ring_fn_nc, ring_fn
+    character (len=128) :: ring_fn_nc, ring_fn, logmsg
     type (tiof_file_type) :: tio_ring_obj
 
     version = 1
@@ -95,10 +95,10 @@ contains
       return
     endif
 
-    if (iprt >= 1) then
-      print *,'read_tables_tio: nwave,ntheta,nscan,nphi,npres'
-      print *,nwave,ntheta,nscan,nphi,npres
-    endif
+    call tell_log(1,'read_tables_tio:')
+    call tell_log(1,'nwave, ntheta, nscan, nphi, npres')
+    write(logmsg,"(I5,I8,I7,I6,I7)"),nwave, ntheta, nscan, nphi, npres
+    call tell_log(1,logmsg)
 
 
     !Allocate arrays

@@ -63,31 +63,26 @@ contains
   end function find2
 
 
-  function find1(mask,iprt) result (index)
+  function find1(mask) result (index)
 
     use tell_module
 
     implicit none
 
     logical, dimension(:),  intent(in)      :: mask
-    integer, optional,      intent(in)      :: iprt
-    integer                                 :: index, iprt1
+    integer                                 :: index
 
     integer, dimension(1) :: temp
     integer :: n, errstat
     integer, dimension(:), allocatable :: temp2
 
-    iprt1=1
-    if (present(iprt)) iprt1=iprt
     n = count(mask)
     if (n == 1) then
       temp(1:1)=find2(mask,1)
       index=temp(1)
     else
-      if (iprt1 >= 1) then
-        print *,'find: WARNING, found more than 1 value'
-        print *,'taking the first'
-      endif
+      call tell_log(1,'find: WARNING, found more than 1 value')
+      call tell_log(1,'find: taking the first')
 
       if (allocated(temp2))  deallocate(temp2, stat=errstat)
       allocate(temp2(n), stat=errstat)

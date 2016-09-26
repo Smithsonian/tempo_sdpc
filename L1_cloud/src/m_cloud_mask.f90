@@ -97,7 +97,7 @@ contains
     use L1B_Reader_class
     use m_strpos
     use m_vars, only: cloud_mask, smpx_mean, smpx_stddev, smpx_wavel, &
-         filename, input_data_path, iprt, smpx_nPix, fill_value
+         filename, input_data_path, smpx_nPix, fill_value
     use m_swathnames
     use m_pgs_include
     use tell_module
@@ -109,7 +109,7 @@ contains
     !Local variables
     integer (KIND = 4), parameter :: maxCoadd=5
     integer (KIND = 4) :: status, ierr, nTimes, nXtrack, iLine, nTimesSmPx
-    character (LEN = 200) :: filenamen, swathname
+    character (LEN = 200) :: filenamen, swathname, logmsg
     type (L1b_block_type) :: blk 
     integer (KIND = 2) :: nPix 
     real (KIND = 4), dimension(:,:), allocatable :: wavelengthL, wavelengthL2
@@ -126,7 +126,8 @@ contains
     else
       swathname = uv2swath
     endif
-    if (iprt >= 2) print *,'cloud_mask: filename ',filenamen
+    write(logmsg,"(A21,A)") 'cloud_mask: filename ',trim(filenamen)
+    call tell_log(2,logmsg)
 
     ! open data block structure with default size of 1 lines
     status = L1Br_open( blk, filenamen, swathname)!, valname )
@@ -145,9 +146,10 @@ contains
            "L1Br_getSWdims failed.", "cloud_mask", 0 )
       errstat = -1
       return
-    else if (iprt > 2) then
-      print *,' cloud_mask: nTimes, nXtrack, nTimesSmPx', &
-           nTimes, nXtrack, nTimesSmPx
+    else 
+      call tell_log(3,'cloud_mask: nTimes, nXtrack, nTimesSmPx')
+      write(logmsg,"(3I6)") nTimes, nXtrack, nTimesSmPx
+      call tell_log(3,logmsg)
     end if
 
     !Allocate arrays
@@ -174,7 +176,8 @@ contains
     !Loop over all scan lines
     do iLine = 0, nTimes-1
 
-      if (iprt >= 7) print *,'cloud_mask: reading data from line ',iLine
+      write(logmsg,"(A35,I4)") 'cloud_mask: reading data from line ',iLine
+      call tell_log(3,logmsg)
       status = L1Br_getDATAline( blk, iLine, nPix, &
            Data_k=smvaluesL, &
            Wavelength_k=wavelengthL)!, quality_flagL )

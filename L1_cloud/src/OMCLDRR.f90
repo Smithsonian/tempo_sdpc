@@ -44,7 +44,7 @@ program OMCLDRR
   integer (kind=4) :: ext_index, errstat
   !>@param filename_out_nc netCDF output filename
   !>@param filename_out_nc netCDF input filename
-  character(len=255) :: filename_out_nc, filename_in_nc
+  character(len=255) :: filename_out_nc, filename_in_nc, logmsg
   integer, parameter :: processing_version = 1  ! FIXME should be input param
 
   !************************************************************************
@@ -55,13 +55,13 @@ program OMCLDRR
   iLine=0
   !Initialize (read resource file)
   !===============================
-  if (iprt > 1) print *,'cloud_ret: initializing'
+  call tell_log(2,'initializing')
   call initialize(errstat)
 
 
   !Read in pre-computed Ring and radiance data
   !===========================================
-  if (iprt > 1) print *,'cloud_ret: reading_tables'
+  call tell_log(2,'reading_tables')
   call read_tables_tio(errstat)
   call read_ocean_table_tio(errstat)
   if (errstat /= 0) then
@@ -87,14 +87,16 @@ program OMCLDRR
     version = 1
     status = pgs_pc_getreference(L2_out,version,flnm_out)
     if(status.ne.0) then
-      ierr=OMI_SMF_setmsg(OMCLDRR_F_FAILURE, &
-           "error opening output L2 file, PGE aborting, exit code = 1", &
-           "program cloud_ret",0)
+      errstat=1
+      call tell_error(tell_io_open_error, &
+           "error opening output L2 file, L1_cloud aborting, exit code = 1", &
+           errstat)
       stop 1
     endif
     filename_out=trim(flnm_out)
-    if (iprt > 1) print *,'cloud_ret: status',status,' output filename ',&
-         trim(flnm_out)
+    write(logmsg,"(A6,I4,A18,A)") 'status', status,', &
+         output filename ',trim(flnm_out)
+    call tell_log(2,logmsg)
   endif
 
   ! Main processing stage
@@ -106,7 +108,7 @@ program OMCLDRR
   !===========================================================
   if (.not. read_he4) do_cloud_mask = .false.
   if (do_cloud_mask) then
-    if (iprt >= 1) print *,'cloud_ret: calling cld_mask'
+    call tell_log(1,'calling cld_mask')
     call cld_mask(errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &
@@ -114,16 +116,16 @@ program OMCLDRR
            errstat)
       stop 1
     else
-      if (iprt >= 1) print *,'cloud_ret: finished calling cld_mask'
+      call tell_log(2,'finished calling cld_mask')
     endif
   else
-    if (iprt >= 1) print *,'skipping cloud mask'
+    call tell_log(2,'skipping cloud mask')
   endif
 
   !Get level 1 input data: 
   !radiance and solar irradiance spectra
   !===========================================================
-  if (iprt > 1) print *,'cloud_ret: reading input data'
+  call tell_log(2,'reading input data')
   !he5 version
   if (read_he4) call read_input_data(blk, errstat)
   !netCDF version
@@ -143,8 +145,8 @@ program OMCLDRR
   !loop over the # of lines
   !========================
   do while (iLine <= nTimes) 
-    if (iprt >= 1) print *,'cloud_ret: processing iLine ',iLine,' of ', &
-         nTimes
+    write(logmsg,"(A17,I4,A4,I4)") 'processing iLine ',iLine,' of ',nTimes
+    call tell_log(1,logmsg)
 
 
     if(iLine > start_line) then
@@ -152,7 +154,7 @@ program OMCLDRR
       !Get level 1 input data: 
       !radiance and solar irradiance spectra
       !===========================================================
-      if (iprt > 1) print *,'cloud_ret: reading input data'
+      call tell_log(2,'reading input data')
       !he5 version
       if (read_he4) then
         call read_input_data(blk, errstat)
@@ -215,7 +217,7 @@ program OMCLDRR
       ref_clr(:,iLine)=real(refl_clr, kind=4)
     endif
 
-    if (iprt > 1) print *,'cloud_ret: retrieving cloud pressure'
+    call tell_log(2,'retrieving cloud pressure')
     call cloud_pres_ret(refl_clr, refl_cld, errstat)
     if (errstat /= 0) then
       call tell_error (tell_application_error, &
@@ -232,18 +234,18 @@ program OMCLDRR
     chi_sqr2(:,iLine)=chi_sqr(:,iLine)
     shifts2(:,iLine)=shifts(:,iLine)
 
-    !write output 
-    !============
-    if (iprt >= 2) then
-      print *, 'cloud_ret: pix, CP, R, f, ps, sza, land, biases, stds, chl. fg, chl, ref. clr.'
-      do ispec=0, nXtrack-1
-        write(6,"(i5,5f8.3,l3,5e11.3,f8.3)") ispec, cloud_pres(ispec,iLine), &
-             refl(ispec,iLine), eff_cld_frac(ispec,iLine), ps(ispec,iLine), &
-             sza(ispec,iLine), land_flg(ispec), biases(ispec,iLine), &
-             stds(ispec,iLine), chlcl(ispec), chlorophyll(ispec,iLine), &
-             ref_clr(ispec,iLine)
-      enddo ! ispec
-    endif ! iprt >= 2
+!    !write output 
+!    !============
+!    if (iprt >= 2) then
+!      print *, 'cloud_ret: pix, CP, R, f, ps, sza, land, biases, stds, chl. fg, chl, ref. clr.'
+!      do ispec=0, nXtrack-1
+!        write(6,"(i5,5f8.3,l3,5e11.3,f8.3)") ispec, cloud_pres(ispec,iLine), &
+!             refl(ispec,iLine), eff_cld_frac(ispec,iLine), ps(ispec,iLine), &
+!             sza(ispec,iLine), land_flg(ispec), biases(ispec,iLine), &
+!             stds(ispec,iLine), chlcl(ispec), chlorophyll(ispec,iLine), &
+!             ref_clr(ispec,iLine)
+!      enddo ! ispec
+!    endif ! iprt >= 2
 
 
 999 continue
@@ -289,7 +291,7 @@ program OMCLDRR
            errstat)
       stop 1
     endif
-    if (iprt > 0) print *,'netCDF file output successfully'
+    call tell_log(1,'netCDF file output successfully')
   endif
 
   !Writing Metadata including LocalGranuleId
@@ -301,9 +303,10 @@ program OMCLDRR
     ! close data block structure
     status = L1Br_close( blk )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      ierr = OMI_SMF_setmsg( status, &
-           "L1Br_close failed, PGE aborting, exit code = 1", &
-           "OMCLDRR_2pres", 1 )
+      errstat=1
+      call tell_error(tell_io_error, &
+           "L1Br_close failed, L1_cloud aborting, exit code = 1", &
+           errstat)
       stop 1
     END IF
   endif
@@ -311,9 +314,7 @@ program OMCLDRR
 
   !exit with normal status
   !=======================
-  status = omi_smf_setmsg(OMI_S_SUCCESS, &
-       'PGE finishes normally, exit code = 0  ', 'cloud_ret',0)
-  status = OMI_S_SUCCESS
+  call tell_log(0,"L1_cloud finished normally")
 
   call tell_close()
 

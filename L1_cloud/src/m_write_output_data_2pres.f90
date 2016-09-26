@@ -5,6 +5,7 @@ contains
   subroutine write_output_data_2pres(outfile, swathname)
     use m_write_swath_field
     use m_vars
+    use tell_module
     implicit none
     !-------------------------------------------------------------------------
     !         NASA/GSFC, Data Assimilation Office, Code 910.3, GEOS/DAS      !
@@ -59,7 +60,7 @@ contains
     !---------------
     character(len=255) :: nTimesstr="nTimes"
     character(len=255) :: nXtrackstr="nXtrack"
-    character(len=255) :: dims2
+    character(len=255) :: dims2, logmsg
     integer            :: nTime, iLine1
     !      integer            :: nWaveRes
     real (kind = 4) :: misval_r4 = fill_value
@@ -81,25 +82,25 @@ contains
     !      cld_pres2=cld_pres2*1013.25
     status = put_data (swid, "CloudPressureforO3", &
          dims2, cld_pres2, misval_r4, "Cloud Pressure for O3", "hPa", &
-         offset=(/0,0/),iprt=iprt)
+         offset=(/0,0/))
     status = put_data (swid, "CloudFractionforO3", &
          dims2, eff_cld_frac2, misval_r4, "Cloud Fraction for O3", "NoUnits", &
-         offset=(/0,0/), iprt=iprt)
+         offset=(/0,0/))
     status = put_data (swid, "ProcessingQualityFlagsforO3", &
          dims2, qc2, misval_i2, "Processing Quality Flags for O3", "NoUnits", &
-         offset=(/0,0/), iprt=iprt)
+         offset=(/0,0/))
 
     ! Detach from the swath interface.
     !-------------------------------------------------
     status = he5_swdetach (swid)
-    if (iprt >= 2) &
-         write (6, *) 'write_output_data: detached swath ',status
+    write(logmsg,"(A34,I12)") 'write_output_data: detached swath ',status
+    call tell_log(2,logmsg)
 
     ! Close the OMI Level2  HDF-EOS output file.
     !----------------------------------------------
     status = he5_swclose (swfid)
-    if (iprt >= 2) &
-         write (6, *) 'write_output_data: closed file ', status
+    write(logmsg,"(A31,I12)") 'write_output_data: closed file ',status
+    call tell_log(2,logmsg)
 
   end subroutine write_output_data_2pres
 

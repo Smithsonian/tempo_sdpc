@@ -28,10 +28,11 @@ contains
 
   subroutine rd_chl (errstat)   
 
-    use m_vars, ONLY: done_read_chl, chl2d, iprt, lat, lon, chlcl, iLine, &
+    use m_vars, ONLY: done_read_chl, chl2d, lat, lon, chlcl, iLine, &
          nXtrack
     use m_LUN_set
     use m_pgs_include
+    use tell_module
 
     implicit none          
 
@@ -41,6 +42,7 @@ contains
     integer                    :: ip, i, j
     integer :: pgs_io_gen_openf, pgs_io_gen_closef, OMI_SMF_setmsg
     integer :: status, ierr,version
+    character (len=128) :: logmsg
 
     version = 1
 
@@ -58,10 +60,12 @@ contains
         return
       endif
 
-      if (iprt > 0) print *,'rd_chl: opening chl file, status ',status
+      write(logmsg,"(A33,I4)") 'rd_chl: opening chl file, status ',status
+      call tell_log(1,logmsg)
       read (lun,*,err=200)  chl2d
       status = pgs_io_gen_closef (lun)
-      if (iprt > 0) print *,'rd_chl: closing chl file, status ',status
+      write(logmsg,"(A33,I4)") 'rd_chl: closing chl file, status ',status
+      call tell_log(1,logmsg)
       done_read_chl=.true.
     endif
 

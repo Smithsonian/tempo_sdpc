@@ -182,7 +182,7 @@ module m_vars
 
 
 
-  integer :: iprt=0  ! verbosity level
+  !integer :: iprt=0  ! verbosity level
   integer :: err_code ! error code in OMCLDRR
   integer :: retstatus ! status of metadata write-out
   character (len=200) :: flnm_out ! L2 output filename

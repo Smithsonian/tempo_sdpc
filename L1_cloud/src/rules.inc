@@ -63,7 +63,6 @@ $(ODIR)/m_cloud_pres_ret.o: $(SDIR)/m_cloud_pres_ret.f90 \
   $(ODIR)/m_matmul.o \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_poly_fit.o \
-  $(ODIR)/m_print_ret.o \
   $(ODIR)/m_sigma.o \
   $(ODIR)/m_spline.o \
   $(ODIR)/m_trilin.o \
@@ -115,10 +114,6 @@ $(ODIR)/m_poly_fit.o: $(SDIR)/m_poly_fit.f90 \
   $(ODIR)/m_invert2.o \
   $(ODIR)/m_matmul.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_poly_fit.f90 -o $(ODIR)/m_poly_fit.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_print_ret.o: $(SDIR)/m_print_ret.f90 \
-  $(ODIR)/m_cloud_pres_mod.o \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_print_ret.f90 -o $(ODIR)/m_print_ret.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_rd_chl.o: $(SDIR)/m_rd_chl.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \
@@ -236,8 +231,7 @@ $(ODIR)/m_earth_sun_dist.o: $(SDIR)/m_earth_sun_dist.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_strpos.o \
-  $(ODIR)/m_swathnames.o \
-  $(ODIR)/m_vars.o
+  $(ODIR)/m_swathnames.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_earth_sun_dist.f90 -o $(ODIR)/m_earth_sun_dist.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/MetadataModule.o: $(SDIR)/MetadataModule.f90 \
   $(ODIR)/m_LUN_set.o \

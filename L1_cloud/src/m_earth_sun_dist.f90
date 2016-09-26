@@ -4,11 +4,11 @@ contains
 
   subroutine EarthSunDist(fn,dist1,dist2) 
 
-    use m_vars, ONLY: iprt
     use m_LUN_set
     use m_swathnames
     use m_strpos
     use m_pgs_include
+    use tell_module
 
     implicit none
 
@@ -21,7 +21,7 @@ contains
 
     character(len=*), intent(in) :: fn
     real(kind=4), intent(out) :: dist1, dist2
-    character(len=200)  :: swn, filenm 
+    character(len=200)  :: swn, filenm, logmsg
     integer (kind=4), parameter :: zero = 0
     integer (kind=4) :: OMI_SMF_setmsg, swopen, swattach, swrdattr, &
          swdetach, swclose
@@ -53,7 +53,8 @@ contains
     swn = sunuv2swath
     !    endif
 
-    if (iprt >= 2) print *,'earth_sun_dist: ',fn,swn
+    write(logmsg,*) 'earth_sun_dist: ',trim(fn),' ',trim(swn)
+    call tell_log(2,logmsg)
 
     !! open the  swath file
     swfid = swopen( fn, DFACC_READ )
@@ -97,7 +98,8 @@ contains
       swn = uv2swath
     endif
 
-    if (iprt >= 2) print *,'earth_sun_dist: ',filenm,swn
+    write(logmsg,*),'earth_sun_dist: ',trim(filenm),' ',trim(swn)
+    call tell_log(2,logmsg)
 
     !! open the  swath file
     swfid = swopen( filenm, DFACC_READ )
@@ -123,7 +125,14 @@ contains
     ENDIF
     ierr = swdetach( swid )
     ierr = swclose( swfid )
-    if (iprt >= 2) print *,'earth_sun_dist: ',dist1,dist2, fn, filenm, swn
+    write(logmsg,*) 'earth_sun_dist: distances ', dist1, dist2
+    call tell_log(2,logmsg)
+    write(logmsg,*) trim(fn)
+    call tell_log(2,logmsg)
+    write(logmsg,*) trim(filenm)
+    call tell_log(2,logmsg)
+    write(logmsg,*) trim(swn)
+    call tell_log(2,logmsg)
 
   end subroutine EarthSunDist
 

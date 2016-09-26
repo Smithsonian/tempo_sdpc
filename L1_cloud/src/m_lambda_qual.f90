@@ -72,8 +72,10 @@ contains
   subroutine bad_irrad_lambda(nXtrack)
 
     use m_vars, ONLY: irr_quality_flagL, qc, nsolwave, ws, fs, wmin, wmax, &
-         iprt, transient_check 
+         transient_check 
     use m_find
+    use tell_module
+
     implicit none
 
     integer, intent(in) :: nXtrack
@@ -81,6 +83,7 @@ contains
     integer :: iw_start, iw_end              !, iw_start2, iw_end2
     logical, dimension(nsolwave,nXtrack) :: pxl_error
     logical :: pxl_warning
+    character (len=128) :: logmsg
 
 
     do ip=0,nXtrack-1
@@ -114,9 +117,9 @@ contains
         if(pxl_error(iw+1,ip+1)) then
           qc(ip,:)=IBSET(qc(ip,:),11)
           fs(iw,ip)=0.
-          if (iprt >= 1) then
-            print *,'bad irradiance scan position ',ip,ws(iw,ip)
-          endif
+          write(logmsg,"(A29,I6,2X,F10.6)") 'bad irradiance scan position ', &
+               ip, ws(iw,ip)
+          call tell_log(1,logmsg)
         endif
         if(pxl_warning) qc(ip,:)=IBSET(qc(ip,:),12)
 
