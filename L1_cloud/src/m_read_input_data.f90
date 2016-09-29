@@ -123,7 +123,6 @@ contains
       write(logmsg,"(A36, I12)")'read_input_data: opening l1b status ',status
       call tell_log(1,logmsg)
       IF( status .NE. OMI_S_SUCCESS ) THEN
-        errstat = -1
         call tell_error(tell_io_open_error, &
              "read_input_data: L1Br_open failed", errstat)
         return
@@ -148,7 +147,6 @@ contains
         nTimes=max_lines+start_line
       endif
       IF( status .NE. OMI_S_SUCCESS ) THEN
-        errstat = -1
         call tell_error(tell_io_read_error, &
              "read_input_data: L1Br_getSWdims failed", errstat)
         return
@@ -171,7 +169,6 @@ contains
          InstrumentConfigurationID_k=config_rad(iLine), &
          ImageBinningFactor_k=imbin )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      errstat = -1
       call tell_error(tell_io_read_error, &
            "read_input_data: L1Br_getDATA failed", errstat)
       return
@@ -186,7 +183,6 @@ contains
     !Geoflag_k=geoflg(:,iLine), MeasFlag_k=mflg(iLine), &
     !MeasClass_k=meas_class(iLine), Config_k=config_rad(iLine) , ImgBinFact_k=imbin )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      errstat = -1
       call tell_error(tell_io_read_error, &
            "read_input_data: L1Br_getGEOline failed", errstat)
       return
@@ -268,7 +264,6 @@ contains
     !check if it was good and abort if bad
     !=====================================
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      errstat = -1
       call tell_error(tell_io_read_error, &
            "read_input_data: L1Br_getSIGline failed", errstat)
       return

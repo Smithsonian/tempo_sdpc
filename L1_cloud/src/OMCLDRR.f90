@@ -87,15 +87,14 @@ program OMCLDRR
     version = 1
     status = pgs_pc_getreference(L2_out,version,flnm_out)
     if(status.ne.0) then
-      errstat=-1
       call tell_error(tell_io_open_error, &
            "error opening output L2 file, L1_cloud aborting, exit code = 1", &
            errstat)
       stop 1
     endif
     filename_out=trim(flnm_out)
-    write(logmsg,"(A6,I4,A18,A)") 'status', status,', &
-         output filename ',trim(flnm_out)
+    write(logmsg,"(A6,I4,A17,A)") 'status', status, &
+         ' output filename ',trim(flnm_out)
     call tell_log(2,logmsg)
   endif
 
@@ -303,7 +302,6 @@ program OMCLDRR
     ! close data block structure
     status = L1Br_close( blk )
     IF( status .NE. OMI_S_SUCCESS ) THEN
-      errstat=-1
       call tell_error(tell_io_error, &
            "L1Br_close failed, L1_cloud aborting, exit code = 1", &
            errstat)

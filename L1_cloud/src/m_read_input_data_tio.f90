@@ -24,7 +24,7 @@ contains
     use m_vars, only: input_data_path, iLine, wrt_solar, wmin, wmax, &
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
-         mflg, n_input, n_missing, nwl, w12d, qc, nwave, min_wl, &
+         mflg, n_input, n_missing, nwl, qc, nwave, min_wl, &
          ws, fs, nsolwave, read_he4, status, Year, Month, Day, time, &
          nc_swathname
     use m_strpos
@@ -216,7 +216,6 @@ contains
       if (nwl > nWavel .or. nwl < min_wl) then
         qc(:,iLine) = ibset(qc(:,iLine),14)
         n_missing = n_missing + nXtrack 
-        errstat=-1
         write (logmsg,"(A13, 4I6)") 'missing line ',iLine, nwl, nWavel, min_wl
         call tell_log(1,logmsg)
 !        if (iprt >= 3) then

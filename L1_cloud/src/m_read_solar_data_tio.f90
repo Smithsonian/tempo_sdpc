@@ -48,7 +48,6 @@ contains
     version = 1
     status = pgs_pc_getreference( IRR1B_FILE, version, filename_sol )
     if( status .ne. PGS_S_SUCCESS ) then
-      errstat = -1
       call tell_error (tell_io_read_error, &
            "read_solar_data_tio: failed to obtain irradiance L1B filename", &
            errstat)
@@ -249,7 +248,6 @@ contains
       if (allocated(ws)) deallocate(ws)
       allocate( ws(0:nsolwave-1,0:nXtrack-1), stat=ierr )
       if (ierr .ne. 0) then
-        errstat=-1
         call tell_error (tell_malloc_error, &
              "read_sol_data: failed to allocate memory: ws", &
              errstat)
@@ -259,7 +257,6 @@ contains
       if (allocated(fs)) deallocate(fs)
       allocate( fs(0:nsolwave-1,0:nXtrack-1), stat=ierr )
       if (ierr .ne. 0) then
-        errstat=-1
         call tell_error (tell_malloc_error, &
              "read_sol_data: failed to allocate memory: fs", &
              errstat)
@@ -269,7 +266,6 @@ contains
       if (allocated (irr_quality_flagL)) deallocate( irr_quality_flagL)
       allocate( irr_quality_flagL(nWavel,nXtrack), stat=ierr )
       if(ierr .ne. 0) then
-        errstat=-1
         call tell_error (tell_malloc_error, &
              "read_solar_data_tio: failed to allocate irr_quality_flagL", &
              errstat)
@@ -357,7 +353,6 @@ contains
     ! testing MeasurementQualityFlags
     if(btest(mflg(1),0) .or. btest(mflg(1),1) .or. btest(mflg(1),3) &
          .or. btest(mflg(1),12) .or. btest(mflg(1),11)) then
-      errstat = -1
       call tell_error (tell_runtime_error, &
            "read_solar_data_tio: solar data flagged as bad, aborting", &
            errstat)
@@ -392,7 +387,6 @@ contains
     sfile2=trim(solar_path)//trim(sfile)
     open(1,file=sfile2,form='formatted',status='unknown',action='write',iostat=ios)
     if (ios .ne. 0) then
-      errstat=-1
       call tell_error (tell_io_open_error, &
            "write_solar_tio: failed to open solar output file", &
            errstat)
@@ -522,7 +516,6 @@ contains
 
       if(minwl .gt. 0.0 .and. maxwl .gt. 0.0 .and. minwl .gt. maxwl) then
         if((minwl-maxwl) > 0.0) then
-          errstat=-1
           call tell_error (tell_invalid_parm, &
                "calc_wl_line: wlmin > wlmax", &
                errstat)
@@ -535,7 +528,6 @@ contains
 
       if(minwl .gt. 0.0) then
         if(minwl > maxval(wl_local))then
-          errstat=-1
           call tell_error (tell_invalid_parm, &
                "calc_wl_line: wlmin out of bound", &
                errstat)
@@ -571,7 +563,6 @@ contains
 
       if(maxwl .gt. 0.0) then
         if(maxwl < minval(wl_local)) then
-          errstat=-1
           call tell_error (tell_invalid_parm, &
                "calc_wl_line: wlmax out of bound", &
                errstat)

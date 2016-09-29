@@ -68,7 +68,6 @@ contains
     temp=amat
 
     if (nsampl /= size(amat,2)) then
-      error=-1
       call tell_error(tell_runtime_error, &
            "invert2 can't invert a non-square matrix", error)
       return
@@ -242,7 +241,7 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !        CALL XERBLA( 'DGETRI', -INFO )
-         errstat=-1*INFO
+         errstat=INFO
          call tell_error(tell_invalid_parm,'DGETRI', errstat)
          RETURN
       ELSE IF( LQUERY ) THEN
@@ -483,7 +482,7 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DTRTRI', -INFO )
-         errstat=-1*INFO
+         errstat=INFO
          call tell_error(tell_invalid_parm,'DTRTRI', errstat)
          RETURN
       END IF
@@ -713,7 +712,7 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DTRTI2', -INFO )
-         errstat=-1*INFO
+         errstat=INFO
          call tell_error(tell_invalid_parm,'DTRTI2', errstat)
          RETURN
       END IF
@@ -3105,7 +3104,7 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DGETRF', -INFO )
-        errstat=-1*INFO
+        errstat=INFO
         call tell_error(tell_invalid_parm,'DGETRF', errstat)
         RETURN
       END IF
@@ -3318,7 +3317,7 @@ contains
       END IF
       IF( INFO.NE.0 ) THEN
 !         CALL XERBLA( 'DGETF2', -INFO )
-         errstat=-1*INFO
+         errstat=INFO
          call tell_error(tell_invalid_parm,'DGETF2', errstat)
          RETURN
       END IF

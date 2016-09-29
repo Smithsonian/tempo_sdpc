@@ -7,7 +7,7 @@ contains
 
 subroutine instr_config(ierr, izoom)
 
-   use m_vars, ONLY: iLine, config_rad, config_irr, mflg
+   use m_vars, ONLY: iLine, config_rad
 
    implicit none
 

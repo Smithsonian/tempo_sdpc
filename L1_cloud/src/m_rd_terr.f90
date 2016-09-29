@@ -45,7 +45,7 @@ contains
     !================
     integer :: lun=2 
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
-    integer :: status,ierr, version
+    integer :: status, version
     integer :: ipts, i, j
     real (KIND=8) :: lont, latt
     character (len=128) :: logmsg
@@ -61,7 +61,6 @@ contains
       status = pgs_io_gen_openf ( terr_prs_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        errstat = -1
         call tell_error(tell_io_open_error, &
              "rd_terr: error opening terrain pressure file", errstat)
         return

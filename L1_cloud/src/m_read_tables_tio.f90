@@ -66,7 +66,6 @@ contains
     ! still has .dat, change to .nc
     status = pgs_pc_getreference ( ring_id, version, ring_fn)
     if (status /= 0) then
-      errstat = -1
       call tell_error (tell_io_read_error, &
            "read_tables_tio: failed to get Ring-effect table filename", &
            errstat)

@@ -222,7 +222,6 @@ contains
     else  !ex=.false., PCF does not exist or environment variable not set
 
       call tell_log(1,'initialize: PCF file not found')
-      errstat=-1
       call tell_error (tell_io_error, &
            "read_cld_dimensions: failed", &
            errstat)

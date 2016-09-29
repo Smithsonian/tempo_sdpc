@@ -47,7 +47,6 @@ contains
     ! still uses .dat rather than .nc
     status = pgs_pc_getreference ( oc_ram_id, version, oc_fn)
     if (status /= 0) then
-      errstat = -1
       call tell_error (tell_io_read_error, &
            "read_ocean_table_tio: failed to get Ocean Raman filename", &
            errstat)

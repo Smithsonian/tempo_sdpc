@@ -46,7 +46,7 @@ contains
     !================
     integer :: lun=2 
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
-    integer :: status,ierr, version=1
+    integer :: status, version=1
     integer :: ipts, i, j
     real (KIND=8) :: lont, latt
     character(len=100) :: txt, logmsg
@@ -61,7 +61,6 @@ contains
       status = pgs_io_gen_openf ( refl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        errstat = -1
         call tell_error(tell_io_open_error, &
              "rd_toms_refl: error opening reflectivity file", errstat)
         return
@@ -84,7 +83,6 @@ contains
         call tell_error (tell_malloc_error, &
              "rd_toms_refl: failed to allocate memory", &
              errstat)
-        errstat = -1
         return
       endif
       read (lun,*,err=200)  ref_lons
@@ -101,7 +99,6 @@ contains
       status = pgs_io_gen_openf ( ler354_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        errstat = -1
         call tell_error(tell_io_open_error, &
              "rd_toms_refl: error opening ler354_cox_munk file", errstat)
         return

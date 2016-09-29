@@ -39,7 +39,7 @@ contains
     integer :: i                       
     character(len=100) :: text
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
-    integer :: status, version, ierr, lun
+    integer :: status, version, lun
     integer :: pgs_met_getPCAttr_i, pgs_pc_getconfigdata
     integer :: OrbitNumber, ThreshOrbitNumber
     character(len=200) :: buf, logmsg
@@ -94,7 +94,6 @@ contains
     call tell_log(1,logmsg)
 
     if(status.ne.0) then
-      errstat = -1
       call tell_error(tell_io_open_error, &
            "read_resid: unable to open resid file", errstat)
       return
@@ -130,7 +129,6 @@ contains
     return
 
 100 status = 1
-    errstat = -1
     call tell_error(tell_io_read_error,'read_resids: error reading file', &
          errstat)
     return
@@ -157,7 +155,7 @@ contains
     integer, intent(inout) :: errstat
     !local variables
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
-    integer :: status, version, ierr, lun, nwav_o3
+    integer :: status, version, lun, nwav_o3
     character (len=200) :: logmsg
 
     if (errstat /= 0) return
@@ -170,7 +168,6 @@ contains
     write(logmsg,"(I6,I12)") status, lun
     call tell_log(1,logmsg)
     if(status.ne.0) then
-      errstat = -1
       call tell_error(tell_io_open_error, &
            "read_o3: failed to open O3 file", errstat)
       return
@@ -205,7 +202,6 @@ contains
 
 100 status = 1
     call tell_log(1,'read_o3: error reading file')
-    errstat = -1
     call tell_error (tell_io_read_error, &
          "read_o3: failed to read O3 cross-section file", &
          errstat)

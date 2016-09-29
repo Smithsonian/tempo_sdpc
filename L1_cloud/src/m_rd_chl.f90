@@ -41,7 +41,7 @@ contains
     integer                    :: lun=3
     integer                    :: ip, i, j
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
-    integer :: status, ierr,version
+    integer :: status, version
     character (len=128) :: logmsg
 
     version = 1
@@ -54,7 +54,6 @@ contains
       status = pgs_io_gen_openf ( chl_id, PGSd_IO_Gen_RSeqFrm, &
            0,lun, version)
       if(status.ne.0) then
-        errstat = -1
         call tell_error (tell_io_open_error, &
              "rd_chl: error opening clorophyll file", errstat)
         return

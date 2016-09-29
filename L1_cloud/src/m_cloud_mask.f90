@@ -132,7 +132,6 @@ contains
     ! open data block structure with default size of 1 lines
     status = L1Br_open( blk, filenamen, swathname)!, valname )
     if( status .ne. OMI_S_SUCCESS ) then
-      errstat = -1
       call tell_error(tell_io_open_error,"cloud_mask: L1Br_open failed", &
            errstat)
       return
@@ -143,7 +142,6 @@ contains
     status = L1Br_getSWdims( blk,  NumTimes_k=nTimes, nXtrack_k=nXtrack, &
          NumTimesSmallPixel_k=nTimesSmPx )
     if( status .ne. OMI_S_SUCCESS ) then
-      errstat = -1
       call tell_error(tell_io_read_error,"cloud_mask: L1Br_getSWdims failed", &
            errstat)
       return
@@ -183,7 +181,6 @@ contains
            Data_k=smvaluesL, &
            Wavelength_k=wavelengthL)!, quality_flagL )
       if( status .ne. OMI_S_SUCCESS ) then
-        errstat = -1
         call tell_error(tell_io_read_error, &
              "cloud_mask: L1Br_getDATAline failed", errstat)
         return
@@ -208,7 +205,6 @@ contains
     ! close data block structure
     status = L1Br_close( blk )
     if( status .ne. OMI_S_SUCCESS ) then
-      errstat = -1
       call tell_error(tell_io_error,"cloud_mask: L1Br_close failed", errstat)
       return
     end if
