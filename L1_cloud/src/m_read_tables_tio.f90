@@ -96,7 +96,7 @@ contains
 
     call tell_log(1,'read_tables_tio:')
     call tell_log(1,'nwave, ntheta, nscan, nphi, npres')
-    write(logmsg,"(I5,I8,I7,I6,I7)"),nwave, ntheta, nscan, nphi, npres
+    write(logmsg,"(I5,I8,I7,I6,I7)") nwave, ntheta, nscan, nphi, npres
     call tell_log(1,logmsg)
 
 

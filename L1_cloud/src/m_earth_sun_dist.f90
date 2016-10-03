@@ -98,7 +98,7 @@ contains
       swn = uv2swath
     endif
 
-    write(logmsg,*),'earth_sun_dist: ',trim(filenm),' ',trim(swn)
+    write(logmsg,*) 'earth_sun_dist: ',trim(filenm),' ',trim(swn)
     call tell_log(2,logmsg)
 
     !! open the  swath file

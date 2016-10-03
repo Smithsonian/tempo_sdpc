@@ -188,7 +188,7 @@ PROGRAM O3T_mainNVAdj
     IF( status /= PGS_S_SUCCESS ) THEN    ! default ="Climatology"
        SnowIceSourceOP = '"Climatology"'
     ELSE
-       READ( msg, '(A)'), SnowIceSourceOP
+       READ( msg, '(A)') SnowIceSourceOP
        IF( TRIM(SnowIceSourceOP) /= '"NISE"' .AND. &
            TRIM(SnowIceSourceOP) /= '"Climatology"' ) THEN
           SnowIceSourceOP = '"Climatology"'

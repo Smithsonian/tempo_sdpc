@@ -528,7 +528,7 @@ MODULE OMI_metaData_class
            status = OMI_E_FAILURE
            RETURN
         ELSE
-           READ( msg, '(I8)'), orbitNumber
+           READ( msg, '(I8)') orbitNumber
            IF( orbitNumber /= OMIcoreMeta%orbitNumber ) THEN
               WRITE( msg,'(A,I8,A,I8,A)' ) "Input file OrbitNumber = ", &
                OMIcoreMeta%orbitNumber, ", differs in PCF = ", orbitNumber, &

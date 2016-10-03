@@ -152,7 +152,7 @@ MODULE L2_metaData_class
            status = OZT_E_FAILURE
            RETURN
         ELSE
-           READ( msg, '(I9)'), orbitNumber
+           READ( msg, '(I9)') orbitNumber
            IF( orbitNumber /= L1BRadCoreArch%orbitNumber ) THEN
               WRITE( msg,'(A,I8,A,I8,A)' ) "OrbitNumber in input file = ", &
                L1BRadCoreArch%orbitNumber, ", differs in PCF = ", orbitNumber, &
