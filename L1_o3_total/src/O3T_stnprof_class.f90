@@ -37,6 +37,8 @@
 !!****************************************************************************
 MODULE O3T_stnprof_class
     USE OMI_SMF_class
+    use tell_module
+
     IMPLICIT NONE
     INTEGER (KIND = 4), PARAMETER, PRIVATE :: zero = 0
 
@@ -114,14 +116,17 @@ MODULE O3T_stnprof_class
 !!END Description:
 
      FUNCTION  O3T_stnprof_idxf( oz, ilat ) RESULT( iplow )
+
+       implicit none
+
        REAL (KIND=4), INTENT(IN) :: oz
        INTEGER (KIND=4), INTENT(IN) :: ilat
-       INTEGER (KIND=4) :: iplow, ierr
+       INTEGER (KIND=4) :: iplow, errstat
 
        IF( ilat < 1 .OR. ilat > 3 ) THEN
           iplow = -1
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "ilat out of range", &
-                                 "O3T_stnprof_idxf", zero )
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_stnprof_idxf: ilat out of range", errstat)
           RETURN
        ENDIF
 
@@ -159,16 +164,19 @@ MODULE O3T_stnprof_class
 
      FUNCTION O3T_ozfraction( oz, iplow, fteran, omeglo_k, omeghi_k ) &
                               RESULT( ozfrac )
+
+       implicit none
+
        REAL (KIND=4), INTENT(IN) :: oz 
        REAL (KIND=4), INTENT(IN), OPTIONAL :: fteran
        INTEGER (KIND=4), INTENT(IN) :: iplow
-       INTEGER (KIND=4) :: iphigh, ierr
+       INTEGER (KIND=4) :: iphigh, errstat
        REAL (KIND=4), INTENT(OUT), OPTIONAL ::omeglo_k, omeghi_k 
        REAL (KIND=4) :: ozfrac, omeglo, omeghi
        IF( iplow < 1 .OR. ANY(iplow .EQ. idx_ub ) .OR. iplow > 21 ) THEN
           ozfrac = -HUGE(1.0)
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "iplow out of range", &
-                                 "O3T_ozfraction", zero )
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_ozfraction: iplow out of range", errstat)
           RETURN
        ENDIF
        iphigh = iplow + 1 
@@ -275,18 +283,22 @@ MODULE O3T_stnprof_class
 !     END FUNCTION O3T_stnprof
 
      FUNCTION O3T_stnprof_1stG( estozn, iplow, fgprf, dxdomega ) &
-                                RESULT( status )
+          RESULT( errstat )
+
+       implicit none
+
        REAL (KIND=4), INTENT(IN) :: estozn
        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: dxdomega, fgprf
        INTEGER (KIND=4), INTENT(IN) :: iplow
        REAL (KIND=4) :: omeghi, omeglo, ozfrac, domega
-       INTEGER (KIND=4) :: iphigh, status, ierr
+       INTEGER (KIND=4) :: iphigh, errstat
+
+       errstat = 0
 
        IF( SIZE( dxdomega ) < NLYR .OR. SIZE( fgprf ) < NLYR ) THEN
-          status = OZT_E_FAILURE
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "input array size too small", &
-                                 "O3T_stnprof_1stG", zero )
-          RETURN
+         call tell_error(tell_runtime_error, &
+              "O3T_stnprof_1stG: input array size too small", errstat)
+         RETURN
        ENDIF
 
        iphigh = iplow+1
@@ -298,28 +310,33 @@ MODULE O3T_stnprof_class
        fgprf    = stdprf(:,iplow) + (stdprf(:,iphigh)-stdprf(:,iplow))*ozfrac 
 
        IF( estozn < omeglo ) THEN
-         status = O3T_prof_check( fgprf, stdprf(:,iplow) )
-       ELSE
-         status = OZT_S_SUCCESS
+         errstat = O3T_prof_check( fgprf, stdprf(:,iplow) )
        ENDIF
-       
+
      END FUNCTION O3T_stnprof_1stG
 
-     FUNCTION O3T_prof_check( o3prof, o3prof_base ) RESULT( status )
+
+
+
+     FUNCTION O3T_prof_check( o3prof, o3prof_base ) RESULT( errstat )
+
+       implicit none
+
        REAL (KIND=4), DIMENSION(:), INTENT(INOUT) :: o3prof
        REAL (KIND=4), DIMENSION(:), INTENT(IN)    :: o3prof_base
        REAL (KIND=4), DIMENSION(SIZE(o3prof_base)):: ratio
        !INTEGER (KIND=4), DIMENSION(1) :: ml
        INTEGER (KIND=4) :: i, j, l, nL 
-       INTEGER (KIND=4) :: status, ierr
+       INTEGER (KIND=4) :: errstat
        CHARACTER (LEN =255) :: msg
+
+       errstat = 0
 
        !! make sure array sizes are the same.
        nL = SIZE( o3prof_base ) 
        IF( SIZE( o3prof ) /= nL ) THEN
-          status = OZT_E_FAILURE
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, "input array size not equal", &
-                                 "O3T_prof_check", zero )
+         call tell_error(tell_runtime_error, &
+              "O3T_prof_check: input array size not equal", errstat)
           RETURN
        ENDIF
        
@@ -340,18 +357,17 @@ MODULE O3T_stnprof_class
 
        IF( i > 0 ) THEN          !! TRUE, further checking and correction 
           IF( SUM( o3prof ) < 0.0 ) THEN
-             status = OZT_E_FAILURE
-             WRITE( msg, * ) "input total O3 =", SUM( o3prof ), o3prof 
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_prof_check", zero )
+             WRITE( msg, * ) "O3T_prof_check: input total O3 =", &
+                  SUM( o3prof ), o3prof 
+             call tell_error(tell_runtime_error, msg, errstat)
              RETURN
           ENDIF
 
           !! make sure reference profile is all positive before continuing.
           IF( ANY( o3prof_base < 0.0 ) ) THEN
-             status = OZT_E_FAILURE
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, "negative O3 value(s) "//&
-                                    "in input reference profile", &
-                                    "O3T_prof_check", zero )
+             call tell_error(tell_runtime_error, &
+                  "O3T_prof_check: negative O3 value(s) " // &
+                  "in input reference profile", errstat)
              RETURN
           ENDIF
 
@@ -374,7 +390,6 @@ MODULE O3T_stnprof_class
            ratio(i:j) = o3prof_base(i:j)/SUM( o3prof_base(i:j))
           o3prof(i:j) =       ratio(i:j)*SUM( o3prof(i:j)     )
        ENDIF
-       status = OZT_S_SUCCESS
        RETURN
      END FUNCTION O3T_prof_check
 

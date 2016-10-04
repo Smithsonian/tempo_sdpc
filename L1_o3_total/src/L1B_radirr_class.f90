@@ -1420,97 +1420,98 @@ MODULE L1B_radirr_class
 !!11. L1Bri_interpWL
       !! This function is a simple scheme to set the Precision and
       !! pixel quality flag at the input wavelength (wl_com).
-      FUNCTION L1Bri_interpWL( Wavelength, PixelQualityFlags, &
-                               wl_com, PixelQualityFlagsWL,   &
-                               RadIrrPrecision_k, PrecisionWL_k ) &
-                               RESULT (status)
-        REAL (KIND = 4), DIMENSION(:,:), INTENT( IN ) :: Wavelength
-        REAL (KIND = 4), DIMENSION(:), INTENT( IN ) :: wl_com
-        INTEGER (KIND = 2), DIMENSION(:,:), INTENT( IN ) :: &
-                                              PixelQualityFlags
-        INTEGER (KIND = 2), DIMENSION(:,:), INTENT( OUT ) :: &
-                                              PixelQualityFlagsWL
-        REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT( IN ) :: & 
-                                         RadIrrPrecision_k
-        REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT( OUT ) :: & 
-                                         PrecisionWL_k
-        INTEGER (KIND = 4 ) :: iw, Nwl, Nwl_com, nXtrack, i, il, ih
-        INTEGER (KIND = 4) :: status
-        REAL (KIND = 4) :: frac
+       FUNCTION L1Bri_interpWL( Wavelength, PixelQualityFlags, &
+            wl_com, PixelQualityFlagsWL,   &
+            RadIrrPrecision_k, PrecisionWL_k ) &
+            RESULT (errstat)
+         use tell_module
 
-        call define_global_epsilon10
+         implicit none
 
-        status = OZT_S_SUCCESS
-        Nwl_com = SIZE( wl_com        )
-        Nwl     = SIZE( Wavelength, 1 )
-        nXtrack = SIZE( Wavelength, 2 )
+         REAL (KIND = 4), DIMENSION(:,:), INTENT( IN ) :: Wavelength
+         REAL (KIND = 4), DIMENSION(:), INTENT( IN ) :: wl_com
+         INTEGER (KIND = 2), DIMENSION(:,:), INTENT( IN ) :: &
+              PixelQualityFlags
+         INTEGER (KIND = 2), DIMENSION(:,:), INTENT( OUT ) :: &
+              PixelQualityFlagsWL
+         REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT( IN ) :: &
+              RadIrrPrecision_k
+         REAL (KIND = 4), OPTIONAL, DIMENSION(:,:), INTENT( OUT ) :: &
+              PrecisionWL_k
+         INTEGER (KIND = 4 ) :: iw, Nwl, Nwl_com, nXtrack, i, il, ih
+         INTEGER (KIND = 4) :: errstat
+         REAL (KIND = 4) :: frac
 
-        IF( SIZE( PixelQualityFlags, 1 ) /= Nwl ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "Nwl size not equal to " // &
-                                  " PixelQualityFlags(:,*)",&
-                                  "L1Bri_interpWL", zero )
-           status = OZT_E_FAILURE
+         call define_global_epsilon10
+
+         errstat = 0
+         Nwl_com = SIZE( wl_com        )
+         Nwl     = SIZE( Wavelength, 1 )
+         nXtrack = SIZE( Wavelength, 2 )
+
+         IF( SIZE( PixelQualityFlags, 1 ) /= Nwl ) THEN
+           call tell_error(tell_runtime_error, &
+                "L1Bri_interpWL: Nwl size not equal to " // &
+                "PixelQualityFlags(:,*)", errstat)
            RETURN
-        ENDIF
+         ENDIF
 
-        IF( SIZE( PixelQualityFlagsWL, 1 ) /= Nwl_com ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "Nwl_com size not " // &
-                                  " equal to PixelQualityFlagsWL(:,*)",&
-                                  "L1Bri_interpWL", zero )
-           status = OZT_E_FAILURE
+         IF( SIZE( PixelQualityFlagsWL, 1 ) /= Nwl_com ) THEN
+           call tell_error(tell_runtime_error, &
+                "L1Bri_interpWL: Nwl_com size not equal to "// &
+                "PixelQualityFlags(:,*)", errstat)
            RETURN
-        ENDIF
-                      
-        IF( SIZE( PixelQualityFlagsWL, 2 ) /= nXtrack .OR. &
-            SIZE( PixelQualityFlags,   2 ) /= nXtrack ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "nXtrack size not good:" // &
-                                 " PixelQualityFlags or PixelQualityFlagsWL",&
-                                 "L1Bri_interpWL", zero )
-           status = OZT_E_FAILURE
-           RETURN
-        ENDIF
+         ENDIF
 
-        DO iw = 1, Nwl_com
+         IF( SIZE( PixelQualityFlagsWL, 2 ) /= nXtrack .OR. &
+              SIZE( PixelQualityFlags,   2 ) /= nXtrack ) THEN
+           call tell_error(tell_runtime_error, &
+                "L1Bri_interpWL: nXtrack size not good:" // &
+                " PixelQualityFlags or PixelQualityFlagsWL", errstat)
+           RETURN
+         ENDIF
+
+         DO iw = 1, Nwl_com
            il = iw
-        DO i = 1, nXtrack
-           il = hunt( Wavelength(1:Nwl,i ), wl_com(iw), il )
-           IF( il == 0 .OR. il == Nwl ) THEN
-              !! no measurement data for this wl, return 0 values
-              !! and set PixelQualityFlags to be missing (bit 1 equal 1)
-              PixelQualityFlagsWL(iw,i) = 1
-              IF( PRESENT(PrecisionWL_k) ) PrecisionWL_k(iw,i) = 0
-           ELSE
-              ih = il+1
-              frac = (wl_com(iw)       - Wavelength(il,i))/ &
-                     (Wavelength(ih,i) - Wavelength(il,i))
-              IF( ABS( frac ) < EPSILON10 ) THEN
-                  ih = il
-                  frac = 0.0
-              ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
-                  il = ih
-                  frac = 0.0
-              ENDIF
- 
-              IF( ih == il ) THEN
+           DO i = 1, nXtrack
+             il = hunt( Wavelength(1:Nwl,i ), wl_com(iw), il )
+             IF( il == 0 .OR. il == Nwl ) THEN
+               !! no measurement data for this wl, return 0 values
+               !! and set PixelQualityFlags to be missing (bit 1 equal 1)
+               PixelQualityFlagsWL(iw,i) = 1
+               IF( PRESENT(PrecisionWL_k) ) PrecisionWL_k(iw,i) = 0
+             ELSE
+               ih = il+1
+               frac = (wl_com(iw)       - Wavelength(il,i))/ &
+                    (Wavelength(ih,i) - Wavelength(il,i))
+               IF( ABS( frac ) < EPSILON10 ) THEN
+                 ih = il
+                 frac = 0.0
+               ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
+                 il = ih
+                 frac = 0.0
+               ENDIF
+
+               IF( ih == il ) THEN
                  PixelQualityFlagsWL(iw,i) = PixelQualityFlags(il,i)
                  IF( PRESENT(PrecisionWL_k) .AND. &
-                     PRESENT(RadIrrPrecision_k) ) PrecisionWL_k(iw,i)  &
-                                                = RadIrrPrecision_k(il,i)
-              ELSE
+                      PRESENT(RadIrrPrecision_k) ) PrecisionWL_k(iw,i)  &
+                      = RadIrrPrecision_k(il,i)
+               ELSE
                  PixelQualityFlagsWL(iw,i) = IOR( PixelQualityFlags(il,i), &
-                                                  PixelQualityFlags(ih,i) )
+                      PixelQualityFlags(ih,i) )
                  IF( PRESENT(PrecisionWL_k) .AND. & 
-                     PRESENT(RadIrrPrecision_k) ) THEN
-                    PrecisionWL_k(iw,i)  = MAX( RadIrrPrecision_k(il,i), &
-                                                RadIrrPrecision_k(ih,i))
+                      PRESENT(RadIrrPrecision_k) ) THEN
+                   PrecisionWL_k(iw,i)  = MAX( RadIrrPrecision_k(il,i), &
+                        RadIrrPrecision_k(ih,i))
                  ENDIF
-              ENDIF
-           ENDIF
-        ENDDO 
-        ENDDO
+               ENDIF
+             ENDIF
+           ENDDO
+         ENDDO
 
-        RETURN
-      END FUNCTION L1Bri_interpWL
+         RETURN
+       END FUNCTION L1Bri_interpWL
 
 !! 12. L1Bri_getLineWC
  !    This function gets the wavelength coefficients the reference column from

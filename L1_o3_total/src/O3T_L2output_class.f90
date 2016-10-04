@@ -67,20 +67,31 @@ MODULE O3T_L2output_class
     PUBLIC :: O3T_freeL2out
 
     CONTAINS
-       FUNCTION O3T_initL2out( wl_com ) RESULT( status )
+       FUNCTION O3T_initL2out( wl_com ) RESULT( errstat )
+
+         use tell_module
+
+         implicit none
+
          REAL (KIND = 4), DIMENSION(:), INTENT(IN), OPTIONAL :: wl_com
          !CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-         INTEGER (KIND=4) :: status, ierr
+         INTEGER (KIND=4) :: errstat
          INTEGER (KIND=4) :: nwl_com
 
-         status = OZT_S_SUCCESS
+         errstat = 0
+
          IF( PRESENT( wl_com ) ) THEN
             nwl_com = SIZE( wl_com )
          ELSE
             nwl_com = nWavel_rad
          ENDIF
 
-         CALL O3T_freeL2out
+         CALL O3T_freeL2out(errstat)
+         IF( errstat /= zero ) THEN
+           call tell_error(tell_runtime_error, &
+                "O3T_freeL2out failed", errstat)
+           RETURN
+         ENDIF
          ALLOCATE( radQAflags_com( nwl_com, nXtrack_rad ), &
                    irrQAflags_com( nwl_com, nXtrack_rad ), &
                    radPrecision_com( nwl_com, nXtrack_rad ), &
@@ -92,31 +103,49 @@ MODULE O3T_L2output_class
                    dndomega_t( nwl_com ), &
                    dNdT( nwl_com ), &
                    dndr( nwl_com ), &
-                   STAT=ierr )
-        IF( ierr /= zero ) THEN
-            ierr = OMI_SMF_setmsg( OZT_E_MEM_ALLOC, &
-                                  "L2out allocation failure", &
-                                  "O3T_initL2out", zero )
-            status = OZT_E_FAILURE
-            RETURN
-         ENDIF
-         RETURN
+                   STAT=errstat )
+        IF( errstat /= zero ) THEN
+          call tell_error(tell_malloc_error, &
+               "O3T_initL2out: allocation failure", errstat)
+          RETURN
+        ENDIF
+        RETURN
  
        END FUNCTION O3T_initL2out
 
-       SUBROUTINE O3T_freeL2out
-         IF( ALLOCATED( radQAflags_com   ) ) DEALLOCATE( radQAflags_com   )
-         IF( ALLOCATED( irrQAflags_com   ) ) DEALLOCATE( irrQAflags_com   )
-         IF( ALLOCATED( radPrecision_com ) ) DEALLOCATE( radPrecision_com )
-         IF( ALLOCATED( irrPrecision_com ) ) DEALLOCATE( irrPrecision_com )
-         IF( ALLOCATED( xnvalm           ) ) DEALLOCATE( xnvalm           )
-         IF( ALLOCATED( res_stp1         ) ) DEALLOCATE( res_stp1         )
-         IF( ALLOCATED( res_stp2         ) ) DEALLOCATE( res_stp2         )
-         IF( ALLOCATED( res_stp3         ) ) DEALLOCATE( res_stp3         )
-         IF( ALLOCATED( dndomega_t       ) ) DEALLOCATE( dndomega_t       )
-         IF( ALLOCATED( dNdT             ) ) DEALLOCATE( dNdT             )
-         IF( ALLOCATED( dndr             ) ) DEALLOCATE( dndr             )
+       SUBROUTINE O3T_freeL2out (errstat)
+
+         use tell_module
+
+         implicit none
+
+         integer (kind=4), intent(inout) :: errstat
+
+         IF(ALLOCATED(radQAflags_com  )) DEALLOCATE(radQAflags_com, &
+              stat=errstat )
+         IF(ALLOCATED(irrQAflags_com  )) DEALLOCATE(irrQAflags_com, &
+              stat=errstat )
+         IF(ALLOCATED(radPrecision_com)) DEALLOCATE(radPrecision_com, &
+              stat=errstat )
+         IF(ALLOCATED(irrPrecision_com)) DEALLOCATE(irrPrecision_com, &
+              stat=errstat )
+         IF(ALLOCATED(xnvalm          )) DEALLOCATE(xnvalm, stat=errstat )
+         IF(ALLOCATED(res_stp1        )) DEALLOCATE(res_stp1, stat=errstat )
+         IF(ALLOCATED(res_stp2        )) DEALLOCATE(res_stp2, stat=errstat )
+         IF(ALLOCATED(res_stp3        )) DEALLOCATE(res_stp3, stat=errstat )
+         IF(ALLOCATED(dndomega_t      )) DEALLOCATE(dndomega_t, stat=errstat )
+         IF(ALLOCATED(dNdT            )) DEALLOCATE(dNdT, stat=errstat )
+         IF(ALLOCATED(dndr            )) DEALLOCATE(dndr, stat=errstat )
+         IF( errstat /= 0 ) THEN
+           call tell_error(tell_malloc_error, &
+                "O3T_freeL2out: deallocation failure", errstat)
+           RETURN
+         ENDIF
+
        END SUBROUTINE O3T_freeL2out
+
+
+
 
        SUBROUTINE O3T_L2setGeoLine( iT, geoblk, datablk ) 
          TYPE (L2_generic_type), INTENT( INOUT ) :: geoblk, datablk
@@ -177,13 +206,14 @@ MODULE O3T_L2output_class
 
        END SUBROUTINE O3T_L2setGeoLine
          
-       SUBROUTINE O3T_L2setDataPix( iT, iX, nWavel, nLayers, &
+!       SUBROUTINE O3T_L2setDataPix( iT, iX, nWavel, nLayers, &
+       SUBROUTINE O3T_L2setDataPix( iT, iX, nWavel, &
                                     algflg, QAflags, radBadPixflgs, & 
                                     stp1oz, stp2oz, stp3oz, &
                                     oz_cld, aerind, so2ind, & 
                                     pixSURF, eff, aprfoz, datablk )
          TYPE (L2_generic_type), INTENT( INOUT ) :: datablk
-         INTEGER (KIND=4), INTENT(IN) :: iT, iX, nWavel, nLayers
+         INTEGER (KIND=4), INTENT(IN) :: iT, iX, nWavel!, nLayers
          TYPE (O3T_pixcover_type), INTENT(IN)  :: pixSURF
          REAL (KIND=4), DIMENSION(:), INTENT(IN) :: eff, aprfoz
          INTEGER (KIND=1), INTENT(IN) :: algflg

@@ -38,6 +38,7 @@ MODULE O3T_dndx_m
     USE O3T_stnprof_class, ONLY : NLYR, stdprf, O3T_ozfraction 
     USE O3T_pixel_class, ONLY : O3T_pixgeo_type, O3T_pixcover_type
     USE O3T_lpolycoef_class, ONLY : O3T_lpoly_coef_type
+    use tell_module
  
     IMPLICIT NONE
     INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0
@@ -46,8 +47,12 @@ MODULE O3T_dndx_m
     PUBLIC  :: O3T_delnbyT
  
     CONTAINS
+
       FUNCTION O3T_dndx( iplow, estozn, coefs, pixGEO, pixSURF, &
-                         dndx, dndomega ) RESULT( status )
+           dndx, dndomega ) RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iplow
         REAL (KIND=4), INTENT(IN) :: estozn
         TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
@@ -57,9 +62,9 @@ MODULE O3T_dndx_m
         REAL (KIND=4), DIMENSION(:), INTENT(OUT), OPTIONAL :: dndomega
         INTEGER (KIND=4) :: iwl, nwl, ii
         INTEGER (KIND=4) :: ip, iprof
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: errstat
         REAL (KIND=4), DIMENSION( nlyrT, npresT, nwl_sub ) ::  &
-                         ezero, tr, sb, Lgr_npres, Lcl_npres
+             ezero, tr, sb, Lgr_npres, Lcl_npres
         REAL (KIND=4), DIMENSION( nlyrT, nwl_sub ) :: Lgr, Lcl, Ltot
         REAL (KIND=4), DIMENSION(2,nwl_sub ) :: xnval
         REAL (KIND=4), DIMENSION(2,NLYR,nwl_sub) :: dxnv
@@ -67,15 +72,14 @@ MODULE O3T_dndx_m
         REAL (KIND=4) :: grref, clref, ref
         !REAL (KIND=4) :: q_unper
         REAL (KIND=8) :: pc, fac_pcl
-                      
-        status = OZT_S_SUCCESS
+
+        errstat = 0
 
         nwl = SIZE(dndx, 1)
         IF( nwl  < nwl_sub  .OR.  SIZE(dndx, 2) < NLYR  ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'input array size too small', &
-                                 "O3T_dndx", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error(tell_runtime_error, &
+               "O3T_dndx: input array size too small", errstat)
+          RETURN
         ENDIF
 
 
@@ -85,67 +89,66 @@ MODULE O3T_dndx_m
         ref    = pixSURF%ref
 
         ozfrac  = O3T_ozfraction( estozn, iplow, &
-                                  omeglo_k=omeglo, omeghi_k=omeghi )
+             omeglo_k=omeglo, omeghi_k=omeghi )
         pc = pixGEO%pc
         IF( pc < 0.25 ) THEN
           fac_pcl = (pixGEO%log_pc-log_pres(3))/(log_pres(4)-log_pres(3))
         ENDIF
-        
+
         iprof = iplow
         DO ip = 1, 2
-          status = O3T_lpoly_interpPLW( iprof, pixGEO, coefs, &
-                                        ezero, tr, sb  )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_FAILURE,  &
-                                    "Table interpolation failed", &
-                                    "O3T_dndx", zero )
-             RETURN
+          errstat = O3T_lpoly_interpPLW( iprof, pixGEO, coefs, &
+               ezero, tr, sb  )
+          IF( errstat .NE. 0 ) THEN
+            call tell_error(tell_runtime_error, &
+                 "O3T_dndx: table interpolation failed", errstat)
+            RETURN
           ENDIF
 
           IF( clfrac <= 0.0 ) THEN 
-             Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
-             DO iwl = 1, nwl_sub
-               Ltot(:,iwl)= real( &
-                    (/(SUM( Lgr_npres(ii,:,iwl)*coefs%pgr), ii=1,nlyrT)/) &
-                    , kind=4)
-             ENDDO 
+            Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
+            DO iwl = 1, nwl_sub
+              Ltot(:,iwl)= real( &
+                   (/(SUM( Lgr_npres(ii,:,iwl)*coefs%pgr), ii=1,nlyrT)/) &
+                   , kind=4)
+            ENDDO
           ELSE IF( clfrac >= 1.0 ) THEN
-             Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
-             IF( pc < 0.25 ) THEN
-                DO iwl = 1, nwl_sub
-                  Ltot(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
-                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl) &
-                              , kind=4)
-                ENDDO
-             ELSE
-                DO iwl = 1, nwl_sub
-                  Ltot(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
-                                   ii=1,nlyrT) /), kind=4)
-                ENDDO
-             ENDIF 
+            Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
+            IF( pc < 0.25 ) THEN
+              DO iwl = 1, nwl_sub
+                Ltot(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
+                     - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl) &
+                     , kind=4)
+              ENDDO
+            ELSE
+              DO iwl = 1, nwl_sub
+                Ltot(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
+                     ii=1,nlyrT) /), kind=4)
+              ENDDO
+            ENDIF
           ELSE
-             Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
-             Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
-             DO iwl = 1, nwl_sub
-               Lgr(:,iwl)=real((/(SUM(Lgr_npres(ii,:,iwl)*coefs%pgr), &
-                    ii=1,nlyrT)/), kind=4)
-             ENDDO
-             IF( pc < 0.25 ) THEN
-                DO iwl = 1, nwl_sub
-                  Lcl(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
-                              - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl), &
-                              kind=4)
-                ENDDO
-             ELSE
-                DO iwl = 1, nwl_sub
-                  Lcl(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
-                                  ii=1,nlyrT) /), kind=4)
-                ENDDO
-             ENDIF 
-             Ltot = clfrac*Lcl + (1.0-clfrac)*Lgr
+            Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
+            Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
+            DO iwl = 1, nwl_sub
+              Lgr(:,iwl)=real((/(SUM(Lgr_npres(ii,:,iwl)*coefs%pgr), &
+                   ii=1,nlyrT)/), kind=4)
+            ENDDO
+            IF( pc < 0.25 ) THEN
+              DO iwl = 1, nwl_sub
+                Lcl(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
+                     - Lcl_npres(:,3,iwl))+Lcl_npres(:,3,iwl), &
+                     kind=4)
+              ENDDO
+            ELSE
+              DO iwl = 1, nwl_sub
+                Lcl(:,iwl) = real((/ (SUM(Lcl_npres(ii,:,iwl)*coefs%pcl), &
+                     ii=1,nlyrT) /), kind=4)
+              ENDDO
+            ENDIF
+            Ltot = clfrac*Lcl + (1.0-clfrac)*Lgr
           ENDIF
           IF( PRESENT( dndomega ) ) THEN
-             xnval(ip,:)  = -100.0*LOG10(Ltot(1,:))
+            xnval(ip,:)  = -100.0*LOG10(Ltot(1,:))
           ENDIF
           IF( lyrDetO3(1) > 0.0 ) THEN
             DO iwl = 1, nwl_sub
@@ -154,31 +157,33 @@ MODULE O3T_dndx_m
           ELSE 
             DO iwl = 1, nwl_sub
               dxnv(ip,:,iwl) = -100.0*LOG10(Ltot(2:nlyrT,iwl)/Ltot(1,iwl)) &
-                             / (0.1*stdprf(1:NLYR,iprof))
+                   / (0.1*stdprf(1:NLYR,iprof))
             ENDDO
           ENDIF
           iprof = iplow + ip
         ENDDO
         IF( PRESENT( dndomega ) ) THEN
-           IF( SIZE(dndomega) < nwl ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'dndomega size too small', &
-                                    "O3T_dndx", zero )
-              status = OZT_E_FAILURE
-              RETURN
-           ENDIF
-           dndomega(1:nwl_sub) = (xnval(2,:) - xnval(1,:))/(omeghi - omeglo)
+          IF( SIZE(dndomega) < nwl ) THEN
+            call tell_error(tell_runtime_error, &
+                 "O3T_dndx: dndomega size too small", errstat)
+            RETURN
+          ENDIF
+          dndomega(1:nwl_sub) = (xnval(2,:) - xnval(1,:))/(omeghi - omeglo)
         ENDIF
         DO iwl = 1, nwl_sub
           dndx(iwl,:) = dxnv(2,:,iwl)*ozfrac + dxnv(1,:,iwl)*(1.0-ozfrac)
         ENDDO
- 
+
         ! set dndx for additional wavelength  to zero
         IF( nwl_sub < nwl ) THEN
-           dndx(nwl_sub+1:nwl,:)   = 0.0 
-           IF( PRESENT( dndomega ) ) dndomega(nwl_sub+1:nwl) = 0.0
+          dndx(nwl_sub+1:nwl,:)   = 0.0 
+          IF( PRESENT( dndomega ) ) dndomega(nwl_sub+1:nwl) = 0.0
         ENDIF
 
       END FUNCTION O3T_dndx
+
+
+
 
 !     FUNCTION O3T_delnbyT computes the Jacobian dN/dT for each of 11 Umkehr 
 !        layers and all the selected wavelengths using a chain rule relating 
@@ -200,34 +205,36 @@ MODULE O3T_dndx_m
 !        use here by subroutine O3T_delnbyT
 
       FUNCTION O3T_delnbyT( dndx, fgprf, fgtmp, aprftm, delnT, dNdT ) &
-                            RESULT( status )
+                            RESULT( errstat )
+
+        implicit none
+
         REAL (KIND=4), DIMENSION(:,:), INTENT(IN) :: dndx
         REAL( KIND=4 ), DIMENSION(:), INTENT(IN) :: fgprf, fgtmp, aprftm
         REAL (KIND=4), DIMENSION(:,:), INTENT(OUT) :: delnT
         REAL (KIND=4), DIMENSION(:), OPTIONAL, INTENT(OUT) :: dNdT !Oz weighted
         REAL( KIND=4 ), DIMENSION(SIZE(aprftm)) :: ctmp, delt, deltsq, t2
-        INTEGER (KIND=4) :: iwl, nwl, ierr, status
+        INTEGER (KIND=4) :: iwl, nwl, errstat
+
+        errstat = 0
 
         IF( ANY( SHAPE(delnT) .NE. SHAPE(dndx)) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'Shapes dndx & delnT differ', &
-                                 "O3T_delnbyT", zero )
-           status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_delnbyT: Shapes dndx & delnT differ", errstat)
            RETURN
         ENDIF
 
         IF( SIZE( fgprf ) .NE. SIZE( fgtmp ) .OR. &
             SIZE( fgprf ) .NE. SIZE( aprftm )  ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'profile array size not equal', &
-                                 "O3T_delnbyT", zero )
-           status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_delnbyT: profile array sizes not equal", errstat)
            RETURN
         ENDIF
 
         nwl = SIZE( dndx, 1 )
         IF( SIZE( fgprf ) .NE. SIZE( dndx, 2 )  ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'layer sizes not equal', &
-                                 "O3T_delnbyT", zero )
-           status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_delnbyT: layersizes not equal", errstat)
            RETURN
         ENDIF
 
@@ -252,9 +259,8 @@ MODULE O3T_dndx_m
 
         IF( PRESENT( dNdT ) ) THEN
            IF( SIZE( dNdT ) < nwl ) THEN 
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'dNdT size too small',&
-                                    "O3T_delnbyT", zero )
-              status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_delnbyT: dNdT size too small", errstat)
               RETURN
            ENDIF
 
@@ -277,6 +283,5 @@ MODULE O3T_dndx_m
            ENDIF
         ENDIF
 
-        status = OZT_S_SUCCESS
       END FUNCTION O3T_delnbyT
 END MODULE O3T_dndx_m

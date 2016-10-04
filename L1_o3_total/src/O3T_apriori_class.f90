@@ -39,7 +39,10 @@ MODULE O3T_apriori_class
     USE O3T_stnprof_class
     USE OMI_LUN_set
     USE PGS_PC_class
+    use tell_module
+
     IMPLICIT NONE
+
     INTEGER (KIND = 4), PARAMETER, PRIVATE :: zero = 0
     INTEGER (KIND = 4), PARAMETER, PRIVATE :: ntoz = 10
     INTEGER (KIND = 4), PARAMETER, PRIVATE :: nlat_ctrs = 18
@@ -53,94 +56,92 @@ MODULE O3T_apriori_class
     
    CONTAINS
 
-     FUNCTION O3T_apriori_rd( ) RESULT( status )
+     FUNCTION O3T_apriori_rd( ) RESULT( errstat )
        INCLUDE 'PGS_IO.f'
        !INCLUDE 'PGS_IO_1.f'
        INTEGER (KIND=4), EXTERNAL :: pgs_io_gen_openf, pgs_io_gen_closef
        INTEGER (KIND=4) :: file_version, record_length, &
-                           climoz_handle, climtm_handle
-       INTEGER (KIND=4) :: status, ierr, ios
+            climoz_handle, climtm_handle
+       INTEGER (KIND=4) :: status, ios, errstat
        INTEGER (KIND=4) :: kmonth, jlat, ioz, ilyr, mnth
-       CHARACTER (LEN =255) :: msg
 
        record_length= 0
+       errstat = 0
 
        file_version = 1
        status = PGS_IO_Gen_OpenF( O3_CLIM_LUN, PGSd_IO_Gen_RSeqFrm, &
-                                  record_length, climoz_handle, &
-                                  file_version )
+            record_length, climoz_handle, &
+            file_version )
        IF( status /= PGS_S_SUCCESS ) THEN
-          ierr = OMI_SMF_setmsg( status,  "open clim oz file for read failed", &
-                                 "O3T_apriori_rd", zero )
-          status = OZT_E_FAILURE
-          RETURN
+         call tell_error(tell_io_open_error, &
+              "O3T_apriori_rd: open clim oz file for read failed", errstat)
+         RETURN
        ELSE
-          DO kmonth = 1, 12
-            DO jlat = 1, nlat_ctrs
-              !READ( climoz_handle, "(1X,'Month = ',I2,' Latitude = ',F6.1)", &
-              READ( climoz_handle, "(9X,I2,12X,F6.1)", &
-                                     IOSTAT = ios ) mnth, rlats(jlat)
-              IF( ios /= zero ) THEN
-                 status = OZT_E_FAILURE
-                 WRITE(msg,*) 'error: reading climoz file '
-                 ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                                       "O3T_apriori_rd", zero )
+         DO kmonth = 1, 12
+           DO jlat = 1, nlat_ctrs
+             !READ( climoz_handle, "(1X,'Month = ',I2,' Latitude = ',F6.1)", &
+             READ( climoz_handle, "(9X,I2,12X,F6.1)", &
+                  IOSTAT = ios ) mnth, rlats(jlat)
+             IF( ios /= zero ) THEN
+               call tell_error(tell_io_read_error, &
+                    "O3T_apriori_rd: error reading climoz file", errstat)
+               RETURN
+             ENDIF
+
+             DO ioz = 1, ntoz
+               READ( climoz_handle, "(1X,F6.1,6F7.2,5F6.2)", IOSTAT = ios ) &
+                    toz(ioz), ( tzaprf(ilyr,ioz,jlat,kmonth), ilyr = 1, NLYR )
+               IF( ios /= zero ) THEN
+                 call tell_error(tell_io_read_error, &
+                      "O3T_apriori_rd: error reading climoz file", errstat)
                  RETURN
-              ENDIF
+               ENDIF
+             ENDDO
+           ENDDO
+         ENDDO
 
-              DO ioz = 1, ntoz
-                READ( climoz_handle, "(1X,F6.1,6F7.2,5F6.2)", IOSTAT = ios ) &
-                      toz(ioz), ( tzaprf(ilyr,ioz,jlat,kmonth), ilyr = 1, NLYR )
-                IF( ios /= zero ) THEN
-                   status = OZT_E_FAILURE
-                   WRITE(msg,*) 'error: reading climoz file '
-                   ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                                         "O3T_apriori_rd", zero )
-                   RETURN
-                ENDIF
-              ENDDO
-            ENDDO
-          ENDDO
-
-          ! put month 1 in position 13 to handle wrap-around
-          tzaprf(:,:,:,13) = tzaprf(:,:,:,1)
-          status = pgs_io_gen_closef( climoz_handle )
+         ! put month 1 in position 13 to handle wrap-around
+         tzaprf(:,:,:,13) = tzaprf(:,:,:,1)
+         status = pgs_io_gen_closef( climoz_handle )
        ENDIF
- 
+
        file_version = 1
        status = PGS_IO_Gen_OpenF( TM_CLIM_LUN, PGSd_IO_Gen_RSeqFrm, &
-                                  record_length, climtm_handle, &
-                                  file_version )
+            record_length, climtm_handle, &
+            file_version )
        IF( status /= PGS_S_SUCCESS ) THEN
-          ierr = OMI_SMF_setmsg( status,  "open clim tm file for read failed", &
-                                 "O3T_apriori_rd", zero )
-          status = OZT_E_FAILURE
-          RETURN
+         call tell_error(tell_io_open_error, &
+              "O3T_apriori_rd: failed to open clim tm file", errstat)
+         RETURN
        ELSE
-          READ (climtm_handle,'(11F7.1)', IOSTAT = ios ) climtm
+         READ (climtm_handle,'(11F7.1)', IOSTAT = ios ) climtm
 
-          IF( ios /= zero ) THEN
-             status = OZT_E_FAILURE
-             WRITE(msg,*) 'error: reading climtm file '
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_apriori_rd", zero )
-             RETURN
-          ENDIF
-     
-          status = pgs_io_gen_closef( climtm_handle )
+         IF( ios /= zero ) THEN
+           call tell_error(tell_io_read_error, &
+                "O3T_apriori_rd: error reading climtm file", errstat)
+           RETURN
+         ENDIF
+
+         status = pgs_io_gen_closef( climtm_handle )
        ENDIF
-       status = OZT_S_SUCCESS
+
      END FUNCTION O3T_apriori_rd
 
+
+
+
      FUNCTION O3T_apriori_prf( latitude, jday, aprftm_k ) &
-                               RESULT( status )
+                               RESULT( errstat )
        REAL (KIND=4), INTENT(IN) :: latitude
        INTEGER (KIND=4), INTENT(IN) :: jday
        REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: aprftm_k
-       INTEGER (KIND=4) :: status, ierr !, ios
+       INTEGER (KIND=4) :: errstat !, ios
        !CHARACTER (LEN =255) :: msg
        INTEGER :: l1, l2, m1, m2
        REAL (KIND=4) :: fracl, xmon, fracm
 
+
+       errstat = 0
        !
        ! -- compute indeces for bracketing months and latitudes
        !
@@ -158,10 +159,8 @@ MODULE O3T_apriori_class
        if(m2 == 13) m2 = 1
 
        IF( SIZE(aprftm_k) < NLYR ) THEN
-          status = OZT_E_FAILURE
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "input array aprftm size too small", &
-                                 "O3T_apriori_prf", zero )
+         call tell_error(tell_runtime_error, &
+              "O3T_apriori_prf: input array aprftm size too small", errstat)
           RETURN
        ENDIF
        aprftm_k=(1.0-fracl)*(1.0-fracm)*climtm(:,l1,m1) + &
@@ -169,6 +168,5 @@ MODULE O3T_apriori_class
                      fracl *     fracm *climtm(:,l2,m2) + &
                 (1.0-fracl)*     fracm *climtm(:,l1,m2)
 
-       status = OZT_S_SUCCESS
      END FUNCTION O3T_apriori_prf
 END MODULE O3T_apriori_class

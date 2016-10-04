@@ -9,6 +9,7 @@ MODULE m_nvalc
   USE PGS_PC_class
   USE OMI_SMF_class
   USE HE4_class
+  use tell_module
 
   IMPLICIT NONE
 
@@ -29,10 +30,9 @@ CONTAINS
     !! Get the dimension information from orbital N-Value correction
     !! file in he4
     !!-----------------------------------------------------------------
+    implicit none
 
-    CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-    INTEGER (KIND = 4), PARAMETER :: zero = 0
-    INTEGER (KIND = 4) :: status, ierr, version
+    INTEGER (KIND = 4) :: status, version, errstat
 
     !
     ! start
@@ -41,16 +41,16 @@ CONTAINS
     status = PGS_PC_getReference(nvCORR_LUN,version, nvcorr_flnm)
 
     IF( status /= PGS_S_SUCCESS ) THEN
-      WRITE( msg,'(A)' ) " Get N-value correction file name failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_read_error, &
+           "OmiNVALCinfo: Get N-value correction file name failed", errstat)
+      stop 1
     ENDIF
 
     fid = swopen(nvcorr_flnm, DFACC_READ)
     IF(fid == -1 ) THEN
-      WRITE( msg,'(A)' ) " Open N-value correction file name failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_open_error, &
+           "OmiNVALCinfo: Open N-value correction file name failed", errstat)
+      stop 1
     ENDIF
 
     swid = swattach(fid, "OrbitNvalueCorrection" )
@@ -63,7 +63,9 @@ CONTAINS
 
   END FUNCTION OmiNVCinfo
 
-  FUNCTION OmiNvalueCorr(orbit, crwl,swpcr) RESULT(status) 
+
+
+  FUNCTION OmiNvalueCorr(orbit, crwl,swpcr) RESULT(errstat) 
     !
     !***********************************************************************
     ! OmiNvalueCorr was from omi_6ch_nvcorv1
@@ -100,8 +102,8 @@ CONTAINS
     !
     USE UTIL_tools_class
     !
-    CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-    INTEGER (KIND = 4), PARAMETER :: zero = 0
+    implicit none
+
     INTEGER(KIND=4), INTENT(IN) :: orbit
     REAL(KIND = 4), DIMENSION(nWvc,nXtc),INTENT(OUT) :: swpcr
     REAL(KIND = 4), DIMENSION(nWvc), INTENT(OUT) :: crwl
@@ -112,24 +114,25 @@ CONTAINS
     INTEGER(KIND = 4) :: start2(1), stride2(1), edge2(1)
     INTEGER(KIND = 4) :: start3(3), stride3(3), edge3(3)
     INTEGER(KIND=4) :: iw, isw, is !, j, i, ji
-    INTEGER(KIND = 4) :: status, ierr, version
+    INTEGER(KIND = 4) :: status, version, errstat
 
     data is/0/
     !
+    errstat = 0
     version = 1
     status = PGS_PC_getReference(nvCORR_LUN,version, nvcorr_flnm)
 
     IF( status /= PGS_S_SUCCESS ) THEN   
-      WRITE( msg,'(A)' ) " Get N-value correction file name failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_read_error, &
+           "OmiNvalueCorr: Get N-value correction file name failed", errstat)
+      stop 1
     ENDIF
 
     fid = swopen(nvcorr_flnm, DFACC_READ) 
     IF(fid == -1 ) THEN
-      WRITE( msg,'(A)' ) " Open N-value correction file name failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_read_error, &
+           "OmiNVALCinfo: Open N-value correction file name failed", errstat)
+      stop 1
     ENDIF
 
     swid = swattach(fid, "OrbitNvalueCorrection" )
@@ -179,7 +182,6 @@ CONTAINS
       RETURN 
     ENDIF
     !!
-    status = OZT_S_SUCCESS
 
   END FUNCTION OmiNvalueCorr
 

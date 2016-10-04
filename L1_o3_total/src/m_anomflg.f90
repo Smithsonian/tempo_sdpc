@@ -3,18 +3,26 @@ MODULE m_anomflg
   USE OMI_SMF_class
   USE HE4_class
   USE OMI_LUN_set
+  use tell_module
+
   IMPLICIT NONE
+
   CHARACTER (LEN=256) :: anomflg_fn
   INTEGER(KIND = 4) :: ntimes,nxtrack,nlats
+
   PUBLIC :: get_anomflg_3
+
   INTEGER(KIND=4), DIMENSION(:,:), ALLOCATABLE :: anomflg_3
+
 CONTAINS
 
-  FUNCTION GET_ANOMFLG_3(year, doy, anomflg_3) RESULT(status)
-    INTEGER(KIND=4) :: status, ierr
+  FUNCTION GET_ANOMFLG_3(year, doy, anomflg_3) RESULT(errstat)
+
+    implicit none
+
+    INTEGER(KIND=4) :: status, errstat
     INTEGER(KIND=4) :: version
     CHARACTER(LEN=PGS_SMF_MAX_MSG_SIZE) :: msg,stryear,strdoy
-    INTEGER(KIND=4), PARAMETER :: zero = 0
     !CHARACTER(LEN=128) :: filename
     INTEGER(KIND=4) :: i
     INTEGER(KIND=4), INTENT(IN) :: year, doy
@@ -27,20 +35,24 @@ CONTAINS
     INTEGER(KIND = 4), DIMENSION(:,:,:), ALLOCATABLE :: flgs
     INTEGER(KIND = 4), DIMENSION(:), ALLOCATABLE :: flg_year, flg_doy
 
+    errstat = 0
+
     version = 1
     status = PGS_PC_getReference(ANOMFLG3_LUN,version, anomflg_fn)
 
     IF( status /= PGS_S_SUCCESS ) THEN
       WRITE( msg,'(A)' ) " Get anomaly flag file name failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "GET_ANOMFLG_3", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_read_error, &
+           "GET_ANOMFLG_3: Get anomaly flag file name failed", errstat)
+      return
     ENDIF
 
     fid = swopen(anomflg_fn, DFACC_READ)
     IF(fid == -1 ) THEN
       WRITE( msg,'(A)' ) " Open anomaly flag file failed "
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "GET_ANOMFLG_3", zero )
-      CALL EXIT(1)
+      call tell_error(tell_io_open_error, &
+           "GET_ANOMFLG_3: open anomaly flag file name failed", errstat)
+      return
     ENDIF
 
     swid = swattach(fid, "OMTO3 Row Anomaly Data" )
@@ -79,21 +91,31 @@ CONTAINS
     DO i=1,ntimes
       IF (flg_year(i) == year .AND. flg_doy(i) == doy) THEN
         anomflg_3(:,:)=flgs(i,:,:)
-        WRITE(msg,'(A)' ) "Anomaly flags retrieved for "//TRIM(stryear)//"/"//TRIM(strdoy)
-        ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, "GET_ANOMFLG_3", zero )
+        WRITE(msg,'(A)' ) &
+             "Anomaly flags retrieved for "//TRIM(stryear)//"/"//TRIM(strdoy)
+        call tell_log(0,msg)
         status=1
       ENDIF
     ENDDO
 
     IF (status /= 1) THEN
-      WRITE( msg,'(A)' ) "No anomaly flags found for "//TRIM(stryear)//"/"//TRIM(strdoy)//" in"//anomflg_fn
-      ierr = OMI_SMF_setmsg( OZT_E_FAILURE, msg, "GET_ANOMFLG_3", zero )
-      CALL EXIT(1)
+      WRITE( msg,'(A)' ) &
+           "No anomaly flags found for "//TRIM(stryear)//"/"//&
+           TRIM(strdoy)//" in"//anomflg_fn
+      call tell_error(tell_runtime_error, msg,errstat)
+      return
     ENDIF
 
     !write(34,'(60I1)') anomflg_3
 
-    DEALLOCATE(flgs,flg_year,flg_doy)
+    DEALLOCATE(flgs,flg_year,flg_doy, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, "GET_ANOMFLG_3: deallocate failed", &
+           errstat)
+      return
+    endif
+
+
   END FUNCTION GET_ANOMFLG_3
 
 

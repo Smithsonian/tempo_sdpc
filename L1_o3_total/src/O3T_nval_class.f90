@@ -38,6 +38,7 @@ MODULE O3T_nval_class
   USE PGS_PC_class
   USE OMI_LUN_set
   USE OMI_SMF_class
+  use tell_module
 
   IMPLICIT NONE
   PUBLIC
@@ -105,7 +106,7 @@ MODULE O3T_nval_class
   PRIVATE :: O3T_getLambdaRange
 
 CONTAINS  
-  FUNCTION O3T_nval_setup( nval_lun, nv ) RESULT( status )
+  FUNCTION O3T_nval_setup( nval_lun, nv ) RESULT( errstat )
     USE HDF5
     USE O3T_LUT_fs
 
@@ -115,8 +116,8 @@ CONTAINS
     TYPE(nvalLUT_t), INTENT(OUT), OPTIONAL :: nv
 
     INTEGER (HID_T) :: file_id
-    INTEGER (KIND = 4) :: status
-    INTEGER :: ip_nval, error, ierr, i_foo(1) ! ie, iprof, is,
+    INTEGER (KIND = 4) :: status, errstat 
+    INTEGER :: ip_nval, i_foo(1) ! ie, iprof, is,
     !INTEGER :: iwl, ipres, isza, ivza 
     !INTEGER, DIMENSION(5) :: data_dims
     TYPE (DSH5_T), DIMENSION(np_nval_read) :: nval_parameters
@@ -127,17 +128,17 @@ CONTAINS
     REAL (KIND = 4), DIMENSION(:,:,:), ALLOCATABLE :: sb_t
     REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: wl_t, c0_t, c1_t, c2_t 
     CHARACTER ( LEN = 200 ) :: msg
-    CHARACTER ( LEN = 20 ) :: FUNCTIONNAME = "O3T_nval_setup"
     !INTEGER (HID_T)  :: datatype
     INTEGER :: version
+
 
     !! get the nval table filename and path
     version = 1
     status = PGS_PC_GetReference( nval_lun, version, fn_nval )
     IF( status /= PGS_S_SUCCESS ) THEN
-      WRITE( msg,'(A,I9)' ) "get LUT name failed at LUN = ", nval_lun
-      ierr = OMI_SMF_setmsg( status, msg, FUNCTIONNAME, zero )
-      status = OZT_E_FAILURE
+      WRITE( msg,'(A,I9)' ) "O3T_nval_setup: get LUT name failed at LUN = ", &
+           nval_lun
+      call tell_error(tell_io_read_error, msg, errstat)
       nval_read = .FALSE.
       RETURN
     ENDIF
@@ -147,13 +148,12 @@ CONTAINS
          ds_wl,  ds_c0,  ds_c1,   ds_c2 /)
 
     ! Initialize FORTRAN interface.
-    CALL h5open_f(error)
+    CALL h5open_f(errstat)
 
-    CALL h5fopen_f( fn_nval, H5F_ACC_RDONLY_F, file_id, error )
-    IF( error < zero ) THEN
-      status = OZT_E_FAILURE
-      WRITE( msg,* ) "h5fopen_f failed on file: ", fn_nval
-      ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), FUNCTIONNAME, zero )
+    CALL h5fopen_f( fn_nval, H5F_ACC_RDONLY_F, file_id, errstat )
+    IF( errstat < zero ) THEN
+      WRITE( msg,* ) "O3T_nval_setup: h5fopen_f failed on file: ", fn_nval
+      call tell_error(tell_io_open_error, msg, errstat)
       nval_read = .FALSE.
       RETURN
     ENDIF
@@ -161,7 +161,7 @@ CONTAINS
     RingAdded(:) = 0 ! initialized to no LRRS ring
     ds_RingAdded%datatype = H5T_NATIVE_INTEGER
     ds_RingAdded%dims(1)  = 1
-    CALL h5tget_class_f(ds_RingAdded%datatype, ds_RingAdded%class, error )
+    CALL h5tget_class_f(ds_RingAdded%datatype, ds_RingAdded%class, errstat )
     status = UTIL_lh5_selectDS( file_id, ds_RingAdded )
     status = UTIL_lh5_get( ds_RingAdded, RingAdded )
     status = UTIL_lh5_disposeDS( ds_RingAdded )
@@ -173,24 +173,20 @@ CONTAINS
 
       nval_parameters(ip_nval)%datatype = H5T_NATIVE_REAL
       CALL h5tget_class_f(nval_parameters(ip_nval)%datatype, &
-           nval_parameters(ip_nval)%class, error )
-      IF( error < zero ) THEN
-        status = OZT_E_FAILURE
-        WRITE( msg,* ) "h5tget_class_f failed on dataset: ", &
+           nval_parameters(ip_nval)%class, errstat )
+      IF( errstat < zero ) THEN
+        WRITE( msg,* ) "O3T_nval_setup: h5tget_class_f failed on dataset: ", &
              nval_parameters(ip_nval)%name
-        ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-             FUNCTIONNAME, zero )
+        call tell_error(tell_io_read_error, msg, errstat)
         nval_read = .FALSE.
         RETURN
       ENDIF
       nval_parameters(ip_nval)%rank = rank_nval(ip_nval)
       status = UTIL_lh5_selectDS( file_id, nval_parameters(ip_nval) )
       IF( status .NE. OZT_S_SUCCESS ) THEN
-        status = OZT_E_FAILURE
-        WRITE( msg,* ) "UTIL_lh5_selectDS failed for ", &
+         WRITE( msg,* ) "O3T_nval_setup: UTIL_lh5_selectDS failed for ", &
              nval_parameters(ip_nval)%name, "in file ", fn_nval
-        ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-             FUNCTIONNAME, zero )
+         call tell_error(tell_io_read_error, msg, errstat)
         nval_read = .FALSE.
         RETURN
       ENDIF
@@ -213,11 +209,10 @@ CONTAINS
          wl_t(nwlLUT), c0_t(nwlLUT), c1_t(nwlLUT), c2_t(nwlLUT), &  
          sza(nszaT), vza(nvzaT), &
          pressure(npresT), log_pres(npresT), &
-         STAT = ierr )
-    IF( ierr /= zero ) THEN
-      status = OZT_E_FAILURE
-      ierr = OMI_SMF_setmsg( OZT_E_MEM_ALLOC, ".. allocation failure", &
-           FUNCTIONNAME, zero )
+         STAT = errstat )
+    IF( errstat /= zero ) THEN
+      call tell_error(tell_malloc_error, &
+           "O3T_nval_setup: allocation failure", errstat)
       nval_read = .FALSE.
       RETURN
     ENDIF
@@ -247,22 +242,20 @@ CONTAINS
            INDEX( nval_parameters(ip_nval)%name, "knr2" )>0 ) CYCLE
       status = UTIL_lh5_disposeDS( nval_parameters(ip_nval ) )
     ENDDO
-    CALL h5fclose_f( file_id, error)
-    CALL h5close_f(error)
+    CALL h5fclose_f( file_id, errstat)
+    CALL h5close_f(errstat)
 
-    status = O3T_getLambdaRange()  !! this sets wlT_min & wlT_max
-    IF( status /= OZT_S_SUCCESS ) THEN
-      status = OZT_E_FAILURE
-      ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_getLambdaRange failed.", &
-           FUNCTIONNAME, zero )
+    errstat = O3T_getLambdaRange()  !! this sets wlT_min & wlT_max
+    IF( errstat /= 0 ) THEN
+      call tell_error(tell_runtime_error, &
+           "O3T_nval_setup: O3T_getLambdaRange failed.", errstat)
       nval_read = .FALSE.
       RETURN
     ENDIF
 
     IF( wlT_min > MAXVAL( wl_t ) ) THEN
-      status = OZT_E_FAILURE
-      ierr = OMI_SMF_setmsg( OZT_E_INPUT, "wlT_min too large", &
-           FUNCTIONNAME, zero )
+      call tell_error(tell_runtime_error, &
+           "O3T_nval_setup: wlT_min too large", errstat)
       nval_read = .FALSE.
       RETURN
     ELSE IF( wlT_min < MINVAL( wl_t )) THEN
@@ -273,9 +266,8 @@ CONTAINS
     ENDIF
 
     IF( wlT_max < MINVAL( wl_t ) ) THEN
-      status = OZT_E_FAILURE
-      ierr = OMI_SMF_setmsg( OZT_E_INPUT, "wlT_max too small", &
-           FUNCTIONNAME, zero )
+      call tell_error(tell_runtime_error, &
+           "O3T_nval_setup: wlT_min too small", errstat)
       nval_read = .FALSE.
       RETURN
     ELSE IF( wlT_max > MAXVAL( wl_t )) THEN
@@ -286,10 +278,11 @@ CONTAINS
     ENDIF
     nwl_com = iwl_e - iwl_s + 1
 
-    WRITE( msg,'(4(A,I5))') "wavelength used in nval calculations:iwl_s =", &
+    WRITE( msg,'(4(A,I5))') &
+         "O3T_nval_setup: wavelength used in nval calculations:iwl_s =", &
          iwl_s,",iwl_e =",iwl_e, &
          ",nwl_com =", nwl_com, ",nwlLUT =", nwlLUT
-    ierr = OMI_SMF_setmsg(OZT_S_SUCCESS, msg, FUNCTIONNAME, four ) 
+    call tell_log(0, msg)
 
     n5size = (/ nvzaT*nszaT*nprofT*nwl_com*npresT, &
          nvzaT*nszaT*nprofT*nwl_com      , &
@@ -308,7 +301,12 @@ CONTAINS
          tr_n(   n5size(1) ), &
          knb_n(  n5size(1) ), &            
          sb_n(   n3size(1) ), &            
-         STAT = ierr )
+         STAT = errstat )
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "O3T_nval_setup: second allocation failed", errstat)
+      return
+    endif
     ! pick out the unpeturbed layer (layer 0) for all the profiles
     ! this will be stored in n values for radiance calculation
     ! HDF used 0 based index, Fortran use 1 based index
@@ -342,9 +340,8 @@ CONTAINS
       ELSE IF( RingAdded(1) == 1  ) THEN
         nv%ringAdded = .TRUE.
       ELSE
-        status = OZT_E_FAILURE
-        ierr = OMI_SMF_setmsg( OZT_E_INPUT, "unknown RingAdded value", &
-             FUNCTIONNAME, zero )
+        call tell_error(tell_runtime_error, &
+             "O3T_nval_setup: unknown RingAdded value", errstat)
         nv%nval_read = .FALSE.
         RETURN
       ENDIF
@@ -362,7 +359,12 @@ CONTAINS
            nv%presLog( nv%npres ), nv%lgi0( nv%n5size(1) ), &
            nv%z1(   nv%n5size(1) ), nv%z2(   nv%n5size(1) ), &
            nv%tr(   nv%n5size(1) ), nv%knb(  nv%n5size(1) ), &            
-           nv%sb(   nv%n3size(1) ), STAT = ierr )
+           nv%sb(   nv%n3size(1) ), STAT = errstat )
+      if (errstat /= 0) then
+        call tell_error(tell_malloc_error, &
+             "O3T_nval_setup: third allocation failed", errstat)
+        return
+      endif
       nv%presLog(:) = log_pres(:)
       nv%sza(:)     = sza(:) 
       nv%vza(:)     = vza(:)
@@ -384,9 +386,15 @@ CONTAINS
     ENDIF
 
     DEALLOCATE( lgi0_t, z1_t, z2_t, tr_t, sb_t, knb_t, &
-         wl_t, c0_t, c1_t, c2_t, STAT = ierr )
+         wl_t, c0_t, c1_t, c2_t, STAT = errstat )
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, "O3T_nval_setup: deallocate failed", &
+           errstat)
+      return
+    endif
 
-    status = OZT_S_SUCCESS
+    errstat = 0
+    
   END FUNCTION O3T_nval_setup
   !...............................................................................
 
@@ -708,8 +716,8 @@ CONTAINS
   !...............................................................................
 
 
-  FUNCTION O3T_getLambdaRange( ) RESULT( status )
-    INTEGER (KIND = 4) :: ierr, status
+  FUNCTION O3T_getLambdaRange( ) RESULT( errstat )
+    INTEGER (KIND = 4) :: status, errstat
     INTEGER (KIND = 4) :: ilun
     REAL (KIND = 4) :: wl_foo
     CHARACTER ( LEN = 200 ) :: msg
@@ -718,8 +726,7 @@ CONTAINS
       status = PGS_PC_GetConfigData( LUNSet(ilun), msg )
       IF( status /= PGS_S_SUCCESS ) THEN
         WRITE( msg,'(A,I9)' ) "get wl failed at LUN = ", LUNSet(ilun)
-        ierr = OMI_SMF_setmsg( status, msg, "O3T_getLambdaRange", zero )
-        status = OZT_E_FAILURE
+        call tell_error(tell_io_read_error, msg, errstat)
         RETURN
       ELSE
         READ( msg, '(F8.4)') wl_foo
@@ -729,20 +736,21 @@ CONTAINS
         CASE( 2 ) 
           wlT_max = wl_foo
         CASE DEFAULT
-          ierr = OMI_SMF_setmsg( status, &
-               "unknow ilun", &
-               "O3T_getLambdaRange", zero )
-          status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_getLambdaRange: unknown ilun", errstat)
           RETURN
         END SELECT
       ENDIF
     ENDDO
-    status = OZT_S_SUCCESS
+    errstat = 0
     RETURN
   END FUNCTION O3T_getLambdaRange
 
-  FUNCTION O3T_getLambdaSet( ) RESULT( status )
-    INTEGER (KIND = 4) :: ierr, status, i_foo(1)
+
+
+
+  FUNCTION O3T_getLambdaSet( ) RESULT( errstat )
+    INTEGER (KIND = 4) :: status, i_foo(1), errstat
     INTEGER (KIND = 4) :: ilun
     REAL (KIND = 4) :: wl_foo
     CHARACTER ( LEN = 200 ) :: msg
@@ -750,18 +758,18 @@ CONTAINS
          WL_OZ_LUN, WL_REFLLOW_LUN, WL_REFLHIGH_LUN /)
 
     IF( .NOT. nval_read ) THEN
-      WRITE( msg,'(A,I9)' ) "NValue Table must be read in before checking."
-      ierr = OMI_SMF_setmsg( status, msg, "O3T_getLambdaSet", zero )
-      status = OZT_E_FAILURE
+      call tell_error(tell_application_error, &
+           "O3T_getLambdaSet: NValue Table must be read in before checking", &
+           errstat)
       RETURN
     ENDIF
 
     DO ilun = 1, 4
       status = PGS_PC_GetConfigData( LUNSet(ilun), msg )
       IF( status /= PGS_S_SUCCESS ) THEN
-        WRITE( msg,'(A,I9)' ) "get wl failed at LUN = ", LUNSet(ilun)
-        ierr = OMI_SMF_setmsg( status, msg, "O3T_getLambdaSet", zero )
-        status = OZT_E_FAILURE
+        WRITE( msg,'(A,I9)' ) "O3T_getLambdaSet: get wl failed at LUN = ", &
+             LUNSet(ilun)
+        call tell_error(tell_io_read_error, msg, errstat)
         RETURN
       ELSE
         READ( msg, '(F10.4)') wl_foo
@@ -770,99 +778,94 @@ CONTAINS
           wl_mix = wl_foo
           IF( wl_mix > MAXVAL( wl_com ) .OR. &
                wl_mix < MINVAL( wl_com) ) THEN
-            WRITE( msg,'(A,F6.2)') "wl_mix = ", wl_mix, &
+            WRITE( msg,'(A,F6.2)') "O3T_getLambdaSet: wl_mix = ", wl_mix, &
                  " outsie LUT range." 
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                 "O3T_getLambdaSet", zero )
-            status = OZT_E_FAILURE
+            call tell_error(tell_runtime_error, msg, errstat)
             RETURN
           ELSE 
             i_foo = MINLOC( ABS(wl_com-wl_mix) )
             iwl_mix = i_foo( 1 )
-            WRITE( msg,'(A,F6.2,A,I3,A)') "wl_mix=", wl_com(iwl_mix), &
+            WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_mix=", &
+                 wl_com(iwl_mix), &
                  ", iwl_mix = ", iwl_mix, &
                  " used in ozone retrieval."
-            ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg,  &
-                 "O3T_getLambdaSet", zero )
+            call tell_log(0,msg)
           ENDIF
         CASE( 2 ) 
           wl_oz = wl_foo
           IF( wl_oz > MAXVAL(wl_com) .OR. wl_oz < MINVAL(wl_com) ) THEN
-            WRITE( msg,'(A,F6.2)') "wl_oz=", wl_oz, " outsie LUT range."
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                 "O3T_getLambdaSet", zero )
-            status = OZT_E_FAILURE
+            WRITE( msg,'(A,F6.2)') "O3T_getLambdaSet: wl_oz=", &
+                 wl_oz, " outsie LUT range."
+            call tell_error(tell_runtime_error, msg, errstat)
             RETURN
           ELSE 
             i_foo = MINLOC( ABS( wl_com-wl_oz ) )
             iwl_ozone = i_foo( 1 )
-            WRITE( msg,'(A,F6.2,A,I3,A)') "wl_oz=", wl_com(iwl_ozone), &
+            WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_oz=", &
+                 wl_com(iwl_ozone), &
                  ", iwl_ozone = ", iwl_ozone, &
                  " used in ozone retrieval."
-            ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg,  &
-                 "O3T_getLambdaSet", zero )
+            call tell_log(0, msg)
           ENDIF
         CASE( 3 ) 
           wl_refl_l = wl_foo
           IF( wl_refl_l > MAXVAL(wl_com) .OR. &
                wl_refl_l < MINVAL(wl_com) ) THEN
-            WRITE( msg,'(A,F6.2)') "wl_refl_l=",wl_refl_l,&
+            WRITE( msg,'(A,F6.2)') "O3T_getLambdaSet: wl_refl_l=",wl_refl_l,&
                  " outside LUT range."
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                 "O3T_getLambdaSet", zero )
-            status = OZT_E_FAILURE
+            call tell_error(tell_runtime_error, msg, errstat)
             RETURN
           ELSE 
             i_foo = MINLOC( ABS( wl_com-wl_refl_l ) )
             iwl_refl_l = i_foo( 1 )
-            WRITE( msg,'(A,F6.2,A,I3,A)') "wl_refl_l=", &
+            WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_refl_l=", &
                  wl_com(iwl_refl_l), ", iwl_refl_l=",iwl_refl_l, &
                  " used in reflectance caclculation."
-            ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, &
-                 "O3T_getLambdaSet", zero )
+            call tell_log(0, msg)
           ENDIF
         CASE( 4 ) 
           wl_refl_h = wl_foo
           IF( wl_refl_h > MAXVAL(wl_com) .OR. &
                wl_refl_h < MINVAL(wl_com) ) THEN
-            WRITE( msg,'(A,F6.2,A)') "wl_refl_h = ", wl_refl_h, &
+            WRITE( msg,'(A,F6.2,A)') "O3T_getLambdaSet: wl_refl_h = ", &
+                 wl_refl_h, &
                  " outsie LUT range."
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, &
-                 "O3T_getLambdaSet", zero )
-            status = OZT_E_FAILURE
+            call tell_error(tell_runtime_error, msg, errstat)
             RETURN
           ELSE 
             i_foo = MINLOC( ABS( wl_com-wl_refl_h ) )
             iwl_refl_h = i_foo( 1 )
-            WRITE( msg,'(A,F6.2,A,I3,A)') "wl_refl_h = ", &
+            WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_refl_h = ", &
                  wl_com(iwl_refl_h), ", iwl_refl_h = ", iwl_refl_h, &
                  " used in reflectance caclculation."
-            ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, &
-                 "O3T_getLambdaSet", zero )
+            call tell_log(0, msg)
           ENDIF
         CASE DEFAULT
-          ierr = OMI_SMF_setmsg( status, &
-               "unknow ilun", &
-               "O3T_getLambdaSet", zero )
-          status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_getLambdaSet: unknown ilun", errstat)
           RETURN
         END SELECT
       ENDIF
     ENDDO
-    status = OZT_S_SUCCESS
+    errstat = 0
     RETURN
   END FUNCTION O3T_getLambdaSet
 
-  FUNCTION O3T_nval_dispose( ) RESULT (status)
-    INTEGER (KIND = 4) :: status
-    INTEGER  :: ierr
+  FUNCTION O3T_nval_dispose( ) RESULT (errstat)
+    INTEGER (KIND = 4) :: errstat
 
     IF( nval_read ) THEN
       DEALLOCATE( sza, vza, pressure, log_pres, wl_com, c0, c1, c2, &
-           lgi0_n, z1_n,  z2_n,  tr_n,  sb_n, knb_n, STAT = ierr )
+           lgi0_n, z1_n,  z2_n,  tr_n,  sb_n, knb_n, STAT = errstat )
       nval_read = .FALSE.
     ENDIF
-    status = OZT_S_SUCCESS
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "O3T_nval_dispose: deallocate failed", errstat)
+      return
+    endif
+
+    errstat = 0
   END FUNCTION O3T_nval_dispose
 
 END MODULE O3T_nval_class

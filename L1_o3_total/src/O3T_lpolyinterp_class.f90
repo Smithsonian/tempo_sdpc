@@ -41,6 +41,7 @@ MODULE O3T_lpolyinterp_class
   USE O3T_nval_class
   USE O3T_dndx_class
   USE O3T_lpolycoef_class
+  use tell_module
 
   IMPLICIT NONE
   INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0
@@ -65,7 +66,10 @@ MODULE O3T_lpolyinterp_class
 !
 
     FUNCTION O3T_lpoly_interpPLW( iprof, pixGEO, coefs, &
-                                  ezero, tr, sb  ) RESULT( status )
+                                  ezero, tr, sb  ) RESULT( errstat )
+
+      implicit none
+
       INTEGER, INTENT(IN) :: iprof
       TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
       TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
@@ -77,13 +81,14 @@ MODULE O3T_lpolyinterp_class
       INTEGER (KIND=4) :: ilyr, ipres, iwl
       INTEGER (KIND=4) :: LL0, LLp0, LLpw0, LLpwl0, LL, is, iv, m
       INTEGER (KIND=4) :: L20, L2p0, L2pw0, L2
-      INTEGER (KIND=4) :: status, ierr
+      INTEGER (KIND=4) :: errstat
       CHARACTER (LEN =255) :: msg
  
+      errstat = 0
+
       IF( .NOT. dndx_read ) THEN
-         status = OZT_E_FAILURE
-         WRITE(msg,*) "DNDX LUT has not been read in yet"
-         ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_lpoly_interpPLW", zero )
+         WRITE(msg,*) "O3T_lpoly_interpPLW: DNDX LUT has not been read in yet"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
 
@@ -132,7 +137,7 @@ MODULE O3T_lpolyinterp_class
        itwo = real(ztwo * inot * pixGEO%pr * pixGEO%p1 , kind=4)
        tr   = tran * inot
        ezero = real(inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi , kind=4)
-       status = OZT_S_SUCCESS
+
     END FUNCTION O3T_lpoly_interpPLW
 
 END MODULE O3T_lpolyinterp_class

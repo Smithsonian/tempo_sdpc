@@ -59,10 +59,10 @@ MODULE O3T_irrad_class
     LOGICAL :: NORMAL_L1BIRR_MISSING = .FALSE.
     INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0, one = 1, two = 2
     INTEGER (KIND=4), PARAMETER, PRIVATE :: three = 3, four = 4, five = 5
+
     PUBLIC  :: O3T_getIRR
     PUBLIC  :: O3T_freeIRR
     PUBLIC  :: O3T_AdjustIRREarthSun
-!    PUBLIC  :: O3T_irrRepair
 
     CONTAINS
 
@@ -188,7 +188,7 @@ MODULE O3T_irrad_class
          ENDIF
 
          ! allocate memory for arrays
-         CALL O3T_freeIRR
+         CALL O3T_freeIRR (status)
          ALLOCATE( irradiance(nWavel_irr,nXtrack_irr), &
                    irrPrecision(nWavel_irr,nXtrack_irr), &
                    irrQAflags(nWavel_irr,nXtrack_irr), &
@@ -251,20 +251,39 @@ MODULE O3T_irrad_class
 
        END FUNCTION O3T_getIRR
 
-       SUBROUTINE O3T_freeIRR
-         IF( ALLOCATED( irradiance    ) ) DEALLOCATE( irradiance    )
-         IF( ALLOCATED( irrPrecision  ) ) DEALLOCATE( irrPrecision  )
-         IF( ALLOCATED( irrQAflags    ) ) DEALLOCATE( irrQAflags    )
-         IF( ALLOCATED( irrWavelength ) ) DEALLOCATE( irrWavelength )
+       SUBROUTINE O3T_freeIRR (errstat)
+
+         implicit none
+
+         integer :: errstat
+
+         if (errstat /= 0) return
+
+         IF(ALLOCATED(irradiance)) DEALLOCATE(irradiance, stat=errstat)
+         IF(ALLOCATED(irrPrecision)) DEALLOCATE(irrPrecision, stat=errstat)
+         IF(ALLOCATED(irrQAflags)) DEALLOCATE(irrQAflags, stat=errstat)
+         IF(ALLOCATED(irrWavelength)) DEALLOCATE(irrWavelength, stat=errstat)
+         if (errstat /= 0) then
+           call tell_error(tell_malloc_error, &
+                "O3T_freeIRR: deallocate failed", errstat)
+           return
+         endif
        END SUBROUTINE O3T_freeIRR
 
        SUBROUTINE O3T_AdjustIRREarthSun( EarthSundistanceRAD )
+
+         use tell_module
+
+         implicit none
+
          REAL (KIND = 4), INTENT(IN) :: EarthSunDistanceRAD
          REAL (KIND = 4) :: Ratio
          CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
+
          IF( EarthSunDistanceRAD <= 0.0 ) THEN
             WRITE( msg,'(A,g16.7,A)' ) "Radiance EarthSunDistance = ", &
                      EarthSunDistanceRAD, ", No adjustment are made to IRR"
+            call tell_log(0,msg)
             RETURN
          ELSE
             Ratio = EarthSunDistanceIRR/EarthSunDistanceRAD
@@ -273,6 +292,7 @@ MODULE O3T_irrad_class
             ELSE
                WRITE( msg,'(A,F10.4,A)' ) "EarthSunDistance Ratio= ", &
                      Ratio, ", out of range, no adjustment are made to IRR"
+               call tell_log(0,msg)
                RETURN
             ENDIF
          ENDIF

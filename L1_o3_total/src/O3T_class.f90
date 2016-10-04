@@ -92,41 +92,48 @@ MODULE O3T_class
 !!  is calculated and returned at the xnvalm.
 !!
       FUNCTION O3T_nvalm( irrWl, irradiance, &
-                          radWl, radiance,   &
-                          wl_com, xnvalm ) RESULT( status )
+           radWl, radiance,   &
+           wl_com, xnvalm ) RESULT( errstat )
+
+        use tell_module
+
+        implicit none
+
         REAL (KIND=4), DIMENSION(:), INTENT(IN) :: wl_com, &
-                                                   irrWl, irradiance, &
-                                                   radWl, radiance
+             irrWl, irradiance, &
+             radWl, radiance
         REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: xnvalm
         REAL (KIND=4), DIMENSION(SIZE(radWl)) :: Rtoa
         REAL (KIND=4) :: irrInterp, RtoaInterp, frac, dwl
         INTEGER :: nwl_l, nwl_rad, nwl_irr
         INTEGER :: iwl, il, ih
-        INTEGER :: ierr, status
+        INTEGER :: errstat
+
+        errstat = 0
 
         nwl_l = SIZE( wl_com )
 
         IF( SIZE( xnvalm ) /= nwl_l .OR. nwl_l /= nwl_com ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'xnvalm and wl_com ' // &
-                        ' array sizes not match', "O3T_nvalm", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error (tell_runtime_error, &
+               "O3T_nvalm: xnvalm and wl_com array sizes not match", &
+               errstat)
+          RETURN
         ENDIF
 
         nwl_irr = SIZE( irrWl )
         IF( nwl_irr /= SIZE( irradiance) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'irrWl and irradiance ' // &
-                        ' array sizes not match', "O3T_nvalm", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error (tell_runtime_error, &
+               "O3T_nvalm: irrWl and irradiance array sizes not match", &
+               errstat)
+          RETURN
         ENDIF
 
         nwl_rad = SIZE( radWl )
         IF( nwl_rad /= SIZE( radiance) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'radWl and radiance ' // &
-                        ' array sizes not match', "O3T_nvalm", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error (tell_runtime_error, &
+               "O3T_nvalm: radWl and radiance array sizes not match", &
+               errstat)
+          RETURN
         ENDIF
 
         !! first get the irradiance value at radiance wavelength
@@ -134,32 +141,31 @@ MODULE O3T_class
           il = iwl
           il = hunt( irrWl(:), radWl(iwl), il )
           IF( il == 0 .OR. il == nwl_irr ) THEN
-              !! no irradiance data at this radiance wl, set it 0.
-             Rtoa(iwl)  = 0.0
+            !! no irradiance data at this radiance wl, set it 0.
+            Rtoa(iwl)  = 0.0
           ELSE
-             ih = il+1
-             dwl = irrWl(ih) - irrWl(il)
-             IF( dwl < EPSILON10 ) THEN
-                ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'irrWl grid spacing ' // &
-                                       ' too small', "O3T_nvalm", zero )
-                status = OZT_E_FAILURE
-                RETURN
-             ENDIF
+            ih = il+1
+            dwl = irrWl(ih) - irrWl(il)
+            IF( dwl < EPSILON10 ) THEN
+              call tell_error (tell_runtime_error, &
+                   "O3T_nvalm: irrWl grid spacing too small", errstat)
+              RETURN
+            ENDIF
 
-             frac = ( radWl(iwl) - irrWl(il) ) / dwl
-             IF( ABS( frac ) < EPSILON10 ) THEN
-                irrInterp = irradiance(il)
-             ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
-                irrInterp = irradiance(ih)
-             ELSE
-                irrInterp = (1.0-frac)*irradiance(il) + frac*irradiance(ih)
-             ENDIF
+            frac = ( radWl(iwl) - irrWl(il) ) / dwl
+            IF( ABS( frac ) < EPSILON10 ) THEN
+              irrInterp = irradiance(il)
+            ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
+              irrInterp = irradiance(ih)
+            ELSE
+              irrInterp = (1.0-frac)*irradiance(il) + frac*irradiance(ih)
+            ENDIF
 
-             IF( irrInterp > EPSILON10 .AND. radiance(iwl) > EPSILON10 ) THEN
-                Rtoa(iwl) = radiance(iwl)/irrInterp
-             ELSE
-                Rtoa(iwl) = 0.0
-             ENDIF
+            IF( irrInterp > EPSILON10 .AND. radiance(iwl) > EPSILON10 ) THEN
+              Rtoa(iwl) = radiance(iwl)/irrInterp
+            ELSE
+              Rtoa(iwl) = 0.0
+            ENDIF
           ENDIF
         ENDDO
 
@@ -168,38 +174,38 @@ MODULE O3T_class
           il = iwl
           il = hunt( radWl(:), wl_com(iwl), il )
           IF( il == 0 .OR. il == nwl_rad ) THEN
-              !! no radiance data at this table wl, set it 0.
-             xnvalm(iwl)  = 0.0
+            !! no radiance data at this table wl, set it 0.
+            xnvalm(iwl)  = 0.0
           ELSE
-             ih = il+1
-             dwl = radWl(ih) - radWl(il)
+            ih = il+1
+            dwl = radWl(ih) - radWl(il)
 
-             IF( dwl < EPSILON10 ) THEN
-                ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'wl_com grid spacing ' // &
-                                       ' too small', "O3T_nvalm", zero )
-                status = OZT_E_FAILURE
-                RETURN
-             ENDIF
+            IF( dwl < EPSILON10 ) THEN
+              call tell_error (tell_runtime_error, &
+                   "O3T_nvalm: wl_com grid spacing too small", errstat)
+              RETURN
+            ENDIF
 
-             frac = ( wl_com(iwl) - radWl(il) ) / dwl
-             IF( ABS( frac ) < EPSILON10 ) THEN
-                RtoaInterp = Rtoa(il)
-             ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
-                RtoaInterp = Rtoa(ih)
-             ELSE
-                RtoaInterp = (1.0-frac)*Rtoa(il) + frac*Rtoa(ih)
-             ENDIF
-             IF( RtoaInterp > EPSILON10 ) THEN
-                xnvalm(iwl) = -ALOG10( RtoaInterp )
-             ELSE
-                xnvalm(iwl) = 0.0
-             ENDIF
+            frac = ( wl_com(iwl) - radWl(il) ) / dwl
+            IF( ABS( frac ) < EPSILON10 ) THEN
+              RtoaInterp = Rtoa(il)
+            ELSE IF( ABS( frac -1.0 ) < EPSILON10 ) THEN
+              RtoaInterp = Rtoa(ih)
+            ELSE
+              RtoaInterp = (1.0-frac)*Rtoa(il) + frac*Rtoa(ih)
+            ENDIF
+            IF( RtoaInterp > EPSILON10 ) THEN
+              xnvalm(iwl) = -ALOG10( RtoaInterp )
+            ELSE
+              xnvalm(iwl) = 0.0
+            ENDIF
           ENDIF
         ENDDO
 
-        status = OZT_S_SUCCESS
         RETURN
       END FUNCTION O3T_nvalm
+
+
 
 !!Step 1:
 !!the algorithm uses a pair of wavelengths by deriving reflectivity from 331 nm
@@ -211,10 +217,13 @@ MODULE O3T_class
 !!may be used under high ozone and high solar zenith angles.
 !!
       FUNCTION O3T_step1( iwl_oz, iwl_refl_l, iwl_refl_h, xnvalm, pixGEO, &
-                          pixSURF, coefs, iwl_refl, iplow, guesoz, stp1oz, &
-                          res_stp1, dndomega_t, dndr, algflg, absrfl, &
-                          maxitr, stp1oz_valid, skipit, doz_limit )  &
-                          RESULT( status )
+           pixSURF, coefs, iwl_refl, iplow, guesoz, stp1oz, &
+           res_stp1, dndomega_t, dndr, algflg, absrfl, &
+           maxitr, stp1oz_valid, skipit, doz_limit )  &
+           RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iwl_refl_l, iwl_refl_h
         INTEGER (KIND=4), INTENT(INOUT) :: iwl_oz
         TYPE (O3T_pixgeo_type), INTENT(INOUT) :: pixGEO
@@ -237,43 +246,41 @@ MODULE O3T_class
         LOGICAL (KIND=4) :: first_call
         REAL (KIND=4) :: ozonin, estozn
         REAL (KIND=4) :: dndoz_r, dndoz_o, doz_limit_l! , dr
-        INTEGER :: ierr, status
+        INTEGER :: errstat
+
+        errstat = 0
 
         IF( SIZE( xnvalm ) < nwl_com ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size too small', &
-                                 "O3T_step1", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error(tell_runtime_error, "array size too small", errstat)
+          RETURN
         ENDIF
 
         IF( SIZE( xnvalm ) .NE. SIZE( dndomega_t ) .OR. &
-            SIZE( xnvalm ) .NE. SIZE( dndr ) .OR. &
-            SIZE( xnvalm ) .NE. SIZE( res_stp1 ) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
-                                 "O3T_step1", zero )
-           status = OZT_E_FAILURE
-           RETURN
+             SIZE( xnvalm ) .NE. SIZE( dndr ) .OR. &
+             SIZE( xnvalm ) .NE. SIZE( res_stp1 ) ) THEN
+          call tell_error(tell_runtime_error, "array size not equal", errstat)
+          RETURN
         ENDIF
 
         !! determine latitude band based in pixel center latitude.
         IF( ABS(pixGEO%lat) <  30.0 )  THEN
-           ilat = 1
+          ilat = 1
         ELSE IF( ABS(pixGEO%lat) <=  60.0 ) THEN
-           ilat = 2
+          ilat = 2
         ELSE
-           ilat = 3
+          ilat = 3
         ENDIF
 
         !! set initial ozone guess, if input guess ozone out of valid range
         !! use guess that is set for the latitude band.
         IF( guesoz < 50.0 .OR. guesoz > 600.0 ) THEN
-           IF( ABS(pixGEO%lat) <=  45.0 ) THEN
-              guesoz = 260
-           ELSE IF(ABS(pixGEO%lat) <= 75.0 ) THEN
-              guesoz = 340
-           ELSE
-              guesoz = 360
-           ENDIF
+          IF( ABS(pixGEO%lat) <=  45.0 ) THEN
+            guesoz = 260
+          ELSE IF(ABS(pixGEO%lat) <= 75.0 ) THEN
+            guesoz = 340
+          ELSE
+            guesoz = 360
+          ENDIF
         ENDIF
 
         itermax = 8
@@ -286,9 +293,9 @@ MODULE O3T_class
         first_call = .TRUE.
         iwl_refl   = iwl_refl_l
         IF( PRESENT( doz_limit ) ) THEN !! doz_limit_l: convergent threshold
-           doz_limit_l = doz_limit
+          doz_limit_l = doz_limit
         ELSE
-           doz_limit_l = 1.0
+          doz_limit_l = 1.0
         ENDIF
 
         pixSURF%iwl_refl_l = iwl_refl_l
@@ -297,57 +304,55 @@ MODULE O3T_class
         !! Iteration to find the step 1 ozone.
         algflg = 1
         DO iter = 1, itermax
-          status = O3T_calcRefl( iplow, ozonin, iwl_refl, xnvalm, coefs, &
-                                 pixGEO, pixSURF, dndoz_r, first_call )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "O3T_calcRefl error", &
-                                   "O3T_step1", zero )
-             skipit = .TRUE.
-             RETURN
+          errstat = O3T_calcRefl( iplow, ozonin, iwl_refl, xnvalm, coefs, &
+               pixGEO, pixSURF, dndoz_r, first_call )
+          IF( errstat .NE. 0 ) THEN
+            call tell_error(tell_runtime_error, "O3T_calcRefl error", errstat)
+            skipit = .TRUE.
+            RETURN
           ENDIF
 
-          status = O3T_oznot( iwl_oz, xnvalm, coefs, pixGEO, pixSURF, &
-                              iplow, iphigh, estozn, dndoz_o, skipit )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "O3T_oznot error", &
-                                   "O3T_step1", zero )
-             RETURN
+          errstat = O3T_oznot( iwl_oz, xnvalm, coefs, pixGEO, pixSURF, &
+               iplow, iphigh, estozn, dndoz_o, skipit )
+          IF( errstat .NE. 0 ) THEN
+            call tell_error(tell_runtime_error, "O3T_oznot error", errstat)
+            RETURN
           ENDIF
-!!        IF( estozn <= 0.0 .OR. estozn > 900.0 .OR. &
-!!            pixSURF%ref < -0.25 .OR.  pixSURF%ref > 1.25 )  THEN
+          !!        IF( estozn <= 0.0 .OR. estozn > 900.0 .OR. &
+          !!            pixSURF%ref < -0.25 .OR.  pixSURF%ref > 1.25 )  THEN
           IF( estozn <= 0.0 .OR. estozn > 900.0  ) THEN
-             stp1oz = estozn
-             skipit = .TRUE.                !! check to see if step 1 ozone
-             stp1oz_valid = .FALSE.         !! is in the valid range.
+            stp1oz = estozn
+            skipit = .TRUE.                !! check to see if step 1 ozone
+            stp1oz_valid = .FALSE.         !! is in the valid range.
           ENDIF
           IF( skipit ) RETURN
 
           IF( iter == 1 ) THEN                              !!This part decides
-             ozonin = estozn                                !!whether C pair is
-             IF( (dndoz_o-dndoz_r)/dndoz_r < swthrsh ) THEN !!used. Note that
-                ozonin = guesoz                             !!dndoz_o & dndoz_r
-                iwl_refl = iwl_refl_h                       !!actually depends
-                iwl_oz   = iwl_refl_l                       !!on ozonin,
-                first_call = .TRUE.                         !!consequently that
-                iplow = O3T_stnprof_idxf( ozonin, ilat )    !!the switch may
-                absrfl = .FALSE.                            !!depends on the
-                algflg = 3                                  !!initial O3 guess.
-             ENDIF
-             CYCLE                                          !!next iteration
+            ozonin = estozn                                !!whether C pair is
+            IF( (dndoz_o-dndoz_r)/dndoz_r < swthrsh ) THEN !!used. Note that
+              ozonin = guesoz                             !!dndoz_o & dndoz_r
+              iwl_refl = iwl_refl_h                       !!actually depends
+              iwl_oz   = iwl_refl_l                       !!on ozonin,
+              first_call = .TRUE.                         !!consequently that
+              iplow = O3T_stnprof_idxf( ozonin, ilat )    !!the switch may
+              absrfl = .FALSE.                            !!depends on the
+              algflg = 3                                  !!initial O3 guess.
+            ENDIF
+            CYCLE                                          !!next iteration
           ENDIF
 
           IF( ABS( estozn - ozonin ) > doz_limit_l ) THEN
-             ozonin = estozn              !! not converged yet
+            ozonin = estozn              !! not converged yet
           ELSE
-             EXIT                         !! iteration converged,
+            EXIT                         !! iteration converged,
           ENDIF                           !! exit the do-while loop.
         ENDDO
 
         IF( iter > itermax ) THEN         !! check to if maximum iteration
-           skipit = .TRUE.                !! is exceeded. If yes, bad ozone,
-           maxitr = .TRUE.                !! return to main code.
-           stp1oz = estozn
-           RETURN
+          skipit = .TRUE.                !! is exceeded. If yes, bad ozone,
+          maxitr = .TRUE.                !! return to main code.
+          stp1oz = estozn
+          RETURN
         ENDIF
 
         !! Calculate step 1 residue and other useful quantities. Note that
@@ -364,30 +369,35 @@ MODULE O3T_class
         !! DNDX tables.
 
         stp1oz = estozn
-        status = O3T_residue( iplow, stp1oz, xnvalm, coefs, pixGEO, &
-                              pixSURF, res_stp1, dndomega_t, dndr )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                        "O3T_residue: determine step 1 residue failed.", &
-                        "O3T_step1", zero )
-           RETURN
+        errstat = O3T_residue( iplow, stp1oz, xnvalm, coefs, pixGEO, &
+             pixSURF, res_stp1, dndomega_t, dndr )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step1: determine step 1 residue failed", errstat)
+          RETURN
         ENDIF
 
         !! calculate reflectivity at 360 nm.
         pixSURF%ref360 = pixSURF%ref &
-                       + (res_stp1(iwl_refl_h)-res_stp1(iwl_refl_l)) &
-                       / dndr(iwl_refl_h)
+             + (res_stp1(iwl_refl_h)-res_stp1(iwl_refl_l)) &
+             / dndr(iwl_refl_h)
         !! Compute Radiative Cloud Fraction based on reflectivity 360
       END FUNCTION O3T_step1
 
+
+
+
 !! Step 2:
-!! Ozone and temperature climatologies are applied at all levles to account
+!! Ozone and temperature climatologies are applied at all levels to account
 !! for seasonal and latitudinal variations in profile shape.
 !!
       FUNCTION O3T_step2( iwl_oz, iwl_refl, iplow, jday, pixGEO, pixSURF, &
-                          coefs, stp1oz, res_stp1, dndomega_t, dndr, absrfl, &
-                          stp2oz, res_stp2, dr, stp2prf, eff, aprfoz, &
-                          stp2oz_valid, skipit, dNdT )  RESULT( status )
+           coefs, stp1oz, res_stp1, dndomega_t, dndr, absrfl, &
+           stp2oz, res_stp2, dr, stp2prf, eff, aprfoz, &
+           stp2oz_valid, skipit, dNdT )  RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iwl_oz, iwl_refl
         TYPE (O3T_pixgeo_type), INTENT(INOUT) :: pixGEO
         TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
@@ -404,105 +414,106 @@ MODULE O3T_class
         LOGICAL, INTENT(INOUT) :: skipit
 
         !INTEGER (KIND=4) :: iprof
-        INTEGER :: ierr, status
+        INTEGER :: errstat
 
         REAL (KIND=4), DIMENSION(nwl_com) :: dndomega
         REAL (KIND=4), DIMENSION(NLYR) :: fgprf, dxdomega
         REAL (KIND=4), DIMENSION(NLYR) :: aprftm, delshp
         REAL (KIND=4), DIMENSION(nwl_com, NLYR) :: dndx, delnT
 
+        errstat = 0
+
         IF( SIZE( res_stp1 ) .NE. SIZE( res_stp2 ) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
-                                 "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: array size not equal", errstat)
+          RETURN
         ENDIF
 
         IF( SIZE( stp2prf ) < NLYR .OR. SIZE( eff ) < NLYR )  THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size too small', &
-                                 "O3T_step2", zero )
-           status = OZT_E_FAILURE
-           RETURN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: array size too small", errstat)
+          RETURN
         ENDIF
 
         !! The quantity dndomega calculated from O3T_dndx is not
         !! used at all in the function. It is discarded. While
         !! dndomega_t passed into function is used instead.
 
-        status = O3T_dndx( iplow, stp1oz, coefs, pixGEO, pixSURF, &
-                           dndx, dndomega )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, "Calculated DNDX failed", &
-                                 "O3T_step2", zero )
-           RETURN
+        errstat = O3T_dndx( iplow, stp1oz, coefs, pixGEO, pixSURF, &
+             dndx, dndomega )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: calculate DNDX failed", errstat)
+          RETURN
         ENDIF
 
         ! determine first guess profile and dxdomega
-        status = O3T_stnprof_1stG( stp1oz, iplow, fgprf, dxdomega )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                    "O3T_stnprof_1stG:determine first guess profile failed", &
-                    "O3T_step2", zero )
-           RETURN
+        errstat = O3T_stnprof_1stG( stp1oz, iplow, fgprf, dxdomega )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: determine first guess profile failed", errstat)
+          RETURN
         ENDIF
 
         ! determine apriori temperature profile
-        status = O3T_apriori_prf(pixGEO%lat, jday, aprftm )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-              "O3T_apriori_prf:determine apriori temperature profile failed", &
-              "O3T_step2", zero )
-           RETURN
+        errstat = O3T_apriori_prf(pixGEO%lat, jday, aprftm )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: determine apriori temperature profile failed", &
+               errstat)
+          RETURN
         ENDIF
 
         ! calculate temperature adjustments
-        status = O3T_delnbyT( dndx, fgprf, fgtmp, aprftm, delnT, dNdT )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_delnbyT: calculate temperature adjustment failed", &
-                     "O3T_step2", zero )
-           RETURN
+        errstat = O3T_delnbyT( dndx, fgprf, fgtmp, aprftm, delnT, dNdT )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: calculate temperature adjustment failed", errstat)
+          RETURN
         ENDIF
 
         ! determine apriori profile shape
-        status =  O3T_getshp( pixGEO%lat, jday, stp1oz, fgprf, aprfoz, delshp )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_getshp: determine apriori profile shape failed", &
-                     "O3T_step2", zero )
-           RETURN
+        errstat =  O3T_getshp( pixGEO%lat, jday, stp1oz, fgprf, aprfoz, &
+             delshp )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: determine apriori profile shape failed", errstat)
+          RETURN
         ENDIF
 
         ! calculate step 2 ozone
         stp2oz = stp1oz    !initialized to step 1 ozone
         stp2oz_valid = .FALSE.
 
-        status = O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, fgtmp, &
-                            dndx, delnT, dndomega_t, dndr, dxdomega, &
-                            aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_stp2oz: determine step 2 ozone failed", &
-                     "O3T_step2", zero )
-           RETURN
+        errstat = O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, &
+             dndx, delnT, dndomega_t, dndr, dxdomega, &
+             delshp, absrfl, dr, stp2prf, eff, stp2oz )
+!             fgtmp, dndx, delnT, dndomega_t, dndr, dxdomega, &
+!             aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: determine step 2 ozone failed", errstat)
+          RETURN
         ENDIF
         IF( stp2oz > 0.0 .AND. stp2oz < 900.0 )  THEN
-           stp2oz_valid = .TRUE.
+          stp2oz_valid = .TRUE.
         ELSE
-           skipit = .TRUE.  !! temporay disabled for comparison wtih v806
+          skipit = .TRUE.  !! temporay disabled for comparison wtih v806
         ENDIF
 
-        status = O3T_resadj( iwl_refl, res_stp1, dndr, dndx, delnT, &
-                             fgprf, stp2prf, dr, res_stp2 )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_FAILURE, &
-                     "O3T_resadj: determine step 2 residue failed", &
-                     "O3T_step2", zero )
-           RETURN
+        errstat = O3T_resadj( iwl_refl, res_stp1, dndr, dndx, delnT, &
+             fgprf, stp2prf, dr, res_stp2 )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step2: determine step 2 residue failed", errstat)
+          RETURN
         ENDIF
         pixSURF%ref    =  pixSURF%ref + dr
 
       END FUNCTION O3T_step2
+
+
+
 
 !      FUNCTION O3T_step2_omps(iwl_oz, iwl_refl, iplow, &
 !                              pixGEO, pixSURF, aprftm, aprfoz, &
@@ -658,9 +669,12 @@ MODULE O3T_class
 !! shape effects.
 !!
       FUNCTION O3T_step3( iglnt, irflo, imixr, pixGEO, stp2oz, f313, &
-                          f360, res_stp2, dndomega_t, &
-                          stp3oz, res_stp3, pathl, algflg ) &
-                          RESULT( status )
+           f360, res_stp2, dndomega_t, &
+           stp3oz, res_stp3, pathl, algflg ) &
+           RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iglnt, irflo, imixr
         TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
         REAL (KIND=4), INTENT(IN) :: stp2oz, f313
@@ -672,14 +686,15 @@ MODULE O3T_class
 
         INTEGER (KIND=4) :: irfhi
         REAL (KIND=4) :: ozpath, aiadj
-        INTEGER (KIND=4) :: ierr, status
+        INTEGER (KIND=4) :: errstat
+
+        errstat = 0
 
         IF( SIZE( res_stp2 ) .NE. SIZE( res_stp3 ) .OR. &
-            SIZE( res_stp2 ) .NE. SIZE(dndomega_t) ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
-                                 "O3T_step3", zero )
-           status = OZT_E_FAILURE
-           RETURN
+             SIZE( res_stp2 ) .NE. SIZE(dndomega_t) ) THEN
+          call tell_error(tell_runtime_error, &
+               "O3T_step3: array size not equal", errstat)
+          RETURN
         ENDIF
 
         pathl  = real(1.0/pixGEO%cos_sza + 1.0/pixGEO%cos_vza , kind=4)
@@ -696,13 +711,12 @@ MODULE O3T_class
         IF( algflg == 3 ) THEN
           irfhi = iglnt
           stp3oz = stp2oz + (  res_stp2(irflo) - res_stp2(irfhi)  ) / &
-                            (dndomega_t(irflo) - dndomega_t(irfhi))
+               (dndomega_t(irflo) - dndomega_t(irfhi))
         ENDIF
 
         !   adjust residues for step 3 ozone change
         res_stp3 = res_stp2 - dndomega_t*(stp3oz-stp2oz)
 
-        status = OZT_S_SUCCESS
       END FUNCTION O3T_step3
 
 !!Description:
@@ -734,7 +748,10 @@ MODULE O3T_class
 
       FUNCTION O3T_oznot( iwl_oz, xnvalm, coefs, pixGEO, pixSURF, &
                           iplow, iphigh, estozn, dndoz_o, skipit ) &
-                          RESULT( status )
+                          RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iwl_oz
         REAL (KIND=4), DIMENSION(:), INTENT(IN) :: xnvalm
         TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
@@ -744,13 +761,15 @@ MODULE O3T_class
         LOGICAL, INTENT(OUT) :: skipit
         REAL (KIND=4), INTENT(OUT) :: estozn, dndoz_o
         REAL (KIND=4) :: xlown, xhighn
-        INTEGER (KIND=4) :: status
-        INTEGER (KIND=4) :: ierr, iprof
+        INTEGER (KIND=4) :: errstat
+        INTEGER (KIND=4) :: iprof
         REAL (KIND=4) :: ezgr, tgr, sbgr, knbgr, ezcl, tcl, sbcl, knbcl
         REAL (KIND=4) :: radgr, rsbgr, radcl, rsbcl,  xnvalc
         REAL (KIND=4) :: omeglo, omeghi
         LOGICAL :: lb_found, ub_found
         CHARACTER (LEN =255) :: msg
+
+        errstat = 0
 
         iprof = iplow
         lb_found = .FALSE.
@@ -759,11 +778,11 @@ MODULE O3T_class
         radgr = 0.0
 
         DO
-          status = O3T_iztrsb( nvRRS, iwl_oz, iprof, pixGEO, coefs,  &
+          errstat = O3T_iztrsb( nvRRS, iwl_oz, iprof, pixGEO, coefs,  &
                                ezgr, tgr, sbgr, knbgr, ezcl, tcl, sbcl, knbcl )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
-                                   "O3T_oznot", zero )
+          IF( errstat .NE. 0 ) THEN
+            call tell_error(tell_runtime_error, &
+                 "O3T_oznot: O3T_iztrsb error", errstat)
              skipit = .TRUE.
              RETURN
           ENDIF
@@ -788,9 +807,8 @@ MODULE O3T_class
              WRITE(msg, *) "radgr =", radgr, ", refl =", pixSURF%ref, &
                            ", clfrac =", pixSURF%clfrac, &
                            ", pixID =", pixGEO%id
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_oznot", zero )
+             call tell_log(0,msg)
              skipit=.TRUE.
-             status = OZT_S_SUCCESS
              RETURN
           ENDIF
 
@@ -798,9 +816,8 @@ MODULE O3T_class
              WRITE(msg, *) "radcl =", radcl, ", refl =", pixSURF%ref, &
                            ", clfrac =", pixSURF%clfrac, &
                            ", pixID =", pixGEO%id
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_oznot", zero )
+             call tell_log(0,msg)
              skipit=.TRUE.
-             status = OZT_S_SUCCESS
              RETURN
           ENDIF
 
@@ -883,7 +900,7 @@ MODULE O3T_class
 
       FUNCTION O3T_calcRefl( iplow, ozonin, iwl_refl, xnvalm, coefs, &
                              pixGEO, pixSURF, dndoz_r, first_call ) &
-                           RESULT(status)
+                           RESULT(errstat)
         INTEGER (KIND=4), INTENT(IN) :: iplow, iwl_refl
         REAL (KIND=4), INTENT(IN) :: ozonin
         REAL (KIND=4), DIMENSION(:), INTENT(IN) :: xnvalm
@@ -906,10 +923,10 @@ MODULE O3T_class
         INTEGER (KIND=4), SAVE :: ip_l = -1, pixel_id = -32767, &
                                   iwl_s = -1 !, ip_u = -1
         INTEGER (KIND=4) :: ioz, iprof
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: errstat
         CHARACTER (LEN =255) :: msg
 
-        status = OZT_S_SUCCESS
+        errstat = 0
         alb  = 10.0**(-xnvalm(iwl_refl))
 
         ozfrac  = O3T_ozfraction( ozonin, iplow, pixGEO%fteran, omeglo, omeghi )
@@ -918,8 +935,8 @@ MODULE O3T_class
                                             ',iplow=' , iplow,        &
                                             ',ozonin=', ozonin,       &
                                             ',fteran=', pixGEO%fteran
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_calcRefl", zero )
-           status = OZT_E_FAILURE
+           call tell_error(tell_runtime_error, "O3T_calcRefl: ozfrac <= -4", &
+                errstat)
            RETURN
         ENDIF
 
@@ -927,12 +944,12 @@ MODULE O3T_class
         IF( iplow .NE. ip_l .OR. pixGEO%id .NE. pixel_id &
                             .OR. iwl_refl  .NE. iwl_s ) THEN
            DO ioz = 1, 2
-             status = O3T_iztrsb( nvRRS, iwl_refl, iprof, pixGEO, coefs, &
+             errstat = O3T_iztrsb( nvRRS, iwl_refl, iprof, pixGEO, coefs, &
                                   ezgr(ioz), tgr(ioz), sbgr(ioz), knbgr(ioz), &
                                   ezcl(ioz), tcl(ioz), sbcl(ioz), knbcl(ioz)  )
-             IF( status .NE. OZT_S_SUCCESS ) THEN
-                ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
-                                      "O3T_calcRefl", zero )
+             IF( errstat .NE. 0 ) THEN
+               call tell_error(tell_runtime_error, &
+                    "O3T_calcRefl: O3T_iztrsb error" , errstat)
                 RETURN
              ENDIF
              iprof = iprof + 1
@@ -990,11 +1007,11 @@ MODULE O3T_class
               ELSE                                  ! corresponding residue at
                  ref = 0.                           ! 360 nm., leaving out RRS
               ENDIF                                !! correction for this calc.
-              status = O3T_glnchk( iplow, xnvalm, ref, &
+              errstat = O3T_glnchk( iplow, xnvalm, ref, &
                                    coefs, pixGEO, pixSURF )
-              IF( status .NE. OZT_S_SUCCESS ) THEN
-                 ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_glnchk error", &
-                                       "O3T_calcRefl", zero )
+              IF( errstat .NE. 0 ) THEN
+                call tell_error (tell_runtime_error, &
+                     "O3T_calcRefl: O3T_glnchk error", errstat)
                  RETURN
               ENDIF
            ENDIF
@@ -1061,10 +1078,16 @@ MODULE O3T_class
 
       END FUNCTION O3T_calcRefl
 
+
+
+
       FUNCTION O3T_residue( iplow, estozn, xnvalm, &
            coefs, pixGEO, pixSURF, &
            n_residue, dndomega_t, dndr, nlambda ) &
-           RESULT( status )
+           RESULT( errstat )
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iplow
         INTEGER (KIND=4), OPTIONAL, INTENT(IN) :: nlambda
         REAL (KIND=4), INTENT(IN) :: estozn
@@ -1078,14 +1101,15 @@ MODULE O3T_class
         REAL (KIND=4), DIMENSION(2) :: radgr, radcl, xnval, pxnval, &
              rsbgr, rsbcl
         REAL (KIND=4), DIMENSION(SIZE(xnvalm)) :: xnvalc, pxnvalc
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: ierr, errstat
         INTEGER (KIND=4) :: iwl, nwl, ioz, iprof
         REAL (KIND=4) :: omeglo, omeghi, ozfrac, clfrac, pclfrac
         REAL (KIND=4) :: grref, clref, ref, pref
         REAL (KIND=4) :: Ic331, Im331, Rm360
         REAL (KIND=4), SAVE :: Rc360 = 0.8
 
-        status = OZT_S_SUCCESS
+        errstat = 0
+
         ozfrac  = O3T_ozfraction( estozn, iplow, pixGEO%fteran, omeglo, omeghi )
         clfrac = pixSURF%clfrac
         grref  = pixSURF%grref
@@ -1097,18 +1121,16 @@ MODULE O3T_class
         IF( SIZE( xnvalm ) .NE. SIZE( n_residue ) .OR. &
              SIZE( xnvalm ) .NE. SIZE( dndomega_t ) .OR. &
              SIZE( xnvalm ) .NE. SIZE( dndr ) ) THEN
-          ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'array size not equal', &
-               "O3T_residue", zero )
-          status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_residue: array size not equal", errstat)
           RETURN
         ENDIF
 
         IF( PRESENT( nlambda ) ) THEN
           nwl = nlambda
           IF( nwl > SIZE(xnvalm) ) THEN
-            ierr = OMI_SMF_setmsg( OZT_E_INPUT, 'nlambda too large', &
-                 "O3T_residue", zero )
-            status = OZT_E_FAILURE
+          call tell_error(tell_runtime_error, &
+               "O3T_residue: nlambda too large", errstat)
             RETURN
           ENDIF
         ELSE
@@ -1119,13 +1141,13 @@ MODULE O3T_class
         DO iwl = 1, nwl
           iprof = iplow
           DO ioz = 1, 2
-            status = O3T_iztrsb( nvRRS, iwl, iprof, pixGEO, coefs, &
+            errstat = O3T_iztrsb( nvRRS, iwl, iprof, pixGEO, coefs, &
                  ezgr(ioz), tgr(ioz), sbgr(ioz), knbgr(ioz), &
                  ezcl(ioz), tcl(ioz), sbcl(ioz), knbcl(ioz) )
             iprof = iprof + 1
-            IF( status .NE. OZT_S_SUCCESS ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
-                   "O3T_residue", zero )
+            IF( errstat .NE. 0 ) THEN
+              call tell_error(tell_runtime_error, &
+                   "O3T_residue: O3T_iztrsb error", errstat)
               RETURN
             ENDIF
           ENDDO
@@ -1163,6 +1185,7 @@ MODULE O3T_class
               Ic331    = 10.0**(-Ic331)
               Im331    = 10.0**(-xnvalm(iwl))
               !! Compute Radiative Cloud Fraction based on Ic331 & Im331
+              !NB - use of ierr indicates output status unimportant 
               ierr     = O3T_rcf1( Ic331, Im331, pixSURF )
             ELSE IF( iwl == pixSURF%iwl_refl_h ) THEN
               Rm360    = real(PI*10.0**(-xnvalm(iwl))/pixGEO%cos_sza , kind=4)
@@ -1182,10 +1205,19 @@ MODULE O3T_class
 
       END FUNCTION O3T_residue
 
-      FUNCTION O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, fgtmp, &
+
+
+      FUNCTION O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf,&
                            dndx, delnT, dndomega_t, dndr, dxdomega, &
-                           aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz ) &
-                           RESULT( status )
+                           delshp, absrfl, dr, stp2prf, eff, stp2oz ) &
+                           RESULT( errstat )
+!      FUNCTION O3T_stp2oz( iwl_oz, iwl_refl, stp1oz, fgprf, fgtmp, &
+!                           dndx, delnT, dndomega_t, dndr, dxdomega, &
+!                           aprftm, delshp, absrfl, dr, stp2prf, eff, stp2oz ) &
+!                           RESULT( errstat )
+
+        implicit none
+
         INTEGER(KIND=4), INTENT(IN) :: iwl_oz, iwl_refl
         REAL(KIND=4), DIMENSION(:,:), INTENT(IN) :: dndx, delnT
         REAL(KIND=4), DIMENSION(:), INTENT(IN) :: dndomega_t, dndr
@@ -1193,13 +1225,14 @@ MODULE O3T_class
         LOGICAL, INTENT(IN) :: absrfl
         REAL(KIND=4), INTENT(OUT) :: stp2oz, dr
         REAL(KIND=4), DIMENSION(:), INTENT(OUT) :: stp2prf, eff
-        REAL(KIND=4), DIMENSION(:), INTENT(IN) :: fgprf, fgtmp, aprftm, &
-                                                   delshp, dxdomega
+        REAL(KIND=4), DIMENSION(:), INTENT(IN) :: fgprf, delshp, dxdomega!, &
+                                                  !fgtmp, aprftm
         REAL(KIND=4) :: dn_at_wloz, dn_at_wlrefl, crrcto, domega
         REAL(KIND=4),DIMENSION(SIZE(eff)) :: crrctx
-        INTEGER(KIND=4) :: status ! ierr,
+        INTEGER(KIND=4) :: errstat
 
-        status = OZT_S_SUCCESS
+        errstat = 0
+
         IF( absrfl ) THEN
            crrctx(:) = (dndr( iwl_oz )/dndr( iwl_refl ))*dndx(iwl_refl,:)
            crrcto    = (dndr( iwl_oz )/dndr( iwl_refl ))*dndomega_t(iwl_refl)
@@ -1225,12 +1258,18 @@ MODULE O3T_class
         IF( stp2oz < 0.0 .OR. stp2oz > 900.0 ) RETURN
 
         stp2prf(:) = fgprf(:) + delshp(:) - domega * dxdomega(:)
-        status =  O3T_prof_check( stp2prf, fgprf + delshp )
+        errstat =  O3T_prof_check( stp2prf, fgprf + delshp )
       END FUNCTION O3T_stp2oz
+
+
+
 
       FUNCTION O3T_resadj( iwl_refl, res_stp1, dndr, dndx, delnT, &
                            fgprf, stp2prf, dr, res_stp2 ) &
-                           RESULT( status )
+                           RESULT( errstat )
+
+        implicit none
+
         REAL(KIND=4), DIMENSION(:), INTENT(IN) :: res_stp1, dndr
         REAL(KIND=4), DIMENSION(:,:), INTENT(IN) :: dndx, delnT
         REAL(KIND=4), DIMENSION(:), INTENT(IN) :: fgprf, stp2prf
@@ -1239,8 +1278,10 @@ MODULE O3T_class
         REAL(KIND=4) :: dn
         INTEGER(KIND=4), INTENT(IN) :: iwl_refl
         INTEGER(KIND=4) :: iwl, nwl
-        INTEGER(KIND=4) :: status
-        status = OZT_S_SUCCESS
+        INTEGER(KIND=4) :: errstat
+
+        errstat = 0
+
         nwl = SIZE(res_stp1)
 
         dn = SUM( (stp2prf - fgprf)*dndx(iwl_refl,:) + delnT(iwl_refl,:) )
@@ -1258,6 +1299,9 @@ MODULE O3T_class
       END FUNCTION O3T_resadj
 
       FUNCTION O3T_blwcld( stp2prf, pixGEO, pixSURF ) RESULT( oz_cld )
+
+        implicit none
+
         REAL(KIND=4), DIMENSION(:), INTENT(IN) :: stp2prf
         TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
         TYPE (O3T_pixcover_type), INTENT(IN) :: pixSURF
@@ -1298,8 +1342,14 @@ MODULE O3T_class
        oz_cld = clfrac*oz_cld
       END FUNCTION O3T_blwcld
 
+
+
+
       FUNCTION O3T_getshp( latitude, jday, estozn, fgprf, apprf, delshp ) &
-                           RESULT( status )
+                           RESULT( errstat )
+
+        implicit none
+
         REAL( KIND=4 ), INTENT(IN) :: latitude, estozn
         INTEGER( KIND=4 ), INTENT(IN) :: jday
         REAL( KIND=4 ), DIMENSION(:), INTENT(IN) :: fgprf
@@ -1307,7 +1357,9 @@ MODULE O3T_class
         REAL( KIND=4 ),DIMENSION(SIZE(fgprf)) :: tmpprf
         INTEGER( KIND=4 ) :: i,j,k,l
         REAL( KIND=4 ) :: foz, flt, fmn
-        INTEGER( KIND=4 ) :: status!, ierr
+        INTEGER( KIND=4 ) :: errstat!, ierr
+
+        errstat = 0
 
         ! determine interpolation indices
         j = int(( estozn - 25.0 )/50.0 - 1)
@@ -1351,12 +1403,8 @@ MODULE O3T_class
                           + (1.0-flt)*     fmn *tzaprf(i,j,k  ,l+1) &
                           +      flt *     fmn *tzaprf(i,j,k+1,l+1)
               ENDDO
-              status =  O3T_prof_check( apprf, tmpprf )
-           ELSE
-              status = OZT_S_SUCCESS
+              errstat =  O3T_prof_check( apprf, tmpprf )
            ENDIF
-        ELSE
-           status = OZT_S_SUCCESS
         ENDIF
 
         delshp(:) = apprf(:)-fgprf(:)
@@ -1387,7 +1435,10 @@ MODULE O3T_class
 !     END FUNCTION O3T_getshp_omps
 
       FUNCTION O3T_glnchk( iplow, xnvalm, refl, coefs, pixGEO, pixSURF ) &
-                           RESULT(status)
+                           RESULT(errstat)
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iplow
         REAL (KIND=4), INTENT(IN) :: refl
         REAL (KIND=4), DIMENSION(:), INTENT(IN) :: xnvalm
@@ -1398,15 +1449,16 @@ MODULE O3T_class
                                ezcl, tcl, sbcl, knbcl
         REAL (KIND=4) :: grrad, xncalc, nres_glint
         INTEGER( KIND=4 ) :: iwl_glint
-        INTEGER( KIND=4 ) :: status, ierr
+        INTEGER( KIND=4 ) :: errstat
 
-        status = OZT_S_SUCCESS
+        errstat = 0
+
         iwl_glint = pixSURF%iwl_glint
-        status = O3T_iztrsb( nvRRS, iwl_glint, iplow, pixGEO, coefs, &
+        errstat = O3T_iztrsb( nvRRS, iwl_glint, iplow, pixGEO, coefs, &
                              ezgr, tgr, sbgr, knbgr, ezcl, tcl, sbcl, knbcl )
-        IF( status .NE. OZT_S_SUCCESS ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, "O3T_iztrsb error", &
-                                  "O3T_glnchk", zero )
+        IF( errstat .NE. 0 ) THEN
+          call tell_error(tell_runtime_error, "O3T_glnchk: O3T_iztrsb error", &
+               errstat)
            RETURN
         ENDIF
 
@@ -1525,20 +1577,29 @@ MODULE O3T_class
         ENDIF
       END FUNCTION O3T_descendQ
 
+
+      !FIXME - will need to be updated for TEMPO
       FUNCTION O3T_getSatName( ShortName, nval_lun ) RESULT( satname )
+
+        use tell_module
+
+        implicit none
+
         CHARACTER(LEN=*), INTENT(IN) :: ShortName
         INTEGER (KIND = 4), INTENT(IN) :: nval_lun
         CHARACTER(LEN=2) :: satname
         CHARACTER (LEN =255) :: msg, fn_nval
-        INTEGER (KIND = 4) :: version, status, ierr, di
+        INTEGER (KIND = 4) :: version, status, di, errstat
 
         !! get the nval table filename and path
+        errstat = 0
         version = 1
         status = PGS_PC_GetReference( nval_lun, version, fn_nval )
         IF( status /= PGS_S_SUCCESS ) THEN
-           WRITE( msg,'(A,I9)' ) "get LUT name failed at LUN = ", nval_lun
-           ierr = OMI_SMF_setmsg( OZT_W_GENERAL, msg, "O3T_getSatName", zero )
-           fn_nval = ""
+          WRITE( msg,'(A,I9)' ) &
+               "O3T_getSatName: get LUT name failed at LUN = ", nval_lun
+          call tell_error(tell_io_read_error, msg, errstat)
+          fn_nval = ""
         ENDIF
 
         !! remove path
@@ -1546,118 +1607,120 @@ MODULE O3T_class
         fn_nval = fn_nval( di+1: )
 
         IF( INDEX( ShortName, "TOMS" )>0 .AND. INDEX( fn_nval, "TOMS" )>0 ) THEN
-           IF( INDEX( fn_nval, "N7" ) > 0 ) THEN
-              satname = "N7";
-           ELSE IF( INDEX( fn_nval, "EP" ) > 0 ) THEN
-              satname = "EP";
-           ELSE IF( INDEX( fn_nval, "M3" ) > 0 ) THEN
-              satname = "M3";
-           ELSE IF( INDEX( fn_nval, "AD" ) > 0 ) THEN
-              satname = "AD";
-           ELSE
-              WRITE( msg,'(A)' ) "ShortName:"//TRIM( ShortName ) // &
-                                 "and NVAL file name"// TRIM(fn_nval) // &
-                                 "incompatiable."
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_getSatName", zero )
-              satname = "";
-           ENDIF
+          IF( INDEX( fn_nval, "N7" ) > 0 ) THEN
+            satname = "N7";
+          ELSE IF( INDEX( fn_nval, "EP" ) > 0 ) THEN
+            satname = "EP";
+          ELSE IF( INDEX( fn_nval, "M3" ) > 0 ) THEN
+            satname = "M3";
+          ELSE IF( INDEX( fn_nval, "AD" ) > 0 ) THEN
+            satname = "AD";
+          ELSE
+            WRITE( msg,'(A)' ) "O3T_getSatName: ShortName:"// &
+                 TRIM( ShortName ) // &
+                 "and NVAL file name"// TRIM(fn_nval) // &
+                 "incompatiable."
+            call tell_error(tell_runtime_error, msg, errstat)
+            satname = "";
+          ENDIF
         ELSE IF ( TRIM(ShortName) /= "OMTO3" ) THEN
-           satname = "OM";
+          satname = "OM";
         ELSE IF ( TRIM(ShortName) /= "GMTO3" ) THEN
-           satname = "OM";
+          satname = "OM";
         ELSE
-           WRITE( msg,'(A)' ) "ShortName:"//TRIM( ShortName ) // &
-                              "and NVAL file name"// TRIM(fn_nval) // &
-                              "incompatiable."
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, "O3T_getSatName", zero )
-           satname = "";
+          WRITE( msg,'(A)' ) "O3T_getSatName: ShortName:"// &
+               TRIM( ShortName ) // &
+               "and NVAL file name"// TRIM(fn_nval) // &
+               "incompatiable."
+          call tell_error(tell_runtime_error, msg, errstat)
+          satname = "";
         ENDIF
         WRITE( msg,'(A)' ) "used satname:"// satname
-        ierr = OMI_SMF_setmsg( OZT_S_SUCCESS, msg, "O3T_getSatName", four )
+        call tell_log(4, msg)
         RETURN
       END FUNCTION O3T_getSatName
 
-      FUNCTION O3T_rcf2( Rc360, Rm360, pixSURF ) RESULT( status )
+
+
+      FUNCTION O3T_rcf2( Rc360, Rm360, pixSURF ) RESULT( errstat )
+
+        implicit none
+
         TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
         REAL (KIND=4), INTENT(IN) :: Rc360, Rm360
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: ierr, errstat
         REAL (KIND=4) :: fc
         REAL (KIND=4), SAVE :: fill_float32
         LOGICAL (KIND=4), SAVE :: firsttime = .TRUE.
         INTEGER (KIND=4), EXTERNAL :: r4Fill
 
-        status = OZT_S_SUCCESS
+        errstat = 0
 
         IF( firsttime ) THEN
-           ierr = r4Fill( fill_float32 )
-           firsttime = .FALSE.
+          ierr = r4Fill( fill_float32 )
+          firsttime = .FALSE.
         ENDIF
 
         fc = pixSURF%clfrac
         IF( fc < 0.0 .OR. fc > 1.0 ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                  "Effective cloud fraction out of range", &
-                  "O3T_rcf2", zero )
-           pixSURF%rcf2 = fill_float32
-           status = OZT_E_INPUT
-           RETURN
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_rcf2: Effective cloud fraction out of range" , errstat)
+          pixSURF%rcf2 = fill_float32
+          RETURN
         ELSE IF( fc == 0.0 .OR. fc == 1.0 ) THEN
-           pixSURF%rcf2 = fc
-           RETURN
+          pixSURF%rcf2 = fc
+          RETURN
         ELSE
-           IF( Rm360 <= 0.0 ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                  "Rm360 out of range", "O3T_rcf2", zero )
-              pixSURF%rcf2 = fill_float32
-              status = OZT_E_INPUT
-              RETURN
-           ELSE
-              pixSURF%rcf2 = fc*Rc360/Rm360
-           ENDIF
+          IF( Rm360 <= 0.0 ) THEN
+            call tell_error(tell_invalid_parm_error, &
+                 "O3T_rcf2: Rm360 out of range" , errstat)
+            pixSURF%rcf2 = fill_float32
+            RETURN
+          ELSE
+            pixSURF%rcf2 = fc*Rc360/Rm360
+          ENDIF
         ENDIF
-        status = OZT_S_SUCCESS
         RETURN
       END FUNCTION O3T_rcf2
 
-      FUNCTION O3T_rcf1( Ic331, Im331, pixSURF ) RESULT( status )
+      FUNCTION O3T_rcf1( Ic331, Im331, pixSURF ) RESULT( errstat )
+
+        implicit none
+
         TYPE (O3T_pixcover_type), INTENT(INOUT) :: pixSURF
         REAL (KIND=4), INTENT(IN) :: Ic331, Im331
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: ierr, errstat
         REAL (KIND=4) :: fc
         REAL (KIND=4), SAVE :: fill_float32
         LOGICAL (KIND=4), SAVE :: firsttime = .TRUE.
         INTEGER (KIND=4), EXTERNAL :: r4Fill
 
-        status = OZT_S_SUCCESS
+        errstat = 0
 
         IF( firsttime ) THEN
-           ierr = r4Fill( fill_float32 )
-           firsttime = .FALSE.
+          ierr = r4Fill( fill_float32 )
+          firsttime = .FALSE.
         ENDIF
 
         fc = pixSURF%clfrac
         IF( fc < 0.0 .OR. fc > 1.0 ) THEN
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                  "Effective cloud fraction out of range", &
-                  "O3T_rcf1", zero )
-           pixSURF%rcf2 = fill_float32
-           status = OZT_E_INPUT
-           RETURN
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_rcf1: Effective cloud fraction out of range", errstat)
+          pixSURF%rcf2 = fill_float32
+          RETURN
         ELSE IF( fc == 0.0 .OR. fc == 1.0 ) THEN
-           pixSURF%rcf1 = fc
-           RETURN
+          pixSURF%rcf1 = fc
+          RETURN
         ELSE
-           IF( Im331 <= 0.0 ) THEN
-              ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                  "Im331 out of range", "O3T_rcf1", zero )
-              pixSURF%rcf1 = fill_float32
-              status = OZT_E_INPUT
-              RETURN
-           ELSE
-              pixSURF%rcf1 = fc*Ic331/Im331
-           ENDIF
+          IF( Im331 <= 0.0 ) THEN
+            call tell_error(tell_invalid_parm_error, &
+                 "O3T_rcf1: Im331 out of range", errstat)
+            pixSURF%rcf1 = fill_float32
+            RETURN
+          ELSE
+            pixSURF%rcf1 = fc*Ic331/Im331
+          ENDIF
         ENDIF
-        status = OZT_S_SUCCESS
         RETURN
       END FUNCTION O3T_rcf1
 

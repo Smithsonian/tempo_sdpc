@@ -40,6 +40,7 @@ MODULE O3T_iztrsb_m
     USE O3T_nval_class, ONLY :  nvalLUT_t
     USE O3T_pixel_class, ONLY : O3T_pixgeo_type
     USE O3T_lpolycoef_class, ONLY: O3T_lpoly_coef_type, NINTERP
+    use tell_module
 
     IMPLICIT NONE
     INTEGER (KIND=4), PARAMETER, PRIVATE :: zero = 0
@@ -79,25 +80,30 @@ MODULE O3T_iztrsb_m
 
       FUNCTION O3T_iztrsb( nv, iwl, iprof, pixGEO, coefs, &
                            ezgr, tgr, sbgr, knbgr, &
-                           ezcl, tcl, sbcl, knbcl ) RESULT( status)
+                           ezcl, tcl, sbcl, knbcl ) RESULT( errstat)
+
+        implicit none
+
         INTEGER (KIND=4), INTENT(IN) :: iwl, iprof
         TYPE (nvalLUT_t), INTENT(IN) :: nv
         TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
         TYPE (O3T_lpoly_coef_type), INTENT(IN) :: coefs
         REAL (KIND=4), INTENT(OUT) :: ezgr, tgr, sbgr, knbgr, &
                                       ezcl, tcl, sbcl, knbcl 
-        INTEGER (KIND=4) :: status, ierr
+        INTEGER (KIND=4) :: errstat
         INTEGER :: ipres
         REAL (KIND=4), DIMENSION(nv%npres) :: ezofp, tofp, sbofp, knbofp
         REAL (KIND=8) :: fac
 
+        errstat = 0
+
         DO ipres = 1, nv%npres 
-          status = O3T_lpoly_interp1( nv, ipres, iwl, iprof, pixGEO, &
+          errstat = O3T_lpoly_interp1( nv, ipres, iwl, iprof, pixGEO, &
                               coefs, ezofp(ipres), tofp(ipres), sbofp(ipres), &
                               knbofp(ipres) )
-          IF( status .NE. OZT_S_SUCCESS ) THEN
-             ierr = OMI_SMF_setmsg( OZT_E_INPUT, "interpolation error", &
-                                   "O3T_iztrsb", zero )
+          IF( errstat .NE. 0 ) THEN
+            call tell_error(tell_runtime_error, &
+                 "O3T_iztrsb: interpolation error" , errstat)
              RETURN
           ENDIF
         ENDDO 
@@ -119,7 +125,7 @@ MODULE O3T_iztrsb_m
            sbcl = real(fac*( sbofp(4)- sbofp(3))+ sbofp(3) , kind=4)
           knbcl = real(fac*(knbofp(4)-knbofp(3))+knbofp(3) , kind=4)
         ENDIF
-        status = OZT_S_SUCCESS
+
       END FUNCTION O3T_iztrsb
 
 !      FUNCTION O3T_iztrsbp( nv, iwl, iprof, pixGEO, coefs, &
@@ -194,7 +200,10 @@ MODULE O3T_iztrsb_m
 !!END Description:
 
     FUNCTION O3T_lpoly_interp1( nv, ipres, iwl, iprof, pixGEO, &
-                                coefs, ezero, tr, sb, knb ) RESULT( status )
+                                coefs, ezero, tr, sb, knb ) RESULT( errstat )
+
+      implicit none
+
       INTEGER (KIND=4), INTENT(IN) :: ipres, iwl, iprof
       TYPE (nvalLUT_t), INTENT(IN) :: nv
       TYPE (O3T_pixgeo_type), INTENT(IN) :: pixGEO
@@ -203,33 +212,33 @@ MODULE O3T_iztrsb_m
       REAL (KIND=8) :: zone, ztwo
       REAL (KIND=4), INTENT(OUT) :: ezero, tr, sb, knb
       INTEGER (KIND=4) :: isza_b, ivza_b, LL0, LL, iv, is, m 
-      INTEGER (KIND=4) :: status, ierr
+      INTEGER (KIND=4) :: errstat
       CHARACTER (LEN =255) :: msg
-      CHARACTER (LEN =25) :: FUNCTIONNAME = "O3T_lpoly_interp1"
+
+      errstat = 0
 
       IF( .NOT. nv%nval_read ) THEN
-         status = OZT_E_FAILURE
-         WRITE(msg,*) "NVAL LUT has not been read in yet"
-         ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, FUNCTIONNAME, zero )
+         WRITE(msg,*) "O3T_lpoly_interp1: NVAL LUT has not been read in yet"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
 
       IF( iprof < 1 .OR. iprof > nv%nprof ) THEN
-         status = OZT_E_FAILURE
-         WRITE(msg,*) "iprof = ", iprof, "out of range[1,",nv%nprof,"]"
-         ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, FUNCTIONNAME, zero )
+         WRITE(msg,*) "O3T_lpoly_interp1: iprof = ", iprof, &
+              "out of range[1,",nv%nprof,"]"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
       IF( iwl < 1 .OR. iwl > nv%nwl ) THEN
-         status = OZT_E_FAILURE
-         WRITE(msg,*) "iwl = ", iwl, "out of range[1,",nv%nwl,"]"
-         ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, FUNCTIONNAME, zero )
+         WRITE(msg,*) "O3T_lpoly_interp1: iwl = ", iwl, &
+              "out of range[1,",nv%nwl,"]"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
       IF( ipres < 1 .OR. ipres > nv%npres ) THEN
-         status = OZT_E_FAILURE
-         WRITE(msg,*) "ipres = ", ipres, "out of range[1,",nv%npres,"]"
-         ierr = OMI_SMF_setmsg( OZT_E_INPUT, msg, FUNCTIONNAME, zero )
+         WRITE(msg,*) "O3T_lpoly_interp1: ipres = ", ipres, &
+              "out of range[1,",nv%npres,"]"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
 
@@ -268,7 +277,6 @@ MODULE O3T_iztrsb_m
       ezero = real((inot + ione*pixGEO%cphi + itwo*pixGEO%c2phi), kind=4)
       LL = (ipres-1)*nv%n3size(2)+(iwl-1)*nv%n3size(3)+iprof
       sb    = nv%sb(LL)
-      status = OZT_S_SUCCESS
 
     END FUNCTION O3T_lpoly_interp1
 

@@ -38,6 +38,7 @@
 MODULE O3T_dndx_class
   USE O3T_nval_class
   USE OMI_SMF_class
+  use tell_module
 
   IMPLICIT NONE
   PUBLIC
@@ -78,7 +79,7 @@ MODULE O3T_dndx_class
 ! reduced.  
 !!
 
-    FUNCTION O3T_dndx_setup( wl_cutoff ) RESULT( status )
+    FUNCTION O3T_dndx_setup( wl_cutoff ) RESULT( errstat )
       USE HDF5
       USE O3T_LUT_fs
       USE PGS_PC_class
@@ -88,8 +89,8 @@ MODULE O3T_dndx_class
       CHARACTER ( LEN = 200 ) :: fn_dndx
 
       INTEGER (HID_T) :: file_id
-      INTEGER (KIND = 4) :: status
-      INTEGER :: ip_lut, iprof, ilyr, error, ierr, i_foo(1) ! is, ie, 
+      INTEGER (KIND = 4) :: status, errstat
+      INTEGER :: ip_lut, iprof, ilyr, i_foo(1) ! is, ie, 
       INTEGER :: iwl, ipres, isza, ivza
       INTEGER (KIND=4) :: nvzaP, nszaP, nprofP, nwlLUTP, npresP 
       !INTEGER :: iwl_max
@@ -107,9 +108,9 @@ MODULE O3T_dndx_class
       INTEGER :: version
 
       IF( .NOT. nval_read ) THEN
-         WRITE( msg,'(A)' ) "nval table must be read in first before dndx tab"
-         ierr = OMI_SMF_setmsg( status, msg, "O3T_dndx_setup", zero )
-         status = OZT_E_FAILURE
+         WRITE( msg,'(A)' ) "O3T_dndx_setup: nval table must be read" // &
+              "in first before dndx tab"
+         call tell_error(tell_application_error, msg, errstat)
          RETURN
       ENDIF
 
@@ -117,29 +118,27 @@ MODULE O3T_dndx_class
       version = 1
       status = PGS_PC_GetReference( OMTO3_DNDX_LUN, version, fn_dndx )
       IF( status /= PGS_S_SUCCESS ) THEN
-         WRITE( msg,'(A)' ) "get LUT name failed, PGE aborting, exit code = 1."
-         ierr = OMI_SMF_setmsg( status, msg, "O3T_dndx_setup", zero )
-         status = OZT_E_FAILURE
+         WRITE( msg,'(A)' ) "O3T_dndx_setup: get LUT name failed, aborting."
+         call tell_error(tell_io_read_error, msg, errstat)
          RETURN
       ENDIF
 
       lut_parameters  = (/ ds_lgi0, ds_z1, ds_z2, ds_tr, ds_sb, ds_wl /)
 
       ! Initialize FORTRAN interface. !
-      CALL h5open_f(error)
+      CALL h5open_f(errstat)
  
-      CALL h5fopen_f( fn_dndx, H5F_ACC_RDONLY_F, file_id, error )
-      IF( error < zero ) THEN
-         status = OZT_E_FAILURE
-         WRITE( msg,* ) "h5fopen_f failed on file: ", fn_dndx
-         ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), "O3T_dndx_setup", zero )
+      CALL h5fopen_f( fn_dndx, H5F_ACC_RDONLY_F, file_id, errstat )
+      IF( errstat < zero ) THEN
+         WRITE( msg,* ) "O3T_dndx_setu: h5fopen_f failed on file: ", fn_dndx
+         call tell_error(tell_io_open_error, msg, errstat)
          dndx_read = .FALSE.
          RETURN
       ENDIF
 
       ds_dx%datatype = H5T_NATIVE_REAL
       ds_dx%dims(1)  = 1
-      CALL h5tget_class_f(ds_dx%datatype, ds_dx%class, error )
+      CALL h5tget_class_f(ds_dx%datatype, ds_dx%class, errstat )
       status = UTIL_lh5_selectDS( file_id, ds_dx )
       IF( status == OZT_S_SUCCESS ) THEN
          status = UTIL_lh5_get( ds_dx, lyrDetO3 )
@@ -151,23 +150,19 @@ MODULE O3T_dndx_class
       DO ip_lut = 1, np_dndx_read
         lut_parameters(ip_lut)%datatype = H5T_NATIVE_REAL
         CALL h5tget_class_f(lut_parameters(ip_lut)%datatype, &
-                            lut_parameters(ip_lut)%class, error )
-        IF( error < zero ) THEN
-           status = OZT_E_FAILURE
-           WRITE( msg,* ) "h5tget_class_f failed on dataset: ", &
+                            lut_parameters(ip_lut)%class, errstat )
+        IF( errstat < zero ) THEN
+           WRITE( msg,* ) "O3T_dndx_setup: h5tget_class_f failed on: ", &
                           lut_parameters(ip_lut)%name
-           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                 "O3T_dndx_setup", zero )
+           call tell_error(tell_io_read_error, msg, errstat)
            RETURN
         ENDIF     
         lut_parameters(ip_lut)%rank = rank_dndx(ip_lut)
         status = UTIL_lh5_selectDS( file_id, lut_parameters(ip_lut) )
         IF( status .NE. OZT_S_SUCCESS ) THEN
-           status = OZT_E_FAILURE
-           WRITE( msg,* ) "UTIL_lh5_selectDS failed for ", &
+           WRITE( msg,* ) "O3T_dndx_setup: UTIL_lh5_selectDS failed for ", &
                           lut_parameters(ip_lut)%name, "in file ", fn_dndx
-           ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                  "O3T_dndx_setup", zero )
+           call tell_error(tell_io_error, msg, errstat)
            dndx_read = .FALSE.
            RETURN
           ENDIF
@@ -182,11 +177,10 @@ MODULE O3T_dndx_class
 
       IF( nvzaP /= nvzaT .OR. nszaP /= nszaT .OR. npresP /= npresT &
           .OR. nprofP /= nprofT .OR. nwlLUTP /= nwlLUT ) THEN
-         WRITE( msg,* ) "nval and dndx tables on different size grids."
-         ierr = OMI_SMF_setmsg( OZT_E_HDF, TRIM(msg), &
-                                "O3T_dndx_setup", zero )
+         call tell_error (tell_runtime_error, &
+              "O3T_dndx_setup: nval and dndx tables on different size grids", &
+              errstat)
          dndx_read = .FALSE.
-         status = OZT_E_FAILURE
          RETURN
       ENDIF
 
@@ -197,11 +191,10 @@ MODULE O3T_dndx_class
                 z2_t(   nvzaT, nszaT, nprofT, nwlLUT, npresT, nlyrT ), &
                 tr_t(   nvzaT, nszaT, nprofT, nwlLUT, npresT, nlyrT ), &
                 sb_t(                 nprofT, nwlLUT, npresT, nlyrT ), &
-                wl_t(nwlLUT), STAT = ierr )
-      IF( ierr /= zero ) THEN
-         status = OZT_E_FAILURE
-         ierr = OMI_SMF_setmsg( OZT_E_MEM_ALLOC, ".. allocation failure", &
-                               "O3T_dndx_setup", zero )
+                wl_t(nwlLUT), STAT = errstat )
+      IF( errstat /= 0 ) THEN
+        call tell_error(tell_malloc_error, &
+             "O3t_dndx_setup: allocation failure", errstat)
          dndx_read = .FALSE.
          RETURN
       ENDIF
@@ -218,8 +211,13 @@ MODULE O3T_dndx_class
       DO ip_lut = 1, np_dndx_read
         status = UTIL_lh5_disposeDS( lut_parameters(ip_lut ) )
       ENDDO
-      CALL h5fclose_f( file_id, error)
-      CALL h5close_f(error)
+      CALL h5fclose_f( file_id, errstat)
+      CALL h5close_f(errstat)
+      if (errstat /= 0) then
+        call tell_error(tell_io_error, "OsT_dndx_setup: h5close failure", &
+             errstat)
+        return
+      endif
 
       IF( PRESENT( wl_cutoff ) ) THEN
          IF( wl_cutoff > wlT_max .OR. wl_cutoff > MAXVAL( wl_t ) ) THEN
@@ -233,10 +231,11 @@ MODULE O3T_dndx_class
       ENDIF
 
       nwl_sub = iwl_c - iwl_s + 1 
-      WRITE( msg,'(4(A,I3))') "wavelength used in dndx calculations:iwl_s =", &
+      WRITE( msg,'(4(A,I3))') &
+           "O3T_dndx_setup: wavelength used in dndx calculations:iwl_s =", &
                              iwl_s,",iwl_c =",iwl_c, &
                              ",nwl_sub =",nwl_sub, ",nwl_com =", nwl_com 
-      ierr = OMI_SMF_setmsg(OZT_S_SUCCESS, msg, "O3T_dndx_setup", four ) 
+      call tell_log(0,"O3T_dndx_setup")
 
       d6size = (/ nvzaT*nszaT*nlyrT*nwl_sub*npresT*nprofT, &
                   nvzaT*nszaT*nlyrT*nwl_sub*npresT      , &
@@ -254,7 +253,12 @@ MODULE O3T_dndx_class
                 z2_d(   d6size(1) ), &
                 tr_d(   d6size(1) ), &
                 sb_d(   d4size(1) ), &            
-                STAT = ierr )
+                STAT = errstat )
+      if (errstat /= 0) then
+        call tell_error(tell_malloc_error, &
+             "O2T_dndx_setup: second allocation failed", errstat)
+        return
+      endif
 
     ! rearrange the lgi0_t, etc... for dndx calculation
       count6d = 1
@@ -279,10 +283,16 @@ MODULE O3T_dndx_class
       ENDDO
       ENDDO
 
-      DEALLOCATE( lgi0_t, z1_t, z2_t, tr_t, sb_t, wl_t, STAT = ierr )
+      DEALLOCATE( lgi0_t, z1_t, z2_t, tr_t, sb_t, wl_t, STAT = errstat )
+      if (errstat /= 0) then
+        call tell_error(tell_malloc_error, &
+             "O2T_dndx_setup: deallocation failed", errstat)
+        return
+      endif
+      
       dndx_read = .TRUE.
 
-      status = OZT_S_SUCCESS
+      errstat = 0
     END FUNCTION O3T_dndx_setup
 
     !...........................................................................
@@ -499,15 +509,18 @@ MODULE O3T_dndx_class
 
     !...........................................................................
 
-    FUNCTION O3T_dndx_dispose( ) RESULT (status)
-      INTEGER (KIND = 4) :: status
-      INTEGER  :: ierr
+    FUNCTION O3T_dndx_dispose( ) RESULT (errstat)
+      INTEGER (KIND = 4) :: errstat
 
       IF( dndx_read ) THEN
-         DEALLOCATE( lgi0_d, z1_d,  z2_d,  tr_d,  sb_d, STAT = ierr )
+         DEALLOCATE( lgi0_d, z1_d,  z2_d,  tr_d,  sb_d, STAT = errstat )
+         if (errstat /= 0) then
+           call tell_error (tell_malloc_error, &
+                "o3T_dndx_dispose: deallocate failure", errstat)
+           return
+         endif
          dndx_read = .FALSE.
       ENDIF
-      status = OZT_S_SUCCESS
 
     END FUNCTION O3T_dndx_dispose
 

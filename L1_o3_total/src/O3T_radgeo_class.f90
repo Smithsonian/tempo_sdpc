@@ -32,7 +32,10 @@ MODULE O3T_radgeo_class
                      ! include PGS_SMF.f define PGS_SMF_MAX_MSG_SIZE
     USE L1B_class    ! L1B_class contains module to read OMI L1B
                      ! geolocation, radiance, and irradiance parameters
+    use tell_module
+
     IMPLICIT NONE
+
     REAL (KIND = 8) :: time
     REAL (KIND = 4) :: sInD, scLat, scLon, scHgt
     REAL (KIND = 4), DIMENSION(:), ALLOCATABLE :: latitude, longitude, &
@@ -144,7 +147,7 @@ MODULE O3T_radgeo_class
          INTEGER (KIND=4) :: status, ierr
 
          !! clean up everything before proceed
-         CALL O3T_freeRAD
+         CALL O3T_freeRAD (status)
          EarthSunDistance = L1Bga_EarthSunDistance( L1B_filename,L1B_swathname )
          status = L1Bga_open( geo_blk, L1B_filename, L1B_swathname )
          IF( status /= OZT_S_SUCCESS ) THEN
@@ -219,28 +222,40 @@ MODULE O3T_radgeo_class
          ENDIF
        END FUNCTION O3T_initRAD
 
-       SUBROUTINE O3T_freeRAD
-         INTEGER (KIND=4) :: status
-         IF( ALLOCATED( latitude      ) ) DEALLOCATE( latitude      )
-         IF( ALLOCATED( longitude     ) ) DEALLOCATE( longitude     )
-         IF( ALLOCATED( lat_bounds    ) ) DEALLOCATE( lat_bounds    )
-         IF( ALLOCATED( lon_bounds    ) ) DEALLOCATE( lon_bounds    )
-         IF( ALLOCATED( szenith       ) ) DEALLOCATE( szenith       )
-         IF( ALLOCATED( sazimuth      ) ) DEALLOCATE( sazimuth      )
-         IF( ALLOCATED( vzenith       ) ) DEALLOCATE( vzenith       )
-         IF( ALLOCATED( vazimuth      ) ) DEALLOCATE( vazimuth      )
-         IF( ALLOCATED( phiArray      ) ) DEALLOCATE( phiArray      )
-         IF( ALLOCATED( ptArray       ) ) DEALLOCATE( ptArray       )
-         IF( ALLOCATED( pcArray       ) ) DEALLOCATE( pcArray       )
-         IF( ALLOCATED( PclimQ        ) ) DEALLOCATE( PclimQ        )
-         IF( ALLOCATED( snowIceArray  ) ) DEALLOCATE( snowIceArray  )
-         IF( ALLOCATED( height        ) ) DEALLOCATE( height        )
-         IF( ALLOCATED( geoflg        ) ) DEALLOCATE( geoflg        )
-         IF( ALLOCATED( anomflg       ) ) DEALLOCATE( anomflg       )
-         IF( ALLOCATED( radiance      ) ) DEALLOCATE( radiance      )
-         IF( ALLOCATED( radPrecision  ) ) DEALLOCATE( radPrecision  )
-         IF( ALLOCATED( radWavelength ) ) DEALLOCATE( radWavelength )
-         IF( ALLOCATED( radQAflags    ) ) DEALLOCATE( radQAflags    )
+       SUBROUTINE O3T_freeRAD (errstat)
+
+         implicit none
+
+         INTEGER (KIND=4) :: status, errstat
+
+         if (errstat /= 0) return
+
+         IF(ALLOCATED(latitude      )) DEALLOCATE(latitude      , stat=errstat)
+         IF(ALLOCATED(longitude     )) DEALLOCATE(longitude     , stat=errstat)
+         IF(ALLOCATED(lat_bounds    )) DEALLOCATE(lat_bounds    , stat=errstat)
+         IF(ALLOCATED(lon_bounds    )) DEALLOCATE(lon_bounds    , stat=errstat)
+         IF(ALLOCATED(szenith       )) DEALLOCATE(szenith       , stat=errstat)
+         IF(ALLOCATED(sazimuth      )) DEALLOCATE(sazimuth      , stat=errstat)
+         IF(ALLOCATED(vzenith       )) DEALLOCATE(vzenith       , stat=errstat)
+         IF(ALLOCATED(vazimuth      )) DEALLOCATE(vazimuth      , stat=errstat)
+         IF(ALLOCATED(phiArray      )) DEALLOCATE(phiArray      , stat=errstat)
+         IF(ALLOCATED(ptArray       )) DEALLOCATE(ptArray       , stat=errstat)
+         IF(ALLOCATED(pcArray       )) DEALLOCATE(pcArray       , stat=errstat)
+         IF(ALLOCATED(PclimQ        )) DEALLOCATE(PclimQ        , stat=errstat)
+         IF(ALLOCATED(snowIceArray  )) DEALLOCATE(snowIceArray  , stat=errstat)
+         IF(ALLOCATED(height        )) DEALLOCATE(height        , stat=errstat)
+         IF(ALLOCATED(geoflg        )) DEALLOCATE(geoflg        , stat=errstat)
+         IF(ALLOCATED(anomflg       )) DEALLOCATE(anomflg       , stat=errstat)
+         IF(ALLOCATED(radiance      )) DEALLOCATE(radiance      , stat=errstat)
+         IF(ALLOCATED(radPrecision  )) DEALLOCATE(radPrecision  , stat=errstat)
+         IF(ALLOCATED(radWavelength )) DEALLOCATE(radWavelength , stat=errstat)
+         IF(ALLOCATED(radQAflags    )) DEALLOCATE(radQAflags    , stat=errstat)
+
+         if (errstat /= 0) then
+           call tell_error (tell_malloc_error, &
+                "O3T_freeRAD: deallocation failed", errstat)
+           return
+         endif
 
          ! close data block structure
          status = L1Bga_close( geo_blk )

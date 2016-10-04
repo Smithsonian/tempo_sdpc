@@ -31,6 +31,8 @@ MODULE O3T_lpolycoef_class
     USE O3T_pixel_class
     USE O3T_nval_class, ONLY : nval_read, nvzaT, nszaT, npresT, &
                                 sza, vza, pressure 
+    use tell_module
+
     IMPLICIT NONE
     
     INTEGER (KIND = 4), PARAMETER :: NINTERP = 4
@@ -66,19 +68,16 @@ MODULE O3T_lpolycoef_class
 
     CONTAINS
 
-      FUNCTION O3T_lpoly_cden( this ) RESULT (status)
+      FUNCTION O3T_lpoly_cden( this ) RESULT (errstat)
         TYPE (O3T_lpoly_cden_type), INTENT( OUT ) :: this
-        INTEGER (KIND = 4) :: status
+        INTEGER (KIND = 4) :: errstat
         INTEGER  :: np, j !,k, i,
-        INTEGER  :: ierr
         !REAL (KIND = 8) :: xdenom
  
         IF( .NOT. nval_read ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_DATA_BLOCK, &
-                                 "LUT not initialized", &
-                                 "O3T_lpoly_cden", zero )
-           RETURN
+          call tell_error(tell_application_error, &
+               "O3T_poly_cden: LUT not initialized", errstat)
+          RETURN
         ENDIF
 
         this%nsza  = nszaT
@@ -86,13 +85,11 @@ MODULE O3T_lpolycoef_class
         this%npres = npresT
 
         ALLOCATE( this%lg_csza(this%nsza), this%lg_cvza(this%nvza), &
-                  this%log_pres(this%npres), STAT = ierr )
+                  this%log_pres(this%npres), STAT = errstat )
 
-        IF( ierr .NE. zero ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_MEM_ALLOC, &
-                                 "this%.. allocation failure", &
-                                 "O3T_lpoly_cden", zero )
+        IF( errstat .NE. zero ) THEN
+          call tell_error(tell_malloc_error, &
+               "O3T_lpoly_cden: this%.. allocation failure", errstat)
            RETURN
         ENDIF
 
@@ -101,38 +98,55 @@ MODULE O3T_lpolycoef_class
         this%log_pres = LOG10( DBLE(pressure))
         
         np = MAX( 1, this%nsza - NINTERP + 1 )
-        ALLOCATE( this%densza(NINTERP, np), STAT = ierr )
+        ALLOCATE( this%densza(NINTERP, np), STAT = errstat )
+        if (errstat /= 0) then
+          call tell_error(tell_malloc_error, &
+               "O3T_lpoly_cden: this%densza allocation failure", errstat)
+          return
+        endif
         DO j = 1, np
           this%densza(:, j) = Lnk_denum(this%lg_csza(j:j+NINTERP-1))
         END DO
 
         np = MAX( 1, this%nvza - NINTERP + 1 )
-        ALLOCATE( this%denvza(NINTERP, np), STAT = ierr )
+        ALLOCATE( this%denvza(NINTERP, np), STAT = errstat )
+        if (errstat /= 0) then
+          call tell_error(tell_malloc_error, &
+               "O3T_lpoly_cden: this%denvza allocation failure", errstat)
+          return
+        endif
         DO j = 1, np
           this%denvza(:, j) = Lnk_denum(this%lg_cvza(j:j+NINTERP-1))
         END DO
 
         np = this%npres 
         IF( np .NE. NINTERP ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_DATA_BLOCK, &
-                                 "This code assums npres_level == NINTERP", &
-                                 "O3T_lpoly_cden", zero )
-           RETURN
+          call tell_error(tell_runtime_error, &
+               "O3T_lpoly_cden: code assumes npres_level == NINTERP", &
+               errstat)
+          return
         ENDIF
 
-        ALLOCATE( this%denpres(np), STAT = ierr )
+        ALLOCATE( this%denpres(np), STAT = errstat )
+        if (errstat /= 0) then
+          call tell_error(tell_malloc_error, &
+               "O3T_lpoly_cden: this%denpres allocation failure", errstat)
+          return
+        endif
         this%denpres = Lnk_denum( this%log_pres )
 
         this%setLUTcoefDen = .TRUE.
-        status = OZT_S_SUCCESS
+
+        errstat = 0
         RETURN
       END FUNCTION O3T_lpoly_cden
 
-      FUNCTION O3T_lpolycden_dispose( this ) RESULT (status)
+
+
+
+      FUNCTION O3T_lpolycden_dispose( this ) RESULT (errstat)
         TYPE (O3T_lpoly_cden_type), INTENT( INOUT ) :: this
-        INTEGER (KIND = 4) :: status
-        INTEGER  :: ierr
+        INTEGER (KIND = 4) :: errstat
  
         IF( this%setLUTcoefDen ) THEN
         !  write(*,*) "lg_csza=", this%lg_csza
@@ -141,47 +155,50 @@ MODULE O3T_lpolycoef_class
         !  write(*,*) "densza=", this%densza
         !  write(*,*) "denvza=", this%denvza
         !  write(*,*) "denpres=", this%denpres
-           DEALLOCATE( this%lg_csza, this%lg_cvza, this%log_pres, STAT = ierr )
-           DEALLOCATE( this%densza, STAT = ierr )
-           DEALLOCATE( this%denvza, STAT = ierr )
-           DEALLOCATE( this%denpres, STAT = ierr )
+           DEALLOCATE( this%lg_csza, this%lg_cvza, this%log_pres, &
+                STAT = errstat )
+           DEALLOCATE( this%densza, STAT = errstat )
+           DEALLOCATE( this%denvza, STAT = errstat )
+           DEALLOCATE( this%denpres, STAT = errstat )
+           if (errstat /= 0) then
+             call tell_error(tell_malloc_error, &
+               "O3T_lpolycden_dispose: deallocation failure", errstat)
+          return
+        endif
         ENDIF
         this%setLUTcoefDen = .FALSE.
-        status = OZT_S_SUCCESS
+        errstat = 0
+
       END FUNCTION O3T_lpolycden_dispose
 
+
+
+
       FUNCTION O3T_lpoly_coef( this, cden_blk, pixGEO ) &
-               RESULT (status)
+               RESULT (errstat)
         TYPE (O3T_lpoly_coef_type), INTENT( OUT ) :: this
         TYPE (O3T_lpoly_cden_type), INTENT( IN ) :: cden_blk
         TYPE (O3T_pixgeo_type), INTENT( IN ) :: pixGEO
         INTEGER (KIND=4) :: isza, isza_end, ivza, ivza_end
         INTEGER (KIND=4) :: i,j,k
-        INTEGER (KIND = 4) :: status
-        INTEGER  :: ierr
+        INTEGER (KIND = 4) :: errstat
   
         IF( .NOT. cden_blk%setLUTcoefDen ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_DATA_BLOCK, &
-                                 "cden block not initialized", &
-                                 "O3T_lpoly_coef", zero )
-           RETURN
+          call tell_error(tell_application_error, &
+               "O3T_lpoly_coef: cden block not initialized", errstat)
+          return
         ENDIF
 
         IF( pixGEO%lg_cos_sza >  cden_blk%lg_csza(cden_blk%nsza) ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "Input sza out of range", &
-                                 "O3T_lpoly_coef", zero )
-           RETURN
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_lpoly_coef: input sza out of range", errstat)
+          return
         ENDIF
 
         IF( pixGEO%lg_cos_vza >  cden_blk%lg_cvza(cden_blk%nvza) ) THEN
-           status = OZT_E_FAILURE
-           ierr = OMI_SMF_setmsg( OZT_E_INPUT, &
-                                 "Input vza out of range", &
-                                 "O3T_lpoly_coef", zero )
-           RETURN
+          call tell_error(tell_invalid_parm_error, &
+               "O3T_lpoly_coef: input vza out of range", errstat)
+          return
         ENDIF
         
         this%pixel_id = pixGEO%id
@@ -221,9 +238,12 @@ MODULE O3T_lpolycoef_class
         ! write(*,*) "cofpgr=", this%pgr
         ! write(*,*) "cofpcl=", this%pcl
         ! write(*,*) "cofpclp=", this%pclp
+        errstat = 0
 
-        status = OZT_S_SUCCESS
       END FUNCTION O3T_lpoly_coef
+
+
+
 
       FUNCTION get_index( x0, xarray ) RESULT( index )
         REAL (KIND = 8), DIMENSION(:), INTENT(IN) :: xarray
@@ -241,6 +261,9 @@ MODULE O3T_lpolycoef_class
            index = nn-NINTERP+1
         ENDIF
       END FUNCTION get_index
+
+
+
 
       FUNCTION Lnk_denum( xarray, x0 ) RESULT( oarray )
         REAL (KIND = 8), DIMENSION(:), INTENT(IN) :: xarray

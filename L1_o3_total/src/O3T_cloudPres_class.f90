@@ -6,7 +6,7 @@
 ! MODULE O3T_cloudPres_class
 !
 ! This module contains the allocatable arrays used to store in Cloud
-! inforamtion retrived from the input L2 cloud file.
+! information retrived from the input L2 cloud file.
 !
 !!Revision History:
 ! Initial version 03/26/2002  Kai Yang/UMBC
@@ -150,19 +150,28 @@ MODULE O3T_cloudPres_class
     end subroutine
 
     subroutine cld_close (cloud_blk, errstat)
+      use tell_module
+
       implicit none
+
       type (tio_cloud_type), intent(inout) :: cloud_blk
       integer, intent(inout) :: errstat
 
       if (allocated(cloud_blk % cloud_pressure)) &
-        deallocate (cloud_blk % cloud_pressure)
+        deallocate (cloud_blk % cloud_pressure, stat=errstat)
       if (allocated(cloud_blk % processing_quality_flags)) &
-        deallocate (cloud_blk % processing_quality_flags)
+        deallocate (cloud_blk % processing_quality_flags, stat=errstat)
 
       ! FIXME (silly global)
       if (allocated(ProcessingQualityFlags)) &
-        deallocate (ProcessingQualityFlags)
+        deallocate (ProcessingQualityFlags, stat=errstat)
+      if (errstat /= 0) then
+        call tell_error(tell_malloc_error, "cld_close: deallocation failed", &
+             errstat)
+        return
+      endif
     end subroutine
+
 
     subroutine cld_open (cloud_blk, pc_source, errstat)
       USE OMI_LUN_set
