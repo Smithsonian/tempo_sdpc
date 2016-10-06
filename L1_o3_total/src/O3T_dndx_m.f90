@@ -105,15 +105,15 @@ MODULE O3T_dndx_m
             RETURN
           ENDIF
 
-          IF( clfrac <= 0.0 ) THEN 
-            Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
+          IF( clfrac <= 0.0 ) THEN
+            Lgr_npres = ezero + grref*tr/(1.0-grref*sb)
             DO iwl = 1, nwl_sub
               Ltot(:,iwl)= real( &
                    (/(SUM( Lgr_npres(ii,:,iwl)*coefs%pgr), ii=1,nlyrT)/) &
                    , kind=4)
             ENDDO
           ELSE IF( clfrac >= 1.0 ) THEN
-            Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
+            Lcl_npres = ezero + clref*tr/(1.0-clref*sb)
             IF( pc < 0.25 ) THEN
               DO iwl = 1, nwl_sub
                 Ltot(:,iwl) = real(fac_pcl*(Lcl_npres(:,4,iwl) &
@@ -127,8 +127,8 @@ MODULE O3T_dndx_m
               ENDDO
             ENDIF
           ELSE
-            Lgr_npres = ezero + grref*tr/(1.0-grref*sb) 
-            Lcl_npres = ezero + clref*tr/(1.0-clref*sb) 
+            Lgr_npres = ezero + grref*tr/(1.0-grref*sb)
+            Lcl_npres = ezero + clref*tr/(1.0-clref*sb)
             DO iwl = 1, nwl_sub
               Lgr(:,iwl)=real((/(SUM(Lgr_npres(ii,:,iwl)*coefs%pgr), &
                    ii=1,nlyrT)/), kind=4)
@@ -176,7 +176,7 @@ MODULE O3T_dndx_m
 
         ! set dndx for additional wavelength  to zero
         IF( nwl_sub < nwl ) THEN
-          dndx(nwl_sub+1:nwl,:)   = 0.0 
+          dndx(nwl_sub+1:nwl,:)   = 0.0
           IF( PRESENT( dndomega ) ) dndomega(nwl_sub+1:nwl) = 0.0
         ENDIF
 

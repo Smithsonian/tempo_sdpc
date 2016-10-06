@@ -358,7 +358,7 @@ MODULE O3T_stnprof_class
        IF( i > 0 ) THEN          !! TRUE, further checking and correction 
           IF( SUM( o3prof ) < 0.0 ) THEN
              WRITE( msg, * ) "O3T_prof_check: input total O3 =", &
-                  SUM( o3prof ), o3prof 
+                  SUM( o3prof ), o3prof
              call tell_error(tell_runtime_error, msg, errstat)
              RETURN
           ENDIF

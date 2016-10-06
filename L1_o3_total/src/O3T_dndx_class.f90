@@ -85,18 +85,18 @@ MODULE O3T_dndx_class
       USE PGS_PC_class
       USE OMI_LUN_set
 
-      REAL(KIND=4), INTENT(IN), OPTIONAL :: wl_cutoff 
+      REAL(KIND=4), INTENT(IN), OPTIONAL :: wl_cutoff
       CHARACTER ( LEN = 200 ) :: fn_dndx
 
       INTEGER (HID_T) :: file_id
       INTEGER (KIND = 4) :: status, errstat
-      INTEGER :: ip_lut, iprof, ilyr, i_foo(1) ! is, ie, 
+      INTEGER :: ip_lut, iprof, ilyr, i_foo(1) ! is, ie,
       INTEGER :: iwl, ipres, isza, ivza
-      INTEGER (KIND=4) :: nvzaP, nszaP, nprofP, nwlLUTP, npresP 
+      INTEGER (KIND=4) :: nvzaP, nszaP, nprofP, nwlLUTP, npresP
       !INTEGER :: iwl_max
       !INTEGER, DIMENSION(6) :: data_dims
       TYPE (DSH5_T), DIMENSION(np_dndx_read) :: lut_parameters
-      INTEGER, DIMENSION(np_dndx_read) :: rank_dndx = (/ 6,6,6,6,4,1 /) 
+      INTEGER, DIMENSION(np_dndx_read) :: rank_dndx = (/ 6,6,6,6,4,1 /)
       INTEGER :: count6d
       INTEGER :: count4d
       REAL (KIND = 4), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: &
@@ -289,7 +289,7 @@ MODULE O3T_dndx_class
              "O2T_dndx_setup: deallocation failed", errstat)
         return
       endif
-      
+
       dndx_read = .TRUE.
 
       errstat = 0

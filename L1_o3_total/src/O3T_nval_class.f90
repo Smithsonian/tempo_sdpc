@@ -116,9 +116,9 @@ CONTAINS
     TYPE(nvalLUT_t), INTENT(OUT), OPTIONAL :: nv
 
     INTEGER (HID_T) :: file_id
-    INTEGER (KIND = 4) :: status, errstat 
+    INTEGER (KIND = 4) :: status, errstat
     INTEGER :: ip_nval, i_foo(1) ! ie, iprof, is,
-    !INTEGER :: iwl, ipres, isza, ivza 
+    !INTEGER :: iwl, ipres, isza, ivza
     !INTEGER, DIMENSION(5) :: data_dims
     TYPE (DSH5_T), DIMENSION(np_nval_read) :: nval_parameters
     INTEGER, DIMENSION(np_nval_read) :: rank_nval =  &
@@ -394,7 +394,7 @@ CONTAINS
     endif
 
     errstat = 0
-    
+
   END FUNCTION O3T_nval_setup
   !...............................................................................
 

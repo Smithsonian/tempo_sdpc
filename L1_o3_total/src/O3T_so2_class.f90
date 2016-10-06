@@ -50,7 +50,7 @@ MODULE O3T_so2_class
        o3am3  = (/1.679, 0.867, 0.143, 0.020, 0.000000001/), &
        so2am3 = (/3.880, 2.220, 0.025, 0.011, 0.0        /), &
        o3aad  = (/2.956, 1.630, 0.877, 0.474, 0.137      /), &
-       so2aad = (/9.090, 4.485, 2.384, 0.643, 0.050      /), &     
+       so2aad = (/9.090, 4.485, 2.384, 0.643, 0.050      /), &
        o3aep  = (/2.970, 1.640, 0.880, 0.470, 0.140      /), &
        so2aep = (/9.620, 4.360, 2.210, 0.650, 0.050      /)!, &
   !o3aqt  = (/2.987, 1.669, 0.883, 0.471, 0.142      /), &
@@ -67,7 +67,7 @@ CONTAINS
 
     implicit none
 
-    CHARACTER (LEN=*), INTENT(IN) :: satname 
+    CHARACTER (LEN=*), INTENT(IN) :: satname
     REAL (KIND=4), DIMENSION(:), INTENT(IN) :: wlen
     INTEGER (KIND=4), DIMENSION(4), INTENT(OUT) :: iso2w
     REAL (KIND=4), DIMENSION(5), INTENT(OUT) :: o3abs, so2abs
@@ -76,34 +76,34 @@ CONTAINS
     INTEGER (KIND=4) :: errstat
 
     errstat = 0
-    SELECT CASE( satname ) 
+    SELECT CASE( satname )
     CASE ('ep', 'EP' )
-      o3abs  = o3aep 
-      so2abs = so2aep 
+      o3abs  = o3aep
+      so2abs = so2aep
       iso2w  = iso2wep
       soilim = soilimEP
-      RETURN 
+      RETURN
     CASE ('n7', 'N7' )
-      o3abs  = o3an7 
-      so2abs = so2an7 
+      o3abs  = o3an7
+      so2abs = so2an7
       iso2w  = iso2wn7
       soilim = soilimN7
-      RETURN 
+      RETURN
     CASE ('m3', 'M3' )
-      o3abs  = o3am3 
-      so2abs = so2am3 
+      o3abs  = o3am3
+      so2abs = so2am3
       iso2w  = iso2wm3
       soilim = soilimM3
-      RETURN 
+      RETURN
     CASE ('ad', 'AD' )
-      o3abs  = o3aad 
-      so2abs = so2aad 
+      o3abs  = o3aad
+      so2abs = so2aad
       iso2w  = iso2wad
       soilim = soilimAD
-      RETURN 
+      RETURN
     CASE ('OM', 'om' )
-      o3abs  = o3aep 
-      so2abs = so2aep 
+      o3abs  = o3aep
+      so2abs = so2aep
       iso2w  = iso2wep
       soilim = soilimOM
       IF( wlep(1) > MAXVAL( wlen ) .OR. &
@@ -118,7 +118,7 @@ CONTAINS
       ENDDO
     CASE DEFAULT
       errstat = -1
-      RETURN 
+      RETURN
     END SELECT
 
   END FUNCTION O3_so2_setCoef
@@ -127,7 +127,7 @@ CONTAINS
 
   ! compute soi from residues and pre-stored coefficients
   FUNCTION O3_so2_index( wlen, dndomega, residue, iso2w, &
-       o3abs, so2abs ) RESULT( so2ind ) 
+       o3abs, so2abs ) RESULT( so2ind )
 
     implicit none
 
@@ -150,13 +150,13 @@ CONTAINS
     ! calculate separation between wavls and reflectivity wavl.
     ! also calculate so2 sensitivities
     dwav(1:5)    = wlen(iwl(1:5))-wlen(iwl(iso2w(4)))
-    snso(1:5)    = dndomega(iwl(1:5))*abs_rat(1:5) 
+    snso(1:5)    = dndomega(iwl(1:5))*abs_rat(1:5)
 
     resn(1:6)  = residue( iwl(1:6) )
     sens(1:6)  = dndomega( iwl(1:6) )
 
     ! calculate "cross" sensitivities and residues for wavelengths
-    ! used in the retrieval 
+    ! used in the retrieval
 
     sens13 = sens(iso2w(1))*dwav(iso2w(3))-sens(iso2w(3))*dwav(iso2w(1))
     sens23 = sens(iso2w(2))*dwav(iso2w(3))-sens(iso2w(3))*dwav(iso2w(2))
@@ -167,7 +167,7 @@ CONTAINS
 
     ! calculate so2 index
     so2ind = (resn23*sens13-resn13*sens23)/(snso23*sens13-snso13*sens23)
-    IF( so2ind > 800.0 ) so2ind = 800.0 
+    IF( so2ind > 800.0 ) so2ind = 800.0
 
   END FUNCTION O3_so2_index
 

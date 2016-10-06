@@ -113,9 +113,9 @@ CONTAINS
 
     CHARACTER(LEN=*), INTENT(IN) :: ShortName_rad
     INTEGER (KIND=2), INTENT(IN) :: mqa_rad
-    INTEGER (KIND=1), INTENT(IN) :: instID_rad, instID_irr 
+    INTEGER (KIND=1), INTENT(IN) :: instID_rad, instID_irr
     INTEGER(KIND=1) :: rebinF
-    INTEGER(KIND=4) :: l 
+    INTEGER(KIND=4) :: l
     LOGICAL :: instIDmismatch
 
     rebinF = int(IBITS( mqa_rad, 7, 1 ),kind(rebinF))
@@ -123,7 +123,7 @@ CONTAINS
 
     IF( ShortName_rad(l:l) == 'G' ) THEN
       IF( instID_irr /= 8 ) THEN
-        instIDmismatch = .TRUE. 
+        instIDmismatch = .TRUE.
         RETURN
       ENDIF
 
@@ -133,56 +133,56 @@ CONTAINS
           instIDmismatch = .FALSE.
           RETURN
         ELSE
-          instIDmismatch = .TRUE. 
+          instIDmismatch = .TRUE.
           RETURN
         ENDIF
       ELSE IF( rebinF == 1 ) THEN
         IF( (42 <= instID_rad .AND. instID_rad <= 44) .OR. &
              instID_rad == 49 .OR. &
              ( 56 <= instID_rad .AND. instID_rad <= 58 ) ) THEN
-          instIDmismatch = .FALSE. 
+          instIDmismatch = .FALSE.
           RETURN
         ELSE
-          instIDmismatch = .TRUE. 
+          instIDmismatch = .TRUE.
           RETURN
         ENDIF
       ELSE
-        instIDmismatch = .TRUE. 
+        instIDmismatch = .TRUE.
         RETURN
       ENDIF
     ELSE IF( ShortName_rad(l:l) == 'Z' ) THEN
       IF( rebinF /= 0 ) THEN
-        instIDmismatch = .TRUE. 
+        instIDmismatch = .TRUE.
         RETURN
       ENDIF
 
       IF( instID_irr == 50 ) THEN
         IF( (42 <= instID_rad .AND. instID_rad <= 44) .OR. &
              instID_rad == 49 ) THEN
-          instIDmismatch = .FALSE. 
+          instIDmismatch = .FALSE.
           RETURN
         ELSE
-          instIDmismatch = .TRUE. 
+          instIDmismatch = .TRUE.
           RETURN
         ENDIF
       ELSE IF( instID_irr == 62 ) THEN
         IF( 56 <= instID_rad .AND. instID_rad <= 58 ) THEN
-          instIDmismatch = .FALSE. 
+          instIDmismatch = .FALSE.
           RETURN
         ELSE
-          instIDmismatch = .TRUE. 
+          instIDmismatch = .TRUE.
           RETURN
         ENDIF
       ELSE
-        instIDmismatch = .TRUE. 
+        instIDmismatch = .TRUE.
         RETURN
       ENDIF
     ELSE
-      instIDmismatch = .TRUE. 
+      instIDmismatch = .TRUE.
       RETURN
     ENDIF
 
-    instIDmismatch = .TRUE. 
+    instIDmismatch = .TRUE.
     RETURN
   END FUNCTION O3T_instIDsCheck
 
@@ -202,11 +202,11 @@ CONTAINS
       pixMissing = 0
       DO iwl = 1, nwl
         pixMissing = pixMissing &
-             + IBITS( earthRadQFLine(iwlArray(iwl), iX), 0, 1 ) 
+             + IBITS( earthRadQFLine(iwlArray(iwl), iX), 0, 1 )
       ENDDO
       IF( pixMissing > 0 ) nMissing = nMissing + 1
     ENDDO
-    RETURN 
+    RETURN
   END FUNCTION O3T_nMissing
 
 
@@ -228,7 +228,7 @@ CONTAINS
     INTEGER (KIND=2), INTENT(INOUT) :: QAflags, radBadPixflgs
     INTEGER (KIND=1), INTENT(INOUT) :: algflg
     !INTEGER (KIND=1), INTENT(IN) :: anomflg ! L1B flag
-    !INTEGER (KIND=1) :: mask7 = 7 ! mask for bits 0-2 
+    !INTEGER (KIND=1) :: mask7 = 7 ! mask for bits 0-2
     INTEGER (KIND=4), INTENT(IN) :: anomflg_3 ! O3 derived flag
     TYPE (L2PARAM_T), INTENT(INOUT) :: L2param
     LOGICAL, INTENT(IN) :: descendQ, PclimQ
@@ -254,9 +254,9 @@ CONTAINS
     radWarning = 0
     DO iwl = 1, nwl
       radMissing = radMissing &
-           + IBITS( earthRadQF(iwlArray(iwl)), 0, 1 ) 
+           + IBITS( earthRadQF(iwlArray(iwl)), 0, 1 )
       radBadPix   = radBadPix   &
-           + IBITS( earthRadQF(iwlArray(iwl)), 1, 1 )                   
+           + IBITS( earthRadQF(iwlArray(iwl)), 1, 1 )
       radError   = radError   &
            + IBITS( earthRadQF(iwlArray(iwl)), 2, 1 )
       radWarning = radWarning &
@@ -268,7 +268,7 @@ CONTAINS
     irrWarning = 0
     DO iwl = 1, nwl
       irrMissing = irrMissing &
-           + IBITS( solarIrrQF(iwlArray(iwl)), 0, 1 ) 
+           + IBITS( solarIrrQF(iwlArray(iwl)), 0, 1 )
       irrError   = irrError   &
            + IBITS( solarIrrQF(iwlArray(iwl)), 1, 2 )
       irrWarning = irrWarning &
@@ -276,9 +276,9 @@ CONTAINS
     ENDDO
 
     IF( descendQ )       QAflags = IBSET( QAflags, 3  )
-    IF(anomflg_3 > 0)    QAflags = IBSET( QAflags, 6 ) 
+    IF(anomflg_3 > 0)    QAflags = IBSET( QAflags, 6 )
     !   to use KMNI L1B XtrackQualityFlags instead, use:
-    !   IF (IAND(anomflg, mask7) > 0)) QAflags = IBSET( QAflags, 6 ) 
+    !   IF (IAND(anomflg, mask7) > 0)) QAflags = IBSET( QAflags, 6 )
     IF( PclimQ )         QAflags = IBSET( QAflags, 7  )
     IF( IBITS( gflg, 6, 1 ) == 1 ) &
          QAflags = IBSET( QAflags, 8  )
@@ -295,15 +295,15 @@ CONTAINS
     IF( radError   > 0 ) L2param%NumberOfRadianceError &
          = L2param%NumberOfRadianceError + 1
     IF( radWarning > 0 ) L2param%NumberOfRadianceWarning &
-         = L2param%NumberOfRadianceWarning + 1  
+         = L2param%NumberOfRadianceWarning + 1
     IF( irrMissing > 0 ) L2param%NumberOfIrradianceMissing &
          = L2param%NumberOfIrradianceMissing + 1
     IF( irrError   > 0 ) L2param%NumberOfIrradianceError &
          = L2param%NumberOfIrradianceError + 1
     IF( irrWarning > 0 ) L2param%NumberOfIrradianceWarning &
-         = L2param%NumberOfIrradianceWarning + 1  
+         = L2param%NumberOfIrradianceWarning + 1
 
-    IF( sza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 & 
+    IF( sza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 &
          .OR. irrMissing > 0 .OR. irrError > 0 ) THEN
       skipit = .TRUE.
       L2param%NumberOfSkippedSamples = L2param%NumberOfSkippedSamples + 1
@@ -357,7 +357,7 @@ CONTAINS
 
 
   FUNCTION O3T_setQAflgsP( irflo, irfhi, iozon, imixr, glint, maxitr, &
-       algflg, resn, flg3lm, flg4lm, soilim, & 
+       algflg, resn, flg3lm, flg4lm, soilim, &
        sza, pathl, so2ind ) RESULT( errflgs )
 !       sza, pathl, so2ind, ozbst ) RESULT( errflgs )
 
@@ -415,7 +415,7 @@ CONTAINS
     !
 
     nwl = SIZE( resn )
-    IF( nwl > 20 ) THEN  !! a large nubmer of residuals 
+    IF( nwl > 20 ) THEN  !! a large nubmer of residuals
       IF( ABS(resn(imixr)) >= 32.0 .OR.  ABS(resn(iozon)) >= 32.0 .OR. &
            ABS(resn(irflo)) >= 32.0 .OR.  ABS(resn(irfhi)) >= 32.0  ) THEN
         errflgs = 7
@@ -437,7 +437,7 @@ CONTAINS
     INTEGER(KIND=2),INTENT(IN) :: QAflags
     INTEGER(KIND=4),DIMENSION(:,:), INTENT(INOUT) :: QualityFlagsCounters
     INTEGER(KIND=4) :: xalg, xqa
-    INTEGER(KIND=4) :: di 
+    INTEGER(KIND=4) :: di
 
     xalg = MOD( algflg, 10 )
     xqa  = MOD( IBITS(QAflags, 0, 4), 8 ) + 1
@@ -449,12 +449,12 @@ CONTAINS
     IF( xalg > 0 .AND. xalg < 4 ) THEN
       DO di = 9, 16
         QualityFlagsCounters(xalg,di) = QualityFlagsCounters(xalg,di) &
-             + IBITS( QAflags, di-1, 1 ) 
+             + IBITS( QAflags, di-1, 1 )
       ENDDO
     ENDIF
   END SUBROUTINE O3T_QAcounter
 
-  SUBROUTINE O3T_zonalMinMax( QAflags, lat, ozone, L2param ) 
+  SUBROUTINE O3T_zonalMinMax( QAflags, lat, ozone, L2param )
 
     implicit none
 
@@ -470,9 +470,9 @@ CONTAINS
       DO iz = 1, nZones
         IF(        L2param%ZonalLatRange(1,iz) <= lat .AND. &
              lat <= L2param%ZonalLatRange(2,iz) ) THEN
-          IF( ozone < L2param%ZonalOzoneMin(iz) ) THEN 
+          IF( ozone < L2param%ZonalOzoneMin(iz) ) THEN
             L2param%ZonalOzoneMin(iz) = ozone
-          ELSE IF ( ozone > L2param%ZonalOzoneMax(iz) ) THEN 
+          ELSE IF ( ozone > L2param%ZonalOzoneMax(iz) ) THEN
             L2param%ZonalOzoneMax(iz) = ozone
           ENDIF
         ENDIF

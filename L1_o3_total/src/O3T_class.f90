@@ -1185,7 +1185,7 @@ MODULE O3T_class
               Ic331    = 10.0**(-Ic331)
               Im331    = 10.0**(-xnvalm(iwl))
               !! Compute Radiative Cloud Fraction based on Ic331 & Im331
-              !NB - use of ierr indicates output status unimportant 
+              !NB - use of ierr indicates output status unimportant
               ierr     = O3T_rcf1( Ic331, Im331, pixSURF )
             ELSE IF( iwl == pixSURF%iwl_refl_h ) THEN
               Rm360    = real(PI*10.0**(-xnvalm(iwl))/pixGEO%cos_sza , kind=4)

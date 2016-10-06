@@ -65,7 +65,7 @@ CONTAINS
 
 
 
-  FUNCTION OmiNvalueCorr(orbit, crwl,swpcr) RESULT(errstat) 
+  FUNCTION OmiNvalueCorr(orbit, crwl,swpcr) RESULT(errstat)
     !
     !***********************************************************************
     ! OmiNvalueCorr was from omi_6ch_nvcorv1
