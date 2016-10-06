@@ -803,10 +803,10 @@ contains
           maxoz = SUM(ozprofs(monin(im), latin(ib), nprof, :))
 
           IF (toz < minoz) THEN
-            WRITE(www_lun,*), 'Warning: no a priori profile available!!!'
+            WRITE(www_lun,*) 'Warning: no a priori profile available!!!'
             oz  = oz + ozprofs(monin(im), latin(ib), 1, :) * latfrac(ib) * toz / minoz * latfrac(ib)
           ELSE IF (toz > maxoz) THEN
-            WRITE(www_lun,*), 'Warning: no a priori profile available!!!'
+            WRITE(www_lun,*) 'Warning: no a priori profile available!!!'
             oz = oz + ozprofs(monin(im), latin(ib), nprof, :) * latfrac(ib) * toz / minoz * latfrac(ib)
           ELSE
             profin = INT ((toz - minoz ) / 50.0) + 1
