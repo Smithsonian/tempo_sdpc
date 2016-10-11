@@ -16,7 +16,7 @@ contains
     !
     real (kind=r8), dimension(n) :: tmp
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! smoothing with kernel (1/16,1/4,3/8,1/4,1/16)
     if (n < 5) return

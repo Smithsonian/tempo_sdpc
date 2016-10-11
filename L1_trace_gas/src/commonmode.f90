@@ -118,7 +118,7 @@ contains
 
     !CHARACTER (LEN=19), PARAMETER :: modulename = 'compute_common_mode'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     IF ( yn_reference_fit ) THEN
       ! -------------------------------------------------------------

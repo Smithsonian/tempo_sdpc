@@ -48,7 +48,7 @@ contains
     integer, dimension(num_steps) :: step_indices
     integer :: i, dimids(2)
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_dimlist_lookup (dimlist, [tg_dim_xtrack, tg_dim_step], dimids, errstat)
 
@@ -136,7 +136,7 @@ contains
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! lookup dimids for relevant array shapes
     call tiof_dimlist_lookup (dimlist, &
@@ -242,7 +242,7 @@ contains
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! lookup dimids for relevant array shapes
     call tiof_dimlist_lookup (dimlist, &
@@ -654,7 +654,7 @@ contains
       call tiof_def_vars (obj, varlist_diag, errstat)
       call tiof_pop_group (obj, errstat)
       call tiof_varlist_free (varlist_diag)
-      if (errstat < 0) return
+      if (errstat /= 0) return
     endif
 
     call tiof_varlist_append (varlist_qa, errstat, &
@@ -727,7 +727,7 @@ contains
 
     type (tiof_varlist_type) :: varlist
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_varlist_append (varlist, errstat, "num_crosstrack_pixels", nf90_int)
     call tiof_varlist_append (varlist, errstat, "num_scan_lines", nf90_int)
@@ -768,13 +768,13 @@ contains
     type (tiof_file_type), pointer :: obj
     type (tiof_dimlist_type) :: dimlist
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
     ! Create a file.
     call tiof_create (obj, filename, nf90_clobber, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: creating file "//trim(filename), &
                        errstat)
@@ -792,7 +792,7 @@ contains
     if (yn_diagnostic_run) then
       call tiof_def_group (obj, tg_grp_diagnostic, errstat)
     endif
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file:  defining groups in "//trim(filename), &
                        errstat)
@@ -813,7 +813,7 @@ contains
       call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
     endif
     call tiof_def_dims (obj, dimlist, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining dimensions in "//trim(filename), &
                        errstat)
@@ -821,7 +821,7 @@ contains
     endif
 
     call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: writing coordinate variables to "//trim(filename), &
                        errstat)
@@ -835,7 +835,7 @@ contains
     call tiof_pop_group (obj, errstat)
 
     call append_column_vars (obj, dimlist, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
                        errstat)
@@ -846,7 +846,7 @@ contains
       call tiof_push_group (obj, tg_grp_support_data, errstat)
       call append_amf_vars (obj, dimlist, errstat)
       call tiof_pop_group (obj, errstat)
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_io_write_error, &
                          "create_output_file: defining amf variables in "//trim(filename), &
                          errstat)
@@ -855,7 +855,7 @@ contains
     endif
 
     call append_wavcal_vars (obj, dimlist, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
                        errstat)
@@ -867,7 +867,7 @@ contains
       call append_common_mode_vars (obj, dimlist, errstat)
       call append_diagnostic_vars (obj, dimlist, errstat)
       call tiof_pop_group (obj, errstat)
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_io_write_error, &
                          "create_output_file: defining diagnostic variables in "//trim(filename), &
                          errstat)
@@ -910,7 +910,7 @@ contains
     integer :: i,j
     real (kind=r4) :: razi, sazi, vazi
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1004,7 +1004,7 @@ contains
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_radfit_output: failed", errstat)
       return
     endif
@@ -1023,7 +1023,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1047,7 +1047,7 @@ contains
                         result_vars % radref_column_xtrfit (1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_wavcal_output: failed", errstat)
       return
     endif
@@ -1088,7 +1088,7 @@ contains
     call tiof_put_r4 (obj, "percent_suspect_output", stats % percent_suspect_output, errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "write_fitting_statistics: writing fitting statistics", &
                        errstat)
@@ -1111,7 +1111,7 @@ contains
       call tiof_pop_group (obj, errstat)
     endif
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "write_fitting_statistics: writing fitting statistics", &
                        errstat)
@@ -1133,7 +1133,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1141,7 +1141,7 @@ contains
     call tiof_put2d_r8 (obj, tg_var_amf_albedo, [0,0], [ntimes,nxtrack], &
                         albedo (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_pop_group (obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_albedo", errstat)
       return
     endif
@@ -1166,7 +1166,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1176,7 +1176,7 @@ contains
     call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,ntimes,nxtrack], &
                         climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     call tiof_pop_group (obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
       return
     endif
@@ -1197,7 +1197,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1205,7 +1205,7 @@ contains
     call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,ntimes,nxtrack], &
                         scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     call tiof_pop_group (obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
       return
     endif
@@ -1235,7 +1235,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1264,7 +1264,7 @@ contains
                         amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_amf_correction", errstat)
       return
     endif
@@ -1288,7 +1288,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1303,7 +1303,7 @@ contains
                         common_mode % refspeccount (1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_common_mode", errstat)
       return
     endif
@@ -1333,7 +1333,7 @@ contains
     type (tiof_file_type), pointer :: obj
     integer :: i
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1353,7 +1353,7 @@ contains
 
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_refspec_database", errstat)
       return
     endif
@@ -1373,7 +1373,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1382,7 +1382,7 @@ contains
                         column(1:nxtrack, 0:ntimes-1), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_reference_sector_corrected_column", &
                        errstat)
       return
@@ -1405,7 +1405,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1416,7 +1416,7 @@ contains
                         resid (1:nwaves,1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_solar_wavecal_diagnostics", errstat)
       return
     endif
@@ -1438,7 +1438,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1449,7 +1449,7 @@ contains
                         resid (1:nwaves,1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_radiance_wavecal_diagnostics", errstat)
       return
     endif
@@ -1467,7 +1467,7 @@ contains
     obj => primary_output_file
 
     call tiof_close (obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_error, "close_output_file failed", errstat)
     endif
 
@@ -1486,12 +1486,12 @@ contains
     integer, dimension(ntimes) :: step_indices
     real (kind=4), dimension(4,1:nxtrack,1:ntimes) :: tmp
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     corners_copied = .false.
 
     call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, "copy_pixel_corners: opening file "//trim(l1bfile), &
                        errstat)
       return
@@ -1502,7 +1502,7 @@ contains
     ! return errstat=0, corners_copied=.false.
     call tell_push_queue
     call tiof_get1d_i4 (l1b, tg_dim_step, [0], [ntimes], step_indices, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_pop_queue (1)
       errstat = 0
       return
@@ -1518,7 +1518,7 @@ contains
     call tell_push_queue
     call tiof_get3d_r4 (l1b, tg_var_latitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
                         tmp(1:4,1:nxtrack,1:ntimes), errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_pop_queue (1)
       errstat = 0
       return
@@ -1541,7 +1541,7 @@ contains
                         tmp(1:4,1:nxtrack,1:ntimes), errstat)
 
     call tiof_close (l1b, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tiof_pop_group (obj, errstat)
       call tell_error (tell_io_read_error, "copy_pixel_corners: reading file "//trim(l1bfile), &
                        errstat)
@@ -1564,7 +1564,7 @@ contains
     obj => primary_output_file
 
     call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, "copy_metadata: opening file "//trim(l1bfile), &
                        errstat)
       return
@@ -1614,7 +1614,7 @@ contains
     type (tiof_file_type), pointer :: obj
     integer (kind=i2), dimension(nxtrack,ntimes) :: i2_thgt
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1626,7 +1626,7 @@ contains
     call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, "in read_geofields", errstat)
       return
     endif
@@ -1658,7 +1658,7 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     obj => primary_output_file
 
@@ -1677,7 +1677,7 @@ contains
     call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, "in read_column_results", errstat)
       return
     endif
@@ -1704,10 +1704,10 @@ contains
     type (tiof_file_type) :: cld
     character (len=128) :: logmsg
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (cloud_file, cld, nf90_nowrite, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, "read_cloud_params: opening file "//trim(cloud_file), &
                        errstat)
       return
@@ -1723,7 +1723,7 @@ contains
     call tiof_get2d_r8 (cld, "cloud_fraction_for_O3", [0,0], [ntimes,nxtrack], &
                         cloud_fraction, errstat, replace_fill=r8_missval)
     call tiof_close (cld, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, "read_cloud_params: reading file "//trim(cloud_file), &
                        errstat)
       return

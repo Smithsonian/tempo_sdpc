@@ -41,7 +41,7 @@ SUBROUTINE ezspline_1d_interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, er
 
   INTEGER (KIND=i4) :: locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   locerrstat     = 0 !pge_errstat_ok
   y_out(1:n_out) = 0.0_r8
@@ -151,7 +151,7 @@ SUBROUTINE ezspline_1d_setup_only ( n_in, x_in, y_in, spline_o, errstat )
   INTEGER (KIND=i4),     DIMENSION (2)     :: BCS1(2)
   INTEGER (KIND=i4)                        :: locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   locerrstat     = 0 !pge_errstat_ok
 
@@ -227,7 +227,7 @@ SUBROUTINE ezspline_1d_ipol_only ( spline_o, n_out, x_out, y_out, errstat )
   INTEGER (KIND=i4),     DIMENSION (2)     :: BCS1(2)
   INTEGER (KIND=i4)                        :: locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   locerrstat     = 0 !pge_errstat_ok
   y_out(1:n_out) = 0.0_r8

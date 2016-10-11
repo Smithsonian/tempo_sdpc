@@ -55,7 +55,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   CHARACTER (LEN=11), PARAMETER :: modulename = 'dataspline'
   character (len=72) :: logmsg
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
   
   locerrstat = 0 ! pge_errstat_ok
 

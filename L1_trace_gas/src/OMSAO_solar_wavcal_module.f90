@@ -62,7 +62,7 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (irr%nwaves(xtpix)) :: bad_idx
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix)) :: wvl_good, wvl_bad, spc_good, spc_bad
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !locerrstat  = pge_errstat_ok
     do_skip_pix = .FALSE.
@@ -203,7 +203,7 @@ CONTAINS
       CALL ezspline_1d_interpolation (                      &
         ngood, wvl_good(1:ngood), spc_good(1:ngood),     &
         nbad, wvl_bad(1:nbad), spc_bad(1:nbad), errstat) !locerrstat )
-      if (errstat < 0) return
+      if (errstat /= 0) return
       DO i = 1, nbad
         j = bad_idx(i)
         adj_spec(j) = spc_bad(i)
@@ -315,7 +315,7 @@ CONTAINS
                       fitvar_cal, lo_sunbnd, up_sunbnd, max_calfit_idx, &
                       n_fitres_loop, real(fitres_range, kind=r8), &
                       is_bad_pixel, locitnum, chisquav, solcal_exval, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
     solcal_itnum = int (locitnum, kind=i2)
 
     ! ---------------------------------------------------------------
@@ -407,7 +407,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=29), PARAMETER :: modulename = 'xtrack_solar_calibration_loop'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     omi_solcal_chisq = r8_missval
     omi_solcal_xflag = i2_missval
@@ -451,13 +451,18 @@ CONTAINS
       IF ( n_irradwvl <= 0 ) CYCLE
       if (n_irradwvl > adj_len) then
         if (adj_len > 0) then
-          deallocate (adj_wvl, adj_spec, adj_wgts, adj_resid)
+          deallocate (adj_wvl, adj_spec, adj_wgts, adj_resid, stat=locerr)
+          if (locerr /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "xtrack_solar_calibration_loop: deallocate failed", errstat)
+            return
+          endif
         endif
-        allocate (adj_wvl(n_irradwvl), adj_spec(n_irradwvl), adj_wgts(n_irradwvl), &
-                  adj_resid(n_irradwvl), &
-                  stat=locerr)
+        allocate (adj_wvl(n_irradwvl), adj_spec(n_irradwvl), &
+             adj_wgts(n_irradwvl), adj_resid(n_irradwvl), stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, &
+               "xtrack_solar_calibration_loop: allocate failed", errstat)
           return
         endif
         adj_len = n_irradwvl
@@ -473,7 +478,7 @@ CONTAINS
         curr_sol_wav_avg, &
         do_skip_pix, errstat) !locerrstat )
 
-      IF ( do_skip_pix .OR. errstat < 0) then !locerrstat >= pge_errstat_error ) THEN
+      IF ( do_skip_pix .OR. errstat /= 0) then !locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
@@ -502,7 +507,7 @@ CONTAINS
         save_resid(1:n_irradwvl,ipix) = adj_resid(1:n_irradwvl)
       endif
 
-      IF ( is_bad_pixel .OR. errstat < 0) then ! locerrstat >= pge_errstat_error ) THEN
+      IF ( is_bad_pixel .OR. errstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''

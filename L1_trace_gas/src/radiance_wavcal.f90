@@ -30,17 +30,19 @@ SUBROUTINE radiance_wavecal ( &
   ! ----------------
   ! Input parameters
   ! ----------------
-  INTEGER (KIND=i4), INTENT (IN) :: ipix, n_fitres_loop, n_rad_wvl, fitres_range
+  INTEGER (KIND=i4), INTENT (IN) :: ipix, n_fitres_loop, n_rad_wvl, &
+       fitres_range
 
   ! -------------------
   ! Modified parameters
   ! -------------------
-  LOGICAL,                                          INTENT (OUT)   :: is_bad_pixel
-  INTEGER (KIND=i2),                                INTENT (OUT)   :: radcal_itnum
-  INTEGER (KIND=i4),                                INTENT (OUT)   :: radcal_exval
-  REAL    (KIND=r8),                                INTENT (OUT)   :: chisquav
-  INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
-  real (kind=r8), dimension(n_rad_wvl), intent(inout) :: adj_wvls, adj_spec, adj_wgts, adj_resid
+  LOGICAL,           INTENT (OUT)   :: is_bad_pixel
+  INTEGER (KIND=i2), INTENT (OUT)   :: radcal_itnum
+  INTEGER (KIND=i4), INTENT (OUT)   :: radcal_exval
+  REAL    (KIND=r8), INTENT (OUT)   :: chisquav
+  INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+  real (kind=r8), dimension(n_rad_wvl), intent(inout) :: adj_wvls, adj_spec, &
+       adj_wgts, adj_resid
 
   ! ---------------
   ! Local variables
@@ -48,7 +50,7 @@ SUBROUTINE radiance_wavecal ( &
   INTEGER (KIND=i4)  :: locitnum ! locerrstat, 
   real (kind=r8) :: sol_wav_avg
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   is_bad_pixel = .FALSE.
 
@@ -67,7 +69,7 @@ SUBROUTINE radiance_wavecal ( &
   ! ------------------------------------------
   CALL compute_common_mode ( &
     .TRUE., ipix, n_rad_wvl, adj_wvls(1:n_rad_wvl), adj_spec(1:n_rad_wvl), errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! -------------------------------------------------------------
   ! Initialize the fitting variables. FITVAR_CAL_SAVED has been
@@ -103,7 +105,7 @@ SUBROUTINE radiance_wavecal ( &
                     fitvar_cal, lo_radbnd, up_radbnd, max_calfit_idx, &
                     n_fitres_loop, real(fitres_range, kind=r8), &
                     is_bad_pixel, locitnum, chisquav, radcal_exval, errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
   radcal_itnum = int(locitnum, kind=i2)
 
   ! ------------------------------------------------------------------

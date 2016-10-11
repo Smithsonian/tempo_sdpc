@@ -74,7 +74,7 @@ CONTAINS
 
     !CHARACTER (LEN=21), PARAMETER :: modulename = 'compute_pixel_corners'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !errstat = pge_errstat_ok
 
     !! --------------------------------------------------------------------

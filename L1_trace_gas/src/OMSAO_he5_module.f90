@@ -246,7 +246,8 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER   (KIND=i4)                       :: nsep, ndim
-    INTEGER   (KIND=i4)                       :: i, errstat, swlen, iend, istart
+    INTEGER   (KIND=i4)                       :: i, errstat, iend, istart
+    integer (kind=C_LONG) :: swlen
     INTEGER   (KIND=C_LONG)                   :: ndimcl, errstatcl
     INTEGER   (KIND=i4),      DIMENSION(0:12) :: dim_array, dim_seps
     INTEGER   (KIND=C_LONG),  DIMENSION(0:12) :: dim_arraycl

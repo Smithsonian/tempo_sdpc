@@ -1170,7 +1170,8 @@ CONTAINS
     if (yn_diagnostic_run) then
       allocate (db_old_order(nRefSpec,npts,nXtrack), stat=locerrstat)
       if (locerrstat /= 0) then
-        call tell_error (tell_malloc_error, "he5_write_omi_database:  allocate failed", errstat)
+        call tell_error (tell_malloc_error, &
+             "he5_write_omi_database:  allocate failed", errstat)
         return
       endif
       do ii=1,nRefSpec
@@ -1181,7 +1182,12 @@ CONTAINS
       locerrstat = HE5_SWWRFLD (pge_swath_id, spdata_field, &
                                 he5_start_3d, he5_stride_3d, he5_edge_3d, &
                                 db_old_order )  ! database_he5 )
-      deallocate(db_old_order)
+      deallocate(db_old_order, stat=locerrstat)
+      if (locerrstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "he5_write_omi_database: deallocate failed", errstat)
+        return
+      endif
     endif
 
     ! Datablock

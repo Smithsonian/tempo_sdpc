@@ -26,14 +26,15 @@ contains
   !! @param[inout] cov_matrix   Covariance matrix
   !! @param[in]  dim1_cov_matrix  Leading dimension of covariance matrix array
   subroutine elsunc_objective (params, num_params, residuals, num_residuals, &
-                               elsunc_ctrl, cov_matrix, dim1_cov_matrix)
+!                               elsunc_ctrl, cov_matrix, dim1_cov_matrix)
+                               elsunc_ctrl)
     implicit none
     integer (kind=i4), intent(in) :: num_params, num_residuals
     real (kind=r8), dimension(num_params), intent(inout) :: params
     real (kind=r8), dimension(num_residuals), intent(inout) :: residuals
     integer (kind=i4), intent(inout) :: elsunc_ctrl
-    integer (kind=i4), intent(in) :: dim1_cov_matrix
-    real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
+    !integer (kind=i4), intent(in) :: dim1_cov_matrix
+    !real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
 
     ! local variables
     integer (kind=i4) :: return_status, log_level

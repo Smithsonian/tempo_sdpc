@@ -49,7 +49,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! ------------------------------
   !CHARACTER (LEN=11), PARAMETER :: modulename = 'undersample'
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   !locerrstat = pge_errstat_ok
 
@@ -85,7 +85,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   !IF ( locerrstat >= pge_errstat_error ) RETURN
   call slitfunction_convolve (npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), &
                               xtrack_pix, [hw1e, e_asym], 2, errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! Phase1 calculation: Calculate spline derivatives for KPNO data
   !                     Calculate solar spectrum at OMI positions

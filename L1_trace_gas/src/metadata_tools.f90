@@ -239,7 +239,7 @@ MODULE metadata_tools
 
 CONTAINS
 
-  subroutine init_metadata (pge_idx, errstat)
+  subroutine init_metadata (errstat)
     use OMSAO_indices_module, only : l1b_radiance_lun
     use OMSAO_he5_module, only : granule_year, granule_month, granule_day
     use OMSAO_parameters_module, only : MAX_STR_LEN
@@ -247,7 +247,7 @@ CONTAINS
     use tio_module
     use tell_module
     implicit none
-    integer (kind=i4), intent(in) :: pge_idx
+    !integer (kind=i4), intent(in) :: pge_idx
     integer, intent(inout) :: errstat
     !local
     integer (kind=i4), external :: PGS_PC_GetReference
@@ -257,7 +257,7 @@ CONTAINS
     integer :: pgs_status, version
     integer :: ncerr
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     version=1
     pgs_status = PGS_PC_GetReference (l1b_radiance_lun, version, l1r_filename)
@@ -269,7 +269,7 @@ CONTAINS
     write(*,*)'metadata_tools::init_metadata:  reading l1r_filename = '//trim(l1r_filename)
 
     call tiof_open (l1r_filename, tio_l1obj, nf90_nowrite, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, "opening "//trim(l1r_filename), errstat)
       return
     endif
@@ -280,7 +280,7 @@ CONTAINS
       return
     endif
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     read (rbd_string, '(i4,1x,i2,1x,i2)') granule_year, granule_month, granule_day
 

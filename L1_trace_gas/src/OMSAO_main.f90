@@ -62,7 +62,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! --------------------------------------------------------------------
   INTEGER (KIND=i4) :: n_max_rspec
 
-  exit_value = -1   ! early return will indicate an error has occured
+  !exit_value = -1   ! early return will indicate an error has occured
+                     ! already set in main.f90 and passed to this subroutine
 
   ! ----------------------------
   ! Set PGE_ERROR_STATUS to O.K.
@@ -80,36 +81,36 @@ SUBROUTINE OMSAO_main ( exit_value )
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered
   ! ----------------------------------------------------------------------------
   call maybe_setenv_msgenv (errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   call allocate_refspec_storage (errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! allocate common mode here in case we read in common mode (see read_ref_spectra)
   call allocate_common_mode_storage (common_mode_spec, errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   call initialize_omidata_structs (errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   call optimizer_set_default_method (elsunc_optimizer)
   call slitfunction_select (omi_slitfunc_read, omi_slitfunc_convolve)
 
   !errstat = pge_errstat_ok
   CALL read_pcf_file (pge_idx, pge_name, errstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
   !  modulename//f_sep//"READ_PCF_FILE.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_error ) GOTO 666
 
-  CALL init_metadata (pge_idx, errstat )  ! Initialize MetaData
-  if (errstat < 0) return
+  CALL init_metadata (errstat)  ! Initialize MetaData
+  if (errstat /= 0) return
   !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
   !  modulename//f_sep//"INIT_METADATA.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
 
   CALL read_ref_spectra ( pge_idx, n_max_rspec, errstat )     ! Read reference spectra
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !CALL error_check ( errstat, pge_errstat_ok, pge_errstat_warning, OMSAO_W_SUBROUTINE, &
   !  modulename//f_sep//"READ_REFERENCE_SPECTRA.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
@@ -121,7 +122,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   !  modulename//f_sep//"OMI_SLITFUNC_READ.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
   call slitfunction_open (errstat, use_table=yn_use_labslitfunc)
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! ---------------------------------------------
   ! Set number of InputPointers and InputVersions
@@ -129,7 +130,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   CALL set_input_pointer_and_versions ( pge_idx )
 
   CALL omi_pge_fitting  ( pge_idx, n_max_rspec, errstat )   ! Where all the work is done
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !CALL error_check ( errstat, pge_errstat_warning, errstat, OMSAO_A_SUBROUTINE, &
   !  modulename//f_sep//"OMI_PGE_FITTING_PROCESS.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666

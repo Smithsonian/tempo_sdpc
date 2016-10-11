@@ -65,7 +65,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=26), PARAMETER :: modulename = 'omi_set_fitting_parameters'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     ! --------------------------
     ! Initialize OUTPUT variable
     ! --------------------------
@@ -94,7 +94,7 @@ CONTAINS
   END SUBROUTINE omi_set_fitting_parameters
 
   SUBROUTINE compute_fitting_statistics ( &
-      pge_idx, ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, &
+      ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, &
                                          fit_stats, errstat )
 
     !USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
@@ -122,7 +122,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntimes, nxtrack
+    INTEGER (KIND=i4), INTENT (IN) :: ntimes, nxtrack
     INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
     REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms
     INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf
@@ -151,7 +151,7 @@ CONTAINS
       num_out_of_bounds
     character (len=256) :: out_string
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !locerrstat = pge_errstat_ok
 
     ! ---------------------------------------------------------
@@ -347,7 +347,7 @@ CONTAINS
       pge_gly_idx, l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
       o3_prefit_lun, bro_prefit_lun, lqh2o_prefit_lun,                        &
       voc_amf_luns, voc_omicld_idx, pge_h2o_idx
-    USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input, input_versions
+    USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input
     USE OMSAO_variables_module,    ONLY: l1b_rad_filename, &
       l1b_radref_filename
     use ctrlvars, only: yn_radiance_reference, yn_solar_comp
@@ -832,7 +832,7 @@ CONTAINS
     ! -----------------------
     !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_set_xtrpix_range'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ---------------------------
     ! Initialize return variables
@@ -981,7 +981,7 @@ CONTAINS
     INTEGER (KIND=i1), DIMENSION (0:nt-1)      :: binfac
     LOGICAL,           DIMENSION (0:nt-1)      :: ynzoom
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !locerrstat = pge_errstat_ok
     !estat      = pge_errstat_ok
 
@@ -996,7 +996,7 @@ CONTAINS
       nt, nx, pixnum_lim(3:4), binfac(0:nt-1), &
       xtrange(0:nt-1,1:2), fpix, lpix, errstat    )
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ----------------------------------------------------------------------
     ! Determine the range of swath line numbers that go into the radiance
@@ -1345,10 +1345,10 @@ CONTAINS
     type (tiof_file_type) :: tio_l1obj
     integer :: nxtrack
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
-    !if (errstat < 0) return
+    !if (errstat /= 0) return
     !if (size(latr4, 1) /= l1bobj%num_xtrack) then
     !  call tell_error (tell_runtime_error, "read_latitude: nxtrack dimension is not correct", errstat)
     !  call l1bread_close (l1bobj)
@@ -1359,7 +1359,7 @@ CONTAINS
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
     if (size(latr4, 1) /= nxtrack) then
       call tell_error (tell_io_read_error, &
                        "read_latitude: nxtrack dimension is not correct", errstat)

@@ -116,7 +116,7 @@ CONTAINS
 
     SAVE fitcol_saved
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     is_bad_pixel = .FALSE.
 
@@ -151,7 +151,7 @@ CONTAINS
     IF ( yn_doas ) THEN
       Spec%spec(1:n_rad_wvl_loc) = LOG ( Spec%spec(1:n_rad_wvl_loc) / database(1:n_rad_wvl_loc,solar_idx) )
       CALL cubic_subtract_meas (Spec%wavs(1:n_rad_wvl_loc), n_rad_wvl_loc, Spec%spec(1:n_rad_wvl_loc), ll_rad, lu_rad, errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
       Spec%spec(1:n_rad_wvl_loc) = Spec%spec(1:n_rad_wvl_loc) + LOG ( database(1:n_rad_wvl_loc,solar_idx) )
     END IF
 
@@ -160,7 +160,7 @@ CONTAINS
     ! --------------------------------------------------------------------
     if ( yn_smooth ) THEN
       call array_smooth (spec%spec, n_rad_wvl_loc, errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
     endif
 
     ! ---------------------------------------
@@ -260,7 +260,7 @@ CONTAINS
                          param_max = upbnd(1:n_fitvar_rad), &
                          param_mask = mask_fitvar_rad(1:n_fitvar_rad), &
                          max_num_iterations = max_itnum_rad)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "fit_radiance: optimizer_open failed", errstat)
       return
     endif
@@ -321,7 +321,7 @@ CONTAINS
     enddo fit_loop
 
     call optimizer_close (opt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "fit_radiance: optimizer_close failed", errstat)
       return
     endif
@@ -374,7 +374,7 @@ CONTAINS
           yn_reference_fit, ipix, n_rad_wvl_loc, Spec%wavs(1:n_rad_wvl_loc), &
           fitres(1:n_rad_wvl_loc), errstat)
       endif
-      if (errstat < 0) return
+      if (errstat /= 0) return
 
       ! =====================================================================
       ! Compute the actual number of radiance wavelengths used in the fitting
@@ -732,7 +732,7 @@ CONTAINS
             n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
             did_full_range, errstat)
-          if (errstat < 0) then
+          if (errstat /= 0) then
             call tell_error (tell_runtime_error, &
                              "spectrum_earthshine: interpolation failed: "// &
                              "resampling to radiance grid", errstat)
@@ -1049,7 +1049,7 @@ CONTAINS
             n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
             did_full_range, errstat)
-          if (errstat < 0) then
+          if (errstat /= 0) then
             call tell_error (tell_runtime_error, &
                              "spectrum_earthshine_o3exp: interpolation failed: "// &
                              "resampling to radiance grid", errstat)

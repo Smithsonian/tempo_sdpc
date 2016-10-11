@@ -91,7 +91,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=27), PARAMETER :: modulename = 'Reference_sector_correction'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !locerrstat = pge_errstat_ok
 
@@ -111,14 +111,19 @@ CONTAINS
     !                            rpt_rr, errstat)
     call read_l1_radiance_info (l1b_radref_filename, l1b_channel, &
                                 rpt_rr, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     nTimesRadRR  = rpt_rr%ntimes
     nXtrackRadRR = rpt_rr%nxtrack
     nWvlCCDrr    = rpt_rr%nwavel_ccd
     omi_radiance_swathname = rpt_rr%swathname
 
-    ALLOCATE (mem_correction(1:nXtrackRadRR,0:nTimesRadRR-1))
+    ALLOCATE (mem_correction(1:nXtrackRadRR,0:nTimesRadRR-1), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "Reference_Sector_correction: allocate failed", errstat)
+      return
+    endif
     ! -------------------------------------------------------------------------
     ! We need to retrieve the concentrations for the Radiance Reference Granule
     ! to be able to compute the latitude dependent correction due to the Refere
@@ -144,7 +149,12 @@ CONTAINS
       END DO
     END DO
 
-    DEALLOCATE (mem_correction)
+    DEALLOCATE (mem_correction, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "Reference_Sector_correction: deallocate failed", errstat)
+      return
+    endif
 
     ! ------------------------------------------
     ! Compute the back ground correction for the
@@ -171,7 +181,7 @@ CONTAINS
     endif
     if (pge_idx == pge_hcho_idx) then
       call write_reference_sector_corrected_column (nxtrack, ntimes, int_saocol, errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
     endif
 
     !errstat = MAX ( errstat, locerrstat )
@@ -213,7 +223,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=35), PARAMETER :: modulename = 'Read_reference_sector_concentration'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     locerrstat = pge_errstat_ok
 
@@ -381,7 +391,7 @@ CONTAINS
     !CHARACTER (LEN=64), PARAMETER :: modulename = &
     !  'Reference_Sector_radiance_reference_granule_retrieval' !JED fix
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     nTimesRadRR = rpt_rr%ntimes
     nXtrackRadRR = rpt_rr%nxtrack
@@ -447,7 +457,7 @@ CONTAINS
       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
       0, nTimesRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
       errstat)
-    if (errstat < 0) &
+    if (errstat /= 0) &
       return
 
     if (yn_disable_omi_features) then
@@ -552,7 +562,7 @@ CONTAINS
     ! Compute average fitting statistics and main quality flag
     ! --------------------------------------------------------
     CALL compute_fitting_statistics ( &
-      pge_idx, nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
+      nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
       rt%column_amount, rt%column_uncertainty, rt%rms,          &
       rt%fit_flag, ref_stats, locerrstat )
 
@@ -573,7 +583,8 @@ CONTAINS
       rt%latitude, mem_amf,                 &
       nXtrackRadRR, nTimesRadRR, ref_stats % quality_flag, locerrstat)
 
-    call dealloc_retrieval_type (rt)
+    call dealloc_retrieval_type (rt, errstat)
+    if (errstat /= 0) return
 
     ! -------------------------------
     ! No more mess with the filenames

@@ -93,7 +93,7 @@ CONTAINS
     INTEGER (KIND=i4) :: ntimes_lqh2o, nxtrack_lqh2o
     !CHARACTER (LEN=17), PARAMETER :: modulename = 'init_prefit_files'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ---------------------------
     ! Initialize output variables
@@ -121,7 +121,7 @@ CONTAINS
         CALL he5_init_input_file ( &
           o3_prefit_fname, o3fit_swath_name, o3fit_swath_id, o3fit_swath_file_id, &
           ntimes_o3, nxtrack_o3, errstat )
-        IF ( errstat < 0 .or. ntimes_o3 /= ntimes .OR. nxtrack_o3 /= nxtrack ) THEN
+        IF ( errstat /= 0 .or. ntimes_o3 /= ntimes .OR. nxtrack_o3 /= nxtrack ) THEN
           !locerrstat = pge_errstat_error
           !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
           !  modulename//f_sep//"O3 access failed.", vb_lev_default, errstat )
@@ -141,7 +141,7 @@ CONTAINS
         CALL he5_init_input_file ( &
           bro_prefit_fname, brofit_swath_name, brofit_swath_id, &
           brofit_swath_file_id, ntimes_bro, nxtrack_bro, errstat) !locerrstat )
-        IF (errstat < 0 .or.  ntimes_bro /= ntimes .OR. nxtrack_bro /= nxtrack ) THEN
+        IF (errstat /= 0 .or.  ntimes_bro /= ntimes .OR. nxtrack_bro /= nxtrack ) THEN
           !locerrstat = pge_errstat_error
           !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
           !  modulename//f_sep//"BrO access failed.", vb_lev_default, errstat )
@@ -164,7 +164,7 @@ CONTAINS
         CALL he5_init_input_file ( &
           lqh2o_prefit_fname, lqh2ofit_swath_name, lqh2ofit_swath_id, &
           lqh2ofit_swath_file_id, ntimes_lqh2o, nxtrack_lqh2o, errstat) ! locerrstat )
-        IF (errstat < 0 .or. ntimes_lqh2o /= ntimes .OR. nxtrack_lqh2o /= nxtrack ) THEN
+        IF (errstat /= 0 .or. ntimes_lqh2o /= ntimes .OR. nxtrack_lqh2o /= nxtrack ) THEN
           !locerrstat = pge_errstat_error
           !CALL error_check ( locerrstat, OMI_S_SUCCESS, pge_errstat_fatal, OMSAO_E_PREFITDIM, &
           !  modulename//f_sep//"lqH2O access failed.", vb_lev_default, errstat )
@@ -218,7 +218,7 @@ CONTAINS
 
     !CHARACTER (LEN=19), PARAMETER :: modulename = 'read_prefit_columns'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! -----------------------------------
     ! Read prefits for specific retrieval
@@ -245,7 +245,7 @@ CONTAINS
             o3_prefit_dcol(i,1:nxtrack,0:nloop-1), &
             yn_read_amf, errstat) !locerrstat )
           !errstat = MAX( errstat, locerrstat )
-          if (errstat < 0) return
+          if (errstat /= 0) return
 
           ! ----------------------------------------------------------------------
           ! Multiply O3 columns with normalization factor to return to true values
@@ -273,7 +273,7 @@ CONTAINS
           ldcolstr, dcol_str, bro_prefit_dcol(1:nxtrack,0:nloop-1), &
           yn_read_amf, errstat) ! locerrstat )
         !errstat = MAX( errstat, locerrstat )
-        if (errstat < 0) return
+        if (errstat /= 0) return
 
         ! -----------------------------------------------------------------------
         ! Multiply BrO columns with normalization factor to return to true values
@@ -300,7 +300,7 @@ CONTAINS
           ldcolstr, dcol_str, lqh2o_prefit_dcol(1:nxtrack,0:nloop-1), &
           yn_read_amf, errstat) ! locerrstat )
         !errstat = MAX( errstat, locerrstat )
-        if (errstat < 0) return
+        if (errstat /= 0) return
 
         ! -------------------------------------------------------------------------
         ! Multiply lqH2O columns with normalization factor to return to true values
@@ -357,7 +357,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (nxtrack_mol, 0:ntimes_mol-1) :: amf
 
     !locerrstat = pge_errstat_ok
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ----------------------------------------------------
     ! Read current data block fitting output from HE5 file
@@ -460,7 +460,7 @@ CONTAINS
     logical :: assigned_index
     integer, intent(inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! NOTE: The icf_idx passed to this routine is to be matched up with
     !       the index associated with each particular molecule in the
@@ -551,7 +551,7 @@ CONTAINS
     real (kind=r8) :: col_tmp, dcol_tmp
     integer (kind=i4) :: j
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     select case (pge_idx)
       case (pge_hcho_idx)

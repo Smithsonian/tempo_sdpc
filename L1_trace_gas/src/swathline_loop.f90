@@ -76,7 +76,7 @@ SUBROUTINE swathline_loops (                               &
   type (radfit_diagnostics_type) :: radfit_diagnostics
   character (len=128) :: logmsg
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   locerrstat = 0 ! pge_errstat_ok
   nt = rpt%ntimes
@@ -156,7 +156,7 @@ SUBROUTINE swathline_loops (                               &
     ! --------------------------------
     IF (.NOT. yn_radiance_reference) then
       CALL read_prefit_columns ( pge_idx, nx, nblock, iline, errstat) !locerrstat )
-      if (errstat < 0) return
+      if (errstat /= 0) return
       !errstat = MAX ( errstat, locerrstat )
       !IF ( errstat >= pge_errstat_error ) RETURN
     END IF
@@ -299,7 +299,7 @@ SUBROUTINE swathline_loops (                               &
       call write_radfit_output (iline, nblock, nx, n_fitvar_rad, n_rad_wvl, &
                                 input_vars, result_vars, radfit_diagnostics, &
                                 errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
 
       if (yn_do_he5_output) then
         CALL he5_write_radfit_output (                            &

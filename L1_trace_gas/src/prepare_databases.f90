@@ -49,7 +49,7 @@ SUBROUTINE prepare_solar_refspec (n_solpts, sol_wvl, sol_spc, &
   ! ------------------------------
   !CHARACTER (LEN=21), PARAMETER :: modulename = 'prepare_solar_refspec'
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   !locerrstat = pge_errstat_ok
 
@@ -87,7 +87,7 @@ SUBROUTINE prepare_solar_refspec (n_solpts, sol_wvl, sol_spc, &
     n_sol_tmp, tmp_sol_wvl(1:n_sol_tmp), tmp_sol_spec(1:n_sol_tmp),             &
     n_radpts, curr_rad_wvl(1:n_radpts), spline_sun(1:n_radpts),                 &
     'endpoints', 0.0_r8, did_full_range, errstat) ! locerrstat )
-  if (errstat < 0) then
+  if (errstat /= 0) then
     call tell_error (tell_runtime_error, &
                      "prepare_solar_refspec: interpolation failed", &
                      errstat)
@@ -142,7 +142,7 @@ SUBROUTINE prepare_solar_refspec (n_solpts, sol_wvl, sol_spc, &
     ! -------------------------------------------------------------------
     ll_rad = fit_winwav_idx(2) ; lu_rad = fit_winwav_idx(3)
     CALL cubic_subtract (curr_rad_wvl, n_radpts, ll_rad, lu_rad, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     database(1:n_radpts, ring_idx) = &
       database(1:n_radpts, ring_idx) * spline_sun(1:n_radpts)
@@ -191,7 +191,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   ! ---------------
   INTEGER (KIND=i4) :: j !, locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   !locerrstat = pge_errstat_ok
 
@@ -199,7 +199,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   ! Spline external reference spectra to common radiance grid
   ! ---------------------------------------------------------
   CALL dataspline ( xtrack_pix, n_rad_wvl, curr_rad_wvl(1:n_rad_wvl), n_max_rspec, errstat) ! locerrstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !errstat = MAX ( errstat, locerrstat )
   !IF ( errstat >= pge_errstat_error ) RETURN
 
@@ -209,7 +209,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   IF ( ANY (have_undersampling) ) &
     CALL undersample_spectrum (xtrack_pix, n_rad_wvl, curr_rad_wvl(1:n_rad_wvl), &
                                Slit_Half_Width_1e, Slit_Asym_Factor, Undersample_Phase, errstat) ! locerrstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !errstat = MAX ( errstat, locerrstat )
   !IF ( errstat >= pge_errstat_error ) RETURN
 
@@ -227,7 +227,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   CALL prepare_solar_refspec ( &
     n_sol_wvl, sol_wvl(1:n_sol_wvl), sol_spc(1:n_sol_wvl), n_rad_wvl, &
     curr_rad_wvl(1:n_rad_wvl), errstat) ! locerrstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !errstat = MAX ( errstat, locerrstat )
   !IF ( errstat >= pge_errstat_error ) RETURN
 
@@ -239,7 +239,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
       call array_smooth (database(:,j), n_rad_wvl, errstat)
     end do
   end if
-  !if (errstat < 0) return
+  !if (errstat /= 0) return
 
   RETURN
 END SUBROUTINE prep_databases

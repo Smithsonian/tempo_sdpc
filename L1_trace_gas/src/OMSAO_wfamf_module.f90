@@ -149,10 +149,14 @@ MODULE OMSAO_wfamf_module
 
 CONTAINS
 
-  subroutine wfamf_deallocate ()
+  subroutine wfamf_deallocate (errstat)
     implicit none
-    call climatology_deallocate()
-    call vlidort_deallocate()
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+    call climatology_deallocate(errstat)
+    call vlidort_deallocate(errstat)
+    if (errstat /= 0) return
   end subroutine wfamf_deallocate
 
   SUBROUTINE amf_calculation_bis (            &
@@ -209,7 +213,7 @@ CONTAINS
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     locerrstat  = pge_errstat_ok
 
     ! ------------------------------------
@@ -264,7 +268,7 @@ CONTAINS
           CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
         endif
         call write_albedo (albedo, nx, nt, errstat)
-        if (errstat < 0) return
+        if (errstat /= 0) return
       endif
 
       ! -----------------------------
@@ -282,7 +286,7 @@ CONTAINS
         call tell_error (tell_runtime_error, "unexpected cloud file extension", errstat)
         return
       endif
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
         return
       endif
@@ -304,7 +308,7 @@ CONTAINS
           CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
         endif
         call write_gas_profile (climatology, cli_heights, nx, nt, CmETA, errstat)
-        if (errstat < 0) return
+        if (errstat /= 0) return
       endif
 
       ! ------------------------------------------------------------------
@@ -313,8 +317,8 @@ CONTAINS
       ! cached values)
       ! ------------------------------------------------------------------
       CALL read_vlidort (errstat)
-      if (errstat < 0) then
-        call vlidort_deallocate()
+      if (errstat /= 0) then
+        call vlidort_deallocate(errstat)
         return
       endif
 
@@ -355,7 +359,7 @@ CONTAINS
           CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
         endif
         call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
-        if (errstat < 0) return
+        if (errstat /= 0) return
       endif
 
     END IF
@@ -385,7 +389,7 @@ CONTAINS
       yn_write_cloud_variables = (pge_idx == pge_hcho_idx) .or. (pge_idx == pge_gly_idx)
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
     endif
 
   END SUBROUTINE amf_calculation_bis
@@ -429,7 +433,7 @@ CONTAINS
     ! Subroutine starts here
     ! ----------------------
     !locerrstat = pge_errstat_ok
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ------------------------------------------------------------
     ! Find the Climatology corresponding to each lat and lon pixel
@@ -487,8 +491,9 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4)         :: nswath, swath_id, swath_file_id, swlen, he5stat, &
+    INTEGER   (KIND=i4)         :: nswath, swath_id, swath_file_id, he5stat, &
       ndatafields
+    integer (kind=C_LONG) :: swlen
     INTEGER   (KIND=i4), DIMENSION(10) :: datafield_rank, datafield_type
     INTEGER   (KIND=C_LONG)     :: nswathcl, Cmlatcl, Cmloncl, CmETAcl, CmEp1cl
     CHARACTER (LEN=   MAX_STR_LEN) :: swath_file, locswathname, gasdatafieldname, datafield_name
@@ -514,7 +519,7 @@ CONTAINS
     ! Subroutine starts here
     ! ----------------------
     !locerrstat = pge_errstat_ok
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !ismonth    = granule_month
     if (granule_month < 1 .OR. granule_month > nmonths) then
@@ -587,7 +592,7 @@ CONTAINS
     ! ------------------------------------
     !locerrstat = pge_errstat_ok
     CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmEp1, errstat )
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !IF ( ismonth < 1 .OR. ismonth > nmonths .OR. locerrstat /= pge_errstat_ok ) THEN
     !  errstat = MAX ( errstat, locerrstat )
     !  RETURN
@@ -608,7 +613,7 @@ CONTAINS
     ! ---------------------------
     !locerrstat = pge_errstat_ok
     CALL climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !IF ( locerrstat /= pge_errstat_ok ) THEN
     !  errstat = MAX ( errstat, locerrstat )
     !  CALL climatology_allocate ( "d", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
@@ -825,7 +830,7 @@ CONTAINS
     ! Subroutine starts here
     ! ----------------------
     locerrstat = pge_errstat_ok
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     grid_file = TRIM(ADJUSTL(OMSAO_OMLER_filename))
 
@@ -1023,12 +1028,13 @@ CONTAINS
     ! --------------------
     ! Deallocate variables
     ! --------------------
-    DEALLOCATE (OMLER_monthly_albedo)
-    DEALLOCATE (OMLER_wvl_albedo)
-    DEALLOCATE (OMLER_albedo)
-    DEALLOCATE (OMLER_longitude)
-    DEALLOCATE (OMLER_latitude)
-    DEALLOCATE (OMLER_wvl)
+    DEALLOCATE (OMLER_monthly_albedo, OMLER_wvl_albedo, OMLER_albedo, &
+         OMLER_longitude, OMLER_latitude, OMLER_wvl, stat=locerrstat)
+    if (locerrstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "omi_omler_albedo: deallocate failed", errstat)
+      return
+    endif
 
     errstat = MAX(errstat, locerrstat)
 
@@ -1134,7 +1140,7 @@ CONTAINS
     INTEGER   (KIND=C_LONG), DIMENSION(0:maxdim) :: dim_arraycl
     CHARACTER (LEN=10*maxdim)                    :: dim_chars
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     ! ---------------------------
     ! Initialize output variables
     ! ---------------------------
@@ -1195,10 +1201,18 @@ CONTAINS
     RETURN
   END SUBROUTINE climatology_getdim
 
-  subroutine climatology_deallocate ()
+  subroutine climatology_deallocate (errstat)
     implicit none
-     deallocate (latvals, lonvals, Ap, Bp, Temperature, &
-                 Gas_profiles, Psurface)
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+    deallocate (latvals, lonvals, Ap, Bp, Temperature, &
+                 Gas_profiles, Psurface, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, "climatology_deallocate failed", &
+           errstat)
+      return
+    endif
   end subroutine climatology_deallocate
 
   SUBROUTINE climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
@@ -1221,7 +1235,7 @@ CONTAINS
     ! ---------------
     INTEGER   (KIND=i4) :: estat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ALLOCATE (latvals (Cmlat), &
               lonvals (Cmlon), &
@@ -1238,13 +1252,20 @@ CONTAINS
     RETURN
   END SUBROUTINE climatology_allocate
 
-  SUBROUTINE vlidort_deallocate ()
+  SUBROUTINE vlidort_deallocate (errstat)
     implicit none
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
     if (allocated(vl_OzC0)) then
       deallocate (vl_OzC0, vl_OzC1, vl_OzC2, vl_pre, vl_sza, vl_vza, &
                   vl_wav, vl_toms, vl_air, vl_alt, vl_ozo, vl_tem, &
                   vl_I0, vl_I1, vl_I2, vl_Ir, vl_Sb, &
-                  vl_dI0, vl_dI1, vl_dI2, vl_dIr)
+                  vl_dI0, vl_dI1, vl_dI2, vl_dIr, stat=errstat)
+    endif
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, "vlidort_deallocate failed", errstat)
+      return
     endif
   END SUBROUTINE
 
@@ -1255,7 +1276,7 @@ CONTAINS
 
     INTEGER   (KIND=i4) :: estat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ALLOCATE (vl_OzC0(anwav), &
               vl_OzC1(anwav), &
@@ -1413,7 +1434,7 @@ CONTAINS
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    if (errstat < 0) return
+    if (errstat /= 0) return
     !errstat = pge_errstat_ok
 
     filename = TRIM(ADJUSTL(OMSAO_wfamf_table_filename))
@@ -1521,7 +1542,7 @@ CONTAINS
     vl_nalt = INT(hdI0_dim(6), KIND=i4)
 
     CALL vlidort_allocate (vl_nozo, vl_ncld, vl_nsza, vl_nvza, vl_nwav, vl_nalt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_malloc_error, "read_vlidort: allocate failed", &
                        errstat)
       return
@@ -1561,7 +1582,12 @@ CONTAINS
       vl_Ir = 0.0
     end where
 
-    DEALLOCATE(tmpspc_r4d5)
+    DEALLOCATE(tmpspc_r4d5, stat=estat)
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_vlidort: deallocate tmpspc_r4d5 failed", errstat)
+      return
+    endif
 
     CALL h5dread_f(Sb_did, H5T_NATIVE_REAL,  &
       vl_Sb(1:vl_nozo,1:vl_ncld,1:vl_nwav),  &
@@ -1587,7 +1613,12 @@ CONTAINS
     CALL h5dread_f(dIr_did, H5T_NATIVE_REAL, tmpspc_r4d6, hdI0_dim, hdferr)
     vl_dIr = reshape (tmpspc_r4d6, dims6, order=perm6)
 
-    DEALLOCATE (tmpspc_r4d6)
+    DEALLOCATE (tmpspc_r4d6, stat=estat)
+    if (estat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_vlidort: deallocate tmpspc_r4d6 failed", errstat)
+      return
+    endif
 
     CALL h5dread_f(air_did, H5T_NATIVE_REAL,  vl_air(1:vl_nozo,1:vl_ncld,1:vl_nalt),  halt_dim, hdferr)
     CALL h5dread_f(alt_did, H5T_NATIVE_REAL,  vl_alt(1:vl_nozo,1:vl_ncld,1:vl_nalt),  halt_dim, hdferr)
@@ -2404,7 +2435,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=11), PARAMETER :: modulename = 'compute_amf'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ----------------------
     ! Subroutine starts here

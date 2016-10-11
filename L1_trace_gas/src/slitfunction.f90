@@ -45,14 +45,14 @@ contains
     integer, intent(inout) :: errstat
     logical, optional, intent(in) :: use_table
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     if (present(use_table)) then
       if (.not.use_table) return
     endif
 
     call sf_init (errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "slitfunction_open: failed", errstat)
       return
     endif
@@ -70,7 +70,7 @@ contains
     real (kind=r8), dimension(:), intent(in) :: params
     integer, intent(inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     if (yn_use_labslitfunc) then
       call sf_convolve (pixel, num_wvl, wvl, spec, spec_conv, errstat)
@@ -82,7 +82,7 @@ contains
       call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
     endif
 
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "slitfunction_convolve: convolution failed", errstat)
       return
     endif

@@ -18,12 +18,13 @@ CONTAINS
     !y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))      ! a better way
   end subroutine eval_cubic
 
+
   SUBROUTINE cubic_objective (this, a, na, y, m, return_status)
     implicit none
     type(optimizer_type) :: this
     real (kind=r8), dimension(:), intent(in) :: a
     real (kind=r8), dimension(:), intent(out) :: y
-    integer (kind=i4), intent(in) :: na, m
+    integer (kind=i4), intent(in) :: m, na
     integer (kind=i4), intent(out) :: return_status
     ! local
     real (kind=r8), dimension(m) :: y0
@@ -57,7 +58,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (doas_npol)              :: par
     type(optimizer_type) :: opt
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ======================
     ! Assign fitting weights
@@ -92,7 +93,7 @@ CONTAINS
 
     call optimizer_open (opt, cubic_objective, doas_npol, errstat, &
                          mode=opt_unbounded, max_num_iterations=5)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "cubic_subtract:  optimizer_open failed", errstat)
       return
     endif
@@ -119,7 +120,7 @@ CONTAINS
     END DO
 
     call optimizer_close (opt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "cubic_subtract:  optimizer_close failed", errstat)
       return
     endif
@@ -165,7 +166,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (npoints)           :: f
     type(optimizer_type) :: opt
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ======================
     ! Assign fitting weights
@@ -195,7 +196,7 @@ CONTAINS
 
     call optimizer_open (opt, cubic_objective, doas_npol, errstat, &
                          mode=opt_unbounded, max_num_iterations=5)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "cubic_subtract_meas:  optimizer_open failed", errstat)
       return
     endif
@@ -220,7 +221,7 @@ CONTAINS
     chisq2 = SUM  ( f(1:nfitted)**2 ) ! This gives the same CHI**2 as the NR routines
 
     call optimizer_close (opt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "cubic_subtract_meas:  optimizer_close failed", errstat)
       return
     endif

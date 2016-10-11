@@ -84,7 +84,7 @@ SUBROUTINE get_pge_ident (in_name, out_idx, out_name, errstat)
   ! --------------
   INTEGER (KIND=i4) :: i !, locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! ---------------------------
   ! Initialize variables
@@ -559,7 +559,7 @@ SUBROUTINE interpolation ( &
   INTEGER (KIND=i4)                 :: imin, imax, nloc !, locerrstat
   REAL    (KIND=r8), DIMENSION (n2) :: xtmp, ytmp
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !locerrstat = 0 ! pge_errstat_ok
 
   ! -------------------------------
@@ -611,7 +611,7 @@ SUBROUTINE interpolation ( &
     CALL ezspline_1d_interpolation (                &
       n1,   x1  (1:n1),   y1  (1:n1),            &
       nloc, xtmp(1:nloc), ytmp(1:nloc), errstat) ! locerrstat )
-    if (errstat < 0) return
+    if (errstat /= 0) return
     y2(imin:imax) = ytmp(1:nloc)
     CALL fill_nonoverlap ( n2, y2(1:n2), imin, imax, filltype, fillval )
     ! -----------------------------------------------------------------

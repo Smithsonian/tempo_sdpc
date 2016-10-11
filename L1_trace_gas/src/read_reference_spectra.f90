@@ -49,7 +49,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   INTEGER (KIND=i4) :: i, npts
   type(Datafield_HE5), pointer :: ptr
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! -------------------------------------------------------------
   ! This variable will hold the maximum number of spectral points
@@ -90,7 +90,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
         CALL read_commonmode_spec ( &
           pge_static_input_luns(i), refspecs_original(i)%FileName, &
           winwav_min, winwav_max, common_mode_spec, errstat )
-        if (errstat < 0) return
+        if (errstat /= 0) return
 
         ! ----------------------------------------------------------------
         ! REFSPECs_ORIGINAL must know the number of spectral points, since
@@ -116,7 +116,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
       CALL read_one_refspec ( &
         i, pge_static_input_luns(i), refspecs_original(i)%FileName, &
         winwav_min, winwav_max, refspecs_original(i), npts, errstat )
-      if (errstat < 0) return
+      if (errstat /= 0) return
 
     END SELECT
 
@@ -169,7 +169,7 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
     !v002 CALL soco_pars_read ( &
     !v002      OMSAO_solcomp_filename, solar_comp_typ-1, solar_comp_orb, l1b_channel, &
     !v002      l1br_opf_version, winwav_min, winwav_max, errstat )
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_io_read_error, "reading composite solar spectrum parameters", &
                        errstat)
       return
@@ -244,7 +244,7 @@ SUBROUTINE read_one_refspec ( &
   INTEGER (KIND=i4), EXTERNAL :: &
     pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !locerrstat = pge_errstat_ok
 
   nspec = 0; rs_temp = 0.0_r8
@@ -273,7 +273,7 @@ SUBROUTINE read_one_refspec ( &
   ! --------------------------------------
   nskip = 0; file_read_stat = 0
   CALL skip_headerlines ( funit, '#', 'read', nskip, lastline, errstat )
-  if (errstat < 0) then
+  if (errstat /= 0) then
     call tell_error (tell_io_read_error, "skipping ref. spectrum header comment lines: "// &
                      trim(specname), errstat)
     return
@@ -497,7 +497,7 @@ SUBROUTINE read_commonmode_spec ( &
   INTEGER (KIND=i4), EXTERNAL :: &
     pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   !locerrstat = pge_errstat_ok
 
@@ -536,7 +536,7 @@ SUBROUTINE read_commonmode_spec ( &
   ! --------------------------------------
   nskip = 0; file_read_stat = 0
   CALL skip_headerlines ( funit, '#', 'read', nskip, lastline, errstat )
-  if (errstat < 0) then
+  if (errstat /= 0) then
     call tell_error (tell_io_read_error, "skipping common mode header comment lines: "// &
                      trim(specname), errstat)
     return
@@ -731,7 +731,7 @@ SUBROUTINE skip_headerlines ( funit, hstr, read_or_skip, nhead, lastline, errsta
   ! ---------------
   INTEGER (KIND=i4) :: i, iskip, file_read_stat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   SELECT CASE ( read_or_skip )
   CASE ( 'read' )

@@ -59,8 +59,7 @@ MODULE OMSAO_destriping_module
   private xtrack_striping_model, xtrack_striping_objective
 CONTAINS
 
-  SUBROUTINE xtrack_destriping (                           &
-      pge_idx, ntimes, nxtrack, do_process_line, xtrange,      &
+  SUBROUTINE xtrack_destriping (ntimes, nxtrack, do_process_line, xtrange, &
       lat, saocol, & !saodco, saoamf, saofcf,
       saomqf, errstat )
 
@@ -72,7 +71,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                                 INTENT (IN) :: pge_idx, ntimes, nxtrack
+    INTEGER (KIND=i4),                                 INTENT (IN) :: ntimes, nxtrack
     LOGICAL,           DIMENSION (0:ntimes-1),         INTENT (IN) :: do_process_line
     INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
     REAL    (KIND=r4), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: lat
@@ -104,7 +103,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (nxtrack)            :: xtr_median, xtr_weight
     LOGICAL,           DIMENSION (0:ntimes-1)         :: dst_range
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -302,7 +301,7 @@ CONTAINS
           CALL xtrack_striping_fit (                                &
             nxtrack, ctr_pol_base, ctr_pol_scal, xtrack_norm, &
             a_stripe, xtrack_cor(1:nxtrack,it), errstat )
-          if (errstat < 0) return
+          if (errstat /= 0) return
 
           ! ----------------
           ! Apply correction
@@ -671,7 +670,7 @@ CONTAINS
     type(optimizer_type) :: opt
     integer (kind=i4) :: return_status
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! -------------------------------------------------------------
     ! Set the number of fitting parameters: Order of the baseline
@@ -746,7 +745,7 @@ CONTAINS
     call optimizer_open (opt, xtrack_striping_objective, nfit, errstat, &
                          mode=opt_bounded, param_min=blow(1:nfit), param_max=bupp(1:nfit), &
                          max_num_iterations=ctr_fitfunc_calls)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "xtrack_striping_fit: optimizer_open failed", errstat)
       return
     endif
@@ -755,7 +754,7 @@ CONTAINS
     call opt%optimize (opt, fitpar(1:nfit), nfit, f(1:nxtrack), nxtrack, exval)
 
     call optimizer_close (opt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "xtrack_striping_fit: optimizer_close failed", errstat)
       return
     endif

@@ -295,11 +295,11 @@ contains
     use tell_module
     implicit none
     integer, intent(inout) :: errstat
-    if (errstat < 0) return
+    if (errstat /= 0) return
     allocate (refspecs_original(max_rs_idx), stat=errstat)
     if (errstat /= 0) then
-      call tell_error (tell_malloc_error, "allocate_refspec_storage: allocate failed", &
-                       errstat)
+      call tell_error (tell_malloc_error, &
+           "allocate_refspec_storage: allocate failed", errstat)
       return
     endif
   end subroutine allocate_refspec_storage
@@ -309,7 +309,7 @@ contains
     implicit none
     type (common_mode_spectrum_type), intent(inout) :: cms
     integer, intent(inout) :: errstat
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate (cms % RefSpecWavs(nwavel_max, nxtrack_max), &
               cms % RefSpecData(nwavel_max, nxtrack_max), &
@@ -318,8 +318,8 @@ contains
               cms % num_wavelengths (nxtrack_max), &
               stat = errstat)
     if (errstat /= 0) then
-      call tell_error (tell_malloc_error, "allocate_common_mode_storage: allocate failed", &
-                       errstat)
+      call tell_error (tell_malloc_error, &
+           "allocate_common_mode_storage: allocate failed", errstat)
       return      
     endif
     cms % num_wavelengths(:) = 0

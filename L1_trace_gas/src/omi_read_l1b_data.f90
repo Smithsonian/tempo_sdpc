@@ -37,7 +37,7 @@ CONTAINS
     type (tiof_file_type) :: tio_l1obj
     character (len=256) :: logmsg
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     write (logmsg, '(a, i5)')"DEBUG: In omi_read_binning_factor, l1bfile="// &
       TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", ntimes=", ntimes
@@ -51,7 +51,7 @@ CONTAINS
     call tiof_inq_group (tio_l1obj, l1bswath, errstat)
     call tiof_get1d_i1 (tio_l1obj, "ImageBinningFactor", [0], [ntimes], binfac, errstat)
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ----------------------------------------------------------------------
     ! Check whether we have a Spatial Zoom granule, in which case we need to
@@ -85,7 +85,7 @@ CONTAINS
 
     type (tiof_file_type) :: obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tiof_open (filename, obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
@@ -258,7 +258,7 @@ CONTAINS
     call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     do iloop = 0, nloop-1
       ! --------------------------------------------------------
@@ -399,7 +399,7 @@ CONTAINS
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
     call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ---------------------------------------------
     ! convert to snow/glint flags

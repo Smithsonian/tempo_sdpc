@@ -87,7 +87,7 @@ CONTAINS
     real (kind=r8) :: sum_cntr8
     character (len=128) :: logmsg
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! ------------------------------
     ! Initialize some some variables
@@ -106,7 +106,7 @@ CONTAINS
 
     CALL read_latitude (rpt_rr%l1bfilename, rpt_rr%swathname, &
                         0, ntrr, latr4, errstat)
-    if (errstat < 0) &
+    if (errstat /= 0) &
       return
 
     if (yn_disable_omi_features) then
@@ -150,7 +150,12 @@ CONTAINS
     END IF
     endif
 
-    deallocate (latr4)
+    deallocate (latr4, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "omi_get_radiance_reference: deallocate failed", errstat)
+      return
+    endif
 
     ! ------------------------------------------
     ! If we don't find a working scan line, fail
@@ -435,7 +440,7 @@ CONTAINS
 
     type (prefit_type) :: prefit
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! -------------------------
     ! Initialize some variables
@@ -550,12 +555,18 @@ CONTAINS
       ! reallocate buffers if needed
       if (n_rad_wvl_loc > num_adj_allocated) then
         if (num_adj_allocated > 0) then
-          deallocate (adj_wvls, adj_spec, adj_wgts)
+          deallocate (adj_wvls, adj_spec, adj_wgts, stat=locerr)
+          if (locerr /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "xtrack_radiance_reference_loop: deallocate failed", errstat)
+            return
+          endif
         endif
-        allocate (adj_wvls(n_rad_wvl_loc), adj_spec(n_rad_wvl_loc), adj_wgts(n_rad_wvl_loc), &
-                  stat=locerr)
+        allocate (adj_wvls(n_rad_wvl_loc), adj_spec(n_rad_wvl_loc), &
+             adj_wgts(n_rad_wvl_loc), stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_radiance_reference_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, &
+               "xtrack_radiance_reference_loop: allocate failed", errstat)
           return
         endif
         num_adj_allocated = n_rad_wvl_loc

@@ -12,7 +12,7 @@ contains
     character (len=*), intent(inout) :: swathname
     integer, intent(inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     if (l1b_channel == "UV1") then
       swathname = "band_290_490_nm"
@@ -40,7 +40,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     rpt%ntimes = 0 ; rpt%nxtrack = 0 ; rpt%nwavel_ccd = 0
     rpt%l1bfilename = l1bfile
@@ -53,7 +53,7 @@ contains
     call tiof_inq_dimlen (tio_l1obj, "mirror_step", rpt%ntimes, errstat)
     call tiof_inq_dimlen (tio_l1obj, "xtrack", rpt%nxtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, "spectral_channel", rpt%nwavel_ccd, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     call tell_log (1, "DEBUG: In read_l1_radiance_info, l1bfile="// &
                    trim(l1bfile)//", l1bswath="//trim(rpt%swathname))

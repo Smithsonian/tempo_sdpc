@@ -286,7 +286,7 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate (omi_radiance_spec(nwavel_max,nxtrack_max,0:nlines_max-1), &
               omi_radiance_wavl(nwavel_max,nxtrack_max,0:nlines_max-1), &
@@ -302,8 +302,8 @@ contains
               omi_database_wvl(nwavel_max, nxtrack_max), &
               stat=errstat)
     if (errstat /= 0) then
-      call tell_error (tell_malloc_error, "initialize_omidata_structs:  allocate failed", &
-                       errstat)
+      call tell_error (tell_malloc_error, &
+           "initialize_omidata_structs:  allocate failed", errstat)
       return
     endif
               
@@ -336,18 +336,38 @@ contains
     result_vars % radref_fit_rms => omi_radref_rms
   end subroutine initialize_omidata_structs
 
-  subroutine dealloc_retrieval_type (rt)
+  subroutine dealloc_retrieval_type (rt, errstat)
+    use tell_module
+    implicit none
     type (retrieval_type), intent(inout) :: rt
-    if (allocated (rt%column_amount)) deallocate (rt%column_amount)
-    if (allocated (rt%column_uncertainty)) deallocate (rt%column_uncertainty)
-    if (allocated (rt%rms)) deallocate (rt%rms)
-    if (allocated (rt%latitude)) deallocate (rt%latitude)
-    if (allocated (rt%longitude)) deallocate (rt%longitude)
-    if (allocated (rt%height)) deallocate (rt%height)
-    if (allocated (rt%sza)) deallocate (rt%sza)
-    if (allocated (rt%vza)) deallocate (rt%vza)
-    if (allocated (rt%fit_flag)) deallocate (rt%fit_flag)
-    if (allocated (rt%xtr_flag)) deallocate (rt%xtr_flag)
+    integer, intent (inout) :: errstat
+
+    if (errstat /= 0) return
+    if (allocated (rt%column_amount)) &
+         deallocate (rt%column_amount, stat=errstat)
+    if (allocated (rt%column_uncertainty) .and. errstat == 0) &
+         deallocate (rt%column_uncertainty, stat=errstat)
+    if (allocated (rt%rms) .and. errstat == 0) &
+         deallocate (rt%rms, stat=errstat)
+    if (allocated (rt%latitude) .and. errstat == 0) &
+         deallocate (rt%latitude, stat=errstat)
+    if (allocated (rt%longitude) .and. errstat == 0) &
+         deallocate (rt%longitude, stat=errstat)
+    if (allocated (rt%height) .and. errstat == 0) &
+         deallocate (rt%height, stat=errstat)
+    if (allocated (rt%sza) .and. errstat == 0) &
+         deallocate (rt%sza, stat=errstat)
+    if (allocated (rt%vza) .and. errstat == 0) &
+         deallocate (rt%vza, stat=errstat)
+    if (allocated (rt%fit_flag) .and. errstat == 0) &
+         deallocate (rt%fit_flag, stat=errstat)
+    if (allocated (rt%xtr_flag) .and. errstat == 0) &
+         deallocate (rt%xtr_flag, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "dealloc_retrieval_type: failed", &
+           errstat)
+      return
+    endif
   end subroutine dealloc_retrieval_type
 
   subroutine alloc_retrieval_type (rt, nxtrack, ntimes, errstat)
@@ -359,7 +379,7 @@ contains
     integer, intent(inout) :: errstat
     integer :: locerrstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate ( &
       rt%column_amount(nxtrack, 0:ntimes-1), &

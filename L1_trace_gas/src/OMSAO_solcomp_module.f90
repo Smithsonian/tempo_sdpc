@@ -61,6 +61,7 @@ CONTAINS
       he5f_acc_rdonly
     USE arrayutils, only: array_locate_r8
     USE OMSAO_errstat_module
+    use tell_module
     IMPLICIT NONE
 
     !INCLUDE 'hdfeos5.inc'
@@ -95,7 +96,8 @@ CONTAINS
     ! Local variable
     ! --------------
     INTEGER (KIND=i4) :: n_xtr, n_wvl, n_pars
-    INTEGER (KIND=i4) :: ios, ntmp, j1, j2, swlen
+    INTEGER (KIND=i4) :: ios, ntmp, j1, j2
+    integer (kind=C_LONG) :: swlen
     REAL    (KIND=r8) :: soco_norm
     REAL    (KIND=r8), DIMENSION (:),     ALLOCATABLE :: tmp_wvls
     REAL    (KIND=r8), DIMENSION (:,:,:), ALLOCATABLE :: tmp_pars
@@ -228,8 +230,13 @@ CONTAINS
     ! ---------------------------------------
     ! De-allocate memory for temporary arrays
     ! ---------------------------------------
-    IF ( ALLOCATED(tmp_wvls) ) DEALLOCATE (tmp_wvls)
-    IF ( ALLOCATED(tmp_pars) ) DEALLOCATE (tmp_pars)
+    IF ( ALLOCATED(tmp_wvls) ) DEALLOCATE (tmp_wvls, stat=ios)
+    IF ( ALLOCATED(tmp_pars) .and. ios == 0) DEALLOCATE (tmp_pars, stat=ios)
+    if (ios /= 0) then
+      call tell_error(tell_malloc_error, "soco_pars_read: deallocate failed", &
+           errstat)
+      return
+    endif
 
     RETURN
   END SUBROUTINE soco_pars_read
@@ -600,6 +607,7 @@ CONTAINS
   END SUBROUTINE soco_compute
 
   SUBROUTINE soco_pars_deallocate ( errstat )
+    use tell_module
 
     !USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     !USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN
@@ -618,11 +626,18 @@ CONTAINS
 
     !errstat = pge_errstat_ok
 
+    if (errstat /= 0) return
     ! ------------------------------------
     ! De-allocate memory for global arrays
     ! ------------------------------------
-    IF ( ALLOCATED(solarcomp_pars%SolComParWavs) ) DEALLOCATE (solarcomp_pars%SolComParWavs)
-    IF ( ALLOCATED(solarcomp_pars%SolComParData) ) DEALLOCATE (solarcomp_pars%SolComParData)
+    IF ( ALLOCATED(solarcomp_pars%SolComParWavs) ) &
+         DEALLOCATE (solarcomp_pars%SolComParWavs, stat=errstat)
+    IF ( ALLOCATED(solarcomp_pars%SolComParData) .and. errstat == 0) &
+         DEALLOCATE (solarcomp_pars%SolComParData, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, "soco_pars_deallocate failed", &
+           errstat)
+    endif
 
     RETURN
   END SUBROUTINE soco_pars_deallocate

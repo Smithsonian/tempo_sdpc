@@ -353,8 +353,9 @@ CONTAINS
     !     DIAG = W(4*N+3*M+7).....W(5*N+3*M+6)
     !     GMAT = W(5*N+3*M+7)......
 
-    REAL (KIND=r8)  :: dx(n), g(n), w0(n), w1(m), w2(m), w3(n), v(m), diag(n),  &
-      gmat(n,n)
+    !REAL (KIND=r8)  :: dx(n), g(n), w0(n), w1(m), w2(m), w3(n), v(m), diag(n), gmat(n,n)
+
+    REAL (KIND=r8)  :: dx(n), g(n), w0(n), w3(n), v(m), diag(n)
     INTEGER    :: ip(n), jp(n)
 
     ! START of code
@@ -404,7 +405,8 @@ CONTAINS
 
     CALL lsunc(x,n,mdc,mdg,m,w(1),w(2),w(3),w(4),sec,p(1),p(2),p(3),  &
       scale,ffunc,bl,bu,bnd,EXIT,w(5),p(6),p(7),p(8),p(9),p(10),p(11), &
-      ip,f,c,diag,w(6),jp,dx,g,w0,w1,w2,w3,v,gmat)
+!      ip,f,c,diag,w(6),jp,dx,g,w0,w1,w2,w3,v,gmat)
+      ip,f,c,diag,w(6),jp,dx,g,w0,w3,v)
 
     IF(EXIT < 0) RETURN
     IF(MOD(EXIT,10) == 1 .AND. p(1) > 0 .AND. p(2) > 0) WRITE(p(2),1000)
@@ -521,7 +523,8 @@ CONTAINS
   SUBROUTINE lsunc(x,n,mdc,mdg,m,tol,epsrel,epsabs,epsx,sec,  &
       iprint,nout,maxit,scale,ffunc,bl,bu,bnd,  &
       EXIT,phi,k,funcev,jacev,secev,linev,prank,p,f,c,diag,speed, &
-      aset,dx,g,w0,w1,w2,w3,v,gmat)
+      aset,dx,g,w0,w3,v)
+!      aset,dx,g,w0,w1,w2,w3,v,gmat)
 
     REAL (KIND=r8), INTENT(IN OUT)  :: x(:)
     INTEGER, INTENT(IN)        :: n
@@ -557,11 +560,11 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN OUT)  :: dx(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: g(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: w0(:)
-    REAL (KIND=r8), INTENT(IN OUT)  :: w1(:)
-    REAL (KIND=r8), INTENT(IN OUT)  :: w2(:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: w1(:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: w2(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: w3(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: v(:)
-    REAL (KIND=r8), INTENT(IN OUT)  :: gmat(:,:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: gmat(:,:)
 
     EXTERNAL ffunc
 
@@ -922,7 +925,8 @@ CONTAINS
     !     ANALYSE THE PAST AND SOMETIMES RECOMPUTE THE SEARCH DIRECTION
 
     CALL analuc(k,restar,kod,fsum,d1sqs,beta,dxnorm,prekm1,ffunc,x,  &
-      dx,diag,w0,p,n,prank,scale,f,v,c,mdc,m,mdg,sec,nract,aset,  &
+!      dx,diag,w0,p,n,prank,scale,f,v,c,mdc,m,mdg,sec,nract,aset,  &
+      dx,diag,w0,p,n,prank,scale,f,v,c,m,sec,nract,aset,  &
       error,eval)
     !      write(10,*) 'POINT',(x(i),i=1,n)
     !      write(10,*) 'PRANK',prank,'DIRECTION',(dx(i),i=1,n)
@@ -953,7 +957,8 @@ CONTAINS
 
     !     COMPUTE STEP LENGTH AND TAKE A STEP
 
-    CALL stepuc(x,g,dx,n,f,v,m,phi,ffunc,kod,prank,bl,bu,aset,nract,bnd,eval,  &
+    CALL stepuc(x,g,dx,n,f,v,m,phi,ffunc,kod,prank,bl,bu,aset,bnd,eval,  &
+!    CALL stepuc(x,g,dx,n,f,v,m,phi,ffunc,kod,prank,bl,bu,aset,nract, bnd,eval,  &
       alpha,alphup,xdiff,error)
     IF(error < -10) GO TO 50
 
@@ -1830,7 +1835,8 @@ CONTAINS
   !ANALUC
 
   SUBROUTINE analuc(k,restar,kod,fsum,d1sqs,beta,dxnorm,prekm1,  &
-      ffunc,x,dx,diag,qraux,p,n,prank,scale,f,v,c,mdc,m,mdg,sec,  &
+!      ffunc,x,dx,diag,qraux,p,n,prank,scale,f,v,c,mdc,m,mdg,sec,  &
+      ffunc,x,dx,diag,qraux,p,n,prank,scale,f,v,c,m,sec,  &
       nract,aset,error,eval)
 
     ! N.B. Arguments W1, W3 & GMAT have been removed.
@@ -1854,9 +1860,9 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN OUT)  :: f(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: v(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: c(:,:)
-    INTEGER, INTENT(IN)        :: mdc
+    !INTEGER, INTENT(IN)        :: mdc
     INTEGER, INTENT(IN)        :: m
-    INTEGER, INTENT(IN)        :: mdg
+    !INTEGER, INTENT(IN)        :: mdg
     LOGICAL, INTENT(IN)        :: sec
     INTEGER, INTENT(IN OUT)    :: nract
     INTEGER, INTENT(IN OUT)    :: aset(:)
@@ -2013,7 +2019,8 @@ CONTAINS
 
     !     USE MINIMIZATION IN SUBSPACE TO RECOMPUTE
 
-    CALL subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,mdc,n,scale,  &
+    !CALL subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,mdc,n,scale,  &
+    CALL subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,n,scale,  &
       diag,p,qraux,prank,dx,v,rank,k)
     kod=-1
     IF(rank == prank) kod=1
@@ -2027,7 +2034,8 @@ CONTAINS
       error=-4
       kod=secind
     ELSE
-      CALL secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,mdc,m,mdg,nract,error,eval)
+      CALL secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,m,nract,error,eval)
+      !CALL secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,mdc,m,mdg,nract,error,eval)
       kod=secind
       prank=-(n-nract)
       dxnorm=dnrm2(n,dx,1)
@@ -2174,7 +2182,8 @@ CONTAINS
 
   !SUBUC
 
-  SUBROUTINE subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,mdc,n,  &
+  SUBROUTINE subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,n,  &
+!  SUBROUTINE subuc(restar,kod,fsum,d1sqs,dxnorm,f,m,c,mdc,n,  &
       scale,diag,p,qraux,prank,dx,v,rank,iter)
 
     ! N.B. Arguments WORK & W1 have been removed.
@@ -2187,7 +2196,7 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN OUT)  :: f(:)
     INTEGER, INTENT(IN)        :: m
     REAL (KIND=r8), INTENT(IN OUT)  :: c(:,:)
-    INTEGER, INTENT(IN)        :: mdc
+    !INTEGER, INTENT(IN)        :: mdc
     INTEGER, INTENT(IN)        :: n
     INTEGER, INTENT(IN)        :: scale
     REAL (KIND=r8), INTENT(IN OUT)  :: diag(:)
@@ -2268,7 +2277,8 @@ CONTAINS
     !   FIND APPROPRIATE SUBSPACE
 
     CALL dimsub(restar,kod,fsum,f,m,c,n,  &
-      scale,diag,p,qraux,prank,dx,v,rank,iter)
+!      scale,diag,p,qraux,prank,dx,v,rank,iter)
+      scale,diag,p,qraux,prank,rank,iter)
 
     !     COMPUTE SEARCH DIRECTION BY MINIMIZING IN A SUBSPACE OF DIMENSION RANK
 
@@ -2281,7 +2291,8 @@ CONTAINS
   !DIMSUB
 
   SUBROUTINE dimsub(restar,kod,fsum,f,m,c,n,  &
-      scale,diag,p,qraux,prank,dx,v,rank,iter)
+      scale,diag,p,qraux,prank,rank,iter)
+!      scale,diag,p,qraux,prank,dx,v,rank,iter)
 
     ! Arguments MDC, WORK & W1 have been removed.
 
@@ -2297,8 +2308,8 @@ CONTAINS
     INTEGER, INTENT(IN)        :: p(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: qraux(:)
     INTEGER, INTENT(IN)        :: prank
-    REAL (KIND=r8), INTENT(IN OUT)  :: dx(:)
-    REAL (KIND=r8), INTENT(IN OUT)  :: v(:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: dx(:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: v(:)
     INTEGER, INTENT(OUT)       :: rank
     !tpk INTEGER, INTENT(OUT)       :: iter
     INTEGER, INTENT(INOUT)       :: iter !tpk
@@ -2546,7 +2557,8 @@ CONTAINS
 
   !SECUC
 
-  SUBROUTINE secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,mdc,m,mdg,nract,  &
+  SUBROUTINE secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,m,nract,  &
+  !SUBROUTINE secuc(ffunc,x,dx,diag,p,qraux,n,scale,f,v,c,mdc,m,mdg,nract,  &
       error,eval)
 
     ! N.B. Arguments W1, W3 & GMAT have been removed.
@@ -2561,9 +2573,9 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN OUT)  :: f(:)
     REAL (KIND=r8), INTENT(OUT)     :: v(:)
     REAL (KIND=r8), INTENT(IN OUT)  :: c(:,:)
-    INTEGER, INTENT(IN)        :: mdc
+    !INTEGER, INTENT(IN)        :: mdc
     INTEGER, INTENT(IN)        :: m
-    INTEGER, INTENT(IN)        :: mdg
+    !INTEGER, INTENT(IN)        :: mdg
     INTEGER, INTENT(IN)        :: nract
     INTEGER, INTENT(OUT)       :: error
     INTEGER, INTENT(OUT)       :: eval
@@ -3132,7 +3144,8 @@ CONTAINS
   !STEPUC
 
   SUBROUTINE stepuc(x,g,dx,n,f,v1,m,phi,ffunc,kod,prank,bl,bu,  &
-      aset,nract,bnd,eval,alpha,alphup,xdiff,error)
+!      aset,nract,bnd,eval,alpha,alphup,xdiff,error)
+      aset,bnd,eval,alpha,alphup,xdiff,error)
 
     ! N.B. Arguments FNEW, V2 & GMOD have been removed.
 
@@ -3150,7 +3163,7 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN)      :: bl(:)
     REAL (KIND=r8), INTENT(IN)      :: bu(:)
     INTEGER, INTENT(IN)        :: aset(:)
-    INTEGER, INTENT(IN OUT)    :: nract
+    !INTEGER, INTENT(IN OUT)    :: nract
     INTEGER, INTENT(IN)        :: bnd
     INTEGER, INTENT(OUT)       :: eval
     REAL (KIND=r8), INTENT(OUT)     :: alpha
@@ -4078,7 +4091,8 @@ CONTAINS
     !     TAKE A PURE GOLDSTEIN-ARMIJO STEP
 
     200 k=k+1
-    CALL gauc(xold,p,f,m,n,ffunc,k,alfmin,EXIT,g,fnew,phizer,dphize,  &
+!    CALL gauc(xold,p,f,m,n,ffunc,k,alfmin,EXIT,g,fnew,phizer,dphize,  &
+    CALL gauc(xold,p,f,m,n,ffunc,k,alfmin,EXIT,g,phizer,dphize,  &
       alfk,phik,tau,pmax)!tpk ,srelpr)
     IF(k < -10) GO TO 1030
 
@@ -4203,7 +4217,8 @@ CONTAINS
   !GAUC
 
   SUBROUTINE gauc(xold,p,f,m,n,ffunc,k,alfmin,EXIT,xnew,  &
-      fnew,phi0,dphi0,u,phiu,tau,pmax)!tpk ,srelpr)
+!      fnew,phi0,dphi0,u,phiu,tau,pmax)!tpk ,srelpr)
+      phi0,dphi0,u,phiu,tau,pmax)!tpk ,srelpr)
 
     !   THIS IS A ROUTINE FOR UNCONSTRAINED LEAST SQUARES PROBLEMS THAT HALVES
     !   THE VALUE OF U UNTIL A GOLDSTEIN-ARMIJO CONDITION IS SATISFIED OR UNTIL
@@ -4226,7 +4241,7 @@ CONTAINS
     REAL (KIND=r8), INTENT(IN OUT)  :: alfmin
     INTEGER, INTENT(OUT)       :: EXIT
     REAL (KIND=r8), INTENT(OUT)     :: xnew(:)
-    REAL (KIND=r8), INTENT(IN OUT)  :: fnew(:)
+    !REAL (KIND=r8), INTENT(IN OUT)  :: fnew(:)
     REAL (KIND=r8), INTENT(IN)      :: phi0
     REAL (KIND=r8), INTENT(IN)      :: dphi0
     REAL (KIND=r8), INTENT(IN OUT)  :: u

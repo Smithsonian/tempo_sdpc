@@ -132,7 +132,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! =================================
   INTEGER (KIND=i4) :: pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! ---------------------------
   ! Initialize output variables
@@ -177,8 +177,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
 
   READ (fit_ctrl_unit, '(A)') tmpchar
-  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, locerrstat )
-  if (locerrstat < 0) then
+  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
+  if (errstat /= 0) then
     call tell_error (tell_io_read_error, "reading fit control file entry: "// &
                      trim(molline_str), errstat)
     return
@@ -807,7 +807,7 @@ SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
   LOGICAL                      :: yn_eoc
   CHARACTER (LEN=LEN(tmpchar)) :: tmpsub, local_tmpchar
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! ----------------------------
   ! Initialize output quantities
@@ -884,7 +884,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   ! CCM Fit Lineshape for every spectrum
   LOGICAL :: fit_lsf_for_every_spectrum = .TRUE.
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
   !locerrstat = pge_errstat_ok
 
   ! -------------------------------------------------------------
@@ -980,7 +980,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
       ! -------------------------------------------------------------------------
       call assign_prefit_parameter_index (i, idx+j, fitvar_rad_init, lo_radbnd, up_radbnd, &
                                           assigned_index, errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
       if (assigned_index) n_prefit_vars = n_prefit_vars + 1
 
     END DO

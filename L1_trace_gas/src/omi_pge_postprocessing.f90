@@ -71,7 +71,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! --------------
   INTEGER (KIND=i4) :: locerrstat
 
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! -------------------------
   ! Initialize error variable
@@ -90,7 +90,7 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
   else
     call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
   endif
 
   call copy_metadata (l1bfile, errstat)
@@ -98,10 +98,10 @@ SUBROUTINE omi_pge_postprocess ( &
 
   call copy_pixel_corners (l1bfile, omi_radiance_swathname, &
                            ntimes, nXtrack, corners_copied, errstat)
-  if (errstat < 0) return
+  if (errstat /= 0) return
   if (.not.corners_copied) then
     CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
   endif
 
   if (.false.) then
@@ -111,7 +111,7 @@ SUBROUTINE omi_pge_postprocess ( &
   else
     call read_column_results (ntimes, nxtrack, saocol, saodco, saorms, &
                               saoamf, saofcf, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
   endif
 
   ! ----------------------------------
@@ -119,7 +119,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------
   CALL omi_read_glint_ice_flags ( &
     l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, errstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! -----------
   ! Compute AMF
@@ -139,21 +139,21 @@ SUBROUTINE omi_pge_postprocess ( &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
     saocol, saodco, saoamf, thg, do_write, &
     errstat              )
-  if (errstat < 0) return
+  if (errstat /= 0) return
 
   ! ----------------------------------
   ! Compute average fitting statistics
   ! ----------------------------------
   allocate (fit_stats%quality_flag (nxtrack, 0:ntimes-1), stat=errstat)
   if (errstat /= 0) then
-    call tell_error (tell_malloc_error, "omi_pge_postprocess:  allocate failed", errstat)
+    call tell_error (tell_malloc_error, &
+         "omi_pge_postprocess:  allocate failed", errstat)
     return
   endif
   call tell_log (1, 'omi_pge_postprocess:  calling compute_fitting_statistics')
-  CALL compute_fitting_statistics ( &
-    pge_idx, ntimes, nxtrack, xtrange, &
+  CALL compute_fitting_statistics ( ntimes, nxtrack, xtrange, &
     saocol, saodco, saorms, saofcf, fit_stats, errstat) ! locerrstat )
-  if (errstat < 0) return
+  if (errstat /= 0) return
   if (yn_do_he5_output) then
     CALL he5_write_fitting_statistics ( &  ! FIXME <--- to be removed
       pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
@@ -164,8 +164,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Apply cross-track destriping correction
   ! ---------------------------------------
   call tell_log (1, 'omi_pge_postprocess:  calling xtrack_destriping')
-  CALL xtrack_destriping (                                    &
-    pge_idx, ntimes, nxtrack, do_process_line, xtrange,         &
+  CALL xtrack_destriping (ntimes, nxtrack, do_process_line, xtrange, &
     lat, saocol, & !saodco, saoamf, saofcf,
     fit_stats % quality_flag, errstat) ! locerrstat )
 
@@ -181,7 +180,11 @@ SUBROUTINE omi_pge_postprocess ( &
   ENDIF
 
   ! Deallocate AMF variables
-  CALL wfamf_deallocate ()
+  CALL wfamf_deallocate (errstat)
+  if (errstat /= 0) then
+    call tell_error(tell_runtime_error, "wfamf_deallocate failed", errstat)
+    return
+  endif
 
   RETURN
 END SUBROUTINE omi_pge_postprocess

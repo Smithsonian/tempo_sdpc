@@ -34,7 +34,7 @@ contains
     type(Radiance_Paras_Type), intent(in) :: rpt_rad
     integer, intent(inout) :: errstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! --------------------------------------------------------------------
     ! Solar Irradiance Processing: If we don't do a solar composite, we can
@@ -65,7 +65,7 @@ contains
 
     integer :: locerr
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate (idt%qflags(max_nwave, nxtrack), &
               idt%wavelengths(max_nwave, nxtrack), &
@@ -108,10 +108,10 @@ contains
     integer (kind=i4) :: ix, icnt, imin, imax, max_nwavel
     integer :: locerrstat
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     allocate (ccdpix_sel (4, nxtrack), stat = locerrstat)
-    if (locerrstat < 0) then
+    if (locerrstat /= 0) then
       call tell_error (tell_malloc_error, "allocate_irr_data_type: allocate failed", errstat)
       return
     endif
@@ -138,7 +138,7 @@ contains
     max_nwavel = 1 + MAXVAL (ccdpix_sel(4, :) - ccdpix_sel(1,:))
 
     call allocate_irr_data_type (Irr_Data, max_nwavel, nxtrack, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     Irr_Data%ccdpix_selection = ccdpix_sel
 
@@ -209,7 +209,7 @@ contains
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! Allow errstat to flow
 
@@ -222,7 +222,7 @@ contains
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, "spectral_channel", nwavel, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !nwavel = l1bobj%num_wavelengths
     !nxtrack = l1bobj%num_xtrack
@@ -250,7 +250,7 @@ contains
     call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,nxtrack,nwavel], &
                         tmp_wavelengths(:,1:nxtrack,1:1), errstat)
     call tiof_close (tio_l1obj, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "read_irradiance_data:  failed reading irradiance data", &
                        errstat)
       return
@@ -272,8 +272,13 @@ contains
 
     wavelengths = real (tmp_wavelengths(:,:,1), kind=r8)
     spectrum = real (tmp_spectrum(:,:,1), kind=r8)
-    deallocate (tmp_wavelengths)
-    deallocate (tmp_spectrum)
+    deallocate (tmp_wavelengths, stat=errstat)
+    if (errstat == 0) deallocate (tmp_spectrum, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_irradiance_data: deallocate failed", errstat)
+      return
+    endif
 
     call package_irradiance_data (nwavel, nxtrack, &
                                   wavelengths, spectrum, tmp_qflags(:,:,1), &
@@ -313,7 +318,7 @@ contains
     integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
     integer :: locerrstat
 
-    if (errstat < 0) return;
+    if (errstat /= 0) return;
 
     ! -----------------------------------------------------------
     ! Compute number of wavelengths and assign to temporary array
@@ -428,7 +433,7 @@ contains
     ! ------------------------------
     !CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_monthly_average_irradiance'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     locerrstat = pge_errstat_ok
 
@@ -468,8 +473,13 @@ contains
       !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
-    ALLOCATE (comUV1(nwUV1,3,nxUV1))
-    ALLOCATE (ncomUV1(nwUV1,nxUV1))
+    ALLOCATE (comUV1(nwUV1,3,nxUV1), ncomUV1(nwUV1,nxUV1), stat=locerrstat)
+    !ALLOCATE (ncomUV1(nwUV1,nxUV1))
+    if (locerrstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "omi_read_monthly_average_irradiance: allocate failed", errstat)
+      return
+    endif
 
     DO ix = 1, nxUV1
 
@@ -520,8 +530,14 @@ contains
       !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
-    ALLOCATE (comUV2(nwUV2,3,nxUV2))
-    ALLOCATE (ncomUV2(nwUV2,nxUV2))
+    ALLOCATE (comUV2(nwUV2,3,nxUV2), ncomUV2(nwUV2,nxUV2), stat=locerrstat)
+    !ALLOCATE (ncomUV2(nwUV2,nxUV2))
+    if (locerrstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "omi_read_monthly_average_irradiance: second allocate failed", &
+           errstat)
+      return
+    endif
 
     DO ix = 1, nxUV2
 
@@ -572,8 +588,14 @@ contains
       !IF (  errstat /= pge_errstat_ok ) RETURN
     END IF
 
-    ALLOCATE (comVIS(nwVIS,3,nxVIS))
-    ALLOCATE (ncomVIS(nwVIS,nxVIS))
+    ALLOCATE (comVIS(nwVIS,3,nxVIS), ncomVIS(nwVIS,nxVIS), stat=locerrstat)
+    !ALLOCATE (ncomVIS(nwVIS,nxVIS))
+    if (locerrstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "omi_read_monthly_average_irradiance: third allocate failed", &
+           errstat)
+      return
+    endif
 
     DO ix = 1, nxVIS
 
@@ -686,15 +708,26 @@ contains
       !Nothing to do here except to fold
     END SELECT
 
-    DEALLOCATE(comUV1) ; DEALLOCATE(comUV2) ; DEALLOCATE(comVIS)
-    DEALLOCATE(ncomUV1) ;  DEALLOCATE(ncomUV2) ; DEALLOCATE(ncomVIS)
+    DEALLOCATE(comUV1, comUV2, comVIS, ncomUV1, ncomUV2, ncomVIS, &
+         stat=errstat)
+    if (errstat /= 0) then
+      call tell_error ( tell_malloc_error, &
+           "omi_read_monthly_average_irradiance: deallocate failed", errstat)
+      return
+    endif
 
     call package_irradiance_data (nwavel, nxtrack, &
                                   tmp_wvl, tmp_spc, tmp_flg, &
                                   errstat)
 
     ! FIXME (JCH) tmp_n unused??
-    deallocate (tmp_spc,tmp_wvl,tmp_prc,tmp_flg, tmp_n)
+    deallocate (tmp_spc,tmp_wvl,tmp_prc,tmp_flg, tmp_n, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error ( tell_malloc_error, &
+           "omi_read_monthly_average_irradiance: second deallocate failed", &
+           errstat)
+      return
+    endif
 
   END SUBROUTINE omi_read_monthly_average_irradiance
 

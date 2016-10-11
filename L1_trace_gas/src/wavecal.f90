@@ -18,11 +18,21 @@ module wavecal
 
 contains
 
-  subroutine deallocate_module_variables ()
+  subroutine deallocate_module_variables (errstat)
     implicit none
-    if (allocated (cal_wavelengths)) deallocate(cal_wavelengths)
-    if (allocated (cal_spectrum)) deallocate(cal_spectrum)
-    if (allocated (cal_weights)) deallocate(cal_weights)
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+    if (allocated (cal_wavelengths)) deallocate(cal_wavelengths, stat=errstat)
+    if (allocated (cal_spectrum) .and. errstat == 0) &
+         deallocate(cal_spectrum, stat=errstat)
+    if (allocated (cal_weights) .and. errstat == 0) &
+         deallocate(cal_weights, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "deallocate_module_variables failed", errstat)
+      return
+    endif
   end subroutine
 
   subroutine allocate_module_variables (wvls, spec, wgts, n, errstat)
@@ -34,9 +44,10 @@ contains
     !
     integer :: locerr
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
-    call deallocate_module_variables ()
+    call deallocate_module_variables (errstat)
+    if (errstat /= 0) return
 
     allocate(cal_wavelengths(n), cal_spectrum(n), cal_weights(n), stat=locerr)
     if (locerr /= 0) then
@@ -187,7 +198,7 @@ contains
         saved_solar_spec_convolved(1:npts), &
         curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
         errstat)
-      if (errstat < 0) return
+      if (errstat /= 0) return
     endif
 
     ! =============================================
@@ -204,7 +215,7 @@ contains
       npts, solar_wvls(1:npts), saved_solar_spec_convolved(1:npts), &
       npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
       did_full_range, errstat )
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "spectrum_solar: interpolation failed while resampling to solar grid", errstat)
       return
     endif
@@ -285,7 +296,7 @@ contains
     integer :: num_fitvar
     character (len=256) :: log_msg
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     ! pack the parameters
     num_fitvar = 0
@@ -317,7 +328,7 @@ contains
     ! Set up module local variables
     call allocate_module_variables (wavelengths, spectrum, weights, &
                                     num_wavelengths, errstat)
-    if (errstat < 0) return
+    if (errstat /= 0) return
     cal_parms(1:num_cal_parms) = loc_cal_parms(1:num_cal_parms)
 
     private_avg_wavelength = avg_wavelength   !sol_wav_avg = avg_wavelength
@@ -335,7 +346,7 @@ contains
                          param_max = upbnd(1:num_fitvar), &
                          param_mask = param_mask(1:num_fitvar), &
                          max_num_iterations = num_iterations_per_fit)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "wavecal_fit: optimizer_open failed", errstat)
       goto 666
     endif
@@ -378,7 +389,7 @@ contains
     enddo fit_loop
 
     call optimizer_close (opt, errstat)
-    if (errstat < 0) then
+    if (errstat /= 0) then
       call tell_error (tell_runtime_error, "wavecal_fit: optimizer_close failed", errstat)
       goto 666
     endif
@@ -394,7 +405,7 @@ contains
 
  666 continue
 
-    call deallocate_module_variables ()
+    call deallocate_module_variables (errstat)
     return
 
   end subroutine wavecal_fit

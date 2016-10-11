@@ -20,8 +20,8 @@
 !
 !!  For \a optimizer_open and \a optimizer_close:
 !!  @verbatim
-!!                errstat < 0 means failure
-!!                errstat >= 0 means success
+!!                errstat /= 0 means failure
+!!                errstat = 0 means success
 !!  @endverbatim
 !!  The value of \a opt%optimize \a return_status depends on the particular
 !!  optimizer's implementation, but should adhere to the same convention.
@@ -114,9 +114,20 @@ contains
     implicit none
     type(optimizer_type) :: this
     integer, intent(inout) :: errstat
-    if (allocated(this%param_mask)) deallocate (this%param_mask)
-    if (allocated(this%param_min)) deallocate (this%param_min)
-    if (allocated(this%param_max)) deallocate (this%param_max)
+
+    if (errstat /= 0) return
+
+    if (allocated(this%param_mask)) deallocate (this%param_mask, stat=errstat)
+    if (allocated(this%param_min) .and. errstat /= 0) &
+         deallocate (this%param_min, stat=errstat)
+    if (allocated(this%param_max) .and. errstat /= 0) &
+         deallocate (this%param_max, stat=errstat)
+
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error,"optimizer_close: deallocate failed",&
+           errstat)
+      return
+    endif
   end subroutine optimizer_close
 
   !> Initialize an instance of \a optimizer_type

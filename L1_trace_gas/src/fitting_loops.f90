@@ -86,7 +86,7 @@ CONTAINS
     ! ------------------------------
     !CHARACTER (LEN=31), PARAMETER :: modulename = 'xtrack_radiance_wvl_calibration'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
 
     !locerrstat = 0 !pge_errstat_ok
 
@@ -214,12 +214,18 @@ CONTAINS
       ! reallocate buffers if needed
       if (adj_num > adj_num_allocated) then
         if (adj_num_allocated > 0) then
-          deallocate (adj_wvls, adj_spec, adj_wgts, adj_resid)
+          deallocate (adj_wvls, adj_spec, adj_wgts, adj_resid, stat=locerr)
+          if (locerr /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "xtrack_radiance_wvl_calibration: deallocate failed", errstat)
+            return
+          endif
         endif
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
                   adj_resid(adj_num), stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_radiance_wvl_calibration: allocate failed", errstat)
+          call tell_error (tell_malloc_error, &
+               "xtrack_radiance_wvl_calibration: allocate failed", errstat)
           return
         endif
         adj_wvls(1:adj_num) = r8_missval
@@ -269,7 +275,7 @@ CONTAINS
         save_resid(1:adj_num,ipix) = adj_resid(1:adj_num)
       endif
 
-      IF ( is_bad_pixel .OR. errstat < 0) then !locerrstat >= pge_errstat_error ) THEN
+      IF ( is_bad_pixel .OR. errstat /= 0) then !locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
@@ -329,7 +335,7 @@ CONTAINS
         ipix, n_ref_wvl, ref_wvl(1:n_ref_wvl), ref_spc(1:n_ref_wvl), &
         adj_num, adj_wvls(1:adj_num), n_max_rspec, errstat) ! locerrstat )
       ! --------------------------------------------------------------------------------
-      if (errstat < 0) exit XTrackWavCal
+      if (errstat /= 0) exit XTrackWavCal
       !IF ( locerrstat >= pge_errstat_error ) EXIT XTrackWavCal
 
       ! ---------------------------------------------------------
@@ -376,7 +382,7 @@ CONTAINS
           omi_database(1:adj_num,ipix,solar_idx),                   &
           'endpoints', 0.0_r8, did_full_range, errstat) ! locerrstat )
 
-        IF (errstat < 0) then ! locerrstat >= pge_errstat_error ) THEN
+        IF (errstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
           !errstat = MAX ( errstat, locerrstat )
           omi_cross_track_skippix (ipix) = .TRUE.
           addmsg = ''
@@ -410,7 +416,7 @@ CONTAINS
                                    omi_database_wvl(1:adj_num_max,1:nxtrack_max), &
                                    refspecs_original(1:max_rs_idx), &
                                    max_rs_idx, adj_num_max, nxtrack, errstat)
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_io_write_error, &
                          'xtrack_radiance_wvl_calibration: error writing refspec database', &
                          errstat)
@@ -556,7 +562,7 @@ CONTAINS
 
     !CHARACTER (LEN=28), PARAMETER :: modulename = 'xtrack_radiance_fitting_loop'
 
-    if (errstat < 0) return
+    if (errstat /= 0) return
     locerrstat = 0 ! pge_errstat_ok
 
     if (yn_diagnostic_run) then
@@ -633,12 +639,18 @@ CONTAINS
       ! reallocate buffers if needed
       if (adj_num > adj_num_allocated) then
         if (adj_num_allocated > 0) then
-          deallocate (adj_wvls, adj_spec, adj_wgts)
+          deallocate (adj_wvls, adj_spec, adj_wgts, stat=locerr)
+          if (locerr /= 0) then
+            call tell_error (tell_malloc_error, &
+                 "xtrack_radiance_fitting_loop: deallocate failed", errstat)
+            return
+          endif
         endif
         allocate (adj_wvls(adj_num), adj_spec(adj_num), adj_wgts(adj_num), &
                   stat=locerr)
         if (locerr /= 0) then
-          call tell_error (tell_malloc_error, "xtrack_radiance_fitting_loop: allocate failed", errstat)
+          call tell_error (tell_malloc_error, &
+               "xtrack_radiance_fitting_loop: allocate failed", errstat)
           return
         endif
         adj_num_allocated = adj_num
