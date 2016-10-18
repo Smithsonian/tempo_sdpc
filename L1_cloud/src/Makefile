@@ -12,7 +12,7 @@ incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
 
 ADDLIBD    = #
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB)
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llapack -lblas
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line

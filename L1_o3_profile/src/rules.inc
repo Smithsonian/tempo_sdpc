@@ -353,8 +353,6 @@ $(ODIR)/m_voigt.o: $(SDIR)/m_voigt.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_voigt.f90 -o $(ODIR)/m_voigt.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_xerbla.o: $(SDIR)/m_xerbla.f90
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_xerbla.f90 -o $(ODIR)/m_xerbla.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_cross_calibrate.o: $(SDIR)/omi_cross_calibrate.f90 \
   $(ODIR)/m_cal_fit_one.o \
   $(ODIR)/m_ezspline_interpolation.o \

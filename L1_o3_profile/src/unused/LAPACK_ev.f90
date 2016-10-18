@@ -218,7 +218,7 @@ contains
                HSWORK = WORK( 1 )
                MAXWRK = MAX( MAXWRK, N + 1, N + HSWORK )
                MAXWRK = MAX( MAXWRK, 4*N )
-            ELSE 
+            ELSE
                MINWRK = 3*N
                CALL DHSEQR( 'E', 'N', N, 1, N, A, LDA, WR, WI, VR, LDVR, &
                      WORK, -1, INFO )
@@ -1094,7 +1094,7 @@ end do
 !
 !  This file is a slight modification of LAPACK-3.0's DGEHRD
 !  subroutine incorporating improvements proposed by Quintana-Orti and
-!  Van de Geijn (2005). 
+!  Van de Geijn (2005).
 !
 !  =====================================================================
 !
@@ -1292,16 +1292,16 @@ end do
 !  a real upper quasi-triangular matrix T.
 !  Matrices of this type are produced by the Schur factorization of
 !  a real general matrix:  A = Q*T*Q**T, as computed by DHSEQR.
-!  
+
 !  The right eigenvector x and the left eigenvector y of T corresponding
 !  to an eigenvalue w are defined by:
-!  
+!
 !     T*x = w*x,     (y**H)*T = w*(y**H)
-!  
+!
 !  where y**H denotes the conjugate transpose of y.
 !  The eigenvalues are not input to this routine, but are read directly
 !  from the diagonal blocks of T.
-!  
+!
 !  This routine returns the matrices X and/or Y of right and left
 !  eigenvectors of T, or the products Q*X and/or Q*Y, where Q is an
 !  input matrix.  If Q is the orthogonal factor that reduces a matrix
@@ -2425,9 +2425,9 @@ end do
 !                        3000             6000          NS = 128
 !                        6000             infinity      NS = 256
 !
-!                  (+)  By default some or all matrices of this order 
+!                  (+)  By default some or all matrices of this order
 !                       are passed to the implicit double shift routine
-!                       DLAHQR and NS is ignored.  See ISPEC=1 above 
+!                       DLAHQR and NS is ignored.  See ISPEC=1 above
 !                       and comments in IPARM for details.
 !
 !                       The asterisks (**) indicate an ad-hoc
@@ -5794,7 +5794,7 @@ end do
 !  Q' * A * Q. The routine returns the matrices V and T which determine
 !  Q as a block reflector I - V*T*V', and also the matrix Y = A * V * T.
 !
-!  This is an OBSOLETE auxiliary routine. 
+!  This is an OBSOLETE auxiliary routine.
 !  This routine will be 'deprecated' in a  future release.
 !  Please use the new routine DLAHR2 instead.
 !
@@ -10781,7 +10781,7 @@ end do
         !  EST    (input/output) DOUBLE PRECISION
         !         On entry with KASE = 1 or 2 and ISAVE(1) = 3, EST should be
         !         unchanged from the previous call to DLACN2.
-        !         On exit, EST is an estimate (a lower bound) for norm(A). 
+        !         On exit, EST is an estimate (a lower bound) for norm(A).
         !
         !  KASE   (input/output) INTEGER
         !         On the initial call to DLACN2, KASE should be 0.
@@ -11776,7 +11776,7 @@ end do
               !
               CALL DTRMV( 'Lower', 'NO TRANSPOSE',  &
                    'UNIT', I-1, &
-                   A( K+1, 1 ), LDA, T( 1, NB ), 1 ) 
+                   A( K+1, 1 ), LDA, T( 1, NB ), 1 )
               CALL DAXPY( I-1, -ONE, T( 1, NB ), 1, A( K+1, I ), 1 )
               !
               A( K+I-1, I-1 ) = EI
@@ -12302,7 +12302,7 @@ end do
               CALL DLASET( 'L', JW-2, JW-2, ZERO, ZERO, T( 3, 1 ), LDT )
               !
               CALL DLARF( 'L', NS, JW, WORK, 1, TAU, T, LDT, &
-                   WORK( JW+1 ) ) 
+                   WORK( JW+1 ) )
               CALL DLARF( 'R', NS, NS, WORK, 1, TAU, T, LDT, &
                    WORK( JW+1 ) )
               CALL DLARF( 'R', JW, NS, WORK, 1, TAU, V, LDV, &

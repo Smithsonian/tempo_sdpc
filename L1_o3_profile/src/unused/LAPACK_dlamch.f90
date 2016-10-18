@@ -652,7 +652,7 @@ contains
     !  Arguments
     !  =========
     !
-    !  EMIN    (output) INTEGER 
+    !  EMIN    (output) INTEGER
     !          The minimum exponent before (gradual) underflow, computed by
     !          setting A = START and dividing by BASE until the previous A
     !          can not be recovered.

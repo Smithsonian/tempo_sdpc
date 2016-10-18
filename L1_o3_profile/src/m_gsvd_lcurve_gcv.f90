@@ -33,7 +33,7 @@ contains
     USE ozprof_data_module,     ONLY : lcurve_gcv
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
-    use gsvd_o3prof_utilities, only: dggsvd, dgetri
+    !use gsvd_o3prof_utilities, only: dggsvd, dgetri
 
     IMPLICIT NONE
 
@@ -271,7 +271,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
-    use gsvd_o3prof_utilities, only: dtrtri
+    !use gsvd_o3prof_utilities, only: dtrtri
 
     IMPLICIT NONE
 
@@ -355,8 +355,12 @@ contains
     END DO
 
     DO i = 1, l
+!      gamma(i) = alpha(i) / beta (i)
+! Orignal form above produces numerous Infinite values since beta is often 0
+! FIXME - not clear whether low beta should produce gamma=0 or very large
+      if (beta(i) < 1e-10) beta(i) = 1.0e-10
       gamma(i) = alpha(i) / beta (i)
-    END DO
+          END DO
 
     RETURN
 

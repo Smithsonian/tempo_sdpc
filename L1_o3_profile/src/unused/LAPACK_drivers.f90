@@ -441,7 +441,7 @@ contains
           NW = MIN( I3, JJ-J+1 )
           IF( NW.GT.0 ) &
                CALL DCOPY( NW, WORK31( 1, JJ-J+1 ), 1, &
-               AB( KV+KL+1-JJ+J, JJ ), 1 ) 
+               AB( KV+KL+1-JJ+J, JJ ), 1 )
         end do
       end do
     END IF

@@ -311,7 +311,7 @@ contains
     !  EST    (input/output) DOUBLE PRECISION
     !         On entry with KASE = 1 or 2 and JUMP = 3, EST should be
     !         unchanged from the previous call to DLACON.
-    !         On exit, EST is an estimate (a lower bound) for norm(A). 
+    !         On exit, EST is an estimate (a lower bound) for norm(A).
     !
     !  KASE   (input/output) INTEGER
     !         On the initial call to DLACON, KASE should be 0.
@@ -1580,7 +1580,7 @@ contains
     PARAMETER          ( ONE = 1.0D+0, ZERO = 0.0D+0 )
     !     ..
     !     .. Local Scalars ..
-    DOUBLE PRECISION   SFMIN 
+    DOUBLE PRECISION   SFMIN
     INTEGER            I, J, JP
     !     ..
     !     .. External Functions ..
@@ -1611,9 +1611,9 @@ contains
     !
     IF( M.EQ.0 .OR. N.EQ.0 ) RETURN
     !
-    !     Compute machine safe minimum 
-    ! 
-    SFMIN = DLAMCH('S')  
+    !     Compute machine safe minimum
+    !
+    SFMIN = DLAMCH('S')
     !
     DO J = 1, MIN( M, N )
       !
@@ -1629,12 +1629,12 @@ contains
         !
         !           Compute elements J+1:M of J-th column.
         !
-        IF( J.LT.M ) THEN 
-          IF( ABS(A( J, J )) .GE. SFMIN ) THEN 
-            CALL DSCAL( M-J, ONE / A( J, J ), A( J+1, J ), 1 ) 
-          ELSE 
-            DO I = 1, M-J 
-              A( J+I, J ) = A( J+I, J ) / A( J, J ) 
+        IF( J.LT.M ) THEN
+          IF( ABS(A( J, J )) .GE. SFMIN ) THEN
+            CALL DSCAL( M-J, ONE / A( J, J ), A( J+1, J ), 1 )
+          ELSE
+            DO I = 1, M-J
+              A( J+I, J ) = A( J+I, J ) / A( J, J )
             end do
           END IF
         END IF
@@ -2900,7 +2900,7 @@ contains
     !
 160 CONTINUE
     !
-    !     12 <= ISPEC <= 16: xHSEQR or one of its subroutines. 
+    !     12 <= ISPEC <= 16: xHSEQR or one of its subroutines.
     !
     ILAENV = IPARMQ( ISPEC, NAME, OPTS, N1, N2, N3, N4 )
     RETURN
@@ -3154,7 +3154,7 @@ contains
     !  -- LAPACK auxiliary routine (version 3.1) --
     !     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
     !     November 2006
-    !     
+    !
     !     .. Scalar Arguments ..
     INTEGER            IHI, ILO, ISPEC, LWORK, N
     CHARACTER          NAME*( * ), OPTS*( * )
@@ -3163,7 +3163,7 @@ contains
     !  =======
     !
     !       This program sets problem and machine dependent parameters
-    !       useful for xHSEQR and its subroutines. It is called whenever 
+    !       useful for xHSEQR and its subroutines. It is called whenever
     !       ILAENV is called with 12 <= ISPEC <= 16
     !
     !  Arguments

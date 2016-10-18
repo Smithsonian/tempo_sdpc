@@ -13,7 +13,7 @@ bindir     = $(prefix)/bin
 msgs_installdir = $(prefix)/msgs
 
 ADDLIBD    = #
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -lvlidort
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -lvlidort -llapack -lblas
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
