@@ -3,7 +3,8 @@
 
 RM = /bin/rm
 
-DIR_LIST=libtio L1_trace_gas L1_cloud L1_o3_total L1_o3_profile L2_regrid
+DIR_LIST = libtio L1_trace_gas L1_cloud L1_o3_total L1_o3_profile \
+           L2_regrid L0_format
 
 all:
 	for dir in $(DIR_LIST) ; do \
