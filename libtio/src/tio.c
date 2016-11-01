@@ -1018,6 +1018,23 @@ int TIO_inq_var_fill (int grp, int varid, int *no_fill, void *fill_value)
    return 0;
 }
 
+int TIO_def_var_chunking (int ncid, int varid,
+                          int storage, size_t *chunksizep)
+{
+   int status;
+
+   status = nc_def_var_chunking (ncid, varid, storage, chunksizep);
+   if (status != NC_NOERR)
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: setting chunking for varid=%d (%s)",
+                     __func__, varid, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
 int TIO_def_var_deflate (int grp, int varid,
                          int shuffle, int deflate, int deflate_level)
 {

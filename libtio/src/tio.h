@@ -301,6 +301,16 @@ extern int TIO_inq_var_fill (int grp, int varid, int *no_fill, void *fill_value)
 extern int TIO_def_var_deflate (int grp, int varid,
                                 int shuffle, int deflate, int deflate_level);
 
+/** Define a variable's chunking configuration
+ * @param grp          The group containing the variable
+ * @param varid        Variable id number
+ * @param storage      Storage class specifier NC_CHUNKED | NC_CONTIGUOUS
+ * @param chunksizep   Array of chunk sizes, one per dimension
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_def_var_chunking (int grp, int varid,
+                                 int storage, size_t *chunksizep);
+
 /** Read the fill value of a named variable and convert it to a specified type
  * @param  grp    The group containing the variable
  * @param  name   The variable name

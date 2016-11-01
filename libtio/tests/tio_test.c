@@ -176,6 +176,7 @@ static int test_def_var (int ncid, const char *name, int type)
         {NULL,NULL}
      };
    const char test_name[] = "test_var";
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
    int i, test_id, dimids_ok;
 
    if (-1 == TIO_inq_var (ncid, name, &vi))
@@ -192,6 +193,9 @@ static int test_def_var (int ncid, const char *name, int type)
    dimids_ok = 1;
    for (i = 0; i < vi.ndims; i++)
      {
+        chunksizes[i] = vi.dimlens[i]/2;
+        if (chunksizes[i] == 0) chunksizes[i] = 1;
+
         if (vi.dimids[i] != vi2.dimids[i])
           {
              dimids_ok = 0;
@@ -205,6 +209,8 @@ static int test_def_var (int ncid, const char *name, int type)
      }
 
    if (-1 == TIO_def_var_deflate (ncid, test_id, 1, 1, 1))
+     return -1;
+   if (-1 == TIO_def_var_chunking (ncid, test_id, NC_CHUNKED, chunksizes))
      return -1;
 
    if (-1 == TIO_def_var_fill (ncid, test_id, 1, NULL))
