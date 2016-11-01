@@ -320,6 +320,25 @@ extern int TIO_def_var_chunking (int grp, int varid,
  */
 extern int TIO_get_fill_value (int grp, const char *name, int type, void *value);
 
+typedef struct
+{
+   char *name;
+   int value;
+}
+TIO_Enum_Type;
+#define TIO_ENUM_TABLE_END {NULL,0}
+
+/** Define an enum data type using a provided array of name-integer pairs.
+ * @param  grp    The group that is to contain the enum data type
+ * @param  name   The name of the enum data type
+ * @param  base_type  The desired netcdf integer base-type, e.g. NC_INT
+ * @param  enum_table  Pointer to a NULL-terminated array of TIO_Enum_Type structs
+ * @param[out] enum_typeid   The data type index of the newly defined enum data type
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_define_enum_table (int grp, const char *name, int base_type,
+                                  const TIO_Enum_Type *enum_table, int *enum_typeid);
+
 #if 0
 {
 #endif

@@ -155,15 +155,15 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 static int define_inr_status (int grp, int inr_status)
 {
    int status, enum_typeid;
-   static _pEnum_Type enum_table[] =
+   static TIO_Enum_Type enum_table[] =
      {
         {"none", TIO_INR_NONE},
         {"initial", TIO_INR_INITIAL},
         {"final", TIO_INR_FINAL},
-        _pENUM_TABLE_END
+        TIO_ENUM_TABLE_END
      };
 
-   if (-1 == _pTIO_define_enum (grp, "inr_status_enum", enum_table, &enum_typeid))
+   if (-1 == TIO_define_enum_table (grp, "inr_status_enum", NC_INT, enum_table, &enum_typeid))
      return -1;
    status = nc_put_att (grp, NC_GLOBAL, "inr_status", enum_typeid, 1,
                         &inr_status);

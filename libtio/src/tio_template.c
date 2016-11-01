@@ -29,17 +29,17 @@ struct TIO_Scan_Ident_Type
 int _pTIO_define_processing_level (int grp, int level)
 {
    int status, enum_typeid;
-   static _pEnum_Type enum_table[] =
+   static TIO_Enum_Type enum_table[] =
      {
         {"level-0",  TIO_PROC_LEVEL_0},
         {"level-1a", TIO_PROC_LEVEL_1A},
         {"level-1b", TIO_PROC_LEVEL_1B},
         {"level-2",  TIO_PROC_LEVEL_2},
         {"level-3",  TIO_PROC_LEVEL_3},
-        _pENUM_TABLE_END
+        TIO_ENUM_TABLE_END
      };
 
-   if (-1 == _pTIO_define_enum (grp, "processing_level_enum", enum_table, &enum_typeid))
+   if (-1 == TIO_define_enum_table (grp, "processing_level_enum", NC_INT, enum_table, &enum_typeid))
      return -1;
    status = nc_put_att (grp, NC_GLOBAL,
                         "processing_level", enum_typeid, 1, &level);

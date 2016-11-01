@@ -105,13 +105,13 @@ int _pTIO_define_dims_using_offsets (int grp, const _pDim_Offsets_Type *offsets,
    return 0;
 }
 
-int _pTIO_define_enum (int grp, const char *name,
-                       const _pEnum_Type *enum_table, int *enum_typeid)
+int TIO_define_enum_table (int grp, const char *name, int base_type,
+                           const TIO_Enum_Type *enum_table, int *enum_typeid)
 {
-   const _pEnum_Type *e;
+   const TIO_Enum_Type *e;
    int status;
 
-   if (NC_NOERR != (status = nc_def_enum (grp, NC_INT, name, enum_typeid)))
+   if (NC_NOERR != (status = nc_def_enum (grp, base_type, name, enum_typeid)))
      {
         Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining enum %s (%s)",
                      __func__, name, nc_strerror(status));
@@ -673,10 +673,8 @@ int TIO_##action##_var_section (int grp, const char *name, \
         status = nc_##action##_vara_string (grp, varid, start, count, (const_qual char **)data); \
         break; \
       default: \
-        Tell_verror (TELL_INVALID_PARM, \
-                     "%s: accessing variable %s using invalid type (type=%d)", \
-                     __func__, name, type); \
-        return -1; \
+        status = nc_##action##_vara (grp, varid, start, count, (const_qual void *)data); \
+        break; \
      } \
  \
    if (status != NC_NOERR) \

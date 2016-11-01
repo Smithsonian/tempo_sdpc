@@ -64,14 +64,6 @@ _pFloat_Attr_Type;
 
 typedef struct
 {
-   char *name;
-   int value;
-}
-_pEnum_Type;
-#define _pENUM_TABLE_END {NULL,0}
-
-typedef struct
-{
    int id;      /**< index assigned by nc_def_dim */
    size_t len;  /**< fixed dimension size or NC_UNLIMITED */
 }
@@ -91,9 +83,6 @@ _pDim_Offsets_Type;
    {name, \
         (offsetof(_pDim_Table_Type,field) + offsetof(_pDim_Type,len)), \
         (offsetof(_pDim_Table_Type,field) + offsetof(_pDim_Type,id))}
-
-extern int _pTIO_define_enum (int grp, const char *name,
-                              const _pEnum_Type *enum_table, int *enum_typeid);
 
 extern int _pTIO_define_dims_using_offsets (int grp,
                                             const _pDim_Offsets_Type *offsets,
