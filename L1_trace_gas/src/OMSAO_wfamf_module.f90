@@ -283,7 +283,7 @@ CONTAINS
       else if (0 /= index (cloud_file, ".nc", .true.)) then
         call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
       else
-        call tell_error (tell_runtime_error, "unexpected cloud file extension", errstat)
+        call tell_error (tell_runtime_error, "unexpected cloud file extension: "//trim(cloud_file), errstat)
         return
       endif
       if (errstat /= 0) then
