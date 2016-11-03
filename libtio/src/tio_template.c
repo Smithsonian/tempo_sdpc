@@ -96,7 +96,7 @@ _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
 {
    memset ((char *)ptm, 0, sizeof (struct tm));
-   if (NULL == strptime (timestr, "%Y-%m-%dT%H:%M:%SZ", ptm))
+   if (NULL == strptime (timestr, TIO_DELIM_TIMESTAMP_FORMAT, ptm))
      {
         Tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
                      __func__, timestr);
@@ -118,7 +118,8 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
    if (-1 == _pTIO_parse_timestr (gid->tstart_str, &tm))
      return -1;
 
-   if (0 == strftime (timestr, MAX_ISOTIME_LEN, "%Y%m%dT%H%M%SZ", &tm))
+   if (0 == strftime (timestr, MAX_ISOTIME_LEN,
+                      TIO_NODELIM_TIMESTAMP_FORMAT, &tm))
      {
         Tell_verror (TELL_RUNTIME_ERROR, "%s: strftime failed",
                      __func__);
@@ -130,7 +131,7 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
     * which fits in a 6 digit int.
     */
    status = snprintf (buf, bufsize,
-                      "tempo_%s_%06d_%02d_%02d_%s.nc",
+                      "tempo_%s_%06d_%02d_v%d_%s.nc",
                       timestr,
                       gid->scan_seq_num,
                       gid->granule_num,

@@ -13,6 +13,9 @@ extern "C" {
 
 #define TIO_CF_CONVENTION_VERSION   "CF-1.6"
 
+#define TIO_DELIM_TIMESTAMP_FORMAT   "%Y-%m-%dT%H:%M:%SZ"
+#define TIO_NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
+
 #define TIO_TIME_REFERENCE_STRING   "2000-01-01T12:00:00Z"
 
 /* To simplify anomaly resolution, choose the TEMPO epoch to be the

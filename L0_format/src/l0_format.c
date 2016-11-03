@@ -24,8 +24,6 @@
 #include "l0_format.h"
 #include "daemon.h"
 
-#define   DELIM_TIMESTAMP_FORMAT "%Y-%m-%dT%H:%M:%SZ"
-#define NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
 enum
 {
    NODELIM_TIMESTAMP = 0,
@@ -265,7 +263,8 @@ static int init_epoch_time_t (void)
    struct tm tm;
 
    memset ((char *)&tm, 0, sizeof(struct tm));
-   if (NULL == strptime (TIO_TIME_REFERENCE_STRING, DELIM_TIMESTAMP_FORMAT, &tm))
+   if (NULL == strptime (TIO_TIME_REFERENCE_STRING,
+                         TIO_DELIM_TIMESTAMP_FORMAT, &tm))
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
                      __func__, TIO_TIME_REFERENCE_STRING);
@@ -295,9 +294,9 @@ static int mktimestamp_str (double sec_since_epoch, int delim, char *buf, int bu
      }
 
    if (delim == 0)
-     status = strftime (buf, bufsize, NODELIM_TIMESTAMP_FORMAT, &tm);
+     status = strftime (buf, bufsize, TIO_NODELIM_TIMESTAMP_FORMAT, &tm);
    else
-     status = strftime (buf, bufsize, DELIM_TIMESTAMP_FORMAT, &tm);
+     status = strftime (buf, bufsize, TIO_DELIM_TIMESTAMP_FORMAT, &tm);
 
    if (0 == status)
      {
@@ -318,7 +317,7 @@ int make_level0_basename (double sec_since_epoch, int processing_version,
    if (-1 == mktimestamp_str (sec_since_epoch, NODELIM_TIMESTAMP, tstr, MAX_ISOTIME_LEN))
      return -1;
 
-   n = snprintf (buf, bufsize, "tempo_%s_%d_%s.nc",
+   n = snprintf (buf, bufsize, "tempo_%s_v%d_%s.nc",
                  tstr, processing_version, suffix);
    if (n >= bufsize)
      {
@@ -503,7 +502,8 @@ int main (int argc, char **argv)
 return_status:
    if (ctrl.daemon)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 0, "daemon exiting (pid=%d)", getpid());
+        tell_vlog (TELL_MSGTYPE_INFO, 0, "daemon exiting: status = %d (pid=%d)",
+                   status, getpid());
      }
    tpinfo_free (tp);
    config_destroy (&cfg);
