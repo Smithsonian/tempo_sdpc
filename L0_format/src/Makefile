@@ -26,7 +26,7 @@ IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc
 EXTRA_INCS =#
 EXTRA_LIBS =#
 
-INCS = -I$(config_dir)/include -I$(IOCSDPC_INC) -I$(LIBCSV_INC) \
+INCS = -I$(config_dir)/include -I$(IOCSDPC_INC) $(LIBCSV_INC) \
        -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
 LIBS = $(INSTALL_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig \
        $(LIBCSV_LIBPATHS) -lcsv \
