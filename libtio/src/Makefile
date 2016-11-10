@@ -15,9 +15,8 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
 INCS = -I$(config_dir)/include -I$(TELL_INC) -I$(NETCDF_INC)
-LIBS = $(INSTALL_LIBPATHS) \
-       $(NETCDF_LIBPATHS) -lnetcdf \
-       $(TELL_LIBPATHS) -ltell $(RPATH)
+LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
+       $(TELL_LIBPATHS) -ltell $(RPATH) $(INSTALL_LIBPATHS)
 
 MODS_F = -I$(NETCDF_INC) -I$(TELL_INC)
 LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TELL_LIBPATHS) -ltell_f

@@ -105,8 +105,8 @@ AC_ARG_WITH(tell,
   [jh_with_tell=$withval],
   [jh_with_tell=no])
 if test "x$jh_with_tell" = "xno"; then
-   TELL_LIB="\$(prefix)/lib"
-   TELL_INC="\$(prefix)/include"
+   TELL_LIB="\$(OTS_ROOT)/lib"
+   TELL_INC="\$(OTS_ROOT)/include"
 else
    TELL_LIB="$jh_with_tell/lib"
    TELL_INC="$jh_with_tell/include"

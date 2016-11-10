@@ -24,10 +24,11 @@ EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
 INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
-LIBS = $(INSTALL_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig \
-       $(TIO_LIBPATHS) -ltio \
+LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
-       $(TELL_LIBPATHS) -ltell $(RPATH)
+       $(TELL_LIBPATHS) -ltell \
+       $(TIO_LIBPATHS) -ltio \
+       $(RPATH) $(INSTALL_LIBPATHS)
 
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#

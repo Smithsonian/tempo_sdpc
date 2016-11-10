@@ -20,7 +20,7 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-LDPATH  = -Wl,-rpath=$(TIOSRC_OBJS):$(TIO_LIB):$(TELL_LIB) $(RPATH) 
+LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
 
 TIO_LIB     = $(prefix)/lib
 TIO_SRC     = $(config_dir)/libtio/src
@@ -48,9 +48,9 @@ PGSLIBS     = -L$(PGSLIB) -lPGSTK
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
          $(NETCDFINCS) $(HE5INCS) $(PGSINCS)
 
-LIBS   = $(LDPATH) $(TIOLIBS) $(TELLLIBS) $(PSPLINELIBS) \
+LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
-         -lm $(DL_LIB)
+         $(LDPATH) $(TIOLIBS) -lm $(DL_LIB)
 
 CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS)
 

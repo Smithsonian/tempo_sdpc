@@ -26,13 +26,14 @@ IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc
 EXTRA_INCS =#
 EXTRA_LIBS =#
 
-INCS = -I$(config_dir)/include -I$(IOCSDPC_INC) $(LIBCSV_INC) \
-       -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
-LIBS = $(INSTALL_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig \
+INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(IOCSDPC_INC) $(LIBCSV_INC) \
+       -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
+LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
        $(LIBCSV_LIBPATHS) -lcsv \
-       $(TIO_LIBPATHS) -ltio \
        $(NETCDF_LIBPATHS) -lnetcdf $(IOCSDPC_LIBPATHS) \
-       $(TELL_LIBPATHS) -ltell $(RPATH)
+       $(TELL_LIBPATHS) -ltell \
+       $(TIO_LIBPATHS) -ltio \
+       $(RPATH) $(INSTALL_LIBPATHS)
 
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
