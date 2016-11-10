@@ -191,7 +191,10 @@ static void delete_methods_table (Process_Method_Table_Type *tbl)
    for ( ; tbl->init != NULL; tbl++)
      {
         Process_Method_Type *m = tbl->method;
-        if (m) m->delete(m);
+        if ((m != NULL) && (m->delete != NULL))
+          {
+             m->delete (m);
+          }
      }
 }
 
@@ -210,6 +213,38 @@ static void catch_sighup (void)
    sigaction (SIGHUP, &new_action, NULL);
 }
 
+static volatile int Sigint_Received;
+static void sigint_handler (int sig)
+{
+   (void) sig;
+   Sigint_Received++;
+}
+static void catch_sigint (void)
+{
+   struct sigaction new_action;
+   new_action.sa_handler = sigint_handler;
+   sigemptyset (&new_action.sa_mask);
+   new_action.sa_flags = 0;
+   sigaction (SIGINT, &new_action, NULL);
+}
+
+static void log_caught_signal (void)
+{
+   const char *signame;
+
+   if (Sighup_Received)
+     signame = "SIGHUP";
+   else if (Sigint_Received)
+     signame = "SIGINT";
+   else
+     signame = "unknown";
+
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "caught signal: %s (pid=%d)",
+              signame, getpid());
+}
+
+#define NO_CAUGHT_SIGNALS ((Sighup_Received == 0) && (Sigint_Received == 0))
+
 static int monitor_dir (Process_Method_Table_Type *tbl,
                         const TPInfo_Type *tpinfo, Control_Type *ctrl)
 {
@@ -219,6 +254,9 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
 
    pattern = ioclib_pathconcat (ctrl->incoming_dir,
                                 ctrl->input_filename_glob_pattern);
+
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "processing %s", pattern);
+
    if (NULL == pattern)
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed",
@@ -226,7 +264,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
         return -1;
      }
 
-   while (Sighup_Received == 0)
+   while (NO_CAUGHT_SIGNALS)
      {
         ioclib_glob_free (gt);
         gt = NULL;
@@ -240,16 +278,14 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
           break;
 
         if (-1 == process_dir_files (tbl, tpinfo, gt->files, gt->num_files))
-          {
-             delete_methods_table (tbl);
-             goto return_status;
-          }
+          goto return_status;
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
      }
 
    status = 0;
 return_status:
+   log_caught_signal();
    ioclib_free (pattern);
    ioclib_glob_free (gt);
 
@@ -493,6 +529,7 @@ int main (int argc, char **argv)
         tell_vlog (TELL_MSGTYPE_INFO, 0, "daemon started (pid=%d)", getpid());
      }
    catch_sighup ();
+   catch_sigint ();
 
    status = monitor_dir (tbl, tp, &ctrl);
    delete_methods_table (tbl);

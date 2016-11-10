@@ -146,6 +146,8 @@ int daemonize (const char *appname, const char *logfile_path)
      }
    else if (pid != 0) /* parent */
      {
+        fprintf (stdout, "%s started pid= %d log= %s\n",
+                 appname, pid, logfile_path);
         _exit(0);
      }
 
