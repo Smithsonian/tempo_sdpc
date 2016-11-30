@@ -15,13 +15,13 @@ contains
          so2crs_convl, which_slit, scnwrt, use_solcomp, use_backup, &
          mask_fitvar_rad, reduce_resolution, l2_cld_filename, &!, coadd_uv2
          use_he5_in, use_he5_out, use_tio_in, use_tio_out, l1b_rad_filename, &
-         nc_rad_swathname, l1_rad_filename_nc, &
+         nc_rad_swathname, l1_rad_filename_nc, numwin, radnhtrunc, &
          l1_irrad_filename_nc, l1b_irrad_filename, &
-         GranuleDay, GranuleMonth, GranuleYear, GranuleJDay
+         GranuleDay, GranuleMonth, GranuleYear!, GranuleJDay
     use ozprof_data_module, only: lcurve_write, ozwrtint, l2funit, &
          lcurve_fname, ozwrtint_fname, lcurve_unit, ozwrtint_unit, &
-         algorithm_name, algorithm_version, calunit!, &
-    !ozprof_start_index, ozprof_end_index, which_cld
+         algorithm_name, algorithm_version, calunit, nfgas, nlay, &
+         ozfit_start_index, ozfit_end_index!, which_cld
     use OMSAO_pixelcorner_module
     use OMSAO_omicloud_module
     use OMSAO_slitfunction_module
@@ -29,7 +29,7 @@ contains
          nxtrack, nfxtrack, ncoadd, omi_radpix_errstat, omi_exitval, &
          omi_fitvar, omi_initval, omi_solpix_errstat, nxbin, nybin, &
          omi_irradiance_wavl, &
-         offset_line, zoom_mode, zoom_p1, zoom_p2!omi_nwav_irrad
+         offset_line, zoom_mode, zoom_p1, zoom_p2, omi_nwav_irrad
     use he5_output_module, only: he5_l2setgeofields, he5_l2setdatafields, &
          he5_l2wrtinit
     use OMSAO_errstat_module
@@ -65,7 +65,8 @@ contains
     ! Local variables (for now)
     ! -------------------------
     integer :: first_line, last_line, iline, nxcoadd, first_pix, last_pix, &
-         exval, initval, errstat, curr_fitted_line, sline, eline, ix!, i
+         exval, initval, errstat, curr_fitted_line, sline, eline, ix, &!, i
+         num_param, num_wav_max
     real (kind=dp), dimension(3)    :: fitcol
     real (kind=dp), dimension(3, 2) :: dfitcol
     real (kind=dp)     :: fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg, rms
@@ -384,7 +385,13 @@ contains
         else
           nc_l2_filename = l2_filename !assume filename is ok as-is.
         endif
-        call l2_tio_create(nc_l2_filename, first_pix, last_pix, first_line, last_line, errstat)
+        num_param = n_fitvar_rad - nfgas - &
+             (ozfit_end_index - ozfit_start_index + 1)
+        num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
+             numwin * 2 * radnhtrunc
+        call l2_tio_create(nc_l2_filename, first_pix, last_pix, first_line, &
+             last_line, offset_line, nybin, nfgas, nlay, n_fitvar_rad, &
+             numwin, num_param, num_wav_max, errstat)
         if (errstat < 0) then
           call tell_error (tell_io_write_error, &
                "omi_fitting_process: L2 file creation failed", errstat)
@@ -492,15 +499,18 @@ contains
             if (use_tio_out) then
               ix = currpix - first_pix ! start from zero for l2_tio_write_data
               if (exval >= 0) then  ! Retrieval finished.
-                call l2_tio_write_data (ix, currloop, first_pix, last_pix, &
-                     exval, fitcol, dfitcol, errstat)       
+                call l2_tio_write_data (ix, currloop, &
+                     exval, fitcol, dfitcol, nfgas, nlay, n_fitvar_rad, &
+                     numwin, num_param, num_wav_max, ozfit_start_index, &
+                     ozfit_end_index, errstat)
                 if (errstat < 0) then
                   call tell_error (tell_io_write_error, &
                        "omi_fitting_process: L2 write failed", errstat)
                 endif
               else  ! Retrieval failed. Fill in as missing values.
-                call l2_tio_fill_data (ix, currloop, first_pix, last_pix, &
-                     exval, errstat)       
+                call l2_tio_fill_data (ix, currloop, &
+                     exval, nfgas, nlay, n_fitvar_rad, numwin, num_param, &
+                     num_wav_max, ozfit_start_index, ozfit_end_index, errstat)
                 if (errstat < 0) then
                   call tell_error (tell_io_write_error, &
                        "omi_fitting_process: L2 fill failed", errstat)

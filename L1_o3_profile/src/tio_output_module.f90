@@ -4,21 +4,18 @@ module tio_output_module
   use tio_module
   use tell_module
   use o3p_names_module
-  use ozprof_data_module, only: nfgas, ozwrtavgk, ozwrtcorr, &
-       ozwrtcovar, ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, wrtring, &
-       ozwrtvar, gaswrt, aerosol, ozfit_start_index, ozfit_end_index, &
-       do_lambcld, nlay
-  use OMSAO_variables_module, only: n_fitvar_rad, numwin, radnhtrunc, &
-       fothvarpos, reduce_resolution, fitvar_rad_unit, mask_fitvar_rad
-  use OMSAO_omidata_module, only: omi_nwav_irrad
-  use OMSAO_indices_module, only: n_max_fitpars
+  use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
+       ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, wrtring, &
+       ozwrtvar, gaswrt, aerosol, do_lambcld
+  use OMSAO_variables_module, only: reduce_resolution
 
   implicit none
 
   private write_coordinate_vars, append_geolocation_vars, &
        append_product_vars, append_support_vars, append_qa_vars, &
        append_diagnostic_vars
-  public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data
+  public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
+       write_merged_geo
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -36,30 +33,36 @@ contains
   !> Create netCDF Level 2 product file
   !! @param[in] filename       output netCDF file name
   !! @param[in] first_pix      index of first xtrack pixel in output
-  !! @param[in] last_pix      index of last xtrack pixel in output
-  !! @param[in] first_line      index of first line in output
+  !! @param[in] last_pix       index of last xtrack pixel in output
+  !! @param[in] first_line     index of first line in output
   !! @param[in] last_line      index of last line in output
+  !! @param[in] offset_line    offset of first line from zero
+  !! @param[in] nybin          along track (line) binning factor
+  !! @param[in] ngas           number of other gas parameters (nfgas)
+  !! @param[in] nlayer         number of layers in ozone profile (nlay)
+  !! @param[in] nfitvar        number of fit variables (n_fitvar_rad)
+  !! @param[in] nwindow        number of fit windows (numwin)
+  !! @param[in] num_param      number of non-gas fit parameters
+  !! @param[in] num_wav_max    maximum number of wavelengths in fit
   !! @param[inout] errstat     error status variable
   subroutine l2_tio_create (filename, first_pix, last_pix, first_line, &
-       last_line, errstat)
+       last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
+       num_param, num_wav_max, errstat)
 
     implicit none
     character (len=*), intent(in) :: filename
-    integer (kind=4), intent(in) :: first_pix, last_pix, first_line, last_line
+    integer (kind=4), intent(in) :: first_pix, last_pix, first_line, &
+         last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
+         num_param, num_wav_max
     integer (kind=4), intent(inout) :: errstat
-    integer (kind=4) :: num_steps, num_xtrack, num_layer, &
-       num_layerp1, num_fitvar, num_param, num_windows, num_elms, &
-       num_wav_max, num_gas, num_aeros_wavl, num_corners
+    integer (kind=4) :: num_steps, num_xtrack, nlayerp1, num_elms, &
+       num_aeros_wavl, num_corners
 
     integer (kind=4), external :: r8fill
 
     type (tiof_file_type), pointer :: obj
     type (tiof_dimlist_type) :: dimlist
 
-    !integer :: i
-    !character (LEN = 20), dimension(n_max_fitpars) :: units
-    !character (LEN = 4)    :: tempc
-    !character (LEN = 1000) :: othunitc
 
     if (errstat < 0) return
 
@@ -72,33 +75,13 @@ contains
       return
     endif
 
-    ! set dimension sizes
     num_corners = 4
-    num_fitvar = n_fitvar_rad
-    num_windows = numwin
     num_steps = last_line - first_line + 1
     num_xtrack = last_pix - first_pix  + 1
-    num_layer = nlay
-    num_aeros_wavl = numwin + 2
-    num_gas = nfgas
-    num_elms = (num_layer * (num_layer - 1))/2
-    num_param = num_fitvar-num_gas-(ozfit_end_index - ozfit_start_index + 1)
-    num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
-         numwin * 2 * radnhtrunc
-    ! need num_layer+1 to deal with arrays including surface 
-    num_layerp1 = num_layer + 1
+    num_aeros_wavl = nwindow + 2
+    num_elms = (nlayer * (nlayer - 1))/2
+    nlayerp1 = nlayer + 1
 
-    !if non-gas fit parameters are to be reported, sort out unit names
-!    if (num_param > 0 .and. ozwrtvar) then
-!      do i = 1, n_fitvar_rad
-!        write (units(i), '(A20)') trim(fitvar_rad_unit(mask_fitvar_rad(i)))
-!      enddo
-!      othunitc = '1. ' // trim(adjustl(units(fothvarpos(1))))
-!      do i = 2, num_param
-!        write(tempc, '(I2,A2)') i, '. '
-!        othunitc = trim(adjustl(othunitc)) // ' ' // tempc // trim(adjustl(units(fothvarpos(i)))) 
-!      enddo
-!    endif
 
     ! Create a file.
     call tiof_create (obj, filename, nf90_clobber, errstat)
@@ -108,6 +91,8 @@ contains
                        errstat)
       return
     endif
+
+    call tiof_put_git_commit_hash (obj, errstat)
 
     ! Create default groups.
     call tiof_def_group (obj, o3p_grp_product, errstat)
@@ -127,11 +112,11 @@ contains
     call tiof_dimlist_append(dimlist, o3p_dim_xtrack, num_xtrack, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_step, num_steps, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_corner, num_corners, errstat)
-    call tiof_dimlist_append(dimlist, o3p_dim_layer, num_layer, errstat)
-    call tiof_dimlist_append(dimlist, o3p_dim_layerp1, num_layerp1, errstat)
-    call tiof_dimlist_append(dimlist, o3p_dim_fitvar, num_fitvar, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_layer, nlayer, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_layerp1, nlayerp1, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_fitvar, nfitvar, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_param, num_param, errstat)
-    call tiof_dimlist_append(dimlist, o3p_dim_windows, num_windows, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_windows, nwindow, errstat)
     !dimensions for optional variables
     if (ozwrtcovar) then
       call tiof_dimlist_append(dimlist, o3p_dim_elms, num_elms, errstat)
@@ -140,8 +125,8 @@ contains
       call tiof_dimlist_append(dimlist, o3p_dim_wavl_max, num_wav_max, &
            errstat)
     endif
-    if (num_gas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      call tiof_dimlist_append(dimlist, o3p_dim_gas, num_gas, errstat)
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+      call tiof_dimlist_append(dimlist, o3p_dim_gas, ngas, errstat)
     endif
     if (aerosol) then
       call tiof_dimlist_append(dimlist, o3p_dim_aeros_wavl, num_aeros_wavl, &
@@ -157,9 +142,11 @@ contains
     endif
 
     !write coordinate variables
-    call write_coordinate_vars(obj, dimlist, num_steps, num_xtrack, &
-       num_corners, num_layer, num_layerp1, num_fitvar, num_param, &
-       num_windows, num_elms, num_wav_max, num_gas, num_aeros_wavl, errstat)
+    call write_coordinate_vars(obj, dimlist, first_line, last_line, &
+         first_pix, last_pix,  offset_line, nybin, num_steps, num_xtrack, &
+         num_corners, nlayer, nlayerp1, nfitvar, num_param, &
+         nwindow, num_elms, num_wav_max, ngas, num_aeros_wavl, &
+         errstat)
 
     !write geolocation group variables
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
@@ -175,8 +162,7 @@ contains
 
     !write product group variables
     call tiof_push_group (obj, o3p_grp_product, errstat)
-    !call append_product_vars (obj, dimlist, num_param, othunitc, errstat)
-    call append_product_vars (obj, dimlist, num_param, errstat)
+    call append_product_vars (obj, dimlist, num_param, ngas, errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -188,8 +174,7 @@ contains
 
     !write support data group variables
     call tiof_push_group (obj, o3p_grp_support_data, errstat)
-!    call append_support_vars (obj, dimlist, num_param, othunitc, errstat)
-    call append_support_vars (obj, dimlist, num_param, errstat)
+    call append_support_vars (obj, dimlist, num_param, ngas, errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -262,6 +247,12 @@ contains
   !> Write coordinate variables to L2 netCDF file
   !! @param[inout]  obj        pointer to output file
   !! @param[in] dimlist        dimension list
+  !! @param[in] first_line     along-track starting binned step number
+  !! @param[in] last_line      along-track ending binned step number
+  !! @param[in] first_pix      cross-track starting binned step number
+  !! @param[in] last_pix       cross-track ending binned step number
+  !! @param[in] offset_line    starting line offset from zero
+  !! @param[in] nybin          along-track binning factor
   !! @param[in] num_steps      number of scan steps
   !! @param[in] num_xtrack     number of cross-track pixels
   !! @param[in] num_corners    number of pixel corners
@@ -271,19 +262,22 @@ contains
   !! @param[in] num_windows    number of fitting windows
   !! @param[in] num_elms       no. of elements in noise matrix (opt)
   !! @param[in] num_wav_max   number of max wavelength values (opt)
-  !! @param[in] num_gas        number of gasses in fit (opt)
+  !! @param[in] ngas        number of gasses in fit (opt)
   !! @param[in] num_aeros_wavl number of aerosol wavelengths (opt)
   !! @param[inout] errstat     error status variable
-  subroutine write_coordinate_vars(obj, dimlist, num_steps, num_xtrack, &
+  subroutine write_coordinate_vars(obj, dimlist, first_line, last_line, &
+       first_pix, last_pix, offset_line, nybin, num_steps, num_xtrack, &
        num_corners, num_layer, num_layerp1, num_fitvar, num_param, &
-       num_windows, num_elms, num_wav_max, num_gas, num_aeros_wavl, errstat)
+       num_windows, num_elms, num_wav_max, ngas, num_aeros_wavl, &
+       errstat)
 
     implicit none
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer (kind=4), intent(in) :: num_steps, num_xtrack, num_corners, &
          num_layer, num_layerp1, num_fitvar, num_param, num_windows, &
-         num_elms, num_wav_max, num_gas, num_aeros_wavl
+         num_elms, num_wav_max, ngas, num_aeros_wavl, first_line, &
+         last_line, first_pix, last_pix, offset_line, nybin
     integer (kind=4), intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
@@ -299,7 +293,7 @@ contains
     integer (kind=4), dimension(:), allocatable :: wav_max_indices
     integer (kind=4), dimension(:), allocatable :: gas_indices
     integer (kind=4), dimension(:), allocatable :: aeros_wavl_indices
-    integer :: i, dimids(12), status
+    integer :: i, dimids(12), status, start_line, end_line
 
     if (errstat < 0) return
 
@@ -322,8 +316,8 @@ contains
       endif
     endif
 
-    if (num_gas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      allocate(gas_indices(num_gas), stat=status)
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+      allocate(gas_indices(ngas), stat=status)
       if (status /= 0) then
         call tell_error (tell_malloc_error, &
              'write_coordinate_vars:  allocate failed', errstat)
@@ -373,7 +367,7 @@ contains
       call tiof_varlist_append (varlist, errstat, o3p_dim_wavl_max, nf90_int, &
                              dimids=[dimids(10)])
     endif
-    if (num_gas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       call tiof_dimlist_lookup(dimlist, [o3p_dim_gas], dimids(11:11), errstat)
       call tiof_varlist_append (varlist, errstat, o3p_dim_gas, nf90_int, &
                              dimids=[dimids(11)])
@@ -396,16 +390,18 @@ contains
       return
     endif
 
-    ! FIXME: eventually, this will be something like
-    ! step_indices=[mirror_step_beg, ..., mirror_step_end]
-    ! where mirror_step_beg/end are granule-specific
+    ! Set mirror step and xtrack indices to binned pixel numbers so
+    ! as to allow stitching together of output files when code is run
+    ! on subsets of the granule
+    start_line = first_line + (offset_line/nybin) - 1
+    end_line = last_line + (offset_line/nybin) - 1
 
     !Write variable indices to L2 file
-    step_indices =  [(i, i=0,num_steps-1)]
+    step_indices =  [(i, i=start_line,end_line)]
     call tiof_put1d_i4 (obj, o3p_dim_step, [0], [num_steps], step_indices, &
          errstat)
 
-    xtrack_indices = [(i, i=0,num_xtrack-1)]
+    xtrack_indices = [(i, i=first_pix-1,last_pix-1)]
     call tiof_put1d_i4 (obj, o3p_dim_xtrack, [0], [num_xtrack], &
          xtrack_indices, errstat)
 
@@ -445,9 +441,9 @@ contains
            wav_max_indices, errstat)
     endif
 
-    if (nfgas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      gas_indices = [(i, i=0,num_gas-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_gas, [0], [num_gas], &
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+      gas_indices = [(i, i=0,ngas-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_gas, [0], [ngas], &
            gas_indices, errstat)
     endif
 
@@ -473,7 +469,7 @@ contains
       deallocate(wav_max_indices, stat=errstat)
     endif
 
-    if (num_gas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       deallocate(gas_indices, stat=errstat)
     endif
 
@@ -627,17 +623,17 @@ contains
   !! @param[in]    obj        pointer to output file
   !! @param[in]    dimlist    dimension list
   !! @param[in]    num_param  number of other fit parameters
-  !! @param[in]    othunitc   units striing for other fit parameters
+  !! @param[in]    ngas    number of fitted other gas parameters
   !! @param[inout] errstat    error status variable
 !  subroutine append_product_vars(obj, dimlist, num_param, othunitc, errstat)
-  subroutine append_product_vars(obj, dimlist, num_param, errstat)
+  subroutine append_product_vars(obj, dimlist, num_param, ngas, errstat)
 
     implicit none
     
     ! input
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
-    integer, intent(in) :: num_param
+    integer, intent(in) :: num_param, ngas
     ! output
     integer, intent(inout) :: errstat
     !local
@@ -646,6 +642,8 @@ contains
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
     ! In case you want to write out the as-yet unused sub2km fields
     logical :: do_sub2km = .FALSE.
 
@@ -663,7 +661,7 @@ contains
                               [o3p_dim_param, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_param_xtrack_step, &
                               errstat)
-    if (nfgas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_gas, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_gas_xtrack_step, &
@@ -684,6 +682,8 @@ contains
                               units = "DU", &
                               valid_range = [-50.0_8, 700.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_retrieve_prof_prec, &
@@ -693,6 +693,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_retrieve_prof_err, &
@@ -702,6 +704,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_total_o3, &
@@ -711,6 +715,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 600.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_total_o3_prec, &
@@ -720,6 +726,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_total_o3_err, &
@@ -729,6 +737,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_strat_o3, &
@@ -738,6 +748,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 600.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_strat_o3_prec, &
@@ -747,6 +759,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_strat_o3_err, &
@@ -756,6 +770,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_o3, &
@@ -765,6 +781,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 600.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_o3_prec, &
@@ -774,6 +792,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_o3_err, &
@@ -783,6 +803,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     ! Not in current algorithm, but expected for UVIS version
     ! Set do_sub2km = .TRUE. if you need to write (empty) fields
@@ -796,6 +818,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 600.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_surf_o3_prec, &
@@ -805,6 +829,8 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_surf_o3_err, &
@@ -814,12 +840,14 @@ contains
                               units = "DU", &
                               valid_range = [0.0_8, 50.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
     ! Optional products 
 
     ! Other fitted gases
-    if (nfgas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_retrieve, &
                               nf90_float, &
@@ -828,6 +856,8 @@ contains
                               units = "molecules cm^-2", &
                               valid_range = [-1.0E30_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_retrieve_prec, &
@@ -837,6 +867,8 @@ contains
                               units = "molecules cm^-2", &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_retrieve_err, &
@@ -846,6 +878,8 @@ contains
                               units = "molecules cm^-2", &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif ! other fitted gases
 
@@ -859,6 +893,8 @@ contains
                               units = o3p_var_nongas_param_names, &
                               valid_range = [-1.0E30_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_ret_prec, &
@@ -868,6 +904,8 @@ contains
                               units = o3p_var_nongas_param_names, &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_ret_err, &
@@ -877,6 +915,8 @@ contains
                               units = o3p_var_nongas_param_names, &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif ! other non-gas parameters
  
@@ -893,16 +933,16 @@ contains
   !! @param[in]    obj        pointer to output file
   !! @param[in]    dimlist    dimension list
   !! @param[in]    num_param  number of other fit parameters
-  !! @param[in]    othunitc   units striing for other fit parameters
+  !! @param[in]    ngas    number of other gas parameters
   !! @param[inout] errstat    error status variable
 !  subroutine append_support_vars(obj, dimlist, num_param, othunitc, errstat)
-  subroutine append_support_vars(obj, dimlist, num_param, errstat)
+  subroutine append_support_vars(obj, dimlist, num_param, ngas, errstat)
 
     implicit none
     
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
-    integer, intent(in) :: num_param
+    integer, intent(in) :: num_param, ngas
 !    character (len=*), intent(in) :: othunitc
     integer, intent(inout) :: errstat
 
@@ -916,6 +956,8 @@ contains
          dimids_window_xtrack_step
     integer, dimension(4) :: dimids_layer_layer_xtrack_step, &
          dimids_wavmax_fitvar_xtrack_step, dimids_fitvar_fitvar_xtrack_step
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
 
     if (errstat < 0) return
 
@@ -947,7 +989,7 @@ contains
                               [o3p_dim_windows, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_window_xtrack_step, &
                               errstat)
-    if (nfgas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_gas, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_gas_xtrack_step, &
@@ -989,6 +1031,8 @@ contains
                               comment = "UV aerosol index", &
                               valid_range = [-200.0_8, 200.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_cld_flag, &
@@ -997,6 +1041,8 @@ contains
                               comment = "cloud flag", &
                               valid_range = [0.0_8, 4.0_8], &
                               fillvalue = fill_uint8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_eff_cld_frac, &
@@ -1005,6 +1051,8 @@ contains
                               comment = "effective cloud fraction", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_eff_cld_pres, &
@@ -1014,6 +1062,8 @@ contains
                               valid_range = [0.0_8, 1013.25_8], &
                               units = "hPa", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_glint_prob, &
@@ -1022,6 +1072,8 @@ contains
                               comment = "glint probablility", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_apriori_prof, &
@@ -1031,6 +1083,8 @@ contains
                               valid_range = [-50.0_8, 700.0_8], &
                               units = "DU", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_apriori_prof_err, &
@@ -1040,6 +1094,8 @@ contains
                               valid_range = [0.0_8, 100.0_8], &
                               units = "DU", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_alt, &
@@ -1049,6 +1105,8 @@ contains
                               valid_range = [0.0_8, 100.0_8], &
                               units = "km", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_temp, &
@@ -1058,6 +1116,8 @@ contains
                               valid_range = [150.0_8, 350.0_8], &
                               units = "Kelvin", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_pres, &
@@ -1067,6 +1127,8 @@ contains
                               valid_range = [0.0_8, 1100.0_8], &
                               units = "hPa", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_index, &
@@ -1075,6 +1137,8 @@ contains
                               comment = "tropopause index", &
                               valid_range = [0.0_8, 100.0_8], &
                               fillvalue = fill_uint1, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_surf_albedo, &
@@ -1083,6 +1147,8 @@ contains
                               comment = "surface albedo", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_fit_wavel, &
@@ -1091,6 +1157,8 @@ contains
                               comment = "number of wavelengths used in fitting", &
                               valid_range = [0.0_8, 1000.0_8], &
                               fillvalue = fill_uint8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_window_wavel, &
@@ -1099,11 +1167,13 @@ contains
                               comment = "number of wavelengths in each fitting window", &
                               valid_range = [0.0_8, 1000.0_8], &
                               fillvalue = fill_uint8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
 
     ! Optional parameters
     ! Other fitted gases
-    if (nfgas > 0 .and. (gaswrt .or. ozwrtvar)) then
+    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
       ! OMI code writes variable names as a very long string in title field
       ! We will write them as a separate array of strings
       call tiof_varlist_append (varlist, errstat, &
@@ -1119,6 +1189,8 @@ contains
                               valid_range = [0.0_8, 1.0E38_8], &
                               units = "molecules cm^-2", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_apriori_err, &
@@ -1128,6 +1200,8 @@ contains
                               valid_range = [0.0_8, 1.0E38_8], &
                               units = "molecules cm^-2", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif !other fitted gases
 
@@ -1154,6 +1228,8 @@ contains
                               valid_range = [-1.0E38_8, 1.0E38_8], &
                               units = o3p_var_nongas_param_names, &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_apriori_err, &
@@ -1163,6 +1239,8 @@ contains
                               valid_range = [-1.0E38_8, 1.0E38_8], &
                               units = o3p_var_nongas_param_names, &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif ! non-gas params
 
@@ -1176,6 +1254,8 @@ contains
                               valid_range = [-32766.0_8, 32767.0_8], &
                               units = "DU", &
                               fillvalue = fill_int16, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
 
     endif
@@ -1189,6 +1269,8 @@ contains
                               comment = "correlation matrix", &
                               valid_range = [-1.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1202,6 +1284,8 @@ contains
                               valid_range = [-10000.0_8, 10000.0_8], &
                               units = "DU", &
                               fillvalue = fill_int16, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1215,6 +1299,8 @@ contains
                               comment = "ozone information content", &
                               valid_range = [0.0_8, 100.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
     ! Contibution matrix
@@ -1226,6 +1312,8 @@ contains
                               comment = "contribution function matrix", &
                               valid_range = [-1.0E38_8, 1.0E38_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1238,6 +1326,8 @@ contains
                               comment = "effective cloud optical depth", &
                               valid_range = [0.0_8, 1000.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1250,6 +1340,8 @@ contains
                               comment = "input aerosol optical thickness", &
                               valid_range = [0.0_8, 20.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_aeros_scatter_thick, &
@@ -1258,6 +1350,8 @@ contains
                               comment = "aerosol scatteringoptical thickness", &
                               valid_range = [0.0_8, 20.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1289,6 +1383,8 @@ contains
     integer, dimension(3) :: dimids_wavmax_xtrack_step, &
          dimids_aeros_xtrack_step
     integer, dimension(4) :: dimids_fitvar_wavmax_xtrack_step
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
 
     if (errstat < 0) return
 
@@ -1333,6 +1429,8 @@ contains
                               comment = "wavelengths used in the retrieval", &
                               valid_range = [100.0_8, 1000.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1345,6 +1443,8 @@ contains
                               comment = "Ring effect spectrum, relative filling-in", &
                               valid_range = [-1.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       endif
 
@@ -1358,6 +1458,8 @@ contains
                               valid_range = [-1.0E38_8, 1.0E38_8], &
                               units = "1/unit of respective variables", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
     ! observed and simulated spectra
@@ -1369,6 +1471,8 @@ contains
                               comment = "observed normalized radiance, I/F", &
                               valid_range = [0.0_8, 10.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_sim_norm_rad, &
@@ -1377,6 +1481,8 @@ contains
                               comment = "simulated normalized radiance, I/F", &
                               valid_range = [0.0_8, 10.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1390,6 +1496,8 @@ contains
                               valid_range = [100.0_8, 1000.0_8], &
                               units="nm", &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
 
@@ -1420,6 +1528,8 @@ contains
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_window_xtrack_step, &
          dimids_wavmax_xtrack_step
+    integer, parameter :: deflate_level = 5
+    logical, parameter :: shuffle = .true.
 
     if (errstat < 0) return
 
@@ -1458,6 +1568,8 @@ contains
                               comment = "retrieval exit status", &
                               valid_range = [-10.0_8, 110.0_8], &
                               fillvalue = fill_uint16, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_iter, &
@@ -1466,6 +1578,8 @@ contains
                               comment = "number of iterations", &
                               valid_range = [0.0_8, 20.0_8], &
                               fillvalue = fill_uint1, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_fit_rms, &
@@ -1474,6 +1588,8 @@ contains
                               comment = "ratio of fitting residual to measurement error", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_avg_resid, &
@@ -1483,6 +1599,8 @@ contains
                               units = "percent", &
                               valid_range = [0.0_8, 100.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
 
     !optional parameter - relative measurement error
@@ -1494,6 +1612,8 @@ contains
                               comment = "relative measurement error", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
                               attlist=att_coord)
     endif
       
@@ -1507,11 +1627,12 @@ contains
 
 
   !> Write all geolocation variables to Level 2 product file
-  !! @param[in] first_pix  index offirst xtrack pixel in use
+  !! @param[in] first_pix  index of first xtrack pixel in use
   !! @param[in] last_pix   index of last xtrack pixel in use
   !! @param[in] ntimes     number of mirror steps in use
   !! @param[inout] errstat  Error status variable
-  subroutine l2_tio_write_geo (first_pix, last_pix, first_line, last_line, errstat)
+  subroutine l2_tio_write_geo (first_pix, last_pix, first_line, last_line, &
+       errstat)
     use OMSAO_pixelcorner_module,only: omi_alllat, omi_alllon, omi_allclat, &
        omi_allclon, omi_allsza, omi_allvza, omi_allaza, omi_alltime, &
        omi_allGeoFlg
@@ -1608,23 +1729,29 @@ contains
 
 
   !> Write data for current pixel to L2 netCDF file
-  !! @param[in]    ipix       current cross-track pixel index (0 based)
-  !! @param[in]    iline      current mirror step index (0 based)
-  !! @param[in]    first_pix  index of first pixel in block
-  !! @param[in]    last_pix  index of first pixel in block
-  !! @param[in]    exval      fitting exit value
-  !! @param[in]    fitcol     ozone column parameters
-  !! @param[in]    dfitcol    ozone column uncertainty parameters
-  !! @param[inout] errstat    error status variable
-  subroutine l2_tio_write_data (ipix, iline, first_pix, last_pix, exval, &
-       fitcol, dfitcol, errstat)
+  !! @param[in]    ipix        current cross-track pixel index (0 based)
+  !! @param[in]    iline       current mirror step index (0 based)
+  !! @param[in]    exval       fitting exit value
+  !! @param[in]    fitcol      ozone column parameters
+  !! @param[in]    dfitcol     ozone column uncertainty parameters
+  !! @param[in]    ngas        number of other gas parameters (nfgas)
+  !! @param[in]    nlayer      number of layers in ozone profile (nlay)
+  !! @param[in]    nfitvar     number of fit variables (n_fitvar_rad)
+  !! @param[in]    nwindow     number of fit windows (numwin)
+  !! @param[in]    num_param   number of non-gas fit parameters
+  !! @param[in]    num_wav_max maximum number of wavelengths in fit
+  !! @param[in]    ozfit_idxs  fit variable starting index (ozfit_start_index)
+  !! @param[in]    ozfit_idxe  fit variable sending index (ozfit_start_index)
+  !! @param[inout] errstat     error status variable
+  subroutine l2_tio_write_data (ipix, iline, exval, fitcol, dfitcol, ngas, &
+       nlayer, nfitvar, nwindow, num_param, num_wav_max, ozfit_idxs, &
+       ozfit_idxe, errstat)
     
     use OMSAO_variables_module, only: n_rad_wvl, nradpix, fitres_rad, &
          fitweights, fitspec_rad, simspec_rad, mask_fitvar_rad, &
          fitvar_rad, fothvarpos, fitvar_rad_nstd, fitvar_rad_std, &
          fitvar_rad_str, fitvar_rad_apriori, fitvar_rad_aperror, fitwavs, &
          fitvar_rad_unit, use_he5_out
-    use OMSAO_parameters_module, only: maxwin!, max_fit_pts
     use OMSAO_pixelcorner_module, only: omi_allMflg
     use ozprof_data_module, only: use_lograd, the_ai, ozprof, ozprof_std, &
          ozprof_nstd, ozprof_ap, ozprof_apstd, tracegas, fgaspos, fgasidxs, &
@@ -1635,25 +1762,25 @@ contains
 
     implicit none
 
-    integer, intent(in) :: ipix, iline, exval, first_pix, last_pix
+    integer, intent(in) :: ipix, iline, exval, ngas, nlayer, nfitvar, &
+         nwindow, num_param, num_wav_max, ozfit_idxs, ozfit_idxe
     integer, intent(inout) ::errstat
     real (kind=8), dimension(3), intent(in) :: fitcol
     real (kind=8), dimension(3,2), intent(in) :: dfitcol
 
-    real (kind=8), dimension (maxwin)           :: allrms, allavgres
+    real (kind=8), dimension (nwindow)           :: allrms, allavgres
     !real (kind=8), dimension (5, n_max_fitpars) :: tempvar
-    real (kind=8), dimension (n_max_fitpars, n_max_fitpars) :: correl
+    real (kind=8), dimension (nfitvar, nfitvar) :: correl
     !real (kind=8), dimension (max_fit_pts)      :: tempring
     real (kind=8)                               :: ncorrl_foo
     real (kind=8) , dimension(n_rad_wvl) :: lfitres_rad
-    integer (KIND= 2), dimension(nlay,nlay   )  :: OzAvgK_I16
+    integer (KIND= 2), dimension(nlayer,nlayer)  :: OzAvgK_I16
     integer (kind=2), dimension (:), allocatable :: ncorrl_1d
-    character (len = 4), dimension(n_max_fitpars)  :: varnames_nNum
-    character (len = 20), dimension(n_max_fitpars) :: units
+    character (len = 4), dimension(nfitvar)  :: varnames_nNum
+    character (len = 20), dimension(nfitvar) :: units
     real (kind=8)  :: avgres
     integer (kind=4) :: i, j, fidx, lidx, ii, irow, jcol, nn
-    integer (kind=4) :: num_elms, num_layer, num_fitvar, num_aeros_wavl, &
-         num_gas, num_param, num_layerp1, num_wav_max
+    integer (kind=4) :: num_elms, num_aeros_wavl, nlayerp1
     logical, save :: first = .true.
 
     type (tiof_file_type), pointer :: obj
@@ -1662,15 +1789,10 @@ contains
 
     obj => primary_output_file
 
-    num_layer = nlay
-    num_layerp1 = num_layer + 1
-    num_elms = (num_layer * (num_layer - 1))/2
-    num_fitvar = n_fitvar_rad
-    num_aeros_wavl = numwin + 2
-    num_gas = nfgas
-    num_param = num_fitvar-num_gas-(ozfit_end_index - ozfit_start_index + 1)
-    num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
-         numwin * 2 * radnhtrunc
+    nlayerp1 = nlayer + 1
+    num_elms = (nlayer * (nlayer - 1))/2
+    num_aeros_wavl = nwindow + 2
+
     ! allocate ncorrl_1d if we need it
     if (ozwrtcovar) then
       allocate(ncorrl_1d(num_elms), stat=errstat)
@@ -1683,7 +1805,7 @@ contains
 
     ! calculate some of the output values
     fidx = 1
-    do i = 1, numwin
+    do i = 1, nwindow
       lidx = fidx + nradpix(i) - 1
       allrms(i) = &
            sqrt(sum((fitres_rad(fidx:lidx)/fitweights(fidx:lidx))**2) / &
@@ -1716,7 +1838,7 @@ contains
          fitspec_rad(1:n_rad_wvl))**2.0)/n_rad_wvl)*100.0
 
     fidx = 1
-    do i = 1, numwin
+    do i = 1, nwindow
       lidx = fidx + nradpix(i) - 1
 !      allavgres(i) = sqrt(sum((abs(fitres_rad(fidx:lidx)) / &
       allavgres(i) = sqrt(sum((abs(lfitres_rad(fidx:lidx)) / &
@@ -1724,7 +1846,7 @@ contains
       fidx = lidx + 1
     enddo
     ! set up array of parameter names and units
-    do i= 1, n_fitvar_rad
+    do i= 1, nfitvar
       write(varnames_nNum(i), '(A4)') &
            trim(fitvar_rad_str(mask_fitvar_rad(i)))
       write(units(i), '(A20)') &
@@ -1736,11 +1858,11 @@ contains
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof, [iline, ipix, 0], &
-         [1,1,nlay], real(ozprof(1:nlay), kind=4), errstat)
+         [1,1,nlayer], real(ozprof(1:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_prec, [iline, ipix, 0], &
-         [1,1,nlay], real(ozprof_nstd(1:nlay), kind=4), errstat)
+         [1,1,nlayer], real(ozprof_nstd(1:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_err, [iline, ipix, 0], &
-         [1,1,nlay], real(ozprof_std(1:nlay), kind=4), errstat)
+         [1,1,nlayer], real(ozprof_std(1:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3, [iline, ipix], &
          [1,1], [real(fitcol(1), kind=4)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3_prec, [iline, ipix], &
@@ -1762,15 +1884,16 @@ contains
     ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
     ! Optional products 
     ! other fitted gases
-    if ( nfgas > 0 .and. (gaswrt .or. ozwrtvar) ) then
+    if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve, [iline, ipix, 0], &
-         [1,1, nfgas], real(tracegas(fgaspos(1:nfgas), 4), kind=4), errstat)
+         [1,1, ngas], real(tracegas(fgaspos(1:ngas), 4), kind=4), &
+         errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve_prec, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         real(tracegas(fgaspos(1:nfgas), 6), kind=4), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         real(tracegas(fgaspos(1:ngas), 6), kind=4), errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve_err, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         real(tracegas(fgaspos(1:nfgas), 5), kind=4), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         real(tracegas(fgaspos(1:ngas), 5), kind=4), errstat)
     endif
     ! non-gas fitted params
     if (num_param > 0 .and. ozwrtvar) then
@@ -1801,15 +1924,15 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
          [real(the_ai, kind=4)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
-         [1,1, num_layerp1], real(atmosprof(1,0:nlay), kind=4), errstat)
+         [1,1, nlayerp1], real(atmosprof(1,0:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
-         [1,1, num_layerp1], real(atmosprof(2,0:nlay), kind=4), errstat)
+         [1,1, nlayerp1], real(atmosprof(2,0:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
-         [1,1, num_layerp1], real(atmosprof(3,0:nlay), kind=4), errstat)
+         [1,1, nlayerp1], real(atmosprof(3,0:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof, [iline, ipix, 0], &
-         [1,1,nlay], real(ozprof_ap(1:nlay), kind=4), errstat)
+         [1,1,nlayer], real(ozprof_ap(1:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &
-         [1,1,nlay], real(ozprof_apstd(1:nlay), kind=4), errstat)
+         [1,1,nlayer], real(ozprof_apstd(1:nlayer), kind=4), errstat)
     call tiof_put1d_i4 (obj, o3p_var_tropo_index, [iline, ipix], &
          [1,1], [ntp], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_frac, [iline, ipix], &
@@ -1825,22 +1948,22 @@ contains
     call tiof_put1d_ui4 (obj, o3p_var_fit_wavel, &
          [iline, ipix], [1,1], [n_rad_wvl], errstat)
     call tiof_put1d_ui4 (obj, o3p_var_window_wavel, &
-         [iline, ipix, 0], [1,1,numwin], nradpix(1:numwin), errstat)
+         [iline, ipix, 0], [1,1,nwindow], nradpix(1:nwindow), errstat)
     ! Optional parameters
     ! Other fitted gases
-    if ( nfgas > 0 .and. (gaswrt .or. ozwrtvar) ) then
+    if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_apriori, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         real(tracegas(fgaspos(1:nfgas), 2), kind=4), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         real(tracegas(fgaspos(1:ngas), 2), kind=4), errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_apriori_err, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         real(tracegas(fgaspos(1:nfgas), 3), kind=4), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         real(tracegas(fgaspos(1:ngas), 3), kind=4), errstat)
       if (first) then
 ! FIXME
 ! see non-gas param names below
-!        call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, nfgas, &
-!             varnames_nNum(fgasidxs(fgaspos(1:nfgas))), errstat)
-        do i=1,nfgas
+!        call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, ngas, &
+!             varnames_nNum(fgasidxs(fgaspos(1:ngas))), errstat)
+        do i=1,ngas
           call tiof_put1d_string (obj, o3p_var_other_gas_names, i-1, 1, &
                [varnames_nNum(fgasidxs(fgaspos(i)))//c_null_char], errstat)
         enddo
@@ -1874,15 +1997,15 @@ contains
     endif
     !averaging kernels
     if (ozwrtavgk) then
-      i = ozfit_start_index; j = ozfit_end_index
+      i = ozfit_idxs; j = ozfit_idxe
       ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
-      OzAvgK_I16(1:nlay,1:nlay) = nint(avg_kernel(i:j, i:j)*1.0d4, KIND= 2)
+      OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*1.0d4, KIND= 2)
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
-           [1,1,nlay,nlay], transpose(OzAvgK_I16(1:nlay,1:nlay)), errstat)
+           [1,1,nlayer,nlayer], transpose(OzAvgK_I16(1:nlayer,1:nlayer)), errstat)
     endif
     !correlation matrix
     if (ozwrtcorr) then
-      do i = 1, n_fitvar_rad
+      do i = 1, nfitvar
         correl(i, i) = 1.0
         do j = 1, i - 1
           correl(i, j) = covar(i, j) / sqrt(covar(i, i) * covar(j, j))
@@ -1890,17 +2013,17 @@ contains
         enddo
       enddo
       call tiof_put2d_r4 (obj, o3p_var_correl, &
-         [iline, ipix, 0, 0], [1,1,n_fitvar_rad,n_fitvar_rad], &
-         real(correl(1:n_fitvar_rad, 1:n_fitvar_rad), &
+         [iline, ipix, 0, 0], [1,1,nfitvar,nfitvar], &
+         real(correl(1:nfitvar, 1:nfitvar), &
          kind=4), errstat)
     endif
     !noise matrix
     if (ozwrtcovar) then
-      i = ozfit_start_index; j = ozfit_end_index
+      i = ozfit_idxs; j = ozfit_idxe
       nn = j-i+1
-      if( nn /= nlay ) then 
+      if( nn /= nlayer ) then
         call tell_error (tell_io_write_error, &
-                       "l2_tio_write_data: nn not equal to nlay", &
+                       "l2_tio_write_data: nn not equal to nlayer", &
                        errstat)
       endif
       ii = 0
@@ -1921,18 +2044,18 @@ contains
          [iline, ipix, 0], [1,1,num_elms], &
          ncorrl_1d(1:num_elms), errstat)
       !
-      ! FIXME - ozone information content is should have its own switch
+      ! FIXME - ozone information content should have its own switch
       call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
          [1,1], [real(ozinfo, kind=4)], errstat)
     endif
     !contribution matrix
     if (ozwrtcontri) then
       if (num_wav_max > n_rad_wvl) then
-        contri(1:n_fitvar_rad, n_rad_wvl+1:num_wav_max) = 0.D0
+        contri(1:nfitvar, n_rad_wvl+1:num_wav_max) = 0.D0
       endif
       call tiof_put2d_r4 (obj, o3p_var_contrib_func, &
-         [iline, ipix, 0, 0], [1,1,n_fitvar_rad,num_wav_max], &
-         real(transpose(contri(1:n_fitvar_rad, 1:num_wav_max)), KIND=4), &
+         [iline, ipix, 0, 0], [1,1,nfitvar,num_wav_max], &
+         real(transpose(contri(1:nfitvar, 1:num_wav_max)), KIND=4), &
          errstat)
     endif
    !cloud optical depth
@@ -1975,11 +2098,11 @@ contains
     !weighting function
     if (ozwrtwf) then
       if (num_wav_max > n_rad_wvl) then
-        weight_function(n_rad_wvl+1:num_wav_max, 1:n_fitvar_rad) = 0.D0
+        weight_function(n_rad_wvl+1:num_wav_max, 1:nfitvar) = 0.D0
       endif
       call tiof_put2d_r4 (obj, o3p_var_weight_func, &
-         [iline, ipix, 0, 0], [1,1,num_wav_max,n_fitvar_rad], &
-         real(transpose(weight_function(1:num_wav_max,1:n_fitvar_rad)), &
+         [iline, ipix, 0, 0], [1,1,num_wav_max,nfitvar], &
+         real(transpose(weight_function(1:num_wav_max,1:nfitvar)), &
          kind=4), errstat)
     endif
      ! normalized observed & simulated spectra
@@ -2011,16 +2134,16 @@ contains
     call tiof_put1d_i4 (obj, o3p_var_iter, &
          [iline, ipix], [1,1], [num_iter], errstat)
     call tiof_put1d_r4 (obj, o3p_var_fit_rms, &
-         [iline, ipix, 0], [1,1,numwin], &
-         real(allrms(1:numwin), kind=4), errstat)
+         [iline, ipix, 0], [1,1,nwindow], &
+         real(allrms(1:nwindow), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_avg_resid, &
-         [iline, ipix, 0], [1,1,numwin], &
-         real(allavgres(1:numwin), kind=4), errstat)
+         [iline, ipix, 0], [1,1,nwindow], &
+         real(allavgres(1:nwindow), kind=4), errstat)
     call tiof_put1d_i2 (obj, o3p_var_mqf, &
          [iline], [1], [omi_allMflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
-      call tiof_put1d_r4 (obj, o3p_var_avg_resid, &
+      call tiof_put1d_r4 (obj, o3p_var_fit_weight, &
            [iline, ipix, 0], [1,1,num_wav_max], &
            real(fitweights(1:num_wav_max), kind=4), errstat)
     endif
@@ -2034,7 +2157,7 @@ contains
 
     !tidy up
     first = .false.
-    deallocate(ncorrl_1d, stat=errstat)
+    if (allocated(ncorrl_1d)) deallocate(ncorrl_1d, stat=errstat)
 
   end subroutine l2_tio_write_data
 
@@ -2042,38 +2165,44 @@ contains
 
 
   !> Write data for current pixel to L2 netCDF file
-  !! @param[in]    ipix       current cross-track pixel index (0 based)
-  !! @param[in]    iline      current mirror step index (0 based)
-  !! @param[in]    first_pix  index of first pixel in block
-  !! @param[in]    last_pix  index of first pixel in block
-  !! @param[in]    exval      fitting exit value
-  !! @param[inout] errstat    error status variable
-  subroutine l2_tio_fill_data (ipix, iline, first_pix, last_pix, exval, &
-       errstat)
+  !! @param[in]    ipix        current cross-track pixel index (0 based)
+  !! @param[in]    iline       current mirror step index (0 based)
+  !! @param[in]    exval       fitting exit value
+  !! @param[in]    ngas        number of other gas parameters (nfgas)
+  !! @param[in]    nlayer      number of layers in ozone profile (nfgas)
+  !! @param[in]    nfitvar     number of fit variables (n_fitvar_rad)
+  !! @param[in]    nwindow     number of fit windows (numwin)
+  !! @param[in]    num_param   number of non-gas fit parameters
+  !! @param[in]    num_wav_max maximum number of wavelengths in fit
+  !! @param[in]    ozfit_idxs  fit variable starting index (ozfit_start_index)
+  !! @param[in]    ozfit_idxe  fit variable sending index (ozfit_start_index)
+  !! @param[inout] errstat     error status variable
+  subroutine l2_tio_fill_data (ipix, iline, exval, ngas, nlayer, nfitvar, &
+       nwindow, num_param, num_wav_max, ozfit_idxs, ozfit_idxe, errstat)
 
-    use OMSAO_parameters_module, only: maxwin, max_fit_pts
     use OMSAO_pixelcorner_module, only: omi_allMflg
 
     implicit none
 
-    integer, intent(in) :: ipix, iline, exval, first_pix, last_pix
+    integer, intent(in) :: ipix, iline, exval, ngas, nlayer, nfitvar, &
+         nwindow, ozfit_idxs, ozfit_idxe
     integer, intent(inout) ::errstat
 
     integer (kind=4) :: i, j
-    integer (kind=4) :: num_elms, num_layer, num_fitvar, num_aeros_wavl, &
-         num_gas, num_param, num_layerp1, num_wav_max
-    real (KIND=4), dimension(0:nlay)      :: tmp1D_layer
-    real (KIND=4), dimension(n_max_fitpars) :: tmp1D_fitvar
-    real (KIND=4), dimension(max_fit_pts)   :: tmp1D_fitpts
-    real (KIND=4), dimension(maxwin)        :: tmp1D_numwin
+    integer (kind=4) :: num_elms, num_aeros_wavl, num_param, nlayerp1, &
+         num_wav_max
+    real (KIND=4), dimension(0:nlayer)      :: tmp1D_layer
+    real (KIND=4), dimension(nfitvar) :: tmp1D_fitvar
+    real (KIND=4), dimension(num_wav_max)   :: tmp1D_fitpts
+    real (KIND=4), dimension(nwindow)        :: tmp1D_numwin
     !integer (KIND=2), dimension(maxwin)      :: tmp1D_num
-    integer (KIND=4), dimension(maxwin)      :: tmp1D_num
-    integer (KIND=2), dimension(nlay*(nlay-1)/2)       :: tmp1D_ncorrl
-    integer(KIND=2), dimension(n_max_fitpars, n_max_fitpars) :: tmp2D_fitvarK16
-    real (KIND=4), dimension(maxwin+2)      :: tmp1D_aer
-    real (KIND=4), dimension(n_max_fitpars, n_max_fitpars) :: tmp2D_fitvar
-    real (KIND=4), dimension(n_max_fitpars, max_fit_pts)   :: tmp2D_contri
-    real (KIND=4), dimension(max_fit_pts, n_max_fitpars)   :: tmp2D_wf
+    integer (KIND=4), dimension(nwindow)      :: tmp1D_num
+    integer (KIND=2), dimension(nlayer*(nlayer-1)/2)       :: tmp1D_ncorrl
+    integer(KIND=2), dimension(nfitvar, nfitvar) :: tmp2D_fitvarK16
+    real (KIND=4), dimension(nwindow+2)      :: tmp1D_aer
+    real (KIND=4), dimension(nfitvar, nfitvar) :: tmp2D_fitvar
+    real (KIND=4), dimension(nfitvar, num_wav_max)   :: tmp2D_contri
+    real (KIND=4), dimension(num_wav_max, nfitvar)   :: tmp2D_wf
 
     type (tiof_file_type), pointer :: obj
 
@@ -2081,30 +2210,24 @@ contains
 
     obj => primary_output_file
 
-    num_layer = nlay
-    num_layerp1 = num_layer + 1
-    num_elms = (num_layer * (num_layer - 1))/2
-    num_fitvar = n_fitvar_rad
-    num_aeros_wavl = numwin + 2
-    num_gas = nfgas
-    num_param = num_fitvar-num_gas-(ozfit_end_index - ozfit_start_index + 1)
-    num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
-         numwin * 2 * radnhtrunc
+    nlayerp1 = nlayer + 1
+    num_elms = (nlayer * (nlayer - 1))/2
+    num_aeros_wavl = nwindow + 2
 
-    tmp1D_layer(0:nlay)          = real(fill_double, kind=4)
-    tmp1D_numwin(1:numwin)       = real(fill_double, kind=4)
-    tmp1D_num(1:numwin)          = int(fill_uint8, kind=4)
-    tmp1D_fitvar(1:n_fitvar_rad) = real(fill_double, kind=4)
+    tmp1D_layer(0:nlayer)          = real(fill_double, kind=4)
+    tmp1D_numwin(1:nwindow)       = real(fill_double, kind=4)
+    tmp1D_num(1:nwindow)          = int(fill_uint8, kind=4)
+    tmp1D_fitvar(1:nfitvar) = real(fill_double, kind=4)
     tmp1D_fitpts(1:num_wav_max)  = real(fill_double, kind=4)
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof, [iline, ipix, 0], &
-         [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
+         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_prec, [iline, ipix, 0], &
-         [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
+         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_err, [iline, ipix, 0], &
-         [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
+         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3, [iline, ipix], &
          [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3_prec, [iline, ipix], &
@@ -2126,15 +2249,15 @@ contains
     ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
     ! Optional products 
     ! other fitted gases
-    if ( nfgas > 0 .and. (gaswrt .or. ozwrtvar) ) then
+    if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve, [iline, ipix, 0], &
-         [1,1, nfgas], tmp1D_fitvar(1:nfgas), errstat)
+         [1,1, ngas], tmp1D_fitvar(1:ngas), errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve_prec, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         tmp1D_fitvar(1:nfgas), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         tmp1D_fitvar(1:ngas), errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve_err, &
-         [iline, ipix, 0], [1,1, nfgas], &
-         tmp1D_fitvar(1:nfgas), errstat)
+         [iline, ipix, 0], [1,1, ngas], &
+         tmp1D_fitvar(1:ngas), errstat)
      endif
     ! non-gas fitted params
     if (num_param > 0 .and. ozwrtvar) then
@@ -2162,15 +2285,15 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
          [tmp1D_layer(0)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
+         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
+         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
-         [1,1, num_layerp1], tmp1D_layer(0:nlay), errstat)
+         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof, [iline, ipix, 0], &
-         [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
+         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &
-         [1,1,nlay], tmp1D_layer(0:nlay-1), errstat)
+         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_i4(obj, o3p_var_tropo_index, [iline, ipix], &
          [1,1], [int(fill_uint1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_frac, [iline, ipix], &
@@ -2186,14 +2309,14 @@ contains
     call tiof_put1d_ui4 (obj, o3p_var_fit_wavel, &
          [iline, ipix], [1,1], [int(fill_uint8)], errstat)
     call tiof_put1d_ui4 (obj, o3p_var_window_wavel, &
-         [iline, ipix, 0], [1,1,numwin], tmp1D_num(1:numwin), errstat)
+         [iline, ipix, 0], [1,1,nwindow], tmp1D_num(1:nwindow), errstat)
     ! Optional parameters
     ! Other fitted gases
-    if ( nfgas > 0 .and. (gaswrt .or. ozwrtvar) ) then
+    if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_apriori, &
-         [iline, ipix, 0], [1,1, nfgas], tmp1D_fitvar(1:nfgas), errstat)
+         [iline, ipix, 0], [1,1, ngas], tmp1D_fitvar(1:ngas), errstat)
       call tiof_put1d_r4 (obj, o3p_var_other_gas_apriori_err, &
-         [iline, ipix, 0], [1,1, nfgas], tmp1D_fitvar(1:nfgas), errstat)
+         [iline, ipix, 0], [1,1, ngas], tmp1D_fitvar(1:ngas), errstat)
     endif
     ! Non-gas fitted parameters
     if (num_param > 0 .and. ozwrtvar) then
@@ -2206,20 +2329,20 @@ contains
     endif
     !averaging kernels
     if (ozwrtavgk) then
-      i = ozfit_start_index; j = ozfit_end_index
+      i = ozfit_idxs; j = ozfit_idxe
       tmp2D_fitvarK16(i:j, i:j) = int(fill_int16, kind=2)
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
-           [1,1,nlay,nlay], tmp2D_fitvarK16(i:j, i:j), errstat)
+           [1,1,nlayer,nlayer], tmp2D_fitvarK16(i:j, i:j), errstat)
     endif
     !correlation matrix
     if (ozwrtcorr) then
       call tiof_put2d_r4 (obj, o3p_var_correl, &
-         [iline, ipix, 0, 0], [1,1,n_fitvar_rad,n_fitvar_rad], &
-         tmp2D_fitvar(1:n_fitvar_rad, 1:n_fitvar_rad), errstat)
+         [iline, ipix, 0, 0], [1,1,nfitvar,nfitvar], &
+         tmp2D_fitvar(1:nfitvar, 1:nfitvar), errstat)
     endif
     !noise matrix
     if (ozwrtcovar) then
-      i = ozfit_start_index; j = ozfit_end_index
+      i = ozfit_idxs; j = ozfit_idxe
       tmp1D_ncorrl(1:num_elms) = int(fill_int16, kind=2)
       call tiof_put1d_i2 (obj, o3p_var_o3_noise_matrix, &
          [iline, ipix, 0], [1,1,num_elms], &
@@ -2231,10 +2354,10 @@ contains
     endif
     !contribution matrix
     if (ozwrtcontri) then
-      tmp2D_contri(1:n_fitvar_rad, 1:num_wav_max) = real(fill_double, kind=4)
+      tmp2D_contri(1:nfitvar, 1:num_wav_max) = real(fill_double, kind=4)
       call tiof_put2d_r4 (obj, o3p_var_contrib_func, &
-         [iline, ipix, 0, 0], [1,1,n_fitvar_rad,num_wav_max], &
-         tmp2D_contri(1:n_fitvar_rad, 1:num_wav_max), errstat)
+         [iline, ipix, 0, 0], [1,1,nfitvar,num_wav_max], &
+         tmp2D_contri(1:nfitvar, 1:num_wav_max), errstat)
     endif
     !cloud optical depth
     if (.not. do_lambcld) then  
@@ -2271,10 +2394,10 @@ contains
     endif
     !weighting function
     if (ozwrtwf) then
-      tmp2D_wf(1:num_wav_max, 1:n_fitvar_rad) = real(fill_double, kind=4)
+      tmp2D_wf(1:num_wav_max, 1:nfitvar) = real(fill_double, kind=4)
       call tiof_put2d_r4 (obj, o3p_var_weight_func, &
-         [iline, ipix, 0, 0], [1,1,num_wav_max,n_fitvar_rad], &
-         tmp2D_wf(1:num_wav_max,1:n_fitvar_rad), errstat)
+         [iline, ipix, 0, 0], [1,1,num_wav_max,nfitvar], &
+         tmp2D_wf(1:num_wav_max,1:nfitvar), errstat)
     endif
     ! normalized observed & simulated spectra
     if (ozwrtres) then
@@ -2298,11 +2421,11 @@ contains
     call tiof_put1d_i4 (obj, o3p_var_iter, &
          [iline, ipix], [1,1], [int(fill_uint1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_fit_rms, &
-         [iline, ipix, 0], [1,1,numwin], &
-         tmp1D_numwin(1:numwin), errstat)
+         [iline, ipix, 0], [1,1,nwindow], &
+         tmp1D_numwin(1:nwindow), errstat)
     call tiof_put1d_r4 (obj, o3p_var_avg_resid, &
-         [iline, ipix, 0], [1,1,numwin], &
-         tmp1D_numwin(1:numwin), errstat)
+         [iline, ipix, 0], [1,1,nwindow], &
+         tmp1D_numwin(1:nwindow), errstat)
     call tiof_put1d_i2 (obj, o3p_var_mqf, & ! there should always be an mflag
          [iline], [1], [omi_allMflg(iline)], errstat)
     !Optional param - relative measurement error
@@ -2320,6 +2443,345 @@ contains
 
 
   end subroutine l2_tio_fill_data
+
+
+  !> Write all geolocation variables to merged Level 2 product file
+  !-----------------------------------------------------------------
+  !
+  !> @param[in]    nstep      size of mirror step dimension
+  !> @param[in]    nxtrack    size of cross-track dimension
+  !> @param[in]    ncorner    size of corner dimension
+  !> @param[inout] errstat    Error status variable
+  !
+  !> @author E. O'Sullivan November 2016
+  !-----------------------------------------------------------------
+  subroutine write_merged_geo (nstep, nxtrack, ncorner, errstat)
+
+    use m_o3p_params, only: lon, lat, aza, sza, vza, corner_lon, corner_lat, &
+         time, geoflg
+
+    implicit none
+
+    integer (kind=4), intent(in) :: nstep, nxtrack, ncorner
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat < 0) return
+
+    obj => primary_output_file
+
+    ! geolocation group
+    call tiof_push_group (obj, o3p_grp_geolocation, errstat)
+    call tiof_put1d_r8 (obj, o3p_var_time, [0], [nstep], time, errstat)
+    call tiof_put2d_ui2 (obj, o3p_var_geoflg, [0, 0], [nstep, nxtrack], &
+         geoflg, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_latitude, [0,0], &
+         [nstep, nxtrack], lat, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_longitude, [0,0], &
+         [nstep, nxtrack], lon, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_ra_angle, [0,0], &
+         [nstep, nxtrack], aza, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_sz_angle, [0,0], &
+         [nstep, nxtrack], sza, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_vz_angle, [0,0], &
+         [nstep, nxtrack], vza, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_latitude_bounds, [0,0,0], &
+         [nstep, nxtrack, ncorner], corner_lat, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, [0,0,0], &
+         [nstep, nxtrack, ncorner], corner_lon, errstat)
+
+    call tiof_pop_group (obj, errstat)
+
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, "write_merged_geo: failed", &
+           errstat)
+      return
+    endif
+
+  end subroutine write_merged_geo
+
+
+  !> Write all geolocation variables to merged Level 2 product file
+  !-----------------------------------------------------------------
+  !
+  !> @param[in]    nstep        size of mirror step dimension
+  !> @param[in]    nxtrack      size of cross-track dimension
+  !> @param[in]    min_step     minimum step value
+  !> @param[in]    ngas         size of gas variables dimension
+  !> @param[in]    nnongas      size of nongas variables dimension
+  !> @param[in]    nlayer       size of layer dimension
+  !> @param[in]    nfitvars     size of fit variables dimension
+  !> @param[in]    nfitwins     size of fit windows dimension
+  !> @param[in]    nmax_wavs    size of wavelength dimension
+  !> @param[in]    nnoise_elems size of noise elements dimension
+  !> @param[in]    naeros_wavs  size of aerosol wavelengths dimension
+  !> @param[inout] errstat      Error status variable
+  !
+  !> @author E. O'Sullivan November 2016
+  !-----------------------------------------------------------------
+  subroutine write_merged_data (nstep, nxtrack, min_step, ngas, nnongas, &
+       nlayer, nfitvars, nfitwins, nmax_wavs, nnoise_elems, naeros_wavs, &
+       errstat)
+
+    use m_o3p_params, only: ozprof, ozprof_prec, ozprof_err, o3tot, &
+         o3tot_prec, o3tot_err, o3strat, o3strat_prec, o3strat_err, &
+         o3trop, o3trop_prec, o3trop_err, gas, gas_prec, gas_err, &
+         nongas, nongas_prec, nongas_err, aeros_idx, ozprof_pres, &
+         ozprof_alt, ozprof_temp, o3apriori, o3apriori_err, tropo_idx, &
+         cld_frac, cld_pres, cld_flag, glintprob, eff_alb, n_fit_wvl, &
+         n_window_wvl, gas_apriori, gas_apriori_err, nongas_apriori, &
+         nongas_apriori_err, gas_names, nongas_names, nongas_units, &
+         avg_kernel, correl_mtrx, noise_mtrx, ozinfo, contrib_mtrx, &
+         cld_opt_depth, aeros_opt_thick, aeros_scatter_thick, &
+         exval,wavelengths, wgt_func, norm_rad, sim_norm_rad, exval, &
+         iterations, mqf, rms, avg_resid, fit_wgt
+    use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
+         ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
+         ozwrtvar, gaswrt, aerosol, do_lambcld
+    use OMSAO_variables_module, only: reduce_resolution
+    use ISO_C_BINDING, only: c_null_char
+
+    implicit none
+
+    integer, intent(in) :: nstep, nxtrack, ngas, nnongas, nlayer, nfitvars, &
+         nfitwins, nmax_wavs, nnoise_elems, naeros_wavs, min_step
+    integer, intent(inout) ::errstat
+    integer :: nlayerp1
+
+    type (tiof_file_type), pointer :: obj
+
+    integer :: i, j
+
+    if (errstat < 0) return
+
+    obj => primary_output_file
+
+    nlayerp1 = nlayer + 1
+
+
+    ! Product group
+    call tiof_push_group (obj, o3p_grp_product, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof, [0, 0, 0], &
+         [nstep, nxtrack, nlayer], ozprof, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_prec, [0, 0, 0], &
+         [nstep, nxtrack, nlayer], ozprof_prec, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_err, [0, 0, 0], &
+         [nstep, nxtrack, nlayer], ozprof_err, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_total_o3, [0,0], &
+         [nstep, nxtrack], o3tot, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_total_o3_prec, [0,0], &
+         [nstep, nxtrack], o3tot_prec, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_total_o3_err, [0,0], &
+         [nstep, nxtrack], o3tot_err, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3, [0,0], &
+         [nstep, nxtrack], o3strat, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3_prec, [0,0], &
+         [nstep, nxtrack], o3strat_prec, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3_err, [0,0], &
+         [nstep, nxtrack], o3strat_err, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3, [0,0], &
+         [nstep, nxtrack], o3trop, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_prec, [0,0], &
+         [nstep, nxtrack], o3trop_prec, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_err, [0,0], &
+         [nstep, nxtrack], o3trop_err, errstat)
+    ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
+    ! Optional products
+    ! other fitted gases
+    if ( ngas > 0 .and. gaswrt ) then
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve, [0, 0, 0], &
+         [nstep, nxtrack, ngas], gas, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve_prec, &
+         [0, 0, 0], [nstep, nxtrack, ngas], gas_prec, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve_err, &
+         [0, 0, 0], [nstep, nxtrack, ngas], gas_err, errstat)
+    endif
+    ! non-gas fitted params
+    if (nnongas > 0 .and. ozwrtvar) then
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_retrieve, &
+         [0, 0, 0], [nstep, nxtrack, nnongas], nongas, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret_prec, &
+         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_prec, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret_err, &
+         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_err, errstat)
+    endif
+
+    call tiof_pop_group (obj, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "write_merged_data: writing to product group", &
+                       errstat)
+      return
+    endif
+
+    ! Support data group
+    call tiof_push_group (obj, o3p_grp_support_data, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_aeros_index, [0,0], [nstep, nxtrack], &
+         aeros_idx, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_profile_pres, [0, 0, 0], &
+         [nstep, nxtrack, nlayerp1], ozprof_pres, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_profile_alt, [0, 0, 0], &
+         [nstep, nxtrack, nlayerp1], ozprof_alt, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_profile_temp, [0, 0, 0], &
+         [nstep, nxtrack, nlayerp1], ozprof_temp, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof, [0, 0, 0], &
+         [nstep, nxtrack, nlayer], o3apriori, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof_err, [0, 0, 0], &
+         [nstep, nxtrack, nlayer], o3apriori_err, errstat)
+    call tiof_put2d_i4 (obj, o3p_var_tropo_index, [0, 0], &
+         [nstep, nxtrack], tropo_idx, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_eff_cld_frac, [0, 0], &
+         [nstep, nxtrack], cld_frac, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_eff_cld_pres, [0, 0], &
+         [nstep, nxtrack], cld_pres, errstat)
+    call tiof_put2d_i4 (obj, o3p_var_cld_flag, [0, 0], &
+         [nstep, nxtrack], cld_flag, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_glint_prob, [0, 0], &
+         [nstep, nxtrack], glintprob, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_surf_albedo, [0, 0], &
+         [nstep, nxtrack], eff_alb, errstat)
+    call tiof_put2d_ui4 (obj, o3p_var_fit_wavel, &
+         [0, 0], [nstep, nxtrack], n_fit_wvl, errstat)
+    call tiof_put3d_ui4 (obj, o3p_var_window_wavel, &
+         [0, 0, 0], [nstep, nxtrack, nfitwins], n_window_wvl, errstat)
+    ! Optional parameters
+    ! Other fitted gases
+    if ( ngas > 0 .and. gaswrt ) then
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_apriori, &
+         [0, 0, 0], [nstep, nxtrack, ngas], gas_apriori, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_apriori_err, &
+         [0, 0, 0], [nstep, nxtrack, ngas], gas_apriori_err, errstat)
+      call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, ngas, &
+             gas_names, errstat)
+!        do i=1,ngas
+!          call tiof_put1d_string (obj, o3p_var_other_gas_names, i-1, 1, &
+!               [varnames_nNum(fgasidxs(fgaspos(i)))//c_null_char], errstat)
+!        enddo
+    endif
+    ! Non-gas fitted parameters
+    if (nnongas > 0 .and. ozwrtvar) then
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_apriori, &
+         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_apriori, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_apriori_err, &
+         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_apriori_err, errstat)
+      call tiof_put1d_string (obj, o3p_var_nongas_param_names, 0, &
+           nnongas, nongas_names, errstat)
+      call tiof_put1d_string (obj, o3p_var_nongas_param_units, 0, &
+           nnongas, nongas_units, errstat)
+!        do i = 1, nnongas
+!          call tiof_put1d_string (obj, o3p_var_nongas_param_names, i-1, &
+!               1, [varnames_nNum(fothvarpos(i))//c_null_char], errstat)
+!          call tiof_put1d_string (obj, o3p_var_nongas_param_units, i-1, &
+!               1, [units(fothvarpos(i))//c_null_char], errstat)
+!        enddo
+    endif
+    !averaging kernels
+    if (ozwrtavgk) then
+      !FIXME - needs tiof_put4d_i2
+!      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
+!           [nstep, nxtrack, nlayer, nlayer], avg_kernel, errstat)
+      do i=0, nstep-1
+        j=i+min_step
+        call tiof_put3d_i2 (obj, o3p_var_o3_avg_kernel, [i, 0, 0, 0], &
+             [1, nxtrack, nlayer, nlayer], avg_kernel(:,:,:,j), errstat)
+      enddo
+    endif
+    !correlation matrix
+    if (ozwrtcorr) then
+      call tiof_put4d_r4 (obj, o3p_var_correl, [0, 0, 0, 0], &
+           [nstep, nxtrack, nfitvars, nfitvars], correl_mtrx, errstat)
+    endif
+    !noise matrix
+    if (ozwrtcovar) then
+      call tiof_put3d_i2 (obj, o3p_var_o3_noise_matrix, &
+         [0, 0, 0], [nstep, nxtrack, nnoise_elems], &
+         noise_mtrx, errstat)
+      !
+      ! FIXME - ozone information content should have its own switch
+      call tiof_put2d_r4 (obj, o3p_var_o3_info_content, [0, 0], &
+         [nstep, nxtrack], ozinfo, errstat)
+    endif
+    !contribution matrix
+    if (ozwrtcontri) then
+      call tiof_put4d_r4 (obj, o3p_var_contrib_func, &
+         [0, 0, 0, 0], [nstep, nxtrack, nfitvars, nmax_wavs], &
+         contrib_mtrx, errstat)
+    endif
+   !cloud optical depth
+    if (.not. do_lambcld) then
+      call tiof_put2d_r4 (obj, o3p_var_cld_opt_depth, [0, 0], &
+           [nstep, nxtrack], cld_opt_depth, errstat)
+    endif
+    !aerosols
+    if (aerosol) then
+      call tiof_put3d_r4 (obj, o3p_var_aeros_opt_thick, [0, 0, 0], &
+           [nstep, nxtrack, naeros_wavs], aeros_opt_thick, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_aeros_scatter_thick, [0, 0, 0], &
+           [nstep, nxtrack, naeros_wavs], aeros_scatter_thick, errstat)
+    endif
+    call tiof_pop_group (obj, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "write_merged_data: writing to support data group", &
+                       errstat)
+      return
+    endif
+
+    ! Diagnostic group
+    call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    ! Optional parameters
+    ! fitted wavelengths
+    if (.not. reduce_resolution) then
+      call tiof_put3d_r4 (obj, o3p_var_wavel, [0, 0, 0], &
+           [nstep, nxtrack, nmax_wavs], wavelengths, errstat)
+    endif
+    !weighting function
+    if (ozwrtwf) then
+      call tiof_put4d_r4 (obj, o3p_var_weight_func, [0, 0, 0, 0], &
+           [nstep, nxtrack, nmax_wavs, nfitvars], wgt_func, errstat)
+    endif
+     ! normalized observed & simulated spectra
+    if (ozwrtres) then
+      call tiof_put3d_r4 (obj, o3p_var_sim_norm_rad, [0, 0, 0], &
+           [nstep, nxtrack, nmax_wavs], sim_norm_rad, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_norm_radiance, [0, 0, 0], &
+           [nstep, nxtrack, nmax_wavs], norm_rad, errstat)
+    endif
+    call tiof_pop_group (obj, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "l2_tio_write_data: writing to diagnostic group", &
+                       errstat)
+      return
+    endif
+
+    ! QA stats group
+    call tiof_push_group (obj, o3p_grp_qa_stats, errstat)
+    call tiof_put2d_i4 (obj, o3p_var_exit_stat, [0, 0], &
+         [nstep, nxtrack], exval, errstat)
+    call tiof_put2d_i4 (obj, o3p_var_iter, [0, 0], [nstep, nxtrack], &
+         iterations, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_fit_rms,[0, 0, 0], &
+         [nstep, nxtrack, nfitwins], rms, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_avg_resid, [0, 0, 0], &
+         [nstep, nxtrack, nfitwins], avg_resid, errstat)
+    call tiof_put1d_i2 (obj, o3p_var_mqf, [0], [nstep], mqf, errstat)
+    !Optional param - relative measurement error
+    if (ozwrtsnr) then
+      call tiof_put3d_r4 (obj, o3p_var_fit_weight, [0, 0, 0], &
+           [nstep, nxtrack, nmax_wavs], fit_wgt, errstat)
+    endif
+    call tiof_pop_group (obj, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_write_error, &
+                       "l2_tio_write_data: writing to qa_stats group", &
+                       errstat)
+      return
+    endif
+
+  end subroutine write_merged_data
+
 
 
 end module tio_output_module

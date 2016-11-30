@@ -126,7 +126,6 @@ $(ODIR)/m_cal_fit_one.o: $(SDIR)/m_cal_fit_one.f90 \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_fit_one.f90 -o $(ODIR)/m_cal_fit_one.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_convert_coadd.o: $(SDIR)/m_convert_coadd.f90 \
-  $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_convert_coadd.f90 -o $(ODIR)/m_convert_coadd.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_dataspline.o: $(SDIR)/m_dataspline.f90 \
@@ -692,11 +691,9 @@ $(ODIR)/m_write_final.o: $(SDIR)/m_write_final.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_final.f90 -o $(ODIR)/m_write_final.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/tio_output_module.o: $(SDIR)/tio_output_module.f90 \
+  $(ODIR)/m_o3p_params.o \
   $(ODIR)/m_read_geo_tio.o \
   $(ODIR)/o3p_names_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_omidata_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_pixelcorner_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o
@@ -729,6 +726,16 @@ $(ODIR)/m_read_metadata_tio.o: $(SDIR)/m_read_metadata_tio.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_metadata_tio.f90 -o $(ODIR)/m_read_metadata_tio.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_o3p_params.o: $(SDIR)/m_o3p_params.f90 \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_o3p_params.f90 -o $(ODIR)/m_o3p_params.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_L2_o3p_tio.o: $(SDIR)/m_read_L2_o3p_tio.f90 \
+  $(ODIR)/m_o3p_params.o \
+  $(ODIR)/o3p_names_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_L2_o3p_tio.f90 -o $(ODIR)/m_read_L2_o3p_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/HE5Tget_size.o:	$(SDIR)/HE5Tget_size.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/HE5Tget_size.c -o $(ODIR)/HE5Tget_size.o
 $(ODIR)/OMI_L1B_reader.o:	$(SDIR)/OMI_L1B_reader.c

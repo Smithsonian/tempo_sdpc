@@ -13,7 +13,6 @@ contains
        nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
 
     USE OMSAO_precision_module
-    USE OMSAO_omidata_module,   ONLY: omi_irradiance_wavl, ntimes
     IMPLICIT NONE
 
     ! ---------------

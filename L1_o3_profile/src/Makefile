@@ -2,6 +2,8 @@
 
 EXECUTABLE = L1_o3_profile
 
+MERGE_EXEC = merge_o3p_files
+
 include ../../Makefile.defines
 
 srcdir     = $(config_dir)/L1_o3_profile/src
@@ -76,7 +78,7 @@ LINKOBJS   = $(addprefix $(objdir)/,$(F90SOURCES:.f90=.o) $(CSOURCES:.c=.o))
 #   make [all|install|clean]
 #---------------------------------
 
-all:	dirs messages o3p-names $(EXECUTABLE)
+all:	dirs messages o3p-names $(EXECUTABLE) $(MERGE_EXEC)
 #all:	dirs messages $(EXECUTABLE)
 
 dirs:
@@ -85,10 +87,18 @@ dirs:
 $(EXECUTABLE):	$(LINKOBJS)
 	$(FC) PROFOZ_main.f90 -o $(objdir)/$(EXECUTABLE) $(LINKOBJS) $(LDFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
 
+$(MERGE_EXEC):	$(LINKOBJS)
+	$(FC) merge_o3p_files.f90 -o $(objdir)/$(MERGE_EXEC) $(LINKOBJS) $(LDFLAGS) $(FCFLAGS) $(IFLAGS) $(LFLAGS) $(LIBS)
+
 install-executable:
 	mkdir -p $(bindir)
 	@echo installing $(EXECUTABLE) in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(EXECUTABLE) $(bindir)/$(EXECUTABLE)
+
+install-merge-exec:
+	mkdir -p $(bindir)
+	@echo installing $(MERGE_EXEC) in $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/$(MERGE_EXEC) $(bindir)/$(MERGE_EXEC)
 
 install-header:
 	mkdir -p $(incdir)
@@ -102,7 +112,7 @@ install-msgs:
 	   $(INSTALL_DATA) $(srcdir)/msgs/$$m $(msgs_installdir)/$$m ; \
 	done
 
-install:	install-executable install-header install-msgs
+install:	install-executable install-merge-exec install-header install-msgs
 
 clean:  clean-o3p-names
 	-$(RM) $(objdir)/*
