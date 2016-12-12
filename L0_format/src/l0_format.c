@@ -487,14 +487,14 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
 
    memset ((char *)&ctrl, 0, sizeof ctrl);
-   if (0 == strcmp (argv[1], "--empty"))
+   if ((argc > 1) && (0 == strcmp (argv[1], "--empty")))
      {
         ctrl.exit_on_emptydir = 1;
         argc--;
         argv++;
      }
 
-   if (0 == strcmp (argv[1], "--daemon"))
+   if ((argc > 1) && (0 == strcmp (argv[1], "--daemon")))
      {
         ctrl.daemon = 1;
         argc--;
