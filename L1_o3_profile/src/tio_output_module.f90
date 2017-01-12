@@ -600,6 +600,7 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "ground pixel quality flag", &
                               valid_range = [0.0_8, 65534.0_8], &
+                              fillvalue = fill_uint1, &
                               attlist=att_coord)
 !    call tiof_varlist_append (varlist, errstat, &
 !                              o3p_var_anomflg, &
@@ -1136,7 +1137,7 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "tropopause index", &
                               valid_range = [0.0_8, 100.0_8], &
-                              fillvalue = fill_uint1, &
+                              fillvalue = fill_uint8, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
@@ -2448,22 +2449,28 @@ contains
   !> Write all geolocation variables to merged Level 2 product file
   !-----------------------------------------------------------------
   !
-  !> @param[in]    nstep      size of mirror step dimension
-  !> @param[in]    nxtrack    size of cross-track dimension
+  !> @param[in]    min_step   mirror step index at which to start writing
+  !> @param[in]    max_step   mirror step index at which to stop writing
+  !> @param[in]    min_xtrack cross-track index at which to start writing
+  !> @param[in]    max_xtrack cross-track index at which to stop writing
   !> @param[in]    ncorner    size of corner dimension
   !> @param[inout] errstat    Error status variable
   !
   !> @author E. O'Sullivan November 2016
   !-----------------------------------------------------------------
-  subroutine write_merged_geo (nstep, nxtrack, ncorner, errstat)
+  subroutine write_merged_geo (min_step, max_step, min_xtrack, max_xtrack, ncorner, errstat)
 
     use m_o3p_params, only: lon, lat, aza, sza, vza, corner_lon, corner_lat, &
          time, geoflg
 
     implicit none
 
-    integer (kind=4), intent(in) :: nstep, nxtrack, ncorner
+    integer (kind=4), intent(in) :: min_step, max_step, min_xtrack, &
+         max_xtrack, ncorner
     integer, intent(inout) :: errstat
+
+    ! local variables
+    integer (kind=4) :: nstep, nxtrack
 
     type (tiof_file_type), pointer :: obj
 
@@ -2471,24 +2478,29 @@ contains
 
     obj => primary_output_file
 
+    nstep=max_step-min_step+1
+    nxtrack=max_xtrack-min_xtrack+1
+
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
-    call tiof_put1d_r8 (obj, o3p_var_time, [0], [nstep], time, errstat)
-    call tiof_put2d_ui2 (obj, o3p_var_geoflg, [0, 0], [nstep, nxtrack], &
-         geoflg, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_latitude, [0,0], &
+    call tiof_put1d_r8 (obj, o3p_var_time, [min_step], [nstep], time, errstat)
+    call tiof_put2d_ui2 (obj, o3p_var_geoflg, [min_step, min_xtrack], &
+         [nstep, nxtrack], geoflg, errstat)
+    call tiof_put2d_r4 (obj, o3p_var_latitude, [min_step, min_xtrack], &
          [nstep, nxtrack], lat, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_longitude, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_longitude, [min_step, min_xtrack], &
          [nstep, nxtrack], lon, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_ra_angle, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_ra_angle, [min_step, min_xtrack], &
          [nstep, nxtrack], aza, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_sz_angle, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_sz_angle, [min_step, min_xtrack], &
          [nstep, nxtrack], sza, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_vz_angle, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_vz_angle, [min_step, min_xtrack], &
          [nstep, nxtrack], vza, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_latitude_bounds, [0,0,0], &
+    call tiof_put3d_r4 (obj, o3p_var_latitude_bounds, &
+         [min_step, min_xtrack, 0], &
          [nstep, nxtrack, ncorner], corner_lat, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, [0,0,0], &
+    call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, &
+         [min_step, min_xtrack, 0], &
          [nstep, nxtrack, ncorner], corner_lon, errstat)
 
     call tiof_pop_group (obj, errstat)
@@ -2505,9 +2517,10 @@ contains
   !> Write all geolocation variables to merged Level 2 product file
   !-----------------------------------------------------------------
   !
-  !> @param[in]    nstep        size of mirror step dimension
-  !> @param[in]    nxtrack      size of cross-track dimension
-  !> @param[in]    min_step     minimum step value
+  !> @param[in]    min_step     mirror step index at which to start writing
+  !> @param[in]    max_step     mirror step index at which to stop writing
+  !> @param[in]    min_xtrack   cross-track index at which to start writing
+  !> @param[in]    max_xtrack   cross-track index at which to stop writing
   !> @param[in]    ngas         size of gas variables dimension
   !> @param[in]    nnongas      size of nongas variables dimension
   !> @param[in]    nlayer       size of layer dimension
@@ -2520,9 +2533,9 @@ contains
   !
   !> @author E. O'Sullivan November 2016
   !-----------------------------------------------------------------
-  subroutine write_merged_data (nstep, nxtrack, min_step, ngas, nnongas, &
-       nlayer, nfitvars, nfitwins, nmax_wavs, nnoise_elems, naeros_wavs, &
-       errstat)
+  subroutine write_merged_data (min_step, max_step, min_xtrack, max_xtrack, &
+       ngas, nnongas, nlayer, nfitvars, nfitwins, nmax_wavs, &
+       nnoise_elems, naeros_wavs, errstat)
 
     use m_o3p_params, only: ozprof, ozprof_prec, ozprof_err, o3tot, &
          o3tot_prec, o3tot_err, o3strat, o3strat_prec, o3strat_err, &
@@ -2544,10 +2557,11 @@ contains
 
     implicit none
 
-    integer, intent(in) :: nstep, nxtrack, ngas, nnongas, nlayer, nfitvars, &
-         nfitwins, nmax_wavs, nnoise_elems, naeros_wavs, min_step
+    integer, intent(in) :: min_step, max_step, min_xtrack, max_xtrack, &
+         ngas, nnongas, nlayer, nfitvars, &
+         nfitwins, nmax_wavs, nnoise_elems, naeros_wavs
     integer, intent(inout) ::errstat
-    integer :: nlayerp1
+    integer :: nlayerp1, nstep, nxtrack
 
     type (tiof_file_type), pointer :: obj
 
@@ -2557,54 +2571,61 @@ contains
 
     obj => primary_output_file
 
+    nstep=max_step-min_step+1
+    nxtrack=max_xtrack-min_xtrack+1
     nlayerp1 = nlayer + 1
 
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof, &
+         [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayer], ozprof, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_prec, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_prec, &
+         [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayer], ozprof_prec, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_err, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_o3_retrieve_prof_err, &
+         [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayer], ozprof_err, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_total_o3, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_total_o3, [min_step, min_xtrack], &
          [nstep, nxtrack], o3tot, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_total_o3_prec, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_total_o3_prec, [min_step, min_xtrack], &
          [nstep, nxtrack], o3tot_prec, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_total_o3_err, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_total_o3_err, [min_step, min_xtrack], &
          [nstep, nxtrack], o3tot_err, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_strat_o3, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3, [min_step, min_xtrack], &
          [nstep, nxtrack], o3strat, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_strat_o3_prec, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3_prec, [min_step, min_xtrack], &
          [nstep, nxtrack], o3strat_prec, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_strat_o3_err, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_strat_o3_err, [min_step, min_xtrack], &
          [nstep, nxtrack], o3strat_err, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_tropo_o3, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3, [min_step, min_xtrack], &
          [nstep, nxtrack], o3trop, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_prec, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_prec, [min_step, min_xtrack], &
          [nstep, nxtrack], o3trop_prec, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_err, [0,0], &
+    call tiof_put2d_r4 (obj, o3p_var_tropo_o3_err, [min_step, min_xtrack], &
          [nstep, nxtrack], o3trop_err, errstat)
     ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
     ! Optional products
     ! other fitted gases
     if ( ngas > 0 .and. gaswrt ) then
-      call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve, [0, 0, 0], &
-         [nstep, nxtrack, ngas], gas, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve, &
+           [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], gas, errstat)
       call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve_prec, &
-         [0, 0, 0], [nstep, nxtrack, ngas], gas_prec, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], gas_prec, errstat)
       call tiof_put3d_r4 (obj, o3p_var_other_gas_retrieve_err, &
-         [0, 0, 0], [nstep, nxtrack, ngas], gas_err, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], gas_err, errstat)
     endif
     ! non-gas fitted params
     if (nnongas > 0 .and. ozwrtvar) then
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_retrieve, &
-         [0, 0, 0], [nstep, nxtrack, nnongas], nongas, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], nongas, errstat)
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret_prec, &
-         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_prec, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], nongas_prec, &
+         errstat)
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret_err, &
-         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_err, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], nongas_err, &
+         errstat)
     endif
 
     call tiof_pop_group (obj, errstat)
@@ -2617,41 +2638,46 @@ contains
 
     ! Support data group
     call tiof_push_group (obj, o3p_grp_support_data, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_aeros_index, [0,0], [nstep, nxtrack], &
-         aeros_idx, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_profile_pres, [0, 0, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_aeros_index, [min_step, min_xtrack], &
+         [nstep, nxtrack], aeros_idx, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_profile_pres, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayerp1], ozprof_pres, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_profile_alt, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_profile_alt, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayerp1], ozprof_alt, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_profile_temp, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_profile_temp, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nlayerp1], ozprof_temp, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof, [0, 0, 0], &
-         [nstep, nxtrack, nlayer], o3apriori, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof_err, [0, 0, 0], &
-         [nstep, nxtrack, nlayer], o3apriori_err, errstat)
-    call tiof_put2d_i4 (obj, o3p_var_tropo_index, [0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof, &
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nlayer], o3apriori, &
+         errstat)
+    call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof_err, &
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nlayer], o3apriori_err, &
+         errstat)
+    call tiof_put2d_i4 (obj, o3p_var_tropo_index, [min_step, min_xtrack], &
          [nstep, nxtrack], tropo_idx, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_eff_cld_frac, [0, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_eff_cld_frac, [min_step, min_xtrack], &
          [nstep, nxtrack], cld_frac, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_eff_cld_pres, [0, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_eff_cld_pres, [min_step, min_xtrack], &
          [nstep, nxtrack], cld_pres, errstat)
-    call tiof_put2d_i4 (obj, o3p_var_cld_flag, [0, 0], &
+    call tiof_put2d_i4 (obj, o3p_var_cld_flag, [min_step, min_xtrack], &
          [nstep, nxtrack], cld_flag, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_glint_prob, [0, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_glint_prob, [min_step, min_xtrack], &
          [nstep, nxtrack], glintprob, errstat)
-    call tiof_put2d_r4 (obj, o3p_var_surf_albedo, [0, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_surf_albedo, [min_step, min_xtrack], &
          [nstep, nxtrack], eff_alb, errstat)
     call tiof_put2d_ui4 (obj, o3p_var_fit_wavel, &
-         [0, 0], [nstep, nxtrack], n_fit_wvl, errstat)
+         [min_step, min_xtrack], [nstep, nxtrack], n_fit_wvl, errstat)
     call tiof_put3d_ui4 (obj, o3p_var_window_wavel, &
-         [0, 0, 0], [nstep, nxtrack, nfitwins], n_window_wvl, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nfitwins], n_window_wvl, &
+         errstat)
     ! Optional parameters
     ! Other fitted gases
     if ( ngas > 0 .and. gaswrt ) then
       call tiof_put3d_r4 (obj, o3p_var_other_gas_apriori, &
-         [0, 0, 0], [nstep, nxtrack, ngas], gas_apriori, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], gas_apriori, &
+         errstat)
       call tiof_put3d_r4 (obj, o3p_var_other_gas_apriori_err, &
-         [0, 0, 0], [nstep, nxtrack, ngas], gas_apriori_err, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], gas_apriori_err, &
+         errstat)
       call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, ngas, &
              gas_names, errstat)
 !        do i=1,ngas
@@ -2662,9 +2688,11 @@ contains
     ! Non-gas fitted parameters
     if (nnongas > 0 .and. ozwrtvar) then
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_apriori, &
-         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_apriori, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], &
+         nongas_apriori, errstat)
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_apriori_err, &
-         [0, 0, 0], [nstep, nxtrack, nnongas], nongas_apriori_err, errstat)
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], &
+         nongas_apriori_err, errstat)
       call tiof_put1d_string (obj, o3p_var_nongas_param_names, 0, &
            nnongas, nongas_names, errstat)
       call tiof_put1d_string (obj, o3p_var_nongas_param_units, 0, &
@@ -2681,44 +2709,47 @@ contains
       !FIXME - needs tiof_put4d_i2
 !      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
 !           [nstep, nxtrack, nlayer, nlayer], avg_kernel, errstat)
-      do i=0, nstep-1
-        j=i+min_step
-        call tiof_put3d_i2 (obj, o3p_var_o3_avg_kernel, [i, 0, 0, 0], &
-             [1, nxtrack, nlayer, nlayer], avg_kernel(:,:,:,j), errstat)
+      do i=1, nstep
+        j=i+min_step-1
+        call tiof_put3d_i2 (obj, o3p_var_o3_avg_kernel, &
+             [j, min_xtrack, 0, 0], [1, nxtrack, nlayer, nlayer], &
+             avg_kernel(:,:,:,i), errstat)
       enddo
     endif
     !correlation matrix
     if (ozwrtcorr) then
-      call tiof_put4d_r4 (obj, o3p_var_correl, [0, 0, 0, 0], &
+      call tiof_put4d_r4 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
            [nstep, nxtrack, nfitvars, nfitvars], correl_mtrx, errstat)
     endif
     !noise matrix
     if (ozwrtcovar) then
       call tiof_put3d_i2 (obj, o3p_var_o3_noise_matrix, &
-         [0, 0, 0], [nstep, nxtrack, nnoise_elems], &
+         [min_step, min_xtrack, 0], [nstep, nxtrack, nnoise_elems], &
          noise_mtrx, errstat)
       !
       ! FIXME - ozone information content should have its own switch
-      call tiof_put2d_r4 (obj, o3p_var_o3_info_content, [0, 0], &
-         [nstep, nxtrack], ozinfo, errstat)
+      call tiof_put2d_r4 (obj, o3p_var_o3_info_content, &
+           [min_step, min_xtrack], [nstep, nxtrack], ozinfo, errstat)
     endif
     !contribution matrix
     if (ozwrtcontri) then
       call tiof_put4d_r4 (obj, o3p_var_contrib_func, &
-         [0, 0, 0, 0], [nstep, nxtrack, nfitvars, nmax_wavs], &
+         [min_step, min_xtrack, 0, 0], [nstep, nxtrack, nfitvars, nmax_wavs], &
          contrib_mtrx, errstat)
     endif
    !cloud optical depth
     if (.not. do_lambcld) then
-      call tiof_put2d_r4 (obj, o3p_var_cld_opt_depth, [0, 0], &
+      call tiof_put2d_r4 (obj, o3p_var_cld_opt_depth, [min_step, min_xtrack], &
            [nstep, nxtrack], cld_opt_depth, errstat)
     endif
     !aerosols
     if (aerosol) then
-      call tiof_put3d_r4 (obj, o3p_var_aeros_opt_thick, [0, 0, 0], &
-           [nstep, nxtrack, naeros_wavs], aeros_opt_thick, errstat)
-      call tiof_put3d_r4 (obj, o3p_var_aeros_scatter_thick, [0, 0, 0], &
-           [nstep, nxtrack, naeros_wavs], aeros_scatter_thick, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_aeros_opt_thick, &
+           [min_step, min_xtrack, 0], [nstep, nxtrack, naeros_wavs], &
+           aeros_opt_thick, errstat)
+      call tiof_put3d_r4 (obj, o3p_var_aeros_scatter_thick, &
+           [min_step, min_xtrack, 0], [nstep, nxtrack, naeros_wavs], &
+           aeros_scatter_thick, errstat)
     endif
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
@@ -2733,19 +2764,22 @@ contains
     ! Optional parameters
     ! fitted wavelengths
     if (.not. reduce_resolution) then
-      call tiof_put3d_r4 (obj, o3p_var_wavel, [0, 0, 0], &
+      call tiof_put3d_r4 (obj, o3p_var_wavel, [min_step, min_xtrack, 0], &
            [nstep, nxtrack, nmax_wavs], wavelengths, errstat)
     endif
     !weighting function
     if (ozwrtwf) then
-      call tiof_put4d_r4 (obj, o3p_var_weight_func, [0, 0, 0, 0], &
+      call tiof_put4d_r4 (obj, o3p_var_weight_func, &
+           [min_step, min_xtrack, 0, 0], &
            [nstep, nxtrack, nmax_wavs, nfitvars], wgt_func, errstat)
     endif
      ! normalized observed & simulated spectra
     if (ozwrtres) then
-      call tiof_put3d_r4 (obj, o3p_var_sim_norm_rad, [0, 0, 0], &
+      call tiof_put3d_r4 (obj, o3p_var_sim_norm_rad, &
+           [min_step, min_xtrack, 0], &
            [nstep, nxtrack, nmax_wavs], sim_norm_rad, errstat)
-      call tiof_put3d_r4 (obj, o3p_var_norm_radiance, [0, 0, 0], &
+      call tiof_put3d_r4 (obj, o3p_var_norm_radiance, &
+           [min_step, min_xtrack, 0], &
            [nstep, nxtrack, nmax_wavs], norm_rad, errstat)
     endif
     call tiof_pop_group (obj, errstat)
@@ -2758,18 +2792,18 @@ contains
 
     ! QA stats group
     call tiof_push_group (obj, o3p_grp_qa_stats, errstat)
-    call tiof_put2d_i4 (obj, o3p_var_exit_stat, [0, 0], &
+    call tiof_put2d_i4 (obj, o3p_var_exit_stat, [min_step, min_xtrack], &
          [nstep, nxtrack], exval, errstat)
-    call tiof_put2d_i4 (obj, o3p_var_iter, [0, 0], [nstep, nxtrack], &
-         iterations, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_fit_rms,[0, 0, 0], &
+    call tiof_put2d_i4 (obj, o3p_var_iter, [min_step, min_xtrack], &
+         [nstep, nxtrack], iterations, errstat)
+    call tiof_put3d_r4 (obj, o3p_var_fit_rms, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nfitwins], rms, errstat)
-    call tiof_put3d_r4 (obj, o3p_var_avg_resid, [0, 0, 0], &
+    call tiof_put3d_r4 (obj, o3p_var_avg_resid, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nfitwins], avg_resid, errstat)
-    call tiof_put1d_i2 (obj, o3p_var_mqf, [0], [nstep], mqf, errstat)
+    call tiof_put1d_i2 (obj, o3p_var_mqf, [min_step], [nstep], mqf, errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
-      call tiof_put3d_r4 (obj, o3p_var_fit_weight, [0, 0, 0], &
+      call tiof_put3d_r4 (obj, o3p_var_fit_weight, [min_step, min_xtrack, 0], &
            [nstep, nxtrack, nmax_wavs], fit_wgt, errstat)
     endif
     call tiof_pop_group (obj, errstat)

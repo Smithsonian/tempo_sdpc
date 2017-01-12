@@ -20,12 +20,13 @@ program merge_o3p_files
   ! input files
   ! note fixed max size of input_files array, required for namelist input
   integer (kind=4) :: ninput
-  character (len=128), dimension(10) :: input_files
+  character (len=128), dimension(64) :: input_files
   ! output file
   character (len=128) :: outfile
   ! dimension indices
   integer (kind=4) :: min_step, max_step, min_xtrack, max_xtrack, &
-       nstep_tot, nxtrack_tot
+       nstep_tot, nxtrack_tot, start_wstep, end_wstep, start_wxtrack, &
+       end_wxtrack
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
   integer :: n, status, dummyid, i, j
@@ -59,7 +60,7 @@ program merge_o3p_files
   call o3p_dim_alloc (ninput, errstat)
   if (errstat /= 0) stop 1
 
-  ! Loop through input files.
+  ! Loop through input files, get dimension sizes
   do n=1,ninput
   ! From first file determine which dimensions/variables are used
     call read_o3p_dims(input_files(n), tio_l2in, nstep(n), nxtrack(n), &
@@ -104,10 +105,14 @@ program merge_o3p_files
       endif
       call close_o3p(tio_l2in, errstat)
       if (errstat /= 0) stop 1
+    endif
+  enddo
 
+  do n=1,ninput ! loop over input files, get dimension indices
   ! For each file, read in xtrack and step values
-      allocate(step(nstep(1), ninput), stat=errstat)
-      allocate(xtrack(nxtrack(1), ninput), stat=errstat)
+    if (n == 1) then
+      allocate(step(maxval(nstep), ninput), stat=errstat)
+      allocate(xtrack(maxval(nxtrack), ninput), stat=errstat)
       if (errstat /= 0) then
         call tell_error(tell_malloc_error, &
              "failed to allocate step and xtrack arrays", errstat)
@@ -135,7 +140,9 @@ program merge_o3p_files
         stop 1
       endif
     endif
-  enddo
+  enddo  ! loop over input files
+
+
 
   ! determine min max indices of step & xtrack
   max_step=maxval(step)
@@ -153,8 +160,8 @@ program merge_o3p_files
   endif
   dup_check=0
   do n=1,ninput
-    do i=1,nstep(1)
-      do j=1,nxtrack(1)
+    do i=1,nstep(n)
+      do j=1,nxtrack(n)
         dup_check(step(i,n),xtrack(j,n))=1
       enddo
     enddo
@@ -166,11 +173,17 @@ program merge_o3p_files
   endif
 
   ! allocate output data arrays and insert fill values
-  call o3p_param_alloc (min_step, max_step, min_xtrack, max_xtrack, ncorner(1), nfitvars(1), &
-       nfitwins(1), ngas(1), nnongas(1), nlayer(1), nlayerp1(1), &
-       nmax_wavs(1), nnoise_elems(1), naeros_wavs(1), &
+  call o3p_param_alloc (one, maxval(nstep), one, maxval(nxtrack), &
+       ncorner(1), nfitvars(1), nfitwins(1), ngas(1), nnongas(1), nlayer(1), &
+       nlayerp1(1), nmax_wavs(1), nnoise_elems(1), naeros_wavs(1), &
        errstat)
-  call o3p_param_fill (errstat)
+!  call o3p_param_fill (errstat)
+  if (errstat /= 0) stop 1
+
+  ! Create output file
+  call l2_tio_create (outfile, min_xtrack+1, max_xtrack+1, min_step+1, &
+       max_step+1, zero, one, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
+       nnongas(1), nmax_wavs(1), errstat)
   if (errstat /= 0) stop 1
 
   ! For each file, read in data to appropriate section of output arrays
@@ -179,44 +192,48 @@ program merge_o3p_files
     max_sf = maxval(step(:,n))
     min_xf = minval(xtrack(:,n))
     max_xf = maxval(xtrack(:,n))
+    start_wstep=min_sf-min_step
+    end_wstep=max_sf-min_step
+    start_wxtrack=min_xf-min_xtrack
+    end_wxtrack=max_xf-min_xtrack
+
+    call o3p_param_fill (errstat)
+
     call open_o3p(input_files(n), tio_l2in, errstat)
 
     call read_o3p_geolocation(tio_l2in, nstep(n), nxtrack(n), ncorner(n), &
-         min_xf, max_xf, min_sf, max_sf, errstat)
+         one, nxtrack(n), one, nstep(n), errstat)
 
     call read_o3p_product(tio_l2in, nstep(n), nxtrack(n), nlayer(n), &
-         ngas(n), nnongas(n), min_xf, max_xf, min_sf, max_sf, errstat)
+         ngas(n), nnongas(n), one, nxtrack(n), one, nstep(n), errstat)
 
     call read_o3p_support(tio_l2in, nstep(n), nxtrack(n), nlayer(n), &
          nlayerp1(n), nfitwins(n), ngas(n), nnongas(n), nfitvars(n), &
          nnoise_elems(n), nmax_wavs(n), naeros_wavs(n), &
-         min_xf, max_xf, min_sf, max_sf, errstat)
+         one, nxtrack(n), one, nstep(n), errstat)
 
     call read_o3p_diagnostic (tio_l2in, nstep(n), nxtrack(n), nmax_wavs(n), &
-         nfitvars(n), min_xf, max_xf, min_sf, max_sf, errstat)
+         nfitvars(n), one, nxtrack(n), one, nstep(n), errstat)
 
     call read_o3p_qastat (tio_l2in, nstep(n), nxtrack(n), nfitwins(n), &
-         nmax_wavs(n), min_xf, max_xf, min_sf, max_sf, errstat)
+         nmax_wavs(n), one, nxtrack(n), one, nstep(n), errstat)
 
     call close_o3p (tio_l2in, errstat)
 
     if (errstat /= 0) stop 1
-  enddo
 
+    !write values
+    call write_merged_geo (start_wstep, end_wstep, start_wxtrack, &
+         end_wxtrack, ncorner(1), errstat)
 
+    call write_merged_data (start_wstep, end_wstep, start_wxtrack, &
+         end_wxtrack, ngas(1), &
+         nnongas(1), nlayer(1), nfitvars(1), nfitwins(1), nmax_wavs(1), &
+         nnoise_elems(1), naeros_wavs(1), errstat)
+    
+    if (errstat /= 0) stop 1
 
-  ! Create output file
-  call l2_tio_create (outfile, min_xtrack+1, max_xtrack+1, min_step+1, &
-       max_step+1, zero, one, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
-       nnongas(1), nmax_wavs(1), errstat)
-  if (errstat /= 0) stop 1
-
-  ! Write in values
-  call write_merged_geo (nstep_tot, nxtrack_tot, ncorner(1), errstat)
-
-  call write_merged_data (nstep_tot, nxtrack_tot, min_step, ngas(1), &
-       nnongas(1), nlayer(1), nfitvars(1), nfitwins(1), nmax_wavs(1), &
-       nnoise_elems(1), naeros_wavs(1), errstat)
+  enddo ! read/write data loop
 
   call l2_tio_close (errstat)
   if (errstat /= 0) stop 1

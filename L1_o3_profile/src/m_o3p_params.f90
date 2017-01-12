@@ -388,7 +388,7 @@ contains
     corner_lat = fill_float
     corner_lon = fill_float
     mqf = 0   ! FIXME - should probably be flagged as bad if not included
-    exval = 999 ! FIXME - pick a value to indicate bad
+    exval = int(fill_int16)
     ozprof = fill_float
     ozprof_prec = fill_float
     ozprof_err = fill_float
