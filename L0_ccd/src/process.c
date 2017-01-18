@@ -446,16 +446,17 @@ static int radiometric_correction (Calibration_Type *cal, int exposure_type,
 
         if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
           {
-             double solar_phi=0.0, solar_theta=0.0;  /* FIXME: placeholders */
+             double solar_phi=0.0, solar_theta=0.0;
+             /* FIXME: placeholders for angles to be computed based on
+              * the observation date/time and orbital ephemeris */
              if ((0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, exprec->img))
                  || (0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, xr->img_err))) /* FIXME: ok? */
                goto return_status;
           }
 
-        /* Logically, wavelength calibration goes here.
-         * But, to save RAM usage, we interleave wavelength
-         * calibration with output.
-         */
+        /* Logically, wavelength calibration goes here but
+         * to save RAM usage, we interleave wavelength
+         * calibration with output. */
      }
 
    status = 0;
@@ -496,10 +497,10 @@ static int finish_and_output (config_t *cfg, Calibration_Type *cal,
                               const Exprec_Meta_Type *exprec_array,
                               int num_exprecs, const char *output_file)
 {
+   Granule_Exprec_Type *exprec = NULL;
    Output_Type *out = NULL;
-   Granule_Exprec_Type *exprec;
-   Image_Type *img;
-   Image_Type *img_tmp_waves;
+   Image_Type *img = NULL;
+   Image_Type *img_tmp_waves = NULL;
    int k, status = -1;
 
    /* FIXME: Are we going to write explicit wavelength arrays
@@ -520,10 +521,10 @@ static int finish_and_output (config_t *cfg, Calibration_Type *cal,
    img = exprec->img;
    out->out_set_dims (out, num_exprecs, img->num_cols, img->num_rows/2);
 
-   if (NULL == (img_tmp_waves = image_new (img->num_rows, img->num_cols)))
+   if (0 != out->out_create (out))
      goto return_status;
 
-   if (0 != out->out_create (out))
+   if (NULL == (img_tmp_waves = image_new (img->num_rows, img->num_cols)))
      goto return_status;
 
    for (k = 0; k < num_exprecs; k++)
