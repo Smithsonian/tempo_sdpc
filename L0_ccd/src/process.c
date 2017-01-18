@@ -202,9 +202,9 @@ static int flag_transients1 (const Pixelqf_Type *pt,
                                    exprec_array[exprec_index].exprec->img);
 }
 
-static int flag_transients (const Pixelqf_Type *pt,
-                            Exprec_Meta_Type *exprec_array,
-                            int num_exprecs, Badpix_Map_Type *bpixmap)
+static int flag_granule_transients (const Pixelqf_Type *pt,
+                                    Exprec_Meta_Type *exprec_array,
+                                    int num_exprecs, Badpix_Map_Type *bpixmap)
 {
    Image_Type *tmp_img = NULL;
    int ixr;
@@ -398,17 +398,13 @@ static int validate_dark_table_type (const Dark_Table_Type *dtt,
    return 0;
 }
 
-static int radiometric_correction (config_t *cfg, int exposure_type,
+static int radiometric_correction (Calibration_Type *cal, int exposure_type,
                                    Exprec_Meta_Type *exprec_array, int num_exprecs,
                                    const Control_Type *ctrl)
 {
-   Calibration_Type *cal = NULL;
    Dark_Table_Type *dtt = NULL;
    Image_Type *tmp_img = NULL;
    int ixr, status = -1;
-
-   if (NULL == (cal = sensorcal_init (cfg)))
-     return -1;
 
    if (NULL == (dtt = dark_table_read (ctrl->dark_file)))
      goto return_status;
@@ -456,19 +452,14 @@ static int radiometric_correction (config_t *cfg, int exposure_type,
                goto return_status;
           }
 
-        /* Wavelength calibration could go here or, to reduce
-         * RAM usage, we could write out the current data, free
-         * the exprec array, and then do wavelength calibration
-         * one frame at a time, re-reading data as needed from the
-         * "output" file.
-         * FIXME: are we going to store explicit wavelength arrays,
-         * or are we going to implement something clever?
+        /* Logically, wavelength calibration goes here.
+         * But, to save RAM usage, we interleave wavelength
+         * calibration with output.
          */
      }
 
    status = 0;
 return_status:
-   if (cal) cal->cal_delete (cal);
    if (dtt) dtt->dtt_delete (dtt);
    image_free (tmp_img);
    return status;
@@ -501,14 +492,20 @@ static int validate_exposure_type (int *exposure_type0, int exposure_type)
    return 0;
 }
 
-static int write_radiometric (config_t *cfg,
+static int finish_and_output (config_t *cfg, Calibration_Type *cal,
                               const Exprec_Meta_Type *exprec_array,
                               int num_exprecs, const char *output_file)
 {
    Output_Type *out = NULL;
    Granule_Exprec_Type *exprec;
    Image_Type *img;
+   Image_Type *img_tmp_waves;
    int k, status = -1;
+
+   /* FIXME: Are we going to write explicit wavelength arrays
+    * out to the L1 file, or are we going to implement
+    * something clever to save disk space?
+    */
 
    if (num_exprecs == 0)
      return 0;
@@ -523,6 +520,9 @@ static int write_radiometric (config_t *cfg,
    img = exprec->img;
    out->out_set_dims (out, num_exprecs, img->num_cols, img->num_rows/2);
 
+   if (NULL == (img_tmp_waves = image_new (img->num_rows, img->num_cols)))
+     goto return_status;
+
    if (0 != out->out_create (out))
      goto return_status;
 
@@ -530,14 +530,22 @@ static int write_radiometric (config_t *cfg,
      {
         Output_Exprec_Type rec;
         const Exprec_Meta_Type *xr = &exprec_array[k];
+
+        /* wavelength calibration */
+        if (0 != cal->cal_wavecal (cal, xr->exprec->img, img_tmp_waves))
+          goto return_status;
+
         rec.exprec = xr->exprec;
         rec.img_err = xr->img_err;
+        rec.img_waves = img_tmp_waves;
+
         if (0 != out->out_write_rec (out, k, &rec))
           goto return_status;
      }
 
    status = 0;
 return_status:
+   image_free (img_tmp_waves);
    if (out)
      {
         (void) out->out_close (out);
@@ -553,11 +561,12 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    Granule_Type *gr = NULL;
    Granule_Exprec_Type *exprec = NULL;
    Instr_Type *instr = NULL;
+   Calibration_Type *cal = NULL;
    Exprec_Meta_Type *exprec_array = NULL;
    Pixelqf_Type *pt = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
-   Badpix_Bitmap_Type bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
+   Badpix_Bitmap_Type bpix_occur_mask;
    double bpix_update_thresh;
    int ixr, num_exprecs, exposure_type = EXPREC_TYPE_UNKNOWN;
    int bpix_occur_threshold, bpix_update_num_exprecs_needed;
@@ -572,6 +581,9 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    if (NULL == (instr = instr_open (ctrl->instr_status_file)))
      goto return_status;
 
+   if (NULL == (cal = sensorcal_init (cfg)))
+     return -1;
+
    if (NULL == (gr = granule_open (ctrl->input_file)))
      goto return_status;
 
@@ -585,6 +597,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
      goto return_status;
 
+   bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
    bpix_occur = bpix_occur_open (bpixmap->num_rows, bpixmap->num_cols,
                                  bpix_occur_mask);
    if (NULL == bpix_occur)
@@ -635,7 +648,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      }
 
    /* FIXME - always do this? */
-   if (0 != flag_transients (pt, exprec_array, num_exprecs, bpixmap))
+   if (0 != flag_granule_transients (pt, exprec_array, num_exprecs, bpixmap))
      goto return_status;
 
    switch (exposure_type)
@@ -657,9 +670,9 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
       case EXPREC_TYPE_RADIANCE:
       case EXPREC_TYPE_IRRADIANCE:
       case EXPREC_TYPE_LIN_IRR:
-        if (0 != radiometric_correction (cfg, exposure_type, exprec_array, num_exprecs, ctrl))
+        if (0 != radiometric_correction (cal, exposure_type, exprec_array, num_exprecs, ctrl))
           goto return_status;
-        if (0 != write_radiometric (cfg, exprec_array, num_exprecs, ctrl->output_file))
+        if (0 != finish_and_output (cfg, cal, exprec_array, num_exprecs, ctrl->output_file))
           goto return_status;
         break;
      }
@@ -671,29 +684,11 @@ return_status:
    bpix_occur_close (bpix_occur);
    free_exprec_array (exprec_array, num_exprecs, gr);
 
-   if (ccd)
-     {
-        ccd->ccd_delete (ccd);
-        ccd = NULL;
-     }
-
-   if (gr)
-     {
-        gr->granule_close (gr);
-        gr = NULL;
-     }
-
-   if (instr)
-     {
-        instr->instr_delete (instr);
-        instr = NULL;
-     }
-
-   if (pt)
-     {
-        pt->pqf_delete (pt);
-        pt = NULL;
-     }
+   if (ccd) ccd->ccd_delete (ccd);
+   if (gr) gr->granule_close (gr);
+   if (instr) instr->instr_delete (instr);
+   if (pt) pt->pqf_delete (pt);
+   if (cal) cal->cal_delete (cal);
 
    return status;
 }

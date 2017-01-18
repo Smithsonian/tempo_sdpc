@@ -8,6 +8,7 @@ typedef struct
 {
    const Granule_Exprec_Type *exprec;
    const Image_Type *img_err;
+   const Image_Type *img_waves;
 }
 Output_Exprec_Type;
 

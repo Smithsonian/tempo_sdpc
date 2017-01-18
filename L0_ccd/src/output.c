@@ -236,6 +236,7 @@ static int write_rec_band1 (Output_Type *out, const char *name_var,
 {
    const Granule_Exprec_Type *exprec = rec->exprec;
    const Image_Type *img_err = rec->img_err;
+   const Image_Type *img_waves = rec->img_waves;
    Image_Type *img_outbuf = out->img_outbuf;
    Band_Info_Type *band = &out->bands[band_index];
    int ybeg = band->ybeg;
@@ -280,6 +281,15 @@ static int write_rec_band1 (Output_Type *out, const char *name_var,
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
                      __func__, name_var_err, out->file);
+        return -1;
+     }
+
+   image_pixels_to_outbuf (img_waves, ybeg, yend, img_outbuf);
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELENGTH, start, count, TIO_FLOAT,
+                                 img_outbuf->pixels))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                     __func__, TEMPO_VAR_WAVELENGTH, out->file);
         return -1;
      }
 

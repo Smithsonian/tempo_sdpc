@@ -13,6 +13,7 @@ struct Calibration_Type
    int (*cal_apply_btdf)(const Calibration_Type *, double, double,
                          Image_Type *);
    int (*cal_apply_prnu)(const Calibration_Type *, Image_Type *);
+   int (*cal_wavecal)(const Calibration_Type *, Image_Type *, Image_Type *);
 
 #ifdef SENSORCAL_PRIVATE_DATA
    SENSORCAL_PRIVATE_DATA

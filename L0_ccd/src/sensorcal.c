@@ -113,7 +113,8 @@ static Cal_Data_Type *read_cal_file (const char *file)
    return data;
 }
 
-static void make_wavelength_grid (double *y, int ny, double dy, double y0_uv, double y0_vis)
+static void make_wavelength_grid (double *y, int ny, double dy,
+                                  double y0_uv, double y0_vis)
 {
    int i, num = ny/2;
 
@@ -193,6 +194,35 @@ static int cal_apply_prnu (const Calibration_Type *cal, Image_Type *img)
    return 0;
 }
 
+static int cal_wavecal (const Calibration_Type *cal, Image_Type *img,
+                        Image_Type *img_waves)
+{
+   int y, ny = img->num_rows;
+   int x, nx = img->num_cols;
+   double *cal_waves = cal->waves;
+
+   if (ny != cal->num_waves)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: unexpected wavelength grid size n=%d (expected n=%d)",
+                     __func__, ny, cal->num_waves);
+        return -1;
+     }
+
+   /* FIXME: wavelength calibration isn't implemented yet */
+
+   for (y = 0; y < ny; y++)
+     {
+        Image_Pixel_Type *waves_y = img_waves->pixels + y * nx;
+        for (x = 0; x < nx; x++)
+          {
+             waves_y[x] = cal_waves[y];
+          }
+     }
+
+   return 0;
+}
+
 static void cal_delete (Calibration_Type *cal)
 {
    if (cal == NULL)
@@ -221,6 +251,7 @@ static Calibration_Type *cal_alloc (int num_waves)
      }
    memset ((char *)cal->waves, 0, sizeof_waves_array);
 
+   /* storage for calibration curves vs wavelength */
    cal->num_waves = num_waves;
    cal->rcoeffs = cal->waves + num_waves;
    cal->plate_trans = cal->waves + num_waves * 2;
@@ -233,6 +264,7 @@ static Calibration_Type *cal_alloc (int num_waves)
    cal->cal_apply_rcoeffs = cal_apply_rcoeffs;
    cal->cal_apply_prnu = cal_apply_prnu;
    cal->cal_apply_btdf = cal_apply_btdf;
+   cal->cal_wavecal = cal_wavecal;
 
    return cal;
 }
@@ -289,14 +321,16 @@ static int init_rcoeffs (Calibration_Type *cal,
 
    for (i = 0; i < n0; i++)
      {
-        /* Input value is the conversion factor for 4 pixels.
-         * Divide by 4 to obtain the conversion factor per pixel.
+        /* FIXME:
+         * Input rmetric_conv value has units e-/(ph/s/sr/cm^2/nm)
+         * which is the conversion factor for 4 spatial pixels.
+         * Divide by 4 to obtain the conversion factor per spatial pixel.
          * Prototype also divides by 0.118 sec, which is
          * the nominal value of exposure_time.
-         * FIXME: Is the specific value 0.118 needed for scaling
-         * the coefficient (e.g. because that's the value used
-         * to take the calibration data), or should we divide by
-         * the observation-specific exposure_time?
+         * I think this scaling is needed to account for the specific
+         * exposure time and binning used when deriving these coefficients.
+         * Presumably we'll eventually get coefficients with documentation
+         * that explains these details.
          */
         double y0_i = rmetric_conv[i] / 4 / 0.118;
         y0[i] = (y0_i > 0) ? 1.0/y0_i : 0.0;
@@ -344,9 +378,8 @@ static Calibration_Type *cal_init (const Cal_Data_Type *data)
    if (NULL == (cal = cal_alloc (2 * data->num_waves_per_ccd)))
      return NULL;
 
-   make_wavelength_grid (cal->waves, cal->num_waves,
-                         data->delta_wave, data->min_wave_uv,
-                         data->min_wave_vis);
+   make_wavelength_grid (cal->waves, cal->num_waves, data->delta_wave,
+                         data->min_wave_uv, data->min_wave_vis);
 
    if ((0 != init_rcoeffs (cal, data))
        || (0 != init_plate_trans (cal, data)))
