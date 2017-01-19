@@ -145,7 +145,8 @@ static int cal_apply_rcoeffs (const Calibration_Type *cal, Image_Type *img)
         double r_y = cal->rcoeffs[y];
         for (x = 0; x < nx; x++)
           {
-             pixels[x] *= r_y;
+             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
+               pixels[x] *= r_y;
           }
      }
 
@@ -177,7 +178,8 @@ static int cal_apply_btdf (const Calibration_Type *cal,
         double btdf = factor * cal->plate_trans[y];
         for (x = 0; x < nx; x++)
           {
-             pixels[x] /= btdf;
+             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
+               pixels[x] /= btdf;
           }
      }
 

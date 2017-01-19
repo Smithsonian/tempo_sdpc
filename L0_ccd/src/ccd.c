@@ -135,6 +135,9 @@ static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *i
 
    for (i = 0; i < num_pixels; i++)
      {
+        if (pixels[i] == IMAGE_PIXEL_FILL_VALUE)
+          continue;
+
         if (pixels[i] >= saturation_level_coadded)
           pixel_quality_flags[i] |= IMAGE_PQF_SATURATED;
 
@@ -183,12 +186,16 @@ static int correct_offset_oct (const CCD_Param_Type *ccdp,
         int count = 0;
         for (s = sb; s < se; s += 2)
           {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              offset += oct_pixels[s];
              count += 1;
           }
         offset /= count;
         for (s = sb0; s < se0; s += 2)
           {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              oct_pixels[s] -= offset;
           }
      }
@@ -231,6 +238,8 @@ static int correct_nonlinearity_oct (const Gain_Param_Type *gpt,
              Image_Pixel_Type tmp = 0.0;
              Image_Pixel_Type tmpx = 1.0;
              int k;
+             if (pixel_value == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              for (k = 0; k < num_coeffs; k++)
                {
                   tmp += coeffs[k] * tmpx;
@@ -274,6 +283,8 @@ static int correct_gain_oct (const Gain_Param_Type *gpt,
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
         for (s = sb0; s < se0; s += 2)
           {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              oct_pixels[s] = (oct_pixels[s] - offset) / gain;
           }
      }
@@ -386,7 +397,10 @@ static int smear_correction_using_oclocks (const CCD_Param_Type *ccdp,
         int pixcount = 0;
         for (p = pb; p < pe; p++)
           {
-             pixsum += quad_pixels[s + p * img_num_cols];
+             Image_Pixel_Type pixel_value = quad_pixels[s + p * img_num_cols];
+             if (pixel_value == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             pixsum += pixel_value;
              pixcount += 1;
           }
         smear_corr[s] = pixsum / pixcount;
@@ -426,7 +440,10 @@ static int smear_correction_using_timing (const CCD_Param_Type *ccdp,
         int pixcount = 0;
         for (p = pb0; p < pe0; p++)
           {
-             pixsum += quad_pixels[s + p * img_num_cols];
+             Image_Pixel_Type pixel_value = quad_pixels[s + p * img_num_cols];
+             if (pixel_value == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             pixsum += pixel_value;
              pixcount += 1;
           }
         smear_corr[s] = (pixsum / pixcount) * smear_fraction;
@@ -467,6 +484,8 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
         quad_pixels = img->pixels + p * img->num_cols;
         for (s = sb0; s < se0; s++)
           {
+             if (quad_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              quad_pixels[s] -= smear_corr[s];
           }
      }
@@ -563,6 +582,8 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
         const Image_Pixel_Type *quad_pixels = img->pixels + p * img->num_cols;
         for (s = sb0; s < se0; s++)
           {
+             if (quad_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
              pixsum += quad_pixels[s];
              pixcount += 1;
           }

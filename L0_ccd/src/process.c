@@ -156,8 +156,13 @@ static void make_transient_ref_img (const Image_Type *prev,
         Image_Pixel_Type *ref_pixels = img_ref->pixels + p * num_cols;
         for (s = 0; s < num_cols; s++)
           {
-             Image_Pixel_Type pxp = prev_pixels[s] * next_pixels[s];
-             ref_pixels[s] = (pxp >= 0) ? sqrt(pxp) : IMAGE_PIXEL_FILL_VALUE;
+             if ((prev_pixels[s] != IMAGE_PIXEL_FILL_VALUE)
+                 && (next_pixels[s] != IMAGE_PIXEL_FILL_VALUE))
+               {
+                  Image_Pixel_Type pxp = prev_pixels[s] * next_pixels[s];
+                  ref_pixels[s] = (pxp >= 0) ? sqrt(pxp) : IMAGE_PIXEL_FILL_VALUE;
+               }
+             else ref_pixels[s] = IMAGE_PIXEL_FILL_VALUE;
           }
      }
 }
@@ -333,10 +338,13 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
    Image_Pqf_Bitmap_Type *img_pqf = img->pixel_quality_flags;
    Image_Pqf_Bitmap_Type *dc_pqf = dc->pixel_quality_flags;
    int i, n = img->num_rows * img->num_cols;
+   Image_Pixel_Type dc_pixels_i;
 
    for (i = 0; i < n; i++)
      {
-        Image_Pixel_Type dc_pixels_i = dc_pixels[i];
+        if (img_pixels[i] == IMAGE_PIXEL_FILL_VALUE)
+          continue;
+        dc_pixels_i = dc_pixels[i];
         if ((dc_pqf[i] == 0) && (dc_pixels_i > 0))
           {
              img_pixels[i] -= dc_pixels_i;

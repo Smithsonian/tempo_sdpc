@@ -111,7 +111,7 @@ static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
         pqf = img->pixel_quality_flags + p * img->num_cols;
         for (s = sb; s < se; s++)
           {
-             if ((pqf[s] != 0) && (pixels[s] < cold_thresh))
+             if ((pqf[s] == 0) && (pixels[s] < cold_thresh))
                pqf[s] |= IMAGE_PQF_COLD_PIXEL;
           }
      }
