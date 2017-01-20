@@ -16,6 +16,7 @@ struct CCD_Type
    int (*ccd_correct_smear)(const CCD_Type *, const void *, Image_Type *);
    int (*ccd_mean_storage_region_dark)(const CCD_Type *, const Image_Type *, float mean_sdc[4]);
 
+   void (*ccd_active_image_dims)(const CCD_Type *, int *, int *);
    Image_Type *(*ccd_select_active_pixels)(const CCD_Type *, const Image_Type *);
    int (*ccd_update_noisesq)(const CCD_Type *, const float *, Image_Type *);
 

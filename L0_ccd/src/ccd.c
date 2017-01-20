@@ -697,6 +697,19 @@ static Image_Type *ccd_select_active_pixels (const CCD_Type *ccd,
    return aimg;
 }
 
+static void ccd_active_image_dims (const CCD_Type *ccd,
+                                   int *num_parallel_active_full,
+                                   int *num_serial_active_full)
+{
+   const CCD_Param_Type *ccdp = &ccd->params;
+
+   if (num_parallel_active_full)
+     *num_parallel_active_full = 2*ccdp->num_parallel_active;
+
+   if (num_serial_active_full)
+     *num_serial_active_full = 2*ccdp->num_serial_active;
+}
+
 static void update_noisesq_quad (const CCD_Type *ccd, int quad,
                                  float sdc, Image_Type *noisesq,
                                  int pb, int pe, int pstep,
@@ -790,6 +803,7 @@ static CCD_Type *ccd_create (void)
    ccd->ccd_correct_smear = ccd_correct_smear;
    ccd->ccd_mean_storage_region_dark = ccd_mean_storage_region_dark;
    ccd->ccd_select_active_pixels = ccd_select_active_pixels;
+   ccd->ccd_active_image_dims = ccd_active_image_dims;
    ccd->ccd_update_noisesq = ccd_update_noisesq;
 
    /* default methods */
