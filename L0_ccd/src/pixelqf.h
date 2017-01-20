@@ -21,6 +21,6 @@ struct Pixelqf_Type
 #endif
 };
 
-extern Pixelqf_Type *pqf_init (config_t *cfg);
+extern Pixelqf_Type *pixelqf_init (config_t *cfg);
 
 #endif

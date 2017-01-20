@@ -428,7 +428,7 @@ static int parse_param_file (config_t *cfg, Pixelqf_Type *pt)
    return 0;
 }
 
-Pixelqf_Type *pqf_init (config_t *cfg)
+Pixelqf_Type *pixelqf_init (config_t *cfg)
 {
    Pixelqf_Type *pt = NULL;
 
