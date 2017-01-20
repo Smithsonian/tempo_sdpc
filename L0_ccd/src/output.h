@@ -19,6 +19,7 @@ struct Output_Type
    int (*out_set_file)(Output_Type *, const char *);
    int (*out_set_dims)(Output_Type *, int, int, int);
    int (*out_create)(Output_Type *);
+   int (*out_file_exists)(const Output_Type *);
    int (*out_write_rec)(Output_Type *, int, const Output_Exprec_Type *);
    int (*out_copy_metadata)(Output_Type *, int);
    int (*out_close)(Output_Type *);

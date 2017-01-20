@@ -38,6 +38,7 @@ Band_Info_Type;
    int num_recs; \
    int num_xtrack; \
    int num_waves; \
+   int formatted_file_exists; \
    int ncid;
 #include "output.h"
 
@@ -156,6 +157,8 @@ static int create_file_of_type (Output_Type *out,
         return -1;
      }
 
+   out->formatted_file_exists = 1;
+
    return 0;
 }
 
@@ -178,13 +181,9 @@ static void out_free (Output_Type *out)
    FREE(out);
 }
 
-static int outfile_exists (Output_Type *out)
+static int out_file_exists (const Output_Type *out)
 {
-   if (out->ncid != 0)
-     return 1;
-   tell_verror (TELL_USAGE_ERROR, "%s: no open output file",
-                __func__);
-   return 0;
+   return out->formatted_file_exists ? 1 : 0;
 }
 
 static void image_pixels_to_outbuf (const Image_Type *img,
@@ -302,8 +301,12 @@ static int write_rec_bands (Output_Type *out, const char *name_var,
 {
    int b;
 
-   if (0 == outfile_exists (out))
-     return -1;
+   if (0 == out_file_exists (out))
+     {
+        tell_verror (TELL_USAGE_ERROR, "%s: no open output file",
+                     __func__);
+        return -1;
+     }
 
    for (b = 0; b < NUM_BANDS; b++)
      {
@@ -345,6 +348,7 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->out_set_file = out_set_file;
    out->out_set_dims = out_set_dims;
    out->out_close = out_close;
+   out->out_file_exists = out_file_exists;
 
    switch (exposure_type)
      {
