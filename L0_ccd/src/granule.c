@@ -175,6 +175,14 @@ static int granule_num_exprecs (const Granule_Type *g)
    return g->num_exprecs;
 }
 
+static int granule_type (const Granule_Type *g, int *exposure_type)
+{
+   if (g == NULL)
+     return -1;
+   if (exposure_type) *exposure_type = g->exposure_type;
+   return 0;
+}
+
 static Granule_Type *new_granule (void)
 {
    Granule_Type *g;
@@ -187,6 +195,7 @@ static Granule_Type *new_granule (void)
    g->granule_num_exprecs = granule_num_exprecs;
    g->granule_read_exprec_by_index = granule_read_exprec_by_index;
    g->granule_free_exprec = granule_free_exprec;
+   g->granule_type = granule_type;
 
    return g;
 }

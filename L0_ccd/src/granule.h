@@ -41,6 +41,7 @@ struct Granule_Type
 {
    void (*granule_close) (Granule_Type *);
    int (*granule_num_exprecs)(const Granule_Type *);
+   int (*granule_type)(const Granule_Type *, int *);
    Granule_Exprec_Type *(*granule_read_exprec_by_index) (const Granule_Type *, int, Granule_Exprec_Type **);
    void (*granule_free_exprec) (Granule_Exprec_Type *);
 
