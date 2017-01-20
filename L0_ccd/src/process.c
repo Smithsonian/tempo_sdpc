@@ -28,6 +28,7 @@ typedef struct
    Image_Type *img_err;
    float storage_region_dark[4];
    float ccd_temp;
+   int index;
 }
 Exprec_Meta_Type;
 
@@ -58,14 +59,144 @@ static int parse_config_file (config_t *cfg, double *bpix_update_thresh,
    return 0;
 }
 
-static int compute_current (CCD_Type *ccd, Pixelqf_Type *pt,
-                            Exprec_Meta_Type *xr)
+static void free_exprec_array (Exprec_Meta_Type *a, int num_exprecs,
+                               Granule_Type *gr)
+{
+   int i;
+
+   if ((gr == NULL) || (a == NULL))
+     return;
+
+   for (i = 0; i < num_exprecs; i++)
+     {
+        Exprec_Meta_Type *a_i = &a[i];
+        gr->granule_free_exprec (a_i->exprec);
+        image_free (a_i->img_err);
+     }
+   FREE(a);
+}
+
+static Exprec_Meta_Type *alloc_exprec_array (int num_exprecs)
+{
+   Exprec_Meta_Type *a = NULL;
+   size_t exprec_array_size;
+
+   exprec_array_size = num_exprecs * sizeof(*a);
+   if (NULL == (a = (Exprec_Meta_Type *) MALLOC (exprec_array_size)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)a, 0, exprec_array_size);
+
+   return a;
+}
+
+static int validate_exposure_type (int exposure_type0, int exposure_type)
+{
+   if (exposure_type == EXPREC_TYPE_UNKNOWN)
+     {
+        tell_verror (TELL_INVALID_DATA_ERROR,
+                     "%s: input granule contains exposures of unknown type",
+                     __func__);
+        return -1;
+     }
+
+   if (exposure_type != exposure_type0)
+     {
+        tell_verror (TELL_INVALID_DATA_ERROR,
+                     "%s: input granule contains multiple exposure types",
+                     __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
+static Dark_Array_Type *create_dark_array (Exprec_Meta_Type *exprec_array,
+                                           int num_exprecs)
+{
+   Dark_Array_Type *dark_array = NULL;
+   int i, k;
+
+   if (NULL == (dark_array = dark_array_alloc (num_exprecs)))
+     return NULL;
+
+   for (i = 0; i < num_exprecs; i++)
+     {
+        Exprec_Meta_Type *xr = &exprec_array[i];
+        Granule_Exprec_Type *exprec = xr->exprec;
+        double sdc;
+        sdc = 0.0;
+        for (k = 0; k < 4; k++)
+          {
+             sdc += xr->storage_region_dark[k];
+          }
+        sdc /= 4;
+        if (0 != dark_array_elem_init (dark_array, i, exprec->img, sdc, xr->ccd_temp,
+                                       exprec->exposure_time))
+          {
+             dark_array_free (dark_array);
+             return NULL;
+          }
+     }
+
+   return dark_array;
+}
+
+static int make_dark_table (config_t *cfg, int is_linearity,
+                            Exprec_Meta_Type *exprec_array, int num_exprecs,
+                            const char *output_file)
+{
+   Dark_Table_Type *dtt = NULL;
+   Dark_Config_Type *dcfg = NULL;
+   Dark_Array_Type *dark_array = NULL;
+
+   if (NULL == (dcfg = dark_table_config (cfg, is_linearity)))
+     return -1;
+
+   if (NULL == (dark_array = create_dark_array (exprec_array, num_exprecs)))
+     goto return_error;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "creating dark current table: %s",
+              output_file);
+   if (NULL == (dtt = dark_table_create (dcfg, dark_array)))
+     goto return_error;
+
+   if (0 != dtt->dtt_write (dtt, output_file))
+     goto return_error;
+
+   dark_table_config_free (dcfg);
+   dark_array_free (dark_array);
+   dtt->dtt_delete (dtt);
+
+   return 0;
+return_error:
+   dark_table_config_free (dcfg);
+   dark_array_free (dark_array);
+   if (dtt) dtt->dtt_delete (dtt);
+   return -1;
+}
+
+static int compute_current_and_trim (const CCD_Type *ccd,
+                                     const Instr_Type *instr,
+                                     const Pixelqf_Type *pt,
+                                     Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    float *mean_sdc = xr->storage_region_dark;
    Image_Type *aimg = NULL;
    double smear_fraction;
    int i;
+
+   /* FIXME: is this the correct temp? */
+   if (0 != instr->instr_ccd_temp1 (instr, exprec->start_time, &xr->ccd_temp))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "%s: ccd_temp lookup failed, start_time=%15.12e",
+                   __func__, exprec->start_time);
+        /* drop */
+     }
 
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
@@ -141,194 +272,103 @@ static int compute_current (CCD_Type *ccd, Pixelqf_Type *pt,
    return 0;
 }
 
-static void make_transient_ref_img (const Image_Type *prev,
-                                    const Image_Type *next,
-                                    Image_Type *img_ref)
+static int process_dark (config_t *cfg, const Control_Type *ctrl,
+                         Granule_Type *gr)
 {
-   int num_rows = img_ref->num_rows;
-   int num_cols = img_ref->num_cols;
-   int s, p;
+   CCD_Type *ccd = NULL;
+   Granule_Exprec_Type *exprec = NULL;
+   Instr_Type *instr = NULL;
+   Exprec_Meta_Type *exprec_array = NULL;
+   Pixelqf_Type *pt = NULL;
+   Badpix_Map_Type *bpixmap = NULL;
+   Badpix_Map_Occur_Type *bpix_occur = NULL;
+   Badpix_Bitmap_Type bpix_occur_mask;
+   double bpix_update_thresh;
+   int ixr, num_exprecs, exposure_type;
+   int bpix_occur_threshold, bpix_update_num_exprecs_needed;
+   int is_linearity, status = -1;
 
-   for (p = 0; p < num_rows; p++)
-     {
-        Image_Pixel_Type *prev_pixels = prev->pixels + p * num_cols;
-        Image_Pixel_Type *next_pixels = next->pixels + p * num_cols;
-        Image_Pixel_Type *ref_pixels = img_ref->pixels + p * num_cols;
-        for (s = 0; s < num_cols; s++)
-          {
-             if ((prev_pixels[s] != IMAGE_PIXEL_FILL_VALUE)
-                 && (next_pixels[s] != IMAGE_PIXEL_FILL_VALUE))
-               {
-                  Image_Pixel_Type pxp = prev_pixels[s] * next_pixels[s];
-                  ref_pixels[s] = (pxp >= 0) ? sqrt(pxp) : IMAGE_PIXEL_FILL_VALUE;
-               }
-             else ref_pixels[s] = IMAGE_PIXEL_FILL_VALUE;
-          }
-     }
-}
-
-static int flag_transients1 (const Pixelqf_Type *pt,
-                             Exprec_Meta_Type *exprec_array,
-                             int num_exprecs, int exprec_index,
-                             Badpix_Map_Type *bpixmap, Image_Type *img_ref)
-{
-   if (img_ref == NULL)
-     {
-        tell_verror (TELL_INTERNAL_ERROR, "%s: img_ref = NULL!", __func__);
-        return -1;
-     }
-
-   /* While img_ref is assumed to point to allocated storage,
-    * we don't always need to write to that storage. When the
-    * necessary reference image already exists, it's more efficient
-    * to over-write the local copy of the img_ref pointer with the
-    * address of the pre-existing reference image.
-    */
-
-   if (exprec_index == 0)
-     {
-        /* over-write local copy of img_ref pointer */
-        img_ref = exprec_array[1].exprec->img;
-     }
-   else if (exprec_index == num_exprecs-1)
-     {
-        /* over-write local copy of img_ref pointer */
-        img_ref = exprec_array[num_exprecs-2].exprec->img;
-     }
-   else
-     {
-        /* here's where we actually need the space img_ref points to */
-        make_transient_ref_img (exprec_array[exprec_index-1].exprec->img,
-                                exprec_array[exprec_index+1].exprec->img,
-                                img_ref);
-     }
-
-   return pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
-                                   exprec_array[exprec_index].exprec->img);
-}
-
-static int flag_granule_transients (const Pixelqf_Type *pt,
-                                    Exprec_Meta_Type *exprec_array,
-                                    int num_exprecs, Badpix_Map_Type *bpixmap)
-{
-   Image_Type *tmp_img = NULL;
-   int ixr;
-
-   if (NULL == (tmp_img = image_dup (exprec_array[0].exprec->img)))
+   if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "flagging transients");
+   if (NULL == (ccd = ccd_init (cfg)))
+     goto return_status;
+
+   if (NULL == (pt = pixelqf_init (cfg)))
+     goto return_status;
+
+   if (NULL == (instr = instr_open (ctrl->instr_status_file)))
+     goto return_status;
+
+   num_exprecs = gr->granule_num_exprecs(gr);
+   if (ctrl->limit_num_granules < num_exprecs)
+     num_exprecs = ctrl->limit_num_granules;
+
+   if (NULL == (exprec_array = alloc_exprec_array (num_exprecs)))
+     goto return_status;
+
+   if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
+     goto return_status;
+
+   bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
+   bpix_occur = bpix_occur_open (bpixmap->num_rows, bpixmap->num_cols,
+                                 bpix_occur_mask);
+   if (NULL == bpix_occur)
+     goto return_status;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
+        Exprec_Meta_Type *xr = &exprec_array[ixr];
+
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
-        if (-1 == flag_transients1 (pt, exprec_array, num_exprecs, ixr,
-                                    bpixmap, tmp_img))
-          goto return_error;
+
+        if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+          goto return_status;
+
+        xr->exprec = exprec;
+        xr->index = ixr;
+
+        if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
+          goto return_status;
+
+        if (-1 == compute_current_and_trim (ccd, instr, pt, xr))
+          goto return_status;
+
+        if (-1 == bpix_occur_incr (bpix_occur,
+                                   exprec->img->pixel_quality_flags))
+          goto return_status;
      }
 
-   image_free (tmp_img);
-   return 0;
-return_error:
-   image_free (tmp_img);
-   return -1;
-}
+   if (-1 == parse_config_file (cfg, &bpix_update_thresh, &bpix_update_num_exprecs_needed))
+     goto return_status;
 
-static void free_exprec_array (Exprec_Meta_Type *a, int num_exprecs,
-                               Granule_Type *gr)
-{
-   int i;
-
-   if ((gr == NULL) || (a == NULL))
-     return;
-
-   for (i = 0; i < num_exprecs; i++)
+   bpix_occur_threshold = bpix_update_thresh * num_exprecs;
+   if (num_exprecs > bpix_update_num_exprecs_needed)
      {
-        Exprec_Meta_Type *a_i = &a[i];
-        gr->granule_free_exprec (a_i->exprec);
-        image_free (a_i->img_err);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "updating bpix map");
+        if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
+                                 bpix_occur_mask, bpixmap->bits))
+          goto return_status;
      }
-   FREE(a);
-}
+   /* FIXME: write out updated badpix map */
 
-static Exprec_Meta_Type *alloc_exprec_array (int num_exprecs)
-{
-   Exprec_Meta_Type *a = NULL;
-   size_t exprec_array_size;
+   is_linearity = (exposure_type == EXPREC_TYPE_LIN_DARK);
+   if (0 != make_dark_table (cfg, is_linearity, exprec_array, num_exprecs, ctrl->output_file))
+     goto return_status;
 
-   exprec_array_size = num_exprecs * sizeof(*a);
-   if (NULL == (a = (Exprec_Meta_Type *) MALLOC (exprec_array_size)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-   memset ((char *)a, 0, exprec_array_size);
+   status = 0;
+return_status:
 
-   return a;
-}
+   bpix_free (bpixmap);
+   bpix_occur_close (bpix_occur);
+   free_exprec_array (exprec_array, num_exprecs, gr);
 
-static Dark_Array_Type *create_dark_array (Exprec_Meta_Type *exprec_array,
-                                           int num_exprecs)
-{
-   Dark_Array_Type *dark_array = NULL;
-   int i, k;
+   if (ccd) ccd->ccd_delete (ccd);
+   if (instr) instr->instr_delete (instr);
+   if (pt) pt->pqf_delete (pt);
 
-   if (NULL == (dark_array = dark_array_alloc (num_exprecs)))
-     return NULL;
-
-   for (i = 0; i < num_exprecs; i++)
-     {
-        Exprec_Meta_Type *xr = &exprec_array[i];
-        Granule_Exprec_Type *exprec = xr->exprec;
-        double sdc;
-        sdc = 0.0;
-        for (k = 0; k < 4; k++)
-          {
-             sdc += xr->storage_region_dark[k];
-          }
-        sdc /= 4;
-        if (0 != dark_array_elem_init (dark_array, i, exprec->img, sdc, xr->ccd_temp,
-                                       exprec->exposure_time))
-          {
-             dark_array_free (dark_array);
-             return NULL;
-          }
-     }
-
-   return dark_array;
-}
-
-static int make_dark_table (config_t *cfg, int is_linearity,
-                            Exprec_Meta_Type *exprec_array, int num_exprecs,
-                            const char *output_file)
-{
-   Dark_Table_Type *dtt = NULL;
-   Dark_Config_Type *dcfg = NULL;
-   Dark_Array_Type *dark_array = NULL;
-
-   if (NULL == (dcfg = dark_table_config (cfg, is_linearity)))
-     return -1;
-
-   if (NULL == (dark_array = create_dark_array (exprec_array, num_exprecs)))
-     goto return_error;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "creating dark current table: %s",
-              output_file);
-   if (NULL == (dtt = dark_table_create (dcfg, dark_array)))
-     goto return_error;
-
-   if (0 != dtt->dtt_write (dtt, output_file))
-     goto return_error;
-
-   dark_table_config_free (dcfg);
-   dark_array_free (dark_array);
-   dtt->dtt_delete (dtt);
-
-   return 0;
-return_error:
-   dark_table_config_free (dcfg);
-   dark_array_free (dark_array);
-   if (dtt) dtt->dtt_delete (dtt);
-   return -1;
+   return status;
 }
 
 static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
@@ -406,155 +446,334 @@ static int validate_dark_table_type (const Dark_Table_Type *dtt,
    return 0;
 }
 
-static int radiometric_correction (Calibration_Type *cal, int exposure_type,
-                                   Exprec_Meta_Type *exprec_array, int num_exprecs,
-                                   const Control_Type *ctrl)
+static int radiometric_correction (const Calibration_Type *cal, const Dark_Table_Type *dtt,
+                                   Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
-   Dark_Table_Type *dtt = NULL;
-   Image_Type *tmp_img = NULL;
-   int ixr, status = -1;
+   Granule_Exprec_Type *exprec = xr->exprec;
 
-   if (NULL == (dtt = dark_table_read (ctrl->dark_file)))
-     goto return_status;
+   /* FIXME? propagate dark-current subtraction error to
+    * uncertainty estimate? */
+   if (0 != subtract_dark_current (exprec, dtt, xr->storage_region_dark,
+                                   xr->ccd_temp, tmp_img))
+     return -1;
 
-   if (0 != validate_dark_table_type (dtt, exposure_type))
-     goto return_status;
+   /* FIXME: update uncertainty? */
+   if (0 != cal->cal_apply_prnu (cal, exprec->img))
+     return -1;
 
-   tmp_img = exprec_array[0].exprec->img;
-   if (NULL == (tmp_img = image_new (tmp_img->num_rows, tmp_img->num_cols)))
-     goto return_status;
+   /* >>> Stray light correction goes here <<< */
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "Radiometric correction:");
+   /* Multiplicative factor converts e/s to photons/s */
+   if ((0 != cal->cal_apply_rcoeffs (cal, exprec->img))
+       || (0 != cal->cal_apply_rcoeffs (cal, xr->img_err)))
+     return -1;
 
-   for (ixr = 0; ixr < num_exprecs; ixr++)
+   if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
-        Exprec_Meta_Type *xr = &exprec_array[ixr];
-        Granule_Exprec_Type *exprec = xr->exprec;
-
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
-
-        /* FIXME? propagate dark-current subtraction error to
-         * uncertainty estimate? */
-        if (0 != subtract_dark_current (exprec, dtt, xr->storage_region_dark,
-                                        xr->ccd_temp, tmp_img))
-          {
-             goto return_status;
-          }
-
-        /* FIXME: update uncertainty? */
-        if (0 != cal->cal_apply_prnu (cal, exprec->img))
-          goto return_status;
-
-        /* >>> Stray light correction goes here <<< */
-
-        /* Multiplicative factor converts e/s to photons/s */
-        if ((0 != cal->cal_apply_rcoeffs (cal, exprec->img))
-            || (0 != cal->cal_apply_rcoeffs (cal, xr->img_err)))
-          goto return_status;
-
-        if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
-          {
-             double solar_phi=0.0, solar_theta=0.0;
-             /* FIXME: placeholders for angles to be computed based on
-              * the observation date/time and orbital ephemeris */
-             if ((0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, exprec->img))
-                 || (0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, xr->img_err))) /* FIXME: ok? */
-               goto return_status;
-          }
-
-        /* Logically, wavelength calibration goes here but
-         * to save RAM usage, we interleave wavelength
-         * calibration with output. */
-     }
-
-   status = 0;
-return_status:
-   if (dtt) dtt->dtt_delete (dtt);
-   image_free (tmp_img);
-   return status;
-}
-
-static int validate_exposure_type (int *exposure_type0, int exposure_type)
-{
-   if (exposure_type == EXPREC_TYPE_UNKNOWN)
-     {
-        tell_verror (TELL_INVALID_DATA_ERROR,
-                     "%s: input granule contains exposures of unknown type",
-                     __func__);
-        return -1;
-     }
-
-   if (*exposure_type0 == EXPREC_TYPE_UNKNOWN)
-     {
-        *exposure_type0 = exposure_type;
-        return 0;
-     }
-
-   if (exposure_type != *exposure_type0)
-     {
-        tell_verror (TELL_INVALID_DATA_ERROR,
-                     "%s: input granule contains multiple exposure types",
-                     __func__);
-        return -1;
+        double solar_phi=0.0, solar_theta=0.0;
+        /* FIXME: placeholders for angles to be computed based on
+         * the observation date/time and orbital ephemeris */
+        if ((0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, exprec->img))
+            || (0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, xr->img_err))) /* FIXME: ok? */
+          return -1;
      }
 
    return 0;
 }
 
-static int finish_and_output (config_t *cfg, Calibration_Type *cal,
-                              const Exprec_Meta_Type *exprec_array,
-                              int num_exprecs, const char *output_file)
+static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal,
+                                  Dark_Table_Type *dtt, Exprec_Meta_Type *xr,
+                                  Image_Type *tmp_img)
 {
-   Granule_Exprec_Type *exprec = NULL;
-   Output_Type *out = NULL;
-   Image_Type *img = NULL;
-   Image_Type *img_tmp_waves = NULL;
-   int k, status = -1;
+   Output_Exprec_Type rec;
 
-   /* FIXME: Are we going to write explicit wavelength arrays
-    * out to the L1 file, or are we going to implement
-    * something clever to save disk space?
-    */
-
-   if (num_exprecs == 0)
-     return 0;
-
-   exprec = exprec_array[0].exprec;
-   if (NULL == (out = output_alloc (cfg, exprec->exposure_type)))
+   if (0 != radiometric_correction (cal, dtt, xr, tmp_img))
      return -1;
 
-   if (0 != out->out_set_file (out, output_file))
+   if (0 != cal->cal_wavecal (cal, xr->exprec->img, tmp_img))
+     return -1;
+
+   rec.exprec = xr->exprec;
+   rec.img_err = xr->img_err;
+   rec.img_waves = tmp_img;
+
+   if (0 != out->out_write_rec (out, xr->index, &rec))
+     return -1;
+
+   return 0;
+}
+
+static Exprec_Meta_Type *new_exprec_meta_type (void)
+{
+   return alloc_exprec_array (1);
+}
+
+static void free_exprec_meta_type (Exprec_Meta_Type *xr, Granule_Type *gr)
+{
+   free_exprec_array (xr, 1, gr);
+}
+
+#define QUEUE_DEPTH  3
+typedef struct
+{
+   Exprec_Meta_Type *items[QUEUE_DEPTH];
+   int num_queued;
+}
+Queue_Type;
+
+static void queue_init (Queue_Type *q)
+{
+   memset ((char *)q->items, 0, sizeof (q->items));
+   q->num_queued = 0;
+}
+
+static Exprec_Meta_Type *queue_shift (Queue_Type *q)
+{
+   Exprec_Meta_Type *oldest = q->items[0];
+   int i;
+
+   for (i = 1; i < QUEUE_DEPTH; i++)
+     {
+        q->items[i-1] = q->items[i];
+     }
+
+   return oldest;
+}
+
+static Exprec_Meta_Type *queue_push (Queue_Type *q,
+                                     Exprec_Meta_Type *xr)
+{
+   Exprec_Meta_Type *oldest = queue_shift (q);
+   q->items[QUEUE_DEPTH-1] = xr;
+   q->num_queued += 1;
+   if (q->num_queued > QUEUE_DEPTH)
+     q->num_queued = QUEUE_DEPTH;
+   return oldest;
+}
+
+static void queue_empty (Queue_Type *q, Granule_Type *gr)
+{
+   int i;
+   if ((q == NULL) || (gr == NULL))
+     return;
+
+   for (i = 0; i < q->num_queued; i++)
+     {
+        free_exprec_meta_type (q->items[i], gr);
+     }
+}
+
+static void make_transient_ref_img (const Image_Type *prev,
+                                    const Image_Type *next,
+                                    Image_Type *img_ref)
+{
+   int num_rows = img_ref->num_rows;
+   int num_cols = img_ref->num_cols;
+   int s, p;
+
+   for (p = 0; p < num_rows; p++)
+     {
+        Image_Pixel_Type *prev_pixels = prev->pixels + p * num_cols;
+        Image_Pixel_Type *next_pixels = next->pixels + p * num_cols;
+        Image_Pixel_Type *ref_pixels = img_ref->pixels + p * num_cols;
+        for (s = 0; s < num_cols; s++)
+          {
+             if ((prev_pixels[s] != IMAGE_PIXEL_FILL_VALUE)
+                 && (next_pixels[s] != IMAGE_PIXEL_FILL_VALUE))
+               {
+                  Image_Pixel_Type pxp = prev_pixels[s] * next_pixels[s];
+                  ref_pixels[s] = (pxp >= 0) ? sqrt(pxp) : IMAGE_PIXEL_FILL_VALUE;
+               }
+             else ref_pixels[s] = IMAGE_PIXEL_FILL_VALUE;
+          }
+     }
+}
+
+static int flag_transients1q (const Pixelqf_Type *pt,
+                              const Badpix_Map_Type *bpixmap,
+                              int num_exprecs, Queue_Type *q, int exprec_index,
+                              Image_Type *img_ref)
+{
+   Exprec_Meta_Type *prev, *xr, *next;
+   int status = 0;
+
+   if (img_ref == NULL)
+     {
+        tell_verror (TELL_INTERNAL_ERROR, "%s: img_ref = NULL!", __func__);
+        return -1;
+     }
+
+   /* The queue lets us lag one record behind so that
+    * when exprec_index=i, we process exprec_index=i-1.
+    * On the final pass, we process two records, to
+    * ensure that every record is processed in the end.
+    */
+
+   if (exprec_index == 0)
+     {
+        /* queue contains {NULL,NULL,img(0)},
+         * nothing to do yet */
+        return 0;
+     }
+
+   /* When we don't need the scratch space at img_ref,
+    * we over-write the local copy of the img_Ref pointer so
+    * that it points to the pre-existing object that's needed.
+    */
+
+   xr = q->items[1];
+   next = q->items[2];
+
+   if ((exprec_index == 1) || (exprec_index == num_exprecs-1))
+     {
+        /* queue contains {NULL, img(0), img(1)}
+         *             or {..., img(n-2), img(n-1)} */
+        img_ref = next->exprec->img;
+     }
+   else
+     {
+        /* here's where we actually need the space img_ref points to */
+        prev = q->items[0];
+        make_transient_ref_img (prev->exprec->img, next->exprec->img,
+                                img_ref);
+     }
+
+   status = pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
+                                     xr->exprec->img);
+   if (status != 0)
+     return status;
+
+   /* When exprec_index==num_exprecs-1, process one more to finish: */
+   if (exprec_index == num_exprecs-1)
+     {
+        /* queue contains {..., img(n-2), img(n-1)} */
+        xr = q->items[2];
+        prev = q->items[1];
+        img_ref = prev->exprec->img;
+        status = pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
+                                          xr->exprec->img);
+     }
+
+   return status;
+}
+
+static int process_exposure (config_t *cfg, const Control_Type *ctrl,
+                             Granule_Type *gr)
+{
+   Queue_Type exprec_queue;
+   CCD_Type *ccd = NULL;
+   Granule_Exprec_Type *exprec = NULL;
+   Instr_Type *instr = NULL;
+   Calibration_Type *cal = NULL;
+   Exprec_Meta_Type *xr = NULL;
+   Exprec_Meta_Type *xr_ready = NULL;
+   Pixelqf_Type *pt = NULL;
+   Badpix_Map_Type *bpixmap = NULL;
+   Dark_Table_Type *dtt = NULL;
+   Output_Type *out = NULL;
+   Image_Type *tmp_img = NULL;
+   int num_serial_active_full, num_parallel_active_full;
+   int ixr, num_exprecs, exposure_type;
+   int status = -1;
+
+   if (0 != gr->granule_type (gr, &exposure_type))
+     return -1;
+
+   if (NULL == (ccd = ccd_init (cfg)))
      goto return_status;
 
-   img = exprec->img;
-   out->out_set_dims (out, num_exprecs, img->num_cols, img->num_rows/2);
+   if (NULL == (cal = sensorcal_init (cfg)))
+     return -1;
 
+   if (NULL == (pt = pixelqf_init (cfg)))
+     goto return_status;
+
+   if (NULL == (instr = instr_open (ctrl->instr_status_file)))
+     goto return_status;
+
+   if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
+     goto return_status;
+
+   if (NULL == (dtt = dark_table_read (ctrl->dark_file)))
+     goto return_status;
+   if (0 != validate_dark_table_type (dtt, exposure_type))
+     goto return_status;
+
+   num_exprecs = gr->granule_num_exprecs(gr);
+   if (ctrl->limit_num_granules < num_exprecs)
+     num_exprecs = ctrl->limit_num_granules;
+
+   /* Allocate reusable scratch space to hold a full, trimmed CCD image */
+   ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
+   if (NULL == (tmp_img = image_new (num_parallel_active_full, num_serial_active_full)))
+     goto return_status;
+
+   /* Dimension the output file to hold num_exprecs trimmed frames,
+    * split into two wavelength bands, with wavelength the fastest
+    * varying dimension. */
+   if ((NULL == (out = output_alloc (cfg, exposure_type)))
+       || (0 != out->out_set_file (out, ctrl->output_file)))
+     goto return_status;
+   out->out_set_dims (out, num_exprecs,
+                      num_serial_active_full, num_parallel_active_full/2);
    if (0 != out->out_create (out))
      goto return_status;
 
-   if (NULL == (img_tmp_waves = image_new (img->num_rows, img->num_cols)))
-     goto return_status;
+   queue_init (&exprec_queue);
 
-   for (k = 0; k < num_exprecs; k++)
+   for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        Output_Exprec_Type rec;
-        const Exprec_Meta_Type *xr = &exprec_array[k];
+        Exprec_Meta_Type *xr_to_delete;
 
-        /* wavelength calibration */
-        if (0 != cal->cal_wavecal (cal, xr->exprec->img, img_tmp_waves))
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
+
+        if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+          goto return_status;
+        if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
           goto return_status;
 
-        rec.exprec = xr->exprec;
-        rec.img_err = xr->img_err;
-        rec.img_waves = img_tmp_waves;
+        if (NULL == (xr = new_exprec_meta_type ()))
+          goto return_status;
+        xr->exprec = exprec;
+        xr->index = ixr;
 
-        if (0 != out->out_write_rec (out, k, &rec))
+        if (-1 == compute_current_and_trim (ccd, instr, pt, xr))
+          goto return_status;
+
+        /* We need at least 2 frames queued to look for transients */
+
+        xr_to_delete = queue_push (&exprec_queue, xr);
+        free_exprec_meta_type (xr_to_delete, gr);
+        if (exprec_queue.num_queued < 2)
+          continue;
+
+        if (0 != flag_transients1q (pt, bpixmap, num_exprecs,
+                                    &exprec_queue, ixr, tmp_img))
+          goto return_status;
+
+        /* Frame ixr-1 is now ready to continue processing */
+        xr_ready = exprec_queue.items[1];
+        if (0 != apply_cal_then_output (out, cal, dtt, xr_ready, tmp_img))
           goto return_status;
      }
 
+   /* Process the last entry in the queue, exprec[num_exprecs-1] */
+   xr_ready = exprec_queue.items[2];
+   if (0 != apply_cal_then_output (out, cal, dtt, xr_ready, tmp_img))
+     goto return_status;
+
    status = 0;
 return_status:
-   image_free (img_tmp_waves);
+
+   queue_empty (&exprec_queue, gr);
+   image_free (tmp_img);
+   bpix_free (bpixmap);
+
+   if (ccd) ccd->ccd_delete (ccd);
+   if (instr) instr->instr_delete (instr);
+   if (pt) pt->pqf_delete (pt);
+   if (cal) cal->cal_delete (cal);
+   if (dtt) dtt->dtt_delete (dtt);
    if (out)
      {
         (void) out->out_close (out);
@@ -566,138 +785,38 @@ return_status:
 
 int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
-   CCD_Type *ccd = NULL;
    Granule_Type *gr = NULL;
-   Granule_Exprec_Type *exprec = NULL;
-   Instr_Type *instr = NULL;
-   Calibration_Type *cal = NULL;
-   Exprec_Meta_Type *exprec_array = NULL;
-   Pixelqf_Type *pt = NULL;
-   Badpix_Map_Type *bpixmap = NULL;
-   Badpix_Map_Occur_Type *bpix_occur = NULL;
-   Badpix_Bitmap_Type bpix_occur_mask;
-   double bpix_update_thresh;
-   int ixr, num_exprecs, exposure_type = EXPREC_TYPE_UNKNOWN;
-   int bpix_occur_threshold, bpix_update_num_exprecs_needed;
-   int status = -1;
-
-   if (NULL == (ccd = ccd_init (cfg)))
-     goto return_status;
-
-   if (NULL == (pt = pqf_init (cfg)))
-     goto return_status;
-
-   if (NULL == (instr = instr_open (ctrl->instr_status_file)))
-     goto return_status;
-
-   if (NULL == (cal = sensorcal_init (cfg)))
-     return -1;
+   int exposure_type, status = -1;
 
    if (NULL == (gr = granule_open (ctrl->input_file)))
      goto return_status;
 
-   num_exprecs = gr->granule_num_exprecs(gr);
-   if (ctrl->limit_num_granules < num_exprecs)
-     num_exprecs = ctrl->limit_num_granules;
-
-   if (NULL == (exprec_array = alloc_exprec_array (num_exprecs)))
-     goto return_status;
-
-   if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
-     goto return_status;
-
-   bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
-   bpix_occur = bpix_occur_open (bpixmap->num_rows, bpixmap->num_cols,
-                                 bpix_occur_mask);
-   if (NULL == bpix_occur)
-     goto return_status;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
-   for (ixr = 0; ixr < num_exprecs; ixr++)
-     {
-        Exprec_Meta_Type *xr = &exprec_array[ixr];
-
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
-
-        if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
-          goto return_status;
-
-        xr->exprec = exprec;
-
-        if (-1 == validate_exposure_type (&exposure_type, exprec->exposure_type))
-          goto return_status;
-
-        /* FIXME: correct temp? */
-        if (0 != instr->instr_ccd_temp1 (instr, exprec->start_time, &xr->ccd_temp))
-          {
-             tell_vlog (TELL_MSGTYPE_WARN, 0,
-                        "%s: ccd_temp lookup failed, start_time=%15.12e",
-                        __func__, exprec->start_time);
-             /* drop */
-          }
-
-        if (-1 == compute_current (ccd, pt, xr))
-          goto return_status;
-
-        if (-1 == bpix_occur_incr (bpix_occur,
-                                   exprec->img->pixel_quality_flags))
-          goto return_status;
-     }
-
-   if (-1 == parse_config_file (cfg, &bpix_update_thresh, &bpix_update_num_exprecs_needed))
-     goto return_status;
-
-   bpix_occur_threshold = bpix_update_thresh * num_exprecs;
-   if (num_exprecs > bpix_update_num_exprecs_needed)
-     {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "updating bpix map");
-        if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
-                                 bpix_occur_mask, bpixmap->bits))
-          goto return_status;
-     }
-
-   /* FIXME - always do this? */
-   if (0 != flag_granule_transients (pt, exprec_array, num_exprecs, bpixmap))
+   if (0 != gr->granule_type (gr, &exposure_type))
      goto return_status;
 
    switch (exposure_type)
      {
-      default:
-        /* Given the validation above, this should never happen */
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unknown exposure type: %d",
-                     __func__, exposure_type);
-        goto return_status;
-
       case EXPREC_TYPE_DARK:
-      case EXPREC_TYPE_LIN_DARK: {
-         int is_linearity = (exposure_type == EXPREC_TYPE_LIN_DARK);
-         if (0 != make_dark_table (cfg, is_linearity, exprec_array, num_exprecs, ctrl->output_file))
-           goto return_status;
-      }
+      case EXPREC_TYPE_LIN_DARK:
+        status = process_dark (cfg, ctrl, gr);
         break;
 
       case EXPREC_TYPE_RADIANCE:
       case EXPREC_TYPE_IRRADIANCE:
       case EXPREC_TYPE_LIN_IRR:
-        if (0 != radiometric_correction (cal, exposure_type, exprec_array, num_exprecs, ctrl))
-          goto return_status;
-        if (0 != finish_and_output (cfg, cal, exprec_array, num_exprecs, ctrl->output_file))
-          goto return_status;
+        status = process_exposure (cfg, ctrl, gr);
+        break;
+
+      default:
+        tell_verror (TELL_INVALID_DATA_ERROR,
+                     "%s: input granule contains exposures of unknown or unexpected type",
+                     __func__);
         break;
      }
 
-   status = 0;
 return_status:
 
-   bpix_free (bpixmap);
-   bpix_occur_close (bpix_occur);
-   free_exprec_array (exprec_array, num_exprecs, gr);
-
-   if (ccd) ccd->ccd_delete (ccd);
    if (gr) gr->granule_close (gr);
-   if (instr) instr->instr_delete (instr);
-   if (pt) pt->pqf_delete (pt);
-   if (cal) cal->cal_delete (cal);
 
    return status;
 }
