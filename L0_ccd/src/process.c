@@ -37,10 +37,10 @@ static int parse_config_file (config_t *cfg, double *bpix_update_thresh,
 {
    config_setting_t *setting, *sub;
 
-   if (NULL == (setting = config_lookup (cfg, "ccd_calibration")))
+   if (NULL == (setting = config_lookup (cfg, "pixel_quality_flag_params")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_calibration in param file: %s",
+                     "%s: accessing pixel_quality_flag_params in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -589,10 +589,10 @@ static void make_transient_ref_img (const Image_Type *prev,
      }
 }
 
-static int flag_transients1q (const Pixelqf_Type *pt,
-                              const Badpix_Map_Type *bpixmap,
-                              int num_exprecs, Queue_Type *q, int exprec_index,
-                              Image_Type *img_ref)
+static int flag_transients1 (const Pixelqf_Type *pt,
+                             const Badpix_Map_Type *bpixmap,
+                             int num_exprecs, Queue_Type *q, int exprec_index,
+                             Image_Type *img_ref)
 {
    Exprec_Meta_Type *prev, *xr, *next;
    int status = 0;
@@ -621,19 +621,18 @@ static int flag_transients1q (const Pixelqf_Type *pt,
     * that it points to the pre-existing object that's needed.
     */
 
-   xr = q->items[1];
+   prev = q->items[0];
+   xr   = q->items[1];
    next = q->items[2];
 
-   if ((exprec_index == 1) || (exprec_index == num_exprecs-1))
+   if (prev == NULL)
      {
-        /* queue contains {NULL, img(0), img(1)}
-         *             or {..., img(n-2), img(n-1)} */
+        /* e.g. exprec_index == 1 for num_exprecs >= 2 */
         img_ref = next->exprec->img;
      }
    else
      {
         /* here's where we actually need the space img_ref points to */
-        prev = q->items[0];
         make_transient_ref_img (prev->exprec->img, next->exprec->img,
                                 img_ref);
      }
@@ -647,9 +646,9 @@ static int flag_transients1q (const Pixelqf_Type *pt,
    if (exprec_index == num_exprecs-1)
      {
         /* queue contains {..., img(n-2), img(n-1)} */
-        xr = q->items[2];
         prev = q->items[1];
         img_ref = prev->exprec->img;
+        xr = q->items[2];
         status = pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
                                           xr->exprec->img);
      }
@@ -747,8 +746,8 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         if (exprec_queue.num_queued < 2)
           continue;
 
-        if (0 != flag_transients1q (pt, bpixmap, num_exprecs,
-                                    &exprec_queue, ixr, tmp_img))
+        if (0 != flag_transients1 (pt, bpixmap, num_exprecs,
+                                   &exprec_queue, ixr, tmp_img))
           goto return_status;
 
         /* Frame ixr-1 is now ready to continue processing */
