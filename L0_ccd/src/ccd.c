@@ -564,14 +564,15 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
    if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, NULL, NULL))
      return -1;
 
+   /* [**] Only one SDC of the rows is actually used */
    if (quad->row_step < 0)
      {
         pb = quad->row_beg;
-        pe = quad->row_beg + ccdp->num_parallel_sdc;
+        pe = quad->row_beg + 1;  /* [**] pe = quad->row_beg + ccdp->num_parallel_sdc; */
      }
    else
      {
-        pb = quad->row_end - ccdp->num_parallel_sdc;
+        pb = quad->row_end - 1; /* [**] pb = quad->row_end - ccdp->num_parallel_sdc; */
         pe = quad->row_end;
      }
 
@@ -588,13 +589,6 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
              pixcount += 1;
           }
      }
-
-   /* FIXME - SDC Questions:
-    * Why two SDC rows for each quadrant?
-    * What's in the two SDC rows?  Is this documented somewhere?
-    * Why does L01 prototype use only one SDC row?
-    * Is this implementation correct?
-    */
 
    *mean_sdc_per_pixel = (pixsum / pixcount) / ccdp->num_parallel_active;
 
