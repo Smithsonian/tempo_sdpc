@@ -209,6 +209,9 @@ subroutine test_put_errors (obj, max_dims, errstat)
   call tiof_put3d_i2 (obj, absent, start(1:3), edge(1:3), &
                       int(reshape(values, edge(1:3)), kind=i2), errstat)
   call expected_fail (errstat)
+  call tiof_put4d_i2 (obj, absent, start(1:4), edge(1:4), &
+                      int(reshape(values, edge(1:4)), kind=i2), errstat)
+  call expected_fail (errstat)
 
   call tiof_put1d_ui2 (obj, absent, start(1:1), edge(1:1), &
                       int(values,kind=i2), errstat)
@@ -324,7 +327,7 @@ subroutine test_get_errors (obj, max_dims, errstat)
   real (kind=r8) :: r8s
   character (len=1), dimension(1) :: strings
   integer (kind=i1) :: i1_1d(1), i1_2d(1,1), i1_3d(1,1,1)
-  integer (kind=i2) :: i2_1d(1), i2_2d(1,1), i2_3d(1,1,1)
+  integer (kind=i2) :: i2_1d(1), i2_2d(1,1), i2_3d(1,1,1), i2_4d(1,1,1,1)
   integer (kind=i4) :: i4_1d(1), i4_2d(1,1), i4_3d(1,1,1)
   integer (kind=i8) :: i8_1d(1), i8_2d(1,1), i8_3d(1,1,1)
   real (kind=r4) :: &
@@ -399,6 +402,9 @@ subroutine test_get_errors (obj, max_dims, errstat)
   call expected_fail (errstat)
   call tiof_get3d_i2 (obj, absent, start(1:3), edge(1:3), &
                       i2_3d, errstat)
+  call expected_fail (errstat)
+  call tiof_get4d_i2 (obj, absent, start(1:4), edge(1:4), &
+                      i2_4d, errstat)
   call expected_fail (errstat)
 
   call tiof_get1d_ui2 (obj, absent, start(1:1), edge(1:1), &
@@ -668,6 +674,14 @@ subroutine check_create (filename, values, max_dims, dimlens, &
     enddo
   enddo
 
+  ! rather than support all 4D arrays, just add this one explicitly
+  call tiof_varlist_append (varlist, errstat, "ssA4", nf90_short, dimids=dimids(1:4), &
+                            fillvalue=fillvalue, comment="comment: ssA4")
+  if (errstat < 0) then
+    call tell_error (tell_runtime_error, "varlist append failed", errstat);
+    return
+  endif
+
   ! exercise variable attributes
   call tiof_varlist_append (varlist, errstat, "many_attributes", &
                             nf90_int, &
@@ -744,6 +758,8 @@ subroutine check_create (filename, values, max_dims, dimlens, &
                       int(reshape(values(1:product(edge(1:2))), edge(1:2)),kind=i2), errstat)
   call tiof_put3d_i2 (obj, "ssA3", start(3:1:-1), edge(3:1:-1), &
                       int(reshape(values(1:product(edge(1:3))), edge(1:3)),kind=i2), errstat)
+  call tiof_put4d_i2 (obj, "ssA4", start(4:1:-1), edge(4:1:-1), &
+                      int(reshape(values(1:product(edge(1:4))), edge(1:4)),kind=i2), errstat)
 
   call tiof_put1d_ui2 (obj, "usA1", start(1:1), edge(1:1), &
                       int(values,kind=i2), errstat)
@@ -885,7 +901,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
   integer (kind=i1), allocatable :: &
     i1_1d(:), i1_2d(:,:), i1_3d(:,:,:)
   integer (kind=i2), allocatable :: &
-    i2_1d(:), i2_2d(:,:), i2_3d(:,:,:)
+    i2_1d(:), i2_2d(:,:), i2_3d(:,:,:), i2_4d(:,:,:,:)
   integer (kind=i4), allocatable :: &
     i4_1d(:), i4_2d(:,:), i4_3d(:,:,:)
   integer (kind=i8), allocatable :: &
@@ -995,6 +1011,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
             i2_1d(edge(1)), &
             i2_2d(edge(1),edge(2)), &
             i2_3d(edge(1),edge(2),edge(3)), &
+            i2_4d(edge(1),edge(2),edge(3),edge(4)), &
             i4_1d(edge(1)), &
             i4_2d(edge(1),edge(2)), &
             i4_3d(edge(1),edge(2),edge(3)), &
@@ -1128,6 +1145,16 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     call tell_error (tell_runtime_error, "i2_3d value mismatch", errstat)
     return
   endif
+
+  i2_4d(:,:,:,:) = -1
+  call tiof_get4d_i2 (obj, "ssA4", start(4:1:-1), edge(4:1:-1), i2_4d, errstat, &
+                     replace_fill=int(fillvalue,kind=i2))
+  if (any (int(values(1:product(edge(1:4))),kind=i2) &
+           /= reshape(i2_4d, [product(edge(1:4))]))) then
+    call tell_error (tell_runtime_error, "i2_4d value mismatch", errstat)
+    return
+  endif
+
   i2_3d(:,:,:) = -1
   call tiof_get3d_ui2 (obj, "usA3", start(3:1:-1), edge(3:1:-1), i2_3d, errstat, &
                      replace_fill=int(fillvalue,kind=i2))

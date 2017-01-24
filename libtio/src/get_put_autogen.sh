@@ -145,3 +145,7 @@ for dim in $big_dim_list; do
   done
   colons="${colons},:"
 done
+
+# and explicitly add support for a few more:
+expand_template_array "get_array_int.in" "get" i2 4 ":,:,:,:"
+expand_template_array "put_array.in" "put" i2 4 ":,:,:,:"

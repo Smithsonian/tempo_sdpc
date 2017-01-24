@@ -18,7 +18,7 @@ program ftest1
   real (kind=r8), dimension(:), allocatable :: values
   integer :: errstat, num_values, j
   real (kind=r8), parameter :: &
-    fillvalue_out = 111.2345, fillvalue_in = -1.5432
+    fillvalue_out = 999.2345, fillvalue_in = -1.5432
 
   errstat = 0
 
