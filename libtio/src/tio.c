@@ -846,6 +846,20 @@ int TIO_get_att (int grp, int varid, const char *attname,
    return 0;
 }
 
+int TIO_free_string (size_t len, char **data)
+{
+   int status;
+
+   if (NC_NOERR != (status = nc_free_string (len, data)))
+     {
+        Tell_verror (TELL_RUNTIME_ERROR, "%s: freeing string %ld arrays (%s)",
+                     __func__, len, nc_strerror (status));
+        return -1;
+     }
+
+   return 0;
+}
+
 int TIO_inq_grp (int parent_ncid, const char *path, int *grp)
 {
    int status;

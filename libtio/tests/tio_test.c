@@ -223,6 +223,46 @@ static int test_def_var (int ncid, const char *name, int type)
    return 0;
 }
 
+static int test_numerical_attribute_io (int target_ncid)
+{
+#define NUM_ATT_VALUE 121
+   unsigned char ubi, ub = NUM_ATT_VALUE;
+   unsigned short usi, us = NUM_ATT_VALUE;
+   char bi, b = NUM_ATT_VALUE;
+   short si, s = NUM_ATT_VALUE;
+   float fi, f = NUM_ATT_VALUE;
+   double di, d = NUM_ATT_VALUE;
+   unsigned long long u64i, u64 = NUM_ATT_VALUE;
+
+   if (   (0 != TIO_put_att (target_ncid, NC_GLOBAL, "byte_att", NC_BYTE, 1, &b))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "ubyte_att", NC_UBYTE, 1, &ub))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "short_att", NC_SHORT, 1, &s))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "ushort_att", NC_USHORT, 1, &us))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "uint64_att", NC_UINT64, 1, &u64))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "float_att", NC_FLOAT, 1, &f))
+       || (0 != TIO_put_att (target_ncid, NC_GLOBAL, "double_att", NC_DOUBLE, 1, &d)))
+     {
+        fprintf (stderr, "*** error writing numerial attribute\n");
+        return -1;
+     }
+
+   if ((0 != TIO_get_att (target_ncid, NC_GLOBAL, "byte_att", NC_BYTE, &bi))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "ubyte_att", NC_UBYTE, &ubi))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "short_att", NC_SHORT, &si))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "ushort_att", NC_USHORT, &usi))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "uint64_att", NC_UINT64, &u64i))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "float_att", NC_FLOAT, &fi))
+       || (0 != TIO_get_att (target_ncid, NC_GLOBAL, "double_att", NC_DOUBLE, &di))
+       || (bi != b) || (ubi != ub) || (si != s) || (usi != us) || (u64i != u64)
+       || (fi != f) || (di != d))
+     {
+        fprintf (stderr, "*** error reading numerial attribute\n");
+        return -1;
+     }
+
+   return 0;
+}
+
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 {
    int ncid, varid, status, grp, err=-1;
@@ -239,6 +279,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    long long attr_in;
    unsigned int attr_in_conversion;
    char *grp_name;
+   char *string_array[1] = {NULL};
+   char *string_array_expected[1] = {"a string attribute"};
    float *data = NULL, *data_err = NULL;
    float *data_in = NULL, *data_err_in = NULL;
    double *dbl_err=NULL;
@@ -525,6 +567,26 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
 
    if (-1 == TIO_write_scan_ident (target_ncid, scan_ident))
      goto cleanup;
+
+   /* Test numerical attribute types */
+   if (-1 == test_numerical_attribute_io (target_ncid))
+     goto cleanup;
+
+   /* Test string attribute I/O and free */
+   if ((-1 == TIO_put_att (target_ncid, NC_GLOBAL, "a_string_att", NC_STRING, 1, string_array_expected))
+       || (-1 == TIO_get_att (target_ncid, NC_GLOBAL, "a_string_att", NC_STRING, string_array)))
+     {
+        fprintf (stderr, "*** error reading time_reference attribute\n");
+        goto cleanup;
+     }
+   if (0 != strcmp (string_array[0], string_array_expected[0]))
+     {
+        fprintf (stderr, "*** error:  string_array[0]=%s (expected %s)\n",
+                 string_array[0], string_array_expected[0]);
+        (void) TIO_free_string (1, string_array);
+        goto cleanup;
+     }
+   (void) TIO_free_string (1, string_array);
 
    if (-1 == TIO_close (target_ncid))
      goto cleanup;

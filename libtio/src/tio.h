@@ -196,6 +196,13 @@ extern int TIO_put_text_attrs (int grp, int varid,
 extern int TIO_get_att (int grp, int varid, const char *attname,
                         int xtype, void *att);
 
+/** Free string array returned by TIO_get_att
+ * @param len    The number of character arrays
+ * @param data   Pointer to the array of character arrays
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_free_string (size_t len, char **data);
+
 /** Copy variable attributes between ncids
  * @param  ncid_infile     Input ncid
  * @param  id_var_infile   Input variable id (in input ncid)
