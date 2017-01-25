@@ -308,7 +308,7 @@ Granule_Type *granule_open (const char *file)
      goto error_return;
    tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec_type: %s", exprec_type ? exprec_type : "(null)");
    g->exposure_type = identify_exprec_type (exprec_type);
-   nc_free_string (1, &exprec_type); /* FIXME */
+   (void) TIO_free_string (1, &exprec_type);
    exprec_type = NULL;
 
    return g;
