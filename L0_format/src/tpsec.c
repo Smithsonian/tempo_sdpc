@@ -472,7 +472,7 @@ static void free_tpsec_row_list (IOCSDPC_TPSec_Row_Type **row_list, int nrows)
      return;
    while (nrows-- > 0)
      {
-        iocsdpc_tpsec_free_row (row_list[nrows]);
+        iocsdpc_tpsec_free_row_type (row_list[nrows]);
      }
    FREE(row_list);
 }

@@ -243,7 +243,7 @@ static void log_caught_signal (void)
               signame, getpid());
 }
 
-#define NO_CAUGHT_SIGNALS ((Sighup_Received == 0) && (Sigint_Received == 0))
+#define CAUGHT_SIGNAL (Sighup_Received || Sigint_Received)
 
 static int monitor_dir (Process_Method_Table_Type *tbl,
                         const TPInfo_Type *tpinfo, Control_Type *ctrl)
@@ -264,7 +264,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
         return -1;
      }
 
-   while (NO_CAUGHT_SIGNALS)
+   while (CAUGHT_SIGNAL == 0)
      {
         ioclib_glob_free (gt);
         gt = NULL;
@@ -283,9 +283,11 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
      }
 
+   if (CAUGHT_SIGNAL)
+     log_caught_signal();
+
    status = 0;
 return_status:
-   log_caught_signal();
    ioclib_free (pattern);
    ioclib_glob_free (gt);
 

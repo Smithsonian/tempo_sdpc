@@ -35,12 +35,12 @@
 static int define_exprec_vars (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                                IOCSDPC_Exprec_Type *erec)
 {
-   IOCSDPC_Image_Info_Item_Type *item;
+   const IOCSDPC_Image_Info_Item_Type *item;
    int ncid = pmt->ncid;
    int num_erec = pmt->outfile_erec_capacity;
    int shuffle=1, deflate=1, deflate_level=1;
    int dimid_time, dimid_row, dimid_col;
-   int varid_image_start_time, varid_exposure_time, varid_frame_transfer_time;
+   int varid_image_start_time, varid_exposure_time, varid_readout_time, varid_frame_transfer_time;
    int varid_exprec, len;
    unsigned int nth, value;
    int dimids_exprec[3];
@@ -64,6 +64,8 @@ static int define_exprec_vars (Process_Method_Type *pmt, const TPInfo_Type *tpin
    if (-1 == TIO_def_var (ncid, "image_start_time", NC_DOUBLE, 1, &dimid_time, &varid_image_start_time))
      return -1;
    if (-1 == TIO_def_var (ncid, "exposure_time", NC_DOUBLE, 1, &dimid_time, &varid_exposure_time))
+     return -1;
+   if (-1 == TIO_def_var (ncid, "readout_time", NC_DOUBLE, 1, &dimid_time, &varid_readout_time))
      return -1;
    if (-1 == TIO_def_var (ncid, "frame_transfer_time", NC_DOUBLE, 1, &dimid_time, &varid_frame_transfer_time))
      return -1;
@@ -225,7 +227,7 @@ static int select_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 static int write_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                          IOCSDPC_Exprec_Type *erec)
 {
-   IOCSDPC_Image_Info_Item_Type *item;
+   const IOCSDPC_Image_Info_Item_Type *item;
    int32_t *data = NULL;
    unsigned int nth, value;
    int ncid, start[3], count[3];
@@ -247,6 +249,9 @@ static int write_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      goto return_status;
    if (-1 == TIO_put_var_section (ncid, "exposure_time", start, count,
                                   NC_DOUBLE, &erec->exposure_time))
+     goto return_status;
+   if (-1 == TIO_put_var_section (ncid, "readout_time", start, count,
+                                  NC_DOUBLE, &erec->readout_time))
      goto return_status;
    if (-1 == TIO_put_var_section (ncid, "frame_transfer_time", start, count,
                                   NC_DOUBLE, &erec->frame_transfer_time))
