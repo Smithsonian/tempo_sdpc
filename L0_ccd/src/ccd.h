@@ -27,4 +27,7 @@ struct CCD_Type
 
 extern CCD_Type *ccd_init (config_t *cfg);
 
+/* This function has global scope only to facilitate testing. */
+extern int __ccd_set_smear_corr_method (CCD_Type *ccd, const char *name);
+
 #endif

@@ -33,7 +33,7 @@ typedef struct
 CCD_Param_Type;
 
 #define NUM_OCTANTS  8
-#define MAX_NUM_NLCOEFFS 5
+#define MAX_NUM_NLCOEFFS 6
 
 typedef struct
 {
@@ -532,7 +532,7 @@ static Smear_Corr_Method_Entry_Type Smear_Corr_Methods[] =
    {NULL, NULL}
 };
 
-static int set_smear_corr_method (CCD_Type *ccd, const char *name)
+int __ccd_set_smear_corr_method (CCD_Type *ccd, const char *name)
 {
    Smear_Corr_Method_Entry_Type *m;
 
@@ -728,8 +728,9 @@ static void update_noisesq_quad (const CCD_Type *ccd, int quad,
    readnoise_sq = (readout_noise*readout_noise
                    + quant_noise*quant_noise);
 
-   /* FIXME - Where do these equations come from?
-    * Are they correct?  Are they implemented correctly?
+   /* FIXME: This expression for CTE noise is an empirical fit to
+    * OMPS data.  Presumably it will eventually be replaced by a
+    * TEMPO-specific expression.
     */
    for (p = pb; p < pe; p++)
      {
@@ -916,8 +917,8 @@ static int read_dn_to_charge_params (CCD_Type *ccd, const char *gain_file)
           }
         if (*buf == '#')
           continue;
-        si.num_nlcoeffs = 5;
-        num_fields = sscanf (buf, "%d,%le,%le,%le,%le,%le, %le,%le,%le,%le,%le",
+        si.num_nlcoeffs = MAX_NUM_NLCOEFFS;
+        num_fields = sscanf (buf, "%d,%le,%le,%le,%le,%le, %le,%le,%le,%le,%le,%le",
                              &id,
                              &si.gain,
                              &si.offset,
@@ -928,8 +929,10 @@ static int read_dn_to_charge_params (CCD_Type *ccd, const char *gain_file)
                              &si.nlcoeffs[1],
                              &si.nlcoeffs[2],
                              &si.nlcoeffs[3],
-                             &si.nlcoeffs[4]);
-        if (num_fields != 11)
+                             &si.nlcoeffs[4],
+                             &si.nlcoeffs[5]
+                            );
+        if (num_fields != 12)
           {
              tell_verror (TELL_INVALID_DATA_ERROR, "%s: parsing gain file: %s",
                           __func__, gain_file);
@@ -1005,7 +1008,7 @@ static int init_methods (config_t *cfg, CCD_Type *ccd)
         return -1;
      }
 
-   if (-1 == set_smear_corr_method (ccd, smear_method))
+   if (-1 == __ccd_set_smear_corr_method (ccd, smear_method))
      return -1;
 
    return 0;
