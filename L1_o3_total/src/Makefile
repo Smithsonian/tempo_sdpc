@@ -183,6 +183,9 @@ distclean-o3t-names:	clean-o3t-names
 # For releases, a static set of rules can be appended.
 Makefile:	rules.inc
 rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
+ifeq (, $(shell which slsh))
+   $(error "slsh is not available on $$PATH, please install S-Lang")
+endif
 	$(DEPMOD) -r $(F90SOURCES) > rules.inc
 	./mkrules.sh c $(CSOURCES) >> rules.inc
 
