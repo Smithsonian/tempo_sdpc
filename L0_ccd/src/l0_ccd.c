@@ -17,12 +17,12 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: L0_ccd [options] <input-file>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -b | --bpix FILE       bad pixel file\n");
    fprintf (stderr, "   -d | --dark FILE       input corrected dark current file\n");
    fprintf (stderr, "   -i | --instr FILE      instrument telemetry points file;\n");
    fprintf (stderr, "                          provide a list using FILE=@DIR/paths.lis\n");
    fprintf (stderr, "   -o | --output FILE     output file\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -b | --bpix FILE       bad pixel file\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
    fprintf (stderr, "   -n | --num N           process <= N exposure records \n");
    fprintf (stderr, "   -v | --verbose lev     logging level\n");
@@ -73,7 +73,7 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"config",  optional_argument, 0, 'c'},
-        {"bpix",    required_argument, 0, 'b'},
+        {"bpix",    optional_argument, 0, 'b'},
         {"dark",    required_argument, 0, 'd'},
         {"instr",   required_argument, 0, 'i'},
         {"output",  required_argument, 0, 'o'},
@@ -102,7 +102,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:d:i:o:v:n:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "b:c:d:i:o:v:n:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)

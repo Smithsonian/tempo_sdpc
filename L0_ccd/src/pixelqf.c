@@ -13,8 +13,6 @@
 #define PIXELQF_TYPE_PRIVATE_DATA \
    int num_sigmas_hot_threshold; \
    int num_sigmas_cold_threshold; \
-   int saturated_neighbor_hw_serial; \
-   int saturated_neighbor_hw_parallel; \
    int transient_neighbor_hw_serial; \
    int transient_neighbor_hw_parallel; \
    double transient_threshold;
@@ -220,6 +218,7 @@ static void flag_neighbor (const Image_Type *img, Neighbor_Type *nt)
 }
 
 static int pqf_flag_neighbor (const Pixelqf_Type *pt, Image_Type *img,
+                              int hw_serial, int hw_parallel,
                               Image_Pqf_Bitmap_Type loc_mask,
                               Image_Pqf_Bitmap_Type set_mask)
 {
@@ -229,11 +228,13 @@ static int pqf_flag_neighbor (const Pixelqf_Type *pt, Image_Type *img,
    int nc = img->num_cols;
    int i;
 
+   (void) pt;
+
    if (-1 == alloc_neighbor_type (img, &nt))
      return -1;
 
-   nt.hw_serial = pt->saturated_neighbor_hw_serial;
-   nt.hw_parallel = pt->saturated_neighbor_hw_parallel;
+   nt.hw_serial = hw_serial;
+   nt.hw_parallel = hw_parallel;
    nt.loc_mask = loc_mask;
    nt.set_mask = set_mask;
 
@@ -400,16 +401,6 @@ static int parse_param_file (config_t *cfg, Pixelqf_Type *pt)
        || (CONFIG_TRUE != config_setting_lookup_int (s, "cold_thresh", &pt->num_sigmas_cold_threshold)))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading hot/cold pixel thresholds",
-                     __func__);
-        return -1;
-     }
-
-   if ((NULL == (sub = config_setting_get_member (s, "saturation")))
-       || (CONFIG_TRUE != config_setting_lookup_int (sub, "neighbor_hw_serial", &pt->saturated_neighbor_hw_serial))
-       || (CONFIG_TRUE != config_setting_lookup_int (sub, "neighbor_hw_parallel", &pt->saturated_neighbor_hw_parallel))
-       )
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading saturation flag parameters",
                      __func__);
         return -1;
      }

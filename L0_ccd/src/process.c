@@ -32,22 +32,40 @@ typedef struct
 }
 Exprec_Meta_Type;
 
-static int parse_config_file (config_t *cfg, double *bpix_update_thresh,
-                              int *bpix_update_num_exprecs_needed)
+typedef struct
 {
-   config_setting_t *setting, *sub;
+   int saturated_neighbor_hw_serial;
+   int saturated_neighbor_hw_parallel;
+   double bpix_update_thresh;
+   int bpix_update_num_exprecs_needed;
+}
+Process_Control_Type;
 
-   if (NULL == (setting = config_lookup (cfg, "pixel_quality_flag_params")))
+static int get_control_params (config_t *cfg, Process_Control_Type *pct)
+{
+   config_setting_t *s, *sub;
+
+   if (NULL == (s = config_lookup (cfg, "pixel_quality_flag_params")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing pixel_quality_flag_params in param file: %s",
+                     "%s: accessing pqf_params in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if ((NULL == (sub = config_setting_get_member (setting, "badpix_update")))
-        || (CONFIG_TRUE != config_setting_lookup_float (sub, "threshold", bpix_update_thresh))
-        || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_exprecs_needed", bpix_update_num_exprecs_needed))
+   if ((NULL == (sub = config_setting_get_member (s, "saturation")))
+       || (CONFIG_TRUE != config_setting_lookup_int (sub, "neighbor_hw_serial", &pct->saturated_neighbor_hw_serial))
+       || (CONFIG_TRUE != config_setting_lookup_int (sub, "neighbor_hw_parallel", &pct->saturated_neighbor_hw_parallel))
+       )
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading saturation flag parameters",
+                     __func__);
+        return -1;
+     }
+
+   if ((NULL == (sub = config_setting_get_member (s, "badpix_update")))
+        || (CONFIG_TRUE != config_setting_lookup_float (sub, "threshold", &pct->bpix_update_thresh))
+        || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_exprecs_needed", &pct->bpix_update_num_exprecs_needed))
        )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -133,8 +151,8 @@ static Dark_Array_Type *create_dark_array (Exprec_Meta_Type *exprec_array,
              sdc += xr->storage_region_dark[k];
           }
         sdc /= 4;
-        if (0 != dark_array_elem_init (dark_array, i, exprec->img, sdc, xr->ccd_temp,
-                                       exprec->exposure_time))
+        if (0 != dark_array_elem_set (dark_array, i, exprec->img, sdc, xr->ccd_temp,
+                                      exprec->exposure_time))
           {
              dark_array_free (dark_array);
              return NULL;
@@ -181,6 +199,7 @@ return_error:
 static int compute_current_and_trim (const CCD_Type *ccd,
                                      const Instr_Type *instr,
                                      const Pixelqf_Type *pt,
+                                     const Process_Control_Type *pct,
                                      Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
@@ -237,6 +256,8 @@ static int compute_current_and_trim (const CCD_Type *ccd,
      }
 
    if (-1 == pt->pqf_flag_neighbor (pt, exprec->img,
+                                    pct->saturated_neighbor_hw_serial,
+                                    pct->saturated_neighbor_hw_parallel,
                                     IMAGE_PQF_SATURATED, IMAGE_PQF_SATURATED))
      return -1;
 
@@ -273,6 +294,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
 }
 
 static int process_dark (config_t *cfg, const Control_Type *ctrl,
+                         Process_Control_Type *pct,
                          Granule_Type *gr)
 {
    CCD_Type *ccd = NULL;
@@ -283,9 +305,8 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
-   double bpix_update_thresh;
    int ixr, num_exprecs, exposure_type;
-   int bpix_occur_threshold, bpix_update_num_exprecs_needed;
+   int bpix_occur_threshold;
    int is_linearity, status = -1;
 
    if (0 != gr->granule_type (gr, &exposure_type))
@@ -332,7 +353,7 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
           goto return_status;
 
-        if (-1 == compute_current_and_trim (ccd, instr, pt, xr))
+        if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
           goto return_status;
 
         if (-1 == bpix_occur_incr (bpix_occur,
@@ -340,11 +361,8 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
           goto return_status;
      }
 
-   if (-1 == parse_config_file (cfg, &bpix_update_thresh, &bpix_update_num_exprecs_needed))
-     goto return_status;
-
-   bpix_occur_threshold = bpix_update_thresh * num_exprecs;
-   if (num_exprecs > bpix_update_num_exprecs_needed)
+   bpix_occur_threshold = pct->bpix_update_thresh * num_exprecs;
+   if (num_exprecs > pct->bpix_update_num_exprecs_needed)
      {
         tell_vlog (TELL_MSGTYPE_INFO, 1, "updating bpix map");
         if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
@@ -657,6 +675,7 @@ static int flag_transients1 (const Pixelqf_Type *pt,
 }
 
 static int process_exposure (config_t *cfg, const Control_Type *ctrl,
+                             Process_Control_Type *pct,
                              Granule_Type *gr)
 {
    Queue_Type exprec_queue;
@@ -736,7 +755,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         xr->exprec = exprec;
         xr->index = ixr;
 
-        if (-1 == compute_current_and_trim (ccd, instr, pt, xr))
+        if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
           goto return_status;
 
         /* We need at least 2 frames queued to look for transients */
@@ -785,7 +804,11 @@ return_status:
 int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
    Granule_Type *gr = NULL;
+   Process_Control_Type pct;
    int exposure_type, status = -1;
+
+   if (0 != get_control_params (cfg, &pct))
+     goto return_status;
 
    if (NULL == (gr = granule_open (ctrl->input_file)))
      goto return_status;
@@ -797,13 +820,13 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      {
       case EXPREC_TYPE_DARK:
       case EXPREC_TYPE_LIN_DARK:
-        status = process_dark (cfg, ctrl, gr);
+        status = process_dark (cfg, ctrl, &pct, gr);
         break;
 
       case EXPREC_TYPE_RADIANCE:
       case EXPREC_TYPE_IRRADIANCE:
       case EXPREC_TYPE_LIN_IRR:
-        status = process_exposure (cfg, ctrl, gr);
+        status = process_exposure (cfg, ctrl, &pct, gr);
         break;
 
       default:

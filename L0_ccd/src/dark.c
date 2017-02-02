@@ -128,9 +128,9 @@ Dark_Array_Type *dark_array_alloc (int num_darks)
    return dark_array;
 }
 
-int dark_array_elem_init (Dark_Array_Type *dark_array, int i,
-                          Image_Type *img, double sdc, double fp_temp,
-                          double exposure_time)
+int dark_array_elem_set (Dark_Array_Type *dark_array, int i,
+                         Image_Type *img, double sdc, double fp_temp,
+                         double exposure_time)
 {
    Dark_Type *dt;
    if ((dark_array == NULL) || (img == NULL))
