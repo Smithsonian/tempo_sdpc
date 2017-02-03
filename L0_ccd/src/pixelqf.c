@@ -222,13 +222,15 @@ static int pqf_flag_neighbor (const Pixelqf_Type *pt, Image_Type *img,
                               Image_Pqf_Bitmap_Type loc_mask,
                               Image_Pqf_Bitmap_Type set_mask)
 {
-   Neighbor_Type nt = {0};
+   Neighbor_Type nt;
    Image_Pqf_Bitmap_Type *pqf;
    int nr = img->num_rows;
    int nc = img->num_cols;
    int i;
 
    (void) pt;
+
+   memset ((char *)&nt, 0, sizeof (nt));
 
    if (-1 == alloc_neighbor_type (img, &nt))
      return -1;
@@ -262,6 +264,7 @@ static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
 
    for (p = pb; p < pe; p++)
      {
+        float *spikefs_row = spikefs + p * img->num_cols;
         pqf = img->pixel_quality_flags + p * img->num_cols;
         for (s = sb; s < se; s++)
           {
@@ -271,7 +274,7 @@ static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
              /* FIXME? - prototype compares spikefs with threshold,
               * but it probably should have compared spikefs with 1+threshold
               */
-             if (spikefs[s] <= 1 + threshold)
+             if (spikefs_row[s] <= 1 + threshold)
                continue;
 
              nsb = s - hw_serial;
@@ -301,8 +304,8 @@ static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
              if (count > 1)
                {
                   double spikefs_adjacent_mean, contrast;
-                  spikefs_adjacent_mean = ((sum - spikefs[s]) / (count - 1));
-                  contrast = spikefs[s] / spikefs_adjacent_mean - 1.0;
+                  spikefs_adjacent_mean = ((sum - spikefs_row[s]) / (count - 1));
+                  contrast = spikefs_row[s] / spikefs_adjacent_mean - 1.0;
                   if (contrast > threshold)
                     pqf[s] |= IMAGE_PQF_TRANSIENT_PIXEL;
                }
@@ -330,12 +333,13 @@ static float *compute_spikefs (const Image_Pqf_Bitmap_Type *bpixmap,
         const Image_Pqf_Bitmap_Type *bpix = bpixmap + p * img->num_cols;
         Image_Pixel_Type *pixels = img->pixels + p * img->num_cols;
         Image_Pixel_Type *ref_pixels = img_ref->pixels + p * img_ref->num_cols;
+        float *spikefs_row = spikefs + p * img->num_cols;
         for (s = 0; s < img->num_cols; s++)
           {
              if ((pixels[s] > 0) && (ref_pixels[s] > 0)
                  && (bpix[s] == 0))
                {
-                  spikefs[s] = pixels[s] / ref_pixels[s];
+                  spikefs_row[s] = pixels[s] / ref_pixels[s];
                }
           }
      }
