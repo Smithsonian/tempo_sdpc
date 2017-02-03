@@ -37,13 +37,6 @@ extern int dark_array_elem_set (Dark_Array_Type *da, int i,
                                 Image_Type *img, double sdc, double fp_temp,
                                 double exposure_time);
 
-/** Write a Dark_Array_Type to a file
- * @param dark_array  non-NULL pointer to a Dark_Array_Type object.
- * @param file        Path to output file
- */
-extern int dark_array_write (const Dark_Array_Type *dark_array,
-                             const char *file);
-
 typedef struct Dark_Table_Type Dark_Table_Type;
 typedef struct Dark_Config_Type Dark_Config_Type;
 
