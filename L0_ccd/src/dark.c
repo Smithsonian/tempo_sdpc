@@ -442,9 +442,9 @@ static int dark_table_write (const Dark_Table_Type *dtt, int ncid)
      }
 
    if ((0 != TIO_put_att (ncid, varid_key_lo, "units", TIO_CHAR, strlen(varname_key_units), varname_key_units))
-       || (0 != TIO_put_att (ncid, varid_key_lo, "comment", TIO_CHAR, strlen(varname_key_comment), varname_key_lo_comment))
+       || (0 != TIO_put_att (ncid, varid_key_lo, "comment", TIO_CHAR, strlen(varname_key_lo_comment), varname_key_lo_comment))
        || (0 != TIO_put_att (ncid, varid_key_hi, "units", TIO_CHAR, strlen(varname_key_units), varname_key_units))
-       || (0 != TIO_put_att (ncid, varid_key_hi, "comment", TIO_CHAR, strlen(varname_key_comment), varname_key_hi_comment)))
+       || (0 != TIO_put_att (ncid, varid_key_hi, "comment", TIO_CHAR, strlen(varname_key_hi_comment), varname_key_hi_comment)))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing dark array bin attributes", __func__);
         return -1;
