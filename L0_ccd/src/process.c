@@ -694,6 +694,8 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    int ixr, num_exprecs, exposure_type;
    int status = -1;
 
+   queue_init (&exprec_queue);
+
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
@@ -736,8 +738,6 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                       num_serial_active_full, num_parallel_active_full/2);
    if (0 != out->out_create (out))
      goto return_status;
-
-   queue_init (&exprec_queue);
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
