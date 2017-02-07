@@ -19,4 +19,4 @@ clean:
 distclean:	clean
 	-cd src && $(MAKE) distclean
 	-cd tests && $(MAKE) distclean
-	#-cd doc && $(MAKE) distclean
+	-cd doc && $(MAKE) distclean

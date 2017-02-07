@@ -1,0 +1,186 @@
+/**
+@mainpage L0_ccd
+
+@section Synopsis
+
+@verbatim
+Usage: L0_ccd [options] <input-file>
+  Required:
+   -d | --dark FILE       input corrected dark current file
+   -i | --instr FILE      instrument telemetry points file;
+                          provide a list using FILE=@DIR/paths.lis
+   -o | --output FILE     output file
+  Optional:
+   -b | --bpix FILE       bad pixel file
+   -c | --config FILE     configuration file
+   -n | --num N           process <= N exposure records
+   -v | --verbose lev     logging level
+@endverbatim
+
+@section Description
+
+\c L0_ccd applies radiometric and dispersed wavelength calibrations to
+TEMPO Level 0 CCD data. The following sections describe the support
+for processing different types of input data. Depending on the input
+data, the primary output products are corrected dark current images,
+dark current lookup tables, Level 1 radiance granules, and Level 1
+irradiance granules.
+
+@subsection l0_ccd_dark Dark frames
+
+@verbatim
+Usage: L0_ccd --instr <level0-tpinfo> --output <dark-table> \
+              <level0-dark-granule>
+@endverbatim
+
+The dark frames in the input granule are used to construct a lookup
+table based on the \a ordered_by sort key specified in the \a
+dark_table_creation section of the \ref param_file. A uniform grid of
+sort key values is defined so as to span the range of sort keys
+appearing in the input granule.  After correcting the dark frames in
+the input granule, the corrected frames are sorted and binned on the
+sort key grid.  The output dark table contains the sort key grid and
+the mean dark current for each grid point.
+
+In the output file containing corrected dark frame images, the pixel
+values are arranged so that the spatial index (serial readout) varies
+fastest, the wavelength index (parallel readout) varies next fastest,
+and the exposure number varies slowest.  This pixel ordering is
+consistent with the pixel ordering in the Level 0 exposure record
+granules and simplifies dark subtraction.
+
+@subsection l0_ccd_irr Irradiance exposures
+
+@verbatim
+Usage: L0_ccd --instr <level0-tpinfo> --dark <dark-table> \
+              --output <level1-irr-granule> <level1-irr-granule>
+@endverbatim
+
+In the Level 1 irradiance file, the irradiance pixel values are
+arranged so that the wavelength index varies fastest, the pixel index
+along the slit varies next fastest, and the exposure number varies
+slowest. This pixel ordering is most convenient for subsequent
+processing.
+
+@subsection l0_ccd_rad Radiance exposures
+
+@verbatim
+Usage: L0_ccd --instr <level0-tpinfo> --dark <dark_table> \
+              --output <level1-rad-granule> <level1-rad-granule>
+@endverbatim
+
+In the Level 1 radiance file, the pixel values are arranged so that
+the wavelength index varies fastest, the spatial (cross-track) index
+varies next fastest, and the mirror step varies slowest.  This pixel
+ordering is most convenient for subsequent processing.
+
+@subsection l0_ccd_linearity Linearity calibration
+
+@verbatim
+Usage: L0_ccd --instr <level0-tpinfo> --output <dark-table-lin> \
+               <level0-dark-granule>
+@endverbatim
+
+Processing of dark frames for linearity calibration may differ in some
+respects from the processing of dark frames intended for routine
+observations.  While the accumulated total number of dark counts is
+expected to be proportional to the integration time, the dark current
+itself may also depend on the integration time. For example, the dark
+current might accumulate at a rate that is sensitive to the total
+charge in each pixel.  In this case, it may be useful to use
+integration time as a sort key to construct the dark table for
+linearity calibration.  In contrast, the dark table for routine
+operations is likely to use either temperature or the storage region
+dark current as a sort key.
+
+@verbatim
+Usage: L0_ccd --instr <level0-tpinfo> --dark <dark-table-lin> \
+              --output <level1-irr-granule-lin> <level1-irr-granule-lin>
+@endverbatim
+
+Processing of irradiance frames for linearity calibration is
+essentially identical to routine irradiance processing.
+
+@section param_file Parameter file
+
+@verbatim
+dark_table_creation:
+{
+   ordered_by = "fptemp";          # fptemp | sdc | exptime
+   max_delta_temp = 0.1;           # max delta temperature [C] per bin
+   max_delta_exptime = 0.1;        # max delta exposure time [sec] per bin
+};
+
+ccd_methods:
+{
+   smear_corr = "timing";          # smear_corr = oclocks | timing
+};
+
+ccd_calibration:
+{
+   sensorcal_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/misc/ccdcal_2016jan.nc";
+   gain_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/misc/ccd_gain.csv";
+   badpix_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/bpix/tempo_dc_badpixel_map.nc";
+
+   default_wavelength_grid:
+   {
+      delta_wave = 0.2;            # nominal wavelength step per pixel [nm]
+      min_wave_uv = 288.0;         # nominal shortest UV wavelength [nm]
+      min_wave_vis = 536.8;        # nominal shortest visual wavelength [nm];
+   };
+};
+
+pixel_quality_flag_params:
+{
+   hot_thresh = 5;     # hot pixels have values > mean + hot_thresh*stddev
+   cold_thresh = 5;    # cold pixels have values < mean - cold_thresh*stddev
+
+   # range, in pixels, at which a saturated pixel affects its neighbors
+   saturation:
+   {
+      neighbor_hw_serial = 2;      # spatial direction half-width (serial)
+      neighbor_hw_parallel = 2;    # spectral direction half-width (parallel)
+   };
+
+   # size of region to examine when identifying transient pixels
+   transients:
+   {
+      neighbor_hw_serial = 2;      # spatial direction half-width (serial)
+      neighbor_hw_parallel = 2;    # spectral direction half-width (parallel)
+      threshold = 0.1;
+   };
+
+   # A pixel may be added to the badpix file if that pixel is flagged as
+   # bad more than f*N times in a granule that contains >N exposure
+   # records, where f=threshold, and N=num_exprecs_needed
+   badpix_update:
+   {
+       threshold = 0.9;
+       num_exprecs_needed = 10;
+   };
+
+};
+
+ccd_parameters:
+{
+ # Pixel dimensions are as specified in the TEMPO EICD (Ball 2420340)
+ # except that two active rows in each channel are now devoted
+ # to measuring the storage region dark current (num_parallel_sdc=2).
+
+ # serial readout (spatial, per-quadrant)
+   num_serial_active = 1024;     # number of active pixels
+   num_serial_leading = 10;      # number of leading buffer pixels
+   num_serial_trailing = 22;     # number of trailing buffer pixels
+
+ # parallel readout (spectral, per-channel)
+   num_parallel_active = 1026;   # number of active pixels
+   num_parallel_oclock = 18;     # number of pixels overclocked for smear correction
+   num_parallel_sdc = 2;         # number of storage region dark current readout rows
+
+   num_readout_bits = 14;        # number of bits per pixel in CCD readout
+   num_coadd_bits = 20;          # number of bits per pixel in coadded image
+   num_full_well = 240000;       # maximum number of e- a CCD pixel can hold
+};
+@endverbatim
+
+*/

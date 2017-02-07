@@ -1,0 +1,19 @@
+# Gain approximated based on Brian Baker's FPS presentation on oct 20, 2016
+# Nonlinear coefficients, use the values from Brian Baker's FPS presentation on on oct 20, 2016
+#
+# octant ids are defined as:
+#  A = quadrant 0: 0,1
+#  B = quadrant 1: 2,3
+#  C = quadrant 2: 4,5
+#  D = quadrant 3: 6,7
+#
+# id, gain [DN/e-], offset [DN], CTE, readout_noise [e-], quant_noise [e-], nlcoeffs[6]
+#
+0,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+1,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+2,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+3,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+4,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+5,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+6,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
+7,2.0,1.0,0.99997,51.0,4.23,1.0,2.0,3.0,4.0,5.0,6.0
