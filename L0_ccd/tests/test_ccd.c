@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include <float.h>
 
 #include <libconfig.h>
 #include <image.h>
@@ -360,7 +362,8 @@ static int test_ccd_mean_sdc (CCD_Type *ccd)
 
    for (i = 0; i < 4; i++)
      {
-        if (mean_sdc[i] != expected_mean_sdc[i])
+        if (fabs(mean_sdc[i] - expected_mean_sdc[i])
+            > FLT_EPSILON * expected_mean_sdc[i])
           {
              fprintf (stderr, "*** mean_sdc[%d] = %7.4f (expected %7.4f)\n",
                       i, mean_sdc[i], expected_mean_sdc[i]);
