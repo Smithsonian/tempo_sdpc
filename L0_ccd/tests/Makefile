@@ -35,7 +35,7 @@ all:  $(EXECUTABLES)
 TEST_OUTPUT_FILES = img_dup_pixels.arr img_dup_pqf.arr dark_table_test.nc \
                     bpix_test.nc
 
-check:
+check:	all
 	@./test_image && echo "test_image ok"
 	@./test_ccd && echo "test_ccd ok"
 	@./test_dark sdc && echo "test_dark sdc ok"
