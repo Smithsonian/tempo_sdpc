@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "bpix.h"
+#include "image.h"
 
 #define BITMASK(bit)  (0x01 << (bit))
 
@@ -66,6 +67,63 @@ int bpix_logical_or (Badpix_Map_Type *a, const Badpix_Bitmap_Type *bits)
      }
 
    return 0;
+}
+
+int bpix_write (const Badpix_Map_Type *b, const char *file)
+{
+   int ncid, dimid_row, dimid_col, varid_bpix;
+   int shuffle=1, deflate=1, deflate_level=1;
+   int dimids[2], start[2], count[2];
+   const char varname_badpix[] = "badpix";
+   Badpix_Bitmap_Type flag_masks[] =
+     {
+        IMAGE_PQF_BAD_PIXEL,
+        IMAGE_PQF_RTS_PIXEL,
+        IMAGE_PQF_HOT_PIXEL,
+        IMAGE_PQF_COLD_PIXEL
+     };
+   const char flag_meanings[] =
+     "bad_pixel rts_pixel hot_pixel cold_pixel";
+   int num_flag_masks = sizeof(flag_masks)/sizeof(*flag_masks);
+   int status = -1;
+
+   if (0 != TIO_create (file, NC_NETCDF4, &ncid))
+     return -1;
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "writing %s", file);
+
+   if ((0 != TIO_def_dim (ncid, "row", b->num_rows, &dimid_row))
+       || (0 != TIO_def_dim (ncid, "col", b->num_cols, &dimid_col)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining badpix file dimensions", __func__);
+        goto return_status;
+     }
+
+   dimids[0] = dimid_row;
+   dimids[1] = dimid_col;
+   if ((0 != TIO_def_var (ncid, varname_badpix, BADPIX_BITMAP_TIO_TYPE, 2, dimids, &varid_bpix))
+       || (0 != TIO_def_var_deflate (ncid, varid_bpix, shuffle, deflate, deflate_level))
+       || (0 != TIO_put_att (ncid, varid_bpix, "flag_masks", BADPIX_BITMAP_TIO_TYPE, num_flag_masks, flag_masks))
+       || (0 != TIO_put_att (ncid, varid_bpix, "flag_meanings", TIO_CHAR, strlen(flag_meanings) + 1, flag_meanings))
+      )
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining badpix variable", __func__);
+        goto return_status;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = b->num_rows;
+   count[1] = b->num_cols;
+   if (0 != TIO_put_var_section (ncid, varname_badpix, start, count, BADPIX_BITMAP_TIO_TYPE, b->bits))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing badpix variable", __func__);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   TIO_close (ncid);
+   return status;
 }
 
 Badpix_Map_Type *bpix_read (const char *file)

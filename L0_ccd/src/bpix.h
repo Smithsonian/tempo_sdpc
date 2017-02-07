@@ -46,6 +46,13 @@ extern Badpix_Map_Type *bpix_new (int num_rows, int num_cols);
  */
 extern Badpix_Map_Type *bpix_read (const char *file);
 
+/** Write a bad pixel map to a netCDF4 file
+ * @param  b      non-NULL pointer to a new Badpix_Map_Type struct
+ * @param  file   Output file name
+ * @return 0 on success, -1 on error
+ */
+extern int bpix_write (const Badpix_Map_Type *b, const char *file);
+
 /** Compute the logical OR of a bad pixel map and a bitfield array
  * @param a      non-NULL pointer to a bad pixel map.
  * @param bits   non-NULL pointer to a bitfield array
