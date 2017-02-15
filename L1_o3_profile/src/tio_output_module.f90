@@ -2706,15 +2706,8 @@ contains
     endif
     !averaging kernels
     if (ozwrtavgk) then
-      !FIXME - needs tiof_put4d_i2
-!      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
-!           [nstep, nxtrack, nlayer, nlayer], avg_kernel, errstat)
-      do i=1, nstep
-        j=i+min_step-1
-        call tiof_put3d_i2 (obj, o3p_var_o3_avg_kernel, &
-             [j, min_xtrack, 0, 0], [1, nxtrack, nlayer, nlayer], &
-             avg_kernel(:,:,:,i), errstat)
-      enddo
+      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
+           [nstep, nxtrack, nlayer, nlayer], avg_kernel, errstat)
     endif
     !correlation matrix
     if (ozwrtcorr) then

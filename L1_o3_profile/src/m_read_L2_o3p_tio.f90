@@ -477,16 +477,9 @@ contains
     endif
     ! Optional - averaging kernels
     if (ozwrtavgk .and. nlayer > 0) then
-      !FIXME - needs tiof_get4d_i2
-!      call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
-!           [nstep, nxtrack, nlayer, nlayer], &
-!           avg_kernel(:,:,min_xtrack:max_xtrack,min_step:max_step), errstat)
-      do i=0, nstep-1
-        j=min_step+i
-        call tiof_get3d_i2 (tio_l2obj, o3p_var_o3_avg_kernel, [i, 0, 0, 0], &
-             [1, nxtrack, nlayer, nlayer], &
-             avg_kernel(:,:,min_xtrack:max_xtrack,j), errstat)
-      enddo
+      call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
+           [nstep, nxtrack, nlayer, nlayer], &
+           avg_kernel(:,:,min_xtrack:max_xtrack,min_step:max_step), errstat)
     endif
     ! Optional - correlation matrix
     if (ozwrtcorr .and. nfitvars > 0) then
