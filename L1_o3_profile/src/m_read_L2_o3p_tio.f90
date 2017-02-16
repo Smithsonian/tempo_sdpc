@@ -393,8 +393,6 @@ contains
 
     type(tiof_file_type) :: tio_l2obj
 
-    integer :: i, j
-
     if (errstat /= 0) return
 
 

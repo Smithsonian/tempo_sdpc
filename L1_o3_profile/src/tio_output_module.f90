@@ -2565,8 +2565,6 @@ contains
 
     type (tiof_file_type), pointer :: obj
 
-    integer :: i, j
-
     if (errstat < 0) return
 
     obj => primary_output_file
