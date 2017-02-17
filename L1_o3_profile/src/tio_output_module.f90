@@ -2704,7 +2704,8 @@ contains
     endif
     !averaging kernels
     if (ozwrtavgk) then
-      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
+      call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, &
+           [min_step, min_xtrack, 0, 0], &
            [nstep, nxtrack, nlayer, nlayer], avg_kernel, errstat)
     endif
     !correlation matrix
