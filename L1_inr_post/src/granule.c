@@ -1,0 +1,781 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+
+#include <tempo_geo.h>
+#include <tell.h>
+#include <tio.h>
+#include <tio_template.h>
+
+#include "config.h"
+
+typedef struct
+{
+   float *lon;
+   float *lat;
+   float *lon_cnr;
+   float *lat_cnr;
+   unsigned int num_mirror_step;
+   unsigned int num_xtrack;
+   unsigned int num_corner;
+   int dimids[3];
+   int group;
+}
+Geoloc_Type;
+
+typedef struct
+{
+   double *X;
+   double *Y;
+   double *Z;
+   unsigned int num;
+}
+ECEF_Position_Type;
+
+typedef struct
+{
+   float *zenith_angle;
+   float *azimuth_angle;
+   unsigned int num_mirror_step;
+   unsigned int num_xtrack;
+}
+Angles_Type;
+
+/* FIXME - move these to tio_template.h? */
+#define BAND_NAME_UV   "band_290_490_nm"
+#define BAND_NAME_VIS  "band_540_740_nm"
+
+#define NUM_BANDS 2
+
+#define GRANULE_PRIVATE_DATA \
+   int ncid; \
+   Geoloc_Type geoloc[NUM_BANDS]; \
+   Angles_Type *sun_angles[NUM_BANDS]; \
+   Angles_Type *sat_angles[NUM_BANDS]; \
+   ECEF_Position_Type sun; \
+   ECEF_Position_Type moon; \
+   ECEF_Position_Type sat;
+#include "granule.h"
+
+static void free_geoloc_fields (Geoloc_Type *geoloc)
+{
+   if (geoloc == NULL)
+     return;
+   FREE(geoloc->lon);
+   FREE(geoloc->lat);
+}
+
+static float *alloc_geoloc_coordinate (Geoloc_Type *geoloc)
+{
+   size_t num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+   size_t alloc_len = num_pixels * (1 + geoloc->num_corner);
+   float *x;
+
+   if (NULL == (x = (float *)MALLOC (alloc_len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)x, 0, alloc_len * sizeof(float));
+   return x;
+}
+
+static int alloc_geoloc_fields (size_t *dimlens, Geoloc_Type *geoloc)
+{
+   unsigned int num_pixels;
+
+   geoloc->num_mirror_step = dimlens[0];
+   geoloc->num_xtrack = dimlens[1];
+   geoloc->num_corner = dimlens[2];
+
+   if ((NULL == (geoloc->lon = alloc_geoloc_coordinate (geoloc)))
+       || (NULL == (geoloc->lat = alloc_geoloc_coordinate (geoloc))))
+     {
+        free_geoloc_fields (geoloc);
+        return -1;
+     }
+
+   num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+   geoloc->lon_cnr = geoloc->lon + num_pixels;
+   geoloc->lat_cnr = geoloc->lat + num_pixels;
+
+   return 0;
+}
+
+static void free_ecef_position (ECEF_Position_Type *p)
+{
+   if (p == NULL)
+     return;
+   FREE(p->X);
+}
+
+static int alloc_ecef_position (unsigned int num, ECEF_Position_Type *p)
+{
+   double *x = NULL;
+
+   if (NULL == (x = (double *)MALLOC (3 * num * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   memset ((char *)x, 0, 3 * num * sizeof(double));
+
+   p->X = x;
+   p->Y = x + num;
+   p->Z = x + num * 2;
+   p->num = num;
+
+   return 0;
+}
+
+static int def_var_elevation (Geoloc_Type *geoloc)
+{
+   TIO_Var_Info_Type info;
+   TIO_Attr_Text_Type text_attrs[] =
+     {
+        {"units", "m"},
+        {"long_name", TEMPO_VAR_TERR_HEIGHT},
+        {"comment", "Terrain height at pixel center"},
+        {"bounds", TEMPO_VAR_TERR_HEIGHT_BOUNDS},
+        {"coordinates", "longitude latitude"},
+        {NULL, NULL}
+     };
+   int varid, status;
+
+   tell_push_queue();
+   status = TIO_inq_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, &info);
+   tell_pop_queue(1);
+   if (status == 0) return 0;
+
+   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, NC_FLOAT, 2, geoloc->dimids, &varid))
+       || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
+     return -1;
+
+   return 0;
+}
+
+static int def_var_elevation_bounds (Geoloc_Type *geoloc)
+{
+   TIO_Var_Info_Type info;
+   TIO_Attr_Text_Type text_attrs[] =
+     {
+        {"units", "m"},
+        {"long_name", "Terrain height at bounds (NE,NW,SW,SE)"},
+        {"comment", "Terrain height at pixel corners"},
+        {NULL, NULL}
+     };
+   int varid, status;
+
+   tell_push_queue();
+   status = TIO_inq_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, &info);
+   tell_pop_queue (1);
+   if (status == 0) return 0;
+
+   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_FLOAT, 3, geoloc->dimids, &varid))
+       || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
+     return -1;
+
+   return 0;
+}
+
+static int set_elevation (Granule_Type *gt, const Elevation_Type *et)
+{
+   Geoloc_Type *geoloc;
+   short *tmp_height = NULL;
+   size_t num_pixels, tmp_len;
+   int start[3], count[3];
+   int i, status;
+
+   geoloc = &gt->geoloc[0];
+   num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+   tmp_len = num_pixels * (1 + geoloc->num_corner);
+
+   if (NULL == (tmp_height = (short *) MALLOC (tmp_len * sizeof(short))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)tmp_height, 0, tmp_len * sizeof(short));
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        geoloc = &gt->geoloc[i];
+
+        if (0 != et->et_lookup (et, tmp_len, geoloc->lon, geoloc->lat, tmp_height))
+          goto return_error;
+
+        start[0] = 0;
+        start[1] = 0;
+        start[2] = 0;
+        count[0] = geoloc->num_mirror_step;
+        count[1] = geoloc->num_xtrack;
+        count[2] = geoloc->num_corner;
+
+        if (0 != def_var_elevation (geoloc))
+          goto return_error;
+
+        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_TERR_HEIGHT,
+                                       start, count, TIO_SHORT, tmp_height))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: setting pixel center terrain height", __func__);
+             goto return_error;
+          }
+
+        if (0 != def_var_elevation_bounds (geoloc))
+          goto return_error;
+
+        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS,
+                                      start, count, TIO_SHORT, tmp_height+num_pixels))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: setting pixel corner terrain height", __func__);
+             goto return_error;
+          }
+     }
+
+   status = 0;
+
+return_error:
+   FREE(tmp_height);
+   return status;
+}
+
+/* Derivation of the solar glint angle:
+ * Notation:
+ * Polar unit vector:  u(theta,phi) = Xhat * sin(theta)*cos(phi)
+ *                                  + Yhat * sin(theta)*sin(phi)
+ *                                  + Zhat * cos(theta)
+ * where Xhat, Yhat, Zhat are unit vectors along coordinate axes
+ * with origin at earth point, P.
+ * In the following, abbreviate theta=t, phi=p.
+ * Define s(t0,p0) = unit vector from earth point, P, toward sun
+ *        v(t,p)   = unit vector from earth point, P, toward satellite
+ * Incident ray from the sun travels along (-s).
+ * From the law of reflection, the reflected solar ray, r, travels
+ * from earth point, P, along:
+ *          r(t0,p0) = (-s(t0,p0)) + 2*cos(t0)*Zhat
+ *
+ * The dot product, r \dot v, yields the cosine, mu, of the angle
+ * between r and v:
+ *
+ *   mu = r \dot v
+ *      = (-sx0)*vx + (-sy0)*vy + (-sz0 + 2*cos(t0))*vz
+ *      = ( (-sin(t0)*cos(p0))*(sin(t)*cos(p))
+ *        + (-sin(t0)*sin(p0))*(sin(t)*sin(p))
+ *        + (+cos(t0)        )*(cos(t)))
+ *      = - sin(t0)*sin(t)*( cos(p0)*cos(p) + sin(p0)*sin(p) )
+ *        + cos(t0)*cos(t)
+ *   mu = cos(t0)*cos(t) - sin(t0)*sin(t)*cos(p-p0)
+ *
+ * To check this, consider the case where p-p0=PI, t=t0:
+ *   mu = cos(t)^2 + sin(t)^2 = 1  => glint_angle = 0,
+ * e.g. the reflected solar ray is aimed at the satellite.
+ * Also, when t=t0=0, mu=1 independent of p,p0, as expected.
+ *
+ * Note that for small zenith angles, this is an ill-conditioned expression
+ * for determining the glint angle, g.  A better expression can
+ * be obtained by using the identity cos(g) = 1 - 2 sin^2(g/2) to obtain:
+ *   sin^2(g/2) = 1/2[1 - cos(t0)cos(t) + sin(t0)sin(t)cos(p-p0)].
+ * However, in this application, we only need to determine
+ * whether or not g<g_threshold, where g_threshold is some large angle
+ * like 40 degrees.  The simpler expression is good enough for that.
+ */
+static float cos_sun_glint_angle (float sza, float saa, float vza, float vaa)
+{
+   float deg2rad = M_PI/180.0;
+   float rel_azimuth;
+
+   /* zenith angles deg -> radians */
+   sza *= deg2rad;
+   vza *= deg2rad;
+
+   /* ensure azimuth angles span 0-2*PI */
+   saa = fmod (saa, 360.0);
+   if (saa < 0) saa += 360.0;
+   vaa = fmod (vaa, 360.0);
+   if (vaa < 0) vaa += 360.0;
+
+   /* relative azimuth angle */
+   rel_azimuth = (vaa - saa) * deg2rad;
+
+   return cos(sza)*cos(vza) - sin(sza)*sin(vza)*cos(rel_azimuth);
+}
+
+static int set_sun_glint_bit (const Angles_Type *sun_angles,
+                               const Angles_Type *sat_angles,
+                               double max_glint_angle,
+                               unsigned char *illum_flags)
+{
+   float *sza = sun_angles->zenith_angle;
+   float *saa = sun_angles->azimuth_angle;
+   float *vza = sat_angles->zenith_angle;
+   float *vaa = sat_angles->azimuth_angle;
+   float cos_max_glint = cos (max_glint_angle*M_PI/180);
+   size_t i, num_pixels = sun_angles->num_mirror_step * sun_angles->num_xtrack;
+
+   for (i = 0; i < num_pixels; i++)
+     {
+        float mu_glint = cos_sun_glint_angle (sza[i], saa[i], vza[i], vaa[i]);
+        illum_flags[i] = (mu_glint > cos_max_glint);
+     }
+
+   return 0;
+}
+
+static void unit_vector (double dx, double dy, double dz, double v[3])
+{
+   double len = sqrt(dx*dx + dy*dy + dz*dz);
+   v[0] = dx/len;
+   v[1] = dy/len;
+   v[2] = dz/len;
+};
+
+static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
+                                  const ECEF_Position_Type *sun,
+                                  const ECEF_Position_Type *moon,
+                                  double max_eclipse_angle,
+                                  unsigned char *illum_flags)
+{
+   float cos_max_eclipse = cos (max_eclipse_angle * M_PI/180.0);
+   size_t step, i;
+
+   for (step = 0; step < geoloc->num_mirror_step; step++)
+     {
+        ECEF_Vector s, m, vec;
+        unsigned char *illum_flags_row = illum_flags + step * geoloc->num_xtrack;
+        float *lon_row = geoloc->lon + step * geoloc->num_xtrack;
+        float *lat_row = geoloc->lat + step * geoloc->num_xtrack;
+
+        s.theX =  sun->X[step]; s.theY =  sun->Y[step]; s.theZ =  sun->Z[step];
+        m.theX = moon->X[step]; m.theY = moon->Y[step]; m.theZ = moon->Z[step];
+
+        for (i = 0; i < geoloc->num_xtrack; i++)
+          {
+             TempoGeoErr err;
+             EarthPoint pt;
+             double us[3], um[3];
+             float mu_eclipse;
+
+             pt.theLon = lon_row[i];
+             pt.theLat = lat_row[i];
+             pt.theAlt = 0.0;   /* FIXME? */
+
+             if (0 != (err = computeSiteVector (&pt, &vec)))
+               {
+                  const char *err_string = tempoGeoErrorString(err);
+                  if (err_string == NULL) err_string = "unknown error";
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: computeSiteVector failed (%s)",
+                               __func__, err_string);
+                  return -1;
+               }
+
+             unit_vector (s.theX - vec.theX,
+                          s.theY - vec.theY,
+                          s.theZ - vec.theZ, us);
+             unit_vector (m.theX - vec.theX,
+                          m.theY - vec.theY,
+                          m.theZ - vec.theZ, um);
+
+             mu_eclipse = us[0]*um[0] + us[1]*um[1] + us[2]*um[2];
+
+             /* bit 0 is sun glint, bit 1 is eclipse bit */
+             illum_flags_row[i] |= (mu_eclipse > cos_max_eclipse) << 1;
+          }
+     }
+
+   return 0;
+}
+
+static int set_ground_pixel_flags (Granule_Type *gt,
+                                   double max_glint_angle,
+                                   double max_eclipse_angle,
+                                   const Snow_Type *sn,
+                                   const Land_Cover_Type *lc)
+{
+   Geoloc_Type *geoloc;
+   int *ground_flags = NULL;
+   unsigned char *ubytes = NULL;
+   unsigned char *snow_flags, *lc_type1, *lc_typeqc, *illum_flags;
+   size_t num_pixels, ubytes_size;
+   int start[2], count[2];
+   int i, status = -1;
+
+   geoloc = &gt->geoloc[0];
+   num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+
+   ubytes_size = 4 * num_pixels * sizeof(unsigned char);
+   if ((NULL == (ground_flags = (int *) MALLOC (num_pixels * sizeof(int))))
+       || (NULL == (ubytes = (unsigned char *) MALLOC (ubytes_size))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_error;
+     }
+   memset ((char *)ubytes, 0, ubytes_size);
+
+   snow_flags  = ubytes;
+   lc_type1    = ubytes + num_pixels;
+   lc_typeqc   = ubytes + num_pixels * 2;
+   illum_flags = ubytes + num_pixels * 3;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = geoloc->num_mirror_step;
+   count[1] = geoloc->num_xtrack;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        unsigned int j;
+
+        geoloc = &gt->geoloc[i];
+
+        if (0 != TIO_get_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
+                                      start, count, TIO_INT, ground_flags))
+          goto return_error;
+
+        if (0 != sn->sn_lookup (sn, num_pixels, geoloc->lon, geoloc->lat, snow_flags))
+          goto return_error;
+
+        if ((0 != lc->lc_lookup_type1 (lc, num_pixels, geoloc->lon, geoloc->lat, lc_type1))
+            || (0 != lc->lc_lookup_typeqc (lc, num_pixels, geoloc->lon, geoloc->lat, lc_typeqc)))
+          goto return_error;
+
+        if ((0 != set_sun_glint_bit (gt->sun_angles[i], gt->sat_angles[i], max_glint_angle, illum_flags))
+            || (0 != set_solar_eclipse_bit (geoloc, &gt->sun, &gt->moon, max_eclipse_angle, illum_flags)))
+          goto return_error;
+
+        for (j = 0; j < num_pixels; j++)
+          {
+             /* clear bits to be set */
+             ground_flags[j] &= 0xff0000c0;
+             /* bit 0-3 = MODIS land/water mask */
+             ground_flags[j] |= (lc_typeqc[j] >> 4);
+             /* bit 4 is sun glint possibility
+              * bit 5 is solar eclipse possibility */
+             ground_flags[j] |= (illum_flags[j] << 4);
+             /* bits 8-15 are snow & ice flags */
+             ground_flags[j] |= (snow_flags[j] << 8);
+             /* bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1 */
+             ground_flags[j] |= (lc_type1[j] << 16);
+          }
+
+        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
+                                      start, count, TIO_INT, ground_flags))
+          goto return_error;
+     }
+
+   status = 0;
+return_error:
+   FREE(ubytes);
+   FREE(ground_flags);
+
+   return status;
+}
+
+static void free_angles_type (Angles_Type *at)
+{
+   if (at == NULL)
+     return;
+   FREE(at->zenith_angle);
+   FREE(at);
+}
+
+static Angles_Type *new_angles_type (int num_mirror_step, int num_xtrack)
+{
+   Angles_Type *at = NULL;
+   float *a = NULL;
+   size_t num = num_mirror_step * num_xtrack;
+
+   if ((NULL == (at = (Angles_Type *)MALLOC (sizeof *at)))
+       || (NULL == (a = (float *)MALLOC (2 * num * sizeof(float)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)at, 0, sizeof (*at));
+   memset ((char *)a, 0, 2 * num * sizeof(float));
+
+   at->zenith_angle = a;
+   at->azimuth_angle = a + num;
+   at->num_mirror_step = num_mirror_step;
+   at->num_xtrack = num_xtrack;
+
+   return at;
+}
+
+static int object_angles (const ECEF_Vector *object,
+                          int num, const float *lon, const float *lat,
+                          float *zenith_angle, float *azimuth_angle)
+{
+   int i;
+
+   for (i = 0; i < num; i++)
+     {
+        TempoGeoErr err;
+        EarthPoint pt;
+        AzZen angles;
+
+        pt.theLon = lon[i];
+        pt.theLat = lat[i];
+        pt.theAlt = 0.0;  /* FIXME? */
+
+        if (0 != (err = computeViewingAngles (&pt, object, &angles)))
+          {
+             const char *err_string = tempoGeoErrorString(err);
+             if (err_string == NULL) err_string = "unknown error";
+             tell_verror (TELL_RUNTIME_ERROR, "%s: computeViewingAngles failed (%s)",
+                          __func__, err_string);
+             return -1;
+          }
+
+        zenith_angle[i] = angles.theZen;
+        azimuth_angle[i] = angles.theAz;
+     }
+
+   return 0;
+}
+
+static Angles_Type *map_object_angles (const Geoloc_Type *geoloc,
+                                       const ECEF_Position_Type *object)
+{
+   Angles_Type *at = NULL;
+   int step, num_step, num_xtrack;
+
+   num_step = geoloc->num_mirror_step;
+   num_xtrack = geoloc->num_xtrack;
+
+   if (NULL == (at = new_angles_type (num_step, num_xtrack)))
+     return NULL;
+
+   for (step = 0; step < num_step; step++)
+     {
+        ECEF_Vector obj;
+        float *lon, *lat, *za, *aa;
+
+        lon = geoloc->lon + step * num_xtrack;
+        lat = geoloc->lat + step * num_xtrack;
+        za = at->zenith_angle + step * num_xtrack;
+        aa = at->azimuth_angle + step * num_xtrack;
+
+        obj.theX = object->X[step];
+        obj.theY = object->Y[step];
+        obj.theZ = object->Z[step];
+
+        if (0 != object_angles (&obj, num_xtrack, lon, lat, za, aa))
+          {
+             free_angles_type (at);
+             return NULL;
+          }
+     }
+
+   return at;
+}
+
+static int write_object_angles (int grp, const Angles_Type *at, const char **varnames)
+{
+   int start[2], count[2];
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = at->num_mirror_step;
+   count[1] = at->num_xtrack;
+
+   if (0 != TIO_put_var_section (grp, varnames[0], start, count, NC_FLOAT, at->zenith_angle))
+     return -1;
+   if (0 != TIO_put_var_section (grp, varnames[1], start, count, NC_FLOAT, at->azimuth_angle))
+     return -1;
+
+   return 0;
+}
+
+static int set_object_angles (Granule_Type *gt)
+{
+   const char *sun_angle_names[] = {TEMPO_VAR_SZ_ANGLE, TEMPO_VAR_SA_ANGLE};
+   const char *sat_angle_names[] = {TEMPO_VAR_VZ_ANGLE, TEMPO_VAR_VA_ANGLE};
+   int i;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        Geoloc_Type *geoloc = &gt->geoloc[i];
+
+        if (NULL == (gt->sun_angles[i] = map_object_angles (geoloc, &gt->sun)))
+          return -1;
+        if (NULL == (gt->sat_angles[i] = map_object_angles (geoloc, &gt->sat)))
+          return -1;
+
+        if (0 != write_object_angles (geoloc->group, gt->sun_angles[i], sun_angle_names))
+          return -1;
+        if (0 != write_object_angles (geoloc->group, gt->sat_angles[i], sat_angle_names))
+          return -1;
+     }
+
+   return 0;
+}
+
+static void delete_granule_type (Granule_Type *gt)
+{
+   int i;
+
+   if (gt == NULL)
+     return;
+
+   free_ecef_position (&gt->sun);
+   free_ecef_position (&gt->moon);
+   free_ecef_position (&gt->sat);
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        free_geoloc_fields (&gt->geoloc[i]);
+        free_angles_type (gt->sun_angles[i]);
+        free_angles_type (gt->sat_angles[i]);
+     }
+
+   FREE(gt);
+}
+
+static Granule_Type *new_granule_type (void)
+{
+   Granule_Type *gt = NULL;
+
+   if (NULL == (gt = (Granule_Type *)MALLOC (sizeof *gt)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)gt, 0, sizeof *gt);
+
+   gt->gt_close = delete_granule_type;
+   gt->gt_set_elevation = set_elevation;
+   gt->gt_set_object_angles = set_object_angles;
+   gt->gt_set_ground_pixel_flags = set_ground_pixel_flags;
+
+   return gt;
+}
+
+static int read_band_geolocation (Granule_Type *gt, const char *band_name,
+                                  Geoloc_Type *geoloc)
+{
+   TIO_Var_Info_Type info;
+   int i, grp, start[3], count[3];
+
+   if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
+     return -1;
+
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_LONGITUDE_BOUNDS, &info))
+     return -1;
+
+   if (0 != alloc_geoloc_fields (info.dimlens, geoloc))
+     return -1;
+
+   geoloc->group = grp;
+
+   for (i = 0; i < 3; i++)
+     {
+        geoloc->dimids[i] = info.dimids[i];
+        start[i] = 0;
+        count[i] = info.dimlens[i];
+     }
+
+   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_FLOAT, geoloc->lon))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_FLOAT, geoloc->lat))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_FLOAT, geoloc->lon_cnr))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_FLOAT, geoloc->lat_cnr)))
+     {
+        goto return_error;
+     }
+
+   return 0;
+
+return_error:
+   free_geoloc_fields (geoloc);
+   return -1;
+}
+
+static int read_geolocation (Granule_Type *gt)
+{
+   const char *band_names[] = {BAND_NAME_UV, BAND_NAME_VIS};
+   int i;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        if (0 != read_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int read_ecef_position (int grp, size_t num, const char **varnames,
+                               ECEF_Position_Type *p)
+{
+   int start, count;
+
+   if (0 != alloc_ecef_position (num, p))
+     return -1;
+
+   start = 0;
+   count = num;
+
+   if ((0 != TIO_get_var_section (grp, varnames[0], &start, &count, NC_DOUBLE, p->X))
+       || (0 != TIO_get_var_section (grp, varnames[1], &start, &count, NC_DOUBLE, p->Y))
+       || (0 != TIO_get_var_section (grp, varnames[2], &start, &count, NC_DOUBLE, p->Z)))
+     {
+        free_ecef_position (p);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int read_ecef_geometry (Granule_Type *gt)
+{
+   TIO_Var_Info_Type info;
+   const char *sun_vars[] =
+     {TEMPO_VAR_SUN_X, TEMPO_VAR_SUN_Y, TEMPO_VAR_SUN_Z};
+   const char *moon_vars[] =
+     {TEMPO_VAR_MOON_X, TEMPO_VAR_MOON_Y, TEMPO_VAR_MOON_Z};
+   const char *sat_vars[] =
+     {TEMPO_VAR_SAT_X, TEMPO_VAR_SAT_Y, TEMPO_VAR_SAT_Z};
+   int grp;
+
+   if (0 != TIO_inq_grp (gt->ncid, TEMPO_GRP_GEOMETRY, &grp))
+     return -1;
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_SUN_X, &info))
+     return -1;
+   if (0 != read_ecef_position (grp, info.dimlens[0], sun_vars, &gt->sun))
+     return -1;
+   if (0 != read_ecef_position (grp, info.dimlens[0], moon_vars, &gt->moon))
+     return -1;
+   if (0 != read_ecef_position (grp, info.dimlens[0], sat_vars, &gt->sat))
+     return -1;
+
+   return 0;
+}
+
+Granule_Type *granule_open (const char *file)
+{
+   Granule_Type *gt = NULL;
+
+   if (NULL == (gt = new_granule_type ()))
+     return NULL;
+
+   if (0 != TIO_open (file, NC_WRITE, &gt->ncid))
+     {
+        gt->gt_close (gt);
+        return NULL;
+     }
+
+   if (0 != read_geolocation (gt))
+     {
+        gt->gt_close (gt);
+        return NULL;
+     }
+
+   if (0 != read_ecef_geometry (gt))
+     {
+        gt->gt_close (gt);
+        return NULL;
+     }
+
+   return gt;
+}

@@ -100,6 +100,20 @@ fi
 AC_SUBST(LIBCONFIG_LIB)
 AC_SUBST(LIBCONFIG_INC)
 
+AC_ARG_WITH(inrlib,
+  [  --with-inrlib[=DIR]       Use INR library installed in DIR],
+  [jh_with_inrlib=$withval],
+  [jh_with_inrlib=no])
+if test "x$jh_with_inrlib" = "xno"; then
+   INR_LIB="\$(OTS_ROOT)/lib"
+   INR_INC="\$(OTS_ROOT)/include"
+else
+   INR_LIB="$jh_with_inrlib/lib"
+   INR_INC="$jh_with_inrlib/include"
+fi
+AC_SUBST(INR_LIB)
+AC_SUBST(INR_INC)
+
 AC_ARG_WITH(tell,
   [  --with-tell[=DIR]         Use tell library installed in DIR (default:$prefix)],
   [jh_with_tell=$withval],
@@ -113,6 +127,34 @@ else
 fi
 AC_SUBST(TELL_LIB)
 AC_SUBST(TELL_INC)
+
+AC_ARG_WITH(tiff,
+  [  --with-tiff[=DIR]         Use tiff library installed in DIR (default:$prefix)],
+  [jh_with_tiff=$withval],
+  [jh_with_tiff=no])
+if test "x$jh_with_tiff" = "xno"; then
+   TIFF_LIB="\$(OTS_ROOT)/lib"
+   TIFF_INC="\$(OTS_ROOT)/include"
+else
+   TIFF_LIB="$jh_with_tiff/lib"
+   TIFF_INC="$jh_with_tiff/include"
+fi
+AC_SUBST(TIFF_LIB)
+AC_SUBST(TIFF_INC)
+
+AC_ARG_WITH(geotiff,
+  [  --with-geotiff[=DIR]      Use geotiff library installed in DIR (default:$prefix)],
+  [jh_with_geotiff=$withval],
+  [jh_with_geotiff=no])
+if test "x$jh_with_geotiff" = "xno"; then
+   GEOTIFF_LIB="\$(OTS_ROOT)/lib"
+   GEOTIFF_INC="\$(OTS_ROOT)/include"
+else
+   GEOTIFF_LIB="$jh_with_geotiff/lib"
+   GEOTIFF_INC="$jh_with_geotiff/include"
+fi
+AC_SUBST(GEOTIFF_LIB)
+AC_SUBST(GEOTIFF_INC)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 
