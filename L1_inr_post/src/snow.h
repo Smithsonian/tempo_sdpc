@@ -7,7 +7,7 @@ struct Snow_Type
 {
    void (*sn_delete)(Snow_Type *);
    int (*sn_lookup)(const Snow_Type *, unsigned int,
-                    const float *, const float *, unsigned char *);
+                    const double *, const double *, unsigned char *);
 
 #ifdef SNOW_TYPE_PRIVATE_DATA
    SNOW_TYPE_PRIVATE_DATA

@@ -15,14 +15,14 @@
 #include "land_cover.h"
 
 static int land_cover_lookup_type1 (const Land_Cover_Type *lc,
-                                    unsigned int num, const float *lon, const float *lat,
+                                    unsigned int num, const double *lon, const double *lat,
                                     unsigned char *mask)
 {
    return map_lookup_ubyte (lc->land_cover_type1, num, lon, lat, mask);
 }
 
 static int land_cover_lookup_typeqc (const Land_Cover_Type *lc,
-                                     unsigned int num, const float *lon, const float *lat,
+                                     unsigned int num, const double *lon, const double *lat,
                                      unsigned char *mask)
 {
    return map_lookup_ubyte (lc->land_cover_typeqc, num, lon, lat, mask);

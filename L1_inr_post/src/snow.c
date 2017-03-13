@@ -35,7 +35,7 @@ static void free_snow_type (Snow_Type *sn)
 }
 
 static int snow_lookup (const Snow_Type *sn, unsigned int num,
-                        const float *lon, const float *lat,
+                        const double *lon, const double *lat,
                         unsigned char *mask)
 {
    char grid[] = NISE_PROJECTION_NAME;

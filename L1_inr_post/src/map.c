@@ -22,10 +22,10 @@ typedef struct
    TIFF *tiff;
    GTIF *gtiff;
    GTIFDefn defn;
-   float lon_min;
-   float lon_max;
-   float lat_min;
-   float lat_max;
+   Map_Coord_Type lon_min;
+   Map_Coord_Type lon_max;
+   Map_Coord_Type lat_min;
+   Map_Coord_Type lat_max;
    unsigned int num_rows;
    unsigned int num_cols;
    int pixel_type;
@@ -42,7 +42,7 @@ Tile_Type;
 struct Map_Type
 {
    Tile_Type *tiles;
-   int (*find_tile)(Map_Type *, float, float);
+   int (*find_tile)(Map_Type *, Map_Coord_Type, Map_Coord_Type);
    int num_tiles;
    int pixel_type;
    int layout_type;
@@ -90,7 +90,7 @@ static TIFF *open_tiff (const char *file, const char *mode)
    return tiff;
 }
 
-static int find_tile_grid (Map_Type *map, float lon, float lat)
+static int find_tile_grid (Map_Type *map, Map_Coord_Type lon, Map_Coord_Type lat)
 {
    Tile_Type *tile;
    int i;
@@ -125,7 +125,7 @@ static int find_tile_grid (Map_Type *map, float lon, float lat)
    return -1;
 }
 
-static int find_tile_latitude_band (Map_Type *map, float lon, float lat)
+static int find_tile_latitude_band (Map_Type *map, Map_Coord_Type lon, Map_Coord_Type lat)
 {
    Tile_Type *tile;
    int i;
@@ -336,7 +336,7 @@ static int read_tile (Tile_Type *tile, int pixel_type)
 
 static int image_to_lonlat (Tile_Type *tile,
                             unsigned int col, unsigned int row,
-                            float *lon, float *lat)
+                            Map_Coord_Type *lon, Map_Coord_Type *lat)
 {
    GTIFDefn *defn = &tile->defn;
    double x, y;
@@ -375,7 +375,7 @@ static int image_to_lonlat (Tile_Type *tile,
 
 static int lonlat_to_image (Tile_Type *tile,
                             unsigned int *col, unsigned int *row,
-                            float lon, float lat)
+                            Map_Coord_Type lon, Map_Coord_Type lat)
 {
    GTIFDefn *defn = &tile->defn;
    double x, y;
@@ -460,7 +460,7 @@ static int init_tile1 (const char *tile_file, int pixel_type,
 
 #define MAP_LOOKUP_TYPE(type,name,NAME,union_field,missing_value) \
 int map_lookup_##name (Map_Type *map, unsigned int num, \
-                       const float *lon, const float *lat, \
+                       const Map_Coord_Type *lon, const Map_Coord_Type *lat, \
                        type *values) \
 { \
    unsigned int i; \

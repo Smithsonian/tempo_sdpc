@@ -12,10 +12,10 @@
 
 typedef struct
 {
-   float *lon;
-   float *lat;
-   float *lon_cnr;
-   float *lat_cnr;
+   double *lon;
+   double *lat;
+   double *lon_cnr;
+   double *lat_cnr;
    unsigned int num_mirror_step;
    unsigned int num_xtrack;
    unsigned int num_corner;
@@ -35,8 +35,8 @@ ECEF_Position_Type;
 
 typedef struct
 {
-   float *zenith_angle;
-   float *azimuth_angle;
+   double *zenith_angle;
+   double *azimuth_angle;
    unsigned int num_mirror_step;
    unsigned int num_xtrack;
 }
@@ -66,18 +66,18 @@ static void free_geoloc_fields (Geoloc_Type *geoloc)
    FREE(geoloc->lat);
 }
 
-static float *alloc_geoloc_coordinate (Geoloc_Type *geoloc)
+static double *alloc_geoloc_coordinate (Geoloc_Type *geoloc)
 {
    size_t num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
    size_t alloc_len = num_pixels * (1 + geoloc->num_corner);
-   float *x;
+   double *x;
 
-   if (NULL == (x = (float *)MALLOC (alloc_len * sizeof(float))))
+   if (NULL == (x = (double *)MALLOC (alloc_len * sizeof(double))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
-   memset ((char *)x, 0, alloc_len * sizeof(float));
+   memset ((char *)x, 0, alloc_len * sizeof(double));
    return x;
 }
 
@@ -149,7 +149,7 @@ static int def_var_elevation (Geoloc_Type *geoloc)
    tell_pop_queue(1);
    if (status == 0) return 0;
 
-   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, NC_FLOAT, 2, geoloc->dimids, &varid))
+   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, NC_SHORT, 2, geoloc->dimids, &varid))
        || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
      return -1;
 
@@ -173,7 +173,7 @@ static int def_var_elevation_bounds (Geoloc_Type *geoloc)
    tell_pop_queue (1);
    if (status == 0) return 0;
 
-   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_FLOAT, 3, geoloc->dimids, &varid))
+   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_SHORT, 3, geoloc->dimids, &varid))
        || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
      return -1;
 
@@ -281,10 +281,10 @@ return_error:
  * whether or not g<g_threshold, where g_threshold is some large angle
  * like 40 degrees.  The simpler expression is good enough for that.
  */
-static float cos_sun_glint_angle (float sza, float saa, float vza, float vaa)
+static double cos_sun_glint_angle (double sza, double saa, double vza, double vaa)
 {
-   float deg2rad = M_PI/180.0;
-   float rel_azimuth;
+   double deg2rad = M_PI/180.0;
+   double rel_azimuth;
 
    /* zenith angles deg -> radians */
    sza *= deg2rad;
@@ -307,16 +307,16 @@ static int set_sun_glint_bit (const Angles_Type *sun_angles,
                                double max_glint_angle,
                                unsigned char *illum_flags)
 {
-   float *sza = sun_angles->zenith_angle;
-   float *saa = sun_angles->azimuth_angle;
-   float *vza = sat_angles->zenith_angle;
-   float *vaa = sat_angles->azimuth_angle;
-   float cos_max_glint = cos (max_glint_angle*M_PI/180);
+   double *sza = sun_angles->zenith_angle;
+   double *saa = sun_angles->azimuth_angle;
+   double *vza = sat_angles->zenith_angle;
+   double *vaa = sat_angles->azimuth_angle;
+   double cos_max_glint = cos (max_glint_angle*M_PI/180);
    size_t i, num_pixels = sun_angles->num_mirror_step * sun_angles->num_xtrack;
 
    for (i = 0; i < num_pixels; i++)
      {
-        float mu_glint = cos_sun_glint_angle (sza[i], saa[i], vza[i], vaa[i]);
+        double mu_glint = cos_sun_glint_angle (sza[i], saa[i], vza[i], vaa[i]);
         illum_flags[i] = (mu_glint > cos_max_glint);
      }
 
@@ -337,15 +337,15 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
                                   double max_eclipse_angle,
                                   unsigned char *illum_flags)
 {
-   float cos_max_eclipse = cos (max_eclipse_angle * M_PI/180.0);
+   double cos_max_eclipse = cos (max_eclipse_angle * M_PI/180.0);
    size_t step, i;
 
    for (step = 0; step < geoloc->num_mirror_step; step++)
      {
         ECEF_Vector s, m, vec;
         unsigned char *illum_flags_row = illum_flags + step * geoloc->num_xtrack;
-        float *lon_row = geoloc->lon + step * geoloc->num_xtrack;
-        float *lat_row = geoloc->lat + step * geoloc->num_xtrack;
+        double *lon_row = geoloc->lon + step * geoloc->num_xtrack;
+        double *lat_row = geoloc->lat + step * geoloc->num_xtrack;
 
         s.theX =  sun->X[step]; s.theY =  sun->Y[step]; s.theZ =  sun->Z[step];
         m.theX = moon->X[step]; m.theY = moon->Y[step]; m.theZ = moon->Z[step];
@@ -355,7 +355,7 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
              TempoGeoErr err;
              EarthPoint pt;
              double us[3], um[3];
-             float mu_eclipse;
+             double mu_eclipse;
 
              pt.theLon = lon_row[i];
              pt.theLat = lat_row[i];
@@ -483,17 +483,17 @@ static void free_angles_type (Angles_Type *at)
 static Angles_Type *new_angles_type (int num_mirror_step, int num_xtrack)
 {
    Angles_Type *at = NULL;
-   float *a = NULL;
+   double *a = NULL;
    size_t num = num_mirror_step * num_xtrack;
 
    if ((NULL == (at = (Angles_Type *)MALLOC (sizeof *at)))
-       || (NULL == (a = (float *)MALLOC (2 * num * sizeof(float)))))
+       || (NULL == (a = (double *)MALLOC (2 * num * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
    memset ((char *)at, 0, sizeof (*at));
-   memset ((char *)a, 0, 2 * num * sizeof(float));
+   memset ((char *)a, 0, 2 * num * sizeof(double));
 
    at->zenith_angle = a;
    at->azimuth_angle = a + num;
@@ -504,8 +504,8 @@ static Angles_Type *new_angles_type (int num_mirror_step, int num_xtrack)
 }
 
 static int object_angles (const ECEF_Vector *object,
-                          int num, const float *lon, const float *lat,
-                          float *zenith_angle, float *azimuth_angle)
+                          int num, const double *lon, const double *lat,
+                          double *zenith_angle, double *azimuth_angle)
 {
    int i;
 
@@ -550,7 +550,8 @@ static Angles_Type *map_object_angles (const Geoloc_Type *geoloc,
    for (step = 0; step < num_step; step++)
      {
         ECEF_Vector obj;
-        float *lon, *lat, *za, *aa;
+        double *lon, *lat;
+        double *za, *aa;
 
         lon = geoloc->lon + step * num_xtrack;
         lat = geoloc->lat + step * num_xtrack;
@@ -580,9 +581,9 @@ static int write_object_angles (int grp, const Angles_Type *at, const char **var
    count[0] = at->num_mirror_step;
    count[1] = at->num_xtrack;
 
-   if (0 != TIO_put_var_section (grp, varnames[0], start, count, NC_FLOAT, at->zenith_angle))
+   if (0 != TIO_put_var_section (grp, varnames[0], start, count, NC_DOUBLE, at->zenith_angle))
      return -1;
-   if (0 != TIO_put_var_section (grp, varnames[1], start, count, NC_FLOAT, at->azimuth_angle))
+   if (0 != TIO_put_var_section (grp, varnames[1], start, count, NC_DOUBLE, at->azimuth_angle))
      return -1;
 
    return 0;
@@ -676,10 +677,10 @@ static int read_band_geolocation (Granule_Type *gt, const char *band_name,
         count[i] = info.dimlens[i];
      }
 
-   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_FLOAT, geoloc->lon))
-       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_FLOAT, geoloc->lat))
-       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_FLOAT, geoloc->lon_cnr))
-       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_FLOAT, geoloc->lat_cnr)))
+   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_DOUBLE, geoloc->lon))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_DOUBLE, geoloc->lat))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lon_cnr))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lat_cnr)))
      {
         goto return_error;
      }

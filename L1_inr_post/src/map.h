@@ -2,6 +2,7 @@
 #define __TEMPO_MAP_INCLUDE__ 1
 
 typedef struct Map_Type Map_Type;
+typedef double Map_Coord_Type;
 
 enum
 {
@@ -20,10 +21,10 @@ extern int map_add_tile (Map_Type *map, int i, const char *file);
 extern void map_free (Map_Type *map);
 
 extern int map_lookup_short (Map_Type *map, unsigned int num,
-                             const float *lon, const float *lat,
+                             const Map_Coord_Type *lon, const Map_Coord_Type *lat,
                              short *values);
 extern int map_lookup_ubyte (Map_Type *map, unsigned int num,
-                             const float *lon, const float *lat,
+                             const Map_Coord_Type *lon, const Map_Coord_Type *lat,
                              unsigned char *values);
 
 #endif

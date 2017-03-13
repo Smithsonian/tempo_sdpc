@@ -14,7 +14,7 @@
 #include "elevation.h"
 
 static int elevation_lookup (const Elevation_Type *et, unsigned int num,
-                             const float *lon, const float *lat,
+                             const double *lon, const double *lat,
                              short *elevation)
 {
    Map_Type *map = et->elevation;

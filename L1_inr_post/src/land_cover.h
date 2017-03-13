@@ -9,10 +9,10 @@ struct Land_Cover_Type
 {
    void (*lc_delete)(Land_Cover_Type *);
    int (*lc_lookup_type1)(const Land_Cover_Type *, unsigned int,
-                          const float *, const float *,
+                          const double *, const double *,
                           unsigned char *);
    int (*lc_lookup_typeqc)(const Land_Cover_Type *, unsigned int,
-                           const float *, const float *,
+                           const double *, const double *,
                            unsigned char *);
 
 #ifdef LAND_COVER_PRIVATE_DATA
