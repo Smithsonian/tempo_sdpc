@@ -118,6 +118,29 @@ int Polygon_set (Polygon_Type *p, int n, const double *x, const double *y)
    return 0;
 }
 
+int Polygon_get (Polygon_Type *p, int n, double *x, double *y)
+{
+   double *p_v;
+   int i;
+
+   if (p->n > n)
+     {
+        Tell_verror (TELL_USAGE_ERROR,
+                     "%s: insufficient destination array size %d (%d required)",
+                     __func__, n, p->n);
+        return -1;
+     }
+
+   p_v  = p->v;
+   for (i = 0; i < n; i++)
+     {
+        x[i] = p_v[2*i    ];
+        y[i] = p_v[2*i + 1];
+     }
+
+   return 0;
+}
+
 int Polygon_length (const Polygon_Type *p)
 {
    return p->n;

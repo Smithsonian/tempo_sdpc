@@ -45,6 +45,19 @@ extern Polygon_Type *Polygon_new (int n);
 extern int Polygon_set (Polygon_Type *p, int n,
                         const double *x, const double *y);
 
+/** Retrieve polygon vertices
+ * @param[in]   p    A Polygon_Type structure obtained
+ *                   by calling Polygon_new.
+ * @param[in]   n    The size of destination arrays x,y
+ * @param[out]  x,y  The vertex coordinates.
+ *
+ * @return 0 on success, -1 on error
+ *
+ * An error is returned if the destination arrays are not
+ * large enough to hold the polygon vertices.
+ */
+extern int Polygon_get (Polygon_Type *p, int n, double *x, double *y);
+
 /** Append a vertex point to a polygon.
  * @param[in]   p    A Polygon_Type structure obtained
  *                   by calling Polygon_new.
