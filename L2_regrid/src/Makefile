@@ -84,6 +84,14 @@ bindir = $(prefix)/bin
 incdir = $(prefix)/include
 libdir = $(prefix)/lib
 
+# FIXME? poly.h routines in libregrid are used elsewhere.
+#        It might be better to create a separate libpoly
+#        to support this usage.
+install-header:
+	$(MKINSDIR) $(incdir)
+	@echo installing headers in $(incdir)/
+	$(INSTALL_DATA) $(srcdir)/poly.h $(incdir)
+
 install-executable:
 	mkdir -p $(bindir)
 	@echo installing $(EXECUTABLE) in $(bindir)/
@@ -102,7 +110,7 @@ install-elf:
 	@echo The links $(ELFLIB) and $(ELFLIB_MAJOR) to $(ELFLIB_BUILD_NAME) were also created.
 	@echo ""
 
-install:	elf install-elf install-executable
+install:	elf install-elf install-executable install-header
 
 # --------------------------------------------------------------------------
 # Housekeeping
