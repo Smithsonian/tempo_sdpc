@@ -57,6 +57,14 @@ _pInt_Attr_Type;
 typedef struct
 {
    char *name;
+   short value;
+}
+_pShort_Attr_Type;
+#define _pSHORT_ATTRS_END  {NULL,0}
+
+typedef struct
+{
+   char *name;
    float value;
 }
 _pFloat_Attr_Type;
@@ -88,6 +96,8 @@ extern int _pTIO_define_dims_using_offsets (int grp,
                                             const _pDim_Offsets_Type *offsets,
                                             _pDim_Table_Type *dim_table);
 
+extern int _pTIO_define_short_attrs (int grp, int varid,
+                                     const _pShort_Attr_Type *attrs);
 extern int _pTIO_define_int_attrs (int grp, int varid,
                                    const _pInt_Attr_Type *attrs);
 extern int _pTIO_define_float_attrs (int grp, int varid,

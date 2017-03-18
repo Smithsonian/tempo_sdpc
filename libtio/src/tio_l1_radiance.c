@@ -419,6 +419,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         {_FillValue, TIO_FILL_FLOAT},
         _pFLOAT_ATTRS_END
      };
+   static _pShort_Attr_Type terr_hgt_short_attrs[] =
+     {
+        {"valid_min", -100},
+        {"valid_max", +10000},
+        {_FillValue, TIO_FILL_SHORT},
+        _pSHORT_ATTRS_END
+     };
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
    int shuffle, deflate=1, deflate_level=1;
@@ -710,7 +717,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              {"units", "m"},
              {"long_name", TEMPO_VAR_TERR_HEIGHT},
              {"comment", "Terrain height at pixel center"},
-             {"bounds", TEMPO_VAR_TERR_HEIGHT_BOUNDS},
              {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END
           };
@@ -776,21 +782,20 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
      }
 
-   /* terrain height bounds */
+   /* terrain height standard deviation */
      {
-        static _pText_Attr_Type terr_hgt_bnds_attrs[] =
+        static _pText_Attr_Type terr_hgt_stddev_attrs[] =
           {
              {"units", "m"},
-             {"long_name", "terrain height at bounds (NE,NW,SW,SE)"},
-             {"comment", "Terrain height at pixel corners"},
+             {"long_name", "area-weighted mean terrain height standard deviation"},
+             {"comment", "Area-weighted mean standard deviation of terrain height inside each pixel"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        dims[2] = dim_table->corner.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_FLOAT, 3, dims, terr_hgt_bnds_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT_STDDEV, NC_SHORT, 2, dims, terr_hgt_stddev_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, terr_hgt_float_attrs))
+        if (-1 == _pTIO_define_short_attrs (grp, varid, terr_hgt_short_attrs))
           return -1;
      }
 

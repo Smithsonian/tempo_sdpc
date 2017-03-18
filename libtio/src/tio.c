@@ -134,6 +134,26 @@ int TIO_define_enum_table (int grp, const char *name, int base_type,
    return 0;
 }
 
+int _pTIO_define_short_attrs (int grp, int varid, const _pShort_Attr_Type *attrs)
+{
+   const _pShort_Attr_Type *a;
+   int status;
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        status = nc_put_att_short (grp, varid, a->name, NC_SHORT, 1, &a->value);
+        if (NC_NOERR != status)
+          {
+             Tell_verror (TELL_IO_WRITE_ERROR,
+                          "%s: defining short attribute %s (%s)",
+                          __func__, a->name, nc_strerror(status));
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
 int _pTIO_define_int_attrs (int grp, int varid, const _pInt_Attr_Type *attrs)
 {
    const _pInt_Attr_Type *a;
