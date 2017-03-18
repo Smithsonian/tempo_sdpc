@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <float.h>
 #include <math.h>
 
 #include <tempo_geo.h>
@@ -24,6 +25,14 @@ typedef struct
 }
 Geoloc_Type;
 
+/* ECEF = Earth-centered Earth-fixed coordinate system.
+ * See WGS84 reference frame (X,Y,Z).
+ * Origin is Earth center of mass.
+ * X,Y axes in the equatorial plane.
+ * +X axis lies along the prime meridian, longitude=0
+ * +Z axis lies along the rotation axis, +Z toward the North.
+ * +Y axis completes the right-handed coordinate system.
+ */
 typedef struct
 {
    double *X;
@@ -41,10 +50,6 @@ typedef struct
    unsigned int num_xtrack;
 }
 Angles_Type;
-
-/* FIXME - move these to tio_template.h? */
-#define BAND_NAME_UV   "band_290_490_nm"
-#define BAND_NAME_VIS  "band_540_740_nm"
 
 #define NUM_BANDS 2
 
@@ -130,52 +135,49 @@ static int alloc_ecef_position (unsigned int num, ECEF_Position_Type *p)
    return 0;
 }
 
-static int def_var_elevation (Geoloc_Type *geoloc)
+static int def_elevation_vars (Geoloc_Type *geoloc)
 {
    TIO_Var_Info_Type info;
-   TIO_Attr_Text_Type text_attrs[] =
+   TIO_Attr_Text_Type hgt_text_attrs[] =
      {
         {"units", "m"},
         {"long_name", TEMPO_VAR_TERR_HEIGHT},
-        {"comment", "Terrain height at pixel center"},
-        {"bounds", TEMPO_VAR_TERR_HEIGHT_BOUNDS},
+        {"comment", "Area-weighted mean terrain height within pixel boundary"},
         {"coordinates", "longitude latitude"},
         {NULL, NULL}
      };
+   TIO_Attr_Text_Type dev_text_attrs[] =
+     {
+        {"units", "m"},
+        {"long_name", TEMPO_VAR_TERR_HEIGHT_STDDEV},
+        {"comment", "Area-weighted terrain height standard deviation within pixel boundary"},
+        {"coordinates", "longitude latitude"},
+        {NULL, NULL}
+     };
+   short fill_value = TIO_FILL_SHORT;
    int varid, status;
 
    tell_push_queue();
    status = TIO_inq_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, &info);
    tell_pop_queue(1);
-   if (status == 0) return 0;
-
-   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, NC_SHORT, 2, geoloc->dimids, &varid))
-       || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
-     return -1;
-
-   return 0;
-}
-
-static int def_var_elevation_bounds (Geoloc_Type *geoloc)
-{
-   TIO_Var_Info_Type info;
-   TIO_Attr_Text_Type text_attrs[] =
+   if (status != 0)
      {
-        {"units", "m"},
-        {"long_name", "Terrain height at bounds (NE,NW,SW,SE)"},
-        {"comment", "Terrain height at pixel corners"},
-        {NULL, NULL}
-     };
-   int varid, status;
+        if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT, NC_SHORT, 2, geoloc->dimids, &varid))
+            || (0 != TIO_def_var_fill (geoloc->group, varid, 0, &fill_value))
+            || (0 != TIO_put_text_attrs (geoloc->group, varid, hgt_text_attrs)))
+          return -1;
+     }
 
    tell_push_queue();
-   status = TIO_inq_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, &info);
-   tell_pop_queue (1);
-   if (status == 0) return 0;
-
-   if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS, NC_SHORT, 3, geoloc->dimids, &varid))
-       || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
-     return -1;
+   status = TIO_inq_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_STDDEV, &info);
+   tell_pop_queue(1);
+   if (status != 0)
+     {
+        if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_TERR_HEIGHT_STDDEV, NC_SHORT, 2, geoloc->dimids, &varid))
+            || (0 != TIO_def_var_fill (geoloc->group, varid, 0, &fill_value))
+            || (0 != TIO_put_text_attrs (geoloc->group, varid, dev_text_attrs)))
+          return -1;
+     }
 
    return 0;
 }
@@ -183,53 +185,55 @@ static int def_var_elevation_bounds (Geoloc_Type *geoloc)
 static int set_elevation (Granule_Type *gt, const Elevation_Type *et)
 {
    Geoloc_Type *geoloc;
-   short *tmp_height = NULL;
-   size_t num_pixels, tmp_len;
+   short *shrt_alloc = NULL;
+   short *height = NULL;
+   short *stddev = NULL;
+   size_t num_pixels, len;
    int start[3], count[3];
    int i, status;
 
    geoloc = &gt->geoloc[0];
    num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
-   tmp_len = num_pixels * (1 + geoloc->num_corner);
+   len = num_pixels * geoloc->num_corner;
 
-   if (NULL == (tmp_height = (short *) MALLOC (tmp_len * sizeof(short))))
+   if (NULL == (shrt_alloc = (short *) MALLOC (2 * len * sizeof(short))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
-   memset ((char *)tmp_height, 0, tmp_len * sizeof(short));
+   memset ((char *)shrt_alloc, 0, 2 * len * sizeof(short));
+
+   height = shrt_alloc;
+   stddev = shrt_alloc + len;
 
    for (i = 0; i < NUM_BANDS; i++)
      {
         geoloc = &gt->geoloc[i];
 
-        if (0 != et->et_lookup (et, tmp_len, geoloc->lon, geoloc->lat, tmp_height))
+        if (0 != et->et_regrid (et, num_pixels, geoloc->lon_cnr, geoloc->lat_cnr,
+                                height, stddev))
+          goto return_error;
+
+        if (0 != def_elevation_vars (geoloc))
           goto return_error;
 
         start[0] = 0;
         start[1] = 0;
-        start[2] = 0;
         count[0] = geoloc->num_mirror_step;
         count[1] = geoloc->num_xtrack;
-        count[2] = geoloc->num_corner;
-
-        if (0 != def_var_elevation (geoloc))
-          goto return_error;
 
         if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_TERR_HEIGHT,
-                                       start, count, TIO_SHORT, tmp_height))
+                                       start, count, TIO_SHORT, height))
           {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: setting pixel center terrain height", __func__);
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: setting pixel center terrain height", __func__);
              goto return_error;
           }
-
-        if (0 != def_var_elevation_bounds (geoloc))
-          goto return_error;
-
-        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_TERR_HEIGHT_BOUNDS,
-                                      start, count, TIO_SHORT, tmp_height+num_pixels))
+        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_TERR_HEIGHT_STDDEV,
+                                       start, count, TIO_SHORT, stddev))
           {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: setting pixel corner terrain height", __func__);
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: setting pixel center terrain height stddev", __func__);
              goto return_error;
           }
      }
@@ -237,7 +241,7 @@ static int set_elevation (Granule_Type *gt, const Elevation_Type *et)
    status = 0;
 
 return_error:
-   FREE(tmp_height);
+   FREE(shrt_alloc);
    return status;
 }
 
@@ -357,9 +361,15 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
              double us[3], um[3];
              double mu_eclipse;
 
+             illum_flags_row[i] = 0;
+
+             /* input may include fill values */
+             if ((fabs(lon_row[i]) > 360.0) || (fabs(lat_row[i]) > 90.0))
+               continue;
+
              pt.theLon = lon_row[i];
              pt.theLat = lat_row[i];
-             pt.theAlt = 0.0;   /* FIXME? */
+             pt.theAlt = 0.0;
 
              if (0 != (err = computeSiteVector (&pt, &vec)))
                {
@@ -515,9 +525,16 @@ static int object_angles (const ECEF_Vector *object,
         EarthPoint pt;
         AzZen angles;
 
+        zenith_angle[i] = TIO_FILL_FLOAT;
+        azimuth_angle[i] = TIO_FILL_FLOAT;
+
+        /* input may include fill values */
+        if ((fabs(lon[i]) > 360.0) || (fabs(lat[i]) > 90.0))
+          continue;
+
         pt.theLon = lon[i];
         pt.theLat = lat[i];
-        pt.theAlt = 0.0;  /* FIXME? */
+        pt.theAlt = 0.0;
 
         if (0 != (err = computeViewingAngles (&pt, object, &angles)))
           {
@@ -694,7 +711,7 @@ return_error:
 
 static int read_geolocation (Granule_Type *gt)
 {
-   const char *band_names[] = {BAND_NAME_UV, BAND_NAME_VIS};
+   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
    int i;
 
    for (i = 0; i < NUM_BANDS; i++)

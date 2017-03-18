@@ -22,6 +22,7 @@ static void usage (void)
    fprintf (stderr, "   -s | --snow FILE       snow and ice mask file\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
+   fprintf (stderr, "   -v | --verbose lev     logging verbosity\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -113,7 +114,8 @@ return_status:
    return status;
 }
 
-static int process_inputs (Granule_Type *gt, config_t *cfg, const char *snow_file)
+static int process_inputs (Granule_Type *gt, config_t *cfg,
+                           const char *snow_file)
 {
    if (0 != set_elevation (gt, cfg))
      return -1;
@@ -140,6 +142,7 @@ int main (int argc, char **argv)
      {
         {"snow",    required_argument, 0, 's'},
         {"config",  optional_argument, 0, 'c'},
+        {"verbose", optional_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -161,7 +164,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:s:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:s:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -181,6 +184,13 @@ int main (int argc, char **argv)
               * any corresponding config file values */
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
+             break;
+           case 'v':
+               {
+                  int log_level;
+                  if (1 == sscanf (optarg, "%d", &log_level))
+                    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
+               }
              break;
           }
      }

@@ -9,7 +9,9 @@ struct Elevation_Type
 {
    void (*et_delete)(Elevation_Type *);
    int (*et_lookup)(const Elevation_Type *, unsigned int,
-                    const double *, const double *, short *);
+                    const double *, const double *, short *, short *);
+   int (*et_regrid)(const Elevation_Type *, unsigned int,
+                    const double *, const double *, short *, short *);
 
 #ifdef ELEVATION_TYPE_PRIVATE_DATA
    ELEVATION_TYPE_PRIVATE_DATA

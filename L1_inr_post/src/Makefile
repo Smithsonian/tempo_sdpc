@@ -10,6 +10,8 @@ objdir  = $(srcdir)/$(archobjs)
 TIO_INC = $(config_dir)/libtio/src
 TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 
+REGRID_INC = $(config_dir)/L2_regrid/src
+
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
@@ -17,13 +19,14 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 TIFF_LIBPATHS = -Wl,-rpath=$(TIFF_LIB) -L$(TIFF_LIB)
 GEOTIFF_LIBPATHS = -Wl,-rpath=$(GEOTIFF_LIB) -L$(GEOTIFF_LIB)
+PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB) -L$(INR_LIB)
 
-EXTRA_INCS =#
-EXTRA_LIBS =#
+EXTRA_INCS = -I$(PROJ_INC)
+EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
-INC_DIRS = $(config_dir)/include $(TIO_INC) \
-           $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC) \
+INC_DIRS = $(config_dir)/include $(REGRID_INC) \
+           $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC) \
            $(GEOTIFF_INC) $(TIFF_INC) $(INR_INC)
 INCS = $(patsubst %,-I%, $(INC_DIRS))
 
@@ -33,7 +36,7 @@ LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
        $(TIO_LIBPATHS) -ltio \
        $(GEOTIFF_LIBPATHS) $(TIFF_LIBPATHS) -lgeotiff -ltiff \
        $(INR_LIBPATHS) -lTempoGeospatial \
-       $(RPATH) $(INSTALL_LIBPATHS)
+       $(RPATH) $(INSTALL_LIBPATHS) -lregrid
 
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 ELF_LINK_CMD = $(ELF_LINK)
