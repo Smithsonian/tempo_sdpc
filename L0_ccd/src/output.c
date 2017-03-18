@@ -13,10 +13,6 @@
 
 #include "config.h"
 
-/* FIXME - move these to tio_template.h? */
-#define BAND_NAME_UV   "band_290_490_nm"
-#define BAND_NAME_VIS  "band_540_740_nm"
-
 #define NUM_BANDS 2
 
 typedef struct
@@ -111,23 +107,23 @@ static void define_bands (Output_Type *out, TIO_Scan_Group_Type bands[NUM_BANDS]
 {
    Band_Info_Type *out_bands = out->bands;
 
-   out_bands[0].name = BAND_NAME_UV;
+   out_bands[0].name = TEMPO_BAND_NAME_UV;
    out_bands[0].num_xtrack = out->num_xtrack;
    out_bands[0].num_channels = out->num_waves;
    out_bands[0].ybeg = 0;
    out_bands[0].yend = out->num_waves;
 
-   out_bands[1].name = BAND_NAME_VIS;
+   out_bands[1].name = TEMPO_BAND_NAME_VIS;
    out_bands[1].num_xtrack = out->num_xtrack;
    out_bands[1].num_channels = out->num_waves;
    out_bands[1].ybeg = out->num_waves;
    out_bands[1].yend = out->num_waves*2;
 
-   bands[0].name = BAND_NAME_UV;
+   bands[0].name = TEMPO_BAND_NAME_UV;
    bands[0].num_xtrack = out->num_xtrack;
    bands[0].num_channels = out->num_waves;
 
-   bands[1].name = BAND_NAME_VIS;
+   bands[1].name = TEMPO_BAND_NAME_VIS;
    bands[1].num_xtrack = out->num_xtrack;
    bands[1].num_channels = out->num_waves;
 }

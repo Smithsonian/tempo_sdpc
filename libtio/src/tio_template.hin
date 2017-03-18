@@ -45,6 +45,9 @@ extern "C" {
         = 11:58:55.816
 */
 
+#define TEMPO_BAND_NAME_UV   "band_290_490_nm"
+#define TEMPO_BAND_NAME_VIS  "band_540_740_nm"
+
 /* File dimension names */
 @CSV_DIMS@
 
