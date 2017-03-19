@@ -11,6 +11,14 @@
 
 #include "config.h"
 
+#define BIT_CLEAR(uc,n)  ((uc) &= ~(1 << (n)))
+#define BIT_SET(uc,n)    ((uc) |=  (1 << (n)))
+
+#define BITMASK_CLEAR(f,mask)  ((f) &= (~(mask)))
+#define BITMASK_SET(f,mask)    ((f) |=   (mask) )
+
+#define BITMASK_GPQF_BITS_USED   0x00ffff3f
+
 typedef struct
 {
    double *lon;
@@ -321,7 +329,11 @@ static int set_sun_glint_bit (const Angles_Type *sun_angles,
    for (i = 0; i < num_pixels; i++)
      {
         double mu_glint = cos_sun_glint_angle (sza[i], saa[i], vza[i], vaa[i]);
-        illum_flags[i] = (mu_glint > cos_max_glint);
+        if (mu_glint > cos_max_glint)
+          {
+             BIT_SET(illum_flags[i], 0);
+          }
+        else BIT_CLEAR(illum_flags[i], 0);
      }
 
    return 0;
@@ -361,7 +373,7 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
              double us[3], um[3];
              double mu_eclipse;
 
-             illum_flags_row[i] = 0;
+             BIT_CLEAR(illum_flags_row[i], 1);
 
              /* input may include fill values */
              if ((fabs(lon_row[i]) > 360.0) || (fabs(lat_row[i]) > 90.0))
@@ -389,8 +401,10 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
 
              mu_eclipse = us[0]*um[0] + us[1]*um[1] + us[2]*um[2];
 
-             /* bit 0 is sun glint, bit 1 is eclipse bit */
-             illum_flags_row[i] |= (mu_eclipse > cos_max_eclipse) << 1;
+             if (mu_eclipse > cos_max_eclipse)
+               {
+                  BIT_SET(illum_flags_row[i], 1);
+               }
           }
      }
 
@@ -454,19 +468,28 @@ static int set_ground_pixel_flags (Granule_Type *gt,
             || (0 != set_solar_eclipse_bit (geoloc, &gt->sun, &gt->moon, max_eclipse_angle, illum_flags)))
           goto return_error;
 
+        /* Clear bits to be set, preserving the other bits as-is.
+         * bit 0 is the least significant bit.
+         * bit 0-3 = MODIS land/water mask.
+         * bit 4-5 are illumination flags (bit 4=sun glint possibility,
+         *                                 bit 5=solar eclipse possibility).
+         * bits 6-7 are currently unused.
+         * bits 8-15 are snow & ice flags.
+         * bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1.
+         */
+
         for (j = 0; j < num_pixels; j++)
           {
-             /* clear bits to be set */
-             ground_flags[j] &= 0xff0000c0;
-             /* bit 0-3 = MODIS land/water mask */
-             ground_flags[j] |= (lc_typeqc[j] >> 4);
-             /* bit 4 is sun glint possibility
-              * bit 5 is solar eclipse possibility */
-             ground_flags[j] |= (illum_flags[j] << 4);
-             /* bits 8-15 are snow & ice flags */
-             ground_flags[j] |= (snow_flags[j] << 8);
-             /* bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1 */
-             ground_flags[j] |= (lc_type1[j] << 16);
+             int flags = ground_flags[j];
+
+             BITMASK_CLEAR(flags, BITMASK_GPQF_BITS_USED);
+
+             BITMASK_SET(flags,   lc_typeqc[j] >> 4);
+             BITMASK_SET(flags, illum_flags[j] << 4);
+             BITMASK_SET(flags,  snow_flags[j] << 8);
+             BITMASK_SET(flags,    lc_type1[j] << 16);
+
+             ground_flags[j] = flags;
           }
 
         if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
