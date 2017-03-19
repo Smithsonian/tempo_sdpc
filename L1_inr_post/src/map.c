@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <math.h>
+#include <wordexp.h>
 
 #include <tiffio.h>
 #include <geotiff/geotiff.h>
@@ -185,7 +186,10 @@ static void free_tile_members (Tile_Type *tile)
      return;
    FREE(tile->pixels.v);
    GTIFFree (tile->gtiff);
-   XTIFFClose (tile->tiff); /* XTIFFClose must follow GTIFFree */
+   if (tile->tiff)
+     {
+        XTIFFClose (tile->tiff); /* XTIFFClose must follow GTIFFree */
+     }
 }
 
 static void free_tile_array (Tile_Type *tiles, int num_tiles)
@@ -489,7 +493,25 @@ static int init_tile1 (const char *tile_file, int pixel_type,
 int map_add_tile (Map_Type *map, int i, const char *file)
 {
    Tile_Type *tile = &map->tiles[i];
-   return init_tile1 (file, map->pixel_type, tile);
+   wordexp_t we;
+   int status;
+
+   memset ((char *)&we, 0, sizeof(wordexp_t));
+
+   if ((0 != wordexp (file, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, file);
+        wordfree (&we);
+        return -1;
+     }
+
+   file = we.we_wordv[0];
+   status = init_tile1 (file, map->pixel_type, tile);
+   wordfree (&we);
+
+   return status;
 }
 
 #define MAP_LOOKUP_TYPE(type,name,NAME,union_field,missing_value) \
