@@ -136,6 +136,7 @@ static Land_Cover_Type *new_land_cover_type (void)
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
+   memset ((char *)lc, 0, sizeof *lc);
 
    lc->lc_delete = free_land_cover_type;
    lc->lc_lookup_type1 = land_cover_lookup_type1;

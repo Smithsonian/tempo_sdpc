@@ -413,6 +413,7 @@ static Elevation_Type *new_elevation_type (void)
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
+   memset ((char *)et, 0, sizeof *et);
 
    et->et_delete = free_elevation_type;
    et->et_lookup = lookup_nearest_neighbor;
