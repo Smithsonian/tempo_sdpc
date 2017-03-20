@@ -517,7 +517,8 @@ int main (int argc, char **argv)
 
    Tell_open ("L2_regrid", -1, -1);
 
-   if (0 == strcmp (argv[1], "--noident"))
+   if ((argc > 1)
+       && (0 == strcmp (argv[1], "--noident")))
      {
         expect_scan_ident = 0;
         argv++;
