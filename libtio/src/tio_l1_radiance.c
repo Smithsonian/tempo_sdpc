@@ -412,13 +412,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         {_FillValue, TIO_FILL_FLOAT},
         _pFLOAT_ATTRS_END
      };
-   static _pFloat_Attr_Type terr_hgt_float_attrs[] =
-     {
-        {"valid_min", -1.0e2},
-        {"valid_max", +1.0e4},
-        {_FillValue, TIO_FILL_FLOAT},
-        _pFLOAT_ATTRS_END
-     };
    static _pShort_Attr_Type terr_hgt_short_attrs[] =
      {
         {"valid_min", -100},
@@ -715,16 +708,16 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type terr_hgt_attrs[] =
           {
              {"units", "m"},
-             {"long_name", TEMPO_VAR_TERR_HEIGHT},
-             {"comment", "Terrain height at pixel center"},
+             {"long_name", "area-weighted mean terrain height"},
+             {"comment", "Area-weighted mean terrain height inside each pixel"},
              {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT, NC_FLOAT, 2, dims, terr_hgt_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TERR_HEIGHT, NC_SHORT, 2, dims, terr_hgt_attrs, &varid))
           return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, terr_hgt_float_attrs))
+        if (-1 == _pTIO_define_short_attrs (grp, varid, terr_hgt_short_attrs))
           return -1;
      }
 
