@@ -39,10 +39,10 @@ contains
          refspec_strings, genline_str, socline_str, racline_str,     &
          rafline_str, molline_str, eoi3str, solar_idx, shift_offset, &
          comm_idx, com1_idx, comfidx, cm1fidx!, rspline_str, &
-         !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
+    !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
     USE OMSAO_parameters_module,   ONLY: maxchlen, maxwin, max_fit_pts!, &
-         !vb_lev_omidebug, vb_lev_develop, n_sol_winwav, n_rad_winwav, &
-         !max_mol_fit, forever
+    !vb_lev_omidebug, vb_lev_develop, n_sol_winwav, n_rad_winwav, &
+    !max_mol_fit, forever
     USE OMSAO_variables_module,    ONLY: use_backup, use_solcomp,    &
          avg_solcomp, avgsol_allorb, &
          fitcol_idx, fincol_idx, n_fincol_idx, n_mol_fit, max_itnum_sol, &
@@ -66,12 +66,12 @@ contains
          redfixwav,use_redfixwav, nredfixwav, redfixwav_fname, radnhtrunc, &
          refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
          use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname
-         !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
+    !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
     USE OMSAO_gome_data_module, ONLY:   &
          gome_idx, which_instrument, max_instrument_idx, &
          omi_idx, scia_idx, gome2_idx, tempo_idx!, &
-         !lm_gome_eshine, n_gome_data_dim, &
-         !n_gome_max_pts, lm_gome_solspec, gome_spec_missing, gome_orbc
+    !lm_gome_eshine, n_gome_data_dim, &
+    !n_gome_max_pts, lm_gome_solspec, gome_spec_missing, gome_orbc
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module, ONLY: orbc, orbnum, orbcsol, orbnumsol, mswath, &
          nswath, upper_wvls, lower_wvls, nxtrack_max, ntimes_max, ncoadd, &
@@ -167,7 +167,7 @@ contains
       WRITE(msg, '(A,I10,I4)') 'get file from lun=', TAB_DIR_LUN, version
       errstat = OMI_SMF_setmsg (OMI_E_INPUT, msg, modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, 'tabdir ='//TRIM(tabdir), &
            modulename, 0)
@@ -183,7 +183,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, &
            'fit_ctrl_file ='//TRIM(fit_ctrl_file), modulename, 0)
@@ -196,7 +196,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
            TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
 
     ! -----------------------------------------------
@@ -209,7 +209,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_instrument, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
     READ (fit_ctrl_unit, '(A)') tmpchar
     CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
@@ -229,9 +229,9 @@ contains
     rw_l1l2_here  = .FALSE.       ! read l1 (write l2) fname from another file
     rw_l1l2_pcf   = .TRUE.        ! read l1 (write l2) fname from PCF file
     fullorb = .TRUE.
-  do_ch2reso = .FALSE.
+    do_ch2reso = .FALSE.
     pixlim = -9999
- linelim = -9999
+    linelim = -9999
 
 !!! FIXME
 !!! file path below should NOT be hard coded!
@@ -274,7 +274,7 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
              TRIM(ADJUSTL(l1l2_files)), modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         READ(l1l2inp_unit, '(A)') l1_inputs_fname_sol
         READ(l1l2inp_unit, '(A)') l1_inputs_fname_rad
@@ -288,12 +288,12 @@ contains
           IF (slat >= elat .OR. slon >= elon) THEN
             WRITE(www_lun, *) 'Incorrect lat/lon range!!!'
             pge_error_status = pge_errstat_error
- RETURN
+            RETURN
           ENDIF
           pixlim(1)  = -5
-  pixlim(2) = -5
+          pixlim(2) = -5
           linelim(1) = -5
- linelim(2) = -5
+          linelim(2) = -5
         ENDIF
         CLOSE(UNIT=l1l2inp_unit) 
       END IF
@@ -311,7 +311,7 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
              modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       END IF
 
       version = 1 
@@ -322,7 +322,7 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
              modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, 'l1_inputs_fname_rad ='// &
              TRIM(l1_inputs_fname_rad), modulename, 0)
@@ -335,7 +335,7 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
              modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
              'l2_cld_fname ='//TRIM(l2_cld_fname), modulename, 0)
@@ -348,7 +348,7 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
              modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
              'l2_output_fname ='//TRIM(l2_output_fname), modulename, 0)
@@ -368,7 +368,7 @@ contains
              LINE_SAMPLE_RANGE_LUN
         errstat = OMI_SMF_setmsg( errstat, msg, modulename, 0 )
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         READ( msg, *) linelim, pixlim
         errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
@@ -391,17 +391,17 @@ contains
         orbcsol = l1_inputs_fname_sol(i : i + 5)
         READ (orbcsol, *) orbnumsol
         READ (l1_inputs_fname_sol(i+7 : i + 9), *) omisol_version 
-        
+
         ! obtain orbit number from radiance file
         i = INDEX(l1_inputs_fname_rad, '-o') + 2
         orbc = l1_inputs_fname_rad(i : i + 5)
         READ (orbc, *) orbnum
-        
+
         ! check cloud file
         i = INDEX(l2_cld_fname, '-o') + 2
         cldorbc = l2_cld_fname(i : i + 5)
         READ (cldorbc, *) cldorb
-        
+
         IF (cldorb /= orbnum) THEN
           WRITE(www_lun, *) &
                'Inconsistent orbit number between radiance and cloud file!!!'
@@ -412,7 +412,7 @@ contains
 
       ! generate identifer for irradiance and radiance spectrum
       i = INDEX(l2_output_fname, 'OMIO3PROF')   
- outdir = l2_output_fname(1:i-1)
+      outdir = l2_output_fname(1:i-1)
       rad_identifier = 'o' // orbc
 
       slit_fname    = TRIM(ADJUSTL(outdir)) // 'slit_o'    // orbcsol
@@ -425,11 +425,11 @@ contains
         orbc = l1_inputs_fname_rad(i-2:i)
         orbcsol = orbc
         i = INDEX(l1_inputs_fname_sol, 'lv1') + 4
- sol_identifier = l1_inputs_fname_sol(i:i+7)
+        sol_identifier = l1_inputs_fname_sol(i:i+7)
         i = INDEX(l1_inputs_fname_rad, 'lv1') + 4
- rad_identifier = l1_inputs_fname_rad(i:i+7)
+        rad_identifier = l1_inputs_fname_rad(i:i+7)
         j = INDEX(l2_output_fname, 'lv2')        
- outdir = l2_output_fname(1:j-1)
+        outdir = l2_output_fname(1:j-1)
         !ELSEIF (instrument_idx == scia_idx) THEN
         !   i = INDEX(l1_inputs_fname_rad, 'Ch1orb') + 28
         !   orbc = l1_inputs_fname_rad(i-2:i) 
@@ -441,11 +441,11 @@ contains
       ELSEIF (instrument_idx == gome2_idx) THEN
         orbc = '0'
         i = INDEX(l1_inputs_fname_sol, 'GOME_xxx_1B') + 18
- sol_identifier = l1_inputs_fname_sol(i:i+7)
+        sol_identifier = l1_inputs_fname_sol(i:i+7)
         i = INDEX(l1_inputs_fname_rad, 'GOME_xxx_1B') + 18
- rad_identifier = l1_inputs_fname_rad(i:i+7)
+        rad_identifier = l1_inputs_fname_rad(i:i+7)
         j = INDEX(l2_output_fname, 'lv2')            
- outdir = l2_output_fname(1:j-1)
+        outdir = l2_output_fname(1:j-1)
       ENDIF
       slit_fname    = &
            TRIM(ADJUSTL(outdir)) // 'slit_'    // sol_identifier // '.dat'
@@ -475,17 +475,17 @@ contains
            l2_hdf_flag > 2)) THEN
         WRITE(www_lun, *) 'GOME-2 data can only be written in HDF'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE IF ((instrument_idx == gome_idx .OR. &
            instrument_idx == scia_idx) .AND. l2_hdf_flag  > 0) THEN
         WRITE(www_lun, *) 'GOME-1/SCIA data can only be written in ASCII'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE IF (instrument_idx == omi_idx .AND. (l2_hdf_flag /= 0 .AND. &
            l2_hdf_flag /= 3)) THEN
         WRITE(www_lun, *) 'OMI data can only be written in ASCII or HDF-EOS5'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
     END IF
 
@@ -511,7 +511,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(atmdbdir), modulename, 0)
     END IF
@@ -535,7 +535,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(refdbdir), modulename, 0)
     END IF
@@ -585,7 +585,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ELSE 
       errstat = OMI_SMF_setmsg (OMI_S_SUCCESS,TRIM(ozprof_input_fname), & !! Kai 
            modulename, 0)
@@ -603,14 +603,14 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, molline_str, &
              modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       END IF
       READ (fit_ctrl_unit, '(A)') tmpchar
       CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
       IF ( errstat /= pge_errstat_ok ) THEN
         errstat = OMI_SMF_setmsg (omsao_e_get_molfitname, '', modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       END IF
     END IF  !xliu
 
@@ -622,7 +622,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_bandselect, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
     READ (fit_ctrl_unit, *) reduce_resolution
     READ (fit_ctrl_unit, *) reduce_slit
@@ -639,12 +639,12 @@ contains
         errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
              TRIM(ADJUSTL(redfixwav_fname)), modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ELSE
         READ(l1l2inp_unit, *) nredfixwav
         IF (nredfixwav > max_fit_pts) THEN
           pge_error_status = pge_errstat_error
- RETURN
+          RETURN
         ENDIF
         READ(l1l2inp_unit, *) (redfixwav(i), i = 1, nredfixwav)
         CLOSE(UNIT=l1l2inp_unit) 
@@ -663,7 +663,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_bandselect, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
     READ (fit_ctrl_unit, *) do_xbin, nxbin
     READ (fit_ctrl_unit, *) do_ybin, nybin
@@ -671,16 +671,16 @@ contains
     READ (fit_ctrl_unit, *) numwin, do_bandavg, wcal_bef_coadd !, winwav_min, winwav_max
     IF (reduce_resolution) THEN
       do_bandavg = .FALSE.
- rm_mgline = .FALSE.
+      rm_mgline = .FALSE.
     ENDIF
     IF (numwin > maxwin .OR. numwin < 1) THEN
       WRITE(www_lun, *) 'Number of windows exceeds maxwin or less than 1!!!'
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ENDIF
 
     retlbnd = 1000.0
- retubnd = 0.0
+    retubnd = 0.0
     DO i = 1, numwin
       READ(fit_ctrl_unit, *) band_selectors(i), winlim(i, 1), winlim(i, 2), &
            n_band_avg(i), n_band_samp(i)
@@ -688,7 +688,7 @@ contains
       IF ((band_selectors(i) < 0) .OR. (band_selectors(i) > mswath)) THEN
         WRITE(www_lun, *) 'No such bands exist !!!'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
 
       IF (numwin > 1) THEN
@@ -696,7 +696,7 @@ contains
              winlim(i, 2) > upper_wvls(band_selectors(i))) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
           pge_error_status = pge_errstat_error
- RETURN
+          RETURN
         ENDIF
       ELSE
         ! Allow 2 extra nm for radiance calibration
@@ -704,7 +704,7 @@ contains
              winlim(i, 2) > upper_wvls(band_selectors(i)) + 1.0) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
           pge_error_status = pge_errstat_error
- RETURN
+          RETURN
         ENDIF
       ENDIF
 
@@ -714,7 +714,7 @@ contains
           WRITE(www_lun, *) &
                'Incorrect band selection (must be in increasing wavelength) !!'
           pge_error_status = pge_errstat_error
- RETURN
+          RETURN
         ENDIF
       ENDIF
 
@@ -733,10 +733,10 @@ contains
     IF (ANY(band_selectors(1:numwin) == 1) .AND. &
          ANY(band_selectors(1:numwin) == 2)) THEN
       coadd_uv2 = .TRUE.
- nswath = 2
+      nswath = 2
     ELSE
       coadd_uv2 = .FALSE.
- nswath = 1
+      nswath = 1
     ENDIF
     IF (nswath == 1 .AND. band_selectors(1) == 1) THEN
       nswath = 2 ! have to read measurements around 370 nm
@@ -760,13 +760,13 @@ contains
       IF (ANY(n_band_avg(1:numwin) < 1)) THEN
         WRITE(www_lun, *) 'Number of points for averaging must >= 1!!!'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
 
       IF (ANY(n_band_samp(1:numwin) < 1)) THEN
         WRITE(www_lun, *) 'Number of points for sampling must >= 1!!!'
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
     ENDIF
     winwav_min = winlim(1, 1) - 5.0
@@ -782,7 +782,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, genline_str, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
 
     READ (fit_ctrl_unit, *) use_backup, use_solcomp, avg_solcomp, avgsol_allorb
@@ -801,7 +801,7 @@ contains
       WRITE(www_lun, *) &
            'Could not use variable slit function when to reduce resolution!!!'
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     ENDIF
     IF (.NOT. wavcal) wavcal_sol = .FALSE.
     READ (fit_ctrl_unit, *) slit_fit_pts, n_slit_step, slit_redo
@@ -826,7 +826,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, socline_str, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
 
     ! ---------------------------------------------------
@@ -839,7 +839,7 @@ contains
     READ (fit_ctrl_unit, *) max_itnum_sol
 
     n_fitvar_sol = 0
-  fitvar_sol_init = 0.0
+    fitvar_sol_init = 0.0
     solpars: DO i = 1, max_calfit_idx
 
       READ (fit_ctrl_unit, *) idxchar, vartmp, lotmp, uptmp
@@ -848,11 +848,11 @@ contains
       ! ---------------------------------------------------------
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
         lotmp = vartmp 
- uptmp = vartmp
+        uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
         uptmp = vartmp 
- lotmp = vartmp
+        lotmp = vartmp
       END IF
 
       IF ( idxchar == eoi3str ) EXIT solpars
@@ -861,7 +861,7 @@ contains
       IF ( sidx > 0 ) THEN
         fitvar_sol_init(sidx) = vartmp
         lo_sunbnd(sidx) = lotmp 
- up_sunbnd(sidx) = uptmp
+        up_sunbnd(sidx) = uptmp
         IF ( lotmp < uptmp ) THEN
           n_fitvar_sol = n_fitvar_sol + 1
           mask_fitvar_sol(n_fitvar_sol) = i
@@ -870,7 +870,7 @@ contains
     END DO solpars
     fitvar_sol_saved = fitvar_sol_init
     lo_sunbnd_init = lo_sunbnd
- up_sunbnd_init = up_sunbnd
+    up_sunbnd_init = up_sunbnd
 
     ! -------------------------------------------------------------
     ! Position cursor to read radiance calibration input parameters
@@ -882,7 +882,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, racline_str, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
     READ (fit_ctrl_unit, *) renorm
     READ (fit_ctrl_unit, *) weight_rad
@@ -902,11 +902,11 @@ contains
       ! ---------------------------------------------------------
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
         lotmp = vartmp 
- uptmp = vartmp
+        uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
         uptmp = vartmp 
- lotmp = vartmp
+        lotmp = vartmp
       END IF
 
       IF ( idxchar == eoi3str ) EXIT radpars
@@ -915,12 +915,12 @@ contains
         fitvar_rad_init(sidx) = vartmp
         fitvar_rad_str (sidx) = TRIM(ADJUSTL(idxchar))
         lo_radbnd(sidx) = lotmp 
- up_radbnd(sidx) = uptmp
+        up_radbnd(sidx) = uptmp
       END IF
     END DO radpars
 
 
-! Obsolete
+    ! Obsolete
     ! Read date from radiance file (used for correcting sun-earth 
     ! distance when using backupirradiance)
     if (use_he5_in) then
@@ -968,7 +968,7 @@ contains
              'Incorrect across track positions to be coadded: ', &
              pixnum_lim(1:2)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
       ! NINT behaviour is not consistent between Intel and GNU builds
       ! when input is exactly integer+0.5
@@ -977,9 +977,9 @@ contains
     ENDIF
 
     WRITE(slinechar, '(I4.4)') linenum_lim(1)
- WRITE(elinechar, '(I4.4)') linenum_lim(2)
+    WRITE(elinechar, '(I4.4)') linenum_lim(2)
     WRITE(sxchar, '(I2.2)')    pixnum_lim(1) 
- WRITE(exchar, '(I2.2)')    pixnum_lim(2)
+    WRITE(exchar, '(I2.2)')    pixnum_lim(2)
 
     ! must divide and must start from odd coadded positions
     IF (do_xbin .AND. nxbin > 1) THEN
@@ -988,7 +988,7 @@ contains
         WRITE(www_lun, '(A,2I4)') &
              'Incorrect across track binning option: ', pixnum_lim(1:2)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       ENDIF
     ELSE
       nxbin = 1
@@ -1060,14 +1060,14 @@ contains
                SWATH_LUN
           errstat = OMI_SMF_setmsg( errstat, msg, modulename, 0 )
           pge_error_status = pge_errstat_error
- RETURN
+          RETURN
         ELSE
           nc = deQuote( msg )
           IF( nc <= 0 ) THEN
             WRITE( msg,'(A)' ) "Error in Input Swath Name:"// TRIM(msg)
             errstat = OMI_SMF_setmsg( OMI_E_HDFEOS,msg,modulename,0 )
             pge_error_status = pge_errstat_error
- RETURN
+            RETURN
             RETURN
           ELSE
             L2_swathname = TRIM( msg )
@@ -1092,7 +1092,7 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, rafline_str, &
            modulename, 0)
       pge_error_status = pge_errstat_error
- RETURN
+      RETURN
     END IF
 
     ! By default we set the undersampling spectrum to FALSE. Only if we select
@@ -1105,9 +1105,9 @@ contains
     ! has to be the last READ action performed from the input file.
     ! -------------------------------------------------------------
     comvidx = 0
- cm1vidx = 0
- comfidx = 0
- cm1fidx = 0
+    cm1vidx = 0
+    comfidx = 0
+    cm1fidx = 0
     fitvar_rad_unit = 'NoUnits'
 
     getpars: DO j = 1, max_rs_idx
@@ -1117,7 +1117,7 @@ contains
         errstat = OMI_SMF_setmsg ( omsao_e_read_fitctrl_file, &
              'radiance fitting parameters', modulename, 0)
         pge_error_status = pge_errstat_error
- RETURN
+        RETURN
       END IF
       CALL check_for_endofinput ( TRIM(ADJUSTL(tmpchar)), yn_eoi )
       IF ( yn_eoi ) EXIT getpars
@@ -1140,11 +1140,11 @@ contains
         ! ---------------------------------------------------------
         IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
           lotmp = vartmp 
- uptmp = vartmp
+          uptmp = vartmp
         END IF
         IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
           uptmp = vartmp 
- lotmp = vartmp
+          lotmp = vartmp
         END IF
 
         CALL string2index ( radfit_strings, mxs_idx, idxchar, sidx )
@@ -1153,7 +1153,7 @@ contains
           fitvar_rad_init(i) = vartmp
           fitvar_rad_str (i) = TRIM(ADJUSTL(tmpchar))
           lo_radbnd (i) = lotmp 
- up_radbnd (i) = uptmp
+          up_radbnd (i) = uptmp
           IF ( (ridx == us1_idx .OR. ridx == us2_idx) .AND. &
                ANY ( (/ vartmp,lotmp,uptmp /) /= 0.0 ) ) &
                have_undersampling = .TRUE.
@@ -1172,18 +1172,18 @@ contains
       READ (fit_ctrl_unit, *) idxchar1, vartmp, lotmp, uptmp
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
         lotmp = vartmp 
- uptmp = vartmp
+        uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
         uptmp = vartmp 
- lotmp = vartmp
+        lotmp = vartmp
       END IF
 
       i =  max_calfit_idx + (ridx-1)*mxs_idx + 1
       IF  (ALL(lo_radbnd(i:i+2) - up_radbnd(i:i+2) >= 0.0)) THEN
         vartmp = 0.0
- uptmp = 0.0
- lotmp = 0.0
+        uptmp = 0.0
+        lotmp = 0.0
       END IF
 
       i =  shift_offset + ridx
@@ -1192,7 +1192,7 @@ contains
       fitvar_rad_unit(i) = 'nm'
 
       lo_radbnd (i) = lotmp 
- up_radbnd (i) = uptmp        
+      up_radbnd (i) = uptmp        
     END DO getpars
 
     ! -----------------------------------------------------
@@ -1225,9 +1225,9 @@ contains
     ! and reference spectra parameters.
     ! -------------------------------------------------------------
     n_fitvar_rad = 0 
- mask_fitvar_rad = 0
+    mask_fitvar_rad = 0
     rmask_fitvar_rad = 0
- database_indices = 0
+    database_indices = 0
     ! --------------------------------
     ! First the calibration parameters
     ! --------------------------------
@@ -1317,12 +1317,12 @@ contains
     IF ( (ntsh == 0 .AND. nsh == 0 .AND. nos == 0 .AND. nsl == 0) &
          .OR. (do_simu .AND. .NOT. radcalwrt)) THEN
       radnhtrunc = 3
- refnhextra = 2
+      refnhextra = 2
       !ELSE IF (reduce_resolution .AND. use_redfixwav) THEN
       !   radnhtrunc = 2; refnhextra = 1
     ELSE
       radnhtrunc = 3
- refnhextra = 2
+      refnhextra = 2
     ENDIF
 
 

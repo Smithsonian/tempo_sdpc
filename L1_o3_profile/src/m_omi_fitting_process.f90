@@ -83,6 +83,9 @@ contains
     integer :: ext
     character(len=1024) :: nc_l2_filename, l2_cld_filename_nc
 
+    ! FIXME - should be input variable, not fixed value
+    integer :: processing_version = 1
+
     !INTEGER, parameter :: ntemp = 18001
     !REAL (kind=dp), DIMENSION(ntemp) :: waves, raycofs, depols
 
@@ -585,14 +588,19 @@ contains
     if (lcurve_write) close (lcurve_unit)
     if (ozwrtint)     close (ozwrtint_unit)
 
+    ! If using netCDF inputs, copy critical metadata and label file
+    if (use_tio_in .AND. use_tio_out) then
+      call copy_hdr_metadata (l1_rad_filename_nc, errstat)
+      call label_output_file ("o3p", processing_version, errstat)
+    endif
+
+
     ! Close L2 netCDF output file
     if (use_tio_out) then
       call l2_tio_close(errstat)
       if (errstat < 0) then
-        if (errstat < 0) then
-          call tell_error (tell_io_write_error, &
-               "omi_fitting_process: Failed to close L2 file", errstat)
-        endif
+        call tell_error (tell_io_write_error, &
+             "omi_fitting_process: Failed to close L2 file", errstat)
         stop 1
       endif
     endif

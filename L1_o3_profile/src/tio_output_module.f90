@@ -15,7 +15,7 @@ module tio_output_module
        append_product_vars, append_support_vars, append_qa_vars, &
        append_diagnostic_vars
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
-       write_merged_geo
+       write_merged_geo, copy_hdr_metadata, label_output_file
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -2808,6 +2808,58 @@ contains
 
   end subroutine write_merged_data
 
+
+  !> Copy metadata required for processing from L1B input file
+  !! @param[in]    l1bfile  Filename for input radiance file
+  !! @param[inout] errstat  Error status variable
+  subroutine copy_hdr_metadata (l1bfile, errstat)
+    implicit none
+    character (len=*), intent(in) :: l1bfile
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, "copy_metadata: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_copy_granule_ident (l1b, obj, errstat)
+    call tiof_close (l1b, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, "copy_metadata: copying from "//trim(l1bfile), &
+                       errstat)
+    endif
+  end subroutine copy_hdr_metadata
+
+
+  !> Label product type in Level 2 product file
+  !! @param[in]    label   product type label to apply
+  !! @param{in]    processing_version processing version used in file creation
+  !! @param[inout] errstat Error status variable
+  subroutine label_output_file (label, processing_version, errstat)
+    implicit none
+    character (len=*), intent(in) :: label
+    integer, intent(in) :: processing_version
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+
+    obj => primary_output_file
+
+    call tiof_label_product (obj, label, processing_version, errstat)
+    if (errstat < 0) then
+      call tell_error (tell_io_error, "label_output_file failed", errstat)
+    endif
+
+  end subroutine label_output_file
 
 
 end module tio_output_module
