@@ -204,8 +204,9 @@ static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb,
 {
    TIO_Var_Info_Type vi;
    void *tmp;
-   int bytes_per_value, have_num_src_bytes, have_num_dest_bytes;
-   int i, num_src_values, num_dest_values;
+   size_t have_num_src_bytes, have_num_dest_bytes;
+   size_t num_src_values, num_dest_values;
+   int i, bytes_per_value;
 
    if (-1 == TIO_inq_var (ncid, var_name, &vi))
      return -1;
