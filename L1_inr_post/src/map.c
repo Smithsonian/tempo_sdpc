@@ -69,7 +69,7 @@ static void tiff_warning_handler (const char *module, const char *fmt,
    char **pw;
    char *pointless_warnings[] =
      {
-        "Unknown field with tag 42113", /* GDAL_NODATA */
+        "nknown field with tag 42113", /* GDAL_NODATA */
         NULL
      };
 
