@@ -7,11 +7,11 @@
 #include <wordexp.h>
 
 #include <tiffio.h>
-#include <geotiff/geotiff.h>
-#include <geotiff/xtiffio.h>
-#include <geotiff/geo_normalize.h>
-#include <geotiff/geo_simpletags.h>
-#include <geotiff/geovalues.h>
+#include <geotiff.h>
+#include <xtiffio.h>
+#include <geo_normalize.h>
+#include <geo_simpletags.h>
+#include <geovalues.h>
 
 #include <libconfig.h>
 #include <tell.h>
