@@ -593,6 +593,9 @@ TIFF_INC
 TIFF_LIB
 TELL_INC
 TELL_LIB
+INROTS_EXTRA_LIBS
+INROTS_INC
+INROTS_LIB
 INR_INC
 INR_LIB
 LIBCONFIG_INC
@@ -683,6 +686,7 @@ with_netcdf
 with_proj
 with_libconfig
 with_inrlib
+with_inrots
 with_tell
 with_tiff
 with_geotiff
@@ -1315,6 +1319,7 @@ Optional Packages:
   --with-proj=DIR         Use proj4 library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-inrlib=DIR       Use INR library installed in DIR
+  --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
@@ -2171,6 +2176,30 @@ else
    INR_LIB="$jh_with_inrlib/lib"
    INR_INC="$jh_with_inrlib/include"
 fi
+
+
+
+
+# Check whether --with-inrots was given.
+if test "${with_inrots+set}" = set; then :
+  withval=$with_inrots; jh_with_inrots=$withval
+else
+  jh_with_inrots=no
+fi
+
+if test "x$jh_with_inrots" = "xno"; then
+   INROTS_LIB="\$(OTS_ROOT)/lib"
+   INROTS_INC="\$(OTS_ROOT)/include"
+else
+   INROTS_LIB="$jh_with_inrots/lib"
+   INROTS_INC="$jh_with_inrots/include"
+   if test -f "${INROTS_LIB}/libtmglib.a" ; then
+     INROTS_EXTRA_LIBS="-ltmglib"
+   else
+     INROTS_EXTRA_LIBS=""
+   fi
+fi
+
 
 
 

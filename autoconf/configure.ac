@@ -114,6 +114,26 @@ fi
 AC_SUBST(INR_LIB)
 AC_SUBST(INR_INC)
 
+AC_ARG_WITH(inrots,
+  [  --with-inrots[=DIR]       Use INR OTS software installed in DIR],
+  [jh_with_inrots=$withval],
+  [jh_with_inrots=no])
+if test "x$jh_with_inrots" = "xno"; then
+   INROTS_LIB="\$(OTS_ROOT)/lib"
+   INROTS_INC="\$(OTS_ROOT)/include"
+else
+   INROTS_LIB="$jh_with_inrots/lib"
+   INROTS_INC="$jh_with_inrots/include"
+   if test -f "${INROTS_LIB}/libtmglib.a" ; then
+     INROTS_EXTRA_LIBS="-ltmglib"
+   else
+     INROTS_EXTRA_LIBS=""
+   fi
+fi
+AC_SUBST(INROTS_LIB)
+AC_SUBST(INROTS_INC)
+AC_SUBST(INROTS_EXTRA_LIBS)
+
 AC_ARG_WITH(tell,
   [  --with-tell[=DIR]         Use tell library installed in DIR (default:$prefix)],
   [jh_with_tell=$withval],
