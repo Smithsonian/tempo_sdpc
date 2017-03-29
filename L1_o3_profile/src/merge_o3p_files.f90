@@ -7,7 +7,7 @@ program merge_o3p_files
   use m_read_L2_o3p_tio
   use m_o3p_params
   use tio_output_module, only: l2_tio_create, l2_tio_close, write_merged_geo, &
-       write_merged_data
+       write_merged_data, write_hdr_metadata
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        ozwrtvar, gaswrt, aerosol, do_lambcld
@@ -140,6 +140,24 @@ program merge_o3p_files
         stop 1
       endif
     endif
+
+  ! get and check global attributes necesary for pipeline processing
+    call read_o3p_pipe_attributes (input_files(n), tio_l2in, proc_ver(n), &
+          prod_type(n), scan_seq_num(n), time_start(n), time_end(n), errstat)
+    if (n > 1 .AND. write_global_attr) then
+      if (proc_ver(n) /= proc_ver(1)) errstat = -1
+      if (scan_seq_num(n) /= scan_seq_num(1)) errstat = -2
+      if (prod_type(n) /= prod_type(1)) errstat = -3
+      !if (time_start(n) /= time_start(1)) errstat = -4
+      !if (time_end(n) /= time_end(1)) errstat = -5
+      if (errstat /= 0) then
+        call tell_error(tell_invalid_parm_error, &
+          "mismatched global attributes, input files from multiple granules", &
+             errstat)
+        stop 1
+      endif
+    endif
+
   enddo  ! loop over input files
 
 
@@ -232,6 +250,13 @@ program merge_o3p_files
          nnoise_elems(1), naeros_wavs(1), errstat)
     
     if (errstat /= 0) stop 1
+
+    !if input has global attributes for pipeline processing, write them out
+    if (write_global_attr) then
+      call write_hdr_metadata (proc_ver(1), prod_type(1), scan_seq_num(1), &
+           time_start(1), time_end(1), errstat)
+      if (errstat /= 0) stop 1
+    endif
 
   enddo ! read/write data loop
 

@@ -11,7 +11,7 @@ module m_read_L2_o3p_tio
   private
   public read_o3p_dims, read_o3p_dim_indices, read_o3p_product, &
        read_o3p_geolocation, read_o3p_support, read_o3p_diagnostic, &
-       read_o3p_qastat, open_o3p, close_o3p
+       read_o3p_qastat, open_o3p, close_o3p, read_o3p_pipe_attributes
 
 
 
@@ -713,6 +713,102 @@ contains
     endif
 
   end subroutine close_o3p
+
+
+  !> Open L2 netCDF O3 profile product and read attributes needed by pipeline
+  !--------------------------------------------------------------------------
+  !
+  !> @param[in]  l2file       L2 O3 profile product filename
+  !> @param      tio_l2obj    L2 file object
+  !> param[out]  proc_ver     processing version number
+  !> param[out]  prod_type    product type string (should be "o3p")
+  !> param[out]  scan_seq_num scan sequence number
+  !> param[out]  time_start   time_coverage_start string
+  !> param[out]  time_end     time_coverage_end string
+  !> @param      errstat      error handling integer, non-zero = error
+  !
+  !> @author E. O'Sullivan October 2016
+  !--------------------------------------------------------------------------
+  subroutine read_o3p_pipe_attributes (l2file, tio_l2obj, proc_ver, &
+       prod_type, scan_seq_num, time_start, time_end, errstat)
+
+    use m_o3p_params, only: write_global_attr
+
+    implicit none
+
+    !input variables
+    character (len=*), intent(in) :: l2file
+
+    !output variables
+    integer (kind=4), intent(out) :: proc_ver, scan_seq_num
+    character (len=*), intent(out) :: prod_type
+    character (len=*), intent(out) :: time_start, time_end
+    integer (kind=4), intent(inout) :: errstat
+
+    !local variables
+    integer :: status, dummyid, exist, existcount
+
+    type(tiof_file_type) :: tio_l2obj
+
+    if (errstat /= 0) return
+
+    ! attributes may not exist if file was made from OMI data, so need to 
+    ! check they exist and keep running if not
+    existcount=0
+    status=nf90_noerr
+    call tiof_open (l2file, tio_l2obj, nf90_nowrite, errstat)
+    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
+         'processing_version', attnum=dummyid)
+    if (exist == nf90_noerr) then
+      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
+           'processing_version', proc_ver)
+      existcount = existcount+1
+    endif
+    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
+         'scan_seq_num', attnum=dummyid)
+    if (exist == nf90_noerr .AND. status == nf90_noerr) then
+      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
+           'scan_seq_num', scan_seq_num)
+      existcount = existcount+1
+    endif
+    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
+         'product_type', attnum=dummyid)
+    if (exist == nf90_noerr .AND. status == nf90_noerr) then
+      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
+           'product_type', prod_type)
+      existcount = existcount+1
+    endif
+    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
+         'time_coverage_start', attnum=dummyid)
+    if (exist == nf90_noerr .AND. status == nf90_noerr) then
+      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
+           'time_coverage_start', time_start)
+      existcount = existcount+1
+    endif
+    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
+         'time_coverage_end', attnum=dummyid)
+    if (exist == nf90_noerr .AND. status == nf90_noerr) then
+      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
+           'time_coverage_end', time_end)
+      existcount = existcount+1
+    endif
+    call tiof_close(tio_l2obj, errstat)
+
+    if (status /= nf90_noerr) then
+      errstat = -1
+    else
+      if (existcount == 5) write_global_attr = .TRUE.
+    endif
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, &
+           "read_o3p_pipe_attributes: failed", errstat)
+    endif
+
+  end subroutine read_o3p_pipe_attributes
+
+
+
 
 
 end module m_read_L2_o3p_tio
