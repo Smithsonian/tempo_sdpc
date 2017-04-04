@@ -100,6 +100,7 @@ contains
          n_fitvar_rad, radwavcal_freq, currpix, currloop, currline, &
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, &
+         tempo_syn, GranuleYear, GranuleMonth, GranuleDay, &
          tabdir!, refwvl, refidx_sav, lo_radbnd, up_radbnd, i0sav
     USE OMSAO_omidata_module,    ONLY: omi_nwav_rad, omi_nradpix, &
          omi_radiance_wavl, omi_radiance_spec, omi_radiance_prec, &
@@ -586,10 +587,15 @@ contains
     edgelons(2) = omi_allelon  (currpix,   currline)
     edgelats(1) = omi_allelat  (currpix-1, currline)
     edgelats(2) = omi_allelat  (currpix,   currline)
-!    estat = PGS_TD_TAItoUTC(omi_time(currloop), the_utc)
-    estat = PGS_TD_TAItoUTC(omi_alltime(currloop), the_utc)
-    READ (the_utc, '(I4, 1x, I2, 1x, I2, 1x, I2, 1x, I2, 1x, F9.6)') &
+    if (tempo_syn) then
+      the_year  = GranuleYear
+      the_month = GranuleMonth
+      the_day   = GranuleDay
+    else
+      estat = PGS_TD_TAItoUTC(omi_alltime(currloop), the_utc)
+      READ (the_utc, '(I4, 1x, I2, 1x, I2, 1x, I2, 1x, I2, 1x, F9.6)') &
          the_year, the_month, the_day, hour, minute, second
+    endif
 
     ! Check cloud fractions
     IF (which_cld /= 2) THEN

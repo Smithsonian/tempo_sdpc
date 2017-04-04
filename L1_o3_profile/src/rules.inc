@@ -724,6 +724,7 @@ $(ODIR)/m_read_geo_tio.o: $(SDIR)/m_read_geo_tio.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_geo_tio.f90 -o $(ODIR)/m_read_geo_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_metadata_tio.o: $(SDIR)/m_read_metadata_tio.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_metadata_tio.f90 -o $(ODIR)/m_read_metadata_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_o3p_params.o: $(SDIR)/m_o3p_params.f90 \

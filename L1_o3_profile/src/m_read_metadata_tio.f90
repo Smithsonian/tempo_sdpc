@@ -25,6 +25,7 @@ contains
     use netcdf
     use tio_module
     use tell_module
+    use OMSAO_variables_module, only: scnwrt
     use OMSAO_parameters_module, only : maxchlen
     use utilities, only: day_of_year
 
@@ -70,6 +71,11 @@ contains
 
     read (rbd_string, '(i4,1x,i2,1x,i2)') year, month, day
     jday = day_of_year ( year, month, day ) 
+
+    if(scnwrt) then
+      print *, 'read_data_tio: year, month, day, jday'
+      print *, year, month, day, jday
+    endif
 
   end subroutine read_date_tio
 
