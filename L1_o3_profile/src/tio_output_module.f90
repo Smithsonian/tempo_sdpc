@@ -15,8 +15,8 @@ module tio_output_module
        append_product_vars, append_support_vars, append_qa_vars, &
        append_diagnostic_vars
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
-       write_merged_geo, copy_hdr_metadata, label_output_file, &
-       write_hdr_metadata
+       write_merged_geo, write_merged_data, copy_hdr_metadata, &
+       label_output_file
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -2862,52 +2862,6 @@ contains
 
   end subroutine label_output_file
 
-  !> Write global attributes needed for pipeline processing to merged file
-  !! @param[in]    proc_ver      processing version
-  !! @param[in]    prod_type     product type code ("o3p")
-  !! @param[in]    scan_seq_num  scan sequence number
-  !! @param[in]    time_start    time_sequence_start string
-  !! @param[in]    time_end      time_sequence_end string
-  !! @param[inout] errstat       error status variable
-  subroutine write_hdr_metadata (proc_ver, prod_type, scan_seq_num, &
-       time_start, time_end, errstat)
-    
-    implicit none
-
-    !input variables
-    integer (kind=4), intent(in) :: proc_ver, scan_seq_num
-    character (len=3), intent(in) :: prod_type
-    character (len=20), intent(in) :: time_start, time_end
-
-    !output variables
-    integer (kind=4), intent(inout) :: errstat
-
-    !local variables
-    integer :: status
-
-    type (tiof_file_type), pointer :: obj
-
-    if (errstat < 0) return
-
-    obj => primary_output_file
-
-    status = nf90_put_att(obj%fileid, nf90_global, 'procesing_version', &
-         proc_ver)
-    if (status == nf90_noerr) status = nf90_put_att(obj%fileid, nf90_global, &
-         'product_type', prod_type)
-    if (status == nf90_noerr) status = nf90_put_att(obj%fileid, nf90_global, &
-         'scan_seq_num', scan_seq_num)
-    if (status == nf90_noerr) status = nf90_put_att(obj%fileid, nf90_global, &
-         'time_sequence_start', time_start)
-    if (status == nf90_noerr) status = nf90_put_att(obj%fileid, nf90_global, &
-         'time_sequence_end', time_end)
-    
-    if (status /= nf90_noerr) then
-      errstat = -1
-      call tell_error (tell_io_error, "write_hdr_metadata failed", errstat)
-    endif
-
-  end subroutine write_hdr_metadata
 
 
 end module tio_output_module

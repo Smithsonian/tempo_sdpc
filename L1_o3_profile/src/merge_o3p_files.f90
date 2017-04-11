@@ -7,7 +7,7 @@ program merge_o3p_files
   use m_read_L2_o3p_tio
   use m_o3p_params
   use tio_output_module, only: l2_tio_create, l2_tio_close, write_merged_geo, &
-       write_merged_data, write_hdr_metadata
+       write_merged_data, copy_hdr_metadata, label_output_file
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        ozwrtvar, gaswrt, aerosol, do_lambcld
@@ -29,7 +29,7 @@ program merge_o3p_files
        end_wxtrack
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
-  integer :: n, status, dummyid, i, j
+  integer :: n, status, dummyid, i, j, omiflag, omicount
   integer, parameter :: zero=0, one=1
 
   type (tiof_file_type) :: tio_l2in
@@ -39,6 +39,8 @@ program merge_o3p_files
 
   !--------------------------------------------------------------------
 
+  omicount = 0
+  omiflag = 0
   errstat = 0
   call tell_open ("merge_o3p_files", 0)
 
@@ -62,7 +64,7 @@ program merge_o3p_files
 
   ! Loop through input files, get dimension sizes
   do n=1,ninput
-  ! From first file determine which dimensions/variables are used
+    ! From first file determine which dimensions/variables are used
     call read_o3p_dims(input_files(n), tio_l2in, nstep(n), nxtrack(n), &
          ncorner(n), nfitvars(n), nfitwins(n), ngas(n), nlayer(n), &
          nlayerp1(n), nmax_wavs(n), nnoise_elems(n), nnongas(n), &
@@ -109,7 +111,7 @@ program merge_o3p_files
   enddo
 
   do n=1,ninput ! loop over input files, get dimension indices
-  ! For each file, read in xtrack and step values
+    ! For each file, read in xtrack and step values
     if (n == 1) then
       allocate(step(maxval(nstep), ninput), stat=errstat)
       allocate(xtrack(maxval(nxtrack), ninput), stat=errstat)
@@ -122,7 +124,7 @@ program merge_o3p_files
     call read_o3p_dim_indices (input_files(n), tio_l2in, nstep(n), &
          nxtrack(n), step(:,n), xtrack(:,n), errstat)
 
-  ! check other dimensions have same sizes
+    ! check other dimensions have same sizes
     if (n > 1) then
       if (ncorner(n) /= ncorner(1)) errstat = -1
       if (nfitvars(n) /= nfitvars(1)) errstat = -2
@@ -141,26 +143,23 @@ program merge_o3p_files
       endif
     endif
 
-  ! get and check global attributes necesary for pipeline processing
-    call read_o3p_pipe_attributes (input_files(n), tio_l2in, proc_ver(n), &
-          prod_type(n), scan_seq_num(n), time_start(n), time_end(n), errstat)
-    if (n > 1 .AND. write_global_attr) then
-      if (proc_ver(n) /= proc_ver(1)) errstat = -1
-      if (scan_seq_num(n) /= scan_seq_num(1)) errstat = -2
-      if (prod_type(n) /= prod_type(1)) errstat = -3
-      !if (time_start(n) /= time_start(1)) errstat = -4
-      !if (time_end(n) /= time_end(1)) errstat = -5
-      if (errstat /= 0) then
-        call tell_error(tell_invalid_parm_error, &
-          "mismatched global attributes, input files from multiple granules", &
-             errstat)
-        stop 1
-      endif
+    ! get and check global attributes necesary for pipeline processing
+    call compare_o3p_pipe_attributes (input_files(1), input_files(n), omiflag,&
+         errstat)
+    omicount = omicount + omiflag
+    if (errstat /= 0) then
+      call tell_error(tell_invalid_parm_error, &
+           "mismatched global attributes, input files from multiple granules",&
+           errstat)
+      stop 1
     endif
 
   enddo  ! loop over input files
 
-
+  ! Do we need to copy TEMPO global attributes?
+  if (omicount == 0) then
+    write_global_attr = .TRUE.
+  endif
 
   ! determine min max indices of step & xtrack
   max_step=maxval(step)
@@ -195,7 +194,7 @@ program merge_o3p_files
        ncorner(1), nfitvars(1), nfitwins(1), ngas(1), nnongas(1), nlayer(1), &
        nlayerp1(1), nmax_wavs(1), nnoise_elems(1), naeros_wavs(1), &
        errstat)
-!  call o3p_param_fill (errstat)
+  !  call o3p_param_fill (errstat)
   if (errstat /= 0) stop 1
 
   ! Create output file
@@ -248,17 +247,16 @@ program merge_o3p_files
          end_wxtrack, ngas(1), &
          nnongas(1), nlayer(1), nfitvars(1), nfitwins(1), nmax_wavs(1), &
          nnoise_elems(1), naeros_wavs(1), errstat)
-    
+
     if (errstat /= 0) stop 1
 
-    !if input has global attributes for pipeline processing, write them out
-    if (write_global_attr) then
-      call write_hdr_metadata (proc_ver(1), prod_type(1), scan_seq_num(1), &
-           time_start(1), time_end(1), errstat)
-      if (errstat /= 0) stop 1
-    endif
-
   enddo ! read/write data loop
+
+  ! if working with TEMPO data, copy global attributes
+  if (write_global_attr) then
+    call copy_hdr_metadata(input_files(1), errstat)
+    call label_output_file("o3p", processing_version, errstat)
+  endif
 
   call l2_tio_close (errstat)
   if (errstat /= 0) stop 1

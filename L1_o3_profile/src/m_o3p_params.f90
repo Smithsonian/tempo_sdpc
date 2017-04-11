@@ -12,9 +12,7 @@ module m_o3p_params
        nnoise_elems, naeros_wavs
 
   ! global attributes
-  integer (kind=4), dimension(:), allocatable :: proc_ver, scan_seq_num
-  character (len=4), dimension(:), allocatable :: prod_type
-  character (len=24), dimension(:), allocatable :: time_start, time_end
+  integer (kind=4) :: processing_version = 1 ! FIXME - should be input param
 
   ! logical switches
   logical :: write_global_attr = .FALSE.
@@ -507,14 +505,6 @@ contains
            "o3p_dim_alloc: failed to allocate dimension size arrays", errstat)
     endif
 
-    allocate(proc_ver(ninput), scan_seq_num(ninput), prod_type(ninput), &
-         time_start(ninput), time_end(ninput), stat=errstat)
-
-    if (errstat /= 0) then
-      call tell_error (tell_malloc_error, &
-           "o3p_dim_alloc: failed to allocate global attribute arrays", &
-           errstat)
-    endif
 
   end subroutine o3p_dim_alloc
 
@@ -555,17 +545,6 @@ contains
            errstat)
     endif
 
-    if (allocated(proc_ver)) deallocate (proc_ver, stat=errstat)
-    if (allocated(scan_seq_num)) deallocate (scan_seq_num, stat=errstat)
-    if (allocated(prod_type)) deallocate (prod_type, stat=errstat)
-    if (allocated(time_start)) deallocate (time_start, stat=errstat)
-    if (allocated(time_end)) deallocate (time_end, stat=errstat)
-
-    if (errstat /= 0) then
-      call tell_error (tell_malloc_error, &
-           "o3p_dim_alloc: failed to deallocate global attribute arrays", &
-           errstat)
-    endif
 
   end subroutine o3p_dim_dealloc
 

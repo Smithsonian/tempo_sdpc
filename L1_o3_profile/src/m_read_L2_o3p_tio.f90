@@ -11,7 +11,7 @@ module m_read_L2_o3p_tio
   private
   public read_o3p_dims, read_o3p_dim_indices, read_o3p_product, &
        read_o3p_geolocation, read_o3p_support, read_o3p_diagnostic, &
-       read_o3p_qastat, open_o3p, close_o3p, read_o3p_pipe_attributes
+       read_o3p_qastat, open_o3p, close_o3p, compare_o3p_pipe_attributes
 
 
 
@@ -715,97 +715,63 @@ contains
   end subroutine close_o3p
 
 
-  !> Open L2 netCDF O3 profile product and read attributes needed by pipeline
+  !> Compare global attributes needed by pipeline in two L2 O3P files
   !--------------------------------------------------------------------------
   !
-  !> @param[in]  l2file       L2 O3 profile product filename
-  !> @param      tio_l2obj    L2 file object
-  !> param[out]  proc_ver     processing version number
-  !> param[out]  prod_type    product type string (should be "o3p")
-  !> param[out]  scan_seq_num scan sequence number
-  !> param[out]  time_start   time_coverage_start string
-  !> param[out]  time_end     time_coverage_end string
+  !> @param[in]  l2file_a     L2 O3 profile product filename
+  !> @param[in]  l2file_b     L2 O3 profile product filename
+  !> @param[out] omiflagb     Flag = 1 if data lack TEMPO global attributes
   !> @param      errstat      error handling integer, non-zero = error
   !
   !> @author E. O'Sullivan October 2016
   !--------------------------------------------------------------------------
-  subroutine read_o3p_pipe_attributes (l2file, tio_l2obj, proc_ver, &
-       prod_type, scan_seq_num, time_start, time_end, errstat)
-
-    use m_o3p_params, only: write_global_attr
+  subroutine compare_o3p_pipe_attributes (l2file_a, l2file_b, omiflag, errstat)
 
     implicit none
 
     !input variables
-    character (len=*), intent(in) :: l2file
+    character (len=*), intent(in) :: l2file_a, l2file_b
 
     !output variables
-    integer (kind=4), intent(out) :: proc_ver, scan_seq_num
-    character (len=*), intent(out) :: prod_type
-    character (len=*), intent(out) :: time_start, time_end
+    integer (kind=4), intent(out) :: omiflag
     integer (kind=4), intent(inout) :: errstat
 
     !local variables
-    integer :: status, dummyid, exist, existcount
+    integer :: status
 
-    type(tiof_file_type) :: tio_l2obj
+    type(tiof_file_type) :: tio_l2obj_a, tio_l2obj_b
 
     if (errstat /= 0) return
 
-    ! attributes may not exist if file was made from OMI data, so need to 
-    ! check they exist and keep running if not
-    existcount=0
-    status=nf90_noerr
-    call tiof_open (l2file, tio_l2obj, nf90_nowrite, errstat)
-    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
-         'processing_version', attnum=dummyid)
-    if (exist == nf90_noerr) then
-      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
-           'processing_version', proc_ver)
-      existcount = existcount+1
-    endif
-    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
-         'scan_seq_num', attnum=dummyid)
-    if (exist == nf90_noerr .AND. status == nf90_noerr) then
-      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
-           'scan_seq_num', scan_seq_num)
-      existcount = existcount+1
-    endif
-    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
-         'product_type', attnum=dummyid)
-    if (exist == nf90_noerr .AND. status == nf90_noerr) then
-      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
-           'product_type', prod_type)
-      existcount = existcount+1
-    endif
-    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
-         'time_coverage_start', attnum=dummyid)
-    if (exist == nf90_noerr .AND. status == nf90_noerr) then
-      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
-           'time_coverage_start', time_start)
-      existcount = existcount+1
-    endif
-    exist = nf90_inquire_attribute(tio_l2obj%fileid, nf90_global, &
-         'time_coverage_end', attnum=dummyid)
-    if (exist == nf90_noerr .AND. status == nf90_noerr) then
-      status = nf90_get_att(tio_l2obj%fileid, nf90_global, &
-           'time_coverage_end', time_end)
-      existcount = existcount+1
-    endif
-    call tiof_close(tio_l2obj, errstat)
+    omiflag = 0
 
-    if (status /= nf90_noerr) then
+    call tiof_open (l2file_a, tio_l2obj_a, nf90_nowrite, errstat)
+    call tiof_open (l2file_b, tio_l2obj_b, nf90_nowrite, errstat)
+
+    status = tiof_same_granule_ident(tio_l2obj_a, tio_l2obj_b)
+
+    if (status < 0) then
+      ! When OMI data no longer used, status < 0 will indicate error
+      !errstat = -1
+      !call tell_error (tell_io_read_error, &
+      !     "read_o3p_pipe_attributes: tiof_same_granule_ident error", errstat)
+      omiflag = 1
+    else if (status == 0) then
       errstat = -1
-    else
-      if (existcount == 5) write_global_attr = .TRUE.
+      call tell_error (tell_io_read_error, &
+           "read_o3p_pipe_attributes: granule metadata differs", errstat)
     endif
+      
+
+    call tiof_close(tio_l2obj_a, errstat)
+    call tiof_close(tio_l2obj_b, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_o3p_pipe_attributes: failed", errstat)
     endif
 
-  end subroutine read_o3p_pipe_attributes
+  end subroutine compare_o3p_pipe_attributes
 
 
 
