@@ -534,6 +534,11 @@ contains
       return
     endif
 
+    if (tiof_same_granule_ident (obj, obj_to) <= 0) then
+      write(*,*)'*** Error: verifying granule label'
+      return
+    endif
+
     call tiof_label_product (obj_to, "XXX", 2, errstat)
     if (errstat /= 0) then
       write(*,*)'*** Error: labeling granule'

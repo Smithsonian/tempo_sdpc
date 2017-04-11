@@ -114,6 +114,15 @@ extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps
  */
 extern int TIO_copy_granule_ident (int ncid_from, int ncid_to);
 
+/** Compare granule identification metadata from one netcdf file to another
+ * @param  ncid1       Index of first netcdf file
+ * @param  ncid2       Index of second netcdf file
+ * @return -1 on error,
+ *          0 when granule identification metadata differ,
+ *          1 when granule identification metadata are the same
+ */
+extern int TIO_same_granule_ident (int ncid1, int ncid2);
+
 /** Generate a filename string using granule identification metadata
  *  in a netcdf file header.
  * @param  ncid          Index of source netcdf file

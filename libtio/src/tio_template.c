@@ -151,6 +151,27 @@ int TIO_copy_granule_ident (int ncid_from, int ncid_to)
    return 0;
 }
 
+static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
+                               const _pTIO_Granule_Ident_Type *gid2)
+{
+   return ((gid1->scan_seq_num == gid2->scan_seq_num)
+           && (gid1->granule_seq_num == gid2->granule_seq_num)
+           && (gid1->granule_num == gid2->granule_num)
+           && (0 == strncmp (gid1->tstart_str, gid2->tstart_str, MAX_ISOTIME_LEN))
+           && (0 == strncmp (gid1->tend_str, gid2->tend_str, MAX_ISOTIME_LEN)));
+}
+
+int TIO_same_granule_ident (int ncid1, int ncid2)
+{
+   _pTIO_Granule_Ident_Type gid1, gid2;
+
+   if ((-1 == _pTIO_read_granule_ident (ncid1, &gid1))
+       || (-1 == _pTIO_read_granule_ident (ncid2, &gid2)))
+     return -1;
+
+   return same_granule_ident (&gid1, &gid2);
+}
+
 int TIO_filename_from_granule (int ncid, const char *label, int version,
                                char *buf, int bufsize)
 {
@@ -267,16 +288,20 @@ int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
 
 static int timet_from_timestr (const char *timestr, time_t *ptimet)
 {
+   const char tz_env[] = "TZ";
    const char *tz = NULL;
    struct tm tm;
 
    if (-1 == _pTIO_parse_timestr (timestr, &tm))
      return -1;
 
-   tz = getenv ("TZ");
-   setenv ("TZ", "", 1);     /* force UTC */
+   tz = getenv (tz_env);
+   setenv (tz_env, "", 1);     /* force UTC */
    *ptimet = mktime(&tm);
-   setenv ("TZ", tz, 1);
+   if (tz)
+     setenv (tz_env, tz, 1);
+   else
+     unsetenv (tz_env);
 
    return 0;
 }
@@ -329,6 +354,8 @@ int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
 }
 
 FCALLSCFUN2(INT, TIO_copy_granule_ident, TIO_F_COPY_GRANULE_IDENT, tio_f_copy_granule_ident,
+            INT, INT)
+FCALLSCFUN2(INT, TIO_same_granule_ident, TIO_F_SAME_GRANULE_IDENT, tio_f_same_granule_ident,
             INT, INT)
 FCALLSCFUN5(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_filename_from_granule,
             INT, STRING, INT, PSTRING, INT)
