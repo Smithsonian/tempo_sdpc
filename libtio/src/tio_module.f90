@@ -117,7 +117,7 @@ module tio_module
 
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
-    tio_f_copy_granule_ident, tio_f_same_granule_ident, tiof_same_granule_ident, &
+    tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
