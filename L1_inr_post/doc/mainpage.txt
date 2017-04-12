@@ -1,0 +1,207 @@
+/**
+@mainpage L1_inr_post
+
+@section Synopsis
+
+\verbatim
+Usage: L1_inr_post [options] <input-file>
+  Required:
+   -s | --snow FILE       snow and ice mask file
+  Optional:
+   -c | --config FILE     configuration file
+   -v | --verbose lev     logging verbosity
+\endverbatim
+
+@section Description
+
+\c L1_inr_post modifies a geolocated Level 1 radiance file to apply
+geolocation-dependent corrections (e.g. polarization) and to populate
+file variables that depend on geolocation.
+
+@section snow Snow and Ice cover
+
+Snow and ice cover information is obtained from the Near-Real-Time
+SSM/I-SSMIS EASE-Grid Daily Global Ice Concentration and Snow Extent
+data set from the NASA National Snow and Ice Data Center Distributed
+Active Archive Center (NSIDC DAAC).
+
+The NISE file name must be provided on the command line.
+
+Although the NISE data product is in HDF4 format, \c L1_inr_post reads
+it using the \c netcdf4 library interface.  For this reason, the
+netcdf4 must be compiled with HDF4 support enabled.
+
+@section param_file Parameter file
+
+\c L1_inr_post is controlled by a parameter file that may be
+provided as an optional command-line argument.  If no parameter
+file is specified on the command-line, \c L1_inr_post reads
+\c l1_inr_post.cfg from the current directory.
+
+Here is an example parameter file:
+\verbatim
+ground_pixel_quality_flags: {
+
+  # GOES ABI Aerosol Detection Product uses max glint angle = 40 deg
+  # (see ATBD v2.1 section 3.3.2)
+  #
+  max_glint_angle_deg = 40.0;
+  max_eclipse_angle_deg = 1.0;
+};
+
+# Be sure that the mean and stddev elevation tiles
+# are listed in the same order!
+
+elevation: {
+  tile_layout = "grid",
+  tiles_mean = [
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n090w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n120w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n150w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n060w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n090w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n120w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n150w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n030w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n060w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n090w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n120w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n150w_20101117_gmted_mea300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n180w_20101117_gmted_mea300.tif"
+          ];
+  tiles_stddev = [
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n090w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n120w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n150w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n060w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n090w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n120w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n150w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n030w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n060w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n090w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n120w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n150w_20101117_gmted_std300.tif",
+           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n180w_20101117_gmted_std300.tif"
+          ];
+};
+
+land_cover: {
+  tile_layout = "latitude_bands",
+  tiles_type1 = [
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_1.tif"
+          ];
+  tiles_typeQC = [
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif"
+          ];
+};
+\endverbatim
+
+In addition to the parameter file format version number, the parameter
+file contains several parameter groups which are described in the
+following sections.
+
+@subsection ground_pixel_quality_flags Ground pixel quality flags parameter group
+
+The ground_pixel_quality_flags parameter group contains the following parameters:
+
+  \li \c max_glint_angle_deg For each point on the earth's surface,
+the glint possibility flag is set when the satellite viewing
+angle at the surface point lies within a cone of radius \c max_glint_angle_deg
+centered on the nominal reflected sunlight vector.
+
+  \li \c max_eclipse_angle_deg For each point on the earth's surface,
+the solar eclipse flag is set when the angular separation of the moon
+and the sun as viewed from the surface point is smaller than \c
+max_eclipse_angle_deg.
+
+@subsection elevation Elevation parameter group
+
+Elevation data are assumed to be provided in non-overlapping \c
+geotiff formatted tiles which may be arranged either in a grid or in
+latitude bands.  One set of tiles should provide the mean elevation
+within each pixel.  Another set of tiles should provide the standard
+deviation of the elevation within each pixel.
+
+  \li \c tile_layout  Supported values are \c grid and \c latitude_bands.
+
+  \li \c tiles_mean  This parameter is an array of strings containing
+the full path to each geotiff mean elevation tile.  Paths may
+incorporate references to environment variables.
+
+  \li \c tiles_stddev This parameter is an array of strings containing
+the full path to each geotiff elevation standard deviation tile.  Paths may
+incorporate references to environment variables.
+
+It is assumed that corresponding files in the two lists, \c tiles_mean
+and \c tiles_stddev, have precisely the same pixel boundaries and
+geographic coverage, but this correspondence is not checked at
+run-time.
+
+@subsection land_cover Land cover parameter group
+
+Land cover data are assumed to be provided in non-overlapping \c
+geotiff formatted tiles which may be arranged either in a grid or in
+latitude bands.  Two sets of tiles must be provided, containing MODIS
+land cover Type 1 and MODIS land cover Type QC classification data,
+respectively.
+
+  \li \c tile_layout  Supported values are \c grid and \c latitude_bands.
+
+  \li \c tile_type1  This parameter is an array of strings containing
+the full path to each geotiff land cover type 1 tile.  Paths may
+incorporate references to environment variables.
+
+  \li \c tile_typeQC This parameter is an array of strings containing
+the full path to each geotiff land cover type QC tile.  Paths may
+incorporate references to environment variables.
+
+It is assumed that corresponding files in the two lists, \c
+tiles_type1 and \c tiles_typeQC, have precisely the same pixel
+boundaries and geographic coverage, but this correspondence is not
+checked at run-time.
+
+@section design_choices Design Choices
+
+@subsection gmted_elevation Elevation data
+
+Using the GMTED elevation data files directly means that there's no
+need to reformat or regrid the GMTED data, eliminating the need to
+develop, test, document, and maintain the code to perform such
+functions.
+
+The terrain height value assigned to each TEMPO pixel is the overlap
+area-weighted mean of the GMTED pixels that overlap the TEMPO pixel.
+While database pixel-lookups are convenient in native
+longitude-latitude coordinates, pixel overlap area computations are
+most convenient in coordinates defined by the Albers equal-area
+projection (for details, see the documentation for \c L2_regrid).
+Albers coordinates are computed using the \c proj4 library.
+
+@subsection modis_land_cover Land cover data
+
+Because the native sinusoidal projection (SIN) used in the MODIS data
+product tiles is inconvenient for performing pixel lookup based on
+lon-lat coordinates, the MODIS data products were resampled to use the
+GEO projection and the tiles were merged into latitude bands. The GEO
+projection gives the simplest mapping from (lon,lat) to pixel
+(column,row), and merging tiles into latitude bands avoids problems
+associated with non-square tile boundaries. This resampling and
+merging was done using the MODIS-provided MRT suite of tools,
+specifically, \c resample, and \c mrtmosaic.
+
+The script used to perform the resampling and mapping is included:
+
+\verbinclude modis_mosaic.sh
+
+*/

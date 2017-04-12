@@ -1,3 +1,10 @@
+
+/** @file elevation.c
+ *  @brief Load elevation data, perform coordinate-based nearest-neighbor
+ *         elevation lookup, compute overlap area-weighted mean elevation
+ *         within pixel boundaries.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

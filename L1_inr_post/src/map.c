@@ -1,3 +1,8 @@
+/** @file map.c
+ *  @brief Provide an interface to a collection of non-overlapping map tiles,
+ *   supporting coordinate-based lookups and rectangular bounding-box subsets.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

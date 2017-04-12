@@ -1,3 +1,8 @@
+/** @file snow.c
+ *  @brief Load snow and ice cover data,
+ *         perform coordinate-based nearest-neighbor lookup
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

@@ -1,3 +1,8 @@
+/** @file granule.c
+ *  @brief Load granule geolocation information,
+ *         set geolocation-dependent variables
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

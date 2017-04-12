@@ -1,3 +1,8 @@
+/** @file land_cover.c
+ *  @brief Load MODIS land cover data, perform coordinate-based
+ *         nearest-neighbor lookups
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

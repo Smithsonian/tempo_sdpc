@@ -1,3 +1,7 @@
+/** @file l1_inr_post.c
+ *  @brief Main program
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
