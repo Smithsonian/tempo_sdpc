@@ -38,9 +38,9 @@ Source_Pixel_List_Type;
 static int longlat_to_albers (double *lon, double *lat, int n)
 {
    projPJ albers = NULL, longlat = NULL;
-   /* spatialreference.org ESRI Projection 102003 - USA Contiguous Albers Equal Area Conic */
+   /* spatialreference.org USA Contiguous Albers Equal Area Conic */
    const char ctl_albers[] =
-     "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs";
+     "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs";
    /* spatialreference.org EPSG Projection 4326 - WGS 84  */
    const char ctl_longlat[] =
      "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";

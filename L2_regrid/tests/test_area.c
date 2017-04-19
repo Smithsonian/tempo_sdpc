@@ -66,9 +66,8 @@ static int init_proj (Obs_Type *o)
    double azi  = AIM_AZIMUTH;
    const char tpers_string[] =
      "+proj=tpers +lat_0=0 +lon_0=%0.2f +h=%9.2f +tilt=%0.4f +azi=%0.4f +ellps=WGS84";
-   /* spatialreference.org ESRI Projection 102003 - USA Contiguous Albers Equal Area Conic */
    const char albers_string[] =
-     "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs";
+     "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs";
    int n;
 
    n = snprintf (buf, BUFSIZE, tpers_string, lon0, h, tilt, azi);
