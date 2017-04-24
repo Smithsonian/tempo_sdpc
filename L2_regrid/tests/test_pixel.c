@@ -195,7 +195,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
-   if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values))
+   if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values, NULL))
      goto return_status;
 
    src_sum = 0.0;
@@ -251,6 +251,175 @@ return_status:
    return status;
 }
 
+static int test_regrid_stat (int nx_src, int ny_src)
+{
+   Pixel_Grid_Param_Type dest_grid_params;
+   Pixel_List_Type *src_pixel_list = NULL;
+   Pixel_Regrid_Type *r = NULL;
+   Pixel_Regrid_Stats_Type *regrid_stats = NULL;
+   double *src_values=NULL, *dest_values=NULL;
+   double x0 = 0.0, dx = 1.0/nx_src;
+   double y0 = 0.0, dy = 1.0/ny_src;
+   double *xcnr = NULL, *ycnr = NULL;
+   /* These values define the test case -- if you change these
+    * values the expected test values must be updated!! */
+   float bin_factor = 2.0;          /* dest grid is coarser */
+   double xshift = 0.5 * dx;
+   double yshift = 0.0;
+   double pixel_xoverlap = 0.0;
+   int expect_no_overlaps = 0;
+   /* end of test case parameters */
+   int num_src, nx_dest, ny_dest, num_dest, num_overlaps;
+   int i, *src_mask= NULL;
+   int status = -1;
+
+   if (DEBUG) fprintf (stderr, "nx_src = %d\n", nx_src);
+
+   num_src = nx_src * ny_src;
+   nx_dest = nx_src / bin_factor;
+   ny_dest = ny_src / bin_factor;
+   num_dest = nx_dest * ny_dest;
+
+   if ((NULL == (src_mask = (int *)MALLOC (num_src*sizeof(int))))
+       || (NULL == (src_values = (double *)MALLOC (num_src*sizeof(double))))
+       || (NULL == (dest_values = (double *)MALLOC (num_dest*sizeof(double)))))
+     {
+        goto return_status;
+     }
+
+   if (NULL == (src_pixel_list = Pixel_list_new (num_src, 4)))
+     goto return_status;
+
+   if (-1 == Pixel_list_use_src_index (src_pixel_list))
+     goto return_status;
+
+   for (i = 0; i < num_src; i++)
+     {
+        double x[4], y[4];
+        int ix = i % nx_src;
+        int iy = i / nx_src;
+        x[0] = x0 + ix * dx - pixel_xoverlap;
+        x[1] = x[0] + (dx + 2*pixel_xoverlap);
+        x[2] = x[1];
+        x[3] = x[0];
+        y[0] = y0 + iy * dy;
+        y[1] = y[0];
+        y[2] = y[0] + dy;
+        y[3] = y[2];
+
+        src_values[i] = 1.0 + (ix % 2);
+        src_mask[i] = 0;
+
+        if ((-1 == Pixel_list_set_vertices (src_pixel_list, i, 4, x, y))
+            || (-1 == Pixel_list_set_src_index (src_pixel_list, i, i)))
+          goto return_status;
+     }
+
+   dest_grid_params.xmin = xshift;
+   dest_grid_params.xmax = xshift + 1.0;
+   dest_grid_params.ymin = yshift;
+   dest_grid_params.ymax = yshift + 1.0;
+   dest_grid_params.nx = nx_dest;
+   dest_grid_params.ny = ny_dest;
+
+   if (-1 == Pixel_grid_arrays (&dest_grid_params, &xcnr, &ycnr))
+     goto return_status;
+
+   if (NULL == (r = Pixel_open_regrid (&dest_grid_params, NULL)))
+     goto return_status;
+
+   if (-1 == (num_overlaps = Pixel_find_overlaps (r, src_pixel_list, NULL)))
+     goto return_status;
+
+   if (expect_no_overlaps && (num_overlaps == 0))
+     {
+        status = 0;
+        goto return_status;
+     }
+
+   if (NULL == (regrid_stats = Pixel_alloc_regrid_stats (num_dest, 1)))
+     goto return_status;
+
+   if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values, regrid_stats))
+     goto return_status;
+
+   for (i = 0; i < num_dest; i++)
+     {
+        struct {double min, max; int num;} expect;
+        int ix = i % nx_dest;
+        int iy = i / nx_dest;
+        int expected;
+
+        if (DEBUG) fprintf (stderr, "(%2d,%2d): %5.3e %5.3e %d\n",
+                            ix, iy,
+                            regrid_stats->min[i],
+                            regrid_stats->max[i],
+                            regrid_stats->num[i]);
+
+        if (ix < nx_dest-1)
+          {
+             /* Apart from edge effects, we expect each destination
+              * pixel to have contributions from 4 source pixels,
+              * with the minimum source pixel value = 1 */
+             expect.min = 1;
+             expect.max = 2;
+             expect.num = 4;
+          }
+        else
+          {
+             /* Handle edge cases:
+              * When nx_src is even, the last column will have value=2,
+              * so when the dest grid has a 1/2 pixel shift in the +X direction
+              * the last column will see only 2 contributions with value=2,
+              * and no contributions with value=1.
+              * When nx_src is odd, vice-versa.
+              */
+             expect.num = 2;
+             if ((nx_src / 2)*2 == nx_src)
+               {
+                  /* nx_src even */
+                  expect.min = 2;
+                  expect.max = 2;
+               }
+             else
+               {
+                  /* nx_src odd */
+                  expect.min = 1;
+                  expect.max = 1;
+               }
+          }
+
+        expected = ((regrid_stats->min[i] == expect.min)
+                    && (regrid_stats->max[i] == expect.max)
+                    && (regrid_stats->num[i] == expect.num));
+        if (!expected)
+          {
+             fprintf (stderr,
+                      "*** unexpected regrid_stats: i=%d min=%g\tmax=%g\tnum=%d\n"
+                      "                   expected:      min=%g\tmax=%g\tnum=%d\n",
+                      i,
+                      regrid_stats->min[i],
+                      regrid_stats->max[i],
+                      regrid_stats->num[i],
+                      expect.min, expect.max, expect.num);
+             goto return_status;
+          }
+     }
+
+   status = 0;
+return_status:
+
+   FREE(src_values);
+   FREE(src_mask);
+   FREE(dest_values);
+   FREE(xcnr);
+   FREE(ycnr);
+   Pixel_list_free (src_pixel_list);
+   Pixel_close_regrid (r);
+   Pixel_free_regrid_stats (regrid_stats);
+   return status;
+}
+
 #define N1 32
 #define N2 64
 
@@ -264,6 +433,11 @@ int main (void)
 
    /* dest grid is finer */
    if (test_regrid (N1, N1, 0.25, 0.0,  0.0, 0.0, 0))
+     return 1;
+
+   if (test_regrid_stat (N1, N1))
+     return 1;
+   if (test_regrid_stat (N1+1, N1))
      return 1;
 
    /* source grid pixels overlap in X, dest grid is finer/coarser */
