@@ -27,11 +27,24 @@ static int test_poly_area (void)
    Polygon_Type *p;
    double x[] = {0.0, 1.0, 1.0};
    double y[] = {0.0, 0.0, 1.0};
+   double xx[3], yy[3];
    double area, xt, yt;
+   int i;
    /* exercise realloc */
    if (NULL == (p = Polygon_new (0)))
      return -1;
    (void) Polygon_set (p, 3, x, y);
+   if (0 != Polygon_get (p, 3, xx, yy))
+     return -1;
+   for (i = 0; i < 3; i++)
+     {
+        if (xx[i] != x[i])
+          {
+             fprintf (stderr, "***ERROR: Polygon_get:  xx[%d] = %g (expected %g)\n",
+                     i, xx[i], x[i]);
+             return -1;
+          }
+     }
    area = Polygon_area (p);
    if (fabs (area - 0.5) > DBL_EPSILON)
      {
