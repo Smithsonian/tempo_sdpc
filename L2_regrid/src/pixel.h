@@ -46,9 +46,16 @@ typedef struct
 }
 Pixel_Grid_Param_Type;
 
+typedef struct
+{
+   double *min;    /**< minimum input value contributing to regridded pixel result */
+   double *max;    /**< maximum input value contributing to regridded pixel result */
+   int *num;       /**< number of input values contributing to regridded pixel result */
+}
+Pixel_Regrid_Stats_Type;
+
 typedef struct Pixel_List_Type Pixel_List_Type;
 typedef struct Pixel_Regrid_Type Pixel_Regrid_Type;
-typedef struct Pixel_Stats_Type Pixel_Stats_Type;
 
 /** Allocate a Pixel_List_Type structure
  * @param[in]  num_polys   The number of pixels (polygons)
@@ -224,7 +231,29 @@ Pixel_find_overlaps (Pixel_Regrid_Type *r,
  */
 extern int
 Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
-              double fill_value, const double *src, double *dest);
+              double fill_value, const double *src, double *dest,
+              Pixel_Regrid_Stats_Type *rs);
+
+/** Free memory associated with a \ref Pixel_Regrid_Stats_Type object.
+ * @param[in]  rs    Pointer to a \ref Pixel_Regrid_Stats_Type object,
+ *                   allocated by \ref Pixel_alloc_regrid_stats.
+ */
+extern void Pixel_free_regrid_stats (Pixel_Regrid_Stats_Type *rs);
+
+/** Allocate a \ref Pixel_Regrid_Stats_Type object.
+ * @param[in]  num_pixels             Number of spatial pixels.
+ * @param[in]  num_values_per_pixel   Number of values per spatial pixel.
+ * @return Pointer to an object of type \ref Pixel_Regrid_Stats_Type on success,
+ *         NULL on error
+ *
+ * The second argument is provided to facilitate regridding multidimensional
+ * objects.  For example, consider regridding a 4-dimensional array with
+ * dimensions [ny, nx, na, nb].  The spatial dimensions are [ny, nx],
+ * so that num_pixels = nx * ny, and num_values_per_pixel = na * nb.
+ * It is assumed that the spatial coordinates vary slowest.
+ */
+extern Pixel_Regrid_Stats_Type *
+Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel);
 
 /** Perform regridding of bitfield values using the pixel overlap
  *  structure computed by Pixel_find_overlaps.
@@ -255,59 +284,6 @@ extern int
 Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
                     int value_type, const void *fill_value,
                     const void *src, void *dest);
-
-/** Generate per-pixel statistics for a variable to be regridded
- *  using the pixel overlap structure computed by \ref Pixel_find_overlaps.
- *
- * @param[in]  r      Pixel_Regrid_Type structure allocated
- *                    by \ref Pixel_open_regrid, and with (private)
- *                    pixel overlap structure initialized by
- *                    \ref Pixel_find_overlaps.
- * @param[in]  src_mask  An mask array with one element per
- *                    pixel in the input spatial grid.
- *                    Non-zero elements indicate that the
- *                    corresponding variable value should not
- *                    be used.
- * @param[in]  src    Array of variable values with one element
- *                    per pixel in the input spatial grid.
- * @param[out] st     Pixel_Stats_Type structure allocated by
- *                    \ref Pixel_stats_new.
- * @return 0 on success, -1 on failure.
- */
-extern int
-Pixel_regrid_stat (const Pixel_Regrid_Type *r, const int *src_mask,
-                   const double *src, Pixel_Stats_Type *st);
-
-/** Allocate a Pixel_Stats_Type structure.
- * @param[in]  num_pixels   Number of target pixels for which statistics
- *                          will be collected.
- * @return A Pixel_Stats_Type pointer on success, NULL on error.
- *
- * When no longer needed, the returned structure should be freed
- * by a call to \ref Pixel_stats_free.
- */
-extern Pixel_Stats_Type *Pixel_stats_new (int num_pixels);
-
-/** Free resources associated with a Pixel_Stats_Type structure
- * @param[in]  s    A Pixel_Stats_Type struct pointer, allocated by
- *                  \ref Pixel_stats_new.
- */
-extern void Pixel_stats_free (Pixel_Stats_Type *s);
-
-/** Access the array fields of a Pixel_Stats_Type structure.
- * @param[in]  st           A Pixel_Stats_Type struct pointer.
- * @param[out] num_pixels   The number of target pixels for which
- *                          space has been allocated.
- * @param[out] num_samples  The number of samples (overlapping pixels)
- *                          contributing to the regridded pixel value.
- * @param[out] min_sample   The smallest sample value contributing
- *                          to the regridded pixel value.
- * @param[out] max_sample   The largest sample value contributing
- *                          to the regridded pixel value.
- */
-extern int Pixel_stats_get (const Pixel_Stats_Type *st,
-                            int *num_pixels, int **num_samples,
-                            double **min_sample, double **max_sample);
 
 #if 0
 {

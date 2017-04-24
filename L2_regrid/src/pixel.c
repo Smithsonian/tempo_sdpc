@@ -37,69 +37,6 @@ struct Pixel_Regrid_Type
    int num_src_xtrack;
 };
 
-struct Pixel_Stats_Type
-{
-   double *min_sample;
-   double *max_sample;
-   int *num_samples;
-   int num_pixels;
-};
-
-void Pixel_stats_free (Pixel_Stats_Type *s)
-{
-   if (s == NULL)
-     return;
-   FREE(s->num_samples);
-   FREE(s->min_sample);
-   FREE(s);
-}
-
-Pixel_Stats_Type *Pixel_stats_new (int num_pixels)
-{
-   Pixel_Stats_Type *s = NULL;
-   int i;
-
-   if (NULL == (s = (Pixel_Stats_Type *)MALLOC (sizeof *s)))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-   memset ((char *)s, 0, sizeof (*s));
-
-   if ((NULL == (s->min_sample = (double *)MALLOC (2*num_pixels*sizeof(double))))
-       || (NULL == (s->num_samples = (int *)MALLOC (num_pixels*sizeof(int)))))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        Pixel_stats_free (s);
-        return NULL;
-     }
-
-   s->num_pixels = num_pixels;
-   s->max_sample = s->min_sample + num_pixels;
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        s->num_samples[i] = PIXEL_INIT_NUM_SAMPLES;
-        s->min_sample[i]  = PIXEL_INIT_MIN_SAMPLE;
-        s->max_sample[i]  = PIXEL_INIT_MAX_SAMPLE;
-     }
-
-   return s;
-}
-
-int Pixel_stats_get (const Pixel_Stats_Type *st, int *num_pixels,
-                     int **num_samples,
-                     double **min_sample, double **max_sample)
-{
-   if (st == NULL)
-     return -1;
-   *num_pixels = st->num_pixels;
-   *num_samples = st->num_samples;
-   *min_sample = st->min_sample;
-   *max_sample = st->max_sample;
-   return 0;
-}
-
 static void free_overlap (Pixel_Overlap_Type *o)
 {
    if (NULL == o)
@@ -532,10 +469,54 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
    return r;
 }
 
-int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
-                  double fill_value, const double *src, double *dest)
+void Pixel_free_regrid_stats (Pixel_Regrid_Stats_Type *rs)
 {
-   int i;
+   if (rs == NULL)
+     return;
+   FREE(rs->min);
+   FREE(rs->max);
+   FREE(rs->num);
+   FREE(rs);
+}
+
+Pixel_Regrid_Stats_Type *
+Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel)
+{
+   Pixel_Regrid_Stats_Type *rs = NULL;
+   int i, len;
+
+   if (NULL == (rs = (Pixel_Regrid_Stats_Type *) MALLOC (sizeof *rs)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)rs, 0, sizeof *rs);
+
+   len = num_pixels * num_values_per_pixel;
+   if ((NULL == (rs->min = (double *)MALLOC (len * sizeof(double))))
+       || (NULL == (rs->max = (double *)MALLOC (len * sizeof(double))))
+       || (NULL == (rs->num = (int *)MALLOC (len * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        Pixel_free_regrid_stats (rs);
+        return NULL;
+     }
+
+   for (i = 0; i < len; i++)
+     {
+        rs->min[i] = PIXEL_INIT_MIN_SAMPLE;
+        rs->max[i] = PIXEL_INIT_MAX_SAMPLE;
+        rs->num[i] = 0;
+     }
+
+   return rs;
+}
+
+int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
+                  double fill_value, const double *src, double *dest,
+                  Pixel_Regrid_Stats_Type *rs)
+{
+   int i, j;
 
    /* Quick return if source and destination grids don't overlap. */
    if (r->overlap == NULL)
@@ -545,9 +526,18 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
      {
         Pixel_Overlap_Type *o = r->overlap[i];
         double a_sum, awt_sum;
-        int j;
+        double mn = PIXEL_INIT_MIN_SAMPLE;
+        double mx = PIXEL_INIT_MAX_SAMPLE;
+        int num = 0;
 
         dest[i] = fill_value;
+
+        if (rs)
+          {
+             rs->min[i] = mn;
+             rs->max[i] = mx;
+             rs->num[i] = num;
+          }
 
         if (o == NULL)
           continue;
@@ -560,8 +550,14 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
              if (src_mask[k] == 0)
                {
                   double a = o->area[j];
-                  awt_sum += a * src[k];
+                  double src_k = src[k];
+                  awt_sum += a * src_k;
                   a_sum   += a;
+
+                  /* keep it simple -- always gather stats */
+                  if (src_k > mx) mx = src_k;
+                  if (src_k < mn) mn = src_k;
+                  num += 1;
                }
           }
 
@@ -569,48 +565,13 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
           {
              dest[i] = awt_sum / a_sum;
           }
-     }
 
-   return 0;
-}
-
-int Pixel_regrid_stat (const Pixel_Regrid_Type *r, const int *src_mask,
-                       const double *src, Pixel_Stats_Type *st)
-{
-   int i;
-
-   /* Quick return if source and destination grids don't overlap. */
-   if (r->overlap == NULL)
-     return 0;
-
-   for (i = 0; i < r->num_dest_pixels; i++)
-     {
-        Pixel_Overlap_Type *o = r->overlap[i];
-        double mn, mx;
-        int j, num;
-
-        if (o == NULL)
-          continue;
-
-        num = 0;
-        mn  = PIXEL_INIT_MIN_SAMPLE;
-        mx  = PIXEL_INIT_MAX_SAMPLE;
-
-        for (j = 0; j < o->num_overlaps; j++)
+        if (rs)
           {
-             int k = o->src_index[j];
-             if (src_mask[k] == 0)
-               {
-                  double src_k = src[k];
-                  if (src_k > mx) mx = src_k;
-                  else if (src_k < mn) mn = src_k;
-                  num += 1;
-               }
+             rs->min[i] = mn;
+             rs->max[i] = mx;
+             rs->num[i] = num;
           }
-
-        st->num_samples[i] = num;
-        st->min_sample[i] = mn;
-        st->max_sample[i] = mx;
      }
 
    return 0;

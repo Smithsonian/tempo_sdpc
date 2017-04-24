@@ -49,7 +49,7 @@ struct Var_Value_Buffer_Type
    Value_Ptr_Type src_values;
    Value_Ptr_Type dest_values;
    Fill_Value_Type fill_value;
-   Pixel_Stats_Type *src_value_stats;
+   Pixel_Regrid_Stats_Type *regrid_stats;
    int value_type;
    int *src_mask;
    int num_dims, dimlens[TIO_MAX_VAR_DIMS];
@@ -135,7 +135,7 @@ void Var_free_value_buffer (Var_Value_Buffer_Type *vb)
    FREE(vb->src_values.d);
    FREE(vb->dest_values.d);
    FREE(vb->src_mask);
-   Pixel_stats_free (vb->src_value_stats);
+   Pixel_free_regrid_stats (vb->regrid_stats);
    FREE(vb);
 }
 
@@ -156,17 +156,13 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
    vb->src_values.d = NULL;
    vb->dest_values.d = NULL;
 
+   vb->regrid_stats = NULL;
+
    vb->num_step = src_num_steps;
    vb->num_xtrack = src_num_xtrack;
 
    vb->num_src_pixels = vb->num_step * vb->num_xtrack;
    vb->num_dest_pixels = dest_nx * dest_ny;
-
-   if (NULL == (vb->src_value_stats = Pixel_stats_new (vb->num_dest_pixels)))
-     {
-        Var_free_value_buffer (vb);
-        return NULL;
-     }
 
    /* The most common level 2 variable to regrid is
     * a 2D array with one value per spatial pixel */
@@ -210,6 +206,9 @@ static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb,
 
    if (-1 == TIO_inq_var (ncid, var_name, &vi))
      return -1;
+
+   Pixel_free_regrid_stats (vb->regrid_stats);
+   vb->regrid_stats = NULL;
 
    have_num_src_bytes = ((vb->num_src_pixels * vb->num_values_per_pixel)
                          * vb->bytes_per_value);
@@ -472,118 +471,219 @@ COPY_TO_STRIDED(int,  int)
 COPY_TO_STRIDED(short,short)
 COPY_TO_STRIDED(byte, char)
 
-static void copy_from_strided_src (Var_Value_Buffer_Type *vb, int i,
-                                   Value_Ptr_Type src_values)
+static void copy_from_strided_src_int (Var_Value_Buffer_Type *vb, int i,
+                                       Value_Ptr_Type *src_values)
 {
    switch (vb->value_type)
      {
-      case VALUE_IS_DOUBLE:
-        copy_from_strided_double (vb->num_src_pixels,
-                                  vb->num_values_per_pixel,
-                                  vb->fill_value.d, vb->src_mask,
-                                  vb->src_values.d + i, src_values.d);
-        break;
       case VALUE_IS_UINT64:
         copy_from_strided_uint64 (vb->num_src_pixels,
                                   vb->num_values_per_pixel,
                                   vb->fill_value.ul, vb->src_mask,
-                                  vb->src_values.ul + i, src_values.ul);
+                                  vb->src_values.ul + i, src_values->ul);
         break;
       case VALUE_IS_UINT:
         copy_from_strided_uint   (vb->num_src_pixels,
                                   vb->num_values_per_pixel,
                                   vb->fill_value.ui, vb->src_mask,
-                                  vb->src_values.ui + i, src_values.ui);
+                                  vb->src_values.ui + i, src_values->ui);
         break;
       case VALUE_IS_USHORT:
         copy_from_strided_ushort (vb->num_src_pixels,
                                   vb->num_values_per_pixel,
                                   vb->fill_value.us, vb->src_mask,
-                                  vb->src_values.us + i, src_values.us);
+                                  vb->src_values.us + i, src_values->us);
         break;
       case VALUE_IS_UBYTE:
         copy_from_strided_ubyte  (vb->num_src_pixels,
                                   vb->num_values_per_pixel,
                                   vb->fill_value.uc, vb->src_mask,
-                                  vb->src_values.uc + i, src_values.uc);
+                                  vb->src_values.uc + i, src_values->uc);
         break;
       case VALUE_IS_INT64:
         copy_from_strided_int64 (vb->num_src_pixels,
                                  vb->num_values_per_pixel,
                                  vb->fill_value.l, vb->src_mask,
-                                 vb->src_values.l + i, src_values.l);
+                                 vb->src_values.l + i, src_values->l);
         break;
       case VALUE_IS_INT:
         copy_from_strided_int   (vb->num_src_pixels,
                                  vb->num_values_per_pixel,
                                  vb->fill_value.i, vb->src_mask,
-                                 vb->src_values.i + i, src_values.i);
+                                 vb->src_values.i + i, src_values->i);
         break;
       case VALUE_IS_SHORT:
         copy_from_strided_short (vb->num_src_pixels,
                                  vb->num_values_per_pixel,
                                  vb->fill_value.s, vb->src_mask,
-                                 vb->src_values.s + i, src_values.s);
+                                 vb->src_values.s + i, src_values->s);
         break;
       case VALUE_IS_BYTE:
         copy_from_strided_byte  (vb->num_src_pixels,
                                  vb->num_values_per_pixel,
                                  vb->fill_value.c, vb->src_mask,
-                                 vb->src_values.c + i, src_values.c);
+                                 vb->src_values.c + i, src_values->c);
+        break;
+      default:
+        tell_verror (TELL_USAGE_ERROR, "%s:  invalid integer type id=%d",
+                     __func__, vb->value_type);
         break;
      }
 }
 
-static void copy_to_strided_dest (Var_Value_Buffer_Type *vb, int i, Value_Ptr_Type dest_values)
+static void copy_to_strided_dest_int (Var_Value_Buffer_Type *vb, int i, Value_Ptr_Type *dest_values)
 {
    switch (vb->value_type)
      {
-      case VALUE_IS_DOUBLE:
-        copy_to_strided_double (vb->num_dest_pixels,
-                                vb->num_values_per_pixel,
-                                dest_values.d, vb->dest_values.d + i);
-        break;
       case VALUE_IS_UINT64:
         copy_to_strided_uint64 (vb->num_dest_pixels,
                                 vb->num_values_per_pixel,
-                                dest_values.ul, vb->dest_values.ul + i);
+                                dest_values->ul, vb->dest_values.ul + i);
         break;
       case VALUE_IS_UINT:
         copy_to_strided_uint   (vb->num_dest_pixels,
                                 vb->num_values_per_pixel,
-                                dest_values.ui, vb->dest_values.ui + i);
+                                dest_values->ui, vb->dest_values.ui + i);
         break;
       case VALUE_IS_USHORT:
         copy_to_strided_ushort (vb->num_dest_pixels,
                                 vb->num_values_per_pixel,
-                                dest_values.us, vb->dest_values.us + i);
+                                dest_values->us, vb->dest_values.us + i);
         break;
       case VALUE_IS_UBYTE:
         copy_to_strided_ubyte  (vb->num_dest_pixels,
                                 vb->num_values_per_pixel,
-                                dest_values.uc, vb->dest_values.uc + i);
+                                dest_values->uc, vb->dest_values.uc + i);
         break;
       case VALUE_IS_INT64:
         copy_to_strided_int64 (vb->num_dest_pixels,
                                vb->num_values_per_pixel,
-                               dest_values.l, vb->dest_values.l + i);
+                               dest_values->l, vb->dest_values.l + i);
         break;
       case VALUE_IS_INT:
         copy_to_strided_int   (vb->num_dest_pixels,
                                vb->num_values_per_pixel,
-                               dest_values.i, vb->dest_values.i + i);
+                               dest_values->i, vb->dest_values.i + i);
         break;
       case VALUE_IS_SHORT:
         copy_to_strided_short (vb->num_dest_pixels,
                                vb->num_values_per_pixel,
-                               dest_values.s, vb->dest_values.s + i);
+                               dest_values->s, vb->dest_values.s + i);
         break;
       case VALUE_IS_BYTE:
         copy_to_strided_byte  (vb->num_dest_pixels,
                                vb->num_values_per_pixel,
-                               dest_values.c, vb->dest_values.c + i);
+                               dest_values->c, vb->dest_values.c + i);
+        break;
+      default:
+        tell_verror (TELL_USAGE_ERROR, "%s:  invalid integer type id=%d",
+                     __func__, vb->value_type);
         break;
      }
+}
+
+static void copy_regrid_stats_to_strided (Var_Value_Buffer_Type *vb, int i,
+                                          Pixel_Regrid_Stats_Type *rs)
+{
+   if (rs == NULL)
+     return;
+   copy_to_strided_double (vb->num_dest_pixels,
+                           vb->num_values_per_pixel,
+                           rs->min, vb->regrid_stats->min + i);
+   copy_to_strided_double (vb->num_dest_pixels,
+                           vb->num_values_per_pixel,
+                           rs->max, vb->regrid_stats->max + i);
+   copy_to_strided_int (vb->num_dest_pixels,
+                        vb->num_values_per_pixel,
+                        rs->num, vb->regrid_stats->num + i);
+}
+
+static void free_workspace (Value_Ptr_Type *src_values, Value_Ptr_Type *dest_values)
+{
+   FREE(src_values->uc);
+   FREE(dest_values->uc);
+}
+
+static int alloc_workspace (Var_Value_Buffer_Type *vb,
+                            Value_Ptr_Type *src_values, Value_Ptr_Type *dest_values)
+{
+   size_t len_src, len_dest;
+
+   len_src = vb->num_src_pixels * vb->bytes_per_value;
+   len_dest = vb->num_dest_pixels * vb->bytes_per_value;
+
+   if ((NULL == (src_values->uc = (unsigned char *)MALLOC (len_src)))
+       || (NULL == (dest_values->uc = (unsigned char *)MALLOC (len_dest))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int regrid_by_averaging (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
+                                Value_Ptr_Type *src_values, Value_Ptr_Type *dest_values,
+                                int want_qa)
+{
+   Pixel_Regrid_Stats_Type *rs = NULL;
+   int i;
+
+   if (want_qa)
+     {
+        Pixel_free_regrid_stats (vb->regrid_stats);
+        if (NULL == (vb->regrid_stats = Pixel_alloc_regrid_stats (vb->num_dest_pixels,
+                                                                  vb->num_values_per_pixel)))
+          return -1;
+        if (NULL == (rs = Pixel_alloc_regrid_stats (vb->num_dest_pixels, 1)))
+          return -1;
+     }
+
+   for (i = 0; i < vb->num_values_per_pixel; i++)
+     {
+        copy_from_strided_double (vb->num_src_pixels,
+                                  vb->num_values_per_pixel,
+                                  vb->fill_value.d, vb->src_mask,
+                                  vb->src_values.d + i, src_values->d);
+        if (0 != Pixel_regrid (r, vb->src_mask, vb->fill_value.d,
+                               src_values->d, dest_values->d, rs))
+          {
+             Pixel_free_regrid_stats (rs);
+             tell_verror (TELL_APPLICATION_ERROR, "%s: Pixel_regrid failed i=%d",
+                          __func__, i);
+             return -1;
+          }
+        copy_to_strided_double (vb->num_dest_pixels,
+                                vb->num_values_per_pixel,
+                                dest_values->d, vb->dest_values.d + i);
+        copy_regrid_stats_to_strided (vb, i, rs);
+     }
+
+   Pixel_free_regrid_stats (rs);
+
+   return 0;
+}
+
+static int regrid_bytes (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
+                         Value_Ptr_Type *src_values, Value_Ptr_Type *dest_values)
+{
+   int i;
+
+   for (i = 0; i < vb->num_values_per_pixel; i++)
+     {
+        copy_from_strided_src_int (vb, i, src_values);
+        if (0 != Pixel_regrid_bytes (r, vb->src_mask, vb->value_type,
+                                     &vb->fill_value.uc,
+                                     src_values->uc, dest_values->uc))
+          {
+             tell_verror (TELL_APPLICATION_ERROR, "%s: Pixel_regrid_bytes failed i=%d",
+                          __func__, i);
+             return -1;
+          }
+        copy_to_strided_dest_int (vb, i, dest_values);
+     }
+
+   return 0;
 }
 
 int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
@@ -591,7 +691,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
                       char **files, int num_files)
 {
    Value_Ptr_Type src_values, dest_values;
-   int i, regrid_by_averaging, status = -1;
+   int allocated_workspace, do_regrid_by_averaging, status = -1;
 
    vb->value_type = value_type;
 
@@ -606,69 +706,40 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
     * higher-dimensional variables, we regrid one slice
     * (dest->nx * dest->ny values) at a time.
     */
+
    if (vb->num_values_per_pixel == 1)
      {
         src_values.d = vb->src_values.d;
         dest_values.d = vb->dest_values.d;
+        allocated_workspace = 0;
      }
    else
      {
-        int len_src = vb->num_src_pixels * vb->bytes_per_value;
-        int len_dest = vb->num_dest_pixels * vb->bytes_per_value;
-        if ((NULL == (src_values.uc = (unsigned char *)MALLOC (len_src)))
-            || (NULL == (dest_values.uc = (unsigned char *)MALLOC (len_dest))))
-          {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             goto free_and_return;
-          }
+        if (-1 == alloc_workspace (vb, &src_values, &dest_values))
+          return -1;
+        allocated_workspace = 1;
      }
 
-   regrid_by_averaging = (vb->value_type == VALUE_IS_DOUBLE);
+   /* All values to be regridded by averaging, whether integer or floating
+    * point, are internally managed as type double (all non-bitfield
+    * variables have vb->value_type == VALUE_IS_DOUBLE).
+    * Values to be treated as bitfields are appropriately sized integer types.
+    */
 
-   for (i = 0; i < vb->num_values_per_pixel; i++)
+   do_regrid_by_averaging = (vb->value_type == VALUE_IS_DOUBLE);
+
+   if (do_regrid_by_averaging)
      {
-        int rstatus, qstatus;
-        copy_from_strided_src (vb, i, src_values);
-        if (regrid_by_averaging)
-          {
-             rstatus = Pixel_regrid (r, vb->src_mask, vb->fill_value.d,
-                                     src_values.d, dest_values.d);
-          }
-        else
-          {
-             rstatus = Pixel_regrid_bytes (r, vb->src_mask, vb->value_type,
-                                           &vb->fill_value.uc,
-                                           src_values.uc, dest_values.uc);
-          }
-        if (rstatus)
-          break;
-        copy_to_strided_dest (vb, i, dest_values);
-
-        if (want_qa == 0)
-          continue;
-        if ((regrid_by_averaging == 0)
-            || (vb->num_values_per_pixel != 1))
-          {
-             Tell_verror (TELL_INTERNAL_ERROR, "%s: action not supported",
-                          __func__);
-             break;
-          }
-        qstatus = Pixel_regrid_stat (r, vb->src_mask,
-                                     src_values.d, vb->src_value_stats);
-        if (qstatus) break;
+        status = regrid_by_averaging (r, vb, &src_values, &dest_values, want_qa);
+     }
+   else
+     {
+        status = regrid_bytes (r, vb, &src_values, &dest_values);
      }
 
-   if (i == vb->num_values_per_pixel)
+   if (allocated_workspace)
      {
-        status = 0;
-     }
-
-free_and_return:
-
-   if (vb->num_values_per_pixel > 1)
-     {
-        FREE(src_values.uc);
-        FREE(dest_values.uc);
+        free_workspace (&src_values, &dest_values);
      }
 
    return status;
@@ -785,8 +856,8 @@ static int copy_extra_dims (int ncid_infile, const TIO_Var_Info_Type *vi,
 
 static int write_src_value_stats (int ncid, int in_grp, int in_varid,
                                   const char *var_qa_label, int in_type,
-                                  const int *dims, int *count,
-                                  const Pixel_Stats_Type *st)
+                                  int num_dims, const int *dims, int *count,
+                                  const Pixel_Regrid_Stats_Type *rs)
 {
    char num_buf[TIO_MAX_NAME_LEN];
    char min_buf[TIO_MAX_NAME_LEN];
@@ -794,7 +865,7 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
    int start[TIO_MAX_VAR_DIMS];
    int *num_samples=NULL;
    double *min_sample=NULL, *max_sample=NULL;
-   int i, qa_grp, num_varid, min_varid, max_varid, num_pixels;
+   int i, qa_grp, num_varid, min_varid, max_varid, num_values;
    double fill_minmax;
    int fill_num = PIXEL_INIT_NUM_SAMPLES;
 
@@ -814,13 +885,13 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
         return -1;
      }
 
-   if ((-1 == TIO_def_var (qa_grp, num_buf, NC_INT, 2, dims, &num_varid))
+   if ((-1 == TIO_def_var (qa_grp, num_buf, NC_INT, num_dims, dims, &num_varid))
        || (-1 == TIO_def_var_fill (qa_grp, num_varid, 0, &fill_num)))
      return -1;
-   if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, 2, dims, &min_varid))
+   if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, num_dims, dims, &min_varid))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid)))
      return -1;
-   if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, 2, dims, &max_varid))
+   if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, num_dims, dims, &max_varid))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid)))
      return -1;
 
@@ -832,16 +903,21 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
    if ((in_type == NC_FLOAT) && (fill_minmax > FLT_MAX))
      fill_minmax = FLT_MAX;
 
-   if (-1 == Pixel_stats_get (st, &num_pixels, &num_samples,
-                              &min_sample, &max_sample))
+   num_samples = rs->num;
+   min_sample = rs->min;
+   max_sample = rs->max;
+
+   num_values = 1;
+   for (i = 0; i < num_dims; i++)
      {
-        return -1;
+        num_values *= count[i];
+        start[i] = 0;
      }
 
 #define IS_BAD_VALUE(x) ((in_type == NC_FLOAT) \
                          && (isnan(x) || isinf(x) || (fabs(x) > FLT_MAX)))
 
-   for (i = 0; i < num_pixels; i++)
+   for (i = 0; i < num_values; i++)
      {
         if ((min_sample[i] == PIXEL_INIT_MIN_SAMPLE)
             || IS_BAD_VALUE(min_sample[i]))
@@ -854,9 +930,6 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
              max_sample[i] = fill_minmax;
           }
      }
-
-   start[0] = 0;
-   start[1] = 0;
 
    if ((   -1 == TIO_put_var_section (qa_grp, num_buf, start, count,
                                       NC_INT, num_samples))
@@ -968,7 +1041,7 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
    if (var_qa_label)
      {
         if (-1 == write_src_value_stats (ncid, in_grp, in_varid, var_qa_label,
-                                         vi.type, dims, count, vb->src_value_stats))
+                                         vi.type, vb->num_dims, dims, count, vb->regrid_stats))
           goto free_and_return;
      }
 
