@@ -45,19 +45,22 @@ contains
   !! @param[in] nwindow        number of fit windows (numwin)
   !! @param[in] num_param      number of non-gas fit parameters
   !! @param[in] num_wav_max    maximum number of wavelengths in fit
+  !! @param[in] step_indices   1D array of unbinned step indices
   !! @param[inout] errstat     error status variable
   subroutine l2_tio_create (filename, first_pix, last_pix, first_line, &
        last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
-       num_param, num_wav_max, errstat)
+       num_param, num_wav_max, step_indices, errstat)
 
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=4), intent(in) :: first_pix, last_pix, first_line, &
          last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
          num_param, num_wav_max
+    integer (kind=4), dimension(:), intent(in) :: step_indices
     integer (kind=4), intent(inout) :: errstat
     integer (kind=4) :: num_steps, num_xtrack, nlayerp1, num_elms, &
-       num_aeros_wavl, num_corners
+       num_aeros_wavl, num_corners, bin_xt, bin_ms, n
+    integer (kind=4), dimension(:), allocatable :: step_indices_bin
 
     integer (kind=4), external :: r8fill
 
@@ -83,6 +86,16 @@ contains
     num_elms = (nlayer * (nlayer - 1))/2
     nlayerp1 = nlayer + 1
 
+    ! get binned mirror step and xtrack indices
+    allocate (step_indices_bin(num_steps), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "l2_tio_create: allocation error", &
+           errstat)
+    endif
+    bin_ms=size(step_indices)/num_steps
+    do n=1,num_steps
+      step_indices_bin(n)=INT(step_indices(n*bin_ms)/bin_ms)
+    enddo
 
     ! Create a file.
     call tiof_create (obj, filename, nf90_clobber, errstat)
@@ -143,11 +156,10 @@ contains
     endif
 
     !write coordinate variables
-    call write_coordinate_vars(obj, dimlist, first_line, last_line, &
-         first_pix, last_pix,  offset_line, nybin, num_steps, num_xtrack, &
-         num_corners, nlayer, nlayerp1, nfitvar, num_param, &
-         nwindow, num_elms, num_wav_max, ngas, num_aeros_wavl, &
-         errstat)
+    call write_coordinate_vars(obj, dimlist, first_pix, last_pix, num_steps, &
+         num_xtrack, num_corners, nlayer, nlayerp1, nfitvar, num_param, &
+         nwindow, step_indices_bin, num_elms, num_wav_max, ngas, &
+         num_aeros_wavl, errstat)
 
     !write geolocation group variables
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
@@ -212,8 +224,9 @@ contains
     !write metadata
 
 
-    !before finishing, free the dimsension list
+    !before finishing, free the dimsension list, index arrays
     call tiof_dimlist_free(dimlist)
+    deallocate (step_indices_bin, stat=errstat)
 
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -248,12 +261,8 @@ contains
   !> Write coordinate variables to L2 netCDF file
   !! @param[inout]  obj        pointer to output file
   !! @param[in] dimlist        dimension list
-  !! @param[in] first_line     along-track starting binned step number
-  !! @param[in] last_line      along-track ending binned step number
   !! @param[in] first_pix      cross-track starting binned step number
   !! @param[in] last_pix       cross-track ending binned step number
-  !! @param[in] offset_line    starting line offset from zero
-  !! @param[in] nybin          along-track binning factor
   !! @param[in] num_steps      number of scan steps
   !! @param[in] num_xtrack     number of cross-track pixels
   !! @param[in] num_corners    number of pixel corners
@@ -261,29 +270,28 @@ contains
   !! @param[in] num_fitvar     number of fitted variables
   !! @param[in] num_param      number of non-gas fit variables
   !! @param[in] num_windows    number of fitting windows
+  !! @param[in] step_indices_bin 1D arry of mirror step indices
   !! @param[in] num_elms       no. of elements in noise matrix (opt)
   !! @param[in] num_wav_max   number of max wavelength values (opt)
   !! @param[in] ngas        number of gasses in fit (opt)
   !! @param[in] num_aeros_wavl number of aerosol wavelengths (opt)
   !! @param[inout] errstat     error status variable
-  subroutine write_coordinate_vars(obj, dimlist, first_line, last_line, &
-       first_pix, last_pix, offset_line, nybin, num_steps, num_xtrack, &
-       num_corners, num_layer, num_layerp1, num_fitvar, num_param, &
-       num_windows, num_elms, num_wav_max, ngas, num_aeros_wavl, &
-       errstat)
+  subroutine write_coordinate_vars(obj, dimlist, first_pix, last_pix, &
+       num_steps, num_xtrack, num_corners, num_layer, num_layerp1, &
+       num_fitvar, num_param,  num_windows, step_indices_bin, num_elms, &
+       num_wav_max, ngas,  num_aeros_wavl, errstat)
 
     implicit none
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer (kind=4), intent(in) :: num_steps, num_xtrack, num_corners, &
          num_layer, num_layerp1, num_fitvar, num_param, num_windows, &
-         num_elms, num_wav_max, ngas, num_aeros_wavl, first_line, &
-         last_line, first_pix, last_pix, offset_line, nybin
+         num_elms, num_wav_max, ngas, num_aeros_wavl, first_pix, last_pix
+    integer (kind=4), dimension(num_steps), intent(in) :: step_indices_bin
     integer (kind=4), intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
     integer (kind=4), dimension(num_xtrack) :: xtrack_indices
-    integer (kind=4), dimension(num_steps) :: step_indices
     integer (kind=4), dimension(num_corners) :: corner_indices
     integer (kind=4), dimension(num_layer) :: layer_indices
     integer (kind=4), dimension(num_layerp1) :: layerp1_indices
@@ -294,7 +302,7 @@ contains
     integer (kind=4), dimension(:), allocatable :: wav_max_indices
     integer (kind=4), dimension(:), allocatable :: gas_indices
     integer (kind=4), dimension(:), allocatable :: aeros_wavl_indices
-    integer :: i, dimids(12), status, start_line, end_line
+    integer :: i, dimids(12), status
 
     if (errstat < 0) return
 
@@ -391,16 +399,12 @@ contains
       return
     endif
 
-    ! Set mirror step and xtrack indices to binned pixel numbers so
-    ! as to allow stitching together of output files when code is run
-    ! on subsets of the granule
-    start_line = first_line + (offset_line/nybin) - 1
-    end_line = last_line + (offset_line/nybin) - 1
-
+    ! Use input mirror step indices, and set xtrack indices to binned pixel 
+    ! numbers so as to allow stitching together of output files when code 
+    ! is run on subsets of the granule
     !Write variable indices to L2 file
-    step_indices =  [(i, i=start_line,end_line)]
-    call tiof_put1d_i4 (obj, o3p_dim_step, [0], [num_steps], step_indices, &
-         errstat)
+    call tiof_put1d_i4 (obj, o3p_dim_step, [0], [num_steps], &
+         step_indices_bin, errstat)
 
     xtrack_indices = [(i, i=first_pix-1,last_pix-1)]
     call tiof_put1d_i4 (obj, o3p_dim_xtrack, [0], [num_xtrack], &

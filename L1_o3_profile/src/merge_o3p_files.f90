@@ -29,6 +29,7 @@ program merge_o3p_files
        end_wxtrack
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
+  integer (kind=4), dimension(:), allocatable :: step_out
   integer :: n, status, dummyid, i, j, omiflag, omicount
   integer, parameter :: zero=0, one=1
 
@@ -169,8 +170,9 @@ program merge_o3p_files
   nstep_tot=max_step-min_step+1
   nxtrack_tot=max_xtrack-min_xtrack+1
 
-  ! check for overlaps - files should cover unique areas in step, xtrack
-  allocate(dup_check(0:max_step, 0:max_xtrack), stat=errstat)
+  ! check for overlaps - files should cover unique areas in step
+  allocate(dup_check(0:max_step, 0:max_xtrack), step_out(nstep_tot), &
+       stat=errstat)
   if (errstat /= 0) then
     call tell_error(tell_malloc_error, "failed to allocate dup_check", errstat)
     stop 1
@@ -197,10 +199,14 @@ program merge_o3p_files
   !  call o3p_param_fill (errstat)
   if (errstat /= 0) stop 1
 
+  ! get combined mirror step and xtrack index arrays
+  do i=1, nstep_tot
+    step_out(i)=min_step+i-1
+  enddo
   ! Create output file
   call l2_tio_create (outfile, min_xtrack+1, max_xtrack+1, min_step+1, &
        max_step+1, zero, one, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
-       nnongas(1), nmax_wavs(1), errstat)
+       nnongas(1), nmax_wavs(1), step_out, errstat)
   if (errstat /= 0) stop 1
 
   ! For each file, read in data to appropriate section of output arrays
@@ -264,7 +270,7 @@ program merge_o3p_files
   ! deallocate memory
   call o3p_param_dealloc (errstat)
   call o3p_dim_dealloc (errstat)
-  deallocate(dup_check, step, xtrack, stat=errstat)
+  deallocate(dup_check, step, xtrack, step_out, stat=errstat)
   if (errstat /= 0) then
     call tell_error(tell_malloc_error, "deallocation failure", errstat)
     stop 1

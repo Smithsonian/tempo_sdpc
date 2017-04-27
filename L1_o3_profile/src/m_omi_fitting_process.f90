@@ -17,6 +17,7 @@ contains
          use_he5_in, use_he5_out, use_tio_in, use_tio_out, l1b_rad_filename, &
          nc_rad_swathname, l1_rad_filename_nc, numwin, radnhtrunc, &
          l1_irrad_filename_nc, l1b_irrad_filename, &
+         tempo_syn, step_idx, &
          GranuleDay, GranuleMonth, GranuleYear!, GranuleJDay
     use ozprof_data_module, only: lcurve_write, ozwrtint, l2funit, &
          lcurve_fname, ozwrtint_fname, lcurve_unit, ozwrtint_unit, &
@@ -47,7 +48,7 @@ contains
     use m_specfit_ozprof
     use tio_output_module
     use m_read_cloud_tio
-    use m_read_l1_tio, only: read_l1_dims_tio
+    use m_read_l1_tio, only: read_l1_dims_tio, read_l1_indices_tio
     use m_read_geo_tio
     use m_read_metadata_tio, only: read_date_tio
 
@@ -142,6 +143,13 @@ contains
       call omi_read_radiance_paras (pge_error_status )
       if ( pge_error_status >= pge_errstat_error ) return
     endif
+    call read_l1_indices_tio(l1_rad_filename_nc, ntimes, tempo_syn, errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_io_error, &
+             "omi_fitting_process: failed to set dimension indices", errstat)
+        return
+      endif
+
 
     ! xtrack positions to be processed (start from the actual binned position)
     if (linenum_lim(2) >= ntimes)  linenum_lim(2) = ntimes
@@ -394,7 +402,9 @@ contains
              numwin * 2 * radnhtrunc
         call l2_tio_create(nc_l2_filename, first_pix, last_pix, first_line, &
              last_line, offset_line, nybin, nfgas, nlay, n_fitvar_rad, &
-             numwin, num_param, num_wav_max, errstat)
+             numwin, num_param, num_wav_max, &
+             step_idx(linenum_lim(1):linenum_lim(2)), &
+             errstat)
         if (errstat < 0) then
           call tell_error (tell_io_write_error, &
                "omi_fitting_process: L2 file creation failed", errstat)

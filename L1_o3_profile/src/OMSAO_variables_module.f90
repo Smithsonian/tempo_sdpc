@@ -367,6 +367,9 @@ MODULE OMSAO_variables_module
 
   ! logical over-ride flag when using TEMPO synthetic data
   logical :: tempo_syn = .false.
+
+  ! array of mirror_step indices for TEMPO synthetic data
+  integer (kind=4), dimension(:), allocatable :: step_idx
   
 
 END MODULE OMSAO_variables_module

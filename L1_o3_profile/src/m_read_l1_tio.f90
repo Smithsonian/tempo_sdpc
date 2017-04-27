@@ -7,11 +7,11 @@ module m_read_l1_tio
   use m_convert_coadd, only: convert_2bytes_to_16bits
   use OMSAO_omidata_module, only: ncoadd, nxtrack_max, ntimes_max 
 ! nxtrack, ntimes, nfxtrack, 
-  use OMSAO_variables_module, only: scnwrt
+  use OMSAO_variables_module, only: scnwrt, step_idx
 
 
   public read_L1_dims_tio, read_L1_rad_line_tio, &
-       open_L1_tio, close_L1_tio
+       open_L1_tio, close_L1_tio, read_L1_indices_tio
   private
 
 contains
@@ -52,7 +52,7 @@ contains
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, o3p_dim_xtrack, nxtrack, errstat)
     call tiof_close (tio_l1obj, errstat)
-    
+
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
            "read_L1_dims_tio: failed to open L1 file", &
@@ -78,7 +78,7 @@ contains
       return
     endif
     if (present(nxtrack_coadd)) then
-      if (nxtrack > nxtrack_max) then
+      if (nxtrack_coadd > nxtrack_max) then
         errstat = -1
         call tell_error (tell_invalid_parm, &
              "read_L1_dims_tio: nxtrack_coadd greater than nxtrack_max", &
@@ -86,6 +86,7 @@ contains
         return
       endif
     endif
+
 
   end subroutine read_L1_dims_tio 
 
@@ -290,6 +291,63 @@ contains
 
   end subroutine close_L1_tio
 
+
+  !> Subroutine to read in dimension indices of an L1 netCDF file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] l1file filename for L1 netCDF file
+  !> @param[in] nstep size of along-track dimension
+  !> @param[in] read_idx logical value, true=read data, false=index from 0
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan June 2016
+  !---------------------------------------------------------------------
+  subroutine read_L1_indices_tio (l1file, nstep, read_idx, errstat)
+
+    implicit none
+    
+    !input variables
+    character (len=*), intent (in) :: l1file
+
+    !output variables
+    integer (kind=4), intent (in) :: nstep
+    logical, intent(in) :: read_idx
+    integer (kind=4), intent (inout) :: errstat
+
+    !local variables
+    type (tiof_file_type) :: tio_l1obj
+    integer :: n
+
+
+    if (errstat /= 0) return
+
+    ! allocate mirror step and xtrack index arrays
+    allocate (step_idx(nstep), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_L1_indices_tio: unable to allocate index array", errstat)
+      return
+    endif
+
+    if (read_idx) then ! read indices from netCDF file
+      call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
+      call tiof_get1d_i4 (tio_l1obj, o3p_dim_step, [0], [nstep], step_idx, &
+           errstat)
+      call tiof_close (tio_l1obj, errstat)
+
+      if (errstat /= 0) then
+        call tell_error (tell_io_open_error, &
+             "read_L1_indices_tio: failed to open L1 file", &
+             errstat)
+        return
+      endif
+    else ! indices unavailable, number from zero
+      do n=1,nstep
+        step_idx(n)=n-1
+      enddo
+    endif
+
+  end subroutine read_L1_indices_tio 
 
 
 
