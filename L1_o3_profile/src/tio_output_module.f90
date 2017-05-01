@@ -59,7 +59,7 @@ contains
     integer (kind=4), dimension(:), intent(in) :: step_indices
     integer (kind=4), intent(inout) :: errstat
     integer (kind=4) :: num_steps, num_xtrack, nlayerp1, num_elms, &
-       num_aeros_wavl, num_corners, bin_xt, bin_ms, n
+       num_aeros_wavl, num_corners, bin_ms, n
     integer (kind=4), dimension(:), allocatable :: step_indices_bin
 
     integer (kind=4), external :: r8fill

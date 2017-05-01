@@ -151,18 +151,23 @@ contains
       end where
     endif
 
+
     ! Resample corners coordinates from L1 file to account for binning
     nx = nxtrack / nxbin 
-    do i = 1, nx
+    do i = 0, nx-1
       do j = 0, nl-1
-        tio_allclon(1,i,j) = tmp_allclon(1,1+(i-1)*nxbin,sline+j*nybin)
-        tio_allclon(2,i,j) = tmp_allclon(2,1+(i)*nxbin,sline+j*nybin)
-        tio_allclon(3,i,j) = tmp_allclon(3,1+(i)*nxbin,sline+(j+1)*nybin)
-        tio_allclon(4,i,j) = tmp_allclon(4,1+(i-1)*nxbin,sline+(j+1)*nybin)
-        tio_allclat(1,i,j) = tmp_allclat(1,1+(i-1)*nxbin,sline+j*nybin)
-        tio_allclat(2,i,j) = tmp_allclat(2,1+(i)*nxbin,sline+j*nybin)
-        tio_allclat(3,i,j) = tmp_allclat(3,1+(i)*nxbin,sline+(j+1)*nybin)
-        tio_allclat(4,i,j) = tmp_allclat(4,1+(i-1)*nxbin,sline+(j+1)*nybin)
+        tio_allclon(1,i,j) = tmp_allclon(1,((i+1)*nxbin),&
+             sline+((j+1)*nybin)-1)
+        tio_allclon(2,i,j) = tmp_allclon(2,((i+1)*nxbin),sline+(j*nybin))
+        tio_allclon(3,i,j) = tmp_allclon(3,1+(i*nxbin),sline+(j*nybin))
+        tio_allclon(4,i,j) = tmp_allclon(4,1+(i*nxbin),&
+             sline+((j+1)*nybin)-1)
+        tio_allclat(1,i,j) = tmp_allclat(1,((i+1)*nxbin),&
+             sline+((j+1)*nybin)-1)
+        tio_allclat(2,i,j) = tmp_allclat(2,((i+1)*nxbin),sline+(j*nybin))
+        tio_allclat(3,i,j) = tmp_allclat(3,1+(i*nxbin),sline+(j*nybin))
+        tio_allclat(4,i,j) = tmp_allclat(4,1+(i*nxbin),&
+             sline+((j+1)*nybin)-1)
       end do
     end do
 
