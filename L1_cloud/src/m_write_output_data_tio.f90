@@ -17,7 +17,8 @@ module m_write_output_data_tio
 
   !define fill values in correct format
   real (kind=8), private, parameter :: fill_float=fill_value, &
-       fill_double=fill_value, fill_short=fill_value_int
+       fill_double=fill_value, fill_short=fill_value_int, &
+       fill_int=fill_value_int
 
 contains 
 
@@ -386,11 +387,11 @@ contains
     ! should be nf90_ushort, but the fill value is unsupported...
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_gpqf, &
-                              nf90_short, &
+                              nf90_uint, &
                               dimids = dimids_xtrack_step,  &
                               comment = "ground pixel quality flag", &
                               valid_range = [0.0_r8, 65535.0_r8], &
-                              fillvalue = fill_short, &
+                              fillvalue = fill_int, &
                               attlist=att_geo)
     call tiof_push_group (obj, cld_grp_geolocation, errstat)
     call tiof_def_vars (obj, varlist, errstat)
@@ -459,7 +460,7 @@ contains
          [num_steps, num_xtrack], terr_height(1:num_xtrack,1:num_steps), &
          errstat)
 
-    call tiof_put2d_i2 (obj, cld_var_gpqf, [0,0], &
+    call tiof_put2d_i4 (obj, cld_var_gpqf, [0,0], &
          [num_steps, num_xtrack], geoflg(1:num_xtrack,1:num_steps), &
          errstat)
 

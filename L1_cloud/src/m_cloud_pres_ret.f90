@@ -212,6 +212,9 @@ contains
              .or. sz > sz_max .or. sz < theta(1) .or. maxval(f1p) < 0. &
              ) qc(ip,iLine)=IBSET(qc(ip,iLine),1)
 
+        ! Add check for extreme viewing zenith angles
+        if (sat_zen(ip,iLine) > sz_max) qc(ip,iLine)=IBSET(qc(ip,iLine),1)
+
         if (BTEST(geoflg(ip+1,iLine),6)) qc(ip,iLine)=IBSET(qc(ip,iLine),15)
 
         bad_pix = BTEST(qc(ip,iLine),15) .or. &

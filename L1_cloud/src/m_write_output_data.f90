@@ -238,8 +238,11 @@ contains
     status = put_data (swid, "MeasurementQualityFlags", &
          dims1, meas_qual_flg, &
          misval_i2, "Measurement Quality Flags", "NoUnits")
+!    status = put_data (swid, "GroundPixelQualityFlags", &
+!         dims2, geoflg, misval_i2, "Ground Pixel Quality Flags", "NoUnits", &
+!         geo=.true., offset=(/0,0/))
     status = put_data (swid, "GroundPixelQualityFlags", &
-         dims2, geoflg, misval_i2, "Ground Pixel Quality Flags", "NoUnits", &
+         dims2, int(geoflg, kind=2), misval_i2, "Ground Pixel Quality Flags", "NoUnits", &
          geo=.true., offset=(/0,0/))
     status = put_data (swid, "XTrackQualityFlags", &
          dims2, anomflg, misval_i1, "Cross Track Quality Flags", "NoUnits", &

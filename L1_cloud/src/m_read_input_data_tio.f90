@@ -4,6 +4,7 @@ module m_read_input_data_tio
   use tio_module
   use tell_module
   use netcdf, only : nf90_nowrite
+  use m_read_metadata_tio
 
   public read_input_data_tio
   private read_cld_dimensions, read_cld_geo_data, read_cld_rad_data, &
@@ -25,7 +26,7 @@ contains
          wmin2, wmax2, set_wmin, set_wmax, wave_long, wave_short, nLines, &
          start_line, max_lines, nXtrack, nTimes, nWavel, meas_qual_flg, &
          mflg, n_input, n_missing, nwl, qc, nwave, min_wl, &
-         ws, fs, nsolwave, read_he4, status, Year, Month, Day, time, &
+         ws, fs, nsolwave, read_he4, Year, Month, Day, &
          nc_swathname
     use m_strpos
     use m_read_solar_data_tio
@@ -41,9 +42,7 @@ contains
     !local variables
     character (len = 200) :: filenamepath, swathname
     character (len = 128) :: logmsg
-    character (len = 30) :: DateTime
     integer (kind = 4) :: i
-    integer (kind = 4) :: PGS_TD_TAItoUTC 
 
     type (tiof_file_type) :: tio_l1obj
 
@@ -121,22 +120,15 @@ contains
       endif
 
       !Need the month in order to read in correct calibration climatologies
-      !FIXME - eventually we'll want to remove dependence on PGS_TD_TAItoUTC
-      status = PGS_TD_TAItoUTC(time(1),DateTime)
-
-      if(status /= 0) then
-        call tell_log (1, "read_input_data_tio: TAI time conversion failed")
-        !FIXME - generate a log message instead of an error
-        !        to facilitate processing low-fidelity test data.
-        !call tell_error (tell_io_read_error, &
-        !       "read_input_data_tio: TAI time conversion failed", &
-        !       errstat)
-        month=1
+      call read_date_tio (l1bfile, Year, Month, Day, errstat)
+      if (errstat /= 0) then
+        call tell_log (1, "read_input_data_tio: failed to read date")
+        Month=1
       else
-        read  (DateTime,"(I4,1X,I2,1x,I2,17X)") Year, Month, Day
         write (logmsg, *) "Date is: ", Year, Month, Day
         call tell_log (1, logmsg)
       endif
+
       write (logmsg,"(A10,2F7.2)") 'wmin2 wmax2 ',wmin2,wmax2
       call tell_log(3,logmsg)
 
@@ -333,7 +325,8 @@ contains
     real (kind=8), dimension(1) :: tio_time
     real (kind=4), dimension(nXtrack,1) :: tio_lat, tio_lon, tio_sza, &
          tio_sat_zen, tio_vazimuth, tio_sazimuth
-    integer (kind=2), dimension(nXtrack,1) :: tio_terr_height, tio_geoflg
+    integer (kind=2), dimension(nXtrack,1) :: tio_terr_height
+    integer (kind=4), dimension(nXtrack,1) :: tio_geoflg
     integer (kind=1), dimension(nXtrack,1) :: tio_anomflg 
     integer (kind=2), dimension(1) :: tio_mflg
 
@@ -361,7 +354,7 @@ contains
          [1,nXtrack], tio_vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, cld_var_terr_height, [iLine-1,0], &
          [1,nXtrack], tio_terr_height, errstat)
-    call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [iLine-1,0], &
+    call tiof_get2d_ui4 (tio_l1obj, cld_var_gpqf, [iLine-1,0], &
          [1,nXtrack], tio_geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iLine-1,0], &
          [1,nXtrack], tio_anomflg, errstat)
@@ -392,8 +385,9 @@ contains
              call tell_log(0,'mismatch:sat_zen')
         if(terr_height(i,iLine).ne.tio_terr_height(i,1)) &
              call tell_log(0,'mismatch:terr_height')
-        if(geoflg(i,iLine).ne.tio_geoflg(i,1)) &
-             call tell_log(0,'mismatch:geoflg')
+!  Disable geoflg comparison since OMI & TEMPO use different size ints.
+!        if(geoflg(i,iLine).ne.tio_geoflg(i,1)) &
+!             call tell_log(0,'mismatch:geoflg')
         if(anomflg(i,iLine).ne.tio_anomflg(i,1)) &
              call tell_log(0,'mismatch:anomflg')
       enddo
@@ -468,7 +462,7 @@ contains
          [nLines,nXtrack], vazimuth, errstat)
     call tiof_get2d_i2 (tio_l1obj, cld_var_terr_height, [0,0], &
          [nLines,nXtrack], terr_height, errstat)
-    call tiof_get2d_ui2 (tio_l1obj, cld_var_gpqf, [0,0], &
+    call tiof_get2d_ui4 (tio_l1obj, cld_var_gpqf, [0,0], &
          [nLines,nXtrack], geoflg, errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
          [nLines,nXtrack], anomflg, errstat)

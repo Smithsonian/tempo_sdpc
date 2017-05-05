@@ -93,7 +93,7 @@ module m_vars
 
   ! FLAGS
   logical, allocatable, dimension (:) :: land_flg ! pixel on land?
-  INTEGER (KIND=2), DIMENSION(:,:), allocatable :: geoflg ! geolocation flags
+  INTEGER (KIND=4), DIMENSION(:,:), allocatable :: geoflg ! geolocation flags
   INTEGER (KIND=1), DIMENSION(:,:), allocatable :: anomflg ! cross-track
   ! quality flags
   INTEGER (KIND=2), dimension(:), allocatable :: mflg ! measurement 

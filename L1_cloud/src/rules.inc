@@ -198,6 +198,7 @@ $(ODIR)/m_read_input_data.o: $(SDIR)/m_read_input_data.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_input_data.f90 -o $(ODIR)/m_read_input_data.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_input_data_tio.o: $(SDIR)/m_read_input_data_tio.f90 \
   $(ODIR)/cld_names_module.o \
+  $(ODIR)/m_read_metadata_tio.o \
   $(ODIR)/m_read_solar_data_tio.o \
   $(ODIR)/m_strpos.o \
   $(ODIR)/m_vars.o
@@ -219,6 +220,8 @@ $(ODIR)/m_read_solar_flux.o: $(SDIR)/m_read_solar_flux.f90 \
   $(ODIR)/m_swathnames.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_solar_flux.f90 -o $(ODIR)/m_read_solar_flux.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_metadata_tio.o: $(SDIR)/m_read_metadata_tio.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_metadata_tio.f90 -o $(ODIR)/m_read_metadata_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_write_HDFEOS_attr.o: $(SDIR)/m_write_HDFEOS_attr.f90 \
   $(ODIR)/m_HDFEOS_attr.o \
   $(ODIR)/m_LUN_set.o \

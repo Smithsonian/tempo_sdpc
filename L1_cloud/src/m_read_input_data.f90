@@ -57,6 +57,7 @@ contains
     INTEGER :: i, izoom
     INTEGER (KIND = 4) :: PGS_TD_TAItoUTC 
     INTEGER (KIND = 1) :: imbin
+    integer (kind = 2), dimension(:), allocatable :: tmp_geoflg
 
     CHARACTER (LEN = 200) :: swathname,filenamen, logmsg
     CHARACTER (LEN = 30) :: DateTime
@@ -174,14 +175,25 @@ contains
       return
     END IF
 
+    ! Need a temporary geoflg array to deal with change of word length
+    ! between OMI & TEMPO
+    allocate (tmp_geoflg(nXtrack), stat=errstat)
+    tmp_geoflg=0
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "read_input_data: failed to allocate tmp_geoflg", errstat)
+      return
+    END IF
+
     status = L1Br_getGEOline( blk, iLine-1, Time_k=time(iLine), & 
          Latitude_k=lat(:,iLine), Longitude_k=lon(:,iLine), &
          SolarZenithAngle_k=sza(:,iLine), SolarAzimuthAngle_k=sazimuth(:,iLine), &
          ViewingZenithAngle_k=sat_zen(:,iLine), ViewingAzimuthAngle_k=vazimuth(:,iLine), &
-         TerrainHeight_k=terr_height(:,iLine), GroundPixelQualityFlags_k=geoflg(:,iLine), &
+         TerrainHeight_k=terr_height(:,iLine), GroundPixelQualityFlags_k=tmp_geoflg(:), & !geoflg(:,iLine), &
          XTrackQualityFlags_k=anomflg(:,iLine)) 
     !Geoflag_k=geoflg(:,iLine), MeasFlag_k=mflg(iLine), &
     !MeasClass_k=meas_class(iLine), Config_k=config_rad(iLine) , ImgBinFact_k=imbin )
+    geoflg(:,iLine) = tmp_geoflg(:)
     IF( status .NE. OMI_S_SUCCESS ) THEN
       call tell_error(tell_io_read_error, &
            "read_input_data: L1Br_getGEOline failed", errstat)
@@ -322,6 +334,14 @@ contains
     if (iLine == start_line) then
       if (wrt_solar) call write_solar()
     endif
+
+    deallocate(tmp_geoflg, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_io_read_error, &
+           "read_input_data: failed to deallocate tmp_geoflg", errstat)
+      return
+    END IF
+
 
   end subroutine read_input_data
 
