@@ -423,7 +423,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
                                    const Land_Cover_Type *lc)
 {
    Geoloc_Type *geoloc;
-   int *ground_flags = NULL;
+   unsigned int *ground_flags = NULL;
    unsigned char *ubytes = NULL;
    unsigned char *snow_flags, *lc_type1, *lc_typeqc, *illum_flags;
    size_t num_pixels, ubytes_size;
@@ -434,7 +434,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
    num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
 
    ubytes_size = 4 * num_pixels * sizeof(unsigned char);
-   if ((NULL == (ground_flags = (int *) MALLOC (num_pixels * sizeof(int))))
+   if ((NULL == (ground_flags = (unsigned int *) MALLOC (num_pixels * sizeof(unsigned int))))
        || (NULL == (ubytes = (unsigned char *) MALLOC (ubytes_size))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -459,7 +459,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
         geoloc = &gt->geoloc[i];
 
         if (0 != TIO_get_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
-                                      start, count, TIO_INT, ground_flags))
+                                      start, count, TIO_UINT, ground_flags))
           goto return_error;
 
         if (0 != sn->sn_lookup (sn, num_pixels, geoloc->lon, geoloc->lat, snow_flags))
@@ -485,7 +485,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
 
         for (j = 0; j < num_pixels; j++)
           {
-             int flags = ground_flags[j];
+             unsigned int flags = ground_flags[j];
 
              BITMASK_CLEAR(flags, BITMASK_GPQF_BITS_USED);
 
@@ -498,7 +498,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
           }
 
         if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
-                                      start, count, TIO_INT, ground_flags))
+                                      start, count, TIO_UINT, ground_flags))
           goto return_error;
      }
 
