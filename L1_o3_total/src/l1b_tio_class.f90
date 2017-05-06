@@ -240,6 +240,7 @@ contains
     integer, intent(inout) :: errstat
 
     integer :: i, nx, ns, nw, nl, ierr
+    integer (kind=4), allocatable :: tmp_geoflg(:,:)
 
     if (errstat < 0) return
 
@@ -268,7 +269,9 @@ contains
               rg % step_indices (ns), &
               rg % qa_flags (nw, nx, nl), &
               rg % measurement_quality_flags (nl), &
-              rg % instid (nl), stat = ierr)
+              rg % instid (nl), &
+              tmp_geoflg (nx, ns), &
+              stat = ierr)
     if (ierr /= 0) then
       call tell_error (tell_malloc_error, "l1b_tio_init_rad: allocate failed", errstat)
       return
@@ -305,14 +308,25 @@ contains
                         rg % vaz(1:nx,1:ns), errstat)
     call tiof_get2d_i2 (this % ft, o3t_var_terrain_height, [0,0], [ns,nx], &
                         rg % hgt(1:nx,1:ns), errstat)
-    call tiof_get2d_ui2 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
-                         rg % geoflg(1:nx,1:ns), errstat)
+    ! call tiof_get2d_ui2 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
+    !                      rg % geoflg(1:nx,1:ns), errstat)
+    call tiof_get2d_ui4 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
+                         tmp_geoflg(1:nx,1:ns), errstat)
     call tiof_get2d_ui1 (this % ft, o3t_var_anomflg, [0,0], [ns,nx], &
                         rg % anomflg(1:nx,1:ns), errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "l1b_tio_init_rad: reading geo variables", errstat)
       return
     endif
+
+    ! FIXME?  For TEMPO, the input ground_pixel_quality_flag has 32-bits,
+    !         but this code uses only the low order 16-bits,
+    !         including them in the output.  For now, we're discarding
+    !         the unused high-order 16 bits on input.  If we want to
+    !         carry the full 32-bits through to the output, more extensive
+    !         changes will have to be made.
+    rg % geoflg(1:nx, 1:ns) = tmp_geoflg(1:nx, 1:ns)
+    deallocate (tmp_geoflg)
 
   end subroutine
 
