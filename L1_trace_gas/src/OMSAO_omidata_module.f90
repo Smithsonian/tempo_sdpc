@@ -118,7 +118,8 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r8), DIMENSION (0:nlines_max-1), target                :: omi_time
 !unused  INTEGER (KIND=i4), DIMENSION (0:nlines_max-1)                        :: omi_radiance_errstat
   INTEGER (KIND=i1), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_xtrflg_l1b
-  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_geoflg, omi_xtrflg
+  INTEGER (KIND=i4), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_geoflg
+  INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1)            :: omi_xtrflg
   INTEGER (KIND=i2), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_height, land_water_flg
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_szenith, omi_sazimuth

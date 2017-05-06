@@ -247,7 +247,7 @@ CONTAINS
                         omi_vazimuth(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_i2 (tio_l1obj, tg_var_terrain_height, [iline,0], [nloop,nxtrack], &
                         omi_height(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
+    call tiof_get2d_ui4 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
                         omi_geoflg(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], [nloop,nxtrack], &
                         omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
@@ -387,7 +387,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i2), DIMENSION (nx,0:nt-1) :: geoflg
+    INTEGER (KIND=i4), DIMENSION (nx,0:nt-1) :: geoflg
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
 
@@ -397,7 +397,7 @@ CONTAINS
     !call l1bread_close (l1bobj)
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
-    call tiof_get2d_ui2 (tio_l1obj, tg_var_gpqf, [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
+    call tiof_get2d_ui4  (tio_l1obj, tg_var_gpqf, [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) return
 
@@ -413,10 +413,10 @@ CONTAINS
     ! land_water_flg = iand (geoflg, 15_i2)
 
     ! Bit 4 is glint
-    glint_flg = iand (ishft(geoflg, -4), 1_i2)
+    glint_flg = int (iand (ishft(geoflg, -4), 1_i4), kind=i2)
 
     ! Bits 8-14 are snow/ice
-    snow_ice_flg  = iand (ishft(geoflg, -8), 127_i2)
+    snow_ice_flg  = int (iand (ishft(geoflg, -8), 127_i4), kind=i2)
 
   END SUBROUTINE omi_read_glint_ice_flags
 
