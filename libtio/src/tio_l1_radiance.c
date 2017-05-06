@@ -212,7 +212,7 @@ static int define_global_attrs (int grp)
    return 0;
 }
 
-static _pName_Int_Pair_Type PQF_Pairs[] =
+static _pName_UInt_Pair_Type PQF_Pairs[] =
 {
    {1<< 0, "missing_data"},
    {1<< 1, "bad_pixel"},
@@ -226,7 +226,7 @@ static _pName_Int_Pair_Type PQF_Pairs[] =
    {1<< 9, "smear_corr_error"},
    {1<<10, "straylight_corr_error"},
    {1<<11, "nonlinear_range"},
-   _pNAME_INT_LIST_END
+   _pNAME_UINT_LIST_END
 };
 
 int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
@@ -237,20 +237,20 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
         _pTEXT_ATTRS_END
      };
    int status, varid, dims[3], num_masks, len;
-   int *flag_masks = NULL;
+   unsigned int *flag_masks = NULL;
    char *flag_meanings = NULL;
    int error_status = -1;
 
    dims[0] = dim_table->step.id;
    dims[1] = dim_table->xtrack.id;
    dims[2] = dim_table->channel.id;
-   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_SHORT, 3, dims, pqf_attrs, &varid))
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PQF, NC_USHORT, 3, dims, pqf_attrs, &varid))
      return error_status;
-   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_SHORT))
+   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_USHORT))
      return error_status;
 
-   if (-1 == _pTIOMake_Name_Int_Arrays (PQF_Pairs, &num_masks, &flag_meanings,
-                                        &flag_masks))
+   if (-1 == _pTIOMake_Name_UInt_Arrays (PQF_Pairs, &num_masks, &flag_meanings,
+                                         &flag_masks))
      {
         Tell_verror (TELL_INTERNAL_ERROR,
                      "%s: creating pixel_quality_flag mask arrays",
@@ -258,12 +258,12 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
         return error_status;
      }
 
-   status = nc_put_att_int (grp, varid, "flag_masks", NC_SHORT,
-                            num_masks, flag_masks);
+   status = nc_put_att_uint (grp, varid, "flag_masks", NC_USHORT,
+                             num_masks, flag_masks);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining int attribute %s (%s)",
+                     "%s: defining uint attribute %s (%s)",
                      __func__, "flag_masks", nc_strerror(status));
         goto cleanup_and_return;
      }
@@ -273,7 +273,7 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining int attribute %s (%s)",
+                     "%s: defining uint attribute %s (%s)",
                      __func__, "flag_meanings", nc_strerror(status));
         goto cleanup_and_return;
      }
@@ -286,7 +286,7 @@ cleanup_and_return:
    return error_status;
 }
 
-static _pName_Int_Pair_Type GPQF_Pairs[] =
+static _pName_UInt_Pair_Type GPQF_Pairs[] =
 {  /* bit 0-3 = MODIS land/water mask (?) */
   { 0,     "shallow_ocean"},
   { 1,     "land"},
@@ -329,7 +329,7 @@ static _pName_Int_Pair_Type GPQF_Pairs[] =
   { 16<<16,   "barren_or_sparsely_vegetated"},
   {254<<16,   "unclassified"},
   {255<<16,   "fill_value"},
-  _pNAME_INT_LIST_END
+  _pNAME_UINT_LIST_END
 };
 
 static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_table)
@@ -341,19 +341,19 @@ static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_ta
         _pTEXT_ATTRS_END
      };
    int status, varid, dims[2], num_values, len;
-   int *flag_values = NULL;
+   unsigned int *flag_values = NULL;
    char *flag_meanings = NULL;
    int error_status = -1;
 
    dims[0] = dim_table->step.id;
    dims[1] = dim_table->xtrack.id;
-   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_INT, 2, dims, gpqf_attrs, &varid))
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_UINT, 2, dims, gpqf_attrs, &varid))
      return error_status;
-   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
+   if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_UINT))
      return error_status;
 
-   if (-1 == _pTIOMake_Name_Int_Arrays (GPQF_Pairs, &num_values, &flag_meanings,
-                                        &flag_values))
+   if (-1 == _pTIOMake_Name_UInt_Arrays (GPQF_Pairs, &num_values, &flag_meanings,
+                                         &flag_values))
      {
         Tell_verror (TELL_INTERNAL_ERROR,
                      "%s: creating ground_pixel_quality_flag value arrays",
@@ -361,11 +361,11 @@ static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_ta
         return error_status;
      }
 
-   status = nc_put_att_int (grp, varid, "flag_values", NC_INT, num_values, flag_values);
+   status = nc_put_att_uint (grp, varid, "flag_values", NC_UINT, num_values, flag_values);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining int attribute %s (%s)",
+                     "%s: defining uint attribute %s (%s)",
                      __func__, "flag_values", nc_strerror(status));
         goto cleanup_and_return;
      }
@@ -375,7 +375,7 @@ static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_ta
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining int attribute %s (%s)",
+                     "%s: defining text attribute %s (%s)",
                      __func__, "flag_meanings", nc_strerror(status));
         goto cleanup_and_return;
      }

@@ -21,12 +21,13 @@
 #define EMPTY()
 #define _pTIO_STR(s) #s
 
-int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
-                               int *pnum_values, char **pnames, int **pvalues)
+int _pTIOMake_Name_UInt_Arrays (_pName_UInt_Pair_Type *array,
+                                int *pnum_values, char **pnames,
+                                unsigned int **pvalues)
 {
-   _pName_Int_Pair_Type *p;
+   _pName_UInt_Pair_Type *p;
    int total_len, num, i;
-   int *values = NULL;
+   unsigned int *values = NULL;
    char *names = NULL;
    char *s, *end;
 
@@ -45,7 +46,7 @@ int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
    /* add room for num-1 spaces, plus 1 trailing null character */
    total_len += num;
 
-   if ((NULL == (values = (int *) TIO_MALLOC (num * sizeof(int))))
+   if ((NULL == (values = (unsigned int *) TIO_MALLOC (num * sizeof(unsigned int))))
        || (NULL == (names = (char *) TIO_MALLOC (total_len * sizeof(char)))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);

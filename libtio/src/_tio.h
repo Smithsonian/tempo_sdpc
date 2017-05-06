@@ -27,13 +27,13 @@ extern "C" {
 #define TIO_MALLOC malloc
 #define TIO_FREE free
 
-typedef struct _pName_Int_Pair_Type _pName_Int_Pair_Type;
-struct _pName_Int_Pair_Type
+typedef struct _pName_UInt_Pair_Type _pName_UInt_Pair_Type;
+struct _pName_UInt_Pair_Type
 {
-   int value;
+   unsigned int value;
    char name[TIO_MAX_NAME_LEN];
 };
-#define _pNAME_INT_LIST_END  {0,""}
+#define _pNAME_UINT_LIST_END  {0,""}
 
 typedef struct
 {
@@ -114,9 +114,9 @@ extern int _pTIO_put_fillvalue_attr (int grp, int varid, nc_type xtype);
 
 extern int _pTIO_define_processing_level (int grp, int level);
 
-extern int _pTIOMake_Name_Int_Arrays (_pName_Int_Pair_Type *array,
-                                      int *pnum_values,
-                                      char **pnames, int **pvalues);
+extern int _pTIOMake_Name_UInt_Arrays (_pName_UInt_Pair_Type *array,
+                                       int *pnum_values, char **pnames,
+                                       unsigned int **pvalues);
 extern int _pEmit_Var_Pixel_Quality_Flag (int grp,
                                           _pDim_Table_Type *dim_table);
 
