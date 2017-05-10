@@ -77,19 +77,23 @@ contains
     endif
 
     do ipts=1, nXtrack
-      latt=-lat(ipts,iLine)
-      i=int(anint((latt+90.0)/0.5),kind(i))+1
-      if (i == 361) i=360
-      if(lon(ipts,iLine) < 0) then 
-        lont=lon(ipts,iLine)+360 
-      else 
-        lont=lon(ipts,iLine)   
+      ! Check lat/lon within bounds, ps=0 if not
+      if (lat(ipts,iLine) > 90.0 .or. lat(ipts,iLine) < -90.0 .or. &
+           lon(ipts,iLine) > 180.0 .or. lon(ipts,iLine) < -180.0) then
+        ps(ipts-1,iLine)=0.0d0
+      else
+        latt=-lat(ipts,iLine)
+        i=int(anint((latt+90.0)/0.5),kind(i))+1
+        if (i == 361) i=360
+        if(lon(ipts,iLine) < 0) then 
+          lont=lon(ipts,iLine)+360 
+        else 
+          lont=lon(ipts,iLine)   
+        endif
+        j=int(anint((lont)/0.5),kind(j))+1
+        if(j == 721) j=1   
+        ps(ipts-1,iLine)=p_terr(i,j)/1013.0   
       endif
-      j=int(anint((lont)/0.5),kind(j))+1
-      if(j == 721) j=1   
-      !print *, 'rd_terr : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &
-      !   i, j!, ps(ipts)
-      ps(ipts-1,iLine)=p_terr(i,j)/1013.0   
     enddo   ! ipts
 
     return

@@ -122,21 +122,24 @@ contains
     !if (iprt > 0) print *,'deltlat, lon ',deltlat, deltlon
 
     do ipts=1, nXtrack
-      latt=lat(ipts,iLine)
-      i=int(anint((startlat-latt)/deltlat),kind(i))+1
-      if (i <= 0) i=1
-      if (i >= ref_nlat+1) i=ref_nlat
-      lont=lon(ipts,iLine)   
-      if(lont > 180.) then 
-        lont=lont-360 
+      ! Check lat/lon within bounds, ref_clr=0 if not
+      if (lat(ipts,iLine) > 90.0 .or. lat(ipts,iLine) < -90.0 .or. &
+           lon(ipts,iLine) > 180.0 .or. lon(ipts,iLine) < -180.0) then
+        ref_clr(ipts-1,iLine)=0.0d0
+      else
+        latt=lat(ipts,iLine)
+        i=int(anint((startlat-latt)/deltlat),kind(i))+1
+        if (i <= 0) i=1
+        if (i >= ref_nlat+1) i=ref_nlat
+        lont=lon(ipts,iLine)   
+        if(lont > 180.) then 
+          lont=lont-360 
+        endif
+        j=int(anint((lont-startlon)/deltlon),kind(j))+1
+        if(j <= 0) j=1   
+        if(j >= ref_nlon+1) j=1   
+        ref_clr(ipts-1,iLine)=toms_refl(month,j,i)/100.
       endif
-      j=int(anint((lont-startlon)/deltlon),kind(j))+1
-      if(j <= 0) j=1   
-      if(j >= ref_nlon+1) j=1   
-      ! print *, 'rd_toms_refl : ',ipts, lat(ipts,iLine), lon(ipts,iLine), &
-      !   i, j
-      ! print *, toms_refl(month,j,i)
-      ref_clr(ipts-1,iLine)=toms_refl(month,j,i)/100.
     enddo   ! ipts
 
     return

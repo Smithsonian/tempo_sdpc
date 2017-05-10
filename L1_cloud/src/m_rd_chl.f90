@@ -69,12 +69,17 @@ contains
     endif
 
     do ip=1, nXtrack !size(lat,dim=2)
-      i=int(anint((lat(ip,iLine)+90.0)/0.5, kind=4),kind(i))+1
-      j=int(anint((lon(ip,iLine)+180.0)/0.5, kind=4),kind(j))+1
-      if(j <= 0) j=1
-      if(j == 721) j=1   
-      chlcl(ip-1)=chl2d(j,i)   
-      ! print *, ip, lat(ip), lon(ip), i, j, chlcl(ip)
+      ! Check lat/lon within bounds, chlcl=0 if not
+      if (lat(ip,iLine) > 90.0 .or. lat(ip,iLine) < -90.0 .or. &
+           lon(ip,iLine) > 180.0 .or. lon(ip,iLine) < -180.0) then
+        chlcl(ip-1)=0.0d0
+      else
+        i=int(anint((lat(ip,iLine)+90.0)/0.5, kind=4),kind(i))+1
+        j=int(anint((lon(ip,iLine)+180.0)/0.5, kind=4),kind(j))+1
+        if(j <= 0) j=1
+        if(j == 721) j=1   
+        chlcl(ip-1)=chl2d(j,i)   
+      endif
     enddo   ! ip
 
     return
