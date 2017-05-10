@@ -997,6 +997,8 @@ PROGRAM O3T_mainNVAdj
 
       errstat = O3T_lpoly_coef( coefs, LUT_cden_blk, pixGEO )
       IF( errstat /= 0 ) THEN
+        errstat = 0   ! clear the error
+        call tell_set_error (errstat)
         WRITE( msg,'(A)' ) "Calculate poly coefficient failed, " // &
              "Skip to next pixel"
         call tell_log (0,msg)
