@@ -33,6 +33,7 @@ contains
   !-----------------------------------------------------------------------
   !
   !> @param[in] l1file  L1 netCDF radiance file name
+  !> @param[in] l1swath L1 netCDF swath name
   !> @param[in] nstep   size of dimension in scan direction
   !> @param[in] nxtrack size of dimention across scan direction
   !> @param[in] nl      number of binned lines in scan direction
@@ -43,7 +44,7 @@ contains
   subroutine read_geo_tio ( l1file, l1swath, nstep, nxtrack, nl, errstat)
     use OMSAO_omidata_module, only: nxbin, nybin, offset_line, nswath, &
          land_water_flg, glint_flg, snow_ice_flg
-    use OMSAO_variables_module, only: use_he5_in
+    use OMSAO_variables_module, only: use_he5_in, coadd_uv2
     ! replace with variables fined in this module once he5 input obsoleted
     use OMSAO_pixelcorner_module, only: omi_alllat, omi_alllon, omi_allsza, &
        omi_allvza, omi_allaza, omi_allsca, omi_alltime, omi_allGeoFlg, &
@@ -134,7 +135,7 @@ contains
     ! coadd and correct any missing xtrack quality flags
     nbits = 8
     ndim = 1
-    if (nswath == 2) then
+    if (nswath == 2 .AND. coadd_uv2) then
       do iline = sline, eline
         do ix = 1, nxtrack
           i = ix * 2 - 1
@@ -145,11 +146,10 @@ contains
           tio_xtrackqflg(ix, iline) = tmp_xtrackqflg(i, iline)
         end do
       end do
-
-      where (tio_xtrackqflg(1:nxtrack, sline:eline) == -127)
-        tio_xtrackqflg(1:nxtrack, sline:eline) = 0
-      end where
     endif
+    where (tio_xtrackqflg(1:nxtrack, sline:eline) == -127)
+      tio_xtrackqflg(1:nxtrack, sline:eline) = 0
+    end where
 
 
     ! Resample corners coordinates from L1 file to account for binning

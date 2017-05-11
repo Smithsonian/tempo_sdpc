@@ -752,12 +752,10 @@ contains
 
     if (status < 0) then
       ! When OMI data no longer used, status < 0 will indicate error
-      !errstat = -1
       !call tell_error (tell_io_read_error, &
       !     "read_o3p_pipe_attributes: tiof_same_granule_ident error", errstat)
       omiflag = 1
     else if (status == 0) then
-      errstat = -1
       call tell_error (tell_io_read_error, &
            "read_o3p_pipe_attributes: granule metadata differs", errstat)
     endif

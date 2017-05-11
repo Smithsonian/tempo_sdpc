@@ -67,19 +67,16 @@ contains
 
     ! check dimension sizes are within bounds
     if (nstep > ntimes_max) then
-      errstat = -1
       call tell_error (tell_invalid_parm, &
            "read_L1_dims_tio: ntimes greater than ntimes_max", errstat)
       return
     else if (nxtrack > nxtrack_max) then
-      errstat = -1
       call tell_error (tell_invalid_parm, &
            "read_L1_dims_tio: nxtrack greater than nxtrack_max", errstat)
       return
     endif
     if (present(nxtrack_coadd)) then
       if (nxtrack_coadd > nxtrack_max) then
-        errstat = -1
         call tell_error (tell_invalid_parm, &
              "read_L1_dims_tio: nxtrack_coadd greater than nxtrack_max", &
              errstat)
