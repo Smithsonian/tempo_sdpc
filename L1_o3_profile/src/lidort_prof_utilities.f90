@@ -9,6 +9,8 @@ module lidort_prof_utilities
        lidort_prof_env
   private read_txcrs 
 
+  integer, parameter, private :: max_pathlen = 1024
+
 contains
 
   SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
@@ -1401,7 +1403,7 @@ contains
     LOGICAL                                            :: slitconv
     REAL (KIND=dp)                                     :: maxw, minw
     CHARACTER (LEN=14)                                 :: tmpchar
-    CHARACTER (LEN=256)                                :: absfname
+    CHARACTER (LEN=max_pathlen)                                :: absfname
 
     ! ------------------------------
     ! Name of this subroutine/module
@@ -1543,7 +1545,7 @@ contains
     REAL (KIND=dp)     :: thet, frac, scalex
     LOGICAL            :: get_lresi0
 
-    CHARACTER (LEN=256):: absfname
+    CHARACTER (LEN=max_pathlen):: absfname
     CHARACTER (LEN=14) :: tmpchar
 
     ! ------------------------------
@@ -1813,7 +1815,7 @@ contains
     REAL (KIND=dp)     :: thet, frac, scalex
     LOGICAL            :: get_lresi0
 
-    CHARACTER (LEN=130):: absfname
+    CHARACTER (LEN=max_pathlen):: absfname
     CHARACTER (LEN=14) :: tmpchar
 
     ! ------------------------------

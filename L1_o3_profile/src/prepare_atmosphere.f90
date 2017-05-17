@@ -10,6 +10,8 @@ module prepare_atmosphere
        get_normtoz, get_mipasig2o3
   private !get_ecmwft
 
+  integer, parameter, private :: max_pathlen = 1024
+
 contains
   ! ************************************************************************
   ! Author:  xiong liu
@@ -155,7 +157,7 @@ contains
     REAL (KIND=dp), DIMENSION(0:nalt)           :: geospres, cumoz
     CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb',&
          'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)                         :: geosfile
+    CHARACTER (LEN=max_pathlen)                         :: geosfile
 
     ! Correct coordinates
     REAL (KIND=DP), DIMENSION(0:nalt), PARAMETER:: pres = (/1.0d0,          &
@@ -247,7 +249,7 @@ contains
     REAL (KIND=dp), DIMENSION(0:nalt)           :: geospres, cumoz
     CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb',&
          'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)                         :: geosfile
+    CHARACTER (LEN=max_pathlen)                         :: geosfile
 
     ! Correct coordinates
     REAL (KIND=DP), DIMENSION(0:nalt), PARAMETER:: pres = (/1.0d0,          &
@@ -330,7 +332,7 @@ contains
     INTEGER                        :: i, j,  nblat, nblon
     LOGICAL                        :: file_exist
     CHARACTER (LEN=2)              :: monc, yrc, dayc
-    CHARACTER (LEN=130)            :: spres_fname
+    CHARACTER (LEN=max_pathlen)            :: spres_fname
     INTEGER, DIMENSION(2)          :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
@@ -398,7 +400,7 @@ contains
     INTEGER                        :: i, j,  nblat, nblon
     LOGICAL                        :: file_exist
     CHARACTER (LEN=2)              :: monc, yrc, dayc
-    CHARACTER (LEN=130)            :: tpres_fname
+    CHARACTER (LEN=max_pathlen)            :: tpres_fname
     INTEGER, DIMENSION(2)          :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
@@ -466,7 +468,7 @@ contains
     INTEGER, PARAMETER           :: nlat=180, nlon=288
     REAL (KIND=dp), PARAMETER    :: longrid = 1.25, latgrid = 1.0, lon0=-180.0, lat0=-90.0
     CHARACTER (LEN=2)            :: monc, yrc, dayc
-    CHARACTER (LEN=130)          :: toz_fname
+    CHARACTER (LEN=max_pathlen)          :: toz_fname
 
     INTEGER                      :: i, j, nblat, nblon
     LOGICAL                      :: file_exist
@@ -537,7 +539,7 @@ contains
 !    INTEGER, PARAMETER           :: nlat=72, nlon=144, nalt=23
 !    REAL (KIND=dp), PARAMETER    :: longrid = 2.5, latgrid = 2.5, lon0=-180.0, lat0=-90.0
 !    CHARACTER (LEN=2)            :: yrc, monc, dayc
-!    CHARACTER (LEN=130)          :: ecmwft_fname, ncep_fname
+!    CHARACTER (LEN=max_pathlen)          :: ecmwft_fname, ncep_fname
 !    INTEGER                      :: i, j, k, nblat, nblon
 !    INTEGER, DIMENSION(2)        :: latin, lonin
 !    REAL (KIND=dp), DIMENSION(2) :: latfrac, lonfrac
@@ -628,7 +630,7 @@ contains
     INTEGER, PARAMETER              :: nlat=72, nlon=144, nalt=22
     REAL (KIND=dp), PARAMETER       :: longrid = 2.5, latgrid = 2.5, lon0=-180.0, lat0=-90.0
     CHARACTER (LEN=2)               :: yrc, monc, dayc
-    CHARACTER (LEN=130)             :: ecmwft_fname, ncep_fname
+    CHARACTER (LEN=max_pathlen)             :: ecmwft_fname, ncep_fname
     INTEGER                         :: i, j, k, nblat, nblon
     INTEGER, DIMENSION(2)           :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)    :: latfrac, lonfrac
@@ -708,7 +710,7 @@ contains
     INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
     !CHARACTER (LEN=3), DIMENSION(12) :: months = (/'jan', 'feb','mar', &
     !'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)                                :: ozprof_fname
+    CHARACTER (LEN=max_pathlen)                                :: ozprof_fname
     CHARACTER (LEN=200)                                :: line
 
 
@@ -850,7 +852,7 @@ contains
     ! Local variables
     ! ======================
     INTEGER, PARAMETER                              :: nlat=18, nmon=12
-    CHARACTER (LEN=130)                             :: tfname
+    CHARACTER (LEN=max_pathlen)                             :: tfname
 
     ! saved variables
     REAL (KIND=dp), SAVE, DIMENSION(nl, nlat, nmon) :: tprofs
@@ -932,7 +934,7 @@ contains
     REAL (KIND=dp), DIMENSION(1:nmon), PARAMETER    :: mons = (/0.5, 3.5, 6.5, 9.5/)
     REAL (KIND=dp), DIMENSION(1:nlat), PARAMETER    :: lats = (/-75.0, -45.0, -10.0, 10.0, 45.0, 75.0/)
 
-    CHARACTER (LEN=130)                             :: fname
+    CHARACTER (LEN=max_pathlen)                             :: fname
 
     ! saved variables
     REAL (KIND=dp), SAVE, DIMENSION(nl, nlat, nmon) :: profs
@@ -1044,7 +1046,7 @@ contains
     REAL (KIND=dp), DIMENSION(1:nmon), PARAMETER    :: mons = (/0.5, 3.5, 6.5, 9.5/)
     REAL (KIND=dp), DIMENSION(1:nlat), PARAMETER    :: lats = (/-75.0, -45.0, -10.0, 10.0, 45.0, 75.0/)
 
-    CHARACTER (LEN=130)                             :: fname
+    CHARACTER (LEN=max_pathlen)                             :: fname
 
     ! saved variables
     REAL (KIND=dp), SAVE, DIMENSION(nl, nlat, nmon) :: profs
@@ -1150,7 +1152,7 @@ contains
 
     INTEGER                        :: i, j, nblat, nblon
     LOGICAL                        :: file_exist
-    CHARACTER (LEN=130)            :: surfalt_fname
+    CHARACTER (LEN=max_pathlen)            :: surfalt_fname
     INTEGER, DIMENSION(2)          :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
@@ -1211,7 +1213,7 @@ contains
 
     INTEGER                        :: i, j, nblat, nblon
     LOGICAL                        :: file_exist
-    CHARACTER (LEN=130)            :: surfalt_fname
+    CHARACTER (LEN=max_pathlen)            :: surfalt_fname
     INTEGER, DIMENSION(2)          :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
@@ -1272,7 +1274,7 @@ contains
 
     INTEGER                        :: i, j, nblat, nblon
     LOGICAL                        :: file_exist
-    CHARACTER (LEN=130)            :: surfalt_fname
+    CHARACTER (LEN=max_pathlen)            :: surfalt_fname
     INTEGER, DIMENSION(2)          :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
@@ -1355,7 +1357,7 @@ contains
     CHARACTER (LEN=3), DIMENSION(12) :: months = (/'jan', 'feb','mar', 'apr', &
          'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
 
-    CHARACTER (LEN=130)      :: geosfile
+    CHARACTER (LEN=max_pathlen)      :: geosfile
 
     IF (first) THEN
       geosfile = TRIM(ADJUSTL(atmdbdir)) // 'geoschem_tropclima/' // months(month) // '_o3_avg.dat'
@@ -1442,7 +1444,7 @@ contains
 !    CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
 !       'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
     CHARACTER (LEN=2)                           :: monc
-    CHARACTER (LEN=130)                         :: geosfile
+    CHARACTER (LEN=max_pathlen)                         :: geosfile
 
     IF (first) THEN
       WRITE(monc, '(I2.2)') month
@@ -1531,7 +1533,7 @@ contains
          .102098d0/)
     CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
          'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)               :: geosfile
+    CHARACTER (LEN=max_pathlen)               :: geosfile
 
     IF (first) THEN
       geosfile = TRIM(ADJUSTL(atmdbdir)) // 'geoschem_hcho/' // months(month) // '_hcho_avg.dat'
@@ -1623,7 +1625,7 @@ contains
 
     CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
          'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)               :: fname
+    CHARACTER (LEN=max_pathlen)               :: fname
 
     IF (first) THEN
       fname = TRIM(ADJUSTL(atmdbdir)) // 'BRO/' // months(month) // '_atm_BrO.dat' 
@@ -1789,7 +1791,7 @@ contains
          0.102098d0/)
     CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr',    &
          'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)               :: fname
+    CHARACTER (LEN=max_pathlen)               :: fname
 
     IF (first) THEN
       fname = TRIM(ADJUSTL(atmdbdir)) // 'NO2/' // months(month) // '_strat_NO2.dat' 
@@ -1966,7 +1968,7 @@ contains
 
 
 
-    CHARACTER (LEN=130)               :: geosfile
+    CHARACTER (LEN=max_pathlen)               :: geosfile
     CHARACTER (LEN=2)                 :: yearc, monc
 
 
@@ -2092,7 +2094,7 @@ contains
     ! ======================
     ! Local variables
     ! ======================
-    CHARACTER (LEN=130)              :: mlsfname
+    CHARACTER (LEN=max_pathlen)              :: mlsfname
     CHARACTER (LEN=2)                :: monc, dayc
     CHARACTER (LEN=4)                :: yrc
     LOGICAL                          :: file_exist
@@ -2256,7 +2258,7 @@ contains
     ! ======================
     ! Local variables
     ! ======================
-    CHARACTER (LEN=130)              :: mlsfname
+    CHARACTER (LEN=max_pathlen)              :: mlsfname
     CHARACTER (LEN=2)                :: monc, dayc
     CHARACTER (LEN=4)                :: yrc
     LOGICAL                          :: file_exist
@@ -2394,7 +2396,7 @@ contains
     ! ======================
     ! Local variables
     ! ======================
-    CHARACTER (LEN=130)              :: omto3fname
+    CHARACTER (LEN=max_pathlen)              :: omto3fname
     CHARACTER (LEN=2)                :: monc, dayc
     CHARACTER (LEN=4)                :: yrc
     LOGICAL                          :: file_exist
@@ -2513,7 +2515,7 @@ contains
     INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
     !CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', &
     !'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
-    CHARACTER (LEN=130)                                :: ozprof_fname
+    CHARACTER (LEN=max_pathlen)                                :: ozprof_fname
     CHARACTER (LEN=200)                                :: line
 
     ! saved variables

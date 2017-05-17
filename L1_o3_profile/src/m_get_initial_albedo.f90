@@ -5,6 +5,7 @@ module m_get_initial_albedo
        get_omi_alb, get_omler_alb
   private calc_albedo!, get_refrad, adj_albcfrac1, 
 
+  integer, parameter, private :: max_pathlen = 1024
 
 contains
 
@@ -268,7 +269,7 @@ contains
          '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'/)
     CHARACTER (LEN=3), DIMENSION(4), PARAMETER    :: vistr = (/'495', '555',&
          '610', '670'/)
-    CHARACTER (LEN=130)            :: alb_fname
+    CHARACTER (LEN=max_pathlen)            :: alb_fname
     CHARACTER (LEN=14)             :: tmpstr
     INTEGER, SAVE, DIMENSION(5, nlon, nlat) :: glbalb
     INTEGER                        :: i, j, k, ialb, latin, lonin,  npix, nact
@@ -798,7 +799,7 @@ contains
     REAL (KIND=dp), PARAMETER :: longrid = 1.25, latgrid = 1.0
     CHARACTER (LEN=2), DIMENSION(12),   PARAMETER :: monstr = (/'01', '02', &
          '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'/)
-    CHARACTER (LEN=130)            :: alb_fname
+    CHARACTER (LEN=max_pathlen)            :: alb_fname
     !CHARACTER (LEN=14)             :: tmpstr
     INTEGER, SAVE, DIMENSION(nlon, nlat) :: glbalb
     INTEGER                        :: i, j, latin, lonin, nact, npix!, k
@@ -887,7 +888,7 @@ contains
          '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'/)
     CHARACTER (LEN=3), DIMENSION(4), PARAMETER :: cwavs = (/'331', '340', '360', '380'/)
     REAL (KIND=dp),    DIMENSION(4), PARAMETER :: wavs  = (/331.0, 340.0, 360.0, 380.0/)            
-    CHARACTER (LEN=130)             :: alb_fname
+    CHARACTER (LEN=max_pathlen)             :: alb_fname
     CHARACTER (LEN=14)              :: tmpstr
     INTEGER, DIMENSION(2)           :: wavin, monin
     INTEGER    :: i, j, k, latin, lonin,  npix, nact, nm, nw!, ialb
@@ -1021,7 +1022,7 @@ contains
     REAL (KIND=4), DIMENSION(nlat)  :: lats
     REAL (KIND=4), DIMENSION(nlon)  :: lons
     REAL (KIND=4), DIMENSION(nwvl)  :: wvls           
-    CHARACTER (LEN=130)             :: alb_fname
+    CHARACTER (LEN=max_pathlen)             :: alb_fname
     !CHARACTER (LEN=14)              :: tmpstr
     INTEGER, DIMENSION(2)           :: wavin, monin
     INTEGER           :: i, j, latin, lonin,  npix, nact, nm, nw!, ialb, k

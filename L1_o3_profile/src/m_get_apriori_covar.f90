@@ -4,6 +4,8 @@ module m_get_apriori_covar
   public get_apriori_covar
   private
 
+  integer, parameter, private :: max_pathlen = 1024
+
 contains
 
   ! ==============================================================
@@ -48,7 +50,7 @@ contains
     REAL (KIND=dp), SAVE, DIMENSION(mlay) :: pres
     INTEGER, SAVE                         :: nlay, nlat, nmon
 
-    CHARACTER (LEN=130)           :: apfname
+    CHARACTER (LEN=max_pathlen)           :: apfname
     !CHARACTER (LEN=2)             :: monc
     REAL (KIND=dp), SAVE, DIMENSION(nm, mlat, mlay) :: stds 
     REAL (KIND=dp), DIMENSION(mlay)           :: astd, cumastd

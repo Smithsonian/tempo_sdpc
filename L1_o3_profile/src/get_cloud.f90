@@ -4,6 +4,8 @@ module get_cloud
   public get_cloud_miprop, get_cloud_maprop, get_tomsv8_ctp
   private !get_isccp_ctp
 
+  integer, parameter, private :: max_pathlen = 1024
+
 contains
 
   ! Cloud optical thickness is derived at approximately 760 nm
@@ -178,7 +180,7 @@ contains
     CHARACTER (LEN=4) :: yrc
     CHARACTER (LEN=2) :: dayc
     CHARACTER (LEN=3) :: actorb
-    CHARACTER(LEN=130):: cldname
+    CHARACTER(LEN=max_pathlen):: cldname
     CHARACTER(LEN=14) :: idstr
     LOGICAL           :: found, iflag, sflag, nothere, file_exist
     LOGICAL, SAVE     :: first = .TRUE.
@@ -380,7 +382,7 @@ contains
 !    REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.5
 !    CHARACTER (LEN=3), DIMENSION(12),   PARAMETER :: monstr = (/'JAN', 'FEB', &
 !         'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'/)
-!    CHARACTER (LEN=130)            :: isccp_fname
+!    CHARACTER (LEN=max_pathlen)            :: isccp_fname
 !    !CHARACTER (LEN=14)             :: tmpstr
 !    INTEGER, SAVE, DIMENSION(nlon, nlat) :: glbctp
 !    INTEGER                        :: i, latin, lonin, nact, npix!, j, k
@@ -469,7 +471,7 @@ contains
     INTEGER, PARAMETER             :: nlat=180, nlon=360, nmon=12
     REAL (KIND=dp), PARAMETER      :: longrid = 1.0, latgrid = 1.0, mongrid=1.0, &
          lon0=-180.0, lat0=-90.0, mon0=0.0
-    CHARACTER (LEN=130)            :: isccp_fname
+    CHARACTER (LEN=max_pathlen)            :: isccp_fname
     !CHARACTER (LEN=14) :: tmpstr
     INTEGER, DIMENSION(2)          :: latin, lonin, monin 
     REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac, monfrac

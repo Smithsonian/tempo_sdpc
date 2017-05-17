@@ -4,6 +4,8 @@ module m_read_aerosol_prof
   public read_aerosol_prof
   private
 
+  integer, parameter, private :: max_pathlen = 1024
+
 contains
 
   !============================================================================
@@ -111,7 +113,7 @@ contains
     ! ======================
     ! LOCAL variables
     ! ======================
-    CHARACTER (LEN=130)                                       :: aername
+    CHARACTER (LEN=max_pathlen)                                       :: aername
     REAL (KIND=dp), SAVE, DIMENSION(NLON, NLAT, NTLAYER, NAER):: tarsl
     !REAL (KIND=sp), DIMENSION(NLON, NLAT, NTLAYER)            :: array
     REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
