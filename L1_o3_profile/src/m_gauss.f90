@@ -386,7 +386,7 @@ contains
         WRITE(www_lun, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
              slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -758,7 +758,7 @@ contains
         WRITE(www_lun, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
              slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -1157,7 +1157,7 @@ contains
         WRITE(www_lun, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
              slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -1290,7 +1290,7 @@ contains
         WRITE(www_lun, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
              slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value

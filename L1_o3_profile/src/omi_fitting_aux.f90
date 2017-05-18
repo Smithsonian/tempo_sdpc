@@ -471,14 +471,14 @@ contains
         irad347=temp_rad(1)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-          STOP
+          STOP 1
         ENDIF
         CALL BSPLINE(rad_posr(1:nrefl), rad_specr(1:nrefl), nrefl, &
              temp_pos_alb, temp_rad, 1, errstat)
         rad347=temp_rad(1)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-          STOP
+          STOP 1
         ENDIF
 
         rad347 = rad347 / irad347

@@ -188,7 +188,8 @@ contains
     CALL BSPLINE(preslg(1:nlay), cumastd(1:nlay), nlay, pslg(0:nz),&
          nstd(0:nz), nz+1, errstat)
     IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
+      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+      STOP 1
     ENDIF
 
     ! Contruct the full covariance matrix for ozone (in Dobson units)
@@ -214,7 +215,9 @@ contains
       mnorstd = 2
       CALL get_mlso3prof(the_year, month, day, lat, nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
+        WRITE(www_lun, *) modulename, &
+             ': Error in getting MLS ozone variabilities!!!'
+        STOP 1
       ENDIF
       DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)
@@ -228,7 +231,9 @@ contains
       mnorstd = 2
       CALL get_mlso3prof_single(the_year, month, day, lat, nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
+        WRITE(www_lun, *) modulename, &
+             ': Error in getting MLS ozone variabilities!!!'
+        STOP 1
       ENDIF
       DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)

@@ -8,7 +8,7 @@ PROGRAM PROFOZ_main
        l2_cld_filename, & !, pge_idx
        use_he5_in, use_he5_out, use_tio_in, use_tio_out
   USE OMSAO_gome_data_module, ONLY: omi_idx, instrument_idx!, &
-       !scia_idx, gome_idx, gome2_idx
+  !scia_idx, gome_idx, gome2_idx
   USE OMSAO_errstat_module
   USE OMI_LUN_set
   use m_omi_fitting_process
@@ -38,7 +38,7 @@ PROGRAM PROFOZ_main
   INTEGER                  :: l2_hdf_flag, iarg
 
   ! ------------------------------------------------------------------
-  ! The general PGE error status variable. This is a relatively late 
+  ! The general PGE error status variable. This is a relatively late
   ! addition and is not used consistently in all routines yet. However,
   ! it is envisaged that it will be used ubiquitously througout the
   ! PGE once the PGE developer gets around to implementing it as such.
@@ -79,7 +79,7 @@ PROGRAM PROFOZ_main
 
 
   ! Read fitting conrol parameters from input file
-  ! CALL read_fitting_control_file ( pge_idx, pge_error_status )  
+  ! CALL read_fitting_control_file ( pge_idx, pge_error_status )
   CALL read_fitting_control_file (fcunit, static_input_fnames(icf_idx), &
        instrument_idx, l1_inputs_fname_sol, l1_inputs_fname_rad,        &
        l2_output_fname, l2_cld_filename, l2_hdf_flag, pge_error_status )
@@ -104,7 +104,7 @@ PROGRAM PROFOZ_main
     l2_filename        = l2_output_fname
     CALL omi_fitting_process ( l2_hdf_flag, pge_error_status )
   CASE DEFAULT
-    pge_error_status = pge_errstat_error 
+    pge_error_status = pge_errstat_error
   END SELECT
 
   ! ------------------------------------
@@ -136,6 +136,6 @@ PROGRAM PROFOZ_main
     ! value. This should never happen, but we buffer this case anyway.
     ! ----------------------------------------------------------------
     errstat = OMI_SMF_setmsg ( OMSAO_U_ENDOFRUN, '', modulename, 0 )
-    STOP
+    STOP 1
   END SELECT
 END PROGRAM PROFOZ_main

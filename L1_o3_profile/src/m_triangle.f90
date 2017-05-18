@@ -365,7 +365,7 @@ contains
       WRITE(www_lun, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
            slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
       WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-      STOP
+      STOP 1
     ENDIF
 
     IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -379,8 +379,8 @@ contains
            slitfit(fslit:lslit, hwe_idx, 1), linter-finter+1, &
            wvlarr(finter:linter), lochwe(finter:linter), errstat )
       IF ( errstat > pge_errstat_warning ) THEN
-        errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
- STOP 1
+        errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+        STOP 1
       END IF
 
       IF (finter > fidx) THEN
@@ -641,11 +641,11 @@ contains
         lslit = fslit
       ENDIF
 
-      IF (fslit > nslit .OR. lslit > nslit) THEN  
+      IF (fslit > nslit .OR. lslit > nslit) THEN
         WRITE(www_lun, *) fslit, lslit, cwave(fidxc), cwave(lidxc), &
              slitwav(1), slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -660,7 +660,7 @@ contains
              slitfit(fslit:lslit, hwe_idx, 1), linter-finter+1, &
              cwave(finter:linter), lochwe(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
           STOP 1
         END IF
 

@@ -258,7 +258,8 @@ contains
 
     RETURN
 
-999 STOP 'Error occur in GSVD_LCURVE_GCV'
+999 WRITE(www_lun, *) modulename, 'Error occur in GSVD_LCURVE_GCV'
+    STOP
 
   END SUBROUTINE gsvd_lcurve_gcv
 

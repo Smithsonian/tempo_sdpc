@@ -95,7 +95,8 @@ contains
              CALL BSPLINE(slitwav(1:nslit), slitfit(1:nslit, slitind(i), 1), &
              nslit, allwaves(fpos:lpos), tmpslit(i, fpos:lpos), lpos-fpos+1,errstat)
         IF (errstat < 0) THEN
-          WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
+          WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+          STOP 1
         ENDIF
       ENDDO
     ENDIF
@@ -271,14 +272,16 @@ contains
              radwavfit(fwavcal:lwavcal, shi_idx, 1), linter-finter+1,&
              allwaves(finter:linter), locshi(finter:linter),   errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+          STOP 1
         END IF
 
         CALL interpolation ( lwavcal-fwavcal+1,   sswav_rad(fwavcal:lwavcal), &
              radwavfit(fwavcal:lwavcal, squ_idx, 1), linter-finter+1, &
              allwaves(finter:linter), locsqu(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+          STOP 1
         END IF
 
         IF (finter - fidx > 0) THEN

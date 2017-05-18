@@ -2111,7 +2111,8 @@ contains
     n_szangles = 1
     szangles(1) = sza
     IF (sza >= 90.0 .OR. sza < 0) THEN
-      STOP 'GET_SLANT_TAU: SZA is >= 90 or < 0!!!'
+      print *, 'GET_SLANT_TAU: SZA is >= 90 or < 0!!!'
+      STOP 1
     ENDIF
 
     nlayers = nz
@@ -2119,7 +2120,8 @@ contains
     height_grid(0:nz) = zs
     earth_radius = rearth
     IF (nz > maxlayers) THEN
-      STOP 'LIDORT_PROF_ENV: # of layers exceeded allowed !!!'
+      print *, 'LIDORT_PROF_ENV: # of layers exceeded allowed !!!'
+      STOP 1
     ENDIF
 
     CALL VLIDORT_CHAPMAN(fail, message, trace)
@@ -3794,7 +3796,8 @@ contains
     polerr = 1.0
     IF ( polcorr == 2) THEN 
       IF (nwfc > 0) THEN
-        STOP 'Polarization correction + variable fc: not implemented!!!'
+        print *, 'Polarization correction + variable fc: not implemented!!!'
+        STOP 1
       ENDIF
       tmpalbs = albs 
       ! clear-sky
@@ -4452,7 +4455,7 @@ contains
              allcrs(i, 1, 1:nz1), allcrs(i, 3, nz1)*refspec_norm(9)
       ENDDO
       print *, nw, nz
-      STOP
+      STOP 1
     ENDIF
 
     RETURN

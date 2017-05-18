@@ -553,7 +553,7 @@ contains
     IF (fslit<=0 .OR. fslit>nslit .OR. lslit<=0 &
          .OR. lslit>nslit .OR. fslit>lslit) THEN  
       WRITE(www_lun, *) modulename, ' Not slit available for this window!!!'
-      STOP
+      STOP 1
     ENDIF
 
     IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -813,7 +813,7 @@ contains
         WRITE(www_lun, *) fslit, lslit, cwave(fidxc), cwave(lidxc), &
              slitwav(1), slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
       ENDIF
 
       IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value

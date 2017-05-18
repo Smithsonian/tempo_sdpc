@@ -43,7 +43,7 @@ contains
     !
     WRITE( *, FMT = 9999 )SRNAME, INFO
     !
-    STOP
+    STOP 1
     !
 9999 FORMAT( ' ** On entry to ', A6, ' parameter number ', I2, ' had ', &
          'an illegal value' )

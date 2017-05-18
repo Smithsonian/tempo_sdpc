@@ -92,7 +92,7 @@ contains
              lpos-fpos+1, errstat)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-          STOP
+          STOP 1
         ENDIF
       ENDDO
     ENDIF

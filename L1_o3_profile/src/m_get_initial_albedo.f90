@@ -100,13 +100,15 @@ contains
       CALL BSPLINE(rad_posr(1:nrefl), rad_specr(1:nrefl), nrefl, &
            wave_arr(1:naw), rad_arr(1:naw), naw, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
+        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+        STOP 1
       ENDIF
 
       CALL BSPLINE(sun_posr(1:nrefl), sun_specr(1:nrefl), nrefl,  wave_arr(1:naw), &
            irrad_arr(1:naw), naw, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
+        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+        STOP 1
       ENDIF
 
       ! compute the reflectance and calculate albedo
@@ -780,7 +782,8 @@ contains
   ! =============================================================
   SUBROUTINE get_toms_alb(month, elons, elats, albedo)
 
-    USE OMSAO_precision_module 
+    USE OMSAO_precision_module
+    use OMSAO_errstat_module, only: www_lun
     USE OMSAO_variables_module, ONLY: atmdbdir
     USE ozprof_data_module,     ONLY: atmos_unit
     IMPLICIT NONE
@@ -789,7 +792,7 @@ contains
     ! Input/Output variables
     ! ======================
     INTEGER, INTENT(IN)         :: month
-    REAL (KIND=dp), DIMENSION(2), INTENT(IN)  :: elons, elats  
+    REAL (KIND=dp), DIMENSION(2), INTENT(IN)  :: elons, elats
     REAL (KIND=dp), INTENT(OUT) :: albedo
 
     ! ======================
@@ -814,7 +817,8 @@ contains
       ! Determine if file exists or not
       INQUIRE (FILE= alb_fname, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
-        STOP 'Albedo file not exist: alb_fname'
+        WRITE(www_lun, *) 'Albedo file not exist: alb_fname'
+        STOP 1
       ENDIF
 
       OPEN (UNIT = atmos_unit, file=alb_fname , status = 'unknown')     
@@ -940,7 +944,8 @@ contains
           ! Determine if file exists or not
           INQUIRE (FILE= alb_fname, EXIST= file_exist)
           IF (.NOT. file_exist) THEN
-            WRITE(www_lun, *) 'GET_OMI_ALB: albedo file does not exist!!!'; STOP
+            WRITE(www_lun, *) 'GET_OMI_ALB: albedo file does not exist!!!'
+            STOP 1
           ENDIF
 
           OPEN (UNIT = atmos_unit, file=alb_fname , status = 'unknown')     
@@ -1069,7 +1074,8 @@ contains
       ! Determine if file exists or not
       INQUIRE (FILE = alb_fname, EXIST = file_exist)
       IF (.NOT. file_exist) THEN
-        WRITE(*, *) 'GET_OMLER_ALB: albedo file does not exist!!!'; STOP
+        WRITE(*, *) 'GET_OMLER_ALB: albedo file does not exist!!!'
+        STOP 1
       ENDIF
 
       alb_fid = HE5_GDopen(TRIM(ADJUSTL(alb_fname)), he5f_acc_rdonly)

@@ -222,7 +222,7 @@ MODULE UTIL_tools_class
      n = SIZE( xa ) 
      IF( n .NE. SIZE( ya ) ) THEN
         WRITE(www_lun, '( "inconsistent input data points in Lintext")' )
-        STOP
+        STOP 1
      ENDIF
   
      klo = MAX( MIN( locate( xa, x ), n-1 ), 1 )
@@ -230,7 +230,7 @@ MODULE UTIL_tools_class
      h   = xa(khi) - xa(klo)
      IF( h == 0.0D0 ) THEN
         WRITE(www_lun,*) "bad xa input in Lintext"
-        STOP
+        STOP 1
      ENDIF
 
      fra = (ya(khi) - ya(klo))/h
@@ -247,7 +247,7 @@ MODULE UTIL_tools_class
      n = SIZE( xa ) 
      IF( n .NE. SIZE( ya ) ) THEN
         WRITE(www_lun, '( "inconsistent input data points in Lintext")' )
-        STOP
+        STOP 1
      ENDIF
 
      DO ii = 1, SIZE(x)
@@ -256,7 +256,7 @@ MODULE UTIL_tools_class
        h   = xa(khi) - xa(klo)
        IF( h == 0.0D0 ) THEN
           WRITE(www_lun,*) "bad xa input in Lintext"
-          STOP
+          STOP 1
        ENDIF
  
        fra     = (ya(khi) - ya(klo))/h
@@ -274,7 +274,7 @@ MODULE UTIL_tools_class
      n = SIZE( xa )
      IF( n .NE. SIZE( ya ) ) THEN
         WRITE(www_lun, '( "inconsistent input data points in Lintext")' )
-        STOP
+        STOP 1
      ENDIF
    
      DO ii = 1, SIZE(x)
@@ -283,7 +283,7 @@ MODULE UTIL_tools_class
        h   = xa(khi) - xa(klo)
        IF( h == 0.0D0 ) THEN
           WRITE(www_lun,*) "bad xa input in Lintext"
-          STOP
+          STOP 1
        ENDIF
  
        fra     = (ya(khi) - ya(klo))/h
@@ -301,7 +301,7 @@ MODULE UTIL_tools_class
      n = SIZE( xa )
      IF( n .NE. SIZE( ya ) ) THEN
         WRITE(www_lun, '( "inconsistent input data points in Lintext")' )
-        STOP
+        STOP 1
      ENDIF
  
      klo = MAX( MIN( locate( xa, x ), n-1 ), 1 )
@@ -309,7 +309,7 @@ MODULE UTIL_tools_class
      h   = xa(khi) - xa(klo)
      IF( h == 0.0D0 ) THEN
         WRITE(www_lun,*) "bad xa input in Lintext"
-        STOP
+        STOP 1
      ENDIF
 
      fra = (ya(khi) - ya(klo))/h
@@ -348,8 +348,9 @@ MODULE UTIL_tools_class
        ct = 4.D0*LOG(2.D0)/x_fwhm**2
        slit = EXP( -ct*x_dist**2 ) / SQRT( PI/ct )
      ELSE
-       WRITE(www_lun,'("unknown filter type =", I3, " in FUNCTION slit" )' ) ltype
-       STOP
+       WRITE(www_lun,'("unknown filter type =", I3, " in FUNCTION slit")') &
+            ltype
+       STOP 1
      ENDIF
    END FUNCTION slit
 
@@ -371,7 +372,7 @@ MODULE UTIL_tools_class
   
      IF( x_fwhm < EPSILON(1.0D0) ) THEN
         WRITE(www_lun,'("Wrong input: x_fwhm = ", F12.6 )' ) x_fwhm
-        STOP
+        STOP 1
      ENDIF
 
      IF( ltype == 1 ) THEN    !triangular
@@ -384,8 +385,9 @@ MODULE UTIL_tools_class
        xmin = x_center - 5.d0*x_fwhm
        xmax = x_center + 5.d0*x_fwhm
      ELSE
-       WRITE(www_lun,'("unknown filter type =", I3, " in FUNCTION Itrapez" )' ) ltype
-       STOP
+       WRITE(www_lun,'("unknown filter type =", I3, " in FUNCTION Itrapez")') &
+            ltype
+       STOP 1
      ENDIF
      
      imin = locate( xa, xmin )
@@ -398,7 +400,7 @@ MODULE UTIL_tools_class
      ALLOCATE( xla(n), yla(n), wt(n), STAT = ierr )
      IF( ierr .NE. 0 ) THEN
        WRITE(www_lun, '("Allocate xla, yla, wt denied in Itrapez" )' )
-       STOP
+       STOP 1
      ENDIF
 
      ymin     = Lintext( xa, ya, xmin )
@@ -413,7 +415,7 @@ MODULE UTIL_tools_class
      DEALLOCATE( xla, yla, wt, STAT = ierr )
      IF( ierr .NE. 0 ) THEN
        WRITE(www_lun, '("Deallocate xla, yla, wt denied in Itrapez" )' )
-       STOP
+       STOP 1
      ENDIF
 
    END FUNCTION Itrapez
