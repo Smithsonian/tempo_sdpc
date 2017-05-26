@@ -31,15 +31,7 @@ MODULE OMSAO_wfamf_module
   ! -----------------------------
   ! Dimensions of the climatology
   ! -----------------------------
-  INTEGER (KIND=i4), public :: Cmlat, Cmlon, CmETA, CmEp1
-
-  !PRIVATE i2, i4, r4, r8, C_LONG
-  !PRIVATE MAX_STR_LEN, i2_missval, r4_missval, r8_missval
-  !PRIVATE pge_swath_id, &
-  !  he5_start_4d, he5_edge_4d, he5_stride_4d, &
-  !  he5_start_3d, he5_edge_3d, he5_stride_3d, &
-  !  he5_start_2d, he5_edge_2d, he5_stride_2d, &
-  !  he5_start_1d, he5_edge_1d, he5_stride_1d
+  INTEGER (KIND=i4), public :: Cmlat, Cmlon, CmETA, CmHRS
 
   ! ====================================================================
   ! Wavelength dependent AMF factor specific variables
@@ -48,12 +40,41 @@ MODULE OMSAO_wfamf_module
   INTEGER, public       :: amf_wfmod_idx
   REAL(KIND=r8), public :: amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, amf_alb_cld, amf_max_sza
 
+  ! ---------------------------------
+  ! GMAO GEOS-5 hybrid grid Ap and Bp
+  ! ---------------------------------
+  REAL(KIND=r8), DIMENSION(48), PARAMETER :: Ap=(/0.000000E+00, 4.804826E-02, 6.593752E+00, 1.313480E+01, &
+       1.961311E+01, 2.609201E+01, 3.257081E+01, 3.898201E+01, &
+       4.533901E+01, 5.169611E+01, 5.805321E+01, 6.436264E+01, &
+       7.062198E+01, 7.883422E+01, 8.909992E+01, 9.936521E+01, &
+       1.091817E+02, 1.189586E+02, 1.286959E+02, 1.429100E+02, &
+       1.562600E+02, 1.696090E+02, 1.816190E+02, 1.930970E+02, &
+       2.032590E+02, 2.121500E+02, 2.187760E+02, 2.238980E+02, &
+       2.243630E+02, 2.168650E+02, 2.011920E+02, 1.769300E+02, &
+       1.503930E+02, 1.278370E+02, 1.086630E+02, 9.236572E+01, &
+       7.851231E+01, 5.638791E+01, 4.017541E+01, 2.836781E+01, &
+       1.979160E+01, 9.292942E+00, 4.076571E+00, 1.650790E+00, &
+       6.167791E-01, 2.113490E-01, 6.600001E-02, 1.000000E-02/)
+  REAL(KIND=r8), DIMENSION(48), PARAMETER :: Bp=(/1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01, &
+       9.203870E-01, 8.989080E-01, 8.774290E-01, 8.560180E-01, &
+       8.346609E-01, 8.133039E-01, 7.919469E-01, 7.706375E-01, &
+       7.493782E-01, 7.211660E-01, 6.858999E-01, 6.506349E-01, &
+       6.158184E-01, 5.810415E-01, 5.463042E-01, 4.945902E-01, &
+       4.437402E-01, 3.928911E-01, 3.433811E-01, 2.944031E-01, &
+       2.467411E-01, 2.003501E-01, 1.562241E-01, 1.136021E-01, &
+       6.372006E-02, 2.801004E-02, 6.960025E-03, 8.175413E-09, &
+       0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+       0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+       0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+       0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00/)
+  INTEGER(KIND=i4), PARAMETER :: ngeos5 = 48
+
   ! ---------------------------------------
   ! Data obtained from the climatology file
   ! ---------------------------------------
-  REAL(KIND=r4), DIMENSION(:),     ALLOCATABLE :: latvals, lonvals, Ap, Bp
-  REAL(KIND=r4), DIMENSION(:,:),   ALLOCATABLE :: Psurface
-  REAL(KIND=r4), DIMENSION(:,:,:), ALLOCATABLE :: Temperature, Gas_profiles !, Heights
+  REAL(KIND=r4), DIMENSION(:),       ALLOCATABLE :: latvals, lonvals, timevals
+  REAL(KIND=r4), DIMENSION(:,:,:),   ALLOCATABLE :: Psurface
+  REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Temperature, Gas_profiles, H2O_profiles
 
   ! ---------------------------------------
   ! Data obtained from Vlidort lookup table
@@ -136,11 +157,9 @@ MODULE OMSAO_wfamf_module
   ! To find the right swath
   ! -----------------------
   INTEGER   (KIND=i4),                    PARAMETER :: nmonths = 12
-  CHARACTER (LEN=9), DIMENSION (nmonths), PARAMETER :: &
+  CHARACTER (LEN=3), DIMENSION (nmonths), PARAMETER :: &
     months = (/ &
-    'January  ', 'February ', 'March    ', 'April    ', &
-    'May      ', 'June     ', 'July     ', 'August   ', &
-    'September', 'October  ', 'November ', 'December '    /)
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC' /)
 
   ! ---------------------------
   ! 32bit/64bit C_LONG integers
@@ -228,7 +247,11 @@ CONTAINS
     saoamf       = r8_missval
     amfgeo       = r8_missval
     amfdiag      = i2_missval
-
+    print*, '---------------------'
+    print*, '---------------------'
+    print*, 'Doing AMF calculation'
+    print*, '---------------------'
+    print*, '---------------------'
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
     ! reported and AMFs equal to 1 with scattw,
@@ -402,7 +425,7 @@ CONTAINS
     ! No interpolation or something like that,
     ! Just pick the closest model grid
     ! =========================================
-    !USE OMSAO_errstat_module
+    USE OMSAO_omidata_module, ONLY: omi_oob_cli
     IMPLICIT NONE
 
     ! ---------------
@@ -422,17 +445,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, idx_lat, idx_lon, ilevel
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=30), PARAMETER :: modulename = 'omi_climatology'
+    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, idx_lat, idx_lon, idx_tim, ilevel
 
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    !locerrstat = pge_errstat_ok
     if (errstat /= 0) return
 
     ! ------------------------------------------------------------
@@ -443,27 +460,28 @@ CONTAINS
       spix = xtrange(itimes,1); epix = xtrange(itimes,2)
       DO ixtrack = spix, epix
 
-        IF (lon(ixtrack,itimes) .LT. -180.0_r4 .OR. &
-          lat(ixtrack,itimes) .LT.  -90.0_r4 .OR. &
-          lon(ixtrack,itimes) .GT.  180.0_r4 .OR. &
-          lat(ixtrack,itimes) .GT.  90.0_r4) CYCLE
+!!$        IF (lon(ixtrack,itimes) .LT. MINVAL(lonvals) .OR. &
+!!$          lat(ixtrack,itimes) .LT.  MINVAL(latvals) .OR. &
+!!$          lon(ixtrack,itimes) .GT.  MAXVAL(lonvals) .OR. &
+!!$          lat(ixtrack,itimes) .GT.  MAXVAL(latvals)) CYCLE
 
         ! ----------------------------------------------------
         ! Just selecting the closest location to lat lon pixel
         ! ----------------------------------------------------
         idx_lat = MINVAL(MINLOC(ABS(latvals(1:Cmlat) - lat(ixtrack,itimes) )))
         idx_lon = MINVAL(MINLOC(ABS(lonvals(1:Cmlon) - lon(ixtrack,itimes) )))
+        idx_tim = 12
+!        idx_tim = MINVAL(MINLOC(ABS(timevals(1:CmHRS) - local_time(ixtrack,itimes )))
 
-        climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon,idx_lat,1:CmETA)
-        local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon,idx_lat,1:CmETA)
-        local_psurf(ixtrack,itimes)               = Psurface(idx_lon,idx_lat)
+        climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon,idx_lat,1:CmETA,idx_tim)
+        local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon,idx_lat,1:CmETA,idx_tim)
+        local_psurf(ixtrack,itimes)               = Psurface(idx_lon,idx_lat,idx_tim)
         DO ilevel = 1, CmETA
           local_heights(ixtrack,itimes,ilevel)   = ( ( Ap(ilevel) + ( local_psurf(ixtrack,itimes) * Bp(ilevel)   ) ) + &
             ( Ap(ilevel+1) + ( local_psurf(ixtrack,itimes) * Bp(ilevel+1) ) ) ) / 2 !(in hPa)
         END DO
       END DO
     END DO
-
   END SUBROUTINE omi_climatology
 
   SUBROUTINE omi_read_climatology (pge_idx, errstat)
@@ -475,7 +493,7 @@ CONTAINS
     ! from one climatology to another one
     ! ==========================================================
 
-    USE OMSAO_indices_module,   ONLY: sao_molecule_names
+    USE OMSAO_indices_module, ONLY: sao_molecule_names, pge_h2o_idx
     USE OMSAO_he5_module, ONLY: granule_month, he5f_acc_rdonly, &
       HE5_SWOPEN, HE5_SWattach, HE5_SWrdfld, HE5_SWrdlattr, &
       he5_swinqswath, HE5_swinqdflds
@@ -495,33 +513,24 @@ CONTAINS
       ndatafields
     integer (kind=C_LONG) :: swlen
     INTEGER   (KIND=i4), DIMENSION(10) :: datafield_rank, datafield_type
-    INTEGER   (KIND=C_LONG)     :: nswathcl, Cmlatcl, Cmloncl, CmETAcl, CmEp1cl
+    INTEGER   (KIND=C_LONG)     :: nswathcl, Cmlatcl, Cmloncl, CmETAcl, CmHRScl
     CHARACTER (LEN=   MAX_STR_LEN) :: swath_file, locswathname, gasdatafieldname, datafield_name
     CHARACTER (LEN=10*MAX_STR_LEN) :: swath_name
 
-    CHARACTER (LEN= 9), PARAMETER :: cli_lat_field         = 'Latitudes'
-    CHARACTER (LEN=10), PARAMETER :: cli_lon_field         = 'Longitudes'
-    CHARACTER (LEN= 3), PARAMETER :: cli_Ap_field          = 'A_p'
-    CHARACTER (LEN= 3), PARAMETER :: cli_Bp_field          = 'B_p'
+    CHARACTER (LEN= 8), PARAMETER :: cli_lat_field         = 'Latitude'
+    CHARACTER (LEN= 9), PARAMETER :: cli_lon_field         = 'Longitude'
+    CHARACTER (LEN=10), PARAMETER :: cli_time_field        = 'Local_time'
     CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field       = 'SurfacePressure'
     CHARACTER (LEN=18), PARAMETER :: cli_Temperature_field = 'TemperatureProfile'
-    !!$    CHARACTER (LEN=13), PARAMETER :: cli_Heights_field     = 'HeightProfile'
 
-    REAL      (KIND=r4) :: scale_lat, scale_lon, scale_Ap, scale_Bp, scale_gas, scale_Psurf, &
-      scale_temperature !, scale_Height
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_climatology'
+    REAL (KIND=r4) :: scale_lat, scale_lon, scale_time, scale_gas, scale_Psurf, &
+      scale_temperature, scale_H2O
 
     ! ----------------------
     ! Subroutine starts here
     ! ----------------------
-    !locerrstat = pge_errstat_ok
     if (errstat /= 0) return
 
-    !ismonth    = granule_month
     if (granule_month < 1 .OR. granule_month > nmonths) then
       call tell_error (tell_runtime_error, "omi_read_climatology: invalid month", &
                        errstat)
@@ -537,9 +546,6 @@ CONTAINS
     IF (swath_file_id == he5_stat_fail) THEN
       call tell_error (tell_io_open_error, "omi_read_climatology: opening climatology file"//trim(swath_file), &
                        errstat)
-      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5SWOPEN, modulename, &
-      !  vb_lev_default, locerrstat)
-      !errstat = MAX (errstat, locerrstat)
       RETURN
     END IF
 
@@ -564,16 +570,12 @@ CONTAINS
       IF ( INDEX (TRIM(ADJUSTL(locswathname)),TRIM(ADJUSTL(months(granule_month)))) == 0 ) THEN
         call tell_error (tell_runtime_error, "omi_read_climatology: finding month in "// &
                          trim(locswathname), errstat)
-        !CALL error_check ( &
-        !  0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
-        !  vb_lev_default, locerrstat )
-        !errstat = MAX ( errstat, locerrstat )
         RETURN
       END IF
     ELSE
       locswathname = TRIM(ADJUSTL(swath_name))
     END IF
-
+    
     ! -----------------------------
     ! Attach to current month swath
     ! -----------------------------
@@ -581,22 +583,14 @@ CONTAINS
     IF ( swath_id == he5_stat_fail ) THEN
       call tell_error (tell_io_error, "omi_read_climatology: attaching to swath "// &
                        trim(locswathname), errstat)
-      !CALL error_check ( &
-      !  0, 1, pge_errstat_error, OMSAO_E_HE5SWATTACH, modulename, vb_lev_default, locerrstat )
-      !errstat = MAX ( errstat, locerrstat )
       RETURN
     END IF
 
     ! ------------------------------------
     ! Read dimensions of Climatology swath
     ! ------------------------------------
-    !locerrstat = pge_errstat_ok
-    CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmEp1, errstat )
+    CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmHRS, errstat )
     if (errstat /= 0) return
-    !IF ( ismonth < 1 .OR. ismonth > nmonths .OR. locerrstat /= pge_errstat_ok ) THEN
-    !  errstat = MAX ( errstat, locerrstat )
-    !  RETURN
-    !END IF
 
     ! ----------------------------------------------------------------------------
     ! Create KIND=4/KIND=8 variables. We have to use those dimensions a few times
@@ -606,19 +600,15 @@ CONTAINS
     Cmlatcl = INT ( Cmlat, KIND=C_LONG )
     Cmloncl = INT ( Cmlon, KIND=C_LONG )
     CmETAcl = INT ( CmETA, KIND=C_LONG )
-    CmEp1cl = INT ( CmEp1, KIND=C_LONG )
+    CmHRScl = INT ( CmHRS, KIND=C_LONG )
 
     ! ---------------------------
     ! Allocate Climatology arrays
     ! ---------------------------
     !locerrstat = pge_errstat_ok
-    CALL climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
+    CALL climatology_allocate (Cmlat, Cmlon, CmETA, CmHRS, errstat)
+    
     if (errstat /= 0) return
-    !IF ( locerrstat /= pge_errstat_ok ) THEN
-    !  errstat = MAX ( errstat, locerrstat )
-    !  CALL climatology_allocate ( "d", Cmlat, Cmlon, CmETA, CmEp1, locerrstat )
-    !  RETURN
-    !END IF
 
     ! -------------------------------
     ! Read dimension-defining arrays
@@ -629,17 +619,14 @@ CONTAINS
     he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = Cmloncl
     he5stat = HE5_SWrdfld ( swath_id, cli_lon_field, &
       he5_start_1d, he5_stride_1d, he5_edge_1d, lonvals(1:Cmlon) )
-    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = CmEp1cl
-    he5stat = HE5_SWrdfld ( swath_id, cli_Ap_field, &
-      he5_start_1d, he5_stride_1d, he5_edge_1d, Ap(1:CmEp1) )
-    he5stat = HE5_SWrdfld ( swath_id, cli_Bp_field, &
-      he5_start_1d, he5_stride_1d, he5_edge_1d, Bp(1:CmEp1) )
+    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = CmHRScl
+    he5stat = HE5_SWrdfld ( swath_id, cli_time_field, &
+      he5_start_1d, he5_stride_1d, he5_edge_1d, timevals(1:CmHRS) )
+
     IF ( he5stat /= pge_errstat_ok ) then
       call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology arrays", &
                        errstat)
       return
-      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      !modulename//f_sep//'Climatology arrays access failed.', vb_lev_default, errstat )
     endif
 
     ! -----------------------------------------------
@@ -647,14 +634,11 @@ CONTAINS
     ! -----------------------------------------------
     he5stat = HE5_SWrdlattr ( swath_id, cli_lat_field, "ScaleFactor", scale_lat )
     he5stat = HE5_SWrdlattr ( swath_id, cli_lon_field, "ScaleFactor", scale_lon )
-    he5stat = HE5_SWrdlattr ( swath_id, cli_Ap_field,  "ScaleFactor", scale_Ap )
-    he5stat = HE5_SWrdlattr ( swath_id, cli_Bp_field,  "ScaleFactor", scale_Bp )
+    he5stat = HE5_SWrdlattr ( swath_id, cli_time_field,  "ScaleFactor", scale_time )
     IF ( he5stat /= pge_errstat_ok ) then
       call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology attributes", &
                        errstat)
       return
-      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      !modulename//f_sep//'Climatology attributes access failed.', vb_lev_default, errstat )
     endif
 
     ! -----------------------------------
@@ -662,45 +646,40 @@ CONTAINS
     ! -----------------------------------
     lonvals = lonvals * scale_lon
     latvals = latvals * scale_lat
-    Ap      = Ap      * scale_Ap
-    Bp      = Bp      * scale_Bp
+    timevals = timevals * scale_time
 
-    ! -----------------------------------------------
-    ! Read the tables: Psurface, Heights, Temperature
-    ! -----------------------------------------------
-    he5_start_2d  = (/ zerocl, zerocl /)
-    he5_stride_2d = (/  onecl,  onecl /)
-    he5_edge_2d   = (/ Cmloncl, Cmlatcl /)
-
-    he5_start_3d  = (/ zerocl, zerocl, zerocl/)
+    ! -------------------------
+    ! Read the tables: Psurface
+    ! -------------------------
+    he5_start_3d  = (/ zerocl, zerocl, zerocl /)
     he5_stride_3d = (/  onecl,  onecl,  onecl /)
-    he5_edge_3d   = (/ Cmloncl, Cmlatcl, CmETAcl /)
-    he5stat = HE5_SWrdfld (                                &
+    he5_edge_3d   = (/ Cmloncl, Cmlatcl, CmHRScl /)
+    he5stat = HE5_SWrdfld (                             &
       swath_id, cli_Psurf_field,                        &
-      he5_start_2d, he5_stride_2d, he5_edge_2d,         &
-      Psurface(1:Cmlon,1:Cmlat) )
+      he5_start_3d, he5_stride_3d, he5_edge_3d,         &
+      Psurface(1:Cmlon,1:Cmlat,1:CmHRS) )
+
+    ! ----------------------------
+    ! Read the tables: Temperature
+    ! ----------------------------
+    he5_start_4d  = (/ zerocl, zerocl, zerocl, zerocl /)
+    he5_stride_4d = (/  onecl,  onecl,  onecl,  onecl /)
+    he5_edge_4d   = (/ Cmloncl, Cmlatcl, CmETAcl, CmHRScl /)
     he5stat = HE5_SWrdfld (                                &
       swath_id, cli_Temperature_field,                  &
-      he5_start_3d, he5_stride_3d, he5_edge_3d,         &
-      Temperature(1:Cmlon,1:Cmlat,1:CmETA) )
-    !!$    he5stat = HE5_SWrdfld (                                &
-    !!$         swath_id, cli_Heights_field,                      &
-    !!$         he5_start_3d, he5_stride_3d, he5_edge_3d,         &
-    !!$         Heights(1:Cmlon,1:Cmlat,1:CmETA) )
+      he5_start_4d, he5_stride_4d, he5_edge_4d,         &
+      Temperature(1:Cmlon,1:Cmlat,1:CmETA,1:CmHRS) )
 
     ! --------------------------------------
     ! Read datafields scale factor attribute
     ! --------------------------------------
     he5stat = HE5_SWrdlattr ( swath_id, cli_Psurf_field,       "ScaleFactor", scale_Psurf       )
     he5stat = HE5_SWrdlattr ( swath_id, cli_Temperature_field, "ScaleFactor", scale_Temperature )
-    !!$    he5stat = HE5_SWrdlattr ( swath_id, cli_Heights_field,     "ScaleFactor", scale_Height      )
 
     IF ( he5stat /= pge_errstat_ok ) then
       call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology data fields", &
                        errstat)
       return
-      !CALL error_check ( he5stat, OMI_S_SUCCESS, pge_errstat_error, OMSAO_E_PREFITCOL, &
-      !modulename//f_sep//'Climatology data fields access failed.', vb_lev_default, errstat )
     endif
 
     ! -----------------------------------------------------------------------
@@ -710,16 +689,11 @@ CONTAINS
     ndatafields = HE5_swinqdflds(swath_id, datafield_name, datafield_rank, datafield_type)
     CALL extract_swathname(nswath, TRIM(ADJUSTL(datafield_name)), &
       TRIM(ADJUSTL(sao_molecule_names(pge_idx))), gasdatafieldname)
-
+    
     ! ---------------------------------------------------------------------------
     ! Check if we found the correct swath name. If not, report an error and exit.
     ! ---------------------------------------------------------------------------
     IF ( INDEX (TRIM(ADJUSTL(gasdatafieldname)),TRIM(ADJUSTL(sao_molecule_names(pge_idx)))) == 0 ) THEN
-      !CALL error_check ( &
-      !  0, 1, pge_errstat_error, OMSAO_E_HE5SWLOCATE, modulename, &
-      !  vb_lev_default, locerrstat )
-      !WRITE(*,*) "Climatology file does not contain data for ", sao_molecule_names(pge_idx)
-      !errstat = MAX ( errstat, locerrstat )
       call tell_error (tell_runtime_error, "omi_read_climatology: climatology file "// &
                        "does not contain data for "// trim(sao_molecule_names(pge_idx)), &
                        errstat)
@@ -731,23 +705,54 @@ CONTAINS
     ! -----------------------------
     he5stat = HE5_SWrdfld (                                &
       swath_id, TRIM(ADJUSTL(gasdatafieldname)),        &
-      he5_start_3d, he5_stride_3d, he5_edge_3d,         &
-      Gas_profiles(1:Cmlon,1:Cmlat,1:CmETA) )
-
+      he5_start_4d, he5_stride_4d, he5_edge_4d,         &
+      Gas_profiles(1:Cmlon,1:Cmlat,1:CmETA,1:CmHRS) )
+    
     ! -----------------------------------------
     ! Read gas datafield scale factor attribute
     ! -----------------------------------------
     he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(gasdatafieldname)),&
       "ScaleFactor", scale_gas       )
 
+    ! -------------------------------------------------------------------
+    ! Finding out the data field for water vapor (to compute air density)
+    ! -------------------------------------------------------------------
+    ndatafields = HE5_swinqdflds(swath_id, datafield_name, datafield_rank, datafield_type)
+    CALL extract_swathname(nswath, TRIM(ADJUSTL(datafield_name)), &
+         TRIM(ADJUSTL(sao_molecule_names(pge_h2o_idx))), gasdatafieldname)
+    
+    ! ---------------------------------------------------------------------------
+    ! Check if we found the correct swath name. If not, report an error and exit.
+    ! ---------------------------------------------------------------------------
+    IF ( INDEX (TRIM(ADJUSTL(gasdatafieldname)),TRIM(ADJUSTL(sao_molecule_names(pge_h2o_idx)))) == 0 ) THEN
+      call tell_error (tell_runtime_error, "omi_read_climatology: climatology file "// &
+                       "does not contain data for "// trim(sao_molecule_names(pge_h2o_idx)), &
+                       errstat)
+      RETURN
+    END IF
+
+    ! -----------------------------
+    ! Read data from this datafield
+    ! -----------------------------
+    he5stat = HE5_SWrdfld (                                &
+         swath_id, TRIM(ADJUSTL(gasdatafieldname)),        &
+         he5_start_4d, he5_stride_4d, he5_edge_4d,         &
+         H2O_profiles(1:Cmlon,1:Cmlat,1:CmETA,1:CmHRS) )
+
+    ! -----------------------------------------
+    ! Read gas datafield scale factor attribute
+    ! -----------------------------------------
+    he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(gasdatafieldname)),&
+              "ScaleFactor", scale_H2O       )
+    
     ! ------------------------------------
     ! Apply scaling factors to data fields
     ! ------------------------------------
-    !!$    Heights      = Heights      * scale_Height
     Temperature  = Temperature  * scale_Temperature
     Psurface     = Psurface     * scale_Psurf
     Gas_profiles = Gas_profiles * scale_gas
-
+    H2O_profiles = H2O_profiles * scale_H2O
+    
   END SUBROUTINE omi_read_climatology
 
   SUBROUTINE omi_omler_albedo( lat, lon, albedo, nt, nx, xtrange, &
@@ -1110,7 +1115,7 @@ CONTAINS
   END SUBROUTINE extract_swathname
 
   SUBROUTINE climatology_getdim ( &
-      swath_id, Cmlat, Cmlon, CmETA, CmEp1, errstat )
+      swath_id, Cmlat, Cmlon, CmETA, CmHRS, errstat )
 
     ! --------------------------------
     ! Return dimensions of Climatology
@@ -1127,7 +1132,7 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-    INTEGER (KIND=i4), INTENT (OUT)   :: Cmlat, Cmlon, CmETA, CmEp1
+    INTEGER (KIND=i4), INTENT (OUT)   :: Cmlat, Cmlon, CmETA, CmHRS
 
     ! ---------------
     ! Local variables
@@ -1144,7 +1149,7 @@ CONTAINS
     ! ---------------------------
     ! Initialize output variables
     ! ---------------------------
-    Cmlat = -1 ; Cmlon = -1 ; CmETA = -1; CmEp1 = -1
+    Cmlat = -1 ; Cmlon = -1 ; CmETA = -1; CmHRS = -1
 
     ! ------------------------------
     ! Inquire about swath dimensions
@@ -1188,10 +1193,10 @@ CONTAINS
         Cmlat = dim_array(j)
       CASE ( "nLon" )
         Cmlon = dim_array(j)
-      CASE ( "nETA" )
+      CASE ( "nLev" )
         CmETA = dim_array(j)
-      CASE ( "nEp1")
-        CmEp1 = dim_array(j)
+      CASE ( "nHrs")
+        CmHRS = dim_array(j)
       CASE DEFAULT
         ! Whatever. Nothing to be done here.
       END SELECT
@@ -1206,8 +1211,8 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    deallocate (latvals, lonvals, Ap, Bp, Temperature, &
-                 Gas_profiles, Psurface, stat=errstat)
+    deallocate (latvals, lonvals, timevals, Temperature, &
+                 Gas_profiles, H2O_profiles, Psurface, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
@@ -1215,7 +1220,7 @@ CONTAINS
     endif
   end subroutine climatology_deallocate
 
-  SUBROUTINE climatology_allocate (Cmlat, Cmlon, CmETA, CmEp1, errstat)
+  SUBROUTINE climatology_allocate (Cmlat, Cmlon, CmETA, CmHRS, errstat)
 
     !USE OMSAO_errstat_module
     IMPLICIT NONE
@@ -1223,7 +1228,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: Cmlat, Cmlon, CmETA, CmEp1
+    INTEGER (KIND=i4), INTENT (IN) :: Cmlat, Cmlon, CmETA, CmHRS
 
     ! ------------------
     ! Modified variables
@@ -1237,13 +1242,13 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    ALLOCATE (latvals (Cmlat), &
-              lonvals (Cmlon), &
-              Ap      (CmEp1), &
-              Bp      (CmEp1), &
-              Temperature (Cmlon, Cmlat, CmETA), &
-              Gas_profiles(Cmlon, Cmlat, CmETA), &
-              Psurface(Cmlon,Cmlat), STAT=estat ) ;
+    ALLOCATE (latvals (Cmlat),  &
+              lonvals (Cmlon),  &
+              timevals (CmHRS), &
+              Temperature (Cmlon, Cmlat, CmETA, CmHRS), &
+              Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
+              H2O_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
+              Psurface(Cmlon,Cmlat,CmHRS), STAT=estat ) ;
     if (estat /= 0) then
       call tell_error (tell_malloc_error, "climatology_allocate: failed", errstat)
       return
