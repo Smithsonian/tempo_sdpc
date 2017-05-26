@@ -247,11 +247,7 @@ CONTAINS
     saoamf       = r8_missval
     amfgeo       = r8_missval
     amfdiag      = i2_missval
-    print*, '---------------------'
-    print*, '---------------------'
-    print*, 'Doing AMF calculation'
-    print*, '---------------------'
-    print*, '---------------------'
+
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
     ! reported and AMFs equal to 1 with scattw,
@@ -425,7 +421,9 @@ CONTAINS
     ! No interpolation or something like that,
     ! Just pick the closest model grid
     ! =========================================
-    USE OMSAO_omidata_module, ONLY: omi_oob_cli
+    USE OMSAO_omidata_module, ONLY: omi_oob_cli, omi_time, omi_time_utc
+    USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
+    USE OMSAO_parameters_module, ONLY: nUTCdim
     IMPLICIT NONE
 
     ! ---------------
@@ -458,6 +456,7 @@ CONTAINS
     DO itimes = 0, nt-1
 
       spix = xtrange(itimes,1); epix = xtrange(itimes,2)
+      CALL convert_tai_to_utc(nUTCdim, omi_time(itimes), omi_time_utc(1:nUTCdim,itimes))
       DO ixtrack = spix, epix
 
 !!$        IF (lon(ixtrack,itimes) .LT. MINVAL(lonvals) .OR. &
@@ -471,7 +470,7 @@ CONTAINS
         idx_lat = MINVAL(MINLOC(ABS(latvals(1:Cmlat) - lat(ixtrack,itimes) )))
         idx_lon = MINVAL(MINLOC(ABS(lonvals(1:Cmlon) - lon(ixtrack,itimes) )))
         idx_tim = 12
-!        idx_tim = MINVAL(MINLOC(ABS(timevals(1:CmHRS) - local_time(ixtrack,itimes )))
+        idx_tim = MINVAL(MINLOC(ABS(timevals(1:CmHRS) - REAL(omi_time_utc(4,itimes),KIND=4))))
 
         climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon,idx_lat,1:CmETA,idx_tim)
         local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon,idx_lat,1:CmETA,idx_tim)
@@ -519,7 +518,7 @@ CONTAINS
 
     CHARACTER (LEN= 8), PARAMETER :: cli_lat_field         = 'Latitude'
     CHARACTER (LEN= 9), PARAMETER :: cli_lon_field         = 'Longitude'
-    CHARACTER (LEN=10), PARAMETER :: cli_time_field        = 'Local_time'
+    CHARACTER (LEN=10), PARAMETER :: cli_time_field        = 'UTC_time'
     CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field       = 'SurfacePressure'
     CHARACTER (LEN=18), PARAMETER :: cli_Temperature_field = 'TemperatureProfile'
 
