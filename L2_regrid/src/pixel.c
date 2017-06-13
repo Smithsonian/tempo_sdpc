@@ -179,6 +179,40 @@ int Pixel_list_set_vertices (Pixel_List_Type *lst, int pix, int n,
    return Polygon_set (lst->poly[pix], n, x, y);
 }
 
+#define IS_FINITE(x) (((x)==(x)) && (fabs(x)<DBL_MAX))
+#define VALID_POINT(x,y) (IS_FINITE(x) && IS_FINITE(y))
+
+int Pixel_list_pack (Pixel_List_Type *pixel_list,
+                     double *xs, double *ys, int num_pixels,
+                     int *step, int num_xtrack)
+{
+   int i;
+
+   for (i = 0; i < num_pixels; i++)
+     {
+        int pix_xtrack = i % num_xtrack;
+        int pix_step_index = i / num_xtrack;
+        int pix = pix_xtrack + step[pix_step_index] * num_xtrack;
+        double *x = xs + 4*i;
+        double *y = ys + 4*i;
+        int j;
+
+        for (j = 0; j < 4; j++)
+          {
+             if (0 == VALID_POINT(x[j],y[j]))
+               break;
+          }
+        if (j == 4)
+          {
+             if ((-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
+                 || (-1 == Pixel_list_set_src_index (pixel_list, i, pix)))
+               return -1;
+          }
+     }
+
+   return 0;
+}
+
 int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
                        double **x_corners, double **y_corners)
 {
