@@ -91,6 +91,7 @@ install-header:
 	$(MKINSDIR) $(incdir)
 	@echo installing headers in $(incdir)/
 	$(INSTALL_DATA) $(srcdir)/poly.h $(incdir)
+	$(INSTALL_DATA) $(srcdir)/pixel.h $(incdir)
 
 install-executable:
 	mkdir -p $(bindir)
