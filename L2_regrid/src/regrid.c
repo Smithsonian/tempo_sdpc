@@ -230,11 +230,9 @@ free_and_return:
 }
 
 /* Pack pixel vertices into pixel list structures */
-static Pixel_List_Type *
-make_pixel_list_of_type (Source_Pixel_Vertices_Type *spv, int use_albers)
+static Pixel_List_Type *make_pixel_list (Source_Pixel_Vertices_Type *spv)
 {
    Pixel_List_Type *plt = NULL;
-   double *x_bounds, *y_bounds;
    int num_sides;
 
    /* Zero-length polygons will indicate lines of sight that
@@ -249,18 +247,7 @@ make_pixel_list_of_type (Source_Pixel_Vertices_Type *spv, int use_albers)
         goto free_and_return;
      }
 
-   if (use_albers)
-     {
-        /* NOTE: coordinate projection is done in place, so after the call,
-         * (lon_bounds, lat_bounds) [deg] is really Albers (x,y) [meters] */
-        if (-1 == longlat_to_albers (spv->lon_bounds, spv->lat_bounds, 4*spv->num_pixels))
-          goto free_and_return;
-     }
-
-   x_bounds = spv->lon_bounds;
-   y_bounds = spv->lat_bounds;
-
-   if (-1 == Pixel_list_pack (plt, x_bounds, y_bounds,
+   if (-1 == Pixel_list_pack (plt, spv->lon_bounds, spv->lat_bounds,
                               spv->num_pixels, spv->step, spv->num_xtrack))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: packing pixel list", __func__);
@@ -298,16 +285,19 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
         /* lookup pixel list uses coordinates that simplify
          * determining which destination pixels overlap each source pixel */
         Pixel_list_free (src_lookup);
-        if (NULL == (src_lookup = make_pixel_list_of_type (spv, 0)))
+        if (NULL == (src_lookup = make_pixel_list (spv)))
+          break;
+
+        /* WARNING! coordinate projection is done in place, so after the call,
+         * (lon_bounds, lat_bounds) [deg] is really Albers (x,y) [meters] */
+        if (-1 == longlat_to_albers (spv->lon_bounds, spv->lat_bounds, 4*spv->num_pixels))
           break;
 
         /* area pixel list uses coordinates that are appropriate
          * for computing pixel overlap areas
-         * WARNING: spv is modified when make_pixel_list_of_type is called
-         *          with use_albers non-zero!
          */
         Pixel_list_free (src_area);
-        if (NULL == (src_area = make_pixel_list_of_type (spv, 1)))
+        if (NULL == (src_area = make_pixel_list (spv)))
           break;
 
         Pixel_regrid_grow_srcdims (r, spv->max_step, spv->max_xtrack);
