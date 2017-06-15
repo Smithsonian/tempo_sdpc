@@ -147,7 +147,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     xtrack_radiance_reference_loop
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   !USE OMSAO_errstat_module
-  USE OMSAO_wfamf_module, ONLY: omi_read_climatology, CmETA
+  USE OMSAO_wfamf_module, ONLY: read_climatology_dimensions, CmETA
   use output_tools, only : create_output_file, close_output_file, &
     write_fitting_statistics, write_common_mode, write_wavcal_output, &
     write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics, &
@@ -346,8 +346,8 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! use the number of levels in the climatology as the number of le
   ! vels of the reported scattering weights.
   ! ---------------------------------------------------------------
-  call tell_log (1, 'omi_fitting: calling omi_read_climatology')
-  CALL omi_read_climatology (pge_idx, errstat )
+  call tell_log (1, 'omi_fitting: calling read_climatology_dimensions')
+  CALL read_climatology_dimensions ( errstat )
 
   ! ----------------------------------------
   ! Initialization of HE5 output data fields

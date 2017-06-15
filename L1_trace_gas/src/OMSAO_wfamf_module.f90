@@ -17,7 +17,7 @@ MODULE OMSAO_wfamf_module
   IMPLICIT NONE
   private
 
-  public omi_read_climatology, amf_calculation_bis, climatology_allocate, &
+  public read_climatology_dimensions, amf_calculation_bis, climatology_allocate, &
     wfamf_deallocate
 
   ! ---------
@@ -72,8 +72,8 @@ MODULE OMSAO_wfamf_module
   ! ---------------------------------------
   ! Data obtained from the climatology file
   ! ---------------------------------------
-  REAL(KIND=r4), DIMENSION(:),       ALLOCATABLE :: latvals, lonvals, timevals
-  REAL(KIND=r4), DIMENSION(:,:,:),   ALLOCATABLE :: Psurface
+  REAL(KIND=r4), DIMENSION(:), ALLOCATABLE :: latvals, lonvals, timevals
+  REAL(KIND=r4), DIMENSION(:,:,:), ALLOCATABLE :: Psurface
   REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Temperature, Gas_profiles, H2O_profiles
 
   ! ---------------------------------------
@@ -316,8 +316,9 @@ CONTAINS
       ! Now it is only needed to interpolate to the pixels of the granule.
       ! It was read there to obtain the dimensions of the number of levels.
       ! ---------------------------------------------------------------------
+      CALL omi_read_climatology(pge_idx,errstat)
       CALL omi_climatology (climatology, cli_heights, cli_psurface, cli_temperature, lat, lon, &
-        nt, nx, xtrange, errstat)
+        nt, nx, amfdiag, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -414,7 +415,7 @@ CONTAINS
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (climatology, local_heights, local_psurf, local_temperature, &
-      lat, lon, nt, nx, xtrange, errstat)
+      lat, lon, nt, nx, amfdiag, xtrange, errstat)
 
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -424,6 +425,7 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: omi_oob_cli, omi_time, omi_time_utc
     USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
     USE OMSAO_parameters_module, ONLY: nUTCdim
+    USE OMSAO_linterpolation_module, ONLY: lininterpol
     IMPLICIT NONE
 
     ! ---------------
@@ -436,6 +438,7 @@ CONTAINS
     ! ------------------
     ! Modified variables
     ! ------------------
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: amfdiag
     INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
     REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology, local_temperature, local_heights
     REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1),        INTENT (INOUT) :: local_psurf
@@ -443,7 +446,24 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, idx_lat, idx_lon, idx_tim, ilevel
+    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, ilevel, n, n1, status 
+    INTEGER (KIND=i4), DIMENSION(2) :: idx_lat, idx_lon, idx_tim
+    REAL    (KIND=r8)                      :: rho, lhgt, aircolumn
+    REAL    (KIND=r8), DIMENSION (0:CmETA) :: lpre, level_press, clima_lpre
+    REAL    (KIND=r8), DIMENSION (1:CmETA) :: ltmp, lh2o, lgas, &
+         layer_press, clima_layer_press
+    REAL    (KIND=r8) :: thish2omxr, Mwet, Rwet, detlnp, llon, llat, ltime
+    REAL    (KIND=r8), DIMENSION (1) :: local_lon, local_lat
+
+    ! -----------------------
+    ! Some physical constants
+    ! -----------------------
+    REAL (KIND=r8), PARAMETER ::  &
+         Mdry = 0.02896,   &
+         Mh2o = 0.018,     &
+         Rstar = 8.314,    &
+         Navogadro = 6.02214e+23, &
+         gplanet = 9.806    
 
     ! ----------------------
     ! Subroutine starts here
@@ -459,26 +479,158 @@ CONTAINS
       CALL convert_tai_to_utc(nUTCdim, omi_time(itimes), omi_time_utc(1:nUTCdim,itimes))
       DO ixtrack = spix, epix
 
-!!$        IF (lon(ixtrack,itimes) .LT. MINVAL(lonvals) .OR. &
-!!$          lat(ixtrack,itimes) .LT.  MINVAL(latvals) .OR. &
-!!$          lon(ixtrack,itimes) .GT.  MAXVAL(lonvals) .OR. &
-!!$          lat(ixtrack,itimes) .GT.  MAXVAL(latvals)) CYCLE
+         llon = REAL(lon(ixtrack,itimes),KIND=r8)
+         llat = REAL(lat(ixtrack,itimes),KIND=r8)
+         ltime = REAL(omi_time_utc(4,itimes),KIND=r8)
+         ! If they are out of boudns, bring them to the closest node
+         IF (llon .LT. MINVAL(lonvals) .OR. & 
+              llat .LT. MINVAL(latvals) .OR. &
+              llon .GT. MAXVAL(lonvals) .OR. &
+              llat .GT. MAXVAL(latvals)) amfdiag(ixtrack,itimes) = omi_oob_cli
+         IF (llon .LT. MINVAL(lonvals)) llon = MINVAL(lonvals)
+         IF (llon .GT. MAXVAL(lonvals)) llon = MAXVAL(lonvals)
+         IF (llat .LT. MINVAL(latvals)) llat = MINVAL(latvals)
+         IF (llat .GT. MAXVAL(latvals)) llat = MAXVAL(latvals)
 
-        ! ----------------------------------------------------
-        ! Just selecting the closest location to lat lon pixel
-        ! ----------------------------------------------------
-        idx_lat = MINVAL(MINLOC(ABS(latvals(1:Cmlat) - lat(ixtrack,itimes) )))
-        idx_lon = MINVAL(MINLOC(ABS(lonvals(1:Cmlon) - lon(ixtrack,itimes) )))
-        idx_tim = 12
-        idx_tim = MINVAL(MINLOC(ABS(timevals(1:CmHRS) - REAL(omi_time_utc(4,itimes),KIND=4))))
+        ! --------------------------------------------------------------------
+        ! Perform interpolation between the closest nodes to
+        ! lat(ixtrack,itimes), lon(ixtrack,itimes), and omi_time_utc(4,itimes)
+        ! If we are at the climatology edge we choose the closest node
+        ! --------------------------------------------------------------------        
+        idx_lat(1) = MINVAL(MINLOC(ABS(latvals(1:Cmlat) - llat )))
+        IF (idx_lat(1) .GE. 3 .AND. idx_lat(1) .LE. Cmlat-2) THEN
+           idx_lat(1) = idx_lat(1)-2
+           idx_lat(2) = idx_lat(1)+4
+        ELSE IF (idx_lat(1) .EQ. 1) THEN
+           idx_lat(1) = 1
+           idx_lat(2) = 4
+        ELSE IF (idx_lat(1) .EQ. Cmlat) THEN
+           idx_lat(1) = Cmlat-4
+           idx_lat(2) = Cmlat
+        END IF
 
-        climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon,idx_lat,1:CmETA,idx_tim)
-        local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon,idx_lat,1:CmETA,idx_tim)
-        local_psurf(ixtrack,itimes)               = Psurface(idx_lon,idx_lat,idx_tim)
-        DO ilevel = 1, CmETA
-          local_heights(ixtrack,itimes,ilevel)   = ( ( Ap(ilevel) + ( local_psurf(ixtrack,itimes) * Bp(ilevel)   ) ) + &
-            ( Ap(ilevel+1) + ( local_psurf(ixtrack,itimes) * Bp(ilevel+1) ) ) ) / 2 !(in hPa)
+        idx_lon(1) = MINVAL(MINLOC(ABS(lonvals(1:Cmlon) - llon )))
+        IF (idx_lon(1) .GE. 3 .AND. idx_lon(1) .LE. Cmlon-2) THEN
+           idx_lon(1) = idx_lon(1)-2
+           idx_lon(2) = idx_lon(1)+4
+        ELSE IF (idx_lon(1) .EQ. 1) THEN
+           idx_lon(1) = 1
+           idx_lon(2) = 4
+        ELSE IF (idx_lon(1) .EQ. Cmlon) THEN
+           idx_lon(1) = Cmlon-4
+           idx_lon(2) = Cmlon
+        END IF
+
+        idx_tim(1) = MINVAL(MINLOC(ABS(timevals(1:CmHRS) - ltime )))
+        IF (idx_tim(1) .GE. 3 .AND. idx_tim(1) .LE. CmHRS-2) THEN
+           idx_tim(1) = idx_tim(1)-2
+           idx_tim(2) = idx_tim(1)+4
+        ELSE IF (idx_lon(1) .EQ. 1) THEN
+           idx_tim(1) = 1
+           idx_tim(2) = 4
+        ELSE IF (idx_lon(1) .EQ. Cmlon) THEN
+           idx_tim(1) = CmHRS-4
+           idx_tim(2) = CmHRS
+        END IF
+
+        ! Interpolate Surface pressure      
+        local_psurf(ixtrack,itimes) = linInterpol(4,4,4, &
+             REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
+             REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
+             REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
+             REAL(Psurface(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),idx_tim(1):idx_tim(2)),KIND=r8), &
+             llon, llat, ltime, status=status)
+        DO n = 0, CmETA
+           lpre(n) = (Ap(n+1) + local_psurf(ixtrack,itimes) * Bp(n+1))*1.D2 ! Pa
         END DO
+
+        DO n = 1, CmETA
+
+          local_heights(ixtrack,itimes,n) = ( ( Ap(n) + ( local_psurf(ixtrack,itimes) * Bp(n)   ) ) + &
+            ( Ap(n+1) + ( local_psurf(ixtrack,itimes) * Bp(n+1) ) ) ) / 2 !(in hPa)
+
+          local_temperature(ixtrack,itimes,n) =  linInterpol(4,4,4, &
+             REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
+             REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
+             REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
+             REAL(Temperature(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
+             llon, llat, ltime, status=status)
+
+          lh2o(n) =  linInterpol(4,4,4, &
+             REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
+             REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
+             REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
+             REAL(H2O_profiles(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
+             llon, llat, ltime, status=status)
+
+          lgas(n) =  linInterpol(4,4,4, &
+             REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
+             REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
+             REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
+             REAL(Gas_profiles(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
+             llon, llat, ltime, status=status)
+
+          rho = 0.0_r8
+          aircolumn = 0.0_r8
+          lhgt = 0.0_r8
+
+          ! Convert input water vapor mixing ratio from PPB to unitless
+          thish2omxr = lh2o(n) / 1.0E9
+
+          ! Calculate mean molecular weight of wet air 
+          Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
+
+          ! Calculate gas constant for wet air
+          Rwet = Rstar / Mwet
+
+          ! Calculate layer thickness using the following
+          ! dz = -(R*T/g) * dlnP
+          n1 = n - 1
+          detlnp = DLOG(lpre(n)) - DLOG(lpre(n1))
+          lhgt = Rwet * local_temperature(ixtrack,itimes,n) * detlnp / gplanet ! meter
+
+          rho                = DEXP(local_heights(ixtrack,itimes,n)) / local_temperature(ixtrack,itimes,n) / Rstar 
+          aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
+
+          ! -------------------------------------------------------------
+          climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
+       
+        END DO
+
+        climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon(1),idx_lat(1),1:CmETA,idx_tim(1))
+        local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon(1),idx_lat(1),1:CmETA,idx_tim(1))
+
+!!$        ! --------------------
+!!$        ! Work out air density
+!!$        ! --------------------
+!!$        DO n = 1, CmETA
+!!$
+!!$           rho = 0.0_r8
+!!$           aircolumn = 0.0_r8
+!!$           lhgt = 0.0_r8
+!!$
+!!$           ! Convert input water vapor mixing ratio from PPB to unitless
+!!$           thish2omxr = lh2o(ilevel) / 1.0E9
+!!$
+!!$           ! Calculate mean molecular weight of wet air 
+!!$           Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
+!!$             
+!!$           ! Calculate gas constant for wet air
+!!$           Rwet = Rstar / Mwet
+!!$             
+!!$           ! Calculate layer thickness using the following
+!!$           ! dz = -(R*T/g) * dlnP
+!!$           n1                   = n - 1
+!!$           detlnp = log(lpre(n)) - log(lpre(n1))
+!!$           lhgt = Rwet * ltmp(n) * detlnp / gplanet ! meter
+!!$           
+!!$           rho                = DEXP(layer_press(n)) / ltmp(n) / Rstar 
+!!$           aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
+!!$           
+!!$           ! -------------------------------------------------------------
+!!$           climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
+!!$        END DO
+
       END DO
     END DO
   END SUBROUTINE omi_climatology
@@ -516,14 +668,10 @@ CONTAINS
     CHARACTER (LEN=   MAX_STR_LEN) :: swath_file, locswathname, gasdatafieldname, datafield_name
     CHARACTER (LEN=10*MAX_STR_LEN) :: swath_name
 
-    CHARACTER (LEN= 8), PARAMETER :: cli_lat_field         = 'Latitude'
-    CHARACTER (LEN= 9), PARAMETER :: cli_lon_field         = 'Longitude'
-    CHARACTER (LEN=10), PARAMETER :: cli_time_field        = 'UTC_time'
     CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field       = 'SurfacePressure'
     CHARACTER (LEN=18), PARAMETER :: cli_Temperature_field = 'TemperatureProfile'
 
-    REAL (KIND=r4) :: scale_lat, scale_lon, scale_time, scale_gas, scale_Psurf, &
-      scale_temperature, scale_H2O
+    REAL (KIND=r4) :: scale_gas, scale_Psurf, scale_temperature, scale_H2O
 
     ! ----------------------
     ! Subroutine starts here
@@ -585,12 +733,6 @@ CONTAINS
       RETURN
     END IF
 
-    ! ------------------------------------
-    ! Read dimensions of Climatology swath
-    ! ------------------------------------
-    CALL climatology_getdim ( swath_id, Cmlat, Cmlon, CmETA, CmHRS, errstat )
-    if (errstat /= 0) return
-
     ! ----------------------------------------------------------------------------
     ! Create KIND=4/KIND=8 variables. We have to use those dimensions a few times
     ! in this subroutine, so it saves some typing if we do the conversion once and
@@ -604,48 +746,9 @@ CONTAINS
     ! ---------------------------
     ! Allocate Climatology arrays
     ! ---------------------------
-    !locerrstat = pge_errstat_ok
     CALL climatology_allocate (Cmlat, Cmlon, CmETA, CmHRS, errstat)
     
     if (errstat /= 0) return
-
-    ! -------------------------------
-    ! Read dimension-defining arrays
-    ! -------------------------------
-    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = Cmlatcl
-    he5stat = HE5_SWrdfld ( swath_id, cli_lat_field, &
-      he5_start_1d, he5_stride_1d, he5_edge_1d, latvals(1:Cmlat) )
-    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = Cmloncl
-    he5stat = HE5_SWrdfld ( swath_id, cli_lon_field, &
-      he5_start_1d, he5_stride_1d, he5_edge_1d, lonvals(1:Cmlon) )
-    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = CmHRScl
-    he5stat = HE5_SWrdfld ( swath_id, cli_time_field, &
-      he5_start_1d, he5_stride_1d, he5_edge_1d, timevals(1:CmHRS) )
-
-    IF ( he5stat /= pge_errstat_ok ) then
-      call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology arrays", &
-                       errstat)
-      return
-    endif
-
-    ! -----------------------------------------------
-    ! Read dimension-defining scale factor attributes
-    ! -----------------------------------------------
-    he5stat = HE5_SWrdlattr ( swath_id, cli_lat_field, "ScaleFactor", scale_lat )
-    he5stat = HE5_SWrdlattr ( swath_id, cli_lon_field, "ScaleFactor", scale_lon )
-    he5stat = HE5_SWrdlattr ( swath_id, cli_time_field,  "ScaleFactor", scale_time )
-    IF ( he5stat /= pge_errstat_ok ) then
-      call tell_error (tell_io_read_error, "omi_read_climatology: reading climatology attributes", &
-                       errstat)
-      return
-    endif
-
-    ! -----------------------------------
-    ! Apply scaling factors to geo fields
-    ! -----------------------------------
-    lonvals = lonvals * scale_lon
-    latvals = latvals * scale_lat
-    timevals = timevals * scale_time
 
     ! -------------------------
     ! Read the tables: Psurface
@@ -686,9 +789,9 @@ CONTAINS
     ! -----------------------------------------------------------------------
     datafield_name=""
     ndatafields = HE5_swinqdflds(swath_id, datafield_name, datafield_rank, datafield_type)
-    CALL extract_swathname(nswath, TRIM(ADJUSTL(datafield_name)), &
+    CALL extract_swathname(ndatafields, TRIM(ADJUSTL(datafield_name)), &
       TRIM(ADJUSTL(sao_molecule_names(pge_idx))), gasdatafieldname)
-    
+
     ! ---------------------------------------------------------------------------
     ! Check if we found the correct swath name. If not, report an error and exit.
     ! ---------------------------------------------------------------------------
@@ -716,8 +819,8 @@ CONTAINS
     ! -------------------------------------------------------------------
     ! Finding out the data field for water vapor (to compute air density)
     ! -------------------------------------------------------------------
-    ndatafields = HE5_swinqdflds(swath_id, datafield_name, datafield_rank, datafield_type)
-    CALL extract_swathname(nswath, TRIM(ADJUSTL(datafield_name)), &
+    gasdatafieldname=""
+    CALL extract_swathname(ndatafields, TRIM(ADJUSTL(datafield_name)), &
          TRIM(ADJUSTL(sao_molecule_names(pge_h2o_idx))), gasdatafieldname)
     
     ! ---------------------------------------------------------------------------
@@ -751,7 +854,7 @@ CONTAINS
     Psurface     = Psurface     * scale_Psurf
     Gas_profiles = Gas_profiles * scale_gas
     H2O_profiles = H2O_profiles * scale_H2O
-    
+
   END SUBROUTINE omi_read_climatology
 
   SUBROUTINE omi_omler_albedo( lat, lon, albedo, nt, nx, xtrange, &
@@ -1114,13 +1217,12 @@ CONTAINS
   END SUBROUTINE extract_swathname
 
   SUBROUTINE climatology_getdim ( &
-      swath_id, Cmlat, Cmlon, CmETA, CmHRS, errstat )
+      swath_id, errstat )
 
     ! --------------------------------
     ! Return dimensions of Climatology
     ! --------------------------------
-    USE OMSAO_he5_module, ONLY: HE5_SWinqdims
-    !USE OMSAO_errstat_module
+    USE OMSAO_he5_module, ONLY: HE5_SWinqdims, HE5_SWrdfld, HE5_SWrdlattr
 
     ! ---------------
     ! Input variables
@@ -1131,18 +1233,22 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-    INTEGER (KIND=i4), INTENT (OUT)   :: Cmlat, Cmlon, CmETA, CmHRS
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4), PARAMETER               :: maxdim = 100
-    INTEGER   (KIND=i4)                          :: ndim, nsep
-    INTEGER   (KIND=C_LONG)                      :: ndimcl
-    INTEGER   (KIND=i4)                          :: i, j, swlen, iend, istart
-    INTEGER   (KIND=i4),  DIMENSION(0:maxdim)    :: dim_array, dim_seps
+    INTEGER   (KIND=i4), PARAMETER :: maxdim = 100
+    INTEGER   (KIND=i4) :: ndim, nsep, he5stat, i, j, swlen, iend, istart
+    INTEGER   (KIND=i4), DIMENSION(0:maxdim) :: dim_array, dim_seps
+    INTEGER   (KIND=C_LONG) :: ndimcl
     INTEGER   (KIND=C_LONG), DIMENSION(0:maxdim) :: dim_arraycl
-    CHARACTER (LEN=10*maxdim)                    :: dim_chars
+
+    CHARACTER (LEN=8), PARAMETER :: cli_lat_field = 'Latitude'
+    CHARACTER (LEN=9), PARAMETER :: cli_lon_field = 'Longitude'
+    CHARACTER (LEN=8), PARAMETER :: cli_time_field = 'UTC_time'
+    CHARACTER (LEN=10*maxdim) :: dim_chars
+
+    REAL (KIND=r4) :: scale_lat, scale_lon, scale_time
 
     if (errstat /= 0) return
     ! ---------------------------
@@ -1158,7 +1264,6 @@ CONTAINS
     ndim   = INT ( ndimcl, KIND=i4 )
     IF ( ndim <= 0 ) THEN
       call tell_error (tell_runtime_error, "in climatology_getdim", errstat)
-      !errstat = MAX ( errstat, pge_errstat_error )
       RETURN
     END IF
     dim_array(0:maxdim) = INT ( dim_arraycl(0:maxdim), KIND=i4 )
@@ -1202,6 +1307,52 @@ CONTAINS
 
     END DO getdims
 
+    ALLOCATE (latvals (Cmlat),  &
+              lonvals (Cmlon),  &
+              timevals (CmHRS), STAT=errstat);
+    if (errstat /= 0) then
+       call tell_error (tell_malloc_error, "in climatology_getdim: allocating climalogy grid arrays failed", errstat)
+       return
+    endif
+
+    ! -------------------------------
+    ! Read dimension-defining arrays
+    ! -------------------------------
+    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = REAL(Cmlat,KIND=r8)
+    he5stat = HE5_SWrdfld ( swath_id, cli_lat_field, &
+      he5_start_1d, he5_stride_1d, he5_edge_1d, latvals(1:Cmlat) )
+    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = REAL(Cmlon,KIND=r8)
+    he5stat = HE5_SWrdfld ( swath_id, cli_lon_field, &
+      he5_start_1d, he5_stride_1d, he5_edge_1d, lonvals(1:Cmlon) )
+    he5_start_1d = zerocl ; he5_stride_1d = onecl ; he5_edge_1d = REAL(CmHRS,KIND=r8)
+    he5stat = HE5_SWrdfld ( swath_id, cli_time_field, &
+      he5_start_1d, he5_stride_1d, he5_edge_1d, timevals(1:CmHRS) )
+
+    IF ( he5stat /= 0 ) then
+      call tell_error (tell_io_read_error, "in climatology_getdim: reading climatology grid failed", &
+                       errstat)
+      return
+    endif
+
+    ! -----------------------------------------------
+    ! Read dimension-defining scale factor attributes
+    ! -----------------------------------------------
+    he5stat = HE5_SWrdlattr ( swath_id, cli_lat_field, "ScaleFactor", scale_lat )
+    he5stat = HE5_SWrdlattr ( swath_id, cli_lon_field, "ScaleFactor", scale_lon )
+    he5stat = HE5_SWrdlattr ( swath_id, cli_time_field, "ScaleFactor", scale_time )
+    IF ( he5stat /= 0 ) then
+      call tell_error (tell_io_read_error, "in climatology_getdim: reading climatology attributes failed", &
+                       errstat)
+      return
+    endif
+
+    ! -----------------------------------
+    ! Apply scaling factors to geo fields
+    ! -----------------------------------
+    lonvals = lonvals * scale_lon
+    latvals = latvals * scale_lat
+    timevals = timevals * scale_time
+
     RETURN
   END SUBROUTINE climatology_getdim
 
@@ -1241,10 +1392,7 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    ALLOCATE (latvals (Cmlat),  &
-              lonvals (Cmlon),  &
-              timevals (CmHRS), &
-              Temperature (Cmlon, Cmlat, CmETA, CmHRS), &
+    ALLOCATE (Temperature (Cmlon, Cmlat, CmETA, CmHRS), &
               Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
               H2O_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
               Psurface(Cmlon,Cmlat,CmHRS), STAT=estat ) ;
@@ -2820,6 +2968,91 @@ CONTAINS
 
     RETURN
   END SUBROUTINE he5_amf_write
+
+  SUBROUTINE read_climatology_dimensions(errstat)
+
+    USE OMSAO_he5_module, ONLY: granule_month, he5f_acc_rdonly, &
+      HE5_SWOPEN, HE5_SWattach, HE5_SWrdlattr, HE5_SWCLOSE, &
+      he5_swinqswath
+    USE OMSAO_errstat_module, ONLY: he5_stat_fail
+
+    IMPLICIT NONE
+    ! ------------------
+    ! Modified variables
+    ! ------------------
+    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER   (KIND=i4) :: nswath, swath_id, swath_file_id
+    CHARACTER (LEN=   MAX_STR_LEN) :: swath_file, locswathname
+    INTEGER   (KIND=C_LONG) :: nswathcl, swlen
+    CHARACTER (LEN=10*MAX_STR_LEN) :: swath_name
+
+    swath_file = TRIM(ADJUSTL(OMSAO_climatology_filename))
+
+    ! --------------------------------------------------------------
+    ! Open he5 OMI climatology and check SWATH_FILE_ID (-1 if error)
+    ! --------------------------------------------------------------
+    swath_file_id = HE5_SWOPEN (swath_file, he5f_acc_rdonly)
+    IF (swath_file_id == he5_stat_fail) THEN
+      call tell_error (tell_io_open_error, "read_climatology_dimensions: opening climatology file"//trim(swath_file), &
+                       errstat)
+      RETURN
+    END IF
+
+    ! -----------------------------------------------------------
+    ! Check for existing HE5 swathw and attach to the one we need
+    ! -----------------------------------------------------------
+    swath_name = "" !JED
+    nswathcl = HE5_SWinqswath(TRIM(ADJUSTL(swath_file)), swath_name, swlen )
+    nswath   = INT(nswathcl, KIND=i4 )
+
+    ! ----------------------------------------------------------------
+    ! If there is only one swath in the file, we can attach to it but
+    ! if there are more (NSWATH > 1), then we must find the swath that
+    ! corresponds to the current month.
+    ! ----------------------------------------------------------------
+    IF (nswath > 1) THEN
+      CALL extract_swathname(nswath, TRIM(ADJUSTL(swath_name)), &
+        TRIM(ADJUSTL(months(granule_month))), locswathname)
+      ! ---------------------------------------------------------------------------
+      ! Check if we found the correct swath name. If not, report an error and exit.
+      ! ---------------------------------------------------------------------------
+      IF ( INDEX (TRIM(ADJUSTL(locswathname)),TRIM(ADJUSTL(months(granule_month)))) == 0 ) THEN
+        call tell_error (tell_runtime_error, "read_climatology_dimensions: finding month in "// &
+                         trim(locswathname), errstat)
+        RETURN
+      END IF
+    ELSE
+      locswathname = TRIM(ADJUSTL(swath_name))
+    END IF
+
+    ! -----------------------------
+    ! Attach to current month swath
+    ! -----------------------------
+    swath_id = HE5_SWattach ( swath_file_id, TRIM(ADJUSTL(locswathname)) )
+    IF ( swath_id == he5_stat_fail ) THEN
+      call tell_error (tell_io_error, "read_climatology_dimensions: attaching to swath "// &
+                       trim(locswathname), errstat)
+      RETURN
+    END IF
+
+    ! ------------------------------------
+    ! Read dimensions of Climatology swath
+    ! ------------------------------------
+    CALL climatology_getdim ( swath_id, errstat )
+    if (errstat /= 0) return
+
+    errstat = HE5_SWCLOSE(swath_file_id)
+    IF ( errstat == he5_stat_fail ) THEN
+      call tell_error (tell_io_error, "read_climatology_dimensions: closing climatology file "// &
+                       trim(swath_file), errstat)
+      RETURN
+    END IF
+
+  END SUBROUTINE read_climatology_dimensions
 
 END MODULE OMSAO_wfamf_module
 
