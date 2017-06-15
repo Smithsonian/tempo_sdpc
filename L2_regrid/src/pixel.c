@@ -480,7 +480,10 @@ Pixel_open_regrid (const Pixel_Grid_Param_Type *dest,
    /* dest_area == NULL is ok */
 
    if (NULL == (r = (Pixel_Regrid_Type *) MALLOC (sizeof *r)))
-     return NULL;
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
 
    num_dest = dest->nx * dest->ny;
    len_overlap = num_dest * sizeof (Pixel_Overlap_Type *);
@@ -682,4 +685,86 @@ int Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
      }
 
    return -1;
+}
+
+/* Regrid in the "reverse" direction:
+ * FROM rectangular, non-overlapping mesh TO pixel list.
+ * The overlap data structure is defined in the same way as before,
+ * and we loop over the mesh pixels in the same order, but the
+ * value assignment is in the opposite direction.
+ *
+ *  1) Pixel_Regrid_Type contains overlap info on all granules
+ *  2) mesh_values covers the complete field of interest
+ *     (e.g. enclosing all granules) for the mesh grid, whatever
+ *     it may be, e.g. longitude-latitude.
+ *     mesh_mask has the same dimensions as mesh_values.
+ *  3) values covers all granules for the (mirror_step, xtrack)
+ *     coordinate system.
+ */
+int Pixel_regrid_from_mesh (const Pixel_Regrid_Type *r, const int *mesh_mask,
+                            double fill_value, const double *mesh_values,
+                            double *values)
+{
+   int mesh_pixel, num_mesh_pixels;
+   int list_pixel, num_list_pixels;
+   double *wrk = NULL;
+   double *a_sum = NULL;
+   double *awt_sum = NULL;
+
+   /* Quick return if source and destination grids don't overlap. */
+   if (r->overlap == NULL)
+     return 0;
+
+   /* full field-of-regard dimensions */
+   num_list_pixels = r->num_src_step * r->num_src_xtrack;
+   num_mesh_pixels = r->num_dest_pixels;
+
+   if (NULL == (wrk = (double *) MALLOC (2*num_list_pixels * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   awt_sum = wrk;
+   a_sum = wrk + num_list_pixels;
+
+   for (list_pixel = 0; list_pixel < num_list_pixels; list_pixel++)
+     {
+        values[list_pixel] = fill_value;
+        awt_sum[list_pixel] = 0.0;
+        a_sum[list_pixel] = 0.0;
+     }
+
+   for (mesh_pixel = 0; mesh_pixel < num_mesh_pixels; mesh_pixel++)
+     {
+        Pixel_Overlap_Type *o = r->overlap[mesh_pixel];
+        double val_m;
+        int j;
+
+        if ((o == NULL) || (mesh_mask[mesh_pixel] == 0))
+          continue;
+
+        val_m = mesh_values[mesh_pixel];
+        if ((val_m == fill_value) || (val_m != val_m))
+          continue;
+
+        for (j = 0; j < o->num_overlaps; j++)
+          {
+             double a = o->area[j];
+             list_pixel = o->src_index[j];
+             awt_sum[list_pixel] += a * val_m;
+             a_sum[list_pixel]   += a;
+          }
+     }
+
+   for (list_pixel = 0; list_pixel < num_list_pixels; list_pixel++)
+     {
+        if (a_sum[list_pixel] != 0.0)
+          {
+             values[list_pixel] = awt_sum[list_pixel] / a_sum[list_pixel];
+          }
+     }
+
+   FREE(wrk);
+
+   return 0;
 }
