@@ -439,31 +439,28 @@ CONTAINS
     ! Modified variables
     ! ------------------
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: amfdiag
-    INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
+    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
     REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology, local_temperature, local_heights
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1),        INTENT (INOUT) :: local_psurf
+    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT (INOUT) :: local_psurf
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, ilevel, n, n1, status 
+    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, n, status 
     INTEGER (KIND=i4), DIMENSION(2) :: idx_lat, idx_lon, idx_tim
-    REAL    (KIND=r8)                      :: rho, lhgt, aircolumn
-    REAL    (KIND=r8), DIMENSION (0:CmETA) :: lpre, level_press, clima_lpre
-    REAL    (KIND=r8), DIMENSION (1:CmETA) :: ltmp, lh2o, lgas, &
-         layer_press, clima_layer_press
+    REAL    (KIND=r8) :: rho, lhgt, aircolumn
+    REAL    (KIND=r8), DIMENSION (1:CmETA) :: lh2o, lgas
     REAL    (KIND=r8) :: thish2omxr, Mwet, Rwet, detlnp, llon, llat, ltime
-    REAL    (KIND=r8), DIMENSION (1) :: local_lon, local_lat
 
     ! -----------------------
     ! Some physical constants
     ! -----------------------
     REAL (KIND=r8), PARAMETER ::  &
-         Mdry = 0.02896,   &
-         Mh2o = 0.018,     &
-         Rstar = 8.314,    &
-         Navogadro = 6.02214e+23, &
-         gplanet = 9.806    
+         Mdry = 0.02896,   & !kg mol-1
+         Mh2o = 0.018,     & !kg mol-1
+         Rstar = 8.314,    & !N m mol-1 K-1
+         Navogadro = 6.02214e+23, & ! mol-1
+         gplanet = 9.806     ! m s-1
 
     ! ----------------------
     ! Subroutine starts here
@@ -540,97 +537,69 @@ CONTAINS
              REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
              REAL(Psurface(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),idx_tim(1):idx_tim(2)),KIND=r8), &
              llon, llat, ltime, status=status)
-        DO n = 0, CmETA
-           lpre(n) = (Ap(n+1) + local_psurf(ixtrack,itimes) * Bp(n+1))*1.D2 ! Pa
-        END DO
 
         DO n = 1, CmETA
 
-          local_heights(ixtrack,itimes,n) = ( ( Ap(n) + ( local_psurf(ixtrack,itimes) * Bp(n)   ) ) + &
-            ( Ap(n+1) + ( local_psurf(ixtrack,itimes) * Bp(n+1) ) ) ) / 2 !(in hPa)
+           local_heights(ixtrack,itimes,n) = (( Ap(n) + local_psurf(ixtrack,itimes) * Bp(n)  ) + &
+                ( Ap(n+1) + local_psurf(ixtrack,itimes) * Bp(n+1) )) / 2.0 * 1.D2
 
-          local_temperature(ixtrack,itimes,n) =  linInterpol(4,4,4, &
+           ! Interpolate temperature to lon,lat,hrs
+           local_temperature(ixtrack,itimes,n) =  linInterpol(4,4,4, &
              REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
              REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
              REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
              REAL(Temperature(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
              llon, llat, ltime, status=status)
 
-          lh2o(n) =  linInterpol(4,4,4, &
+           ! Interpolate water vapor profile to lon,lat,hrs
+           lh2o(n) =  linInterpol(4,4,4, &
              REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
              REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
              REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
              REAL(H2O_profiles(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
              llon, llat, ltime, status=status)
 
-          lgas(n) =  linInterpol(4,4,4, &
-             REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
-             REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
-             REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
-             REAL(Gas_profiles(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
-             llon, llat, ltime, status=status)
+           ! Interpolate trace gas profile to lon,lat,hrs
+           lgas(n) =  linInterpol(4,4,4, &
+                REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
+                REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
+                REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
+                REAL(Gas_profiles(idx_lon(1):idx_lon(2),idx_lat(1):idx_lat(2),n,idx_tim(1):idx_tim(2)),KIND=r8), &
+                llon, llat, ltime, status=status)
 
-          rho = 0.0_r8
-          aircolumn = 0.0_r8
-          lhgt = 0.0_r8
+           rho = 0.0_r8
+           aircolumn = 0.0_r8
+           lhgt = 0.0_r8
 
-          ! Convert input water vapor mixing ratio from PPB to unitless
-          thish2omxr = lh2o(n) / 1.0E9
+           ! Convert input water vapor mixing ratio from PPB to unitless
+           thish2omxr = lh2o(n) / 1.0E9
 
-          ! Calculate mean molecular weight of wet air 
-          Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
+           ! Calculate mean molecular weight of wet air 
+           Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
 
-          ! Calculate gas constant for wet air
-          Rwet = Rstar / Mwet
+           ! Calculate gas constant for wet air
+           Rwet = Rstar / Mwet
 
-          ! Calculate layer thickness using the following
-          ! dz = -(R*T/g) * dlnP
-          n1 = n - 1
-          detlnp = DLOG(lpre(n)) - DLOG(lpre(n1))
-          lhgt = Rwet * local_temperature(ixtrack,itimes,n) * detlnp / gplanet ! meter
+           ! Calculate layer thickness using the following
+           ! dz = -(R*T/g) * dlnP
+           detlnp = LOG( ( Ap(n+1)   + local_psurf(ixtrack,itimes) * Bp(n+1) ) ) - &
+                LOG( ( Ap(n)     + local_psurf(ixtrack,itimes) * Bp(n)   ) ) !(in Pa)
 
-          rho                = DEXP(local_heights(ixtrack,itimes,n)) / local_temperature(ixtrack,itimes,n) / Rstar 
-          aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
+           lhgt = -Rwet * local_temperature(ixtrack,itimes,n) * detlnp / gplanet ! meter
 
-          ! -------------------------------------------------------------
-          climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
+           rho                = local_heights(ixtrack,itimes,n) / local_temperature(ixtrack,itimes,n) / Rwet ! Kg m-3
+           aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
+
+           ! -------------------------------------------------------------
+           climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
        
         END DO
-
-        climatology(ixtrack,itimes,1:CmETA)       = Gas_profiles(idx_lon(1),idx_lat(1),1:CmETA,idx_tim(1))
-        local_temperature(ixtrack,itimes,1:CmETA) = Temperature(idx_lon(1),idx_lat(1),1:CmETA,idx_tim(1))
-
-!!$        ! --------------------
-!!$        ! Work out air density
-!!$        ! --------------------
-!!$        DO n = 1, CmETA
-!!$
-!!$           rho = 0.0_r8
-!!$           aircolumn = 0.0_r8
-!!$           lhgt = 0.0_r8
-!!$
-!!$           ! Convert input water vapor mixing ratio from PPB to unitless
-!!$           thish2omxr = lh2o(ilevel) / 1.0E9
-!!$
-!!$           ! Calculate mean molecular weight of wet air 
-!!$           Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
-!!$             
-!!$           ! Calculate gas constant for wet air
-!!$           Rwet = Rstar / Mwet
-!!$             
-!!$           ! Calculate layer thickness using the following
-!!$           ! dz = -(R*T/g) * dlnP
-!!$           n1                   = n - 1
-!!$           detlnp = log(lpre(n)) - log(lpre(n1))
-!!$           lhgt = Rwet * ltmp(n) * detlnp / gplanet ! meter
-!!$           
-!!$           rho                = DEXP(layer_press(n)) / ltmp(n) / Rstar 
-!!$           aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
-!!$           
-!!$           ! -------------------------------------------------------------
-!!$           climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
-!!$        END DO
-
+       
+        !  Set non-physical entries to zero.
+        WHERE ( climatology(ixtrack,itimes,1:CmETA) < 0.0_r8 )
+           climatology(ixtrack,itimes,1:CmETA) = 0.0_r8
+        END WHERE
+        
       END DO
     END DO
   END SUBROUTINE omi_climatology
