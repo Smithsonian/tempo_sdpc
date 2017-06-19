@@ -367,9 +367,8 @@ CONTAINS
       ! Work out the AMF using the scattering weights and the climatology
       ! Work out Averaging Kernels
       ! -----------------------------------------------------------------
-      CALL compute_amf ( nt, nx, CmETA, climatology, cli_heights, &
-                        cli_temperature, & !cli_psurface,
-                        scattw, saoamf, amfdiag, locerrstat)
+      CALL compute_amf ( nt, nx, CmETA, climatology, &
+           scattw, saoamf, amfdiag, locerrstat)
 
       ! -----------------------------------------------------------------
       ! Write out scattering weights, altitude grid and averaging kernels
@@ -460,7 +459,8 @@ CONTAINS
          Mh2o = 0.018,     & !kg mol-1
          Rstar = 8.314,    & !N m mol-1 K-1
          Navogadro = 6.02214e+23, & ! mol-1
-         gplanet = 9.806     ! m s-1
+         gplanet = 9.806,  &  ! m s-1
+         m2tocm2 = 1.0e+4
 
     ! ----------------------
     ! Subroutine starts here
@@ -588,7 +588,7 @@ CONTAINS
            lhgt = -Rwet * local_temperature(ixtrack,itimes,n) * detlnp / gplanet ! meter
 
            rho                = local_heights(ixtrack,itimes,n) / local_temperature(ixtrack,itimes,n) / Rwet ! Kg m-3
-           aircolumn          = rho*lhgt*Navogadro*1.0E-4 ! # air/cm^2
+           aircolumn          = rho*lhgt*Navogadro/m2tocm2 ! # air/cm^2
 
            ! -------------------------------------------------------------
            climatology(ixtrack,itimes,n) = aircolumn * lgas(n) / 1.0E9 ! [GAS]/cm^2
@@ -599,7 +599,7 @@ CONTAINS
         WHERE ( climatology(ixtrack,itimes,1:CmETA) < 0.0_r8 )
            climatology(ixtrack,itimes,1:CmETA) = 0.0_r8
         END WHERE
-        
+
       END DO
     END DO
   END SUBROUTINE omi_climatology
@@ -2504,7 +2504,7 @@ CONTAINS
 
   END SUBROUTINE COMPUTE_SCATT
 
-  SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, cli_heights, cli_temperature, & !cli_psurface,
+  SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, &
       scattw, saoamf, amfdiag, errstat)
 
     IMPLICIT NONE
@@ -2513,43 +2513,19 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                                INTENT(IN) :: nt, nx, CmETA
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, cli_heights, &
-      cli_temperature, scattw
-    !REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1),       INTENT(IN) :: cli_psurface
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1),       INTENT(IN) :: amfdiag
 
     ! -----------------------------
     ! Output and modified variables
     ! -----------------------------
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1),       INTENT (INOUT) :: saoamf
-    !!$    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT (INOUT) :: akernels
     INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                      :: n, n1, ixtrack, itimes
-    REAL    (KIND=r8)                      :: rho1, rho2, grad, aircolumn
-    REAL    (KIND=r8), DIMENSION (0:CmETA) :: lhgt, lpre, ltmp
-    REAL    (KIND=r8), DIMENSION (CmETA)   :: gas_partialcolumn
-
-    ! -----------------------
-    ! Some physical constants
-    ! -----------------------
-    REAL (KIND=r8), PARAMETER ::                &
-      rho_stand = 2.6867773e+19_r8,          & ! Loschmidt, in [cm^-3]
-      pzero     = 1013.25_r8,                & ! P0 in [mb]
-      tzero     = 273.15_r8,                 &
-      rho_zero  = rho_stand * tzero / pzero
-    ! o2ratio   = 0.2095_r8
-    ! mwair     = 28.97_r8,
-    ! du_to_cm2 = 2.6867773e+16_r8
-    ! mwh2o     = 18.0_r8
-
-    ! -------------------------------
-    ! Air density conversion constant
-    ! -------------------------------
-    REAL (KIND=r8), PARAMETER :: km2cm  = 1.0E+05_r8
+    INTEGER (KIND=i4)                      :: ixtrack, itimes
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2571,80 +2547,13 @@ CONTAINS
           saoamf(ixtrack,itimes) = r8_missval
           CYCLE
         ENDIF
-        lhgt              = 0.0_r8
-        lpre              = 0.0_r8
-        ltmp              = 0.0_r8
-        grad              = 0.0_r8
-        rho1              = 0.0_r8
-        rho2              = 0.0_r8
-        aircolumn         = 0.0_r8
-        gas_partialcolumn = 0.0_r8
-
-        ! -------------------
-        ! Develop air density
-        ! -------------------
-
-        ! --------------------------------------------------------
-        ! Some notes on Units
-        ! -------------------
-        ! Values from the atmospheric profile now have these units:
-        !   pressures:    hPa = mb
-        !   temperatures: K
-        !   heights       km
-        !
-        ! CONST: 10^-1 K m^-3 hPa^-1
-        !
-        ! ==> aircolumns: 10^4 m^-2  or 10^10 km^-2  or  cm^-2
-        ! --------------------------------------------------------
-        DO n = 0, CmETA-1
-          lhgt(n) = -16.0_r8 * log10(cli_heights(ixtrack,itimes,n+1) / 1013.0_r8)
-        END DO
-
-        ! Create a fake top of atmos 1 km above top altitude of the
-        ! climatology
-        lhgt(CmETA)     = cli_heights(ixtrack,itimes,CmETA) / 1000.0_r8 + 1.0_r8
-        lpre(0:CmETA-1) = cli_heights(ixtrack,itimes,1:CmETA)
-        ltmp(0:CmETA-1) = cli_temperature(ixtrack,itimes,1:CmETA)
-
-        ! --------------------------------------------
-        ! extrapolated temperature and pressure at TOA
-        ! --------------------------------------------
-        grad        =  LOG ( lpre(CmETA-2)/lpre(CmETA-1) ) / (lhgt(CmETA-2) - lhgt(CmETA-1))
-        lpre(CmETA) = EXP( LOG( lpre(CmETA-1)) + grad * (lhgt(CmETA) - lhgt(CmETA-1) ) )
-        grad        = (ltmp(1) - ltmp(2)) / (lhgt(1) - lhgt(2))
-        ltmp(CmETA) = ltmp(CmETA-1) + grad*(lhgt(CmETA) - lhgt(CmETA-1))
-
-        DO n = 1, CmETA
-          n1                   = n - 1
-          rho1                 = lpre(n1) / ltmp(n1)
-          rho2                 = lpre(n)  / ltmp(n)
-          aircolumn            = 0.5_r8*rho_zero*(rho1+rho2)*(lhgt(n)-lhgt(n1))*km2cm
-
-          ! -------------------------------------------------------------
-          ! Divided by 1E09 to convert from ppb in the climatology to VMR
-          ! -------------------------------------------------------------
-          gas_partialcolumn(n) = aircolumn * climatology(ixtrack,itimes,n) / 1.0E09
-
-        END DO
-
-        !  Set non-physical entries to zero.
-        WHERE ( gas_partialcolumn(1:CmETA) < 0.0_r8 )
-          gas_partialcolumn(1:CmETA) = 0.0_r8
-        END WHERE
-
+   
         ! -------------------------
         ! Finally work out the AMFs
         ! -------------------------
         saoamf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:CmETA) * &
-          gas_partialcolumn(1:CmETA))     / &
-          SUM(gas_partialcolumn(1:CmETA))
-
-        !!$          ! --------------------------
-        !!$          ! Eskes and Boersma 2003 ACP
-        !!$          ! --------------------------
-        !!$          DO n = 1, CmETA
-        !!$             akernels(ixtrack,itimes,n) =  scattw(ixtrack,itimes,n) / saoamf(ixtrack,itimes)
-        !!$          END DO
+             climatology(ixtrack,itimes,1:CmETA))     / &
+             SUM(climatology(ixtrack,itimes,1:CmETA))
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
