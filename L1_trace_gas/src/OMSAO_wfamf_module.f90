@@ -295,7 +295,6 @@ CONTAINS
       ! -----------------------------
       ! Read the OMI L2 cloud product
       ! -----------------------------
-      !locerrstat = pge_errstat_ok
 
       cloud_file = voc_amf_filenames(voc_omicld_idx)
       if (0 /= index (cloud_file, ".he5", .true.)) then
@@ -934,9 +933,6 @@ CONTAINS
     IF (grid_file_id == he5_stat_fail) THEN
       call tell_error (tell_io_open_error, "omi_omler_albedo: opening Omler grid file"//trim(grid_file), &
                        errstat)
-      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDOPEN, modulename, &
-      !  vb_lev_default, locerrstat)
-      !errstat = MAX (errstat, locerrstat)
       RETURN
     END IF
 
@@ -945,9 +941,6 @@ CONTAINS
     ! ----------------------------------------------
     grid_id = HE5_GDattach (grid_file_id, grid_name)
     IF (grid_id == he5_stat_fail) THEN
-      !CALL error_check (0, 1, pge_errstat_error, OMSAO_E_HE5GDATTACH, modulename, &
-      !  vb_lev_default, locerrstat)
-      !errstat = MAX( errstat, locerrstat)
       call tell_error (tell_io_read_error, "omi_omler_albedo: attaching to Omler grid file"// &
                        trim(grid_file), errstat)
       return
@@ -1010,23 +1003,22 @@ CONTAINS
     ! -Month
     ! -Selected wavelenghts
     ! ---------------------------
-
     month = granule_month - 1
 
     he5_start_4d  = (/  0,  0, minwvl-1, month/)
     he5_stride_4d = (/  1,  1,        1,     1/)
     he5_edge_4d   = (/OMLER_n_longitudes,OMLER_n_latitudes, &
       OMnwvl, 1/)
-    locerrstat = HE5_GDRDFLD(grid_id, "MonthlySurfaceReflectance",  &
+    locerrstat = HE5_GDRDFLD(grid_id, "MonthlyMinimumSurfaceReflectance",  &
       he5_start_4d, he5_stride_4d, he5_edge_4d, OMLER_monthly_albedo)
     errstat = MAX (errstat, locerrstat)
 
     ! ----------------------------
     ! Read the albedo scale factor
     ! ----------------------------
-    locerrstat = HE5_GDRDLATTR(grid_id, "MonthlySurfaceReflectance", &
+    locerrstat = HE5_GDRDLATTR(grid_id, "MonthlyMinimumSurfaceReflectance", &
       "ScaleFactor", scale_factor)
-    locerrstat = HE5_GDRDLATTR(grid_id, "MonthlySurfaceReflectance", &
+    locerrstat = HE5_GDRDLATTR(grid_id, "MonthlyMinimumSurfaceReflectance", &
       "Offset", offset)
 
     ! --------------------
@@ -1042,10 +1034,6 @@ CONTAINS
       call tell_error (tell_io_error, "omi_omler_albedo: closing Omler grid file"// &
                        trim(grid_file), errstat)
       return
-      !CALL error_check (0, 1, pge_errstat_error, OMSAO_W_HE5GDCLOSE, modulename, &
-      !  vb_lev_default, locerrstat)
-      !errstat = MAX (errstat, locerrstat)
-      !RETURN
     END IF
 
     OMLER_wvl_albedo = REAL(offset, KIND = r8) +          &
@@ -1115,6 +1103,7 @@ CONTAINS
           minlat(1):maxlat(1), 1, 1),            &
           one, one, plon, plat, albedo(ixtrack,itimes),       &
           locerrstat )
+        print*, albedo(ixtrack,itimes)
       END DO
     END DO
 
@@ -1130,7 +1119,7 @@ CONTAINS
     endif
 
     errstat = MAX(errstat, locerrstat)
-
+    stop
   END SUBROUTINE omi_omler_albedo
 
   SUBROUTINE extract_swathname ( nswath, multi_swath, swathstr, single_swath )
