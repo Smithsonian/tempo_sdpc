@@ -7,7 +7,8 @@ MODULE he5_output_tools
 
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
 
-  USE OMSAO_he5_module, ONLY: he5_start_2d, he5_stride_2d, he5_edge_2d, &
+  USE OMSAO_he5_module, ONLY: he5_start_1d, he5_stride_1d, he5_edge_1d, &
+    he5_start_2d, he5_stride_2d, he5_edge_2d, &
     he5_start_3d, he5_stride_3d, he5_edge_3d, &
     HE5T_NATIVE_DOUBLE, HE5T_NATIVE_FLOAT, HE5T_NATIVE_INT, &
     HE5T_NATIVE_INT16, HE5T_NATIVE_CHAR, &
@@ -46,7 +47,7 @@ MODULE he5_output_tools
     saopge_geofield_read, saopge_columninfo_read, he5_init_swath, &
     he5_define_fields, he5_close_output_file, he5_set_field_attributes, &
     he5_write_swath_attributes, he5_write_global_attributes, &
-    he5_write_wavcal_output, he5_write_common_mode
+    he5_write_wavcal_output, he5_write_common_mode, saopge_geofieldtime_read
 
 CONTAINS
 
@@ -2683,5 +2684,71 @@ CONTAINS
 
     RETURN
   END SUBROUTINE saopge_columninfo_read
+
+  SUBROUTINE saopge_geofieldtime_read ( &
+      ntimes, geodata_field, geodata, errstat )
+
+    USE OMSAO_precision_module, ONLY: i2, i4, r4
+    USE OMSAO_parameters_module,   ONLY: NLINES_MAX, r4_missval
+    USE OMSAO_errstat_module
+    USE datafields, ONLY: thgt_field
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4), INTENT (IN) :: ntimes
+    CHARACTER (LEN=*), INTENT (IN) :: geodata_field
+
+    ! -----------------
+    ! Modified variable
+    ! -----------------
+    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+
+    ! ----------------
+    ! Output variable
+    ! ----------------
+    REAL    (KIND=r8), DIMENSION (0:ntimes-1), INTENT (OUT) :: geodata
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4)  :: locerrstat, iline, nblock
+
+    ! -------------------------------------
+    ! Initialize output and local variables
+    ! -------------------------------------
+    geodata = r4_missval ; locerrstat = pge_errstat_ok
+
+    ! -------------------------------------------------------
+    ! Loop over all lines in the file in blocks of NLINES_MAX
+    ! -------------------------------------------------------
+    ScanLines: DO iline = 0, ntimes-1, NLINES_MAX
+
+      ! --------------------------------------------------------
+      ! Check if loop ends before n_times_loop max is exhausted.
+      ! --------------------------------------------------------
+      nblock = MIN ( NLINES_MAX, ntimes-iline )
+
+      ! ----------------------------------------------------
+      ! Read current data block fitting output from HE5 file
+      ! ----------------------------------------------------
+      he5_start_1d  = (/ iline /)
+      he5_stride_1d = (/     1 /)
+      he5_edge_1d   = (/nblock /)
+
+      ! --------------------------------------
+      ! Geolocation field
+      ! --------------------------------------
+      locerrstat = HE5_SWrdfld ( pge_swath_id, TRIM(ADJUSTL(geodata_field)),         &
+           he5_start_1d, he5_stride_1d, he5_edge_1d, geodata(iline:iline+nblock-1) )
+
+    END DO ScanLines
+
+    errstat = MAX ( errstat, locerrstat )
+
+    RETURN
+  END SUBROUTINE saopge_geofieldtime_read
+
 
 END MODULE

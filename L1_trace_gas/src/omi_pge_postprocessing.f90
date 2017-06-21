@@ -31,13 +31,13 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
-    he5_write_fitting_statistics
+    he5_write_fitting_statistics, saopge_geofieldtime_read
   use output_tools, only : read_geofields, read_column_results, &
     copy_pixel_corners, copy_metadata
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col
-  use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field
+  use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
   IMPLICIT NONE
 
   ! ---------------
@@ -59,6 +59,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------
   ! (1) OMI data
   ! ----------------
+  REAL    (KIND=r8), DIMENSION (0:ntimes-1) :: time
   REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1) :: lat, lon, sza, vza, thg
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
@@ -88,8 +89,9 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL  saopge_geofield_read ( ntimes, nxtrack, sza_field,  sza, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
   CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
+  CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
   else
-    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, errstat)
+    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, time, errstat)
     if (errstat /= 0) return
   endif
 

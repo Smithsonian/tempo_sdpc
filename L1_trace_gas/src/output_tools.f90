@@ -1600,8 +1600,9 @@ contains
   !! @param[inout] sza   Solar zenith angle [deg]
   !! @param[inout] vza   Viewing zenith angle [deg]
   !! @param[inout] thgt  Terrain height
+  !! @param[inout] time  Time [s]
   !! @param[inout] errstat  Error status variable
-  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thgt, errstat)
+  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thgt, time, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
     use tio_module
     implicit none
@@ -1609,6 +1610,7 @@ contains
     integer (kind=i4), intent(in) :: ntimes, nxtrack
     ! these arrays are (1:nxtrack,0:ntimes-1)
     real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, thgt
+    real (kind=r8), dimension(:), intent(inout) :: time
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1624,6 +1626,7 @@ contains
     call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
+    call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
