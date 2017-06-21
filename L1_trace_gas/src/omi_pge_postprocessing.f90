@@ -28,7 +28,7 @@ SUBROUTINE omi_pge_postprocess ( &
   use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
-  USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, climatology_allocate, &
+  USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics

@@ -17,7 +17,7 @@ MODULE OMSAO_wfamf_module
   IMPLICIT NONE
   private
 
-  public read_climatology_dimensions, amf_calculation_bis, climatology_allocate, &
+  public read_climatology_dimensions, amf_calculation_bis, &
     wfamf_deallocate
 
   ! ---------
