@@ -1376,8 +1376,11 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    deallocate (latvals, lonvals, timevals, Temperature, &
-                 Gas_profiles, H2O_profiles, Psurface, stat=errstat)
+    deallocate (latvals, lonvals, timevals, stat=errstat)
+    if (allocated(Temperature)) DEALLOCATE(Temperature, stat=errstat)
+    if (allocated(Gas_profiles)) DEALLOCATE(Gas_profiles, stat=errstat)
+    if (allocated(H2O_profiles)) DEALLOCATE(H2O_profiles, stat=errstat)
+    if (allocated(Psurface)) DEALLOCATE(Psurface, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
