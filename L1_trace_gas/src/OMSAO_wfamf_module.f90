@@ -317,7 +317,7 @@ CONTAINS
       ! Read climatology and interpolate to lon/lat/time
       ! ------------------------------------------------
       CALL omi_climatology (pge_idx, climatology, cli_heights, cli_psurface, cli_temperature, lat, lon, &
-        nt, nx, xtrange, errstat)
+        time, nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -413,7 +413,7 @@ CONTAINS
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (pge_idx, climatology, local_heights, local_psurf, local_temperature, &
-       lat, lon, nt, nx, xtrange, errstat)
+       lat, lon, time, nt, nx, xtrange, errstat)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -421,7 +421,7 @@ CONTAINS
     ! Just pick the closest model grid
     ! =========================================
     USE OMSAO_indices_module, ONLY: sao_molecule_names, pge_h2o_idx
-    USE OMSAO_omidata_module, ONLY: omi_oob_cli, omi_time, omi_time_utc
+    USE OMSAO_omidata_module, ONLY: omi_oob_cli
     USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
     USE OMSAO_parameters_module, ONLY: nUTCdim
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
@@ -437,6 +437,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx, pge_idx
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon
+    REAL    (KIND=r8), DIMENSION (0:nt-1), INTENT (IN) :: time
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
     
     ! ------------------
@@ -462,6 +463,8 @@ CONTAINS
     CHARACTER (LEN=MAX_STR_LEN) :: swath_file, swath_name, locswathname, datafield_name, &
          gasdatafieldname, h2odatafieldname
     INTEGER (KIND=C_LONG) :: nswathcl, swlen
+    INTEGER (KIND=i2), DIMENSION(nUTCdim) :: time_utc
+    
 
     ! -----------------------
     ! Some physical constants
@@ -580,13 +583,18 @@ CONTAINS
     DO itimes = 0, nt-1
        
        spix = xtrange(itimes,1); epix = xtrange(itimes,2)
-       CALL convert_tai_to_utc(nUTCdim, omi_time(itimes), omi_time_utc(1:nUTCdim,itimes))
+       CALL convert_tai_to_utc(nUTCdim, time(itimes), time_utc(1:nUTCdim))
+       ltime = REAL(time_utc(4),KIND=r8)+REAL(time_utc(5),KIND=r8)/60.0
+
+       IF (ltime .LT. MINVAL(timevals)) ltime = REAL(MINVAL(timevals),KIND=r8)
+       IF (ltime .GT. MAXVAL(timevals)) ltime = REAL(MAXVAL(timevals),KIND=r8)
+
        
        DO ixtrack = spix, epix
           
           llon = REAL(lon(ixtrack,itimes),KIND=r8)
           llat = REAL(lat(ixtrack,itimes),KIND=r8)
-          ltime = REAL(omi_time_utc(4,itimes),KIND=r8)
+
           
           IF (llon .LT. MINVAL(lonvals)) llon = REAL(MINVAL(lonvals),KIND=r8)
           IF (llon .GT. MAXVAL(lonvals)) llon = REAL(MAXVAL(lonvals),KIND=r8)
