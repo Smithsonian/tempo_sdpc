@@ -316,7 +316,7 @@ CONTAINS
       ! Read climatology and interpolate to lon/lat/time
       ! ------------------------------------------------
       CALL omi_climatology (pge_idx, climatology, cli_heights, cli_psurface, cli_temperature, lat, lon, &
-        nt, nx, amfdiag, xtrange, errstat)
+        nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -412,7 +412,7 @@ CONTAINS
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (pge_idx, climatology, local_heights, local_psurf, local_temperature, &
-       lat, lon, nt, nx, amfdiag, xtrange, errstat)
+       lat, lon, nt, nx, xtrange, errstat)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -441,7 +441,6 @@ CONTAINS
     ! ------------------
     ! Modified variables
     ! ------------------
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: amfdiag
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology, &
          local_temperature, local_heights
@@ -588,19 +587,14 @@ CONTAINS
           llat = REAL(lat(ixtrack,itimes),KIND=r8)
           ltime = REAL(omi_time_utc(4,itimes),KIND=r8)
           
-          ! If they are out of boudns, bring them to the closest node
-!!$          IF (llon .LT. MINVAL(lonvals) .OR. & 
-!!$               llat .LT. MINVAL(latvals) .OR. &
-!!$               llon .GT. MAXVAL(lonvals) .OR. &
-!!$               llat .GT. MAXVAL(latvals)) amfdiag(ixtrack,itimes) = omi_oob_cli
-          IF (llon .LT. MINVAL(lonvals)) llon = MINVAL(lonvals)
-          IF (llon .GT. MAXVAL(lonvals)) llon = MAXVAL(lonvals)
-          IF (llat .LT. MINVAL(latvals)) llat = MINVAL(latvals)
-          IF (llat .GT. MAXVAL(latvals)) llat = MAXVAL(latvals)
+          IF (llon .LT. MINVAL(lonvals)) llon = REAL(MINVAL(lonvals),KIND=r8)
+          IF (llon .GT. MAXVAL(lonvals)) llon = REAL(MAXVAL(lonvals),KIND=r8)
+          IF (llat .LT. MINVAL(latvals)) llat = REAL(MINVAL(latvals),KIND=r8)
+          IF (llat .GT. MAXVAL(latvals)) llat = REAL(MAXVAL(latvals),KIND=r8)
 
           ! ------------------------------------------------------------------------
           ! Given the values of lonvals, latvals, timevals and llon, llat, and ltime
-          ! determine the indices of the values to be read from the climatology file
+          ! determine the indices of climatolgoy values to be read.
           ! Using linear interpolation only 2 nodes needed in each dimension or if 
           ! outbounds, closest node is selected
           ! ------------------------------------------------------------------------
