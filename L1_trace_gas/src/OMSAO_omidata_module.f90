@@ -11,6 +11,7 @@ MODULE OMSAO_omidata_module
     ! 2d arrays are (nxtrack, 0:ntimes-1)
     real (kind=r8), dimension(:,:), allocatable :: column_amount, column_uncertainty
     real (kind=r8), dimension(:,:), allocatable :: rms
+    real (kind=r8), dimension(:), allocatable :: time
     real (kind=r4), dimension(:,:), allocatable :: latitude, longitude, height
     real (kind=r4), dimension(:,:), allocatable :: sza, vza
     integer (kind=i2), dimension(:,:), allocatable :: fit_flag, xtr_flag
@@ -365,6 +366,8 @@ contains
          deallocate (rt%fit_flag, stat=errstat)
     if (allocated (rt%xtr_flag) .and. errstat == 0) &
          deallocate (rt%xtr_flag, stat=errstat)
+    if (allocated (rt%time) .and. errstat == 0) &
+         deallocate (rt%time, stat=errstat)
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, "dealloc_retrieval_type: failed", &
            errstat)
@@ -393,7 +396,8 @@ contains
       rt%sza(nxtrack, 0:ntimes-1), &
       rt%vza(nxtrack, 0:ntimes-1), &
       rt%fit_flag(nxtrack, 0:ntimes-1), &
-      rt%xtr_flag(nxtrack, 0:ntimes-1), stat=locerrstat)
+      rt%xtr_flag(nxtrack, 0:ntimes-1), &
+      rt%time(0:ntimes-1), stat=locerrstat)
     if (locerrstat /= 0) then
       call tell_error (tell_malloc_error, "alloc_retrieval_type:  allocation failed", errstat)
       return

@@ -137,7 +137,7 @@ SUBROUTINE omi_pge_postprocess ( &
   do_write = .TRUE.
   call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation_bis')
   CALL amf_calculation_bis (                             &
-    pge_idx, ntimes, nxtrack, lat, lon, sza, vza,     &
+    pge_idx, ntimes, nxtrack, lat, lon, sza, vza, time,  &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
     saocol, saodco, saoamf, thg, do_write, &
     errstat              )

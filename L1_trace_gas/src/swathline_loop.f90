@@ -269,6 +269,7 @@ SUBROUTINE swathline_loops (                               &
           retrieval_opt%fit_flag(fpix:lpix,scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
           retrieval_opt%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
           retrieval_opt%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
+          retrieval_opt%time(scanline_no)                         = omi_time(iloop)
         endif
       !always true -> END IF
 

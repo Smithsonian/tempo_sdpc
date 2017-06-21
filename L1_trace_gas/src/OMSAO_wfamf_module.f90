@@ -182,7 +182,7 @@ CONTAINS
   end subroutine wfamf_deallocate
 
   SUBROUTINE amf_calculation_bis (            &
-      pge_idx, nt, nx, lat, lon, sza, vza,   &
+      pge_idx, nt, nx, lat, lon, sza, vza, time,  &
       snow, glint, xtrange, do_szoom,        &
       saocol, saodco, saoamf, terrain_height,&
       do_write, errstat                                )
@@ -209,6 +209,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx, pge_idx
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, sza, vza, terrain_height
+    REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
     LOGICAL,           DIMENSION (     0:nt-1), INTENT (IN) :: do_szoom
     LOGICAL                                                 :: do_write
