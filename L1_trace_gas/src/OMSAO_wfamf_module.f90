@@ -849,7 +849,7 @@ CONTAINS
     ! the orbit to processed. Then it interpolates the values for each
     ! one of the pixels of the orbit to be analyzed
     ! ==================================================================
-
+    USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE OMSAO_variables_module, ONLY: OMSAO_OMLER_filename, &
       winwav_min, winwav_max
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation, &
@@ -884,29 +884,23 @@ CONTAINS
     INTEGER (KIND=i2), ALLOCATABLE, DIMENSION(:,:,:,:) :: &
       OMLER_monthly_albedo
     REAL    (KIND=r8), ALLOCATABLE, DIMENSION(:,:,:,:) :: &
-      OMLER_albedo, OMLER_wvl_albedo
+      OMLER_wvl_albedo
+    REAL    (KIND=r8), ALLOCATABLE, DIMENSION(:,:) :: &
+      OMLER_albedo
 
     ! --------------------
     ! More Local variables
     ! --------------------
-    CHARACTER (LEN=34),  PARAMETER :: grid_name = &
-      'EarthSurfaceReflectanceClimatology'
-    CHARACTER (LEN=MAX_STR_LEN)       :: grid_file
-
-    INTEGER   (KIND=i4), DIMENSION(1)   :: minwvl, maxwvl, minlon,    &
-      maxlon, minlat, maxlat
-    INTEGER   (KIND=i4), PARAMETER      :: OMLER_n_latitudes   = 360, &
-      OMLER_n_longitudes  = 720, &
-      OMLER_n_wavelenghts =  23, &
-      one                 =   1
-    INTEGER   (KIND=i4)                 :: itimes, ixtrack, spix,     &
-      epix, ilon, ilat, nlon,    &
-      nlat, OMnwvl
-    INTEGER   (KIND=i4)                 :: grid_id, grid_file_id, month
-
-    REAL      (KIND=r8), DIMENSION(1)   :: plon, plat, midwvl
-    REAL      (KIND=r4)                 :: scale_factor, offset
-    REAL      (KIND=r8)                 :: lonp, latp
+    CHARACTER (LEN=34), PARAMETER :: grid_name = 'EarthSurfaceReflectanceClimatology'
+    CHARACTER (LEN=MAX_STR_LEN) :: grid_file
+    INTEGER (KIND=i4), PARAMETER :: OMLER_n_latitudes = 360, &
+      OMLER_n_longitudes = 720, OMLER_n_wavelenghts =  23, one = 1
+    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, ilon, ilat, nlon, &
+      nlat, OMnwvl, grid_id, grid_file_id, month, minwvl, maxwvl
+    INTEGER (KIND=i4), DIMENSION(2) :: lon_idx, lat_idx
+    REAL (KIND=r4) :: scale_factor, offset
+    REAL (KIND=r8) :: lonp, latp
+    REAL (KIND=r8), DIMENSION(1) :: midwvl
 
     ! ------------------------
     ! Error handling variables
@@ -949,7 +943,7 @@ CONTAINS
     ALLOCATE (OMLER_longitude(OMLER_n_longitudes), &
               OMLER_latitude(OMLER_n_latitudes), &
               OMLER_wvl(OMLER_n_wavelenghts), &
-              OMLER_albedo(OMLER_n_longitudes, OMLER_n_latitudes, 1,1), &
+              OMLER_albedo(OMLER_n_longitudes, OMLER_n_latitudes), &
               stat=locerrstat)
     if (locerrstat /= 0) then
       call tell_error (tell_malloc_error, "omi_omler_albedo:  allocate failed", &
@@ -984,10 +978,10 @@ CONTAINS
     ! -----------------------------------------------
     ! Select the wavelenghts; finding array positions
     ! -----------------------------------------------
-    midwvl = (amf_wvl + amf_wvl2) / 2.0_r8
-    minwvl = MINLOC(OMLER_wvl, OMLER_wvl .GE. REAL(winwav_min,KIND=r4))
-    maxwvl = MAXLOC(OMLER_wvl, OMLER_wvl .LE. REAL(winwav_max,KIND=r4))
-    OMnwvl = maxwvl(1)-minwvl(1)+1
+    midwvl(1) = REAL((amf_wvl + amf_wvl2) / 2.0_r8,KIND=r8)
+    minwvl = MINLOC(OMLER_wvl, 1, OMLER_wvl .GE. REAL(winwav_min,KIND=r4))
+    maxwvl = MAXLOC(OMLER_wvl, 1, OMLER_wvl .LE. REAL(winwav_max,KIND=r4))
+    OMnwvl = maxwvl-minwvl+1
 
     allocate (OMLER_monthly_albedo(OMLER_n_longitudes, OMLER_n_latitudes, OMnwvl,1), &
               OMLER_wvl_albedo(OMLER_n_longitudes, OMLER_n_latitudes, OMnwvl,1), &
@@ -1046,10 +1040,10 @@ CONTAINS
     ! ----------------------------------------------------------------
     DO ilon = 1, OMLER_n_longitudes
       DO ilat = 1, OMLER_n_latitudes
-        CALL ezspline_1d_interpolation (                            &
-          OMnwvl, REAL(OMLER_wvl(minwvl(1):maxwvl(1)), KIND=r8), &
-          OMLER_wvl_albedo(ilon,ilat,1:OMnwvl,1),                &
-          one, midwvl, OMLER_albedo(ilon,ilat,1,1), errstat )
+        CALL ezspline_1d_interpolation ( &
+          OMnwvl, REAL(OMLER_wvl(minwvl:maxwvl), KIND=r8), &
+          OMLER_wvl_albedo(ilon,ilat,1:OMnwvl,1), &
+          one, midwvl, OMLER_albedo(ilon,ilat), locerrstat )
       END DO
     END DO
 
@@ -1061,49 +1055,47 @@ CONTAINS
       spix = xtrange(itimes,1); epix = xtrange(itimes,2)
       DO ixtrack = spix, epix
 
-        plon(1) = r8_missval
-        plat(1) = r8_missval
-        plon(1) = REAL(lon(ixtrack,itimes), KIND=r8)
-        plat(1) = REAL(lat(ixtrack,itimes), KIND=r8)
-        lonp = plon(1)
-        latp = plat(1)
+        lonp = REAL(lon(ixtrack,itimes), KIND=r8)
+        latp = REAL(lat(ixtrack,itimes), KIND=r8)
 
-        IF (lon(ixtrack,itimes) .LT. -180.0_r4 .OR. &
-          lat(ixtrack,itimes) .LT.  -90.0_r4 .OR. &
-          lon(ixtrack,itimes) .GT.  180.0_r4 .OR. &
-          lat(ixtrack,itimes) .GT.  90.0_r4) CYCLE
+        ! -----------------------------------------
+        ! Locate two closest indices to lon and lat
+        ! in OMLER_longitude and OMLER_latitudes.
+        ! If result out of bounds bring it to the
+        ! closest boundary.
+        ! ------------------------------------------
+        CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
+             lon_idx(1), 'Lower')
+        IF (lon_idx(1) .EQ. -2) lon_idx(1) = 1
+        IF (lon_idx(1) .EQ. -3) lon_idx(1) = OMLER_n_longitudes
+        CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
+             lon_idx(2), 'Upper')
+        IF (lon_idx(2) .EQ. -2) lon_idx(2) = 1
+        IF (lon_idx(2) .EQ. -3) lon_idx(2) = OMLER_n_longitudes
+        nlon = lon_idx(2)-lon_idx(1)+1
 
-        ! -------------------------------------------------
-        ! To speed up the interpolation a field of +- 2 deg
-        ! rees on latitude and longitude will be used from
-        ! OMLER centered around the OMI pixel.
-        ! ----------------------------------------------------------
-        ! Finding which OMLER pixels go in to the interpolation
-        ! If we are too close to the boundaries I just move them to
-        ! the interior. Good for the latitude, no so good for the
-        ! longitude, but over the Pacific it should make no much dif
-        ! ference
-        ! ----------------------------------------------------------
-        IF (latp .LT. -88.0) latp = -89.0
-        IF (latp .GT.  88.0) latp =  89.0
-        IF (lonp .LT. -178.0) lonp = -179.0
-        IF (lonp .GT.  178.0) lonp =  179.0
+        CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
+             lat_idx(1), 'Lower')
+        IF (lat_idx(1) .EQ. -2) lat_idx(1) = 1
+        IF (lat_idx(1) .EQ. -3) lat_idx(1) = OMLER_n_latitudes
+        CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
+             lat_idx(2), 'Upper')
+        IF (lat_idx(2) .EQ. -2) lat_idx(2) = 1
+        IF (lat_idx(2) .EQ. -3) lat_idx(2) = OMLER_n_latitudes
+        nlat = lat_idx(2)-lat_idx(1)+1
+        
+        albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
+             REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
+             REAL(OMLER_latitude(lat_idx(1):lat_idx(2)),KIND=r8), &
+             OMLER_albedo(lon_idx(1):lon_idx(2),lat_idx(1):lat_idx(2)), &
+             lonp, latp, status=locerrstat)
 
-        minlon = MINLOC(OMLER_longitude, OMLER_longitude .GE. lonp-1.0)
-        maxlon = MAXLOC(OMLER_longitude, OMLER_longitude .LE. lonp+1.0)
-        minlat = MINLOC(OMLER_latitude,  OMLER_latitude  .GE. latp-1.0)
-        maxlat = MAXLOC(OMLER_latitude,  OMLER_latitude  .LE. latp+1.0)
-        nlon   = maxlon(1)-minlon(1)+1
-        nlat   = maxlat(1)-minlat(1)+1
+        if (locerrstat /= 0) then
+           call tell_error (tell_malloc_error, &
+                "omi_omler_albedo: lon/lat interpolation failed", errstat)
+           return
+        endif
 
-        CALL ezspline_2d_interpolation ( nlon, nlat,             &
-          REAL(OMLER_longitude(minlon(1):maxlon(1)),KIND=r8), &
-          REAL(OMLER_latitude (minlat(1):maxlat(1)),KIND=r8), &
-          OMLER_albedo(minlon(1):maxlon(1),                   &
-          minlat(1):maxlat(1), 1, 1),            &
-          one, one, plon, plat, albedo(ixtrack,itimes),       &
-          locerrstat )
-        print*, albedo(ixtrack,itimes)
       END DO
     END DO
 
@@ -1119,7 +1111,7 @@ CONTAINS
     endif
 
     errstat = MAX(errstat, locerrstat)
-    stop
+    
   END SUBROUTINE omi_omler_albedo
 
   SUBROUTINE extract_swathname ( nswath, multi_swath, swathstr, single_swath )
