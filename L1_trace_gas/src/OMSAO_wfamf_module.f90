@@ -1125,6 +1125,9 @@ CONTAINS
         IF (lat_idx(2) .EQ. -2) lat_idx(2) = 1
         IF (lat_idx(2) .EQ. -3) lat_idx(2) = OMLER_n_latitudes
         nlat = lat_idx(2)-lat_idx(1)+1
+
+        IF (nlon .EQ. 1) lonp = REAL(OMLER_longitude(lon_idx(1)),KIND=r8)
+        IF (nlon .EQ. 1) latp = REAL(OMLER_latitude(lat_idx(1)),KIND=r8)
         
         albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
              REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
@@ -1133,7 +1136,7 @@ CONTAINS
              lonp, latp, status=locerrstat)
 
         if (locerrstat /= 0) then
-           call tell_error (tell_malloc_error, &
+           call tell_error (tell_runtime_error, &
                 "omi_omler_albedo: lon/lat interpolation failed", errstat)
            return
         endif
