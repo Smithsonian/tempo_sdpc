@@ -194,7 +194,7 @@ contains
          lbe_idx, ad2_idx, mxs_idx, &
          bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
          sc3_idx, sin_idx, shi_idx, squ_idx!, hwe_idx, wvl_idx, asy_idx
-    USE OMSAO_parameters_module, ONLY: max_spec_pts, max_fit_pts
+    USE OMSAO_parameters_module, ONLY: max_spec_pts!, max_fit_pts
     USE OMSAO_variables_module,  ONLY: fitvar_rad, mask_fitvar_rad, &
          n_refwvl, refwvl!, curr_rad_spec, curr_sol_spec
          
@@ -212,8 +212,10 @@ contains
     REAL (KIND=dp),  INTENT (IN) :: rad_wav_avg
     REAL (KIND=dp), DIMENSION (n_fitvar),   INTENT (IN) :: fitvar
     REAL (KIND=dp), DIMENSION (npoints),    INTENT (IN) :: locwvl
-    REAL (KIND=dp), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: database
-!    REAL (KIND=dp), DIMENSION (max_rs_idx,max_fit_pts), INTENT (IN) :: database
+    REAL (KIND=dp), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: &
+         database
+!    REAL (KIND=dp), DIMENSION (max_rs_idx,max_fit_pts), INTENT (IN) :: &
+!         database
 
     ! ================
     ! Output variables
@@ -300,7 +302,7 @@ contains
              sunspec_ss (1:npoints))
 
       DO j = 1, max_rs_idx
-        IF ( j /= solar_idx .AND. j /= ring_idx ) THEN !.AND. database(j,1:npoints) /= 0.0) THEN
+        IF ( j /= solar_idx .AND. j /= ring_idx ) THEN 
           i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
           fit(1:npoints) = fit(1:npoints) + fitvar_rad(i) * &
                database(j,3:n_refwvl-2)
@@ -311,7 +313,7 @@ contains
 
       ! Initial add-on contributions.
       DO j = 1, max_rs_idx
-        IF ( j /= solar_idx ) THEN !.AND. database(j,1:npoints) /= 0.0_dp ) THEN
+        IF ( j /= solar_idx ) THEN
           i = max_calfit_idx + (j-1)*mxs_idx + ad1_idx
           fit(1:npoints) = fit(1:npoints) + fitvar_rad(i) * &
                database(j,3:n_refwvl-2)
@@ -319,7 +321,7 @@ contains
       END DO
       ! Beer's law contributions.
       DO j = 1, max_rs_idx
-        IF ( j /= solar_idx ) THEN !.AND. database(j,1:npoints) /= 0.0_dp ) THEN
+        IF ( j /= solar_idx ) THEN
           i = max_calfit_idx + (j-1)*mxs_idx + lbe_idx
           fit(1:npoints) = fit(1:npoints) * &
                EXP(-fitvar_rad(i)*database(j,3:n_refwvl-2))
@@ -328,7 +330,7 @@ contains
       END DO
       ! Final add-on contributions.
       DO j = 1, max_rs_idx
-        IF ( j /= solar_idx ) THEN !.AND. database(j,1:npoints) /= 0.0_dp ) THEN
+        IF ( j /= solar_idx ) THEN
           i = max_calfit_idx + (j-1)*mxs_idx + ad2_idx
           fit(1:npoints) = fit(1:npoints) + fitvar_rad(i) * &
                database(j,3:n_refwvl-2)

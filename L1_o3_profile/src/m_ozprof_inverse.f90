@@ -1,8 +1,8 @@
 !
 module m_ozprof_inverse
 
-  public ozprof_inverse, step2_specfit
-  private get_caloz, twostep_inversion, negativeo3_inversion
+  public ozprof_inverse
+  private get_caloz, negativeo3_inversion
 
 contains
 
@@ -24,17 +24,17 @@ contains
   ! Exit status
   ! exval = 0, not converge
   !       = 1, using absolute radiance converge in OE/PTR (delchi < epsrel)
-  !       = 2, converge in LIDORT (delchi < epsrel): 
-  !       = 4, ozone parameters change less than epsrel!       
+  !       = 2, converge in LIDORT (delchi < epsrel):
+  !       = 4, ozone parameters change less than epsrel!
   !       =+10, used modified a  priori (e.g., ozone hole condition)
   !       =+20, used UV2 retrievals (maybe modified a priori)
-  !       = +100, negative values occur for the last iteration 
-  !       = 3, 1 + 2      
-  !       = 5, 1 + 4     
+  !       = +100, negative values occur for the last iteration
+  !       = 3, 1 + 2
+  !       = 5, 1 + 4
   !       = 6, 2 + 4
-  !       = 7, 4 + 2 + 1 
+  !       = 7, 4 + 2 + 1
   !       = -1, failure due to set_cldalb (specfit_ozprof.f90)
-  !       = -2, failure due to regular matrix with Tikhonov 
+  !       = -2, failure due to regular matrix with Tikhonov
   !             (specfit_ozprof.f90) or making atmosphere
   !       = -3, failure due to out of bounds
   !       = -4, failure in get_raman
@@ -46,7 +46,7 @@ contains
        ns, np, sa, bb, nchisq, fitspec, fitres, exval)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module,  ONLY: maxlay 
+    USE OMSAO_parameters_module,  ONLY: maxlay
     USE ozprof_data_module,       ONLY: ffidx=>ozfit_start_index, &
          flidx=>ozfit_end_index, ozwrtint_unit, ozwrtint, num_iter, &
          avg_kernel, contri, covar, ncovar, ozdfs, ozinfo, use_oe, nlay, &
@@ -55,14 +55,14 @@ contains
          ozwrtfavgk, favg_kernel, radcalwrt, use_lograd, which_caloz, &
          start_layer, end_layer, atmosprof, ozwrtwf, weight_function, &
          do_simu, wrtring, wfcfidx, nfwfc, ecfrind, ecfrfind, so2zfind, &
-         so2valts, do_twostep, use_large_so2_aperr, use_effcrs, &
-         do_simu_rmring!, tf_fidx, tf_lidx, nt_fit, saa_flag, lcurve_unit, 
-         !do_bothstep
+         so2valts, use_large_so2_aperr, use_effcrs, &
+         do_simu_rmring!, tf_fidx, tf_lidx, nt_fit, saa_flag, lcurve_unit,
+    !do_bothstep, do_twostep,
     USE OMSAO_variables_module,   ONLY: fitvar_rad, mask_fitvar_rad, epsrel, &
          fitwavs, fitweights, maxit=>max_itnum_rad, clmspec_rad, nradpix, &
          numwin, currpix, currline, currloop, the_surfalt, band_selectors!, &
-         !the_sza_atm, the_vza_atm, scnwrt, npix_fitted, fitvar_rad_init, &
-         !fitvar_rad_apriori
+    !the_sza_atm, the_vza_atm, scnwrt, npix_fitted, fitvar_rad_init, &
+    !fitvar_rad_apriori
     USE OMSAO_indices_module,     ONLY: no2_t1_idx, so2_idx, bro_idx, &
          hcho_idx, so2v_idx, o2o2_idx!, bro2_idx
     USE OMSAO_pixelcorner_module, ONLY: omi_allNSPC
@@ -86,7 +86,7 @@ contains
     REAL (KIND=dp), DIMENSION(nf, nf), INTENT(IN)     :: bb
 
     ! ==================
-    ! Modified variables  
+    ! Modified variables
     ! ==================
     REAL (KIND=dp), DIMENSION (nf), INTENT (INOUT) :: fitvar
 
@@ -141,14 +141,14 @@ contains
     ! ==============================
     CHARACTER (LEN=14), PARAMETER :: modulename = 'ozprof_inverse'
 
-    IF (first) THEN  
+    IF (first) THEN
       DO i = 1, ngas
         IF (gasidxs(i) == no2_t1_idx) no2fidx  = fgasidxs(i)
-        IF (gasidxs(i) == so2v_idx)   so2vfidx = fgasidxs(i)  
-        IF (gasidxs(i) == so2_idx)    so2fidx  = fgasidxs(i)  
-        IF (gasidxs(i) == bro_idx)    brofidx  = fgasidxs(i) 
-        IF (gasidxs(i) == hcho_idx)   hchofidx = fgasidxs(i)    
-        IF (gasidxs(i) == o2o2_idx)   o4fidx   = fgasidxs(i)  
+        IF (gasidxs(i) == so2v_idx)   so2vfidx = fgasidxs(i)
+        IF (gasidxs(i) == so2_idx)    so2fidx  = fgasidxs(i)
+        IF (gasidxs(i) == bro_idx)    brofidx  = fgasidxs(i)
+        IF (gasidxs(i) == hcho_idx)   hchofidx = fgasidxs(i)
+        IF (gasidxs(i) == o2o2_idx)   o4fidx   = fgasidxs(i)
       ENDDO
 
       first = .FALSE.
@@ -158,7 +158,7 @@ contains
     IF (numwin >= 2 ) THEN
       fidx = 1
       DO i = 1, numwin
-        lidx = fidx + nradpix(i) - 1 
+        lidx = fidx + nradpix(i) - 1
         IF (band_selectors(i) == 2) THEN
           uv2fy = fidx; uv2ly = lidx; nuv2 = nradpix(i)
           use_uv2init = .TRUE.; EXIT
@@ -166,28 +166,29 @@ contains
         fidx = lidx + 1
       ENDDO
     ENDIF
-    uv12_retflg = 0 ! 0: uv1+uv2 1: uv1+uv2+modified a priori 2: uv2 retrieval only
+    uv12_retflg = 0 ! 0: uv1+uv2 1: uv1+uv2+modified a priori 2: uv2 only
 
 
-    num_iter  = 0  
+    num_iter  = 0
     refl_only = .FALSE.       ! need both radiances and weighting function
     proceed   = .TRUE.;    conv      = .FALSE.; varconv = .FALSE.
     do_sa_diagonal = .FALSE.; negval = .FALSE.
-    sig = 1.0                 ! measurement error included in dyda and gspec (i.e., normalized to 1)
+    sig = 1.0 ! measurement error included in dyda and gspec (normalized to 1)
     exval = 0
     covar = 0.0
-    ncovar = 0.0 ! covariance matrix 
+    ncovar = 0.0 ! covariance matrix
     fitvarap0 = fitvarap
     decorrelate = .FALSE.
-    correct_merr = .FALSE. 
+    correct_merr = .FALSE.
     cmerr_niter = 0 !maxit + 1
     readout_noise=1.0
 
-    ! After retrievals are done with currently assumed measurement errors, preform retrievals again
-    ! with adjusted measurement errors based on fitting residuals in several different spectral regions
+    ! After retrievals are done with currently assumed measurement errors,
+    ! perform retrievals again with adjusted measurement errors based on
+    ! fitting residuals in several different spectral regions
     adjust_merr = .FALSE.
     IF (adjust_merr) THEN
-      correct_merr = .FALSE. 
+      correct_merr = .FALSE.
       fidx = 1;     i = fidx
       DO j = 1, nreg
         DO WHILE (fitwavs(i) < reg_waves(j) .AND. i <= ns)
@@ -215,7 +216,7 @@ contains
     inverse: DO WHILE (proceed)
 
       ! compute radiance, spectrum, and weighting function
-      ! xliu: 0/1/28/1010: add use_effcrs here because use_hres always 
+      ! xliu: 0/1/28/1010: add use_effcrs here because use_hres always
       !  needs weighting function for correction
       IF (radcalwrt .AND. do_simu .AND. .NOT. do_simu_rmring .AND. &
            use_effcrs) THEN
@@ -238,7 +239,7 @@ contains
         RETURN
       ENDIF
 
-      xold = fitvar 
+      xold = fitvar
       IF (use_logstate) THEN
         xold(ffidx:flidx) = LOG(xold(ffidx:flidx))
         DO i = ffidx, flidx
@@ -248,8 +249,9 @@ contains
       xap = fitvarap
       IF (use_logstate) xap(ffidx:flidx) = LOG(xap(ffidx:flidx))
 
-      delchi = ABS(nradrms - oradrms) / SQRT(oradrms)  
-      IF (IEOR(IBCLR(TRANSFER(delchi, NAN), DPSB), NAN) == 0) THEN  ! check for NAN
+      delchi = ABS(nradrms - oradrms) / SQRT(oradrms)
+      ! check for NAN
+      IF (IEOR(IBCLR(TRANSFER(delchi, NAN), DPSB), NAN) == 0) THEN
         proceed = .FALSE.; exval = -6; CYCLE
       ENDIF
 
@@ -262,33 +264,33 @@ contains
       num_iter = num_iter + 1
       so2aperr_update = .FALSE.
 
-      DO 
+      DO
         IF (use_oe) THEN  ! use optimal estimation
           last_iter = .TRUE.
-          IF (.NOT. do_twostep) THEN
-! FIXME - masking array temporaries
-            CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
-                 epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, &
-                 xap, xold, sa, varname, ffidx, flidx, delta_x, &
-!                 covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
-!                 avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, &
-                 tmp_covar(:,:), tmp_ncovar(:,:), conv, &
-                 tmp_avg_kernel(:,:), tmp_contri(:,:), ozdfs, &
-                 ozinfo, lchisq, gspec_new) 
-            covar(1:nf, 1:nf)=tmp_covar
-            ncovar(1:nf, 1:nf)=tmp_ncovar
-            avg_kernel(1:nf, 1:nf)=tmp_avg_kernel
-            contri(1:nf, 1:ns)=tmp_contri
+          !          IF (.NOT. do_twostep) THEN
+          ! FIXME - masking array temporaries
+          CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
+               epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, &
+               xap, xold, sa, varname, ffidx, flidx, delta_x, &
+                      ! covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
+                      ! avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, &
+               tmp_covar(:,:), tmp_ncovar(:,:), conv, &
+               tmp_avg_kernel(:,:), tmp_contri(:,:), ozdfs, &
+               ozinfo, lchisq, gspec_new)
+          covar(1:nf, 1:nf)=tmp_covar
+          ncovar(1:nf, 1:nf)=tmp_ncovar
+          avg_kernel(1:nf, 1:nf)=tmp_avg_kernel
+          contri(1:nf, 1:ns)=tmp_contri
 
-          ELSE
-            CALL twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
-                 epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, &
-                 xold, lowbnd, upbnd, sa, varname, ffidx, flidx, delta_x, &
-                 covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
-                 avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, &
-                 ozinfo, lchisq)  
-          ENDIF
-        ELSE    ! use Phillips-Tikhonov regularization    
+          ! ELSE
+          ! CALL twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
+          !      epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, &
+          !      xold, lowbnd, upbnd, sa, varname, ffidx, flidx, delta_x, &
+          !      covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
+          !      avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, &
+          !      ozinfo, lchisq)
+          ! ENDIF
+        ELSE    ! use Phillips-Tikhonov regularization
           CALL gsvd_lcurve_gcv (ozwrtint, ozwrtint_unit, epsrel, num_iter, &
                ns, nf, np, bb(1:np, 1:nf), gspec, dyda, fitvarap, xold, &
                varname, delta_x, covar(1:nf, 1:nf), conv, &
@@ -299,13 +301,14 @@ contains
           ! Remove Ring effect and I/F wavelength shift
           simrad(1:ns) = fitspec(1:ns) - fitres(1:ns)
           !DO i = 1, ns
-          !   WRITE(90, '(4D14.6)') fitwavs(i), fitspec(i), simrad(i), fitres(i)
+          !  WRITE(90, '(4D14.6)') fitwavs(i), fitspec(i), simrad(i), fitres(i)
           !ENDDO
 
           ! Ring effect, assume ring effect last variable, one single band
           gspec(1:ns) = gspec(1:ns) - dyda(1:ns, nf) * delta_x(nf)
 
-          ! I/F wavelength shift (should not since wavelength scale is not changed)
+          ! I/F wavelength shift (should not since wavelength scale is not
+          ! changed)
           !gspec(1:ns) = gspec(1:ns) - dyda(1:ns, nf-1) * delta_x(nf-1)
           fitres(1:ns) = gspec(1:ns) * fitweights(1:ns)
           fitspec(1:ns) = fitres(1:ns) + simrad(1:ns)
@@ -314,7 +317,8 @@ contains
         ENDIF
 
         fitvar = delta_x + xold
-        IF (IEOR(IBCLR(TRANSFER(lchisq, NAN), DPSB), NAN) == 0) THEN  ! check for NAN
+        ! check for NAN
+        IF (IEOR(IBCLR(TRANSFER(lchisq, NAN), DPSB), NAN) == 0) THEN
           proceed = .FALSE.; exval = -6; EXIT
         ENDIF
 
@@ -327,18 +331,20 @@ contains
         !WRITE(www_lun, *)
 
         ! Special treatment for SO2
-        IF (do_twostep .OR. (so2vfidx <= 0 .AND. so2fidx <= 0) .OR. use_large_so2_aperr) EXIT
+        !IF (do_twostep .OR. (so2vfidx <= 0 .AND. so2fidx <= 0) .OR. &
+        !use_large_so2_aperr) EXIT
+        IF ((so2vfidx <= 0 .AND. so2fidx <= 0) .OR. use_large_so2_aperr) EXIT
         so2aperr_update = .FALSE.
         IF ( so2vfidx > 0) THEN
           IF ( ABS(fitvar(so2vfidx)) > SQRT(sa(so2vfidx, so2vfidx)) * 0.5) THEN
-            sa(so2vfidx, so2vfidx) = 4.0 * fitvar(so2vfidx) ** 2.0 
+            sa(so2vfidx, so2vfidx) = 4.0 * fitvar(so2vfidx) ** 2.0
             so2aperr_update  = .TRUE.
           ENDIF
         ENDIF
 
         IF ( so2fidx > 0 ) THEN
           IF ( ABS(fitvar(so2fidx)) > SQRT(sa(so2fidx, so2fidx)) * 0.5) THEN
-            sa(so2fidx, so2fidx) = 4.0 * fitvar(so2fidx) ** 2.0 
+            sa(so2fidx, so2fidx) = 4.0 * fitvar(so2fidx) ** 2.0
             so2aperr_update = .TRUE.
           ENDIF
         ENDIF
@@ -346,24 +352,26 @@ contains
       ENDDO
 
       IF (use_logstate) THEN
-        fitvar(ffidx:flidx) = EXP(fitvar(ffidx:flidx)) 
-        xold(ffidx:flidx) = EXP(xold(ffidx:flidx)) 
+        fitvar(ffidx:flidx) = EXP(fitvar(ffidx:flidx))
+        xold(ffidx:flidx) = EXP(xold(ffidx:flidx))
         delta_x(ffidx:flidx) = fitvar(ffidx:flidx) - xold(ffidx:flidx)
       ENDIF
 
       !WRITE(www_lun, '(I3,1X,A6,3d14.6)') ((i, varname(i), xold(i), &
-      !     delta_x(i), fitvar(i)), i=1, nf) 
+      !     delta_x(i), fitvar(i)), i=1, nf)
       !WRITE(www_lun, *) SUM(xold(ffidx:flidx)), SUM(fitvar(ffidx:flidx))
 
       uv12_retflg = 0
       IF (ANY (fitvar(ffidx:flidx) <= lowbnd(ffidx:flidx)) .OR. &
-           ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN                             
+           ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN
+
         IF (use_uv2init) THEN
           CALL negativeo3_inversion (uv2fy, uv2ly, nuv2, do_sa_diagonal,  &
-               ozwrtint, ozwrtint_unit, epsrel, last_iter, num_iter, ns, nf, gspec, &
-               sig, dyda, xap, xold, lowbnd, upbnd, sa, varname, ffidx, flidx,      &
-               delta_x, covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
-               contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec_new, uv12_retflg)
+               ozwrtint, ozwrtint_unit, epsrel, last_iter, num_iter, ns, nf, &
+               gspec, sig, dyda, xap, xold, lowbnd, upbnd, sa, varname, &
+               ffidx, flidx, delta_x, covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), &
+               conv, avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, &
+               ozinfo, lchisq, gspec_new, uv12_retflg)
 
           fitvar = delta_x + xold
           fitvarap(ffidx:flidx) = xap(ffidx:flidx)
@@ -371,19 +379,21 @@ contains
       END IF
 
       IF (ANY (fitvar(ffidx:flidx) <= lowbnd(ffidx:flidx)) .OR. &
-           ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN                             
+           ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN
+
         IF (so2aperr_update) THEN
-          ! Redo the retrieval the using original state except with updated SO2 fields
+          ! Redo the retrieval using original state with updated SO2 fields
           IF (so2vfidx > 0) THEN
             xold(so2vfidx) = fitvar(so2vfidx); fitvar = xold
             fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
             fitvarap(so2vfidx) = fitvar(so2vfidx)
           ENDIF
         ELSE
-          WRITE(www_lun, *) modulename, ': Retrieved ozone values out of bounds!!!'
+          WRITE(www_lun, *) modulename, &
+               ': Retrieved ozone values out of bounds!!!'
           proceed = .FALSE.;     exval = -3; CYCLE
         ENDIF
-      ELSE    
+      ELSE
 
         ! Unnecessary here, it is the a priori error that matters
         !IF (so2aperr_update) THEN
@@ -398,7 +408,7 @@ contains
         fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
       END IF
 
-      IF ( ALL(ABS(delta_x(ffidx:flidx) / fitvar(ffidx:flidx)) <= epsrel) ) THEN
+      IF (ALL(ABS(delta_x(ffidx:flidx) / fitvar(ffidx:flidx)) <= epsrel)) THEN
         varconv = .TRUE.
       ENDIF
 
@@ -413,8 +423,8 @@ contains
       ENDIF
 
       IF (ring_on_line .AND. ABS(SUM(delta_x(ffidx:flidx))) > 20.0D0) THEN
-        CALL GET_RAMAN(nlay, fitvar_rad(pfidx:plidx), errstat) 
-        IF (errstat == pge_errstat_error) THEN 
+        CALL GET_RAMAN(nlay, fitvar_rad(pfidx:plidx), errstat)
+        IF (errstat == pge_errstat_error) THEN
           exval = -4; proceed = .FALSE.
         ENDIF
       ENDIF
@@ -425,9 +435,10 @@ contains
           IF (fitvar(so2zfind) > the_surfalt) THEN
             so2valts(0) = fitvar(so2zfind)
             so2valts(-1) = so2valts(0) - 1.0
-            IF (so2valts(-1) < the_surfalt) so2valts(-1) = (the_surfalt + so2valts(0)) / 2.0
-            so2valts(1)  = so2valts(0) + 1.0  
-            ! Update the a priori value for SO2 plume height for the next iteration 
+            IF (so2valts(-1) < the_surfalt) so2valts(-1) = &
+                 (the_surfalt + so2valts(0)) / 2.0
+            so2valts(1)  = so2valts(0) + 1.0
+            ! Update the a priori value for SO2 plume height for next iteration
             ! (since the apriori value is an arbitrary guess)
             fitvarap(so2zfind) = fitvar(so2zfind)
           ELSE
@@ -446,15 +457,15 @@ contains
     DO k = 1, ngas
       i = fgasidxs(k)
       IF (i > 0) THEN
-        tracegas(k, 9) = avg_kernel(i, i)  
+        tracegas(k, 9) = avg_kernel(i, i)
         ! consider interference from others
-        tracegas(k, 10) = SUM(avg_kernel(i, 1:nf) * aperr(1:nf) / aperr(i) )  
+        tracegas(k, 10) = SUM(avg_kernel(i, 1:nf) * aperr(1:nf) / aperr(i) )
       ENDIF
     ENDDO
     IF (ozwrtfavgk) favg_kernel(1:nf, 1:nf) = avg_kernel(1:nf, 1:nf)
 
     IF (ozwrtwf .AND. exval >= 0) THEN
-      DO i = 1, nf  
+      DO i = 1, nf
         weight_function(1:ns, i) = dyda(1:ns, i) * fitweights(1:ns)
       ENDDO
     ENDIF
@@ -467,21 +478,26 @@ contains
     ! 05/26/2010
     ! c. Adjust measurement error to reflect actual fitting residuals
     IF ( exval >= 0 .AND. (decorrelate .OR. &
-         (correct_merr .AND. cmerr_niter == maxit + 1) .OR. adjust_merr) ) THEN   
+         (correct_merr .AND. cmerr_niter == maxit + 1) .OR. adjust_merr) ) THEN
 
       IF (correct_merr .AND. cmerr_niter == maxit + 1) THEN
-        gspec(1:ns) = gspec(1:ns) * SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
+        gspec(1:ns) = gspec(1:ns) * &
+             SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
         DO i = 1, nf
-          dyda(1:ns, i) = dyda(1:ns, i) * SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
+          dyda(1:ns, i) = dyda(1:ns, i) * &
+               SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
         ENDDO
-        fitweights(1:ns) = fitweights(1:ns) / SQRT(1.0d0 * omi_allNSPC(currline)) * readout_noise
-        nchisq = nchisq  * omi_allNSPC(currline) / readout_noise / readout_noise
+        fitweights(1:ns) = fitweights(1:ns) / &
+             SQRT(1.0d0 * omi_allNSPC(currline)) * readout_noise
+        nchisq = nchisq  * omi_allNSPC(currline) / &
+             readout_noise / readout_noise
       ENDIF
 
       IF (adjust_merr) THEN
         DO i = 1, nreg
           fidx = regfidxs(i); lidx = reglidxs(i)
-          reg_rms(i) = SQRT(SUM((fitres(fidx:lidx)/fitweights(fidx:lidx))**2) / regnpts(i))
+          reg_rms(i) = SQRT(SUM((fitres(fidx:lidx)/fitweights(fidx:lidx))**2) &
+               / regnpts(i))
           reg_res(i) = SQRT(SUM(fitres(fidx:lidx)**2) / regnpts(i))
 
           fitweights(fidx:lidx) = fitweights(fidx:lidx) * reg_rms(i)
@@ -507,35 +523,35 @@ contains
         ENDDO
       ENDIF
       !xold = fitvar
-      xap = fitvarap 
+      xap = fitvarap
 
       IF (use_logstate) THEN
-        xold(ffidx:flidx) = LOG(xold(ffidx:flidx)) 
-        xap(ffidx:flidx)  = LOG(xap(ffidx:flidx)) 
+        xold(ffidx:flidx) = LOG(xold(ffidx:flidx))
+        xap(ffidx:flidx)  = LOG(xap(ffidx:flidx))
       ENDIF
 
       IF (use_oe) THEN  ! use optimal estimation
         last_iter = .TRUE.
-        IF (.NOT. do_twostep) THEN
-          CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel, &
-               last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, sa, &
-               varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), &
-               ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
-               contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec_new)
-        ELSE
-          CALL twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
-               epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, &
-               xold, lowbnd, upbnd, sa, varname, ffidx, flidx, delta_x, &
-               covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
-               avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, ozinfo, &
-               lchisq) 
-        ENDIF
+        !IF (.NOT. do_twostep) THEN
+        CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel, &
+             last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, sa, &
+             varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), &
+             ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
+             contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec_new)
+        !ELSE
+        !  CALL twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
+        !       epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, &
+        !       xold, lowbnd, upbnd, sa, varname, ffidx, flidx, delta_x, &
+        !       covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, &
+        !       avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, ozinfo, &
+        !       lchisq)
+        !ENDIF
 
         DO i = 1, nf
           contri(i, 1:ns) = contri(i, 1:ns) / fitweights(1:ns)
         ENDDO
 
-      ELSE    ! use Phillips-Tikhonov regularization    
+      ELSE    ! use Phillips-Tikhonov regularization
         CALL gsvd_lcurve_gcv (ozwrtint, ozwrtint_unit, epsrel, num_iter, &
              ns, nf, np, bb(1:np, 1:nf), gspec, dyda, fitvarap, xold, varname, &
              delta_x, covar(1:nf, 1:nf), conv, avg_kernel(1:nf,1:nf), &
@@ -543,27 +559,29 @@ contains
       END IF
       fitvar = xold  + delta_x
 
-      !WRITE(www_lun, '(I3,1X,A6,d14.6,f10.4,d14.6)') ((i, varname(i), xold(i), &
-      !delta_x(i) / xold(i)*100.0, fitvar(i)), i=1, nf)  
+      !WRITE(www_lun, '(I3,1X,A6,d14.6,f10.4,d14.6)') &
+      ! ((i, varname(i), xold(i), delta_x(i) / xold(i)*100.0, fitvar(i)), &
+      ! i=1, nf)
 
       IF (use_logstate) THEN
-        fitvar(ffidx:flidx) = EXP(fitvar(ffidx:flidx)) 
-        xold(ffidx:flidx) = EXP(xold(ffidx:flidx)) 
+        fitvar(ffidx:flidx) = EXP(fitvar(ffidx:flidx))
+        xold(ffidx:flidx) = EXP(xold(ffidx:flidx))
         delta_x(ffidx:flidx) = fitvar(ffidx:flidx) - xold(ffidx:flidx)
       ENDIF
 
       IF (ANY (fitvar(ffidx:flidx) <= lowbnd(ffidx:flidx)) .OR. &
            ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN
-        WRITE(www_lun, *) modulename, ': Retrieved ozone values out of bounds!!!'
+        WRITE(www_lun, *) modulename, &
+             ': Retrieved ozone values out of bounds!!!'
         exval = -3
-      ELSE       
+      ELSE
         ! update the uncondensed fitting variables
         fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
       END IF
 
       DO i = 1, nf
         IF (i < ffidx .OR. i > flidx) THEN
-          covar(i, i) = std(i); ncovar(i, i) = nstd(i) 
+          covar(i, i) = std(i); ncovar(i, i) = nstd(i)
         ENDIF
       ENDDO
     ENDIF
@@ -574,8 +592,10 @@ contains
         covar(i, i) = covar(i, i) * fitvar(i) ** 2.0
         ncovar(i, i) = ncovar(i, i) * fitvar(i) ** 2.0
         DO j = i+1, flidx
-          covar(i, j) =  covar(i, j) * fitvar(i) * fitvar(j); covar(j, i) = covar(i,j) 
-          ncovar(i, j) = ncovar(i, j) * fitvar(i) * fitvar(j); ncovar(j, i) = ncovar(i,j)
+          covar(i, j) =  covar(i, j) * fitvar(i) * fitvar(j)
+          covar(j, i) = covar(i,j)
+          ncovar(i, j) = ncovar(i, j) * fitvar(i) * fitvar(j)
+          ncovar(j, i) = ncovar(i,j)
         ENDDO
       ENDDO
     ENDIF
@@ -584,36 +604,38 @@ contains
     ! but this step is unnecssary, since retrieval is already done.
     ! On the other hand, it can save computation by one iteration (significant)
     ! for exval == 1, final spectrum already calculated
-    ! IF (exval > 1) THEN  
+    ! IF (exval > 1) THEN
     !   refl_only = .TRUE.
-    !   CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gspec, &
-    !        fitres, fitspec, nchisq, nradrms, errstat)     
+    !   CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, &
+    !        dyda, gspec, fitres, fitspec, nchisq, nradrms, errstat)
     !   delchi = ABS(nradrms - oradrms) / oradrms   ! converge, exit
     !   IF (delchi < epsrel)  exval = exval + 1
     !END IF
 
     IF (exval >= 0 .AND. radcalwrt) THEN
       refl_only = .TRUE.
-      xold = fitvar     
+      xold = fitvar
 
-      !Save retrievals  
+      !Save retrievals
       !Use a priori albedo and ozone, the other are the same
       IF (which_caloz == 1) THEN
-        fitvar(ffidx:flidx) = fitvarap(ffidx:flidx) 
+        fitvar(ffidx:flidx) = fitvarap(ffidx:flidx)
       ELSE
         tozprof(1:nlay)                = fitvar_rad(pfidx:plidx)
         tozprof(start_layer:end_layer) = fitvarap(ffidx:flidx)
         CALL get_caloz(nlay, atmosprof(1, 0:nlay), tozprof(1:nlay))
-        fitvar(ffidx:flidx) = tozprof(start_layer:end_layer)         
+        fitvar(ffidx:flidx) = tozprof(start_layer:end_layer)
       ENDIF
 
-      IF (nfalb > 0) fitvar(albfidx:albfidx+nfalb-1) = fitvarap0(albfidx:albfidx+nfalb-1)
-      IF (nfwfc > 0) fitvar(wfcfidx:wfcfidx+nfwfc-1) = fitvarap0(wfcfidx:wfcfidx+nfwfc-1)
+      IF (nfalb > 0) fitvar(albfidx:albfidx+nfalb-1) = &
+           fitvarap0(albfidx:albfidx+nfalb-1)
+      IF (nfwfc > 0) fitvar(wfcfidx:wfcfidx+nfwfc-1) = &
+           fitvarap0(wfcfidx:wfcfidx+nfwfc-1)
       IF (ecfrfind > 0) fitvar(ecfrind) = fitvarap0(ecfrind)
-      fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar    
+      fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
 
-      CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gspec, &
-           fitres1, fitspec1, nchisq, nradrms, errstat)
+      CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, &
+           dyda, gspec, fitres1, fitspec1, nchisq, nradrms, errstat)
 
       ! Restore the retrieved variables
       fitvar = xold
@@ -629,7 +651,7 @@ contains
       IF (uv12_retflg == 1) exval = exval + 10
       IF (uv12_retflg == 2) exval = exval + 20
       IF ( ANY(fitvar(ffidx:flidx) <= 0.0)) negval = .TRUE.
-      IF (negval) exval = exval + 100 
+      IF (negval) exval = exval + 100
     ENDIF
 
     RETURN
@@ -671,13 +693,13 @@ contains
     ! ==============================
     CHARACTER (LEN=9), PARAMETER :: modulename = 'get_caloz'
 
-    IF ( first ) THEN 
+    IF ( first ) THEN
       OPEN(profunit, FILE=TRIM(ADJUSTL(caloz_fname)), STATUS='old')
       READ(profunit, *) nz, oztyp
       IF (nz > mflay) THEN
         WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'; STOP
       ENDIF
-      READ (profunit, *) 
+      READ (profunit, *)
       IF (oztyp <= 2) THEN
         READ (profunit, *) ozs(1:nz)
       ELSE
@@ -685,9 +707,10 @@ contains
       ENDIF
 
       IF ( oztyp == 1 .AND. nz /= nl ) THEN
-        WRITE(www_lun, *) modulename, ': Number of layers are inconsistent!!!'; STOP 
+        WRITE(www_lun, *) modulename, ': Number of layers are inconsistent!!!'
+        STOP 1
       ELSE
-        READ (profunit, *) 
+        READ (profunit, *)
         READ (profunit, *) ps(0:nz)  ! mb
       ENDIF
       CLOSE (profunit)
@@ -705,13 +728,16 @@ contains
           DO i = 1, nz
             cozs(i) = cozs(i-1) + ozs(i)
           ENDDO
-        ELSE IF (oztyp == 3) THEN   ! Integrate from ppbv to DU (with gravity correction)
+        ELSE IF (oztyp == 3) THEN
+          ! Integrate from ppbv to DU (with gravity correction)
           zs = - 16.0 * LOG10( ps / 1013.25)
           cozs(0) = 0.0
-          DO i = 1, nz             ! 2533.12 = 1.25 / 0.5 * 1013.25 
+          DO i = 1, nz             ! 2533.12 = 1.25 / 0.5 * 1013.25
             alt     = ( zs(i-1) + zs(i) ) / 2.0
-            gcorr   = ( rearth / (rearth + alt) ) ** 2.0 * 2533.125 !* 1.25 / 0.5 * 1013.25
-            cozs(i) = cozs(i-1) + ( ozs(i-1) + ozs(i) ) * (ps(i) - ps(i-1)) / gcorr
+            gcorr   = ( rearth / (rearth + alt) ) ** 2.0 * 2533.125
+                                               !* 1.25 / 0.5 * 1013.25
+            cozs(i) = cozs(i-1) + ( ozs(i-1) + ozs(i) ) * &
+                 (ps(i) - ps(i-1)) / gcorr
           ENDDO
         ENDIF
       ENDIF
@@ -720,17 +746,18 @@ contains
     ENDIF
 
     IF (oztyp == 1 ) THEN
-      ozprof(1:nl) = ozs(1:nz) 
+      ozprof(1:nl) = ozs(1:nz)
     ELSE
       ! Interpolate to the retrieval grid
       sidx = MINVAL(MINLOC(pres, MASK=(pres >= ps(0 )))) - 1
       eidx = MINVAL(MAXLOC(pres, MASK=(pres <= ps(nz)))) - 1
       nlay = eidx - sidx
 
-      ps = LOG(ps); pres = LOG(pres)     
-      CALL BSPLINE(ps, cozs, nz+1, pres(sidx:eidx), cozprof(sidx:eidx), nlay+1, errstat)
-      ozprof(sidx+1:eidx) = cozprof(sidx+1:eidx) - cozprof(sidx:eidx-1)  
-      ps = EXP(ps); pres = EXP(pres) 
+      ps = LOG(ps); pres = LOG(pres)
+      CALL BSPLINE(ps, cozs, nz+1, pres(sidx:eidx), cozprof(sidx:eidx), &
+           nlay+1, errstat)
+      ozprof(sidx+1:eidx) = cozprof(sidx+1:eidx) - cozprof(sidx:eidx-1)
+      ps = EXP(ps); pres = EXP(pres)
 
     ENDIF
 
@@ -739,222 +766,19 @@ contains
   END SUBROUTINE get_caloz
 
 
-  SUBROUTINE twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, &
-       epsrel, last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, &
-       lowbnd, upbnd, sa, varname, ffidx, flidx, delta_x, covar, ncovar, &
-       conv, avg_kernel,  contri, ozdfs, ozinfo, lchisq) 
 
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module,  ONLY: elsunc_np, elsunc_nw!, &
-         !maxlay, max_spec_pts
-    USE ozprof_data_module,       ONLY: fgasidxs, ngas, do_bothstep!, gasidxs
-    USE OMSAO_variables_module,   ONLY: tol, epsabs, epsx, step2_y, &
-         step2_dyda!, max_itnum_rad, mask_fitvar_rad, fitvar_rad, fitwavs
-    !USE OMSAO_indices_module,     ONLY: elsunc_userdef
-    USE bounded_nonlin_LS,        ONLY: elsunc
-    USE OMSAO_errstat_module
-    use m_oe_inversion
-
-
-    IMPLICIT NONE
-
-    ! =======================
-    ! Input/Output variables
-    ! =======================
-    INTEGER, INTENT (IN)                             :: ns, nf, ozwrtint_unit, num_iter, ffidx, flidx
-    REAL (KIND=dp), INTENT (IN)                      :: epsrel
-    REAL (KIND=dp), INTENT (OUT)                     :: ozdfs, ozinfo, lchisq
-    REAL (KIND=dp), DIMENSION(nf), INTENT (IN)       :: lowbnd, upbnd, xap, xold
-    REAL (KIND=dp), DIMENSION(nf), INTENT (OUT)      :: delta_x
-    REAL (KIND=dp), DIMENSION(ns), INTENT (IN)       :: gspec, sig
-    CHARACTER (LEN=6), DIMENSION(nf), INTENT (IN)    :: varname
-    REAL (KIND=dp), DIMENSION(ns, nf), INTENT (INOUT):: dyda
-    REAL (KIND=dp), DIMENSION(nf, ns), INTENT (OUT)  :: contri
-    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(INOUT) :: sa
-    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(OUT)   :: covar, ncovar, avg_kernel
-    LOGICAL, INTENT(IN)                              :: do_sa_diagonal, ozwrtint, last_iter
-    LOGICAL, INTENT(OUT)                             :: conv
-
-    ! =======================
-    ! Local variables
-    ! =======================
-    INTEGER                                          :: i, j, idx, n2f, elbnd, exval
-    INTEGER, DIMENSION(nf)                           :: step2idxs
-    REAL (KIND=dp), DIMENSION(nf, nf)                :: sa_sav
-    REAL (KIND=dp), DIMENSION(nf)                    :: step2_fitvar
-    CHARACTER (LEN=6), DIMENSION(nf)                 :: step2_varname
-    REAL (KIND=dp), DIMENSION(ns)                    :: gspec1
-
-    INTEGER,        DIMENSION (elsunc_np)            :: p
-    REAL (KIND=dp), DIMENSION (elsunc_nw)            :: w
-    REAL (KIND=dp), DIMENSION (nf)                   :: blow, bupp !, stderr
-    REAL (KIND=dp), DIMENSION (ns)                   :: step2_fitres
-    REAL (KIND=dp), DIMENSION (ns, nf)               :: dfda
-    !REAL (KIND=dp), DIMENSION (nf, nf)               :: correl
-
-    !EXTERNAL step2_specfit
-
-    ! Freeze trace gas variables other than ozone by either
-    ! 1. Setting weighting function to zero
-    ! 2. Setting the a priori covariance matrix to zero
-    sa_sav = sa
-
-    n2f = 0
-    DO i = 1, ngas
-      IF (fgasidxs(i) > 0) THEN
-        idx = fgasidxs(i)
-        IF (.NOT. do_bothstep) sa(idx, idx) = 0.0
-        n2f = n2f + 1
-        step2idxs(n2f) = idx
-      ENDIF
-    ENDDO
-
-    !DO i = flidx + 1, nf
-    !   IF (varname(i)(3:4) == 'a1' .OR. varname(i)(3:4) == 'a2' .OR. varname(i)(3:4) == 'a3') THEN
-    !      IF (.NOT. do_bothstep) sa(i, i) = 0.0
-    !      n2f = n2f + 1
-    !      step2idxs(n2f) = i
-    !   ENDIF
-    !ENDDO
-
-    IF (n2f > 0) THEN
-      step2_fitvar(1:n2f)  = xold(step2idxs(1:n2f))
-      step2_dyda(1:ns, 1:n2f) = dyda(:, step2idxs(1:n2f))
-      step2_varname(1:n2f) = varname(step2idxs(1:n2f))
-    ENDIF
-
-    delta_x = 0.0
-
-    ! Call optimal estimation routine for those un-frozen parameters
-    CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel, &
-         last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, sa, &
-         varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), &
-         ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
-         contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec1) 
-    !WRITE(www_lun, '(I3,1X,A6,2d14.6)') ((i, varname(i), xold(i), &
-    !     delta_x(i)), i=1, nf)
-
-    IF (n2f <= 0 ) RETURN
-
-    ! Second step: use NLLS (ELSUNC, but linear here, i.e., 1 iterations) to
-    ! fit those freezed trace gases 
-    elbnd = 0   ! Unconstrained
-    exval = 0         
-
-    p  = -1   ;          p(1)   = 0;     p(3) = 1   !max_itnum_rad
-    w  = -1.0 ;          w(1:4) = (/ tol,  epsrel,  epsabs,  epsx /)
-    blow(1:n2f) = -1.0D99;   bupp(1:n2f) = 1.0D99
-    blow(1:n2f) = -1.0D99;   bupp(1:n2f) = 1.0D99
-    !blow(2) = 0.0; bupp(2) = 1.0
-    !blow(5) = 0.0; bupp(5) = 1.0
-
-    step2_fitres = 0.0;  dfda(1:ns, 1:n2f) = 0.0
-    step2_y(1:ns) = gspec1(1:ns)
-
-    CALL elsunc ( step2_fitvar(1:n2f), n2f, ns, ns, step2_specfit,          &
-         elbnd, blow(1:n2f),  bupp(1:n2f), p, w, exval, step2_fitres(1:ns), &
-         dfda(1:ns, 1:n2f) )
-
-    ! ---------------------------------------------------------------
-    ! Compute fitting residual
-    ! FITRES is the negative of the returned function F = Model-Data.
-    ! -------------------------------------opl--------------------------
-    step2_fitres(1:ns) = -step2_fitres(1:ns)
-
-    !WRITE(90, '(3D14.6)') ((gspec(i), gspec1(i), step2_fitres(i)), i=1, ns)
-
-    ! Fitting RMS and CHI**2
-    ! ----------------------
-    lchisq = SQRT (SUM (step2_fitres(1:ns)**2 ) / ns )
-
-    !! compute standard deviation for each variable
-    !DO i = 1, n2f
-    !   stderr(i) =  SQRT(dfda(i, i) * ns / (ns - n2f)) !* lchisq
-    !END DO
-
-    delta_x(step2idxs(1:n2f)) = delta_x(step2idxs(1:n2f)) + step2_fitvar(1:n2f)
-
-    DO i = 1, n2f
-      DO j = 1, n2f
-        covar(step2idxs(i), step2idxs(j)) = covar(step2idxs(i), step2idxs(j)) + dfda(i, j)
-        ncovar(step2idxs(i), step2idxs(j)) = ncovar(step2idxs(i), step2idxs(j)) + dfda(i, j)
-      ENDDO
-    ENDDO
-
-    DO i = 1, ngas
-      IF (fgasidxs(i) > 0) THEN
-        idx = fgasidxs(i)
-        sa(idx, idx) = sa_sav(idx, idx)
-        !IF (ABS(xold(idx) + delta_x(idx)) > SQRT(sa(idx, idx))) &
-        !     sa(idx, idx)= (xold(idx) + delta_x(idx))**2 
-      ENDIF
-    ENDDO
-
-    !WRITE(www_lun, '(I3,1X,A6,2d14.6)') ((i, varname(i), xold(i), delta_x(i)), i=1, nf)
-    !print *, lchisq
-
-    RETURN
-  END SUBROUTINE twostep_inversion
-
-  SUBROUTINE step2_specfit ( a, na, y, m, ctrl, dyda, mdy )
-
-    USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : max_spec_pts
-    USE OMSAO_variables_module,  ONLY : step2_y, step2_dyda
-    USe OMSAO_errstat_module
-
-    IMPLICIT NONE
-
-    ! Input parameters
-    ! ================
-    INTEGER,                         INTENT (IN)  :: na, m, mdy
-    REAL (KIND=dp), DIMENSION (na),  INTENT (IN)  :: a
-
-    ! Modified parameters
-    ! ===================
-    INTEGER, INTENT (INOUT) :: ctrl
-
-    ! Output parameters
-    ! =================
-    REAL (KIND=dp), DIMENSION (m),     INTENT (OUT) :: y
-    REAL (KIND=dp), DIMENSION (m, na), INTENT (OUT) :: dyda
-
-    ! Local variables
-    ! ===============
-    REAL (KIND=dp), DIMENSION (m) :: y0
-    INTEGER                       :: i
-
-    y0 = 0.0_dp
-    DO i = 1, na
-      y0 =  y0 + a(i) * (step2_dyda(1:m, i))
-    END DO
-
-    SELECT CASE ( ABS(ctrl) )
-    CASE ( 1 )
-      y  =  y0 - step2_y(1:m)
-    CASE ( 2 )
-      dyda(1:m, 1:na) = step2_dyda(1:m, 1:na)
-    CASE ( 3 )
-      ! This CASE is included to get the complete fitted spectrum
-      y  = y0
-    CASE DEFAULT
-      WRITE(www_lun, '(A,I3)') "Don't know how to handle CTRL = ", ctrl
-    END SELECT
-
-    RETURN
-  END SUBROUTINE step2_specfit
 
   SUBROUTINE negativeo3_inversion (uv2fy, uv2ly, nuv2, do_sa_diagonal,  &
        ozwrtint, ozwrtint_unit, epsrel, last_iter, num_iter, ns, nf, gspec, &
        sig, dyda, xap, xold, lowbnd, upbnd, sa, varname, ffidx, flidx,      &
        delta_x, covar, ncovar, conv, avg_kernel, contri, ozdfs, ozinfo,     &
-       lchisq, gspec_new, uv12_retflg) 
+       lchisq, gspec_new, uv12_retflg)
 
     USE OMSAO_precision_module
     !USE OMSAO_parameters_module,  ONLY: maxlay, max_spec_pts
     USE ozprof_data_module,       ONLY: atmosprof, nlay
     USE OMSAO_variables_module,   ONLY: the_lat, the_month, the_day!, &
-         !mask_fitvar_rad, fitwavs, fitvar_rad
+    !mask_fitvar_rad, fitwavs, fitvar_rad
     USE OMSAO_errstat_module
     use prepare_atmosphere, only: get_tomsv8_clima
     use m_oe_inversion
@@ -976,10 +800,12 @@ contains
     REAL (KIND=dp), DIMENSION(ns, nf), INTENT (INOUT):: dyda
     REAL (KIND=dp), DIMENSION(nf, ns), INTENT (OUT)  :: contri
     REAL (KIND=dp), DIMENSION(nf, nf), INTENT(INOUT) :: sa
-    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(OUT)   :: covar, ncovar, avg_kernel
+    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(OUT)   :: covar, ncovar, &
+         avg_kernel
     REAL (KIND=dp), DIMENSION(ns), INTENT (OUT)      :: gspec_new
     REAL (KIND=dp), DIMENSION(nf), INTENT (OUT)      :: xap
-    LOGICAL, INTENT(IN)                              :: do_sa_diagonal, ozwrtint, last_iter
+    LOGICAL, INTENT(IN)                              :: do_sa_diagonal, &
+         ozwrtint, last_iter
     LOGICAL, INTENT(OUT)                             :: conv
 
     ! =======================
@@ -997,7 +823,7 @@ contains
          dyda(uv2fy:uv2ly, :), xap, xold, sa, varname, ffidx, flidx, delta_x, &
          covar(1:nf, 1:nf), ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
          contri(1:nf, uv2fy:uv2ly), ozdfs, ozinfo, lchisq, &
-         gspec_new(uv2fy:uv2ly)) 
+         gspec_new(uv2fy:uv2ly))
 
     aptoz  = SUM(xap(ffidx:flidx))
     apoz   = xap(ffidx:flidx)
@@ -1007,17 +833,18 @@ contains
     !print *, 'Inside'
     !WRITE(*, '(4F8.3)') aptoz, oldtoz, newtoz, SUM(delta_x(ffidx:flidx))
 
-    ! If UV2 total ozone is larger than a priori by 50 DU, then 
+    ! If UV2 total ozone is larger than a priori by 50 DU, then
     ! use total ozone dependent TOMS V8 climatology to replace xap
-    IF (ABS(newtoz - aptoz) >= 50.0 .AND. newtoz >= 100. .AND. newtoz <= 600.) THEN
+    IF (ABS(newtoz - aptoz) >= 50.0 .AND. newtoz >= 100. .AND. &
+         newtoz <= 600.) THEN
       CALL get_tomsv8_clima(the_month, the_day, the_lat, newtoz, &
            nlay, atmosprof(1, 0:nlay), apoz(1:nlay), newapoz(1:nlay), errstat)
 
       IF (errstat /= pge_errstat_error) THEN
         xap(ffidx:flidx) = newapoz(1:nlay)
 
-        ! Try rertievals with updated a priori and with both retrievals, accpet results
-        ! if it is succesful, otherwise, still use UV2 retrievals
+        ! Try rertievals with updated a priori and with both retrievals,
+        ! accept results if it is succesful, otherwise, use UV2 retrievals
         CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel, &
              last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, sa,  &
              varname, ffidx, flidx, delta_x1, covar(1:nf, 1:nf), &
@@ -1031,7 +858,8 @@ contains
           delta_x = delta_x1
           uv12_retflg = 1
           !print *, 'Use modified UV1 + UV2'
-          !WRITE(*, '(4F8.3)') aptoz, oldtoz, oldtoz+SUM(delta_x(ffidx:flidx)), SUM(delta_x(ffidx:flidx)
+          !WRITE(*, '(4F8.3)') aptoz, oldtoz, &
+          !  oldtoz+SUM(delta_x(ffidx:flidx)), SUM(delta_x(ffidx:flidx)
         ELSE
           CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel, &
                last_iter, num_iter, nuv2, nf, gspec(uv2fy:uv2ly), &
@@ -1039,7 +867,7 @@ contains
                varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), &
                ncovar(1:nf, 1:nf), conv, avg_kernel(1:nf, 1:nf), &
                contri(1:nf, uv2fy:uv2ly), ozdfs, ozinfo, lchisq, &
-               gspec_new(uv2fy:uv2ly)) 
+               gspec_new(uv2fy:uv2ly))
           !print *, 'Still use UV2'
         ENDIF
       ENDIF

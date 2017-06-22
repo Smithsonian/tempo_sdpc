@@ -51,6 +51,7 @@ contains
     use m_read_l1_tio, only: read_l1_dims_tio, read_l1_indices_tio
     use m_read_geo_tio
     use m_read_metadata_tio, only: read_date_tio
+    use m_allocate
 
 
 
@@ -70,13 +71,14 @@ contains
          num_param, num_wav_max
     real (kind=dp), dimension(3)    :: fitcol
     real (kind=dp), dimension(3, 2) :: dfitcol
-    real (kind=dp)     :: fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg, rms
+    real (kind=dp)     :: fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg, &
+         rms
     character (len=24) :: currtime
     logical            :: reduce_resolution_save
 
     integer :: version, year, month, day, jday
     type (OMIECSMETA_T) :: L1BcoreMeta
-    type (ECSMETA_ITEM_T), dimension(6) :: PROFOZ_metaItems 
+    type (ECSMETA_ITEM_T), dimension(6) :: PROFOZ_metaItems
 
     integer (kind=4), dimension(3) :: LUNinputPointer
     !CHARACTER(len=7) :: cldtype
@@ -97,7 +99,7 @@ contains
 
     pge_error_status = pge_errstat_ok
 
-    ! Initialize swath names 
+    ! Initialize swath names
     call omi_set_fitting_parameters ( pge_error_status )
     if ( pge_error_status >= pge_errstat_error ) return
 
@@ -144,11 +146,11 @@ contains
       if ( pge_error_status >= pge_errstat_error ) return
     endif
     call read_l1_indices_tio(l1_rad_filename_nc, ntimes, tempo_syn, errstat)
-      if (errstat /= 0) then
-        call tell_error (tell_io_error, &
-             "omi_fitting_process: failed to set dimension indices", errstat)
-        return
-      endif
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "omi_fitting_process: failed to set dimension indices", errstat)
+      return
+    endif
 
 
     ! xtrack positions to be processed (start from the actual binned position)
@@ -157,14 +159,17 @@ contains
       pixnum_lim(1) = max(nint(1.0 * (zoom_p1 + 1) / ncoadd), pixnum_lim(1))
       pixnum_lim(2) = min(zoom_p2 / ncoadd, pixnum_lim(2))
       if ( mod(pixnum_lim(2) - pixnum_lim(1) + 1, nxbin) /= 0) then
-        write(www_lun, '(A,2I4)') 'Incorrect across track binning option: ', pixnum_lim(1:2)
+        write(www_lun, '(A,2I4)') 'Incorrect across track binning option: ', &
+             pixnum_lim(1:2)
         pge_error_status = pge_errstat_error; return
       endif
 
       if (pixnum_lim(1) > pixnum_lim(2)) then
         write(www_lun, *) 'This is a zoom in mode orbit!!!'
-        write(www_lun, '(A, I2, A, I2)') 'Invalid pixel selection, must be between ', &
-             (zoom_p1 / ncoadd) * ncoadd + 1, ' and ', (zoom_p2 / ncoadd ) * ncoadd 
+        write(www_lun, '(A, I2, A, I2)') &
+             'Invalid pixel selection, must be between ', &
+             (zoom_p1 / ncoadd) * ncoadd + 1, ' and ', &
+             (zoom_p2 / ncoadd ) * ncoadd
         pge_error_status = pge_errstat_error; return
       endif
     endif
@@ -175,7 +180,7 @@ contains
 
     ! Line number, starting from zero and keep track of offset
     offset_line = linenum_lim(1) - 1; first_line = 1
-    last_line   = int ((linenum_lim(2) - linenum_lim(1) + 1.0) / nybin) 
+    last_line   = int ((linenum_lim(2) - linenum_lim(1) + 1.0) / nybin)
     if (last_line > 100) then
       call tell_error(tell_usage_error, &
            "omi_fitting_process: number of binned lines defined in PCF exceeds maximum of 100", errstat)
@@ -185,7 +190,7 @@ contains
     endif
 
 
-    ! load omi slit parameters  (Need to use it while getting coadded irradiance data)
+    ! load omi slit parameters  (Needed when getting coadded irradiance data)
     if (which_slit == 4) then
       call load_slitpars (pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
@@ -195,7 +200,6 @@ contains
     !If using nc inputs only, need to read the obs date a this point,
     ! as it will be needed if the backup solar spectrum is used
     if (use_tio_in) then
-      errstat = 0 ! FIXME - remove when libtell more widely used
       call read_date_tio (l1_rad_filename_nc, year, month, day, jday, errstat)
       if (errstat /= 0) then
         call tell_error (tell_io_error, &
@@ -211,18 +215,29 @@ contains
 
     ! Read OMI irradiances
     reduce_resolution_save = reduce_resolution; reduce_resolution = .false.
-    call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, pge_error_status ) 
+    call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, &
+         pge_error_status )
     if ( pge_error_status >= pge_errstat_error ) then
       use_backup = .true.
-      call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, pge_error_status )  
-      if ( pge_error_status >= pge_errstat_error ) return   
+      call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, &
+           pge_error_status )
+      if ( pge_error_status >= pge_errstat_error ) return
     endif
     if (scnwrt) write(*, '(A)') 'Finish reading irradiances!!!'
 
     if (use_solcomp) then
-      call replace_solar_irradiance(calunit, nxcoadd, first_pix, last_pix, pge_error_status)
+      call replace_solar_irradiance(calunit, nxcoadd, first_pix, last_pix, &
+           pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
-      if (scnwrt) write(*, '(A)') 'Finish replacing irradiances with solar composite!!!'
+      if (scnwrt) write(*, '(A)') &
+           'Finish replacing irradiances with solar composite!!!'
+    endif
+
+    ! Allocate some memory - must be before cross_calibrate calls
+    call alloc (errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "memory allocation failed", errstat)
+      return
     endif
 
     ! Calibrate OMI irradiances for all cross track pixels and save results
@@ -232,9 +247,11 @@ contains
     if (scnwrt) write(*, '(A)') 'Finish calibrating irradiances!!!'
 
     if (reduce_resolution_save) then
-      call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, pge_error_status ) 
-      if ( pge_error_status >= pge_errstat_error ) return  
-      if (scnwrt) write(*, '(A)') 'Finish reading irradiances (with reduced resolution)!!!'      
+      call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, &
+           pge_error_status )
+      if ( pge_error_status >= pge_errstat_error ) return
+      if (scnwrt) write(*, '(A)') &
+           'Finish reading irradiances (with reduced resolution)!!!'
     endif
 
 
@@ -243,7 +260,7 @@ contains
     ! is determined by nlines_max = 100. This suggests that it expects
     ! to operate within one OMI data black of 100 lines. When operated
     ! in it's current position, outside the OMIBlock loop, if last_line >100
-    ! the array indices will exceed nlines_max, causing memory to be 
+    ! the array indices will exceed nlines_max, causing memory to be
     ! overwritten and causing the program to crash / give false results
     ! Consider moving compute_pixel_corners inside the OMIBlock loop.
 
@@ -324,7 +341,7 @@ contains
 
     ! Initialize fitting statistics
     npix_fitting = 0       ! number of pixels (failure + success)
-    npix_fitted  = 0       ! number of successfully fitted pixels   
+    npix_fitted  = 0       ! number of successfully fitted pixels
     fitcol_avg   = 0.0
     rms_avg = 0.0
     dfitcol_avg = 0.0
@@ -332,16 +349,19 @@ contains
 
     ! Open output files
     if (lcurve_write) then
-      open(UNIT=lcurve_unit, file=trim(adjustl(lcurve_fname)), status='unknown', IOSTAT=errstat)
+      open(UNIT=lcurve_unit, file=trim(adjustl(lcurve_fname)), &
+           status='unknown', IOSTAT=errstat)
       if ( errstat /= pge_errstat_ok ) then
         write(www_lun, *) modulename, ': Cannot open lcurve file!!!'
         pge_error_status = pge_errstat_error; return
       end if
     endif
     if (ozwrtint) then
-      open(UNIT=ozwrtint_unit, file=trim(adjustl(ozwrtint_fname)), status='unknown', IOSTAT=errstat)
+      open(UNIT=ozwrtint_unit, file=trim(adjustl(ozwrtint_fname)), &
+           status='unknown', IOSTAT=errstat)
       if ( errstat /= pge_errstat_ok ) then
-        write(www_lun, *) modulename, ': Cannot open intermediate output file!!!'
+        write(www_lun, *) modulename, &
+             ': Cannot open intermediate output file!!!'
         pge_error_status = pge_errstat_error; return
       end if
     endif
@@ -362,20 +382,24 @@ contains
 
     if (l2_hdf_flag == 0) then
       ! text output
-      open (UNIT=l2funit, FILE=trim(adjustl(l2_filename)), STATUS='UNKNOWN', IOSTAT=errstat)
+      open (UNIT=l2funit, FILE=trim(adjustl(l2_filename)), STATUS='UNKNOWN', &
+           IOSTAT=errstat)
       if ( errstat /= pge_errstat_ok ) then
         write(www_lun, *) modulename, ': Cannot open output file!!!'
         pge_error_status = pge_errstat_error; return
       end if
       call timestamp(currtime)
-      write(l2funit, '(3A,1x,A27,A10,I5,A10,I5)') trim(adjustl(algorithm_name)), ', ', &
-           trim(adjustl(algorithm_version)), currtime, ' xbin = ', nxbin, ' ybin = ', nybin
+      write(l2funit, '(3A,1x,A27,A10,I5,A10,I5)') &
+           trim(adjustl(algorithm_name)), ', ', &
+           trim(adjustl(algorithm_version)), currtime, ' xbin = ', nxbin, &
+           ' ybin = ', nybin
 
-    else 
+    else
 
       ! he5 output
       if (use_he5_out) then
-        call He5_L2WrtInit (first_pix, last_pix, first_line, last_line, errstat )
+        call He5_L2WrtInit (first_pix, last_pix, first_line, last_line, &
+             errstat )
         if ( errstat /= pge_errstat_ok ) then
           write(www_lun, *) modulename, ' : Cannot create HE5 output file!!!'
           pge_error_status = pge_errstat_error; return
@@ -401,16 +425,16 @@ contains
         num_wav_max = maxval(omi_nwav_irrad(first_pix:last_pix)) - &
              numwin * 2 * radnhtrunc
         call l2_tio_create(nc_l2_filename, first_pix, last_pix, first_line, &
-             last_line, offset_line, nybin, nfgas, nlay, n_fitvar_rad, &
-             numwin, num_param, num_wav_max, &
-             step_idx(linenum_lim(1):linenum_lim(2)), &
+             last_line, nfgas, nlay, n_fitvar_rad, numwin, num_param, &
+             num_wav_max, step_idx(linenum_lim(1):linenum_lim(2)), &
              errstat)
         if (errstat < 0) then
           call tell_error (tell_io_write_error, &
                "omi_fitting_process: L2 file creation failed", errstat)
         endif
         ! write geolocation data to netCDF
-        call l2_tio_write_geo(first_pix, last_pix, first_line, last_line, errstat)
+        call l2_tio_write_geo(first_pix, last_pix, first_line, last_line, &
+             errstat)
       endif
 
     endif
@@ -418,10 +442,11 @@ contains
     ! loop through each OMI data block
     ! 1. read each block
     ! 2. perform calibration for each block (middle line)
-    ! 3. perform retrievals from first_pix (all lines within the block) to last_pix
+    ! 3. perform retrievals from first_pix to last_pix (all lines in block)
 
-    ! these pixels with exitval >= 0 will be used by subsequent retrievals as initial values
-    omi_exitval = -10 ! no retrievals yet 
+    ! these pixels with exitval >= 0 will be used by subsequent retrievals
+    !  as initial values
+    omi_exitval = -10 ! no retrievals yet
     omi_fitvar  = 0.0
 
     OMIBlock: do iline = 0, last_line-1, nlines_max
@@ -431,18 +456,23 @@ contains
 
       ! Actually lines in OMI data
       sline = offset_line + iline * nybin
-      eline = sline + ntimes_loop * nybin - 1     
+      eline = sline + ntimes_loop * nybin - 1
 
       ! Get NTIMES_LOOP radiance lines (with effective viewing geometry)
-      call omi_read_radiance_lines (iline, ntimes_loop, sline, eline, first_pix, last_pix, nxcoadd, pge_error_status)
+      call omi_read_radiance_lines (iline, ntimes_loop, sline, eline, &
+           first_pix, last_pix, nxcoadd, pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
-      if (scnwrt) write(*, '(A,I4,A,I4)') 'Finishing reading radiances for lines: ', sline + 1, ' - ', eline+1
+      if (scnwrt) write(*, '(A,I4,A,I4)') &
+           'Finishing reading radiances for lines: ', sline + 1, ' - ', eline+1
 
-      ! Perform calibration for the middle scan line and apply to the other scan lines
+      ! Perform calibration for the middle scan line and apply to the other
+      !  scan lines
       if (wavcal) then
         call omi_rad_cross_calibrate (first_pix, last_pix, pge_error_status)
         if ( pge_error_status >= pge_errstat_error ) return
-        if (scnwrt) write(*, '(A,I4,A,I4)') 'Finishing calibrating radiances for lines: ', sline+1, ' - ', eline+1
+        if (scnwrt) write(*, '(A,I4,A,I4)') &
+             'Finishing calibrating radiances for lines: ', sline+1, ' - ', &
+             eline+1
       endif
 
       ! loop through each xtrack position
@@ -451,8 +481,9 @@ contains
       XtrackPix: do currpix = first_pix, last_pix
         !! Kai
         if( scnwrt ) write(*,'(A,I5,A,I3)') 'Doing Line=',iline,', iX=',currpix
-        ! Need to convolve high-resolution ozone absorption cross section (for this position)
-        ! Once the xsection is convolved, it will be set to false in ROUTINE getabs_crs
+        ! Need to convolve high-resolution ozone absorption cross section
+        !  (for this position). Once the xsection is convolved, it will be
+        !  set to false in ROUTINE getabs_crs
         ozabs_convl = .true.; so2crs_convl = .true.
 
         !IF (ALL(omi_radpix_errstat(currpix, 0:ntimes_loop-1) == pge_errstat_error) &
@@ -468,27 +499,31 @@ contains
         YfitLine: do currloop = 0, ntimes_loop - 1
 
           omi_exitval(currpix, currloop) = -10
-          currline = iline + currloop  
+          currline = iline + currloop
 
           if (omi_radpix_errstat(currpix, currloop) == pge_errstat_error .or. &
                omi_solpix_errstat(currpix) == pge_errstat_error ) &
                omi_exitval(currpix, currloop) = -9
 
           ! Load/adjust radiances/geolocations fields for a particular pixel
-          ! Prepare databases for the first pixel (ifitline == 1)   
+          ! Prepare databases for the first pixel (ifitline == 1)
           if (omi_exitval(currpix, currloop) == -10) then
             call omi_adj_earthshine_data (curr_fitted_line, pge_error_status)
-            if ( pge_error_status >= pge_errstat_error ) omi_exitval(currpix, currloop) = -9
+            if ( pge_error_status >= pge_errstat_error ) &
+                 omi_exitval(currpix, currloop) = -9
           endif
 
           if (omi_exitval(currpix, currloop) == -10) then
-            if (scnwrt) write(*, '(A,I5,A10,I5, A10, I5)')       'OMI Pixel: Line = ', &
-                 currline * nybin + offset_line + 1, ' XPix = ', (currpix-1) * nxbin  + 1, &
+            if (scnwrt) write(*, '(A,I5,A10,I5, A10, I5)') &
+                 'OMI Pixel: Line = ', &
+                 currline * nybin + offset_line + 1, &
+                 ' XPix = ', (currpix-1) * nxbin  + 1, &
                  ' Loop = ', currloop
 
             initval = omi_initval(currpix, currloop)
             call specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
-            omi_exitval(currpix, currloop) = exval  ! Store exit status for current pixel
+            ! Store exit status for current pixel
+            omi_exitval(currpix, currloop) = exval
             omi_fitvar(currpix, currloop, 1:n_fitvar_rad) &
                  = fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad))
           else
@@ -500,7 +535,7 @@ contains
             ! text output
             if (exval > -9) call omi_write_intermed (l2funit, fitcol, &
                  dfitcol,  rms,  exval)
-          else 
+          else
             ! write he5 output
             if (use_he5_out) then
               call He5_L2SetDataFields (currpix, first_pix, last_pix, &
@@ -532,11 +567,13 @@ contains
             endif
           endif
 
-          if ( exval >= 0 .and. fitcol(1) > 0.0 .and. dfitcol(1, 1) >= 0.0 ) then                     
-            ! ----------------------------------------------------------------------
-            ! Some general statistics on the average fitted column and uncertainty.
-            ! Again, we make sure that only "good" fits are included in the average.
-            ! ----------------------------------------------------------------------              
+          if ( exval >= 0 .and. fitcol(1) > 0.0 .and. &
+               dfitcol(1, 1) >= 0.0 ) then
+            ! -----------------------------------------------------------------
+            ! Some general statistics on the average fitted column and
+            ! uncertainty. Again, we make sure that only "good" fits are
+            ! included in the average.
+            ! ----------------------------------------------------------------
             fitcol_avg       = fitcol_avg + fitcol(1)
             rms_avg          = rms_avg + rms
             dfitcol_avg      = dfitcol_avg + dfitcol(1, 1)
@@ -545,7 +582,7 @@ contains
             curr_fitted_line = curr_fitted_line + 1
           endif
 
-          npix_fitting        = npix_fitting + 1          
+          npix_fitting        = npix_fitting + 1
         enddo YfitLine
       enddo XtrackPix
     enddo OMIBlock
@@ -566,13 +603,13 @@ contains
         LUNinputPointer(1:2) = (/ L1B_UV_FILE_LUN, L2_CLD_FILE_LUN /)
         errstat  = OMI_setCoreArchMetaData( L2_OUT_LUN , L1BcoreMeta, &
              LUNinputPointer(1:2), MCF_FILE_LUN,  &
-             PROFOZ_metaItems(1:6), ShortName ) 
+             PROFOZ_metaItems(1:6), ShortName )
       else
         LUNinputPointer(1:3) = (/ L1B_IRR_FILE_LUN, L1B_UV_FILE_LUN, &
              L2_CLD_FILE_LUN /)
         errstat  = OMI_setCoreArchMetaData( L2_OUT_LUN , L1BcoreMeta, &
              LUNinputPointer(1:3), MCF_FILE_LUN,  &
-             PROFOZ_metaItems(1:6), ShortName ) 
+             PROFOZ_metaItems(1:6), ShortName )
       endif
 
       if( errstat /= OMI_S_SUCCESS ) then
@@ -582,7 +619,8 @@ contains
     endif
 
     if ( npix_fitted == 0) npix_fitted = 1
-    if (scnwrt) call write_final(fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg, npix_fitted)
+    if (scnwrt) call write_final(fitcol_avg, rms_avg, dfitcol_avg, &
+         drel_fitcol_avg, npix_fitted)
     if (scnwrt) write(*, '(2(A,I5))') 'Number of pixels = ', &
          npix_fitting, '   Number of fitted pixels = ', npix_fitted
 
@@ -591,7 +629,7 @@ contains
     ! -----------------------------------------
     if (l2_hdf_flag == 0) then
       call timestamp(currtime)
-      write(l2funit, '(A27)') currtime 
+      write(l2funit, '(A27)') currtime
       close ( l2funit )
     endif
 
@@ -604,6 +642,9 @@ contains
       call label_output_file ("o3p", processing_version, errstat)
     endif
 
+
+    ! Deallocate any remaining arrays
+    call dealloc (errstat)
 
     ! Close L2 netCDF output file
     if (use_tio_out) then

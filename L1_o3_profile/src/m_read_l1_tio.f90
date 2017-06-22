@@ -131,7 +131,7 @@ contains
          tio_prec, tio_wvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     integer (kind=2), dimension(1) :: tio_mqf
-    character (len=25) :: rad_param_name, prec_param_name
+    character (len=64) :: rad_param_name, prec_param_name
     integer :: nx,nw
 
     type (tiof_file_type) :: tio_l1obj

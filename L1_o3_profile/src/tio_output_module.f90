@@ -37,8 +37,6 @@ contains
   !! @param[in] last_pix       index of last xtrack pixel in output
   !! @param[in] first_line     index of first line in output
   !! @param[in] last_line      index of last line in output
-  !! @param[in] offset_line    offset of first line from zero
-  !! @param[in] nybin          along track (line) binning factor
   !! @param[in] ngas           number of other gas parameters (nfgas)
   !! @param[in] nlayer         number of layers in ozone profile (nlay)
   !! @param[in] nfitvar        number of fit variables (n_fitvar_rad)
@@ -48,14 +46,13 @@ contains
   !! @param[in] step_indices   1D array of unbinned step indices
   !! @param[inout] errstat     error status variable
   subroutine l2_tio_create (filename, first_pix, last_pix, first_line, &
-       last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
+       last_line, ngas, nlayer, nfitvar, nwindow, &
        num_param, num_wav_max, step_indices, errstat)
 
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=4), intent(in) :: first_pix, last_pix, first_line, &
-         last_line, offset_line, nybin, ngas, nlayer, nfitvar, nwindow, &
-         num_param, num_wav_max
+         last_line, ngas, nlayer, nfitvar, nwindow, num_param, num_wav_max
     integer (kind=4), dimension(:), intent(in) :: step_indices
     integer (kind=4), intent(inout) :: errstat
     integer (kind=4) :: num_steps, num_xtrack, nlayerp1, num_elms, &

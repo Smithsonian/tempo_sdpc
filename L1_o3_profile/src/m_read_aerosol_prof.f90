@@ -17,33 +17,33 @@ contains
   !
   ! Modificcation History:
   ! Nov 27, 2004: (before, use 9612-9711 for other years; now: 9609-9708)
-  ! Jan 26, 2005: (use GOES-4(96-97,99-00) fields and GEOS-3 (98) fields 
+  ! Jan 26, 2005: (use GOES-4(96-97,99-00) fields and GEOS-3 (98) fields
   ! for individual years and GOES-4 average fields for other years
   !
   ! Purpose:
   ! This program reads aerosol extinction profiles:
   ! (a): Stratospheric aerosols from SAGE (Jan 1995- Aug 1999)
   !      Reference: Bauman et al., 2003a, b, c
-  !       4 wavelengths, 385, 453, 525, 1020 nm (extrapolated to 0.26 and 
+  !       4 wavelengths, 385, 453, 525, 1020 nm (extrapolated to 0.26 and
   !       0.35um based on Q)
   !      28 latitude 5 degree bands from -70s to 70n
-  !      Altitude from 10 km to 40 km at every 1 km 
+  !      Altitude from 10 km to 40 km at every 1 km
   !        (valid values about tropopause)
-  ! (b): GEOS-CHEM monthly mean aerosol extinction profiles 
-  !      (i.e., GOCART aerosols) for Mineral dust, tropospheric sulfate, 
+  ! (b): GEOS-CHEM monthly mean aerosol extinction profiles
+  !      (i.e., GOCART aerosols) for Mineral dust, tropospheric sulfate,
   !       black carbon,  organic carbon, sea salt
   !      (accumulation mode and coarse mode)
   !      Reference:
-  !      Chin, M., P. Ginoux, S. Kinne, O. Torres, B. Holben, B.N. Duncan, 
-  !      R.V. Martin, J.A. Logan, A. Higurashi, and T. Nakajima, Tropospheric 
-  !      aerosol optical thickness from the GOCART model and comparisons with 
-  !      satellite and sunphotometer measurements, 
+  !      Chin, M., P. Ginoux, S. Kinne, O. Torres, B. Holben, B.N. Duncan,
+  !      R.V. Martin, J.A. Logan, A. Higurashi, and T. Nakajima, Tropospheric
+  !      aerosol optical thickness from the GOCART model and comparisons with
+  !      satellite and sunphotometer measurements,
   !       J. Atmos. Sci., 59, 461-483, 2002.
   !
   !      Dimension: GEOS-STRAT, GRID2x2.5x26 (2.5lon x 2lat x 26 layers)
   !      INTEGER, PARAMETER :: IGLOB  = 144 (-181.25 -- 178.75) pixel center
   !      INTEGER, PARAMETER :: JGLOB  = 91  (-89.0 --- 89.0)
-  !      INTEGER, PARAMETER :: LGLOB  = 26 
+  !      INTEGER, PARAMETER :: LGLOB  = 26
   !
   !      Sigma Pressure Coordinate
   !      Levels
@@ -53,11 +53,11 @@ contains
   !     &         .380000d0, .325000d0, .278000d0, .237954d0, .202593d0,
   !     &         .171495d0, .144267d0, .121347d0, .102098d0, .085972d0,
   !     &         .072493d0, .061252d0, .051896d0, .037692d0, .019958d0,
-  !     &         .000000d0 / 
+  !     &         .000000d0 /
 
   ! Optical properties:
-  ! (a) Tropospheric aerosols: 
-  ! The optical properties (Q, w, phase moments) for each of these aerosols 
+  ! (a) Tropospheric aerosols:
+  ! The optical properties (Q, w, phase moments) for each of these aerosols
   ! are computed by R.V. Martin at four wave lengths (300, 400, 600, 999)
   ! Note: for wavelengths less than 300., extrapolated
   ! (b) Stratospheric aerosols
@@ -66,14 +66,14 @@ contains
   ! sigma at four different wavelengths, 0.260, 0.337, 0.525, 1.0230
   !============================================================================
 
-  ! This subroutine is modified from Randall's routine in amfv4.sd/main.F for 
+  ! This subroutine is modified from Randall's routine in amfv4.sd/main.F for
   ! reading GEOS-CHEM aerosols
   ! Note in gasmoms, first moments are not stored, since they are always 1
 
   SUBROUTINE READ_AEROSOL_PROF(year, month, lon, lat, ps, zs, tp, nz, &
        waves, nwave, useasy, gaext, gasca, gaasy, ngksec, gamoms, errstat)
 
-    USE OMSAO_precision_module 
+    USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir, refdbdir
     USE ozprof_data_module,     ONLY: atmos_unit, nmom, maxgksec, &
          strat_aerosol, which_aerosol, maxmom
@@ -96,7 +96,7 @@ contains
     !INTEGER, DIMENSION(NAER)              :: IND = (/4, 6, 9, 12, 15, 18/)
     !CHARACTER (LEN=8)                     :: CATEGORY_IN = 'OD-MAP-$'
     !CHARACTER (LEN=3), DIMENSION(12)      :: monstr = (/'jan', 'feb', &
-    !   'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/) 
+    !   'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
 
     ! ======================
     ! Input/Output variables
@@ -113,11 +113,12 @@ contains
     ! ======================
     ! LOCAL variables
     ! ======================
-    CHARACTER (LEN=max_pathlen)                                       :: aername
+    CHARACTER (LEN=max_pathlen) :: aername
     REAL (KIND=dp), SAVE, DIMENSION(NLON, NLAT, NTLAYER, NAER):: tarsl
     !REAL (KIND=sp), DIMENSION(NLON, NLAT, NTLAYER)            :: array
     REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
-    REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) :: smoms
+    REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) ::&
+         smoms
     REAL (KIND=dp), DIMENSION(NWL, NSLAYER)                   :: nsext, nsasy
     REAL (KIND=dp), DIMENSION(NWL, NSLAYER, 0:nmom, ngksec)   :: nsmoms
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: zstrat
@@ -144,7 +145,7 @@ contains
 
     !     ! sigma coordinate for GEOS-STRAT
     !     REAL (KIND=dp), DIMENSION (0: NTLAYER), PARAMETER :: sigma0 =      &
-    !          (/1.0d0, .987871d0, .954730d0, .905120d0, .845000d0, .78d0,& 
+    !          (/1.0d0, .987871d0, .954730d0, .905120d0, .845000d0, .78d0,&
     !          .710000d0, .639000d0, .570000d0, .503000d0, .440000d0,     &
     !          .380000d0, .325000d0, .278000d0, .237954d0, .202593d0,     &
     !          .171495d0, .144267d0, .121347d0, .102098d0, .085972d0,     &
@@ -174,8 +175,8 @@ contains
          0.000000D0,   0.000000D0,   0.000000D0, 0.000000D0/)
     !p(L) = AP4(L) + BP4(L) * ps
 
-    REAL (KIND=dp), DIMENSION (0: NTLAYER)    :: zsig, sigma 
-    CHARACTER (LEN=2)  :: monc, yrc 
+    REAL (KIND=dp), DIMENSION (0: NTLAYER)    :: zsig, sigma
+    CHARACTER (LEN=2)  :: monc, yrc
     LOGICAL, SAVE      :: first = .TRUE.
     INTEGER, SAVE      :: ntlayer1
 
@@ -205,11 +206,12 @@ contains
       !---------------------------------------------------------------
       ! Read tropospheric aerosol profiles from the binary punch file
       !---------------------------------------------------------------
-      WRITE(monc, '(I2.2)') month          ! from 9 to '09'   
+      WRITE(monc, '(I2.2)') month          ! from 9 to '09'
       WRITE(yrc, '(I2.2)') MOD(year, 100)  ! from 1997 to '97'
 
 
-      aername = TRIM(ADJUSTL(atmdbdir)) // 'gcaer/aer_' // yrc // monc // '.dat'
+      aername = TRIM(ADJUSTL(atmdbdir)) // 'gcaer/aer_' // yrc // monc // &
+           '.dat'
       ! Determine if file exists or not
       INQUIRE (FILE= aername, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
@@ -220,7 +222,7 @@ contains
 
       OPEN (UNIT=atmos_unit, FILE=aername, STATUS='old')
       DO i = 1, 5
-        READ(atmos_unit, *) 
+        READ(atmos_unit, *)
       ENDDO
       IF (year == 1998) THEN
         ntlayer1 = NTLAYER
@@ -236,19 +238,21 @@ contains
       ! Read stratospheric aerosol profiles from files
       !---------------------------------------------------------------
       IF (strat_aerosol) THEN
-        aername = TRIM(ADJUSTL(atmdbdir)) // 'strataer/strataerv_' // yrc // '_' // monc // '.dat'
+        aername = TRIM(ADJUSTL(atmdbdir)) // 'strataer/strataerv_' // yrc // &
+             '_' // monc // '.dat'
 
         ! Determine if file exists or not
         INQUIRE (FILE= aername, EXIST= file_exist)
         IF (.NOT. file_exist) THEN
           WRITE(www_lun,*) &
                'Warning: no strat. aerosol file found, use 98-99 aerosols!!!'
-          aername = TRIM(ADJUSTL(atmdbdir)) // 'strataer/strataerv_bk_' // monc // '.dat'
+          aername = TRIM(ADJUSTL(atmdbdir)) // 'strataer/strataerv_bk_' // &
+               monc // '.dat'
         ENDIF
 
         wls = (/260.0, 337.0, 525.0, 1020./)
         OPEN (UNIT=atmos_unit, FILE=aername, STATUS='old')
-        DO i = 1, NSLAT 
+        DO i = 1, NSLAT
           DO j = 1, NSLAYER
             READ(atmos_unit, *) (sext(k, i, j), k=1, NWL), &
                  (((smoms(k, i, j, n, m), k=1, NWL),  m = 1, maxgksec), &
@@ -269,14 +273,14 @@ contains
            TRIM(ADJUSTL(refdbdir)) // 'aer_vproperty_kirchstetter1000.dat', &
            FORM='formatted',STATUS='old')
       READ (atmos_unit, *)      ! Header
-      DO n = 1, NAER 
+      DO n = 1, NAER
         READ(atmos_unit, *)    ! Aerosol label
         READ(atmos_unit, *) nwls(n)
         IF (nwls(n) > MWL) THEN
           WRITE(www_lun, *) modulename, &
                ' # Aerosol input wavelengths exceeds MWL. Increase MWL!!!'
           errstat = pge_errstat_error
-          RETURN           
+          RETURN
         ENDIF
         DO i = 1, nwls(n)
           READ(atmos_unit, *) wl(i,n), qext(i,n), raa(i,n), assa(i,n), &
@@ -287,7 +291,7 @@ contains
         ENDDO
       ENDDO
       IF (useasy) qasy = phfcn(1, 1, :, :) / 3.0
-      CLOSE ( atmos_unit ) 
+      CLOSE ( atmos_unit )
 
       first = .FALSE.
     ENDIF
@@ -300,13 +304,13 @@ contains
          lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
     tprof(:, faer:laer) = 0.0
     DO i = 1, nblon
-      DO j = 1, nblat 
+      DO j = 1, nblat
         tprof(:, faer:laer) = tprof(:, faer:laer) + &
              tarsl(lonin(i), latin(j), :, faer:laer) * lonfrac(i) * latfrac(j)
       ENDDO
     ENDDO
 
-    ! The optical thickness for tropospheric aerosols is scaled 
+    ! The optical thickness for tropospheric aerosols is scaled
     ! using extinction coefficient for tropospheric aerosol to provided
     ! optical thickness at 400 nm
     DO j = faer, laer
@@ -322,7 +326,7 @@ contains
     ENDDO
 
     ! Get height coordinate for GEOS-CHEM
-    ! sigma = sigma0 * ps(0); 
+    ! sigma = sigma0 * ps(0)
     IF (year == 1998) THEN
       sigma = pres3 * ps(0)
     ELSE
@@ -333,7 +337,7 @@ contains
     CALL BSPLINE(LOG(ps), zs, nz+1, LOG(sigma(0:NTLAYER)), zsig(0:NTLAYER),&
          NTLAYER+1, errstat)
     IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat 
+      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
       errstat = pge_errstat_error
       RETURN
     ENDIF
@@ -358,8 +362,10 @@ contains
       ELSE
         nblat = 2
         frac = (lat + 67.5) / latsgrid + 1
-        latin(1) = INT(frac); latin(2) = latin(1) + 1
-        latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+        latin(1) = INT(frac)
+        latin(2) = latin(1) + 1
+        latfrac(1) = latin(2) - frac
+        latfrac(2) = 1.0 - latfrac(1)
       ENDIF
 
       nsext = 0.0
@@ -401,7 +407,7 @@ contains
         high = k
         low = k - 1
 
-        ! handling tropospheric part    
+        ! handling tropospheric part
         xg      = (waves(i) - wl(low, j)) / (wl(high, j)-wl(low, j))
         ext(j)  = qext(low, j) * (1.0 - xg) + qext(high, j) * xg
         waer(j) = assa(low, j) * (1.0 - xg) + assa(high, j) * xg
@@ -416,7 +422,7 @@ contains
       ENDDO
 
       ! scaling aerosol optical thickness to 400 nm values
-      ctprof(0, faer:laer) = 0.0    
+      ctprof(0, faer:laer) = 0.0
       DO j = 1, ntlvl
         ctprof(j, faer:laer) = ctprof(j-1, faer:laer) + ext(faer:laer) &
              / ext400(faer:laer) * tprof(j, faer:laer)
@@ -435,13 +441,13 @@ contains
            ntprof(1:tp, faer:laer) - ntprof(0:tp-1, faer:laer)
 
       DO j = 1, tp
-        gaext(i, j) = SUM(ntprof(j, faer:laer)) 
-        gasca(i, j) = SUM(ntprof(j, faer:laer) * waer(faer:laer)) 
+        gaext(i, j) = SUM(ntprof(j, faer:laer))
+        gasca(i, j) = SUM(ntprof(j, faer:laer) * waer(faer:laer))
 
         IF (useasy) THEN
           gaasy(i, j) = SUM(ntprof(j, faer:laer) * waer(faer:laer) * &
                asy(faer:laer)) / gasca(i, j)
-        ELSE        
+        ELSE
           DO k = 0, nmom
             DO n = 1, ngksec
               gamoms(i, j, k, n) = SUM(phsmoms(n, k, faer:laer) * &
@@ -454,7 +460,7 @@ contains
 
       IF (strat_aerosol) THEN
         ! handling stratospheric part
-        IF (waves(i) > 525.0) THEN    
+        IF (waves(i) > 525.0) THEN
           low = 3
           high = 4
         ELSE IF(waves(i) > 337.0) THEN
@@ -480,15 +486,16 @@ contains
         ENDDO
 
         CALL INTERPOL(zstrat, csprof, NSLAYER+1, zs(tp:nshigh), &
-             nsprof(tp:nshigh), nshigh-tp + 1, errstat) 
+             nsprof(tp:nshigh), nshigh-tp + 1, errstat)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, &
-               ': INTERPOL error, errstat = ', errstat 
+               ': INTERPOL error, errstat = ', errstat
           errstat = pge_errstat_error
           RETURN
         ENDIF
         gaext(i, tp+1:nshigh) = nsprof(tp+1:nshigh) - nsprof(tp:nshigh-1)
-        gasca(i, tp+1:nshigh) = gaext(i, tp+1:nshigh)  ! single albedo 1 for sulfate
+        ! single albedo 1 for sulfate
+        gasca(i, tp+1:nshigh) = gaext(i, tp+1:nshigh)
 
         IF (useasy) THEN
           CALL INTERPOL(zstrat(0:NSLAYER-1), sg, NSLAYER, &
@@ -501,7 +508,7 @@ contains
           ENDIF
         ELSE
           DO k = 0, nmom
-            DO n = 1, ngksec 
+            DO n = 1, ngksec
               CALL INTERPOL(zstrat(0:NSLAYER-1), sph(:, k, n), NSLAYER, &
                    zs(tp+1:nshigh), gamoms(i, tp+1:nshigh, k, n), &
                    nshigh-tp, errstat)
@@ -520,7 +527,7 @@ contains
              (zs(nshigh)-zs(nshigh-1))
         DO j = nshigh+1, nz
           gaext(i, j) = 10.0D0**(slope * (zs(j) - zs(nshigh-1)) + &
-               LOG10(gaext(i, nshigh-1))) 
+               LOG10(gaext(i, nshigh-1)))
         ENDDO
 
         gasca(i, nshigh+1:nz) = gaext(i, nshigh+1:nz)
@@ -529,7 +536,7 @@ contains
         ELSE
           DO j = 0, nmom
             DO k = 1, ngksec
-              gamoms(i, nshigh+1:nz, j, k) = gamoms(i, nshigh, j, k) 
+              gamoms(i, nshigh+1:nz, j, k) = gamoms(i, nshigh, j, k)
             ENDDO
           ENDDO
         ENDIF

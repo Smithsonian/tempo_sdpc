@@ -8,11 +8,11 @@ module m_read_geo_tio
 
   implicit none
 
-  ! Public parameters 
+  ! Public parameters
   real (kind=4), dimension (4, 0:nxtrack_max, 0:ntimes_max) :: tio_allclat, &
        tio_allclon
 
-  ! Local parameters used in geometry calculations 
+  ! Local parameters used in geometry calculations
   real (kind=8), parameter, private :: pi         = 3.14159265358979d0
   real (kind=8), parameter, private :: pihalf     = 0.5d0  * pi
   real (kind=8), parameter, private :: twopi      = 2.0d0  * pi
@@ -54,13 +54,13 @@ contains
     use m_convert_coadd, only: coadd_byte_qflgs, convert_gpqualflag_info
 
     implicit none
-    
+
     ! input variables
     integer, intent (in) :: nstep, nxtrack, nl
     character (len=*), intent(in) :: l1file,  l1swath
     ! output variables
     integer, intent (inout) :: errstat
-    ! local variables 
+    ! local variables
     type (tiof_file_type) :: tio_l1obj
     integer :: eline, sline, nline, iline, nx, i, j, ix, iy, nbits, ndim
     integer :: ysidx, yeidx, ymidx, xsidx, xeidx, xmidx
@@ -142,7 +142,7 @@ contains
           j = i + 1
           tmp_xtrackqflg = tio_xtrackqflg
           CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline), &
-               tmp_xtrackqflg(j, iline)) 
+               tmp_xtrackqflg(j, iline))
           tio_xtrackqflg(ix, iline) = tmp_xtrackqflg(i, iline)
         end do
       end do
@@ -153,7 +153,7 @@ contains
 
 
     ! Resample corners coordinates from L1 file to account for binning
-    nx = nxtrack / nxbin 
+    nx = nxtrack / nxbin
     do i = 0, nx-1
       do j = 0, nl-1
         tio_allclon(1,i,j) = tmp_allclon(1,((i+1)*nxbin),&
@@ -229,23 +229,23 @@ contains
 
 
     ! determine time and flags for coadded pixels
-    do iy = 0, nl - 1 
-      ysidx = sline + iy * nybin 
+    do iy = 0, nl - 1
+      ysidx = sline + iy * nybin
       yeidx = ysidx + nybin - 1
       ymidx = ysidx + nybin / 2
       tio_time(iy) = sum(tio_time(ysidx:yeidx)) / nybin
-      ! Use those from the middle point 
+      ! Use those from the middle point
       ! (avoid dealing with polar, dateline regions)
       tio_mflg(iy) = tio_mflg(ymidx)
       ! get separate land/water, glint, snow/ice flags
-      if (.NOT. use_he5_in) then 
+      if (.NOT. use_he5_in) then
         call convert_gpqualflag_info (nxtrack, &
              omi_allGeoFlg(1:nxtrack, ymidx), &
              land_water_flg(1:nxtrack, ymidx), glint_flg(1:nxtrack, ymidx), &
              snow_ice_flg(1:nxtrack, ymidx))
       endif
 
-      do ix = 1, nx 
+      do ix = 1, nx
         xsidx = (ix - 1) * nxbin + 1
         xeidx = xsidx + nxbin - 1
         xmidx = xsidx + nxbin / 2
@@ -304,7 +304,7 @@ contains
     omi_alltime = tio_time
     omi_allMflg = tio_mflg
     omi_allHeight = tio_height
-    omi_allGeoFlg = tio_geoflg
+    omi_allGeoFlg = INT(tio_geoflg, kind=2)
     omi_allXtrackQFlg = tio_xtrackqflg
     omi_alllat(1:nx,0:nl-1) = tio_alllat(1:nx,0:nl-1)
     omi_alllon(1:nx,0:nl-1) = tio_alllon(1:nx,0:nl-1)
@@ -341,7 +341,7 @@ contains
   !> @param[out] esza edgs solar zenith angles?
   !> @param[out] eaza edge solar azimuth angles?
   !> @param[out] evza edge viewing zenith angles?
-  !> @param[out] esca edge 
+  !> @param[out] esca edge
   !
   !---------------------------------------------------------------------
 
@@ -363,7 +363,7 @@ contains
     real (kind=8), dimension (0:nxtrack, 0:ntimes), intent(out) :: clon, clat
     real (kind=8), dimension (0:nxtrack, 0:ntimes-1), intent(out) :: elon, elat
     real (kind=8), dimension (1:nxtrack, 0:ntimes-1), intent(out) :: esza, &
-         evza, eaza, esca     
+         evza, eaza, esca
 
     ! ---------------
     ! Local variables
@@ -389,11 +389,11 @@ contains
     ! -------------------------
     ! Initialize some variables
     ! -------------------------
-    clon   = -999.9d0 
+    clon   = -999.9d0
     clat = -999.9d0
-    elon   = -999.9d0 
+    elon   = -999.9d0
     elat = -999.9d0
-    esza   = -999.9d0 
+    esza   = -999.9d0
     evza = -999.9d0
     eaza = -999.9d0
     esca = -999.9d0
@@ -401,13 +401,13 @@ contains
     ! Perform interpolation across the track
     do i = 0, ntimes - 1
       ! Compute the distances between two pixels: (x1 + x2) / 2.
-      do ix = 1, nxtrack - 1 
+      do ix = 1, nxtrack - 1
         tmpdisx(ix) = circle_rdis(lat(ix, i), lon(ix, i), lat(ix+1, i), &
              lon(ix+1, i))
       enddo
 
       ! Compute the pixel size across the track
-      ! Assume the center two pixels have equal pixel size 
+      ! Assume the center two pixels have equal pixel size
       ! (which causes about < 0.1 km error for UV-2)
       mpix = nxtrack / 2
       xsize(mpix) = tmpdisx(mpix) / 2.0
@@ -422,11 +422,11 @@ contains
       omixsize(:, i) = xsize
 
       !!  This is to test SUBROUTINE sphergeom_intermediate
-      !!  Works for both interpolation and extrapolation 
-      !! (with certain limitation) 
+      !!  Works for both interpolation and extrapolation
+      !! (with certain limitation)
 
-      ! Perform interpolation 
-      do ix = 1, nxtrack - 1          
+      ! Perform interpolation
+      do ix = 1, nxtrack - 1
         call sphergeom_intermediate(lat(ix, i), lon(ix, i), lat(ix+1, i), &
              lon(ix+1, i), tmpdisx(ix), xsize(ix), elat(ix, i), elon(ix, i))
       enddo
@@ -438,7 +438,7 @@ contains
            lon(ix-1, i), tmpdisx(ix-1), -xsize(ix), elat(ix, i), elon(ix, i))
 
       ! Compute viewing geometry for west and east edge
-      ! Performal interpolation/extrapolation (2 points) along the 
+      ! Performal interpolation/extrapolation (2 points) along the
       ! spherical lines (good enough)
       tmpx = 0.0
       do ix = 1, nxtrack
@@ -446,7 +446,7 @@ contains
       enddo
       tmpxmid(1:nxtrack) = (tmpx(0:nxtrack-1) + tmpx(1:nxtrack)) / 2.0
       call interpol(tmpxmid(1:nxtrack), sza(1:nxtrack, i),  nxtrack, &
-           tmpx(0:nxtrack), tmpsza(0:nxtrack), nxtrack+1, errstat)      
+           tmpx(0:nxtrack), tmpsza(0:nxtrack), nxtrack+1, errstat)
       call interpol(tmpxmid(1:nxtrack), saza(1:nxtrack, i), nxtrack, &
            tmpx(0:nxtrack), tmpsaza(0:nxtrack), nxtrack+1, errstat)
       call interpol(tmpxmid(1:nxtrack), vza(1:nxtrack, i),  nxtrack, &
@@ -473,19 +473,19 @@ contains
     !FIXME - hard coded OMI pixel size
     if (ntimes == 1) tmpdisy(0) = 0.00212031  ! ~ 13.5 km
     do ix = 0, nxtrack
-      do i = 0, ntimes - 2 
+      do i = 0, ntimes - 2
         tmpdisy(i) = circle_rdis(elat(ix, i), elon(ix, i), elat(ix, i+1), &
              elon(ix, i+1))
         call sphergeom_intermediate(elat(ix, i), elon(ix, i), elat(ix, i+1), &
              elon(ix, i+1), tmpdisy(i), tmpdisy(i)*0.5, clat(ix, i+1), &
-             clon(ix, i+1))  
+             clon(ix, i+1))
       enddo
       i = 0
       call sphergeom_intermediate(elat(ix, i), elon(ix, i), elat(ix, i+1), &
            elon(ix, i+1), tmpdisy(i), -tmpdisy(i)*0.5, clat(ix, i), &
            clon(ix, i))
 
-      i = ntimes - 1       
+      i = ntimes - 1
       call sphergeom_intermediate(elat(ix, i), elon(ix, i), elat(ix, i-1),  &
            elon(ix, i-1), tmpdisy(i-1), -tmpdisy(i-1)*0.5, clat(ix, i+1), &
            clon(ix, i+1))
@@ -493,7 +493,7 @@ contains
 
     ! Perform coadding
     if (nxbin > 1 .or. nybin > 1) then
-      nx = nxtrack / nxbin    
+      nx = nxtrack / nxbin
       ny = ntimes  / nybin
 
       ! cornor coordinates (only need sampling)
@@ -513,18 +513,18 @@ contains
 
       ! edge coordinates (easy to be re-computed from corner coordinates)
       do ix = 0, nx
-        do i = 0, ny - 1 
+        do i = 0, ny - 1
           tmpdisy(i) = circle_rdis(clat(ix, i), clon(ix, i), clat(ix, i+1), &
                clon(ix, i+1))
           call sphergeom_intermediate(clat(ix, i), clon(ix, i), &
                clat(ix, i+1), clon(ix, i+1), &
-               tmpdisy(i), tmpdisy(i)*0.5, elat(ix, i), elon(ix, i))  
+               tmpdisy(i), tmpdisy(i)*0.5, elat(ix, i), elon(ix, i))
         enddo
       enddo
 
       ! Center coordinates (computed from edge coordinates)
       do ix = 1, nx
-        do i = 0, ny - 1 
+        do i = 0, ny - 1
           tmpdisx(ix) = circle_rdis(elat(ix-1, i), elon(ix-1, i), &
                elat(ix, i), elon(ix, i))
           call sphergeom_intermediate(elat(ix-1, i), elon(ix-1, i), &
@@ -557,14 +557,14 @@ contains
         tmpxmid(1:nx) = (tmpx(0:nx-1) + tmpx(1:nx)) / 2.0
 
         call interpol(tmpx(0:nx), edsza (0:nx, i),  nx+1, tmpxmid(1:nx), &
-             sza (1:nx, i),  nx, errstat) 
+             sza (1:nx, i),  nx, errstat)
         call interpol(tmpx(0:nx), edsazm(0:nx, i),  nx+1, tmpxmid(1:nx), &
-             saza(1:nx, i),  nx, errstat)  
+             saza(1:nx, i),  nx, errstat)
 
         call interpol(tmpx(0:nx), edvza (0:nx, i),  nx+1, tmpxmid(1:nx), &
-             vza (1:nx, i),  nx, errstat) 
+             vza (1:nx, i),  nx, errstat)
         call interpol(tmpx(0:nx), edvazm(0:nx, i),  nx+1, tmpxmid(1:nx), &
-             vaza(1:nx, i),  nx, errstat)      
+             vaza(1:nx, i),  nx, errstat)
 
         ! Check center pixel
         mpix = nx / 2
@@ -581,19 +581,19 @@ contains
     endif
 
     ! Now compute effective viewing geometry
-    ! Compute effective viewing geometry for each pixel 
-    ! (at a certain atmosphere) 
+    ! Compute effective viewing geometry for each pixel
+    ! (at a certain atmosphere)
     do i = 0, ny-1
       do ix = 1, nx
         if ( sza(ix, i)  >= minza  .and. sza(ix, i)  < maxza  .and. &
              vza(ix, i)  >= minza  .and. vza(ix, i)  < maxza  .and. &
              saza(ix, i) >= minaza .and. saza(ix, i) < maxaza .and. &
              vaza(ix, i) >= minaza .and. vaza(ix, i) < maxaza) then
-          zen0(1) = edsza(ix-1, i) 
-          zen0(2) = sza(ix, i) 
+          zen0(1) = edsza(ix-1, i)
+          zen0(2) = sza(ix, i)
           zen0(3) = edsza(ix, i)
-          zen(1)  = edvza(ix-1, i) 
-          zen(2)  = vza(ix, i) 
+          zen(1)  = edvza(ix-1, i)
+          zen(2)  = vza(ix, i)
           zen(3)  = edvza(ix, i)
           sazm(1) = edsazm(ix-1, i)
           sazm(2) = saza(ix, i)
@@ -603,11 +603,11 @@ contains
           vazm(3) = edvazm(ix, i)
           relaza  = abs(vazm - sazm)
 
-          where (vazm > 0) 
+          where (vazm > 0)
             zen = - zen
           end where
 
-          ! -180 < relaza < 180          
+          ! -180 < relaza < 180
           where (relaza > 180.0)
             relaza = 360.0 - relaza
           end where
@@ -618,9 +618,9 @@ contains
       enddo
     enddo
 
-    clon(0:nx, 0:ny)   = clon(0:nx, 0:ny)   * rad2deg    
+    clon(0:nx, 0:ny)   = clon(0:nx, 0:ny)   * rad2deg
     clat(0:nx, 0:ny)   = clat(0:nx, 0:ny)   * rad2deg
-    lon(1:nx, 0:ny-1)  = lon(1:nx, 0:ny-1)  * rad2deg    
+    lon(1:nx, 0:ny-1)  = lon(1:nx, 0:ny-1)  * rad2deg
     lat(1:nx, 0:ny-1)  = lat(1:nx, 0:ny-1)  * rad2deg
     elon(0:nx, 0:ny-1) = elon(0:nx, 0:ny-1) * rad2deg
     elat(0:nx, 0:ny-1) = elat(0:nx, 0:ny-1) * rad2deg
@@ -678,7 +678,7 @@ contains
     real (kind=8) :: one=1.0d0
 
     lat = 0.0d0
-    lon = 0.0d0    
+    lon = 0.0d0
     gam0 = angle_minus_twopi ( lon2 - lon1, pi )
     !gamsign = abs(gam0) / gam0
     ! version above fails for gam0==0
@@ -691,7 +691,7 @@ contains
     tmp1 = sin(c)
     frc = tmp1 / (sin(c0 - c) + tmp1)
 
-    ! Work in Cartesian Coordinate 
+    ! Work in Cartesian Coordinate
     tmp1 = frc * cos(lat2)
     tmp2 = 1.0 - frc
     x = tmp2 *   cos(lat1) + tmp1 * cos(gam0)
@@ -756,7 +756,7 @@ contains
     if ( gamma0 > pival ) then
       gamma = gamma0 - 2.0d0 * pival !SIGN(2.0_r8*pival - gamma0, gamma0)
     else if ( gamma0 < -pival ) then
-      gamma = gamma0 + 2.0d0 * pival 
+      gamma = gamma0 + 2.0d0 * pival
     else
       gamma = gamma0
     end if

@@ -31,7 +31,7 @@ program merge_o3p_files
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
   integer (kind=4), dimension(:), allocatable :: step_out
   integer :: n, status, dummyid, i, j, omiflag, omicount
-  integer, parameter :: zero=0, one=1
+  integer, parameter :: one=1
 
   type (tiof_file_type) :: tio_l2in
 
@@ -205,7 +205,7 @@ program merge_o3p_files
   enddo
   ! Create output file
   call l2_tio_create (outfile, min_xtrack+1, max_xtrack+1, min_step+1, &
-       max_step+1, zero, one, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
+       max_step+1, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
        nnongas(1), nmax_wavs(1), step_out, errstat)
   if (errstat /= 0) stop 1
 

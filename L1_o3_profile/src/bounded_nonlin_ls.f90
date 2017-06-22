@@ -1119,7 +1119,8 @@ CONTAINS
     !     INTERNAL VARIABLES
 
     INTEGER   :: i,j,k,inds,ip(1),kk,ii,lprank,mr,info,kmax
-    REAL (dp) :: cnorm,tol,scaqr(1),dummy(1),dykk(1),d1max,d1new,ymax
+    REAL (dp) :: cnorm,tol,scaqr(1),dykk(1),d1max,d1new,ymax
+    real (dp) :: dummy1(1), dummy2(1), dummy3(1), dummy4(1)
     REAL (dp), SAVE  :: factor = 2.0_dp
 
     !      write(10,*) 'Current point in SOLIUC'
@@ -1187,7 +1188,7 @@ CONTAINS
     d1max=d1sqs
     kmax=0
     w1(1:m)=-f(1:m)
-    CALL sqrsl(c,m,n,qraux,w1,dummy,tempw1,w2,dummy,dummy,1000,info)
+    CALL sqrsl(c,m,n,qraux,w1,dummy1,tempw1,w2,dummy2,dummy3,1000,info)
     w1=tempw1
 
     !     TRY EACH "BOUNDED" COLUMN TO SEE WHAT PREDICTED REDUCTION IT GIVES
@@ -1235,8 +1236,8 @@ CONTAINS
 
              !     TANSFORM W2 IN THE SAME WAY
 
-             CALL sqrsl(work2,mr,1,scaqr,w2(kk:),dummy,w2(kk:),  &
-                  dykk,dummy,dummy,100,info)
+             CALL sqrsl(work2,mr,1,scaqr,w2(kk:),dummy1,w2(kk:),  &
+                  dykk,dummy2,dummy3,100,info)
              work(kk:kk+mr-1) = work2(1:mr,1)
           END IF
 
@@ -1306,14 +1307,14 @@ CONTAINS
 
 100    ip(1)=kk+1
        w2(ip(1):m)=zero
-       IF(kmax /= kk) CALL sqrsl(work2,mr,1,scaqr,w2(kk:),w2(kk:),dummy,  &
-            dummy,dummy,dummy,10000,info)
+       IF(kmax /= kk) CALL sqrsl(work2,mr,1,scaqr,w2(kk:),w2(kk:),dummy1,  &
+            dummy2,dummy3,dummy4,10000,info)
        work(kk:kk+mr-1) = work2(1:mr,1)
 
        !     V:= Q*H*(D1)
        !             ( 0)
 
-       CALL sqrsl(c,m,n,qraux,w2,v,dummy,dummy,dummy,dummy,10000,info)
+       CALL sqrsl(c,m,n,qraux,w2,v,dummy1,dummy2,dummy3,dummy4,10000,info)
 
        !     MOVE COLUMN KMAX TO COLUMN KK
 
@@ -1627,7 +1628,8 @@ CONTAINS
     !   INTERNAL VARIABLES
 
     INTEGER   :: i,info
-    REAL (dp) :: dummy(1),temp, tempy(size(y))
+    REAL (dp) :: temp, tempy(size(y))
+    real (dp) :: dummy1(1), dummy2(1)
 
     d1sqs=zero
     y(1:m)=-f(1:m)
@@ -1635,7 +1637,7 @@ CONTAINS
     !                                                         T
     !     COMPUTE THE SOLUTION DX,THE PROJECTION  -V  AND Y=-Q *F
 
-    CALL sqrsl(c,m,prank,qraux,y,dummy,tempy,dx,dummy,v,1101,info)
+    CALL sqrsl(c,m,prank,qraux,y,dummy1,tempy,dx,dummy2,v,1101,info)
     y=tempy
     d1sqs=dnrm2(prank,y,1)**2
     IF(info == 0) GO TO 40
@@ -2363,7 +2365,8 @@ CONTAINS
     !     INTERNAL VARIABLES
 
     INTEGER   :: i,info,j,mindim
-    REAL (dp) :: bn,sn,dummy(1),pgress,work(n),w1(m), tempw1(m)
+    REAL (dp) :: bn,sn,pgress,work(n),w1(m), tempw1(m)
+    real (dp) :: dummy1(1), dummy2(1), dummy3(1), dummy4(1)
     REAL (dp), SAVE  :: rabs = 0.1_dp
 
     !     CHECK IF A RESTART STEP
@@ -2392,7 +2395,8 @@ CONTAINS
       !   FORM RIGHT HAND SIDE OF (1) AND STORE IN W1
 
       w1(1:m)=-f(1:m)
-      CALL sqrsl(c,m,prank,qraux,w1,dummy,tempw1,dummy,dummy,dummy,1000,info)
+      CALL sqrsl(c,m,prank,qraux,w1,dummy1,tempw1,dummy2,dummy3,dummy4,1000,&
+           info)
       w1=tempw1
 
       !     COMPUTE ESTIMATES OF STEPLENGTHS W1(I) AND PROGRESS WORK(I)
@@ -2709,7 +2713,7 @@ CONTAINS
     !   INTERNAL VARIABLES
 
     INTEGER   :: i,j,k,l,nn,info,idummy(1)
-    REAL (dp) :: dummy(n)
+    REAL (dp) :: dummy1(n), dummy2(1), dummy3(1), dummy4(1)
 
     !     INSTEAD OF SOLVING (1) WE SOLVE A TRANSFORMED SYSTEM
     !     WHICH HAS N-NRACT UNKNOWNS DY
@@ -2727,7 +2731,7 @@ CONTAINS
     !     FIRST FORM Q *F BY USING SQRSL AND STORE IN W1
 
     nn=n - nract
-    CALL sqrsl(c,m,nn,qraux,f,dummy,w1,dummy,dummy,dummy,1000,info)
+    CALL sqrsl(c,m,nn,qraux,f,dummy1,w1,dummy2,dummy3,dummy4,1000,info)
 
     !              T
     !     FORM  -(R :0)*W1 AND STORE IN DX

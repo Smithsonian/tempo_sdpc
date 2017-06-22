@@ -3180,8 +3180,8 @@ contains
     REAL (KIND=dp), DIMENSION(max_fit_pts, mflay), SAVE :: abscrs, dads, dadt
     REAL (KIND=dp), DIMENSION(max_fit_pts, mflay), SAVE :: so2crs
     INTEGER, SAVE :: so2idx, so2vidx, o4idx, so2crsidx
-    real (kind=dp), dimension(nw,mflay) :: tmp_dads, tmp_dadt, tmp_abscrs, &
-         tmp_so2crs
+    !real (kind=dp), dimension(nw,mflay) :: tmp_dads, tmp_dadt, tmp_abscrs, &
+    !     tmp_so2crs
 
     ! Will become an input parameter later in ozprof.inp
     LOGICAL :: do_ssfullb295 = .FALSE.

@@ -2,7 +2,7 @@
 module fitting_functions
 
   public specfit_func_sol, specfit_func, cubic_specfit, poly_specfit
-  private cubic_func
+  private !cubic_func
 
 contains
 
@@ -13,7 +13,7 @@ contains
     !
     ! Calculates the Solar spectrum and its derivatives for ELSUNC
     !
-    ! NOTE: the variable DYDA as required here is the transpose of that 
+    ! NOTE: the variable DYDA as required here is the transpose of that
     !       rquired for the Numerical Recipes
     !
 
@@ -76,7 +76,7 @@ contains
     !
     !     Calculates the spectrum and its derivatives for ELSUNC
     !
-    ! NOTE: the variable DYDA as required here is the transpose of that 
+    ! NOTE: the variable DYDA as required here is the transpose of that
     !       rquired for the Numerical Recipes
     !
 
@@ -106,7 +106,7 @@ contains
       ! Calculate the weighted difference between fitted and measured spectrum.
       CALL spectrum_earthshine ( &
            npoints, npars, yn_smooth, rad_wav_avg, locwvl(1:npoints), &
-           ymod(1:npoints), vars(1:npars),database, yn_doas ) 
+           ymod(1:npoints), vars(1:npars),database, yn_doas )
 
       ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) )&
            / fitweights(1:npoints)
@@ -134,45 +134,45 @@ contains
   END SUBROUTINE specfit_func
 
 
-  !  Unused?
-  !
-  SUBROUTINE cubic_func ( x, afunc, ma )
-
-    ! ***************************************************
-    !
-    !   Computes a third-order polynomial. Used in LFIT
-    !
-    ! ***************************************************
-
-    USE OMSAO_precision_module
-
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    INTEGER,        INTENT (IN) :: ma
-    REAL (KIND=dp), INTENT (IN) :: x
-
-    ! ================
-    ! Output variables
-    ! ================
-    REAL (KIND=dp), DIMENSION (ma), INTENT (OUT) :: afunc
-
-
-    ! ===============
-    ! Local variables
-    ! ===============
-    INTEGER :: i
-
-
-    afunc(1) = 1.0_dp
-    DO i = 2, ma
-      afunc(i) = afunc(i-1) * x
-    END DO
-
-    RETURN
-  END SUBROUTINE cubic_func
+!  !  Unused?
+!  !
+!  SUBROUTINE cubic_func ( x, afunc, ma )
+!
+!    ! ***************************************************
+!    !
+!    !   Computes a third-order polynomial. Used in LFIT
+!    !
+!    ! ***************************************************
+!
+!    USE OMSAO_precision_module
+!
+!    IMPLICIT NONE
+!
+!    ! ===============
+!    ! Input variables
+!    ! ===============
+!    INTEGER,        INTENT (IN) :: ma
+!    REAL (KIND=dp), INTENT (IN) :: x
+!
+!    ! ================
+!    ! Output variables
+!    ! ================
+!    REAL (KIND=dp), DIMENSION (ma), INTENT (OUT) :: afunc
+!
+!
+!    ! ===============
+!    ! Local variables
+!    ! ===============
+!    INTEGER :: i
+!
+!
+!    afunc(1) = 1.0_dp
+!    DO i = 2, ma
+!      afunc(i) = afunc(i-1) * x
+!    END DO
+!
+!    RETURN
+!  END SUBROUTINE cubic_func
 
   SUBROUTINE cubic_specfit ( a, na, y, m, ctrl, dyda, mdy )
 

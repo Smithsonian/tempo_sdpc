@@ -42,6 +42,7 @@ m_subtract_poly.f90
 m_triangle.f90
 m_undersample.f90
 m_voigt.f90
+m_allocate.f90
 omi_cross_calibrate.f90
 omi_fitting_aux.f90
 m_omi_fitting_process.f90

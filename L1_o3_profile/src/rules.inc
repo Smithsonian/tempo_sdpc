@@ -235,7 +235,6 @@ $(ODIR)/m_oe_inversion.o: $(SDIR)/m_oe_inversion.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_oe_inversion.f90 -o $(ODIR)/m_oe_inversion.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_ozprof_inverse.o: $(SDIR)/m_ozprof_inverse.f90 \
-  $(ODIR)/bounded_nonlin_ls.o \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/m_get_raman.o \
   $(ODIR)/m_gsvd_lcurve_gcv.o \
@@ -352,6 +351,12 @@ $(ODIR)/m_voigt.o: $(SDIR)/m_voigt.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_voigt.f90 -o $(ODIR)/m_voigt.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_allocate.o: $(SDIR)/m_allocate.f90 \
+  $(ODIR)/OMSAO_indices_module.o \
+  $(ODIR)/OMSAO_omidata_module.o \
+  $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_variables_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_allocate.f90 -o $(ODIR)/m_allocate.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_cross_calibrate.o: $(SDIR)/omi_cross_calibrate.f90 \
   $(ODIR)/m_cal_fit_one.o \
   $(ODIR)/m_ezspline_interpolation.o \
@@ -390,6 +395,7 @@ $(ODIR)/omi_fitting_aux.o: $(SDIR)/omi_fitting_aux.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_fitting_aux.f90 -o $(ODIR)/omi_fitting_aux.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_omi_fitting_process.o: $(SDIR)/m_omi_fitting_process.f90 \
   $(ODIR)/he5_output_module.o \
+  $(ODIR)/m_allocate.o \
   $(ODIR)/m_read_cloud_tio.o \
   $(ODIR)/m_read_geo_tio.o \
   $(ODIR)/m_read_l1_tio.o \
@@ -609,10 +615,8 @@ $(ODIR)/m_read_reference_spectra.o: $(SDIR)/m_read_reference_spectra.f90 \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_reference_spectra.f90 -o $(ODIR)/m_read_reference_spectra.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_set_cldalb.o: $(SDIR)/m_set_cldalb.f90 \
-  $(ODIR)/get_cloud.o \
   $(ODIR)/m_get_initial_albedo.o \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_gome_data_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o

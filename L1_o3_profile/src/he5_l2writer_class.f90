@@ -8,13 +8,13 @@ MODULE he5_l2writer_class
 
   IMPLICIT NONE
 
-  INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int8    = -127 
+  INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int8    = -127
   INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint8   = 255
-  INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int16   = -32767 
+  INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_int16   = -32767
   !INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint16  = 65535
   INTEGER (KIND=2), PARAMETER, PUBLIC :: fill_uint16  = -1
   REAL (KIND=4), PUBLIC               :: fill_float32
-  REAL (KIND=8), PUBLIC               :: fill_float64 
+  REAL (KIND=8), PUBLIC               :: fill_float64
   !REAL (KIND=4), PARAMETER, PUBLIC    :: fill_float32 = -1.0E+30_4
   !REAL (KIND=8), PARAMETER, PUBLIC    :: fill_float64 = -1.0E+30_8
 
@@ -45,7 +45,7 @@ CONTAINS
     INTEGER (KIND=4) :: SW_fileid
 
     !! Get number of L2 output files from PCF
-    !! and make sure there is only one 
+    !! and make sure there is only one
 
     !status = PGS_PC_getnumberoffiles( L2_file_LUN,  numfiles )
     !IF( status /= PGS_S_SUCCESS ) THEN
@@ -79,7 +79,7 @@ CONTAINS
       WRITE( msg,'(A)' ) "he5_swopen:"// TRIM(L2_filename) // " failed."
       ierr = OMI_SMF_setmsg( OMI_E_HDFEOS, msg, "L2_createFile", zero )
       status = OMI_E_FAILURE
-      RETURN 
+      RETURN
     ELSE
       WRITE( msg,'(A)' ) "he5_swopen:"// TRIM(L2_filename) //&
            " created succesfully."
@@ -98,7 +98,7 @@ CONTAINS
     ierr = r4Fill( fill_float32 )
     ierr = r8Fill( fill_float64 )
 
-    RETURN 
+    RETURN
   END FUNCTION L2_createFile
 
   FUNCTION L2_setupSwath( L2_filename, dimList, dims, swath_name_LUN, &
@@ -122,7 +122,7 @@ CONTAINS
       WRITE( msg,'(A)' ) "he5_swopen:"// TRIM(L2_filename) // " failed."
       ierr = OMI_SMF_setmsg( OMI_E_HDFEOS, msg, "L2_setupSwath", zero )
       status = OMI_E_FAILURE
-      RETURN 
+      RETURN
     ENDIF
 
 !!! Get the L2 Swath name from the PCF.
@@ -136,13 +136,13 @@ CONTAINS
     !ELSE
     !  nc = deQuote( msg )
     !  IF( nc <= 0 ) THEN
-    !     WRITE( msg,'(A)' ) "Error in Input Swath Name:"// TRIM(msg) 
+    !     WRITE( msg,'(A)' ) "Error in Input Swath Name:"// TRIM(msg)
     !     ierr = OMI_SMF_setmsg( OZT_E_HDFEOS,msg,"L2_setupSwath",zero )
     !     status = OZT_E_FAILURE
-    !     RETURN 
+    !     RETURN
     !  ELSE
     !     L2_swathname = TRIM( msg )
-    !  ENDIF 
+    !  ENDIF
     !ENDIF
 
     !! create the swath
@@ -152,7 +152,7 @@ CONTAINS
            " failed in file " // TRIM(L2_filename )
       ierr = OMI_SMF_setmsg( OMI_E_HDFEOS, msg, "L2_setupSwath", zero )
       status = OMI_E_FAILURE
-      RETURN 
+      RETURN
     ELSE
       WRITE( msg,'(A)' ) "he5_swcreate:"// TRIM(L2_swathname) //&
            " created succesfully in file " // &
@@ -167,7 +167,7 @@ CONTAINS
            "input dimList and dims do not match", &
            "L2_setupSwath", zero )
       status = OMI_E_FAILURE
-      RETURN 
+      RETURN
     ENDIF
     dimSize(1:nDims) = dims(1:nDims)
 
@@ -199,14 +199,14 @@ CONTAINS
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
 
     nflds = HE5_SWinqgflds( SW_id, fieldlist, rank, ntype )
-    nflds = EH_parsestrF( fieldlist, delim, outstrs ) 
+    nflds = EH_parsestrF( fieldlist, delim, outstrs )
 
     NG = SIZE( gfList )
     DO ig = 1, NG
       !! check to make sure the field does not exist before
-      !! define it 
+      !! define it
       DO ifld = 1, nflds
-        IF( TRIM( outstrs(ifld) ) == TRIM(gfList(ig)%name) ) EXIT 
+        IF( TRIM( outstrs(ifld) ) == TRIM(gfList(ig)%name) ) EXIT
       ENDDO
 
       IF( ifld > nflds ) THEN
@@ -227,7 +227,7 @@ CONTAINS
       ENDIF
     ENDDO
 
-    status = OMI_S_SUCCESS 
+    status = OMI_S_SUCCESS
     RETURN
   END FUNCTION L2_defSWgeofields
 
@@ -246,14 +246,14 @@ CONTAINS
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
 
     nflds = HE5_SWinqdflds( SW_id, fieldlist, rank, ntype )
-    nflds = EH_parsestrF( fieldlist, delim, outstrs ) 
+    nflds = EH_parsestrF( fieldlist, delim, outstrs )
 
     ND = SIZE( dfList )
     DO id = 1, ND
       !! check to make sure the field does not exist before
-      !! define it 
+      !! define it
       DO ifld = 1, nflds
-        IF( TRIM( outstrs(ifld) ) == TRIM(dfList(id)%name) ) EXIT 
+        IF( TRIM( outstrs(ifld) ) == TRIM(dfList(id)%name) ) EXIT
       ENDDO
 
       !PRINT *, ID, ND, dfList(id)%name
@@ -275,7 +275,7 @@ CONTAINS
       ENDIF
     ENDDO
 
-    status = OMI_S_SUCCESS 
+    status = OMI_S_SUCCESS
     RETURN
   END FUNCTION L2_defSWdatafields
 
@@ -283,7 +283,7 @@ CONTAINS
        SW_fileid, SW_id, fieldList, nL ) &
        RESULT( status )
     CHARACTER( LEN = * ), INTENT(IN) :: filename, swathname
-    TYPE (DFHE5_T), DIMENSION(:), INTENT(INOUT) :: fieldList 
+    TYPE (DFHE5_T), DIMENSION(:), INTENT(INOUT) :: fieldList
     INTEGER (KIND=4), INTENT(IN), OPTIONAL :: nL
     INTEGER (KIND=4) :: status, ierr, id, rankID
     !INTEGER (KIND=8) :: id!, rankID
@@ -331,9 +331,9 @@ CONTAINS
     !! Find out the dimension size, the rank, and the datatype and
     !! and byte size for each of the field (geo or data).
     this%SumElmSize = 0
-    DO id = 1, this%nFields
-      !print *, id, fieldList(id)%name  
-      this%fieldname(id) = fieldList(id)%name  
+    DO id = 1, INT(this%nFields, kind=4)
+      !print *, id, fieldList(id)%name
+      this%fieldname(id) = fieldList(id)%name
       !FIXME - Modified to avoid creation of array temporary
 !      ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
 !           this%dims(id,:), ntype, dimlist, maxdimlist )
@@ -415,7 +415,7 @@ CONTAINS
     this%SumLineSize = 0
     this%accuLineSize(0) = 0
     this%accuBlkSize(0) = 0
-    DO id = 1, this%nFields
+    DO id = 1, INT(this%nFields, kind=4)
       rankID = INT(this%rank(id), kind=4)
       IF( rankID == 1 ) THEN
         this%pixSize(id) = this%elmSize(id)
@@ -426,7 +426,7 @@ CONTAINS
       ELSE IF( rankID == 3 ) THEN
         this%pixSize(id) = this%elmSize(id) * this%dims(id,1)
         this%lineSize(id) = this%pixSize(id) * this%dims(id,2)
-      ELSE 
+      ELSE
         this%pixSize(id) = this%elmSize(id) * this%dims(id,1) * this%dims(id,2)
         this%lineSize(id) = this%pixSize(id) * this%dims(id,3)
       ENDIF
@@ -636,31 +636,31 @@ CONTAINS
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
 
 
-    nc = LEN( TRIM(df%Units) ) 
+    nc = LEN( TRIM(df%Units) )
     IF( nc > 0 ) THEN
       status = he5_swwrlattr( SW_id, df%name, "Units", &
-           HE5T_NATIVE_CHAR, nc, df%Units )      
+           HE5T_NATIVE_CHAR, nc, df%Units )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: Units, " // TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
     ENDIF
 
-    nc = LEN( TRIM(df%LongName) ) 
+    nc = LEN( TRIM(df%LongName) )
     IF( nc > 0 ) THEN
       status = he5_swwrlattr( SW_id, df%name, "Title", &
-           HE5T_NATIVE_CHAR, nc, df%LongName )      
+           HE5T_NATIVE_CHAR, nc, df%LongName )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: LongName, " // TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
     ENDIF
 
-    nc = LEN( TRIM(df%UniqueFieldDefinition) ) 
+    nc = LEN( TRIM(df%UniqueFieldDefinition) )
     IF( nc > 0 ) THEN
       status = he5_swwrlattr( SW_id, df%name, "UniqueFieldDefinition", &
            HE5T_NATIVE_CHAR, nc, &
-           df%UniqueFieldDefinition )      
+           df%UniqueFieldDefinition )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: UniqueFieldDefinition, " // &
              TRIM(df%name )
@@ -669,16 +669,16 @@ CONTAINS
     ENDIF
 
     status = he5_swwrlattr( SW_id, df%name, "ScaleFactor", &
-!         HE5T_NATIVE_DOUBLE, nc, df%ScaleFactor )      
-         HE5T_NATIVE_DOUBLE, nc1, df%ScaleFactor )      
+!         HE5T_NATIVE_DOUBLE, nc, df%ScaleFactor )
+         HE5T_NATIVE_DOUBLE, nc1, df%ScaleFactor )
     IF( status == -1 ) THEN
       WRITE( msg,'(A)' ) " he5_swwrlattr: ScaleFactor, " // TRIM(df%name )
       ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
     ENDIF
 
     status = he5_swwrlattr( SW_id, df%name, "Offset", &
-!         HE5T_NATIVE_DOUBLE, nc, df%Offset )      
-         HE5T_NATIVE_DOUBLE, nc1, df%Offset )      
+!         HE5T_NATIVE_DOUBLE, nc, df%Offset )
+         HE5T_NATIVE_DOUBLE, nc1, df%Offset )
     IF( status == -1 ) THEN
       WRITE( msg,'(A)' ) " he5_swwrlattr: Offset, " // TRIM(df%name )
       ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
@@ -690,7 +690,7 @@ CONTAINS
       range_int8(1) = NINT(df%ValidRange_l)
       range_int8(2) = NINT(df%ValidRange_h)
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           HE5T_NATIVE_INT8, nc, range_int8 )      
+           HE5T_NATIVE_INT8, nc, range_int8 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
@@ -698,9 +698,9 @@ CONTAINS
       ENDIF
 
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           HE5T_NATIVE_INT8, nc1, fill_int8 )      
+           HE5T_NATIVE_INT8, nc1, fill_int8 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           HE5T_NATIVE_INT8, nc1, fill_int8 )      
+           HE5T_NATIVE_INT8, nc1, fill_int8 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: MissingValue, " // &
              TRIM(df%name )
@@ -711,16 +711,16 @@ CONTAINS
       range_int8(1) = NINT(df%ValidRange_l)
       range_int8(2) = NINT(df%ValidRange_h)
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           df%datatype, nc, range_int8 )      
+           df%datatype, nc, range_int8 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           df%datatype, nc1, fill_uint8 )      
+           df%datatype, nc1, fill_uint8 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           df%datatype, nc1, fill_uint8 )      
+           df%datatype, nc1, fill_uint8 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: MissingValue, " // &
              TRIM(df%name )
@@ -730,16 +730,16 @@ CONTAINS
       range_int16(1) = NINT(df%ValidRange_l)
       range_int16(2) = NINT(df%ValidRange_h)
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           df%datatype, nc, range_int16 )      
+           df%datatype, nc, range_int16 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           df%datatype, nc1, fill_int16 )      
+           df%datatype, nc1, fill_int16 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           df%datatype, nc1, fill_int16 )      
+           df%datatype, nc1, fill_int16 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: MissingValue, " // &
              TRIM(df%name )
@@ -749,16 +749,16 @@ CONTAINS
       range_int16(1) = NINT(df%ValidRange_l)
       range_int16(2) = NINT(df%ValidRange_h)
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           df%datatype, nc, range_int16 )      
+           df%datatype, nc, range_int16 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           df%datatype, nc1, fill_uint16 )      
+           df%datatype, nc1, fill_uint16 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           df%datatype, nc1, fill_uint16 )      
+           df%datatype, nc1, fill_uint16 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: MissingValue, " // &
              TRIM(df%name )
@@ -768,7 +768,7 @@ CONTAINS
       range_float(1) = df%ValidRange_l
       range_float(2) = df%ValidRange_h
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           df%datatype, nc, range_float )      
+           df%datatype, nc, range_float )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
@@ -776,9 +776,9 @@ CONTAINS
       ENDIF
       ierr = r4Fill( fill_float32 )
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           df%datatype, nc1, fill_float32 )      
+           df%datatype, nc1, fill_float32 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           df%datatype, nc1, fill_float32 )      
+           df%datatype, nc1, fill_float32 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
@@ -788,7 +788,7 @@ CONTAINS
       range_double(1) = df%ValidRange_l
       range_double(2) = df%ValidRange_h
       status = he5_swwrlattr( SW_id, df%name, "ValidRange", &
-           df%datatype, nc, range_double )      
+           df%datatype, nc, range_double )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
@@ -796,15 +796,15 @@ CONTAINS
       ENDIF
       ierr = r8Fill( fill_float64 )
       status = he5_swwrlattr( SW_id, df%name, "_FillValue", &
-           df%datatype, nc1, fill_float64 )      
+           df%datatype, nc1, fill_float64 )
       status = he5_swwrlattr( SW_id, df%name, "MissingValue", &
-           df%datatype, nc1, fill_float64 )      
+           df%datatype, nc1, fill_float64 )
       IF( status == -1 ) THEN
         WRITE( msg,'(A)' ) " he5_swwrlattr: ValidRange, " // &
              TRIM(df%name )
         ierr=OMI_SMF_setmsg( OMI_E_HDFEOS,msg,"L2_setDFattrs",zero )
       ENDIF
-    CASE DEFAULT 
+    CASE DEFAULT
       ierr = OMI_SMF_setmsg( OMI_W_GENERAL, "Valid range not set for "// &
            TRIM(df%name) // " because of datatype.",&
            "L2_setDFattrs", zero )
