@@ -385,7 +385,7 @@ CONTAINS
       ! amfdiag is used to keep track of the pixels were enough information is
       ! available to carry on the AMFs calculation.
       ! ----------------------------------------------------------------------
-      CALL amf_diagnostic (nt, nx, &! lat, lon,
+      CALL amf_diagnostic (nt, nx, lat, lon, &
                            sza, vza, snow, glint, xtrange, &
                            l2cfr, l2ctp, &
                            amfdiag  )
@@ -461,7 +461,6 @@ CONTAINS
     ! Just pick the closest model grid
     ! =========================================
     USE OMSAO_indices_module, ONLY: sao_molecule_names, pge_h2o_idx
-    USE OMSAO_omidata_module, ONLY: omi_oob_cli
     USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
     USE OMSAO_parameters_module, ONLY: nUTCdim
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
@@ -2108,12 +2107,13 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_read_omiclouds
 
-  SUBROUTINE amf_diagnostic ( nt, nx, & !lat, lon,
+  SUBROUTINE amf_diagnostic ( nt, nx, lat, lon, &
                              sza, vza, snow, glint, xtrange, &
                              l2cfr, l2ctp, amfdiag )
 
     USE OMSAO_parameters_module, only: i2_missval
-    USE OMSAO_omidata_module,   ONLY: omi_oobview_amf, omi_glint_add, omi_bigsza_amf
+    USE OMSAO_omidata_module, ONLY: omi_geo_amf, omi_cld_addmiss, &
+         omi_ooblut_amf, omi_glint_add, omi_bigsza_amf
     !USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -2123,8 +2123,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx
     !REAL    (KIND=r4),                          INTENT (IN) :: ctpmin, ctpmax
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza
-    !REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, lat, lon
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
 
@@ -2137,7 +2136,8 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: it, spix, epix
+    INTEGER (KIND=i4) :: j1, j2, ix, it, ilat, ilon, spix, epix
+    REAL    (KIND=r8) :: latdp, londp
 
     ! -------------------------------------------------------------------
     ! AMFDIAG has already been set to "geometric" AMF where SZA and VZA
@@ -2172,83 +2172,66 @@ CONTAINS
     DO it = 0, nt-1
       spix = xtrange(it,1) ; epix = xtrange(it,2)
 
-      ! ----------------
-      ! Missing SZA, VZA
-      ! ----------------
-      WHERE (                                   &
-          sza(spix:epix,it) <= r8_missval .OR. &
-          vza(spix:epix,it) <= r8_missval        )
-        amfdiag(spix:epix,it) = i2_missval
-      END WHERE
-
-      ! ----------------------------------------
-      ! Out-of-Bound SZA, VZA (but not missing!)
-      ! ----------------------------------------
+      ! ----------------------------------
+      ! Check for ice/snow/ocean flag
+      ! ----------------------------------
       WHERE ( &
-          ( sza(spix:epix,it) < MINVAL(vl_sza) ) .OR. &
-          ( sza(spix:epix,it) > MAXVAL(vl_sza) ) .OR. &
-          ( vza(spix:epix,it) < MINVAL(vl_vza) ) .OR. &
-          ( vza(spix:epix,it) > MAXVAL(vl_vza) )      )
-        amfdiag(spix:epix,it) = omi_oobview_amf
-      END WHERE
-
-      ! -------------------------------------------------
-      ! Out of bounds clouds (to high over land), make it
-      ! the highest possible value in the look up table.
-      ! Ask Xiong...
-      ! -------------------------------------------------
-      WHERE ( &
-          ( l2ctp(spix:epix,it) < MINVAL(vl_pre(1:vl_ncld))*1013.0_r8 ) )
-        l2ctp(spix:epix,it) = MINVAL(vl_pre(1:vl_ncld))*1013.0_r8
-      END WHERE
-
-      ! ------------------------------------------------------
-      ! For pixel without cloud information set amf to missval
-      ! and flag to missval
-      ! ------------------------------------------------------
-      WHERE ( &
-          ( l2cfr(spix:epix,it) .EQ. r8_missval ) .OR. &
-          ( l2ctp(spix:epix,it) .EQ. r8_missval)       )
-        amfdiag(spix:epix,it) = omi_oobview_amf
-      END WHERE
-
-      ! ------------------------------------------------------
-      ! And AMFDIAG values > OOB must be good and are set to 0
-      ! if we have "good" clouds
-      ! ------------------------------------------------------
-      WHERE ( &
-          ( amfdiag(spix:epix,it) > omi_oobview_amf ) .AND. &
-          (l2cfr(spix:epix,it) >= 0.0_r8            ) .AND. &
-          (l2ctp(spix:epix,it) >= 0.0_r8            )       )
-        amfdiag(spix:epix,it) = 0_i2
-      END WHERE
-
-      ! --------------------------------------------------
-      ! Angles above the top value set on the control file
-      ! are calculated "using this maximum value".
-      ! --------------------------------------------------
-      WHERE ( &
-          ( sza(spix:epix,it)     .GE. amf_max_sza       ) .AND. &
-          ( amfdiag(spix:epix,it) .GT. omi_oobview_amf ) )
-        amfdiag(spix:epix,it) = omi_bigsza_amf + amfdiag(spix:epix,it)
-      END WHERE
-
-      ! -----------------------
-      ! Start with the ice flag
-      ! -----------------------
-      WHERE (                                       &
-          amfdiag     (spix:epix,it) >= 0_i2 .AND. &
-          snow(spix:epix,it) >= 0_i2         )
-        amfdiag(spix:epix,it) = snow(spix:epix,it)
+           amfdiag(spix:epix,it) >= omi_geo_amf .AND. &
+           snow(spix:epix,it) >= 0_i2         )
+         amfdiag(spix:epix,it) = snow(spix:epix,it)
       END WHERE
 
       ! ---------------------------
       ! Check for glint possibility
       ! ---------------------------
       WHERE (                                    &
-          amfdiag  (spix:epix,it) >= 0_i2 .AND. &
-          glint(spix:epix,it) > 0_i2           )
-        amfdiag(spix:epix,it) = amfdiag(spix:epix,it) + omi_glint_add
+           amfdiag  (spix:epix,it) >= 0_i2 .AND. &
+           glint(spix:epix,it) > 0_i2           )
+         amfdiag(spix:epix,it) = amfdiag(spix:epix,it) + omi_glint_add
+      END WHERE
+
+      ! ---------------------------------------
+      ! Check if we have cloud information from
+      ! satellite retrievals. If not complete
+      ! with cloud climatology.
+      ! ---------------------------------------
+       IF ( ( ANY( l2cfr(spix:epix,it) < 0.0_r8 ) ) .OR. &
+            ( ANY( l2ctp(spix:epix,it) < 0.0_r8 ) ) ) THEN
+          DO ix = spix, epix
+             IF (amfdiag(ix,it) >= 0_i2) THEN
+                latdp = REAL ( lat(ix,it), KIND=r8 ) ; londp = REAL ( lon(ix,it), KIND=r8 ) ;
+                ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-latdp) ))
+                j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
+                j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
+                ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-londp) ))
+                l2ctp(ix,it) = ISCCP_CloudClim%ctp(ilon)
+                l2cfr(ix,it) = ISCCP_CloudClim%cfr(ilon)                   
+                amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
+             ENDIF
+          END DO
+       END IF
+
+      ! --------------------------------------------------
+      ! Angles above the top value set on the control file
+      ! are calculated "using this maximum value".
+      ! --------------------------------------------------
+      WHERE ( &
+          ( sza(spix:epix,it) >= amf_max_sza) .AND. &
+          ( amfdiag(spix:epix,it) >= 0_i2 ) )
+        amfdiag(spix:epix,it) = omi_bigsza_amf + amfdiag(spix:epix,it)
+      END WHERE
+
+      ! ----------------------------------------
+      ! Out-of-Bound SZA, VZA (but not missing!)
+      ! ----------------------------------------
+      WHERE ( &
+           ( ( sza(spix:epix,it)   < MINVAL(vl_sza) ) .OR. &
+             ( sza(spix:epix,it)   > MAXVAL(vl_sza) ) .OR. &
+             ( vza(spix:epix,it)   < MINVAL(vl_vza) ) .OR. &
+             ( vza(spix:epix,it)   > MAXVAL(vl_vza) ) .OR. &
+             ( l2ctp(spix:epix,it) < MINVAL(vl_pre(1:vl_ncld))*1013.0_r8 ) ) .AND. &
+             ( amfdiag(spix:epix,it) >= 0_i2 ) )
+         amfdiag(spix:epix,it) = omi_ooblut_amf + amfdiag(spix:epix,it)
       END WHERE
 
     END DO

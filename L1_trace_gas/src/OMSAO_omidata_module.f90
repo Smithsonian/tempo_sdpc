@@ -109,9 +109,9 @@ MODULE OMSAO_omidata_module
   ! and geometric or no AMF
   ! --------------------------------------------------------------------
   INTEGER (KIND=i2), PARAMETER :: &
-    omi_cfr_addmiss = 1000, omi_ctp_addmiss = 2000, omi_glint_add = 10000, &
-    omi_geo_amf = -1, omi_oobview_amf = -2, omi_wfmod_amf = -9, omi_bigsza_amf = 2, &
-    omi_oob_cli = -3
+    omi_cld_addmiss = 200, omi_glint_add = 10000, &
+    omi_geo_amf = -1, omi_oobview_amf = -2, omi_wfmod_amf = -9, omi_bigsza_amf = 1000, &
+    omi_ooblut_amf = 2000
 
   ! -----------------------
   ! Arrays for OMI L1b data
