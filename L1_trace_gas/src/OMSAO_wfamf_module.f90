@@ -168,6 +168,35 @@ MODULE OMSAO_wfamf_module
   ! Integer parameters
   INTEGER (KIND=i4), PARAMETER :: one = 1, two = 2
 
+  ! -----------
+  ! ISCCP stuff
+  ! -----------
+  ! --------------------------------------------
+  ! TYPE declaration for ISCCP cloud climatology
+  ! --------------------------------------------
+  INTEGER (KIND=i4), PARAMETER, PRIVATE :: nlat_isccp=72, nlon_isccp=6596
+  TYPE :: CloudClimatology
+     REAL    (KIND=r8)                         :: &
+          scale_ctp, scale_cfr, delta_lat, missval_cfr, missval_ctp
+     REAL    (KIND=r4), DIMENSION (nlat_isccp) :: latvals, delta_lon
+     INTEGER (KIND=i4), DIMENSION (nlat_isccp) :: n_lonvals
+     REAL    (KIND=r4), DIMENSION (nlon_isccp) :: lonvals
+     REAL    (KIND=r8), DIMENSION (nlon_isccp) :: cfr, ctp
+  END TYPE CloudClimatology
+  ! ----------------------------------------------
+  ! Composite variable for ISCCP Cloud Climatology
+  ! ----------------------------------------------
+  TYPE (CloudClimatology) :: ISCCP_CloudClim
+
+  ! --------------------------
+  !(3) ISCCP Cloud Climatology
+  ! --------------------------
+  CHARACTER (LEN=10), PARAMETER :: isccp_lat_field  = 'ISCCP_Lats'
+  CHARACTER (LEN=15), PARAMETER :: isccp_dlon_field = 'ISCCP_DeltaLons'
+  CHARACTER (LEN=13), PARAMETER :: isccp_nlon_field = 'ISCCP_NumLons'
+  CHARACTER (LEN=10), PARAMETER :: isccp_lon_field  = 'ISCCP_Lons'
+  CHARACTER (LEN=30), PARAMETER :: isccp_mcfr_field = 'ISCCP_MonthlyAVG_CloudFraction'
+  CHARACTER (LEN=30), PARAMETER :: isccp_mctp_field = 'ISCCP_MonthlyAVG_CloudPressure'
 
 CONTAINS
 
@@ -195,7 +224,8 @@ CONTAINS
     !     - VLIDORT calculated scattering weights
     ! =================================================================
     USE OMSAO_errstat_module, only : pge_errstat_ok!, pge_errstat_error
-    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx, voc_omicld_idx
+    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx, voc_omicld_idx, &
+         voc_isccp_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
       write_scattering_weights, write_amf_correction
@@ -296,7 +326,6 @@ CONTAINS
       ! -----------------------------
       ! Read the OMI L2 cloud product
       ! -----------------------------
-
       cloud_file = voc_amf_filenames(voc_omicld_idx)
       if (0 /= index (cloud_file, ".he5", .true.)) then
         ! FIXME: amf_read_omiclouds to be removed
@@ -312,6 +341,17 @@ CONTAINS
         return
       endif
       call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
+
+      ! ----------------------------
+      ! Read ISCCP cloud climatology
+      ! ----------------------------
+      cloud_file = voc_amf_filenames(voc_isccp_idx)
+      CALL voc_amf_readisccp  ( errstat )
+      if (errstat /= 0) then
+        call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
+        return
+      endif
+      call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
 
       ! ------------------------------------------------
       ! Read climatology and interpolate to lon/lat/time
@@ -3000,6 +3040,111 @@ CONTAINS
     END IF
 
   END SUBROUTINE read_climatology_dimensions
+
+  SUBROUTINE voc_amf_readisccp ( errstat )
+
+    USE OMSAO_variables_module, ONLY: voc_amf_filenames
+    USE OMSAO_indices_module, ONLY: voc_isccp_idx
+    USE OMSAO_errstat_module, ONLY: he5_stat_fail
+    USE OMSAO_he5_module, ONLY: HE5_SWclose, HE5_SWopen, &
+         he5f_acc_rdonly, granule_month, HE5_SWattach, &
+         HE5_SWinqswath, HE5_SWrdfld, HE5_SWrdlattr, &
+         HE5_SWdetach
+
+    IMPLICIT NONE
+
+    ! ------------------
+    ! Modified variables
+    ! ------------------
+    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER   (KIND=i4) :: swath_id, swath_file_id, swlen, he5stat
+    INTEGER   (KIND=C_LONG) :: locerrstat
+    CHARACTER (LEN=MAX_STR_LEN) :: swath_file, swath_name
+    INTEGER   (KIND=i4), DIMENSION (nlon_isccp) :: tmparr
+
+    swath_file = TRIM(ADJUSTL(voc_amf_filenames(voc_isccp_idx)))
+    
+    ! -----------------------------------------------------------
+    ! Open HE5 output file and check SWATH_FILE_ID ( -1 if error)
+    ! -----------------------------------------------------------
+    swath_file_id = HE5_SWopen ( swath_file, he5f_acc_rdonly )
+    IF ( swath_file_id == he5_stat_fail ) THEN
+      call tell_error (tell_io_error, "voc_amf_readisccp: opening climatology file "// &
+                       trim(swath_file), errstat)
+      RETURN
+    END IF
+    
+    ! ---------------------------------------------
+    ! Check for existing HE5 swath and attach to it
+    ! ---------------------------------------------
+    swath_name = ''
+    locerrstat  = HE5_SWinqswath  ( TRIM(ADJUSTL(swath_file)), swath_name, swlen )
+    swath_id = HE5_SWattach ( swath_file_id, TRIM(ADJUSTL(swath_name)) )
+    IF ( swath_id == he5_stat_fail ) THEN
+       call tell_error (tell_io_error, "voc_amf_readisccp: attaching to swath "// &
+            trim(swath_name), errstat)
+       RETURN
+    END IF
+
+    ! ----------------------------
+    ! Read ISCCP Cloud Climatoloty
+    ! ----------------------------
+    ! * Latitudes
+    he5_start_1d = 0 ; he5_stride_1d = 1 ; he5_edge_1d = nlat_isccp
+    he5stat = HE5_SWrdfld ( swath_id, isccp_lat_field, &
+         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%latvals(1:nlat_isccp) )
+    ! * Number of longitudes per latitude
+    he5stat = HE5_SWrdfld ( swath_id, isccp_nlon_field, &
+         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%n_lonvals(1:nlat_isccp) )
+    ! * Delta-Longitudes    
+    he5stat = HE5_SWrdfld ( swath_id, isccp_dlon_field, &
+         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%delta_lon(1:nlat_isccp) )
+    ! * Longitudes
+    he5_start_1d = 0 ; he5_stride_1d = 1 ; he5_edge_1d = nlon_isccp
+    he5stat = HE5_SWrdfld ( swath_id, isccp_lon_field, &
+         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%lonvals(1:nlon_isccp) )
+    
+    ! * Cloud fraction
+    he5_start_2d  = (/ granule_month-1, 0 /) ; he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ 1, nlon_isccp /)
+    he5stat = HE5_SWrdfld ( swath_id, isccp_mcfr_field,                 &
+         he5_start_2d, he5_stride_2d, he5_edge_2d, tmparr(1:nlon_isccp) )
+    ISCCP_CloudClim%cfr(1:nlon_isccp) = REAL (tmparr(1:nlon_isccp), KIND=r8)
+    ! * Cloud top pressure
+    he5stat = HE5_SWrdfld ( swath_id, isccp_mctp_field,                 &
+         he5_start_2d, he5_stride_2d, he5_edge_2d, tmparr(1:nlon_isccp) )
+    ISCCP_CloudClim%ctp(1:nlon_isccp) = REAL (tmparr(1:nlon_isccp), KIND=r8)
+    
+    ! --------------------
+    ! Read some attributes
+    ! --------------------
+    he5stat = HE5_SWrdlattr ( swath_id, isccp_lat_field,  "DeltaGrid",    ISCCP_CloudClim%delta_lat   )
+    he5stat = HE5_SWrdlattr ( swath_id, isccp_mcfr_field, "ScaleFactor",  ISCCP_CloudClim%scale_cfr   )
+    he5stat = HE5_SWrdlattr ( swath_id, isccp_mctp_field, "ScaleFactor",  ISCCP_CloudClim%scale_ctp   )
+    he5stat = HE5_SWrdlattr ( swath_id, isccp_mcfr_field, "MissingValue", ISCCP_CloudClim%missval_cfr )
+    he5stat = HE5_SWrdlattr ( swath_id, isccp_mctp_field, "MissingValue", ISCCP_CloudClim%missval_ctp )
+
+    ! -------------------------------------------------------
+    ! Scale the ISCCP cloud values with their scaling factors
+    ! -------------------------------------------------------
+    WHERE ( ISCCP_CloudClim%cfr /= ISCCP_CloudClim%missval_ctp )
+       ISCCP_CloudClim%cfr = ISCCP_CloudClim%cfr * ISCCP_CloudClim%scale_cfr
+    END WHERE
+    WHERE ( ISCCP_CloudClim%ctp /= ISCCP_CloudClim%missval_ctp )
+       ISCCP_CloudClim%ctp = ISCCP_CloudClim%ctp * ISCCP_CloudClim%scale_ctp
+    END WHERE
+   
+    ! -----------------------------------------------
+    ! Detach from HE5 swath and close HE5 output file
+    ! -----------------------------------------------
+    he5stat = HE5_SWdetach ( swath_id )
+    he5stat = HE5_SWclose  ( swath_file_id )
+
+    RETURN
+  END SUBROUTINE voc_amf_readisccp
 
 END MODULE OMSAO_wfamf_module
 
