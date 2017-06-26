@@ -1,7 +1,7 @@
 !
 module fitting_functions
 
-  public specfit_func_sol, specfit_func, cubic_specfit, poly_specfit
+  public specfit_func_sol, cubic_specfit, poly_specfit!, specfit_func
   private !cubic_func
 
 contains
@@ -54,7 +54,8 @@ contains
       ! function derivative. It is faster and more flexible than the original
       ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
       ! ---------------------------------------------------------------------
-      ctrl = 0; RETURN
+      ctrl = 0
+      RETURN
 
     CASE ( 3 )
       ! Calculate the spectrum, without weighting
@@ -71,67 +72,67 @@ contains
   END SUBROUTINE specfit_func_sol
 
 
-  SUBROUTINE specfit_func ( vars, npars, ymod, npoints, ctrl, dyda, mdy )
-
-    !
-    !     Calculates the spectrum and its derivatives for ELSUNC
-    !
-    ! NOTE: the variable DYDA as required here is the transpose of that
-    !       rquired for the Numerical Recipes
-    !
-
-    USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : max_spec_pts
-    USE OMSAO_variables_module, ONLY : database, yn_doas, yn_smooth, &
-         rad_wav_avg, fitwavs, fitweights, currspec
-    USE OMSAO_errstat_module
-    use spectra, only: spectrum_earthshine
-
-    IMPLICIT NONE
-
-    INTEGER, INTENT (IN)    :: npars, mdy
-    INTEGER, INTENT (INOUT) :: ctrl, npoints
-    REAL (KIND=dp), DIMENSION (npars),         INTENT (IN)    :: vars
-    REAL (KIND=dp), DIMENSION (npoints),       INTENT (INOUT) :: ymod
-    REAL (KIND=dp), DIMENSION (npoints,npars), INTENT (INOUT) :: dyda
-
-    !INTEGER                                   :: i
-    !REAL (KIND=dp), DIMENSION (npars)         :: vartmp
-    REAL (KIND=dp), DIMENSION (npoints)       :: locwvl!, dyplus, dyminus
-
-    locwvl(1:npoints) = fitwavs(1:npoints)
-
-    SELECT CASE ( ABS ( ctrl ) )
-    CASE ( 1 )
-      ! Calculate the weighted difference between fitted and measured spectrum.
-      CALL spectrum_earthshine ( &
-           npoints, npars, yn_smooth, rad_wav_avg, locwvl(1:npoints), &
-           ymod(1:npoints), vars(1:npars),database, yn_doas )
-
-      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) )&
-           / fitweights(1:npoints)
-
-    CASE ( 2 )
-      ! ---------------------------------------------------------------------
-      ! The following sets up ELSUNC for numerical computation of the fitting
-      ! function derivative. It is faster and more flexible than the original
-      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
-      ! ---------------------------------------------------------------------
-      ctrl = 0; RETURN
-
-    CASE ( 3 )
-      ! Calculate the spectrum, without weighting
-      CALL spectrum_earthshine ( npoints, npars, yn_smooth, rad_wav_avg, &
-           locwvl(1:npoints), ymod(1:npoints), vars(1:npars), database, &
-           yn_doas )
-
-    CASE DEFAULT
-      WRITE (www_lun,'(A,I4)') &
-           "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL = ", ctrl
-    END SELECT
-
-    RETURN
-  END SUBROUTINE specfit_func
+!  SUBROUTINE specfit_func ( vars, npars, ymod, npoints, ctrl, dyda, mdy )
+!
+!    !
+!    !     Calculates the spectrum and its derivatives for ELSUNC
+!    !
+!    ! NOTE: the variable DYDA as required here is the transpose of that
+!    !       rquired for the Numerical Recipes
+!    !
+!
+!    USE OMSAO_precision_module
+!    !USE OMSAO_parameters_module, ONLY : max_spec_pts
+!    USE OMSAO_variables_module, ONLY : database, yn_doas, yn_smooth, &
+!         rad_wav_avg, fitwavs, fitweights, currspec
+!    USE OMSAO_errstat_module
+!    use spectra, only: spectrum_earthshine
+!
+!    IMPLICIT NONE
+!
+!    INTEGER, INTENT (IN)    :: npars, mdy
+!    INTEGER, INTENT (INOUT) :: ctrl, npoints
+!    REAL (KIND=dp), DIMENSION (npars),         INTENT (IN)    :: vars
+!    REAL (KIND=dp), DIMENSION (npoints),       INTENT (INOUT) :: ymod
+!    REAL (KIND=dp), DIMENSION (npoints,npars), INTENT (INOUT) :: dyda
+!
+!    !INTEGER                                   :: i
+!    !REAL (KIND=dp), DIMENSION (npars)         :: vartmp
+!    REAL (KIND=dp), DIMENSION (npoints)       :: locwvl!, dyplus, dyminus
+!
+!    locwvl(1:npoints) = fitwavs(1:npoints)
+!
+!    SELECT CASE ( ABS ( ctrl ) )
+!    CASE ( 1 )
+!      ! Calculate the weighted difference between fitted and measured spectrum.
+!      CALL spectrum_earthshine ( &
+!           npoints, npars, yn_smooth, rad_wav_avg, locwvl(1:npoints), &
+!           ymod(1:npoints), vars(1:npars),database, yn_doas )
+!
+!      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) )&
+!           / fitweights(1:npoints)
+!
+!    CASE ( 2 )
+!      ! ---------------------------------------------------------------------
+!      ! The following sets up ELSUNC for numerical computation of the fitting
+!      ! function derivative. It is faster and more flexible than the original
+!      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
+!      ! ---------------------------------------------------------------------
+!      ctrl = 0; RETURN
+!
+!    CASE ( 3 )
+!      ! Calculate the spectrum, without weighting
+!      CALL spectrum_earthshine ( npoints, npars, yn_smooth, rad_wav_avg, &
+!           locwvl(1:npoints), ymod(1:npoints), vars(1:npars), database, &
+!           yn_doas )
+!
+!    CASE DEFAULT
+!      WRITE (www_lun,'(A,I4)') &
+!           "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL = ", ctrl
+!    END SELECT
+!
+!    RETURN
+!  END SUBROUTINE specfit_func
 
 
 !  !  Unused?

@@ -2,16 +2,16 @@
 module m_read_fitting_controls
 
   public read_fitting_control_file
-  private get_mols_for_fitting
+  private !get_mols_for_fitting
 
 contains
 
   ! *********************** Modification History **********************
   ! Xiong Liu; July, 2003  (!xliu)
-  ! 1. Read whether to do ozone profile retrieval and set a flag 
+  ! 1. Read whether to do ozone profile retrieval and set a flag
   ! 2. Read additional fitting control variables if ozprof_flag is set
-  ! 3. Read an option about variable slit width, add yn_varyslit variable 
-  !    n_slit_itnerval, slit_fname, slit_redo, wavcal_redo, wavcal_fname, 
+  ! 3. Read an option about variable slit width, add yn_varyslit variable
+  !    n_slit_itnerval, slit_fname, slit_redo, wavcal_redo, wavcal_fname,
   !    in USE OMSAO_variables_module
   ! 4. Add 1 nm more for winwav_min, winwav_max to avoid interpolation
   !    out of bounds for solar spectrum calibration
@@ -22,7 +22,7 @@ contains
   SUBROUTINE read_fitting_control_file( fit_ctrl_unit, fit_ctrl_file,  &
        instrument_idx, l1_inputs_fname_sol,&
        l1_inputs_fname_rad, l2_output_fname, &
-       l2_cld_fname, l2_hdf_flag, pge_error_status)     
+       l2_cld_fname, l2_hdf_flag, pge_error_status)
 
     USE PGS_PC_class
     USE OMI_LUN_set
@@ -37,15 +37,15 @@ contains
          max_rs_idx, calfit_strings, max_calfit_idx, radfit_strings, &
          mns_idx, mxs_idx, us1_idx, us2_idx, comvidx, cm1vidx, &
          refspec_strings, genline_str, socline_str, racline_str,     &
-         rafline_str, molline_str, eoi3str, solar_idx, shift_offset, &
-         comm_idx, com1_idx, comfidx, cm1fidx!, rspline_str, &
+         rafline_str, eoi3str, solar_idx, shift_offset, &
+         comm_idx, com1_idx, comfidx, cm1fidx!, rspline_str, molline_str, &
     !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
     USE OMSAO_parameters_module,   ONLY: maxchlen, maxwin, max_fit_pts!, &
     !vb_lev_omidebug, vb_lev_develop, n_sol_winwav, n_rad_winwav, &
     !max_mol_fit, forever
     USE OMSAO_variables_module,    ONLY: use_backup, use_solcomp,    &
          avg_solcomp, avgsol_allorb, &
-         fitcol_idx, fincol_idx, n_fincol_idx, n_mol_fit, max_itnum_sol, &
+         n_fincol_idx, max_itnum_sol, &
          max_itnum_rad,  yn_smooth, yn_doas, weight_sun, fitvar_sol_saved, &
          fitvar_sol_init, fitvar_rad_init, fitvar_rad_saved, yn_varyslit,  &
          wavcal, which_slit, n_slit_step, slit_fname, slit_redo, wavcal_redo, &
@@ -67,6 +67,7 @@ contains
          refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
          use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname
     !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
+    !fitcol_idx, fincol_idx, n_mol_fit
     USE OMSAO_gome_data_module, ONLY:   &
          gome_idx, which_instrument, max_instrument_idx, &
          omi_idx, scia_idx, gome2_idx, tempo_idx!, &
@@ -161,7 +162,7 @@ contains
     END DO
 
     !! get table directory !! Kai
-    version = 1 
+    version = 1
     errstat = PGS_PC_getreference( TAB_DIR_LUN, version, tabdir )
     IF( errstat /= PGS_S_SUCCESS ) THEN
       WRITE(msg, '(A,I10,I4)') 'get file from lun=', TAB_DIR_LUN, version
@@ -215,7 +216,7 @@ contains
     CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
          instrument_idx )
 
-    ! If Tempo synthetic data, we need to behave like OMI, but with an 
+    ! If Tempo synthetic data, we need to behave like OMI, but with an
     ! over-ride for some settings (e.g., uv2_coadd)
     if (instrument_idx == tempo_idx) then
       instrument_idx = omi_idx
@@ -280,7 +281,7 @@ contains
         READ(l1l2inp_unit, '(A)') l1_inputs_fname_rad
         READ(l1l2inp_unit, '(A)') l2_cld_fname
         READ(l1l2inp_unit, '(A)') l2_output_fname
-        READ(l1l2inp_unit, *)     linelim, pixlim 
+        READ(l1l2inp_unit, *)     linelim, pixlim
         READ(l1l2inp_unit, *, IOSTAT=errstat)  select_lonlat
         IF ( errstat /= pge_errstat_ok ) select_lonlat = .FALSE.
         IF (select_lonlat) THEN
@@ -295,14 +296,14 @@ contains
           linelim(1) = -5
           linelim(2) = -5
         ENDIF
-        CLOSE(UNIT=l1l2inp_unit) 
+        CLOSE(UNIT=l1l2inp_unit)
       END IF
     END IF
 
 
     !! Start Read L1L2 file from PCF Kai
     IF (rw_l1l2_pcf ) THEN
-      version = 1 
+      version = 1
       errstat = PGS_PC_getreference( L1B_IRR_FILE_LUN, version, &
            l1_inputs_fname_sol )
       IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -314,7 +315,7 @@ contains
         RETURN
       END IF
 
-      version = 1 
+      version = 1
       errstat = PGS_PC_getreference( L1B_UV_FILE_LUN, version, &
            l1_inputs_fname_rad )
       IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -328,7 +329,7 @@ contains
              TRIM(l1_inputs_fname_rad), modulename, 0)
       END IF
 
-      version = 1 
+      version = 1
       errstat = PGS_PC_getreference( L2_CLD_FILE_LUN, version, l2_cld_fname )
       IF( errstat /= PGS_S_SUCCESS ) THEN
         WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_CLD_FILE_LUN, version
@@ -341,7 +342,7 @@ contains
              'l2_cld_fname ='//TRIM(l2_cld_fname), modulename, 0)
       END IF
 
-      version = 1 
+      version = 1
       errstat = PGS_PC_getreference( L2_OUT_LUN, version, l2_output_fname )
       IF( errstat /= PGS_S_SUCCESS ) THEN
         WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_OUT_LUN, version
@@ -354,14 +355,14 @@ contains
              'l2_output_fname ='//TRIM(l2_output_fname), modulename, 0)
       END IF
 
-      IF( scnwrt ) THEN 
+      IF( scnwrt ) THEN
         WRITE(*, '(A)') TRIM(l1_inputs_fname_sol)
         WRITE(*, '(A)') TRIM(l1_inputs_fname_rad)
         WRITE(*, '(A)') TRIM(l2_cld_fname)
         WRITE(*, '(A)') TRIM(l2_output_fname)
       ENDIF
 
-      !! get run specific inputs 
+      !! get run specific inputs
       errstat = PGS_PC_GetConfigData( LINE_SAMPLE_RANGE_LUN, msg )
       IF( errstat /= PGS_S_SUCCESS ) THEN
         WRITE( msg,'(A,I8)' ) "get line sample range failed at LUN = ", &
@@ -373,7 +374,7 @@ contains
         READ( msg, *) linelim, pixlim
         errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
              'PCF: UV2 Line sample ranges='//TRIM(msg), modulename, 0 )
-        IF( scnwrt ) THEN 
+        IF( scnwrt ) THEN
           WRITE(*,'(A,I4,A,I4,A)') &
                " extracting line   range=[", linelim(1),",", linelim(2), "]"
           WRITE(*,'(A,I4,A,I4,A)')  &
@@ -390,7 +391,7 @@ contains
         i = INDEX(l1_inputs_fname_sol, '-o') + 2
         orbcsol = l1_inputs_fname_sol(i : i + 5)
         READ (orbcsol, *) orbnumsol
-        READ (l1_inputs_fname_sol(i+7 : i + 9), *) omisol_version 
+        READ (l1_inputs_fname_sol(i+7 : i + 9), *) omisol_version
 
         ! obtain orbit number from radiance file
         i = INDEX(l1_inputs_fname_rad, '-o') + 2
@@ -411,7 +412,7 @@ contains
       endif
 
       ! generate identifer for irradiance and radiance spectrum
-      i = INDEX(l2_output_fname, 'OMIO3PROF')   
+      i = INDEX(l2_output_fname, 'OMIO3PROF')
       outdir = l2_output_fname(1:i-1)
       rad_identifier = 'o' // orbc
 
@@ -428,13 +429,13 @@ contains
         sol_identifier = l1_inputs_fname_sol(i:i+7)
         i = INDEX(l1_inputs_fname_rad, 'lv1') + 4
         rad_identifier = l1_inputs_fname_rad(i:i+7)
-        j = INDEX(l2_output_fname, 'lv2')        
+        j = INDEX(l2_output_fname, 'lv2')
         outdir = l2_output_fname(1:j-1)
         !ELSEIF (instrument_idx == scia_idx) THEN
         !   i = INDEX(l1_inputs_fname_rad, 'Ch1orb') + 28
-        !   orbc = l1_inputs_fname_rad(i-2:i) 
+        !   orbc = l1_inputs_fname_rad(i-2:i)
         !   i = INDEX(l1_inputs_fname_sol, 'Ch1orb') + 20
-        !   sol_identifier = l1_inputs_fname_sol(i:i+4) // l1_inputs_fname_sol(i+6:i+8) 
+        !   sol_identifier = l1_inputs_fname_sol(i:i+4) // l1_inputs_fname_sol(i+6:i+8)
         !   rad_identifier = sol_identifier
         !   j = INDEX(l2_output_fname, 'lv2')        ; outdir = l2_output_fname(1:j-1)
         !   sciaorb_identifier =  l1_inputs_fname_sol(i-3:i+11)
@@ -444,7 +445,7 @@ contains
         sol_identifier = l1_inputs_fname_sol(i:i+7)
         i = INDEX(l1_inputs_fname_rad, 'GOME_xxx_1B') + 18
         rad_identifier = l1_inputs_fname_rad(i:i+7)
-        j = INDEX(l2_output_fname, 'lv2')            
+        j = INDEX(l2_output_fname, 'lv2')
         outdir = l2_output_fname(1:j-1)
       ENDIF
       slit_fname    = &
@@ -493,7 +494,7 @@ contains
     !xliu, 09/23/05 Add direcotry, remove hard code directory
     ! ----------------------------------------------------------
     ! Position cursor to read database directory
-    ! ----------------------------------------------------------  
+    ! ----------------------------------------------------------
     !  REWIND ( fit_ctrl_unit )
     !  CALL skip_to_filemark ( fit_ctrl_unit, lm_atmdb, tmpchar, file_read_stat )
     !  IF ( file_read_stat /= file_read_ok ) THEN
@@ -504,7 +505,7 @@ contains
     !  ENDIF
 
     !! Start, get atmo data bsse, Kai
-    version = 1 
+    version = 1
     errstat = PGS_PC_getreference( ATMOSDB_DIR_LUN, version, atmdbdir )
     IF( errstat /= PGS_S_SUCCESS ) THEN
       WRITE(msg, '(A,I10,I4)') 'get file from lun=', ATMOSDB_DIR_LUN, version
@@ -515,7 +516,7 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(atmdbdir), modulename, 0)
     END IF
-    IF( scnwrt ) WRITE (*, '(A)') TRIM(atmdbdir) 
+    IF( scnwrt ) WRITE (*, '(A)') TRIM(atmdbdir)
     !! End, get atmo data bsse, Kai
 
     !  REWIND ( fit_ctrl_unit)
@@ -528,7 +529,7 @@ contains
     !  ENDIF
 
     !! Start get reference data bsse, Kai
-    version = 1 
+    version = 1
     errstat = PGS_PC_getreference( REFDB_DIR_LUN, version, refdbdir )
     IF( errstat /= PGS_S_SUCCESS ) THEN
       WRITE(msg, '(A,I10,I4)') 'get file from lun=', REFDB_DIR_LUN, version
@@ -558,7 +559,7 @@ contains
     !     ENDIF
     !  END IF
 
-    !  !xliu: add the following block 
+    !  !xliu: add the following block
     !  ! ----------------------------------------------------------
     !  ! Position cursor to read whether to retrieve ozone profile
     !  ! ----------------------------------------------------------
@@ -568,7 +569,7 @@ contains
     !     ozprof_flag = .FALSE.
     !     WRITE(*, *) 'This algorithm is only for ozone profile retrieval!!!'
     !     pge_error_status = pge_errstat_error; RETURN
-    !  ELSE 
+    !  ELSE
     !     READ (fit_ctrl_unit, *) ozprof_flag
     !     IF (ozprof_flag)  THEN
     !!       READ (fit_ctrl_unit, '(A)') ozprof_input_fname !! commented Kai
@@ -577,7 +578,7 @@ contains
     ozprof_flag = .TRUE.
 
     !! Start, Kai
-    version = 1 
+    version = 1
     errstat = PGS_PC_getreference( OZPROF_CTRL_LUN, version, &
          ozprof_input_fname )
     IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -586,8 +587,8 @@ contains
            modulename, 0)
       pge_error_status = pge_errstat_error
       RETURN
-    ELSE 
-      errstat = OMI_SMF_setmsg (OMI_S_SUCCESS,TRIM(ozprof_input_fname), & !! Kai 
+    ELSE
+      errstat = OMI_SMF_setmsg (OMI_S_SUCCESS,TRIM(ozprof_input_fname), & !! Kai
            modulename, 0)
     END IF
     !! End, Kai
@@ -595,24 +596,24 @@ contains
     ! -----------------------------------------------
     ! Position cursor to read molecule name(s) to fit
     ! -----------------------------------------------
-    IF (.NOT. ozprof_flag) THEN  !xliu
-      REWIND ( fit_ctrl_unit )
-      CALL skip_to_filemark ( fit_ctrl_unit, molline_str, tmpchar, &
-           file_read_stat )
-      IF ( file_read_stat /= file_read_ok ) THEN
-        errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, molline_str, &
-             modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      END IF
-      READ (fit_ctrl_unit, '(A)') tmpchar
-      CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
-      IF ( errstat /= pge_errstat_ok ) THEN
-        errstat = OMI_SMF_setmsg (omsao_e_get_molfitname, '', modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      END IF
-    END IF  !xliu
+    !IF (.NOT. ozprof_flag) THEN  !xliu
+    !  REWIND ( fit_ctrl_unit )
+    !  CALL skip_to_filemark ( fit_ctrl_unit, molline_str, tmpchar, &
+    !       file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !    errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, molline_str, &
+    !         modulename, 0)
+    !    pge_error_status = pge_errstat_error
+    !    RETURN
+    !  END IF
+    !  READ (fit_ctrl_unit, '(A)') tmpchar
+    !  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
+    !  IF ( errstat /= pge_errstat_ok ) THEN
+    !    errstat = OMI_SMF_setmsg (omsao_e_get_molfitname, '', modulename, 0)
+    !    pge_error_status = pge_errstat_error
+    !    RETURN
+    !  END IF
+    !END IF  !xliu
 
     !xliu, 01/03/2007, read options to degrade spectral resolution
     REWIND ( fit_ctrl_unit )
@@ -628,7 +629,7 @@ contains
     READ (fit_ctrl_unit, *) reduce_slit
     READ (fit_ctrl_unit, *) omi_redslw(1:mswath)
     IF ( reduce_slit == 1 ) omi_redslw(1:mswath) = &
-         omi_redslw(1:mswath) / 1.66511  ! convert from FWHM to hw1e 
+         omi_redslw(1:mswath) / 1.66511  ! convert from FWHM to hw1e
     READ (fit_ctrl_unit, *) use_redfixwav
     IF (.NOT. reduce_resolution) use_redfixwav = .FALSE.
     READ (fit_ctrl_unit, '(A)') redfixwav_fname
@@ -647,10 +648,10 @@ contains
           RETURN
         ENDIF
         READ(l1l2inp_unit, *) (redfixwav(i), i = 1, nredfixwav)
-        CLOSE(UNIT=l1l2inp_unit) 
+        CLOSE(UNIT=l1l2inp_unit)
       END IF
     ENDIF
-    READ (fit_ctrl_unit, *) redsampr 
+    READ (fit_ctrl_unit, *) redsampr
     READ (fit_ctrl_unit, *) redlam
 
     ! -----------------------------------------------------
@@ -750,8 +751,8 @@ contains
       nc_irrad_swathname = (/ 'band_290_490_nm', 'band_290_490_nm'/)
     endif
 
-    IF (coadd_uv2) THEN 
-      ncoadd = 2 
+    IF (coadd_uv2) THEN
+      ncoadd = 2
     ELSE
       ncoadd = 1
     ENDIF
@@ -808,7 +809,7 @@ contains
     READ (fit_ctrl_unit, *) wavcal_fit_pts, n_wavcal_step, wavcal_redo
     READ (fit_ctrl_unit, *) yn_smooth
     READ (fit_ctrl_unit, *) yn_doas
-    READ (fit_ctrl_unit, *) use_meas_sig 
+    READ (fit_ctrl_unit, *) use_meas_sig
     READ (fit_ctrl_unit, *) linenum_lim
     READ (fit_ctrl_unit, *) pixnum_lim
     READ (fit_ctrl_unit, *) tol
@@ -832,9 +833,9 @@ contains
     ! ---------------------------------------------------
     ! First thing to read is the Solar Reference Spectrum
     ! ---------------------------------------------------
-    READ (fit_ctrl_unit, '(A)') refspec_fname(solar_idx)  
+    READ (fit_ctrl_unit, '(A)') refspec_fname(solar_idx)
     refspec_fname(solar_idx) = &
-         TRIM(ADJUSTL(refdbdir)) // refspec_fname(solar_idx)  
+         TRIM(ADJUSTL(refdbdir)) // refspec_fname(solar_idx)
     READ (fit_ctrl_unit, *) weight_sun
     READ (fit_ctrl_unit, *) max_itnum_sol
 
@@ -847,11 +848,11 @@ contains
       ! Check for consitency of bounds and adjust where necessary
       ! ---------------------------------------------------------
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-        lotmp = vartmp 
+        lotmp = vartmp
         uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-        uptmp = vartmp 
+        uptmp = vartmp
         lotmp = vartmp
       END IF
 
@@ -860,7 +861,7 @@ contains
       CALL string2index ( calfit_strings, max_calfit_idx, idxchar, sidx )
       IF ( sidx > 0 ) THEN
         fitvar_sol_init(sidx) = vartmp
-        lo_sunbnd(sidx) = lotmp 
+        lo_sunbnd(sidx) = lotmp
         up_sunbnd(sidx) = uptmp
         IF ( lotmp < uptmp ) THEN
           n_fitvar_sol = n_fitvar_sol + 1
@@ -901,11 +902,11 @@ contains
       ! Check for consitency of bounds and adjust where necessary
       ! ---------------------------------------------------------
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-        lotmp = vartmp 
+        lotmp = vartmp
         uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-        uptmp = vartmp 
+        uptmp = vartmp
         lotmp = vartmp
       END IF
 
@@ -914,14 +915,14 @@ contains
       IF ( sidx > 0 ) THEN
         fitvar_rad_init(sidx) = vartmp
         fitvar_rad_str (sidx) = TRIM(ADJUSTL(idxchar))
-        lo_radbnd(sidx) = lotmp 
+        lo_radbnd(sidx) = lotmp
         up_radbnd(sidx) = uptmp
       END IF
     END DO radpars
 
 
     ! Obsolete
-    ! Read date from radiance file (used for correcting sun-earth 
+    ! Read date from radiance file (used for correcting sun-earth
     ! distance when using backupirradiance)
     if (use_he5_in) then
       i = INDEX(l1_inputs_fname_rad, '-o') -14
@@ -950,13 +951,13 @@ contains
     IF (pixlim(1)  /= -9999) pixnum_lim  =  pixlim
     IF ( ALL ( linenum_lim < 0 ) )      linenum_lim(1:2) = (/ 1, ntimes_max /)
     IF ( linenum_lim(1) > linenum_lim(2) ) linenum_lim([1, 2]) = &
-         linenum_lim([2, 1])   
+         linenum_lim([2, 1])
     IF ( linenum_lim(1) < 1 )              linenum_lim(1) = 1
     IF ( linenum_lim(2) > ntimes_max )     linenum_lim(2) = ntimes_max
 
     IF ( ALL ( pixnum_lim < 0 ) )       pixnum_lim(1:2) = (/ 1, nxtrack_max /)
     IF ( pixnum_lim(1) > pixnum_lim(2) )   pixnum_lim([1, 2]) = &
-         pixnum_lim([2, 1])   
+         pixnum_lim([2, 1])
     IF ( pixnum_lim(1) < 1 )               pixnum_lim(1) = 1
     IF ( pixnum_lim(2) > nxtrack_max )     pixnum_lim(2) = nxtrack_max
 
@@ -978,7 +979,7 @@ contains
 
     WRITE(slinechar, '(I4.4)') linenum_lim(1)
     WRITE(elinechar, '(I4.4)') linenum_lim(2)
-    WRITE(sxchar, '(I2.2)')    pixnum_lim(1) 
+    WRITE(sxchar, '(I2.2)')    pixnum_lim(1)
     WRITE(exchar, '(I2.2)')    pixnum_lim(2)
 
     ! must divide and must start from odd coadded positions
@@ -997,12 +998,12 @@ contains
     ! Could start from any positions, adjust line positions if necessary
     IF (do_ybin .AND. nybin > 1)  THEN
       IF( linenum_lim(1) <= nybin ) THEN
-        linenum_lim(1) = 1 
+        linenum_lim(1) = 1
       ELSE
         linenum_lim(1) = INT((linenum_lim(1)-1)/nybin)*nybin + 1
       ENDIF
       IF ( linenum_lim(1) > linenum_lim(2) )   linenum_lim(2) = &
-           linenum_lim(1)   
+           linenum_lim(1)
       i = linenum_lim(2)-linenum_lim(1) + 1
       IF (MOD(i, nybin) /= 0) THEN
         linenum_lim(2) = CEILING(1.0 * i / nybin) * nybin + linenum_lim(1) - 1
@@ -1015,10 +1016,10 @@ contains
 
     IF( coadd_uv2 ) THEN
       WRITE(msg, '(A,2I5,2I3)') 'Processing UV1 Line sample ranges=', &
-           linenum_lim(1:2),pixnum_lim(1:2) 
+           linenum_lim(1:2),pixnum_lim(1:2)
     ELSE
       WRITE(msg, '(A,2I5,2I3)') 'Processing UV2 Line sample ranges=', &
-           linenum_lim(1:2),pixnum_lim(1:2) 
+           linenum_lim(1:2),pixnum_lim(1:2)
     ENDIF
     errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, TRIM(msg), modulename, 0 )
 
@@ -1040,18 +1041,18 @@ contains
 
       IF (do_xbin) THEN
         WRITE(xbinchar, '(A2,I1)') 'BX', nxbin
-        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // xbinchar 
+        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // xbinchar
       ENDIF
       IF (do_ybin) THEN
         WRITE(ybinchar, '(A2,I1)') 'BY', nybin
-        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // ybinchar 
+        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // ybinchar
       ENDIF
     ENDIF !Kai
 
     IF ( instrument_idx /= gome2_idx) THEN
       IF (instrument_idx == omi_idx .AND. l2_hdf_flag == 3) THEN
         ! Kai
-        !  l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '.he5' 
+        !  l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '.he5'
         !  l2_swathname = 'OMI Vertical Ozone Profile'
 
         errstat = PGS_PC_GetConfigData( SWATH_LUN, msg )
@@ -1075,10 +1076,10 @@ contains
           errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
                'SwathName : '//TRIM(msg), modulename, 0 )
         ENDIF
-      ELSE      
+      ELSE
         l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '.out'
       ENDIF
-    ELSE 
+    ELSE
       l2_output_fname = TRIM(ADJUSTL(l2_output_fname))
     ENDIF
 
@@ -1101,7 +1102,7 @@ contains
     have_undersampling = .FALSE.
 
     ! -------------------------------------------------------------
-    ! Now keep reading spectrum blocks until EOF. This, obviously, 
+    ! Now keep reading spectrum blocks until EOF. This, obviously,
     ! has to be the last READ action performed from the input file.
     ! -------------------------------------------------------------
     comvidx = 0
@@ -1129,7 +1130,7 @@ contains
       ! GOME specific: the first line in the "spectrum parameter block" is
       ! the name of the corresponding reference spectrum
       READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) refspec_fname(ridx)
-      refspec_fname(ridx) = TRIM(ADJUSTL(refdbdir)) // refspec_fname(ridx)  
+      refspec_fname(ridx) = TRIM(ADJUSTL(refdbdir)) // refspec_fname(ridx)
 
       ! Read the block of fitting parameters for current reference spectrum
       DO k = 1, mxs_idx
@@ -1139,11 +1140,11 @@ contains
         ! Check for consitency of bounds and adjust where necessary
         ! ---------------------------------------------------------
         IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-          lotmp = vartmp 
+          lotmp = vartmp
           uptmp = vartmp
         END IF
         IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-          uptmp = vartmp 
+          uptmp = vartmp
           lotmp = vartmp
         END IF
 
@@ -1152,7 +1153,7 @@ contains
           i = max_calfit_idx + (ridx-1)*mxs_idx + sidx
           fitvar_rad_init(i) = vartmp
           fitvar_rad_str (i) = TRIM(ADJUSTL(tmpchar))
-          lo_radbnd (i) = lotmp 
+          lo_radbnd (i) = lotmp
           up_radbnd (i) = uptmp
           IF ( (ridx == us1_idx .OR. ridx == us2_idx) .AND. &
                ANY ( (/ vartmp,lotmp,uptmp /) /= 0.0 ) ) &
@@ -1171,11 +1172,11 @@ contains
       ! read shift parameter
       READ (fit_ctrl_unit, *) idxchar1, vartmp, lotmp, uptmp
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-        lotmp = vartmp 
+        lotmp = vartmp
         uptmp = vartmp
       END IF
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-        uptmp = vartmp 
+        uptmp = vartmp
         lotmp = vartmp
       END IF
 
@@ -1191,8 +1192,8 @@ contains
       fitvar_rad_str(i) = TRIM(ADJUSTL(idxchar1))
       fitvar_rad_unit(i) = 'nm'
 
-      lo_radbnd (i) = lotmp 
-      up_radbnd (i) = uptmp        
+      lo_radbnd (i) = lotmp
+      up_radbnd (i) = uptmp
     END DO getpars
 
     ! -----------------------------------------------------
@@ -1212,8 +1213,8 @@ contains
     ! In addition, we need to determine the fitting indices that
     ! will make up the final fitted column of the molecule(s) in
     ! question. For this we have to jump through a double loop:
-    ! Since we are compressing the fitting parameter array to 
-    ! include only the varied parameters, the final covariance 
+    ! Since we are compressing the fitting parameter array to
+    ! include only the varied parameters, the final covariance
     ! matrix, which is crucial for determining the uncertainties,
     ! only knows the compressed indices. Therefore we have to have
     ! an "index of an index" type array, that remembers the index
@@ -1224,7 +1225,7 @@ contains
     ! calibration parameters (unrelated to the final fitted column)
     ! and reference spectra parameters.
     ! -------------------------------------------------------------
-    n_fitvar_rad = 0 
+    n_fitvar_rad = 0
     mask_fitvar_rad = 0
     rmask_fitvar_rad = 0
     database_indices = 0
@@ -1235,7 +1236,7 @@ contains
       IF ( lo_radbnd(i) < up_radbnd(i) ) THEN
         n_fitvar_rad = n_fitvar_rad + 1
         mask_fitvar_rad(n_fitvar_rad) = i
-        rmask_fitvar_rad(i) = n_fitvar_rad      
+        rmask_fitvar_rad(i) = n_fitvar_rad
       END IF
     END DO
 
@@ -1245,7 +1246,7 @@ contains
     n_fincol_idx = 0
     DO i = 1, max_rs_idx
       idx = max_calfit_idx + (i-1) * mxs_idx
-      DO j = mns_idx, mxs_idx        
+      DO j = mns_idx, mxs_idx
         ! ----------------------------------------------
         ! Assign only entries that are varied in the fit
         ! ----------------------------------------------
@@ -1264,19 +1265,19 @@ contains
           ! that is associated with this molecule, so that we
           ! can easily access its normalization factor.
           ! -------------------------------------------------
-          IF (.NOT. ozprof_flag) THEN  !xliu
-            getfincol: DO k = 1, n_mol_fit
-              IF ( fitcol_idx(k) == i ) THEN
-                n_fincol_idx = n_fincol_idx + 1
-                fincol_idx (1,n_fincol_idx) = n_fitvar_rad
-                fincol_idx (2,n_fincol_idx) = i
-                EXIT getfincol
-              END IF
-            END DO getfincol
-          ENDIF   !xliu
+          !IF (.NOT. ozprof_flag) THEN  !xliu
+          !  getfincol: DO k = 1, n_mol_fit
+          !    IF ( fitcol_idx(k) == i ) THEN
+          !      n_fincol_idx = n_fincol_idx + 1
+          !      fincol_idx (1,n_fincol_idx) = n_fitvar_rad
+          !      fincol_idx (2,n_fincol_idx) = i
+          !      EXIT getfincol
+          !    END IF
+          !  END DO getfincol
+          !ENDIF   !xliu
 
           IF (idx + j == comvidx) comfidx = n_fitvar_rad
-          IF (idx + j == cm1vidx) cm1fidx = n_fitvar_rad  
+          IF (idx + j == cm1vidx) cm1fidx = n_fitvar_rad
 
 
         END IF
@@ -1302,18 +1303,18 @@ contains
 
     !xliu: add the following block
     ! ------------------------------------------------------------------------
-    ! Read fitting conrol parameters from input file for 
+    ! Read fitting conrol parameters from input file for
     ! ozone profile variables
-    IF (ozprof_flag) THEN 
+    IF (ozprof_flag) THEN
       CALL read_ozprof_input ( &
            fit_ctrl_unit, ozprof_input_fname, pge_error_status )
-      IF ( pge_error_status >= pge_errstat_error ) RETURN 
+      IF ( pge_error_status >= pge_errstat_error ) RETURN
     END IF
 
 
 
-    ! refnhextra must >= 1 and radnhtrunc > refnhextra, if interpolation 
-    ! is performed radnhtrunc should be 
+    ! refnhextra must >= 1 and radnhtrunc > refnhextra, if interpolation
+    ! is performed radnhtrunc should be
     IF ( (ntsh == 0 .AND. nsh == 0 .AND. nos == 0 .AND. nsl == 0) &
          .OR. (do_simu .AND. .NOT. radcalwrt)) THEN
       radnhtrunc = 3
@@ -1341,63 +1342,63 @@ contains
   END SUBROUTINE read_fitting_control_file
 
 
-  SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
-
-    USE OMSAO_indices_module,    ONLY: refspec_strings, max_rs_idx
-    USE OMSAO_parameters_module, ONLY: max_mol_fit
-    USE OMSAO_errstat_module,    ONLY: pge_errstat_error
-    use utilities, only: get_substring, string2index
-
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    CHARACTER (LEN=*), INTENT (INOUT) :: tmpchar
-
-    ! ================
-    ! Output variables
-    ! ================
-    INTEGER,                          INTENT (OUT) :: n_mol_fit, errstat
-    INTEGER, DIMENSION (max_mol_fit), INTENT (OUT) :: fitcol_idx
-
-    ! ===============
-    ! Local variables
-    ! ===============
-    INTEGER                      :: i, ncl, sstart, sidx
-    LOGICAL                      :: yn_eoc
-    CHARACTER (LEN=LEN(tmpchar)) :: tmpsub
-
-    ! ----------------------------
-    ! Initialize output quantities
-    ! ----------------------------
-    n_mol_fit = 0  
-    fitcol_idx = 0
-
-    ! -----------------------------------------------
-    ! Get names and indices for main molecules to fit
-    ! -----------------------------------------------
-    sstart = 0 
-    ncl = 0 
-    yn_eoc = .FALSE.
-    getmolnames: DO i = 1, max_mol_fit
-      ! ---------------------------------------------------------
-      ! Extract index string, find index, then extract file name.
-      ! ---------------------------------------------------------
-      CALL get_substring ( tmpchar, sstart, tmpsub, ncl, yn_eoc )
-      IF ( ncl > 0 ) THEN
-        CALL string2index ( refspec_strings, max_rs_idx, tmpsub, sidx )
-        IF ( sidx > 0 ) THEN
-          n_mol_fit = n_mol_fit + 1
-          fitcol_idx(n_mol_fit) = sidx
-        END IF
-      END IF
-      IF ( yn_eoc ) EXIT getmolnames
-    END DO getmolnames
-    IF ( n_mol_fit == 0 .OR. ALL(fitcol_idx == 0) ) errstat = pge_errstat_error
-
-    RETURN
-  END SUBROUTINE get_mols_for_fitting
+!  SUBROUTINE get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
+!
+!    USE OMSAO_indices_module,    ONLY: refspec_strings, max_rs_idx
+!    USE OMSAO_parameters_module, ONLY: max_mol_fit
+!    USE OMSAO_errstat_module,    ONLY: pge_errstat_error
+!    use utilities, only: get_substring, string2index
+!
+!    IMPLICIT NONE
+!
+!    ! ===============
+!    ! Input variables
+!    ! ===============
+!    CHARACTER (LEN=*), INTENT (INOUT) :: tmpchar
+!
+!    ! ================
+!    ! Output variables
+!    ! ================
+!    INTEGER,                          INTENT (OUT) :: n_mol_fit, errstat
+!    INTEGER, DIMENSION (max_mol_fit), INTENT (OUT) :: fitcol_idx
+!
+!    ! ===============
+!    ! Local variables
+!    ! ===============
+!    INTEGER                      :: i, ncl, sstart, sidx
+!    LOGICAL                      :: yn_eoc
+!    CHARACTER (LEN=LEN(tmpchar)) :: tmpsub
+!
+!    ! ----------------------------
+!    ! Initialize output quantities
+!    ! ----------------------------
+!    n_mol_fit = 0
+!    fitcol_idx = 0
+!
+!    ! -----------------------------------------------
+!    ! Get names and indices for main molecules to fit
+!    ! -----------------------------------------------
+!    sstart = 0
+!    ncl = 0
+!    yn_eoc = .FALSE.
+!    getmolnames: DO i = 1, max_mol_fit
+!      ! ---------------------------------------------------------
+!      ! Extract index string, find index, then extract file name.
+!      ! ---------------------------------------------------------
+!      CALL get_substring ( tmpchar, sstart, tmpsub, ncl, yn_eoc )
+!      IF ( ncl > 0 ) THEN
+!        CALL string2index ( refspec_strings, max_rs_idx, tmpsub, sidx )
+!        IF ( sidx > 0 ) THEN
+!          n_mol_fit = n_mol_fit + 1
+!          fitcol_idx(n_mol_fit) = sidx
+!        END IF
+!      END IF
+!      IF ( yn_eoc ) EXIT getmolnames
+!    END DO getmolnames
+!    IF ( n_mol_fit == 0 .OR. ALL(fitcol_idx == 0) ) errstat = pge_errstat_error
+!
+!    RETURN
+!  END SUBROUTINE get_mols_for_fitting
 
 
 end module m_read_fitting_controls

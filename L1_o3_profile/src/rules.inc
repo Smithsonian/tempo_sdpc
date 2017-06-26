@@ -1,5 +1,4 @@
 $(ODIR)/adj_measurement_data.o: $(SDIR)/adj_measurement_data.f90 \
-  $(ODIR)/m_amf_conversion.o \
   $(ODIR)/m_angle_sat2toa.o \
   $(ODIR)/prepare_databases.o \
   $(ODIR)/m_rad_fit_vary.o \
@@ -104,14 +103,6 @@ $(ODIR)/lidort_prof_utilities.o: $(SDIR)/lidort_prof_utilities.f90 \
   $(ODIR)/ozprof_data_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/lidort_prof_utilities.f90 -o $(ODIR)/lidort_prof_utilities.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_amf_conversion.o: $(SDIR)/m_amf_conversion.f90 \
-  $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
-  $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/utilities.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_amf_conversion.f90 -o $(ODIR)/m_amf_conversion.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_angle_sat2toa.o: $(SDIR)/m_angle_sat2toa.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -557,15 +548,6 @@ $(ODIR)/m_pseudo_model.o: $(SDIR)/m_pseudo_model.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pseudo_model.f90 -o $(ODIR)/m_pseudo_model.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_radiance_fit.o: $(SDIR)/m_radiance_fit.f90 \
-  $(ODIR)/fitting_functions.o \
-  $(ODIR)/m_specfit.o \
-  $(ODIR)/m_subtract_cubic.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
-  $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_variables_module.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_radiance_fit.f90 -o $(ODIR)/m_radiance_fit.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_rad_shisqu.o: $(SDIR)/m_rad_shisqu.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \

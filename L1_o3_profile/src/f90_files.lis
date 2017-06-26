@@ -13,7 +13,6 @@ he5_output_module.f90
 L1B_Reader_class.f90
 L2_attr_class.f90
 lidort_prof_utilities.f90
-m_amf_conversion.f90
 m_angle_sat2toa.f90
 m_cal_fit_one.f90
 m_convert_coadd.f90
@@ -69,7 +68,6 @@ PGS_TD_class.f90
 prepare_atmosphere.f90
 prepare_databases.f90
 m_pseudo_model.f90
-m_radiance_fit.f90
 m_rad_shisqu.f90
 m_read_aerosol_prof.f90
 m_read_fitting_controls.f90
