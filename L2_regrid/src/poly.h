@@ -90,10 +90,11 @@ extern int Polygon_vertex (const Polygon_Type *p, int i,
  * @param[in]    p          The polygon
  * @param[out]   xmin,xmax  The bounding box X interval
  * @param[out]   ymin,ymax  The bounding box Y interval
+ * @return  number of invalid vertex coordinates
  */
-extern void Polygon_bbox (const Polygon_Type *p,
-                          double *xmin, double *xmax,
-                          double *ymin, double *ymax);
+extern int Polygon_bbox (const Polygon_Type *p,
+                         double *xmin, double *xmax,
+                         double *ymin, double *ymax);
 
 /** Compute the area enclosed by a polygon.
  * @param[in]    p          The polygon

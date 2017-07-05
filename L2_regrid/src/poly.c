@@ -155,21 +155,31 @@ int Polygon_vertex (const Polygon_Type *p, int i, double *x, double *y)
    return 0;
 }
 
-void Polygon_bbox (const Polygon_Type *p,
-                   double *xmin, double *xmax, double *ymin, double *ymax)
+int Polygon_bbox (const Polygon_Type *p,
+                  double *xmin, double *xmax, double *ymin, double *ymax)
 {
    double *p_v, *p_vend = p->v + 2*p->n;
    double xmn, xmx, ymn, ymx;
+   int num_invalid;
 
    xmn = ymn = DBL_MAX;
    xmx = ymx = -DBL_MAX;
+   num_invalid = 0;
 
    for (p_v = p->v; p_v + 1 < p_vend; p_v += 2)
      {
         double x = p_v[0];
         double y = p_v[1];
+
+        if (isnan(x) || isnan(y))
+          {
+             num_invalid++;
+             continue;
+          }
+
         if (x < xmn) xmn = x;
         else if (x > xmx) xmx = x;
+
         if (y < ymn) ymn = y;
         else if (y > ymx) ymx = y;
      }
@@ -178,6 +188,8 @@ void Polygon_bbox (const Polygon_Type *p,
    *xmax = xmx;
    *ymin = ymn;
    *ymax = ymx;
+
+   return num_invalid;
 }
 
 /* Area of planar polygon, ccw area is positive */
