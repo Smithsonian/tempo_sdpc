@@ -120,11 +120,14 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    double *src_values=NULL, *dest_values=NULL;
    double x0 = 0.0, dx = 1.0/nx_src;
    double y0 = 0.0, dy = 1.0/ny_src;
-   double src_sum, dest_sum, expected_dest_sum;
+   double src_sum, dest_sum, expected_dest_sum, expected_src_sum;
    double *xcnr = NULL, *ycnr = NULL;
+   double fill_value = DBL_MAX;
    int num_src, nx_dest, ny_dest, num_dest, num_overlaps;
    int new_num_step, new_num_xtrack;
+   int num_src_from_mesh, num_src_pixels_with_dest_overlaps;
    int i, *src_mask= NULL;
+   int *overlap_map = NULL;
    int status = -1;
 
    num_src = nx_src * ny_src;
@@ -195,7 +198,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
-   if (-1 == Pixel_regrid (r, src_mask, DBL_MAX, src_values, dest_values, NULL))
+   if (-1 == Pixel_regrid (r, src_mask, fill_value, src_values, dest_values, NULL))
      goto return_status;
 
    src_sum = 0.0;
@@ -210,7 +213,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      {
         debug_print (stderr, "dest[%2d] = %15.6e\n",
                      i, dest_values[i]);
-        if (dest_values[i] != DBL_MAX)
+        if (dest_values[i] != fill_value)
           {
              dest_sum += dest_values[i];
           }
@@ -226,6 +229,45 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      {
         fprintf (stderr, "*** FAIL: dest_sum=%g (expected %g)\n",
                  dest_sum, expected_dest_sum);
+        goto return_status;
+     }
+
+   /* Test Pixel_regrid_from_mesh */
+   Pixel_regrid_grow_srcdims (r, nx_src-1, ny_src-1);
+   memset ((char *)src_values, 0, num_src * sizeof(double));
+   if (0 != Pixel_regrid_from_mesh (r, NULL, fill_value, dest_values, src_values))
+     goto return_status;
+   num_src_from_mesh = 0;
+   src_sum = 0.0;
+   for (i = 0; i < num_src; i++)
+     {
+        if (src_values[i] != fill_value)
+          {
+             src_sum += src_values[i];
+             num_src_from_mesh++;
+          }
+     }
+   expected_src_sum = num_src * (1.0 - fabs(xshift)) * (1.0 - fabs(yshift));
+   if (fabs(src_sum - expected_src_sum) > DBL_EPSILON * expected_src_sum)
+     {
+        fprintf (stderr, "*** FAIL (Pixel_regrid_from_mesh): src_sum=%g (expected %g)\n",
+                 src_sum, expected_src_sum);
+        goto return_status;
+     }
+
+   /* test Pixel_regrid_overlap_map (crudely) */
+   if (NULL == (overlap_map = Pixel_regrid_overlap_map (r)))
+     goto return_status;
+   num_src_pixels_with_dest_overlaps = 0;
+   for (i = 0; i < num_src; i++)
+     {
+        if (overlap_map[i] > 0) num_src_pixels_with_dest_overlaps++;
+     }
+   if (num_src_pixels_with_dest_overlaps != (int) expected_src_sum)
+     {
+        fprintf (stderr, "*** FAIL (Pixel_regrid_overlap_map): num=%d (expected %g)\n",
+                 num_src_pixels_with_dest_overlaps,
+                 expected_src_sum);
         goto return_status;
      }
 
@@ -248,6 +290,7 @@ return_status:
    FREE(ycnr);
    Pixel_list_free (src_pixel_list);
    Pixel_close_regrid (r);
+   FREE(overlap_map);
    return status;
 }
 
@@ -356,38 +399,16 @@ static int test_regrid_stat (int nx_src, int ny_src)
                             regrid_stats->max[i],
                             regrid_stats->num[i]);
 
-        if (ix < nx_dest-1)
-          {
-             /* Apart from edge effects, we expect each destination
-              * pixel to have contributions from 4 source pixels,
-              * with the minimum source pixel value = 1 */
-             expect.min = 1;
-             expect.max = 2;
-             expect.num = 4;
-          }
-        else
-          {
-             /* Handle edge cases:
-              * When nx_src is even, the last column will have value=2,
-              * so when the dest grid has a 1/2 pixel shift in the +X direction
-              * the last column will see only 2 contributions with value=2,
-              * and no contributions with value=1.
-              * When nx_src is odd, vice-versa.
-              */
-             expect.num = 2;
-             if ((nx_src / 2)*2 == nx_src)
-               {
-                  /* nx_src even */
-                  expect.min = 2;
-                  expect.max = 2;
-               }
-             else
-               {
-                  /* nx_src odd */
-                  expect.min = 1;
-                  expect.max = 1;
-               }
-          }
+        /* With binfac=2 and xshift = +1/2 a pixel, the dest pixel
+         * will always span adjacent source pixels so will always
+         * have min=1 and max=2.
+         * Interior dest pixels will span 6 source pixels, while
+         * dest pixels at the +X boundary will span only 4 source pixels.
+         */
+
+        expect.min = 1;
+        expect.max = 2;
+        expect.num = (ix < nx_dest-1) ? 6 : 4;
 
         expected = ((regrid_stats->min[i] == expect.min)
                     && (regrid_stats->max[i] == expect.max)
@@ -402,6 +423,7 @@ static int test_regrid_stat (int nx_src, int ny_src)
                       regrid_stats->max[i],
                       regrid_stats->num[i],
                       expect.min, expect.max, expect.num);
+             /* (void) __Pixel_print_overlap (r, i); */
              goto return_status;
           }
      }
