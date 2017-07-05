@@ -108,6 +108,26 @@ static int push_overlap (Pixel_Overlap_Type *o, double area, int src_index)
    return 0;
 }
 
+#if 0
+int __Pixel_print_overlap (const Pixel_Regrid_Type *r, int dest_pixel_index)
+{
+   Pixel_Overlap_Type *o;
+   int j;
+
+   if (r->overlap == NULL)
+     return -1;
+
+   o = r->overlap[dest_pixel_index];
+
+   fprintf (stderr, "src_index  overlap_area\n");
+   for (j = 0; j < o->num_overlaps; j++)
+     {
+        fprintf (stderr, "%6d  %15.8e\n", o->src_index[j], o->area[j]);
+     }
+   return 0;
+}
+#endif
+
 void Pixel_list_free (Pixel_List_Type *lst)
 {
    if (lst == NULL)
@@ -285,34 +305,6 @@ static int poly_fill (const Pixel_Grid_Param_Type *dest,
    return Polygon_set (p, 4, x, y);
 }
 
-static double my_round (double x)
-{
-   double xf, xi;
-
-   xf = modf (x, &xi);                 /* x = xi + xf */
-   if (xi > 0)
-     {
-        if (xf >= 0.5)
-          return xi + 1.0;
-     }
-   else if (xi < 0)
-     {
-        if (xf <= -0.5)
-          return xi - 1.0;
-     }
-   else if (xf < 0)                    /* xi=0 */
-     {
-        if (xf <= -0.5)
-          return -1.0;
-     }
-   else if (xf >= 0.5)                 /* xi=0 */
-     return 1.0;
-
-   return xi;
-}
-/* C99 provides round, but for now, avoid requiring C99 */
-#define ROUND(x) my_round(x)
-
 /* assume array overlap[dest->num_polys] already allocated */
 int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                          const Pixel_List_Type *src_area,
@@ -355,9 +347,11 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
         Polygon_Type *src_poly_area = src_area->poly[k];
         Polygon_Type *src_poly_lookup = src_lookup->poly[k];
         double xmn, xmx, ymn, ymx;
-        int i, j, imn, imx, jmn, jmx;
+        int i, j, imn, imx, jmn, jmx, num_invalid;
 
-        Polygon_bbox (src_poly_lookup, &xmn, &xmx, &ymn, &ymx);
+        num_invalid = Polygon_bbox (src_poly_lookup, &xmn, &xmx, &ymn, &ymx);
+        /* Does source polygon bbox have any invalid vertex coordinates ? */
+        if (num_invalid) continue;
 
         /* Does source polygon bbox overlap destination grid anywhere? */
         if ((xmn > dest->xmax) || (xmx < dest->xmin)
@@ -377,11 +371,11 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
         ymn = MAX(ymn, dest->ymin);
         ymx = MIN(ymx, dest->ymax);
 
-        /* find destination cell index range */
+        /* find destination cell index range. */
         imn = (int) floor((xmn - dest->xmin) / dx);
-        imx = (int) ROUND((xmx - dest->xmin) / dx);
+        imx = (int)  ceil((xmx - dest->xmin) / dx);
         jmn = (int) floor((ymn - dest->ymin) / dy);
-        jmx = (int) ROUND((ymx - dest->ymin) / dy);
+        jmx = (int)  ceil((ymx - dest->ymin) / dy);
 
         for (j = jmn; j < jmx; j++)
           {
@@ -549,6 +543,38 @@ Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel)
    return rs;
 }
 
+/* How many source pixels map to each destination mesh pixel?
+ * This is primarily for diagnostic purposes */
+int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r)
+{
+   int *map = NULL;
+   int i, j, num_src_pixels;
+
+   if (r->overlap == NULL)
+     return NULL;
+
+   num_src_pixels = r->num_src_step * r->num_src_xtrack;
+   if (NULL == (map = (int *)MALLOC (num_src_pixels * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)map, 0, num_src_pixels * sizeof(int));
+
+   for (i = 0; i < r->num_dest_pixels; i++)
+     {
+        Pixel_Overlap_Type *o = r->overlap[i];
+        if (o == NULL)
+          continue;
+        for (j = 0; j < o->num_overlaps; j++)
+          {
+             map[o->src_index[j]] += 1;
+          }
+     }
+
+   return map;
+}
+
 int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
                   double fill_value, const double *src, double *dest,
                   Pixel_Regrid_Stats_Type *rs)
@@ -584,7 +610,8 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
         for (j = 0; j < o->num_overlaps; j++)
           {
              int k = o->src_index[j];
-             if (src_mask[k] == 0)
+             if ((src_mask == NULL)
+                 || ((src_mask != NULL) && (src_mask[k] == 0)))
                {
                   double a = o->area[j];
                   double src_k = src[k];
@@ -640,7 +667,8 @@ static int regrid_bytes_##typestr (const Pixel_Regrid_Type *r, const int *src_ma
         for (j = 0; j < o->num_overlaps; j++) \
           { \
              int k = o->src_index[j]; \
-             if (src_mask[k] == 0) \
+             if ((src_mask == NULL) \
+                 || ((src_mask != NULL) && (src_mask[k] == 0))) \
                { \
                   or_all |= src[k]; \
                } \
@@ -740,7 +768,8 @@ int Pixel_regrid_from_mesh (const Pixel_Regrid_Type *r, const int *mesh_mask,
         double val_m;
         int j;
 
-        if ((o == NULL) || (mesh_mask[mesh_pixel] == 0))
+        if ((o == NULL)
+            || ((mesh_mask != NULL) && (mesh_mask[mesh_pixel] != 0)))
           continue;
 
         val_m = mesh_values[mesh_pixel];

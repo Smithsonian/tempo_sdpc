@@ -290,6 +290,17 @@ Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
                     int value_type, const void *fill_value,
                     const void *src, void *dest);
 
+extern int
+Pixel_regrid_from_mesh (const Pixel_Regrid_Type *r, const int *mesh_mask,
+                        double fill_value, const double *mesh_values,
+                        double *values);
+
+extern int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r);
+
+/* Debugging tools */
+
+extern int __Pixel_print_overlap (const Pixel_Regrid_Type *r, int dest_pixel_index);
+
 #if 0
 {
 #endif
