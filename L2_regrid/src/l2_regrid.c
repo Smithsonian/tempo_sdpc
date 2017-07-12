@@ -542,7 +542,10 @@ int main (int argc, char **argv)
      param_file = argv[1];
 
    if (-1 == parse_param_file (param_file, &dest, &product_list))
-     return 1;
+     {
+        tell_close();
+        return 1;
+     }
 
    /* Compute pixel overlaps using the first set of products */
    prod = product_list;
@@ -576,6 +579,7 @@ return_status:
    Var_free_value_buffer (vb);
    Regrid_close (r);
    TIO_free_scan_ident (lst);
+   tell_close ();
 
    return status;
 }

@@ -114,6 +114,7 @@ static void free_spv_type (Source_Pixel_Vertices_Type *spv)
    FREE(spv->lon_bounds);
    FREE(spv->lat_bounds);
    FREE(spv->step);
+   FREE(spv);
 }
 
 static Source_Pixel_Vertices_Type *new_spv_type (int num_steps, int num_xtrack)
