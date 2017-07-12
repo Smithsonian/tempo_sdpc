@@ -633,7 +633,6 @@ CONTAINS
           
           llon = REAL(lon(ixtrack,itimes),KIND=r8)
           llat = REAL(lat(ixtrack,itimes),KIND=r8)
-
           
           IF (llon .LT. MINVAL(lonvals)) llon = REAL(MINVAL(lonvals),KIND=r8)
           IF (llon .GT. MAXVAL(lonvals)) llon = REAL(MAXVAL(lonvals),KIND=r8)
@@ -649,30 +648,30 @@ CONTAINS
           CALL GetNode(REAL(lonvals,KIND=r8),llon, &
                idx_lon(1), 'Lower')
           IF (idx_lon(1) .EQ. -2) idx_lon(1) = 1
-          IF (idx_lon(1) .EQ. -3) idx_lon(1) = Cmlon
+          IF (idx_lon(1) .EQ. -3) idx_lon(1) = Cmlon-1
           CALL GetNode(REAL(lonvals,KIND=r8),llon, &
                idx_lon(2), 'Upper')
-          IF (idx_lon(2) .EQ. -2) idx_lon(2) = 1
+          IF (idx_lon(2) .EQ. -2) idx_lon(2) = 2
           IF (idx_lon(2) .EQ. -3) idx_lon(2) = Cmlon
           nlon = idx_lon(2)-idx_lon(1) + 1
 
           CALL GetNode(REAL(latvals,KIND=r8),llat, &
                idx_lat(1), 'Lower')
           IF (idx_lat(1) .EQ. -2) idx_lat(1) = 1
-          IF (idx_lat(1) .EQ. -3) idx_lat(1) = Cmlat
+          IF (idx_lat(1) .EQ. -3) idx_lat(1) = Cmlat-1
           CALL GetNode(REAL(latvals,KIND=r8),llat, &
                idx_lat(2), 'Upper')
-          IF (idx_lat(2) .EQ. -2) idx_lat(2) = 1
+          IF (idx_lat(2) .EQ. -2) idx_lat(2) = 2
           IF (idx_lat(2) .EQ. -3) idx_lat(2) = Cmlat
           nlat = idx_lat(2)-idx_lat(1) + 1
 
           CALL GetNode(REAL(timevals,KIND=r8),ltime, &
                idx_tim(1), 'Lower')
           IF (idx_tim(1) .EQ. -2) idx_tim(1) = 1
-          IF (idx_tim(1) .EQ. -3) idx_tim(1) = CmHRS
+          IF (idx_tim(1) .EQ. -3) idx_tim(1) = CmHRS-1
           CALL GetNode(REAL(timevals,KIND=r8),ltime, &
                idx_tim(2), 'Upper')
-          IF (idx_tim(2) .EQ. -2) idx_tim(2) = 1
+          IF (idx_tim(2) .EQ. -2) idx_tim(2) = 2
           IF (idx_tim(2) .EQ. -3) idx_tim(2) = CmHRS
           ntim = idx_tim(2)-idx_tim(1) + 1
 
@@ -1148,6 +1147,12 @@ CONTAINS
         lonp = REAL(lon(ixtrack,itimes), KIND=r8)
         latp = REAL(lat(ixtrack,itimes), KIND=r8)
 
+        ! Be sure that lonp and latp are within surface albedo boundaries
+        IF (lonp .LT. MINVAL(OMLER_longitude)) lonp = REAL(MINVAL(OMLER_longitude),KIND=r8)
+        IF (lonp .GT. MAXVAL(OMLER_longitude)) lonp = REAL(MAXVAL(OMLER_longitude),KIND=r8)
+        IF (latp .LT. MINVAL(OMLER_latitude)) latp = REAL(MINVAL(OMLER_latitude),KIND=r8)
+        IF (latp .GT. MAXVAL(OMLER_latitude)) latp = REAL(MAXVAL(OMLER_latitude),KIND=r8)
+
         ! -----------------------------------------
         ! Locate two closest indices to lon and lat
         ! in OMLER_longitude and OMLER_latitudes.
@@ -1157,25 +1162,25 @@ CONTAINS
         CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
              lon_idx(1), 'Lower')
         IF (lon_idx(1) .EQ. -2) lon_idx(1) = 1
-        IF (lon_idx(1) .EQ. -3) lon_idx(1) = OMLER_n_longitudes
+        IF (lon_idx(1) .EQ. -3) lon_idx(1) = OMLER_n_longitudes-1
         CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
              lon_idx(2), 'Upper')
-        IF (lon_idx(2) .EQ. -2) lon_idx(2) = 1
+        IF (lon_idx(2) .EQ. -2) lon_idx(2) = 2
         IF (lon_idx(2) .EQ. -3) lon_idx(2) = OMLER_n_longitudes
         nlon = lon_idx(2)-lon_idx(1)+1
 
         CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
              lat_idx(1), 'Lower')
         IF (lat_idx(1) .EQ. -2) lat_idx(1) = 1
-        IF (lat_idx(1) .EQ. -3) lat_idx(1) = OMLER_n_latitudes
+        IF (lat_idx(1) .EQ. -3) lat_idx(1) = OMLER_n_latitudes-1
         CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
              lat_idx(2), 'Upper')
-        IF (lat_idx(2) .EQ. -2) lat_idx(2) = 1
+        IF (lat_idx(2) .EQ. -2) lat_idx(2) = 2
         IF (lat_idx(2) .EQ. -3) lat_idx(2) = OMLER_n_latitudes
         nlat = lat_idx(2)-lat_idx(1)+1
 
         IF (nlon .EQ. 1) lonp = REAL(OMLER_longitude(lon_idx(1)),KIND=r8)
-        IF (nlon .EQ. 1) latp = REAL(OMLER_latitude(lat_idx(1)),KIND=r8)
+        IF (nlat .EQ. 1) latp = REAL(OMLER_latitude(lat_idx(1)),KIND=r8)
         
         albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
              REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
@@ -2283,6 +2288,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION(CmETA)   :: local_chg
     REAL    (kind=8),  PARAMETER :: d2r = 3.141592653589793d0/180.0  !! JED fix
     character (len=72) :: logmsg
+
     ! -----------------------------------
     ! Find look up table wavelength index
     ! No interpolation, closest available
