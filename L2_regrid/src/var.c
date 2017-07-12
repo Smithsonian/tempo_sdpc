@@ -195,17 +195,13 @@ Var_new_value_buffer (int dest_nx, int dest_ny,
    return vb;
 }
 
-static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb,
-                                    const char *var_name)
+static int maybe_realloc_value_buf (const TIO_Var_Info_Type *vi,
+                                    Var_Value_Buffer_Type *vb)
 {
-   TIO_Var_Info_Type vi;
-   void *tmp;
+   void *tmp = NULL;
    size_t have_num_src_bytes, have_num_dest_bytes;
    size_t num_src_values, num_dest_values;
    int i, bytes_per_value;
-
-   if (-1 == TIO_inq_var (ncid, var_name, &vi))
-     return -1;
 
    Pixel_free_regrid_stats (vb->regrid_stats);
    vb->regrid_stats = NULL;
@@ -215,15 +211,15 @@ static int maybe_realloc_value_buf (int ncid, Var_Value_Buffer_Type *vb,
    have_num_dest_bytes = ((vb->num_dest_pixels * vb->num_values_per_pixel)
                           * vb->bytes_per_value);
 
-   vb->num_dims = vi.ndims;
-   for (i = 0; i < vi.ndims; i++)
+   vb->num_dims = vi->ndims;
+   for (i = 0; i < vi->ndims; i++)
      {
-        vb->dimlens[i] = vi.dimlens[i];
+        vb->dimlens[i] = vi->dimlens[i];
      }
    vb->num_values_per_pixel = 1;
-   for (i = 2; i < vi.ndims; i++)
+   for (i = 2; i < vi->ndims; i++)
      {
-        vb->num_values_per_pixel *= vi.dimlens[i];
+        vb->num_values_per_pixel *= vi->dimlens[i];
      }
 
    num_src_values = vb->num_src_pixels * vb->num_values_per_pixel;
@@ -261,11 +257,22 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
    TIO_Var_Info_Type vi;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
    int i, num_steps, num_pixels, num_values, bytes_per_value, in_type;
-   size_t step_dimlen;
-   int step_dimid;
+   size_t step_dimlen, xtrack_dimlen;
+   int step_dimid, xtrack_dimid;
    int *step = NULL;
    unsigned char *var = NULL;
    int status = -1;
+
+   /* All granules are assumed to have the same xtrack dimension */
+   if (0 != TIO_inq_dim (ncid, TEMPO_DIM_XTRACK, &xtrack_dimid, &xtrack_dimlen))
+     return -1;
+   if (xtrack_dimlen != (size_t) vb->num_xtrack)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: unexpected xtrack dimension size = %ld (expected %d)",
+                     __func__, xtrack_dimlen, vb->num_xtrack);
+        return -1;
+     }
 
    /* num_steps may vary among granules */
    if (0 != TIO_inq_dim (ncid, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
@@ -286,11 +293,22 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
                                   start, count, TIO_INT, step))
      goto cleanup_and_return;
 
+   if (-1 == TIO_inq_var (var_grp, var_name, &vi))
+     goto cleanup_and_return;
+
+   /* Verify that variable dimensions are as expected */
+   if ((vi.dimids[0] != step_dimid)
+       || (vi.dimids[1] != xtrack_dimid))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: variable %s has unexpected dimensions, expected (%s,%s [,...])",
+                     __func__, var_name, TEMPO_DIM_STEP, TEMPO_DIM_XTRACK);
+        goto cleanup_and_return;
+     }
+
    /* Set a default fill-value then let any fill-value in the file
     * override it.  If there's no fill-value in the file, the
     * default value won't be over-written. */
-   if (-1 == TIO_inq_var (var_grp, var_name, &vi))
-     goto cleanup_and_return;
    value_default_fill (vb, vi.type);
    if (vb->value_type == VALUE_IS_DOUBLE)
      {
@@ -405,7 +423,20 @@ static int read_var_values (Var_Value_Buffer_Type *vb, const char *var_path,
 
         if (i == 0)
           {
-             if (-1 == maybe_realloc_value_buf (grp, vb, var_name))
+             TIO_Var_Info_Type vi;
+
+             if (-1 == TIO_inq_var (grp, var_name, &vi))
+               goto free_and_return;
+
+             if (vi.ndims < 2)
+               {
+                  tell_vwarn (0, "%s: cannot regrid variable with dimension %d (%s)",
+                              __func__, vi.ndims, var_name);
+                  status = 1;
+                  goto free_and_return;
+               }
+
+             if (-1 == maybe_realloc_value_buf (&vi, vb))
                goto free_and_return;
           }
 
@@ -691,15 +722,16 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
                       char **files, int num_files)
 {
    Value_Ptr_Type src_values, dest_values;
-   int allocated_workspace, do_regrid_by_averaging, status = -1;
+   int allocated_workspace, do_regrid_by_averaging;
+   int read_var_status, status = -1;
 
    vb->value_type = value_type;
 
    src_values.d = NULL;
    dest_values.d = NULL;
 
-   if (-1 == read_var_values (vb, var_path, files, num_files))
-     return -1;
+   if (0 != (read_var_status = read_var_values (vb, var_path, files, num_files)))
+     return read_var_status;
 
    /* Regridded result will be returned in vb->dest_values.
     * For 2D data, this is straightforward but, for

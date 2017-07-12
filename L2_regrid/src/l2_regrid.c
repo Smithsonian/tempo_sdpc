@@ -443,14 +443,22 @@ static int make_l3_product (const Product_Type *prod,
    for (i = 0; i < prod->num_var_names; i++)
      {
         int want_qa = (prod->var_qa_labels[i] != NULL);
-        if (-1 == Var_apply_regrid (r, vb, prod->value_types[i],
-                                    prod->in_var_names[i], want_qa,
-                                    prod->input_files, prod->num_input_files))
-          goto return_status;
+        int apply_regrid_status =
+          Var_apply_regrid (r, vb, prod->value_types[i],
+                            prod->in_var_names[i], want_qa,
+                            prod->input_files, prod->num_input_files);
+        if (apply_regrid_status != 0)
+          {
+             if (apply_regrid_status > 0)
+               continue;
+             goto return_status;
+          }
         if (-1 == Var_write_values (ncid, vb, prod->out_var_names[i],
                                     prod->var_qa_labels[i],
                                     ncid_infile, prod->in_var_names[i]))
-          goto return_status;
+          {
+             goto return_status;
+          }
      }
 
    status = 0;
