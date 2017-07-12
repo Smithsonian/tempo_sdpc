@@ -255,6 +255,7 @@ void TIO_free_scan_ident (TIO_Scan_Ident_Type *lst)
 int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
 {
    _pTIO_Granule_Ident_Type *item = NULL;
+   int status;
 
    if (lst == NULL)
      return -1;
@@ -273,17 +274,23 @@ int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
         return 0;
      }
 
-   if (item->scan_seq_num != lst->granule_ident->scan_seq_num)
+   if (item->scan_seq_num == lst->granule_ident->scan_seq_num)
+     {
+        status = 0;
+     }
+   else
      {
         Tell_verror (TELL_APPLICATION_ERROR,
                      "%s: scan_seq_num mismatch: new item has scan_seq_num=%d  granule list has scan_seq_num=%d",
                      __func__,
                      item->scan_seq_num,
                      lst->granule_ident->scan_seq_num);
-        return -1;
+        status = -1;
      }
 
-   return 0;
+   free_granule_ident (item);
+
+   return status;
 }
 
 static int timet_from_timestr (const char *timestr, time_t *ptimet)
