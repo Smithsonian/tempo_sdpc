@@ -786,7 +786,8 @@ contains
       is = 0
       DO
         is = is + 1
-        IF ( (dimScale(is) > x) .OR. (is > sdim) ) EXIT
+        IF ( is > sdim ) EXIT
+        IF ( dimScale(is) > x ) EXIT
       END DO
       Node = is - 1
 
@@ -801,7 +802,8 @@ contains
       is = sdim + 1
       DO
         is = is - 1
-        IF ( (dimScale(is) < x) .OR. (is < 1) ) EXIT
+        If ( is < 1 ) EXIT
+        IF ( dimScale(is) < x ) EXIT
       END DO
       Node = is + 1
 
