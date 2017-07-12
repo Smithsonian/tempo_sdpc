@@ -620,24 +620,33 @@ CONTAINS
     ! Find the Climatology corresponding to each lat and lon pixel
     ! ------------------------------------------------------------
     DO itimes = 0, nt-1
-       
+
+       ! Only work out climatology if we have complete geolocation information
+       IF (time(itimes) /= r8_missval) THEN
+          CALL convert_tai_to_utc(nUTCdim, time(itimes), time_utc(1:nUTCdim))
+          ltime = REAL(time_utc(4),KIND=r8)+REAL(time_utc(5),KIND=r8)/60.0
+          IF (ltime .LT. MINVAL(timevals)) ltime = REAL(MINVAL(timevals),KIND=r8)
+          IF (ltime .GT. MAXVAL(timevals)) ltime = REAL(MAXVAL(timevals),KIND=r8)
+       ELSE
+          CYCLE
+       END IF
+
        spix = xtrange(itimes,1); epix = xtrange(itimes,2)
-       CALL convert_tai_to_utc(nUTCdim, time(itimes), time_utc(1:nUTCdim))
-       ltime = REAL(time_utc(4),KIND=r8)+REAL(time_utc(5),KIND=r8)/60.0
-
-       IF (ltime .LT. MINVAL(timevals)) ltime = REAL(MINVAL(timevals),KIND=r8)
-       IF (ltime .GT. MAXVAL(timevals)) ltime = REAL(MAXVAL(timevals),KIND=r8)
-
        
        DO ixtrack = spix, epix
           
           llon = REAL(lon(ixtrack,itimes),KIND=r8)
           llat = REAL(lat(ixtrack,itimes),KIND=r8)
           
-          IF (llon .LT. MINVAL(lonvals)) llon = REAL(MINVAL(lonvals),KIND=r8)
-          IF (llon .GT. MAXVAL(lonvals)) llon = REAL(MAXVAL(lonvals),KIND=r8)
-          IF (llat .LT. MINVAL(latvals)) llat = REAL(MINVAL(latvals),KIND=r8)
-          IF (llat .GT. MAXVAL(latvals)) llat = REAL(MAXVAL(latvals),KIND=r8)
+          ! Only complete climatology calculation if we have complete geolocation information
+          IF ( (llon /= r8_missval) .AND. (llat /= r8_missval) ) THEN
+             IF (llon .LT. MINVAL(lonvals)) llon = REAL(MINVAL(lonvals),KIND=r8)
+             IF (llon .GT. MAXVAL(lonvals)) llon = REAL(MAXVAL(lonvals),KIND=r8)
+             IF (llat .LT. MINVAL(latvals)) llat = REAL(MINVAL(latvals),KIND=r8)
+             IF (llat .GT. MAXVAL(latvals)) llat = REAL(MAXVAL(latvals),KIND=r8)
+          ELSE
+             CYCLE
+          END IF
 
           ! ------------------------------------------------------------------------
           ! Given the values of lonvals, latvals, timevals and llon, llat, and ltime
@@ -1141,60 +1150,61 @@ CONTAINS
     ! --------------------------------------------------
     DO itimes = 0, nt-1
 
-      spix = xtrange(itimes,1); epix = xtrange(itimes,2)
-      DO ixtrack = spix, epix
+       spix = xtrange(itimes,1); epix = xtrange(itimes,2)
+       DO ixtrack = spix, epix
 
-        lonp = REAL(lon(ixtrack,itimes), KIND=r8)
-        latp = REAL(lat(ixtrack,itimes), KIND=r8)
+          lonp = REAL(lon(ixtrack,itimes), KIND=r8)
+          latp = REAL(lat(ixtrack,itimes), KIND=r8)
 
-        ! Be sure that lonp and latp are within surface albedo boundaries
-        IF (lonp .LT. MINVAL(OMLER_longitude)) lonp = REAL(MINVAL(OMLER_longitude),KIND=r8)
-        IF (lonp .GT. MAXVAL(OMLER_longitude)) lonp = REAL(MAXVAL(OMLER_longitude),KIND=r8)
-        IF (latp .LT. MINVAL(OMLER_latitude)) latp = REAL(MINVAL(OMLER_latitude),KIND=r8)
-        IF (latp .GT. MAXVAL(OMLER_latitude)) latp = REAL(MAXVAL(OMLER_latitude),KIND=r8)
+          ! Only work out surface reflectance if we have geolocation information
+          IF ( (lonp /= r8_missval) .AND. (latp /= r8_missval) ) THEN
+             ! Be sure that lonp and latp are within surface albedo boundaries
+             IF (lonp .LT. MINVAL(OMLER_longitude)) lonp = REAL(MINVAL(OMLER_longitude),KIND=r8)
+             IF (lonp .GT. MAXVAL(OMLER_longitude)) lonp = REAL(MAXVAL(OMLER_longitude),KIND=r8)
+             IF (latp .LT. MINVAL(OMLER_latitude)) latp = REAL(MINVAL(OMLER_latitude),KIND=r8)
+             IF (latp .GT. MAXVAL(OMLER_latitude)) latp = REAL(MAXVAL(OMLER_latitude),KIND=r8)
+          ELSE
+             CYCLE
+          END IF
 
-        ! -----------------------------------------
-        ! Locate two closest indices to lon and lat
-        ! in OMLER_longitude and OMLER_latitudes.
-        ! If result out of bounds bring it to the
-        ! closest boundary.
-        ! ------------------------------------------
-        CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
-             lon_idx(1), 'Lower')
-        IF (lon_idx(1) .EQ. -2) lon_idx(1) = 1
-        IF (lon_idx(1) .EQ. -3) lon_idx(1) = OMLER_n_longitudes-1
-        CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
-             lon_idx(2), 'Upper')
-        IF (lon_idx(2) .EQ. -2) lon_idx(2) = 2
-        IF (lon_idx(2) .EQ. -3) lon_idx(2) = OMLER_n_longitudes
-        nlon = lon_idx(2)-lon_idx(1)+1
+          ! -----------------------------------------
+          ! Locate two closest indices to lon and lat
+          ! in OMLER_longitude and OMLER_latitudes.
+          ! If result out of bounds bring it to the
+          ! closest boundary.
+          ! ------------------------------------------
+          CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
+               lon_idx(1), 'Lower')
+          IF (lon_idx(1) .EQ. -2) lon_idx(1) = 1
+          IF (lon_idx(1) .EQ. -3) lon_idx(1) = OMLER_n_longitudes-1
+          CALL GetNode(REAL(OMLER_longitude,KIND=r8),lonp, &
+               lon_idx(2), 'Upper')
+          IF (lon_idx(2) .EQ. -2) lon_idx(2) = 2
+          IF (lon_idx(2) .EQ. -3) lon_idx(2) = OMLER_n_longitudes
+          nlon = lon_idx(2)-lon_idx(1)+1
 
-        CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
-             lat_idx(1), 'Lower')
-        IF (lat_idx(1) .EQ. -2) lat_idx(1) = 1
-        IF (lat_idx(1) .EQ. -3) lat_idx(1) = OMLER_n_latitudes-1
-        CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
-             lat_idx(2), 'Upper')
-        IF (lat_idx(2) .EQ. -2) lat_idx(2) = 2
-        IF (lat_idx(2) .EQ. -3) lat_idx(2) = OMLER_n_latitudes
-        nlat = lat_idx(2)-lat_idx(1)+1
+          CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
+               lat_idx(1), 'Lower')
+          IF (lat_idx(1) .EQ. -2) lat_idx(1) = 1
+          IF (lat_idx(1) .EQ. -3) lat_idx(1) = OMLER_n_latitudes-1
+          CALL GetNode(REAL(OMLER_latitude,KIND=r8),latp, &
+               lat_idx(2), 'Upper')
+          IF (lat_idx(2) .EQ. -2) lat_idx(2) = 2
+          IF (lat_idx(2) .EQ. -3) lat_idx(2) = OMLER_n_latitudes
+          nlat = lat_idx(2)-lat_idx(1)+1
 
-        IF (nlon .EQ. 1) lonp = REAL(OMLER_longitude(lon_idx(1)),KIND=r8)
-        IF (nlat .EQ. 1) latp = REAL(OMLER_latitude(lat_idx(1)),KIND=r8)
-        
-        albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
-             REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
-             REAL(OMLER_latitude(lat_idx(1):lat_idx(2)),KIND=r8), &
-             OMLER_albedo(lon_idx(1):lon_idx(2),lat_idx(1):lat_idx(2)), &
-             lonp, latp, status=locerrstat)
+          albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
+               REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
+               REAL(OMLER_latitude(lat_idx(1):lat_idx(2)),KIND=r8), &
+               OMLER_albedo(lon_idx(1):lon_idx(2),lat_idx(1):lat_idx(2)), &
+               lonp, latp, status=locerrstat)
 
-        if (locerrstat /= 0) then
-           call tell_error (tell_runtime_error, &
-                "omi_omler_albedo: lon/lat interpolation failed", errstat)
-           return
-        endif
-
-      END DO
+          if (locerrstat /= 0) then
+             call tell_error (tell_runtime_error, &
+                  "omi_omler_albedo: lon/lat interpolation failed", errstat)
+             return
+          endif
+       END DO
     END DO
 
     ! --------------------
@@ -1203,13 +1213,13 @@ CONTAINS
     DEALLOCATE (OMLER_monthly_albedo, OMLER_wvl_albedo, OMLER_albedo, &
          OMLER_longitude, OMLER_latitude, OMLER_wvl, stat=locerrstat)
     if (locerrstat /= 0) then
-      call tell_error (tell_malloc_error, &
-           "omi_omler_albedo: deallocate failed", errstat)
-      return
+       call tell_error (tell_malloc_error, &
+            "omi_omler_albedo: deallocate failed", errstat)
+       return
     endif
-
-    errstat = MAX(errstat, locerrstat)
     
+    errstat = MAX(errstat, locerrstat)
+
   END SUBROUTINE omi_omler_albedo
 
   SUBROUTINE extract_swathname ( nswath, multi_swath, swathstr, single_swath )
