@@ -204,6 +204,7 @@ int Pixel_list_set_vertices (Pixel_List_Type *lst, int pix, int n,
 
 int Pixel_list_pack (Pixel_List_Type *pixel_list,
                      double *xs, double *ys, int num_pixels,
+                     int num_pixel_vertices,
                      int *step, int num_xtrack)
 {
    int i;
@@ -213,18 +214,18 @@ int Pixel_list_pack (Pixel_List_Type *pixel_list,
         int pix_xtrack = i % num_xtrack;
         int pix_step_index = i / num_xtrack;
         int pix = pix_xtrack + step[pix_step_index] * num_xtrack;
-        double *x = xs + 4*i;
-        double *y = ys + 4*i;
+        double *x = xs + i * num_pixel_vertices;
+        double *y = ys + i * num_pixel_vertices;
         int j;
 
-        for (j = 0; j < 4; j++)
+        for (j = 0; j < num_pixel_vertices; j++)
           {
              if (0 == VALID_POINT(x[j],y[j]))
                break;
           }
-        if (j == 4)
+        if (j == num_pixel_vertices)
           {
-             if ((-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
+             if ((-1 == Pixel_list_set_vertices (pixel_list, i, num_pixel_vertices, x, y))
                  || (-1 == Pixel_list_set_src_index (pixel_list, i, pix)))
                return -1;
           }
@@ -243,33 +244,63 @@ int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
    double xmin = g->xmin;
    double ymin = g->ymin;
    int num_pixels = g->nx * g->ny;
+   int num_pixel_vertices =
+     (4 + 2 * g->num_xside_extra + 2 * g->num_yside_extra);
+   int num_vertices = num_pixels * num_pixel_vertices;
    int nx = g->nx;
    double *xs=NULL, *ys=NULL;
    double *x, *y;
+   double dx_j, dy_j;
    int k, status = -1;
 
-   if ((NULL == (xs = (double *) MALLOC (4*num_pixels * sizeof(double))))
-       || (NULL == (ys = (double *) MALLOC (4*num_pixels * sizeof(double)))))
+   if ((NULL == (xs = (double *) MALLOC (num_vertices * sizeof(double))))
+       || (NULL == (ys = (double *) MALLOC (num_vertices * sizeof(double)))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto free_and_return;
      }
 
+   dx_j = dx / (1 + g->num_xside_extra);
+   dy_j = dy / (1 + g->num_yside_extra);
+
    for (k = 0; k < num_pixels; k++)
      {
-        int ix = k % nx;
-        int iy = k / nx;
+        double x0, y0, x1, y1;
+        int i, j, ix, iy;
 
-        x = xs + 4*k;
-        y = ys + 4*k;
-        x[0] = xmin + ix * dx;
-        y[0] = ymin + iy * dy;
-        x[1] = x[0] + dx;
-        y[1] = y[0];
-        x[2] = x[1];
-        y[2] = y[1] + dy;
-        x[3] = x[0];
-        y[3] = y[2];
+        ix = k % nx;
+        iy = k / nx;
+
+        x0 = xmin + ix * dx;
+        y0 = ymin + iy * dy;
+        x1 = x0 + dx;
+        y1 = y0 + dy;
+
+        x = xs + k * num_pixel_vertices;
+        y = ys + k * num_pixel_vertices;
+
+        j = 0;
+
+        for (i = 0; i <= g->num_xside_extra; i++, j++)
+          {
+             x[j] = x0 + i * dx_j;
+             y[j] = y0;
+          }
+        for (i = 0; i <= g->num_yside_extra; i++, j++)
+          {
+             x[j] = x1;
+             y[j] = y0 + i * dy_j;
+          }
+        for (i = 0; i <= g->num_xside_extra; i++, j++)
+          {
+             x[j] = x1 - i * dx_j;
+             y[j] = y1;
+          }
+        for (i = 0; i <= g->num_yside_extra; i++, j++)
+          {
+             x[j] = x0;
+             y[j] = y1 - i * dy_j;
+          }
      }
 
    *x_corners = xs;

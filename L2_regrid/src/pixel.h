@@ -43,6 +43,12 @@ typedef struct
    double ymax; /**< maximum pixel edge Y coordinate */
    int nx;      /**< Number of pixels in the X dimension */
    int ny;      /**< Number of pixels in the Y dimension */
+   int num_xside_extra;
+   int num_yside_extra;
+   /**< Number of extra points per side for each dimension
+    * The total number of points defining the perimeter
+    * of each pixel is then 4 + 2*num_xside_extra + 2*num_yside_extra
+    */
 }
 Pixel_Grid_Param_Type;
 
@@ -115,6 +121,7 @@ Pixel_list_set_vertices (Pixel_List_Type *lst, int pix, int n,
 extern int
 Pixel_list_pack (Pixel_List_Type *pixel_list,
                  double *xs, double *ys, int num_pixels,
+                 int num_pixel_vertices,
                  int *step, int num_xtrack);
 
 /** Use grid parameters to generate X,Y pixel corner arrays

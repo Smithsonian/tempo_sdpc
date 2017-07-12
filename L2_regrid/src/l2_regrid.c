@@ -127,7 +127,8 @@ static void free_product_list (Product_Type *plist)
 }
 
 static int lookup_grid_spec (const config_setting_t *s,
-                             int *num, double *min, double *max)
+                             int *num, double *min, double *max,
+                             int *num_pixel_sub)
 {
    double delta;
    if ((CONFIG_TRUE != config_setting_lookup_float (s, "min", min))
@@ -138,6 +139,10 @@ static int lookup_grid_spec (const config_setting_t *s,
                      "%s: defining target grid", __func__);
         return -1;
      }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_pixel_sub", num_pixel_sub))
+     *num_pixel_sub = 0;
+
    *max = *min + (*num) * delta;
    return 0;
 }
@@ -148,11 +153,11 @@ static int init_dest_grid (const config_setting_t *setting,
    config_setting_t *s;
 
    if ((NULL == (s = config_setting_get_member (setting, "longitude")))
-       || (-1 == lookup_grid_spec (s, &dest->nx, &dest->xmin, &dest->xmax)))
+       || (-1 == lookup_grid_spec (s, &dest->nx, &dest->xmin, &dest->xmax, &dest->num_xside_extra)))
      return -1;
 
    if ((NULL == (s = config_setting_get_member (setting, "latitude")))
-       || (-1 == lookup_grid_spec (s, &dest->ny, &dest->ymin, &dest->ymax)))
+       || (-1 == lookup_grid_spec (s, &dest->ny, &dest->ymin, &dest->ymax, &dest->num_yside_extra)))
      return -1;
 
    return 0;

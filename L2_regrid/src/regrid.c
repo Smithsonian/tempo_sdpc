@@ -248,7 +248,7 @@ static Pixel_List_Type *make_pixel_list (Source_Pixel_Vertices_Type *spv)
      }
 
    if (-1 == Pixel_list_pack (plt, spv->lon_bounds, spv->lat_bounds,
-                              spv->num_pixels, spv->step, spv->num_xtrack))
+                              spv->num_pixels, 4, spv->step, spv->num_xtrack))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: packing pixel list", __func__);
         goto free_and_return;
@@ -333,6 +333,8 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
 {
    Pixel_List_Type *pixel_list = NULL;
    int num_pixels = dest->nx * dest->ny;
+   int num_pixel_vertices =
+     (4 + 2*dest->num_xside_extra + 2*dest->num_yside_extra);
    double *xs = NULL, *ys = NULL;
    double *x, *y;
    int i, status = -1;
@@ -340,10 +342,10 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
    if (-1 == Pixel_grid_arrays (dest, &xs, &ys))
      return NULL;
 
-   if (-1 == longlat_to_albers (xs, ys, 4*num_pixels))
+   if (-1 == longlat_to_albers (xs, ys, num_pixels * num_pixel_vertices))
      goto free_and_return;
 
-   if (NULL == (pixel_list = Pixel_list_new (num_pixels, 4)))
+   if (NULL == (pixel_list = Pixel_list_new (num_pixels, num_pixel_vertices)))
      goto free_and_return;
 
    x = xs;
@@ -351,10 +353,10 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
 
    for (i = 0; i < num_pixels; i++)
      {
-        if (-1 == Pixel_list_set_vertices (pixel_list, i, 4, x, y))
+        if (-1 == Pixel_list_set_vertices (pixel_list, i, num_pixel_vertices, x, y))
           goto free_and_return;
-        x += 4;
-        y += 4;
+        x += num_pixel_vertices;
+        y += num_pixel_vertices;
      }
 
    status = 0;
