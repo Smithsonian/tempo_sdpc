@@ -28,6 +28,10 @@ typedef struct
 }
 Source_Pixel_Vertices_Type;
 
+/* Valid longitude, latitude values */
+#define INVALID_LONGITUDE(b) (((b) < -180.0) || (360.0 < (b)) || (0 == isfinite(b)))
+#define INVALID_LATITUDE(b)  (((b) <  -90.0) || ( 90.0 < (b)) || (0 == isfinite(b)))
+
 /* The Albers equal-area conic projection preserves areas
  * but in general, polygon edges do not project into
  * straight lines.  For "sufficiently small" polygons,
@@ -160,8 +164,10 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
 {
    Source_Pixel_Vertices_Type *spv = NULL;
    TIO_Var_Info_Type vi;
+   double *lon_bounds, *lat_bounds;
+   double nan_value = nan("");
    int ncid, grp, start[3], count[3];
-   int num_steps, num_xtrack;
+   int num_steps, num_xtrack, num_vertices;
    int i, status;
 
    if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
@@ -216,6 +222,18 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
                                       start, count, TIO_DOUBLE, spv->lat_bounds)))
      {
         goto free_and_return;
+     }
+
+   num_vertices = 4 * num_steps * num_xtrack;
+   lon_bounds = spv->lon_bounds;
+   lat_bounds = spv->lat_bounds;
+
+   for (i = 0; i < num_vertices; i++)
+     {
+        double lonb_i = lon_bounds[i];
+        double latb_i = lat_bounds[i];
+        if (INVALID_LONGITUDE(lonb_i)) lon_bounds[i] = nan_value;
+        if (INVALID_LATITUDE(latb_i)) lat_bounds[i] = nan_value;
      }
 
    status = 0;
