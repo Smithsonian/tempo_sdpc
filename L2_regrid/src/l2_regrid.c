@@ -153,11 +153,11 @@ static int init_dest_grid (const config_setting_t *setting,
    config_setting_t *s;
 
    if ((NULL == (s = config_setting_get_member (setting, "longitude")))
-       || (-1 == lookup_grid_spec (s, &dest->nx, &dest->xmin, &dest->xmax, &dest->num_xside_extra)))
+       || (-1 == lookup_grid_spec (s, &dest->nx, &dest->xmin, &dest->xmax, &dest->num_extra_xpoints)))
      return -1;
 
    if ((NULL == (s = config_setting_get_member (setting, "latitude")))
-       || (-1 == lookup_grid_spec (s, &dest->ny, &dest->ymin, &dest->ymax, &dest->num_yside_extra)))
+       || (-1 == lookup_grid_spec (s, &dest->ny, &dest->ymin, &dest->ymax, &dest->num_extra_ypoints)))
      return -1;
 
    return 0;

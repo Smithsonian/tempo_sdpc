@@ -43,11 +43,11 @@ typedef struct
    double ymax; /**< maximum pixel edge Y coordinate */
    int nx;      /**< Number of pixels in the X dimension */
    int ny;      /**< Number of pixels in the Y dimension */
-   int num_xside_extra;
-   int num_yside_extra;
+   int num_extra_xpoints;
+   int num_extra_ypoints;
    /**< Number of extra points per side for each dimension
     * The total number of points defining the perimeter
-    * of each pixel is then 4 + 2*num_xside_extra + 2*num_yside_extra
+    * of each pixel is then 4 + 2*num_extra_xpoints + 2*num_extra_ypoints
     */
 }
 Pixel_Grid_Param_Type;

@@ -353,7 +353,7 @@ dest_pixel_area_coords (const Pixel_Grid_Param_Type *dest)
    Pixel_List_Type *pixel_list = NULL;
    int num_pixels = dest->nx * dest->ny;
    int num_pixel_vertices =
-     (4 + 2*dest->num_xside_extra + 2*dest->num_yside_extra);
+     (4 + 2*dest->num_extra_xpoints + 2*dest->num_extra_ypoints);
    double *xs = NULL, *ys = NULL;
    double *x, *y;
    int i, status = -1;

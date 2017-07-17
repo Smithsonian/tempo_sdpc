@@ -176,8 +176,8 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
    dest_grid_params.ymax = yshift + 1.0;
    dest_grid_params.nx = nx_dest;
    dest_grid_params.ny = ny_dest;
-   dest_grid_params.num_xside_extra = 2;
-   dest_grid_params.num_yside_extra = 2;
+   dest_grid_params.num_extra_xpoints = 2;
+   dest_grid_params.num_extra_ypoints = 2;
 
    if (-1 == Pixel_grid_arrays (&dest_grid_params, &xcnr, &ycnr))
      goto return_status;
@@ -366,8 +366,8 @@ static int test_regrid_stat (int nx_src, int ny_src)
    dest_grid_params.ymax = yshift + 1.0;
    dest_grid_params.nx = nx_dest;
    dest_grid_params.ny = ny_dest;
-   dest_grid_params.num_xside_extra = 0;
-   dest_grid_params.num_yside_extra = 0;
+   dest_grid_params.num_extra_xpoints = 0;
+   dest_grid_params.num_extra_ypoints = 0;
 
    if (-1 == Pixel_grid_arrays (&dest_grid_params, &xcnr, &ycnr))
      goto return_status;

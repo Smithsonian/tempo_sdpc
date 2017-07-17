@@ -245,7 +245,7 @@ int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
    double ymin = g->ymin;
    int num_pixels = g->nx * g->ny;
    int num_pixel_vertices =
-     (4 + 2 * g->num_xside_extra + 2 * g->num_yside_extra);
+     (4 + 2 * g->num_extra_xpoints + 2 * g->num_extra_ypoints);
    int num_vertices = num_pixels * num_pixel_vertices;
    int nx = g->nx;
    double *xs=NULL, *ys=NULL;
@@ -260,8 +260,8 @@ int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
         goto free_and_return;
      }
 
-   dx_j = dx / (1 + g->num_xside_extra);
-   dy_j = dy / (1 + g->num_yside_extra);
+   dx_j = dx / (1 + g->num_extra_xpoints);
+   dy_j = dy / (1 + g->num_extra_ypoints);
 
    for (k = 0; k < num_pixels; k++)
      {
@@ -281,22 +281,22 @@ int Pixel_grid_arrays (const Pixel_Grid_Param_Type *g,
 
         j = 0;
 
-        for (i = 0; i <= g->num_xside_extra; i++, j++)
+        for (i = 0; i <= g->num_extra_xpoints; i++, j++)
           {
              x[j] = x0 + i * dx_j;
              y[j] = y0;
           }
-        for (i = 0; i <= g->num_yside_extra; i++, j++)
+        for (i = 0; i <= g->num_extra_ypoints; i++, j++)
           {
              x[j] = x1;
              y[j] = y0 + i * dy_j;
           }
-        for (i = 0; i <= g->num_xside_extra; i++, j++)
+        for (i = 0; i <= g->num_extra_xpoints; i++, j++)
           {
              x[j] = x1 - i * dx_j;
              y[j] = y1;
           }
-        for (i = 0; i <= g->num_yside_extra; i++, j++)
+        for (i = 0; i <= g->num_extra_ypoints; i++, j++)
           {
              x[j] = x0;
              y[j] = y1 - i * dy_j;
