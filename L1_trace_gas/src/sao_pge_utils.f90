@@ -919,16 +919,69 @@ SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
   RETURN
 END SUBROUTINE roundoff_3darr_r8
 
-  subroutine print_array (a, n)
-    use OMSAO_precision_module, only: i4, r8
-    implicit none
-    integer (kind=i4), intent(in) :: n
-    real (kind=r8), intent(in) :: a(n)
+subroutine print_array (a, n)
+  use OMSAO_precision_module, only: i4, r8
+  implicit none
+  integer (kind=i4), intent(in) :: n
+  real (kind=r8), intent(in) :: a(n)
+  
+  integer(kind=i4) :: i
+  do i=1, n
+     write(*,*) "a[", i, "]=", a(i)
+  enddo
+end subroutine print_array
 
-    integer(kind=i4) :: i
-    do i=1, n
-      write(*,*) "a[", i, "]=", a(i)
-    enddo
-  end subroutine
+SUBROUTINE get_gridfrac1(nlon, nlat, nmon, longrid, latgrid, mongrid, lon0, lat0, mon0, & 
+     lon, lat, mon, nblon, nblat, nbmon, lonfrac, latfrac, monfrac, lonin, latin, monin)
+
+  USE OMSAO_precision_module, only: r8
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN) :: nlon, nlat, nmon
+  REAL (KIND=r8), INTENT(IN) :: lon0, lat0, mon0, lat, lon, mon, longrid, latgrid, mongrid 
+  INTEGER, INTENT(OUT) :: nblon, nblat, nbmon
+  INTEGER, DIMENSION(2), INTENT(OUT) :: latin, lonin, monin
+  REAL (KIND=r8), DIMENSION(2), INTENT(OUT) :: latfrac, lonfrac, monfrac 
+  
+  ! ======================
+  ! Local variables
+  ! ======================  
+  REAL (KIND=r8) :: frac, lat_offset, lon_offset, mon_offset
+  
+  lat_offset   = lat0   + latgrid / 2.0
+  lon_offset   = lon0   + longrid / 2.0
+  mon_offset   = mon0   + mongrid / 2.0
+  
+  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+  latin(1) = INT(frac); latin(2) = latin(1) + 1
+  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+  IF (latin(1) == 0)   THEN    
+     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+  ENDIF
+  
+  IF (latin(2) > nlat) THEN
+     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+  ENDIF
+  
+  ! Circular in longitude direction
+  nblon = 2; frac = (lon - lon_offset) / longrid + 1
+  lonin(1) = INT(frac); lonin(2) = lonin(1) + 1
+  lonfrac(1) = lonin(2) - frac; lonfrac(2) = 1.0 - lonfrac(1)
+  IF (lonin(1) == 0)   lonin(1) = nlon
+  IF (lonin(2) > nlon) lonin(2) = 1
+
+  ! Circular in year
+  nbmon = 2; frac = (mon - mon_offset) / mongrid + 1
+  monin(1) = INT(frac); monin(2) = monin(1) + 1
+  monfrac(1) = monin(2) - frac; monfrac(2) = 1.0 - monfrac(1)
+  IF (monin(1) == 0)   monin(1) = nmon
+  IF (monin(2) > nmon) monin(2) = 1
+  
+  RETURN  
+  
+END SUBROUTINE get_gridfrac1
 
 END MODULE
