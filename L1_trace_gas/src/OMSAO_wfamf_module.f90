@@ -351,7 +351,7 @@ CONTAINS
       ! with the correct albedo. amfdiag is used to skip pixel
       ! ---------------------------------------------------------
       CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
-                          terrain_height, amfdiag, scattw)
+                          terrain_height, lat, lon, amfdiag, scattw)
 
       ! -----------------------------------------------------------------
       ! Work out the AMF using the scattering weights and the climatology
@@ -2165,8 +2165,8 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_diagnostic
 
-  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, amfdiag, &
-       scattw)
+  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, lat, lon, &
+       amfdiag, scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -2175,20 +2175,22 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                                INTENT (IN) :: nt, nx
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1),       INTENT (IN) :: amfdiag
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1),       INTENT (IN) :: sza, vza, terrain_height
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1),       INTENT (IN) :: albedo, l2ctp, l2cfr
+    INTEGER (KIND=i4), INTENT (IN) :: nt, nx
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
+    REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, terrain_height, lat, lon
+    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
     ! ------------------
     ! Modified variables
     ! ------------------
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT (INOUT) :: scattw
+    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT (INOUT) :: scattw
+    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
 
     ! ---------------
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
-         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, ozo_idx, status
+         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, ozo_idx, &
+         j1, j2, ilat, ilon, status
     REAL (KIND=r4) :: saa, vaa !Temporary
     character (len=72) :: logmsg    
 
@@ -2268,11 +2270,27 @@ CONTAINS
           ! ----------------------------------------------
           local_srf = 1013.0_r8 * (10.0_r8 ** (local_srf / 1000.0_r8 / (-16.0_r8)))
              
-          !Bringing it to the lowest available pressure if needed
-          IF (local_srf .GT. 1050.0) local_srf = 1050.0_r8
-          !Bringing clouds heights to ground if those are below ground. Weird yes, but just in case
-          IF (local_ctp .GT. local_srf) local_ctp = local_srf
-
+          ! ------------------------------------------------------
+          ! Bringing it to the lowest available pressure if needed
+          ! ------------------------------------------------------
+          IF (local_srf .GT. 1030.0) local_srf = 1030.0_r8
+          ! --------------------------------------------------------------------------
+          !If cloud pressure is greater than surface pressure (cloud below surface!!!)
+          !then use climatology to correct cloud pressure.
+          !---------------------------------------------------------------------------
+          IF (local_ctp .GT. local_srf) THEN 
+             ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-REAL(lat(ixtrack,itime),KIND=r8))))
+             j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
+             j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
+             ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-REAL(lon(ixtrack,itime),KIND=r8))))
+             IF (ISCCP_CloudClim%ctp(ilon) < local_srf) THEN
+                local_ctp = ISCCP_CloudClim%ctp(ilon)
+                l2ctp(ixtrack,itime) = ISCCP_CloudClim%ctp(ilon)
+             ELSE
+                local_ctp = local_srf
+                l2ctp(ixtrack,itime) = local_srf
+             END IF
+          END IF
           ! ---------------------------------------
           ! Now we can find nodes for interpolation
           ! ---------------------------------------
