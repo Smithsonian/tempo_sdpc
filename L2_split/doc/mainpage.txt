@@ -1,0 +1,85 @@
+/**
+@mainpage L2_split
+
+@section Synopsis
+
+\verbatim
+Usage: L2_split [options] file1 file2 ...
+  Optional:
+   -c | --config FILE     configuration file
+   -v | --verbose lev     logging level
+\endverbatim
+
+@section Description
+
+\c L2_split reads the set of Level 2 NO2 data products from a single
+TEMPO scan and estimates the contribution to the total vertical NO2
+column associated with the troposphere and the stratosphere,
+respectively.
+
+@section param_file Parameter file
+
+\c L2_split is controlled by a parameter file that may be
+provided as an optional command-line argument.  If no parameter
+file is specified on the command-line, \c L2_split reads
+\c l2_split.cfg from the current directory.
+
+Here is an example parameter file:
+\verbatim
+# L2_split configuration file
+#
+# min, delta in degrees
+# num = number of grid points
+# num_extra_points = [optional] Number of extra points used to
+#                  represent each pixel boundary along this
+#                  dimension. num_extra_points=0 [default] means
+#                  only the corner points are used.
+#
+mesh: {
+   longitude = {delta = 0.1; min = -180.0; num = 3600;};
+   latitude  = {delta = 0.1; min =  -90.0; num = 1800;};
+};
+
+trop_thresh = 0.3e15;
+
+filter: {
+   block   = {num_dim0 = 10; num_dim1 = 10;};
+   # block 10x10 0.1 degrees pixels to yield 1 degree pixels
+
+   smooth1 = {num_dim0 = 20; num_dim1 = 30;};
+   # boxcar smoothing window (pre-clip)
+
+   clip    = {num_dim0 = 10; num_dim1 = 15; stddev = 1.5;};
+   # sigma clipping window and clipping criterion
+
+   smooth2 = {num_dim0 =  3; num_dim1 =  5;};
+   # boxcar smoothing window (post-clip)
+};
+
+refdata: {
+ apriori_trop_file = "/tmp/mean_no2_filt_200707.nc";
+ testdata_file = "/tmp/OMI_GRIDDED_DATA_0.10x0.10_2007_07_15.nc";
+};
+\endverbatim
+
+The parameter file contains the following fields:
+  \li \c mesh Specifies the longitude-latitude grids used
+              for intermediate processing (smoothing, and hotspot
+              filtering).  Each axis of the coordinate grid is
+              specified by the required parameters (\c delta, \c min, \c num),
+              where \c delta is the discretization interval, \c min is
+              minimum coordinate value, and \c num is the number of
+              pixels.  An optional parameter, \c num_extra_points,
+              controls the number of additional points to be used
+              to densify the corresponding edges of each pixel.
+
+  \li \c trop_thresh  The smallest measurable tropospheric vertical 
+              column density
+
+  \li \c filter Contains a list of structures, one for each stage 
+                of processing involved in filtering the
+                stratospheric vertical column estimate.
+
+  \li \c refdata  The primary reference data file contains an
+                  a priori estimate of the tropospheric vertical column.
+*/
