@@ -74,7 +74,7 @@ MODULE OMSAO_wfamf_module
   ! ---------------------------------------
   REAL(KIND=r4), DIMENSION(:), ALLOCATABLE :: latvals, lonvals, timevals
   REAL(KIND=r4), DIMENSION(:,:,:), ALLOCATABLE :: Psurface
-  REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Temperature, Gas_profiles, H2O_profiles
+  REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Gas_profiles
 
   ! ------------------------------
   ! Vlidort lookup table variables
@@ -309,7 +309,7 @@ CONTAINS
       ! Read climatology and interpolate to lon/lat/time
       ! ------------------------------------------------
       CALL omi_climatology (pge_idx, climatology, cli_psurface, lat, lon, &
-        time, terrain_height, nt, nx, xtrange, errstat)
+        time, nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -404,7 +404,7 @@ CONTAINS
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (pge_idx, climatology, local_psurf, &
-       lat, lon, time, terrain_height, nt, nx, xtrange, errstat)
+       lat, lon, time, nt, nx, xtrange, errstat)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -426,7 +426,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx, pge_idx
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, terrain_height
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon
     REAL    (KIND=r8), DIMENSION (0:nt-1), INTENT (IN) :: time
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
     
@@ -443,8 +443,7 @@ CONTAINS
     INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, n, status , &
          nlon, nlat, ntim, locerrstat
     INTEGER (KIND=i4), DIMENSION(2) :: idx_lat, idx_lon, idx_tim
-    REAL (KIND=r8) :: rho, lhgt, aircolumn, ltmp, lh2o, lgas, &
-         thish2omxr, Mwet, Rwet, detlnp, llon, llat, ltime, height, l1_srf
+    REAL (KIND=r8) :: llon, llat, ltime
 
     INTEGER (KIND=i4) :: swath_file_id, swath_id, nswath, ndatafields
     INTEGER   (KIND=i4), DIMENSION(10) :: datafield_rank, datafield_type
@@ -453,17 +452,6 @@ CONTAINS
     INTEGER (KIND=C_LONG) :: nswathcl, swlen
     INTEGER (KIND=i2), DIMENSION(nUTCdim) :: time_utc
     character (len=72) :: logmsg    
-
-    ! -----------------------
-    ! Some physical constants
-    ! -----------------------
-    REAL (KIND=r8), PARAMETER ::  &
-         Mdry = 0.02896,   & !kg mol-1
-         Mh2o = 0.018,     & !kg mol-1
-         Rstar = 8.314,    & !N m mol-1 K-1
-         Navogadro = 6.02214e+23, & ! mol-1
-         gplanet = 9.806,  &  ! m s-1
-         m2tocm2 = 1.0e+4
 
     ! ----------------------
     ! Subroutine starts here
@@ -675,7 +663,7 @@ CONTAINS
           ! Read climatology
           ! ----------------
           CALL read_climatology(idx_lon, idx_lat, idx_tim, &
-               swath_id, gasdatafieldname, h2odatafieldname, locerrstat)
+               swath_id, gasdatafieldname, locerrstat)
           IF ( locerrstat /= 0 ) THEN
              call tell_error (tell_runtime_error, "omi_climatology: read climatology failed", errstat)
              RETURN
@@ -695,41 +683,10 @@ CONTAINS
                   "omi_climatology: surface pressure interpolation failed", errstat)
              RETURN
           END IF
-          l1_srf = 1013.0_r8 * (10.0_r8 ** (REAL(terrain_height(ixtrack,itimes),KIND=r8) / 1000.0_r8 / (-16.0_r8)))
+
           DO n = 1, CmETA
-             
-             height = (( Ap(n) + l1_srf * Bp(n)  ) + &
-                  ( Ap(n+1) + l1_srf * Bp(n+1) )) / 2.0 * 1.D2
-             
-             ! Interpolate temperature to lon,lat,hrs
-             ltmp = linInterpol(nlon,nlat,ntim, &
-                  REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
-                  REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
-                  REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
-                  REAL(Temperature(1:nlon,1:nlat,n,1:ntim),KIND=r8), &
-                  llon, llat, ltime, status=status)
-             IF ( locerrstat /= 0 ) THEN
-                call tell_error (tell_runtime_error, &
-                     "omi_climatology: temperature interpolation failed", errstat)
-                RETURN
-             END IF
-
-             
-             ! Interpolate water vapor profile to lon,lat,hrs
-             lh2o =  linInterpol(nlon,nlat,ntim, &
-                  REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
-                  REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
-                  REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
-                  REAL(H2O_profiles(1:nlon,1:nlat,n,1:ntim),KIND=r8), &
-                  llon, llat, ltime, status=status)
-             IF ( locerrstat /= 0 ) THEN
-                call tell_error (tell_runtime_error, &
-                     "omi_climatology: water vapor interpolation failed", errstat)
-                RETURN
-             END IF
-
-             ! Interpolate trace gas profile to lon,lat,hrs
-             lgas = linInterpol(nlon,nlat,ntim, &
+             ! Interpolate trace gas profile to lon,lat,hrs [GAS]/cm^2
+             climatology(ixtrack,itimes,CmETA-n+1) = linInterpol(nlon,nlat,ntim, &
                   REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
                   REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
                   REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
@@ -740,31 +697,6 @@ CONTAINS
                      "omi_climatology: gas interpolation failed", errstat)
                 RETURN
              END IF
-
-             rho = 0.0_r8
-             aircolumn = 0.0_r8
-             lhgt = 0.0_r8
-             
-             ! Convert input water vapor mixing ratio from PPB to unitless
-             thish2omxr = lh2o / 1.0E9
-            
-             ! Calculate mean molecular weight of wet air 
-             Mwet = (1.0_r8 - thish2omxr)*Mdry + thish2omxr*Mh2o
-             
-             ! Calculate gas constant for wet air
-             Rwet = Rstar / Mwet
-             
-             ! Calculate layer thickness using the following
-             ! dz = -(R*T/g) * dlnP
-             detlnp = LOG( ( Ap(n+1) + local_psurf(ixtrack,itimes) * Bp(n+1) ) ) - &
-                  LOG( ( Ap(n) + local_psurf(ixtrack,itimes) * Bp(n)   ) ) !(in Pa)
-             
-             lhgt = -Rwet * ltmp * detlnp / gplanet ! meter
-             rho  = height / ltmp / Rwet ! Kg m-3
-             aircolumn = rho*lhgt*Navogadro/m2tocm2 ! # air/cm^2
-             
-             ! -------------------------------------------------------------
-             climatology(ixtrack,itimes,CmETA-n+1) = aircolumn * lgas / 1.0E9 ! [GAS]/cm^2
           END DO
 
           !  Set non-physical entries to zero.
@@ -797,7 +729,7 @@ CONTAINS
   END SUBROUTINE omi_climatology
   
   SUBROUTINE read_climatology (idx_lon, idx_lat, idx_tim, swath_id, &
-       gasdatafieldname, h2odatafieldname, errstat)
+       gasdatafieldname, errstat)
     ! ==========================================================
     ! This subroutine reads in the climatology from GEOS-Chem or
     ! other source. The climatology file needs to be conform to
@@ -809,7 +741,7 @@ CONTAINS
 
     INTEGER (KIND=i4), INTENT (IN) :: swath_id
     INTEGER (KIND=i4), DIMENSION(2), INTENT (IN) :: idx_lon, idx_lat, idx_tim
-    CHARACTER (LEN=MAX_STR_LEN) :: gasdatafieldname, h2odatafieldname
+    CHARACTER (LEN=MAX_STR_LEN) :: gasdatafieldname
 
     ! ------------------
     ! Modified variables
@@ -821,9 +753,8 @@ CONTAINS
     ! ---------------
     INTEGER   (KIND=i4) :: he5stat
     INTEGER   (KIND=C_LONG) :: nlon, nlat, nlev, ntim
-    CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field       = 'SurfacePressure'
-    CHARACTER (LEN=18), PARAMETER :: cli_Temperature_field = 'TemperatureProfile'
-    REAL (KIND=r4) :: scale_gas, scale_Psurf, scale_temperature, scale_H2O
+    CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field = 'SurfacePressure'
+    REAL (KIND=r4) :: scale_gas, scale_Psurf
 
     ! ----------------------
     ! Subroutine starts here
@@ -856,23 +787,10 @@ CONTAINS
          he5_start_3d, he5_stride_3d, he5_edge_3d, &
          Psurface(1:nlon,1:nlat,1:ntim) )
 
-    ! ----------------------------
-    ! Read the tables: Temperature
-    ! ----------------------------
-    he5_start_4d  = (/ INT(idx_lon(1)-1,8),INT(idx_lat(1)-1,8),zerocl,INT(idx_tim(1)-1,8) /)
-    he5_stride_4d = (/ onecl, onecl, onecl, onecl /)
-    he5_edge_4d   = (/  nlon,  nlat, nlev, ntim /)
-    he5stat = HE5_SWrdfld ( &
-      swath_id, cli_Temperature_field, &
-      he5_start_4d, he5_stride_4d, he5_edge_4d, &
-      Temperature(1:nlon,1:nlat,1:nlev,1:ntim) )
-
     ! --------------------------------------
     ! Read datafields scale factor attribute
     ! --------------------------------------
     he5stat = HE5_SWrdlattr ( swath_id, cli_Psurf_field, "ScaleFactor", scale_Psurf       )
-    he5stat = HE5_SWrdlattr ( swath_id, cli_Temperature_field, "ScaleFactor", scale_Temperature )
-
     IF ( he5stat /= pge_errstat_ok ) then
       call tell_error (tell_io_read_error, "read_climatology: reading climatology data fields", &
                        errstat)
@@ -882,6 +800,13 @@ CONTAINS
     ! ----------------------------
     ! Read data from gas datafield
     ! ----------------------------
+    ! ----------------------------
+    ! Read the tables: Temperature
+    ! ----------------------------
+    he5_start_4d  = (/ INT(idx_lon(1)-1,8),INT(idx_lat(1)-1,8),zerocl,INT(idx_tim(1)-1,8) /)
+    he5_stride_4d = (/ onecl, onecl, onecl, onecl /)
+    he5_edge_4d   = (/  nlon,  nlat, nlev, ntim /)
+
     he5stat = HE5_SWrdfld ( &
       swath_id, TRIM(ADJUSTL(gasdatafieldname)), &
       he5_start_4d, he5_stride_4d, he5_edge_4d, &
@@ -893,27 +818,11 @@ CONTAINS
     he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(gasdatafieldname)),&
       "ScaleFactor", scale_gas       )
 
-    ! ----------------------------
-    ! Read data from H2O datafield
-    ! ----------------------------
-    he5stat = HE5_SWrdfld (                                &
-         swath_id, TRIM(ADJUSTL(h2odatafieldname)),        &
-         he5_start_4d, he5_stride_4d, he5_edge_4d,         &
-         H2O_profiles(1:nlon,1:nlat,1:nlev,1:ntim) )
-
-    ! -----------------------------------------
-    ! Read gas datafield scale factor attribute
-    ! -----------------------------------------
-    he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(h2odatafieldname)),&
-              "ScaleFactor", scale_H2O       )
-    
     ! ------------------------------------
     ! Apply scaling factors to data fields
     ! ------------------------------------
-    Temperature  = Temperature  * scale_Temperature
     Psurface     = Psurface     * scale_Psurf
     Gas_profiles = Gas_profiles * scale_gas
-    H2O_profiles = H2O_profiles * scale_H2O
 
   END SUBROUTINE read_climatology
 
@@ -1433,9 +1342,7 @@ CONTAINS
 
     if (errstat /= 0) return
     deallocate (latvals, lonvals, timevals, stat=errstat)
-    if (allocated(Temperature)) DEALLOCATE(Temperature, stat=errstat)
     if (allocated(Gas_profiles)) DEALLOCATE(Gas_profiles, stat=errstat)
-    if (allocated(H2O_profiles)) DEALLOCATE(H2O_profiles, stat=errstat)
     if (allocated(Psurface)) DEALLOCATE(Psurface, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
@@ -1449,8 +1356,7 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    deallocate ( Temperature, &
-                 Gas_profiles, H2O_profiles, Psurface, stat=errstat)
+    deallocate ( Gas_profiles, Psurface, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
@@ -1480,9 +1386,7 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    ALLOCATE (Temperature (Cmlon, Cmlat, CmETA, CmHRS), &
-              Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
-              H2O_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
+    ALLOCATE (Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
               Psurface(Cmlon,Cmlat,CmHRS), STAT=estat ) ;
     if (estat /= 0) then
       call tell_error (tell_malloc_error, "climatology_allocate: failed", errstat)
