@@ -74,7 +74,8 @@ MODULE OMSAO_wfamf_module
   ! ---------------------------------------
   REAL(KIND=r4), DIMENSION(:), ALLOCATABLE :: latvals, lonvals, timevals
   REAL(KIND=r4), DIMENSION(:,:,:), ALLOCATABLE :: Psurface
-  REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Gas_profiles
+  REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Gas_profiles, wgh_ozo_pro
+  INTEGER(KIND=i4), DIMENSION(:,:,:,:), ALLOCATABLE :: idx_ozo_pro
 
   ! ------------------------------
   ! Vlidort lookup table variables
@@ -214,6 +215,9 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo, cli_psurface
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology, cli_heights
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
+    INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
+
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
@@ -715,7 +719,6 @@ CONTAINS
        END DO
        write(logmsg, '(a,1x,i5)')'Preparing climatology line', itimes
        call tell_log (1, logmsg)
-
     END DO
 
     ! Close climatology file (done here to do it only once)
@@ -754,7 +757,9 @@ CONTAINS
     INTEGER   (KIND=i4) :: he5stat
     INTEGER   (KIND=C_LONG) :: nlon, nlat, nlev, ntim
     CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field = 'SurfacePressure'
-    REAL (KIND=r4) :: scale_gas, scale_Psurf
+    CHARACTER (LEN=16), PARAMETER :: wgh_ozo_pro_field = 'LUT Ozone Weight'
+    CHARACTER (LEN=17), PARAMETER :: idx_ozo_pro_field = 'LUT Ozone Profile'
+    REAL (KIND=r4) :: scale_gas, scale_Psurf, scale_wgh, scale_idx
 
     ! ----------------------
     ! Subroutine starts here
@@ -800,9 +805,6 @@ CONTAINS
     ! ----------------------------
     ! Read data from gas datafield
     ! ----------------------------
-    ! ----------------------------
-    ! Read the tables: Temperature
-    ! ----------------------------
     he5_start_4d  = (/ INT(idx_lon(1)-1,8),INT(idx_lat(1)-1,8),zerocl,INT(idx_tim(1)-1,8) /)
     he5_stride_4d = (/ onecl, onecl, onecl, onecl /)
     he5_edge_4d   = (/  nlon,  nlat, nlev, ntim /)
@@ -818,11 +820,39 @@ CONTAINS
     he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(gasdatafieldname)),&
       "ScaleFactor", scale_gas       )
 
+    ! ---------------------------------------
+    ! Read data from ozone profile data field
+    ! ---------------------------------------
+    he5_start_4d  = (/ INT(idx_lon(1)-1,8),INT(idx_lat(1)-1,8),INT(idx_tim(1)-1,8),zerocl /)
+    he5_stride_4d = (/ onecl, onecl, onecl, onecl /)
+    he5_edge_4d   = (/  nlon,  nlat, ntim, INT(2,8) /)
+    he5stat = HE5_SWrdfld ( &
+      swath_id, TRIM(ADJUSTL(idx_ozo_pro_field)), &
+      he5_start_4d, he5_stride_4d, he5_edge_4d, &
+      idx_ozo_pro(1:nlon,1:nlat,1:ntim,1:2) )
+    he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(idx_ozo_pro_field)),&
+      "ScaleFactor", scale_idx       )
+
+    ! ----------------------------------------------
+    ! Read data from ozone profile weight data field
+    ! ----------------------------------------------
+    he5_start_4d  = (/ INT(idx_lon(1)-1,8),INT(idx_lat(1)-1,8),INT(idx_tim(1)-1,8),zerocl /)
+    he5_stride_4d = (/ onecl, onecl, onecl, onecl /)
+    he5_edge_4d   = (/  nlon,  nlat, ntim, INT(2,8) /)
+    he5stat = HE5_SWrdfld ( &
+      swath_id, TRIM(ADJUSTL(wgh_ozo_pro_field)), &
+      he5_start_4d, he5_stride_4d, he5_edge_4d, &
+      wgh_ozo_pro(1:nlon,1:nlat,1:ntim,1:2) )
+    he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(wgh_ozo_pro_field)),&
+      "ScaleFactor", scale_wgh       )
+    
     ! ------------------------------------
     ! Apply scaling factors to data fields
     ! ------------------------------------
     Psurface     = Psurface     * scale_Psurf
     Gas_profiles = Gas_profiles * scale_gas
+    idx_ozo_pro  = idx_ozo_pro  * INT(scale_idx,4)
+    wgh_ozo_pro  = wgh_ozo_pro  * scale_wgh
 
   END SUBROUTINE read_climatology
 
@@ -1344,6 +1374,8 @@ CONTAINS
     deallocate (latvals, lonvals, timevals, stat=errstat)
     if (allocated(Gas_profiles)) DEALLOCATE(Gas_profiles, stat=errstat)
     if (allocated(Psurface)) DEALLOCATE(Psurface, stat=errstat)
+    if (allocated(wgh_ozo_pro)) DEALLOCATE(wgh_ozo_pro, stat=errstat)
+    if (allocated(idx_ozo_pro)) DEALLOCATE(idx_ozo_pro, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
@@ -1356,7 +1388,7 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    deallocate ( Gas_profiles, Psurface, stat=errstat)
+    deallocate ( Gas_profiles, Psurface, wgh_ozo_pro, idx_ozo_pro, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
@@ -1387,7 +1419,8 @@ CONTAINS
     if (errstat /= 0) return
 
     ALLOCATE (Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
-              Psurface(Cmlon,Cmlat,CmHRS), STAT=estat ) ;
+              Psurface(Cmlon,Cmlat,CmHRS), wgh_ozo_pro(Cmlon, Cmlat, CmHRS, 2), &
+              idx_ozo_pro(Cmlon, Cmlat, CmHRS, 2), STAT=estat ) ;
     if (estat /= 0) then
       call tell_error (tell_malloc_error, "climatology_allocate: failed", errstat)
       return
