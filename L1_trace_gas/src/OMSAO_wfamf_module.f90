@@ -2145,10 +2145,15 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
-         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, ozo_idx, &
+         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, &
          j1, j2, ilat, ilon, status
     REAL (KIND=r4) :: saa, vaa !Temporary
     character (len=72) :: logmsg    
+
+    ! LUT ozone profile variables
+    INTEGER (KIND=i4), PARAMETER :: nozo = 2
+    REAL (KIND=r8), DIMENSION(nozo) :: local_ozo_wgh
+    INTEGER (KIND=i4), DIMENSION(nozo) :: local_ozo_idx
 
     ! Interpolation variables
     INTEGER (KIND=i4), DIMENSION(2) :: idx_sza, idx_vza, idx_alb, idx_cld_alb, idx_srf, idx_ctp
@@ -2208,6 +2213,8 @@ CONTAINS
           local_sza = REAL(sza(ixtrack,itime), KIND = r8)  ! JED fix
           local_vza = REAL(vza(ixtrack,itime), KIND = r8)  ! JED fix
           local_srf = REAL(terrain_height(ixtrack,itime), KIND = r8)
+          local_ozo_wgh(1:2) = cli_wgh_ozo_pro(ixtrack,itime,1:2)
+          local_ozo_idx(1:2) = cli_idx_ozo_pro(ixtrack,itime,1:2)
 
           ! ----------------------
           ! Relative azimuth angle
@@ -2247,15 +2254,7 @@ CONTAINS
                 l2ctp(ixtrack,itime) = local_srf
              END IF
           END IF
-          ! ---------------------------------------
-          ! Now we can find nodes for interpolation
-          ! ---------------------------------------
-          ! Ozone profile interpolation is not done
-          ! For now I'm going to keep it fix to M350
-          ! Still to be decided how to select the most
-          ! Suitable profile (climatology of total ozone or
-          ! from online fitting of ozone slant columns)
-          ozo_idx = 8
+
           ! SZA
           CALL GetNode(REAL(lut_sza,KIND=8),local_sza,idx_sza(1), 'Lower')
           IF (idx_sza(1) .EQ. -2) idx_sza(1) = 1
@@ -2387,34 +2386,57 @@ CONTAINS
                 DO isrf = idx_srf(1), idx_srf(2)
                    Rad_3D_clear(isrf-idx_srf(1)+1,&
                         ivza-idx_vza(1)+1,&
-                        isza-idx_sza(1)+1) = REAL(lut_I0(ozo_idx,isrf,ivza,isza) + &
-                        lut_I1(ozo_idx,isrf,ivza,isza) * COS(local_raa*d2r) + &
-                        lut_I2(ozo_idx,isrf,ivza,isza) * COS(2.0*local_raa*d2r) + &
-                        ( lut_Ir(ozo_idx,isrf,ivza,isza) * local_alb / (1.0 - local_alb * lut_Sb(ozo_idx,isrf))),KIND=8)
+                        isza-idx_sza(1)+1) = REAL(lut_I0(local_ozo_idx(1),isrf,ivza,isza) + &
+                        lut_I1(local_ozo_idx(1),isrf,ivza,isza) * COS(local_raa*d2r) + &
+                        lut_I2(local_ozo_idx(1),isrf,ivza,isza) * COS(2.0*local_raa*d2r) + &
+                        ( lut_Ir(local_ozo_idx(1),isrf,ivza,isza) * local_alb / &
+                        (1.0 - local_alb * lut_Sb(local_ozo_idx(1),isrf))),KIND=8) &
+                        * local_ozo_wgh(1) + REAL(lut_I0(local_ozo_idx(2),isrf,ivza,isza) + &
+                        lut_I1(local_ozo_idx(2),isrf,ivza,isza) * COS(local_raa*d2r) + &
+                        lut_I2(local_ozo_idx(2),isrf,ivza,isza) * COS(2.0*local_raa*d2r) + &
+                        ( lut_Ir(local_ozo_idx(2),isrf,ivza,isza) * local_alb / &
+                        (1.0 - local_alb * lut_Sb(local_ozo_idx(2),isrf))),KIND=8) &
+                        * local_ozo_wgh(2)
                    DO ialb = idx_alb(1), idx_alb(2)
                       DO ilay = 1, INT(lay_dim(1),KIND=4)
                          Sca_5D_clear(isrf-idx_srf(1)+1, ilay, ialb-idx_alb(1)+1, &
                               ivza-idx_vza(1)+1, isza-idx_sza(1)+1) = REAL(&
-                              lut_dI0(ozo_idx,isrf,ilay,ialb,ivza,isza) + &
-                              lut_dI1(ozo_idx,isrf,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
-                              lut_dI2(ozo_idx,isrf,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r), KIND=8)
+                              lut_dI0(local_ozo_idx(1),isrf,ilay,ialb,ivza,isza) + &
+                              lut_dI1(local_ozo_idx(1),isrf,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
+                              lut_dI2(local_ozo_idx(1),isrf,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r), KIND=8) &
+                              * local_ozo_wgh(1) + REAL(lut_dI0(local_ozo_idx(2),isrf,ilay,ialb,ivza,isza) + &
+                              lut_dI1(local_ozo_idx(2),isrf,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
+                              lut_dI2(local_ozo_idx(2),isrf,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r), KIND=8) &
+                              * local_ozo_wgh(2)
+                              
                       END DO
                    END DO
                 END DO
                 DO ictp = idx_ctp(1), idx_ctp(2)
                    Rad_3D_cloud(ictp-idx_ctp(1)+1,&
                         ivza-idx_vza(1)+1,&
-                        isza-idx_sza(1)+1) = REAL(lut_I0(ozo_idx,ictp,ivza,isza) + &
-                        lut_I1(ozo_idx,ictp,ivza,isza) * COS(local_raa*d2r) + &
-                        lut_I2(ozo_idx,ictp,ivza,isza) * COS(2.0*local_raa*d2r) + &
-                        ( lut_Ir(ozo_idx,ictp,ivza,isza) * amf_alb_cld / (1.0 - amf_alb_cld * lut_Sb(ozo_idx,ictp))),KIND=8)
+                        isza-idx_sza(1)+1) = REAL(lut_I0(local_ozo_idx(1),ictp,ivza,isza) + &
+                        lut_I1(local_ozo_idx(1),ictp,ivza,isza) * COS(local_raa*d2r) + &
+                        lut_I2(local_ozo_idx(1),ictp,ivza,isza) * COS(2.0*local_raa*d2r) + &
+                        ( lut_Ir(local_ozo_idx(1),ictp,ivza,isza) * amf_alb_cld / &
+                        (1.0 - amf_alb_cld * lut_Sb(local_ozo_idx(1),ictp))),KIND=8) * &
+                        local_ozo_wgh(1) +  REAL(lut_I0(local_ozo_idx(2),ictp,ivza,isza) + &
+                        lut_I1(local_ozo_idx(2),ictp,ivza,isza) * COS(local_raa*d2r) + &
+                        lut_I2(local_ozo_idx(2),ictp,ivza,isza) * COS(2.0*local_raa*d2r) + &
+                        ( lut_Ir(local_ozo_idx(2),ictp,ivza,isza) * amf_alb_cld / &
+                        (1.0 - amf_alb_cld * lut_Sb(local_ozo_idx(2),ictp))),KIND=8) * &
+                        local_ozo_wgh(2)
                    DO ialb = idx_cld_alb(1), idx_cld_alb(2)
                       DO ilay = 1, INT(lay_dim(1),KIND=4)
                          Sca_5D_cloud(ictp-idx_ctp(1)+1, ilay, ialb-idx_cld_alb(1)+1, &
                               ivza-idx_vza(1)+1, isza-idx_sza(1)+1) = REAL(&
-                              lut_dI0(ozo_idx,ictp,ilay,ialb,ivza,isza) + &
-                              lut_dI1(ozo_idx,ictp,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
-                              lut_dI2(ozo_idx,ictp,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r),KIND=8)
+                              lut_dI0(local_ozo_idx(1),ictp,ilay,ialb,ivza,isza) + &
+                              lut_dI1(local_ozo_idx(1),ictp,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
+                              lut_dI2(local_ozo_idx(1),ictp,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r),KIND=8) &
+                              * local_ozo_wgh(1) + REAL(lut_dI0(local_ozo_idx(2),ictp,ilay,ialb,ivza,isza) + &
+                              lut_dI1(local_ozo_idx(2),ictp,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
+                              lut_dI2(local_ozo_idx(2),ictp,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r),KIND=8) &
+                              * local_ozo_wgh(2)
                       END DO
                    END DO
                 END DO
