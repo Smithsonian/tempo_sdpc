@@ -6,7 +6,7 @@ MODULE OMSAO_wfamf_module
   ! and calculate them
   ! ====================================================================
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
-  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r4_missval, r8_missval
+  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, i4_missval, r4_missval, r8_missval
   use tell_module
   USE OMSAO_he5_module, ONLY: pge_swath_id, &
     he5_start_4d, he5_edge_4d, he5_stride_4d, &
@@ -230,6 +230,8 @@ CONTAINS
     ! ------------------------------------
     albedo       = r8_missval
     climatology  = r8_missval
+    cli_wgh_ozo_pro = r8_missval ! Not output
+    cli_idx_ozo_pro = i4_missval ! Not output
     cli_heights  = r8_missval
     cli_psurface = r8_missval
     scattw       = r8_missval
@@ -312,8 +314,8 @@ CONTAINS
       ! ------------------------------------------------
       ! Read climatology and interpolate to lon/lat/time
       ! ------------------------------------------------
-      CALL omi_climatology (pge_idx, climatology, cli_psurface, lat, lon, &
-        time, nt, nx, xtrange, errstat)
+      CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+           cli_psurface, lat, lon, time, nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -407,8 +409,8 @@ CONTAINS
 
   END SUBROUTINE amf_calculation_bis
 
-  SUBROUTINE omi_climatology (pge_idx, climatology, local_psurf, &
-       lat, lon, time, nt, nx, xtrange, errstat)
+  SUBROUTINE omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+       local_psurf, lat, lon, time, nt, nx, xtrange, errstat)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -439,6 +441,8 @@ CONTAINS
     ! ------------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology
+    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_wgh_ozo_pro
+    INTEGER (KIND=i4), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_idx_ozo_pro
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT (INOUT) :: local_psurf
     
     ! ---------------
@@ -673,6 +677,17 @@ CONTAINS
              RETURN
           END IF
 
+          ! ----------------------------------------------------------
+          ! Save ozone profile index and weight.
+          ! Choose climatology pixel closest to satellite pixel center
+          ! ----------------------------------------------------------
+          cli_wgh_ozo_pro(ixtrack,itimes,1:2) = REAL(wgh_ozo_pro(MINLOC(ABS(lonvals(idx_lon)-llon),1), &
+               MINLOC(ABS(latvals(idx_lat)-llat),1), &
+               MINLOC(ABS(timevals(idx_tim)-ltime),1),1:2), KIND=r8)
+          cli_idx_ozo_pro(ixtrack,itimes,1:2) = idx_ozo_pro(MINLOC(ABS(lonvals(idx_lon)-llon),1), &
+               MINLOC(ABS(latvals(idx_lat)-llat),1), &
+               MINLOC(ABS(timevals(idx_tim)-ltime),1),1:2)
+
           ! ----------------------------
           ! Interpolate Surface pressure
           ! ----------------------------
@@ -720,7 +735,7 @@ CONTAINS
        write(logmsg, '(a,1x,i5)')'Preparing climatology line', itimes
        call tell_log (1, logmsg)
     END DO
-
+   
     ! Close climatology file (done here to do it only once)
     errstat = HE5_SWCLOSE(swath_file_id)
     IF ( errstat == he5_stat_fail ) THEN
@@ -728,7 +743,7 @@ CONTAINS
             trim(swath_file), errstat)
        RETURN
     END IF
-    
+
   END SUBROUTINE omi_climatology
   
   SUBROUTINE read_climatology (idx_lon, idx_lat, idx_tim, swath_id, &
