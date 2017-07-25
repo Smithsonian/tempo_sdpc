@@ -357,7 +357,8 @@ CONTAINS
       ! with the correct albedo. amfdiag is used to skip pixel
       ! ---------------------------------------------------------
       CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
-                          terrain_height, lat, lon, amfdiag, scattw)
+                          terrain_height, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+                          lat, lon, amfdiag, scattw)
 
       ! -----------------------------------------------------------------
       ! Work out the AMF using the scattering weights and the climatology
@@ -2117,8 +2118,8 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_diagnostic
 
-  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, lat, lon, &
-       amfdiag, scattw)
+  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, &
+       cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -2131,6 +2132,9 @@ CONTAINS
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, terrain_height, lat, lon
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
+    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_wgh_ozo_pro
+    INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_idx_ozo_pro
+
     ! ------------------
     ! Modified variables
     ! ------------------
