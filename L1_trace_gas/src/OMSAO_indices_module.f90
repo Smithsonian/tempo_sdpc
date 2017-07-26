@@ -466,6 +466,7 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=21), PARAMETER :: newshift_str    = 'New shift and squeeze'
   CHARACTER (LEN=27), PARAMETER :: refseccor_str   = 'Reference sector correction'
   CHARACTER (LEN=25), PARAMETER :: scattweight_str = 'Scattering weights output'
+  CHARACTER (LEN=34), PARAMETER :: stratrop_str    = 'Stratospheric and Tropospheric AMF'
 
   ! --------------------------------------------------------------
   ! End-Of-Input string; used to terminate a list of string inputs

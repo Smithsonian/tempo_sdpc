@@ -38,6 +38,9 @@ module ctrlvars
   ! and albedo attributes. gga
   logical, public :: yn_scat_weights
 
+  ! Stratospheric and tropospheric AMF calculation
+  logical, public :: yn_stratrop
+
   logical, public :: yn_remove_target
 
   ! FIXME JCH temporary switches for tempo development

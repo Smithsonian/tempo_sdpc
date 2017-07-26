@@ -68,7 +68,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
     destriping_str, scpline_str, nrmline_str, comline_str, o3amf_str, maxgoodcol_str,   &
     comm_idx, procmode_diag, solmonthave_str, wfmod_amf_str,             &
-    newshift_str, refseccor_str, scattweight_str
+    newshift_str, refseccor_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
     fitcol_idx, n_mol_fit, max_itnum_sol, max_itnum_rad,            &
@@ -722,6 +722,18 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_scat_weights
+
+  ! ----------------------------------------------------------------------------------
+  ! Position cursor to read logical for Stratospheric and Tropospheric AMF calculation
+  ! ----------------------------------------------------------------------------------
+  REWIND (fit_ctrl_unit)
+  CALL skip_to_filemark ( fit_ctrl_unit, stratrop_str, tmpchar, file_read_stat )
+  if (file_read_stat /= 0) then
+    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
+                     trim(stratrop_str), errstat)
+    return
+  endif
+  READ (fit_ctrl_unit, *) yn_stratrop
 
   ! -------------------------------------------------------------------
   ! Unless we come up with a reason against it, the maximum good column
