@@ -176,8 +176,8 @@ CONTAINS
     !     - GEOS Chem climatology
     !     - VLIDORT calculated scattering weights
     ! =================================================================
-    USE OMSAO_errstat_module, only : pge_errstat_ok!, pge_errstat_error
-    use OMSAO_indices_module, only: pge_hcho_idx, pge_gly_idx, voc_omicld_idx, &
+    USE OMSAO_errstat_module, only: pge_errstat_ok!, pge_errstat_error
+    use OMSAO_indices_module, only: voc_omicld_idx, &
          voc_isccp_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
@@ -394,7 +394,7 @@ CONTAINS
     ! -----------------------------------------------
     IF (do_write) then
       if (yn_do_he5_output) then
-        CALL he5_amf_write ( pge_idx, nx, nt, saocol, saodco, saoamf, &
+        CALL he5_amf_write ( nx, nt, saocol, saodco, saoamf, &
                             amfgeo, amfdiag, l2cfr, l2ctp, locerrstat ) ! FIXME <-- (to be removed)
       endif
       amf_corr % amf_molecule_specific => saoamf
@@ -402,7 +402,7 @@ CONTAINS
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
-      yn_write_cloud_variables = (pge_idx == pge_hcho_idx) .or. (pge_idx == pge_gly_idx)
+      yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
       if (errstat /= 0) return
@@ -2811,16 +2811,13 @@ CONTAINS
   END SUBROUTINE write_scatt_he5
 
   SUBROUTINE he5_amf_write ( &
-      pge_idx, nx, nt, saocol, saodco, amfmol, amfgeo, amfdiag, &
+      nx, nt, saocol, saodco, amfmol, amfgeo, amfdiag, &
       amfcfr, amfctp, errstat )
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_he5_module, ONLY: HE5_SWWRFLD, he5_start_2d, he5_stride_2d, &
       he5_edge_2d
     USE OMSAO_errstat_module, only : pge_errstat_ok
-    !USE OMSAO_omidata_module,   ONLY: n_roff_dig
-    USE OMSAO_indices_module,   ONLY: pge_hcho_idx, pge_gly_idx
-    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_2darr_r8
     use datafields, only: amfcfr_field, amfctp_field, amfdiag_field, &
       amfgeo_field, amfmol_field, col_field, dcol_field
 
@@ -2834,7 +2831,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                          INTENT (IN) :: pge_idx, nx, nt
+    INTEGER (KIND=i4),                          INTENT (IN) :: nx, nt
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: saocol, saodco
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfmol, amfgeo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfcfr, amfctp
@@ -2892,19 +2889,17 @@ CONTAINS
     errstat = MAX ( errstat, locerrstat )
 
     ! ----------------------------------------------------------
-    ! (4) OMHCHO, OMCHOCHO only: AMF cloud fraction and pressure
+    ! (4) AMF cloud fraction and pressure
     ! ----------------------------------------------------------
-    IF ( pge_idx == pge_hcho_idx .OR. pge_idx == pge_gly_idx ) THEN
-      amfloc = REAL ( amfcfr, KIND=r4 )
-      locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfcfr_field)), &
-                                he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-      errstat = MAX ( errstat, locerrstat )
-
-      amfloc = REAL ( amfctp, KIND=r4 )
-      locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfctp_field)), &
-                                he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-      errstat = MAX ( errstat, locerrstat )
-    END IF
+    amfloc = REAL ( amfcfr, KIND=r4 )
+    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfcfr_field)), &
+         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+    errstat = MAX ( errstat, locerrstat )
+    
+    amfloc = REAL ( amfctp, KIND=r4 )
+    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfctp_field)), &
+         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+    errstat = MAX ( errstat, locerrstat )
 
     ! -----------------------------------------------------------------------
     ! (5) All PGEs: Output of columns and column uncertainties. For some PGEs
