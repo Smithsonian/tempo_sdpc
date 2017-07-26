@@ -133,7 +133,6 @@ MODULE datafields
   type (Datafield_List_Type), public, save :: sw_he5fields
   character (len=*), parameter, public :: &
     scaweights_field = "ScatteringWeights", &
-    clialtgrid_field = "ClimatologyLevels", &
     gasprofile_field = "GasProfile", &
     albedo_field     = "Albedo"
 
@@ -869,16 +868,6 @@ CONTAINS
                        "Scattering Weights", &             ! title
                        "nXtrack,nTimes,nLevels", &         ! dimensions
                        "NoUnits", &                        ! units
-                       "r8", &                             ! datatype
-                       -1e30_r8, 1e30_r8, &                ! validrange
-                       "OMI-Specific" &                    ! uniquefd
-                      )
-
-    call new_datafield(sw_he5fields, &
-                       "ClimatologyLevels", &              ! name
-                       "Climatology Levels", &             ! title
-                       "nXtrack,nTimes,nLevels", &         ! dimensions
-                       "hPa", &                            ! units
                        "r8", &                             ! datatype
                        -1e30_r8, 1e30_r8, &                ! validrange
                        "OMI-Specific" &                    ! uniquefd

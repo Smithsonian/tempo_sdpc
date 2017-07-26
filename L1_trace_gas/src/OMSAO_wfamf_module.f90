@@ -322,9 +322,9 @@ CONTAINS
       ! -------------------------------------
       IF (do_write) then
         if (yn_do_he5_output) then
-          CALL write_climatology_he5 (climatology, cli_heights, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+          CALL write_climatology_he5 (climatology, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
         endif
-        call write_gas_profile (climatology, cli_heights, nx, nt, CmETA, errstat)
+        call write_gas_profile (climatology, nx, nt, CmETA, errstat)
         if (errstat /= 0) return
       endif
 
@@ -2708,13 +2708,13 @@ CONTAINS
 
   END SUBROUTINE write_albedo_he5
 
-  SUBROUTINE write_climatology_he5(climatology, cli_heights, nt, nx, nl, errstat)
+  SUBROUTINE write_climatology_he5(climatology, nt, nx, nl, errstat)
 
     ! ===============================================================
     ! This routines writes the Target Gas Profiles from the GEOS-Chem
     ! climatology to the output file.
     ! ===============================================================
-    use datafields, only: clialtgrid_field, gasprofile_field
+    use datafields, only: gasprofile_field
     use OMSAO_he5_module, ONLY: HE5_SWWRFLD
     IMPLICIT NONE
 
@@ -2722,7 +2722,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                              INTENT (IN) :: nt, nx, nl
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1,1:nl), INTENT (IN) :: climatology, cli_heights
+    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1,1:nl), INTENT (IN) :: climatology
 
     ! ------------------
     ! Modified variables
@@ -2750,14 +2750,6 @@ CONTAINS
     !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
                               TRIM(ADJUSTL(gasprofile_field)),         &
-                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
-                              colloc(1:nx,0:nt-1,1:nl) )
-    errstat = MAX ( errstat, locerrstat )
-
-    colloc = cli_heights
-    !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-                              TRIM(ADJUSTL(clialtgrid_field)),         &
                               he5_start_3d, he5_stride_3d, he5_edge_3d,&
                               colloc(1:nx,0:nt-1,1:nl) )
     errstat = MAX ( errstat, locerrstat )

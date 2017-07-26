@@ -21,7 +21,6 @@ TG_VAR_WAVELENGTH,"wavelength"
 # level 2 variables
 #
 TG_VAR_AMF_ALBEDO,"albedo"
-TG_VAR_AMF_CLIMATOLOGY_LEVELS,"climatology_levels"
 TG_VAR_AMF_DIAGNOSTIC_FLAG,"amf_diagnostic_flag"
 TG_VAR_AMF_CLOUD_FRACTION,"amf_cloud_fraction"
 TG_VAR_AMF_CLOUD_PRESSURE,"amf_cloud_pressure"

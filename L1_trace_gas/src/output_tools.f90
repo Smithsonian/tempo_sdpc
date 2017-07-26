@@ -163,16 +163,6 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_amf_climatology_levels, &
-                              nf90_double, &
-                              dimids = dimids_xtrack_step_levels,  &
-                              comment = "climatology levels", &
-                              units = "hPa", &
-                              valid_range = [-1e30_r8, 1e30_r8], &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              chunksizes = chunksizes)
-    call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
                               nf90_double, &
                               dimids = dimids_xtrack_step_levels,  &
@@ -1155,13 +1145,12 @@ contains
   !! @param[in] ntimes  Number of scans
   !! @param[in] nlevels  Number of altitudes in vertical profile climatology
   !! @param[inout] errstat  Error status variable
-  subroutine write_gas_profile (gas_profile, climatology_levels, &
+  subroutine write_gas_profile (gas_profile, &
                                 nxtrack, ntimes, nlevels, errstat)
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes, nlevels
     real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: gas_profile
-    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: climatology_levels
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1173,8 +1162,6 @@ contains
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,ntimes,nxtrack], &
                         gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
-    call tiof_put3d_r8 (obj, tg_var_amf_climatology_levels, [0,0,0], [nlevels,ntimes,nxtrack], &
-                        climatology_levels(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
