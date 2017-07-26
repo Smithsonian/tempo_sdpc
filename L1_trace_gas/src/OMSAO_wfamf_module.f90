@@ -2172,7 +2172,7 @@ CONTAINS
     iwavf = MINLOC(ABS(lut_wav - REAL(amf_wvl2, KIND = r4) ),1)
     nwav = iwavf - iwavs + 1
 
-    write(logmsg, '(a,1x,i5)')'Computting scattering weights...', itime
+    write(logmsg, '(a)')'Computting scattering weights...'
     call tell_log (1, logmsg)
 
     ! ---------------
