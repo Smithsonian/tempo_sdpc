@@ -35,8 +35,8 @@ contains
   ! ngas  :  number of gases
   ! gasin :  pointer to gases that are used
   ! abscrs:  Input/output
-  !		   If get_crs is set, then it refers to absorption cross section
-  !		   at each layer and for each species for each molecule
+  !		 If get_crs is set, then it refers to absorption cross section
+  !		 at each layer and for each species for each molecule
   !          On return, it gives the absorption od for each species at each layer
   ! gascol : column density for each species at each layer, molecules/cm^2
 
@@ -68,9 +68,9 @@ contains
     use m_vlidort90_include
     IMPLICIT NONE
 
-    !===============================  Define Variables ===========================
+    !===============================  Define Variables ========================
     ! Include files of dimensions and numbers
-!    INCLUDE 'VLIDORT90.PARS'
+    !    INCLUDE 'VLIDORT90.PARS'
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS90.VARS'
     INCLUDE 'VLIDORT_SETUPS90.VARS'
@@ -88,12 +88,16 @@ contains
     REAL (KIND=dp), DIMENSION(0:nlayers), INTENT(IN) :: zsgrid
     REAL (KIND=dp), DIMENSION(nlayers), INTENT(IN)   :: airgrid,  &
          aersca, aerext, aerasy, cldsca, cldext, cldasy
-    REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: aermoms
-    REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: cldmoms
-    REAL (KIND=dp), DIMENSION(ngas, nlayers), INTENT(IN)  :: abscrs, gascol, eta
+    REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: &
+         aermoms
+    REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: &
+         cldmoms
+    REAL (KIND=dp), DIMENSION(ngas, nlayers), INTENT(IN)  :: abscrs, gascol, &
+         eta
 
     ! Optional output
-    REAL (KIND=dp), DIMENSION(nlayers), INTENT(OUT) :: deltau, delsca, delo3abs, delray
+    REAL (KIND=dp), DIMENSION(nlayers), INTENT(OUT) :: deltau, delsca, &
+         delo3abs, delray
 
 
     ! Output variables
@@ -117,7 +121,8 @@ contains
     !REAL (KIND=dp), DIMENSION(nlayers)                 :: extconf
     REAL (KIND=dp), DIMENSION(ngas, nlayers)           :: absod
     REAL (KIND=dp), DIMENSION(0:maxmoments_input, 1:maxgksec, maxscatter), SAVE :: phasmoms_input
-    REAL (KIND=dp), DIMENSION(0:maxmoments_input, 1:maxgksec), SAVE :: phasmoms_total_input
+    REAL (KIND=dp), DIMENSION(0:maxmoments_input, 1:maxgksec), SAVE :: &
+         phasmoms_total_input
     REAL (KIND=dp), DIMENSION(0:max_atmoswfs, 0:maxmoments_input, 1:maxgksec), SAVE :: l_phasmoms_total_input
     LOGICAL, SAVE :: first = .TRUE.
 
@@ -130,13 +135,17 @@ contains
 
     IF (first) THEN
       IF (.NOT. useasy .AND. nmoms > maxmoments_input) THEN
-        WRITE(www_lun, *) 'Need to increase maxmoments_input for aerosols/clouds!!!'
-        problems = .TRUE.; RETURN
+        WRITE(www_lun, *) &
+             'Need to increase maxmoments_input for aerosols/clouds!!!'
+        problems = .TRUE.
+        RETURN
       ENDIF
 
       IF (.NOT. useasy .AND. nmoms < ngreek_moments_input) THEN
-        WRITE(www_lun, *) 'Need to increase input moments for aerosols/clouds!!!'
-        problems = .TRUE.; RETURN
+        WRITE(www_lun, *) &
+             'Need to increase input moments for aerosols/clouds!!!'
+        problems = .TRUE.
+        RETURN
       ENDIF
 
       ! This only needs to be initialized once
@@ -153,9 +162,11 @@ contains
     ENDIF
 
     IF (NSTOKES == 1) THEN
-      nactgksec = 1;  nactgkmatc = 1
+      nactgksec = 1
+      nactgkmatc = 1
     ELSE
-      nactgksec = ngksec; nactgkmatc = ngkmatc
+      nactgksec = ngksec
+      nactgkmatc = ngkmatc
     ENDIF
 
     !WRITE(www_lun, *) nmoms, nmoments, ngreek_moments_input, maxmoments
@@ -203,26 +214,34 @@ contains
 
       ! Aerosols and clouds
       extco = extco_r
-      nscatter = 1; cldidx = 0; aeridx = 0
-      extco_a = ZERO; scaco_a = ZERO; extco_c = ZERO; scaco_c = ZERO;
+      nscatter = 1
+      cldidx = 0
+      aeridx = 0
+      extco_a = ZERO
+      scaco_a = ZERO
+      extco_c = ZERO
+      scaco_c = ZERO
 
       !IF (.NOT. do_rayleigh_only) THEN
       IF (do_clouds .AND. cldmsk(i)) THEN
         nscatter = nscatter + 1
         extco = extco + cldext(i)
-        extco_c = cldext(i);   scaco_c = cldsca(i)
+        extco_c = cldext(i)
+        scaco_c = cldsca(i)
         scaco_input(nscatter) = cldsca(i)
         cldidx = nscatter
 
         ! get phase moments for clouds
         IF (.NOT. useasy) THEN
-          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = cldmoms(0:nmoms, 1:nactgksec, i)
+          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = &
+               cldmoms(0:nmoms, 1:nactgksec, i)
         ELSE ! use H_G function
           phasmoms_input(0, 2, nscatter) = ONE
           j0 = ONE
           DO j = 1, ngreek_moments_input
             j1 = REAL(2*j+1, KIND=dp)
-            phasmoms_input(j, 2, nscatter) = (j1/j0) * cldasy(i) * phasmoms_input(j-1, 2, nscatter)
+            phasmoms_input(j, 2, nscatter) = (j1/j0) * cldasy(i) * &
+                 phasmoms_input(j-1, 2, nscatter)
             j0 = j1
           ENDDO
         ENDIF
@@ -233,18 +252,21 @@ contains
         nscatter = nscatter + 1
         extco = extco + aerext(i)
         scaco_input(nscatter) = aersca(i)
-        extco_a = aerext(i);  scaco_a = aersca(i)
+        extco_a = aerext(i)
+        scaco_a = aersca(i)
         aeridx = nscatter
 
         ! get phase moments for aerosols
-        IF (.NOT. useasy) THEN  
-          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = aermoms(0:nmoms, 1:nactgksec, i)  
+        IF (.NOT. useasy) THEN
+          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = &
+               aermoms(0:nmoms, 1:nactgksec, i)
         ELSE ! use H_G function
           phasmoms_input(0, 2, nscatter) = ONE
-          j0 = ONE             
+          j0 = ONE
           DO j = 1, ngreek_moments_input
             j1 = REAL(2*j+1, KIND=dp)
-            phasmoms_input(j, 2, nscatter) = (j1/j0) * aerasy(i) * phasmoms_input(j-1, 2, nscatter)
+            phasmoms_input(j, 2, nscatter) = (j1/j0) * aerasy(i) * &
+                 phasmoms_input(j-1, 2, nscatter)
             j0 = j1
           ENDDO
         ENDIF
@@ -255,12 +277,13 @@ contains
       scaco = SUM(scaco_input(1:nscatter))
       omega_total_input(i) = scaco / extco
 
-      IF (omega_total_input(i) < OMEGA_SMALLNUM) omega_total_input(i) = OMEGA_SMALLNUM 
+      IF (omega_total_input(i) < OMEGA_SMALLNUM) omega_total_input(i) = &
+           OMEGA_SMALLNUM
       IF (omega_total_input(i) > 1.0 - OMEGA_SMALLNUM)  &
            omega_total_input(i) = 1.0 - OMEGA_SMALLNUM
       taugrid_input(i) = taugrid_input(i-1) + extco
       deltau_vert_input(i) = extco
-      !extconf(i) = extco / (zsgrid(i-1) - zsgrid(i))   ! extinction coefficients
+      !extconf(i) = extco / (zsgrid(i-1) - zsgrid(i)) ! extinction coefficients
       !IF (i > 25) THEN
       !   print *, i, aermsk(i), taugrid_input(i), omega_total_input(i)
       !   print *, extco, absco_r, scaco_r, extco_a, scaco_a
@@ -273,9 +296,9 @@ contains
                * scaco_input(1:nscatter)) / scaco
         ENDDO
       ENDDO
-      !phasmoms_total_input(ngreek_moments_input+1:maxmoments, 1:maxgksec) = 0.0  
+      !phasmoms_total_input(ngreek_moments_input+1:maxmoments, 1:maxgksec) = 0.0
 
-      ! Set up greek scattering matrix for each moment 
+      ! Set up greek scattering matrix for each moment
       !greekmat_total_input(0:ngreek_moments_input, i, 1)  = phasmoms_total_input(0:ngreek_moments_input, 1)
       !greekmat_total_input(0:ngreek_moments_input, i, 2)  = phasmoms_total_input(0:ngreek_moments_input, 5)
       !greekmat_total_input(0:ngreek_moments_input, i, 5)  = phasmoms_total_input(0:ngreek_moments_input, 5)
@@ -287,11 +310,13 @@ contains
       !greekmat_total_input(ngreek_moments_input+1:maxmoments, i, 1:MAXSTOKES_SQ) = 0.0
       greekmat_total_input(0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
            phasmoms_total_input(0:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-      IF ( nactgkmatc > 1 ) greekmat_total_input(0:ngreek_moments_input, i, 15) &
-           = -greekmat_total_input(0:ngreek_moments_input, i, 15)
+      IF ( nactgkmatc > 1 ) &
+           greekmat_total_input(0:ngreek_moments_input, i, 15) = &
+           -greekmat_total_input(0:ngreek_moments_input, i, 15)
 
-      ! This should always be 1, but may be slightly different due to numerical truncation
-      greekmat_total_input(0, i, 1) = 1.0  
+      ! This should always be 1, but may be slightly different due to
+      ! numerical truncation
+      greekmat_total_input(0, i, 1) = 1.0
 
       !IF  (i == 26) THEN
       !WRITE (91, '(I5, 7D24.12, I5)') i, extco, scaco, scaco_a, absco_r, scaco_r, &
@@ -304,25 +329,27 @@ contains
       !IF (do_simulation_only .OR. .NOT. varyprof(i)) THEN   ! no linearition
       !   ! zero out quantity for safety
       !   layer_vary_flag(i) = .FALSE.
-      !   layer_vary_number(i) = 0	
-      !   	   
+      !   layer_vary_number(i) = 0
+      !
       !   !l_deltau_vert_input(:, i) =   ZERO
       !   !l_omega_total_input(:, i) = ZERO
-      !   !l_greekmat_total_input(:, : , :, i) = ZERO        
+      !   !l_greekmat_total_input(:, : , :, i) = ZERO
       !
       !ELSE
       !   layer_vary_flag(i) = .TRUE.
       !   layer_vary_number(i) = n_totalatmos_wfs
       !The above part has been taken care of in routine: lidort_prof_env.f90
 
-      DO q = 1, n_totalatmos_wfs        
+      DO q = 1, n_totalatmos_wfs
         !  w.r.t ozone volume mixing ratio: 1
         !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         IF ( profilewf_names(q) == 'ozone volume mixing ratio------' ) THEN
           idx = absin(1)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -333,8 +360,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'NO2 volume mixing ratio------' ) THEN
           idx = absin(2)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -345,8 +374,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'O2 volume mixing ratio------' ) THEN
           idx = absin(8)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -357,8 +388,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'O4 volume mixing ratio------' ) THEN
           idx = absin(3)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.;  RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -369,8 +402,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'BrO volume mixing ratio------' ) THEN
           idx = absin(4)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -381,8 +416,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'H2O volume mixing ratio------' ) THEN
           idx = absin(9)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i)         = + absod(idx, i) / extco
@@ -393,8 +430,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'SO2 volume mixing ratio------' ) THEN
           idx = absin(5)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i) = + absod(idx, i) / extco
@@ -405,8 +444,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'HCHO volume mixing ratio------' ) THEN
           idx = absin(6)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i)         = + absod(idx, i) / extco
@@ -417,8 +458,10 @@ contains
         ELSE IF ( profilewf_names(q) == 'OCLO volume mixing ratio------' ) THEN
           idx = absin(7)
           IF (idx < 1) THEN
-            WRITE(www_lun, *) idx, 'This gas is not modeled. No WF can be done!!!'
-            problems = .TRUE.; RETURN
+            WRITE(www_lun, *) idx, &
+                 'This gas is not modeled. No WF can be done!!!'
+            problems = .TRUE.
+            RETURN
           ENDIF
           l_omega_total_input(q, i) = - absod(idx, i) / extco
           l_deltau_vert_input(q, i)         = + absod(idx, i) / extco
@@ -427,8 +470,8 @@ contains
           !  w.r.t average temperature of layer
           !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           !  no variation of phase functions
-          !  Assume no effects on air density              
-        ELSE IF ( profilewf_names(q) == 'average temperature of layer---' ) THEN
+          !  Assume no effects on air density
+        ELSE IF ( profilewf_names(q) == 'average temperature of layer---') THEN
           l_omega_total_input(q, i) = - SUM(absod(:, i) * eta(:, i)) / extco
           l_deltau_vert_input(q, i) = + SUM(absod(:, i) * eta(:, i)) / extco
           !l_greekmat_total_input(q, : , i, :) = ZERO
@@ -436,7 +479,7 @@ contains
           !  w.r.t average pressure of layer
           !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           !  no variation of phase functions
-        ELSE IF ( profilewf_names(q) == 'average pressure of layer------' ) THEN
+        ELSE IF ( profilewf_names(q) == 'average pressure of layer------') THEN
 
           pvar = extco_r/ extco
           l_omega_total_input(q, i) = ((ONE - pvar) * scaco_input(1) - &
@@ -446,16 +489,18 @@ contains
 
           !  w.r.t rayleigh soptical thickness
           ! xliu: August 12, 2008
-          !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-        ELSE IF ( profilewf_names(q) == 'rayleigh optical thickness-----' ) THEN
+          !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ELSE IF ( profilewf_names(q) == 'rayleigh optical thickness-----') THEN
           pvar = scaco_r / extco
-          l_omega_total_input(q,i) = (1.0 - omega_total_input(i)) * scaco_r / extco / omega_total_input(i)
+          l_omega_total_input(q,i) = (1.0 - omega_total_input(i)) * &
+               scaco_r / extco / omega_total_input(i)
           l_deltau_vert_input(q,i) = pvar
           l_greekmat_total_input(q, 0:ngreek_moments_input, i, :) = ZERO
           DO j = 0, ngreek_moments_input
             DO k = 1, nactgksec
               IF (phasmoms_total_input(j, k) /= 0.0) THEN
-                l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, 1) - phasmoms_total_input(j, k) ) &
+                l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, 1) - &
+                     phasmoms_total_input(j, k) ) &
                      / phasmoms_total_input(j, k) * scaco_a / scaco
               ELSE
                 l_phasmoms_total_input(q, j, k) = 0.0
@@ -464,11 +509,12 @@ contains
           ENDDO
           l_greekmat_total_input(q, 0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
                l_phasmoms_total_input(q, 0:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-          IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
-               = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)          
-        ELSE IF ( profilewf_names(q) == 'rayleigh scattering coefficient' ) THEN
-          !  xliu: April 13, 2007 
-          !  Still need to consider the variation in phase function  
+          IF ( nactgkmatc > 1 )  &
+               l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
+               = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
+        ELSE IF ( profilewf_names(q) == 'rayleigh scattering coefficient') THEN
+          !  xliu: April 13, 2007
+          !  Still need to consider the variation in phase function
           pvar = scaco_r / extco
           l_omega_total_input(q, i) = ((ONE - pvar) * scaco_input(1) - &
                pvar * (scaco - scaco_input(1)) ) / scaco
@@ -477,20 +523,22 @@ contains
           !l_greekmat_total_input(q, : , i, :) = ZERO
 
           !  w.r.t aerosol extinction coefficient / aerosol optical thickness
-          !  aerosol scattering albedo does not change   
+          !  aerosol scattering albedo does not change
           !  xliu: April 13, 2007 (consider the variation in phase function)
-        ELSE IF ( profilewf_names(q) == 'aerosol extinction coefficient-' ) THEN
+        ELSE IF ( profilewf_names(q) == 'aerosol extinction coefficient-') THEN
           IF (aeridx > 0) THEN
             l_deltau_vert_input(q,i) = + extco_a / extco
-            l_omega_total_input(q,i) = (scaco_a  / extco_a - omega_total_input(i) ) &
+            l_omega_total_input(q,i) = (scaco_a  / extco_a - &
+                 omega_total_input(i) ) &
                  / omega_total_input(i)  * extco_a / extco
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, :) = ZERO
             DO j = 0, ngreek_moments_input
               DO k = 1, nactgksec
                 IF (phasmoms_total_input(j, k) /= 0.0) THEN
-                  l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, aeridx) &
-                       - phasmoms_total_input(j, k) ) / phasmoms_total_input(j, k) &
-                       * scaco_a / scaco
+                  l_phasmoms_total_input(q, j, k) = &
+                       ( phasmoms_input(j, k, aeridx) &
+                       - phasmoms_total_input(j, k) ) / &
+                       phasmoms_total_input(j, k) * scaco_a / scaco
                 ELSE
                   l_phasmoms_total_input(q, j, k) = 0.0
                 ENDIF
@@ -498,8 +546,9 @@ contains
             ENDDO
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
                  l_phasmoms_total_input(q, 0:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-            IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
-                 = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
+            IF ( nactgkmatc > 1 )  &
+                 l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) =&
+                 -l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
             !print *, maxval(l_greekmat_total_input), minval(l_greekmat_total_input)
             !print *, i, l_deltau_vert_input(q,i), l_omega_total_input(q,i)
             !WRITE(www_lun, '(6D14.6)') (l_phasmoms_total_input(1, j, 1:nactgksec), j = 0, ngreek_moments_input)
@@ -507,7 +556,7 @@ contains
           ENDIF
           !  w.r.t  aerosol scattering coefficient / single scattering albedo
           !  aerosol optical thickness will not change
-        ELSE IF ( profilewf_names(q) == 'aerosol scattering coefficient-' ) THEN
+        ELSE IF ( profilewf_names(q) == 'aerosol scattering coefficient-') THEN
           IF (aeridx > 0) THEN
             l_deltau_vert_input(q,i) = ZERO
             l_omega_total_input(q,i) = scaco_a  / omega_total_input(i) / extco
@@ -515,9 +564,10 @@ contains
             DO j = 0, ngreek_moments_input
               DO k = 1, nactgksec
                 IF (phasmoms_total_input(j, k) /= 0.0) THEN
-                  l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, aeridx) &
-                       - phasmoms_total_input(j, k) ) / phasmoms_total_input(j, k) &
-                       * scaco_a / scaco
+                  l_phasmoms_total_input(q, j, k) = &
+                       ( phasmoms_input(j, k, aeridx) &
+                       - phasmoms_total_input(j, k) ) / &
+                       phasmoms_total_input(j, k) * scaco_a / scaco
                 ELSE
                   l_phasmoms_total_input(q, j, k) = 0.0
                 ENDIF
@@ -525,22 +575,25 @@ contains
             ENDDO
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
                  l_phasmoms_total_input(q, 0:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-            IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
-                 = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
+            IF ( nactgkmatc > 1 )  &
+                 l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) = &
+                 -l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
           ENDIF
           !   w.r.t cloud extinction coefficient / optical thickness
-        ELSE IF ( profilewf_names(q) == 'cloud extinction coefficient---' ) THEN
+        ELSE IF ( profilewf_names(q) == 'cloud extinction coefficient---') THEN
           IF (cldidx > 0) THEN
             l_deltau_vert_input(q,i) = + extco_c / extco
-            l_omega_total_input(q,i) = (scaco_c  / extco_c - omega_total_input(i) ) &
+            l_omega_total_input(q,i) = (scaco_c  / extco_c - &
+                 omega_total_input(i) ) &
                  / omega_total_input(i)  * extco_c / extco
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, :) = ZERO
             DO j = 0, ngreek_moments_input
               DO k = 1, nactgksec
                 IF (phasmoms_total_input(j, k) /= 0.0) THEN
-                  l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, cldidx) &
-                       - phasmoms_total_input(j, k) ) / phasmoms_total_input(j, k) &
-                       * scaco_a / scaco
+                  l_phasmoms_total_input(q, j, k) = &
+                       ( phasmoms_input(j, k, cldidx) &
+                       - phasmoms_total_input(j, k) ) / &
+                       phasmoms_total_input(j, k) * scaco_a / scaco
                 ELSE
                   l_phasmoms_total_input(q, j, k) = 0.0
                 ENDIF
@@ -548,12 +601,13 @@ contains
             ENDDO
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
                  l_phasmoms_total_input(0, 1:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-            IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
-                 = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
+            IF ( nactgkmatc > 1 )  &
+                 l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) = &
+                 -l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
           ENDIF
 
           !  w.r.t clouds scattering coefficient
-        ELSE IF ( profilewf_names(q) == 'cloud scattering coefficient---' ) THEN
+        ELSE IF ( profilewf_names(q) == 'cloud scattering coefficient---') THEN
           IF (cldidx > 0) THEN
             l_deltau_vert_input(q,i) = ZERO
             l_omega_total_input(q,i) = scaco_c  / omega_total_input(i) / extco
@@ -561,9 +615,10 @@ contains
             DO j = 0, ngreek_moments_input
               DO k = 1, nactgksec
                 IF (phasmoms_total_input(j, k) /= 0.0) THEN
-                  l_phasmoms_total_input(q, j, k) = ( phasmoms_input(j, k, cldidx) &
-                       - phasmoms_total_input(j, k) ) / phasmoms_total_input(j, k) &
-                       * scaco_a / scaco
+                  l_phasmoms_total_input(q, j, k) = &
+                       ( phasmoms_input(j, k, cldidx) &
+                       - phasmoms_total_input(j, k) ) / &
+                       phasmoms_total_input(j, k) * scaco_a / scaco
                 ELSE
                   l_phasmoms_total_input(q, j, k) = 0.0
                 ENDIF
@@ -571,16 +626,18 @@ contains
             ENDDO
             l_greekmat_total_input(q, 0:ngreek_moments_input, i, greekmat_idxs(1:nactgkmatc)) = &
                  l_phasmoms_total_input(q, 0:ngreek_moments_input, phasmoms_idxs(1:nactgkmatc))
-            IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
-                 = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
+            IF ( nactgkmatc > 1 ) &
+                 l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) = &
+                 -l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
           ENDIF
         ENDIF ! end selection of weighting function
       ENDDO           ! n_totalatmos_wfs loop
-      !ENDIF             ! end of do_linearization    
+      !ENDIF             ! end of do_linearization
     ENDDO              ! layer loop
 
     deltau(1:nlayers) = deltau_vert_input(1:nlayers)
-    delsca(1:nlayers) = deltau_vert_input(1:nlayers) * omega_total_input(1:nlayers)
+    delsca(1:nlayers) = deltau_vert_input(1:nlayers) * &
+         omega_total_input(1:nlayers)
     delo3abs(1:nlayers) = absod(1, 1:nlayers)
 
 
@@ -601,7 +658,7 @@ contains
     !        ENDDO
     !     ENDDO
     !  ENDIF
-    !   
+    !
     !  ! Prepare for spherical attenuation
     !  IF ( .NOT. do_chapman_function ) THEN
     !     CALL PREPARE_SPHERICAL (nlayers, do_plane_parallel, beam_szas(1), earth_radius, &
@@ -614,99 +671,99 @@ contains
 
 
 
-!  Unused
-!
-!  ! ===============================================================
-!  ! Modified from provided routine in LODORT V23 by Rob (F77->F90)
-!  ! This routine is not consistent with CHAPMAN_FUNCTION, maybe sth.
-!  ! is wrong
-!  ! ===============================================================
-!
-!  SUBROUTINE PREPARE_SPHERICAL (nlayers, do_plane_parallel,  input_sunzen, &
-!       re, ext, z_grid, tauthick_input, sunlocal_input )
-!
-!    USE OMSAO_precision_module
-!    USE OMSAO_parameters_module, ONLY : deg2rad
-!    IMPLICIT NONE
-!
-!    !  Input arguments
-!    INTEGER, INTENT(IN)	:: nlayers
-!    LOGICAL, INTENT(IN)	:: do_plane_parallel
-!    REAL (KIND=dp), INTENT(IN)   :: input_sunzen, re
-!    REAL (KIND=dp), DIMENSION (0:nlayers), INTENT(IN) :: z_grid
-!    REAL (KIND=dp), DIMENSION (nlayers), INTENT(IN)   :: ext
-!
-!    !  Output
-!    REAL (KIND=dp), DIMENSION (nlayers, nlayers), INTENT(OUT) :: tauthick_input
-!    REAL (KIND=dp), DIMENSION (nlayers), INTENT(OUT)          :: sunlocal_input
-!
-!    !  local variables
-!    INTEGER        :: n, j, m
-!    REAL (KIND=dp) :: gm_toa, th_toa, th0, th1, gm0, gm1
-!    REAL (KIND=dp) :: h(0:nlayers), delz, taup, mu_toa
-!    REAL (KIND=dp) :: z_dIff, z_0, z, const0
-!    REAL (KIND=dp) :: x, xd, cumdep, s2, hf, deltm, delt
-!
-!
-!    !  get spherical optical depths
-!    !  ----------------------------
-!    !  prepare spherical attenuation (shell geometry)
-!
-!    IF ( .NOT. do_plane_parallel ) THEN
-!
-!      mu_toa = COS ( input_sunzen * deg2rad )
-!      gm_toa = SQRT ( 1.0d0 - mu_toa * mu_toa )
-!      th_toa = ASIN (gm_toa)
-!      h(0:nlayers) = z_grid(0:nlayers) + re
-!      const0 = gm_toa / h(0)
-!      cumdep = 0.0d0
-!
-!      DO n = 1, nlayers
-!        delz = z_grid(n-1)-z_grid(n)
-!        z_diff   = delz
-!        z_0 = z_grid(n-1)
-!        z  = z_0
-!        DO j = 1, 1
-!          z = z - z_dIFf
-!          x = z_0 - z
-!          xd = x + cumdep
-!          hf = h(0) - xd
-!          gm0 = const0 * hf
-!          th0 = ASIN ( gm0 )
-!          taup = 0.0d0
-!          DO m = 1, n-1
-!            gm1 = h(m-1) * gm0 / h(m)
-!            th1 = ASIN(gm1)
-!            s2 = h(m-1) * SIN(th1-th0) / gm1
-!            IF ( j == 1 ) tauthick_input(n,m) = ext(m) * s2
-!            taup = taup + ext(m) * s2
-!            th0 = th1
-!            gm0 = gm1        
-!          ENDDO
-!          s2 = h(n-1)* SIN(th_toa-th0) / gm_toa
-!          taup = taup + ext(n) * s2
-!          IF ( j== 1 ) tauthick_input(n,n) = ext(n) * s2
-!        ENDDO
-!        cumdep = xd
-!        sunlocal_input(n) = mu_toa
-!      ENDDO
-!    ELSE
-!
-!      mu_toa = COS( input_sunzen * deg2rad )
-!      DO n = 1, nlayers
-!        sunlocal_input(n) = mu_toa
-!        delz = z_grid(n-1)-z_grid(n)
-!        delt = ext(n) * delz
-!        tauthick_input(n,n) = delt/mu_toa
-!        DO m = 1, n-1
-!          deltm = ext(m) * delz
-!          tauthick_input(n,m) = deltm / mu_toa
-!        ENDDO
-!      ENDDO
-!
-!    ENDIF
-!
-!  END SUBROUTINE PREPARE_SPHERICAL
+  !  Unused
+  !
+  !  ! ===============================================================
+  !  ! Modified from provided routine in LODORT V23 by Rob (F77->F90)
+  !  ! This routine is not consistent with CHAPMAN_FUNCTION, maybe sth.
+  !  ! is wrong
+  !  ! ===============================================================
+  !
+  !  SUBROUTINE PREPARE_SPHERICAL (nlayers, do_plane_parallel,  input_sunzen, &
+  !       re, ext, z_grid, tauthick_input, sunlocal_input )
+  !
+  !    USE OMSAO_precision_module
+  !    USE OMSAO_parameters_module, ONLY : deg2rad
+  !    IMPLICIT NONE
+  !
+  !    !  Input arguments
+  !    INTEGER, INTENT(IN)	:: nlayers
+  !    LOGICAL, INTENT(IN)	:: do_plane_parallel
+  !    REAL (KIND=dp), INTENT(IN)   :: input_sunzen, re
+  !    REAL (KIND=dp), DIMENSION (0:nlayers), INTENT(IN) :: z_grid
+  !    REAL (KIND=dp), DIMENSION (nlayers), INTENT(IN)   :: ext
+  !
+  !    !  Output
+  !    REAL (KIND=dp), DIMENSION (nlayers, nlayers), INTENT(OUT) :: tauthick_input
+  !    REAL (KIND=dp), DIMENSION (nlayers), INTENT(OUT)          :: sunlocal_input
+  !
+  !    !  local variables
+  !    INTEGER        :: n, j, m
+  !    REAL (KIND=dp) :: gm_toa, th_toa, th0, th1, gm0, gm1
+  !    REAL (KIND=dp) :: h(0:nlayers), delz, taup, mu_toa
+  !    REAL (KIND=dp) :: z_dIff, z_0, z, const0
+  !    REAL (KIND=dp) :: x, xd, cumdep, s2, hf, deltm, delt
+  !
+  !
+  !    !  get spherical optical depths
+  !    !  ----------------------------
+  !    !  prepare spherical attenuation (shell geometry)
+  !
+  !    IF ( .NOT. do_plane_parallel ) THEN
+  !
+  !      mu_toa = COS ( input_sunzen * deg2rad )
+  !      gm_toa = SQRT ( 1.0d0 - mu_toa * mu_toa )
+  !      th_toa = ASIN (gm_toa)
+  !      h(0:nlayers) = z_grid(0:nlayers) + re
+  !      const0 = gm_toa / h(0)
+  !      cumdep = 0.0d0
+  !
+  !      DO n = 1, nlayers
+  !        delz = z_grid(n-1)-z_grid(n)
+  !        z_diff   = delz
+  !        z_0 = z_grid(n-1)
+  !        z  = z_0
+  !        DO j = 1, 1
+  !          z = z - z_dIFf
+  !          x = z_0 - z
+  !          xd = x + cumdep
+  !          hf = h(0) - xd
+  !          gm0 = const0 * hf
+  !          th0 = ASIN ( gm0 )
+  !          taup = 0.0d0
+  !          DO m = 1, n-1
+  !            gm1 = h(m-1) * gm0 / h(m)
+  !            th1 = ASIN(gm1)
+  !            s2 = h(m-1) * SIN(th1-th0) / gm1
+  !            IF ( j == 1 ) tauthick_input(n,m) = ext(m) * s2
+  !            taup = taup + ext(m) * s2
+  !            th0 = th1
+  !            gm0 = gm1
+  !          ENDDO
+  !          s2 = h(n-1)* SIN(th_toa-th0) / gm_toa
+  !          taup = taup + ext(n) * s2
+  !          IF ( j== 1 ) tauthick_input(n,n) = ext(n) * s2
+  !        ENDDO
+  !        cumdep = xd
+  !        sunlocal_input(n) = mu_toa
+  !      ENDDO
+  !    ELSE
+  !
+  !      mu_toa = COS( input_sunzen * deg2rad )
+  !      DO n = 1, nlayers
+  !        sunlocal_input(n) = mu_toa
+  !        delz = z_grid(n-1)-z_grid(n)
+  !        delt = ext(n) * delz
+  !        tauthick_input(n,n) = delt/mu_toa
+  !        DO m = 1, n-1
+  !          deltm = ext(m) * delz
+  !          tauthick_input(n,m) = deltm / mu_toa
+  !        ENDDO
+  !      ENDDO
+  !
+  !    ENDIF
+  !
+  !  END SUBROUTINE PREPARE_SPHERICAL
 
 
 
@@ -720,19 +777,19 @@ contains
   ! ==============================================================
 
   !SUBROUTINE GET_RAYCOF_DEPOL(lamda, raycof, depol)
-  !  
+  !
   !  USE OMSAO_precision_module
   !  IMPLICIT NONE
-  ! 
+  !
   !  !	Input/Output
   !  REAL (KIND=dp), INTENT(IN)  :: lamda
   !  REAL (KIND=dp), INTENT(OUT) :: raycof, depol
-  !  
+  !
   !  !	Local variables
   !  REAL (KIND=dp) :: sig, sig2, sig2p, sig4, fk_n2, fk_o2, fking
   !  REAL (KIND=dp), PARAMETER :: abod = 1.0455996d0, bbod = -341.29061d0, &
   !       cbod = -0.90230850d0, dbod = 0.0027059889d0, ebod = -85.968563d0
-  ! 
+  !
   !  !	Rayleigh coefficient
   !  ! Using bodhaine et al, j. atm. oceanic tech. 16, 1854-1861, 1999.
   !  sig =    1.0d3 / lamda
@@ -741,9 +798,9 @@ contains
   !  sig4 =   sig2 * sig2
   !  raycof = (abod + bbod * sig2 + cbod * sig2p) &
   !       / (1.d0 + dbod * sig2 + ebod * sig2p) * 1.d-28
-  !  
+  !
   !  !	Derivation of depolarization factor d from king factors for air,
-  !  !	fking = (6 + 3.depol) / (6 - 7.depol) 
+  !  !	fking = (6 + 3.depol) / (6 - 7.depol)
   !  !	bodhaine et al., 370 ppmv co2
   !  fk_n2 = 1.034d0 + 3.17d-4 * sig2
   !  fk_o2 = 1.096d0 + 1.385d-3 * sig2 + 1.448d-4 * sig4
@@ -753,9 +810,9 @@ contains
   !  !     0.037d0 * fk_co2) / (78.084d0 + 20.946d0 + 0.934d0 + 0.037d0)
   !  fking = (78.084d0 * fk_n2 + 20.946d0 * fk_o2 + 0.97655d0) / 100.001d0
   !  depol = 6.d0 * (fking - 1.d0) / (3.d0 + 7.d0 * fking)
-  !  
+  !
   !  RETURN
-  !  
+  !
   !END SUBROUTINE GET_RAYCOF_DEPOL
 
 
@@ -785,7 +842,7 @@ contains
          / (1.d0 + dbod * sig2 + ebod * sig2p) * 1.d-28
 
     !	Derivation of depolarization factor d from king factors for air,
-    !	fking = (6 + 3.depol) / (6 - 7.depol) 
+    !	fking = (6 + 3.depol) / (6 - 7.depol)
     !	bodhaine et al., 370 ppmv co2
     fk_n2 = 1.034d0 + 3.17d-4 * sig2
     fk_o2 = 1.096d0 + 1.385d-3 * sig2 + 1.448d-4 * sig4
@@ -861,57 +918,68 @@ contains
 
     IF (first) THEN
 
-      ni0 = n_refspec_pts(1); nref = ni0
+      ni0 = n_refspec_pts(1)
+      nref = ni0
       refwavs(1:nref) = refspec_orig_data(1, 1:ni0, 1)
 
       CALL GET_ALL_RAYCOF_DEPOL(nref, refwavs, ray(1:nref), dep(1:nref))
-      rnorm = 1.0E-25; dnorm = 1.0E-2
-      ray(1:nref) = ray(1:nref) / rnorm; dep(1:nref) = dep(1:nref) / dnorm
+      rnorm = 1.0E-25
+      dnorm = 1.0E-2
+      ray(1:nref) = ray(1:nref) / rnorm
+      dep(1:nref) = dep(1:nref) / dnorm
 
       scalex = 1.0  ! dummy variable here
       get_lowresi0 = .FALSE.
       CALL CORRECT_I0EFFECT(refwavs(1:nref), ray(1:nref), nref, &
-           refspec_orig_data(1, 1:ni0, 1), refspec_orig_data(1, 1:ni0, 2), ni0, &
-           scalex, get_lowresi0, errstat, lowresi0(1:nref))
+           refspec_orig_data(1, 1:ni0, 1), refspec_orig_data(1, 1:ni0, 2), &
+           ni0, scalex, get_lowresi0, errstat, lowresi0(1:nref))
       IF ( errstat /= 0 ) THEN
         WRITE(www_lun, *) 'Error in correcting I0 effect for raycof!!!'
-        problems = .TRUE.; RETURN
+        problems = .TRUE.
+        RETURN
       ENDIF
       CALL CORRECT_I0EFFECT(refwavs(1:nref), dep(1:nref), nref, &
-           refspec_orig_data(1, 1:ni0, 1), refspec_orig_data(1, 1:ni0, 2), ni0, &
-           scalex, get_lowresi0, errstat, lowresi0(1:nref))
+           refspec_orig_data(1, 1:ni0, 1), refspec_orig_data(1, 1:ni0, 2), &
+           ni0, scalex, get_lowresi0, errstat, lowresi0(1:nref))
       IF ( errstat /= 0 ) THEN
         WRITE(www_lun, *) 'Error in correcting I0 effect for depol!!!'
-        problems = .TRUE.; RETURN
+        problems = .TRUE.
+        RETURN
       ENDIF
 
       first = .FALSE.
     ENDIF
 
     ! interpolation
-    CALL BSPLINE(refwavs(1:nref), ray(1:nref), nref, waves, raycof1, nw, errstat)
+    CALL BSPLINE(refwavs(1:nref), ray(1:nref), nref, waves, raycof1, nw, &
+         errstat)
     IF (errstat < 0) THEN
       WRITE(www_lun, *) 'Error in interpolating raycof!!!'
-      problems = .TRUE.; RETURN
+      problems = .TRUE.
+      RETURN
     ENDIF
 
-    CALL BSPLINE(refwavs(1:nref), dep(1:nref), nref, waves, depol1,  nw, errstat)
+    CALL BSPLINE(refwavs(1:nref), dep(1:nref), nref, waves, depol1,  nw, &
+         errstat)
     IF (errstat < 0) THEN
       WRITE(www_lun, *) 'Error in interpolating depol!!!'
-      problems = .TRUE.; RETURN
+      problems = .TRUE.
+      RETURN
     ENDIF
 
     IF (do_bandavg) THEN
       CALL avg_band_effozcrs(waves, raycof1, nw, ntemp, errstat)
       IF ( errstat /= 0 .OR. ntemp /= nw1) THEN
         WRITE(www_lun, *) 'Raycof Spectra Averaging Error: ', nw, nw1, ntemp
-        problems = .TRUE.; RETURN
+        problems = .TRUE.
+        RETURN
       ENDIF
 
       CALL avg_band_effozcrs(waves, depol1, nw, ntemp, errstat)
       IF ( errstat /= 0 .OR. ntemp /= nw1) THEN
         WRITE(www_lun, *) 'Depol Spectra Averaging Error: ', nw, nw1, ntemp
-        problems = .TRUE.; RETURN
+        problems = .TRUE.
+        RETURN
       ENDIF
     ENDIF
 

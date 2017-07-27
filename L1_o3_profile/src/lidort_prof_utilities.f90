@@ -81,8 +81,9 @@ contains
         k = k + 1
 
         IF (k > 1) albpmin0(k)= albpmax0(k-1) + 1 
-        IF (k < n0alb) albpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), MASK=(waves0(1:ncalcp) &
-             >= albmin(i) .AND. waves0(1:ncalcp) < albmax(i))))  
+        IF (k < n0alb) albpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), &
+             MASK=(waves0(1:ncalcp) >= albmin(i) .AND. &
+             waves0(1:ncalcp) < albmax(i))))  
       ENDIF
     ENDDO
 
@@ -93,8 +94,9 @@ contains
         k = k + 1
 
         IF (k > 1) wfcpmin0(k)= wfcpmax0(k-1) + 1 
-        IF (k < n0wfc) wfcpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), MASK=(waves0(1:ncalcp) &
-             >= wfcmin(i) .AND. waves0(1:ncalcp) < wfcmax(i))))  
+        IF (k < n0wfc) wfcpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), &
+             MASK=(waves0(1:ncalcp) >= wfcmin(i) .AND. &
+             waves0(1:ncalcp) < wfcmax(i))))  
       ENDIF
     ENDDO
 
@@ -181,7 +183,7 @@ contains
         ewav = CEILING(invdhw * (winlim(i, 2))) / invdhw 
 
         nsub = NINT((ewav - swav) / dhw0) + 1  
-        hreswav(nhresp+1:nhresp+nsub) = swav + dhw0 * (/(j, j = 0, nsub-1)/)      
+        hreswav(nhresp+1:nhresp+nsub) = swav + dhw0 * (/(j, j = 0, nsub-1)/)
         nhresp = nhresp + nsub
       ENDDO
     ELSE 
@@ -246,7 +248,8 @@ contains
       IF (i == radc_nsegsr) THEN
         lidx = nhresp - 1
       ELSE
-        lidx = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) < radc_lambnd(i+1))))
+        lidx = MINVAL(MAXLOC(hreswav(1:nhresp), &
+             MASK=(hreswav(1:nhresp) < radc_lambnd(i+1))))
       ENDIF
 
       DO j = fidx, lidx
@@ -415,7 +418,8 @@ contains
 
 
       ! Obtain high resolution rayleigh scattering coefficients and depolarization factor
-      CALL GET_ALL_RAYCOF_DEPOL(nhresp, hreswav(1:nhresp), hres_raycof(1:nhresp), hres_depol(1:nhresp))
+      CALL GET_ALL_RAYCOF_DEPOL(nhresp, hreswav(1:nhresp), &
+           hres_raycof(1:nhresp), hres_depol(1:nhresp))
 
       ! Obtain high resolution cross sections of other trace gases (except for O3 and SO2)
       do_so2shi = .FALSE.
@@ -426,26 +430,32 @@ contains
           IF (gasidxs(i) == so2_idx) so2sfidx = fgassidxs(i)
           IF (gasidxs(i) == so2v_idx) so2vsfidx = fgassidxs(i)
 
-          IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. fgassidxs(i) > 0) do_so2shi = .TRUE.
-          IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. use_so2dtcrs) CYCLE
+          IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &
+               fgassidxs(i) > 0) do_so2shi = .TRUE.
+          IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &
+               use_so2dtcrs) CYCLE
           IF (fgassidxs(i) > 0 ) CYCLE
 
           hres_gas(i, 1:nhresp) = 0.0D0
           npts = n_refspec_pts(gasidxs(i))
-          fidx = MINVAL(MINLOC(hreswav(1:nhresp), MASK = (hreswav(1:nhresp) >= &
+          fidx = MINVAL(MINLOC(hreswav(1:nhresp), &
+               MASK = (hreswav(1:nhresp) >= &
                refspec_orig_data(gasidxs(i), 1, 1) .AND. hreswav(1:nhresp)  &
                <= refspec_orig_data(gasidxs(i), npts, 1))))
-          lidx = MINVAL(MAXLOC(hreswav(1:nhresp), MASK = (hreswav(1:nhresp) >= &
+          lidx = MINVAL(MAXLOC(hreswav(1:nhresp), &
+               MASK = (hreswav(1:nhresp) >= &
                refspec_orig_data(gasidxs(i), 1, 1) .AND. hreswav(1:nhresp) &
                <= refspec_orig_data(gasidxs(i), npts, 1))))
 
           IF (lidx > fidx .AND. lidx > 0 .AND. fidx > 0) THEN 
             CALL BSPLINE(refspec_orig_data(gasidxs(i), 1:npts, 1), &
-                 refspec_orig_data(gasidxs(i), 1:npts, 2), npts, hreswav(fidx:lidx), &
-                 hres_gas(i, fidx:lidx), lidx - fidx + 1, errstat) 
+                 refspec_orig_data(gasidxs(i), 1:npts, 2), npts, &
+                 hreswav(fidx:lidx), hres_gas(i, fidx:lidx), &
+                 lidx - fidx + 1, errstat) 
 
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ' : BSPLINE2 error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ' : BSPLINE2 error, errstat = ', &
+                   errstat
               pge_error_status = pge_errstat_error
               RETURN
             ENDIF
@@ -454,20 +464,22 @@ contains
       ENDDO
 
       ! Obtain original O3 cross section (quadratic or individual T, shift, T-depen)
-      CALL READ_TXCRS(hreswav(1:nhresp), nhresp, 1, mxsect, o3crs0, no3, o3ts, &
-           o3tdepend, no3t, o3normc, problems)
+      CALL READ_TXCRS(hreswav(1:nhresp), nhresp, 1, mxsect, o3crs0, no3, &
+           o3ts, o3tdepend, no3t, o3normc, problems)
       IF (problems) THEN
-        WRITE(www_lun, *) modulename, ' : Error in reading ozone cross sections!!!'
+        WRITE(www_lun, *) modulename, &
+             ' : Error in reading ozone cross sections!!!'
         pge_error_status = pge_errstat_error
         RETURN
       ENDIF
 
       IF (.NOT. do_o3shi) THEN
         DO i = 1, no3t
-          CALL BSPLINE(o3crs0(0, 1:no3), o3crs0(i, 1:no3), no3, hreswav(1:nhresp), &
-               hres_o3(i, 1:nhresp), nhresp, errstat)
+          CALL BSPLINE(o3crs0(0, 1:no3), o3crs0(i, 1:no3), no3, &
+               hreswav(1:nhresp), hres_o3(i, 1:nhresp), nhresp, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', &
+                 errstat
             pge_error_status = pge_errstat_error
             RETURN
           ENDIF
@@ -476,20 +488,22 @@ contains
 
       ! Obtain original SO2 cross section (quadratic or individual T, shift)
       IF (use_so2dtcrs) THEN
-        CALL READ_TXCRS(hreswav(1:nhresp), nhresp, 2, mxsect, so2crs0, nso2, so2ts, &
-             so2tdepend, nso2t, so2normc, problems)
+        CALL READ_TXCRS(hreswav(1:nhresp), nhresp, 2, mxsect, so2crs0, nso2, &
+             so2ts, so2tdepend, nso2t, so2normc, problems)
         IF (problems) THEN
-          WRITE(www_lun, *) modulename, ' : Error in reading SO2 cross sections!!!'
+          WRITE(www_lun, *) modulename, &
+               ' : Error in reading SO2 cross sections!!!'
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
 
         IF (.NOT. do_so2shi) THEN
           DO i = 1, nso2t
-            CALL BSPLINE(so2crs0(0, 1:nso2), so2crs0(i, 1:nso2), nso2, hreswav(1:nhresp), &
-                 hres_so2(i, 1:nhresp), nhresp, errstat)
+            CALL BSPLINE(so2crs0(0, 1:nso2), so2crs0(i, 1:nso2), nso2, &
+                 hreswav(1:nhresp), hres_so2(i, 1:nhresp), nhresp, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', &
+                   errstat
               pge_error_status = pge_errstat_error
               RETURN
             ENDIF
@@ -513,9 +527,11 @@ contains
             lidx = nhresp
           ELSE
             tmp = (winlim(j, 2) + winlim(j+1, 1)) / 2.0
-            lidx = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) <= tmp)))
+            lidx = MINVAL(MAXLOC(hreswav(1:nhresp), &
+                 MASK=(hreswav(1:nhresp) <= tmp)))
           ENDIF
-          delpos(fidx:lidx) =  hreswav(fidx:lidx) - (hreswav(fidx) + hreswav(lidx)) / 2.0
+          delpos(fidx:lidx) =  hreswav(fidx:lidx) - (hreswav(fidx) + &
+               hreswav(lidx)) / 2.0
           IF (osfind(j, 1) > 0) delshi(fidx:lidx) =  o3shi(j, 1) 
 
           DO i = 2, nos
@@ -529,17 +545,20 @@ contains
           fidx = 1
         ELSE
           tmp = (winlim(oswins(1, 1), 1) + winlim(oswins(1, 1) - 1, 2))/2.
-          fidx = MINVAL(MINLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) >= tmp)))
+          fidx = MINVAL(MINLOC(hreswav(1:nhresp), &
+               MASK=(hreswav(1:nhresp) >= tmp)))
         ENDIF
 
         IF (oswins(1, 2) == numwin) THEN
           lidx = nhresp
         ELSE
           tmp = (winlim(oswins(1, 2), 2) + winlim(oswins(1, 2) + 1, 1))/2.
-          lidx = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) <= tmp)))
+          lidx = MINVAL(MAXLOC(hreswav(1:nhresp), &
+               MASK=(hreswav(1:nhresp) <= tmp)))
         ENDIF
 
-        delpos(fidx:lidx) =  hreswav(fidx:lidx) - (hreswav(fidx) + hreswav(lidx)) / 2.0
+        delpos(fidx:lidx) =  hreswav(fidx:lidx) - (hreswav(fidx) + &
+             hreswav(lidx)) / 2.0
         IF (osfind(1, 1) > 0) delshi(fidx:lidx) =  + o3shi(1, 1) 
 
         DO i = 2, nos  
@@ -549,10 +568,12 @@ contains
       ENDIF
 
       DO i = 1, no3t
-        CALL BSPLINE2(o3crs0(0, 1:no3), o3crs0(i, 1:no3), no3, do_o3shi, hreswav(1:nhresp)-delshi, &
-             hres_o3(i, 1:nhresp), hres_o3shi(i, 1:nhresp), nhresp, errstat)
+        CALL BSPLINE2(o3crs0(0, 1:no3), o3crs0(i, 1:no3), no3, do_o3shi, &
+             hreswav(1:nhresp)-delshi, hres_o3(i, 1:nhresp), &
+             hres_o3shi(i, 1:nhresp), nhresp, errstat)
         IF (errstat < 0) THEN
-          WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', errstat
+          WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', &
+               errstat
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
@@ -561,24 +582,29 @@ contains
 
     ! Get ozone cross section at each layer
     IF (num_iter == 0 .OR. do_o3shi .OR. do_tmpwf) THEN
-      IF (o3tdepend .AND. no3t == 3) THEN     ! qudratic T dependent coefficients
+      IF (o3tdepend .AND. no3t == 3) THEN   ! qudratic T dependent coefficients
         DO i = 1, nz
           thet = ts(i) - zerok
-          o3crsz(1:nhresp, i) = (hres_o3(1, 1:nhresp) + hres_o3(2, 1:nhresp) * thet &
-               + hres_o3(3, 1:nhresp) * thet * thet )
+          o3crsz(1:nhresp, i) = (hres_o3(1, 1:nhresp) + &
+               hres_o3(2, 1:nhresp) * thet + &
+               hres_o3(3, 1:nhresp) * thet * thet )
           IF (do_o3shi) THEN
-            o3dadsz(1:nhresp, i) = (hres_o3shi(1, 1:nhresp) + hres_o3shi(2, 1:nhresp) * thet &
-                 + hres_o3shi(3, 1:nhresp) * thet * thet )
+            o3dadsz(1:nhresp, i) = (hres_o3shi(1, 1:nhresp) + &
+                 hres_o3shi(2, 1:nhresp) * thet + &
+                 hres_o3shi(3, 1:nhresp) * thet * thet )
           ENDIF
           IF (do_tmpwf) THEN
-            o3dadtz(1:nhresp, i) = (hres_o3(2, 1:nhresp)  + 2.0 * hres_o3(3, 1:nhresp) * thet)
+            o3dadtz(1:nhresp, i) = (hres_o3(2, 1:nhresp)  + 2.0 * &
+                 hres_o3(3, 1:nhresp) * thet)
           ENDIF
         ENDDO
-      ELSE IF (o3tdepend .AND. no3t == 2) THEN   ! linear T dependent coefficients
+      ELSE IF (o3tdepend .AND. no3t == 2) THEN !linear T dependent coefficients
         DO i = 1, nz
           thet = ts(i) - zerok
-          o3crsz(1:nhresp, i) = hres_o3(1, 1:nhresp) + hres_o3(2, 1:nhresp) * thet 
-          IF (do_o3shi) o3dadsz(1:nhresp, i) = (hres_o3shi(1, 1:nhresp) + hres_o3shi(2, 1:nhresp) * thet)
+          o3crsz(1:nhresp, i) = hres_o3(1, 1:nhresp) + &
+               hres_o3(2, 1:nhresp) * thet 
+          IF (do_o3shi) o3dadsz(1:nhresp, i) = (hres_o3shi(1, 1:nhresp) + &
+               hres_o3shi(2, 1:nhresp) * thet)
           IF (do_tmpwf) o3dadtz(1:nhresp, i) = hres_o3(2, 1:nhresp)
         ENDDO
       ELSE IF (no3t == 1)  THEN           ! only 1 T
@@ -590,17 +616,21 @@ contains
       ELSE IF (no3t == 2) THEN            ! have 2 T values
         DO i = 1, nz
           frac = 1.0 - (ts(i) - o3ts(1)) / (o3ts(2) - o3ts(1))
-          o3crsz(1:nhresp, i) = (frac * hres_o3(1, 1:nhresp) + (1.0 - frac) * hres_o3(2, 1:nhresp))
-          IF (do_o3shi) o3dadsz(1:nhresp, i) = (frac * hres_o3shi(1, 1:nhresp) + &
+          o3crsz(1:nhresp, i) = (frac * hres_o3(1, 1:nhresp) + &
+               (1.0 - frac) * hres_o3(2, 1:nhresp))
+          IF (do_o3shi) o3dadsz(1:nhresp, i) = &
+               (frac * hres_o3shi(1, 1:nhresp) + &
                (1.0 - frac) * hres_o3shi(2, 1:nhresp))
-          IF (do_tmpwf) o3dadtz(1:nhresp, i) = (hres_o3(1, 1:nhresp) - hres_o3(2, 1:nw)) / (o3ts(1) - o3ts(2))
+          IF (do_tmpwf) o3dadtz(1:nhresp, i) = &
+               (hres_o3(1, 1:nhresp) - hres_o3(2, 1:nw)) / (o3ts(1) - o3ts(2))
         END DO
       ELSE  IF (.NOT. o3tdepend .AND. no3t > 3) THEN  ! have more than n T     
-        DO i = 1, nhresp                     ! Interpolate/extrapolate over T   
+        DO i = 1, nhresp                     ! Interpolate/extrapolate over T
           CALL INTERPOL2(o3ts(1:no3t), hres_o3(1:no3t,i), no3t, do_tmpwf, ts, &
                o3crsz(i, 1:nz), o3dadtz(i, 1:nz),nz, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': INTERPOL2 error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, ': INTERPOL2 error, errstat = ', &
+                 errstat
             pge_error_status = pge_errstat_error
             RETURN
           ENDIF
@@ -609,26 +639,31 @@ contains
             CALL INTERPOL(o3ts(1:no3t), hres_o3shi(1:no3t,i), no3t, ts, &
                  o3dadsz(i, 1:nz), nz, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', &
+                   errstat
               pge_error_status = pge_errstat_error
               RETURN
             ENDIF
           ENDIF
         ENDDO
       ELSE 
-        WRITE(www_lun, *) modulename, ': Such type of ozone cross sections not implemented' 
+        WRITE(www_lun, *) modulename, &
+             ': Such type of ozone cross sections not implemented' 
         pge_error_status = pge_errstat_error
         RETURN
       ENDIF
       IF (do_tmpwf) THEN
-        o3dadtz(1:nhresp, 1:nz) = o3dadtz(1:nhresp, 1:nz) / o3crsz(1:nhresp, 1:nz)
+        o3dadtz(1:nhresp, 1:nz) = o3dadtz(1:nhresp, 1:nz) / &
+             o3crsz(1:nhresp, 1:nz)
       ENDIF
       IF (do_o3shi) THEN
-        o3dadsz(1:nhresp, 1:nz) = o3dadsz(1:nhresp, 1:nz) / o3crsz(1:nhresp, 1:nz)
+        o3dadsz(1:nhresp, 1:nz) = o3dadsz(1:nhresp, 1:nz) / &
+             o3crsz(1:nhresp, 1:nz)
       ENDIF
       o3crsz(1:nhresp, 1:nz) = o3crsz(1:nhresp, 1:nz) * o3normc
       IF (wrtozcrs .AND. o3tdepend .AND. no3t <= 3) &
-           abscrs_qtdepen(1:3, 1:ncalcp) = hres_o3(1:3, radcidxs(1:ncalcp)) * o3normc
+           abscrs_qtdepen(1:3, 1:ncalcp) = &
+           hres_o3(1:3, radcidxs(1:ncalcp)) * o3normc
     ENDIF
     allcrs(1:ncalcp, 1, 1:nz) = o3crsz(radcidxs(1:ncalcp), 1:nz)
     DO i = 1, nz
@@ -641,11 +676,12 @@ contains
         DO i = 1, nso2t
           idum = MAX(so2sfidx, so2vsfidx)
           tmp = fitvar_rad(rmask_fitvar_rad(idum))
-          CALL BSPLINE2(so2crs0(0, 1:nso2), so2crs0(i, 1:nso2), nso2, do_so2shi, &
-               hreswav(1:nhresp) - tmp, hres_so2(i, 1:nhresp), hres_so2shi(i, 1:nhresp), &
-               nhresp, errstat)
+          CALL BSPLINE2(so2crs0(0, 1:nso2), so2crs0(i, 1:nso2), nso2, &
+               do_so2shi, hreswav(1:nhresp) - tmp, hres_so2(i, 1:nhresp), &
+               hres_so2shi(i, 1:nhresp), nhresp, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': BSPLINE2 error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, &
+                 ': BSPLINE2 error, errstat = ', errstat
             pge_error_status = pge_errstat_error
             RETURN
           ENDIF
@@ -653,21 +689,25 @@ contains
       ENDIF
 
       IF (num_iter == 0 .OR. do_so2shi .OR. do_tmpwf) THEN
-        IF (so2tdepend .AND. nso2t == 3) THEN     ! qudratic T dependent coefficients
+        IF (so2tdepend .AND. nso2t == 3) THEN ! quadratic T dependent coefficients
           DO i = 1, nz
             thet = ts(i) - zerok
-            so2crsz(1:nhresp, i) = (hres_so2(1, 1:nhresp) + hres_so2(2, 1:nhresp) * thet &
-                 + hres_so2(3, 1:nhresp) * thet * thet )
+            so2crsz(1:nhresp, i) = (hres_so2(1, 1:nhresp) + &
+                 hres_so2(2, 1:nhresp) * thet + &
+                 hres_so2(3, 1:nhresp) * thet * thet )
             IF (do_so2shi) THEN
-              so2dadsz(1:nhresp, i) = (hres_so2shi(1, 1:nhresp) + hres_so2shi(2, 1:nhresp) * thet &
-                   + hres_so2shi(3, 1:nhresp) * thet * thet )
+              so2dadsz(1:nhresp, i) = (hres_so2shi(1, 1:nhresp) + &
+                   hres_so2shi(2, 1:nhresp) * thet + &
+                   hres_so2shi(3, 1:nhresp) * thet * thet )
             ENDIF
           ENDDO
-        ELSE IF (so2tdepend .AND. nso2t == 2) THEN   ! linear T dependent coefficients
+        ELSE IF (so2tdepend .AND. nso2t == 2) THEN ! linear T dependent coefficients
           DO i = 1, nz
             thet = ts(i) - zerok
-            so2crsz(1:nhresp, i) = hres_so2(1, 1:nhresp) + hres_so2(2, 1:nhresp) * thet 
-            IF (do_so2shi) so2dadsz(1:nhresp, i) = (hres_so2shi(1, 1:nhresp) + hres_so2shi(2, 1:nhresp) * thet)
+            so2crsz(1:nhresp, i) = hres_so2(1, 1:nhresp) + &
+                 hres_so2(2, 1:nhresp) * thet 
+            IF (do_so2shi) so2dadsz(1:nhresp, i) = &
+                 (hres_so2shi(1, 1:nhresp) + hres_so2shi(2, 1:nhresp) * thet)
           ENDDO
         ELSE IF (nso2t == 1)  THEN           ! only 1 T
           DO i = 1, nz
@@ -677,36 +717,42 @@ contains
         ELSE IF (nso2t == 2) THEN            ! have 2 T values
           DO i = 1, nz
             frac = 1.0 - (ts(i) - so2ts(1)) / (so2ts(2) - so2ts(1))
-            so2crsz(1:nhresp, i) = (frac * hres_so2(1, 1:nhresp) + (1.0 - frac) * hres_so2(2, 1:nhresp))
-            IF (do_so2shi) so2dadsz(1:nhresp, i) = (frac * hres_so2shi(1, 1:nhresp) + &
+            so2crsz(1:nhresp, i) = (frac * hres_so2(1, 1:nhresp) + &
+                 (1.0 - frac) * hres_so2(2, 1:nhresp))
+            IF (do_so2shi) so2dadsz(1:nhresp, i) = &
+                 (frac * hres_so2shi(1, 1:nhresp) + &
                  (1.0 - frac) * hres_so2shi(2, 1:nhresp))
           END DO
-        ELSE IF (.NOT. so2tdepend .AND. nso2t >= 3) THEN  ! have more than n T     
+        ELSE IF (.NOT. so2tdepend .AND. nso2t >= 3) THEN  ! have more than n T
           DO i = 1, nhresp         ! interpolate/extrapolate over T   
             CALL INTERPOL(so2ts(1:nso2t), hres_so2(1:nso2t,i), nso2t, ts,  &
                  so2crsz(i, 1:nz), nz, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', &
+                   errstat
               pge_error_status = pge_errstat_error
               RETURN
             ENDIF
 
             IF (do_so2shi) THEN 
-              CALL INTERPOL(so2ts(1:nso2t), hres_so2shi(1:nso2t,i), nso2t, ts, &
-                   so2dadsz(i, 1:nz), nz, errstat)
+              CALL INTERPOL(so2ts(1:nso2t), hres_so2shi(1:nso2t,i), nso2t, &
+                   ts, so2dadsz(i, 1:nz), nz, errstat)
               IF (errstat < 0) THEN
-                WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
+                WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', &
+                     errstat
                 pge_error_status = pge_errstat_error
                 RETURN
               ENDIF
             ENDIF
           ENDDO
         ELSE 
-          WRITE(www_lun, *) modulename, ': Such type of SO2 cross sections not implemented' 
+          WRITE(www_lun, *) modulename, &
+               ': Such type of SO2 cross sections not implemented' 
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
-        IF (do_so2shi) so2dadsz(1:nhresp, 1:nz) = so2dadsz(1:nhresp, 1:nz) / so2crsz(1:nhresp, 1:nz)
+        IF (do_so2shi) so2dadsz(1:nhresp, 1:nz) = &
+             so2dadsz(1:nhresp, 1:nz) / so2crsz(1:nhresp, 1:nz)
         so2crsz(1:nhresp, 1:nz) = so2crsz(1:nhresp, 1:nz) * so2normc
       ENDIF
     ENDIF
@@ -721,16 +767,20 @@ contains
       IF (fgasidxs(i) > 0 ) THEN
         nfgas1 = nfgas1 + 1
 
-        IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. use_so2dtcrs) THEN
-          allcrs(1:ncalcp, nfgas1, 1:nz) = so2crsz(radcidxs(1:ncalcp), 1:nz) / refspec_norm(gasidxs(i))
+        IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &
+             use_so2dtcrs) THEN
+          allcrs(1:ncalcp, nfgas1, 1:nz) = &
+               so2crsz(radcidxs(1:ncalcp), 1:nz) / refspec_norm(gasidxs(i))
           IF (do_so2shi) THEN
             DO j = 1, nz
-              so2dads(1:nhresp) = so2dads(1:nhresp) + so2dadsz(1:nhresp, j) * allcol(nfgas1, j)
+              so2dads(1:nhresp) = so2dads(1:nhresp) + &
+                   so2dadsz(1:nhresp, j) * allcol(nfgas1, j)
               so2sum = so2sum + allcol(nfgas1, j)
             ENDDO
           ENDIF
           DO j = 1, nz
-            hresgabs(1:nhresp, j) = hresgabs(1:nhresp, j) + so2crsz(1:nhresp, j) &
+            hresgabs(1:nhresp, j) = hresgabs(1:nhresp, j) + &
+                 so2crsz(1:nhresp, j) &
                  / refspec_norm(gasidxs(i)) * allcol(nfgas1, j)
           ENDDO
         ELSE
@@ -740,20 +790,24 @@ contains
             tmpwav = hreswav(1:nhresp) - fitvar_rad(idum)  ! wavelength shifts
             hres_gas(i, 1:nhresp) = 0.0D0
             npts = n_refspec_pts(gasidxs(i))
-            fidx = MINVAL(MINLOC(tmpwav(1:nhresp), MASK = (tmpwav(1:nhresp) >= &
+            fidx = MINVAL(MINLOC(tmpwav(1:nhresp), &
+                 MASK = (tmpwav(1:nhresp) >= &
                  refspec_orig_data(gasidxs(i), 1, 1) .AND. tmpwav(1:nhresp)  &
                  <= refspec_orig_data(gasidxs(i), npts, 1))))
-            lidx = MINVAL(MAXLOC(tmpwav(1:nhresp), MASK = (tmpwav(1:nhresp) >= &
+            lidx = MINVAL(MAXLOC(tmpwav(1:nhresp), &
+                 MASK = (tmpwav(1:nhresp) >= &
                  refspec_orig_data(gasidxs(i), 1, 1) .AND. tmpwav(1:nhresp) &
                  <= refspec_orig_data(gasidxs(i), npts, 1))))
 
             IF (lidx > fidx .AND. lidx > 0 .AND. fidx > 0) THEN 
               CALL BSPLINE2(refspec_orig_data(gasidxs(i), 1:npts, 1), &
-                   refspec_orig_data(gasidxs(i), 1:npts, 2), npts, do_shi, tmpwav(fidx:lidx), &
-                   hres_gas(i, fidx:lidx), hres_gasshi(i, fidx:lidx), lidx - fidx + 1, errstat) 
+                   refspec_orig_data(gasidxs(i), 1:npts, 2), npts, do_shi, &
+                   tmpwav(fidx:lidx), hres_gas(i, fidx:lidx), &
+                   hres_gasshi(i, fidx:lidx), lidx - fidx + 1, errstat) 
 
               IF (errstat < 0) THEN
-                WRITE(www_lun, *) modulename, ' : BSPLINE2 error, errstat = ', errstat
+                WRITE(www_lun, *) modulename, &
+                     ' : BSPLINE2 error, errstat = ', errstat
                 pge_error_status = pge_errstat_error
                 RETURN
               ENDIF
@@ -762,19 +816,21 @@ contains
 
           DO j = 1, nz
             allcrs(1:ncalcp, nfgas1, j) = hres_gas(i, radcidxs(1:ncalcp))
-            hresgabs(1:nhresp, j) = hresgabs(1:nhresp, j) + hres_gas(i, 1:nhresp) * allcol(nfgas1, j)
+            hresgabs(1:nhresp, j) = hresgabs(1:nhresp, j) + &
+                 hres_gas(i, 1:nhresp) * allcol(nfgas1, j)
           ENDDO
         ENDIF
       ENDIF
     ENDDO
-    IF (do_so2shi .AND. use_so2dtcrs) so2dads(1:nhresp) = so2dads(1:nhresp) / so2sum
+    IF (do_so2shi .AND. use_so2dtcrs) so2dads(1:nhresp) = &
+         so2dads(1:nhresp) / so2sum
 
     ! Rayleigh scattering and depolarization factor
     raycof(1:ncalcp) = hres_raycof(radcidxs(1:ncalcp))
     depol(1:ncalcp)  = hres_depol(radcidxs(1:ncalcp))
 
-    ! compute total rayleigh and absorption optical thickness (o3 + other gas) for 
-    ! later radiance interpolaiton
+    ! compute total rayleigh and absorption optical thickness (o3 + other gas) 
+    ! for later radiance interpolation
     DO i = 1, nz 
       hresray(1:nhresp, i) = rhos(i) * hres_raycof(1:nhresp)
     ENDDO
@@ -939,8 +995,10 @@ contains
         hrad(fidx:lidx) = hrad(fidx:lidx) + tauwf(iw, i) * dtau(fidx:lidx) + &
              fraywf(iw, i) * dray(fidx:lidx)
 
-        ! Is it better to do cubic interpolation or assume same wf (after normalized by o3 xsec)
-        hozwf(fidx:lidx, i) = fozwf(iw, i) * o3crsz(fidx:lidx, i) / o3crsz(radcidxs(iw), i)
+        ! Is it better to do cubic interpolation or assume same wf (after 
+        ! normalized by o3 xsec)
+        hozwf(fidx:lidx, i) = fozwf(iw, i) * o3crsz(fidx:lidx, i) / &
+             o3crsz(radcidxs(iw), i)
       ENDDO
     ENDDO
 
@@ -953,34 +1011,40 @@ contains
     !ENDDO
 
     IF (do_albwf) THEN
-      CALL BSPLINE(wave(1:nw0), albwf(1:nw0), nw0, hwave(1:nhw), halbwf(1:nhw), nhw, errstat)
+      CALL BSPLINE(wave(1:nw0), albwf(1:nw0), nw0, hwave(1:nhw), &
+           halbwf(1:nhw), nhw, errstat)
     ENDIF
 
     IF (do_cfracwf) THEN
-      CALL BSPLINE(wave(1:nw0), cfracwf(1:nw0), nw0, hwave(1:nhw), hcfracwf(1:nhw), nhw, errstat)
+      CALL BSPLINE(wave(1:nw0), cfracwf(1:nw0), nw0, hwave(1:nhw), &
+           hcfracwf(1:nhw), nhw, errstat)
     ENDIF
 
     IF (do_faerwf) THEN
       DO i = faerlvl, nz
-        CALL BSPLINE(wave(1:nw0), faerwf(1:nw0, i), nw0, hwave(1:nhw), haerwf(1:nhw, i), nhw, errstat)
+        CALL BSPLINE(wave(1:nw0), faerwf(1:nw0, i), nw0, hwave(1:nhw), &
+             haerwf(1:nhw, i), nhw, errstat)
       ENDDO
     ENDIF
 
     IF (do_faerswf) THEN
       DO i = faerlvl, nz
-        CALL BSPLINE(wave(1:nw0), faerswf(1:nw0, i), nw0, hwave(1:nhw), haerswf(1:nhw, i), nhw, errstat)
+        CALL BSPLINE(wave(1:nw0), faerswf(1:nw0, i), nw0, hwave(1:nhw), &
+             haerswf(1:nhw, i), nhw, errstat)
       ENDDO
     ENDIF
 
     IF (do_codwf) THEN
       DO i = nctp, ncbp
-        CALL BSPLINE(wave(1:nw0), fcodwf(1:nw0, i), nw0, hwave(1:nhw), hcodwf(1:nhw, i), nhw, errstat)
+        CALL BSPLINE(wave(1:nw0), fcodwf(1:nw0, i), nw0, hwave(1:nhw), &
+             hcodwf(1:nhw, i), nhw, errstat)
       ENDDO
     ENDIF
 
     IF (do_sprswf) THEN
       DO i = nsprs, nz
-        CALL BSPLINE(wave(1:nw0), fsprswf(1:nw0, i), nw0, hwave(1:nhw), hsprswf(1:nhw, i), nhw, errstat)
+        CALL BSPLINE(wave(1:nw0), fsprswf(1:nw0, i), nw0, hwave(1:nhw), &
+             hsprswf(1:nhw, i), nhw, errstat)
       ENDDO
     ENDIF
 
@@ -1025,7 +1089,8 @@ contains
     ENDIF
 
 
-    ! Convolve radiance/weighting functions/solar reference at fine grids into measurement grid 
+    ! Convolve radiance/weighting functions/solar reference at fine grids 
+    ! into measurement grid 
     ! convolve all spectra at once to speed up computation
     ! *** First, transfer all spectra to inarr ***
     inarr(1:nhw, 1) = hres_i0(1:nhw)
@@ -1118,7 +1183,8 @@ contains
     eidx = sidx
 
     ! *** second, convole all spectra at once ****
-    CALL convol_f2c(hwave(1:nhw), inarr(1:nhw, 1:eidx), nhw, eidx, owave(1:now), outarr(1:now, 1:eidx), now)
+    CALL convol_f2c(hwave(1:nhw), inarr(1:nhw, 1:eidx), nhw, eidx, &
+         owave(1:now), outarr(1:now, 1:eidx), now)
 
     ! *** third, transfer all convolved spectra back ***
     oi0(1:now)  = outarr(1:now, 1)
@@ -1212,7 +1278,7 @@ contains
     ! Perform additional coadding (if necesary)
     ! Use OMI solar spectra here
     IF (do_bandavg) THEN
-      tmpi0(1:now) = i0sav(refidx_sav(1:now))  ! better to use OMI solar spectra     
+      tmpi0(1:now) = i0sav(refidx_sav(1:now)) ! better to use OMI solar spectra
       oi0(1:now) = tmpi0
       CALL avg_band_spec(owave(1:now), oi0(1:now), now, ntemp, errstat)
       IF (ntemp /= nrad .OR. errstat /= 0) THEN
@@ -1378,7 +1444,8 @@ contains
 
   ! Read T-dependent cross sections (O3 and SO2)
   ! Inteprolate original cross section to input wavelength grid
-  SUBROUTINE READ_TXCRS(waves, nw0, which_gas, maxt, abscrs, nw, ts, tdepend, nt, normc, problems)
+  SUBROUTINE READ_TXCRS(waves, nw0, which_gas, maxt, abscrs, nw, ts, &
+       tdepend, nt, normc, problems)
 
     USE OMSAO_precision_module  
     USE OMSAO_parameters_module, ONLY : max_spec_pts
@@ -1454,7 +1521,8 @@ contains
     ENDIF
 
     IF (tdepend .AND. nt > 3) THEN
-      WRITE(www_lun, *) 'High-order (> 2) T-dependent x-section not implemented!!!'
+      WRITE(www_lun, *) &
+           'High-order (> 2) T-dependent x-section not implemented!!!'
       problems = .TRUE.
       CLOSE (ozabs_unit)
       RETURN
@@ -1520,7 +1588,8 @@ contains
     REAL (KIND=dp), INTENT(IN), DIMENSION(nlayers) :: tsgrid
 
     ! Output variables
-    REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs, dads, dadt
+    REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs, dads, &
+         dadt
     REAL (KIND=dp), DIMENSION(3, nlamda), INTENT(OUT)       :: crsqtd_k
     LOGICAL, INTENT(OUT) :: problems
 
@@ -1555,7 +1624,8 @@ contains
 
     problems = .FALSE.
     IF ( whichgas > ngas ) THEN
-      WRITE(www_lun, *) 'Absorption cross section for this gas not available!!!'
+      WRITE(www_lun, *) &
+           'Absorption cross section for this gas not available!!!'
       problems = .TRUE.
       RETURN
     ENDIF
@@ -1591,7 +1661,8 @@ contains
       ENDIF
 
       IF (tdepend .AND. nt > 3) THEN
-        WRITE(www_lun, *) 'High-order (>2) T-dependent cross section not implemented!!!'
+        WRITE(www_lun, *) &
+             'High-order (>2) T-dependent cross section not implemented!!!'
         problems = .TRUE.
         CLOSE (ozabs_unit)
         RETURN
@@ -1634,8 +1705,10 @@ contains
         scalex = 0.2 ! ~600 DU SUM(fozs(1:nflay)) * 2.69E16 * normc, now a dummy number, not used
         DO i = 1, nt 
           IF (i == 1) get_lresi0 = .TRUE.
-          CALL CORRECT_I0EFFECT(refwavs(1:nline), refabs(i, 1:nline), nline, refspec_orig_data(1, 1:ni0, 1), &
-               refspec_orig_data(1, 1:ni0, 2), ni0, scalex, get_lresi0, errstat, lowresi0(1:nline))
+          CALL CORRECT_I0EFFECT(refwavs(1:nline), refabs(i, 1:nline), nline, &
+               refspec_orig_data(1, 1:ni0, 1), &
+               refspec_orig_data(1, 1:ni0, 2), &
+               ni0, scalex, get_lresi0, errstat, lowresi0(1:nline))
           IF (i == 1) get_lresi0 = .FALSE.
 
           IF ( errstat /= 0 ) THEN
@@ -1678,7 +1751,8 @@ contains
         CALL avg_band_effozcrs(lamda, savabs(i, :), nlsav, ntemp, errstat)
 
         IF ( errstat /= 0 .OR. ntemp /= nlamda) THEN
-          WRITE(www_lun, *) 'O3 Spectra Averaging Error: ', nlsav, nlamda, ntemp
+          WRITE(www_lun, *) 'O3 Spectra Averaging Error: ', nlsav, nlamda, &
+               ntemp
           problems = .TRUE.
           RETURN
         ENDIF
@@ -1686,7 +1760,8 @@ contains
 
         CALL avg_band_effozcrs(lamda, savabs_d1(i, :), nlsav, ntemp, errstat)
         IF ( errstat /= 0 .OR. ntemp /= nlamda) THEN
-          WRITE(www_lun, *) 'O3 Spectra Averaging Error: ', nlsav, nlamda, ntemp
+          WRITE(www_lun, *) 'O3 Spectra Averaging Error: ', nlsav, nlamda, &
+               ntemp
           problems = .TRUE.
           RETURN 
         ENDIF
@@ -1743,7 +1818,8 @@ contains
         CALL INTERPOL2(ts(1:nt), tmpabs(1:nt,i), nt, dodt, tsgrid,&
              abscrs(i, :), dadt(i, :), nlayers, errstat)
         IF (errstat < 0) THEN
-          WRITE(www_lun, *) modulename, ': INTEPROL2 error, errstat = ', errstat
+          WRITE(www_lun, *) modulename, ': INTEPROL2 error, errstat = ', &
+               errstat
           problems = .TRUE.
           RETURN
         ENDIF
@@ -1752,14 +1828,16 @@ contains
           CALL INTERPOL(ts(1:nt), tmpabs_d1(1:nt,i), nt, tsgrid, &
                dads(i, :), nlayers, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', &
+                 errstat
             problems = .TRUE.
             RETURN
           ENDIF
         ENDIF
       ENDDO
     ELSE 
-      WRITE(www_lun, *) modulename, ': Such type of ozone cross sections not implemented' 
+      WRITE(www_lun, *) modulename, &
+           ': Such type of ozone cross sections not implemented' 
       problems = .TRUE.
       RETURN
     ENDIF
@@ -1858,7 +1936,8 @@ contains
       ENDIF
 
       IF (tdepend .AND. nt > 3) THEN
-        WRITE(www_lun, *) 'High-order (>2) T-dependent cross section not implemented!!!'
+        WRITE(www_lun, *) &
+             'High-order (>2) T-dependent cross section not implemented!!!'
         problems = .TRUE.
         CLOSE (ozabs_unit)
         RETURN
@@ -1890,8 +1969,10 @@ contains
         ni0 = n_refspec_pts(1)
         scalex = 0.1  ! dummy number, not used any more
         DO i = 1, nt 
-          CALL CORRECT_I0EFFECT(refwavs(1:nline), refabs(i, 1:nline), nline, refspec_orig_data(1, 1:ni0, 1), &
-               refspec_orig_data(1, 1:ni0, 2), ni0, scalex, get_lresi0, errstat, lowresi0(1:nline))
+          CALL CORRECT_I0EFFECT(refwavs(1:nline), refabs(i, 1:nline), &
+               nline, refspec_orig_data(1, 1:ni0, 1), &
+               refspec_orig_data(1, 1:ni0, 2), ni0, scalex, get_lresi0, &
+               errstat, lowresi0(1:nline))
           IF ( errstat /= 0 ) THEN
             WRITE(www_lun, *) 'Error in Correct I0 Effect!!!'
             problems = .TRUE.
@@ -1916,7 +1997,8 @@ contains
         CALL avg_band_effozcrs(lamda, savabs(i, :), nlsav, ntemp, errstat)
 
         IF ( errstat /= 0 .OR. ntemp /= nlamda) THEN
-          WRITE(www_lun, *) 'SO2 Spectra Averaging Error: ', nlsav, nlamda, ntemp
+          WRITE(www_lun, *) 'SO2 Spectra Averaging Error: ', nlsav, nlamda, &
+               ntemp
           problems = .TRUE.
           RETURN
         ENDIF
@@ -1950,7 +2032,8 @@ contains
       END DO
     ELSE IF (.NOT. tdepend .AND. nt >= 3) THEN ! have more than n T     
       DO i = 1, nlamda           ! interpolate over T   
-        CALL INTERPOL(ts(1:nt), tmpabs(1:nt,i), nt, tsgrid, abscrs(i, :), nlayers, errstat)
+        CALL INTERPOL(ts(1:nt), tmpabs(1:nt,i), nt, tsgrid, abscrs(i, :), &
+             nlayers, errstat)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
           problems = .TRUE.
@@ -1958,7 +2041,8 @@ contains
         ENDIF
       ENDDO
     ELSE 
-      WRITE(www_lun, *) modulename, ': Such type of SO2 cross sections not implemented' 
+      WRITE(www_lun, *) modulename, &
+           ': Such type of SO2 cross sections not implemented' 
       problems = .TRUE.
       RETURN
     ENDIF
@@ -2011,7 +2095,8 @@ contains
 
     problems = .FALSE.
     IF (first) THEN
-      ozcrs_fname = TRIM(ADJUSTL(refdbdir)) // '/' // TRIM(ADJUSTL(ozcrs_alb_fname))
+      ozcrs_fname = TRIM(ADJUSTL(refdbdir)) // '/' // &
+           TRIM(ADJUSTL(ozcrs_alb_fname))
       OPEN(UNIT = ozabs_unit, file=ozcrs_fname, status='old')     
       DO i = 1, 5
         READ(ozabs_unit, *)
@@ -2021,7 +2106,8 @@ contains
       swav = pos_alb - toms_fwhm
       ewav = pos_alb + toms_fwhm
       IF (swav < fwav .OR. ewav > lwav) THEN
-        WRITE(www_lun, *) 'Ozone cross section does not cover region for determining fcld!!!'
+        WRITE(www_lun, *) &
+            'Ozone cross section does not cover region for determining fcld!!!'
         problems = .TRUE.
         CLOSE(ozabs_unit)
         RETURN
@@ -2088,9 +2174,9 @@ contains
 
     IMPLICIT NONE
 
-    !===============================  Define Variables ===========================
+    !============================  Define Variables ===========================
     ! Include files of dimensions and numbers
-!    INCLUDE 'VLIDORT90.PARS'
+    !    INCLUDE 'VLIDORT90.PARS'
     INCLUDE 'VLIDORT_INPUTS90.VARS'
     INCLUDE 'VLIDORT_SETUPS90.VARS'
 
@@ -2178,15 +2264,18 @@ contains
       IF (fgasidxs(i) > 0) THEN
         avcd = mgasprof(i, nz+1)
 
-        IF ((gasidxs(i) /= so2_idx .AND. gasidxs(i) /= so2v_idx) .OR. .NOT. use_so2dtcrs) THEN
+        IF ((gasidxs(i) /= so2_idx .AND. gasidxs(i) /= so2v_idx) .OR. .NOT. &
+             use_so2dtcrs) THEN
           DO j = 1, nw
             tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1)) / avcd          
           ENDDO
 
           IF (fgassidxs(i) > 0) THEN
-            database(gasidxs(i), refidx(1:nw)) = database(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
+            database(gasidxs(i), refidx(1:nw)) = &
+                 database(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
           ELSE
-            database(gasidxs(i), refidx(1:nw)) = database_save(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
+            database(gasidxs(i), refidx(1:nw)) = &
+                 database_save(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
           ENDIF
 
           tracegas(i, 7) = 0.0
@@ -2201,7 +2290,8 @@ contains
         ELSE
           tmp = avcd * refspec_norm(gasidxs(i))
           DO j = 1, nw
-            tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1) * so2crs(j, 1:nz1) ) / tmp
+            tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1) * &
+                 so2crs(j, 1:nz1) ) / tmp
           ENDDO
           database(gasidxs(i), refidx(1:nw)) = tamf(i, 1:nw) 
 
@@ -2209,26 +2299,31 @@ contains
           nk = 0
           DO j = 1, nw
             IF (database_save(gasidxs(i), refidx(j)) > 0.) THEN
-              tracegas(i, 7) = tracegas(i, 7) + tamf(i, j) / database_save(gasidxs(i), refidx(j)) 
+              tracegas(i, 7) = tracegas(i, 7) + tamf(i, j) / &
+                   database_save(gasidxs(i), refidx(j)) 
               nk = nk + 1
             ENDIF
           ENDDO
           tracegas(i, 7) = tracegas(i, 7) / nk
         ENDIF
 
-        ! Calculate weighting function for SO2V plume height, verified with finite difference
+        ! Calculate weighting function for SO2V plume height, verified 
+        ! with finite difference
         IF (do_so2zwf .AND. gasidxs(i) == so2v_idx) THEN
-          tmp = du2mol * refspec_norm(gasidxs(i)) * (so2valts(1)-so2valts(-1)) * avcd / tracegas(i, 4)
+          tmp = du2mol * refspec_norm(gasidxs(i)) * &
+               (so2valts(1)-so2valts(-1)) * avcd / tracegas(i, 4)
 
           IF (use_so2dtcrs) THEN
             DO j = 1, nw
-              so2zwf(j) = SUM(ozwf(j, 1:nz1) / ozabs(j, 1:nz1) * so2crs(j, 1:nz1) &
+              so2zwf(j) = SUM(ozwf(j, 1:nz1) / ozabs(j, 1:nz1) * &
+                   so2crs(j, 1:nz1) &
                    * (so2vprofn1p1(1:nz1, 2)-so2vprofn1p1(1:nz1, 1)) ) / tmp
             ENDDO
           ELSE
             tmp =tmp / refspec_norm(gasidxs(i))
             DO j = 1, nw
-              so2zwf(j) = SUM(ozwf(j, 1:nz1) / ozabs(j, 1:nz1) * database_save(gasidxs(i), refidx(j)) &
+              so2zwf(j) = SUM(ozwf(j, 1:nz1) / ozabs(j, 1:nz1) * &
+                   database_save(gasidxs(i), refidx(j)) &
                    * (so2vprofn1p1(1:nz1, 2)-so2vprofn1p1(1:nz1, 1)) ) / tmp
             ENDDO
           ENDIF
@@ -2255,15 +2350,17 @@ contains
     ! =======================
     ! Input/Output variables
     ! =======================
-    INTEGER, INTENT(IN)                              :: nw, nz, nctp, ncbp, faerlvl, nsprs
-    INTEGER, INTENT(OUT)                             :: errstat                                                   
+    INTEGER, INTENT(IN)                              :: nw, nz, nctp, ncbp, &
+         faerlvl, nsprs
+    INTEGER, INTENT(OUT)                             :: errstat
     LOGICAL, INTENT(IN)                              :: do_fozwf, do_albwf, &
          do_faerwf, do_faerswf, do_codwf, do_sprswf, do_cfracwf
     LOGICAL, DIMENSION(nw), INTENT(IN)               :: do_radcals
 
     REAL (KIND=dp), DIMENSION(nz),     INTENT(IN)    :: ozs
     REAL (KIND=dp), DIMENSION(nw, nz), INTENT(IN)    :: abscrs
-    REAL (KIND=dp), DIMENSION(nw, nz), INTENT(INOUT) :: fozwf, faerwf, faerswf, fcodwf, fsprswf
+    REAL (KIND=dp), DIMENSION(nw, nz), INTENT(INOUT) :: fozwf, faerwf, &
+         faerswf, fcodwf, fsprswf
     REAL (KIND=dp), DIMENSION(nw),     INTENT(IN)    :: wave
     REAL (KIND=dp), DIMENSION(nw),     INTENT(INOUT) :: rad, albwf, cfracwf
 
@@ -2271,7 +2368,8 @@ contains
     INTEGER :: i, j, k,  iw, nd, nd1, nud, p1, p2, dp1, dp2, fidx, lidx
     INTEGER, DIMENSION(nw)                           :: didxs, uidxs!, radcals
     REAL (KIND=dp)                                   :: toz, df
-    REAL (KIND=dp), DIMENSION(nw)                    :: effcrs, a, b, crs1, crs2, tmp1, tmp2, wav1, wav2
+    REAL (KIND=dp), DIMENSION(nw)                    :: effcrs, a, b, crs1, &
+         crs2, tmp1, tmp2, wav1, wav2
 
     !REAL (KIND=dp), DIMENSION(nw, nz) :: fozwf1
     !REAL (KIND=dp), DIMENSION(nw, nl) :: ozwf1, tmpwf1
@@ -2303,7 +2401,8 @@ contains
       effcrs(i) = SUM(abscrs(i, :) * ozs) / toz
     ENDDO
 
-    ! For ozone weighting functions (fine grids), divide by radiance and change its negative sign
+    ! For ozone weighting functions (fine grids), divide by radiance and 
+    ! change its negative sign
     IF (do_fozwf) THEN
       DO i = 1, nz
         WHERE(do_radcals)
@@ -2387,7 +2486,8 @@ contains
         tmp1(1:nd1)  = rad(didxs(k:nd))
         crs2(1:nud) = effcrs(uidxs(1:nud))
 
-        CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), tmp2(1:nud), nud, errstat)
+        CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), &
+             tmp2(1:nud), nud, errstat)
         IF (errstat < 0) THEN
           WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
           errstat = pge_errstat_error
@@ -2400,9 +2500,11 @@ contains
         IF (do_albwf .AND. MAXVAL(albwf) > 0.0) THEN
           tmp1(1:nd1) = LOG(albwf(didxs(k:nd)))
 
-          CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), tmp2(1:nud), nud, errstat)
+          CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), &
+               tmp2(1:nud), nud, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                 errstat
             errstat = pge_errstat_error
             RETURN
           ENDIF
@@ -2413,9 +2515,11 @@ contains
         IF (do_cfracwf .AND. MAXVAL(cfracwf) > 0.0) THEN
           tmp1(1:nd1) = LOG(cfracwf(didxs(k:nd)))
 
-          CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), tmp2(1:nud), nud, errstat)
+          CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), &
+               tmp2(1:nud), nud, errstat)
           IF (errstat < 0) THEN
-            WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+            WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                 errstat
             errstat = pge_errstat_error
             RETURN
           ENDIF
@@ -2430,9 +2534,11 @@ contains
             tmp1(1:nd1) = LOG(fozwf(didxs(k:nd), j))
             crs2(1:nud) = abscrs(uidxs(1:nud), j)
 
-            CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), tmp2(1:nud), nud, errstat)
+            CALL BSPLINE(crs1(1:nd1), tmp1(1:nd1), nd1, crs2(1:nud), &
+                 tmp2(1:nud), nud, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                   errstat
               errstat = pge_errstat_error
               RETURN
             ENDIF
@@ -2448,9 +2554,11 @@ contains
           DO j = faerlvl, nz 
             tmp1(1:nd1) = faerwf(didxs(k:nd), j)
 
-            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), tmp2(1:nud), nud, errstat)
+            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), &
+                 tmp2(1:nud), nud, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                   errstat
               errstat = pge_errstat_error
               RETURN
             ENDIF
@@ -2465,9 +2573,11 @@ contains
           DO j = faerlvl, nz 
             tmp1(1:nd1) = faerswf(didxs(k:nd), j)
 
-            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), tmp2(1:nud), nud, errstat)
+            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), &
+                 tmp2(1:nud), nud, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                   errstat
               errstat = pge_errstat_error
               RETURN
             ENDIF
@@ -2482,9 +2592,11 @@ contains
           DO j = nctp, ncbp 
             tmp1(1:nd1) = fcodwf(didxs(k:nd), j)
 
-            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), tmp2(1:nud), nud, errstat)
+            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), &
+                 tmp2(1:nud), nud, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                   errstat
               errstat = pge_errstat_error
               RETURN
             ENDIF
@@ -2499,9 +2611,11 @@ contains
           DO j = nsprs, nz 
             tmp1(1:nd1) = fsprswf(didxs(k:nd), j)
 
-            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), tmp2(1:nud), nud, errstat)
+            CALL BSPLINE(wav1(1:nd1), tmp1(1:nd1), nd1, wav2(1:nud), &
+                 tmp2(1:nud), nud, errstat)
             IF (errstat < 0) THEN
-              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+              WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', &
+                   errstat
               errstat = pge_errstat_error
               RETURN
             ENDIF
@@ -2520,23 +2634,26 @@ contains
           IF ( do_radcals(i) ) THEN
             dp2 = i
 
-            IF (dp2 - dp1 > 1) THEN  ! there are points with no rad/wf in between
-              ! get rad/wf in between using rad/wf at dp1:dp2
+            IF (dp2 - dp1 > 1) THEN  ! there are points with no rad/wf in 
+              ! between get rad/wf in between using rad/wf at dp1:dp2
               df = effcrs(dp2) - effcrs(dp1)
               p1 = dp1 + 1
               p2 = dp2 - 1
               a(p1 : p2) = ( effcrs(dp2) - effcrs(p1 : p2) ) / df
               b(p1 : p2) = 1.0 - a(p1 : p2)
               rad(p1 : p2) = a(p1 : p2) * rad(dp1) + b(p1 : p2) * rad(dp2)
-              IF (do_albwf) albwf(p1 : p2) = a(p1 : p2) * albwf(dp1) + b(p1 : p2) * albwf(dp2)
-              IF (do_cfracwf) cfracwf(p1 : p2) = a(p1 : p2) * cfracwf(dp1) + b(p1 : p2) * cfracwf(dp2)
+              IF (do_albwf) albwf(p1 : p2) = a(p1 : p2) * albwf(dp1) + &
+                   b(p1 : p2) * albwf(dp2)
+              IF (do_cfracwf) cfracwf(p1 : p2) = a(p1 : p2) * cfracwf(dp1) + &
+                   b(p1 : p2) * cfracwf(dp2)
 
               IF (do_fozwf) THEN
                 DO j = 1, nz
                   df = abscrs(dp2, j) - abscrs(dp1, j)
                   a(p1 : p2) = ( abscrs(dp2, j) - abscrs(p1 : p2, j) ) / df
                   b(p1 : p2) = 1.0 - a(p1 : p2)
-                  fozwf(p1 : p2, j) = a(p1 : p2) * fozwf(dp1, j) + b(p1 : p2) * fozwf(dp2, j)
+                  fozwf(p1 : p2, j) = a(p1 : p2) * fozwf(dp1, j) + &
+                       b(p1 : p2) * fozwf(dp2, j)
                 ENDDO
               ENDIF
 
@@ -2545,7 +2662,8 @@ contains
                   df = wave(dp2) - wave(dp1)
                   a(p1 : p2) = ( wave(dp2) - wave(p1 : p2) ) / df
                   b(p1 : p2) = 1.0 - a(p1 : p2)
-                  faerwf(p1 : p2, j) = a(p1 : p2) * faerwf(dp1, j) + b(p1 : p2) * faerwf(dp2, j)
+                  faerwf(p1 : p2, j) = a(p1 : p2) * faerwf(dp1, j) + &
+                       b(p1 : p2) * faerwf(dp2, j)
                 ENDDO
               ENDIF
 
@@ -2554,7 +2672,8 @@ contains
                   df = wave(dp2) - wave(dp1)
                   a(p1 : p2) = ( wave(dp2) - wave(p1 : p2) ) / df
                   b(p1 : p2) = 1.0 - a(p1 : p2)
-                  faerswf(p1 : p2, j) = a(p1 : p2) * faerswf(dp1, j) + b(p1 : p2) * faerswf(dp2, j)
+                  faerswf(p1 : p2, j) = a(p1 : p2) * faerswf(dp1, j) + &
+                       b(p1 : p2) * faerswf(dp2, j)
                 ENDDO
               ENDIF
 
@@ -2563,7 +2682,8 @@ contains
                   df = wave(dp2) - wave(dp1)
                   a(p1 : p2) = ( wave(dp2) - wave(p1 : p2) ) / df
                   b(p1 : p2) = 1.0 - a(p1 : p2)
-                  fcodwf(p1 : p2, j) = a(p1 : p2) * fcodwf(dp1, j) + b(p1 : p2) * fcodwf(dp2, j)
+                  fcodwf(p1 : p2, j) = a(p1 : p2) * fcodwf(dp1, j) + &
+                       b(p1 : p2) * fcodwf(dp2, j)
                 ENDDO
               ENDIF
 
@@ -2572,7 +2692,8 @@ contains
                   df = wave(dp2) - wave(dp1)
                   a(p1 : p2) = ( wave(dp2) - wave(p1 : p2) ) / df
                   b(p1 : p2) = 1.0 - a(p1 : p2)
-                  fsprswf(p1 : p2, j) = a(p1 : p2) * fsprswf(dp1, j) + b(p1 : p2) * fsprswf(dp2, j)
+                  fsprswf(p1 : p2, j) = a(p1 : p2) * fsprswf(dp1, j) + &
+                       b(p1 : p2) * fsprswf(dp2, j)
                 ENDDO
               ENDIF
 
@@ -2582,7 +2703,8 @@ contains
           i = i + 1
         ENDDO
       ELSE                                 ! Not implemented
-        WRITE(www_lun, *) 'Interpolation for this channel is not implemented!!!'
+        WRITE(www_lun, *) &
+             'Interpolation for this channel is not implemented!!!'
         errstat = pge_errstat_error
       ENDIF
       fidx = lidx + 1
@@ -2695,7 +2817,8 @@ contains
     REAL (KIND=dp), DIMENSION(mw), SAVE              :: albwf_sav, cfracwf_sav
     LOGICAL                                          :: newcorr = .TRUE.
 
-    ! Compute differences at positions where corrections are explicitly calcualted
+    ! Compute differences at positions where corrections are 
+    ! explicitly calcualted
     IF (niter == 0 .OR. which_polcorr == 3 .OR. which_polcorr == 5 ) THEN
       dfrad(1:ncorr) = 0.0D0
 
@@ -2710,7 +2833,8 @@ contains
         ENDWHERE
       ENDIF
 
-      IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
+      IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. &
+           (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
 
         IF (do_albwf)   dfalbwf(1:ncorr) = 0.D0
         dftauwf(1:ncorr, 1:nz) = 0.D0
@@ -2732,24 +2856,29 @@ contains
 
         IF ( do_albwf) THEN
           WHERE (palbwf(polidxs) /= 0.0)
-            dfalbwf(1:ncorr) = (albwf(polidxs) - palbwf(polidxs)) / palbwf(polidxs)
+            dfalbwf(1:ncorr) = (albwf(polidxs) - palbwf(polidxs)) / &
+                 palbwf(polidxs)
           ENDWHERE
         ENDIF
 
         IF ( do_cfracwf) THEN
           WHERE (pcfracwf(polidxs) /= 0.0)
-            dfcfracwf(1:ncorr) = (cfracwf(polidxs) - pcfracwf(polidxs)) / pcfracwf(polidxs)
+            dfcfracwf(1:ncorr) = (cfracwf(polidxs) - pcfracwf(polidxs)) / &
+                 pcfracwf(polidxs)
           ENDWHERE
         ENDIF
 
         IF ( do_fozwf ) THEN
           WHERE( pfozwf(polidxs, 1:nz) /= 0.0)
-            dffozwf(1:ncorr, 1:nz) = (fozwf(polidxs, 1:nz) - pfozwf(polidxs, 1:nz)) / pfozwf(polidxs, 1:nz)
+            dffozwf(1:ncorr, 1:nz) = (fozwf(polidxs, 1:nz) - &
+                 pfozwf(polidxs, 1:nz)) / pfozwf(polidxs, 1:nz)
           ENDWHERE
 
           DO i = 1, ncorr
-            ptauwf(i, 1:nz) = pfozwf(polidxs(i), 1:nz) * ozs / tabs(polidxs(i), 1:nz) / prad(polidxs(i))
-            tauwf (i, 1:nz) = fozwf (polidxs(i), 1:nz) * ozs / tabs(polidxs(i), 1:nz) / rad (polidxs(i))
+            ptauwf(i, 1:nz) = pfozwf(polidxs(i), 1:nz) * &
+                 ozs / tabs(polidxs(i), 1:nz) / prad(polidxs(i))
+            tauwf (i, 1:nz) = fozwf (polidxs(i), 1:nz) * &
+                 ozs / tabs(polidxs(i), 1:nz) / rad (polidxs(i))
           ENDDO
           dftauwf(1:ncorr, 1:nz) = ptauwf(1:ncorr, 1:nz) - tauwf(1:ncorr, 1:nz)
           !        WRITE(www_lun, *) ' ***'
@@ -2771,28 +2900,32 @@ contains
 
         IF ( do_faerswf ) THEN
           WHERE ( pfaerswf(polidxs, faerlvl:nz) /= 0.0 )
-            dffaerswf(1:ncorr, faerlvl:nz) = (faerswf(polidxs, faerlvl:nz) &
-                 - pfaerswf(polidxs, faerlvl:nz)) / pfaerswf(polidxs, faerlvl:nz)
+            dffaerswf(1:ncorr, faerlvl:nz) = (faerswf(polidxs, faerlvl:nz) - &
+                 pfaerswf(polidxs, faerlvl:nz)) / &
+                 pfaerswf(polidxs, faerlvl:nz)
           ENDWHERE
         ENDIF
 
         IF ( do_codwf ) THEN
           WHERE ( pfcodwf( polidxs, nctp:ncbp ) /= 0.0 )
-            dffcodwf(1:ncorr, nctp:ncbp) = (fcodwf(polidxs, nctp:ncbp) - pfcodwf(polidxs, nctp:ncbp)) &
+            dffcodwf(1:ncorr, nctp:ncbp) = (fcodwf(polidxs, nctp:ncbp) - &
+                 pfcodwf(polidxs, nctp:ncbp)) &
                  / pfcodwf(polidxs, nctp:ncbp)
           ENDWHERE
         ENDIF
 
         IF ( do_sprswf ) THEN
           WHERE ( pfsprswf( polidxs, nsprs:nz ) /= 0.0 )
-            dffsprswf(1:ncorr, nsprs:nz) = (fsprswf(polidxs, nsprs:nz) - pfsprswf(polidxs, nsprs:nz)) &
+            dffsprswf(1:ncorr, nsprs:nz) = (fsprswf(polidxs, nsprs:nz) - &
+                 pfsprswf(polidxs, nsprs:nz)) &
                  / pfsprswf(polidxs, nsprs:nz)
           ENDWHERE
         ENDIF
 
         IF ( do_fraywf ) THEN
           WHERE( pfraywf(polidxs, 1:nz) /= 0.0)
-            dffraywf(1:ncorr, 1:nz) = (fraywf(polidxs, 1:nz) - pfraywf(polidxs, 1:nz)) / pfraywf(polidxs, 1:nz)
+            dffraywf(1:ncorr, 1:nz) = (fraywf(polidxs, 1:nz) - &
+                 pfraywf(polidxs, 1:nz)) / pfraywf(polidxs, 1:nz)
           ENDWHERE
         ENDIF
 
@@ -2810,13 +2943,15 @@ contains
       ENDIF
 
       IF (newcorr) THEN
-        tmprad = frac * (SUM(dftauwf(1, 1:nz) * (tabs(j, 1:nz)-tabs(polidxs(1), 1:nz))) + dfrad(1))
+        tmprad = frac * (SUM(dftauwf(1, 1:nz) * (tabs(j, 1:nz) - &
+             tabs(polidxs(1), 1:nz))) + dfrad(1))
         rad(j) = rad(j) * EXP(tmprad)
       ELSE
         rad(j) = rad(j) / (1.0 + frac * dfrad(1))
       ENDIF
 
-      IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
+      IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. &
+           (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
 
         IF ( do_albwf)  THEN
           tmpcorr(1) = (1.0 + frac * dfalbwf(1)) 
@@ -2835,13 +2970,15 @@ contains
         IF ( do_faerwf ) THEN
           tmpcorr(faerlvl:nz) = (1.0 + frac * dffaerwf(1, faerlvl:nz))
           WHERE (tmpcorr(faerlvl:nz) /= 0.0) 
-            faerwf(j, faerlvl:nz)   = faerwf(j, faerlvl:nz)  / tmpcorr(faerlvl:nz)
+            faerwf(j, faerlvl:nz)   = faerwf(j, faerlvl:nz) / &
+                 tmpcorr(faerlvl:nz)
           ENDWHERE
         ENDIF
         IF ( do_faerswf ) THEN
           tmpcorr(faerlvl:nz) = (1.0 + frac * dffaerswf(1, faerlvl:nz))
           WHERE (tmpcorr(faerlvl:nz) /= 0.0) 
-            faerswf(j, faerlvl:nz)   = faerswf(j, faerlvl:nz)  / tmpcorr(faerlvl:nz)
+            faerswf(j, faerlvl:nz)   = faerswf(j, faerlvl:nz) / &
+                 tmpcorr(faerlvl:nz)
           ENDWHERE
         ENDIF
         IF ( do_codwf )  THEN
@@ -2888,14 +3025,17 @@ contains
           !   write(*, '(10D12.4)') dftauwf(i, 1:nz)
           !   write(*, '(10D12.4)') tabs(polidxs(i), 1:nz)
           !ENDIF
-          tmprad = frac1 * (SUM(dftauwf(i-1, 1:nz) * (tabs(j, 1:nz)-tabs(polidxs(i-1), 1:nz))) + dfrad(i-1)) + &
-               frac2 * (SUM(dftauwf(i, 1:nz) * (tabs(j, 1:nz)-tabs(polidxs(i), 1:nz))) + dfrad(i))
+          tmprad = frac1 * (SUM(dftauwf(i-1, 1:nz) * (tabs(j, 1:nz) - &
+               tabs(polidxs(i-1), 1:nz))) + dfrad(i-1)) + &
+               frac2 * (SUM(dftauwf(i, 1:nz) * (tabs(j, 1:nz) - &
+               tabs(polidxs(i), 1:nz))) + dfrad(i))
           rad(j) = rad(j) * EXP(tmprad)
         ELSE
           rad(j) = rad(j) / (1.0 + frac1 * dfrad(i-1) + frac2 * dfrad(i))
         ENDIF
 
-        IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
+        IF ( which_polcorr /= 5 .OR. (which_polcorr == 5 .AND. &
+             (niter == 1 .OR. (niter == 0 .AND. currloop == 0))) ) THEN
 
           IF ( do_albwf)  THEN
             tmpcorr(1) = (1.0 + frac1 * dfalbwf(i-1) + frac2 * dfalbwf(i))
@@ -2906,39 +3046,47 @@ contains
             IF (tmpcorr(1) /= 0.0) cfracwf(j) = cfracwf(j) / tmpcorr(1)
           ENDIF
           IF ( do_fozwf  ) THEN
-            tmpcorr(1:nz) = (1.0 + frac1 * dffozwf(i-1, 1:nz) + frac2 * dffozwf(i, 1:nz))
+            tmpcorr(1:nz) = (1.0 + frac1 * dffozwf(i-1, 1:nz) + frac2 * &
+                 dffozwf(i, 1:nz))
             WHERE (tmpcorr(1:nz) /= 0.0)
               fozwf(j, :) = fozwf(j, :) / tmpcorr(1:nz)
             ENDWHERE
           ENDIF
           IF ( do_faerwf ) THEN
-            tmpcorr(faerlvl:nz) = (1.0 + frac1 * dffaerwf(i-1, faerlvl:nz) + frac2 * dffaerwf(i, faerlvl:nz))
+            tmpcorr(faerlvl:nz) = (1.0 + frac1 * dffaerwf(i-1, faerlvl:nz) + &
+                 frac2 * dffaerwf(i, faerlvl:nz))
             WHERE (tmpcorr(faerlvl:nz) /= 0.0) 
-              faerwf(j, faerlvl:nz)   = faerwf(j, faerlvl:nz)  / tmpcorr(faerlvl:nz)
+              faerwf(j, faerlvl:nz)   = faerwf(j, faerlvl:nz)  / &
+                   tmpcorr(faerlvl:nz)
             ENDWHERE
           ENDIF
           IF ( do_faerswf ) THEN
-            tmpcorr(faerlvl:nz) = (1.0 + frac1 * dffaerswf(i-1, faerlvl:nz) + frac2 * dffaerswf(i, faerlvl:nz))
+            tmpcorr(faerlvl:nz) = (1.0 + frac1 * dffaerswf(i-1, faerlvl:nz) + &
+                 frac2 * dffaerswf(i, faerlvl:nz))
             WHERE (tmpcorr(faerlvl:nz) /= 0.0) 
-              faerswf(j, faerlvl:nz)   = faerswf(j, faerlvl:nz)  / tmpcorr(faerlvl:nz)
+              faerswf(j, faerlvl:nz)   = faerswf(j, faerlvl:nz) / &
+                   tmpcorr(faerlvl:nz)
             ENDWHERE
           ENDIF
           IF ( do_codwf )  THEN
-            tmpcorr(nctp:ncbp) = (1.0 + frac1 * dffcodwf(i-1, nctp:ncbp) + frac2 * dffcodwf(i, nctp:ncbp))
+            tmpcorr(nctp:ncbp) = (1.0 + frac1 * dffcodwf(i-1, nctp:ncbp) + &
+                 frac2 * dffcodwf(i, nctp:ncbp))
             WHERE (tmpcorr(nctp:ncbp) /= 0.0)
               fcodwf(j, nctp:ncbp) = fcodwf(j, nctp:ncbp) / tmpcorr(nctp:ncbp)
             ENDWHERE
           ENDIF
 
           IF ( do_sprswf )  THEN
-            tmpcorr(nsprs:nz) = (1.0 + frac1 * dffsprswf(i-1, nsprs:nz) + frac2 * dffsprswf(i, nsprs:nz))
+            tmpcorr(nsprs:nz) = (1.0 + frac1 * dffsprswf(i-1, nsprs:nz) + &
+                 frac2 * dffsprswf(i, nsprs:nz))
             WHERE (tmpcorr(nsprs:nz) /= 0.0)
               fsprswf(j, nsprs:nz) = fsprswf(j, nsprs:nz) / tmpcorr(nsprs:nz)
             ENDWHERE
           ENDIF
 
           IF ( do_fraywf  ) THEN
-            tmpcorr(1:nz) = (1.0 + frac1 * dffraywf(i-1, 1:nz) + frac2 * dffraywf(i, 1:nz))
+            tmpcorr(1:nz) = (1.0 + frac1 * dffraywf(i-1, 1:nz) + frac2 * &
+                 dffraywf(i, 1:nz))
             WHERE (tmpcorr(1:nz) /= 0.0)
               fraywf(j, :) = fraywf(j, :) / tmpcorr(1:nz)
             ENDWHERE
@@ -3095,7 +3243,7 @@ contains
 
     !===========================  Define Variables ===========================
     ! Include files of dimensions and numbers
-!    INCLUDE 'VLIDORT90.PARS'
+    !    INCLUDE 'VLIDORT90.PARS'
 
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS90.VARS'
@@ -3196,21 +3344,23 @@ contains
 
     errstat = pge_errstat_ok
 
-      status_inputcheck  = vlidort_success
-      status_calculation = vlidort_success
-      status_inputread   = vlidort_success
+    status_inputcheck  = vlidort_success
+    status_calculation = vlidort_success
+    status_inputread   = vlidort_success
     IF (first) THEN
-!      status_inputcheck  = vlidort_success
-!      status_calculation = vlidort_success
-!      status_inputread   = vlidort_success
+      !      status_inputcheck  = vlidort_success
+      !      status_calculation = vlidort_success
+      !      status_inputread   = vlidort_success
 
       ! ======================= Read LIDORT Control Input ==========================
 !!! FIXME 
 !!! file path below should NOT be hard coded!
-      CALL VLIDORT_L_INPUT_MASTER ( TRIM(tabdir)//'../control/vlidort_control.inp', &
+      CALL VLIDORT_L_INPUT_MASTER ( &
+           TRIM(tabdir)//'../control/vlidort_control.inp', &
            'o3prof_lidort_error', status_inputread)
       IF (status_inputread .NE. vlidort_success) THEN
-        WRITE(www_lun, *) modulename, ': Problems encountered with input read!!!'
+        WRITE(www_lun, *) modulename, &
+             ': Problems encountered with input read!!!'
         errstat = pge_errstat_error
         RETURN
       ENDIF
@@ -3231,15 +3381,18 @@ contains
         IF (gasidxs(i) == o2o2_idx)    o4idx  = i
       ENDDO
 
-      IF (fgasidxs(so2vidx) <= 0 .AND. fgasidxs(so2idx) <= 0) use_so2dtcrs = .FALSE.
+      IF (fgasidxs(so2vidx) <= 0 .AND. fgasidxs(so2idx) <= 0) &
+           use_so2dtcrs = .FALSE.
 
-      ! Could not handle two different wavelength shifts for the same cross sections
-      IF (fgassidxs(so2vidx) > 0 .AND. fgassidxs(so2idx) > 0 .AND. use_so2dtcrs) use_so2dtcrs = .FALSE.
+      ! Could not handle two different wavelength shifts for the same 
+      ! cross sections
+      IF (fgassidxs(so2vidx) > 0 .AND. fgassidxs(so2idx) > 0 .AND. &
+           use_so2dtcrs) use_so2dtcrs = .FALSE.
 
       first = .FALSE.
     ENDIF
 
-    ! ============= Overridden some control and atmospheric variables ============== 
+    ! ========== Overridden some control and atmospheric variables =========== 
     IF (num_iter == 0 ) THEN
       n_szangles = 1
       szangles(1) = sza 
@@ -3279,7 +3432,8 @@ contains
         RETURN
       ENDIF
       IF (nl > nlayers) THEN
-        WRITE(www_lun, *) modulename, ' : Coarse grids cannot be finer than fine grids!!!'
+        WRITE(www_lun, *) modulename, &
+             ' : Coarse grids cannot be finer than fine grids!!!'
         errstat = pge_errstat_error
         RETURN
       ENDIF
@@ -3307,12 +3461,12 @@ contains
       !WRITE(www_lun, '(12F8.2)') ts(1:nz)
     ENDIF
 
-    ! =================== Interpolate Ozone, T to fine grids =======================
+    ! ================ Interpolate Ozone, T to fine grids ====================
     IF (nz /= nl) THEN
       DO i = 1, nl
         varyprof(nup2p(i-1)+1:nup2p(i)) = ozvary(i)
-        ozs(nup2p(i-1)+1:nup2p(i)) = fozs(nup2p(i-1)+1:nup2p(i)) * ozprof(i) / &
-             SUM(fozs(nup2p(i-1)+1:nup2p(i)))
+        ozs(nup2p(i-1)+1:nup2p(i)) = fozs(nup2p(i-1)+1:nup2p(i)) * &
+             ozprof(i) / SUM(fozs(nup2p(i-1)+1:nup2p(i)))
       ENDDO
 
       IF (nt_fit > 0) THEN
@@ -3339,11 +3493,13 @@ contains
     IF (do_taodwf .AND. num_iter > 0) THEN
       aodscl = fitvar_rad(taodind) / tropaod(actawin)
       tropaod(1:actawin) = tropaod(1:actawin) * aodscl
-      gaext(1:actawin, nup2p(ntp)+1:nz1) = gaext(1:actawin, nup2p(ntp)+1:nz1) * aodscl
+      gaext(1:actawin, nup2p(ntp)+1:nz1) = &
+           gaext(1:actawin, nup2p(ntp)+1:nz1) * aodscl
 
       IF (.NOT. do_twaewf) THEN ! Single scattering albedo does not change
         tropsca(1:actawin) = tropsca(1:actawin) * aodscl
-        gasca(1:actawin, nup2p(ntp)+1:nz1) = gasca(1:actawin, nup2p(ntp)+1:nz1) * aodscl
+        gasca(1:actawin, nup2p(ntp)+1:nz1) = &
+             gasca(1:actawin, nup2p(ntp)+1:nz1) * aodscl
       ENDIF
     ELSE
       aodscl = 1.0
@@ -3353,7 +3509,8 @@ contains
       waerscl = fitvar_rad(twaeind) / tropwaer(actawin)   ! Scale single scattering albedo
       tropwaer(1:actawin) = tropwaer(1:actawin) * waerscl
       tropsca(1:actawin)  = tropsca(1:actawin) * waerscl * aodscl
-      gasca(1:actawin, nup2p(ntp)+1:nz1) = gasca(1:actawin, nup2p(ntp)+1:nz1) * waerscl * aodscl
+      gasca(1:actawin, nup2p(ntp)+1:nz1) = &
+           gasca(1:actawin, nup2p(ntp)+1:nz1) * waerscl * aodscl
     ENDIF
 
     IF (do_saodwf .AND. num_iter > 0) THEN
@@ -3365,9 +3522,11 @@ contains
     ENDIF
 
     IF (do_sprswf .AND. num_iter > 0) THEN
-      temp = (fitvar_rad(sprsind) - fps(nup2p(nsfc-1)))/ (fps(nz1) - fps(nup2p(nsfc-1)))
+      temp = (fitvar_rad(sprsind) - fps(nup2p(nsfc-1))) / &
+           (fps(nz1) - fps(nup2p(nsfc-1)))
       frhos(nup2p(nsfc-1)+1:nz1) = frhos(nup2p(nsfc-1)+1:nz1) * temp
-      delps(nup2p(nsfc-1)+1:nz1) = (fps(nup2p(nsfc-1)+1:nz1)-fps(nup2p(nsfc-1):nz1-1))  * temp
+      delps(nup2p(nsfc-1)+1:nz1) = (fps(nup2p(nsfc-1)+1:nz1) - &
+           fps(nup2p(nsfc-1):nz1-1)) * temp
       DO i = nup2p(nsfc-1)+1, nz1
         fps(i) = fps(i-1) + delps(i)
       ENDDO
@@ -3383,7 +3542,8 @@ contains
 
     ! Determinine atmospheric weighting functions to be calculated
     IF (do_ozwf .OR.  do_tmpwf .OR. do_o3shi .OR. do_taodwf .OR. &
-         do_twaewf .OR. do_saodwf .OR. do_codwf .OR. do_sprswf )  do_atmos_linearization = .TRUE.
+         do_twaewf .OR. do_saodwf .OR. do_codwf .OR. do_sprswf )  &
+         do_atmos_linearization = .TRUE.
     do_surface_linearization = do_albwf    
     IF (do_atmos_linearization .OR. do_albwf) THEN
       do_simulation_only =    .FALSE.
@@ -3418,7 +3578,8 @@ contains
 
       IF (do_taodwf) THEN
         layer_vary_flag(nup2p(ntp)+1:nz1) = .TRUE.
-        layer_vary_number(nup2p(ntp)+1:nz1) = layer_vary_number(nup2p(ntp)+1:nz1) + 1
+        layer_vary_number(nup2p(ntp)+1:nz1) = &
+             layer_vary_number(nup2p(ntp)+1:nz1) + 1
       ENDIF
 
       IF (do_saodwf) THEN
@@ -3431,7 +3592,8 @@ contains
       twaewfidx = i
       profilewf_names(i) = 'aerosol scattering coefficient-'
       layer_vary_flag(nup2p(ntp)+1:nz1) = .TRUE.
-      layer_vary_number(nup2p(ntp)+1:nz1) = layer_vary_number(nup2p(ntp)+1:nz1) + 1
+      layer_vary_number(nup2p(ntp)+1:nz1) = &
+           layer_vary_number(nup2p(ntp)+1:nz1) + 1
     ENDIF
     IF ( do_codwf) THEN
       i = i + 1
@@ -3454,7 +3616,8 @@ contains
         layer_vary_number(1:nz1) = layer_vary_number(1:nz1) + 1
       ELSE
         layer_vary_flag(nup2p(nsfc-1)+1:nz1) = .TRUE.
-        layer_vary_number(nup2p(nsfc-1)+1:nz1) = layer_vary_number(nup2p(nsfc-1)+1:nz1) + 1
+        layer_vary_number(nup2p(nsfc-1)+1:nz1) = &
+             layer_vary_number(nup2p(nsfc-1)+1:nz1) + 1
       ENDIF
     ENDIF
 
@@ -3467,7 +3630,8 @@ contains
     ENDIF
 
     do_fozwf = .FALSE.
-    IF (do_ozwf .OR. do_tmpwf .OR. do_o3shi .OR. (.NOT. use_effcrs .AND. nw > 1)) do_fozwf = .TRUE.
+    IF (do_ozwf .OR. do_tmpwf .OR. do_o3shi .OR. &
+         (.NOT. use_effcrs .AND. nw > 1)) do_fozwf = .TRUE.
     do_faerwf = .FALSE.
     IF (do_taodwf .OR. do_saodwf) do_faerwf = .TRUE.
 
@@ -3475,7 +3639,7 @@ contains
     !print *, layer_vary_flag(1:nz)
     !print *, layer_vary_number(1:nz)
 
-    ! ==================== Get Ozone Absorption Cross Section ====================   
+    ! ================== Get Ozone Absorption Cross Section ==================
     IF (nw > 1) THEN
       allcol(1, 1:nz1) = ozs(1:nz1) * du2mol
       nfgas = 1
@@ -3489,7 +3653,8 @@ contains
 
           ! molecules cm^-2, but normalized by refspec_norm(gasidxs(k))
           ! allcol / refspec_norm will be molecules cm^-2
-          allcol(nfgas, 1:nz1) = mgasprof(k, 1:nz1) * tracegas(k, 4) / mgasprof(k, nz+1)
+          allcol(nfgas, 1:nz1) = mgasprof(k, 1:nz1) * tracegas(k, 4) / &
+               mgasprof(k, nz+1)
         ENDIF
       ENDDO
 
@@ -3501,11 +3666,12 @@ contains
             fidx = 1
             DO j = 1, numwin
               lidx = fidx + nradpix_sav(j) - 1
-              delpos(fidx:lidx) =  radwvl_sav(fidx:lidx) - (radwvl_sav(fidx) + radwvl_sav(lidx)) / 2.0
+              delpos(fidx:lidx) =  radwvl_sav(fidx:lidx) - &
+                   (radwvl_sav(fidx) + radwvl_sav(lidx)) / 2.0
               IF (osfind(j, 1) > 0) delshi(fidx:lidx) =  o3shi(j, 1) 
 
               DO i = 2, nos
-                IF (osfind(j, i) > 0) delshi(fidx:lidx) = delshi(fidx:lidx)  + &
+                IF (osfind(j, i) > 0) delshi(fidx:lidx) = delshi(fidx:lidx) + &
                      o3shi(j, i) * delpos(fidx:lidx) ** (i-1)
               ENDDO
               fidx = lidx + 1
@@ -3518,7 +3684,8 @@ contains
             ENDIF
             lidx = SUM(nradpix(1: oswins(1, 2)))
 
-            delpos(fidx:lidx) =  radwvl_sav(fidx:lidx) - (radwvl_sav(fidx) + radwvl_sav(lidx)) / 2.0
+            delpos(fidx:lidx) =  radwvl_sav(fidx:lidx) - (radwvl_sav(fidx) + &
+                 radwvl_sav(lidx)) / 2.0
             IF (osfind(1, 1) > 0) delshi(fidx:lidx) =  + o3shi(1, 1) 
 
             DO i = 2, nos  
@@ -3534,19 +3701,22 @@ contains
 
         ! Get ozone absorption coefficients
         IF (ANY(ABS(delshi) >= 2.0)) THEN
-          WRITE(www_lun, *) modulename, ' : Ozone wavelength shifts are too large!!!'
+          WRITE(www_lun, *) modulename, &
+               ' : Ozone wavelength shifts are too large!!!'
           errstat = pge_errstat_error
           RETURN
         ENDIF
 
-        ! Get temperature-dependent ozone cross section at instrumental spectral resolution
+        ! Get temperature-dependent ozone cross section at instrumental 
+        ! spectral resolution
         IF (num_iter == 0 .OR. (do_o3shi .AND. nw > 1) ) THEN
-          CALL GETABS_CRS(swaves, n_radwvl_sav, nw, 1, nz1, ts(1:nz1), abscrs(1:nw, 1:nz1), &
-               do_o3shi, do_tmpwf, dads(1:nw, 1:nz1), dadt(1:nw, 1:nz1), problems, &
-               abscrs_qtdepen(1:3, 1:nw))
+          CALL GETABS_CRS(swaves, n_radwvl_sav, nw, 1, nz1, ts(1:nz1), &
+               abscrs(1:nw, 1:nz1), do_o3shi, do_tmpwf, dads(1:nw, 1:nz1), &
+               dadt(1:nw, 1:nz1), problems, abscrs_qtdepen(1:3, 1:nw))
 
           IF (problems) THEN
-            WRITE(www_lun, *) modulename, ' : Problems in reading ozone absorption !!!'
+            WRITE(www_lun, *) modulename, &
+                 ' : Problems in reading ozone absorption !!!'
             errstat = pge_errstat_error
             RETURN
           ENDIF
@@ -3557,13 +3727,17 @@ contains
         !IF (num_iter == 0) THEN 
         !   CALL GET_ALL_RAYCOF_DEPOL(nw, waves, raycof(1:nw), depol(1:nw))
         IF (num_iter == 0) THEN 
-          CALL GET_ALL_RAYCOF_DEPOL1(n_radwvl_sav, radwvl_sav, nw, raycof(1:nw), depol(1:nw), problems)
+          CALL GET_ALL_RAYCOF_DEPOL1(n_radwvl_sav, radwvl_sav, nw, &
+               raycof(1:nw), depol(1:nw), problems)
         ENDIF
 
-        IF ( num_iter == 0 .AND. (fgasidxs(so2idx) > 0 .OR. fgasidxs(so2vidx) > 0) .AND. use_so2dtcrs) THEN
-          CALL GETSO2_CRS(radwvl_sav, n_radwvl_sav, nw, nz1, ts(1:nz1), so2crs(1:nw, 1:nz1), problems)
+        IF ( num_iter == 0 .AND. (fgasidxs(so2idx) > 0 .OR. &
+             fgasidxs(so2vidx) > 0) .AND. use_so2dtcrs) THEN
+          CALL GETSO2_CRS(radwvl_sav, n_radwvl_sav, nw, nz1, ts(1:nz1), &
+               so2crs(1:nw, 1:nz1), problems)
           IF (problems) THEN
-            WRITE(www_lun, *) modulename, ' : Problems in reading SO2 absorption !!!'
+            WRITE(www_lun, *) modulename, &
+                 ' : Problems in reading SO2 absorption !!!'
             errstat = pge_errstat_error
             RETURN
           ENDIF
@@ -3581,34 +3755,43 @@ contains
                 tmprefwav(1:npts) = refspec_orig_data(gasidxs(k), 1:npts, 1)
                 tmprefspec(1:npts) = refspec_orig_data(gasidxs(k), 1:npts, 3)
                 fidx = MINVAL(MINLOC(waves(1:nw), MASK=(waves(1:nw) >= &
-                     tmprefwav(1) + 0.1 .AND. waves(1:nw) <= tmprefwav(npts) - 0.1)))
+                     tmprefwav(1) + 0.1 .AND. &
+                     waves(1:nw) <= tmprefwav(npts) - 0.1)))
                 lidx = MINVAL(MAXLOC(waves(1:nw), MASK=(waves(1:nw) >= &
-                     tmprefwav(1) + 0.1 .AND. waves(1:nw) <= tmprefwav(npts) - 0.1)))
+                     tmprefwav(1) + 0.1 .AND. &
+                     waves(1:nw) <= tmprefwav(npts) - 0.1)))
 
                 IF (lidx > fidx .AND. lidx > 0 .AND. fidx > 0) THEN 
                   temp = fitvar_rad(rmask_fitvar_rad(fgassidxs(k)))
-                  CALL BSPLINE1(  tmprefwav(1:npts) - temp, tmprefspec(1:npts), npts, &
-                       waves(fidx:lidx), allcrs(fidx:lidx, nfgas, 1),  gshiwf(fidx:lidx), lidx-fidx+1, errstat) 
+                  CALL BSPLINE1( tmprefwav(1:npts) - temp, &
+                       tmprefspec(1:npts), npts, waves(fidx:lidx), &
+                       allcrs(fidx:lidx, nfgas, 1), gshiwf(fidx:lidx), &
+                       lidx-fidx+1, errstat) 
 
                   !print *, k, gasidxs(k), fgasidxs(k), gassidxs(k), fgassidxs(k), fitvar_rad(gassidxs(k)), npts
                   !WRITE(90, '(F10.4, 2D14.6)') ((waves(i), database_shiwf(gasidxs(k), refidx(i)), gshiwf(i)), i=fidx, lidx)
 
-                  database_shiwf(gasidxs(k), refidx(fidx:lidx)) = gshiwf(fidx:lidx)
-                  database(gasidxs(k), refidx(fidx:lidx)) = allcrs(fidx:lidx, nfgas, 1)               
+                  database_shiwf(gasidxs(k), refidx(fidx:lidx)) = &
+                       gshiwf(fidx:lidx)
+                  database(gasidxs(k), refidx(fidx:lidx)) = &
+                       allcrs(fidx:lidx, nfgas, 1)               
                   IF (errstat < 0) THEN
-                    WRITE(www_lun, *) modulename, ' : BSPLINE error, errstat = ', errstat
+                    WRITE(www_lun, *) modulename, &
+                         ' : BSPLINE error, errstat = ', errstat
                     RETURN
                   ENDIF
                 ENDIF
               ELSE
-                allcrs(1:nw, nfgas, 1) = database_save(gasidxs(k), refidx(1:nw))
+                allcrs(1:nw, nfgas, 1) = database_save(gasidxs(k), &
+                     refidx(1:nw))
               ENDIF
 
               DO i = 2, nz1
                 allcrs(1:nw, nfgas, i) = allcrs(1:nw, nfgas, 1)
               ENDDO
             ELSE
-              allcrs(1:nw, nfgas, 1:nz1) = so2crs(1:nw, 1:nz1) / refspec_norm(gasidxs(k))
+              allcrs(1:nw, nfgas, 1:nz1) = so2crs(1:nw, 1:nz1) / &
+                   refspec_norm(gasidxs(k))
             ENDIF
           ENDIF
         ENDDO
@@ -3626,9 +3809,11 @@ contains
               ! always do radiative transfer calculation at end points
               IF (band_selectors(iw) == 2) THEN
                 DO i = fidx + 1, lidx - 1
-                  IF (abscrs(i, k) > abscrs(i-1, k) .AND. abscrs(i, k) > abscrs(i+1, k)) &
+                  IF (abscrs(i, k) > abscrs(i-1, k) .AND. &
+                       abscrs(i, k) > abscrs(i+1, k)) &
                        do_radcals(i) = .TRUE.
-                  IF (abscrs(i, k) < abscrs(i-1, k) .AND. abscrs(i, k) < abscrs(i+1, k)) &
+                  IF (abscrs(i, k) < abscrs(i-1, k) .AND. &
+                       abscrs(i, k) < abscrs(i+1, k)) &
                        do_radcals(i) = .TRUE.
                   !IF (abscrs(i, nz1) > abscrs(i-1, nz1) .AND. abscrs(i, nz1) > abscrs(i+1, nz1)) &
                   !    do_radcals(i) = .TRUE.
@@ -3690,12 +3875,16 @@ contains
       ELSE   ! .NOT. use_effcrs
         ! O3/SO2 (use_so2dtcrs=.TRUE.) cross section: if do_tmpwf = .FALSE. and do_o3shi is false, 
         ! just need to get once for each retrieval
-        ! Other trace gas cross section: just need to get it once for all the retrievals if no shifts 
-        CALL GET_HRES_GASCRS_RAY(nw, waves, nz1, ts(1:nz1), do_o3shi, o3shi, do_tmpwf, nfgas, &
-             use_so2dtcrs, num_iter, allcrs(1:nw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), frhos(1:nz1), &
-             abscrs_qtdepen(1:3, 1:nw), raycof(1:nw), depol(1:nw), errstat)
+        ! Other trace gas cross section: just need to get it once for all 
+        ! the retrievals if no shifts 
+        CALL GET_HRES_GASCRS_RAY(nw, waves, nz1, ts(1:nz1), do_o3shi,&
+             o3shi, do_tmpwf, nfgas, use_so2dtcrs, num_iter, &
+             allcrs(1:nw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
+             frhos(1:nz1), abscrs_qtdepen(1:3, 1:nw), raycof(1:nw), &
+             depol(1:nw), errstat)
         abscrs(1:ncalcp, 1:nz1) = allcrs(1:ncalcp, 1, 1:nz1)
-        IF (use_so2dtcrs) so2crs(1:ncalcp, 1:nz1) = allcrs(1:ncalcp, so2crsidx, 1:nz1)
+        IF (use_so2dtcrs) so2crs(1:ncalcp, 1:nz1) = &
+             allcrs(1:ncalcp, so2crsidx, 1:nz1)
 
         IF (num_iter == 0) THEN
           do_radcals(1:nw) = .FALSE.
@@ -3736,9 +3925,11 @@ contains
       !raycof(1) = 2.3184501D-26; depol(1) = 0.030247913D0
 
       nfgas = 7
-      CALL GET_ALB_OZCRS_RAY(nz1, ts(1:nz1), nfgas, allcrs(1, 1:nfgas, 1:nz1), raycof(1), depol(1), problems)
+      CALL GET_ALB_OZCRS_RAY(nz1, ts(1:nz1), nfgas, &
+           allcrs(1, 1:nfgas, 1:nz1), raycof(1), depol(1), problems)
       IF (problems) THEN
-        WRITE(www_lun, *) modulename, ' : Problems in reading O3 XSec for determining Fc!!!'
+        WRITE(www_lun, *) modulename, &
+             ' : Problems in reading O3 XSec for determining Fc!!!'
         errstat = pge_errstat_error
         RETURN
       ENDIF
@@ -3757,7 +3948,8 @@ contains
       ENDDO
 
       ! O2-O2 Concentration (Oxygen: 20.95%)
-      allcol(6, 1:nz1) = ( frhos(1:nz1) * 0.2095 ) ** 2.0 / (fzs(0:nz1-1) - fzs(1:nz1)) / 1.0D5
+      allcol(6, 1:nz1) = ( frhos(1:nz1) * 0.2095 ) ** 2.0 / &
+           (fzs(0:nz1-1) - fzs(1:nz1)) / 1.0D5
       gasin(6) = 6
     ENDIF
 
@@ -3861,10 +4053,12 @@ contains
           ELSE
             temp = (winlim(iw, 2) + winlim(iw + 1, 1)) / 2.
           ENDIF
-          lidx = MINVAL(MAXLOC(waves(1:nw), MASK=(waves(1:nw) < temp .AND. waves(1:nw) > 0))) 
+          lidx = MINVAL(MAXLOC(waves(1:nw), MASK=(waves(1:nw) < temp .AND. &
+               waves(1:nw) > 0))) 
           !lidx = fidx + nradpix(iw) - 1
           IF ( waves(lidx) <= 312.0 ) THEN
-            ! Error from using single scattering is about 0.2% at 270 nm, it needs o be corrected
+            ! Error from using single scattering is about 0.2% at 270 nm, 
+            ! it needs to be corrected
             !IF (do_ssfullb295) do_polcorrs(fidx) = .TRUE. 
             IF (idum == 0) idum = 1
             DO i = fidx + 1, lidx - 1
@@ -3874,8 +4068,9 @@ contains
                      (waves(idum) < 299. .AND. waves(i) >= 299.0) .OR.  &
                      (waves(idum) < 301. .AND. waves(i) >= 301.0) .OR.  &
                      (waves(idum) < 303. .AND. waves(i) >= 303.) .OR.  &
-                                !(waves(idum) < 304. .AND. waves(i) >= 304.0) .OR.  &
-                     (waves(idum) < 305. .AND. waves(i) >= 305.0) )  do_polcorrs(i) = .TRUE.
+                    !(waves(idum) < 304. .AND. waves(i) >= 304.0) .OR.  &
+                     (waves(idum) < 305. .AND. waves(i) >= 305.0) )  &
+                     do_polcorrs(i) = .TRUE.
                 idum = i
               ENDIF
             ENDDO
@@ -3899,7 +4094,8 @@ contains
                 !     (waves(idum) < waves(kk) .AND. waves(i) >= waves(kk)) .OR. &
                 !     (waves(idum) < waves(jk) .AND. waves(i) >= waves(jk)))  do_polcorrs(i) = .TRUE.
                 IF ( (waves(idum) < waves(j) .AND. waves(i) >= waves(j)) .OR. &
-                     (waves(idum) < waves(k) .AND. waves(i) >= waves(k)))  do_polcorrs(i) = .TRUE.
+                     (waves(idum) < waves(k) .AND. waves(i) >= waves(k)))  &
+                     do_polcorrs(i) = .TRUE.
                 idum = i
               ENDIF
             ENDDO
@@ -3931,7 +4127,7 @@ contains
         !STOP
       ENDIF
     ENDIF
-    ! ====================== Call LIDORT and Do Post Processing =====================
+    ! ================== Call LIDORT and Do Post Processing ==================
     DO iw = 1, nw 
 
       IF (.NOT. do_radcals(iw) ) CYCLE   ! Radiances and weighting functions will be interpolated 
@@ -3940,12 +4136,14 @@ contains
 
       ! NSTOKES = 4 when
       ! (1) Vector LIDORT or 
-      ! (2) on-line polarization correction (polcorr=3) at cloud wavelength or wavelengths 
-      !     where exact radiances are calcualted or
-      ! (3) on-line polarization correction (polcorr=4) at cloud wavelength or wavelengths 
-      !     where exact radiances are calcualted in the first iteration
-      IF (polcorr == 0 .OR. ((polcorr == 3 .OR. polcorr == 5) .AND. (nw == 1 .OR. do_polcorrs(iw)))  &
-           .OR. (polcorr == 4 .AND. (nw == 1 .OR. (do_polcorrs(iw) .AND. num_iter == 0))) ) THEN
+      ! (2) on-line polarization correction (polcorr=3) at cloud wavelength or
+      !     wavelengthswhere exact radiances are calcualted or
+      ! (3) on-line polarization correction (polcorr=4) at cloud wavelength or 
+      !     wavelengths where exact radiances are calcualted in the first 
+      !     iteration
+      IF (polcorr == 0 .OR. ((polcorr == 3 .OR. polcorr == 5) .AND. &
+           (nw == 1 .OR. do_polcorrs(iw))) .OR. (polcorr == 4 .AND. &
+           (nw == 1 .OR. (do_polcorrs(iw) .AND. num_iter == 0))) ) THEN
         NSTOKES = 3 
         NSTREAMS = 4
       ELSE
@@ -3954,7 +4152,8 @@ contains
       ENDIF
       VlidortNstream = NSTREAMS
 
-      IF ( lamda < 295.0 .AND. NSTOKES == 1 .AND. nw > 1 .AND. do_ssfullb295) THEN
+      IF ( lamda < 295.0 .AND. NSTOKES == 1 .AND. nw > 1 .AND. &
+           do_ssfullb295) THEN
         DO_SSFULL = .TRUE.
         DO_SSCORR_TRUNCATION = .FALSE.
         DO_DELTAM_SCALING = .FALSE.
@@ -3979,12 +4178,15 @@ contains
         low = hgh - 1
         xg = (lamda - aerwavs(low)) / (aerwavs(hgh) - aerwavs(low))
 
-        aersca(faer_lvl:nfsfc-1) = gasca(low, faer_lvl:nfsfc-1) * (1.0 - xg) +  gasca(hgh, faer_lvl:nfsfc-1) * xg
-        aerext(faer_lvl:nfsfc-1) = gaext(low, faer_lvl:nfsfc-1) * (1.0 - xg) +  gaext(hgh, faer_lvl:nfsfc-1) * xg
+        aersca(faer_lvl:nfsfc-1) = gasca(low, faer_lvl:nfsfc-1) * &
+             (1.0 - xg) +  gasca(hgh, faer_lvl:nfsfc-1) * xg
+        aerext(faer_lvl:nfsfc-1) = gaext(low, faer_lvl:nfsfc-1) * &
+             (1.0 - xg) +  gaext(hgh, faer_lvl:nfsfc-1) * xg
 
         !IF (num_iter == 0) THEN  ! Don't need to be updated
         IF (useasy) THEN
-          aerasy(faer_lvl:nfsfc-1) = gaasy(low, faer_lvl:nfsfc-1) * (1.0 - xg) + &
+          aerasy(faer_lvl:nfsfc-1) = gaasy(low, faer_lvl:nfsfc-1) * &
+               (1.0 - xg) + &
                gaasy(hgh, faer_lvl:nfsfc-1) * xg
         ELSE        
           DO i = 0, nmom
@@ -4002,7 +4204,8 @@ contains
         cldext(nctp:ncbp) = (gcq(low) * (1.0 - xg) + gcq(hgh) * xg) * &
              (fzs(nctp-1 : ncbp-1) - fzs(nctp:ncbp)) * the_cbeta
         cldsca(nctp:ncbp) = cldext(nctp:ncbp)  ! w0 = 1.0
-        IF (iw == 1) cldext0(nctp:ncbp) = cldext(nctp:ncbp) * gcq(actawin) / (gcq(low) * (1.0 - xg) + gcq(hgh) * xg) 
+        IF (iw == 1) cldext0(nctp:ncbp) = cldext(nctp:ncbp) * &
+             gcq(actawin) / (gcq(low) * (1.0 - xg) + gcq(hgh) * xg) 
 
         IF (useasy) THEN
           cldasy(nctp:ncbp) = gcasy(low) * (1.0 - xg) + gcasy(hgh) * xg
@@ -4023,9 +4226,11 @@ contains
         npolmod = 1   ! Only once either scalar or vector
       ENDIF
 
-      ! When polcorr = 5 is selected, only calculate weighting function for iteration 1
+      ! When polcorr = 5 is selected, only calculate weighting function for 
+      ! iteration 1
       ! iteration 0 if 1st pixel of a x-track position is being retrieved
-      IF (polcorr == 5 .AND. nw > 1 .AND. (num_iter > 1 .OR. (num_iter == 0 .AND. currloop /= 0))) THEN
+      IF (polcorr == 5 .AND. nw > 1 .AND. (num_iter > 1 .OR. &
+           (num_iter == 0 .AND. currloop /= 0))) THEN
         do_simulation_only = .TRUE.
         do_linearization   = .FALSE.
       ENDIF
@@ -4060,11 +4265,14 @@ contains
             IF (do_albwf)  palbwf(iw)             = albwf(iw, 1)
             IF (do_fozwf)  pfozwf(iw, :)          = fozwf(iw, :, 1)
             IF (do_codwf)  pfcodwf(iw, nctp:ncbp) = fcodwf(iw, nctp:ncbp, 1)
-            IF (do_sprswf) pfsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1) = fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, 1)
+            IF (do_sprswf) pfsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1) = &
+                 fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, 1)
             IF (do_fraywf) pfraywf(iw, :)         = fraywf(iw, :, 1)
             IF (do_ctpwf)  pctpwf(iw)             = ctpwf(iw, 1)
-            IF (do_faerwf) pfaerwf(iw, faer_lvl:nfsfc-1)  = faerwf(iw, faer_lvl:nfsfc-1, 1)           
-            IF (do_twaewf) pfaerswf(iw, faer_lvl:nfsfc-1) = faerwf(iw, faer_lvl:nfsfc-1, 1)
+            IF (do_faerwf) pfaerwf(iw, faer_lvl:nfsfc-1)  = &
+                 faerwf(iw, faer_lvl:nfsfc-1, 1)           
+            IF (do_twaewf) pfaerswf(iw, faer_lvl:nfsfc-1) = &
+                 faerwf(iw, faer_lvl:nfsfc-1, 1)
 
             ! Initalize those variables to zero again          
             IF (do_albwf) albwf(iw, 1:nostk) = 0.d0
@@ -4103,7 +4311,7 @@ contains
             nlayers = nfsfc - 1
             nz1 = nlayers   
 
-            ! zero O3 weighting function below surface (This is necessary)           
+            ! zero O3 weighting function below surface (This is necessary)
             profilewf(1:n_totalatmos_wfs, nz1+1:nz, 1, 1, 1:NSTOKES, 1) = 0.0
 
             IF (ipol == 1) THEN
@@ -4111,15 +4319,19 @@ contains
               !WRITE(91, '(40D14.6)') height_grid(0:nlayers)
               !WRITE(91, '(2D14.6)') lamda, depol(iw)
 
-              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), frhos(1:nz1), &
-                   varyprof(1:nz1), nfgas, gasin(1:nfgas), allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
-                   alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, aersca(1:nz1),      &
-                   aerext(1:nz1), aerasy(1:nz1), aermoms(0:nmom, 1:maxgksec, 1:nz1), aermsk(1:nz1), &
+              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), &
+                   frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+                   allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
+                   alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, &
+                   aersca(1:nz1), aerext(1:nz1), aerasy(1:nz1), &
+                   aermoms(0:nmom, 1:maxgksec, 1:nz1), aermsk(1:nz1), &
                    do_clouds, cldsca(1:nz1), cldext(1:nz1), cldasy(1:nz1), &
-                   cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), problems, &
-                   deltau(iw, 1:nz1), delsca(iw, 1:nz1), delo3abs(iw, 1:nz1), delray(iw, 1:nz1))
+                   cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), &
+                   problems, deltau(iw, 1:nz1), delsca(iw, 1:nz1), &
+                   delo3abs(iw, 1:nz1), delray(iw, 1:nz1))
               IF (problems) then
-                WRITE(*, *) modulename, ' : Problems encountered in lidort preparation!!!'
+                WRITE(*, *) modulename, &
+                     ' : Problems encountered in lidort preparation!!!'
                 errstat = pge_errstat_error
                 RETURN
               END IF
@@ -4140,16 +4352,20 @@ contains
             profilewf(1:n_totalatmos_wfs, nz1+1:nz, 1, 1, 1:NSTOKES, 1) = 0.0
 
             IF (frac == 1.0 .AND. ipol == 1) THEN
-              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), frhos(1:nz1), &
-                   varyprof(1:nz1), nfgas, gasin(1:nfgas), allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
-                   alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, aersca(1:nz1),      &
-                   aerext(1:nz1), aerasy(1:nz1), aermoms(0:nmom, 1:maxgksec, 1:nz1), aermsk(1:nz1), &
+              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), &
+                   frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+                   allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
+                   alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, &
+                   aersca(1:nz1), aerext(1:nz1), aerasy(1:nz1), &
+                   aermoms(0:nmom, 1:maxgksec, 1:nz1), aermsk(1:nz1), &
                    do_clouds, cldsca(1:nz1), cldext(1:nz1), cldasy(1:nz1), &
-                   cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), problems , &
-                   deltau(iw, 1:nz1), delsca(iw, 1:nz1), delo3abs(iw, 1:nz1), delray(iw, 1:nz1))
+                   cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), &
+                   problems, deltau(iw, 1:nz1), delsca(iw, 1:nz1), &
+                   delo3abs(iw, 1:nz1), delray(iw, 1:nz1))
 
               IF (problems) THEN
-                WRITE(www_lun, *) modulename, ' : Problems encountered in lidort preparation!!!'
+                WRITE(www_lun, *) modulename, &
+                     ' : Problems encountered in lidort preparation!!!'
                 errstat = pge_errstat_error
                 RETURN
               END IF
@@ -4162,7 +4378,8 @@ contains
           !szangles(1) = sza; user_vzangles(1) = vza; user_relazms(1) = aza  
           !print *, nlayers 
           !print *, geometry_specheight, height_grid(0:nlayers)
-          CALL VLIDORT_L_MASTER_LAMBERTIAN (status_inputcheck, status_calculation)   
+          CALL VLIDORT_L_MASTER_LAMBERTIAN (status_inputcheck, &
+               status_calculation)   
           !IF (iw >= 102 .AND. iw <= 103) THEN
           !   WRITE(www_lun, '(3I5,F8.3,30D14.6)') iw, ic, ipol, lamda, &
           !    stokes(1, 1, 1:nostk, 1)!, atmoswf(ozwfidx, 1:nfsfc-1, 1, 1, 1, 1)
@@ -4170,46 +4387,55 @@ contains
 
           !CALL VLIDORT_STATUS ( status_inputcheck, status_calculation ) 
           IF (status_inputcheck   /= vlidort_success) THEN
-            WRITE(www_lun, *) modulename, ' : Problems encountered in lidort input check!!!'
+            WRITE(www_lun, *) modulename, &
+                 ' : Problems encountered in lidort input check!!!'
             errstat = pge_errstat_error
             RETURN
           ENDIF
           IF (status_calculation  /= vlidort_success) THEN
-            WRITE(www_lun, *) modulename, ' : Problems encountered in lidort calculation!!!'
+            WRITE(www_lun, *) modulename, &
+                 ' : Problems encountered in lidort calculation!!!'
             errstat = pge_errstat_error
             RETURN
           ENDIF
 
           ! Pixel-independent approximation
-          radclrcld(ic, 1:nostk) = stokes(1, 1, 1:nostk, 1) * polerr(iw, ic, 1:nostk)
-          rad(iw, 1:nostk)       = rad(iw, 1:nostk) + radclrcld(ic, 1:nostk) * frac
+          radclrcld(ic, 1:nostk) = stokes(1, 1, 1:nostk, 1) * &
+               polerr(iw, ic, 1:nostk)
+          rad(iw, 1:nostk) = rad(iw, 1:nostk) + radclrcld(ic, 1:nostk) * frac
 
           IF (do_linearization ) THEN
 
             ! weighting function per Dobson Unit
             IF ( do_ozwf ) THEN
               DO istk = 1, nostk
-                fozwf(iw, 1:nfsfc-1, istk) = fozwf(iw, 1:nfsfc-1, istk) + profilewf(ozwfidx, 1:nfsfc-1, 1, 1, istk, 1) &
+                fozwf(iw, 1:nfsfc-1, istk) = fozwf(iw, 1:nfsfc-1, istk) + &
+                     profilewf(ozwfidx, 1:nfsfc-1, 1, 1, istk, 1) &
                      / ozs(1:nfsfc-1)  * polerr(iw, ic, istk) * frac 
               ENDDO
             ENDIF
 
-            ! Weighting function with respect to aerosol/cloud optical depth at the last wavelength
-            ! so as to keep the scaling since we are fitting the aod at that wavelength
+            ! Weighting function with respect to aerosol/cloud optical depth 
+            ! at the last wavelength so as to keep the scaling since we are 
+            ! fitting the aod at that wavelength
             IF ( do_taodwf .OR. do_saodwf ) THEN
               !print *, ipol, faer_lvl, nfsfc-1, frac
               DO istk = 1, nostk
-                faerwf(iw, faer_lvl:nfsfc-1, istk)  = faerwf(iw, faer_lvl:nfsfc-1, istk) + &
+                faerwf(iw, faer_lvl:nfsfc-1, istk)  = &
+                     faerwf(iw, faer_lvl:nfsfc-1, istk) + &
                      profilewf(aodwfidx, faer_lvl:nfsfc-1, 1, 1, istk, 1) / &
-                     gaext(actawin, faer_lvl:nfsfc-1) * polerr(iw, ic, istk) *  frac
+                     gaext(actawin, faer_lvl:nfsfc-1) * &
+                     polerr(iw, ic, istk) *  frac
                 !print *, faerwf(iw, faer_lvl:nfsfc-1, 1)
               ENDDO
             ENDIF
             IF ( do_twaewf ) THEN
               DO istk = 1, nostk
-                faerswf(iw, faer_lvl:nfsfc-1, istk)  = faerswf(iw, faer_lvl:nfsfc-1, istk) + &
+                faerswf(iw, faer_lvl:nfsfc-1, istk)  = &
+                     faerswf(iw, faer_lvl:nfsfc-1, istk) + &
                      profilewf(twaewfidx, faer_lvl:nfsfc-1, 1, 1, istk, 1) / &
-                     gasca(actawin, faer_lvl:nfsfc-1) * gaext(actawin, faer_lvl:nfsfc-1) * &
+                     gasca(actawin, faer_lvl:nfsfc-1) * &
+                     gaext(actawin, faer_lvl:nfsfc-1) * &
                      polerr(iw, ic, istk) *  frac
               ENDDO
             ENDIF
@@ -4222,15 +4448,19 @@ contains
             ENDIF
             IF ( do_sprswf ) THEN
               DO istk = 1, nostk 
-                fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, istk)  = fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, istk) + &
-                     profilewf(sprswfidx, nup2p(nsfc-1)+1:nfsfc-1, 1, 1, istk, 1) / &
-                     (fps(nup2p(nsfc-1)+1:nfsfc-1) - fps(nup2p(nsfc-1):nfsfc-2)) * polerr(iw, ic, istk) *  frac
+                fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, istk)  = &
+                     fsprswf(iw, nup2p(nsfc-1)+1:nfsfc-1, istk) + &
+                     profilewf(sprswfidx, nup2p(nsfc-1)+1:nfsfc-1, 1, 1, &
+                     istk, 1) / &
+                     (fps(nup2p(nsfc-1)+1:nfsfc-1) - &
+                     fps(nup2p(nsfc-1):nfsfc-2)) * polerr(iw, ic, istk) *  frac
               ENDDO
             ENDIF
 
             IF ( do_fraywf ) THEN
               DO istk = 1, nostk
-                fraywf(iw, 1:nfsfc-1, istk) = fraywf(iw, 1:nfsfc-1, istk) + profilewf(raywfidx, 1:nfsfc-1, 1, 1, istk, 1) &
+                fraywf(iw, 1:nfsfc-1, istk) = fraywf(iw, 1:nfsfc-1, istk) + &
+                     profilewf(raywfidx, 1:nfsfc-1, 1, 1, istk, 1) &
                      / delray(iw, 1:nfsfc-1)  * polerr(iw, ic, istk) * frac 
               ENDDO
             ENDIF
@@ -4240,14 +4470,17 @@ contains
             !                        if the_cfrac == 1, albwf from cloud only
             IF (do_albwf) THEN 
               IF (.NOT. do_lambcld) THEN
-                albwf(iw, 1:nostk) = albwf(iw, 1:nostk) + surfacewf(1, 1, 1, 1:nostk, 1) &
+                albwf(iw, 1:nostk) = albwf(iw, 1:nostk) + &
+                     surfacewf(1, 1, 1, 1:nostk, 1) &
                      * polerr(iw, ic, 1:nostk) * frac / lambertian_albedo
               ELSE IF (the_cfrac < 1.0) THEN
                 IF (ic == 1) albwf(iw, 1:nostk) = albwf(iw, 1:nostk) + &
-                     surfacewf(1, 1, 1, 1:nostk, 1) * polerr(iw, ic, 1:nostk) * frac / lambertian_albedo
+                     surfacewf(1, 1, 1, 1:nostk, 1) * &
+                     polerr(iw, ic, 1:nostk) * frac / lambertian_albedo
               ELSE IF (the_cfrac == 1.0) THEN
                 IF (ic == 2) albwf(iw, 1:nostk) = albwf(iw, 1:nostk) + &
-                     surfacewf(1, 1, 1, 1:nostk, 1) * polerr(iw, ic, 1:nostk) * frac / lambertian_albedo
+                     surfacewf(1, 1, 1, 1:nostk, 1) * &
+                     polerr(iw, ic, 1:nostk) * frac / lambertian_albedo
               ENDIF
             ENDIF
 
@@ -4256,7 +4489,8 @@ contains
         ENDDO ! end clear/cloudy scene loop
         radclr(iw, 1:nostk) = radclrcld(1, 1:nostk)
         radcld(iw, 1:nostk) = radclrcld(2, 1:nostk)
-        IF (do_cfracwf) cfracwf(iw, 1:nostk) = radcld(iw, 1:nostk) - radclr(iw, 1:nostk)
+        IF (do_cfracwf) cfracwf(iw, 1:nostk) = radcld(iw, 1:nostk) - &
+             radclr(iw, 1:nostk)
       ENDDO    ! end scalar/vector modes
     ENDDO       ! end wavelength loop 
 
@@ -4281,12 +4515,12 @@ contains
            do_faerwf, do_twaewf, do_codwf, do_sprswf, do_fraywf, do_cfracwf, &
            waves(1:nw0), rad(1:nw0, 1), prad(1:nw0), delabs(1:nw0, 1:nz1), &
            ozs(1:nz1), albwf(1:nw0, 1), palbwf(1:nw0), &
-!           fozwf(1:nw0, 1:nz1, 1), pfozwf(1:nw0, 1:nz1), &
-!           faerwf(1:nw0, 1:nz1, 1), pfaerwf(1:nw0, 1:nz1), &
-!           faerswf(1:nw0, 1:nz1, 1), pfaerswf(1:nw0, 1:nz1), &
-!           fcodwf(1:nw0, 1:nz1, 1), pfcodwf(1:nw0, 1:nz1), &
-!           fsprswf(1:nw0, 1:nz1, 1), pfsprswf(1:nw0, 1:nz1), &
-!           fraywf(1:nw0, 1:nz1, 1), pfraywf(1:nw0, 1:nz1), &
+           !           fozwf(1:nw0, 1:nz1, 1), pfozwf(1:nw0, 1:nz1), &
+           !           faerwf(1:nw0, 1:nz1, 1), pfaerwf(1:nw0, 1:nz1), &
+           !           faerswf(1:nw0, 1:nz1, 1), pfaerswf(1:nw0, 1:nz1), &
+           !           fcodwf(1:nw0, 1:nz1, 1), pfcodwf(1:nw0, 1:nz1), &
+           !           fsprswf(1:nw0, 1:nz1, 1), pfsprswf(1:nw0, 1:nz1), &
+           !           fraywf(1:nw0, 1:nz1, 1), pfraywf(1:nw0, 1:nz1), &
            fozwf(1:nw0, 1:nz1, 1), pfozwf(1:nw0, 1:nz1), &
            faerwf(1:nw0, 1:nz1, 1), pfaerwf(1:nw0, 1:nz1), &
            faerswf(1:nw0, 1:nz1, 1), pfaerswf(1:nw0, 1:nz1), &
@@ -4354,14 +4588,16 @@ contains
       nw0 = nw
     ENDIF
 
-    ! Calculate desired weighting functions at the end after applying all the correction
+    ! Calculate desired weighting functions at the end after applying all 
+    ! the correction
     IF ( do_ozwf ) THEN  
       DO i = 1, nl
         fidx = nup2p(i - 1) + 1
         lidx = nup2p(i)         
         DO iw = 1, nw0
           DO istk = 1, nostk
-            ozwf(iw, i, istk) = SUM(fozwf(iw, fidx:lidx, istk) * ozs(fidx:lidx)) / SUM(ozs(fidx:lidx))
+            ozwf(iw, i, istk) = SUM(fozwf(iw, fidx:lidx, istk) * &
+                 ozs(fidx:lidx)) / SUM(ozs(fidx:lidx))
           ENDDO
         ENDDO
       ENDDO
@@ -4373,8 +4609,10 @@ contains
         lidx = nup2p(i)         
         DO iw = 1, nw0
           DO istk = 1, nostk
-            tmpwf(iw, i, istk) = SUM(fozwf(iw, fidx:lidx, istk) * ozs(fidx:lidx) &
-                 * dadt(iw, fidx:lidx) * (fzs(fidx-1:lidx-1)-fzs(fidx:lidx))) / (fzs(fidx-1) - fzs(lidx))
+            tmpwf(iw, i, istk) = SUM(fozwf(iw, fidx:lidx, istk) * &
+                 ozs(fidx:lidx) * dadt(iw, fidx:lidx) * &
+                 (fzs(fidx-1:lidx-1)-fzs(fidx:lidx))) / &
+                 (fzs(fidx-1) - fzs(lidx))
           ENDDO
         ENDDO
       ENDDO
@@ -4383,7 +4621,8 @@ contains
     IF (do_o3shi) THEN
       DO iw = 1, nw0
         DO istk = 1, nostk
-          o3shiwf(iw, istk) = SUM(fozwf(iw, 1:nz1, istk) * ozs(1:nz1) * dads(iw, 1:nz1))
+          o3shiwf(iw, istk) = SUM(fozwf(iw, 1:nz1, istk) * ozs(1:nz1) * &
+               dads(iw, 1:nz1))
         ENDDO
       ENDDO
     ENDIF
@@ -4392,7 +4631,8 @@ contains
       DO iw = 1, nw0
         DO istk = 1, nostk
           taodwf(iw, istk) = SUM( faerwf(iw, nup2p(ntp)+1:nz1, istk) * &
-               gaext(actawin, nup2p(ntp)+1:nz1) ) / SUM (gaext(actawin, nup2p(ntp)+1:nz1))
+               gaext(actawin, nup2p(ntp)+1:nz1) ) / &
+               SUM (gaext(actawin, nup2p(ntp)+1:nz1))
         ENDDO
       ENDDO
     ENDIF
@@ -4401,8 +4641,10 @@ contains
       DO iw = 1, nw0
         DO istk = 1, nostk
           twaewf(iw, istk) = SUM( faerswf(iw, nup2p(ntp)+1:nz1, istk) * &
-               gasca(actawin, nup2p(ntp)+1:nz1) / gaext(actawin, nup2p(ntp)+1:nz1) ) &
-               / SUM (gasca(actawin, nup2p(ntp)+1:nz1) / gaext(actawin, nup2p(ntp)+1:nz1))
+               gasca(actawin, nup2p(ntp)+1:nz1) / &
+               gaext(actawin, nup2p(ntp)+1:nz1) ) &
+               / SUM (gasca(actawin, nup2p(ntp)+1:nz1) / &
+               gaext(actawin, nup2p(ntp)+1:nz1))
         ENDDO
       ENDDO
     ENDIF
@@ -4411,7 +4653,8 @@ contains
       DO iw = 1, nw0
         DO istk = 1, nostk
           saodwf(iw, istk) = SUM( faerwf(iw, 1:nup2p(ntp), istk) * &
-               gaext(actawin, 1:nup2p(ntp)) ) / SUM (gaext(actawin, 1:nup2p(ntp)))
+               gaext(actawin, 1:nup2p(ntp)) ) / &
+               SUM (gaext(actawin, 1:nup2p(ntp)))
         ENDDO
       ENDDO
     ENDIF
@@ -4429,7 +4672,8 @@ contains
       DO iw = 1, nw0
         DO istk = 1, nostk
           sprswf(iw, istk) = SUM( fsprswf(iw, nup2p(nsfc-1)+1:nz1, istk) * &
-               (fps(nup2p(nsfc-1)+1:nz1) - fps(nup2p(nsfc-1):nz1-1))) / (fps(nz1)-fps(nup2p(nsfc-1)))
+               (fps(nup2p(nsfc-1)+1:nz1) - fps(nup2p(nsfc-1):nz1-1))) / &
+               (fps(nz1)-fps(nup2p(nsfc-1)))
         ENDDO
       ENDDO
     ENDIF
@@ -4442,18 +4686,21 @@ contains
     !ENDIF
 
     IF (nw > 1 .AND. do_ozwf .AND. do_tracewf ) &
-         CALL GET_TRACEGAS_WF (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), so2crs(1:nw0, 1:nz), use_so2dtcrs, &
-         rad(1:nw0, 1), nw0, nz, nz1, ozs(1:nz), waves(1:nw0), do_so2zwf, so2zwf(1:nw0, 1))
+         CALL GET_TRACEGAS_WF (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
+         so2crs(1:nw0, 1:nz), use_so2dtcrs, rad(1:nw0, 1), nw0, nz, nz1, &
+         ozs(1:nz), waves(1:nw0), do_so2zwf, so2zwf(1:nw0, 1))
 
     IF (nw > 1 .AND. do_simu .AND. .NOT. radcalwrt) THEN
       WRITE(78, *) 2, nz1
       WRITE(78, *) 'Profile: Z, P, T, O3, SO2'
       DO i = 1, nz1
-        WRITE(78, '(F10.4, 4D16.7)') fzs(i), fps(i), fts(i), fozs(i), allcol(3, i)/refspec_norm(9)
+        WRITE(78, '(F10.4, 4D16.7)') fzs(i), fps(i), fts(i), fozs(i), &
+             allcol(3, i)/refspec_norm(9)
       ENDDO
       WRITE(78, '(A)') 'Wavelength, radiance, albedo wf, ozone wf, aerosol wf, ozcrs, so2crs'
       DO i = 1, nw !160, 369, 209
-        WRITE(78, '(F10.4, 500D16.7)') waves(i), rad(i, 1), albwf(i, 1), fozwf(i, 1:nz1, 1), & !, faerwf(i, 1:nz1, 1), &
+        WRITE(78, '(F10.4, 500D16.7)') waves(i), rad(i, 1), albwf(i, 1), &
+             fozwf(i, 1:nz1, 1), & !, faerwf(i, 1:nz1, 1), &
              allcrs(i, 1, 1:nz1), allcrs(i, 3, nz1)*refspec_norm(9)
       ENDDO
       print *, nw, nz
