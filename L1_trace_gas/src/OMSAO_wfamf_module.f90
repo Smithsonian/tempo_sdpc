@@ -212,10 +212,11 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology, cli_heights
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure
 
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
@@ -231,11 +232,11 @@ CONTAINS
     climatology  = r8_missval
     cli_wgh_ozo_pro = r8_missval ! Not output
     cli_idx_ozo_pro = i4_missval ! Not output
-    cli_heights  = r8_missval
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
     amfdiag      = i2_missval
+    surface_pressure = r4_missval
 
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
@@ -244,137 +245,137 @@ CONTAINS
     ! -----------------------------------------
     IF (amf_wvl .LT. 0.0) THEN
 
-      DO itt = 0, nt-1
-        spixx = xtrange(itt,1) ; epixx = xtrange(itt,2)
-        saoamf(spixx:epixx,itt) = 1.0_r8
-      END DO
-
+       DO itt = 0, nt-1
+          spixx = xtrange(itt,1) ; epixx = xtrange(itt,2)
+          saoamf(spixx:epixx,itt) = 1.0_r8
+       END DO
+       
     ELSE
 
-      ! -------------------------
-      ! Compute the geometric AMF
-      ! -------------------------
-      CALL compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
+       ! -------------------------
+       ! Compute the geometric AMF
+       ! -------------------------
+       CALL compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
 
-      ! -------------------------------------------------------
-      ! Initialize molecular AMF with geometric AMF. Subsequent
-      ! subroutines will replace any entries where the true
-      ! molecular AMF can be computed.
-      ! -------------------------------------------------------
-      saoamf = amfgeo
+       ! -------------------------------------------------------
+       ! Initialize molecular AMF with geometric AMF. Subsequent
+       ! subroutines will replace any entries where the true
+       ! molecular AMF can be computed.
+       ! -------------------------------------------------------
+       saoamf = amfgeo
       
-      ! ----------------------------------------------------
-      ! Read OMLER albedo database stored in variable albedo
-      ! ----------------------------------------------------
-      CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, errstat)
+       ! ----------------------------------------------------
+       ! Read OMLER albedo database stored in variable albedo
+       ! ----------------------------------------------------
+       CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, errstat)
 
-      ! ---------------------------------------
-      ! Write the albedo to the output file he5
-      ! ---------------------------------------
-      IF (do_write) then
-        if (yn_do_he5_output) then
-          CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
-        endif
-        call write_albedo (albedo, nx, nt, errstat)
-        if (errstat /= 0) return
-      endif
+       ! ---------------------------------------
+       ! Write the albedo to the output file he5
+       ! ---------------------------------------
+       IF (do_write) then
+          if (yn_do_he5_output) then
+             CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
+          endif
+          call write_albedo (albedo, nx, nt, errstat)
+          if (errstat /= 0) return
+       endif
 
-      ! -----------------------------
-      ! Read the OMI L2 cloud product
-      ! -----------------------------
-      cloud_file = voc_amf_filenames(voc_omicld_idx)
-      if (0 /= index (cloud_file, ".he5", .true.)) then
-        ! FIXME: amf_read_omiclouds to be removed
-        CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
-      else if (0 /= index (cloud_file, ".nc", .true.)) then
-        call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
-      else
-        call tell_error (tell_runtime_error, "unexpected cloud file extension: "//trim(cloud_file), errstat)
-        return
-      endif
-      if (errstat /= 0) then
-        call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
-        return
-      endif
-      call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
+       ! -----------------------------
+       ! Read the OMI L2 cloud product
+       ! -----------------------------
+       cloud_file = voc_amf_filenames(voc_omicld_idx)
+       if (0 /= index (cloud_file, ".he5", .true.)) then
+          ! FIXME: amf_read_omiclouds to be removed
+          CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
+       else if (0 /= index (cloud_file, ".nc", .true.)) then
+          call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+       else
+          call tell_error (tell_runtime_error, "unexpected cloud file extension: "//trim(cloud_file), errstat)
+          return
+       endif
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
+          return
+       endif
+       call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
 
-      ! ----------------------------
-      ! Read ISCCP cloud climatology
-      ! ----------------------------
-      cloud_file = voc_amf_filenames(voc_isccp_idx)
-      CALL voc_amf_readisccp  ( errstat )
-      if (errstat /= 0) then
-        call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
-        return
-      endif
-      call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
+       ! ----------------------------
+       ! Read ISCCP cloud climatology
+       ! ----------------------------
+       cloud_file = voc_amf_filenames(voc_isccp_idx)
+       CALL voc_amf_readisccp  ( errstat )
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
+          return
+       endif
+       call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
 
-      ! ------------------------------------------------
-      ! Read climatology and interpolate to lon/lat/time
-      ! ------------------------------------------------
-      CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-           lat, lon, time, nt, nx, xtrange, errstat)
+       ! ------------------------------------------------
+       ! Read climatology and interpolate to lon/lat/time
+       ! ------------------------------------------------
+       CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+            lat, lon, time, nt, nx, xtrange, errstat)
 
-      ! -------------------------------------
-      ! Write the climatology to the he5 file
-      ! -------------------------------------
-      IF (do_write) then
-        if (yn_do_he5_output) then
-          CALL write_climatology_he5 (climatology, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
-        endif
-        call write_gas_profile (climatology, nx, nt, CmETA, errstat)
-        if (errstat /= 0) return
-      endif
+       ! -------------------------------------
+       ! Write the climatology to the he5 file
+       ! -------------------------------------
+       IF (do_write) then
+          if (yn_do_he5_output) then
+             CALL write_climatology_he5 (climatology, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+          endif
+          call write_gas_profile (climatology, nx, nt, CmETA, errstat)
+          if (errstat /= 0) return
+       endif
 
-      ! ------------------------------------------------------------------
-      ! Read VLIDORT look up table. Variables are declared at module level
-      ! (Input is read only on the first pass.  Subsequent passes use
-      ! cached values)
-      ! ------------------------------------------------------------------
-      CALL read_vlidort (errstat)
-      if (errstat /= 0) then
-        call vlidort_deallocate(errstat)
-        return
-      endif
+       ! ------------------------------------------------------------------
+       ! Read VLIDORT look up table. Variables are declared at module level
+       ! (Input is read only on the first pass.  Subsequent passes use
+       ! cached values)
+       ! ------------------------------------------------------------------
+       CALL read_vlidort (errstat)
+       if (errstat /= 0) then
+          call vlidort_deallocate(errstat)
+          return
+       endif
 
-      ! ----------------------------------------------------------------------
-      ! amfdiag is used to keep track of the pixels were enough information is
-      ! available to carry on the AMFs calculation.
-      ! ----------------------------------------------------------------------
-      CALL amf_diagnostic (nt, nx, lat, lon, &
-                           sza, vza, snow, glint, xtrange, &
-                           l2cfr, l2ctp, &
-                           amfdiag  )
+       ! ----------------------------------------------------------------------
+       ! amfdiag is used to keep track of the pixels were enough information is
+       ! available to carry on the AMFs calculation.
+       ! ----------------------------------------------------------------------
+       CALL amf_diagnostic (nt, nx, lat, lon, &
+            sza, vza, snow, glint, xtrange, &
+            l2cfr, l2ctp, &
+            amfdiag  )
 
-      WHERE ((saocol <= r8_missval).or.(saodco<=r8_missval))
-        amfdiag = i2_missval
-      END WHERE
+       WHERE ((saocol <= r8_missval).or.(saodco<=r8_missval))
+          amfdiag = i2_missval
+       END WHERE
 
-      ! --------------------------------------------------------
-      ! Compute Scattering weights in the look up table grid but
-      ! with the correct albedo. amfdiag is used to skip pixel
-      ! ---------------------------------------------------------
-      CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
-                          terrain_height, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-                          lat, lon, amfdiag, scattw)
+       ! --------------------------------------------------------
+       ! Compute Scattering weights in the look up table grid but
+       ! with the correct albedo. amfdiag is used to skip pixel
+       ! ---------------------------------------------------------
+       CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
+            terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+            lat, lon, amfdiag, scattw)
 
-      ! -----------------------------------------------------------------
-      ! Work out the AMF using the scattering weights and the climatology
-      ! Work out Averaging Kernels
-      ! -----------------------------------------------------------------
-      CALL compute_amf ( nt, nx, CmETA, climatology, &
-           scattw, saoamf, amfdiag, locerrstat)
+       ! -----------------------------------------------------------------
+       ! Work out the AMF using the scattering weights and the climatology
+       ! Work out Averaging Kernels
+       ! -----------------------------------------------------------------
+       CALL compute_amf ( nt, nx, CmETA, climatology, &
+            scattw, saoamf, amfdiag, locerrstat)
 
-      ! -----------------------------------------------------------------
-      ! Write out scattering weights, altitude grid and averaging kernels
-      ! -----------------------------------------------------------------
-      IF (do_write) then
-        if (yn_do_he5_output) then
-          CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
-        endif
-        call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
-        if (errstat /= 0) return
-      endif
+       ! -----------------------------------------------------------------
+       ! Write out scattering weights, altitude grid and averaging kernels
+       ! -----------------------------------------------------------------
+       IF (do_write) then
+          if (yn_do_he5_output) then
+             CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
+          endif
+          call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
+          if (errstat /= 0) return
+       endif
 
     END IF
 
@@ -393,13 +394,15 @@ CONTAINS
     IF (do_write) then
       if (yn_do_he5_output) then
         CALL he5_amf_write ( nx, nt, saocol, saodco, saoamf, &
-                            amfgeo, amfdiag, l2cfr, l2ctp, locerrstat ) ! FIXME <-- (to be removed)
+                            amfgeo, amfdiag, l2cfr, l2ctp, surface_pressure, &
+                            locerrstat ) ! FIXME <-- (to be removed)
       endif
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_geometric => amfgeo
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
+      amf_corr % surface_pressure => surface_pressure
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
@@ -2069,7 +2072,7 @@ CONTAINS
   END SUBROUTINE amf_diagnostic
 
   SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, &
-       cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
+       surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -2090,6 +2093,7 @@ CONTAINS
     ! ------------------
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT (INOUT) :: scattw
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
+    REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: surface_pressure
 
     ! ---------------
     ! Local variables
@@ -2190,6 +2194,9 @@ CONTAINS
           ! Bringing it to the lowest available pressure if needed
           ! ------------------------------------------------------
           IF (local_srf .GT. 1030.0) local_srf = 1030.0_r8
+          ! Save it in ouptut variable
+          surface_pressure(ixtrack,itime) = REAL(local_srf, KIND=r4)
+
           ! --------------------------------------------------------------------------
           !If cloud pressure is greater than surface pressure (cloud below surface!!!)
           !then use climatology to correct cloud pressure.
@@ -2761,14 +2768,14 @@ CONTAINS
 
   SUBROUTINE he5_amf_write ( &
       nx, nt, saocol, saodco, amfmol, amfgeo, amfdiag, &
-      amfcfr, amfctp, errstat )
+      amfcfr, amfctp, surface_pressure, errstat )
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_he5_module, ONLY: HE5_SWWRFLD, he5_start_2d, he5_stride_2d, &
       he5_edge_2d
     USE OMSAO_errstat_module, only : pge_errstat_ok
     use datafields, only: amfcfr_field, amfctp_field, amfdiag_field, &
-      amfgeo_field, amfmol_field, col_field, dcol_field
+      amfgeo_field, amfmol_field, col_field, dcol_field, surpre_field
 
     IMPLICIT NONE
 
@@ -2784,6 +2791,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: saocol, saodco
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfmol, amfgeo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfcfr, amfctp
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: surface_pressure
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
 
     ! -----------------
@@ -2863,6 +2871,14 @@ CONTAINS
     colloc = saodco
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(dcol_field)), &
                               he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
+    errstat = MAX ( errstat, locerrstat )
+
+    ! ----------------
+    ! Surface pressure
+    ! ----------------
+    amfloc = surface_pressure
+    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(surpre_field)), &
+         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
     RETURN

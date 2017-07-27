@@ -1277,6 +1277,11 @@ contains
     endif
     call tiof_pop_group (obj, errstat)
 
+    call tiof_push_group (obj, tg_grp_geolocation, errstat)
+    call tiof_put2d_r4 (obj, tg_var_surface_pressure, [0,0], [ntimes,nxtrack], &
+                        amf_corr % surface_pressure (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
     ! Note that we're over-writing the column amount variable in the file
     ! (to which we previously wrote the slant column values).
     call tiof_push_group (obj, tg_grp_product, errstat)
