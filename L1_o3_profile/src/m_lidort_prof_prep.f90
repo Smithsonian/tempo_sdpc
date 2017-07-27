@@ -21,9 +21,9 @@ contains
   ! ====================================================================
 
   ! Description of Arguments
-  ! lamda:   wavelength 
+  ! lamda:   wavelength
   ! zsgrid:  altitude at each level from TOA to BOS in km, nlayers+1 levels
-  ! airgrid: air column density for each layer, molecules / cm^2 
+  ! airgrid: air column density for each layer, molecules / cm^2
   ! varyprof:arrays of linearization flags for each layer, 0:no 1:yes
 
   ! Currently, number of gases to be allowed is one, i.e., O3
@@ -35,8 +35,8 @@ contains
   ! ngas  :  number of gases
   ! gasin :  pointer to gases that are used
   ! abscrs:  Input/output
-  !		   If get_crs is set, then it refers to absorption cross section 
-  !		   at each layer and for each species for each molecule 
+  !		   If get_crs is set, then it refers to absorption cross section
+  !		   at each layer and for each species for each molecule
   !          On return, it gives the absorption od for each species at each layer
   ! gascol : column density for each species at each layer, molecules/cm^2
 
@@ -49,7 +49,7 @@ contains
   ! aermsk    :  Indicator of aerosols for each layer, 1: with aerosol, 0: no aerosols
   ! aermoms   :  Aerosol moments at layers with aerosols
 
-  ! do_clouds : include clouds 
+  ! do_clouds : include clouds
   ! cldsca    :  cloud scattering coefficients at each layer
   ! cldext    :  cloud extinction coefficients at each layer
   ! cldasy    :  cloud asymmetric factor  at each layer
@@ -57,7 +57,7 @@ contains
   ! cldmoms   :  cloud moments at layers with clouds
 
   SUBROUTINE LIDORT_PROF_PREP (raycof, depol, zsgrid, airgrid,  varyprof, &
-       ngas, gasin, abscrs, gascol, eta, useasy, nmoms, &          
+       ngas, gasin, abscrs, gascol, eta, useasy, nmoms, &
        do_aerosols, aersca, aerext, aerasy, aermoms, aermsk, &
        do_clouds, cldsca, cldext, cldasy, cldmoms, cldmsk, problems, &
        deltau, delsca, delo3abs, delray)
@@ -65,11 +65,12 @@ contains
     USE OMSAO_precision_module
     USE ozprof_data_module, ONLY : maxgksec, maxgkmatc, ngksec, ngkmatc
     USE OMSAO_errstat_module
-    IMPLICIT NONE  
+    use m_vlidort90_include
+    IMPLICIT NONE
 
     !===============================  Define Variables ===========================
     ! Include files of dimensions and numbers
-    INCLUDE 'VLIDORT90.PARS'  
+!    INCLUDE 'VLIDORT90.PARS'
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS90.VARS'
     INCLUDE 'VLIDORT_SETUPS90.VARS'
@@ -102,7 +103,7 @@ contains
     LOGICAL, INTENT(INOUT) :: do_aerosols, do_clouds
 
     ! Local variables
-    INTEGER, PARAMETER     :: maxngas = 7, maxscatter=3, allngas = 9
+    INTEGER, PARAMETER     :: maxscatter=3, allngas = 9!, maxngas = 7
     INTEGER, DIMENSION(maxgkmatc), PARAMETER :: &
          greekmat_idxs = (/1, 2, 5, 6, 11, 12, 15, 16/), &
          phasmoms_idxs = (/1, 5, 5, 2, 3, 6, 6, 4/)
@@ -145,7 +146,7 @@ contains
 
       l_deltau_vert_input   = ZERO
       l_omega_total_input   = ZERO
-      l_greekmat_total_input= ZERO 
+      l_greekmat_total_input= ZERO
       l_phasmoms_total_input= ZERO
 
       first =.FALSE.
@@ -157,7 +158,7 @@ contains
       nactgksec = ngksec; nactgkmatc = ngkmatc
     ENDIF
 
-    !WRITE(www_lun, *) nmoms, nmoments, ngreek_moments_input, maxmoments 
+    !WRITE(www_lun, *) nmoms, nmoments, ngreek_moments_input, maxmoments
     !WRITE(www_lun, *) SUM(gascol), SUM(airgrid)
     !WRITE(www_lun, *) varyprof(1), varyprof(nlayers)
     !WRITE(www_lun, *) abscrs(1, 1), abscrs(1, 30)
@@ -177,35 +178,35 @@ contains
     !IF (do_clouds .OR. do_aerosols) do_deltam_scaling = .TRUE.
 
     ! Start layer loop
-    taugrid_input(0) = ZERO 
+    taugrid_input(0) = ZERO
 
     ! Get rayleigh scattering phase function moments (Same for each layer)
     ! unassigned elements have already initialized to zero
     phasmoms_input(0, 1, 1) = ONE
-    phasmoms_input(2, 1, 1) = (ONE - depol) / (TWO + depol)  
+    phasmoms_input(2, 1, 1) = (ONE - depol) / (TWO + depol)
     IF (nactgksec == 6) THEN
       phasmoms_input(2, 2, 1) = 6.0D0 * phasmoms_input(2, 1, 1)
       phasmoms_input(2, 5, 1) = -SQRT(6.0D0) * phasmoms_input(2, 1, 1)
       phasmoms_input(1, 4, 1) = 3.0D0 * (ONE - 2.0D0 * depol) / (TWO + depol)
     ENDIF
 
-    DO i = 1, nlayers   
+    DO i = 1, nlayers
       ! Rayleigh scattering
       scaco_r = raycof * airgrid(i)
       delray(i) = scaco_r
 
       ! Gas absorption
       absod(1:ngas, i) = abscrs(1:ngas, i) * gascol(1:ngas, i)
-      absco_r = SUM(absod(1:ngas, i))         
+      absco_r = SUM(absod(1:ngas, i))
       extco_r = absco_r + scaco_r
       scaco_input(1) = scaco_r
 
       ! Aerosols and clouds
       extco = extco_r
       nscatter = 1; cldidx = 0; aeridx = 0
-      extco_a = ZERO; scaco_a = ZERO; extco_c = ZERO; scaco_c = ZERO; 
+      extco_a = ZERO; scaco_a = ZERO; extco_c = ZERO; scaco_c = ZERO;
 
-      !IF (.NOT. do_rayleigh_only) THEN        
+      !IF (.NOT. do_rayleigh_only) THEN
       IF (do_clouds .AND. cldmsk(i)) THEN
         nscatter = nscatter + 1
         extco = extco + cldext(i)
@@ -215,10 +216,10 @@ contains
 
         ! get phase moments for clouds
         IF (.NOT. useasy) THEN
-          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = cldmoms(0:nmoms, 1:nactgksec, i)                         
+          phasmoms_input(0:nmoms, 1:nactgksec, nscatter) = cldmoms(0:nmoms, 1:nactgksec, i)
         ELSE ! use H_G function
           phasmoms_input(0, 2, nscatter) = ONE
-          j0 = ONE             
+          j0 = ONE
           DO j = 1, ngreek_moments_input
             j1 = REAL(2*j+1, KIND=dp)
             phasmoms_input(j, 2, nscatter) = (j1/j0) * cldasy(i) * phasmoms_input(j-1, 2, nscatter)

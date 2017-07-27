@@ -2083,13 +2083,14 @@ contains
   SUBROUTINE GET_SLANT_TAU(nz, zs, tauin, sza, tauout)
     USE OMSAO_parameters_module, ONLY  : maxchlen, rearth
     USE OMSAO_precision_module
+    use m_vlidort90_include
     !    use vlidort_miscsetups_src, only: vlidort_chapman
 
     IMPLICIT NONE
 
     !===============================  Define Variables ===========================
     ! Include files of dimensions and numbers
-    INCLUDE 'VLIDORT90.PARS'
+!    INCLUDE 'VLIDORT90.PARS'
     INCLUDE 'VLIDORT_INPUTS90.VARS'
     INCLUDE 'VLIDORT_SETUPS90.VARS'
 
@@ -3070,7 +3071,7 @@ contains
     USE OMSAO_indices_module,   ONLY : so2_idx, so2v_idx, o2o2_idx
     USE ozprof_data_module,     ONLY  : nt_fit, atmosprof, nup2p, nflay, &
          do_lambcld, lambcld_refl, ntp, &
-         do_subfit, polcorr, the_cod, the_cfrac, maxmom, &
+         do_subfit, polcorr, the_cod, the_cfrac, &
          nmom, fts, fps, fzs, fozs, frhos, gaext, gasca, gaasy, gamoms, gcq,  &
          gcasy, gcmoms, the_cbeta, aerwavs, has_clouds, aerosol, useasy, &
          aerwavs, actawin, ncbp, nctp, num_iter, do_tracewf, mgasprof, ngas,  &
@@ -3080,11 +3081,12 @@ contains
          tropsca, tropaod, tropwaer, strataod, stratsca, taodind,  &
          saodind, twaeind, sprsind, nwfc, use_effcrs, ncalcp, VlidortNstream!,&
     !radcidxs, saodfind, start_layer, twaefind, taodfind, wrtozcrs, &
-    !gcw, gassidxs, do_multi_vza, do_ch2reso, end_layer, maxawin
+    !gcw, gassidxs, do_multi_vza, do_ch2reso, end_layer, maxmom, maxawin
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, bspline1
     use m_lidort_prof_prep, only: get_all_raycof_depol, &
          get_all_raycof_depol1, lidort_prof_prep
+    use m_vlidort90_include
     !use lib_vlidort, only: vlidort_l_input_master
     !use vlidort_l_masters_lambertian, only: vlidort_l_master_lambertian
     !use vlidort_aux, only: vlidort_status
@@ -3093,7 +3095,7 @@ contains
 
     !===========================  Define Variables ===========================
     ! Include files of dimensions and numbers
-    INCLUDE 'VLIDORT90.PARS'
+!    INCLUDE 'VLIDORT90.PARS'
 
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS90.VARS'

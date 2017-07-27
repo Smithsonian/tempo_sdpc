@@ -95,6 +95,7 @@ $(ODIR)/lidort_prof_utilities.o: $(SDIR)/lidort_prof_utilities.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/m_gauss.o \
   $(ODIR)/m_lidort_prof_prep.o \
+  $(ODIR)/m_vlidort90_include.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
@@ -204,6 +205,7 @@ $(ODIR)/m_lidort_prof_prep.o: $(SDIR)/m_lidort_prof_prep.f90 \
   $(ODIR)/avg_band.o \
   $(ODIR)/m_dataspline.o \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_vlidort90_include.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -727,6 +729,8 @@ $(ODIR)/m_read_L2_o3p_tio.o: $(SDIR)/m_read_L2_o3p_tio.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_L2_o3p_tio.f90 -o $(ODIR)/m_read_L2_o3p_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_vlidort90_include.o: $(SDIR)/m_vlidort90_include.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_vlidort90_include.f90 -o $(ODIR)/m_vlidort90_include.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/HE5Tget_size.o:	$(SDIR)/HE5Tget_size.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/HE5Tget_size.c -o $(ODIR)/HE5Tget_size.o
 $(ODIR)/OMI_L1B_reader.o:	$(SDIR)/OMI_L1B_reader.c
