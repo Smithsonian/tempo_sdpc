@@ -77,6 +77,7 @@ $(ODIR)/he5_output_module.o: $(SDIR)/he5_output_module.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/he5_output_module.f90 -o $(ODIR)/he5_output_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L1B_Reader_class.o: $(SDIR)/L1B_Reader_class.f90 \
   $(ODIR)/hdfeos4_parameters.o \
+  $(ODIR)/m_pgs_include.o \
   $(ODIR)/Szoom_Parameter_Module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/L1B_Reader_class.f90 -o $(ODIR)/L1B_Reader_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/L2_attr_class.o: $(SDIR)/L2_attr_class.f90 \
@@ -443,6 +444,7 @@ $(ODIR)/OMI_SMF_class.o: $(SDIR)/OMI_SMF_class.f90 \
   $(ODIR)/OMSAO_errstat_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMI_SMF_class.f90 -o $(ODIR)/OMI_SMF_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_errstat_module.o: $(SDIR)/OMSAO_errstat_module.f90 \
+  $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_errstat_module.f90 -o $(ODIR)/OMSAO_errstat_module.o $(MODOUTFLG) $(ODIR)
@@ -723,6 +725,8 @@ $(ODIR)/m_read_L2_o3p_tio.o: $(SDIR)/m_read_L2_o3p_tio.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_L2_o3p_tio.f90 -o $(ODIR)/m_read_L2_o3p_tio.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/HE5Tget_size.o:	$(SDIR)/HE5Tget_size.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/HE5Tget_size.c -o $(ODIR)/HE5Tget_size.o
 $(ODIR)/OMI_L1B_reader.o:	$(SDIR)/OMI_L1B_reader.c
