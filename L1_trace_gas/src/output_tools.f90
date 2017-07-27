@@ -11,7 +11,8 @@ module output_tools
   use tio_module
   use tg_names_module
   use OMSAO_precision_module
-  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
+  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights, &
+       yn_stratrop
 
   implicit none
   private
@@ -210,6 +211,22 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "adjusted cloud pressure for AMF computation", &
                               valid_range = [0.0_r8, 1e30_r8])
+    IF (yn_stratrop) THEN
+       call tiof_varlist_append (varlist, errstat, &
+                              tg_var_amf_molecule_tropospheric, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "molecule-specific tropospheric air mass factor (AMF)", &
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              fillvalue = fill_float)
+       call tiof_varlist_append (varlist, errstat, &
+                              tg_var_amf_molecule_stratospheric, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "molecule-specific tropospheric air mass factor (AMF)", &
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              fillvalue = fill_float)
+    END IF
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
@@ -573,6 +590,24 @@ contains
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
+    call tiof_varlist_append (varlist_geo, errstat, &
+                              tg_var_surface_pressure, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "surface pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1030.0_r8], &
+                              fillvalue = fill_float)
+    IF (yn_stratrop) THEN
+       call tiof_varlist_append (varlist_geo, errstat, &
+                              tg_var_tropopause_pressure, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "tropopause pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1030.0_r8], &
+                              fillvalue = fill_float)
+    END IF
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_terrain_height, &
                               nf90_short, &

@@ -449,6 +449,7 @@ $(ODIR)/undersample.o: $(SDIR)/undersample.f90 \
   $(ODIR)/slitfunction.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/undersample.f90 -o $(ODIR)/undersample.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/datafields.o: $(SDIR)/datafields.f90 \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o

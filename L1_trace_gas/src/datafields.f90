@@ -3,6 +3,7 @@ MODULE datafields
   use OMSAO_precision_module
   use OMSAO_parameters_module, ONLY: MAX_STR_LEN
   use iso_c_binding, ONLY: c_ptr
+  use ctrlvars, only: yn_stratrop
 
   INTEGER (KIND=i4), PARAMETER, PRIVATE :: maxrank = 3
 
@@ -39,7 +40,9 @@ MODULE datafields
     scno_field    = "ScanNumber", &
     lat_field     = "Latitude", &
     lon_field     = "Longitude", &
+    tropre_field  = "TropopausePressure", &
     saa_field     = "SolarAzimuthAngle", &
+    surpre_field  = "SurfacePressure", &
     sza_field     = "SolarZenithAngle", &
     vaa_field     = "ViewingAzimuthAngle", &
     vza_field     = "ViewingZenithAngle", &
@@ -52,6 +55,8 @@ MODULE datafields
     amfmol_field   = "AirMassFactor", &
     amfdiag_field  = "AirMassFactorDiagnosticFlag", &
     amfgeo_field   = "AirMassFactorGeometric", &
+    amfstr_field   = "AirMassFactorStratospheric", &
+    amftro_field   = "AirMassFactorTropospheric", &
     avgcol_field   = "AverageColumnAmount", &
     avgdcol_field  = "AverageColumnUncertainty", &
     avgrms_field   = "AverageFittingRMS", &
@@ -287,6 +292,30 @@ CONTAINS
                        "OMI-Specific" &                    ! uniquefd
                       )
     ! i2 omi_xtrflg (nxtrack_max,0:nlines_max-1)
+    
+    IF (yn_stratrop) THEN
+       call new_datafield(geo_he5fields, &
+                       "TropopausePressure", &             ! name
+                       "Tropopause Pressure", &            ! title
+                       "nXtrack,nTimes", &                 ! dimensions
+                       "hPa", &                            ! units
+                       "r4", &                             ! datatype
+                       0.0_r8, 1030.0_r8, &                ! validrange
+                       "OMI-Specific" &                    ! uniquefd
+                      )
+    END IF
+    ! Derive in AMF calculation from meterological data (nxtrack_max,0:nlines_max-1)
+
+    call new_datafield(geo_he5fields, &
+                       "SurfacePressure", &                ! name
+                       "Surface Pressure", &               ! title
+                       "nXtrack,nTimes", &                 ! dimensions
+                       "hPa", &                            ! units
+                       "r4", &                             ! datatype
+                       0.0_r8, 1030.0_r8, &                ! validrange
+                       "OMI-Specific" &                    ! uniquefd
+                      )
+    ! Derive in AMF calculation from meterological data (nxtrack_max,0:nlines_max-1)
 
     call new_datafield(sol_calfit_he5fields, &
                        "SolarWavCalConvergenceFlag", &     ! name
@@ -416,6 +445,30 @@ CONTAINS
                        "OMI-Specific" &                    ! uniquefd
                       )
     ! derived from amfgeo in amf_calculation
+
+    IF (yn_stratrop) THEN
+       call new_datafield(comdata_he5fields, &
+                       "AirMassFactorStratospheric", &     ! name
+                       "Molecule Specific Stratospheric Air Mass Factor (AMF)", &! title
+                       "nXtrack,nTimes", &                 ! dimensions
+                       "NoUnits", &                        ! units
+                       "r4", &                             ! datatype
+                       0.0_r8, 1e30_r8, &                  ! validrange
+                       "OMI-Specific" &                    ! uniquefd
+                      )
+    ! derived from amfgeo in amf_calculation
+
+       call new_datafield(comdata_he5fields, &
+                       "AirMassFactorTropospheric", &      ! name
+                       "Molecule Specific Tropospheric Air Mass Factor (AMF)", &! title
+                       "nXtrack,nTimes", &                 ! dimensions
+                       "NoUnits", &                        ! units
+                       "r4", &                             ! datatype
+                       0.0_r8, 1e30_r8, &                  ! validrange
+                       "OMI-Specific" &                    ! uniquefd
+                      )
+    ! derived from amfgeo in amf_calculation
+    END IF
 
     call new_datafield(comdata_he5fields, &
                        "AverageColumnAmount", &            ! name
