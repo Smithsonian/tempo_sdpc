@@ -73,7 +73,6 @@ MODULE OMSAO_wfamf_module
   ! Data obtained from the climatology file
   ! ---------------------------------------
   REAL(KIND=r4), DIMENSION(:), ALLOCATABLE :: latvals, lonvals, timevals
-  REAL(KIND=r4), DIMENSION(:,:,:), ALLOCATABLE :: Psurface
   REAL(KIND=r4), DIMENSION(:,:,:,:), ALLOCATABLE :: Gas_profiles, wgh_ozo_pro
   INTEGER(KIND=i4), DIMENSION(:,:,:,:), ALLOCATABLE :: idx_ozo_pro
 
@@ -738,7 +737,6 @@ CONTAINS
     ! the format assumed here.
     ! ==========================================================    
     USE OMSAO_he5_module, ONLY: HE5_SWrdfld, HE5_SWrdlattr
-    USE OMSAO_errstat_module, only : pge_errstat_ok
     IMPLICIT NONE
 
     INTEGER (KIND=i4), INTENT (IN) :: swath_id
@@ -755,10 +753,9 @@ CONTAINS
     ! ---------------
     INTEGER   (KIND=i4) :: he5stat
     INTEGER   (KIND=C_LONG) :: nlon, nlat, nlev, ntim
-    CHARACTER (LEN=15), PARAMETER :: cli_Psurf_field = 'SurfacePressure'
     CHARACTER (LEN=16), PARAMETER :: wgh_ozo_pro_field = 'LUT Ozone Weight'
     CHARACTER (LEN=17), PARAMETER :: idx_ozo_pro_field = 'LUT Ozone Profile'
-    REAL (KIND=r4) :: scale_gas, scale_Psurf, scale_wgh, scale_idx
+    REAL (KIND=r4) :: scale_gas, scale_wgh, scale_idx
 
     ! ----------------------
     ! Subroutine starts here
@@ -779,27 +776,6 @@ CONTAINS
     ntim = INT(idx_tim(2)-idx_tim(1)+1,KIND=C_LONG)
     
     if (errstat /= 0) return
-
-    ! -------------------------
-    ! Read the tables: Psurface
-    ! -------------------------
-    he5_start_3d  = (/ INT(idx_lon(1)-1,8), INT(idx_lat(1)-1,8), INT(idx_tim(1)-1,8) /)
-    he5_stride_3d = (/ onecl, onecl, onecl /)
-    he5_edge_3d   = (/  nlon,  nlat,  ntim /)
-    he5stat = HE5_SWrdfld ( &
-         swath_id, cli_Psurf_field, &
-         he5_start_3d, he5_stride_3d, he5_edge_3d, &
-         Psurface(1:nlon,1:nlat,1:ntim) )
-
-    ! --------------------------------------
-    ! Read datafields scale factor attribute
-    ! --------------------------------------
-    he5stat = HE5_SWrdlattr ( swath_id, cli_Psurf_field, "ScaleFactor", scale_Psurf       )
-    IF ( he5stat /= pge_errstat_ok ) then
-      call tell_error (tell_io_read_error, "read_climatology: reading climatology data fields", &
-                       errstat)
-      return
-    endif
 
     ! ----------------------------
     ! Read data from gas datafield
@@ -848,7 +824,6 @@ CONTAINS
     ! ------------------------------------
     ! Apply scaling factors to data fields
     ! ------------------------------------
-    Psurface     = Psurface     * scale_Psurf
     Gas_profiles = Gas_profiles * scale_gas
     idx_ozo_pro  = idx_ozo_pro  * INT(scale_idx,4)
     wgh_ozo_pro  = wgh_ozo_pro  * scale_wgh
@@ -1372,7 +1347,6 @@ CONTAINS
     if (errstat /= 0) return
     deallocate (latvals, lonvals, timevals, stat=errstat)
     if (allocated(Gas_profiles)) DEALLOCATE(Gas_profiles, stat=errstat)
-    if (allocated(Psurface)) DEALLOCATE(Psurface, stat=errstat)
     if (allocated(wgh_ozo_pro)) DEALLOCATE(wgh_ozo_pro, stat=errstat)
     if (allocated(idx_ozo_pro)) DEALLOCATE(idx_ozo_pro, stat=errstat)
     if (errstat /= 0) then
@@ -1387,7 +1361,7 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    deallocate ( Gas_profiles, Psurface, wgh_ozo_pro, idx_ozo_pro, stat=errstat)
+    deallocate ( Gas_profiles, wgh_ozo_pro, idx_ozo_pro, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, "climatology_deallocate failed", &
            errstat)
@@ -1418,7 +1392,7 @@ CONTAINS
     if (errstat /= 0) return
 
     ALLOCATE (Gas_profiles(Cmlon, Cmlat, CmETA, CmHRS), &
-              Psurface(Cmlon,Cmlat,CmHRS), wgh_ozo_pro(Cmlon, Cmlat, CmHRS, 2), &
+              wgh_ozo_pro(Cmlon, Cmlat, CmHRS, 2), &
               idx_ozo_pro(Cmlon, Cmlat, CmHRS, 2), STAT=estat ) ;
     if (estat /= 0) then
       call tell_error (tell_malloc_error, "climatology_allocate: failed", errstat)
