@@ -212,7 +212,7 @@ CONTAINS
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), target :: amfdiag
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo, cli_psurface
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology, cli_heights
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
@@ -233,7 +233,6 @@ CONTAINS
     cli_wgh_ozo_pro = r8_missval ! Not output
     cli_idx_ozo_pro = i4_missval ! Not output
     cli_heights  = r8_missval
-    cli_psurface = r8_missval
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
@@ -315,7 +314,7 @@ CONTAINS
       ! Read climatology and interpolate to lon/lat/time
       ! ------------------------------------------------
       CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-           cli_psurface, lat, lon, time, nt, nx, xtrange, errstat)
+           lat, lon, time, nt, nx, xtrange, errstat)
 
       ! -------------------------------------
       ! Write the climatology to the he5 file
@@ -411,7 +410,7 @@ CONTAINS
   END SUBROUTINE amf_calculation_bis
 
   SUBROUTINE omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-       local_psurf, lat, lon, time, nt, nx, xtrange, errstat)
+       lat, lon, time, nt, nx, xtrange, errstat)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
@@ -444,7 +443,6 @@ CONTAINS
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_idx_ozo_pro
-    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT (INOUT) :: local_psurf
     
     ! ---------------
     ! Local variables
@@ -688,21 +686,6 @@ CONTAINS
           cli_idx_ozo_pro(ixtrack,itimes,1:2) = idx_ozo_pro(MINLOC(ABS(lonvals(idx_lon)-llon),1), &
                MINLOC(ABS(latvals(idx_lat)-llat),1), &
                MINLOC(ABS(timevals(idx_tim)-ltime),1),1:2)
-
-          ! ----------------------------
-          ! Interpolate Surface pressure
-          ! ----------------------------
-          local_psurf(ixtrack,itimes) = linInterpol(nlon,nlat,ntim, &
-               REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
-               REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
-               REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
-               REAL(Psurface(1:nlon,1:nlat,1:ntim),KIND=r8), &
-               llon, llat, ltime, status=locerrstat)
-          IF ( locerrstat /= 0 ) THEN
-             call tell_error (tell_runtime_error, &
-                  "omi_climatology: surface pressure interpolation failed", errstat)
-             RETURN
-          END IF
 
           DO n = 1, CmETA
              ! Interpolate trace gas profile to lon,lat,hrs [GAS]/cm^2
