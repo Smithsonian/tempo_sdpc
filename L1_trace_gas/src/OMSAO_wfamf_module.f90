@@ -2111,7 +2111,6 @@ CONTAINS
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
          iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, &
          j1, j2, ilat, ilon, status
-    REAL (KIND=r4) :: saa, vaa !Temporary
     character (len=72) :: logmsg    
 
     ! LUT ozone profile variables
@@ -2127,7 +2126,7 @@ CONTAINS
     REAL (KIND=r8), DIMENSION(:,:,:), ALLOCATABLE :: Rad_3D_clear, Rad_3D_cloud
     REAL (KIND=r8), DIMENSION(:,:,:,:,:), ALLOCATABLE :: Sca_5D_clear, Sca_5D_cloud
     REAL (KIND=r8) :: local_alb, local_sza, local_vza, local_srf, local_ctp, &
-         local_cfr, local_raa, out_pre_lay
+         local_cfr, local_raa, out_pre_lay, seed
 
     ! Error variables
     INTEGER (KIND=i4) :: locerrstat
@@ -2186,12 +2185,10 @@ CONTAINS
           ! ----------------------
           ! Relative azimuth angle
           ! ----------------------
-          vaa = 170.0 ! Temporary values for development
-          saa = 5.0
-          IF (saa .LT. 0.0) saa = 360.0+saa
-          IF (vaa .LT. 0.0) vaa = 360.0+vaa
-          local_raa = saa-vaa
-          IF (local_raa .LT. 0.0) local_raa = 360.0+local_raa
+          ! Generate dummy values of vaa and saa
+          CALL RANDOM_NUMBER(seed)
+          local_raa = -180.0 + seed * 360.0 ! -180 to 180 degrees range
+          print*, local_raa
           
           ! ----------------------------------------------
           ! Convert pixel terrain height to pressure using
