@@ -183,7 +183,7 @@ CONTAINS
       write_scattering_weights, write_amf_correction
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
-    use ctrlvars, only : yn_do_he5_output
+    use ctrlvars, only : yn_do_he5_output, yn_stratrop
     IMPLICIT NONE
 
     ! ---------------
@@ -209,14 +209,15 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)                                :: locerrstat, itt, spixx, epixx
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), target :: amfdiag
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
+         stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
 
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
@@ -237,6 +238,11 @@ CONTAINS
     amfgeo       = r8_missval
     amfdiag      = i2_missval
     surface_pressure = r4_missval
+    IF (yn_stratrop) then
+       tropopause_pressure = r4_missval
+       stratospheric_amf = r8_missval
+       tropospheric_amf = r8_missval
+    ENDIF
 
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
@@ -395,14 +401,18 @@ CONTAINS
       if (yn_do_he5_output) then
         CALL he5_amf_write ( nx, nt, saocol, saodco, saoamf, &
                             amfgeo, amfdiag, l2cfr, l2ctp, surface_pressure, &
+                            tropopause_pressure, tropospheric_amf, stratospheric_amf, &
                             locerrstat ) ! FIXME <-- (to be removed)
       endif
       amf_corr % amf_molecule_specific => saoamf
+      amf_corr % amf_molecule_stratospheric => stratospheric_amf
+      amf_corr % amf_molecule_tropospheric => tropospheric_amf
       amf_corr % amf_geometric => amfgeo
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
       amf_corr % surface_pressure => surface_pressure
+      amf_corr % tropopause_pressure => tropopause_pressure
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
@@ -2768,14 +2778,17 @@ CONTAINS
 
   SUBROUTINE he5_amf_write ( &
       nx, nt, saocol, saodco, amfmol, amfgeo, amfdiag, &
-      amfcfr, amfctp, surface_pressure, errstat )
+      amfcfr, amfctp, surface_pressure, tropopause_pressure, &
+      tropospheric_amf, stratospheric_amf, errstat )
 
     USE OMSAO_precision_module, ONLY: i2, i4, r8
     USE OMSAO_he5_module, ONLY: HE5_SWWRFLD, he5_start_2d, he5_stride_2d, &
       he5_edge_2d
     USE OMSAO_errstat_module, only : pge_errstat_ok
     use datafields, only: amfcfr_field, amfctp_field, amfdiag_field, &
-      amfgeo_field, amfmol_field, col_field, dcol_field, surpre_field
+      amfgeo_field, amfmol_field, col_field, dcol_field, surpre_field, &
+      amfstr_field, amftro_field, tropre_field
+    use ctrlvars, only: yn_stratrop
 
     IMPLICIT NONE
 
@@ -2789,9 +2802,10 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nx, nt
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: saocol, saodco
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfmol, amfgeo
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfmol, amfgeo, tropospheric_amf, &
+         stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfcfr, amfctp
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: surface_pressure
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: surface_pressure, tropopause_pressure
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
 
     ! -----------------
@@ -2845,6 +2859,17 @@ CONTAINS
                               he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
 
+    IF (yn_stratrop) then
+       amfloc = REAL ( tropospheric_amf, KIND=r4 )
+       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amftro_field)), &
+                                  he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+       errstat = MAX ( errstat, locerrstat )
+       amfloc = REAL ( stratospheric_amf, KIND=r4 )
+       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfstr_field)), &
+                                  he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+       errstat = MAX ( errstat, locerrstat )
+    END IF
+
     ! ----------------------------------------------------------
     ! (4) AMF cloud fraction and pressure
     ! ----------------------------------------------------------
@@ -2880,6 +2905,16 @@ CONTAINS
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(surpre_field)), &
          he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
+
+    ! -------------------
+    ! Tropopause pressure
+    ! -------------------
+    IF (yn_stratrop) then
+       amfloc = tropopause_pressure
+       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(tropre_field)), &
+                                 he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
+       errstat = MAX ( errstat, locerrstat )
+    END IF
 
     RETURN
   END SUBROUTINE he5_amf_write

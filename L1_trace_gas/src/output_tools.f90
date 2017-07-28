@@ -1269,6 +1269,13 @@ contains
     call tiof_put2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes,nxtrack], &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
 
+    if (yn_stratrop) then
+       call tiof_put2d_r8 (obj, tg_var_amf_molecule_stratospheric, [0,0], [ntimes,nxtrack], &
+                           amf_corr % amf_molecule_stratospheric (1:nxtrack, 0:ntimes-1), errstat)
+       call tiof_put2d_r8 (obj, tg_var_amf_molecule_tropospheric, [0,0], [ntimes,nxtrack], &
+                           amf_corr % amf_molecule_tropospheric (1:nxtrack, 0:ntimes-1), errstat)
+    end if
+
     if (yn_write_cloud_variables) then
       call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,nxtrack], &
                           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
@@ -1280,6 +1287,12 @@ contains
     call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_put2d_r4 (obj, tg_var_surface_pressure, [0,0], [ntimes,nxtrack], &
                         amf_corr % surface_pressure (1:nxtrack, 0:ntimes-1), errstat)
+
+    if (yn_stratrop) then
+       call tiof_put2d_r4 (obj, tg_var_tropopause_pressure, [0,0], [ntimes,nxtrack], &
+                           amf_corr % tropopause_pressure (1:nxtrack, 0:ntimes-1), errstat)
+    end if
+       
     call tiof_pop_group (obj, errstat)
 
     ! Note that we're over-writing the column amount variable in the file

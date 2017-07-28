@@ -70,11 +70,14 @@ MODULE OMSAO_omidata_module
   type, public :: amf_correction_type
     ! 2d arrays have dimension (1:nxtrack,0:ntimes-1)
     real (kind=r8), dimension (:,:), pointer :: amf_molecule_specific => null()
+    real (kind=r8), dimension (:,:), pointer :: amf_molecule_stratospheric => null()
+    real (kind=r8), dimension (:,:), pointer :: amf_molecule_tropospheric => null()
     real (kind=r8), dimension (:,:), pointer :: amf_geometric => null()
     real (kind=r8), dimension (:,:), pointer :: cloud_fraction => null()
     real (kind=r8), dimension (:,:), pointer :: cloud_pressure => null()
     integer (kind=i2), dimension (:,:), pointer :: diagnostic_flag => null()
     real (kind=r4), dimension (:,:), pointer :: surface_pressure => null() 
+    real (kind=r4), dimension (:,:), pointer :: tropopause_pressure => null() 
   end type amf_correction_type
 
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
