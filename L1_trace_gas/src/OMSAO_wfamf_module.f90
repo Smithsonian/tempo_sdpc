@@ -2602,7 +2602,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx
     REAL (KIND=r4) :: seed ! FIXME
-    REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid
+    REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid, temperature_profile, alpha
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2630,10 +2630,14 @@ CONTAINS
         ! ---------------------------------------------------
         IF (yn_stratrop) THEN ! <<- FIXME
 
-           ! Allocate pressure_grid
-           ALLOCATE(pressure_grid(1:CmETA))
+           ! Allocate pressure_grid and temperature vertical profile
+           ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
+                alpha(1:CmETA))
+           ! Generate tropopause pressure
            CALL RANDOM_NUMBER(seed)
            tropopause_pressure(ixtrack,itimes) = 50.0 + seed * (250.0)
+           ! Set temperature profile constant and equal to 220K
+           temperature_profile = 220.0_r8
            ! Work out pressure_grid
            DO ilay = 1, CmETA
               pressure_grid(CmETA-ilay+1) = (( Ap(ilay) + surface_pressure(ixtrack,itimes) * Bp(ilay)  ) + &
@@ -2645,13 +2649,15 @@ CONTAINS
 
            ! Compute stratospheric and tropospheric AMFs following Bucsela et al., 2013
            ! DOI:10.5194/amt-6-2607-2013
+           ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
+           alpha = 1.0_r8-0.003_r8*(temperature_profile-220.0_r8)
            stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
-             climatology(ixtrack,itimes,1:tropopause_idx))     / &
+             climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
              SUM(climatology(ixtrack,itimes,1:tropopause_idx))
-           tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx:CmETA) * &
-             climatology(ixtrack,itimes,tropopause_idx:CmETA))     / &
+           tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
+             climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
              SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA))
-           DEALLOCATE(pressure_grid)
+           DEALLOCATE(pressure_grid,temperature_profile,alpha)
         END IF
 
         ! -------------------------
