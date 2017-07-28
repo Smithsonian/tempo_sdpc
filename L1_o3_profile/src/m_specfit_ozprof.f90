@@ -375,7 +375,7 @@ contains
     ! Get a priori ozone covariance matrix
     IF (use_oe .OR. (.NOT. use_oe .AND. ptr_order == 6)) THEN
       CALL GET_APRIORI_COVAR(the_month, the_day, the_lat, the_lon, &
-           atmosprof(1,0:nlay), atmosprof(2,0:nlay), atmosprof(3, 0:nlay), &
+           atmosprof(1,0:nlay), atmosprof(2,0:nlay), &
            nlay, ntp, ozprof(1:nlay), sao3)
 
       IF (nsfc < nlay) THEN

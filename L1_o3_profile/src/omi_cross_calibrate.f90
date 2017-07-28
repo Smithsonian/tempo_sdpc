@@ -543,8 +543,8 @@ contains
   END SUBROUTINE solwavcal_coadd
 
 
-  SUBROUTINE radwavcal_coadd(wcal_bef_coadd, wavcal, iwin, ix, nspec, &
-       ncoadd, allspec, wshis, wsqus, error)
+  SUBROUTINE radwavcal_coadd(wcal_bef_coadd, wavcal, & ! iwin, ix, &
+       nspec, ncoadd, allspec, wshis, wsqus, error)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
@@ -565,7 +565,7 @@ contains
     ! ================================
     ! Input and Output variables
     ! =================================
-    INTEGER, INTENT(IN) :: nspec, ncoadd, iwin, ix
+    INTEGER, INTENT(IN) :: nspec, ncoadd!, iwin, ix
     REAL (KIND=dp), DIMENSION(ncoadd, sig_idx, nspec), INTENT(INOUT) :: allspec
     REAL (KIND=dp), DIMENSION(ncoadd), INTENT(INOUT) :: wshis, wsqus
     LOGICAL, INTENT( IN)   :: wcal_bef_coadd, wavcal

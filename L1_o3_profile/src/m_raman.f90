@@ -45,8 +45,8 @@ contains
   ! spectrum1 (1 data point/line, in ascending order wrt lambda) 
   ! spectrum2(don't skip any lines between spectra, see sample Int.txt) 
 
-  SUBROUTINE raman(refdir, nulo, nuhi, nline, nz, T, sca, cossza, R, tran, &
-       rhos, ring)
+  SUBROUTINE raman(refdir, nulo, nuhi, nline, nz, T, sca, & 
+       R, tran, rhos, ring)
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY : maxchlen, pi, o2mix, N2mix, CO2mix
@@ -60,7 +60,7 @@ contains
     REAL (KIND=dp), DIMENSION(nulo:nuhi, nz), INTENT(IN) :: R, tran
     REAL (KIND=dp), DIMENSION(nline),        INTENT(OUT) :: ring
     REAL (KIND=dp), DIMENSION(nz),         INTENT(INOUT) :: rhos
-    REAL (KIND=dp), INTENT(IN)                           :: sca, cossza, T
+    REAL (KIND=dp), INTENT(IN)                           :: sca, T
 
     ! ========================
     ! Local variables

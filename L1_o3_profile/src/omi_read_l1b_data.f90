@@ -1253,7 +1253,7 @@ contains
   END SUBROUTINE omi_read_irradiance_data
 
 
-  SUBROUTINE omi_read_radiance_lines ( iline, ny, first_line, last_line, &
+  SUBROUTINE omi_read_radiance_lines ( iline, ny, first_line, &
        first_pix, last_pix, nxcoadd, pge_error_status )
 
     USE OMSAO_precision_module
@@ -1301,7 +1301,7 @@ contains
     ! Input variables
     ! ---------------
     INTEGER,  INTENT (IN) :: iline, ny, first_pix, last_pix, first_line, &
-         last_line, nxcoadd
+         nxcoadd
 
     ! ----------------
     ! Output variables
@@ -1605,7 +1605,7 @@ contains
 
           DO ix = 1, nxtrack
             CALL coadd_2bytes_qflgs(nbits, nwls(ch), &
-                 omi_radiance_qflg(j:nwl, ix, iloop), tmp_rqflg(j:nwl, ix)) 
+                 omi_radiance_qflg(j:nwl, ix, iloop))!, tmp_rqflg(j:nwl, ix))
           ENDDO
 
 !          IF( errstat /= omi_s_success ) THEN
@@ -1942,8 +1942,10 @@ contains
           lidx = fidx + omi_nradpix(iw, ix, iloop) - 1 
 
           IF (nbin > 1) THEN
-            CALL radwavcal_coadd(wcal_bef_coadd, wavcals(iw, ix), iw, ix, omi_nradpix(iw, ix, iloop), nbin, &
-                 omispec(1:nbin, :, fidx:lidx), wshis(iw, ix, 1:nbin), wsqus(iw, ix, 1:nbin), error)
+            CALL radwavcal_coadd(wcal_bef_coadd, wavcals(iw, ix), & !iw, ix, &
+                 omi_nradpix(iw, ix, iloop), nbin, &
+                 omispec(1:nbin, :, fidx:lidx), wshis(iw, ix, 1:nbin), &
+                 wsqus(iw, ix, 1:nbin), error)
             wavcals(iw, ix) = .FALSE.
             IF (error) THEN
               WRITE(www_lun, '(A)') 'No radiance wavelength calibration before coadding!!!'
@@ -2022,7 +2024,7 @@ contains
   END SUBROUTINE omi_read_radiance_lines
 
   ! Replace Solar Composite with original OMI solar irradiance
-  SUBROUTINE replace_solar_irradiance (lun, nxcoadd, first_pix, last_pix, &
+  SUBROUTINE replace_solar_irradiance (lun, first_pix, last_pix, &
        pge_error_status )
 
     USE OMSAO_precision_module
@@ -2044,7 +2046,7 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,  INTENT (IN) :: first_pix, last_pix, lun, nxcoadd
+    INTEGER,  INTENT (IN) :: first_pix, last_pix, lun
 
     ! ----------------
     ! Output variables

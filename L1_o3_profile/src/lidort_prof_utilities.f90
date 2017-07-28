@@ -15,9 +15,9 @@ contains
 
   SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
        ozvary, do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-       do_codwf, do_sprswf, do_so2zwf, nw, waves, nos, o3shi, sza, vza, aza, &
-       nl, ozprof, tprof, n0alb, albarr, albpmin, albpmax, n0wfc, wfcarr, &
-       wfcpmin, wfcpmax, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, codwf, &
+       do_codwf, do_sprswf, do_so2zwf, nw, nos, o3shi, sza, vza, aza, &
+       nl, ozprof, tprof, n0alb, albarr, & !albpmin, albpmax, &
+       n0wfc, wfcarr, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, codwf, &
        ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, rad, errstat)
 
     USE OMSAO_precision_module
@@ -40,10 +40,8 @@ contains
          do_twaewf, do_saodwf, do_cfracwf, do_codwf, do_ctpwf, do_sprswf, &
          do_so2zwf
     INTEGER, INTENT(OUT)                                 :: errstat
-    INTEGER, DIMENSION(n0alb), INTENT(IN)                :: albpmax, albpmin
-    INTEGER, DIMENSION(n0wfc), INTENT(IN)                :: wfcpmax, wfcpmin
+!    INTEGER, DIMENSION(n0alb), INTENT(IN)                :: albpmax, albpmin
     LOGICAL, DIMENSION(nl), INTENT(IN)                   :: ozvary
-    REAL (KIND=dp), DIMENSION(nw),  INTENT(IN)           :: waves
     REAL (KIND=dp), DIMENSION(nw, nostk),  INTENT(OUT)   :: rad, albwf, &
          cfracwf, o3shiwf, codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf
     REAL (KIND=dp), DIMENSION(numwin, nos), INTENT(IN)   :: o3shi
@@ -336,7 +334,7 @@ contains
   ! section: if do_tmpwf = .FALSE. and do_o3shi is false, just need to get 
   ! once for each retrieval Other trace gas cross section: just need to 
   ! get it once for all the retrievals if no shifts 
-  SUBROUTINE GET_HRES_GASCRS_RAY(nw, waves, nz, ts, do_o3shi, o3shi, &
+  SUBROUTINE GET_HRES_GASCRS_RAY(nw, nz, ts, do_o3shi, o3shi, &
        do_tmpwf, nfgas, use_so2dtcrs, num_iter, allcrs, allcol, rhos, &
        abscrs_qtdepen, raycof, depol, pge_error_status)
 
@@ -363,7 +361,6 @@ contains
     INTEGER, INTENT (IN)       :: nw, nz, nfgas, num_iter ! nw = ncalcp
     INTEGER, INTENT (OUT)      :: pge_error_status
     LOGICAL, INTENT (IN)       :: do_o3shi, do_tmpwf, use_so2dtcrs
-    REAL (KIND=dp), DIMENSION(nw), INTENT (IN )           :: waves
     REAL (KIND=dp), DIMENSION(nz), INTENT (IN )           :: ts, rhos
     REAL (KIND=dp), DIMENSION(nw), INTENT (OUT)           :: raycof, depol
     REAL (KIND=dp), DIMENSION(3, nw), INTENT (OUT)        :: abscrs_qtdepen
@@ -2225,8 +2222,7 @@ contains
   ! Obtain minor trace gas weighting functions from ozwf
   ! Note: it is not the exact wf but negative of the WF divided by radiances
   SUBROUTINE GET_TRACEGAS_WF (ozwf, ozabs, so2crs, use_so2dtcrs, rad, nw, &
-       nz, nz1, &
-       ozs, waves, do_so2zwf, so2zwf)
+       nz, nz1, do_so2zwf, so2zwf)
     USE OMSAO_precision_module
     USE OMSAO_parameters_module,ONLY : du2mol
     USE OMSAO_indices_module,   ONLY : so2_idx, so2v_idx!, &
@@ -2240,9 +2236,8 @@ contains
     ! Input/Output variables
     INTEGER, INTENT(IN)                           :: nw, nz, nz1
     REAL (KIND=dp), DIMENSION(nw, nz), INTENT(IN) :: ozwf, ozabs, so2crs
-    REAL (KIND=dp), DIMENSION(nw),     INTENT(IN) :: rad, waves
+    REAL (KIND=dp), DIMENSION(nw),     INTENT(IN) :: rad
     REAL (KIND=dp), DIMENSION(nw),    INTENT(OUT) :: so2zwf
-    REAL (KIND=dp), DIMENSION(nz),     INTENT(IN) :: ozs
     LOGICAL,                           INTENT(IN) :: use_so2dtcrs, do_so2zwf
 
     ! Local variables
@@ -3877,7 +3872,7 @@ contains
         ! just need to get once for each retrieval
         ! Other trace gas cross section: just need to get it once for all 
         ! the retrievals if no shifts 
-        CALL GET_HRES_GASCRS_RAY(nw, waves, nz1, ts(1:nz1), do_o3shi,&
+        CALL GET_HRES_GASCRS_RAY(nw, nz1, ts(1:nz1), do_o3shi,&
              o3shi, do_tmpwf, nfgas, use_so2dtcrs, num_iter, &
              allcrs(1:nw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
              frhos(1:nz1), abscrs_qtdepen(1:3, 1:nw), raycof(1:nw), &
@@ -4319,8 +4314,9 @@ contains
               !WRITE(91, '(40D14.6)') height_grid(0:nlayers)
               !WRITE(91, '(2D14.6)') lamda, depol(iw)
 
-              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), &
-                   frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), &!fzs(0:nz1), &
+                   !frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+                   frhos(1:nz1), nfgas, gasin(1:nfgas), &
                    allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
                    alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, &
                    aersca(1:nz1), aerext(1:nz1), aerasy(1:nz1), &
@@ -4352,8 +4348,9 @@ contains
             profilewf(1:n_totalatmos_wfs, nz1+1:nz, 1, 1, 1:NSTOKES, 1) = 0.0
 
             IF (frac == 1.0 .AND. ipol == 1) THEN
-              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), fzs(0:nz1), &
-                   frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+              CALL LIDORT_PROF_PREP(raycof(iw), depol(iw), &!fzs(0:nz1), &
+                   !frhos(1:nz1), varyprof(1:nz1), nfgas, gasin(1:nfgas), &
+                   frhos(1:nz1), nfgas, gasin(1:nfgas), &
                    allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
                    alleta(1:nfgas, 1:nz1), useasy, nmom, aerosol, &
                    aersca(1:nz1), aerext(1:nz1), aerasy(1:nz1), &
@@ -4688,7 +4685,7 @@ contains
     IF (nw > 1 .AND. do_ozwf .AND. do_tracewf ) &
          CALL GET_TRACEGAS_WF (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
          so2crs(1:nw0, 1:nz), use_so2dtcrs, rad(1:nw0, 1), nw0, nz, nz1, &
-         ozs(1:nz), waves(1:nw0), do_so2zwf, so2zwf(1:nw0, 1))
+         do_so2zwf, so2zwf(1:nw0, 1))
 
     IF (nw > 1 .AND. do_simu .AND. .NOT. radcalwrt) THEN
       WRITE(78, *) 2, nz1

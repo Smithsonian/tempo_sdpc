@@ -669,14 +669,16 @@ contains
 
     IF (which_clima == 7 ) THEN
       mnorstd = 1
-      CALL get_mlso3prof_single(year, month, day, the_lat, numk, mnorstd, umkp, umkz, ozprof, tmpntp, errstat)
+      CALL get_mlso3prof_single(year, month, day, numk, mnorstd, umkp, &
+           ozprof, tmpntp, errstat)
       IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, ': Error in getting MLS ozone profiles!!!'
         errstat = pge_errstat_error; RETURN
       ENDIF
     ELSE IF (which_clima == 6 ) THEN
       mnorstd = 1
-      CALL get_mlso3prof(year, month, day, the_lat, numk, mnorstd, umkp, umkz, ozprof, tmpntp, errstat)
+      CALL get_mlso3prof(year, month, day, the_lat, numk, mnorstd, umkp, &
+           ozprof, tmpntp, errstat)
       IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, ': Error in getting MLS ozone profiles!!!'
         errstat = pge_errstat_error; RETURN
@@ -720,7 +722,8 @@ contains
     ! Need to normalize ozone profile (Strat. and trop.) or tropospheric ozone profile with input total ozone
     IF (which_toz /= 0 .AND. which_clima /= 1) THEN
       IF (which_clima /= 6 .AND. which_clima /= 7) tmpntp = ntp
-      CALL GET_NORMTOZ(year, month, day, the_lat, toz, numk, tmpntp, umkp, umkz, ozprof, errstat)  
+      CALL GET_NORMTOZ(year, month, day, the_lat, toz, numk, tmpntp, umkp, &
+           ozprof, errstat)  
       IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, ': Error in getting zonal mean total ozone!!!'
         errstat = pge_errstat_error; RETURN

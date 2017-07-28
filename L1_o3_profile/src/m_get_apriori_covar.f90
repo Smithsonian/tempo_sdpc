@@ -15,7 +15,7 @@ contains
   ! Non-diagonal elements are calculated by assuming a 
   ! correlation length (5 km for now)
   ! ==============================================================
-  SUBROUTINE get_apriori_covar(month, day, lat, lon, ps, zs, ts, nz, ntp, &
+  SUBROUTINE get_apriori_covar(month, day, lat, lon, ps, zs, nz, ntp, &
        ozprof, sao3)
 
     USE OMSAO_precision_module 
@@ -34,7 +34,7 @@ contains
     ! ======================
     INTEGER, INTENT(IN)                            :: month, day, nz, ntp
     REAL (KIND=dp), INTENT(IN)                     :: lat, lon
-    REAL (KIND=dp), DIMENSION(0:nz),   INTENT(INOUT) :: zs, ps, ts
+    REAL (KIND=dp), DIMENSION(0:nz),   INTENT(INOUT) :: zs, ps
     REAL (KIND=dp), DIMENSION(nz, nz), INTENT(OUT) :: sao3
     REAL (KIND=dp), DIMENSION(nz),      INTENT(IN) :: ozprof
 
@@ -55,7 +55,7 @@ contains
     REAL (KIND=dp), SAVE, DIMENSION(nm, mlat, mlay) :: stds 
     REAL (KIND=dp), DIMENSION(mlay)           :: astd, cumastd
     REAL (KIND=dp), DIMENSION(nz)             :: zmid
-    REAL (KIND=dp), DIMENSION(0:nz)           :: pslg, nstd, nstd1, ps1, zs1
+    REAL (KIND=dp), DIMENSION(0:nz)           :: pslg, nstd, nstd1, ps1
     INTEGER                       :: i, j, k,  idum, nband, mnorstd, tmpntp
     INTEGER, DIMENSION(2)         :: latin, monin
     REAL (KIND=dp)                :: frac
@@ -213,7 +213,8 @@ contains
       ENDDO
 
       mnorstd = 2
-      CALL get_mlso3prof(the_year, month, day, lat, nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
+      CALL get_mlso3prof(the_year, month, day, lat, nz, mnorstd, ps1(0:nz), &
+           nstd1(1:nz), tmpntp, errstat)
       IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, &
              ': Error in getting MLS ozone variabilities!!!'
@@ -229,7 +230,8 @@ contains
       ENDDO
 
       mnorstd = 2
-      CALL get_mlso3prof_single(the_year, month, day, lat, nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
+      CALL get_mlso3prof_single(the_year, month, day, nz, mnorstd, ps1(0:nz), &
+           nstd1(1:nz), tmpntp, errstat)
       IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, &
              ': Error in getting MLS ozone variabilities!!!'

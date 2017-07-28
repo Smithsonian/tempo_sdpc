@@ -196,7 +196,7 @@ contains
     ENDDO
 
     ! Call raman program
-    CALL RAMAN(refdbdir, nulo, nuhi, nu, nflay, avgt, the_sca_atm, cossza, &
+    CALL RAMAN(refdbdir, nulo, nuhi, nu, nflay, avgt, the_sca_atm, &
          st(1:nu,:), vt(1:nu,:), frhos(1:nflay), ring(1:nu))
 !         st(1:nu,:), vt(1:nu,:), frhos(0:mflay), ring(1:nu))
 

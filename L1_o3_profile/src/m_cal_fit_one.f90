@@ -101,7 +101,7 @@ contains
     upbnd(1:n_fitvar_sol) = up_sunbnd(mask_fitvar_sol(1:n_fitvar_sol))  
 
 
-    CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), n_fitvar_sol, &
+    CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), &
          n_fit_pts, lobnd(1:n_fitvar_sol), upbnd(1:n_fitvar_sol), &
          max_itnum_sol, rms, chisq, covar(1:n_fitvar_sol,1:n_fitvar_sol), &
          fitspec(1:n_fit_pts), fitres(1:n_fit_pts), stderr, solfit_exval, &

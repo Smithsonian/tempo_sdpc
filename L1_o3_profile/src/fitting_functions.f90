@@ -19,8 +19,8 @@ contains
 
     USE OMSAO_precision_module
     !USE OMSAO_parameters_module, ONLY : max_spec_pts
-    USE OMSAO_variables_module, ONLY : yn_smooth, yn_doas, fitwavs, &
-         fitweights, currspec, sol_wav_avg
+    USE OMSAO_variables_module, ONLY : fitwavs, fitweights, currspec, &
+         sol_wav_avg
     USE OMSAO_errstat_module
     use spectra, only: spectrum_solar
 
@@ -43,8 +43,8 @@ contains
       ! -----------------------------------------------------------------------
       ! Calculate the weighted difference between fitted and measured spectrum.
       ! -----------------------------------------------------------------------
-      CALL spectrum_solar ( npoints, nfitvar, yn_smooth, sol_wav_avg, &
-           locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar), yn_doas )
+      CALL spectrum_solar ( npoints, nfitvar, sol_wav_avg, &
+           locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar) )
 
       ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) / &
            fitweights(1:npoints)
@@ -59,9 +59,8 @@ contains
 
     CASE ( 3 )
       ! Calculate the spectrum, without weighting
-      CALL spectrum_solar ( npoints, nfitvar, yn_smooth, sol_wav_avg, &
-           locwvl(1:npoints), ymod(1:npoints), &
-           fitvar(1:nfitvar), yn_doas )
+      CALL spectrum_solar ( npoints, nfitvar, sol_wav_avg, &
+           locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar))
 
     CASE DEFAULT
       WRITE (www_lun,'(A,I4)') &

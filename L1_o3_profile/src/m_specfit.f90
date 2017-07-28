@@ -6,7 +6,7 @@ module m_specfit
 
 contains
 
-  SUBROUTINE specfit ( nfitvar, fitvar, n_fitvar_rad, nspecpts, lowbnd, &
+  SUBROUTINE specfit ( nfitvar, fitvar, nspecpts, lowbnd, &
        uppbnd, max_itnum, rms, chisq, covar, fitspec, fitres, stderr, &
        exval, fitfunc )
 
@@ -23,7 +23,7 @@ contains
     ! Input variables
     ! ===============
     INTEGER,                              INTENT (IN) :: nfitvar, nspecpts, &
-         n_fitvar_rad, max_itnum
+         max_itnum
     REAL (KIND=dp), DIMENSION (nfitvar),  INTENT (IN) :: lowbnd, uppbnd
 
     ! ==================

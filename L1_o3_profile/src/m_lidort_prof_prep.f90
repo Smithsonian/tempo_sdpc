@@ -56,8 +56,8 @@ contains
   ! cldmsk    :  Indicator of clouds for each layer, 1: with cloud, 0: no clouds
   ! cldmoms   :  cloud moments at layers with clouds
 
-  SUBROUTINE LIDORT_PROF_PREP (raycof, depol, zsgrid, airgrid,  varyprof, &
-       ngas, gasin, abscrs, gascol, eta, useasy, nmoms, &
+  SUBROUTINE LIDORT_PROF_PREP (raycof, depol, &! zsgrid, airgrid,  varyprof, &
+       airgrid, ngas, gasin, abscrs, gascol, eta, useasy, nmoms, &
        do_aerosols, aersca, aerext, aerasy, aermoms, aermsk, &
        do_clouds, cldsca, cldext, cldasy, cldmoms, cldmsk, problems, &
        deltau, delsca, delo3abs, delray)
@@ -81,11 +81,11 @@ contains
     ! Input variables
     INTEGER, INTENT(IN)                     :: ngas, nmoms
     INTEGER, INTENT(IN), DIMENSION(ngas)    :: gasin
-    LOGICAL, INTENT(IN), DIMENSION(nlayers) :: cldmsk, aermsk, varyprof
+    LOGICAL, INTENT(IN), DIMENSION(nlayers) :: cldmsk, aermsk!, varyprof
     LOGICAL, INTENT(IN)                     :: useasy
 
     REAL (KIND=dp), INTENT(IN)              :: raycof, depol
-    REAL (KIND=dp), DIMENSION(0:nlayers), INTENT(IN) :: zsgrid
+    !REAL (KIND=dp), DIMENSION(0:nlayers), INTENT(IN) :: zsgrid
     REAL (KIND=dp), DIMENSION(nlayers), INTENT(IN)   :: airgrid,  &
          aersca, aerext, aerasy, cldsca, cldext, cldasy
     REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: &

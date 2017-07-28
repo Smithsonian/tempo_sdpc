@@ -107,7 +107,8 @@ CONTAINS
     mWavel = MAXVAL(omi_nwav_irrad(spix:epix)) - nCh * 2 * radnhtrunc
 
     !! Create the L2 output file
-    status = L2_createFile(l2funit, l2_filename )
+    !status = L2_createFile(l2funit, l2_filename )
+    status = L2_createFile( l2_filename )
 
     IF ( status /= omi_s_success ) THEN
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_creatFile fails.", modulename, 0 )
@@ -138,7 +139,7 @@ CONTAINS
     !WRITE(www_lun, '(A)') dimList
     !WRITE(www_lun, '(11I6)') dims(1:11)
 
-    status = L2_setupSwath(l2_filename, dimList, dims, l2swathunit, &
+    status = L2_setupSwath(l2_filename, dimList, dims, & !l2swathunit, &
          TRIM(ADJUSTL(l2_swathname)), l2_fileid, l2_swid )
     IF ( status /= omi_s_success ) THEN
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_setupSwath fails.", modulename, 0 )

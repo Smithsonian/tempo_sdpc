@@ -7,13 +7,13 @@ module spectra
 contains
 
   ! *********************** Modification History **************
-  ! xliu: 
+  ! xliu:
   ! 1. Replace call to asym_gauss to voigt_gauss
   ! 2. Add variable vgr_idx, vgl_idx, hwr_idx, hwl_idx
   ! **********************************************************
 
-  SUBROUTINE spectrum_solar ( &
-       npoints, nfitvar, smooth, sol_wav_avg, locwvl, fit, fitvar, doas )
+  SUBROUTINE spectrum_solar ( npoints, nfitvar, sol_wav_avg, locwvl, fit, &
+       fitvar)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: vgl_idx, vgr_idx, hwr_idx, hwl_idx, &
@@ -36,7 +36,6 @@ contains
 
 
     INTEGER,                            INTENT (INOUT) :: npoints, nfitvar
-    LOGICAL,                            INTENT (INOUT) :: smooth, doas
     REAL (KIND=dp),                     INTENT (IN)    :: sol_wav_avg
     REAL (KIND=dp), DIMENSION (nfitvar),INTENT (INOUT) :: fitvar
     REAL (KIND=dp), DIMENSION (npoints),INTENT (INOUT) :: locwvl, fit
@@ -185,7 +184,7 @@ contains
     RETURN
   END SUBROUTINE spectrum_solar
 
-  SUBROUTINE spectrum_earthshine ( npoints, n_fitvar, smooth, rad_wav_avg, &
+  SUBROUTINE spectrum_earthshine ( npoints, n_fitvar, rad_wav_avg, &
        locwvl, fit, fitvar, database, doas )
 
     USE OMSAO_precision_module
@@ -197,7 +196,7 @@ contains
     USE OMSAO_parameters_module, ONLY: max_spec_pts!, max_fit_pts
     USE OMSAO_variables_module,  ONLY: fitvar_rad, mask_fitvar_rad, &
          n_refwvl, refwvl!, curr_rad_spec, curr_sol_spec
-         
+
     USE OMSAO_errstat_module
     use utilities, only: interpolation
 
@@ -207,7 +206,7 @@ contains
     ! ===============
     ! Input variables
     ! ===============
-    LOGICAL,  INTENT (IN) :: smooth, doas
+    LOGICAL,  INTENT (IN) :: doas
     INTEGER,  INTENT (IN) :: npoints, n_fitvar
     REAL (KIND=dp),  INTENT (IN) :: rad_wav_avg
     REAL (KIND=dp), DIMENSION (n_fitvar),   INTENT (IN) :: fitvar

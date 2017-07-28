@@ -226,7 +226,7 @@ contains
     if (scnwrt) write(*, '(A)') 'Finish reading irradiances!!!'
 
     if (use_solcomp) then
-      call replace_solar_irradiance(calunit, nxcoadd, first_pix, last_pix, &
+      call replace_solar_irradiance(calunit, first_pix, last_pix, &
            pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
       if (scnwrt) write(*, '(A)') &
@@ -459,7 +459,7 @@ contains
       eline = sline + ntimes_loop * nybin - 1
 
       ! Get NTIMES_LOOP radiance lines (with effective viewing geometry)
-      call omi_read_radiance_lines (iline, ntimes_loop, sline, eline, &
+      call omi_read_radiance_lines (iline, ntimes_loop, sline, &
            first_pix, last_pix, nxcoadd, pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
       if (scnwrt) write(*, '(A,I4,A,I4)') &

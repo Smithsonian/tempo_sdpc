@@ -150,7 +150,7 @@ contains
   ! consistency with ISCCP)
 
 
-  SUBROUTINE GET_CLOUD_MAPROP (year, month, day, orb, stpix, sndpix, cldflg, &
+  SUBROUTINE GET_CLOUD_MAPROP (month, stpix, sndpix, cldflg, &
        ctaus, cfracs, ctps, errstat)
 
     USE OMSAO_precision_module 
@@ -165,10 +165,9 @@ contains
     ! ======================
     ! Input/Output variables
     ! ======================
-    INTEGER, INTENT(IN)           :: year, month, day, cldflg, stpix
+    INTEGER, INTENT(IN)           :: month, cldflg, stpix
     INTEGER, INTENT(OUT)          :: errstat
     INTEGER, INTENT(INOUT)        :: sndpix
-    CHARACTER (LEN=3), INTENT(IN) :: orb
     REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: ctaus, cfracs, ctps
 
 

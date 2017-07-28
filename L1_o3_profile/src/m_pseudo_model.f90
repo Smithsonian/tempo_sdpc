@@ -264,9 +264,9 @@ contains
       ntmp = MAX(ncalcp, ns)
       CALL HRES_RADCALC_ENV(ntmp, do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
            ozvary, do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-           do_codwf, do_sprswf, do_so2zwf, ns, waves, maxoth, o3shi, sza, &
-           vza, aza, nlay, ozprof, tprof, n0alb, albarr, albpmin, albpmax, &
-           n0wfc, wfcarr, wfcpmin, wfcpmax, nostk, albwf(1:ns, 1:nostk), &
+           do_codwf, do_sprswf, do_so2zwf, ns, maxoth, o3shi, sza, &
+           vza, aza, nlay, ozprof, tprof, n0alb, albarr, & !albpmin, albpmax, &
+           n0wfc, wfcarr, nostk, albwf(1:ns, 1:nostk), &
            ozwf(1:ns, 1:nlay, 1:nostk), tmpwf(1:ns, 1:nlay, 1:nostk), &
            o3shiwf(1:ns, 1:nostk), cfracwf(1:ns, 1:nostk), &
            codwf(1:ns, 1:nostk), ctpwf(1:ns, 1:nostk), &

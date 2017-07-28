@@ -2072,8 +2072,9 @@ contains
   ! Obtain AURA MLS zonal mean ozone profiles and its standard deviations
   ! (quality flags applied) 0.1-215 mb (i.e., 10-64 km), 36 latitude bins
   ! =====================================================================
-  SUBROUTINE get_mlso3prof(year, month, day, lat, nz, mnorstd, ps, zs, oz, ntp, errstat)
-    USE OMSAO_precision_module 
+  SUBROUTINE get_mlso3prof(year, month, day, lat, nz, mnorstd, ps, &
+       oz, ntp, errstat)
+    USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir
     USE ozprof_data_module,     ONLY: atmos_unit!, which_clima
     USE OMSAO_errstat_module
@@ -2088,7 +2089,7 @@ contains
     INTEGER, INTENT(IN)                          :: year, month, day, nz, mnorstd
     INTEGER, INTENT(OUT)                         :: errstat, ntp
     REAL (KIND=dp),INTENT(IN)                    :: lat
-    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps, zs
+    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
     REAL (KIND=dp), DIMENSION(nz), INTENT(INOUT) :: oz
 
     ! ======================
@@ -2235,9 +2236,9 @@ contains
   ! Obtain AURA MLS zonal mean ozone profiles and its standard deviations
   ! (quality flags applied) 0.1-215 mb (i.e., 10-64 km), 36 latitude bins
   ! =====================================================================
-  SUBROUTINE get_mlso3prof_single(year, month, day, lat, nz, mnorstd, ps, &
-       zs, oz, ntp, errstat)
-    USE OMSAO_precision_module 
+  SUBROUTINE get_mlso3prof_single(year, month, day, nz, mnorstd, ps, &
+       oz, ntp, errstat)
+    USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir, tabdir
     USE ozprof_data_module,     ONLY: atmos_unit!, which_clima
     USE OMSAO_errstat_module
@@ -2251,8 +2252,7 @@ contains
     ! ======================
     INTEGER, INTENT(IN)                          :: year, month, day, nz, mnorstd
     INTEGER, INTENT(OUT)                         :: errstat, ntp
-    REAL (KIND=dp),INTENT(IN)                    :: lat
-    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps, zs
+    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
     REAL (KIND=dp), DIMENSION(nz), INTENT(INOUT) :: oz
 
     ! ======================
@@ -2373,9 +2373,9 @@ contains
 
 
 
-  SUBROUTINE GET_NORMTOZ(year, month, day, lat, toz, nz, ntp, ps, zs, oz, errstat)
+  SUBROUTINE GET_NORMTOZ(year, month, day, lat, toz, nz, ntp, ps, oz, errstat)
 
-    USE OMSAO_precision_module 
+    USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir
     USE ozprof_data_module,     ONLY: atmos_unit, norm_tropo3, which_toz
     USE OMSAO_errstat_module
@@ -2390,7 +2390,7 @@ contains
     INTEGER, INTENT(OUT)                         :: errstat
     REAL (KIND=dp),INTENT(IN)                    :: lat
     REAL (KIND=dp),INTENT(INOUT)                 :: toz
-    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps, zs
+    REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
     REAL (KIND=dp), DIMENSION(nz), INTENT(INOUT) :: oz
 
     ! ======================

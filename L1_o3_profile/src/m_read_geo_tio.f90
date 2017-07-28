@@ -141,8 +141,8 @@ contains
           i = ix * 2 - 1
           j = i + 1
           tmp_xtrackqflg = tio_xtrackqflg
-          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline), &
-               tmp_xtrackqflg(j, iline))
+          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline))!, &
+               !tmp_xtrackqflg(j, iline))
           tio_xtrackqflg(ix, iline) = tmp_xtrackqflg(i, iline)
         end do
       end do

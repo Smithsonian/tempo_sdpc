@@ -34,8 +34,9 @@ MODULE he5_l2writer_class
 
 CONTAINS
 
-  FUNCTION L2_createFile( L2_file_LUN, L2_filename ) RESULT( status )
-    INTEGER (KIND=4), INTENT(IN) :: L2_file_LUN
+  FUNCTION L2_createFile( L2_filename ) RESULT( status )
+  !FUNCTION L2_createFile( L2_file_LUN, L2_filename ) RESULT( status )
+    !INTEGER (KIND=4), INTENT(IN) :: L2_file_LUN
     !CHARACTER( LEN = * ), INTENT(OUT) :: L2_filename
     CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
@@ -101,13 +102,13 @@ CONTAINS
     RETURN
   END FUNCTION L2_createFile
 
-  FUNCTION L2_setupSwath( L2_filename, dimList, dims, swath_name_LUN, &
+  FUNCTION L2_setupSwath( L2_filename, dimList, dims, & !swath_name_LUN, &
        L2_swathname, SW_fileid, SW_id) RESULT( status )
     CHARACTER( LEN = * ), INTENT(IN) :: L2_filename
     CHARACTER( LEN = * ), INTENT(IN) :: dimList
     !CHARACTER( LEN = * ), INTENT(OUT) :: L2_swathname
     CHARACTER( LEN = * ), INTENT(IN) :: L2_swathname
-    INTEGER (KIND=4), INTENT(IN) :: swath_name_LUN
+    !INTEGER (KIND=4), INTENT(IN) :: swath_name_LUN
     INTEGER (KIND=4), DIMENSION(:), INTENT(IN) :: dims
     INTEGER (KIND=4) :: status, ierr, id!, nc
     INTEGER (KIND=4) :: nDims

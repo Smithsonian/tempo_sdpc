@@ -283,8 +283,8 @@ CONTAINS
         DO ix = 1, nxtrack1
           i = ix * 2 - 1
           j = i + 1
-          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i), &
-               tmp_xtrackqflg1(j)) 
+          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i))!, &
+               !tmp_xtrackqflg1(j))
           omi_allXTrackQFlg(ix, iline) = tmp_xtrackqflg1(i)
         ENDDO
       ENDIF
