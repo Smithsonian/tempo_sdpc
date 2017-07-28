@@ -578,7 +578,7 @@ CONTAINS
     DO itimes = 0, nt-1
 
        ! Only work out climatology if we have complete geolocation information
-       IF (time(itimes) /= r8_missval) THEN
+       IF (time(itimes) /= r8_missval) THEN ! FIXME
           CALL convert_tai_to_utc(nUTCdim, time(itimes), time_utc(1:nUTCdim))
           ltime = REAL(time_utc(4),KIND=r8)+REAL(time_utc(5),KIND=r8)/60.0
           IF (ltime .LT. MINVAL(timevals)) ltime = REAL(MINVAL(timevals),KIND=r8)
@@ -2186,7 +2186,7 @@ CONTAINS
           ! Relative azimuth angle
           ! ----------------------
           ! Generate dummy values of vaa and saa
-          CALL RANDOM_NUMBER(seed)
+          CALL RANDOM_NUMBER(seed) !<-- FIXME
           local_raa = -180.0 + seed * 360.0 ! -180 to 180 degrees range
           
           ! ----------------------------------------------
@@ -2598,7 +2598,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: ixtrack, itimes
-    REAL    (KIND=r4) :: seed !Temporary
+    REAL    (KIND=r4) :: seed ! FIXME
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2624,10 +2624,12 @@ CONTAINS
         ! ---------------------------------------------------
         ! Temporary random generation of tropopause pressure.
         ! ---------------------------------------------------
-        IF (yn_stratrop) THEN
+        IF (yn_stratrop) THEN ! <<- FIXME
            CALL RANDOM_NUMBER(seed)
            tropopause_pressure(ixtrack,itimes) = 50.0 + seed * (250.0)
            print*,tropopause_pressure(ixtrack,itimes)
+
+           
         END IF
 
         ! -------------------------
