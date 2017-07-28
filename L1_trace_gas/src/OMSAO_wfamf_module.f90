@@ -370,7 +370,7 @@ CONTAINS
        ! Work out Averaging Kernels
        ! -----------------------------------------------------------------
        CALL compute_amf ( nt, nx, CmETA, climatology, &
-            scattw, saoamf, amfdiag, locerrstat)
+            scattw, saoamf, tropopause_pressure, amfdiag, locerrstat)
 
        ! -----------------------------------------------------------------
        ! Write out scattering weights, altitude grid and averaging kernels
@@ -2188,7 +2188,6 @@ CONTAINS
           ! Generate dummy values of vaa and saa
           CALL RANDOM_NUMBER(seed)
           local_raa = -180.0 + seed * 360.0 ! -180 to 180 degrees range
-          print*, local_raa
           
           ! ----------------------------------------------
           ! Convert pixel terrain height to pressure using
@@ -2576,27 +2575,30 @@ CONTAINS
   END SUBROUTINE COMPUTE_SCATT
 
   SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, &
-      scattw, saoamf, amfdiag, errstat)
+      scattw, saoamf, tropopause_pressure, amfdiag, errstat)
 
+    use ctrlvars, only: yn_stratrop
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                                INTENT(IN) :: nt, nx, CmETA
+    INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1),       INTENT(IN) :: amfdiag
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT(IN) :: amfdiag
 
     ! -----------------------------
     ! Output and modified variables
     ! -----------------------------
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1),       INTENT (INOUT) :: saoamf
-    INTEGER (KIND=i4),                                INTENT (INOUT) :: errstat
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: saoamf
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: tropopause_pressure
+    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                      :: ixtrack, itimes
+    INTEGER (KIND=i4) :: ixtrack, itimes
+    REAL    (KIND=r4) :: seed !Temporary
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2618,7 +2620,16 @@ CONTAINS
           saoamf(ixtrack,itimes) = r8_missval
           CYCLE
         ENDIF
-   
+
+        ! ---------------------------------------------------
+        ! Temporary random generation of tropopause pressure.
+        ! ---------------------------------------------------
+        IF (yn_stratrop) THEN
+           CALL RANDOM_NUMBER(seed)
+           tropopause_pressure(ixtrack,itimes) = 50.0 + seed * (250.0)
+           print*,tropopause_pressure(ixtrack,itimes)
+        END IF
+
         ! -------------------------
         ! Finally work out the AMFs
         ! -------------------------
