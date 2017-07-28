@@ -370,7 +370,8 @@ CONTAINS
        ! Work out Averaging Kernels
        ! -----------------------------------------------------------------
        CALL compute_amf ( nt, nx, CmETA, climatology, &
-            scattw, saoamf, tropopause_pressure, amfdiag, locerrstat)
+            scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, tropopause_pressure, amfdiag, &
+            locerrstat)
 
        ! -----------------------------------------------------------------
        ! Write out scattering weights, altitude grid and averaging kernels
@@ -2575,7 +2576,8 @@ CONTAINS
   END SUBROUTINE COMPUTE_SCATT
 
   SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, &
-      scattw, saoamf, tropopause_pressure, amfdiag, errstat)
+      scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
+      tropopause_pressure, amfdiag, errstat)
 
     use ctrlvars, only: yn_stratrop
     IMPLICIT NONE
@@ -2584,21 +2586,23 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT(IN) :: amfdiag
+    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
+    INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: amfdiag
+    REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: surface_pressure
 
     ! -----------------------------
     ! Output and modified variables
     ! -----------------------------
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: saoamf
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: tropopause_pressure
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
+    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: saoamf, stratospheric_amf, tropospheric_amf
+    REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: tropopause_pressure
+    INTEGER (KIND=i4), INTENT(INOUT) :: errstat
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: ixtrack, itimes
-    REAL    (KIND=r4) :: seed ! FIXME
+    INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx
+    REAL (KIND=r4) :: seed ! FIXME
+    REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2625,11 +2629,29 @@ CONTAINS
         ! Temporary random generation of tropopause pressure.
         ! ---------------------------------------------------
         IF (yn_stratrop) THEN ! <<- FIXME
+
+           ! Allocate pressure_grid
+           ALLOCATE(pressure_grid(1:CmETA))
            CALL RANDOM_NUMBER(seed)
            tropopause_pressure(ixtrack,itimes) = 50.0 + seed * (250.0)
-           print*,tropopause_pressure(ixtrack,itimes)
+           ! Work out pressure_grid
+           DO ilay = 1, CmETA
+              pressure_grid(CmETA-ilay+1) = (( Ap(ilay) + surface_pressure(ixtrack,itimes) * Bp(ilay)  ) + &
+                   ( Ap(ilay+1) + surface_pressure(ixtrack,itimes) * Bp(ilay+1) )) / 2.0
+           END DO
 
-           
+           ! Find which layer is closer to the tropopause.
+           tropopause_idx = MINLOC(ABS(pressure_grid-REAL(tropopause_pressure(ixtrack,itimes),KIND=r4)),1)
+
+           ! Compute stratospheric and tropospheric AMFs following Bucsela et al., 2013
+           ! DOI:10.5194/amt-6-2607-2013
+           stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
+             climatology(ixtrack,itimes,1:tropopause_idx))     / &
+             SUM(climatology(ixtrack,itimes,1:tropopause_idx))
+           tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx:CmETA) * &
+             climatology(ixtrack,itimes,tropopause_idx:CmETA))     / &
+             SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA))
+           DEALLOCATE(pressure_grid)
         END IF
 
         ! -------------------------
