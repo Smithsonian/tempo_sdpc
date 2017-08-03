@@ -92,7 +92,7 @@ program merge_o3p_files
       endif
       call tiof_pop_group (tio_l2in, errstat)
       call tiof_push_group (tio_l2in, o3p_grp_qa_stats, errstat)
-      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_fit_weight, dummyid)
+      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_merr, dummyid)
       if (status == nf90_noerr) ozwrtsnr = .true.
       call tiof_pop_group(tio_l2in, errstat)
       call tiof_push_group (tio_l2in, o3p_grp_diagnostic, errstat)

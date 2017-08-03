@@ -1544,7 +1544,7 @@ contains
                               [o3p_dim_windows, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_window_xtrack_step, &
                               errstat)
-    if (ozwrtres) then
+    if (ozwrtsnr) then
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_wavl_max, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_wavmax_xtrack_step, &
@@ -2146,7 +2146,7 @@ contains
          [iline], [1], [omi_allMflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
-      call tiof_put1d_r4 (obj, o3p_var_fit_weight, &
+      call tiof_put1d_r4 (obj, o3p_var_merr, &
            [iline, ipix, 0], [1,1,num_wav_max], &
            real(fitweights(1:num_wav_max), kind=4), errstat)
     endif
@@ -2433,7 +2433,7 @@ contains
          [iline], [1], [omi_allMflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
-      call tiof_put1d_r4 (obj, o3p_var_avg_resid, [iline, ipix, 0], &
+      call tiof_put1d_r4 (obj, o3p_var_merr, [iline, ipix, 0], &
            [1,1,num_wav_max], tmp1D_fitpts(1:num_wav_max), errstat)
     endif
     call tiof_pop_group (obj, errstat)
@@ -2797,7 +2797,7 @@ contains
     call tiof_put1d_i2 (obj, o3p_var_mqf, [min_step], [nstep], mqf, errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
-      call tiof_put3d_r4 (obj, o3p_var_fit_weight, [min_step, min_xtrack, 0], &
+      call tiof_put3d_r4 (obj, o3p_var_merr, [min_step, min_xtrack, 0], &
            [nstep, nxtrack, nmax_wavs], fit_wgt, errstat)
     endif
     call tiof_pop_group (obj, errstat)

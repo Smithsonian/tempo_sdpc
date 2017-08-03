@@ -648,7 +648,7 @@ contains
          mqf(min_step:max_step), errstat)
     ! Optional - fit weights
     if (ozwrtsnr .and. nmax_wavs > 0) then
-      call tiof_get3d_r4 (tio_l2obj, o3p_var_fit_weight, [0, 0, 0], &
+      call tiof_get3d_r4 (tio_l2obj, o3p_var_merr, [0, 0, 0], &
            [nstep, nxtrack, nmax_wavs], &
            fit_wgt(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
     endif
