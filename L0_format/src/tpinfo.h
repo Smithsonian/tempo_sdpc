@@ -12,7 +12,7 @@ typedef struct TPInfo_Type TPInfo_Type;
 typedef struct
 {
    char *mnemonic;
-   char *description;
+   char *synopsis;
    char *units;
    char *enumlist;
 }

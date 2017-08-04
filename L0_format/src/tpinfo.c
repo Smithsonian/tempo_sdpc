@@ -57,7 +57,7 @@ CSV_Map_Type;
 static CSV_Map_Type CSV_Map[] =
 {
    CSV_FIELD(mnemonic),
-   CSV_FIELD(description),
+   CSV_FIELD(synopsis),
    CSV_FIELD(units),
    CSV_FIELD(enumlist),
    CSV_FIELD_TABLE_END
@@ -68,7 +68,7 @@ static void free_tpfields_type_fields (TPFields_Type *info)
    if (info == NULL)
      return;
    FREE(info->mnemonic);
-   FREE(info->description);
+   FREE(info->synopsis);
    FREE(info->units);
    FREE(info->enumlist);
 }

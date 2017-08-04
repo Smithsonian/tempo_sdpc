@@ -214,7 +214,7 @@ static int create_group
         /* engineering units */
         if (-1 == TIO_def_var (grp, col_info->mnemonic, var_typeid, 1, &dimid_time, &varid_eng))
           return -1;
-        if (-1 == annotate_var (grp, varid_eng, tpfields.description, tpfields.units))
+        if (-1 == annotate_var (grp, varid_eng, tpfields.synopsis, tpfields.units))
           return -1;
         if (-1 == TIO_def_var_deflate (grp, varid_eng, shuffle, deflate, deflate_level))
           return -1;

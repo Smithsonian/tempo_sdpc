@@ -95,7 +95,7 @@ static int define_exprec_vars (Process_Method_Type *pmt, const TPInfo_Type *tpin
 
         if (-1 == TIO_def_var (ncid, item->mnemonic, varid_item, 1, &dimid_time, &varid_item))
           return -1;
-        if (-1 == annotate_var (ncid, varid_item, tpfields.description, tpfields.units))
+        if (-1 == annotate_var (ncid, varid_item, tpfields.synopsis, tpfields.units))
           return -1;
         nth++;
      }
