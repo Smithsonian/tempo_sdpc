@@ -1003,7 +1003,8 @@ int TIO_def_var (int ncid, const char *name, int type,
 {
    int status;
 
-   if ((name == NULL) || (dimids == NULL) || (varid == NULL))
+   if ((name == NULL) || (varid == NULL)
+       || ((dimids == NULL) && (num_dims != 0)))
      {
         Tell_verror (TELL_INVALID_PARM, "%s: got a NULL pointer", __func__);
         return -1;
