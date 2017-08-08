@@ -26,6 +26,10 @@
 #define IOCDB_DTYPE_F64 10
 #define IOCDB_DTYPE_ENUM 11            /* AKA "STATE", uint32 in FS */
 
+#ifndef REALLOC
+#define REALLOC realloc
+#endif
+
 #ifndef MALLOC
 #define MALLOC malloc
 #endif
@@ -110,5 +114,17 @@ extern Process_Method_Type *init_exprec_method (config_t *cfg);
  * @return A @c Process_Method_Type structure on success, or @c NULL on error
  */
 extern Process_Method_Type *init_tpsec_method (config_t *cfg);
+
+/** Initialize the module that handles scan mechanism controller files
+ * @param[in] cfg  Pointer to fully initialized @c config_t struct
+ * @return A @c Process_Method_Type structure on success, or @c NULL on error
+ */
+extern Process_Method_Type *init_smc_method (config_t *cfg);
+
+/** Initialize the module that handles inertial reference unit files
+ * @param[in] cfg  Pointer to fully initialized @c config_t struct
+ * @return A @c Process_Method_Type structure on success, or @c NULL on error
+ */
+extern Process_Method_Type *init_iru_method (config_t *cfg);
 
 #endif

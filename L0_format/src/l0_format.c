@@ -161,8 +161,8 @@ static Process_Method_Table_Type Method_Table[] =
 {
    PROCESS_METHOD(IOCSDPC_FILETYPE_EXPREC, init_exprec_method),
    PROCESS_METHOD(IOCSDPC_FILETYPE_TPSEC, init_tpsec_method),
-   /* PROCESS_METHOD(IOCSDPC_FILETYPE_IRU, init_iru_method), */
-   /* PROCESS_METHOD(IOCSDPC_FILETYPE_SMC, init_smc_method), */
+   PROCESS_METHOD(IOCSDPC_FILETYPE_IRU, init_iru_method),
+   PROCESS_METHOD(IOCSDPC_FILETYPE_SMC, init_smc_method),
    /* PROCESS_METHOD(IOCSDPC_FILETYPE_TLMRAW, init_tlmraw_method), */
    PROCESS_METHODS_TABLE_END
 };
