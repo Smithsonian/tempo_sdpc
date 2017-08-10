@@ -48,9 +48,9 @@ static SMC_Var_Type SMC_Var_Table[] =
 {
    SMC_VAR1(sample_time,"time",NC_DOUBLE,"sec",
             "Time of sample (secs since TEMPO epoch)"),
-   SMC_VAR(dit_raw_x,NC_FLOAT,"",
+   SMC_VAR(dit_raw_x,NC_FLOAT,NULL,
           "Filtered raw DIT readout for sensor axis-x"),
-   SMC_VAR(dit_raw_y,NC_FLOAT,"",
+   SMC_VAR(dit_raw_y,NC_FLOAT,NULL,
           "Filtered raw DIT readout for sensor axis-y"),
    SMC_VAR(proc_meas_x,NC_FLOAT,"urad",
           "Filtered estimated control axis-x scan pos"),

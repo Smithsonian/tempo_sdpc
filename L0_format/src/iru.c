@@ -129,7 +129,7 @@ static int define_iru_vars (Process_Method_Type *pmt,
    /* scale factor */
    if (0 != TIO_def_var (pmt->ncid, IRU_FILE_VAR_SCALE_FACTOR, NC_FLOAT, 1, &dimid_gyro_axis, &varid))
      return -1;
-   if (0 != annotate_var (pmt->ncid, varid, "gyro scale factor", ""))
+   if (0 != annotate_var (pmt->ncid, varid, "gyro scale factor", NULL))
      return -1;
 
    count = pmt->gyro_dimension;
