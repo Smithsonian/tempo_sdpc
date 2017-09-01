@@ -34,6 +34,10 @@ MODULE OMSAO_pixelcorner_module
   REAL (KIND=r8), PARAMETER, PRIVATE :: eps = 1.0E-10_r8
   ! ---------------------------------------------------------------------
 
+  public compute_pixel_corners, sphergeom_coordinates_at_point, &
+       sphergeom_baseline_comp, lonlat_to_pi, sphgeo_comp_pixel_corners
+  private
+
 CONTAINS
 
   SUBROUTINE compute_pixel_corners ( ntimes, nxtrack, lat, lon, do_szoom, errstat )
@@ -47,7 +51,7 @@ CONTAINS
     ! =======================================================
     use datafields, only: pxclat_field, pxclon_field
     USE OMSAO_he5_module, ONLY:  he5_start_2d, he5_stride_2d, &
-      he5_edge_2d, pge_swath_id, HE5_SWWRFLD
+         he5_edge_2d, pge_swath_id, HE5_SWWRFLD
     use ctrlvars, only : yn_do_he5_output
 
     IMPLICIT NONE
@@ -102,9 +106,9 @@ CONTAINS
     ! ------------------------------
     corner_lat = r8_missval ;  corner_lon = r8_missval
     CALL sphgeo_comp_pixel_corners (                                                &
-      nxtloc, ntimes, lon(spix:epix,0:ntimes-1), lat(spix:epix,0:ntimes-1),      &
-      corner_lon(spix-1:epix,0:ntimes), corner_lat(spix-1:epix,0:ntimes), estat, &
-      do_omi_pixel_adjust_k=.FALSE. )
+         nxtloc, ntimes, lon(spix:epix,0:ntimes-1), lat(spix:epix,0:ntimes-1),      &
+         corner_lon(spix-1:epix,0:ntimes), corner_lat(spix-1:epix,0:ntimes), estat, &
+         do_omi_pixel_adjust_k=.FALSE. )
 
     ! --------------------------------------------------------------------
     ! Write corner coordinates to L2 output file. Do this in chunks of no
@@ -131,12 +135,12 @@ CONTAINS
       cor_latlon(0:nxtrack,1:nchunk) = REAL(corner_lat(0:nxtrack,iline:iline+nchunk-1), KIND=r4 )
       if (yn_do_he5_output) then
         estat = HE5_SWWRFLD ( pge_swath_id, pxclat_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                             cor_latlon(0:nxtrack,1:nchunk) )
+             cor_latlon(0:nxtrack,1:nchunk) )
       endif
       cor_latlon(0:nxtrack,1:nchunk) = REAL(corner_lon(0:nxtrack,iline:iline+nchunk-1), KIND=r4 )
       if (yn_do_he5_output) then
         estat = HE5_SWWRFLD ( pge_swath_id, pxclon_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                             cor_latlon(0:nxtrack,1:nchunk) )
+             cor_latlon(0:nxtrack,1:nchunk) )
       endif
 
     END DO
@@ -145,188 +149,188 @@ CONTAINS
     RETURN
   END SUBROUTINE compute_pixel_corners
 
-  SUBROUTINE sphergeom_asa ( c, alp, bet, a, b )
+  !  SUBROUTINE sphergeom_asa ( c, alp, bet, a, b )
+  !
+  !    ! -------------------------------------------------------------------
+  !    ! ASA: Angle-Side-Angle
+  !    !
+  !    ! Computation of quantities in a spherical triangle: Given two angles
+  !    ! ALP and BET, and the side C inbetween them, computes the sides A
+  !    ! and B.
+  !    ! -------------------------------------------------------------------
+  !    IMPLICIT NONE
+  !
+  !    ! ---------------
+  !    ! Input variables
+  !    ! ---------------
+  !    REAL (KIND=r8),    INTENT (IN) :: c, alp, bet
+  !
+  !    ! ----------------
+  !    ! Output variables
+  !    ! ----------------
+  !    REAL (KIND=r8), INTENT (OUT) :: a, b
+  !
+  !    ! ---------------
+  !    ! Local variables
+  !    ! ---------------
+  !    REAL (KIND=r8) :: tmp1, tmp2, gam
+  !
+  !    ! --------------------------------------------------
+  !    ! Initialize output variables to keep compiler happy
+  !    ! --------------------------------------------------
+  !    a = 0.0_r8 ; b = 0.0_r8
+  !
+  !    ! -------------------------------------
+  !    ! Compute the angle BET opposite side B
+  !    ! -------------------------------------
+  !    tmp1 = ATAN(TAN(c/2.0_r8) * COS((alp-bet)/2.0_r8) / COS((alp+bet)/2.0_r8))
+  !    tmp2 = ATAN(TAN(c/2.0_r8) * SIN((alp-bet)/2.0_r8) / SIN((alp+bet)/2.0_r8))
+  !
+  !    a = tmp1 + tmp2
+  !    b = tmp1 - tmp2
+  !
+  !    gam = ACOS(-COS(alp)*COS(bet) + SIN(alp)*SIN(bet)*COS(c))
+  !    a   = ASIN(SIN(c)*SIN(alp)/SIN(gam))
+  !    b   = ASIN(SIN(c)*SIN(bet)/SIN(gam))
+  !
+  !    RETURN
+  !  END SUBROUTINE sphergeom_asa
 
-    ! -------------------------------------------------------------------
-    ! ASA: Angle-Side-Angle
-    !
-    ! Computation of quantities in a spherical triangle: Given two angles
-    ! ALP and BET, and the side C inbetween them, computes the sides A
-    ! and B.
-    ! -------------------------------------------------------------------
-    IMPLICIT NONE
+  !  SUBROUTINE sphergeom_ssa ( a, b, alp, c, bet, gam )
+  !
+  !    ! -------------------------------------------------------------------
+  !    ! SSA: Side-Side-Angle
+  !    !
+  !    ! Computation of quantities in a spherical triangle: Given two sides
+  !    ! A, B and an angle ALP opposite to one of the sides, computes the
+  !    ! third side and the remaining two angles in the triangle.
+  !    ! -------------------------------------------------------------------
+  !    IMPLICIT NONE
+  !
+  !    ! ---------------
+  !    ! Input variables
+  !    ! ---------------
+  !    REAL (KIND=r8),    INTENT (IN) :: a, b, alp
+  !
+  !    ! ----------------
+  !    ! Output variables
+  !    ! ----------------
+  !    REAL (KIND=r8), INTENT (OUT) :: c, bet, gam
+  !
+  !    ! ---------------
+  !    ! Local variables
+  !    ! ---------------
+  !    REAL (KIND=r8) :: tmp1, tmp2
+  !
+  !    ! --------------------------------------------------
+  !    ! Initialize output variables to keep compiler happy
+  !    ! --------------------------------------------------
+  !    c = 0.0_r8 ; bet = 0.0_r8 ; gam = 0.0_r8
+  !
+  !    ! -------------------------------------
+  !    ! Compute the angle BET opposite side B
+  !    ! -------------------------------------
+  !    tmp1 = SIN(b) * SIN(alp) ; tmp2 = SIN(a)
+  !    IF ( ABS(ABS(tmp1)-ABS(tmp2)) < eps ) THEN
+  !      bet = pihalf
+  !    ELSE IF ( ABS(tmp1) < eps ) THEN
+  !      bet = 0.0_r8
+  !    ELSE
+  !      bet = ASIN(tmp1/tmp2)
+  !    END IF
+  !
+  !    ! -----------------------------------
+  !    ! Now the length of C, the third side
+  !    ! -----------------------------------
+  !    tmp1 = TAN(b) * COS(alp) ; tmp2 = TAN(a) * COS(bet)
+  !    c = ATAN(tmp1) + ATAN(tmp2)
+  !
+  !    ! -------------------------------------------
+  !    ! Finally the angle GAM between sides A and B
+  !    ! -------------------------------------------
+  !    ! Note: COT(x) = -TAN(x+pi/2)
+  !    ! -----------------------------------------------------------
+  !    ! COT(phi) = COS(b) * TAN(alp) ; COT(psi) = COS(a) * TAN(bet)
+  !    ! gam = phi + psi
+  !    ! -----------------------------------------------------------
+  !    tmp1 = COS(b) * TAN(alp) ; tmp2 = COS(a) * TAN(bet)
+  !    gam = ATAN(-tmp1) + ATAN(-tmp2) - pi
+  !    IF ( ABS(ABS(gam)-pi) < eps ) gam = 0.0_r8
+  !
+  !    RETURN
+  !  END SUBROUTINE sphergeom_ssa
 
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    REAL (KIND=r8),    INTENT (IN) :: c, alp, bet
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL (KIND=r8), INTENT (OUT) :: a, b
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    REAL (KIND=r8) :: tmp1, tmp2, gam
-
-    ! --------------------------------------------------
-    ! Initialize output variables to keep compiler happy
-    ! --------------------------------------------------
-    a = 0.0_r8 ; b = 0.0_r8
-
-    ! -------------------------------------
-    ! Compute the angle BET opposite side B
-    ! -------------------------------------
-    tmp1 = ATAN(TAN(c/2.0_r8) * COS((alp-bet)/2.0_r8) / COS((alp+bet)/2.0_r8))
-    tmp2 = ATAN(TAN(c/2.0_r8) * SIN((alp-bet)/2.0_r8) / SIN((alp+bet)/2.0_r8))
-
-    a = tmp1 + tmp2
-    b = tmp1 - tmp2
-
-    gam = ACOS(-COS(alp)*COS(bet) + SIN(alp)*SIN(bet)*COS(c))
-    a   = ASIN(SIN(c)*SIN(alp)/SIN(gam))
-    b   = ASIN(SIN(c)*SIN(bet)/SIN(gam))
-
-    RETURN
-  END SUBROUTINE sphergeom_asa
-
-  SUBROUTINE sphergeom_ssa ( a, b, alp, c, bet, gam )
-
-    ! -------------------------------------------------------------------
-    ! SSA: Side-Side-Angle
-    !
-    ! Computation of quantities in a spherical triangle: Given two sides
-    ! A, B and an angle ALP opposite to one of the sides, computes the
-    ! third side and the remaining two angles in the triangle.
-    ! -------------------------------------------------------------------
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    REAL (KIND=r8),    INTENT (IN) :: a, b, alp
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL (KIND=r8), INTENT (OUT) :: c, bet, gam
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    REAL (KIND=r8) :: tmp1, tmp2
-
-    ! --------------------------------------------------
-    ! Initialize output variables to keep compiler happy
-    ! --------------------------------------------------
-    c = 0.0_r8 ; bet = 0.0_r8 ; gam = 0.0_r8
-
-    ! -------------------------------------
-    ! Compute the angle BET opposite side B
-    ! -------------------------------------
-    tmp1 = SIN(b) * SIN(alp) ; tmp2 = SIN(a)
-    IF ( ABS(ABS(tmp1)-ABS(tmp2)) < eps ) THEN
-      bet = pihalf
-    ELSE IF ( ABS(tmp1) < eps ) THEN
-      bet = 0.0_r8
-    ELSE
-      bet = ASIN(tmp1/tmp2)
-    END IF
-
-    ! -----------------------------------
-    ! Now the length of C, the third side
-    ! -----------------------------------
-    tmp1 = TAN(b) * COS(alp) ; tmp2 = TAN(a) * COS(bet)
-    c = ATAN(tmp1) + ATAN(tmp2)
-
-    ! -------------------------------------------
-    ! Finally the angle GAM between sides A and B
-    ! -------------------------------------------
-    ! Note: COT(x) = -TAN(x+pi/2)
-    ! -----------------------------------------------------------
-    ! COT(phi) = COS(b) * TAN(alp) ; COT(psi) = COS(a) * TAN(bet)
-    ! gam = phi + psi
-    ! -----------------------------------------------------------
-    tmp1 = COS(b) * TAN(alp) ; tmp2 = COS(a) * TAN(bet)
-    gam = ATAN(-tmp1) + ATAN(-tmp2) - pi
-    IF ( ABS(ABS(gam)-pi) < eps ) gam = 0.0_r8
-
-    RETURN
-  END SUBROUTINE sphergeom_ssa
-
-  SUBROUTINE sphergeom_sas ( a, b, gam, c, alp, bet )
-
-    ! -------------------------------------------------------------------
-    ! SAS: Side-Angle-Side
-    !
-    ! Computation of quantities in a spherical triangle: Given two sides
-    ! A, B and the angle GAM inbetween them, computes the third side and
-    ! one of the remaining two angles in the triangle.
-    ! -------------------------------------------------------------------
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    REAL (KIND=r8),    INTENT (IN) :: a, b, gam
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL (KIND=r8), INTENT (OUT) :: c, alp, bet
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    REAL (KIND=r8) :: tmp1, tmp2
-
-    ! --------------------------------------------------
-    ! Initialize output variables to keep compiler happy
-    ! --------------------------------------------------
-    c = 0.0_r8 ; alp = 0.0_r8
-
-    ! -----------------------------------------------------------
-    ! Compute length of baseline c between the two points A and B
-    ! -----------------------------------------------------------
-    tmp1 = COS(a) * COS(b) + SIN(a) * SIN(b) * COS(gam)
-    IF ( ABS(tmp1) < eps ) THEN
-      c = pihalf
-    ELSE
-      c = ACOS(tmp1)
-    END IF
-
-    ! ----------------------------------------------------
-    ! Now the angle ALP at point A (between sides a and c)
-    ! ----------------------------------------------------
-    tmp1 = COS(a) - COS(b) * COS(c) ; tmp2 = SIN(b) * SIN(c)
-    IF ( tmp2 /= 0.0_r8 ) THEN
-      IF ( ABS(tmp1/tmp2) < 1.0_r8 ) THEN
-        alp = ACOS(tmp1/tmp2)
-      ELSE
-        alp = 0.0_r8
-      END IF
-    ELSE
-      alp = 0.0_r8
-    END IF
-
-    ! ----------------------------------------------------
-    ! Now the angle BET at point B (between sides b and c)
-    ! ----------------------------------------------------
-    tmp1 = COS(b) - COS(c) * COS(a) ; tmp2 = SIN(c) * SIN(a)
-    IF ( tmp2 /= 0.0_r8 ) THEN
-      IF ( ABS(tmp1/tmp2) < 1.0_r8 ) THEN
-        bet = ACOS(tmp1/tmp2)
-      ELSE
-        bet = 0.0_r8
-      END IF
-    ELSE
-      bet = 0.0_r8
-    END IF
-
-    RETURN
-  END SUBROUTINE sphergeom_sas
+  !  SUBROUTINE sphergeom_sas ( a, b, gam, c, alp, bet )
+  !
+  !    ! -------------------------------------------------------------------
+  !    ! SAS: Side-Angle-Side
+  !    !
+  !    ! Computation of quantities in a spherical triangle: Given two sides
+  !    ! A, B and the angle GAM inbetween them, computes the third side and
+  !    ! one of the remaining two angles in the triangle.
+  !    ! -------------------------------------------------------------------
+  !    IMPLICIT NONE
+  !
+  !    ! ---------------
+  !    ! Input variables
+  !    ! ---------------
+  !    REAL (KIND=r8),    INTENT (IN) :: a, b, gam
+  !
+  !    ! ----------------
+  !    ! Output variables
+  !    ! ----------------
+  !    REAL (KIND=r8), INTENT (OUT) :: c, alp, bet
+  !
+  !    ! ---------------
+  !    ! Local variables
+  !    ! ---------------
+  !    REAL (KIND=r8) :: tmp1, tmp2
+  !
+  !    ! --------------------------------------------------
+  !    ! Initialize output variables to keep compiler happy
+  !    ! --------------------------------------------------
+  !    c = 0.0_r8 ; alp = 0.0_r8
+  !
+  !    ! -----------------------------------------------------------
+  !    ! Compute length of baseline c between the two points A and B
+  !    ! -----------------------------------------------------------
+  !    tmp1 = COS(a) * COS(b) + SIN(a) * SIN(b) * COS(gam)
+  !    IF ( ABS(tmp1) < eps ) THEN
+  !      c = pihalf
+  !    ELSE
+  !      c = ACOS(tmp1)
+  !    END IF
+  !
+  !    ! ----------------------------------------------------
+  !    ! Now the angle ALP at point A (between sides a and c)
+  !    ! ----------------------------------------------------
+  !    tmp1 = COS(a) - COS(b) * COS(c) ; tmp2 = SIN(b) * SIN(c)
+  !    IF ( tmp2 /= 0.0_r8 ) THEN
+  !      IF ( ABS(tmp1/tmp2) < 1.0_r8 ) THEN
+  !        alp = ACOS(tmp1/tmp2)
+  !      ELSE
+  !        alp = 0.0_r8
+  !      END IF
+  !    ELSE
+  !      alp = 0.0_r8
+  !    END IF
+  !
+  !    ! ----------------------------------------------------
+  !    ! Now the angle BET at point B (between sides b and c)
+  !    ! ----------------------------------------------------
+  !    tmp1 = COS(b) - COS(c) * COS(a) ; tmp2 = SIN(c) * SIN(a)
+  !    IF ( tmp2 /= 0.0_r8 ) THEN
+  !      IF ( ABS(tmp1/tmp2) < 1.0_r8 ) THEN
+  !        bet = ACOS(tmp1/tmp2)
+  !      ELSE
+  !        bet = 0.0_r8
+  !      END IF
+  !    ELSE
+  !      bet = 0.0_r8
+  !    END IF
+  !
+  !    RETURN
+  !  END SUBROUTINE sphergeom_sas
 
   SUBROUTINE sphergeom_coordinates_at_point ( a0, b0, gam0, c_in, abs_or_frac, a, gam )
 
@@ -518,7 +522,7 @@ CONTAINS
   END FUNCTION angle_minus_twopi
 
   SUBROUTINE sphgeo_comp_pixel_corners ( &
-      nxtrack, ntimes, lon, lat, clon, clat, estat, do_omi_pixel_adjust_k )
+       nxtrack, ntimes, lon, lat, clon, clat, estat, do_omi_pixel_adjust_k )
 
     ! ------------------------------------------------------------------------
     ! Compute corner coordinates of ground pixels given only the pixel centers
@@ -667,18 +671,18 @@ CONTAINS
       END DO
     END DO
 
-    !!! ===============================================================================!!!
-    !!! The following code is experimental and doesn't quite work yet. It is supposed  !!!
-    !!! to adjust the corner coordinates according to the true distance between the    !!!
-    !!! pixel centers, and it does so by working outwards from the center of the swath !!!
-    !!! to the across-track edges. Known issues are:                                   !!!
-    !!!   * At the along-track edges, we seem to be mis-aligning the pixels and are    !!!
-    !!!     losing the proper last line of corners                                     !!!
-    !!!   * At the poles, the distortion of pixels progresses outwards, resulting in   !!!
-    !!!     heavy distortions past the poles (going outward). This can be ameliorated  !!!
-    !!!     somewhat by excluding pole-most latitudes (within 3 deg of pole), but this !!!
-    !!!     still leaves some undesirable distortions.                                 !!!
-    !!! ===============================================================================!!!
+!!! ===============================================================================!!!
+!!! The following code is experimental and doesn't quite work yet. It is supposed  !!!
+!!! to adjust the corner coordinates according to the true distance between the    !!!
+!!! pixel centers, and it does so by working outwards from the center of the swath !!!
+!!! to the across-track edges. Known issues are:                                   !!!
+!!!   * At the along-track edges, we seem to be mis-aligning the pixels and are    !!!
+!!!     losing the proper last line of corners                                     !!!
+!!!   * At the poles, the distortion of pixels progresses outwards, resulting in   !!!
+!!!     heavy distortions past the poles (going outward). This can be ameliorated  !!!
+!!!     somewhat by excluding pole-most latitudes (within 3 deg of pole), but this !!!
+!!!     still leaves some undesirable distortions.                                 !!!
+!!! ===============================================================================!!!
     IF ( do_pixel_adjust_crosstrack ) THEN
       DO j = 0, ntimes
         ! -------------------------------------------------------------------

@@ -20,7 +20,8 @@ SUBROUTINE gnome_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, n_arr_pix, sza,
   ! ===============
   ! Local variables
   ! ===============
-  REAL (KIND=r4)                        :: pihalf
+!  REAL (KIND=r4)                        :: pihalf
+  REAL (KIND=r8)                        :: pihalf
   REAL (KIND=r4), DIMENSION (n_arr_pix) :: &
     earth_zen, locazm, szarad, vzarad, razmrad, tmp_sza, tmp_vza
 
@@ -29,7 +30,8 @@ SUBROUTINE gnome_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, n_arr_pix, sza,
   ! ==================================
   ! (Adopted in part from R.Spurr's geometry module)
 
-  pihalf = REAL(pi/2.0_r8, KIND=r4)
+!  pihalf = REAL(pi/2.0_r8, KIND=r4)
+  pihalf = pi/2.0_r8
 
   ! -------------------------------------------------------
   ! Modify a local copy of SZA and VZA so that we don't go
@@ -46,9 +48,9 @@ SUBROUTINE gnome_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, n_arr_pix, sza,
   ! ----------------------------------
   ! First convert everything to Radian
   ! ----------------------------------
-  szarad  = sza    * REAL ( deg2rad, KIND=r4 )
-  vzarad  = vza    * REAL ( deg2rad, KIND=r4 )
-  razmrad = relazm * REAL ( deg2rad, KIND=r4 )
+  szarad  = REAL ( deg2rad*sza, KIND=r4 )
+  vzarad  = REAL ( deg2rad*vza, KIND=r4 )
+  razmrad = REAL ( deg2rad*relazm, KIND=r4 )
 
   ! ----------------------------------
   ! Step 1: Compute Earth center angle
@@ -104,17 +106,18 @@ SUBROUTINE gnome_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, n_arr_pix, sza,
   ! Final step: Convert everything back to Degrees
   ! ----------------------------------------------
   WHERE ( ABS(szarad) <= pihalf )
-    sza   = szarad * REAL ( rad2deg, KIND=r4 )
+    sza   = REAL ( rad2deg*szarad, KIND=r4 )
   ELSEWHERE
     sza = r4_missval
   END WHERE
   WHERE ( ABS(vzarad) <= pihalf )
-    vza    = vzarad  * REAL ( rad2deg, KIND=r4 )
+    vza    = REAL ( rad2deg*vzarad, KIND=r4 )
   ELSEWHERE
     vza  = r4_missval
   ENDWHERE
-  WHERE ( ABS(razmrad) <= REAL(pi, KIND=r4) )
-    relazm = razmrad * REAL ( rad2deg, KIND=r4 )
+!  WHERE ( ABS(razmrad) <= REAL(pi, KIND=r4) )
+  WHERE ( ABS(razmrad) <= pi )
+    relazm = REAL ( rad2deg*razmrad, KIND=r4 )
   ELSEWHERE
     relazm = r4_missval
   END WHERE

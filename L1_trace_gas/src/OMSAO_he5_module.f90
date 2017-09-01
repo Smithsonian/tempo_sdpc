@@ -303,13 +303,14 @@ CONTAINS
     ! check for nTimes and nXtrack.
     ! ----------------------------------------------------------------------
     nsep = 0 ; dim_seps = 0 ; dim_seps(0) = 0
-    getseps: DO i = 1, swlen
+    getseps: DO i = 1, int(swlen, kind=i4)
       IF ( dim_chars(i:i) == ',' ) THEN
         nsep = nsep + 1
         dim_seps(nsep) = i
       END IF
     END DO getseps
-    nsep = nsep + 1 ; dim_seps(nsep) = swlen+1
+    nsep = nsep + 1
+    dim_seps(nsep) = int(swlen, kind=i4)+1
 
     ! --------------------------------------------------------------------
     ! Hangle along the NSEP indices until we have found the two dimensions

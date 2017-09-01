@@ -1,13 +1,12 @@
 MODULE sao_pge_utils
+
   use tell_module
+
   implicit none
 
-  private year_month_day, check_read_status, fill_nonoverlap!, find_overlap, &
-       !get_gridfrac1
-  public :: day_of_year, get_pge_ident, utc_julian_date_and_time, &
-       skip_to_filemark, signdp, interpolation, roundoff_r8, roundoff_r4, &
-       roundoff_1darr_r8, roundoff_1darr_r4, roundoff_2darr_r8, &
-       roundoff_2darr_r4, print_array, calc_relaz_angle
+  public day_of_year, utc_julian_date_and_time, skip_to_filemark, signdp, &
+       interpolation, print_array, get_pge_ident
+  private year_month_day, check_read_status, fill_nonoverlap
 
 CONTAINS
   ! ===========================================================================
@@ -718,214 +717,214 @@ CONTAINS
     RETURN
   END SUBROUTINE fill_nonoverlap
 
-  FUNCTION roundoff_r8 ( ndecim, r8value ) RESULT ( r8rounded )
-
-    USE OMSAO_precision_module, ONLY: i4, r8
-    IMPLICIT NONE
-
-    ! ---------------------------------------------------------------------
-    ! Explanation of FUNCTION arguments:
-    !
-    !    ndecim ........... number of significant digits to keep
-    !    r8value .......... DOUBLE PRECISION number to be truncated
-    !    r8rounded ........ truncated value
-    ! ---------------------------------------------------------------------
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (IN)    :: ndecim
-    REAL    (KIND=r8), INTENT (INOUT) :: r8value
-
-    ! --------------
-    ! Returned value
-    ! --------------
-    REAL    (KIND=r8) :: r8rounded
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4) :: pow
-    REAL    (KIND=r8) :: tmpval
-
-    ! ------------------------------------------
-    ! Nothing to be done if we have a Zero value
-    ! ------------------------------------------
-    IF (  r8value == 0.0_r8 ) THEN
-      r8rounded = 0.0_r8 ; RETURN
-    END IF
-
-    ! ---------------------------------
-    ! Power of 10 of the original value
-    ! ---------------------------------
-    pow = INT ( LOG10 (ABS(r8value)), KIND=i4 )
-
-    ! ------------------------------------------------------
-    ! Remove original power of 10 and shift by NDECIM powers
-    ! ------------------------------------------------------
-    tmpval = r8value * 10.0_r8**(ndecim-pow)
-
-    ! ---------------------------------------------
-    ! Find the nearest INTEGER and undo power-shift
-    ! ---------------------------------------------
-    r8rounded = ANINT ( tmpval )  * 10.0_r8**(pow-ndecim)
-
-    RETURN
-  END FUNCTION roundoff_r8
-
-  FUNCTION roundoff_r4 ( ndecim, r4value ) RESULT ( r4rounded )
-
-    USE OMSAO_precision_module, ONLY: i4, r4
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (IN)    :: ndecim
-    REAL    (KIND=r4), INTENT (INOUT) :: r4value
-
-    INTEGER (KIND=i4) :: pow
-    REAL    (KIND=r4) :: r4rounded, tmpval
-
-    ! ------------------------------------------
-    ! Nothing to be done if we have a Zero value
-    ! ------------------------------------------
-    IF (  r4value == 0.0_r4 ) THEN
-      r4rounded = 0.0_r4 ; RETURN
-    END IF
-
-    ! ---------------------------------
-    ! Power of 10 of the original value
-    ! ---------------------------------
-    pow = INT ( LOG10 (ABS(r4value)), KIND=i4 )
-
-    ! ------------------------------------------------------
-    ! Remove original power of 10 and shift by NDECIM powers
-    ! ------------------------------------------------------
-    tmpval = r4value * 10.0_r4**(ndecim-pow)
-
-    ! ---------------------------------------------
-    ! Find the nearest INTEGER and undo power-shift
-    ! ---------------------------------------------
-    r4rounded = ANINT ( tmpval ) * 10.0_r4**(pow-ndecim)
-
-    RETURN
-  END FUNCTION roundoff_r4
-
-  SUBROUTINE roundoff_1darr_r8 ( ndecim, ndim, r8value )
-
-    USE OMSAO_precision_module, ONLY: i4, r8
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
-    !REAL    (KIND=r8), DIMENSION (ndim), INTENT (INOUT) :: r8value
-    REAL    (KIND=r8), DIMENSION (:), INTENT (INOUT) :: r8value
-
-    INTEGER (KIND=i4) :: i
-    !REAL    (KIND=r8) :: roundoff_r8
-
-    DO i = 1, ndim
-      r8value(i) = ROUNDOFF_R8 ( ndecim, r8value(i) )
-    END DO
-
-    RETURN
-  END SUBROUTINE roundoff_1darr_r8
-
-  SUBROUTINE roundoff_1darr_r4 ( ndecim, ndim, r4value )
-
-    USE OMSAO_precision_module, ONLY: i4, r4
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
-    !REAL    (KIND=r4), DIMENSION (ndim), INTENT (INOUT) :: r4value
-    REAL    (KIND=r4), DIMENSION (:), INTENT (INOUT) :: r4value
-
-    INTEGER (KIND=i4) :: i
-    !REAL    (KIND=r4) :: roundoff_r4
-
-    DO i = 1, ndim
-      r4value(i) = ROUNDOFF_R4 ( ndecim, r4value(i) )
-    END DO
-
-    RETURN
-  END SUBROUTINE roundoff_1darr_r4
-
-  SUBROUTINE roundoff_2darr_r8 ( ndecim, n1, n2, r8value )
-
-    USE OMSAO_precision_module, ONLY: i4, r8
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
-    !REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (INOUT) :: r8value
-    REAL    (KIND=r8), DIMENSION (:,:), INTENT (INOUT) :: r8value
-
-    INTEGER (KIND=i4) :: i, j
-
-    DO i = 1, n1
-      DO j = 1, n2
-        r8value(i,j) = roundoff_r8 ( ndecim, r8value(i,j) )
-      END DO
-    END DO
-
-    RETURN
-  END SUBROUTINE roundoff_2darr_r8
-
-  SUBROUTINE roundoff_2darr_r4 ( ndecim, n1, n2, r4value )
-
-    USE OMSAO_precision_module, ONLY: i4, r4
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
-    !REAL    (KIND=r4), DIMENSION (n1,n2), INTENT (INOUT) :: r4value
-    REAL    (KIND=r4), DIMENSION (:,:), INTENT (INOUT) :: r4value
-    INTEGER (KIND=i4) :: i, j
-
-    DO i = 1, n1
-      DO j = 1, n2
-        r4value(i,j) = roundoff_r4 ( ndecim, r4value(i,j) )
-      END DO
-    END DO
-
-    RETURN
-  END SUBROUTINE roundoff_2darr_r4
-
-  SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
-
-    USE OMSAO_precision_module, ONLY: i4, r8
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                       INTENT (IN)    :: ndecim, n1, n2, n3
-    !REAL    (KIND=r8), DIMENSION (n1,n2,n3), INTENT (INOUT) :: r8value
-    REAL    (KIND=r8), DIMENSION (:,:,:), INTENT (INOUT) :: r8value
-
-    INTEGER (KIND=i4) :: i, j, k
-    !REAL    (KIND=r8) :: roundoff_r8
-
-    DO i = 1, n1
-      DO j = 1, n2
-        DO k = 1, n3
-          r8value(i,j,k) = ROUNDOFF_R8 ( ndecim, r8value(i,j,k) )
-        END DO
-      END DO
-    END DO
-
-    RETURN
-  END SUBROUTINE roundoff_3darr_r8
+!FUNCTION roundoff_r8 ( ndecim, r8value ) RESULT ( r8rounded )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r8
+!  IMPLICIT NONE
+!
+!  ! ---------------------------------------------------------------------
+!  ! Explanation of FUNCTION arguments:
+!  !
+!  !    ndecim ........... number of significant digits to keep
+!  !    r8value .......... DOUBLE PRECISION number to be truncated
+!  !    r8rounded ........ truncated value
+!  ! ---------------------------------------------------------------------
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4), INTENT (IN)    :: ndecim
+!  REAL    (KIND=r8), INTENT (INOUT) :: r8value
+!
+!  ! --------------
+!  ! Returned value
+!  ! --------------
+!  REAL    (KIND=r8) :: r8rounded
+!
+!  ! ---------------
+!  ! Local variables
+!  ! ---------------
+!  INTEGER (KIND=i4) :: pow
+!  REAL    (KIND=r8) :: tmpval
+!
+!  ! ------------------------------------------
+!  ! Nothing to be done if we have a Zero value
+!  ! ------------------------------------------
+!  IF (  r8value == 0.0_r8 ) THEN
+!    r8rounded = 0.0_r8 ; RETURN
+!  END IF
+!
+!  ! ---------------------------------
+!  ! Power of 10 of the original value
+!  ! ---------------------------------
+!  pow = INT ( LOG10 (ABS(r8value)), KIND=i4 )
+!
+!  ! ------------------------------------------------------
+!  ! Remove original power of 10 and shift by NDECIM powers
+!  ! ------------------------------------------------------
+!  tmpval = r8value * 10.0_r8**(ndecim-pow)
+!
+!  ! ---------------------------------------------
+!  ! Find the nearest INTEGER and undo power-shift
+!  ! ---------------------------------------------
+!  r8rounded = ANINT ( tmpval )  * 10.0_r8**(pow-ndecim)
+!
+!  RETURN
+!END FUNCTION roundoff_r8
+!
+!FUNCTION roundoff_r4 ( ndecim, r4value ) RESULT ( r4rounded )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r4
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4), INTENT (IN)    :: ndecim
+!  REAL    (KIND=r4), INTENT (INOUT) :: r4value
+!
+!  INTEGER (KIND=i4) :: pow
+!  REAL    (KIND=r4) :: r4rounded, tmpval
+!
+!  ! ------------------------------------------
+!  ! Nothing to be done if we have a Zero value
+!  ! ------------------------------------------
+!  IF (  r4value == 0.0_r4 ) THEN
+!    r4rounded = 0.0_r4 ; RETURN
+!  END IF
+!
+!  ! ---------------------------------
+!  ! Power of 10 of the original value
+!  ! ---------------------------------
+!  pow = INT ( LOG10 (ABS(r4value)), KIND=i4 )
+!
+!  ! ------------------------------------------------------
+!  ! Remove original power of 10 and shift by NDECIM powers
+!  ! ------------------------------------------------------
+!  tmpval = r4value * 10.0_r4**(ndecim-pow)
+!
+!  ! ---------------------------------------------
+!  ! Find the nearest INTEGER and undo power-shift
+!  ! ---------------------------------------------
+!  r4rounded = ANINT ( tmpval ) * 10.0_r4**(pow-ndecim)
+!
+!  RETURN
+!END FUNCTION roundoff_r4
+!
+!SUBROUTINE roundoff_1darr_r8 ( ndecim, ndim, r8value )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r8
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
+!  !REAL    (KIND=r8), DIMENSION (ndim), INTENT (INOUT) :: r8value
+!  REAL    (KIND=r8), DIMENSION (:), INTENT (INOUT) :: r8value
+!
+!  INTEGER (KIND=i4) :: i
+!  !REAL    (KIND=r8) :: roundoff_r8
+!
+!  DO i = 1, ndim
+!    r8value(i) = ROUNDOFF_R8 ( ndecim, r8value(i) )
+!  END DO
+!
+!  RETURN
+!END SUBROUTINE roundoff_1darr_r8
+!
+!SUBROUTINE roundoff_1darr_r4 ( ndecim, ndim, r4value )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r4
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4),                   INTENT (IN)    :: ndecim, ndim
+!  !REAL    (KIND=r4), DIMENSION (ndim), INTENT (INOUT) :: r4value
+!  REAL    (KIND=r4), DIMENSION (:), INTENT (INOUT) :: r4value
+!
+!  INTEGER (KIND=i4) :: i
+!  !REAL    (KIND=r4) :: roundoff_r4
+!
+!  DO i = 1, ndim
+!    r4value(i) = ROUNDOFF_R4 ( ndecim, r4value(i) )
+!  END DO
+!
+!  RETURN
+!END SUBROUTINE roundoff_1darr_r4
+!
+!SUBROUTINE roundoff_2darr_r8 ( ndecim, n1, n2, r8value )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r8
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
+!  !REAL    (KIND=r8), DIMENSION (n1,n2), INTENT (INOUT) :: r8value
+!  REAL    (KIND=r8), DIMENSION (:,:), INTENT (INOUT) :: r8value
+!
+!  INTEGER (KIND=i4) :: i, j
+!
+!  DO i = 1, n1
+!    DO j = 1, n2
+!      r8value(i,j) = roundoff_r8 ( ndecim, r8value(i,j) )
+!    END DO
+!  END DO
+!
+!  RETURN
+!END SUBROUTINE roundoff_2darr_r8
+!
+!SUBROUTINE roundoff_2darr_r4 ( ndecim, n1, n2, r4value )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r4
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4),                    INTENT (IN)    :: ndecim, n1, n2
+!  !REAL    (KIND=r4), DIMENSION (n1,n2), INTENT (INOUT) :: r4value
+!  REAL    (KIND=r4), DIMENSION (:,:), INTENT (INOUT) :: r4value
+!  INTEGER (KIND=i4) :: i, j
+!
+!  DO i = 1, n1
+!    DO j = 1, n2
+!      r4value(i,j) = roundoff_r4 ( ndecim, r4value(i,j) )
+!    END DO
+!  END DO
+!
+!  RETURN
+!END SUBROUTINE roundoff_2darr_r4
+!
+!SUBROUTINE roundoff_3darr_r8 ( ndecim, n1, n2, n3, r8value )
+!
+!  USE OMSAO_precision_module, ONLY: i4, r8
+!  IMPLICIT NONE
+!
+!  ! ---------------
+!  ! Input variables
+!  ! ---------------
+!  INTEGER (KIND=i4),                       INTENT (IN)    :: ndecim, n1, n2, n3
+!  !REAL    (KIND=r8), DIMENSION (n1,n2,n3), INTENT (INOUT) :: r8value
+!  REAL    (KIND=r8), DIMENSION (:,:,:), INTENT (INOUT) :: r8value
+!
+!  INTEGER (KIND=i4) :: i, j, k
+!  !REAL    (KIND=r8) :: roundoff_r8
+!
+!  DO i = 1, n1
+!    DO j = 1, n2
+!      DO k = 1, n3
+!        r8value(i,j,k) = ROUNDOFF_R8 ( ndecim, r8value(i,j,k) )
+!      END DO
+!    END DO
+!  END DO
+!
+!  RETURN
+!END SUBROUTINE roundoff_3darr_r8
 
   subroutine print_array (a, n)
     use OMSAO_precision_module, only: i4, r8

@@ -2,8 +2,8 @@ module arrayutils
 
   private
   public array_smooth, array_sort_r8, array_locate_r4, array_locate_r8, &
-    array_find_bounding_indices_r4, array_find_inner_bounding_indices_r4, &
-    array_find_bounding_indices_r8, array_find_inner_bounding_indices_r8
+    array_find_bounding_indices_r8, array_find_inner_bounding_indices_r8!, &
+    !array_find_bounding_indices_r4, array_find_inner_bounding_indices_r4
 
 contains
   subroutine array_smooth (x, n, errstat)
@@ -252,37 +252,37 @@ contains
     RETURN
   END SUBROUTINE array_locate_r8
 
-  subroutine array_find_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
-
-    USE OMSAO_precision_module, ONLY: i4, r4
-    implicit none
-    integer (kind=i4), intent(in) :: n
-    real (kind=r4), intent(in), dimension(n) :: xs
-    real (kind=r4), intent(in) :: xmin, xmax
-    integer (kind=i4), intent(out) :: iminp, imaxp
-
-    ! xs[iminp] <= xmin
-    CALL array_locate_r4 (n, xs, xmin, 'LE', iminp)
-    ! xmax <= xs[imaxp]
-    CALL array_locate_r4 (n, xs, xmax, 'GE', imaxp)
-
-  end subroutine
-
-  subroutine array_find_inner_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
-
-    USE OMSAO_precision_module, ONLY: i4, r4
-    implicit none
-    integer (kind=i4), intent(in) :: n
-    real (kind=r4), intent(in), dimension(n) :: xs
-    real (kind=r4), intent(in) :: xmin, xmax
-    integer (kind=i4), intent(out) :: iminp, imaxp
-
-    ! xs[iminp] <= xmin
-    CALL array_locate_r4 (n, xs, xmin, 'GE', iminp)
-    ! xmax <= xs[imaxp]
-    CALL array_locate_r4 (n, xs, xmax, 'LE', imaxp)
-
-  end subroutine
+!  subroutine array_find_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
+!
+!    USE OMSAO_precision_module, ONLY: i4, r4
+!    implicit none
+!    integer (kind=i4), intent(in) :: n
+!    real (kind=r4), intent(in), dimension(n) :: xs
+!    real (kind=r4), intent(in) :: xmin, xmax
+!    integer (kind=i4), intent(out) :: iminp, imaxp
+!
+!    ! xs[iminp] <= xmin
+!    CALL array_locate_r4 (n, xs, xmin, 'LE', iminp)
+!    ! xmax <= xs[imaxp]
+!    CALL array_locate_r4 (n, xs, xmax, 'GE', imaxp)
+!
+!  end subroutine
+!
+!  subroutine array_find_inner_bounding_indices_r4 (n, xs, xmin, xmax, iminp, imaxp)
+!
+!    USE OMSAO_precision_module, ONLY: i4, r4
+!    implicit none
+!    integer (kind=i4), intent(in) :: n
+!    real (kind=r4), intent(in), dimension(n) :: xs
+!    real (kind=r4), intent(in) :: xmin, xmax
+!    integer (kind=i4), intent(out) :: iminp, imaxp
+!
+!    ! xs[iminp] <= xmin
+!    CALL array_locate_r4 (n, xs, xmin, 'GE', iminp)
+!    ! xmax <= xs[imaxp]
+!    CALL array_locate_r4 (n, xs, xmax, 'LE', imaxp)
+!
+!  end subroutine
 
   subroutine array_find_bounding_indices_r8 (n, xs, xmin, xmax, iminp, imaxp)
 

@@ -1,33 +1,38 @@
 MODULE strutils
 
+  implicit none
+
+  public slice_string, remove_quotes, get_substring
+  private
+
 CONTAINS
 
-  !---------------------------------------------------------------------------
-  SUBROUTINE find_endstring ( slen, cstring, istart, iend)
-    IMPLICIT NONE
+!  !---------------------------------------------------------------------------
+!  SUBROUTINE find_endstring ( slen, cstring, istart, iend)
+!    IMPLICIT NONE
+!
+!    INTEGER,              INTENT (IN) :: slen, istart
+!    CHARACTER (LEN=slen), INTENT (IN) :: cstring
+!
+!    INTEGER, INTENT (OUT) :: iend
+!
+!    iend = INDEX ( cstring(istart:slen), "," )
+!    RETURN
+!  END SUBROUTINE find_endstring
 
-    INTEGER,              INTENT (IN) :: slen, istart
-    CHARACTER (LEN=slen), INTENT (IN) :: cstring
-
-    INTEGER, INTENT (OUT) :: iend
-
-    iend = INDEX ( cstring(istart:slen), "," )
-    RETURN
-  END SUBROUTINE find_endstring
-
-  !---------------------------------------------------------------------------
-  SUBROUTINE find_dimension ( slen, cstring, istart, iend, dimstring )
-    IMPLICIT NONE
-
-    INTEGER,              INTENT (IN ) :: slen, istart, iend
-    CHARACTER (LEN=slen), INTENT (IN) :: cstring
-
-    CHARACTER (LEN=*),    INTENT (OUT) :: dimstring
-
-    dimstring = cstring(istart:iend)
-
-    RETURN
-  END SUBROUTINE find_dimension
+!  !---------------------------------------------------------------------------
+!  SUBROUTINE find_dimension ( slen, cstring, istart, iend, dimstring )
+!    IMPLICIT NONE
+!
+!    INTEGER,              INTENT (IN ) :: slen, istart, iend
+!    CHARACTER (LEN=slen), INTENT (IN) :: cstring
+!
+!    CHARACTER (LEN=*),    INTENT (OUT) :: dimstring
+!
+!    dimstring = cstring(istart:iend)
+!
+!    RETURN
+!  END SUBROUTINE find_dimension
 
   !---------------------------------------------------------------------------
   SUBROUTINE slice_string ( slen, instring, istart, ostring )
