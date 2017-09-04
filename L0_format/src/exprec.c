@@ -32,6 +32,11 @@
 
 #define EXPREC_ENUM_TABLE_SIZE 16
 
+static double image_end_time (IOCSDPC_Exprec_Type *erec)
+{
+   return erec->image_start_time + erec->exposure_time + erec->frame_transfer_time;
+}
+
 static int define_exprec_vars (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                                IOCSDPC_Exprec_Type *erec)
 {
@@ -141,7 +146,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    char *path = NULL;
 
    pmt->outfile_timestamp_start = erec->image_start_time;
-   pmt->outfile_timestamp_end = erec->image_start_time;
+   pmt->outfile_timestamp_end = image_end_time (erec);
    pmt->exprec_type = erec->exprec_type;
    pmt->outfile_erec_count = 0;
 
@@ -242,7 +247,7 @@ static int write_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    count[2] = 0;
 
    if (erec->image_start_time > pmt->outfile_timestamp_end)
-     pmt->outfile_timestamp_end = erec->image_start_time;
+     pmt->outfile_timestamp_end = image_end_time (erec);
 
    if (-1 == TIO_put_var_section (ncid, "image_start_time", start, count,
                                   NC_DOUBLE, &erec->image_start_time))
