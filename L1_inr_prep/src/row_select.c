@@ -1,0 +1,279 @@
+/** @file row_select.c
+ *  @brief Manage SMC, IRU time series subsetting
+ */
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <ioclib.h>
+
+#include <tell.h>
+#include <tio.h>
+#include <tio_template.h>
+
+#include "row_select.h"
+#include "bsearch.h"
+
+enum
+{
+   FILE_ERROR_OCCURRED    = -1,
+   FILE_FOLLOWS_INTERVAL  =  1,
+   FILE_OVERLAPS_INTERVAL =  2,
+   FILE_PRECEDES_INTERVAL =  3
+};
+
+static void row_select_free1 (Row_Select_Type *rst)
+{
+   if (rst == NULL)
+     return;
+   ioclib_free(rst->file);
+   FREE(rst->times);
+   FREE(rst);
+}
+
+void row_select_free (Row_Select_Type *rst)
+{
+   if (rst == NULL)
+     return;
+
+   while (rst)
+     {
+        Row_Select_Type *next = rst->next;
+        row_select_free1(rst);
+        rst = next;
+     }
+}
+
+static Row_Select_Type *alloc_row_select (const char *file)
+{
+   Row_Select_Type *rst = NULL;
+
+   if (NULL == (rst = (Row_Select_Type *)MALLOC (sizeof *rst)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)rst, 0, sizeof *rst);
+
+   if (NULL == (rst->file = ioclib_strdup (file)))
+     return NULL;
+
+   return rst;
+}
+
+static int read_times (Row_Select_Type *rst, int ncid)
+{
+   TIO_Var_Info_Type info;
+   const char *time_var = "time";
+   size_t size_times;
+
+   if (0 != TIO_inq_var (ncid, time_var, &info))
+     return -1;
+
+   rst->num_times = info.dimlens[0];
+
+   size_times = rst->num_times * sizeof(double);
+   if (NULL == (rst->times = (double *) MALLOC (size_times)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   if (0 != TIO_get_var_section (ncid, time_var, &rst->start, &rst->num_times,
+                                 NC_DOUBLE, rst->times))
+     {
+        return -1;
+     }
+
+   return 0;
+}
+
+static int apply_selection (Row_Select_Type *rst,
+                            double time_beg, double time_end)
+{
+   if (time_beg < rst->times[0])
+     rst->start = 0;
+   else if (time_beg > rst->times[rst->num_times-1])
+     rst->start = rst->num_times;
+   else
+     {
+        int b = bsearch_d (time_beg, rst->times, rst->num_times);
+        if (b < 0) return -1;
+        rst->start = b;
+     }
+
+   if (time_end < rst->times[0])
+     rst->count = 0;
+   else if (time_end > rst->times[rst->num_times-1])
+     rst->count = rst->num_times - rst->start;
+   else
+     {
+        int e = bsearch_d (time_end, rst->times, rst->num_times);
+        if (e < 0) return -1;
+        if ((e + 1) < rst->num_times) e += 1;
+        rst->count = e - rst->start;
+     }
+
+   return 0;
+}
+
+static int estimate_padding (int ncid, int num_pad,
+                             double *time_beg, double *time_end)
+{
+   TIO_Var_Info_Type time_var_info;
+   double average_sample_frequency_hz, dt;
+
+   if (0 != TIO_inq_var (ncid, "time", &time_var_info))
+     return -1;
+
+   if (0 != TIO_get_att (ncid, time_var_info.varid,
+                         "average_sample_frequency_hz", NC_DOUBLE,
+                         &average_sample_frequency_hz))
+     {
+        return -1;
+     }
+
+   dt = num_pad / average_sample_frequency_hz;
+
+   *time_beg -= dt;
+   *time_end += dt;
+
+   return 0;
+}
+
+static int examine_file (Row_Select_Type **rstp, int ncid, const char *file,
+                         double time_beg, double time_end)
+{
+   double time_coverage_start, time_coverage_end;
+   int status = FILE_ERROR_OCCURRED;
+
+   *rstp = NULL;
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch",
+                          NC_DOUBLE, &time_coverage_start))
+       ||(0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch",
+                            NC_DOUBLE, &time_coverage_end)))
+     {
+        return status;
+     }
+
+   if (time_end < time_coverage_start)
+     status = FILE_FOLLOWS_INTERVAL;
+   else if (time_coverage_end < time_beg)
+     status = FILE_PRECEDES_INTERVAL;
+   else
+     {
+        Row_Select_Type *rst = NULL;
+
+        if (NULL == (rst = alloc_row_select (file)))
+          return status;
+
+        *rstp = rst;
+        status = FILE_OVERLAPS_INTERVAL;
+     }
+
+   return status;
+}
+
+int row_select_scan (double time_beg, double time_end, int num_pad,
+                     const char *file_glob_pattern,
+                     Row_Select_Type **rstp)
+{
+   Row_Select_Type *rst_head = NULL;
+   IOCLib_Glob_Type *g = NULL;
+   int return_status = -1;
+   size_t n;
+
+   *rstp = NULL;
+
+   if (NULL == (g = ioclib_glob (file_glob_pattern, 0)))
+     return -1;
+
+   if (g->num_files == 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: no files match glob pattern: %s",
+                     __func__, file_glob_pattern);
+        return -1;
+     }
+
+   /* globbed file list is sorted in ascending order,
+    * and is, therefore, assumed to be correctly time-ordered
+    */
+   n = g->num_files;
+
+   while (n-- > 0)
+     {
+        Row_Select_Type *rst;
+        const char *file = g->files[n];
+        double time_beg_pad = time_beg;
+        double time_end_pad = time_end;
+        int ncid, status;
+
+        if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+          goto cleanup_and_return;
+
+        if (num_pad > 0)
+          {
+             /* When padding, expand the time interval to make sure
+              * we include all relevant files */
+             if (0 != estimate_padding (ncid, num_pad, &time_beg_pad, &time_end_pad))
+               goto cleanup_and_return;
+          }
+
+        status = examine_file (&rst, ncid, file, time_beg_pad, time_end_pad);
+        if (status == FILE_ERROR_OCCURRED)
+          {
+             (void) TIO_close (ncid);
+             goto cleanup_and_return;
+          }
+        else if (status == FILE_PRECEDES_INTERVAL)
+          {
+             (void) TIO_close (ncid);
+             break;
+          }
+        else if (status == FILE_FOLLOWS_INTERVAL)
+          {
+             (void) TIO_close (ncid);
+             continue;
+          }
+        else if (status == FILE_OVERLAPS_INTERVAL)
+          {
+             if (0 != read_times (rst, ncid))
+               goto cleanup_and_return;
+             (void) TIO_close (ncid);
+
+             if (0 != apply_selection (rst, time_beg_pad, time_end_pad))
+               goto cleanup_and_return;
+
+             if (rst_head != NULL)
+               {
+                  rst->next = rst_head;
+               }
+             rst_head = rst;
+          }
+     }
+
+   if (rst_head == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: no samples in time interval [%0.4f, %0.4f) with num_pad=%d",
+                     __func__, time_beg, time_end, num_pad);
+        goto cleanup_and_return;
+     }
+
+   return_status = 0;
+cleanup_and_return:
+   ioclib_glob_free (g);
+
+   if (return_status)
+     {
+        row_select_free (rst_head);
+        rst_head = NULL;
+     }
+
+   *rstp = rst_head;
+
+   return return_status;
+}

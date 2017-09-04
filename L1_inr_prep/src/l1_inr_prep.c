@@ -1,0 +1,448 @@
+/** @file l1_inr_prep.c
+ *  @brief Main program
+ */
+
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <math.h>
+#include <limits.h>
+
+#include <libconfig.h>
+
+#include <ioclib.h>
+#include <tell.h>
+#include <tio.h>
+#include <tio_template.h>
+
+#include "row_select.h"
+#include "radiance.h"
+#include "ephem.h"
+
+#define BASENAME_SIZE 256
+
+typedef struct
+{
+   const char *file_glob_pattern;
+   int num_pad;
+   Row_Select_Type *rst;
+}
+Selection_Type;
+
+typedef struct
+{
+   char *tmp_path;
+   char *final_path;
+   const char *target_dir;
+   int processing_version;
+}
+Rename_Path_Type;
+
+static void usage (void)
+{
+   fprintf (stderr, "Usage: L1_inr_prep [options] [FILE]\n");
+   fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -b | --begin <start-time>  start time (sec since epoch)\n");
+   fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
+   fprintf (stderr, "   -c | --config FILE         configuration file\n");
+   fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
+   exit (EXIT_SUCCESS);
+}
+
+static int read_config_file (const char *config_file, config_t *cfg)
+{
+   if (0 == config_read_file (cfg, config_file))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: Reading %s:%d - %s",
+                     __func__, config_error_file(cfg),
+                     config_error_line(cfg), config_error_text(cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int read_common_params (config_t *cfg, const char *setting_name,
+                               Selection_Type *st)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, setting_name)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing '%s' in param file: %s",
+                     __func__, setting_name, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "file_glob", &st->file_glob_pattern))
+       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &st->num_pad)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading '%s' parameters in param file: %s",
+                     __func__, setting_name, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int copy_iru (Radiance_Type *r, config_t *cfg,
+                     double time_beg, double time_end, int pad_enable)
+{
+   Selection_Type iru = {0};
+   int status = -1;
+
+   if (0 != read_common_params (cfg, "iru_config", &iru))
+     return -1;
+
+   if (0 != row_select_scan (time_beg, time_end,
+                             pad_enable ? iru.num_pad : 0,
+                             iru.file_glob_pattern, &iru.rst))
+     return -1;
+
+   if (0 != radiance_copy_iru (r, iru.rst))
+     goto return_status;
+
+   status = 0;
+return_status:
+   row_select_free (iru.rst);
+   return status;
+}
+
+static int copy_smc (Radiance_Type *r, config_t *cfg,
+                     double time_beg, double time_end, int pad_enable)
+{
+   Selection_Type smc = {0};
+   int status = -1;
+
+   if (0 != read_common_params (cfg, "smc_config", &smc))
+     return -1;
+
+   if (0 != row_select_scan (time_beg, time_end,
+                             pad_enable ? smc.num_pad : 0,
+                             smc.file_glob_pattern, &smc.rst))
+     return -1;
+
+   if (0 != radiance_copy_smc (r, smc.rst))
+     goto return_status;
+
+   status = 0;
+return_status:
+   row_select_free (smc.rst);
+   return status;
+}
+
+static int rename_radiance_file (Rename_Path_Type *rpt)
+{
+   char basename[BASENAME_SIZE];
+   int ncid, status = -1;
+
+   if (0 != TIO_open (rpt->tmp_path, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (TIO_filename_from_granule (ncid, "rad1", rpt->processing_version,
+                                  basename, BASENAME_SIZE) < 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: generating filename", __func__);
+        goto return_status;
+     }
+
+   if (NULL == (rpt->final_path = ioclib_pathconcat (rpt->target_dir, basename)))
+     goto return_status;
+
+   if (0 != rename (rpt->tmp_path, rpt->final_path))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: renaming %s to %s",
+                     __func__, rpt->tmp_path, rpt->final_path);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   (void) TIO_close (ncid);
+   return status;
+}
+
+static char *temp_radiance_path (const char *target_dir)
+{
+   const char tmp_fmt[] = ".l1_inr_prep_%d_tmprad1.nc";
+   char buf[BASENAME_SIZE];
+
+   if (snprintf (buf, BASENAME_SIZE, tmp_fmt, getpid()) >= BASENAME_SIZE)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: filename truncated (bufsize=%d is too small)",
+                     __func__, BASENAME_SIZE);
+        return NULL;
+     }
+
+   return ioclib_pathconcat (target_dir, buf);
+}
+
+static int read_rename_config (config_t *cfg, Rename_Path_Type *rpt)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, "telemetry_only_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing 'telemetry_only_config' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "target_dir", &rpt->target_dir))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading 'target_dir' from param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &rpt->processing_version))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading 'processing_version' from param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (NULL == (rpt->tmp_path = temp_radiance_path (rpt->target_dir)))
+     return -1;
+
+   return 0;
+}
+
+static void free_rename_path_type (Rename_Path_Type *rpt)
+{
+   if (rpt == NULL)
+     return;
+   ioclib_free (rpt->tmp_path);
+   ioclib_free (rpt->final_path);
+}
+
+static int copy_ephem (Radiance_Type *r, config_t *cfg,
+                       double time_beg, double time_end, int pad_enable)
+{
+   Eph_Type eph = {0};
+   config_setting_t *s;
+   const char *ephemeris_file;
+   int num_pad, status;
+
+   if (NULL == (s = config_lookup (cfg, "ephemeris_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing 'ephemeris_config' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "file", &ephemeris_file))
+       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &num_pad)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading 'ephemeris_config' parameters in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != eph_read_subset (&eph, ephemeris_file, time_beg, time_end,
+                             pad_enable ? num_pad : 0))
+     return -1;
+
+   status = radiance_write_eph (r, &eph);
+   eph_free (&eph);
+
+   return status;
+}
+
+static int process_inputs (config_t *cfg,
+                           const char *radiance_file,
+                           double time_beg, double time_end)
+{
+   Radiance_Type *r = NULL;
+   Rename_Path_Type rpt = {0};
+   const char *logmsg_filename = NULL;
+   int radiance_is_telemetry_only = 0;
+   int pad_enable = 0;
+   int status = -1;
+
+   if (radiance_file)
+     {
+        pad_enable = 1;
+        logmsg_filename = radiance_file;
+        if (NULL == (r = radiance_open (radiance_file)))
+          return -1;
+        if (0 != radiance_interval (r, &time_beg, &time_end))
+          goto return_status;
+     }
+   else
+     {
+        /* If necessary, create a telemetry-only radiance file */
+        radiance_is_telemetry_only = 1;
+        if (0 != read_rename_config (cfg, &rpt))
+          goto return_status;
+        if (NULL == (r = radiance_create (rpt.tmp_path, rpt.processing_version)))
+          goto return_status;
+        logmsg_filename = rpt.tmp_path;
+     }
+
+   if (isnan(time_beg)
+       || isnan(time_end)
+       || (time_beg >= time_end))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: invalid time interval [%g, %g)",
+                     __func__, time_beg, time_end);
+        goto return_status;
+     }
+
+   /* Copy IRU, SMC time series spanning [time_beg,time_end),
+    * handling the case where padding forces consideration
+    * of additional files.
+    */
+
+   if (0 != copy_smc (r, cfg, time_beg, time_end, pad_enable))
+     goto return_status;
+
+   if (0 != copy_iru (r, cfg, time_beg, time_end, pad_enable))
+     goto return_status;
+
+   /* Copy subset of ephemeris */
+   if (0 != copy_ephem (r, cfg, time_beg, time_end, pad_enable))
+     goto return_status;
+
+   if (radiance_is_telemetry_only)
+     {
+        /* Finalize the temporary radiance file */
+        if (0 != radiance_update_coverage_times (r))
+          goto return_status;
+
+        /* close before renaming */
+        radiance_close (r);
+        r = NULL;
+        if (0 != rename_radiance_file (&rpt))
+          goto return_status;
+        logmsg_filename = rpt.final_path;
+     }
+
+   status = 0;
+return_status:
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, file=%s",
+              status, logmsg_filename ? logmsg_filename : "(null)");
+   radiance_close (r);
+   free_rename_path_type (&rpt);
+
+   return status;
+}
+
+int main (int argc, char **argv)
+{
+   const char appname[] = "L1_inr_prep";
+   char *config_file = "l1_inr_prep.cfg";
+   config_t cfg;
+   int status = EXIT_FAILURE;
+   static struct option long_options[] =
+     {
+        {"begin", optional_argument, 0, 'b'},
+        {"end",   optional_argument, 0, 'e'},
+        {"config", optional_argument, 0, 'c'},
+        {"verbose", optional_argument, 0, 'v'},
+        {0,0,0,0}
+     };
+
+   double nan_value = nan("");
+   double time_beg = nan_value;
+   double time_end = nan_value;
+   char *radiance_file = NULL;
+
+   if (argc < 2)
+     usage();
+
+   tell_open (appname, -1, 0);
+
+   config_init (&cfg);
+
+   /* Try reading the default config file, but if it doesn't exist,
+    * keep going in case there's a config file on the command line */
+   if (0 == access (config_file, F_OK | R_OK))
+     {
+        if (-1 == read_config_file (config_file, &cfg))
+          goto return_status;
+     }
+
+   for (;;)
+     {
+        int option_index = 0;
+        int c = getopt_long (argc, argv, "b:c:e:v:", long_options, &option_index);
+        if (c == -1)
+          break;
+        switch (c)
+          {
+           default:
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "%s: getopt returned character %d??",
+                          __func__, c);
+             goto return_status;
+             break;
+           case 'b':
+             if (1 != sscanf (optarg, "%le", &time_beg))
+               goto return_status;
+             break;
+           case 'e':
+             if (1 != sscanf (optarg, "%le", &time_end))
+               goto return_status;
+             break;
+           case 'c':
+             config_file = optarg;
+             /* This config file will override the default one
+              * that might have been read previously.
+              * Subsequent command-line args will override
+              * any corresponding config file values */
+             if (-1 == read_config_file (config_file, &cfg))
+               goto return_status;
+             break;
+           case 'v':
+               {
+                  int log_level;
+                  if (1 == sscanf (optarg, "%d", &log_level))
+                    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
+               }
+             break;
+          }
+     }
+
+   if (optind == 0)
+     usage();
+
+   if (optind < argc)
+     {
+        radiance_file = argv[optind++];
+     }
+
+   if (optind < argc)
+     {
+        fprintf (stdout, "Remaining arguments ignored: \n");
+        while (optind < argc)
+          {
+             fprintf (stdout, "%s ", argv[optind++]);
+          }
+        fprintf (stdout, "\n");
+     }
+
+   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end))
+     goto return_status;
+
+   status = 0;
+return_status:
+   config_destroy (&cfg);
+   tell_close ();
+
+   return status;
+}
