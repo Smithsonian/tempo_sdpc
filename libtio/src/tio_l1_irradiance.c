@@ -100,6 +100,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
+#if 0     /* FIXME - isn't this irrelevant for the irradiance? */
    /* granule_flag */
      {
         static _pText_Attr_Type granule_flag_attrs[] =
@@ -111,6 +112,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
           return -1;
      }
+#endif
 
    /* earth_sun_distance */
      {
