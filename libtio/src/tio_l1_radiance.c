@@ -177,23 +177,41 @@ static int define_inr_status (int grp, int inr_status)
    return 0;
 }
 
+static int define_radiance_granule_global_ident (int grp)
+{
+   _pTIO_Granule_Ident_Type gid;
+   int secs_since_epoch;
+
+   gid.next = NULL;
+   gid.scan_seq_num = 0;
+   gid.granule_seq_num = 0;
+   gid.granule_num = 0;
+   strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
+   strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
+
+   if (0 != _pTIO_time_since_epoch (_pTIO_TIME_COVERAGE_START, &secs_since_epoch))
+     return -1;
+   gid.tstart = (double) secs_since_epoch;
+
+   if (0 != _pTIO_time_since_epoch (_pTIO_TIME_COVERAGE_END, &secs_since_epoch))
+     return -1;
+   gid.tend = (double) secs_since_epoch;
+
+   return _pTIO_write_granule_ident (grp, &gid);
+}
+
 static int define_global_attrs (int grp)
 {
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
         {"time_reference", TIO_TIME_REFERENCE_STRING},
-        {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
-        {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
      {
         MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
         MAKE_INT_ATTR1("processing_version", 0),
-        MAKE_INT_ATTR1("granule_seq_num", 0),
-        MAKE_INT_ATTR1("scan_seq_num", 0),
-        MAKE_INT_ATTR1("granule_num", 0),
         _pINT_ATTRS_END
      };
 
@@ -201,6 +219,9 @@ static int define_global_attrs (int grp)
      return -1;
 
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
+     return -1;
+
+   if (0 != define_radiance_granule_global_ident (grp))
      return -1;
 
    if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1A))

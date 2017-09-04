@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define __USE_XOPEN
+#define __USE_XOPEN   /* for strptime */
 #include <time.h>
 
 #include <stdarg.h>
@@ -69,10 +69,15 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end", NC_CHAR, gid->tend_str))
      return -1;
 
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &gid->tstart))
+     return -1;
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &gid->tend))
+     return -1;
+
    return 0;
 }
 
-static int
+int
 _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
    size_t len;
@@ -90,10 +95,16 @@ _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_end", NC_CHAR, len, gid->tend_str))
      return -1;
 
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, 1, &gid->tstart))
+     return -1;
+
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, 1, &gid->tend))
+     return -1;
+
    return 0;
 }
 
-int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
+int TIO_parse_timestr (const char *timestr, struct tm *ptm)
 {
    memset ((char *)ptm, 0, sizeof (struct tm));
    if (NULL == strptime (timestr, TIO_DELIM_TIMESTAMP_FORMAT, ptm))
@@ -115,7 +126,7 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
    struct tm tm;
    int status;
 
-   if (-1 == _pTIO_parse_timestr (gid->tstart_str, &tm))
+   if (-1 == TIO_parse_timestr (gid->tstart_str, &tm))
      return -1;
 
    if (0 == strftime (timestr, MAX_ISOTIME_LEN,
@@ -157,6 +168,8 @@ static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
    return ((gid1->scan_seq_num == gid2->scan_seq_num)
            && (gid1->granule_seq_num == gid2->granule_seq_num)
            && (gid1->granule_num == gid2->granule_num)
+           && (gid1->tstart == gid2->tstart)
+           && (gid1->tend == gid2->tend)
            && (0 == strncmp (gid1->tstart_str, gid2->tstart_str, MAX_ISOTIME_LEN))
            && (0 == strncmp (gid1->tend_str, gid2->tend_str, MAX_ISOTIME_LEN)));
 }
@@ -293,13 +306,94 @@ int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
    return status;
 }
 
+enum
+{
+   NODELIM_TIMESTAMP = 0,
+     DELIM_TIMESTAMP = 1
+};
+
+static time_t Epoch_Time_t;
+static int Epoch_Time_Initialized = 0;
+
+static int init_epoch_time_t (void)
+{
+   struct tm tm;
+
+   if (Epoch_Time_Initialized)
+     return 0;
+
+   memset ((char *)&tm, 0, sizeof(struct tm));
+   if (NULL == strptime (TIO_TIME_REFERENCE_STRING,
+                         TIO_DELIM_TIMESTAMP_FORMAT, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
+                     __func__, TIO_TIME_REFERENCE_STRING);
+        return -1;
+     }
+
+   Epoch_Time_t = timegm (&tm);
+   Epoch_Time_Initialized = 1;
+
+   return 0;
+}
+
+int _pTIO_time_since_epoch (const char *timestr, int *secs_since_epoch)
+{
+   struct tm tm;
+
+   if (init_epoch_time_t())
+     return -1;
+
+   if (-1 == TIO_parse_timestr (timestr, &tm))
+     return -1;
+
+   *secs_since_epoch = timegm(&tm) - Epoch_Time_t;
+   return 0;
+}
+
+int TIO_mktimestamp_str (double sec_since_epoch, int delim, char *buf,
+                         int bufsize)
+{
+   struct tm tm;
+   time_t tt;
+   int status;
+
+   if (init_epoch_time_t())
+     return -1;
+
+   tt = Epoch_Time_t + sec_since_epoch;
+
+   memset ((char *)&tm, 0, sizeof(struct tm));
+   if (NULL == gmtime_r (&tt, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
+                     __func__, tt);
+        return -1;
+     }
+
+   if (delim == 0)
+     status = strftime (buf, bufsize, TIO_NODELIM_TIMESTAMP_FORMAT, &tm);
+   else
+     status = strftime (buf, bufsize, TIO_DELIM_TIMESTAMP_FORMAT, &tm);
+
+   if (0 == status)
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: strftime failed, tt=%ld",
+                     __func__, tt);
+        return -1;
+     }
+
+   return 0;
+}
+
+#if 0
 static int timet_from_timestr (const char *timestr, time_t *ptimet)
 {
    const char tz_env[] = "TZ";
    const char *tz = NULL;
    struct tm tm;
 
-   if (-1 == _pTIO_parse_timestr (timestr, &tm))
+   if (-1 == TIO_parse_timestr (timestr, &tm))
      return -1;
 
    tz = getenv (tz_env);
@@ -312,11 +406,44 @@ static int timet_from_timestr (const char *timestr, time_t *ptimet)
 
    return 0;
 }
+#endif
+
+int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
+                         double secs_since_epoch)
+{
+   char timestamp_str[MAX_ISOTIME_LEN];
+   char attr_name_since_epoch[TIO_MAX_NAME_LEN];
+   size_t len;
+   int n;
+
+   if (0 != TIO_mktimestamp_str (secs_since_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
+     return -1;
+
+   n = snprintf (attr_name_since_epoch, TIO_MAX_NAME_LEN, "%s_since_epoch", attr_name);
+   if (n >= TIO_MAX_NAME_LEN)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: snprintf failed (output variable name exceeds buffer size=%d characters)",
+                     __func__, TIO_MAX_NAME_LEN);
+        return -1;
+     }
+
+   len = strlen(timestamp_str) + 1;
+   if ((0 != TIO_put_att (ncid, varid, attr_name, NC_CHAR, len, timestamp_str))
+       ||(0 != TIO_put_att (ncid, varid, attr_name_since_epoch, NC_DOUBLE, 1, &secs_since_epoch)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing timestamp %s",
+                     __func__, attr_name);
+        return -1;
+     }
+
+   return 0;
+}
 
 int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
 {
    _pTIO_Granule_Ident_Type *beg=NULL, *end=NULL, *gid;
-   time_t tt_beg=LONG_MAX, tt_end=0;
+   double t_beg, t_end;
    size_t len;
 
    if (lst == NULL)
@@ -325,23 +452,20 @@ int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
    beg = lst->granule_ident;
    end = beg;
 
+   t_beg = beg->tstart;
+   t_end = beg->tend;
+
    for (gid = lst->granule_ident; gid != NULL; gid = gid->next)
      {
-        time_t tt;
-
-        if (-1 == timet_from_timestr (gid->tstart_str, &tt))
-          return -1;
-        if (tt < tt_beg)
+        if (gid->tstart < t_beg)
           {
-             tt_beg = tt;
+             t_beg = gid->tstart;
              beg = gid;
           }
 
-        if (-1 == timet_from_timestr (gid->tend_str, &tt))
-          return -1;
-        if (tt > tt_end)
+        if (gid->tend > t_end)
           {
-             tt_end = tt;
+             t_end = gid->tend;
              end = gid;
           }
      }
@@ -355,6 +479,12 @@ int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
 
    len = strlen (end->tend_str) + 1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_end", NC_CHAR, len, end->tend_str))
+     return -1;
+
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, 1, &t_beg))
+     return -1;
+
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, 1, &t_end))
      return -1;
 
    return 0;

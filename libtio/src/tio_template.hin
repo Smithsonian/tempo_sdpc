@@ -8,6 +8,9 @@ extern "C" {
 }
 #endif
 
+#define __USE_XOPEN
+#include <time.h>
+
 /* L1 File format version number */
 #define TIO_L1_FORMAT_VERSION  2
 
@@ -130,7 +133,11 @@ extern int TIO_same_granule_ident (int ncid1, int ncid2);
  * @param  version       Processing version number to include in the filename string
  * @param  buf           Buffer to hold the output filename string
  * @param  bufsize       Size of the output filename buffer
- * @return 0 on success, -1 on error
+ * @return On error, a negative value is returned.  On success, the
+ *         return value is the number of characters that would have been
+ *         needed for the filename if space was available.  Thus,
+ *         a return value of \c bufsize or more indicates that the
+ *         output was truncated.
  *
  * Note that the label string can be either a valid label, or a format
  * definition such as "%s".  The latter is useful for creating a filename
@@ -179,6 +186,40 @@ extern int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst);
  * @return 0 on success, -1 on error
  */
 extern int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst);
+
+/** Parse ISO 8601 time string
+ * @param timestr     const pointer to ISO 8601 time string
+ * @param ptm         pointer to tm struct (see time.h)
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_parse_timestr (const char *timestr, struct tm *ptm);
+
+/** Create timestamp string
+ * @param sec_since_epoch    Number of elapsed seconds since the epoch.
+ * @param delim              If 0, format time as HHMMSS, otherwise, as HH:MM:SS
+ * @param buf                Pointer to the buffer to receive the string
+ * @param bufsize            Size of character buffer
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_mktimestamp_str (double sec_since_epoch, int delim, char *buf,
+                                int bufsize);
+
+/** Write timestamp attributes
+ * @param ncid             Index of destination netcdf file
+ * @param varid            Variable id to receive attributes (usually NC_GLOBAL)
+ * @param attr_base_name   Attribute base name
+ * @param secs_since_epoch Timestamp value [seconds since epoch]
+ * @return 0 on success, -1 on error
+ *
+ * Two timestamp attributes are written.  The first is an ISO 8601
+ * formatted string, the second is a double precision floating point
+ * value containing the number of seconds since the epoch.
+ * Note that the string representation does not show fractional
+ * seconds.
+ */
+extern int TIO_write_timestamp (int ncid, int varid,
+                                const char *attr_base_name,
+                                double secs_since_epoch);
 
 #if 0
 {

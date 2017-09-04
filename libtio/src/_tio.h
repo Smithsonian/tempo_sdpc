@@ -121,7 +121,10 @@ extern int _pEmit_Var_Pixel_Quality_Flag (int grp,
                                           _pDim_Table_Type *dim_table);
 
 #define MAX_ISOTIME_LEN 32
-/*      MAX_ISOTIME_LEN must hold:  yyyy-mm-ddThh:mm:ss.sssZ */
+/*      MAX_ISOTIME_LEN must hold:  yyyy-mm-ddThh:mm:ss.sssZ
+ * (Although floating point seconds are currently unsupported
+ *  by strftime/strptime and may never be used)
+ */
 
 typedef struct _pTIO_Granule_Ident_Type _pTIO_Granule_Ident_Type;
 struct _pTIO_Granule_Ident_Type
@@ -132,10 +135,14 @@ struct _pTIO_Granule_Ident_Type
    int granule_num;
    char tstart_str[MAX_ISOTIME_LEN];
    char tend_str[MAX_ISOTIME_LEN];
+   double tstart;
+   double tend;
 };
 
 extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
+extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
+extern int _pTIO_time_since_epoch (const char *timestr, int *secs_since_epoch);
 
 #if 0
 {
