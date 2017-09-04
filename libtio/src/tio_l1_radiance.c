@@ -18,6 +18,8 @@
 #define TIO_CHUNKSIZE_STEP 1
 #define DO_CHUNKING        1
 
+#define TIO_CHUNK_IRU_SMC_TIME  64
+
 #define COMMENT_WGS84 \
  "Earth-centered WGS84 Cartesian coordinates (z=North Pole, y=equator, x=prime meridian)"
 #define COORDINATE_AT_EXPOSURE_START "coordinate at exposure start"
@@ -574,12 +576,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         chunksizes[1] = dim_table->xtrack.len;
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
-            && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
-                          TEMPO_VAR_RADIANCE, nc_strerror(status));
-             return -1;
-          }
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
 #endif
      }
 
@@ -617,12 +615,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         chunksizes[1] = dim_table->xtrack.len;
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
-            && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
-                          TEMPO_VAR_RADIANCE_ERROR, nc_strerror(status));
-             return -1;
-          }
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
 #endif
      }
 
@@ -660,12 +654,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         chunksizes[1] = dim_table->xtrack.len;
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
-            && (NC_NOERR != (status = nc_def_var_chunking (grp, varid, storage, chunksizes))))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "defining %s chunking parameters (%s)",
-                          TEMPO_VAR_WAVELENGTH, nc_strerror(status));
-             return -1;
-          }
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
 #endif
      }
 
@@ -1148,6 +1138,14 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
+#ifdef DO_CHUNKING
+   int storage = NC_CHUNKED;
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
+#endif
+
+#ifdef DO_CHUNKING
+   chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+#endif
 
    if (grp_name == NULL)
      {
@@ -1179,7 +1177,10 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
@@ -1225,9 +1226,20 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         dims[0] = dim_table->time_ephemeris.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_X, NC_DOUBLE, 1, dims, satpos_x_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Y, NC_DOUBLE, 1, dims, satpos_y_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_Z, NC_DOUBLE, 1, dims, satpos_z_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
@@ -1257,9 +1269,20 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         dims[0] = dim_table->time_ephemeris.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VX, NC_DOUBLE, 1, dims, satvel_vx_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VY, NC_DOUBLE, 1, dims, satvel_vy_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SAT_VZ, NC_DOUBLE, 1, dims, satvel_vz_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
@@ -1354,8 +1377,12 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 static int define_gyroscope_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
-   int status, grp;
+   int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
+#ifdef DO_CHUNKING
+   int storage = NC_CHUNKED;
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
+#endif
 
    if (grp_name == NULL)
      {
@@ -1391,8 +1418,15 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, gyro_time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, gyro_time_attrs, &varid))
           return -1;
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* gyro output */
@@ -1405,8 +1439,16 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->time_gyroscope.id;
         dims[1] = dim_table->gyro_axis.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_OUTPUT, NC_INT, 2, dims, output_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_OUTPUT, NC_INT, 2, dims, output_attrs, &varid))
           return -1;
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+        chunksizes[1] = dim_table->gyro_axis.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* gyro bias time coordinate */
@@ -1417,8 +1459,15 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_bias.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO_BIAS, NC_DOUBLE, 1, dims, bias_time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO_BIAS, NC_DOUBLE, 1, dims, bias_time_attrs, &varid))
           return -1;
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* gyro bias */
@@ -1431,8 +1480,16 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
           };
         dims[0] = dim_table->time_bias.id;
         dims[1] = dim_table->bias_axis.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_BIAS, NC_FLOAT, 2, dims, bias_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_BIAS, NC_FLOAT, 2, dims, bias_attrs, &varid))
           return -1;
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+        chunksizes[1] = dim_table->bias_axis.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    if (grp_id != NULL)
@@ -1448,6 +1505,14 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
+#ifdef DO_CHUNKING
+   int storage = NC_CHUNKED;
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
+#endif
+
+#ifdef DO_CHUNKING
+   chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+#endif
 
    if (grp_name == NULL)
      {
@@ -1479,7 +1544,10 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
@@ -1498,9 +1566,17 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_sma.id;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_SCANX, NC_FLOAT, 1, dims, dit_scanx_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_SCANY, NC_FLOAT, 1, dims, dit_scany_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
@@ -1521,7 +1597,14 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
         dims[0] = dim_table->time_sma.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_RAWX, NC_FLOAT, 1, dims, dit_rawx_attrs, &varid))
           return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SMADIT_RAWY, NC_FLOAT, 1, dims, dit_rawy_attrs, &varid))
+          return -1;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
           return -1;
      }
 
