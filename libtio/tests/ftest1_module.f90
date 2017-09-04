@@ -913,6 +913,8 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     r8_1d(:), r8_2d(:,:), r8_3d(:,:,:), &
     r8_4d(:,:,:,:), r8_5d(:,:,:,:,:), r8_6d(:,:,:,:,:,:)
 
+  real (kind=r4), parameter :: r4_huge_1 = huge(1)
+
   call tiof_open (filename, obj, nf90_nowrite, errstat)
   if (errstat < 0) then
     call tell_error (tell_io_error, "open failed", errstat);
@@ -1265,7 +1267,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
   endif
 
   ! real (kind=r4)
-  r4_1d(:) = huge(1)
+  r4_1d(:) = r4_huge_1
   call tiof_get1d_r4 (obj, "rfA1", start(1:1), edge(1:1), r4_1d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:edge(1)),kind=r4) /= r4_1d)) then
@@ -1273,7 +1275,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     return
   endif
 
-  r4_2d(:,:) = huge(1)
+  r4_2d(:,:) = r4_huge_1
   call tiof_get2d_r4 (obj, "rfA2", start(2:1:-1), edge(2:1:-1), r4_2d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:product(edge(1:2))),kind=r4) &
@@ -1282,7 +1284,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     return
   endif
 
-  r4_3d(:,:,:) = huge(1)
+  r4_3d(:,:,:) = r4_huge_1
   call tiof_get3d_r4 (obj, "rfA3", start(3:1:-1), edge(3:1:-1), r4_3d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:product(edge(1:3))),kind=r4) &
@@ -1291,7 +1293,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     return
   endif
 
-  r4_4d(:,:,:,:) = huge(1)
+  r4_4d(:,:,:,:) = r4_huge_1
   call tiof_get4d_r4 (obj, "rfA4", start(4:1:-1), edge(4:1:-1), r4_4d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:product(edge(1:4))),kind=r4) &
@@ -1300,7 +1302,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     return
   endif
 
-  r4_5d(:,:,:,:,:) = huge(1)
+  r4_5d(:,:,:,:,:) = r4_huge_1
   call tiof_get5d_r4 (obj, "rfA5", start(5:1:-1), edge(5:1:-1), r4_5d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:product(edge(1:5))),kind=r4) &
@@ -1309,7 +1311,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     return
   endif
 
-  r4_6d(:,:,:,:,:,:) = huge(1)
+  r4_6d(:,:,:,:,:,:) = r4_huge_1
   call tiof_get6d_r4 (obj, "rfA6", start(6:1:-1), edge(6:1:-1), r4_6d, errstat, &
                      replace_fill=real(fillvalue,kind=r4))
   if (any (real(values(1:product(edge(1:6))),kind=r4) &

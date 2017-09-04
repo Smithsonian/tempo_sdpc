@@ -12,6 +12,8 @@ program tio_test
 
   integer, parameter :: dim_strlen_size = 32, dim_name_size = 20
   integer, parameter :: dim1_size = 5, dim2_size = 7
+  integer, parameter :: half_dim1_size = dim1_size/2
+  integer, parameter :: half_dim2_size = dim2_size/2
   character (len=dim_strlen_size), parameter :: dim_strlen = "strlen"
   character (len=dim_strlen_size), parameter :: dim_name = "name"
   integer, dimension(2) :: list_of_names_dimids
@@ -247,9 +249,9 @@ program tio_test
   ! First, test integer I/O and replacing fill values:
 
   iv = iv_value
-  call tiof_put1d_i2 (obj, "iv_i2", [0], [dim1_size/2], int(iv,kind=i2), errstat)
-  call tiof_put1d_i4 (obj, "iv_i4", [0], [dim1_size/2], int(iv,kind=i4), errstat)
-  call tiof_put1d_i8 (obj, "iv_i8", [0], [dim1_size/2], int(iv,kind=i8), errstat)
+  call tiof_put1d_i2 (obj, "iv_i2", [0], [half_dim1_size], int(iv,kind=i2), errstat)
+  call tiof_put1d_i4 (obj, "iv_i4", [0], [half_dim1_size], int(iv,kind=i4), errstat)
+  call tiof_put1d_i8 (obj, "iv_i8", [0], [half_dim1_size], int(iv,kind=i8), errstat)
   if (errstat < 0) then
     write (*,*)'*** failed: writing iv arrays'
     stop 3
@@ -262,8 +264,8 @@ program tio_test
     write(*,*)'*** error reading iv_i2'
     stop
   endif
-  if (any(iv_in_i2(1:dim1_size/2) /= int(iv_value,kind=i2)) &
-      .or. any(iv_in_i2(1+dim1_size/2:) /= int(replace_fill_i2,kind=i2))) then
+  if (any(iv_in_i2(1:half_dim1_size) /= int(iv_value,kind=i2)) &
+      .or. any(iv_in_i2(1+half_dim1_size:) /= int(replace_fill_i2,kind=i2))) then
     write(*,*)'*** unexpected iv_i2 values'
     stop 3
   endif
@@ -273,8 +275,8 @@ program tio_test
     write(*,*)'*** error reading iv_i4'
     stop
   endif
-  if (any(iv_in_i4(1:dim1_size/2) /= int(iv_value,kind=i4)) &
-      .or. any(iv_in_i4(1+dim1_size/2:) /= int(replace_fill_i4,kind=i4))) then
+  if (any(iv_in_i4(1:half_dim1_size) /= int(iv_value,kind=i4)) &
+      .or. any(iv_in_i4(1+half_dim1_size:) /= int(replace_fill_i4,kind=i4))) then
     write(*,*)'*** unexpected iv_i4 values'
     stop 3
   endif
@@ -284,8 +286,8 @@ program tio_test
     write(*,*)'*** error reading iv_i8'
     stop
   endif
-  if (any(iv_in_i8(1:dim1_size/2) /= int(iv_value,kind=i8)) &
-      .or. any(iv_in_i8(1+dim1_size/2:) /= int(replace_fill_i8,kind=i8))) then
+  if (any(iv_in_i8(1:half_dim1_size) /= int(iv_value,kind=i8)) &
+      .or. any(iv_in_i8(1+half_dim1_size:) /= int(replace_fill_i8,kind=i8))) then
     write(*,*)'*** unexpected iv_i8 values'
     stop 3
   endif
@@ -297,8 +299,8 @@ program tio_test
     write(*,*)'*** error reading iv_i2'
     stop
   endif
-  if (any(iv_in_i4(1:dim1_size/2) /= int(iv_value,kind=i4)) &
-      .or. any(iv_in_i4(1+dim1_size/2:) /= int(replace_fill_i4,kind=i4))) then
+  if (any(iv_in_i4(1:half_dim1_size) /= int(iv_value,kind=i4)) &
+      .or. any(iv_in_i4(1+half_dim1_size:) /= int(replace_fill_i4,kind=i4))) then
     write(*,*)'*** unexpected iv_i2 values'
     !write(*,*)iv_in_i4
     stop 3
@@ -306,8 +308,8 @@ program tio_test
 
   ! Now, test floating point I/O and replacing fill values:
   iv = iv_value
-  call tiof_put1d_r4 (obj, "rv_r4", [0], [dim1_size/2], real(iv,kind=r4), errstat)
-  call tiof_put1d_r8 (obj, "rv_r8", [0], [dim1_size/2], real(iv,kind=r8), errstat)
+  call tiof_put1d_r4 (obj, "rv_r4", [0], [half_dim1_size], real(iv,kind=r4), errstat)
+  call tiof_put1d_r8 (obj, "rv_r8", [0], [half_dim1_size], real(iv,kind=r8), errstat)
   if (errstat < 0) then
     write (*,*)'*** failed: writing iv arrays'
     stop 3
@@ -320,8 +322,8 @@ program tio_test
     write(*,*)'*** error reading rv_r4'
     stop
   endif
-  if (any(rv_in_r4(1:dim1_size/2) /= real(iv_value,kind=r4)) &
-      .or. any(rv_in_r4(1+dim1_size/2:) /= real(replace_fill_i4,kind=r4))) then
+  if (any(rv_in_r4(1:half_dim1_size) /= real(iv_value,kind=r4)) &
+      .or. any(rv_in_r4(1+half_dim1_size:) /= real(replace_fill_i4,kind=r4))) then
     write(*,*)'*** unexpected rv_r4 values'
     stop 3
   endif
@@ -331,8 +333,8 @@ program tio_test
     write(*,*)'*** error reading rv_r8'
     stop
   endif
-  if (any(rv_in_r8(1:dim1_size/2) /= real(iv_value,kind=r8)) &
-      .or. any(rv_in_r8(1+dim1_size/2:) /= real(replace_fill_i4,kind=r8))) then
+  if (any(rv_in_r8(1:half_dim1_size) /= real(iv_value,kind=r8)) &
+      .or. any(rv_in_r8(1+half_dim1_size:) /= real(replace_fill_i4,kind=r8))) then
     write(*,*)'*** unexpected rv_r8 values'
     stop 3
   endif
@@ -344,17 +346,17 @@ program tio_test
     write(*,*)'*** error reading rv_r4'
     stop
   endif
-  if (any(rv_in_r8(1:dim1_size/2) /= real(iv_value,kind=r8)) &
-      .or. any(rv_in_r8(1+dim1_size/2:) /= real(replace_fill_i4,kind=r8))) then
+  if (any(rv_in_r8(1:half_dim1_size) /= real(iv_value,kind=r8)) &
+      .or. any(rv_in_r8(1+half_dim1_size:) /= real(replace_fill_i4,kind=r8))) then
     write(*,*)'*** unexpected rv_r4 values'
     !write(*,*)rv_in_r8
     stop 3
   endif
 
   fv = 0.0
-  fv(1:dim1_size,1:dim2_size/2) = 1.0e3
+  fv(1:dim1_size,1:half_dim2_size) = 1.0e3
   !write(*,'(7(1pe9.3,1x))')transpose(fv)
-  call tiof_put2d_r4 (obj, "fv", [0,0], [dim2_size/2, dim1_size], fv, errstat)
+  call tiof_put2d_r4 (obj, "fv", [0,0], [half_dim2_size, dim1_size], fv, errstat)
   if (errstat < 0) then
     write (*,*)'*** tiof_put2d_r4 failed: writing fv'
     stop 4
@@ -368,12 +370,12 @@ program tio_test
     write (*,*)'*** tiof_get2d_r4 failed: reading fv'
     stop 4
   endif
-  if (any (fv(1:dim1_size,1:dim2_size/2) /= 1.0e3)) then
+  if (any (fv(1:dim1_size,1:half_dim2_size) /= 1.0e3)) then
     write(*,*)'*** tiof_get2d_r4: non-fill values were modified!'
     !write(*,'(7(1pe9.3,1x))')transpose(fv)
     stop 4
   endif
-  if (any (fv(1:dim1_size,1+dim2_size/2:dim2_size) /= replace_fill_r4)) then
+  if (any (fv(1:dim1_size,1+half_dim2_size:dim2_size) /= replace_fill_r4)) then
     write (*,*)'*** tiof_get2d_r4 failed: fv has unexpected fill values'
     !write(*,'(7(1pe9.3,1x))')transpose(fv)
     stop 4
