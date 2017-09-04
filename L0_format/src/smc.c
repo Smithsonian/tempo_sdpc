@@ -5,6 +5,7 @@
  */
 
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,6 +79,7 @@ static int close_smc_outfile (Process_Method_Type *pmt)
           return -1;
      }
    pmt->ncid = INT_MAX;
+   pmt->num_written = 0;
    return 0;
 }
 
@@ -206,6 +208,42 @@ static int realloc_outbuf (Process_Method_Type *pmt, unsigned int num_records)
    return 0;
 }
 
+static int write_avg_sample_freq_attr (Process_Method_Type *pmt,
+                                       unsigned int num_records,
+                                       const IOCSDPC_SMC_Record_Type *rec_array)
+{
+   TIO_Var_Info_Type info;
+   double t0, t1, average_sample_frequency_hz;
+   double delta_sum = 0.0;
+   unsigned int i, num_deltas = 0;
+
+   if (0 != TIO_inq_var (pmt->ncid, "time", &info))
+     return -1;
+
+   t0 = rec_array[0].sample_time;
+   for (i = 1; i < num_records; i++)
+     {
+        t1 = rec_array[i].sample_time;
+        if ((0 == isnan(t0)) && (0 == isnan(t1)))
+          {
+             delta_sum += (t1 - t0);
+             num_deltas += 1;
+          }
+        t0 = t1;
+     }
+   if (delta_sum > 0.0)
+     {
+        average_sample_frequency_hz = num_deltas / delta_sum;
+     }
+   else average_sample_frequency_hz = 0.0;
+
+   if (0 != TIO_put_att (pmt->ncid, info.varid, "average_sample_frequency_hz",
+                         NC_DOUBLE, 1, &average_sample_frequency_hz))
+     return -1;
+
+   return 0;
+}
+
 static int write_smc_records (Process_Method_Type *pmt,
                               unsigned int num_records,
                               const IOCSDPC_SMC_Record_Type *rec_array)
@@ -303,6 +341,9 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      goto return_status;
 
    if (0 != write_smc_records (pmt, smc->num_records, rec_array))
+     goto return_status;
+
+   if (0 != write_avg_sample_freq_attr (pmt, smc->num_records, rec_array))
      goto return_status;
 
    iocsdpc_smc_close (smc);
