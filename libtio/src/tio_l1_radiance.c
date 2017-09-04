@@ -122,8 +122,8 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type granule_flag_attrs[] =
           {
-             {"flag_masks", "0x01, 0x02"},
-             {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
+             {"flag_masks", "0x01, 0x02, 0x04"},
+             {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan, is_telemetry_only"},
              _pTEXT_ATTRS_END
           };
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
