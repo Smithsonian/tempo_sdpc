@@ -12,9 +12,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define __USE_XOPEN  /* for strptime */
-#include <time.h>
-
 #include <ioclib.h>
 #include <iocsdpc.h>
 #include <tell.h>
@@ -23,12 +20,6 @@
 
 #include "l0_format.h"
 #include "daemon.h"
-
-enum
-{
-   NODELIM_TIMESTAMP = 0,
-     DELIM_TIMESTAMP = 1
-};
 
 typedef struct
 {
@@ -294,65 +285,13 @@ return_status:
    return status;
 }
 
-static time_t Epoch_Time_t;
-
-static int init_epoch_time_t (void)
-{
-   struct tm tm;
-
-   memset ((char *)&tm, 0, sizeof(struct tm));
-   if (NULL == strptime (TIO_TIME_REFERENCE_STRING,
-                         TIO_DELIM_TIMESTAMP_FORMAT, &tm))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
-                     __func__, TIO_TIME_REFERENCE_STRING);
-        return -1;
-     }
-
-   Epoch_Time_t = timegm (&tm);
-
-   return 0;
-}
-
-static int mktimestamp_str (double sec_since_epoch, int delim, char *buf, int bufsize)
-{
-   struct tm tm;
-   time_t tt;
-   int status;
-
-   tt = Epoch_Time_t + sec_since_epoch;
-
-   memset ((char *)&tm, 0, sizeof(struct tm));
-
-   if (NULL == gmtime_r (&tt, &tm))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
-                     __func__, tt);
-        return -1;
-     }
-
-   if (delim == 0)
-     status = strftime (buf, bufsize, TIO_NODELIM_TIMESTAMP_FORMAT, &tm);
-   else
-     status = strftime (buf, bufsize, TIO_DELIM_TIMESTAMP_FORMAT, &tm);
-
-   if (0 == status)
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: strftime failed, tt=%ld",
-                     __func__, tt);
-        return -1;
-     }
-
-   return 0;
-}
-
 int make_level0_basename (double sec_since_epoch, int processing_version,
                           const char *suffix, char *buf, int bufsize)
 {
    char tstr[MAX_ISOTIME_LEN];
    int n;
 
-   if (-1 == mktimestamp_str (sec_since_epoch, NODELIM_TIMESTAMP, tstr, MAX_ISOTIME_LEN))
+   if (-1 == TIO_mktimestamp_str (sec_since_epoch, 0, tstr, MAX_ISOTIME_LEN))
      return -1;
 
    n = snprintf (buf, bufsize, "tempo_%s_v%d_%s.nc",
@@ -383,17 +322,7 @@ static int make_hidden_basename (const char *basename, char *buf, int bufsize)
 int write_attr_global_timestamp (int ncid, const char *tstamp_name,
                                  double tstamp_value)
 {
-   char buf[MAX_ISOTIME_LEN];
-   int len;
-
-   if (-1 == mktimestamp_str (tstamp_value, DELIM_TIMESTAMP, buf, sizeof(buf)))
-     return -1;
-
-   len = strlen (buf);
-   if (-1 == TIO_put_att (ncid, NC_GLOBAL, tstamp_name, NC_CHAR, len, buf))
-     return -1;
-
-   return 0;
+   return TIO_write_timestamp (ncid, NC_GLOBAL, tstamp_name, tstamp_value);
 }
 
 static int write_std_global_metadata (int ncid)
@@ -507,9 +436,6 @@ int main (int argc, char **argv)
      param_file = argv[1];
 
    tell_open (appname, -1, 0);
-
-   if (-1 == init_epoch_time_t ())
-     goto return_status;
 
    config_init (&cfg);
 
