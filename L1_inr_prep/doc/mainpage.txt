@@ -1,0 +1,93 @@
+/**
+@mainpage L1_inr_prep
+
+@section Synopsis
+
+\verbatim
+Usage: L1_inr_prep [options] [FILE]
+  Optional:
+   -b | --begin <start-time>  start time (sec since epoch)
+   -e | --end <end-time>      stop time (sec since epoch)
+   -c | --config FILE         configuration file
+   -v | --verbose lev         logging verbosity
+\endverbatim
+
+@section Description
+
+To support INR processing, \c L1_inr_prep packages spacecraft
+ephemeris data, gyroscope telemetry, and instrument scan mirror
+telemetry into netcdf files formatted as Level 1 radiance granules.
+During radiance scans, \c L1_inr_prep modifies each Level 1 radiance
+granule in place, adding the relevant time series to the file
+directly.  At other times, \c L1_inr_prep creates a special-purpose
+telemetry-only radiance granule to hold the time series.
+
+@section param_file Parameter file
+
+\c L1_inr_prep is controlled by a parameter file that may be provided
+as an optional command-line argument.  If no parameter file is
+specified on the command-line, \c L1_inr_prep reads \c l1_inr_prep.cfg
+from the current directory.
+
+Here is an example parameter file:
+\verbatim
+#
+# Parameters controlling the generation of
+# telemetry-only radiance files:
+#
+telemetry_only_config: {
+  target_dir = "/vex/d0/tmp/inr_in";
+  processing_version = 1;
+};
+
+smc_config: {
+  file_glob = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/*smc0.nc";
+  num_pad = 10;
+};
+
+iru_config: {
+  file_glob = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/*iru0.nc";
+  num_pad = 10;
+};
+
+ephemeris_config: {
+  file = "sample_ephem.csv";
+  num_pad = 10;
+};
+\endverbatim
+
+The parameter file contains several parameter groups which are
+described in the following sections.
+
+@subsection telemetry_only_config Telemetry-only file configuration
+
+The telemetry_only_config parameter group contains the following parameters:
+  \li \c target_dir  Path to the destination directory where the
+               telemetry-only radiance file should be created
+
+  \li \c processing_version  The processing version number to be used
+               in the telemetry-only radiance file
+
+@subsection smc_config Scan mechanism controller (SMC) time series
+
+  \li \c file_glob Globbing pattern defining the input SMC files
+
+  \li \c num_pad  Number of additional telemetry points to include
+                  at either end of the specified time interval.
+
+@subsection iru_config Gyroscope (IRU) time series
+
+  \li \c file_glob Globbing pattern defining the input IRU files
+
+  \li \c num_pad  Number of additional telemetry points to include
+                  at either end of the specified time interval.
+
+@subsection ephemeris_config Ephemeris time series
+
+  \li \c file Path to the input ephemeris file, CSV formatted in
+              accordance with the SOC-IOC IDD.
+
+  \li \c num_pad  Number of additional data points to include
+                  at either end of the specified time interval.
+
+*/

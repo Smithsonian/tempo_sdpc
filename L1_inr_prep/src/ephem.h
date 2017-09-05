@@ -22,8 +22,33 @@ typedef struct
 }
 Eph_Type;
 
+/** Free memory allocated by @c eph_read_subset
+ *
+ *  @param[in] eph  Pointer to @c Eph_Type struct with fields allocated by @c eph_read_subset
+ */
 extern void eph_free (Eph_Type *eph);
 
+/** Read ephemeris data for a specified time interval
+ *
+ * @param[in] eph   Pointer to @c Eph_Type struct.  On successful
+ *                  return, the fields of this structure will be
+ *                  allocated and populated with ephemeris data.
+ * @param[in] file  Path to the ephemeris data file, formatted
+ *                  in accordance with the SOC/IOC IDD.
+ * @param[in] time_beg   Beginning of the time interval for
+ *                       which ephemeris data will be read in,
+ *                       expressed as the number of seconds elapsed
+ *                       since the TEMPO epoch.
+ * @param[in] time_end   End of the time interval for
+ *                       which ephemeris data will be read in,
+ *                       expressed as the number of seconds elapsed
+ *                       since the TEMPO epoch.
+ * @param[in] num_pad    Number of additional ephemeris points to
+ *                       include as padding in addition to the
+ *                       primary time interval from @c time_beg to
+ *                       @c time_end.
+ * @return 0 on success, -1 on error.
+ */
 extern int eph_read_subset (Eph_Type *eph, const char *file,
                             double time_beg, double time_end,
                             int num_pad);
