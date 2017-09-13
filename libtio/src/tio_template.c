@@ -312,56 +312,42 @@ enum
      DELIM_TIMESTAMP = 1
 };
 
-static time_t Epoch_Time_t;
-static int Epoch_Time_Initialized = 0;
-
-static int init_epoch_time_t (void)
-{
-   struct tm tm;
-
-   if (Epoch_Time_Initialized)
-     return 0;
-
-   memset ((char *)&tm, 0, sizeof(struct tm));
-   if (NULL == strptime (TIO_TIME_REFERENCE_STRING,
-                         TIO_DELIM_TIMESTAMP_FORMAT, &tm))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
-                     __func__, TIO_TIME_REFERENCE_STRING);
-        return -1;
-     }
-
-   Epoch_Time_t = timegm (&tm);
-   Epoch_Time_Initialized = 1;
-
-   return 0;
-}
-
-int _pTIO_time_since_epoch (const char *timestr, int *secs_since_epoch)
-{
-   struct tm tm;
-
-   if (init_epoch_time_t())
-     return -1;
-
-   if (-1 == TIO_parse_timestr (timestr, &tm))
-     return -1;
-
-   *secs_since_epoch = timegm(&tm) - Epoch_Time_t;
-   return 0;
-}
-
-int TIO_mktimestamp_str (double sec_since_epoch, int delim, char *buf,
-                         int bufsize)
+int _pTIO_timet_from_timestr (const char *str, time_t *ptt)
 {
    struct tm tm;
    time_t tt;
+
+   memset ((char *)&tm, 0, sizeof(struct tm));
+   if (NULL == strptime (str, TIO_DELIM_TIMESTAMP_FORMAT, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
+                     __func__, str);
+        return -1;
+     }
+
+   if ((tt = timegm (&tm)) < 0)
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: timegm failed: s=%s",
+                     __func__, str);
+        return -1;
+     }
+
+   *ptt = tt;
+   return 0;
+}
+
+int TIO_mktimestamp_str1 (const char *epoch_str,
+                          double sec_since_epoch, int delim, char *buf,
+                          int bufsize)
+{
+   struct tm tm;
+   time_t tt, epoch_tt;
    int status;
 
-   if (init_epoch_time_t())
+   if (0 != _pTIO_timet_from_timestr (epoch_str, &epoch_tt))
      return -1;
 
-   tt = Epoch_Time_t + sec_since_epoch;
+   tt = epoch_tt + sec_since_epoch;
 
    memset ((char *)&tm, 0, sizeof(struct tm));
    if (NULL == gmtime_r (&tt, &tm))
@@ -386,37 +372,27 @@ int TIO_mktimestamp_str (double sec_since_epoch, int delim, char *buf,
    return 0;
 }
 
-#if 0
-static int timet_from_timestr (const char *timestr, time_t *ptimet)
+int TIO_mktimestamp_str (double sec_since_epoch, int dlim, char *buf,
+                         int bufsize)
 {
-   const char tz_env[] = "TZ";
-   const char *tz = NULL;
-   struct tm tm;
-
-   if (-1 == TIO_parse_timestr (timestr, &tm))
-     return -1;
-
-   tz = getenv (tz_env);
-   setenv (tz_env, "", 1);     /* force UTC */
-   *ptimet = mktime(&tm);
-   if (tz)
-     setenv (tz_env, tz, 1);
-   else
-     unsetenv (tz_env);
-
-   return 0;
+   return TIO_mktimestamp_str1 (TIO_TIME_REFERENCE_STRING,
+                                sec_since_epoch, dlim, buf, bufsize);
 }
-#endif
 
 int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
                          double secs_since_epoch)
 {
+   char epoch_str[MAX_ISOTIME_LEN];
    char timestamp_str[MAX_ISOTIME_LEN];
    char attr_name_since_epoch[TIO_MAX_NAME_LEN];
    size_t len;
    int n;
 
-   if (0 != TIO_mktimestamp_str (secs_since_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
+   memset ((char *)epoch_str, 0, MAX_ISOTIME_LEN);
+   if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, epoch_str))
+     return -1;
+
+   if (0 != TIO_mktimestamp_str1 (epoch_str, secs_since_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
      return -1;
 
    n = snprintf (attr_name_since_epoch, TIO_MAX_NAME_LEN, "%s_since_epoch", attr_name);

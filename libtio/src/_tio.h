@@ -142,7 +142,7 @@ struct _pTIO_Granule_Ident_Type
 extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
-extern int _pTIO_time_since_epoch (const char *timestr, int *secs_since_epoch);
+extern int _pTIO_timet_from_timestr (const char *timestr, time_t *ptt);
 
 #if 0
 {
