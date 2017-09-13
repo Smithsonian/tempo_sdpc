@@ -23,6 +23,7 @@ module m_cloud_pres_mod
   !INTEGER(KIND=4), EXTERNAL :: OMI_SMF_setmsg
   integer :: status, NISE 
   real (KIND=8), parameter :: sz_max=86d0 ! maximum solar zenith angle
+  real (KIND=8), parameter :: sat_zen_max=70d0 ! maximum solar zenith angle
   real (KIND=8), parameter :: bad_thresh=0.02d0 !maximum acceptable 
   !fractional error on observed flux
   real (KIND=8), parameter :: refl_cld_mask=0.4d0 !reflectance threshold
