@@ -61,7 +61,7 @@ contains
        sb_ls, tr_ls, set_cld_frac, i0_ss, sb_ss, tr_ss)
 
     use m_vars, ONLY: refl, refl_l, dIdR, min_refl, max_refl, min_refl_flag, &
-         qc, eff_cld_frac, iLine, cal_reflec, rad_cld_frac 
+         qc, eff_cld_frac, iLine, cal_reflec, rad_cld_frac
     use tell_module
 
     implicit none
@@ -79,6 +79,7 @@ contains
     character (len=128) :: logmsg
 
     !**************************************************************************
+
 
     !retrieve the reflectivity
     !=========================
@@ -125,17 +126,20 @@ contains
 
     write(logmsg,*) refl_clr, refl_cld
     call tell_log(4,logmsg)
-    write(logmsg,*) I_clr_l, I_cld_l, I_obs_l
-    call tell_log(4,logmsg)
-    write(logmsg,*) (i_obs_l-I_clr_l), (I_cld_l-I_clr_l), &
+    if (set_cld_frac) then
+      write(logmsg,*) I_clr_l, I_cld_l, I_obs_l
+      call tell_log(4,logmsg)
+      write(logmsg,*) (i_obs_l-I_clr_l), (I_cld_l-I_clr_l), &
            (i_obs_l-I_clr_l)/(I_cld_l-I_clr_l)
-    call tell_log(4,logmsg)
-    write(logmsg,*) i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss),i0_s + &
+      call tell_log(4,logmsg)
+      write(logmsg,*) i0_ss + (refl_clr*tr_ss)/(1-refl_clr*Sb_ss),i0_s + &
            (refl_cld*tr_s)/(1-refl_cld*Sb_s)
-    call tell_log(4,logmsg)
-    call tell_log(4,' get_ai_refl: rad_cld_frac, eff_cld_frac, refl')
-    write(logmsg,*) rad_cld_frac(i,iLine), eff_cld_frac(i,iLine), refl(i,iLine)
-    call tell_log(4,logmsg)
+      call tell_log(4,logmsg)
+      call tell_log(4,' get_ai_refl: rad_cld_frac, eff_cld_frac, refl')
+      write(logmsg,*) rad_cld_frac(i,iLine), eff_cld_frac(i,iLine), &
+           refl(i,iLine)
+      call tell_log(4,logmsg)
+    endif
 
 
   end subroutine get_ai_refl

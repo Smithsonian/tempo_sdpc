@@ -205,7 +205,7 @@ contains
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmin
-        write(logmsg,"(A27,L1)") 'initialize: setting wmin = ', &
+        write(logmsg,"(A27,F5.1)") 'initialize: setting wmin = ', &
              wmin
         call tell_log(1,logmsg)
         set_wmin=.true.
@@ -213,8 +213,8 @@ contains
       returnstatus = pgs_pc_getconfigdata(wmax_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmax
-        write(logmsg,"(A27,L1)") 'initialize: setting wmax = ', &
-             wmin
+        write(logmsg,"(A27,F5.1)") 'initialize: setting wmax = ', &
+             wmax
         call tell_log(1,logmsg)
         set_wmax=.true.
       endif

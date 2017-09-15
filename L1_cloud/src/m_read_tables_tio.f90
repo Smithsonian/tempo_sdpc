@@ -40,6 +40,7 @@ contains
     use m_vars, ONLY: w_grid, nwave2, nwave, ntheta, nscan, nphi, &
          theta, scan, phi, sflx, wgrid_out, npres, pres,  k1bar, sba, nba, &
          i01a, i0a, tra, nia, nra, z1, z2
+    use m_cloud_pres_mod, only: sat_zen_max
     use m_LUN_set
     use m_pgs_include
     use tio_module
@@ -174,6 +175,8 @@ contains
     nwave2=nwave
     w_grid=wgrid_out
 
+    ! Set maximum viewing zenith angle
+    sat_zen_max=maxval(scan)
 
 
   end subroutine read_tables_tio
