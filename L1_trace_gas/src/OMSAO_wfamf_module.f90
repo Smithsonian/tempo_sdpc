@@ -2064,9 +2064,9 @@ CONTAINS
         amfdiag(spix:epix,it) = omi_bigsza_amf + amfdiag(spix:epix,it)
       END WHERE
 
-      ! ----------------------------------------
-      ! Out-of-Bound SZA, VZA (but not missing!)
-      ! ----------------------------------------
+      ! ----------------------------------------------------------
+      ! Out-of-Bound SZA,VZA,and cloud pressure (but not missing!)
+      ! ----------------------------------------------------------
       WHERE( ( sza(spix:epix,it)   < MINVAL(lut_sza) ) .OR. &
              ( sza(spix:epix,it)   > MAXVAL(lut_sza) ) .OR. &
              ( vza(spix:epix,it)   < MINVAL(lut_vza) ) .OR. &
@@ -2204,10 +2204,10 @@ CONTAINS
           ! Save it in ouptut variable
           surface_pressure(ixtrack,itime) = REAL(local_srf, KIND=r4)
 
-          ! --------------------------------------------------------------------------
-          !If cloud pressure is greater than surface pressure (cloud below surface!!!)
-          !then use climatology to correct cloud pressure.
-          !---------------------------------------------------------------------------
+          ! ---------------------------------------------------------------------------
+          ! If cloud pressure is greater than surface pressure (cloud below surface!!!)
+          ! then use climatology to correct cloud pressure.
+          ! ---------------------------------------------------------------------------
           IF (local_ctp .GT. local_srf) THEN 
              ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-REAL(lat(ixtrack,itime),KIND=r8))))
              j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
@@ -2222,6 +2222,15 @@ CONTAINS
              END IF
           END IF
 
+          ! -----------------------------------------------------------------
+          ! If cloud pressure is lower than the minimum available in LUT then
+          ! force it to match the lowest available pressure
+          ! -----------------------------------------------------------------
+          IF (local_ctp .LT. MINVAL(lut_srf)) local_ctp = REAL(MINVAL(lut_srf),KIND=r8)
+
+          ! ----------
+          ! Find nodes
+          ! ----------
           ! SZA
           CALL GetNode(REAL(lut_sza,KIND=8),local_sza,idx_sza(1), 'Lower')
           IF (idx_sza(1) .EQ. -2) idx_sza(1) = 1
