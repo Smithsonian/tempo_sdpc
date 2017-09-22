@@ -21,8 +21,8 @@ contains
   !---------------------------------------------------------------------
   subroutine read_solar_data_tio(errstat)
 
-    use m_vars, only: fs, nsolwave, status, dist_rad, dist_irrad, &
-         filename, nc_swathname
+    use m_vars, only: fs, nsolwave, dist_rad, dist_irrad, &
+         irrad_filename_nc, filename_in_nc, nc_swathname
     use m_lambda_qual
     use m_LUN_set
     use m_pgs_include
@@ -33,37 +33,22 @@ contains
     integer (kind=4), intent (inout) :: errstat
 
     !internal variables
-    integer (kind = 4) :: version
-    integer (kind = 4) :: pgs_pc_getreference, nTimes, nXtrack, nWavel, &
-         ext_index
-    character (len = 200) :: filename_sol, filename_sol_nc, swathname, &
-         filename_rad_nc, logmsg
+    integer (kind = 4) :: nTimes, nXtrack, nWavel
+    character (len = 200) ::  swathname, logmsg
 
     type (tiof_file_type) :: tio_irrl1obj
 
 
     if (errstat /= 0) return
 
-    ! obtain name of IRR1B data file
-    version = 1
-    status = pgs_pc_getreference( IRR1B_FILE, version, filename_sol )
-    if( status .ne. PGS_S_SUCCESS ) then
-      call tell_error (tell_io_read_error, &
-           "read_solar_data_tio: failed to obtain irradiance L1B filename", &
-           errstat)
-      return
-    endif
-    ext_index=index(filename_sol,'.he4')
-    filename_sol_nc=filename_sol(1:ext_index-1)//'.nc'
-
     !open IRR1B file
     swathname=trim(nc_swathname)
 
-    write(logmsg,*) 'read_solar_data_tio: opening ',trim(filename_sol_nc), &
+    write(logmsg,*) 'read_solar_data_tio: opening ',trim(irrad_filename_nc), &
          ' ', trim(swathname)
     call tell_log(2,logmsg)
 
-    call read_sol_dimensions(filename_sol_nc, tio_irrl1obj, swathname, &
+    call read_sol_dimensions(irrad_filename_nc, tio_irrl1obj, swathname, &
          nTimes, nXtrack, nWavel, errstat)
     if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
@@ -73,7 +58,7 @@ contains
     endif
 
     ! Read and test measurement quality flags 
-    call read_sol_mflg(filename_sol_nc, tio_irrl1obj, swathname, errstat)
+    call read_sol_mflg(irrad_filename_nc, tio_irrl1obj, swathname, errstat)
     if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
            "read_sol_mflg: ended with error", &
@@ -82,7 +67,7 @@ contains
     endif
 
     !Read in solar data
-    call read_sol_data(filename_sol_nc, tio_irrl1obj, swathname, &
+    call read_sol_data(irrad_filename_nc, tio_irrl1obj, swathname, &
          nXtrack, nWavel, errstat)
     if(errstat /= 0) then 
       call tell_error (tell_io_read_error, &
@@ -96,7 +81,7 @@ contains
     call bad_irrad_lambda(nXtrack, errstat)
 
     !correction for earth-sun distance
-    call read_earth_sun_distance(filename_sol_nc,dist_irrad,errstat)
+    call read_earth_sun_distance(irrad_filename_nc,dist_irrad,errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &
            "read_earth_sun_distance: failed for irradiance file", &
@@ -104,9 +89,7 @@ contains
       return
     endif
 
-    ext_index=index(filename,'.he4')
-    filename_rad_nc=filename(1:ext_index-1)//'.nc'
-    call read_earth_sun_distance(filename_rad_nc,dist_rad,errstat)
+    call read_earth_sun_distance(filename_in_nc,dist_rad,errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &
            "read_earth_sun_distance: failed for radiance file", &

@@ -43,11 +43,11 @@ contains
     !  -1  problem
     !-------------------------------------------------------------------------
     ! Local variables
-    integer :: i
+    integer :: ext, nargs!, i
     integer :: iprt=0   ! verbosity level
     integer :: iarg=0
-    integer :: argc, iargc
-    character*255 ::  argv, logmsg
+!    integer :: argc, iargc
+    character*255 ::  arg, logmsg
     character*255 ::  pcfpath 
     integer(kind=4), EXTERNAL :: pgs_pc_getnumberoffiles, pgs_pc_getreference
     integer(kind=4), EXTERNAL :: pgs_pc_getuniversalref, pgs_pc_getconfigdata
@@ -62,30 +62,64 @@ contains
     ! read command line information
     ! and do argument check
     !===============================
-    argc = iargc()
-    do i = 1, 32767
-      iarg = iarg + 1
-      if ( iarg > argc ) go to 111
-      call GetArg ( iArg, argv )
-      if(index(argv,'-h ') > 0) then
+!    argc = iargc()
+!    do i = 1, 32767
+!      iarg = iarg + 1
+!      if ( iarg > argc ) go to 111
+!      call GetArg ( iArg, argv )
+!      if(index(argv,'-h ') > 0) then
+!        call ret_usage()
+!      else if(index(argv,'-p ') > 0) then
+!        if ( iarg+1 > argc ) call ret_usage()
+!        iarg = iarg + 1
+!        call GetArg ( iArg, argv )
+!        read(argv,*,err=500) iprt
+!      else if(index(argv,'-nc_swath ') > 0) then
+!        if ( iarg+1 > argc ) call ret_usage()
+!        iarg = iarg + 1
+!        call GetArg ( iArg, argv )
+!        read(argv,*,err=500) nc_swathname
+!      else if(index(argv,'-nc_only ') > 0) then
+!        read_he4 = .false.
+!      else if(index(argv,'-noret ') > 0) then
+!        noret = .true.
+!      endif
+!    enddo
+!111 continue
+    do
+      nargs = command_argument_count()
+      call get_command_argument (iarg, arg)
+      if (len_trim(arg) == 0) exit
+      if (trim(arg) == "-p") then
+        iarg = iarg + 1
+        if (iarg > nargs) then
+          call tell_error(tell_usage_error, &
+               "initialize: verbosity value not set", errstat)
+          call ret_usage()
+        else
+          call get_command_argument (iarg, arg)
+          read(arg,*,err=500) iprt
+        endif
+      else if (trim(arg) == "-h") then
         call ret_usage()
-      else if(index(argv,'-p ') > 0) then
-        if ( iarg+1 > argc ) call ret_usage()
-        iarg = iarg + 1
-        call GetArg ( iArg, argv )
-        read(argv,*,err=500) iprt
-      else if(index(argv,'-nc_swath ') > 0) then
-        if ( iarg+1 > argc ) call ret_usage()
-        iarg = iarg + 1
-        call GetArg ( iArg, argv )
-        read(argv,*,err=500) nc_swathname
-      else if(index(argv,'-nc_only ') > 0) then
+      else if (trim(arg) == "-nc_in") then
+        read_nc = .false.
+      else if (trim(arg) == "-nc_out") then
+        write_nc = .false.
+      else if (trim(arg) == "+he4_in") then
+        read_he4 = .true.
+      else if (trim(arg) == "+he5_out") then
+        write_he5 = .true.
+        read_he4 = .true.  ! he4 input required to calculate cloud mask
+      else if (trim(arg) == "-tempo") then
+        nc_swathname = "band_290_490_nm"
         read_he4 = .false.
-      else if(index(argv,'-noret ') > 0) then
+        write_he5 = .false.
+      else if (trim(arg) == "-noret") then
         noret = .true.
       endif
+      iarg = iarg + 1
     enddo
-111 continue
 
 
     ! Set logging level from iprt
@@ -105,14 +139,42 @@ contains
     if (ex) then
       version = 1
       status = pgs_pc_getreference ( L1B_LUN, version, filename)
-      write(logmsg,"(A12,A24,I1)") 'initialize: ', &
-           'get_pc_reference status ',status
-      call tell_log(1,logmsg)
-      write(logmsg,"(A13,A)") 'l1b filename ',trim(filename)
-      call tell_log(1,logmsg)
+      if (status == 0) then
+!        write(logmsg,"(A12,A24,I1)") 'initialize: ', &
+!             'get_pc_reference status ',status
+!        call tell_log(1,logmsg)
+        write(logmsg,"(A13,A)") 'l1b filename ',trim(filename)
+        call tell_log(1,logmsg)
+      else
+        call tell_error(tell_io_read_error, &
+             'initialize: unable to read radiance filename from PCF', &
+             errstat)
+      endif
 
       version = 1
+      returnstatus = pgs_pc_getreference(IRR1B_FILE,version,irrad_filename)
+      if (returnstatus == 0) then
+        write(logmsg,"(A19,A)") 'l1b irrad filename ',trim(irrad_filename)
+        call tell_log(1,logmsg)
+      else
+        call tell_error(tell_io_read_error, &
+             'initialize: unable to read irradiance filename from PCF', &
+             errstat)
+      endif
 
+      version = 1
+      returnstatus = pgs_pc_getreference(L2_out,version,flnm_out)
+      if (returnstatus == 0) then
+        filename_out=trim(flnm_out)
+        write(logmsg,"(A16,A)") 'output filename ',trim(filename_out)
+        call tell_log(1,logmsg)
+      else
+        call tell_error(tell_io_read_error, &
+             'initialize: unable to read output filename from PCF', &
+             errstat)
+      endif
+
+      version = 1
       returnstatus = pgs_pc_getconfigdata(using_resid_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) pcf_int
@@ -159,9 +221,11 @@ contains
       endif
 
       returnstatus = pgs_pc_getconfigdata(no_ret_LUN,buf)
-      IF(returnstatus == 0 ) THEN
-        read(buf,*) pcf_int
-        noret = pcf_int == 1
+      IF(returnstatus == 0) THEN
+        if (.NOT. noret) then ! only true if set from command line above
+          read(buf,*) pcf_int
+          noret = pcf_int == 1
+        endif
         write(logmsg,"(A28,L1)") 'initialize: setting noret = ', &
              noret
         call tell_log(1,logmsg)
@@ -229,7 +293,28 @@ contains
 
     endif
 
-
+    !sort out .nc and .he4/5 filenames
+    !radiance
+    ext = index(filename, '.nc')
+    if (ext <= 0) then ! extension is he4
+      ext = index(filename, '.he4')
+    endif
+    filename = trim(filename(1:ext-1))//'.he4'
+    filename_in_nc = trim(filename(1:ext-1))//'.nc'
+    !irradiance
+    ext = index(irrad_filename, '.nc')
+    if (ext <= 0) then ! extension is he4
+      ext = index(irrad_filename, '.he4')
+    endif
+    irrad_filename = trim(irrad_filename(1:ext-1))//'.he4'
+    irrad_filename_nc = trim(irrad_filename(1:ext-1))//'.nc'
+    !output
+    ext = index(filename_out, '.nc')
+    if (ext <= 0) then ! extension is he5
+      ext = index(filename_out, '.he5')
+    endif
+    filename_out = trim(filename_out(1:ext-1))//'.he5'
+    filename_out_nc = trim(filename_out(1:ext-1))//'.nc'
     !***********************************************************************
 
     return
@@ -245,21 +330,25 @@ contains
 
     print *
     print *, &
-         'Usage:  cloud_ret.x [-p iprt] [-nc_swath swathname] [-noret] [-nc_only]'
+         'Usage:  L1_cloud [-p iprt] [options] '
     print *
     print *,  'where'
     print *
-    print *, '-p  iprt    printout level flag (1:least amount of '
-    print *, '             (printout, >1 more printouts, default=1)'
-    print *, '                                             '
-    print *, '-nc_swath <swathname> override the default netCDF'
-    print *, '                      swathname'
+    print *, '-h          print this message'
     print *
-    print *, '-nc_only    read and write netCDF files only, no he4/5'
+    print *, '-p iprt     verbosity flag (iprt=0: no output, 1: basic output '
+    print *, '             >1 detailed output, default=0)'
     print *
-    print *, '-noret      do not actually perform retrieval (for testing)'    
+    print *, '-noret      do not actually perform retrieval (for testing)'
     print *
-    print *, "Last Revised: 20 August 2014      (E. O'Sullivan)  "
+    print *, '-nc_in      do not read netCDF input'
+    print *, '-nc_out     do not write netCDF output'
+    print *, '-he4_in     read HDFEOS4 input'
+    print *, '-he5_out    write HDFEOS5 output'
+    print *
+    print *, '-tempo      expect TEMPO-fortmat netCDF input'
+    print *
+    print *, "Last Revised: 22 September 2017      (E. O'Sullivan)  "
     print *
 
     stop 1

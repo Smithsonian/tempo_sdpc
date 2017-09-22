@@ -72,8 +72,10 @@ module m_vars
   logical :: do_LER=.false. ! do Lambertian Equiv. Reflector version of calc.
   logical :: do_mler=.true. ! do Mixed LER version of calculation
   logical :: test_solar=.false. ! use solar spectrum as input data?
-  logical :: read_he4=.true. ! read/write he4 input & he5 output files?
-  logical :: read_nc=.true. ! read/write netCDF input/output files?
+  logical :: read_he4=.false. ! read he4 input files?
+  logical :: read_nc=.true. ! read netCDF input files?
+  logical :: write_he5=.false. ! write he5 output files?
+  logical :: write_nc=.true. ! write netCDF output files?
   logical :: do_cloud_mask=.true. ! create cloud mask product?
 
   ! FILENAMES and PATHS
@@ -85,7 +87,12 @@ module m_vars
   character(len=255) :: out_path='' ! used by read_tables
   character(len=255) :: filename='' ! widely used placeholder
   character(len=255) :: thresh_file='' ! threshold reference file name
+  character(len=255) :: flnm_out ! raw L2 output filename
   character(len=255) :: filename_out='' ! output .he5 filename
+  character(len=255) :: filename_in_nc='' ! input .nc filename
+  character(len=255) :: filename_out_nc='' ! output .nc filename
+  character(len=255) :: irrad_filename='' ! input radiance .he4 filename
+  character(len=255) :: irrad_filename_nc='' ! input radiance .nc filename
   character(len=255) :: outswathname='Cloud Product' ! in output file
   character(len=255) :: ring_file_pre='ring_tab_omi_p' !Ring effect table
   character(len=255) :: ring_file_suf='.dat' !Rifng effect table suffix
@@ -185,7 +192,6 @@ module m_vars
   !integer :: iprt=0  ! verbosity level
   integer :: err_code ! error code in OMCLDRR
   integer :: retstatus ! status of metadata write-out
-  character (len=200) :: flnm_out ! L2 output filename
   integer (kind=1), dimension(:), allocatable :: meas_class, config_rad
   ! measurement class (Earth, Dark, Sun, etc), instrument config.
   integer :: ispec ! cross-track iteration counter in OMCLDRR output

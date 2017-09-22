@@ -553,7 +553,7 @@ contains
   subroutine write_solar
 
     use m_vars
-    integer :: ios 
+    integer :: ios, i
     character(len=80) :: sfile2
 
     sfile2=trim(solar_path)//trim(sfile)

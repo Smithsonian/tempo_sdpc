@@ -5,7 +5,7 @@ contains
   subroutine read_solar_flux(errstat)
 
     use m_vars, ONLY: ws, fs, wmin2, wmax2, nsolwave, meas_qual_flg, &
-         irr_quality_flagL, dist_rad, dist_irrad, config_irr 
+         irr_quality_flagL, dist_rad, dist_irrad, config_irr, irrad_filename
     USE hdfeos4_parameters
     USE L1B_Reader_class
     USE m_LUN_set
@@ -25,10 +25,9 @@ contains
 
     integer (kind=4), intent(in) :: errstat
 
-    INTEGER (KIND = 4) :: version, status, pgs_pc_getreference, ierr, &
-         nTimes, nXtrack, nWavel, nWavelCoef, &
+    INTEGER (KIND = 4) :: status, ierr, nTimes, nXtrack, nWavel, nWavelCoef, &
          nwl        !,iLine
-    CHARACTER (LEN = 200) :: filename, swathname, logmsg
+    CHARACTER (LEN = 200) :: swathname, logmsg
     TYPE (L1B_block_type) :: blk
     INTEGER (KIND = 4), PARAMETER :: zero = 0
     INTEGER (KIND = 2) :: mflg
@@ -43,16 +42,6 @@ contains
     Wl_vis_beg = wmin2 
     Wl_vis_end = wmax2
 
-    ! obtain name of IRR1B data file
-    version = 1
-    status = pgs_pc_getreference( IRR1B_FILE, version, filename )
-    IF( status .NE. PGS_S_SUCCESS ) THEN
-      ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
-           "get IRR1B_FILE name failed, PGE aborting", &
-           "read_solar_flux", 1 )
-      stop 1
-    END IF
-
     ! open data block structure with default size of 1 lines
     if (vis .or. visz) then
       swathname = sunvisswath
@@ -64,10 +53,10 @@ contains
     else
       swathname = sunuv2swath 
     endif
-    write(logmsg,*)'read_solar_flux: opening ',trim(filename),' ',&
+    write(logmsg,*)'read_solar_flux: opening ',trim(irrad_filename),' ',&
          trim(swathname)
     call tell_log(2,logmsg)
-    status = L1Br_open( blk, filename, swathname )
+    status = L1Br_open( blk, irrad_filename, swathname )
     IF( status .NE. OMI_S_SUCCESS ) THEN
       ierr = OMI_SMF_setmsg( OMCLDRR_F_FAILURE, & 
            "L1Br_open failed, PGE aborting", &
@@ -219,7 +208,7 @@ contains
       stop 1
     END IF
 
-    call EarthSunDist(filename,dist_irrad, dist_rad)
+    call EarthSunDist(irrad_filename,dist_irrad, dist_rad)
     fs(0:nsolwave-1,:)=fs(0:nsolwave-1,:)*(dist_irrad/dist_rad)**2
 
     !      ierr = OMI_SMF_setmsg( PGS_S_SUCCESS, &

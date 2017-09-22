@@ -28,23 +28,22 @@ program OMCLDRR
   IMPLICIT NONE
 
   !-------------------------------------------------------------------------
-  ! !REVISION HISTORY: 
+  ! !REVISION HISTORY:
   !
   !  05Jan01   Joiner     original fortran 90
   !  28Mar02   Vasilkov   changes to read filename_out from PCF (marked ****)
   !  26Aug14   O'Sullivan tidying, simplification, annotation for TEMPO
   !-------------------------------------------------------------------------
 
-  integer (kind=4), external :: pgs_pc_getreference 
+  integer (kind=4), external :: pgs_pc_getreference
   !>@param blk Defined type for passing L1B he4 input data from
   TYPE (L1B_block_type) :: blk
 
   !>@param errstat integer error code used throughout program
-  !>@param ext_index integer position of extension in filename string
-  integer (kind=4) :: ext_index, errstat
+  integer (kind=4) :: errstat
   !>@param filename_out_nc netCDF output filename
-  !>@param filename_out_nc netCDF input filename
-  character(len=255) :: filename_out_nc, filename_in_nc, logmsg
+  !>@param filename_in_nc netCDF input filename
+  character(len=255) :: logmsg
   integer, parameter :: processing_version = 1  ! FIXME should be input param
 
   !************************************************************************
@@ -81,22 +80,6 @@ program OMCLDRR
     stop 1
   endif
 
-  !Assign output file name
-  !======================================
-  if (ex) then
-    version = 1
-    status = pgs_pc_getreference(L2_out,version,flnm_out)
-    if(status.ne.0) then
-      call tell_error(tell_io_open_error, &
-           "error opening output L2 file, L1_cloud aborting, exit code = 1", &
-           errstat)
-      stop 1
-    endif
-    filename_out=trim(flnm_out)
-    write(logmsg,"(A6,I4,A17,A)") 'status', status, &
-         ' output filename ',trim(flnm_out)
-    call tell_log(2,logmsg)
-  endif
 
   ! Main processing stage
   !============================================================
@@ -129,8 +112,8 @@ program OMCLDRR
   if (read_he4) call read_input_data(blk, errstat)
   !netCDF version
   if (read_nc) then
-    ext_index=index(filename,'.he4')
-    filename_in_nc=filename(1:ext_index-1)//'.nc'
+!    ext_index=index(filename,'.he4')
+!    filename_in_nc=filename(1:ext_index-1)//'.nc'
     if (read_he4) iLine=iLine-1 
     call read_input_data_tio(filename_in_nc, errstat)
   endif
@@ -254,16 +237,16 @@ program OMCLDRR
 
   !Write an output .he5 file
   !=========================
-  if (read_he4) then
+  if (write_he5) then
     call write_output_data(filename_out,outswathname)
     call write_output_data_2pres(filename_out,outswathname)
   endif
 
   !Write out an output .nc file
   !============================
-  if (read_nc) then
-    ext_index=index(filename_out,'.he5')
-    filename_out_nc=filename_out(1:ext_index-1)//'.nc'
+  if (write_nc) then
+!    ext_index=index(filename_out,'.he5')
+!    filename_out_nc=filename_out(1:ext_index-1)//'.nc'
     if (write_resid) then
       call create_output_file(filename_out_nc,nTimes,nXtrack,errstat, &
            size(wave_resid))
