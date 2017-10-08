@@ -600,6 +600,8 @@ INR_INC
 INR_LIB
 LIBCONFIG_INC
 LIBCONFIG_LIB
+SLNOVAS_INC
+SLNOVAS_LIB
 PROJ_INC
 PROJ_LIB
 NETCDF_INC
@@ -653,6 +655,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -684,6 +687,7 @@ with_hdfeos
 with_hdfeos5
 with_netcdf
 with_proj
+with_slnovas
 with_libconfig
 with_inrlib
 with_inrots
@@ -732,6 +736,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -984,6 +989,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1121,7 +1135,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1274,6 +1288,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1317,6 +1332,7 @@ Optional Packages:
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
   --with-proj=DIR         Use proj4 library installed in DIR
+  --with-slnovas=DIR         Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-inrlib=DIR       Use INR library installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
@@ -2139,6 +2155,24 @@ if test "x$jh_with_proj" = "xno"; then
 else
    PROJ_LIB="$jh_with_proj/lib"
    PROJ_INC="$jh_with_proj/include"
+fi
+
+
+
+
+# Check whether --with-slnovas was given.
+if test "${with_slnovas+set}" = set; then :
+  withval=$with_slnovas; jh_with_slnovas=$withval
+else
+  jh_with_slnovas=no
+fi
+
+if test "x$jh_with_slnovas" = "xno"; then
+   SLNOVAS_LIB="\$(OTS_ROOT)/lib"
+   SLNOVAS_INC="\$(OTS_ROOT)/include"
+else
+   SLNOVAS_LIB="$jh_with_proj/lib"
+   SLNOVAS_INC="$jh_with_proj/include"
 fi
 
 

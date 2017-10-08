@@ -86,6 +86,20 @@ fi
 AC_SUBST(PROJ_LIB)
 AC_SUBST(PROJ_INC)
 
+AC_ARG_WITH(slnovas,
+  [  --with-slnovas[=DIR]         Use slnovas library installed in DIR],
+  [jh_with_slnovas=$withval],
+  [jh_with_slnovas=no])
+if test "x$jh_with_slnovas" = "xno"; then
+   SLNOVAS_LIB="\$(OTS_ROOT)/lib"
+   SLNOVAS_INC="\$(OTS_ROOT)/include"
+else
+   SLNOVAS_LIB="$jh_with_proj/lib"
+   SLNOVAS_INC="$jh_with_proj/include"
+fi
+AC_SUBST(SLNOVAS_LIB)
+AC_SUBST(SLNOVAS_INC)
+
 AC_ARG_WITH(libconfig,
   [  --with-libconfig[=DIR]    Use libconfig library installed in DIR],
   [jh_with_libconfig=$withval],
