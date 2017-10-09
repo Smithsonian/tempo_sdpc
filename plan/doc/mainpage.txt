@@ -1,0 +1,194 @@
+/**
+@mainpage plan
+
+@section Synopsis
+
+\verbatim
+Usage: plan [options]
+  Optional:
+   -h | --help              Print this usage message
+   -d | --date YYYY-MM-DD   Plan start date
+   -n | --ndays NUM         Number of days to plan [default=14]
+   -o | --output FILE       Output file [default=stdout]
+   -s | --scan METHOD       METHOD = std | opt1 [default=std]
+   -c | --config FILE       Configuration file
+   -m | --master            Generate master scan table, then exit
+   -z | --szaout FILE       Generate netCDF output to help visualize
+                            the solar zenith angle at selected times
+\endverbatim
+
+@section Description
+
+\c plan can be used to generate a TEMPO Earth scan plan or a TEMPO
+master scan table for input to the TEMPO Instrument Operations Center
+(IOC). The master scan table is likely to remain fixed for the
+duration of the mission.  Earth scan plans are likely to be updated
+weekly or even more frequently, as needed.
+
+Earth scan start and stop times are determined by the solar zenith
+angle (SZA) at two control points.  The eastern control point
+determines the start time of the first scan of each day.  The western
+control point determines the start time of the last scan each day.
+Scans are planned to continue as long as the SZA is smaller than the
+maximum value, \c max_sza, specified in the parameter file.
+
+The following scanning methods are currently supported:
+
+\li \e std: The \e std scan method uses a single mirror scan table to
+scan from the eastern scan limit (\c scan_beg) to the western scan limit
+(\c scan_end) each day.
+
+\li \e opt1: The \e opt1 scan method uses three mirror scan tables
+each day. One scan table covers the eastern half of the field of
+regard (FOR) and is used during the morning.  Another table covers the
+western half of the FOR and is used during the late afternoon.  The
+other table is using during mid-day when the entire FOR is suitably
+illuminated.
+
+@section param_file Parameter file
+
+\c plan is controlled by a parameter file that may be provided as an
+optional command-line argument.  If no parameter file is specified on
+the command-line, \c plan reads \c plan.cfg from the current
+directory.
+
+The parameter file contains several parameter blocks, as follows:
+  \li \c scan_config: Coordinates of scan endpoints, and control points;
+                      scan timing parameters
+  \li \c limits_config:  Other parameter limits that constrain scans
+  \li \c sat_config:  Satellite and instrument pointing geometry
+  \li \c iers_config: Earth orientation and time scale parameters
+  \li \c novas_config: Solar system ephemeris
+  \li \c master_table_config: Parameters defining the master scan table
+  \li \c output_sza_map_config: Parameters used to generate a solar
+         zenith angle map (for visualization only)
+
+Here is an example parameter file:
+\verbatim
+#
+# The points day_beg, day_end may differ from scan_beg, scan_end
+# because checking the SZA at the FOR scan limits may not
+# the best way to gauge the illumination across an entire granule.
+# Also, using a single sample point is cheaper than computing
+# the SZA over a fine grid of points spanning an entire granule.
+
+scan_config: {
+
+# scan_beg, scan_end are the eastern and western limits of the scan:
+
+  scan_beg: {lon =  -73.7; lat = 18.0;};
+  scan_end: {lon = -126.4; lat = 18.0;};
+ #scan_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
+ #scan_end: {lon = -104.673; lat = 39.849;};  # Denver
+
+# day_beg, day_end are control points used to decide what time
+# interval is best for performing radiance scans with sza<max_sza.
+
+  day_beg: {lon =  -71.057; lat = 42.361;};  # Boston
+  day_end: {lon = -122.431; lat = 37.774;};  # San Francisco
+ #day_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
+ #day_end: {lon = -104.673; lat = 39.849;};  # Denver
+
+# Time [sec] required for various operations during the scan:
+
+  step_times: {
+     step_expose = 2.8;
+     step_move   = 0.1;
+     scan_reset  = 2.35;
+  };
+};
+
+limits_config: {
+
+# max_sza = maximum useful solar zenith angle
+  max_sza = 80.0;
+
+# min_sun_angle = minimum safe angle between the
+#                 sun and boresight directions
+  min_sun_angle = 60.0;
+};
+
+sat_config: {
+
+# sat_lon = geostationary satellite longitude
+  sat_lon = -100.0;
+
+# instrument boresight surface coordinates:
+  boresight: {lon = -97.0, lat = 34.0;};
+};
+
+iers_config: {
+
+# Values of these parameters, accurate for the current date, can be
+# obtained from IERS Bulletin A, available from:
+# https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
+
+  xpole = 0.0;
+  ypole = 0.0;
+
+  leap_secs = 36;
+
+# ut1_utc = predicted UT1-UTC [sec]
+  ut1_utc = -0.21325;
+};
+
+novas_config: {
+  ephem_name = "/vex/d2/tempo/install/gnu/share/libnovas/JPLEPH";
+};
+
+master_table_config: {
+
+# x[i] = integer scan coordinate, [microradian]
+# x[i] = xstart - i * step_size,  i = [0,num_steps-1]
+
+  num_steps =  1283;
+  step_size =   114;
+  xstart    = 73131;
+};
+
+output_sza_map_config: {
+
+# SZA image dimension
+   img_size = 256;
+
+# dimensions of nominal field of regard and
+# pixel angular size [microradian] in each dimension
+
+   num_mirror_steps   = 1283;
+   size_mirror_step   = 114.0;
+
+   num_xtrack         = 2038;
+   size_xtrack_pixel  = 41.79;
+
+# tilt>0 [deg] is northward tilt of instrument boresight,
+#              about spacecraft roll axis
+# azi>0 [deg] is rotation, eastward from north (CW),
+#             about instrument boresight axis
+# These angles specify the instrument pointing direction
+# for the tilted perspective projection ('tpers') from
+# the Proj4 library.
+
+   tilt = 5.53
+   azi  = 4.5
+};
+\endverbatim
+
+@section vis_section Visualization
+
+For planning purposes, the INR library interface provides a mapping
+from coordinates on the Earth's surface (longitude, latitude), to
+angular coordinates in the field of regard (azimuth, elevation). This
+interface is used to assign mirror step angular coordinates to the
+start point of each scan.
+
+For visualization purposes, the inverse mapping is most convenient,
+mapping each pixel in the field of regard to a point on the Earth's
+surface. The \c proj4 library is used to provide this mapping through
+the library's tilted perspective projection (\e tpers), using the
+parameters specified in the \c output_sza_map_config block of the
+parameter file. To ensure that the visualization accurately matches
+the TEMPO field of regard, it's important that the parameters in the
+\c output_sza_map_config block reflect the actual instrument
+configuration.
+
+*/

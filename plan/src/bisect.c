@@ -1,3 +1,7 @@
+/** @file bisect.c
+ *  @brief Bisection method root solver.
+ */
+
 #include "config.h"
 #include <math.h>
 #include <stdio.h>
