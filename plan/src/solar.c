@@ -12,7 +12,6 @@
 
 #include <libconfig.h>
 #include <libnovas.h>
-#include <tempo_geo.h>
 
 #include <tell.h>
 
