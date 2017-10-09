@@ -17,7 +17,7 @@
 #include <tempo_geo.h>
 
 #include "scan.h"
-#include "scan_list.h"
+#include "plan_list.h"
 #include "scan_methods.h"
 #include "vis.h"
 
@@ -122,18 +122,18 @@ static int scan_table_params (const Scan_Type *st,
    return 0;
 }
 
-static Scan_List_Entry *
+static Plan_List_Type *
 plan_baseline (const Scan_Type *st, Solar_Geom_Type *solar_geom,
                const Scan_Limit_Times_Type *limit_times)
 {
-   Scan_List_Entry *entry = NULL;
+   Plan_List_Type *entry = NULL;
    double time_full_scan, xstart;
    int num_steps;
 
    if (0 != scan_table_params (st, solar_geom, 1, &xstart, &num_steps))
      return NULL;
 
-   if (NULL == (entry = scan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc ()))
      return NULL;
 
    time_full_scan = st->st_scan_duration (st, num_steps);
@@ -148,7 +148,7 @@ plan_baseline (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
-static int vis_baseline (Vis_Type *v, const Scan_List_Entry *lst, int ncid)
+static int vis_baseline (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
    double *sza = NULL, jd_utc;
    int status = -1;
@@ -184,15 +184,15 @@ typedef struct
 }
 Table_Schedule;
 
-static int append_entry (Scan_List_Entry **lst, const Scan_Type *st,
+static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
                          const Table_Schedule *x)
 {
-   Scan_List_Entry *entry = NULL;
+   Plan_List_Type *entry = NULL;
 
    if (x->num_steps <= 0)
      return 0;
 
-   if (NULL == (entry = scan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc ()))
      return -1;
 
    entry->tstart = x->tstart;
@@ -202,16 +202,16 @@ static int append_entry (Scan_List_Entry **lst, const Scan_Type *st,
    entry->step_exposure = st->st_step_exposure (st);
    entry->num_repeats = x->num_repeats;
 
-   return scan_list_append (lst, entry);
+   return plan_list_append (lst, entry);
 }
 
 #define NUM_TABLES_OPT1 3
 
-static Scan_List_Entry *
+static Plan_List_Type *
 plan_opt1 (const Scan_Type *st, Solar_Geom_Type *solar_geom,
            const Scan_Limit_Times_Type *limit_times)
 {
-   Scan_List_Entry *opt_scans = NULL;
+   Plan_List_Type *opt_scans = NULL;
    Table_Schedule rise={0}, full={0}, set={0};
    double time_midpoint, sun_angle, min_sun_angle, jd_utc;
    double xstart[NUM_TABLES_OPT1];
@@ -285,16 +285,16 @@ plan_opt1 (const Scan_Type *st, Solar_Geom_Type *solar_geom,
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: appending scan plan entries",
                      __func__);
-        scan_list_free (opt_scans);
+        plan_list_free (opt_scans);
         return NULL;
      }
 
    return opt_scans;
 }
 
-static int vis_opt1 (Vis_Type *v, const Scan_List_Entry *lst, int ncid)
+static int vis_opt1 (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
-   const Scan_List_Entry *entry;
+   const Plan_List_Type *entry;
    const char *variable_names[] =
      {"sza_beg", "sza_full_beg", "sza_full_end", NULL};
    const char **name;

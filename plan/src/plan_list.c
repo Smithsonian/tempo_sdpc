@@ -1,4 +1,4 @@
-/** @file scan_list.c
+/** @file plan_list.c
  *  @brief Manage a list of instrument scan parameters
  */
 
@@ -13,43 +13,43 @@
 #include <libconfig.h>
 #include <tell.h>
 
-#include "scan_list.h"
+#include "plan_list.h"
 
-void scan_list_entry_free (Scan_List_Entry *stt)
+void plan_list_entry_free (Plan_List_Type *ple)
 {
-   if (stt == NULL)
+   if (ple == NULL)
      return;
-   FREE(stt);
+   FREE(ple);
 }
 
-void scan_list_free (Scan_List_Entry *head)
+void plan_list_free (Plan_List_Type *head)
 {
    while (head != NULL)
      {
-        Scan_List_Entry *stt = head->next;
-        scan_list_entry_free (head);
-        head = stt;
+        Plan_List_Type *ple = head->next;
+        plan_list_entry_free (head);
+        head = ple;
      }
 }
 
-Scan_List_Entry *scan_list_entry_alloc (void)
+Plan_List_Type *plan_list_entry_alloc (void)
 {
-   Scan_List_Entry *stt = NULL;
+   Plan_List_Type *ple = NULL;
 
-   if (NULL == (stt = (Scan_List_Entry *) MALLOC (sizeof *stt)))
+   if (NULL == (ple = (Plan_List_Type *) MALLOC (sizeof *ple)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
-   memset ((char *)stt, 0, sizeof *stt);
+   memset ((char *)ple, 0, sizeof *ple);
 
-   return stt;
+   return ple;
 }
 
-int scan_list_append (Scan_List_Entry **phead,
-                      Scan_List_Entry *stt)
+int plan_list_append (Plan_List_Type **phead,
+                      Plan_List_Type *ple)
 {
-   Scan_List_Entry *head;
+   Plan_List_Type *head;
 
    if (phead == NULL)
      return -1;
@@ -58,7 +58,7 @@ int scan_list_append (Scan_List_Entry **phead,
 
    if (head == NULL)
      {
-        *phead = stt;
+        *phead = ple;
         return 0;
      }
 
@@ -66,7 +66,7 @@ int scan_list_append (Scan_List_Entry **phead,
      {
         if (head->next == NULL)
           {
-             head->next = stt;
+             head->next = ple;
              return 0;
           }
      }
@@ -76,9 +76,9 @@ int scan_list_append (Scan_List_Entry **phead,
 
 #define TIME_BUFSIZE 21
 
-int scan_list_write (FILE *fp, const Scan_List_Entry *head)
+int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
-   const Scan_List_Entry *entry;
+   const Plan_List_Type *entry;
    const char header_comment[] =
      "# tstart,duration,xstart,num_steps,step_exposure,num_repeats,timestamp\n";
 

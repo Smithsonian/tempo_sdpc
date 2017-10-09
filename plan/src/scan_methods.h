@@ -6,14 +6,14 @@
  */
 
 #include "scan.h"
-#include "scan_list.h"
+#include "plan_list.h"
 #include "vis.h"
 
 typedef struct
 {
-   Scan_List_Entry *(*sm_plan)(const Scan_Type *, Solar_Geom_Type *,
-                               const Scan_Limit_Times_Type *);
-   int (*sm_vis)(Vis_Type *v, const Scan_List_Entry *, int);
+   Plan_List_Type *(*sm_plan)(const Scan_Type *, Solar_Geom_Type *,
+                              const Scan_Limit_Times_Type *);
+   int (*sm_vis)(Vis_Type *v, const Plan_List_Type *, int);
 }
 Scan_Method_Type;
 

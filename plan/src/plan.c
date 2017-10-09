@@ -20,7 +20,7 @@
 
 #include "solar.h"
 #include "scan.h"
-#include "scan_list.h"
+#include "plan_list.h"
 #include "scan_methods.h"
 #include "vis.h"
 
@@ -232,7 +232,7 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
 
 static int generate_vis (config_t *cfg, const char *filename,
                          Solar_Geom_Type *solar_geom,
-                         const Scan_List_Entry *scan_list,
+                         const Plan_List_Type *plan_list,
                          const Scan_Method_Type *sm)
 {
    Vis_Type *v = NULL;
@@ -247,7 +247,7 @@ static int generate_vis (config_t *cfg, const char *filename,
    if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
      goto return_status;
 
-   if (0 != sm->sm_vis (v, scan_list, ncid))
+   if (0 != sm->sm_vis (v, plan_list, ncid))
      goto return_status;
 
    tio_status = TIO_close (ncid);
@@ -264,7 +264,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
 {
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
-   Scan_List_Entry *scan_list = NULL;
+   Plan_List_Type *plan_list = NULL;
    const Scan_Method_Type *sm = NULL;
    Solar_Geom_Type *solar_geom = NULL;
    double jd_utc, jd_utc0, jd_utc1;
@@ -300,7 +300,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
    for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
      {
         Scan_Limit_Times_Type limit_times = {0};
-        Scan_List_Entry *entry = NULL;
+        Plan_List_Type *entry = NULL;
 
         if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
           goto return_status;
@@ -308,7 +308,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
         if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times)))
           goto return_status;
 
-        if (0 != scan_list_append (&scan_list, entry))
+        if (0 != plan_list_append (&plan_list, entry))
           goto return_status;
      }
 
@@ -319,10 +319,10 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
      goto return_status;
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph.ephem_name);
    (void) fprintf (fp, "#\n");
-   if (0 != scan_list_write (fp, scan_list))
+   if (0 != plan_list_write (fp, plan_list))
      goto return_status;
 
-   if (0 != generate_vis (cfg, vis_output_file, solar_geom, scan_list, sm))
+   if (0 != generate_vis (cfg, vis_output_file, solar_geom, plan_list, sm))
      goto return_status;
 
    status = 0;
@@ -338,7 +338,7 @@ return_status:
         scan->st_delete (scan);
         scan = NULL;
      }
-   scan_list_free (scan_list);
+   plan_list_free (plan_list);
 
    return status;
 }
