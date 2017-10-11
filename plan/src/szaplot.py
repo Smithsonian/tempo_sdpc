@@ -11,14 +11,17 @@ args = parser.parse_args()
 nc_filename = args.filename
 plt_filename = os.path.splitext(nc_filename)[0] + "." + args.ext
 
-from mpl_toolkits.basemap import Basemap, cm
-from netCDF4 import Dataset as NetCDFFile
 import numpy as np
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
+# Axis label numbers are still serif font.  Why?
 plt.rc('text', usetex=True)
+plt.rc('text.latex', preamble=r'\usepackage{lmodern}\renewcommand*\familydefault{\sfdefault}\usepackage[T1]{fontenc}')
+
+from mpl_toolkits.basemap import Basemap, cm
+from netCDF4 import Dataset as NetCDFFile
 
 class Grid_Map (object):
     def __init__(self, lon, lat):
@@ -61,9 +64,9 @@ def plot_var_map (m, grid, var, var_config):
 
 def config_map (m):
     # draw coastlines, state and country boundaries, edge of map.
-    m.drawcoastlines()
-    m.drawstates()
-    m.drawcountries()
+    m.drawcoastlines(linewidth=0.25)
+    m.drawstates(linewidth=0.25)
+    m.drawcountries(linewidth=0.25)
     # draw parallels.
     parallels = np.arange(20.0,60.0,10.)
     m.drawparallels(parallels)
