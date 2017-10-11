@@ -26,7 +26,7 @@ struct Solar_Geom_Type
                             double *psun_angle);
    /**< compute the angle between the sun and the instrument boresight */
 
-   int (*sgt_print_params)(Solar_Geom_Type *sgt, const char *, FILE *);
+   int (*sgt_print_params)(const Solar_Geom_Type *sgt, const char *, FILE *);
    /**< print selected parameters to the specified open FILE pointer */
 
 #ifdef SGT_PRIVATE_DATA

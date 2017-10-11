@@ -38,8 +38,8 @@ static int scan_table_params (const Scan_Type *st,
    EarthPoint beg_pt={0}, end_pt={0};
    AziElev_Type beg, end;
    TempoGeoErr error;
-   double sat_lon;
-   int max_num_steps, step_size;
+   double sat_lon, step_size;
+   int max_num_steps;
 
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
@@ -76,7 +76,7 @@ static int scan_table_params (const Scan_Type *st,
    if ((step_size = st->st_step_size (st)) <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: invalid mirror step size = %d",
+                     "%s: invalid mirror step size = %g",
                      __func__, step_size);
         return -1;
      }
@@ -123,8 +123,8 @@ static int scan_table_params (const Scan_Type *st,
 }
 
 static Plan_List_Type *
-plan_baseline (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-               const Scan_Limit_Times_Type *limit_times)
+std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+          const Scan_Limit_Times_Type *limit_times)
 {
    Plan_List_Type *entry = NULL;
    double time_full_scan, xstart;
@@ -148,7 +148,7 @@ plan_baseline (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
-static int vis_baseline (Vis_Type *v, const Plan_List_Type *lst, int ncid)
+static int std_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
    double *sza = NULL, jd_utc;
    int status = -1;
@@ -208,7 +208,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
 #define NUM_TABLES_OPT1 3
 
 static Plan_List_Type *
-plan_opt1 (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
            const Scan_Limit_Times_Type *limit_times)
 {
    Plan_List_Type *opt_scans = NULL;
@@ -292,7 +292,7 @@ plan_opt1 (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return opt_scans;
 }
 
-static int vis_opt1 (Vis_Type *v, const Plan_List_Type *lst, int ncid)
+static int opt1_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
    const Plan_List_Type *entry;
    const char *variable_names[] =
@@ -348,8 +348,8 @@ Method_Entry;
 
 static Method_Entry Method_Table[] =
 {
-   METHOD_ENTRY("std", plan_baseline, vis_baseline),
-   METHOD_ENTRY("opt1", plan_opt1, vis_opt1),
+   METHOD_ENTRY("std", std_plan, std_vis),
+   METHOD_ENTRY("opt1", opt1_plan, opt1_vis),
    METHOD_TABLE_END
 };
 

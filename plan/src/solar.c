@@ -214,7 +214,7 @@ static int sgt_geosat_longitude (const Solar_Geom_Type *sgt, double *lon)
    return 0;
 }
 
-static int sgt_print_params (Solar_Geom_Type *sgt, const char *pprefix, FILE *fp)
+static int sgt_print_params (const Solar_Geom_Type *sgt, const char *pprefix, FILE *fp)
 {
    const char *prefix = pprefix ? pprefix : "";
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = instrument boresight point\n",

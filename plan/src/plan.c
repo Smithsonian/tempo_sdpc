@@ -157,10 +157,11 @@ static int ephem_open (config_t *cfg, Ephem_Type *eph)
 
 static int
 read_master_scan_table_params
-(config_t *cfg, int *xstart, int *dx, unsigned int *num_steps)
+(config_t *cfg, double *pxstart, double *pdx, unsigned int *pnum_steps)
 {
    config_setting_t *s;
-   int num;
+   double xstart, dx;
+   int num_steps;
 
    if (NULL == (s = config_lookup (cfg, "master_table_config")))
      {
@@ -170,42 +171,90 @@ read_master_scan_table_params
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_int (s, "xstart", xstart))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "step_size", dx))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_steps", &num)))
+   if ((CONFIG_TRUE != config_setting_lookup_float (s, "xstart", &xstart))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "step_size", &dx))
+       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_steps", &num_steps)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading master_table_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   *num_steps = num;
+   if (pxstart) *pxstart = xstart;
+   if (pnum_steps) *pnum_steps = num_steps;
+   if (pdx) *pdx = dx;
 
    return 0;
 }
 
+static double mirror_tilt (double azimuth)
+{
+   /* The scanning plan refers to the azimuthal angle coordinate in the field
+    * of regard from which we want to collect photons entering through the slit.
+    * To command the instrument, the flight software wants the mirror tilt
+    * angle.  Using the law of reflection, the mirror tilt angle is half
+    * the azimuthal angle coordinate in the field of regard.
+    *
+    * The azimuthal angle coordinate in the field of regard increases toward
+    * the east (+X axis in a right-handed coordinate system), By convention,
+    * the FSW wants the mirror tilt angle to increase toward the west,
+    * so the coordinate transformation also involves a change of sign.
+    *
+    * Both angles are in microradians.
+    */
+
+   return -0.5 * azimuth;
+}
+
 static int generate_master_scan_table (config_t *cfg, FILE *fp)
 {
-   int xstart, dx, dy=0;
    unsigned int i, num_steps;
+   double xstart, dx;
+   double *tilt_fsw = NULL;
+   int dx_fsw, dy_fsw;
 
    if (0 != read_master_scan_table_params (cfg, &xstart, &dx, &num_steps))
      return -1;
 
-   if (fprintf (fp, "mirror_x,delta_x,delta_y\n") < 0)
+   /* The malloc and loop may seem like overkill, but this approach
+    * makes it simpler to generate the necessary dx value based on
+    * the transformed coordinates. If we didn't need dx in the transformed
+    * coordinates, it would be easy to generate the grid of X values in
+    * a loop without allocating an array for tilt_fsw.  */
+   if (NULL == (tilt_fsw = (double *)MALLOC (num_steps * sizeof(double))))
      {
-        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
 
    for (i = 0; i < num_steps; i++)
      {
-        if (fprintf (fp, "%d,%d,%d\n", xstart - i*dx, dx, dy) < 0)
+        double azimuth = xstart - i * dx;
+        tilt_fsw[i] = mirror_tilt (azimuth);
+     }
+
+   /* The spec requires that we create a table with integer-valued dx,dy! */
+   dx_fsw = tilt_fsw[1] - tilt_fsw[0];
+   dy_fsw = 0;
+
+   if (fprintf (fp, "mirror_x,delta_x,delta_y\n") < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        FREE(tilt_fsw);
+        return -1;
+     }
+
+   for (i = 0; i < num_steps; i++)
+     {
+        if (fprintf (fp, "%d,%d,%d\n", (int) tilt_fsw[i], dx_fsw, dy_fsw) < 0)
           {
              tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+             FREE(tilt_fsw);
              return -1;
           }
      }
+
+   FREE(tilt_fsw);
 
    return 0;
 }
@@ -325,7 +374,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
      goto return_status;
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph.ephem_name);
    (void) fprintf (fp, "#\n");
-   if (0 != plan_list_write (fp, plan_list))
+   if (0 != plan_list_write (fp, mirror_tilt, plan_list))
      goto return_status;
 
    if (0 != generate_vis (cfg, vis_output_file, solar_geom, plan_list, sm))

@@ -42,7 +42,7 @@ Step_Config_Type;
    Surface_Point_Type day_beg; \
    Surface_Point_Type day_end; \
    Step_Config_Type dt; \
-   int step_size;
+   double step_size;
 #include "scan.h"
 
 static void free_scan_type (Scan_Type *st)
@@ -117,7 +117,7 @@ static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
    return 0;
 }
 
-static int read_step_size (config_t *cfg, int *step_size)
+static int read_step_size (config_t *cfg, double *step_size)
 {
    config_setting_t *s;
 
@@ -129,7 +129,7 @@ static int read_step_size (config_t *cfg, int *step_size)
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_int (s, "step_size", step_size))
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "step_size", step_size))
      return -1;
 
    return 0;
@@ -253,14 +253,6 @@ static int sun_angle_vs_time (double jd_utc, double *dsa, void *v)
 
    return 0;
 }
-
-#define MAX_SUN_ANGLE_TIME_DELTA (2.0/24)
-/* The maximum shift that may be applied to a scan start/end time
- * in order to ensure compliance with the instrument safety constraint
- * on minimum sun angle.  The value is somewhat latitude dependent
- * because, at high latitudes, sunset/sunrise may occur close together
- * in time.
- */
 
 static int fixup_sun_angle (Solar_Geom_Type *sgt,
                             double min_sun_angle,
@@ -405,7 +397,7 @@ static double scan_integration_time (const Scan_Type *st)
    return st->dt.integration_time;
 }
 
-static int scan_step_size (const Scan_Type *st)
+static double scan_step_size (const Scan_Type *st)
 {
    return st->step_size;
 }

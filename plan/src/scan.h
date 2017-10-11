@@ -21,7 +21,7 @@ struct Scan_Type
    double (*st_integration_time)(const Scan_Type *);
    /**< retrieve the integration time [sec] for a single exposure in a co-add */
 
-   int (*st_step_size)(const Scan_Type *);
+   double (*st_step_size)(const Scan_Type *);
    /**< retrieve the step size [microradian] for each scan step */
 
    double (*st_min_sun_angle)(const Scan_Type *);
@@ -57,10 +57,10 @@ typedef struct
    /**< Time when scanning should end [days] */
 
    double jd_utc_beg_full;
-   /**< Time when max ROI illumination begins [days] */
+   /**< Time when ROI max illumination begins [days] */
 
    double jd_utc_end_full;
-   /**< Time when max ROI illumination ends [days] */
+   /**< Time when ROI max illumination ends [days] */
 }
 Scan_Limit_Times_Type;
 

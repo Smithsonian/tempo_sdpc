@@ -73,12 +73,12 @@ novas_config: {
 
 master_table_config: {
 
-# x[i] = integer scan coordinate, [microradian]
+# x[i] = azimuthal scan coordinate, [microradian]
 # x[i] = xstart - i * step_size,  i = [0,num_steps-1]
 
   num_steps =  1283;
-  step_size =   114;
-  xstart    = 73131;
+  step_size =   114.0;
+  xstart    = 73131.0;
 };
 
 output_sza_map_config: {
