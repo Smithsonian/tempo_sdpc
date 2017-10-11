@@ -18,8 +18,8 @@ struct Scan_Type
    double (*st_scan_duration)(const Scan_Type *, int);
    /**< compute the time [sec] required to complete a scan with N steps */
 
-   double (*st_step_exposure)(const Scan_Type *);
-   /**< retrieve the exposure time [sec] for each scan step */
+   double (*st_integration_time)(const Scan_Type *);
+   /**< retrieve the integration time [sec] for a single exposure in a co-add */
 
    int (*st_step_size)(const Scan_Type *);
    /**< retrieve the step size [microradian] for each scan step */

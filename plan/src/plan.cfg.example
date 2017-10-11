@@ -9,8 +9,8 @@ scan_config: {
 
 # scan_beg, scan_end are the eastern and western limits of the scan:
 
-  scan_beg: {lon =  -73.7; lat = 18.0;};
-  scan_end: {lon = -126.4; lat = 18.0;};
+  scan_beg: {lon =  -73.71; lat = 18.0;};
+  scan_end: {lon = -126.40; lat = 18.0;};
  #scan_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
  #scan_end: {lon = -104.673; lat = 39.849;};  # Denver
 
@@ -22,12 +22,14 @@ scan_config: {
  #day_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
  #day_end: {lon = -104.673; lat = 39.849;};  # Denver
 
-# Time [sec] required for various operations during the scan:
+# Mirror stepping parameters:
 
-  step_times: {
-     step_expose = 2.8;
-     step_move   = 0.1;
+  step_config: {
+     integration_time = 0.118;
+     num_coadds = 21;
      scan_reset  = 2.35;
+     frame_transfer_time = 0.00833328;
+     readout_time = 0.1;
   };
 };
 

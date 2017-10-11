@@ -25,11 +25,14 @@ Surface_Point_Type;
 
 typedef struct
 {
-   double step_expose;
-   double step_move;
+   double integration_time;
+   double frame_transfer_time;
+   double readout_time;
+   double step_dwell;
    double scan_reset;
+   int num_coadds;
 }
-Step_Times_Type;
+Step_Config_Type;
 
 #define SCAN_TYPE_PRIVATE_DATA \
    double min_sun_angle; \
@@ -38,7 +41,7 @@ Step_Times_Type;
    Surface_Point_Type scan_end; \
    Surface_Point_Type day_beg; \
    Surface_Point_Type day_end; \
-   Step_Times_Type dt; \
+   Step_Config_Type dt; \
    int step_size;
 #include "scan.h"
 
@@ -93,17 +96,23 @@ static int read_surface_point (config_setting_t *s, const char *name,
    return 0;
 }
 
-static int read_step_times (config_setting_t *s, Step_Times_Type *dt)
+static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
 {
    config_setting_t *sub;
 
-   if (NULL == (sub = config_setting_get_member (s, "step_times")))
+   if (NULL == (sub = config_setting_get_member (s, "step_config")))
      return -1;
 
-   if ((CONFIG_TRUE != config_setting_lookup_float (sub, "step_expose", &dt->step_expose))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "step_move", &dt->step_move))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset)))
+   if ((CONFIG_TRUE != config_setting_lookup_float (sub, "integration_time", &dt->integration_time))
+       || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_coadds", &dt->num_coadds))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &dt->frame_transfer_time))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &dt->readout_time)))
      return -1;
+
+   dt->step_dwell =
+     dt->num_coadds * (dt->integration_time + dt->frame_transfer_time)
+       + dt->frame_transfer_time + dt->readout_time;
 
    return 0;
 }
@@ -178,10 +187,10 @@ static int read_params (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
-   if (0 != read_step_times (s, &st->dt))
+   if (0 != read_step_config (s, &st->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading step_times: %s",
+                     "%s: reading step_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -391,9 +400,9 @@ static double scan_min_sun_angle (const Scan_Type *st)
    return st->min_sun_angle;
 }
 
-static double scan_step_exposure (const Scan_Type *st)
+static double scan_integration_time (const Scan_Type *st)
 {
-   return st->dt.step_expose;
+   return st->dt.integration_time;
 }
 
 static int scan_step_size (const Scan_Type *st)
@@ -403,12 +412,8 @@ static int scan_step_size (const Scan_Type *st)
 
 static double scan_duration (const Scan_Type *st, int num_steps)
 {
-   const Step_Times_Type *dt = &st->dt;
-
-   /* compute times and durations in units of days: */
-   return (dt->step_expose * num_steps
-           + dt->step_move * (num_steps-1)
-           + dt->scan_reset) / SEC_PER_DAY;
+   const Step_Config_Type *dt = &st->dt;
+   return (dt->step_dwell * num_steps + dt->scan_reset) / SEC_PER_DAY;
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,
@@ -440,7 +445,7 @@ Scan_Type *scan_open (config_t *cfg)
    st->st_delete = free_scan_type;
    st->st_scan_duration = scan_duration;
    st->st_step_size = scan_step_size;
-   st->st_step_exposure = scan_step_exposure;
+   st->st_integration_time = scan_integration_time;
    st->st_min_sun_angle = scan_min_sun_angle;
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;

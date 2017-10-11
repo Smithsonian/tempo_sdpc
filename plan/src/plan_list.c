@@ -80,7 +80,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
-     "# tstart,duration,xstart,num_steps,step_exposure,num_repeats,timestamp\n";
+     "tstart,duration,mirror_x,num_steps,integration_time,num_repeats,timestamp\n";
 
    if (fprintf (fp, header_comment) < 0)
      {
@@ -100,7 +100,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
                      entry->scan_duration,
                      (int) entry->xstart,
                      entry->num_steps,
-                     entry->step_exposure,
+                     entry->integration_time,
                      entry->num_repeats,
                      buf) < 0)
           {

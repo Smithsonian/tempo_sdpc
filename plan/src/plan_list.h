@@ -11,12 +11,12 @@ typedef struct Plan_List_Type Plan_List_Type;
 struct Plan_List_Type
 {
    Plan_List_Type *next;
-   double tstart;         /**< scan start time, UTC [days] */
-   double xstart;         /**< scan start mirror coordinate [microradian] */
-   double scan_duration;  /**< scan duration [sec] */
-   double step_exposure;  /**< scan step exposure time [sec] */
-   int num_steps;         /**< number of mirror steps in the scan */
-   int num_repeats;       /**< number of scans on this day */
+   double tstart;            /**< scan start time, UTC [days] */
+   double xstart;            /**< scan start mirror coordinate [microradian] */
+   double scan_duration;     /**< scan duration [sec] */
+   double integration_time;  /**< integration time for a single exposure in a co-add [sec] */
+   int num_steps;            /**< number of mirror steps in the scan */
+   int num_repeats;          /**< number of scans on this day */
 };
 
 /** Allocate a \ref Plan_List_Type structure

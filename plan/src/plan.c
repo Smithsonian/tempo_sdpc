@@ -192,6 +192,12 @@ static int generate_master_scan_table (config_t *cfg, FILE *fp)
    if (0 != read_master_scan_table_params (cfg, &xstart, &dx, &num_steps))
      return -1;
 
+   if (fprintf (fp, "mirror_x,delta_x,delta_y\n") < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        return -1;
+     }
+
    for (i = 0; i < num_steps; i++)
      {
         if (fprintf (fp, "%d,%d,%d\n", xstart - i*dx, dx, dy) < 0)

@@ -142,7 +142,7 @@ plan_baseline (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->xstart = xstart;
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->step_exposure = st->st_step_exposure (st);
+   entry->integration_time = st->st_integration_time (st);
    entry->num_repeats = ceil ((limit_times->jd_utc_end - limit_times->jd_utc_beg)
                               / time_full_scan);
    return entry;
@@ -199,7 +199,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
    entry->xstart = x->xstart;
    entry->num_steps = x->num_steps;
    entry->scan_duration = x->duration * SEC_PER_DAY;
-   entry->step_exposure = st->st_step_exposure (st);
+   entry->integration_time = st->st_integration_time (st);
    entry->num_repeats = x->num_repeats;
 
    return plan_list_append (lst, entry);
