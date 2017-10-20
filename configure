@@ -587,6 +587,7 @@ LIBOBJS
 LINKOBJS
 CSOURCES
 F90SOURCES
+LEAP_SECONDS_LIST
 GEOTIFF_INC
 GEOTIFF_LIB
 TIFF_INC
@@ -694,6 +695,7 @@ with_inrots
 with_tell
 with_tiff
 with_geotiff
+with_leapsec
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1332,13 +1334,14 @@ Optional Packages:
   --with-hdfeos5=DIR      Use HDFEOS5 libraries installed in DIR
   --with-netcdf=DIR       Use netCDF library installed in DIR
   --with-proj=DIR         Use proj4 library installed in DIR
-  --with-slnovas=DIR         Use slnovas library installed in DIR
+  --with-slnovas=DIR      Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-inrlib=DIR       Use INR library installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
+  --with-leapsec=FILE     Use this leap second file
 
 Report bugs to the package provider.
 _ACEOF
@@ -2289,6 +2292,26 @@ else
    GEOTIFF_INC="$jh_with_geotiff/include"
 fi
 
+
+
+
+# Check whether --with-leapsec was given.
+if test "${with_leapsec+set}" = set; then :
+  withval=$with_leapsec; jh_with_leapsec=$withval
+else
+  jh_with_leapsec=no
+fi
+
+if test "x$jh_with_leapsec" = "xno"; then
+   LEAP_SECONDS_LIST="/usr/share/zoneinfo/leap-seconds.list"
+else
+   LEAP_SECONDS_LIST="$jh_with_leapsec"
+fi
+if ! test -f "$LEAP_SECONDS_LIST" ; then
+   as_fn_error $? "Leap seconds file not found: $LEAP_SECONDS_LIST" "$LINENO" 5
+elif ! test -r "$LEAP_SECONDS_LIST" ; then
+   as_fn_error $? "Cannot read leap seconds file: $LEAP_SECONDS_LIST" "$LINENO" 5
+fi
 
 
 #{{{

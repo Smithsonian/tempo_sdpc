@@ -87,7 +87,7 @@ AC_SUBST(PROJ_LIB)
 AC_SUBST(PROJ_INC)
 
 AC_ARG_WITH(slnovas,
-  [  --with-slnovas[=DIR]         Use slnovas library installed in DIR],
+  [  --with-slnovas[=DIR]      Use slnovas library installed in DIR],
   [jh_with_slnovas=$withval],
   [jh_with_slnovas=no])
 if test "x$jh_with_slnovas" = "xno"; then
@@ -189,6 +189,22 @@ else
 fi
 AC_SUBST(GEOTIFF_LIB)
 AC_SUBST(GEOTIFF_INC)
+
+AC_ARG_WITH(leapsec,
+  [  --with-leapsec[=FILE]     Use this leap second file],
+  [jh_with_leapsec=$withval],
+  [jh_with_leapsec=no])
+if test "x$jh_with_leapsec" = "xno"; then
+   LEAP_SECONDS_LIST="/usr/share/zoneinfo/leap-seconds.list"
+else
+   LEAP_SECONDS_LIST="$jh_with_leapsec"
+fi
+if ! test -f "$LEAP_SECONDS_LIST" ; then
+   AC_MSG_ERROR(Leap seconds file not found: $LEAP_SECONDS_LIST)
+elif ! test -r "$LEAP_SECONDS_LIST" ; then
+   AC_MSG_ERROR(Cannot read leap seconds file: $LEAP_SECONDS_LIST)
+fi
+AC_SUBST(LEAP_SECONDS_LIST)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 

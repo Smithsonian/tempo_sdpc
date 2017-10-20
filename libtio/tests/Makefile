@@ -28,16 +28,17 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = tio_test tio_test_f ftest1 ppc_test
+EXECUTABLES = tio_test time_test tio_test_f ftest1 ppc_test
 
 all:  $(EXECUTABLES)
 
 check:	$(EXECUTABLES)
+	@./time_test < times.in > times.out && diff times.out times.chk && echo "running time_test...ok"
 	@./tio_test 2> c.test.log && echo "testing C...ok"
 	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
 	@./ftest1 2> ftest1.test.log && echo "running ftest1...ok"
 	@./ppc_test > ppc_test.out && diff ppc_test.out ppc_test.chk && echo "running ppc_test...ok"
-	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out
+	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out times.out
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
@@ -59,6 +60,9 @@ coverage:	$(EXECUTABLES)
 
 tio_test:
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
+
+time_test:
+	$(COMPILE_CMD) -o time_test $(INCS) time_test.c $(LIBS)
 
 ppc_test:
 	$(COMPILE_CMD) -o ppc_test $(INCS) -DSELF_TEST ../src/tio_ppc.c $(LIBS)

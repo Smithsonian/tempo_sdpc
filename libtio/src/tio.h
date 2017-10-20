@@ -346,6 +346,40 @@ TIO_Enum_Type;
 extern int TIO_define_enum_table (int grp, const char *name, int base_type,
                                   const TIO_Enum_Type *enum_table, int *enum_typeid);
 
+/** Convert TAI sec since TEMPO epoch to UTC sec since Unix epoch
+ * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
+ * @param[out] utc_time      UTC seconds since the Unix epoch
+ * @return 0 on success, -a on error
+ *
+ * The TAI time scale advances monotonically, while the UTC
+ * time scale includes leap second corrections at irregular
+ * intervals.
+ */
+extern int tio_time_tempo_to_utc (double tempo_time, double *utc_time);
+
+/** Convert UTC sec since the Unix epoch to TAI sec since the TEMPO epoch
+ * @param[in]  utc_time      UTC seconds since the Unix epoch
+ * @param[out] tempo_time    TAI seconds since the TEMPO epoch
+ * @return 0 on success, -a on error
+ *
+ * The TAI time scale advances monotonically, while the UTC
+ * time scale includes leap second corrections at irregular
+ * intervals.
+ */
+extern int tio_time_utc_to_tempo (double utc_time, double *tempo_time);
+
+/** Convert TAI sec since the TEMPO epoch to TAI sec since the Unix epoch
+ * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
+ * @param[out] tai_time      TAI seconds since the Unix epoch
+ * @return 0 on success, -a on error
+ */
+extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
+
+/** Time of TEMPO epoch as a count of TAI sec since Unix epoch.
+ * @return Time of TEMPO epoch as a count of TAI sec since Unix epoch.
+ */
+extern double tio_tempo_epoch_timet (void);
+
 #if 0
 {
 #endif

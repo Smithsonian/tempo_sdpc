@@ -141,7 +141,6 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"time_reference", TIO_TIME_REFERENCE_STRING},
         {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
         {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
         _pTEXT_ATTRS_END
@@ -154,7 +153,8 @@ static int define_global_attrs (int grp)
         _pINT_ATTRS_END
      };
 
-   if (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs))
+   if ((-1 == tio_write_epoch_timestamp (grp, NC_GLOBAL))
+       || (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs)))
      return -1;
 
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))

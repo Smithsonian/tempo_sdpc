@@ -327,13 +327,7 @@ int write_attr_global_timestamp (int ncid, const char *tstamp_name,
 
 static int write_std_global_metadata (int ncid)
 {
-   const char *time_ref = TIO_TIME_REFERENCE_STRING;
-   int len = strlen (time_ref);
-
-   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, len, time_ref))
-     return -1;
-
-   return 0;
+   return tio_write_epoch_timestamp (ncid, NC_GLOBAL);
 }
 
 int create_hidden (const char *dirname, const char *basename, int *ncid)

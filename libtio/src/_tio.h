@@ -24,6 +24,7 @@ extern "C" {
 #define _pTIO_TIME_COVERAGE_END     "2019-01-01T13:00:00Z"
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 
+#define TIO_REALLOC realloc
 #define TIO_MALLOC malloc
 #define TIO_FREE free
 

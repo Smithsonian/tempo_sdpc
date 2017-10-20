@@ -41,8 +41,8 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o
-ELFOBJS  = $(elfdir)/tio.o $(elfdir)/tio_ppc.o $(elfdir)/tio_template.o $(elfdir)/tio_l1_radiance.o $(elfdir)/tio_l1_irradiance.o
+OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o tio_time.o
+ELFOBJS  = $(patsubst %.o,$(elfdir)/%.o, $(OFILES))
 TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
 
 # --- Fortran interface
@@ -219,6 +219,11 @@ $(elfdir)/tio_l1_radiance.o:	$(srcdir)/tio_l1_radiance.c
 
 $(elfdir)/tio_l1_irradiance.o:	$(srcdir)/tio_l1_irradiance.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_irradiance.c $(LIBS)
+
+tio_time_c_defines = -DLEAP_SECONDS_LIST="\"$(LEAP_SECONDS_LIST)\""
+
+$(elfdir)/tio_time.o:	$(srcdir)/tio_time.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(tio_time_c_defines) $(srcdir)/tio_time.c $(LIBS)
 
 $(elfdir)/tio_module.o:	$(srcdir)/tio_module.f90
 	cd $(elfdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/tio_module.f90

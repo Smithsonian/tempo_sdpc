@@ -191,8 +191,9 @@ static int define_radiance_granule_global_ident (int grp)
    strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
    strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
 
-   if ((0 != _pTIO_timet_from_timestr (TIO_TIME_REFERENCE_STRING, &epoch_tt))
-       ||(0 != _pTIO_timet_from_timestr (gid.tstart_str, &tstart_tt))
+   epoch_tt = tio_tempo_epoch_timet();
+
+   if ((0 != _pTIO_timet_from_timestr (gid.tstart_str, &tstart_tt))
        ||(0 != _pTIO_timet_from_timestr (gid.tend_str, &tend_tt)))
      return -1;
 
@@ -207,7 +208,6 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"time_reference", TIO_TIME_REFERENCE_STRING},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
@@ -217,7 +217,8 @@ static int define_global_attrs (int grp)
         _pINT_ATTRS_END
      };
 
-   if (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs))
+   if ((-1 == tio_write_epoch_timestamp (grp, NC_GLOBAL))
+       || (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs)))
      return -1;
 
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))

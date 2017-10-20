@@ -21,6 +21,9 @@
 #include "tio_template.h"
 #include "_tio.h"
 
+#define DELIM_TIMESTAMP_FORMAT   "%Y-%m-%dT%H:%M:%SZ"
+#define NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
+
 struct TIO_Scan_Ident_Type
 {
    _pTIO_Granule_Ident_Type *granule_ident;
@@ -107,7 +110,7 @@ _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 int TIO_parse_timestr (const char *timestr, struct tm *ptm)
 {
    memset ((char *)ptm, 0, sizeof (struct tm));
-   if (NULL == strptime (timestr, TIO_DELIM_TIMESTAMP_FORMAT, ptm))
+   if (NULL == strptime (timestr, DELIM_TIMESTAMP_FORMAT, ptm))
      {
         Tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
                      __func__, timestr);
@@ -130,7 +133,7 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
      return -1;
 
    if (0 == strftime (timestr, MAX_ISOTIME_LEN,
-                      TIO_NODELIM_TIMESTAMP_FORMAT, &tm))
+                      NODELIM_TIMESTAMP_FORMAT, &tm))
      {
         Tell_verror (TELL_RUNTIME_ERROR, "%s: strftime failed",
                      __func__);
@@ -318,7 +321,7 @@ int _pTIO_timet_from_timestr (const char *str, time_t *ptt)
    time_t tt;
 
    memset ((char *)&tm, 0, sizeof(struct tm));
-   if (NULL == strptime (str, TIO_DELIM_TIMESTAMP_FORMAT, &tm))
+   if (NULL == strptime (str, DELIM_TIMESTAMP_FORMAT, &tm))
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
                      __func__, str);
@@ -336,18 +339,14 @@ int _pTIO_timet_from_timestr (const char *str, time_t *ptt)
    return 0;
 }
 
-int TIO_mktimestamp_str1 (const char *epoch_str,
-                          double sec_since_epoch, int delim, char *buf,
-                          int bufsize)
+static int mktimestamp_str1 (double epoch_tt, double sec_offset,
+                             int delim, char *buf, int bufsize)
 {
    struct tm tm;
-   time_t tt, epoch_tt;
+   time_t tt;
    int status;
 
-   if (0 != _pTIO_timet_from_timestr (epoch_str, &epoch_tt))
-     return -1;
-
-   tt = epoch_tt + sec_since_epoch;
+   tt = (time_t)(epoch_tt + sec_offset);
 
    memset ((char *)&tm, 0, sizeof(struct tm));
    if (NULL == gmtime_r (&tt, &tm))
@@ -358,9 +357,9 @@ int TIO_mktimestamp_str1 (const char *epoch_str,
      }
 
    if (delim == 0)
-     status = strftime (buf, bufsize, TIO_NODELIM_TIMESTAMP_FORMAT, &tm);
+     status = strftime (buf, bufsize, NODELIM_TIMESTAMP_FORMAT, &tm);
    else
-     status = strftime (buf, bufsize, TIO_DELIM_TIMESTAMP_FORMAT, &tm);
+     status = strftime (buf, bufsize, DELIM_TIMESTAMP_FORMAT, &tm);
 
    if (0 == status)
      {
@@ -372,27 +371,71 @@ int TIO_mktimestamp_str1 (const char *epoch_str,
    return 0;
 }
 
-int TIO_mktimestamp_str (double sec_since_epoch, int dlim, char *buf,
-                         int bufsize)
+int TIO_mktimestamp_str (double sec_offset,
+                         int delim, char *buf, int bufsize)
 {
-   return TIO_mktimestamp_str1 (TIO_TIME_REFERENCE_STRING,
-                                sec_since_epoch, dlim, buf, bufsize);
+   double epoch_tt = tio_tempo_epoch_timet();
+   return mktimestamp_str1 (epoch_tt, sec_offset, delim, buf, bufsize);
+}
+
+int tio_write_epoch_timestamp (int ncid, int varid)
+{
+   char buf[MAX_ISOTIME_LEN];
+   struct tm tm = {0};
+   time_t tt;
+   int len;
+
+   tt = tio_tempo_epoch_timet();
+   (void) gmtime_r (&tt, &tm);
+   if (0 == strftime (buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm))
+     {
+        Tell_verror (TELL_RUNTIME_ERROR, "%s: strftime failed",
+                     __func__);
+        return -1;
+     }
+
+   len = strlen(buf);
+
+   if (-1 == TIO_put_att (ncid, varid, "time_reference", NC_CHAR, len, buf))
+     return -1;
+
+   return 0;
 }
 
 int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
-                         double secs_since_epoch)
+                         double secs_since_tempo_epoch)
 {
    char epoch_str[MAX_ISOTIME_LEN];
    char timestamp_str[MAX_ISOTIME_LEN];
    char attr_name_since_epoch[TIO_MAX_NAME_LEN];
+   double secs_since_file_epoch, tempo_epoch;
+   time_t epoch_tt, tempo_epoch_tt;
+   struct tm tm;
    size_t len;
    int n;
 
+   secs_since_file_epoch = secs_since_tempo_epoch;
+
+   /* The timestamp should be consistent with the file's defined
+    * reference time, which may not be the TEMPO epoch.
+    */
    memset ((char *)epoch_str, 0, MAX_ISOTIME_LEN);
    if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, epoch_str))
      return -1;
 
-   if (0 != TIO_mktimestamp_str1 (epoch_str, secs_since_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
+   if (-1 == TIO_parse_timestr (epoch_str, &tm))
+     return -1;
+   epoch_tt = timegm (&tm);
+
+   tempo_epoch = tio_tempo_epoch_timet ();
+   tempo_epoch_tt = (time_t)tempo_epoch;
+   if (tempo_epoch_tt != epoch_tt)
+     {
+        secs_since_file_epoch = (secs_since_tempo_epoch
+                                 + (tempo_epoch - epoch_tt));
+     }
+
+   if (0 != mktimestamp_str1 (epoch_tt, secs_since_file_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
      return -1;
 
    n = snprintf (attr_name_since_epoch, TIO_MAX_NAME_LEN, "%s_since_epoch", attr_name);
@@ -406,7 +449,7 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
 
    len = strlen(timestamp_str) + 1;
    if ((0 != TIO_put_att (ncid, varid, attr_name, NC_CHAR, len, timestamp_str))
-       ||(0 != TIO_put_att (ncid, varid, attr_name_since_epoch, NC_DOUBLE, 1, &secs_since_epoch)))
+       ||(0 != TIO_put_att (ncid, varid, attr_name_since_epoch, NC_DOUBLE, 1, &secs_since_file_epoch)))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing timestamp %s",
                      __func__, attr_name);
