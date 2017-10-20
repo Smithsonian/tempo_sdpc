@@ -13,28 +13,11 @@
 
 #include <libconfig.h>
 #include <libnovas.h>
+#include <tio.h>
 #include <tio_template.h>
 #include <tell.h>
 
 #include "plan_list.h"
-
-static int jd_tempo_epoch (double *epoch_jd)
-{
-   struct tm tm;
-   const char *epoch_str = TIO_TIME_REFERENCE_STRING;
-   short int year, month, day;
-   double hour = 0.0;
-
-   if (0 != TIO_parse_timestr (epoch_str, &tm))
-     return -1;
-
-   year = 1900 + tm.tm_year;
-   month = 1 + tm.tm_mon;
-   day = tm.tm_mday;
-
-   *epoch_jd = novas_julian_date (year, month, day, hour);
-   return 0;
-}
 
 void plan_list_entry_free (Plan_List_Type *ple)
 {
@@ -95,7 +78,7 @@ int plan_list_append (Plan_List_Type **phead,
    return -1;
 }
 
-#define TIME_BUFSIZE 21
+#define TIME_BUFSIZE 32
 
 int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
                      const Plan_List_Type *head)
@@ -103,10 +86,9 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
    const Plan_List_Type *entry;
    const char header_comment[] =
      "time,duration,mirror_x,num_steps,integration_time,timestamp\n";
-   double epoch;
+   double unix_epoch_jd;
 
-   if (0 != jd_tempo_epoch (&epoch))
-     return -1;
+   unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
    if (fprintf (fp, header_comment) < 0)
      {
@@ -121,11 +103,11 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
 
         for (i = 0; i < entry->num_repeats; i++)
           {
-             double fsw_xstart;
-             double tstart = (entry->tstart
-                              + i * entry->scan_duration/SEC_PER_DAY);
+             double fsw_xstart, tempo_time, tstart_utc;
+             double tstart_jd = (entry->tstart
+                                 + i * entry->scan_duration/SEC_PER_DAY);
 
-             if (0 != mkjdtimestr (tstart, buf, sizeof(buf)))
+             if (0 != mkjdtimestr (tstart_jd, buf, sizeof(buf)))
                return -1;
 
              if (mirror_tilt)
@@ -133,8 +115,13 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
              else
                fsw_xstart = entry->xstart;
 
+             tstart_utc = (tstart_jd - unix_epoch_jd) * SEC_PER_DAY;
+
+             if (0 != tio_time_utc_to_tempo (tstart_utc, &tempo_time))
+               return -1;
+
              if (fprintf (fp, "%0.14e,%0.3f,%d,%d,%0.3f,\"%s\"\n",
-                          (tstart - epoch)*SEC_PER_DAY,
+                          tempo_time,
                           entry->scan_duration,
                           (int) fsw_xstart,
                           entry->num_steps,

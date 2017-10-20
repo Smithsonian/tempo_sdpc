@@ -30,6 +30,7 @@ typedef struct
    double readout_time;
    double step_dwell;
    double scan_reset;
+   double scan_timing_margin;
    int num_coadds;
 }
 Step_Config_Type;
@@ -106,6 +107,7 @@ static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
    if ((CONFIG_TRUE != config_setting_lookup_float (sub, "integration_time", &dt->integration_time))
        || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_coadds", &dt->num_coadds))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_timing_margin", &dt->scan_timing_margin))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &dt->frame_transfer_time))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &dt->readout_time)))
      return -1;
@@ -402,10 +404,14 @@ static double scan_step_size (const Scan_Type *st)
    return st->step_size;
 }
 
+/* scan duration [days] */
 static double scan_duration (const Scan_Type *st, int num_steps)
 {
    const Step_Config_Type *dt = &st->dt;
-   return (dt->step_dwell * num_steps + dt->scan_reset) / SEC_PER_DAY;
+   double duration = (dt->step_dwell * num_steps
+                      + 2*dt->scan_reset
+                      + dt->scan_timing_margin) / SEC_PER_DAY;
+   return duration;
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,

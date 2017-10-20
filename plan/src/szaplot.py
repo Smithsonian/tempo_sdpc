@@ -13,6 +13,8 @@ plt_filename = os.path.splitext(nc_filename)[0] + "." + args.ext
 
 import numpy as np
 import numpy.ma as ma
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 

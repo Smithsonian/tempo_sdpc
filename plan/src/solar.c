@@ -14,6 +14,7 @@
 #include <libnovas.h>
 
 #include <tell.h>
+#include <tio.h>
 
 typedef struct
 {
@@ -34,7 +35,7 @@ Times_Type;
    double xpole; \
    double ypole; \
    double ut1_utc; \
-   int leap_secs; \
+   double unix_epoch_jd; \
    short int accuracy;
 #include "solar.h"
 
@@ -59,6 +60,22 @@ static int times_eval (Times_Type *tt, double jd_utc,
    return 0;
 }
 
+static int leap_seconds (const Solar_Geom_Type *sgt, double jd_utc,
+                         int *leap_secs)
+{
+   double utc_secs, tempo, tai_secs;
+
+   utc_secs = (jd_utc - sgt->unix_epoch_jd) * SEC_PER_DAY;
+
+   if ((0 != tio_time_utc_to_tempo (utc_secs, &tempo))
+       || (0 != tio_time_tempo_to_tai (tempo, &tai_secs)))
+     return -1;
+
+   *leap_secs = tai_secs - utc_secs;
+
+   return 0;
+}
+
 static int sgt_solar_zenith_angle (const Solar_Geom_Type *sgt,
                                    double jd_utc, double lon, double lat,
                                    double *psza)
@@ -72,8 +89,12 @@ static int sgt_solar_zenith_angle (const Solar_Geom_Type *sgt,
    short int refr_option = 0;   /* 0 means no refraction */
    double rar, decr;            /* ra,dec adjusted for refraction */
    double zd, az;
+   int leap_secs;
 
-   if (0 != times_eval (&tt, jd_utc, sgt->leap_secs, sgt->ut1_utc))
+   if (0 != leap_seconds (sgt, jd_utc, &leap_secs))
+     return -1;
+
+   if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
 
    novas_make_observer_on_surface (lat, lon, DEFAULT_HEIGHT,
@@ -159,11 +180,15 @@ static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
    double r_sun;
    short int error;
    short int coord_sys = 0;   /* 0 means GCRS coordinates */
+   int leap_secs;
    int method = 1; /* 1 = equinox-based method */
    int option = 0; /* 0 = output vector referred to GCRS axes */
    int i;
 
-   if (0 != times_eval (&tt, jd_utc, sgt->leap_secs, sgt->ut1_utc))
+   if (0 != leap_seconds (sgt, jd_utc, &leap_secs))
+     return -1;
+
+   if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
 
    /* convert sat position from ITRS to GCRS system */
@@ -290,8 +315,7 @@ static int read_iers_params (Solar_Geom_Type *sgt, config_t *cfg)
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_int (s, "leap_secs", &sgt->leap_secs))
-       ||(CONFIG_TRUE != config_setting_lookup_float (s, "ut1_utc", &sgt->ut1_utc)))
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "ut1_utc", &sgt->ut1_utc))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading iers_config: %s",
                      __func__, config_error_file (cfg));
@@ -358,6 +382,8 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
         return NULL;
      }
    memset ((char *)sgt, 0, sizeof *sgt);
+
+   sgt->unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
    sgt->sgt_delete = sgt_delete;
    sgt->sgt_solar_zenith_angle = sgt_solar_zenith_angle;

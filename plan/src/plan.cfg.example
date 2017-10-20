@@ -25,9 +25,10 @@ scan_config: {
 # Mirror stepping parameters:
 
   step_config: {
+     scan_reset  = 2.35;
+     scan_timing_margin = 10.0;
      integration_time = 0.118;
      num_coadds = 21;
-     scan_reset  = 2.35;
      frame_transfer_time = 0.00833328;
      readout_time = 0.1;
   };
@@ -61,10 +62,8 @@ iers_config: {
   xpole = 0.0;
   ypole = 0.0;
 
-  leap_secs = 36;
-
 # ut1_utc = predicted UT1-UTC [sec]
-  ut1_utc = -0.21325;
+  ut1_utc = 0.494792
 };
 
 novas_config: {

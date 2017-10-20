@@ -78,15 +78,15 @@ static int read_config_file (const char *config_file, config_t *cfg)
 int mkjdtimestr (double jd_utc, char *buf, int bufsize)
 {
    Cal_Date_Type t0;
-   short int hour, min, sec;
-   int status;
+   double sec;
+   int hour, min, status;
 
    novas_cal_date (jd_utc, &t0.year, &t0.month, &t0.day, &t0.hour);
    hour = t0.hour;
    min  = 60*(t0.hour - hour);
    sec  = 3600*(t0.hour - hour - min/60.0);
 
-   if (((status = snprintf (buf, bufsize, "%4d-%02d-%02dT%02d:%02d:%02dZ",
+   if (((status = snprintf (buf, bufsize, "%4d-%02d-%02dT%02d:%02d:%06.3fZ",
                             t0.year, t0.month, t0.day, hour, min, sec)) < 0)
        || (status >= bufsize))
      {
@@ -374,6 +374,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
      goto return_status;
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph.ephem_name);
    (void) fprintf (fp, "#\n");
+
    if (0 != plan_list_write (fp, mirror_tilt, plan_list))
      goto return_status;
 
