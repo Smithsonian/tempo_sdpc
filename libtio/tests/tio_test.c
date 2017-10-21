@@ -295,6 +295,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      };
    int i, num_sgrps = sizeof (sgrps) / sizeof(sgrps[0]);
    TIO_Scan_Ident_Type *scan_ident = NULL;
+   double test_timestamp_out, test_timestamp_in;
 
    for (i = 0; i < num_sgrps; i++)
      {
@@ -414,6 +415,18 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
        || (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_level", processing_level_type, 1, &processing_level)))
      {
         fprintf (stderr, "*** error writing to enum attribute\n");
+        goto cleanup;
+     }
+
+   /* test writing a timestamp */
+   test_timestamp_out = 5.e8;
+   if (0 != TIO_write_timestamp (ncid, NC_GLOBAL, "test_timestamp", test_timestamp_out))
+     goto cleanup;
+   if (0 != TIO_get_att (ncid, NC_GLOBAL, "test_timestamp_since_epoch", NC_DOUBLE, &test_timestamp_in))
+     goto cleanup;
+   if (test_timestamp_in != test_timestamp_out)
+     {
+        fprintf (stderr, "*** error reading timestamp\n");
         goto cleanup;
      }
 
