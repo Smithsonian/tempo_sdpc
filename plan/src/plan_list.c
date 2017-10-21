@@ -98,30 +98,29 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
+        double tstart_utc, tstart_tai, fsw_xstart;
         char buf[TIME_BUFSIZE];
         int i;
 
+        tstart_utc = (entry->tstart - unix_epoch_jd) * SEC_PER_DAY;
+        if (0 != tio_time_utc_to_tempo (tstart_utc, &tstart_tai))
+          return -1;
+
+        if (mirror_tilt)
+          fsw_xstart = mirror_tilt (entry->xstart);
+        else
+          fsw_xstart = entry->xstart;
+
         for (i = 0; i < entry->num_repeats; i++)
           {
-             double fsw_xstart, tempo_time, tstart_utc;
              double tstart_jd = (entry->tstart
                                  + i * entry->scan_duration/SEC_PER_DAY);
 
              if (0 != mkjdtimestr (tstart_jd, buf, sizeof(buf)))
                return -1;
 
-             if (mirror_tilt)
-               fsw_xstart = mirror_tilt (entry->xstart);
-             else
-               fsw_xstart = entry->xstart;
-
-             tstart_utc = (tstart_jd - unix_epoch_jd) * SEC_PER_DAY;
-
-             if (0 != tio_time_utc_to_tempo (tstart_utc, &tempo_time))
-               return -1;
-
-             if (fprintf (fp, "%0.14e,%0.3f,%d,%d,%0.3f,\"%s\"\n",
-                          tempo_time,
+             if (fprintf (fp, "%0.16e,%0.3f,%d,%d,%0.3f,\"%s\"\n",
+                          tstart_tai,
                           entry->scan_duration,
                           (int) fsw_xstart,
                           entry->num_steps,
@@ -131,6 +130,8 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
                   tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
                   return -1;
                }
+
+             tstart_tai += entry->scan_duration;
           }
      }
 
