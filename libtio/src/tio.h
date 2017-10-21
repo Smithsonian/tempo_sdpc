@@ -372,11 +372,20 @@ extern int tio_time_utc_to_tempo (double utc_time, double *tempo_time);
  * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
  * @param[out] tai_time      TAI seconds since the Unix epoch
  * @return 0 on success, -a on error
+ *
+ * The TAI time scale advances monotonically, with no leap second
+ * corrections.
  */
 extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
 
-/** Time of TEMPO epoch as a count of TAI sec since Unix epoch.
- * @return Time of TEMPO epoch as a count of TAI sec since Unix epoch.
+/** Unix time_t value for the TEMPO epoch
+ * @return Unix time_t value for the TEMPO epoch
+ *
+ * The time_t value may be used for direct comparison with the Unix
+ * NTP-synchronized clock value, which is a count of seconds
+ * elapsed since the Unix epoch, January 1, 1970, 00:00:00 (UTC).
+ * The NTP-synchronized Unix clock includes leap second corrections
+ * and is therefore non-monotonic.
  */
 extern double tio_tempo_epoch_timet (void);
 

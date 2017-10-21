@@ -20,8 +20,8 @@ extern "C" {
 #define _pTIO_MIRROR_STEP_SIZE    114.0   /* microradian */
 
 /* default values for template files */
-#define _pTIO_TIME_COVERAGE_START   "2019-01-01T12:00:00Z"
-#define _pTIO_TIME_COVERAGE_END     "2019-01-01T13:00:00Z"
+#define _pTIO_TIME_COVERAGE_START   "2017-01-01T12:00:00Z"
+#define _pTIO_TIME_COVERAGE_END     "2017-01-01T13:00:00Z"
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 
 #define TIO_REALLOC realloc
@@ -134,16 +134,16 @@ struct _pTIO_Granule_Ident_Type
    int scan_seq_num;
    int granule_seq_num;
    int granule_num;
-   char tstart_str[MAX_ISOTIME_LEN];
-   char tend_str[MAX_ISOTIME_LEN];
-   double tstart;
-   double tend;
+   char tstart_str[MAX_ISOTIME_LEN];   /**< start time, UTC, ISO 8601 time string */
+   char tend_str[MAX_ISOTIME_LEN];     /**< end time, UTC, ISO 8601 time string */
+   double tstart;  /**< start time, TAI seconds since TEMPO epoch */
+   double tend;    /**< end time, TAI seconds since TEMPO epoch */
 };
 
 extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
-extern int _pTIO_timet_from_timestr (const char *timestr, time_t *ptt);
+extern int _pTIO_tempo_time_from_utc_timestr (const char *timestr, double *tai_sec);
 
 #if 0
 {

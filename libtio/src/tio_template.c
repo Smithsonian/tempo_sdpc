@@ -126,19 +126,10 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
                                    char *buf, int bufsize)
 {
    char timestr[MAX_ISOTIME_LEN];
-   struct tm tm;
    int status;
 
-   if (-1 == TIO_parse_timestr (gid->tstart_str, &tm))
+   if (0 != TIO_mktimestamp_str (gid->tstart, 0, timestr, sizeof(timestr)))
      return -1;
-
-   if (0 == strftime (timestr, MAX_ISOTIME_LEN,
-                      NODELIM_TIMESTAMP_FORMAT, &tm))
-     {
-        Tell_verror (TELL_RUNTIME_ERROR, "%s: strftime failed",
-                     __func__);
-        return -1;
-     }
 
    /* 6 digit sequence number should be enough for a 10 year mission:
     * (10 years)*(365 days/year)*(100 scans/day) = 3.65e5 scans
@@ -315,38 +306,41 @@ enum
      DELIM_TIMESTAMP = 1
 };
 
-int _pTIO_timet_from_timestr (const char *str, time_t *ptt)
+int _pTIO_tempo_time_from_utc_timestr (const char *str, double *tai_sec)
 {
    struct tm tm;
-   time_t tt;
+   double utc;
 
-   memset ((char *)&tm, 0, sizeof(struct tm));
-   if (NULL == strptime (str, DELIM_TIMESTAMP_FORMAT, &tm))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: strptime failed: s=%s",
-                     __func__, str);
-        return -1;
-     }
+   /* Note that parsing a time stamp string is likely to yield
+    * only a low precision time stamp, because such a string
+    * most likely has only integer seconds.  For a high precision
+    * time stamp, it's better to read a floating point value,
+    * if one is available */
 
-   if ((tt = timegm (&tm)) < 0)
+   if (0 != TIO_parse_timestr (str, &tm))
+     return -1;
+
+   if ((utc = timegm (&tm)) < 0)
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: timegm failed: s=%s",
                      __func__, str);
         return -1;
      }
 
-   *ptt = tt;
-   return 0;
+   return tio_time_utc_to_tempo (utc, tai_sec);
 }
 
-static int mktimestamp_str1 (double epoch_tt, double sec_offset,
-                             int delim, char *buf, int bufsize)
+int TIO_mktimestamp_str (double tempo_tai_offset,
+                         int delim, char *buf, int bufsize)
 {
    struct tm tm;
+   double utc;
    time_t tt;
    int status;
 
-   tt = (time_t)(epoch_tt + sec_offset);
+   if (0 != tio_time_tempo_to_utc (tempo_tai_offset, &utc))
+     return -1;
+   tt = (time_t)utc;
 
    memset ((char *)&tm, 0, sizeof(struct tm));
    if (NULL == gmtime_r (&tt, &tm))
@@ -371,28 +365,13 @@ static int mktimestamp_str1 (double epoch_tt, double sec_offset,
    return 0;
 }
 
-int TIO_mktimestamp_str (double sec_offset,
-                         int delim, char *buf, int bufsize)
-{
-   double epoch_tt = tio_tempo_epoch_timet();
-   return mktimestamp_str1 (epoch_tt, sec_offset, delim, buf, bufsize);
-}
-
 int tio_write_epoch_timestamp (int ncid, int varid)
 {
    char buf[MAX_ISOTIME_LEN];
-   struct tm tm = {0};
-   time_t tt;
    int len;
 
-   tt = tio_tempo_epoch_timet();
-   (void) gmtime_r (&tt, &tm);
-   if (0 == strftime (buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm))
-     {
-        Tell_verror (TELL_RUNTIME_ERROR, "%s: strftime failed",
-                     __func__);
-        return -1;
-     }
+   if (0 != TIO_mktimestamp_str (0.0, 1, buf, sizeof(buf)))
+     return -1;
 
    len = strlen(buf);
 
@@ -408,35 +387,48 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
    char epoch_str[MAX_ISOTIME_LEN];
    char timestamp_str[MAX_ISOTIME_LEN];
    char attr_name_since_epoch[TIO_MAX_NAME_LEN];
-   double secs_since_file_epoch, tempo_epoch;
+   double file_epoch_tai, secs_since_file_epoch, tempo_epoch_utc;
    time_t epoch_tt, tempo_epoch_tt;
    struct tm tm;
    size_t len;
    int n;
 
-   secs_since_file_epoch = secs_since_tempo_epoch;
+   /* Generate the UTC string for the timestamp */
+   if (0 != TIO_mktimestamp_str (secs_since_tempo_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
+     return -1;
 
-   /* The timestamp should be consistent with the file's defined
-    * reference time, which may not be the TEMPO epoch.
-    */
+   /* The floating point TAI timestamp should be consistent
+    * with the file's defined reference epoch, which may not
+    * be the TEMPO epoch. */
    memset ((char *)epoch_str, 0, MAX_ISOTIME_LEN);
    if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, epoch_str))
      return -1;
-
    if (-1 == TIO_parse_timestr (epoch_str, &tm))
      return -1;
    epoch_tt = timegm (&tm);
 
-   tempo_epoch = tio_tempo_epoch_timet ();
-   tempo_epoch_tt = (time_t)tempo_epoch;
-   if (tempo_epoch_tt != epoch_tt)
-     {
-        secs_since_file_epoch = (secs_since_tempo_epoch
-                                 + (tempo_epoch - epoch_tt));
-     }
+   tempo_epoch_utc = tio_tempo_epoch_timet ();
+   tempo_epoch_tt = (time_t)tempo_epoch_utc;
 
-   if (0 != mktimestamp_str1 (epoch_tt, secs_since_file_epoch, DELIM_TIMESTAMP, timestamp_str, MAX_ISOTIME_LEN))
-     return -1;
+   if (epoch_tt == tempo_epoch_tt)
+     {
+        secs_since_file_epoch = secs_since_tempo_epoch;
+     }
+   else
+     {
+        double tempo, file_epoch_utc, tempo_epoch_tai, tai_timestamp;
+
+        if (0 != tio_time_tempo_to_tai (0.0, &tempo_epoch_tai))
+          return -1;
+        tai_timestamp = tempo_epoch_tai + secs_since_tempo_epoch;
+
+        file_epoch_utc = (double) epoch_tt;
+        if ((0 != tio_time_utc_to_tempo (file_epoch_utc, &tempo))
+            || (0 != tio_time_tempo_to_tai (tempo, &file_epoch_tai)))
+          return -1;
+
+        secs_since_file_epoch = tai_timestamp - file_epoch_tai;
+     }
 
    n = snprintf (attr_name_since_epoch, TIO_MAX_NAME_LEN, "%s_since_epoch", attr_name);
    if (n >= TIO_MAX_NAME_LEN)

@@ -182,7 +182,7 @@ static int define_inr_status (int grp, int inr_status)
 static int define_radiance_granule_global_ident (int grp)
 {
    _pTIO_Granule_Ident_Type gid;
-   time_t epoch_tt, tstart_tt, tend_tt;
+   double tstart, tend;
 
    gid.next = NULL;
    gid.scan_seq_num = 0;
@@ -191,14 +191,12 @@ static int define_radiance_granule_global_ident (int grp)
    strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
    strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
 
-   epoch_tt = tio_tempo_epoch_timet();
-
-   if ((0 != _pTIO_timet_from_timestr (gid.tstart_str, &tstart_tt))
-       ||(0 != _pTIO_timet_from_timestr (gid.tend_str, &tend_tt)))
+   if ((0 != _pTIO_tempo_time_from_utc_timestr (gid.tstart_str, &tstart))
+       ||(0 != _pTIO_tempo_time_from_utc_timestr (gid.tend_str, &tend)))
      return -1;
 
-   gid.tstart = (double) (tstart_tt - epoch_tt);
-   gid.tend = (double) (tend_tt - epoch_tt);
+   gid.tstart = tstart;
+   gid.tend = tend;
 
    return _pTIO_write_granule_ident (grp, &gid);
 }

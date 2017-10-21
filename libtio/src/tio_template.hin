@@ -162,8 +162,8 @@ extern int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst);
  */
 extern int TIO_parse_timestr (const char *timestr, struct tm *ptm);
 
-/** Create timestamp string based on the TEMPO epoch
- * @param sec_since_epoch    Number of elapsed seconds since the epoch.
+/** Create UTC timestamp string based on the TEMPO epoch
+ * @param sec_since_epoch    TAI number of elapsed seconds since the epoch.
  * @param delim              If 0, format time as HHMMSS, otherwise, as HH:MM:SS
  * @param buf                Pointer to the buffer to receive the string
  * @param bufsize            Size of character buffer
@@ -176,12 +176,12 @@ extern int TIO_mktimestamp_str (double sec_since_epoch, int delim, char *buf,
  * @param ncid             Index of destination netcdf file
  * @param varid            Variable id to receive attributes (usually NC_GLOBAL)
  * @param attr_base_name   Attribute base name
- * @param secs_since_epoch Timestamp value [seconds since epoch]
+ * @param secs_since_epoch Timestamp value [TAI seconds since epoch]
  * @return 0 on success, -1 on error
  *
  * Two timestamp attributes are written.  The first is an ISO 8601
- * formatted string, the second is a double precision floating point
- * value containing the number of seconds since the epoch.
+ * formatted string giving the UTC time, the second is a double precision
+ * floating point value containing the number of TAI seconds since the epoch.
  * The epoch definition is taken from the file's \c time_reference
  * global attribute.
  */
