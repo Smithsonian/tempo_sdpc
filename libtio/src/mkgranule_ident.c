@@ -35,8 +35,8 @@ static int write_granule_ident_file (const char *file,
    struct tm tstart, tend;
    FILE *fp;
 
-   if ((-1 == TIO_parse_timestr (gid->tstart_str, &tstart))
-       || (-1 == TIO_parse_timestr (gid->tend_str, &tend)))
+   if ((-1 == _pTIO_parse_timestr (gid->tstart_str, &tstart))
+       || (-1 == _pTIO_parse_timestr (gid->tend_str, &tend)))
      return -1;
 
    if (NULL == (fp = fopen (file, "w")))

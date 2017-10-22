@@ -389,6 +389,16 @@ extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
  */
 extern double tio_tempo_epoch_timet (void);
 
+/** Convert TAI sec since TEMPO epoch to calendar date and time, UTC
+ * @param[in] tempo_time   Elapsed TAI seconds since the TEMPO epoch
+ * @param[out]  year       4-digit year
+ * @param[out]  month      month, 1-12
+ * @param[out]  day        day of month, 1-31
+ * @param[out]  hour       UTC hour of the day, 0-23.999...
+ */
+extern int tio_time_tempo_to_utc_caldate
+(double tempo_time, int *year, int *month, int *day, double *hour);
+
 #if 0
 {
 #endif

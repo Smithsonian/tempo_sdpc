@@ -275,6 +275,33 @@ static int initialize (void)
    return 0;
 }
 
+int tio_time_tempo_to_utc_caldate
+(double tempo_time, int *year, int *month, int *day, double *hour)
+{
+   struct tm tm;
+   double utc;
+   time_t tt;
+
+   if (0 != tio_time_tempo_to_utc (tempo_time, &utc))
+     return -1;
+
+   tt = (time_t) utc;
+   if (NULL == gmtime_r (&tt, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
+                     __func__, tt);
+        return -1;
+     }
+
+   *year = 1900 + tm.tm_year;
+   *month = 1 + tm.tm_mon;
+   *day = tm.tm_mday;
+   *hour = (tm.tm_hour
+            + (1.0/60)*(tm.tm_min
+                        + (1.0/60)*(tm.tm_sec + (utc - tt))));
+   return 0;
+}
+
 int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
 {
    Leap_Second_Table_Type *lstt;

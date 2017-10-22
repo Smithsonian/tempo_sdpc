@@ -80,8 +80,7 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    return 0;
 }
 
-int
-_pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
+int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
    size_t len;
 
@@ -107,7 +106,7 @@ _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
    return 0;
 }
 
-int TIO_parse_timestr (const char *timestr, struct tm *ptm)
+int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
 {
    memset ((char *)ptm, 0, sizeof (struct tm));
    if (NULL == strptime (timestr, DELIM_TIMESTAMP_FORMAT, ptm))
@@ -317,7 +316,7 @@ int _pTIO_tempo_time_from_utc_timestr (const char *str, double *tai_sec)
     * time stamp, it's better to read a floating point value,
     * if one is available */
 
-   if (0 != TIO_parse_timestr (str, &tm))
+   if (0 != _pTIO_parse_timestr (str, &tm))
      return -1;
 
    if ((utc = timegm (&tm)) < 0)
@@ -403,7 +402,7 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
    memset ((char *)epoch_str, 0, MAX_ISOTIME_LEN);
    if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, epoch_str))
      return -1;
-   if (-1 == TIO_parse_timestr (epoch_str, &tm))
+   if (-1 == _pTIO_parse_timestr (epoch_str, &tm))
      return -1;
    epoch_tt = timegm (&tm);
 
@@ -509,3 +508,5 @@ FCALLSCFUN5(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_f
             INT, STRING, INT, PSTRING, INT)
 FCALLSCFUN3(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
             INT, STRING, INT)
+FCALLSCFUN5(INT, tio_time_tempo_to_utc_caldate, TIO_F_TEMPO_TIME_TO_UTC_CALDATE, tio_f_tempo_time_to_utc_caldate,
+            DOUBLE, PINT,PINT,PINT,PDOUBLE)

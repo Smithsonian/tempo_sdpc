@@ -118,11 +118,13 @@ module tio_module
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
-    tio_f_filename_from_granule, tio_f_label_product
+    tio_f_filename_from_granule, tio_f_label_product, &
+    tio_f_tempo_time_to_utc_caldate
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
-    tio_f_filename_from_granule, tio_f_label_product
+    tio_f_filename_from_granule, tio_f_label_product, &
+    tio_f_tempo_time_to_utc_caldate
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -132,7 +134,8 @@ module tio_module
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
-    tiof_filename_from_granule, tiof_label_product
+    tiof_filename_from_granule, tiof_label_product, &
+    tiof_tempo_time_to_utc_caldate
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -237,6 +240,27 @@ contains
       return
     endif
     name = trim(name)//c_null_char
+  end subroutine
+
+  subroutine tiof_tempo_time_to_utc_caldate (tempo_time, year, &
+                                             month, day, hour, errstat)
+    implicit none
+    real (kind=r8), intent(in) :: tempo_time
+    integer, intent(out) :: year, month, day
+    real (kind=r8), intent(out) :: hour
+    integer, intent(inout) :: errstat
+
+    integer :: status
+
+    if (errstat < 0) return
+
+    status = tio_f_tempo_time_to_utc_caldate (tempo_time, year, &
+                                              month, day, hour)
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "Error converting time to calendar date", &
+                       errstat)
+    endif
   end subroutine
 
   subroutine tiof_label_product (obj, product_type, version, errstat)

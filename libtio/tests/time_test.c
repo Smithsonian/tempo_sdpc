@@ -9,11 +9,14 @@
 static int check_time_conversions (double tempo)
 {
    char buf[BUFSIZE];
-   double other, tempo_from_utc;
+   double other, tempo_from_utc, hour, minf, sec;
    time_t tt;
    struct tm tm;
+   int year, month, day, hr, min;
 
   if (-1 == tio_time_tempo_to_utc (tempo, &other))
+     return -1;
+   if (-1 == tio_time_tempo_to_utc_caldate (tempo, &year, &month, &day, &hour))
      return -1;
    if (0 != tio_time_utc_to_tempo (other, &tempo_from_utc))
      return -1;
@@ -24,6 +27,15 @@ static int check_time_conversions (double tempo)
    fprintf (stdout, "%s.%06d UTC : %06d usec\n", buf,
             (int)(round((other-tt)*1e6)),
             (int)(round((tempo-tempo_from_utc)*1e6)));
+
+   hr   = (int)hour;
+   minf = (hour - hr)*60;
+   min = (int)minf;
+   sec = (minf - min)*60;
+
+   /* this string should exactly match the above UTC string */
+   fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6f\n",
+            year, month, day, hr, min, sec);
 
    if (-1 == tio_time_tempo_to_tai (tempo, &other))
      return -1;
