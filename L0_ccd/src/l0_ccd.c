@@ -167,6 +167,7 @@ return_status:
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, finished %s",
               status, ctrl.input_file);
+   tell_close();
 
    return status;
 }
