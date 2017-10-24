@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <signal.h>
 
 #include <ioclib.h>
@@ -40,6 +41,16 @@ typedef struct
    int daemon;
 }
 Control_Type;
+
+static void usage (void)
+{
+   fprintf (stderr, "Usage: L0_format [options] [config-file]\n");
+   fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -h | --help              Print this usage message\n");
+   fprintf (stderr, "   -d | --daemon            Run as a daemon\n");
+   fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
+   exit (EXIT_SUCCESS);
+}
 
 static int parse_param_file (config_t *cfg, const char *cfg_file,
                              Control_Type *ctrl)
@@ -410,27 +421,56 @@ int main (int argc, char **argv)
    config_t cfg;
    TPInfo_Type *tp = NULL;
    int status = EXIT_FAILURE;
+   static struct option long_options[] =
+     {
+        {"help",    no_argument, 0, 'h'},
+        {"daemon",  no_argument, 0, 'd'},
+        {"empty",   no_argument, 0, 'e'},
+        {0,0,0,0}
+     };
 
    memset ((char *)&ctrl, 0, sizeof ctrl);
-   if ((argc > 1) && (0 == strcmp (argv[1], "--empty")))
+
+   for (;;)
      {
-        ctrl.exit_on_emptydir = 1;
-        argc--;
-        argv++;
+        int option_index = 0;
+        int c = getopt_long (argc, argv, "hde", long_options, &option_index);
+        if (c == -1)
+          break;
+        switch (c)
+          {
+           default:
+             fprintf (stderr, "getopt returned character %d??", c);
+             goto return_status;
+             break;
+           case 'h':
+             usage();
+             break;
+           case 'd':
+             ctrl.daemon = 1;
+             break;
+           case 'e':
+             ctrl.exit_on_emptydir = 1;
+             break;
+          }
      }
 
-   if ((argc > 1) && (0 == strcmp (argv[1], "--daemon")))
+   if (optind < argc)
      {
-        ctrl.daemon = 1;
-        argc--;
-        argv++;
+        param_file = argv[optind++];
      }
 
-   if (argc > 1)
-     param_file = argv[1];
+   if (optind < argc)
+     {
+        fprintf (stdout, "Remaining arguments ignored:  ");
+        while (optind < argc)
+          {
+             fprintf (stdout, "%s ", argv[optind++]);
+          }
+        fprintf (stdout, "\n");
+     }
 
    tell_open (appname, -1, 0);
-
    config_init (&cfg);
 
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
