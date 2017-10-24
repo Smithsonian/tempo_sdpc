@@ -6,6 +6,7 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,8 +23,6 @@
 #include "pixel.h"
 #include "regrid.h"
 #include "var.h"
-
-#define DEFAULT_PARAM_FILE  "l2_regrid.cfg"
 
 typedef struct Product_Type Product_Type;
 struct Product_Type
@@ -46,6 +45,16 @@ struct Product_Type
    int num_input_files;
    char **input_files;
 };
+
+static void usage (void)
+{
+   fprintf (stderr, "Usage: L2_regrid [options] [config-file]\n");
+   fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -h | --help            Print this usage message\n");
+   fprintf (stderr, "   -c | --config FILE     Use this configuration file\n");
+   fprintf (stderr, "   -i | --ignore          Ignore scan metadata fields\n");
+   exit (EXIT_SUCCESS);
+}
 
 static void free_product_type (Product_Type *p)
 {
@@ -517,7 +526,8 @@ free_and_return:
 
 int main (int argc, char **argv)
 {
-   const char *param_file = DEFAULT_PARAM_FILE;
+   const char appname[] = "L2_regrid";
+   const char *param_file = "l2_regrid.cfg";
    Var_Value_Buffer_Type *vb = NULL;
    TIO_Scan_Ident_Type *lst = NULL;
    Pixel_Regrid_Type *r = NULL;
@@ -527,25 +537,57 @@ int main (int argc, char **argv)
    int src_num_steps, src_num_xtrack;
    int expect_scan_ident = 1;
    int status = 1;
-
-   Tell_open ("L2_regrid", -1, -1);
-
-   if ((argc > 1)
-       && (0 == strcmp (argv[1], "--noident")))
+   static struct option long_options[] =
      {
-        expect_scan_ident = 0;
-        argv++;
-        argc--;
+        {"help", no_argument, 0, 'h'},
+        {"config", required_argument, 0, 'c'},
+        {"ignore", no_argument, 0, 'i'},
+        {0,0,0,0}
+     };
+
+   for (;;)
+     {
+        int option_index = 0;
+        int c = getopt_long (argc, argv, "hic:", long_options, &option_index);
+        if (c == -1)
+          break;
+        switch (c)
+          {
+           default:
+             fprintf (stderr, "*** Error: getopt returned character %d??", c);
+             goto return_status;
+             break;
+           case 'c':
+             param_file = optarg;
+             break;
+           case 'h':
+             usage();
+             break;
+           case 'i':
+             expect_scan_ident = 0;
+             break;
+          }
      }
 
-   if (argc > 1)
-     param_file = argv[1];
+   tell_open (appname, -1, -1);
+
+   if (optind < argc)
+     {
+        param_file = argv[optind++];
+     }
+
+   if (optind < argc)
+     {
+        fprintf (stdout, "Remaining arguments ignored:  ");
+        while (optind < argc)
+          {
+             fprintf (stdout, "%s ", argv[optind++]);
+          }
+        fprintf (stdout, "\n");
+     }
 
    if (-1 == parse_param_file (param_file, &dest, &product_list))
-     {
-        tell_close();
-        return 1;
-     }
+     goto return_status;
 
    /* Compute pixel overlaps using the first set of products */
    prod = product_list;

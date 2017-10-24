@@ -10,4 +10,4 @@ NUM_PIXELS=100
 
 mkdir -p $TMPDIR
 ./mktestdata_l2 -o $TMPDIR -m $NUM_STEPS -p $NUM_PIXELS
-$L2_REGRID --noident test_run.cfg
+$L2_REGRID --ignore test_run.cfg
