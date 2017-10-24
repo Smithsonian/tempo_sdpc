@@ -145,7 +145,7 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"snow",    required_argument, 0, 's'},
-        {"config",  optional_argument, 0, 'c'},
+        {"config",  required_argument, 0, 'c'},
         {"verbose", optional_argument, 0, 'v'},
         {0,0,0,0}
      };
@@ -200,7 +200,11 @@ int main (int argc, char **argv)
      }
 
    if (optind == argc)
-     usage();
+     {
+        config_destroy(&cfg);
+        tell_close();
+        usage();
+     }
 
    input_file = argv[optind++];
 
@@ -229,6 +233,7 @@ return_status:
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, finished %s",
               status, input_file);
+   tell_close();
 
    return status;
 }
