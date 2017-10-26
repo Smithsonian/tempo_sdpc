@@ -27,6 +27,14 @@
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
 
+#define MAX_ALLOWED_AZIMUTH_URAD  1.1e5
+/* The maximum SMA coordinate allowed by the flight software is
+ * 55000 microradians.  This refers to the mirror tilt angle,
+ * and corresponds to a 1.1e5 urad azimuthal offset of the line
+ * of sight in the field of regard.  This is the maximum angle
+ * allowed by the hardware.
+ */
+
 typedef struct
 {
    char *ephem_name;
@@ -157,11 +165,10 @@ static int ephem_open (config_t *cfg, Ephem_Type *eph)
 
 static int
 read_master_scan_table_params
-(config_t *cfg, double *pxstart, double *pdx, unsigned int *pnum_steps)
+(config_t *cfg, double *pstep_size, double *proll_angle)
 {
    config_setting_t *s;
-   double xstart, dx;
-   int num_steps;
+   double step_size, roll_angle;
 
    if (NULL == (s = config_lookup (cfg, "master_table_config")))
      {
@@ -171,90 +178,109 @@ read_master_scan_table_params
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_float (s, "xstart", &xstart))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "step_size", &dx))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_steps", &num_steps)))
+   if ((CONFIG_TRUE != config_setting_lookup_float (s, "step_size", &step_size))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "roll_angle", &roll_angle))
+      )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading master_table_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if (pxstart) *pxstart = xstart;
-   if (pnum_steps) *pnum_steps = num_steps;
-   if (pdx) *pdx = dx;
+   if (pstep_size) *pstep_size = step_size;
+   if (proll_angle) *proll_angle = roll_angle;
 
    return 0;
 }
 
 static double mirror_tilt (double azimuth)
 {
-   /* The scanning plan refers to the azimuthal angle coordinate in the field
-    * of regard from which we want to collect photons entering through the slit.
+   /* The FOR coordinate system refers to the azimuth and elevation angular
+    * coordinates in the field of regard indicating the line of sight
+    * from which we want to collect photons entering through the slit.
     * To command the instrument, the flight software wants the mirror tilt
-    * angle.  Using the law of reflection, the mirror tilt angle is half
-    * the azimuthal angle coordinate in the field of regard.
+    * angle needed to access that line of sight.  Using the law of reflection,
+    * the mirror tilt angle is half the azimuthal angle coordinate in the
+    * field of regard.
     *
     * The azimuthal angle coordinate in the field of regard increases toward
-    * the east (+X axis in a right-handed coordinate system), By convention,
-    * the FSW wants the mirror tilt angle to increase toward the west,
-    * so the coordinate transformation also involves a change of sign.
+    * the east (+X axis in a right-handed coordinate system).  The elevation
+    * coordinate increases toward the south (+Y axis).
+    *
+    * The C&THB documentation for the SMA_MOVE command says:
+    *
+    * "Neglecting alignment tolerances, a motion of the scan mirror in
+    * the positive X-direction moves the line of sight in the Spacecraft
+    * +X direction (East) . A motion of the scan mirror in the positive
+    * Y-direction moves the line of sight in the Spacecraft +Y direction
+    * (South)."
+    *
+    * Therefore, the mirror tilt angle +X coordinate has the same sign
+    * as the +X azimuthal angle in the field of regard.
     *
     * Both angles are in microradians.
     */
 
-   return -0.5 * azimuth;
+   return 0.5 * azimuth;
 }
 
 static int generate_master_scan_table (config_t *cfg, FILE *fp)
 {
-   unsigned int i, num_steps;
-   double xstart, dx;
-   double *tilt_fsw = NULL;
-   int dx_fsw, dy_fsw;
+   const char fmt[] = "%0.3f,%0.3f,%0.3f\n";
+   double mirror_x0, mirror_x1, delta_x, mirror_y, dx_r;
+   double xstart, step_size, roll_angle;
+   double cos_phi, sin_phi, x;
 
-   if (0 != read_master_scan_table_params (cfg, &xstart, &dx, &num_steps))
+   if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
      return -1;
 
-   /* The malloc and loop may seem like overkill, but this approach
-    * makes it simpler to generate the necessary dx value based on
-    * the transformed coordinates. If we didn't need dx in the transformed
-    * coordinates, it would be easy to generate the grid of X values in
-    * a loop without allocating an array for tilt_fsw.  */
-   if (NULL == (tilt_fsw = (double *)MALLOC (num_steps * sizeof(double))))
+   (void) fprintf (fp, "# roll = %0.3f microradian\n", roll_angle);
+
+   /* convert from microradians to radians */
+   roll_angle *= 1.e-6;
+
+   xstart = MAX_ALLOWED_AZIMUTH_URAD;
+   mirror_x0 = mirror_tilt (xstart);
+   mirror_x1 = mirror_tilt (-xstart);
+   delta_x = mirror_tilt (step_size);
+
+   (void) fprintf (fp, "mirror_x,delta_x,mirror_y\n");
+
+   if (roll_angle == 0.0)
      {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
+        mirror_y = 0.0;
+
+        (void) fprintf (fp, fmt, mirror_x1, delta_x, mirror_y);
+        (void) fprintf (fp, fmt, mirror_x0, delta_x, mirror_y);
+        return 0;
      }
 
-   for (i = 0; i < num_steps; i++)
-     {
-        double azimuth = xstart - i * dx;
-        tilt_fsw[i] = mirror_tilt (azimuth);
-     }
+   /* +X is eastward, +Y is southward,  +Z is along the boresight,
+    * at (X,Y) = (0,0).
+    * +roll_angle is clockwise rotation of a vector
+    * about the +Z axis of the right-handed coordinate system.
+    * For example, consider the vector (1,0).  Applying roll_angle>0
+    * will rotate the vector CW, making the Y coordinate > 0, and
+    * making the X coordinate smaller.
+    * Applying roll_angle=pi/2 will rotate the vector into (0,1).
+    *
+    * Vector rotation:
+    *  xp = cos(phi) * x - sin(phi) * y
+    *  yp = sin(phi) * x + cos(phi) * y
+    */
 
-   /* The spec requires that we create a table with integer-valued dx,dy! */
-   dx_fsw = tilt_fsw[1] - tilt_fsw[0];
-   dy_fsw = 0;
+   cos_phi = cos (roll_angle);
+   sin_phi = sin (roll_angle);
 
-   if (fprintf (fp, "mirror_x,delta_x,delta_y\n") < 0)
-     {
-        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
-        FREE(tilt_fsw);
-        return -1;
-     }
+   /* initially, y=0 and  delta_y=0, so rotation yields
+    * x, y components as follows: */
 
-   for (i = 0; i < num_steps; i++)
-     {
-        if (fprintf (fp, "%d,%d,%d\n", (int) tilt_fsw[i], dx_fsw, dy_fsw) < 0)
-          {
-             tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
-             FREE(tilt_fsw);
-             return -1;
-          }
-     }
+   dx_r = cos_phi * delta_x;
 
-   FREE(tilt_fsw);
+   x = mirror_x1;
+   (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
+   x = mirror_x0;
+   (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
 
    return 0;
 }

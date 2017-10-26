@@ -73,7 +73,10 @@ static int scan_table_params (const Scan_Type *st,
    beg.azimuth *= DEGTOMICRORAD;   beg.elevation *= DEGTOMICRORAD;
    end.azimuth *= DEGTOMICRORAD;   end.elevation *= DEGTOMICRORAD;
 
-   if ((step_size = st->st_step_size (st)) <= 0)
+   /* In this context, we care only about the absolute value of the
+    * mirror step size */
+   step_size = fabs(st->st_step_size (st));
+   if (step_size == 0.0)
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: invalid mirror step size = %g",

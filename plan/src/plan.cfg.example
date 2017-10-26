@@ -44,6 +44,24 @@ limits_config: {
   min_sun_angle = 60.0;
 };
 
+master_table_config: {
+
+  # step_size refers to the azimuthal coordinate in the field of regard.
+  # The +X direction is eastward. For the mirror, +Y is southward,
+  # so a right- handed coordinate system has +Z along the boresight
+  # direction. roll_angle > 0 is clockwise rotation of a vector
+  # in the FOR about the boresight (+Z) axis.
+  # step_size and roll_angle are in microradians.
+  #
+  # step_size<0 represents a westward step.
+  # For example, roll_angle>0 will move the eastern end of the
+  # scan track to a +Y coordinate, making mirror_y>0 at
+  # the eastern edge of the FOR.
+
+  step_size = -114.0;
+  roll_angle = 0.0;
+};
+
 sat_config: {
 
 # sat_lon = geostationary satellite longitude
@@ -67,16 +85,6 @@ iers_config: {
 
 novas_config: {
   ephem_name = "/vex/d2/tempo/install/gnu/share/libnovas/JPLEPH";
-};
-
-master_table_config: {
-
-# x[i] = azimuthal scan coordinate, [microradian]
-# x[i] = xstart - i * step_size,  i = [0,num_steps-1]
-
-  num_steps =  1283;
-  step_size =   114.0;
-  xstart    = 73131.0;
 };
 
 output_sza_map_config: {
