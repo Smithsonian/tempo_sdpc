@@ -1,5 +1,7 @@
 #! /bin/bash
 
+FILENAME_LIST=".test_input_files.lst"
+
 test_syntax(){
 outfile=$1
 cat >$outfile <<EOF
@@ -55,7 +57,7 @@ target_grid: {
 EOF
 }
 
-test_missing_output_file(){
+test_missing_file_list(){
 outfile=$1
 cat >$outfile <<EOF
 target_grid: {
@@ -70,24 +72,13 @@ data_products: {
 EOF
 }
 
-test_missing_input_files(){
-outfile=$1
-cat >$outfile <<EOF
-target_grid: {
-   longitude = {delta = 0.05; min = -155.0; num = 2611;};
-   latitude  = {delta = 0.05; min =   17.0; num =  940;};
-};
-data_products: {
-   prod:{
-     name="prod";
-     output_file = "foo.nc";
-   };
-};
-EOF
+default_input_files_list(){
+echo "foo.nc\nfoo.nc" > .test_input_files.lst
 }
 
-test_zero_input_files(){
+test_missing_input_files(){
 outfile=$1
+echo "foo.nc" > .test_input_files.lst
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -96,9 +87,7 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
-     input_files = [
-     ];
+     filename_list = "$FILENAME_LIST";
    };
 };
 EOF
@@ -106,6 +95,7 @@ EOF
 
 test_missing_vars(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -114,10 +104,7 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
-     input_files = [
-        "foo.nc"
-     ];
+     filename_list = "$FILENAME_LIST";
    };
 };
 EOF
@@ -125,6 +112,7 @@ EOF
 
 test_zero_vars(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -133,11 +121,8 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      vars = ();
-     input_files = [
-        "foo.nc"
-     ];
    };
 };
 EOF
@@ -145,6 +130,7 @@ EOF
 
 test_var_missing_in(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -153,13 +139,10 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      vars = (
        {out="foo";}
      );
-     input_files = [
-        "foo.nc"
-     ];
    };
 };
 EOF
@@ -167,6 +150,7 @@ EOF
 
 test_bad_input_files(){
 outfile=$1
+echo "foo.nc\n7" > .test_input_files.lst
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -175,13 +159,10 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      vars = (
        {in="foo";}
      );
-     input_files = [
-       7
-     ];
    };
 };
 EOF
@@ -189,6 +170,7 @@ EOF
 
 test_var_bad_bitfield_type(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -197,14 +179,11 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      vars = (
        {in="bar"; bitfield_type=0;},
        {in="foo"; bitfield_type=7;}
      );
-     input_files = [
-        "foo.nc"
-     ];
    };
 };
 EOF
@@ -212,6 +191,7 @@ EOF
 
 test_missing_longlat_group(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -220,13 +200,10 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      vars = (
        {in="foo";}
      );
-     input_files = [
-       "bar.nc"
-     ];
    };
 };
 EOF
@@ -234,6 +211,7 @@ EOF
 
 test_have_longlat_group(){
 outfile=$1
+default_input_files_list
 cat >$outfile <<EOF
 target_grid: {
    longitude = {delta = 0.05; min = -155.0; num = 2611;};
@@ -242,14 +220,11 @@ target_grid: {
 data_products: {
    prod:{
      name="prod";
-     output_file = "foo.nc";
+     filename_list = "$FILENAME_LIST";
      longlat_group = {in="geolocation"};
      vars = (
        {in="foo";}
      );
-     input_files = [
-       "bar.nc"
-     ];
    };
 };
 EOF
@@ -277,9 +252,8 @@ perform_test test_missing_target_grid
 perform_test test_missing_latitude
 perform_test test_defining_target_grid
 perform_test test_missing_data_products
+perform_test test_missing_file_list
 perform_test test_missing_input_files
-perform_test test_missing_output_file
-perform_test test_zero_input_files
 perform_test test_missing_vars
 perform_test test_zero_vars
 perform_test test_var_missing_in
