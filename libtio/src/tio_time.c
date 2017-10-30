@@ -100,7 +100,7 @@ static int resize_leap_second_table (Leap_Second_Table_Type *lstt, unsigned int 
    return 0;
 }
 
-static int ioclib_fgets (char **linep, size_t *lenp, FILE *fp)
+int tio_fgets (char **linep, size_t *lenp, FILE *fp)
 {
    char *line = NULL;
    size_t len = 0;
@@ -199,7 +199,7 @@ static int read_leapsecond_table (const char *file)
         int tai_utc_offset;
         int status;
 
-        status = ioclib_fgets (&line, NULL, fp);
+        status = tio_fgets (&line, NULL, fp);
         if (status == -1)
           goto return_error;
         if (status == 0)

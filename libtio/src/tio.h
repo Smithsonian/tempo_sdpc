@@ -349,7 +349,7 @@ extern int TIO_define_enum_table (int grp, const char *name, int base_type,
 /** Convert TAI sec since TEMPO epoch to UTC sec since Unix epoch
  * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
  * @param[out] utc_time      UTC seconds since the Unix epoch
- * @return 0 on success, -a on error
+ * @return 0 on success, -1 on error
  *
  * The TAI time scale advances monotonically, while the UTC
  * time scale includes leap second corrections at irregular
@@ -360,7 +360,7 @@ extern int tio_time_tempo_to_utc (double tempo_time, double *utc_time);
 /** Convert UTC sec since the Unix epoch to TAI sec since the TEMPO epoch
  * @param[in]  utc_time      UTC seconds since the Unix epoch
  * @param[out] tempo_time    TAI seconds since the TEMPO epoch
- * @return 0 on success, -a on error
+ * @return 0 on success, -1 on error
  *
  * The TAI time scale advances monotonically, while the UTC
  * time scale includes leap second corrections at irregular
@@ -371,7 +371,7 @@ extern int tio_time_utc_to_tempo (double utc_time, double *tempo_time);
 /** Convert TAI sec since the TEMPO epoch to TAI sec since the Unix epoch
  * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
  * @param[out] tai_time      TAI seconds since the Unix epoch
- * @return 0 on success, -a on error
+ * @return 0 on success, -1 on error
  *
  * The TAI time scale advances monotonically, with no leap second
  * corrections.
@@ -395,9 +395,21 @@ extern double tio_tempo_epoch_timet (void);
  * @param[out]  month      month, 1-12
  * @param[out]  day        day of month, 1-31
  * @param[out]  hour       UTC hour of the day, 0-23.999...
+ * @return 0 on success, -1 on error
  */
 extern int tio_time_tempo_to_utc_caldate
 (double tempo_time, int *year, int *month, int *day, double *hour);
+
+/** Read one line from an ASCII text file
+ * @param[out] linep   Pointer to an allocated string
+ * @param[out] lenp    The length of the allocated string (NULL is ok)
+ * @param[in]  fp      An open file pointer.
+ * @return 0 on success, -1 on error
+ *
+ * The string returned will include the terminating newline if
+ * one is present in the file.
+ */
+extern int tio_fgets (char **linep, size_t *lenp, FILE *fp);
 
 #if 0
 {
