@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 #include <tell.h>
 #include <netcdf.h>
@@ -44,6 +45,9 @@ struct Product_Type
 
    int num_input_files;
    char **input_files;
+
+   int __num_files;
+   char **__filenames;
 };
 
 static void usage (void)
@@ -58,12 +62,14 @@ static void usage (void)
 
 static void free_product_type (Product_Type *p)
 {
+   int i;
+
    if (p == NULL)
      return;
 
    if (p->in_var_names)
      {
-        int i, num_shared = 3 * p->num_var_names + p->num_input_files;
+        int num_shared = 3 * p->num_var_names;
         for (i = 0; i < num_shared; i++)
           {
              FREE(p->in_var_names[i]);
@@ -71,16 +77,23 @@ static void free_product_type (Product_Type *p)
         FREE(p->in_var_names);
      }
 
+   if (p->__filenames)
+     {
+        for (i = 0; i < p->__num_files; i++)
+          {
+             FREE(p->__filenames[i]);
+          }
+        FREE(p->__filenames);
+     }
+
    FREE(p->value_types);
    FREE(p->name);
-   FREE(p->outfile);
    FREE(p->in_lonlat_grp);
    FREE(p->out_lonlat_grp);
    FREE(p);
 }
 
-static Product_Type *new_product_type (int num_var_names,
-                                       int num_input_files)
+static Product_Type *new_product_type (int num_var_names)
 {
    Product_Type *p = NULL;
    int i, num_strings;
@@ -92,11 +105,9 @@ static Product_Type *new_product_type (int num_var_names,
      }
    memset ((char *)p, 0, sizeof (*p));
 
-   p->next = NULL;
    p->num_var_names = num_var_names;
-   p->num_input_files = num_input_files;
 
-   num_strings = 3 * num_var_names + num_input_files;
+   num_strings = 3 * num_var_names;
 
    p->in_var_names = (char **) MALLOC (num_strings * sizeof (char *));
    if (NULL == p->in_var_names)
@@ -120,7 +131,6 @@ static Product_Type *new_product_type (int num_var_names,
 
    p->out_var_names = p->in_var_names + num_var_names;
    p->var_qa_labels = p->out_var_names + num_var_names;
-   p->input_files = p->var_qa_labels + num_var_names;
 
    return p;
 }
@@ -207,47 +217,124 @@ static char *malloc_strcpy (const char *s)
    return cpy;
 }
 
-static Product_Type *init_product_type (const config_setting_t *setting)
+static int read_filename_list (const char *list_file, int *num_filesp,
+                               char ***filenamesp)
+{
+   FILE *fp;
+   char **filenames = NULL;
+   int num_files = 0;
+   int num_allocated = 0;
+   int return_status = -1;
+
+   *num_filesp = 0;
+   *filenamesp = NULL;
+
+   if (list_file == NULL)
+     return -1;
+
+/* Using a low initial value to exercise the realloc. */
+#define DEFAULT_NUM_FILES 2
+
+   if (NULL == (filenames = (char **)MALLOC (DEFAULT_NUM_FILES * sizeof (char *))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   num_allocated = DEFAULT_NUM_FILES;
+
+   if (NULL == (fp = fopen (list_file, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s", __func__, list_file);
+        goto return_error;
+     }
+
+   while (1)
+     {
+        char *newline;
+        char *line;
+        int status;
+
+        status = tio_fgets (&line, NULL, fp);
+        if (status == -1)
+          goto return_error;
+        if (status == 0)
+          break;
+
+        if ((*line == '#') || (*line == '\n') || (*line == 0))
+          {
+             FREE(line);
+             line = NULL;
+             continue;
+          }
+
+        newline = strchr(line, '\n');
+        if (newline) *newline = 0;
+
+        filenames[num_files++] = line;
+
+        if (num_files == num_allocated)
+          {
+             char **more_files = NULL;
+             int new_num = 2*num_allocated;
+             if (NULL == (more_files = REALLOC(filenames, new_num * sizeof(char *))))
+               {
+                  tell_verror (TELL_MALLOC_ERROR, "%s: realloc failed", __func__);
+                  goto return_error;
+               }
+             filenames = more_files;
+             num_allocated = new_num;
+          }
+     }
+
+   return_status = 0;
+return_error:
+   (void) fclose (fp);
+   if (return_status)
+     {
+        FREE(filenames);
+        filenames = NULL;
+        num_files = 0;
+     }
+
+   *filenamesp = filenames;
+   *num_filesp = num_files;
+
+   return return_status;
+}
+
+static int init_product_type (const config_setting_t *setting,
+                              Product_Type **prodp)
 {
    Product_Type *prod = NULL;
-   config_setting_t *s, *vars, *longlat_group, *input_files;
-   const char *name, *outfile, *in_grp, *out_grp;
-   int i, num_vars, num_input_files, processing_version;
+   config_setting_t *s, *vars, *longlat_group;
+   const char *name, *in_grp, *out_grp, *list_file;
+   int i, num_vars, processing_version;
+
+   *prodp = NULL;
 
    if (setting == NULL)
-     return NULL;
+     return -1;
+
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "filename_list", &list_file))
+     {
+        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing filename_list", __func__);
+        return -1;
+     }
+
+   /* silently ignore a missing list of filenames */
+   if (0 != access (list_file, F_OK))
+     return 0;
 
    if (CONFIG_TRUE != config_setting_lookup_string (setting, "name", &name))
      {
         Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing name", __func__);
-        return NULL;
-     }
-
-   if (CONFIG_TRUE != config_setting_lookup_string (setting, "output_file", &outfile))
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing output_file", __func__);
-        return NULL;
+        return -1;
      }
 
    if (CONFIG_TRUE != config_setting_lookup_int (setting, "processing_version", &processing_version))
      {
         Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing processing_version", __func__);
-        return NULL;
-     }
-
-   input_files = config_setting_get_member (setting, "input_files");
-   if (NULL == input_files)
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing input_files list", __func__);
-        return NULL;
-     }
-   num_input_files = config_setting_length (input_files);
-
-   if (num_input_files == 0)
-     {
-        Tell_verror (TELL_USAGE_ERROR, "product %s: No input files", name);
-        return NULL;
+        return -1;
      }
 
    vars = config_setting_get_member (setting, "vars");
@@ -255,7 +342,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
      {
         Tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing vars list", __func__);
-        return NULL;
+        return -1;
      }
    num_vars = config_setting_length (vars);
 
@@ -263,13 +350,30 @@ static Product_Type *init_product_type (const config_setting_t *setting)
      {
         Tell_verror (TELL_USAGE_ERROR,
                      "product %s: No variables to regrid", name);
-        return NULL;
+        return -1;
      }
 
-   if (NULL == (prod = new_product_type (num_vars, num_input_files)))
-     return NULL;
+   if (NULL == (prod = new_product_type (num_vars)))
+     return -1;
 
    prod->processing_version = processing_version;
+
+   if (0 != read_filename_list (list_file, &prod->__num_files, &prod->__filenames))
+     {
+        free_product_type (prod);
+        return -1;
+     }
+
+   if (prod->__num_files < 2)
+     {
+        free_product_type (prod);
+        /* silently ignore a missing list of input files */
+        return 0;
+     }
+
+   prod->outfile = prod->__filenames[0];
+   prod->input_files = prod->__filenames + 1;
+   prod->num_input_files = prod->__num_files - 1;
 
    for (i = 0; i < num_vars; i++)
      {
@@ -281,7 +385,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
              Tell_verror (TELL_INVALID_PARM_ERROR,
                           "%s: accessing vars element i=%d", __func__, i);
              free_product_type (prod);
-             return NULL;
+             return -1;
           }
 
         if (CONFIG_TRUE != config_setting_lookup_string (s, "out", &out_name))
@@ -296,7 +400,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
         else if (-1 == set_value_type (bitfield_type, &prod->value_types[i]))
           {
              free_product_type(prod);
-             return NULL;
+             return -1;
           }
 
         if ((NULL == (prod->in_var_names[i] = malloc_strcpy (in_name)))
@@ -304,7 +408,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
-             return NULL;
+             return -1;
           }
 
         if (var_qa_label == NULL)
@@ -313,25 +417,7 @@ static Product_Type *init_product_type (const config_setting_t *setting)
           {
              Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
-             return NULL;
-          }
-     }
-
-   for (i = 0; i < num_input_files; i++)
-     {
-        const char *file;
-        if (NULL == (file = config_setting_get_string_elem (input_files, i)))
-          {
-             Tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: accessing input_files element i=%d", __func__, i);
-             free_product_type (prod);
-             return NULL;
-          }
-        if (NULL == (prod->input_files[i] = malloc_strcpy (file)))
-          {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             free_product_type (prod);
-             return NULL;
+             return -1;
           }
      }
 
@@ -341,23 +427,23 @@ static Product_Type *init_product_type (const config_setting_t *setting)
         Tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing longlat_group", __func__);
         free_product_type (prod);
-        return NULL;
+        return -1;
      }
 
    if (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "out", &out_grp))
      out_grp = in_grp;
 
    if ((NULL == (prod->name = malloc_strcpy (name)))
-       || (NULL == (prod->outfile = malloc_strcpy (outfile)))
        || (NULL == (prod->in_lonlat_grp = malloc_strcpy (in_grp)))
        || (NULL == (prod->out_lonlat_grp = malloc_strcpy (out_grp))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_product_type (prod);
-        return NULL;
+        return -1;
      }
 
-   return prod;
+   *prodp = prod;
+   return 0;
 }
 
 static int parse_param_file (const char *cfg_file,
@@ -399,18 +485,29 @@ static int parse_param_file (const char *cfg_file,
 
    for (i = 0; i < num_products; i++)
      {
-        Product_Type *prod;
         config_setting_t *prod_cfg = config_setting_get_elem (s, i);
+        Product_Type *prod;
 
-        if (NULL == (prod = init_product_type (prod_cfg)))
+        if (0 != init_product_type (prod_cfg, &prod))
           goto cleanup_and_return;
 
-        prod->next = plist;
-        plist = prod;
+        if (prod)
+          {
+             prod->next = plist;
+             plist = prod;
+          }
      }
 
-   status = 0;
-   *product_list = plist;
+   if (plist)
+     {
+        status = 0;
+        *product_list = plist;
+     }
+   else
+     {
+        tell_verror (TELL_UNKNOWN_ERROR, "%s: no product files to regrid?",
+                     __func__);
+     }
 
 cleanup_and_return:
    if (status)
