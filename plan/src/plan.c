@@ -226,7 +226,7 @@ static double mirror_tilt (double azimuth)
 
 static int generate_master_scan_table (config_t *cfg, FILE *fp)
 {
-   const char fmt[] = "%0.3f,%0.3f,%0.3f\n";
+   const char fmt[] = "%0.3f,%#0.16g,%#0.6g\n";
    double mirror_x0, mirror_x1, delta_x, mirror_y, dx_r;
    double xstart, step_size, roll_angle;
    double cos_phi, sin_phi, x;
@@ -234,7 +234,7 @@ static int generate_master_scan_table (config_t *cfg, FILE *fp)
    if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
      return -1;
 
-   (void) fprintf (fp, "# roll = %0.3f microradian\n", roll_angle);
+   (void) fprintf (fp, "# roll = %#0.6g microradian\n", roll_angle);
 
    /* convert from microradians to radians */
    roll_angle *= 1.e-6;
