@@ -68,7 +68,7 @@ sat_config: {
   sat_lon = -100.0;
 
 # instrument boresight surface coordinates:
-  boresight: {lon = -97.0, lat = 34.0;};
+  boresight: {lon = -97.0; lat = 34.0;};
 };
 
 iers_config: {
@@ -80,7 +80,7 @@ iers_config: {
 
   xpole = 0.0;
   ypole = 0.0;
-  ut1_utc = 0.494792
+  ut1_utc = 0.494792;
 };
 
 novas_config: {
@@ -109,6 +109,6 @@ output_sza_map_config: {
 # for the tilted perspective projection ('tpers') from
 # the Proj4 library.
 
-   tilt = 5.53
-   azi  = 4.5
+   tilt = 5.53;
+   azi  = 4.5;
 };
