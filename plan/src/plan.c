@@ -27,12 +27,20 @@
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
 
-#define MAX_ALLOWED_AZIMUTH_URAD  1.1e5
-/* The maximum SMA coordinate allowed by the flight software is
- * 55000 microradians.  This refers to the mirror tilt angle,
- * and corresponds to a 1.1e5 urad azimuthal offset of the line
- * of sight in the field of regard.  This is the maximum angle
- * allowed by the hardware.
+#define SMA_MAX_CALIBRATED_MIRROR_X  49600.0
+#define SMA_MAX_CALIBRATED_MIRROR_Y   4400.0
+/* The maximum range over which the scan mirror should be commanded is:
+ *    |X| <= SMA_MAX_CALIBRATED_MIRROR_X,
+ *    |Y| <= SMA_MAX_CALIBRATED_MIRROR_Y.
+ * These coordinates refer to the scan mirror tilt angle in microradians.
+ * (From TEMPO ConOps, Ball doc 2418231, Rev E, section 12.3.2, page 75,
+ *  10/12/2017)
+ */
+
+#define SMA_MAX_SCAN_TABLE_STEP   100.0
+/* The maximum mirror step size within a scan table [microradians]
+ * (From TEMPO ConOps, Ball doc 2418231, Rev E, section 12.3.2, page 75,
+ *  10/12/2017)
  */
 
 typedef struct
@@ -226,23 +234,30 @@ static double mirror_tilt (double azimuth)
 
 static int generate_master_scan_table (config_t *cfg, FILE *fp)
 {
-   const char fmt[] = "%0.3f,%#0.16g,%#0.6g\n";
+   const char fmt[] = "%0.3f,%0.7g,%0.4g\n";
    double mirror_x0, mirror_x1, delta_x, mirror_y, dx_r;
-   double xstart, step_size, roll_angle;
+   double step_size, roll_angle, max_roll_angle;
    double cos_phi, sin_phi, x;
 
    if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
      return -1;
 
-   (void) fprintf (fp, "# roll = %#0.6g microradian\n", roll_angle);
+   (void) fprintf (fp, "# roll = %0.6g microradian\n", roll_angle);
 
    /* convert from microradians to radians */
    roll_angle *= 1.e-6;
 
-   xstart = MAX_ALLOWED_AZIMUTH_URAD;
-   mirror_x0 = mirror_tilt (xstart);
-   mirror_x1 = mirror_tilt (-xstart);
+   mirror_x0 =  SMA_MAX_CALIBRATED_MIRROR_X;
+   mirror_x1 = -SMA_MAX_CALIBRATED_MIRROR_X;
    delta_x = mirror_tilt (step_size);
+
+   if (fabs(delta_x) > SMA_MAX_SCAN_TABLE_STEP)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: step_size = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
+                     __func__, delta_x, SMA_MAX_SCAN_TABLE_STEP);
+        return -1;
+     }
 
    (void) fprintf (fp, "mirror_x,delta_x,mirror_y\n");
 
@@ -253,6 +268,17 @@ static int generate_master_scan_table (config_t *cfg, FILE *fp)
         (void) fprintf (fp, fmt, mirror_x1, delta_x, mirror_y);
         (void) fprintf (fp, fmt, mirror_x0, delta_x, mirror_y);
         return 0;
+     }
+
+   max_roll_angle = atan2 (SMA_MAX_CALIBRATED_MIRROR_Y,
+                           SMA_MAX_CALIBRATED_MIRROR_X);
+
+   if (fabs(roll_angle) > max_roll_angle)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: roll_angle = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
+                     __func__, roll_angle*1.e6, max_roll_angle*1.e6);
+        return -1;
      }
 
    /* +X is eastward, +Y is southward,  +Z is along the boresight,
@@ -279,6 +305,7 @@ static int generate_master_scan_table (config_t *cfg, FILE *fp)
 
    x = mirror_x1;
    (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
+
    x = mirror_x0;
    (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
 
