@@ -41,6 +41,7 @@ m_swathnames.f90
 m_trilin.f90
 m_triquad.f90
 m_vars.f90
+m_write_metadata.f90
 m_write_output_data.f90
 m_write_output_data_2pres.f90
 m_write_output_data_tio.f90

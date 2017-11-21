@@ -117,6 +117,9 @@ contains
         write_he5 = .false.
       else if (trim(arg) == "-noret") then
         noret = .true.
+      ! FIXME - temporary flag for proof-of-concept ODL ASCII test
+      else if (trim(arg) == "-wrt_odl") then
+        wrt_odl = .true.
       endif
       iarg = iarg + 1
     enddo

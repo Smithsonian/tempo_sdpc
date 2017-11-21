@@ -315,5 +315,7 @@ module m_vars
   !=====================================================================
   !real (KIND=8), allocatable, dimension (:,:) :: A
 
+  !temporary addition - flag to allow proof-of-concept ODL metadata test
+  logical :: wrt_odl = .false.
 
 end module m_vars

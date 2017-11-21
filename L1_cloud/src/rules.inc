@@ -168,6 +168,11 @@ $(ODIR)/m_triquad.o: $(SDIR)/m_triquad.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_triquad.f90 -o $(ODIR)/m_triquad.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_vars.o: $(SDIR)/m_vars.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_vars.f90 -o $(ODIR)/m_vars.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_write_metadata.o: $(SDIR)/m_write_metadata.f90 \
+  $(ODIR)/m_LUN_set.o \
+  $(ODIR)/m_pgs_include.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_metadata.f90 -o $(ODIR)/m_write_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_write_output_data.o: $(SDIR)/m_write_output_data.f90 \
   $(ODIR)/m_vars.o \
   $(ODIR)/m_write_swath_field.o
