@@ -22,7 +22,7 @@
 #define BITMASK_CLEAR(f,mask)  ((f) &= (~(mask)))
 #define BITMASK_SET(f,mask)    ((f) |=   (mask) )
 
-#define BITMASK_GPQF_BITS_USED   0x00ffff3f
+#define BITMASK_GPQF_BITS_USED   0xffffffff
 
 typedef struct
 {
@@ -426,6 +426,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
    unsigned int *ground_flags = NULL;
    unsigned char *ubytes = NULL;
    unsigned char *snow_flags, *lc_type1, *lc_typeqc, *illum_flags;
+   int *inr_quality_flag = NULL;
    size_t num_pixels, ubytes_size;
    int start[2], count[2];
    int i, status = -1;
@@ -435,6 +436,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
 
    ubytes_size = 4 * num_pixels * sizeof(unsigned char);
    if ((NULL == (ground_flags = (unsigned int *) MALLOC (num_pixels * sizeof(unsigned int))))
+       || (NULL == (inr_quality_flag = (int *) MALLOC (num_pixels * sizeof(int))))
        || (NULL == (ubytes = (unsigned char *) MALLOC (ubytes_size))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -455,11 +457,22 @@ static int set_ground_pixel_flags (Granule_Type *gt,
    for (i = 0; i < NUM_BANDS; i++)
      {
         unsigned int j;
+        int varid_gpqf;
 
         geoloc = &gt->geoloc[i];
 
+        if (0 != tio_inq_varid (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF, &varid_gpqf))
+          {
+             if (0 != tio_def_var_ground_pixel_quality_flag (geoloc->group))
+               goto return_error;
+          }
+
         if (0 != TIO_get_var_section (geoloc->group, TEMPO_VAR_GROUND_PIXEL_QF,
                                       start, count, TIO_UINT, ground_flags))
+          goto return_error;
+
+        if (0 != TIO_get_var_section (geoloc->group, TEMPO_VAR_INRQF,
+                                      start, count, TIO_INT, inr_quality_flag))
           goto return_error;
 
         if (0 != sn->sn_lookup (sn, num_pixels, geoloc->lon, geoloc->lat, snow_flags))
@@ -478,7 +491,8 @@ static int set_ground_pixel_flags (Granule_Type *gt,
          * bit 0-3 = MODIS land/water mask.
          * bit 4-5 are illumination flags (bit 4=sun glint possibility,
          *                                 bit 5=solar eclipse possibility).
-         * bits 6-7 are currently unused.
+         * bit 6 is the INR quality flag
+         * bit 7 is currently unused.
          * bits 8-15 are snow & ice flags.
          * bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1.
          */
@@ -491,6 +505,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
 
              BITMASK_SET(flags,   lc_typeqc[j] >> 4);
              BITMASK_SET(flags, illum_flags[j] << 4);
+             BITMASK_SET(flags, (inr_quality_flag[j] & 0x01) << 6);
              BITMASK_SET(flags,  snow_flags[j] << 8);
              BITMASK_SET(flags,    lc_type1[j] << 16);
 
@@ -506,8 +521,17 @@ static int set_ground_pixel_flags (Granule_Type *gt,
 return_error:
    FREE(ubytes);
    FREE(ground_flags);
+   FREE(inr_quality_flag);
 
    return status;
+}
+
+static int set_earth_sun_distance (Granule_Type *gt)
+{
+   const ECEF_Position_Type *sun = &gt->sun;
+   double x = sun->X[0], y = sun->Y[0], z = sun->Z[0];
+   double dist_km = sqrt (x*x + y*y + z+z);
+   return tio_set_earth_sun_distance (gt->ncid, dist_km * 1.e3);
 }
 
 static void free_angles_type (Angles_Type *at)
@@ -643,11 +667,21 @@ static int set_object_angles (Granule_Type *gt)
    for (i = 0; i < NUM_BANDS; i++)
      {
         Geoloc_Type *geoloc = &gt->geoloc[i];
+        int varid_sza;
 
         if (NULL == (gt->sun_angles[i] = map_object_angles (geoloc, &gt->sun)))
           return -1;
         if (NULL == (gt->sat_angles[i] = map_object_angles (geoloc, &gt->sat)))
           return -1;
+
+        /* If SZA doesn't exist, assume that means we need to define all the angle
+         * variables.  If SZA does exist, assume that means all the angle variables
+         * have been correctly defined already. */
+        if (0 != tio_inq_varid (geoloc->group, TEMPO_VAR_SZ_ANGLE, &varid_sza))
+          {
+             if (0 != tio_def_l1_radiance_angle_vars (geoloc->group))
+               return -1;
+          }
 
         if (0 != write_object_angles (geoloc->group, gt->sun_angles[i], sun_angle_names))
           return -1;
@@ -694,6 +728,7 @@ static Granule_Type *new_granule_type (void)
    gt->gt_set_elevation = set_elevation;
    gt->gt_set_object_angles = set_object_angles;
    gt->gt_set_ground_pixel_flags = set_ground_pixel_flags;
+   gt->gt_set_earth_sun_distance = set_earth_sun_distance;
 
    return gt;
 }

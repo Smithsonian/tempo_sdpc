@@ -68,6 +68,25 @@ TIO_Scan_Group_Type;
 extern int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
                                      TIO_Scan_Group_Type *sgrps);
 
+/** Define solar and viewing angle variables for a Level 1 radiance file
+ * @param[in]  grp     NetCDF file group index
+ * @return 0 on success, -1 on error
+ */
+extern int tio_def_l1_radiance_angle_vars (int grp);
+
+/** Define ground pixel quality flag variable for a Level 1 radiance file
+ * @param[in]  grp     NetCDF file group index
+ * @return 0 on success, -1 on error
+ */
+extern int tio_def_var_ground_pixel_quality_flag (int grp);
+
+/** Define earth-sun distance
+ * @param[in]  grp    NetCDF file group index
+ * @param[in]  earth_sun_distance  Earth-sun distance [meters]
+ * @return 0 on success, -1 on error
+ */
+extern int tio_set_earth_sun_distance (int grp, double earth_sun_distance);
+
 /** Create a template Level 1 irradiance data file
  * @param  ncid          Index returned by nc_create
  * @param  num_steps     Number of mirror steps

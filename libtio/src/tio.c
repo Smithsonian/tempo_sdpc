@@ -345,6 +345,11 @@ int TIO_close (int ncid)
    return 0;
 }
 
+int tio_inq_varid (int grp, const char *name, int *varid)
+{
+   return nc_inq_varid (grp, name, varid);
+}
+
 int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
 {
    int status, i;

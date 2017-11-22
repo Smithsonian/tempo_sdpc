@@ -70,6 +70,34 @@ static int define_radiance_group_dims (int grp, _pDim_Table_Type *dim_table)
    return _pTIO_define_dims_using_offsets (grp, dim_offsets, dim_table);
 }
 
+int tio_set_earth_sun_distance (int grp, double earth_sun_distance)
+{
+   _pText_Attr_Type earth_sun_distance_attrs[] =
+     {
+        {"units", "m"},
+        {"comment", "Earth sun distance"},
+        _pTEXT_ATTRS_END
+     };
+   const char name[] = TEMPO_VAR_EARTH_SUN_DISTANCE;
+   float esd = earth_sun_distance;
+   int varid, status;
+
+   if (NC_NOERR != nc_inq_varid (grp, name, &varid))
+     {
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, name, NC_FLOAT, 0, NULL, earth_sun_distance_attrs, &varid))
+          return -1;
+     }
+
+   if (NC_NOERR != (status = nc_put_var_float (grp, varid, &esd)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing earth sun distance (%s)",
+                     __func__, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
 static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
    int status, varid, dims[TIO_MAX_VAR_DIMS];
@@ -133,23 +161,8 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      }
 
    /* earth_sun_distance */
-     {
-        static _pText_Attr_Type earth_sun_distance_attrs[] =
-          {
-             {"units", "m"},
-             {"comment", "Earth sun distance"},
-             _pTEXT_ATTRS_END
-          };
-        float earth_sun_distance = _pTIO_EARTH_SUN_DISTANCE;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_EARTH_SUN_DISTANCE, NC_FLOAT, 0, NULL, earth_sun_distance_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &earth_sun_distance)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing earth sun distance (%s)",
-                          __func__, nc_strerror(status));
-             return -1;
-          }
-     }
+   if (0 != tio_set_earth_sun_distance (grp, _pTIO_EARTH_SUN_DISTANCE))
+     return -1;
 
    return 0;
 }
@@ -354,7 +367,7 @@ static _pName_UInt_Pair_Type GPQF_Pairs[] =
   _pNAME_UINT_LIST_END
 };
 
-static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_table)
+static int emit_var_ground_pixel_quality_flag (int grp, const int *dims, int num_dims)
 {
    static _pText_Attr_Type gpqf_attrs[] =
      {
@@ -362,13 +375,17 @@ static int emit_var_ground_pixel_quality_flag (int grp, _pDim_Table_Type *dim_ta
         {"coordinates", "longitude latitude"},
         _pTEXT_ATTRS_END
      };
-   int status, varid, dims[2], num_values, len;
+   int status, varid, num_values, len;
    unsigned int *flag_values = NULL;
    char *flag_meanings = NULL;
    int error_status = -1;
 
-   dims[0] = dim_table->step.id;
-   dims[1] = dim_table->xtrack.id;
+   if (num_dims != 2)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: unexpected number of dimensions", __func__);
+        return error_status;
+     }
+
    if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GROUND_PIXEL_QF, NC_UINT, 2, dims, gpqf_attrs, &varid))
      return error_status;
    if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_UINT))
@@ -408,6 +425,114 @@ cleanup_and_return:
    TIO_FREE(flag_values);
 
    return error_status;
+}
+
+static int define_radiance_group_angle_vars (int grp, const int *dims, int num_dims)
+{
+   _pText_Attr_Type sza_text_attrs[] =
+     {
+        {"units", "degrees"},
+        {"long_name", TEMPO_VAR_SZ_ANGLE},
+        {"comment", "solar zenith angle at pixel center"},
+        _pTEXT_ATTRS_END
+     };
+   _pFloat_Attr_Type sza_float_attrs[] =
+     {
+        {"valid_min",   0.0},
+        {"valid_max", +90.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   _pText_Attr_Type saa_text_attrs[] =
+     {
+        {"units", "degrees"},
+        {"long_name", TEMPO_VAR_SA_ANGLE},
+        {"comment", "solar azimuth angle at pixel center"},
+        _pTEXT_ATTRS_END
+     };
+   _pFloat_Attr_Type saa_float_attrs[] =
+     {
+        {"valid_min", -180.0},
+        {"valid_max", +180.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   _pText_Attr_Type vza_text_attrs[] =
+     {
+        {"units", "degrees"},
+        {"long_name", TEMPO_VAR_VZ_ANGLE},
+        {"comment", "viewing zenith angle at pixel center"},
+        _pTEXT_ATTRS_END
+     };
+   _pFloat_Attr_Type vza_float_attrs[] =
+     {
+        {"valid_min",   0.0},
+        {"valid_max", +90.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   _pText_Attr_Type vaa_text_attrs[] =
+     {
+        {"units", "degrees"},
+        {"long_name", TEMPO_VAR_VA_ANGLE},
+        {"comment", "viewing azimuth angle at pixel center"},
+        _pTEXT_ATTRS_END
+     };
+   _pFloat_Attr_Type vaa_float_attrs[] =
+     {
+        {"valid_min", -180.0},
+        {"valid_max", +180.0},
+        {_FillValue, TIO_FILL_FLOAT},
+        _pFLOAT_ATTRS_END
+     };
+   int varid;
+
+   if (num_dims != 2)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: unexpected number of dimensions", __func__);
+        return -1;
+     }
+
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SZ_ANGLE, NC_FLOAT, 2, dims, sza_text_attrs, &varid))
+     return -1;
+   if (-1 == _pTIO_define_float_attrs (grp, varid, sza_float_attrs))
+     return -1;
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SA_ANGLE, NC_FLOAT, 2, dims, saa_text_attrs, &varid))
+     return -1;
+   if (-1 == _pTIO_define_float_attrs (grp, varid, saa_float_attrs))
+     return -1;
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VZ_ANGLE, NC_FLOAT, 2, dims, vza_text_attrs, &varid))
+     return -1;
+   if (-1 == _pTIO_define_float_attrs (grp, varid, vza_float_attrs))
+     return -1;
+   if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
+     return -1;
+   if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_float_attrs))
+     return -1;
+
+   return 0;
+}
+
+int tio_def_l1_radiance_angle_vars (int grp)
+{
+   int dims[2];
+
+   if ((0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dims[0]))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_XTRACK, &dims[1])))
+     return -1;
+
+   return define_radiance_group_angle_vars (grp, dims, 2);
+}
+
+int tio_def_var_ground_pixel_quality_flag (int grp)
+{
+   int dims[2];
+
+   if ((0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dims[0]))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_XTRACK, &dims[1])))
+     return -1;
+
+   return emit_var_ground_pixel_quality_flag (grp, dims, 2);
 }
 
 static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
@@ -802,101 +927,10 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
      }
 
-   /* solar zenith angle */
-     {
-        static _pText_Attr_Type sza_text_attrs[] =
-          {
-             {"units", "degrees"},
-             {"long_name", TEMPO_VAR_SZ_ANGLE},
-             {"comment", "solar zenith angle at pixel center"},
-             _pTEXT_ATTRS_END
-          };
-        static _pFloat_Attr_Type sza_float_attrs[] =
-          {
-             {"valid_min",   0.0},
-             {"valid_max", +90.0},
-             {_FillValue, TIO_FILL_FLOAT},
-             _pFLOAT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SZ_ANGLE, NC_FLOAT, 2, dims, sza_text_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, sza_float_attrs))
-          return -1;
-     }
-
-   /* solar azimuth angle */
-     {
-        static _pText_Attr_Type saa_text_attrs[] =
-          {
-             {"units", "degrees"},
-             {"long_name", TEMPO_VAR_SA_ANGLE},
-             {"comment", "solar azimuth angle at pixel center"},
-             _pTEXT_ATTRS_END
-          };
-        static _pFloat_Attr_Type saa_float_attrs[] =
-          {
-             {"valid_min", -180.0},
-             {"valid_max", +180.0},
-             {_FillValue, TIO_FILL_FLOAT},
-             _pFLOAT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SA_ANGLE, NC_FLOAT, 2, dims, saa_text_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, saa_float_attrs))
-          return -1;
-     }
-
-   /* viewing zenith angle */
-     {
-        static _pText_Attr_Type vza_text_attrs[] =
-          {
-             {"units", "degrees"},
-             {"long_name", TEMPO_VAR_VZ_ANGLE},
-             {"comment", "viewing zenith angle at pixel center"},
-             _pTEXT_ATTRS_END
-          };
-        static _pFloat_Attr_Type vza_float_attrs[] =
-          {
-             {"valid_min",   0.0},
-             {"valid_max", +90.0},
-             {_FillValue, TIO_FILL_FLOAT},
-             _pFLOAT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VZ_ANGLE, NC_FLOAT, 2, dims, vza_text_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, vza_float_attrs))
-          return -1;
-     }
-
-   /* viewing azimuth angle */
-     {
-        static _pText_Attr_Type vaa_text_attrs[] =
-          {
-             {"units", "degrees"},
-             {"long_name", TEMPO_VAR_VA_ANGLE},
-             {"comment", "viewing azimuth angle at pixel center"},
-             _pTEXT_ATTRS_END
-          };
-        static _pFloat_Attr_Type vaa_float_attrs[] =
-          {
-             {"valid_min", -180.0},
-             {"valid_max", +180.0},
-             {_FillValue, TIO_FILL_FLOAT},
-             _pFLOAT_ATTRS_END
-          };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_VA_ANGLE, NC_FLOAT, 2, dims, vaa_text_attrs, &varid))
-          return -1;
-        if (-1 == _pTIO_define_float_attrs (grp, varid, vaa_float_attrs))
-          return -1;
-     }
+   dims[0] = dim_table->step.id;
+   dims[1] = dim_table->xtrack.id;
+   if (0 != define_radiance_group_angle_vars (grp, dims, 2))
+     return -1;
 
    /* inr flags */
      {
@@ -936,7 +970,9 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      return -1;
 
    /* ground pixel quality flag */
-   if (-1 == emit_var_ground_pixel_quality_flag (grp, dim_table))
+   dims[0] = dim_table->step.id;
+   dims[1] = dim_table->xtrack.id;
+   if (-1 == emit_var_ground_pixel_quality_flag (grp, dims, 2))
      return -1;
 
    /* cloud top height */

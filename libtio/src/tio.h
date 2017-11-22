@@ -97,6 +97,14 @@ extern int TIO_close (int ncid);
  */
 extern int TIO_inq_grp (int parent_ncid, const char *path, int *grp);
 
+/** Get the variable index for a given variable name.
+ * @param  grp    Index of group containing the variable
+ * @param  name   Variable name string
+ * @param  varid  Pointer to the integer that will receive the variable index
+ * @return 0 on success, -1 on error
+ */
+extern int tio_inq_varid (int grp, const char *name, int *varid);
+
 /** Get information about a variable using its name.
  * @param  grp    Index of group containing the variable
  * @param  name   Variable name string

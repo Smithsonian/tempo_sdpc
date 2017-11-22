@@ -460,7 +460,7 @@ contains
          [num_steps, num_xtrack], terr_height(1:num_xtrack,1:num_steps), &
          errstat)
 
-    call tiof_put2d_i4 (obj, cld_var_gpqf, [0,0], &
+    call tiof_put2d_ui4 (obj, cld_var_gpqf, [0,0], &
          [num_steps, num_xtrack], geoflg(1:num_xtrack,1:num_steps), &
          errstat)
 

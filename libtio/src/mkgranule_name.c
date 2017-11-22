@@ -64,6 +64,7 @@ int main (int argc, char **argv)
    if (0 != TIO_open (radiance_file, NC_NOWRITE, &ncid))
      return 1;
 
+   buf[0] = 0;
    n = TIO_filename_from_granule (ncid, prod_abbrev, version,
                                   buf, BUFSIZE);
    (void) TIO_close (ncid);
@@ -75,7 +76,8 @@ int main (int argc, char **argv)
                      n, BUFSIZE);
         return 1;
      }
+   else if (n < 0) return 1;
 
-   fprintf (stdout, "%s\n", buf);
+   fprintf (stdout, "%s", buf);
    return 0;
 }

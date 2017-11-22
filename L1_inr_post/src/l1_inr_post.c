@@ -127,6 +127,9 @@ static int process_inputs (Granule_Type *gt, config_t *cfg,
    if (0 != gt->gt_set_object_angles (gt))
      return -1;
 
+   if (0 != gt->gt_set_earth_sun_distance (gt))
+     return -1;
+
    if (0 != set_ground_pixel_quality_flags (gt, cfg, snow_file))
      return -1;
 

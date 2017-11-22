@@ -47,6 +47,16 @@ struct Granule_Type
     * @return 0 on success, -1 on error
     */
 
+   int (*gt_set_earth_sun_distance) (Granule_Type *);
+   /**< Set Earth-Sun distance
+    * @param[in] gt  pointer to Granule_Type object from granule_open
+    * @return 0 on success, -1 on error
+    *
+    * This function uses the (X,Y,Z) coordinates of the Sun provided
+    * by INR processing to define an Earth-Sun distance global variable
+    * in the output NetCDF file.
+    */
+
 #ifdef GRANULE_PRIVATE_DATA
    GRANULE_PRIVATE_DATA
 #endif
