@@ -3,11 +3,11 @@ module m_write_metadata
 
   use m_LUN_set
   use m_pgs_include
-  use m_vars, only: filename_in_nc
+  use m_vars, only: filename_in_nc, lon, lat, nXtrack, nLines
   use tell_module
-  use netcdf
+  use netcdf, only: nf90_nowrite, nf90_global, nf90_noerr, nf90_get_att
   use tio_module
-  use ISO_C_BINDING, only: C_NULL_CHAR
+  use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
 
   implicit none
   private
@@ -40,14 +40,15 @@ contains
     integer, parameter :: ninp = 9
     integer, parameter :: ninvname=5
 
-    integer :: pgs_MET_setAttr_s, pgs_MET_setmultiAttr_s
+    integer :: pgs_MET_setAttr_s, pgs_MET_setAttr_i, pgs_MET_setmultiAttr_s, &
+         pgs_MET_setmultiAttr_d, pgs_MET_setmultiAttr_i
     integer :: pgs_met_init,pgs_met_write, pgs_pc_getreference, &
          pgs_met_sfstart, pgs_met_sfend, pgs_met_remove
 
     integer :: i, status, returnstatus, version, sdid, Fil_Lun, j, &
          resid_id
 
-    character(LEN=PGSd_MET_GROUP_NAME_L) :: GROUPS(PGSd_MET_NUM_OF_GROUPS)
+    character(LEN=PGSd_MET_GROUP_NAME_L), dimension(PGSd_MET_NUM_OF_GROUPS) :: GROUPS
     character(LEN=100), dimension(50) :: Objvalue
     character(LEN=100), dimension(ninp) :: InputPnt,supflnm
     character(LEN=200) :: buf
@@ -58,13 +59,62 @@ contains
          "RANGEENDINGTIME                  ", &
          "RANGEBEGINNINGDATE               ", &
          "RANGEBEGINNINGTIME               "/)
-    character (len=4) :: NULL = C_NULL_CHAR
+    character (kind=C_CHAR) :: NULL = C_NULL_CHAR
+
+
+
+    ! Additional attributes
+    integer, parameter :: nadd = 2
+    character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
+
+    ! bounding polgon / footprint parameters
+    integer, parameter :: nintermed = 3 ! change dimensions and MCF if changing from 3
+    integer :: npts, n, xtidx, atidx
+    integer (kind=4), dimension(0:15) :: xtstep, atstep
+    integer (kind=C_INT), dimension(16) :: polygon_seq
+    real (kind=C_DOUBLE), dimension(16) :: polygon_lats, polygon_lons
+    real (kind=4) :: center_lat, center_lon
 
     integer :: ncerr
-    character (len=256) :: cov_start_string, cov_end_string
+    character (len=32) :: cov_start_string, cov_end_string
+
     type(tiof_file_type) :: tio_l1obj
 
     status = OMI_S_SUCCESS
+    errstat = 0
+
+    ! Bounding polgon points
+    ! One position for each corner, nintermed points along each side
+    ! Note that MCF specifies total number of values in polygon, so has to be
+    ! updated if you change nintermed, as well as polygon variable dimensions
+    npts = 4+(4*nintermed) ! number of points in polygon
+
+    do n=0,npts/2
+      xtstep(n)=0+(n-(nintermed+1))
+      atstep(n)=0+n
+      if(atstep(n) > (nintermed+1)) atstep(n) = nintermed+1
+      if(xtstep(n) < 0) xtstep(n) = 0
+    enddo
+    do n=(npts/2)+1,npts-1
+      xtstep(n)=atstep(npts-n)
+      atstep(n)=xtstep(npts-n)
+    enddo
+    do n=1,npts
+      xtidx=1+int((nXtrack-1)*xtstep(n-1)/(nintermed+1))
+      atidx=1+int((nLines-1)*atstep(n-1)/(nintermed+1))
+      polygon_lats(n)=lat(xtidx, atidx)
+      polygon_lons(n)=lon(xtidx, atidx)
+      polygon_seq(n)=n
+    enddo
+    ! Mean longitude and latitude
+    center_lon=lon(nXtrack/2,nLines/2)
+    center_lat=lat(nXtrack/2,nLines/2)
+
+    ! Centroid values classed as additional attributes
+    AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
+    AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
+    write(AddAttrVal(1),'(f14.9)') center_lon
+    write(AddAttrVal(2),'(f14.9)') center_lat
 
     !
     ! TBD - here we need a section reading metadata from input radiance file
@@ -144,7 +194,7 @@ contains
 
     ! Set up metadata file in memory
     returnstatus = pgs_met_init(MCF_LUN, GROUPS)
-    if(returnstatus /= 0 ) then
+    if (returnstatus /= 0 ) then
       call tell_error(tell_io_error, &
            "write_metadata: failed to initialise metadata file", errstat)
       return
@@ -154,7 +204,7 @@ contains
     do i=1,ninvname
       returnstatus = pgs_met_setattr_s(GROUPS(INVENTORY),trim(INVOBJ(i)), &
            Objvalue(i))
-      if(returnstatus /= 0 ) then
+      if (returnstatus /= 0 ) then
         call tell_error(tell_io_error, &
              "write_metadata: failed to set input filenames", errstat)
         return
@@ -164,17 +214,46 @@ contains
     returnstatus = pgs_MET_setmultiAttr_s(GROUPS(INVENTORY),"InputPointer", &
          ninp,InputPnt)
 
-    if(returnstatus /=0)then
+    if (returnstatus /= 0) then
       call tell_error(tell_io_error, &
            "write_metadata: failed to set input pointer", errstat)
       return
     endif
 
+    returnstatus = pgs_MET_setmultiAttr_i(GROUPS(INVENTORY), &
+         "GRINGPOINTSEQUENCENO.1", npts, polygon_seq)
+    returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
+         "GRINGPOINTLATITUDE.1", npts, polygon_lats)
+    returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
+         "GRINGPOINTLONGITUDE.1", npts, polygon_lons)
+
+    if(returnstatus /= 0)then
+      call tell_error(tell_io_error, &
+           "write_metadata: failed to set bounding polygon", errstat)
+      return
+    endif
+
+    do i=1,nadd
+      write(buf,*) i
+      buf=adjustl(buf)
+      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
+           "ADDITIONALATTRIBUTENAME."//trim(buf),AddAttrNam(i))
+      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
+           "PARAMETERVALUE."//trim(buf),AddAttrVal(i))
+      if (returnstatus /= 0) then
+        call tell_error(tell_io_error, &
+             "write_metadata: failed to set additional attr "//trim(buf), &
+             errstat)
+        return
+      endif
+    enddo
+
+
     version =1
 
     returnstatus = pgs_met_sfstart( trim(outfilnm), HDF5_ACC_RDWR,sdid)
 
-    if(returnstatus /=0) then
+    if(returnstatus /= 0) then
       call tell_error(tell_io_error, &
            "write_metadata: failed to open .met file", errstat)
       return
