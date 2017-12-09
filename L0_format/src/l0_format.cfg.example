@@ -1,0 +1,33 @@
+format_version = "1.0";
+
+main: {
+   incoming_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out";
+   input_filename_glob_pattern = "tempo_d*.???";
+   tpinfo_file = "/vex/d0/tmp/ioc_sdpc_interface/tempo_tpmeta_r7.csv";
+   monitor_wait_secs = 5.0;
+   daemon_logfile_path = "/vex/d0/tmp/ioc_sdpc_interface/l0.log";
+};
+
+tpsec: {
+   processing_version = 1;
+   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
+   outfile_deltat_sec = 300.0;
+};
+
+exprec: {
+   processing_version = 1;
+   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
+   outfile_capacity = 128;
+};
+
+smc: {
+   processing_version = 1;
+   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
+   outfile_deltat_sec = 300.0;
+};
+
+iru: {
+   processing_version = 1;
+   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
+   outfile_deltat_sec = 300.0;
+};

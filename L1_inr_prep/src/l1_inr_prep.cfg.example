@@ -1,0 +1,23 @@
+#
+# Parameters controlling the generation of
+# telemetry-only radiance files:
+#
+telemetry_only_config: {
+  target_dir = "/vex/d0/tmp/inr_in";
+  processing_version = 1;
+};
+
+smc_config: {
+  file_glob = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/*smc0.nc";
+  num_pad = 10;
+};
+
+iru_config: {
+  file_glob = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/*iru0.nc";
+  num_pad = 10;
+};
+
+ephemeris_config: {
+  file = "sample_ephem.csv";
+  num_pad = 10;
+};

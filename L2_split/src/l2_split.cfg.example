@@ -1,0 +1,40 @@
+# L2_split configuration file
+#
+# min, delta in degrees
+# num = number of grid points
+# num_extra_points = [optional] Number of extra points used to
+#                  represent each pixel boundary along this
+#                  dimension. num_extra_points=0 [default] means
+#                  only the corner points are used.
+#
+mesh: {
+   longitude = {delta = 0.1; min = -180.0; num = 3600;};
+   latitude  = {delta = 0.1; min =  -90.0; num = 1800;};
+};
+
+trop_thresh = 0.3e15;
+
+filter: {
+   block   = {num_dim0 = 10; num_dim1 = 10;};
+   # block 10x10 0.1 degrees pixels to yield 1 degree pixels
+
+   smooth1 = {num_dim0 = 20; num_dim1 = 30;};
+   # boxcar smoothing window (pre-clip)
+
+   clip    = {num_dim0 = 10; num_dim1 = 15; stddev = 1.5;};
+   # sigma clipping window and clipping criterion
+
+   smooth2 = {num_dim0 =  3; num_dim1 =  5;};
+   # boxcar smoothing window (post-clip)
+};
+
+refdata: {
+# January:
+# apriori_trop_file = "/tmp/mean_no2_filt_200701.nc";
+# testdata_file = "/tmp/OMI_GRIDDED_DATA_0.10x0.10_2007_01_15.nc";
+
+# July:
+ apriori_trop_file = "/tmp/mean_no2_filt_200707.nc";
+ testdata_file = "/tmp/OMI_GRIDDED_DATA_0.10x0.10_2007_07_15.nc";
+};
+
