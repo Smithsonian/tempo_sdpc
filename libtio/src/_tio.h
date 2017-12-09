@@ -23,6 +23,7 @@ extern "C" {
 #define _pTIO_TIME_COVERAGE_START   "2017-01-01T12:00:00Z"
 #define _pTIO_TIME_COVERAGE_END     "2017-01-01T13:00:00Z"
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
+#define _pTIO_PHOTON_UNITS "photons/s/cm^2/nm/sr"
 
 #define TIO_REALLOC realloc
 #define TIO_MALLOC malloc
