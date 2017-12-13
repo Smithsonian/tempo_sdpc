@@ -20,6 +20,7 @@ contains
 
     USE sao_pge_utils, ONLY: signdp
     USE integration_routines, ONLY: cubint
+    use slatec_davint, only : davint
     IMPLICIT NONE
 
     ! ---------------
@@ -37,7 +38,7 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                        :: i, j, nslit, sslit, eslit
+    INTEGER (KIND=i4)                        :: i, j, nslit, sslit, eslit, davint_err
     REAL    (KIND=r8)                        :: slitsum, sliterr, cwvl, lwvl, rwvl
     REAL    (KIND=r8), DIMENSION (3*npoints) :: spc_temp, wvl_temp, sf_val, xtmp, ytmp
 
@@ -110,11 +111,24 @@ contains
       ! ----------------------------------------------------------------
       xtmp(1:nslit) = wvl_temp(sslit:eslit)-cwvl
       ytmp(1:nslit) = sf_val  (sslit:eslit)
-      CALL cubint ( &
-        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
-      !!CALL DAVINT ( &
-      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-      !!     slitsum, locerrstat )
+!      CALL cubint ( &
+!        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
+!      !!CALL DAVINT ( &
+!      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+!      !!     slitsum, locerrstat )
+      if (nslit > 3) then
+        ! jch - it's an error to call cubint with nslit < 4
+        CALL cubint ( &
+          nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
+      else
+        CALL DAVINT ( &
+          xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+          slitsum, davint_err )
+        if (davint_err /= 1) then
+          write (*,*)'*** asymmetric_gaussian_sf::davint failed, davint_err=', &
+            davint_err
+        endif
+      endif
 
       IF ( slitsum > 0.0_r8 ) sf_val(sslit:eslit) = sf_val(sslit:eslit) / slitsum
 
@@ -127,11 +141,24 @@ contains
       ! ----------------------------------------------------------
       ! Folding (a.k.a. integration) of spectrum and slit function
       ! ----------------------------------------------------------
-      !!CALL DAVINT ( &
-      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-      !!     specmod(i), locerrstat )
-      CALL cubint ( &
-        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, specmod(i), sliterr)
+!      !!CALL DAVINT ( &
+!      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+!      !!     specmod(i), locerrstat )
+!      CALL cubint ( &
+!        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, specmod(i), sliterr)
+      if (nslit > 3) then
+        ! jch - it's an error to call cubint with nslit < 4
+        CALL cubint ( &
+          nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, specmod(i), sliterr)
+      else
+        CALL DAVINT ( &
+           xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+           specmod(i), davint_err )
+        if (davint_err /= 1) then
+          write (*,*)'*** asymmetric_gaussian_sf::davint failed, davint_err=', &
+            davint_err
+        endif
+      endif
     END DO
 
     RETURN

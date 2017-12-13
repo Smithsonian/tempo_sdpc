@@ -17,7 +17,8 @@ $(ODIR)/slitfunction_omi.o: $(SDIR)/slitfunction_omi.f90 \
 $(ODIR)/slitfunction_asym_gaussian.o: $(SDIR)/slitfunction_asym_gaussian.f90 \
   $(ODIR)/integration_routines.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/sao_pge_utils.o
+  $(ODIR)/sao_pge_utils.o \
+  $(ODIR)/SLATEC_davint.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_asym_gaussian.f90 -o $(ODIR)/slitfunction_asym_gaussian.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/cache_module.o: $(SDIR)/cache_module.f90 \
   $(ODIR)/OMSAO_precision_module.o

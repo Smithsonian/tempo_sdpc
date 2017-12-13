@@ -2143,7 +2143,7 @@ CONTAINS
     iwavf = MINLOC(ABS(lut_wav - REAL(amf_wvl2, KIND = r4) ),1)
     nwav = iwavf - iwavs + 1
 
-    write(logmsg, '(a)')'Computting scattering weights...'
+    write(logmsg, '(a)')'Computing scattering weights...'
     call tell_log (1, logmsg)
 
     ! ---------------
@@ -2163,14 +2163,7 @@ CONTAINS
           ! initialized to 0.0 to work out the average
           ! ----------------------------------------------
           scattw(ixtrack,itime,:) = 0.0_r8
-          
-          ! ----------------------------------------------
-          ! If sza > amf_max_sza set it for calculation to
-          ! amf_max_sza
-          ! ----------------------------------------------
-          local_sza = REAL(sza(ixtrack,itime), KIND = r8)
-          IF (local_sza .GT. amf_max_sza) local_sza = amf_max_sza
-          
+
           ! -----------------------------------
           ! Fill up local values for this pixel
           ! -----------------------------------
@@ -2182,6 +2175,17 @@ CONTAINS
           local_srf = REAL(terrain_height(ixtrack,itime), KIND = r8)
           local_ozo_wgh(1:2) = cli_wgh_ozo_pro(ixtrack,itime,1:2)
           local_ozo_idx(1:2) = cli_idx_ozo_pro(ixtrack,itime,1:2)
+          ! ----------------------------------------------
+          ! If sza > amf_max_sza set it for calculation to
+          ! amf_max_sza
+          ! ----------------------------------------------
+          IF (local_sza .GT. amf_max_sza) local_sza = amf_max_sza
+          !------------------------------------------------------
+          ! We also need to check vza for values >max(vza_lut)
+          ! or else flag pixel as bad and move on...
+          ! -----------------------------------------------------
+          ! FIXME - reset value is arbitrary
+          IF (local_vza .GT. maxval(lut_vza)) local_vza = maxval(lut_vza)-0.1
 
           ! ----------------------
           ! Relative azimuth angle
@@ -2638,7 +2642,6 @@ CONTAINS
         ! Temporary random generation of tropopause pressure.
         ! ---------------------------------------------------
         IF (yn_stratrop) THEN ! <<- FIXME
-
            ! Allocate pressure_grid and temperature vertical profile
            ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
                 alpha(1:CmETA))
