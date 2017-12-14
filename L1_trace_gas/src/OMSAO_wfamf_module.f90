@@ -163,7 +163,7 @@ CONTAINS
   end subroutine wfamf_deallocate
 
   SUBROUTINE amf_calculation_bis (            &
-      pge_idx, nt, nx, lat, lon, sza, vza, time,  &
+      pge_idx, nt, nx, lat, lon, sza, vza, saa, vaa, time,  &
       snow, glint, xtrange, do_szoom,        &
       saocol, saodco, saoamf, terrain_height,&
       do_write, errstat                                )
@@ -190,7 +190,8 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx, pge_idx
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, sza, vza, terrain_height
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, sza, &
+         vza, saa, vaa, terrain_height
     REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
     LOGICAL,           DIMENSION (     0:nt-1), INTENT (IN) :: do_szoom
@@ -361,7 +362,7 @@ CONTAINS
        ! Compute Scattering weights in the look up table grid but
        ! with the correct albedo. amfdiag is used to skip pixel
        ! ---------------------------------------------------------
-       CALL compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, &
+       CALL compute_scatt ( nt, nx, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
             lat, lon, amfdiag, scattw)
 
@@ -2082,11 +2083,13 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_diagnostic
 
-  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, l2ctp, l2cfr, terrain_height, &
+  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, terrain_height, &
        surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
+    use sao_pge_utils, only: calc_relaz_angle
+
     IMPLICIT NONE
 
     ! ---------------
@@ -2094,7 +2097,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: nt, nx
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
-    REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, terrain_height, lat, lon
+    REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, saa, vaa, terrain_height, lat, lon
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_idx_ozo_pro
@@ -2127,7 +2130,8 @@ CONTAINS
     REAL (KIND=r8), DIMENSION(:,:,:), ALLOCATABLE :: Rad_3D_clear, Rad_3D_cloud
     REAL (KIND=r8), DIMENSION(:,:,:,:,:), ALLOCATABLE :: Sca_5D_clear, Sca_5D_cloud
     REAL (KIND=r8) :: local_alb, local_sza, local_vza, local_srf, local_ctp, &
-         local_cfr, local_raa, out_pre_lay, seed
+         local_cfr, local_raa, out_pre_lay
+    real (kind=4) :: local_saa, local_vaa
 
     ! Error variables
     INTEGER (KIND=i4) :: locerrstat
@@ -2172,6 +2176,8 @@ CONTAINS
           local_cfr = l2cfr(ixtrack,itime)
           local_sza = REAL(sza(ixtrack,itime), KIND = r8)  ! JED fix
           local_vza = REAL(vza(ixtrack,itime), KIND = r8)  ! JED fix
+          local_saa = saa(ixtrack,itime)
+          local_vaa = vaa(ixtrack,itime)
           local_srf = REAL(terrain_height(ixtrack,itime), KIND = r8)
           local_ozo_wgh(1:2) = cli_wgh_ozo_pro(ixtrack,itime,1:2)
           local_ozo_idx(1:2) = cli_idx_ozo_pro(ixtrack,itime,1:2)
@@ -2190,17 +2196,15 @@ CONTAINS
           ! ----------------------
           ! Relative azimuth angle
           ! ----------------------
-          ! Generate dummy values of vaa and saa
-          CALL RANDOM_NUMBER(seed) !<-- FIXME
-          local_raa = -180.0 + seed * 360.0 ! -180 to 180 degrees range
-          
+          local_raa = calc_relaz_angle(local_saa,local_vaa)
+
           ! ----------------------------------------------
           ! Convert pixel terrain height to pressure using
           ! Xiong suggested to use pressure altitude:
           !  Z = -16 alog10 (P / Po) Z in km and P in hPa.
           ! ----------------------------------------------
           local_srf = 1013.0_r8 * (10.0_r8 ** (local_srf / 1000.0_r8 / (-16.0_r8)))
-             
+
           ! ------------------------------------------------------
           ! Bringing it to the lowest available pressure if needed
           ! ------------------------------------------------------

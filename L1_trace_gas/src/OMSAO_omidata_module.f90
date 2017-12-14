@@ -13,7 +13,7 @@ MODULE OMSAO_omidata_module
     real (kind=r8), dimension(:,:), allocatable :: rms
     real (kind=r8), dimension(:), allocatable :: time
     real (kind=r4), dimension(:,:), allocatable :: latitude, longitude, height
-    real (kind=r4), dimension(:,:), allocatable :: sza, vza
+    real (kind=r4), dimension(:,:), allocatable :: sza, vza, saa, vaa
     integer (kind=i2), dimension(:,:), allocatable :: fit_flag, xtr_flag
     integer (kind=i4) :: nxtrack, ntimes
   end type retrieval_type
@@ -366,6 +366,10 @@ contains
          deallocate (rt%sza, stat=errstat)
     if (allocated (rt%vza) .and. errstat == 0) &
          deallocate (rt%vza, stat=errstat)
+    if (allocated (rt%saa) .and. errstat == 0) &
+         deallocate (rt%saa, stat=errstat)
+    if (allocated (rt%vaa) .and. errstat == 0) &
+         deallocate (rt%vaa, stat=errstat)
     if (allocated (rt%fit_flag) .and. errstat == 0) &
          deallocate (rt%fit_flag, stat=errstat)
     if (allocated (rt%xtr_flag) .and. errstat == 0) &
@@ -399,6 +403,8 @@ contains
       rt%height(nxtrack, 0:ntimes-1), &
       rt%sza(nxtrack, 0:ntimes-1), &
       rt%vza(nxtrack, 0:ntimes-1), &
+      rt%saa(nxtrack, 0:ntimes-1), &
+      rt%vaa(nxtrack, 0:ntimes-1), &
       rt%fit_flag(nxtrack, 0:ntimes-1), &
       rt%xtr_flag(nxtrack, 0:ntimes-1), &
       rt%time(0:ntimes-1), stat=locerrstat)
@@ -417,6 +423,8 @@ contains
     rt%height = r4_missval
     rt%sza = r4_missval
     rt%vza = r4_missval
+    rt%saa = r4_missval
+    rt%vaa = r4_missval
     rt%fit_flag = i2_missval
     rt%xtr_flag = i2_missval
 

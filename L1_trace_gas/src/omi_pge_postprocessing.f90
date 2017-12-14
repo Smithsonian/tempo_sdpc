@@ -60,7 +60,8 @@ SUBROUTINE omi_pge_postprocess ( &
   ! (1) OMI data
   ! ----------------
   REAL    (KIND=r8), DIMENSION (0:ntimes-1) :: time
-  REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1) :: lat, lon, sza, vza, thg
+  REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1) :: lat, lon, sza, vza, &
+       saa, vaa, thg
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg
@@ -91,7 +92,7 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
   CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
   else
-    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thg, time, errstat)
+    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thg, time, errstat)
     if (errstat /= 0) return
   endif
 
@@ -137,7 +138,7 @@ SUBROUTINE omi_pge_postprocess ( &
   do_write = .TRUE.
   call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation_bis')
   CALL amf_calculation_bis (                             &
-    pge_idx, ntimes, nxtrack, lat, lon, sza, vza, time,  &
+    pge_idx, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, time,  &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
     saocol, saodco, saoamf, thg, do_write, &
     errstat              )

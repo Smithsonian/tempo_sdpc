@@ -13,6 +13,7 @@ module output_tools
   use OMSAO_precision_module
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights, &
        yn_stratrop
+  use sao_pge_utils, only: calc_relaz_angle
 
   implicit none
   private
@@ -933,7 +934,6 @@ contains
     real (kind=r8), dimension(:,:,:), pointer :: waves, meas, model, weights
     real (kind=r4), dimension(1:nxtrack,0:nblock-1) :: relative_azimuth
     integer :: i,j
-    real (kind=r4) :: razi, sazi, vazi
 
     if (errstat /= 0) return
 
@@ -993,17 +993,8 @@ contains
     relative_azimuth(:,:) = fill_float
     do j=0,nblock-1
       do i=1,nxtrack
-        vazi = input_vars % viewing_azimuth(i,j)
-        sazi = input_vars % solar_azimuth(i,j)
-        if (abs(vazi) <= 360.0 .and. abs(sazi) <= 360.0) then
-          razi = vazi - sazi
-          if (razi > 180.0) then
-            razi = razi - 360.0
-          else if (razi < -180.0) then
-            razi = razi + 360.0
-          endif
-          relative_azimuth(i,j) = razi
-        endif
+        relative_azimuth(i,j) = calc_relaz_angle( &
+             input_vars%solar_azimuth(i,j), input_vars%viewing_azimuth(i,j))
       enddo
     enddo
 
@@ -1639,17 +1630,20 @@ contains
   !! @param[inout] lon   Longitude [deg]
   !! @param[inout] sza   Solar zenith angle [deg]
   !! @param[inout] vza   Viewing zenith angle [deg]
+  !! @param[inout] saa   Solar azimuth angle [deg]
+  !! @param[inout] vaa   Viewing azimuth angle [deg]
   !! @param[inout] thgt  Terrain height
   !! @param[inout] time  Time [s]
   !! @param[inout] errstat  Error status variable
-  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, thgt, time, errstat)
+  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thgt, time, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
     use tio_module
     implicit none
 
     integer (kind=i4), intent(in) :: ntimes, nxtrack
     ! these arrays are (1:nxtrack,0:ntimes-1)
-    real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, thgt
+    real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, &
+         saa, vaa, thgt
     real (kind=r8), dimension(:), intent(inout) :: time
     integer, intent(inout) :: errstat
 
@@ -1665,6 +1659,8 @@ contains
     call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_vz_angle, [0,0], [ntimes, nxtrack], vza(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r4 (obj, tg_var_sa_angle, [0,0], [ntimes, nxtrack], saa(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r4 (obj, tg_var_va_angle, [0,0], [ntimes, nxtrack], vaa(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
     call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)

@@ -86,6 +86,7 @@ $(ODIR)/output_tools.o: $(SDIR)/output_tools.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/sao_pge_utils.o \
   $(ODIR)/tg_names_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/output_tools.f90 -o $(ODIR)/output_tools.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/integration_routines.o: $(SDIR)/integration_routines.f90 \
@@ -341,7 +342,8 @@ $(ODIR)/OMSAO_wfamf_module.o: $(SDIR)/OMSAO_wfamf_module.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/output_tools.o
+  $(ODIR)/output_tools.o \
+  $(ODIR)/sao_pge_utils.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_wfamf_module.f90 -o $(ODIR)/OMSAO_wfamf_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/prepare_databases.o: $(SDIR)/prepare_databases.f90 \
   $(ODIR)/arrayutils.o \

@@ -20,7 +20,8 @@ SUBROUTINE swathline_loops (                               &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
     omi_column_uncert, omi_time_utc, omi_time, omi_fit_rms,    &    !omi_radiance_errstat, 
     omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
-    retrieval_type, input_vars, result_vars, radfit_diagnostics_type
+    retrieval_type, input_vars, result_vars, radfit_diagnostics_type, &
+    omi_sazimuth, omi_vazimuth
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   !USE OMSAO_errstat_module
   USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
@@ -266,6 +267,8 @@ SUBROUTINE swathline_loops (                               &
           retrieval_opt%longitude(fpix:lpix,scanline_no)          = omi_longitude(fpix:lpix,iloop)
           retrieval_opt%sza(fpix:lpix,scanline_no)                = omi_szenith(fpix:lpix,iloop)
           retrieval_opt%vza(fpix:lpix,scanline_no)                = omi_vzenith(fpix:lpix,iloop)
+          retrieval_opt%saa(fpix:lpix,scanline_no)                = omi_sazimuth(fpix:lpix,iloop)
+          retrieval_opt%vaa(fpix:lpix,scanline_no)                = omi_vazimuth(fpix:lpix,iloop)
           retrieval_opt%fit_flag(fpix:lpix,scanline_no)           = omi_fitconv_flag(fpix:lpix,iloop)
           retrieval_opt%xtr_flag(fpix:lpix,scanline_no)           = omi_xtrflg(fpix:lpix,iloop)
           retrieval_opt%height(fpix:lpix,scanline_no)             = REAL(omi_height(fpix:lpix,iloop), KIND = r4)
