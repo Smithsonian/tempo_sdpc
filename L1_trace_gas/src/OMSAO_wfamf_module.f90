@@ -2190,7 +2190,7 @@ CONTAINS
           ! We also need to check vza for values >max(vza_lut)
           ! or else flag pixel as bad and move on...
           ! -----------------------------------------------------
-          ! FIXME - reset value is arbitrary
+          ! reset value is arbitrary, but approved by Gonzalo
           IF (local_vza .GT. maxval(lut_vza)) local_vza = maxval(lut_vza)-0.1
 
           ! ----------------------

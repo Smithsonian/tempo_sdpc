@@ -132,6 +132,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
+    type (tiof_attlist_type) :: att_coord
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_xtrack_step_levels, dimsizes_xtrack_step_levels
     integer, dimension(3) :: chunksizes
@@ -150,6 +151,10 @@ contains
                               dimids_xtrack_step_levels, &
                               errstat, dimsizes = dimsizes_xtrack_step_levels)
 
+    ! coordinates for 2D variables
+    call tiof_attlist_append (att_coord, errstat, "coordinates", &
+                              att_text = trim(tg_var_longitude) &
+                              //' '//trim(tg_var_latitude))
     ! append amf variables
     chunksizes(1) = min(dimsizes_xtrack_step_levels(1), 128)  ! xtrack dimension
     chunksizes(2) = min(dimsizes_xtrack_step_levels(2), 128)  ! step dimension
@@ -163,7 +168,8 @@ contains
                               valid_range = [-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              chunksizes = chunksizes)
+                              chunksizes = chunksizes, &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
                               nf90_double, &
@@ -173,13 +179,15 @@ contains
                               valid_range = [-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              chunksizes = chunksizes)
+                              chunksizes = chunksizes, &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_albedo, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               comment = "albedo", &
-                              valid_range = [-1e30_r8, 1e30_r8])
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              attlist = att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_molecule_specific, &
@@ -187,31 +195,36 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "molecule-specific air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_diagnostic_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "diagnostic flag for molecule-specific air mass factor (AMF)", &
-                              valid_range = [-2.0_r8, 13127.0_r8])
+                              valid_range = [-2.0_r8, 13127.0_r8], &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_geometric, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "geometric air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8])
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_fraction, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "adjusted cloud fraction for AMF computation", &
-                              valid_range = [0.0_r8, 1e30_r8])
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "adjusted cloud pressure for AMF computation", &
-                              valid_range = [0.0_r8, 1e30_r8])
+                              valid_range = [0.0_r8, 1e30_r8], &
+                              attlist = att_coord)
     IF (yn_stratrop) THEN
        call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_molecule_tropospheric, &
@@ -219,14 +232,16 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "molecule-specific tropospheric air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
        call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_molecule_stratospheric, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "molecule-specific tropospheric air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
     END IF
 
     call tiof_def_vars (obj, varlist, errstat)
@@ -242,6 +257,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
+    type (tiof_attlist_type) :: att_coord
     integer, dimension(2) :: dimids_xtrack_step, dimids_refwavl_xtrack
     integer, dimension(3) :: dimids_var_xtrack_step, dimsizes_var_xtrack_step
     integer, dimension(3) :: dimids_commwvl_xtrack_step, dimsizes_commwvl_xtrack_step
@@ -274,6 +290,11 @@ contains
                               dimids_refwavl_xtrack, &
                               errstat)
 
+    ! coordinates for 2D variables
+    call tiof_attlist_append (att_coord, errstat, "coordinates", &
+                              att_text = trim(tg_var_longitude) &
+                              //' '//trim(tg_var_latitude))
+
     ! append diagnostic variables
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radfit_iteration_count, &
@@ -281,7 +302,8 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "radiance fit iteration count", &
                               valid_range = [0.0_r8, 32767.0_r8], &
-                              fillvalue = fill_short)
+                              fillvalue = fill_short, &
+                              attlist = att_coord)
 
     chunksizes(1) = dimsizes_var_xtrack_step(1)  ! var dimension
     chunksizes(2) = dimsizes_var_xtrack_step(2)  ! xtrack dimension
@@ -466,7 +488,8 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "main data quality flag", &
-                              valid_range = [-1.0_r8, 2.0_r8])
+                              valid_range = [-1.0_r8, 2.0_r8], &
+                              attlist=att_coord)
     if (yn_refseccor) then
       call tiof_varlist_append (varlist, errstat, &
                                 tg_var_refseccor_vertical_column, &
@@ -475,7 +498,8 @@ contains
                                 comment = "reference sector corrected vertical_column", &
                                 units = "molec/cm2", &
                                 valid_range = [-1e30_r8, 1e30_r8], &
-                                fillvalue = fill_double)
+                                fillvalue = fill_double, &
+                                attlist=att_coord)
     endif
     call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_def_vars (obj, varlist, errstat)
@@ -488,14 +512,16 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "fit rms residual", &
                               valid_range = [0.0_r8, 1.e30_r8], &
-                              fillvalue = fill_double)
+                              fillvalue = fill_double, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radfit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "fit convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
-                              fillvalue = fill_short)
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
 
     call tiof_push_group (obj, tg_grp_qa_stats, errstat)
     call tiof_def_vars (obj, varlist_qa, errstat)
@@ -558,7 +584,8 @@ contains
                               comment = "solar zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_sa_angle, &
                               nf90_float, &
@@ -566,7 +593,8 @@ contains
                               comment = "solar azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_vz_angle, &
                               nf90_float, &
@@ -574,7 +602,8 @@ contains
                               comment = "viewing zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_va_angle, &
                               nf90_float, &
@@ -582,7 +611,8 @@ contains
                               comment = "viewing azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_relative_azimuth, &
                               nf90_float, &
@@ -590,7 +620,8 @@ contains
                               comment = "relative azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_surface_pressure, &
                               nf90_float, &
@@ -598,7 +629,8 @@ contains
                               comment = "surface pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1030.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     IF (yn_stratrop) THEN
        call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_tropopause_pressure, &
@@ -607,7 +639,8 @@ contains
                               comment = "tropopause pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1030.0_r8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
     END IF
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_terrain_height, &
@@ -616,7 +649,8 @@ contains
                               comment = "terrain height", &
                               units = "m", &
                               valid_range = [-1000.0_r8, 10000.0_r8], &
-                              fillvalue = fill_short)
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
 
     call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_def_vars (obj, varlist_geo, errstat)
