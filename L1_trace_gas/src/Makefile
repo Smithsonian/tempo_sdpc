@@ -28,6 +28,12 @@ TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
 TIOLIBS     = -L$(TIO_LIB) -L$(TIOSRC_OBJS) -ltio_f -ltio
 
+MET_LIB     = $(prefix)/lib
+MET_SRC     = $(config_dir)/libmet/src
+METSRC_OBJS = $(MET_SRC)/$(archobjs)
+METINCS     = -I$(METSRC_OBJS)
+METLIBS     = -L$(MET_LIB) -L$(METSRC_OBJS) -lmet_f
+
 TELLINCS    = -I$(TELL_INC)
 TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
 
@@ -46,11 +52,11 @@ PGSINCS     = -I$(PGSINC)
 PGSLIBS     = -L$(PGSLIB) -lPGSTK
 
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
-         $(NETCDFINCS) $(HE5INCS) $(PGSINCS)
+         $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(METINCS)
 
 LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
-         $(LDPATH) $(TIOLIBS) -lm $(DL_LIB)
+         $(LDPATH) $(TIOLIBS) $(METLIBS) -lm $(DL_LIB)
 
 CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS)
 

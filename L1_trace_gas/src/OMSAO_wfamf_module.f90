@@ -25,8 +25,10 @@ MODULE OMSAO_wfamf_module
   ! ---------
   INTEGER(KIND=i4), PARAMETER, public :: wfamf_table_lun = 700250
   INTEGER(KIND=i4), PARAMETER, public :: climatology_lun = 700270
+  integer(kind=i4), parameter, public :: meteorology_lun = 700290
   CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_wfamf_table_filename
   CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_climatology_filename
+  CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_meteorology_filename
 
   ! -----------------------------
   ! Dimensions of the climatology
@@ -371,7 +373,7 @@ CONTAINS
        ! Work out Averaging Kernels
        ! -----------------------------------------------------------------
        CALL compute_amf ( nt, nx, CmETA, climatology, &
-            scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, tropopause_pressure, amfdiag, &
+            scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, tropopause_pressure, lat, lon, amfdiag, &
             locerrstat)
 
        ! -----------------------------------------------------------------
@@ -2594,9 +2596,10 @@ CONTAINS
 
   SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, &
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
-      tropopause_pressure, amfdiag, errstat)
+      tropopause_pressure, lat, lon, amfdiag, errstat)
 
     use ctrlvars, only: yn_stratrop
+    use met_module
     IMPLICIT NONE
 
     ! ---------------
@@ -2606,6 +2609,7 @@ CONTAINS
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
     INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: amfdiag
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: surface_pressure
+    real (kind=r4), dimension(1:nx,0:nt-1), intent(in) :: lat, lon
 
     ! -----------------------------
     ! Output and modified variables
@@ -2618,7 +2622,6 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx
-    REAL (KIND=r4) :: seed ! FIXME
     REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid, temperature_profile, alpha
 
     ! ------------------------------
@@ -2649,9 +2652,11 @@ CONTAINS
            ! Allocate pressure_grid and temperature vertical profile
            ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
                 alpha(1:CmETA))
-           ! Generate tropopause pressure
-           CALL RANDOM_NUMBER(seed)
-           tropopause_pressure(ixtrack,itimes) = 50.0 + seed * (250.0)
+           ! Read in tropopause pressure
+           call read_met_data(trim(OMSAO_meteorology_filename), &
+                lat(ixtrack,itimes), lon(ixtrack,itimes), &
+                tropopause_pressure(ixtrack,itimes), errstat=errstat)
+
            ! Set temperature profile constant and equal to 220K
            temperature_profile = 220.0_r8
            ! Work out pressure_grid
@@ -2666,13 +2671,22 @@ CONTAINS
            ! Compute stratospheric and tropospheric AMFs following Bucsela et al., 2013
            ! DOI:10.5194/amt-6-2607-2013
            ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
+           ! EJOS adding a test for zero in climatology to avoid NaN AMFs
            alpha = 1.0_r8-0.003_r8*(temperature_profile-220.0_r8)
-           stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
-             climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
-             SUM(climatology(ixtrack,itimes,1:tropopause_idx))
-           tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
-             climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
-             SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA))
+           if (SUM(climatology(ixtrack,itimes,1:tropopause_idx)).eq.0) then
+             stratospheric_amf(ixtrack,itimes) = 0.0d0
+           else
+             stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
+                  climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
+                  SUM(climatology(ixtrack,itimes,1:tropopause_idx))
+           endif
+           if (SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA)).eq.0) then
+             tropospheric_amf(ixtrack,itimes) = 0.0d0
+           else
+             tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
+                  climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
+                  SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA))
+           endif
            DEALLOCATE(pressure_grid,temperature_profile,alpha)
         END IF
 

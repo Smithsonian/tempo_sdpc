@@ -107,7 +107,8 @@ CONTAINS
     USE OMSAO_prefitcol_module, ONLY: o3_prefit_fname, bro_prefit_fname, &
          lqh2o_prefit_fname
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
-         OMSAO_wfamf_table_filename, OMSAO_climatology_filename
+         OMSAO_wfamf_table_filename, OMSAO_climatology_filename, &
+         meteorology_lun, OMSAO_meteorology_filename
     USE control_module, ONLY: read_fitting_control_file
     USE sao_pge_utils, ONLY: get_pge_ident
     USE strutils, ONLY: remove_quotes
@@ -424,6 +425,13 @@ CONTAINS
     call do_pgs_get_reference (climatology_lun, "PGE_STATIC_INPUT_LUN", &
          OMSAO_W_GETLUN, pge_errstat_warning, &
          OMSAO_climatology_filename, pge_error_status)
+
+    !-----------------
+    ! Meteorology
+    !-----------------
+    call do_pgs_get_reference (meteorology_lun, "PGE_STATIC_INPUT_LUN", &
+         OMSAO_W_GETLUN, pge_errstat_warning, &
+         OMSAO_meteorology_filename, pge_error_status)
 
     ! -------------------------------------------------------------------------
     ! Read name of file with Solar Spectrum Composite
