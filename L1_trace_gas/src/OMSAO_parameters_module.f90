@@ -226,7 +226,8 @@ MODULE OMSAO_parameters_module
     min_zenith    =     0.0_r4, max_zenith    =  90.0_r4, &  ! "non-inclusive"
     min_azimuth   =  -360.0_r4, max_azimuth   = 360.0_r4, &  ! "inclusive"
     min_latitude  =   -90.0_r4, max_latitude  =  90.0_r4, &  ! "inclusive"
-    min_longitude =  -180.0_r4, max_longitude = 180.0_r4     ! "inclusive"
+    min_longitude =  -180.0_r4, max_longitude = 180.0_r4, &  ! "inclusive"
+    max_legal_zenith = 180.0_r4
 
   ! ---------------------------------
   ! Maximum data/swath dimensions

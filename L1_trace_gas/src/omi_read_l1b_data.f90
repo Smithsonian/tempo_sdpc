@@ -163,6 +163,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r4_missval, &
       min_zenith, min_azimuth, max_azimuth, &  ! "non-inclusive"
+      max_legal_zenith, &
       max_latitude, max_longitude, &
       earth_radius_avg
     USE OMSAO_variables_module,  ONLY: zatmos
@@ -285,11 +286,15 @@ CONTAINS
       ! For the Zenith Angles we only correct those values < 0, since we want
       ! to maintain the information of the value of SZA even if it is out of
       ! the bounds required for the computation of AMFs
+      ! EJOS - TEMPO zenith angles have high fill values which must be 
+      ! excluded, so we require a check against a maximum legal value
       ! ---------------------------------------------------------------------
-      WHERE (omi_szenith(1:nxtrack,iloop) < min_zenith )
+      WHERE ((omi_szenith(1:nxtrack,iloop) < min_zenith ) &
+           .or. (omi_szenith(1:nxtrack,iloop) > max_legal_zenith ))
         omi_szenith(1:nxtrack,iloop) = r4_missval
       ENDWHERE
-      WHERE (omi_vzenith(1:nxtrack,iloop) < min_zenith )
+      WHERE ((omi_vzenith(1:nxtrack,iloop) < min_zenith ) &
+           .or. (omi_vzenith(1:nxtrack,iloop) > max_legal_zenith ))
         omi_vzenith(1:nxtrack,iloop) = r4_missval
       ENDWHERE
       WHERE ((omi_sazimuth(1:nxtrack,iloop) < min_azimuth) &

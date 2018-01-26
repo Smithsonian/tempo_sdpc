@@ -3093,7 +3093,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER   (KIND=i4) :: swath_id, swath_file_id, swlen, he5stat
+    INTEGER   (KIND=C_LONG) :: swath_id, swath_file_id, swlen, he5stat
     INTEGER   (KIND=C_LONG) :: locerrstat
     CHARACTER (LEN=MAX_STR_LEN) :: swath_file, swath_name
     INTEGER   (KIND=i4), DIMENSION (nlon_isccp) :: tmparr
