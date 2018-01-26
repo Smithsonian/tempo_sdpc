@@ -224,6 +224,7 @@ $(ODIR)/OMSAO_linterpolation_module.o: $(SDIR)/OMSAO_linterpolation_module.f90
 $(ODIR)/OMSAO_main.o: $(SDIR)/OMSAO_main.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/elsunc_interface_module.o \
+  $(ODIR)/irradiance_data.o \
   $(ODIR)/metadata_tools.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_pge_fitting_process.o \

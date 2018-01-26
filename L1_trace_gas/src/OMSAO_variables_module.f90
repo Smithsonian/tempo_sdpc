@@ -327,4 +327,40 @@ contains
     
   end subroutine allocate_common_mode_storage
 
+  subroutine deallocate_refspec_common_mode (cms, errstat)
+
+    use tell_module
+
+    implicit none
+
+    type (common_mode_spectrum_type), intent(inout) :: cms
+    integer, intent(inout) :: errstat
+    if (errstat /= 0) return
+
+    if (allocated(refspecs_original)) deallocate (refspecs_original, &
+         stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "deallocate_refspec_common_mode: deallocate refspecs failed", &
+           errstat)
+      return
+    endif
+
+    if (allocated(cms%RefSpecWavs)) deallocate (cms%RefSpecWavs, stat=errstat)
+    if (allocated(cms%RefSpecData)) deallocate (cms%RefSpecData, stat=errstat)
+    if (allocated(cms%CCDPixel)) deallocate (cms%CCDPixel, stat=errstat)
+    if (allocated(cms%RefSpecCount)) deallocate (cms%RefSpecCount, &
+         stat=errstat)
+    if (allocated(cms%num_wavelengths)) deallocate (cms%num_wavelengths, &
+         stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "deallocate_refspec_common_mode: deallocate common mode failed", &
+           errstat)
+      return
+    endif
+
+
+  end subroutine deallocate_refspec_common_mode
+
 END MODULE OMSAO_variables_module

@@ -22,7 +22,7 @@ module irradiance_data
   type (Irradiance_Data_Type) :: Irr_Data
 
   private
-  public irradiance_data_init, Irr_Data
+  public irradiance_data_init, Irr_Data, deallocate_irr_data_type
 
 contains
 
@@ -86,6 +86,34 @@ contains
     idt%nxtrack = nxtrack
 
   end subroutine allocate_irr_data_type
+
+  ! =========================================================================
+
+  subroutine deallocate_irr_data_type (idt, errstat)
+
+    implicit none
+
+    type (Irradiance_Data_Type), intent(inout) :: idt
+    integer, intent(inout) :: errstat
+
+    if (allocated(idt%qflags)) deallocate (idt%qflags, stat=errstat)
+    if (allocated(idt%wavelengths)) deallocate (idt%wavelengths, stat=errstat)
+    if (allocated(idt%spectrum)) deallocate (idt%spectrum, stat=errstat)
+    if (allocated(idt%nwaves)) deallocate (idt%nwaves, stat=errstat)
+    if (allocated(idt%avg_wavelengths)) deallocate (idt%avg_wavelengths, &
+         stat=errstat)
+    if (allocated(idt%ccdpix_selection)) deallocate (idt%ccdpix_selection, &
+         stat=errstat)
+    if (allocated(idt%ccdpix_exclusion)) deallocate (idt%ccdpix_exclusion, &
+         stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "deallocate_irr_data_type: failed", &
+           errstat)
+      return
+    endif
+
+
+  end subroutine deallocate_irr_data_type
 
   ! =========================================================================
 

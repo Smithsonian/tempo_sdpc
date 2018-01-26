@@ -343,6 +343,66 @@ contains
     result_vars % radref_fit_rms => omi_radref_rms
   end subroutine initialize_omidata_structs
 
+  subroutine deallocate_omidata_structs (errstat)
+    use tell_module
+    implicit none
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    if (allocated(omi_radiance_spec)) deallocate(omi_radiance_spec, &
+         stat=errstat)
+    if (allocated(omi_radiance_wavl)) deallocate(omi_radiance_wavl, &
+         stat=errstat)
+    if (allocated(omi_radiance_qflg)) deallocate(omi_radiance_qflg, &
+         stat=errstat)
+    if (allocated(omi_radiance_ccdpix)) deallocate(omi_radiance_ccdpix, &
+         stat=errstat)
+    if (allocated(omi_irradiance_ccdpix)) deallocate(omi_irradiance_ccdpix, &
+         stat=errstat)
+    if (allocated(omi_radref_qflg)) deallocate(omi_radref_qflg, &
+         stat=errstat)
+    if (allocated(omi_irradiance_wght)) deallocate(omi_irradiance_wght, &
+         stat=errstat)
+    if (allocated(omi_radref_spec)) deallocate(omi_radref_spec, &
+         stat=errstat)
+    if (allocated(omi_radref_wavl)) deallocate(omi_radref_wavl, &
+         stat=errstat)
+    if (allocated(omi_radref_wght)) deallocate(omi_radref_wght, &
+         stat=errstat)
+    if (allocated(omi_database)) deallocate(omi_database, &
+         stat=errstat)
+    if (allocated(omi_database_wvl)) deallocate(omi_database_wvl, &
+              stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "deallocate_omidata_structs:  deallocate failed", errstat)
+      return
+    endif
+
+!    input_vars % time => omi_time
+!    input_vars % latitude => omi_latitude
+!    input_vars % longitude => omi_longitude
+!    input_vars % solar_zenith => omi_szenith
+!    input_vars % solar_azimuth => omi_sazimuth
+!    input_vars % viewing_zenith => omi_vzenith
+!    input_vars % viewing_azimuth => omi_vazimuth
+!    input_vars % terrain_height => omi_height
+!
+!    result_vars % column_amount => omi_column_amount
+!    result_vars % column_uncert => omi_column_uncert
+!    result_vars % fit_rms_residual => omi_fit_rms
+!    result_vars % fit_convergence_flag => omi_fitconv_flag
+!    result_vars % fit_iteration_count => omi_itnum_flag
+!    result_vars % solcal_convergence_flag => omi_solcal_xflag
+!    result_vars % radcal_convergence_flag => omi_radcal_xflag
+!    result_vars % radref_convergence_flag => omi_radref_xflag
+!    result_vars % radref_column_amount => omi_radref_col
+!    result_vars % radref_column_uncert => omi_radref_dcol
+!    result_vars % radref_column_xtrfit => omi_radref_xtrcol
+!    result_vars % radref_fit_rms => omi_radref_rms
+  end subroutine deallocate_omidata_structs
+
   subroutine dealloc_retrieval_type (rt, errstat)
     use tell_module
     implicit none

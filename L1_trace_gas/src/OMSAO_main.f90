@@ -30,9 +30,12 @@ SUBROUTINE OMSAO_main ( exit_value )
   use slitfunction, only : slitfunction_select, slitfunction_open
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
   use ctrlvars, only: yn_use_labslitfunc, yn_do_he5_output
-  use OMSAO_omidata_module, only : initialize_omidata_structs
+  use OMSAO_omidata_module, only : initialize_omidata_structs, &
+       deallocate_omidata_structs
   use OMSAO_variables_module, only : allocate_refspec_storage, &
-    allocate_common_mode_storage, common_mode_spec
+    allocate_common_mode_storage, common_mode_spec, &
+    deallocate_refspec_common_mode
+  use irradiance_data, only: Irr_Data, deallocate_irr_data_type
   IMPLICIT NONE
 
   ! ---------------
@@ -135,6 +138,15 @@ SUBROUTINE OMSAO_main ( exit_value )
   !  modulename//f_sep//"OMI_PGE_FITTING_PROCESS.", vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
 
+  !-------------------------------------
+  call deallocate_omidata_structs (errstat)
+  if (errstat /= 0) return
+
+  call deallocate_refspec_common_mode (common_mode_spec, errstat)
+  if (errstat /= 0) return
+
+  call deallocate_irr_data_type (Irr_Data, errstat)
+  if (errstat /= 0) return
   ! ------------------------------------
   ! Write END_OF_RUN message to log file
   ! ------------------------------------

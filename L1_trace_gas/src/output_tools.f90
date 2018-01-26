@@ -246,6 +246,7 @@ contains
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_coord)
 
   end subroutine append_amf_vars
 
