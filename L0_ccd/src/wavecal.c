@@ -9,6 +9,7 @@
 #include <tell.h>
 #include <tio.h>
 #include <gsl/gsl_errno.h>
+#include <mpfit.h>
 
 #include "config.h"
 #include "util.h"
@@ -16,7 +17,6 @@
 #include "interp.h"
 #include "shapefun.h"
 #include "wavecal.h"
-#include "mpfit.h"
 
 #define NCID_UNINITIALIZED -1
 

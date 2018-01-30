@@ -25,7 +25,7 @@ INCS = -I$(config_dir)/include -I$(TIO_INC) \
 LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
-       $(TIO_LIBPATHS) -ltio \
+       $(TIO_LIBPATHS) -ltio -lmpfit \
        $(RPATH) $(INSTALL_LIBPATHS)
 
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
@@ -36,7 +36,7 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
            bpix.o dark.o sensorcal.o output.o util.o \
 	   wavecal.o interp.o lsq.o shapefun.o \
-	   interp_cheb.o interp_poly.o interp_cspline.o mpfit.o
+	   interp_cheb.o interp_poly.o interp_cspline.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
@@ -95,7 +95,7 @@ $(objdir)/test_interp.o:	$(srcdir)/test_interp.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
 
 TEST_WAVECAL_OFILES = test_wavecal.o util.o wavecal.o interp.o shapefun.o \
-     lsq.o interp_cheb.o interp_poly.o interp_cspline.o mpfit.o
+     lsq.o interp_cheb.o interp_poly.o interp_cspline.o
 TEST_WAVECAL_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_WAVECAL_OFILES))
 
 $(objdir)/test_wavecal:	$(TEST_WAVECAL_OBJS)
@@ -165,7 +165,4 @@ $(objdir)/interp_poly.o:	$(srcdir)/interp_poly.c
 
 $(objdir)/interp_cheb.o:	$(srcdir)/interp_cheb.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c $(LIBS)
-
-$(objdir)/mpfit.o:	$(srcdir)/mpfit.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/mpfit.c $(LIBS)
 
