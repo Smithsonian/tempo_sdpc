@@ -34,7 +34,9 @@ ELF_LINK_CMD = $(ELF_LINK)
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
 OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
-           bpix.o dark.o sensorcal.o output.o
+           bpix.o dark.o sensorcal.o output.o util.o \
+	   wavecal.o interp.o lsq.o shapefun.o \
+	   interp_cheb.o interp_poly.o interp_cspline.o mpfit.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
@@ -42,6 +44,8 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # --------------------------------------------------------------------------
 
 all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+
+tests:	$(objdir) $(objdir)/test_wavecal $(objdir)/test_interp
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -79,6 +83,28 @@ distclean: clean
 # Object Rules
 # --------------------------------------------------------------------------
 
+TEST_INTERP_OFILES = test_interp.o lsq.o interp.o \
+              interp_cheb.o interp_poly.o interp_cspline.o
+TEST_INTERP_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_INTERP_OFILES))
+
+$(objdir)/test_interp:	$(TEST_INTERP_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/test_interp $(TEST_INTERP_OBJS) \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+$(objdir)/test_interp.o:	$(srcdir)/test_interp.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
+
+TEST_WAVECAL_OFILES = test_wavecal.o util.o wavecal.o interp.o shapefun.o \
+     lsq.o interp_cheb.o interp_poly.o interp_cspline.o mpfit.o
+TEST_WAVECAL_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_WAVECAL_OFILES))
+
+$(objdir)/test_wavecal:	$(TEST_WAVECAL_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/test_wavecal $(TEST_WAVECAL_OBJS) \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+$(objdir)/test_wavecal.o:	$(srcdir)/test_wavecal.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_wavecal.c $(LIBS)
+
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
@@ -115,4 +141,31 @@ $(objdir)/sensorcal.o:	$(srcdir)/sensorcal.c
 
 $(objdir)/output.o:	$(srcdir)/output.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/output.c $(LIBS)
+
+$(objdir)/util.o:	$(srcdir)/util.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/util.c $(LIBS)
+
+$(objdir)/wavecal.o:	$(srcdir)/wavecal.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal.c $(LIBS)
+
+$(objdir)/interp.o:	$(srcdir)/interp.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp.c $(LIBS)
+
+$(objdir)/shapefun.o:	$(srcdir)/shapefun.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/shapefun.c $(LIBS)
+
+$(objdir)/lsq.o:	$(srcdir)/lsq.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/lsq.c $(LIBS)
+
+$(objdir)/interp_cspline.o:	$(srcdir)/interp_cspline.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cspline.c $(LIBS)
+
+$(objdir)/interp_poly.o:	$(srcdir)/interp_poly.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_poly.c $(LIBS)
+
+$(objdir)/interp_cheb.o:	$(srcdir)/interp_cheb.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c $(LIBS)
+
+$(objdir)/mpfit.o:	$(srcdir)/mpfit.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/mpfit.c $(LIBS)
 

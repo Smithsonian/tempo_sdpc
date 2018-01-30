@@ -8,6 +8,7 @@
 #include <tio.h>
 
 #include "config.h"
+#include "util.h"
 
 #define INSTR_PRIVATE_DATA \
    Instr_Type *next; \
@@ -16,29 +17,6 @@
    float *ccd_temp2; \
    size_t num_times;
 #include "instr.h"
-
-static int bsearch_d (double t, double *x, int n)
-{
-   int n0, n1, n2;
-   double xt;
-
-   n0 = 0;
-   n1 = n;
-
-   while (n1 > n0 + 1)
-     {
-        n2 = (n0 + n1) / 2;
-        xt = x[n2];
-        if (t <= xt)
-          {
-             if (xt == t) return n2;
-             n1 = n2;
-          }
-        else n0 = n2;
-     }
-
-   return n0;
-}
 
 static int find_entry1 (const Instr_Type *instr, double t, int *entry)
 {
