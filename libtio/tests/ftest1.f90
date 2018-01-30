@@ -18,7 +18,7 @@ program ftest1
   real (kind=r8), dimension(:), allocatable :: values
   integer :: errstat, num_values, j
   real (kind=r8), parameter :: &
-    fillvalue_out = 999.2345, fillvalue_in = -1.5432
+    fillvalue_out = 9.2345, fillvalue_in = -1.5432
 
   errstat = 0
 
@@ -30,6 +30,8 @@ program ftest1
   endif
 
   values = real([(j, j=0,num_values-1)], kind=r8)
+  !ensure values do not exceed size that can fit into single byte
+  values = 100.0_r8*values/maxval(values)
   values(2::3) = fillvalue_out
 
   strings = ["I"//c_null_char//"      ", "dislike"//c_null_char, &
