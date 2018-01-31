@@ -68,6 +68,10 @@ SUBROUTINE OMSAO_main ( exit_value )
   !exit_value = -1   ! early return will indicate an error has occured
                      ! already set in main.f90 and passed to this subroutine
 
+  ! command-line arguments
+  integer(kind=4) :: iarg=0
+  character (len=255) :: arg
+
   ! ----------------------------
   ! Set PGE_ERROR_STATUS to O.K.
   ! ----------------------------
@@ -76,9 +80,26 @@ SUBROUTINE OMSAO_main ( exit_value )
 
   call tell_set_log_level (1)
 
+  ! Control he5 output
+  ! Default for other codes is to not write he5 unless switch is set
+  yn_do_he5_output = .false.
+  do
+    call get_command_argument (iarg, arg)
+    if (len(trim(arg)) == 0) exit
+    if (trim(arg) == "+he5_out") then
+      yn_do_he5_output = .true.
+    else if (trim(arg) == "-h") then
+      print *, "Usage: L1_trace_gas [options]"
+      print *, ""
+      print *, "   +he5_out    enable he5 output"
+      return
+    endif
+    iarg = iarg + 1
+  enddo
+
   ! Do he5 output unless this environment variable is set.
-  call get_environment_variable ("TG_NO_HE5_OUTPUT", status=env_variable_status)
-  yn_do_he5_output = (env_variable_status == 1 .or. env_variable_status == 2)
+!  call get_environment_variable ("TG_NO_HE5_OUTPUT", status=env_variable_status)
+!  yn_do_he5_output = (env_variable_status == 1 .or. env_variable_status == 2)
 
   ! ----------------------------------------------------------------------------
   CALL unbufferSTDout()                       ! Make PGE write STD/IO unbuffered
