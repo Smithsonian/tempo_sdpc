@@ -7,8 +7,8 @@ typedef struct Wavecal_Type Wavecal_Type;
 
 typedef struct
 {
+   double fill_value;
    int *index_lim;
-   double wave_pad;
 }
 Wavecal_Config_Type;
 

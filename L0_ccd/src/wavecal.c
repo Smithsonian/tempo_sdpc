@@ -36,7 +36,6 @@ typedef struct
    int xtrack;         /**< cross-track index to be fitted */
    int num_wave;       /**< total number of wavelength points in measured spectrum */
    double *wave0;      /**< initial guess at wavelength grid for measured spectrum */
-   double wave_pad;
    int index_lim[2];   /**< index limits on the wave0[] grid to be fitted */
 
    Shapefun_Type *shapefun;
@@ -104,7 +103,6 @@ struct Wavecal_Type
    Window_Type window;
    Term_Type *terms;
    Fit_Control_Type fit_ctrl;
-   int index_lim_ref[2];
    int mode;
 };
 
@@ -211,8 +209,6 @@ static int config_interp_method (config_setting_t *s, Interp_Type *it)
 {
    int num_coef;
 
-   /* FIXME - should implement method-specific validation */
-
    (void) config_setting_lookup_float (s, "xmin", &it->xmin);
    (void) config_setting_lookup_float (s, "xmax", &it->xmax);
    (void) config_setting_lookup_float (s, "xexp", &it->xexp);
@@ -228,8 +224,6 @@ static int config_shapefun_method (config_setting_t *s,
 {
    config_setting_t *ss;
    int num_coef;
-
-   /* FIXME - should implement method-specific validation */
 
    (void) config_setting_lookup_float (s, "xmin", &st->xmin);
    (void) config_setting_lookup_float (s, "xmax", &st->xmax);
@@ -795,10 +789,7 @@ static int init_window (Wavecal_Type *wct, int xtrack,
    Window_Type *win = &wct->window;
    Shapefun_Type *shapefun = win->shapefun;
    Shapefun_Init_Type shapefun_init = {0};
-   double beg_wave, end_wave;
-   double *wave_start;
-   double *irr_start;
-   int i, num;
+   int i;
 
    if (0 != read_irr_reference (&wct->irr, xtrack))
      return -1;
@@ -807,7 +798,6 @@ static int init_window (Wavecal_Type *wct, int xtrack,
      return -1;
 
    win->xtrack = xtrack;
-   win->wave_pad = config->wave_pad;
    win->num_wave = num_wave;
 
    if (config->index_lim)
@@ -818,18 +808,18 @@ static int init_window (Wavecal_Type *wct, int xtrack,
    else
      {
         win->index_lim[0] = 0;
-        win->index_lim[1] = win->num_wave-1;
+        win->index_lim[1] = num_wave-1;
      }
 
    FREE(win->wave0); /* FIXME - preallocate this */
-   if (NULL == (win->wave0 = alloc_doubles (win->num_wave)))
+   if (NULL == (win->wave0 = alloc_doubles (num_wave)))
      return -1;
-   memcpy ((char *)win->wave0, (char *)wave, win->num_wave * sizeof(double));
+   memcpy ((char *)win->wave0, (char *)wave, num_wave * sizeof(double));
 
    FREE(win->pindex); /* FIXME - preallocate this */
-   if (NULL == (win->pindex = alloc_doubles (win->num_wave)))
+   if (NULL == (win->pindex = alloc_doubles (num_wave)))
      return -1;
-   for (i = 0; i < win->num_wave; i++)
+   for (i = 0; i < num_wave; i++)
      {
         win->pindex[i] = (double)i;
      }
@@ -838,28 +828,16 @@ static int init_window (Wavecal_Type *wct, int xtrack,
    shapefun_init.y = win->wave0;
    shapefun_init.n = win->num_wave;
 
-   shapefun->xmin = win->index_lim[0];
-   shapefun->xmax = win->index_lim[1];
+   shapefun->xmin = shapefun_init.x[0];
+   shapefun->xmax = shapefun_init.x[num_wave-1];
 
    if (0 != shapefun->st_init_params (shapefun, &shapefun_init,
                                       win->num_wave_params, win->wave_params))
      return -1;
 
-   /* derive padded wavelength range for reference spectra */
-   beg_wave = win->wave0[ win->index_lim[0] ] - win->wave_pad;
-   end_wave = win->wave0[ win->index_lim[1] ] + win->wave_pad;
-
-   if ((wct->index_lim_ref[0] = find_x (beg_wave, irr->wavelen, irr->num_wavelen)) < 0)
-     return -1;
-   if ((wct->index_lim_ref[1] = find_x (end_wave, irr->wavelen, irr->num_wavelen)) < 0)
-     return -1;
-
-   num = wct->index_lim_ref[1] - wct->index_lim_ref[0] + 1;
-   wave_start = irr->wavelen + wct->index_lim_ref[0];
-   irr_start = irr->irradiance + wct->index_lim_ref[0];
-
    cspline_free (irr->cspline); /* FIXME - preallocate this */
-   if (NULL == (irr->cspline = cspline_interpol (num, wave_start, irr_start, NULL)))
+   if (NULL == (irr->cspline = cspline_interpol (irr->num_wavelen, irr->wavelen,
+                                                 irr->irradiance, NULL)))
      return -1;
 
    return 0;
@@ -1211,6 +1189,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    struct mp_config_struct fit_config = {0};
    struct mp_result_struct fit_result = {0};
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
+   double fill_value = config->fill_value;
    Window_Type *win = NULL;
    double *params = NULL;
    double *model = NULL;
@@ -1241,11 +1220,18 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    scale_factor = wct->irr.file.scale_factor;
    for (i = 0; i < win->num_wave; i++)
      {
-        double err = specerr[i];
-        spec_scaled[i] = spec[i] * scale_factor;
-        if ((err != 0.0) && (isfinite(err) != 0))
+        double spec_i = spec[i];
+        double err_i = specerr[i];
+
+        if (isfinite(spec_i) && (spec_i != fill_value))
           {
-             weight[i] = 1.0/(fabs(err) * scale_factor);
+             spec_scaled[i] = spec_i * scale_factor;
+          }
+        else spec_scaled[i] = 0.0;
+
+        if (isfinite(err_i) && (err_i != fill_value) && (err_i != 0.0))
+          {
+             weight[i] = 1.0/(fabs(err_i) * scale_factor);
           }
         else weight[i] = 0.0;
      }
