@@ -180,8 +180,8 @@ int main (int argc, char **argv)
    const char appname[] = "wavecal_driver";
    const char *config_file = "l0_ccd.cfg";
    const char *file = NULL;
-   const char *params_outfile = "wavecal_driver.out";
-   FILE *fp = NULL;
+   const char *params_outfile = NULL;
+   FILE *fp = stderr;
    config_t cfg;
    Radiance_Type rad = {0};
    int status = EXIT_FAILURE;
@@ -295,12 +295,11 @@ int main (int argc, char **argv)
    if (NULL == (wct = wavecal_open (&cfg, rad.n, 1)))
      goto return_status;
 
-   if (!silent)
+   if (params_outfile)
      {
         if (NULL == (fp = fopen (params_outfile, "w")))
           {
-             fprintf (stderr, "*** Error opening file for writing: %s\n",
-                      params_outfile ? params_outfile : "(null)");
+             fprintf (stderr, "*** Error: opening file for writing: %s\n", params_outfile);
              goto return_status;
           }
      }
@@ -342,7 +341,10 @@ return_status:
    tell_close();
    wavecal_close (wct);
 
-   if (fp) (void) fclose (fp);
+   if ((fp != NULL) && (params_outfile != NULL))
+     {
+        (void) fclose (fp);
+     }
 
    return status;
 }
