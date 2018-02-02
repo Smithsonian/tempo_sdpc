@@ -29,35 +29,40 @@ enum
    TERM_TYPE_BL
 };
 
-#define NUM_TERMS 5
+#define NUM_TERM_TYPES 5
 
 typedef struct
 {
    int xtrack;         /**< cross-track index to be fitted */
    int num_wave;       /**< total number of wavelength points in measured spectrum */
    double *wave0;      /**< initial guess at wavelength grid for measured spectrum */
-   int index_lim[2];   /**< index limits on the wave0[] grid to be fitted */
 
    Shapefun_Type *shapefun;
-   double *pindex;
-   double *wave_params;
-   size_t num_wave_params;
+   double *pindex;          /**< pixel index array for measured spectrum */
+   double *wave_params;     /**< wavelength grid parameters */
+   size_t num_wave_params;  /**< number of wavelength grid parameters */
+
+   /* storage for use during the fit iteration */
+   double *model;           /**< computed model */
+   double *spec_scaled;     /**< spectrum to calibrate, scaled by a constant */
+   double *weight;          /**< weight for each spectrum pixel */
+   double *residuals;       /**< weighted fit residual, (model - spec_scaled)*weight */
 }
 Window_Type;
 
 typedef struct
 {
-   const char *path;
-   const char *name_x;
-   const char *name_y;
-   double scale_factor;
+   const char *path;       /**< path to the file */
+   const char *name_x;     /**< name of variable containing "X" */
+   const char *name_y;     /**< name of variable containing "Y" */
+   double scale_factor;    /**< scale factor to be applied to "Y" values */
 }
 File_Type;
 
 typedef struct
 {
-   File_Type file;
-   Interp_Type *interp;
+   File_Type file;         /**< file specification */
+   Interp_Type *interp;    /**< generic interpolation object */
 }
 Refspec_Type;
 
@@ -65,44 +70,45 @@ typedef struct Term_Type Term_Type;
 struct Term_Type
 {
    Term_Type *next;
-   char *term_name;
-   int term_type;
-   Refspec_Type refspec;
-   Shapefun_Type *shapefun;
-   Shapefun_Init_Type shapefun_init;
-   double *params;
-   size_t num_params;
-   double *value_workspace;
-   size_t num_values;
+   char *term_name;                   /**< user-specified name string */
+   int term_type;                     /**< term type (enum) */
+   Refspec_Type refspec;              /**< reference spectrum, if any */
+   Shapefun_Type *shapefun;           /**< shape function, or NULL */
+   Shapefun_Init_Type shapefun_init;  /**< shape function initialization data */
+   double *params;                    /**< fit parameters for this term, if any */
+   size_t num_params;                 /**< number of fit parameters for this term */
+   double *value;                     /**< term value vs wavelength */
+   size_t num_values;                 /**< number of wavelengths in value array */
 };
 
 typedef struct
 {
-   File_Type file;
-   int ncid;
-   Cspline_Type *cspline;
-   double *irr0_workspace;
-   double *irradiance;
-   double *wavelen;
-   size_t num_wavelen;
+   File_Type file;                   /**< location of reference irradiance (file, variables) */
+   int ncid;                         /**< netcdf file descriptor */
+   Cspline_Type *cspline;            /**< spline interpolation object */
+   double *irradiance;               /**< reference irradiance values */
+   double *wavelen;                  /**< reference irradiance wavelength grid */
+   size_t num_wavelen;               /**< number of wavelength points in grid */
 }
 Reference_Irr_Type;
 
 typedef struct
 {
-   double xtol;
-   double ftol;
-   int maxiter;
-   int maxfev;
+   double xtol;        /**< fit parameter value convergence criterion */
+   double ftol;        /**< objective function convergence criterion */
+   int maxiter;        /**< max number of iterations of the optimization algorithm */
+   int maxfev;         /**< max number of evaluations of the objective function */
 }
 Fit_Control_Type;
 
 struct Wavecal_Type
 {
-   Reference_Irr_Type irr;
-   Window_Type window;
-   Term_Type *terms;
-   Fit_Control_Type fit_ctrl;
+   Reference_Irr_Type irr;      /**< reference irradiance */
+   Window_Type window;          /**< fit window */
+   Fit_Control_Type fit_ctrl;   /**< optimization control parameters */
+   Term_Type *terms;            /**< terms in the model being fitted */
+   double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
+   double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int mode;
 };
 
@@ -147,7 +153,7 @@ static void free_term1 (Term_Type *tt)
      return;
    FREE(tt->term_name);
    FREE(tt->params);
-   FREE(tt->value_workspace);
+   FREE(tt->value);
    free_interp_type (tt->refspec.interp);
    free_shapefun_type (tt->shapefun);
    free_shapefun_init_type (&tt->shapefun_init);
@@ -403,10 +409,29 @@ static void free_window (Window_Type *win)
 {
    if (win == NULL)
      return;
-   free_shapefun_type (win->shapefun);
-   FREE(win->wave_params);
    FREE(win->wave0);
    FREE(win->pindex);
+   FREE(win->model);
+   FREE(win->spec_scaled);
+   FREE(win->weight);
+   FREE(win->residuals);
+   FREE(win->wave_params);
+   free_shapefun_type (win->shapefun);
+}
+
+static int alloc_window (Window_Type *win, int num_wave)
+{
+   win->num_wave = num_wave;
+
+   if ((NULL == (win->wave0 = alloc_doubles (num_wave)))
+       || (NULL == (win->pindex = alloc_doubles (num_wave)))
+       || (NULL == (win->model = alloc_doubles (num_wave)))
+       || (NULL == (win->spec_scaled = alloc_doubles (num_wave)))
+       || (NULL == (win->weight = alloc_doubles (num_wave)))
+       || (NULL == (win->residuals = alloc_doubles (num_wave))))
+     return -1;
+
+   return 0;
 }
 
 static void free_reference_irr_type (Reference_Irr_Type *irr)
@@ -417,22 +442,82 @@ static void free_reference_irr_type (Reference_Irr_Type *irr)
    cspline_free (irr->cspline);
    FREE(irr->wavelen);
    FREE(irr->irradiance);
-   FREE(irr->irr0_workspace);
 }
 
-void wavecal_close (Wavecal_Type *wct)
+static void free_term_sums (double **ts, size_t num_term_types)
 {
+   size_t i;
+
+   if (ts == NULL)
+     return;
+
+   for (i = 0; i < num_term_types; i++)
+     {
+        FREE(ts[i]);
+     }
+}
+
+static int alloc_term_sums (double **a, size_t na, size_t num)
+{
+   size_t i;
+
+   for (i = 0; i < na; i++)
+     {
+        if (NULL == (a[i] = alloc_doubles (num)))
+          return -1;
+     }
+
+   return 0;
+}
+
+static void zero_term_sums (double **a, size_t na, size_t num)
+{
+   size_t i, len = num * sizeof(double);
+   for (i = 0; i < na; i++)
+     {
+        memset ((char *)a[i], 0, len);
+     }
+}
+
+static int alloc_term_storage (Term_Type *term, int num_wave)
+{
+   Term_Type *t;
+
+   for (t = term; t != NULL; t = t->next)
+     {
+        double *v;
+        /* we may have 2 factors, so allocate space for both */
+        if (NULL == (v = alloc_doubles (2 * num_wave)))
+          return -1;
+        t->value = v;
+        t->num_values = num_wave;
+     }
+
+   return 0;
+}
+
+static void free_wavecal (Wavecal_Type *wct)
+{
+   size_t num_term_types = NUM_TERM_TYPES;
    if (wct == NULL)
      return;
    free_reference_irr_type (&wct->irr);
    free_terms (wct->terms);
+   free_term_sums (wct->term_sums, num_term_types);
    free_window (&wct->window);
+   FREE(wct->irr0);
    FREE(wct);
 }
 
-static Wavecal_Type *alloc_wavecal (void)
+void wavecal_close (Wavecal_Type *wct)
+{
+   free_wavecal (wct);
+}
+
+static Wavecal_Type *alloc_wavecal (int num_wave)
 {
    Wavecal_Type *wct = NULL;
+   size_t num_term_types = NUM_TERM_TYPES;
 
    if (NULL == (wct = (Wavecal_Type *)MALLOC (sizeof *wct)))
      {
@@ -440,6 +525,24 @@ static Wavecal_Type *alloc_wavecal (void)
         return NULL;
      }
    memset ((char *)wct, 0, sizeof *wct);
+
+   if (NULL == (wct->irr0 = alloc_doubles (num_wave)))
+     {
+        free_wavecal (wct);
+        return NULL;
+     }
+
+   if (0 != alloc_term_sums (wct->term_sums, num_term_types, num_wave))
+     {
+        free_wavecal (wct);
+        return NULL;
+     }
+
+   if (0 != alloc_window (&wct->window, num_wave))
+     {
+        free_wavecal (wct);
+        return NULL;
+     }
 
    return wct;
 }
@@ -460,7 +563,6 @@ static int config_model_components (Wavecal_Type *wct, config_setting_t *s)
 
         name = config_setting_name (ss);
         if (name[0] == '*') continue;
-        if (1) fprintf (stderr, "add component: %s\n", name);
 
         if (NULL == (term = term_open (ss)))
           return -1;
@@ -538,62 +640,6 @@ static int config_control (config_setting_t *s, Wavecal_Type *wct)
    (void) config_setting_lookup_int (s, "maxfev", &c->maxfev);
 
    return 0;
-}
-
-Wavecal_Type *wavecal_open (config_t *cfg, int mode)
-{
-   Wavecal_Type *wct = NULL;
-   config_setting_t *s;
-
-   if (NULL == (wct = alloc_wavecal ()))
-     goto error_return;
-
-   wct->mode = mode;
-
-   if (NULL == (s = config_lookup (cfg, "wavecal_control")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing wavecal_control in param file: %s",
-                     __func__, config_error_file (cfg));
-        goto error_return;
-     }
-
-   if (0 != config_control (s, wct))
-     goto error_return;
-
-   if (NULL == (s = config_lookup (cfg, "wavecal_irr_reference")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing wavecal_irr_reference in param file: %s",
-                     __func__, config_error_file (cfg));
-        goto error_return;
-     }
-
-   if (0 != config_fit_window (s, &wct->window))
-     goto error_return;
-
-   if (0 != config_irr_reference (s, &wct->irr))
-     goto error_return;
-
-   if (mode == 1)
-     {
-        if (NULL == (s = config_lookup (cfg, "wavecal_rad_model")))
-          {
-             tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: accessing wavecal_rad_model in param file: %s",
-                          __func__, config_error_file (cfg));
-             goto error_return;
-          }
-
-        if (0 != config_model_components (wct, s))
-          goto error_return;
-     }
-
-   return wct;
-
-error_return:
-   wavecal_close(wct);
-   return NULL;
 }
 
 static int read_var (int ncid, const char *name, int xtrack,
@@ -683,10 +729,6 @@ static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
              irr_i[i] *= scale;
           }
      }
-
-   FREE(irr->irr0_workspace); /* FIXME - preallocate this */
-   if (NULL == (irr->irr0_workspace = alloc_doubles (irr->num_wavelen)))
-     return -1;
 
    return 0;
 }
@@ -781,58 +823,35 @@ static int read_rad_reference (Term_Type *terms, int xtrack)
    return 0;
 }
 
-static int init_window (Wavecal_Type *wct, int xtrack,
-                        int num_wave, const double *wave,
+static int init_window (Wavecal_Type *wct, int xtrack, const double *wave,
                         const Wavecal_Config_Type *config)
 {
    Reference_Irr_Type *irr = &wct->irr;
    Window_Type *win = &wct->window;
    Shapefun_Type *shapefun = win->shapefun;
    Shapefun_Init_Type shapefun_init = {0};
-   int i;
 
-   if (0 != read_irr_reference (&wct->irr, xtrack))
-     return -1;
-
-   if (0 != read_rad_reference (wct->terms, xtrack))
-     return -1;
+   (void) config;
 
    win->xtrack = xtrack;
-   win->num_wave = num_wave;
 
-   if (config->index_lim)
-     {
-        win->index_lim[0] = config->index_lim[0];
-        win->index_lim[1] = config->index_lim[1];
-     }
-   else
-     {
-        win->index_lim[0] = 0;
-        win->index_lim[1] = num_wave-1;
-     }
-
-   FREE(win->wave0); /* FIXME - preallocate this */
-   if (NULL == (win->wave0 = alloc_doubles (num_wave)))
-     return -1;
-   memcpy ((char *)win->wave0, (char *)wave, num_wave * sizeof(double));
-
-   FREE(win->pindex); /* FIXME - preallocate this */
-   if (NULL == (win->pindex = alloc_doubles (num_wave)))
-     return -1;
-   for (i = 0; i < num_wave; i++)
-     {
-        win->pindex[i] = (double)i;
-     }
+   memcpy ((char *)win->wave0, (char *)wave, win->num_wave * sizeof(double));
 
    shapefun_init.x = win->pindex;
    shapefun_init.y = win->wave0;
    shapefun_init.n = win->num_wave;
 
    shapefun->xmin = shapefun_init.x[0];
-   shapefun->xmax = shapefun_init.x[num_wave-1];
+   shapefun->xmax = shapefun_init.x[win->num_wave-1];
 
    if (0 != shapefun->st_init_params (shapefun, &shapefun_init,
                                       win->num_wave_params, win->wave_params))
+     return -1;
+
+   if (0 != read_rad_reference (wct->terms, xtrack))
+     return -1;
+
+   if (0 != read_irr_reference (&wct->irr, xtrack))
      return -1;
 
    cspline_free (irr->cspline); /* FIXME - preallocate this */
@@ -885,23 +904,81 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
    return 0;
 }
 
+Wavecal_Type *wavecal_open (config_t *cfg, int num_wave, int mode)
+{
+   Wavecal_Type *wct = NULL;
+   config_setting_t *s;
+   double *pindex = NULL;
+   int i;
+
+   if (NULL == (wct = alloc_wavecal (num_wave)))
+     goto error_return;
+
+   wct->mode = mode;
+
+   if (NULL == (s = config_lookup (cfg, "wavecal_control")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing wavecal_control in param file: %s",
+                     __func__, config_error_file (cfg));
+        goto error_return;
+     }
+
+   if (0 != config_control (s, wct))
+     goto error_return;
+
+   if (NULL == (s = config_lookup (cfg, "wavecal_irr_reference")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing wavecal_irr_reference in param file: %s",
+                     __func__, config_error_file (cfg));
+        goto error_return;
+     }
+
+   if (0 != config_fit_window (s, &wct->window))
+     goto error_return;
+
+   if (0 != config_irr_reference (s, &wct->irr))
+     goto error_return;
+
+   if (mode == 1)
+     {
+        if (NULL == (s = config_lookup (cfg, "wavecal_rad_model")))
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "%s: accessing wavecal_rad_model in param file: %s",
+                          __func__, config_error_file (cfg));
+             goto error_return;
+          }
+
+        if (0 != config_model_components (wct, s))
+          goto error_return;
+
+        if (0 != alloc_term_storage (wct->terms, num_wave))
+          goto error_return;
+     }
+
+   pindex = wct->window.pindex;
+
+   for (i = 0; i < num_wave; i++)
+     {
+        pindex[i] = (double)i;
+     }
+
+   return wct;
+
+error_return:
+   wavecal_close(wct);
+   return NULL;
+}
+
 static int evaluate_term (Term_Type *term, Window_Type *win,
                           const double *params)
 {
    Refspec_Type *ref = &term->refspec;
    size_t i, offset, n = win->num_wave;
-   double *v = NULL;
+   double *v = term->value;
 
-   if (term->value_workspace == NULL)
-     {
-        /* we may have 2 factors, so allocate space for both */
-        if (NULL == (v = alloc_doubles (2 * n)))
-          return -1;
-        term->value_workspace = v;
-        term->num_values = n;
-     }
-
-   v = term->value_workspace;
    memset ((char *)v, 0, 2*n * sizeof(double));
 
    offset = 0;
@@ -912,7 +989,6 @@ static int evaluate_term (Term_Type *term, Window_Type *win,
         offset = n;
         if (st->st_eval (st, params, n, win->wave0, v))
           return -1;
-        if (0) fprintf (stderr, "evaluated term %s (shapefun)\n", term->term_name);
      }
 
    if (ref->interp)
@@ -929,122 +1005,72 @@ static int evaluate_term (Term_Type *term, Window_Type *win,
    return 0;
 }
 
-typedef struct
+int wavecal_query_term (const Wavecal_Type *wct, int nth,
+                        Wavecal_Term_Info_Type *info)
 {
-   double *v;
-   size_t n;
-}
-Array_Type;
+   const Term_Type *t;
+   const Window_Type *win;
+   int i;
 
-static void array_free (Array_Type *a)
-{
-   FREE(a->v);
-   a->v = NULL;
-   a->n = 0;
-}
-
-static int array_alloc (Array_Type *a, size_t n)
-{
-   if (NULL == (a->v = (double *)MALLOC (n * sizeof(double))))
+   if ((wct == NULL) || (info == NULL))
      {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: got NULL pointer", __func__);
         return -1;
      }
-   memset ((char *)a->v, 0, n * sizeof(double));
-   a->n = n;
-   return 0;
-}
 
-static void free_term_arrays (Array_Type *a, size_t na)
-{
-   size_t i;
-   for (i = 0; i < na; i++)
+   win = &wct->window;
+
+   i = 0;
+   for (t = wct->terms; t != NULL; t = t->next)
      {
-        array_free (&a[i]);
-     }
-}
-static int alloc_term_arrays (Array_Type *a, size_t na, size_t len)
-{
-   size_t i;
-   for (i = 0; i < na; i++)
-     {
-        if (0 != array_alloc (&a[i], len))
+        if (i == nth)
           {
-             free_term_arrays (a, na);
-             return -1;
+             info->name = t->term_name;
+             info->value = t->value;
+             info->num_values = win->num_wave;
+             return i+1;
           }
+        i++;
      }
+
    return 0;
-}
-
-static int Write_Output = 0;
-static int write_term (const Term_Type *t, const Window_Type *win)
-{
-#define BUFSIZE 256
-   char filename[BUFSIZE];
-   FILE *fp;
-   size_t i, n;
-
-   if (Write_Output == 0)
-     return 0;
-
-   if (snprintf (filename, BUFSIZE, "term_%s.dat", t->term_name) > BUFSIZE)
-     return -1;
-
-   if (NULL == (fp = fopen (filename, "w")))
-     return -1;
-
-   n = win->num_wave;
-   for (i = 0; i < n; i++)
-     {
-        fprintf (fp, "%5ld %15.6f %15.6e\n",
-                 i, win->wave0[i], t->value_workspace[i]);
-     }
-
-   return fclose (fp);
 }
 
 static int combine_terms (Wavecal_Type *wct, double *model)
 {
    Window_Type *win = &wct->window;
-   Reference_Irr_Type *irr = &wct->irr;
-   Array_Type term_sum[NUM_TERMS];
-   int count[NUM_TERMS];
-   size_t num_terms = NUM_TERMS;
+   int count[NUM_TERM_TYPES];
+   size_t num_term_types = NUM_TERM_TYPES;
    size_t i, n = win->num_wave;
    double *ad1, *ad2, *i0, *lbe, *bl;
    Term_Type *t;
 
-   if (0 != alloc_term_arrays (term_sum, num_terms, n))
-     return -1;
-
    /* sum over terms of each type */
-
-   memset ((char *)count, 0, num_terms * sizeof(int));
+   zero_term_sums (wct->term_sums, num_term_types, win->num_wave);
+   memset ((char *)count, 0, num_term_types * sizeof(int));
 
    for (t = wct->terms; t != NULL; t = t->next)
      {
-        double *term_value = t->value_workspace;
-        double *sum = term_sum[t->term_type].v;
+        double *term_value = t->value;
+        double *sum = wct->term_sums[t->term_type];
         for (i = 0; i < n; i++)
           {
              sum[i] += term_value[i];
           }
         count[t->term_type] += 1;
-        if (0 != write_term (t, win)) return -1; /* FIXME */
      }
 
    /* model = sc*(i0 + ad1)*exp(-lbe) + bl + ad2 */
 
-   i0  = irr->irr0_workspace;
-   ad1 = term_sum[TERM_TYPE_AD1].v;
-   ad2 = term_sum[TERM_TYPE_AD2].v;
-   lbe = term_sum[TERM_TYPE_LBE].v;
-   bl  = term_sum[TERM_TYPE_BL].v;
+   i0  = wct->irr0;
+   ad1 = wct->term_sums[TERM_TYPE_AD1];
+   ad2 = wct->term_sums[TERM_TYPE_AD2];
+   lbe = wct->term_sums[TERM_TYPE_LBE];
+   bl  = wct->term_sums[TERM_TYPE_BL];
 
    if (count[TERM_TYPE_SC] > 0)
      {
-        double *sc  = term_sum[TERM_TYPE_SC].v;
+        double *sc  = wct->term_sums[TERM_TYPE_SC];
         for (i = 0; i < n; i++)
           {
              model[i] = (sc[i] * (i0[i] + ad1[i]) * exp(-lbe[i])
@@ -1059,8 +1085,6 @@ static int combine_terms (Wavecal_Type *wct, double *model)
                          + bl[i] + ad2[i]);
           }
      }
-
-   free_term_arrays (term_sum, num_terms);
 
    return 0;
 }
@@ -1082,7 +1106,7 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    par += win->num_wave_params;
 
    /* evaluate the reference irradiance on the new wavelength grid */
-   if (cspline_eval (cspline, win->num_wave, win->wave0, irr->irr0_workspace))
+   if (cspline_eval (cspline, win->num_wave, win->wave0, wct->irr0))
      return -1;
 
    /* evaluate all model terms on the new wavelength grid */
@@ -1098,29 +1122,6 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
      return -1;
 
    return 0;
-}
-
-static int write_resid (const Window_Type *win,
-                        const double *model, const double *spec,
-                        const double *resid)
-{
-   FILE *fp;
-   size_t i, n;
-
-   if (Write_Output == 0)
-     return 0;
-
-   if (NULL == (fp = fopen ("resid.dat", "w")))
-     return -1;
-
-   n = win->num_wave;
-   for (i = 0; i < n; i++)
-     {
-        fprintf (fp, "%5ld %15.6e %15.6f %15.6e %15.6e\n",
-                 i, spec[i], win->wave0[i], model[i], resid[i]);
-     }
-
-   return fclose (fp);
 }
 
 typedef struct
@@ -1158,30 +1159,11 @@ static int mpfit_objective_function
         fvec[i] = (model[i] - spec[i]) * weight[i];
      }
 
-   if (Write_Output)
-     {
-        double sumsq = 0.0;
-        for (i = 0; i < m; i++)
-          {
-             double diff = fvec[i];
-             sumsq += diff * diff;
-          }
-        p->counter += 1;
-        fprintf(stderr, "sumsq= %12.5e\n", sumsq);
-        for (i = 0; i < n; i++)
-          {
-             fprintf (stderr, "%2d:%12.5e ", i, x[i]);
-             if ((i+1)%5 == 0) fputs("\n", stderr);
-          }
-        fprintf(stderr, "\n");
-     }
-
    return 0;
 }
 
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
-                 int num_wave, const double *wave,
-                 const double *spec, const double *specerr,
+                 const double *wave, const double *spec, const double *specerr,
                  const Wavecal_Config_Type *config,
                  Wavecal_Result_Type *result)
 {
@@ -1189,32 +1171,18 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    struct mp_config_struct fit_config = {0};
    struct mp_result_struct fit_result = {0};
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
+   Window_Type *win = &wct->window;
    double fill_value = config->fill_value;
-   Window_Type *win = NULL;
+   double *spec_scaled = win->spec_scaled;
+   double *weight = win->weight;
    double *params = NULL;
-   double *model = NULL;
-   double *spec_scaled = NULL;
-   double *weight = NULL;
-   double *residuals = NULL;
    double scale_factor;
    size_t num;
    int status = -1;
    int i, num_residuals, num_params, mp_status;
 
-   if (0 != init_window (wct, xtrack, num_wave, wave, config))
+   if (0 != init_window (wct, xtrack, wave, config))
      return -1;
-
-   win = &wct->window;
-
-   if (collect_params (wct, &num, &params) < 0)
-     return -1;
-   if (1) fprintf (stderr, "fit: %ld parameters\n", num);
-
-   if ((NULL == (model = alloc_doubles (win->num_wave)))
-       || (NULL == (spec_scaled = alloc_doubles (win->num_wave)))
-       || (NULL == (weight = alloc_doubles (win->num_wave)))
-       || (NULL == (residuals = alloc_doubles (win->num_wave)))) /* FIXME? */
-     goto return_error;
 
    /* Scale the radiance and irradiance by the same factor */
    scale_factor = wct->irr.file.scale_factor;
@@ -1236,10 +1204,13 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         else weight[i] = 0.0;
      }
 
+   if (collect_params (wct, &num, &params) < 0)
+     return -1;
+
    mp.wct = wct;
-   mp.spec = spec_scaled;
-   mp.weight = weight;
-   mp.model = model;
+   mp.spec = win->spec_scaled;
+   mp.weight = win->weight;
+   mp.model = win->model;
    mp.counter = 0;
 
    num_params = num;
@@ -1251,46 +1222,35 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    fit_config.maxfev = (fit_ctrl->maxfev ?
                         fit_ctrl->maxfev : fit_ctrl->maxiter * num_params);
 
-   fit_result.resid = residuals; /* FIXME? */
+   fit_result.resid = win->residuals; /* FIXME: make this a debug option? */
 
    mp_status = mpfit (&mpfit_objective_function, num_residuals,
                       num_params, params, NULL, &fit_config, &mp, &fit_result);
-   fprintf (stderr, "mpfit returned mp_status = %d\n", mp_status);
 
-   fprintf (stderr, "result:\n bestnorm=%g\n orignorm=%g\n niter=%d nfev=%d\n",
-            fit_result.bestnorm,
-            fit_result.orignorm,
-            fit_result.niter,
-            fit_result.nfev
-           );
+   /* making sure the model is evaluated at best-fit */
+   if (0 != mpfit_objective_function (num_residuals, num_params,
+                                      params, win->residuals, NULL, &mp))
+     goto return_error;
 
-   if (1)
-   {  /* FIXME - making sure the model is evaluated at best-fit */
-      Write_Output = 1;
-      if (0 != mpfit_objective_function (num_residuals, num_params,
-                                         params, residuals, NULL, &mp))
-        goto return_error;
-      /* FIXME */
-      if (write_resid (win, model, spec_scaled, residuals))
-        return -1;
-   }
-
-   /* FIXME - what to return?
-    * updated wavelengths: win->wave0?
-    * best-fit wavelength parameters?
-    */
    if (result)
      {
+        /* Warning: pointers are valid only until wavecal_close gets called */
+        memcpy ((char *)win->wave_params,
+                (char *)params, win->num_wave_params * sizeof(double));
+        result->wave_params = win->wave_params;
+        result->num_wave_params = win->num_wave_params;
         result->wave = win->wave0;
+        result->model = win->model;
+        result->spec_scaled = win->spec_scaled;
+        result->residuals = win->residuals;
+        result->bestnorm = fit_result.bestnorm;
+        result->nfev = fit_result.nfev;
+        result->opt_status = mp_status;
      }
 
    status = 0;
 return_error:
    FREE(params);
-   FREE(model);
-   FREE(spec_scaled);
-   FREE(weight);
-   FREE(residuals);
 
    return status;
 }

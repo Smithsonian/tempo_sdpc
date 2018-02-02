@@ -43,9 +43,9 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/wavecal_driver
 
-tests:	$(objdir) $(objdir)/test_wavecal $(objdir)/test_interp
+tests:	$(objdir) $(objdir)/wavecal_driver $(objdir)/test_interp
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -67,6 +67,7 @@ install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/wavecal_driver $(bindir)/
 
 install:	install-executables
 
@@ -94,16 +95,16 @@ $(objdir)/test_interp:	$(TEST_INTERP_OBJS)
 $(objdir)/test_interp.o:	$(srcdir)/test_interp.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
 
-TEST_WAVECAL_OFILES = test_wavecal.o util.o wavecal.o interp.o shapefun.o \
+WAVECAL_DRIVER_OFILES = wavecal_driver.o util.o wavecal.o interp.o shapefun.o \
      lsq.o interp_cheb.o interp_poly.o interp_cspline.o
-TEST_WAVECAL_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_WAVECAL_OFILES))
+WAVECAL_DRIVER_OBJS = $(patsubst %.o,$(objdir)/%.o, $(WAVECAL_DRIVER_OFILES))
 
-$(objdir)/test_wavecal:	$(TEST_WAVECAL_OBJS)
-	$(COMPILE_CMD) -o $(objdir)/test_wavecal $(TEST_WAVECAL_OBJS) \
+$(objdir)/wavecal_driver:	$(WAVECAL_DRIVER_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/wavecal_driver $(WAVECAL_DRIVER_OBJS) \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
-$(objdir)/test_wavecal.o:	$(srcdir)/test_wavecal.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_wavecal.c $(LIBS)
+$(objdir)/wavecal_driver.o:	$(srcdir)/wavecal_driver.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_driver.c $(LIBS)
 
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \
