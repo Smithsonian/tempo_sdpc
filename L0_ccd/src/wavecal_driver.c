@@ -137,7 +137,7 @@ static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wa
 
    for (i = 0; i < info->num_values; i++)
      {
-        fprintf (fp, "%4d %15.6f %15.6e\n", i, wave[i], info->value[i]);
+        fprintf (fp, "%4ld %15.6f %15.6e\n", i, wave[i], info->value[i]);
      }
 
    (void) fclose (fp);
@@ -318,7 +318,6 @@ int main (int argc, char **argv)
 
    for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
      {
-        int nth;
         if (read_radiance (ncid, xtrack, &rad))
           goto return_status;
 
