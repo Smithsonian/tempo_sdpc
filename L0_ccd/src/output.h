@@ -6,6 +6,7 @@
 
 #include <libconfig.h>
 #include "granule.h"
+#include "sensorcal.h"
 
 /** @brief Struct to organize the main output objects
  *
@@ -15,9 +16,8 @@
  */
 typedef struct
 {
-   const Granule_Exprec_Type *exprec;   /**< Level 1a exposure record */
-   const Image_Type *img_err;           /**< Uncertainty in exposure record */
-   const Image_Type *img_waves;         /**< Wavelength arrays */
+   Spectral_Data_Type *uv;
+   Spectral_Data_Type *vis;
 }
 Output_Exprec_Type;
 

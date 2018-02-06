@@ -499,26 +499,78 @@ static int radiometric_correction (const Calibration_Type *cal, const Dark_Table
    return 0;
 }
 
+static Spectral_Data_Type *
+finalize_band (const Calibration_Type *cal, config_t *cfg,
+               const Exprec_Meta_Type *xr, int band_id)
+{
+   Wavecal_Type *wct = NULL;
+   Image_Type *img = xr->exprec->img;
+   Image_Type *img_err = xr->img_err;
+   Spectral_Data_Type *sdt = NULL;
+   int use_default_waves = (xr->index != 0);
+   int status;
+
+   /* FIXME: It might be slightly more efficient to allocate two
+    * Spectral_Data_Type objects at a high level and then re-use them */
+   if (NULL == (sdt = sdt_extract_band (cal, band_id, img, img_err)))
+     return NULL;
+
+   /* FIXME?: In principle, it may be more efficient to open a
+    * Wavecal_Type object once at a high level and then re-use it.
+    * Unfortunately, the initialization of a Wavecal_Type object is
+    * complicated and, at the moment, the simplest way to re-initialize
+    * is to delete it and create a new one. But if this is the worst
+    * inefficiency here, then maybe we aren't doing too badly.
+    */
+   if (!use_default_waves)
+     {
+        if (NULL == (wct = wavecal_open (cfg, sdt->num_channels, 0)))
+          goto return_status;
+     }
+
+   /* (wct == NULL) means use default wavelength grid */
+   if (0 != cal->cal_wavecal (cal, wct, band_id, sdt->num_xtrack,
+                              sdt->img, sdt->img_err, sdt->wave))
+     goto return_status;
+
+   status = 0;
+return_status:
+   wavecal_close (wct);
+   if (status)
+     {
+        sdt_free (sdt);
+        return NULL;
+     }
+
+   return sdt;
+}
+
 static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal,
-                                  Dark_Table_Type *dtt, Exprec_Meta_Type *xr,
+                                  config_t *cfg, Dark_Table_Type *dtt,
+                                  Exprec_Meta_Type *xr,
                                   Image_Type *tmp_img)
 {
-   Output_Exprec_Type rec;
+   Output_Exprec_Type outrec = {0};
+   int status = -1;
 
    if (0 != radiometric_correction (cal, dtt, xr, tmp_img))
      return -1;
 
-   if (0 != cal->cal_wavecal (cal, xr->exprec->img, tmp_img))
+   if (NULL == (outrec.uv = finalize_band (cal, cfg, xr, TEMPO_BAND_UV)))
      return -1;
 
-   rec.exprec = xr->exprec;
-   rec.img_err = xr->img_err;
-   rec.img_waves = tmp_img;
+   if (NULL == (outrec.vis = finalize_band (cal, cfg, xr, TEMPO_BAND_VIS)))
+     goto return_status;
 
-   if (0 != out->out_write_rec (out, xr->index, &rec))
-     return -1;
+   if (0 != out->out_write_rec (out, xr->index, &outrec))
+     goto return_status;
 
-   return 0;
+   status = 0;
+return_status:
+   sdt_free (outrec.uv);
+   sdt_free (outrec.vis);
+
+   return status;
 }
 
 static Exprec_Meta_Type *new_exprec_meta_type (void)
@@ -771,13 +823,13 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
         /* Frame ixr-1 is now ready to continue processing */
         xr_ready = exprec_queue.items[1];
-        if (0 != apply_cal_then_output (out, cal, dtt, xr_ready, tmp_img))
+        if (0 != apply_cal_then_output (out, cal, cfg, dtt, xr_ready, tmp_img))
           goto return_status;
      }
 
    /* Process the last entry in the queue, exprec[num_exprecs-1] */
    xr_ready = exprec_queue.items[2];
-   if (0 != apply_cal_then_output (out, cal, dtt, xr_ready, tmp_img))
+   if (0 != apply_cal_then_output (out, cal, cfg, dtt, xr_ready, tmp_img))
      goto return_status;
 
    status = 0;

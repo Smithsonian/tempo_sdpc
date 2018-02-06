@@ -6,6 +6,13 @@
 
 #include <libconfig.h>
 #include "image.h"
+#include "wavecal.h"
+
+enum
+{
+   TEMPO_BAND_UV,
+   TEMPO_BAND_VIS
+};
 
 typedef struct Calibration_Type Calibration_Type;
 
@@ -57,13 +64,18 @@ struct Calibration_Type
 
    /** Perform wavelength calibration
     * @param cal  non-NULL pointer to a Calibration_Type object
-    * @param img  non-NULL pointer to an uncalibrated image
+    * @param wct  non-NULL pointer to a Wavecal_Type object
+    * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)
+    * @param num  number of spectra to calibrate
+    * @param img  non-NULL pointer to spectrum values
+    * @param img_err  non-NULL pointer to spectrum uncertainty values
     * @param img_waves non-NULL pointer to the output calibrated wavelength arrays
     * @return 0 on success, non-zero on error
     *
     * Not implemented yet
     */
-   int (*cal_wavecal)(const Calibration_Type *, Image_Type *, Image_Type *);
+   int (*cal_wavecal)(const Calibration_Type *, Wavecal_Type *, int, int,
+                      const double *, const double *, double *);
 
 #ifdef SENSORCAL_PRIVATE_DATA
    SENSORCAL_PRIVATE_DATA
@@ -75,5 +87,28 @@ struct Calibration_Type
  * @return non-NULL pointer to a Calibration_Type object on success, NULL on error
  */
 extern Calibration_Type *sensorcal_init (config_t *cfg);
+
+
+typedef struct
+{
+   double *img;
+   double *img_err;
+   double *wave;
+   Image_Pqf_Bitmap_Type *pqf;
+   const char *name;
+   int num_xtrack;
+   int num_channels;
+}
+Spectral_Data_Type;
+/**< Spectral_Data_Type arrays are ordered so that wavelength
+ * is the fastest varying index to facilitate wavelength
+ * calibration and spectral analysis.
+ */
+
+extern void sdt_free (Spectral_Data_Type *sdt);
+
+extern Spectral_Data_Type *
+sdt_extract_band (const Calibration_Type *cal, int band_id,
+                  const Image_Type *img, const Image_Type *img_err);
 
 #endif
