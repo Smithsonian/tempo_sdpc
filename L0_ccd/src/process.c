@@ -507,7 +507,6 @@ finalize_band (const Calibration_Type *cal, config_t *cfg,
    Image_Type *img = xr->exprec->img;
    Image_Type *img_err = xr->img_err;
    Spectral_Data_Type *sdt = NULL;
-   int use_default_waves = (xr->index != 0);
    int status;
 
    /* FIXME: It might be slightly more efficient to allocate two
@@ -522,7 +521,7 @@ finalize_band (const Calibration_Type *cal, config_t *cfg,
     * is to delete it and create a new one. But if this is the worst
     * inefficiency here, then maybe we aren't doing too badly.
     */
-   if (!use_default_waves)
+   if (cal->cal_wavecal_enabled (cal, xr->index))
      {
         if (NULL == (wct = wavecal_open (cfg, sdt->num_channels, 0)))
           goto return_status;

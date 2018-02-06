@@ -77,6 +77,13 @@ struct Calibration_Type
    int (*cal_wavecal)(const Calibration_Type *, Wavecal_Type *, int, int,
                       const double *, const double *, double *);
 
+   /** Query if wavelength calibration has been enabled
+    * @param cal  non-NULL pointer to a Calibration_Type object
+    * @param mirror_step  mirror step index
+    * return 0 if disabled, non-zero if enabled
+    */
+   int (*cal_wavecal_enabled)(const Calibration_Type *, int);
+
 #ifdef SENSORCAL_PRIVATE_DATA
    SENSORCAL_PRIVATE_DATA
 #endif
@@ -87,7 +94,6 @@ struct Calibration_Type
  * @return non-NULL pointer to a Calibration_Type object on success, NULL on error
  */
 extern Calibration_Type *sensorcal_init (config_t *cfg);
-
 
 typedef struct
 {

@@ -33,7 +33,8 @@ CCD_Cal_Type;
    double btdf; \
    double diffuser_trend; \
    int num_waves_per_ccd; \
-   int wavecal_xtrack_stride;
+   int wavecal_xtrack_stride; \
+   int wavecal_mirror_step_stride;
 #include "sensorcal.h"
 
 typedef struct Cal_Data_Type Cal_Data_Type;
@@ -262,6 +263,14 @@ static const CCD_Cal_Type *ccd_cal (const Calibration_Type *cal,
    return NULL;
 }
 
+static int cal_wavecal_enabled (const Calibration_Type *cal,
+                                int mirror_step)
+{
+   return ((0 != cal->wavecal_xtrack_stride)
+           && (0 != cal->wavecal_mirror_step_stride)
+           && (0 == (mirror_step % cal->wavecal_mirror_step_stride)));
+}
+
 static int cal_wavecal (const Calibration_Type *cal, Wavecal_Type *wct,
                         int band_index, int nx,
                         const double *pspec, const double *pspec_err,
@@ -384,6 +393,7 @@ static Calibration_Type *cal_alloc (int num_waves_per_ccd)
    cal->cal_apply_prnu = cal_apply_prnu;
    cal->cal_apply_btdf = cal_apply_btdf;
    cal->cal_wavecal = cal_wavecal;
+   cal->cal_wavecal_enabled = cal_wavecal_enabled;
 
    return cal;
 }
@@ -538,7 +548,8 @@ Calibration_Type *sensorcal_init (config_t *cfg)
    const char *sensorcal_file;
    Calibration_Type *cal = NULL;
    Cal_Data_Type *data = NULL;
-   int wavecal_xtrack_stride;
+   int wavecal_xtrack_stride = 0;
+   int wavecal_mirror_step_stride = 0;
 
    if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
      {
@@ -555,11 +566,23 @@ Calibration_Type *sensorcal_init (config_t *cfg)
         return NULL;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_int (s, "wavecal_xtrack_stride", &wavecal_xtrack_stride))
+   /* Absent parameter means wavelength calibration disabled */
+   (void) config_setting_lookup_int (s, "wavecal_xtrack_stride",
+                                     &wavecal_xtrack_stride);
+   (void) config_setting_lookup_int (s, "wavecal_mirror_step_stride",
+                                     &wavecal_mirror_step_stride);
+   if ((0 != wavecal_xtrack_stride)
+       && (0 != wavecal_mirror_step_stride))
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading %s",
-                     __func__, config_setting_name (s));
-        return NULL;
+        tell_vlog (TELL_MSGTYPE_INFO, 1,
+                   "wavelength calibration enabled: xtrack_stride = %d, mirror_step_stride = %d",
+                   wavecal_xtrack_stride, wavecal_mirror_step_stride);
+     }
+   else
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "wavelength calibration disabled");
+        wavecal_xtrack_stride = 0;
+        wavecal_mirror_step_stride = 0;
      }
 
    if (NULL == (data = read_cal_file (sensorcal_file)))
@@ -600,6 +623,7 @@ Calibration_Type *sensorcal_init (config_t *cfg)
    if (cal)
      {
         cal->wavecal_xtrack_stride = wavecal_xtrack_stride;
+        cal->wavecal_mirror_step_stride = wavecal_mirror_step_stride;
      }
    else tell_verror (TELL_RUNTIME_ERROR,
                      "%s: sensorcal init failed", __func__);
