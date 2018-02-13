@@ -238,7 +238,7 @@ contains
                               tg_var_amf_molecule_stratospheric, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "molecule-specific tropospheric air mass factor (AMF)", &
+                              comment = "molecule-specific stratospheric air mass factor (AMF)", &
                               valid_range = [0.0_r8, 1e30_r8], &
                               fillvalue = fill_float, &
                               attlist = att_coord)
