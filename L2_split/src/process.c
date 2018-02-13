@@ -156,8 +156,7 @@ vertical_strat_column (const Pixel_Grid_Param_Type *mesh,
 
         vstrat[i] = nan_value;
 
-        if ((slant_column_i != slant_column_i)
-            || (slant_column_i == DBL_MAX))
+        if (isnan(slant_column_i) || (slant_column_i == DBL_MAX))
           continue;
 
         s_trop = apriori_vert_trop[i] * amf_trop[i];
@@ -424,7 +423,7 @@ static int filter_vert_strat (const Pixel_Grid_Param_Type *mesh,
    return status;
 }
 
-int process_files (config_t *cfg, int num_files, char **files)
+int process_files (config_t *cfg, int num_files, char **files, int omi_test)
 {
    Config_Type params = {0};
    Pixel_Grid_Param_Type mesh = {0};
@@ -454,13 +453,22 @@ int process_files (config_t *cfg, int num_files, char **files)
      goto free_and_return;
    Pixel_regrid_get_srcdims (r_mesh, &num_steps, &num_xtrack);
 
-   /* Read product variables on scan grid */
-   if (0 != __scan_enable_testdata (st, params.testdata_file, r_mesh))
-     goto free_and_return;
    if (NULL == (sv = scan_vars_alloc (num_steps, num_xtrack)))
      goto free_and_return;
-   if (0 != scan_vars_read (st, sv))
-     goto free_and_return;
+
+   /* Pack product variables on scan grid */
+   if (!omi_test)
+     {
+        if (0 != scan_vars_pack (st, sv))
+          goto free_and_return;
+     }
+   else
+     {
+        if (0 != __scan_enable_testdata (st, params.testdata_file, r_mesh))
+          goto free_and_return;
+        if (0 != __scan_vars_read (st, sv))
+          goto free_and_return;
+     }
 
    /* Regrid product variables onto mesh grid */
    if (NULL == (mesh_vars = regrid_product_vars (sv, &mesh, r_mesh)))

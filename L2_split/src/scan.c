@@ -24,6 +24,10 @@ struct Granule_Type
    char *file;
    double *lon_bounds;
    double *lat_bounds;
+   double *slant_column;
+   double *amf_trop;
+   double *amf_strat;
+   int *data_quality_flag;
    int *steps;
    int num_xtrack;
    int num_steps;
@@ -55,6 +59,10 @@ static void granule_free (Granule_Type *gr)
    FREE(gr->steps);
    FREE(gr->lon_bounds);
    FREE(gr->lat_bounds);
+   FREE(gr->slant_column);
+   FREE(gr->amf_trop);
+   FREE(gr->amf_strat);
+   FREE(gr->data_quality_flag);
    FREE(gr);
 }
 
@@ -85,11 +93,40 @@ static Granule_Type *granule_new (const char *file)
    return gr;
 }
 
+static int granule_alloc_data_arrays (Granule_Type *gr)
+{
+   int num_pixels;
+   size_t len_bounds, len_doubles;
+
+   if (NULL == (gr->steps = (int *)MALLOC (gr->num_steps * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   num_pixels = gr->num_steps * gr->num_xtrack;
+   len_doubles = num_pixels * sizeof(double);
+   len_bounds = 4 * len_doubles;
+
+   if ((NULL == (gr->lon_bounds = (double *) MALLOC (len_bounds)))
+       || (NULL == (gr->lat_bounds = (double *) MALLOC (len_bounds)))
+       || (NULL == (gr->slant_column = (double *) MALLOC (len_doubles))
+       || (NULL == (gr->amf_trop = (double *) MALLOC (len_doubles)))
+       || (NULL == (gr->amf_strat = (double *) MALLOC (len_doubles)))
+       || (NULL == (gr->data_quality_flag = (int *) MALLOC (num_pixels * sizeof(int)))))
+      )
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
 static int read_pixel_vertices (Granule_Type *gr, int ncid)
 {
    TIO_Var_Info_Type vi;
    int i, grp, num_pixels, start[3], count[3];
-   size_t len_bounds;
    double nan_value = nan("");
    double *lonb, *latb;
 
@@ -101,27 +138,14 @@ static int read_pixel_vertices (Granule_Type *gr, int ncid)
      return -1;
    gr->num_steps = vi.dimlens[0];
 
-   if (NULL == (gr->steps = (int *)MALLOC (gr->num_steps * sizeof(int))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
+   if (0 != granule_alloc_data_arrays (gr))
+     return -1;
 
    start[0] = 0;
    count[0] = gr->num_steps;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, gr->steps))
      return -1;
-
-   num_pixels = gr->num_steps * gr->num_xtrack;
-   len_bounds = 4 * num_pixels * sizeof(double);
-
-   if ((NULL == (gr->lon_bounds = (double *) MALLOC (len_bounds)))
-       || (NULL == (gr->lat_bounds = (double *) MALLOC (len_bounds))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
 
    /* read lon/lat bounds arrays */
 
@@ -143,6 +167,8 @@ static int read_pixel_vertices (Granule_Type *gr, int ncid)
         return -1;
      }
 
+   num_pixels = gr->num_steps * gr->num_xtrack;
+
    /* filter invalid values */
    lonb = gr->lon_bounds;
    latb = gr->lat_bounds;
@@ -153,6 +179,109 @@ static int read_pixel_vertices (Granule_Type *gr, int ncid)
         if (INVALID_LONGITUDE(lonb_i)) lonb[i] = nan_value;
         if (INVALID_LATITUDE(latb_i)) latb[i] = nan_value;
      }
+
+   return 0;
+}
+
+static void dbl_replace_fill_with_nan (double *a, int n, double fill_value)
+{
+   double nan_value = nan("");
+   int i;
+   for (i = 0; i < n; i++)
+     {
+        if (a[i] == fill_value) a[i] = nan_value;
+     }
+}
+
+static int read_dbl_and_replace_fill (int grp, const char *name,
+                                      int *count, double *value)
+{
+   TIO_Var_Info_Type info;
+   int no_fill, start[] = {0, 0};
+   double fill_value;
+
+   if (0 != TIO_get_var_section (grp, name,
+                                 start, count, TIO_DOUBLE, value))
+     return -1;
+
+   if (0 != TIO_inq_var (grp, name, &info))
+     return -1;
+
+   /* initialize to NaN, then read and see if the initial value changed */
+   fill_value = nan("");
+
+   if (info.type == TIO_FLOAT)
+     {
+        float float_fill = nan("");
+        if (0 != TIO_inq_var_fill (grp, info.varid, &no_fill, &float_fill))
+          return -1;
+        fill_value = (double) float_fill;
+     }
+   else if (info.type == TIO_DOUBLE)
+     {
+        if (0 != TIO_inq_var_fill (grp, info.varid, &no_fill, &fill_value))
+          return -1;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported data type = %d",
+                     __func__, info.type);
+        return -1;
+     }
+
+   /* If the initial value didn't change, it appears that
+    * there's no fill value to filter */
+   if (0 == isnan(fill_value))
+     {
+        int num_pixels = count[0] * count[1];
+        dbl_replace_fill_with_nan (value, num_pixels, fill_value);
+     }
+
+   return 0;
+}
+
+static int read_data_arrays (Granule_Type *gr, int ncid)
+{
+   int grp, start[2], count[2];
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = gr->num_steps;
+   count[1] = gr->num_xtrack;
+
+   if (-1 == TIO_inq_grp (ncid, "product", &grp))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "column_amount", count, gr->slant_column))
+     return -1;
+
+   if (1)  /* FIXME - why are input slant columns < 0? */
+   {
+      double *slant_column = gr->slant_column;
+      double nan_value = nan("");
+      int i, num_pixels = gr->num_steps * gr->num_xtrack;
+      for (i = 0; i < num_pixels; i++)
+        {
+           double slant_column_i = slant_column[i];
+           if (slant_column_i < 0)
+             {
+                slant_column[i] = nan_value;
+             }
+        }
+   }
+
+   if (0 != TIO_get_var_section (grp, "main_data_quality_flag",
+                                 start, count, TIO_INT, gr->data_quality_flag))
+     return -1;
+
+   if (-1 == TIO_inq_grp (ncid, "support_data", &grp))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "amf_molecule_tropospheric", count, gr->amf_trop))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "amf_molecule_stratospheric", count, gr->amf_strat))
+     return -1;
 
    return 0;
 }
@@ -172,14 +301,18 @@ static Granule_Type *granule_init (const char *file)
      }
 
    if (0 != read_pixel_vertices (gr, ncid))
-     {
-        (void) TIO_close (ncid);
-        granule_free (gr);
-        return NULL;
-     }
-   (void) TIO_close (ncid);
+     goto free_and_return;
 
+   if (0 != read_data_arrays (gr, ncid))
+     goto free_and_return;
+
+   (void) TIO_close (ncid);
    return gr;
+
+free_and_return:
+   (void) TIO_close (ncid);
+   granule_free (gr);
+   return NULL;
 }
 
 void scan_free (Scan_Type *st)
@@ -424,6 +557,50 @@ free_and_return:
    return r;
 }
 
+void scan_vars_free (Scan_Vars_Type *sv)
+{
+   if (sv == NULL)
+     return;
+   FREE(sv->slant_column);
+   FREE(sv->amf_trop);
+   FREE(sv->amf_strat);
+   FREE(sv->data_quality_flag);
+   FREE(sv);
+}
+
+Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
+{
+   Scan_Vars_Type *sv = NULL;
+   int num_pixels = num_steps * num_xtrack;
+
+   if (NULL == (sv = (Scan_Vars_Type *)MALLOC (sizeof *sv)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)sv, 0, sizeof *sv);
+
+   if ((NULL == (sv->slant_column = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (sv->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (sv->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (sv->data_quality_flag = (int *)MALLOC (num_pixels * sizeof(int))))
+      )
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        scan_vars_free (sv);
+        return NULL;
+     }
+   memset ((char *)sv->slant_column, 0, num_pixels * sizeof(double));
+   memset ((char *)sv->amf_strat, 0, num_pixels * sizeof(double));
+   memset ((char *)sv->amf_trop, 0, num_pixels * sizeof(double));
+   memset ((char *)sv->data_quality_flag, 0, num_pixels * sizeof(int));
+
+   sv->num_steps = num_steps;
+   sv->num_xtrack = num_xtrack;
+
+   return sv;
+}
+
 int __scan_enable_testdata (Scan_Type *st, const char *filename,
                             Pixel_Regrid_Type *r)
 {
@@ -476,7 +653,8 @@ free_and_return:
 
 /* If pvar != NULL, use the space it points to.  Otherwise, allocate space
  * and return a pointer to the allocated storage */
-static double *read_var (const Scan_Type *st, const char *var_name, double *pvar)
+static double *read_var (const Scan_Type *st,
+                         const char *var_name, double *pvar)
 {
    int num_xtrack = st->max_num_xtrack;
    int num_step = st->max_step + 1;
@@ -538,47 +716,7 @@ free_and_return:
    return var;
 }
 
-void scan_vars_free (Scan_Vars_Type *sv)
-{
-   if (sv == NULL)
-     return;
-   FREE(sv->slant_column);
-   FREE(sv->amf_trop);
-   FREE(sv->amf_strat);
-   FREE(sv->data_quality_flag);
-   FREE(sv);
-}
-
-Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
-{
-   Scan_Vars_Type *sv = NULL;
-   int num_pixels = num_steps * num_xtrack;
-
-   if (NULL == (sv = (Scan_Vars_Type *)MALLOC (sizeof *sv)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-   memset ((char *)sv, 0, sizeof *sv);
-
-   if ((NULL == (sv->slant_column = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (sv->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (sv->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (sv->data_quality_flag = (int *)MALLOC (num_pixels * sizeof(int))))
-      )
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        scan_vars_free (sv);
-        return NULL;
-     }
-
-   sv->num_steps = num_steps;
-   sv->num_xtrack = num_xtrack;
-
-   return sv;
-}
-
-int scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv)
+int __scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv)
 {
    int i, num_pixels;
    double *slant_column;
@@ -606,12 +744,67 @@ int scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv)
    return 0;
 }
 
+static void copy_dbl_field (double *dest, int num_xtrack_dest,
+                            const double *src, const Granule_Type *gr)
+{
+   size_t len = gr->num_xtrack * sizeof(double);
+   int j;
+
+   for (j = 0; j < gr->num_steps; j++)
+     {
+        const double *src_j = src + j * gr->num_xtrack;
+        double *dest_j = dest + gr->steps[j] * num_xtrack_dest;
+        memcpy ((char *)dest_j, (char *)src_j, len);
+     }
+}
+
+static void copy_int_field (int *dest, int num_xtrack_dest,
+                            const int *src, const Granule_Type *gr)
+{
+   size_t len = gr->num_xtrack * sizeof(int);
+   int j;
+
+   for (j = 0; j < gr->num_steps; j++)
+     {
+        const int *src_j = src + j * gr->num_xtrack;
+        int *dest_j = dest + gr->steps[j] * num_xtrack_dest;
+        memcpy ((char *)dest_j, (char *)src_j, len);
+     }
+}
+
+int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv)
+{
+   int i, num_pixels;
+   int *dqf;
+
+   for (i = 0; i < st->num_granules; i++)
+     {
+        Granule_Type *gr = st->granules[i];
+        copy_dbl_field (sv->slant_column, sv->num_xtrack, gr->slant_column, gr);
+        copy_dbl_field (sv->amf_trop, sv->num_xtrack, gr->amf_trop, gr);
+        copy_dbl_field (sv->amf_strat, sv->num_xtrack, gr->amf_strat, gr);
+        copy_int_field (sv->data_quality_flag, sv->num_xtrack, gr->data_quality_flag, gr);
+     }
+
+   num_pixels = sv->num_steps * sv->num_xtrack;
+   dqf = sv->data_quality_flag;
+
+   /* FIXME: this seems crude -- change it? */
+   for (i = 0; i < num_pixels; i++)
+     {
+        dqf[i] = (dqf[i] < 0) ? 1 : 0;
+     }
+
+   return 0;
+}
+
 static int write_granule_vars (const Granule_Type *gr, double fill_value,
                                const double *vtrop_gr, const double *vstrat_gr)
 {
    TIO_Var_Info_Type vi;
-   const char vtrop_name[] = "trop_column_amount";
-   const char vstrat_name[] = "strat_column_amount";
+   const char vtrop_name[] = "tropospheric_column_amount";
+   const char vstrat_name[] = "stratospheric_column_amount";
+   const char coordinate_string[] = "longitude latitude";
    int start[2], count[2], varid_trop, varid_strat;
    int i, num_steps, num_xtrack;
    int ncid, grp, status = -1;
@@ -625,17 +818,25 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
    if (-1 == TIO_inq_var (grp, "column_amount", &vi))
      goto close_and_return;
 
-   if ((0 != TIO_def_var (grp, vtrop_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_trop))
-       || (0 != TIO_def_var (grp, vstrat_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_strat)))
+   if (0 != tio_inq_varid (grp, vtrop_name, &varid_trop))
      {
-        goto close_and_return;
+        if ((0 != TIO_def_var (grp, vtrop_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_trop))
+            || (0 != TIO_def_var_fill (grp, varid_trop, 0, &fill_value)))
+          goto close_and_return;
      }
 
-   if ((0 != TIO_def_var_fill (grp, varid_trop, 0, &fill_value))
-       || (0 != TIO_def_var_fill (grp, varid_strat, 0, &fill_value)))
+   if (0 != tio_inq_varid (grp, vstrat_name, &varid_strat))
      {
-        goto close_and_return;
+        if ((0 != TIO_def_var (grp, vstrat_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_strat))
+            || (0 != TIO_def_var_fill (grp, varid_strat, 0, &fill_value)))
+          goto close_and_return;
      }
+
+   if ((0 != TIO_put_att (grp, varid_trop, "coordinates", TIO_CHAR,
+                          sizeof(coordinate_string), coordinate_string))
+       ||(0 != TIO_put_att (grp, varid_strat, "coordinates", TIO_CHAR,
+                          sizeof(coordinate_string), coordinate_string)))
+     goto close_and_return;
 
    num_steps = vi.dimlens[0];
    num_xtrack = vi.dimlens[1];

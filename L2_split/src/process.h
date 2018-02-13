@@ -20,9 +20,10 @@ extern "C" {
  *                  \c L2_split parameter file
  * @param[in] num_files  Number of granule files
  * @param[in] files      Pointer to an array of granule file names
+ * @param[in] omi_test   If non-zero, process OMI test data
  * @return 0 on success, -1 on error
  */
-extern int process_files (config_t *cfg, int num_files, char **files);
+extern int process_files (config_t *cfg, int num_files, char **files, int omi_test);
 
 #if 0
 {

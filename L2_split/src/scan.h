@@ -84,16 +84,17 @@ extern Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack);
  */
 extern void scan_vars_free (Scan_Vars_Type *sv);
 
-/** Read selected scan-gridded product variables into pre-allocated storage
+/** Pack selected scan-gridded product variables into pre-allocated storage
  * @param[in]  st   Pointer to an object of type \c Scan_Type initialized by
  *                  \c scan_read_grids.
  * @param[in]  sv   Pointer to an object of type \c Scan_Vars_Type allocated
  *                  by \c scan_vars_alloc
  * @return 0 on success, -1 on error
  */
-extern int scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv);
+extern int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv);
 
 /* FIXME - this is needed only for initial development */
+extern int __scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv);
 extern int __scan_enable_testdata (Scan_Type *st, const char *filename,
                                    Pixel_Regrid_Type *r);
 

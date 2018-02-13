@@ -17,6 +17,7 @@ static void usage (void)
    fprintf (stderr, "Usage: L2_split [options] file1 file2 ...\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
+   fprintf (stderr, "   -t | --test            process OMI test data\n");
    fprintf (stderr, "   -v | --verbose lev     logging level\n");
    exit (EXIT_SUCCESS);
 }
@@ -41,9 +42,11 @@ int main (int argc, char **argv)
    char *config_file = "l2_split.cfg";
    config_t cfg;
    int status = EXIT_FAILURE;
+   int omi_test = 0;
    static struct option long_options[] =
      {
         {"config",  optional_argument, 0, 'c'},
+        {"test",    optional_argument, 0, 't'},
         {"verbose", optional_argument, 0, 'v'},
         {0,0,0,0}
      };
@@ -66,7 +69,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:tv:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -85,6 +88,9 @@ int main (int argc, char **argv)
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
              break;
+           case 't':
+             omi_test = 1;
+             break;
            case 'v':
              {
                 int log_level;
@@ -97,7 +103,7 @@ int main (int argc, char **argv)
    if (optind == argc)
      usage();
 
-   if (0 != process_files (&cfg, argc-optind, &argv[optind]))
+   if (0 != process_files (&cfg, argc-optind, &argv[optind], omi_test))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s:  processing files", __func__);
         goto return_status;
