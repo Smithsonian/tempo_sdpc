@@ -10,15 +10,19 @@
 #include <libconfig.h>
 #include <tell.h>
 #include <tio.h>
+#include <tio_template.h>
 
 #include "config.h"
 #include "wavecal.h"
+
+#define PIXEL_SIZE_NANOMETERS   0.2
+#define MIN_WAVELENGTH_UV     288.0
+#define MIN_WAVELENGTH_VIS    536.8
 
 typedef struct
 {
    double *rad;
    double *rad_err;
-   double *y;
    size_t n;
 }
 Radiance_Type;
@@ -26,10 +30,15 @@ Radiance_Type;
 static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal [options] <input-file>\n");
+   fprintf (stderr, "  Required:\n");
+   fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing radiance spectrum\n");
+   fprintf (stderr, "   -S | --yStart WAVELENGTH   starting wavelength\n");
+   fprintf (stderr, "   -D | --yDelta DELTA        wavelength step per pixel\n");
+   fprintf (stderr, "   -m | --mirror STEP         mirror step index\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -o | --outpar FILE     output file for wavelength parameters\n");
-   fprintf (stderr, "   -s | --silent          turn off file output (for timing)\n");
    fprintf (stderr, "   -x | --xtrack N        cross-track pixel index, 0 is northernmost\n");
+   fprintf (stderr, "   -o | --outpar FILE     output file for wavelength parameters\n");
+   fprintf (stderr, "   -v | --verbose         turn on verbose output\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -42,33 +51,30 @@ static void free_radiance (Radiance_Type *r)
 
 static int alloc_radiance (Radiance_Type *r, size_t n)
 {
-   if (NULL == (r->rad = (double *)MALLOC (3 * n * sizeof(double))))
+   if (NULL == (r->rad = (double *)MALLOC (2 * n * sizeof(double))))
      return -1;
    r->n = n;
-   r->y = r->rad + n;
-   r->rad_err = r->y + n;
+   r->rad_err = r->rad + n;
    return 0;
 }
 
-static int read_radiance (int ncid, int xtrack, Radiance_Type *r)
+static int read_radiance (int ncid, int step, int xtrack, Radiance_Type *r)
 {
-   int start[2], count[2];
+   int start[3], count[3];
    double rmax, a, sn_max=2500.0;
    size_t i;
    int status = -1;
 
-   start[0] = xtrack;
-   start[1] = 0;
+   start[0] = step;
+   start[1] = xtrack;
+   start[2] = 0;
 
    count[0] = 1;
-   count[1] = r->n;
+   count[1] = 1;
+   count[2] = r->n;
 
-   if (0 != TIO_get_var_section (ncid, "RadianceObserved", start, count, TIO_DOUBLE,
+   if (0 != TIO_get_var_section (ncid, TEMPO_VAR_RADIANCE, start, count, TIO_DOUBLE,
                                  r->rad))
-     goto return_error;
-
-   if (0 != TIO_get_var_section (ncid, "Wavelength", start, count, TIO_DOUBLE,
-                                 r->y))
      goto return_error;
 
    /* To fake some plausible uncertainty values,
@@ -95,26 +101,6 @@ static int read_radiance (int ncid, int xtrack, Radiance_Type *r)
    status = 0;
 return_error:
    return status;
-}
-
-static int write_resid (size_t num_wave,
-                        const double *wave0,
-                        const double *model, const double *spec,
-                        const double *resid)
-{
-   FILE *fp;
-   size_t i;
-
-   if (NULL == (fp = fopen ("resid.dat", "w")))
-     return -1;
-
-   for (i = 0; i < num_wave; i++)
-     {
-        fprintf (fp, "%5ld %15.6e %15.6f %15.6e %15.6e\n",
-                 i, spec[i], wave0[i], model[i], resid[i]);
-     }
-
-   return fclose (fp);
 }
 
 static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wave)
@@ -145,7 +131,7 @@ static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wa
    return 0;
 }
 
-static int write_fit_results (FILE *fp, int xtrack, int num_wave,
+static int write_fit_details (FILE *fp, int xtrack,
                               const Wavecal_Type *wct,
                               const Wavecal_Result_Type *wavecal_result)
 {
@@ -161,9 +147,6 @@ static int write_fit_results (FILE *fp, int xtrack, int num_wave,
      }
    fprintf (fp, "\n");
 
-   write_resid (num_wave, wavecal_result->wave,
-                wavecal_result->model, wavecal_result->spec_scaled,
-                wavecal_result->residuals);
    nth = 0;
    do
      {
@@ -175,31 +158,125 @@ static int write_fit_results (FILE *fp, int xtrack, int num_wave,
    return 0;
 }
 
+static int create_result_group (int parent_grp, const char *grp_name,
+                                const TIO_Var_Info_Type *radiance_info,
+                                const Wavecal_Result_Type *wavecal_result,
+                                int *pgrp)
+{
+   int grp, varid, param_dimids[3];
+   size_t params_dimlen;
+
+   if (0 != TIO_def_grp (parent_grp, grp_name, &grp))
+     return -1;
+
+   memcpy ((char *)param_dimids, (char *)radiance_info->dimids,
+           3 * sizeof (int));
+   params_dimlen = wavecal_result->num_wave_params;
+   if (0 != TIO_def_dim (grp, "params", params_dimlen, &param_dimids[2]))
+     return -1;
+
+   if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
+                          radiance_info->ndims,
+                          radiance_info->dimids, &varid))
+       || (0 != TIO_def_var (grp, "model", TIO_FLOAT,
+                             radiance_info->ndims,
+                             radiance_info->dimids, &varid))
+       || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT,
+                             radiance_info->ndims,
+                             radiance_info->dimids, &varid))
+       || (0 != TIO_def_var (grp, "params", TIO_FLOAT,
+                             radiance_info->ndims,
+                             param_dimids, &varid))
+      )
+     {
+        return -1;
+     }
+
+   *pgrp = grp;
+
+   return 0;
+}
+
+static int write_results (int parent_grp, const TIO_Var_Info_Type *radiance_info,
+                          int step, int xtrack, int num_wave,
+                          const Wavecal_Type *wct,
+                          const Wavecal_Result_Type *wavecal_result)
+{
+   const char grp_name[] = "wavecal_test";
+   int grp, status, start[3], count[3];
+
+   (void) wct;
+
+   tell_push_queue ();
+   status = TIO_inq_grp (parent_grp, grp_name, &grp);
+   tell_pop_queue (1);
+   if (status)
+     {
+        if (0 != create_result_group (parent_grp, grp_name, radiance_info,
+                                      wavecal_result, &grp))
+          return -1;
+     }
+
+   start[0] = step;
+   start[1] = xtrack;
+   start[2] = 0;
+
+   count[0] = 1;
+   count[1] = 1;
+   count[2] = num_wave;
+
+   if ((0 != TIO_put_var_section (grp, "wavelength", start, count, TIO_DOUBLE,
+                                  wavecal_result->wave))
+       || (0 != TIO_put_var_section (grp, "model", start, count, TIO_DOUBLE,
+                                  wavecal_result->model))
+       || (0 != TIO_put_var_section (grp, "residuals", start, count, TIO_DOUBLE,
+                                  wavecal_result->residuals)))
+     {
+        return -1;
+     }
+
+   count[2] = wavecal_result->num_wave_params;
+   if (0 != TIO_put_var_section (grp, "params", start, count, TIO_DOUBLE,
+                                 wavecal_result->wave_params))
+     return -1;
+
+   return 0;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "wavecal_driver";
    const char *config_file = "l0_ccd.cfg";
    const char *file = NULL;
    const char *params_outfile = NULL;
+   const char *group_name = NULL;
    FILE *fp = stderr;
    config_t cfg;
    Radiance_Type rad = {0};
    int status = EXIT_FAILURE;
    Wavecal_Type *wct = NULL;
+   TIO_Var_Info_Type radiance_info = {0};
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
    double *y0 = NULL;
    double nan_value = nan("");
-   int ncid, xtrack = -1;
+   double y_start = nan_value;
+   double y_delta = nan_value;
+   int ncid, grp, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
-   int silent = 0;
+   int beg_step, end_step;
+   int verbose = 0;
    size_t i, len;
    static struct option long_options[] =
      {
         {"config",  optional_argument, 0, 'c'},
         {"outpar",  optional_argument, 0, 'o'},
-        {"silent",  optional_argument, 0, 's'},
         {"xtrack",  optional_argument, 0, 'x'},
+        {"mirror",  optional_argument, 0, 'm'},
+        {"verbose",  optional_argument, 0, 'v'},
+        {"yDelta",  optional_argument, 0, 'D'},
+        {"yStart",  optional_argument, 0, 'S'},
+        {"group",   required_argument, 0, 'g'},
         {0,0,0,0}
      };
 
@@ -222,7 +299,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:x:o:s", long_options, &option_index);
+        int c = getopt_long (argc, argv, "m:D:S:c:g:x:o:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -239,12 +316,27 @@ int main (int argc, char **argv)
              if (0 == config_read_file (&cfg, config_file))
                goto return_status;
              break;
+           case 'g': group_name = optarg;
+             break;
            case 'o': params_outfile = optarg;
              break;
-           case 's': silent++;
+           case 'v': verbose++;
+             break;
+
+           case 'S':
+             if (1 != sscanf (optarg, "%le", &y_start))
+               usage();
+             break;
+           case 'D':
+             if (1 != sscanf (optarg, "%le", &y_delta))
+               usage();
              break;
            case 'x':
              if (1 != sscanf (optarg, "%d", &xtrack))
+               usage();
+             break;
+           case 'm':
+             if (1 != sscanf (optarg, "%d", &step))
                usage();
              break;
           }
@@ -274,9 +366,34 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   if (isnan(y_delta))
+     {
+        y_delta = PIXEL_SIZE_NANOMETERS;
+     }
+
+   if (isnan(y_start))
+     {
+        if (0 == strcasecmp (group_name, TEMPO_BAND_NAME_UV))
+          y_start = MIN_WAVELENGTH_UV;
+        else if (0 == strcasecmp (group_name, TEMPO_BAND_NAME_VIS))
+          y_start = MIN_WAVELENGTH_VIS;
+        else
+          usage();
+     }
+
    wavecal_config.fill_value = nan_value;
 
-   len = 1001;
+   if (0 != TIO_open (file, NC_WRITE, &ncid))
+     return -1;
+
+   if (0 != TIO_inq_grp (ncid, group_name, &grp))
+     return -1;
+
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_RADIANCE, &radiance_info))
+     return -1;
+
+   /* expected dimensions are: [mirror_step, xtrack, spectral_channel] */
+   len = radiance_info.dimlens[2];
 
    if (alloc_radiance (&rad, len))
      goto return_status;
@@ -286,11 +403,8 @@ int main (int argc, char **argv)
 
    for (i = 0; i < len; i++)
      {
-        y0[i] = 290.0 + i*0.2;
+        y0[i] = y_start + i*y_delta;
      }
-
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
-     return -1;
 
    if (NULL == (wct = wavecal_open (&cfg, rad.n, 1)))
      goto return_status;
@@ -304,11 +418,10 @@ int main (int argc, char **argv)
           }
      }
 
-   /* default test xtrack = 196;  test file contains 301 */
    if (xtrack < 0)
      {
         beg_xtrack = 0;
-        end_xtrack = 301;
+        end_xtrack = radiance_info.dimlens[1];
      }
    else
      {
@@ -316,18 +429,38 @@ int main (int argc, char **argv)
         end_xtrack = xtrack+1;
      }
 
-   for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
+   if (step < 0)
      {
-        if (read_radiance (ncid, xtrack, &rad))
-          goto return_status;
+        beg_step = 0;
+        end_step = radiance_info.dimlens[0];
+     }
+   else
+     {
+        beg_step = step;
+        end_step = step+1;
+     }
 
-        if (0 != wavecal_fit (wct, xtrack, y0, rad.rad, rad.rad_err,
-                              &wavecal_config, &wavecal_result))
-          goto return_status;
-
-        if (!silent)
+   for (step = beg_step; step < end_step; step++)
+     {
+        for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
-             (void) write_fit_results (fp, xtrack, rad.n, wct, &wavecal_result);
+             fprintf (stderr, "step=%4d xtrack=%4d\n", step, xtrack);
+
+             if (read_radiance (grp, step, xtrack, &rad))
+               goto return_status;
+
+             if (wavecal_fit (wct, xtrack, y0, rad.rad, rad.rad_err,
+                              &wavecal_config, &wavecal_result))
+               goto return_status;
+
+             if (write_results (grp, &radiance_info, step, xtrack, rad.n, wct,
+                                &wavecal_result))
+               goto return_status;
+
+             if ((verbose != 0) || (params_outfile != NULL))
+               {
+                  (void) write_fit_details (fp, xtrack, wct, &wavecal_result);
+               }
           }
      }
 
