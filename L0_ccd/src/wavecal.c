@@ -694,12 +694,20 @@ error_return:
    return status;
 }
 
+/* FIXME - this is only temporary! */
+static int Num_Warnings = 3;
+
 static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
 {
    File_Type *file = &irr->file;
 
    xtrack = 0;
-   fprintf (stderr, "FIXME: forcing xtrack=%d on irradiance input\n", xtrack);
+   if (Num_Warnings > 0)
+     {
+        fprintf (stderr, "FIXME: forcing xtrack=%d on irradiance input\n",
+                 xtrack);
+        Num_Warnings--;
+     }
 
    /* FIXME better to allocate a buffer once, and re-use it */
    FREE(irr->wavelen);
