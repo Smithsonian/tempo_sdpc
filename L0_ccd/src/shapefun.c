@@ -33,7 +33,7 @@ enum
    SHAPEFUN_TYPE_CSPLINE,
    SHAPEFUN_TYPE_CHEB,
    SHAPEFUN_TYPE_POLY,
-   SHAPEFUN_TYPE_SQUARE
+   SHAPEFUN_TYPE_POSITIVE_COEFF
 };
 
 static void free_shapefun_type (Shapefun_Type *st)
@@ -58,7 +58,7 @@ static int st_num_params (const Shapefun_Type *st)
         num_params = st->num_coef;
         break;
 
-      case SHAPEFUN_TYPE_SQUARE:
+      case SHAPEFUN_TYPE_POSITIVE_COEFF:
         num_params = 1;
         break;
 
@@ -325,15 +325,16 @@ static int eval_poly_shapefun (const Shapefun_Type *st, const double *node_coeff
    return 0;
 }
 
-static int init_square_shapefun_params (const Shapefun_Type *st,
-                                        const Shapefun_Init_Type *init,
-                                        size_t num_nodes,
-                                        double *node_coeffs)
+static int
+init_positive_coeff_shapefun_params (const Shapefun_Type *st,
+                                     const Shapefun_Init_Type *init,
+                                     size_t num_nodes,
+                                     double *node_coeffs)
 {
    (void) st;
 
-   /* For 'square' scale functions, node_coeffs[0] is interpreted as the
-    * parameter to be squared */
+   /* For 'positive_coeff' scale functions, node_coeffs[0]
+    * is interpreted as the parameter to be squared */
 
    if (num_nodes != 1)
      {
@@ -354,8 +355,9 @@ static int init_square_shapefun_params (const Shapefun_Type *st,
    return 0;
 }
 
-static int eval_square_shapefun (const Shapefun_Type *st, const double *node_coeffs,
-                                 size_t n, const double *x, double *y)
+static int
+eval_positive_coeff_shapefun (const Shapefun_Type *st, const double *node_coeffs,
+                              size_t n, const double *x, double *y)
 {
    double s2, s = node_coeffs[0];
    size_t i;
@@ -395,7 +397,7 @@ static Shapefun_Method Tf_Method_Table[] =
    TF_METHOD(cspline,SHAPEFUN_TYPE_CSPLINE),
    TF_METHOD(cheb,SHAPEFUN_TYPE_CHEB),
    TF_METHOD(poly,SHAPEFUN_TYPE_POLY),
-   TF_METHOD(square,SHAPEFUN_TYPE_SQUARE),
+   TF_METHOD(positive_coeff,SHAPEFUN_TYPE_POSITIVE_COEFF),
    TF_METHOD_TABLE_END
 };
 

@@ -235,7 +235,7 @@ band_540_740_nm:
    H2O_285K:
    {
      term = "lbe";
-     method = "square";
+     method = "positive_coeff";
      function:
      {
            nodes = [535.0, 750.0];
@@ -254,7 +254,7 @@ band_540_740_nm:
    O2_285K:
    {
      term = "lbe";
-     method = "square";
+     method = "positive_coeff";
      function:
      {
            nodes = [535.0, 750.0];
