@@ -59,12 +59,15 @@ extern void wavecal_close (Wavecal_Type *wct);
  * wavelength points.
  * @param cfg        Pointer to an open \a config_t structure initialized
  *                   with an appropriate configuration file.
+ * @param cfg_name   Name of configuration file parameter group governing
+ *                   the spectrum to be calibrated.
  * @param num_wave   Number of wavelength points in each spectrum to be calibrated.
- * @param mode       Integer indicating the type of spectra to be calibrated
- *                   0 means irradiance, 1 means radiance [currently not used].
+ * @param is_irradiance  Integer indicating the type of spectra to be calibrated
+ *                       1 means irradiance, 0 means radiance.
  * @return A valid \a Wavecal_Type pointer on success, NULL on error.
  */
-extern Wavecal_Type *wavecal_open (config_t *cfg, int num_wave, int mode);
+extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
+                                   int num_wave, int is_irradiance);
 
 /** Perform wavelength calibration on a single spectrum
  * @param  wct      Pointer to a \a Wavecal_Type object initialized by

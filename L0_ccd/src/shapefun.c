@@ -28,16 +28,19 @@
    int method_id;
 #include "shapefun.h"
 
+enum
+{
+   SHAPEFUN_TYPE_CSPLINE,
+   SHAPEFUN_TYPE_CHEB,
+   SHAPEFUN_TYPE_POLY,
+   SHAPEFUN_TYPE_SQUARE
+};
+
 static void free_shapefun_type (Shapefun_Type *st)
 {
    if (st == NULL)
      return;
    FREE(st);
-}
-
-static int st_method_id (const Shapefun_Type *st)
-{
-   return st->method_id;
 }
 
 static int st_num_params (const Shapefun_Type *st)
@@ -46,13 +49,17 @@ static int st_num_params (const Shapefun_Type *st)
 
    switch (st->method_id)
      {
-      case INTERP_TYPE_CSPLINE:
+      case SHAPEFUN_TYPE_CSPLINE:
         num_params = st->num_nodes;
         break;
 
-      case INTERP_TYPE_CHEB:
-      case INTERP_TYPE_POLY:
+      case SHAPEFUN_TYPE_CHEB:
+      case SHAPEFUN_TYPE_POLY:
         num_params = st->num_coef;
+        break;
+
+      case SHAPEFUN_TYPE_SQUARE:
+        num_params = 1;
         break;
 
       default:
@@ -318,6 +325,53 @@ static int eval_poly_shapefun (const Shapefun_Type *st, const double *node_coeff
    return 0;
 }
 
+static int init_square_shapefun_params (const Shapefun_Type *st,
+                                        const Shapefun_Init_Type *init,
+                                        size_t num_nodes,
+                                        double *node_coeffs)
+{
+   (void) st;
+
+   /* For 'square' scale functions, node_coeffs[0] is interpreted as the
+    * parameter to be squared */
+
+   if (num_nodes != 1)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: incorrect destination array size (size=%ld, 1 is required)",
+                     __func__, num_nodes);
+        return -1;
+     }
+
+   if ((init == NULL) || (init->y == NULL))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: got NULL pointer", __func__);
+        return -1;
+     }
+
+   node_coeffs[0] = init->y[0];
+
+   return 0;
+}
+
+static int eval_square_shapefun (const Shapefun_Type *st, const double *node_coeffs,
+                                 size_t n, const double *x, double *y)
+{
+   double s2, s = node_coeffs[0];
+   size_t i;
+
+   (void) st; (void) x;
+
+   s2 = s*s;
+
+   for (i = 0; i < n; i++)
+     {
+        y[i] = s2;
+     }
+
+   return 0;
+}
+
 typedef struct
 {
    const char *name;
@@ -338,9 +392,10 @@ Shapefun_Method;
 
 static Shapefun_Method Tf_Method_Table[] =
 {
-   TF_METHOD(cspline,INTERP_TYPE_CSPLINE),
-   TF_METHOD(cheb,INTERP_TYPE_CHEB),
-   TF_METHOD(poly,INTERP_TYPE_POLY),
+   TF_METHOD(cspline,SHAPEFUN_TYPE_CSPLINE),
+   TF_METHOD(cheb,SHAPEFUN_TYPE_CHEB),
+   TF_METHOD(poly,SHAPEFUN_TYPE_POLY),
+   TF_METHOD(square,SHAPEFUN_TYPE_SQUARE),
    TF_METHOD_TABLE_END
 };
 
@@ -373,7 +428,6 @@ static int shapefun_config (Shapefun_Type *st, const char *method_name)
    st->st_init_params = m->st_init_params;
    st->st_eval = m->st_eval;
    st->st_num_params = st_num_params;
-   st->st_method_id = st_method_id;
 
    return 0;
 }

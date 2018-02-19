@@ -109,7 +109,7 @@ struct Wavecal_Type
    Term_Type *terms;            /**< terms in the model being fitted */
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
-   int mode;
+   int is_irradiance;
 };
 
 static void free_interp_type (Interp_Type *it)
@@ -265,7 +265,7 @@ static int config_shapefun_method (config_setting_t *s,
 static int open_refspec (config_setting_t *s,
                          File_Type *file, Interp_Type **pinterp)
 {
-   const char *method_name;
+   const char *method_name = "cspline";
    config_setting_t *ss;
    Interp_Type *interp = NULL;
 
@@ -278,11 +278,13 @@ static int open_refspec (config_setting_t *s,
    if (0 != read_filepar (ss, file))
      return -1;
 
+#if 0
    if (CONFIG_FALSE == config_setting_lookup_string (s, "method", &method_name))
      {
         tell_config_error (s, __func__);
         return -1;
      }
+#endif
 
    if (NULL == (interp = interp_create (method_name)))
      return -1;
@@ -912,17 +914,18 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
    return 0;
 }
 
-Wavecal_Type *wavecal_open (config_t *cfg, int num_wave, int mode)
+Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
+                            int num_wave, int is_irradiance)
 {
    Wavecal_Type *wct = NULL;
-   config_setting_t *s;
+   config_setting_t *s, *s_band;
    double *pindex = NULL;
    int i;
 
    if (NULL == (wct = alloc_wavecal (num_wave)))
      goto error_return;
 
-   wct->mode = mode;
+   wct->is_irradiance = is_irradiance;
 
    if (NULL == (s = config_lookup (cfg, "wavecal_control")))
      {
@@ -935,10 +938,18 @@ Wavecal_Type *wavecal_open (config_t *cfg, int num_wave, int mode)
    if (0 != config_control (s, wct))
      goto error_return;
 
-   if (NULL == (s = config_lookup (cfg, "wavecal_irr_reference")))
+   if (NULL == (s_band = config_lookup (cfg, cfg_name)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing wavecal_irr_reference in param file: %s",
+                     "%s: accessing %s in param file: %s",
+                     __func__, cfg_name, config_error_file (cfg));
+        goto error_return;
+     }
+
+   if (NULL == (s = config_setting_get_member (s_band, "wavecal_irradiance")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing wavecal_irradiance in param file: %s",
                      __func__, config_error_file (cfg));
         goto error_return;
      }
@@ -949,12 +960,12 @@ Wavecal_Type *wavecal_open (config_t *cfg, int num_wave, int mode)
    if (0 != config_irr_reference (s, &wct->irr))
      goto error_return;
 
-   if (mode == 1)
+   if (is_irradiance == 0)
      {
-        if (NULL == (s = config_lookup (cfg, "wavecal_rad_model")))
+        if (NULL == (s = config_setting_get_member (s_band, "wavecal_radiance")))
           {
              tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: accessing wavecal_rad_model in param file: %s",
+                          "%s: accessing wavecal_radiance in param file: %s",
                           __func__, config_error_file (cfg));
              goto error_return;
           }
@@ -1132,6 +1143,31 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    return 0;
 }
 
+static void write_params (FILE *fp, const double *x, int n)
+{
+   int i;
+   fprintf (fp, "params:\n");
+   for (i = 0; i < n; i++)
+     {
+        fprintf (fp, "%15.6e ", x[i]);
+        if (0 == ((i+1) % 6)) fprintf (fp, "\n");
+     }
+   fprintf (fp, "\n");
+}
+
+static void write_statistic (FILE *fp, const double *f, int m)
+{
+   double sumsq;
+   int i;
+
+   sumsq = 0.0;
+   for (i = 0; i < m; i++)
+     {
+        sumsq += f[i] * f[i];
+     }
+   fprintf (fp, "sumsq = %15.6e\n", sumsq);
+}
+
 typedef struct
 {
    Wavecal_Type *wct;
@@ -1159,6 +1195,8 @@ static int mpfit_objective_function
 
    (void) n; (void) dvec;
 
+   if (0) write_params (stderr, x, n);
+
    if (forward_model (p->wct, x, model) < 0)
      return -1;
 
@@ -1166,6 +1204,8 @@ static int mpfit_objective_function
      {
         fvec[i] = (model[i] - spec[i]) * weight[i];
      }
+
+   if (0) write_statistic (stderr, fvec, m);
 
    return 0;
 }
@@ -1254,6 +1294,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         result->bestnorm = fit_result.bestnorm;
         result->nfev = fit_result.nfev;
         result->opt_status = mp_status;
+        if (0) write_params (stderr, params, num_params);
      }
 
    status = 0;

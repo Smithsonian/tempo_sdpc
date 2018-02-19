@@ -37,12 +37,6 @@ struct Shapefun_Type
     */
    void (*st_delete)(Shapefun_Type *);
 
-   /** Retrieve the interpolation method index for this shape function
-    * @param   A pointer to this \a Shapefun_Type object
-    * @return  A valid method index.
-    */
-   int (*st_method_id)(const Shapefun_Type *);
-
    /** Retrieve the number of parameters associated with this \a Shapefun_Type object
     * @param sf  A pointer to this \a Shapefun_Type object
     * @return The number of parameters

@@ -58,11 +58,36 @@ static int alloc_radiance (Radiance_Type *r, size_t n)
    return 0;
 }
 
+static void fake_radiance_errors (Radiance_Type *r, double snr_max)
+{
+   double rmax, a;
+   size_t i;
+
+   /* To fake some plausible uncertainty values,
+    * assume 1) radiance is proportional to counts
+    *        2) uncertainties are Poisson, so sigma=sqrt(N)
+    *        3) peak radiance has signal-to-noise ratio, snr_max
+    * Therefore:
+    *    snr_max = sqrt(nmax)   and rmax = a*nmax
+    *   => a = rmax/snr_max^2
+    * so that for any r, n(r) = r/a,
+    * and r_err = a*sqrt(n(r)) = a*sqrt(r/a) = sqrt(a*r)
+    */
+   rmax = r->rad[0];
+   for (i = 1; i < r->n; i++)
+     {
+        if (r->rad[i] > rmax) rmax = r->rad[i];
+     }
+   a = rmax / (snr_max * snr_max);
+   for (i = 0; i < r->n; i++)
+     {
+        r->rad_err[i] = sqrt(a * r->rad[i]);
+     }
+}
+
 static int read_radiance (int ncid, int step, int xtrack, Radiance_Type *r)
 {
    int start[3], count[3];
-   double rmax, a, sn_max=2500.0;
-   size_t i;
    int status = -1;
 
    start[0] = step;
@@ -77,25 +102,15 @@ static int read_radiance (int ncid, int step, int xtrack, Radiance_Type *r)
                                  r->rad))
      goto return_error;
 
-   /* To fake some plausible uncertainty values,
-    * assume 1) radiance is proportional to counts
-    *        2) uncertainties are Poisson, so sigma=sqrt(N)
-    *        3) peak radiance has signal-to-noise ratio, sn_max
-    * Therefore:
-    *    sn_max = sqrt(nmax)   and rmax = a*nmax
-    *   => a = rmax/sn_max^2
-    * so that for any r, n(r) = r/a,
-    * and r_err = a*sqrt(n(r)) = a*sqrt(r/a) = sqrt(a*r)
-    */
-   rmax = r->rad[0];
-   for (i = 1; i < r->n; i++)
+   tell_push_queue();
+   status = TIO_get_var_section (ncid, TEMPO_VAR_RADIANCE_ERROR, start, count, TIO_DOUBLE,
+                                 r->rad_err);
+   tell_pop_queue(1);
+   if (status)
      {
-        if (r->rad[i] > rmax) rmax = r->rad[i];
-     }
-   a = rmax / (sn_max * sn_max);
-   for (i = 0; i < r->n; i++)
-     {
-        r->rad_err[i] = sqrt(a * r->rad[i]);
+        double snr_max = 2500.0;
+        fprintf (stderr, "*** Faking radiance errors assuming max(SNR) = %g\n", snr_max);
+        fake_radiance_errors (r, snr_max);
      }
 
    status = 0;
@@ -131,6 +146,27 @@ static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wa
    return 0;
 }
 
+static void write_fit (const Wavecal_Result_Type *r, size_t num_values)
+{
+   FILE *fp = NULL;
+   size_t i;
+
+   if (NULL == (fp = fopen ("result.dat", "w")))
+     {
+        fprintf (stderr, "*** %s: Error writing results\n", __func__);
+        return;
+     }
+   for (i = 0; i < num_values; i++)
+     {
+        fprintf (fp, "%4ld %9.4f %15.4e %15.4e %15.4e\n", i,
+                 r->wave[i],
+                 r->spec_scaled[i],
+                 r->model[i],
+                 r->residuals[i]);
+     }
+   (void) fclose (fp);
+}
+
 static int write_fit_details (FILE *fp, int xtrack,
                               const Wavecal_Type *wct,
                               const Wavecal_Result_Type *wavecal_result)
@@ -154,6 +190,9 @@ static int write_fit_details (FILE *fp, int xtrack,
         write_term_info (&info, wavecal_result->wave);
      }
    while (nth > 0);
+
+   (void) wavecal_query_term (wct, 0, &info);
+   write_fit (wavecal_result, info.num_values);
 
    return 0;
 }
@@ -265,6 +304,7 @@ int main (int argc, char **argv)
    int ncid, grp, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
    int beg_step, end_step;
+   int is_irradiance = 0;
    int verbose = 0;
    size_t i, len;
    static struct option long_options[] =
@@ -406,7 +446,7 @@ int main (int argc, char **argv)
         y0[i] = y_start + i*y_delta;
      }
 
-   if (NULL == (wct = wavecal_open (&cfg, rad.n, 1)))
+   if (NULL == (wct = wavecal_open (&cfg, group_name, rad.n, is_irradiance)))
      goto return_status;
 
    if (params_outfile)
@@ -444,8 +484,6 @@ int main (int argc, char **argv)
      {
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
-             fprintf (stderr, "step=%4d xtrack=%4d\n", step, xtrack);
-
              if (read_radiance (grp, step, xtrack, &rad))
                goto return_status;
 
@@ -457,9 +495,15 @@ int main (int argc, char **argv)
                                 &wavecal_result))
                goto return_status;
 
-             if ((verbose != 0) || (params_outfile != NULL))
+             if (verbose)
                {
-                  (void) write_fit_details (fp, xtrack, wct, &wavecal_result);
+                  fprintf (stderr, "%4d %4d %12.4e %4d\n", step, xtrack,
+                           wavecal_result.bestnorm, wavecal_result.nfev);
+
+                  if (params_outfile)
+                    {
+                       (void) write_fit_details (fp, xtrack, wct, &wavecal_result);
+                    }
                }
           }
      }

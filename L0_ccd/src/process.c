@@ -8,6 +8,8 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <tio.h>
+#include <tio_template.h>
 
 #include "config.h"
 #include "ccd.h"
@@ -499,6 +501,27 @@ static int radiometric_correction (const Calibration_Type *cal, const Dark_Table
    return 0;
 }
 
+static const char *config_group (int band_id)
+{
+   const char *cfg_name = NULL;
+
+   switch (band_id)
+     {
+      case TEMPO_BAND_UV:
+        cfg_name = TEMPO_BAND_NAME_UV;
+        break;
+      case TEMPO_BAND_VIS:
+        cfg_name = TEMPO_BAND_NAME_VIS;
+        break;
+      default:
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: invalid band_id=%d", __func__, band_id);
+        break;
+     }
+
+   return cfg_name;
+}
+
 static Spectral_Data_Type *
 finalize_band (const Calibration_Type *cal, config_t *cfg,
                const Exprec_Meta_Type *xr, int band_id)
@@ -517,13 +540,15 @@ finalize_band (const Calibration_Type *cal, config_t *cfg,
    /* FIXME?: In principle, it may be more efficient to open a
     * Wavecal_Type object once at a high level and then re-use it.
     * Unfortunately, the initialization of a Wavecal_Type object is
-    * complicated and, at the moment, the simplest way to re-initialize
-    * is to delete it and create a new one. But if this is the worst
-    * inefficiency here, then maybe we aren't doing too badly.
+    * complicated, band-specific, and, at the moment, the simplest way
+    * to re-initialize is to delete it and create a new one. But if this
+    * is the worst inefficiency here, then maybe we aren't doing too badly.
     */
    if (cal->cal_wavecal_enabled (cal, xr->index))
      {
-        if (NULL == (wct = wavecal_open (cfg, sdt->num_channels, 0)))
+        int is_irradiance = EXPREC_TYPE_IS_IRRADIANCE(xr->exprec->exposure_type);
+        const char *cfg_name = config_group (band_id);
+        if (NULL == (wct = wavecal_open (cfg, cfg_name, sdt->num_channels, is_irradiance)))
           goto return_status;
      }
 

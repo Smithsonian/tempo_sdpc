@@ -87,8 +87,10 @@ wavecal_control:
    maxiter = 200;   # max number of Levenberg-Marquardt iterations
 };
 
-wavecal_irr_reference:
+band_290_490_nm:
 {
+  wavecal_irradiance:
+  {
     # Wavelength grid parameterization:
     method = "cheb"; num_coef = 7;
 
@@ -100,10 +102,10 @@ wavecal_irr_reference:
        path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS.nc";
        scale_factor = 1.0e-14;
     };
-};
+  };
 
-wavecal_rad_model:
-{
+  wavecal_radiance:
+  {
    # The radiance model has the form:
    #  model = sc*(i0 + ad1)*exp(-lbe) + bl + ad2
    #
@@ -127,7 +129,7 @@ wavecal_rad_model:
      };
    };
 
-   BLine:
+   *BLine:
    {
      term = "bl";
      method = "poly"; num_coef = 2; xexp = 390.0;
@@ -142,24 +144,30 @@ wavecal_rad_model:
    {
      term = "ad1";
      method = "cspline";
-     data:
-     {
-           value = "RING";
-           wavegrid = "Wavelength";
-           path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS.nc";
-     };
      function:
      {
            nodes = [285.0,295.0,300.0,310.0,320.0,330.0,340.0,415.0,495.0];
            x0 = [390.0];
            y0 = [-1.0];
      };
+     data:
+     {
+           value = "RING";
+           wavegrid = "Wavelength";
+           path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS.nc";
+     };
    };
 
-   O3_220K:
+   *O3_220K:
    {
      term = "lbe";
      method = "cspline";
+     function:
+     {
+           nodes = [285.0,295.0,300.0,305.0,310.0,315.0,340.0,495.0];
+           x0 = [390.0];
+           y0 = [0.0];
+     };
      data:
      {
            value = "O3_220K";
@@ -167,11 +175,99 @@ wavecal_rad_model:
            path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS.nc";
            scale_factor = 1.0e22;
      };
+   };
+  };
+};   # end of band_290_490_nm
+
+band_540_740_nm:
+{
+  wavecal_irradiance:
+  {
+    # Wavelength grid parameterization:
+    method = "cheb"; num_coef = 7;
+
+    # Reference solar spectrum for wavelength calibration:
+    data:
+    {
+       value = "SolarIrradiance";
+       wavegrid = "Wavelength";
+       path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS_Band2.nc";
+       scale_factor = 1.0e-14;
+    };
+  };
+
+  wavecal_radiance:
+  {
+   # The radiance model has the form:
+   #  model = sc*(i0 + ad1)*exp(-lbe) + bl + ad2
+   #
+   # Each component listed here contributes to a single
+   # term which must be one of: {sc, ad1, ad2, lbe, bl}.
+   #
+   # To omit a component from the fit, prefix the
+   # corresponding section label with an asterisk (*).
+
+   AlbSC:
+   {
+     term = "sc";
+     method = "cspline";
      function:
      {
-           nodes = [285.0,295.0,300.0,305.0,310.0,315.0,340.0,495.0];
+           nodes = [535.0, 550.0, 565.0, 580.0, 595.0,
+                    610.0, 625.0, 640.0, 655.0, 670.0,
+                    685.0, 700.0, 715.0, 730.0, 745.0];
            x0 = [390.0];
-           y0 = [0.0];
+           y0 = [0.05];
      };
    };
-};
+
+   *BLine:
+   {
+     term = "bl";
+     method = "poly"; num_coef = 2; xexp = 640.0;
+     function:
+     {
+         x0 = [640.0];
+         y0 = [0.0];
+     };
+   };
+
+   H2O_285K:
+   {
+     term = "lbe";
+     method = "square";
+     function:
+     {
+           nodes = [535.0, 750.0];
+           x0 = [640.0];
+           y0 = [1.0];
+     };
+     data:
+     {
+           value = "H2O_285K_875hPa";
+           wavegrid = "Wavelength";
+           path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS_Band2.nc";
+           scale_factor = 1.0e24;
+     };
+   };
+
+   O2_285K:
+   {
+     term = "lbe";
+     method = "square";
+     function:
+     {
+           nodes = [535.0, 750.0];
+           x0 = [640.0];
+           y0 = [1.0];
+     };
+     data:
+     {
+           value = "O2_285K_875hPa";
+           wavegrid = "Wavelength";
+           path = "/vex/d2/tempo/sdpc/src/l0to1/wavcal/cmiller/reference_xs/wavcal_refspec_TEMPO_ILS_Band2.nc";
+           scale_factor = 1.0e24;
+     };
+   };
+  };
+};  # end of band_540_740_nm
