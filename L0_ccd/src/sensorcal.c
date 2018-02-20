@@ -690,19 +690,19 @@ static void copy_image_pixels_to_wavelength_order
 static void copy_image_pqf_to_wavelength_order
 (const Image_Type *img, int ybeg, int yend, Image_Pqf_Bitmap_Type *outbuf)
 {
-   Image_Pixel_Type *pixels_img = img->pixels;
+   const Image_Pqf_Bitmap_Type *img_pqf = img->pixel_quality_flags;
    int x, nx = img->num_cols;
    int y, ny = yend - ybeg;
 
-   /* Copy wavelength range [ybeg,yend) from img -> outbuf.
+   /* Copy wavelength range [ybeg,yend) from img_pqf -> outbuf.
     * In img, x varies fastest. In outbuf, y varies fastest. */
 
    for (x = 0; x < nx; x++)
      {
-        Image_Pqf_Bitmap_Type *pixels_out = outbuf + x * ny;
+        Image_Pqf_Bitmap_Type *pqf_out = outbuf + x * ny;
         for (y = ybeg; y < yend; y++)
           {
-             pixels_out[y-ybeg] = pixels_img[x + y * nx];
+             pqf_out[y-ybeg] = img_pqf[x + y * nx];
           }
      }
 }
