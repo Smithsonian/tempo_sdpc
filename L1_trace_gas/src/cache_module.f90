@@ -8,5 +8,6 @@ module cache_module
   ! changed from one iteration to the other is a reconvolution necessary.
   ! ---------------------------------------------------------------------
   REAL (KIND=r8) :: saved_shift = -1.0E+30_r8, saved_squeeze = -1.0E+30_r8
+  REAL (KIND=r8) :: saved_hwe = -1.0E+30_r8, saved_asy = -1.0E+30_r8
 
 end module cache_module

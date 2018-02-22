@@ -18,6 +18,8 @@ contains
       swathname = "band_290_490_nm"
     else if (l1b_channel == "UV2") then
       swathname = "band_540_740_nm"
+    else if (l1b_channel == "VIS") then
+      swathname = "band_vis"
     else
       call tell_error (tell_internal_error, &
                        "*** read_irradiance_data:  Unsupported value l1b_channel="//l1b_channel, &

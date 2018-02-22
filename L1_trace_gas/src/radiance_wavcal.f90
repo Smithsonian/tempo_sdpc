@@ -78,9 +78,9 @@ SUBROUTINE radiance_wavecal ( &
   ! updated with current values from the previous fit if that fit
   ! has gone well.
   ! -------------------------------------------------------------
-  !fitvar_cal(1:max_calfit_idx) = fitvar_cal_saved(1:max_calfit_idx)
+  fitvar_cal(1:max_calfit_idx) = fitvar_cal_saved(1:max_calfit_idx)
   !fitvar_cal(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
-  fitvar_cal(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
+  !fitvar_cal(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
 
   ! -------------------------------------------------------------------------
   ! Keep the slit function variables from solar fit fixed. Remember to reduce

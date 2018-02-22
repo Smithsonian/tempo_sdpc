@@ -202,7 +202,7 @@ CONTAINS
     REAL      (KIND=r4), DIMENSION (nxtrack)      :: tmp_sazm, tmp_vazm
     REAL      (KIND=r4), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_wvl, tmp_spc
     INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
-    character (len=128) :: logmsg
+    character (len=256) :: logmsg
 
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
