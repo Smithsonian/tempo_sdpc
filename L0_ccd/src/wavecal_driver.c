@@ -34,8 +34,9 @@ static void usage (void)
    fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing radiance spectrum\n");
    fprintf (stderr, "   -S | --yStart WAVELENGTH   starting wavelength\n");
    fprintf (stderr, "   -D | --yDelta DELTA        wavelength step per pixel\n");
-   fprintf (stderr, "   -m | --mirror STEP         mirror step index\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -h | --help            print this usage message\n");
+   fprintf (stderr, "   -m | --mirror STEP     mirror step index\n");
    fprintf (stderr, "   -x | --xtrack N        cross-track pixel index, 0 is northernmost\n");
    fprintf (stderr, "   -o | --outpar FILE     output file for wavelength parameters\n");
    fprintf (stderr, "   -v | --verbose         turn on verbose output\n");
@@ -309,11 +310,12 @@ int main (int argc, char **argv)
    size_t i, len;
    static struct option long_options[] =
      {
+        {"help",    optional_argument, 0, 'h'},
         {"config",  optional_argument, 0, 'c'},
         {"outpar",  optional_argument, 0, 'o'},
         {"xtrack",  optional_argument, 0, 'x'},
         {"mirror",  optional_argument, 0, 'm'},
-        {"verbose",  optional_argument, 0, 'v'},
+        {"verbose", optional_argument, 0, 'v'},
         {"yDelta",  optional_argument, 0, 'D'},
         {"yStart",  optional_argument, 0, 'S'},
         {"group",   required_argument, 0, 'g'},
@@ -339,7 +341,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "m:D:S:c:g:x:o:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hm:D:S:c:g:x:o:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -355,6 +357,9 @@ int main (int argc, char **argv)
               * any corresponding config file values */
              if (0 == config_read_file (&cfg, config_file))
                goto return_status;
+             break;
+           case 'h':
+             usage();
              break;
            case 'g': group_name = optarg;
              break;
