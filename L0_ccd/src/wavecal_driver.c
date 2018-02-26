@@ -21,17 +21,17 @@
 
 typedef struct
 {
-   double *rad;
-   double *rad_err;
+   double *spec;
+   double *spec_err;
    size_t n;
 }
-Radiance_Type;
+Spectrum_Type;
 
 static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal [options] <input-file>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing radiance spectrum\n");
+   fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing spectra\n");
    fprintf (stderr, "   -S | --yStart WAVELENGTH   starting wavelength\n");
    fprintf (stderr, "   -D | --yDelta DELTA        wavelength step per pixel\n");
    fprintf (stderr, "  Optional:\n");
@@ -43,53 +43,67 @@ static void usage (void)
    exit (EXIT_SUCCESS);
 }
 
-static void free_radiance (Radiance_Type *r)
+static void free_spectrum (Spectrum_Type *r)
 {
    if (r == NULL)
      return;
-   FREE(r->rad);
+   FREE(r->spec);
 }
 
-static int alloc_radiance (Radiance_Type *r, size_t n)
+static int alloc_spectrum (Spectrum_Type *r, size_t n)
 {
-   if (NULL == (r->rad = (double *)MALLOC (2 * n * sizeof(double))))
+   if (NULL == (r->spec = (double *)MALLOC (2 * n * sizeof(double))))
      return -1;
    r->n = n;
-   r->rad_err = r->rad + n;
+   r->spec_err = r->spec + n;
    return 0;
 }
 
-static void fake_radiance_errors (Radiance_Type *r, double snr_max)
+static void fake_spectrum_errors (Spectrum_Type *r, double snr_max)
 {
    double rmax, a;
    size_t i;
 
    /* To fake some plausible uncertainty values,
-    * assume 1) radiance is proportional to counts
+    * assume 1) spectral radiance/irradiance is proportional to counts
     *        2) uncertainties are Poisson, so sigma=sqrt(N)
-    *        3) peak radiance has signal-to-noise ratio, snr_max
+    *        3) peak has signal-to-noise ratio, snr_max
     * Therefore:
     *    snr_max = sqrt(nmax)   and rmax = a*nmax
     *   => a = rmax/snr_max^2
     * so that for any r, n(r) = r/a,
     * and r_err = a*sqrt(n(r)) = a*sqrt(r/a) = sqrt(a*r)
     */
-   rmax = r->rad[0];
+   rmax = r->spec[0];
    for (i = 1; i < r->n; i++)
      {
-        if (r->rad[i] > rmax) rmax = r->rad[i];
+        if (r->spec[i] > rmax) rmax = r->spec[i];
      }
    a = rmax / (snr_max * snr_max);
    for (i = 0; i < r->n; i++)
      {
-        r->rad_err[i] = sqrt(a * r->rad[i]);
+        r->spec_err[i] = sqrt(a * r->spec[i]);
      }
 }
 
-static int read_radiance (int ncid, int step, int xtrack, Radiance_Type *r)
+static int read_spectrum (int ncid, int step, int xtrack, int is_irradiance,
+                          Spectrum_Type *r)
 {
+   const char *var_spec;
+   const char *var_err;
    int start[3], count[3];
    int status = -1;
+
+   if (is_irradiance)
+     {
+        var_spec = TEMPO_VAR_IRRADIANCE;
+        var_err = TEMPO_VAR_IRRADIANCE_ERROR;
+     }
+   else
+     {
+        var_spec = TEMPO_VAR_RADIANCE;
+        var_err = TEMPO_VAR_RADIANCE_ERROR;
+     }
 
    start[0] = step;
    start[1] = xtrack;
@@ -99,19 +113,17 @@ static int read_radiance (int ncid, int step, int xtrack, Radiance_Type *r)
    count[1] = 1;
    count[2] = r->n;
 
-   if (0 != TIO_get_var_section (ncid, TEMPO_VAR_RADIANCE, start, count, TIO_DOUBLE,
-                                 r->rad))
+   if (0 != TIO_get_var_section (ncid, var_spec, start, count, TIO_DOUBLE, r->spec))
      goto return_error;
 
    tell_push_queue();
-   status = TIO_get_var_section (ncid, TEMPO_VAR_RADIANCE_ERROR, start, count, TIO_DOUBLE,
-                                 r->rad_err);
+   status = TIO_get_var_section (ncid, var_err, start, count, TIO_DOUBLE, r->spec_err);
    tell_pop_queue(1);
    if (status)
      {
         double snr_max = 2500.0;
-        fprintf (stderr, "*** Faking radiance errors assuming max(SNR) = %g\n", snr_max);
-        fake_radiance_errors (r, snr_max);
+        fprintf (stderr, "*** Faking spectrum errors assuming max(SNR) = %g\n", snr_max);
+        fake_spectrum_errors (r, snr_max);
      }
 
    status = 0;
@@ -199,7 +211,7 @@ static int write_fit_details (FILE *fp, int xtrack,
 }
 
 static int create_result_group (int parent_grp, const char *grp_name,
-                                const TIO_Var_Info_Type *radiance_info,
+                                const TIO_Var_Info_Type *spectrum_info,
                                 const Wavecal_Result_Type *wavecal_result,
                                 int *pgrp)
 {
@@ -209,23 +221,23 @@ static int create_result_group (int parent_grp, const char *grp_name,
    if (0 != TIO_def_grp (parent_grp, grp_name, &grp))
      return -1;
 
-   memcpy ((char *)param_dimids, (char *)radiance_info->dimids,
+   memcpy ((char *)param_dimids, (char *)spectrum_info->dimids,
            3 * sizeof (int));
    params_dimlen = wavecal_result->num_wave_params;
    if (0 != TIO_def_dim (grp, "params", params_dimlen, &param_dimids[2]))
      return -1;
 
    if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
-                          radiance_info->ndims,
-                          radiance_info->dimids, &varid))
+                          spectrum_info->ndims,
+                          spectrum_info->dimids, &varid))
        || (0 != TIO_def_var (grp, "model", TIO_FLOAT,
-                             radiance_info->ndims,
-                             radiance_info->dimids, &varid))
+                             spectrum_info->ndims,
+                             spectrum_info->dimids, &varid))
        || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT,
-                             radiance_info->ndims,
-                             radiance_info->dimids, &varid))
+                             spectrum_info->ndims,
+                             spectrum_info->dimids, &varid))
        || (0 != TIO_def_var (grp, "params", TIO_FLOAT,
-                             radiance_info->ndims,
+                             spectrum_info->ndims,
                              param_dimids, &varid))
       )
      {
@@ -237,7 +249,7 @@ static int create_result_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-static int write_results (int parent_grp, const TIO_Var_Info_Type *radiance_info,
+static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
                           int step, int xtrack, int num_wave,
                           const Wavecal_Type *wct,
                           const Wavecal_Result_Type *wavecal_result)
@@ -252,7 +264,7 @@ static int write_results (int parent_grp, const TIO_Var_Info_Type *radiance_info
    tell_pop_queue (1);
    if (status)
      {
-        if (0 != create_result_group (parent_grp, grp_name, radiance_info,
+        if (0 != create_result_group (parent_grp, grp_name, spectrum_info,
                                       wavecal_result, &grp))
           return -1;
      }
@@ -292,10 +304,10 @@ int main (int argc, char **argv)
    const char *group_name = NULL;
    FILE *fp = stderr;
    config_t cfg;
-   Radiance_Type rad = {0};
+   Spectrum_Type spec = {0};
    int status = EXIT_FAILURE;
    Wavecal_Type *wct = NULL;
-   TIO_Var_Info_Type radiance_info = {0};
+   TIO_Var_Info_Type spectrum_info = {0};
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
    double *y0 = NULL;
@@ -411,6 +423,12 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   if (group_name == NULL)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "group name not specified");
+        usage();
+     }
+
    if (isnan(y_delta))
      {
         y_delta = PIXEL_SIZE_NANOMETERS;
@@ -429,18 +447,32 @@ int main (int argc, char **argv)
    wavecal_config.fill_value = nan_value;
 
    if (0 != TIO_open (file, NC_WRITE, &ncid))
-     return -1;
+     goto return_status;
 
    if (0 != TIO_inq_grp (ncid, group_name, &grp))
-     return -1;
+     goto return_status;
 
-   if (0 != TIO_inq_var (grp, TEMPO_VAR_RADIANCE, &radiance_info))
-     return -1;
+   is_irradiance = -1;
+   tell_push_queue();
+   if (0 == TIO_inq_var (grp, TEMPO_VAR_RADIANCE, &spectrum_info))
+     {
+        is_irradiance = 0;
+     }
+   else if (0 == TIO_inq_var (grp, TEMPO_VAR_IRRADIANCE, &spectrum_info))
+     {
+        is_irradiance = 1;
+     }
+   tell_pop_queue(1);
+   if (is_irradiance < 0)
+     {
+        fprintf (stderr, "*** unsupported file type: %s\n", file);
+        goto return_status;
+     }
 
    /* expected dimensions are: [mirror_step, xtrack, spectral_channel] */
-   len = radiance_info.dimlens[2];
+   len = spectrum_info.dimlens[2];
 
-   if (alloc_radiance (&rad, len))
+   if (alloc_spectrum (&spec, len))
      goto return_status;
 
    if (NULL == (y0 = (double *)malloc (len * sizeof(double))))
@@ -451,7 +483,7 @@ int main (int argc, char **argv)
         y0[i] = y_start + i*y_delta;
      }
 
-   if (NULL == (wct = wavecal_open (&cfg, group_name, rad.n, is_irradiance)))
+   if (NULL == (wct = wavecal_open (&cfg, group_name, spec.n, is_irradiance)))
      goto return_status;
 
    if (params_outfile)
@@ -466,7 +498,7 @@ int main (int argc, char **argv)
    if (xtrack < 0)
      {
         beg_xtrack = 0;
-        end_xtrack = radiance_info.dimlens[1];
+        end_xtrack = spectrum_info.dimlens[1];
      }
    else
      {
@@ -477,7 +509,7 @@ int main (int argc, char **argv)
    if (step < 0)
      {
         beg_step = 0;
-        end_step = radiance_info.dimlens[0];
+        end_step = spectrum_info.dimlens[0];
      }
    else
      {
@@ -489,14 +521,14 @@ int main (int argc, char **argv)
      {
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
-             if (read_radiance (grp, step, xtrack, &rad))
+             if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
                goto return_status;
 
-             if (wavecal_fit (wct, xtrack, y0, rad.rad, rad.rad_err,
+             if (wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
                               &wavecal_config, &wavecal_result))
                goto return_status;
 
-             if (write_results (grp, &radiance_info, step, xtrack, rad.n, wct,
+             if (write_results (grp, &spectrum_info, step, xtrack, spec.n, wct,
                                 &wavecal_result))
                goto return_status;
 
@@ -517,7 +549,7 @@ int main (int argc, char **argv)
 return_status:
    FREE(y0);
    TIO_close (ncid);
-   free_radiance (&rad);
+   free_spectrum (&spec);
    config_destroy (&cfg);
    tell_close();
    wavecal_close (wct);
