@@ -1659,6 +1659,7 @@ contains
   end subroutine label_output_file
 
   !> Read geolocation fields
+  !! @param[in] l1bfile level 1 radiance filename
   !! @param[in] ntimes  Number of scans
   !! @param[in] nxtrack Number of cross-track pixels
   !! @param[inout] lat   Latitude [deg]
@@ -1670,11 +1671,14 @@ contains
   !! @param[inout] thgt  Terrain height
   !! @param[inout] time  Time [s]
   !! @param[inout] errstat  Error status variable
-  subroutine read_geofields (ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thgt, time, errstat)
+  subroutine read_geofields (l1bfile, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thgt, time, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
+    use OMSAO_omidata_module, only: omi_radiance_swathname
     use tio_module
+    use netcdf, only: nf90_nowrite
     implicit none
 
+    character (len=*), intent(in) :: l1bfile
     integer (kind=i4), intent(in) :: ntimes, nxtrack
     ! these arrays are (1:nxtrack,0:ntimes-1)
     real (kind=r4), dimension(:,:), intent(inout) :: lat, lon, sza, vza, &
@@ -1682,14 +1686,14 @@ contains
     real (kind=r8), dimension(:), intent(inout) :: time
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: obj
     integer (kind=i2), dimension(nxtrack,ntimes) :: i2_thgt
 
     if (errstat /= 0) return
 
-    obj => primary_output_file
-
-    call tiof_push_group (obj, tg_grp_geolocation, errstat)
+    call tiof_open (l1bfile, obj, nf90_nowrite, errstat)
+    call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat)
+    call tiof_push_group (obj, omi_radiance_swathname, errstat)
     call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_sz_angle, [0,0], [ntimes, nxtrack], sza(1:nxtrack,1:ntimes), errstat)
@@ -1697,8 +1701,8 @@ contains
     call tiof_get2d_r4 (obj, tg_var_sa_angle, [0,0], [ntimes, nxtrack], saa(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_va_angle, [0,0], [ntimes, nxtrack], vaa(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_i2 (obj, tg_var_terrain_height, [0,0], [ntimes, nxtrack], i2_thgt(1:nxtrack,1:ntimes), errstat)
-    call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
+    call tiof_close (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "in read_geofields", errstat)
@@ -1706,6 +1710,7 @@ contains
     endif
 
     thgt(1:nxtrack,1:ntimes) = real(i2_thgt(1:nxtrack,1:ntimes),kind=r4)
+
 
   end subroutine read_geofields
 

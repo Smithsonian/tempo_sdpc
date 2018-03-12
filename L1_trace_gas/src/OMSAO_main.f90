@@ -56,7 +56,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ------------------------------------------------------------------
   INTEGER   (KIND=i4)      :: errstat, pge_idx !pge_error_status
   CHARACTER (LEN=12) :: pge_name
-  integer :: env_variable_status
+  !integer :: env_variable_status
 
   ! --------------------------------------------------------------------
   ! Maximum number of points in any reference spectrum. This is used for

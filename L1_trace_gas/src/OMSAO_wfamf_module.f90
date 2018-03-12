@@ -322,9 +322,8 @@ CONTAINS
        ! ------------------------------------------------
        ! Read climatology and interpolate to lon/lat/time
        ! ------------------------------------------------
-       CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-            lat, lon, time, nt, nx, xtrange, errstat)
-
+       CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, &
+            cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
        ! -------------------------------------
        ! Write the climatology to the he5 file
        ! -------------------------------------
@@ -425,14 +424,15 @@ CONTAINS
 
   END SUBROUTINE amf_calculation_bis
 
-  SUBROUTINE omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-       lat, lon, time, nt, nx, xtrange, errstat)
+  SUBROUTINE omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, &
+    cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
     
     ! =========================================
     ! Extract Gas climatology to granule pixels
     ! No interpolation or something like that,
     ! Just pick the closest model grid
     ! =========================================
+    use OMSAO_omidata_module, only: omi_scattfail_amf
     USE OMSAO_indices_module, ONLY: sao_molecule_names, pge_h2o_idx
     USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
     USE OMSAO_parameters_module, ONLY: nUTCdim
@@ -459,7 +459,8 @@ CONTAINS
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_idx_ozo_pro
-    
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (OUT) :: amfdiag
+
     ! ---------------
     ! Local variables
     ! ---------------
@@ -588,7 +589,10 @@ CONTAINS
           IF (ltime .LT. MINVAL(timevals)) ltime = REAL(MINVAL(timevals),KIND=r8)
           IF (ltime .GT. MAXVAL(timevals)) ltime = REAL(MAXVAL(timevals),KIND=r8)
        ELSE
-          CYCLE
+         write(logmsg, '(a,1x,i4)')'Failed to read time for step', itimes
+         call tell_log (1, logmsg)
+         amfdiag(:,itimes) = omi_scattfail_amf
+         CYCLE
        END IF
 
        spix = xtrange(itimes,1); epix = xtrange(itimes,2)
@@ -824,7 +828,6 @@ CONTAINS
       idx_ozo_pro(1:nlon,1:nlat,1:ntim,1:2) )
     he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(idx_ozo_pro_field)),&
       "ScaleFactor", scale_idx       )
-
     ! ----------------------------------------------
     ! Read data from ozone profile weight data field
     ! ----------------------------------------------
@@ -2088,6 +2091,7 @@ CONTAINS
   SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, terrain_height, &
        surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
 
+    use OMSAO_omidata_module, only: omi_scattfail_amf
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
     use sao_pge_utils, only: calc_relaz_angle
@@ -2098,7 +2102,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: nt, nx
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (inout) :: amfdiag
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, saa, vaa, terrain_height, lat, lon
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_wgh_ozo_pro
@@ -2436,9 +2440,12 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_clear, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-             call tell_error (tell_runtime_error, &
-                  "compute_scatt: Interpolation of Radiance_clr failed", locerrstat)
-             RETURN
+            amfdiag(ixtrack,itime) = omi_scattfail_amf
+            write(logmsg, '(a55,i4,i4)') &
+                 "compute_scatt: Radiance_clr interpol failed at ", &
+                 ixtrack,itime
+             call tell_log (1,logmsg)
+             goto 999
           END IF
           Radiance_cld = linInterpol(nctp,nvza,nsza, &
                REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
@@ -2446,9 +2453,12 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_cloud, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-             call tell_error (tell_runtime_error, &
-                  "compute_scatt: Interpolation of Radiance_cld failed", locerrstat)
-             RETURN
+            amfdiag(ixtrack,itime) = omi_scattfail_amf
+            write(logmsg, '(a55,i4,i4)') &
+                 "compute_scatt: Radiance_cld interpol failed at ", &
+                 ixtrack,itime
+             call tell_log (1,logmsg)
+             goto 999
           END IF
           
           ! Scattering Weights linear interpolation on alb, vza, sza
@@ -2461,9 +2471,12 @@ CONTAINS
                      Sca_5D_clear(isrf,ilay,1:nalb,1:nvza,1:nsza), &
                      local_alb, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                   call tell_error (tell_runtime_error, &
-                        "compute_scatt: Interpolation of Sca_2D failed", locerrstat)
-                   RETURN
+                  amfdiag(ixtrack,itime) = omi_scattfail_amf
+                  write(logmsg, '(a55,i4,i4)') &
+                       "compute_scatt: Sca_2D interpol failed at ", &
+                       ixtrack,itime
+                  call tell_log (1,logmsg)
+                  goto 999
                 END IF
              END DO
           END DO
@@ -2471,7 +2484,7 @@ CONTAINS
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_srf) THEN
                 Sca_1D(ilay) = 0.0
-                CYCLE
+                cycle
              ENDIF
              IF (nsrf .EQ. 2 .AND. Sca_2D(1,ilay) .LE. 0 .AND. Sca_2D(2,ilay) .GT. 0) THEN
                 delta1=(Sca_2D(2,ilay-2)-Sca_2D(2,ilay-1)) / &
@@ -2483,14 +2496,17 @@ CONTAINS
                 Sca_1D(ilay) = &
                      Sca_1d(ilay-1) - delta3*delta2/delta1 * &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
-                CYCLE
+                cycle
              END IF
              Sca_1D(ilay) = linInterpol(nsrf, REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
                   Sca_2D(1:nsrf,ilay), REAL(local_srf,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-                call tell_error (tell_runtime_error, &
-                     "compute_scatt: Interpolation of Sca_1D failed", locerrstat)
-                RETURN
+               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               write(logmsg, '(a55,i4,i4)') &
+                    "compute_scatt: Sca_1D interpol failed at ", &
+                    ixtrack,itime
+               call tell_log (1,logmsg)
+               goto 999
              END IF
           END DO
 
@@ -2504,9 +2520,12 @@ CONTAINS
                      Sca_5D_cloud(ictp,ilay,1:ncld_alb,1:nvza,1:nsza), &
                      amf_alb_cld, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                   call tell_error (tell_runtime_error, &
-                        "compute_scatt: Interpolation of Sca_2D_cloud failed", locerrstat)
-                   RETURN
+                  amfdiag(ixtrack,itime) = omi_scattfail_amf
+                  write(logmsg, '(a55,i4,i4)') &
+                       "compute_scatt: Sca_2D_cloud interpol failed at ", &
+                       ixtrack,itime
+                  call tell_log (1,logmsg)
+                  goto 999
                 END IF
              END DO
           END DO
@@ -2514,7 +2533,7 @@ CONTAINS
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_ctp) THEN
                 Sca_1D_cloud(ilay) = 0.0
-                CYCLE
+                cycle
              ENDIF
              IF (nctp .EQ. 2 .AND. Sca_2D_cloud(1,ilay) .LE. 0 .AND. Sca_2D_cloud(2,ilay) .GT. 0) THEN
                 delta1=(Sca_2D_cloud(2,ilay-2)-Sca_2D_cloud(2,ilay-1)) / &
@@ -2526,14 +2545,17 @@ CONTAINS
                 Sca_1D_cloud(ilay) = &
                      Sca_1d_cloud(ilay-1) - delta3*delta2/delta1 * &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
-                CYCLE
+                cycle
              END IF
              Sca_1D_cloud(ilay) = linInterpol(nctp, REAL(lut_srf(idx_ctp(1):idx_ctp(2)),KIND=8), &
                   Sca_2D_cloud(1:nctp,ilay), REAL(local_ctp,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-                call tell_error (tell_runtime_error, &
-                     "compute_scatt: Interpolation of Sca_1D_cloud failed", locerrstat)
-                RETURN
+               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               write(logmsg, '(a55,i4,i4)') &
+                    "compute_scatt: Sca_1D_cloud interpol failed at ", &
+                    ixtrack,itime
+               call tell_log (1,logmsg)
+               goto 999
              END IF
           END DO
           
@@ -2564,23 +2586,30 @@ CONTAINS
                   ( Ap(ilay+1) + local_srf * Bp(ilay+1) )) / 2.0
              IF ( (out_pre_lay > MAXVAL(lut_pre_lay)) .OR. (out_pre_lay < MINVAL(lut_pre_lay)) ) THEN
                 scattw(ixtrack,itime,CmETA-ilay+1) = 0.0
-                CYCLE
+                cycle
              ENDIF
              scattw(ixtrack,itime,CmETA-ilay+1) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
                   Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
-                call tell_error (tell_runtime_error, &
-                     "compute_scatt: Interpolation to output pressure grid failed", locerrstat)
-                RETURN
+               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               write(logmsg, '(a55,i4,i4)') &
+                    "compute_scatt: output press grid interpol failed at ", &
+                    ixtrack,itime
+               call tell_log (1,logmsg)
+               goto 999
              END IF
           END DO
           
-          DEALLOCATE(Rad_3D_clear, Rad_3D_cloud, Sca_5D_clear, Sca_5D_cloud, Sca_2D, Sca_2D_cloud, &
-               Sca_1D, Sca_1D_cloud, STAT=locerrstat)
-          if (locerrstat /= 0) then
-             call tell_error (tell_malloc_error, "compute_scatt:  de-allocate failed", &
-                  status)
-             return
+ 999      continue
+          if (allocated(Sca_1D)) then
+            DEALLOCATE(Rad_3D_clear, Rad_3D_cloud, Sca_5D_clear, &
+                 Sca_5D_cloud, Sca_2D, Sca_2D_cloud, &
+                 Sca_1D, Sca_1D_cloud, STAT=locerrstat)
+            if (locerrstat /= 0) then
+              call tell_error (tell_malloc_error, "compute_scatt:  de-allocate failed", &
+                   status)
+              return
+            endif
           endif
 
           !  Set non-physical entries to zero.

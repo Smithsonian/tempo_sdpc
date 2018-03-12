@@ -17,7 +17,7 @@ SUBROUTINE radiance_wavecal ( &
     max_calfit_idx, shi_idx, squ_idx, &
     hwe_idx, asy_idx
   USE OMSAO_variables_module,   ONLY: &
-    fitvar_cal, fitvar_rad_init, fitvar_sol_init, fitvar_cal_saved, &
+    fitvar_cal, fitvar_rad_init, fitvar_cal_saved, & !fitvar_sol_init,
     lo_radbnd, up_radbnd, &
     max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor!, sol_wav_avg
   use ctrlvars, only: yn_newshift

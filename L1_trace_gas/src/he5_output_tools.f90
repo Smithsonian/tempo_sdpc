@@ -2691,7 +2691,7 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: i2, i4, r4
     USE OMSAO_parameters_module,   ONLY: NLINES_MAX, r4_missval
     USE OMSAO_errstat_module
-    USE datafields, ONLY: thgt_field
+    !USE datafields, ONLY: thgt_field
     IMPLICIT NONE
 
     ! ---------------

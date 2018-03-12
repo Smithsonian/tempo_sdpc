@@ -36,7 +36,7 @@ SUBROUTINE omi_pge_postprocess ( &
     copy_pixel_corners, copy_metadata
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
-  USE OMSAO_variables_module, ONLY: max_good_col
+  USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
   use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
   IMPLICIT NONE
 
@@ -92,7 +92,8 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
   CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
   else
-    call read_geofields (ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thg, time, errstat)
+    call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
+         sza, vza, saa, vaa, thg, time, errstat)
     if (errstat /= 0) return
   endif
 
