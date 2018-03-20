@@ -1,5 +1,5 @@
 !>Function to write ODL-format metadata to an ASCII file
-module m_write_metadata
+module m_write_odl_metadata
 
   use m_LUN_set
   use m_pgs_include
@@ -12,7 +12,7 @@ module m_write_metadata
   implicit none
   private
 
-  public write_metadata
+  public write_odl_metadata
 
 contains
 
@@ -26,8 +26,10 @@ contains
   !
   ! Note: as yet, this is only a proof-of-concept test to ensure we can
   !       produce ASCII format ODL metadata when processing netCDF only.
+  ! Also: note that there's a write_metadata subroutine in
+  !       m_write_output_data_tio that writes to the netCDF file
   !-----------------------------------------------------------------------
-  function write_metadata(outfilnm) result(errstat)
+  function write_odl_metadata(outfilnm) result(errstat)
 
     implicit none
 
@@ -128,7 +130,7 @@ contains
     call tiof_open(filename_in_nc, tio_l1obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
-           "write_metadata: failed to open L1 radiance file", errstat)
+           "write_odl_metadata: failed to open L1 radiance file", errstat)
       return
     endif
 
@@ -136,7 +138,7 @@ contains
          "time_coverage_start", cov_start_string)
     if (ncerr /= nf90_noerr) then
       call tell_error (tell_io_read_error, &
-           "write_metadata: failed to read time_coverage_start", &
+           "write_odl_metadata: failed to read time_coverage_start", &
            errstat)
       return
     endif
@@ -145,7 +147,7 @@ contains
          "time_coverage_end", cov_end_string)
     if (ncerr /= nf90_noerr) then
       call tell_error (tell_io_read_error, &
-           "write_metadata: failed to read time_coverage_end", &
+           "write_odl_metadata: failed to read time_coverage_end", &
            errstat)
       return
     endif
@@ -153,7 +155,7 @@ contains
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &
-           "write_metadata: failed to close L1 radiance file", errstat)
+           "write_odl_metadata: failed to close L1 radiance file", errstat)
       return
     endif
 
@@ -181,7 +183,7 @@ contains
       returnstatus = PGS_PC_GetReference( Fil_Lun, version, buf )
       if( returnstatus /= 0 ) then
         call tell_error(tell_io_read_error, &
-             "write_metadata: failed to read input file names", errstat)
+             "write_odl_metadata: failed to read input file names", errstat)
         return
       else
         j = index( buf, '/', BACK = .true. ) + 1
@@ -196,7 +198,7 @@ contains
     returnstatus = pgs_met_init(MCF_LUN, GROUPS)
     if (returnstatus /= 0 ) then
       call tell_error(tell_io_error, &
-           "write_metadata: failed to initialise metadata file", errstat)
+           "write_odl_metadata: failed to initialise metadata file", errstat)
       return
     endif
 
@@ -206,7 +208,7 @@ contains
            Objvalue(i))
       if (returnstatus /= 0 ) then
         call tell_error(tell_io_error, &
-             "write_metadata: failed to set input filenames", errstat)
+             "write_odl_metadata: failed to set input filenames", errstat)
         return
       endif
     enddo
@@ -216,7 +218,7 @@ contains
 
     if (returnstatus /= 0) then
       call tell_error(tell_io_error, &
-           "write_metadata: failed to set input pointer", errstat)
+           "write_odl_metadata: failed to set input pointer", errstat)
       return
     endif
 
@@ -229,7 +231,7 @@ contains
 
     if(returnstatus /= 0)then
       call tell_error(tell_io_error, &
-           "write_metadata: failed to set bounding polygon", errstat)
+           "write_odl_metadata: failed to set bounding polygon", errstat)
       return
     endif
 
@@ -242,7 +244,7 @@ contains
            "PARAMETERVALUE."//trim(buf),AddAttrVal(i))
       if (returnstatus /= 0) then
         call tell_error(tell_io_error, &
-             "write_metadata: failed to set additional attr "//trim(buf), &
+             "write_odl_metadata: failed to set additional attr "//trim(buf), &
              errstat)
         return
       endif
@@ -255,7 +257,7 @@ contains
 
     if(returnstatus /= 0) then
       call tell_error(tell_io_error, &
-           "write_metadata: failed to open .met file", errstat)
+           "write_odl_metadata: failed to open .met file", errstat)
       return
     endif
 
@@ -264,7 +266,7 @@ contains
     ! PGSMET_E_SD_SETATTR indicates HDFEOS fie not set, as we intend
     if(returnstatus /= PGSMET_E_SD_SETATTR .AND. returnstatus /= 0) then
       call tell_error (tell_io_write_error, &
-           "write_metadata: failed to write ArchiveMetadata", errstat)
+           "write_odl_metadata: failed to write ArchiveMetadata", errstat)
       return
     endif
 
@@ -272,7 +274,7 @@ contains
 
     if(returnstatus /=0) then
       call tell_error(tell_io_error, &
-           "write_metadata: failed to close .met file", errstat)
+           "write_odl_metadata: failed to close .met file", errstat)
       return
     endif
 
@@ -280,8 +282,8 @@ contains
 
 
 
-    call tell_log (1,"write_metadata: success")
+    call tell_log (1,"write_odl_metadata: success")
 
     return
-  end function write_metadata
-end module m_write_metadata
+  end function write_odl_metadata
+end module m_write_odl_metadata

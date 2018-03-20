@@ -24,7 +24,7 @@ program OMCLDRR
   use L1B_Reader_class
   use m_pgs_include
   use tell_module
-  use m_write_metadata
+  use m_write_odl_metadata
 
   IMPLICIT NONE
 
@@ -276,7 +276,7 @@ program OMCLDRR
     endif
     ! Proof-of-concept example of ODL ASCII metadata
     if (wrt_odl) then
-      errstat = write_metadata(filename_out_nc)
+      errstat = write_odl_metadata(filename_out_nc)
       if (errstat /= 0) then
         call tell_error(tell_io_write_error, "failed writing ODL metadata", &
              errstat)
