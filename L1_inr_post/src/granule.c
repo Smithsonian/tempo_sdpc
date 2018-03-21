@@ -699,6 +699,8 @@ static void delete_granule_type (Granule_Type *gt)
    if (gt == NULL)
      return;
 
+   TIO_close (gt->ncid);
+
    free_ecef_position (&gt->sun);
    free_ecef_position (&gt->moon);
    free_ecef_position (&gt->sat);
