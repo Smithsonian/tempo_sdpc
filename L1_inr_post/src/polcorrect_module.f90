@@ -218,12 +218,11 @@ contains
     ctp_saved = 0.0
 
     do step = beg_step, end_step
-      write (*,*)'step=',step
+
       call read_radiance_for_mirror_step (rad_s, step, errstat)
       if (errstat /= 0) return
 
       do ix = beg_xtrack, end_xtrack
-        if (mod(ix, 100) == 0) write(*,'(a,i0)')'ix=',ix
 
         lat = rad_s % lat(ix,step)
         lon = rad_s % lon(ix,step)
@@ -533,7 +532,6 @@ contains
     integer :: i, j, dimlens(2)
     real (kind=r8) :: saa, vaa, raa
 
-    write(*,*)'calc_relative_azimuth_angle'
     if (errstat /= 0) return
 
     dimlens = shape(rad_s % vaa)
@@ -571,7 +569,6 @@ contains
 
     real (kind=r8) :: z_meters, pre
 
-    write(*,*)'calc_surface_pressure'
     if (errstat /= 0) return
 
     dimlens = shape(rad_s % hgt)

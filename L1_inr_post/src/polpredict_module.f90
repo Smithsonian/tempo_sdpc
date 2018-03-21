@@ -285,8 +285,6 @@ contains
 
     if (errstat /= 0) return
 
-    write(*,*)'reading QU dimension arrays'
-
     call read_dim (obj, "sza", lut % qu_dims(iqu_sza), errstat, subset % sza)
     call read_dim (obj, "vza", lut % qu_dims(iqu_vza), errstat, subset % vza)
     call read_dim (obj, "raa", lut % qu_dims(iqu_raa), errstat, subset % raa)
@@ -302,7 +300,6 @@ contains
     ! The 'ozo' coordinate grid depends on the surface pressure
     ! through a separate lookup table: ozcol(ozo,pre)
     call init_ozo_dim (obj, "ozo", lut % qu_dims(iqu_ozo), errstat)
-    write(*,*)'calling read_ozcol_array'
     call read_ozcol_array (obj, &
                            lut % qu_dims(iqu_ozo) % dimlen, &
                            lut % qu_dims(iqu_pre) % dimlen, &
@@ -336,21 +333,18 @@ contains
       return
     endif
 
-    write(*,*)'calling read_qu_arrays'
     call read_qu_arrays (obj, subset, lut % qu_dims, &
                          lut % q, &
                          lut % u, &
                          errstat)
     if (errstat /= 0) return
 
-    write(*,*)'calling read_swav_arrays'
     call read_swav_arrays (obj, subset, lut % si_dims, &
                            lut % si, &
                            lut % salbflg, &
                            errstat)
     if (errstat /= 0) return
 
-    write(*,*)'calling read_ll_arrays'
     call read_ll_arrays (obj, subset, fmonth, lut % ll_dims, lut % ler_dims, &
                          lut % ps, &
                          lut % toz_surf, &
@@ -360,7 +354,6 @@ contains
                          errstat)
     if (errstat /= 0) return
 
-    write(*,*)'pp_read: done'
   end subroutine pp_read
 
   subroutine read_ll_arrays (obj, subset, fmonth, ll_dims, ler_dims, &
@@ -649,8 +642,6 @@ contains
     integer :: start(1), edge(1)
     integer :: dimlen, imin, imax, dimlen_subset, err, i
 
-    write(*,*)' read_dim: ',dim_name
-
     if (errstat /= 0) return
 
     if (present(subset)) then
@@ -699,9 +690,6 @@ contains
       call tell_error (tell_malloc_error, "allocate failed", errstat)
       return
     endif
-
-    write(*,'(a,a,i0,a,i0,a,i0,a,i0,a)')dim_name,'(',dimlen, &
-      ') =>', imin,':',imax,' (',dimlen_subset,')'
 
     the_dim % x(:) = real (dim_tmp(imin:imax), kind=r4)
     the_dim % dimlen = dimlen_subset
