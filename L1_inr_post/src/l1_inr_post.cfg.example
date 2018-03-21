@@ -1,3 +1,41 @@
+polcorr_tables: {
+
+  # instrument linear polarization sensitivity:
+  #
+  lps_lut = "/vex/d0/polcorr_test_data/lps_table.nc";
+
+  # QU dependence on selected parameters:
+  #
+  qu_lut  = "/vex/d0/polarization_lut/Polarization_LUT_qu_SIqu_clima_reordered.nc";
+
+  # LUT SI "swav" wavelength grid index limits for retrievals
+  waves_uv  = [ 1, 13];
+  waves_vis = [14, 28];
+
+  use_mler = true;
+
+  # delta_pa = angle between local meridian plane (LMP),
+  #            and instrument reference plane (IRP)
+  delta_pa = 0.0;
+};
+
+polcorr_instr_geom: {
+
+# sat_lon = geostationary satellite longitude
+  sat_lon = -100.0;
+
+# tilt>0 [deg] is northward tilt of instrument boresight,
+#              about spacecraft roll axis
+# azi>0 [deg] is rotation, eastward from north (CW),
+#             about instrument boresight axis
+# These angles specify the instrument pointing direction
+# for the tilted perspective projection ('tpers') from
+# the Proj4 library.
+
+   tilt = 5.53;
+   azi  = 4.5;
+};
+
 ground_pixel_quality_flags: {
 
   # GOES ABI Aerosol Detection Product uses max glint angle = 40 deg

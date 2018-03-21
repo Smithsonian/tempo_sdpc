@@ -1,0 +1,39 @@
+!!
+!! @dim@-D tables
+!!
+  subroutine ndi_table_@typchar@@dim@d_interp (dims, tbl, x, val, errstat, input_indices, output_indices)
+    implicit none
+    integer, parameter :: nd=@dim@, nterms=2**nd
+    type (ndi_dim), intent(in), dimension(:) :: dims
+    real (kind=@fkind@), intent(in), dimension(@colons@) :: tbl
+    real (kind=r8), dimension(nd), intent(in) :: x
+    real (kind=@fkind@), intent(out) :: val
+    integer, intent(inout) :: errstat
+    integer, optional, dimension(nd), intent(in) :: input_indices
+    integer, optional, dimension(nd), intent(out) :: output_indices
+
+    real (kind=r8), dimension(nd) :: weights
+    integer, dimension(nd) :: indices, id_k
+    real (kind=r8) :: wt_k, val_r8
+    integer :: k
+
+    if (errstat /= 0) return
+
+    if (present(input_indices)) then
+      indices = input_indices
+    else
+      call ndi_find_indices (dims, x, indices)
+      if (present(output_indices)) output_indices = indices
+    endif
+
+    call ndi_calc_weights (dims, x, indices, weights)
+
+    val_r8 = 0.0
+    do k = 1, nterms
+      call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
+      val_r8 = val_r8 + wt_k * tbl(@idxid@)
+    enddo
+
+    val = real (val_r8, kind=@fkind@)
+
+  end subroutine ndi_table_@typchar@@dim@d_interp

@@ -51,19 +51,29 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 OFILES   = l1_inr_post.o map.o elevation.o land_cover.o granule.o snow.o ezlhconv.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
+ELF_FCFLAGS = $(FCFLAGS) -fPIC
+ELF_F_LINK_CMD = $(ELF_F_LINK)
+ELF_F_COMPILE_CMD = $(ELF_FC) -c $(ELF_FCFLAGS)
+
 # --------------------------------------------------------------------------
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/L1_polcorr
+
+polcorr:	$(objdir)/L1_polcorr
+
+tests:	 $(objdir)/ndinterp_test
 
 $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES))
+	ctags $(patsubst %.o,%.c,$(OFILES)) \
+	      $(patsubst %.o,%.c,$(POLCORR_C_OFILES)) \
+	      $(patsubst %.o,%.f90,$(POLCORR_F_OFILES))
 
-.PHONY: clean distclean all install check tags
+.PHONY: clean distclean all install check tags polcorr
 
 # --------------------------------------------------------------------------
 # Installation
@@ -77,6 +87,7 @@ install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/L1_polcorr $(bindir)/
 
 install:	install-executables
 
@@ -117,3 +128,60 @@ $(objdir)/snow.o:	$(srcdir)/snow.c
 
 $(objdir)/ezlhconv.o:	$(srcdir)/ezlhconv.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ezlhconv.c $(LIBS)
+
+# -----------------------------------------------------------------------
+
+GSL_LIBPATHS = -lgsl -lgslcblas
+
+POLCORR_F_OFILES = types_module.o polpredict_module.o polcorrect_module.o ndinterp_module.o
+POLCORR_C_OFILES = l1_polcorr.o lps.o spline.o
+POLCORR_OFILES = $(POLCORR_C_OFILES) $(POLCORR_F_OFILES)
+
+POLCORR_OBJS = $(patsubst %.o,$(objdir)/%.o, $(POLCORR_OFILES))
+
+POLCORR_INC_DIRS = $(config_dir)/include $(PROJ_INC) \
+                   $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC)
+POLCORR_INCS = $(patsubst %,-I%, $(POLCORR_INC_DIRS))
+
+POLCORR_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+               $(NETCDF_LIBPATHS) -lnetcdff -lnetcdf \
+               $(TELL_LIBPATHS) -ltell_f -ltell \
+               $(TIO_LIBPATHS) -ltio_f -ltio \
+	       $(PROJ_LIBPATHS) -lproj \
+	       $(GSL_LIBPATHS) \
+               $(RPATH) $(INSTALL_LIBPATHS) -lgfortran
+
+MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(prefix)/include
+
+$(objdir)/L1_polcorr:	$(POLCORR_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/L1_polcorr $(POLCORR_OBJS) $(POLCORR_LIBS) -lm
+
+$(objdir)/l1_polcorr.o:	$(srcdir)/l1_polcorr.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/l1_polcorr.o $(POLCORR_INCS) $(srcdir)/l1_polcorr.c $(POLCORR_LIBS)
+
+$(objdir)/lps.o:	$(srcdir)/lps.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps.o $(POLCORR_INCS) $(srcdir)/lps.c $(POLCORR_LIBS)
+
+$(objdir)/spline.o:	$(srcdir)/spline.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/spline.o $(POLCORR_INCS) $(srcdir)/spline.c $(POLCORR_LIBS)
+
+$(objdir)/types_module.o:	$(srcdir)/types_module.f90
+	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/types_module.f90
+
+$(objdir)/polcorrect_module.o:	$(srcdir)/polcorrect_module.f90
+	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/polcorrect_module.f90
+
+$(objdir)/polpredict_module.o:	$(srcdir)/polpredict_module.f90
+	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/polpredict_module.f90
+
+NDINTERP_AUTOGEN_SRC = ndinterp_module_code.in ndinterp_module_autogen.sh
+
+ndinterp-autogen-timestamp:	ndinterp_module.f90 $(NDINTERP_AUTOGEN_SRC)
+	./ndinterp_module_autogen.sh
+	touch $@
+
+$(objdir)/ndinterp_module.o:	ndinterp_module.f90 ndinterp-autogen-timestamp
+	$(ELF_F_COMPILE_CMD) -o $(objdir)/ndinterp_module.o ndinterp_module.f90
+
+$(objdir)/ndinterp_test:	$(objdir)/ndinterp_module.o ndinterp_test.f90
+	$(ELF_FC) $(ELF_FCFLAGS) -o $(objdir)/ndinterp_test ndinterp_test.f90 $(objdir)/ndinterp_module.o
