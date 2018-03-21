@@ -53,7 +53,7 @@ contains
     character(LEN=PGSd_MET_GROUP_NAME_L), dimension(PGSd_MET_NUM_OF_GROUPS) :: GROUPS
     character(LEN=100), dimension(50) :: Objvalue
     character(LEN=100), dimension(ninp) :: InputPnt,supflnm
-    character(LEN=200) :: buf
+    character(LEN=200) :: buf, localgranuleid
     character(LEN=PGSd_MET_GROUP_NAME_L),dimension(ninvname), parameter :: &
          INVOBJ = (/                                     &
          "INPUTPOINTER                     ", &
@@ -202,13 +202,22 @@ contains
       return
     endif
 
+    j = index( outfilnm, '/', BACK = .true. ) + 1
+    localgranuleid = trim(outfilnm(j:))
+    returnstatus = pgs_MET_setattr_s(GROUPS(INVENTORY), "LOCALGRANULEID", &
+         trim(localgranuleid))
+    if (returnstatus /= 0 ) then
+      call tell_error(tell_io_error, &
+           "write_odl_metadata: failed to set localgranuleid", errstat)
+      return
+    endif
 
     do i=1,ninvname
       returnstatus = pgs_met_setattr_s(GROUPS(INVENTORY),trim(INVOBJ(i)), &
            Objvalue(i))
       if (returnstatus /= 0 ) then
         call tell_error(tell_io_error, &
-             "write_odl_metadata: failed to set input filenames", errstat)
+             "write_odl_metadata: failed to set time/date ranges", errstat)
         return
       endif
     enddo
