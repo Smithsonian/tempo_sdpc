@@ -62,6 +62,9 @@ struct Lps_Type
    Lps_Table_Type *table_uv;    /**< UV band [num_mirror_x] */
    Lps_Table_Type *table_vis;   /**< VIS band [num_mirror_x] */
 
+   projPJ tpers;
+   projPJ longlat;
+
    gsl_interp *interp;
    gsl_interp_accel *acc;
    double *tmp;                  /* reusable scratch space */
@@ -95,24 +98,33 @@ static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
    return 0;
 }
 
-/* input (lon,lat) in degrees; output (x,y) in radians */
-static int lonlat_to_tpers_xy (const Instr_Geom_Type *geom,
-                               int n, const double *lon, const double *lat,
-                               double *x, double *y)
+static void lps_proj_close (Lps_Type *lps)
 {
-   projPJ tpers = NULL;
-   projPJ longlat = NULL;
+   if (lps == NULL)
+     return;
+   pj_free (lps->longlat);
+   pj_free (lps->tpers);
+}
+
+static int lps_proj_open (Lps_Type *lps)
+{
    char ctl_tpers[PROJ_ARGS_BUFSIZE];
    const char tpers_fmt[] =
      "+proj=tpers +lat_0=0 +lon_0=%0.3g +h=%0.1f +tilt=%0.3g +azi=%0.3g";
    const char ctl_longlat[] =
      "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-   int i, len, status = -1;
+   Instr_Geom_Type *geom;
+   int len;
 
-   if (NULL == (longlat = pj_init_plus (ctl_longlat)))
+   if (lps == NULL)
+     return -1;
+
+   geom = &lps->geom;
+
+   if (NULL == (lps->longlat = pj_init_plus (ctl_longlat)))
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(longlat) failed", __func__);
-        goto return_status;
+        return -1;
      }
 
    memset (ctl_tpers, 0, PROJ_ARGS_BUFSIZE);
@@ -123,14 +135,24 @@ static int lonlat_to_tpers_xy (const Instr_Geom_Type *geom,
    if (len >= PROJ_ARGS_BUFSIZE)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
-        goto return_status;
+        return -1;
      }
 
-   if (NULL == (tpers = pj_init_plus (ctl_tpers)))
+   if (NULL == (lps->tpers = pj_init_plus (ctl_tpers)))
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(tpers) failed", __func__);
-        goto return_status;
+        return -1;
      }
+
+   return 0;
+}
+
+/* input (lon,lat) in degrees; output (x,y) in radians */
+static int lonlat_to_tpers_xy (Lps_Type *lps,
+                               int n, const double *lon, const double *lat,
+                               double *x, double *y)
+{
+   int i, status;
 
    /* convert (lon,lat) to radians */
    for (i = 0; i < n; i++)
@@ -139,12 +161,12 @@ static int lonlat_to_tpers_xy (const Instr_Geom_Type *geom,
         y[i] = lat[i] * DEGTORAD;
      }
 
-   if ((status = pj_transform (longlat, tpers, n, 1, x, y, NULL)) != 0)
+   if ((status = pj_transform (lps->longlat, lps->tpers, n, 1, x, y, NULL)) != 0)
      {
         tell_verror (TELL_APPLICATION_ERROR,
                      "%s: pj_transform failed, status = %d (%s)",
                      __func__, status, pj_strerrno(status));
-        goto return_status;
+        return -1;
      }
 
    /* convert (x,y) to radians */
@@ -154,11 +176,7 @@ static int lonlat_to_tpers_xy (const Instr_Geom_Type *geom,
         y[i] /= GEO_ALTITUDE;
      }
 
-   status = 0;
-return_status:
-   pj_free (longlat);
-   pj_free (tpers);
-   return status ? -1 : 0;
+   return 0;
 }
 
 static int bsearch_d (double t, double *x, int n)
@@ -241,7 +259,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
     *        mirror_y = -y
     * But since we don't need mirror_y, I'll not bother with the sign flip.
     */
-   if (0 != lonlat_to_tpers_xy (&lps->geom, 1, &lon, &lat, &mirror_x, &y))
+   if (0 != lonlat_to_tpers_xy (lps, 1, &lon, &lat, &mirror_x, &y))
      return -1;
 
    if ((mirror_x < min_mirror_x) || (max_mirror_x < mirror_x))
@@ -531,6 +549,7 @@ static void free_lps (Lps_Type *lps)
 {
    if (NULL == lps)
      return;
+   lps_proj_close (lps);
    FREE(lps->mirror_x);
    free_table_array (lps->table_uv, lps->num_mirror_x);
    free_table_array (lps->table_vis, lps->num_mirror_x);
@@ -577,6 +596,9 @@ Lps_Type *lps_open (config_t *cfg)
    memset ((char *)lps, 0, sizeof *lps);
 
    if (0 != read_geom (cfg, &lps->geom))
+     goto return_error;
+
+   if (0 != lps_proj_open (lps))
      goto return_error;
 
    if (0 != TIO_open (lps_file, NC_NOWRITE, &ncid))
