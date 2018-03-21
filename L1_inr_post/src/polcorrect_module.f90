@@ -45,6 +45,31 @@ module polcorrect_module
     end function lps_eval
   end interface
 
+  interface
+    function tio_get_fill_value (grp, name, nofill, fillvalue) &
+        bind (c, name='TIO_get_fill_value')
+      use, intrinsic :: iso_c_binding, only : c_ptr, c_int, c_float, c_char
+      implicit none
+      integer(c_int), intent(in) :: grp
+      character (len=1, kind=c_char), intent(in) :: name
+      integer(c_int), intent(out) :: nofill
+      real (c_float), intent(out) :: fillvalue
+      integer(c_int) :: tio_get_fill_value
+    end function tio_get_fill_value
+  end interface
+
+  interface
+    function tio_time_tempo_to_utc_caldate (tempo_time,year,month,day,hour) &
+      bind (c, name='tio_time_tempo_to_utc_caldate')
+      use, intrinsic :: iso_c_binding, only : c_double, c_int
+      implicit none
+      real (c_double), value :: tempo_time
+      integer (c_int), intent(out) :: year, month, day
+      real (c_double), intent(out) :: hour
+      integer (c_int) :: tio_time_tempo_to_utc_caldate
+    end function tio_time_tempo_to_utc_caldate
+  end interface
+
   real (kind=r8), parameter :: r8_fill = nf90_fill_double
   real (kind=r8), parameter :: cldalb0 = 0.8d0  ! cloud albedo
 
@@ -63,7 +88,7 @@ contains
 
     rad_file => c_f_string (pt % rad_file)
 
-    call tiof_open (rad_file, rad_s % obj, nf90_nowrite, errstat)
+    call tiof_open (rad_file, rad_s % obj, nf90_write, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, 'reading radiance file: '//rad_file, errstat)
       polcorrect = errstat
@@ -106,7 +131,6 @@ contains
     integer, dimension(2) :: swav_limits
     integer, dimension(num_ctp_waves) :: ctp_wave_indices
     integer, dimension(num_oz_waves) :: oz_wave_indices
-    ! real (kind=r8), allocatable, dimension(:) :: lpsens, angmax
     real (kind=r4) :: fmonth
     real (kind=r8) :: lon, lat, pre, sza, vza, raa
     real (kind=r8) :: oz, oz0, oz_saved
@@ -122,9 +146,8 @@ contains
 
     use_mler = (pt % use_mler /= 0)
 
-    ! FIXME - read the radiance file date and compute this.
-    fmonth = 3.4
-    write(*,*)'FIXME: using fixed constant fmonth=',fmonth
+    call read_radiance_fmonth (rad_s, fmonth, errstat)
+    if (errstat /= 0) return
 
     ! Wavelength indices (on SI "swav" grid) to be used
     ! for retrievals in this band
@@ -323,7 +346,12 @@ contains
                           band_id, ix, step, lpserr, errstat)
         if (errstat /= 0) return
 
+        where (rad_s % radiance (:,ix) /= r8_fill)
+          rad_s % radiance(:, ix) = rad_s % radiance(:,ix) / (1.0 + lpserr(:))
+        end where
+
       enddo ! ix
+      call write_radiance_for_mirror_step (rad_s, step, errstat)
     enddo ! step
 
     call dealloc_radiance (rad_s, errstat)
@@ -568,6 +596,40 @@ contains
 
   end subroutine calc_surface_pressure
 
+  subroutine read_radiance_fmonth (rad_s, fmonth, errstat)
+    implicit none
+    type (radiance_type), intent(in) :: rad_s
+    real (kind=r4), intent(out) :: fmonth
+    integer, intent(inout) :: errstat
+
+    integer :: err, year, month, day
+    real (kind=r8) :: tstart, hour
+
+    if (errstat /= 0) return
+
+    err = nf90_get_att (rad_s % obj % fileid, nf90_global, &
+                        "time_coverage_start_since_epoch", tstart)
+    if (err /= 0) then
+      call tell_error (tell_io_read_error, &
+                       "process_group: error reading granule start time", &
+                       errstat)
+      return
+    endif
+
+    err = tio_time_tempo_to_utc_caldate (tstart, year, month, day, hour)
+    if (err /= 0) then
+      call tell_error (tell_io_read_error, &
+                       "process_group: error processing granule start time", &
+                       errstat)
+      return
+    endif
+
+    ! The monthly tables give values at mid-month, so fmonth=1.0 means Jan 15.
+    fmonth = (month-0.5) + day/30.0
+    if (fmonth > 12.0) fmonth = fmonth - 12.0
+
+  end subroutine read_radiance_fmonth
+
   subroutine read_radiance_geometry (rad_s, band_id, errstat)
     implicit none
     type(radiance_type), intent(inout) :: rad_s
@@ -650,6 +712,42 @@ contains
     endif
 
   end subroutine read_radiance_for_mirror_step
+
+  subroutine write_radiance_for_mirror_step (rad_s, step, errstat)
+    use, intrinsic :: iso_c_binding, only : c_null_char
+    implicit none
+    type(radiance_type), intent(inout) :: rad_s
+    integer, intent(in) :: step
+    integer, intent(inout) :: errstat
+    integer, dimension(3) :: start, edge
+
+    character (len=128) :: msg
+    integer :: err, nofill, varid
+    real (kind=r4) :: fill_value
+
+    if (errstat /= 0) return
+
+    start = (/step-1, 0,0/)
+    edge  = (/1, rad_s % num_xtrack, rad_s % num_wave/)
+
+    ! FIXME - a libtio interface is preferable
+    err = nf90_inq_varid (rad_s % obj % groupid, tempo_var_radiance, varid)
+    err = nf90_inq_var_fill (rad_s % obj % groupid, varid, nofill, fill_value)
+    if (err == 0) then
+      where (rad_s % radiance == r8_fill)
+        rad_s % radiance = real(fill_value, kind=r8)
+      end where
+    endif
+
+    call tiof_put2d_r8 (rad_s % obj, tempo_var_radiance, start, edge, &
+                        rad_s % radiance, errstat)
+    if (errstat /= 0) then
+      write(msg,'(a,i0)')'writing radiances: step=',step
+      call tell_error (tell_io_write_error, msg, errstat)
+      return
+    endif
+
+  end subroutine write_radiance_for_mirror_step
 
   subroutine define_subset (rad_s, subset, errstat)
     implicit none
