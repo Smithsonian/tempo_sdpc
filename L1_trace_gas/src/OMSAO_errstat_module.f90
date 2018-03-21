@@ -10,23 +10,24 @@ MODULE OMSAO_errstat_module
 
   USE OMSAO_precision_module, ONLY: i4
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
+  use m_pgs_include
 
   IMPLICIT NONE
 
   PRIVATE MAX_STR_LEN, i4
 
   ! Toolkit include files (sytem)
-  INCLUDE 'PGS_SMF.f'
-  INCLUDE 'PGS_PC.f'
-  INCLUDE 'PGS_PC_9.f'
-  INCLUDE 'PGS_IO.f'
-  INCLUDE 'PGS_TD_3.f'
+  !INCLUDE 'PGS_SMF.f'
+  !INCLUDE 'PGS_PC.f'
+  !INCLUDE 'PGS_PC_9.f'
+  !INCLUDE 'PGS_IO.f'
+  !INCLUDE 'PGS_TD_3.f'
 
   ! Toolkit include files (PGE specific)
-  INCLUDE 'PGS_OMSAO_52500.f'
+  !INCLUDE 'PGS_OMSAO_52500.f'
 
   ! OMI L1B reader include file
-  INCLUDE 'PGS_OMI_1900.f'
+  !INCLUDE 'PGS_OMI_1900.f'
 
   ! ----------------------------------------------------
   ! String carrying a potential error or warning message

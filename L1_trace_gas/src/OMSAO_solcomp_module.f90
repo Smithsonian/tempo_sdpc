@@ -57,8 +57,8 @@ CONTAINS
 
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
     USE OMSAO_he5_module, ONLY: HE5_SWopen, HE5_SWattach, HE5_SWrdfld, &
-      HE5_SWrdlattr, HE5_SWdetach, HE5_SWclose, HE5_SWinqswath, &
-      he5f_acc_rdonly
+      HE5_SWrdlattr, HE5_SWdetach, HE5_SWclose, HE5_SWinqswath!, &
+      !he5f_acc_rdonly
     USE arrayutils, only: array_locate_r8
     USE OMSAO_errstat_module
     use tell_module

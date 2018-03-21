@@ -43,6 +43,9 @@ module ctrlvars
 
   logical, public :: yn_remove_target
 
+  ! Write ODL-format metadata text file alongside netCDF
+  logical, public :: yn_wrt_odl
+
   ! FIXME JCH temporary switches for tempo development
   logical, public :: yn_disable_omi_features, yn_do_he5_output
 

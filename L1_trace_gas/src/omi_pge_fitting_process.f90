@@ -140,8 +140,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     Radiance_Paras_Type, &
     radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
-    yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, yn_do_he5_output
-  USE OMSAO_he5_module,       ONLY:  pge_swath_name
+    yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, &
+    yn_do_he5_output, yn_wrt_odl
+  USE OMSAO_he5_module,       ONLY:  pge_swath_name, n_lun_inp, lun_input
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
     xtrack_radiance_reference_loop
@@ -170,6 +171,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     omi_cross_track_skippix, omi_radcal_xflag, &
     omi_radiance_swathname, result_vars
   USE irradiance_data, only: irradiance_data_init
+  use m_write_odl_metadata
 
   IMPLICIT NONE
 
@@ -245,7 +247,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ntimes_rr = rpt_rr%ntimes
   nxtrack_rr = rpt_rr%nxtrack
   nwavel_rr = rpt_rr%nwavel_ccd
-
   ! ---------------------------------------------------------------
   ! Some initializations that will save us headaches in cases where
   ! a proper set-up of those variables failes or is bypassed.
@@ -791,6 +792,21 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       call tell_error (tell_io_error, &
                        "omi_fitting: he5_close_output_file failed", &
                        errstat)
+      return
+    endif
+  endif
+
+  ! --------------------------------------------------------
+  ! Write ODL metadata to go with netCDF, if switch is set
+  ! --------------------------------------------------------
+  ! Note this occurs now because postprocessing has the whole lon, lat grid
+  ! available, whereas main retrieval seems to only ever have blocks
+  if (yn_wrt_odl) then
+    errstat = write_odl_metadata (l1b_rad_filename, l2_filename_netcdf, &
+         nxtrack_rad-1, ntimes_rad-1, lun_input, n_lun_inp)
+    if (errstat /= 0) then
+      call tell_error(tell_io_write_error, "failed writing ODL metadata", &
+           errstat)
       return
     endif
   endif

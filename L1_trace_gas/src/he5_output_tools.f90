@@ -73,7 +73,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: NWAVEL_MAX, nUTCdim
     USE OMSAO_indices_module,   ONLY: max_calfit_idx, max_rs_idx
     USE OMSAO_omidata_module,   ONLY: nclenfit, n_comm_wvl
-    USE OMSAO_he5_module, only: he5_swopen, he5_swcreate, he5_swdefdim, he5f_acc_trunc
+    USE OMSAO_he5_module, only: he5_swopen, he5_swcreate, he5_swdefdim!, he5f_acc_trunc
     USE OMSAO_errstat_module
     USE OMSAO_variables_module, ONLY: n_fitvar_rad
 

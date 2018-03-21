@@ -93,6 +93,7 @@ $(ODIR)/integration_routines.o: $(SDIR)/integration_routines.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/integration_routines.f90 -o $(ODIR)/integration_routines.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/metadata_tools.o: $(SDIR)/metadata_tools.f90 \
+  $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_casestring_module.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \
@@ -104,6 +105,12 @@ $(ODIR)/metadata_tools.o: $(SDIR)/metadata_tools.f90 \
   $(ODIR)/sao_pge_utils.o \
   $(ODIR)/strutils.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/metadata_tools.f90 -o $(ODIR)/metadata_tools.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
+  $(ODIR)/m_pgs_include.o \
+  $(ODIR)/OMSAO_indices_module.o \
+  $(ODIR)/OMSAO_omidata_module.o \
+  $(ODIR)/tg_names_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_fitting_aux.o: $(SDIR)/omi_pge_fitting_aux.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/metadata_tools.o \
@@ -125,6 +132,7 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
   $(ODIR)/he5_output_tools.o \
   $(ODIR)/irradiance_data.o \
   $(ODIR)/l1bread_utils.o \
+  $(ODIR)/m_write_odl_metadata.o \
   $(ODIR)/metadata_tools.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_pge_postprocessing.o \
@@ -205,6 +213,7 @@ $(ODIR)/OMSAO_elsunc_fitting_module.o: $(SDIR)/OMSAO_elsunc_fitting_module.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_elsunc_fitting_module.f90 -o $(ODIR)/OMSAO_elsunc_fitting_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_errstat_module.o: $(SDIR)/OMSAO_errstat_module.f90 \
+  $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_errstat_module.f90 -o $(ODIR)/OMSAO_errstat_module.o $(MODOUTFLG) $(ODIR)
@@ -496,6 +505,8 @@ $(ODIR)/ctrlvars.o: $(SDIR)/ctrlvars.f90
 $(ODIR)/arrayutils.o: $(SDIR)/arrayutils.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/arrayutils.f90 -o $(ODIR)/arrayutils.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMI_SMF_setmsg.o:	$(SDIR)/OMI_SMF_setmsg.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(OMI_SMF_setmsg_INCS) $(OMI_SMF_setmsg_DEFINES) $(SDIR)/OMI_SMF_setmsg.c -o $(ODIR)/OMI_SMF_setmsg.o
 $(ODIR)/unbufferSTDOUT.o:	$(SDIR)/unbufferSTDOUT.c

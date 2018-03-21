@@ -4,11 +4,9 @@ MODULE metadata_tools
   USE OMSAO_parameters_module, ONLY: &
     MAX_STR_LEN, str_missval, i4_missval, blank23, blank25, blank27, blank30
   USE OMSAO_indices_module,    ONLY: sao_pge_min_idx, sao_pge_max_idx
+  use m_pgs_include
 
   IMPLICIT NONE
-
-  INCLUDE "PGS_MET.f"
-  INCLUDE "PGS_PC.f"
 
   ! -----------------------
   ! MetaData STRING Objects
