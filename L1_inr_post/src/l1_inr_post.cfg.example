@@ -2,11 +2,11 @@ polcorr_tables: {
 
   # instrument linear polarization sensitivity:
   #
-  lps_lut = "/vex/d0/polcorr_test_data/lps_table.nc";
+  lps_lut = "/vex/d4/polarization/lps_lut/lps_table.nc";
 
   # QU dependence on selected parameters:
   #
-  qu_lut  = "/vex/d0/polarization_lut/Polarization_LUT_qu_SIqu_clima_reordered.nc";
+  qu_lut = "/vex/d4/polarization/qu_lut/Polarization_LUT_qu_SIqu_clima_reordered.nc";
 
   # LUT SI "swav" wavelength grid index limits for retrievals
   waves_uv  = [ 1, 13];

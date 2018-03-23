@@ -139,6 +139,7 @@ contains
     real (kind=r8), allocatable, dimension(:) :: cfracs0, tmp_cfracs0
     real (kind=r8), allocatable, dimension(:,:) :: snalbs0, tmp_snalbs0
     real (kind=r8), dimension(maxscene) :: snps
+    type (range_type) :: qu_range
 
     logical :: use_mler
 
@@ -149,17 +150,20 @@ contains
     call read_radiance_fmonth (rad_s, fmonth, errstat)
     if (errstat /= 0) return
 
-    ! Wavelength indices (on SI "swav" grid) to be used
-    ! for retrievals in this band
+    ! Wavelength intervals and array indices to be used for processing this band
     select case (band_id)
       case (tempo_band_uv)
         swav_limits = (/pt % uv_beg, pt % uv_end/)
         ctp_wave_indices = (/10, 11, 12/)
         oz_wave_indices = (/1, 2, 5/)
+        qu_range % min = 285.0
+        qu_range % max = 495.0
       case (tempo_band_vis)
         swav_limits = (/pt % vis_beg, pt % vis_end/)
         ctp_wave_indices = (/8, 9, 10/)
         oz_wave_indices = (/3, 4, 6/)
+        qu_range % min = 535.0
+        qu_range % max = 745.0
     end select
 
     call read_radiance_geometry (rad_s, band_id, errstat)
@@ -180,6 +184,10 @@ contains
     if (errstat /= 0) return
 
     num_wav = size(wav)
+
+    ! Computing Q, U is costly, so minimize the number of wavelengths computed:
+    qu_range % imin = ndi_find_index (qu_range % min, wav)
+    qu_range % imax = ndi_find_index (qu_range % max, wav) + 1
 
     allocate (snalbs0(num_swav,maxscene), tmp_snalbs0(num_swav,maxscene), &
               cfracs0(num_swav), tmp_cfracs0(num_swav), &
@@ -336,13 +344,12 @@ contains
                                oz_info, nscene, cfracs0, snalbs0, snps, errstat)
         if (errstat /= 0) return
 
-        call pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, &
-                        oz_info, nscene, cfracs0, snalbs0, snps, &
-                        q, u, errstat)
+        call pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, oz_info, &
+                        nscene, cfracs0, snalbs0, snps, qu_range, q, u, errstat)
         if (errstat /= 0) return
 
-        call calc_lpserr (pt % lps, pt % delta_pa, wav, q, u, rad_s, &
-                          band_id, ix, step, lpserr, errstat)
+        call calc_lpserr (pt % lps, pt % delta_pa, wav, q, u, &
+                          rad_s, band_id, ix, step, lpserr, errstat)
         if (errstat /= 0) return
 
         where (rad_s % radiance (:,ix) /= r8_fill)
@@ -369,11 +376,11 @@ contains
     integer, intent(inout) :: errstat
 
     real (kind=r8), parameter :: degtorad = 4.0_r8*atan(1.0_r8)/180.0_r8
-    real (kind=r8), allocatable, dimension(:) :: q, u, dolps, lpsens, angmax, pa_irp
+    real (kind=r8), allocatable, dimension(:) :: q, u, dolps, lpsens, angmax
     real (kind=r8), target, allocatable, dimension(:) :: pa
-    real (kind=r8), pointer, dimension(:) :: wave, pa_lmp
+    real (kind=r8), pointer, dimension(:) :: rad_wave
     real (kind=r8) :: lon, lat
-    integer :: err, nwav, num_wave
+    integer :: err, nwav, num_rad_wave
 
     if (errstat /= 0) return
 
@@ -383,66 +390,71 @@ contains
     endif
 
     nwav = size(wav)
-    num_wave = rad_s % num_wave
-    wave => rad_s % wave (:, ix)
+    num_rad_wave = rad_s % num_wave
+    rad_wave => rad_s % wave (:, ix)
 
-    allocate (q(num_wave), u(num_wave), &
-              dolps(num_wave), pa(num_wave), &
-              lpsens(num_wave), angmax(num_wave), &
-              pa_irp(num_wave), stat=err)
+    allocate (q(num_rad_wave), u(num_rad_wave), &
+              dolps(num_rad_wave), pa(num_rad_wave), &
+              lpsens(num_rad_wave), angmax(num_rad_wave), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, "calc_lpserr: malloc failed", errstat)
       return
     endif
 
-    err = spline (wav, q0, nwav, wave, q, num_wave)
+    ! Map Q, U from LUT wav grid to radiance measurement wavelength grid:
+
+    err = spline (wav, q0, nwav, rad_wave, q, num_rad_wave)
     if (err /= 0) then
       call tell_error (tell_runtime_error, "calc_lpserr: Q interpolation failed", errstat)
       return
     endif
 
-    err = spline (wav, u0, nwav, wave, u, num_wave)
+    err = spline (wav, u0, nwav, rad_wave, u, num_rad_wave)
     if (err /= 0) then
       call tell_error (tell_runtime_error, "calc_lpserr: U interpolation failed", errstat)
       return
     endif
 
+    ! dolps = degree of linear polarization
     dolps = sqrt (q*q + u*u)
-    pa = 0.5 * atan (u/q) / degtorad
 
+    ! pa = angle between the plane of linear polarization,
+    !      and the LUT plane of reference, 0 <= pa <= 180
+    pa = 0.5 * atan2(u, q) / degtorad
     where (pa < 0.0)
-      pa = pa + 90.0
-    end where
-
-    where (q > 0.0 .and. u < 0.0)
       pa = pa + 180.0
     end where
+
+    ! At this point, the plane of reference for pa is the local meridian
+    ! plane, LMP. However, the instrument reference plane, IRP, is rotated
+    ! relative to the LMP by an angle, delta_pa. To apply the instrument
+    ! linear polarization sensitivity tables, we need the angle between
+    ! the plane of linear polarization and the IRP, which is:
+
+    pa = pa + delta_pa
+
+    ! Use (lon,lat) to derive this spectrum's angular offset from the
+    ! instrument boresight, then perform a table lookup to obtain the
+    ! associated values of:
+    !     lpsens = linear polarization sensitivity
+    !     angmax = angle of maximum transmission
 
     lon = rad_s % lon (ix, step)
     lat = rad_s % lat (ix, step)
 
-    err = lps_eval (lps, band_id, ix, lon, lat, num_wave, wave, lpsens, angmax)
+    err = lps_eval (lps, band_id, ix, lon, lat, num_rad_wave, rad_wave, lpsens, angmax)
     if (err /= 0) then
       call tell_set_error (errstat)
       return
     endif
 
-    ! delta_pa = angle between the local meridian plane (LMP) and
-    !            the instrument reference plane (IRP)
-    ! pa_lmp = angle between polarization direction,
-    !          and LMP = local meridian plane
-    pa_lmp => pa
-    pa_irp = pa_lmp + delta_pa
-
-    ! measured radiance, I', true radiance I
+    ! Measured radiance, I', true radiance, I:
     ! I' = I * ( 1 + 2.0 * lps * Dolp * cos(2.0 * (pa - maxang))
     ! I = I' / ( 1 + 2.0 * lps * Dolp * cos(2.0 * (pa - maxang))
-    ! pa: phase angle of polarization wrt to instrument reference plane (irp)
-    ! maxang: angle of maximum transmission
+    ! where pa: phase angle of polarization wrt to instrument reference plane (irp),
+    ! and maxang: angle of maximum transmission
 
-    lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa_irp - angmax) * degtorad)
-    !write(*,'(a,e10.4,1x,e10.4)')'1/(1+lpserr): ', &
-    !  minval(1.0/(1.0+lpserr)), maxval(1.0/(1.0+lpserr))
+    lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa - angmax) * degtorad)
 
   end subroutine calc_lpserr
 
@@ -768,6 +780,13 @@ contains
 
     subset % raa % min = minval(rad_s % raa, rad_s % raa /= r8_fill)
     subset % raa % max = maxval(rad_s % raa, rad_s % raa /= r8_fill)
+
+    ! This is used to subset the lookup table (LUT) on input.
+    ! Since we only want to read the LUT *once*, the subset
+    ! wavelength range should cover *both* TEMPO wavelength bands.
+
+    subset % wav % min = lut_wav_min
+    subset % wav % max = lut_wav_max
 
   end subroutine define_subset
 

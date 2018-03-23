@@ -290,7 +290,7 @@ contains
     call read_dim (obj, "raa", lut % qu_dims(iqu_raa), errstat, subset % raa)
     call read_dim (obj, "alb", lut % qu_dims(iqu_alb), errstat)
     call read_dim (obj, "pre", lut % qu_dims(iqu_pre), errstat)
-    call read_dim (obj, "wav", lut % qu_dims(iqu_wav), errstat)
+    call read_dim (obj, "wav", lut % qu_dims(iqu_wav), errstat, subset % wav)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
                        "reading QU lookup table dimensions", errstat)
@@ -493,7 +493,8 @@ contains
       subset % raa % imin - 1, &
       subset % vza % imin - 1, &
       subset % sza % imin - 1, &
-      0, 0, 0, 0/)
+      0, 0, 0, &
+      subset % wav % imin - 1/)
 
     edge(:) = (/ &
       qu_dims(iqu_raa) % dimlen, &
@@ -644,15 +645,6 @@ contains
 
     if (errstat /= 0) return
 
-    if (present(subset)) then
-      dim_range = subset
-    else
-      dim_range % min = -huge(0.0d0)
-      dim_range % max =  huge(0.0d0)
-      dim_range % imin = 0
-      dim_range % imax = 0
-    endif
-
     call tiof_inq_dimlen (obj, dim_name, dimlen, errstat)
     if (errstat /= 0) return
 
@@ -667,6 +659,15 @@ contains
     call tiof_get1d_r8 (obj, dim_name, start, edge, dim_tmp, &
                         errstat)
     if (errstat /= 0) return
+
+    if (present(subset)) then
+      dim_range = subset
+    else
+      dim_range % min = -huge(0.0d0)
+      dim_range % max =  huge(0.0d0)
+      dim_range % imin = 1
+      dim_range % imax = dimlen
+    endif
 
     dim_min = dim_range % min
     dim_max = dim_range % max
@@ -1580,8 +1581,8 @@ contains
 
   end subroutine pp_derive_albcld
 
-  subroutine pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, &
-                        oz_info, nscene, cfrac0, snalbs0, snps, out_q, out_u, &
+  subroutine pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, oz_info, &
+                        nscene, cfrac0, snalbs0, snps, qu_range, out_q, out_u, &
                         errstat)
     implicit none
     type (polpredict_type), target, intent(in) :: lut_s
@@ -1592,6 +1593,7 @@ contains
     integer, intent(in) :: nscene
     real (kind=r8), dimension(:), intent(in) :: cfrac0, snps
     real (kind=r8), dimension(:,:), intent(in) :: snalbs0
+    type (range_type), intent(in) :: qu_range
     real (kind=r8), dimension(:), intent(inout) :: out_q, out_u
     integer, intent(inout) :: errstat
 
@@ -1695,7 +1697,7 @@ contains
           indices(3) = ioz;
           weights(3) = (oz_grid(ioz+1) - oz)/(oz_grid(ioz+1) - oz_grid(ioz));
 
-          do iw = 1, nwav
+          do iw = qu_range % imin, qu_range % imax  ! 1, nwav
 
             ! albedo
             ia = ndi_find_index (snalbs(iw,is), alb_grid)

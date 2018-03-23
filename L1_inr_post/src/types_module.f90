@@ -13,6 +13,12 @@ module types_module
     r4 = kind(1.0), &
     r8 = selected_real_kind (2*precision(1.0_r4))
 
+  ! Wavelength limits [nm] spanning the full TEMPO band,
+  ! and a bit more to be on the safe side.
+  real (kind=r8), parameter :: &
+    lut_wav_min = 285.0, &
+    lut_wav_max = 745.0
+
   type, public :: radiance_type
     type(tiof_file_type) :: obj
     integer :: this_step
@@ -39,6 +45,7 @@ module types_module
     type(range_type) :: sza        ! solar zenith angle
     type(range_type) :: vza        ! viewing zenith angle
     type(range_type) :: raa        ! relative azimuth angle
+    type(range_type) :: wav        ! wavelength
   end type
 
   interface
