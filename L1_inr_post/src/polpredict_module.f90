@@ -9,7 +9,7 @@ module polpredict_module
 
   public pp_read, pp_dealloc, pp_initialized, pp_get_swav, pp_get_wav
   public pp_interp_ozone_pre, pp_interp_ctp, pp_interp_surface_albedo
-  public pp_interp_ozone_profile, pp_ozone_zone_info
+  public pp_interp_ozone_profile, pp_ozone_zone_info, pp_derive_scene_pressure
   public pp_derive_ctp, pp_derive_to3, pp_derive_albcld, pp_get_qu
 
   type, public :: polpredict_type
@@ -724,6 +724,74 @@ contains
     to_dims(:) = from_dims(:)
 
   end subroutine dup_dims
+
+  subroutine pp_derive_scene_pressure (lut_s, cld_wave_index, srad, sza, vza, raa, oz, oz_info, &
+                                       snalbs, snps, ctp, errstat)
+    implicit none
+    type (polpredict_type), target, intent(in) :: lut_s
+    integer, intent(in) :: cld_wave_index
+    real (kind=r8), dimension(:), intent(in) :: srad
+    real (kind=r8), intent(in) :: sza, vza, raa, oz
+    type (pp_ozone_zone_info_type), intent(in) :: oz_info
+    real (kind=r8), dimension(:,:), intent(in) :: snalbs
+    real (kind=r8), dimension(:), intent(in) :: snps
+    real (kind=r8), intent(out) :: ctp
+    integer, intent(inout) :: errstat
+
+    integer, parameter :: nd = 6, nterms=2**nd
+    integer :: is, iz, k, fidx, lidx, ioz
+    integer, dimension(nd) :: ids, indices, id_k
+    real (kind=r8), dimension(nd) :: x, weights
+    real (kind=r8), dimension(2) :: snrad
+    real (kind=r8), pointer, dimension(:) :: alb_grid, pre_grid, oz_grid
+    real (kind=r8) :: val, radcfrac, cfrac, wt_k
+
+    ids(:) = (/iqu_alb,iqu_pre,iqu_ozo,iqu_sza,iqu_vza,iqu_raa/)
+    x(4:6) = (/sza, vza, raa/)
+
+    call ndi_find_indices (lut_s % si_dims(ids(4:6)), x(4:6), indices(4:6))
+
+    alb_grid => lut_s % si_dims(iqu_alb) % x
+    pre_grid => lut_s % si_dims(iqu_pre) % x
+    oz_grid => lut_s % si_dims(iqu_ozo) % x
+
+    snrad(:) = 0.0
+
+    do is = 1, 2
+      x(1) = snalbs(cld_wave_index, is)
+      indices(1) = ndi_find_index (snalbs(cld_wave_index, is), alb_grid)
+      x(2) = snps(is)
+      indices(2) = ndi_find_index (snps(is), pre_grid)
+
+      fidx = oz_info % beg_index
+      do iz = 1, oz_info % nzone
+        lidx = fidx + oz_info % nzoneo3(iz) - 1
+        ioz = ndi_find_index (oz, oz_grid(fidx:lidx))
+        indices(3) = fidx + ioz - 1
+        x(3) = oz
+
+        call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights)
+
+        val = 0.0
+        do k = 1, nterms
+          call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
+          val = val + wt_k * lut_s % si (cld_wave_index,id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
+        enddo
+        snrad(is) = snrad(is) + val * oz_info % zonefracs(iz)
+      enddo
+    enddo
+
+    cfrac = (srad(cld_wave_index) - snrad(1)) / (snrad(2) - snrad(1))
+    if (cfrac <= 0.0) then
+      ctp = snps(1)
+    else if (cfrac > 0.0 .and. cfrac < 1.0) then
+      radcfrac = cfrac + snrad(2)/srad(cld_wave_index)
+      ctp = snps(1) * (1.0 - radcfrac) + snps(2) * radcfrac
+    else
+      ctp = snps(2)
+    endif
+
+  end subroutine pp_derive_scene_pressure
 
   subroutine pp_derive_ctp (lut_s, use_mler, srad, &
                             sza, vza, raa, oz, oz_info, wave_indices, &

@@ -163,7 +163,7 @@ contains
     type (pp_ozone_zone_info_type) :: oz_info
     integer :: step, ix, err, beg_step, end_step, beg_xtrack, end_xtrack
     integer :: retoz_errstat, retctp_errstat, status
-    integer :: iter, num_iter, nscene, num_swav, num_wav
+    integer :: iter, num_iter, nscene, num_swav, num_wav, cld_wave_index
     integer, dimension(2) :: swav_limits
     integer, dimension(num_ctp_waves) :: ctp_wave_indices
     integer, dimension(num_oz_waves) :: oz_wave_indices
@@ -190,12 +190,14 @@ contains
     select case (band_id)
       case (tempo_band_uv)
         swav_limits = (/pt % uv_beg, pt % uv_end/)
+        cld_wave_index = 5   ! 367 nm
         ctp_wave_indices = (/10, 11, 12/)
         oz_wave_indices = (/1, 2, 5/)
         qu_range % min = 285.0
         qu_range % max = 495.0
       case (tempo_band_vis)
         swav_limits = (/pt % vis_beg, pt % vis_end/)
+        cld_wave_index = 7   ! 670 nm
         ctp_wave_indices = (/8, 9, 10/)
         oz_wave_indices = (/3, 4, 6/)
         qu_range % min = 535.0
@@ -306,9 +308,20 @@ contains
         call pp_ozone_zone_info (lut_s, lat, oz, oz_info, errstat)
         if (errstat /= 0) return
 
-        ! FIXME? At this point, Xiong's prototype handled the case:
-        !       if (.not.use_mler .and. not.retctp)
-        ! For a first cut, I'm leaving that out.  Do we need this case?
+        if (.not. (use_mler.or.retctp)) then
+          ! If not retcp, need to derive scene pressure here, otherwise
+          ! scene pressure will be derived during cloud retrieval
+          nscene = 2
+          snps(1) = pre
+          snps(2) = ctp0
+          snalbs0(cld_wave_index, 1) = 0.05
+          snalbs0(cld_wave_index, 2) = cldalb0
+          call pp_derive_scene_pressure (lut_s, cld_wave_index, srad, sza, vza, raa, oz, &
+                                         oz_info, snalbs0, snps, ctp, errstat)
+          if (errstat /= 0) ctp = pre
+          nscene = 1
+          snps(1) = ctp
+        endif
 
         ! Ozone (oz) and cloud-top pressure (ctp) depend on each other.
         ! Iterate unless a previously successful retrieval is available.
@@ -332,48 +345,53 @@ contains
 
         do iter=1,num_iter
 
-          ! Derive cloud-top pressure
-          tmp_snalbs0 = snalbs0(ctp_wave_indices,:)
-          tmp_cfracs0 = cfracs0(ctp_wave_indices)
-          call pp_derive_ctp (lut_s, use_mler, srad(ctp_wave_indices), &
-                              sza, vza, raa, oz, oz_info, ctp_wave_indices, &
-                              nscene, ctp, tmp_cfracs0, tmp_snalbs0, snps, errstat)
-          snalbs0(ctp_wave_indices,:) = tmp_snalbs0
-          cfracs0(ctp_wave_indices) = tmp_cfracs0
-          if (errstat /= 0) return
+          if (retctp) then
+            ! Derive cloud-top pressure
+            tmp_snalbs0 = snalbs0(ctp_wave_indices,:)
+            tmp_cfracs0 = cfracs0(ctp_wave_indices)
+            call pp_derive_ctp (lut_s, use_mler, srad(ctp_wave_indices), &
+                                sza, vza, raa, oz, oz_info, ctp_wave_indices, &
+                                nscene, ctp, tmp_cfracs0, tmp_snalbs0, snps, errstat)
+            snalbs0(ctp_wave_indices,:) = tmp_snalbs0
+            cfracs0(ctp_wave_indices) = tmp_cfracs0
+            if (errstat /= 0) return
 
-          if (isnan(ctp)) retctp_errstat = 4
-          if (use_mler .and. ctp > pre) then
-            retctp_errstat = 2
-            ctp = pre
-          endif
-          if (retctp_errstat == 0) then
-            ctp_saved = ctp
-          else
-            ctp = ctp0
-          endif
-
-          ! Derive total ozone
-          tmp_snalbs0 = snalbs0(oz_wave_indices,:)
-          tmp_cfracs0 = cfracs0(oz_wave_indices)
-          call pp_derive_to3 (lut_s, use_mler, &
-                              swav(oz_wave_indices), srad(oz_wave_indices), &
-                              sza, vza, raa, oz, oz_info, oz_wave_indices, &
-                              nscene, tmp_cfracs0, tmp_snalbs0, snps, status, errstat)
-          snalbs0(oz_wave_indices,:) = tmp_snalbs0
-          cfracs0(oz_wave_indices) = tmp_cfracs0
-          if (errstat /= 0) return
-
-          if (isnan(oz)) retoz_errstat = 4
-          if (retoz_errstat == 0) then
-            oz_saved = oz
-          else
-            oz = oz0
+            if (isnan(ctp)) retctp_errstat = 4
+            if (use_mler .and. ctp > pre) then
+              retctp_errstat = 2
+              ctp = pre
+            endif
+            if (retctp_errstat == 0) then
+              ctp_saved = ctp
+            else
+              ctp = ctp0
+            endif
           endif
 
-          ! Define o3 zones
-          call pp_ozone_zone_info (lut_s, lat, oz, oz_info, errstat)
-          if (errstat /= 0) return
+          if (retoz) then
+            ! Derive total ozone
+            tmp_snalbs0 = snalbs0(oz_wave_indices,:)
+            tmp_cfracs0 = cfracs0(oz_wave_indices)
+            call pp_derive_to3 (lut_s, use_mler, &
+                                swav(oz_wave_indices), srad(oz_wave_indices), &
+                                sza, vza, raa, oz, oz_info, oz_wave_indices, &
+                                nscene, tmp_cfracs0, tmp_snalbs0, snps, status, errstat)
+            snalbs0(oz_wave_indices,:) = tmp_snalbs0
+            cfracs0(oz_wave_indices) = tmp_cfracs0
+            if (errstat /= 0) return
+
+            if (isnan(oz)) retoz_errstat = 4
+            if (retoz_errstat == 0) then
+              oz_saved = oz
+            else
+              oz = oz0
+            endif
+
+            ! Define o3 zones
+            call pp_ozone_zone_info (lut_s, lat, oz, oz_info, errstat)
+            if (errstat /= 0) return
+          endif
+
         enddo ! iter
 
         call pp_derive_albcld (lut_s, use_mler, swav, srad, sza, vza, raa, oz, &
