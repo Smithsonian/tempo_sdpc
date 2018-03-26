@@ -419,6 +419,8 @@ extern int tio_time_tempo_to_utc_caldate
  */
 extern int tio_fgets (char **linep, size_t *lenp, FILE *fp);
 
+extern int tio_def_var_radiance_status_flag (int grp);
+
 #if 0
 {
 #endif

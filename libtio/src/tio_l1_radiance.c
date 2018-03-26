@@ -535,6 +535,41 @@ int tio_def_var_ground_pixel_quality_flag (int grp)
    return emit_var_ground_pixel_quality_flag (grp, dims, 2);
 }
 
+static int emit_radiance_status_flag (int grp)
+{
+   _pText_Attr_Type text_attrs[] =
+     {
+        {"flag_meanings", "polarization, straylight"},
+        {"comment", "Bit settings indicate which corrections have been applied"},
+        _pTEXT_ATTRS_END
+     };
+   const int flag_masks[] = {1<<0, 1<<1};
+   size_t len = sizeof(flag_masks)/sizeof(flag_masks[0]);
+   int varid, status_flag = 0;
+
+   if (0 != _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_RADIANCE_STATUS, NC_INT, 0, NULL, text_attrs, &varid))
+     return -1;
+   if (NC_NOERR != nc_put_att_int (grp, varid, "flag_masks", NC_INT, len, flag_masks))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining %s flag_masks attribute",
+                     __func__, TEMPO_VAR_RADIANCE_STATUS);
+        return -1;
+     }
+   if (NC_NOERR != nc_put_var_int (grp, varid, &status_flag))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s",
+                     __func__, TEMPO_VAR_RADIANCE_STATUS);
+        return -1;
+     }
+
+   return 0;
+}
+
+int tio_def_var_radiance_status_flag (int grp)
+{
+   return emit_radiance_status_flag (grp);
+}
+
 static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
@@ -672,7 +707,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"units", _pTIO_PHOTON_UNITS},
              {"coordinates", "longitude latitude spectral_channel"},
-             {"ancillary_variables", TEMPO_VAR_RADIANCE_ERROR},
+             {"ancillary_variables", "radiance_error radiance_status_flag"},
              _pTEXT_ATTRS_END
           };
         float radiance_fill = TIO_FILL_RADIANCE;
@@ -743,6 +778,9 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           return -1;
 #endif
      }
+
+   if (0 != emit_radiance_status_flag (grp))
+     return -1;
 
    /* wavelength */
      {
