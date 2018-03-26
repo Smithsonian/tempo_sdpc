@@ -73,6 +73,9 @@ module polcorrect_module
   real (kind=r8), parameter :: r8_fill = nf90_fill_double
   real (kind=r8), parameter :: cldalb0 = 0.8d0  ! cloud albedo
 
+  ! radiance_status bit for polarization correction status
+  integer, parameter :: polcorr_status_bit = 0
+
 contains
 
   integer(c_int) function polcorrect (pt) bind (C, name='polcorrect')
@@ -109,6 +112,39 @@ contains
 
     polcorrect = 0
   end function
+
+  subroutine check_pol_correction_status (obj, has_pol_correction, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    logical, intent(out) :: has_pol_correction
+    integer, intent(inout) :: errstat
+    integer :: status_flag
+    if (errstat /= 0) return
+
+    has_pol_correction = .false.
+
+    call tiof_get_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
+    if (errstat /= 0) return
+
+    has_pol_correction = btest (status_flag, polcorr_status_bit)
+  end subroutine check_pol_correction_status
+
+  subroutine set_polcorr_status_bit (obj, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout) :: errstat
+    integer :: status_flag
+    if (errstat /= 0) return
+
+    call tiof_get_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
+    if (errstat /= 0) return
+
+    status_flag = ibset (status_flag, polcorr_status_bit)
+
+    call tiof_put_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
+    if (errstat /= 0) return
+
+  end subroutine set_polcorr_status_bit
 
   subroutine process_group (pt, lut_s, rad_s, band_id, errstat)
     use polpredict_module
@@ -358,6 +394,7 @@ contains
 
       enddo ! ix
       call write_radiance_for_mirror_step (rad_s, step, errstat)
+      if (errstat /= 0) return
     enddo ! step
 
     call dealloc_radiance (rad_s, errstat)
@@ -647,6 +684,7 @@ contains
 
     integer :: num_step, num_xtrack, num_wave
     integer, dimension(2) :: start, edge
+    logical :: has_pol_correction
 
     if (errstat /= 0) return
 
@@ -659,6 +697,14 @@ contains
       case (tempo_band_vis)
         call tiof_inq_group (rad_s % obj, tempo_band_name_vis, errstat)
     end select
+
+    call check_pol_correction_status (rad_s % obj, has_pol_correction, errstat)
+    if (errstat /= 0) return
+    if (has_pol_correction) then
+      call tell_error (tell_runtime_error, &
+                       "polarization correction has already been applied", errstat)
+      return
+    endif
 
     call tiof_inq_dimlen (rad_s % obj, tempo_dim_xtrack, num_xtrack, errstat)
     call tiof_inq_dimlen (rad_s % obj, tempo_dim_channel, num_wave, errstat)
@@ -755,6 +801,8 @@ contains
       call tell_error (tell_io_write_error, msg, errstat)
       return
     endif
+
+    call set_polcorr_status_bit (rad_s % obj, errstat)
 
   end subroutine write_radiance_for_mirror_step
 
