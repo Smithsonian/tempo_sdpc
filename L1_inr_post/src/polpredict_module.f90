@@ -1159,9 +1159,9 @@ contains
     type (pp_ozone_zone_info_type), target, intent(in) :: oz_info
     integer, dimension(nw), intent(in) :: wave_indices
     integer, intent(in) :: nscene
-    real (kind=r8), dimension(:), intent(inout) :: cfracs
+    real (kind=r8), dimension(:), intent(out) :: cfracs
     real (kind=r8), dimension(:,:), intent(inout) :: snalbs
-    real (kind=r8), dimension(:), intent(inout) :: snps
+    real (kind=r8), dimension(:), intent(in) :: snps
     integer, intent(out) :: status
     integer, intent(inout) :: errstat
 
@@ -1535,9 +1535,9 @@ contains
     real (kind=r8), intent(inout) :: oz
     type (pp_ozone_zone_info_type), target, intent(in) :: oz_info
     integer, intent(in) :: nscene
-    real (kind=r8), dimension(:), intent(inout) :: cfrac
+    real (kind=r8), dimension(:), intent(out) :: cfrac
     real (kind=r8), dimension(:,:), intent(inout) :: snalbs
-    real (kind=r8), dimension(:), intent(inout) :: snps
+    real (kind=r8), dimension(:), intent(in) :: snps
     integer, intent(inout) :: errstat
 
     integer, parameter :: nd = 5, nterms_5d = 2**5
