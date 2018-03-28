@@ -51,6 +51,7 @@ static void usage (void)
    fprintf (stderr, "Usage: L1_polcorr [options] <input-file>\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
+   fprintf (stderr, "   -d | --debug           generate debugging output\n");
    fprintf (stderr, "   -s | --step s          step index to process (1 <= s <= num_steps_in_granule)\n");
    fprintf (stderr, "   -x | --xtrack x        xtrack index to process (1 <= x <= num_xtrack)\n");
    fprintf (stderr, "   -v | --verbose lev     logging verbosity\n");
@@ -101,7 +102,7 @@ read_retrieval_limits (config_setting_t *s, const char *name,
 }
 
 static int process_inputs (config_t *cfg, const char *rad_file,
-                           int step, int xtrack)
+                           int step, int xtrack, int debug_output)
 {
    Polcorr_Type pt = {0};
    wordexp_t we;
@@ -114,6 +115,7 @@ static int process_inputs (config_t *cfg, const char *rad_file,
    pt.rad_file = rad_file;
    pt.step = step;
    pt.xtrack = xtrack;
+   pt.debug_output = debug_output;
 
    if (NULL == (s = config_lookup (cfg, "polcorr_tables")))
      {
@@ -126,7 +128,6 @@ static int process_inputs (config_t *cfg, const char *rad_file,
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &qu_file))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "use_mler", &pt.use_mler))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands))
-       || (CONFIG_TRUE != config_setting_lookup_bool (s, "debug_output", &pt.debug_output))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "delta_pa", &pt.delta_pa)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -173,11 +174,13 @@ int main (int argc, char **argv)
    config_t cfg;
    char *input_file = NULL;
    int status = EXIT_FAILURE;
+   int debug_output = 0;
    int step = 0;
    int xtrack = 0;
    static struct option long_options[] =
      {
         {"config",  required_argument, 0, 'c'},
+        {"debug",   no_argument,       0, 'd'},
         {"step",    required_argument, 0, 's'},
         {"xtrack",  required_argument, 0, 'x'},
         {"verbose", optional_argument, 0, 'v'},
@@ -202,7 +205,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:s:x:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:ds:x:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -220,6 +223,9 @@ int main (int argc, char **argv)
               * any corresponding config file values */
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
+             break;
+           case 'd':
+             debug_output = 1;
              break;
            case 's':
              if (1 != sscanf (optarg, "%d", &step))
@@ -261,7 +267,7 @@ int main (int argc, char **argv)
    gsl_set_error_handler_off();
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", input_file);
 
-   status = process_inputs (&cfg, input_file, step, xtrack);
+   status = process_inputs (&cfg, input_file, step, xtrack, debug_output);
 
 return_status:
    config_destroy (&cfg);
