@@ -492,7 +492,6 @@ contains
     integer, intent(inout) :: errstat
 
     integer, dimension(7) :: start, edge
-    real :: start_read, finish_read
     integer :: err
 
     ! Note that these indices follow the C array index ordering
@@ -521,17 +520,9 @@ contains
       call tell_error (tell_malloc_error, "malloc failed", errstat)
     endif
 
-    ! FIXME - disable the actual file read to speed testing
-    if (.true.) then
-      call cpu_time(start_read)
-      call tiof_get7d_r4 (obj, "q", start, edge, q, errstat)
-      call tiof_get7d_r4 (obj, "u", start, edge, u, errstat)
-      call cpu_time(finish_read)
-      write(*,'(a,f0.4,a)')' reading q, u took ',finish_read-start_read,' sec'
-      if (errstat /= 0) return
-    else
-      write(*,*)'SKIPPED READING Q,U'
-    endif
+    call tiof_get7d_r4 (obj, "q", start, edge, q, errstat)
+    call tiof_get7d_r4 (obj, "u", start, edge, u, errstat)
+    if (errstat /= 0) return
 
   end subroutine read_qu_arrays
 
