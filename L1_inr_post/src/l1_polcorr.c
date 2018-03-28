@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
+#include <wordexp.h>
 
 #include <libconfig.h>
 #include <proj_api.h>
@@ -103,8 +104,12 @@ static int process_inputs (config_t *cfg, const char *rad_file,
                            int step, int xtrack)
 {
    Polcorr_Type pt = {0};
+   wordexp_t we;
+   const char *qu_file;
    config_setting_t *s;
    int status = -1;
+
+   memset ((char *)&we, 0, sizeof(wordexp_t));
 
    pt.rad_file = rad_file;
    pt.step = step;
@@ -118,7 +123,7 @@ static int process_inputs (config_t *cfg, const char *rad_file,
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &pt.qu_file))
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &qu_file))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "use_mler", &pt.use_mler))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "debug_output", &pt.debug_output))
@@ -137,6 +142,15 @@ static int process_inputs (config_t *cfg, const char *rad_file,
         goto return_status;
      }
 
+   if ((0 != wordexp (qu_file, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, qu_file);
+        goto return_status;
+     }
+   pt.qu_file = we.we_wordv[0];
+
    if (NULL == (pt.lps = lps_open (cfg)))
      goto return_status;
 
@@ -145,6 +159,7 @@ static int process_inputs (config_t *cfg, const char *rad_file,
 
    status = 0;
 return_status:
+   wordfree (&we);
    lps_close (pt.lps);
    free_polcorr_type (&pt);
 

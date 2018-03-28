@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
+#include <wordexp.h>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_interp.h>
@@ -567,9 +568,12 @@ void lps_close (Lps_Type *lps)
 Lps_Type *lps_open (config_t *cfg)
 {
    Lps_Type *lps = NULL;
+   wordexp_t we;
    config_setting_t *s;
    const char *lps_file;
    int ncid, status;
+
+   memset ((char *)&we, 0, sizeof(wordexp_t));
 
    if (NULL == (s = config_lookup (cfg, "polcorr_tables")))
      {
@@ -601,15 +605,28 @@ Lps_Type *lps_open (config_t *cfg)
    if (0 != lps_proj_open (lps))
      goto return_error;
 
-   if (0 != TIO_open (lps_file, NC_NOWRITE, &ncid))
+   if ((0 != wordexp (lps_file, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, lps_file);
+        goto return_error;
+     }
+
+   if (0 != TIO_open (we.we_wordv[0], NC_NOWRITE, &ncid))
      goto return_error;
+
    status = read_lps_tables (lps, ncid);
+
    (void) TIO_close (ncid);
+   wordfree (&we);
+
    if (status) goto return_error;
 
    return lps;
 
 return_error:
+   wordfree (&we);
    free_lps (lps);
    return NULL;
 }

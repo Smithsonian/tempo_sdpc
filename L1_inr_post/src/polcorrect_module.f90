@@ -545,10 +545,12 @@ contains
     lon = rad_s % lon (ix, step)
     lat = rad_s % lat (ix, step)
 
+    ! Note that lps_eval wants the xtrack index to be 0-based
+
     if (merge_bands) then
       i0 = 1
       i1 = num_rad_wave/2
-      err = lps_eval (lps, tempo_band_uv, ix, lon, lat, &
+      err = lps_eval (lps, tempo_band_uv, ix-1, lon, lat, &
                       num_rad_wave/2, rad_wave(i0:i1), &
                       lpsens(i0:i1), angmax(i0:i1))
       if (err /= 0) then
@@ -558,7 +560,7 @@ contains
 
       i0 = num_rad_wave/2 + 1
       i1 = num_rad_wave
-      err = lps_eval (lps, tempo_band_vis, ix, lon, lat, &
+      err = lps_eval (lps, tempo_band_vis, ix-1, lon, lat, &
                       num_rad_wave/2, rad_wave(i0:i1), &
                       lpsens(i0:i1), angmax(i0:i1))
       if (err /= 0) then
@@ -566,7 +568,7 @@ contains
         return
       endif
     else
-      err = lps_eval (lps, band_id, ix, lon, lat, &
+      err = lps_eval (lps, band_id, ix-1, lon, lat, &
                       num_rad_wave, rad_wave, lpsens, angmax)
       if (err /= 0) then
         call tell_set_error (errstat)
@@ -669,6 +671,9 @@ contains
       call tell_error (tell_malloc_error, "alloc_radiance: malloc failed", errstat)
       return
     endif
+
+    rad_s % q(:,:) = 0.0
+    rad_s % u(:,:) = 0.0
 
   end subroutine alloc_radiance
 
