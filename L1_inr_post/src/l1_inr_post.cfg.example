@@ -13,6 +13,8 @@ polcorr_tables: {
   waves_vis = [14, 28];
 
   use_mler = true;
+  merge_bands = true;
+  debug_output = true;
 
   # delta_pa = angle between local meridian plane (LMP),
   #            and instrument reference plane (IRP)

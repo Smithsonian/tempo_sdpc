@@ -267,7 +267,8 @@ contains
 
     num_swav = iend - ibeg + 1
     if (num_swav <= 0 .or. num_swav > max_num_swav) then
-      call tell_error (tell_runtime_error, "pp_get_swav: invalid wavelength selection", errstat)
+      call tell_error (tell_runtime_error, &
+                       "pp_get_swav: invalid wavelength selection", errstat)
       return
     endif
 
@@ -494,7 +495,8 @@ contains
     real :: start_read, finish_read
     integer :: err
 
-    ! Note that these indices follow the C array index ordering (as does the file itself)
+    ! Note that these indices follow the C array index ordering
+    ! (as does the file itself)
     start(:) = (/ &
       subset % raa % imin - 1, &
       subset % vza % imin - 1, &
@@ -731,7 +733,8 @@ contains
 
   end subroutine dup_dims
 
-  subroutine pp_derive_scene_pressure (lut_s, cld_wave_index, srad, sza, vza, raa, oz, oz_info, &
+  subroutine pp_derive_scene_pressure (lut_s, cld_wave_index, srad, &
+                                       sza, vza, raa, oz, oz_info, &
                                        snalbs, snps, ctp, errstat)
     implicit none
     type (polpredict_type), target, intent(in) :: lut_s

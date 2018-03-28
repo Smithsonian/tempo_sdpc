@@ -26,6 +26,7 @@ module types_module
     ! shape: (wave, xtrack) for specified mirror step
     real (kind=r8), allocatable, dimension(:,:) :: radiance
     real (kind=r8), allocatable, dimension(:,:) :: wave
+    real (kind=r8), allocatable, dimension(:,:) :: q, u
     ! shape: (xtrack, step)
     real (kind=r8), allocatable, dimension(:,:) :: lon, lat
     real (kind=r8), allocatable, dimension(:,:) :: sza, saa  ! solar zenith, azimuth angles

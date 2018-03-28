@@ -20,6 +20,7 @@
 
 #include "lps.h"
 
+/* Update the fortran interface whenever this definition changes */
 typedef struct
 {
    const char *rad_file;
@@ -27,7 +28,9 @@ typedef struct
    Lps_Type *lps;
    int uv_beg, uv_end;
    int vis_beg, vis_end;
+   int merge_bands;
    int use_mler;
+   int debug_output;
    int step;
    int xtrack;
    double delta_pa;
@@ -117,6 +120,8 @@ static int process_inputs (config_t *cfg, const char *rad_file,
 
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &pt.qu_file))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "use_mler", &pt.use_mler))
+       || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands))
+       || (CONFIG_TRUE != config_setting_lookup_bool (s, "debug_output", &pt.debug_output))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "delta_pa", &pt.delta_pa)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,

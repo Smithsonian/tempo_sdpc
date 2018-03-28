@@ -15,7 +15,9 @@ module polcorrect_module
     type(c_ptr) :: lps         !< opaque pointer to linear polarization sensitivity struct
     integer (c_int) :: uv_beg, uv_end
     integer (c_int) :: vis_beg, vis_end
+    integer (c_int) :: merge_bands
     integer (c_int) :: use_mler
+    integer (c_int) :: debug_output
     integer (c_int) :: step
     integer (c_int) :: xtrack
     real (kind=c_double) :: delta_pa
@@ -27,7 +29,9 @@ module polcorrect_module
     tempo_band_vis = 1
   character (len=*), private, parameter :: &
     tempo_band_name_uv = 'band_290_490_nm', &
-    tempo_band_name_vis = 'band_540_740_nm'
+    tempo_band_name_vis = 'band_540_740_nm', &
+    q_var_name = 'q', &
+    u_var_name = 'u'
 
   interface
     function lps_eval (lps, band_index, xtrack, lon, lat, &
@@ -93,13 +97,28 @@ contains
 
     call tiof_open (rad_file, rad_s % obj, nf90_write, errstat)
     if (errstat /= 0) then
-      call tell_error (tell_io_open_error, 'reading radiance file: '//rad_file, errstat)
+      call tell_error (tell_io_open_error, &
+                       'reading radiance file: '//rad_file, errstat)
       polcorrect = errstat
       return
     endif
 
-    call process_group (pt, lut_s, rad_s, tempo_band_uv, errstat)
-    call process_group (pt, lut_s, rad_s, tempo_band_vis, errstat)
+    if (pt % debug_output /= 0) then
+      call define_qu_vars (rad_s, errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_io_open_error, &
+                         'creating Q,U variables: '//rad_file, errstat)
+        polcorrect = errstat
+        return
+      endif
+    endif
+
+    if (pt % merge_bands == 0) then
+      call process_group (pt, lut_s, rad_s, tempo_band_uv, errstat)
+      call process_group (pt, lut_s, rad_s, tempo_band_vis, errstat)
+    else
+      call process_group (pt, lut_s, rad_s, tempo_band_uv, errstat)
+    endif
 
     call tiof_close (rad_s % obj, errstat)
     if (errstat /= 0) then
@@ -177,35 +196,52 @@ contains
     real (kind=r8), dimension(maxscene) :: snps
     type (range_type) :: qu_range
 
-    logical :: use_mler
+    logical :: use_mler, merge_bands, debug_output
 
     if (errstat /= 0) return
 
     use_mler = (pt % use_mler /= 0)
+    merge_bands = (pt % merge_bands /= 0)
+    debug_output = (pt % debug_output /= 0)
 
     call read_radiance_fmonth (rad_s, fmonth, errstat)
     if (errstat /= 0) return
 
     ! Wavelength intervals and array indices to be used for processing this band
-    select case (band_id)
-      case (tempo_band_uv)
-        swav_limits = (/pt % uv_beg, pt % uv_end/)
-        cld_wave_index = 5   ! 367 nm
-        ctp_wave_indices = (/10, 11, 12/)
-        oz_wave_indices = (/1, 2, 5/)
-        qu_range % min = 285.0
-        qu_range % max = 495.0
-      case (tempo_band_vis)
-        swav_limits = (/pt % vis_beg, pt % vis_end/)
-        cld_wave_index = 7   ! 670 nm
-        ctp_wave_indices = (/8, 9, 10/)
-        oz_wave_indices = (/3, 4, 6/)
-        qu_range % min = 535.0
-        qu_range % max = 745.0
-    end select
+    if (merge_bands) then
+      swav_limits = (/pt % uv_beg, pt % vis_end/)
+      cld_wave_index = 5   ! 367 nm
+      ctp_wave_indices = (/10, 11, 12/)
+      oz_wave_indices = (/1, 2, 5/)
+      qu_range % min = 285.0
+      qu_range % max = 745.0
+    else if (band_id == tempo_band_uv) then
+      swav_limits = (/pt % uv_beg, pt % uv_end/)
+      cld_wave_index = 5   ! 367 nm
+      ctp_wave_indices = (/10, 11, 12/)
+      oz_wave_indices = (/1, 2, 5/)
+      qu_range % min = 285.0
+      qu_range % max = 495.0
+    else if (band_id == tempo_band_vis) then
+      swav_limits = (/pt % vis_beg, pt % vis_end/)
+      cld_wave_index = 7   ! 670 nm
+      ctp_wave_indices = (/8, 9, 10/)
+      oz_wave_indices = (/3, 4, 6/)
+      qu_range % min = 535.0
+      qu_range % max = 745.0
+    endif
 
-    call read_radiance_geometry (rad_s, band_id, errstat)
+    call read_radiance_geometry (rad_s, band_id, merge_bands, errstat)
     if (errstat /= 0) return
+
+    if (.not.merge_bands) then
+      select case (band_id)
+        case (tempo_band_uv)
+          call tiof_inq_group (rad_s % obj, tempo_band_name_uv, errstat)
+        case (tempo_band_vis)
+          call tiof_inq_group (rad_s % obj, tempo_band_name_vis, errstat)
+      end select
+    endif
 
     call calc_relative_azimuth_angle (rad_s, errstat)
     call calc_surface_pressure (rad_s, errstat)
@@ -265,7 +301,7 @@ contains
 
     do step = beg_step, end_step
 
-      call read_radiance_for_mirror_step (rad_s, step, errstat)
+      call read_radiance_for_mirror_step (rad_s, step, band_id, merge_bands, errstat)
       if (errstat /= 0) return
 
       do ix = beg_xtrack, end_xtrack
@@ -282,7 +318,8 @@ contains
         if (use_mler) then
           nscene = 2
           snps(:) = (/pre, ctp0/)
-          call pp_interp_surface_albedo (lut_s, lat, lon, swav, snalbs0(:,1), errstat)
+          call pp_interp_surface_albedo (lut_s, lat, lon, swav, &
+                                         snalbs0(:,1), errstat)
           snalbs0(:,2) = cldalb0
         else
           nscene = 1
@@ -316,8 +353,9 @@ contains
           snps(2) = ctp0
           snalbs0(cld_wave_index, 1) = 0.05
           snalbs0(cld_wave_index, 2) = cldalb0
-          call pp_derive_scene_pressure (lut_s, cld_wave_index, srad, sza, vza, raa, oz, &
-                                         oz_info, snalbs0, snps, ctp, errstat)
+          call pp_derive_scene_pressure (lut_s, cld_wave_index, srad, &
+                                         sza, vza, raa, oz, oz_info, &
+                                         snalbs0, snps, ctp, errstat)
           if (errstat /= 0) ctp = pre
           nscene = 1
           snps(1) = ctp
@@ -328,13 +366,15 @@ contains
         num_iter = 1
         if (retctp .and. retoz) then
           num_iter = 2
-          if (ix /= beg_xtrack .and. retoz_errstat == 0 .and. retctp_errstat == 0) num_iter = 1
+          if (ix /= beg_xtrack .and. retoz_errstat == 0 &
+              .and. retctp_errstat == 0) num_iter = 1
         endif
 
-        err = spline (rad_s % wave(:,ix), rad_s % radiance (:,ix), rad_s % num_wave, &
-                      swav, srad, num_swav)
+        err = spline (rad_s % wave(:,ix), rad_s % radiance (:,ix), &
+                      rad_s % num_wave, swav, srad, num_swav)
         if (err /= 0) then
-          call tell_error (tell_runtime_error, "spline interpolation failed", errstat)
+          call tell_error (tell_runtime_error, "spline interpolation failed", &
+                           errstat)
           return
         endif
 
@@ -404,7 +444,8 @@ contains
         if (errstat /= 0) return
 
         call calc_lpserr (pt % lps, pt % delta_pa, wav, q, u, &
-                          rad_s, band_id, ix, step, lpserr, errstat)
+                          rad_s, band_id, merge_bands, ix, step, &
+                          lpserr, errstat)
         if (errstat /= 0) return
 
         where (rad_s % radiance (:,ix) /= r8_fill)
@@ -412,7 +453,8 @@ contains
         end where
 
       enddo ! ix
-      call write_radiance_for_mirror_step (rad_s, step, errstat)
+      call write_radiance_for_mirror_step (rad_s, step, band_id, merge_bands, &
+                                           debug_output, errstat)
       if (errstat /= 0) return
     enddo ! step
 
@@ -421,7 +463,7 @@ contains
   end subroutine process_group
 
   subroutine calc_lpserr (lps, delta_pa, wav, q0, u0, rad_s, &
-                          band_id, ix, step, lpserr, errstat)
+                          band_id, merge_bands, ix, step, lpserr, errstat)
     use, intrinsic :: ieee_arithmetic
     implicit none
     type (c_ptr), value :: lps
@@ -429,15 +471,16 @@ contains
     real (kind=r8), dimension(:), intent(in) :: wav, q0, u0
     type (radiance_type), target, intent(in) :: rad_s
     integer, intent(in) :: band_id, ix, step
+    logical, intent(in) :: merge_bands
     real (kind=r8), dimension(:), intent(inout) :: lpserr
     integer, intent(inout) :: errstat
 
     real (kind=r8), parameter :: degtorad = 4.0_r8*atan(1.0_r8)/180.0_r8
-    real (kind=r8), allocatable, dimension(:) :: q, u, dolps, lpsens, angmax
+    real (kind=r8), allocatable, dimension(:) :: dolps, lpsens, angmax
     real (kind=r8), target, allocatable, dimension(:) :: pa
-    real (kind=r8), pointer, dimension(:) :: rad_wave
+    real (kind=r8), pointer, dimension(:) :: rad_wave, q, u
     real (kind=r8) :: lon, lat
-    integer :: err, nwav, num_rad_wave
+    integer :: err, nwav, num_rad_wave, i0, i1
 
     if (errstat /= 0) return
 
@@ -449,9 +492,10 @@ contains
     nwav = size(wav)
     num_rad_wave = rad_s % num_wave
     rad_wave => rad_s % wave (:, ix)
+    q => rad_s % q(:,ix)
+    u => rad_s % u(:,ix)
 
-    allocate (q(num_rad_wave), u(num_rad_wave), &
-              dolps(num_rad_wave), pa(num_rad_wave), &
+    allocate (dolps(num_rad_wave), pa(num_rad_wave), &
               lpsens(num_rad_wave), angmax(num_rad_wave), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, "calc_lpserr: malloc failed", errstat)
@@ -462,19 +506,17 @@ contains
 
     err = spline (wav, q0, nwav, rad_wave, q, num_rad_wave)
     if (err /= 0) then
-      call tell_error (tell_runtime_error, "calc_lpserr: Q interpolation failed", errstat)
+      call tell_error (tell_runtime_error, &
+                       "calc_lpserr: Q interpolation failed", errstat)
       return
     endif
 
     err = spline (wav, u0, nwav, rad_wave, u, num_rad_wave)
     if (err /= 0) then
-      call tell_error (tell_runtime_error, "calc_lpserr: U interpolation failed", errstat)
+      call tell_error (tell_runtime_error, &
+                       "calc_lpserr: U interpolation failed", errstat)
       return
     endif
-
-    !do i=1,num_rad_wave
-    !  write(*,'(3f10.4)')rad_wave(i), q(i), u(i)
-    !enddo
 
     ! dolps = degree of linear polarization
     dolps = sqrt (q*q + u*u)
@@ -503,10 +545,33 @@ contains
     lon = rad_s % lon (ix, step)
     lat = rad_s % lat (ix, step)
 
-    err = lps_eval (lps, band_id, ix, lon, lat, num_rad_wave, rad_wave, lpsens, angmax)
-    if (err /= 0) then
-      call tell_set_error (errstat)
-      return
+    if (merge_bands) then
+      i0 = 1
+      i1 = num_rad_wave/2
+      err = lps_eval (lps, tempo_band_uv, ix, lon, lat, &
+                      num_rad_wave/2, rad_wave(i0:i1), &
+                      lpsens(i0:i1), angmax(i0:i1))
+      if (err /= 0) then
+        call tell_set_error (errstat)
+        return
+      endif
+
+      i0 = num_rad_wave/2 + 1
+      i1 = num_rad_wave
+      err = lps_eval (lps, tempo_band_vis, ix, lon, lat, &
+                      num_rad_wave/2, rad_wave(i0:i1), &
+                      lpsens(i0:i1), angmax(i0:i1))
+      if (err /= 0) then
+        call tell_set_error (errstat)
+        return
+      endif
+    else
+      err = lps_eval (lps, band_id, ix, lon, lat, &
+                      num_rad_wave, rad_wave, lpsens, angmax)
+      if (err /= 0) then
+        call tell_set_error (errstat)
+        return
+      endif
     endif
 
     ! Measured radiance, I', true radiance, I:
@@ -542,7 +607,8 @@ contains
 
     call tiof_open (lut_file, lut_obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
-      call tell_error (tell_io_open_error, 'reading lookup table: '//lut_file, errstat)
+      call tell_error (tell_io_open_error, &
+                       'reading lookup table: '//lut_file, errstat)
       return
     endif
 
@@ -560,6 +626,7 @@ contains
 
     deallocate (rad_s % radiance, &
                 rad_s % wave, &
+                rad_s % q, rad_s % u, &
                 rad_s % lon, rad_s % lat, &
                 rad_s % sza, rad_s % saa, &
                 rad_s % vza, rad_s % vaa, &
@@ -567,7 +634,8 @@ contains
                 rad_s % hgt, rad_s % pre, &
                 stat = err)
     if (err /= 0) then
-      call tell_error (tell_malloc_error, "dealloc_radiance: dealloc failed", errstat)
+      call tell_error (tell_malloc_error, &
+                       "dealloc_radiance: dealloc failed", errstat)
       return
     endif
   end subroutine dealloc_radiance
@@ -585,6 +653,8 @@ contains
 
     allocate (rad_s % radiance(num_wave, num_xtrack), &
               rad_s % wave(num_wave, num_xtrack), &
+              rad_s % q(num_wave, num_xtrack), &
+              rad_s % u(num_wave, num_xtrack), &
               rad_s % lon(num_xtrack, num_step), &
               rad_s % lat(num_xtrack, num_step), &
               rad_s % sza(num_xtrack, num_step), &
@@ -704,10 +774,11 @@ contains
 
   end subroutine read_radiance_fmonth
 
-  subroutine read_radiance_geometry (rad_s, band_id, errstat)
+  subroutine read_radiance_geometry (rad_s, band_id, merge_bands, errstat)
     implicit none
     type(radiance_type), intent(inout) :: rad_s
     integer(c_int), intent(in) :: band_id
+    logical, intent(in) :: merge_bands
     integer, intent(inout) :: errstat
 
     integer :: num_step, num_xtrack, num_wave
@@ -721,9 +792,9 @@ contains
 
     select case (band_id)
       case (tempo_band_uv)
-        call tiof_inq_group (rad_s % obj, tempo_band_name_uv, errstat)
+        call tiof_push_group (rad_s % obj, tempo_band_name_uv, errstat)
       case (tempo_band_vis)
-        call tiof_inq_group (rad_s % obj, tempo_band_name_vis, errstat)
+        call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
     end select
 
     call check_pol_correction_status (rad_s % obj, has_pol_correction, errstat)
@@ -740,6 +811,8 @@ contains
       call tell_error (tell_io_read_error, "reading granule dimensions", errstat)
       return
     endif
+
+    if (merge_bands) num_wave = num_wave * 2
 
     call alloc_radiance (rad_s, num_step, num_xtrack, num_wave, errstat)
     if (errstat /= 0) return
@@ -761,6 +834,7 @@ contains
                         rad_s % vaa, errstat, replace_fill=r8_fill)
     call tiof_get2d_r8 (rad_s % obj, tempo_var_terr_height, start, edge, &
                         rad_s % hgt, errstat, replace_fill=r8_fill)
+    call tiof_pop_group (rad_s % obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "reading geometry variables", errstat)
       return
@@ -768,50 +842,139 @@ contains
 
   end subroutine read_radiance_geometry
 
-  subroutine read_radiance_for_mirror_step (rad_s, step, errstat)
+  subroutine read_radiance_band (rad_s, step, band_id, merge_bands, errstat)
     implicit none
     type(radiance_type), intent(inout) :: rad_s
-    integer, intent(in) :: step
+    integer, intent(in) :: step, band_id
+    logical, intent(in) :: merge_bands
     integer, intent(inout) :: errstat
-    integer, dimension(3) :: start, edge
 
+    integer, dimension(3) :: start, edge
+    integer :: i0, i1, num_wave
     character (len=128) :: msg
 
     if (errstat /= 0) return
 
-    start = (/step-1, 0,0/)
-    edge  = (/1, rad_s % num_xtrack, rad_s % num_wave/)
+    i0 = 1
+    if (merge_bands) then
+      num_wave = rad_s % num_wave / 2
+      if (band_id == tempo_band_vis) i0 = num_wave + 1
+    else
+      num_wave = rad_s % num_wave
+    endif
+    i1 = i0 + num_wave - 1
 
-    rad_s % this_step = step
+    start = (/step-1, 0, 0/)
+    edge  = (/1, rad_s % num_xtrack, num_wave/)
 
     call tiof_get2d_r8 (rad_s % obj, tempo_var_radiance, start, edge, &
-                        rad_s % radiance, errstat, replace_fill=r8_fill)
+                        rad_s % radiance(i0:i1,:), errstat, replace_fill=r8_fill)
     call tiof_get2d_r8 (rad_s % obj, tempo_var_wavelength, start, edge, &
-                        rad_s % wave, errstat, replace_fill=r8_fill)
+                        rad_s % wave(i0:i1,:), errstat, replace_fill=r8_fill)
     if (errstat /= 0) then
       write(msg,'(a,i0)')'reading radiances: step=',step
       call tell_error (tell_io_read_error, msg, errstat)
       return
     endif
 
-  end subroutine read_radiance_for_mirror_step
+  end subroutine read_radiance_band
 
-  subroutine write_radiance_for_mirror_step (rad_s, step, errstat)
-    use, intrinsic :: iso_c_binding, only : c_null_char
+  subroutine read_radiance_for_mirror_step (rad_s, step, band_id, &
+                                            merge_bands, errstat)
     implicit none
     type(radiance_type), intent(inout) :: rad_s
-    integer, intent(in) :: step
+    integer, intent(in) :: step, band_id
+    logical, intent(in) :: merge_bands
     integer, intent(inout) :: errstat
-    integer, dimension(3) :: start, edge
 
+    if (errstat /= 0) return
+
+    rad_s % this_step = step
+
+    if (merge_bands) then
+      call tiof_push_group (rad_s % obj, tempo_band_name_uv, errstat)
+      call read_radiance_band (rad_s, step, tempo_band_uv, merge_bands, errstat)
+      call tiof_pop_group (rad_s % obj, errstat)
+
+      call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
+      call read_radiance_band (rad_s, step, tempo_band_vis, merge_bands, errstat)
+      call tiof_pop_group (rad_s % obj, errstat)
+    else
+      call read_radiance_band (rad_s, step, band_id, merge_bands, errstat)
+    endif
+
+  end subroutine read_radiance_for_mirror_step
+
+  subroutine define_qu_vars (rad_s, errstat)
+    implicit none
+    type (radiance_type), intent(inout) :: rad_s
+    integer, intent(inout) :: errstat
+
+    character (len=len(tempo_band_name_vis)), dimension(2) :: grp_names
+    type (tiof_varlist_type) :: varlist
+    integer :: i, grp, status, dimids(3)
+    if (errstat /= 0) return
+
+    grp_names(1) = tempo_band_name_uv
+    grp_names(2) = tempo_band_name_vis
+
+    call tiof_inq_group (rad_s % obj, "/", errstat)
+    grp = rad_s % obj % groupid
+    status = nf90_inq_dimid (grp, tempo_dim_step, dimids(3))
+    if (status /= nf90_noerr) then
+      call tell_error(tell_io_read_error, &
+                      "reading dimid: "//trim(tempo_dim_step), errstat)
+      return
+    endif
+
+    do i = 1, size(grp_names)
+      call tiof_push_group (rad_s % obj, grp_names(i), errstat)
+
+      grp = rad_s % obj % groupid
+      status = nf90_inq_dimid (grp, tempo_dim_xtrack, dimids(2))
+      status = nf90_inq_dimid (grp, tempo_dim_channel, dimids(1))
+      if (status /= nf90_noerr) then
+        call tell_error(tell_io_read_error, &
+                        "reading dimids:"//trim(grp_names(i)), errstat)
+        return
+      endif
+
+      call tiof_varlist_append (varlist, errstat, q_var_name, nf90_float, dimids=dimids)
+      call tiof_varlist_append (varlist, errstat, u_var_name, nf90_float, dimids=dimids)
+      call tiof_def_vars (rad_s % obj, varlist, errstat)
+      call tiof_varlist_free (varlist)
+      call tiof_pop_group (rad_s % obj, errstat)
+      if (errstat /= 0) return
+    enddo
+
+  end subroutine define_qu_vars
+
+  subroutine write_radiance_band (rad_s, step, band_id, merge_bands, &
+                                  debug_output, errstat)
+    implicit none
+    type(radiance_type), intent(inout) :: rad_s
+    integer, intent(in) :: step, band_id
+    logical, intent(in) :: merge_bands, debug_output
+    integer, intent(inout) :: errstat
+
+    integer, dimension(3) :: start, edge
     character (len=128) :: msg
-    integer :: err, nofill, varid
+    integer :: err, nofill, varid, i0, i1, num_wave
     real (kind=r4) :: fill_value
 
     if (errstat /= 0) return
 
-    start = (/step-1, 0,0/)
-    edge  = (/1, rad_s % num_xtrack, rad_s % num_wave/)
+    i0 = 1
+    if (merge_bands) then
+      num_wave = rad_s % num_wave / 2
+      if (band_id == tempo_band_vis) i0 = num_wave + 1
+    else
+      num_wave = rad_s % num_wave
+    endif
+    i1 = i0 + num_wave - 1
+
+    start = (/step-1, 0, 0/)
+    edge  = (/1, rad_s % num_xtrack, num_wave/)
 
     ! FIXME - a libtio interface is preferable
     err = nf90_inq_varid (rad_s % obj % groupid, tempo_var_radiance, varid)
@@ -823,7 +986,13 @@ contains
     endif
 
     call tiof_put2d_r8 (rad_s % obj, tempo_var_radiance, start, edge, &
-                        rad_s % radiance, errstat)
+                        rad_s % radiance(i0:i1,:), errstat)
+    if (debug_output) then
+      call tiof_put2d_r8 (rad_s % obj, q_var_name, start, edge, &
+                          rad_s % q(i0:i1,:), errstat)
+      call tiof_put2d_r8 (rad_s % obj, u_var_name, start, edge, &
+                          rad_s % u(i0:i1,:), errstat)
+    endif
     if (errstat /= 0) then
       write(msg,'(a,i0)')'writing radiances: step=',step
       call tell_error (tell_io_write_error, msg, errstat)
@@ -831,6 +1000,34 @@ contains
     endif
 
     call set_polcorr_status_bit (rad_s % obj, errstat)
+
+  end subroutine write_radiance_band
+
+  subroutine write_radiance_for_mirror_step (rad_s, step, band_id, merge_bands, &
+                                             debug_output, errstat)
+    use, intrinsic :: iso_c_binding, only : c_null_char
+    implicit none
+    type(radiance_type), intent(inout) :: rad_s
+    integer, intent(in) :: step, band_id
+    logical, intent(in) :: merge_bands, debug_output
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    if (merge_bands) then
+      call tiof_push_group (rad_s % obj, tempo_band_name_uv, errstat)
+      call write_radiance_band (rad_s, step, tempo_band_uv, merge_bands, &
+                                debug_output, errstat)
+      call tiof_pop_group (rad_s % obj, errstat)
+
+      call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
+      call write_radiance_band (rad_s, step, tempo_band_vis, merge_bands, &
+                                debug_output, errstat)
+      call tiof_pop_group (rad_s % obj, errstat)
+    else
+      call write_radiance_band (rad_s, step, band_id, merge_bands, &
+                                debug_output, errstat)
+    endif
 
   end subroutine write_radiance_for_mirror_step
 
