@@ -162,7 +162,8 @@ contains
     real (kind=r8), dimension(nd) :: weights, x
     real (kind=r8), allocatable, dimension(:) :: alb
     real (kind=r8) :: wt_k
-    integer :: err, k, num_ler_waves
+    real (kind=r8), pointer, dimension(:) :: albwav_grid
+    integer :: err, k, num_ler_waves, nswav, fidx, lidx
 
     if (errstat /= 0) return
 
@@ -192,14 +193,19 @@ contains
     enddo
 
     ! Now, spline interpolate onto the SI wavelength grid
-
-    err = spline (lut_s % ler_dims(ler_albwav) % x, alb, num_ler_waves, &
-                  swav, snalbs, size(swav))
+    albwav_grid => lut_s % ler_dims(ler_albwav) % x
+    fidx = minloc (swav, dim=1, mask=(swav >= albwav_grid(1)))
+    lidx = maxloc (swav, dim=1, mask=(swav <= albwav_grid(num_ler_waves)))
+    err = spline (albwav_grid, alb, num_ler_waves, &
+                  swav(fidx:lidx), snalbs(fidx:lidx), lidx-fidx+1)
     if (err /= 0) then
       call tell_error (tell_runtime_error, &
                        "pp_interp_surface_albedo: spline failed", errstat)
       return
     endif
+    nswav = size(swav)
+    if (fidx > 1) snalbs(1:fidx-1) = snalbs(fidx)
+    if (lidx < nswav) snalbs(lidx+1:nswav) = snalbs(lidx)
 
   end subroutine pp_interp_surface_albedo
 
@@ -778,6 +784,7 @@ contains
           val = val + wt_k * lut_s % si (cld_wave_index,id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
         enddo
         snrad(is) = snrad(is) + val * oz_info % zonefracs(iz)
+        fidx = lidx + 1
       enddo
     enddo
 
@@ -795,7 +802,7 @@ contains
 
   subroutine pp_derive_ctp (lut_s, use_mler, srad, &
                             sza, vza, raa, oz, oz_info, wave_indices, &
-                            nscene, ctp, cfracs, snalbs, snps, errstat)
+                            nscene, ctp, cfracs, snalbs, snps, status, errstat)
     implicit none
     integer, parameter :: nw = 3
     type (polpredict_type), target, intent(in) :: lut_s
@@ -809,10 +816,11 @@ contains
     real (kind=r8), dimension(:), intent(inout) :: cfracs
     real (kind=r8), dimension(:,:), intent(inout) :: snalbs
     real (kind=r8), dimension(:), intent(inout) :: snps
+    integer, intent(out) :: status
     integer, intent(inout) :: errstat
 
     integer, parameter :: nd = 4, nterms_4d=2**4, nterms_2d=2**2
-    integer :: iz, ia, ip, is, iw, k, nalb, npre, err, fidx, lidx, ioz, status
+    integer :: iz, ia, ip, is, iw, k, nalb, npre, err, fidx, lidx, ioz
     integer, dimension(nd) :: ids, indices, id_k
     real (kind=r8), dimension(nd) :: x, weights
     real (kind=r8), allocatable, dimension(:,:,:) :: snrad
@@ -1167,7 +1175,7 @@ contains
 
     real (kind=r8), parameter :: min_vis_wave = 520.0
 
-    integer, parameter :: nd = 4, nterms_4d = 2**nd
+    integer, parameter :: nd = 4, nterms_2d = 2**2, nterms_4d = 2**4
     integer :: is, ia, iw, iz, izb, ize, err, k, nalb, noz
     integer :: nzone, off, fidx, lidx, sidx, eidx, nw1, num_iter
     integer, dimension(nd) :: id_k, indices, ids
@@ -1366,9 +1374,9 @@ contains
 
           ! 2D linear interpolation:
           val = 0.0
-          do k = 1, nterms_4d
+          do k = 1, nterms_2d
             call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
-            val = val + snalbrad(iw, id_k(1), id_k(2), is)
+            val = val + wt_k * snalbrad(iw, id_k(1), id_k(2), is)
           enddo
           snrad(is,iw) = val
 
@@ -1574,7 +1582,7 @@ contains
 
     do iw = 1, nswav
 
-      if (lut_s % salbflg (iw) < 1) continue
+      if (lut_s % salbflg (iw) < 1) cycle
 
       snalbrad(:,:) = 0.0
 
@@ -1599,6 +1607,7 @@ contains
                 * wt_k * lut_s % si(iw, ia, id_k(1), id_k(2), id_k(3), id_k(4), id_k(5))
             enddo
 
+            fidx = lidx + 1
           enddo
         enddo
       enddo
@@ -1665,7 +1674,7 @@ contains
     real (kind=r8), dimension(:), intent(inout) :: out_q, out_u
     integer, intent(inout) :: errstat
 
-    integer, parameter :: nd=6, nterms_6d=2**6
+    integer, parameter :: nd=6, nterms_6d=2**nd
     integer, dimension(nd) :: indices, id_k
     real (kind=r8), dimension(nd) :: weights
     real (kind=r8), pointer, dimension(:) :: wav_grid, pre_grid, alb_grid, oz_grid
@@ -1674,7 +1683,7 @@ contains
     integer, dimension(size(swav)) :: albcld_indices
     integer, dimension(3) :: ids
     integer :: nalbcld, ia, is, ip, iz, ioz, iw, nswav, nwav, err, lidx, fidx, k
-    real (kind=r8) :: wt_k, ff, frac
+    real (kind=r8) :: wt_k, frac, q_val, u_val
 
     if (errstat /= 0) return
 
@@ -1780,15 +1789,16 @@ contains
               frac = cfrac(iw)
             endif
 
-            ff = frac * oz_info % zonefracs(iz)
-
+            q_val = 0.0
+            u_val = 0.0
             do k = 1, nterms_6d
               call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
-              out_q(iw) = out_q(iw) + &
-                ff * wt_k * lut_s % q(iw, id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
-              out_u(iw) = out_u(iw) + &
-                ff * wt_k * lut_s % u(iw, id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
+              q_val = q_val + wt_k * lut_s % q(iw, id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
+              u_val = u_val + wt_k * lut_s % u(iw, id_k(1),id_k(2),id_k(3),id_k(4),id_k(5),id_k(6))
             enddo ! k
+
+            out_q(iw) = out_q(iw) + q_val * frac * oz_info % zonefracs(iz)
+            out_u(iw) = out_u(iw) + u_val * frac * oz_info % zonefracs(iz)
 
           enddo ! iw
         endif

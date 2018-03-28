@@ -162,7 +162,7 @@ contains
     type (radiance_subset_type) :: subset
     type (pp_ozone_zone_info_type) :: oz_info
     integer :: step, ix, err, beg_step, end_step, beg_xtrack, end_xtrack
-    integer :: retoz_errstat, retctp_errstat, status
+    integer :: retoz_errstat, retctp_errstat
     integer :: iter, num_iter, nscene, num_swav, num_wav, cld_wave_index
     integer, dimension(2) :: swav_limits
     integer, dimension(num_ctp_waves) :: ctp_wave_indices
@@ -293,7 +293,7 @@ contains
         ! If possible, use oz, ctp from previous iteration
         oz = oz0
         ctp = ctp0
-        if (ix > 1) then
+        if (ix > beg_xtrack) then
           if (retoz .and. retoz_errstat == 0) oz = oz_saved
           if (retctp .and. retctp_errstat == 0) ctp = ctp_saved
         endif
@@ -326,10 +326,9 @@ contains
         ! Ozone (oz) and cloud-top pressure (ctp) depend on each other.
         ! Iterate unless a previously successful retrieval is available.
         num_iter = 1
-        if ((retctp .and. retoz) &
-            .and. ((ix == 1) &
-                   .or. (retoz_errstat /= 0 .or. retctp_errstat /= 0))) then
+        if (retctp .and. retoz) then
           num_iter = 2
+          if (ix /= beg_xtrack .and. retoz_errstat == 0 .and. retctp_errstat == 0) num_iter = 1
         endif
 
         err = spline (rad_s % wave(:,ix), rad_s % radiance (:,ix), rad_s % num_wave, &
@@ -351,7 +350,8 @@ contains
             tmp_cfracs0 = cfracs0(ctp_wave_indices)
             call pp_derive_ctp (lut_s, use_mler, srad(ctp_wave_indices), &
                                 sza, vza, raa, oz, oz_info, ctp_wave_indices, &
-                                nscene, ctp, tmp_cfracs0, tmp_snalbs0, snps, errstat)
+                                nscene, ctp, tmp_cfracs0, tmp_snalbs0, snps, &
+                                retctp_errstat, errstat)
             snalbs0(ctp_wave_indices,:) = tmp_snalbs0
             cfracs0(ctp_wave_indices) = tmp_cfracs0
             if (errstat /= 0) return
@@ -375,7 +375,8 @@ contains
             call pp_derive_to3 (lut_s, use_mler, &
                                 swav(oz_wave_indices), srad(oz_wave_indices), &
                                 sza, vza, raa, oz, oz_info, oz_wave_indices, &
-                                nscene, tmp_cfracs0, tmp_snalbs0, snps, status, errstat)
+                                nscene, tmp_cfracs0, tmp_snalbs0, snps, &
+                                retoz_errstat, errstat)
             snalbs0(oz_wave_indices,:) = tmp_snalbs0
             cfracs0(oz_wave_indices) = tmp_cfracs0
             if (errstat /= 0) return
@@ -421,6 +422,7 @@ contains
 
   subroutine calc_lpserr (lps, delta_pa, wav, q0, u0, rad_s, &
                           band_id, ix, step, lpserr, errstat)
+    use, intrinsic :: ieee_arithmetic
     implicit none
     type (c_ptr), value :: lps
     real (kind=r8), intent(in) :: delta_pa
@@ -470,6 +472,10 @@ contains
       return
     endif
 
+    !do i=1,num_rad_wave
+    !  write(*,'(3f10.4)')rad_wave(i), q(i), u(i)
+    !enddo
+
     ! dolps = degree of linear polarization
     dolps = sqrt (q*q + u*u)
 
@@ -510,6 +516,10 @@ contains
     ! and maxang: angle of maximum transmission
 
     lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa - angmax) * degtorad)
+
+    where (.not.ieee_is_finite(lpserr))
+      lpserr = 0.0
+    end where
 
   end subroutine calc_lpserr
 
