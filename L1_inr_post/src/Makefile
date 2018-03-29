@@ -151,7 +151,7 @@ POLCORR_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
 	       $(GSL_LIBPATHS) \
                $(RPATH) $(INSTALL_LIBPATHS) -lgfortran
 
-MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(prefix)/include
+MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(TIO_LIB) -I$(prefix)/include
 
 $(objdir)/L1_polcorr:	$(POLCORR_OBJS)
 	$(COMPILE_CMD) -o $(objdir)/L1_polcorr $(POLCORR_OBJS) $(POLCORR_LIBS) -lm
