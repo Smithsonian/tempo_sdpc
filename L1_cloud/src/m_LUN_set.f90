@@ -27,4 +27,5 @@ module m_LUN_set
        wmin_LUN=200307, wmax_LUN=200308, do_o3_LUN=200309, ThreshOrbNum_LUN=200310 
   integer, parameter :: test_solar_LUN = 200311, add_shift_LUN=200312
   integer, parameter :: using_spline_LUN = 200313
+  integer, parameter :: mdlist_LUN=511002
 end module m_LUN_set

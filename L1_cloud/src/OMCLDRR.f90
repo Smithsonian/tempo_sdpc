@@ -298,7 +298,7 @@ program OMCLDRR
       call open_md(filename_out_nc, errstat)
       call write_geo_bounds_md(nXtrack, nTimes, lat, lon, errstat)
       call write_inputs_md(ninp, inputs, errstat)
-      call write_fixed_md('./boilerplate.nml',errstat)
+      call write_fixed_md(md_namelist, errstat)
       call write_prodid_md(filename_out_nc,"(1)",errstat)
       call close_md(errstat)
 

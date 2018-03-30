@@ -28,9 +28,15 @@ TIO_LIB  = $(prefix)/lib
 TIO_SRC  = $(config_dir)/libtio/src
 TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 
+MD_LIB  = $(prefix)/lib
+MD_SRC  = $(config_dir)/libmd/src
+MD_SRC_OBJDIR = $(MD_SRC)/$(archobjs)
+
 PSPLINELIBS  = -lpspline -lezcdf
 TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
                -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
+	       -Wl,-rpath=$(MD_SRC_OBJDIR) -L$(MD_SRC_OBJDIR) \
+	       -Wl,-rpath=$(MD_LIB) -L$(MD_LIB) -lmd_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f
 NETCDFLIBS   = -lnetcdf -lnetcdff
 HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
@@ -52,6 +58,7 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(HDFEOS5_INC) \
          $(MODFLG)$(objdir) \
          $(MODFLG)$(TIO_SRC_OBJDIR) \
+         $(MODFLG)$(MD_SRC_OBJDIR) \
          $(MODFLG)$(TELL_INC) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD)

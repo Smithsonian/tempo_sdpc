@@ -3,7 +3,7 @@
 
 RM = /bin/rm
 
-DIR_LIST = libtio libmet L1_trace_gas L1_cloud L1_o3_total L1_o3_profile \
+DIR_LIST = libtio libmet libmd L1_trace_gas L1_cloud L1_o3_total L1_o3_profile \
            L2_regrid L0_format L0_ccd L1_inr_prep L1_inr_post L2_split \
            plan
 

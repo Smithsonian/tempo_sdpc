@@ -317,5 +317,6 @@ module m_vars
 
   !temporary addition - flag to allow proof-of-concept ODL metadata test
   logical :: wrt_odl = .false.
+  character (len=244) :: md_namelist ! archive metadata namelist filename
 
 end module m_vars
