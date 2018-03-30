@@ -65,7 +65,7 @@ Instr_Geom_Type;
 typedef struct
 {
    double *lpsens;   /**< linear polarization sensivity [num_xtrack, num_wave] */
-   double *angmax;   /**< angle of maximum transmission [num_xtrack, num_wave] */
+   double *angmax;   /**< angle of maximum transmission [num_xtrack, num_wave] [rad] */
    double *wave;     /**< wavelength grid [num_wave] */
    int num_xtrack;
    int num_wave;
@@ -75,7 +75,7 @@ Lps_Table_Type;
 struct Lps_Type
 {
    Instr_Geom_Type geom;
-   double *mirror_x;             /**< azimuth angle from boresight, EAST is positive [rad] */
+   double *mirror_x;   /**< azimuth angle from boresight, EAST is positive [rad] */
    int num_mirror_x;
    Lps_Table_Type *table_uv;    /**< UV band [num_mirror_x] */
    Lps_Table_Type *table_vis;   /**< VIS band [num_mirror_x] */
@@ -259,7 +259,7 @@ static void compute_boresight_lon_lat (const Instr_Geom_Type *geom, double *lon,
    ss = sin(geom->tilt) * cos(geom->tilt) * (a - sqrt(1 - (a*a-1.0) * alpha * alpha));
    cs = sqrt (1.0 - ss * ss);
 
-   /* azi>0 is eastward rotation */
+   /* azi>0 is eastward rotation (CW from north) */
    delta = atan(sin(geom->azi) * ss/cs);
 
    *lat = acos (cs/cos(delta));
@@ -301,6 +301,8 @@ static int init_geom_vectors (Lps_Type *lps)
    /* Compute (lon,lat) of boresight surface point [radians] */
    compute_boresight_lon_lat (geom, &bs_lon, &bs_lat);
 
+   if (0) fprintf (stderr, "boresight: lon=%g, lat=%g\n", bs_lon/DEGTORAD, bs_lat/DEGTORAD);
+
    /* rb = vector from the Earth's center to the boresight surface point */
    vec_unit (M_PI_2 - bs_lat, bs_lon, &rb_u);
    vec_scale (EARTH_RADIUS, &rb_u, &rb);
@@ -323,6 +325,10 @@ static int init_geom_vectors (Lps_Type *lps)
    vec_cross (&v, &slit, &geom->irp_u);
    if (0 != vec_norm (&geom->irp_u))
      return -1;
+
+   if (0) fprintf (stderr, "IRP unit vector: (%g, %g, %g)  len=%g\n",
+                   geom->irp_u.x, geom->irp_u.y, geom->irp_u.z,
+                   vec_length(&geom->irp_u));
 
    return 0;
 }
@@ -408,7 +414,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
    double max_mirror_x = lps->mirror_x[num_mirror_x-1];
    double *tmp_lpsens, *lpsens0, *lpsens1;
    double *tmp_angmax, *angmax0, *angmax1;
-   double mirror_x, y, wt_m;
+   double x, y, cos_a, sin_a, mirror_x, mirror_y, wt_m;
    int j, m, xtrack_offset, err, err_count;
    size_t i, num_wave_tb0;
 
@@ -432,17 +438,29 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
      }
 
    /* (x,y) are angular coordinates in the tilted perspective plane (Proj4 'tpers')
-    * x [radian] = azimuth angle from boresight
-    * y [radian] = altitude angle from boresight
-    *
-    * SMA mirror coordinates have +X "east" and +Y "SOUTH", so that:
+    * x [radian] = azimuth angle
+    * y [radian] = altitude angle
+    * (x,y) origin is at GEO satellite foot point on equator, with +x east, +y north
+    */
+   if (0 != lonlat_to_tpers_xy (lps, 1, &lon, &lat, &x, &y))
+     return -1;
+
+   /* To convert angular tpers coordinates to mirror coordinates,
+    * offset to FOR center (the boresight), and account for azi rotation
+    */
+   y -= lps->geom.tilt;
+   cos_a = cos(-lps->geom.azi);
+   sin_a = sin(-lps->geom.azi);
+   mirror_x = x * cos_a - y * sin_a;
+   mirror_y = x * sin_a + y * cos_a;
+
+   if (0) fprintf (stderr, "lon=%g lat=%g => mirror_x = %g\n", lon, lat, mirror_x);
+
+   /* SMA mirror coordinates have +X "east" and +Y "SOUTH", so that:
     *        mirror_x = x
     *        mirror_y = -y
     * But since we don't need mirror_y, I'll not bother with the sign flip.
     */
-   if (0 != lonlat_to_tpers_xy (lps, 1, &lon, &lat, &mirror_x, &y))
-     return -1;
-
    if ((mirror_x < min_mirror_x) || (max_mirror_x < mirror_x))
      {
         tell_verror (TELL_RUNTIME_ERROR,
@@ -541,7 +559,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
              err_count++;
              ang_max = 0.0;
           }
-        angmax[j] = ang_max * DEGTORAD;
+        angmax[j] = ang_max;
      }
 
    if (err_count)
@@ -622,7 +640,7 @@ static Lps_Table_Type *alloc_table_array (int num_mirror_x, int num_xtrack, int 
 static int read_lps_mirror_x_grid (int ncid, double **xp, int *nxp)
 {
    size_t dimlen;
-   int dimid, start, count;
+   int i, dimid, start, count;
    double *x;
 
    if (0 != TIO_inq_dim (ncid, "azimuth_lps", &dimid, &dimlen))
@@ -641,6 +659,12 @@ static int read_lps_mirror_x_grid (int ncid, double **xp, int *nxp)
      {
         FREE(x);
         return -1;
+     }
+
+   /* convert deg -> radians */
+   for (i = 0; i < dimlen; i++)
+     {
+        x[i] *= DEGTORAD;
      }
 
    *xp = x;
@@ -674,6 +698,7 @@ static int read_lps_table_array1 (int grp, Lps_Table_Type **tblp)
    for (i = 0; i < num_mirror_x; i++)
      {
         Lps_Table_Type *ti = &tbl[i];
+        int k;
 
         ti->num_xtrack = num_xtrack;
         ti->num_wave = num_wave;
@@ -695,6 +720,12 @@ static int read_lps_table_array1 (int grp, Lps_Table_Type **tblp)
         if ((0 != TIO_get_var_section (grp, lps_var, start, count, NC_DOUBLE, ti->lpsens))
             ||(0 != TIO_get_var_section (grp, angmax_var, start, count, NC_DOUBLE, ti->angmax)))
           goto return_error;
+
+        /* convert deg -> radians */
+        for (k = 0; k < num_xtrack * num_wave; k++)
+          {
+             ti->angmax[k] *= DEGTORAD;
+          }
      }
 
    *tblp = tbl;
