@@ -14,10 +14,6 @@ polcorr_tables: {
 
   use_mler = true;
   merge_bands = true;
-
-  # delta_pa = angle between local meridian plane (LMP),
-  #            and instrument reference plane (IRP)
-  delta_pa = 0.0;
 };
 
 polcorr_instr_geom: {

@@ -34,7 +34,6 @@ typedef struct
    int debug_output;
    int step;
    int xtrack;
-   double delta_pa;
 }
 Polcorr_Type;
 
@@ -127,8 +126,7 @@ static int process_inputs (config_t *cfg, const char *rad_file,
 
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &qu_file))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "use_mler", &pt.use_mler))
-       || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "delta_pa", &pt.delta_pa)))
+       || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing %s in param file: %s",

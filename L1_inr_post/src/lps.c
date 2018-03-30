@@ -20,7 +20,9 @@
 #include "lps.h"
 
 #define DEGTORAD      (M_PI/180.0)
+#define EARTH_RADIUS   6378137.0   /* meters */
 #define GEO_ALTITUDE  35785831.0   /* meters */
+#define GEO_RADIUS    (EARTH_RADIUS + GEO_ALTITUDE)
 
 #define PROJ_ARGS_BUFSIZE       80
 
@@ -33,15 +35,30 @@ enum
 
 typedef struct
 {
-   double sat_lon;  /**< GEO satellite orbital station [deg] */
+   double x;
+   double y;
+   double z;
+}
+Vector_Type;
+
+typedef struct
+{
+   double sat_lon;
+   /**< GEO satellite orbital station [radians] */
 
    double tilt;
    /**< tilt > 0 is northward tilt of instrument boresight
-    *   about spacecraft roll axis [deg] */
+    *   about spacecraft roll axis [radians] */
 
    double azi;
    /**< azi > 0 is rotation, eastward from north (CW),
-    *   about instrument boresight axis [deg] */
+    *   about instrument boresight axis [radians] */
+
+   Vector_Type spacecraft_u;
+   /**< unit vector pointing from Earth's center toward spacecraft */
+
+   Vector_Type irp_u;
+   /**< unit vector normal to instrument reference plane (IRP) */
 }
 Instr_Geom_Type;
 
@@ -73,6 +90,55 @@ struct Lps_Type
    size_t size_tmp;
 };
 
+static void vec_unit (double theta, double phi, Vector_Type *v)
+{
+   double sin_t = sin(theta);
+   v->x = sin_t * cos(phi);
+   v->y = sin_t * sin(phi);
+   v->z = cos(theta);
+}
+
+static void vec_scale (double c, const Vector_Type *a, Vector_Type *b)
+{
+   b->x = a->x * c;
+   b->y = a->y * c;
+   b->z = a->z * c;
+}
+
+static void vec_cross (const Vector_Type *a, const Vector_Type *b, Vector_Type *c)
+{
+   c->x =   a->y * b->z - a->z * b->y;
+   c->y = - a->x * b->z + a->z * b->x;
+   c->z =   a->x * b->y - a->y * b->x;
+}
+
+static void vec_diff (const Vector_Type *a, const Vector_Type *b, Vector_Type *c)
+{
+   c->x = a->x - b->x;
+   c->y = a->y - b->y;
+   c->z = a->z - b->z;
+}
+
+static double vec_dot (const Vector_Type *a, const Vector_Type *b)
+{
+   return a->x * b->x + a->y * b->y + a->z * b->z;
+}
+
+static double vec_length (const Vector_Type *a)
+{
+   return sqrt(vec_dot(a,a));
+}
+
+static int vec_norm (Vector_Type *p)
+{
+   double len = vec_length (p);
+   if (len == 0.0) return -1;
+   p->x /= len;
+   p->y /= len;
+   p->z /= len;
+   return 0;
+}
+
 static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
 {
    config_setting_t *s;
@@ -95,6 +161,10 @@ static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
                      config_setting_source_file (s));
         return -1;
      }
+
+   geom->sat_lon *= DEGTORAD;
+   geom->tilt *= DEGTORAD;
+   geom->azi *= DEGTORAD;
 
    return 0;
 }
@@ -130,9 +200,9 @@ static int lps_proj_open (Lps_Type *lps)
 
    memset (ctl_tpers, 0, PROJ_ARGS_BUFSIZE);
    len = snprintf (ctl_tpers, PROJ_ARGS_BUFSIZE, tpers_fmt,
-                   geom->sat_lon, GEO_ALTITUDE,
-                   geom->tilt,
-                   geom->azi);
+                   geom->sat_lon / DEGTORAD, GEO_ALTITUDE,
+                   geom->tilt / DEGTORAD,
+                   geom->azi / DEGTORAD);
    if (len >= PROJ_ARGS_BUFSIZE)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
@@ -176,6 +246,109 @@ static int lonlat_to_tpers_xy (Lps_Type *lps,
         x[i] /= GEO_ALTITUDE;
         y[i] /= GEO_ALTITUDE;
      }
+
+   return 0;
+}
+
+static void compute_boresight_lon_lat (const Instr_Geom_Type *geom, double *lon, double *lat)
+{
+   double a = GEO_RADIUS / EARTH_RADIUS;
+   double alpha, ss, cs, delta;
+
+   alpha = tan (geom->tilt);
+   ss = sin(geom->tilt) * cos(geom->tilt) * (a - sqrt(1 - (a*a-1.0) * alpha * alpha));
+   cs = sqrt (1.0 - ss * ss);
+
+   /* azi>0 is eastward rotation */
+   delta = atan(sin(geom->azi) * ss/cs);
+
+   *lat = acos (cs/cos(delta));
+   *lon = delta + geom->sat_lon;
+}
+
+static int init_geom_vectors (Lps_Type *lps)
+{
+   Instr_Geom_Type *geom = &lps->geom;
+   Vector_Type sc, slit, rb_u, rb, v;
+   double bs_lon, bs_lat;
+
+   /* FIXME:
+    * Ball hasn't yet specified how the instrument reference plane
+    * (IRP) is defined so, to make progress, I'm arbitrarily defining
+    * the IRP in terms of a vector along the instrument slit.
+    * When Ball provides a definition, this may have to change.
+    *
+    * Assume that the instrument reference plane (IRP) contains the
+    * boresight direction and the instrument slit.
+    * The unit vector, N(irp), normal to the IRP, is then:
+    *             N(irp) = \v x \slit
+    * where:
+    *         \v = (G\S - E\b)/d
+    * is a unit vector along the anti-boresight direction, and where:
+    *          G = geostationary orbit radius
+    *         \S = unit vector from Earth center toward spacecraft
+    *
+    *          E = earth radius (assumed spherical)
+    *         \b = unit vector from Earth center toward boresight surface point
+    *          d = distance from spacecraft to boresight surface point
+    *
+    *      \slit = unit vector along instrument slit (toward north)
+    */
+
+   /* slit = unit vector "northward" along the instrument slit */
+   vec_unit (geom->tilt, geom->sat_lon, &slit);
+
+   /* Compute (lon,lat) of boresight surface point [radians] */
+   compute_boresight_lon_lat (geom, &bs_lon, &bs_lat);
+
+   /* rb = vector from the Earth's center to the boresight surface point */
+   vec_unit (M_PI_2 - bs_lat, bs_lon, &rb_u);
+   vec_scale (EARTH_RADIUS, &rb_u, &rb);
+
+   /* unit vector from Earth's center toward spacecraft */
+   vec_unit (M_PI_2, geom->sat_lon, &geom->spacecraft_u);
+
+   /* sc = vector from Earth's center to the spacecraft: */
+   vec_scale (GEO_RADIUS, &geom->spacecraft_u, &sc);
+
+   /* v = unit vector from the boresight surface point toward spacecraft */
+   vec_diff (&sc, &rb, &v);
+   if (0 != vec_norm (&v))
+     return -1;
+
+   /* cross product, \v x \slit, is the (westward) normal
+    * to the instrument reference plane (IRP).
+    * Be sure the IRP normal has unit length!!
+    */
+   vec_cross (&v, &slit, &geom->irp_u);
+   if (0 != vec_norm (&geom->irp_u))
+     return -1;
+
+   return 0;
+}
+
+static int irp_lmp_angle (const Lps_Type *lps, double lon, double lat, double *angle)
+{
+   const Instr_Geom_Type *geom = &lps->geom;
+   Vector_Type zenith_u, lmp_u;
+   double theta, phi;
+
+   /* M_PI_2 = pi/2 */
+   theta = M_PI_2 - lat * DEGTORAD;
+   phi = lon * DEGTORAD;
+
+   /* unit vector from Earth center toward surface point */
+   vec_unit (theta, phi, &zenith_u);
+
+   /* lmp_u = (westward) unit vector normal to local meridian plane */
+   vec_cross (&geom->spacecraft_u, &zenith_u, &lmp_u);
+   if (0 != vec_norm (&lmp_u))
+     return -1;
+
+   /* dot product of IRP, LMP unit (westward) normals
+    * gives the cosine of the desired angle [radians]
+    */
+   *angle = acos(vec_dot(&geom->irp_u, &lmp_u));
 
    return 0;
 }
@@ -225,7 +398,7 @@ static int need_temp_space (Lps_Type *lps, size_t num_needed)
 
 int lps_eval (Lps_Type *lps, int band_index, int xtrack,
               double lon, double lat, int num_wave, const double *wave,
-              double *lpsens, double *angmax)
+              double *lpsens, double *angmax, double *lmp_irp_angle)
 {
    Lps_Table_Type *tb_array = NULL;
    Lps_Table_Type *tb0 = NULL;
@@ -248,6 +421,13 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
       default:
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: unsupported: band_index=%d", __func__, band_index);
+        return -1;
+     }
+
+   if (0 != irp_lmp_angle (lps, lon, lat, lmp_irp_angle))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: computing IRU-LMP angle for lon=%g lat=%g",
+                     __func__, lon, lat);
         return -1;
      }
 
@@ -361,7 +541,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
              err_count++;
              ang_max = 0.0;
           }
-        angmax[j] = ang_max;
+        angmax[j] = ang_max * DEGTORAD;
      }
 
    if (err_count)
@@ -600,6 +780,9 @@ Lps_Type *lps_open (config_t *cfg)
    memset ((char *)lps, 0, sizeof *lps);
 
    if (0 != read_geom (cfg, &lps->geom))
+     goto return_error;
+
+   if (0 != init_geom_vectors (lps))
      goto return_error;
 
    if (0 != lps_proj_open (lps))

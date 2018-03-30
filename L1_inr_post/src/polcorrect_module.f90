@@ -20,7 +20,6 @@ module polcorrect_module
     integer (c_int) :: debug_output
     integer (c_int) :: step
     integer (c_int) :: xtrack
-    real (kind=c_double) :: delta_pa
   end type
 
   ! FIXME: these parameters should be provided by tio_module
@@ -35,7 +34,7 @@ module polcorrect_module
 
   interface
     function lps_eval (lps, band_index, xtrack, lon, lat, &
-                       num_wave, wave, lpsens, angmax) &
+                       num_wave, wave, lpsens, angmax, delta_irp) &
         bind (c, name='lps_eval')
       use, intrinsic :: iso_c_binding, only: c_ptr, c_double, c_int
       implicit none
@@ -45,6 +44,7 @@ module polcorrect_module
       real (kind=c_double), dimension(num_wave), intent(in) :: wave
       real (kind=c_double), dimension(num_wave), intent(out) :: lpsens
       real (kind=c_double), dimension(num_wave), intent(out) :: angmax
+      real (kind=c_double), intent(out) :: delta_irp
       integer (c_int) :: lps_eval
     end function lps_eval
   end interface
@@ -443,9 +443,8 @@ contains
                         nscene, cfracs0, snalbs0, snps, qu_range, q, u, errstat)
         if (errstat /= 0) return
 
-        call calc_lpserr (pt % lps, pt % delta_pa, wav, q, u, &
-                          rad_s, band_id, merge_bands, ix, step, &
-                          lpserr, errstat)
+        call calc_lpserr (pt % lps, wav, q, u, rad_s, band_id, merge_bands, &
+                          ix, step, lpserr, errstat)
         if (errstat /= 0) return
 
         where (rad_s % radiance (:,ix) /= r8_fill)
@@ -462,12 +461,11 @@ contains
 
   end subroutine process_group
 
-  subroutine calc_lpserr (lps, delta_pa, wav, q0, u0, rad_s, &
-                          band_id, merge_bands, ix, step, lpserr, errstat)
+  subroutine calc_lpserr (lps, wav, q0, u0, rad_s, band_id, merge_bands, &
+                          ix, step, lpserr, errstat)
     use, intrinsic :: ieee_arithmetic
     implicit none
     type (c_ptr), value :: lps
-    real (kind=r8), intent(in) :: delta_pa
     real (kind=r8), dimension(:), intent(in) :: wav, q0, u0
     type (radiance_type), target, intent(in) :: rad_s
     integer, intent(in) :: band_id, ix, step
@@ -475,11 +473,11 @@ contains
     real (kind=r8), dimension(:), intent(inout) :: lpserr
     integer, intent(inout) :: errstat
 
-    real (kind=r8), parameter :: degtorad = 4.0_r8*atan(1.0_r8)/180.0_r8
+    real (kind=r8), parameter :: pi = 4.0_r8*atan(1.0_r8)
     real (kind=r8), allocatable, dimension(:) :: dolps, lpsens, angmax
     real (kind=r8), target, allocatable, dimension(:) :: pa
     real (kind=r8), pointer, dimension(:) :: rad_wave, q, u
-    real (kind=r8) :: lon, lat
+    real (kind=r8) :: lon, lat, delta_irp
     integer :: err, nwav, num_rad_wave, i0, i1
 
     if (errstat /= 0) return
@@ -522,19 +520,11 @@ contains
     dolps = sqrt (q*q + u*u)
 
     ! pa = angle between the plane of linear polarization,
-    !      and the LUT plane of reference, 0 <= pa <= 180
-    pa = 0.5 * atan2(u, q) / degtorad
+    !      and the LUT plane of reference, 0 <= pa <= pi
+    pa = 0.5 * atan2(u, q)
     where (pa < 0.0)
-      pa = pa + 180.0
+      pa = pa + pi
     end where
-
-    ! At this point, the plane of reference for pa is the local meridian
-    ! plane, LMP. However, the instrument reference plane, IRP, is rotated
-    ! relative to the LMP by an angle, delta_pa. To apply the instrument
-    ! linear polarization sensitivity tables, we need the angle between
-    ! the plane of linear polarization and the IRP, which is:
-
-    pa = pa + delta_pa
 
     ! Use (lon,lat) to derive this spectrum's angular offset from the
     ! instrument boresight, then perform a table lookup to obtain the
@@ -552,7 +542,7 @@ contains
       i1 = num_rad_wave/2
       err = lps_eval (lps, tempo_band_uv, ix-1, lon, lat, &
                       num_rad_wave/2, rad_wave(i0:i1), &
-                      lpsens(i0:i1), angmax(i0:i1))
+                      lpsens(i0:i1), angmax(i0:i1), delta_irp)
       if (err /= 0) then
         call tell_set_error (errstat)
         return
@@ -562,19 +552,29 @@ contains
       i1 = num_rad_wave
       err = lps_eval (lps, tempo_band_vis, ix-1, lon, lat, &
                       num_rad_wave/2, rad_wave(i0:i1), &
-                      lpsens(i0:i1), angmax(i0:i1))
+                      lpsens(i0:i1), angmax(i0:i1), delta_irp)
       if (err /= 0) then
         call tell_set_error (errstat)
         return
       endif
     else
       err = lps_eval (lps, band_id, ix-1, lon, lat, &
-                      num_rad_wave, rad_wave, lpsens, angmax)
+                      num_rad_wave, rad_wave, lpsens, angmax, delta_irp)
       if (err /= 0) then
         call tell_set_error (errstat)
         return
       endif
     endif
+
+    ! Tables provide predicted polarization relative to the local
+    ! meridian plane (LMP). The LMP is defined as the plane containing
+    ! the viewing direction (toward the satellite) and the local zenith direction.
+    ! On the other hand, the instrument linear polarization sensitivity is given
+    ! in terms of the instrument reference plane (IRP).
+    ! Here, we correct for the angular offset between the IRP and the LMP,
+    ! by adding the offset angle, delta_irp:
+
+    pa = pa + delta_irp
 
     ! Measured radiance, I', true radiance, I:
     ! I' = I * ( 1 + 2.0 * lps * Dolp * cos(2.0 * (pa - maxang))
@@ -582,7 +582,7 @@ contains
     ! where pa: phase angle of polarization wrt to instrument reference plane (irp),
     ! and maxang: angle of maximum transmission
 
-    lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa - angmax) * degtorad)
+    lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa - angmax))
 
     where (.not.ieee_is_finite(lpserr))
       lpserr = 0.0
