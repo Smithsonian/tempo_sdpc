@@ -172,7 +172,7 @@ contains
     implicit none
 
     integer (kind=4), intent(in) :: ninp
-    character (len=128), dimension(ninp), intent(in) :: inputs
+    character (len=*), dimension(ninp), intent(in) :: inputs
     integer (kind=4), intent(inout) :: errstat
 
     character (len=128*ninp) :: input_list
@@ -191,7 +191,7 @@ contains
     enddo
 
     call tiof_attlist_append (attlist, errstat, "input_files", &
-         att_text=input_list)
+         att_text=trim(input_list))
 
     call tiof_push_group (l2obj, "metadata", errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)

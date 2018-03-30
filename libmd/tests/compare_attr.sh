@@ -44,29 +44,28 @@ acval_out=`cat nc_header.txt | awk -F\" '/:access_value/{print $2}'`
 abs_out=`cat nc_header.txt | awk -F\" '/:abstract/{print $2}' | sed "s%[\\]%%g"`
 keys_out=`cat nc_header.txt | awk -F\" '/:keywords/{print $2}'`
 
-problem=0
+exitstat=0
 #compare
-if [ "$cmlat_out" != "$cmlat_in" ] ; then problem=1 ; fi
-if [ "$cmlon_out" != "$cmlon_in" ] ; then problem=1 ; fi
-if [ "$polylat_out" != "$polylat_in" ] ; then problem=1 ; fi
-if [ "$polylon_out" != "$polylon_in" ] ; then problem=1 ; fi
-if [ "$polyseq_out" != "$polyseq_in" ] ; then problem=1 ; fi
-if [ "$inputs_out" != "$inputs_in" ] ; then problem=1 ; fi
-if [ "$local_gran_out" != "$local_gran_in" ] ; then problem=1 ; fi
-if [ "$local_vers_out" != "$local_vers_in" ] ; then problem=1 ; fi
-if [ "$colname_out" != "$colname_in" ] ; then problem=1 ; fi
-if [ "$colvers_out" != "$colvers_in" ] ; then problem=1 ; fi
-if [ "$platform_out" != "$platform_in" ] ; then problem=1 ; fi
-if [ "$inst_out" != "$inst_in" ] ; then problem=1 ; fi
-if [ "$acdesc_out" != "$acdesc_in" ] ; then problem=1 ; fi
-if [ "$acval_out" != "$acval_in" ] ; then problem=1 ; fi
-if [ "$abs_out" != "$abs_in" ] ; then problem=1 ; fi
-if [ "$keys_out" != "$keys_in" ] ; then problem=1 ; fi
+if [ "$cmlat_out" != "$cmlat_in" ] ; then exitstat=1 ; fi
+if [ "$cmlon_out" != "$cmlon_in" ] ; then exitstat=2 ; fi
+if [ "$polylat_out" != "$polylat_in" ] ; then exitstat=3 ; fi
+if [ "$polylon_out" != "$polylon_in" ] ; then exitstat=4 ; fi
+if [ "$polyseq_out" != "$polyseq_in" ] ; then exitstat=5 ; fi
+if [ "$inputs_out" != "$inputs_in" ] ; then exitstat=6 ; fi
+if [ "$local_gran_out" != "$local_gran_in" ] ; then exitstat=7 ; fi
+if [ "$local_vers_out" != "$local_vers_in" ] ; then exitstat=8 ; fi
+if [ "$colname_out" != "$colname_in" ] ; then exitstat=9 ; fi
+if [ "$colvers_out" != "$colvers_in" ] ; then exitstat=10 ; fi
+if [ "$platform_out" != "$platform_in" ] ; then exitstat=11 ; fi
+if [ "$inst_out" != "$inst_in" ] ; then exitstat=12 ; fi
+if [ "$acdesc_out" != "$acdesc_in" ] ; then exitstat=13 ; fi
+if [ "$acval_out" != "$acval_in" ] ; then exitstat=14 ; fi
+if [ "$abs_out" != "$abs_in" ] ; then exitstat=15 ; fi
+if [ "$keys_out" != "$keys_in" ] ; then exitstat=16 ; fi
 
-if [ $problem -ne 0 ]
+if [ $exitstat -ne 0 ]
 then
   echo "*** test_attr: comparison failed"
-  exitstat=1
 fi
 
 exit $exitstat

@@ -51,7 +51,7 @@ program test_attr
   if (errstat /= 0) then
     call tell_error (tell_io_read_error, &
          "*** test_attr: failed to read from namelist", errstat)
-    return
+    stop 1
   endif
 
   ! set input files
