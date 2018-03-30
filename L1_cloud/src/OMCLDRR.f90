@@ -25,6 +25,7 @@ program OMCLDRR
   use m_pgs_include
   use tell_module
   use m_write_odl_metadata
+  use md_module
 
   IMPLICIT NONE
 
@@ -46,7 +47,11 @@ program OMCLDRR
   !>@param filename_in_nc netCDF input filename
   character(len=255) :: logmsg
   integer, parameter :: processing_version = 1  ! FIXME should be input param
-
+  integer (kind=4) :: n, j, returnstatus, dummy_version
+  integer (kind=4), parameter :: ninp=9 ! number of input files
+  integer (kind=4), dimension(ninp) :: input_luns
+  character (len=128), dimension(ninp) :: inputs
+  character (len=256) :: buf
   !************************************************************************
 
   errstat=0
@@ -274,8 +279,29 @@ program OMCLDRR
            errstat)
       stop 1
     endif
-    ! Proof-of-concept example of ODL ASCII metadata
+    ! Proof-of-concept example of ODL ASCII and netCDF metadata
     if (wrt_odl) then
+      input_luns=(/ L1B_LUN, IRR1B_file, terr_prs_id, chl_id, oc_ram_id, &
+           ring_id, thresh_id, resid_id_late, refl_id /)
+      do n=1,ninp
+        dummy_version = 1
+        returnstatus = PGS_PC_GetReference( input_luns(n), dummy_version, buf )
+        if( returnstatus /= 0 ) then
+          call tell_error(tell_io_read_error, &
+               "write_odl_metadata: failed to read input file names", errstat)
+          stop 1
+        else
+          j = index( buf, '/', BACK = .true. ) + 1
+          inputs(n) = trim(buf(j:))
+        endif
+      enddo
+      call open_md(filename_out_nc, errstat)
+      call write_geo_bounds_md(nXtrack, nTimes, lat, lon, errstat)
+      call write_inputs_md(ninp, inputs, errstat)
+      call write_fixed_md('./boilerplate.nml',errstat)
+      call write_prodid_md(filename_out_nc,"(1)",errstat)
+      call close_md(errstat)
+
       errstat = write_odl_metadata(filename_out_nc)
       if (errstat /= 0) then
         call tell_error(tell_io_write_error, "failed writing ODL metadata", &

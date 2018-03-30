@@ -1,0 +1,11 @@
+! Basic metadata for cloud code
+
+&metadata
+collection_shortname='TEMPOCLDRR'
+collection_version = '(1)'
+platform = 'J Random Comsat'
+access_description = 'very very secret indeed'
+access_value = 'public'
+abstract = "This is supposed to be a short description of the product and what it is used for. All work and no play make Jack a dull boy. All work and no play make Jack a dull boy. All work and no play make Jack a dull boy. Heeeere's Johnny!"
+keywords = "EARTH SCIENCE>ATMOSPHERE>CLOUDS>CLOUD PROPERTIES>CLOUD FRACTION, EARTH SCIENCE>ATMOSPHERECLOUDS>CLOUD PROPERTIES>CLOUD TOP PRESSURE"
+/
