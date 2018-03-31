@@ -474,7 +474,7 @@ contains
     integer, intent(inout) :: errstat
 
     real (kind=r8), parameter :: pi = 4.0_r8*atan(1.0_r8)
-    real (kind=r8), allocatable, dimension(:) :: dolps, lpsens, angmax
+    real (kind=r8), allocatable, dimension(:) :: dolp, lpsens, angmax
     real (kind=r8), target, allocatable, dimension(:) :: pa
     real (kind=r8), pointer, dimension(:) :: rad_wave, q, u
     real (kind=r8) :: lon, lat, delta_irp
@@ -493,7 +493,7 @@ contains
     q => rad_s % q(:,ix)
     u => rad_s % u(:,ix)
 
-    allocate (dolps(num_rad_wave), pa(num_rad_wave), &
+    allocate (dolp(num_rad_wave), pa(num_rad_wave), &
               lpsens(num_rad_wave), angmax(num_rad_wave), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, "calc_lpserr: malloc failed", errstat)
@@ -516,8 +516,8 @@ contains
       return
     endif
 
-    ! dolps = degree of linear polarization
-    dolps = sqrt (q*q + u*u)
+    ! dolp = degree of linear polarization
+    dolp = sqrt (q*q + u*u)
 
     ! pa = angle between the plane of linear polarization,
     !      and the LUT plane of reference, 0 <= pa <= pi
@@ -582,7 +582,7 @@ contains
     ! where pa: phase angle of polarization wrt to instrument reference plane (irp),
     ! and maxang: angle of maximum transmission
 
-    lpserr = 2.0 * lpsens * dolps * cos(2.0 * (pa - angmax))
+    lpserr = 2.0 * lpsens * dolp * cos(2.0 * (pa - angmax))
 
     where (.not.ieee_is_finite(lpserr))
       lpserr = 0.0
