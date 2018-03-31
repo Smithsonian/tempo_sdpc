@@ -745,15 +745,16 @@ contains
         vaa = rad_s % vaa(i,j)
         saa = rad_s % saa(i,j)
 
-        if (vaa == r8_fill .or. saa == r8_fill) then
-          raa = r8_fill
-        else
-          raa = 180.d0 + (saa - vaa)
-          if (raa > 180.d0) then
-            raa = raa - 360.d0
-          else if (raa < -180.d0) then
-            raa = raa + 360.d0
+        if (vaa /= r8_fill .and. saa /= r8_fill) then
+          raa = saa - vaa
+          if (raa >= 360.0) then
+            raa = raa - 360.0
+          else if (raa < 0.0) then
+            raa = raa + 360.0
           endif
+          raa = abs(raa - 180.0)
+        else
+          raa = r8_fill
         endif
 
         rad_s % raa(i,j) = raa
