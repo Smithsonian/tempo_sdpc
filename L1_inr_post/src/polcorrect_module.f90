@@ -765,14 +765,13 @@ contains
 
   subroutine calc_surface_pressure (rad_s, errstat)
     implicit none
-    real (kind=r8), parameter :: &
-      pressure0_hpa = 1013.25, &
-      pressure_scale_height_meters = 16.0d3
+    real (kind=r8), parameter :: p0 = 1013.25   ! sea level pressure [hPa]
+    real (kind=r8), parameter :: h0 = 16.0d3    ! pressure scale height [m]
     type(radiance_type), intent(inout) :: rad_s
     integer, intent(inout) :: errstat
     integer :: i, j, dimlens(2)
 
-    real (kind=r8) :: z_meters, pre
+    real (kind=r8) :: z, pre
 
     if (errstat /= 0) return
 
@@ -782,13 +781,12 @@ contains
       do i = 1, dimlens(1)
 
         ! terrain height [meters]
-        z_meters = rad_s % hgt(i,j)
+        z = rad_s % hgt(i,j)
 
-        if (z_meters == r8_fill) then
+        if (z == r8_fill) then
           pre = r8_fill
         else
-          ! surface pressure [hPa]
-          pre = pressure0_hpa * 10**(-z_meters/pressure_scale_height_meters)
+          pre = p0 * 10**(-z/h0)
         endif
 
         rad_s % pre(i,j) = pre
