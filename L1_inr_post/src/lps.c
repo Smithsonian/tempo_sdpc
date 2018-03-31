@@ -218,21 +218,17 @@ static int lps_proj_open (Lps_Type *lps)
    return 0;
 }
 
-/* input (lon,lat) in degrees; output (x,y) in radians */
-static int lonlat_to_tpers_xy (Lps_Type *lps,
-                               int n, const double *lon, const double *lat,
-                               double *x, double *y)
+static int lonlat_to_mirror_xy (Lps_Type *lps, double lon, double lat,
+                                double *mirror_x, double *mirror_y)
 {
-   int i, status;
+   double x, y, m_x, m_y, cos_a, sin_a;
+   int status, n=1;
 
-   /* convert (lon,lat) to radians */
-   for (i = 0; i < n; i++)
-     {
-        x[i] = lon[i] * DEGTORAD;
-        y[i] = lat[i] * DEGTORAD;
-     }
+   /* input (lon,lat) in radians */
+   x = lon;
+   y = lat;
 
-   if ((status = pj_transform (lps->longlat, lps->tpers, n, 1, x, y, NULL)) != 0)
+   if ((status = pj_transform (lps->longlat, lps->tpers, n, 1, &x, &y, NULL)) != 0)
      {
         tell_verror (TELL_APPLICATION_ERROR,
                      "%s: pj_transform failed, status = %d (%s)",
@@ -240,17 +236,87 @@ static int lonlat_to_tpers_xy (Lps_Type *lps,
         return -1;
      }
 
-   /* convert (x,y) to radians */
-   for (i = 0; i < n; i++)
-     {
-        x[i] /= GEO_ALTITUDE;
-        y[i] /= GEO_ALTITUDE;
-     }
+   /* convert tilted perspective (x,y) meters to radians */
+   x /= GEO_ALTITUDE;
+   y /= GEO_ALTITUDE;
+
+   /* (x,y) are angular coordinates in the tilted perspective
+    * plane (Proj4 'tpers')
+    * x [radian] = azimuth angle
+    * y [radian] = altitude angle
+    * (x,y) origin is at GEO satellite foot point on equator,
+    * with +x east, +y north
+    */
+
+   /* To convert angular tpers coordinates to mirror coordinates,
+    * offset to FOR center (the boresight), and account for azi rotation
+    */
+   y -= lps->geom.tilt;
+   cos_a = cos(-lps->geom.azi);
+   sin_a = sin(-lps->geom.azi);
+   m_x = x * cos_a - y * sin_a;
+   m_y = x * sin_a + y * cos_a;
+
+   /* SMA mirror coordinates have +X "east" and +Y "SOUTH",
+    * so that:
+    *        mirror_x = m_x
+    *        mirror_y = -m_y
+    */
+   m_y *= -1;
+
+   if (0) fprintf (stderr, "lon=%g lat=%g => mirror_x = %g\n",
+                   lon/DEGTORAD, lat/DEGTORAD, m_x);
+
+   if (mirror_x) *mirror_x = m_x;
+   if (mirror_y) *mirror_y = m_y;
 
    return 0;
 }
 
-static void compute_boresight_lon_lat (const Instr_Geom_Type *geom, double *lon, double *lat)
+static int mirror_xy_to_lonlat (Lps_Type *lps, double *lon, double *lat,
+                                double mirror_x, double mirror_y)
+{
+   double x, y, m_x, m_y, cos_a, sin_a;
+   int status, n=1;
+
+   /* mirror_x,mirror_y coordinates are offset from tilted perspective
+    * angular coordinates by a Y sign flip, a rotation, and an offset:
+    */
+
+   m_x = mirror_x;
+   m_y = -mirror_y;
+
+   cos_a = cos(-lps->geom.azi);
+   sin_a = sin(-lps->geom.azi);
+   x =  m_x * cos_a + m_y * sin_a;
+   y = -m_x * sin_a + m_y * cos_a;
+
+   y += lps->geom.tilt;
+
+   /* tilted perspective coordinates in meters */
+   x *= GEO_ALTITUDE;
+   y *= GEO_ALTITUDE;
+
+   /* transform to (lon,lat) */
+   if ((status = pj_transform (lps->tpers, lps->longlat, n, 1, &x, &y, NULL)) != 0)
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: pj_transform failed, status = %d (%s)",
+                     __func__, status, pj_strerrno(status));
+        return -1;
+     }
+
+   /* return (lon,lat) in radians */
+   if (lon) *lon = x;
+   if (lat) *lat = y;
+
+   return 0;
+}
+
+#if 0
+/* this routine assumes a spherical earth */
+static void compute_boresight_lon_lat (const Instr_Geom_Type *geom,
+                                       double *lon, double *lat)
 {
    double a = GEO_RADIUS / EARTH_RADIUS;
    double alpha, ss, cs, delta;
@@ -265,6 +331,7 @@ static void compute_boresight_lon_lat (const Instr_Geom_Type *geom, double *lon,
    *lat = acos (cs/cos(delta));
    *lon = delta + geom->sat_lon;
 }
+#endif
 
 static int init_geom_vectors (Lps_Type *lps)
 {
@@ -281,47 +348,45 @@ static int init_geom_vectors (Lps_Type *lps)
     * Assume that the instrument reference plane (IRP) contains the
     * boresight direction and the instrument slit.
     * The unit vector, N(irp), normal to the IRP, is then:
-    *             N(irp) = \v x \slit
+    *     N(irp) = \v x \slit
     * where:
-    *         \v = (G\S - E\b)/d
+    *     \v = (G\S - E\b)/d
     * is a unit vector along the anti-boresight direction, and where:
-    *          G = geostationary orbit radius
-    *         \S = unit vector from Earth center toward spacecraft
+    *      G = geostationary orbit radius
+    *     \S = unit vector from Earth center toward spacecraft
+    *      E = earth radius (assumed spherical)
+    *     \b = unit vector from Earth center toward boresight surface point
+    *      d = distance from spacecraft to boresight surface point
     *
-    *          E = earth radius (assumed spherical)
-    *         \b = unit vector from Earth center toward boresight surface point
-    *          d = distance from spacecraft to boresight surface point
-    *
-    *      \slit = unit vector along instrument slit (toward north)
+    *  \slit = unit vector along instrument slit (toward north)
     */
 
    /* slit = unit vector "northward" along the instrument slit */
    vec_unit (geom->tilt, geom->sat_lon, &slit);
 
-   /* Compute (lon,lat) of boresight surface point [radians] */
-   compute_boresight_lon_lat (geom, &bs_lon, &bs_lat);
+   /* Compute (lon,lat) of boresight surface point [radians]
+    * by projecting from mirror coordinates: (mirror_x,mirror_y) = (0,0)
+    */
+   if (0 != mirror_xy_to_lonlat (lps, &bs_lon, &bs_lat, 0.0, 0.0))
+     return -1;
 
-   if (0) fprintf (stderr, "boresight: lon=%g, lat=%g\n", bs_lon/DEGTORAD, bs_lat/DEGTORAD);
+   if (0) fprintf (stderr, "boresight: lon=%g, lat=%g\n",
+                   bs_lon/DEGTORAD, bs_lat/DEGTORAD);
 
-   /* rb = vector from the Earth's center to the boresight surface point */
+   /* vector from the Earth's center to the boresight surface point */
    vec_unit (M_PI_2 - bs_lat, bs_lon, &rb_u);
    vec_scale (EARTH_RADIUS, &rb_u, &rb);
 
-   /* unit vector from Earth's center toward spacecraft */
+   /* vector from Earth's center toward spacecraft */
    vec_unit (M_PI_2, geom->sat_lon, &geom->spacecraft_u);
-
-   /* sc = vector from Earth's center to the spacecraft: */
    vec_scale (GEO_RADIUS, &geom->spacecraft_u, &sc);
 
-   /* v = unit vector from the boresight surface point toward spacecraft */
+   /* unit vector from the boresight surface point toward spacecraft */
    vec_diff (&sc, &rb, &v);
    if (0 != vec_norm (&v))
      return -1;
 
-   /* cross product, \v x \slit, is the (westward) normal
-    * to the instrument reference plane (IRP).
-    * Be sure the IRP normal has unit length!!
-    */
+   /* Westward IRP normal is cross product normalized to unit length. */
    vec_cross (&v, &slit, &geom->irp_u);
    if (0 != vec_norm (&geom->irp_u))
      return -1;
@@ -329,7 +394,6 @@ static int init_geom_vectors (Lps_Type *lps)
    if (0) fprintf (stderr, "IRP unit vector: (%g, %g, %g)  len=%g\n",
                    geom->irp_u.x, geom->irp_u.y, geom->irp_u.z,
                    vec_length(&geom->irp_u));
-
    return 0;
 }
 
@@ -339,9 +403,9 @@ static int irp_lmp_angle (const Lps_Type *lps, double lon, double lat, double *a
    Vector_Type zenith_u, lmp_u;
    double theta, phi;
 
-   /* M_PI_2 = pi/2 */
-   theta = M_PI_2 - lat * DEGTORAD;
-   phi = lon * DEGTORAD;
+   /* M_PI_2 = pi/2, input (lon,lat) in radians */
+   theta = M_PI_2 - lat;
+   phi = lon;
 
    /* unit vector from Earth center toward surface point */
    vec_unit (theta, phi, &zenith_u);
@@ -414,7 +478,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
    double max_mirror_x = lps->mirror_x[num_mirror_x-1];
    double *tmp_lpsens, *lpsens0, *lpsens1;
    double *tmp_angmax, *angmax0, *angmax1;
-   double x, y, cos_a, sin_a, mirror_x, mirror_y, wt_m;
+   double mirror_x, wt_m;
    int j, m, xtrack_offset, err, err_count;
    size_t i, num_wave_tb0;
 
@@ -430,6 +494,10 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
         return -1;
      }
 
+   /* convert (lon,lat) to radians */
+   lon *= DEGTORAD;
+   lat *= DEGTORAD;
+
    if (0 != irp_lmp_angle (lps, lon, lat, lmp_irp_angle))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: computing IRU-LMP angle for lon=%g lat=%g",
@@ -437,30 +505,9 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
         return -1;
      }
 
-   /* (x,y) are angular coordinates in the tilted perspective plane (Proj4 'tpers')
-    * x [radian] = azimuth angle
-    * y [radian] = altitude angle
-    * (x,y) origin is at GEO satellite foot point on equator, with +x east, +y north
-    */
-   if (0 != lonlat_to_tpers_xy (lps, 1, &lon, &lat, &x, &y))
+   if (0 != lonlat_to_mirror_xy (lps, lon, lat, &mirror_x, NULL))
      return -1;
 
-   /* To convert angular tpers coordinates to mirror coordinates,
-    * offset to FOR center (the boresight), and account for azi rotation
-    */
-   y -= lps->geom.tilt;
-   cos_a = cos(-lps->geom.azi);
-   sin_a = sin(-lps->geom.azi);
-   mirror_x = x * cos_a - y * sin_a;
-   mirror_y = x * sin_a + y * cos_a;
-
-   if (0) fprintf (stderr, "lon=%g lat=%g => mirror_x = %g\n", lon, lat, mirror_x);
-
-   /* SMA mirror coordinates have +X "east" and +Y "SOUTH", so that:
-    *        mirror_x = x
-    *        mirror_y = -y
-    * But since we don't need mirror_y, I'll not bother with the sign flip.
-    */
    if ((mirror_x < min_mirror_x) || (max_mirror_x < mirror_x))
      {
         tell_verror (TELL_RUNTIME_ERROR,
@@ -639,8 +686,8 @@ static Lps_Table_Type *alloc_table_array (int num_mirror_x, int num_xtrack, int 
 
 static int read_lps_mirror_x_grid (int ncid, double **xp, int *nxp)
 {
-   size_t dimlen;
-   int i, dimid, start, count;
+   size_t i, dimlen;
+   int dimid, start, count;
    double *x;
 
    if (0 != TIO_inq_dim (ncid, "azimuth_lps", &dimid, &dimlen))
@@ -813,10 +860,10 @@ Lps_Type *lps_open (config_t *cfg)
    if (0 != read_geom (cfg, &lps->geom))
      goto return_error;
 
-   if (0 != init_geom_vectors (lps))
+   if (0 != lps_proj_open (lps))
      goto return_error;
 
-   if (0 != lps_proj_open (lps))
+   if (0 != init_geom_vectors (lps))
      goto return_error;
 
    if ((0 != wordexp (lps_file, &we, WRDE_NOCMD | WRDE_UNDEF))
