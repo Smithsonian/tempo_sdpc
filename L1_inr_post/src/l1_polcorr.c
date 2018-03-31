@@ -49,6 +49,7 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: L1_polcorr [options] <input-file>\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
    fprintf (stderr, "   -d | --debug           generate debugging output\n");
    fprintf (stderr, "   -s | --step s          step index to process (1 <= s <= num_steps_in_granule)\n");
@@ -179,6 +180,7 @@ int main (int argc, char **argv)
      {
         {"config",  required_argument, 0, 'c'},
         {"debug",   no_argument,       0, 'd'},
+        {"help",    no_argument,       0, 'h'},
         {"step",    required_argument, 0, 's'},
         {"xtrack",  required_argument, 0, 'x'},
         {"verbose", optional_argument, 0, 'v'},
@@ -203,7 +205,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:ds:x:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hc:ds:x:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -213,6 +215,11 @@ int main (int argc, char **argv)
                           "%s: getopt returned character %d??",
                           __func__, c);
              goto return_status;
+             break;
+           case 'h':
+             config_destroy(&cfg);
+             tell_close();
+             usage();
              break;
            case 'c': config_file = optarg;
              /* This config file will override the default one
