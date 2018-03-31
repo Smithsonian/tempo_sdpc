@@ -31,7 +31,7 @@ typedef struct
    int vis_beg, vis_end;
    int merge_bands;
    int use_mler;
-   int debug_output;
+   int diag_output;
    int step;
    int xtrack;
 }
@@ -51,7 +51,7 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
-   fprintf (stderr, "   -d | --debug           generate debugging output\n");
+   fprintf (stderr, "   -d | --diag            generate diagnostic output\n");
    fprintf (stderr, "   -s | --step s          step index to process (1 <= s <= num_steps_in_granule)\n");
    fprintf (stderr, "   -x | --xtrack x        xtrack index to process (1 <= x <= num_xtrack)\n");
    fprintf (stderr, "   -v | --verbose lev     logging verbosity\n");
@@ -102,7 +102,7 @@ read_retrieval_limits (config_setting_t *s, const char *name,
 }
 
 static int process_inputs (config_t *cfg, const char *rad_file,
-                           int step, int xtrack, int debug_output)
+                           int step, int xtrack, int diag_output)
 {
    Polcorr_Type pt = {0};
    wordexp_t we;
@@ -115,7 +115,7 @@ static int process_inputs (config_t *cfg, const char *rad_file,
    pt.rad_file = rad_file;
    pt.step = step;
    pt.xtrack = xtrack;
-   pt.debug_output = debug_output;
+   pt.diag_output = diag_output;
 
    if (NULL == (s = config_lookup (cfg, "polcorr_tables")))
      {
@@ -173,13 +173,13 @@ int main (int argc, char **argv)
    config_t cfg;
    char *input_file = NULL;
    int status = EXIT_FAILURE;
-   int debug_output = 0;
+   int diag_output = 0;
    int step = 0;
    int xtrack = 0;
    static struct option long_options[] =
      {
         {"config",  required_argument, 0, 'c'},
-        {"debug",   no_argument,       0, 'd'},
+        {"diag",    no_argument,       0, 'd'},
         {"help",    no_argument,       0, 'h'},
         {"step",    required_argument, 0, 's'},
         {"xtrack",  required_argument, 0, 'x'},
@@ -230,7 +230,7 @@ int main (int argc, char **argv)
                goto return_status;
              break;
            case 'd':
-             debug_output = 1;
+             diag_output = 1;
              break;
            case 's':
              if (1 != sscanf (optarg, "%d", &step))
@@ -272,7 +272,7 @@ int main (int argc, char **argv)
    gsl_set_error_handler_off();
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", input_file);
 
-   status = process_inputs (&cfg, input_file, step, xtrack, debug_output);
+   status = process_inputs (&cfg, input_file, step, xtrack, diag_output);
 
 return_status:
    config_destroy (&cfg);

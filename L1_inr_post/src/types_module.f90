@@ -19,6 +19,14 @@ module types_module
     lut_wav_min = 285.0, &
     lut_wav_max = 745.0
 
+  type, public :: diag_output_type
+    ! shape: (wave, xtrack) for specified mirror step
+    real (kind=r8), allocatable, dimension(:,:) :: q, u
+    ! shape: (xtrack) for specified mirror step
+    real (kind=r8), allocatable, dimension(:) :: delta_irp
+    logical :: active
+  end type
+
   type, public :: radiance_type
     type(tiof_file_type) :: obj
     integer :: this_step
@@ -26,7 +34,6 @@ module types_module
     ! shape: (wave, xtrack) for specified mirror step
     real (kind=r8), allocatable, dimension(:,:) :: radiance
     real (kind=r8), allocatable, dimension(:,:) :: wave
-    real (kind=r8), allocatable, dimension(:,:) :: q, u
     ! shape: (xtrack, step)
     real (kind=r8), allocatable, dimension(:,:) :: lon, lat
     real (kind=r8), allocatable, dimension(:,:) :: sza, saa  ! solar zenith, azimuth angles
