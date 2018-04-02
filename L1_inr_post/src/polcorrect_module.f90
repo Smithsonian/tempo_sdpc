@@ -9,17 +9,18 @@ module polcorrect_module
 
   public :: polcorrect
 
+  ! NOTE: this declaration must match the C struct Polcorr_Type.
   type, bind(c), public :: polcorrect_type
     type(c_ptr) :: rad_file    !< radiance file name
     type(c_ptr) :: qu_file     !< QU lookup table file name
-    type(c_ptr) :: lps         !< opaque pointer to linear polarization sensitivity struct
-    integer (c_int) :: uv_beg, uv_end
-    integer (c_int) :: vis_beg, vis_end
-    integer (c_int) :: merge_bands
-    integer (c_int) :: use_mler
-    integer (c_int) :: diag_output
-    integer (c_int) :: step
-    integer (c_int) :: xtrack
+    type(c_ptr) :: lps         !< C Lps_Type opaque pointer
+    integer (c_int) :: uv_beg, uv_end    !< swav array index range for UV band
+    integer (c_int) :: vis_beg, vis_end  !< swav array index range for VIS band
+    integer (c_int) :: merge_bands       !< non-zero when UV and VIS bands should be processed together
+    integer (c_int) :: use_mler          !< non-zero for MLER, zero for LER
+    integer (c_int) :: diag_output       !< non-zero when diagnostic output is wanted
+    integer (c_int) :: step              !< non-zero means process specific 1-based mirror step index
+    integer (c_int) :: xtrack            !< non-zero means process specific 1-based north-south (cross-track) spatial index
   end type
 
   ! FIXME: these parameters should be provided by tio_module
@@ -76,7 +77,9 @@ module polcorrect_module
   end interface
 
   real (kind=r8), parameter :: r8_fill = nf90_fill_double
-  real (kind=r8), parameter :: cldalb0 = 0.8d0  ! cloud albedo
+
+  ! cloud albedo for MLER
+  real (kind=r8), parameter :: cldalb0 = 0.8d0
 
   ! radiance_status bit for polarization correction status
   integer, parameter :: polcorr_status_bit = 0
@@ -1050,8 +1053,8 @@ contains
     err = nf90_inq_varid (rad_s % obj % groupid, tempo_var_radiance, varid)
     err = nf90_inq_var_fill (rad_s % obj % groupid, varid, nofill, fill_value)
     if (err == 0) then
-      where (rad_s % radiance == r8_fill)
-        rad_s % radiance = real(fill_value, kind=r8)
+      where (rad_s % radiance (i0:i1, :) == r8_fill)
+        rad_s % radiance(i0:i1, :) = real(fill_value, kind=r8)
       end where
     endif
 

@@ -395,7 +395,7 @@ static int slit_vector (const Instr_Geom_Type *geom,
 static int init_geom_vectors (Lps_Type *lps)
 {
    Instr_Geom_Type *geom = &lps->geom;
-   Vector_Type sc, rb_u, rb, v, slit_u;
+   Vector_Type sc, rb_u, rb, anti_bs, slit_u;
    double bs_lon, bs_lat;
 
    /* FIXME:
@@ -438,16 +438,16 @@ static int init_geom_vectors (Lps_Type *lps)
    vec_scale (GEO_RADIUS, &geom->spacecraft_u, &sc);
 
    /* unit vector from the boresight surface point toward spacecraft */
-   vec_diff (&sc, &rb, &v);
-   if (0 != vec_norm (&v))
+   vec_diff (&sc, &rb, &anti_bs);
+   if (0 != vec_norm (&anti_bs))
      return -1;
 
    /* slit = unit vector "northward" along the instrument slit */
-   if (0 != slit_vector (geom, &geom->spacecraft_u, &v, &slit_u))
+   if (0 != slit_vector (geom, &geom->spacecraft_u, &anti_bs, &slit_u))
      return -1;
 
    /* Westward IRP normal is cross product normalized to unit length. */
-   vec_cross (&v, &slit_u, &geom->irp_u);
+   vec_cross (&anti_bs, &slit_u, &geom->irp_u);
    if (0 != vec_norm (&geom->irp_u))
      return -1;
 
