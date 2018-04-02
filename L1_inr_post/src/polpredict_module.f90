@@ -236,6 +236,8 @@ contains
     if (allocated (lut_s % ctp)) deallocate (lut_s % ctp)
     if (allocated (lut_s % ler)) deallocate (lut_s % ler)
 
+    if (errstat /= 0) return ! silence compiler warning
+
   end subroutine pp_dealloc
 
   subroutine pp_get_wav (lut_s, wav, errstat)
@@ -672,6 +674,7 @@ contains
     dim_max = dim_range % max
 
     imin = 1
+    imax = 1
     do i = 1, dimlen
       if (dim_min < dim_tmp(i)) exit
       imin = i
@@ -745,6 +748,8 @@ contains
     real (kind=r8), dimension(2) :: snrad
     real (kind=r8), pointer, dimension(:) :: alb_grid, pre_grid, oz_grid
     real (kind=r8) :: val, radcfrac, cfrac, wt_k
+
+    if (errstat /= 0) return
 
     ids(:) = (/iqu_alb,iqu_pre,iqu_ozo,iqu_sza,iqu_vza,iqu_raa/)
     x(4:6) = (/sza, vza, raa/)
@@ -1212,6 +1217,7 @@ contains
 
     status = 0
     snalbrad(:,:,:,:) = 0
+    albcldwfs(:) = 0
 
     ! 4 SI dimensions we'll be interpolating on:
     ids(:) = (/iqu_pre, iqu_sza, iqu_vza, iqu_raa/)
