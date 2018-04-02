@@ -337,7 +337,7 @@ static int read_tile (Tile_Type *tile, int pixel_type)
 
    for (row = 0; row < tile->num_rows; row++)
      {
-        void *pixel_row;
+        void *pixel_row = NULL;
         switch (tile->pixel_type)
           {
            case MAP_PIXEL_SHORT:
@@ -793,6 +793,7 @@ Map_Subset_Type *map_subset (Map_Type *map,
              int tile_index, pixel_index;
              unsigned col, row;
              double value;
+             value = 0.0;
              if ((tile_index = map->find_tile (map, lon_o, lat_a)) < 0)
                continue;
              tile = &map->tiles[tile_index];

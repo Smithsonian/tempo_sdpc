@@ -20,6 +20,7 @@
  *==========================================================================*/
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 
 #define PI 3.141592653589793
 #define rad(t) ((t)*PI/180)
@@ -134,7 +135,11 @@ int ezlh_inverse(char grid[], double r, double s, double *lat, double *lon)
 	double Rg, phi, lam, rho, r0, s0;
 	double beta, gamma, epsilon, c, x, y, sinphi1, cosphi1;
 	int cols, rows, scale;
-	
+
+        lam = DBL_MAX;
+        sinphi1 = DBL_MAX;
+        cosphi1 = DBL_MAX;
+
 	if (grid[0] == 'N' || grid[0] == 'S')
 	{ cols = 721;
 	  rows = 721;
