@@ -139,6 +139,29 @@ static int vec_norm (Vector_Type *p)
    return 0;
 }
 
+/* Rotate 3D vector v about axis k by an angle theta, yielding vector vrot,
+ * where theta > 0 is defined according to the right hand rule.
+ * Rodrigues' rotation formula:
+ *   vrot = v cos(t) + (k \cross v) sin(t) + k (k \dot v) (1 - cos(t))
+ */
+static void vec_rotate (const Vector_Type *v, const Vector_Type *k,
+                        double theta, Vector_Type *vrot)
+{
+   Vector_Type cross, n, p;
+   double dot, cos_t = cos(theta);
+
+   vec_cross (k, v, &cross);
+   vec_scale (sin(theta), &cross, &n);
+
+   dot = vec_dot(k, v);
+   vec_scale (dot * (1 - cos_t), k, &p);
+
+   vec_scale (cos_t, v, vrot);
+   vrot->x += n.x + p.x;
+   vrot->y += n.y + p.y;
+   vrot->z += n.z + p.z;
+}
+
 static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
 {
    config_setting_t *s;
@@ -333,10 +356,46 @@ static void compute_boresight_lon_lat (const Instr_Geom_Type *geom,
 }
 #endif
 
+static int slit_vector (const Instr_Geom_Type *geom,
+                        const Vector_Type *spacecraft_u,
+                        const Vector_Type *anti_boresight,
+                        Vector_Type *slit)
+{
+   Vector_Type s0, s1;
+
+   /* In 3 steps, we'll construct a unit vector along the instrument slit.
+    * Start with the instrument boresight pointed at the equator at longitude,
+    * geom->sat_lon, so the initial slit vector is a unit vector parallel
+    * to the Z coordinate axis (e.g. parallel to the Earth's rotation axis,
+    * and pointed northward, toward +Z).
+    *   1) Tilt the instrument boresight northward by an angle 'geom->tilt'
+    *      radians (this is a rotation about spacecraft roll axis).  At this
+    *      point, s0 is just the radius vector for theta=tilt, phi=sat_lon.
+    *   2) Now, using the satellite's radius vector as the rotation axis,
+    *      rotate the instrument by an angle 'geom->azi'.
+    *      According to the right-hand rule, azi<0, will shift the
+    *      boresight eastward.
+    *   3) Now, using the anti-boresight vector as a rotation axis,
+    *      rotate the instrument by angle 'geom->azi'.
+    *      According to the right-hand rule, azi>0 will rotate the
+    *      slit direction northward, toward the Earth's rotation axis.
+    */
+   vec_unit (geom->tilt, geom->sat_lon, &s0);
+
+   /* rotate about the spacecraft's radius vector direction: */
+   vec_rotate (&s0, spacecraft_u, -geom->azi, &s1);
+
+   /* rotate about the anti-boresight direction */
+   vec_rotate (&s1, anti_boresight, geom->azi, slit);
+
+   /* Finally, normalize to ensure that we have a unit vector: */
+   return vec_norm (slit);
+}
+
 static int init_geom_vectors (Lps_Type *lps)
 {
    Instr_Geom_Type *geom = &lps->geom;
-   Vector_Type sc, slit, rb_u, rb, v;
+   Vector_Type sc, rb_u, rb, v, slit_u;
    double bs_lon, bs_lat;
 
    /* FIXME:
@@ -361,9 +420,6 @@ static int init_geom_vectors (Lps_Type *lps)
     *  \slit = unit vector along instrument slit (toward north)
     */
 
-   /* slit = unit vector "northward" along the instrument slit */
-   vec_unit (geom->tilt, geom->sat_lon, &slit);
-
    /* Compute (lon,lat) of boresight surface point [radians]
     * by projecting from mirror coordinates: (mirror_x,mirror_y) = (0,0)
     */
@@ -386,8 +442,12 @@ static int init_geom_vectors (Lps_Type *lps)
    if (0 != vec_norm (&v))
      return -1;
 
+   /* slit = unit vector "northward" along the instrument slit */
+   if (0 != slit_vector (geom, &geom->spacecraft_u, &v, &slit_u))
+     return -1;
+
    /* Westward IRP normal is cross product normalized to unit length. */
-   vec_cross (&v, &slit, &geom->irp_u);
+   vec_cross (&v, &slit_u, &geom->irp_u);
    if (0 != vec_norm (&geom->irp_u))
      return -1;
 
