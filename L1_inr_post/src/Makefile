@@ -181,7 +181,8 @@ ndinterp-autogen-timestamp:	ndinterp_module.f90 $(NDINTERP_AUTOGEN_SRC)
 	touch $@
 
 $(objdir)/ndinterp_module.o:	ndinterp_module.f90 ndinterp-autogen-timestamp
-	$(ELF_F_COMPILE_CMD) -o $(objdir)/ndinterp_module.o ndinterp_module.f90
+	$(ELF_F_COMPILE_CMD) -o $(objdir)/ndinterp_module.o -I$(TELL_INC) ndinterp_module.f90
 
+NDI_LIBS = $(TELL_LIBPATHS) -ltell_f -ltell
 $(objdir)/ndinterp_test:	$(objdir)/ndinterp_module.o ndinterp_test.f90
-	$(ELF_FC) $(ELF_FCFLAGS) -o $(objdir)/ndinterp_test ndinterp_test.f90 $(objdir)/ndinterp_module.o
+	$(ELF_FC) $(ELF_FCFLAGS) -o $(objdir)/ndinterp_test ndinterp_test.f90 $(objdir)/ndinterp_module.o $(NDI_LIBS)

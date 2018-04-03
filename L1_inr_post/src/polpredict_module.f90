@@ -71,8 +71,9 @@ contains
 
     ! interpolate ozone profile vector, oz(nz)
 
-    call ndi_find_indices (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices)
-    call ndi_calc_weights (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices, weights)
+    call ndi_find_indices (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices, errstat)
+    call ndi_calc_weights (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices, weights, errstat)
+    if (errstat /= 0) return
 
     oz(:) = 0.0
     do k = 1, nterms
@@ -183,8 +184,9 @@ contains
     ! This lets us move the (implied) loop over wavelengths inside
     ! the loop over terms.
 
-    call ndi_find_indices (lut_s % ler_dims(2:3), x, indices)
-    call ndi_calc_weights (lut_s % ler_dims(2:3), x, indices, weights)
+    call ndi_find_indices (lut_s % ler_dims(2:3), x, indices, errstat)
+    call ndi_calc_weights (lut_s % ler_dims(2:3), x, indices, weights, errstat)
+    if (errstat /= 0) return
 
     alb(:) = 0.0
     do k = 1, nterms
@@ -754,7 +756,8 @@ contains
     ids(:) = (/iqu_alb,iqu_pre,iqu_ozo,iqu_sza,iqu_vza,iqu_raa/)
     x(4:6) = (/sza, vza, raa/)
 
-    call ndi_find_indices (lut_s % si_dims(ids(4:6)), x(4:6), indices(4:6))
+    call ndi_find_indices (lut_s % si_dims(ids(4:6)), x(4:6), indices(4:6), errstat)
+    if (errstat /= 0) return
 
     alb_grid => lut_s % si_dims(iqu_alb) % x
     pre_grid => lut_s % si_dims(iqu_pre) % x
@@ -775,7 +778,8 @@ contains
         indices(3) = fidx + ioz - 1
         x(3) = oz
 
-        call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights)
+        call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights, errstat)
+        if (errstat /= 0) return
 
         val = 0.0
         do k = 1, nterms
@@ -837,7 +841,8 @@ contains
 
     ! locate 3 of the 4 interpolation coordinates (the geometry variables)
     ! in the main SI lookup table
-    call ndi_find_indices (lut_s % si_dims (ids(2:4)), x(2:4), indices(2:4))
+    call ndi_find_indices (lut_s % si_dims (ids(2:4)), x(2:4), indices(2:4), errstat)
+    if (errstat /= 0) return
 
     ! sizes of dimensions we'll be looping over (plus nw=3)
     nalb = lut_s % si_dims (iqu_alb) % dimlen
@@ -868,7 +873,8 @@ contains
       indices(1) = fidx + ioz - 1
 
       ! compute the 4-D linear interpolation weights
-      call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights)
+      call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights, errstat)
+      if (errstat /= 0) return
 
       ! Using 4-D interpolation weights, linearly interpolate
       ! a 3-D object with dimensions (nw,nalb,npre) and accumulate
@@ -897,7 +903,8 @@ contains
       do iw = 1, nw
         x(1) = snalbs (iw, is)
         indices(1) = ndi_find_index (x(1), lut_s % si_dims(iqu_alb) % x)
-        call ndi_calc_weights (lut_s % si_dims(ids(1:2)), x(1:2), indices(1:2), weights(1:2))
+        call ndi_calc_weights (lut_s % si_dims(ids(1:2)), x(1:2), indices(1:2), weights(1:2), errstat)
+        if (errstat /= 0) return
         snrad0_val = 0.0
         do k = 1, nterms_2d
           call ndi_calc_term_weight (k, indices(1:2), weights(1:2), id_k, wt_k)
@@ -988,8 +995,9 @@ contains
 
     do iw = 1,nw
       x(:) = (/snalbs(iw,1), snps(1)/)
-      call ndi_find_indices (lut_s % si_dims(ids), x, indices)
-      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights)
+      call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
+      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
+      if (errstat /= 0) return
 
       val = 0.0
       do k = 1, nterms
@@ -1104,8 +1112,9 @@ contains
     do iw = 1, nw
 
       x(:) = (/snalbs(iw,2), snps(2)/)
-      call ndi_find_indices (lut_s % si_dims(ids), x, indices)
-      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights)
+      call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
+      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
+      if (errstat /= 0) return
 
       val = 0.0
       do k = 1, nterms
@@ -1227,8 +1236,9 @@ contains
       ! 4-D interpolation point
       x(:) = (/snps(is), sza, vza, raa/)
 
-      call ndi_find_indices (lut_s % si_dims(ids), x, indices)
-      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights)
+      call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
+      call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
+      if (errstat /= 0) return
 
       do k = 1, nterms_4d
         call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
@@ -1577,8 +1587,9 @@ contains
     ! indices(1:5) =           (pre,ozo,sza,vza,raa) plus matching weights(:)
     ids(:) = (/iqu_sza, iqu_vza, iqu_raa/)
     xs(:)  = (/    sza,     vza,     raa/)
-    call ndi_find_indices (lut_s % si_dims(ids), xs, indices(3:5))
-    call ndi_calc_weights (lut_s % si_dims(ids), xs, indices(3:5), weights(3:5))
+    call ndi_find_indices (lut_s % si_dims(ids), xs, indices(3:5), errstat)
+    call ndi_calc_weights (lut_s % si_dims(ids), xs, indices(3:5), weights(3:5), errstat)
+    if (errstat /= 0) return
 
     do iw = 1, nswav
 
@@ -1723,6 +1734,10 @@ contains
                          "pp_get_qu: spline failed (snalbs)", errstat)
         return
       endif
+      ! if spline yields negative values, replace with zero:
+      where (snalbs(fidx:lidx,is) < 0)
+        snalbs(fidx:lidx,is) = 0.0
+      end where
       snalbs(1:fidx-1, is) = snalbs(fidx, is)
       snalbs(lidx+1:nwav, is) = snalbs(lidx, is)
     enddo
@@ -1744,8 +1759,9 @@ contains
     ! (alb,pre,ozo) vary within the loops over scenes and vertical structure
 
     ids(:) = (/iqu_sza, iqu_vza, iqu_raa/)
-    call ndi_find_indices (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6))
-    call ndi_calc_weights (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6), weights(4:6))
+    call ndi_find_indices (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6), errstat)
+    call ndi_calc_weights (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6), weights(4:6), errstat)
+    if (errstat /= 0) return
 
     alb_grid => lut_s % qu_dims(iqu_alb) % x
     pre_grid => lut_s % qu_dims(iqu_pre) % x
@@ -1760,6 +1776,11 @@ contains
 
       ! pressure
       ip = ndi_find_index (snps(is), pre_grid);
+      if (ip < 0) then
+        call tell_error (tell_runtime_error, &
+                         "pp_get_qu: extrapolation on pressure grid", errstat)
+        return
+      endif
       indices(2) = ip
       weights(2) = (pre_grid(ip+1) - snps(is))/(pre_grid(ip+1) - pre_grid(ip));
 
@@ -1770,6 +1791,11 @@ contains
         if (oz_info % zonefracs(iz) > 0.0) then
           ! ozone
           ioz = ndi_find_index (oz, oz_grid(fidx:lidx))
+          if (ioz < 0) then
+            call tell_error (tell_runtime_error, &
+                             "pp_get_qu: extrapolation on ozone grid", errstat)
+            return
+          endif
           ioz = ioz + fidx - 1
           indices(3) = ioz;
           weights(3) = (oz_grid(ioz+1) - oz)/(oz_grid(ioz+1) - oz_grid(ioz));
@@ -1778,6 +1804,11 @@ contains
 
             ! albedo
             ia = ndi_find_index (snalbs(iw,is), alb_grid)
+            if (ia < 0) then
+              call tell_error (tell_runtime_error, &
+                               "pp_get_qu: extrapolation on albedo grid", errstat)
+              return
+            endif
             indices(1) = ia;
             weights(1) = (alb_grid(ia+1) - snalbs(iw,is)) / (alb_grid(ia+1) - alb_grid(ia));
 

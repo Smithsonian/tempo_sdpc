@@ -1,5 +1,5 @@
 module ndinterp_module
-
+  use tell_module
   implicit none
   private
 
@@ -45,16 +45,11 @@ contains
     !     x(i) <= x0 < x(i+1)
     ! such that both i and i+1 are valid array indices.
     !
-    ! It's the calling routine's responsibility to
-    ! avoid extrapolation. FIXME?
-
+    ! Extrapolation is not supported.
     n = size(x)
 
-    if (x0 < x(1)) then
-      ndi_find_index = 1
-      return
-    else if (x(n) < x0) then
-      ndi_find_index = n-1
+    if (x0 < x(1) .or. x(n) < x0) then
+      ndi_find_index = -1
       return
     endif
 
@@ -72,27 +67,41 @@ contains
     ndi_find_index = i
   end function ndi_find_index
 
-  subroutine ndi_find_indices (dims, x, indices)
+  subroutine ndi_find_indices (dims, x, indices, errstat)
     implicit none
     type (ndi_dim), dimension(:), intent(in) :: dims
     real (kind=r8), dimension(:), intent(in) :: x
     integer, dimension(:), intent(out) :: indices
+    integer, intent(inout) :: errstat
+    character (len=72) :: msg
     integer :: d
+
+    if (errstat /= 0) return
 
     do d = 1, size(dims)
       indices(d) = ndi_find_index (x(d), dims(d) % x)
+      if (indices(d) < 0) then
+        write(msg, '(a,1pe12.4)')'x = ',x(d)
+        call tell_error (tell_runtime_error, &
+                         "ndi_find_indices: value out of range"//msg, &
+                         errstat)
+        return
+      endif
     enddo
   end subroutine ndi_find_indices
 
-  subroutine ndi_calc_weights (dims, x, indices, weights)
+  subroutine ndi_calc_weights (dims, x, indices, weights, errstat)
     implicit none
     type (ndi_dim), target, dimension(:), intent(in) :: dims
     real (kind=r8), dimension(:), intent(in) :: x
     integer, dimension(:), intent(in) :: indices
     real (kind=r8), dimension(:), intent(out) :: weights
+    integer, intent(inout) :: errstat
 
     real (kind=r8), dimension(:), pointer :: tx
     integer :: d, m
+
+    if (errstat /= 0) return
 
     ! Linear interpolation
 
@@ -100,6 +109,13 @@ contains
       tx => dims(d) % x
       m = indices(d)
       weights(d) = (tx(m+1) - x(d)) / (tx(m+1) - tx(m))
+
+      if (weights(d) < 0 .or. weights(d) > 1) then
+        call tell_error (tell_runtime_error, &
+                         "ndi_calc_weights: extrapolation is not supported", &
+                         errstat)
+        return
+      endif
     enddo
   end subroutine ndi_calc_weights
 

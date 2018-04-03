@@ -22,11 +22,13 @@
     if (present(input_indices)) then
       indices = input_indices
     else
-      call ndi_find_indices (dims, x, indices)
+      call ndi_find_indices (dims, x, indices, errstat)
+      if (errstat /= 0) return
       if (present(output_indices)) output_indices = indices
     endif
 
-    call ndi_calc_weights (dims, x, indices, weights)
+    call ndi_calc_weights (dims, x, indices, weights, errstat)
+    if (errstat /= 0) return
 
     val_r8 = 0.0
     do k = 1, nterms
