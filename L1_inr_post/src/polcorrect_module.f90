@@ -123,7 +123,10 @@ contains
     call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
     call check_pol_correction_status (rad_s % obj, errstat)
     call tiof_pop_group (rad_s % obj, errstat)
-    if (errstat /= 0) return
+    if (errstat /= 0) then
+      polcorrect = errstat
+      return
+    endif
 
     if (pt % diag_output /= 0) then
       call define_diag_vars (rad_s, errstat)
@@ -261,6 +264,8 @@ contains
     if (diag_output) then
       call alloc_diag (diag_s, rad_s % num_xtrack, rad_s % num_wave, errstat)
       if (errstat /= 0) return
+    else
+      diag_s % active = .false.
     endif
 
     if (.not.merge_bands) then
