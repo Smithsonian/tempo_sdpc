@@ -76,6 +76,16 @@ module polcorrect_module
     end function tio_time_tempo_to_utc_caldate
   end interface
 
+  interface
+    function tio_def_var_radiance_status_flag (grp) &
+        bind (c, name='tio_def_var_radiance_status_flag')
+      use, intrinsic :: iso_c_binding, only : c_int
+      implicit none
+      integer (c_int), value :: grp
+      integer (c_int) :: tio_def_var_radiance_status_flag
+    end function tio_def_var_radiance_status_flag
+  end interface
+
   real (kind=r8), parameter :: r8_fill = nf90_fill_double
 
   ! cloud albedo for MLER
@@ -107,6 +117,14 @@ contains
       return
     endif
 
+    call tiof_push_group (rad_s % obj, tempo_band_name_uv, errstat)
+    call check_pol_correction_status (rad_s % obj, errstat)
+    call tiof_pop_group (rad_s % obj, errstat)
+    call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
+    call check_pol_correction_status (rad_s % obj, errstat)
+    call tiof_pop_group (rad_s % obj, errstat)
+    if (errstat /= 0) return
+
     if (pt % diag_output /= 0) then
       call define_diag_vars (rad_s, errstat)
       if (errstat /= 0) then
@@ -136,38 +154,39 @@ contains
     polcorrect = 0
   end function
 
-  subroutine check_pol_correction_status (obj, has_pol_correction, errstat)
+  subroutine check_pol_correction_status (obj, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
-    logical, intent(out) :: has_pol_correction
     integer, intent(inout) :: errstat
-    integer :: status_flag
+    integer :: status_flag, varid, err
+
     if (errstat /= 0) return
 
-    has_pol_correction = .false.
+    err = nf90_inq_varid (obj % groupid, tempo_var_radiance_status, varid)
+    if (err /= 0) then
+      err = tio_def_var_radiance_status_flag (obj % groupid)
+      if (err /= 0) then
+        call tell_error (tell_io_write_error, &
+                         "defining variable: "//trim(tempo_var_radiance_status), &
+                         errstat)
+        return
+      endif
+    endif
 
     call tiof_get_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
     if (errstat /= 0) return
 
-    has_pol_correction = btest (status_flag, polcorr_status_bit)
-  end subroutine check_pol_correction_status
-
-  subroutine set_polcorr_status_bit (obj, errstat)
-    implicit none
-    type (tiof_file_type), intent(in) :: obj
-    integer, intent(inout) :: errstat
-    integer :: status_flag
-    if (errstat /= 0) return
-
-    call tiof_get_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
-    if (errstat /= 0) return
+    if (btest (status_flag, polcorr_status_bit)) then
+      call tell_error (tell_runtime_error, &
+                       "polarization correction has already been applied", errstat)
+      return
+    endif
 
     status_flag = ibset (status_flag, polcorr_status_bit)
-
     call tiof_put_i4 (obj, tempo_var_radiance_status, status_flag, errstat)
     if (errstat /= 0) return
 
-  end subroutine set_polcorr_status_bit
+  end subroutine check_pol_correction_status
 
   subroutine process_group (pt, lut_s, rad_s, band_id, errstat)
     use polpredict_module
@@ -304,8 +323,8 @@ contains
     snalbs0 = 0.0
     cfracs0 = 0.0
 
-    retoz_errstat = 0
-    retctp_errstat = 0
+    retoz_errstat = -1
+    retctp_errstat = -1
     oz_saved = 0.0
     ctp_saved = 0.0
 
@@ -319,6 +338,8 @@ contains
         lat = rad_s % lat(ix,step)
         lon = rad_s % lon(ix,step)
         pre = rad_s % pre(ix,step)
+
+        if (lat == r8_fill .or. pre == r8_fill) cycle
 
         ! get ozone for pre
         call pp_interp_ozone_pre (lut_s, lat, lon, pre, oz0, errstat)
@@ -842,7 +863,6 @@ contains
 
     integer :: num_step, num_xtrack, num_wave
     integer, dimension(2) :: start, edge
-    logical :: has_pol_correction
 
     if (errstat /= 0) return
 
@@ -855,14 +875,6 @@ contains
       case (tempo_band_vis)
         call tiof_push_group (rad_s % obj, tempo_band_name_vis, errstat)
     end select
-
-    call check_pol_correction_status (rad_s % obj, has_pol_correction, errstat)
-    if (errstat /= 0) return
-    if (has_pol_correction) then
-      call tell_error (tell_runtime_error, &
-                       "polarization correction has already been applied", errstat)
-      return
-    endif
 
     call tiof_inq_dimlen (rad_s % obj, tempo_dim_xtrack, num_xtrack, errstat)
     call tiof_inq_dimlen (rad_s % obj, tempo_dim_channel, num_wave, errstat)
@@ -898,6 +910,14 @@ contains
       call tell_error (tell_io_read_error, "reading geometry variables", errstat)
       return
     endif
+
+    write(*,*)'FIXME: forcing sza<=85, vza<=85 on input to avoid extrapolation in lookup table'
+    where (rad_s % vza /= r8_fill .and. rad_s % vza > 85.0)
+      rad_s % vza = 85.0
+    end where
+    where (rad_s % sza /= r8_fill .and. rad_s % sza > 85.0)
+      rad_s % sza = 85.0
+    end where
 
   end subroutine read_radiance_geometry
 
@@ -1065,8 +1085,6 @@ contains
       call tell_error (tell_io_write_error, msg, errstat)
       return
     endif
-
-    call set_polcorr_status_bit (rad_s % obj, errstat)
 
     if (diag_s % active) then
       call tiof_put2d_r8 (rad_s % obj, q_var_name, start, edge, &
