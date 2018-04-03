@@ -1734,9 +1734,11 @@ contains
                          "pp_get_qu: spline failed (snalbs)", errstat)
         return
       endif
-      ! if spline yields negative values, replace with zero:
+      ! fix any out of range albedo values from spline interpolation
       where (snalbs(fidx:lidx,is) < 0)
         snalbs(fidx:lidx,is) = 0.0
+      else where (snalbs(fidx:lidx,is) > 1)
+        snalbs(fidx:lidx,is) = 1.0
       end where
       snalbs(1:fidx-1, is) = snalbs(fidx, is)
       snalbs(lidx+1:nwav, is) = snalbs(lidx, is)
