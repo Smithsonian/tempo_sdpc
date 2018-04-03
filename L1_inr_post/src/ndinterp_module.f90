@@ -108,6 +108,12 @@ contains
     do d = 1, size(dims)
       tx => dims(d) % x
       m = indices(d)
+      if (m < 1 .or. (m+1) > dims(d) % dimlen) then
+        call tell_error (tell_runtime_error, &
+                         "ndi_calc_weights: invalid array index", errstat)
+        return
+      endif
+
       weights(d) = (tx(m+1) - x(d)) / (tx(m+1) - tx(m))
 
       if (weights(d) < 0 .or. weights(d) > 1) then

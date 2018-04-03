@@ -205,6 +205,14 @@ contains
                        "pp_interp_surface_albedo: spline failed", errstat)
       return
     endif
+
+    ! filter out of range albedo values from spline
+    where (snalbs(fidx:lidx) < 0.0)
+      snalbs(fidx:lidx) = 0.0
+    else where (snalbs(fidx:lidx) > 1.0)
+      snalbs(fidx:lidx) = 1.0
+    end where
+
     nswav = size(swav)
     if (fidx > 1) snalbs(1:fidx-1) = snalbs(fidx)
     if (lidx < nswav) snalbs(lidx+1:nswav) = snalbs(lidx)
@@ -1139,6 +1147,9 @@ contains
         if (snalbs(iw,2) > 1.0) then
           snalbs(iw,2) = 1.0
           status = 1
+        else if (snalbs(iw,2) < 0) then
+          snalbs(iw,2) = 0.0
+          status = 1
         endif
       else if (cfracs(iw) < 0.0) then
         ! If cloud fraction is  <0, re-derive SURFACE albedo
@@ -1154,6 +1165,9 @@ contains
         snalbs(iw,1) = snalbs(iw,1) + (srad(iw) - snrad0(iw,1)) / drad_dalb
         if (snalbs(iw,1) < 0.0) then
           snalbs(iw,1) = 0.0
+          status = 1
+        else if (snalbs(iw,1) > 1) then
+          snalbs(iw,1) = 1.0
           status = 1
         endif
       endif
