@@ -1,3 +1,7 @@
+/** @file lps.c
+ *  @brief Interface for linear polarization sensitivity
+ *         lookup table
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,7 +1,7 @@
 /**
 @mainpage L1_inr_post
 
-@section Synopsis
+@section inr_post_synopsis Synopsis
 
 \verbatim
 Usage: L1_inr_post [options] <input-file>
@@ -12,11 +12,11 @@ Usage: L1_inr_post [options] <input-file>
    -v | --verbose lev     logging verbosity
 \endverbatim
 
-@section Description
+@section inr_post_description Description
 
 \c L1_inr_post modifies a geolocated Level 1 radiance file to apply
-geolocation-dependent corrections (e.g. polarization) and to populate
-file variables that depend on geolocation.
+geolocation-dependent corrections and to populate file variables that
+depend on geolocation.
 
 @section snow Snow and Ice cover
 
@@ -31,7 +31,7 @@ Although the NISE data product is in HDF4 format, \c L1_inr_post reads
 it using the \c netcdf4 library interface.  For this reason, the
 netcdf4 must be compiled with HDF4 support enabled.
 
-@section param_file Parameter file
+@section inr_post_param_file Parameter file
 
 \c L1_inr_post is controlled by a parameter file that may be
 provided as an optional command-line argument.  If no parameter
@@ -203,5 +203,71 @@ specifically, \c resample, and \c mrtmosaic.
 The script used to perform the resampling and mapping is included:
 
 \verbinclude modis_mosaic.sh
+
+@section polcorr_synopsis Synopsis
+
+\verbatim
+Usage: L1_polcorr [options] <input-file>
+  Optional:
+   -h | --help            print this usage message
+   -c | --config FILE     configuration file
+   -d | --diag            generate diagnostic output
+   -s | --step s          step index to process (1 <= s <= num_steps_in_granule)
+   -x | --xtrack x        xtrack index to process (1 <= x <= num_xtrack)
+   -v | --verbose lev     logging verbosity
+\endverbatim
+
+@section polcorr_description Description
+
+\c L1_polcorr modifies the radiances in a geolocated Level 1 radiance
+file to apply a geolocation- and wavelength-dependent polarization
+correction.  This correction attempts to remove the effect of the
+instrument's polarization sensitivity, to yield a better approximation
+of the total intensity of the radiance incident on the detector.
+
+@section polcorr_param_file Parameter file
+
+\c L1_polcorr is controlled by a parameter file that may be provided
+as an optional command-line argument.  If no parameter file is specified
+on the command line, \c L1_polcorr reads \c l1_inr_post.cfg from the
+current directory.
+
+Here is an example of the required control parameters:
+\verbatim
+polcorr_tables: {
+
+  # instrument linear polarization sensitivity:
+  #
+  lps_lut = "$SDPC_RUN_DIR/refdata/polarization/lps_table.nc";
+
+  # QU dependence on selected parameters:
+  #
+  qu_lut = "$SDPC_RUN_DIR/refdata/polarization/Polarization_LUT_qu_SIqu_clima_reordered.nc";
+
+  # LUT SI "swav" wavelength grid index limits for retrievals
+  waves_uv  = [ 1, 13];
+  waves_vis = [14, 28];
+
+  use_mler = true;
+  merge_bands = true;
+};
+
+polcorr_instr_geom: {
+
+# sat_lon = geostationary satellite longitude
+  sat_lon = -100.0;
+
+# tilt>0 [deg] is northward tilt of instrument boresight,
+#              about spacecraft roll axis
+# azi>0 [deg] is rotation, eastward from north (CW),
+#             about instrument boresight axis
+# These angles specify the instrument pointing direction
+# for the tilted perspective projection ('tpers') from
+# the Proj4 library.
+
+   tilt = 5.53;
+   azi  = 4.5;
+};
+\endverbatim
 
 */

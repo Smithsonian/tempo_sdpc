@@ -1,3 +1,33 @@
+!> Multi-dimensional linear interpolation
+!! @file
+!! @sa ndinterp_code.inc  (Table interpolation functions for 1-D to 7-D tables)
+!! @sa ndinterp_decl.inc  (Common interface definition for table interpolation functions)
+!! @sa ndinterp_module_code.in  (Template for autogeneration of table interpolation functions)
+!! @sa ndinterp_module_autogen.sh  (Shell script to autogenerate table interpolation functions)
+!!
+!! @details
+!!
+!! These functions support linear interpolation on lookup tables
+!! implemented as a multidimensional array plus a 1-D array of
+!! coordinates for each array dimension.  The coordinate arrays
+!! are managed in an array of objects of type \a ndi_dim,
+!! such that dimension 1 corresponds to the fastest varying
+!! (leftmost) index of the multidimensional table value array,
+!! and dimension N corresponds to the slowest varying (rightmost)
+!! index of the multidimensional table value array.  Coordinate
+!! arrays are assumed to be stored in ascending order.
+!! Extrapolation is not supported.
+!!
+!! **Error handling:**
+!!
+!! Most member functions take an integer error code, \a errstat
+!! When the input \a errstat is negative, the function returns
+!! immediately, with \a errstat unchanged. On return, \a errstat<0
+!! indicates that an error occured. Error messages and global error
+!! status are handled using libtell. Additional information on the
+!! type of error that occurred may be available from the global error
+!! status, via \a tell_get_error and \a tell_copy_strerror.
+
 module ndinterp_module
   use tell_module
   implicit none
@@ -15,6 +45,15 @@ module ndinterp_module
   public ndi_dims_alloc, ndi_dims_dealloc
   public ndi_table_interp
 
+  !> Linearly interpolate in a multidimensional array
+  !! @fn subroutine ndi_table_interp (dims, tbl, x, val, errstat, input_indices, output_indices)
+  !! @param[in]  dims  Array of N \a ndi_dim objects
+  !! @param[in]  tbl   N-dimensional array of table values
+  !! @param[in]  x     Coordinates of interpolation point
+  !! @param[out] val   Interpolated table value at \a x.
+  !! @param[inout] errstat   Error status code
+  !! @param[optional, in]   input_indices   Indices of the table cell known to contain the interpolation point, \a x
+  !! @param[optional, out]  output_indices  Indices of the table cell containing the interpolation point, \a x
   include 'ndinterp_decl.inc'
 
   integer, parameter :: &
@@ -25,14 +64,20 @@ module ndinterp_module
     r4 = kind(1.0), &
     r8 = selected_real_kind (2*precision(1.0_r4))
 
+  !> Coordinate grid object
   type, public :: ndi_dim
-    real (kind=r8), allocatable, dimension(:) :: x
-    integer :: dimlen
-    character (len=32) :: name
+    real (kind=r8), allocatable, dimension(:) :: x  !< coordinate array
+    integer :: dimlen                               !< size of this array dimension
+    character (len=32) :: name                      !< name of this coordinate
   end type ndi_dim
 
 contains
 
+  !> Find coordinate x0 in array x(:), assumed to be in ascending order
+  !! @param[in]   x0   Coordinate value to search for
+  !! @param[in]   x    Coordinate array to search. Must be in ascending order
+  !! @return on error, returns -1.
+  !!  on success, returns array index \a i, such that $x(i) \le x0 \lt x(i+1)$.
   integer function ndi_find_index (x0, x)
     implicit none
     real (kind=r8), intent(in) :: x0
@@ -67,6 +112,13 @@ contains
     ndi_find_index = i
   end function ndi_find_index
 
+  !> Find the table cell containing coordinate vector x(:)
+  !! @param[in]  dims     Array of N \a ndi_dim coordinate objects
+  !! @param[in]  x        Vector of N coordinates of the interpolation point
+  !! @param[out] indices  Vector of array indices of the table cell
+  !!                      containing the interpolation point, \a x.
+  !! @param[inout]  errstat  Error status
+  !! @return on success, errstat=0, on error, errstat /=0
   subroutine ndi_find_indices (dims, x, indices, errstat)
     implicit none
     type (ndi_dim), dimension(:), intent(in) :: dims
@@ -90,6 +142,14 @@ contains
     enddo
   end subroutine ndi_find_indices
 
+  !> Compute linear interpolation weight for each array dimension
+  !! @param[in]  dims    Array of N \a ndi_dim coordinate objects
+  !! @param[in]  x       Vector of N coordinates of the interpolation point
+  !! @param[in] indices  Vector of array indices of the table cell
+  !!                     containing the interpolation point, \a x.
+  !! @param[out] weights Vector of N linear interpolation weights.
+  !! @param[inout]  errstat  Error status
+  !! @return on success, errstat=0, on error, errstat /=0
   subroutine ndi_calc_weights (dims, x, indices, weights, errstat)
     implicit none
     type (ndi_dim), target, dimension(:), intent(in) :: dims
@@ -125,6 +185,32 @@ contains
     enddo
   end subroutine ndi_calc_weights
 
+  !> Compute linear interpolation weight for each lookup table array element
+  !! @param[in]  k      Index of a term in the sum of table entries,
+  !!                    1 <= k <= 2**N, where N is the number of array dimensions
+  !!                    in the lookup table
+  !! @param[in] indices Vector of array indices of the table cell
+  !!                    containing the interpolation point, \a x.
+  !! @param[in] weights Vector of N linear interpolation weights for
+  !!                    the interpolation point, \a x.
+  !! @param[in] id_k    N multidimensional array indices of the table
+  !!                    entry corresponding to term k
+  !! @param[in] wt_k    Interpolation weight for term k
+  !! @param[inout]  errstat  Error status
+  !! @return on success, errstat=0, on error, errstat /=0
+  !!
+  !! Using this routine, N-dimensional interpolation requires accumulating
+  !! a sum of 2^N weighted terms.  For example, a 3-D table interpolation
+  !! would look like:
+  !!@v+
+  !!   num_terms = 2^3
+  !!   s = 0.0
+  !!   do k = 1, num_terms
+  !!      call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
+  !!      s = s + wt_k * value(id_k(1),id_k(2),id_k(3))
+  !!   enddo
+  !!@v-
+  !!
   subroutine ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
     implicit none
     integer, intent(in) :: k
@@ -140,7 +226,6 @@ contains
     ! In terms of the table coordinate arrays, X => tbl % dims(d) % x,
     ! we have
     !            X(index(d)) <= x(d) < X(index(d)+1).
-    !
     ! The linearly interpolated value at x(:) may be viewed as a weighted
     ! sum of table values at that cell's 2^N corners.
     ! The coefficient of the kth term in that sum is given by the product
@@ -152,7 +237,6 @@ contains
     ! For the kth term in the sum, this loop generates both
     ! the term's lookup table array indices, id_k(:), and
     ! the term's weight coefficient, 'wt_k'.
-
     wt_k = 1.0
     do d = 1, size(weights)
       if (iand (k-1, ishft(1, d-1)) == 0) then
@@ -165,6 +249,7 @@ contains
     enddo
   end subroutine ndi_calc_term_weight
 
+  !> Deallocate array of \a ndi_dim objects
   subroutine ndi_dims_dealloc (dims)
     implicit none
     type (ndi_dim), dimension(:), intent(inout) :: dims
@@ -178,6 +263,11 @@ contains
     enddo
   end subroutine ndi_dims_dealloc
 
+  !> Allocate an array of \a ndi_dim objects
+  !! @param[in]  dims     Array of \a ndi_dim objects to be allocated
+  !! @param[in]  dimlens  Array containing the size of each dimension
+  !! @param[inout] errstat   Error status code
+  !! @return on success, \a errstat=0, on error, \a errstat /= 0
   subroutine ndi_dims_alloc (dims, dimlens, errstat)
     implicit none
     type (ndi_dim), dimension(:), intent(inout) :: dims

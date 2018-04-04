@@ -1,3 +1,13 @@
+!> Polarization correction module
+!! @file
+!! @sa  polpredict_module.f90   (Polarization prediction module)
+!! @sa  lps.c                   (Instrument polarization sensitivity lookup)
+!!
+!! This module processes a radiance file to derive a predicted wavelength
+!! dependent polarization state (Stokes parameters, Q and U) for each
+!! radiance spectrum.  It then applies a wavelength dependent correction
+!! factor for the instrument polarization sensitivity, to obtain a better
+!! approximation to the total radiance incident on the instrument.
 module polcorrect_module
   use, intrinsic :: iso_c_binding
   use netcdf
@@ -9,7 +19,8 @@ module polcorrect_module
 
   public :: polcorrect
 
-  ! NOTE: this declaration must match the C struct Polcorr_Type.
+  !> Fortran interface for C struct \a Polcorr_Type
+  !! NOTE: this declaration must match the layout of C struct Polcorr_Type.
   type, bind(c), public :: polcorrect_type
     type(c_ptr) :: rad_file    !< radiance file name
     type(c_ptr) :: qu_file     !< QU lookup table file name
@@ -96,6 +107,9 @@ module polcorrect_module
 
 contains
 
+  !> Perform polarization correction on a specified radiance file
+  !! @param[in]  pt   Pointer to a C structure of type \a Polcorr_Type
+  !! @return on success, 0, on error, -1
   integer(c_int) function polcorrect (pt) bind (C, name='polcorrect')
     use polpredict_module, only: pp_dealloc, polpredict_type
     implicit none

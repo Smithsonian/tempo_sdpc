@@ -1,3 +1,12 @@
+!> Polarization prediction module
+!! @file
+!!
+!! This module provides an interface to a polarization state lookup table.
+!! Member functions process observed radiances to derive parameters
+!! such as cloud-top pressure, albedo, and ozone column, that are then
+!! used to interpolate in the lookup table and derive a predicted
+!! polarization state defined in terms of Stokes parameters Q and U.
+!! All externally visible routines are prefixed with \a pp_.
 module polpredict_module
   use netcdf
   use tell_module
@@ -12,6 +21,11 @@ module polpredict_module
   public pp_interp_ozone_profile, pp_ozone_zone_info, pp_derive_scene_pressure
   public pp_derive_ctp, pp_derive_to3, pp_derive_albcld, pp_get_qu
 
+  !> Data structure for Polarization lookup table
+  !! Note that the internal structure of this lookup table is
+  !! private to this file (and should stay private!).
+  !! If any outside code needs something from this lookup table,
+  !! that access should be provided by a function defined in this file.
   type, public :: polpredict_type
     private
     type (ndi_dim) :: qu_dims(7)  ! (wav,alb,pre,ozo,sza,vza,raa)
@@ -88,6 +102,7 @@ contains
 
   end subroutine pp_interp_ozone_profile
 
+  !> Interpolate ozone colume at a specified pressure
   subroutine pp_interp_ozone_pre (lut_s, lat0, lon0, pre, oz0_r8, errstat)
     implicit none
     type (polpredict_type), intent(in) :: lut_s
@@ -129,6 +144,7 @@ contains
 
   end subroutine pp_ozone_zone_info
 
+  !> Interpolate cloud top pressure
   subroutine pp_interp_ctp (lut_s, lat0, lon0, ctp_r8, errstat)
     implicit none
     type (polpredict_type), intent(in) :: lut_s
@@ -219,12 +235,14 @@ contains
 
   end subroutine pp_interp_surface_albedo
 
+  !> Query whether or not the lookup table has been initialized
   logical function pp_initialized (lut_s)
     implicit none
     type (polpredict_type), intent(in) :: lut_s
     pp_initialized = allocated (lut_s % qu_dims(1) % x)
   end function pp_initialized
 
+  !> deallocate the lookup table
   subroutine pp_dealloc (lut_s, errstat)
     implicit none
     type (polpredict_type), intent(inout) :: lut_s
@@ -250,6 +268,7 @@ contains
 
   end subroutine pp_dealloc
 
+  !> Retrieve the lookup table's high resolution wavelength grid
   subroutine pp_get_wav (lut_s, wav, errstat)
     implicit none
     type (polpredict_type), intent(in) :: lut_s
@@ -265,6 +284,7 @@ contains
     wav(:) = lut_s % qu_dims(iqu_wav) % x(:)
   end subroutine pp_get_wav
 
+  !> Retrieve the lookup table's low resolution wavelength grid
   subroutine pp_get_swav (lut_s, ibeg, iend, swav, errstat)
     implicit none
     type (polpredict_type), intent(in) :: lut_s
@@ -294,6 +314,7 @@ contains
 
   end subroutine pp_get_swav
 
+  !> Read the polarization lookup table
   subroutine pp_read (obj, subset, fmonth, lut, errstat)
     implicit none
     type (tiof_file_type), intent(inout) :: obj
@@ -737,6 +758,13 @@ contains
 
   end subroutine dup_dims
 
+  !> Derive scene pressure for LER by weighting surface pressure
+  !! and cloud pressure from an MLER model
+  !! \li \c LER   Lambertian equivalent reflectance, treat the entire scene
+  !!              as a surface with a scene albedo and scene pressure
+  !! \li \c MLER  Mixed lambertian equivalent reflectance, treat the scene
+  !!              as a mixture of clear sky scene (surface albedo, pressure)
+  !!              and cloudy-sky scene (cloud albedo, pressure)
   subroutine pp_derive_scene_pressure (lut_s, cld_wave_index, srad, &
                                        sza, vza, raa, oz, oz_info, &
                                        snalbs, snps, ctp, errstat)
@@ -811,6 +839,14 @@ contains
 
   end subroutine pp_derive_scene_pressure
 
+  !> Derive scene pressure/albedo
+  !!
+  !! Derive scene pressure/albedo for using LER model and
+  !! cloud pressure/fractions for using a MLER model using
+  !! triplet wavelengths (1 absorption peak and 2 wings on
+  !! side) in the O2-O2 absorption spectral region
+  !! (~469, 477, 485 nm) or in the O2-B spectral region
+  !! (683.0, 687.2, 691.4 nm)
   subroutine pp_derive_ctp (lut_s, use_mler, srad, &
                             sza, vza, raa, oz, oz_info, wave_indices, &
                             nscene, ctp, cfracs, snalbs, snps, status, errstat)
@@ -1176,6 +1212,13 @@ contains
 
   end subroutine derive_ctp_mler
 
+  !> Derive total ozone down to the surface
+  !!
+  !! Derive total ozone down to surface using triplet wavelengths
+  !! in the Huggins bands (~317, 333, 367 nm) or in the Chappuis
+  !! bands (564, 602, 640 nm). In the UV, it is based on the differential
+  !! ozone absorption at 317/333 nm in the UV and the ratio of radiance at
+  !! absorption peak to average radiance at the two absorption wings
   subroutine pp_derive_to3 (lut_s, use_mler, swav, srad, &
                             sza, vza, raa, oz, oz_info, wave_indices, &
                             nscene, cfracs, snalbs, snps, status, errstat)
@@ -1554,8 +1597,8 @@ contains
 
   end subroutine pp_derive_to3
 
-  ! Purpose: derive effective cloud fraction (for MLER model) or
-  !          scene albedo (for LER model)
+  !> Derive effective cloud fraction (for MLER model) or
+  !! scene albedo (for LER model)
   subroutine pp_derive_albcld (lut_s, use_mler, swav, srad, &
                                sza, vza, raa, oz, oz_info, &
                                nscene, cfrac, snalbs, snps, errstat)
@@ -1683,6 +1726,7 @@ contains
 
   end subroutine pp_derive_albcld
 
+  !> Interpolate Stokes parameters, Q, U as a function of wavelength
   subroutine pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, oz_info, &
                         nscene, cfrac0, snalbs0, snps, qu_range, out_q, out_u, &
                         errstat)
