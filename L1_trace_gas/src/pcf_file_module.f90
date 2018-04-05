@@ -103,7 +103,7 @@ CONTAINS
          OMBRO_amf_filename, OMSAO_solcomp_filename, voc_amf_filenames,      &
          refspecs_original, OMSAO_solmonthave_filename,                      &
          OMSAO_refseccor_filename, OMSAO_OMLER_filename,                     &
-         OMSAO_refseccor_cld_filename, l1b_radref_filename
+         OMSAO_refseccor_cld_filename, l1b_radref_filename, mdlist_filename
     USE OMSAO_prefitcol_module, ONLY: o3_prefit_fname, bro_prefit_fname, &
          lqh2o_prefit_fname
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
@@ -112,6 +112,7 @@ CONTAINS
     USE control_module, ONLY: read_fitting_control_file
     USE sao_pge_utils, ONLY: get_pge_ident
     USE strutils, ONLY: remove_quotes
+    use ctrlvars, only: yn_wrt_odl
 
     IMPLICIT NONE
 
@@ -483,6 +484,20 @@ CONTAINS
       call tell_error(tell_io_read_error, &
            "read_pcf_file: failed to read L2 output LUN", errstat)
       return
+    endif
+
+    !-------------------------------------------------------
+    ! if writing metadata with netCDF, get namelist filename
+    !-------------------------------------------------------
+    if (yn_wrt_odl) then
+      call do_pgs_get_reference (mdlist_LUN, "PGE_MDLIST_LUN", &
+           OMSAO_F_GETLUN, pge_errstat_fatal, &
+           mdlist_filename, pge_error_status)
+      IF ( pge_error_status >= pge_errstat_error ) then
+        call tell_error(tell_io_read_error, &
+             "read_pcf_file: failed to read metadata list LUN", errstat)
+        return
+      endif
     endif
 
     ! ---------------------------------------------------------

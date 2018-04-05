@@ -34,6 +34,12 @@ METSRC_OBJS = $(MET_SRC)/$(archobjs)
 METINCS     = -I$(METSRC_OBJS)
 METLIBS     = -L$(MET_LIB) -L$(METSRC_OBJS) -lmet_f
 
+MD_LIB      = $(prefix)/lib
+MD_SRC      = $(config_dir)/libmd/src
+MDSRC_OBJS  = $(MD_SRC)/$(archobjs)
+MDINCS      = -I$(MDSRC_OBJS)
+MDLIBS      = -L$(MD_LIB) -L$(MDSRC_OBJS) -lmd_f
+
 TELLINCS    = -I$(TELL_INC)
 TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
 
@@ -52,11 +58,11 @@ PGSINCS     = -I$(PGSINC)
 PGSLIBS     = -L$(PGSLIB) -lPGSTK
 
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
-         $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(METINCS)
+         $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(METINCS) $(MDINCS)
 
 LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
-         $(LDPATH) $(TIOLIBS) $(METLIBS) -lm $(DL_LIB)
+         $(LDPATH) $(TIOLIBS) $(METLIBS) $(MDLIBS) -lm $(DL_LIB)
 
 CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS)
 

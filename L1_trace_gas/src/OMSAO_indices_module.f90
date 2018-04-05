@@ -319,7 +319,8 @@ MODULE OMSAO_indices_module
     pge_molid_lun          = 700000, & ! LUN for PGE molecule ID; registered
     l1b_radiance_lun       = 700010, & ! PGE L1B radiance file (both UV or VIS)
     l1b_radianceref_lun    = 700015, & ! PGE L1B Radiance Reference file
-    l1b_irradiance_lun     = 700020    ! PGE L1B Solar irradiance  file
+    l1b_irradiance_lun     = 700020, & ! PGE L1B Solar irradiance  file
+    mdlist_lun             = 700002    ! LUN for metadata namelist
 
   ! -----------------------------------------------------------------
   ! Place any of the above LUNs that are associated with Config data

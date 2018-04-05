@@ -109,6 +109,7 @@ $(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/tg_names_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_fitting_aux.o: $(SDIR)/omi_pge_fitting_aux.f90 \
@@ -408,6 +409,7 @@ $(ODIR)/control_module.o: $(SDIR)/control_module.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/control_module.f90 -o $(ODIR)/control_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/pcf_file_module.o: $(SDIR)/pcf_file_module.f90 \
   $(ODIR)/control_module.o \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/metadata_tools.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \

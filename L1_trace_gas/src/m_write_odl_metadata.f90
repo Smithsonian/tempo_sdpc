@@ -8,7 +8,9 @@ module m_write_odl_metadata
   use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
   use OMSAO_indices_module, only: mcf_lun
   use OMSAO_omidata_module, only: omi_radiance_swathname
+  use OMSAO_variables_module, only: mdlist_filename
   use m_pgs_include
+  use md_module
 
   implicit none
 
@@ -36,11 +38,6 @@ contains
   function write_odl_metadata(l1bfile, outfilnm, nXtrack, nLines, &
        lun_input, ninp) result(errstat)
 
-    use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
-    use OMSAO_indices_module, only: mcf_lun
-    use OMSAO_omidata_module, only: omi_radiance_swathname
-    use m_pgs_include
-
     implicit none
 
     !input variables
@@ -53,6 +50,7 @@ contains
     !local variables
     integer, parameter :: INVENTORY=2
     integer, parameter :: ninvname=5
+
 
     real (kind=4), dimension(nXtrack, nLines) :: lon, lat
 
@@ -280,7 +278,23 @@ contains
       endif
     enddo
 
+    ! Write archive metadata attributes to netCDF file
+    ! do this first since pgs_met functions apparently leave nc file open!
+    call open_md(outfilnm, errstat)
+    call write_geo_bounds_md(nXtrack, nLines, lat, lon, errstat)
+    call write_inputs_md(ninp, InputPnt, errstat)
+    call write_fixed_md(mdlist_filename,errstat)!md_namelist, errstat)
+    call write_prodid_md(outfilnm,"(1)",errstat)
+    call close_md(errstat)
 
+    if (errstat /= 0) then
+      call tell_error(tell_io_error, &
+           "write_odl_metadata: failed writing netCDF attributes", &
+           errstat)
+      return
+    endif
+
+    ! write ODL-format text file
     version =1
 
     returnstatus = pgs_met_sfstart( trim(outfilnm), HDF5_ACC_RDWR,sdid)
@@ -308,6 +322,7 @@ contains
     endif
 
     returnstatus = pgs_met_remove()
+
 
 
 

@@ -268,6 +268,12 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_OMLER_filename
 
+  !-------------------------------------------------------
+  ! Namelist file for boilerplate metadata
+  !-------------------------------------------------------
+  CHARACTER (LEN=MAX_STR_LEN) :: mdlist_filename
+
+
   ! -------------------------------------------------------
   ! Variables connected with  a radiance reference spectrum
   ! -------------------------------------------------------
