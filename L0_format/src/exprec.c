@@ -27,7 +27,8 @@
    char *exprec_type_string; \
    int exprec_type; \
    int outfile_erec_capacity; \
-   int outfile_erec_count;
+   int outfile_erec_count; \
+   unsigned int curr_mirror_step;
 #include "l0_format.h"
 
 #define EXPREC_ENUM_TABLE_SIZE 16
@@ -150,6 +151,10 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    pmt->exprec_type = erec->exprec_type;
    pmt->outfile_erec_count = 0;
 
+   if (NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step",
+                                             &pmt->curr_mirror_step))
+     return -1;
+
    ioclib_free (pmt->exprec_type_string);
    pmt->exprec_type_string = NULL;
 
@@ -213,20 +218,41 @@ return_status:
    return -1;
 }
 
-static int select_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
-                           IOCSDPC_Exprec_Type *erec)
+enum
 {
-   /* A new file will be opened when either:
-    *  a) a new exposure record type is encountered, or
-    *  b) when the output file max capacity reached.
-    * FIXME? - should the output file also closed after a timeout?
-    */
-   if ((pmt->ncid != INT_MAX)
-       && (pmt->exprec_type == erec->exprec_type)
-       && (pmt->outfile_erec_count < pmt->outfile_erec_capacity))
-     return 0;
+   OUTFILE_ERROR = -1,
+   OUTFILE_CURRENT = 0,
+   OUTFILE_NEW = 1
+};
 
-   return new_outfile (pmt, tpinfo, erec);
+static int decide_if_new_outfile (Process_Method_Type *pmt, IOCSDPC_Exprec_Type *erec)
+{
+   /* Open a new file when:
+    * - we haven't opened a file yet, or
+    * - the current file is full, or
+    * - we're processing a different type of exposure.
+    */
+   if ((pmt->ncid == INT_MAX)
+       || (pmt->outfile_erec_count >= pmt->outfile_erec_capacity)
+       || (pmt->exprec_type != erec->exprec_type))
+     {
+        return OUTFILE_NEW;
+     }
+
+   if (erec->exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE)
+     {
+        unsigned int prev_mirror_step = pmt->curr_mirror_step;
+        if (NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step",
+                                                  &pmt->curr_mirror_step))
+          {
+             return OUTFILE_ERROR;
+          }
+        /* Open a new file when a new radiance scan starts: */
+        if (pmt->curr_mirror_step < prev_mirror_step)
+          return OUTFILE_NEW;
+     }
+
+   return OUTFILE_CURRENT;
 }
 
 static int write_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
@@ -313,12 +339,26 @@ static int process_exprec (Process_Method_Type *pmt,
                            int fd, IOCSDPC_Common_Header_Type *chdrp)
 {
    IOCSDPC_Exprec_Type *erec;
+   int outfile_decision;
 
    if (NULL == (erec = iocsdpc_exprec_fdopen_read (file, fd, chdrp)))
      return -1;
 
-   if (-1 == select_outfile (pmt, tpinfo, erec))
-     goto return_status;
+   outfile_decision = decide_if_new_outfile (pmt, erec);
+
+   switch (outfile_decision)
+     {
+      case OUTFILE_CURRENT:
+        break;
+      case OUTFILE_NEW:
+        if (0 != new_outfile (pmt, tpinfo, erec))
+          goto return_status;
+        break;
+      case OUTFILE_ERROR:
+        /* drop */
+      default:
+        goto return_status;
+     }
 
    if (-1 == write_exprec (pmt, tpinfo, erec))
      goto return_status;
