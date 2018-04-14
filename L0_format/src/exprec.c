@@ -697,8 +697,8 @@ static int process_exprec (Process_Method_Type *pmt,
    if (radiance_belongs_to_curr_granule (pmt, &file_info))
      return 0;
 
-   /* When we see a file that doesn't belong to the current
-    * radiance granule, we expect no more additions to it. */
+   /* When we see a frame that doesn't belong to the current
+    * radiance granule, that granule is complete. */
    return process_cache (pmt, tpinfo, 0);
 }
 
