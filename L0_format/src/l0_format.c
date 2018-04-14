@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
+#include <wordexp.h>
 
 #include <ioclib.h>
 #include <iocsdpc.h>
@@ -32,10 +33,10 @@ Process_Method_Table_Type;
 
 typedef struct
 {
-   const char *incoming_dir;
-   const char *tpinfo_file;
    const char *input_filename_glob_pattern;
-   const char *daemon_logfile_path;
+   char *incoming_dir;
+   char *tpinfo_file;
+   char *daemon_logfile_path;
    double monitor_wait_secs;
    double cache_flush_idle_wait_secs;
    int exit_on_emptydir;
@@ -54,10 +55,47 @@ static void usage (void)
    exit (EXIT_SUCCESS);
 }
 
+char *expand_string (const char *s)
+{
+   wordexp_t we = {0};
+   char *s_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof (wordexp_t));
+
+   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, s ? s : "(null)");
+        wordfree (&we);
+        return NULL;
+     }
+
+   s_exp = strdup (we.we_wordv[0]);
+   wordfree (&we);
+
+   if (NULL == s_exp)
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
+     }
+
+   return s_exp;
+}
+
+static void free_control_type_fields (Control_Type *ctrl)
+{
+   FREE(ctrl->incoming_dir);
+   FREE(ctrl->tpinfo_file);
+   FREE(ctrl->daemon_logfile_path);
+}
+
 static int parse_param_file (config_t *cfg, const char *cfg_file,
                              Control_Type *ctrl)
 {
    config_setting_t *s;
+   const char *incoming_dir;
+   const char *tpinfo_file;
+   const char *daemon_logfile_path;
 
    if (0 == config_read_file (cfg, cfg_file))
     {
@@ -76,10 +114,10 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "incoming_dir", &ctrl->incoming_dir))
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "incoming_dir", &incoming_dir))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "input_filename_glob_pattern", &ctrl->input_filename_glob_pattern))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &ctrl->tpinfo_file))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "daemon_logfile_path", &ctrl->daemon_logfile_path))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &tpinfo_file))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "daemon_logfile_path", &daemon_logfile_path))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
       )
@@ -87,6 +125,13 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'main' parameters in param file: %s",
                      __func__, cfg_file);
+        return -1;
+     }
+
+   if ((NULL == (ctrl->incoming_dir = expand_string (incoming_dir)))
+       || (NULL == (ctrl->tpinfo_file = expand_string (tpinfo_file)))
+       || (NULL == (ctrl->daemon_logfile_path = expand_string (daemon_logfile_path))))
+     {
         return -1;
      }
 
@@ -125,7 +170,7 @@ static int process_file (const Process_Method_Table_Type *tbl,
    if (NULL == (pmt = find_process_method (tbl, file)))
      return -1;
 
-   return pmt->process (pmt, tpinfo, file);
+   return pmt->pmt_process (pmt, tpinfo, file);
 }
 
 static int process_dir_files (const Process_Method_Table_Type *tbl,
@@ -172,9 +217,9 @@ static int flush_caches (const Process_Method_Table_Type *tbl,
    for (; tbl->init != NULL; tbl++)
      {
         pmt = tbl->method;
-        if (pmt->flush_cache)
+        if (pmt->pmt_flush_cache)
           {
-             if (0 != pmt->flush_cache (pmt, tpinfo))
+             if (0 != pmt->pmt_flush_cache (pmt, tpinfo))
                num_failed++;
           }
      }
@@ -219,9 +264,9 @@ static void delete_methods_table (Process_Method_Table_Type *tbl)
    for ( ; tbl->init != NULL; tbl++)
      {
         Process_Method_Type *m = tbl->method;
-        if ((m != NULL) && (m->delete != NULL))
+        if ((m != NULL) && (m->pmt_delete != NULL))
           {
-             m->delete (m);
+             m->pmt_delete (m);
           }
      }
 }
@@ -470,7 +515,7 @@ int main (int argc, char **argv)
    const char *appname = "L0_format";
    const char *param_file = "l0_format.cfg";
    Process_Method_Table_Type *tbl = Method_Table;
-   Control_Type ctrl;
+   Control_Type ctrl = {0};
    config_t cfg;
    TPInfo_Type *tp = NULL;
    int verbose = 0;
@@ -563,6 +608,7 @@ return_status:
         tell_vinfo (0, "daemon exiting: status = %d (pid=%d)",
                     status, getpid());
      }
+   free_control_type_fields (&ctrl);
    tpinfo_free (tp);
    config_destroy (&cfg);
    tell_close();

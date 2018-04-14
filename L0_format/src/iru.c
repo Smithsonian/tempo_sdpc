@@ -20,7 +20,7 @@
 #include <tio_template.h>
 
 #define PROCESS_METHOD_PRIVATE_DATA \
-   const char *out_dirname; \
+   char *out_dirname; \
    char *out_basename; \
    int ncid; \
    int processing_version; \
@@ -84,6 +84,7 @@ static void delete_iru (Process_Method_Type *pmt)
      return;
    (void) close_iru_outfile (pmt);
    ioclib_free (pmt->out_basename);
+   FREE(pmt->out_dirname);
    FREE(pmt->outbuf);
    FREE(pmt);
 }
@@ -406,6 +407,7 @@ return_status:
 static int parse_iru_params (config_t *cfg, Process_Method_Type *pmt)
 {
    config_setting_t *s;
+   const char *out_dirname;
 
    if (NULL == (s = config_lookup (cfg, "iru")))
      {
@@ -416,7 +418,7 @@ static int parse_iru_params (config_t *cfg, Process_Method_Type *pmt)
      }
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &pmt->processing_version))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &pmt->out_dirname))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "outfile_deltat_sec", &pmt->outfile_deltat_sec))
       )
      {
@@ -425,6 +427,9 @@ static int parse_iru_params (config_t *cfg, Process_Method_Type *pmt)
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if (NULL == (pmt->out_dirname = expand_string (out_dirname)))
+     return -1;
 
    return 0;
 }
@@ -446,8 +451,10 @@ Process_Method_Type *init_iru_method (config_t *cfg)
         return NULL;
      }
 
-   pmt->process = process_iru;
-   pmt->delete = delete_iru;
+   pmt->pmt_process = process_iru;
+   pmt->pmt_delete = delete_iru;
+   pmt->pmt_flush_cache = NULL;
+
    pmt->out_basename = NULL;
    pmt->ncid = INT_MAX;
    pmt->outfile_timestamp_start = -1.0;

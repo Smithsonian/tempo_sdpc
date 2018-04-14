@@ -42,7 +42,8 @@ File_Info_Type;
 
 #define PROCESS_METHOD_PRIVATE_DATA \
    Enum_Lookup_Type *enum_lookup; \
-   const char *out_dirname; \
+   char *cache_dirname; \
+   char *out_dirname; \
    char *out_basename; \
    int ncid; \
    int processing_version; \
@@ -52,8 +53,7 @@ File_Info_Type;
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
-   Granule_Schedule_Type radiance_sched; \
-   const char *cache_dirname;
+   Granule_Schedule_Type radiance_sched;
 #include "l0_format.h"
 
 #define EXPREC_ENUM_TABLE_SIZE 16
@@ -581,14 +581,14 @@ static int cache_file (const char *cache_dirname, const char *file)
    return status;
 }
 
-static int radiance_belongs_to_later_granule (const Process_Method_Type *pmt,
-                                              const File_Info_Type *file_info)
+static int radiance_belongs_to_curr_granule (const Process_Method_Type *pmt,
+                                             const File_Info_Type *file_info)
 {
    const Granule_Schedule_Type *sched = &pmt->radiance_sched;
    unsigned int step_ubound = sched->granule_ubound[sched->curr_granule];
    if (file_info->exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
      return 0;
-   return (file_info->curr_mirror_step >= step_ubound);
+   return (file_info->curr_mirror_step < step_ubound);
 }
 
 static int classify_file (const char *file, File_Info_Type *info)
@@ -678,7 +678,8 @@ static int process_exprec (Process_Method_Type *pmt,
      return 0;
 
    /* For radiance exposure records, we know how many to expect,
-    * so we generate granules according to a pre-planned schedule */
+    * so we generate granules according to a pre-planned schedule.
+    */
 
    pmt->curr_mirror_step = file_info.curr_mirror_step;
 
@@ -687,23 +688,25 @@ static int process_exprec (Process_Method_Type *pmt,
 
    if (is_new_scan || is_new_scan_length)
      {
-        /* new schedule upon new scan resets sched->curr_granule to 0 */
+        /* New schedule upon new scan resets sched->curr_granule to 0 */
         if (0 != schedule_granules (file_info.num_mirror_steps,
                                     &pmt->radiance_sched))
           return -1;
      }
 
-   if (radiance_belongs_to_later_granule (pmt, &file_info))
-     {
-        return process_cache (pmt, tpinfo, 0);
-     }
+   if (radiance_belongs_to_curr_granule (pmt, &file_info))
+     return 0;
 
-   return 0;
+   /* When we see a file that doesn't belong to the current
+    * radiance granule, we expect no more additions to it. */
+   return process_cache (pmt, tpinfo, 0);
 }
 
 static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
 {
    config_setting_t *s;
+   const char *out_dirname;
+   const char *cache_dirname;
    int size_default, size_max;
 
    if (NULL == (s = config_lookup (cfg, "exprec")))
@@ -715,8 +718,8 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
      }
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &pmt->processing_version))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &pmt->out_dirname))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "cache_dir", &pmt->cache_dirname))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "cache_dir", &cache_dirname))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_default", &size_default))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_max", &size_max)))
      {
@@ -725,6 +728,10 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if ((NULL == (pmt->out_dirname = expand_string (out_dirname)))
+       || (NULL == (pmt->cache_dirname = expand_string (cache_dirname))))
+     return -1;
 
    pmt->radiance_sched.size_default = size_default;
    pmt->radiance_sched.size_max = size_max;
@@ -739,6 +746,8 @@ static void delete_exprec (Process_Method_Type *pmt)
    (void) close_outfile (pmt);
    ioclib_free (pmt->exprec_type_string);
    FREE(pmt->out_basename);
+   FREE(pmt->out_dirname);
+   FREE(pmt->cache_dirname);
    FREE(pmt);
 }
 
@@ -765,9 +774,9 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
         return NULL;
      }
 
-   pmt->process = process_exprec;
-   pmt->delete = delete_exprec;
-   pmt->flush_cache = flush_cache;
+   pmt->pmt_process = process_exprec;
+   pmt->pmt_delete = delete_exprec;
+   pmt->pmt_flush_cache = flush_cache;
 
    pmt->out_basename = NULL;
    pmt->ncid = INT_MAX;

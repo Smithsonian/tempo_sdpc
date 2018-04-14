@@ -43,6 +43,14 @@
 
 #define L0_DEFAULT_OUTFILE_DURATION_SEC 300.0
 
+/** Perform shell variable expansion on a string
+ * @param[in]  s  Input string
+ * @return on success, an allocated string, NULL on error.
+ *
+ * Use \a free to free the allocated string.
+ */
+extern char *expand_string (const char *s);
+
 /** Write a global time-stamp attribute to an open netCDF file
  * @param[in] ncid  Index of a netCDF file, opened for writing.
  * @param[in] tstamp_name  Name of time-stamp variable, normally one either
@@ -94,9 +102,9 @@ extern int annotate_var (int grp, int varid, const char *descr, const char *unit
 typedef struct Process_Method_Type Process_Method_Type;
 struct Process_Method_Type
 {
-   int (*process)(Process_Method_Type *, const TPInfo_Type *, const char *);
-   void (*delete)(Process_Method_Type *);
-   int (*flush_cache)(Process_Method_Type *, const TPInfo_Type *);
+   int (*pmt_process)(Process_Method_Type *, const TPInfo_Type *, const char *);
+   void (*pmt_delete)(Process_Method_Type *);
+   int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *);
 
 #ifdef PROCESS_METHOD_PRIVATE_DATA
    PROCESS_METHOD_PRIVATE_DATA
