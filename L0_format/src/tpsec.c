@@ -102,6 +102,8 @@ static int new_outfile (Process_Method_Type *pmt, double timestamp)
           return -1;
      }
 
+   tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
+
    if (-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
      return -1;
    ioclib_free (pmt->out_basename);
@@ -478,17 +480,21 @@ static void free_tpsec_row_list (IOCSDPC_TPSec_Row_Type **row_list, int nrows)
 }
 
 static int process_tpsec_file
-(Process_Method_Type *pmt, const TPInfo_Type *tpinfo, const char *file,
-    int fd, IOCSDPC_Common_Header_Type *chdrp)
+(Process_Method_Type *pmt, const TPInfo_Type *tpinfo, const char *file)
 {
+   IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_TPSec_Type *s;
    IOCSDPC_TPSec_Row_Type **row_list = NULL;
    unsigned int i, nrows;
+   int fd;
 
    (void) pmt;
 
-   if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, chdrp)))
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+
+   if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, &chdr)))
+     goto return_error;
 
    nrows = s->num_rows;
 
@@ -510,11 +516,13 @@ static int process_tpsec_file
 
    free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
+   ioclib_fd_close (fd);
    return 0;
 
 return_error:
    free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
+   ioclib_fd_close (fd);
    return -1;
 }
 

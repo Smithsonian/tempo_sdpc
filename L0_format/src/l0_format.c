@@ -37,6 +37,7 @@ typedef struct
    const char *input_filename_glob_pattern;
    const char *daemon_logfile_path;
    double monitor_wait_secs;
+   double cache_flush_idle_wait_secs;
    int exit_on_emptydir;
    int daemon;
 }
@@ -49,6 +50,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -d | --daemon            Run as a daemon\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
+   fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -79,6 +81,7 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
        || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &ctrl->tpinfo_file))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "daemon_logfile_path", &ctrl->daemon_logfile_path))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
       )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -91,8 +94,16 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
 }
 
 static Process_Method_Type *
-find_process_method (const Process_Method_Table_Type *tbl, int filetype)
+find_process_method (const Process_Method_Table_Type *tbl, const char *file)
 {
+   IOCSDPC_Common_Header_Type chdr;
+   int fd, filetype;
+
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
+     return NULL;
+   filetype = chdr.filetype;
+   (void) ioclib_fd_close (fd);
+
    for ( ; tbl->init != NULL; tbl++)
      {
         if (tbl->filetype == filetype)
@@ -110,20 +121,11 @@ static int process_file (const Process_Method_Table_Type *tbl,
                          const char *file)
 {
    Process_Method_Type *pmt;
-   IOCSDPC_Common_Header_Type chdr;
-   int fd, status;
 
-   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
+   if (NULL == (pmt = find_process_method (tbl, file)))
      return -1;
 
-   if (NULL == (pmt = find_process_method (tbl, chdr.filetype)))
-     return -1;
-
-   status = pmt->process (pmt, tpinfo, file, fd, &chdr);
-
-   (void) ioclib_fd_close (fd);
-
-   return status;
+   return pmt->process (pmt, tpinfo, file);
 }
 
 static int process_dir_files (const Process_Method_Table_Type *tbl,
@@ -137,13 +139,18 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
         char *file = file_list[i];
         if (0 == process_file (tbl, tpinfo, file))
           {
-             tell_vlog (TELL_MSGTYPE_INFO, 0, "processed: %s", file);
-             if (0 != ioclib_unlink (file))
-               return -1;
+             tell_vinfo (1, "processed: %s", file);
+             /* If processing involved a rename, then deletion
+              * will be handled elsewhere. */
+             if (ioclib_isfile (file))
+               {
+                  if (0 != ioclib_unlink (file))
+                    return -1;
+               }
           }
         else
           {
-             tell_vlog (TELL_MSGTYPE_INFO, 0, "bad file: %s", file);
+             tell_vinfo (0, "bad file: %s", file);
              if (0 != ioclib_rename_to_bad_file (file))
                {
                   tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_rename_to_bad_file failed, file=%s",
@@ -154,6 +161,25 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
      }
 
    return 0;
+}
+
+static int flush_caches (const Process_Method_Table_Type *tbl,
+                         const TPInfo_Type *tpinfo)
+{
+   Process_Method_Type *pmt;
+   int num_failed = 0;
+
+   for (; tbl->init != NULL; tbl++)
+     {
+        pmt = tbl->method;
+        if (pmt->flush_cache)
+          {
+             if (0 != pmt->flush_cache (pmt, tpinfo))
+               num_failed++;
+          }
+     }
+
+   return num_failed;
 }
 
 #define PROCESS_METHOD(filetype,init) {filetype,NULL,init}
@@ -241,8 +267,7 @@ static void log_caught_signal (void)
    else
      signame = "unknown";
 
-   tell_vlog (TELL_MSGTYPE_INFO, 0, "caught signal: %s (pid=%d)",
-              signame, getpid());
+   tell_vinfo (0, "caught signal: %s (pid=%d)", signame, getpid());
 }
 
 #define CAUGHT_SIGNAL (Sighup_Received || Sigint_Received)
@@ -252,12 +277,13 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
 {
    IOCLib_Glob_Type *gt = NULL;
    char *pattern = NULL;
-   int status = -1;
+   int may_have_cached_files, status = -1;
+   double time_since_last_file;
 
    pattern = ioclib_pathconcat (ctrl->incoming_dir,
                                 ctrl->input_filename_glob_pattern);
 
-   tell_vlog (TELL_MSGTYPE_INFO, 0, "processing %s", pattern);
+   tell_vinfo (0, "processing %s", pattern);
 
    if (NULL == pattern)
      {
@@ -265,6 +291,9 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
                     __func__);
         return -1;
      }
+
+   time_since_last_file = 0.0;
+   may_have_cached_files = 0;
 
    while (CAUGHT_SIGNAL == 0)
      {
@@ -283,10 +312,34 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
           goto return_status;
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
+
+        if (gt->num_files)
+          {
+             time_since_last_file = 0.0;
+             may_have_cached_files = 1;
+          }
+        else
+          {
+             time_since_last_file += ctrl->monitor_wait_secs;
+          }
+
+        if ((may_have_cached_files != 0) &&
+            (time_since_last_file > ctrl->cache_flush_idle_wait_secs))
+          {
+             tell_vinfo (0, "flush caches (%g sec since last file)", time_since_last_file);
+             if (0 != flush_caches (tbl, tpinfo))
+               goto return_status;
+             may_have_cached_files = 0;
+          }
      }
 
    if (CAUGHT_SIGNAL)
      log_caught_signal();
+
+   /* FIXME - use a timer to invoke this occasionally? */
+   tell_vinfo (0, "flush caches on exit");
+   if (0 != flush_caches (tbl, tpinfo))
+     goto return_status;
 
    status = 0;
 return_status:
@@ -420,12 +473,14 @@ int main (int argc, char **argv)
    Control_Type ctrl;
    config_t cfg;
    TPInfo_Type *tp = NULL;
+   int verbose = 0;
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
         {"daemon",  no_argument, 0, 'd'},
         {"empty",   no_argument, 0, 'e'},
+        {"verbose", no_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -434,7 +489,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hde", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hdev", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -451,6 +506,9 @@ int main (int argc, char **argv)
              break;
            case 'e':
              ctrl.exit_on_emptydir = 1;
+             break;
+           case 'v':
+             verbose++;
              break;
           }
      }
@@ -471,6 +529,7 @@ int main (int argc, char **argv)
      }
 
    tell_open (appname, -1, 0);
+   tell_set_log_level (TELL_MSGTYPE_INFO, verbose);
    config_init (&cfg);
 
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
@@ -488,7 +547,7 @@ int main (int argc, char **argv)
         tell_close();
         if (0 != daemonize (appname, ctrl.daemon_logfile_path))
           goto return_status;
-        tell_vlog (TELL_MSGTYPE_INFO, 0, "daemon started (pid=%d)", getpid());
+        tell_vinfo (0, "daemon started (pid=%d)", getpid());
      }
    catch_sighup ();
    catch_sigint ();
@@ -501,8 +560,8 @@ int main (int argc, char **argv)
 return_status:
    if (ctrl.daemon)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 0, "daemon exiting: status = %d (pid=%d)",
-                   status, getpid());
+        tell_vinfo (0, "daemon exiting: status = %d (pid=%d)",
+                    status, getpid());
      }
    tpinfo_free (tp);
    config_destroy (&cfg);

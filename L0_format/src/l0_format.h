@@ -94,9 +94,9 @@ extern int annotate_var (int grp, int varid, const char *descr, const char *unit
 typedef struct Process_Method_Type Process_Method_Type;
 struct Process_Method_Type
 {
-   int (*process)(Process_Method_Type *, const TPInfo_Type *,
-                  const char *, int, IOCSDPC_Common_Header_Type *);
+   int (*process)(Process_Method_Type *, const TPInfo_Type *, const char *);
    void (*delete)(Process_Method_Type *);
+   int (*flush_cache)(Process_Method_Type *, const TPInfo_Type *);
 
 #ifdef PROCESS_METHOD_PRIVATE_DATA
    PROCESS_METHOD_PRIVATE_DATA

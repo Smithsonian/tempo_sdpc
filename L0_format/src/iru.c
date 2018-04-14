@@ -323,6 +323,8 @@ static int new_iru_outfile (Process_Method_Type *pmt, double timestamp)
           return -1;
      }
 
+   tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
+
    if (-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
      return -1;
    ioclib_free (pmt->out_basename);
@@ -350,17 +352,22 @@ static int select_iru_outfile (Process_Method_Type *pmt,
 }
 
 static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
-                        const char *file, int fd, IOCSDPC_Common_Header_Type *chdrp)
+                        const char *file)
 {
+   IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_IRU_Type *iru = NULL;
    IOCSDPC_IRU_Record_Type *rec_array = NULL;
    unsigned int num_read;
    size_t rec_array_size;
+   int fd;
 
    (void) tpinfo;
 
-   if (NULL == (iru = iocsdpc_iru_fdopen_read (file, fd, chdrp)))
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+
+   if (NULL == (iru = iocsdpc_iru_fdopen_read (file, fd, &chdr)))
+     goto return_status;
 
    rec_array_size = iru->num_records * IOCSDPC_IRU_RECORD_SIZE;
    if (NULL == (rec_array = (IOCSDPC_IRU_Record_Type *)MALLOC (rec_array_size)))
@@ -385,11 +392,13 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      goto return_status;
 
    iocsdpc_iru_close (iru);
+   ioclib_fd_close (fd);
    FREE(rec_array);
    return 0;
 
 return_status:
    iocsdpc_iru_close (iru);
+   ioclib_fd_close (fd);
    FREE(rec_array);
    return -1;
 }
