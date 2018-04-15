@@ -16,14 +16,11 @@
 #include <tio.h>
 #include <tell.h>
 
-/* crude but generous out-of-range values for TEMPO */
-#define MAX_NUM_MIRROR_STEPS 1500
-#define MAX_NUM_GRANULES 16
-
 typedef struct
 {
-   unsigned int granule_sizes[MAX_NUM_GRANULES];
-   unsigned int granule_ubound[MAX_NUM_GRANULES];
+   unsigned int *granule_sizes;
+   unsigned int *granule_ubound;
+   unsigned int num_granules_alloc;
    unsigned int num_granules;
    unsigned int num_recs;
    unsigned int size_default;
@@ -53,30 +50,60 @@ File_Info_Type;
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
-   Granule_Schedule_Type radiance_sched;
+   Granule_Schedule_Type sched;
 #include "l0_format.h"
 
 #define EXPREC_ENUM_TABLE_SIZE 16
+
+static void sched_free (Granule_Schedule_Type *sched)
+{
+   FREE(sched->granule_sizes);
+   memset ((char *)sched, 0, sizeof(Granule_Schedule_Type));
+}
+
+static int sched_realloc (Granule_Schedule_Type *sched, unsigned int n)
+{
+   unsigned int *m = NULL;
+   size_t len;
+
+   if (sched == NULL)
+     return -1;
+   if (n < sched->num_granules_alloc)
+     return 0;
+
+   /* allocate more than we need */
+   sched->num_granules_alloc = n + n/2;
+   len = sched->num_granules_alloc * sizeof(unsigned int);
+
+   if (NULL == (m = (unsigned int *)REALLOC (sched->granule_sizes, 2 * len)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: realloc failed", __func__);
+        return -1;
+     }
+
+   sched->granule_sizes = m;
+   sched->granule_ubound = m + sched->num_granules_alloc;
+   sched->num_granules = n;
+
+   return 0;
+}
 
 static int compute_granule_sizes (unsigned int num_recs,
                                   unsigned int num_granules,
                                   Granule_Schedule_Type *sched)
 {
    unsigned int i, n, remainder, ubound;
+   size_t len = sched->num_granules_alloc * sizeof(unsigned int);
 
-   if (num_granules > MAX_NUM_GRANULES)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: internal buffer size exceeded", __func__);
-        return -1;
-     }
+   if (0 != sched_realloc (sched, num_granules))
+     return -1;
+
+   memset ((char *)sched->granule_sizes, 0, len);
+   memset ((char *)sched->granule_ubound, 0, len);
 
    n = num_recs / num_granules;
    if (n < 1) n = 1;
    remainder = num_recs - n * num_granules;
-
-   memset ((char *)sched->granule_sizes, 0, MAX_NUM_GRANULES * sizeof(unsigned int));
-   memset ((char *)sched->granule_ubound, 0, MAX_NUM_GRANULES * sizeof(unsigned int));
 
    for (i = 0; i < num_granules; i++)
      {
@@ -387,12 +414,10 @@ return_status:
    return -1;
 }
 
-static int process_cache (Process_Method_Type *pmt,
-                          const TPInfo_Type *tpinfo,
+static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                           int process_all_files)
 {
    const char *cache_dirname = pmt->cache_dirname;
-   Granule_Schedule_Type other_sched = {0};
    Granule_Schedule_Type *sched = NULL;
    IOCSDPC_Exprec_Type *erec = NULL;
    char **files = NULL;
@@ -424,24 +449,20 @@ static int process_cache (Process_Method_Type *pmt,
 
    /* The schedule tells us how the exposure records should be packed
     * into granules. For radiances, the header tells us how many scan
-    * steps were commanded, so scheduling is easier.
+    * steps were commanded, so a schedule based on that was defined
+    * when the first frame of the scan arrived.
     * For other types of exposure records, we derive a packing schedule
     * based on the number of files we actually received. In most cases,
     * that will be a single granule, but we'll also handle the case when
     * multiple files might be needed.
     */
-   if (exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE)
+   if (exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
      {
-        sched = &pmt->radiance_sched;
-     }
-   else
-     {
-        /* struct copy: field defaults from radiance_sched */
-        other_sched = pmt->radiance_sched;
-        if (0 != schedule_granules (num_files, &other_sched))
+        if (0 != schedule_granules (num_files, &pmt->sched))
           return -1;
-        sched = &other_sched;
      }
+
+   sched = &pmt->sched;
 
    file_erec_count = 0;
    total_erec_count = 0;
@@ -584,7 +605,7 @@ static int cache_file (const char *cache_dirname, const char *file)
 static int radiance_belongs_to_curr_granule (const Process_Method_Type *pmt,
                                              const File_Info_Type *file_info)
 {
-   const Granule_Schedule_Type *sched = &pmt->radiance_sched;
+   const Granule_Schedule_Type *sched = &pmt->sched;
    unsigned int step_ubound = sched->granule_ubound[sched->curr_granule];
    if (file_info->exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
      return 0;
@@ -622,7 +643,6 @@ static int classify_file (const char *file, File_Info_Type *info)
      return 0;
 
    if ((info->num_mirror_steps == 0)
-       || (info->num_mirror_steps > MAX_NUM_MIRROR_STEPS)
        || (info->curr_mirror_step >= info->num_mirror_steps))
      {
         tell_vlog (TELL_MSGTYPE_INFO, 0,
@@ -683,14 +703,13 @@ static int process_exprec (Process_Method_Type *pmt,
 
    pmt->curr_mirror_step = file_info.curr_mirror_step;
 
-   is_new_scan_length = (file_info.num_mirror_steps
-                         != pmt->radiance_sched.num_recs);
+   is_new_scan_length = (file_info.num_mirror_steps != pmt->sched.num_recs);
 
    if (is_new_scan || is_new_scan_length)
      {
         /* New schedule upon new scan resets sched->curr_granule to 0 */
         if (0 != schedule_granules (file_info.num_mirror_steps,
-                                    &pmt->radiance_sched))
+                                    &pmt->sched))
           return -1;
      }
 
@@ -733,8 +752,8 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
        || (NULL == (pmt->cache_dirname = expand_string (cache_dirname))))
      return -1;
 
-   pmt->radiance_sched.size_default = size_default;
-   pmt->radiance_sched.size_max = size_max;
+   pmt->sched.size_default = size_default;
+   pmt->sched.size_max = size_max;
 
    return 0;
 }
@@ -745,6 +764,7 @@ static void delete_exprec (Process_Method_Type *pmt)
      return;
    (void) close_outfile (pmt);
    ioclib_free (pmt->exprec_type_string);
+   sched_free (&pmt->sched);
    FREE(pmt->out_basename);
    FREE(pmt->out_dirname);
    FREE(pmt->cache_dirname);
