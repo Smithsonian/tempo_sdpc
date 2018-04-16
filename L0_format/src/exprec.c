@@ -22,7 +22,6 @@ typedef struct
    unsigned int *granule_ubound;
    unsigned int num_granules_alloc;
    unsigned int num_granules;
-   unsigned int num_recs;
    unsigned int size_default;
    unsigned int size_max;
    unsigned int curr_granule;
@@ -123,7 +122,6 @@ static int compute_granule_sizes (unsigned int num_recs,
      }
 
    sched->num_granules = num_granules;
-   sched->num_recs = num_recs;
    sched->curr_granule = 0;
 
    return 0;
@@ -665,7 +663,7 @@ static int process_exprec (Process_Method_Type *pmt,
                            const TPInfo_Type *tpinfo, const char *file)
 {
    File_Info_Type file_info = {0};
-   int is_radiance, is_new_type, is_new_scan, is_new_scan_length;
+   int is_radiance, is_new_type, is_new_scan;
 
    if (0 != classify_file (file, &file_info))
      return -1;
@@ -712,9 +710,7 @@ static int process_exprec (Process_Method_Type *pmt,
 
    pmt->curr_mirror_step = file_info.curr_mirror_step;
 
-   is_new_scan_length = (file_info.num_mirror_steps != pmt->sched.num_recs);
-
-   if (is_new_scan || is_new_scan_length)
+   if (is_new_scan)
      {
         /* New schedule upon new scan resets sched->curr_granule to 0 */
         if (0 != schedule_granules (file_info.num_mirror_steps,
