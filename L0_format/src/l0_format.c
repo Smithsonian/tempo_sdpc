@@ -381,7 +381,6 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
    if (CAUGHT_SIGNAL)
      log_caught_signal();
 
-   /* FIXME - use a timer to invoke this occasionally? */
    tell_vinfo (0, "flush caches on exit");
    if (0 != flush_caches (tbl, tpinfo))
      goto return_status;
