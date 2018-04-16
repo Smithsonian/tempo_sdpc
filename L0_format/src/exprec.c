@@ -50,6 +50,7 @@ File_Info_Type;
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
+   unsigned int num_files_cached; \
    Granule_Schedule_Type sched;
 #include "l0_format.h"
 
@@ -423,7 +424,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    char **files = NULL;
    char *path = NULL;
    unsigned int file_erec_count, total_erec_count;
-   size_t i, num_files, num_removed=0;
+   size_t i, num_files;
    int fd, exprec_type, status = -1;
 
    /* If the cache directory is empty, do nothing.
@@ -571,15 +572,15 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
              tell_verror (TELL_RUNTIME_ERROR, "%s: unlink failed: path=%s",
                           __func__, path);
           }
-        num_removed++;
+        pmt->num_files_cached--;
         ioclib_free (path);
         path = NULL;
      }
 
    status = 0;
 return_status:
-   tell_vinfo (2, "done processing exprec cache: i=%ld num_files=%ld num_removed=%ld (status=%d)",
-               i, num_files, num_removed, status);
+   tell_vinfo (2, "done processing exprec cache: num_files_cached=%d (status=%d)",
+               pmt->num_files_cached, status);
 
    ioclib_free (path);
    ioclib_string_array_free (files, num_files);
@@ -689,13 +690,21 @@ static int process_exprec (Process_Method_Type *pmt,
    pmt->exprec_type = file_info.exprec_type;
    if (0 != cache_file (pmt->cache_dirname, file))
      return -1;
+   pmt->num_files_cached++;
 
    /* Non-radiance exposure records are cached until something
-    * triggers cache processing; either arrival of a different
-    * exposure type, or expiration of a timer. */
+    * triggers cache processing: 1) arrival of a different
+    * exposure type, 2) exceeding a cache size threshold,
+    * or 3) expiration of a timer. */
 
    if (is_radiance == 0)
-     return 0;
+     {
+        if (pmt->num_files_cached < 1.5*pmt->sched.size_default)
+          {
+             return 0;
+          }
+        return process_cache (pmt, tpinfo, 0);
+     }
 
    /* For radiance exposure records, we know how many to expect,
     * so we generate granules according to a pre-planned schedule.
