@@ -9,11 +9,11 @@ nmlfile=boilerplate.nml
 $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 
 #comparison values
-cmlat_in="-1"
-cmlon_in="-2"
-polylat_in="-10, -10, -10, -10, -10, -5, 0, 5, 10, 10, 10, 10, 10, 5, 0, -5"
-polylon_in="-10, -6, 0, 4, 10, 10, 10, 10, 10, 4, 0, -6, -10, -10, -10, -10"
-polyseq_in="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+cmlat_in="0"
+cmlon_in="0"
+polylat_in="-10, -10, 10, 10"
+polylon_in="-10, 10, 10, -10"
+polyseq_in="1, 2, 3, 4"
 inputs_in="l1_radiance.nc, l1_irradiance.nc, lookup.txt, reference_table.nc, otherstuff.dat"
 local_gran_in=$ncfile
 local_vers_in="(1)"

@@ -8,6 +8,7 @@ module m_write_odl_metadata
   use netcdf, only: nf90_nowrite, nf90_global, nf90_noerr, nf90_get_att
   use tio_module
   use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
+  use md_module, only : bounding_box_md
 
   implicit none
   private
@@ -70,11 +71,12 @@ contains
     character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
 
     ! bounding polgon / footprint parameters
-    integer, parameter :: nintermed = 3 ! change dimensions and MCF if changing from 3
-    integer :: npts, n, xtidx, atidx
-    integer (kind=4), dimension(0:15) :: xtstep, atstep
-    integer (kind=C_INT), dimension(16) :: polygon_seq
-    real (kind=C_DOUBLE), dimension(16) :: polygon_lats, polygon_lons
+    integer, parameter :: max_npts = 100
+    integer :: npts
+    integer (kind=C_INT), dimension(max_npts) :: polygon_seq
+    real (kind=C_DOUBLE), dimension(max_npts) :: polygon_lats, polygon_lons
+    real (kind=4), dimension(max_npts) :: p_lats, p_lons
+    logical, dimension(nXtrack, nLines) :: valid
     real (kind=4) :: center_lat, center_lon
 
     integer :: ncerr
@@ -86,37 +88,30 @@ contains
     errstat = 0
 
     ! Bounding polgon points
-    ! One position for each corner, nintermed points along each side
-    ! Note that MCF specifies total number of values in polygon, so has to be
-    ! updated if you change nintermed, as well as polygon variable dimensions
-    npts = 4+(4*nintermed) ! number of points in polygon
+    ! For now, do the simlest possible thing - a bounding box
+    call bounding_box_md(nXtrack, nLines, lat, lon, p_lats, &
+         p_lons, npts, errstat)
+    polygon_lons=p_lons
+    polygon_lats=p_lats
+    do i=1,npts
+      polygon_seq(i) = i
+    enddo
 
-    do n=0,npts/2
-      xtstep(n)=0+(n-(nintermed+1))
-      atstep(n)=0+n
-      if(atstep(n) > (nintermed+1)) atstep(n) = nintermed+1
-      if(xtstep(n) < 0) xtstep(n) = 0
-    enddo
-    do n=(npts/2)+1,npts-1
-      xtstep(n)=atstep(npts-n)
-      atstep(n)=xtstep(npts-n)
-    enddo
-    do n=1,npts
-      xtidx=1+int((nXtrack-1)*xtstep(n-1)/(nintermed+1))
-      atidx=1+int((nLines-1)*atstep(n-1)/(nintermed+1))
-      polygon_lats(n)=lat(xtidx, atidx)
-      polygon_lons(n)=lon(xtidx, atidx)
-      polygon_seq(n)=n
-    enddo
     ! Mean longitude and latitude
-    center_lon=lon(nXtrack/2,nLines/2)
-    center_lat=lat(nXtrack/2,nLines/2)
+    where (lat.ge.-90.0d0 .and. lat.le.90.0d0 .and. &
+         lon.ge.-180.0d0 .and. lon.le.180.0d0)
+      valid=.true.
+    elsewhere
+      valid=.false.
+    end where
+    center_lon=sum(lon,mask=valid)/count(valid)
+    center_lat=sum(lat,mask=valid)/count(valid)
 
     ! Centroid values classed as additional attributes
     AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
     AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
-    write(AddAttrVal(1),'(f14.9)') center_lon
-    write(AddAttrVal(2),'(f14.9)') center_lat
+    write(AddAttrVal(1),'(f7.1)') center_lon
+    write(AddAttrVal(2),'(f7.1)') center_lat
 
     !
     ! TBD - here we need a section reading metadata from input radiance file
@@ -232,11 +227,11 @@ contains
     endif
 
     returnstatus = pgs_MET_setmultiAttr_i(GROUPS(INVENTORY), &
-         "GRINGPOINTSEQUENCENO.1", npts, polygon_seq)
+         "GRINGPOINTSEQUENCENO.1", npts, polygon_seq(1:npts))
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLATITUDE.1", npts, polygon_lats)
+         "GRINGPOINTLATITUDE.1", npts, polygon_lats(1:npts))
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLONGITUDE.1", npts, polygon_lons)
+         "GRINGPOINTLONGITUDE.1", npts, polygon_lons(1:npts))
 
     if(returnstatus /= 0)then
       call tell_error(tell_io_error, &

@@ -9,7 +9,7 @@ module md_module
 
   private
   public open_md, close_md, write_geo_bounds_md, write_inputs_md, &
-       write_prodid_md, write_fixed_md
+       write_prodid_md, write_fixed_md, bounding_box_md
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -82,6 +82,9 @@ contains
   !
   !> @author E. O'Sullivan  March 2018
   !
+  ! Note that this only works for a completely filled lon, lat array
+  ! so will fail for level 1 or 2 granules that cross the earth's limb
+  !
   !-----------------------------------------------------------------------
   subroutine write_geo_bounds_md (nxtrack, nstep, lat, lon, errstat)
 
@@ -93,11 +96,11 @@ contains
     integer (kind=4), intent (inout) :: errstat
 
     !local variables
-    integer, parameter :: nintermed = 3
-    integer :: npts, n, xtidx, atidx
-    integer (kind=4), dimension(0:4*nintermed+3) :: xtstep, atstep
-    real (kind=4), dimension(4*nintermed+4) :: polygon_lats, polygon_lons
-    integer (kind=4), dimension(4*nintermed+4) :: polygon_seq
+    integer (kind=4) :: npts, i
+    integer (kind=4), parameter :: max_npts=100
+    real (kind=4), dimension(max_npts) :: polygon_lats, polygon_lons
+    integer (kind=4), dimension(max_npts) :: polygon_seq
+    logical, dimension(nxtrack, nstep) :: valid
     real (kind=4) :: center_lat, center_lon
     type (tiof_attlist_type) :: attlist
     type (tiof_file_type), pointer :: l2obj
@@ -106,31 +109,31 @@ contains
 
     l2obj => primary_output_file
 
-    !number of points in polygon
-    npts = 4+(4*nintermed)
-
-    !polygon points
-    do n=0,npts/2
-      xtstep(n)=0+(n-(nintermed+1))
-      atstep(n)=0+n
-      if(atstep(n) > (nintermed+1)) atstep(n) = nintermed+1
-      if(xtstep(n) < 0) xtstep(n) = 0
-    enddo
-    do n=(npts/2)+1,npts-1
-      xtstep(n)=atstep(npts-n)
-      atstep(n)=xtstep(npts-n)
-    enddo
-    do n=1,npts
-      xtidx=1+int((nxtrack-1)*xtstep(n-1)/(nintermed+1))
-      atidx=1+int((nstep-1)*atstep(n-1)/(nintermed+1))
-      polygon_lats(n)=lat(xtidx, atidx)
-      polygon_lons(n)=lon(xtidx, atidx)
-      polygon_seq(n)=n
+    ! For now, do the simplest thing, a bounding box
+    call bounding_box_md(nxtrack, nstep, lat, lon, polygon_lats, &
+         polygon_lons, npts, errstat)
+    if (npts > max_npts) then
+      call tell_error (tell_io_write_error, &
+           "write_geo_bounds_md: npts in polygon exceeds max allowed", &
+           errstat)
+      return
+    endif
+    do i=1,npts
+      polygon_seq(i) = i
     enddo
 
     ! Centroid longitude and latitude
-    center_lon=lon(nxtrack/2,nstep/2)
-    center_lat=lat(nxtrack/2,nstep/2)
+    ! FIXME - the mean lon & lat may vary in 3rd d.p. between Intel/GNU builds
+    ! owing to rounding errors. Calculating centroid of an accurate
+    ! bounding polygon might be more accurate, if we eventually use one.
+    where (lat.ge.-90.0d0 .and. lat.le.90.0d0 .and. &
+         lon.ge.-180.0d0 .and. lon.le.180.0d0)
+      valid=.true.
+    elsewhere
+      valid=.false.
+    end where
+    center_lon=sum(lon,mask=valid)/count(valid)
+    center_lat=sum(lat,mask=valid)/count(valid)
 
     !write to l2obj
     call tiof_attlist_append (attlist, errstat, "centroid_mean_latitude", &
@@ -138,12 +141,17 @@ contains
     call tiof_attlist_append (attlist, errstat, "centroid_mean_longitude", &
          att_r4=[center_lon])
     call tiof_attlist_append (attlist, errstat, "polygon_latitudes", &
-         att_r4=[polygon_lats])
+         att_r4=[polygon_lats(1:npts)])
     call tiof_attlist_append (attlist, errstat, "polygon_longitudes", &
-         att_r4=[polygon_lons])
+         att_r4=[polygon_lons(1:npts)])
     call tiof_attlist_append (attlist, errstat, "polygon_sequence", &
-         att_i4=[polygon_seq])
+         att_i4=[polygon_seq(1:npts)])
 
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "write_geo_bounds_md: failed", &
+           errstat)
+      return
+    endif
     call tiof_push_group (l2obj, "metadata", errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
@@ -342,6 +350,141 @@ contains
     endif
 
   end subroutine write_fixed_md
+
+  !> Determine bounding box from latitude, longitude arrays
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in]    nxtrack cross-track dimension size (e.g., 2000)
+  !> @param[in]    nstep   mirror step dimension size (e.g., 128)
+  !> @param[in]    lat     latitude array (nxtrack, nstep)
+  !> @param[in]    lon     longitude array
+  !> @param[out]   lat_pts output latitude array (4 corners)
+  !> @param[out]   lon_pts output longitude array (4 corners)
+  !> @param[out]   npts    number of polygon points (fixed, =4)
+  !> @param        errstat error tracking code, non-zero indicates problem
+  !
+  !> @author E. O'Sullivan  April 2018
+  !
+  ! Note that order of corners must be anti-clockwise
+  !
+  !-----------------------------------------------------------------------
+  subroutine bounding_box_md (nxtrack, nstep, lat, lon, &
+       lat_pts, lon_pts, npts, errstat)
+
+    implicit none
+
+    !input variables
+    integer (kind=4), intent(in) :: nxtrack, nstep
+    real (kind=4), dimension(nxtrack, nstep), intent(in) :: lat, lon
+    !output variables
+    real (kind=4), dimension(4), intent(out) :: lat_pts, lon_pts
+    integer (kind=4), intent(out) :: npts
+    integer (kind=4), intent (inout) :: errstat
+
+    !local variables
+    real (kind=4) :: min_lat, max_lat, min_lon, max_lon
+
+    if (errstat /= 0) return
+
+    min_lon=minval(lon, mask=lon.ge.-180 .and. lon.le.180)
+    max_lon=maxval(lon, mask=lon.ge.-180 .and. lon.le.180)
+    min_lat=minval(lat, mask=lat.ge.-90 .and. lat.le.90)
+    max_lat=maxval(lat, mask=lat.ge.-90 .and. lat.le.90)
+
+    lon_pts=(/min_lon, max_lon, max_lon, min_lon/)
+    lat_pts=(/min_lat, min_lat, max_lat, max_lat/)
+    npts=4
+
+  end subroutine bounding_box_md
+
+!  !>Write geographic bounding polygon and centroid values
+!  !-----------------------------------------------------------------------
+!  !
+!  !> @param[in]    nxtrack cross-track dimension size (e.g., 2000)
+!  !> @param[in]    nstep   mirror step dimension size (e.g., 128)
+!  !> @param[in]    lat     latitude array (nxtrack, nstep)
+!  !> @param[in]    lon     longitude array
+!  !> @param        errstat error tracking code, non-zero indicates problem
+!  !
+!  !> @author E. O'Sullivan  March 2018
+!  !
+!  ! Note that this only works for a completely filled lon, lat array
+!  ! so will fail for level 1 or 2 granules that cross the earth's limb
+!  !
+!  !-----------------------------------------------------------------------
+!  subroutine write_geo_bounds_md_old (nxtrack, nstep, lat, lon, errstat)
+!
+!    implicit none
+!
+!    !input variables
+!    integer (kind=4), intent(in) :: nxtrack, nstep
+!    real (kind=4), dimension(nxtrack, nstep), intent(in) :: lat, lon
+!    integer (kind=4), intent (inout) :: errstat
+!
+!    !local variables
+!    integer, parameter :: nintermed = 3
+!    integer :: npts, n, xtidx, atidx
+!    integer (kind=4), dimension(0:4*nintermed+3) :: xtstep, atstep
+!    real (kind=4), dimension(4*nintermed+4) :: polygon_lats, polygon_lons
+!    integer (kind=4), dimension(4*nintermed+4) :: polygon_seq
+!    real (kind=4) :: center_lat, center_lon
+!    type (tiof_attlist_type) :: attlist
+!    type (tiof_file_type), pointer :: l2obj
+!
+!    if (errstat /= 0) return
+!
+!    l2obj => primary_output_file
+!
+!    !number of points in polygon
+!    npts = 4+(4*nintermed)
+!
+!    !polygon points
+!    do n=0,npts/2
+!      xtstep(n)=0+(n-(nintermed+1))
+!      atstep(n)=0+n
+!      if(atstep(n) > (nintermed+1)) atstep(n) = nintermed+1
+!      if(xtstep(n) < 0) xtstep(n) = 0
+!    enddo
+!    do n=(npts/2)+1,npts-1
+!      xtstep(n)=atstep(npts-n)
+!      atstep(n)=xtstep(npts-n)
+!    enddo
+!    do n=1,npts
+!      xtidx=1+int((nxtrack-1)*xtstep(n-1)/(nintermed+1))
+!      atidx=1+int((nstep-1)*atstep(n-1)/(nintermed+1))
+!      polygon_lats(n)=lat(xtidx, atidx)
+!      polygon_lons(n)=lon(xtidx, atidx)
+!      polygon_seq(n)=n
+!    enddo
+!
+!    ! Centroid longitude and latitude
+!    center_lon=lon(nxtrack/2,nstep/2)
+!    center_lat=lat(nxtrack/2,nstep/2)
+!
+!    !write to l2obj
+!    call tiof_attlist_append (attlist, errstat, "centroid_mean_latitude", &
+!         att_r4=[center_lat])
+!    call tiof_attlist_append (attlist, errstat, "centroid_mean_longitude", &
+!         att_r4=[center_lon])
+!    call tiof_attlist_append (attlist, errstat, "polygon_latitudes", &
+!         att_r4=[polygon_lats])
+!    call tiof_attlist_append (attlist, errstat, "polygon_longitudes", &
+!         att_r4=[polygon_lons])
+!    call tiof_attlist_append (attlist, errstat, "polygon_sequence", &
+!         att_i4=[polygon_seq])
+!
+!    call tiof_push_group (l2obj, "metadata", errstat)
+!    call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
+!    call tiof_pop_group (l2obj, errstat)
+!    call tiof_attlist_free (attlist)
+!
+!    if (errstat /= 0) then
+!      call tell_error (tell_io_write_error, "write_geo_bounds_md: failed", &
+!           errstat)
+!      return
+!    endif
+!
+!  end subroutine write_geo_bounds_md_old
 
 
 
