@@ -423,7 +423,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    char *path = NULL;
    unsigned int file_erec_count, total_erec_count;
    size_t i, num_files;
-   int fd, exprec_type, status = -1;
+   int fd, exprec_type, is_radiance, status = -1;
 
    /* If the cache directory is empty, do nothing.
     * Otherwise, the cache directory contains cached exposure records
@@ -445,6 +445,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    tell_vinfo (2, "processing exprec cache: %ld files", num_files);
 
    exprec_type = pmt->exprec_type;
+   is_radiance = (exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
 
    /* The schedule tells us how the exposure records should be packed
     * into granules. For radiances, the header tells us how many scan
@@ -455,10 +456,10 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
     * that will be a single granule, but we'll also handle the case when
     * multiple files might be needed.
     */
-   if (exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
+   if (is_radiance == 0)
      {
         if (0 != schedule_granules (num_files, &pmt->sched))
-          return -1;
+          goto return_status;
      }
 
    sched = &pmt->sched;
@@ -469,7 +470,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    for (i = 0; i < num_files; i++)
      {
         IOCSDPC_Common_Header_Type chdr;
-        unsigned int next_erec;
+        unsigned int next_erec, curr_mirror_step, index;
         int need_new_outfile;
 
         if (NULL == (path = ioclib_pathconcat (cache_dirname, files[i])))
@@ -491,13 +492,19 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           }
 
         /* Assert: exprec_type == erec->exprec_type */
-
-        if (exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE)
+        if (exprec_type != erec->exprec_type)
           {
-             unsigned int curr_mirror_step;
+             tell_verror (TELL_INTERNAL_ERROR,
+                          "%s: unexpected exposure record type %d (expected %d) file=%s",
+                          __func__, erec->exprec_type, exprec_type, path);
+             goto return_status;
+          }
+
+        if (is_radiance)
+          {
              if (NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step",
                                                        &curr_mirror_step))
-               return -1;
+               goto return_status;
              next_erec = curr_mirror_step;
           }
         else next_erec = total_erec_count;
@@ -511,7 +518,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
              unsigned int k, granule_size;
 
              if (-1 == close_outfile (pmt))
-               return -1;
+               goto return_status;
 
              /* From granule schedule, find out which file
               * should hold the next exposure record.
@@ -530,9 +537,11 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                        tell_verror (TELL_APPLICATION_ERROR,
                                     "%s: ioclib_rename_to_bad_file, failed: file=%s",
                                     __func__, path);
-                       ioclib_free (path);
-                       continue;
+                       goto return_status;
                     }
+                  ioclib_free (path);
+                  path = NULL;
+                  continue;
                }
 
              sched->curr_granule = k;
@@ -547,7 +556,8 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                }
 
              if ((process_all_files != 0)
-                 && (granule_size > num_files-i))
+                 && (granule_size > num_files-i)
+                 && (is_radiance == 0))
                {
                   /* Must open now: size the granule to hold what's here */
                   granule_size = num_files - i;
@@ -558,7 +568,17 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
              file_erec_count = 0;
           }
 
-        if (0 != write_exprec (pmt, tpinfo, file_erec_count, erec))
+        if (is_radiance)
+          {
+             index = curr_mirror_step;
+             if (sched->curr_granule > 0)
+               {
+                  index -= sched->granule_ubound[sched->curr_granule-1];
+               }
+          }
+        else index = file_erec_count;
+
+        if (0 != write_exprec (pmt, tpinfo, index, erec))
           goto return_status;
         file_erec_count++;
         total_erec_count++;
@@ -642,7 +662,7 @@ static int classify_file (const char *file, File_Info_Type *info)
      return 0;
 
    if ((info->num_mirror_steps == 0)
-       || (info->curr_mirror_step >= info->num_mirror_steps))
+       || (info->curr_mirror_step > info->num_mirror_steps))
      {
         tell_vlog (TELL_MSGTYPE_INFO, 0,
                    "%s: invalid radiance exposure record header: curr_mirror_step=%d num_mirror_steps=%d file=%s",
@@ -717,7 +737,7 @@ static int process_exprec (Process_Method_Type *pmt,
    if (is_radiance_new_scan)
      {
         /* New schedule upon new scan resets sched->curr_granule to 0 */
-        if (0 != schedule_granules (file_info.num_mirror_steps,
+        if (0 != schedule_granules (file_info.num_mirror_steps + 1,
                                     &pmt->sched))
           return -1;
      }
