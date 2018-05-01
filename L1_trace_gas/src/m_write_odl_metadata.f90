@@ -87,7 +87,7 @@ contains
     real (kind=C_DOUBLE), dimension(max_npts) :: polygon_lats, polygon_lons
     real (kind=4), dimension(max_npts) :: p_lats, p_lons
     logical, dimension(nXtrack, nLines) :: valid
-    real (kind=4) :: center_lat, center_lon, clon, clat
+    real (kind=4) :: center_lat, center_lon
 
     integer :: ncerr
     character (len=32) :: cov_start_string, cov_end_string

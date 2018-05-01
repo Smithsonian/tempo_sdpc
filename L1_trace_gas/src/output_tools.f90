@@ -162,7 +162,7 @@ contains
     ! FIXME - choose more optimal chunk sizes
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_scattering_weights, &
-                              nf90_double, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step_levels,  &
                               comment = "scattering weights", &
                               valid_range = [-1e30_r8, 1e30_r8], &
@@ -172,7 +172,7 @@ contains
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
-                              nf90_double, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step_levels,  &
                               comment = "gas profile", &
                               units = "ppb", &
@@ -1201,7 +1201,6 @@ contains
   !> Write AMF vertical gas profile climatology to Level 2 product file
   !! @param[in] gas_profile  Column density vertical profile climatology for each pixel
   !!                     [molecules/cm^2].
-  !! @param[in] climatology_levels  Altitude [km] coordinate for each gas profile point.
   !! @param[in] nxtrack  Number of cross-track pixels
   !! @param[in] ntimes  Number of scans
   !! @param[in] nlevels  Number of altitudes in vertical profile climatology
@@ -1221,8 +1220,9 @@ contains
     obj => primary_output_file
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_put3d_r8 (obj, tg_var_amf_gas_profile, [0,0,0], [nlevels,ntimes,nxtrack], &
-                        gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    call tiof_put3d_r4 (obj, tg_var_amf_gas_profile, [0,0,0], &
+         [nlevels,ntimes,nxtrack], &
+         real(gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), kind=4), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
@@ -1250,8 +1250,9 @@ contains
     obj => primary_output_file
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_put3d_r8 (obj, tg_var_amf_scattering_weights, [0,0,0], [nlevels,ntimes,nxtrack], &
-                        scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), errstat)
+    call tiof_put3d_r4 (obj, tg_var_amf_scattering_weights, [0,0,0], &
+         [nlevels,ntimes,nxtrack], &
+         real(scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), kind=4), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
