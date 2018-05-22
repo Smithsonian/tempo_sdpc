@@ -8,11 +8,13 @@ srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
 
 MET_INC = $(srcdir)
-TIO_INC = $(prefix)/include
+TIO_INC = $(config_dir)/libtio/src/$(archobjs)
+#TIO_INC = $(prefix)/include
 
 MET_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
-TIO_LIBPATHS    = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
+TIO_LIBPATHS    = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
+#TIO_LIBPATHS   = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 
 INCS_F = -I$(elfdir) -I$(TELL_INC) -I$(TIO_INC)
