@@ -15,11 +15,21 @@
 #include <proj_api.h>
 #include <gsl/gsl_errno.h>
 #include <tell.h>
+#include <tio.h>
 #include <tio_template.h>
 
 #include "config.h"
 
 #include "lps.h"
+#include "lps_apply.h"
+
+static char *_pCommand_Line;
+
+enum
+{
+   TASK_LPS_CORRECT = 0,
+   TASK_LPS_APPLY = 1
+};
 
 /* Update the fortran interface whenever this definition changes */
 typedef struct
@@ -52,6 +62,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
    fprintf (stderr, "   -d | --diag            generate diagnostic output\n");
+   fprintf (stderr, "   -a | --apply           apply LPS error for Q,U in input file\n");
    fprintf (stderr, "   -s | --step s          step index to process (1 <= s <= num_steps_in_granule)\n");
    fprintf (stderr, "   -x | --xtrack x        xtrack index to process (1 <= x <= num_xtrack)\n");
    fprintf (stderr, "   -v | --verbose lev     logging verbosity\n");
@@ -101,7 +112,7 @@ read_retrieval_limits (config_setting_t *s, const char *name,
    return 0;
 }
 
-static int process_inputs (config_t *cfg, const char *rad_file,
+static int process_inputs (config_t *cfg, const char *rad_file, int task,
                            int step, int xtrack, int diag_output)
 {
    Polcorr_Type pt = {0};
@@ -154,10 +165,22 @@ static int process_inputs (config_t *cfg, const char *rad_file,
    if (NULL == (pt.lps = lps_open (cfg)))
      goto return_status;
 
-   if (0 != polcorrect (&pt))
-     return -1;
+   switch (task)
+     {
+      case TASK_LPS_CORRECT:
+        status = polcorrect (&pt);
+        break;
 
-   status = 0;
+      case TASK_LPS_APPLY:
+        status = lps_apply (pt.lps, rad_file, _pCommand_Line);
+        break;
+
+      default:
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: unsupported task id = %d", __func__, task);
+        break;
+     }
+
 return_status:
    wordfree (&we);
    lps_close (pt.lps);
@@ -173,6 +196,7 @@ int main (int argc, char **argv)
    config_t cfg;
    char *input_file = NULL;
    int status = EXIT_FAILURE;
+   int task = TASK_LPS_CORRECT;
    int diag_output = 0;
    int step = 0;
    int xtrack = 0;
@@ -180,6 +204,7 @@ int main (int argc, char **argv)
      {
         {"config",  required_argument, 0, 'c'},
         {"diag",    no_argument,       0, 'd'},
+        {"apply",   no_argument,       0, 'a'},
         {"help",    no_argument,       0, 'h'},
         {"step",    required_argument, 0, 's'},
         {"xtrack",  required_argument, 0, 'x'},
@@ -189,6 +214,9 @@ int main (int argc, char **argv)
 
    if (argc < 2)
      usage();
+
+   /* NULL return is ok */
+   _pCommand_Line = tio_concat_argv (argc, argv, NULL, 0);
 
    tell_open (appname, -1, 0);
 
@@ -205,7 +233,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hc:ds:x:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ahc:ds:x:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -231,6 +259,9 @@ int main (int argc, char **argv)
              break;
            case 'd':
              diag_output = 1;
+             break;
+           case 'a':
+             task = TASK_LPS_APPLY;
              break;
            case 's':
              if (1 != sscanf (optarg, "%d", &step))
@@ -272,7 +303,7 @@ int main (int argc, char **argv)
    gsl_set_error_handler_off();
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", input_file);
 
-   status = process_inputs (&cfg, input_file, step, xtrack, diag_output);
+   status = process_inputs (&cfg, input_file, task, step, xtrack, diag_output);
 
 return_status:
    config_destroy (&cfg);

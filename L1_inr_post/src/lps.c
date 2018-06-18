@@ -30,13 +30,6 @@
 
 #define PROJ_ARGS_BUFSIZE       80
 
-/* FIXME - these indices should be provided by tio_template.h */
-enum
-{
-   TEMPO_BAND_UV = 0,
-   TEMPO_BAND_VIS = 1
-};
-
 typedef struct
 {
    double x;

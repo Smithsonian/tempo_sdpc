@@ -6,6 +6,15 @@
  *         lookup table
  */
 
+#include <libconfig.h>
+
+/* FIXME - these indices should be provided by tio_template.h */
+enum
+{
+   TEMPO_BAND_UV = 0,
+   TEMPO_BAND_VIS = 1
+};
+
 typedef struct Lps_Type Lps_Type;
 
 /** Evaluate linear polarization sensitivity vs wavelength

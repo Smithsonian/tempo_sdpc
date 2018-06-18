@@ -1,4 +1,11 @@
-#define MALLOC malloc
-#define FREE free
-#define REALLOC realloc
+#ifndef MALLOC
+# define MALLOC malloc
+#endif
 
+#ifndef FREE
+# define FREE free
+#endif
+
+#ifndef REALLOC
+# define REALLOC realloc
+#endif

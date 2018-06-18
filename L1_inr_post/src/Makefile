@@ -134,7 +134,7 @@ $(objdir)/ezlhconv.o:	$(srcdir)/ezlhconv.c
 GSL_LIBPATHS = -lgsl -lgslcblas
 
 POLCORR_F_OFILES = ndinterp_module.o types_module.o polpredict_module.o polcorrect_module.o
-POLCORR_C_OFILES = l1_polcorr.o lps.o spline.o
+POLCORR_C_OFILES = l1_polcorr.o lps.o spline.o lps_apply.o
 POLCORR_OFILES = $(POLCORR_C_OFILES) $(POLCORR_F_OFILES)
 
 POLCORR_OBJS = $(patsubst %.o,$(objdir)/%.o, $(POLCORR_OFILES))
@@ -161,6 +161,9 @@ $(objdir)/l1_polcorr.o:	$(srcdir)/l1_polcorr.c
 
 $(objdir)/lps.o:	$(srcdir)/lps.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps.o $(POLCORR_INCS) $(srcdir)/lps.c $(POLCORR_LIBS)
+
+$(objdir)/lps_apply.o:	$(srcdir)/lps_apply.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps_apply.o $(POLCORR_INCS) $(srcdir)/lps_apply.c $(POLCORR_LIBS)
 
 $(objdir)/spline.o:	$(srcdir)/spline.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/spline.o $(POLCORR_INCS) $(srcdir)/spline.c $(POLCORR_LIBS)
