@@ -421,6 +421,24 @@ extern int tio_fgets (char **linep, size_t *lenp, FILE *fp);
 
 extern int tio_def_var_radiance_status_flag (int grp);
 
+/** Append a string to the global history attribute
+ * @param[in]  ncid   netcdf file id
+ * @param[in]  str    pointer to the history string to be appended
+ * @return 0 on success, -1 on error
+ */
+extern int tio_append_history (int ncid, const char *str);
+
+/** Concatenate string tokens
+ * @param[in]  argc   number of string tokens
+ * @param[in]  argv   array of pointers to string tokens
+ * @param[in]  pstr   optional pointer to space for result string (NULL is ok)
+ * @param[in]  len_pstr  length of space pointed to by pstr (ignored when pstr=NULL)
+ * @return NULL on error
+ *         When pstr=NULL, the return value is an allocated string.
+ *         When pstrt!=NULL, the return value is pstr.
+ */
+extern char *tio_concat_argv (int argc, char **argv, char *pstr, size_t len_pstr);
+
 #if 0
 {
 #endif

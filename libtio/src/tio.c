@@ -21,6 +21,8 @@
 #define EMPTY()
 #define _pTIO_STR(s) #s
 
+#define TIMESTAMP_BUFLEN 26
+
 int _pTIOMake_Name_UInt_Arrays (_pName_UInt_Pair_Type *array,
                                 int *pnum_values, char **pnames,
                                 unsigned int **pvalues)
@@ -343,6 +345,133 @@ int TIO_close (int ncid)
      }
 
    return 0;
+}
+
+int tio_append_history (int ncid, const char *str)
+{
+   const char *history_attr = "history";
+   char buf[TIMESTAMP_BUFLEN];
+   time_t now;
+   int status, nctype;
+   char *att = NULL;
+   char *newline;
+   size_t len, hlen, entry_len;
+   int have_attribute = 0;
+   int offset = 0;
+
+   if ((str == NULL) || (*str == 0))
+     return 0;
+
+   now = time(NULL);
+   ctime_r (&now, buf);
+
+   /* truncate time string at trailing newline */
+   newline = strchr(buf, '\n');
+   if (newline) *newline=0;
+
+   /* <time>: <str>\n */
+   entry_len = strlen(buf) + strlen(str) + 4;
+   len = entry_len;
+
+   status = nc_inq_att (ncid, NC_GLOBAL, history_attr, &nctype, &hlen);
+   if (status == NC_NOERR)
+     {
+        have_attribute++;
+        len += hlen;
+     }
+
+   if (NULL == (att = (char *)TIO_MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)att, 0, len * sizeof(char));
+
+   if (have_attribute)
+     {
+        if (NC_NOERR != (status = nc_get_att (ncid, NC_GLOBAL, history_attr, att)))
+          {
+             tell_verror (TELL_IO_READ_ERROR, "%s: reading history attribute (%s)",
+                          __func__, nc_strerror (status));
+             goto return_status;
+          }
+        offset = strlen(att);
+        sprintf (att + offset, "\n");
+        offset++;
+     }
+
+   sprintf (att + offset, "%s:%s", buf, str);
+
+   if (NC_NOERR != (status = nc_put_att (ncid, NC_GLOBAL, history_attr, NC_CHAR, len, att)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: updating history attribute (%s)",
+                     __func__, nc_strerror (status));
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   TIO_FREE(att);
+   return status ? -1 : 0;
+}
+
+char *tio_concat_argv (int argc, char **argv, char *pstr, size_t len_pstr)
+{
+   char *str = NULL;
+   size_t len, offset;
+   int i;
+
+   if (argv == NULL)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: argv != NULL is required", __func__);
+        return NULL;
+     }
+
+   /* allocate storage to concatenate argc tokens, with a space delimiter,
+    * and a terminating null character */
+
+   len = 1;
+   for (i = 0; i < argc; i++)
+     {
+        if (argv[i] == NULL)
+          continue;
+        len += strlen(argv[i]) + 1;
+     }
+
+   if (pstr != NULL)
+     {
+        if (len_pstr < len)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: command line too long (len=%ld, buffer=%ld)",
+                          __func__, len, len_pstr);
+             return NULL;
+          }
+        str = pstr;
+     }
+   else
+     {
+        if (NULL == (str = (char *)TIO_MALLOC (len * sizeof (char))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             return NULL;
+          }
+     }
+
+   /* at this point, str points to at least 'len' characters of storage,
+    * which is guaranteed to be enough to hold the command line.
+    */
+
+   offset = 0;
+   for (i = 0; i < argc; i++)
+     {
+        if (argv[i])
+          {
+             sprintf (str + offset, " %s", argv[i]);
+             offset += strlen(argv[i]) + 1;
+          }
+     }
+
+   return str;
 }
 
 int tio_inq_varid (int grp, const char *name, int *varid)
