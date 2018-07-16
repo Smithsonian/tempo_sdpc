@@ -197,8 +197,7 @@ static int create_group
              is_enum_type = elt_is_valid (pmt->enum_lookup, tpfields.enumlist);
              if (tpfields.enumlist && (is_enum_type == 0))
                {
-                  tell_vwarn (TELL_MSGTYPE_WARN,
-                              "%s: invalid enum %s, enumlist=%s",
+                  tell_vwarn (0, "%s: invalid enum %s, enumlist=%s",
                               __func__, col_info->mnemonic, tpfields.enumlist);
                }
           }

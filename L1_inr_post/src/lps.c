@@ -642,7 +642,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
 
    if (err_count)
      {
-        tell_vwarn (TELL_MSGTYPE_ERROR, "%s: %d lpsens interpolation errors",
+        tell_vwarn (0, "%s: %d lpsens interpolation errors",
                     __func__, err_count);
         err_count = 0;
      }
@@ -668,7 +668,7 @@ int lps_eval (Lps_Type *lps, int band_index, int xtrack,
 
    if (err_count)
      {
-        tell_vwarn (TELL_MSGTYPE_ERROR, "%s: %d angmax interpolation errors",
+        tell_vwarn (0, "%s: %d angmax interpolation errors",
                     __func__, err_count);
      }
 
