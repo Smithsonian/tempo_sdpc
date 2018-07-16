@@ -50,6 +50,7 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags;
    int i, num_pixels = img->num_rows * img->num_cols;
+   int num_invalid_quality_byte = 0;
 
 #define PIXEL_QUALITY_BYTE(v)  (((v) >> 24) & 0xff)
 #define PIXEL_VALUE(v)         ((v) & ~(0xff << 24))
@@ -82,14 +83,21 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
              break;
 
            default:
-             tell_verror (TELL_NOT_IMPLEMENTED_ERROR, "%s: unsupported quality byte value = %d",
-                          __func__, quality_byte);
-             return -1;
+             /* Quality flag is invalid, but we'll preserve the bits just in case */
+             num_invalid_quality_byte += 1;
+             quality_byte = IMAGE_PQF_BAD_PIXEL;
+             pixel_value = PIXEL_VALUE(bits);
              break;
           }
 
         pixel_quality_flags[i] = quality_flag;
         pixels[i] = pixel_value;
+     }
+
+   if (num_invalid_quality_byte)
+     {
+        tell_vwarn (0, "%s: %d pixels had invalid quality byte values",
+                    __func__, num_invalid_quality_byte);
      }
 
    return 0;
