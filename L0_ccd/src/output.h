@@ -8,6 +8,13 @@
 #include "granule.h"
 #include "sensorcal.h"
 
+typedef struct
+{
+   double start_time;           /**< exposure start time in sec elapsed since the TEMPO epoch */
+   double exposure_time;        /**< total exposure duration [sec] */
+}
+Output_Metadata_Type;
+
 /** @brief Struct to organize the main output objects
  *
  * Along with each calibrated radiance or irradiance exposure record,
@@ -16,6 +23,7 @@
  */
 typedef struct
 {
+   Output_Metadata_Type meta;
    Spectral_Data_Type *uv;
    Spectral_Data_Type *vis;
 }

@@ -23,7 +23,9 @@
    int num_xtrack; \
    int num_waves; \
    int formatted_file_exists; \
-   int ncid;
+   int ncid; \
+   double tstart; \
+   double tend;
 #include "output.h"
 
 static int out_set_file (Output_Type *out, const char *file)
@@ -58,7 +60,15 @@ static int out_set_dims (Output_Type *out, int num_recs,
 
 static int out_close (Output_Type *out)
 {
-   int status = TIO_close (out->ncid);
+   int status;
+
+   if ((0 != TIO_write_timestamp (out->ncid, NC_GLOBAL, "time_coverage_start", out->tstart))
+       ||(0 != TIO_write_timestamp (out->ncid, NC_GLOBAL, "time_coverage_end", out->tend)))
+     {
+        tell_vwarn (0, "%s: writing coverage time stamps", __func__);
+     }
+
+   status = TIO_close (out->ncid);
    out->ncid = 0;
    return status;
 }
@@ -212,6 +222,68 @@ write_rec_band1 (Output_Type *out, int index,
    return 0;
 }
 
+static void update_coverage_time_range (Output_Type *out,
+                                        const Output_Metadata_Type *meta)
+{
+   double tend;
+
+   if (isnan(meta->start_time) || (meta->start_time < 0))
+     return;
+
+   if (isnan(out->tstart)
+       || (meta->start_time < out->tstart))
+     {
+        out->tstart = meta->start_time;
+     }
+
+   if (isnan(meta->exposure_time) || (meta->exposure_time < 0))
+     return;
+
+   tend = meta->start_time + meta->exposure_time;
+
+   if (isnan(out->tend)
+       || (tend > out->tend))
+     {
+        out->tend = tend;
+     }
+}
+
+static int write_rec_meta (Output_Type *out, int index,
+                           const Output_Metadata_Type *meta)
+{
+   int grp, start, count;
+
+   update_coverage_time_range (out, meta);
+
+   if (0 != TIO_inq_grp (out->ncid, "/", &grp))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: accessing group / in %s",
+                     __func__, out->file);
+        return -1;
+     }
+
+   start = index;
+   count = 1;
+
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_TIME, &start, &count, TIO_DOUBLE,
+                                 &meta->start_time))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                     __func__, TEMPO_VAR_TIME, out->file);
+        return -1;
+     }
+
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_EXPOSURE_TIME, &start, &count, TIO_DOUBLE,
+                                 &meta->exposure_time))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                     __func__, TEMPO_VAR_EXPOSURE_TIME, out->file);
+        return -1;
+     }
+
+   return 0;
+}
+
 static int
 write_rec_bands (Output_Type *out, int index,
                  const Output_Exprec_Type *rec,
@@ -223,6 +295,9 @@ write_rec_bands (Output_Type *out, int index,
                      __func__);
         return -1;
      }
+
+   if (0 != write_rec_meta (out, index, &rec->meta))
+     return -1;
 
    if (0 != write_rec_band1 (out, index, rec->uv, name_var, name_var_err))
      return -1;
@@ -252,6 +327,7 @@ static int write_rad_rec (Output_Type *out,
 Output_Type *output_alloc (config_t *cfg, int exposure_type)
 {
    Output_Type *out = NULL;
+   double nan_value = nan("");
 
    (void) cfg;
 
@@ -267,6 +343,8 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->out_set_dims = out_set_dims;
    out->out_close = out_close;
    out->out_file_exists = out_file_exists;
+   out->tstart = nan_value;
+   out->tend = nan_value;
 
    switch (exposure_type)
      {

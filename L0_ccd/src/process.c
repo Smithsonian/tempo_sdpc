@@ -586,6 +586,9 @@ static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal,
    if (NULL == (outrec.vis = finalize_band (cal, cfg, xr, TEMPO_BAND_VIS)))
      goto return_status;
 
+   outrec.meta.start_time = xr->exprec->start_time;
+   outrec.meta.exposure_time = xr->exprec->exposure_time;
+
    if (0 != out->out_write_rec (out, xr->index, &outrec))
      goto return_status;
 
