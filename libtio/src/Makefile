@@ -3,7 +3,7 @@
 include ../../Makefile.defines
 
 THIS_LIB = tio
-EXECUTABLES = mkgranule_name mkgranule_ident
+EXECUTABLES = mkgranule_name mkgranule_ident ttime
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
@@ -200,6 +200,10 @@ mkgranule_name:
 mkgranule_ident:
 	$(COMPILE_CMD) -o mkgranule_ident $(INCS) mkgranule_ident.c \
 	     $(TIO_LIBPATHS) -ltio $(LIBS)
+
+ttime:
+	$(COMPILE_CMD) -o ttime $(INCS) ttime.c \
+	     $(TIO_LIBPATHS) -ltio -lm
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	git_commit="(unknown)" ; \
