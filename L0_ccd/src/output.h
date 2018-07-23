@@ -65,6 +65,8 @@ struct Output_Type
     */
    int (*out_create)(Output_Type *);
 
+   int (*out_ncid)(const Output_Type *);
+
    /** query whether or not the formatted output file exists
     * @param out  non-NULL pointer to an Output_Type object
     * @return non-zero if the file exists, 0 otherwise.

@@ -191,6 +191,11 @@ static int granule_type (const Granule_Type *g, int *exposure_type)
    return 0;
 }
 
+static int granule_get_ncid (const Granule_Type *g)
+{
+   return g->ncid;
+}
+
 static Granule_Type *new_granule (void)
 {
    Granule_Type *g;
@@ -204,6 +209,7 @@ static Granule_Type *new_granule (void)
    g->granule_read_exprec_by_index = granule_read_exprec_by_index;
    g->granule_free_exprec = granule_free_exprec;
    g->granule_type = granule_type;
+   g->granule_ncid = granule_get_ncid;
 
    return g;
 }

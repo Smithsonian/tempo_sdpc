@@ -818,6 +818,14 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != out->out_create (out))
      goto return_status;
 
+   if (exposure_type == EXPREC_TYPE_RADIANCE)
+     {
+        int ncid_from = gr->granule_ncid (gr);
+        int ncid_to = out->out_ncid (out);
+        if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
+          goto return_status;
+     }
+
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
         Exprec_Meta_Type *xr_to_delete;

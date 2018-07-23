@@ -324,6 +324,11 @@ static int write_rad_rec (Output_Type *out,
                            TEMPO_VAR_RADIANCE_ERROR);
 }
 
+static int out_get_ncid (const Output_Type *out)
+{
+   return out->ncid;
+}
+
 Output_Type *output_alloc (config_t *cfg, int exposure_type)
 {
    Output_Type *out = NULL;
@@ -345,6 +350,7 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->out_file_exists = out_file_exists;
    out->tstart = nan_value;
    out->tend = nan_value;
+   out->out_ncid = out_get_ncid;
 
    switch (exposure_type)
      {

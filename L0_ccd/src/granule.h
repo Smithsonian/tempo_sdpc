@@ -97,6 +97,8 @@ struct Granule_Type
     */
    Granule_Exprec_Type *(*granule_read_exprec_by_index) (const Granule_Type *, int, Granule_Exprec_Type **);
 
+   int (*granule_ncid)(const Granule_Type *);
+
    /** Free a Granule_Exprec_Type object
     * @param  Granule_Exprec_Type *  non-NULL pointer to a Granule_Exprec_Type object
     */
