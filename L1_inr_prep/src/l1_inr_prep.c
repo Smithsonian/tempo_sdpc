@@ -11,7 +11,6 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
-#include <wordexp.h>
 
 #include <libconfig.h>
 
@@ -52,31 +51,6 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
    exit (EXIT_SUCCESS);
-}
-
-static char *expand_path (const char *path)
-{
-   wordexp_t we = {0};
-   char *path_exp = NULL;
-
-   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
-       || (we.we_wordc != 1))
-     {
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, path);
-        goto cleanup_and_return;
-     }
-
-   if (NULL == (path_exp = strdup (we.we_wordv[0])))
-     {
-        tell_verror (TELL_MALLOC_ERROR,
-                     "%s: strdup failed", __func__);
-        goto cleanup_and_return;
-     }
-
-cleanup_and_return:
-   wordfree (&we);
-   return path_exp;
 }
 
 static int read_config_file (const char *config_file, config_t *cfg)
@@ -122,18 +96,14 @@ static int copy_iru (Radiance_Type *r, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type iru = {0};
-   char *pat = NULL;
    int status = -1;
 
    if (0 != read_common_params (cfg, "iru_config", &iru))
      return -1;
 
-   if (NULL == (pat = expand_path (iru.file_glob_pattern)))
-     goto return_status;
-
    if (0 != row_select_scan (time_beg, time_end,
                              pad_enable ? iru.num_pad : 0,
-                             pat, &iru.rst))
+                             iru.file_glob_pattern, &iru.rst))
      goto return_status;
 
    if (0 != radiance_copy_iru (r, iru.rst))
@@ -141,7 +111,6 @@ static int copy_iru (Radiance_Type *r, config_t *cfg,
 
    status = 0;
 return_status:
-   FREE(pat);
    row_select_free (iru.rst);
    return status;
 }
@@ -150,18 +119,14 @@ static int copy_smc (Radiance_Type *r, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type smc = {0};
-   char *pat = NULL;
    int status = -1;
 
    if (0 != read_common_params (cfg, "smc_config", &smc))
      return -1;
 
-   if (NULL == (pat = expand_path (smc.file_glob_pattern)))
-     goto return_status;
-
    if (0 != row_select_scan (time_beg, time_end,
                              pad_enable ? smc.num_pad : 0,
-                             pat, &smc.rst))
+                             smc.file_glob_pattern, &smc.rst))
      goto return_status;
 
    if (0 != radiance_copy_smc (r, smc.rst))
@@ -169,7 +134,6 @@ static int copy_smc (Radiance_Type *r, config_t *cfg,
 
    status = 0;
 return_status:
-   FREE(pat);
    row_select_free (smc.rst);
    return status;
 }
@@ -269,7 +233,6 @@ static int copy_ephem (Radiance_Type *r, config_t *cfg,
    Eph_Type eph = {0};
    config_setting_t *s;
    const char *ephemeris_file;
-   char *pat = NULL;
    int num_pad, status = -1;
 
    if (NULL == (s = config_lookup (cfg, "ephemeris_config")))
@@ -289,10 +252,7 @@ static int copy_ephem (Radiance_Type *r, config_t *cfg,
         return -1;
      }
 
-   if (NULL == (pat = expand_path (ephemeris_file)))
-     goto return_status;
-
-   if (0 != eph_read_subset (&eph, pat, time_beg, time_end,
+   if (0 != eph_read_subset (&eph, ephemeris_file, time_beg, time_end,
                              pad_enable ? num_pad : 0))
      goto return_status;
 
@@ -301,7 +261,6 @@ static int copy_ephem (Radiance_Type *r, config_t *cfg,
 
    status = 0;
 return_status:
-   FREE(pat);
    eph_free (&eph);
 
    return status;

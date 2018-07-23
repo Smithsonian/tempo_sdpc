@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wordexp.h>
 
 #include <ioclib.h>
 
@@ -181,32 +182,36 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
                      Row_Select_Type **rstp)
 {
    Row_Select_Type *rst_head = NULL;
-   IOCLib_Glob_Type *g = NULL;
+   wordexp_t we = {0};
    int return_status = -1;
    size_t n;
 
    *rstp = NULL;
 
-   if (NULL == (g = ioclib_glob (file_glob_pattern, 0)))
-     return -1;
+   if (0 != wordexp (file_glob_pattern, &we, WRDE_NOCMD | WRDE_UNDEF))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, file_glob_pattern);
+        return -1;
+     }
 
-   if (g->num_files == 0)
+   if (we.we_wordc < 1)
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: no files match glob pattern: %s",
                      __func__, file_glob_pattern);
-        return -1;
+        goto cleanup_and_return;
      }
 
    /* globbed file list is sorted in ascending order,
     * and is, therefore, assumed to be correctly time-ordered
     */
-   n = g->num_files;
+   n = we.we_wordc;
 
    while (n-- > 0)
      {
         Row_Select_Type *rst;
-        const char *file = g->files[n];
+        const char *file = we.we_wordv[n];
         double time_beg_pad = time_beg;
         double time_end_pad = time_end;
         int ncid, status;
@@ -265,7 +270,7 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
 
    return_status = 0;
 cleanup_and_return:
-   ioclib_glob_free (g);
+   wordfree (&we);
 
    if (return_status)
      {

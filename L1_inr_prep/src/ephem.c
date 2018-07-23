@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wordexp.h>
 
 #include <tell.h>
 
@@ -249,25 +250,47 @@ int eph_read_subset (Eph_Type *eph, const char *file,
                      double time_beg, double time_end,
                      int num_pad)
 {
-   int num_times;
+   wordexp_t we = {0};
+   int num_times, status = -1;
+
+   if (0 != wordexp (file, &we, WRDE_NOCMD | WRDE_UNDEF))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, file);
+        return -1;
+     }
+
+   if (we.we_wordc != 1)
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: ephemeris file pattern match is non-unique: %s",
+                     __func__, file);
+        goto cleanup_and_return;
+     }
+
+   file = we.we_wordv[0];
 
    if ((num_times = count_times (file)) < 0)
-     return -1;
+     goto cleanup_and_return;
 
    if (0 != alloc_eph (eph, num_times))
-     return -1;
+     goto cleanup_and_return;
 
    if (0 != read_eph (file, num_times, eph))
      {
         eph_free (eph);
-        return -1;
+        goto cleanup_and_return;
      }
 
    if (0 != select_interval (eph, time_beg, time_end, num_pad))
      {
         eph_free (eph);
-        return -1;
+        goto cleanup_and_return;
      }
 
-   return 0;
+   status = 0;
+cleanup_and_return:
+   wordfree (&we);
+
+   return status;
 }
