@@ -59,9 +59,22 @@ int _pTIO_define_processing_level (int grp, int level)
 
 int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
+   int start, count;
+
    if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &gid->scan_seq_num))
        ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, &gid->granule_seq_num))
-       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
+       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num))
+      )
+     {
+        return -1;
+     }
+
+   /* FIXME - temporary */
+   gid->scan_num = gid->scan_seq_num;
+
+   start = 0;
+   count = 1;
+   if (0 != TIO_get_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &gid->granule_flag))
      return -1;
 
    memset (gid->tstart_str, 0, MAX_ISOTIME_LEN);
@@ -80,14 +93,75 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    return 0;
 }
 
-int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
+int tio_define_granule_flag_var (int ncid)
+{
+   static _pText_Attr_Type granule_flag_attrs[] =
+     {
+        {"flag_meanings",
+             "is_first_granule_of_scan, is_last_granule_of_scan, is_telemetry_only"},
+        _pTEXT_ATTRS_END
+     };
+   int flag_masks[] = {
+      TEMPO_GRANULE_FLAG_IS_FIRST,
+      TEMPO_GRANULE_FLAG_IS_LAST,
+      TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY
+   };
+   int num_masks = sizeof(flag_masks)/sizeof(*flag_masks);
+   int varid, status;
+
+   if (-1 == _pTIO_define_var_with_text_attrs (ncid, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, &varid))
+     return -1;
+   if (NC_NOERR != (status = nc_put_att_int (ncid, varid, "flag_masks", NC_INT,
+                                             num_masks, flag_masks)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining int attribute %s (%s)",
+                     __func__, "flag_masks", nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int write_granule_ident_indices (int ncid, int scan_num,
+                                        int granule_num, int granule_flag)
+{
+   /* FIXME: temporary back-compatibility:
+    * scan_seq_num and granule_seq_num will soon be removed.
+    */
+   int granule_seq_num = 0;
+   int scan_seq_num = scan_num;
+   int status, start, count, varid;
+
+   status = ((-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &scan_seq_num))
+             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, 1, &granule_seq_num))
+             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_num", NC_INT, 1, &scan_num))
+             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_num", NC_INT, 1, &granule_num))
+            );
+   if (status)
+     return -1;
+
+   status = nc_inq_varid (ncid, TEMPO_VAR_GRANULE_FLAG, &varid);
+   if (NC_NOERR != status)
+     {
+        if (status != NC_ENOTVAR)
+          return -1;
+        if (0 != tio_define_granule_flag_var (ncid))
+          return -1;
+        /* drop */
+     }
+
+   start = 0;
+   count = 1;
+   status = TIO_put_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count,
+                                 NC_INT, &granule_flag);
+
+   return status ? -1 : 0;
+}
+
+static int write_granule_ident_times (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
    size_t len;
-
-   if ((-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &gid->scan_seq_num))
-       ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, 1, &gid->granule_seq_num))
-       ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_num", NC_INT, 1, &gid->granule_num)))
-     return -1;
 
    len = strlen (gid->tstart_str) + 1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "time_coverage_start", NC_CHAR, len, gid->tstart_str))
@@ -104,6 +178,40 @@ int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
      return -1;
 
    return 0;
+}
+
+int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
+{
+   if (0 != write_granule_ident_indices (ncid, gid->scan_seq_num, gid->granule_num,
+                                         gid->granule_flag))
+     return -1;
+
+   return write_granule_ident_times (ncid, gid);
+}
+
+int tio_write_granule_ident_indices (int ncid, int scan_num, int granule_num,
+                                    int granule_flag)
+{
+   return write_granule_ident_indices (ncid, scan_num, granule_num,
+                                       granule_flag);
+}
+
+int tio_write_granule_ident_times (int ncid, double tstart, double tend)
+{
+   _pTIO_Granule_Ident_Type gid = {0};
+
+   if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
+     return -1;
+
+   gid.tstart = tstart;
+   gid.tend = tend;
+
+   if (0 != TIO_mktimestamp_str (tstart, 0, gid.tstart_str, sizeof(gid.tstart_str)))
+     return -1;
+   if (0 != TIO_mktimestamp_str (tend, 0, gid.tend_str, sizeof(gid.tend_str)))
+     return -1;
+
+   return write_granule_ident_times (ncid, &gid);
 }
 
 int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
@@ -159,8 +267,10 @@ static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
                                const _pTIO_Granule_Ident_Type *gid2)
 {
    return ((gid1->scan_seq_num == gid2->scan_seq_num)
+           && (gid1->scan_num == gid2->scan_num)
            && (gid1->granule_seq_num == gid2->granule_seq_num)
            && (gid1->granule_num == gid2->granule_num)
+           && (gid1->granule_flag == gid2->granule_flag)
            && (gid1->tstart == gid2->tstart)
            && (gid1->tend == gid2->tend)
            && (0 == strncmp (gid1->tstart_str, gid2->tstart_str, MAX_ISOTIME_LEN))
@@ -481,6 +591,8 @@ int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
      }
 
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &beg->scan_seq_num))
+     return -1;
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_num", NC_INT, 1, &beg->scan_num))
      return -1;
 
    len = strlen (beg->tstart_str) + 1;

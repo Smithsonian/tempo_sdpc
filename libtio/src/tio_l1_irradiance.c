@@ -100,20 +100,6 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
-#if 0     /* FIXME - isn't this irrelevant for the irradiance? */
-   /* granule_flag */
-     {
-        static _pText_Attr_Type granule_flag_attrs[] =
-          {
-             {"flag_masks", "0x01, 0x02"},
-             {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan"},
-             _pTEXT_ATTRS_END
-          };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
-          return -1;
-     }
-#endif
-
    /* earth_sun_distance */
      {
         static _pText_Attr_Type earth_sun_distance_attrs[] =
@@ -149,7 +135,7 @@ static int define_global_attrs (int grp)
      {
         MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
         MAKE_INT_ATTR1("processing_version", 0),
-        MAKE_INT_ATTR1("granule_seq_num", 0),
+        MAKE_INT_ATTR1("granule_seq_num", 0), /* FIXME? */
         _pINT_ATTRS_END
      };
 

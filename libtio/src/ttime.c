@@ -18,14 +18,16 @@ static void usage (void)
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
+   fprintf (stderr, "  -e | --epoch        Write TEMPO epoch timestamp\n");
    fprintf (stderr, "  -s | --sec SECONDS  Convert seconds since TEMPO epoch to UTC timestamp string\n");
+   fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
    fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to seconds since TEMPO epoch\n");
    fprintf (stderr, "  UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
    exit (EXIT_SUCCESS);
 }
 
 static int fix_header_timestamp (const char *path, const char *grp_path,
-                                 const char *var)
+                                 const char *var, int write_epoch)
 {
    TIO_Var_Info_Type info = {0};
    double tstart, tend;
@@ -33,6 +35,12 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
 
    if (0 != TIO_open (path, NC_WRITE, &ncid))
      return -1;
+
+   if (write_epoch)
+     {
+        if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
+          return -1;
+     }
 
    if (0 != TIO_inq_grp (ncid, grp_path, &grp))
      return -1;
@@ -60,7 +68,7 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
    return 0;
 }
 
-static int convert_seconds (const char *arg)
+static int convert_seconds (const char *arg, int omit_delimiters)
 {
    double tempo, hour, minf, sec;
    int year, month, day, hr, min;
@@ -80,8 +88,16 @@ static int convert_seconds (const char *arg)
    min = (int)minf;
    sec = (minf - min)*60;
 
-   fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
-            year, month, day, hr, min, sec);
+   if (omit_delimiters)
+     {
+        fprintf (stdout, "%4d%02d%02dT%02d%02d%02.0f",
+                 year, month, day, hr, min, sec);
+     }
+   else
+     {
+        fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6fZ",
+                 year, month, day, hr, min, sec);
+     }
 
    return 0;
 }
@@ -135,6 +151,8 @@ int main (int argc, char **argv)
      {
         {"utc", required_argument, 0, 'u'},
         {"sec", required_argument, 0, 's'},
+        {"delim", no_argument,     0, 'd'},
+        {"epoch", no_argument,     0, 'e'},
         {"fix", required_argument, 0, 'f'},
         {"grp", required_argument, 0, 'g'},
         {"var", required_argument, 0, 'v'},
@@ -146,6 +164,8 @@ int main (int argc, char **argv)
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int fix_file = 0;
+   int write_epoch = 0;
+   int omit_delimiters = 0;
 
    if (argc < 3)
      usage();
@@ -153,13 +173,19 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "f:g:s:u:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "edf:g:s:u:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
           {
            default:
              fprintf (stderr, "getopt returned character %d??\n", c);
+             break;
+           case 'e':
+             write_epoch++;
+             break;
+           case 'd':
+             omit_delimiters++;
              break;
            case 'g':
              grp = optarg;
@@ -172,7 +198,7 @@ int main (int argc, char **argv)
              var = optarg;
              break;
            case 's':
-             status = convert_seconds (optarg);
+             status = convert_seconds (optarg, omit_delimiters);
              break;
            case 'u':
              status = convert_timestamp_string (optarg);
@@ -182,7 +208,7 @@ int main (int argc, char **argv)
 
    if (fix_file)
      {
-        status = fix_header_timestamp (path, grp, var);
+        status = fix_header_timestamp (path, grp, var, write_epoch);
      }
 
    exit_status = status ? EXIT_FAILURE : EXIT_SUCCESS;

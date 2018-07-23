@@ -97,6 +97,16 @@ extern int tio_set_earth_sun_distance (int grp, double earth_sun_distance);
 extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
                                        TIO_Scan_Group_Type *sgrps);
 
+#define TEMPO_GRANULE_FLAG_IS_FIRST           0x1
+#define TEMPO_GRANULE_FLAG_IS_LAST            0x2
+#define TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY  0x4
+extern int tio_define_granule_flag_var (int ncid);
+
+extern int tio_write_granule_ident_indices (int ncid, int scan_num,
+                                            int granule_num, int granule_flag);
+extern int tio_write_granule_ident_times (int ncid, double tstart,
+                                          double tend);
+
 /** Copy granule identification metadata from one netcdf file to another
  * @param  ncid_from     Index of source netcdf file
  * @param  ncid_to       Index of destination netcdf file

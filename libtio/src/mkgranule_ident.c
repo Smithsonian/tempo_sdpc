@@ -49,6 +49,7 @@ static int write_granule_ident_file (const char *file,
    fprintf (fp, "processing_version,%d\n", version);
    fprintf (fp, "scan_seq_num,%d\n", gid->scan_seq_num);
    fprintf (fp, "granule_seq_num,%d\n", gid->granule_seq_num);
+   fprintf (fp, "scan_num,%d\n", gid->scan_num);
    fprintf (fp, "granule_num,%d\n", gid->granule_num);
    fprintf (fp, "time_coverage_start_since_epoch,%0.16e\n", gid->tstart);
    fprintf (fp, "time_coverage_end_since_epoch,%0.16e\n", gid->tend);

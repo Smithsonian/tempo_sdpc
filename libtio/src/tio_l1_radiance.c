@@ -148,18 +148,6 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
-   /* granule_flag */
-     {
-        static _pText_Attr_Type granule_flag_attrs[] =
-          {
-             {"flag_masks", "0x01, 0x02, 0x04"},
-             {"flag_meanings", "is_first_granule_of_scan, is_last_granule_of_scan, is_telemetry_only"},
-             _pTEXT_ATTRS_END
-          };
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GRANULE_FLAG, NC_INT, 0, NULL, granule_flag_attrs, NULL))
-          return -1;
-     }
-
    /* earth_sun_distance */
    if (0 != tio_set_earth_sun_distance (grp, _pTIO_EARTH_SUN_DISTANCE))
      return -1;
@@ -194,22 +182,23 @@ static int define_inr_status (int grp, int inr_status)
 
 static int define_radiance_granule_global_ident (int grp)
 {
-   _pTIO_Granule_Ident_Type gid;
-   double tstart, tend;
+   _pTIO_Granule_Ident_Type gid = {0};
+
+   if (0 != tio_define_granule_flag_var (grp))
+     return -1;
 
    gid.next = NULL;
+   gid.scan_num = 0;
    gid.scan_seq_num = 0;
    gid.granule_seq_num = 0;
    gid.granule_num = 0;
+   gid.granule_flag = 0;
    strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
    strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
 
-   if ((0 != _pTIO_tempo_time_from_utc_timestr (gid.tstart_str, &tstart))
-       ||(0 != _pTIO_tempo_time_from_utc_timestr (gid.tend_str, &tend)))
+   if ((0 != _pTIO_tempo_time_from_utc_timestr (gid.tstart_str, &gid.tstart))
+       ||(0 != _pTIO_tempo_time_from_utc_timestr (gid.tend_str, &gid.tend)))
      return -1;
-
-   gid.tstart = tstart;
-   gid.tend = tend;
 
    return _pTIO_write_granule_ident (grp, &gid);
 }
