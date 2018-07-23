@@ -315,7 +315,7 @@ static int new_iru_outfile (Process_Method_Type *pmt, double timestamp)
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
    if (0 != make_level0_basename (timestamp, pmt->processing_version, "iru0",
-                                  basename, sizeof(basename)))
+                                  NULL, basename, sizeof(basename)))
      return -1;
 
    if (pmt->ncid != INT_MAX)

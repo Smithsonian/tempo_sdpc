@@ -62,6 +62,14 @@ extern char *expand_string (const char *s);
 extern int write_attr_global_timestamp (int ncid, const char *tstamp_name,
                                         double tstamp_value);
 
+typedef struct
+{
+   int scan_num;
+   int granule_num;
+   int granule_flag;
+}
+Radiance_Ident_Type;
+
 /** Generate a Level 0 file basename given the necessary file name components
  * @param[in]  sec_since_epoch   A time stamp value, expressed as the number
  *                               of seconds elapsed since the TEMPO epoch.
@@ -73,7 +81,8 @@ extern int write_attr_global_timestamp (int ncid, const char *tstamp_name,
  * @return 0 on success, -1 on error
  */
 extern int make_level0_basename (double sec_since_epoch, int processing_version,
-                                 const char *suffix, char *buf, int bufsize);
+                                 const char *suffix, const Radiance_Ident_Type *identp,
+                                 char *buf, int bufsize);
 
 /** Create a netCDF file with a hidden name.
  *  @param[in] dirname   Path to the target directory that will contain the file.

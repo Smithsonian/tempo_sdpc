@@ -14,6 +14,7 @@
 #include <ioclib.h>
 #include <iocsdpc.h>
 #include <tio.h>
+#include <tio_template.h>
 #include <tell.h>
 
 typedef struct
@@ -156,7 +157,8 @@ static double image_end_time (IOCSDPC_Exprec_Type *erec)
 
 static int define_file_vars (Process_Method_Type *pmt,
                              const TPInfo_Type *tpinfo,
-                             IOCSDPC_Exprec_Type *erec)
+                             IOCSDPC_Exprec_Type *erec,
+                             const Radiance_Ident_Type *identp)
 {
    const IOCSDPC_Image_Info_Item_Type *item;
    int ncid = pmt->ncid;
@@ -173,6 +175,17 @@ static int define_file_vars (Process_Method_Type *pmt,
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "exprec_type",
                           NC_CHAR, len, pmt->exprec_type_string))
      return -1;
+
+   if (identp)
+     {
+        if (0 != tio_define_granule_flag_var (ncid))
+          return -1;
+        if (0 != tio_write_granule_ident_indices (ncid, identp->scan_num,
+                                                  identp->granule_num,
+                                                  identp->granule_flag))
+          return -1;
+     }
+
    if (-1 == write_attr_global_timestamp (ncid, "time_coverage_start",
                                           pmt->outfile_timestamp_start))
      return -1;
@@ -258,12 +271,30 @@ static int close_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
+static void set_radiance_granule_flag (int curr_granule, int num_granules,
+                                       int *pgranule_flag)
+{
+   int granule_flag = 0;
+   if (curr_granule == 0)
+     {
+        granule_flag |= TEMPO_GRANULE_FLAG_IS_FIRST;
+     }
+   if (curr_granule == num_granules-1)
+     {
+        granule_flag |= TEMPO_GRANULE_FLAG_IS_LAST;
+     }
+   *pgranule_flag = granule_flag;
+}
+
 /* Create a new netCDF output file  */
 static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
-                        int granule_size, IOCSDPC_Exprec_Type *erec)
+                        int granule_size, IOCSDPC_Exprec_Type *erec,
+                        int curr_granule, int num_granules)
 {
    char basename[MAX_BASENAME_SIZE];
    char *exprec_type_suffix;
+   Radiance_Ident_Type radiance_ident = {0};
+   Radiance_Ident_Type *identp = NULL;
 
    pmt->outfile_timestamp_start = erec->image_start_time;
    pmt->outfile_timestamp_end = image_end_time (erec);
@@ -277,6 +308,11 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
       case IOCSDPC_EXPREC_TYPE_RADIANCE:
         exprec_type_suffix = "rad0";
         pmt->exprec_type_string = ioclib_strdup("radiance");
+        radiance_ident.scan_num = 0;   /* FIXME! exprec header should define this */
+        radiance_ident.granule_num = curr_granule + 1;
+        set_radiance_granule_flag (curr_granule, num_granules,
+                                   &radiance_ident.granule_flag);
+        identp = &radiance_ident;
         break;
       case IOCSDPC_EXPREC_TYPE_DARK:
         exprec_type_suffix = "drk0";
@@ -307,7 +343,8 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      return -1;
 
    if (-1 == make_level0_basename (erec->image_start_time, pmt->processing_version,
-                                   exprec_type_suffix, basename, sizeof(basename)))
+                                   exprec_type_suffix, identp,
+                                   basename, sizeof(basename)))
      return -1;
 
    tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
@@ -323,7 +360,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    pmt->granule_size = granule_size;
 
-   return define_file_vars (pmt, tpinfo, erec);
+   return define_file_vars (pmt, tpinfo, erec, identp);
 }
 
 static int write_exprec (Process_Method_Type *pmt,
@@ -563,7 +600,9 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                   granule_size = num_files - i;
                }
 
-             if (0 != new_outfile (pmt, tpinfo, granule_size, erec))
+             if (0 != new_outfile (pmt, tpinfo, granule_size, erec,
+                                   sched->curr_granule,
+                                   sched->num_granules))
                goto return_status;
              file_erec_count = 0;
           }

@@ -394,7 +394,8 @@ return_status:
 }
 
 int make_level0_basename (double sec_since_epoch, int processing_version,
-                          const char *suffix, char *buf, int bufsize)
+                          const char *suffix, const Radiance_Ident_Type *identp,
+                          char *buf, int bufsize)
 {
    char tstr[MAX_ISOTIME_LEN];
    int n;
@@ -402,13 +403,26 @@ int make_level0_basename (double sec_since_epoch, int processing_version,
    if (-1 == TIO_mktimestamp_str (sec_since_epoch, 0, tstr, MAX_ISOTIME_LEN))
      return -1;
 
-   n = snprintf (buf, bufsize, "tempo_%s_v%d_%s.nc",
-                 tstr, processing_version, suffix);
+   if (identp)
+     {
+        n = snprintf (buf, bufsize, "tempo_%s_%06d_%02d_v%d_%s.nc",
+                      tstr,
+                      identp->scan_num,
+                      identp->granule_num,
+                      processing_version,
+                      suffix);
+     }
+   else
+     {
+        n = snprintf (buf, bufsize, "tempo_%s_v%d_%s.nc",
+                      tstr, processing_version, suffix);
+     }
+
    if (n >= bufsize)
      {
         tell_verror (TELL_APPLICATION_ERROR,
                      "%s: basename length %d truncated to buffer size %d)",
-                    __func__, n, bufsize);
+                     __func__, n, bufsize);
         return -1;
      }
 
