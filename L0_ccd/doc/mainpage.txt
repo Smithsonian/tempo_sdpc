@@ -6,15 +6,18 @@
 @verbatim
 Usage: L0_ccd [options] <input-file>
   Required:
-   -d | --dark FILE       input corrected dark current file
-   -i | --instr FILE      instrument telemetry points file;
-                          provide a list using FILE=@DIR/paths.lis
-   -o | --output FILE     output file
+   -d | --dark FILE       Input corrected dark current file
+   -i | --instr FILE      Instrument telemetry points file.
+                          Provide a list using FILE=@DIR/paths.lis.
+                          When FILE provides a directory path,
+                          files matching hk_glob_pattern are examined
+                          (hk_glob_pattern is defined in the config file)
+   -o | --output FILE     Output file
   Optional:
-   -b | --bpix FILE       bad pixel file
-   -c | --config FILE     configuration file
-   -n | --num N           process <= N exposure records
-   -v | --verbose lev     logging level
+   -b | --bpix FILE       Bad pixel file
+   -c | --config FILE     Configuration file
+   -n | --num N           Process <= N exposure records
+   -v | --verbose lev     Logging level
 @endverbatim
 
 @section Description
@@ -103,84 +106,6 @@ essentially identical to routine irradiance processing.
 
 @section param_file Parameter file
 
-@verbatim
-dark_table_creation:
-{
-   ordered_by = "fptemp";          # fptemp | sdc | exptime
-   max_delta_temp = 0.1;           # max delta temperature [C] per bin
-   max_delta_exptime = 0.1;        # max delta exposure time [sec] per bin
-};
-
-ccd_methods:
-{
-   smear_corr = "timing";          # smear_corr = oclocks | timing
-};
-
-ccd_calibration:
-{
-   sensorcal_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/misc/ccdcal_2016jan.nc";
-   gain_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/misc/ccd_gain.csv";
-   badpix_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/bpix/tempo_dc_badpixel_map.nc";
-
-   default_wavelength_grid:
-   {
-      delta_wave = 0.2;            # nominal wavelength step per pixel [nm]
-      min_wave_uv = 288.0;         # nominal shortest UV wavelength [nm]
-      min_wave_vis = 536.8;        # nominal shortest visual wavelength [nm];
-   };
-};
-
-pixel_quality_flag_params:
-{
-   hot_thresh = 5;     # hot pixels have values > mean + hot_thresh*stddev
-   cold_thresh = 5;    # cold pixels have values < mean - cold_thresh*stddev
-
-   # range, in pixels, at which a saturated pixel affects its neighbors
-   saturation:
-   {
-      neighbor_hw_serial = 2;      # spatial direction half-width (serial)
-      neighbor_hw_parallel = 2;    # spectral direction half-width (parallel)
-   };
-
-   # size of region to examine when identifying transient pixels
-   transients:
-   {
-      neighbor_hw_serial = 2;      # spatial direction half-width (serial)
-      neighbor_hw_parallel = 2;    # spectral direction half-width (parallel)
-      threshold = 0.1;
-   };
-
-   # A pixel may be added to the badpix file if that pixel is flagged as
-   # bad more than f*N times in a granule that contains >N exposure
-   # records, where f=threshold, and N=num_exprecs_needed
-   badpix_update:
-   {
-       threshold = 0.9;
-       num_exprecs_needed = 10;
-   };
-
-};
-
-ccd_parameters:
-{
- # Pixel dimensions are as specified in the TEMPO EICD (Ball 2420340)
- # except that two active rows in each channel are now devoted
- # to measuring the storage region dark current (num_parallel_sdc=2).
-
- # serial readout (spatial, per-quadrant)
-   num_serial_active = 1024;     # number of active pixels
-   num_serial_leading = 10;      # number of leading buffer pixels
-   num_serial_trailing = 22;     # number of trailing buffer pixels
-
- # parallel readout (spectral, per-channel)
-   num_parallel_active = 1026;   # number of active pixels
-   num_parallel_oclock = 18;     # number of pixels overclocked for smear correction
-   num_parallel_sdc = 2;         # number of storage region dark current readout rows
-
-   num_readout_bits = 14;        # number of bits per pixel in CCD readout
-   num_coadd_bits = 20;          # number of bits per pixel in coadded image
-   num_full_well = 240000;       # maximum number of e- a CCD pixel can hold
-};
-@endverbatim
+@verbinclude l0_ccd.cfg.example
 
 */

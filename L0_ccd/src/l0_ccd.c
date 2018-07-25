@@ -17,15 +17,18 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: L0_ccd [options] <input-file>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -d | --dark FILE       input corrected dark current file\n");
-   fprintf (stderr, "   -i | --instr FILE      instrument telemetry points file;\n");
-   fprintf (stderr, "                          provide a list using FILE=@DIR/paths.lis\n");
-   fprintf (stderr, "   -o | --output FILE     output file\n");
+   fprintf (stderr, "   -d | --dark FILE       Input corrected dark current file\n");
+   fprintf (stderr, "   -i | --instr FILE      Instrument telemetry points file.\n");
+   fprintf (stderr, "                          Provide a list using FILE=@DIR/paths.lis.\n");
+   fprintf (stderr, "                          When FILE provides a directory path,\n");
+   fprintf (stderr, "                          files matching hk_glob_pattern are examined\n");
+   fprintf (stderr, "                          (hk_glob_pattern is defined in the config file)\n");
+   fprintf (stderr, "   -o | --output FILE     Output file\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -b | --bpix FILE       bad pixel file\n");
-   fprintf (stderr, "   -c | --config FILE     configuration file\n");
-   fprintf (stderr, "   -n | --num N           process <= N exposure records \n");
-   fprintf (stderr, "   -v | --verbose lev     logging level\n");
+   fprintf (stderr, "   -b | --bpix FILE       Bad pixel file\n");
+   fprintf (stderr, "   -c | --config FILE     Configuration file\n");
+   fprintf (stderr, "   -n | --num N           Process <= N exposure records \n");
+   fprintf (stderr, "   -v | --verbose lev     Logging level\n");
    exit (EXIT_SUCCESS);
 }
 
