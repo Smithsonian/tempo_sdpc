@@ -1,3 +1,9 @@
+control:
+{
+   hk_glob_pattern = "*hk0.nc";    #  filename pattern to identify
+   #                                  level 0 telemetry point files
+};
+
 dark_table_creation:
 {
    ordered_by = "sdc";          # fptemp | sdc | exptime
@@ -15,8 +21,6 @@ ccd_calibration:
    sensorcal_file = "$SDPC_RUN_DIR/refdata/instrument/ccdcal_2016jan.nc";
    gain_file = "$SDPC_RUN_DIR/refdata/instrument/ccd_gain.csv";
    badpix_file = "$SDPC_RUN_DIR/refdata/instrument/tempo_dc_badpixel_map.nc";
-
-   hk_glob_pattern = "*hk0.nc";
 
    # Either stride=0 means wavelength calibration is OFF
    wavecal_xtrack_stride = 64;
