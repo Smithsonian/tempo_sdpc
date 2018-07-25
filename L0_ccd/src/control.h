@@ -8,6 +8,7 @@ typedef struct
    const char *bpix_file;
    const char *dark_file;
    const char *instr_status_file;
+   const char *instr_glob;
    int limit_num_granules;
 }
 Control_Type;

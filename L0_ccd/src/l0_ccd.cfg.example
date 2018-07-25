@@ -16,6 +16,8 @@ ccd_calibration:
    gain_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/misc/ccd_gain.csv";
    badpix_file = "/cf/data/tempo_gs/jhouck/lev01/nc_test_data/bpix/tempo_dc_badpixel_map.nc";
 
+   hk_glob_pattern = "*hk0.nc"'
+
    # Either stride=0 means wavelength calibration is OFF
    wavecal_xtrack_stride = 64;
    wavecal_mirror_step_stride = 64;

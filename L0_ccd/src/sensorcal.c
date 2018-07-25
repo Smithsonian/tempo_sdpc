@@ -550,6 +550,7 @@ Calibration_Type *sensorcal_init (config_t *cfg)
    Cal_Data_Type *data = NULL;
    int wavecal_xtrack_stride = 0;
    int wavecal_mirror_step_stride = 0;
+   char *path = NULL;
 
    if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
      {
@@ -585,7 +586,11 @@ Calibration_Type *sensorcal_init (config_t *cfg)
         wavecal_mirror_step_stride = 0;
      }
 
-   if (NULL == (data = read_cal_file (sensorcal_file)))
+   if (NULL == (path = expand_path (sensorcal_file)))
+     return NULL;
+   data = read_cal_file (path);
+   FREE(path);
+   if (NULL == data)
      return NULL;
 
    if ((NULL == (sub = config_setting_get_member (s, "default_wavelength_grid")))

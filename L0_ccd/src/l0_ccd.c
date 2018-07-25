@@ -60,6 +60,15 @@ static int read_config_file (const char *config_file,
         return -1;
      }
 
+   if (CONFIG_TRUE != config_setting_lookup_string
+       (setting, "hk_glob_pattern", &ctrl->instr_glob))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading hk_glob_pattern in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
    return 0;
 }
 

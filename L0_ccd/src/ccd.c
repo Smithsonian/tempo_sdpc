@@ -8,6 +8,7 @@
 #include <tell.h>
 
 #include "config.h"
+#include "util.h"
 #include "image.h"
 
 typedef struct
@@ -964,6 +965,8 @@ static int init_gain (config_t *cfg, CCD_Type *ccd)
 {
    config_setting_t *setting;
    const char *gain_file;
+   char *path = NULL;
+   int status;
 
    if (NULL == (setting = config_lookup (cfg, "ccd_calibration")))
      {
@@ -981,10 +984,12 @@ static int init_gain (config_t *cfg, CCD_Type *ccd)
         return -1;
      }
 
-   if (-1 == read_dn_to_charge_params (ccd, gain_file))
+   if (NULL == (path = expand_path (gain_file)))
      return -1;
+   status = read_dn_to_charge_params (ccd, path);
+   FREE(path);
 
-   return 0;
+   return status;
 }
 
 static int init_methods (config_t *cfg, CCD_Type *ccd)

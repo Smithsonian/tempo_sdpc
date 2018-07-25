@@ -16,7 +16,9 @@
    int ncid; \
    int num_exprecs; \
    int num_rows; \
-   int num_cols;
+   int num_cols; \
+   double tstart; \
+   double tend;
 #include "granule.h"
 
 static void granule_free_exprec (Granule_Exprec_Type *exprec)
@@ -196,6 +198,15 @@ static int granule_get_ncid (const Granule_Type *g)
    return g->ncid;
 }
 
+static double granule_tstart (const Granule_Type *g)
+{
+   return g->tstart;
+}
+static double granule_tend (const Granule_Type *g)
+{
+   return g->tend;
+}
+
 static Granule_Type *new_granule (void)
 {
    Granule_Type *g;
@@ -210,6 +221,8 @@ static Granule_Type *new_granule (void)
    g->granule_free_exprec = granule_free_exprec;
    g->granule_type = granule_type;
    g->granule_ncid = granule_get_ncid;
+   g->granule_tstart = granule_tstart;
+   g->granule_tend = granule_tend;
 
    return g;
 }
@@ -324,6 +337,12 @@ Granule_Type *granule_open (const char *file)
    g->exposure_type = identify_exprec_type (exprec_type);
    (void) TIO_free_string (1, &exprec_type);
    exprec_type = NULL;
+
+   if ((-1 == TIO_get_att (g->ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &g->tstart))
+       || (-1 == TIO_get_att (g->ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &g->tend)))
+     {
+        goto error_return;
+     }
 
    return g;
 

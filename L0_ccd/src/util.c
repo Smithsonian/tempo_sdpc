@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <wordexp.h>
 
 #include <tell.h>
 #include "config.h"
@@ -87,4 +89,30 @@ int read_config_float_array (config_setting_t *s, const char *name,
    if (pnum_a) *pnum_a = na;
 
    return 1;
+}
+
+char *expand_path (const char *path)
+{
+   wordexp_t we;
+   char *path_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof(wordexp_t));
+
+   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, path);
+        goto return_error;
+     }
+
+   if (NULL == (path_exp = strdup (we.we_wordv[0])))
+     {
+        tell_verror (TELL_MALLOC_ERROR,
+                     "%s: strdup failed", __func__);
+     }
+
+return_error:
+   wordfree (&we);
+   return path_exp;
 }

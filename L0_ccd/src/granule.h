@@ -97,7 +97,23 @@ struct Granule_Type
     */
    Granule_Exprec_Type *(*granule_read_exprec_by_index) (const Granule_Type *, int, Granule_Exprec_Type **);
 
+   /** Return the netCDF file descriptor for a Granule_Type object
+    * @param  Granule_Type *  non-NULL pointer to a Granule_Type object
+    * @return the file descriptor on success, or -1 on error
+    */
    int (*granule_ncid)(const Granule_Type *);
+
+   /** Return the coverage start time for a Granule_Type object
+    * @param  Granule_Type *  non-NULL pointer to a Granule_Type object
+    * @return the coverage start time, in TAI seconds since the TEMPO epoch
+    */
+   double (*granule_tstart)(const Granule_Type *);
+
+   /** Return the coverage end time for a Granule_Type object
+    * @param  Granule_Type *  non-NULL pointer to a Granule_Type object
+    * @return the coverage end time, in TAI seconds since the TEMPO epoch
+    */
+   double (*granule_tend)(const Granule_Type *);
 
    /** Free a Granule_Exprec_Type object
     * @param  Granule_Exprec_Type *  non-NULL pointer to a Granule_Exprec_Type object

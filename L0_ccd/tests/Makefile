@@ -64,7 +64,7 @@ coverage:	$(EXECUTABLES)
 	genhtml filtered.info -o lcov.dir
 
 LIBOBJS = util.o $(elfdir)/ccd.o $(elfdir)/image.o $(elfdir)/dark.o \
-          $(elfdir)/pixelqf.o $(elfdir)/bpix.o
+          $(elfdir)/pixelqf.o $(elfdir)/bpix.o $(elfdir)/util.o
 
 test_image:	util.o
 	$(COMPILE_CMD) -o test_image $(INCS) test_image.c $(LIBOBJS) $(LIBS) -lm

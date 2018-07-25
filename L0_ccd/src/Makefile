@@ -17,13 +17,16 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 GSL_LIBPATHS     = -lgsl -lgslcblas
 
+IOCSDPC_INC = $(prefix)/include
+IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -lcsv
+
 EXTRA_INCS =#
 EXTRA_LIBS = $(GSL_LIBPATHS) #
 
-INCS = -I$(config_dir)/include -I$(TIO_INC) \
+INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(IOCSDPC_INC) \
        -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
 LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
-       $(NETCDF_LIBPATHS) -lnetcdf \
+       $(NETCDF_LIBPATHS) -lnetcdf $(IOCSDPC_LIBPATHS) \
        $(TELL_LIBPATHS) -ltell \
        $(TIO_LIBPATHS) -ltio -lmpfit \
        $(RPATH) $(INSTALL_LIBPATHS)

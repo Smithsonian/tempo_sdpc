@@ -52,7 +52,7 @@ Window_Type;
 
 typedef struct
 {
-   const char *path;       /**< path to the file */
+   char *path;             /**< path to the file */
    const char *name_x;     /**< name of variable containing "X" */
    const char *name_y;     /**< name of variable containing "Y" */
    double scale_factor;    /**< scale factor to be applied to "Y" values */
@@ -112,6 +112,13 @@ struct Wavecal_Type
    int is_irradiance;
 };
 
+static void free_file_type (File_Type *file)
+{
+   if (file == NULL)
+     return;
+   FREE(file->path);
+}
+
 static void free_interp_type (Interp_Type *it)
 {
    if (it == NULL)
@@ -154,6 +161,7 @@ static void free_term1 (Term_Type *tt)
    FREE(tt->term_name);
    FREE(tt->params);
    FREE(tt->value);
+   free_file_type(&tt->refspec.file);
    free_interp_type (tt->refspec.interp);
    free_shapefun_type (tt->shapefun);
    free_shapefun_init_type (&tt->shapefun_init);
@@ -186,7 +194,9 @@ static Term_Type *term_alloc (void)
 
 static int read_filepar (config_setting_t *s, File_Type *ct)
 {
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "path", &ct->path))
+   const char *path = NULL;
+
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "path", &path))
        ||(CONFIG_TRUE != config_setting_lookup_string (s, "wavegrid", &ct->name_x))
        ||(CONFIG_TRUE != config_setting_lookup_string (s, "value", &ct->name_y)))
      {
@@ -199,6 +209,9 @@ static int read_filepar (config_setting_t *s, File_Type *ct)
 
    if (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor", &ct->scale_factor))
      ct->scale_factor = 1.0;
+
+   if (NULL == (ct->path = expand_path (path)))
+     return -1;
 
    return 0;
 }
@@ -442,6 +455,7 @@ static void free_reference_irr_type (Reference_Irr_Type *irr)
      return;
    TIO_close (irr->ncid);
    cspline_free (irr->cspline);
+   free_file_type (&irr->file);
    FREE(irr->wavelen);
    FREE(irr->irradiance);
 }

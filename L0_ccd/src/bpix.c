@@ -8,6 +8,7 @@
 #include <tell.h>
 
 #include "config.h"
+#include "util.h"
 #include "bpix.h"
 #include "image.h"
 
@@ -132,10 +133,18 @@ Badpix_Map_Type *bpix_read (const char *file)
    TIO_Var_Info_Type info;
    int start[2], count[2];
    int ncid;
+   char *path = NULL;
 
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+   if (NULL == (path = expand_path (file)))
      return NULL;
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
+
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
+     {
+        FREE(path);
+        return NULL;
+     }
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
+   FREE(path);
 
    if (0 != TIO_inq_var (ncid, "badpix", &info))
      return NULL;

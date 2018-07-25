@@ -320,7 +320,8 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (NULL == (pt = pixelqf_init (cfg)))
      goto return_status;
 
-   if (NULL == (instr = instr_open (ctrl->instr_status_file)))
+   if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
+                                    gr->granule_tstart(gr), gr->granule_tend(gr))))
      goto return_status;
 
    num_exprecs = gr->granule_num_exprecs(gr);
@@ -787,7 +788,8 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (NULL == (pt = pixelqf_init (cfg)))
      goto return_status;
 
-   if (NULL == (instr = instr_open (ctrl->instr_status_file)))
+   if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
+                                    gr->granule_tstart(gr), gr->granule_tend(gr))))
      goto return_status;
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
@@ -891,7 +893,7 @@ return_status:
 int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
    Granule_Type *gr = NULL;
-   Process_Control_Type pct;
+   Process_Control_Type pct = {0};
    int exposure_type, status = -1;
 
    if (0 != get_control_params (cfg, &pct))

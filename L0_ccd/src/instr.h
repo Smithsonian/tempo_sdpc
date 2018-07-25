@@ -35,14 +35,23 @@ struct Instr_Type
 };
 
 /** Create an Instr_Type object for a specified file
- * @param  file   Path to a file
+ * @param  path         Path to a file specifier
+ * @param  glob_basename  [optional] globbing pattern for instrument file basename
+ * @param  tstart       [optional] desired coverage start time
+ * @param  tend         [optional] desired coverage end time
  * @return non-NULL pointer to an Instr_Type object on success, NULL on error
  *
- * The specified file may be either a single netCDF file of the correct format,
- * or may be an ascii file containing one or more netCDF file paths.  When an
- * ascii file is provided, the first character of the \a file string should
- * be the '@' symbol.
+ * The file specifier may be one of the following:
+ *   1) The path to a single netCDF file of the correct format.
+ *   2) The path to an ascii file containing one or more netCDF file paths.
+ *      When an ascii file is provided, the first character of the \a path
+ *      string should be the '@' symbol.
+ *   3) The path to a directory containing netCDF files matching the
+ *      provided basename globbing pattern.  In this case, the
+ *      provide coverage start/end times are used to select the relevant
+ *      files from the directory.
  */
-extern Instr_Type *instr_open (const char *file);
+extern Instr_Type *instr_open (const char *file, const char *glob_basename,
+                               double tstart, double tend);
 
 #endif

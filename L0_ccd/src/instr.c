@@ -4,8 +4,13 @@
 #include <float.h>
 #include <math.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <tell.h>
 #include <tio.h>
+#include <ioclib.h>
 
 #include "config.h"
 #include "util.h"
@@ -17,6 +22,14 @@
    float *ccd_temp2; \
    size_t num_times;
 #include "instr.h"
+
+typedef struct
+{
+   const char *glob_basename;
+   double tstart;
+   double tend;
+}
+Instr_Filter_Type;
 
 static int find_entry1 (const Instr_Type *instr, double t, int *entry)
 {
@@ -232,17 +245,10 @@ return_error:
    return NULL;
 }
 
-static Instr_Type *read_instr (const char *path)
+static Instr_Type *read_instr_list (const char *path)
 {
    FILE *fp = NULL;
    Instr_Type *head = NULL;
-
-   if (*path != '@')
-     {
-        return read_instr1 (path);
-     }
-
-   path++;
 
    if (NULL == (fp = fopen (path, "r")))
      {
@@ -285,8 +291,149 @@ static Instr_Type *read_instr (const char *path)
    return head;
 }
 
-Instr_Type *instr_open (const char *file)
+enum
 {
+   FILTER_ERROR = -1,
+   FILTER_INCLUDES_FILE = 0,
+   FILTER_EXCLUDES_FILE = 1
+};
+
+static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file)
+{
+   double file_tstart, file_tend;
+   int ncid, status;
+
+   status = FILTER_ERROR;
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return FILTER_ERROR;
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &file_tstart))
+     goto return_status;
+
+   if (flt->tend < file_tstart)
+     {
+        status = FILTER_EXCLUDES_FILE;
+        goto return_status;
+     }
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &file_tend))
+     goto return_status;
+
+   if (file_tend < flt->tstart)
+     {
+        status = FILTER_EXCLUDES_FILE;
+        goto return_status;
+     }
+
+   status = FILTER_INCLUDES_FILE;
+
+return_status:
+   (void) TIO_close (ncid);
+   return status;
+}
+
+static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *flt)
+{
+   IOCLib_Glob_Type *g = NULL;
+   Instr_Type *head = NULL;
+   char *glob_path = NULL;
+   unsigned int i;
+   int status_flag = -1;
+
+   if (flt->glob_basename == NULL)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: glob_basename == NULL", __func__);
+        return NULL;
+     }
+
+   if (NULL == (glob_path = ioclib_pathconcat (path, flt->glob_basename)))
+     return NULL;
+
+   /* The globbing pattern is assumed to yield a time-ordered list of files */
+   if (NULL == (g = ioclib_glob (glob_path, 0)))
+     goto return_status;
+
+   for (i = 0; i < g->num_files; i++)
+     {
+        Instr_Type *instr, **tail;
+        int status = filter_excludes_file (flt, g->files[i]);
+
+        if (status < 0)
+          goto return_status;
+        else if (status > 0)
+          continue;
+
+        if (NULL == (instr = read_instr1 (g->files[i])))
+          goto return_status;
+
+        /* Preserve the order */
+        if (head == NULL)
+          head = instr;
+        else
+          {
+             *tail = instr;
+          }
+        tail = &instr->next;
+     }
+
+   status_flag = 0;
+return_status:
+   ioclib_free (glob_path);
+   ioclib_glob_free (g);
+
+   if (status_flag)
+     {
+        free_instr (head);
+        head = NULL;
+     }
+
+   return head;
+}
+
+static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
+{
+   struct stat st = {0};
+
+   /* The input path may represent one of the following
+    * alternatives:
+    * 1) path = '@LISTFILE'
+    *           where LISTFILE is the path to a file containing
+    *           a time-ordered list of filenames
+    * 2) path = 'DIRPATH'
+    *           where DIRPATH is the path to a directory containing
+    *           files matching a globbing expression
+    * 3) path = 'FILENAME'
+    *           where FILENAME is the path to a single file
+    */
+
+   if (*path == '@')
+     {
+        path++;
+        return read_instr_list (path);
+     }
+
+   if (stat(path, &st) == -1)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: cannot stat %s",
+                     __func__, path ? path : "<null>");
+        return NULL;
+     }
+
+   if (S_ISDIR(st.st_mode))
+     {
+        return read_instr_glob (path, flt);
+     }
+
+   return read_instr1 (path);
+}
+
+Instr_Type *instr_open (const char *file, const char *glob_basename,
+                        double tstart, double tend)
+{
+   Instr_Filter_Type flt = {0};
+
    if (file == NULL)
      {
         tell_verror (TELL_INVALID_PARM_ERROR, "%s: received file == NULL",
@@ -294,5 +441,9 @@ Instr_Type *instr_open (const char *file)
         return NULL;
      }
 
-   return read_instr (file);
+   flt.glob_basename = glob_basename;
+   flt.tstart = tstart;
+   flt.tend = tend;
+
+   return read_instr (file, &flt);
 }
