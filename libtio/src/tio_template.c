@@ -57,14 +57,26 @@ int _pTIO_define_processing_level (int grp, int level)
    return 0;
 }
 
-int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
+static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
-   int start, count;
+   int start, count, attid;
+
+   /* When granule ident indices aren't present, we assume this granule doesn't need them.
+    * In this case, we set the indices to zero to indicate that they aren't used.
+    */
+   if (NC_ENOTATT == nc_inq_attid (ncid, NC_GLOBAL, "granule_num", &attid))
+     {
+        gid->scan_num = 0;
+        gid->granule_num = 0;
+        gid->scan_seq_num = 0;
+        gid->granule_seq_num = 0;
+        gid->granule_flag = 0;
+        return 0;
+     }
 
    if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &gid->scan_seq_num))
        ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, &gid->granule_seq_num))
-       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num))
-      )
+       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
      {
         return -1;
      }
@@ -75,6 +87,14 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    start = 0;
    count = 1;
    if (0 != TIO_get_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &gid->granule_flag))
+     return -1;
+
+   return 0;
+}
+
+int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
+{
+   if (0 != read_granule_ident_indices (ncid, gid))
      return -1;
 
    memset (gid->tstart_str, 0, MAX_ISOTIME_LEN);
@@ -132,6 +152,12 @@ static int write_granule_ident_indices (int ncid, int scan_num,
    int granule_seq_num = 0;
    int scan_seq_num = scan_num;
    int status, start, count, varid;
+
+   /* In use, granule_num and scan_num are both positive values.
+    * A value of zero indicates that the index will not be used.
+    */
+   if ((granule_num == 0) || (scan_num == 0))
+     return 0;
 
    status = ((-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &scan_seq_num))
              ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, 1, &granule_seq_num))
@@ -233,28 +259,44 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
                                    char *buf, int bufsize)
 {
    char timestr[MAX_ISOTIME_LEN];
+   int meaningful_granule_indices;
    int status;
 
    if (0 != TIO_mktimestamp_str (gid->tstart, 0, timestr, sizeof(timestr)))
      return -1;
 
-   /* 6 digit sequence number should be enough for a 10 year mission:
-    * (10 years)*(365 days/year)*(100 scans/day) = 3.65e5 scans
-    * which fits in a 6 digit int.
-    */
-   status = snprintf (buf, bufsize,
-                      "tempo_%s_%06d_%02d_v%d_%s.nc",
-                      timestr,
-                      gid->scan_seq_num,
-                      gid->granule_num,
-                      version,
-                      label);
+   meaningful_granule_indices = ((gid->granule_num > 0)
+                                 && (gid->scan_num > 0));
+
+   if (meaningful_granule_indices)
+     {
+        /* 6 digit sequence number should be enough for a 10 year mission:
+         * (10 years)*(365 days/year)*(100 scans/day) = 3.65e5 scans
+         * which fits in a 6 digit int.
+         */
+        status = snprintf (buf, bufsize,
+                           "tempo_%s_%06d_%02d_v%d_%s.nc",
+                           timestr,
+                           gid->scan_num,
+                           gid->granule_num,
+                           version,
+                           label);
+     }
+   else
+     {
+        status = snprintf (buf, bufsize,
+                           "tempo_%s_v%d_%s.nc",
+                           timestr,
+                           version,
+                           label);
+     }
+
    return status;
 }
 
 int TIO_copy_granule_ident (int ncid_from, int ncid_to)
 {
-   _pTIO_Granule_Ident_Type gid;
+   _pTIO_Granule_Ident_Type gid = {0};
 
    if ((-1 == _pTIO_read_granule_ident (ncid_from, &gid))
        || (-1 == _pTIO_write_granule_ident (ncid_to, &gid)))
@@ -279,7 +321,8 @@ static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
 
 int TIO_same_granule_ident (int ncid1, int ncid2)
 {
-   _pTIO_Granule_Ident_Type gid1, gid2;
+   _pTIO_Granule_Ident_Type gid1 = {0};
+   _pTIO_Granule_Ident_Type gid2 = {0};
 
    if ((-1 == _pTIO_read_granule_ident (ncid1, &gid1))
        || (-1 == _pTIO_read_granule_ident (ncid2, &gid2)))
@@ -291,7 +334,7 @@ int TIO_same_granule_ident (int ncid1, int ncid2)
 int TIO_filename_from_granule (int ncid, const char *label, int version,
                                char *buf, int bufsize)
 {
-   _pTIO_Granule_Ident_Type gid;
+   _pTIO_Granule_Ident_Type gid = {0};
 
    if (-1 == _pTIO_read_granule_ident (ncid, &gid))
      return -1;

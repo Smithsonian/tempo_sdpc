@@ -85,7 +85,7 @@ static int write_granule_ident_file (const char *file,
 
 int main (int argc, char **argv)
 {
-   _pTIO_Granule_Ident_Type gid;
+   _pTIO_Granule_Ident_Type gid = {0};
    char *output_file = NULL;
    char *radiance_file = NULL;
    int c, ncid;
