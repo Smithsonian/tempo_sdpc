@@ -12,6 +12,7 @@ typedef struct
 {
    double start_time;           /**< exposure start time in sec elapsed since the TEMPO epoch */
    double exposure_time;        /**< total exposure duration [sec] */
+   int mirror_step;             /**< current mirror step */
 }
 Output_Metadata_Type;
 

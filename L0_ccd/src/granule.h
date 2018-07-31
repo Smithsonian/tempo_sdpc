@@ -46,6 +46,7 @@ typedef struct
    double readout_time;         /**< storage region readout time [sec] */
    int exposure_type;           /**< \ref granule_exprec_types "exposure record type" */
    int num_coadds;              /**< number of co-adds */
+   int curr_mirror_step;        /**< current mirror step */
    Image_Type *img;             /**< Pointer to image data */
 }
 Granule_Exprec_Type;

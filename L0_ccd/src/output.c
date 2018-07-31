@@ -281,6 +281,14 @@ static int write_rec_meta (Output_Type *out, int index,
         return -1;
      }
 
+   if (0 != TIO_put_var_section (out->ncid, TEMPO_DIM_STEP, &start, &count, TIO_INT,
+                                 &meta->mirror_step))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                     __func__, TEMPO_DIM_STEP, out->file);
+        return -1;
+     }
+
    return 0;
 }
 

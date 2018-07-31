@@ -589,6 +589,7 @@ static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal,
 
    outrec.meta.start_time = xr->exprec->start_time;
    outrec.meta.exposure_time = xr->exprec->exposure_time;
+   outrec.meta.mirror_step = xr->exprec->curr_mirror_step;
 
    if (0 != out->out_write_rec (out, xr->index, &outrec))
      goto return_status;

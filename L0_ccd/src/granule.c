@@ -143,7 +143,10 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
        ||(0 != TIO_get_var_section (g->ncid, "readout_time", start, count, TIO_DOUBLE,
                                     &exprec->readout_time))
        ||(0 != TIO_get_var_section (g->ncid, "num_coadds", start, count, TIO_INT,
-                                    &exprec->num_coadds)))
+                                    &exprec->num_coadds))
+       ||(0 != TIO_get_var_section (g->ncid, "curr_mirror_step", start, count, TIO_INT,
+                                    &exprec->curr_mirror_step))
+      )
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: reading exposure record %d",
                      __func__, ith);
