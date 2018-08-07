@@ -269,7 +269,7 @@ PROGRAM O3T_mainNVAdj
     else
       IRR_swathname = "band_290_490_nm"
     endif
-    call o3t_tio_getirr (IRR_filename, IRR_swathname, errstat)
+    call o3t_tio_getirr (IRR_filename, IRR_swathname, have_omi_data, errstat)
     if (errstat /= 0) stop 1
   else
     status = O3T_getIRR(IRR_filename, IRR_swathname)
@@ -316,7 +316,8 @@ PROGRAM O3T_mainNVAdj
     else
       UV_swathname = "band_290_490_nm"
     endif
-    call o3t_tio_initrad (rad_file_obj, UV_filename, UV_swathname, errstat)
+    call o3t_tio_initrad (rad_file_obj, UV_filename, UV_swathname, &
+         have_omi_data, errstat)
     if (errstat /= 0) stop 1
   else
     status = O3T_initRAD( UV_filename, UV_swathname )
@@ -492,7 +493,7 @@ PROGRAM O3T_mainNVAdj
       nc_l2_filename = OMTO3_fn !assume filename is ok as-is.
     endif
     call l2_tio_create (nc_l2_filename, nTimes_rad, nXtrack_rad, NLYR, &
-         nwl_com, errstat)
+         nwl_com, have_omi_data, errstat)
     if (errstat /= 0) stop 1
     call l2_tio_copy_metadata (l1b_file_object(rad_file_obj), errstat)
     call l2_tio_label_output_file ("o3t", processing_version, errstat)
@@ -771,10 +772,17 @@ PROGRAM O3T_mainNVAdj
   DO iLine = iLine_b, iLine_e
 
     if (use_tio_in) then
-      call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+      if (have_omi_data) then
+        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
            lat_bounds, lon_bounds, step_index, &
            szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
            errstat, anomflg)
+      else
+        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, &
+             longitude, lat_bounds, lon_bounds, step_index, szenith, &
+             sazimuth, vzenith, vazimuth, height, geoflg, errstat)
+        anomflg = 0
+      endif
       if (errstat /= 0) stop 1
     else
       status = L1Bga_getLine( geo_blk, iLine, time, &
@@ -857,13 +865,14 @@ PROGRAM O3T_mainNVAdj
     endif
 
     if (use_tio_out) then
-      call l2_tio_write_geo (iLine, step_index, nXtrack_rad, errstat)
+      call l2_tio_write_geo (iLine, step_index, nXtrack_rad, have_omi_data, &
+           errstat)
       if (errstat /= 0) stop 1
     endif
 
     if (use_tio_in) then
-      call l1b_tio_getrad (rad_file_obj, radgeo_blk, iLine, errstat, &
-           radiance, radWavelength, radQAflags)
+      call l1b_tio_getrad (rad_file_obj, radgeo_blk, iLine, have_omi_data, &
+           errstat, radiance, radWavelength, radQAflags)
       if (errstat /= 0) stop 1
     else
       status = L1Bri_getLine( rad_blk, iLine, &
@@ -929,14 +938,16 @@ PROGRAM O3T_mainNVAdj
         ENDIF
       ENDIF
 
-      ! check instrument configuration id
-      if (use_tio_in) then
-        call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
-             instid=instId_rad)
-        if (errstat /= 0) stop 1
-      else
-        status = L1Bri_getInstConfigId(  rad_blk, iLine, instId_rad )
-      endif
+      ! check instrument configuration id if we're using OMI
+      if (have_omi_data) then
+        if (use_tio_in) then
+          call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
+               instid=instId_rad)
+          if (errstat /= 0) stop 1
+        else
+          status = L1Bri_getInstConfigId(  rad_blk, iLine, instId_rad )
+        endif
+      endif ! if TEMPO, instId not used
 
       QAflags = 0
       radBadPixflgs = 0
@@ -1181,16 +1192,20 @@ PROGRAM O3T_mainNVAdj
 
     ENDDO ! iX end loop for Cross Track index
 
-    if (use_tio_in) then
-      call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
-           mqf=mqa_rad)
-      if (errstat /= 0) then
-        call tell_error(tell_io_error, &
-             "O3T_main: l1b_tio_get_etc failed", errstat)
-        stop 1
+    if (have_omi_data) then
+      if (use_tio_in) then
+        call l1b_tio_get_etc (rad_file_obj, radgeo_blk, iLine, errstat, &
+             mqf=mqa_rad)
+        if (errstat /= 0) then
+          call tell_error(tell_io_error, &
+               "O3T_main: l1b_tio_get_etc failed", errstat)
+          stop 1
+        endif
+      else
+        status = L1Bri_getMeasurementQF( rad_blk, iLine, mqa_rad    )
       endif
-    else
-      status = L1Bri_getMeasurementQF( rad_blk, iLine, mqa_rad    )
+    else ! TEMPO data, mo measurement quality flags
+      mqa_rad = 0
     endif
 
     IF( nXtrack_rad == &
@@ -1211,7 +1226,7 @@ PROGRAM O3T_mainNVAdj
     if (use_he5_out) &
          CALL O3T_L2setMqaLine( iT, mqaL2, datablk )
 
-    if (use_tio_out) then
+    if (use_tio_out .and. have_omi_data) then
       call l2_tio_write_mqf (iLine, mqaL2, errstat)
       if (errstat /= 0) then
         call tell_error(tell_io_error, &

@@ -66,9 +66,10 @@ MODULE O3T_irrad_class
 
     CONTAINS
 
- subroutine o3t_tio_getirr (filename, groupname, errstat)
+ subroutine o3t_tio_getirr (filename, groupname, have_omi_data, errstat)
    implicit none
    character (len=*), intent(in) :: filename, groupname
+   logical, intent(in) :: have_omi_data
    integer, intent(inout) :: errstat
 
    type (l1b_tio_type) :: ft
@@ -111,7 +112,8 @@ MODULE O3T_irrad_class
    irrprecision(:,:) = 0.0
 
    call l1b_tio_get_irr (ft, irradiance, irrWavelength, irrQAflags, &
-                         irrMeasurementFlags, instID_irr, errstat)
+                         irrMeasurementFlags, instID_irr, have_omi_data, &
+                         errstat)
 
    call l1b_tio_close (ft, errstat)
    if (errstat < 0) then

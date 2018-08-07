@@ -21,10 +21,11 @@ module l2_tio_class
 
 contains
 
-  subroutine append_product_vars (obj, dimlist, errstat)
+  subroutine append_product_vars (obj, dimlist, have_omi_data, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
@@ -55,12 +56,14 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
-    call tiof_varlist_append (varlist, errstat, &
+    if (have_omi_data) then
+      call tiof_varlist_append (varlist, errstat, &
                               o3t_var_mqf, &
                               nf90_ubyte, &
                               dimids = [dimids_xtrack_step(2)], &
                               comment = "measurement quality flag", &
                               valid_range = [0.0_8, 254.0_8])
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_radiative_cloudfrac, &
@@ -391,10 +394,11 @@ contains
     call tiof_attlist_free (att_coord)
   end subroutine
 
-  subroutine append_geolocation_vars (obj, dimlist, errstat)
+  subroutine append_geolocation_vars (obj, dimlist, have_omi_data, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
@@ -534,12 +538,14 @@ contains
                               comment = "ground pixel quality flag", &
                               valid_range = [0.0_8, 65534.0_8])
 
-    call tiof_varlist_append (varlist, errstat, &
+    if (have_omi_data) then
+      call tiof_varlist_append (varlist, errstat, &
                               o3t_var_xtrack_qf, &
                               nf90_ubyte, &
                               dimids = dimids_xtrack_step, &
                               comment = "cross-track quality flag", &
                               valid_range = [0.0_8, 254.0_8])
+    endif
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
@@ -595,12 +601,14 @@ contains
   !! @param[in] num_xtrack  Number of cross-strack pixels
   !! @param[in] num_layers  Number of vertical profile layers in forward model
   !! @param[in] num_wavel  Number of wavelengths
+  !! @param[in] have_omi_data true = OMI, false = TEMPO
   !! @param[inout] errstat   Error status variable
   subroutine l2_tio_create (filename, num_steps, num_xtrack, &
-                            num_layers, num_wavel, errstat)
+                            num_layers, num_wavel, have_omi_data, errstat)
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=4), intent(in) :: num_steps, num_xtrack, num_layers, num_wavel
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     integer (kind=4), external :: r8fill
@@ -663,7 +671,7 @@ contains
     endif
 
     call tiof_push_group (obj, o3t_grp_product, errstat)
-    call append_product_vars (obj, dimlist, errstat)
+    call append_product_vars (obj, dimlist, have_omi_data, errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -673,7 +681,7 @@ contains
     endif
 
     call tiof_push_group (obj, o3t_grp_geolocation, errstat)
-    call append_geolocation_vars (obj, dimlist, errstat)
+    call append_geolocation_vars (obj, dimlist, have_omi_data, errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
@@ -793,13 +801,16 @@ contains
   !> Write scan line geolocation variables to Level 2 product file
   !! @param[in] iline  Scan line index
   !! @param[in] nxtrack Number of cross-track pixels
+  !! @param[in] have_omi_data logical, true = OMI, false = TEMPO
   !! @param[inout] errstat  Error status variable
   !! @details
   !! The geolocation variables are passed via the \a O3T_radgeo_class module.
-  subroutine l2_tio_write_geo (iline, step_index, nxtrack, errstat)
+  subroutine l2_tio_write_geo (iline, step_index, nxtrack, have_omi_data, &
+       errstat)
     use O3T_radgeo_class
     implicit none
     integer, intent(in) :: iline, step_index, nxtrack
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -838,8 +849,10 @@ contains
                         phiArray(1:nxtrack), errstat)
     call tiof_put1d_i2 (obj, o3t_var_terrain_height, [iline,0], [1, nxtrack], &
                         height(1:nxtrack), errstat)
-    call tiof_put1d_ui1 (obj, o3t_var_xtrack_qf, [iline,0], [1, nxtrack], &
+    if (have_omi_data) then
+      call tiof_put1d_ui1 (obj, o3t_var_xtrack_qf, [iline,0], [1, nxtrack], &
                          anomflg(1:nxtrack), errstat)
+    endif
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &

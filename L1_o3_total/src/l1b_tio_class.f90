@@ -149,12 +149,14 @@ contains
   !! @param[out] qaflags  Array of quality assurance flags, one for each spectral bin.
   !! @param[out] measurement_quality_flag  Measurement quality flag
   !! @param[out] instid  Instrument id
+  !! @param[in] have_omi_data logical, true = OMI, false = TEMPO
   !! @param[inout] errstat  Error status variable
   subroutine l1b_tio_get_irr (this, irr, wavelength, qaflags, &
-                              measurement_quality_flag, instid, errstat)
-    use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
+                              measurement_quality_flag, instid, &
+                              have_omi_data, errstat)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
+    logical, intent(in) :: have_omi_data
     real (kind=4), dimension(:,:), intent(out) :: irr, wavelength
     integer (kind=2), dimension(:,:), intent(out) :: qaflags
     integer (kind=2), intent(out) :: measurement_quality_flag
@@ -192,15 +194,16 @@ contains
       return
     endif
 
-    ! FIXME:  This instid stuff is here only to support tests with OMI data.
-    !         Maybe it will eventually go away?
-    status = nf90_inq_varid (this%ft%groupid, o3t_var_instid, instid_varid)
-    if (status == nf90_noerr) then
+    if (have_omi_data) then
       call tiof_get1d_ui1 (this % ft, o3t_var_instid, [0], [1], &
                            tmp_instid(1:1), errstat)
       instid = tmp_instid(1)
+      call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [0], [1], &
+           tmp_mqf(1:1), errstat)
+      measurement_quality_flag = tmp_mqf(1)
     else
       instid = 0_1
+      measurement_quality_flag = 0
     endif
 
     call tiof_get3d_r4 (this % ft, o3t_var_wavelength, [0,0,0], [1,nx,nw], &
@@ -209,7 +212,6 @@ contains
                         tmp_spectrum(:,1:nx,1:1), errstat)
     call tiof_get3d_ui2 (this % ft, o3t_var_pqf, [0,0,0], [1,nx,nw], &
                         tmp_qflags(:,1:nx,1:1), errstat)
-    call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [0], [1], tmp_mqf(1:1), errstat)
     if (errstat < 0) then
       call tell_error (tell_io_read_error, &
                        'l1b_tio_get_irr: failed reading irradiance: '//trim(this % filename), &
@@ -220,23 +222,24 @@ contains
     irr(1:nw, 1:nx) = tmp_spectrum(1:nw, 1:nx, 1)
     wavelength(1:nw, 1:nx) = tmp_wavelengths(1:nw, 1:nx, 1)
     qaflags(1:nw, 1:nx) = tmp_qflags (1:nw, 1:nx, 1)
-    measurement_quality_flag = tmp_mqf(1)
 
   end subroutine
 
   !> Initialize an \a l1b_radgeo_type object using an open \a l1b_tio_type
   !! @param[inout] this  Level 1 file object
   !! @param[inout] rg  The \a l1b_radgeo_type object to initialize
+  !! @param[in] have_omi_data logical, true = OMI, false = TEMPO
   !! @param[inout] errstat  Error status variable
   !! @details
   !! For efficiency, radiance spectra will be loaded in blocks.
   !! The \a l1b_radgeo_type object is initialized by allocating space
   !! for all variables, defining the number of radiance spectra per cached
   !! block (for processing efficiency), and loading the geolocation variables.
-  subroutine l1b_tio_init_rad (this, rg, errstat)
+  subroutine l1b_tio_init_rad (this, rg, have_omi_data, errstat)
     implicit none
     type(l1b_tio_type), intent(inout), target :: this
     type(l1b_radgeo_type), intent(inout) :: rg
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     integer :: i, nx, ns, nw, nl, ierr
@@ -312,8 +315,14 @@ contains
     !                      rg % geoflg(1:nx,1:ns), errstat)
     call tiof_get2d_ui4 (this % ft, o3t_var_geoflg, [0,0], [ns,nx], &
                          tmp_geoflg(1:nx,1:ns), errstat)
-    call tiof_get2d_ui1 (this % ft, o3t_var_anomflg, [0,0], [ns,nx], &
+
+    if (have_omi_data) then
+      call tiof_get2d_ui1 (this % ft, o3t_var_anomflg, [0,0], [ns,nx], &
                         rg % anomflg(1:nx,1:ns), errstat)
+    else
+      rg % anomflg(1:nx,1:ns) = 0
+    endif
+
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "l1b_tio_init_rad: reading geo variables", errstat)
       return
@@ -334,17 +343,18 @@ contains
   !! @param[inout] this  Level 1 file object
   !! @param[inout] rg  The \a l1b_radgeo_type object to receive the spectra
   !! @param[in]  iline  Index of first scan line to read.
+  !! @param[in] have_omi_data logical, true = OMI, false = TEMPO
   !! @param[inout] errstat  Error status variable
   !! @details
   !! Note that as each block is loaded into the cache, the
   !! \a l1b_radgeo_type object records the beginning and ending scan lines
   !! that were loaded.
-  subroutine load_radiance_block (this, rg, iline, errstat)
-    use netcdf, only : nf90_noerr, nf90_inq_varid ! FIXME <---
+  subroutine load_radiance_block (this, rg, iline, have_omi_data, errstat)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     integer :: num_read, nx, nw, status, instid_varid
@@ -362,18 +372,16 @@ contains
     nx = this % num_xtrack
     nw = this % num_wavelengths
 
-    ! FIXME:  This instid stuff is here only to support tests with OMI data.
-    !         Maybe it will eventually go away?
-    status = nf90_inq_varid (this%ft%groupid, o3t_var_instid, instid_varid)
-    if (status == nf90_noerr) then
+    if (have_omi_data) then
       call tiof_get1d_ui1 (this % ft, o3t_var_instid, [iline], [num_read], &
                            rg % instid (1:num_read), errstat)
+      call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [iline], [num_read], &
+                        rg % measurement_quality_flags (1:num_read), errstat)
     else
       rg % instid (1:num_read) = 0_1
+      rg % measurement_quality_flags (1:num_read) = 0
     endif
 
-    call tiof_get1d_ui2 (this % ft, o3t_var_mqf, [iline], [num_read], &
-                        rg % measurement_quality_flags (1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_wavelength, [iline,0,0], [num_read,nx,nw], &
                         rg % wavelength(1:nw,1:nx,1:num_read), errstat)
     call tiof_get3d_r4 (this % ft, o3t_var_radiance, [iline,0,0], [num_read,nx,nw], &
@@ -388,10 +396,11 @@ contains
 
   end subroutine
 
-  subroutine maybe_load_new_block (this, rg, iline, errstat)
+  subroutine maybe_load_new_block (this, rg, iline, have_omi_data, errstat)
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
     character (len=256) :: msg
@@ -405,7 +414,7 @@ contains
     endif
 
     if (iline < rg % beg_line .or. iline > rg % end_line) then
-      call load_radiance_block (this, rg, iline, errstat)
+      call load_radiance_block (this, rg, iline, have_omi_data, errstat)
       if (errstat < 0) then
         write(msg, '(a,i9)')'maybe_load_new_block: loading radiance block for iline=',iline
         call tell_error (tell_runtime_error, msg, errstat)
@@ -419,6 +428,7 @@ contains
   !! @param[inout]  this  Level 1 file object
   !! @param[inout] rg  The \a l1b_radgeo_type object
   !! @param[in]  iline  The scan line to copy.
+  !! @param[in] have_omi_data logical, true = OMI, false = TEMPO
   !! @param[inout] errstat  Error status variable
   !! @param[out] radiance  Array of radiance spectra, one for each cross-track pixel.
   !! @param[out] wavelength  Array of radiance wavelength grids, one for each cross-track pixel.
@@ -427,19 +437,20 @@ contains
   !! If \a iline isn't in the block cached
   !! by the \a l1b_radgeo_type object, a block of spectra at
   !! \a iline will be loaded from the open Level 1 file (\a this).
-  subroutine l1b_tio_getrad (this, rg, iline, errstat, &
+  subroutine l1b_tio_getrad (this, rg, iline, have_omi_data, errstat, &
                              radiance, wavelength, qa_flags)
     implicit none
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
+    logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
     real (kind=4), dimension(:,:), intent(out) :: radiance, wavelength
     integer (kind=2), dimension (:,:), intent(out) :: qa_flags
 
     integer :: nx, nw, j
 
-    call maybe_load_new_block (this, rg, iline, errstat)
+    call maybe_load_new_block (this, rg, iline, have_omi_data, errstat)
     if (errstat < 0) return
 
     nx = this % num_xtrack
@@ -475,7 +486,8 @@ contains
 
     integer :: j
 
-    call maybe_load_new_block (this, rg, iline, errstat)
+    ! only use instid and mqf with OMI data, so have_omi_data always true
+    call maybe_load_new_block (this, rg, iline, .true., errstat)
     if (errstat < 0) return
 
     j  = iline - rg % beg_line + 1

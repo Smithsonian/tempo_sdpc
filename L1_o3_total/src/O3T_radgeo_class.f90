@@ -70,12 +70,14 @@ MODULE O3T_radgeo_class
 
     CONTAINS
 
- subroutine o3t_tio_initrad (this, filename, groupname, errstat)
+ subroutine o3t_tio_initrad (this, filename, groupname, have_omi_data, &
+      errstat)
    use l1b_tio_class
    use tell_module
    implicit none
    type (l1b_tio_type), intent(inout) :: this
    character (len=*), intent(in) :: filename, groupname
+   logical, intent(in) :: have_omi_data
    integer, intent(inout) :: errstat
 
    integer :: ext, ierr
@@ -101,7 +103,7 @@ MODULE O3T_radgeo_class
    call l1b_tio_getdims (this, nTimes_rad, nXtrack_rad, nWavel_rad, errstat)
    nTimesSmallPixel_rad = -1  ! OMI-legacy: code will fail if this is set to 0
    call l1b_tio_earthsun_distance (this, EarthSunDistance, errstat)
-   call l1b_tio_init_rad (this, radgeo_blk, errstat)
+   call l1b_tio_init_rad (this, radgeo_blk, have_omi_data, errstat)
    if (errstat /= 0) then
      call tell_error (tell_runtime_error, "o3t_tio_initrad: initializing radiances", errstat)
      return
