@@ -305,7 +305,7 @@ contains
   subroutine read_sol_mflg(filename_sol_nc, tio_irrl1obj, swathname, &
        errstat)
 
-    use m_vars, only: meas_qual_flg
+    use m_vars, only: meas_qual_flg, have_omi_data
 
     implicit none
     !input variables
@@ -320,17 +320,21 @@ contains
 
     if (errstat /= 0) return
 
-    call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
-    call tiof_inq_group (tio_irrl1obj, swathname, errstat)
-    call tiof_get1d_i2 (tio_irrl1obj, "MeasurementQualityFlags", [0], &
-         [1], mflg, errstat)
-    call tiof_close (tio_irrl1obj, errstat)
+    if (have_omi_data) then
+      call tiof_open (filename_sol_nc, tio_irrl1obj, nf90_nowrite, errstat)
+      call tiof_inq_group (tio_irrl1obj, swathname, errstat)
+      call tiof_get1d_i2 (tio_irrl1obj, "MeasurementQualityFlags", [0], &
+           [1], mflg, errstat)
+      call tiof_close (tio_irrl1obj, errstat)
 
-    if (errstat /= 0) then
-      call tell_error (tell_io_read_error, &
-           "read_sol_mflg: unable to read Measurement Quality Flags", &
-           errstat)
-      return
+      if (errstat /= 0) then
+        call tell_error (tell_io_read_error, &
+             "read_sol_mflg: unable to read Measurement Quality Flags", &
+             errstat)
+        return
+      endif
+    else
+      mflg=0
     endif
 
     ! testing MeasurementQualityFlags

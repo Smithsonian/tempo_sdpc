@@ -77,6 +77,7 @@ module m_vars
   logical :: write_he5=.false. ! write he5 output files?
   logical :: write_nc=.true. ! write netCDF output files?
   logical :: do_cloud_mask=.true. ! create cloud mask product?
+  logical :: have_omi_data=.true. ! are we using OMI or TEMPO data?
 
   ! FILENAMES and PATHS
   character(len=255) :: solar_path='../out/' ! path used by write_solar

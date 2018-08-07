@@ -485,7 +485,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine write_cloud_struct(obj, dimlist, errstat)
     use m_vars, only: squeeze, write_fill, write_resid, cal_reflec, &
-         do_mler, do_cloud_mask, cloud_mask
+         do_mler, do_cloud_mask, cloud_mask, have_omi_data
 
     implicit none
 
@@ -624,7 +624,8 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
-    call tiof_varlist_append (varlist, errstat, &
+    if (have_omi_data) then
+      call tiof_varlist_append (varlist, errstat, &
                               cld_var_mqf, &
                               nf90_short, &
                               dimids = [dimids_xtrack_step(2)],  &
@@ -634,6 +635,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
+    endif
     if (squeeze) then
       call tiof_varlist_append (varlist, errstat, &
                               cld_var_wav_squeeze, &
@@ -790,7 +792,8 @@ contains
          do_mler, cloud_mask, rad_cld_frac, ps, shifts2, squeezes, &
          ref_clr, fill, wave_resid, resid, dIdR, reflect_cld, &
          refl, meas_qual_flg, biases2, stds2, chi_sqr2, chlorophyll, &
-         cld_pres2, eff_cld_frac2, qc2, do_cloud_mask, read_he4
+         cld_pres2, eff_cld_frac2, qc2, do_cloud_mask, read_he4, &
+         have_omi_data
     
     implicit none
 
@@ -843,8 +846,10 @@ contains
     call tiof_put2d_r4 (obj, cld_var_reflec, [0,0], &
          [num_steps,num_xtrack], refl(0:num_xtrack-1,1:num_steps), errstat)
 
-    call tiof_put1d_i2 (obj, cld_var_mqf, [0], &
-         [-1], meas_qual_flg(1:num_steps), errstat)
+    if (have_omi_data) then
+      call tiof_put1d_i2 (obj, cld_var_mqf, [0], &
+           [-1], meas_qual_flg(1:num_steps), errstat)
+    endif
 
     call tiof_put2d_r4 (obj, cld_var_wav_shift, [0,0], &
          [num_steps,num_xtrack], shifts2(0:num_xtrack-1,1:num_steps), errstat)

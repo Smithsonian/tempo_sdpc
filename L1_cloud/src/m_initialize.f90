@@ -115,6 +115,7 @@ contains
         nc_swathname = "band_290_490_nm"
         read_he4 = .false.
         write_he5 = .false.
+        have_omi_data = .false.
       else if (trim(arg) == "-noret") then
         noret = .true.
       ! FIXME - temporary flag for proof-of-concept ODL ASCII test

@@ -313,7 +313,7 @@ contains
 
     use m_vars, only: iLine, time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nXtrack, &
-         azimuth, fill_value, read_he4
+         azimuth, fill_value, read_he4, have_omi_data
 
     implicit none
     !input variables
@@ -356,10 +356,15 @@ contains
          [1,nXtrack], tio_terr_height, errstat)
     call tiof_get2d_ui4 (tio_l1obj, cld_var_gpqf, [iLine-1,0], &
          [1,nXtrack], tio_geoflg, errstat)
-    call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iLine-1,0], &
-         [1,nXtrack], tio_anomflg, errstat)
-    call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [iLine-1], &
-         [1], tio_mflg, errstat)
+    if (have_omi_data) then
+      call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iLine-1,0], &
+           [1,nXtrack], tio_anomflg, errstat)
+      call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [iLine-1], &
+           [1], tio_mflg, errstat)
+    else
+      tio_anomflg=0
+      tio_mflg=0
+    endif
     call tiof_close (tio_l1obj, errstat)
 
     if (errstat /= 0) then
@@ -431,7 +436,7 @@ contains
 
     use m_vars, only: time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
-         azimuth, fill_value
+         azimuth, fill_value, have_omi_data
 
     implicit none
     !input variables
@@ -464,10 +469,15 @@ contains
          [nLines,nXtrack], terr_height, errstat)
     call tiof_get2d_ui4 (tio_l1obj, cld_var_gpqf, [0,0], &
          [nLines,nXtrack], geoflg, errstat)
-    call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
-         [nLines,nXtrack], anomflg, errstat)
-    call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [0], &
-         [nLines], mflg, errstat)
+    if (have_omi_data) then
+      call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
+           [nLines,nXtrack], anomflg, errstat)
+      call tiof_get1d_i2 (tio_l1obj, "MeasurementQualityFlags", [0], &
+           [nLines], mflg, errstat)
+    else
+      anomflg=0
+      mflg=0
+    endif
     call tiof_close (tio_l1obj, errstat)
 
     if (errstat /= 0) then
