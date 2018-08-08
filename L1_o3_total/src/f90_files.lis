@@ -41,5 +41,6 @@ OMI_SMF_class.f90
 PGS_MET_class.f90
 PGS_PC_class.f90
 PGS_TD_class.f90
+pgs_io_class.f90
 UTIL_lh5_class.f90
 UTIL_tools_class.f90

@@ -820,7 +820,7 @@ CONTAINS
             iwl_refl_l = i_foo( 1 )
             WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_refl_l=", &
                  wl_com(iwl_refl_l), ", iwl_refl_l=",iwl_refl_l, &
-                 " used in reflectance caclculation."
+                 " used in reflectance calculation."
             call tell_log(0, msg)
           ENDIF
         CASE( 4 ) 
@@ -837,7 +837,7 @@ CONTAINS
             iwl_refl_h = i_foo( 1 )
             WRITE( msg,'(A,F6.2,A,I3,A)') "O3T_getLambdaSet: wl_refl_h = ", &
                  wl_com(iwl_refl_h), ", iwl_refl_h = ", iwl_refl_h, &
-                 " used in reflectance caclculation."
+                 " used in reflectance calculation."
             call tell_log(0, msg)
           ENDIF
         CASE DEFAULT

@@ -79,6 +79,7 @@ $(ODIR)/o3t_names_module.o: $(SDIR)/o3t_names_module.f90
 $(ODIR)/O3T_apriori_class.o: $(SDIR)/O3T_apriori_class.f90 \
   $(ODIR)/O3T_stnprof_class.o \
   $(ODIR)/OMI_LUN_set.o \
+  $(ODIR)/pgs_io_class.o \
   $(ODIR)/PGS_PC_class.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/O3T_apriori_class.f90 -o $(ODIR)/O3T_apriori_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/O3T_class.o: $(SDIR)/O3T_class.f90 \
@@ -213,6 +214,8 @@ $(ODIR)/PGS_PC_class.o: $(SDIR)/PGS_PC_class.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/PGS_PC_class.f90 -o $(ODIR)/PGS_PC_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/PGS_TD_class.o: $(SDIR)/PGS_TD_class.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/PGS_TD_class.f90 -o $(ODIR)/PGS_TD_class.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/pgs_io_class.o: $(SDIR)/pgs_io_class.f90
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/pgs_io_class.f90 -o $(ODIR)/pgs_io_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/UTIL_lh5_class.o: $(SDIR)/UTIL_lh5_class.f90 \
   $(ODIR)/OMI_SMF_class.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/UTIL_lh5_class.f90 -o $(ODIR)/UTIL_lh5_class.o $(MODOUTFLG) $(ODIR)

@@ -163,7 +163,7 @@ contains
     integer (kind=1), intent(out) :: instid
     integer, intent(inout) :: errstat
 
-    integer :: nx, nw, status, instid_varid
+    integer :: nx, nw, status!, instid_varid
     real (kind=4), dimension(:,:,:), allocatable :: &
       tmp_wavelengths, tmp_spectrum
     integer (kind=2), dimension(:,:,:), allocatable :: tmp_qflags
@@ -357,7 +357,7 @@ contains
     logical, intent(in) :: have_omi_data
     integer, intent(inout) :: errstat
 
-    integer :: num_read, nx, nw, status, instid_varid
+    integer :: num_read, nx, nw!, status, instid_varid
 
     if (errstat < 0) return
 

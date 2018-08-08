@@ -57,7 +57,8 @@ MODULE O3T_apriori_class
    CONTAINS
 
      FUNCTION O3T_apriori_rd( ) RESULT( errstat )
-       INCLUDE 'PGS_IO.f'
+       use pgs_io_class
+       !INCLUDE 'PGS_IO.f'
        !INCLUDE 'PGS_IO_1.f'
        INTEGER (KIND=4), EXTERNAL :: pgs_io_gen_openf, pgs_io_gen_closef
        INTEGER (KIND=4) :: file_version, record_length, &
