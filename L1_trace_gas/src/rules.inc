@@ -187,6 +187,7 @@ $(ODIR)/omi_parameters_module.o: $(SDIR)/omi_parameters_module.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_parameters_module.f90 -o $(ODIR)/omi_parameters_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_read_l1b_data.o: $(SDIR)/omi_read_l1b_data.f90 \
   $(ODIR)/angle_sat2toa.o \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \

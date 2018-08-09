@@ -29,7 +29,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   use elsunc_interface_module, only : elsunc_optimizer
   use slitfunction, only : slitfunction_select, slitfunction_open
   use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
-  use ctrlvars, only: yn_use_labslitfunc, yn_do_he5_output, yn_wrt_odl
+  use ctrlvars, only: yn_use_labslitfunc, yn_do_he5_output, yn_wrt_odl, &
+       yn_omi_data
   use OMSAO_omidata_module, only : initialize_omidata_structs, &
        deallocate_omidata_structs
   use OMSAO_variables_module, only : allocate_refspec_storage, &
@@ -83,6 +84,8 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! Control he5 output
   ! Default for other codes is to not write he5 unless switch is set
   yn_do_he5_output = .false.
+  ! Default for other codes is OMI data
+  yn_omi_data = .true.
   ! Whether to write ODL metadata as text file alongside netCDF
   yn_wrt_odl = .false.
   do
@@ -90,12 +93,16 @@ SUBROUTINE OMSAO_main ( exit_value )
     if (len(trim(arg)) == 0) exit
     if (trim(arg) == "+he5_out") then
       yn_do_he5_output = .true.
+    else if (trim(arg) == "-tempo") then
+      yn_omi_data = .false.
+      yn_do_he5_output = .false.
     else if (trim(arg) == "-wrt_odl") then
       yn_wrt_odl = .true.
     else if (trim(arg) == "-h") then
       print *, "Usage: L1_trace_gas [options]"
       print *, ""
       print *, "   +he5_out    enable he5 output"
+      print *, "   -tempo      using TEMPO data"
       print *, "   -wrt_odl    write ODL metadata with netCDF"
       return
     endif

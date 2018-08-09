@@ -17,6 +17,7 @@ CONTAINS
     use tio_module
     use tg_names_module
     use netcdf, only : nf90_nowrite
+    use ctrlvars, only : yn_omi_data
 
     IMPLICIT NONE
 
@@ -47,28 +48,36 @@ CONTAINS
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
     !call l1bread_get1d_i1 (l1bobj, "ImageBinningFactor", 0, ntimes, binfac, errstat)
     !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_inq_group (tio_l1obj, l1bswath, errstat)
-    call tiof_get1d_i1 (tio_l1obj, "ImageBinningFactor", [0], [ntimes], binfac, errstat)
-    call tiof_close (tio_l1obj, errstat)
-    if (errstat /= 0) return
+    if (yn_omi_data) then
+      call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
+      call tiof_inq_group (tio_l1obj, l1bswath, errstat)
+      call tiof_get1d_i1 (tio_l1obj, "ImageBinningFactor", [0], [ntimes], &
+           binfac, errstat)
+      call tiof_close (tio_l1obj, errstat)
+      if (errstat /= 0) return
 
     ! ----------------------------------------------------------------------
     ! Check whether we have a Spatial Zoom granule, in which case we need to
     ! process 60 cross-track positions rather than 30.
     ! ----------------------------------------------------------------------
-    IF ( ( INDEX(l1bfile, 'OML1BRUZ') > 0 ) .OR. &
-        ( INDEX(l1bfile, 'OML1BRVZ') > 0 ) )    &
-      binfac(0:ntimes-1) = global_mode
+      IF ( ( INDEX(l1bfile, 'OML1BRUZ') > 0 ) .OR. &
+           ( INDEX(l1bfile, 'OML1BRVZ') > 0 ) )    &
+           binfac(0:ntimes-1) = global_mode
 
     ! ------------------------------------------------------------------------------
     ! Check for GLOBAL and SPATIAL ZOOM mode and set up arrays for index adjustment.
     ! ------------------------------------------------------------------------------
-    WHERE ( binfac(0:ntimes-1) == szoom_mode )
-      is_szoom (0:nTimes-1) = .TRUE.
-    ELSEWHERE
-      is_szoom (0:nTimes-1) = .FALSE.
-    END WHERE
+      WHERE ( binfac(0:ntimes-1) == szoom_mode )
+        is_szoom (0:nTimes-1) = .TRUE.
+      ELSEWHERE
+        is_szoom (0:nTimes-1) = .FALSE.
+      END WHERE
+
+    else ! TEMPO data - no zoom
+      binfac = global_mode
+      is_szoom = .false.
+    endif
+
 
     RETURN
   END SUBROUTINE omi_read_binning_factor
@@ -180,6 +189,7 @@ CONTAINS
     use tio_module
     use tg_names_module
     use netcdf, only : nf90_nowrite
+    use ctrlvars, only : yn_omi_data
 
     IMPLICIT NONE
 
@@ -233,7 +243,6 @@ CONTAINS
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
-    call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], [nloop], omi_auraalt, errstat)
     call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [iline,0], [nloop,nxtrack], &
                         omi_latitude(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_r4 (tio_l1obj, tg_var_longitude, [iline,0], [nloop,nxtrack], &
@@ -250,8 +259,6 @@ CONTAINS
                         omi_height(1:nxtrack,0:nloop-1), errstat)
     call tiof_get2d_ui4 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
                         omi_geoflg(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], [nloop,nxtrack], &
-                        omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
     call tiof_get3d_r4 (tio_l1obj, tg_var_radiance, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_spc(:,1:nxtrack,0:nloop-1), errstat)
     call tiof_get3d_i2 (tio_l1obj, tg_var_pqf, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
@@ -259,6 +266,16 @@ CONTAINS
     call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
     call tiof_close (tio_l1obj, errstat)
+    if (yn_omi_data) then
+      call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], &
+           [nloop], omi_auraalt, errstat)
+      call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], &
+           [nloop,nxtrack], omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
+    else
+      !No need to set omi_auraalt as it is only used when writing HE5
+      omi_xtrflg_l1b(1:nxtrack,0:nloop-1) = 0
+    endif
+
     if (errstat /= 0) return
 
     do iloop = 0, nloop-1

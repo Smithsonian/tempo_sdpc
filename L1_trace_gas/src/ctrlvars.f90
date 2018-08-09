@@ -43,6 +43,9 @@ module ctrlvars
 
   logical, public :: yn_remove_target
 
+  ! TEMPO/OMI data flag, set by command line switch, true=OMI, false=TEMPO
+  logical, public :: yn_omi_data
+
   ! Write ODL-format metadata text file alongside netCDF
   logical, public :: yn_wrt_odl
 
