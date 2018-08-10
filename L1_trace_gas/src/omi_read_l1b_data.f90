@@ -265,7 +265,6 @@ CONTAINS
                         tmp_flg(:,1:nxtrack,0:nloop-1), errstat)
     call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
                         tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
-    call tiof_close (tio_l1obj, errstat)
     if (yn_omi_data) then
       call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], &
            [nloop], omi_auraalt, errstat)
@@ -275,6 +274,7 @@ CONTAINS
       !No need to set omi_auraalt as it is only used when writing HE5
       omi_xtrflg_l1b(1:nxtrack,0:nloop-1) = 0
     endif
+    call tiof_close (tio_l1obj, errstat)
 
     if (errstat /= 0) return
 
