@@ -110,6 +110,8 @@ struct Wavecal_Type
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
+   double rad_mean_ratio;       /**< (mean_rad)/(mean_irr) within target wavelength band */
+   int start_pix;
 };
 
 static void free_file_type (File_Type *file)
@@ -243,6 +245,9 @@ static int config_shapefun_method (config_setting_t *s,
 {
    config_setting_t *ss;
    int num_coef;
+
+   (void) config_setting_lookup_bool (s, "scale_by_mean_radiance_over_mean_irradiance",
+                                      &st->st_apply_external_scaling);
 
    (void) config_setting_lookup_float (s, "xmin", &st->xmin);
    (void) config_setting_lookup_float (s, "xmax", &st->xmax);
@@ -541,6 +546,9 @@ static Wavecal_Type *alloc_wavecal (int num_wave)
         return NULL;
      }
    memset ((char *)wct, 0, sizeof *wct);
+
+   /* default this parameter to irradiance calibration case */
+   wct->rad_mean_ratio = 1.0;
 
    if (NULL == (wct->irr0 = alloc_doubles (num_wave)))
      {
@@ -929,16 +937,40 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
 }
 
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
-                            int num_wave, int is_irradiance)
+                            int max_num_wave, int is_irradiance)
 {
    Wavecal_Type *wct = NULL;
    config_setting_t *s, *s_band;
    double *pindex = NULL;
-   int i;
+   int i, num_pix, start_pix;
 
-   if (NULL == (wct = alloc_wavecal (num_wave)))
+   if (NULL == (s_band = config_lookup (cfg, cfg_name)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing %s in param file: %s",
+                     __func__, cfg_name, config_error_file (cfg));
+        return NULL;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s_band, "num_pix_fit", &num_pix))
+     num_pix = max_num_wave;
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s_band, "start_pix", &start_pix))
+     start_pix = 0;
+
+   if (((num_pix <= 0) || (num_pix > max_num_wave))
+       || ((start_pix < 0) || (start_pix >= max_num_wave)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: invalid wavelength calibration window size: max_num_wave=%d num_pix=%d start_pix=%d",
+                     __func__, max_num_wave, num_pix, start_pix);
+        return NULL;
+     }
+
+   if (NULL == (wct = alloc_wavecal (num_pix)))
      goto error_return;
 
+   wct->start_pix = start_pix;
    wct->is_irradiance = is_irradiance;
 
    if (NULL == (s = config_lookup (cfg, "wavecal_control")))
@@ -951,14 +983,6 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
 
    if (0 != config_control (s, wct))
      goto error_return;
-
-   if (NULL == (s_band = config_lookup (cfg, cfg_name)))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing %s in param file: %s",
-                     __func__, cfg_name, config_error_file (cfg));
-        goto error_return;
-     }
 
    if (NULL == (s = config_setting_get_member (s_band, "wavecal_irradiance")))
      {
@@ -987,15 +1011,15 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         if (0 != config_model_components (wct, s))
           goto error_return;
 
-        if (0 != alloc_term_storage (wct->terms, num_wave))
+        if (0 != alloc_term_storage (wct->terms, num_pix))
           goto error_return;
      }
 
    pindex = wct->window.pindex;
 
-   for (i = 0; i < num_wave; i++)
+   for (i = 0; i < num_pix; i++)
      {
-        pindex[i] = (double)i;
+        pindex[i] = (double)(i + start_pix);
      }
 
    return wct;
@@ -1006,6 +1030,7 @@ error_return:
 }
 
 static int evaluate_term (Term_Type *term, Window_Type *win,
+                          double scale_factor,
                           const double *params)
 {
    Refspec_Type *ref = &term->refspec;
@@ -1022,6 +1047,10 @@ static int evaluate_term (Term_Type *term, Window_Type *win,
         offset = n;
         if (st->st_eval (st, params, n, win->wave0, v))
           return -1;
+        if (st->st_apply_external_scaling)
+          {
+             for (i = 0; i < n; i++) v[i] *= scale_factor;
+          }
      }
 
    if (ref->interp)
@@ -1145,7 +1174,8 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    /* evaluate all model terms on the new wavelength grid */
    for (term = wct->terms; term != NULL; term = term->next)
      {
-        if (evaluate_term (term, win, par) < 0)
+        double scale_factor = wct->rad_mean_ratio;
+        if (evaluate_term (term, win, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
      }
@@ -1224,8 +1254,51 @@ static int mpfit_objective_function
    return 0;
 }
 
+static int compute_rad_mean_ratio (Wavecal_Type *wct)
+{
+   Window_Type *win = &wct->window;
+   Shapefun_Type *wl = win->shapefun;
+   Reference_Irr_Type *irr = &wct->irr;
+   double sum_irr, sum_rad;
+   int i;
+
+   if (wct->is_irradiance)
+     return 0;
+
+   /* compute wavelength as a function of pixel index */
+   if (wl->st_eval (wl, win->wave_params, win->num_wave, win->pindex, win->wave0) < 0)
+     return -1;
+
+   /* evaluate the reference irradiance on the target wavelength grid */
+   if (cspline_eval (irr->cspline, win->num_wave, win->wave0, wct->irr0))
+     return -1;
+
+   sum_irr = 0.0;
+   sum_rad = 0.0;
+   for (i = 0; i < win->num_wave; i++)
+     {
+        sum_irr += wct->irr0[i];
+        sum_rad += win->spec_scaled[i];
+     }
+
+   if (sum_irr == 0.0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: irradiance sum is zero!!", __func__);
+        return -1;
+     }
+
+   /* rad_mean_ratio = (mean_radiance)/(mean_irradiance)
+    *                = (sum_rad[*]/num_rad) / (sum_irr[*]/num_irr)
+    *                = sum_rad[*]/sum_irr[*]
+    * because the wavelength grids are identical.
+    */
+   wct->rad_mean_ratio = sum_rad / sum_irr;
+
+   return 0;
+}
+
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
-                 const double *wave, const double *spec, const double *specerr,
+                 const double *p_wave, const double *p_spec, const double *p_specerr,
                  const Wavecal_Config_Type *config,
                  Wavecal_Result_Type *result)
 {
@@ -1235,6 +1308,9 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
    Window_Type *win = &wct->window;
    double fill_value = config->fill_value;
+   const double *wave = p_wave + wct->start_pix;
+   const double *spec = p_spec + wct->start_pix;
+   const double *specerr = p_specerr + wct->start_pix;
    double *spec_scaled = win->spec_scaled;
    double *weight = win->weight;
    double *params = NULL;
@@ -1275,6 +1351,9 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    mp.model = win->model;
    mp.counter = 0;
 
+   if (0 != compute_rad_mean_ratio (wct))
+     goto return_error;
+
    num_params = num;
    num_residuals = win->num_wave;
 
@@ -1285,6 +1364,18 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
                         fit_ctrl->maxfev : fit_ctrl->maxiter * num_params);
 
    fit_result.resid = win->residuals; /* FIXME: make this a debug option? */
+
+#if 0
+   fprintf (stderr, "*** FORCING initial param values\n");
+   params[0] = 3.970994e+02;
+   params[1] = 5.099444e+00;
+   params[2] = -9.934236e-02;
+   params[3] = 7.157610e-04;
+   params[4] = 9.729859e-01;
+   params[5] = -6.147860e-03;
+#endif
+
+   if (0) write_params (stderr, params, num_params);
 
    mp_status = mpfit (&mpfit_objective_function, num_residuals,
                       num_params, params, NULL, &fit_config, &mp, &fit_result);
@@ -1306,9 +1397,11 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         result->spec_scaled = win->spec_scaled;
         result->residuals = win->residuals;
         result->bestnorm = fit_result.bestnorm;
+        result->num_fit = win->num_wave;
         result->nfev = fit_result.nfev;
         result->opt_status = mp_status;
         if (0) write_params (stderr, params, num_params);
+        if (0) write_statistic (stderr, win->residuals, num_residuals);
      }
 
    status = 0;

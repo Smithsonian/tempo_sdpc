@@ -36,6 +36,7 @@ typedef struct
    const double *spec_scaled;  /**< scaled spectrum that was fitted */
    const double *residuals;    /**< weighted fit residuals */
    double bestnorm;    /**< best fit statistic */
+   int num_fit;        /**< number of pixels fitted */
    int nfev;           /**< number of objective function evaluations */
    int opt_status;     /**< optimizer status code */
 }
@@ -61,13 +62,13 @@ extern void wavecal_close (Wavecal_Type *wct);
  *                   with an appropriate configuration file.
  * @param cfg_name   Name of configuration file parameter group governing
  *                   the spectrum to be calibrated.
- * @param num_wave   Number of wavelength points in each spectrum to be calibrated.
+ * @param max_num_wave  Maximum number of wavelength points in each spectrum to be calibrated.
  * @param is_irradiance  Integer indicating the type of spectra to be calibrated
  *                       1 means irradiance, 0 means radiance.
  * @return A valid \a Wavecal_Type pointer on success, NULL on error.
  */
 extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
-                                   int num_wave, int is_irradiance);
+                                   int max_num_wave, int is_irradiance);
 
 /** Perform wavelength calibration on a single spectrum
  * @param  wct      Pointer to a \a Wavecal_Type object initialized by

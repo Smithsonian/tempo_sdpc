@@ -95,6 +95,10 @@ wavecal_control:
 
 band_290_490_nm:
 {
+  # Specify pixel range to fit (default is full band)
+  # start_pix = 495;
+  # num_pix_fit = 60;
+
   wavecal_irradiance:
   {
     # Wavelength grid parameterization:
@@ -125,6 +129,7 @@ band_290_490_nm:
    {
      term = "sc";
      method = "cspline";
+     # scale_by_mean_radiance_over_mean_irradiance = true;
      function:
      {
            nodes = [285.0, 302.5, 320.0, 337.5, 355.0,
@@ -187,6 +192,10 @@ band_290_490_nm:
 
 band_540_740_nm:
 {
+  # Specify pixel range to fit (default is full band)
+  # start_pix = 495;
+  # num_pix_fit = 60;
+
   wavecal_irradiance:
   {
     # Wavelength grid parameterization:

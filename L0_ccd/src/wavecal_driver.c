@@ -39,6 +39,7 @@ static void usage (void)
    fprintf (stderr, "   -m | --mirror STEP     mirror step index\n");
    fprintf (stderr, "   -x | --xtrack N        cross-track pixel index, 0 is northernmost\n");
    fprintf (stderr, "   -o | --outpar FILE     output file for wavelength parameters\n");
+   fprintf (stderr, "   -c | --config FILE     path to configuration file\n");
    fprintf (stderr, "   -v | --verbose         turn on verbose output\n");
    exit (EXIT_SUCCESS);
 }
@@ -188,8 +189,8 @@ static int write_fit_details (FILE *fp, int xtrack,
    size_t i;
    int nth;
 
-   fprintf (fp, "%4d %12.4e %4d ", xtrack, wavecal_result->bestnorm,
-            wavecal_result->nfev);
+   fprintf (fp, "%4d %12.4e %4d %4d ", xtrack, wavecal_result->bestnorm,
+            wavecal_result->nfev, wavecal_result->opt_status);
    for (i = 0; i < wavecal_result->num_wave_params; i++)
      {
         fprintf (fp, "%15.9e ", wavecal_result->wave_params[i]);
@@ -224,7 +225,7 @@ static int create_result_group (int parent_grp, const char *grp_name,
    memcpy ((char *)param_dimids, (char *)spectrum_info->dimids,
            3 * sizeof (int));
    params_dimlen = wavecal_result->num_wave_params;
-   if (0 != TIO_def_dim (grp, "params", params_dimlen, &param_dimids[2]))
+   if (0 != TIO_def_dim (grp, "par", params_dimlen, &param_dimids[2]))
      return -1;
 
    if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
@@ -250,7 +251,7 @@ static int create_result_group (int parent_grp, const char *grp_name,
 }
 
 static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
-                          int step, int xtrack, int num_wave,
+                          int step, int xtrack,
                           const Wavecal_Type *wct,
                           const Wavecal_Result_Type *wavecal_result)
 {
@@ -275,7 +276,7 @@ static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info
 
    count[0] = 1;
    count[1] = 1;
-   count[2] = num_wave;
+   count[2] = wavecal_result->num_fit;
 
    if ((0 != TIO_put_var_section (grp, "wavelength", start, count, TIO_DOUBLE,
                                   wavecal_result->wave))
@@ -322,14 +323,14 @@ int main (int argc, char **argv)
    size_t i, len;
    static struct option long_options[] =
      {
-        {"help",    optional_argument, 0, 'h'},
-        {"config",  optional_argument, 0, 'c'},
-        {"outpar",  optional_argument, 0, 'o'},
-        {"xtrack",  optional_argument, 0, 'x'},
-        {"mirror",  optional_argument, 0, 'm'},
-        {"verbose", optional_argument, 0, 'v'},
-        {"yDelta",  optional_argument, 0, 'D'},
-        {"yStart",  optional_argument, 0, 'S'},
+        {"help",    no_argument, 0, 'h'},
+        {"config",  required_argument, 0, 'c'},
+        {"outpar",  required_argument, 0, 'o'},
+        {"xtrack",  required_argument, 0, 'x'},
+        {"mirror",  required_argument, 0, 'm'},
+        {"verbose", no_argument, 0, 'v'},
+        {"yDelta",  required_argument, 0, 'D'},
+        {"yStart",  required_argument, 0, 'S'},
         {"group",   required_argument, 0, 'g'},
         {0,0,0,0}
      };
@@ -528,14 +529,15 @@ int main (int argc, char **argv)
                               &wavecal_config, &wavecal_result))
                goto return_status;
 
-             if (write_results (grp, &spectrum_info, step, xtrack, spec.n, wct,
+             if (write_results (grp, &spectrum_info, step, xtrack, wct,
                                 &wavecal_result))
                goto return_status;
 
              if (verbose)
                {
-                  fprintf (stderr, "%4d %4d %12.4e %4d\n", step, xtrack,
-                           wavecal_result.bestnorm, wavecal_result.nfev);
+                  fprintf (stderr, "%4d %4d %12.4e %4d %4d\n", step, xtrack,
+                           wavecal_result.bestnorm, wavecal_result.nfev,
+                           wavecal_result.opt_status);
 
                   if (params_outfile)
                     {

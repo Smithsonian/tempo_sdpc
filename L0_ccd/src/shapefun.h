@@ -78,6 +78,8 @@ struct Shapefun_Type
    int (*st_eval)(const Shapefun_Type *, const double *,
                   size_t, const double *, double *);
 
+   int st_apply_external_scaling;  /**< if non-zero, result requires externally managed scale factor */
+
    double *node_x;        /**< [method-specific option] fixed, ordered set of x coordinates */
    size_t num_nodes;      /**< [method-specific option] number of fixed nodes */
    int malloced_node_x;   /**< [method-specific option] flag used to facilitate memory management */
