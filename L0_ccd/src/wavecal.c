@@ -42,6 +42,11 @@ typedef struct
    double *wave_params;     /**< wavelength grid parameters */
    size_t num_wave_params;  /**< number of wavelength grid parameters */
 
+   int start_pix;               /**< offset to sub-window to be fitted */
+   double delta_wavelength;     /**< bin width */
+   double feature_wavelength;   /**< wavelength of fiducial feature */
+   double rad_mean_ratio;       /**< (mean_rad)/(mean_irr) within target wavelength band */
+
    /* storage for use during the fit iteration */
    double *model;           /**< computed model */
    double *spec_scaled;     /**< spectrum to calibrate, scaled by a constant */
@@ -110,8 +115,6 @@ struct Wavecal_Type
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
-   double rad_mean_ratio;       /**< (mean_rad)/(mean_irr) within target wavelength band */
-   int start_pix;
 };
 
 static void free_file_type (File_Type *file)
@@ -547,9 +550,6 @@ static Wavecal_Type *alloc_wavecal (int num_wave)
      }
    memset ((char *)wct, 0, sizeof *wct);
 
-   /* default this parameter to irradiance calibration case */
-   wct->rad_mean_ratio = 1.0;
-
    if (NULL == (wct->irr0 = alloc_doubles (num_wave)))
      {
         free_wavecal (wct);
@@ -567,6 +567,9 @@ static Wavecal_Type *alloc_wavecal (int num_wave)
         free_wavecal (wct);
         return NULL;
      }
+
+   /* default this parameter to irradiance calibration case */
+   wct->window.rad_mean_ratio = 1.0;
 
    return wct;
 }
@@ -936,13 +939,44 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
    return 0;
 }
 
+typedef struct
+{
+   double feature_wavelength;
+   double delta_wavelength;
+   int start_pix;
+   int num_pix;
+}
+Feature_Window_Type;
+
+static int read_feature_window (config_setting_t *s_band, Feature_Window_Type *fwin)
+{
+   config_setting_t *s;
+
+   memset ((char *)fwin, 0, sizeof *fwin);
+
+   if (NULL == (s = config_setting_get_member (s_band, "feature_window")))
+     return -1;
+
+   if ((CONFIG_TRUE != config_setting_lookup_int (s, "num_pix_fit", &fwin->num_pix))
+       || (CONFIG_TRUE != config_setting_lookup_int (s, "start_pix", &fwin->start_pix)))
+     return -1;
+
+   if ((CONFIG_TRUE != config_setting_lookup_float (s, "delta_wavelength", &fwin->delta_wavelength))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "fid_wavelength", &fwin->feature_wavelength)))
+     return -1;
+
+   return 0;
+}
+
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                             int max_num_wave, int is_irradiance)
 {
    Wavecal_Type *wct = NULL;
+   Window_Type *win = NULL;
+   Feature_Window_Type fwin = {0};
    config_setting_t *s, *s_band;
    double *pindex = NULL;
-   int i, num_pix, start_pix;
+   int i;
 
    if (NULL == (s_band = config_lookup (cfg, cfg_name)))
      {
@@ -952,25 +986,26 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         return NULL;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_int (s_band, "num_pix_fit", &num_pix))
-     num_pix = max_num_wave;
+   if (0 != read_feature_window (s_band, &fwin))
+     {
+        fwin.num_pix = max_num_wave;
+        fwin.start_pix = 0;
+        fwin.delta_wavelength = 0.0;
+        fwin.feature_wavelength = 0.0;
+     }
 
-   if (CONFIG_TRUE != config_setting_lookup_int (s_band, "start_pix", &start_pix))
-     start_pix = 0;
-
-   if (((num_pix <= 0) || (num_pix > max_num_wave))
-       || ((start_pix < 0) || (start_pix >= max_num_wave)))
+   if (((fwin.num_pix <= 0) || (fwin.num_pix > max_num_wave))
+       || ((fwin.start_pix < 0) || (fwin.start_pix >= max_num_wave)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: invalid wavelength calibration window size: max_num_wave=%d num_pix=%d start_pix=%d",
-                     __func__, max_num_wave, num_pix, start_pix);
+                     __func__, max_num_wave, fwin.num_pix, fwin.start_pix);
         return NULL;
      }
 
-   if (NULL == (wct = alloc_wavecal (num_pix)))
+   if (NULL == (wct = alloc_wavecal (fwin.num_pix)))
      goto error_return;
 
-   wct->start_pix = start_pix;
    wct->is_irradiance = is_irradiance;
 
    if (NULL == (s = config_lookup (cfg, "wavecal_control")))
@@ -995,6 +1030,11 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
    if (0 != config_fit_window (s, &wct->window))
      goto error_return;
 
+   win = &wct->window;
+   win->start_pix = fwin.start_pix;
+   win->delta_wavelength = fwin.delta_wavelength;
+   win->feature_wavelength = fwin.feature_wavelength;
+
    if (0 != config_irr_reference (s, &wct->irr))
      goto error_return;
 
@@ -1011,15 +1051,15 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         if (0 != config_model_components (wct, s))
           goto error_return;
 
-        if (0 != alloc_term_storage (wct->terms, num_pix))
+        if (0 != alloc_term_storage (wct->terms, fwin.num_pix))
           goto error_return;
      }
 
    pindex = wct->window.pindex;
 
-   for (i = 0; i < num_pix; i++)
+   for (i = 0; i < fwin.num_pix; i++)
      {
-        pindex[i] = (double)(i + start_pix);
+        pindex[i] = (double)(i + fwin.start_pix);
      }
 
    return wct;
@@ -1174,7 +1214,7 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    /* evaluate all model terms on the new wavelength grid */
    for (term = wct->terms; term != NULL; term = term->next)
      {
-        double scale_factor = wct->rad_mean_ratio;
+        double scale_factor = win->rad_mean_ratio;
         if (evaluate_term (term, win, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
@@ -1292,9 +1332,57 @@ static int compute_rad_mean_ratio (Wavecal_Type *wct)
     *                = sum_rad[*]/sum_irr[*]
     * because the wavelength grids are identical.
     */
-   wct->rad_mean_ratio = sum_rad / sum_irr;
+   win->rad_mean_ratio = sum_rad / sum_irr;
 
    return 0;
+}
+
+/* When the wavelength grid is defined by Chebyshev polynomial
+ * coefficients, the coefficients c[0] and c[1] correspond to:
+ *
+ *   c[0] = the midpoint wavelength
+ *        = \lambda( (k0+k1)/2 )
+ *   c[1] = the half-width of the calibration band
+ *        = 0.5 * (\lambda(k1) - \lambda(k0))
+ *
+ * where the calibration band is:
+ *    \lambda(k0) <= \lambda <= \lambda(k1)
+ * and k0, k1 are pixel indices.
+ */
+static void estimate_midpoint_wavelength (Window_Type *win, const double *spec,
+                                          double *wavelength_of_window_midpoint)
+{
+   Shapefun_Type *st = win->shapefun;
+   int num_spec = win->num_wave;
+   double bin_width = win->delta_wavelength;
+   double wavelength_of_window_minimum = win->feature_wavelength;
+   int i, index_of_window_minimum = 0;
+   double window_minimum = spec[0];
+
+   /* This estimate assumes the wavelength scale is
+    * parameterized by a Chebyshev polynomial.
+    * Don't use it for anything else.
+    */
+   if (st->st_method (st) != SHAPEFUN_TYPE_CHEB)
+     return;
+
+   /* If required parameters haven't been provided, do nothing */
+   if ((bin_width <= 0.0)
+       || (wavelength_of_window_minimum <= 0.0))
+     return;
+
+   for (i = 1; i < num_spec; i++)
+     {
+        if (0 < spec[i] && spec[i] < window_minimum)
+          {
+             window_minimum = spec[i];
+             index_of_window_minimum = i;
+          }
+     }
+
+   *wavelength_of_window_midpoint =
+     (wavelength_of_window_minimum
+       + bin_width * (0.5*(num_spec-1) - index_of_window_minimum));
 }
 
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
@@ -1308,9 +1396,9 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
    Window_Type *win = &wct->window;
    double fill_value = config->fill_value;
-   const double *wave = p_wave + wct->start_pix;
-   const double *spec = p_spec + wct->start_pix;
-   const double *specerr = p_specerr + wct->start_pix;
+   const double *wave = p_wave + win->start_pix;
+   const double *spec = p_spec + win->start_pix;
+   const double *specerr = p_specerr + win->start_pix;
    double *spec_scaled = win->spec_scaled;
    double *weight = win->weight;
    double *params = NULL;
@@ -1345,14 +1433,16 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    if (collect_params (wct, &num, &params) < 0)
      return -1;
 
+   estimate_midpoint_wavelength (win, spec_scaled, &params[0]);
+
+   if (0 != compute_rad_mean_ratio (wct))
+     goto return_error;
+
    mp.wct = wct;
    mp.spec = win->spec_scaled;
    mp.weight = win->weight;
    mp.model = win->model;
    mp.counter = 0;
-
-   if (0 != compute_rad_mean_ratio (wct))
-     goto return_error;
 
    num_params = num;
    num_residuals = win->num_wave;
@@ -1364,16 +1454,6 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
                         fit_ctrl->maxfev : fit_ctrl->maxiter * num_params);
 
    fit_result.resid = win->residuals; /* FIXME: make this a debug option? */
-
-#if 0
-   fprintf (stderr, "*** FORCING initial param values\n");
-   params[0] = 3.970994e+02;
-   params[1] = 5.099444e+00;
-   params[2] = -9.934236e-02;
-   params[3] = 7.157610e-04;
-   params[4] = 9.729859e-01;
-   params[5] = -6.147860e-03;
-#endif
 
    if (0) write_params (stderr, params, num_params);
 

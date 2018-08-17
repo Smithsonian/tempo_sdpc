@@ -13,6 +13,14 @@
 
 #include <libconfig.h>
 
+enum
+{
+   SHAPEFUN_TYPE_CSPLINE,
+   SHAPEFUN_TYPE_CHEB,
+   SHAPEFUN_TYPE_POLY,
+   SHAPEFUN_TYPE_POSITIVE_COEFF
+};
+
 typedef struct
 {
    /** The initial state of a shape function may be specified
@@ -42,6 +50,12 @@ struct Shapefun_Type
     * @return The number of parameters
     */
    int (*st_num_params)(const Shapefun_Type *);
+
+   /** Query the method id for this \a Shapefun_Type object
+    * @param sf  A pointer to this \a Shapefun_Type object
+    * @return The method id
+    */
+   int (*st_method)(const Shapefun_Type *);
 
    /** Initialize the parameters for this \a Shapefun_Type object
     * @param  sf  A read-only pointer to this \a Shapefun_Type object

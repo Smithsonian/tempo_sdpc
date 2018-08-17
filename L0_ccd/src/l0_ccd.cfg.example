@@ -95,9 +95,14 @@ wavecal_control:
 
 band_290_490_nm:
 {
-  # Specify pixel range to fit (default is full band)
-  # start_pix = 495;
-  # num_pix_fit = 60;
+  # [optional] specify narrow window to fit (default is full-band)
+  feature_window:
+  {
+     start_pix = 495;
+     num_pix_fit = 60;
+     delta_wavelength = 0.2;    # bin width [nm]
+     fid_wavelength = 393.3;    # reference point wavelength [nm]
+  };
 
   wavecal_irradiance:
   {
@@ -192,9 +197,14 @@ band_290_490_nm:
 
 band_540_740_nm:
 {
-  # Specify pixel range to fit (default is full band)
-  # start_pix = 495;
-  # num_pix_fit = 60;
+  # [optional] specify narrow window to fit (default is full-band)
+  *feature_window:
+  {
+     start_pix = 495;
+     num_pix_fit = 60;
+     delta_wavelength = 0.2;    # bin width [nm]
+     fid_wavelength = 393.3;    # reference point wavelength [nm]
+  };
 
   wavecal_irradiance:
   {

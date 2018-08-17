@@ -240,6 +240,8 @@ static int create_result_group (int parent_grp, const char *grp_name,
        || (0 != TIO_def_var (grp, "params", TIO_FLOAT,
                              spectrum_info->ndims,
                              param_dimids, &varid))
+       || (0 != TIO_def_var (grp, "bestnorm", TIO_FLOAT, 2,
+                             param_dimids, &varid))
       )
      {
         return -1;
@@ -283,7 +285,9 @@ static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info
        || (0 != TIO_put_var_section (grp, "model", start, count, TIO_DOUBLE,
                                   wavecal_result->model))
        || (0 != TIO_put_var_section (grp, "residuals", start, count, TIO_DOUBLE,
-                                  wavecal_result->residuals)))
+                                  wavecal_result->residuals))
+       || (0 != TIO_put_var_section (grp, "bestnorm", start, count, TIO_DOUBLE,
+                                     &wavecal_result->bestnorm)))
      {
         return -1;
      }

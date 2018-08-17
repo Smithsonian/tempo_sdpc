@@ -28,19 +28,16 @@
    int method_id;
 #include "shapefun.h"
 
-enum
-{
-   SHAPEFUN_TYPE_CSPLINE,
-   SHAPEFUN_TYPE_CHEB,
-   SHAPEFUN_TYPE_POLY,
-   SHAPEFUN_TYPE_POSITIVE_COEFF
-};
-
 static void free_shapefun_type (Shapefun_Type *st)
 {
    if (st == NULL)
      return;
    FREE(st);
+}
+
+static int st_method (const Shapefun_Type *st)
+{
+   return st->method_id;
 }
 
 static int st_num_params (const Shapefun_Type *st)
@@ -430,6 +427,7 @@ static int shapefun_config (Shapefun_Type *st, const char *method_name)
    st->st_init_params = m->st_init_params;
    st->st_eval = m->st_eval;
    st->st_num_params = st_num_params;
+   st->st_method = st_method;
 
    return 0;
 }
