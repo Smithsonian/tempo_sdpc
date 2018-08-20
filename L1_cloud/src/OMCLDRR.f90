@@ -158,6 +158,8 @@ program OMCLDRR
 
     !get the climatological terrain pressure
     !=======================================
+    ! Crude presssure climatology - higher resolution values could
+    ! be read in from meteorological forecast
     call rd_terr (errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &

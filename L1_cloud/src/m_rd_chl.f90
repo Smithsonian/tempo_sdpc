@@ -1,7 +1,7 @@
 !>Read chlorophyll concentration climatology reference file
 !
 !--------------------------------------------------------------------------
-!> @author Joanna Joiner - original code, 
+!> @author Joanna Joiner - original code,
 !> @author modified by Alexander P. Vasilkov
 !> @author updated for TEMPO by E. O'Sullivan
 !
@@ -9,11 +9,11 @@
 !
 !         CALLING SEQUENCE: call rd_chl (lat, lon, chl_out)
 !
-!         INPUT:         
+!         INPUT:
 !> @param lat[in]            latitude (-90.0,90.0)
 !> @param lon[in]     longitude (-180-180) -> (0.0,360.0)
 !
-!         OUTPUT:  
+!         OUTPUT:
 !> @param chl_out[out]        chlorophyll concentration
 !
 !        HISTORY: Developed Nov. 15, 2001
@@ -26,7 +26,7 @@ module m_rd_chl
 
 contains
 
-  subroutine rd_chl (errstat)   
+  subroutine rd_chl (errstat)
 
     use m_vars, ONLY: done_read_chl, chl2d, lat, lon, chlcl, iLine, &
          nXtrack
@@ -34,7 +34,7 @@ contains
     use m_pgs_include
     use tell_module
 
-    implicit none          
+    implicit none
 
     integer, intent(inout) :: errstat
     !local variables
@@ -77,14 +77,14 @@ contains
         i=int(anint((lat(ip,iLine)+90.0)/0.5, kind=4),kind(i))+1
         j=int(anint((lon(ip,iLine)+180.0)/0.5, kind=4),kind(j))+1
         if(j <= 0) j=1
-        if(j == 721) j=1   
-        chlcl(ip-1)=chl2d(j,i)   
+        if(j == 721) j=1
+        chlcl(ip-1)=chl2d(j,i)
       endif
     enddo   ! ip
 
     return
 
-    !FIXME - should this failure cause the code to abort?
+    !Note - OMCLDRR aborts at this error, but could continue with chl2d=0
 200 call tell_error(tell_io_read_error, &
          'rd_chl: error reading chlorophyll file', errstat)
     chl2d=0.d0

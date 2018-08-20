@@ -144,7 +144,7 @@ contains
 
     return
 
-    !FIXME - should either of these failures cause the code to abort?
+    !Note - OMCLDRR aborts at these errors but could continue
 200 call tell_error(tell_io_read_error, &
          "rd_toms_refl: error reading reflectivity file", errstat)
     toms_refl=0.d0

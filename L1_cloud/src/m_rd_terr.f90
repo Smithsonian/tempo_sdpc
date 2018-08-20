@@ -8,18 +8,18 @@
 !
 ! !CALLING SEQUENCE: call rd_terr (lat, lon, terr_pres)
 !
-! !INPUT PARAMETERS: 
+! !INPUT PARAMETERS:
 !> @param lat[in]      latitude
 !> @param lon[in]      longitude
 !
-! !OUTPUT PARAMETERS:  
+! !OUTPUT PARAMETERS:
 !> @param terr_pres[out]       terrain pressure
 !
-! !SEE ALSO: 
+! !SEE ALSO:
 !
 ! !REVISION HISTORY:
 !
-!> @author  01Oct96   Joiner       Original code 
+!> @author  01Oct96   Joiner       Original code
 !> @author  19Mar02   Vasilkov     To read filenames from PCF!
 !> @author  26Mar15   O'Sullivan   Update for TEMPO
 !-------------------------------------------------------------------------
@@ -30,20 +30,20 @@ module m_rd_terr
 
 contains
 
-  subroutine rd_terr (errstat)   
+  subroutine rd_terr (errstat)
 
     use m_vars, ONLY: p_terr, done_read_terr, lat, lon, ps, &
          iLine, nXtrack
     use m_LUN_set
     use m_pgs_include
     use tell_module
-    implicit NONE          
+    implicit NONE
 
     integer, intent (inout) :: errstat
 
     !local variables
     !================
-    integer :: lun=2 
+    integer :: lun=2
     integer :: pgs_io_gen_openf, pgs_io_gen_closef
     integer :: status, version
     integer :: ipts, i, j
@@ -85,20 +85,20 @@ contains
         latt=-lat(ipts,iLine)
         i=int(anint((latt+90.0)/0.5),kind(i))+1
         if (i == 361) i=360
-        if(lon(ipts,iLine) < 0) then 
-          lont=lon(ipts,iLine)+360 
-        else 
-          lont=lon(ipts,iLine)   
+        if(lon(ipts,iLine) < 0) then
+          lont=lon(ipts,iLine)+360
+        else
+          lont=lon(ipts,iLine)
         endif
         j=int(anint((lont)/0.5),kind(j))+1
-        if(j == 721) j=1   
-        ps(ipts-1,iLine)=p_terr(i,j)/1013.0   
+        if(j == 721) j=1
+        ps(ipts-1,iLine)=p_terr(i,j)/1013.0
       endif
     enddo   ! ipts
 
     return
 
-    !FIXME - should this error cause the code to abort?
+    ! Note - OMCLDRR aborts at this error, but could continue with p_terr=0
 200 call tell_error(tell_io_read_error, &
          'rd_terr: error reading terrain file', errstat)
     p_terr=0.d0
