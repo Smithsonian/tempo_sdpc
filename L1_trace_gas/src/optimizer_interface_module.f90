@@ -66,11 +66,11 @@ module optimizer_interface_module
     subroutine optimizer_interface (this, params, num_params, residuals, num_residuals, return_status, &
                                    cov_matrix)
      import i4, r8, optimizer_type
-     ! FIXME:  'implicit none' is commented out to work around a bug
-     !         in ifort 12.0.2 20110112
-     !         See https://software.intel.com/en-us/forums/topic/337047
-     !         Apparently, the bug was fixed in ifort-13.0.
-     !implicit none
+     ! 'implicit none' was commented out to work around a bug
+     ! in ifort 12.0.2 20110112
+     ! See https://software.intel.com/en-us/forums/topic/337047
+     ! The bug was fixed in ifort-13.0.
+     implicit none
      ! positional parameters
      type(optimizer_type) :: this
      real (kind=r8), dimension (:), intent(inout) :: params

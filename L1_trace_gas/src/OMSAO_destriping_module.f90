@@ -53,9 +53,9 @@ MODULE OMSAO_destriping_module
   ! itself, in an attempt to catch infinite loops of the ELSUNC routine, which
   ! occur on occasion for reasons not yet known.
   ! ----------------------------------------------------------------------------
-  !INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi ! FIXME (unused)
+  !INTEGER (KIND=i4), private :: num_fitfunc_calls, num_fitfunc_jacobi
 
-  !private xtrack_striping_func ! FIXME (unused)  
+  !private xtrack_striping_func
   private xtrack_striping_model, xtrack_striping_objective
 CONTAINS
 
@@ -1072,7 +1072,6 @@ CONTAINS
       ! ----------------------------------------------
       ! Write X-Track pattern ("diagnostic" runs only)
       ! ----------------------------------------------
-      !FIXME IF ( yn_diagnostic_run .AND. yn_output_diag(xtrcor_didx) )                 &
       if (yn_diagnostic_run .and. yn_do_he5_output) &
         locerrstat = HE5_SWwrfld ( pge_swath_id, TRIM(ADJUSTL(xtrcor_field)), &
         he5_start_2d, he5_stride_2d, he5_edge_2d, xtrack_cor(1:nxtrack,iline:iline+ntimes_loop-1) )

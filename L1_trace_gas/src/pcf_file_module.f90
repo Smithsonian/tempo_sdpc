@@ -382,7 +382,7 @@ CONTAINS
            OMBRO_amf_filename, pge_error_status)
       Have_AMF_Table = Have_AMF_Table.and.(len_trim(OMBRO_amf_filename) > 0)
 
-    CASE ( pge_hcho_idx, pge_no2_idx )   ! FIXME: JCH added pge_no2_idx (ok?)
+    CASE ( pge_hcho_idx, pge_no2_idx )
       DO i = 1, n_voc_amf_luns
         call do_pgs_get_reference (voc_amf_luns(i), "PGE_STATIC_INPUT_LUN", &
              OMSAO_W_GETLUN, pge_errstat_warning, &

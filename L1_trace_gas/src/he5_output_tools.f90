@@ -639,30 +639,30 @@ CONTAINS
 
   !---------------------------------------------------------------------------
   SUBROUTINE he5_write_radfit_output ( &
-      pge_idx, iline, nXtrack, nblock, fpix, lpix, &
-      all_fitted_columns, all_fitted_errors, correlation_columns,&
-      omi_fitspc, errstat )
+       pge_idx, iline, nXtrack, nblock, fpix, lpix, &
+       all_fitted_columns, all_fitted_errors, correlation_columns,&
+       omi_fitspc, errstat )
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: nxtrack_max, nUTCdim
     USE OMSAO_variables_module,  ONLY: n_fitvar_rad, n_rad_wvl, n_rad_wvl_max
     USE OMSAO_indices_module,    ONLY: sao_molecule_names, &
-      pge_bro_idx, pge_o3_idx, o3_t1_idx
-!      pge_bro_idx, pge_o3_idx, o3_t1_idx,
-!      corr_didx,  corrcol_didx, correrr_didx, itnum_didx,  &
-!      fitwt_didx, posobs_didx,  spcobs_didx,  spcfit_didx, &
-!      spcres_didx
+         pge_bro_idx, pge_o3_idx, o3_t1_idx
+    !      pge_bro_idx, pge_o3_idx, o3_t1_idx,
+    !      corr_didx,  corrcol_didx, correrr_didx, itnum_didx,  &
+    !      fitwt_didx, posobs_didx,  spcobs_didx,  spcfit_didx, &
+    !      spcres_didx
     USE OMSAO_omidata_module
     USE OMSAO_errstat_module
     !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8, roundoff_2darr_r8
     USE datafields, ONLY: DataField_HE5, &
-      o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
-      auraalt_field, col_field, corr_field, corrcol_field, correrr_field, &
-      dcol_field, extr_field, lat_field, lon_field, posobs_field, &
-      fitcon_field, fitrms_field, fitwt_field, itnum_field, &
-      saa_field, spcfit_field, spcobs_field, spcres_field, &
-      sza_field, thgt_field, time_field, utc_field, vaa_field, &
-      vza_field, xtr_field
+         o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
+         auraalt_field, col_field, corr_field, corrcol_field, correrr_field, &
+         dcol_field, extr_field, lat_field, lon_field, posobs_field, &
+         fitcon_field, fitrms_field, fitwt_field, itnum_field, &
+         saa_field, spcfit_field, spcobs_field, spcres_field, &
+         sza_field, thgt_field, time_field, utc_field, vaa_field, &
+         vza_field, xtr_field
 
     IMPLICIT NONE
 
@@ -695,7 +695,7 @@ CONTAINS
     ! will modify the values. Hence INTENT (IN) produces a conflict.
     ! --------------------------------------------------------------
     REAL (KIND=r8), INTENT (INOUT), DIMENSION (1:n_fitvar_rad,1:nXtrack,0:nblock-1) :: &
-      all_fitted_columns, all_fitted_errors, correlation_columns
+         all_fitted_columns, all_fitted_errors, correlation_columns
 
     ! ---------------
     ! Output variable
@@ -722,8 +722,8 @@ CONTAINS
     locerrstat = pge_errstat_ok
 
     write (0,*) "he5_write_radfit_output: n_rad_wvl_max=", n_rad_wvl_max, &
-      " n_comm_wvl=", n_comm_wvl, " n_rad_wvl=", n_rad_wvl, &
-      " nxtrack_max=", nxtrack_max, " nxtrack=", nxtrack
+         " n_comm_wvl=", n_comm_wvl, " n_rad_wvl=", n_rad_wvl, &
+         " nxtrack_max=", nxtrack_max, " nxtrack=", nxtrack
 
     ! -------------------------------------------------------
     ! Some fields have the PGE molecule name appended to them
@@ -755,32 +755,32 @@ CONTAINS
 
     he5_start_2d  = (/ iline, 0 /) ;  he5_stride_2d = (/ 1, 0 /) ; he5_edge_2d = (/ nblock, 0 /)
     locerrstat = HE5_SWWRFLD ( pge_swath_id, auraalt_field,   he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_auraalt(0:nblock-1) )
+         omi_auraalt(0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, time_field,   he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_time(0:nblock-1) )
+         omi_time(0:nblock-1) )
 
     ! --------
     ! UTC time
     ! --------
     he5_start_2d = (/ 0, iline /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nUTCdim, nblock /)
     locerrstat = HE5_SWWRFLD ( pge_swath_id, utc_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_time_utc(1:nUTCdim, 0:nblock-1) )
+         omi_time_utc(1:nUTCdim, 0:nblock-1) )
 
     he5_start_2d = (/ 0, iline /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nXtrack, nblock /)
     locerrstat = HE5_SWWRFLD ( pge_swath_id, lat_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_latitude(1:nXtrack,0:nblock-1) )
+         omi_latitude(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, lon_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_longitude(1:nXtrack,0:nblock-1) )
+         omi_longitude(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, saa_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_sazimuth(1:nXtrack,0:nblock-1) )
+         omi_sazimuth(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, sza_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_szenith(1:nXtrack,0:nblock-1) )
+         omi_szenith(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, vaa_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_vazimuth(1:nXtrack,0:nblock-1) )
+         omi_vazimuth(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, vza_field,    he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_vzenith(1:nXtrack,0:nblock-1) )
+         omi_vzenith(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, thgt_field,   he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_height(1:nXtrack,0:nblock-1) )
+         omi_height(1:nXtrack,0:nblock-1) )
 
     ! ----------------------------------------------------------------------------------
     ! Row-anomaly related cross-track quality flags in two flavors: The original format,
@@ -788,9 +788,9 @@ CONTAINS
     ! a bit-conversion. gga
     ! ----------------------------------------------------------------------------------
     locerrstat = HE5_SWWRFLD ( pge_swath_id, xtr_field,   he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_xtrflg_l1b(1:nXtrack,0:nblock-1) )
+         omi_xtrflg_l1b(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, extr_field,  he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                              omi_xtrflg(1:nXtrack,0:nblock-1) )
+         omi_xtrflg(1:nXtrack,0:nblock-1) )
 
     ! -----------------------------
     ! Column amount and uncertainty
@@ -802,9 +802,9 @@ CONTAINS
     !       double rounding can only lessen the precision.
     ! ------------------------------------------------------------------
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(col_field)),     &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, omi_column_amount(1:nXtrack,0:nblock-1) )
+         he5_start_2d, he5_stride_2d, he5_edge_2d, omi_column_amount(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(dcol_field)),    &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, omi_column_uncert(1:nXtrack,0:nblock-1) )
+         he5_start_2d, he5_stride_2d, he5_edge_2d, omi_column_uncert(1:nXtrack,0:nblock-1) )
 
     ! -----------------------------------------------------
     ! Fitting RMS and EXIT values from fitting.
@@ -812,9 +812,9 @@ CONTAINS
     ! -----------------------------------------------------
     !CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, omi_fit_rms(fpix:lpix,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(fitrms_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, omi_fit_rms(1:nXtrack,0:nblock-1) )
+         he5_start_2d, he5_stride_2d, he5_edge_2d, omi_fit_rms(1:nXtrack,0:nblock-1) )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(fitcon_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, omi_fitconv_flag(1:nXtrack,0:nblock-1) )
+         he5_start_2d, he5_stride_2d, he5_edge_2d, omi_fitconv_flag(1:nXtrack,0:nblock-1) )
 
     ! ---------------------------------------------------------
     ! PGE specific output:
@@ -833,8 +833,8 @@ CONTAINS
       do while (associated (ptr))
         !CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_amount(i,fpix:lpix,0:nblock-1))
         locerrstat = HE5_SWWRFLD (pge_swath_id, TRIM(ptr%name), &
-                                  he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                                  omi_o3_amount(i,1:nXtrack,0:nblock-1))
+             he5_start_2d, he5_stride_2d, he5_edge_2d, &
+             omi_o3_amount(i,1:nXtrack,0:nblock-1))
         ptr => ptr % next
         i = i + 1
       end do
@@ -844,8 +844,8 @@ CONTAINS
       do while (associated (ptr))
         !CALL roundoff_2darr_r8 (n_roff_dig, npix, nblock, omi_o3_uncert(i,fpix:lpix,0:nblock-1))
         locerrstat = HE5_SWWRFLD (pge_swath_id, TRIM(ptr%name), &
-                                  he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                                  omi_o3_uncert(i,1:nXtrack,0:nblock-1))
+             he5_start_2d, he5_stride_2d, he5_edge_2d, &
+             omi_o3_uncert(i,1:nXtrack,0:nblock-1))
         ptr => ptr % next
         i = i + 1
       end do
@@ -866,9 +866,8 @@ CONTAINS
 
       he5_start_2d = (/ 0, iline /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nXtrack, nblock /)
 
-      !FIXME: IF( yn_output_diag( itnum_didx ) ) &
-        locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(itnum_field)), &
-                                  he5_start_2d, he5_stride_2d, he5_edge_2d, omi_itnum_flag(1:nXtrack,0:nblock-1) )
+      locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(itnum_field)), &
+           he5_start_2d, he5_stride_2d, he5_edge_2d, omi_itnum_flag(1:nXtrack,0:nblock-1) )
 
       !DO i = 1, n_fitvar_rad
       !  CALL roundoff_2darr_r8 ( n_roff_dig, npix, nblock, correlation_columns(i,fpix:lpix,0:nblock-1) )
@@ -880,20 +879,20 @@ CONTAINS
       he5_stride_3d = (/ 1,            1,      1           /)
       he5_edge_3d   = (/ n_fitvar_rad, nXtrack, nblock /)
 
-      !FIXME IF( yn_output_diag( corr_didx ) ) &
       if (yn_diagnostic_run) &
-        locerrstat = HE5_SWWRFLD ( pge_swath_id, corr_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  correlation_columns(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
+           locerrstat = HE5_SWWRFLD ( pge_swath_id, corr_field, &
+           he5_start_3d, he5_stride_3d, he5_edge_3d, &
+           correlation_columns(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
 
-      !IF( yn_output_diag( corrcol_didx ) ) &
       if (yn_diagnostic_run) &
-        locerrstat = HE5_SWWRFLD ( pge_swath_id, corrcol_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  all_fitted_columns(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
+           locerrstat = HE5_SWWRFLD ( pge_swath_id, corrcol_field, &
+           he5_start_3d, he5_stride_3d, he5_edge_3d, &
+           all_fitted_columns(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
 
-      !IF( yn_output_diag( correrr_didx ) ) THEN &
       if (yn_diagnostic_run) &
-        locerrstat = HE5_SWWRFLD ( pge_swath_id, correrr_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  all_fitted_errors(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
+           locerrstat = HE5_SWWRFLD ( pge_swath_id, correrr_field, &
+           he5_start_3d, he5_stride_3d, he5_edge_3d, &
+           all_fitted_errors(1:n_fitvar_rad,1:nXtrack,0:nblock-1) )
 
     END IF
 
@@ -909,93 +908,40 @@ CONTAINS
       he5_edge_3d   = (/ n_rad_wvl, nXtrack, nblock /)
 
       ! (1) Model Spectrum
-      !FIXME IF( yn_output_diag( spcfit_didx ) ) THEN
-      if (.true.) then
-        !DO ii=1,n_comm_wvl
-        !  DO jj=1,nXtrack
-        !    DO kk=0,nblock-1
-        !      tmp_fitspc(ii,jj,kk) = omi_fitspc(ii,jj,1,kk)
-        !    ENDDO
-        !  ENDDO
-        !ENDDO
-        !tmp_fitspc (1:n_comm_wvl, 1:nXtrack, 0:nblock-1) = omi_fitspc (1:n_comm_wvl, 1:nXtrack, 1, 0:nblock-1)
-        tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 1, 0:nblock-1)
-        locerrstat = HE5_SWWRFLD ( pge_swath_id,spcfit_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1))
-      ENDIF
+      tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 1, 0:nblock-1)
+      locerrstat = HE5_SWWRFLD ( pge_swath_id,spcfit_field, he5_start_3d, &
+           he5_stride_3d, he5_edge_3d, &
+           tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1))
 
       ! (2) Measured Spectrum
-      ! FIXME: IF( yn_output_diag( spcobs_didx ) ) THEN
-      if (.true.) then
-        !DO ii=1,n_comm_wvl
-        !  DO jj=1,nXtrack
-        !    DO kk=0,nblock-1
-        !      tmp_fitspc(ii,jj,kk) = omi_fitspc(ii,jj,2,kk)
-        !    ENDDO
-        !  ENDDO
-        !ENDDO
-        !tmp_fitspc (1:n_comm_wvl, 1:nXtrack, 0:nblock-1) = omi_fitspc (1:n_comm_wvl, 1:nXtrack, 2, 0:nblock-1)
-        tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 2, 0:nblock-1)
-        locerrstat = HE5_SWWRFLD ( pge_swath_id,spcobs_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
-      ENDIF
+      tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 2, 0:nblock-1)
+      locerrstat = HE5_SWWRFLD ( pge_swath_id,spcobs_field, he5_start_3d, &
+           he5_stride_3d, he5_edge_3d, &
+           tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
 
       ! (3) Measured Position
-      !IF( yn_output_diag( posobs_didx ) ) THEN
-      if (.true.) then
-        !DO ii=1,n_comm_wvl
-        DO ii=1,n_rad_wvl
-          !DO jj=1,nXtrack
-          !  DO kk=0,nblock-1
-          !    tmp_fitspc(ii,jj,kk) = omi_fitspc(ii,jj,3,kk)
-          !  ENDDO
-          !ENDDO
-          !tmp_fitspc (ii, 1:nXtrack, 0:nblock-1) = omi_fitspc (ii, 1:nXtrack, 3, 0:nblock-1)
-          tmp_fitspc(ii,:,:) = omi_fitspc (ii, 1:nXtrack, 3, 0:nblock-1)
-        !  CALL roundoff_2darr_r8 ( n_roff_dig, nXtrack, nblock, tmp_fitspc(ii,1:nXtrack,0:nblock-1) )
-        ENDDO
+      DO ii=1,n_rad_wvl
+        tmp_fitspc(ii,:,:) = omi_fitspc (ii, 1:nXtrack, 3, 0:nblock-1)
+      ENDDO
 
-        locerrstat = HE5_SWWRFLD ( pge_swath_id,posobs_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
-      ENDIF
+      locerrstat = HE5_SWWRFLD ( pge_swath_id,posobs_field, he5_start_3d, &
+           he5_stride_3d, he5_edge_3d, &
+           tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
 
       ! (4) Fit Weights
-      ! FIXME: IF( yn_output_diag( fitwt_didx ) ) THEN
-      if (.true.) then
-        !DO ii=1,n_comm_wvl
-        !  DO jj=1,nXtrack
-        !    DO kk=0,nblock-1
-        !      tmp_fitspc(ii,jj,kk) = omi_fitspc(ii,jj,4,kk)
-        !    ENDDO
-        !  ENDDO
-        !ENDDO
-        !tmp_fitspc (1:n_comm_wvl, 1:nXtrack, 0:nblock-1) = omi_fitspc (1:n_comm_wvl, 1:nXtrack, 4, 0:nblock-1)
-        tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 4, 0:nblock-1)
-        locerrstat = HE5_SWWRFLD ( pge_swath_id,fitwt_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
-      ENDIF
+      tmp_fitspc = omi_fitspc (1:n_rad_wvl, 1:nXtrack, 4, 0:nblock-1)
+      locerrstat = HE5_SWWRFLD ( pge_swath_id,fitwt_field, he5_start_3d, &
+           he5_stride_3d, he5_edge_3d, &
+           tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
 
       ! Residual Spectrum
-      ! FIXME: IF( yn_output_diag( spcres_didx ) ) THEN
-      if (.true.) then
-        !DO ii=1,n_comm_wvl
-        !  DO jj=1,nXtrack
-        !    DO kk=0,nblock-1
-        !      tmp_fitspc(ii,jj,kk) = omi_fitspc(ii,jj,2,kk) - omi_fitspc(ii,jj,1,kk)
-        !    ENDDO
-        !  ENDDO
-        !ENDDO
-        !tmp_fitspc (1:n_comm_wvl, 1:nXtrack, 0:nblock-1) = &
-        !  omi_fitspc (1:n_comm_wvl, 1:nXtrack, 2, 0:nblock-1) &
-        !  - omi_fitspc (1:n_comm_wvl, 1:nXtrack, 1, 0:nblock-1)
+      tmp_fitspc = &
+           omi_fitspc (1:n_rad_wvl, 1:nXtrack, 2, 0:nblock-1) &
+           - omi_fitspc (1:n_rad_wvl, 1:nXtrack, 1, 0:nblock-1)
 
-        tmp_fitspc = &
-          omi_fitspc (1:n_rad_wvl, 1:nXtrack, 2, 0:nblock-1) &
-          - omi_fitspc (1:n_rad_wvl, 1:nXtrack, 1, 0:nblock-1)
-
-        locerrstat = HE5_SWWRFLD ( pge_swath_id,spcres_field, he5_start_3d, he5_stride_3d, he5_edge_3d, &
-                                  tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
-      ENDIF
+      locerrstat = HE5_SWWRFLD ( pge_swath_id,spcres_field, he5_start_3d, &
+           he5_stride_3d, he5_edge_3d, &
+           tmp_fitspc(1:n_rad_wvl,1:nXtrack,0:nblock-1) )
 
     END IF
     ! CCM
@@ -1004,7 +950,7 @@ CONTAINS
     ! Check error status
     ! ------------------
     CALL error_check ( locerrstat, HE5_STAT_OK, pge_errstat_error, OMSAO_E_HE5SWWRFLD, &
-                      modulename, vb_lev_default, errstat )
+         modulename, vb_lev_default, errstat )
     RETURN
 
   END SUBROUTINE he5_write_radfit_output
@@ -1075,43 +1021,48 @@ CONTAINS
     ! ------------------------------------------
     ! Common Mode Spectrum - Count for Averaging
     ! ------------------------------------------
-    ! FIXME IF( yn_output_diag(commcnt_didx) ) THEN
     if (yn_diagnostic_run) then
-      he5_start_2d  = (/ 0, 0 /) ;  he5_stride_2d = (/ 1, 0 /) ; he5_edge_2d = (/ nXtrack, 0 /)
+      he5_start_2d  = (/ 0, 0 /)
+      he5_stride_2d = (/ 1, 0 /)
+      he5_edge_2d = (/ nXtrack, 0 /)
       locerrstat = HE5_SWWRFLD ( &
-        pge_swath_id, commcnt_field, he5_start_2d, he5_stride_2d, he5_edge_2d, loccnt(1:nXtrack) )
+        pge_swath_id, commcnt_field, he5_start_2d, he5_stride_2d, &
+        he5_edge_2d, loccnt(1:nXtrack) )
     ENDIF
 
     ! ----------------------------------------------
     ! Common Mode Spectrum - Wavelengths and Spectra
     ! ----------------------------------------------
-    he5_start_2d  = (/ 0, 0 /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nXtrack, npts /)
+    he5_start_2d  = (/ 0, 0 /)
+    he5_stride_2d = (/ 1, 1 /)
+    he5_edge_2d = (/ nXtrack, npts /)
 
-    !FIXME IF( yn_output_diag(commwvl_didx) ) THEN
     if (yn_diagnostic_run) &
       locerrstat = HE5_SWWRFLD ( &
-        pge_swath_id, commwvl_field, he5_start_2d, he5_stride_2d, he5_edge_2d, locwvl(1:nXtrack,1:npts) )
+        pge_swath_id, commwvl_field, he5_start_2d, he5_stride_2d, &
+        he5_edge_2d, locwvl(1:nXtrack,1:npts) )
 
-    !FIXME: IF( yn_output_diag(commspc_didx) ) THEN
     if (yn_diagnostic_run) &
       locerrstat = HE5_SWWRFLD ( &
-        pge_swath_id, commspc_field, he5_start_2d, he5_stride_2d, he5_edge_2d, locspc(1:nXtrack,1:npts) )
+        pge_swath_id, commspc_field, he5_start_2d, he5_stride_2d, &
+        he5_edge_2d, locspc(1:nXtrack,1:npts) )
 
     ! --------------------------
     ! CCD Pixel - First and Last
     ! --------------------------
-    ! FIXME: IF ( yn_diagnostic_run .AND. yn_output_diag(ccdpix_didx)) THEN
     if (yn_diagnostic_run) then
-      he5_start_2d  = (/ 0, 0 /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nXtrack, 2 /)
+      he5_start_2d  = (/ 0, 0 /)
+      he5_stride_2d = (/ 1, 1 /)
+      he5_edge_2d = (/ nXtrack, 2 /)
       locerrstat = HE5_SWWRFLD ( &
-        pge_swath_id, ccdpix_field, he5_start_2d, he5_stride_2d, he5_edge_2d, &
-        locccd(1:nXtrack,1:2) )
+        pge_swath_id, ccdpix_field, he5_start_2d, he5_stride_2d, &
+        he5_edge_2d, locccd(1:nXtrack,1:2) )
     END IF
     ! ------------------
     ! Check error status
     ! ------------------
-    CALL error_check ( locerrstat, HE5_STAT_OK, pge_errstat_error, OMSAO_E_HE5SWWRFLD, &
-                      modulename, vb_lev_default, errstat )
+    CALL error_check ( locerrstat, HE5_STAT_OK, pge_errstat_error, &
+         OMSAO_E_HE5SWWRFLD, modulename, vb_lev_default, errstat )
 
     RETURN
   END SUBROUTINE he5_write_common_mode
@@ -1167,7 +1118,6 @@ CONTAINS
     he5_edge_3d   = (/ nRefSpec,  npts, nXtrack /)
 
     ! Write refspec database
-    ! FIXME IF( yn_output_diag(spdata_didx) ) THEN
     if (yn_diagnostic_run) then
       allocate (db_old_order(nRefSpec,npts,nXtrack), stat=locerrstat)
       if (locerrstat /= 0) then
@@ -1196,7 +1146,6 @@ CONTAINS
     he5_stride_2d = (/    1,       1 /)
     he5_edge_2d   = (/ npts, nXtrack /)
     ! Write refspec database wavelength
-    !FIXME IF( yn_output_diag(spdatw_didx) ) THEN
     if (yn_diagnostic_run) &
       locerrstat = HE5_SWWRFLD ( pge_swath_id, spdatw_field, &
                                 he5_start_2d, he5_stride_2d, he5_edge_2d, &
@@ -1211,7 +1160,6 @@ CONTAINS
     he5_edge_2d = (/ nRefSpec, 0 /)
 
     ! Write Normalisation factors
-    ! FIXME IF( yn_output_diag( spnrmf_didx ) ) THEN
     if (yn_diagnostic_run) &
       locerrstat = HE5_SWWRFLD ( pge_swath_id, spnrmf_field, &
                                 he5_start_2d, he5_stride_2d, he5_edge_2d,&
@@ -1347,14 +1295,13 @@ CONTAINS
     ! solution of converting everything to INTEGERs first and write those to file.
     ! ----------------------------------------------------------------------------
     ! FIXME. Need to test output field of the linked list here
-    !IF (yn_diagnostic_run & .AND. yn_output_diag(correlm_didx) ) THEN
     IF (yn_diagnostic_run) THEN
       he5_start_2d  = (/ zerocl, zerocl /)
       he5_stride_2d = (/  onecl, zerocl /)
       he5_edge_2d   = (/ INT(nclenfit,KIND=C_LONG), zerocl /)
       locerrstat = HE5_SWWRFLD ( &
-        pge_swath_id, correlm_field,  he5_start_2d, he5_stride_2d, he5_edge_2d, &
-        TRIM(ADJUSTL(correlation_names_concat)) )
+        pge_swath_id, correlm_field,  he5_start_2d, he5_stride_2d, &
+        he5_edge_2d, TRIM(ADJUSTL(correlation_names_concat)) )
     END IF
     ! ------------------
     ! Check error status

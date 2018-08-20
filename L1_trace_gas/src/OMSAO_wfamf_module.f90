@@ -283,7 +283,7 @@ CONTAINS
        ! ---------------------------------------
        IF (do_write) then
           if (yn_do_he5_output) then
-             CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)! <-- FIXME: (to be removed)
+             CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)
           endif
           call write_albedo (albedo, nx, nt, errstat)
           if (errstat /= 0) return
@@ -329,7 +329,8 @@ CONTAINS
        ! -------------------------------------
        IF (do_write) then
           if (yn_do_he5_output) then
-             CALL write_climatology_he5 (climatology, nt, nx, CmETA, locerrstat) ! <-- FIXME: (to be removed)
+             CALL write_climatology_he5 (climatology, nt, nx, CmETA, &
+                  locerrstat)
           endif
           call write_gas_profile (climatology, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
@@ -380,7 +381,7 @@ CONTAINS
        ! -----------------------------------------------------------------
        IF (do_write) then
           if (yn_do_he5_output) then
-             CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat) ! FIXME <-- (to be removed)
+             CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat)
           endif
           call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
@@ -404,8 +405,8 @@ CONTAINS
       if (yn_do_he5_output) then
         CALL he5_amf_write ( nx, nt, saocol, saodco, saoamf, &
                             amfgeo, amfdiag, l2cfr, l2ctp, surface_pressure, &
-                            tropopause_pressure, tropospheric_amf, stratospheric_amf, &
-                            locerrstat ) ! FIXME <-- (to be removed)
+                            tropopause_pressure, tropospheric_amf, &
+                            stratospheric_amf, locerrstat )
       endif
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_molecule_stratospheric => stratospheric_amf
@@ -2675,9 +2676,9 @@ CONTAINS
         ENDIF
 
         ! ---------------------------------------------------
-        ! Temporary random generation of tropopause pressure.
+        ! Read tropopause pressure from met forecast file
         ! ---------------------------------------------------
-        IF (yn_stratrop) THEN ! <<- FIXME
+        IF (yn_stratrop) THEN
            ! Allocate pressure_grid and temperature vertical profile
            ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
                 alpha(1:CmETA))

@@ -13,9 +13,7 @@ CONTAINS
     real (kind=r8), dimension(:), intent(in) :: a
     real (kind=r8), dimension(:), intent(in) :: x
     real (kind=r8), dimension(:), intent(out) :: y
-    ! do it this way to reproduce the previous answer  ! FIXME!!
-    y = a(1) + a(2)*x + a(3)*x*x + a(4)*x*x*x
-    !y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))      ! a better way
+    y = a(1) + x*(a(2) + x*(a(3) + x*a(4)))
   end subroutine eval_cubic
 
 

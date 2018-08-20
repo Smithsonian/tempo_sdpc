@@ -174,7 +174,7 @@ CONTAINS
     ! sector corrected total columns
     ! ---------------------------------------------------
     if (yn_do_he5_output) then
-      CALL he5_write_reference_sector_corrected_column &   ! FIXME <-- (to be removed)
+      CALL he5_write_reference_sector_corrected_column &
         (pge_idx, &
          ntimes, nxtrack, int_saocol, &!int_saodco,
          locerrstat)

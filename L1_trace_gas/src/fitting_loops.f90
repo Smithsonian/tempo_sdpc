@@ -405,7 +405,7 @@ CONTAINS
     ! CCM Write splined/convolved databases if necessary
     IF( yn_diagnostic_run .and. yn_do_he5_output) THEN
       ! omi_database maybe omi_database_wvl?
-      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &  ! FIXME <-- (to be removed)
+      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), & 
                                   omi_database_wvl(1:adj_num, 1:nxtrack_max), &
                                   max_rs_idx, adj_num, nxtrack_max, errstat)
       ! JCH:  I don't think adj_num should be used to define the subarrays that

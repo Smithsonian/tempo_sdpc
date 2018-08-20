@@ -83,19 +83,15 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
   ! ----------------------------------------
-  if (.false.) then
-    ! FIXME (to be removed)
-  CALL  saopge_geofield_read ( ntimes, nxtrack, lat_field,  lat, locerrstat )
-  CALL  saopge_geofield_read ( ntimes, nxtrack, lon_field,  lon, locerrstat )
-  CALL  saopge_geofield_read ( ntimes, nxtrack, sza_field,  sza, locerrstat )
-  CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
-  CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
-  CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
-  else
-    call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
-         sza, vza, saa, vaa, thg, time, errstat)
-    if (errstat /= 0) return
-  endif
+!  CALL  saopge_geofield_read ( ntimes, nxtrack, lat_field,  lat, locerrstat )
+!  CALL  saopge_geofield_read ( ntimes, nxtrack, lon_field,  lon, locerrstat )
+!  CALL  saopge_geofield_read ( ntimes, nxtrack, sza_field,  sza, locerrstat )
+!  CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
+!  CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
+!  CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
+  call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
+       sza, vza, saa, vaa, thg, time, errstat)
+  if (errstat /= 0) return
 
   call copy_metadata (l1bfile, errstat)
   if (errstat /= 0) return
@@ -108,15 +104,11 @@ SUBROUTINE omi_pge_postprocess ( &
     if (errstat /= 0) return
   endif
 
-  if (.false.) then
-  CALL saopge_columninfo_read (                 &  ! FIXME (<--- to be removed)
-    ntimes, nxtrack, saocol, saodco, saorms, &
-    saoamf, saofcf, locerrstat                 )
-  else
-    call read_column_results (ntimes, nxtrack, saocol, saodco, saorms, &
-                              saoamf, saofcf, errstat)
-    if (errstat /= 0) return
-  endif
+!  CALL saopge_columninfo_read ( ntimes, nxtrack, saocol, saodco, saorms, &
+!    saoamf, saofcf, locerrstat )
+  call read_column_results (ntimes, nxtrack, saocol, saodco, saorms, &
+       saoamf, saofcf, errstat)
+  if (errstat /= 0) return
 
   ! ----------------------------------
   ! Read L1b glint and snow/ice flags
@@ -159,7 +151,7 @@ SUBROUTINE omi_pge_postprocess ( &
     saocol, saodco, saorms, saofcf, fit_stats, errstat) ! locerrstat )
   if (errstat /= 0) return
   if (yn_do_he5_output) then
-    CALL he5_write_fitting_statistics ( &  ! FIXME <--- to be removed
+    CALL he5_write_fitting_statistics ( &
       pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
       fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
   endif
