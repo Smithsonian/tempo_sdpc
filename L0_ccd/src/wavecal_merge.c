@@ -8,17 +8,19 @@
 #include <math.h>
 #include <limits.h>
 
+#include <ioclib.h>
 #include <tell.h>
 #include <tio.h>
 #include <tio_template.h>
 
 static void usage (void)
 {
-   fprintf (stderr, "Usage: wavecal_merge -t <target-file> <wavecal-files>\n");
+   fprintf (stderr, "Usage: wavecal_merge -t <target-file> <wavecal-results-dir>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -t | --target FILE         name of netCDF4 file to receive wavecal arrays\n");
+   fprintf (stderr, "   -t | --target FILE   name of netCDF4 file to receive wavecal arrays\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -h | --help                print this usage message\n");
+   fprintf (stderr, "   -d | --delete        delete input files and directory after successful merge\n");
+   fprintf (stderr, "   -h | --help          print this usage message\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -153,11 +155,16 @@ int main (int argc, char **argv)
    const char appname[] = "wavecal_merge";
    int status = EXIT_FAILURE;
    const char *target_file = NULL;
-   int ncid_target;
+   const char *results_dir = NULL;
+   char *pattern = NULL;
+   IOCLib_Glob_Type *gt = NULL;
+   int delete_files = 0;
+   int i, ncid_target;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
         {"target",  required_argument, 0, 't'},
+        {"delete",  no_argument, 0, 'd'},
         {0,0,0,0}
      };
 
@@ -178,11 +185,14 @@ int main (int argc, char **argv)
              fprintf (stderr, "getopt returned character %d??", c);
              goto return_status;
              break;
-           case 't':
-             target_file = optarg;
-             break;
            case 'h':
              usage();
+             break;
+           case 'd':
+             delete_files++;
+             break;
+           case 't':
+             target_file = optarg;
              break;
           }
      }
@@ -190,13 +200,34 @@ int main (int argc, char **argv)
    if (optind == argc)
      usage();
 
+   results_dir = argv[optind];
+
+   if (NULL == (pattern = ioclib_pathconcat (results_dir, "*.nc")))
+     goto return_status;
+
+   if (NULL == (gt = ioclib_glob (pattern, 0)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "ioclib_glob failed: %s", pattern);
+        goto return_status;
+     }
+
    if (0 != TIO_open (target_file, NC_WRITE, &ncid_target))
      goto return_status;
 
-   while (optind < argc)
+   for (i = 0; i < gt->num_files; i++)
      {
-        (void) perform_merge (ncid_target, argv[optind++]);
+        if (0 == perform_merge (ncid_target, gt->files[i]))
+          {
+             if (delete_files)
+               {
+                  (void) remove (gt->files[i]);
+               }
+          }
+     }
 
+   if (delete_files)
+     {
+        (void) rmdir (results_dir);
      }
 
    status = EXIT_SUCCESS;
@@ -206,5 +237,7 @@ return_status:
         (void) TIO_close (ncid_target);
      }
    tell_close();
+   ioclib_free (pattern);
+   ioclib_glob_free (gt);
    return status;
 }
