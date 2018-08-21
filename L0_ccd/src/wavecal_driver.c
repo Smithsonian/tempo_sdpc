@@ -19,6 +19,9 @@
 #define MIN_WAVELENGTH_UV     288.0
 #define MIN_WAVELENGTH_VIS    536.8
 
+#define WAVECAL_PARAM_NAME      "wavecal_params"
+#define WAVECAL_PARAM_DIM_NAME  "wavecal_par"
+
 typedef struct
 {
    double *spec;
@@ -29,18 +32,20 @@ Spectrum_Type;
 
 static void usage (void)
 {
-   fprintf (stderr, "Usage: wavecal [options] <input-file>\n");
+   fprintf (stderr, "Usage: wavecal_driver [options] <input-file> <output-file>\n");
    fprintf (stderr, "  Required:\n");
    fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing spectra\n");
    fprintf (stderr, "   -S | --yStart WAVELENGTH   starting wavelength\n");
    fprintf (stderr, "   -D | --yDelta DELTA        wavelength step per pixel\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -h | --help            print this usage message\n");
-   fprintf (stderr, "   -m | --mirror STEP     mirror step index\n");
-   fprintf (stderr, "   -x | --xtrack N        cross-track pixel index, 0 is northernmost\n");
-   fprintf (stderr, "   -o | --outpar FILE     output file for wavelength parameters\n");
-   fprintf (stderr, "   -c | --config FILE     path to configuration file\n");
-   fprintf (stderr, "   -v | --verbose         turn on verbose output\n");
+   fprintf (stderr, "   -h | --help                print this usage message\n");
+   fprintf (stderr, "   -d | --debug               write diagnostic information to output file\n");
+   fprintf (stderr, "   -b | --block i:num         mirror step blocking specification\n");
+   fprintf (stderr, "   -m | --mirror STEP         mirror step index\n");
+   fprintf (stderr, "   -x | --xtrack N            cross-track pixel index, 0 is northernmost\n");
+   fprintf (stderr, "   -w | --wavepar FILE        output file for wavelength parameters\n");
+   fprintf (stderr, "   -c | --config FILE         path to configuration file\n");
+   fprintf (stderr, "   -v | --verbose             turn on verbose output\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -211,10 +216,89 @@ static int write_fit_details (FILE *fp, int xtrack,
    return 0;
 }
 
-static int create_result_group (int parent_grp, const char *grp_name,
-                                const TIO_Var_Info_Type *spectrum_info,
-                                const Wavecal_Result_Type *wavecal_result,
-                                int *pgrp)
+static int create_result_file (const char *path, const char *group_name,
+                               size_t beg_step, size_t end_step, size_t step_dimlen,
+                               size_t num_xtrack,
+                               size_t params_dimlen)
+{
+   int ncid, varid, param_dimids[3], start, count;
+   size_t i, num_steps = end_step - beg_step;
+   int max_num_steps = step_dimlen;
+   int *steps = NULL;
+
+   if (0 != TIO_create (path, NC_NETCDF4, &ncid))
+     return -1;
+
+   if ((0 != TIO_put_att (ncid, NC_GLOBAL, "group_name", TIO_CHAR,
+                          strlen(group_name), group_name))
+       || (0 != TIO_put_att (ncid, NC_GLOBAL, "mirror_step_dimlen", TIO_INT, 1, &max_num_steps)))
+     goto close_and_return;
+
+   if ((0 != TIO_def_dim (ncid, TEMPO_DIM_STEP, num_steps, &param_dimids[0]))
+       || (0 != TIO_def_dim (ncid, TEMPO_DIM_XTRACK, num_xtrack, &param_dimids[1]))
+       || (0 != TIO_def_dim (ncid, WAVECAL_PARAM_DIM_NAME, params_dimlen, &param_dimids[2])))
+     goto close_and_return;
+
+   if (0 != TIO_def_var (ncid, WAVECAL_PARAM_NAME, TIO_FLOAT, 3, param_dimids, &varid))
+     goto close_and_return;
+   if (0 != TIO_def_var (ncid, "bestnorm", TIO_FLOAT, 2, param_dimids, &varid))
+     goto close_and_return;
+
+   if (0 != TIO_def_var (ncid, TEMPO_DIM_STEP, TIO_INT, 1, &param_dimids[0], &varid))
+     goto close_and_return;
+
+   if (NULL == (steps = (int *)MALLOC (num_steps * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   for (i = beg_step; i < end_step; i++)
+     {
+        steps[i-beg_step] = i;
+     }
+
+   start = 0;
+   count = num_steps;
+
+   if (0 != TIO_put_var_section (ncid, TEMPO_DIM_STEP, &start, &count, TIO_INT, steps))
+     goto close_and_return;
+
+   FREE(steps);
+   return ncid;
+
+close_and_return:
+   FREE(steps);
+   (void) TIO_close (ncid);
+   return -1;
+}
+
+static int write_result (int ncid, int beg_step, int step, int xtrack,
+                         const Wavecal_Result_Type *wavecal_result)
+{
+   int start[3], count[3];
+
+   start[0] = step - beg_step;
+   start[1] = xtrack;
+   start[2] = 0;
+
+   count[0] = 1;
+   count[1] = 1;
+   count[2] = wavecal_result->num_wave_params;
+
+   if ((0 != TIO_put_var_section (ncid, WAVECAL_PARAM_NAME, start, count, TIO_DOUBLE,
+                                  wavecal_result->wave_params))
+       ||(0 != TIO_put_var_section (ncid, "bestnorm", start, count, TIO_DOUBLE,
+                                    &wavecal_result->bestnorm)))
+     return -1;
+
+   return 0;
+}
+
+static int create_diagnostic_group (int parent_grp, const char *grp_name,
+                                    const TIO_Var_Info_Type *spectrum_info,
+                                    const Wavecal_Result_Type *wavecal_result,
+                                    int *pgrp)
 {
    int grp, varid, param_dimids[3];
    size_t params_dimlen;
@@ -225,7 +309,7 @@ static int create_result_group (int parent_grp, const char *grp_name,
    memcpy ((char *)param_dimids, (char *)spectrum_info->dimids,
            3 * sizeof (int));
    params_dimlen = wavecal_result->num_wave_params;
-   if (0 != TIO_def_dim (grp, "par", params_dimlen, &param_dimids[2]))
+   if (0 != TIO_def_dim (grp, WAVECAL_PARAM_DIM_NAME, params_dimlen, &param_dimids[2]))
      return -1;
 
    if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
@@ -237,7 +321,7 @@ static int create_result_group (int parent_grp, const char *grp_name,
        || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT,
                              spectrum_info->ndims,
                              spectrum_info->dimids, &varid))
-       || (0 != TIO_def_var (grp, "params", TIO_FLOAT,
+       || (0 != TIO_def_var (grp, WAVECAL_PARAM_NAME, TIO_FLOAT,
                              spectrum_info->ndims,
                              param_dimids, &varid))
        || (0 != TIO_def_var (grp, "bestnorm", TIO_FLOAT, 2,
@@ -252,12 +336,12 @@ static int create_result_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
-                          int step, int xtrack,
-                          const Wavecal_Type *wct,
-                          const Wavecal_Result_Type *wavecal_result)
+static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
+                              int step, int xtrack,
+                              const Wavecal_Type *wct,
+                              const Wavecal_Result_Type *wavecal_result)
 {
-   const char grp_name[] = "wavecal_test";
+   const char grp_name[] = "wavecal_diagnostics";
    int grp, status, start[3], count[3];
 
    (void) wct;
@@ -267,8 +351,8 @@ static int write_results (int parent_grp, const TIO_Var_Info_Type *spectrum_info
    tell_pop_queue (1);
    if (status)
      {
-        if (0 != create_result_group (parent_grp, grp_name, spectrum_info,
-                                      wavecal_result, &grp))
+        if (0 != create_diagnostic_group (parent_grp, grp_name, spectrum_info,
+                                          wavecal_result, &grp))
           return -1;
      }
 
@@ -304,7 +388,8 @@ int main (int argc, char **argv)
 {
    const char appname[] = "wavecal_driver";
    const char *config_file = "l0_ccd.cfg";
-   const char *file = NULL;
+   const char *input_file = NULL;
+   const char *result_file = NULL;
    const char *params_outfile = NULL;
    const char *group_name = NULL;
    FILE *fp = stderr;
@@ -319,18 +404,23 @@ int main (int argc, char **argv)
    double nan_value = nan("");
    double y_start = nan_value;
    double y_delta = nan_value;
-   int ncid, grp, step = -1, xtrack = -1;
+   int grp, ncid = 0, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
    int beg_step, end_step;
+   int use_blocking = 0, this_block, num_blocks;
    int is_irradiance = 0;
    int verbose = 0;
-   size_t i, len;
+   int ncid_result = 0, num_wave_params;
+   int debug = 0;
+   size_t i, len, step_dimlen;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
+        {"debug",    no_argument, 0, 'd'},
         {"config",  required_argument, 0, 'c'},
-        {"outpar",  required_argument, 0, 'o'},
+        {"wavepar", required_argument, 0, 'w'},
         {"xtrack",  required_argument, 0, 'x'},
+        {"block",  required_argument, 0, 'b'},
         {"mirror",  required_argument, 0, 'm'},
         {"verbose", no_argument, 0, 'v'},
         {"yDelta",  required_argument, 0, 'D'},
@@ -358,7 +448,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hm:D:S:c:g:x:o:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hdb:m:D:S:c:g:x:w:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -375,12 +465,15 @@ int main (int argc, char **argv)
              if (0 == config_read_file (&cfg, config_file))
                goto return_status;
              break;
+           case 'd':
+             debug++;
+             break;
            case 'h':
              usage();
              break;
            case 'g': group_name = optarg;
              break;
-           case 'o': params_outfile = optarg;
+           case 'w': params_outfile = optarg;
              break;
            case 'v': verbose++;
              break;
@@ -401,13 +494,24 @@ int main (int argc, char **argv)
              if (1 != sscanf (optarg, "%d", &step))
                usage();
              break;
+           case 'b':
+             if (2 != sscanf (optarg, "%d:%d", &this_block, &num_blocks))
+               usage();
+             if (this_block < 0 || num_blocks <= this_block)
+               {
+                  fprintf (stderr, "*** wavecal_driver: invalid blocking specification\n");
+                  goto return_status;
+               }
+             use_blocking++;
+             break;
           }
      }
 
-   if (optind == argc)
+   if (optind+2 < argc)
      usage();
 
-   file = argv[optind++];
+   input_file = argv[optind++];
+   result_file = argv[optind++];
 
    if (optind < argc)
      {
@@ -451,7 +555,7 @@ int main (int argc, char **argv)
 
    wavecal_config.fill_value = nan_value;
 
-   if (0 != TIO_open (file, NC_WRITE, &ncid))
+   if (0 != TIO_open (input_file, NC_WRITE, &ncid))
      goto return_status;
 
    if (0 != TIO_inq_grp (ncid, group_name, &grp))
@@ -470,7 +574,7 @@ int main (int argc, char **argv)
    tell_pop_queue(1);
    if (is_irradiance < 0)
      {
-        fprintf (stderr, "*** unsupported file type: %s\n", file);
+        fprintf (stderr, "*** unsupported file type: %s\n", input_file);
         goto return_status;
      }
 
@@ -511,15 +615,53 @@ int main (int argc, char **argv)
         end_xtrack = xtrack+1;
      }
 
-   if (step < 0)
+   step_dimlen = spectrum_info.dimlens[0];
+
+   if (use_blocking)
+     {
+        int block_size = step_dimlen / num_blocks;
+        int residual = step_dimlen - num_blocks * block_size;
+        beg_step = this_block * block_size;
+        if (residual > 0)
+          {
+             if (this_block < residual)
+               {
+                  block_size += 1;
+                  beg_step += this_block;
+               }
+             else beg_step += residual;
+          }
+        end_step = beg_step + block_size;
+        if (end_step > (int) step_dimlen)
+          end_step = step_dimlen;
+     }
+   else if (step < 0)
      {
         beg_step = 0;
-        end_step = spectrum_info.dimlens[0];
+        end_step = step_dimlen;
      }
    else
      {
         beg_step = step;
         end_step = step+1;
+     }
+
+   num_wave_params = wavecal_num_wave_params (wct);
+   if (num_wave_params <= 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid number of wavelength scale parameters: num_wave_params=%d",
+                     __func__, num_wave_params);
+        goto return_status;
+     }
+
+   ncid_result = create_result_file (result_file, group_name,
+                                     beg_step, end_step, step_dimlen,
+                                     spectrum_info.dimlens[1], num_wave_params);
+   if (ncid_result <= 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",
+                     __func__, result_file);
+        goto return_status;
      }
 
    for (step = beg_step; step < end_step; step++)
@@ -533,9 +675,15 @@ int main (int argc, char **argv)
                               &wavecal_config, &wavecal_result))
                goto return_status;
 
-             if (write_results (grp, &spectrum_info, step, xtrack, wct,
-                                &wavecal_result))
+             if (write_result (ncid_result, beg_step, step, xtrack, &wavecal_result))
                goto return_status;
+
+             if (debug)
+               {
+                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct,
+                                         &wavecal_result))
+                    goto return_status;
+               }
 
              if (verbose)
                {
@@ -554,7 +702,8 @@ int main (int argc, char **argv)
    status = EXIT_SUCCESS;
 return_status:
    FREE(y0);
-   TIO_close (ncid);
+   if (ncid) TIO_close (ncid);
+   if (ncid_result) TIO_close (ncid_result);
    free_spectrum (&spec);
    config_destroy (&cfg);
    tell_close();

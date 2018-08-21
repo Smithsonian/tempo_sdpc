@@ -70,6 +70,12 @@ extern void wavecal_close (Wavecal_Type *wct);
 extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                                    int max_num_wave, int is_irradiance);
 
+/** Query the number of wavelength parameters
+ * @param  wct   Pointer to \a Wavecal_Type object initialized by \a wavecal_open
+ * @return the number of wavelength parameters on success, -1 on error.
+ */
+extern int wavecal_num_wave_params (const Wavecal_Type *wct);
+
 /** Perform wavelength calibration on a single spectrum
  * @param  wct      Pointer to a \a Wavecal_Type object initialized by
  *                  \a wavecal_open.

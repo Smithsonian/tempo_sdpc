@@ -968,6 +968,13 @@ static int read_feature_window (config_setting_t *s_band, Feature_Window_Type *f
    return 0;
 }
 
+int wavecal_num_wave_params (const Wavecal_Type *wct)
+{
+   if (wct == NULL)
+     return -1;
+   return wct->window.num_wave_params;
+}
+
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                             int max_num_wave, int is_irradiance)
 {

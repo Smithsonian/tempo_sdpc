@@ -46,7 +46,7 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/wavecal_driver
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/wavecal_driver $(objdir)/wavecal_merge
 
 tests:	$(objdir) $(objdir)/wavecal_driver $(objdir)/test_interp
 
@@ -71,6 +71,7 @@ install-executables:
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/wavecal_driver $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/wavecal_merge $(bindir)/
 
 install:	install-executables
 
@@ -97,6 +98,13 @@ $(objdir)/test_interp:	$(TEST_INTERP_OBJS)
 
 $(objdir)/test_interp.o:	$(srcdir)/test_interp.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
+
+$(objdir)/wavecal_merge:	$(objdir)/wavecal_merge.o
+	$(COMPILE_CMD) -o $(objdir)/wavecal_merge $(objdir)/wavecal_merge.o \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+$(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c $(LIBS)
 
 WAVECAL_DRIVER_OFILES = wavecal_driver.o util.o wavecal.o interp.o shapefun.o \
      lsq.o interp_cheb.o interp_poly.o interp_cspline.o
