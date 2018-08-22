@@ -10,7 +10,6 @@
 #include <gsl/gsl_spline.h>
 
 #include "config.h"
-#include "wavecal.h"
 #include "util.h"
 
 typedef struct
@@ -32,9 +31,7 @@ CCD_Cal_Type;
    CCD_Cal_Type ccds[2]; \
    double btdf; \
    double diffuser_trend; \
-   int num_waves_per_ccd; \
-   int wavecal_xtrack_stride; \
-   int wavecal_mirror_step_stride;
+   int num_waves_per_ccd;
 #include "sensorcal.h"
 
 typedef struct Cal_Data_Type Cal_Data_Type;
@@ -263,27 +260,17 @@ static const CCD_Cal_Type *ccd_cal (const Calibration_Type *cal,
    return NULL;
 }
 
-static int cal_wavecal_enabled (const Calibration_Type *cal,
-                                int mirror_step)
-{
-   return ((0 != cal->wavecal_xtrack_stride)
-           && (0 != cal->wavecal_mirror_step_stride)
-           && (0 == (mirror_step % cal->wavecal_mirror_step_stride)));
-}
-
-static int cal_wavecal (const Calibration_Type *cal, Wavecal_Type *wct,
+static int cal_wavecal (const Calibration_Type *cal,
                         int band_index, int nx,
                         const double *pspec, const double *pspec_err,
                         double *pwaves)
 {
-   Wavecal_Config_Type config = {0};
-   Wavecal_Result_Type result = {0};
    const CCD_Cal_Type *ccd = NULL;
    int ny = cal->num_waves_per_ccd;
-   const double *spec = pspec;
-   const double *err = pspec_err;
    double *waves = pwaves;
    int x;
+
+   (void) pspec; (void) pspec_err;
 
    if (NULL == (ccd = ccd_cal (cal, band_index)))
      return -1;
@@ -296,25 +283,12 @@ static int cal_wavecal (const Calibration_Type *cal, Wavecal_Type *wct,
         return -1;
      }
 
-   /* FIXME? */
-   config.fill_value = IMAGE_PIXEL_FILL_VALUE;
-
    for (x = 0; x < nx; x++)
      {
         const double *y0 = ccd->waves;
 
-        if ((NULL != wct)
-            && (0 == (x % cal->wavecal_xtrack_stride)))
-          {
-             if (0 != wavecal_fit (wct, x, y0, spec, err, &config, &result))
-               return -1;
-             y0 = result.wave;
-          }
-
         memcpy ((char *)waves, (char *)y0, ny * sizeof(double));
         waves += ny;
-        spec += ny;
-        err += ny;
      }
 
    return 0;
@@ -393,7 +367,6 @@ static Calibration_Type *cal_alloc (int num_waves_per_ccd)
    cal->cal_apply_prnu = cal_apply_prnu;
    cal->cal_apply_btdf = cal_apply_btdf;
    cal->cal_wavecal = cal_wavecal;
-   cal->cal_wavecal_enabled = cal_wavecal_enabled;
 
    return cal;
 }
@@ -548,8 +521,6 @@ Calibration_Type *sensorcal_init (config_t *cfg)
    const char *sensorcal_file;
    Calibration_Type *cal = NULL;
    Cal_Data_Type *data = NULL;
-   int wavecal_xtrack_stride = 0;
-   int wavecal_mirror_step_stride = 0;
    char *path = NULL;
 
    if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
@@ -565,25 +536,6 @@ Calibration_Type *sensorcal_init (config_t *cfg)
         tell_verror (TELL_IO_READ_ERROR, "%s: reading sensorcal_file",
                      __func__);
         return NULL;
-     }
-
-   /* Absent parameter means wavelength calibration disabled */
-   (void) config_setting_lookup_int (s, "wavecal_xtrack_stride",
-                                     &wavecal_xtrack_stride);
-   (void) config_setting_lookup_int (s, "wavecal_mirror_step_stride",
-                                     &wavecal_mirror_step_stride);
-   if ((0 != wavecal_xtrack_stride)
-       && (0 != wavecal_mirror_step_stride))
-     {
-        tell_vlog (TELL_MSGTYPE_INFO, 1,
-                   "wavelength calibration enabled: xtrack_stride = %d, mirror_step_stride = %d",
-                   wavecal_xtrack_stride, wavecal_mirror_step_stride);
-     }
-   else
-     {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "wavelength calibration disabled");
-        wavecal_xtrack_stride = 0;
-        wavecal_mirror_step_stride = 0;
      }
 
    if (NULL == (path = expand_path (sensorcal_file)))
@@ -624,14 +576,6 @@ Calibration_Type *sensorcal_init (config_t *cfg)
 
    cal = cal_init (data);
    free_cal_data (data);
-
-   if (cal)
-     {
-        cal->wavecal_xtrack_stride = wavecal_xtrack_stride;
-        cal->wavecal_mirror_step_stride = wavecal_mirror_step_stride;
-     }
-   else tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: sensorcal init failed", __func__);
 
    return cal;
 }

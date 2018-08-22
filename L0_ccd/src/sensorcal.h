@@ -6,7 +6,6 @@
 
 #include <libconfig.h>
 #include "image.h"
-#include "wavecal.h"
 
 enum
 {
@@ -64,7 +63,6 @@ struct Calibration_Type
 
    /** Perform wavelength calibration
     * @param cal  non-NULL pointer to a Calibration_Type object
-    * @param wct  non-NULL pointer to a Wavecal_Type object
     * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)
     * @param num  number of spectra to calibrate
     * @param img  non-NULL pointer to spectrum values
@@ -74,15 +72,8 @@ struct Calibration_Type
     *
     * Not implemented yet
     */
-   int (*cal_wavecal)(const Calibration_Type *, Wavecal_Type *, int, int,
+   int (*cal_wavecal)(const Calibration_Type *, int, int,
                       const double *, const double *, double *);
-
-   /** Query if wavelength calibration has been enabled
-    * @param cal  non-NULL pointer to a Calibration_Type object
-    * @param mirror_step  mirror step index
-    * return 0 if disabled, non-zero if enabled
-    */
-   int (*cal_wavecal_enabled)(const Calibration_Type *, int);
 
 #ifdef SENSORCAL_PRIVATE_DATA
    SENSORCAL_PRIVATE_DATA

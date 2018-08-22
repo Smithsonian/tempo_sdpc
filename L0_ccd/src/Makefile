@@ -38,7 +38,7 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 
 OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
            bpix.o dark.o sensorcal.o output.o util.o \
-	   wavecal.o interp.o lsq.o shapefun.o \
+	   interp.o lsq.o shapefun.o \
 	   interp_cheb.o interp_poly.o interp_cspline.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
@@ -54,7 +54,7 @@ $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES))
+	ctags $(patsubst %.o,%.c,$(OFILES)) wavecal_driver.c wavecal_merge.c
 
 .PHONY: clean distclean all install check tags
 

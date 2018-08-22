@@ -391,7 +391,7 @@ static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_
 int main (int argc, char **argv)
 {
    const char appname[] = "wavecal_driver";
-   const char *config_file = "l0_ccd.cfg";
+   const char *config_file = "wavecal.cfg";
    const char *input_file = NULL;
    const char *result_file = NULL;
    const char *params_outfile = NULL;
