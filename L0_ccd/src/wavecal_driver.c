@@ -218,7 +218,7 @@ static int write_fit_details (FILE *fp, int xtrack,
 
 static int create_result_file (const char *path, const char *group_name,
                                size_t beg_step, size_t end_step, size_t step_dimlen,
-                               size_t num_xtrack,
+                               size_t num_xtrack, int start_pix, int num_pix,
                                size_t params_dimlen)
 {
    int ncid, varid, param_dimids[3], start, count;
@@ -241,6 +241,10 @@ static int create_result_file (const char *path, const char *group_name,
 
    if (0 != TIO_def_var (ncid, WAVECAL_PARAM_NAME, TIO_FLOAT, 3, param_dimids, &varid))
      goto close_and_return;
+   if ((0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
+       ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
+     goto close_and_return;
+
    if (0 != TIO_def_var (ncid, "bestnorm", TIO_FLOAT, 2, param_dimids, &varid))
      goto close_and_return;
 
@@ -410,7 +414,7 @@ int main (int argc, char **argv)
    int use_blocking = 0, this_block, num_blocks;
    int is_irradiance = 0;
    int verbose = 0;
-   int ncid_result = 0, num_wave_params;
+   int ncid_result = 0, num_wave_params, start_pix, num_pix;
    int debug = 0;
    size_t i, len, step_dimlen;
    static struct option long_options[] =
@@ -654,9 +658,12 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   (void) wavecal_feature_window (wct, &start_pix, &num_pix);
+
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen,
-                                     spectrum_info.dimlens[1], num_wave_params);
+                                     spectrum_info.dimlens[1],
+                                     start_pix, num_pix, num_wave_params);
    if (ncid_result <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",

@@ -29,7 +29,7 @@ static int perform_merge (int ncid_target, const char *file)
    const char *params_varname = "wavecal_params";
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
-   int ncid_src, grp_target;
+   int ncid_src, grp_target, varid, start_pix, num_pix;
    int step_dimlen_src, step_dimid, xtrack_dimid, dest_varid;
    int start[3], count[3];
    size_t step_dimlen, xtrack_dimlen, xtrack_dimlen_src;
@@ -104,6 +104,11 @@ static int perform_merge (int ncid_target, const char *file)
                                     TIO_FLOAT, wavecal_params)))
      goto close_and_return;
 
+   if ((0 != tio_inq_varid (ncid_src, params_varname, &varid))
+       || (0 != TIO_get_att (ncid_src, varid, "start_spectral_channel", NC_INT, &start_pix))
+       || (0 != TIO_get_att (ncid_src, varid, "num_spectral_channels", NC_INT, &num_pix)))
+     goto close_and_return;
+
    /* write params, creating target variable if necessary */
 
    if (0 != tio_inq_varid (grp_target, params_varname, &dest_varid))
@@ -121,6 +126,9 @@ static int perform_merge (int ncid_target, const char *file)
         params_dimid_list[2] = params_dimid;
 
         if (0 != TIO_def_var (grp_target, params_varname, TIO_FLOAT, 3, params_dimid_list, &dest_varid))
+          goto close_and_return;
+        if ((0 != TIO_put_att (grp_target, dest_varid, "start_spectral_channel", NC_INT, 1, &start_pix))
+            || (0 != TIO_put_att (grp_target, dest_varid, "num_spectral_channels", NC_INT, 1, &num_pix)))
           goto close_and_return;
      }
 
@@ -159,7 +167,8 @@ int main (int argc, char **argv)
    char *pattern = NULL;
    IOCLib_Glob_Type *gt = NULL;
    int delete_files = 0;
-   int i, ncid_target;
+   int ncid_target;
+   size_t i;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},

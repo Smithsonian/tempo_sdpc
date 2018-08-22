@@ -76,6 +76,14 @@ extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
  */
 extern int wavecal_num_wave_params (const Wavecal_Type *wct);
 
+/** Query the the fit window offset and width
+ * @param  wct        Pointer to \a Wavecal_Type object initialized by \a wavecal_open
+ * @param  start_pix  Address to hold the window offset (NULL is ok)
+ * @param  num_pix    Address to hold the window width (NULL is ok)
+ * @return 0 on success, -1 on error
+ */
+extern int wavecal_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix);
+
 /** Perform wavelength calibration on a single spectrum
  * @param  wct      Pointer to a \a Wavecal_Type object initialized by
  *                  \a wavecal_open.

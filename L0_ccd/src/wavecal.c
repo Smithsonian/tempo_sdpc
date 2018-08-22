@@ -975,6 +975,17 @@ int wavecal_num_wave_params (const Wavecal_Type *wct)
    return wct->window.num_wave_params;
 }
 
+int wavecal_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
+{
+   const Window_Type *win = NULL;
+   if (wct == NULL)
+     return -1;
+   win = &wct->window;
+   if (start_pix) *start_pix = win->start_pix;
+   if (num_pix) *num_pix = win->num_wave;
+   return 0;
+}
+
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                             int max_num_wave, int is_irradiance)
 {
