@@ -15,6 +15,10 @@
 #include "tio_template.h"
 #include "_tio.h"
 
+#define TIO_CHUNKSIZE_XTRACK 128
+#define TIO_CHUNKSIZE_STEP 1
+#define DO_CHUNKING        1
+
 /* An instance of a _pDim_Table_Type struct is used as a lookup table
  * for all the dimensions that are defined anywhere in the associated
  * netCDF file.
@@ -158,6 +162,10 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
    int shuffle, deflate=1, deflate_level=1;
+#ifdef DO_CHUNKING
+   int storage = NC_CHUNKED;
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
+#endif
 
    shuffle = deflate;
 
@@ -267,6 +275,16 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                           TEMPO_VAR_IRRADIANCE, grp, nc_strerror(status));
              return -1;
           }
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNKSIZE_STEP;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
+        chunksizes[2] = dim_table->channel.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* irradiance error */
@@ -303,6 +321,16 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                           TEMPO_VAR_IRRADIANCE_ERROR, grp, nc_strerror(status));
              return -1;
           }
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNKSIZE_STEP;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
+        chunksizes[2] = dim_table->channel.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* wavelength */
@@ -334,6 +362,16 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                           TEMPO_VAR_WAVELENGTH, grp, nc_strerror(status));
              return -1;
           }
+#ifdef DO_CHUNKING
+        /* FIXME */
+        chunksizes[0] = TIO_CHUNKSIZE_STEP;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
+        chunksizes[2] = dim_table->channel.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
      }
 
    /* pixel quality flags */
