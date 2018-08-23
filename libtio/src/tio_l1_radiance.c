@@ -15,6 +15,7 @@
 #include "tio_template.h"
 #include "_tio.h"
 
+#define TIO_CHUNKSIZE_XTRACK 128
 #define TIO_CHUNKSIZE_STEP 1
 #define DO_CHUNKING        1
 
@@ -721,7 +722,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 #ifdef DO_CHUNKING
         /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
-        chunksizes[1] = dim_table->xtrack.len;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
@@ -760,7 +762,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 #ifdef DO_CHUNKING
         /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
-        chunksizes[1] = dim_table->xtrack.len;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
@@ -802,7 +805,8 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 #ifdef DO_CHUNKING
         /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
-        chunksizes[1] = dim_table->xtrack.len;
+        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
         chunksizes[2] = dim_table->channel.len;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
