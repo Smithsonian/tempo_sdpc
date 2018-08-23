@@ -45,7 +45,6 @@ static int define_irradiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 {
    static _pDim_Offsets_Type dim_offsets[] =
     {
-       _pDIM_OFFSET_ENTRY(TEMPO_DIM_STEP,step),
        _pDIM_OFFSET_ENTRY(TEMPO_DIM_XTRACK,xtrack),
        _pDIM_OFFSET_ENTRY(TEMPO_DIM_CHANNEL,channel),
        _pDIM_OFFSETS_END
