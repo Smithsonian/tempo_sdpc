@@ -159,13 +159,12 @@ contains
       call process_group (pt, lut_s, rad_s, tempo_band_uv, errstat)
     endif
 
-    call tiof_close (rad_s % obj, errstat)
     if (errstat /= 0) then
-      call tell_error (tell_io_error, 'error closing file:'//rad_file, errstat)
+      call tell_error (tell_runtime_error, 'error processing file:'//rad_file, errstat)
       polcorrect = errstat
-      return
     endif
 
+    call tiof_close (rad_s % obj, errstat)
     call pp_dealloc (lut_s, errstat)
 
     polcorrect = 0
