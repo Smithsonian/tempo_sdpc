@@ -46,6 +46,7 @@ module types_module
     real (kind=r8), allocatable, dimension(:,:) :: raa       !< relative azimuth angle
     real (kind=r8), allocatable, dimension(:,:) :: hgt       !< terrain height
     real (kind=r8), allocatable, dimension(:,:) :: pre       !< surface pressure
+    integer, allocatable, dimension(:,:) :: inr_quality_flag !< INR quality flag
   end type
 
   !< data type to support subsetting of a single coordinate array

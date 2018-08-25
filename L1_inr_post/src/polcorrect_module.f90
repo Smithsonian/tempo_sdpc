@@ -353,6 +353,8 @@ contains
 
       do ix = beg_xtrack, end_xtrack
 
+        if (rad_s % inr_quality_flag (ix, step) /= 0) cycle
+
         lat = rad_s % lat(ix,step)
         lon = rad_s % lon(ix,step)
         pre = rad_s % pre(ix,step)
@@ -688,6 +690,7 @@ contains
                 rad_s % vza, rad_s % vaa, &
                 rad_s % raa, &
                 rad_s % hgt, rad_s % pre, &
+                rad_s % inr_quality_flag, &
                 stat = err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, &
@@ -718,6 +721,7 @@ contains
               rad_s % raa(num_xtrack, num_step), &
               rad_s % hgt(num_xtrack, num_step), &
               rad_s % pre(num_xtrack, num_step), &
+              rad_s % inr_quality_flag(num_xtrack, num_step), &
               stat = err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, "alloc_radiance: malloc failed", errstat)
@@ -923,6 +927,8 @@ contains
                         rad_s % vaa, errstat, replace_fill=r8_fill)
     call tiof_get2d_r8 (rad_s % obj, tempo_var_terr_height, start, edge, &
                         rad_s % hgt, errstat, replace_fill=r8_fill)
+    call tiof_get2d_i4 (rad_s % obj, tempo_var_inrqf, start, edge, &
+                        rad_s % inr_quality_flag, errstat)
     call tiof_pop_group (rad_s % obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "reading geometry variables", errstat)
