@@ -137,6 +137,33 @@ return_error:
    return status;
 }
 
+static int *read_inr_quality_flag (int grp, size_t *dimlens)
+{
+   int *inr_quality_flag = NULL;
+   int start[2], count[2];
+   size_t len = dimlens[0] * dimlens[1];
+
+   if (NULL == (inr_quality_flag = (int *)MALLOC (len * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)inr_quality_flag, 0, len * sizeof(int));
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = dimlens[0];
+   count[1] = dimlens[1];
+
+   if (0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, inr_quality_flag))
+     {
+        FREE(inr_quality_flag);
+        return NULL;
+     }
+
+   return inr_quality_flag;
+}
+
 static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wave)
 {
 #define BUFSIZE 256
@@ -404,6 +431,7 @@ int main (int argc, char **argv)
    TIO_Var_Info_Type spectrum_info = {0};
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
+   int *inr_quality_flag = NULL;
    double *y0 = NULL;
    double nan_value = nan("");
    double y_start = nan_value;
@@ -416,7 +444,7 @@ int main (int argc, char **argv)
    int verbose = 0;
    int ncid_result = 0, num_wave_params, start_pix, num_pix;
    int debug = 0;
-   size_t i, len, step_dimlen;
+   size_t i, step_dimlen, xtrack_dimlen, channel_dimlen;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
@@ -583,17 +611,28 @@ int main (int argc, char **argv)
      }
 
    /* expected dimensions are: [mirror_step, xtrack, spectral_channel] */
-   len = spectrum_info.dimlens[2];
+   step_dimlen = spectrum_info.dimlens[0];
+   xtrack_dimlen = spectrum_info.dimlens[1];
+   channel_dimlen = spectrum_info.dimlens[2];
 
-   if (alloc_spectrum (&spec, len))
+   if (alloc_spectrum (&spec, channel_dimlen))
      goto return_status;
 
-   if (NULL == (y0 = (double *)malloc (len * sizeof(double))))
-     goto return_status;
+   if (NULL == (y0 = (double *)MALLOC (channel_dimlen * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
 
-   for (i = 0; i < len; i++)
+   for (i = 0; i < channel_dimlen; i++)
      {
         y0[i] = y_start + i*y_delta;
+     }
+
+   if (0 == is_irradiance)
+     {
+        if (NULL == (inr_quality_flag = read_inr_quality_flag (grp, spectrum_info.dimlens)))
+          goto return_status;
      }
 
    if (NULL == (wct = wavecal_open (&cfg, group_name, spec.n, is_irradiance)))
@@ -611,15 +650,13 @@ int main (int argc, char **argv)
    if (xtrack < 0)
      {
         beg_xtrack = 0;
-        end_xtrack = spectrum_info.dimlens[1];
+        end_xtrack = xtrack_dimlen;
      }
    else
      {
         beg_xtrack = xtrack;
         end_xtrack = xtrack+1;
      }
-
-   step_dimlen = spectrum_info.dimlens[0];
 
    if (use_blocking)
      {
@@ -662,7 +699,7 @@ int main (int argc, char **argv)
 
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen,
-                                     spectrum_info.dimlens[1],
+                                     xtrack_dimlen,
                                      start_pix, num_pix, num_wave_params);
    if (ncid_result <= 0)
      {
@@ -673,8 +710,18 @@ int main (int argc, char **argv)
 
    for (step = beg_step; step < end_step; step++)
      {
+        int *inrqf_step = NULL;
+
+        if (0 == is_irradiance)
+          {
+             inrqf_step = inr_quality_flag + step * xtrack_dimlen;
+          }
+
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
+             if ((inrqf_step != NULL) && (inrqf_step[xtrack] != 0))
+               continue;
+
              if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
                goto return_status;
 
@@ -709,6 +756,7 @@ int main (int argc, char **argv)
    status = EXIT_SUCCESS;
 return_status:
    FREE(y0);
+   FREE(inr_quality_flag);
    if (ncid) TIO_close (ncid);
    if (ncid_result) TIO_close (ncid_result);
    free_spectrum (&spec);
