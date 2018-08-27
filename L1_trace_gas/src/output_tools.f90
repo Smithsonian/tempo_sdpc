@@ -1306,8 +1306,11 @@ contains
     if (yn_write_cloud_variables) then
       call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,nxtrack], &
                           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
-      call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
-                          amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
+      !call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
+      !                    amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
+      ! FIXME: netcdf error will occur if cloud_pressure is not representable as a float
+      call tiof_put2d_r4 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
+                          real(amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1),kind=r4), errstat)
     endif
     call tiof_pop_group (obj, errstat)
 
