@@ -164,7 +164,11 @@ struct CCD_Type
     * and the storage region dark current are omitted from the newly created
     * image.  The input Image_Type object is not modified.
     */
-   Image_Type *(*ccd_select_active_pixels)(const CCD_Type *, const Image_Type *);
+   Image_Type *(*ccd_copy_active_pixels)(const CCD_Type *, const Image_Type *);
+
+   int (*ccd_apply_pixel_quality_flags)(const CCD_Type *, Image_Type *img,
+                                        const Image_Pqf_Bitmap_Type *flags,
+                                        int num_rows, int num_cols);
 
    /** Add noise contribution from CTE and quantization
     * @param ccd         A non-null pointer to the CCD_Type object

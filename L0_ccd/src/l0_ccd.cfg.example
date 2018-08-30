@@ -20,7 +20,7 @@ ccd_calibration:
 {
    sensorcal_file = "$SDPC_RUN_DIR/refdata/instrument/ccdcal_2016jan.nc";
    gain_file = "$SDPC_RUN_DIR/refdata/instrument/ccd_gain.csv";
-   badpix_file = "$SDPC_RUN_DIR/refdata/instrument/tempo_dc_badpixel_map.nc";
+   badpix_file = "$SDPC_RUN_DIR/refdata/instrument/tempo_dc_badpixel_map_v2.nc";
 
    default_wavelength_grid:
    {

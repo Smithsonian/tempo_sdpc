@@ -296,7 +296,7 @@ static int test_ccd_correct_smear_method (CCD_Type *ccd,
    init_colnum_image (img);
    image_set_type (img, IMAGE_TYPE_PADDED);
    if ((0 != ccd->ccd_correct_smear (ccd, &smear_fraction, img))
-       || (NULL == (img_active = ccd->ccd_select_active_pixels (ccd, img)))
+       || (NULL == (img_active = ccd->ccd_copy_active_pixels (ccd, img)))
        || (0 == image_test (img_active, expected_value, 0)))
      {
         fprintf (stderr, "*** smear correction\n");

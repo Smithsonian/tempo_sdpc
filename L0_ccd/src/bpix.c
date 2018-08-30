@@ -92,8 +92,8 @@ int bpix_write (const Badpix_Map_Type *b, const char *file)
      return -1;
    tell_vlog (TELL_MSGTYPE_INFO, 1, "writing %s", file);
 
-   if ((0 != TIO_def_dim (ncid, "row", b->num_rows, &dimid_row))
-       || (0 != TIO_def_dim (ncid, "col", b->num_cols, &dimid_col)))
+   if ((0 != TIO_def_dim (ncid, "parallel", b->num_rows, &dimid_row))
+       || (0 != TIO_def_dim (ncid, "serial", b->num_cols, &dimid_col)))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: defining badpix file dimensions", __func__);
         goto return_status;

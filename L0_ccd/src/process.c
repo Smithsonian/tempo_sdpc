@@ -246,7 +246,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
    if (0) fprintf (stderr, "mean sdc:  %7.1f %7.1f %7.1f %7.1f\n",
                    mean_sdc[0], mean_sdc[1], mean_sdc[2], mean_sdc[3]);
 
-   if (NULL == (aimg = ccd->ccd_select_active_pixels (ccd, exprec->img)))
+   if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, exprec->img)))
      return -1;
    image_free (exprec->img);
    exprec->img = aimg;
@@ -354,6 +354,10 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         xr->index = ixr;
 
         if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
+          goto return_status;
+
+        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
+                                                     bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
 
         if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
@@ -801,6 +805,9 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
           goto return_status;
         if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
+          goto return_status;
+        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
+                                                     bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
 
         if (NULL == (xr = new_exprec_meta_type ()))

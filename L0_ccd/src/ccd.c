@@ -612,63 +612,73 @@ static int ccd_mean_storage_region_dark (const CCD_Type *ccd,
    return 0;
 }
 
-static void select_active_pixels (const CCD_Type *ccd, size_t elem_size,
-                                  const char *from, int from_num_cols,
-                                  char *to, int to_num_cols)
+static int map_active_pixels (const CCD_Type *ccd, int elem_size,
+                              char *active, int active_num_cols,
+                              char *padded, int padded_num_cols,
+                              int (*process_row)(void *, void *, size_t, int))
 {
    const CCD_Param_Type *ccdp = &ccd->params;
-   int from_top_offset, from_bottom_offset, padded_quad_row_offset;
-   int from_padded_offset, to_active_offset;
+   int padded_top_offset, padded_bottom_offset, padded_quad_row_offset;
+   int padded_offset, active_offset;
    int num_active_rows, p;
-   size_t active_quad_row_size;
+   size_t num_serial_active;
 
    num_active_rows = 2 * ccdp->num_parallel_active;
 
-   from_top_offset = (ccdp->num_parallel_sdc * from_num_cols
-                      + ccdp->num_serial_leading);
-   from_bottom_offset = (from_top_offset
-                         + 2 * ccdp->num_parallel_oclock * from_num_cols);
+   padded_top_offset = (ccdp->num_parallel_sdc * padded_num_cols
+                        + ccdp->num_serial_leading);
+   padded_bottom_offset = (padded_top_offset
+                           + 2 * ccdp->num_parallel_oclock * padded_num_cols);
    padded_quad_row_offset = (ccdp->num_serial_active
                              + 2 * ccdp->num_serial_trailing);
-   active_quad_row_size = ccdp->num_serial_active * elem_size;
+   num_serial_active = ccdp->num_serial_active;
 
    /* top half */
    for (p = 0; p < num_active_rows/2; p++)
      {
         /* left quad */
-        from_padded_offset = p * from_num_cols + from_top_offset;
-        to_active_offset = p * to_num_cols;
-        memcpy (to + to_active_offset * elem_size,
-                from + from_padded_offset * elem_size,
-                active_quad_row_size);
+        padded_offset = p * padded_num_cols + padded_top_offset;
+        active_offset = p * active_num_cols;
+        if (process_row (active + active_offset * elem_size,
+                         padded + padded_offset * elem_size,
+                         num_serial_active, elem_size)) return -1;
         /* right quad */
-        from_padded_offset += padded_quad_row_offset;
-        to_active_offset += ccdp->num_serial_active;
-        memcpy (to + to_active_offset * elem_size,
-                from + from_padded_offset * elem_size,
-                active_quad_row_size);
+        padded_offset += padded_quad_row_offset;
+        active_offset += ccdp->num_serial_active;
+        if (process_row (active + active_offset * elem_size,
+                         padded + padded_offset * elem_size,
+                         num_serial_active, elem_size)) return -1;
      }
 
    /* bottom half */
    for (p = num_active_rows/2; p < num_active_rows; p++)
      {
         /* left quad */
-        from_padded_offset = p * from_num_cols + from_bottom_offset;
-        to_active_offset = p * to_num_cols;
-        memcpy (to + to_active_offset * elem_size,
-                from + from_padded_offset * elem_size,
-                active_quad_row_size);
+        padded_offset = p * padded_num_cols + padded_bottom_offset;
+        active_offset = p * active_num_cols;
+        if (process_row (active + active_offset * elem_size,
+                         padded + padded_offset * elem_size,
+                         num_serial_active, elem_size)) return -1;
         /* right quad */
-        from_padded_offset += padded_quad_row_offset;
-        to_active_offset += ccdp->num_serial_active;
-        memcpy (to + to_active_offset * elem_size,
-                from + from_padded_offset * elem_size,
-                active_quad_row_size);
+        padded_offset += padded_quad_row_offset;
+        active_offset += ccdp->num_serial_active;
+        if (process_row (active + active_offset * elem_size,
+                         padded + padded_offset * elem_size,
+                         num_serial_active, elem_size)) return -1;
      }
+
+   return 0;
 }
 
-static Image_Type *ccd_select_active_pixels (const CCD_Type *ccd,
-                                             const Image_Type *img)
+static int copy_active_from_padded (void *p_active, void *p_padded, size_t num_elem, int elem_size)
+{
+   size_t len = num_elem * elem_size;
+   memcpy ((char *)p_active, (char *)p_padded, len);
+   return 0;
+};
+
+static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd,
+                                           const Image_Type *img)
 {
    const CCD_Param_Type *ccdp = &ccd->params;
    int image_type, num_active_rows, num_active_cols;
@@ -689,12 +699,15 @@ static Image_Type *ccd_select_active_pixels (const CCD_Type *ccd,
      return NULL;
    image_set_type (aimg, IMAGE_TYPE_ACTIVE);
 
-   select_active_pixels (ccd, sizeof(*img->pixels),
-                         (const char *)img->pixels, img->num_cols,
-                         (char *)aimg->pixels, aimg->num_cols);
-   select_active_pixels (ccd, sizeof(*img->pixel_quality_flags),
-                         (const char *)img->pixel_quality_flags, img->num_cols,
-                         (char *)aimg->pixel_quality_flags, aimg->num_cols);
+   (void) map_active_pixels (ccd, sizeof(*img->pixels),
+                             (char *)aimg->pixels, aimg->num_cols,
+                             (char *)img->pixels, img->num_cols,
+                             copy_active_from_padded);
+   (void) map_active_pixels (ccd, sizeof(*img->pixel_quality_flags),
+                             (char *)aimg->pixel_quality_flags, aimg->num_cols,
+                             (char *)img->pixel_quality_flags, img->num_cols,
+                             copy_active_from_padded);
+
    return aimg;
 }
 
@@ -709,6 +722,55 @@ static void ccd_active_image_dims (const CCD_Type *ccd,
 
    if (num_serial_active_full)
      *num_serial_active_full = 2*ccdp->num_serial_active;
+}
+
+static int apply_active_flag_array_to_padded (void *p_active, void *p_padded,
+                                              size_t num_elem, int size_elem)
+{
+   Image_Pqf_Bitmap_Type *active = (Image_Pqf_Bitmap_Type *)p_active;
+   Image_Pqf_Bitmap_Type *padded = (Image_Pqf_Bitmap_Type *)p_padded;
+   size_t i;
+
+   (void) size_elem;
+
+   for (i = 0; i < num_elem; i++)
+     {
+        padded[i] |= active[i];
+     }
+
+   return 0;
+}
+
+static int ccd_apply_pixel_quality_flags (const CCD_Type *ccd, Image_Type *img,
+                                          const Image_Pqf_Bitmap_Type *flags,
+                                          int num_rows, int num_cols)
+{
+   int num_parallel_active_full, num_serial_active_full;
+   int image_type;
+
+   if (IMAGE_TYPE_PADDED != (image_type = image_get_type (img)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: unexpected image, image_type=%d (expected a padded image, image_type=%d)",
+                     __func__, image_type, IMAGE_TYPE_PADDED);
+        return -1;
+     }
+
+   ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
+
+   if ((num_rows != num_parallel_active_full)
+       || (num_cols != num_serial_active_full))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: mismatched quality flag array dimensions: got (r:%d,c:%d), expected (r:%d,c:%d)",
+                     __func__, num_rows, num_cols, num_parallel_active_full, num_serial_active_full);
+        return -1;
+     }
+
+   return map_active_pixels (ccd, sizeof(Image_Pqf_Bitmap_Type),
+                             (char *)flags, num_cols,
+                             (char *)img->pixel_quality_flags, img->num_cols,
+                             apply_active_flag_array_to_padded);
 }
 
 static void update_noisesq_quad (const CCD_Type *ccd, int quad,
@@ -804,7 +866,8 @@ static CCD_Type *ccd_create (void)
    ccd->ccd_correct_gain = ccd_correct_gain;
    ccd->ccd_correct_smear = ccd_correct_smear;
    ccd->ccd_mean_storage_region_dark = ccd_mean_storage_region_dark;
-   ccd->ccd_select_active_pixels = ccd_select_active_pixels;
+   ccd->ccd_copy_active_pixels = ccd_copy_active_pixels;
+   ccd->ccd_apply_pixel_quality_flags = ccd_apply_pixel_quality_flags;
    ccd->ccd_active_image_dims = ccd_active_image_dims;
    ccd->ccd_update_noisesq = ccd_update_noisesq;
 
