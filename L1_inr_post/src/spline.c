@@ -22,6 +22,7 @@ int spline (const double *x, const double *y, int nx,
    gsl_interp_accel *acc = NULL;
    size_t n = nx;
    size_t i, ns = nxs;
+   int gsl_err;
 
    if ((NULL == (interp = gsl_interp_alloc (gsl_interp_cspline, n)))
        || (NULL == (acc = gsl_interp_accel_alloc ())))
@@ -31,9 +32,10 @@ int spline (const double *x, const double *y, int nx,
         return -1;
      }
 
-   if (gsl_interp_init (interp, x, y, n))
+   if (0 != (gsl_err = gsl_interp_init (interp, x, y, n)))
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: gsl_interp init failed", __func__);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: gsl_interp init failed (%s)",
+                     __func__, gsl_strerror (gsl_err));
         gsl_interp_free (interp);
         gsl_interp_accel_free (acc);
         return -1;
