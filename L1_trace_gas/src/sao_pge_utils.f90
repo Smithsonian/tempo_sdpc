@@ -536,7 +536,7 @@ CONTAINS
   END FUNCTION signdp
 
   SUBROUTINE interpolation ( &
-       n1, x1, y1, n2, x2, y2, filltype, fillval, did_full_range, errstat )
+       n1, x1, y1, n2, x2, y2, filltype, fillval, did_full_range, err )
 
     USE OMSAO_precision_module
     !USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_error
@@ -556,7 +556,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER (KIND=i4),                 INTENT (INOUT) :: errstat
+    INTEGER (KIND=i4),                 INTENT (INOUT) :: err
     REAL    (KIND=r8), DIMENSION (n2), INTENT (OUT)   :: y2
     LOGICAL,                           INTENT (OUT)   :: did_full_range
 
@@ -566,7 +566,7 @@ CONTAINS
     INTEGER (KIND=i4)                 :: imin, imax, nloc !, locerrstat
     REAL    (KIND=r8), DIMENSION (n2) :: xtmp, ytmp
 
-    if (errstat /= 0) return
+    if (err /= 0) return
     !locerrstat = 0 ! pge_errstat_ok
 
     ! -------------------------------
@@ -609,16 +609,15 @@ CONTAINS
     SELECT CASE ( nloc )
     CASE ( :3 ) ! Less than 4 data points available for interpolation
       !errstat = -1 ! pge_errstat_error
-      call tell_error (tell_runtime_error, &
-           "interpolation: less than 4 data points available for interpolation", &
-           errstat)
+      call tell_log (0, "interpolation: less than 4 data points available for interpolation")
+      err = -1
       RETURN
     CASE DEFAULT
       xtmp(1:nloc) = x2(imin:imax)
       CALL ezspline_1d_interpolation (                &
            n1,   x1  (1:n1),   y1  (1:n1),            &
-           nloc, xtmp(1:nloc), ytmp(1:nloc), errstat) ! locerrstat )
-      if (errstat /= 0) return
+           nloc, xtmp(1:nloc), ytmp(1:nloc), err) ! locerrstat )
+      if (err /= 0) return
       y2(imin:imax) = ytmp(1:nloc)
       CALL fill_nonoverlap ( n2, y2(1:n2), imin, imax, filltype, fillval )
       ! -----------------------------------------------------------------

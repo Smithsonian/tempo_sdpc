@@ -70,7 +70,7 @@ contains
     integer (kind=i4), intent(in) :: num_params, num_wavelengths
     integer (kind=i4), intent(out) :: return_status
     ! local variables
-    integer (kind=i4) :: i, idx
+    integer (kind=i4) :: i, idx, err
 
     ! unpack fit parameters
     DO i = 1, num_params
@@ -78,9 +78,16 @@ contains
       cal_parms(idx) = params(i)
     END DO
 
+    err = 0
+
     CALL spectrum_solar (num_wavelengths, private_avg_wavelength, & !sol_wav_avg, &
                          cal_wavelengths(1:num_wavelengths), &
-                         residuals(1:num_wavelengths), cal_parms)
+                         residuals(1:num_wavelengths), cal_parms, err)
+
+    if (err /= 0) then
+      return_status = err
+      return
+    endif
 
     residuals(1:num_wavelengths) = cal_weights(1:num_wavelengths) &
       * (cal_spectrum(1:num_wavelengths) - residuals(1:num_wavelengths))
@@ -91,7 +98,7 @@ contains
 
   ! ---------------------------------------------------------------------------
 
-  subroutine spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, loc_cal_parms)
+  subroutine spectrum_solar (npoints, solar_wavel_avg, locwvl, fit, loc_cal_parms, err)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
@@ -114,20 +121,21 @@ contains
     REAL    (KIND=r8), DIMENSION (:), INTENT (IN) :: loc_cal_parms
     REAL    (KIND=r8), DIMENSION (npoints), INTENT (IN) :: locwvl
     REAL    (KIND=r8), DIMENSION (npoints), INTENT (OUT) :: fit
+    integer (kind=i4), intent(inout) :: err
 
     ! ---------------
     ! Local variables
     ! ---------------
     LOGICAL                                                 :: did_full_range
     REAL    (KIND=r8), DIMENSION (npoints)                  :: del, sunspec_ss
-    INTEGER (KIND=i4)                                       :: npts, errstat
+    INTEGER (KIND=i4)                                       :: npts
     ! Shorthands for solar reference spectrum
     REAL    (KIND=r8), DIMENSION (refspecs_original(solar_idx)%nPoints) :: &
       solar_wvls, solar_spec
     real (kind=r8), dimension (MAX_SPEC_PTS), save :: &
       saved_solar_spec_convolved = 0.0_r8
 
-    errstat = 0 !pge_errstat_ok
+    if (err /= 0) return
 
     npts               = refspecs_original(solar_idx)%nPoints
     solar_wvls(1:npts) = refspecs_original(solar_idx)%RefSpecWavs(1:npts)
@@ -201,8 +209,8 @@ contains
         npts, solar_wvls(1:npts), solar_spec(1:npts), &
         saved_solar_spec_convolved(1:npts), &
         curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
-        errstat)
-      if (errstat /= 0) return
+        err)
+      if (err /= 0) return
     endif
 
     ! =============================================
@@ -218,9 +226,9 @@ contains
     CALL interpolation ( &
       npts, solar_wvls(1:npts), saved_solar_spec_convolved(1:npts), &
       npoints, locwvl(1:npoints), sunspec_ss(1:npoints), 'endpoints', 0.0_r8, &
-      did_full_range, errstat )
-    if (errstat /= 0) then
-      call tell_error (tell_runtime_error, "spectrum_solar: interpolation failed while resampling to solar grid", errstat)
+      did_full_range, err )
+    if (err /= 0) then
+      call tell_log (0, "spectrum_solar: interpolation failed while resampling to solar grid")
       return
     endif
 

@@ -281,6 +281,8 @@ CONTAINS
         addmsg = ''
         WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
         call tell_log (0, addmsg)
+        call tell_set_error (0)
+        errstat = 0
         !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
         !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
         !                  locerrstat )
@@ -335,7 +337,14 @@ CONTAINS
         ipix, n_ref_wvl, ref_wvl(1:n_ref_wvl), ref_spc(1:n_ref_wvl), &
         adj_num, adj_wvls(1:adj_num), n_max_rspec, errstat) ! locerrstat )
       ! --------------------------------------------------------------------------------
-      if (errstat /= 0) exit XTrackWavCal
+      if (errstat /= 0) then !exit XTrackWavCal
+        addmsg = ''
+        write (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: prep_databases failed: SKIPPING cross track pixel #', ipix
+        call tell_log (0, addmsg)
+        call tell_set_error (0)
+        errstat = 0
+        cycle
+      endif
       !IF ( locerrstat >= pge_errstat_error ) EXIT XTrackWavCal
 
       ! ---------------------------------------------------------
@@ -388,6 +397,8 @@ CONTAINS
           addmsg = ''
           WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
           call tell_log (0, addmsg)
+          call tell_set_error (0)
+          errstat = 0
           !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
           !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
           !                  locerrstat )

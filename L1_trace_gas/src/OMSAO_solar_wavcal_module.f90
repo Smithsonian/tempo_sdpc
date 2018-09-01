@@ -199,7 +199,9 @@ CONTAINS
         wvl_good(ngood) = adj_wvl(i)
       END IF
     END DO
-    IF ( nbad > 0 ) THEN
+    if (ngood == 0) THEN
+      do_skip_pix = .TRUE.
+    else  IF ( nbad > 0 ) THEN
       CALL ezspline_1d_interpolation (                      &
         ngood, wvl_good(1:ngood), spc_good(1:ngood),     &
         nbad, wvl_bad(1:nbad), spc_bad(1:nbad), errstat) !locerrstat )

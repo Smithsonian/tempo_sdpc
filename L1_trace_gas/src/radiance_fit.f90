@@ -338,7 +338,7 @@ CONTAINS
       DO i = 1, n_fitvar_rad
         IF (covar_matrix (i,i) == 0.0) cycle
         corrmat(i) = (covar_matrix (indx, i ) &
-                      / SQRT(covar_xx * covar_matrix (i, i)))
+                      / SQRT(abs(covar_xx * covar_matrix (i, i))))
       END DO
     endif
 
