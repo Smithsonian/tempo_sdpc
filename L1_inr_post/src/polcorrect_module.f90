@@ -235,6 +235,7 @@ contains
     real (kind=r8), allocatable, dimension(:,:) :: snalbs0, tmp_snalbs0
     real (kind=r8), dimension(maxscene) :: snps
     type (range_type) :: qu_range
+    character (len=128) :: msg
 
     logical :: use_mler, merge_bands, diag_output
 
@@ -348,10 +349,33 @@ contains
 
     do step = beg_step, end_step
 
+      ! If an error occurs while looping, we try to 'cycle' to keep going.
+      ! tell_runtime_error is ignored/cleared. All other non-zero errstat
+      ! values cause an immediate return:
+      if (errstat == tell_runtime_error) then
+        call tell_set_error (0)
+        errstat = 0
+      else if (errstat /= 0) then
+        return
+      endif
+
       call read_radiance_for_mirror_step (rad_s, step, band_id, merge_bands, errstat)
       if (errstat /= 0) return
 
-      do ix = beg_xtrack, end_xtrack
+      xtrack_loop: do ix = beg_xtrack, end_xtrack
+
+        write (msg, '(a,i0,a,i0)')'step=',step,' xtrack=',ix
+        call tell_log (1, msg)
+
+        ! If an error occurs while looping, we try to 'cycle' to keep going.
+        ! tell_runtime_error is ignored/cleared. All other non-zero errstat
+        ! values cause an immediate return:
+        if (errstat == tell_runtime_error) then
+          call tell_set_error (0)
+          errstat = 0
+        else if (errstat /= 0) then
+          return
+        endif
 
         if (rad_s % inr_quality_flag (ix, step) /= 0) cycle
 
@@ -390,11 +414,11 @@ contains
 
         ! Define ozone profile down to surface pressure
         call pp_interp_ozone_profile (lut_s, pre, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) cycle
 
         ! Define o3 zones
         call pp_ozone_zone_info (lut_s, lat, oz, oz_info, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) cycle
 
         if (.not. (use_mler.or.retctp)) then
           ! If not retcp, need to derive scene pressure here, otherwise
@@ -424,9 +448,9 @@ contains
         err = spline (rad_s % wave(:,ix), rad_s % radiance (:,ix), &
                       rad_s % num_wave, swav, srad, num_swav)
         if (err /= 0) then
-          call tell_error (tell_runtime_error, "spline interpolation failed", &
-                           errstat)
-          return
+          write (msg,'(a,i0,a,i0)')'spline interpolation failed: step=', step, ', xtrack=', ix
+          call tell_error (tell_runtime_error, msg, errstat)
+          cycle
         endif
 
         sza = rad_s % sza(ix, step)
@@ -445,7 +469,7 @@ contains
                                 retctp_errstat, errstat)
             snalbs0(ctp_wave_indices,:) = tmp_snalbs0
             cfracs0(ctp_wave_indices) = tmp_cfracs0
-            if (errstat /= 0) return
+            if (errstat /= 0) cycle xtrack_loop
 
             if (isnan(ctp)) retctp_errstat = 4
             if (use_mler .and. ctp > pre) then
@@ -470,7 +494,7 @@ contains
                                 retoz_errstat, errstat)
             snalbs0(oz_wave_indices,:) = tmp_snalbs0
             cfracs0(oz_wave_indices) = tmp_cfracs0
-            if (errstat /= 0) return
+            if (errstat /= 0) cycle xtrack_loop
 
             if (isnan(oz)) retoz_errstat = 4
             if (retoz_errstat == 0) then
@@ -481,28 +505,39 @@ contains
 
             ! Define o3 zones
             call pp_ozone_zone_info (lut_s, lat, oz, oz_info, errstat)
-            if (errstat /= 0) return
+            if (errstat /= 0) cycle xtrack_loop
           endif
 
         enddo ! iter
 
         call pp_derive_albcld (lut_s, use_mler, swav, srad, sza, vza, raa, oz, &
                                oz_info, nscene, cfracs0, snalbs0, snps, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) cycle
 
         call pp_get_qu (lut_s, use_mler, swav, sza, vza, raa, oz, oz_info, &
                         nscene, cfracs0, snalbs0, snps, qu_range, q, u, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) cycle
 
         call calc_lpserr (pt % lps, wav, q, u, rad_s, band_id, merge_bands, &
                           ix, step, lpserr, diag_s, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) cycle
 
         where (rad_s % radiance (:,ix) /= r8_fill)
           rad_s % radiance(:, ix) = rad_s % radiance(:,ix) / (1.0 + lpserr(:))
         end where
 
-      enddo ! ix
+      enddo xtrack_loop ! ix
+
+      ! If an error occurs while looping, we try to 'cycle' to keep going.
+      ! tell_runtime_error is ignored/cleared. All other non-zero errstat
+      ! values cause an immediate return:
+      if (errstat == tell_runtime_error) then
+        call tell_set_error (0)
+        errstat = 0
+      else if (errstat /= 0) then
+        return
+      endif
+
       call write_radiance_for_mirror_step (rad_s, step, band_id, merge_bands, diag_s, errstat)
       if (errstat /= 0) return
     enddo ! step
