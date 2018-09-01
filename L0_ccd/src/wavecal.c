@@ -20,6 +20,8 @@
 
 #define NCID_UNINITIALIZED -1
 
+#define MIN_ACCEPTABLE_GOOD_PIXEL_FRACTION  0.8
+
 enum
 {
    TERM_TYPE_AD1,
@@ -1405,6 +1407,7 @@ static void estimate_midpoint_wavelength (Window_Type *win, const double *spec,
 
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
                  const double *p_wave, const double *p_spec, const double *p_specerr,
+                 const unsigned int *p_pixel_quality_flag,
                  const Wavecal_Config_Type *config,
                  Wavecal_Result_Type *result)
 {
@@ -1417,17 +1420,19 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    const double *wave = p_wave + win->start_pix;
    const double *spec = p_spec + win->start_pix;
    const double *specerr = p_specerr + win->start_pix;
+   const unsigned int *pqf = p_pixel_quality_flag + win->start_pix;
    double *spec_scaled = win->spec_scaled;
    double *weight = win->weight;
    double *params = NULL;
    double scale_factor;
    size_t num;
-   int status = -1;
-   int i, num_residuals, num_params, mp_status;
+   int status = WAVECAL_FIT_ERROR;
+   int i, num_residuals, num_params, mp_status, num_good;
 
    if (0 != init_window (wct, xtrack, wave, config))
-     return -1;
+     return WAVECAL_FIT_ERROR;
 
+   num_good = 0;
    /* Scale the radiance and irradiance by the same factor */
    scale_factor = wct->irr.file.scale_factor;
    for (i = 0; i < win->num_wave; i++)
@@ -1435,21 +1440,26 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         double spec_i = spec[i];
         double err_i = specerr[i];
 
-        if (isfinite(spec_i) && (spec_i != fill_value))
+        if ((pqf[i] == 0) && (0 != isfinite(spec_i)) && (spec_i != fill_value))
           {
              spec_scaled[i] = spec_i * scale_factor;
+             num_good++;
           }
         else spec_scaled[i] = 0.0;
 
-        if (isfinite(err_i) && (err_i != fill_value) && (err_i != 0.0))
+        if ((pqf[i] == 0) && (0 != isfinite(err_i)) && (err_i != fill_value) && (err_i != 0.0))
           {
              weight[i] = 1.0/(fabs(err_i) * scale_factor);
           }
         else weight[i] = 0.0;
      }
 
+   /* Too many bad pixels? */
+   if (num_good < MIN_ACCEPTABLE_GOOD_PIXEL_FRACTION * win->num_wave)
+     return WAVECAL_FIT_BAD;
+
    if (collect_params (wct, &num, &params) < 0)
-     return -1;
+     goto return_error;
 
    estimate_midpoint_wavelength (win, spec_scaled, &params[0]);
 
@@ -1502,7 +1512,8 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         if (0) write_statistic (stderr, win->residuals, num_residuals);
      }
 
-   status = 0;
+   status = ((0 < mp_status) && (mp_status < 4)) ? WAVECAL_FIT_GOOD : WAVECAL_FIT_BAD;
+
 return_error:
    FREE(params);
 

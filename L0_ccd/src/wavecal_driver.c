@@ -26,6 +26,7 @@ typedef struct
 {
    double *spec;
    double *spec_err;
+   unsigned int *pixel_quality_flag;
    size_t n;
 }
 Spectrum_Type;
@@ -54,12 +55,16 @@ static void free_spectrum (Spectrum_Type *r)
    if (r == NULL)
      return;
    FREE(r->spec);
+   FREE(r->pixel_quality_flag);
 }
 
 static int alloc_spectrum (Spectrum_Type *r, size_t n)
 {
-   if (NULL == (r->spec = (double *)MALLOC (2 * n * sizeof(double))))
+   if ((NULL == (r->spec = (double *)MALLOC (2 * n * sizeof(double))))
+       || (NULL == (r->pixel_quality_flag = (unsigned int *)MALLOC (n * sizeof(unsigned int)))))
      return -1;
+   memset ((char *) r->spec, 0, 2*n*sizeof(double));
+   memset ((char *) r->pixel_quality_flag, 0, n * sizeof(unsigned int));
    r->n = n;
    r->spec_err = r->spec + n;
    return 0;
@@ -119,7 +124,8 @@ static int read_spectrum (int ncid, int step, int xtrack, int is_irradiance,
    count[1] = 1;
    count[2] = r->n;
 
-   if (0 != TIO_get_var_section (ncid, var_spec, start, count, TIO_DOUBLE, r->spec))
+   if ((0 != TIO_get_var_section (ncid, var_spec, start, count, TIO_DOUBLE, r->spec))
+       || (0 != TIO_get_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_UINT, r->pixel_quality_flag)))
      goto return_error;
 
    tell_push_queue();
@@ -445,6 +451,7 @@ int main (int argc, char **argv)
    int ncid_result = 0, num_wave_params, start_pix, num_pix;
    int debug = 0;
    size_t i, step_dimlen, xtrack_dimlen, channel_dimlen;
+   int fit_status_code;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
@@ -725,12 +732,22 @@ int main (int argc, char **argv)
              if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
                goto return_status;
 
-             if (wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
-                              &wavecal_config, &wavecal_result))
-               goto return_status;
+             fit_status_code = wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
+                                            spec.pixel_quality_flag,
+                                            &wavecal_config, &wavecal_result);
+             switch (fit_status_code)
+               {
+                case WAVECAL_FIT_ERROR:
+                  goto return_status;
 
-             if (write_result (ncid_result, beg_step, step, xtrack, &wavecal_result))
-               goto return_status;
+                case WAVECAL_FIT_GOOD:
+                  if (write_result (ncid_result, beg_step, step, xtrack, &wavecal_result))
+                    goto return_status;
+                  break;
+
+                default:
+                  break;
+               }
 
              if (debug)
                {

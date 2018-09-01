@@ -91,17 +91,28 @@ extern int wavecal_feature_window (const Wavecal_Type *wct, int *start_pix, int 
  * @param  wave     Pointer to initial wavelength grid
  * @param  spec     Pointer to spectrum values, radiance or irradiance
  * @param  specerr  Pointer to array of spectrum uncertainties
+ * @param  pqf      Pointer to array of pixel quality flags (0 means good)
  * @param  config   Pointer to object of type \a Wavecal_Config_Type
  *                  containing additional control/configuration parameters.
  * @param  result   Pointer to object of type \a Wavecal_Result_Type
  *                  containing calibration results.
- * @return 0 on success, -1 on error
+ * @return -1 on error, 0 when the fit succeeds, 1 when the fit fails
+ *
+ * For return status details, see mpfit.h.
  */
 extern int
 wavecal_fit (Wavecal_Type *wct, int xtrack,
              const double *wave, const double *spec, const double *specerr,
+             const unsigned int *pqf,
              const Wavecal_Config_Type *config,
              Wavecal_Result_Type *result);
+
+enum
+{
+   WAVECAL_FIT_ERROR = -1,
+   WAVECAL_FIT_GOOD = 0,
+   WAVECAL_FIT_BAD = 1
+};
 
 /** Query fit terms in succession
  * @param  wct      Pointer to a \a Wavecal_Type object initialized by
