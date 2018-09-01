@@ -208,6 +208,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
    float *mean_sdc = xr->storage_region_dark;
    Image_Type *aimg = NULL;
    double smear_fraction;
+   double exposure_time_per_frame;
    int i;
 
    /* FIXME: is this the correct temp? */
@@ -221,6 +222,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
 
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
+   exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
 
    if (-1 == ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
@@ -235,7 +237,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
      return -1;
 
    smear_fraction = (exprec->frame_transfer_time
-                     /(exprec->frame_transfer_time + exprec->exposure_time));
+                     /(exprec->frame_transfer_time + exposure_time_per_frame));
 
    if (-1 == ccd->ccd_correct_smear (ccd, &smear_fraction, exprec->img))
      return -1;
@@ -282,10 +284,10 @@ static int compute_current_and_trim (const CCD_Type *ccd,
         image_sqrt (noisesq);
         xr->img_err = noisesq;
 
-        image_scale (xr->img_err, 1.0/exprec->exposure_time);
+        image_scale (xr->img_err, 1.0/exposure_time_per_frame);
      }
 
-   image_scale (exprec->img, 1.0/exprec->exposure_time);
+   image_scale (exprec->img, 1.0/exposure_time_per_frame);
 
    for (i = 0; i < 4; i++)
      {
