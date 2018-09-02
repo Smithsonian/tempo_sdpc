@@ -1407,9 +1407,8 @@ static void estimate_midpoint_wavelength (Window_Type *win, const double *spec,
 
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
                  const double *p_wave, const double *p_spec, const double *p_specerr,
-                 const unsigned int *p_pixel_quality_flag,
-                 const Wavecal_Config_Type *config,
-                 Wavecal_Result_Type *result)
+                 const unsigned int *p_pixel_quality_flag, const Wavecal_Config_Type *config,
+                 double *wave_params, Wavecal_Result_Type *result)
 {
    Mpfit_Interface_Type mp = {0};
    struct mp_config_struct fit_config = {0};
@@ -1431,6 +1430,11 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
 
    if (0 != init_window (wct, xtrack, wave, config))
      return WAVECAL_FIT_ERROR;
+
+   /* If the fit fails, the initial wavelength parameter guess
+    * will serve as the result */
+   memcpy ((char *)wave_params, (char *)win->wave_params,
+           win->num_wave_params * sizeof(double));
 
    num_good = 0;
    /* Scale the radiance and irradiance by the same factor */
@@ -1496,8 +1500,8 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    if (result)
      {
         /* Warning: pointers are valid only until wavecal_close gets called */
-        memcpy ((char *)win->wave_params,
-                (char *)params, win->num_wave_params * sizeof(double));
+        memcpy ((char *)win->wave_params, (char *)params,
+                win->num_wave_params * sizeof(double));
         result->wave_params = win->wave_params;
         result->num_wave_params = win->num_wave_params;
         result->wave = win->wave0;
@@ -1513,6 +1517,12 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
      }
 
    status = ((0 < mp_status) && (mp_status < 4)) ? WAVECAL_FIT_GOOD : WAVECAL_FIT_BAD;
+
+   if (status == WAVECAL_FIT_GOOD)
+     {
+        memcpy ((char *)wave_params, (char *)params,
+                win->num_wave_params * sizeof(double));
+     }
 
 return_error:
    FREE(params);

@@ -221,6 +221,7 @@ static void write_fit (const Wavecal_Result_Type *r, size_t num_values)
 
 static int write_fit_details (FILE *fp, int xtrack,
                               const Wavecal_Type *wct,
+                              const double *wave_params,
                               const Wavecal_Result_Type *wavecal_result)
 {
    Wavecal_Term_Info_Type info = {0};
@@ -231,7 +232,7 @@ static int write_fit_details (FILE *fp, int xtrack,
             wavecal_result->nfev, wavecal_result->opt_status);
    for (i = 0; i < wavecal_result->num_wave_params; i++)
      {
-        fprintf (fp, "%15.9e ", wavecal_result->wave_params[i]);
+        fprintf (fp, "%15.9e ", wave_params[i]);
      }
    fprintf (fp, "\n");
 
@@ -311,6 +312,7 @@ close_and_return:
 }
 
 static int write_result (int ncid, int beg_step, int step, int xtrack,
+                         const double *wave_params,
                          const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
@@ -324,7 +326,7 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
    count[2] = wavecal_result->num_wave_params;
 
    if ((0 != TIO_put_var_section (ncid, WAVECAL_PARAM_NAME, start, count, TIO_DOUBLE,
-                                  wavecal_result->wave_params))
+                                  wave_params))
        ||(0 != TIO_put_var_section (ncid, "bestnorm", start, count, TIO_DOUBLE,
                                     &wavecal_result->bestnorm)))
      return -1;
@@ -374,8 +376,8 @@ static int create_diagnostic_group (int parent_grp, const char *grp_name,
 }
 
 static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
-                              int step, int xtrack,
-                              const Wavecal_Type *wct,
+                              int step, int xtrack, const Wavecal_Type *wct,
+                              const double *wave_params,
                               const Wavecal_Result_Type *wavecal_result)
 {
    const char grp_name[] = "wavecal_diagnostics";
@@ -415,7 +417,7 @@ static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_
 
    count[2] = wavecal_result->num_wave_params;
    if (0 != TIO_put_var_section (grp, "params", start, count, TIO_DOUBLE,
-                                 wavecal_result->wave_params))
+                                 wave_params))
      return -1;
 
    return 0;
@@ -442,6 +444,7 @@ int main (int argc, char **argv)
    double nan_value = nan("");
    double y_start = nan_value;
    double y_delta = nan_value;
+   double *wave_params = NULL;
    int grp, ncid = 0, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
    int beg_step, end_step;
@@ -702,6 +705,12 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   if (NULL == (wave_params = (double *)MALLOC (num_wave_params * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
    (void) wavecal_feature_window (wct, &start_pix, &num_pix);
 
    ncid_result = create_result_file (result_file, group_name,
@@ -733,25 +742,17 @@ int main (int argc, char **argv)
                goto return_status;
 
              fit_status_code = wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
-                                            spec.pixel_quality_flag,
-                                            &wavecal_config, &wavecal_result);
-             switch (fit_status_code)
-               {
-                case WAVECAL_FIT_ERROR:
-                  goto return_status;
+                                            spec.pixel_quality_flag, &wavecal_config,
+                                            wave_params, &wavecal_result);
+             if (fit_status_code == WAVECAL_FIT_ERROR)
+               goto return_status;
 
-                case WAVECAL_FIT_GOOD:
-                  if (write_result (ncid_result, beg_step, step, xtrack, &wavecal_result))
-                    goto return_status;
-                  break;
-
-                default:
-                  break;
-               }
+             if (write_result (ncid_result, beg_step, step, xtrack, wave_params, &wavecal_result))
+               goto return_status;
 
              if (debug)
                {
-                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct,
+                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct, wave_params,
                                          &wavecal_result))
                     goto return_status;
                }
@@ -764,7 +765,7 @@ int main (int argc, char **argv)
 
                   if (params_outfile)
                     {
-                       (void) write_fit_details (fp, xtrack, wct, &wavecal_result);
+                       (void) write_fit_details (fp, xtrack, wct, wave_params, &wavecal_result);
                     }
                }
           }
@@ -774,6 +775,7 @@ int main (int argc, char **argv)
 return_status:
    FREE(y0);
    FREE(inr_quality_flag);
+   FREE(wave_params);
    if (ncid) TIO_close (ncid);
    if (ncid_result) TIO_close (ncid_result);
    free_spectrum (&spec);

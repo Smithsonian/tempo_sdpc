@@ -66,9 +66,6 @@ static int replace_wavelength_grid (int grp_target, int mirror_step, int start_p
      {
         float *pars = param_slab_i + xtrack * params_dimlen;
 
-        if (pars[0] == NC_FILL_FLOAT)
-          continue;
-
         if (0 != compute_wavelength_grid (pars, params_dimlen, start_pix, num_pix,
                                           calibrated_waves, spectral_channel_dimlen))
           return -1;

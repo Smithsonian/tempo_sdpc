@@ -54,7 +54,7 @@ $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES)) wavecal_driver.c wavecal_merge.c
+	ctags $(patsubst %.o,%.c,$(OFILES)) wavecal_driver.c wavecal_merge.c wavecal.c
 
 .PHONY: clean distclean all install check tags
 
