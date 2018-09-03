@@ -1,0 +1,25 @@
+
+# Support use of a pipe label -- useful for testing multiple pipes,
+# and demonstrating simultaneous reprocessing.
+PIPE_LABEL=sdpc_test
+
+# Local root processing directory on each compute node:
+NODE_ROOT_DIR=/scratch/$(PIPE_LABEL)/sdpc_run_dir
+
+# Number of compute nodes to be configured
+NUM_NODES=3
+
+# REFDATA_DIR contains static reference data,
+# shared by all processing nodes
+# (e.g. reference spectra, cross-sections, climatologies, etc.)
+REFDATA_DIR=/data/tempo/sdpc/refdata
+
+# ANCILLARY_DIR contains time-sensitive reference data,
+# shared by all processing nodes
+# (e.g. Met data, snow & ice cover)
+# FIXME - GOES imagery should live in this directory too
+ANCILLARY_DIR=/data/tempo/sdpc/ancillary
+
+# IRRADIANCE_DIR contains the irradiance spectrum used for testing.
+# During operations, it's likely that this will be updated daily.
+IRRADIANCE_DIR=/data/tempo/sdpc/irradiance/test

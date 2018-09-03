@@ -689,3 +689,39 @@ AC_SUBST(LINKOBJS)
 ])
 
 #}}}
+
+AC_DEFUN(JD_SLANG_VERSION, dnl#{{{
+[
+ slang_h=$jd_slang_include_dir/slang.h
+ AC_MSG_CHECKING(SLANG_VERSION in $slang_h)
+slang_version=`grep "^#define  *SLANG_VERSION " $slang_h |
+               awk '{ print [$]3 }'`
+slang_major_version=`echo $slang_version |
+ awk '{ print int([$]1/10000) }'`
+slang_minor_version=`echo $slang_version $slang_major_version |
+ awk '{ print int(([$]1 - [$]2*10000)/100) }'`
+slang_patchlevel_version=`echo $slang_version $slang_major_version $slang_minor_version |
+ awk '{ print ([$]1 - [$]2*10000 - [$]3*100) }'`
+
+AC_MSG_RESULT($slang_major_version.$slang_minor_version.$slang_patchlevel_version)
+AC_SUBST(slang_version)
+AC_SUBST(slang_major_version)
+AC_SUBST(slang_minor_version)
+AC_SUBST(slang_patchlevel_version)
+])
+#}}}
+
+AC_DEFUN(JD_SLANG_MODULE_INSTALL_DIR, dnl#{{{
+[
+  AC_REQUIRE([JD_SLANG_VERSION])
+  if test "X$slang_major_version" = "X1"
+  then
+    MODULE_INSTALL_DIR="$libdir/slang/modules"
+  else
+    MODULE_INSTALL_DIR="$libdir/slang/v$slang_major_version/modules"
+  fi
+  SL_FILES_INSTALL_DIR=$datadir/slsh/local-packages
+  AC_SUBST(MODULE_INSTALL_DIR)
+  AC_SUBST(SL_FILES_INSTALL_DIR)
+])
+#}}}

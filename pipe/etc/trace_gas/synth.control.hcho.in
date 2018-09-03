@@ -1,0 +1,389 @@
+# ======================================== #
+# OMHCHO BOAS Fitting Input Control File   #
+# ======================================== #
+
+# ==================================================================
+# String(s) with shortname(s) of molecules to fit. If more than one
+# string is provided, the final column will be composed as the sum
+# of all individual columns.
+# ==================================================================
+Molecule(s) to fit
+hcho
+
+# ============================================================
+# Mode of operations: "production" or "diagnostic". The latter
+# will add several data fields on fitting correlations.
+# ============================================================
+Processing mode
+production
+tempo
+
+General fitting parameters
+ F             # SMOOTH spectra?
+ F             # DOAS fitting?
+-500 -500      # First+last OMI scan line to fit ("-1 -1" for "all")
+  -1 -60       # First+last OMI cross track pixel (values < 1 for "all"
+-90.0 90.0     # Lower and upper latitude limit to process
+ 1.0E-08       # pseudo rank tolerance   constant  (TOL    = SQRT(mach. prec.))
+ 1.0E-04       # relative    convergence constant  (EPSREL = SQRT(mach. prec.))
+ 1.0E-04       # absolute    convergence constant  (EPSABS = mach. prec.)
+ 1.0E-04       # parameter   convergence constant  (EPSX   = SQRT(mach. prec.))
+
+
+# ========================================================================
+# Selection of Solar Composite Spectrum
+# (1) Logical for Yes/No Solar Composite spectrum
+# (2) INTEGER value ("Yes" case only, otherwise ignored):
+#     1 = Mean Solar Spectrum
+#     2 = Median Solar Spectrum
+#     3 = First Principal Component Solar Spectrum
+# ========================================================================
+Solar composite spectrum
+F
+3
+
+# ========================================================================
+# Selection of solar monthly average spectrum
+# (1) Logical for Yes/No solar monthly average spectrum. If it is set to T
+#     solar composite spectrum should be F or viceversa. Both to F is OK
+# ========================================================================
+Solar monthly average
+F
+
+# ========================================================================
+# Spectrum Normalization
+# (1) Logical for Yes/No normalization radiance and irradiance spectra to
+#     about 1 over the fitting window.
+#     ("No" with Solar Composite "Yes" may produce unexpected results)
+# ========================================================================
+Spectrum normalization
+T
+
+# ========================================================================
+# Setting for the Common Mode Spectrum
+# (1) Logical for Yes/No online common mode computation
+# (2) Two REAL values for Start/End of latitude range to be covered in
+#     Common Mode iteration. Ignored in "No" case.
+# ========================================================================
+Common mode iteration
+F
+-30.0 +30.0
+
+# ========================================================================
+# Contstraints for outlier identification in fitting resdiual: Number of
+# standard deviations around mean residual outside which to to reject the
+# wavelength position, and number of iterations to remove outliers.
+# Negative values for "no outlier removal".
+# (1) Solar calibration
+# (2) Radiance wavelength calibration
+# (3) Radiance reference fit
+# (4) All radiance fits
+#
+# Input Format: First No of SDEVs then No of Iterations
+# ========================================================================
+Fitting Residual Constraints
+-3   -2      # Solar    Calibration
+-3   -2      # Radiance Calibration
+-4   -1      # Radiance Reference
+-3   -2      # Radiance Fit
+
+
+# ========================================================================
+# Setting for the Radiance Reference/Wavelength Calibration line.
+# (1) Logical for Yes/No Radiance Reference
+# (2) Logical for Yes/No remove target from radiance and polynomial to fit
+#     across track ( both ignored for (1)=No)
+# (3) Two REAL values for Start/End of latitude range to be averaged into
+#     the Radiance Reference (only first number will be used for "No" case
+#     to identify radiance for wavelength calibration)
+# ========================================================================
+Radiance reference setting
+F
+T 0
+-30.0 +30.0
+
+
+# ========================================================================
+# Setting for the fitting wavelength window
+# (1) Three-letter STRING with name of OMI channel (UV1, UV2, VIS)
+# (2) Six REAL values N1-6 for Start/End of wavelength window:
+#     N1 = first wavelength to read
+#     N2 = first wavelength of weighted fitting window
+#     N3 = last  wavelength of weighted fitting window
+#     N4 = last  wavelength to read
+#     N5 = first wavelength to exclude from fitting
+#     N6 = last  wavelength to exclude from fitting
+# ========================================================================
+Fitting window settings
+UV1   # JCH use UV1 for tempo file format
+326.5 328.5 356.5 358.5 0.0 0.0
+
+# ------------------------------------------------------------------------
+# Weighting-function modified Air Mass Factors
+#
+# 1st line: Logical ("T"/"F") followed by "1/2/3" where
+#           1 = Stratospheric AMF
+#           2 = Stratospheric and Tropospheric AMF
+#           3 = Tropospheric AMF
+#           Not applicable to HCHO. Just left here to back compliance with
+#           the BrO development
+# 2nd line: Three albedos, the first for land and ocean, the
+#           second for snow surfaces and the third for clouds
+#           (Note that at present the albedo is not interpolated for the 
+#           wavelenght dependent AMFs; the closest match
+#           is being used instead.)
+# 3rd line: Only read if "1st line" is "F"; 
+#           wavelengths for AMF table look-up.
+#              If only one wavelength to be used set both to same value
+#              Averaged for Scattering weights
+#           NOTE: WVL <= 0 will sets AMFs to 1.0 ("slant columns")
+#           Third number indicating maximun SZA for AMFs calculations
+#              SZA above it will be given that SZA for the AMF interpolation
+# ---------------------------------------------------------------
+Use weighting-function modified AMFs?
+F 1
+0.10 0.85 0.80
+340.0 340.0 70.0
+
+# ------------------------------------------------------------------------
+# Setting for the solar calibration parameters
+# 
+#   INT ... maximum number of iterations for wvl.cal. (<0: default)
+#   bl0 ... baseline 0th order
+#   bl1 ... baseline 1st order
+#   bl2 ... baseline 2nd order
+#   bl3 ... baseline 3rd order
+#   bl4 ... baseline 4th order
+#   bl5 ... baseline 5th order
+#   sc0 ... scaling  0th order
+#   sc1 ... scaling  1st order
+#   sc2 ... scaling  2nd order
+#   sc3 ... scaling  3rd order
+#   sc4 ... scaling  4th order
+#   sc5 ... scaling  5th order
+#   sin ... solar intensity ("albedo" in non-normalized case)
+#   hwe ... instrument function Gaussian half-width at 1/e
+#   asy ... instrument function asymmetry parameter
+#   shi ... spectral shift
+#   squ ... spectral squeeze
+# ------------------------------------------------------------------------
+Solar calibration parameters
+ 20           # maximum number of iterations for (solar) wvl.cal. (<0: default)
+bl0   0.0250   -1.0e+30   1.0e+30
+bl1   0.0030   -1.0e+30   1.0e+30
+bl2   0.0001   -1.0e+30   1.0e+30
+bl3  -5.0E-05  -1.0e+30   1.0e+30
+bl4   0         0         0       0.0001   -1.0e+30   1.0e+30
+bl5   0         0         0       0.0001   -1.0e+30   1.0e+30
+sc0   1.0       1.0       1.0    
+sc1  -0.0050   -1.0e+30   1.0e+30
+sc2  -0.0003   -1.0e+30   1.0e+30
+sc3  -8.0E-05  -1.0e+30   1.0e+30
+sc4   0         0         0       -8.0E-05  -1.0e+30   1.0e+30
+sc5   0         0         0        0.0001   -1.0e+30   1.0e+30
+sin   0.6      -1.0e+30   1.0e+30
+hwe   0.3      -1.0       1.0     # Gaussian HW@1/e
+asy   0.0      -1.0       1.0     # Gaussian asymmetry
+shi   0.05     -0.1       0.1
+squ   0         0         0    
+eoi   0         0         0        # end of input
+
+Radiance calibration parameters
+ F F                  # Use O3 prefit?  Vary prefitted O3 columns?
+ F F                  # Use BrO prefit? Vary prefitted BrO columns?
+ T                    # Correct O3 cross sections for "solar I0 effect"?
+ 10                   # maximum number of iterations for fitting (<0: default)
+ 10000                # frequency of radiance wavelength calibration
+  85.00               # maximum solar zenith angle to process
+   0.00               # "Top of Atmosphere" height [km]
+  +0.91               # "phase" of undersampling spectrum
+bl0    0.001     -1.0e+30    1.0e+30
+bl1    0.001     -1.0e+30    1.0e+30
+bl2    0.0001    -1.0e+30    1.0e+30
+bl3    0.0001    -1.0e+30    1.0e+30
+bl4    0          0          0       0.0001    -1.0e+30    1.0e+30
+bl5    0          0          0       0.0001    -1.0e+30    1.0e+30
+sc0    1.0        1.0        1.0    
+sc1    0.001    -1.0e+30    1.0e+30
+sc2    5.0E-05   -1.0e+30    1.0e+30
+sc3    5.0E-05   -1.0e+30    1.0e+30
+sc4    0          0          0        0.0001    -1.0e+30    1.0e+30
+sc5    0          0          0        0.0001    -1.0e+30    1.0e+30
+sin    0.6       -1.0e+30    1.0e+30
+hwe   -1.0       -1.0       -1.0     # Gaussian HW@1/e
+asy   -1.0       -1.0       -1.0     # Gaussian asymmetry
+shi    0.05     -0.1        0.1
+squ    0          0          0
+eoi    0          0          0  # end of input
+
+# ========================================================================
+# Radiance fitting parameters. Each block is headed by the component name
+# to be initialized ("ring", "no2", etc), followed by up to three lines
+# with the type of spectrum contribution that is being added:
+#
+# "ad1" = added first (before Lambert-Beer)
+# "lbe" = Lambert-Beer
+# "ad1" = added last  (after  Lambert-Beer)
+#
+# and on the same line three numbers specifying the first guess and the
+# range of acceptable values.
+#
+# "eoi 0 0 0" terminates each individual block.
+#
+#
+# EXCEPTION: Ozone for BrO and HCHO (and SO2) is fitted with a polynomial
+#            wavelength contribution that uses the three parameters in a
+#            different manner, namely to correct for the wavelength 
+#            dependence of the AMF.
+#
+#            This requires "Correct O3 AMF Wavelength Dependence?" to be
+#            set to T.
+# ========================================================================
+Correct O3 AMF Wavelength Dependence?
+F
+
+Radiance fitting parameters
+ring
+ad1    0.02     -1.0e+30    1.0e+30
+eoi    0         0          0
+o3_t1
+ad1    0         0          0
+lbe    1.00E-3   -1.0e+30    1.0e+30
+ad2    0         0          0
+eoi    0         0          0
+o3_t2
+ad1    0         0          0
+lbe    1.00E-3   -1.0e+30    1.0e+30
+ad2    0         0          0
+eoi    0         0          0
+o3_t3
+ad1    0         0          0
+lbe    0         0          0
+ad2    0         0          0
+eoi    0         0          0
+no2_t1
+lbe    1.0E-03  -1.0e+30    1.0e+30
+eoi    0         0          0
+no2_t2
+lbe    0         0          0
+eoi    0         0          0
+o2o2
+lbe    1.0E-03   -1.0e+30    1.0e+30
+eoi    0         0          0
+so2
+lbe    0         0          0
+eoi    0         0          0
+bro
+lbe    5.0E-03  -1.0e+30    1.0e+30
+eoi    0         0          0
+oclo
+lbe    0         0          0 1.0E-03   -1.0e+30   1.0e+30  
+eoi    0         0          0
+hcho
+lbe    1.0e-03  -1.0e+30    1.0e+30
+eoi    0         0          0
+h2o
+lbe    0         0          0 1.0e-03  -1.0e+30    1.0e+30  
+eoi    0         0          0
+lqh2o
+lbe    0         0          0
+eoi    0         0          0
+glyox
+lbe    0         0          0
+eoi    0         0          0
+io
+lbe    0         0          0
+eoi    0         0          0
+hono
+lbe    0         0          0
+eoi    0         0          0
+vraman
+ad1    0         0          0
+lbe    0         0          0
+ad2    0         0          0
+eoi    0         0          0
+commod
+ad2    0         0          0 0.0010   -1.0e+30   1.0e+30
+eoi    0         0          0
+pseudo
+lbe    0         0          0 1.0E-03  -1.0e+30   1.0e+30
+eoi    0         0          0
+usamp1
+ad1    0         0          0 -0.01    -1.0e+30   1.0e+30
+eoi    0         0          0
+usamp2
+ad1   +0.01     -1.0e+30    1.0e+30
+eoi    0         0          0
+end_of_input
+
+# -------------------------------------------------------------
+# Here we set the maximum column amount up to which a fitted
+# column value is assigned a QA flag of "good". Anything beyond
+# this is considered "suspect". The value is used for both
+# positive and negative fitted columns, i.e., it is used to
+# constrain the absolute value of the fitting result.
+# -------------------------------------------------------------
+Maximum Good Column Amount
+1.0E+19
+
+# ----------------------------------------------------------------
+# The next block controls the cross-track smoothing procedure.
+# Input lines as follows:
+#
+# 1st Line: Logical for destriping
+#
+# 2nd Line: Remove cross-track bias Logical
+#           Order of cross-track bias polynomial
+#
+# 3rd Line: Order of baseline polynomial
+#           Order of scaling polynomial
+#           Order of polynomial to fit to cross-track average
+#
+# 4th Line: Number of scan line blocks to averge
+#           Fixed latitude ramge for destriping
+# ========> Set first number to less than 0 if fixed lats are desired
+#           The blocks option is now death
+#
+# 5th Line: Number of iterations for cross-track fitting
+#
+# 6th Line: Number of iterations for iterative cross-track striping
+# ----------------------------------------------------------------
+Cross-Track Smoothing
+ F
+ T 3
+ 8 1 1
+ -200  -50.0 +50.0
+   8
+  10
+
+# ------------------------------------------------------------------
+# Next entry turns on the new shift and squeeze.
+# F it does
+# Lambda = Lambda * (1 + squeeze) + shift it will be
+# T it does
+# Lambda = Lambda * (1 + squeeze) + shift - Lambda_average * squeeze
+# ------------------------------------------------------------------
+New shift and squeeze
+T
+
+# --------------------------------------------------------------------
+# Logical for background correction using a Reference Sector approach.
+# The reference sector is placed over the Pacific
+# T/F
+# --------------------------------------------------------------------
+Reference sector correction
+T
+
+# --------------------------------------------------------------------
+# Logical for the computation and output of Scattering weights, Target
+# gas profile and Averaging Kernels. This should become the standard
+# after the new two step approach AMF routines are in place.
+# --------------------------------------------------------------------
+Scattering weights output
+T
+
+# ------------------------------------------------------
+# Logical to compute tropospheric and stratospheric AMFs
+# ------------------------------------------------------
+Stratospheric and Tropospheric AMF
+F

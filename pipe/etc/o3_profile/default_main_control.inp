@@ -1,0 +1,135 @@
+# ============================================================
+# Main input contorl file 
+# !!! Note that lines starts with "*" indicate the beginning
+#          of input blocks and cannot be removed
+#     Lines starts with "#" are comments
+# ============================================================
+
+# Currently supported: OMI or TMPO
+# GOME/GOME2 is temporarily disabled in this pge
+*Satellite instrument name
+TMPO
+
+*Reduce spectral resolution
+F      ; T: Reduce spectral resolution; F: Original
+1      ; which slit 1: Symmetric Gaussian 2. Triangular
+0.98681265 1.0655328  ; additional slit width (FWHM) for each channel
+T      ; T: read wavelength grid from file (nex line), F: generated based sample rate, FWHM
+INP/SBUV2_wavelengths.dat
+3      ; sample rate (per FWHM)
+0.05   ; fine grid interval (before convolution), if negative or greater than original, then use original
+
+# Note that bands are in increasing order (no internal sort/check)
+# no overlapping between them different channels
+*OMI radiance bands to be used ; (band 1: UV-1; band 2: UV-2; band 3: VIS)
+T   4                  # Coadd across track, # of observations to be coadded
+T   2                  # Coadd along track,  # of observations to be coadded
+T                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
+2   F  F               # # of bands, spectral coadd? wavelength calibration before coadd? 
+1  269.0 309.0  5  2   # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
+2  312.0 330.0  2  2 
+
+# If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
+# Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
+*Write HDF output?
+3
+
+*General fitting parameters
+ F F T F      # use backup, use solar composite, median/pc0, all orbits / first 7 orbits
+ 0            # 0: Symmetric Gauss 1: Asymmetric Gauss  2. Voigt  3: Tirangle (symmetric) 4: OMI-preflight slit
+ 0.01        # Slit truncation limit
+ F F F F  F   # variable slit, wavelength calibration, second iter for sol wavcal, smooth cali, slit_rad
+ 31 10 T      # slit fit pts, slit step points, on-line slit fit (21, 5)
+ 21 6  T      # wavcal fit pts, wavcal step points, on-line wavcal cal (15, 3)
+ F            # SMOOTH spectra?
+ F            # DOAS fitting?
+ T            # Use measurement error
+ -5 -5        # First + last OMI scan lines  (- values for "all")
+ 43 44        # First + last OMI cross track pixels (- values for "all")
+ 1.0E-06      # pseudo rank tolerance constant  (TOL = SQRT(mach. prec.))
+ 1.0E-02      # relative convergence constant (EPSREL = SQRT(mach. prec.))
+ 1.0E-02      # absolute convergence constant (EPSABS = mach. prec.)
+ 1.0E-02      # parameterconvergence constant (EPSX   = SQRT(mach. prec.))
+                                      
+*Solar calibration parameters
+OMSAO_NKPNO_SolarSpec_ReCal.dat 
+ F           # do solar weighting?
+ 10          # maximum number of iterations for (solar) wvl.cal. (<0: default)
+bl0  0 0 0 1.0E-5 -1.0E+99   1.0E+99
+bl1  0 0 0 -1.0E-6  -1.0E+99   1.0E+99
+bl2  0 0 0 1.0E-7   -1.0E+99  1.0E+99
+bl3  0 0 0 -1.0E-08  -1.0E+99  1.0E+99
+sc0  1 1 1  -1.0E+99  1.0E+99    
+sc1  1.0E-4  -1.0E+99   1.0E+99
+sc2  -5.43E-05 -1.0E+99   1.0E+99
+sc3  3.5E-6  -1.0E+99   1.0E+99
+sin  1.00E+00  -1.0E+99   1.0E+99
+hwe  0.3 -10.0E+00  10.0E+00                   # Gaussian HW@1/e
+asy  0 0 0 -0.04 -1.0E+99 1.0E+99            # Gaussian asymmetry
+shi  -1.00E-03 -1.0E+99 1.0E+99
+squ  0 0 0 1.0E-5 -0.01  0.01 
+vgl  0 0 0 0.03 0.03 0.03 0.067 -1.0E+99 1.0E+99     
+vgr  0 0 0 0.03  0.03 0.03 -1.0E+99 1.0E+99
+hwl  0 0 0 0.159  -1.0E+99 1.0E+99
+hwr  0 0 0 0.204  -1.0E+99 1.0E+99
+eoi  0 0 0  # end of input
+
+*Radiance calibration parameters
+ F            # renormalize radiance spectrum?
+ F            # weight radiance spectrum?
+ 10            # maximum number of iterations for fitting (<0: default)
+ 100          # frequency of radiance wavelength calibration
+ 88.0         # maximum solar zenith angle to process
+ 0.0          # "Top of Atmosphere" height [km]
+ +0.1         # "phase" of undersampling spectrum
+bl0   0 0 0 -1.56  -1.0E+99   1.0E+99     
+bl1   0 0 0 -1.56  -1.0E+99   1.0E+99   
+bl2   0 0 0 1.590E-8   -1.0E+99   1.0E+99
+bl3   0 0 0 -5.56E-6   -1.0E+99   1.0E+99
+sc0   1.0 1.0 1.0 -1.0E+99 1.0E+99    
+sc1   0 0 0 -.01E   -1.0E+99   1.0E+99
+sc2   0 0 0 +0.0025  -1.0E99 1.0E99  -1.0000004E-04   -1.0E+99   1.0E+99
+sc3   0 0 0 -0.01  -1.0E99 1.0E99 5.0000000E-05   -1.0E+99   1.0E+99
+sin   1.0 1.0 1.0 -1.0E99 1.0E99 0.0 1.0 0.7 0.7
+hwe   0.0 0.0 0.0   # Gaussian HW@1/e
+asy   0.0 0.0 0.0   # Gaussian asymmetry
+shi   0 0 0 1.83E-3 -1.0E+99  1.0E+99
+squ   0.00 0.00  00.0         
+vgl   0.00 0.00 0.00
+vgr   0.00 0.00 0.00
+hwl   0.00 0.00 0.00
+hwr   0.00 0.00 0.00
+eoi   0 0 0           #  end of input
+
+*Radiance fitting parameters
+no2_t1
+OMSAO_NO2_220K_noslit.dat
+ad1    0 0 0 
+lbe    0 0 0 2.62E-04 -1.0E+99 1.0E+99
+ad2    0 0 0 
+no2s   0 0 0   -1.0E+99 1.0E+99
+so2   
+OMSAO_SO2_295K_SAO-IASB.dat
+ad1    0 0 0 
+lbe    0 0 0 8.43E-05 -0.1E+01 1.0E+99  OMSAO_SO2_295K_SAO-IASB.dat
+ad2    0 0 0 
+so2s   0 0 0 -1.0E+99 1.0E+99  OMSAO_SO2_scia_fm_293.dat
+so2v   
+OMSAO_SO2_scia_fm_273.dat
+ad1    0 0 0 
+lbe    0 0 0 8.43E-05 -1.0E+99 1.0E+99  OMSAO_SO2_295K_SAO-IASB.dat
+ad2    0 0 0 
+so2vs  0 0 0 0.1 -1.0E+99 1.0E+99  OMSAO_SO2_scia_fm_293.dat
+bro
+OMSAO_BrO_228K_o3prof_noslit.dat
+ad1    0 0 0 
+lbe    5.67D-5  -0.1E+01 1.0E+99
+ad2    0 0 0 
+bros   0 0 0  -1.0E+99 1.0E+99
+hcho
+OMSAO_HCHO_300K_Cantrell.dat
+ad1    0 0 0 
+lbe    0 0 0 1.00D-5 -1.0E+99 1.0E+99
+ad2    0 0 0 
+hchos  0 0 0  -1.0E+99 1.0E+99
+end_of_input

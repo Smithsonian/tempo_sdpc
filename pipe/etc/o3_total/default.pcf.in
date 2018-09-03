@@ -1,0 +1,92 @@
+?   SYSTEM RUNTIME PARAMETERS
+1
+1
+?   PRODUCT INPUT FILES
+! @spectra_dir@
+1100|@radiance_file@||||@radiance_file@|1
+1104|@irradiance_file@||||@irradiance_file@|1
+500001|@cloud_file@||||@cloud_file@|1
+10301|leapsec.dat|@refdata_dir@/data||||1
+400100|@backup_irr_file@|@refdata_dir@/data/BACKUP_IRR|||@backup_irr_file@|1
+400121|OZON_CLIM.txt|@refdata_dir@/data/CLIM||||1
+400122|TEMP_CLIM.txt|@refdata_dir@/data/CLIM||||1
+400150|terrainPressure0303.he4|@refdata_dir@/data/V8ANC||||1
+400151|cloud_pressure.he4|@refdata_dir@/data/V8ANC||||1
+400152|v8snowice.he4|@refdata_dir@/data/V8ANC||||1
+400400|NVAL.SO2_w12_RRS.h5|@refdata_dir@/data/LUT||||1
+400401|DNDX.SO2_w12.h5|@refdata_dir@/data/LUT||||1
+410100|OMTO3.MCF|@refdata_dir@/control||||1
+420001|OMI-Aura_L2-NVALC_TO3_v00051.he4|@refdata_dir@/data||||1
+420300|OMI-Aura_L4-OMTO3yrFlag_2012m0101t0000-2012m0305t0000_v003-2012m0305t151836.he4|@refdata_dir@/data||||1
+10250|MCF|||||1
+10252|GetAttr.temp|||||1
+10254|MCFWrite.temp|||||1
+?   PRODUCT OUTPUT FILES
+! @product_dir@
+449010|@product_file@|||||1
+10255|asciidump|||||1
+?   SUPPORT INPUT FILES
+! ./
+?   SUPPORT OUTPUT FILES 
+! @product_dir@
+10100|LogPGE|||||1
+10101|LogPGE|||||1
+10102|LogPGE|||||1
+10103|TmpStatus|||||1
+10104|TmpReport|||||1
+10105|TmpUser|||||1
+10110|MailFile|||||1
+10111|ShmMem|||||1
+?   USER DEFINED RUNTIME PARAMETERS
+10220|Toolkit version string|SCF  TK5.2.18
+200100|SMF Verbosity Threshold|2
+200105|PGEVERSION|"2.2.1"
+200110|ProcessingCenter|"OMI SIPS"
+200115|ProcessingHost|"Linux 2.6.9-89.0.20.ELsmp i686"
+200135|REPROCESSINGACTUAL|"processed once"
+200170|ProcessLevel|"2"
+200175|InstrumentName|"OMI"
+200180|OPERATIONMODE|"Test"
+200185|AuthorAffiliation|"NASA/GSFC"
+200190|AuthorName|"U.S. OMI Science Team"
+200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
+200200|OrbitNumber|04670
+200210|SwathName|"OMI Column Amount O3"
+400010|wl_min|308.0
+400020|wl_mix|312.6
+400030|wl_oz|317.5
+400040|wl_reflLow|331.3
+400050|wl_reflHigh|360.1
+400060|wl_max|370.0
+400090|CLOUDPRESSURESOURCE|"OMCLDRR"
+400091|TERRAINPRESSURESOURCE|"ETOPO-5"
+400092|TEMPERATURESOURCE|"Climatology"
+400093|SNOWICESOURCE|"Climatology"
+400094|APRIORIOZONEPROFILESOURCE|"Climatology"
+123456|VERSIONID|3
+10109|TransmitFlag; 1=transmit,0=disable|0
+10106|RemoteHost|sandcrab
+10107|RemotePath|/usr/kwan/test/PC/data
+10108|EmailAddresses|kwan@eos.hitc.com
+10114|Logging Control; 0=disable logging, 1=enable logging|1
+10115|Trace Control; 0=no trace, 1=error trace, 2=full trace|0
+10116|Process ID logging; 0=don't log PID, 1=log PID|0
+10117|Disabled status level list (e.g. W S F)|0
+10118|Disabled seed list|0
+10119|Disabled status code list|0
+10120|ADEOS-II s/c reference time|0
+10121|ADEOS-II ground reference time|0
+10122|ADEOS-II s/c clock period|0
+10123|TRMM UTCF value|0
+10124|NASA PB5C time Epoch date (ASCII UTC)|0
+10507|ephemeris data quality flag mask|65536
+10508|attitude data quality flag mask|65536
+10911|ECS DEBUG; 0=normal, 1=debug|0
+10099|Local IP Address of 'ether'|155.157.31.87
+?   INTERMEDIATE INPUT
+! ./
+?   INTERMEDIATE OUTPUT
+! ./
+?   TEMPORARY I/O
+! ./
+?   END

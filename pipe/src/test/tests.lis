@@ -1,0 +1,6 @@
+test_daemon.sh
+test_cron.sh
+test_batch.sh
+test_process1.sh
+test_multi.sh
+test_two_stage.sh

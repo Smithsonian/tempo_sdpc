@@ -1,0 +1,30 @@
+# -*- sh -*-
+
+prefix = @prefix@
+SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
+
+all:
+	@echo "targets: install"
+
+SCRIPT_FILES= run_postinr_L2.sh prep_L2.sh run_L2.sh run_L2_cleanup.sh \
+    run_trace_gas.sh run_o3t.sh run_o3p_util.sh run_o3p_block.sh \
+    run_L0_pre_inr.sh run_L0.sh wavecal_block.sh run_wavecal.sh \
+    run_wavecal_merge.sh
+
+INSTALL = @INSTALL@
+MKINSDIR = ../../autoconf/mkinsdir.sh
+
+install_directories:
+	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
+
+install_scripts:
+	@for X in $(SCRIPT_FILES); \
+	do \
+		echo $(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		$(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install:	install_directories install_scripts

@@ -206,13 +206,34 @@ elif ! test -r "$LEAP_SECONDS_LIST" ; then
 fi
 AC_SUBST(LEAP_SECONDS_LIST)
 
+JD_WITH_LIBRARY(slang)
+JD_SLANG_MODULE_INSTALL_DIR
+INSTALL_MODULE="\$(INSTALL_DATA)"
+AC_SUBST(INSTALL_MODULE)
+
+dnl Check these header since they cause trouble
+AC_CHECK_HEADERS( \
+stdlib.h \
+unistd.h \
+)
+
+AC_CHECK_SIZEOF(short, 2)
+AC_CHECK_SIZEOF(int, 4)
+AC_CHECK_SIZEOF(long, 4)
+AC_CHECK_SIZEOF(float, 4)
+AC_CHECK_SIZEOF(double, 8)
+
+JD_SET_RPATH($libdir)
+
 JH_LIST_SOURCES(L1_trace_gas/src)
 
-dnl AC_CONFIG_HEADER(include/config.h:include/config.hin)
+AC_CONFIG_HEADER(pipe/src/config.h:pipe/src/config.hin)
 
 AC_CONFIG_FILES([\
  Makefile:autoconf/Makefile.in \
  Makefile.defines:autoconf/Makefile.defines.in \
+ pipe/src/Makefile:pipe/src/Makefile.in \
+ pipe/slurm/Makefile:pipe/slurm/Makefile.in \
 ])
 AC_OUTPUT
 

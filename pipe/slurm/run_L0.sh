@@ -1,0 +1,173 @@
+#! /bin/sh
+#SBATCH --cpus-per-task=1
+#SBATCH --output=/dev/null
+
+# 1. Assume this script is started in a writeable directory
+#    with the path to a (hidden) Level 0 granule file provided
+#    on the command line.  The L0 granule may contain dark,
+#    irradiance or radiance frames.
+#
+#    The following environment variables are assumed to be set:
+#          * SDPC_ROOT, SDPC_RUN_DIR
+#
+# 2. When execution is successful...
+#
+#    On error...
+#
+#---------------------------------------------------------------------
+
+# exit on error
+set -e
+# exit upon any usage of an undefined variable
+set -u
+ulimit -s unlimited
+
+# check that paths are valid
+test -d $SDPC_ROOT || exit 1
+test -d $SDPC_RUN_DIR || exit 1
+test -d $SDPC_ARCHIVE_DIR || exit 1
+
+if test $# -ne 2 ; then
+  echo "Usage: $0 <granule-path> <target-basename>"
+  exit 1
+fi
+granule_path="$1"
+granule_basename="$2"
+
+# Setup paths to scripts, config files
+# current directory, output directories
+#
+export PATH="$SDPC_ROOT/bin:$PATH"
+etc_dir="$SDPC_ROOT/etc"
+
+l0_incoming_dir="$SDPC_RUN_DIR/L0/incoming"
+l0_out_dir="$SDPC_RUN_DIR/L0/out"
+l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
+
+l1_out_dir="$SDPC_RUN_DIR/L1/out"
+l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
+
+inr_input_cache="$SDPC_RUN_DIR/L1/radiance_inr_staging"
+
+# Make a working directory with a local copy of the granule file.
+work_dir=$(basename $granule_basename .nc)
+/bin/mkdir "$work_dir"
+cd $work_dir
+/bin/cp "$granule_path" "$granule_basename"
+chmod u+w "$granule_basename"
+
+work_dir_tarfile="${work_dir}.tar"
+
+processing_version=1
+
+mkgranule_ident -o granule_ident.csv -v $processing_version $granule_basename
+
+run_dir=$(pwd)
+parent_dir=$(dirname "$run_dir")
+
+tar_product_to_dest_dir()
+{
+   dest_dir=$1
+   /bin/mkdir -p $dest_dir
+
+   cd $run_dir
+   /bin/rm $granule_basename
+
+   cd $parent_dir
+   tar c --remove-files -f $dest_dir/.$work_dir_tarfile $work_dir
+   /bin/mv $dest_dir/.$work_dir_tarfile $dest_dir/$work_dir_tarfile
+}
+
+finish()
+{
+   tar_product_to_dest_dir "$l0_repro_dir"
+}
+trap finish EXIT
+
+run_l0_ccd()
+{
+   output_file="$1"
+   dark_option="$2"
+
+   /bin/cp ${etc_dir}/l0_ccd.cfg .
+
+   /usr/bin/time --verbose \
+   L0_ccd -i $l0_incoming_dir/telem \
+          -o $output_file $dark_option \
+          $granule_basename > log_l0_ccd.txt 2>&1
+}
+
+. $SDPC_ROOT/bin/run_wavecal.sh
+
+run_inr_prep()
+{
+   target_file="$1"
+
+   /bin/cp ${etc_dir}/l1_inr_prep.cfg .
+
+   /usr/bin/time --verbose \
+   L1_inr_prep $target_file > log_inr_prep.txt 2>&1
+}
+
+remove_run_dir()
+{
+   /bin/rm -f $output_file $granule_basename \
+           l0_ccd.cfg log_l0_ccd.txt \
+           l1_inr_prep.cfg log_inr_prep.txt \
+           granule_ident.csv
+   /bin/rmdir $run_dir
+}
+
+case "${granule_basename}" in
+  *drk0* )
+  output_file=$(mkgranule_name -p drk1 -v $processing_version $granule_basename)
+  run_l0_ccd $output_file ""
+  tar_out_dir="$l0_out_dir"
+  archive_level="L0"
+  ;;
+
+  *irr0* )
+  output_file=$(mkgranule_name -p irr1 -v $processing_version $granule_basename)
+  dark_file_path=$(lookup_dark.sh $granule_basename)
+  run_l0_ccd $output_file "-d $dark_file_path"
+  run_wavecal $output_file "0-4"
+  tar_out_dir="$l1_out_dir"
+  archive_level="L1"
+  ;;
+
+  *rad0* )
+  output_file=$(mkgranule_name -p rad -v $processing_version $granule_basename)
+  dark_file_path=$(lookup_dark.sh $granule_basename)
+  run_l0_ccd $output_file "-d $dark_file_path"
+  #Better to run radiance wavelength calibration post-INR
+  #run_wavecal $output_file "0-9"
+  run_inr_prep $output_file
+
+  # Before we archive it, the radiance file must go through INR:
+  tar_out_dir=""
+  archive_level=""
+
+  rad_tmpfile=$inr_input_cache/.${output_file}
+  /bin/cp $output_file $rad_tmpfile
+  /bin/mv $rad_tmpfile $inr_input_cache/$output_file
+  remove_run_dir
+  ;;
+
+  * )
+  printf "*** Unsupported granule filename pattern\n"
+  exit 1
+  ;;
+esac
+
+trap - EXIT
+
+if test x"$tar_out_dir" != x ; then
+   tar_product_to_dest_dir "$tar_out_dir"
+   tarfile_path="$tar_out_dir/${work_dir_tarfile}"
+   archive.sl --delete -a $SDPC_ARCHIVE_DIR -l $archive_level $tarfile_path
+fi
+
+# Assume the initial L0 granule was archived when it was produced,
+# so it's ok to delete this copy once the archive.sl process has
+# succeeded.
+/bin/rm "$granule_path"

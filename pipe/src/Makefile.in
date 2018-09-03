@@ -1,0 +1,173 @@
+# -*- sh -*-
+
+include ../../Makefile.defines
+
+#---------------------------------------------------------------------------
+# List of modules and associated .sl files to install
+#---------------------------------------------------------------------------
+MODULES = daemon-module.so
+SL_FILES = daemon.sl pipeutil.sl fork_socket.sl
+SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl \
+            lookup_irr.sh lookup_snow.sh lookup_met.sh lookup_dark.sh
+ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
+HLP_FILES = ../doc/help/daemon.hlp
+DOC_FILES = ../COPYRIGHT ../README ../doc/text/daemon.txt
+MODULE_VERSION	= `./mkversion.sh`
+
+#---------------------------------------------------------------------------
+# Installation Directories
+#---------------------------------------------------------------------------
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+datarootdir = @datarootdir@
+MODULE_INSTALL_DIR = @MODULE_INSTALL_DIR@
+SL_FILES_INSTALL_DIR = @SL_FILES_INSTALL_DIR@
+SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
+ETC_FILES_INSTALL_DIR = $(prefix)/etc
+HLP_FILES_INSTALL_DIR = $(SL_FILES_INSTALL_DIR)/help
+DOC_FILES_INSTALL_DIR = $(datarootdir)/doc/slang-daemon
+
+#---------------------------------------------------------------------------
+# C Compiler to create a shared library
+#---------------------------------------------------------------------------
+#CC		= @CC@
+#CFLAGS		= @CFLAGS@ @SLANG_DLL_CFLAGS@
+#LDFLAGS	= @LDFLAGS@
+#CC_SHARED 	= @CC_SHARED@
+CC_SHARED       = $(CC) $(CFLAGS) -shared -fPIC
+
+#---------------------------------------------------------------------------
+# Location of the S-Lang library and its include file
+#---------------------------------------------------------------------------
+SLANG_INC	= @SLANG_INC@
+SLANG_LIB	= @SLANG_LIB@ -lslang
+
+#---------------------------------------------------------------------------
+# Additional Libraries required by the module
+#---------------------------------------------------------------------------
+#RPATH		= @RPATH@
+MODULE_LIBS	= $(TELL_LIB)
+
+TELL_INC        = -I@TELL_INC@
+TELL_LIB        = -L@TELL_LIB@ -ltell
+
+#---------------------------------------------------------------------------
+# Misc Programs required for installation
+#---------------------------------------------------------------------------
+INSTALL		= @INSTALL@
+INSTALL_DATA	= @INSTALL_DATA@
+INSTALL_MODULE	= @INSTALL_MODULE@
+MKINSDIR	= ../../autoconf/mkinsdir.sh
+RM		= rm -f
+LN		= ln -s
+
+#---------------------------------------------------------------------------
+# DESTDIR is designed to facilitate making packages.  Normally it is empty
+#---------------------------------------------------------------------------
+DESTDIR =
+DEST_MODULE_INSTALL_DIR = $(DESTDIR)$(MODULE_INSTALL_DIR)
+DEST_SL_FILES_INSTALL_DIR = $(DESTDIR)$(SL_FILES_INSTALL_DIR)
+DEST_SCRIPT_FILES_INSTALL_DIR = $(DESTDIR)$(SCRIPT_FILES_INSTALL_DIR)
+DEST_ETC_FILES_INSTALL_DIR = $(DESTDIR)$(ETC_FILES_INSTALL_DIR)
+DEST_HLP_FILES_INSTALL_DIR = $(DESTDIR)$(HLP_FILES_INSTALL_DIR)
+DEST_DOC_FILES_INSTALL_DIR = $(DESTDIR)$(DOC_FILES_INSTALL_DIR)
+
+#---------------------------------------------------------------------------
+LIBS = $(SLANG_LIB) $(MODULE_LIBS) $(RPATH) $(DL_LIB) -lm
+INCS = $(SLANG_INC) $(TELL_INC)
+
+all: $(MODULES)
+
+#---------------------------------------------------------------------------
+# Put Rules to create the modules here
+#---------------------------------------------------------------------------
+daemon-module.so: daemon-module.c
+	$(CC_SHARED) $(INCS) daemon-module.c -o daemon-module.so $(LIBS)
+#---------------------------------------------------------------------------
+# Regression tests
+#---------------------------------------------------------------------------
+check:
+	cd test ; $(MAKE) check
+#---------------------------------------------------------------------------
+# Installation Rules
+#---------------------------------------------------------------------------
+install_directories:
+	$(MKINSDIR) $(DEST_MODULE_INSTALL_DIR)
+	$(MKINSDIR) $(DEST_SL_FILES_INSTALL_DIR)
+	$(MKINSDIR) $(DEST_SCRIPT_FILES_INSTALL_DIR)
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/trace_gas
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/cloud
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/o3_total
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/o3_profile
+	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
+	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
+
+install_modules:
+	@for X in $(MODULES); \
+	do \
+		Y=$$X.$(MODULE_VERSION); \
+		YDEST=$(DEST_MODULE_INSTALL_DIR)/$$Y; \
+		echo $(INSTALL_MODULE) $$X $$YDEST; \
+		$(INSTALL_MODULE) $$X $$YDEST; \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+		$(RM) $(DEST_MODULE_INSTALL_DIR)/$$X; \
+		$(LN) $$Y $(DEST_MODULE_INSTALL_DIR)/$$X; \
+	done
+
+install_scripts:
+	@for X in $(SCRIPT_FILES); \
+	do \
+		echo $(INSTALL) $$X $(DEST_SCRIPT_FILES_INSTALL_DIR); \
+		$(INSTALL) $$X $(DEST_SCRIPT_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install_etcfiles:
+	@for X in $(ETC_FILES); \
+	do \
+		echo $(INSTALL_DATA) ../etc/$$X $(DEST_ETC_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) ../etc/$$X $(DEST_ETC_FILES_INSTALL_DIR)/$$X; \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install_slfiles:
+	@for X in $(SL_FILES); \
+	do \
+		echo $(INSTALL_DATA) $$X $(DEST_SL_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) $$X $(DEST_SL_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+install_hlpfiles:
+	@for X in $(HLP_FILES); \
+	do \
+		echo $(INSTALL_DATA) $$X $(DEST_HLP_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) $$X $(DEST_HLP_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+install_docfiles:
+	@for X in $(DOC_FILES); \
+	do \
+		echo $(INSTALL_DATA) $$X $(DEST_DOC_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) $$X $(DEST_DOC_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install: all install_directories install_modules \
+          install_scripts install_etcfiles install_slfiles # install_hlpfiles install_docfiles
+
+clean:
+	-/bin/rm -f $(MODULES)
+distclean: clean
+	-/bin/rm -f config.h Makefile

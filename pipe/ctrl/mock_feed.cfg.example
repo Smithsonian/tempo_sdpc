@@ -1,0 +1,24 @@
+# DataProvider type
+Symlink
+# Source directory
+/home/houck/test_data/synth_granules_v2_fixed+lps
+# Destination directory
+/home/houck/sdpc_test/inr/Staging/Granules
+# File list
+360.0	tempo_20130715T175956Z_000003_01_v1_rad.nc
+360.0	tempo_20130715T180553Z_000003_02_v1_rad.nc
+360.0	tempo_20130715T181149Z_000003_03_v1_rad.nc
+360.0	tempo_20130715T181745Z_000003_04_v1_rad.nc
+360.0	tempo_20130715T182341Z_000003_05_v1_rad.nc
+360.0	tempo_20130715T182937Z_000003_06_v1_rad.nc
+360.0	tempo_20130715T183533Z_000003_07_v1_rad.nc
+360.0	tempo_20130715T184129Z_000003_08_v1_rad.nc
+360.0	tempo_20130715T184725Z_000003_09_v1_rad.nc
+360.0	tempo_20130715T185321Z_000003_10_v1_rad.nc
+
+
+
+
+
+
+
