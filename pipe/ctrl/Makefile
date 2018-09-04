@@ -7,10 +7,11 @@ default:	inr-targets pipe-targets
 inr-targets:
 	@echo "INR targets:  inr-config inr-install inr-start inr-feed clean"
 
-LOGGING_CONF_FILE  = inr_config/TempoLogging.conf
-PIPELINE_CONF_FILE = inr_config/TempoPipelineInterfaceSAO.conf
+INR_CONFIG_DIR = inr_config
+LOGGING_CONF_FILE  = TempoLogging.conf
+PIPELINE_CONF_FILE = TempoPipelineInterfaceSAO.conf
 
-INR_AUTOGEN_FILES = $(LOGGING_CONF_FILE) $(PIPELINE_CONF_FILE)
+INR_AUTOGEN_FILES = $(addprefix $(INR_CONFIG_DIR)/,$(LOGGING_CONF_FILE) $(PIPELINE_CONF_FILE))
 
 INR_DIRS = config logs scantailoring Output CloudProducts \
            Staging/Granules Staging/Left Staging/Right Staging/rsr
@@ -20,7 +21,7 @@ INR_PIPE = $(INRSW_INSTALL_DIR)/bin/PipelineInterface
 
 inr-start:
 	cd $(INR_PROCESSING_ROOT) ; \
-	exec $(INR_PIPE) $(PIPELINE_CONF_FILE) > run.log 2>&1 &
+	exec $(INR_PIPE) config/$(PIPELINE_CONF_FILE) > run.log 2>&1 &
 
 inr-feed:
 	/bin/cp $(INR_MOCK_FEED_CFG) $(INR_PROCESSING_ROOT)
@@ -30,12 +31,12 @@ inr-feed:
 inr-config:
 	# INR logging
 	sed -e s,@INR_PROCESSING_ROOT@,$(INR_PROCESSING_ROOT),g \
-	       $(LOGGING_CONF_FILE).in > $(LOGGING_CONF_FILE)
+	       $(INR_CONFIG_DIR)/$(LOGGING_CONF_FILE).in > $(INR_CONFIG_DIR)/$(LOGGING_CONF_FILE)
 	# INR pipeline
 	sed -e s,@INR_PROCESSING_ROOT@,$(INR_PROCESSING_ROOT),g \
 	    -e s,@INR_IERS_DIR@,$(INR_IERS_DIR),g \
 	    -e s,@INR_REFDATA_DIR@,$(INR_REFDATA_DIR),g \
-	   $(PIPELINE_CONF_FILE).in > $(PIPELINE_CONF_FILE)
+	   $(INR_CONFIG_DIR)/$(PIPELINE_CONF_FILE).in > $(INR_CONFIG_DIR)/$(PIPELINE_CONF_FILE)
 
 inr-install:	inr-mkdirs inr-install-config inr-install-refdata
 
