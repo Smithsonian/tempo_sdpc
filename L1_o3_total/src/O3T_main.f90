@@ -156,6 +156,8 @@ PROGRAM O3T_mainNVAdj
   integer (kind=4) :: step_index
   integer :: errstat, version, ext, iarg, orbit_number
   integer :: cloud_pressure_source, anomflg_3_ix_ilat
+  real (kind=4), parameter :: latmin=-90.0, latmax=90.0, &
+       lonmin=-180.0, lonmax=180.0
   ! FIXME processing_version should be an input parameter
   integer, parameter :: processing_version = 1
 
@@ -800,15 +802,27 @@ PROGRAM O3T_mainNVAdj
          (/ ( adjustDEG(180.0+sazimuth(iX)-vazimuth(iX)), iX =1,nXtrack_rad ) /)
 
     DO iX = 1, nXtrack_rad
-      status = OMI_pixGetTerPres( latitude(iX), longitude(iX), ptArray(iX) )
-      status = OMI_pixGetSnowIce( latitude(iX), longitude(iX), &
-           year, month, day, snowIceArray(iX) )
+      !Need lat,lon sanity check here and below for TEMPO data
+      if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
+           longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
+        status = OMI_pixGetTerPres( latitude(iX), longitude(iX), ptArray(iX) )
+        status = OMI_pixGetSnowIce( latitude(iX), longitude(iX), &
+             year, month, day, snowIceArray(iX) )
+      else
+        ptArray(iX)=0.0
+        snowIceArray(iX)=0.0
+      endif
     ENDDO
 
     IF (cloud_pressure_source == cldpres_climatology) THEN
       DO iX = 1, nXtrack_rad
-        status = OMI_pixGetCldPres( latitude(iX), longitude(iX), &
-             year, month, day, pcArray(iX) )
+        if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
+             longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
+          status = OMI_pixGetCldPres( latitude(iX), longitude(iX), &
+               year, month, day, pcArray(iX) )
+        else
+          pcArray(iX)=0.0
+        endif
         !! Make sure cloud pressure is inside the range 200.0 to 1013.25 hPa.
         PclimQ(iX) = .TRUE.
         IF( pcArray(iX) < Pc_min      ) THEN
@@ -1053,9 +1067,9 @@ PROGRAM O3T_mainNVAdj
            stp1oz_valid, skipit, doz_limit )
       !NB use status here since failure leads only to skipped pixel not abort
       IF( skipit .OR. status /= 0 ) THEN
-        WRITE( msg,'(A,I3,I5, 2(A9,F9.3), 3(A9,L1) )' ) &
-             "O3T_step1 skipped at (iX, iL)=", iX, iLine, &
-             ",stp1oz=", stp1oz, ", refl=", pixSURF%ref, ",maxitr=", maxitr, &
+        WRITE( msg,'(A,I4,I5, 2(A9,F9.3), 3(A9,L1) )' ) &
+             "O3T_step1 skipped at (iX, iL)=(", iX, iLine, &
+             "),stp1oz=", stp1oz, ", refl=", pixSURF%ref, ",maxitr=", maxitr, &
              ",stp1oz=", stp1oz_valid, ",skipit=", skipit
         call tell_log (0,msg)
         IF( maxitr ) THEN
@@ -1087,7 +1101,7 @@ PROGRAM O3T_mainNVAdj
            stp2oz_valid, skipit, dNdT )
       ! Again, use status rather than errstat since failure => skipped pixel
       IF( skipit .OR. status /= 0 ) THEN
-        WRITE( msg,'(A,I3,I5,2(A9,G10.3),A8,L1)' ) &
+        WRITE( msg,'(A,I4,I5,2(A9,G10.3),A8,L1)' ) &
              "O3T_step2 skipped at (iX, iL)=(", iX, iLine, &
              "),stp1oz=", stp1oz, ",stp2oz=", stp2oz,",skipit=", skipit
         call tell_log (0,msg)
