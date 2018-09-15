@@ -17,7 +17,8 @@ config_file="$SDPC_ROOT/etc/o3_profile/o3_profile.rc"
 export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="$pcf_file"
 
-(/usr/bin/time --verbose L1_o3_profile) > log_o3_profile.txt 2>&1
+srun --ntasks=1 --output=log_o3_profile.txt \
+ L1_o3_profile
 
 exit_status="$?"
 echo $exit_status > exit_status

@@ -149,15 +149,15 @@ run_inr_post()
    radiance_file=$1
 
    # INR post
-   /usr/bin/time --verbose \
+   srun --ntasks=1 --output=log_inr_post.txt \
     L1_inr_post -c ${etc_dir}/l1_inr_post.cfg \
-                -s $snow_file $radiance_file > log_inr_post.txt 2>&1
+                -s $snow_file $radiance_file
 
    run_wavecal $radiance_file "0-9"
 
    # polarization correction
-   /usr/bin/time --verbose \
-    L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file > log_polcorr.txt 2>&1
+   srun --ntasks=1 --output=log_polcorr.txt \
+    L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
 
    (tar_l1_radiance_to_dest "$l1_out_dir")
 }
@@ -200,7 +200,8 @@ run_cloud()
   export PGS_PC_INFO_FILE="$pcf_file"
   export PGSMSG="${SDPC_ROOT}/msgs"
 
-  (/usr/bin/time --verbose L1_cloud $cmdline_args) > log_cloud.txt 2>&1
+  srun --ntasks=1 --output=log_cloud.txt \
+    L1_cloud $cmdline_args
 
   tar_l2_cloud_to_dest "$l2_out_dir"
 

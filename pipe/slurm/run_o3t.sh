@@ -92,7 +92,8 @@ sed \
 export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="$pcf_file"
 
-(/usr/bin/time --verbose L1_o3_total tempo) > log_o3_total.txt 2>&1
+srun --ntasks=1 --output=log_o3_total.txt \
+  L1_o3_total tempo
 
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"

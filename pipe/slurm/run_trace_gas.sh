@@ -117,7 +117,8 @@ sed \
 
 export PGS_PC_INFO_FILE="$this_pcf_file"
 
-(/usr/bin/time --verbose L1_trace_gas -tempo) > log_${molecule}.txt 2>&1
+srun --ntasks=1 --output=log_${molecule}.txt \
+ L1_trace_gas -tempo
 
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"

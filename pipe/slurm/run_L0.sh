@@ -91,10 +91,10 @@ run_l0_ccd()
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
-   /usr/bin/time --verbose \
+   srun --ntasks=1 --output=log_l0_ccd.txt \
    L0_ccd -i $l0_incoming_dir/telem \
           -o $output_file $dark_option \
-          $granule_basename > log_l0_ccd.txt 2>&1
+          $granule_basename
 }
 
 . $SDPC_ROOT/bin/run_wavecal.sh
@@ -105,8 +105,8 @@ run_inr_prep()
 
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
-   /usr/bin/time --verbose \
-   L1_inr_prep $target_file > log_inr_prep.txt 2>&1
+   srun --ntasks=1 --output=log_inr_prep.txt \
+   L1_inr_prep $target_file
 }
 
 remove_run_dir()
