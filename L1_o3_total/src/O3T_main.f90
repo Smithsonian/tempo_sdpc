@@ -855,9 +855,14 @@ PROGRAM O3T_mainNVAdj
 
         !!  IF( cld_errflg > 0 .OR. CloudFraction(iX) < 0.15 ) THEN
         IF( cld_errflg > 0 ) THEN
-          status = OMI_pixGetCldPres( latitude(iX), longitude(iX), &
-               year, month, day, pcArray(iX) )
-          PclimQ(iX) = .TRUE.
+           if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
+                longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
+              status = OMI_pixGetCldPres( latitude(iX), longitude(iX), &
+                   year, month, day, pcArray(iX) )
+              PclimQ(iX) = .TRUE.
+           else
+              pcArray(iX) = 0.0
+           endif
         ENDIF
         !! Make sure cloud pressure is inside the range 250.0 to 1013.25 hPa.
         IF( pcArray(iX) < Pc_min      ) THEN
@@ -933,7 +938,13 @@ PROGRAM O3T_mainNVAdj
       hgt                = height(iX)
       pt                 = ptArray(iX)/Pc_max
       pc                 = pcArray(iX)/Pc_max
-      ilat               = (int(lat)+90)/5+1
+      if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
+           longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
+         ilat               = (int(lat)+90)/5+1
+      else 
+         ilat=36
+         lon=0
+      endif
 
       IF (ilat > 36) ilat=36
 
@@ -987,9 +998,11 @@ PROGRAM O3T_mainNVAdj
 !           irrPrecision_com(:,IX) )
 
       !! calculates xnvalm no matter what QAflags is set for the pixel.
-      errstat = O3T_nvalm( irrWavelength(:,iX), irradiance(:,iX),  &
+      if (.NOT. skipit .AND. errstat == 0) then
+        errstat = O3T_nvalm( irrWavelength(:,iX), irradiance(:,iX),  &
            radWavelength(:,iX),   radiance(:,iX),  &
            wl_com(:), xnvalm(:) )
+      endif
       IF( skipit .OR. errstat /= 0  ) THEN
         IF( pixSURF%isnow == 10 ) algflg = algflg + 10_1
         errflgs = 7
