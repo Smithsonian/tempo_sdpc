@@ -1,4 +1,3 @@
-
 # The script assumes that the environment is properly set (e.g. PATH, SDPC_ROOT, etc.)
 
 run_wavecal()
@@ -12,7 +11,7 @@ run_wavecal()
 
    jid_list=$(sbatch -w $SLURMD_NODENAME --parsable \
                      --array=$chunks \
-                     --job-name="${SDPC_GRANULE_LABEL}:wvl" \
+                     --job-name="wvl:${SDPC_GRANULE_LABEL}" \
                      wavecal_block.sh band_290_490_nm $input_file $result_dir)
 
    # FIXME - vis band narrow cal window not yet specified
@@ -20,6 +19,6 @@ run_wavecal()
    #jid_list=${jid_list}:${jid_vis}
 
    sbatch -w $SLURMD_NODENAME --wait --dependency=afterany:$jid_list \
-          --job-name="${SDPC_GRANULE_LABEL}:mrg" \
+          --job-name="wvl-end:${SDPC_GRANULE_LABEL}" \
           run_wavecal_merge.sh $input_file $result_dir
 }

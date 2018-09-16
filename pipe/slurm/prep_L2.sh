@@ -1,5 +1,4 @@
 #! /bin/sh
-#SBATCH --cpus-per-task=2
 #SBATCH --output=/dev/null
 
 # 1. Assume this script is started in a writeable directory
@@ -116,18 +115,19 @@ finish()
 {
    tar_granule_dir_to_dest "$l2_repro_dir"
 }
-trap finish EXIT
+trap finish EXIT ERR
 
 tar_l1_radiance_to_dest()
 {
    dest_dir=$1
    mkdir -p "$dest_dir"
    cd $parent_dir
-   tarfile_rad="${rad_basename}.rad.tar"
 
    if test x"$tiepoint_file" != x ; then
       tiepoint_file="$granule_dir/$tiepoint_file"
    fi
+
+   tarfile_rad="${rad_basename}.rad.tar"
 
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
@@ -239,15 +239,15 @@ perform_cleanup()
    done
 }
 
-get_tiepoint_file
-
-mkgranule_ident -o granule_ident.csv -v $processing_version ${rad_basename}.nc
-run_inr_post ${rad_basename}.nc
-
 if ! test -f "$irr_file" ; then
   echo "ERROR:  irradiance file not found:  $irr_file"
   exit 1
 fi
+
+get_tiepoint_file
+
+mkgranule_ident -o granule_ident.csv -v $processing_version ${rad_basename}.nc
+run_inr_post ${rad_basename}.nc
 
 /bin/cp $irr_file ${irr_basename}.nc
 (run_cloud)

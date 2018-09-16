@@ -28,16 +28,13 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")
 
 # construct granule label string for slurm job names
-IFS='_' read -r prefix date scan_num granule_num version suffix<<<$rad_basename
-scan_num=$(echo $scan_num | sed -e s"/^0*//")
-granule_num=$(echo $granule_num | sed -e s"/^0*//")
-export SDPC_GRANULE_LABEL="${scan_num}:${granule_num}"
+export SDPC_GRANULE_LABEL="${rad_basename}"
 
 # Run the pipeline:
-job_prep_l2="${SDPC_GRANULE_LABEL}:L2-pre"
+job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
 jid=$(sbatch --parsable --job-name=$job_prep_l2 --chdir $run_dir prep_L2.sh "$rad_path" "${rad_basename}.nc")
 
-job_run_l2="${SDPC_GRANULE_LABEL}:L2"
+job_run_l2="L2:${SDPC_GRANULE_LABEL}"
 tarfile_path="$SDPC_RUN_DIR/L2/incoming/${rad_basename}.tar"
 sbatch --dependency=afterany:$jid \
        --job-name=$job_run_l2 \

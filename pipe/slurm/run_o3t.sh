@@ -62,7 +62,7 @@ finish()
 {
    tar_product_to_dest_dir "$l2_repro_dir"
 }
-trap finish EXIT
+trap finish EXIT ERR
 
 out_basename=$(printf "$lev1_base_fmt" l2_o3t)
 

@@ -82,7 +82,7 @@ finish()
 {
    tar_product_to_dest_dir "$l0_repro_dir"
 }
-trap finish EXIT
+trap finish EXIT ERR
 
 run_l0_ccd()
 {

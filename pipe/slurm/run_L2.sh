@@ -95,21 +95,21 @@ update_job_list()
 
 do_hcho()
 {
-  job_hcho="${SDPC_GRANULE_LABEL}:hcho"
+  job_hcho="hcho:${SDPC_GRANULE_LABEL}"
   jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho run_trace_gas.sh hcho)
   update_job_list $jid_hcho
 }
 
 do_no2()
 {
-  job_no2="${SDPC_GRANULE_LABEL}:no2"
+  job_no2="no2:${SDPC_GRANULE_LABEL}"
   jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 run_trace_gas.sh no2)
   update_job_list $jid_no2
 }
 
 do_o3t()
 {
-  job_o3t="${SDPC_GRANULE_LABEL}:o3t"
+  job_o3t="o3t:${SDPC_GRANULE_LABEL}"
   jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t run_o3t.sh)
   update_job_list $jid_o3t
 }
@@ -126,13 +126,13 @@ do_o3p()
    o3p_range_spec="1 128 1 128"
    run_o3p_util.sh init $o3p_num_blocks "$o3p_range_spec"
 
-   job_o3p_block="${SDPC_GRANULE_LABEL}:o3p"
+   job_o3p_block="o3p:${SDPC_GRANULE_LABEL}"
    jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
                           --array="1-$o3p_num_blocks" \
                           --job-name=$job_o3p_block \
                           run_o3p_block.sh ${run_dir})
 
-   job_o3p_clean="${SDPC_GRANULE_LABEL}:o3p-end"
+   job_o3p_clean="o3p-end:${SDPC_GRANULE_LABEL}"
    jid_o3p_cleanup=$(sbatch -w $SLURMD_NODENAME --parsable \
                             --dependency=afterany:$jid_o3p_array \
                             --job-name=$job_o3p_clean \
@@ -155,7 +155,7 @@ for prod in $product_list ; do
 done
 
 if test X"$jid_list" != X ; then
-   job_clean="$SDPC_GRANULE_LABEL:L2-end"
+   job_clean="L2-end:$SDPC_GRANULE_LABEL"
    sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
           --dependency=afterany:$jid_list \
           run_L2_cleanup.sh $tar_file $tar_unpack_dir/$tar_file_dir
