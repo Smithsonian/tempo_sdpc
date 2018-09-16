@@ -117,31 +117,27 @@ private define get_tarfile_archive_subdir (tar_file)
    if (0 != remove (temp_granule_ident_file))
      throw ApplicationError, "*** Error removing $temp_granule_ident_file"$;
 
-   variable subdir_seq;
-   if (atoi(g.scan_seq_num) == 0 && atoi(g.granule_num) == 0)
+   % Construct the archive subdirectory path:
+   variable subdir_seq = [g.processing_version];
+
+   switch (g.product_type)
      {
-        variable l0_type, l0_type_list = ["drk", "irr", "rad"];
-        variable found = 0;
-        foreach l0_type (l0_type_list)
-          {
-             if (0 != is_substr (tar_file_basename, l0_type))
-               {
-                  found++;
-                  break;
-               }
-          }
-        if (found == 0)
-          {
-             throw ApplicationError, "*** Unsupported L0 data product: $tar_file_basename"$;
-          }
-        subdir_seq = [g.processing_version, l0_type,
-                      g.tstart_year, g.tstart_month, g.tstart_mday];
+      case "drk" or case "irr" or case "rad":
+        subdir_seq = [subdir_seq, g.product_type];
      }
-   else
+
+   subdir_seq = [subdir_seq, g.tstart_year, g.tstart_month, g.tstart_mday];
+
+   % scan_seq_num=0 means "unused"
+   if (atoi(g.scan_seq_num) != 0)
      {
-        subdir_seq = [g.processing_version,
-                      g.tstart_year, g.tstart_month, g.tstart_mday,
-                      g.scan_seq_num, g.granule_num];
+        subdir_seq = [subdir_seq, g.scan_seq_num];
+     }
+
+   % granule_num=0 means "unused"
+   if (atoi(g.granule_num) != 0)
+     {
+        subdir_seq = [subdir_seq, g.granule_num];
      }
 
    % FIXME: do we want leading zeros in directory names?
