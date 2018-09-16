@@ -145,7 +145,7 @@ extern int TIO_filename_from_granule (int ncid, const char *label, int version,
 
 /** Write product_type and processing version metadata to a netcdf header
  * @param  ncid          Index of destination netcdf file
- * @param  product_type  Product type string, e.g. "l1_rad", or "l2_no2"
+ * @param  product_type  Product type string, e.g. "rad", or "no2"
  * @param  version       Processing version number
  * @return 0 on success, -1 on error
  */

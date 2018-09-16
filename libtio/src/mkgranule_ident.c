@@ -18,6 +18,7 @@
 #include "_tio.h"
 
 #define BUFSIZE 1024
+#define MAX_PRODUCT_TYPE_LEN 16
 
 static void usage (int argc, char **argv)
 {
@@ -30,7 +31,7 @@ static void usage (int argc, char **argv)
 
 static int write_granule_ident_file (const char *file,
                                      _pTIO_Granule_Ident_Type *gid,
-                                     int version)
+                                     int version, const char *product_type)
 {
    struct tm tstart, tend;
    FILE *fp;
@@ -47,6 +48,7 @@ static int write_granule_ident_file (const char *file,
      }
 
    fprintf (fp, "processing_version,%d\n", version);
+   fprintf (fp, "product_type,%s\n", product_type);
    fprintf (fp, "scan_seq_num,%d\n", gid->scan_seq_num);
    fprintf (fp, "granule_seq_num,%d\n", gid->granule_seq_num);
    fprintf (fp, "scan_num,%d\n", gid->scan_num);
@@ -86,10 +88,12 @@ static int write_granule_ident_file (const char *file,
 int main (int argc, char **argv)
 {
    _pTIO_Granule_Ident_Type gid = {0};
+   char product_type[MAX_PRODUCT_TYPE_LEN];
    char *output_file = NULL;
    char *radiance_file = NULL;
-   int c, ncid;
+   int c, ncid, xtype;
    int version = INT_MAX; /* version=1 default might cause trouble here */
+   size_t len;
 
    while ((c = getopt (argc, argv, "o:v:")) != -1)
      {
@@ -141,9 +145,21 @@ int main (int argc, char **argv)
         return -1;
      }
 
+   memset (product_type, 0, MAX_PRODUCT_TYPE_LEN);
+
+   if ((NC_NOERR == nc_inq_att (ncid, NC_GLOBAL, "product_type", &xtype, &len))
+       && (len < MAX_PRODUCT_TYPE_LEN))
+     {
+        if (0 != TIO_get_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, product_type))
+          {
+             (void) TIO_close (ncid);
+             return -1;
+          }
+     }
+
    (void) TIO_close (ncid);
 
-   if (0 != write_granule_ident_file (output_file, &gid, version))
+   if (0 != write_granule_ident_file (output_file, &gid, version, product_type))
      return -1;
 
    return 0;
