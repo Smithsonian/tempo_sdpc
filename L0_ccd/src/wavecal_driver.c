@@ -221,16 +221,21 @@ static void write_fit (const Wavecal_Result_Type *r, size_t num_values)
 
 static int write_fit_details (FILE *fp, int xtrack,
                               const Wavecal_Type *wct,
-                              const double *wave_params,
+                              const double *wave_params, int num_wave_params,
                               const Wavecal_Result_Type *wavecal_result)
 {
    Wavecal_Term_Info_Type info = {0};
-   size_t i;
-   int nth;
+   int i, nth;
+
+   if (wavecal_result == NULL)
+     {
+        fprintf (fp, "# %4d [no result]\n", xtrack);
+        return 0;
+     }
 
    fprintf (fp, "%4d %12.4e %4d %4d ", xtrack, wavecal_result->bestnorm,
             wavecal_result->nfev, wavecal_result->opt_status);
-   for (i = 0; i < wavecal_result->num_wave_params; i++)
+   for (i = 0; i < num_wave_params; i++)
      {
         fprintf (fp, "%15.9e ", wave_params[i]);
      }
@@ -312,7 +317,7 @@ close_and_return:
 }
 
 static int write_result (int ncid, int beg_step, int step, int xtrack,
-                         const double *wave_params,
+                         const double *wave_params, int num_wave_params,
                          const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
@@ -323,13 +328,18 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
 
    count[0] = 1;
    count[1] = 1;
-   count[2] = wavecal_result->num_wave_params;
+   count[2] = num_wave_params;
 
-   if ((0 != TIO_put_var_section (ncid, WAVECAL_PARAM_NAME, start, count, TIO_DOUBLE,
+   if (0 != TIO_put_var_section (ncid, WAVECAL_PARAM_NAME, start, count, TIO_DOUBLE,
                                   wave_params))
-       ||(0 != TIO_put_var_section (ncid, "bestnorm", start, count, TIO_DOUBLE,
-                                    &wavecal_result->bestnorm)))
      return -1;
+
+   if (wavecal_result)
+     {
+        if (0 != TIO_put_var_section (ncid, "bestnorm", start, count, TIO_DOUBLE,
+                                    &wavecal_result->bestnorm))
+          return -1;
+     }
 
    return 0;
 }
@@ -377,7 +387,7 @@ static int create_diagnostic_group (int parent_grp, const char *grp_name,
 
 static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
                               int step, int xtrack, const Wavecal_Type *wct,
-                              const double *wave_params,
+                              const double *wave_params, int num_wave_params,
                               const Wavecal_Result_Type *wavecal_result)
 {
    const char grp_name[] = "wavecal_diagnostics";
@@ -390,10 +400,21 @@ static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_
    tell_pop_queue (1);
    if (status)
      {
+        if (wavecal_result == NULL)
+          return -1;
+
         if (0 != create_diagnostic_group (parent_grp, grp_name, spectrum_info,
                                           wavecal_result, &grp))
           return -1;
      }
+
+   count[2] = num_wave_params;
+   if (0 != TIO_put_var_section (grp, "params", start, count, TIO_DOUBLE,
+                                 wave_params))
+     return -1;
+
+   if (wavecal_result == NULL)
+     return 0;
 
    start[0] = step;
    start[1] = xtrack;
@@ -414,11 +435,6 @@ static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_
      {
         return -1;
      }
-
-   count[2] = wavecal_result->num_wave_params;
-   if (0 != TIO_put_var_section (grp, "params", start, count, TIO_DOUBLE,
-                                 wave_params))
-     return -1;
 
    return 0;
 }
@@ -711,7 +727,7 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   (void) wavecal_feature_window (wct, &start_pix, &num_pix);
+   (void) wavecal_query_feature_window (wct, &start_pix, &num_pix);
 
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen,
@@ -735,37 +751,46 @@ int main (int argc, char **argv)
 
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
+             Wavecal_Result_Type *wrt;
+
+             wrt = NULL;
+
              if ((inrqf_step != NULL) && (inrqf_step[xtrack] != 0))
-               continue;
+               {
+                  if (0 != wavecal_get_initial_params (wct, y0, wave_params))
+                    goto return_status;
+               }
+             else
+               {
+                  if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
+                    goto return_status;
 
-             if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
-               goto return_status;
+                  fit_status_code = wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
+                                                 spec.pixel_quality_flag, &wavecal_config,
+                                                 wave_params, &wavecal_result);
+                  if (fit_status_code == WAVECAL_FIT_ERROR)
+                    goto return_status;
 
-             fit_status_code = wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
-                                            spec.pixel_quality_flag, &wavecal_config,
-                                            wave_params, &wavecal_result);
-             if (fit_status_code == WAVECAL_FIT_ERROR)
-               goto return_status;
+                  wrt = &wavecal_result;
+               }
 
-             if (write_result (ncid_result, beg_step, step, xtrack, wave_params, &wavecal_result))
+             if (write_result (ncid_result, beg_step, step, xtrack, wave_params, num_wave_params, wrt))
                goto return_status;
 
              if (debug)
                {
-                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct, wave_params,
-                                         &wavecal_result))
+                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct, wave_params, num_wave_params, wrt))
                     goto return_status;
                }
 
-             if (verbose)
+             if (verbose && wrt)
                {
                   fprintf (stderr, "%4d %4d %12.4e %4d %4d\n", step, xtrack,
-                           wavecal_result.bestnorm, wavecal_result.nfev,
-                           wavecal_result.opt_status);
+                           wrt->bestnorm, wrt->nfev, wrt->opt_status);
 
                   if (params_outfile)
                     {
-                       (void) write_fit_details (fp, xtrack, wct, wave_params, &wavecal_result);
+                       (void) write_fit_details (fp, xtrack, wct, wave_params, num_wave_params, wrt);
                     }
                }
           }

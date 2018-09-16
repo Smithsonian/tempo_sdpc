@@ -860,30 +860,12 @@ static int read_rad_reference (Term_Type *terms, int xtrack)
    return 0;
 }
 
-static int init_window (Wavecal_Type *wct, int xtrack, const double *wave,
-                        const Wavecal_Config_Type *config)
+static int init_window_reference_spectra (Wavecal_Type *wct, int xtrack)
 {
    Reference_Irr_Type *irr = &wct->irr;
    Window_Type *win = &wct->window;
-   Shapefun_Type *shapefun = win->shapefun;
-   Shapefun_Init_Type shapefun_init = {0};
-
-   (void) config;
 
    win->xtrack = xtrack;
-
-   memcpy ((char *)win->wave0, (char *)wave, win->num_wave * sizeof(double));
-
-   shapefun_init.x = win->pindex;
-   shapefun_init.y = win->wave0;
-   shapefun_init.n = win->num_wave;
-
-   shapefun->xmin = shapefun_init.x[0];
-   shapefun->xmax = shapefun_init.x[win->num_wave-1];
-
-   if (0 != shapefun->st_init_params (shapefun, &shapefun_init,
-                                      win->num_wave_params, win->wave_params))
-     return -1;
 
    if (0 != read_rad_reference (wct->terms, xtrack))
      return -1;
@@ -897,6 +879,25 @@ static int init_window (Wavecal_Type *wct, int xtrack, const double *wave,
      return -1;
 
    return 0;
+}
+
+static int init_window_shapefun (Wavecal_Type *wct, const double *wave)
+{
+   Window_Type *win = &wct->window;
+   Shapefun_Type *shapefun = win->shapefun;
+   Shapefun_Init_Type shapefun_init = {0};
+
+   memcpy ((char *)win->wave0, (char *)wave, win->num_wave * sizeof(double));
+
+   shapefun_init.x = win->pindex;
+   shapefun_init.y = win->wave0;
+   shapefun_init.n = win->num_wave;
+
+   shapefun->xmin = shapefun_init.x[0];
+   shapefun->xmax = shapefun_init.x[win->num_wave-1];
+
+   return shapefun->st_init_params (shapefun, &shapefun_init,
+                                    win->num_wave_params, win->wave_params);
 }
 
 static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
@@ -977,7 +978,7 @@ int wavecal_num_wave_params (const Wavecal_Type *wct)
    return wct->window.num_wave_params;
 }
 
-int wavecal_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
+int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
 {
    const Window_Type *win = NULL;
    if (wct == NULL)
@@ -1405,6 +1406,21 @@ static void estimate_midpoint_wavelength (Window_Type *win, const double *spec,
        + bin_width * (0.5*(num_spec-1) - index_of_window_minimum));
 }
 
+int wavecal_get_initial_params (Wavecal_Type *wct, const double *p_wave,
+                                double *wave_params)
+{
+   Window_Type *win = &wct->window;
+   const double *wave = p_wave + win->start_pix;
+
+   if (0 != init_window_shapefun (wct, wave))
+     return -1;
+
+   memcpy ((char *)wave_params, (char *)win->wave_params,
+           win->num_wave_params * sizeof(double));
+
+   return 0;
+}
+
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
                  const double *p_wave, const double *p_spec, const double *p_specerr,
                  const unsigned int *p_pixel_quality_flag, const Wavecal_Config_Type *config,
@@ -1428,13 +1444,16 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    int status = WAVECAL_FIT_ERROR;
    int i, num_residuals, num_params, mp_status, num_good;
 
-   if (0 != init_window (wct, xtrack, wave, config))
+   if (0 != init_window_shapefun (wct, wave))
      return WAVECAL_FIT_ERROR;
 
    /* If the fit fails, the initial wavelength parameter guess
     * will serve as the result */
    memcpy ((char *)wave_params, (char *)win->wave_params,
            win->num_wave_params * sizeof(double));
+
+   if (0 != init_window_reference_spectra (wct, xtrack))
+     return WAVECAL_FIT_ERROR;
 
    num_good = 0;
    /* Scale the radiance and irradiance by the same factor */
