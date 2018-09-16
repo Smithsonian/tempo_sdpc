@@ -78,7 +78,15 @@ private define is_directory (file)
 
 private define set_eval_struct_field (g, name, val)
 {
-   set_struct_field (g, name, eval(val));
+   switch (name)
+     {
+      case "product_type":
+        set_struct_field (g, name, val);
+     }
+     {
+        % default:
+        set_struct_field (g, name, eval(val));
+     }
 }
 
 private define read_ident_file (csv_ident_file)
