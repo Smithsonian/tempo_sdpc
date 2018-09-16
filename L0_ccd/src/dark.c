@@ -491,8 +491,12 @@ static int dark_table_write (const Dark_Table_Type *dtt, int ncid)
 static int dtt_write (const Dark_Table_Type *dtt, const char *file)
 {
    int status, ncid;
+   const char *product_type = "drk";
 
    if (0 != TIO_create (file, NC_NETCDF4, &ncid))
+     return -1;
+
+   if (0 != TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, strlen(product_type), product_type))
      return -1;
 
    status = dark_table_write (dtt, ncid);

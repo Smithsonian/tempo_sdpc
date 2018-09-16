@@ -62,6 +62,13 @@ extern char *expand_string (const char *s);
 extern int write_attr_global_timestamp (int ncid, const char *tstamp_name,
                                         double tstamp_value);
 
+/** Write a global product type attribute to an open netCDF file
+ * @param[in] ncid  Index of a netCDF file, opened for writing.
+ * @param[in] product_type  product type identifier string
+ * @return 0 on success, -1 on error
+ */
+extern int write_attr_global_product_type (int ncid, const char *product_type);
+
 typedef struct
 {
    int scan_num;

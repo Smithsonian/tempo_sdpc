@@ -103,8 +103,9 @@ static int define_iru_vars (Process_Method_Type *pmt,
    pmt->gyro_bias_time = iru->gyro_bias_time;
    pmt->gyro_dimension = iru->gyro_dimension ? iru->gyro_dimension : 4;
 
-   if (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
-                                         pmt->outfile_timestamp_start))
+   if ((0 != write_attr_global_product_type (pmt->ncid, "iru"))
+       || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
+                                             pmt->outfile_timestamp_start)))
      return -1;
 
    /* FIXME?:

@@ -441,6 +441,18 @@ static int make_hidden_basename (const char *basename, char *buf, int bufsize)
    return 0;
 }
 
+int write_attr_global_product_type (int ncid, const char *product_type)
+{
+   int len;
+   if ((product_type == NULL) || (*product_type == 0))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: null product_type", __func__);
+        return -1;
+     }
+   len = strlen(product_type);
+   return TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, len, product_type);
+}
+
 int write_attr_global_timestamp (int ncid, const char *tstamp_name,
                                  double tstamp_value)
 {

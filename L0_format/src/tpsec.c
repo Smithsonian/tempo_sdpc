@@ -110,8 +110,9 @@ static int new_outfile (Process_Method_Type *pmt, double timestamp)
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
      return -1;
 
-   if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
-                                          pmt->outfile_timestamp_start))
+   if ((0 != write_attr_global_product_type (pmt->ncid, "hk"))
+       || (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
+                                              pmt->outfile_timestamp_start)))
      return -1;
 
    if (NULL == (pmt->enum_lookup = elt_open (L0_ENUM_TABLE_SIZE)))

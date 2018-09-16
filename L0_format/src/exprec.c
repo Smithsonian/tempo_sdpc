@@ -46,6 +46,7 @@ File_Info_Type;
    int processing_version; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
+   char *product_type; \
    char *exprec_type_string; \
    int exprec_type; \
    int granule_size; \
@@ -174,6 +175,9 @@ static int define_file_vars (Process_Method_Type *pmt,
    len = strlen(pmt->exprec_type_string)+1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "exprec_type",
                           NC_CHAR, len, pmt->exprec_type_string))
+     return -1;
+
+   if (0 != write_attr_global_product_type (ncid, pmt->product_type))
      return -1;
 
    if (identp)
@@ -306,6 +310,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    switch (pmt->exprec_type)
      {
       case IOCSDPC_EXPREC_TYPE_RADIANCE:
+        pmt->product_type = "rad";
         exprec_type_suffix = "rad0";
         pmt->exprec_type_string = ioclib_strdup("radiance");
         radiance_ident.scan_num = 0;   /* FIXME! exprec header should define this */
@@ -315,24 +320,29 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         identp = &radiance_ident;
         break;
       case IOCSDPC_EXPREC_TYPE_DARK:
+        pmt->product_type = "drk";
         exprec_type_suffix = "drk0";
         pmt->exprec_type_string = ioclib_strdup("dark");
         break;
       case IOCSDPC_EXPREC_TYPE_IRRADIANCE:
+        pmt->product_type = "irr";
         exprec_type_suffix = "irr0";
         pmt->exprec_type_string = ioclib_strdup("irradiance");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_IRR:
+        pmt->product_type = "irr";
         exprec_type_suffix = "irrlin0";
         pmt->exprec_type_string = ioclib_strdup("irradiance,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_DARK:
+        pmt->product_type = "drk";
         exprec_type_suffix = "drklin0";
         pmt->exprec_type_string = ioclib_strdup("dark,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_UNKNOWN:
         /* drop */
       default:
+        pmt->product_type = "unk";
         exprec_type_suffix = "unk0";
         pmt->exprec_type_string = ioclib_strdup("unknown");
         break;

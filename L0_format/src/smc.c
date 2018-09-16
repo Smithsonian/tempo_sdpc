@@ -101,8 +101,9 @@ static int define_smc_vars (Process_Method_Type *pmt)
    size_t chunk_size = 1024;
    int dimid_time;
 
-   if (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
-                                         pmt->outfile_timestamp_start))
+   if ((0 != write_attr_global_product_type (pmt->ncid, "smc"))
+       || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
+                                             pmt->outfile_timestamp_start)))
      return -1;
 
    if (-1 == TIO_def_dim (pmt->ncid, "time", NC_UNLIMITED, &dimid_time))
