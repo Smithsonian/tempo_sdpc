@@ -51,10 +51,10 @@ irr_basename=$(basename $irr_file .nc)
 
 # Define product file name template
 #
-lev1_file_fmt=$(mkgranule_name -p %s ${rad_basename}.nc)
+lev1_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc)
 lev1_base_fmt=$(basename $lev1_file_fmt .nc)
 
-out_basename=$(printf "$lev1_base_fmt" l2_o3p)
+out_basename=$(printf "$lev1_base_fmt" o3p)
 
 tar_product_to_dest_dir()
 {

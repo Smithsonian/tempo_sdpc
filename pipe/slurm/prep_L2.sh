@@ -76,12 +76,11 @@ irr_basename=$(basename "$irr_file" .nc)
 
 # Define template product file name
 #
-lev1_file_fmt=$(mkgranule_name -p %s "${rad_basename}.nc")
-lev1_base_fmt=$(basename "$lev1_file_fmt" .nc)
-cld_basename=$(printf "$lev1_base_fmt" cldrr)
+lev1_file_fmt=$(mkgranule_name -L 1 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
+lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
+cld_basename=$(printf "$lev2_base_fmt" cldrr)
 cld_dir="cloud"
-
-processing_version=1
 
 get_tiepoint_file()
 {
@@ -246,7 +245,7 @@ fi
 
 get_tiepoint_file
 
-mkgranule_ident -o granule_ident.csv -v $processing_version ${rad_basename}.nc
+mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc
 run_inr_post ${rad_basename}.nc
 
 /bin/cp $irr_file ${irr_basename}.nc

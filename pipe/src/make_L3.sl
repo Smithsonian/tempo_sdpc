@@ -145,20 +145,13 @@ private define make_l3_filename_format (idents)
    (tbeg, ) = get_ident_time_structs (idents[beg]);
    variable tstart_str = strftime ("%Y%m%dT%H%M%SZ", tbeg);
 
-   variable tdelta_sec = (idents[end].time_coverage_end_since_epoch
-                          - idents[beg].time_coverage_start_since_epoch);
-   variable duration_str = sprintf ("PT%04dS", int(tdelta_sec));
-
    variable
-     scan_seq_num = idents[beg].scan_seq_num,
+     scan_num = idents[beg].scan_num,
      processing_version = idents[beg].processing_version;
 
-   % ISO 8601 specifies that the start time and duration should be
-   % separated by either '/' or '--', but I'm using '_' because the
-   % first option is a non-starter and the second option is stupid.
    variable filename_format =
-     sprintf ("tempo_%s_%s_%06d_v%d_l3_%%s.nc",
-              tstart_str, duration_str, scan_seq_num, processing_version);
+     sprintf ("TEMPO_%%s_L3_V%02d_%s_S%03d.nc",
+              processing_version, tstart_str, scan_num);
 
    return filename_format;
 }
@@ -169,7 +162,7 @@ private define scan_subdir (g)
    % the granule_ident CSV file.
    variable subdir_seq = [g.processing_version,
                           g.tstart_year, g.tstart_month, g.tstart_mday,
-                          g.scan_seq_num];
+                          g.scan_num];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
 }
@@ -215,7 +208,7 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
         variable lst = {};
         foreach dir (granule_dir_list)
           {
-             file = glob ("${dir}/${prod}/tempo_*_${prod}.nc"$);
+             file = glob ("${dir}/${prod}/TEMPO_${prod}_L2_*.nc"$);
              if (length(file) == 0) continue;
              list_append (lst, file[0]);
           }

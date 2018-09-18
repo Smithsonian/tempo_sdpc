@@ -58,9 +58,7 @@ chmod u+w "$granule_basename"
 
 work_dir_tarfile="${work_dir}.tar"
 
-processing_version=1
-
-mkgranule_ident -o granule_ident.csv -v $processing_version $granule_basename
+mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION $granule_basename
 
 run_dir=$(pwd)
 parent_dir=$(dirname "$run_dir")
@@ -119,15 +117,15 @@ remove_run_dir()
 }
 
 case "${granule_basename}" in
-  *drk0* )
-  output_file=$(mkgranule_name -p drk1 -v $processing_version $granule_basename)
+  *drk* )
+  output_file=$(mkgranule_name -L 0 -p drkt -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file ""
   tar_out_dir="$l0_out_dir"
   archive_level="L0"
   ;;
 
-  *irr0* )
-  output_file=$(mkgranule_name -p irr1 -v $processing_version $granule_basename)
+  *irr* )
+  output_file=$(mkgranule_name -L 1 -p irr -v $SDPC_PROCESSING_VERSION $granule_basename)
   dark_file_path=$(lookup_dark.sh $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   run_wavecal $output_file "0-4"
@@ -135,8 +133,8 @@ case "${granule_basename}" in
   archive_level="L1"
   ;;
 
-  *rad0* )
-  output_file=$(mkgranule_name -p rad -v $processing_version $granule_basename)
+  *rad* )
+  output_file=$(mkgranule_name -L 1 -p rad -v $SDPC_PROCESSING_VERSION $granule_basename)
   dark_file_path=$(lookup_dark.sh $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   #Better to run radiance wavelength calibration post-INR

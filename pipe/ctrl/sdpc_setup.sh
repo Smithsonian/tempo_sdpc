@@ -5,3 +5,5 @@
 export SDPC_ROOT=/soft/tempo/sdpc/install/v1_gnu/sdpc
 export SDPC_RUN_DIR=/scratch/sdpc_test/sdpc_run_dir
 export SDPC_ARCHIVE_DIR=/home/houck/sdpc_test/archive
+
+export SDPC_PROCESSING_VERSION=1

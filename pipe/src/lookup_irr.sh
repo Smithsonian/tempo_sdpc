@@ -12,21 +12,21 @@ use_fixed_irr()
 
 lookup_irr()
 {
-   IFS='_' read -r prefix date scan_num granule_num version suffix<<<$granule_basename
+   IFS='_' read -r prefix ptype level version date suffix<<<$granule_basename
 
    # Split date=YYYYMMDDTHHMMSSZ -> YYYY/MM/DD = date_subdirs
    ymd=$(echo $date | cut -f 1 -d T)
    date_subdirs=$(date --date $ymd +'%Y/%-m/%-d')
 
-   # Trim 'v' from version string
-   version_num=$(echo $version | tr -d v)
+   # Trim 'V' and leading zeros from version number
+   version_num_with_leading_zeros=$(echo $version | tr -d V)
+   version_num=$((10#${version_num_with_leading_zeros}))
 
-   # tempo_*irr1.nc = Level 1 irradiance
    dir_path="${SDPC_ARCHIVE_DIR}/L1/${version_num}/irr/${date_subdirs}"
    if ! test -d "$dir_path" ; then
       use_fixed_irr
    else
-      files=$(/bin/ls ${dir_path}/*irr1.nc)
+      files=$(/bin/ls ${dir_path}/TEMPO_irr_*.nc)
       if test x"$files" != x ; then
          echo $files
       else

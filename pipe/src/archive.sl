@@ -128,10 +128,10 @@ private define get_tarfile_archive_subdir (tar_file)
 
    subdir_seq = [subdir_seq, g.tstart_year, g.tstart_month, g.tstart_mday];
 
-   % scan_seq_num=0 means "unused"
-   if (atoi(g.scan_seq_num) != 0)
+   % scan_num=0 means "unused"
+   if (atoi(g.scan_num) != 0)
      {
-        subdir_seq = [subdir_seq, g.scan_seq_num];
+        subdir_seq = [subdir_seq, g.scan_num];
      }
 
    % granule_num=0 means "unused"
