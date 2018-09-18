@@ -105,11 +105,19 @@ MODULE O3T_class
         REAL (KIND=4), DIMENSION(:), INTENT(OUT) :: xnvalm
         REAL (KIND=4), DIMENSION(SIZE(radWl)) :: Rtoa
         REAL (KIND=4) :: irrInterp, RtoaInterp, frac, dwl
+        REAL (KIND=4), SAVE :: fill_float32
+        LOGICAL (KIND=4), SAVE :: firsttime = .TRUE.
+        INTEGER (KIND=4), EXTERNAL :: r4Fill
         INTEGER :: nwl_l, nwl_rad, nwl_irr
         INTEGER :: iwl, il, ih
-        INTEGER :: errstat
+        INTEGER :: errstat, ierr
 
         errstat = 0
+
+        IF( firsttime ) THEN
+          ierr = r4Fill( fill_float32 )
+          firsttime = .FALSE.
+        ENDIF
 
         nwl_l = SIZE( wl_com )
 
@@ -197,7 +205,8 @@ MODULE O3T_class
             IF( RtoaInterp > EPSILON10 ) THEN
               xnvalm(iwl) = -ALOG10( RtoaInterp )
             ELSE
-              xnvalm(iwl) = 0.0
+!              xnvalm(iwl) = 0.0
+              xnvalm(iwl) = fill_float32
             ENDIF
           ENDIF
         ENDDO

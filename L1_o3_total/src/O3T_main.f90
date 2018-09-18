@@ -998,10 +998,14 @@ PROGRAM O3T_mainNVAdj
 !           irrPrecision_com(:,IX) )
 
       !! calculates xnvalm no matter what QAflags is set for the pixel.
-      if (.NOT. skipit .AND. errstat == 0) then
+!      if (.NOT. skipit .AND. errstat == 0) then
+      if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
+           longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
         errstat = O3T_nvalm( irrWavelength(:,iX), irradiance(:,iX),  &
            radWavelength(:,iX),   radiance(:,iX),  &
            wl_com(:), xnvalm(:) )
+      else
+        xnvalm(:) = fill_float32
       endif
       IF( skipit .OR. errstat /= 0  ) THEN
         IF( pixSURF%isnow == 10 ) algflg = algflg + 10_1
