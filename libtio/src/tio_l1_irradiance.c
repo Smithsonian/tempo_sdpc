@@ -139,7 +139,6 @@ static int define_global_attrs (int grp)
      {
         MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
         MAKE_INT_ATTR1("processing_version", 0),
-        MAKE_INT_ATTR1("granule_seq_num", 0), /* FIXME? */
         _pINT_ATTRS_END
      };
 

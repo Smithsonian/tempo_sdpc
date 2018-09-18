@@ -68,21 +68,15 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
      {
         gid->scan_num = 0;
         gid->granule_num = 0;
-        gid->scan_seq_num = 0;
-        gid->granule_seq_num = 0;
         gid->granule_flag = 0;
         return 0;
      }
 
-   if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &gid->scan_seq_num))
-       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, &gid->granule_seq_num))
+   if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &gid->scan_num))
        ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
      {
         return -1;
      }
-
-   /* FIXME - temporary */
-   gid->scan_num = gid->scan_seq_num;
 
    start = 0;
    count = 1;
@@ -146,11 +140,6 @@ int tio_define_granule_flag_var (int ncid)
 static int write_granule_ident_indices (int ncid, int scan_num,
                                         int granule_num, int granule_flag)
 {
-   /* FIXME: temporary back-compatibility:
-    * scan_seq_num and granule_seq_num will soon be removed.
-    */
-   int granule_seq_num = 0;
-   int scan_seq_num = scan_num;
    int status, start, count, varid;
 
    /* In use, granule_num and scan_num are both positive values.
@@ -159,11 +148,8 @@ static int write_granule_ident_indices (int ncid, int scan_num,
    if ((granule_num == 0) || (scan_num == 0))
      return 0;
 
-   status = ((-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &scan_seq_num))
-             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_seq_num", NC_INT, 1, &granule_seq_num))
-             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_num", NC_INT, 1, &scan_num))
-             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_num", NC_INT, 1, &granule_num))
-            );
+   status = ((-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_num", NC_INT, 1, &scan_num))
+             ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_num", NC_INT, 1, &granule_num)));
    if (status)
      return -1;
 
@@ -208,7 +194,7 @@ static int write_granule_ident_times (int ncid, const _pTIO_Granule_Ident_Type *
 
 int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
-   if (0 != write_granule_ident_indices (ncid, gid->scan_seq_num, gid->granule_num,
+   if (0 != write_granule_ident_indices (ncid, gid->scan_num, gid->granule_num,
                                          gid->granule_flag))
      return -1;
 
@@ -255,7 +241,7 @@ int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
 
 static int
 _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
-                                   const char *label, int version,
+                                   const char *label, int level, int version,
                                    char *buf, int bufsize)
 {
    char timestr[MAX_ISOTIME_LEN];
@@ -270,25 +256,18 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
 
    if (meaningful_granule_indices)
      {
-        /* 6 digit sequence number should be enough for a 10 year mission:
-         * (10 years)*(365 days/year)*(100 scans/day) = 3.65e5 scans
-         * which fits in a 6 digit int.
-         */
+        /* TEMPO_<label>_Ld_Vdd_<time>_SdddGdd.nc */
         status = snprintf (buf, bufsize,
-                           "tempo_%s_%06d_%02d_v%d_%s.nc",
-                           timestr,
-                           gid->scan_num,
-                           gid->granule_num,
-                           version,
-                           label);
+                           "TEMPO_%s_L%d_V%02d_%s_S%03dG%02d.nc",
+                           label, level, version, timestr,
+                           gid->scan_num, gid->granule_num);
      }
    else
      {
+        /* TEMPO_<label>_Ld_Vdd_<time>.nc */
         status = snprintf (buf, bufsize,
-                           "tempo_%s_v%d_%s.nc",
-                           timestr,
-                           version,
-                           label);
+                           "TEMPO_%s_L%d_V%02d_%s.nc",
+                           label, level, version, timestr);
      }
 
    return status;
@@ -308,9 +287,7 @@ int TIO_copy_granule_ident (int ncid_from, int ncid_to)
 static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
                                const _pTIO_Granule_Ident_Type *gid2)
 {
-   return ((gid1->scan_seq_num == gid2->scan_seq_num)
-           && (gid1->scan_num == gid2->scan_num)
-           && (gid1->granule_seq_num == gid2->granule_seq_num)
+   return ((gid1->scan_num == gid2->scan_num)
            && (gid1->granule_num == gid2->granule_num)
            && (gid1->granule_flag == gid2->granule_flag)
            && (gid1->tstart == gid2->tstart)
@@ -331,7 +308,7 @@ int TIO_same_granule_ident (int ncid1, int ncid2)
    return same_granule_ident (&gid1, &gid2);
 }
 
-int TIO_filename_from_granule (int ncid, const char *label, int version,
+int TIO_filename_from_granule (int ncid, const char *label, int level, int version,
                                char *buf, int bufsize)
 {
    _pTIO_Granule_Ident_Type gid = {0};
@@ -339,7 +316,7 @@ int TIO_filename_from_granule (int ncid, const char *label, int version,
    if (-1 == _pTIO_read_granule_ident (ncid, &gid))
      return -1;
 
-   return _pTIO_filename_from_granule_ident (&gid, label, version, buf, bufsize);
+   return _pTIO_filename_from_granule_ident (&gid, label, level, version, buf, bufsize);
 }
 
 int TIO_label_product (int ncid, const char *product_type, int version)
@@ -433,17 +410,17 @@ int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
         return 0;
      }
 
-   if (item->scan_seq_num == lst->granule_ident->scan_seq_num)
+   if (item->scan_num == lst->granule_ident->scan_num)
      {
         status = 0;
      }
    else
      {
         Tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: scan_seq_num mismatch: new item has scan_seq_num=%d  granule list has scan_seq_num=%d",
+                     "%s: scan_num mismatch: new item has scan_num=%d  granule list has scan_num=%d",
                      __func__,
-                     item->scan_seq_num,
-                     lst->granule_ident->scan_seq_num);
+                     item->scan_num,
+                     lst->granule_ident->scan_num);
         status = -1;
      }
 
@@ -633,8 +610,6 @@ int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
           }
      }
 
-   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, 1, &beg->scan_seq_num))
-     return -1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "scan_num", NC_INT, 1, &beg->scan_num))
      return -1;
 
@@ -659,8 +634,8 @@ FCALLSCFUN2(INT, TIO_copy_granule_ident, TIO_F_COPY_GRANULE_IDENT, tio_f_copy_gr
             INT, INT)
 FCALLSCFUN2(INT, TIO_same_granule_ident, TIO_F_SAME_GRANULE_IDENT, tio_f_same_granule_ident,
             INT, INT)
-FCALLSCFUN5(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_filename_from_granule,
-            INT, STRING, INT, PSTRING, INT)
+FCALLSCFUN6(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_filename_from_granule,
+            INT, STRING, INT, INT, PSTRING, INT)
 FCALLSCFUN3(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
             INT, STRING, INT)
 FCALLSCFUN5(INT, tio_time_tempo_to_utc_caldate, TIO_F_TEMPO_TIME_TO_UTC_CALDATE, tio_f_tempo_time_to_utc_caldate,

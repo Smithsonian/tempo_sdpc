@@ -127,6 +127,7 @@ extern int TIO_same_granule_ident (int ncid1, int ncid2);
  *  in a netcdf file header.
  * @param  ncid          Index of source netcdf file
  * @param  label         Label string to include in the filename string
+ * @param  level         Processing level number (e.g. 0, 1, 2, 3)
  * @param  version       Processing version number to include in the filename string
  * @param  buf           Buffer to hold the output filename string
  * @param  bufsize       Size of the output filename buffer
@@ -140,7 +141,7 @@ extern int TIO_same_granule_ident (int ncid1, int ncid2);
  * definition such as "%s".  The latter is useful for creating a filename
  * template string.
  */
-extern int TIO_filename_from_granule (int ncid, const char *label, int version,
+extern int TIO_filename_from_granule (int ncid, const char *label, int level, int version,
                                       char *buf, int bufsize);
 
 /** Write product_type and processing version metadata to a netcdf header

@@ -132,8 +132,6 @@ typedef struct _pTIO_Granule_Ident_Type _pTIO_Granule_Ident_Type;
 struct _pTIO_Granule_Ident_Type
 {
    _pTIO_Granule_Ident_Type *next;
-   int scan_seq_num;
-   int granule_seq_num;
    int scan_num;
    int granule_num;
    int granule_flag;

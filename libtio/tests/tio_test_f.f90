@@ -519,7 +519,7 @@ contains
     if (errstat /= 0) return
 
     namebuf = repeat('X',len(namebuf))
-    call tiof_filename_from_granule (obj, "test"//c_null_char, 1, &
+    call tiof_filename_from_granule (obj, "test"//c_null_char, 1, 1, &
                                      namebuf, errstat)
     if (errstat /= 0) then
       write(*,*)'*** Error: generating filename'

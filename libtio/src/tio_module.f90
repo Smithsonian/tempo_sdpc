@@ -219,19 +219,19 @@ contains
     status = tio_f_same_granule_ident (obj1 % fileid, obj2 % fileid)
   end function
 
-  subroutine tiof_filename_from_granule (obj, label, version, name, errstat)
+  subroutine tiof_filename_from_granule (obj, label, level, version, name, errstat)
     use iso_c_binding, only : c_char, c_null_char
     implicit none
     type (tiof_file_type), intent(in) :: obj
     character(kind=c_char,len=*), intent(in) :: label
-    integer, intent(in) :: version
+    integer, intent(in) :: level, version
     character(kind=c_char,len=*), intent(inout) :: name
     integer, intent(inout):: errstat
 
     integer :: n
 
     if (errstat < 0) return
-    n = tio_f_filename_from_granule (obj % fileid, label, &
+    n = tio_f_filename_from_granule (obj % fileid, label, level, &
                                      version, name, len(name))
     if (n >= len(name)) then
       call tell_error (tell_runtime_error, &

@@ -271,7 +271,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    char attr_name[] = "foo";
 #define BUFSIZE 1024
    char namebuf[BUFSIZE];
-   int target_ncid, read_scan_seq_num, scan_seq_num;
+   int target_ncid, read_scan_num, scan_num;
    int field_type = TIO_FLOAT;
    int attr_type_in, attr_type = TIO_INT64, attr_type_conversion = TIO_UINT;
    int attr_len = 1, attr_len_in;
@@ -534,7 +534,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      }
 
    /* test granule id functions */
-   if (-1 == TIO_filename_from_granule (ncid, "test", 1, namebuf, sizeof(namebuf)))
+   if (-1 == TIO_filename_from_granule (ncid, "test", 1, 1, namebuf, sizeof(namebuf)))
      {
         fprintf (stderr, "*** Error generating filename from granule id\n");
         goto cleanup;
@@ -564,17 +564,17 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   if ((0 != TIO_get_att (target_ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &read_scan_seq_num))
-       || (0 != TIO_get_att (ncid, NC_GLOBAL, "scan_seq_num", NC_INT, &scan_seq_num)))
+   if ((0 != TIO_get_att (target_ncid, NC_GLOBAL, "scan_num", NC_INT, &read_scan_num))
+       || (0 != TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &scan_num)))
      {
-        fprintf (stderr, "*** Error reading scan_seq_num\n");
+        fprintf (stderr, "*** Error reading scan_num\n");
         goto cleanup;
      }
-   if (read_scan_seq_num != scan_seq_num)
+   if (read_scan_num != scan_num)
      {
         fprintf (stderr,
-                 "*** Error: value mismatch: read_scan_seq_num=%d scan_seq_num=%d\n",
-                 read_scan_seq_num, scan_seq_num);
+                 "*** Error: value mismatch: read_scan_num=%d scan_num=%d\n",
+                 read_scan_num, scan_num);
         goto cleanup;
      }
 

@@ -13,9 +13,10 @@
 static void usage (int argc, char **argv)
 {
    (void) argc;
-   fprintf (stderr, "Usage: %s [options] -p <prod> <radiance-file>\n", argv[0]);
+   fprintf (stderr, "Usage: %s [options] -L <level> -p <prod> <radiance-file>\n", argv[0]);
    fprintf (stderr, "Options:\n");
-   fprintf (stderr, " -p <prod>      L2 product abbreviation, e.g. no2\n");
+   fprintf (stderr, " -L <level>     product level, e.g. 0, 1, 2\n");
+   fprintf (stderr, " -p <prod>      product type, e.g. irr, rad, no2\n");
    fprintf (stderr, " -v <version>   Processing version number\n");
 }
 
@@ -24,14 +25,22 @@ int main (int argc, char **argv)
    char buf[BUFSIZE];
    char *prod_abbrev = NULL;
    char *radiance_file = NULL;
-   int c, n, ncid, version = 1;
+   int c, n, ncid, level = 0, version = 1;
 
-   while ((c = getopt (argc, argv, "p:v:")) != -1)
+   while ((c = getopt (argc, argv, "p:L:v:")) != -1)
      {
         switch (c)
           {
            case 'p':
              prod_abbrev = optarg;
+             break;
+
+           case 'L':
+             if (1 != sscanf (optarg, "%d", &level))
+               {
+                  fprintf (stderr, "*** ERROR: invalid level: %s\n", optarg);
+                  return 1;
+               }
              break;
 
            case 'v':
@@ -65,7 +74,7 @@ int main (int argc, char **argv)
      return 1;
 
    buf[0] = 0;
-   n = TIO_filename_from_granule (ncid, prod_abbrev, version,
+   n = TIO_filename_from_granule (ncid, prod_abbrev, level, version,
                                   buf, BUFSIZE);
    (void) TIO_close (ncid);
 

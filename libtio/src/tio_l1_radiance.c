@@ -190,8 +190,6 @@ static int define_radiance_granule_global_ident (int grp)
 
    gid.next = NULL;
    gid.scan_num = 1;
-   gid.scan_seq_num = 1;
-   gid.granule_seq_num = 1;
    gid.granule_num = 1;
    gid.granule_flag = 0;
    strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
