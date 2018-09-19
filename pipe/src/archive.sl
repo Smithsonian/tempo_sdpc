@@ -164,9 +164,13 @@ define unpack_and_archive (tar_file, archive_dest_dir)
         throw ApplicationError, "*** Error: creating $archive_dest_subdir"$;
      }
 
-   % Tar options are chosen to ensure that no existing files are
-   % overwritten
-   variable argv = ["tar", "-x", "--keep-old-files"];
+   variable argv = ["tar", "-x"];
+
+   if (Clobber_Output_Files == 0)
+     {
+        argv = [argv, "--keep-old-files"];
+     }
+
    if (NULL != stat_file (path_concat (archive_dest_subdir, Granule_Ident_File)))
      {
         argv = [argv, "--exclude=${Granule_Ident_File}"$];
