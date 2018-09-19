@@ -135,7 +135,7 @@ tar_l1_radiance_to_dest()
        $granule_dir/log_polcorr.txt
    /bin/mv $dest_dir/.${tarfile_rad} $dest_dir/${tarfile_rad}
 
-   archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L1 $dest_dir/${tarfile_rad}
+   archive.sl --clobber --delete -a $SDPC_ARCHIVE_DIR -l L1 $dest_dir/${tarfile_rad}
 
    /bin/rm -f $granule_dir/log_inr_post.txt $tiepoint_file \
               $granule_dir/log_polcorr.txt

@@ -107,15 +107,6 @@ run_inr_prep()
    L1_inr_prep $target_file
 }
 
-remove_run_dir()
-{
-   /bin/rm -f $output_file $granule_basename \
-           l0_ccd.cfg log_l0_ccd.txt \
-           l1_inr_prep.cfg log_inr_prep.txt \
-           granule_ident.csv
-   /bin/rmdir $run_dir
-}
-
 case "${granule_basename}" in
   *drk* )
   output_file=$(mkgranule_name -L 0 -p drkt -v $SDPC_PROCESSING_VERSION $granule_basename)
@@ -141,14 +132,12 @@ case "${granule_basename}" in
   #run_wavecal $output_file "0-9"
   run_inr_prep $output_file
 
-  # Before we archive it, the radiance file must go through INR:
-  tar_out_dir=""
-  archive_level=""
+  tar_out_dir="$l1_out_dir"
+  archive_level="L1"
 
   rad_tmpfile=$inr_input_cache/.${output_file}
   /bin/cp $output_file $rad_tmpfile
   /bin/mv $rad_tmpfile $inr_input_cache/$output_file
-  remove_run_dir
   ;;
 
   * )
