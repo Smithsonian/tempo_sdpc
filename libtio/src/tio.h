@@ -128,7 +128,7 @@ extern int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info);
  * @return 0 indicates success, -1 indicates failure.
  */
 extern int TIO_put_var_section (int grp, const char *name,
-                                int *start, int *count, int type,
+                                const int *start, const int *count, int type,
                                 const void *data);
 
 /*! Read a block of values from an N-dimensional array variable.
@@ -146,7 +146,7 @@ extern int TIO_put_var_section (int grp, const char *name,
  * @return 0 indicates success, -1 indicates failure.
  */
 extern int TIO_get_var_section (int grp, const char *name,
-                                int *start, int *count, int type,
+                                const int *start, const int *count, int type,
                                 void *data);
 
 /** Enable or disable variable-specific I/O methods

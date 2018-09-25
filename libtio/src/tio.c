@@ -541,24 +541,6 @@ int TIO_inq_var (int grp, const char *name, TIO_Var_Info_Type *info)
    return 0;
 }
 
-/* #define TEST_WAVELENGTH_METHODS 1 */
-#ifdef TEST_WAVELENGTH_METHODS
-static int get_wavelengths (int grp, int *start, int *count,
-                            int type, void *data, const char *name,
-                            void *client_data)
-{
-   fprintf (stderr, "=====> called get_wavelengths\n");
-   return 0;
-}
-static int put_wavelengths (int grp, int *start, int *count,
-                            int type, const void *data, const char *name,
-                            void *client_data)
-{
-   fprintf (stderr, "=====> called put_wavelengths\n");
-   return 0;
-}
-#endif
-
 #if 0
 static int cvt_float_to_type (int num, const float *f, int type, void *v)
 {
@@ -684,6 +666,161 @@ free_and_return:
 
 typedef struct
 {
+   double a;
+   double b;
+   double *coef;
+   int num_coef;
+}
+Cheb_Type;
+
+static double cheb_expansion_eval (const Cheb_Type *s, double x)
+{
+   size_t i, order = s->num_coef-1;
+   double d1, d2, t, t2, value;
+
+   /* Use Clenshaw recursion to evaluate a truncated Chebyshev series,
+    *       f(x) = \sum c(k) T(t;k), k = 0,1,2...order
+    * at a particular coordinate x, in the interval [a,b], via the Chebyshev
+    * coordinate t, on the interval [-1,1], is: t = (2*x-a-b)/(b-a).
+    * In this expansion, T(t;k) is a Chebyshev polynomial of the first kind
+    * of order k, and the c(k) are constant coefficients.
+    */
+
+   /* Clenshaw recursion: original reference is
+    * Clenshaw, C.W., Math. Comp. 9 (1955), 118-120
+    */
+
+   /* t is coordinate in [-1,1] interval */
+   t = (2.0 * x - s->a - s->b) / (s->b - s->a);
+   t2 = 2.0 * t;
+
+   d1 = 0.0;
+   d2 = 0.0;
+
+   for (i = order; i >= 1; i--)
+     {
+        double temp = d1;
+        d1 = t2 * d1 - d2 + s->coef[i];
+        d2 = temp;
+     }
+
+   value = t * d1 - d2 + s->coef[0];
+
+   return value;
+}
+
+static int read_wavecal_params (int grp, const int *start, const int *count,
+                                Cheb_Type *ct, double **wavecal_params, size_t *params_dimlen)
+{
+   TIO_Var_Info_Type info = {0};
+   const char *wavecal_params_name = "wavecal_params";
+   size_t len_params, pstart[3], pcount[3];
+   double *params = NULL;
+   int num_coef, start_pix, num_pix, status;
+
+   *wavecal_params = NULL;
+   *params_dimlen = 0;
+
+   if (0 != TIO_inq_var (grp, wavecal_params_name, &info))
+     return -1;
+
+   pstart[0] = start[0];
+   pstart[1] = start[1];
+   pstart[2] = 0;
+
+   pcount[0] = count[0];
+   pcount[1] = count[1];
+   pcount[2] = info.dimlens[2];
+
+   len_params = pcount[0] * pcount[1] * pcount[2];
+   if (NULL == (params = (double *)TIO_MALLOC (len_params * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   if ((NC_NOERR != (status = nc_get_vara_double (grp, info.varid, pstart, pcount, params)))
+       || (NC_NOERR != (status = nc_get_att_int (grp, info.varid, "num_coefficients", &num_coef)))
+       || (NC_NOERR != (status = nc_get_att_int (grp, info.varid, "start_spectral_channel", &start_pix)))
+       || (NC_NOERR != (status = nc_get_att_int (grp, info.varid, "num_spectral_channels", &num_pix))))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s in group %d (%s)",
+                     __func__, wavecal_params_name, grp, nc_strerror(status));
+        TIO_FREE(params);
+        return -1;
+     }
+
+   ct->a = start_pix;
+   ct->b = start_pix + num_pix - 1;
+   ct->num_coef = num_coef;
+
+   *params_dimlen = info.dimlens[2];
+   *wavecal_params = params;
+
+   return 0;
+}
+
+static int get_wavelength (int grp, const int *start, const int *count,
+                           int type, void *data, const char *name, void *client_data)
+{
+   Cheb_Type ct = {0};
+   double *wavecal_params = NULL;
+   size_t params_dimlen, wavelen_offset, param_offset;
+   int step, num_waves, num_step, num_xtrack, varid;
+
+   (void) client_data;
+
+   /* If wavecal_params doesn't exist, then return and continue with the default method */
+   if (NC_NOERR != nc_inq_varid (grp, "wavecal_params", &varid))
+     return 1;
+
+   num_step = count[0];
+   num_xtrack = count[1];
+   num_waves = count[2];
+
+   if (0 != read_wavecal_params (grp, start, count, &ct, &wavecal_params, &params_dimlen))
+     return -1;
+
+   wavelen_offset = 0;
+   param_offset = 0;
+
+   for (step = 0; step < num_step; step++)
+     {
+        int xtrack;
+
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             int i;
+             ct.coef = wavecal_params + param_offset;
+
+             if (type == NC_FLOAT)
+               {
+                  float *y_flt = (float *)data + wavelen_offset;
+                  for (i = 0; i < num_waves; i++)
+                    {
+                       y_flt[i] = (float) cheb_expansion_eval (&ct, i + start[2]);
+                    }
+               }
+             else
+               {
+                  double *y_dbl = (double *)data + wavelen_offset;
+                  for (i = 0; i < num_waves; i++)
+                    {
+                       y_dbl[i] = cheb_expansion_eval (&ct, i + start[2]);
+                    }
+               }
+             wavelen_offset += num_waves;
+             param_offset += params_dimlen;
+          }
+     }
+
+   TIO_FREE(wavecal_params);
+
+   return 0;
+}
+
+typedef struct
+{
    char *name;
    int (*get)(int, const  int *, const int *,
               int,       void *, const char *, void *);
@@ -719,11 +856,9 @@ static int Radiance_Error_Num_Significant_Digits = 2;
 
 static IO_Methods_Type IO_Methods[] =
 {
-#ifdef TEST_WAVELENGTH_METHODS
-   {"wavelength",
-        get_wavelengths, NULL, 1,
-        put_wavelengths, NULL, 1},
-#endif
+   {TEMPO_VAR_WAVELENGTH,
+        get_wavelength, NULL, 1,
+        NULL, NULL, 0},
    {TEMPO_VAR_RADIANCE_ERROR,
         NULL, NULL, 0,
         put_float_nsd, &Radiance_Error_Num_Significant_Digits, 1},
@@ -748,7 +883,7 @@ int _TIO_set_io_method_enable (const char *name,
 
 #define TIO_IO_VAR_SECTION(action,error_num,const_qual) \
 int TIO_##action##_var_section (int grp, const char *name, \
-                                int *istart, int *icount, int type, \
+                                const int *istart, const int *icount, int type, \
                                 const_qual void *data) \
 { \
    TIO_Var_Info_Type info; \
@@ -760,8 +895,11 @@ int TIO_##action##_var_section (int grp, const char *name, \
    if ((NULL != io_method) && (io_method->action##_enable != 0) \
        && (NULL != io_method->action)) \
      { \
-        return io_method->action (grp, istart, icount, type, data, name, \
-                                  io_method->action##_client_data); \
+        int io_method_status; \
+        io_method_status = io_method->action (grp, istart, icount, type, data, name, \
+                                              io_method->action##_client_data); \
+        if (io_method_status <= 0) \
+          return io_method_status; \
      } \
  \
    if (-1 == TIO_inq_var (grp, name, &info)) \
