@@ -257,10 +257,10 @@ static int write_fit_details (FILE *fp, int xtrack,
 
 static int create_result_file (const char *path, const char *group_name,
                                size_t beg_step, size_t end_step, size_t step_dimlen,
-                               size_t num_xtrack, int start_pix, int num_pix,
-                               size_t params_dimlen)
+                               size_t num_xtrack, int start_pix, int num_pix, int num_coefs)
 {
    int ncid, varid, param_dimids[3], start, count;
+   size_t params_dimlen = num_coefs;
    size_t i, num_steps = end_step - beg_step;
    int max_num_steps = step_dimlen;
    int *steps = NULL;
@@ -280,7 +280,8 @@ static int create_result_file (const char *path, const char *group_name,
 
    if (0 != TIO_def_var (ncid, WAVECAL_PARAM_NAME, TIO_FLOAT, 3, param_dimids, &varid))
      goto close_and_return;
-   if ((0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
+   if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
+       ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
        ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
      goto close_and_return;
 
@@ -731,8 +732,7 @@ int main (int argc, char **argv)
 
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen,
-                                     xtrack_dimlen,
-                                     start_pix, num_pix, num_wave_params);
+                                     xtrack_dimlen, start_pix, num_pix, num_wave_params);
    if (ncid_result <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",

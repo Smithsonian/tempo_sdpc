@@ -120,16 +120,6 @@ inline int cheb_clenshaw_eval (double a, double b, const double *coef,
    double d2 = 0.0;
    double t, t2;
 
-#if 0
-   if (x < a || b < x)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: x=%g out of range (expected values in interval [%g,%g])",
-                     __func__, x, a, b);
-        return -1;
-     }
-#endif
-
    /* Clenshaw recursion: original reference is
     * Clenshaw, C.W., Math. Comp. 9 (1955), 118-120
     */
@@ -144,12 +134,6 @@ inline int cheb_clenshaw_eval (double a, double b, const double *coef,
         d1 = t2 * d1 - d2 + coef[i];
         d2 = temp;
      }
-
-   /* Note that a common formulation of the Clenshaw recursion
-    * has a factor 1/2 in the constant term of the final expression.
-    * But in this application, we're generating our Chebyshev
-    * series coefficients by solving a least-squares system, so
-    * we don't have that factor of 1/2 in the constant term. */
 
    *value = t * d1 - d2 + coef[0];
 

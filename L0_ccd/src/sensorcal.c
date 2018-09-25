@@ -260,36 +260,31 @@ static const CCD_Cal_Type *ccd_cal (const Calibration_Type *cal,
    return NULL;
 }
 
-static int cal_wavecal (const Calibration_Type *cal,
-                        int band_index, int nx,
-                        const double *pspec, const double *pspec_err,
+static int cal_wavecal (const Calibration_Type *cal, int band_index,
+                        int nx, const double *pspec, const double *pspec_err,
                         double *pwaves)
 {
    const CCD_Cal_Type *ccd = NULL;
-   int ny = cal->num_waves_per_ccd;
-   double *waves = pwaves;
-   int x;
 
-   (void) pspec; (void) pspec_err;
+   (void) nx; (void) pspec; (void) pspec_err;
+
+   /* Wavelength calibration is performed elsewhere.
+    * Here, we just copy the nominal wavelength grid.
+    */
 
    if (NULL == (ccd = ccd_cal (cal, band_index)))
      return -1;
 
-   if (ny != ccd->num_waves)
+   if (cal->num_waves_per_ccd != ccd->num_waves)
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: unexpected wavelength grid size n=%d (expected n=%d)",
-                     __func__, ny, ccd->num_waves);
+                     __func__, cal->num_waves_per_ccd, ccd->num_waves);
         return -1;
      }
 
-   for (x = 0; x < nx; x++)
-     {
-        const double *y0 = ccd->waves;
-
-        memcpy ((char *)waves, (char *)y0, ny * sizeof(double));
-        waves += ny;
-     }
+   memcpy ((char *)pwaves, (char *)ccd->waves,
+           cal->num_waves_per_ccd * sizeof(double));
 
    return 0;
 }
@@ -545,13 +540,13 @@ Calibration_Type *sensorcal_init (config_t *cfg)
    if (NULL == data)
      return NULL;
 
-   if ((NULL == (sub = config_setting_get_member (s, "default_wavelength_grid")))
+   if ((NULL == (sub = config_setting_get_member (s, "nominal_wavelength_grid")))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "delta_wave", &data->delta_wave))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "min_wave_uv", &data->min_wave_uv))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "min_wave_vis", &data->min_wave_vis))
       )
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading default_wavelength_grid parameters",
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading nominal_wavelength_grid parameters",
                      __func__);
         free_cal_data (data);
         return NULL;
@@ -584,6 +579,7 @@ void sdt_free (Spectral_Data_Type *sdt)
 {
    if (sdt == NULL)
      return;
+   FREE(sdt->wave);
    FREE(sdt->img);
    FREE(sdt->pqf);
    FREE(sdt);
@@ -604,14 +600,14 @@ static Spectral_Data_Type *sdt_alloc (int num_xtrack, int num_channels)
    sdt->num_xtrack = num_xtrack;
    sdt->num_channels = num_channels;
 
-   if ((NULL == (sdt->img = (double *)MALLOC (3 * img_size * sizeof(double))))
-       || (NULL == (sdt->pqf = (Image_Pqf_Bitmap_Type *)MALLOC (img_size * sizeof(Image_Pqf_Bitmap_Type)))))
+   if ((NULL == (sdt->img = (double *)MALLOC (2 * img_size * sizeof(double))))
+       || (NULL == (sdt->pqf = (Image_Pqf_Bitmap_Type *)MALLOC (img_size * sizeof(Image_Pqf_Bitmap_Type))))
+       || (NULL == (sdt->wave = (double *)MALLOC (num_channels * sizeof(double)))))
      {
         sdt_free (sdt);
         return NULL;
      }
    sdt->img_err = sdt->img + img_size;
-   sdt->wave = sdt->img + img_size * 2;
 
    return sdt;
 }

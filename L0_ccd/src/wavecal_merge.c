@@ -24,79 +24,17 @@ static void usage (void)
    exit (EXIT_SUCCESS);
 }
 
-static int compute_wavelength_grid (float *pars, size_t num_pars, int start_pix, int num_pix,
-                                    float *waves, size_t num_waves)
-{
-   float p0, p1, c0;
-   int end_pix = start_pix + num_pix - 1;
-   int i, num_waves_signed;
-
-   if (num_pars != 2)
-     {
-        fprintf (stderr, "*** Error:  unsupported polynomial degree = %ld (%s)\n",
-                 num_pars, __func__);
-        return -1;
-     }
-
-   p0 = pars[0];
-   p1 = pars[1];
-   c0 = 2.0 / (end_pix - start_pix);
-
-   /* we need a signed value of (i-start_pix) */
-   num_waves_signed = num_waves;
-
-   for (i = 0; i < num_waves_signed; i++)
-     {
-        float x =  c0 * (i - start_pix) - 1.0;
-        waves[i] = p0 + x * p1;
-     }
-
-   return 0;
-}
-
-static int replace_wavelength_grid (int grp_target, int mirror_step, int start_pix, int num_pix,
-                                    float *param_slab_i, size_t xtrack_dimlen, size_t params_dimlen,
-                                    size_t spectral_channel_dimlen,
-                                    float *calibrated_waves)
-{
-   int start[3], count[3];
-   size_t xtrack;
-
-   for (xtrack = 0; xtrack < xtrack_dimlen; xtrack++)
-     {
-        float *pars = param_slab_i + xtrack * params_dimlen;
-
-        if (0 != compute_wavelength_grid (pars, params_dimlen, start_pix, num_pix,
-                                          calibrated_waves, spectral_channel_dimlen))
-          return -1;
-
-        start[0] = mirror_step;
-        start[1] = xtrack;
-        start[2] = 0;
-        count[0] = 1;
-        count[1] = 1;
-        count[2] = spectral_channel_dimlen;
-
-        if (0 != TIO_put_var_section (grp_target, TEMPO_VAR_WAVELENGTH, start, count,
-                                      TIO_FLOAT, calibrated_waves))
-          return -1;
-     }
-
-   return 0;
-}
-
 static int perform_merge (int ncid_target, const char *file)
 {
    const char *params_varname = "wavecal_params";
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
-   int ncid_src, grp_target, varid, start_pix, num_pix;
-   int step_dimlen_src, step_dimid, xtrack_dimid, dest_varid, dimid;
+   int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;
+   int step_dimlen_src, step_dimid, xtrack_dimid, dest_varid;
    int start[3], count[3];
-   size_t step_dimlen, xtrack_dimlen, xtrack_dimlen_src, spectral_channel_dimlen;
+   size_t step_dimlen, xtrack_dimlen, xtrack_dimlen_src;
    size_t params_dimlen_src, len_params, len_slab, i;
    float *wavecal_params = NULL;
-   float *calibrated_waves = NULL;
    int *mirror_step = NULL;
    int status = -1;
 
@@ -126,17 +64,6 @@ static int perform_merge (int ncid_target, const char *file)
    if (0 != TIO_inq_dim (grp_target, TEMPO_DIM_XTRACK, &xtrack_dimid, &xtrack_dimlen))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading xtrack dimension size", __func__);
-        goto close_and_return;
-     }
-
-   if (0 != TIO_inq_dim (grp_target, TEMPO_DIM_CHANNEL, &dimid, &spectral_channel_dimlen))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: reading spectral channel  dimension size", __func__);
-        goto close_and_return;
-     }
-   if (NULL == (calibrated_waves = (float *)MALLOC (spectral_channel_dimlen * sizeof(float))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto close_and_return;
      }
 
@@ -178,6 +105,7 @@ static int perform_merge (int ncid_target, const char *file)
      goto close_and_return;
 
    if ((0 != tio_inq_varid (ncid_src, params_varname, &varid))
+       || (0 != TIO_get_att (ncid_src, varid, "num_coefficients", NC_INT, &num_coefs))
        || (0 != TIO_get_att (ncid_src, varid, "start_spectral_channel", NC_INT, &start_pix))
        || (0 != TIO_get_att (ncid_src, varid, "num_spectral_channels", NC_INT, &num_pix)))
      goto close_and_return;
@@ -200,7 +128,8 @@ static int perform_merge (int ncid_target, const char *file)
 
         if (0 != TIO_def_var (grp_target, params_varname, TIO_FLOAT, 3, params_dimid_list, &dest_varid))
           goto close_and_return;
-        if ((0 != TIO_put_att (grp_target, dest_varid, "start_spectral_channel", NC_INT, 1, &start_pix))
+        if ((0 != TIO_put_att (grp_target, dest_varid, "num_coefficients", NC_INT, 1, &num_coefs))
+            || (0 != TIO_put_att (grp_target, dest_varid, "start_spectral_channel", NC_INT, 1, &start_pix))
             || (0 != TIO_put_att (grp_target, dest_varid, "num_spectral_channels", NC_INT, 1, &num_pix)))
           goto close_and_return;
      }
@@ -221,12 +150,6 @@ static int perform_merge (int ncid_target, const char *file)
         if (0 != TIO_put_var_section (grp_target, params_varname, start, count,
                                       TIO_FLOAT, param_slab_i))
           goto close_and_return;
-
-        /* FIXME: presumably drop this when we drop the explicit wavelength grid variable */
-        if (0 != replace_wavelength_grid (grp_target, mirror_step[i], start_pix, num_pix,
-                                          param_slab_i, xtrack_dimlen_src, params_dimlen_src,
-                                          spectral_channel_dimlen, calibrated_waves))
-          goto close_and_return;
      }
 
    status = 0;
@@ -234,7 +157,7 @@ close_and_return:
    TIO_close(ncid_src);
    FREE(wavecal_params);
    FREE(mirror_step);
-   FREE(calibrated_waves);
+
    return status;
 }
 

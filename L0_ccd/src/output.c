@@ -211,11 +211,11 @@ write_rec_band1 (Output_Type *out, int index,
         return -1;
      }
 
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELENGTH, start, count, TIO_DOUBLE,
+   if (0 != TIO_put_var_section (grp, "nominal_wavelength", &start[2], &count[2], TIO_DOUBLE,
                                  sdt->wave))
      {
-        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
-                     __func__, TEMPO_VAR_WAVELENGTH, out->file);
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing nominal_wavelength to %s",
+                     __func__, out->file);
         return -1;
      }
 
