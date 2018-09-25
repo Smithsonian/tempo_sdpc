@@ -332,7 +332,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 #endif
      }
 
-   /* wavelength */
+   /* nominal_wavelength */
      {
         static _pText_Attr_Type wavelength_attrs[] =
           {
@@ -346,31 +346,11 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              {_FillValue, TIO_FILL_FLOAT},
              _pFLOAT_ATTRS_END
           };
-        dims[0] = dim_table->step.id;
-        dims[1] = dim_table->xtrack.id;
-        dims[2] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELENGTH, NC_FLOAT, 3, dims, wavelength_attrs, &varid))
+        dims[0] = dim_table->channel.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, "nominal_wavelength", NC_FLOAT, 1, dims, wavelength_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
           return -1;
-
-        if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR,
-                          "defining %s compression parameters for grp %d (%s)",
-                          TEMPO_VAR_WAVELENGTH, grp, nc_strerror(status));
-             return -1;
-          }
-#ifdef DO_CHUNKING
-        /* FIXME */
-        chunksizes[0] = TIO_CHUNKSIZE_STEP;
-        chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
-                         dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
-        chunksizes[2] = dim_table->channel.len;
-        if ((storage == NC_CHUNKED)
-            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
-          return -1;
-#endif
      }
 
    /* pixel quality flags */
