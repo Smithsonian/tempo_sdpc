@@ -26,7 +26,7 @@ static void usage (void)
 
 static int perform_merge (int ncid_target, const char *file)
 {
-   const char *params_varname = "wavecal_params";
+   const char *params_varname = TEMPO_VAR_WAVECAL_PARAM;
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
    int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;

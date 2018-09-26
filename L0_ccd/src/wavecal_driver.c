@@ -19,9 +19,6 @@
 #define MIN_WAVELENGTH_UV     288.0
 #define MIN_WAVELENGTH_VIS    536.8
 
-#define WAVECAL_PARAM_NAME      "wavecal_params"
-#define WAVECAL_PARAM_DIM_NAME  "wavecal_par"
-
 typedef struct
 {
    double *spec;
@@ -275,10 +272,10 @@ static int create_result_file (const char *path, const char *group_name,
 
    if ((0 != TIO_def_dim (ncid, TEMPO_DIM_STEP, num_steps, &param_dimids[0]))
        || (0 != TIO_def_dim (ncid, TEMPO_DIM_XTRACK, num_xtrack, &param_dimids[1]))
-       || (0 != TIO_def_dim (ncid, WAVECAL_PARAM_DIM_NAME, params_dimlen, &param_dimids[2])))
+       || (0 != TIO_def_dim (ncid, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &param_dimids[2])))
      goto close_and_return;
 
-   if (0 != TIO_def_var (ncid, WAVECAL_PARAM_NAME, TIO_FLOAT, 3, param_dimids, &varid))
+   if (0 != TIO_def_var (ncid, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT, 3, param_dimids, &varid))
      goto close_and_return;
    if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
        ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
@@ -331,7 +328,7 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
    count[1] = 1;
    count[2] = num_wave_params;
 
-   if (0 != TIO_put_var_section (ncid, WAVECAL_PARAM_NAME, start, count, TIO_DOUBLE,
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_WAVECAL_PARAM, start, count, TIO_DOUBLE,
                                   wave_params))
      return -1;
 
@@ -359,7 +356,7 @@ static int create_diagnostic_group (int parent_grp, const char *grp_name,
    memcpy ((char *)param_dimids, (char *)spectrum_info->dimids,
            3 * sizeof (int));
    params_dimlen = wavecal_result->num_wave_params;
-   if (0 != TIO_def_dim (grp, WAVECAL_PARAM_DIM_NAME, params_dimlen, &param_dimids[2]))
+   if (0 != TIO_def_dim (grp, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &param_dimids[2]))
      return -1;
 
    if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
@@ -371,7 +368,7 @@ static int create_diagnostic_group (int parent_grp, const char *grp_name,
        || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT,
                              spectrum_info->ndims,
                              spectrum_info->dimids, &varid))
-       || (0 != TIO_def_var (grp, WAVECAL_PARAM_NAME, TIO_FLOAT,
+       || (0 != TIO_def_var (grp, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT,
                              spectrum_info->ndims,
                              param_dimids, &varid))
        || (0 != TIO_def_var (grp, "bestnorm", TIO_FLOAT, 2,
