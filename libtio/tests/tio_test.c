@@ -1,3 +1,5 @@
+/* -*- mode: C; mode: fold -*- */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,9 +9,10 @@
 
 #include "netcdf.h"
 #include "tio.h"
+#include "_tio.h"
 #include "tio_template.h"
 
-static float *generate_data (int n)
+static float *generate_data (int n) /*{{{*/
 {
    int i;
    float *y;
@@ -28,7 +31,9 @@ static float *generate_data (int n)
    return y;
 }
 
-static float *generate_err (int n, float err)
+/*}}}*/
+
+static float *generate_err (int n, float err) /*{{{*/
 {
    int i;
    float *y;
@@ -47,7 +52,9 @@ static float *generate_err (int n, float err)
    return y;
 }
 
-static int compare_data (int n, float *out, float *in)
+/*}}}*/
+
+static int compare_data (int n, float *out, float *in) /*{{{*/
 {
    int i;
 
@@ -73,7 +80,9 @@ static int compare_data (int n, float *out, float *in)
    return 0;
 }
 
-static int test_def_grp (int ncid)
+/*}}}*/
+
+static int test_def_grp (int ncid) /*{{{*/
 {
    int grp, ignore_grp;
 
@@ -82,6 +91,7 @@ static int test_def_grp (int ncid)
         fprintf (stderr, "*** TIO_def_grp failed\n");
         return -1;
      }
+
    if ((-1 == TIO_inq_grp (ncid, "xxx", &grp))
        || (grp != ignore_grp))
      {
@@ -124,7 +134,9 @@ static int test_def_grp (int ncid)
    return 0;
 }
 
-static int test_dims (int ncid)
+/*}}}*/
+
+static int test_dims (int ncid) /*{{{*/
 {
    const char dimname[] = "test_dim";
    size_t len, test_dimlen = 128;
@@ -161,12 +173,14 @@ static int test_dims (int ncid)
    return 0;
 }
 
+/*}}}*/
+
 static int dontcopy_attr (const char *attr)
 {
    return (0 == strcmp (attr, "_FillValue"));
 }
 
-static int test_def_var (int ncid, const char *name, int type)
+static int test_def_var (int ncid, const char *name, int type) /*{{{*/
 {
    TIO_Var_Info_Type vi, vi2;
    static TIO_Attr_Text_Type attrs[] =
@@ -223,7 +237,9 @@ static int test_def_var (int ncid, const char *name, int type)
    return 0;
 }
 
-static int test_numerical_attribute_io (int target_ncid)
+/*}}}*/
+
+static int test_numerical_attribute_io (int target_ncid) /*{{{*/
 {
 #define NUM_ATT_VALUE 121
    unsigned char ubi, ub = NUM_ATT_VALUE;
@@ -263,7 +279,456 @@ static int test_numerical_attribute_io (int target_ncid)
    return 0;
 }
 
-static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
+/*}}}*/
+
+static int create_float_waves (float w0, size_t num_waves, float **pwaves) /*{{{*/
+{
+   float *waves = NULL;
+   size_t i;
+
+   if (NULL == (waves = (float *) malloc (num_waves * sizeof(float))))
+     {
+        fprintf (stderr, "*** %s: malloc failed\n", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < num_waves; i++)
+     {
+        waves[i] = w0 + i;
+     }
+
+   *pwaves = waves;
+
+   return 0;
+}
+
+/*}}}*/
+
+/* Initial condition: group contains only 1D 'nominal_wavelength'
+ * Read 'wavelength' 3D and verify that the result is 'nominal_wavelength'.
+ */
+static int test_wavelength_nominal (int ncid) /*{{{*/
+{
+   TIO_Var_Info_Type info = {0};
+   const char grpname[] = "band_290_490_nm";
+   float *nominal_waves = NULL;
+   float *waves = NULL;
+   float wave0 = 290.0;
+   size_t i, step, xtrack, num_chan, num_xtrack, num_step;
+   size_t waves_offset;
+   int grp, varid, start[3], count[3];
+   int status = -1;
+
+   if (NC_NOERR != nc_inq_grp_ncid (ncid, grpname, &grp))
+     {
+        fprintf (stderr, "%s: Error accessing group %s\n", __func__, grpname);
+        return -1;
+     }
+
+   if (NC_NOERR == nc_inq_varid (grp, TEMPO_VAR_WAVELENGTH, &varid))
+     {
+        fprintf (stderr, "%s: Error test assumes that variable %s does not exist\n", __func__, TEMPO_VAR_WAVELENGTH);
+        return -1;
+     }
+
+   if (NC_NOERR != nc_inq_varid (grp, TEMPO_VAR_WAVELEN_NOMINAL, &varid))
+     {
+        fprintf (stderr, "%s: Error accessing variable %s\n", __func__, TEMPO_VAR_WAVELEN_NOMINAL);
+        return -1;
+     }
+
+   if (0 != TIO_inq_var (grp, "radiance", &info))
+     return -1;
+   num_step = info.dimlens[0];
+   num_xtrack = info.dimlens[1];
+   num_chan = info.dimlens[2];
+
+   if (0 != create_float_waves (wave0, num_chan, &nominal_waves))
+     return -1;
+
+   if (NULL == (waves = (float *)malloc (num_step * num_xtrack * num_chan * sizeof(float))))
+     {
+        fprintf (stderr, "%s: malloc failed\n", __func__);
+        return -1;
+     }
+
+   start[0] = 0;
+   count[0] = num_chan;
+
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, NC_FLOAT, nominal_waves))
+     goto return_status;
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+
+   count[0] = num_step;
+   count[1] = num_xtrack;
+   count[2] = num_chan;
+
+   if (0 != TIO_get_var_section (grp, TEMPO_VAR_WAVELENGTH, start, count, NC_FLOAT, waves))
+     goto return_status;
+
+   waves_offset = 0;
+   for (step = 0; step < num_step; step++)
+     {
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             float *pwaves = waves + waves_offset;
+             for (i = 0; i < num_chan; i++)
+               {
+                  float diff = pwaves[i] - nominal_waves[i];
+                  float avg = (pwaves[i] + nominal_waves[i]) * 0.5;
+                  if (fabs(diff) > FLT_EPSILON*fabs(avg))
+                    {
+                       fprintf (stderr, "*** %s: Error: wavelength mismatch: pwaves[%ld]=%g nominal_waves[%ld]=%g\n",
+                                __func__, i, pwaves[i], i, nominal_waves[i]);
+                       goto return_status;
+                    }
+               }
+             waves_offset += num_chan;
+          }
+     }
+
+   status = 0;
+return_status:
+   free(nominal_waves);
+   free(waves);
+   if (status)
+     {
+        fprintf (stderr, "%s: FAIL\n", __func__);
+     }
+
+   return status;
+}
+
+/*}}}*/
+
+static int write_wavecal_params (int grp, float **pwaves, int *pnum_waves) /*{{{*/
+{
+   TIO_Var_Info_Type info = {0};
+   float *waves = NULL;
+   float *wavecal_params = NULL;
+   float wave0 = 280.0;  /* intentionally different from nominal_waves[0] */
+   float coefs[2];
+   size_t n, params_dimlen, step, xtrack, num_step, num_xtrack, len;
+   size_t wp_offset;
+   int start_spectral_channel, num_spectral_channels, num_coefficients;
+   int param_dimid, dimids[3], varid, start[3], count[3];
+   int status = -1;
+
+   if (0 != TIO_inq_var (grp, "radiance", &info))
+     return -1;
+   n = info.dimlens[2];
+
+   if (0 != create_float_waves (wave0, n, &waves))
+     return -1;
+
+   *pwaves = waves;
+   *pnum_waves = n;
+
+   params_dimlen = 2;
+
+   num_coefficients = params_dimlen;
+   num_spectral_channels = n;
+   start_spectral_channel = 0;
+
+   if (0 != TIO_def_dim (grp, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &param_dimid))
+     goto return_status;
+
+   dimids[0] = info.dimids[0];
+   dimids[1] = info.dimids[1];
+   dimids[2] = param_dimid;
+
+   if (0 != TIO_def_var (grp, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT, 3, dimids, &varid))
+     goto return_status;
+   if ((0 != TIO_put_att (grp, varid, "num_coefficients", TIO_INT, 1, &num_coefficients))
+       || (0 != TIO_put_att (grp, varid, "start_spectral_channel", TIO_INT, 1, &start_spectral_channel))
+       || (0 != TIO_put_att (grp, varid, "num_spectral_channels", TIO_INT, 1, &num_spectral_channels)))
+     goto return_status;
+
+   /* In the linear case, the Chebyshev expansion coefficients are fairly obvious:
+    *    \lambda(i) = c[0] * T0(x) + c[1] * T1(x)
+    * where x(i) = (2*i - i0 - i1) / (i1 - i0)
+    *   and  i \in [i0, i1]
+    *   so that -1 <= x <= 1
+    * Also, T0(x) = 1, T1(x) = x
+    * Therefore:
+    *    \lambda(i) = c[0] + c[1] * x
+    * Here i0=0, i1=n-1, so the coefficients are determined by:
+    *          lambda(0) = c[0] - c[1]
+    *        lambda(n-1) = c[0] + c[1]
+    *  =>  c[0] = (lambda(n-1) + lambda(0)) / 2
+    *      c[1] = (lambda(n-1) - lambda(0)) / 2
+    */
+   coefs[0] = (waves[n-1] + waves[0]) * 0.5;
+   coefs[1] = (waves[n-1] - waves[0]) * 0.5;
+
+   num_step = info.dimlens[0];
+   num_xtrack = info.dimlens[1];
+
+   len = params_dimlen * num_step * num_xtrack;
+
+   if (NULL == (wavecal_params = (float *)malloc (len * sizeof(float))))
+     {
+        fprintf (stderr, "%s: malloc failed\n", __func__);
+        goto return_status;
+     }
+
+   wp_offset = 0;
+   for (step = 0; step < num_step; step++)
+     {
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             float *wp = wavecal_params + wp_offset;
+             wp[0] = coefs[0];
+             wp[1] = coefs[1];
+             wp_offset += params_dimlen;
+          }
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = num_step;
+   count[1] = num_xtrack;
+   count[2] = params_dimlen;
+
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVECAL_PARAM, start, count, NC_FLOAT, wavecal_params))
+     goto return_status;
+
+   status = 0;
+return_status:
+   free(wavecal_params);
+
+   return status;
+}
+
+/*}}}*/
+
+/* Initial condition: group contains only 'nominal_wavelength'.
+ * Create wavecal_params and verify that reading 'wavelength' yields
+ * wavelengths derived from that, and not from nominal_wavelength.
+ */
+static int test_wavelength_wavecal (int ncid) /*{{{*/
+{
+   TIO_Var_Info_Type info = {0};
+   const char grpname[] = "band_290_490_nm";
+   float *waves1 = NULL;
+   float *waves = NULL;
+   int grp, step, i, xtrack, num_step, num_xtrack, num_chan, start[3], count[3];
+   size_t len, waves_offset;
+   int status = -1;
+
+   if (NC_NOERR != nc_inq_grp_ncid (ncid, grpname, &grp))
+     {
+        fprintf (stderr, "%s: Error accessing group %s\n", __func__, grpname);
+        return -1;
+     }
+
+   if (0 != TIO_inq_var (grp, "radiance", &info))
+     return -1;
+
+   num_step = info.dimlens[0];
+   num_xtrack = info.dimlens[1];
+
+   if (0 != write_wavecal_params (grp, &waves1, &num_chan))
+     goto return_status;
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+
+   count[0] = num_step;
+   count[1] = num_xtrack;
+   count[2] = num_chan;
+
+   len = num_step * num_xtrack * num_chan;
+   if (NULL == (waves = (float *)malloc (len * sizeof(float))))
+     {
+        fprintf (stderr, "*** %s: malloc failed\n", __func__);
+        goto return_status;
+     }
+
+   if (0 != TIO_get_var_section (grp, TEMPO_VAR_WAVELENGTH, start, count, NC_FLOAT, waves))
+     goto return_status;
+
+   waves_offset = 0;
+   for (step = 0; step < num_step; step++)
+     {
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             float *pwaves = waves + waves_offset;
+             for (i = 0; i < num_chan; i++)
+               {
+                  float diff = pwaves[i] - waves1[i];
+                  float avg = (pwaves[i] + waves1[i]) * 0.5;
+                  if (fabs(diff) > FLT_EPSILON*fabs(avg))
+                    {
+                       fprintf (stderr, "*** %s: Error: wavelength mismatch: pwaves[%d]=%g waves1[%d]=%g\n",
+                                __func__, i, pwaves[i], i, waves1[i]);
+                       goto return_status;
+                    }
+               }
+             waves_offset += num_chan;
+          }
+     }
+
+   status = 0;
+return_status:
+   free(waves1);
+   free(waves);
+   return status;
+}
+
+/*}}}*/
+
+/* Verify reading 'wavelength' succeeds when 'nominal_wavelength'
+ * and 'wavecal_params' are not present.
+ */
+static int test_wavelength_literal (int ncid) /*{{{*/
+{
+   const char varname[] = "wavelength";
+   size_t i, num_waves = 32;
+   int dimid, varid, start, count;
+   float w0 = 200.0;
+   float *waves = NULL;
+   float *in_waves = NULL;
+   int status = -1;
+
+   if (NULL == (in_waves = (float *)malloc (num_waves * sizeof(float))))
+     {
+        fprintf (stderr, "*** %s: malloc failed\n", __func__);
+        return -1;
+     }
+
+   if (0 != create_float_waves (w0, num_waves, &waves))
+     goto return_status;
+
+   if ((NC_NOERR != nc_def_dim (ncid, "test_wavedim", num_waves, &dimid))
+       || (NC_NOERR != nc_def_var (ncid, varname, NC_FLOAT, 1, &dimid, &varid)))
+     {
+        fprintf (stderr, "*** %s: Error defining test variable '%s'\n", __func__, varname);
+        goto return_status;
+     }
+
+   start = 0;
+   count = num_waves;
+   if (0 != TIO_put_var_section (ncid, varname, &start, &count, NC_FLOAT, waves))
+     goto return_status;
+
+   if (0 != TIO_get_var_section (ncid, varname, &start, &count, NC_FLOAT, in_waves))
+     goto return_status;
+
+   for (i = 0; i < num_waves; i++)
+     {
+        if (in_waves[i] != waves[i])
+          {
+             fprintf (stderr, "*** %s: input/output mismatch: wrote waves[%ld] = %g  read in_waves[%ld] = %g\n",
+                      __func__, i, waves[i], i, in_waves[i]);
+             goto return_status;
+          }
+     }
+
+   status = 0;
+return_status:
+   free(waves);
+   free(in_waves);
+   return status;
+}
+
+/*}}}*/
+
+static int test_wavelength_input (const char *file) /*{{{*/
+{
+   int ncid;
+   int status = -1;
+
+   if (-1 == TIO_open (file, NC_WRITE, &ncid))
+     return -1;
+
+   if ((0 != test_wavelength_nominal (ncid))
+       || (0 != test_wavelength_wavecal (ncid))
+       || (0 != test_wavelength_literal (ncid)))
+     goto close_and_return;
+
+   status = 0;
+close_and_return:
+   if (0 != TIO_close (ncid))
+     return -1;
+
+   return status;
+}
+
+/*}}}*/
+
+static int check_granule_ident (int ncid)
+{
+   int scan_num, granule_num, granule_flag, itest, varid;
+   int start=0, count=1;
+   double tstart, tend, dtest;
+
+   scan_num = 10;
+   granule_num = 3;
+   granule_flag = 1;
+
+   if (0 != tio_write_granule_ident_indices (ncid, scan_num, granule_num, granule_flag))
+     return -1;
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &itest)
+        || (itest != scan_num)))
+     {
+        fprintf (stderr, "*** %s: Error expected scan_num=%d, got %d\n",
+                 __func__, scan_num, itest);
+        return -1;
+     }
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &itest)
+        || (itest != granule_num)))
+     {
+        fprintf (stderr, "*** %s: Error expected granule_num=%d, got %d\n",
+                 __func__, granule_num, itest);
+        return -1;
+     }
+
+   if (0 != tio_inq_varid (ncid, "granule_flag", &varid))
+     return -1;
+
+   if ((0 != TIO_get_var_section (ncid, "granule_flag", &start, &count, NC_INT, &itest)
+        || (itest != granule_flag)))
+     {
+        fprintf (stderr, "*** %s: Error expected granule_flag=%d, got %d\n",
+                 __func__, granule_flag, itest);
+        return -1;
+     }
+
+   if ((0 != _pTIO_tempo_time_from_utc_timestr ("2018-09-26T18:00:00Z", &tstart))
+       || (0 != _pTIO_tempo_time_from_utc_timestr ("2018-09-26T18:00:01Z", &tend)))
+     return -1;
+
+   if (0 != tio_write_granule_ident_times (ncid, tstart, tend))
+     return -1;
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &dtest)
+        || (dtest != tstart)))
+     {
+        fprintf (stderr, "*** %s: Error expected tstart=%17.15e, got %17.15e\n",
+                 __func__, tstart, dtest);
+        return -1;
+     }
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &dtest)
+        || (dtest != tend)))
+     {
+        fprintf (stderr, "*** %s: Error expected tend=%17.15e, got %17.15e\n",
+                 __func__, tend, dtest);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny) /*{{{*/
 {
    int ncid, varid, status, grp, err=-1;
    char data_name[] = TEMPO_VAR_RADIANCE;
@@ -285,7 +750,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    float *data_in = NULL, *data_err_in = NULL;
    double *dbl_err=NULL;
    int data_size = ntracks * nxtrack * ny;
-   int start[3], count[3];
+   int start[3], count[3], sub_grp;
    int processing_level;
    int processing_level_type;
    TIO_Scan_Group_Type sgrps[] =
@@ -345,6 +810,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         fprintf (stderr, "*** failed creating L1 radiance template in %s\n", file);
         goto cleanup;
      }
+
+   if (0 != check_granule_ident (ncid))
+     goto cleanup;
 
    grp_name = sgrps[0].name;
 
@@ -430,7 +898,16 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
+   if ((0 != TIO_def_grp (grp, "subgroup", &sub_grp))
+       || (0 != tio_def_l1_radiance_angle_vars (sub_grp))
+       || (0 != tio_def_var_ground_pixel_quality_flag  (sub_grp))
+       || (0 != tio_def_var_radiance_status_flag (sub_grp)))
+     goto cleanup;
+
    if (-1 == TIO_close (ncid))
+     goto cleanup;
+
+   if (0 != test_wavelength_input (file))
      goto cleanup;
 
    if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
@@ -621,7 +1098,9 @@ cleanup:
    return err;
 }
 
-static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int ny)
+/*}}}*/
+
+static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int ny) /*{{{*/
 {
    int ncid, err=-1;
    TIO_Scan_Group_Type sgrps[] =
@@ -658,6 +1137,8 @@ cleanup:
    if (err) fprintf (stderr, "*** TEST FAILED (test_l1_irradiance)\n");
    return err;
 }
+
+/*}}}*/
 
 int main (void)
 {
