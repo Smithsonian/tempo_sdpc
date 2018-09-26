@@ -782,13 +782,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         static _pFloat_Attr_Type wavelength_float_attrs[] =
           {
-             {"valid_min", TIO_FILL_FLOAT},
+             {"valid_min", -TIO_FILL_FLOAT},
              {"valid_max", TIO_FILL_FLOAT},
              {_FillValue, TIO_FILL_FLOAT},
              _pFLOAT_ATTRS_END
           };
         dims[0] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, "nominal_wavelength", NC_FLOAT, 1, dims, wavelength_attrs, &varid))
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELEN_NOMINAL, NC_FLOAT, 1, dims, wavelength_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
           return -1;

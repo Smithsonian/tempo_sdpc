@@ -713,7 +713,6 @@ static int read_wavecal_params (int grp, const int *start, const int *count,
                                 Cheb_Type *ct, double **wavecal_params, size_t *params_dimlen)
 {
    TIO_Var_Info_Type info = {0};
-   const char *wavecal_params_name = "wavecal_params";
    size_t len_params, pstart[3], pcount[3];
    double *params = NULL;
    int num_coef, start_pix, num_pix, status;
@@ -721,7 +720,7 @@ static int read_wavecal_params (int grp, const int *start, const int *count,
    *wavecal_params = NULL;
    *params_dimlen = 0;
 
-   if (0 != TIO_inq_var (grp, wavecal_params_name, &info))
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_WAVECAL_PARAM, &info))
      return -1;
 
    pstart[0] = start[0];
@@ -745,7 +744,7 @@ static int read_wavecal_params (int grp, const int *start, const int *count,
        || (NC_NOERR != (status = nc_get_att_int (grp, info.varid, "num_spectral_channels", &num_pix))))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s in group %d (%s)",
-                     __func__, wavecal_params_name, grp, nc_strerror(status));
+                     __func__, TEMPO_VAR_WAVECAL_PARAM, grp, nc_strerror(status));
         TIO_FREE(params);
         return -1;
      }
@@ -760,19 +759,15 @@ static int read_wavecal_params (int grp, const int *start, const int *count,
    return 0;
 }
 
-static int get_wavelength (int grp, const int *start, const int *count,
-                           int type, void *data, const char *name, void *client_data)
+static int get_wavelength_wavecal (int grp, const int *start, const int *count,
+                                   int type, void *data, const char *name, void *client_data)
 {
    Cheb_Type ct = {0};
    double *wavecal_params = NULL;
    size_t params_dimlen, wavelen_offset, param_offset;
-   int step, num_waves, num_step, num_xtrack, varid;
+   int step, num_waves, num_step, num_xtrack;
 
-   (void) client_data;
-
-   /* If wavecal_params doesn't exist, then return and continue with the default method */
-   if (NC_NOERR != nc_inq_varid (grp, "wavecal_params", &varid))
-     return 1;
+   (void) client_data; (void) name;
 
    num_step = count[0];
    num_xtrack = count[1];
@@ -817,6 +812,126 @@ static int get_wavelength (int grp, const int *start, const int *count,
    TIO_FREE(wavecal_params);
 
    return 0;
+}
+
+static int get_wavelength_nominal (int grp, const int *start, const int *count,
+                                   int type, void *data, const char *name, void *client_data)
+{
+   float *nominal_waves = NULL;
+   int step, num_waves, num_step, num_xtrack, varid, status;
+   size_t wavelen_offset, wave_start, wave_count;
+
+   (void) client_data; (void) name;
+
+   num_step = count[0];
+   num_xtrack = count[1];
+   num_waves = count[2];
+
+   if (NULL == (nominal_waves = (float *)TIO_MALLOC (num_waves * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   wave_start = start[2];
+   wave_count = count[2];
+
+   if ((NC_NOERR != (status = nc_inq_varid (grp, TEMPO_VAR_WAVELEN_NOMINAL, &varid)))
+       || (NC_NOERR != (status = nc_get_vara_float (grp, varid, &wave_start, &wave_count, nominal_waves))))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: failed reading %s (%s)",
+                     __func__, TEMPO_VAR_WAVELEN_NOMINAL, nc_strerror (status));
+        return -1;
+     }
+
+   wavelen_offset = 0;
+
+   for (step = 0; step < num_step; step++)
+     {
+        int xtrack;
+
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             int i;
+
+             if (type == NC_FLOAT)
+               {
+                  float *y_flt = (float *)data + wavelen_offset;
+                  memcpy ((char *)y_flt, (char *)nominal_waves,
+                          num_waves * sizeof(float));
+               }
+             else
+               {
+                  double *y_dbl = (double *)data + wavelen_offset;
+                  for (i = 0; i < num_waves; i++)
+                    {
+                       y_dbl[i] = (double) nominal_waves[i];
+                    }
+               }
+             wavelen_offset += num_waves;
+          }
+     }
+
+   TIO_FREE(nominal_waves);
+
+   return 0;
+}
+
+static int have_wavecal_param_3d (int grp)
+{
+   int varid, ndims, dimids[3], dimid_par;
+
+   if (NC_NOERR != nc_inq_varid (grp, TEMPO_VAR_WAVECAL_PARAM, &varid))
+     return 0;
+
+   if ((NC_NOERR != nc_inq_varndims (grp, varid, &ndims))
+       || (ndims != 3))
+     return 0;
+
+   if ((NC_NOERR != nc_inq_vardimid (grp, varid, dimids))
+       || (NC_NOERR != nc_inq_dimid (grp, TEMPO_DIM_WAVECAL_PARAM, &dimid_par)))
+     return 0;
+
+   return (dimids[2] == dimid_par);
+}
+
+static int have_nominal_wavelength_1d (int grp)
+{
+   int varid, ndims, dimid, dimid_spectral_channel;
+
+   if (NC_NOERR != nc_inq_varid (grp, TEMPO_VAR_WAVELEN_NOMINAL, &varid))
+     return 0;
+
+   if ((NC_NOERR != nc_inq_varndims (grp, varid, &ndims))
+       || (ndims != 1))
+     return 0;
+
+   if ((NC_NOERR != nc_inq_vardimid (grp, varid, &dimid))
+       || (NC_NOERR != nc_inq_dimid (grp, TEMPO_DIM_CHANNEL, &dimid_spectral_channel)))
+     return 0;
+
+   return (dimid == dimid_spectral_channel);
+}
+
+static int get_wavelength (int grp, const int *start, const int *count,
+                           int type, void *data, const char *name, void *client_data)
+{
+   /* When asked to read 'wavelength':
+    * First, look for 3D TEMPO_VAR_WAVECAL_PARAM,
+    * if that's not present, look for 1D TEMPO_VAR_NOMINAL_WAVELEN.
+    * If that's not present, return >0, which means look for 'wavelength'
+    */
+
+   if (have_wavecal_param_3d (grp))
+     {
+        return get_wavelength_wavecal (grp, start, count, type, data, name, client_data);
+     }
+   else if (have_nominal_wavelength_1d (grp))
+     {
+        return get_wavelength_nominal (grp, start, count, type, data, name, client_data);
+     }
+
+   return 1;
 }
 
 typedef struct
