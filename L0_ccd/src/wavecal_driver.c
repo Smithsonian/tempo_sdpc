@@ -15,10 +15,6 @@
 #include "config.h"
 #include "wavecal.h"
 
-#define PIXEL_SIZE_NANOMETERS   0.2
-#define MIN_WAVELENGTH_UV     288.0
-#define MIN_WAVELENGTH_VIS    536.8
-
 typedef struct
 {
    double *spec;
