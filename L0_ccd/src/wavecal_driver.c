@@ -28,13 +28,20 @@ typedef struct
 }
 Spectrum_Type;
 
+typedef struct
+{
+   int *inr_quality_flag;
+   double *solar_zenith_angle;
+   size_t num_step;
+   size_t num_xtrack;
+}
+Geoloc_Type;
+
 static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal_driver [options] <input-file> <output-file>\n");
    fprintf (stderr, "  Required:\n");
    fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing spectra\n");
-   fprintf (stderr, "   -S | --yStart WAVELENGTH   starting wavelength\n");
-   fprintf (stderr, "   -D | --yDelta DELTA        wavelength step per pixel\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help                print this usage message\n");
    fprintf (stderr, "   -d | --debug               write diagnostic information to output file\n");
@@ -140,31 +147,125 @@ return_error:
    return status;
 }
 
-static int *read_inr_quality_flag (int grp, size_t *dimlens)
+static double *read_nominal_wavelength (int grp, size_t num_waves)
 {
-   int *inr_quality_flag = NULL;
-   int start[2], count[2];
-   size_t len = dimlens[0] * dimlens[1];
+   double *y = NULL;
+   int start, count;
 
-   if (NULL == (inr_quality_flag = (int *)MALLOC (len * sizeof(int))))
+   if (NULL == (y = (double *)MALLOC (num_waves * sizeof(double))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
-   memset ((char *)inr_quality_flag, 0, len * sizeof(int));
+
+   start = 0;
+   count = num_waves;
+   if (0 != TIO_get_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, &start, &count, TIO_DOUBLE, y))
+     {
+        FREE(y);
+        return NULL;
+     }
+
+   return y;
+}
+
+static void free_geoloc_type (Geoloc_Type *g)
+{
+   if (g == NULL)
+     return;
+   FREE(g->inr_quality_flag);
+   FREE(g->solar_zenith_angle);
+   FREE(g);
+}
+
+static Geoloc_Type *alloc_geoloc_type (size_t num_step, size_t num_xtrack)
+{
+   Geoloc_Type *g = NULL;
+   size_t len;
+
+   if (NULL == (g = (Geoloc_Type *)MALLOC (sizeof *g)))
+     {
+        tell_verror(TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   g->num_step = num_step;
+   g->num_xtrack = num_xtrack;
+
+   len = num_step * num_xtrack;
+
+   if ((NULL == (g->inr_quality_flag = (int *)MALLOC (len * sizeof(int))))
+       || (NULL == (g->solar_zenith_angle = (double *)MALLOC (len * sizeof(double)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_geoloc_type (g);
+        return NULL;
+     }
+
+   memset ((char *)g->inr_quality_flag, 0, len * sizeof(int));
+   memset ((char *)g->solar_zenith_angle, 0, len * sizeof(double));
+
+   return g;
+}
+
+static Geoloc_Type *read_geolocation_vars (int grp, const size_t *dimlens)
+{
+   Geoloc_Type *g = NULL;
+   int start[2], count[2];
+
+   if (NULL == (g = alloc_geoloc_type (dimlens[0], dimlens[1])))
+     return NULL;
 
    start[0] = 0;
    start[1] = 0;
    count[0] = dimlens[0];
    count[1] = dimlens[1];
 
-   if (0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, inr_quality_flag))
+   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, g->inr_quality_flag))
+       ||(0 != TIO_get_var_section (grp, TEMPO_VAR_SZ_ANGLE, start, count, TIO_DOUBLE, g->solar_zenith_angle)))
      {
-        FREE(inr_quality_flag);
+        free_geoloc_type (g);
         return NULL;
      }
 
-   return inr_quality_flag;
+   return g;
+}
+
+static int read_sza_max (config_t *cfg, double *sza_max)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, "wavecal_control")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing wavecal_control in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "sza_max", sza_max))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading sza_max from param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int will_calibrate_radiance (const Geoloc_Type *g, int step, int xtrack, double sza_max)
+{
+   int *inrqf_step = NULL;
+   double *sza_step = NULL;
+
+   if (g == NULL)
+     return 1;
+
+   inrqf_step = g->inr_quality_flag + step * g->num_xtrack;
+   sza_step = g->solar_zenith_angle + step * g->num_xtrack;
+
+   return ((inrqf_step[xtrack] == 0) && (sza_step[xtrack] < sza_max));
 }
 
 static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wave)
@@ -453,12 +554,11 @@ int main (int argc, char **argv)
    TIO_Var_Info_Type spectrum_info = {0};
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
-   int *inr_quality_flag = NULL;
+   Geoloc_Type *geoloc = NULL;
    double *y0 = NULL;
    double nan_value = nan("");
-   double y_start = nan_value;
-   double y_delta = nan_value;
    double *wave_params = NULL;
+   double sza_max;
    int grp, ncid = 0, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
    int beg_step, end_step;
@@ -467,20 +567,18 @@ int main (int argc, char **argv)
    int verbose = 0;
    int ncid_result = 0, num_wave_params, start_pix, num_pix;
    int debug = 0;
-   size_t i, step_dimlen, xtrack_dimlen, channel_dimlen;
+   size_t step_dimlen, xtrack_dimlen, channel_dimlen;
    int fit_status_code;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
-        {"debug",    no_argument, 0, 'd'},
+        {"debug",   no_argument, 0, 'd'},
         {"config",  required_argument, 0, 'c'},
         {"wavepar", required_argument, 0, 'w'},
         {"xtrack",  required_argument, 0, 'x'},
-        {"block",  required_argument, 0, 'b'},
+        {"block",   required_argument, 0, 'b'},
         {"mirror",  required_argument, 0, 'm'},
         {"verbose", no_argument, 0, 'v'},
-        {"yDelta",  required_argument, 0, 'D'},
-        {"yStart",  required_argument, 0, 'S'},
         {"group",   required_argument, 0, 'g'},
         {0,0,0,0}
      };
@@ -504,7 +602,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hdb:m:D:S:c:g:x:w:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hdb:m:c:g:x:w:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -534,14 +632,6 @@ int main (int argc, char **argv)
            case 'v': verbose++;
              break;
 
-           case 'S':
-             if (1 != sscanf (optarg, "%le", &y_start))
-               usage();
-             break;
-           case 'D':
-             if (1 != sscanf (optarg, "%le", &y_delta))
-               usage();
-             break;
            case 'x':
              if (1 != sscanf (optarg, "%d", &xtrack))
                usage();
@@ -594,21 +684,6 @@ int main (int argc, char **argv)
         usage();
      }
 
-   if (isnan(y_delta))
-     {
-        y_delta = PIXEL_SIZE_NANOMETERS;
-     }
-
-   if (isnan(y_start))
-     {
-        if (0 == strcasecmp (group_name, TEMPO_BAND_NAME_UV))
-          y_start = MIN_WAVELENGTH_UV;
-        else if (0 == strcasecmp (group_name, TEMPO_BAND_NAME_VIS))
-          y_start = MIN_WAVELENGTH_VIS;
-        else
-          usage();
-     }
-
    wavecal_config.fill_value = nan_value;
 
    if (0 != TIO_open (input_file, NC_WRITE, &ncid))
@@ -642,20 +717,15 @@ int main (int argc, char **argv)
    if (alloc_spectrum (&spec, channel_dimlen))
      goto return_status;
 
-   if (NULL == (y0 = (double *)MALLOC (channel_dimlen * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto return_status;
-     }
-
-   for (i = 0; i < channel_dimlen; i++)
-     {
-        y0[i] = y_start + i*y_delta;
-     }
+   if (NULL == (y0 = read_nominal_wavelength (grp, channel_dimlen)))
+     goto return_status;
 
    if (0 == is_irradiance)
      {
-        if (NULL == (inr_quality_flag = read_inr_quality_flag (grp, spectrum_info.dimlens)))
+        if (NULL == (geoloc = read_geolocation_vars (grp, spectrum_info.dimlens)))
+          goto return_status;
+
+        if (0 != read_sza_max (&cfg, &sza_max))
           goto return_status;
      }
 
@@ -739,25 +809,15 @@ int main (int argc, char **argv)
 
    for (step = beg_step; step < end_step; step++)
      {
-        int *inrqf_step = NULL;
-
-        if (0 == is_irradiance)
-          {
-             inrqf_step = inr_quality_flag + step * xtrack_dimlen;
-          }
-
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
              Wavecal_Result_Type *wrt;
 
              wrt = NULL;
 
-             if ((inrqf_step != NULL) && (inrqf_step[xtrack] != 0))
-               {
-                  if (0 != wavecal_get_initial_params (wct, y0, wave_params))
-                    goto return_status;
-               }
-             else
+             /* Calibrate all irradiance spectra, and radiance spectra that meet filter criteria */
+             if ((0 != is_irradiance)
+                 || (0 != will_calibrate_radiance (geoloc, step, xtrack, sza_max)))
                {
                   if (read_spectrum (grp, step, xtrack, is_irradiance, &spec))
                     goto return_status;
@@ -769,6 +829,12 @@ int main (int argc, char **argv)
                     goto return_status;
 
                   wrt = &wavecal_result;
+               }
+             else
+               {
+                  /* Uncalibrated radiance spectra get the default wavelength grid */
+                  if (0 != wavecal_get_initial_params (wct, y0, wave_params))
+                    goto return_status;
                }
 
              if (write_result (ncid_result, beg_step, step, xtrack, wave_params, num_wave_params, wrt))
@@ -796,8 +862,8 @@ int main (int argc, char **argv)
    status = EXIT_SUCCESS;
 return_status:
    FREE(y0);
-   FREE(inr_quality_flag);
    FREE(wave_params);
+   free_geoloc_type (geoloc);
    if (ncid) TIO_close (ncid);
    if (ncid_result) TIO_close (ncid_result);
    free_spectrum (&spec);

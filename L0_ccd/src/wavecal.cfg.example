@@ -3,6 +3,8 @@ wavecal_control:
    xtol = 1.e-8;    # parameter convergence criterion
    ftol = 1.e-8;    # objective function convergence criterion
    maxiter = 200;   # max number of Levenberg-Marquardt iterations
+
+   sza_max = 80.0;  # Radiance spectra with sza > sza_max will not be calibrated
 };
 
 band_290_490_nm:
