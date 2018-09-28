@@ -503,20 +503,21 @@ static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_
           return -1;
      }
 
-   count[2] = num_wave_params;
-   if (0 != TIO_put_var_section (grp, "params", start, count, TIO_DOUBLE,
-                                 wave_params))
-     return -1;
-
-   if (wavecal_result == NULL)
-     return 0;
-
    start[0] = step;
    start[1] = xtrack;
    start[2] = 0;
 
    count[0] = 1;
    count[1] = 1;
+   count[2] = num_wave_params;
+
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVECAL_PARAM, start, count, TIO_DOUBLE,
+                                 wave_params))
+     return -1;
+
+   if (wavecal_result == NULL)
+     return 0;
+
    count[2] = wavecal_result->num_fit;
 
    if ((0 != TIO_put_var_section (grp, "wavelength", start, count, TIO_DOUBLE,
