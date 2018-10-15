@@ -71,7 +71,7 @@ contains
            zerospec_string ) == 0 ) THEN
 !  FIXME
 !  Modified to mask array temporaries
-        CALL read_one_refspec ( &
+        CALL read_one_refspec1 ( &
              specunit, &
              refspec_fname(i), winwav_min, winwav_max, n_refspec_pts(i), &
 !             refspec_firstlast_wav(i,wvl_idx:spc_idx), refspec_norm(i), &
@@ -103,10 +103,6 @@ contains
 
     RETURN
   END SUBROUTINE read_reference_spectra
-
-
-
-
 
   SUBROUTINE read_one_refspec ( specunit, specname, winwav_min, winwav_max,&
        nspec, specwav, specnorm, onespec, pge_error_status )
@@ -354,4 +350,189 @@ contains
     RETURN
   END SUBROUTINE read_one_refspec
 
+  !xliu: 10/25/2011, replace the routine above with the following one
+  !      This subroutine can allow data gap in the reference if that portion of
+  !      the orbit is not used so that we could use a smaller max_spec_pts
+  SUBROUTINE read_one_refspec1 ( specunit, specname, winwav_min, winwav_max,&
+     nspec, specwav, specnorm, onespec, pge_error_status )
+
+    USE OMSAO_precision_module,   ONLY: dp
+    USE OMSAO_indices_module,     ONLY: wvl_idx, spc_idx
+    USE OMSAO_parameters_module,  ONLY: maxchlen, max_spec_pts, lm_start_of_table,&
+        vb_lev_omidebug, maxwin
+    USE OMSAO_variables_module,   ONLY: verb_thresh_lev, winlim, numwin
+    USE OMSAO_errstat_module
+    use utilities, only: skip_to_filemark
+    IMPLICIT NONE
+
+    ! ----------------
+    ! Input Parameters
+    ! ----------------
+    INTEGER,             INTENT (IN) :: specunit
+    CHARACTER (LEN=*),   INTENT (IN) :: specname
+    REAL      (KIND=dp), INTENT (IN) :: winwav_min, winwav_max
+    ! -----------------
+    ! Output Parameters
+    ! -----------------
+    INTEGER,                                                  INTENT (OUT) :: pge_error_status
+    INTEGER,                                                  INTENT (OUT) :: nspec
+    REAL (KIND=dp),                                           INTENT (OUT) :: specnorm
+    REAL (KIND=dp), DIMENSION (2),                            INTENT (OUT) :: specwav
+    REAL (KIND=dp), DIMENSION (max_spec_pts,wvl_idx:spc_idx), INTENT (OUT) :: onespec
+
+    ! ----------------
+    ! Local Variables
+    ! ----------------
+    INTEGER  :: i, ip, ios, file_read_stat, imin, imax, nwin, iwin, fwin, lwin,wstep
+    INTEGER,        DIMENSION (max_spec_pts) :: irev
+    REAL (KIND=dp), DIMENSION (max_spec_pts) :: x, y
+    REAL (KIND=dp), DIMENSION (maxwin, 2)    :: wlim
+    REAL (KIND=dp)                           :: xdum, xmin, xmax
+    CHARACTER (LEN=maxchlen)                 :: lastline
+    LOGICAL                                  :: isinc
+
+    ! ------------------------------
+    ! Name of this module/subroutine
+    ! ------------------------------
+    CHARACTER (LEN=21), PARAMETER :: modulename = 'read_one_refspec'
+
+    ! ------------------------
+    ! Error handling variables
+    ! ------------------------
+    INTEGER :: errstat, version
+
+    ! ---------------------------------
+    ! External OMI and Toolkit routines
+    ! ---------------------------------
+    INTEGER :: OMI_SMF_setmsg
+
+    IF (numwin == 1) THEN
+       wlim(1, 1) = winlim(1, 1) - 5.0d0
+       wlim(1, 2) = winlim(1, 2) + 5.0d0
+       nwin = 1
+    ELSE
+       iwin = 1
+       wlim(1, 1) = winlim(1, 1) - 5.0d0
+       DO i = 2, numwin
+          IF (winlim(i, 1) - winlim(i-1, 2) > 20.d0) THEN
+             wlim(iwin, 2) = winlim(i-1, 2) + 5.d0
+             iwin = iwin + 1
+             wlim(iwin, 1) = winlim(i, 1) - 5.d0
+          ENDIF
+       ENDDO
+       wlim(iwin, 2) = winlim(numwin, 2) + 5.0d0
+       nwin = iwin
+    ENDIF
+
+    nspec = 0 ; specnorm = 0.0 ; specwav = 0.0 ; onespec = 0.0
+    pge_error_status = pge_errstat_ok
+    x = 0.0 ; y = 0.0
+    ! -----------------------
+    ! Open reference spectrum
+    ! -----------------------
+    OPEN ( UNIT=specunit, FILE=TRIM(ADJUSTL(specname)), STATUS='OLD', IOSTAT=errstat)
+    IF ( errstat /= pge_errstat_ok ) THEN
+       errstat = OMI_SMF_setmsg ( &
+          omsao_e_open_refspec_file, TRIM(ADJUSTL(specname)), modulename, 0)
+         print * , 'no file', specname
+       pge_error_status = pge_errstat_error; RETURN
+    END IF
+
+    ! --------------------------------------
+    ! Skip comments header to start of table
+    ! --------------------------------------
+    CALL skip_to_filemark ( specunit, lm_start_of_table, lastline, file_read_stat)
+    IF ( file_read_stat /= file_read_ok ) THEN
+          errstat = OMI_SMF_setmsg ( &
+          omsao_e_read_refspec_file, TRIM(ADJUSTL(specname)), modulename, 0)
+          pge_error_status = pge_errstat_error; RETURN
+    END IF
+
+    ! -----------------------------------------------
+    ! Read dimension, start&end, and norm of spectrum
+    ! -----------------------------------------------
+    READ (UNIT=specunit, FMT=*, IOSTAT=file_read_stat) nspec, specwav, specnorm
+    IF ( file_read_stat /= file_read_ok ) THEN
+           errstat = OMI_SMF_setmsg ( &
+          omsao_e_read_refspec_file, TRIM(ADJUSTL(specname)), modulename, 0)
+          pge_error_status = pge_errstat_error; RETURN
+    END IF
+
+    ! ---------------------------------------------------------------------
+    ! Find first and last index to read, based on WINWAV_MIN and WINWAV_MAX
+    ! ---------------------------------------------------------------------
+    IF (specwav(1) < specwav(2)) THEN
+       xmin = specwav(1); xmax = specwav(2)
+       imin = 1; imax = nspec; isinc = .TRUE.
+    ELSE
+       xmin = specwav(2); xmax = specwav(1)
+       imin = nspec; imax = 1; isinc = .FALSE.
+    ENDIF
+
+    IF (xmin > winwav_max .OR. xmax < winwav_min) THEN
+       WRITE(*, *) TRIM(ADJUSTL(specname)), ' does not cover any wavelength range!!!'
+       pge_error_status = pge_errstat_warning; RETURN
+    ENDIF
+
+    ip = 1; i = 1
+    IF (isinc) THEN
+       fwin = 1; lwin = nwin; wstep=1
+    ELSE
+       fwin = nwin; lwin = 1; wstep=-1
+    ENDIF
+
+    DO iwin = fwin, lwin, wstep
+       xmin = wlim(iwin, 1); xmax = wlim(iwin, 2)
+
+       DO WHILE (i <= nspec )
+          READ (UNIT=specunit, FMT=*, IOSTAT=file_read_stat) x(ip), y(ip)
+          i = i + 1
+          IF ( file_read_stat /= file_read_ok ) THEN
+                errstat = OMI_SMF_setmsg ( &
+                omsao_e_read_refspec_file, TRIM(ADJUSTL(specname)), modulename, 0)
+           pge_error_status = pge_errstat_error; RETURN
+          ENDIF
+          IF (x(ip) >= xmin .AND. x(ip) <= xmax) THEN
+             IF (ip > max_spec_pts) THEN
+                WRITE(*, *) TRIM(ADJUSTL(specname)), ', increase max_spec_pts ', max_spec_pts
+                pge_error_status = pge_errstat_error; RETURN
+             ENDIF
+             ip = ip + 1
+          ELSE IF (isinc .AND. x(ip) > xmax) THEN
+             IF (iwin < lwin .AND. x(ip) > wlim(iwin+1, 1)) ip = ip + 1
+             EXIT
+          ELSE IF (.NOT. isinc .AND. x(ip) < xmin) THEN
+             IF (iwin < lwin .AND. x(ip) < wlim(iwin+1, 2)) ip = ip + 1
+             EXIT
+          ENDIF
+       ENDDO
+    ENDDO
+
+    ! -----------------------------------------------
+    ! Close fitting control file, report SUCCESS read
+    ! -----------------------------------------------
+    CLOSE ( UNIT=specunit )
+
+    ! ------------------------------------------------------------
+    ! Reassign number of spectral points and first/last wavelength
+    ! ------------------------------------------------------------
+    nspec = ip - 1
+
+    ! ---------------------------------------------------
+    ! Reorder spectrum so that wavelengths are increasing
+    ! ---------------------------------------------------
+    IF ( .NOT. isinc ) THEN
+       irev = (/ (i, i = nspec, 1, -1) /)
+       x(1:nspec) = x(irev(1:nspec));  y(1:nspec) = y(irev(1:nspec))
+    END IF
+
+    ! ------------------------
+    ! Assign output quantities
+    ! ------------------------
+    onespec(1:nspec,wvl_idx) = x(1:nspec)
+    onespec(1:nspec,spc_idx) = y(1:nspec)
+    specwav(1:2)             = (/ x(1), x(nspec) /)
+
+    RETURN
+  END SUBROUTINE read_one_refspec1
 end module m_read_reference_spectra

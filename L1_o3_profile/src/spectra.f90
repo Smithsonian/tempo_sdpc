@@ -10,22 +10,25 @@ contains
   ! xliu:
   ! 1. Replace call to asym_gauss to voigt_gauss
   ! 2. Add variable vgr_idx, vgl_idx, hwr_idx, hwl_idx
+  ! Jbak:
+  ! 1. add super_gauss_module
+  ! 2. 
   ! **********************************************************
 
   SUBROUTINE spectrum_solar ( npoints, nfitvar, sol_wav_avg, locwvl, fit, &
        fitvar)
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module, ONLY: vgl_idx, vgr_idx, hwr_idx, hwl_idx, &
-         wvl_idx, spc_idx, solar_idx, &
-         bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, &
-         sc2_idx, sc3_idx, sin_idx,  hwe_idx, asy_idx, shi_idx, squ_idx!, &
-         !max_rs_idx
-    !USE OMSAO_parameters_module, ONLY: max_spec_pts
+    USE OMSAO_indices_module, ONLY: wvl_idx, spc_idx, solar_idx, shi_idx, squ_idx, &
+        sin_idx,hwe_idx, asy_idx,  vgl_idx, vgr_idx, hwr_idx, hwl_idx, spk_idx, &
+        bl0_idx, bl1_idx, bl2_idx, bl3_idx, & !bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
+        sc0_idx, sc1_idx, sc2_idx, sc3_idx !, sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
+!        wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
          fitwavs, fitvar_sol, mask_fitvar_sol, which_slit, fixslitcal, &
-         yn_varyslit!, phase, lo_sunbnd, up_sunbnd, currspec
+         yn_varyslit, correct_lamda !, rmask_fitvar_sol, correct_lamda
     USE OMSAO_slitfunction_module
+    USE super_gauss_module, ONLY: super_gauss, super_gauss_vary
     USE OMSAO_errstat_module
     use m_gauss, only: asym_gauss, asym_gauss_vary, gauss, gauss_vary
     use m_voigt, only: asym_voigt, asym_voigt_vary
@@ -36,23 +39,21 @@ contains
 
 
     INTEGER,                            INTENT (INOUT) :: npoints, nfitvar
-    REAL (KIND=dp),                     INTENT (IN)    :: sol_wav_avg
+    REAL (KIND=dp),                     INTENT (INOUT)    :: sol_wav_avg
     REAL (KIND=dp), DIMENSION (nfitvar),INTENT (INOUT) :: fitvar
     REAL (KIND=dp), DIMENSION (npoints),INTENT (INOUT) :: locwvl, fit
 
-
-    REAL (KIND=dp), DIMENSION (npoints) :: del, sunspec_ss!, tempspec_ss
+    REAL (KIND=dp), DIMENSION (npoints) :: del, delx, sunspec_ss , tempspec, tempwave, deli
 
     ! =======================================
     ! Variable declarations for IMPLICIT NONE
     ! =======================================
-    INTEGER :: npts, errstat, ref_fidx, ref_lidx!, i, j
+    INTEGER :: npts, errstat, ref_fidx, ref_lidx, i
 
     ! =======================================
     ! Shorthands for solar reference spectrum
     ! =======================================
-    REAL (KIND=dp), DIMENSION (n_refspec_pts(solar_idx)) :: kppos, kpspec,&
-         kpspec_gauss
+    REAL (KIND=dp), DIMENSION (n_refspec_pts(solar_idx)) :: kppos, kpspec, kpspec_gauss
 
     ! ------------------
     ! External functions
@@ -68,6 +69,24 @@ contains
 
     fitvar_sol(mask_fitvar_sol(1:nfitvar)) = fitvar(1:nfitvar)
 
+
+    !IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
+    ! tempwave = 0.0d0
+    ! DO i = 1, npoints
+    !    del(i) = 1.0d0 * i
+    ! ENDDO
+    ! del = (del - npoints / 2.0) / npoints
+    ! deli = 1.0d0
+
+    ! DO j = wr0_idx, wr7_idx
+    !    tempwave = tempwave + fitvar_sol(j) * deli
+    !    deli = deli * del
+    ! ENDDO
+    ! fitwavs(1:npoints) = tempwave
+    !ENDIF
+    locwvl(1:npoints) = fitwavs(1:npoints)
+    sol_wav_avg = ( fitwavs(1) + fitwavs(npoints)) / 2.0
+
     npts = n_refspec_pts(solar_idx)
     ref_fidx = MINVAL(MINLOC(refspec_orig_data(solar_idx, 1:npts, wvl_idx), &
          MASK = (refspec_orig_data(solar_idx, 1:npts, wvl_idx) >= &
@@ -80,7 +99,6 @@ contains
     npts = ref_lidx - ref_fidx + 1
     kppos (1:npts) = refspec_orig_data(solar_idx, ref_fidx:ref_lidx, wvl_idx)
     kpspec(1:npts) = refspec_orig_data(solar_idx, ref_fidx:ref_lidx, spc_idx)
-
     !     Spectrum calculation for both fitting and non-fitting cases.
 
     !     Calculate the spectrum:
@@ -88,21 +106,30 @@ contains
     !     1 + FITVAR(SQU_IDX); do in absolute sense, 
     !     to make it easy to back-convert OMI data.
 
-    kppos(1:npts) = kppos(1:npts) * (1.0 + fitvar_sol(squ_idx)) + &
-         fitvar_sol(shi_idx)
-
+    IF (correct_lamda == 1) THEN
+       kppos(1:npts)  = kppos(1:npts) * (1.0 + fitvar_sol(squ_idx)) + fitvar_sol(shi_idx)
+    ELSE
+       kppos(1:npts)  = kppos(1:npts) * (1.0 + fitvar_sol(squ_idx)) + fitvar_sol(shi_idx) - sol_wav_avg * fitvar_sol(squ_idx)
+    ENDIF
     ! =============================================
     ! Broadening and re-sampling of solar spectrum:
     ! =============================================
     ! =============================================
     ! Broadening and re-sampling of solar spectrum:
     ! =============================================
-    IF (which_slit == 4) THEN
+    IF (which_slit == 5) THEN
       ! solar calibration, don't use variable slit (unknown)
       IF (.NOT. yn_varyslit ) THEN
         CALL omislit_multi (kppos, kpspec, kpspec_gauss, npts)
       ELSE
         CALL omislit_vary  (kppos, kpspec, kpspec_gauss, npts)
+      END IF
+    ELSE IF (which_slit == 4) THEN 
+      IF (.NOT. yn_varyslit ) THEN
+        CALL super_gauss (kppos, kpspec, kpspec_gauss, npts, &
+              fitvar_sol(hwe_idx), fitvar_sol(spk_idx))
+      ELSE
+        CALL super_gauss_vary  (kppos, kpspec, kpspec_gauss, npts)
       END IF
     ELSE IF (which_slit == 3) THEN
       IF (.NOT. yn_varyslit .OR. fixslitcal ) THEN
@@ -136,6 +163,9 @@ contains
       END IF
     ENDIF
 
+    !write(*,'(2f15.7, f8.2)') sum(kpspec(1:npts)), sum(kpspec_gauss(1:npts)), fitvar_sol(hwe_idx), fitvar_sol(spk_idx) !;stop
+  
+
     ! ------------------------------------------------------
     ! Re-sample the solar reference spectrum to the OMI grid
     ! ------------------------------------------------------
@@ -163,23 +193,28 @@ contains
     ! Add the scaling.
     ! ----------------
     del(1:npoints) = locwvl(1:npoints) - sol_wav_avg
-    fit(1:npoints) = fit(1:npoints) * ( &
-         fitvar_sol(sc0_idx)                                               + &
-         fitvar_sol(sc1_idx) * del(1:npoints)                              + &
-         fitvar_sol(sc2_idx) * del(1:npoints)*del(1:npoints)               + &
-         fitvar_sol(sc3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints) )
+    tempspec = 1.0d0
+    delx(1:npoints) = 1.0d0
+    DO i = sc0_idx, sc3_idx
+     IF (fitvar_sol(i) /= 0.0) THEN
+        tempspec = tempspec + fitvar_sol(i) * delx
+     ENDIF
+     delx = delx * del
+    ENDDO
+    fit(1:npoints) = fit(1:npoints) * tempspec
 
     ! ------------------------
     ! Add baseline parameters.
     ! ------------------------
-    fit(1:npoints) = fit(1:npoints) + &
-         fitvar_sol(bl0_idx)                                               + &
-         fitvar_sol(bl1_idx) * del(1:npoints)                              + &
-         fitvar_sol(bl2_idx) * del(1:npoints)*del(1:npoints)               + &
-         fitvar_sol(bl3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)
-
-    !WRITE(www_lun, '(6d12.4)') locwvl(1), locwvl(npoints), currspec(1), &
-    !       currspec(npoints), fit(1), fit(npoints)
+    tempspec = 0.0d0
+    delx(1:npoints) = 1.0d0
+    DO i = bl0_idx, bl3_idx
+     IF (fitvar_sol(i) /= 0.0) THEN
+        tempspec = tempspec + fitvar_sol(i) * delx
+     ENDIF
+     delx = delx * del
+    ENDDO
+    fit(1:npoints) = fit(1:npoints) + tempspec
 
     RETURN
   END SUBROUTINE spectrum_solar

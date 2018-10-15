@@ -87,6 +87,12 @@ MODULE ozprof_data_module
   LOGICAL                       :: saa_flag
   INTEGER                       :: nsaa_spike
 
+  !-------------------------------------
+  ! which_atm
+  !-------------------------------------
+  INTEGER :: which_atm
+  !0. NCEP
+  !1.  
   ! -------------------------------------
   ! ozone climatology (MP vs. TOMS V8)
   ! For use TOMS V8: also get EP total ozone

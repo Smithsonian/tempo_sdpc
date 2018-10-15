@@ -419,11 +419,11 @@ contains
         radrms = relrms
       ENDIF
 
-      WRITE (www_lun, '(I5, 4(A10,1pd11.3))') num_iter, &
+      WRITE (*, '(I5, 4(A10,1pd11.3))') num_iter, &
            ' Chi = ', chisq, ' rms = ', rms, &
            ' rms(%) = ', relrms, ' Irms(%) = ', radrms
       DO i = 1, numwin
-        WRITE (www_lun, '(A13, I2, 2(A14, 1pd11.3))') 'Win ', i, &
+        WRITE (*, '(A13, I2, 2(A14, 1pd11.3))') 'Win ', i, &
              ': allrms = ', allrms(i), 'allIrms(%) = ', allradrms(i)
       ENDDO
     ENDIF

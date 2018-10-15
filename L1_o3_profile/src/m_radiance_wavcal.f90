@@ -17,14 +17,14 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: max_calfit_idx, shi_idx, squ_idx, &
-         wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, asy_idx, vgl_idx!, &
+         wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, asy_idx, vgl_idx, spk_idx !, &
          !vgr_idx, hwl_idx, sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
          !bl0_idx, bl1_idx, bl2_idx, bl3_idx, 
     USE OMSAO_variables_module, ONLY: n_fitvar_sol, fitvar_sol, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, wincal_wav, &
          winlim, radwinfit, solwinfit, fixslitcal, fitwavs, fitweights, &
          currspec, fitvar_sol_init, numwin, &
-         nradpix, scnwrt!, sol_wav_avg, which_slit, fitvar_sol_saved
+         nradpix, scnwrt, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
 
@@ -59,14 +59,14 @@ contains
         wrt_to_screen = .FALSE.
       ENDIF
 
-      ! fix variables for hwe, asy, vgr, vgl, hwr, hwl
+      ! fix variables for hwe, asy, vgr, vgl, hwr, hwl, spk
       fitvar_sol(hwe_idx:asy_idx) = 0_dp
       lo_sunbnd(hwe_idx:asy_idx)  = 0_dp
       up_sunbnd(hwe_idx:asy_idx)  = 0_dp
 
-      fitvar_sol(vgl_idx:hwr_idx) = 0_dp
-      lo_sunbnd(vgl_idx:hwr_idx)  = 0_dp
-      up_sunbnd(vgl_idx:hwr_idx)  = 0_dp
+      fitvar_sol(vgl_idx:spk_idx) = 0_dp
+      lo_sunbnd(vgl_idx:spk_idx)  = 0_dp
+      up_sunbnd(vgl_idx:spk_idx)  = 0_dp
 
       ! find the locations of actually used fitting variables
       n_fitvar_sol = 0
@@ -95,7 +95,7 @@ contains
       fitweights(1:n_fit_pts) = curr_rad_spec(sig_idx, fidx:lidx)
 
       fitvar_sol = fitvar_sol_init
-      fitvar_sol(hwe_idx:hwr_idx) = solwinfit(iwin, hwe_idx:hwr_idx, 1)
+      fitvar_sol(hwe_idx:spk_idx) = solwinfit(iwin, hwe_idx:spk_idx, 1)
       CALL cal_fit_one (n_fit_pts, n_fitvar_sol, wrt_to_screen, wrt_to_file, &
            slitcal, slit_unit, wincal_wav(iwin), &
            radwinfit(iwin, 1:max_calfit_idx, 1:2), solfit_exval)
@@ -111,9 +111,13 @@ contains
       ! Shift and squeeze solar spectrum.
       ! =================================
       ! fitvar_sol is updated in solar_fit_one through common module variables
-      curr_rad_spec(wvl_idx,fidx:lidx) = (curr_rad_spec(wvl_idx,fidx:lidx) - &
-           fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
-
+      IF (correct_lamda == 1) THEN
+          curr_rad_spec(wvl_idx,fidx:lidx) = (curr_rad_spec(wvl_idx,fidx:lidx) - &
+          fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
+      ELSE
+          curr_rad_spec(wvl_idx,fidx:lidx) = (curr_rad_spec(wvl_idx,fidx:lidx) - &
+          fitvar_sol(shi_idx) + sol_wav_avg * fitvar_sol(squ_idx)) / (1.0 +fitvar_sol(squ_idx))
+     ENDIF
       fidx = lidx + 1
 
     END DO

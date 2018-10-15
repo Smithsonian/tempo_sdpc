@@ -17,7 +17,7 @@ contains
          use_he5_in, use_he5_out, use_tio_in, use_tio_out, l1b_rad_filename, &
          nc_rad_swathname, l1_rad_filename_nc, numwin, radnhtrunc, &
          l1_irrad_filename_nc, l1b_irrad_filename, &
-         tempo_syn, step_idx, &
+         tempo_syn, step_idx, nxbin, nybin, &
          GranuleDay, GranuleMonth, GranuleYear!, GranuleJDay
     use ozprof_data_module, only: lcurve_write, ozwrtint, l2funit, &
          lcurve_fname, ozwrtint_fname, lcurve_unit, ozwrtint_unit, &
@@ -28,7 +28,7 @@ contains
     use OMSAO_slitfunction_module
     use OMSAO_omidata_module, only: nlines_max, ntimes, ntimes_loop, &
          nxtrack, nfxtrack, ncoadd, omi_radpix_errstat, omi_exitval, &
-         omi_fitvar, omi_initval, omi_solpix_errstat, nxbin, nybin, &
+         omi_fitvar, omi_initval, omi_solpix_errstat,  &
          omi_irradiance_wavl, &
          offset_line, zoom_mode, zoom_p1, zoom_p2, omi_nwav_irrad
     use he5_output_module, only: he5_l2setgeofields, he5_l2setdatafields, &
@@ -191,7 +191,7 @@ contains
 
 
     ! load omi slit parameters  (Needed when getting coadded irradiance data)
-    if (which_slit == 4) then
+    if (which_slit == 5) then
       call load_slitpars (pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return
       if (scnwrt) write(*, '(A)') 'Finish loading OMI slit parameters !!!'

@@ -7,8 +7,7 @@ module fitting_functions
 contains
 
 
-  SUBROUTINE specfit_func_sol ( fitvar, nfitvar, ymod, npoints, ctrl, dyda, &
-       mdy )
+  SUBROUTINE specfit_func_sol ( fitvar, nfitvar, ymod, npoints, ctrl, dyda, mdy )
 
     !
     ! Calculates the Solar spectrum and its derivatives for ELSUNC
@@ -18,9 +17,7 @@ contains
     !
 
     USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : max_spec_pts
-    USE OMSAO_variables_module, ONLY : fitwavs, fitweights, currspec, &
-         sol_wav_avg
+    USE OMSAO_variables_module, ONLY : fitwavs, fitweights, currspec, sol_wav_avg
     USE OMSAO_errstat_module
     use spectra, only: spectrum_solar
 
@@ -32,9 +29,7 @@ contains
     REAL (KIND=dp), DIMENSION (npoints),         INTENT (INOUT) :: ymod
     REAL (KIND=dp), DIMENSION (npoints,nfitvar), INTENT (INOUT) :: dyda
 
-    !INTEGER                             :: i
-    !REAL (KIND=dp), DIMENSION (nfitvar) :: vartmp
-    REAL (KIND=dp), DIMENSION (npoints) :: locwvl!, dyplus, dyminus
+    REAL (KIND=dp), DIMENSION (npoints) :: locwvl
 
     locwvl(1:npoints) = fitwavs(1:npoints)
 
@@ -46,8 +41,7 @@ contains
       CALL spectrum_solar ( npoints, nfitvar, sol_wav_avg, &
            locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar) )
 
-      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) / &
-           fitweights(1:npoints)
+      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) / fitweights(1:npoints)
     CASE ( 2 )
       ! ---------------------------------------------------------------------
       ! The following sets up ELSUNC for numerical computation of the fitting

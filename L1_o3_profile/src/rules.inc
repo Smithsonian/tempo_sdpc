@@ -134,6 +134,7 @@ $(ODIR)/m_dataspline.o: $(SDIR)/m_dataspline.f90 \
   $(ODIR)/OMSAO_slitfunction_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
+  $(ODIR)/m_super_gauss.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_dataspline.f90 -o $(ODIR)/m_dataspline.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_ezspline_interpolation.o: $(SDIR)/m_ezspline_interpolation.f90 \
@@ -148,8 +149,16 @@ $(ODIR)/m_gauss.o: $(SDIR)/m_gauss.f90 \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_slitfunction_module.o \
   $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/m_super_gauss.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_gauss.f90 -o $(ODIR)/m_gauss.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_super_gauss.o: $(SDIR)/m_super_gauss.f90 \
+  $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_indices_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/utilities.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_super_gauss.f90 -o $(ODIR)/m_super_gauss.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_apriori_covar.o: $(SDIR)/m_get_apriori_covar.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \
@@ -336,6 +345,7 @@ $(ODIR)/m_undersample.o: $(SDIR)/m_undersample.f90 \
   $(ODIR)/OMSAO_slitfunction_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
+  $(ODIR)/m_super_gauss.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_undersample.f90 -o $(ODIR)/m_undersample.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_voigt.o: $(SDIR)/m_voigt.f90 \
@@ -572,7 +582,6 @@ $(ODIR)/m_read_fitting_controls.o: $(SDIR)/m_read_fitting_controls.f90 \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/omi_read_l1b_data.o \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_gome_data_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
@@ -641,6 +650,7 @@ $(ODIR)/spectra.o: $(SDIR)/spectra.f90 \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_slitfunction_module.o \
   $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/m_super_gauss.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/spectra.f90 -o $(ODIR)/spectra.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_spectra_reflectance.o: $(SDIR)/m_spectra_reflectance.f90 \

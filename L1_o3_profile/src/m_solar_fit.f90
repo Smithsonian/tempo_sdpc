@@ -17,13 +17,13 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx,&
-         wvl_idx, spc_idx, sig_idx, hwr_idx, hwe_idx, vgl_idx, asy_idx
+         wvl_idx, spc_idx, sig_idx, hwr_idx, hwe_idx, vgl_idx, asy_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: curr_sol_spec, n_fitvar_sol,     &
          fitvar_sol, mask_fitvar_sol, lo_sunbnd, up_sunbnd, n_irrad_wvl, &
          wincal_wav, solwinfit, fixslitcal, fitwavs, nsolpix,    &
          fitweights, currspec, numwin, which_slit, fitvar_sol_init, &
-         scnwrt, lo_sunbnd_init, up_sunbnd_init, wavcal!, winlim, &
-         !sol_wav_avg, sol_spec_ring, nsol_ring, fitvar_sol_saved
+         scnwrt, lo_sunbnd_init, up_sunbnd_init, wavcal, &
+         sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
 
@@ -37,12 +37,10 @@ contains
     ! ===============
     ! Local variables
     ! ===============
-    REAL (KIND=dp), DIMENSION (n_irrad_wvl)      :: allwaves!, del
-    !REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_fitvar
+    REAL (KIND=dp), DIMENSION (n_irrad_wvl)      :: allwaves, del
     REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_varstd
-    !REAL (KIND=dp)                               :: tmpwave             
     INTEGER         :: i, iwin, fidx, lidx, n_fit_pts,  &
-         solfit_exval!, sfidx, slidx, linter, finter
+                       solfit_exval
     INTEGER, SAVE   :: slit_unit
     LOGICAL, SAVE   :: wrt_to_screen, wrt_to_file, slitcal
     LOGICAL, SAVE   :: first = .TRUE.
@@ -60,14 +58,14 @@ contains
       lo_sunbnd  = lo_sunbnd_init; up_sunbnd  = up_sunbnd_init
 
       ! find the locations of actually used fitting variables
-      IF (which_slit == 4) THEN
+      IF (which_slit == 5) THEN
         fitvar_sol(hwe_idx:asy_idx) = 0_dp
         lo_sunbnd(hwe_idx:asy_idx)  = 0_dp
         up_sunbnd(hwe_idx:asy_idx)  = 0_dp
 
-        fitvar_sol(vgl_idx:hwr_idx) = 0_dp
-        lo_sunbnd(vgl_idx:hwr_idx)  = 0_dp
-        up_sunbnd(vgl_idx:hwr_idx)  = 0_dp
+        fitvar_sol(vgl_idx:spk_idx) = 0_dp
+        lo_sunbnd(vgl_idx:spk_idx)  = 0_dp
+        up_sunbnd(vgl_idx:spk_idx)  = 0_dp
         fixslitcal = .FALSE.; slitcal = .FALSE.
       ENDIF
 
@@ -93,6 +91,9 @@ contains
       currspec  (1:n_fit_pts) = curr_sol_spec(spc_idx, fidx:lidx)
       fitweights(1:n_fit_pts) = curr_sol_spec(sig_idx, fidx:lidx)
 
+     !DO i = 1, n_fit_pts
+     ! print * , i, fitwavs(i), currspec(i), fitweights(i)
+     !enddo
       ! UV-2, problem in solar reference above 325 nm
       !IF (reduce_resolution) THEN
       !   IF (fitwavs(2) < 325.1 .AND. fitwavs(n_fit_pts) > 325.1) THEN  
@@ -104,11 +105,6 @@ contains
       IF (scnwrt) WRITE(*,'(A10,I4,2f8.3,I4)') 'win = ', iwin, fitwavs(1), &
            fitwavs(n_fit_pts), nsolpix(iwin)
 
-      !WRITE(90, '(I3)') n_fit_pts
-      !DO i = 1, n_fit_pts
-      !   WRITE(90, '(F8.4, 2D15.7)') fitwavs(i), currspec(i), fitweights(i)
-      !ENDDO
-      !STOP
 
       fitvar_sol = fitvar_sol_init
       CALL cal_fit_one (n_fit_pts, n_fitvar_sol, wrt_to_screen, wrt_to_file,&
@@ -127,9 +123,14 @@ contains
       ! Shift and squeeze solar spectrum.
       ! =================================
       ! fitvar_sol is updated in solar_fit_one through common module variables
-      IF (wavcal) allwaves(fidx:lidx) = &
-           (allwaves(fidx:lidx) - fitvar_sol(shi_idx)) / &
-           (1.0 + fitvar_sol(squ_idx))  
+      IF (wavcal) THEN
+        IF (correct_lamda == 1) THEN
+            allwaves(fidx:lidx) = (allwaves(fidx:lidx) - fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))     
+        ELSE
+            allwaves(fidx:lidx) = (allwaves(fidx:lidx) - fitvar_sol(shi_idx) + &
+                                   sol_wav_avg * fitvar_sol(squ_idx)) / (1.0 +fitvar_sol(squ_idx))
+        ENDIF
+     ENDIF
 
       fidx = lidx + 1
     END DO

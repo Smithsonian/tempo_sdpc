@@ -11,7 +11,7 @@ contains
     USE OMSAO_precision_module,     ONLY: dp
     USE OMSAO_indices_module,       ONLY: wvl_idx, sig_idx, shi_idx, squ_idx
     USE OMSAO_variables_module,     ONLY: nradpix, winlim, radwavfit, &
-         nwavcal_rad, sswav_rad, numwin
+         nwavcal_rad, sswav_rad, numwin, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use utilities, only: interpolation
 
@@ -94,8 +94,13 @@ contains
         END IF
       END IF
 
-      allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
-           / ( 1.0 + locsqu(fidx:lidx)) 
+      IF (correct_lamda == 1) THEN
+         allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
+           / ( 1.0 + locsqu(fidx:lidx))
+      ELSE IF (correct_lamda == 2) THEN
+         allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) + sol_wav_avg * locsqu(fidx:lidx) ) &
+          / (1.0 + locsqu(fidx:lidx))
+      ENDIF
       fidx = lidx + 1
       fwavcal = lwavcal + 1     
     END DO

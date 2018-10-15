@@ -12,7 +12,7 @@ contains
     USE OMSAO_parameters_module, ONLY : maxchlen
     USE OMSAO_indices_module,    ONLY : max_calfit_idx, shi_idx, &
          squ_idx, wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, vgr_idx, &
-         vgl_idx, asy_idx, hwl_idx!, sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
+         vgl_idx, asy_idx, hwl_idx, spk_idx !, sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
          !, bl0_idx, bl1_idx, bl2_idx, bl3_idx
     USE OMSAO_variables_module,  ONLY : n_fitvar_sol, fitvar_sol, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, sswav_rad, nwavcal_rad, &
@@ -20,7 +20,7 @@ contains
          wavcal_fname, nradpix, winlim, poly_order, radwavfit, slitfit, &
          fixslitcal, which_slit, fitweights, fitwavs, &
          currspec, fitvar_sol_saved, nslit, slitwav, fitvar_sol_init, &
-         numwin, currpixchar, scnwrt!, curr_sol_spec, debug_boreas
+         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: bspline
@@ -42,15 +42,16 @@ contains
     ! ===============
     ! Local variables
     ! ===============
+    INTEGER, PARAMETER :: n_slit_par = 7
     REAL (KIND=dp)                           :: tmpwave
-    REAL (KIND=dp), DIMENSION (6, n_rad_wvl) :: tmpslit 
+    REAL (KIND=dp), DIMENSION (n_slit_par, n_rad_wvl) :: tmpslit 
     REAL (KIND=dp), DIMENSION (n_rad_wvl) :: allwaves, locshi, locsqu, locspec
     REAL (KIND=dp), DIMENSION (max_calfit_idx, 2) :: tmp_fitvar
     INTEGER  :: npoints, i, iwin, fidx, lidx, errstat = pge_errstat_ok, &
          iwavcal, fpos, lpos, fwavcal, lwavcal, ios, finter,&
          linter, npoly, solfit_exval!, j, nstep, n_fit_pts
-    INTEGER, DIMENSION(6)   :: slitind = (/hwe_idx, asy_idx, vgl_idx, &
-         vgr_idx, hwl_idx, hwr_idx/)
+    INTEGER, DIMENSION(n_slit_par)   :: slitind = (/hwe_idx, asy_idx, vgl_idx, &
+         vgr_idx, hwl_idx, hwr_idx, spk_idx/)
     CHARACTER(LEN=maxchlen) :: tmpchar, fname
     LOGICAL :: wrt_to_screen, wrt_to_file, slitcal, calfname_exist = .TRUE.
 
@@ -76,21 +77,21 @@ contains
     fitvar_sol_saved  =  fitvar_sol_init
     fitvar_sol = fitvar_sol_init
 
-    IF (which_slit /= 4) THEN
+    IF (which_slit /= 5) THEN
       tmpslit = 0.0
       fpos = MINVAL(MINLOC(allwaves, MASK=(allwaves >= slitwav(1))))
       lpos = MINVAL(MAXLOC(allwaves, MASK=(allwaves <= slitwav(nslit))))
       IF (fpos > 1)  THEN
-        DO i = 1, 6
+        DO i = 1, n_slit_par
           tmpslit(i, 1:fpos-1) = slitfit(1, slitind(i), 1)
         ENDDO
       ENDIF
       IF (lpos < n_rad_wvl)  THEN
-        DO i = 1, 6
+        DO i = 1, n_slit_par
           tmpslit(i, lpos+1:n_rad_wvl) = slitfit(nslit, slitind(i), 1)
         ENDDO
       ENDIF
-      DO i = 1, 6
+      DO i = 1, n_slit_par
         IF (slitfit(1, slitind(i), 1) /= 0.0) &
              CALL BSPLINE(slitwav(1:nslit), slitfit(1:nslit, slitind(i), 1), &
              nslit, allwaves(fpos:lpos), tmpslit(i, fpos:lpos), lpos-fpos+1,errstat)
@@ -120,9 +121,9 @@ contains
       fitvar_sol(hwe_idx:asy_idx) = 0.0
       lo_sunbnd(hwe_idx:asy_idx) = 0.0
       up_sunbnd(hwe_idx:asy_idx) = 0.0
-      fitvar_sol(vgl_idx:hwr_idx) = 0.0
-      lo_sunbnd(vgl_idx:hwr_idx) = 0.0
-      up_sunbnd(vgl_idx:hwr_idx) = 0.0
+      fitvar_sol(vgl_idx:spk_idx) = 0.0
+      lo_sunbnd(vgl_idx:spk_idx) = 0.0
+      up_sunbnd(vgl_idx:spk_idx) = 0.0
 
       ! find the number of actual used fitting variables     
       n_fitvar_sol = 0
@@ -161,7 +162,7 @@ contains
           fitvar_sol = fitvar_sol_saved
           !fixslitcal = .FALSE.; fitvar_sol(slitind) = 0.0
           fixslitcal = .TRUE. 
-          IF (which_slit /= 4) THEN
+          IF (which_slit /= 5) THEN
             fitvar_sol(slitind) = tmpslit(:, (fpos+lpos)/2)
             lo_sunbnd(slitind) = fitvar_sol(slitind)
             up_sunbnd(slitind) = fitvar_sol(slitind)
@@ -295,9 +296,13 @@ contains
         END IF
 
       END IF
-
+      IF (correct_lamda == 1) THEN 
       allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) ) &
            / ( 1.0 + locsqu(fidx:lidx))
+      ELSE IF (correct_lamda == 2) THEN 
+      allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) + sol_wav_avg * locsqu(fidx:lidx)) & 
+           / ( 1.0 + locsqu(fidx:lidx))
+      ENDIF
 
       fidx = lidx + 1; fwavcal = lwavcal + 1     
     END DO

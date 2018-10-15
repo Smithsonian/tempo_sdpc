@@ -11,7 +11,7 @@ MODULE he5_output_module
   USE OMSAO_HE5_module
   USE he5_l2writer_class
   USE OMSAO_omidata_module,    ONLY: mTimes=>ntimes, mXtrack=>nfxtrack, &
-       nXbin, nYbin, nlines_max, offset_line, omi_nwav_irrad, mswath, &
+       nlines_max, offset_line, omi_nwav_irrad, mswath, &
        omi_redslw, orbnum
   USE OMSAO_variables_module,  ONLY: l2_filename, n_fitvar_rad, numwin, &
        radnhtrunc, l2_swathname, fitvar_rad, mask_fitvar_rad, n_fitvar_rad, &
@@ -26,7 +26,7 @@ MODULE he5_output_module
        slit_fit_pts, wavcal_fit_pts, smooth_slit, wavcal_sol, &
        slit_trunc_limit, l1b_irrad_filename, l1b_rad_filename, &
        l2_cld_filename, TAI93At0ZOfGranule, TAI93StartOfGranule, &
-       GranuleYear, GranuleMonth, GranuleDay, GranuleJDay
+       GranuleYear, GranuleMonth, GranuleDay, GranuleJDay, nxbin, nybin
   USE ozprof_data_module,      ONLY: l2funit, l2swathunit, nGas=>nfgas, &
        nTgas=>ngas, nLayer=>nlay, ozfit_start_index, ozfit_end_index, &
        aerosol, do_lambcld, saa_flag, ozwrtavgk, ozwrtcorr, ozwrtcovar, &

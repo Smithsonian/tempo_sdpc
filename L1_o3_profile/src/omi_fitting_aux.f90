@@ -63,7 +63,7 @@ contains
     sun_specr(1:nrefl) = omi_solspecr(spc_idx, 1:nrefl, currpix)
 
     ! Load slit calibration parameters
-    IF (which_slit < 4) THEN
+    IF (which_slit < 5) THEN
       IF (yn_varyslit) THEN
         IF (slit_rad) THEN
           nslit = omi_nslit_rad(currpix)

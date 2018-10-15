@@ -174,7 +174,7 @@ contains
   END SUBROUTINE convert_16bits_to_2bytes
 
 
-  SUBROUTINE coadd_2bytes_qflgs(nbits, ndim, qflg1)!, qflg2)
+  SUBROUTINE coadd_2bytes_qflgs(nbits, ndim, qflg1, qflg2)
 
     USE OMSAO_precision_module
     IMPLICIT NONE
@@ -184,12 +184,12 @@ contains
     ! --------------------------
     INTEGER (KIND=i4),                    INTENT (IN)  :: nbits, ndim
     INTEGER (KIND=i2), DIMENSION(ndim), INTENT (INOUT) :: qflg1
-    !INTEGER (KIND=i2), DIMENSION(ndim), INTENT (IN)    :: qflg2
+    INTEGER (KIND=i2), DIMENSION(ndim), INTENT (IN)    :: qflg2
 
     INTEGER (KIND=i2), DIMENSION (ndim, 0:nbits-1) :: bit_num1, bit_num2
 
     CALL convert_2bytes_to_16bits ( nbits, ndim, qflg1, bit_num1 )
-    CALL convert_2bytes_to_16bits ( nbits, ndim, qflg1, bit_num2 )
+    CALL convert_2bytes_to_16bits ( nbits, ndim, qflg2, bit_num2 )
     bit_num1 = bit_num1 + bit_num2
 
     WHERE(bit_num1 > 1) 
@@ -307,7 +307,7 @@ contains
 
 
 
-  SUBROUTINE coadd_byte_qflgs(nbits, ndim, qflg1)!, qflg2)
+  SUBROUTINE coadd_byte_qflgs(nbits, ndim, qflg1, qflg2)
 
     USE OMSAO_precision_module
     IMPLICIT NONE
@@ -317,12 +317,12 @@ contains
     ! --------------------------
     INTEGER (KIND=i4),                    INTENT (IN)  :: nbits, ndim
     INTEGER (KIND=i1), DIMENSION(ndim), INTENT (INOUT) :: qflg1
-    !INTEGER (KIND=i1), DIMENSION(ndim), INTENT (IN)    :: qflg2
+    INTEGER (KIND=i1), DIMENSION(ndim), INTENT (IN)    :: qflg2
 
     INTEGER (KIND=i1), DIMENSION (ndim, 0:nbits-1) :: bit_num1, bit_num2
 
     CALL convert_byte_to_8bits ( nbits, ndim, qflg1, bit_num1 )
-    CALL convert_byte_to_8bits ( nbits, ndim, qflg1, bit_num2 )
+    CALL convert_byte_to_8bits ( nbits, ndim, qflg2, bit_num2 )
     bit_num1 = bit_num1 + bit_num2
 
     WHERE(bit_num1 > 1) 

@@ -216,8 +216,6 @@ contains
       toz = 0.0
     ENDIF
 
-    IF (scnwrt) WRITE(*, '(3(A,F8.2))') ' spres =', ps0, &
-         ' tpres =', pst, ' toz = ', toz
 
     ! ====================================================================
     !	                 Set up atmospheric profiles
@@ -286,6 +284,9 @@ contains
       exval = -1
       RETURN
     ENDIF
+
+    IF (scnwrt) WRITE(*, '(6(A,F8.2))') ' spres =', ps0, &
+         ' tpres =', pst, ' toz = ', toz, 'ctp= ', the_ctp, 'cfrac= ', the_cfrac, 'alb= ', salbedo
 
     ! For clouds, initial ctp, cod is based on assumed input (e.g., 20/10) 
     !  or from other products, which maybe re-adjusted using longer wavelengths

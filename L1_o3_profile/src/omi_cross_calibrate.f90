@@ -18,13 +18,13 @@ contains
          wincal_wav, solwinfit, sol_spec_ring, nsol_ring, slitwav_sol, &
          sswav_sol, nslit_sol, nwavcal_sol, numwin, solslitfit, &
          currpix, currpixchar, scnwrt, wavcal, reduce_resolution, &
-         band_selectors!, solwavfit, slitwav, slitfit, slitdis, nslit
+         band_selectors, nxbin!, solwavfit, slitwav, slitfit, slitdis, nslit
     USE OMSAO_omidata_module, ONLY: omi_irradiance_spec, &
          omi_irradiance_wavl, omi_irradiance_prec, omi_nwav_irrad, &
          omi_nsolpix, omi_solspec_ring, omi_slitwav_sol, &
          omi_sswav_sol, omi_solslitfit, omi_nslit_sol, &
          omi_nwavcal_sol, omi_solwinfit, omi_wincal_wav, solring_uin, &
-         solring_lin, omi_solpix_errstat, nxbin, omi_redslw!, omi_solnorm, &
+         solring_lin, omi_solpix_errstat, omi_redslw!, omi_solnorm, &
     !omi_nsolring, nfxtrack, omi_solwavfit
     USE ozprof_data_module, ONLY: calunit
     USE OMSAO_errstat_module
@@ -109,7 +109,7 @@ contains
            'which_slit=',which_slit
 
       IF (yn_varyslit) THEN
-        IF (which_slit <= 3 ) THEN
+        IF (which_slit < 5 ) THEN
           IF (scnwrt) WRITE(*, *) 'CALL solar_fit_vary'
           CALL solar_fit_vary (calunit, error )
           omi_nslit_sol(ix) = nslit_sol
@@ -118,7 +118,7 @@ contains
           omi_slitwav_sol(1:nslit_sol, ix) = slitwav_sol(1:nslit_sol)
         ENDIF
 
-        IF (wavcal .AND. (wavcal_sol .OR. which_slit == 4)) THEN
+        IF (wavcal .AND. (wavcal_sol .OR. which_slit == 5)) THEN
           IF (scnwrt) WRITE(*, *) 'CALL solar_wavcal_vary'
           CALL solar_wavcal_vary(calunit, error)
           omi_nwavcal_sol(ix) = nwavcal_sol
@@ -127,7 +127,7 @@ contains
           omi_sswav_sol(1:nwavcal_sol, ix) = sswav_sol(1:nwavcal_sol)
         ENDIF
       ELSE
-        IF (wavcal .OR. which_slit /= 4) THEN
+        IF (wavcal .OR. which_slit /= 5) THEN
           IF (scnwrt) WRITE(*, *) 'CALL solar_fit'
           CALL solar_fit ( error )
           omi_wincal_wav(1:numwin, ix) = wincal_wav(1:numwin)
@@ -205,13 +205,13 @@ contains
          use_meas_sig, yn_varyslit, wavcal_sol, slit_rad, nradpix, &
          wincal_wav, solwinfit, numwin, slitwav_rad, nslit_rad, radslitfit, &
          radwinfit, nslit, slitwav, slitfit, nwavcal_rad,  sswav_rad, currpix,&
-         currpixchar, which_slit, scnwrt, wavcal!, slitdisradwavfit
+         currpixchar, which_slit, scnwrt, wavcal, nxbin, nybin !, slitdisradwavfit
     USE OMSAO_omidata_module,    ONLY: omi_radiance_spec, &
          omi_radiance_wavl, omi_radiance_prec, omi_nwav_rad, omi_nradpix, &
          omi_slitwav_sol, omi_solslitfit, omi_nslit_sol, omi_slitwav_rad, &
          omi_radslitfit, omi_nslit_rad, omi_solwinfit, omi_radwinfit, &
          omi_wincal_wav, ntimes_loop, omi_radpix_errstat, omi_nwavcal_rad, &
-         omi_sswav_rad, nxbin, nybin, offset_line!, nfxtrack, &
+         omi_sswav_rad, offset_line!, nfxtrack, &
     !omi_radiance_errstat, omi_nwav_irrad, omi_irradiance_wavl, omi_radwavfit
     USE ozprof_data_module, ONLY: calunit
     USE OMSAO_errstat_module
@@ -292,7 +292,7 @@ contains
         CLOSE(999)
       ENDIF
       !! Kai
-      IF (which_slit < 4) THEN
+      IF (which_slit < 5) THEN
         IF (yn_varyslit .AND. slit_rad ) THEN
           CALL rad_fit_vary(calunit, n_rad_wvl, &
                curr_rad_spec(wvl_idx:sig_idx, 1:n_rad_wvl), error)
@@ -310,7 +310,7 @@ contains
       ENDIF
 
       IF (wavcal) THEN
-        IF (yn_varyslit .AND. (wavcal_sol .OR. which_slit == 4) ) THEN
+        IF (yn_varyslit .AND. (wavcal_sol .OR. which_slit == 5) ) THEN
           CALL rad_wavcal_vary (calunit, n_rad_wvl, &
                curr_rad_spec(wvl_idx:sig_idx, 1:n_rad_wvl), error)
           omi_nwavcal_rad(ix) = nwavcal_rad
@@ -400,10 +400,10 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
-         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, hwr_idx, vgl_idx
+         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, hwr_idx, vgl_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,   &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
-         fitweights, currspec, fitvar_sol_saved, which_slit
+         fitweights, currspec, fitvar_sol_saved, which_slit, xbin_decerr, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use utilities, only: interpolation
@@ -448,14 +448,14 @@ contains
         fixslitcal = .TRUE.    ; slitcal = .TRUE.
         wrt_to_screen = .FALSE.; wrt_to_file = .FALSE. ; slit_unit = 1000
 
-        IF (which_slit == 4) THEN
+        IF (which_slit == 5) THEN
           fitvar_sol(hwe_idx:asy_idx) = 0_dp
           lo_sunbnd(hwe_idx:asy_idx)  = 0_dp
           up_sunbnd(hwe_idx:asy_idx)  = 0_dp
 
-          fitvar_sol(vgl_idx:hwr_idx) = 0_dp
-          lo_sunbnd(vgl_idx:hwr_idx)  = 0_dp
-          up_sunbnd(vgl_idx:hwr_idx)  = 0_dp
+          fitvar_sol(vgl_idx:spk_idx) = 0_dp
+          lo_sunbnd(vgl_idx:spk_idx)  = 0_dp
+          up_sunbnd(vgl_idx:spk_idx)  = 0_dp
           slitcal = .FALSE.; fixslitcal = .FALSE.
         ENDIF
 
@@ -486,9 +486,11 @@ contains
         END IF
 
         ! Shift and squeeze earthshine spectrum
-        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - &
-             fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
-
+        IF (correct_lamda == 1) THEN
+        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
+        ELSE
+        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx) + sol_wav_avg * fitvar_sol(squ_idx) ) / (1.0 + fitvar_sol(squ_idx))
+        ENDIF
         ! Make sure that the correction is less than a pixel
         dwvl = fitwavs(2) - fitwavs(1)
         IF (ANY(ABS(allspec(i, wvl_idx, 1:nspec) - fitwavs(1:nspec)) > dwvl)) &
@@ -508,8 +510,7 @@ contains
       ENDDO
       allspec(1, wvl_idx, :) = allspec(1, wvl_idx, :) / ncoadd
       allspec(1, spc_idx, :) = allspec(1, spc_idx, :) / ncoadd  ! reduce S/N
-      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd / &
-           SQRT(1.0 * ncoadd)  ! reduce S/N
+      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd  !/ SQRT(1.0 * ncoadd)  ! reduce S/N
     ELSE
       ! Interpolate all spectra to the wavelength grids of first spectrum
       DO i = 2, ncoadd
@@ -534,9 +535,10 @@ contains
       allspec(1, wvl_idx, 1) = allspec(1, wvl_idx, 1) / ncoadd
       allspec(1, wvl_idx, nspec) = allspec(1, wvl_idx, nspec) / ncoadd
       allspec(1, spc_idx, :) = allspec(1, spc_idx, :) / ncoadd  ! reduce S/N
-      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd / &
-           SQRT(1.0 * ncoadd)  ! reduce S/N
+      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd  !/SQRT(1.0 * ncoadd)  ! reduce S/N
     ENDIF
+    ! Reduce measurement error after coadding
+    IF (xbin_decerr) allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / SQRT(1.0 *ncoadd)
 
     RETURN
 
@@ -548,12 +550,11 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
-         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, hwr_idx
+         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,   &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
          fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
-         up_sunbnd_init!, yn_varyslit, nslit, slitfit, slitwav, &
-    !fitvar_sol_saved,
+         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lamda
     !USE OMSAO_omidata_module,     ONLY: omi_slitwav_sol, omi_solslitfit, &
     !     omi_nslit_sol, omi_solwinfit
     USE OMSAO_errstat_module
@@ -602,14 +603,14 @@ contains
       lo_sunbnd  = lo_sunbnd_init
       up_sunbnd  = up_sunbnd_init
 
-      IF (which_slit == 4) THEN
+      IF (which_slit == 5) THEN
         ! fix variables for hwe, asy, vgr, vgl, hwr, hwl
         fitvar_sol(hwe_idx:asy_idx) = 0.0
         lo_sunbnd(hwe_idx:asy_idx) = 0.0
         up_sunbnd(hwe_idx:asy_idx) = 0.0
-        fitvar_sol(vgl_idx:hwr_idx) = 0.0
-        lo_sunbnd(vgl_idx:hwr_idx) = 0.0
-        up_sunbnd(vgl_idx:hwr_idx) = 0.0
+        fitvar_sol(vgl_idx:spk_idx) = 0.0
+        lo_sunbnd(vgl_idx:spk_idx) = 0.0
+        up_sunbnd(vgl_idx:spk_idx) = 0.0
       ENDIF
 
       n_fitvar_sol = 0
@@ -653,8 +654,11 @@ contains
         END IF
 
         ! Shift and squeeze earthshine spectrum
-        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - &
-             fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
+        IF (correct_lamda == 1) THEN
+        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
+        ELSE
+        allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx) + sol_wav_avg * fitvar_sol(squ_idx)) / (1.0 + fitvar_sol(squ_idx))
+        ENDIF
 
         ! Make sure that the correction is less than a pixel
         dwvl = fitwavs(2) - fitwavs(1)
@@ -668,8 +672,11 @@ contains
       ENDDO
     ELSE IF (wcal_bef_coadd .AND. .NOT. wavcal) THEN
       DO i = 1, ncoadd
-        allspec(i, wvl_idx, 1:nspec) = (allspec(i, wvl_idx, 1:nspec) - &
-             wshis(i)) / (1.0 + wsqus(i))
+        IF (correct_lamda == 1) THEN
+        allspec(i, wvl_idx, 1:nspec) = (allspec(i, wvl_idx, 1:nspec) - wshis(i)) / (1.0 + wsqus(i))
+        ELSE
+        allspec(i, wvl_idx, 1:nspec) = (allspec(i, wvl_idx, 1:nspec) - wshis(i) + sol_wav_avg * wsqus(i) ) / (1.0 + wsqus(i))
+        ENDIF
       ENDDO
     ENDIF
 
@@ -681,8 +688,7 @@ contains
       ENDDO
       allspec(1, wvl_idx, :) = allspec(1, wvl_idx, :) / ncoadd
       allspec(1, spc_idx, :) = allspec(1, spc_idx, :) / ncoadd  ! reduce S/N
-      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd  / &
-           SQRT(1.0 * ncoadd)  ! reduce S/N
+      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd  ! SQRT(1.0 * ncoadd)  ! reduce S/N
     ELSE
       ! Interpolate all spectra to the wavelength grids of first spectrum
       DO i = 2, ncoadd
@@ -707,10 +713,9 @@ contains
       allspec(1, wvl_idx, 1) = allspec(1, wvl_idx, 1) / ncoadd
       allspec(1, wvl_idx, nspec) = allspec(1, wvl_idx, nspec) / ncoadd
       allspec(1, spc_idx, :) = allspec(1, spc_idx, :) / ncoadd  ! reduce S/N
-      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd / &
-           SQRT(1.0 * ncoadd)  ! reduce S/N
+      allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / ncoadd  !/ SQRT(1.0 * ncoadd)  ! reduce S/N
     ENDIF
-
+    IF (xbin_decerr) allspec(1, sig_idx, :) = allspec(1, sig_idx, :) / SQRT(1.0 * ncoadd)
     RETURN
 
   END SUBROUTINE radwavcal_coadd

@@ -28,6 +28,7 @@ contains
          slitwav_sol, slitwav_rad, slitfit, solslitfit, radslitfit, &
          slit_rad, refspec_norm
     USE OMSAO_slitfunction_module
+    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
     USE ozprof_data_module,       ONLY: ring_convol, ring_on_line       
     USE OMSAO_errstat_module
 
@@ -86,8 +87,7 @@ contains
     ! Perform solar i0 effect (no need to convolve) 
     ni0 = n_refspec_pts(solar_idx)
     DO idx = stidx, max_rs_idx
-      IF ( n_refspec_pts(idx) >= 3 .AND. &
-           INDEX(TRIM(ADJUSTL(refspec_fname(idx))), &
+      IF ( n_refspec_pts(idx) >= 3 .AND. INDEX(TRIM(ADJUSTL(refspec_fname(idx))), &
            zerospec_string ) == 0) THEN
         npts = n_refspec_pts(idx)  ! Define short-hand
         specmod(1:npts) = refspec_orig_data(idx,1:npts,spc_idx)
@@ -95,9 +95,8 @@ contains
         !print *, idx, TRIM(ADJUSTL(refspec_fname(idx))), n_radwvl
         !IF (idx == o2o2_idx) refspec_orig_data(idx,1:npts,wvl_idx) = refspec_orig_data(idx,1:npts,wvl_idx)
 
-        IF (idx == bro_idx .OR. idx == bro2_idx .OR. idx == hcho_idx .OR. &
-             idx == no2_t1_idx .OR. idx == so2_idx .OR. &
-             idx == so2v_idx .OR. idx == o2o2_idx ) THEN
+        IF (idx == bro_idx .OR. idx == bro2_idx .OR. idx == hcho_idx .OR. idx == no2_t1_idx & 
+             .OR. idx == so2_idx .OR. idx == so2v_idx .OR. idx == o2o2_idx ) THEN
           !IF (idx == bro_idx .OR. idx == hcho_idx .OR. idx == no2_t1_idx) THEN
           IF (idx == bro_idx .OR. idx == bro2_idx) THEN
             scalex = 2.0E13
@@ -106,8 +105,8 @@ contains
           ELSE
             scalex = 5.0E15
           ENDIF
-          scalex = scalex * refspec_norm(idx)
 
+          scalex = scalex * refspec_norm(idx)
           CALL CORRECT_I0EFFECT(refspec_orig_data(idx,1:npts,wvl_idx), &
                specmod(1:npts), npts, &
                refspec_orig_data(solar_idx,1:ni0,wvl_idx), &
@@ -123,8 +122,7 @@ contains
           ! -----------------------------------------------------------------  
         ELSE IF ((idx /= comm_idx .AND. idx /= com1_idx .AND. &
              idx /= ring_idx .AND. idx /= ring1_idx ) .OR. &
-             (idx == ring_idx .AND. ring_convol) .OR. &
-             (idx == ring1_idx .AND. ring_convol)) THEN
+             (idx == ring_idx .AND. ring_convol) .OR. (idx == ring1_idx .AND. ring_convol)) THEN
           IF (.NOT. yn_varyslit) THEN
             IF (which_slit == 0) THEN
               CALL gauss_multi (refspec_orig_data(idx,1:npts,wvl_idx), &
@@ -137,6 +135,9 @@ contains
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
             ELSE IF (which_slit == 3) THEN
               CALL triangle_multi (refspec_orig_data(idx,1:npts,wvl_idx),   &
+                   refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
+            ELSE IF (which_slit == 4) THEN 
+              CALL super_gauss_multi (refspec_orig_data(idx,1:npts,wvl_idx),   &
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
             ELSE
               CALL omislit_multi (refspec_orig_data(idx,1:npts,wvl_idx),    &
@@ -154,6 +155,10 @@ contains
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
             ELSE IF (which_slit == 3) THEN
               CALL triangle_vary (refspec_orig_data(idx,1:npts,wvl_idx),     &
+                   refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), &
+                   npts)
+            ELSE IF (which_slit == 4) THEN 
+              CALL super_gauss_vary (refspec_orig_data(idx,1:npts,wvl_idx),     &
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), &
                    npts)
             ELSE
@@ -223,7 +228,7 @@ contains
     USE OMSAO_errstat_module
     USE OMSAO_variables_module,   ONLY: yn_varyslit, which_slit
     USE OMSAO_slitfunction_module
-
+    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
     IMPLICIT NONE
 
     INTEGER,                          INTENT (IN)    :: nref, ni0
@@ -243,7 +248,7 @@ contains
          !frac, abspec1, abspecmod1
     REAL (KIND=dp)                   :: frefw, lrefw
     CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
-
+    LOGICAL, PARAMETER :: weight_irrad = .true.
     errstat = pge_errstat_ok
 
     frefw = MAXVAL([refwav(1), i0wav(1)])
@@ -260,8 +265,11 @@ contains
       errstat = pge_errstat_error;      RETURN
     ENDIF
 
-    abspec(fidx:lidx)  = newi0(fidx:lidx) * refspec(fidx:lidx)
-    !abspec1(fidx:lidx) = newi0(fidx:lidx) * EXP(-refspec(fidx:lidx) * scalex)
+    IF (weight_irrad) THEN   
+       abspec(fidx:lidx)  = newi0(fidx:lidx) * refspec(fidx:lidx)
+    ELSE
+       abspec(fidx:lidx) = newi0(fidx:lidx)*EXP(-refspec(fidx:lidx)*scalex) 
+    ENDIF
 
     IF (.NOT. yn_varyslit) THEN
       IF (which_slit == 0) THEN
@@ -280,6 +288,10 @@ contains
         CALL triangle_multi   (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
         !CALL triangle_multi (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
         CALL triangle_multi   (refwav(fidx:lidx), newi0(fidx:lidx),  specmod(fidx:lidx),   npts)
+      ELSE IF (which_slit == 4) THEN 
+        CALL super_gauss_multi   (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
+        !CALL triangle_multi (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
+        CALL super_gauss_multi   (refwav(fidx:lidx), newi0(fidx:lidx),  specmod(fidx:lidx),   npts)
       ELSE
         CALL omislit_multi    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
         !CALL omislit_multi (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
@@ -302,7 +314,11 @@ contains
         CALL triangle_vary   (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
         !CALL triangle_vary   (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
         CALL triangle_vary   (refwav(fidx:lidx), newi0(fidx:lidx),  specmod(fidx:lidx),   npts)
-      ELSE 
+      ELSE IF (which_slit == 4) THEN 
+        CALL super_gauss_vary   (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
+        !CALL triangle_vary   (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
+        CALL super_gauss_vary   (refwav(fidx:lidx), newi0(fidx:lidx),  specmod(fidx:lidx),   npts)
+      ELSE
         CALL omislit_vary    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
         !CALL omislit_vary    (refwav(fidx:lidx), abspec1(fidx:lidx), abspecmod1(fidx:lidx), npts)
         CALL omislit_vary    (refwav(fidx:lidx), newi0(fidx:lidx),  specmod(fidx:lidx),   npts)
@@ -327,9 +343,8 @@ contains
     !          LOG(abspecmod1(fidx1:lidx1) / specmod(fidx1:lidx1)) / scalex * ( 1.0 - frac(fidx1:lidx1))
     !  ENDIF
 
-    !refspec(fidx:lidx) = - LOG(abspecmod1(fidx:lidx) / specmod(fidx:lidx)) / scalex
-    refspec(fidx:lidx) = abspecmod(fidx:lidx) / specmod(fidx:lidx)
-
+       refspec(fidx:lidx) = abspecmod(fidx:lidx) / specmod(fidx:lidx)
+ 
     IF ( get_lresi0 ) THEN
       lowresi0(fidx:lidx) = specmod(fidx:lidx)
       lowresi0(1:fidx-1) = 0.0; lowresi0(lidx+1:nref) = 0.0
@@ -427,14 +442,16 @@ contains
     errstat = pge_errstat_ok
 
     IF (n1 > 1) THEN
-      delw = wav(n1 + 1) - wav(n1)
+      !delw = wav(n1 + 1) - wav(n1)
+      delw = (wav(n2) - wav(n1))/(n2-n1) ! jbak, much better when there are large band pixels
       DO i = n1-1, 1, -1
         wav(i) = wav(i+1) - delw
       ENDDO
     ENDIF
 
     IF (n2 < nspec) THEN
-      delw = wav(n2) - wav(n2-1)
+      !delw = wav(n2) - wav(n2-1)
+      delw = (wav(n2) - wav(n1))/(n2-n1) ! jbak, much better when there are large band pixels
       DO i = n2 + 1, nspec
         wav(i) = wav(i - 1) + delw
       ENDDO
@@ -496,7 +513,7 @@ contains
 
 
 !   Unused?
-!
+!   * here super_gauss is not implemented (jbak)
 !  SUBROUTINE normalize_solar_refspec ( n_radwvl, curr_rad_wvl, solar_spec, errstat)
 !
 !    USE OMSAO_precision_module

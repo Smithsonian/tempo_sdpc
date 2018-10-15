@@ -80,12 +80,13 @@ contains
          slit_rad, wavcal_sol, radnhtrunc, refnhextra, nradpix_sav, &
          n_radwvl_sav, radwvl_sav, tabdir
     !amf, amfgeo, have_amf, sol_zen_eff, sza_atm, vza_atm, szamax,
-    !aza_atm, nsolpix, refwvl, the_sca_atm, the_year, zatmos,
+    !aza_atm, nsolpix, refwvl, the_sca_atm, the_year, zatmos, instrument_idx, &
+    !gome2_idx
     USE OMSAO_gome_data_module,    ONLY : n_gome_radpts, gome_radspec, &
          gome_curpix
-    !, azm0_idx, azm_idx, earth_curv, ers2_alt, gome2_idx, &
+    !, azm0_idx, azm_idx, earth_curv, ers2_alt, &
     !gome_angles_wrtn, gome_angles_wrts, gome_geoloc, gome_solspec, &
-    !instrument_idx, los_idx, n_gome_geo, zen0_idx, zen_idx, n_gome_ang,
+    !los_idx, n_gome_geo, zen0_idx, zen_idx, n_gome_ang,
     USE ozprof_data_module,        ONLY : div_rad, div_sun, & !ozprof_flag, &
          the_cfrac, the_ctp, the_cod, the_orig_cfr, the_orig_ctp, &
          the_orig_cod, aerosol, which_aerosol, &

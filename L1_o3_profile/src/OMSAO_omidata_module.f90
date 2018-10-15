@@ -11,8 +11,7 @@ MODULE OMSAO_omidata_module
   ! max number of channels (UV-1 and UV-2) reqd for OMI O3 profile retrievals
   INTEGER, PARAMETER :: mswath  = 2
   INTEGER            :: nswath           ! actually number of swath used
-  LOGICAL            :: do_xbin, do_ybin ! binning across and along the track
-  INTEGER            :: nxbin, nybin , ncoadd
+  INTEGER            :: ncoadd
   LOGICAL            :: zoom_mode
   INTEGER, PARAMETER :: zoom_p1 = 16, zoom_p2 = 45
 

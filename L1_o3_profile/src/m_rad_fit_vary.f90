@@ -12,14 +12,14 @@ contains
     USE OMSAO_parameters_module, ONLY : maxchlen
     USE OMSAO_indices_module,    ONLY : max_calfit_idx, shi_idx, squ_idx,&
          wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, vgr_idx, vgl_idx,  &
-         asy_idx, hwl_idx
+         asy_idx, hwl_idx, spk_idx
     USE OMSAO_variables_module,  ONLY : n_fitvar_sol, fitvar_sol,        &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, slitwav_rad, nslit_rad,  &
          slit_fit_pts, n_slit_step, smooth_slit,  slit_redo, rslit_fname,&
          nradpix, winlim, poly_order, radslitfit,which_slit, wavcal_sol, &
          fixslitcal,fitweights, fitwavs, currspec, fitvar_sol_saved, &
          fitvar_sol_init,lo_sunbnd_init, up_sunbnd_init, numwin, &
-         nslit, slitwav, slitfit, currpixchar, scnwrt, wavcal
+         nslit, slitwav, slitfit, currpixchar, scnwrt, wavcal, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use utilities, only: interpolation
     use m_cal_fit_one
@@ -164,7 +164,7 @@ contains
         IF (which_slit == 2) THEN
           READ (rslit_unit, *, IOSTAT = ios) slitwav_rad(islit), &
                radslitfit(islit, vgl_idx, 1), radslitfit(islit, vgr_idx, 1), &
-               radslitfit(islit, hwl_idx, 1), radslitfit(islit, hwr_idx, 1), &
+               radslitfit(islit, spk_idx, 1), radslitfit(islit, hwr_idx, 1), &
                radslitfit(islit, shi_idx, 1), radslitfit(islit, squ_idx, 1)
         ELSE
           READ (rslit_unit, *, IOSTAT = ios) slitwav_rad(islit), &
@@ -199,7 +199,7 @@ contains
         ! use a 4-order polynomial
         IF (lslit > fslit + 3) THEN
           poly_order = 4
-          DO i = hwe_idx, hwr_idx
+          DO i = hwe_idx, spk_idx
             IF (radslitfit(fslit,i,1)==0. .AND. radslitfit(lslit,i,1)==0.0) CYCLE
             IF (wavcal_sol .AND. (i == shi_idx .OR. i == squ_idx)) CYCLE
 
@@ -220,7 +220,7 @@ contains
 
           END DO
         ELSE
-          DO i = hwe_idx, hwr_idx
+          DO i = hwe_idx, spk_idx
             radslitfit(fslit:lslit, i, 1) = SUM(radslitfit(fslit:lslit, i, 1)) / &
                  (lslit - fslit + 1.0)
           END DO
@@ -287,8 +287,13 @@ contains
         END IF
       END IF
 
-      allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
-           / (1.0 + locsqu(fidx:lidx))
+      IF (correct_lamda == 1) THEN
+         allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
+               / (1.0 + locsqu(fidx:lidx))
+     ELSE
+         allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) +  sol_wav_avg * locsqu(fidx:lidx) ) &
+               / (1.0 + locsqu(fidx:lidx))
+     ENDIF
       fidx = lidx + 1; fslit = lslit + 1     
     END DO
 

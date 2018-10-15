@@ -286,14 +286,14 @@ contains
          reduce_resolution, redlam, redsampr, reduce_slit, rm_mgline, &
          dwavmax, use_redfixwav, which_slit, &
          GranuleYear, GranuleMonth, GranuleDay, &
-         use_he5_in, use_tio_in, l1_irrad_filename_nc, nc_irrad_swathname 
+         use_he5_in, use_tio_in, l1_irrad_filename_nc, nc_irrad_swathname, nxbin
     USE OMSAO_omidata_module,  ONLY: orbnum, nswath, mswath, omi_nsolpix, &
          nwavel_max,  omi_irradiance_swathname, omi_irradiance_spec, &
          omi_irradiance_qflg, omi_irradiance_prec, omi_irradiance_wavl, &
          omi_nwav_irrad, nxtrack, nfxtrack, ncoadd, nxtrack_max, &
          omi_nsolring, omi_solspec_ring, solring_lin, solring_uin, &
          omi_solspecr, omisol_winpix, omisolr_winpix, omi_solnorm, &
-         omi_solpix_errstat, omi_solring_ndiv, irradwind, nxbin, omiraddate, &
+         omi_solpix_errstat, omi_solring_ndiv, irradwind, omiraddate, &
          reduce_ubnd, reduce_lbnd, retlbnd, retubnd, omichs, &
          omisol_version, zoom_p1, omi_redslw!, orbnumsol, &
          !omi_rad_stray, omi_irrad_stray, ntimes
@@ -399,7 +399,6 @@ contains
     omi_irradiance_wavl (1:nwavel_max,1:nxtrack) = 0.0
     omi_solpix_errstat(1:nxtrack) = pge_errstat_ok
 
-    IF( scnwrt ) WRITE(*,*) 'use_backup=', use_backup !! Kai
     IF (.NOT. use_backup) THEN 
       DO is = 1, nswath
         ch = omichs(is)
@@ -645,6 +644,7 @@ contains
         bkfname = ADJUSTL(TRIM(refdbdir)) // 'OMI/omisol_v003_avg_nshi_backup.dat'
       ENDIF
 
+      IF( scnwrt ) WRITE(*,*) 'use_backup=(T):'//ADJUSTL(TRIM( bkfname ))
       OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(bkfname)), STATUS='UNKNOWN', IOSTAT=errstat)
       IF ( errstat /= pge_errstat_ok ) THEN
         WRITE(www_lun, '(2A)') modulename, ': Cannot open solar backup file!!!'
@@ -1263,8 +1263,9 @@ contains
     USE OMSAO_variables_module,  ONLY: verb_thresh_lev, l1b_rad_filename, &
          wcal_bef_coadd, numwin, coadd_uv2, band_selectors, &
          szamax, currpix, reduce_resolution, redlam, redsampr, &
-         reduce_slit, use_he5_in, use_tio_in, l1_rad_filename_nc, &
-         nc_rad_swathname!, winpix, winlim, scnwrt
+         reduce_slit, correct_merr, ybin_decerr, & 
+         use_he5_in, use_tio_in, l1_rad_filename_nc, &
+         nc_rad_swathname, nxbin, nybin !, winpix, winlim, scnwrt
     USE OMSAO_omidata_module,    ONLY: nswath, mswath, omi_nradpix, &
          nwavel_max, nxtrack_max, omi_radiance_swathname, omi_radiance_spec, &
          omi_radiance_qflg, omi_radiance_prec, omi_radiance_wavl, &
@@ -1275,7 +1276,7 @@ contains
          omi_radiance_errstat, &! land_water_flg, glint_flg, snow_ice_flg, 
          omi_radpix_errstat, omi_nsolpix, &
          omisolr_winpix, omichs, omi_saa_flag, omi_radnorm, irradwind, &
-         radwind, nybin, nxbin, reduce_lbnd, reduce_ubnd, retlbnd, retubnd, &
+         radwind, reduce_lbnd, reduce_ubnd, retlbnd, retubnd, &
          omi_redslw, &!omi_xtrackqflg, &
          rowanomaly_flg, waveshift_flg, blockage_flg, straysun_flg, &
          strayearth_flg!, omisol_winpix, omi_sazimuth, omi_vazimuth, &
@@ -1345,8 +1346,6 @@ contains
     REAL (KIND = dp), DIMENSION (maxwin, nxtrack_max, nxcoadd) :: wshis, wsqus
     REAL (KIND = dp), DIMENSION (nxcoadd, sig_idx, nwavel_max) :: omispec
     REAL (KIND = dp), DIMENSION (sig_idx, nwavel_max, nxtrack_max) :: tmpspec
-
-    LOGICAL                                   :: correct_merr = .TRUE.
     type (tiof_file_type) :: tio_l1obj
     integer (kind=2) :: tio_mflg
 
@@ -1604,8 +1603,7 @@ contains
                omi_radiance_wavl(j:nwl, :, iloop) + tmp_rwavl(j:nwl, :)
 
           DO ix = 1, nxtrack
-            CALL coadd_2bytes_qflgs(nbits, nwls(ch), &
-                 omi_radiance_qflg(j:nwl, ix, iloop))!, tmp_rqflg(j:nwl, ix))
+            CALL coadd_2bytes_qflgs(nbits, nwls(ch), omi_radiance_qflg(j:nwl, ix, iloop), tmp_rqflg(j:nwl, ix))
           ENDDO
 
 !          IF( errstat /= omi_s_success ) THEN
@@ -1639,9 +1637,14 @@ contains
 
         omi_radiance_spec(j:nwl, :, iloop) = &
              omi_radiance_spec(j:nwl, :, iloop) / nybin
+        IF (ybin_decerr) THEN 
         omi_radiance_prec(j:nwl, :, iloop) = &
-             real(omi_radiance_prec(j:nwl, :, iloop) / nybin / &
+              real(omi_radiance_prec(j:nwl, :, iloop) / nybin / &
              SQRT(1.0D0 * nybin) , kind=r4)
+        ELSE
+        omi_radiance_prec(j:nwl, :, iloop) = &
+               omi_radiance_prec(j:nwl, :, iloop) / nybin 
+        ENDIF
         omi_radiance_wavl(j:nwl, :, iloop) = &
              omi_radiance_wavl(j:nwl, :, iloop) / nybin 
       END DO     ! end iloop
@@ -2031,11 +2034,11 @@ contains
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx!, sig_idx
     USE OMSAO_parameters_module, ONLY: maxchlen, maxwin!, mrefl
     USE OMSAO_variables_module,  ONLY: avg_solcomp, avgsol_allorb, numwin, &
-         coadd_uv2, band_selectors, refdbdir
+         coadd_uv2, band_selectors, refdbdir, nxbin
     USE OMSAO_omidata_module,    ONLY: nswath, mswath, orbnum, nxtrack_max, &
          nxtrack, nwavel_max, omi_irradiance_wavl,&
          omi_irradiance_spec, ncoadd, omi_nsolpix, omi_solnorm, &
-         omi_solspecr, nxbin, omi_solspec_ring, solring_lin, solring_uin, &
+         omi_solspecr, omi_solspec_ring, solring_lin, solring_uin, &
          omi_solring_ndiv!, omi_nwav_irrad, omi_nsolring, nfxtrack
     USE ozprof_data_module,      ONLY: nrefl
     USE OMSAO_errstat_module

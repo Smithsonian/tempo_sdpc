@@ -17,7 +17,7 @@ contains
     USE OMSAO_indices_module,     ONLY : max_calfit_idx, hwe_idx, asy_idx, &
          shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, bl0_idx,    &
          bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, sc3_idx,    &
-         vgl_idx, vgr_idx, hwl_idx, hwr_idx, solar_idx!, sig_idx
+         vgl_idx, vgr_idx, hwl_idx, hwr_idx, solar_idx, spk_idx!, sig_idx
     USE OMSAO_variables_module,   ONLY: weight_sun, fitvar_sol, &
          fitvar_sol_saved, chisq,  sol_wav_avg, which_slit, &
          mask_fitvar_sol, fitwavs, fitweights, currspec, lo_sunbnd, up_sunbnd,&
@@ -49,7 +49,7 @@ contains
     REAL (KIND=dp)  :: asum, ssum, rms!, sum_sig2
     REAL (KIND=dp), DIMENSION (n_fit_pts)                 :: fitres, fitspec
     REAL (KIND=dp), DIMENSION (n_fitvar_sol, n_fitvar_sol):: covar
-    REAL (KIND=dp)  :: hw1e, e_asym, vgl, vgr, hwl, hwr, sin, shi, squ
+    REAL (KIND=dp)  :: hw1e, e_asym, vgl, vgr, hwl, hwr, sin, shi, squ, spk
     REAL (KIND=dp), DIMENSION (n_fitvar_sol) :: fitvar, lobnd, upbnd, stderr
     INTEGER         :: i, ref_fidx, ref_lidx, ref_all_pts!, n_ref_pts
 
@@ -130,27 +130,31 @@ contains
     IF (wrt_to_screen .OR. (wrt_to_file .AND. solfit_exval > 0)) THEN
       IF (which_slit == 3) THEN
         hw1e = fitvar_sol(hwe_idx); e_asym = 0.0
-      ELSE IF (which_slit == 4) THEN
+      ELSE IF (which_slit == 5) THEN
         hw1e = 0.0; e_asym = 0.0
       ELSE IF (which_slit == 2) THEN
         vgl  = fitvar_sol(vgl_idx);  vgr    = fitvar_sol(vgr_idx)
         hwl  = fitvar_sol(hwl_idx);  hwr    = fitvar_sol(hwr_idx)
       ELSE
         hw1e = fitvar_sol(hwe_idx); e_asym =  fitvar_sol(asy_idx)
+        spk  = fitvar_sol(spk_idx)
       ENDIF
       shi = fitvar_sol(shi_idx); squ = fitvar_sol(squ_idx); sin = fitvar_sol(sin_idx)
     ENDIF
 
     IF (wrt_to_screen) THEN
       IF ( which_slit /= 2) THEN
-        WRITE(www_lun, '(3(A, 1pd14.6), A, I6)') 'hwle = ',  hw1e,  &
-             ' e_asym =', e_asym, ' rms = ', rms, ' exval = ', solfit_exval
+        WRITE(www_lun, '(4(A, 1pd14.6), 2(A, I6))') 'hwle = ',  hw1e,  &
+             ' e_asym =', e_asym,' spk =', spk, ' rms = ', rms, ' exval = ', solfit_exval !, ' niter=', niter
+        WRITE(*, '(4(A, 1pd14.6), A, I6)') 'hwle = ',  hw1e,  &
+             ' e_asym =', e_asym,' spk =', spk, ' rms = ', rms, ' exval = ', solfit_exval
       ELSE
         WRITE(www_lun, '(5(A,1pd14.6),A,I6)') 'vgl = ',  vgl, ' vgr = ',  vgr,  &
              ' hwl = ', hwl, ' hwr = ', hwr,' rms = ',rms,' exval = ', solfit_exval
       END IF
 
       WRITE(www_lun, '(3(A, 1pd14.6))') 'shi = ', shi, ' squ =', squ, ' sin = ', sin
+      WRITE(*, '(3(A, 1pd14.6))') 'shi = ', shi, ' squ =', squ, ' sin = ', sin
       WRITE(www_lun, '(4(A, 1pd14.6))') 'b10 = ', fitvar_sol(bl0_idx), ' b11 = ', &
            fitvar_sol(bl1_idx),' b12 = ', fitvar_sol(bl2_idx), &
            ' b13 = ', fitvar_sol(bl3_idx)
@@ -165,8 +169,8 @@ contains
           WRITE(slit_unit, '(f8.3,1p8d11.3,I6)') avgwav, vgl, vgr, hwl, hwr, &
                shi, squ, sin, rms, solfit_exval
         ELSE
-          WRITE(slit_unit, '(f8.3,1p6d11.3,I6,1pd11.3)') avgwav, hw1e, e_asym,&
-               shi, squ, sin, rms, solfit_exval, &
+          WRITE(slit_unit, '(f8.3,1p7d11.3,I6,1pd11.3)') avgwav, hw1e, e_asym,&
+               spk, shi, squ, sin, rms, solfit_exval, &
                varstd(hwe_idx, 2)
         END IF
       ELSE                ! for solar/rad wavelength calibration

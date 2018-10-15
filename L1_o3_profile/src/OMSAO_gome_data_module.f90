@@ -4,16 +4,6 @@ MODULE OMSAO_gome_data_module
   USE OMSAO_parameters_module, ONLY: maxchlen, max_fit_pts, maxwin
   IMPLICIT NONE
 
-  ! -------------------------------------
-  ! GOME data fitting or OMI data fitting
-  ! -------------------------------------
-  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, gome2_idx = 4
-  INTEGER, PARAMETER :: tempo_idx = 5
-  INTEGER, PARAMETER :: max_instrument_idx = tempo_idx
-  CHARACTER (LEN=4), DIMENSION (max_instrument_idx), PARAMETER :: &
-       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2', 'TMPO' /)
-  INTEGER :: instrument_idx
-
   ! ===================================
   ! GOME instrument and data parameters
   ! ===================================

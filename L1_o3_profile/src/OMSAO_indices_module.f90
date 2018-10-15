@@ -134,11 +134,11 @@ MODULE OMSAO_indices_module
        bl0_idx =  1, bl1_idx =  2, bl2_idx =  3, bl3_idx =  4, sc0_idx =  5, sc1_idx =  6, &
        sc2_idx =  7, sc3_idx =  8, sin_idx =  9,  hwe_idx = 10, asy_idx = 11, &
        shi_idx = 12, squ_idx = 13, vgl_idx = 14, vgr_idx = 15, hwl_idx =  16, &
-       hwr_idx = 17,  max_calfit_idx = hwr_idx
+       hwr_idx = 17, spk_idx = 18,  max_calfit_idx = spk_idx
 
   CHARACTER (LEN=3), DIMENSION (max_calfit_idx), PARAMETER :: calfit_strings = (/ &
        'bl0', 'bl1', 'bl2', 'bl3', 'sc0', 'sc1', 'sc2', 'sc3', 'sin', 'hwe', 'asy', &
-       'shi', 'squ', 'vgl', 'vgr', 'hwl', 'hwr'/)
+       'shi', 'squ', 'vgl', 'vgr', 'hwl', 'hwr', 'spk'/)
 
   ! ------------------------------------------------------------
   ! (3) Particular fitting parameters: Radiance spectral fitting

@@ -38,7 +38,9 @@ contains
          mns_idx, mxs_idx, us1_idx, us2_idx, comvidx, cm1vidx, &
          refspec_strings, genline_str, socline_str, racline_str,     &
          rafline_str, eoi3str, solar_idx, shift_offset, &
-         comm_idx, com1_idx, comfidx, cm1fidx!, rspline_str, molline_str, &
+         comm_idx, com1_idx, comfidx, cm1fidx, & 
+         hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx
+    !, rspline_str, molline_str, &
     !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
     USE OMSAO_parameters_module,   ONLY: maxchlen, maxwin, max_fit_pts!, &
     !vb_lev_omidebug, vb_lev_develop, n_sol_winwav, n_rad_winwav, &
@@ -65,18 +67,19 @@ contains
          reduce_resolution, redsampr, redlam, reduce_slit, rm_mgline, &
          redfixwav,use_redfixwav, nredfixwav, redfixwav_fname, radnhtrunc, &
          refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
-         use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname
+         use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname, &
+         gome_idx, which_instrument, max_instrument_idx, &
+         omi_idx, scia_idx, gome2_idx, tempo_idx, correct_merr, xbin_decerr, ybin_decerr, &
+         do_xbin, do_ybin, nxbin, nybin
     !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
     !fitcol_idx, fincol_idx, n_mol_fit
-    USE OMSAO_gome_data_module, ONLY:   &
-         gome_idx, which_instrument, max_instrument_idx, &
-         omi_idx, scia_idx, gome2_idx, tempo_idx!, &
+    !USE OMSAO_gome_data_module, ONLY:   &
     !lm_gome_eshine, n_gome_data_dim, &
     !n_gome_max_pts, lm_gome_solspec, gome_spec_missing, gome_orbc
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module, ONLY: orbc, orbnum, orbcsol, orbnumsol, mswath, &
          nswath, upper_wvls, lower_wvls, nxtrack_max, ntimes_max, ncoadd, &
-         do_xbin, do_ybin, nxbin, nybin, ncoadd, omiraddate,  &
+         ncoadd, omiraddate,  &
          retlbnd, retubnd, omisol_version, omi_redslw!, nlines_max
     USE ozprof_data_module, ONLY: ozprof_flag, &
          ozprof_input_fname, fullorb, do_ch2reso, l1l2inp_unit, &
@@ -809,7 +812,7 @@ contains
     READ (fit_ctrl_unit, *) wavcal_fit_pts, n_wavcal_step, wavcal_redo
     READ (fit_ctrl_unit, *) yn_smooth
     READ (fit_ctrl_unit, *) yn_doas
-    READ (fit_ctrl_unit, *) use_meas_sig
+    READ (fit_ctrl_unit, *) use_meas_sig, correct_merr, xbin_decerr, ybin_decerr
     READ (fit_ctrl_unit, *) linenum_lim
     READ (fit_ctrl_unit, *) pixnum_lim
     READ (fit_ctrl_unit, *) tol
@@ -859,6 +862,34 @@ contains
       IF ( idxchar == eoi3str ) EXIT solpars
 
       CALL string2index ( calfit_strings, max_calfit_idx, idxchar, sidx )
+      IF (which_slit == 4) THEN  
+         IF ((sidx == spk_idx .or. sidx == hwe_idx) .and. lotmp == uptmp ) THEN 
+           WRITE(www_lun, '(a)') 'solar cali. pars of check main_control.f90'
+           WRITE(www_lun, '(a)') 'k is fixed to 2 so super should be same as gauss' 
+         ELSE IF (sidx == asy_idx .or. (sidx >= vgl_idx .and. sidx <= hwr_idx)) THEN 
+           vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
+         ENDIF
+      ELSE
+        IF (sidx == spk_idx) THEN 
+           vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
+        ENDIF
+      ENDIF
+
+      IF (which_slit == 0 ) THEN 
+        IF (sidx == hwe_idx .and. lotmp == uptmp) THEN
+            STOP
+         ELSE IF (sidx == asy_idx .or. (sidx >= vgl_idx .and. sidx <= hwr_idx)) THEN 
+           vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
+         ENDIF
+      ELSE IF (which_slit == 1) THEN 
+         IF ( (sidx == hwe_idx .or. sidx == asy_idx) .and. lotmp == uptmp ) THEN
+             WRITE(*,*) 'check main_control.inp * irradiance cali. par.'
+             STOP
+         ELSE IF (sidx >=vgl_idx .and. sidx <= hwr_idx) THEN
+               vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0
+         ENDIF
+      ENDIF
+
       IF ( sidx > 0 ) THEN
         fitvar_sol_init(sidx) = vartmp
         lo_sunbnd(sidx) = lotmp

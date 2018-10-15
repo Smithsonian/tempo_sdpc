@@ -498,7 +498,6 @@ contains
     ! Initialization of output variable (default for "no convolution")
     ! ----------------------------------------------------------------
     specmod(1:npoints) = specarr(1:npoints)
-
     ! --------------------------------------
     ! No convolution if halfwidth @ 1/e is 0
     ! --------------------------------------
@@ -506,22 +505,18 @@ contains
 
     emult  = -1.0 / ( hw1e * hw1e )
     delwvl = wvlarr(2) - wvlarr(1)
-
     !  Calculate slit function values out to 0.001 times x0 value,
     !     normalize so that sum = 1.
 
     slitsum = 1.0 ;  slit0 = 1.0
-!    i = 1  ;  num_slit = 0
-    num_slit = 0
-!    DO WHILE ( num_slit <= npoints )
-    DO i = 1, npoints 
+    i = 1  ;  num_slit = 0
+    DO WHILE ( num_slit <= npoints )
       slit (i) = EXP (emult * (delwvl * i)**2)
       slitsum = slitsum + 2.0 * slit (i)
       IF (slit (i) <= slit_trunc_limit ) EXIT 
-!      i = i + 1
+      i = i + 1
     ENDDO
-!    num_slit = i
-    num_slit = i - 1
+    num_slit = i
 
     slit0 = slit0 / slitsum
     slit(1:num_slit) = slit(1:num_slit) / slitsum
@@ -532,8 +527,7 @@ contains
     DO i = 1, npoints
       DO j = 1, num_slit
         nlo = i - j 
-!        IF (nlo < 1) nlo = -nlo + 2 
-        IF (nlo < 1) nlo = -nlo + 1
+        IF (nlo < 1) nlo = -nlo + 2 
         nhi = i + j
         IF ( nhi > npoints ) nhi = npoints - MOD(nhi, npoints)
         specmod(i) = specmod(i) + slit(j) * ( specarr(nlo) + specarr(nhi) )
@@ -883,6 +877,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY : yn_varyslit, which_slit
     USE OMSAO_slitfunction_module
+    USE super_gauss_module, ONLY : super_gauss_f2c, super_gauss_vary_f2c
     IMPLICIT NONE
 
     ! ===============
@@ -903,7 +898,9 @@ contains
         CALL asym_voigt_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
       ELSE IF (which_slit == 3) THEN
         CALL triangle_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE
+      ELSE IF (which_slit == 4) THEN 
+        CALL super_gauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
+      ELSE IF (which_slit == 5) THEN
         CALL omislit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
       END IF
     ELSE 
@@ -915,7 +912,9 @@ contains
         CALL asym_voigt_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
       ELSE IF (which_slit == 3) THEN
         CALL triangle_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE 
+      ELSE IF (which_slit == 4) THEN
+        CALL super_gauss_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
+      ELSE IF (which_slit == 5) THEN
         CALL omislit_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
       ENDIF
     ENDIF

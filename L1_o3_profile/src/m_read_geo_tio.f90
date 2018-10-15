@@ -42,9 +42,9 @@ contains
   !> @author E. O'Sullivan    July 2016
   !-----------------------------------------------------------------------
   subroutine read_geo_tio ( l1file, l1swath, nstep, nxtrack, nl, errstat)
-    use OMSAO_omidata_module, only: nxbin, nybin, offset_line, nswath, &
+    use OMSAO_omidata_module, only:  offset_line, nswath, &
          land_water_flg, glint_flg, snow_ice_flg
-    use OMSAO_variables_module, only: use_he5_in, coadd_uv2
+    use OMSAO_variables_module, only: use_he5_in, coadd_uv2, nxbin, nybin
     ! replace with variables fined in this module once he5 input obsoleted
     use OMSAO_pixelcorner_module, only: omi_alllat, omi_alllon, omi_allsza, &
        omi_allvza, omi_allaza, omi_allsca, omi_alltime, omi_allGeoFlg, &
@@ -141,8 +141,9 @@ contains
           i = ix * 2 - 1
           j = i + 1
           tmp_xtrackqflg = tio_xtrackqflg
-          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline))!, &
-               !tmp_xtrackqflg(j, iline))
+          !CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline))!, &
+               !tmp_xtrackqflg(j, iline)) ! by someone by TEMPO teams
+          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline), tmp_xtrackqflg(j, iline)) ! returned by jbak
           tio_xtrackqflg(ix, iline) = tmp_xtrackqflg(i, iline)
         end do
       end do
@@ -348,7 +349,7 @@ contains
   subroutine get_sphgeoview_corners (nxtrack, ntimes, lon, lat, sza, saza, &
        vza, vaza, clon, clat, elon, elat, esza, evza, eaza, esca)
 
-    use OMSAO_omidata_module, only: nxbin, nybin
+    use OMSAO_variables_module, only: nxbin, nybin
     use m_ezspline_interpolation, only: interpol
     use m_angle_sat2toa
 

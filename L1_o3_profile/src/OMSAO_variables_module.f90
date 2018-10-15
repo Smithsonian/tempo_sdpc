@@ -27,6 +27,17 @@ MODULE OMSAO_variables_module
 
   IMPLICIT NONE
 
+  ! -------------------------------------
+  ! GOME data fitting or OMI data fitting
+  ! -------------------------------------
+  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, &
+                        gome2_idx = 4, tempo_idx = 5
+  INTEGER, PARAMETER :: max_instrument_idx = tempo_idx
+  CHARACTER (LEN=4), DIMENSION (max_instrument_idx), PARAMETER :: &
+       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2', 'TMPO' /)
+  INTEGER :: instrument_idx
+
+
   ! Time of a Granule
   REAL (KIND=8) :: TAI93At0ZOfGranule, TAI93StartOfGranule, GranuleSecond
   INTEGER       :: GranuleYear, GranuleMonth, GranuleDay, GranuleHour,       &
@@ -58,8 +69,11 @@ MODULE OMSAO_variables_module
   ! Variables defined in preamble of original program
   ! -------------------------------------------------
   LOGICAL :: yn_smooth, yn_doas, yn_varyslit, use_meas_sig
+  LOGICAL :: correct_merr ! correct OMI COL3 measurement error, xliu:09/25/12
+  LOGICAL :: xbin_decerr, ybin_decerr ! reduce meas erors when coadding in x/y dirrection
   LOGICAL :: weight_sun, weight_rad, renorm
-
+  LOGICAL :: do_xbin, do_ybin ! binning across and along the track
+  INTEGER :: nxbin, nybin
   ! -------------------------------------------
   ! A special beast: The undersampling spectrum
   ! -------------------------------------------
@@ -229,6 +243,11 @@ MODULE OMSAO_variables_module
   LOGICAL :: slit_redo, wavcal_redo, wavcal_sol, wavcal, slit_rad
   LOGICAL :: fixslitcal, smooth_slit, slitcal
   INTEGER :: which_slit   ! 1. Gauss 2. Voigt 3. Triangle Other: Gauss
+  INTEGER, PARAMETER :: correct_lamda = 2
+  !1 :  lamda =( fitwavs - shi)/(1.0 + squ) ; IN OLD VERSION
+  !2 :  lamda =( fitwavs - shi + sol_wav_avg*squ) /(1.0+squ) IN UPDATED
+  !VERSION,because there is too much correlation between squ and shi in previous
+  !implemnetation
 
 
   ! hw1e, e_asym, shi, squ, hwl, hwr, vgl, vgr at each window
@@ -344,6 +363,9 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   INTEGER :: n_irrad_wvl, n_rad_wvl
 
+  !-----------------------------------------------------------------
+  ! 
+  !-----------------------------------------------------------------
   ! -----------------------------------------------------------------
   !
   ! This module defines variables associated with the SAO PGEs.
@@ -383,5 +405,6 @@ MODULE OMSAO_variables_module
   ! array of mirror_step indices for TEMPO synthetic data
   integer (kind=4), dimension(:), allocatable :: step_idx
 
+   
 
 END MODULE OMSAO_variables_module

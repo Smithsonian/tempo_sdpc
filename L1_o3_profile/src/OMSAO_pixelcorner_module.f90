@@ -13,9 +13,9 @@ MODULE OMSAO_pixelcorner_module
   USE OMSAO_variables_module, ONLY: l1b_rad_filename, verb_thresh_lev, &
        the_utc, TAI93At0ZOfGranule, TAI93StartOfGranule, GranuleYear, &
        GranuleMonth, GranuleDay, GranuleHour, GranuleMinute, GranuleSecond, &
-       GranuleJDay
+       GranuleJDay, nxbin, nybin
   USE OMSAO_omidata_module,   ONLY: omi_radiance_swathname, nxtrack_max, &
-       ntimes_max, nxbin, nybin, offset_line, zoom_mode, nswath, zoom_p1, &
+       ntimes_max, offset_line, zoom_mode, nswath, zoom_p1, &
        land_water_flg, glint_flg, snow_ice_flg, omi_irradiance_wavl
   use m_angle_sat2toa, only: omi_angle_sat2toa
   IMPLICIT NONE
@@ -283,8 +283,9 @@ CONTAINS
         DO ix = 1, nxtrack1
           i = ix * 2 - 1
           j = i + 1
-          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i))!, &
-               !tmp_xtrackqflg1(j))
+          !CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i))!, & changed by someson TEMPO team
+          !     !tmp_xtrackqflg1(j))
+          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i), tmp_xtrackqflg1(j)) ! returned by jbak
           omi_allXTrackQFlg(ix, iline) = tmp_xtrackqflg1(i)
         ENDDO
       ENDIF

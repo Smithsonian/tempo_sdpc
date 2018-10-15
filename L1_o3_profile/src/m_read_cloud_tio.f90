@@ -4,9 +4,8 @@ module m_read_cloud_tio
   use tio_module
   use tell_module
   use netcdf, only: nf90_nowrite
-  use OMSAO_omidata_module, only: nxtrack_max, ntimes_max, ncoadd, &
-       nxbin, nybin, offset_line
-  use OMSAO_variables_module, only: coadd_uv2, scnwrt, use_he5_in
+  use OMSAO_omidata_module, only: nxtrack_max, ntimes_max, ncoadd, offset_line
+  use OMSAO_variables_module, only: coadd_uv2, scnwrt, use_he5_in, nxbin, nybin
 
   implicit none
   ! Type declaration for cloud data

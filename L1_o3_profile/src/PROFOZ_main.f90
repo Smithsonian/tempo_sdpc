@@ -6,9 +6,8 @@ PROGRAM PROFOZ_main
        l1b_rad_filename,                &
        l1b_irrad_filename, l2_filename, &
        l2_cld_filename, & !, pge_idx
-       use_he5_in, use_he5_out, use_tio_in, use_tio_out
-  USE OMSAO_gome_data_module, ONLY: omi_idx, instrument_idx!, &
-  !scia_idx, gome_idx, gome2_idx
+       use_he5_in, use_he5_out, use_tio_in, use_tio_out, &
+       omi_idx, instrument_idx
   USE OMSAO_errstat_module
   USE OMI_LUN_set
   use m_omi_fitting_process

@@ -25,7 +25,7 @@ contains
          tf_fidx, tf_lidx, nt_fit, nalb, nfalb, albfidx, albidx, use_oe, &
          cloud, use_flns, useasy, ndiv, albmax, albmin, do_multi_vza, &
          do_lambcld, ring_on_line, ring_convol, fit_atanring, degcorr, &
-         do_subfit, fgassidxs, fgaspos, which_clima, which_alb, which_cld, &
+         do_subfit, fgassidxs, fgaspos, which_atm, which_clima, which_alb, which_cld, &
          use_logstate, radcalwrt, smooth_ozbc, do_ch2reso, &
          atmos_prof_fname, ozwrtcorr, ozwrtcovar, ozwrtcontri, ozwrtres, &
          ozwrtvar, ozwrtavgk,  ozwrtfavgk, degfname, biascorr, biasfname, &
@@ -201,6 +201,7 @@ contains
     READ (fit_ctrl_unit, *) lcurve_write
     lcurve_fname = TRIM(ADJUSTL(outdir)) // 'lcurve_' // rad_identifier // '.dat'
     READ (fit_ctrl_unit, *) ptr_order, ptr_w0, ptr_w1, ptr_w2
+    READ (fit_ctrl_unit, *) which_atm
     READ (fit_ctrl_unit, *) which_clima
     IF (which_clima > 7 .OR. which_clima <= 0) THEN
       WRITE(www_lun, *) modulename, ' No such ozone profile climatology!!!'

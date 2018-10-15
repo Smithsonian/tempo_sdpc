@@ -13,8 +13,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: elsunc_userdef
     USE OMSAO_parameters_module, ONLY: elsunc_np, elsunc_nw!, max_spec_pts
-    USE OMSAO_variables_module, ONLY: tol,  epsrel,  epsabs,  epsx!, fitwavs, &
-         !currspec, fitweights
+    USE OMSAO_variables_module, ONLY: tol,  epsrel,  epsabs,  epsx
     USE bounded_nonlin_LS, ONLY: elsunc
 
     IMPLICIT NONE
@@ -22,8 +21,7 @@ contains
     ! ===============
     ! Input variables
     ! ===============
-    INTEGER,                              INTENT (IN) :: nfitvar, nspecpts, &
-         max_itnum
+    INTEGER,                              INTENT (IN) :: nfitvar, nspecpts, max_itnum
     REAL (KIND=dp), DIMENSION (nfitvar),  INTENT (IN) :: lowbnd, uppbnd
 
     ! ==================
@@ -62,11 +60,8 @@ contains
 
     exval = 0
 
-    p   = -1    
-    p(1)   = 0  
-    p(3) = max_itnum
-    w   = -1.0  
-    w(1:4) = (/ tol,  epsrel,  epsabs,  epsx /)
+    p   = -1    ;  p(1)   = 0  ;    p(3) = max_itnum
+    w   = -1.0  ;  w(1:4) = (/ tol,  epsrel,  epsabs,  epsx /)
 
     blow(1:nfitvar) = lowbnd(1:nfitvar)
     bupp(1:nfitvar) = uppbnd(1:nfitvar)
@@ -74,7 +69,6 @@ contains
     CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts, fitfunc,    &
          elbnd, blow(1:nfitvar),  bupp(1:nfitvar), p, w, exval, f(1:nspecpts),&
          dfda(1:nspecpts,1:nfitvar) )
-
     ! ------------------------------------------------------------------
     ! Call to ELSUNC fitting function to obtain complete fitted spectrum
     ! ------------------------------------------------------------------

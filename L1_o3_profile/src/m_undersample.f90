@@ -25,16 +25,17 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: solar_idx, us1_idx, us2_idx, wvl_idx, &
-         spc_idx, hwe_idx, hwr_idx, hwl_idx, asy_idx
+         spc_idx, hwe_idx, hwr_idx, hwl_idx, asy_idx, spk_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts!, maxchlen
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
          database, yn_varyslit, which_slit, database_shiwf, &
          nslit, nslit_rad, nslit_sol,slitwav, slitwav_sol, slitwav_rad, &
          slitfit, solslitfit, radslitfit, slit_rad, numwin, nradpix, &
          solwinfit, sring_fidx, sring_lidx, nsol_ring, sol_spec_ring, &
-         have_undersampling
+         have_undersampling, refnhextra
     USE ozprof_data_module,     ONLY: nsl
     USE OMSAO_slitfunction_module
+    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
     USE OMSAO_errstat_module
     use m_gauss, only: gauss_vary, gauss_multi, asym_gauss_multi, &
          asym_gauss_vary
@@ -61,11 +62,10 @@ contains
     ! Local variables
     ! ---------------
     REAL (KIND=dp), DIMENSION (2,n_gome_pts+4)  :: underspec
-    REAL (KIND=dp), DIMENSION (max_spec_pts)    :: locwvl, locspec, &
-         specmod, specmod1
-    REAL (KIND=dp), DIMENSION (n_gome_pts + 4)  :: tmpwav, over, &
-         under, resample, resample1, subwav, tmpspec
-    INTEGER :: npts, errstat, iwin, fidx, lidx, npoints!, i, j
+    REAL (KIND=dp), DIMENSION (max_spec_pts)    :: locwvl, locspec, specmod, specmod1
+    REAL (KIND=dp), DIMENSION (n_gome_pts + 4)  :: tmpwav, over, under, resample, & 
+          resample1, subwav, tmpspec
+    INTEGER :: npts, errstat, iwin, fidx, lidx, npoints
 
     ! ------------------
     ! External functions
@@ -125,6 +125,13 @@ contains
           solwinfit(1:numwin, hwe_idx,1) = &
                solwinfit(1:numwin, hwe_idx,1) - 0.01
           CALL triangle_multi (locwvl, locspec, specmod, npts)
+        ELSE IF (which_slit == 4) THEN
+           solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) + 0.01
+           solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) + 0.01
+           IF (nsl > 0) CALL super_gauss_multi (locwvl, locspec, specmod1, npts)
+           solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) - 0.01
+           solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) - 0.01
+           CALL super_gauss_multi (locwvl, locspec, specmod, npts)
         ELSE
           CALL omislit_multi (locwvl, locspec, specmod, npts)
         END IF
@@ -153,6 +160,13 @@ contains
           IF (nsl > 0) CALL triangle_vary (locwvl, locspec, specmod1, npts)
           slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
           CALL triangle_vary (locwvl, locspec, specmod, npts)
+        ELSE IF (which_slit == 4) THEN
+           slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
+           slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
+           IF (nsl > 0) CALL super_gauss_vary (locwvl, locspec, specmod1, npts)
+           slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
+           slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
+           CALL super_gauss_vary (locwvl, locspec, specmod, npts)
         ELSE
           CALL omislit_vary (locwvl, locspec, specmod, npts)
         ENDIF
@@ -173,7 +187,8 @@ contains
     ! do it separately for each window
     lidx = 0
     DO iwin = 1, numwin
-      npoints = nradpix(iwin) + 8 ! reference has 4 more wavelengths and add 4 extra pixels
+!      npoints = nradpix(iwin) + 8  ! 
+      npoints = nradpix(iwin) + refnhextra*2 + 4 ! JBAK reference has 4 more wavelengths and add 4 extra pixels 
       fidx =  lidx + 1            ! fidx:lidx refers to position in curr_wvl
       lidx =  fidx + npoints - 5
 

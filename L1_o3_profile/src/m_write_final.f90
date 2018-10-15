@@ -229,13 +229,13 @@ contains
 
     ! Write out the average fitting statistics
     WRITE (www_lun,*)
-    WRITE (www_lun,'(A, 1PE13.5)') &
+    WRITE (*,'(A, 1PE13.5)') &
          '                      Avg Col = ', fitted_col/n_spec
-    WRITE (www_lun,'(A, 1PE13.5)') &
+    WRITE (*,'(A, 1PE13.5)') &
          '                      Avg RMS = ', rmsavg/n_spec
-    WRITE (www_lun,'(A, 1PE13.5)') &
+    WRITE (*,'(A, 1PE13.5)') &
          '                     Avg dCol = ', davg/n_spec
-    WRITE (www_lun,'(A, 1PE13.5)') &
+    WRITE (*,'(A, 1PE13.5)') &
          ' Avg relative Col uncertainty = ', drelavg/n_spec
 
     RETURN
@@ -268,9 +268,9 @@ contains
          fitspec_rad, fitres_rad, fitwavs, &
          fitvar_rad_str, fitvar_rad_nstd, currline, currpix, currloop, &
          simspec_rad, clmspec_rad, actspec_rad, fitweights, &
-         numwin, nradpix!, refidx, fitvar_rad_apriori, database
+         numwin, nradpix, nxbin, nybin !, refidx, fitvar_rad_apriori, database
     USE OMSAO_omidata_module,   ONLY : land_water_flg, glint_flg, &
-         snow_ice_flg, offset_line, nxbin, nybin
+         snow_ice_flg, offset_line
 
     IMPLICIT NONE
 
