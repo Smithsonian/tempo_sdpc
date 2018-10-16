@@ -239,38 +239,66 @@ int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
    return 0;
 }
 
+int __tio_filename_string_indexed (char *buf, int bufsize,
+                                   double tstart, const char *label, int level, int version,
+                                   int scan_num, int granule_num)
+{
+   char timestr[MAX_ISOTIME_LEN];
+
+   if (0 != TIO_mktimestamp_str (tstart, 0, timestr, sizeof(timestr)))
+     return -1;
+
+   /* TEMPO_<label>_Ld_Vdd_<time>_SdddGdd.nc */
+   return snprintf (buf, bufsize,
+                    "TEMPO_%s_L%d_V%02d_%s_S%03dG%02d.nc",
+                    label, level, version, timestr,
+                    scan_num, granule_num);
+}
+
+int __tio_filename_string (char *buf, int bufsize,
+                           double tstart, const char *label, int level, int version)
+{
+   char timestr[MAX_ISOTIME_LEN];
+
+   if (0 != TIO_mktimestamp_str (tstart, 0, timestr, sizeof(timestr)))
+     return -1;
+
+   /* TEMPO_<label>_Ld_Vdd_<time>.nc */
+   return snprintf (buf, bufsize,
+                    "TEMPO_%s_L%d_V%02d_%s.nc",
+                    label, level, version, timestr);
+}
+
 static int
 _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
                                    const char *label, int level, int version,
                                    char *buf, int bufsize)
 {
-   char timestr[MAX_ISOTIME_LEN];
    int meaningful_granule_indices;
-   int status;
-
-   if (0 != TIO_mktimestamp_str (gid->tstart, 0, timestr, sizeof(timestr)))
-     return -1;
+   int n;
 
    meaningful_granule_indices = ((gid->granule_num > 0)
                                  && (gid->scan_num > 0));
 
    if (meaningful_granule_indices)
      {
-        /* TEMPO_<label>_Ld_Vdd_<time>_SdddGdd.nc */
-        status = snprintf (buf, bufsize,
-                           "TEMPO_%s_L%d_V%02d_%s_S%03dG%02d.nc",
-                           label, level, version, timestr,
-                           gid->scan_num, gid->granule_num);
+        n = __tio_filename_string_indexed (buf, bufsize, gid->tstart, label, level, version,
+                                           gid->scan_num, gid->granule_num);
      }
    else
      {
-        /* TEMPO_<label>_Ld_Vdd_<time>.nc */
-        status = snprintf (buf, bufsize,
-                           "TEMPO_%s_L%d_V%02d_%s.nc",
-                           label, level, version, timestr);
+        n = __tio_filename_string (buf, bufsize, gid->tstart, label, level, version);
      }
 
-   return status;
+   if (n >= bufsize)
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: filename length %d truncated to buffer size %d)",
+                     __func__, n, bufsize);
+        return -1;
+     }
+
+   return 0;
 }
 
 int TIO_copy_granule_ident (int ncid_from, int ncid_to)

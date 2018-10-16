@@ -144,6 +144,49 @@ extern int TIO_same_granule_ident (int ncid1, int ncid2);
 extern int TIO_filename_from_granule (int ncid, const char *label, int level, int version,
                                       char *buf, int bufsize);
 
+/** Generate a scan granule filename string.
+ * @param  buf           Buffer to hold filename string
+ * @param  bufsize       Size of filename buffer
+ * @param  tstart        TAI seconds elapsed since the TEMPO epoch
+ * @param  label         Label string to include in the filename string (e.g. rad)
+ * @param  level         Processing level number (e.g. 0, 1, 2, 3)
+ * @param  version       Processing version number to include in the filename string
+ * @param  scan_num      Scan number (>0)
+ * @param  granule_num   Granule number (>0)
+ * @return On error, a negative value is returned.  On success, the
+ *         return value is the number of characters that would have been
+ *         needed for the filename if space was available.  Thus,
+ *         a return value of \c bufsize or more indicates that the
+ *         output was truncated.
+ *
+ * Note that the label string can be either a valid label, or a format
+ * definition such as "%s".  The latter is useful for creating a filename
+ * template string.
+ */
+extern int __tio_filename_string_indexed (char *buf, int bufsize,
+                                          double tstart, const char *label, int level, int version,
+                                          int scan_num, int granule_num);
+
+/** Generate a filename string.
+ * @param  buf           Buffer to hold filename string
+ * @param  bufsize       Size of filename buffer
+ * @param  tstart        TAI seconds elapsed since the TEMPO epoch
+ * @param  label         Label string to include in the filename string (e.g. irr, drk, iru, smc...)
+ * @param  level         Processing level number (e.g. 0, 1, 2, 3)
+ * @param  version       Processing version number to include in the filename string
+ * @return On error, a negative value is returned.  On success, the
+ *         return value is the number of characters that would have been
+ *         needed for the filename if space was available.  Thus,
+ *         a return value of \c bufsize or more indicates that the
+ *         output was truncated.
+ *
+ * Note that the label string can be either a valid label, or a format
+ * definition such as "%s".  The latter is useful for creating a filename
+ * template string.
+ */
+extern int __tio_filename_string (char *buf, int bufsize,
+                                  double tstart, const char *label, int level, int version);
+
 /** Write product_type and processing version metadata to a netcdf header
  * @param  ncid          Index of destination netcdf file
  * @param  product_type  Product type string, e.g. "rad", or "no2"
