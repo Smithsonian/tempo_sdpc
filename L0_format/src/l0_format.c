@@ -433,9 +433,9 @@ int make_level0_archdir_path (char **archdir_path,
    if (0 != tio_time_tempo_to_utc_caldate (sec_since_epoch, &year, &month, &day, &hour))
      return -1;
 
-   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/${file_type}/YYYY/MM/DD */
-   n = snprintf (buf, bufsize, "%s/L0/%d/%s/%d/%d/%d",
-                 root_path, processing_version, suffix, year, month, day);
+   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/YYYY/MM/DD/${file_type} */
+   n = snprintf (buf, bufsize, "%s/L0/%d/%d/%d/%d/%s",
+                 root_path, processing_version, year, month, day, suffix);
 
    if (n >= bufsize)
      {
@@ -743,7 +743,7 @@ int main (int argc, char **argv)
         switch (c)
           {
            default:
-             fprintf (stderr, "getopt returned character %d ?", c);
+             fprintf (stderr, "getopt returned character %d?\n", c);
              goto return_status;
              break;
            case 'h':
