@@ -19,9 +19,12 @@
 #include <tio.h>
 #include <tio_template.h>
 
+#define PRODUCT_TYPE_IRU "iru"
+
 #define PROCESS_METHOD_PRIVATE_DATA \
    char *out_dirname; \
    char *out_basename; \
+   char *archdir_path; \
    int ncid; \
    int processing_version; \
    double outfile_timestamp_start; \
@@ -69,7 +72,7 @@ static int close_iru_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename))
+        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
           return -1;
      }
    pmt->ncid = INT_MAX;
@@ -86,6 +89,7 @@ static void delete_iru (Process_Method_Type *pmt)
    ioclib_free (pmt->out_basename);
    FREE(pmt->out_dirname);
    FREE(pmt->outbuf);
+   FREE(pmt->archdir_path);
    FREE(pmt);
 }
 
@@ -103,21 +107,21 @@ static int define_iru_vars (Process_Method_Type *pmt,
    pmt->gyro_bias_time = iru->gyro_bias_time;
    pmt->gyro_dimension = iru->gyro_dimension ? iru->gyro_dimension : 4;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, "iru"))
+   if ((0 != write_attr_global_product_type (pmt->ncid, PRODUCT_TYPE_IRU))
        || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                              pmt->outfile_timestamp_start)))
      return -1;
 
    /* FIXME?:
     * The dimension dimid_bias_time is being used somewhat inconsistently.
-    * Each iru0 file incoming from the IOC has a single value of
+    * Each iru file incoming from the IOC has a single value of
     *     time_of_scale_or_bias_update
     *     scale_factor[gyro_axis]
     *     bias[gyro_bias]
     * Instead, the instrument will provide a bias time series, which
     * the IOC may ultimately provide as a separate file.  For now,
     * the bias_time dimension is effectively a counter indicating the
-    * number of IRU products from the IOC merged to make the iru0 file.
+    * number of IRU products from the IOC merged to make the iru file.
     * This configuration is likely to change when we complete NDAs
     * with the gyroscope vendors and finally learn what's in the IRU
     * packets.
@@ -315,8 +319,15 @@ static int new_iru_outfile (Process_Method_Type *pmt, double timestamp)
 
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
-   if (0 != make_level0_basename (timestamp, pmt->processing_version, "iru0",
-                                  NULL, basename, sizeof(basename)))
+
+   FREE(pmt->archdir_path);
+   pmt->archdir_path = NULL;
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp,
+                                      pmt->processing_version, PRODUCT_TYPE_IRU))
+     return -1;
+
+   if (0 != make_level0_basename (basename, sizeof(basename), timestamp,
+                                  pmt->processing_version, PRODUCT_TYPE_IRU, NULL))
      return -1;
 
    if (pmt->ncid != INT_MAX)

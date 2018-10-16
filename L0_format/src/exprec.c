@@ -42,6 +42,7 @@ File_Info_Type;
    char *cache_dirname; \
    char *out_dirname; \
    char *out_basename; \
+   char *archdir_path; \
    int ncid; \
    int processing_version; \
    double outfile_timestamp_start; \
@@ -263,7 +264,7 @@ static int close_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename))
+        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
           return -1;
      }
    pmt->ncid = INT_MAX;
@@ -296,7 +297,6 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                         int curr_granule, int num_granules)
 {
    char basename[MAX_BASENAME_SIZE];
-   char *exprec_type_suffix;
    Radiance_Ident_Type radiance_ident = {0};
    Radiance_Ident_Type *identp = NULL;
 
@@ -311,7 +311,6 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      {
       case IOCSDPC_EXPREC_TYPE_RADIANCE:
         pmt->product_type = "rad";
-        exprec_type_suffix = "rad0";
         pmt->exprec_type_string = ioclib_strdup("radiance");
         radiance_ident.scan_num = 0;   /* FIXME! exprec header should define this */
         radiance_ident.granule_num = curr_granule + 1;
@@ -321,29 +320,24 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         break;
       case IOCSDPC_EXPREC_TYPE_DARK:
         pmt->product_type = "drk";
-        exprec_type_suffix = "drk0";
         pmt->exprec_type_string = ioclib_strdup("dark");
         break;
       case IOCSDPC_EXPREC_TYPE_IRRADIANCE:
         pmt->product_type = "irr";
-        exprec_type_suffix = "irr0";
         pmt->exprec_type_string = ioclib_strdup("irradiance");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_IRR:
         pmt->product_type = "irr";
-        exprec_type_suffix = "irrlin0";
         pmt->exprec_type_string = ioclib_strdup("irradiance,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_DARK:
         pmt->product_type = "drk";
-        exprec_type_suffix = "drklin0";
         pmt->exprec_type_string = ioclib_strdup("dark,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_UNKNOWN:
         /* drop */
       default:
         pmt->product_type = "unk";
-        exprec_type_suffix = "unk0";
         pmt->exprec_type_string = ioclib_strdup("unknown");
         break;
      }
@@ -352,9 +346,14 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (pmt->exprec_type_string == NULL)
      return -1;
 
-   if (-1 == make_level0_basename (erec->image_start_time, pmt->processing_version,
-                                   exprec_type_suffix, identp,
-                                   basename, sizeof(basename)))
+   FREE(pmt->archdir_path);
+   pmt->archdir_path = NULL;
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, erec->image_start_time,
+                                      pmt->processing_version, pmt->product_type))
+     return -1;
+
+   if (-1 == make_level0_basename (basename, sizeof(basename), erec->image_start_time,
+                                   pmt->processing_version, pmt->product_type, identp))
      return -1;
 
    tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
@@ -846,6 +845,7 @@ static void delete_exprec (Process_Method_Type *pmt)
    FREE(pmt->out_basename);
    FREE(pmt->out_dirname);
    FREE(pmt->cache_dirname);
+   FREE(pmt->archdir_path);
    FREE(pmt);
 }
 

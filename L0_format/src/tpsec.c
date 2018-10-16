@@ -19,10 +19,13 @@
 
 #include "enum.h"
 
+#define PRODUCT_TYPE_TPSEC "hk"
+
 #define PROCESS_METHOD_PRIVATE_DATA \
    Enum_Lookup_Type *enum_lookup; \
    char *out_dirname; \
    char *out_basename; \
+   char *archdir_path; \
    int ncid; \
    int processing_version; \
    double outfile_timestamp_start; \
@@ -76,7 +79,7 @@ static int close_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename))
+        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
           return -1;
      }
    pmt->ncid = INT_MAX;
@@ -92,8 +95,15 @@ static int new_outfile (Process_Method_Type *pmt, double timestamp)
 
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
-   if (-1 == make_level0_basename (timestamp, pmt->processing_version, "hk0",
-                                   NULL, basename, sizeof(basename)))
+
+   FREE(pmt->archdir_path);
+   pmt->archdir_path = NULL;
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp,
+                                      pmt->processing_version, PRODUCT_TYPE_TPSEC))
+     return -1;
+
+   if (-1 == make_level0_basename (basename, sizeof(basename), timestamp,
+                                   pmt->processing_version, PRODUCT_TYPE_TPSEC, NULL))
      return -1;
 
    if (pmt->ncid != INT_MAX)
@@ -110,7 +120,7 @@ static int new_outfile (Process_Method_Type *pmt, double timestamp)
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
      return -1;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, "hk"))
+   if ((0 != write_attr_global_product_type (pmt->ncid, PRODUCT_TYPE_TPSEC))
        || (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                               pmt->outfile_timestamp_start)))
      return -1;
@@ -562,6 +572,7 @@ static void delete_tpsec (Process_Method_Type *pmt)
    (void) close_outfile (pmt);
    ioclib_free (pmt->out_basename);
    FREE(pmt->out_dirname);
+   FREE(pmt->archdir_path);
    FREE(pmt);
 }
 
@@ -574,6 +585,7 @@ Process_Method_Type *init_tpsec_method (config_t *cfg)
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
+   memset ((char *)pmt, 0, sizeof *pmt);
 
    if (-1 == parse_tpsec_params (cfg, pmt))
      {

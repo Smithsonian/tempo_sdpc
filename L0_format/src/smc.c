@@ -17,9 +17,12 @@
 #include <tio.h>
 #include <tell.h>
 
+#define PRODUCT_TYPE_SMC "smc"
+
 #define PROCESS_METHOD_PRIVATE_DATA \
    char *out_dirname; \
    char *out_basename; \
+   char *archdir_path; \
    int ncid; \
    int processing_version; \
    double outfile_timestamp_start; \
@@ -75,7 +78,7 @@ static int close_smc_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename))
+        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
           return -1;
      }
    pmt->ncid = INT_MAX;
@@ -91,6 +94,7 @@ static void delete_smc (Process_Method_Type *pmt)
    ioclib_free (pmt->out_basename);
    FREE(pmt->out_dirname);
    FREE(pmt->outbuf);
+   FREE(pmt->archdir_path);
    FREE(pmt);
 }
 
@@ -101,7 +105,7 @@ static int define_smc_vars (Process_Method_Type *pmt)
    size_t chunk_size = 1024;
    int dimid_time;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, "smc"))
+   if ((0 != write_attr_global_product_type (pmt->ncid, PRODUCT_TYPE_SMC))
        || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                              pmt->outfile_timestamp_start)))
      return -1;
@@ -276,8 +280,15 @@ static int new_smc_outfile (Process_Method_Type *pmt, double timestamp)
 
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
-   if (0 != make_level0_basename (timestamp, pmt->processing_version, "smc0",
-                                  NULL, basename, sizeof(basename)))
+
+   FREE(pmt->archdir_path);
+   pmt->archdir_path = NULL;
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp,
+                                      pmt->processing_version, PRODUCT_TYPE_SMC))
+     return -1;
+
+   if (0 != make_level0_basename (basename, sizeof(basename), timestamp,
+                                  pmt->processing_version, PRODUCT_TYPE_SMC, NULL))
      return -1;
 
    if (pmt->ncid != INT_MAX)

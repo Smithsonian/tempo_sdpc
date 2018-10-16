@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <signal.h>
@@ -22,6 +25,8 @@
 
 #include "l0_format.h"
 #include "daemon.h"
+
+#define MAX_PATHLEN 1024
 
 typedef struct
 {
@@ -51,6 +56,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -d | --daemon            Run as a daemon\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
+   fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
 }
@@ -393,29 +399,79 @@ return_status:
    return status;
 }
 
-int make_level0_basename (double sec_since_epoch, int processing_version,
-                          const char *suffix, const Radiance_Ident_Type *identp,
-                          char *buf, int bufsize)
-{
-   char tstr[MAX_ISOTIME_LEN];
-   int n;
+static const char *Archive_Root_Dir = NULL;
 
-   if (-1 == TIO_mktimestamp_str (sec_since_epoch, 0, tstr, MAX_ISOTIME_LEN))
+static void set_archive_root_dir (const char *dir)
+{
+   Archive_Root_Dir = dir;
+}
+
+static const char *get_archive_root_dir (void)
+{
+   return Archive_Root_Dir;
+}
+
+int make_level0_archdir_path (char **archdir_path,
+                              double sec_since_epoch, int processing_version,
+                              const char *suffix)
+{
+   char buf[MAX_PATHLEN];
+   size_t bufsize = sizeof(buf);
+   const char *root_path;
+   char *path = NULL;
+   int year, month, day;
+   double hour;
+   size_t n;
+
+   /* NULL means don't perform archiving */
+   if (NULL == (root_path = get_archive_root_dir ()))
+     {
+        *archdir_path = NULL;
+        return 0;
+     }
+
+   if (0 != tio_time_tempo_to_utc_caldate (sec_since_epoch, &year, &month, &day, &hour))
      return -1;
+
+   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/${file_type}/YYYY/MM/DD */
+   n = snprintf (buf, bufsize, "%s/L0/%d/%s/%d/%d/%d",
+                 root_path, processing_version, suffix, year, month, day);
+
+   if (n >= bufsize)
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: basename length %ld truncated to buffer size %ld)",
+                     __func__, n, bufsize);
+        return -1;
+     }
+
+   if (NULL == (path = strdup (buf)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
+        return -1;
+     }
+
+   *archdir_path = path;
+
+   return 0;
+}
+
+int make_level0_basename (char *buf, int bufsize,
+                          double sec_since_epoch, int processing_version,
+                          const char *suffix, const Radiance_Ident_Type *identp)
+{
+   int n, level = 0;
 
    if (identp)
      {
-        n = snprintf (buf, bufsize, "tempo_%s_%06d_%02d_v%d_%s.nc",
-                      tstr,
-                      identp->scan_num,
-                      identp->granule_num,
-                      processing_version,
-                      suffix);
+        n = __tio_filename_string_indexed (buf, bufsize,
+                                           sec_since_epoch, suffix, level, processing_version,
+                                           identp->scan_num, identp->granule_num);
      }
    else
      {
-        n = snprintf (buf, bufsize, "tempo_%s_v%d_%s.nc",
-                      tstr, processing_version, suffix);
+        n = __tio_filename_string (buf, bufsize,
+                                   sec_since_epoch, suffix, level, processing_version);
      }
 
    if (n >= bufsize)
@@ -487,14 +543,129 @@ int create_hidden (const char *dirname, const char *basename, int *ncid)
    return status;
 }
 
+static int copy_file (const char *from, const char *to)
+{
+   mode_t mode_create = 00644;  /* rw-r--r-- */
+   struct stat st = {0};
+   char *buf = NULL;
+   size_t bufsize;
+   ssize_t nread;
+   int fd_from, fd_to = -1, status = -1;
+
+   if (0 != stat (from, &st))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: cannot stat %s", __func__, from);
+        return -1;
+     }
+
+   bufsize = st.st_blksize;
+
+   if ((fd_from = open (from, O_RDONLY)) < 0)
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: opening %s", __func__, from);
+        return -1;
+     }
+
+   if ((fd_to = open (to, O_WRONLY | O_CREAT | O_EXCL, mode_create)) < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: opening %s (%s)", __func__, to, strerror (errno));
+        goto return_status;
+     }
+
+   if (NULL == (buf = (char *) MALLOC (bufsize)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+   while ((nread = read (fd_from, buf, bufsize)) > 0)
+     {
+        char *pbuf = buf;
+        ssize_t nwritten;
+
+        do
+          {
+             if ((nwritten = write (fd_to, pbuf, nread)) >= 0)
+               {
+                  nread -= nwritten;
+                  pbuf += nwritten;
+               }
+             else if (errno != EINTR)
+               {
+                  tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s (%s)", __func__, to, strerror(errno));
+                  goto return_status;
+               }
+          } while (nread > 0);
+     }
+
+   if (nread == 0)
+     {
+        if (close (fd_to) < 0)
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: closing %s (%s)", __func__, to, strerror(errno));
+             fd_to = -1;
+             goto return_status;
+          }
+        /* Success! */
+        status = 0;
+     }
+   else
+     {
+        /* Error: nread < 0 */
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading %s (%s)", __func__, from, strerror(errno));
+     }
+
+return_status:
+   FREE(buf);
+   (void) close (fd_from);
+   if (fd_to > 0)
+     (void) close (fd_to);
+
+   return status;
+}
+
+static int perform_copy (const char *path, const char *copydir, const char *basename)
+{
+   char *copypath = NULL;
+   int status = -1;
+
+   /* NULL means "don't copy" */
+   if (copydir == NULL)
+     return 0;
+
+   if (0 != ioclib_mkdir (copydir, 0))
+     return -1;
+
+   if (NULL == (copypath = ioclib_pathconcat (copydir, basename)))
+     return -1;
+
+   tell_vinfo (0, "copying %s %s", path, copypath);
+
+   if (0 != copy_file (path, copypath))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: copying from %s to %s", __func__, path, copypath);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+
+   FREE(copypath);
+   return status;
+}
+
 /* Close hidden file $dirname/.${basename} and
- * and rename to $dirname/$basename */
-int close_hidden (int ncid, const char *dirname, const char *basename)
+ * and rename to $dirname/$basename.
+ * Optionally, if copydir != NULL, put a copy in $copydir/$basename
+ * before performing the rename.
+ */
+int close_hidden (int ncid, const char *dirname, const char *basename,
+                  const char *copydir)
 {
    char hidden_basename[MAX_BASENAME_SIZE];
    char *oldpath = NULL;
    char *newpath = NULL;
-   int status = 0;
+   int status = -1;
 
    if (-1 == TIO_close (ncid))
      return -1;
@@ -503,11 +674,17 @@ int close_hidden (int ncid, const char *dirname, const char *basename)
      return -1;
 
    if ((NULL == (oldpath = ioclib_pathconcat (dirname, hidden_basename)))
-       || (NULL == (newpath = ioclib_pathconcat (dirname, basename)))
-       || (-1 == ioclib_rename (oldpath, newpath)))
-     {
-        status = -1;
-     }
+       || (NULL == (newpath = ioclib_pathconcat (dirname, basename))))
+     goto return_status;
+
+   if (0 != perform_copy (oldpath, copydir, basename))
+     goto return_status;
+
+   if (-1 == ioclib_rename (oldpath, newpath))
+     goto return_status;
+
+   status = 0;
+return_status:
 
    FREE(oldpath);
    FREE(newpath);
@@ -548,6 +725,7 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
+        {"archive", required_argument, 0, 'a'},
         {"daemon",  no_argument, 0, 'd'},
         {"empty",   no_argument, 0, 'e'},
         {"verbose", no_argument, 0, 'v'},
@@ -559,17 +737,20 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hdev", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hadev", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
           {
            default:
-             fprintf (stderr, "getopt returned character %d??", c);
+             fprintf (stderr, "getopt returned character %d ?", c);
              goto return_status;
              break;
            case 'h':
              usage();
+             break;
+           case 'a':
+             set_archive_root_dir (optarg);
              break;
            case 'd':
              ctrl.daemon = 1;

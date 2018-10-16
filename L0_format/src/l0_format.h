@@ -78,18 +78,33 @@ typedef struct
 Radiance_Ident_Type;
 
 /** Generate a Level 0 file basename given the necessary file name components
+ * @param[out] buf       Pointer to a buffer to hold the generated file name.
+ * @param[in]  bufsize   Size of the file name buffer.
  * @param[in]  sec_since_epoch   A time stamp value, expressed as the number
  *                               of seconds elapsed since the TEMPO epoch.
  * @param[in] processing_version Integer processing version number.
  * @param[in] suffix      File name suffix indicating the file type.
- * @param[out]  buf     Pointer to a buffer to hold the generated file name.
- * @param[in]  bufsize   Size of the file name buffer.
  *
  * @return 0 on success, -1 on error
  */
-extern int make_level0_basename (double sec_since_epoch, int processing_version,
-                                 const char *suffix, const Radiance_Ident_Type *identp,
-                                 char *buf, int bufsize);
+extern int make_level0_basename (char *buf, int bufsize,
+                                 double sec_since_epoch, int processing_version,
+                                 const char *suffix, const Radiance_Ident_Type *identp);
+
+/** Generate the archive directory path for a Level 0 file
+ * @param[inout] archdir_path      The full archive directory path (malloced)
+ * @param[in]  sec_since_epoch   A time stamp value, expressed as the number
+ *                               of seconds elapsed since the TEMPO epoch.
+ * @param[in] processing_version Integer processing version number.
+ * @param[in] suffix      File name suffix indicating the file type.
+ *
+ * @return 0 on success, -1 on error
+ *
+ * If \a archdir_path is \a NULL, this function does nothing and returns 0.
+ */
+extern int make_level0_archdir_path (char **archdir_path,
+                                     double sec_since_epoch, int processing_version,
+                                     const char *suffix);
 
 /** Create a netCDF file with a hidden name.
  *  @param[in] dirname   Path to the target directory that will contain the file.
@@ -101,16 +116,18 @@ extern int make_level0_basename (double sec_since_epoch, int processing_version,
  */
 extern int create_hidden (const char *dirname, const char *basename, int *ncid);
 
-/** Close a hidden file, removing a "." prefix from the name.
+/** Close a hidden file, removing a "." prefix from the name, and optionally put a copy into a specified directory
  *  @param[in] ncid      netCDF file index of the hidden file.
  *  @param[in] dirname   Path to the target directory that contains the file.
  *  @param[in] basename  The file basename that will be prefixed by a "." to construct
  *                       the hidden file name.
+ *  @param[in] copydir   Directory to receive a non-hidden copy of the file before the rename occurs.
+ *                       If \a copydir is NULL, no copy is created.
  *  @return 0 on success, -1 on error
  *
  * On return, a "." prefix will be removed from the name of the file on disk.
  */
-extern int close_hidden (int ncid, const char *dirname, const char *basename);
+extern int close_hidden (int ncid, const char *dirname, const char *basename, const char *copydir);
 
 /** Write comment and units attributes to a specified netCDF file variable */
 extern int annotate_var (int grp, int varid, const char *descr, const char *units);
