@@ -354,10 +354,11 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
-        {"begin", optional_argument, 0, 'b'},
-        {"end",   optional_argument, 0, 'e'},
-        {"config", optional_argument, 0, 'c'},
-        {"verbose", optional_argument, 0, 'v'},
+        {"help", no_argument, 0, 'h'},
+        {"begin", required_argument, 0, 'b'},
+        {"end",   required_argument, 0, 'e'},
+        {"config", required_argument, 0, 'c'},
+        {"verbose", required_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -365,6 +366,7 @@ int main (int argc, char **argv)
    double time_beg = nan_value;
    double time_end = nan_value;
    char *radiance_file = NULL;
+   int print_usage = 0;
 
    if (argc < 2)
      usage();
@@ -384,15 +386,17 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "b:c:e:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:e:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
           {
            default:
-             tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: getopt returned character %d??",
-                          __func__, c);
+             fprintf (stderr, "%s: getopt returned character %d??\n", __func__, c);
+             goto return_status;
+             break;
+           case 'h':
+             print_usage = 1;
              goto return_status;
              break;
            case 'b':
@@ -423,7 +427,10 @@ int main (int argc, char **argv)
      }
 
    if (optind == 0)
-     usage();
+     {
+        print_usage = 1;
+        goto return_status;
+     }
 
    if (optind < argc)
      {
@@ -447,6 +454,8 @@ int main (int argc, char **argv)
 return_status:
    config_destroy (&cfg);
    tell_close ();
+
+   if (print_usage) usage();
 
    return status;
 }
