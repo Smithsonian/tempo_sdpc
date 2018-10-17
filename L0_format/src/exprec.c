@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -849,6 +852,48 @@ static void delete_exprec (Process_Method_Type *pmt)
    FREE(pmt);
 }
 
+static int dir_empty (DIR *d)
+{
+   struct dirent *ent;
+   int ret = 1;
+
+   while ((ent = readdir(d)))
+     {
+        if ((0 != strcmp(ent->d_name, "."))
+            && (0 != strcmp(ent->d_name, "..")))
+          {
+             ret = 0;
+             break;
+          }
+   }
+
+   return ret;
+}
+
+static int valid_cache_directory_path (const char *path)
+{
+   struct stat st;
+
+   /* nonexistent is ok - we'll create it */
+   if (0 != stat (path, &st))
+     return 1;
+
+   /* an empty, accessible directory is ok */
+   if (S_ISDIR(st.st_mode))
+     {
+        DIR *d;
+        int is_empty;
+        if (NULL == (d = opendir (path)))
+          return 0;  /* inaccessible is not ok */
+        is_empty = dir_empty (d);
+        (void) closedir(d);
+        if (is_empty) return 1;
+     }
+
+   /* 0 means invalid */
+   return 0;
+}
+
 Process_Method_Type *init_exprec_method (config_t *cfg)
 {
    Process_Method_Type *pmt = NULL;
@@ -863,6 +908,12 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    if (-1 == parse_exprec_params (cfg, pmt))
      {
         delete_exprec (pmt);
+        return NULL;
+     }
+
+   if (0 == valid_cache_directory_path (pmt->cache_dirname))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid cache directory path: %s", __func__, pmt->cache_dirname);
         return NULL;
      }
 
