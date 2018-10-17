@@ -48,7 +48,7 @@ contains
          nothgrp, the_cfrac, radcalwrt, do_simu, ecfrfind, ecodfind, &
          ectpfind, taodfind, twaefind, saodfind, ecfrind, &
          sprsfind, wfcfidx, nwfc, nfwfc, wfcidx, wfcfpix, wfclpix, so2zfind, &
-         fit_atanring, use_effcrs, ncalcp, do_simu_rmring!, wfcmin, wfcmax, &
+         fit_atanring, use_effcrs, ncalcp, do_simu_rmring, vary_sfcalb !, wfcmin, wfcmax, &
          !twaeind, taodind, so2zind, saodind, sprsind, &
          !gasidxs, albmin, albmax, ecodind, ectpind, polcorr, saa_flag
     USE OMSAO_errstat_module
@@ -102,7 +102,7 @@ contains
          do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, negval, &
          do_sprswf, do_so2zwf
     LOGICAL, DIMENSION (nlay) :: ozvary
-
+    REAL (KIND=dp), DIMENSION(ns) :: walb0s, wfc0s
     ! ==============================
     ! Name of this module/subroutine
     ! ==============================
@@ -210,24 +210,40 @@ contains
     n0alb = 0
     DO i = 1, nalb
       j = albidx - 1 + i
-      IF (fitvar_rad_str(j)(4:4) == '0') THEN
+     !xliu, 02/08/2012, add albord and **albord
+     READ(fitvar_rad_str(j)(4:4), '(I1)') albord
+     IF (albord == 0) THEN
         n0alb = n0alb + 1
-
         !IF (fitvar_rad(j) > 1.0) THEN
         !   fitvar_rad(j) = 1.0
         !   IF (rmask_fitvar_rad(j) > 0) fitvar(rmask_fitvar_rad(j)) = 1.0
         !ENDIF
-        albarr(n0alb) = fitvar_rad(j)
+        albarr(n0alb)  = fitvar_rad(j)
         albpmax(n0alb) = alblpix(i); albpmin(n0alb) = albfpix(i)
+        IF (vary_sfcalb) walb0s(albpmin(n0alb):albpmax(n0alb)) = albarr(n0alb)
+      ELSE
+        IF (vary_sfcalb) THEN 
+          fidx=albfpix(i); lidx=alblpix(i)
+          wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx)) 
+          walb0s(fidx:lidx) = walb0s(fidx:lidx) + fitvar_rad(j) * (waves(fidx:lidx) - wavavg)**albord 
+        ENDIF
       ENDIF
     ENDDO
 
     n0wfc = 0
     DO i = 1, nwfc
       j = wfcidx - 1 + i
-      IF (fitvar_rad_str(j)(4:4) == '0') THEN
+      READ(fitvar_rad_str(j)(4:4), '(I1)') wfcord
+      IF (wfcord == 0) THEN
         n0wfc = n0wfc + 1; wfcarr(n0wfc) = fitvar_rad(j)
         wfcpmax(n0wfc) = wfclpix(i); wfcpmin(n0wfc) = wfcfpix(i)
+        IF (vary_sfcalb) wfc0s(wfcpmin(n0wfc):wfcpmax(n0wfc)) = wfcarr(n0wfc)
+      ELSE
+        IF (vary_sfcalb) THEN 
+           fidx = wfcfpix(i); lidx = wfclpix(i)
+           wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
+           wfc0s(fidx:lidx) =  wfc0s(fidx:lidx) + fitvar_rad(j) * (waves(fidx:lidx) - wavavg)**wfcord
+        ENDIF
       ENDIF
     ENDDO
 
@@ -249,14 +265,14 @@ contains
       CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
            do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
            do_sprswf, do_so2zwf, ns, waves, maxoth, o3shi, sza, vza, aza, &
-           nlay, ozprof, tprof, n0alb, albarr, albpmin, albpmax, n0wfc, &
-           wfcarr, wfcpmin, wfcpmax, nostk, albwf(1:ns, 1:nostk), &
-           ozwf(1:ns, 1:nlay, 1:nostk), tmpwf(1:ns, 1:nlay, 1:nostk), &
-           o3shiwf(1:ns, 1:nostk), cfracwf(1:ns, 1:nostk), &
-           codwf(1:ns, 1:nostk), ctpwf(1:ns, 1:nostk), &
-           taodwf(1:ns, 1:nostk), twaewf(1:ns, 1:nostk), &
-           saodwf(1:ns, 1:nostk), sprswf(1:ns, 1:nostk), &
-           so2zwf(1:ns, 1:nostk), fsimrad(1:ns, 1:nostk), errstat)
+           nlay, ozprof, tprof, vary_sfcalb, &
+           n0alb, albarr, albpmin, albpmax, walb0s, & 
+           n0wfc, wfcarr, wfcpmin, wfcpmax, wfc0s, & 
+           nostk, albwf(1:ns, 1:nostk), ozwf(1:ns, 1:nlay, 1:nostk), &
+           tmpwf(1:ns, 1:nlay, 1:nostk), o3shiwf(1:ns, 1:nostk), & 
+           cfracwf(1:ns, 1:nostk), codwf(1:ns, 1:nostk), ctpwf(1:ns, 1:nostk), &
+           taodwf(1:ns, 1:nostk), twaewf(1:ns, 1:nostk), saodwf(1:ns, 1:nostk), &
+           sprswf(1:ns, 1:nostk), so2zwf(1:ns, 1:nostk), fsimrad(1:ns, 1:nostk), errstat)
       IF (errstat == pge_errstat_error) &
            WRITE(www_lun, *) modulename, &
            ': Errors in calling LIDORT_PROF_ENV!!!'
@@ -264,15 +280,14 @@ contains
       ntmp = MAX(ncalcp, ns)
       CALL HRES_RADCALC_ENV(ntmp, do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
            ozvary, do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-           do_codwf, do_sprswf, do_so2zwf, ns, maxoth, o3shi, sza, &
-           vza, aza, nlay, ozprof, tprof, n0alb, albarr, & !albpmin, albpmax, &
-           n0wfc, wfcarr, nostk, albwf(1:ns, 1:nostk), &
-           ozwf(1:ns, 1:nlay, 1:nostk), tmpwf(1:ns, 1:nlay, 1:nostk), &
-           o3shiwf(1:ns, 1:nostk), cfracwf(1:ns, 1:nostk), &
-           codwf(1:ns, 1:nostk), ctpwf(1:ns, 1:nostk), &
-           taodwf(1:ns, 1:nostk), twaewf(1:ns, 1:nostk), &
-           saodwf(1:ns, 1:nostk), sprswf(1:ns, 1:nostk), &
-           so2zwf(1:ns, 1:nostk), fsimrad(1:ns, 1:nostk), errstat)
+           do_codwf, do_sprswf, do_so2zwf, ns, waves, maxoth, o3shi, sza, vza, aza, &
+           nlay, ozprof, tprof, vary_sfcalb, & 
+           n0alb, albarr, walb0s,  n0wfc, wfcarr, wfc0s, & 
+           nostk, albwf(1:ns, 1:nostk), ozwf(1:ns, 1:nlay, 1:nostk), & 
+           tmpwf(1:ns, 1:nlay, 1:nostk), o3shiwf(1:ns, 1:nostk), & 
+           cfracwf(1:ns, 1:nostk),  codwf(1:ns, 1:nostk), ctpwf(1:ns, 1:nostk), &
+           taodwf(1:ns, 1:nostk), twaewf(1:ns, 1:nostk),  saodwf(1:ns, 1:nostk),& 
+           sprswf(1:ns, 1:nostk),so2zwf(1:ns, 1:nostk), fsimrad(1:ns, 1:nostk), errstat)
       IF (errstat == pge_errstat_error) &
            WRITE(www_lun, *) modulename, &
            ': Errors in calling HRES_RADCALC_ENV!!!'
@@ -316,19 +331,18 @@ contains
       simrad = LOG(simrad)           ! get dlnI     
     END IF
 
-
+    IF (do_albwf   == .false.) albwf(:,:) = 0.0D0
+    IF (do_cfracwf == .false.) cfracwf(:,:) = 0.0D0
     ! correct for linear/quardratic wavelength dependent in albedo
     albothwf = 0.0
     DO i = 1, nalb
       j = albidx + i - 1
-
       READ(fitvar_rad_str(j)(4:4), '(I1)') albord
       IF (albord == 0) CYCLE
-
       fidx=albfpix(i); lidx=alblpix(i)
       wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
       albothwf(1:ns,albord) = albwf(1:ns, 1)*(waves(1:ns) - wavavg)**albord  
-      simrad(1:ns) = simrad(1:ns) +  albothwf(1:ns, albord) * fitvar_rad(j)
+      IF (.NOT. vary_sfcalb) simrad(1:ns) = simrad(1:ns) +  albothwf(1:ns, albord) * fitvar_rad(j)
     ENDDO
 
     IF (nwfc > 0) THEN
@@ -343,7 +357,7 @@ contains
         wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
         wfcothwf(fidx:lidx,wfcord) = &
              cfracwf(fidx:lidx, 1)*(waves(fidx:lidx) - wavavg)**wfcord
-        simrad(fidx:lidx) = &
+        IF (.NOT. vary_sfcalb) simrad(fidx:lidx) = &
              simrad(fidx:lidx) +  wfcothwf(fidx:lidx, wfcord) * fitvar_rad(j)
       ENDDO
     ENDIF

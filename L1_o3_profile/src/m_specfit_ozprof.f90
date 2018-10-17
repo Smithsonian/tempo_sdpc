@@ -40,8 +40,7 @@ contains
          the_month, the_year, the_day, npix_fitted, fitvar_rad_nstd, &
          numwin, nradpix, refspec_norm, scnwrt, ozabs_convl, the_surfalt, &
          fitvar_rad_init_saved, the_lons, the_lats, the_surfalt, nloc, &
-         fitvar_rad_aperror!, yn_doas, use_meas_sig, edgelons, edgelats, &
-         !currloop
+         fitvar_rad_aperror
     USE ozprof_data_module, ONLY: ozprof_start_index, ozprof_end_index, &
          ozfit_start_index, ozfit_end_index, use_oe, covar, ozprof_std, &
          ozprof_ap, ncovar, ozprof_apstd, ozprof_init, ozprof, &
@@ -59,7 +58,8 @@ contains
          ecodfind, ectpind, ectpfind, has_glint, twaefind, saodind, &
          glintprob, which_toz, sprsind, sprsfind, wfcidx, wfcfidx, nwfc, &
          nfwfc, eff_wfc, eff_wfc_init, so2zind, so2zfind, fit_atanring, &
-         use_large_so2_aperr, ozwrtcontri, ozwrtwf, weight_function!, &
+         use_large_so2_aperr, ozwrtcontri, ozwrtwf, weight_function, &
+         trace_profwf, trace_contri, trace_prof, which_atm
          !ndc, nir, nis, nsl, nrn, nfsfc, nlay_fit, num_iter, ozinfo, &
          !slind, do_lambcld, do_tracewf, colprof, cloud, avg_kernel, &
          !which_clima, which_cld, the_cld_flg, useasy, aerosol
@@ -67,9 +67,9 @@ contains
     use m_set_cldalb
     use m_make_atm
     use m_ozprof_inverse
-    use m_get_apriori_covar, only: get_apriori_covar
-    use prepare_atmosphere, only: get_finereso_surfalt, get_ncepreso_surfalt, &
-         get_spres, get_tpres, get_toz
+    use m_get_o3prof,  only: get_apriori_covar
+    use m_get_bclayer, only: get_bc_layer
+    use m_get_toz,     only: get_toz
     use m_get_reg_matrix
 
 
@@ -155,8 +155,8 @@ contains
     currspec  (1:npoints) = curr_rad_spec(spc_idx,1:npoints)
     fitweights(1:npoints) = curr_rad_spec(sig_idx,1:npoints)
 
-    IF( scnwrt ) WRITE(444,'(3G20.8)') (curr_rad_spec(1:3,i), i=1,npoints)
-    IF( scnwrt ) WRITE(444, *)
+    !IF( scnwrt ) WRITE(444,'(3G20.8)') (curr_rad_spec(1:3,i), i=1,npoints)
+    !IF( scnwrt ) WRITE(444, *)
 
     IF (ozabs_convl) THEN
 
@@ -178,40 +178,31 @@ contains
       IF ( weight_rad ) THEN
         asum = SUM ( fitwavs(1:n_rad_wvl) / fitweights(1:n_rad_wvl)**2 )
         ssum = SUM ( 1.D0 / fitweights(1:n_rad_wvl)**2 )
-        rad_wav_avg = asum / ssum
+        RAD_wav_avg = asum / ssum
       ELSE
         rad_wav_avg = (fitwavs(n_rad_wvl) + fitwavs(1)) / 2.0
       END IF
     ENDIF
 
+    ! polcc fit
+    !IF (nfpol) THEN
+    ! DO i = 1, npol
+    !    j = polidx + i -1
+    !    polfpix(i)= MINVAL(MINLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
+    !         >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
+    !    pollpix(i)= MINVAL(MAXLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
+    !         >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
+    ! ENDDO
+    !ENDIF
+
     ! =======================================================================
     !       Set up atmospheric cloud properties, albedo and atmosphere
     ! ======================================================================
-    ! Spres is provided at NCEP resolution: 2.5 x 2.5
-    ! To get the spres for OMI pixel:
-    ! 1. get spres at ncep/ncar reso
-    ! 2. get z0 at ncep/ncar reso
-    ! 3. get z0 at omi spatial resolution
-    ! 4. get spres at omi spatial resolution
-    CALL GET_SPRES(the_year, the_month, the_day, the_lon, the_lat, ps0)
-    CALL get_ncepreso_surfalt(the_lon, the_lat, ncepreso_z0)
-    DO i = 1, nloc
-      CALL get_finereso_surfalt(the_lons(i), the_lats(i), fine_z0(i))
-    ENDDO
-    omi_z0 = (SUM(fine_z0(1:4)) + fine_z0(5) * 4.) / 8.
+    call get_bc_layer(which_atm, nloc, the_lons, the_lats, ps0, pst,the_surfalt)
+    IF (use_tropopause == .false.)  pst = pst0
 
-    ! Adjust surface pressur
-    ps0 = ps0 + 1013.25 * (10.**(-omi_z0/16.) - 10.**(-ncepreso_z0/16.))
-    the_surfalt = omi_z0
-
-    IF (use_tropopause) THEN 
-      CALL GET_TPRES(the_year, the_month, the_day, the_lon, the_lat, pst)
-    ELSE
-      pst = pst0
-    ENDIF
-
-    IF (which_toz == 1 ) THEN
-      CALL GET_TOZ(the_year, the_month, the_day, the_lon, the_lat, toz)
+    IF (which_toz /= 0 ) THEN
+      CALL get_toz(which_toz, toz)
     ELSE
       toz = 0.0
     ENDIF
@@ -254,6 +245,7 @@ contains
     IF (initval == 0 .OR. ANY(fitvar_rad_init(ozp_fidx:ozp_lidx) <= 0.0))  THEN
       fitvar_rad_init(ozp_fidx:ozp_lidx) = ozprof(1:nlay)  
     ENDIF
+
     IF (nsfc < nlay) &
          fitvar_rad_init(ozp_lidx + 1 - nlay + nsfc : ozp_lidx) = &
          ozprof(nsfc+1:nlay)
@@ -343,11 +335,27 @@ contains
     DO i = 1, numwin
       fitvar_rad_init (osind(i, 1:maxoth)) = 0.0D0
       fitvar_rad_init (shind(i, 1:maxoth)) = 0.0D0
+      !fitvar_rad_init (cmind(i, 1)) = 1.0D0
+      !fitvar_rad_init (cmind(i, 2:maxoth)) = 0.0D0
+      !fitvar_rad_init (p1ind(i, 1:maxoth)) = 0.0D0
+      !fitvar_rad_init (p2ind(i, 1:maxoth)) = 0.0D0
     ENDDO
+
     DO i = albidx, albidx + nalb - 1
       IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.D0
     ENDDO
+
+    DO i = wfcidx, wfcidx + nwfc - 1
+     IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
+    ENDDO
+
     fitvar_rad_init(irind(1, 1))  = -1.0E-5    ! non zero
+
+
+    !DO i = polidx, polidx + npol -1
+    !  fitvar_rad_init(i) = 1.D0
+    !  IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
+    !ENDDO
 
     IF (do_subfit) THEN
       nsub = numwin
@@ -375,9 +383,8 @@ contains
 
     ! Get a priori ozone covariance matrix
     IF (use_oe .OR. (.NOT. use_oe .AND. ptr_order == 6)) THEN
-      CALL GET_APRIORI_COVAR(the_month, the_day, the_lat, the_lon, &
-           atmosprof(1,0:nlay), atmosprof(2,0:nlay), &
-           nlay, ntp, ozprof(1:nlay), sao3)
+      CALL get_apriori_covar(nlay, atmosprof(1,0:nlay), atmosprof(2,0:nlay), &
+                             ozprof(1:nlay), ntp, sao3)
 
       IF (nsfc < nlay) THEN
         sao3(nsfc+1:nlay, :) = 0.0
@@ -424,6 +431,11 @@ contains
         IF (fitvar_rad_str(i)(4:4) == '0') fitvar_rad_apriori(i) = &
              fitvar_rad(i)
       ENDDO
+
+      !DO i = wfcidx, wfcidx + nwfc - 1
+      !  IF (fitvar_rad_str(i)(4:4) == '0') fitvar_rad_apriori(i) = fitvar_rad(i)
+      !ENDDO
+
       IF (fit_atanring) THEN        
         fitvar_rad_apriori(rnind(1, 1) : rnind(1, 3) + nsub - 1) = &
              fitvar_rad(rnind(1, 1) : rnind(1, 3) + nsub - 1) 
@@ -551,6 +563,7 @@ contains
         DO i = wfcfidx, wfcfidx + nfwfc - 1
           READ (fitvar_rad_str(mask_fitvar_rad(i))(4:4), '(I1.1)') nord
           sa(i, i) = albfc_aperr * (5.0 ** ( - nord * 2.0))
+          IF (the_cfrac <= 1.0D-2 .OR. the_cfrac >= 0.99) sa(i, i) = 0.0 ! updated by jbak
         ENDDO
       ENDIF
 
@@ -810,10 +823,21 @@ contains
         ! Change weighting function and contribution function for 
         ! trace gas variables wrt to the reported unit instead of 
         ! normalized quantities
-        IF (ozwrtwf) weight_function(1:npoints, i) = &
-             weight_function(1:npoints, i) * refspec_norm(gasidxs(k)) 
-        IF (ozwrtcontri) contri(i, 1:npoints) = contri(i, 1:npoints) / &
-             refspec_norm(gasidxs(k)) 
+        IF (ozwrtwf) THEN 
+             weight_function(1:npoints, i) = &
+                weight_function(1:npoints, i) * refspec_norm(gasidxs(k)) 
+             trace_profwf(k, 1:npoints, 1:nlay) = & 
+                trace_profwf(k, 1:npoints, 1:nlay) * refspec_norm(gasidxs(k))
+        ENDIF
+        IF (ozwrtcontri) THEN
+             contri(i, 1:npoints) = contri(i, 1:npoints) /refspec_norm(gasidxs(k)) 
+             trace_contri(k, 1:npoints) = contri(i, 1:npoints)
+        ENDIF
+        ! Add trace gas profile (a priori profile/shape)
+        DO j = 1, nlay
+          fidx = nup2p(j - 1) + 1; lidx = nup2p(j)
+          trace_prof(k, j) = SUM(mgasprof(k, fidx:lidx))
+        ENDDO 
       ENDIF
     ENDDO
 

@@ -212,6 +212,7 @@ MODULE ozprof_data_module
   ! ------------------------------------------------------------------------------
   ! variables for albedo: albedo can be at most quadratically wavelength-dependent
   ! ------------------------------------------------------------------------------
+  LOGICAL                   :: vary_sfcalb
   REAL (KIND=dp)            :: pos_alb, toms_fwhm 
   REAL (KIND=dp)            :: measref
   CHARACTER(LEN=maxchlen)   :: alb_tbl_fname, ozcrs_alb_fname       ! reflectance table
@@ -381,6 +382,19 @@ MODULE ozprof_data_module
   ! above cloud fraction, average kernel (a priori influence), avgk (consider influence from others)
   REAL (KIND=dp), DIMENSION(ngas, 10)          :: tracegas = 1.0  ! initial AMF to 1.0
 
+  ! xliu, 08/06/2010: Add trace gas averaging kernels, profile weighting
+  ! function, contribution function (VCD)
+  ! trace gas averaging kernel (dC/dx): sensitivity of retrieved trace gas
+  ! vertical column
+  ! to actual trace gas at each individual layer
+  ! profile weighting function: dy/dx
+  ! contribution function: dC/dy
+  ! dy = dlnI if use logarithm of measurements else dy = dI
+  REAL (KIND=dp), DIMENSION(ngas, maxlay)              :: trace_avgk
+  REAL (KIND=dp), DIMENSION(ngas, max_fit_pts, maxlay) :: trace_profwf
+  REAL (KIND=dp), DIMENSION(ngas, max_fit_pts)         :: trace_contri
+  REAL (KIND=dp), DIMENSION(ngas, maxlay)              :: trace_prof   ! Retrieval grid
+
   ! SO2V profiles if the cental altitude is decreased/increased by 1 km
   REAL (KIND=dp), DIMENSION (mflay, 2)         :: so2vprofn1p1 = 0.0D0
   REAL (KIND=dp), DIMENSION (-1:1)             :: so2valts
@@ -406,5 +420,9 @@ MODULE ozprof_data_module
   REAL(KIND=dp), DIMENSION(max_spec_pts, mflay)  :: o3crsz, o3dadsz, o3dadtz, so2crsz, &
        hresgabs, hresray
   REAL(KIND=dp), DIMENSION(max_spec_pts)         :: so2dads ! Weighted by profiles
+
+  ! New variables added by jbak
+  REAL (KIND=dp) :: trpz ! tropopause height in km used to define TB clima
+  REAL (KIND=dp) :: ozone_above60km
 
 END MODULE ozprof_data_module

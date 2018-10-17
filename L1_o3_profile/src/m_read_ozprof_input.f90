@@ -47,7 +47,7 @@ contains
          wfcmin, wfcidx, wfcfidx, so2zind, so2zfind, &
          do_bothstep, do_twostep, use_large_so2_aperr, use_effcrs, &
          radc_msegsr, radc_nsegsr, radc_samprate, radc_lambnd, &
-         hres_samprate, thealbidx, thewfcidx, cntrstr, do_simu_rmring!, &
+         hres_samprate, thealbidx, thewfcidx, cntrstr, do_simu_rmring, vary_sfcalb
          !wfcfpix, wfclpix, coadd_after_b1ab
 
     USE OMSAO_parameters_module,   ONLY: maxlay,  maxchlen, maxwin         
@@ -203,7 +203,7 @@ contains
     READ (fit_ctrl_unit, *) ptr_order, ptr_w0, ptr_w1, ptr_w2
     READ (fit_ctrl_unit, *) which_atm
     READ (fit_ctrl_unit, *) which_clima
-    IF (which_clima > 7 .OR. which_clima <= 0) THEN
+    IF (which_clima > 11 .OR. which_clima <= 0) THEN
       WRITE(www_lun, *) modulename, ' No such ozone profile climatology!!!'
       pge_error_status = pge_errstat_error
       RETURN
@@ -216,7 +216,7 @@ contains
     ENDIF
     READ (fit_ctrl_unit, *) loose_aperr, min_serr, min_terr
     READ (fit_ctrl_unit, *) which_toz
-    IF (which_toz > 2 .OR. which_toz < 0) THEN
+    IF (which_toz > 3 .OR. which_toz < 0) THEN
       WRITE(www_lun, *) modulename, ' No such total ozone field!!!'
       pge_error_status = pge_errstat_error
       RETURN
@@ -493,6 +493,7 @@ contains
       RETURN
     END IF
 
+    READ (fit_ctrl_unit, *) vary_sfcalb
     READ (fit_ctrl_unit, *) pos_alb, toms_fwhm
     READ (fit_ctrl_unit, '(A)') ozcrs_alb_fname
     READ (fit_ctrl_unit, *) nalb

@@ -20,6 +20,10 @@ m_dataspline.f90
 m_ezspline_interpolation.f90
 m_gauss.f90
 m_super_gauss.f90
+m_get_ncep.f90
+m_get_bclayer.f90
+m_get_toz.f90
+m_get_o3prof.f90
 m_get_apriori_covar.f90
 m_get_initial_albedo.f90
 m_get_raman.f90

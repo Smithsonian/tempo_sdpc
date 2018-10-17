@@ -56,8 +56,7 @@ contains
          start_layer, end_layer, atmosprof, ozwrtwf, weight_function, &
          do_simu, wrtring, wfcfidx, nfwfc, ecfrind, ecfrfind, so2zfind, &
          so2valts, use_large_so2_aperr, use_effcrs, &
-         do_simu_rmring!, tf_fidx, tf_lidx, nt_fit, saa_flag, lcurve_unit,
-    !do_bothstep, do_twostep,
+         do_simu_rmring, trace_avgk, trace_contri, trace_profwf
     USE OMSAO_variables_module,   ONLY: fitvar_rad, mask_fitvar_rad, epsrel, &
          fitwavs, fitweights, maxit=>max_itnum_rad, clmspec_rad, nradpix, &
          numwin, currpix, currline, currloop, the_surfalt, band_selectors!, &
@@ -585,6 +584,19 @@ contains
         ENDIF
       ENDDO
     ENDIF
+
+   ! xliu: 08/06/2010, Add trace gas averaging kernel (dc / dx)
+   ! dc/dx = dc/dY * dY/dx
+   ! dc/dY: contribution function for VCD of a trace gas
+   ! dY/dx: trace gas profile weighting function
+    DO k = 1, ngas
+     i = fgasidxs(k)
+     IF (i > 0) THEN
+        DO j = 1, nlay
+           trace_avgk(k, j) = SUM(contri(i, 1:ns) * trace_profwf(k, 1:ns, j))
+        ENDDO
+     ENDIF
+    ENDDO
 
     ! This is incorrect, and need to be changed
     IF  (use_logstate) THEN

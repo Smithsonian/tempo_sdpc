@@ -440,7 +440,7 @@ contains
     INTEGER                         :: i
     REAL (KIND=dp), DIMENSION(nlay) :: tprof, ozprof, ozadj, ozaprof
     REAL (KIND=dp), DIMENSION(ns)   :: waves, albwf, cfracwf, simrad, codwf, &
-         ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf
+         ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, walb0s, wfc0s
     REAL (KIND=dp), DIMENSION(ns)   :: o3shiwf
     REAL (KIND=dp), DIMENSION(ns, nlay) :: ozwf, tmpwf
     REAL (KIND=dp), DIMENSION(nalb) :: albarr
@@ -450,7 +450,7 @@ contains
          newoz, initalb!, simrad1, simrad2, spres
     LOGICAL :: do_albwf, do_tmpwf, do_ozwf, do_o3shi, negval, &
          do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-         do_codwf, do_sprswf, do_so2zwf
+         do_codwf, do_sprswf, do_so2zwf, vary_sfcalb
     LOGICAL, DIMENSION(nlay) :: ozvary
 
     do_tmpwf  = .FALSE.
@@ -463,6 +463,7 @@ contains
     do_ctpwf = .FALSE.
     do_sprswf = .FALSE.
     do_so2zwf = .FALSE.
+    vary_sfcalb = .FALSE.
     IF (cfrac == 1.0) cfrac = 0.95 ! Calculate cloud fraction weight function
 
     ! ======= Set up ozone, temperature, albedo, lamda for LIDORT ============
@@ -513,15 +514,17 @@ contains
       ENDIF
 
       albarr(1) = albedo
+      walb0s(1) = albedo
       the_cfrac = cfrac
       wfcarr(1) = cfrac
+      wfc0s(1)  = cfrac
       CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
-           do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
-           do_sprswf, do_so2zwf, ns, waves, nos, o3shi, sza, vza, aza, nlay, &
-           ozprof, tprof, nalb, albarr, albpmin, albpmax, nwfc, wfcarr, &
-           wfcpmin, wfcpmax, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
-           codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, simrad, &
-           errstat)
+        do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
+        do_sprswf, do_so2zwf, ns, waves, nos, o3shi, sza, vza, aza, nlay, &
+        ozprof, tprof, vary_sfcalb, &
+        nalb, albarr, albpmin, albpmax, walb0s, nwfc, wfcarr, wfcpmin, wfcpmax,wfc0s, &
+        nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
+        codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, simrad, errstat)
 
       !xliu (02/01/2007): correct radiances based on ozone weighting function
       !  to deal with negative ozone values

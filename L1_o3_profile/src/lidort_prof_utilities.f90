@@ -15,15 +15,16 @@ contains
 
   SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
        ozvary, do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-       do_codwf, do_sprswf, do_so2zwf, nw, nos, o3shi, sza, vza, aza, &
-       nl, ozprof, tprof, n0alb, albarr, & !albpmin, albpmax, &
-       n0wfc, wfcarr, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, codwf, &
+       do_codwf, do_sprswf, do_so2zwf, nw, waves, nos, o3shi, sza, vza, aza, &
+       nl, ozprof, tprof, vary_sfcalb, n0alb, albarr, walb0s, & !albpmin, albpmax, &
+       n0wfc, wfcarr, wfc0s, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, codwf, &
        ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, rad, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY : fitvar_rad_str, numwin!, fitwavs
+    USE OMSAO_variables_module, ONLY : fitvar_rad, fitvar_rad_str, numwin!, fitwavs
     USE ozprof_data_module,     ONLY : radcwav, ncalcp, &
-         nalb, albidx, albmin, albmax, nwfc, wfcidx, wfcmin, wfcmax!, &
+         nalb, albidx, albmin, albmax, albfpix, alblpix, &
+         nwfc, wfcidx, wfcmin, wfcmax, wfcfpix, wfclpix !, &
     !use_effcrs, wfcfidx, wfcfpix, wfclpix, nfalb, nfwfc, albfidx, &
     !albfpix, alblpix
 
@@ -38,10 +39,11 @@ contains
     INTEGER, INTENT(IN) :: nw0, nw, nl, nos, n0alb, nostk, n0wfc
     LOGICAL, INTENT(IN) :: do_ozwf, do_albwf, do_tmpwf, do_o3shi, do_taodwf, &
          do_twaewf, do_saodwf, do_cfracwf, do_codwf, do_ctpwf, do_sprswf, &
-         do_so2zwf
+         do_so2zwf, vary_sfcalb
     INTEGER, INTENT(OUT)                                 :: errstat
 !    INTEGER, DIMENSION(n0alb), INTENT(IN)                :: albpmax, albpmin
     LOGICAL, DIMENSION(nl), INTENT(IN)                   :: ozvary
+    REAL (KIND=dp), DIMENSION(nw), INTENT(IN)            :: waves, walb0s, wfc0s
     REAL (KIND=dp), DIMENSION(nw, nostk),  INTENT(OUT)   :: rad, albwf, &
          cfracwf, o3shiwf, codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf
     REAL (KIND=dp), DIMENSION(numwin, nos), INTENT(IN)   :: o3shi
@@ -54,8 +56,9 @@ contains
     ! =======================
     ! Local variables
     ! =======================
-    INTEGER :: i, j, k 
-    REAL (KIND=dp), DIMENSION(nw0)            :: waves0
+    INTEGER :: i, j, k , ord, fidx, lidx, fidx0, lidx0
+    REAL (KIND=dp) :: wavavg
+    REAL (KIND=dp), DIMENSION(nw0)            :: waves0, walb0s0, wfc0s0
     REAL (KIND=dp), DIMENSION(nw0, nostk)     :: rad0, albwf0, cfracwf0, &
          o3shiwf0, codwf0, ctpwf0, taodwf0, twaewf0, saodwf0, sprswf0, so2zwf0
     REAL (KIND=dp), DIMENSION(nw0, nl, nostk) :: ozwf0, tmpwf0
@@ -75,26 +78,46 @@ contains
     albpmax0(n0alb) = nw0
     DO i = 1, nalb
       j = albidx - 1 + i
-      IF (fitvar_rad_str(j)(4:4) == '0') THEN
+      READ(fitvar_rad_str(j)(4:4), '(I1)') ord
+      IF (ord == 0) THEN
         k = k + 1
 
         IF (k > 1) albpmin0(k)= albpmax0(k-1) + 1 
         IF (k < n0alb) albpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), &
-             MASK=(waves0(1:ncalcp) >= albmin(i) .AND. &
-             waves0(1:ncalcp) < albmax(i))))  
+                                    MASK=(waves0(1:ncalcp) >= albmin(i) .AND. &
+                                    waves0(1:ncalcp) < albmax(i))))  
+         fidx0 = albpmin0(k) ; lidx0=albpmax0(k)
+        IF (vary_sfcalb) walb0s0(albpmin0(k):albpmax0(k)) = albarr(k)
+      ELSE
+        IF (vary_sfcalb) THEN 
+          ! Note use the exact average wavelength as retrieval grid
+           fidx=albfpix(i); lidx=alblpix(i)
+           wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
+           ! Get surface albedo for each radiance calculation wavelength
+           walb0s0(fidx0:lidx0) = walb0s0(fidx0:lidx0) + fitvar_rad(j) * & 
+                                  (waves0(fidx0:lidx0) - wavavg)**ord 
+        ENDIF
       ENDIF
     ENDDO
 
     k = 0
     DO i = 1, nwfc
       j = wfcidx - 1 + i
-      IF (fitvar_rad_str(j)(4:4) == '0') THEN
+      READ(fitvar_rad_str(j)(4:4), '(I1)') ord
+      IF (ord == 0 ) THEN 
         k = k + 1
-
         IF (k > 1) wfcpmin0(k)= wfcpmax0(k-1) + 1 
         IF (k < n0wfc) wfcpmax0(k)= MINVAL(MAXLOC(waves0(1:ncalcp), &
-             MASK=(waves0(1:ncalcp) >= wfcmin(i) .AND. &
-             waves0(1:ncalcp) < wfcmax(i))))  
+                       MASK=(waves0(1:ncalcp) >= wfcmin(i) .AND. &
+                       waves0(1:ncalcp) < wfcmax(i))))  
+        IF (vary_sfcalb) wfc0s0(wfcpmin0(k):wfcpmax0(k)) = wfcarr(k)
+      ELSE
+        IF (vary_sfcalb) THEN
+           fidx=wfcfpix(i); lidx=wfclpix(i)
+           wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
+           wfc0s0(fidx0:lidx0) = wfc0s0(fidx0:lidx0) + fitvar_rad(j) * & 
+                                 (waves0(fidx0:lidx0) - wavavg)**ord
+        ENDIF
       ENDIF
     ENDDO
 
@@ -107,10 +130,12 @@ contains
     ! Call LIDORT_PROF_ENV on fine wavelength grids
     ! Return raidances and weighting functions on required resolution wavelength grid
     CALL LIDORT_PROF_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
-         do_taodwf,do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
-         do_sprswf, do_so2zwf, nw0, waves0, nos, o3shi, sza, vza, aza, nl, &
-         ozprof, tprof, n0alb, albarr, albpmin0, albpmax0, n0wfc, wfcarr, &
-         wfcpmin0, wfcpmax0, nostk, albwf0, ozwf0, tmpwf0, o3shiwf0, &
+         do_taodwf,do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, & 
+         nw0, waves0, nos, o3shi, sza, vza, aza, &
+         nl, ozprof, tprof, vary_sfcalb, & 
+         n0alb, albarr, albpmin0, albpmax0,walb0s0, & 
+         n0wfc, wfcarr, wfcpmin0, wfcpmax0, wfc0s0, &
+         nostk, albwf0, ozwf0, tmpwf0, o3shiwf0,&
          cfracwf0, codwf0, ctpwf0, taodwf0, twaewf0, saodwf0, sprswf0, &
          so2zwf0, rad0, errstat)
 
@@ -3197,8 +3222,10 @@ contains
   SUBROUTINE lidort_prof_env (do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
        do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
        do_sprswf,  do_so2zwf, nw, waves, nos, o3shi, sza, vza, aza, nl, &
-       ozprof, tprof, n0alb, albarr, albpmin, albpmax, n0wfc, wfcarr, &
-       wfcpmin, wfcpmax, nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
+       ozprof, tprof, vary_sfcalb, &
+       n0alb, albarr, albpmin, albpmax, walb0s, &
+       n0wfc, wfcarr, wfcpmin, wfcpmax, wfc0s, &
+       nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
        codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, rad, errstat)
 
     USE OMSAO_precision_module
@@ -3258,12 +3285,12 @@ contains
     INTEGER, INTENT(IN)  :: nw, nl, nos, n0alb, nostk, n0wfc
     LOGICAL, INTENT(IN)  :: do_ozwf, do_albwf, do_tmpwf, do_o3shi, do_taodwf, &
          do_twaewf, do_saodwf, do_cfracwf, do_codwf, do_ctpwf, do_sprswf, &
-         do_so2zwf
+         do_so2zwf, vary_sfcalb
     INTEGER, INTENT(OUT) :: errstat
     INTEGER, DIMENSION(n0alb), INTENT(IN)        :: albpmax, albpmin
     INTEGER, DIMENSION(n0wfc), INTENT(IN)        :: wfcpmax, wfcpmin
     LOGICAL, DIMENSION(nl), INTENT(IN)           :: ozvary
-    REAL (KIND=dp), DIMENSION(nw),  INTENT(IN)   :: waves
+    REAL (KIND=dp), DIMENSION(nw),  INTENT(IN)   :: waves, walb0s, wfc0s
     REAL (KIND=dp), DIMENSION(nw, nostk),  INTENT(OUT)   :: rad, albwf, &
          cfracwf, o3shiwf, codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf
     REAL (KIND=dp), DIMENSION(numwin, nos), INTENT(IN)   :: o3shi
@@ -3527,13 +3554,18 @@ contains
       ENDDO
     ENDIF
 
-    ! albedo array
-    DO i = 1, n0alb
-      albs(albpmin(i):albpmax(i)) = albarr(i)
-    ENDDO
-    DO i = 1, n0wfc
-      wfcs(wfcpmin(i):wfcpmax(i)) = wfcarr(i)
-    ENDDO
+    ! albedo/cloud fraction  array
+    IF (.NOT. vary_sfcalb) THEN
+       DO i = 1, n0alb
+          albs(albpmin(i):albpmax(i)) = albarr(i)
+       ENDDO
+       DO i = 1, n0wfc
+          wfcs(wfcpmin(i):wfcpmax(i)) = wfcarr(i)
+       ENDDO
+    ELSE
+       albs(1:nw) = walb0s(1:nw)
+       wfcs(1:nw) = wfc0s(1:nw)
+    ENDIF
 
     ! Determinine atmospheric weighting functions to be calculated
     IF (do_ozwf .OR.  do_tmpwf .OR. do_o3shi .OR. do_taodwf .OR. &
@@ -4683,7 +4715,7 @@ contains
     !ENDIF
 
     IF (nw > 1 .AND. do_ozwf .AND. do_tracewf ) &
-         CALL GET_TRACEGAS_WF (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
+         CALL get_tracegas_wf (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
          so2crs(1:nw0, 1:nz), use_so2dtcrs, rad(1:nw0, 1), nw0, nz, nz1, &
          do_so2zwf, so2zwf(1:nw0, 1))
 
@@ -4706,7 +4738,4 @@ contains
 
     RETURN
   END SUBROUTINE lidort_prof_env
-
-
-
 end module lidort_prof_utilities

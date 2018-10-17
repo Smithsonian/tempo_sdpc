@@ -45,7 +45,7 @@ contains
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
          no2_t1_idx, so2v_idx, o2o2_idx
     USE ozprof_data_module,     ONLY : atmos_prof_fname, profunit, &
-         do_lambcld, which_clima, strataod, stratsca, tropaod, tropsca, &
+         do_lambcld, which_atm, which_clima, strataod, stratsca, tropaod, tropsca, &
          tropwaer, stratwaer, useasy, mflay, aerosol, cloud, has_clouds, &
          ncbp, nctp, ntp, aerwavs, nw=>actawin, fts, nmom, fps, fzs, fozs, &
          frhos, gaext, gasca, gaasy, gamoms, gcq, gcw, gcasy, gcmoms, &
@@ -54,21 +54,19 @@ contains
          presgrid_fname, adjust_trop_layer, fixed_ptrop, ntp0, pst0, nsfc, &
          nfsfc, use_tropopause, scaled_aod, scale_aod, ngksec, &
          do_simu, radcalwrt, which_toz, so2zind, so2vprofn1p1, &
-         so2valts!, atmos_unit, maxgksec, norm_tropo3
+         so2valts, trpz
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, reverse, interpol
     use prepare_atmosphere, only: get_bro, get_geoschem_hcho, &
-         get_geoschem_o3mean, get_geoschem_o31, get_geoschem_so2, &
-         get_logan_clima, get_mipasig2t, get_mipasig2o3, get_mlso3prof, &
-         get_mlso3prof_single, get_ncept, get_no2, get_normtoz, &
-         get_surfalt, get_v8prof, get_v8temp
+         get_geoschem_so2,get_mipasig2t, get_no2, get_v8temp
     use get_cloud, only: get_cloud_miprop, get_tomsv8_ctp
     use m_read_aerosol_prof
-
+    use m_get_o3prof, ONLY:get_o3prof
+    use m_get_ncep, ONLY:get_ncep_temp
     IMPLICIT NONE
 
-    INTEGER, PARAMETER :: nv8=11, nold=28, nlecm=22, nref=71, nmpref=61, nmipas=121
-
+    INTEGER, PARAMETER :: nv8=11, nlfnl=22, nref=71, nmpref=61, nmipas=121
+    INTEGER, PARAMETER :: nold0 = 22 + 6
     ! Input variables
     INTEGER, INTENT(IN)          :: year, month, day, ndiv, numk
     INTEGER, INTENT(OUT)         :: errstat
@@ -85,27 +83,16 @@ contains
     REAL (KIND=dp), DIMENSION(numk), INTENT(OUT)      :: sacldscl
 
     ! Local variables
-    INTEGER :: i, j, k, n, ncld, ncldinc, np, nftp, ntemp, mnorstd, tmpntp
+    INTEGER :: nlecm, nold
+    INTEGER :: i, j, k, n, ncld, ncldinc, np, nftp, ntemp
     INTEGER, DIMENSION(0:numk) :: indarr
-    REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, &
-         tmpscl, so2v_fwhm, so2v_vcd, tmp!, lon, lat, so2v_z0
-
-    REAL (KIND=dp), DIMENSION (0:nold), PARAMETER :: pold0 = (/1013.25, &
-         1000., 925., 850., 700., 600., 500., 400., 300., 250., 200., 150., &
-         100., 70., 50., 30., 20., 10., 7., 5., 3., 2., 1., 0.70, 0.35, &
-         0.25, 0.175, 0.125, 0.0874604/)
-    REAL (KIND=dp), DIMENSION (0:nold), PARAMETER :: told0 = (/288.2, 287.5, &
-         283.3, 278.7, 268.6, 261., 252., 241.4, 228.6, 223.1, 220.5, 216.5, &
-         216.6, 216.6, 216.6, 220.5, 223.1, 227.7, 232.4, 239.3, 249.5, &
-         257.9, 271.3, 270.7, 260.8, 250., 247.0, 242., 236.0/)
-    REAL (KIND=dp), DIMENSION (0:nold)         :: pold, told, zold
-    REAL (KIND=dp), DIMENSION (1:nmipas)       :: mipasp, mipast, mipaso3
+    REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, tmp, tmpscl, &
+                                  so2v_fwhm, so2v_vcd,  halfdz
+    REAL (KIND=dp), DIMENSION (0:maxlay)        :: told0, pold, told, zold
+    REAL (KIND=dp), DIMENSION (1:nmipas)       :: mipasp, mipast
     REAL (KIND=dp), DIMENSION (4)              :: ptemp    
-    REAL (KIND=dp), DIMENSION (0:nv8)          :: pv8, v8oz
     REAL (KIND=dp), DIMENSION (nv8)            :: v8temp
-    REAL (KIND=dp), DIMENSION (0:numk) :: umkp, umkt, umkz, &
-         umkoz, umkoz1!, umkp_save
-    REAL (KIND=dp), DIMENSION (0:nref)         :: ozref, refp
+    REAL (KIND=dp), DIMENSION (0:numk)         :: umkp, umkt, umkz, umkoz
     REAL (KIND=dp), DIMENSION (0:mflay)        :: oznref
     !REAL (KIND=dp), DIMENSION(2)               :: afgltmp
     !REAL (KIND=dp), DIMENSION (0:24)           :: fixed_p, fixed_cumoz
@@ -113,13 +100,11 @@ contains
 
     LOGICAL, SAVE :: first = .TRUE., first1 = .TRUE., is_pgrid = .true., &
          isinc=.TRUE.
-    REAL (KIND=dp), DIMENSION (0:nv8), SAVE    :: pv80
     REAL (KIND=dp), DIMENSION (0:maxlay), SAVE :: umkp0, umkz0
-    real (kind=dp), dimension(1) :: temp_spres, temp_tmp
     real (kind=dp), dimension(:), allocatable :: tmp_inarr
 
     LOGICAL :: use_input_spres = .TRUE.
-
+    LOGICAL :: norm_o3p = .false.
     !xliu, 09/23/05, indicator for a layer if it is above a cloud or not
     !If above a cloud then 1 else 0
     REAL (KIND=dp), DIMENSION (mflay)            :: acld  
@@ -131,21 +116,38 @@ contains
 
     errstat = pge_errstat_ok
 
-    ! pressure grid for temperature profile
-    pold = pold0; pold(nold) = p0 * 2.0D0 ** (-13.5D0) 
+    ! 1. pold, told, zold at meterological vertical grids
 
-    ! Get temperature profiles
-    CALL GET_NCEPT(year, month, day, the_lon, the_lat, told(1:nlecm))
-    IF (ALL(told(1:nlecm) == 0.0)) told = told0
+    ! pressure grid, temperature at origianl meterological input grids
+    told (:) = 0.0
+    IF (which_atm == 0 ) THEN 
+        nlecm = 22 
+        nold  = nlecm + 6
+        pold(0:nold) = (/1013.25, 1000., 925., 850., 700., 600., 500., 400., 300., 250., 200., 150., 100.,&
+                         70., 50., 30., 20., 10., 7.,5., 3., 2., 1., & 
+                          0.70, 0.35, 0.25, 0.175, 0.125, 0.0874604/)
+        told0(0:nold) = (/288.2, 287.5,   283.3, 278.7, 268.6, 261., 252., 241.4, 228.6, 223.1, 220.5, 216.5, &
+                         216.6, 216.6, 216.6, 220.5, 223.1, 227.7, 232.4, 239.3, 249.5, &
+                         257.9, 271.3, 270.7, 260.8, 250., 247.0, 242., 236.0/)
+        CALL GET_NCEP_TEMP (told(1:nlecm)) !NCEP 1:17 + ECMWFAVG 18 + 22 
+    ELSE IF (which_atm == 1) THEN 
+        STOP
+    ENDIF
+   
+    IF (ALL(told(1:nlecm) == 0.0)) THEN 
+        nold = nold0
+        told(0:nold0) = told0(0:nold0)
+        WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm; STOP
+    ENDIF
+    pold(nold) = p0 * 2.0D0 ** (-13.5D0)  ! TOP
 
     ! Use TOMS V8 temperature climatology for 0.70, 0.35 mb 
     CALL GET_V8TEMP(month, day, the_lat, v8temp)
-    told(23) = v8temp(10); told(24) = v8temp(11)
-
+    told(nlecm+1) = v8temp(10); told(nlecm + 2) = v8temp(11)
     ! Use MIPAS Temperature cimatology for the upper 4 layers)
     CALL GET_MIPASIG2T(month, day, the_lat, mipasp, mipast)
-    mipasp = LOG(mipasp); ptemp = LOG(pold(25:28))
-    CALL BSPLINE(mipasp, mipast, nmipas, ptemp, told(25:28), 4, errstat)
+    mipasp = LOG(mipasp); ptemp = LOG(pold(nlecm+3:nlecm+6))
+    CALL BSPLINE(mipasp, mipast, nmipas, ptemp, told(nlecm+3:nlecm+6), 4, errstat)
     IF (errstat < 0) THEN
       WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
       errstat = pge_errstat_error; RETURN
@@ -157,36 +159,46 @@ contains
     IF (use_input_spres) THEN
       IF (spres > pold(0) ) pold(0) = spres
     ENDIF
-    told(0) = told(1) + (told(1)-told(2))/(LOG(pold(1))-LOG(pold(2))) * (LOG(pold(0))-LOG(pold(1)))
-    !WRITE(www_lun, '(A6, 14f8.2, /, 6x, 13f8.2)') 'ecmwft: ', told(0:nold)
-
+    
+    IF (told(0) == 0.0) THEN
+        told(0) = told(1) + (told(1)-told(2))/(LOG(pold(1))-LOG(pold(2))) * (LOG(pold(0))-LOG(pold(1)))
+    ENDIF
+  
     ! Compute altitude grids for this temperature profile
-    pold = LOG(pold); zold(0) = 0
+    ! xliu, 03/09/11: Slightly modify the way of computing altitude grids (based on
+    !       surface pressure and surface altitude). Also use surface temperature  from met. data.
+    pold = LOG(pold); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
     IF (use_input_spres) THEN
       IF (spres == pold(0)) THEN
-        zold(0) = the_surfalt
+         zold(0) = the_surfalt
+         ntemp = 0 
       ELSE
-        temp_spres=LOG(spres)
-        CALL BSPLINE(pold, told, nold+1, temp_spres, temp_tmp, 1, errstat)
-        tmp=temp_tmp(1)
-        IF (errstat < 0) THEN
-          WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-          errstat = pge_errstat_error; RETURN
-        ENDIF
-        mt = (told(0) + tmp)/ 2.0
-        dlgp = pold(0) - LOG(spres)
-        accr = (rearth / (rearth + the_surfalt/2.))**2
-        zold(0) = the_surfalt - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+        DO i = 1, nold
+             IF (pold(i) <= LOG(spres) ) EXIT
+        ENDDO
+        ntemp = i -1
+        mt = (told(ntemp) + told(0))/ 2.0
+        dlgp = pold(ntemp) - LOG(spres)
+        halfdz = - (dlgp/2.30259)*8.0 ! Approximate delta z using zs = -16.*alog10(ps/p0)
+        accr = (rearth / (rearth + the_surfalt + halfdz))**2
+        zold(ntemp) = the_surfalt - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+        DO i = ntemp-1, 0, -1
+           mt = (told(i) + told(i+1))/ 2.0
+           dlgp = pold(i) - pold(i+1)
+           halfdz = -(dlgp/2.30259) * 8.0 ! Approximate delta z using zs=-16. *alog10(Ps/P0)
+           accr = (rearth / (rearth + zold(i+1) + halfdz))**2
+           zold(i) = the_surfalt - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+        ENDDO
       ENDIF
     ENDIF
 
-    DO i=1, nold
+    DO i=ntemp+1, nold
       mt=(told(i)+told(i-1))/ 2.0
       dlgp= pold(i) - pold(i-1)
-      accr=(rearth / (rearth + zold(i-1)))**2
+      halfdz = - (dlgp/2.30259)*8.0 ! Approximate delta z using zs = -16.*alog10(ps/p0)
+      accr=(rearth / (rearth + zold(i-1) + halfdz))**2
       zold(i)=zold(i-1)-boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
     ENDDO
-
 
     IF ( first1 ) THEN
       ! ================================ Generate Ozone Retrieval Layers ===========================
@@ -215,18 +227,10 @@ contains
         CLOSE (profunit)
 
         IF (is_pgrid) THEN
-          IF (umkp0(numk) > p0 * 2.0D0 ** (-13.5D0)) umkp0(numk) = p0 * 2.0D0 ** (-13.5D0) 
+          !IF (umkp0(numk) > p0 * 2.0D0 ** (-13.5D0)) umkp0(numk) = p0 * 2.0D0 ** (-13.5D0) 
+          umkp0(numk) = p0*2.0D0**(-13.5D0)
           umkp0(0:numk) = LOG(umkp0(0:numk))
         ENDIF
-      ENDIF
-
-      ! V8 TOMS Climatology
-      IF (which_clima == 1) THEN
-        DO i = 0, nv8 - 1
-          pv80(i) = 2.0D0 ** (-i)
-        ENDDO
-        pv80(nv8) = umkp0(numk)
-        pv80(0:nv8) = LOG(pv80(0:nv8) * p0)
       ENDIF
 
       IF (.NOT. fixed_ptrop .AND. .NOT. use_tropopause .AND. is_pgrid) THEN
@@ -235,8 +239,6 @@ contains
 
       first1 = .FALSE.
     ENDIF
-    pv8 = pv80
-
     IF ( .NOT. is_pgrid) THEN
       CALL INTERPOL(zold, pold, nold+1, umkz0(0:numk), umkp0(0:numk), numk+1, errstat)
       IF (errstat < 0) THEN
@@ -270,14 +272,15 @@ contains
         ENDDO
       ENDIF
     ENDIF
-
     ! Find the level of tropopause
     ! ntp = 3 means there are three layers below tropopause
     IF (.NOT. use_tropopause .AND. .NOT. fixed_ptrop) THEN
       ntp = ntp0
     ELSE
       ! Replace the closest level (ranges from 85 mb to 450 mb) with tropopause pressure 
-      ntp = MAXVAL(MINLOC(ABS(LOG(tpres)-umkp))) - 1;  umkp(ntp) = LOG(tpres)
+      ntp = MAXVAL(MINLOC(ABS(LOG(tpres)-umkp))) - 1
+      IF (ntp == 0) ntp =1 ! shoud not replace surface (xliu:8/9/12)
+      umkp(ntp) = LOG(tpres)
     ENDIF
 
     IF (adjust_trop_layer) THEN
@@ -311,69 +314,6 @@ contains
       ! mark number of layers below surface pressure
       umkp(nsfc) = LOG(spres)
     ENDIF
-
-    ! Get a priori climatology for 0-60 km (pressure altitude)
-    ! Perform interpolation over the time domain (xliu: 01/18/2006)
-    CALL GET_V8PROF(month, day, the_lat, toz, which_clima, v8oz(1:nv8), &
-         ozref(1:nmpref-1))
-
-    ! Get a priori climatology for 60-70 km from MIPAS climatology
-    CALL GET_MIPASIG2O3(month, day, the_lat, mipasp, mipaso3)
-    ozref(nmpref:nref-1) = mipaso3(nmpref:nref-1)
-
-    ozref(0) = 0.0;  refp(0) = p0
-    DO i = 1, nref-1
-      refp(i) = p0 * 10.0D0 ** (-REAL(i, KIND=dp)/16.D0)
-      ozref(i) = ozref(i-1) + ozref(i)
-    ENDDO
-
-    ! Ozone above 70 km and one more layer
-    refp(nref) = p0 * 10.0D0 ** (-REAL(nref, KIND=dp)/16.D0)
-    ozref(nref) = ozref(nref-1) + SUM(mipaso3(nref:nmipas))
-    refp = LOG(refp)
-
-    IF (spres > p0 .OR. EXP(umkp(0)) > p0) refp(0) = MAX(LOG(spres), umkp(0))
-    CALL BSPLINE(refp, ozref, nref+1, umkp(0:numk), umkoz(0:numk), numk+1, &
-         errstat)
-    IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-      errstat = pge_errstat_error; RETURN
-    ENDIF
-
-    IF (which_clima == 1) THEN
-      v8oz(0) = 0.0   ! get cumulative ozone amount
-      DO i = 1, nv8
-        v8oz(i) = v8oz(i) + v8oz(i-1)
-      ENDDO
-
-      ! May have negative values for upper layers or lead to inproper interpolation 
-      ! when interpolated from the 11 layer climatology and the partial column ozone 
-      ! for these layers are very small, need readjustment using the McPeters Clima
-      umkoz1 = umkoz
-
-      ! get cumulative ozone amount at modified grids
-      IF (spres > p0 .OR. EXP(umkp(0)) > p0) pv8(0) = MAX(LOG(spres), umkp(0))
-      pv8(nv8) = umkp(numk)
-      CALL BSPLINE(pv8, v8oz, nv8+1, umkp, umkoz, numk+1, errstat)
-      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error 1, errstat = ', errstat
-        errstat = pge_errstat_error; RETURN
-      ENDIF
-
-      DO i = numk, 0, -1
-        IF (umkp(i) >= pv8(nv8-1)) EXIT
-      ENDDO
-      tmp = (umkoz(numk)-umkoz(i)) / (umkoz1(numk)-umkoz1(i))
-
-      umkoz = umkoz - umkoz(0); umkoz(1:numk) = umkoz(1:numk) - umkoz(0:numk-1)  
-
-      umkoz1 = umkoz1 - umkoz1(0); umkoz1(1:numk) = umkoz1(1:numk) - umkoz1(0:numk-1)  
-      umkoz(i+1:numk) = umkoz1(i+1:numk) * tmp
-    ELSE 
-      umkoz = umkoz - umkoz(0) !; toz = umkoz(numk)
-      umkoz(1:numk) = umkoz(1:numk) - umkoz(0:numk-1)  
-    ENDIF
-
     ! ====================== Generate Fine Layers for Radiance Calculation =================
     ! Generate fine grids for ozone retrieval grids according to following rules
     ! Clear-sky: each ozone retrieval layer is broken to ndiv layers
@@ -388,16 +328,20 @@ contains
     fndiv = REAL(ndiv, KIND=dp)
     fps(0) = umkp(0); np = 0
     DO i = 1, numk
-      IF ( i == numk) fndiv = fndiv + 1  ! Add one more layers for the top layer
-      dlgp = (umkp(i-1) - umkp(i)) / fndiv
-
+      !IF ( i == numk) fndiv = fndiv + 1  ! Add one more layers for the top layer
+      IF ( i == numk) THEN 
+        IF (fndiv == 1 ) THEN 
+         fndiv = fndiv + 3
+        ELSE 
+         fndiv = fndiv + 2
+        ENDIF 
+      ENDIF
+      dlgp = (umkp(i-1) - umkp(i)) / fndiv      
       DO j = 1, int(fndiv)
         np = np + 1
         fps(np) = umkp(i-1) - dlgp * j
       ENDDO
     ENDDO
-
-
     ! Determine CBP by assumming COD of 20 per 100 hPa
     ! several heuristic assumptions about clouds are implemented
     ! due to inperfect or inadequate cloud information
@@ -406,7 +350,6 @@ contains
     !       2. change from 15 per 100 hPa to 20 Per 100 hPa (i.e., 6.6 to 5)
     has_clouds = .FALSE.; nctp = 0; ncbp = 0; cbp =0.0
     IF (cloud .AND. ctp > 0.0) THEN 
-!      fps = EXP(fps)
       fps(1:np) = EXP(fps(1:np))
       has_clouds = .TRUE.
 
@@ -462,7 +405,6 @@ contains
         ENDIF
       ENDDO
 
-!      fps = LOG(fps)  ! convert fps back to logarithmic for convenience
       fps(1:np) = LOG(fps(1:np))  ! convert fps back to logarithmic for convenience
 
       ! need to break cloud to more layers ( tau = 2 / per layer) for scattering clouds
@@ -526,11 +468,12 @@ contains
     ! ================================ Get T, P, Z, aerosols ============================== 
     ! Interpolate temperature and altitude to FINE grids
     CALL BSPLINE(pold, told, nold+1, fps(0:np), fts(0:np), np+1, errstat)
+   
     IF (errstat < 0) THEN
       WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
       errstat = pge_errstat_error; RETURN
     ENDIF
-
+ 
     CALL INTERPOL(pold, zold, nold+1, fps(0:np), fzs(0:np), np+1, errstat)
     IF (errstat < 0) THEN
       WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
@@ -563,21 +506,26 @@ contains
     ! Add molecules about fps(0): molecule ~ pressure
     frhos(np) = frhos(np) * EXP(fps(np-1)) / (EXP(fps(np-1))-EXP(fps(np)))
 
+    umkt = fts(nup2p); umkz = fzs(nup2p)  !  T and Z grid for ozone retrieval layers
+    trpz = umkz(ntp)
+
+
     umkt = fts(nup2p); umkz = fzs(nup2p)     !  T and Z grid for ozone retrieval layers
-
-    ! ======================== Interpolate Ozone to LIDORT Grid ======================
-    CALL BSPLINE(refp, ozref, nref+1, fps(0:np), oznref(0:np), np+1, errstat)
-    IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-      errstat = pge_errstat_error; RETURN
-    ENDIF
-    oznref(1:np) = oznref(1:np) - oznref(0:np-1); oznref(0) = 0.0  
-
-    ! convert back to mbar for pressure
+    trpz=umkz(ntp)
+    ! convert back to mbar for pressures
     umkp = EXP(umkp); fps(0:np) = EXP(fps(0:np))
-    atmosprof(1, 0:numk) = umkp; atmosprof(2, 0:numk) = umkz; atmosprof(3, 0:numk)=umkt
-    ozprof = umkoz(1:numk)
-
+    atmosprof(1, 0:numk) = umkp; atmosprof(2,0:numk) = umkz; atmosprof(3, 0:numk)=umkt
+  ! ======================== get ozprof and other tracegases===================================
+  
+    ! Need to normalize ozone profile (Strat. and trop.) or tropospheric ozone profile with input total ozone
+    IF (which_toz /= 0 .AND. which_clima /= 1 .and. toz > 200 ) norm_o3p=.true.
+    ozprof(1:numk) = 0.0
+    oznref (0:np) = 0.0
+    CALL get_o3prof (numk, umkp(0:numk),umkz(0:numk), ntp, norm_o3p, toz, ozprof(1:numk))
+    CALL get_o3prof ( np,  fps(0:np), fzs(0:np), ntp, norm_o3p, toz, oznref(1:np))
+    !DO i = 1, numk
+    !   print * , i, umkp(i), umkp(i), umkz(i), umkt(i), ozprof(i)
+    !ENDDO
     ! Loading minor trace gas profile
     IF (do_tracewf .OR. first) THEN
       DO i = 1, ngas
@@ -586,23 +534,12 @@ contains
             CALL GET_NO2(month, the_lon, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, mgasprof(i, nfsfc+1:np), np-nfsfc)
           ELSE IF (gasidxs(i) == bro_idx) THEN     
             CALL GET_BRO(month, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, mgasprof(i, nfsfc+1:np), np-nfsfc)
-            !print *, 'pressure: '
-            !WRITE(www_lun, '(10F10.4)') fps(nfsfc:np)
-            !print *, 'BrO: '
-            !WRITE(www_lun, '(10D12.4)') mgasprof(i, nfsfc+1:np)
-            !WRITE(www_lun, '(D12.4)')  SUM(mgasprof(i, nfsfc+1:np))
 
           ELSE IF (gasidxs(i) == bro2_idx) THEN     
             !Put BrO in the first layer
             mgasprof(i, nfsfc+1:np) = 0.0
             mgasprof(i, nfsfc+1:nfsfc+nup2p(1)) = (fps(nfsfc:nfsfc+nup2p(1)-1) - fps(nfsfc+1:nfsfc+nup2p(1))) / &
                  (fps(nfsfc) - fps(nfsfc+nup2p(1)))  * 2.0E13
-            !print *, 'BrO2: '
-            !WRITE(www_lun, '(10D12.4)') mgasprof(i, nfsfc+1:np)
-            !WRITE(www_lun, '(D12.4)')  SUM(mgasprof(i, nfsfc+1:np))
-            !print *, nup2p(1)
-            !STOP
-
           ELSE IF (gasidxs(i) == hcho_idx) THEN 
             CALL GET_GEOSCHEM_HCHO(month, the_lon, the_lat, fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nfsfc) 
           ELSE IF ( gasidxs(i) == so2_idx) THEN 
@@ -667,29 +604,6 @@ contains
       IF (first) first = .FALSE.
     ENDIF
 
-    IF (which_clima == 7 ) THEN
-      mnorstd = 1
-      CALL get_mlso3prof_single(year, month, day, numk, mnorstd, umkp, &
-           ozprof, tmpntp, errstat)
-      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': Error in getting MLS ozone profiles!!!'
-        errstat = pge_errstat_error; RETURN
-      ENDIF
-    ELSE IF (which_clima == 6 ) THEN
-      mnorstd = 1
-      CALL get_mlso3prof(year, month, day, the_lat, numk, mnorstd, umkp, &
-           ozprof, tmpntp, errstat)
-      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': Error in getting MLS ozone profiles!!!'
-        errstat = pge_errstat_error; RETURN
-      ENDIF
-    ELSE IF (which_clima == 5) THEN      ! 72 x 46, Logan clima only
-      CALL GET_LOGAN_CLIMA(month, the_lon, the_lat, umkp, ozprof, numk, ntp)  
-    ELSE IF (which_clima == 4) THEN      ! 144 x 91, profile only
-      CALL GET_GEOSCHEM_O31(month, the_lon, the_lat, umkp, ozprof, numk, ntp)
-    ELSE IF (which_clima == 3) THEN      ! 18 x 12, profile
-      CALL GET_GEOSCHEM_O3MEAN(month, the_lon, the_lat, umkp, ozprof, numk, ntp)
-    ENDIF
 
     !  ! Use fixed a priori 
     !  OPEN(UNIT = atmos_unit, FILE = TRIM(ADJUSTL(atmdbdir)) // 'mpclima/fixed_apriori.dat', status='old')
@@ -720,15 +634,6 @@ contains
     !  CALL REVERSE(ozprof(1:numk), numk)
 
     ! Need to normalize ozone profile (Strat. and trop.) or tropospheric ozone profile with input total ozone
-    IF (which_toz /= 0 .AND. which_clima /= 1) THEN
-      IF (which_clima /= 6 .AND. which_clima /= 7) tmpntp = ntp
-      CALL GET_NORMTOZ(year, month, day, the_lat, toz, numk, tmpntp, umkp, &
-           ozprof, errstat)  
-      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': Error in getting zonal mean total ozone!!!'
-        errstat = pge_errstat_error; RETURN
-      ENDIF
-    ENDIF
 
     DO i = 1, np
       IF (fps(i) >= ctp-1.0E-7) THEN

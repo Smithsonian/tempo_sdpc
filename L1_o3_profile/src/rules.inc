@@ -159,6 +159,34 @@ $(ODIR)/m_super_gauss.o: $(SDIR)/m_super_gauss.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_super_gauss.f90 -o $(ODIR)/m_super_gauss.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_get_ncep.o: $(SDIR)/m_get_ncep.f90 \
+  $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_ncep.f90 -o $(ODIR)/m_get_ncep.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_get_bclayer.o: $(SDIR)/m_get_bclayer.f90 \
+  $(ODIR)/m_get_ncep.o \
+  $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_bclayer.f90 -o $(ODIR)/m_get_bclayer.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_get_toz.o: $(SDIR)/m_get_toz.f90 \
+  $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_he5_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_toz.f90 -o $(ODIR)/m_get_toz.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_get_o3prof.o: $(SDIR)/m_get_o3prof.f90 \
+  $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_o3prof.f90 -o $(ODIR)/m_get_o3prof.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_apriori_covar.o: $(SDIR)/m_get_apriori_covar.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \
@@ -224,6 +252,8 @@ $(ODIR)/m_lidort_prof_prep.o: $(SDIR)/m_lidort_prof_prep.f90 \
 $(ODIR)/m_make_atm.o: $(SDIR)/m_make_atm.f90 \
   $(ODIR)/get_cloud.o \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_get_ncep.o \
+  $(ODIR)/m_get_o3prof.o \
   $(ODIR)/m_read_aerosol_prof.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -627,8 +657,10 @@ $(ODIR)/solar_fit_vary.o: $(SDIR)/solar_fit_vary.f90 \
   $(ODIR)/utilities.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/solar_fit_vary.f90 -o $(ODIR)/solar_fit_vary.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_specfit_ozprof.o: $(SDIR)/m_specfit_ozprof.f90 \
-  $(ODIR)/m_get_apriori_covar.o \
+  $(ODIR)/m_get_bclayer.o \
+  $(ODIR)/m_get_o3prof.o \
   $(ODIR)/m_get_reg_matrix.o \
+  $(ODIR)/m_get_toz.o \
   $(ODIR)/m_make_atm.o \
   $(ODIR)/m_ozprof_inverse.o \
   $(ODIR)/m_set_cldalb.o \
@@ -637,8 +669,7 @@ $(ODIR)/m_specfit_ozprof.o: $(SDIR)/m_specfit_ozprof.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/ozprof_data_module.o \
-  $(ODIR)/prepare_atmosphere.o
+  $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_specfit_ozprof.f90 -o $(ODIR)/m_specfit_ozprof.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/spectra.o: $(SDIR)/spectra.f90 \
   $(ODIR)/m_gauss.o \

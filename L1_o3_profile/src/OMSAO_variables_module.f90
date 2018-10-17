@@ -356,7 +356,7 @@ MODULE OMSAO_variables_module
   ! ---------------------
   CHARACTER (LEN=maxchlen) :: l1b_rad_filename, l1b_irrad_filename, &
        l2_filename, l2_cld_filename, l2_swathname, l1_rad_filename_nc, &
-       l1_irrad_filename_nc
+       l1_irrad_filename_nc, l3_toc_filename
 
   ! -----------------------------------------------------------------
   ! Generic dimension variables (initialized from either GOME or OMI)
