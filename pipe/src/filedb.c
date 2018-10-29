@@ -3,7 +3,8 @@
  */
 
 #include "config.h"
-#define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500  /* for nftw */
+#define _DEFAULT_SOURCE    /* for timegm */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -677,7 +678,10 @@ static int direntry_handler (const char *fpath, const struct stat *sb, int typef
    if (0 != fdb->parse_timestamp (pbasename, &tm))
      return -1;
 
-   utc = mktime (&tm);
+   /* timegm is a GNU extension, but this is easier than persuading
+    * mktime to interpret the struct tm as UTC instead of local time.
+    */
+   utc = timegm (&tm);
 
    if (0 != tio_time_utc_to_tempo (utc, &timestamp))
      return -1;

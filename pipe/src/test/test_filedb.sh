@@ -11,7 +11,7 @@ fi
 FILEDB_EXEC="$1"
 
 TEST_DBNAME="met:nam227"
-SEARCH_TIME="541647009"
+SEARCH_TIME="531379809"
 
 DELAY=5
 APPROX_EXPECTED_DELAY_WHEN_BLOCKED=3
@@ -42,7 +42,7 @@ assert_duration_exceeds()
    value=$(echo $duration \> $expect | bc)
 
    if test $value -eq 0 ; then
-      printf "Duration %g sec is less than expected value %g sec\n" $duration $expect
+      printf "*** Duration %g sec is less than expected value %g sec\n" $duration $expect
       exit 1
    fi
 }
@@ -55,20 +55,45 @@ assert_duration_lessthan()
    value=$(echo $duration \< $expect | bc)
 
    if test $value -eq 0 ; then
-      printf "Duration %g sec is longer than expected value %g sec\n" $duration $expect
+      printf "*** Duration %g sec is longer than expected value %g sec\n" $duration $expect
       exit 1
    fi
 }
 
-#-------------- Exercise database options
+check_search_result()
+{
+   db=$1
+   expect_tt=$2
+
+   fn=$($FILEDB_EXEC $db --find --sec $SEARCH_TIME)
+   tt=$(cat $fn)
+   #printf "$tt $fn\n"
+
+   if test $tt -ne $expect_tt ; then
+      printf "*** unexpected search result: %ld != %ld\n" $tt $expect_tt
+      exit 1
+   fi
+}
+
+printf "Test: database initialization:\n"
 
 DBNAME_LIST="met:nam227 snow:nsidc tempo:irr tempo:drk"
 for db in $DBNAME_LIST ; do
    $FILEDB_EXEC $db --update
 done
-for db in $DBNAME_LIST ; do
-   $FILEDB_EXEC $db --find --sec $SEARCH_TIME > /dev/null
-done
+
+printf "Test: database search result accuracy:\n"
+
+# SEARCH_TIME="531379809"
+# 531379809 /tmp/filedb_test.jhouck/ancillary/met/nam227/2016/11/02/2016110217.nam.tffz.conusnest.hiresf17.tm00.grib2
+# 531365409 /tmp/filedb_test.jhouck/ancillary/snow/nsidc/2016/11/NISE_SSMISF18_20161102.HDFEOS
+# 531322209 /tmp/filedb_test.jhouck/archive/L1/irr/2016/11/02/TEMPO_irr_L1_V01_20161102T013009Z.nc
+# 531358209 /tmp/filedb_test.jhouck/archive/L0/drk/2016/11/02/TEMPO_drk_L0_V01_20161102T113009Z.nc
+
+check_search_result met:nam227 531379809
+check_search_result snow:nsidc 531365409
+check_search_result tempo:irr  531322209
+check_search_result tempo:drk  531358209
 
 #-------------- Test database file locking
 
