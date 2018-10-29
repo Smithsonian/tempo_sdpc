@@ -58,6 +58,7 @@ static void usage (void)
    fprintf (stderr, "   -u | --update          update the lookup table\n");
    fprintf (stderr, "   -f | --find            search the lookup table\n");
    fprintf (stderr, "   -s | --sec SECONDS     time elapsed since the TEMPO epoch [sec]\n");
+   fprintf (stderr, "   -d | --delay SECONDS   set delay time (for testing only)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -323,8 +324,32 @@ static int open_with_lock (const char *filename, int readonly)
    return fd;
 }
 
+static double Delay_Time;
+
+static void delay_if_requested (void)
+{
+   struct timespec req, rem;
+   time_t delay_sec;
+
+   if (Delay_Time <= 0)
+     return;
+
+   delay_sec = (time_t) Delay_Time;
+
+   req.tv_sec = delay_sec;
+   req.tv_nsec = (long) (Delay_Time - delay_sec) * 1.e9;
+
+   fprintf (stderr, "delay %g sec...\n", Delay_Time);
+
+   if (0 == nanosleep (&req, &rem))
+     return;
+
+   fprintf (stderr, "delay interrupted: %g sec remaining\n", (rem.tv_sec + rem.tv_nsec/1.e9));
+}
+
 static int close_and_unlock (int fd)
 {
+   delay_if_requested ();
    (void) flock (fd, LOCK_UN);
    return close (fd);
 }
@@ -778,6 +803,7 @@ int main (int argc, char **argv)
         {"update", no_argument, 0, 'u'},
         {"find", no_argument, 0, 'f'},
         {"sec",  required_argument, 0, 's'},
+        {"delay",  required_argument, 0, 'd'},
         {0,0,0,0}
      };
 
@@ -797,7 +823,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:ufs:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:d:ufs:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -815,6 +841,12 @@ int main (int argc, char **argv)
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
              break;
+
+           case 'd':
+             if (1 != sscanf (optarg, "%le", &Delay_Time))
+               goto return_status;
+             break;
+
            case 's':
              if (1 != sscanf (optarg, "%le", &timestamp))
                goto return_status;
