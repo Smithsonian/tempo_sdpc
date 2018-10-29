@@ -1,0 +1,27 @@
+nam227:
+{
+    root_dir = "$SDPC_ROOT/ancillary/met/nam227" ;
+    basename_pattern = "*.grib2" ;
+    lookup_table = "$SDPC_ROOT/var/nam227.db" ;
+};
+
+nsidc:
+{
+    root_dir = "$SDPC_ROOT/ancillary/snow/nsidc" ;
+    basename_pattern = "NISE_SSMISF*.HDFEOS" ;
+    lookup_table = "$SDPC_ROOT/var/nsidc.db" ;
+};
+
+irr:
+{
+    root_dir = "$SDPC_ROOT/archive/L1/irr" ;
+    basename_pattern = "TEMPO_irr_*.nc" ;
+    lookup_table = "$SDPC_ROOT/var/irr.db" ;
+};
+
+drk:
+{
+    root_dir = "$SDPC_ROOT/archive/L0/drk" ;
+    basename_pattern = "TEMPO_drk_*.nc" ;
+    lookup_table = "$SDPC_ROOT/var/drk.db" ;
+};

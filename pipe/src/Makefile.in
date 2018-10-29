@@ -76,13 +76,54 @@ DEST_DOC_FILES_INSTALL_DIR = $(DESTDIR)$(DOC_FILES_INSTALL_DIR)
 LIBS = $(SLANG_LIB) $(MODULE_LIBS) $(RPATH) $(DL_LIB) -lm
 INCS = $(SLANG_INC) $(TELL_INC)
 
-all: $(MODULES)
+srcdir = $(config_dir)/pipe/src
+objdir = $(srcdir)/$(archobjs)
+bindir = $(prefix)/bin
+
+all: $(objdir) $(MODULES) $(objdir)/filedb
 
 #---------------------------------------------------------------------------
 # Put Rules to create the modules here
 #---------------------------------------------------------------------------
 daemon-module.so: daemon-module.c
 	$(CC_SHARED) $(INCS) daemon-module.c -o daemon-module.so $(LIBS)
+
+COMPILE_CMD = $(CC) $(CCFLAGS)
+ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
+
+TIO_INC = $(config_dir)/libtio/src
+TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
+
+TIO_LIBPATHS  = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
+LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
+
+FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o
+FILEDB_OBJS = $(patsubst %.o,$(objdir)/%.o, $(FILEDB_OFILES))
+
+FILEDB_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+              $(TIO_LIBPATHS) -ltio
+FILEDB_INC_DIRS = $(TIO_INC) $(LIBCONFIG_INC)
+FILEDB_INCS = $(patsubst %,-I%, $(FILEDB_INC_DIRS))
+
+$(objdir):
+	-mkdir -p $(objdir)
+
+$(objdir)/filedb:	$(FILEDB_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/filedb $(FILEDB_OBJS) \
+	    $(FILEDB_INCS) $(FILEDB_LIBS) -lm
+
+$(objdir)/filedb.o:	$(srcdir)/filedb.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb.c $(FILEDB_LIBS)
+
+$(objdir)/filedb_met.o:	$(srcdir)/filedb_met.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_met.c $(FILEDB_LIBS)
+
+$(objdir)/filedb_snow.o:	$(srcdir)/filedb_snow.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_snow.c $(FILEDB_LIBS)
+
+$(objdir)/filedb_tempo.o:	$(srcdir)/filedb_tempo.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_tempo.c $(FILEDB_LIBS)
+
 #---------------------------------------------------------------------------
 # Regression tests
 #---------------------------------------------------------------------------
@@ -101,6 +142,11 @@ install_directories:
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/o3_profile
 	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
 	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
+
+install_execs:
+	mkdir -p $(bindir)
+	@echo installing executables in $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/filedb $(bindir)/
 
 install_modules:
 	@for X in $(MODULES); \
@@ -164,10 +210,10 @@ install_docfiles:
 		fi; \
 	done
 
-install: all install_directories install_modules \
+install: all install_directories install_modules install_execs \
           install_scripts install_etcfiles install_slfiles # install_hlpfiles install_docfiles
 
 clean:
-	-/bin/rm -f $(MODULES)
+	-/bin/rm -f $(MODULES) $(objdir)/*
 distclean: clean
 	-/bin/rm -f config.h Makefile
