@@ -58,7 +58,9 @@ static void usage (void)
    fprintf (stderr, "   -u | --update          update the lookup table\n");
    fprintf (stderr, "   -f | --find            search the lookup table\n");
    fprintf (stderr, "   -s | --sec SECONDS     time elapsed since the TEMPO epoch [sec]\n");
-   fprintf (stderr, "   -d | --delay SECONDS   set delay time (for testing only)\n");
+   fprintf (stderr, "   -d | --delay SECONDS   set delay time (for testing only)\n\n");
+   fprintf (stderr, "WARNING: Because locking of network-mounted files is unreliable,\n");
+   fprintf (stderr, "         lookup tables should reside on a local disk.\n");
    exit (EXIT_SUCCESS);
 }
 
