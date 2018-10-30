@@ -4,7 +4,7 @@
 
 #include "config.h"
 #define _XOPEN_SOURCE 500  /* for nftw */
-#define _DEFAULT_SOURCE    /* for timegm */
+#define _GNU_SOURCE        /* for timegm */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
