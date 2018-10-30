@@ -11,8 +11,7 @@ contains
     use OMSAO_precision_module
     use OMSAO_variables_module,  only: wavcal,  pixnum_lim, linenum_lim, &
          npix_fitting, npix_fitted, l2_filename, fitvar_rad_saved, &
-         n_fitvar_rad, currpix, currline, currloop, ozabs_convl, &
-         so2crs_convl, which_slit, scnwrt, use_solcomp, use_backup, &
+         n_fitvar_rad, currpix, currline, currloop, which_slit, scnwrt, use_solcomp, use_backup, &
          mask_fitvar_rad, reduce_resolution, l2_cld_filename, &!, coadd_uv2
          use_he5_in, use_he5_out, use_tio_in, use_tio_out, l1b_rad_filename, &
          nc_rad_swathname, l1_rad_filename_nc, numwin, radnhtrunc, &
@@ -22,7 +21,8 @@ contains
     use ozprof_data_module, only: lcurve_write, ozwrtint, l2funit, &
          lcurve_fname, ozwrtint_fname, lcurve_unit, ozwrtint_unit, &
          algorithm_name, algorithm_version, calunit, nfgas, nlay, &
-         ozfit_start_index, ozfit_end_index!, which_cld
+         ozfit_start_index, ozfit_end_index, ozabs_convl, &
+         so2crs_convl, o4crs_convl
     use OMSAO_pixelcorner_module
     use OMSAO_omicloud_module
     use OMSAO_slitfunction_module
@@ -484,7 +484,7 @@ contains
         ! Need to convolve high-resolution ozone absorption cross section
         !  (for this position). Once the xsection is convolved, it will be
         !  set to false in ROUTINE getabs_crs
-        ozabs_convl = .true.; so2crs_convl = .true.
+        ozabs_convl = .true.; so2crs_convl = .true. ; o4crs_convl = .true.
 
         !IF (ALL(omi_radpix_errstat(currpix, 0:ntimes_loop-1) == pge_errstat_error) &
         !     .OR. omi_solpix_errstat(currpix) == pge_errstat_error) THEN
@@ -508,11 +508,11 @@ contains
           ! Load/adjust radiances/geolocations fields for a particular pixel
           ! Prepare databases for the first pixel (ifitline == 1)
           if (omi_exitval(currpix, currloop) == -10) then
-            call omi_adj_earthshine_data (curr_fitted_line, pge_error_status)
+            call omi_adj_earthshine_data (curr_fitted_line, pge_error_status) 
             if ( pge_error_status >= pge_errstat_error ) &
                  omi_exitval(currpix, currloop) = -9
           endif
-
+        
           if (omi_exitval(currpix, currloop) == -10) then
             if (scnwrt) write(*, '(A,I5,A10,I5, A10, I5)') &
                  'OMI Pixel: Line = ', &
@@ -566,7 +566,7 @@ contains
               endif
             endif
           endif
-
+          print * , exval
           if ( exval >= 0 .and. fitcol(1) > 0.0 .and. &
                dfitcol(1, 1) >= 0.0 ) then
             ! -----------------------------------------------------------------

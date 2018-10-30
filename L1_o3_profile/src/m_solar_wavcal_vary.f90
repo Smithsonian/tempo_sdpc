@@ -22,9 +22,8 @@ contains
          slitwav, fitvar_sol_init, numwin, sol_spec_ring, nsol_ring, &
          currpixchar, scnwrt, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: bspline
+    USE m_ezspline_interpolation, only: bspline, interpolation
     use m_cal_fit_one
-    use utilities, only: interpolation
     use m_subtract_poly, only: subtract_poly_meas
 
 

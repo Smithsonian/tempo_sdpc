@@ -1,8 +1,12 @@
 !
 module m_get_raman
+   USE m_ezspline_interpolation, only: bspline, interpol
+   USE m_get_xcrs, ONLY: get_all_raycof, geto3_crs
+   USE m_raman, only: raman
+   USE avg_band, only: avg_band_refspec
 
-  public get_raman
-  private
+  PUBLIC get_raman
+  PRIVATE
 
 contains
 
@@ -12,19 +16,15 @@ contains
     USE OMSAO_parameters_module, ONLY : du2mol, deg2rad, max_ring_pts
     USE OMSAO_variables_module,  ONLY : database, n_refwvl, refwvl, &
          the_sca_atm, the_sza_atm,the_vza_atm, refwvl_sav, &
-         nsol_ring, n_refwvl_sav, do_bandavg, sol_spec_ring, ozabs_convl, &
+         nsol_ring, n_refwvl_sav, do_bandavg, sol_spec_ring,  &
          refdbdir, n_rad_wvl, refidx!, &
          !the_aza_atm, up_radbnd, lo_radbnd, fitvar_rad, database_shiwf
     USE ozprof_data_module,      ONLY : nflay, mflay,  &
          atmosprof, actawin, aerwavs, gaext, fts, fzs, fozs, frhos, num_iter, &
-         wrtring!, atmos_prof_fname, nos
+         wrtring, ozabs_convl !, atmos_prof_fname, nos
     USE OMSAO_indices_module,    ONLY : ring_idx!, solar_idx, ring1_idx
     USE OMSAO_errstat_module 
-    use m_ezspline_interpolation, only: bspline, interpol
-    use m_lidort_prof_prep, only: get_all_raycof
-    use lidort_prof_utilities, only: getabs_crs
-    use m_raman, only: raman
-    use avg_band, only: avg_band_refspec
+ 
 
      
     IMPLICIT NONE 
@@ -61,186 +61,187 @@ contains
     ! ==============================
     CHARACTER (LEN=9), PARAMETER :: modulename = 'GET_RAMAN'
 
-    errstat = pge_errstat_ok 
+     errstat = pge_errstat_ok 
 
     IF (ozabs_convl) THEN   ! Check this for each cross track position
 
-      ! Get position for raman calculation
-      swavs(1:nsol_ring) = sol_spec_ring(1, 1:nsol_ring)
-
-      IF (swavs(1) > refwvl(1)-2.0 .OR. swavs(nsol_ring) < refwvl(n_refwvl) + 2.0) THEN
+     ! Get position for raman calculation
+     swavs(1:nsol_ring) = sol_spec_ring(1, 1:nsol_ring)
+ 
+     IF (swavs(1) > refwvl(1)-2.0 .OR. swavs(nsol_ring) < refwvl(n_refwvl) + 2.0) THEN
         WRITE(www_lun, *) modulename, ': Increase wavelength range for solar spectra in ring calculation!!!'
         errstat = pge_errstat_error; RETURN
-      ENDIF
+     ENDIF
 
-      nuhi = INT(1.0D7 / swavs(1))
-      nulo = INT(1.0D7 / swavs(nsol_ring)) + 1
-      nu = 0
-      DO i = nulo, nuhi
+     nuhi = INT(1.0D7 / swavs(1))
+     nulo = INT(1.0D7 / swavs(nsol_ring)) + 1
+     nu = 0
+     DO i = nulo, nuhi
         nu = nu + 1
         ramanwav(nu) = 1.0D7 / REAL(i, KIND=dp)
-      ENDDO
-      ramanwav(nu) = swavs(1); ramanwav(1) = swavs(nsol_ring)
-
-      IF (nuhi - nulo + 1 > maxnu) THEN
+     ENDDO
+     ramanwav(nu) = swavs(1); ramanwav(1) = swavs(nsol_ring)
+     
+     IF (nuhi - nulo + 1 > maxnu) THEN
         WRITE(www_lun, *) nuhi, nulo, refwvl(1), refwvl(n_refwvl)
         WRITE(www_lun, *) modulename, ': Need to increase maxnu!!!'
         errstat = pge_errstat_error; RETURN
-      ELSE IF (nuhi <= nulo) THEN
+     ELSE IF (nuhi <= nulo) THEN
         WRITE(www_lun, *) modulename, ': nulo>=nuhi, should never happen!!!'
         errstat = pge_errstat_error; RETURN
-      ENDIF
+     ENDIF
 
-      ! Get Rayleigh scattering coefficients once
-      CALL GET_ALL_RAYCOF(nsol_ring, swavs(1:nsol_ring), raycof(1:nsol_ring))
-
-      ! ozabs_convl will be changed after calling get_abscrs routine
+     ! Get Rayleigh scattering coefficients once
+     CALL GET_ALL_RAYCOF(nsol_ring, swavs(1:nsol_ring), raycof(1:nsol_ring))
+     
+     ! ozabs_convl will be changed after calling get_abscrs routine
     ENDIF
 
-    IF (num_iter == 0) THEN
-      ts(1:nflay) = (fts(1:nflay) + fts(0:nflay-1)) / 2.d0
+  IF (num_iter == 0) THEN
+     ts(1:nflay) = (fts(1:nflay) + fts(0:nflay-1)) / 2.d0
 
-      ! Use effective temperature to speed up the calculation
-      avgt = SUM(ts(1:nflay) * fozs(1:nflay)) / SUM (fozs(1:nflay))
+     ! Use effective temperature to speed up the calculation
+     avgt = SUM(ts(1:nflay) * fozs(1:nflay)) / SUM (fozs(1:nflay))
 
-      cossza = COS(the_sza_atm * deg2rad); cosvza = COS(the_vza_atm * deg2rad)
+     cossza = COS(the_sza_atm * deg2rad); cosvza = COS(the_vza_atm * deg2rad)
 
-      do_o3shi = .FALSE.; do_tmpwf = .FALSE.
-      do_bandavg_sav = do_bandavg; do_bandavg = .FALSE.
-      CALL GETABS_CRS(swavs(1:nsol_ring), nsol_ring, nsol_ring, 1, nflay, ts(1:nflay), &
-           abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
-           abscrs_qtdepen(1:3, 1:nsol_ring) )
-
-      IF (problems) THEN
+     do_o3shi = .FALSE.; do_tmpwf = .FALSE.
+     do_bandavg_sav = do_bandavg; do_bandavg = .FALSE.
+     !CALL GETABS_CRS(swavs(1:nsol_ring), nsol_ring, nsol_ring,1, nflay, ts(1:nflay), &
+     !     abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
+     !     abscrs_qtdepen(1:3, 1:nsol_ring) ) 
+     CALL geto3_crs(swavs(1:nsol_ring), nsol_ring, nsol_ring,nflay, ts(1:nflay), &
+          abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
+          abscrs_qtdepen(1:3, 1:nsol_ring) )
+     IF (problems) THEN
         print *, swavs(1), swavs(nsol_ring)
         WRITE(www_lun, *) modulename, ': Problems in reading trace gas absorption!!!'
         do_bandavg = do_bandavg_sav; errstat = pge_errstat_error; RETURN
-      ENDIF
-      do_bandavg = do_bandavg_sav
+     ENDIF
+     do_bandavg = do_bandavg_sav
 
-      DO i = 1, nsol_ring
+     DO i = 1, nsol_ring
         low = COUNT(MASK=(aerwavs(1:actawin) < swavs(i)))
         IF (low == 0) THEN
-          low = low + 1
+           low = low + 1
         ELSE IF (low == actawin) THEN 
-          low = low - 1
+           low = low - 1
         ENDIF
         hgh = low + 1
-
+        
         xg = (swavs(i) - aerwavs(low)) / (aerwavs(hgh) - aerwavs(low))
         aerext(i, 1:nflay) = gaext(low, 1:nflay) * (1.0 - xg) +  gaext(hgh, 1:nflay) * xg
-      ENDDO
-    ENDIF
-
-    ! Get ozone profile
-    IF (num_iter == 0) THEN
-      ozs(1:nflay) = fozs(1:nflay)
-    ELSE
-      IF (nflay /= nl) THEN
+     ENDDO
+  ENDIF
+ 
+  ! Get ozone profile
+  IF (num_iter == 0) THEN
+     ozs(1:nflay) = fozs(1:nflay)
+  ELSE
+     IF (nflay /= nl) THEN
         cumoz(0) = 0.0
         DO i = 1, nl
-          cumoz(i) = ozprof(i) + cumoz(i-1)
+           cumoz(i) = ozprof(i) + cumoz(i-1)
         ENDDO
-
+        
         CALL INTERPOL(atmosprof(2, 0:nl), cumoz, nl+1, fzs(0:nflay), ozs(0:nflay), nflay+1, errstat)
         IF (errstat < 0) THEN
-          WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat ;  RETURN
+           WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat ;  RETURN
         ENDIF
         ozs(1:nflay) = (ozs(1:nflay) - ozs(0:nflay-1))
-      ELSE
+     ELSE
         ozs(1:nflay) = ozprof(1:nl)
-      ENDIF
-    ENDIF
-    ozs(1:nflay) = ozs(1:nflay) * du2mol  ! convert to molecules
+     ENDIF
+  ENDIF
+  ozs(1:nflay) = ozs(1:nflay) * du2mol  ! convert to molecules
 
-    !WRITE(77, '(2I5, 4D16.7)') nsol_ring, nflay, the_sza_atm, the_vza_atm, the_aza_atm, the_sca_atm
-    !WRITE(77, '(100F14.7)') ts(1:nflay)
-    !WRITE(77, '(100D16.7)') frhos(1:nflay)
-
-    ! Compute optical depth
-    DO i = 1, nsol_ring
-      ext = raycof(i) * frhos(1:nflay) + abscrs(i, 1:nflay) * ozs(1:nflay) + aerext(i, 1:nflay) 
-
-      tauin = 0.0
-      DO j = 1, nflay
+  !WRITE(77, '(2I5, 4D16.7)') nsol_ring, nflay, the_sza_atm, the_vza_atm, the_aza_atm, the_sca_atm
+  !WRITE(77, '(100F14.7)') ts(1:nflay)
+  !WRITE(77, '(100D16.7)') frhos(1:nflay)
+  
+  ! Compute optical depth
+  DO i = 1, nsol_ring
+     ext = raycof(i) * frhos(1:nflay) + abscrs(i, 1:nflay) * ozs(1:nflay) + aerext(i, 1:nflay) 
+     
+     tauin = 0.0
+     DO j = 1, nflay
         tauin(j) = tauin(j-1) + ext(j)
-      ENDDO
+     ENDDO
+     
+     ! Plane parallel
+     scl = sol_spec_ring(2, i) * ((swavs(i) / swavs(1)) ** (-4.0))
+     strans(i, 1:nflay) = scl * EXP(-tauin(1:nflay) / cossza)
+     vtrans(i, 1:nflay) = EXP(-tauin(1:nflay) / cosvza)
+     
+     !! Spherical geometry (unnecessary)
+     !CALL GET_SLANT_TAU (nflay, zs, tauin, sza, tauout)
+     !strans(i, 1:nflay) = scl * EXP(-tauout(1:nflay))
+     !CALL GET_SLANT_TAU (nflay, zs, tauin, vza, tauout)
+     !vtrans(i, 1:nflay) = EXP(-tauout(1:nflay))
+     !WRITE(77, '(F12.5, 100D16.7)') swavs(i), sol_spec_ring(2, i), ext(1:nflay)
+  ENDDO
 
-      ! Plane parallel
-      scl = sol_spec_ring(2, i) * ((swavs(i) / swavs(1)) ** (-4.0))
-      strans(i, 1:nflay) = scl * EXP(-tauin(1:nflay) / cossza)
-      vtrans(i, 1:nflay) = EXP(-tauin(1:nflay) / cosvza)
-
-      !! Spherical geometry (unnecessary)
-      !CALL GET_SLANT_TAU (nflay, zs, tauin, sza, tauout)
-      !strans(i, 1:nflay) = scl * EXP(-tauout(1:nflay))
-      !CALL GET_SLANT_TAU (nflay, zs, tauin, vza, tauout)
-      !vtrans(i, 1:nflay) = EXP(-tauout(1:nflay))
-      !WRITE(77, '(F12.5, 100D16.7)') swavs(i), sol_spec_ring(2, i), ext(1:nflay)
-    ENDDO
-
-    ! Interpolate to raman grid in wavenumber
-    DO i = 1, nflay
-      CALL BSPLINE(swavs(1:nsol_ring), strans(1:nsol_ring, i), nsol_ring, &
-           ramanwav(1:nu), st(1:nu, i), nu, errstat)
-
-      IF (errstat < 0) THEN
+  ! Interpolate to raman grid in wavenumber
+  DO i = 1, nflay
+     CALL BSPLINE(swavs(1:nsol_ring), strans(1:nsol_ring, i), nsol_ring, &
+          ramanwav(1:nu), st(1:nu, i), nu, errstat)
+        
+     IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
-      ENDIF
+     ENDIF
 
-      CALL BSPLINE(swavs(1:nsol_ring), vtrans(1:nsol_ring, i), nsol_ring, &
-           ramanwav(1:nu), vt(1:nu, i), nu, errstat)
-      IF (errstat < 0) THEN
+     CALL BSPLINE(swavs(1:nsol_ring), vtrans(1:nsol_ring, i), nsol_ring, &
+          ramanwav(1:nu), vt(1:nu, i), nu, errstat)
+     IF (errstat < 0) THEN
         WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
-      ENDIF
-    ENDDO
+     ENDIF
+  ENDDO
+  
+  ! Call raman program
+  CALL RAMAN(refdbdir, nulo, nuhi, nu, nflay, avgt, the_sca_atm, cossza, &
+       st(1:nu,:), vt(1:nu,:), frhos(1:nflay), ring(1:nu))
 
-    ! Call raman program
-    CALL RAMAN(refdbdir, nulo, nuhi, nu, nflay, avgt, the_sca_atm, &
-         st(1:nu,:), vt(1:nu,:), frhos(1:nflay), ring(1:nu))
-!         st(1:nu,:), vt(1:nu,:), frhos(0:mflay), ring(1:nu))
+  !CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, swavs(1:nsol_ring), &
+  !     tmpring(1:nsol_ring), nsol_ring, errstat) 
+  !WRITE(78, '(F12.5, D16.7)') ((swavs(i), tmpring(i)), i = 1, nsol_ring)
+  
+  ! Interpolate calculated ring back to gome radiance grids
+  CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, refwvl_sav(1:n_refwvl_sav), &
+       newring(1:n_refwvl_sav), n_refwvl_sav, errstat) 
 
-    !CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, swavs(1:nsol_ring), &
-    !     tmpring(1:nsol_ring), nsol_ring, errstat) 
-    !WRITE(78, '(F12.5, D16.7)') ((swavs(i), tmpring(i)), i = 1, nsol_ring)
+  
+  IF (errstat < 0) THEN
+     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
+  ENDIF
 
-    ! Interpolate calculated ring back to gome radiance grids
-    CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, refwvl_sav(1:n_refwvl_sav), &
-         newring(1:n_refwvl_sav), n_refwvl_sav, errstat) 
-
-
-    IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
-    ENDIF
-
-    !WRITE(90, *) 'After Coadding'
-    !DO i = 1, n_refwvl_sav
-    !   WRITE(90, '(f8.4, D14.5)') refwvl_sav(i), newring(i)
-    !ENDDO
-    !STOP
-
-    IF (do_bandavg) THEN
-      CALL avg_band_refspec(refwvl_sav(1:n_refwvl_sav), newring(1:n_refwvl_sav), &
-           n_refwvl_sav, ntemp, errstat)
-      IF ( errstat /= 0 .OR. ntemp /= n_refwvl) THEN
+  !WRITE(90, *) 'After Coadding'
+  !DO i = 1, n_refwvl_sav
+  !   WRITE(90, '(f8.4, D14.5)') refwvl_sav(i), newring(i)
+  !ENDDO
+  !STOP
+  
+  IF (do_bandavg) THEN
+     CALL avg_band_refspec(refwvl_sav(1:n_refwvl_sav), newring(1:n_refwvl_sav), &
+          n_refwvl_sav, ntemp, errstat)
+     IF ( errstat /= 0 .OR. ntemp /= n_refwvl) THEN
         WRITE(www_lun, *) modulename, ': Ring Spectra Averaging Error ', n_refwvl_sav, ntemp
         errstat = pge_errstat_error; RETURN
-      ENDIF
-    ENDIF
+     ENDIF
+  ENDIF
+  
+  ! put the Ring spectrum into database
+  database(ring_idx,  1:n_refwvl)  = newring(1:n_refwvl)
+  !database(ring1_idx,  1:n_refwvl) = newring(1:n_refwvl)
 
-    ! put the Ring spectrum into database
-    database(ring_idx,  1:n_refwvl)  = newring(1:n_refwvl)
-    !database(ring1_idx,  1:n_refwvl) = newring(1:n_refwvl)
-
-    IF (wrtring) THEN
-      WRITE(92, *) n_rad_wvl
-      DO i = 1, n_rad_wvl
+  IF (wrtring) THEN
+     WRITE(92, *) n_rad_wvl
+     DO i = 1, n_rad_wvl
         WRITE(92, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
-      ENDDO
-    ENDIF
-    RETURN
-
-  END SUBROUTINE GET_RAMAN
+     ENDDO
+  ENDIF
+  RETURN
+  
+END SUBROUTINE GET_RAMAN
 
 
 

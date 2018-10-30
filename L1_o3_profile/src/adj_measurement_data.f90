@@ -3,7 +3,7 @@ module adj_measurement_data
   use m_angle_sat2toa
 
   public adj_solar_data, adj_earthshine_data, rough_spike_detect, &
-       uv1_spike_detect!, spike_detect_correct
+       uv1_spike_detect , spike_detect_correct
   private !adj_rad_sig, calc_view_geometry, spike_detect_correct1, &
   !rough_spike_detect1
 
@@ -729,100 +729,100 @@ contains
   END SUBROUTINE ROUGH_SPIKE_DETECT
 
 
-  !  SUBROUTINE SPIKE_DETECT_CORRECT(ns, fitspec, simrad)
-  !
-  !    USE OMSAO_precision_module
-  !    USE OMSAO_variables_module, ONLY : currspec!, fitwavs, fitweights
-  !    USE ozprof_data_module,     ONLY : use_lograd
-  !    IMPLICIT NONE
-  !
-  !    ! =======================
-  !    ! Input/Output variables
-  !    ! =======================
-  !    INTEGER, INTENT(IN)                             :: ns
-  !    REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: simrad
-  !    REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: fitspec
-  !
-  !    ! =======================
-  !    ! local variables
-  !    ! =======================
-  !    INTEGER                        :: i, approach
-  !    REAL (KIND=dp), DIMENSION(ns)  :: mratio, sratio
-  !    REAL (KIND=dp)                 :: fitavg, simavg, fitavg3, &
-  !         simavg3, fitavg2, simavg2
-  !
-  !    IF (use_lograd) THEN
-  !      simrad = EXP(simrad)
-  !      fitspec = EXP(fitspec)
-  !    ENDIF
-  !    !WRITE(90, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
-  !
-  !    ! use approach 1 is better
-  !    approach = 1
-  !
-  !    IF (approach == 1) THEN
-  !
-  !      ! Assume the average of last 10 pixels are without errors
-  !      ! Also assume the ratio of adjacent pixels is less dependent on
-  !      ! ozone profile
-  !      sratio(1:ns-1) = simrad(1:ns-1)  /  simrad(2:ns)
-  !      sratio(ns) = sratio(ns-1)
-  !      mratio(1:ns-1) = fitspec(1:ns-1) / fitspec(2:ns)
-  !      mratio(ns) = mratio(ns-1)
-  !
-  !      fitavg = SUM(fitspec(ns-9:ns)) / 10.0D0
-  !      simavg = SUM(simrad(ns-9:ns))  / 10.0D0
-  !
-  !      sratio(ns-10)   = simrad(ns-10)  / simavg
-  !      mratio(ns-10)   = fitspec(ns-10) / fitavg
-  !      fitspec(ns-10)  = fitspec(ns-10)  * sratio(ns-10) / mratio(ns-10)
-  !      currspec(ns-10) = currspec(ns-10) * sratio(ns-10) / mratio(ns-10)
-  !
-  !      DO i = ns - 11, 1, - 1
-  !        mratio(i)  = fitspec(i)  / fitspec(i + 1)
-  !        fitspec(i) = fitspec(i)  * sratio(i) / mratio(i)
-  !        currspec(i)= currspec(i) * sratio(i) / mratio(i)
-  !      ENDDO
-  !    ELSE
-  !
-  !      ! Assume the average of last 20 pixels are without errors
-  !      ! Also assume the ratio of adjacent pixels (first * third / second^2) &
-  !      ! is less dependent on ozone profile
-  !
-  !      sratio(1:ns-2) = simrad(1:ns-2)  * simrad(3:ns)  / (simrad(2:ns-1)**2.0)
-  !      mratio(1:ns-2) = fitspec(1:ns-2) * fitspec(3:ns) / (fitspec(2:ns-1)**2.0)
-  !
-  !      fitavg3= SUM(fitspec(ns-9:ns)) / 10.0D0
-  !      simavg3= SUM(simrad(ns-9:ns))  / 10.0D0
-  !      fitavg2= SUM(fitspec(ns-19:ns-10)) / 10.0D0
-  !      simavg2= SUM(simrad(ns-19:ns-10))  / 10.0D0
-  !
-  !      sratio(ns-20)  = simrad(ns-20)  * simavg3 / (simavg2**2.0)
-  !      mratio(ns-20)  = fitspec(ns-20) * fitavg3 / (fitavg2**2.0)
-  !      fitspec (ns-20)= fitspec(ns-20) * sratio(ns-20) / mratio(ns-20)
-  !      currspec(ns-20)= currspec(ns-20)* sratio(ns-20) / mratio(ns-20)
-  !
-  !      sratio(ns-21)  = simrad(ns-21)  * simavg2 / (simrad(ns-20)**2.0)
-  !      mratio(ns-21)  = fitspec(ns-21) * fitavg2 / (fitspec(ns-20)**2.0)
-  !      fitspec (ns-21)= fitspec(ns-21) * sratio(ns-21) / mratio(ns-21)
-  !      currspec(ns-21)= currspec(ns-21)* sratio(ns-21) / mratio(ns-21)
-  !
-  !      DO i = ns - 22, 1, - 1
-  !        mratio(i)  = fitspec(i)  * fitspec(i+2) / (fitspec(i + 1)**2.0)
-  !        fitspec(i) = fitspec(i)  * sratio(i)    /  mratio(i)
-  !        currspec(i)= currspec(i) * sratio(i)    /  mratio(i)
-  !      ENDDO
-  !    ENDIF
-  !
-  !    !WRITE(91, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
-  !    IF (use_lograd) THEN
-  !      simrad = LOG(simrad)
-  !      fitspec = LOG(fitspec)
-  !    ENDIF
-  !
-  !    RETURN
-  !
-  !  END SUBROUTINE SPIKE_DETECT_CORRECT
+    SUBROUTINE SPIKE_DETECT_CORRECT(ns, fitspec, simrad)
+  
+     USE OMSAO_precision_module
+      USE OMSAO_variables_module, ONLY : currspec!, fitwavs, fitweights
+      USE ozprof_data_module,     ONLY : use_lograd
+      IMPLICIT NONE
+  
+      ! =======================
+      ! Input/Output variables
+      ! =======================
+      INTEGER, INTENT(IN)                             :: ns
+      REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: simrad
+      REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: fitspec
+  
+      ! =======================
+      ! local variables
+      ! =======================
+      INTEGER                        :: i, approach
+      REAL (KIND=dp), DIMENSION(ns)  :: mratio, sratio
+      REAL (KIND=dp)                 :: fitavg, simavg, fitavg3, &
+           simavg3, fitavg2, simavg2
+  
+      IF (use_lograd) THEN
+        simrad = EXP(simrad)
+        fitspec = EXP(fitspec)
+      ENDIF
+      !WRITE(90, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
+  
+     ! use approach 1 is better
+      approach = 1
+  
+    IF (approach == 1) THEN
+  
+       ! Assume the average of last 10 pixels are without errors
+        ! Also assume the ratio of adjacent pixels is less dependent on
+        ! ozone profile
+        sratio(1:ns-1) = simrad(1:ns-1)  /  simrad(2:ns)
+        sratio(ns) = sratio(ns-1)
+        mratio(1:ns-1) = fitspec(1:ns-1) / fitspec(2:ns)
+        mratio(ns) = mratio(ns-1)
+  
+        fitavg = SUM(fitspec(ns-9:ns)) / 10.0D0
+        simavg = SUM(simrad(ns-9:ns))  / 10.0D0
+  
+       sratio(ns-10)   = simrad(ns-10)  / simavg
+        mratio(ns-10)   = fitspec(ns-10) / fitavg
+        fitspec(ns-10)  = fitspec(ns-10)  * sratio(ns-10) / mratio(ns-10)
+        currspec(ns-10) = currspec(ns-10) * sratio(ns-10) / mratio(ns-10)
+  
+        DO i = ns - 11, 1, - 1
+          mratio(i)  = fitspec(i)  / fitspec(i + 1)
+          fitspec(i) = fitspec(i)  * sratio(i) / mratio(i)
+          currspec(i)= currspec(i) * sratio(i) / mratio(i)
+        ENDDO
+      ELSE
+  
+       ! Assume the average of last 20 pixels are without errors
+        ! Also assume the ratio of adjacent pixels (first * third / second^2) &
+        ! is less dependent on ozone profile
+  
+       sratio(1:ns-2) = simrad(1:ns-2)  * simrad(3:ns)  / (simrad(2:ns-1)**2.0)
+        mratio(1:ns-2) = fitspec(1:ns-2) * fitspec(3:ns) / (fitspec(2:ns-1)**2.0)
+  
+        fitavg3= SUM(fitspec(ns-9:ns)) / 10.0D0
+        simavg3= SUM(simrad(ns-9:ns))  / 10.0D0
+        fitavg2= SUM(fitspec(ns-19:ns-10)) / 10.0D0
+        simavg2= SUM(simrad(ns-19:ns-10))  / 10.0D0
+  
+        sratio(ns-20)  = simrad(ns-20)  * simavg3 / (simavg2**2.0)
+        mratio(ns-20)  = fitspec(ns-20) * fitavg3 / (fitavg2**2.0)
+        fitspec (ns-20)= fitspec(ns-20) * sratio(ns-20) / mratio(ns-20)
+        currspec(ns-20)= currspec(ns-20)* sratio(ns-20) / mratio(ns-20)
+  
+        sratio(ns-21)  = simrad(ns-21)  * simavg2 / (simrad(ns-20)**2.0)
+        mratio(ns-21)  = fitspec(ns-21) * fitavg2 / (fitspec(ns-20)**2.0)
+        fitspec (ns-21)= fitspec(ns-21) * sratio(ns-21) / mratio(ns-21)
+       currspec(ns-21)= currspec(ns-21)* sratio(ns-21) / mratio(ns-21)
+  
+        DO i = ns - 22, 1, - 1
+          mratio(i)  = fitspec(i)  * fitspec(i+2) / (fitspec(i + 1)**2.0)
+          fitspec(i) = fitspec(i)  * sratio(i)    /  mratio(i)
+         currspec(i)= currspec(i) * sratio(i)    /  mratio(i)
+       ENDDO
+     ENDIF
+  
+      !WRITE(91, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
+      IF (use_lograd) THEN
+        simrad = LOG(simrad)
+        fitspec = LOG(fitspec)
+      ENDIF
+ 
+     RETURN
+  
+    END SUBROUTINE SPIKE_DETECT_CORRECT
 
 
   !  Unused

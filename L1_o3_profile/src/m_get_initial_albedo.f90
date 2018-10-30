@@ -1,11 +1,13 @@
 !
 module m_get_initial_albedo
   use tell_module
+  use m_lidort_master, only: lidort_prof_env
+  use m_ezspline_interpolation, only: bspline,  blend_101, blend_103
 
   public get_initial_albedo, get_gome_alb, adj_albcfrac, get_toms_alb, &
        get_omi_alb, get_omler_alb
   private calc_albedo!, get_refrad, adj_albcfrac1,
-
+   
   integer, parameter, private :: max_pathlen = 1024
 
 contains
@@ -31,7 +33,7 @@ contains
     USE ozprof_data_module, ONLY : pos_alb, toms_fwhm, rad_posr, rad_specr, &
          sun_posr, sun_specr, ps0, measref, nrefl
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: bspline
+   
 
     IMPLICIT NONE
 
@@ -155,7 +157,7 @@ contains
     USE OMSAO_parameters_module, ONLY : deg2rad
     USE OMSAO_variables_module, ONLY  : refdbdir
     USE ozprof_data_module,      ONLY : alb_tbl_fname, atmos_unit
-    use m_ezspline_interpolation, only: blend_101, blend_103
+
 
 
     IMPLICIT NONE
@@ -417,206 +419,163 @@ contains
 
 
   SUBROUTINE adj_albcfrac(albedo, cfrac, ctau, errstat)
-    USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY : sza => the_sza_atm, fitvar_rad_apriori,&
-         vza => the_vza_atm, aza => the_aza_atm, fitvar_rad_init, scnwrt
-    USE ozprof_data_module,     ONLY : nlay, ozp_fidx => ozprof_start_index, &
-         ozp_lidx => ozprof_end_index, t_fidx, t_lidx, pos_alb, measref, &
-         do_lambcld, lambcld_refl, the_cfrac, num_iter, the_cbeta, ncbp, &
-         nctp, fzs, lambcld_initalb, taodfind, twaefind, scacld_initcod
-    USE OMSAO_errstat_module
-    use lidort_prof_utilities, only: lidort_prof_env
+  USE OMSAO_precision_module
+  USE OMSAO_variables_module, ONLY : sza => the_sza_atm, fitvar_rad_apriori, &
+       vza => the_vza_atm, aza => the_aza_atm, fitvar_rad_init, scnwrt
+  USE ozprof_data_module,     ONLY : nlay, ozp_fidx => ozprof_start_index, &
+       ozp_lidx => ozprof_end_index, t_fidx, t_lidx, pos_alb, measref, &
+       do_lambcld, lambcld_refl, the_cfrac, num_iter, the_cbeta, ncbp, &
+       nctp, fzs, lambcld_initalb, taodfind, twaefind, scacld_initcod
+  USE OMSAO_errstat_module
 
-    IMPLICIT NONE
+  IMPLICIT NONE
 
-    ! Modified variables
-    INTEGER, INTENT(OUT)            :: errstat
-    REAL (KIND=dp), INTENT(INOUT)   :: albedo, cfrac, ctau
+  ! Modified variables
+  INTEGER, INTENT(OUT)            :: errstat
+  REAL (KIND=dp), INTENT(INOUT)   :: albedo, cfrac, ctau
 
-    ! Local variables
-    INTEGER, PARAMETER              :: ns = 1, nos = 1, nalb=1, nostk=1, nwfc=1
-    INTEGER, DIMENSION(nalb)        :: albpmax, albpmin
-    INTEGER, DIMENSION(nalb)        :: wfcpmax, wfcpmin
-    INTEGER                         :: i
-    REAL (KIND=dp), DIMENSION(nlay) :: tprof, ozprof, ozadj, ozaprof
-    REAL (KIND=dp), DIMENSION(ns)   :: waves, albwf, cfracwf, simrad, codwf, &
-         ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, walb0s, wfc0s
-    REAL (KIND=dp), DIMENSION(ns)   :: o3shiwf
-    REAL (KIND=dp), DIMENSION(ns, nlay) :: ozwf, tmpwf
-    REAL (KIND=dp), DIMENSION(nalb) :: albarr
-    REAL (KIND=dp), DIMENSION(nalb) :: wfcarr
-    REAL (KIND=dp), DIMENSION(nos)  :: o3shi
-    REAL (KIND=dp)                  :: delta_cfrac, delta_alb, delta_cod, &
-         newoz, initalb!, simrad1, simrad2, spres
-    LOGICAL :: do_albwf, do_tmpwf, do_ozwf, do_o3shi, negval, &
-         do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, &
-         do_codwf, do_sprswf, do_so2zwf, vary_sfcalb
-    LOGICAL, DIMENSION(nlay) :: ozvary
+  ! Local variables
+  INTEGER, PARAMETER              :: ns = 1, nos = 1, nalb=1, nostk=1, nwfc=1
+  INTEGER, DIMENSION(nalb)        :: albpmax, albpmin
+  INTEGER, DIMENSION(nalb)        :: wfcpmax, wfcpmin
+  INTEGER                         :: i
+  REAL (KIND=dp), DIMENSION(nlay) :: tprof, ozprof, ozadj, ozaprof
+  REAL (KIND=dp), DIMENSION(ns)   :: waves, albwf, cfracwf, simrad, codwf, &
+       ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, walb0s, wfc0s
+  REAL (KIND=dp), DIMENSION(ns)   :: o3shiwf
+  REAL (KIND=dp), DIMENSION(ns, nlay) :: ozwf, tmpwf
+  REAL (KIND=dp), DIMENSION(nalb) :: albarr
+  REAL (KIND=dp), DIMENSION(nalb) :: wfcarr
+  REAL (KIND=dp), DIMENSION(nos)  :: o3shi
+  REAL (KIND=dp)                  :: delta_cfrac, delta_alb, delta_cod, &
+       simrad1, simrad2, spres, newoz, initalb
+  LOGICAL                  :: do_albwf, do_tmpwf, do_ozwf, do_o3shi, negval, vary_sfcalb, &
+       do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, do_pslwf
+  LOGICAL, DIMENSION(nlay) :: ozvary
 
-    do_tmpwf  = .FALSE.
-    do_ozwf   = .FALSE.
-    do_o3shi = .FALSE.
-    ozvary   = .FALSE.
-    do_taodwf = .FALSE.
-    do_saodwf = .FALSE.
-    do_twaewf = .FALSE.
-    do_ctpwf = .FALSE.
-    do_sprswf = .FALSE.
-    do_so2zwf = .FALSE.
-    vary_sfcalb = .FALSE.
-    IF (cfrac == 1.0) cfrac = 0.95 ! Calculate cloud fraction weight function
+  do_tmpwf  = .FALSE.; do_ozwf   = .FALSE.; do_o3shi = .FALSE.; ozvary   = .FALSE.
+  do_taodwf = .FALSE.; do_saodwf = .FALSE.; do_twaewf = .FALSE.; do_ctpwf = .FALSE.
+  do_sprswf = .FALSE.; do_so2zwf = .FALSE.; do_pslwf =.FALSE.
+  IF (cfrac == 1.0) cfrac = 0.95 ! Calculate cloud fraction weighting function
 
-    ! ======= Set up ozone, temperature, albedo, lamda for LIDORT ============
-    ozprof(1:nlay) =  fitvar_rad_init(ozp_fidx:ozp_lidx)
-    ozaprof(1:nlay) = fitvar_rad_apriori(ozp_fidx:ozp_lidx)
-    tprof(1:nlay)  =  fitvar_rad_init(t_fidx:t_lidx)
+  ! ======= Set up ozone, temperature, albedo, lamda for LIDORT ============
+  ozprof(1:nlay) =  fitvar_rad_init(ozp_fidx:ozp_lidx)
+  ozaprof(1:nlay) = fitvar_rad_apriori(ozp_fidx:ozp_lidx)
+  tprof(1:nlay)  =  fitvar_rad_init(t_fidx:t_lidx)
 
-    !xliu (02/01/2007): adjust ozone profile for negative ozone values
-    !       radiances will be corrected using ozone weighting function
-    ozadj(1:nlay) = 0.0
-    negval = .FALSE.
-    DO i = 1, nlay
-      IF (ozprof(i) <= 0.0) THEN
+  !xliu (02/01/2007): adjust ozone profile for negative ozone values
+  !                   radiances will be corrected using ozone weighting function
+  ozadj(1:nlay) = 0.0; negval = .FALSE.
+  DO i = 1, nlay
+     IF (ozprof(i) <= 0.0) THEN
         newoz  = MIN(0.5d0, ozaprof(i))
-        negval = .TRUE.
-        ozadj(i)  = newoz - ozprof(i)
-        ozprof(i) = newoz
-        do_ozwf = .TRUE.
-        ozvary(i) = .TRUE.
-      ENDIF
-    ENDDO
+        negval = .TRUE. ; ozadj(i)  = newoz - ozprof(i); ozprof(i) = newoz
+        do_ozwf = .TRUE.; ozvary(i) = .TRUE.
+     ENDIF
+  ENDDO
 
-    o3shi(1) = 0.0
-    waves(1) = pos_alb
-    albpmax(1) = 1
-    albpmin(1) = 1
-    wfcpmax(1) = 1
-    wfcpmin(1) = 1
+  o3shi(1) = 0.0  ; waves(1) = pos_alb
+  albpmax(1) = 1  ; albpmin(1)=1 
+  wfcpmax(1) = 1  ; wfcpmin(1)=1 
 
-    num_iter = 0
-    IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, &
-         lambcld_refl, cfrac, ctau
+  num_iter = 0
+  IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
 
-    initalb = albedo
-    DO
-      ! Weighting function needs to be calculated
-      do_albwf = .FALSE.
-      do_cfracwf = .FALSE.
-      do_codwf = .FALSE.
-      IF (cfrac <= 0.0) THEN
-        do_albwf  = .TRUE.
-      ELSE IF (cfrac < 1.0) THEN
+  initalb = albedo
+  DO 
+     ! Weighting function needs to be calculated
+     do_albwf = .FALSE.; do_cfracwf = .FALSE.; do_codwf = .FALSE.
+     IF (cfrac <= 0.0) THEN
+        do_albwf  = .TRUE. 
+     ELSE IF (cfrac < 1.0) THEN
         do_cfracwf = .TRUE.
-      ELSE IF (do_lambcld) THEN
+     ELSE IF (do_lambcld) THEN
         do_albwf = .TRUE.
-      ELSE
+     ELSE
         do_codwf = .TRUE.
-      ENDIF
+     ENDIF
 
-      albarr(1) = albedo
-      walb0s(1) = albedo
-      the_cfrac = cfrac
-      wfcarr(1) = cfrac
-      wfc0s(1)  = cfrac
-      CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
-        do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
-        do_sprswf, do_so2zwf, ns, waves, nos, o3shi, sza, vza, aza, nlay, &
-        ozprof, tprof, vary_sfcalb, &
-        nalb, albarr, albpmin, albpmax, walb0s, nwfc, wfcarr, wfcpmin, wfcpmax,wfc0s, &
-        nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
-        codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, simrad, errstat)
-
-      !xliu (02/01/2007): correct radiances based on ozone weighting function
-      !  to deal with negative ozone values
-      IF (negval) THEN
-        DO i = 1, nlay
-          IF (ozadj(i) > 0) THEN
-            simrad(1:ns) = simrad(1:ns) - ozadj(i) * ozwf(1:ns, i)
-          ENDIF
+     albarr(1) = albedo; vary_sfcalb = .FALSE.; walb0s(1) = albedo
+     the_cfrac = cfrac;  wfcarr(1) = cfrac; wfc0s(1) = cfrac
+     CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,    &
+          do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf,  do_sprswf, do_so2zwf, do_pslwf, &
+          ns, waves, nos, o3shi, sza, vza, aza, nlay, ozprof, tprof, nalb, albarr, albpmin, &
+          albpmax, vary_sfcalb, walb0s, nwfc, wfcarr, wfcpmin, wfcpmax, wfc0s,              &
+          nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
+          codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, simrad, errstat)
+    
+     !xliu (02/01/2007): correct radiances based on ozone weighting function to deal with negative ozone values
+     IF (negval) THEN
+        DO i = 1, nlay 
+           IF (ozadj(i) > 0) THEN
+              simrad(1:ns) = simrad(1:ns) - ozadj(i) * ozwf(1:ns, i) 
+           ENDIF
         ENDDO
-      ENDIF
+     ENDIF
+     
+     IF (errstat == pge_errstat_error) RETURN 
 
-      IF (errstat == pge_errstat_error) RETURN
-
-      ! Initial delta values to zero
-      delta_cfrac = 0.0
-      delta_alb = 0.0
-      delta_cod = 0.0
-      IF (cfrac > 0.0 .AND. cfrac < 1.0D0) THEN
+     ! Initial delta values to zero
+     delta_cfrac = 0.0; delta_alb = 0.0; delta_cod = 0.0
+     IF (cfrac > 0.0 .AND. cfrac < 1.0D0) THEN  
         delta_cfrac = (measref - simrad(1)) / cfracwf(1)
         cfrac = cfrac + delta_cfrac
         IF (cfrac > 0.0 .AND. cfrac < 1.0D0) THEN
-          IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, &
-               lambcld_refl, cfrac, ctau
-          EXIT
+         !  IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
+          ! EXIT !xliu, 3/25/2016, needs to be removed
         ENDIF
-      ELSE IF (cfrac >= 1.0D0 .AND. do_lambcld) THEN  ! Adjust the lambertian
-        !                                                cloud albedo
+     ELSE IF (cfrac >= 1.0D0 .AND. do_lambcld) THEN   ! Adjust the lambertian cloud albedo
         ! Here albwf is the albedo wf for a fully cloudy conditions
         delta_alb = (measref - simrad(1)) / albwf(1)
         lambcld_refl = lambcld_refl + delta_alb
-
-        IF (lambcld_refl < lambcld_initalb) THEN
-          ! cfracwf < 0, surface contribution comparable to cloud
-          lambcld_refl = lambcld_initalb
-          cfrac = 0.0
-          delta_cfrac = -1.0
-          delta_alb = 0.0
+        
+        IF (lambcld_refl < lambcld_initalb) THEN  ! cfracwf < 0, surface contribution comparable to cloud
+           lambcld_refl = lambcld_initalb; cfrac = 0.0
+           delta_cfrac = -1.0; delta_alb = 0.0
         ENDIF
-      ELSE IF (cfrac >= 1.0D0 .AND. .NOT. do_lambcld) THEN
-        ! Cloud optical thickness
+     ELSE IF (cfrac >= 1.0D0 .AND. .NOT. do_lambcld) THEN  ! Cloud optical thickness
         delta_cod = (measref - simrad(1)) / codwf(1)
         ctau = ctau + delta_cod
 
-        IF (ctau < scacld_initcod) THEN
-          ! cfracwf < 0, surface contribution comparable to cloud
-          ctau = scacld_initcod
-          cfrac = 0.0
-          delta_cfrac = -1.0
-          delta_cod = 0.0
+        IF (ctau < scacld_initcod) THEN  ! cfracwf < 0, surface contribution comparable to cloud
+           ctau = scacld_initcod; cfrac = 0.0
+           delta_cfrac = -1.0; delta_cod = 0.0
         ENDIF
         the_cbeta  = ctau /(fzs(nctp-1) - fzs(ncbp))
-      ELSE
+     ELSE
         delta_alb = (measref - simrad(1)) / albwf(1)
         albedo = albedo + delta_alb
-      ENDIF
+     ENDIF
 
-      IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, &
-           lambcld_refl, cfrac, ctau
-      IF (cfrac < 0.00 .OR. albedo < 0.00 .OR. cfrac > 1.0D0 .OR. &
-           albedo > 1.0D0) THEN
+     IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
+     IF (cfrac < 0.00 .OR. albedo < 0.00 .OR. cfrac > 1.0D0 .OR. albedo > 1.0D0) THEN
         IF (cfrac < 0.0)        THEN
-          cfrac = 0.0
+           cfrac = 0.0
         ELSE IF (cfrac > 1.0D0) THEN
-          cfrac = 1.0D0
+           cfrac = 1.0D0
 
-          ! Quality Flags can be added for the following two cases
-        ELSE IF (albedo < 0.0)  THEN
-          ! Suggest aerosols are under/over estimated (absorbing/nonabsorbing)
-          albedo = 0.001
-          EXIT
-        ELSE
-          ! Suggest cloud exists (polar regions), but need cloud-top pressure
-          albedo = 1.0
-          EXIT
+        ! Quality Flags can be added for the following two cases
+        ELSE IF (albedo < 0.0)  THEN ! Suggest aerosols are under/over estimated (absorbing/nonabsorbing)
+           albedo = 0.001
+           EXIT  
+        ELSE                         ! Suggest cloud exists (polar regions), but need cloud-top pressure
+           albedo = 1.0;     EXIT    
         ENDIF
-      ENDIF
+     ENDIF
 
-      ! Exit if the change in albedo or cloud fraction is smaller than 0.001
-      IF ( ABS(delta_cfrac) <= 0.001 .AND. ABS(delta_alb) <= 0.001 .AND. &
-           ABS(delta_cod) <= 0.001 ) EXIT
+     ! Exit if the change in albedo or cloud fraction is smaller than 0.001
+     IF ( ABS(delta_cfrac) <= 0.001 .AND. ABS(delta_alb) <= 0.001 .AND. ABS(delta_cod) <= 0.001 ) EXIT
+     
+     num_iter = num_iter + 1
+     IF (num_iter >= 10) EXIT
+  ENDDO
 
-      num_iter = num_iter + 1
-      IF (num_iter >= 10) EXIT
-    ENDDO
+  IF (taodfind > 0 .OR. twaefind> 0) THEN
+     albedo = initalb
+  ENDIF
 
-    IF (taodfind > 0 .OR. twaefind> 0) THEN
-      albedo = initalb
-    ENDIF
-
-    RETURN
-  END SUBROUTINE adj_albcfrac
-
+  RETURN
+END SUBROUTINE adj_albcfrac
 
 
   !  Unused
@@ -1135,9 +1094,9 @@ contains
 
     integer (kind=4) :: errstat
 
-    alb_fname = TRIM(ADJUSTL(atmdbdir)) // &
-      'KNMI_OMIALB/OMI-Aura_L3-OMLER_2004m10-2007m10_v003-2008m0910t100324.he5'
-
+    !alb_fname = TRIM(ADJUSTL(atmdbdir)) // &
+    !  'KNMI_OMIALB/OMI-Aura_L3-OMLER_2004m10-2007m10_v003-2008m0910t100324.he5'
+    alb_fname = TRIM(ADJUSTL(atmdbdir)) //'KNMI_OMIALB/OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5'
     nw = 2
     nm = 2
 

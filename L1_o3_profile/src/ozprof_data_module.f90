@@ -9,11 +9,12 @@ MODULE ozprof_data_module
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module, ONLY : maxchlen, maxlay, max_fit_pts, &
-       max_iter, mrefl, maxwin, mflay, max_spec_pts
-  USE OMSAO_indices_module,    ONLY : n_max_fitpars, maxalb, max_rs_idx, &
+       max_iter, mrefl, maxwin, mflay, max_spec_pts !, mreflcld
+  USE OMSAO_indices_module,    ONLY : n_max_fitpars,  max_rs_idx, &
+       maxoth, maxalb, maxwfc, &
        no2_t1_idx, no2_t2_idx, o2o2_idx, so2_idx, bro_idx, oclo_idx,     &
-       hcho_idx, o2gam_idx, h2o_idx, so2v_idx, bro2_idx, maxoth, maxwfc, &
-       shift_offset
+       hcho_idx, o2_idx, h2o_idx, so2v_idx, bro2_idx,  shift_offset, &
+       o2t2_idx,h2ot2_idx
 
   IMPLICIT NONE
 
@@ -26,10 +27,12 @@ MODULE ozprof_data_module
   CHARACTER (LEN=*), PARAMETER  :: ozprof_str  = 'Ozone profile retrieval'
   CHARACTER (LEN=32), PARAMETER :: cntrstr     = '*Ozone Profile Retrieval Control'  
   CHARACTER (LEN=7), PARAMETER  :: ozstr       = '*ozprof' 
+  CHARACTER (LEN=7), PARAMETER  :: othgasstr   = '*othgas' 
   CHARACTER (LEN=7), PARAMETER  :: albstr      = '*albedo' 
   CHARACTER (LEN=7), PARAMETER  :: wfcstr      = '*wcfrac' 
   CHARACTER (LEN=7), PARAMETER  :: cldaerstr   = '*cldaer' 
-  CHARACTER (LEN=7), PARAMETER  :: othstr      = '*otherp'  
+  CHARACTER (LEN=7), PARAMETER  :: othstr      = '*otherp'
+  CHARACTER (LEN=7), PARAMETER  :: polstr      = '*polcor'    
   CHARACTER (LEN=maxchlen)      :: ozprof_input_fname   ! profile input file (unit=11)
   CHARACTER (LEN=maxchlen)      :: atmos_prof_fname     ! atmos. profiles for LIDORT (unit=55)
   CHARACTER (LEN=maxchlen)      :: ozabs_fname          ! o3 T-depend absorption coefficents
@@ -87,17 +90,27 @@ MODULE ozprof_data_module
   LOGICAL                       :: saa_flag
   INTEGER                       :: nsaa_spike
 
+  ! Need to convolve high-resolution ozone absorption cross section at the beginning of 
+  ! processing each scan position of each block
+  ! Once the xsection is convolved, it will be set to false in ROUTINE getabs_crs
+  LOGICAL                       :: ozabs_convl, so2crs_convl, o4crs_convl, &
+                                   o2crs_convl, h2ocrs_convl
+
+  !----------------------------------------------------------
+  ! Temperatrue dependent cross section for other tracegases
+  !----------------------------------------------------------
+  LOGICAL                       :: use_so2dtcrs
+  LOGICAL                       :: use_o4dtcrs
+  LOGICAL                       :: use_o2dptcrs
+  LOGICAL                       :: use_h2odptcrs
+
   !-------------------------------------
   ! which_atm
   !-------------------------------------
   INTEGER :: which_atm
   !0. NCEP
   !1.  
-  ! -------------------------------------
-  ! ozone climatology (MP vs. TOMS V8)
-  ! For use TOMS V8: also get EP total ozone
-  ! 1: EP+V8  2: McPeters
-  ! -------------------------------------
+
   INTEGER                       :: which_clima         
   !1. V8+EP
   !2. McPeters Clima 
@@ -106,6 +119,9 @@ MODULE ozprof_data_module
   !5. McPeters+LOGAN CLIMA (72 x 46)
   !6. McPeters+zonal mean MLS (0.1 mb - 215 mb)
   !7. McPeters+individual MLS / other profiles
+  !8. TB
+  !9. AB
+  !10 ML
 
   INTEGER                       :: which_aperr
   !1: McPeters Clima  
@@ -113,6 +129,9 @@ MODULE ozprof_data_module
   !3. McPter Clima+GEOS-CHEM  
   !4. MLS zonal mean  
   !5. MLS/other individual profile  
+  !8. TB
+  !9  AB
+  !10  ML
 
   LOGICAL                       :: loose_aperr         ! Whehter to loose a priori constraint
   REAL (KIND=dp)                :: min_serr, min_terr  ! Minimum relative a priori error in the statosphere and troposphere     
@@ -167,7 +186,7 @@ MODULE ozprof_data_module
 
   ! Number of fitted variabled for o3 crs shift, sol/rad shi, sol/rad slit (0-4)
   ! first-order ring (1/0)         
-  INTEGER :: nos, nsh, nsl, nrn, ndc, nis, nir
+  INTEGER :: nos, nsh, nsl, nrn, ndc, nis, nir, np1, np2, ncm
 
   ! Starting and ending indices for fitting variables for convenient acess
   INTEGER :: ozfit_start_index, ozfit_end_index, tf_fidx, tf_lidx
@@ -178,8 +197,10 @@ MODULE ozprof_data_module
   ! Number of group of auxiliar parameters
   INTEGER                             :: nothgrp  
   INTEGER, DIMENSION (maxwin, maxoth) :: osind, osfind, slind, slfind, shind, shfind, &
-       rnind, rnfind, dcind, dcfind, isind, isfind, irind, irfind
-  INTEGER, DIMENSION (maxoth, 2)      :: oswins, slwins, shwins, rnwins, dcwins, iswins, irwins
+       rnind, rnfind, dcind, dcfind, isind, isfind, irind, irfind, &
+       p1ind, p1find, p2ind, p2find, cmind, cmfind
+  INTEGER, DIMENSION (maxoth, 2)      :: oswins, slwins, shwins, rnwins, dcwins, iswins, irwins, &
+                                         p1wins, p2wins, cmwins
 
   INTEGER :: ncldaer, ecfrind, ecodind, ectpind, taodind, twaeind, saodind, &
        ecfrfind, ecodfind, ectpfind, taodfind, twaefind, saodfind, &
@@ -216,6 +237,16 @@ MODULE ozprof_data_module
   REAL (KIND=dp)            :: pos_alb, toms_fwhm 
   REAL (KIND=dp)            :: measref
   CHARACTER(LEN=maxchlen)   :: alb_tbl_fname, ozcrs_alb_fname       ! reflectance table
+  ! @ variables for EOF/BRDF albedo spectrum
+  LOGICAL                   :: use_albspc   ! Use albedo spectra/EOFs (bands 3&4only)
+  LOGICAL                   :: use_albeofs  ! Use albedo EOFs (use_albspec must be set)
+  INTEGER, PARAMETER        :: malbspc = 5  ! maximum number of albedo spectra/EOFs
+  INTEGER                   :: nalbspc      ! # albedo spectra/# EOFs (does not include mean spectrum for albedo EOFs)
+  INTEGER                   :: nactalbspc   ! # actually used albedo spectra/EOFs (include mean)
+  INTEGER                   :: nalbspcwin   ! number of windows for usign albedo spectra
+  INTEGER                   :: nalbspcord   ! # of parameters for scaling albedo spectra/EOFs
+  REAL (KIND=dp), DIMENSION(max_fit_pts, 0:malbspc-1)  :: albspcs ! 0 store spectrum or mean EOF
+  REAL (KIND=dp), DIMENSION(max_fit_pts, 2)            :: sfcalbs ! Initial andderived surface albedo values
 
   ! number of wavelengths around center wavelength for calculating cloud fraction
   INTEGER :: nrefl
@@ -227,6 +258,7 @@ MODULE ozprof_data_module
   REAL (KIND=dp), DIMENSION(maxalb) :: eff_alb, eff_alb_init ! albedoes
   REAL (KIND=dp), DIMENSION(maxalb) :: albmax, albmin   ! max and min lamda 
   INTEGER, DIMENSION (maxalb)       :: albfpix, alblpix ! first and last pixel
+  LOGICAL, DIMENSION (maxalb)       :: is_albspcvar
   INTEGER :: albidx, albfidx, thealbidx ! star index for albedo in whole and varied array
 
   ! Wavelength-dependent cloud fraction (wfc) terms
@@ -279,7 +311,7 @@ MODULE ozprof_data_module
   ! --------------------------------------
   ! Variables for ring effect
   ! --------------------------------------
-  LOGICAL        :: ring_on_line, ring_convol, fit_atanring
+  LOGICAL        :: ring_on_line, ring_convol, fit_atanring !, ring_LUT
 
 
   !xliu, 09/03/2005
@@ -301,7 +333,7 @@ MODULE ozprof_data_module
   ! --------------------------------------
   ! Variables for polarization correction
   ! --------------------------------------
-  INTEGER        :: polcorr, VlidortNstream
+  INTEGER        :: VlidortNstream
 
   ! -----------------------------------------
   ! Do claculation at three VZAs (A, B, C), but
@@ -326,7 +358,7 @@ MODULE ozprof_data_module
   ! Whehter to coadd after b1a/b boundary change from 307 to 282 nm if 
   ! the starting wavelength is larger than the new boundary 282 nm.  If 
   ! false, the retrieval is done at 320 x 40 km2 and backscan is not used.
-  ! Otherwise, it is consistent with before the b1a/b change
+  ! OtherwISE, it is consistent with before the b1a/b change
   ! ---------------------------------------------------------------------
   LOGICAL        :: coadd_after_b1ab
   LOGICAL        :: b1ab_change, scia_coadd
@@ -341,9 +373,6 @@ MODULE ozprof_data_module
   ! --------------------------------------
   ! spectra normalization constant, used for getting absolute reflectance
   REAL(KIND=dp)  :: div_sun, div_rad  
-
-  REAL(KIND=dp), DIMENSION(11)  :: colprof
-
   ! --------------------------------------
   ! File Units Reserved in Program
   ! --------------------------------------
@@ -371,10 +400,12 @@ MODULE ozprof_data_module
   INTEGER        :: the_cld_flg
 
   ! Other traces gases (: NO2, SO2, BrO, HCHO)   
-  INTEGER, PARAMETER :: ngas = 11, nallgas = 12 
+  INTEGER, PARAMETER :: ngas = 13, nallgas = 14
   INTEGER            :: nfgas
   INTEGER, DIMENSION(ngas), PARAMETER         :: gasidxs = (/no2_t1_idx, no2_t2_idx, &
-       o2o2_idx, so2_idx, bro_idx, oclo_idx, hcho_idx, o2gam_idx, h2o_idx, so2v_idx, bro2_idx/)  
+       o2o2_idx, so2_idx, bro_idx, oclo_idx, hcho_idx, o2_idx, h2o_idx, so2v_idx, bro2_idx, &
+       o2t2_idx, h2ot2_idx/)  
+  LOGICAL, DIMENSION(max_rs_idx)              :: rtm_treatment   ! included in RTM calculation
   INTEGER, DIMENSION(ngas), PARAMETER         :: gassidxs = gasidxs + shift_offset
   REAL (KIND=dp), DIMENSION (ngas, mflay)     :: mgasprof = 0.0D0
   INTEGER, DIMENSION(ngas)                    :: fgasidxs, fgassidxs, fgaspos
@@ -411,17 +442,31 @@ MODULE ozprof_data_module
   INTEGER            :: radc_nsegsr 
   INTEGER            :: nhresp, ncalcp, nhresp0
   INTEGER, DIMENSION(max_fit_pts)                :: radcidxs
+  REAL(KIND=dp), DIMENSION(max_fit_pts)          :: radcwav
   REAL(KIND=dp), DIMENSION(radc_msegsr)          :: radc_samprate, radc_lambnd
   REAL(KIND=dp)                                  :: hres_samprate
   REAL(KIND=dp), DIMENSION(max_spec_pts)         :: hreswav, hreswav0, hres_i0, hres_raycof, hres_depol
-  REAL(KIND=dp), DIMENSION(max_fit_pts)          :: radcwav
-  REAL(KIND=dp), DIMENSION(mxsect, max_spec_pts) :: hres_o3,  hres_o3shi, hres_so2, hres_so2shi
+  REAL(KIND=dp), DIMENSION(mxsect, max_spec_pts) :: hres_o3,  hres_o3shi, hres_so2, hres_so2shi, &
+                                                    hres_o4, hres_o4shi
+  REAL(KIND=dp), DIMENSION(mflay, max_spec_pts) :: hres_o2, hres_h2o
   REAL(KIND=dp), DIMENSION(ngas, max_spec_pts)   :: hres_gas, hres_gasshi
-  REAL(KIND=dp), DIMENSION(max_spec_pts, mflay)  :: o3crsz, o3dadsz, o3dadtz, so2crsz, &
-       hresgabs, hresray
-  REAL(KIND=dp), DIMENSION(max_spec_pts)         :: so2dads ! Weighted by profiles
+  REAL(KIND=dp), DIMENSION(max_spec_pts, mflay)  :: o3crsz, o3dadsz,o3dadtz,  &
+                                                    so2crsz, o4crsz, o2crsz, h2ocrsz
+  REAL(KIND=dp), DIMENSION(max_spec_pts, mflay)  :: hresgabs, hresray
+  REAL(KIND=dp), DIMENSION(max_spec_pts)         :: so2dads, o4dads, o2dads, h2odads ! Weighted by profiles
 
-  ! New variables added by jbak
+  ! ------------------------------------------------------------------------------
+  ! wave-variant polcorr
+  ! ------------------------------------------------------------------------------
+  INTEGER, PARAMETER :: maxpol = 5 
+  INTEGER ::  polcorr,npol, nfpol  ! total # of polcorrs and fixed polcorrs
+  REAL (KIND=dp), DIMENSION(maxpol) :: polmax, polmin   ! max and min lamda 
+  INTEGER, DIMENSION (maxpol)       :: polfpix, pollpix ! first and last pixel
+  INTEGER :: polidx, polfidx, thepolidx 
+  REAL (KIND=dp), DIMENSION (max_fit_pts) :: polcc
+  REAL (KIND=dp), DIMENSION (max_fit_pts, 4) :: polwf
+
+  
   REAL (KIND=dp) :: trpz ! tropopause height in km used to define TB clima
   REAL (KIND=dp) :: ozone_above60km
 

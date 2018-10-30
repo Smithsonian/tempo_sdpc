@@ -16,14 +16,17 @@ contains
   SUBROUTINE solar_fit (error)
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx,&
-         wvl_idx, spc_idx, sig_idx, hwr_idx, hwe_idx, vgl_idx, asy_idx, spk_idx
+    USE OMSAO_parameters_module,  ONLY: max_fit_pts
+    USE OMSAO_indices_module,     ONLY: max_calfit_idx, & 
+      shi_idx, squ_idx,&
+      wvl_idx, spc_idx, sig_idx, hwr_idx, hwe_idx, vgl_idx, asy_idx, spk_idx,&
+      wr0_idx, wr7_idx
     USE OMSAO_variables_module,   ONLY: curr_sol_spec, n_fitvar_sol,     &
          fitvar_sol, mask_fitvar_sol, lo_sunbnd, up_sunbnd, n_irrad_wvl, &
          wincal_wav, solwinfit, fixslitcal, fitwavs, nsolpix,    &
          fitweights, currspec, numwin, which_slit, fitvar_sol_init, &
          scnwrt, lo_sunbnd_init, up_sunbnd_init, wavcal, &
-         sol_wav_avg, correct_lamda
+         sol_wav_avg, rmask_fitvar_sol, poly_order, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
 
@@ -37,10 +40,12 @@ contains
     ! ===============
     ! Local variables
     ! ===============
+    INTEGER         :: i,j, iwin, fidx, lidx, n_fit_pts,  &
+                       solfit_exval, ll, lu
+    REAL (KIND=dp), DIMENSION(8) :: polycoeffs
+    REAL (KIND=dp), DIMENSION(max_fit_pts) :: polyx
     REAL (KIND=dp), DIMENSION (n_irrad_wvl)      :: allwaves, del
     REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_varstd
-    INTEGER         :: i, iwin, fidx, lidx, n_fit_pts,  &
-                       solfit_exval
     INTEGER, SAVE   :: slit_unit
     LOGICAL, SAVE   :: wrt_to_screen, wrt_to_file, slitcal
     LOGICAL, SAVE   :: first = .TRUE.
@@ -107,6 +112,33 @@ contains
 
 
       fitvar_sol = fitvar_sol_init
+
+      ! Initialization for wavelength registration block this to return_v1
+      IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
+        DO i = 1, n_fit_pts
+           polyx(i) = 1.0d0 * i - 1.0
+        ENDDO
+        polyx(1:n_fit_pts) = (polyx(1:n_fit_pts) - n_fit_pts / 2.0) / n_fit_pts
+
+        DO i = wr0_idx, wr7_idx
+           IF ( fitvar_sol(i) > lo_sunbnd(i) .and. fitvar_sol(i) < up_sunbnd(i)) THEN
+              poly_order = i - wr0_idx + 1
+           ENDIF
+        ENDDO
+        ll = 1; lu = n_fit_pts
+      !  CALL poly_fit(polyx(1:n_fit_pts), n_fit_pts, fitwavs(1:n_fit_pts), ll,lu, polycoeffs(1:poly_order))
+
+        j = 1
+        DO i = wr0_idx, wr7_idx
+           IF ( fitvar_sol(i) > lo_sunbnd(i) .and. fitvar_sol(i) < up_sunbnd(i)) THEN
+              fitvar_sol(i) = polycoeffs(j)
+              lo_sunbnd(i) = -1.0D+99
+              up_sunbnd(i) =  1.0D+99
+              j = j + 1
+           ENDIF
+        ENDDO
+      ENDIF
+
       CALL cal_fit_one (n_fit_pts, n_fitvar_sol, wrt_to_screen, wrt_to_file,&
            slitcal, slit_unit, wincal_wav(iwin), &
 !           solwinfit(iwin,1:max_calfit_idx, 1:2), solfit_exval)

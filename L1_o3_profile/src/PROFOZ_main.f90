@@ -76,7 +76,6 @@ PROGRAM PROFOZ_main
     iarg = iarg + 1
   enddo
 
-
   ! Read fitting conrol parameters from input file
   ! CALL read_fitting_control_file ( pge_idx, pge_error_status )
   CALL read_fitting_control_file (fcunit, static_input_fnames(icf_idx), &

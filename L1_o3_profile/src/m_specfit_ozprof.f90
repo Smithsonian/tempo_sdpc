@@ -28,17 +28,17 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_parameters_module,   ONLY: missing_value_dp, maxlay!, du2mol
     USE OMSAO_indices_module,      ONLY: n_max_fitpars, wvl_idx, spc_idx, &
-         sig_idx, maxalb, no2_t1_idx, so2_idx, so2v_idx, hcho_idx, &
+         sig_idx, maxalb, no2_t1_idx, no2_t2_idx, so2_idx, so2v_idx, hcho_idx, &
          us1_idx, us2_idx, max_calfit_idx, max_rs_idx, mxs_idx, maxoth, &
          shift_offset, maxwfc, comvidx, cm1vidx, comfidx, cm1fidx, &
-         bro2_idx, o2o2_idx!, bro_idx
+         bro2_idx, o2o2_idx, h2o_idx, h2ot2_idx, o2_idx, o2t2_idx
     USE OMSAO_variables_module, ONLY: curr_rad_spec, rad_wav_avg, fitwavs, &
          currspec, fitweights, fitvar_rad, fitvar_rad_apriori, &
          fitvar_rad_saved, fitvar_rad_init, fitvar_rad_str, lo_radbnd, &
          up_radbnd, n_fitvar_rad, n_rad_wvl, mask_fitvar_rad,fitspec_rad, &
          fitres_rad, weight_rad, fitvar_rad_std, the_lon, the_lat, &
          the_month, the_year, the_day, npix_fitted, fitvar_rad_nstd, &
-         numwin, nradpix, refspec_norm, scnwrt, ozabs_convl, the_surfalt, &
+         numwin, nradpix, refspec_norm, scnwrt, the_surfalt, &
          fitvar_rad_init_saved, the_lons, the_lats, the_surfalt, nloc, &
          fitvar_rad_aperror
     USE ozprof_data_module, ONLY: ozprof_start_index, ozprof_end_index, &
@@ -49,7 +49,7 @@ contains
          ps0, pst, nup2p, nfalb, nalb, tf_fidx, tf_lidx, t_fidx, &
          t_lidx, albidx, albfidx, nt_fit, pos_alb, the_cfrac, the_cod, &
          the_ctp, ozprof_nstd, use_oe, maxawin, use_logstate, contri, &
-         smooth_ozbc, actawin, aerwavs, mgasprof, &
+         smooth_ozbc, actawin, aerwavs, mgasprof, ozabs_convl, &
          fgasidxs, gasidxs, tracegas, ngas, nflay, do_subfit, osind, &
          rnind, dcind, isind, irind, shind, nos, nsh, &
          shfind, osfind, use_tropopause, pst0, nsfc, &
@@ -59,9 +59,12 @@ contains
          glintprob, which_toz, sprsind, sprsfind, wfcidx, wfcfidx, nwfc, &
          nfwfc, eff_wfc, eff_wfc_init, so2zind, so2zfind, fit_atanring, &
          use_large_so2_aperr, ozwrtcontri, ozwrtwf, weight_function, &
-         trace_profwf, trace_contri, trace_prof, which_atm
+         trace_profwf, trace_contri, trace_prof, which_atm, &
+         np1, np2, p1find, p2find, p1ind, p2ind, ncm, cmind, & 
+       npol, nfpol, polidx, polfidx, polmin, polmax, polfpix, pollpix
+
          !ndc, nir, nis, nsl, nrn, nfsfc, nlay_fit, num_iter, ozinfo, &
-         !slind, do_lambcld, do_tracewf, colprof, cloud, avg_kernel, &
+         !slind, do_lambcld, do_tracewf, cloud, avg_kernel, &
          !which_clima, which_cld, the_cld_flg, useasy, aerosol
     USE OMSAO_errstat_module
     use m_set_cldalb
@@ -136,7 +139,6 @@ contains
       lowbond = 0.0 
       upbond = 0.0 
       varname(1:nf) = fitvar_rad_str(mask_fitvar_rad(1:nf))
-
       first = .FALSE.
     ENDIF
 
@@ -184,16 +186,15 @@ contains
       END IF
     ENDIF
 
-    ! polcc fit
-    !IF (nfpol) THEN
-    ! DO i = 1, npol
-    !    j = polidx + i -1
-    !    polfpix(i)= MINVAL(MINLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
-    !         >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
-    !    pollpix(i)= MINVAL(MAXLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
-    !         >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
-    ! ENDDO
-    !ENDIF
+    IF (nfpol) THEN 
+       DO i = 1, npol
+        j = polidx + i -1
+        polfpix(i)= MINVAL(MINLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
+             >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
+        pollpix(i)= MINVAL(MAXLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
+             >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
+       ENDDO
+    ENDIF 
 
     ! =======================================================================
     !       Set up atmospheric cloud properties, albedo and atmosphere
@@ -277,8 +278,7 @@ contains
       RETURN
     ENDIF
 
-    IF (scnwrt) WRITE(*, '(6(A,F8.2))') ' spres =', ps0, &
-         ' tpres =', pst, ' toz = ', toz, 'ctp= ', the_ctp, 'cfrac= ', the_cfrac, 'alb= ', salbedo
+
 
     ! For clouds, initial ctp, cod is based on assumed input (e.g., 20/10) 
     !  or from other products, which maybe re-adjusted using longer wavelengths
@@ -310,11 +310,11 @@ contains
       IF (i > 0) THEN
         j = mask_fitvar_rad(i)          
         fitvar_rad_apriori(j) = mgasprof(k, nflay + 1) * &
-             refspec_norm(gasidxs(k)) 
-
+                                refspec_norm(gasidxs(k)) 
         fitvar_rad_init(j) =  fitvar_rad_apriori(j) 
         IF (gasidxs(k) == so2_idx .OR. gasidxs(k) == so2v_idx) &
              fitvar_rad_init(j) = 0.0 
+        IF (gasidxs(k) == o2o2_idx) fitvar_rad_init(j) = 0.0
         IF (gasidxs(k) == bro2_idx) fitvar_rad_apriori(j) = &
              fitvar_rad_apriori(j) * 5. / 2.
 
@@ -335,10 +335,10 @@ contains
     DO i = 1, numwin
       fitvar_rad_init (osind(i, 1:maxoth)) = 0.0D0
       fitvar_rad_init (shind(i, 1:maxoth)) = 0.0D0
-      !fitvar_rad_init (cmind(i, 1)) = 1.0D0
-      !fitvar_rad_init (cmind(i, 2:maxoth)) = 0.0D0
-      !fitvar_rad_init (p1ind(i, 1:maxoth)) = 0.0D0
-      !fitvar_rad_init (p2ind(i, 1:maxoth)) = 0.0D0
+      fitvar_rad_init (cmind(i, 1)) = 1.0D0
+      fitvar_rad_init (cmind(i, 2:maxoth)) = 0.0D0
+      fitvar_rad_init (p1ind(i, 1:maxoth)) = 0.0D0
+      fitvar_rad_init (p2ind(i, 1:maxoth)) = 0.0D0
     ENDDO
 
     DO i = albidx, albidx + nalb - 1
@@ -352,17 +352,18 @@ contains
     fitvar_rad_init(irind(1, 1))  = -1.0E-5    ! non zero
 
 
-    !DO i = polidx, polidx + npol -1
-    !  fitvar_rad_init(i) = 1.D0
-    !  IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
-    !ENDDO
+    DO i = polidx, polidx + npol -1
+      fitvar_rad_init(i) = 1.D0
+      IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
+    ENDDO
 
     IF (do_subfit) THEN
       nsub = numwin
     ELSE
       nsub = 1
     ENDIF
-
+    IF (scnwrt) WRITE(*, '(6(A,F8.2))') ' spres =', ps0, &
+         ' tpres =', pst, ' toz = ', toz, 'ctp= ', the_ctp, 'cfrac= ', the_cfrac, 'alb= ', salbedo
     ! ======================================================================
     !	 Set up state vector, a priori state vector and covariance matrix
     ! ======================================================================
@@ -471,7 +472,8 @@ contains
             ENDIF
           ELSE IF (j >= rnind(1, 2) .AND. j <= rnind(nsub, 2)) THEN
             IF (fit_atanring) THEN 
-              sa(i, i) = 9.
+                 sa(i, i) = 9. ! changed from 4 to 9 
+                 !sa(i, i) = 4. 
             ELSE
               sa(i, i) = 2.0E-3
             ENDIF
@@ -479,7 +481,7 @@ contains
             IF (fit_atanring) THEN 
               sa(i, i) = 4.
             ELSE
-              sa(i, i) = 1.0E-4
+              sa(i, i) = 1.0E-4 !2.0E-3
             ENDIF
           ELSE IF (j >= rnind(1, 4) .AND. j <= rnind(nsub, 4) ) THEN
             sa(i, i) = 5.0E-5   
@@ -529,7 +531,29 @@ contains
             ENDDO
           ENDDO
         ENDIF
+        IF (np1 > 0) THEN
+           !print *, ' ask to xiong what number should I put here ?'
+           DO i = 1, np1
+              DO j = 1, nsub
+                 k = p1find(j, i)
+                 iF (k > 0) sa(k, k) = 1*1.0E-1 * (10.0 ** (-(i - 1) * 2.0))
+                 !iF (k > 0) sa(k, k) = 0.1 * (10.0 ** (-(2.*i - 2) * 2.0))
+              ENDDO
+           ENDDO
+        ENDIF
+
+        IF (np2 > 0) THEN
+           !print *, ' ask to xiong what number should I put here ?'
+           DO i = 1, np2
+              DO j = 1, nsub
+                 k = p2find(j, i)
+                 IF (k > 0) sa(k, k) = 1*1.0E-1  * (10.0 ** (-(i - 1) * 2.0))
+                 !IF (k > 0) sa(k, k) = 0.1  * (10.0 ** (-(i*2. - 2) * 2.0))
+              ENDDO
+           ENDDO
+        ENDIF
       ENDIF
+
 
       ! need to update o3 a priori covariance matrix for each retrieval
       sa(ozf_fidx:ozf_lidx, ozf_fidx:ozf_lidx) = &
@@ -556,6 +580,8 @@ contains
           READ (fitvar_rad_str(mask_fitvar_rad(i))(4:4), '(I1.1)') nord
           sa(i, i) = albfc_aperr * (5.0 ** ( - nord * 2.0))
           IF (salbedo > 0.6 .AND. nord >= 1) sa(i, i) = 0.0
+!          IF (the_cfrac > 0.2 .AND. the_cfrac < 0.99 .AND. nfwfc > 0 ) & 
+!                sa(i, i) = 0.0 ! added for update v2
         ENDDO
       ENDIF
 
@@ -567,18 +593,28 @@ contains
         ENDDO
       ENDIF
 
+      IF (nfpol > 0) THEN
+         DO i = polfidx, polfidx + nfpol -1
+            READ (fitvar_rad_str(mask_fitvar_rad(i))(4:4), '(I1.1)') nord
+            sa(i, i) = 1.0 * (5.0 ** ( - nord * 2.0))
+         ENDDO
+      ENDIF
+
       ! Use 50% (NO2 and HCHO) or 100% (SO2 and BrO) error for other 
       !    minor trace gases
       ! The apiori of these trace gases are determined by climatology 
       !    (NO2, HCHO)
-
+      ! JBAK for o2o2, it is changed from 0.25 to 0.05
       DO i = 1, ngas
         j = fgasidxs(i)
         IF (j > 0) THEN
+
           sa(j, j) = (fitvar_rad_apriori(mask_fitvar_rad(j)))**2.0
-          IF (gasidxs(i) == hcho_idx .OR. gasidxs(i) == no2_t1_idx ) &
+          IF (gasidxs(i) == hcho_idx .OR. gasidxs(i) == no2_t1_idx .OR. gasidxs(i) == no2_t2_idx ) &
                sa(j, j) = sa(j, j) * 0.25  !50% error
-          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) * 0.25 !50% error
+          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) * 0.04 !50% error
+          IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) sa(j, j) = sa(j, j) * 0.09 !30% error
+          IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) sa(j, j) = sa(j,j) !100% error
           IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &
                use_large_so2_aperr)  &
                sa(j, j) = (1.0E17 * refspec_norm(gasidxs(i))) ** 2.0

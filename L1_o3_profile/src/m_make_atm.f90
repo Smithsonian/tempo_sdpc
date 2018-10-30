@@ -43,7 +43,8 @@ contains
          the_surfalt, the_lon, the_lat, fitvar_rad_init!, &
          !currline, n_refspec_pts, atmdbdir, database
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
-         no2_t1_idx, so2v_idx, o2o2_idx
+         no2_t1_idx, so2v_idx, o2o2_idx, no2_t2_idx, & 
+         o2_idx,  o2t2_idx, h2o_idx, h2ot2_idx
     USE ozprof_data_module,     ONLY : atmos_prof_fname, profunit, &
          do_lambcld, which_atm, which_clima, strataod, stratsca, tropaod, tropsca, &
          tropwaer, stratwaer, useasy, mflay, aerosol, cloud, has_clouds, &
@@ -56,12 +57,13 @@ contains
          do_simu, radcalwrt, which_toz, so2zind, so2vprofn1p1, &
          so2valts, trpz
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: bspline, reverse, interpol
-    use prepare_atmosphere, only: get_bro, get_geoschem_hcho, &
-         get_geoschem_so2,get_mipasig2t, get_no2, get_v8temp
+    use m_ezspline_interpolation, only: bspline, interpol
+    USE utilities, ONLY: reverse
+    use prepare_atmosphere, only: get_mipasig2t, get_v8temp
     use get_cloud, only: get_cloud_miprop, get_tomsv8_ctp
     use m_read_aerosol_prof
     use m_get_o3prof, ONLY:get_o3prof
+    use m_get_tracegas, ONLY: get_bro, get_no2, get_geoschem_hcho, get_geoschem_so2, get_afglus_h2o
     use m_get_ncep, ONLY:get_ncep_temp
     IMPLICIT NONE
 
@@ -530,22 +532,23 @@ contains
     IF (do_tracewf .OR. first) THEN
       DO i = 1, ngas
         IF (fgasidxs(i) > 0) THEN
-          IF (gasidxs(i) == no2_t1_idx) THEN
-            CALL GET_NO2(month, the_lon, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, mgasprof(i, nfsfc+1:np), np-nfsfc)
+          IF (gasidxs(i) == no2_t1_idx .OR. gasidxs(i) == no2_t2_idx ) THEN
+            CALL get_no2(year, month, the_lon, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, &
+                         mgasprof(i, nfsfc+1:np), np-nfsfc)
           ELSE IF (gasidxs(i) == bro_idx) THEN     
-            CALL GET_BRO(month, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, mgasprof(i, nfsfc+1:np), np-nfsfc)
-
+            CALL get_bro(month, the_lat, fzs(nfsfc:np), fps(nfsfc:np), sza, &
+                          mgasprof(i, nfsfc+1:np), np-nfsfc)
           ELSE IF (gasidxs(i) == bro2_idx) THEN     
             !Put BrO in the first layer
             mgasprof(i, nfsfc+1:np) = 0.0
             mgasprof(i, nfsfc+1:nfsfc+nup2p(1)) = (fps(nfsfc:nfsfc+nup2p(1)-1) - fps(nfsfc+1:nfsfc+nup2p(1))) / &
                  (fps(nfsfc) - fps(nfsfc+nup2p(1)))  * 2.0E13
           ELSE IF (gasidxs(i) == hcho_idx) THEN 
-            CALL GET_GEOSCHEM_HCHO(month, the_lon, the_lat, fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nfsfc) 
+            CALL get_geoschem_hcho(month, the_lon, the_lat, fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nfsfc) 
           ELSE IF ( gasidxs(i) == so2_idx) THEN 
             nftp = nup2p(ntp) - nfsfc
             !write(90, *) currline 
-            CALL GET_GEOSCHEM_SO2(year, month, the_lon, the_lat, fps(nfsfc:np), mgasprof(i, nfsfc+1:np), nftp, np-nsfc) 
+            CALL get_geoschem_so2 (year, month, the_lon, the_lat, fps(nfsfc:np), mgasprof(i, nfsfc+1:np), nftp, np-nsfc) 
             !errstat = pge_errstat_error; RETURN
           ELSE IF (gasidxs(i) == so2v_idx) THEN
             so2valts(0)  = fitvar_rad_init(so2zind)
@@ -579,7 +582,17 @@ contains
             ! Assume 20.95% for O2
             ! Here Divide 1.0E10, and absorption coefficients multiply by 1.D10
             mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5/1.D10
-          ELSE
+           ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN
+              ! Assume 20.95% for O2
+              mgasprof(i, 1:np) = frhos(1:np)*0.2095
+           ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
+              CALL get_afglus_h2o (fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nsfc)
+               ! xliu, 12/10/2014, Both h2o_idx and h2ot2_idx are selected
+              IF (gasidxs(i) == h2ot2_idx .AND. fgasidxs(9) > 0) THEN
+                 mgasprof(9, 1:np+1)  = mgasprof(9, 1:np+1) * 0.70d0
+                 mgasprof(i, 1:np)  = mgasprof(i, 1:np) * 0.30d0
+              ENDIF
+           ELSE
             print *, 'Not Implemented!!!'
             errstat = pge_errstat_error; RETURN
           ENDIF
@@ -740,7 +753,7 @@ contains
 
     nflay = np 
     ncbp = np - ncbp + 1; nctp = np - nctp + 1; nfsfc = np - nfsfc + 1
-
+ 
 
     ! Reverse (from bottom-up to top-down)
     CALL REVERSE(fts(0:np), np+1)
@@ -793,8 +806,9 @@ contains
     !gprof: Partial column at each provided layer
 
     USE OMSAO_precision_module
+    USE m_ezspline_interpolation, ONLY: interpol
+    USE utilities, ONLY: reverse
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: reverse, interpol
 
     IMPLICIT NONE
 

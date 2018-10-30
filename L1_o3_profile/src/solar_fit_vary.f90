@@ -23,7 +23,7 @@ contains
          up_sunbnd_init, scnwrt, wavcal
     USE OMSAO_errstat_module
     use m_cal_fit_one
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
     use m_subtract_poly, only: subtract_poly_meas
 
     IMPLICIT NONE

@@ -16,7 +16,7 @@ contains
        pge_error_status)
 
     USE OMSAO_precision_module
-    USE ozprof_data_module, ONLY: nlay, nlay_fit, ozstr, albstr, othstr, &
+    USE ozprof_data_module, ONLY: nlay, nlay_fit, ozstr, othgasstr, albstr, othstr, polstr, &
          ozprof_start_index, ozprof_end_index, ozfit_start_index, &
          ozfit_end_index, start_layer, end_layer, atmos_prof_fname, &
          lcurve_write, lcurve_fname, ozwrtint, ozwrtint_fname, &
@@ -44,22 +44,25 @@ contains
          taodfind, twaefind, saodfind, lambcld_initalb, scacld_initcod, &
          which_aperr, loose_aperr, min_serr, min_terr, which_toz, &
          norm_tropo3, sprsind, sprsfind, nwfc, wfcstr, nfwfc, wfcmax, &
-         wfcmin, wfcidx, wfcfidx, so2zind, so2zfind, &
+         wfcmin, wfcidx, wfcfidx, so2zind, so2zfind, rtm_treatment,&
          do_bothstep, do_twostep, use_large_so2_aperr, use_effcrs, &
          radc_msegsr, radc_nsegsr, radc_samprate, radc_lambnd, &
-         hres_samprate, thealbidx, thewfcidx, cntrstr, do_simu_rmring, vary_sfcalb
+         hres_samprate, thealbidx, thewfcidx, cntrstr, do_simu_rmring, vary_sfcalb, &
+         np1, p1ind, p1find, p1wins, np2, p2ind, p2find, p2wins, &
+         ncm, cmwins, cmind, cmfind, use_so2dtcrs, use_o4dtcrs,  &
+         npol, nfpol, maxpol, polidx, polmin, polmax, polfidx, thepolidx
          !wfcfpix, wfclpix, coadd_after_b1ab
 
     USE OMSAO_parameters_module,   ONLY: maxlay,  maxchlen, maxwin         
     USE OMSAO_indices_module, ONLY: max_rs_idx,  max_calfit_idx, mxs_idx, &
-         maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx!, &
-         !solar_idx, so2_idx, shi_idx, no2_t1_idx, n_max_fitpars, hcho_idx, &
-         !bro_idx
+         maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx, &
+         hwe_idx, asy_idx, vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx
     USE OMSAO_variables_module, ONLY: fitvar_rad_init, fitvar_rad_saved, &
          mask_fitvar_rad, n_fitvar_rad, lo_radbnd, up_radbnd, fitvar_rad_str, &
          rad_identifier, outdir, numwin, refdbdir, scnwrt, &
          tabdir, rmask_fitvar_rad, fitvar_rad_init_saved, winlim, &
-         fothvarpos, fitvar_rad_unit!, refspec_fname
+         fothvarpos, fitvar_rad_unit, &
+         n_slitvar, mask_slitvar, which_slit, yn_varyslit
     USE OMSAO_errstat_module
     use utilities, only: skip_to_filemark
 
@@ -481,6 +484,19 @@ contains
       nt_fit = tf_lidx - tf_fidx + 1
     ENDIF
 
+
+   !------------------------------------------------
+   ! Read the control variable for T-dependent cross gases
+   !------------------------------------------------
+    REWIND ( fit_ctrl_unit )
+    CALL skip_to_filemark ( fit_ctrl_unit, othgasstr, tmpchar, file_read_stat )
+     IF ( file_read_stat /= file_read_ok ) THEN
+     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
+           TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
+      pge_error_status = pge_errstat_error; RETURN
+    END IF
+    READ (fit_ctrl_unit, *) use_so2dtcrs
+    READ (fit_ctrl_unit, *) use_o4dtcrs
     ! -----------------------------------------------
     ! Read wavelength dependent surface albedo terms
     ! -----------------------------------------------
@@ -493,8 +509,8 @@ contains
       RETURN
     END IF
 
-    READ (fit_ctrl_unit, *) vary_sfcalb
     READ (fit_ctrl_unit, *) pos_alb, toms_fwhm
+    READ (fit_ctrl_unit, *) vary_sfcalb
     READ (fit_ctrl_unit, '(A)') ozcrs_alb_fname
     READ (fit_ctrl_unit, *) nalb
     IF (nalb > maxalb) THEN
@@ -634,6 +650,59 @@ contains
       nfwfc = n_fitvar_rad - wfcfidx + 1
       thewfcidx = thewfcidx - albfidx + 1
     ENDIF
+
+   !-----------------------------------
+   ! Read Wavelength-dependent polcorr variables 
+   !-----------------------------------
+   REWIND ( fit_ctrl_unit )
+   CALL skip_to_filemark ( fit_ctrl_unit, polstr, tmpchar, file_read_stat)
+   IF ( file_read_stat /= file_read_ok ) THEN
+       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
+            TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
+       pge_error_status = pge_errstat_error; RETURN
+   END IF
+
+   READ (fit_ctrl_unit, *) npol
+   IF (polcorr /= 4) THEN 
+      npol = 0
+      print * , 'npol = 0 because polcorr=', polcorr
+   ENDIF
+
+   IF (npol > maxpol) THEN
+      WRITE(www_lun, *) modulename, ' : # of wavelength dependent terms exceed allowed  ', maxpol
+      pge_error_status = pge_errstat_error; RETURN
+   ELSE IF (npol < 1) THEN
+      npol = 0
+   ENDIF
+
+   idx = idx + maxpol
+   polidx = idx + 1
+   polmin= 0.0; polmax = 0.0
+   polpars: DO i = 1, npol
+     READ (fit_ctrl_unit, *, IOSTAT=errstat) idxchar1, vartmp, &
+          lotmp, uptmp, polmin(i), polmax(i)
+      IF ( errstat /= pge_errstat_ok ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
+             TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
+             WRITE(www_lun, *) modulename, ' : Error in reading initial cloud fraction variables!!!'
+             pge_error_status = pge_errstat_error; RETURN
+      END IF
+
+      ! ---------------------------------------------------------
+      ! Check for consitency of bounds and adjust where necessary
+      ! ---------------------------------------------------------
+      IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
+           lotmp = vartmp ; uptmp = vartmp
+      END IF
+      IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
+           uptmp = vartmp ; lotmp = vartmp
+      END IF
+    
+      fitvar_rad_init(idx + i) = vartmp
+      fitvar_rad_str(idx+i) = TRIM(ADJUSTL(idxchar1))
+      lo_radbnd(idx + i) = lotmp
+      up_radbnd(idx + i) = uptmp
+    END DO polpars
 
     ! -------------------------------
     ! Read cloud/aerosol variables
@@ -968,19 +1037,58 @@ contains
         irwins = tmpwins
         irind = tmpind
         irfind = tmpfind
+      ELSE IF (i == 8) THEN
+        np1 = nord; p1wins = tmpwins; p1ind = tmpind; p1find = tmpfind
+      ELSE IF (i == 9) THEN
+        np2 = nord; p2wins = tmpwins; p2ind = tmpind; p2find = tmpfind
+      ELSE IF (i == 10) THEN
+        ncm = nord; cmwins = tmpwins; cmind = tmpind; cmfind = tmpfind
       ENDIF
 
       !WRITE(www_lun, *) i, nord
       !WRITE(www_lun, '(8I5)') tmpind(1:np,  1:maxoth)
       !WRITE(www_lun, '(8I5)') tmpfind(1:np, 1:maxoth)
     ENDDO
+ IF (np1 + np2 /= 0 ) THEN
+  IF (which_slit == 0 ) THEN   ! gaussian
+     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+     np2 =0
+  ELSE IF (which_slit == 1) THEN  ! asym. gaussian
+     n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, asy_idx]
+     IF (np2 == 0) THEN
+     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+     ELSE IF (np1 == 0) THEN
+     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [asy_idx]
+     ENDIF
+  ELSE IF (which_slit == 2) THEN  ! triangle
+     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+  ELSE IF (which_slit == 3) THEN  ! viot
+     !n_slitvar = 4 ; mask_slitvar(1:n_slitvar) = [vgl_idx, vgr_idx, hwl_idx,
+     !hwr_idx ]
+     print * , 'not yet implemented ' ; stop
+  ELSE IF (which_slit == 4) THEN  ! super gaussian
+     n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, spk_idx]
+     IF (np2 == 0) THEN
+       n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+     ELSE IF (np1 == 0) THEN
+       n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [spk_idx]
+     ENDIF
+  ELSE IF (which_slit == 5) THEN  ! omi instrument
+     np1 = 0 ; np2 = 0
+     ! current OMI instrument slit function is not fitted, but Kang Sun did it
+     ! and jbak did it for OMPS
+     ! so could be implemented later
+  ENDIF
+  IF (yn_varyslit) THEN
+     np1 = 0 ; np2 = 0
+     print * , 'not yet implemented' ; stop
+  ENDIF
+  ENDIF
 
-    !DO i = 1, n_fitvar_rad
-    !   print *, i, fitvar_rad_str(mask_fitvar_rad(i))
-    !ENDDO
-    !WRITE(www_lun, '(7I5)') nos, nsl, nsh, nrn, ndc, nis, nir
+! get indices for auxiliary variables in the final fitted array
+  rtm_treatment(1:max_rs_idx) = .FALSE.
+  rtm_treatment(gasidxs) = .TRUE.
 
-    ! get indices for auxiliary variables in the final fitted array
     fgasidxs = 0
     nfgas = 0
     DO i = 1, ngas
@@ -1016,8 +1124,15 @@ contains
     fitvar_rad_saved = fitvar_rad_init
     fitvar_rad_init_saved = fitvar_rad_init
 
-    IF (scnwrt) WRITE(*, '(A, I8, A, I8)') ' n_fitvar_rad = ', n_fitvar_rad, '      nlayer = ', nlay
-
+    IF (scnwrt) THEN
+     WRITE(*, '(A, I8, A, I8)') ' n_fitvar_rad = ', n_fitvar_rad, '      nlayer = ', nlay
+     DO i = 1, n_fitvar_rad
+     IF (i < ozfit_start_index .or. i > ozfit_end_index) THEN
+     WRITE(*, '(I5, A10,f5.2, A20)') i, fitvar_rad_str(mask_fitvar_rad(i)), &
+         fitvar_rad_init(masK_fitvar_rad(i)),   fitvar_rad_unit(mask_fitvar_rad(i))
+     ENDIF
+     ENDDO
+  ENDIF
     RETURN
   END SUBROUTINE read_ozprof_input
 

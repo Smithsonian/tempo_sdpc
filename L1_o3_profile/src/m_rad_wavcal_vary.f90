@@ -11,9 +11,10 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY : maxchlen
     USE OMSAO_indices_module,    ONLY : max_calfit_idx, shi_idx, &
-         squ_idx, wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, vgr_idx, &
-         vgl_idx, asy_idx, hwl_idx, spk_idx !, sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
-         !, bl0_idx, bl1_idx, bl2_idx, bl3_idx
+       squ_idx, wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, vgr_idx, &
+       vgl_idx, asy_idx, hwl_idx, bl0_idx, bl1_idx, bl2_idx, bl3_idx, &
+       sc0_idx, sc1_idx, sc2_idx, sc3_idx, spk_idx
+
     USE OMSAO_variables_module,  ONLY : n_fitvar_sol, fitvar_sol, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, sswav_rad, nwavcal_rad, &
          wavcal_fit_pts, n_wavcal_step, smooth_slit,  wavcal_redo, &
@@ -23,8 +24,7 @@ contains
          numwin, currpixchar, scnwrt, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
-    use m_ezspline_interpolation, only: bspline
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: bspline, interpolation
     use m_subtract_poly, only: subtract_poly_meas
 
 

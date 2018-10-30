@@ -13,7 +13,7 @@ contains
     USE OMSAO_variables_module,     ONLY: nradpix, winlim, radwavfit, &
          nwavcal_rad, sswav_rad, numwin, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
+    USE m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 

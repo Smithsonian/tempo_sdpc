@@ -58,28 +58,42 @@ MODULE OMSAO_indices_module
   !     o3_tc:  BrO total column (from OMHCHO  PGE fitting)
   !     pseudo: Pseudo absorber
   !     polcor: Polarization correction
-  !     o2gam:  o2 gamma
+  !     o2:     o2 
   !     h2o:    h2o
   !     ring1:  second ring effect
   !     comod1: second common mode residual
+  !     so2v:   volcanic SO2
+  !     bro2:   second bro
+  !     glyox:  glyoxal
+  !     io:     io
+  !     vraman: vibrational Raman scattering
   !     fsl   : irradiance stray light
-  !     rsl   : radiance stray light    
+  !     rsl   : radiance stray light   
+  !     o2t2:   second o2 
+  !     h2ot2:  second h2o 
+  !     lh2o:   liquid water
+  !     vege:   vegetation
+  !     chloro:  chlorophyll
+  !     comod2:  3rd common mode
+  !     comod3:  4th common mode
   !     noname: Not yet determined, dummy placeholder
-  !
   !     amf:    Air mass factor (not a reference spectrum)
+  !     soft  : softspectrum
   ! ---------------------------------------------------------------------
   INTEGER, PARAMETER :: &
        icf_idx    =  0, solar_idx  =  1, ring_idx   =  2, o3_t1_idx  =  3, &
        o3_t2_idx  =  4, o3_t3_idx  =  5, no2_t1_idx =  6, no2_t2_idx =  7, &
        o2o2_idx   =  8, so2_idx    =  9, bro_idx    = 10, oclo_idx   = 11, &
-       hcho_idx   = 12, comm_idx   = 13, us1_idx    = 14, us2_idx    = 15, &
+       hcho_idx   = 12, com_idx   = 13, us1_idx    = 14, us2_idx    = 15, &
        bro_tc_idx = 16, o3_tc_idx  = 17, pabs_idx   = 18, polcor_idx = 19, &
-       o2gam_idx  = 20, h2o_idx    = 21, ring1_idx  = 22, com1_idx   = 23, &
+       o2_idx     = 20, h2o_idx    = 21, ring1_idx  = 22, com1_idx   = 23, &
        so2v_idx   = 24, bro2_idx   = 25, glyox_idx  = 26, io_idx     = 27, &
-       vraman_idx = 28, fsl_idx    = 29, rsl_idx    = 30, noname_idx = 31, &
-       amf_idx    = 32
+       vraman_idx = 28, fsl_idx    = 29, rsl_idx    = 30, o2t2_idx   = 31, &
+       h2ot2_idx  = 32, lh2o_idx   = 33, vege_idx   = 34, chloro_idx = 35, &
+       com2_idx = 36,   com3_idx   = 37, sdc_idx    = 38, noname_idx = 39, amf_idx=40
 
-  INTEGER           :: comfidx, cm1fidx, comvidx, cm1vidx
+  INTEGER           :: comfidx, cm1fidx, cm2fidx, cm3fidx ,&
+                       comvidx, cm1vidx, cm2vidx, cm3vidx
 
   ! ----------------------------------------------------------
   ! The minimum and maximum indices of reference spectra (rs).
@@ -92,10 +106,11 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=6), DIMENSION (min_rs_idx:max_rs_idx), PARAMETER :: &
        refspec_strings = (/ &
        'solar ', 'ring  ', 'o3_t1 ', 'o3_t2 ', 'o3_t3 ', 'no2_t1', 'no2_t2', &
-       'o2o2  ', 'so2   ', 'bro   ', 'oclo  ', 'hcho  ', 'commod', 'usamp1', &
-       'usamp2', 'bro_tc', 'o3_tc ', 'pseudo', 'polcor', 'o2gam ', 'h2o   ', &
-       'ring1 ', 'comod1', 'so2v  ', 'bro2  ', 'glyox ', 'io    ', 'vraman', &
-       'fsl   ', 'rsl   ', 'noname'  /)
+       'o2o2  ', 'so2   ', 'bro   ', 'oclo  ', 'hcho  ', 'comod', 'usamp1', &
+       'usamp2', 'bro_tc', 'o3_tc ', 'pseudo', 'polcor', 'o2    ', 'h2o   ', &
+       'ring1 ', 'comod1', 'so2v',   'bro2',   'glyox ', 'io    ', 'vraman', &
+       'fsl',    'rsl',    'o2t2  ', 'h2ot2 ', 'lh2o  ', 'vege  ', 'chloro', &
+       'comod2', 'comod3', 'sdc',  'noname'  /)
 
 
   ! ==============================================
@@ -116,12 +131,22 @@ MODULE OMSAO_indices_module
   !     bl1: baseline, 1 order
   !     bl2: baseline, 2 order
   !     bl3: baseline, 3 order
+  !     bl4: baseline, 4 order
+  !     bl5: baseline, 5 order
+  !     bl6: baseline, 6 order
+  !     bl7: baseline, 7 order
   !     sc0: scaling,  0 order
   !     sc1: scaling,  1 order
   !     sc2: scaling,  2 order
   !     sc3: scaling,  3 order
+  !     sc4: scaling,  4 order
+  !     sc5: scaling,  5 order
+  !     sc6: scaling,  6 order
+  !     sc7: scaling,  7 order
   !     sin: solar intensity
   !     hwe: slit width at 1/e
+  !     off: center offset
+  !     skw: skewness
   !     asy: slit function asymmetry
   !     shi: spectral shift
   !     squ: spectral squeeze
@@ -129,16 +154,30 @@ MODULE OMSAO_indices_module
   !     vgr: Right ratio of Lorentz to Gaussian Width
   !     hwl: Left gaussian width at 1/e
   !     hwr: right gaussian width at 1/e
+  !     spk: shape factor of super gaussian
+  !     wr0: wavelength registration, 0 order
+  !     wr1: wavelength registration, 1 order
+  !     wr2: wavelength registration, 2 order
+  !     wr3: wavelength registration, 3 order
+  !     wr4: wavelength registration, 4 order
+  !     wr5: wavelength registration, 5 order
+  !     wr6: wavelength registration, 6 order
+  !     wr7: wavelength registration, 7 order
   ! --------------------------
   INTEGER, PARAMETER :: &
-       bl0_idx =  1, bl1_idx =  2, bl2_idx =  3, bl3_idx =  4, sc0_idx =  5, sc1_idx =  6, &
-       sc2_idx =  7, sc3_idx =  8, sin_idx =  9,  hwe_idx = 10, asy_idx = 11, &
-       shi_idx = 12, squ_idx = 13, vgl_idx = 14, vgr_idx = 15, hwl_idx =  16, &
-       hwr_idx = 17, spk_idx = 18,  max_calfit_idx = spk_idx
+       bl0_idx =  1, bl1_idx =  2, bl2_idx =  3, bl3_idx =  4, bl4_idx =  5, bl5_idx =  6, &
+       bl6_idx =  7, bl7_idx =  8, sc0_idx =  9, sc1_idx = 10, sc2_idx = 11, sc3_idx = 12, &
+       sc4_idx = 13, sc5_idx = 14, sc6_idx = 15, sc7_idx = 16, sin_idx = 17, hwe_idx = 18, &
+       off_idx = 19, skw_idx = 20, asy_idx = 21, shi_idx = 22, squ_idx = 23, vgl_idx = 24, &
+       vgr_idx = 25, hwl_idx = 26, hwr_idx = 27, spk_idx = 28, &
+       wr0_idx = 29, wr1_idx = 30, wr2_idx = 31, &
+       wr3_idx = 32, wr4_idx = 33, wr5_idx = 34, wr6_idx = 35, wr7_idx = 36, max_calfit_idx = wr7_idx
 
   CHARACTER (LEN=3), DIMENSION (max_calfit_idx), PARAMETER :: calfit_strings = (/ &
-       'bl0', 'bl1', 'bl2', 'bl3', 'sc0', 'sc1', 'sc2', 'sc3', 'sin', 'hwe', 'asy', &
-       'shi', 'squ', 'vgl', 'vgr', 'hwl', 'hwr', 'spk'/)
+       'bl0', 'bl1', 'bl2', 'bl3', 'bl4', 'bl5', 'bl6', 'bl7', 'sc0', 'sc1', 'sc2', 'sc3', 'sc4', &
+       'sc5', 'sc6', 'sc7', 'sin', 'hwe', 'off', 'skw', 'asy', 'shi', 'squ', 'vgl', 'vgr', 'hwl', 'hwr', 'spk', &
+       'wr0', 'wr1', 'wr2', 'wr3', 'wr4', 'wr5', 'wr6', 'wr7'/)
+
 
   ! ------------------------------------------------------------
   ! (3) Particular fitting parameters: Radiance spectral fitting
@@ -174,7 +213,7 @@ MODULE OMSAO_indices_module
   !    degradation corrrection 2
   !    degradation corrrection 3
 
-  INTEGER, PARAMETER :: maxalb = 12, maxwfc = 12, maxoth = 4, maxgrp = 7, maxcldaer=8
+  INTEGER, PARAMETER :: maxalb = 14, maxwfc = 12, maxoth = 4, maxgrp = 13, maxcldaer=8
   INTEGER, PARAMETER :: n_max_fitpars = max_calfit_idx + mxs_idx * max_rs_idx &
        + max_rs_idx + maxlay * 2  + maxalb + maxwfc + maxcldaer + (maxgrp * maxoth) * maxwin
   INTEGER, PARAMETER :: shift_offset = max_calfit_idx + max_rs_idx * mxs_idx
@@ -279,22 +318,26 @@ MODULE OMSAO_indices_module
        710108,  710109,  710110,  710111,  710112,  710113,  710114,  710115, &
        710116,  710117,  710118,  710119,  710120,  710121,  710122,  710123, &
        710124,  710125,  710126,  710127,  710128,  710129,  710130,  710131, &
-       710132,                                                                &
+       710132,  710133,  710134,  710135,  710136,  710137,  710138,  710139, &
+       710140,   &
        711100,  711101,  711102,  711103,  711104,  711105,  711106,  711107, &
        711108,  711109,  711110,  711111,  711112,  711113,  711114,  711115, &
        711116,  711117,  711118,  711119,  711120,  711121,  711122,  711123, &
        711124,  711125,  711126,  711127,  711128,  711129,  711130,  711131, &
-       711132,                                                                &
+       711132,  711133,  711134,  711135,  711136,  711137,  711138,  711139, &
+       711140,   &
        712100,  712101,  712102,  712103,  712104,  712105,  712106,  712107, &
        712108,  712109,  712110,  712111,  712112,  712113,  712114,  712115, &
        712116,  712117,  712118,  712119,  712120,  712121,  712122,  712123, &
        712124,  712125,  712126,  712127,  712128,  712129,  712130,  712131, &
-       712132,                                                                &
+       712132,  712133,  712134,  712135,  712136,  712137,  712138,  712139, &
+       712140,   &
        712200,  712201,  712202,  712203,  712204,  712205,  712206,  712207, &
        712208,  712209,  712210,  712211,  712212,  712213,  712214,  712215, &
        712216,  712217,  712218,  712219,  712220,  712221,  712222,  712223, &
        712224,  712225,  712226,  712227,  712228,  712229,  712230,  712231, &
-       712232/),&
+       712232,  712233,  712234,  712235,  712236,  712237,  712238,  712239, &
+       712240  /),&
         (/ amf_idx+1, n_sao_pge /) )
 
   ! ------------------------

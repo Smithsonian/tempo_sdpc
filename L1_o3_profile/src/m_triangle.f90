@@ -1,8 +1,8 @@
 !
 module m_triangle
 
-  use utilities, only: interpolation, signdp
-
+  USE utilities, ONLY: signdp
+  USE m_ezspline_interpolation, ONLY: interpolation
   public triangle, triangle_vary, triangle_multi, triangle_uneven, &
        triangle_f2c, triangle_vary_f2c
   private

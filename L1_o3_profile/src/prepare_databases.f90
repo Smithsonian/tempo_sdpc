@@ -21,10 +21,9 @@ contains
          n_refwvl_sav, refwvl_sav, curr_sol_spec, nsolpix, refsol_idx, &
          radnhtrunc, refnhextra!, n_irrad_wvl, refspec_orig_data, &
          !fitvar_rad_str, have_undersampling
-    USE OMSAO_indices_module,   ONLY: max_rs_idx, ring1_idx, ring_idx, &
-         comm_idx, wvl_idx, solar_idx, com1_idx, shift_offset!, &
-         !max_calfit_idx, mxs_idx, spc_idx, us1_idx, us2_idx, &
-         !no2_t1_idx, so2_idx, hcho_idx, bro_idx
+    USE OMSAO_indices_module,   ONLY: max_rs_idx, solar_idx, shift_offset, &
+      wvl_idx, ring1_idx, ring_idx, sdc_idx, &
+      com_idx, com1_idx, com2_idx, com3_idx
     USE OMSAO_errstat_module,   ONLY: pge_errstat_error
     USE ozprof_data_module,     ONLY: ring_on_line, ozprof_flag, do_tracewf!, &
          !radcalwrt, do_simu
@@ -103,6 +102,7 @@ contains
     ! Calculate the splined fitting database
     ! --------------------------------------
     CALL prepare_refspecs (n_refwvl, refwvl(1:n_refwvl), pge_error_status)
+   
     IF ( pge_error_status >= pge_errstat_error ) RETURN
     i0sav(1:n_refwvl) = database(solar_idx, 1:n_refwvl)
 
@@ -111,12 +111,16 @@ contains
     ! Spline external reference spectra to common radiance grid
     ! ---------------------------------------------------------
     CALL dataspline ( n_refwvl, refwvl(1:n_refwvl), pge_error_status)
+
+    
     IF ( pge_error_status >= pge_errstat_error) RETURN
 
     ! ----------------------------------------------------------
     ! Calculate the undersampled spectrum
     ! -----------------------------------------------------------
     CALL undersample (n_refwvl, refwvl(1:n_refwvl), phase, pge_error_status)
+
+   
     IF ( pge_error_status >= pge_errstat_error ) RETURN
 
 
@@ -125,7 +129,7 @@ contains
         IF ( (i == ring_idx .OR. i == ring1_idx ) &
              .AND. ozprof_flag .AND. ring_on_line) CYCLE 
 
-        IF ( i == comm_idx .OR. i == com1_idx) CYCLE
+        IF ( i == com_idx .OR. i == com1_idx .OR. i == com2_idx .OR. i == com3_idx .OR. i == sdc_idx ) CYCLE
 
         IF (n_refspec_pts(i) > 0 ) THEN
           CALL avg_band_refspec(refwvl(1:n_refwvl), database(i,1:n_refwvl), &

@@ -1,6 +1,13 @@
 !
 module m_ozprof_inverse
-
+    use m_make_atm, only: adjust_so2vplumez
+    use m_get_raman
+    use m_gsvd_lcurve_gcv, only: gsvd_lcurve_gcv
+    use m_oe_inversion
+    use m_pseudo_model
+    use m_ezspline_interpolation, only: bspline
+    use utilities, ONLY: reverse
+    use m_get_o3prof, ONLY: get_tomsv8_clima
   public ozprof_inverse
   private get_caloz, negativeo3_inversion
 
@@ -66,11 +73,7 @@ contains
          hcho_idx, so2v_idx, o2o2_idx!, bro2_idx
     USE OMSAO_pixelcorner_module, ONLY: omi_allNSPC
     USE OMSAO_errstat_module
-    use m_make_atm, only: adjust_so2vplumez
-    use m_get_raman
-    use m_gsvd_lcurve_gcv, only: gsvd_lcurve_gcv
-    use m_oe_inversion
-    use m_pseudo_model
+
 
     IMPLICIT NONE
 
@@ -677,7 +680,7 @@ contains
     USE OMSAO_parameters_module, ONLY : mflay, rearth
     USE ozprof_data_module,      ONLY : caloz_fname, profunit
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: bspline, reverse
+
 
     IMPLICIT NONE
 
@@ -777,9 +780,6 @@ contains
 
   END SUBROUTINE get_caloz
 
-
-
-
   SUBROUTINE negativeo3_inversion (uv2fy, uv2ly, nuv2, do_sa_diagonal,  &
        ozwrtint, ozwrtint_unit, epsrel, last_iter, num_iter, ns, nf, gspec, &
        sig, dyda, xap, xold, lowbnd, upbnd, sa, varname, ffidx, flidx,      &
@@ -792,7 +792,6 @@ contains
     USE OMSAO_variables_module,   ONLY: the_lat, the_month, the_day!, &
     !mask_fitvar_rad, fitwavs, fitvar_rad
     USE OMSAO_errstat_module
-    use prepare_atmosphere, only: get_tomsv8_clima
     use m_oe_inversion
 
     IMPLICIT NONE

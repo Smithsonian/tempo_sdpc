@@ -3,7 +3,7 @@ module omi_fitting_aux
 
   public omi_adj_solar_data, omi_adj_earthshine_data, &
        omi_set_fitting_parameters, corruv2wav, timestamp, get_doy
-  private omi_adj_rad_sig
+  private omi_adj_rad_sig, load_omi_comres
 
 contains
 
@@ -129,7 +129,6 @@ contains
     use avg_band, only: avg_band_radspec
     use m_ezspline_interpolation, only: bspline, interpol
     use get_cloud, only: get_tomsv8_ctp
-    use m_prepare_refspecs, only: load_omi_comres
     use m_prepare_databases
     use adj_measurement_data, only: rough_spike_detect
 
@@ -616,7 +615,9 @@ contains
       the_cfrac = 0.5  ! will be updated anyway at longer wavelength
       the_ai = -999.0
     ENDIF
-
+    print * , 'PLEASE REMOVE AFTER TESTING:ctp and cfrac is fixed to'
+    the_cfrac =0.086421
+    the_ctp   = 732.18
     ! Special treatments for sea glint
     has_glint = .FALSE.
     glintprob = 0.0
@@ -870,9 +871,9 @@ contains
         ENDDO
       ELSE IF ( which_biascorr == 7) THEN
         !! Kai need to comment out gascorr, i.e., the following two lines to make the code work for arbitrary window. 
-        curr_rad_spec(spc_idx, 1:n_rad_wvl) = curr_rad_spec(spc_idx, 1:n_rad_wvl) * gascorr(currpix, 1:n_rad_wvl, 2)
-        curr_rad_spec(spc_idx, 1:n_rad_wvl) = curr_rad_spec(spc_idx, 1:n_rad_wvl) * &
-             (1.0d0 + xw2corr(currpix, 1:n_rad_wvl, 2) / 100.)
+        !curr_rad_spec(spc_idx, 1:n_rad_wvl) = curr_rad_spec(spc_idx, 1:n_rad_wvl) * gascorr(currpix, 1:n_rad_wvl, 2)
+        !curr_rad_spec(spc_idx, 1:n_rad_wvl) = curr_rad_spec(spc_idx, 1:n_rad_wvl) * &
+        !     (1.0d0 + xw2corr(currpix, 1:n_rad_wvl, 2) / 100.)
       ENDIF
     ENDIF
 
@@ -1070,6 +1071,65 @@ contains
     RETURN
   END SUBROUTINE omi_set_fitting_parameters
 
+SUBROUTINE load_omi_comres(errstat)
+    USE OMSAO_precision_module
+    USE OMSAO_parameters_module, ONLY: max_fit_pts, maxchlen
+    USE OMSAO_variables_module, ONLY: refdbdir, n_refwvl, database, &
+         nradpix, refidx, currpix!, up_radbnd, refwvl, numwin, &
+         !n_fitvar_rad, fitvar_rad_str, mask_fitvar_rad, lo_radbnd
+    USE OMSAO_indices_module, ONLY: com1_idx, com_idx, comfidx, cm1fidx
+    USE OMSAO_errstat_module, ONLY: pge_errstat_error, pge_errstat_ok, www_lun
+
+    INTEGER, INTENT (OUT)      :: errstat
+
+    CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
+    INTEGER, PARAMETER            :: nx = 30, lun = 12
+    INTEGER                       :: ix, itemp, i, fidx, lidx
+    CHARACTER (LEN=maxchlen)      :: comres_fname
+
+    LOGICAL,                                        SAVE :: first = .TRUE.
+    REAL (KIND=dp), DIMENSION (nx, max_fit_pts, 2), SAVE :: comres
+    INTEGER, DIMENSION(nx, 3),                      SAVE :: npts
+
+    errstat = pge_errstat_ok
+    IF (first) THEN
+      comres = 0.D0
+      comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
+
+      OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(comres_fname)), STATUS='UNKNOWN', IOSTAT=errstat)
+      IF ( errstat /= pge_errstat_ok ) THEN
+        WRITE(www_lun, '(2A)') modulename, ': Cannot open common-mode residual file!!!'
+        errstat = pge_errstat_error; RETURN
+      END IF
+
+      READ (lun, *)
+      READ (lun, *)
+      DO ix = 1, nx
+        READ (lun, *) itemp, npts(ix, 1:3)
+        DO i = 1, npts(ix, 1)
+          READ (lun, *) comres(ix, i, 1:2)
+        ENDDO
+      ENDDO
+      CLOSE (lun)
+
+      first = .FALSE.
+    ENDIF
+
+    IF (comfidx > 0) THEN
+      database(com_idx, 1:n_refwvl) = 0.D0
+      fidx = 1; lidx = fidx + nradpix(1) - 1
+      database(com_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
+    ENDIF
+
+    IF ( cm1fidx > 0 ) THEN
+      database(com1_idx, 1:n_refwvl) = 0.D0
+      fidx = nradpix(1) + 1; lidx = fidx + nradpix(2) - 1
+      database(com1_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
+    ENDIF
+
+    RETURN
+
+  END SUBROUTINE load_omi_comres
 
   ! Correction for wavelength registration at 1:67 and 498:557
   SUBROUTINE corruv2wav(nw, nx, waves)
@@ -1125,10 +1185,6 @@ contains
 
     RETURN
   END SUBROUTINE corruv2wav
-
-
-
-
 
   subroutine timestamp (curtime )
     !
@@ -1230,6 +1286,6 @@ contains
 
     RETURN
   END SUBROUTINE GET_DOY
-
+  
 
 end module omi_fitting_aux

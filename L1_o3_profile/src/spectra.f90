@@ -21,18 +21,18 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: wvl_idx, spc_idx, solar_idx, shi_idx, squ_idx, &
         sin_idx,hwe_idx, asy_idx,  vgl_idx, vgr_idx, hwr_idx, hwl_idx, spk_idx, &
-        bl0_idx, bl1_idx, bl2_idx, bl3_idx, & !bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
-        sc0_idx, sc1_idx, sc2_idx, sc3_idx !, sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
-!        wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
+        bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
+        sc0_idx, sc1_idx, sc2_idx, sc3_idx,  sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
+        wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
          fitwavs, fitvar_sol, mask_fitvar_sol, which_slit, fixslitcal, &
-         yn_varyslit, correct_lamda !, rmask_fitvar_sol, correct_lamda
+         yn_varyslit, correct_lamda , rmask_fitvar_sol, correct_lamda
     USE OMSAO_slitfunction_module
-    USE super_gauss_module, ONLY: super_gauss, super_gauss_vary
+    USE m_super_gauss, ONLY: super_gauss, super_gauss_vary
     USE OMSAO_errstat_module
     use m_gauss, only: asym_gauss, asym_gauss_vary, gauss, gauss_vary
     use m_voigt, only: asym_voigt, asym_voigt_vary
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
     use m_triangle, only: triangle, triangle_vary
 
     IMPLICIT NONE
@@ -70,20 +70,20 @@ contains
     fitvar_sol(mask_fitvar_sol(1:nfitvar)) = fitvar(1:nfitvar)
 
 
-    !IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
-    ! tempwave = 0.0d0
-    ! DO i = 1, npoints
-    !    del(i) = 1.0d0 * i
-    ! ENDDO
-    ! del = (del - npoints / 2.0) / npoints
-    ! deli = 1.0d0
+    IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
+     tempwave = 0.0d0
+     DO i = 1, npoints
+        del(i) = 1.0d0 * i
+     ENDDO
+     del = (del - npoints / 2.0) / npoints
+     deli = 1.0d0
 
-    ! DO j = wr0_idx, wr7_idx
-    !    tempwave = tempwave + fitvar_sol(j) * deli
-    !    deli = deli * del
-    ! ENDDO
-    ! fitwavs(1:npoints) = tempwave
-    !ENDIF
+     DO i = wr0_idx, wr7_idx
+        tempwave = tempwave + fitvar_sol(i) * deli
+        deli = deli * del
+     ENDDO
+     fitwavs(1:npoints) = tempwave
+    ENDIF
     locwvl(1:npoints) = fitwavs(1:npoints)
     sol_wav_avg = ( fitwavs(1) + fitwavs(npoints)) / 2.0
 
@@ -195,7 +195,7 @@ contains
     del(1:npoints) = locwvl(1:npoints) - sol_wav_avg
     tempspec = 1.0d0
     delx(1:npoints) = 1.0d0
-    DO i = sc0_idx, sc3_idx
+    DO i = sc0_idx, sc7_idx
      IF (fitvar_sol(i) /= 0.0) THEN
         tempspec = tempspec + fitvar_sol(i) * delx
      ENDIF
@@ -208,7 +208,7 @@ contains
     ! ------------------------
     tempspec = 0.0d0
     delx(1:npoints) = 1.0d0
-    DO i = bl0_idx, bl3_idx
+    DO i = bl0_idx, bl7_idx
      IF (fitvar_sol(i) /= 0.0) THEN
         tempspec = tempspec + fitvar_sol(i) * delx
      ENDIF
@@ -227,13 +227,12 @@ contains
          max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
          lbe_idx, ad2_idx, mxs_idx, &
          bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
-         sc3_idx, sin_idx, shi_idx, squ_idx!, hwe_idx, wvl_idx, asy_idx
+         sc3_idx, sin_idx, shi_idx, squ_idx, bl7_idx, sc7_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts!, max_fit_pts
     USE OMSAO_variables_module,  ONLY: fitvar_rad, mask_fitvar_rad, &
          n_refwvl, refwvl!, curr_rad_spec, curr_sol_spec
-
+    use m_ezspline_interpolation, only: interpolation
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
 
     IMPLICIT NONE
 
@@ -260,7 +259,7 @@ contains
     ! Local variables
     ! ===============
     INTEGER                              :: i, j, idx, errstat
-    REAL (KIND=dp), DIMENSION (npoints)  :: del, sunspec_ss
+    REAL (KIND=dp), DIMENSION (npoints)  :: del, delx, sunspec_ss, tempspec
     REAL (KIND=dp), DIMENSION (n_refwvl) :: sunpos_ss
 
     ! ------------------
@@ -372,20 +371,31 @@ contains
       END DO
     END IF
 
-    ! Add the scaling.
+
+   ! Add the scaling.
     del(1:npoints) = locwvl(1:npoints) - rad_wav_avg
-    fit(1:npoints) = fit(1:npoints) * ( &
-         fitvar_rad(sc0_idx)                                               + &
-         fitvar_rad(sc1_idx) * del(1:npoints)                              + &
-         fitvar_rad(sc2_idx) * del(1:npoints)*del(1:npoints)               + &
-         fitvar_rad(sc3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints) )
+    tempspec = 0.0d0
+    delx(1:npoints) = 1.0d0
+    DO i = sc0_idx, sc7_idx
+       IF (fitvar_rad(i) /= 0.0) THEN
+          tempspec = tempspec + fitvar_rad(i) * delx
+       ENDIF
+       delx = delx * del
+    ENDDO
+    fit(1:npoints) = fit(1:npoints) * tempspec
 
     ! Add baseline parameters.
-    fit(1:npoints) = fit(1:npoints) + &
-         fitvar_rad(bl0_idx)                                               + &
-         fitvar_rad(bl1_idx) * del(1:npoints)                              + &
-         fitvar_rad(bl2_idx) * del(1:npoints)*del(1:npoints)               + &
-         fitvar_rad(bl3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)
+    tempspec = 0.0d0
+    delx(1:npoints) = 1.0d0
+    DO i = bl0_idx, bl7_idx
+       IF (fitvar_rad(i) /= 0.0) THEN
+          tempspec = tempspec + fitvar_rad(i) * delx
+       ENDIF
+       delx = delx * del
+    ENDDO
+    fit(1:npoints) = fit(1:npoints) + tempspec
+
+
 
     RETURN
   END SUBROUTINE spectrum_earthshine

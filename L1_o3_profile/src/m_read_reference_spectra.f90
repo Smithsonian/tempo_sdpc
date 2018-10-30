@@ -66,9 +66,9 @@ contains
     ! Read spectra one by one. Skip if name of file is ZEROSPEC
     ! -----------------------------------------------------------
     DO i = 1, max_rs_idx
-      IF( scnwrt ) WRITE(*,*) i, TRIM(ADJUSTL(refspec_fname(i))) !! Kai
       IF ( INDEX (TRIM(ADJUSTL(refspec_fname(i))), &
            zerospec_string ) == 0 ) THEN
+      IF( scnwrt ) WRITE(*,*) i, TRIM(ADJUSTL(refspec_fname(i))) !! Kai
 !  FIXME
 !  Modified to mask array temporaries
         CALL read_one_refspec1 ( &

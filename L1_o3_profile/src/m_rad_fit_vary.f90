@@ -21,7 +21,7 @@ contains
          fitvar_sol_init,lo_sunbnd_init, up_sunbnd_init, numwin, &
          nslit, slitwav, slitfit, currpixchar, scnwrt, wavcal, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
     use m_cal_fit_one
     use m_subtract_poly, only: subtract_poly_meas
 

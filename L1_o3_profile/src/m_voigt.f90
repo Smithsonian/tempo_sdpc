@@ -1,6 +1,7 @@
 !
 module m_voigt
-
+  
+  USE m_ezspline_interpolation, only: interpolation
   public asym_voigt, asym_voigt_multi, asym_voigt_vary, asym_voigt_f2c, &
        asym_voigt_vary_f2c
   private voigt
@@ -451,7 +452,6 @@ contains
          !numwin, debug_boreas
     USE OMSAO_indices_module,   ONLY : vgr_idx, vgl_idx, hwr_idx, hwl_idx
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
 
     IMPLICIT NONE
 
@@ -749,7 +749,6 @@ contains
          slitwav, slitfit, nslit
     USE OMSAO_indices_module,   ONLY : hwl_idx, hwr_idx, vgr_idx, vgl_idx
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
 
     IMPLICIT NONE
 

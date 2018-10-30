@@ -3,8 +3,7 @@ module m_dataspline
   use m_gauss, only: asym_gauss_multi, asym_gauss_vary, gauss_multi, gauss_vary
   use m_voigt, only: asym_voigt_multi, asym_voigt_vary
   use avg_band, only: avg_band_ozcrs, avg_band_refspec
-  use m_ezspline_interpolation, only: bspline, bspline1
-  use utilities, only: interpolation
+  use m_ezspline_interpolation, only: bspline, bspline1, interpolation
   use m_triangle, only: triangle_multi, triangle_vary
 
   public dataspline, correct_i0effect, append_solring
@@ -15,11 +14,14 @@ contains
   SUBROUTINE dataspline ( n_radwvl, curr_rad_wvl, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module,     ONLY: max_rs_idx, solar_idx, wvl_idx, &
-         spc_idx, comm_idx, com1_idx, ring1_idx, ring_idx, so2_idx, &
-         hcho_idx, bro_idx, no2_t1_idx, shift_offset, bro2_idx, &
-         so2v_idx, o2o2_idx!, &
-    !fsl_idx, max_calfit_idx, mxs_idx, refspec_strings, rsl_idx
+    USE OMSAO_indices_module,     ONLY: &
+        max_rs_idx,  solar_idx, wvl_idx, spc_idx, refspec_strings,shift_offset, &
+        com_idx, com1_idx, com2_idx, com3_idx, &
+        ring1_idx, ring_idx, vege_idx, &
+        so2_idx, so2v_idx, bro_idx, bro2_idx, &
+        hcho_idx, no2_t1_idx, no2_t2_idx,  o2o2_idx, chloro_idx, &
+        o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, lh2o_idx, sdc_idx
+
     USE OMSAO_parameters_module,  ONLY: max_spec_pts, zerospec_string!, &
     !maxchlen
     USE OMSAO_variables_module,   ONLY: n_refspec_pts, refspec_orig_data,    &
@@ -28,7 +30,7 @@ contains
          slitwav_sol, slitwav_rad, slitfit, solslitfit, radslitfit, &
          slit_rad, refspec_norm
     USE OMSAO_slitfunction_module
-    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
+    USE m_super_gauss, ONLY: super_gauss_multi, super_gauss_vary
     USE ozprof_data_module,       ONLY: ring_convol, ring_on_line       
     USE OMSAO_errstat_module
 
@@ -92,18 +94,22 @@ contains
         npts = n_refspec_pts(idx)  ! Define short-hand
         specmod(1:npts) = refspec_orig_data(idx,1:npts,spc_idx)
 
-        !print *, idx, TRIM(ADJUSTL(refspec_fname(idx))), n_radwvl
         !IF (idx == o2o2_idx) refspec_orig_data(idx,1:npts,wvl_idx) = refspec_orig_data(idx,1:npts,wvl_idx)
-
-        IF (idx == bro_idx .OR. idx == bro2_idx .OR. idx == hcho_idx .OR. idx == no2_t1_idx & 
-             .OR. idx == so2_idx .OR. idx == so2v_idx .OR. idx == o2o2_idx ) THEN
-          !IF (idx == bro_idx .OR. idx == hcho_idx .OR. idx == no2_t1_idx) THEN
+        IF (idx == bro_idx .OR. idx == bro2_idx .OR. idx == no2_t1_idx .OR. idx == no2_t2_idx .OR. &
+            idx == so2_idx .OR. idx == so2v_idx .OR. idx == o2o2_idx .OR. &
+            idx == o2_idx .OR. idx == o2t2_idx .OR. idx == h2o_idx .OR. idx == h2ot2_idx .OR. &
+            idx == hcho_idx ) THEN
+            ! this ref.spec is convolved after ref*IO
           IF (idx == bro_idx .OR. idx == bro2_idx) THEN
-            scalex = 2.0E13
+              scalex = 2.0E13 ! 1.0E-4
           ELSE IF (idx == o2o2_idx) THEN
-            scalex = 2.6E33
+              scalex = 2.6E33
+          ELSE IF (idx == o2_idx .OR. idx == o2t2_idx) THEN
+              scalex = 6.0E24
+          ELSE IF (idx == h2o_idx .OR. idx == h2ot2_idx) THEN
+              scalex = 1.0E23
           ELSE
-            scalex = 5.0E15
+              scalex = 5.0E15 ! 20E-4
           ENDIF
 
           scalex = scalex * refspec_norm(idx)
@@ -120,9 +126,11 @@ contains
           ! spectrum, while ERROR status indicates a
           ! more serious condition that requires termination.
           ! -----------------------------------------------------------------  
-        ELSE IF ((idx /= comm_idx .AND. idx /= com1_idx .AND. &
-             idx /= ring_idx .AND. idx /= ring1_idx ) .OR. &
+          ELSE IF ((idx /= com_idx .AND. idx /= com1_idx .AND. idx /= com2_idx .AND. idx /= com3_idx  &
+             .AND. idx /= ring_idx .AND. idx /= ring1_idx &
+             .AND. idx /= vege_idx .AND. idx /= chloro_idx .AND. idx /= lh2o_idx .AND. idx /=  sdc_idx) .OR. &
              (idx == ring_idx .AND. ring_convol) .OR. (idx == ring1_idx .AND. ring_convol)) THEN
+
           IF (.NOT. yn_varyslit) THEN
             IF (which_slit == 0) THEN
               CALL gauss_multi (refspec_orig_data(idx,1:npts,wvl_idx), &
@@ -139,10 +147,12 @@ contains
             ELSE IF (which_slit == 4) THEN 
               CALL super_gauss_multi (refspec_orig_data(idx,1:npts,wvl_idx),   &
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
-            ELSE
+            ELSE IF (which_slit == 5) THEN 
               CALL omislit_multi (refspec_orig_data(idx,1:npts,wvl_idx),    &
                    refspec_orig_data(idx,1:npts,spc_idx), specmod(1:npts), npts)
-            END IF
+            ELSE 
+              STOP
+            ENDIF
           ELSE 
             IF (which_slit == 0) THEN
               CALL gauss_vary (refspec_orig_data(idx,1:npts,wvl_idx),   &
@@ -228,7 +238,7 @@ contains
     USE OMSAO_errstat_module
     USE OMSAO_variables_module,   ONLY: yn_varyslit, which_slit
     USE OMSAO_slitfunction_module
-    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
+    USE m_super_gauss, ONLY: super_gauss_multi, super_gauss_vary
     IMPLICIT NONE
 
     INTEGER,                          INTENT (IN)    :: nref, ni0
@@ -343,7 +353,12 @@ contains
     !          LOG(abspecmod1(fidx1:lidx1) / specmod(fidx1:lidx1)) / scalex * ( 1.0 - frac(fidx1:lidx1))
     !  ENDIF
 
+    IF (weight_irrad) THEN
        refspec(fidx:lidx) = abspecmod(fidx:lidx) / specmod(fidx:lidx)
+    ELSE
+        refspec(fidx:lidx) = - LOG(abspecmod(fidx:lidx) / specmod(fidx:lidx)) /  scalex
+    ENDIF
+
  
     IF ( get_lresi0 ) THEN
       lowresi0(fidx:lidx) = specmod(fidx:lidx)

@@ -2,7 +2,7 @@
 module utilities
 
   public interpolation, check_for_endofinput, skip_to_filemark, &
-       get_substring, string2index, signdp, day_of_year
+         get_substring, string2index, signdp, day_of_year
   private gome_check_read_status!, year_month_day, &
        ! upper_case, utc_julian_date_and_time, 
 
@@ -578,92 +578,21 @@ contains
     RETURN
   END FUNCTION signdp
 
-  SUBROUTINE interpolation ( n_in, x_in, y_in, n_out, x_out, y_out, &
-       pge_error_status )
-
-    USE OMSAO_precision_module
-    USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_warning, &
-         pge_errstat_error
-    use m_ezspline_interpolation, only: ezspline_interpolation
-
+  SUBROUTINE reverse ( inarr, num )
     IMPLICIT NONE
+    INTEGER, PARAMETER :: dp = KIND(1.0D0)
 
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER,                           INTENT (IN) :: n_in, n_out
-    REAL (KIND=dp), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
-    REAL (KIND=dp), DIMENSION (n_out), INTENT (IN) :: x_out
+    INTEGER, INTENT(IN) :: num
+    INTEGER             :: i
+    REAL (KIND=dp), DIMENSION(1: num), INTENT(INOUT) :: inarr
+    REAL (KIND=dp), DIMENSION(1: num)                :: temp
 
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER,                           INTENT (INOUT) :: pge_error_status
-    REAL (KIND=dp), DIMENSION (n_out), INTENT (OUT) :: y_out
-
-    ! --------------
-    ! Local variable
-    ! --------------
-    INTEGER :: errstat, imin, imax, nloc
-
-    errstat = pge_errstat_ok
-
-    ! -------------------------------
-    ! Initialize interpolation output
-    ! -------------------------------
-    y_out(1:n_out) = 0.0_dp
-
-    ! ------------------------------------------------------------------------
-    ! Find indices in radiance wavelength spectrum that cover reference 
-    !  spectrum
-    ! ------------------------------------------------------------------------
-
-    imin = 1
-    imax = n_out
-    IF ( x_out(1) < x_in(1) ) &
-         imin = MAXVAL ( MAXLOC ( x_out(1:n_out), MASK = x_out(1:n_out) < x_in(1) ) ) + 1
-    IF ( x_out(n_out) > x_in(n_in) ) &
-         imax = MINVAL ( MINLOC ( x_out(1:n_out), MASK = x_out(1:n_out) > x_in(n_out) ) )
-
-    ! -------------------------------------------------------------------------
-    ! Check whether we have the whole wavelength range. If not, set 
-    ! PGE_ERROR_STATUS to WARNING level, which will trigger an error message 
-    ! in the calling module. We don't want to report errors in this 
-    ! subroutine, since it is so generic that the error message would not 
-    ! be very helpful.
-    ! ------------------------------------------------------------------------
-    IF ( imin /= 1 .OR. imax /= n_out ) THEN
-      pge_error_status = pge_errstat_warning
-      RETURN
-    ENDIF
-
-    ! ------------------------------------------------------------------------
-    ! Now that we know the first & last index to cover with the interpolation,
-    ! we can treat all cases alike. Only we need make sure that the number of
-    ! interpolation points is consistent. And if we don't have *any* points,
-    ! then we must return without calling the interpolation routine.
-    ! ------------------------------------------------------------------------
-    nloc = imax - imin + 1
-
-    SELECT CASE ( nloc )
-    CASE ( :0 )
-      RETURN
-    CASE DEFAULT
-      CALL ezspline_interpolation (                          &
-           n_in, x_in (1:n_in),    y_in (1:n_in),            &
-           nloc, x_out(imin:imax), y_out(imin:imax), errstat )
-      ! -----------------------------------------------------------------
-      ! If we have non-zero exit status, something must have gone wrong
-      ! in the interpolation. Set PGE_ERROR_STATUS to ERROR in this case.
-      ! -----------------------------------------------------------------
-      IF ( errstat /= pge_errstat_ok ) THEN
-        pge_error_status = pge_errstat_error
-      ELSE
-        pge_error_status = pge_errstat_ok
-      ENDIF
-    END SELECT
+    DO i = 1, num
+      temp(i) = inarr(num - i + 1)
+    ENDDO
+    inarr = temp
 
     RETURN
-  END SUBROUTINE interpolation
+  END SUBROUTINE reverse
 
 end module utilities

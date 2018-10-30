@@ -339,7 +339,7 @@ contains
     INTEGER   (KIND=i2), DIMENSION (mswath) :: spos, epos
     INTEGER  :: nwavel, is, ix, i, j, iix, nomi, fidx, lidx, ch, idum,  &
          iw, ic, idx, noff1, noff2, nring, irefl, nbin, theyear, themon, &
-         theday, thedoy, np, npos, nsolbin
+         theday, thedoy, np, npos, nsolbin, nbad
     INTEGER, DIMENSION (nwavel_max)                        :: idxs
     INTEGER (KIND=i2), DIMENSION (nwavel_max, nxtrack_max) :: tmpqflg
 !    INTEGER (KIND=i1)                                      :: tmpNinteg
@@ -1048,7 +1048,12 @@ contains
         IF (ch == 2 .AND. nsolbin == 2) THEN  ! Shift the position by 15 
           iix = iix - (zoom_p1 - 1) * nsolbin
         ENDIF
-
+        ! jbak 2017-12-25, there are very huge bad pixels for near upper boundary of
+        ! shorther wavelengths
+        ! wavelengths ==> causing fail because reference solar spectrum does not
+        ! cover in apending ring
+        ! therefore there is 5 continuous bad pixels then exit
+        nbad = 0
         DO i = winpix(1, 1) - 1, 1, -1
           IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
                ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
@@ -1056,6 +1061,9 @@ contains
             omirsol(wvl_idx, noff1) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
             omirsol(spc_idx, noff1) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
             IF (noff1 == 1) EXIT
+          ELSE ! JBAK
+            nbad = nbad + 1
+            IF (nbad == 5) EXIT
           ENDIF
         ENDDO
 
@@ -1122,7 +1130,7 @@ contains
         ELSE
           nring = nring + 12
         ENDIF
-
+        nbad = 0
         DO i = spos(ch) + winpix(numwin, 2), epos(ch)
           IF (ch == 1 .OR. .NOT. coadd_uv2) THEN
             nbin = nxbin
@@ -1136,6 +1144,8 @@ contains
             noff2 = noff2 + 1
             omirsol(wvl_idx, noff2) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
             omirsol(spc_idx, noff2) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+          ELSE
+             nbad = nbad + 1
           ENDIF
 
           IF (noff2 == nring) EXIT
@@ -1768,7 +1778,7 @@ contains
             tmp_rqflg(1:np, ix) = flgbits(1, 1:np, 0) &   ! Missing
                  + flgbits(1, 1:np, 1)                &   ! Bad
                  + flgbits(1, 1:np, 2)                &   ! Processing error
-                 + flgbits(1, 1:np, 4)                &   ! RTS_Pixel_Warning Flag
+           !      + flgbits(1, 1:np, 4)                &   ! RTS_Pixel_Warning Flag
                  + flgbits(1, 1:np, 5)                &   ! Saturation Possibility Flag
                  + flgbits(1, 1:np, 7)                    ! Dark Current Warning Flag
           ENDDO
@@ -1874,7 +1884,7 @@ contains
                    + flgbits(ic, spos(ch):epos(ch), 0)                &   ! Missing
                    + flgbits(ic, spos(ch):epos(ch), 1)                &   ! Bad 
                    + flgbits(ic, spos(ch):epos(ch), 2)                &   ! Processing error
-                   + flgbits(ic, spos(ch):epos(ch), 4)                &   ! RTS_Pixel_Warning Flag
+         !          + flgbits(ic, spos(ch):epos(ch), 4)                &   ! RTS_Pixel_Warning Flag
                    + flgbits(ic, spos(ch):epos(ch), 5)                &   ! Saturation Possibility Flag
                    + flgbits(ic, spos(ch):epos(ch), 7)                     ! Dark Current Warning Flag
             ENDDO
@@ -2042,7 +2052,7 @@ contains
          omi_solring_ndiv!, omi_nwav_irrad, omi_nsolring, nfxtrack
     USE ozprof_data_module,      ONLY: nrefl
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 
@@ -2369,7 +2379,7 @@ contains
     USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
     USE ozprof_data_module,      ONLY: pos_alb
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 
@@ -2643,7 +2653,7 @@ contains
     USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
     USE ozprof_data_module,      ONLY: pos_alb
     USE OMSAO_errstat_module
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 

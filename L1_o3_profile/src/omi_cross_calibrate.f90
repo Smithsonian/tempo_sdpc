@@ -406,7 +406,7 @@ contains
          fitweights, currspec, fitvar_sol_saved, which_slit, xbin_decerr, sol_wav_avg, correct_lamda
     USE OMSAO_errstat_module
     use m_cal_fit_one
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 
@@ -557,9 +557,10 @@ contains
          up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lamda
     !USE OMSAO_omidata_module,     ONLY: omi_slitwav_sol, omi_solslitfit, &
     !     omi_nslit_sol, omi_solwinfit
+
+    USE m_ezspline_interpolation, only: interpolation
     USE OMSAO_errstat_module
     use m_cal_fit_one
-    use utilities, only: interpolation
 
     IMPLICIT NONE
 

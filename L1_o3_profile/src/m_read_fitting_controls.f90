@@ -34,12 +34,16 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
-         max_rs_idx, calfit_strings, max_calfit_idx, radfit_strings, &
-         mns_idx, mxs_idx, us1_idx, us2_idx, comvidx, cm1vidx, &
-         refspec_strings, genline_str, socline_str, racline_str,     &
-         rafline_str, eoi3str, solar_idx, shift_offset, &
-         comm_idx, com1_idx, comfidx, cm1fidx, & 
-         hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx
+         max_rs_idx, max_calfit_idx, mns_idx, mxs_idx,&
+         calfit_strings, radfit_strings, refspec_strings, & 
+         genline_str, socline_str, racline_str,     &
+         rafline_str, eoi3str, & 
+         solar_idx, us1_idx, us2_idx, shift_offset, &
+         com_idx, com1_idx, com2_idx, com3_idx, &
+         comfidx,  cm1fidx, cm2fidx,   cm3fidx, &
+         comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
+         hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx, &
+         wr0_idx, wr7_idx
     !, rspline_str, molline_str, &
     !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
     USE OMSAO_parameters_module,   ONLY: maxchlen, maxwin, max_fit_pts!, &
@@ -70,7 +74,7 @@ contains
          use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname, &
          gome_idx, which_instrument, max_instrument_idx, &
          omi_idx, scia_idx, gome2_idx, tempo_idx, correct_merr, xbin_decerr, ybin_decerr, &
-         do_xbin, do_ybin, nxbin, nybin
+         do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol, debug_input
     !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
     !fitcol_idx, fincol_idx, n_mol_fit
     !USE OMSAO_gome_data_module, ONLY:   &
@@ -111,7 +115,7 @@ contains
     ! ---------------
     INTEGER :: i, j, k, file_read_stat, sidx, ridx, idx, cldorb, ntsh!, nidx
     INTEGER, DIMENSION(2)    :: pixlim, linelim
-    CHARACTER (LEN=maxchlen) :: tmpchar, l1l2_files
+    CHARACTER (LEN=maxchlen) :: tmpchar, l1l2_files, fname
     CHARACTER (LEN=3)        :: idxchar, xbinchar, ybinchar
     CHARACTER (LEN=5)        :: idxchar1, cldorbc
     CHARACTER (LEN=4)        :: slinechar, elinechar
@@ -218,6 +222,7 @@ contains
     READ (fit_ctrl_unit, '(A)') tmpchar
     CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
          instrument_idx )
+    READ (fit_ctrl_unit, '(A)') debug_input
 
     ! If Tempo synthetic data, we need to behave like OMI, but with an
     ! over-ride for some settings (e.g., uv2_coadd)
@@ -844,6 +849,8 @@ contains
 
     n_fitvar_sol = 0
     fitvar_sol_init = 0.0
+    mask_fitvar_sol = 0 
+    rmask_fitvar_sol = 0
     solpars: DO i = 1, max_calfit_idx
 
       READ (fit_ctrl_unit, *) idxchar, vartmp, lotmp, uptmp
@@ -896,13 +903,21 @@ contains
         up_sunbnd(sidx) = uptmp
         IF ( lotmp < uptmp ) THEN
           n_fitvar_sol = n_fitvar_sol + 1
-          mask_fitvar_sol(n_fitvar_sol) = i
+          mask_fitvar_sol(n_fitvar_sol) = sidx
+          rmask_fitvar_sol(sidx) = n_fitvar_sol
         ENDIF
       END IF
     END DO solpars
     fitvar_sol_saved = fitvar_sol_init
     lo_sunbnd_init = lo_sunbnd
     up_sunbnd_init = up_sunbnd
+
+    IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0) .AND. &
+          (rmask_fitvar_sol(shi_idx) > 0 .OR. rmask_fitvar_sol(squ_idx) > 0 )) THEN
+          WRITE(*, '(A)') 'Wavelength shi/squ should not be used with wavelength registraion!!!'
+          pge_error_status = pge_errstat_error; RETURN
+   ENDIF
+
 
     ! -------------------------------------------------------------
     ! Position cursor to read radiance calibration input parameters
@@ -1138,8 +1153,12 @@ contains
     ! -------------------------------------------------------------
     comvidx = 0
     cm1vidx = 0
+    cm2vidx = 0
+    cm3vidx = 0
     comfidx = 0
     cm1fidx = 0
+    cm2fidx = 0
+    cm3fidx = 0
     fitvar_rad_unit = 'NoUnits'
 
     getpars: DO j = 1, max_rs_idx
@@ -1160,8 +1179,7 @@ contains
 
       ! GOME specific: the first line in the "spectrum parameter block" is
       ! the name of the corresponding reference spectrum
-      READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) refspec_fname(ridx)
-      refspec_fname(ridx) = TRIM(ADJUSTL(refdbdir)) // refspec_fname(ridx)
+      READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) fname
 
       ! Read the block of fitting parameters for current reference spectrum
       DO k = 1, mxs_idx
@@ -1190,16 +1208,28 @@ contains
                ANY ( (/ vartmp,lotmp,uptmp /) /= 0.0 ) ) &
                have_undersampling = .TRUE.
 
-          IF ( ridx == comm_idx .AND. lotmp < uptmp ) THEN
+          IF ( ridx == com_idx .AND. lotmp < uptmp ) THEN
             comvidx = i
           ENDIF
 
           IF ( ridx == com1_idx .AND. lotmp < uptmp ) THEN
             cm1vidx = i
           ENDIF
+
+          IF ( ridx == com2_idx .AND. lotmp < uptmp ) THEN
+              cm2vidx = i
+          ENDIF
+
+          IF ( ridx == com3_idx .AND. lotmp < uptmp ) THEN
+              cm3vidx = i
+          ENDIF
+
+          IF (lotmp < uptmp) THEN
+           refspec_fname(ridx) = TRIM(ADJUSTL(refdbdir)) // TRIM(ADJUSTL(fname))
+          ENDIF
         END IF
       END DO
-
+        
       ! read shift parameter
       READ (fit_ctrl_unit, *) idxchar1, vartmp, lotmp, uptmp
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
@@ -1309,6 +1339,8 @@ contains
 
           IF (idx + j == comvidx) comfidx = n_fitvar_rad
           IF (idx + j == cm1vidx) cm1fidx = n_fitvar_rad
+          IF (idx + j == cm2vidx) cm2fidx = n_fitvar_rad
+          IF (idx + j == cm3vidx) cm3fidx = n_fitvar_rad
 
 
         END IF

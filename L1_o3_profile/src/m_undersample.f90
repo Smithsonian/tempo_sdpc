@@ -35,13 +35,13 @@ contains
          have_undersampling, refnhextra
     USE ozprof_data_module,     ONLY: nsl
     USE OMSAO_slitfunction_module
-    USE super_gauss_module, ONLY: super_gauss_multi, super_gauss_vary
+    USE m_super_gauss, ONLY: super_gauss_multi, super_gauss_vary
     USE OMSAO_errstat_module
     use m_gauss, only: gauss_vary, gauss_multi, asym_gauss_multi, &
          asym_gauss_vary
     use m_voigt, only: asym_voigt_multi, asym_voigt_vary
     use m_triangle, only: triangle_multi, triangle_vary
-    use utilities, only: interpolation
+    use m_ezspline_interpolation, only: interpolation
     use m_dataspline, only: append_solring
 
     IMPLICIT NONE

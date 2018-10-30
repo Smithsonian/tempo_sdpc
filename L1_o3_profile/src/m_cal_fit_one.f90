@@ -14,20 +14,23 @@ contains
        wrt_to_file, slitcal, slit_unit, avgwav, varstd, solfit_exval)
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module,     ONLY : max_calfit_idx, hwe_idx, asy_idx, &
-         shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, bl0_idx,    &
-         bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, sc3_idx,    &
-         vgl_idx, vgr_idx, hwl_idx, hwr_idx, solar_idx, spk_idx!, sig_idx
+    USE OMSAO_indices_module,     ONLY : max_calfit_idx, solar_idx, & 
+         hwe_idx, asy_idx, shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, &
+         vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
+         bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
+         sc0_idx, sc1_idx, sc2_idx, sc3_idx, sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
+         wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
+
     USE OMSAO_variables_module,   ONLY: weight_sun, fitvar_sol, &
-         fitvar_sol_saved, chisq,  sol_wav_avg, which_slit, &
-         mask_fitvar_sol, fitwavs, fitweights, currspec, lo_sunbnd, up_sunbnd,&
-         max_itnum_sol, n_refspec_pts, refspec_orig_data!, &
-         !refspec_norm, fitvar_sol_init, n_irrad_wvl, debug_boreas
-    USE OMSAO_errstat_module  
+        fitvar_sol_saved,   chisq,  sol_wav_avg, which_slit, &
+        mask_fitvar_sol, rmask_fitvar_sol, fitwavs, fitweights, currspec, lo_sunbnd, up_sunbnd,&
+        max_itnum_sol, poly_order, n_refspec_pts, refspec_orig_data
+    USE OMSAO_errstat_module
     use m_specfit
     use fitting_functions, only: specfit_func_sol
+!    use m_subtract_poly, only : poly_fit
+    USE OMSAO_errstat_module     
 
-   
     IMPLICIT NONE
 
     ! ================
@@ -46,62 +49,91 @@ contains
     ! ===============
     ! Local variables
     ! ===============
-    REAL (KIND=dp)  :: asum, ssum, rms!, sum_sig2
-    REAL (KIND=dp), DIMENSION (n_fit_pts)                 :: fitres, fitspec
+    REAL (KIND=dp)  :: asum, ssum, rms,  niter
+    REAL (KIND=dp), DIMENSION (n_fit_pts)                 :: fitres, fitspec, polyx
     REAL (KIND=dp), DIMENSION (n_fitvar_sol, n_fitvar_sol):: covar
     REAL (KIND=dp)  :: hw1e, e_asym, vgl, vgr, hwl, hwr, sin, shi, squ, spk
     REAL (KIND=dp), DIMENSION (n_fitvar_sol) :: fitvar, lobnd, upbnd, stderr
-    INTEGER         :: i, ref_fidx, ref_lidx, ref_all_pts!, n_ref_pts
+    REAL (KIND=dp), DIMENSION (8) :: polycoeffs
+    INTEGER         :: i, j, ref_fidx, ref_lidx, ref_all_pts, ll, lu
 
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
     CHARACTER (LEN=11), PARAMETER :: modulename = 'cal_fit_one'
 
-    !EXTERNAL specfit_func_sol
+    ! Initialization for wavelength registration
+    IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN ! updated v2
+       DO i = 1, n_fit_pts
+        polyx(i) = 1.0d0 * i
+       ENDDO
+        polyx = (polyx - n_fit_pts / 2.0) / n_fit_pts
+
+       DO i = wr0_idx, wr7_idx
+        IF ( fitvar_sol(i) > lo_sunbnd(i) .and. fitvar_sol(i) < up_sunbnd(i) ) THEN
+           poly_order = i - wr0_idx + 1
+        ENDIF
+       ENDDO
+       ll = 1; lu = n_fit_pts
+       !CALL poly_fit(polyx, n_fit_pts, fitwavs(1:n_fit_pts), ll, lu, polycoeffs(1:poly_order))
+
+       j = 1
+       DO i = wr0_idx, wr7_idx
+          fitvar_sol(i) = polycoeffs(j)
+          lo_sunbnd(i) = -1.0D+99
+          up_sunbnd(i) =  1.0D+99
+          j = j + 1
+       ENDDO
+    ENDIF
+
 
     ! -------------------------------------------------------
     ! Calculate SOL_WAV_AVG of measured solar spectra here,
     ! for use in calculated spectra.
     ! -------------------------------------------------------
     IF ( weight_sun ) THEN
-      asum = SUM ( fitwavs(1:n_fit_pts) / (fitweights(1:n_fit_pts) &
+        asum = SUM ( fitwavs(1:n_fit_pts) / (fitweights(1:n_fit_pts) &
            * fitweights(1:n_fit_pts)))
-      ssum = SUM (1.0/ (fitweights(1:n_fit_pts)*fitweights(1:n_fit_pts)))
-      sol_wav_avg = asum / ssum
-    ELSE
-      sol_wav_avg = ( fitwavs(1) + fitwavs(n_fit_pts)) / 2.0
-    END IF
+        ssum = SUM (1.0/ (fitweights(1:n_fit_pts)*fitweights(1:n_fit_pts)))
+        sol_wav_avg = asum / ssum
+     ELSE
+        sol_wav_avg = ( fitwavs(1) + fitwavs(n_fit_pts)) / 2.0
+     END IF
 
-    ! --------------------------------------------------------------
-    ! ELSUNC FIT: Calculate and iterate on the irradiance spectrum.
-    ! --------------------------------------------------------------     
-    ! initialize the sin variables for faster convergence
-    ref_all_pts = n_refspec_pts(solar_idx)   
-    ref_fidx=MINVAL(MAXLOC(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx),&
-         MASK=(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx) <= fitwavs(1))))
+     ! --------------------------------------------------------------
+     ! ELSUNC FIT: Calculate and iterate on the irradiance spectrum.
+     ! --------------------------------------------------------------     
+     ! initialize the sin variables for faster convergence
+     ref_all_pts = n_refspec_pts(solar_idx)   
+     ref_fidx=MINVAL(MAXLOC(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx),&
+          MASK=(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx) <= fitwavs(1))))
+  
+     ref_lidx=MINVAL(MINLOC(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx),&
+          MASK=(refspec_orig_data(solar_idx,1:ref_all_pts,wvl_idx)>=fitwavs(n_fit_pts))))
+ 
+     IF (ref_fidx > ref_all_pts .OR. ref_fidx <= 0 .OR. ref_lidx > ref_all_pts &
+          .OR. ref_lidx <= 0 .OR. ref_fidx > ref_lidx) THEN
+        WRITE(www_lun, *) ref_fidx, ref_lidx, n_fit_pts
+        WRITE(www_lun, *) fitwavs(1), fitwavs(n_fit_pts)
+        WRITE(www_lun, *) refspec_orig_data(solar_idx, ref_fidx, wvl_idx), refspec_orig_data(solar_idx, ref_lidx, wvl_idx)
+        WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'; STOP
+     END IF
+     
+     fitvar_sol(sin_idx) = SUM(currspec(1:n_fit_pts)) * (ref_lidx-ref_fidx + 1.0) / &
+          SUM(refspec_orig_data(solar_idx, ref_fidx:ref_lidx, spc_idx)) /n_fit_pts
 
-    ref_lidx=MINVAL(MINLOC(refspec_orig_data(solar_idx, 1:ref_all_pts, wvl_idx),&
-         MASK=(refspec_orig_data(solar_idx,1:ref_all_pts,wvl_idx)>=fitwavs(n_fit_pts))))
-
-    IF (ref_fidx > ref_all_pts .OR. ref_fidx <= 0 .OR. ref_lidx > ref_all_pts &
-         .OR. ref_lidx <= 0 .OR. ref_fidx > ref_lidx) THEN
-      WRITE(www_lun, *) ref_fidx, ref_lidx, n_fit_pts
-      WRITE(www_lun, *) fitwavs(1), fitwavs(n_fit_pts)
-      WRITE(www_lun, *) refspec_orig_data(solar_idx, ref_fidx, wvl_idx), refspec_orig_data(solar_idx, ref_lidx, wvl_idx)
-      WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'; STOP
-    END IF
-
-    fitvar_sol(sin_idx) = SUM(currspec(1:n_fit_pts)) * (ref_lidx-ref_fidx + 1.0) / &
-         SUM(refspec_orig_data(solar_idx, ref_fidx:ref_lidx, spc_idx)) /n_fit_pts
-
-    fitvar = 0.0; lobnd = 0.0; upbnd = 0.0
-    fitvar(1:n_fitvar_sol) = fitvar_sol(mask_fitvar_sol(1:n_fitvar_sol))
-    lobnd(1:n_fitvar_sol) = lo_sunbnd(mask_fitvar_sol(1:n_fitvar_sol)) 
-    upbnd(1:n_fitvar_sol) = up_sunbnd(mask_fitvar_sol(1:n_fitvar_sol))  
-
-
-    CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), &
+     fitvar = 0.0; lobnd = 0.0; upbnd = 0.0
+     fitvar(1:n_fitvar_sol) = fitvar_sol(mask_fitvar_sol(1:n_fitvar_sol))
+     lobnd(1:n_fitvar_sol) = lo_sunbnd(mask_fitvar_sol(1:n_fitvar_sol)) 
+     upbnd(1:n_fitvar_sol) = up_sunbnd(mask_fitvar_sol(1:n_fitvar_sol))  
+  
+  
+!  CALL specfit ( &
+!       n_fitvar_sol, fitvar(1:n_fitvar_sol), n_fitvar_sol, n_fit_pts, &
+!       lobnd(1:n_fitvar_sol), upbnd(1:n_fitvar_sol), max_itnum_sol,   &
+!       rms, chisq, covar(1:n_fitvar_sol,1:n_fitvar_sol), fitspec(1:n_fit_pts), &
+!       fitres(1:n_fit_pts), stderr, solfit_exval, specfit_func_sol)
+   CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), &
          n_fit_pts, lobnd(1:n_fitvar_sol), upbnd(1:n_fitvar_sol), &
          max_itnum_sol, rms, chisq, covar(1:n_fitvar_sol,1:n_fitvar_sol), &
          fitspec(1:n_fit_pts), fitres(1:n_fit_pts), stderr, solfit_exval, &
@@ -109,79 +141,73 @@ contains
 
 
 
-    !DO i = 1, n_fit_pts
-    !   WRITE(90, '(f10.4, 3D14.6)') fitwavs(i), currspec(i), fitspec(i), fitres(i)
-    !ENDDO
+     !DO i = 1, n_fit_pts
+     !   WRITE(90, '(f10.4, 3D14.6)') fitwavs(i), currspec(i), fitspec(i), fitres(i)
+     !ENDDO
+     fitvar_sol_saved = fitvar_sol
 
-    fitvar_sol_saved = fitvar_sol
+     !standard variables variables and standard error
+     varstd(1:max_calfit_idx, 1:2) = 0.0
+     avgwav = ( fitwavs(1) + fitwavs(n_fit_pts)) / 2.0
+  
+     DO i = 1, max_calfit_idx
+        varstd(i, 1) = fitvar_sol(i)
+     ENDDO
 
-    !standard variables variables and standard error
-    varstd(1:max_calfit_idx, 1:2) = 0.0
-    avgwav = ( fitwavs(1) + fitwavs(n_fit_pts)) / 2.0
+     DO i = 1, n_fitvar_sol
+        varstd(mask_fitvar_sol(i), 2) = stderr(i)
+     END DO
 
-    DO i = 1, max_calfit_idx
-      varstd(i, 1) = fitvar_sol(i)
-    ENDDO
-
-    DO i = 1, n_fitvar_sol
-      varstd(mask_fitvar_sol(i), 2) = stderr(i)
-    END DO
-
-    IF (wrt_to_screen .OR. (wrt_to_file .AND. solfit_exval > 0)) THEN
-      IF (which_slit == 3) THEN
-        hw1e = fitvar_sol(hwe_idx); e_asym = 0.0
-      ELSE IF (which_slit == 5) THEN
-        hw1e = 0.0; e_asym = 0.0
-      ELSE IF (which_slit == 2) THEN
-        vgl  = fitvar_sol(vgl_idx);  vgr    = fitvar_sol(vgr_idx)
-        hwl  = fitvar_sol(hwl_idx);  hwr    = fitvar_sol(hwr_idx)
-      ELSE
-        hw1e = fitvar_sol(hwe_idx); e_asym =  fitvar_sol(asy_idx)
-        spk  = fitvar_sol(spk_idx)
-      ENDIF
-      shi = fitvar_sol(shi_idx); squ = fitvar_sol(squ_idx); sin = fitvar_sol(sin_idx)
-    ENDIF
-
-    IF (wrt_to_screen) THEN
-      IF ( which_slit /= 2) THEN
-        WRITE(www_lun, '(4(A, 1pd14.6), 2(A, I6))') 'hwle = ',  hw1e,  &
-             ' e_asym =', e_asym,' spk =', spk, ' rms = ', rms, ' exval = ', solfit_exval !, ' niter=', niter
-        WRITE(*, '(4(A, 1pd14.6), A, I6)') 'hwle = ',  hw1e,  &
-             ' e_asym =', e_asym,' spk =', spk, ' rms = ', rms, ' exval = ', solfit_exval
-      ELSE
-        WRITE(www_lun, '(5(A,1pd14.6),A,I6)') 'vgl = ',  vgl, ' vgr = ',  vgr,  &
-             ' hwl = ', hwl, ' hwr = ', hwr,' rms = ',rms,' exval = ', solfit_exval
-      END IF
-
-      WRITE(www_lun, '(3(A, 1pd14.6))') 'shi = ', shi, ' squ =', squ, ' sin = ', sin
-      WRITE(*, '(3(A, 1pd14.6))') 'shi = ', shi, ' squ =', squ, ' sin = ', sin
-      WRITE(www_lun, '(4(A, 1pd14.6))') 'b10 = ', fitvar_sol(bl0_idx), ' b11 = ', &
-           fitvar_sol(bl1_idx),' b12 = ', fitvar_sol(bl2_idx), &
-           ' b13 = ', fitvar_sol(bl3_idx)
-      WRITE(www_lun, '(4(A, 1pd14.6))') 'sc0 = ', fitvar_sol(sc0_idx), ' sc1 = ', &
-           fitvar_sol(sc1_idx), ' sc2 = ', fitvar_sol(sc2_idx), &
-           ' sc3 = ', fitvar_sol(sc3_idx)
-    END IF
-
-    IF (wrt_to_file .AND. solfit_exval > 0) THEN
-      IF ( slitcal ) THEN   ! for solar slit width calibration
-        IF (which_slit == 2) THEN
-          WRITE(slit_unit, '(f8.3,1p8d11.3,I6)') avgwav, vgl, vgr, hwl, hwr, &
-               shi, squ, sin, rms, solfit_exval
+     IF (wrt_to_screen .OR. (wrt_to_file .AND. solfit_exval > 0)) THEN
+        IF (which_slit == 3) THEN ! triangle (symmetric)
+           hw1e = fitvar_sol(hwe_idx); e_asym = 0.0
+        ELSE IF (which_slit == 5) THEN ! OMI-preflight_slit
+           hw1e = 0.0; e_asym = 0.0; spk = 0.0
+        ELSE IF (which_slit == 2) THEN ! Voigt
+           vgl  = fitvar_sol(vgl_idx);  vgr    = fitvar_sol(vgr_idx)
+           hwl  = fitvar_sol(hwl_idx);  hwr    = fitvar_sol(hwr_idx)
         ELSE
-          WRITE(slit_unit, '(f8.3,1p7d11.3,I6,1pd11.3)') avgwav, hw1e, e_asym,&
-               spk, shi, squ, sin, rms, solfit_exval, &
-               varstd(hwe_idx, 2)
+           hw1e = fitvar_sol(hwe_idx); e_asym =  fitvar_sol(asy_idx)
+           spk =  fitvar_sol(spk_idx)
+        ENDIF
+          shi = fitvar_sol(shi_idx); squ = fitvar_sol(squ_idx); sin = fitvar_sol(sin_idx)
+     ENDIF
+     IF (wrt_to_screen) THEN
+        IF ( which_slit /= 2) THEN
+           WRITE(*, '(5(A, 1pd14.6), 2(A, I6))') 'wav=',avgwav ,'hwle = ',  hw1e,  &
+                ' e_asym =', e_asym, ' spk = ', spk, ' rms = ', rms, ' exval = ', solfit_exval, ' niter= ', niter
+        ELSE
+           WRITE(www_lun, '(5(A,1pd14.6),A,I6)') 'vgl = ',  vgl, ' vgr = ',  vgr,  &
+                ' hwl = ', hwl, ' hwr = ', hwr,' rms = ',rms,' exval = ', solfit_exval
         END IF
-      ELSE                ! for solar/rad wavelength calibration
-        WRITE(slit_unit, '(f8.3,1p4d11.3, I6, 1pd11.3)') avgwav, shi, squ, sin,&
-             rms, solfit_exval, varstd(shi_idx, 2)
-      END IF
-    END IF
+  
+        WRITE(*, '(3(A, 1pd14.6))') 'shi = ', shi, ' squ =', squ, ' sin = ', sin
+        WRITE(*, '(4(A, 1pd14.6))') 'b10 = ', fitvar_sol(bl0_idx), ' b11 = ', &
+             fitvar_sol(bl1_idx),' b12 = ', fitvar_sol(bl2_idx), &
+             ' b13 = ', fitvar_sol(bl3_idx)
+        WRITE(*, '(4(A, 1pd14.6))') 'sc0 = ', fitvar_sol(sc0_idx), ' sc1 = ', &
+             fitvar_sol(sc1_idx), ' sc2 = ', fitvar_sol(sc2_idx), &
+             ' sc3 = ', fitvar_sol(sc3_idx)
+     END IF
 
-    RETURN
+     IF (wrt_to_file .AND. solfit_exval > 0) THEN
+        IF ( slitcal ) THEN   ! for solar slit width calibration
+           IF (which_slit == 2) THEN
+              WRITE(slit_unit, '(f8.3,1p8d11.3,I6)') avgwav, vgl, vgr, hwl, hwr, &
+                   shi, squ, sin, rms, solfit_exval
+           ELSE
+              WRITE(slit_unit, '(f8.3,1p7d11.3,I6,1pd11.3)') avgwav, hw1e, e_asym,&
+                   spk, shi, squ, sin, rms, solfit_exval, &
+                   varstd(hwe_idx, 2)
+           END IF
+        ELSE                ! for solar/rad wavelength calibration
+           WRITE(slit_unit, '(f8.3,1p4d11.3, I6, 1pd11.3)') avgwav, shi, squ, sin,&
+                rms, solfit_exval, varstd(shi_idx, 2)
+        END IF
+     END IF
 
-  END SUBROUTINE cal_fit_one
+     RETURN
 
-
+   END SUBROUTINE cal_fit_one
 end module m_cal_fit_one
+

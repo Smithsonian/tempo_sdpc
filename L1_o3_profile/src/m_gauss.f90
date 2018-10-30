@@ -1,10 +1,9 @@
 !> Gaussian slit functions
 module m_gauss
-  use utilities, only: interpolation, signdp
-  use m_triangle, only: triangle_f2c, triangle_vary_f2c
-  use m_voigt, only: asym_voigt_f2c, asym_voigt_vary_f2c
-  use OMSAO_slitfunction_module, only: omislit_f2c, omislit_vary_f2c
-
+  USE m_triangle, only: triangle_f2c, triangle_vary_f2c
+  USE m_voigt, only: asym_voigt_f2c, asym_voigt_vary_f2c
+  USE OMSAO_slitfunction_module, only: omislit_f2c, omislit_vary_f2c
+  USE m_ezspline_interpolation, only: interpolation
   public asym_gauss, asym_gauss_multi, asym_gauss_vary, gauss, gauss_multi, &
        gauss_vary, gauss_uneven, convol_f2c
   private gauss_f2c, asym_gauss_f2c, gauss_vary_f2c, asym_gauss_vary_f2c
@@ -877,7 +876,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY : yn_varyslit, which_slit
     USE OMSAO_slitfunction_module
-    USE super_gauss_module, ONLY : super_gauss_f2c, super_gauss_vary_f2c
+    USE m_super_gauss, ONLY : super_gauss_f2c, super_gauss_vary_f2c
     IMPLICIT NONE
 
     ! ===============
@@ -929,7 +928,7 @@ contains
   SUBROUTINE gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY : solwinfit, winlim, numwin, slit_trunc_limit
+    USE OMSAO_variables_module, ONLY : solwinfit, winlim, numwin, slit_trunc_limit, do_dsdw
     USE OMSAO_indices_module,   ONLY : hwe_idx
     IMPLICIT NONE
 
@@ -947,8 +946,8 @@ contains
     ! ===============
     INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, &
          eidx, nhalf!, iw
-    REAL (KIND=dp) :: temp, hw1esq, dfw, ssum
-    REAL (KIND=dp), DIMENSION (nf) :: slit
+    REAL (KIND=dp) :: temp, hw1e, hw1esq, dfw, ssum, hwle, ssum1, pert
+    REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
 
     !slit(:) = 0.0; cspec(:, :)= 0.0
     fidx = 1; fidxc = 1
@@ -964,6 +963,7 @@ contains
         lidx =  MINVAL(MAXLOC(fwave, MASK=(fwave <= temp)))
         lidxc = MINVAL(MAXLOC(cwave, MASK=(cwave <= temp)))
       ENDIF
+      hw1e   = solwinfit(iwin, hwe_idx, 1)
       hw1esq = solwinfit(iwin, hwe_idx, 1)**2
       nhalf  = CEILING(solwinfit(iwin, hwe_idx, 1) / dfw * SQRT(-LOG(slit_trunc_limit))) !xliu, 10/22/2009
 
@@ -989,10 +989,17 @@ contains
         sidx = MAX(midx - nhalf, 1)
         eidx = MIN(nf, midx + nhalf)
         slit(sidx:eidx) = EXP(-(cwave(i) - fwave(sidx:eidx))**2 / hw1esq )
-
         ssum = SUM(slit(sidx:eidx))
+        slit (sidx:eidx) = slit(sidx:eidx)/ssum
+        IF (do_dsdw) THEN
+          pert =1.001
+          slit1(sidx:eidx) =EXP (-(abs(cwave(i) - fwave(sidx:eidx))/(hw1e*pert))**2)
+          ssum1 = sum(slit1(sidx:eidx))
+          slit1 (sidx:eidx)= slit1(sidx:eidx)/ssum1
+          slit (sidx:eidx) = (slit1(sidx:eidx) - slit(sidx:eidx))/(hw1e*(pert-1.0 ))
+        ENDIF
         DO j = 1, nspec
-          cspec(i, j) = SUM(fspec(sidx:eidx, j) * slit(sidx:eidx)) / ssum
+           cspec(i, j) = SUM(fspec(sidx:eidx, j) * slit(sidx:eidx))
         ENDDO
       ENDDO
 
