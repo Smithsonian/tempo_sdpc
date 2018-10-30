@@ -25,20 +25,30 @@ static int parse_timestamp (const char *basename, struct tm *tm)
    char *p;
 
    len = strlen(basename);
-   if (len != 36)
+   if (len < 36)
      {
-        fprintf (stderr, "**** Error: basename appears too short: %s (strlen = %ld)\n",
+        fprintf (stderr, "*** Error: basename appears too short: %s (strlen = %ld)\n",
                  basename, len);
         return -1;
      }
 
    /* e.g. TEMPO_irr_L1_V01_20181028T013009Z.nc */
-   tstamp_start = basename + 17;
+   if (NULL == (tstamp_start = strstr (basename, "_20")))
+     goto parse_failed;
+
+   tstamp_start += 1;
+
+   if ((tstamp_start + 15 > basename + len)
+       || (tstamp_start[8] != 'T')
+       || (tstamp_start[15] != 'Z'))
+     goto parse_failed;
+
    p = strptime (tstamp_start, "%Y%m%dT%H%M%S", tm);
    len = p - tstamp_start;
    if (len == 15)
      return 0;
 
+parse_failed:
    fprintf (stderr, "*** Error: parsing %s\n", basename);
    return -1;
 }

@@ -60,6 +60,7 @@ static void usage (void)
    fprintf (stderr, "   -f | --find            search the lookup table\n");
    fprintf (stderr, "   -s | --sec SECONDS     time elapsed since the TEMPO epoch [sec]\n");
    fprintf (stderr, "   -d | --delay SECONDS   set delay time (for testing only)\n\n");
+   fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "WARNING: Because locking of network-mounted files is unreliable,\n");
    fprintf (stderr, "         lookup tables should reside on a local disk.\n");
    exit (EXIT_SUCCESS);
@@ -480,6 +481,12 @@ static int filedb_write (const char *filename, const Filedb_Entry_Type *lst)
 {
    int fd, status;
 
+   if (lst == NULL)
+     {
+        fprintf (stderr, "*** %s: empty filename list?\n", __func__);
+        return -1;
+     }
+
    if ((fd = open_with_lock (filename, 0)) < 0)
      return -1;
 
@@ -702,6 +709,13 @@ static int fdb_initialize (Filedb_Type *fdb)
         return -1;
      }
 
+   if (fdb->lst == NULL)
+     {
+        fprintf (stderr, "*** No matching files in directory %s\n",
+                 fdb->root_dir);
+        return -1;
+     }
+
    if (0 != filedb_write (fdb->lookup_table, fdb->lst))
      return -1;
 
@@ -805,11 +819,12 @@ int main (int argc, char **argv)
      };
    static struct option long_options[] =
      {
-        {"config",  required_argument, 0, 'c'},
-        {"update", no_argument, 0, 'u'},
-        {"find", no_argument, 0, 'f'},
-        {"sec",  required_argument, 0, 's'},
+        {"config", required_argument, 0, 'c'},
+        {"sec",    required_argument, 0, 's'},
         {"delay",  required_argument, 0, 'd'},
+        {"help",   no_argument,       0, 'h'},
+        {"update", no_argument,       0, 'u'},
+        {"find",   no_argument,       0, 'f'},
         {0,0,0,0}
      };
 
@@ -829,7 +844,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:d:ufs:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:s:d:huf", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -846,6 +861,11 @@ int main (int argc, char **argv)
               * any corresponding config file values */
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
+             break;
+
+           case 'h':
+             config_destroy (&cfg);
+             usage();
              break;
 
            case 'd':
