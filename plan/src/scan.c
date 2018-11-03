@@ -298,6 +298,16 @@ static int fixup_sun_angle (Solar_Geom_Type *sgt,
    return 0;
 }
 
+static double floor_sec (double t_days)
+{
+   return floor (t_days * SEC_PER_DAY) / SEC_PER_DAY;
+}
+
+static double ceil_sec (double t_days)
+{
+   return ceil (t_days * SEC_PER_DAY) / SEC_PER_DAY;
+}
+
 int scan_limit_times (const Scan_Type *st, double jd_utc,
                       Solar_Geom_Type *sgt,
                       Scan_Limit_Times_Type *slt)
@@ -372,6 +382,14 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
         return -1;
      }
 
+   /* These limit times are somewhat arbitrary, and it's nice to start
+    * scans on whole second boundaries, so adjust accordingly
+    */
+   slt->jd_utc_beg = ceil_sec (slt->jd_utc_beg);
+   slt->jd_utc_end = floor_sec (slt->jd_utc_end);
+   slt->jd_utc_beg_full = ceil_sec (slt->jd_utc_beg_full);
+   slt->jd_utc_end_full = floor_sec (slt->jd_utc_end_full);
+
    return 0;
 }
 
@@ -411,7 +429,8 @@ static double scan_duration (const Scan_Type *st, int num_steps)
    double duration = (dt->step_dwell * num_steps
                       + 2*dt->scan_reset
                       + dt->scan_timing_margin) / SEC_PER_DAY;
-   return duration;
+   /* adjust scan duration to an integer number of seconds [in units of days] */
+   return ceil_sec (duration);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,

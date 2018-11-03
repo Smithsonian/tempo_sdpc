@@ -119,7 +119,7 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
              if (0 != mkjdtimestr (tstart_jd, buf, sizeof(buf)))
                return -1;
 
-             if (fprintf (fp, "%0.16e,%0.3f,%0.1f,%d,%0.3f,\"%s\"\n",
+             if (fprintf (fp, "%0.11e,%0.3f,%0.1f,%d,%0.3f,\"%s\"\n",
                           tstart_tai,
                           entry->scan_duration,
                           fsw_xstart,
