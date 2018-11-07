@@ -23,8 +23,30 @@ test -d "$SDPC_ROOT" || exit 1
 
 export PATH="$SDPC_ROOT/bin:$PATH"
 
-# Parse the path to the granule file
+# Parse the path to the granule file:
 granule_basename=$(basename "$granule_path" .nc| sed -e s"/^[.]//")
+granule_dir=$(dirname "$granule_path")
+
+# If necessary, lookup the relevant dark file:
+case "${granule_basename}" in
+   *_irr_* | *_rad_* )
+   # FIXME - in operations, a cron job should handle this DB update e.g. 1-2x per day
+   # For testing, we'll update it here, because the dark file may be newly created
+   filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:drk --update
+
+   dark_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:drk --find --header "$granule_path")
+   ;;
+   * )
+   dark_file_path=NONE
+   ;;
+esac
+
+# Create file-list file
+file_list_file="$granule_dir/.${granule_basename}.lis"
+cat <<EOF > $file_list_file
+  granule_path=${granule_path}
+  dark_file_path=${dark_file_path}
+EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
 
@@ -32,4 +54,4 @@ export SDPC_GRANULE_LABEL="$granule_basename"
 job_l0="L0:$SDPC_GRANULE_LABEL"
 sbatch --job-name=$job_l0 \
        --chdir $run_dir \
-       run_L0.sh "$granule_path" "${granule_basename}.nc"
+       run_L0.sh "${granule_basename}.nc" "$file_list_file"

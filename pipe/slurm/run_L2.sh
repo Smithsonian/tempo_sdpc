@@ -73,13 +73,13 @@ init_product_dir()
   dir=$1
   /bin/mkdir -p $dir
   /bin/ln ./${rad_basename}.nc ./${irr_basename}.nc ./$cld_file $dir
-  /bin/cp granule_ident.csv files.lis $dir
+  /bin/cp granule_ident.csv files.lis ${rad_basename}.lis $dir
 }
 
 remove_redundant_files()
 {
    /bin/rm ${rad_basename}.nc ${irr_basename}.nc $cld_file
-   /bin/rm files.lis granule_ident.csv
+   /bin/rm files.lis granule_ident.csv ${rad_basename}.lis
 }
 
 jid_list=""

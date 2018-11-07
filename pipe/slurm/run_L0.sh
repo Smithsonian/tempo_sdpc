@@ -28,11 +28,16 @@ test -d $SDPC_RUN_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
-  echo "Usage: $0 <granule-path> <target-basename>"
+  echo "Usage: $0 <target-basename> <list-of-files>"
   exit 1
 fi
-granule_path="$1"
-granule_basename="$2"
+granule_basename="$1"
+file_list_file="$2"
+
+# including this file should define these variables:
+#    granule_path
+#    dark_file_path
+. "$file_list_file"
 
 # Setup paths to scripts, config files
 # current directory, output directories
@@ -54,6 +59,7 @@ work_dir=$(basename $granule_basename .nc)
 /bin/mkdir "$work_dir"
 cd $work_dir
 /bin/cp "$granule_path" "$granule_basename"
+/bin/cp "$file_list_file" "${granule_basename}.lis"
 chmod u+w "$granule_basename"
 
 work_dir_tarfile="${work_dir}.tar"
@@ -117,7 +123,6 @@ case "${granule_basename}" in
 
   *irr* )
   output_file=$(mkgranule_name -L 1 -p irr -v $SDPC_PROCESSING_VERSION $granule_basename)
-  dark_file_path=$(lookup_dark.sh $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   run_wavecal $output_file "0-4"
   tar_out_dir="$l1_out_dir"
@@ -126,10 +131,8 @@ case "${granule_basename}" in
 
   *rad* )
   output_file=$(mkgranule_name -L 1 -p rad -v $SDPC_PROCESSING_VERSION $granule_basename)
-  dark_file_path=$(lookup_dark.sh $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
-  #Better to run radiance wavelength calibration post-INR
-  #run_wavecal $output_file "0-9"
+  # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file
 
   tar_out_dir="$l1_out_dir"
@@ -157,4 +160,4 @@ fi
 # Assume the initial L0 granule was archived when it was produced,
 # so it's ok to delete this copy once the archive.sl process has
 # succeeded.
-/bin/rm "$granule_path"
+/bin/rm "$granule_path" "$file_list_file"

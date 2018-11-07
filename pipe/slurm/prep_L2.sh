@@ -8,10 +8,7 @@
 #    The following environment variables are assumed to be set:
 #          * SDPC_ROOT, SDPC_RUN_DIR
 #
-# 2. Scripts lookup_irr.sh and lookup_snow.sh retrieve the appropriate
-#    irradiance and snow data products required for processing.
-#
-# 3. When execution is successful, the following tar files are created:
+# 2. When execution is successful, the following tar files are created:
 #          tarfile = $SDPC_RUN_DIR/L1/out/${rad_basename}.tar
 #      tarfile_rad = $SDPC_RUN_DIR/L1/out/${rad_basename}.rad.tar
 #      tarfile_cld = $SDPC_RUN_DIR/L2/out/${rad_basename}.cld.tar
@@ -38,11 +35,18 @@ test -d $SDPC_RUN_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
-  echo "Usage: $0 <rad-path> <rad-target-file>"
+  echo "Usage: $0 <rad-target-file> <file-list-file>"
   exit 1
 fi
-rad_path="$1"
-rad_file="$2"
+rad_file="$1"
+file_list_file="$2"
+
+# file_list_file should define the following symbols:
+#    rad_path
+#    irr_file
+#    snow_file
+#    met_file_path
+. "$file_list_file"
 
 # Setup paths to scripts, config files
 # current directory, output directories
@@ -57,10 +61,12 @@ l2_out_dir="$SDPC_RUN_DIR/L2/out"
 l2_repro_dir="$SDPC_RUN_DIR/L2/repro"
 
 # Make a working directory with a local copy of the radiance file.
-work_dir=$(basename "$rad_file" .nc)
+rad_file_basename=$(basename "$rad_file" .nc)
+work_dir="${rad_file_basename}"
 /bin/mkdir "$work_dir"
 cd $work_dir
 /bin/cp "$rad_path" "$rad_file"
+/bin/cp "$file_list_file" "${rad_file_basename}.lis"
 chmod u+w "$rad_file"
 
 run_dir=$(pwd)
@@ -69,8 +75,6 @@ granule_dir=$(basename "$run_dir")
 
 # Input files:
 #
-irr_file=$(lookup_irr.sh "$rad_file")
-snow_file=$(lookup_snow.sh "$rad_file")
 rad_basename=$(basename "$rad_file" .nc)
 irr_basename=$(basename "$irr_file" .nc)
 
@@ -221,8 +225,8 @@ EOF
 
 perform_cleanup()
 {
-   # Delete the original radiance file
-   /bin/rm "$rad_path"
+   # Delete the original radiance file, and file list file
+   /bin/rm "$rad_path" "$file_list_file"
 
    # We need original radiance path, without the "." prefix on the basename
    # (usually looks like "$some_dir/${prefix}.Smoothed.nc"):

@@ -25,8 +25,18 @@ test -f $CACHEMON || exit 1
 #PRODUCT_LIST="hcho,no2,o3t,o3p"
 PRODUCT_LIST="hcho,no2,o3t"
 
+__init_table_lookup()
+{
+   # FIXME - During operations, cron jobs will do this.
+   #         For testing purposes, do it here.
+   ${SDPC_ROOT}/bin/filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
+   $(SDPC_ROOT}/bin/filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
+}
+
 start()
 {
+  __init_table_lookup
+
   PIPE_SRCDIR=`pwd`
 
   $CACHEMON -d --rename "${PIPE_SRCDIR}/cachemon_L0_pre_inr.cfg" -- "${SDPC_RUN_DIR}/L0"

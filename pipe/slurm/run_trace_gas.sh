@@ -88,8 +88,10 @@ start_month=$(grep tstart_month granule_ident.csv | cut -f2 -d,)
 start_month_name=${month_names[${start_month}]}
 clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
 
+# read file-list file to obtain definition for met_file_path variable
+met_file_path=$(grep met_file_path ${rad_basename}.lis | sed -e s,met_file_path=,,)
+
 # set meteorological data file:
-met_file_path=$(lookup_met.sh "$rad_file")
 met_dir=$(dirname $met_file_path)
 met_file=$(basename $met_file_path)
 

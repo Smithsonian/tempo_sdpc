@@ -25,6 +25,7 @@
 
 #include <libconfig.h>
 
+#include <ioclib.h>
 #include <tio.h>
 #include "filedb.h"
 
@@ -58,8 +59,9 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
    fprintf (stderr, "   -u | --update          update the lookup table\n");
    fprintf (stderr, "   -f | --find            search the lookup table\n");
+   fprintf (stderr, "   -H | --header FILE     match header timestamp in TEMPO data product FILE\n");
    fprintf (stderr, "   -s | --sec SECONDS     time elapsed since the TEMPO epoch [sec]\n");
-   fprintf (stderr, "   -d | --delay SECONDS   set delay time (for testing only)\n\n");
+   fprintf (stderr, "   -d | --delay SECONDS   delay closing database file (for testing only)\n\n");
    fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "WARNING: Because locking of network-mounted files is unreliable,\n");
    fprintf (stderr, "         lookup tables should reside on a local disk.\n");
@@ -696,10 +698,39 @@ static int direntry_handler (const char *fpath, const struct stat *sb, int typef
    return append_entry (fdb, fpath, timestamp);
 }
 
+static int create_lookup_table_dir (const char *path)
+{
+   char *dirname = NULL;
+   int status = -1;
+
+   if (NULL == (dirname = ioclib_dirname (path)))
+     {
+        fprintf (stderr, "*** %s: unable to extract directory path from %s\n",
+                 __func__, path ? path : "(null)");
+        return -1;
+     }
+
+   /* mode 07555 = drwxr-xr-x */
+   if (0 != ioclib_mkdir (dirname, 0755))
+     {
+        fprintf (stderr, "*** %s: unable to create directory path %s\n",
+                 __func__, dirname);
+        goto cleanup_and_return;
+     }
+
+   status = 0;
+cleanup_and_return:
+   ioclib_free (dirname);
+   return status;
+}
+
 static int fdb_initialize (Filedb_Type *fdb)
 {
    int nopenfd = MAX_NUM_OPEN_DIRS;
    int nftw_flags = FTW_MOUNT | FTW_PHYS;
+
+   if (0 != create_lookup_table_dir (fdb->lookup_table))
+     return -1;
 
    set_global_filedb_ptr (fdb);
 
@@ -749,6 +780,28 @@ int read_config_common (Filedb_Type *fdb, config_t *cfg, const char *name)
      return -1;
 
    return 0;
+}
+
+static int query_file_timestamp (const char *file, double *timestamp)
+{
+   int ncid, status = -1;
+
+   if (0 != access (file, F_OK | R_OK))
+     {
+        fprintf (stderr, "*** %s: cannot read file %s\n", __func__, file);
+        return -1;
+     }
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, timestamp))
+     goto close_and_return;
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+   return status;
 }
 
 typedef struct
@@ -820,6 +873,7 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"config", required_argument, 0, 'c'},
+        {"header", required_argument, 0, 'H'},
         {"sec",    required_argument, 0, 's'},
         {"delay",  required_argument, 0, 'd'},
         {"help",   no_argument,       0, 'h'},
@@ -844,7 +898,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:s:d:huf", long_options, &option_index);
+        int c = getopt_long (argc, argv, "c:H:s:d:huf", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -870,6 +924,11 @@ int main (int argc, char **argv)
 
            case 'd':
              if (1 != sscanf (optarg, "%le", &Delay_Time))
+               goto return_status;
+             break;
+
+           case 'H':
+             if (0 != query_file_timestamp (optarg, &timestamp))
                goto return_status;
              break;
 

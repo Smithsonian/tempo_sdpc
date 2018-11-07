@@ -6,9 +6,8 @@ include ../../Makefile.defines
 # List of modules and associated .sl files to install
 #---------------------------------------------------------------------------
 MODULES = daemon-module.so
-SL_FILES = daemon.sl pipeutil.sl fork_socket.sl
-SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl \
-            lookup_irr.sh lookup_snow.sh lookup_met.sh lookup_dark.sh
+SL_FILES = daemon.sl pipeutil.sl
+SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES = ../doc/help/daemon.hlp
 DOC_FILES = ../COPYRIGHT ../README ../doc/text/daemon.txt
@@ -97,12 +96,15 @@ TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 TIO_LIBPATHS  = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 
+IOCSDPC_INC = $(prefix)/include
+IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
+
 FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o
 FILEDB_OBJS = $(patsubst %.o,$(objdir)/%.o, $(FILEDB_OFILES))
 
-FILEDB_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+FILEDB_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig $(IOCSDPC_LIBPATHS) \
               $(TIO_LIBPATHS) -ltio
-FILEDB_INC_DIRS = $(TIO_INC) $(LIBCONFIG_INC)
+FILEDB_INC_DIRS = $(TIO_INC) $(LIBCONFIG_INC) $(IOCSDPC_INC)
 FILEDB_INCS = $(patsubst %,-I%, $(FILEDB_INC_DIRS))
 
 $(objdir):
