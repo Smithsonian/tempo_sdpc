@@ -30,7 +30,7 @@ __init_table_lookup()
    # FIXME - During operations, cron jobs will do this.
    #         For testing purposes, do it here.
    ${SDPC_ROOT}/bin/filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
-   $(SDPC_ROOT}/bin/filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
+   ${SDPC_ROOT}/bin/filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
 }
 
 start()
