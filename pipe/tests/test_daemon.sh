@@ -2,7 +2,7 @@
 
 /bin/rm -f hello.log
 
-export SLANG_MODULE_PATH=".."
+export SLANG_MODULE_PATH="../src"
 ./hello.sl || exit 1
 
 sleep 2

@@ -1,6 +1,6 @@
-include ../../../Makefile.defines
+include ../../Makefile.defines
 
-objdir=../$(archobjs)
+objdir=../src/$(archobjs)
 
 CACHEMON_TESTS=$(shell grep -v '\#' tests.lis)
 

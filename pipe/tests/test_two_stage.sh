@@ -11,11 +11,11 @@ fi
 
 # Start the cache monitors.
 # The incoming directory need not exist.
-export SLANG_MODULE_PATH=".."
-../cachemon.sl ./stage1.cfg -- 3 > log.stage1 2>&1 &
+export SLANG_MODULE_PATH="../src"
+../src/cachemon.sl ./stage1.cfg -- 3 > log.stage1 2>&1 &
 CACHEMON_PID_STAGE1="$!"
 
-../cachemon.sl ./stage2.cfg > log.stage2 2>&1 &
+../src/cachemon.sl ./stage2.cfg > log.stage2 2>&1 &
 CACHEMON_PID_STAGE2="$!"
 
 # Create the incoming directory and feed files

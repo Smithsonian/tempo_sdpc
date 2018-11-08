@@ -11,8 +11,8 @@ fi
 
 # Start the cache monitor.
 # The incoming directory need not exist.
-export SLANG_MODULE_PATH=".."
-../cachemon.sl ./batch.cfg -- 3 > log.batch 2>&1 &
+export SLANG_MODULE_PATH="../src"
+../src/cachemon.sl ./batch.cfg -- 3 > log.batch 2>&1 &
 CACHEMON_PID="$!"
 
 # Create the incoming directory and feed files

@@ -2,7 +2,7 @@
 
 $1 = path_dirname (__FILE__);
 prepend_to_slang_load_path ($1);
-prepend_to_slang_load_path ("..");
+prepend_to_slang_load_path ("../src");
 require ("pipeutil");
 
 private variable Tempo_Epoch_Time_T = 946728000L;

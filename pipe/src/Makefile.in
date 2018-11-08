@@ -127,11 +127,6 @@ $(objdir)/filedb_tempo.o:	$(srcdir)/filedb_tempo.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_tempo.c $(FILEDB_LIBS)
 
 #---------------------------------------------------------------------------
-# Regression tests
-#---------------------------------------------------------------------------
-check:
-	cd test ; $(MAKE) check
-#---------------------------------------------------------------------------
 # Installation Rules
 #---------------------------------------------------------------------------
 install_directories:

@@ -17,7 +17,7 @@ if test -d out_multi ; then
   exit 1
 fi
 
-export SLANG_MODULE_PATH=".."
+export SLANG_MODULE_PATH="../src"
 
 /bin/mkdir logs || exit 1
 
@@ -30,7 +30,7 @@ NUM_GRANULES=10
 pid_list=""
 k=0
 while test "$k" -lt $NUM_CACHEMON ; do
-  ../cachemon.sl ./multi.cfg > logs/log.$k 2>&1 &
+  ../src/cachemon.sl ./multi.cfg > logs/log.$k 2>&1 &
   pid_list="$! $pid_list"
   k=$(($k + 1))
 done
