@@ -17,7 +17,7 @@ check:	filedb-test cachemon-tests
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
-coverage: 
+coverage:
 	# zero all execution counters
 	lcov -z -d $(GCDA_FILES_DIR) -d .
 	# create baseline coverage data file
@@ -32,3 +32,9 @@ coverage:
 	lcov -r total.info $(OTS_ROOT)/include/cfortran.h -o filtered.info
 	# generate summary web pages
 	genhtml filtered.info -o lcov.dir
+
+covclean:
+	-/bin/rm -f *.info
+	-/bin/rm -rf lcov.dir
+
+.PHONY:	covclean check coverage
