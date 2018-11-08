@@ -26,19 +26,19 @@ trap print_exit_message EXIT ERR
 
 tic()
 {
-  __tic=$(date +"%s")
+  __tic=$(date +"%s%N")
 }
 
 toc()
 {
-  __toc=$(date +"%s")
+  __toc=$(date +"%s%N")
 }
 
 assert_duration_exceeds()
 {
    expect=$1
 
-   duration=$(echo $__toc - $__tic | bc)
+   duration=$(echo "scale=9; ($__toc - $__tic)/10^9" | bc)
    value=$(echo $duration \> $expect | bc)
 
    if test $value -eq 0 ; then
@@ -51,7 +51,7 @@ assert_duration_lessthan()
 {
    expect=$1
 
-   duration=$(echo $__toc - $__tic | bc)
+   duration=$(echo "scale=9; ($__toc - $__tic)/10^9" | bc)
    value=$(echo $duration \< $expect | bc)
 
    if test $value -eq 0 ; then
