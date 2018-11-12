@@ -93,6 +93,13 @@ static void delete_iru (Process_Method_Type *pmt)
    FREE(pmt);
 }
 
+static int query_latest_timestamp (Process_Method_Type *pmt, int notused, double *timestamp)
+{
+   (void) notused;
+   *timestamp = pmt->outfile_timestamp_end;
+   return 0;
+}
+
 static int define_iru_vars (Process_Method_Type *pmt,
                             const IOCSDPC_IRU_Type *iru)
 {
@@ -466,6 +473,7 @@ Process_Method_Type *init_iru_method (config_t *cfg)
    pmt->pmt_process = process_iru;
    pmt->pmt_delete = delete_iru;
    pmt->pmt_flush_cache = NULL;
+   pmt->pmt_query_latest_timestamp = query_latest_timestamp;
 
    pmt->out_basename = NULL;
    pmt->ncid = INT_MAX;

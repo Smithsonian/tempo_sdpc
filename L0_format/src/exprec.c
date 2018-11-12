@@ -37,6 +37,7 @@ typedef struct
    int exprec_type;
    unsigned int curr_mirror_step;
    unsigned int num_mirror_steps;
+   double image_end_time;
 }
 File_Info_Type;
 
@@ -48,6 +49,7 @@ File_Info_Type;
    char *archdir_path; \
    int ncid; \
    int processing_version; \
+   double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
    char *product_type; \
@@ -697,6 +699,7 @@ static int classify_file (const char *file, File_Info_Type *info)
      }
 
    info->exprec_type = erec->exprec_type;
+   info->image_end_time = image_end_time (erec);
 
    if ((NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step",
                                              &info->curr_mirror_step))
@@ -751,6 +754,11 @@ static int process_exprec (Process_Method_Type *pmt,
    /* Reject duplicate radiance */
    if (is_radiance && (file_info.curr_mirror_step == pmt->curr_mirror_step))
      return -1;
+
+   if (is_radiance)
+     {
+        pmt->latest_radiance_timestamp_seen = file_info.image_end_time;
+     }
 
    /* The cache contains records of type pmt->exprec_type.
     * Process the cache before changing the value of pmt->exprec_type. */
@@ -852,6 +860,23 @@ static void delete_exprec (Process_Method_Type *pmt)
    FREE(pmt);
 }
 
+static int query_latest_timestamp (Process_Method_Type *pmt, int exprec_type, double *timestamp)
+{
+   switch (exprec_type)
+     {
+      case IOCSDPC_EXPREC_TYPE_RADIANCE:
+        *timestamp = pmt->latest_radiance_timestamp_seen;
+        break;
+
+      default:
+        tell_verror (TELL_NOT_IMPLEMENTED_ERROR, "%s: exprec_type = %d", __func__, exprec_type);
+        return -1;
+        break;
+     }
+
+   return 0;
+}
+
 static int dir_empty (DIR *d)
 {
    struct dirent *ent;
@@ -926,6 +951,9 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    pmt->pmt_process = process_exprec;
    pmt->pmt_delete = delete_exprec;
    pmt->pmt_flush_cache = flush_cache;
+   pmt->pmt_query_latest_timestamp = query_latest_timestamp;
+
+   pmt->latest_radiance_timestamp_seen = -1.0;
 
    pmt->out_basename = NULL;
    pmt->ncid = INT_MAX;

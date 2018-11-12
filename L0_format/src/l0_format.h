@@ -138,6 +138,7 @@ struct Process_Method_Type
    int (*pmt_process)(Process_Method_Type *, const TPInfo_Type *, const char *);
    void (*pmt_delete)(Process_Method_Type *);
    int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *);
+   int (*pmt_query_latest_timestamp)(Process_Method_Type *, int, double *);
 
 #ifdef PROCESS_METHOD_PRIVATE_DATA
    PROCESS_METHOD_PRIVATE_DATA

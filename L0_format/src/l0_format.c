@@ -38,6 +38,16 @@ Process_Method_Table_Type;
 
 typedef struct
 {
+   double max_iru_knowledge_gap_duration;
+   double latest_iru_timestamp_seen;
+   double latest_radiance_timestamp_seen;
+   double latest_iru_only_interval_end_time;
+   char *dir;
+}
+IRU_Interval_Type;
+
+typedef struct
+{
    const char *input_filename_glob_pattern;
    char *incoming_dir;
    char *tpinfo_file;
@@ -46,6 +56,7 @@ typedef struct
    double cache_flush_idle_wait_secs;
    int exit_on_emptydir;
    int daemon;
+   IRU_Interval_Type iru_interval;
 }
 Control_Type;
 
@@ -93,30 +104,21 @@ static void free_control_type_fields (Control_Type *ctrl)
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
    FREE(ctrl->daemon_logfile_path);
+   FREE(ctrl->iru_interval.dir);
 }
 
-static int parse_param_file (config_t *cfg, const char *cfg_file,
-                             Control_Type *ctrl)
+static int read_main_params (config_t *cfg, Control_Type *ctrl)
 {
    config_setting_t *s;
    const char *incoming_dir;
    const char *tpinfo_file;
    const char *daemon_logfile_path;
 
-   if (0 == config_read_file (cfg, cfg_file))
-    {
-       tell_verror (TELL_INVALID_PARM_ERROR,
-                    "%s: Reading %s: %s:%d - %s",
-                    __func__, cfg_file, config_error_file(cfg),
-                    config_error_line(cfg), config_error_text(cfg));
-       return -1;
-    }
-
    if (NULL == (s = config_lookup (cfg, "main")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing 'main' in param file: %s",
-                     __func__, cfg_file);
+                     __func__, config_error_file(cfg));
         return -1;
      }
 
@@ -130,7 +132,7 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'main' parameters in param file: %s",
-                     __func__, cfg_file);
+                     __func__, config_error_file (cfg));
         return -1;
      }
 
@@ -144,17 +146,82 @@ static int parse_param_file (config_t *cfg, const char *cfg_file,
    return 0;
 }
 
-static Process_Method_Type *
-find_process_method (const Process_Method_Table_Type *tbl, const char *file)
+static int read_exprec_params (config_t *cfg, Control_Type *ctrl)
 {
-   IOCSDPC_Common_Header_Type chdr;
-   int fd, filetype;
+   config_setting_t *s;
+   const char *exprec_out_dirname;
 
-   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return NULL;
-   filetype = chdr.filetype;
-   (void) ioclib_fd_close (fd);
+   if (NULL == (s = config_lookup (cfg, "exprec")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing 'exprec' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
 
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &exprec_out_dirname))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading parameter 'exprec:output_dir' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (NULL == (ctrl->iru_interval.dir = expand_string (exprec_out_dirname)))
+     return -1;
+
+   return 0;
+}
+
+static int read_iru_params (config_t *cfg, Control_Type *ctrl)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, "iru")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing 'iru' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "inr_update_interval", &ctrl->iru_interval.max_iru_knowledge_gap_duration))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading parameter 'iru:inr_update_interval' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int parse_param_file (config_t *cfg, const char *cfg_file,
+                             Control_Type *ctrl)
+{
+   if (0 == config_read_file (cfg, cfg_file))
+    {
+       tell_verror (TELL_INVALID_PARM_ERROR, "%s: Reading %s:%d - %s",
+                    __func__, config_error_file(cfg),
+                    config_error_line(cfg), config_error_text(cfg));
+       return -1;
+    }
+
+   if (0 != read_main_params (cfg, ctrl))
+     return -1;
+
+   if (0 != read_exprec_params (cfg, ctrl))
+     return -1;
+
+   if (0 != read_iru_params (cfg, ctrl))
+     return -1;
+
+   return 0;
+}
+
+static Process_Method_Type *
+find_process_method (const Process_Method_Table_Type *tbl, int filetype)
+{
    for ( ; tbl->init != NULL; tbl++)
      {
         if (tbl->filetype == filetype)
@@ -167,20 +234,176 @@ find_process_method (const Process_Method_Table_Type *tbl, const char *file)
    return NULL;
 }
 
+static int make_iru_only_path (const char *dir, double tstart, char *path, size_t pathsize)
+{
+   size_t n, strsize;
+   char *str = path;
+
+   if (dir == NULL)
+     {
+        str = path;
+        strsize = pathsize;
+     }
+   else
+     {
+        n = snprintf (path, pathsize, "%s/", dir);
+        if (n >= pathsize)
+          {
+             tell_verror (TELL_APPLICATION_ERROR,
+                          "%s: path length %ld truncated to buffer size %ld)",
+                          __func__, n, pathsize);
+             return -1;
+          }
+        str = path + n;
+        strsize = pathsize - n;
+     }
+
+   n = __tio_filename_string (str, strsize, tstart, "inr", 0, 0);
+   if (n >= strsize)
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: basename length %ld truncated to buffer size %ld)",
+                     __func__, n, strsize);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int write_iru_only_interval (const char *dir, double tbeg, double tend)
+{
+   char path[MAX_PATHLEN];
+   FILE *fp;
+
+   if (0 != make_iru_only_path (dir, tbeg, path, sizeof(path)))
+     return -1;
+
+   tell_vinfo (0, "creating file %s", path);
+
+   if (NULL == (fp = fopen (path, "w")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: error opening file %s", __func__, path);
+        return -1;
+     }
+
+   if (fprintf (fp, "%0.15e,%0.15e\n", tbeg, tend) < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: error writing to file %s", __func__, path);
+        (void) fclose (fp);
+        return -1;
+     }
+
+   if (0 != fclose (fp))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: error closing file %s", __func__, path);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int maybe_write_iru_only_interval (IRU_Interval_Type *iru_interval)
+{
+   double t_max = iru_interval->max_iru_knowledge_gap_duration;
+   double t_iru = iru_interval->latest_iru_timestamp_seen;
+   double t_rad = iru_interval->latest_radiance_timestamp_seen;
+   double t_only = iru_interval->latest_iru_only_interval_end_time;
+   double t_last, t_end;
+
+   /* Initialization: If we've never sent any IRU data to the INR subsystem,
+    * we'll assume the current IRU knowledge gap starts with the latest
+    * IRU timestamp.  This isn't ideal, and this assumption might might leave
+    * a small gap in IRU coverage, but such a short, isolated coverage
+    * gap won't matter much.
+    * Essentially, this is a design decision, that modifying the code to get
+    * perfect, unbroken coverage isn't worth the effort, while starting the
+    * knowledge gap now is easy and is better than doing nothing at all.
+    */
+   if (t_only <= 0.0 && t_rad <= 0.0)
+     {
+        iru_interval->latest_iru_only_interval_end_time = t_iru;
+        return 0;
+     }
+
+   /* What's the latest IRU timestamp headed for the INR subsystem? */
+   t_last = (t_rad > t_only) ? t_rad : t_only;
+
+   /* Does the INR subsystem need an IRU update? */
+   if (t_iru - t_last < t_max)
+     return 0;
+
+   t_end = t_last + t_max;
+
+   if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
+     return -1;
+
+   iru_interval->latest_iru_only_interval_end_time = t_end;
+
+   return 0;
+}
+
+static int update_control_parameters (Process_Method_Type *pmt, int filetype,
+                                      Control_Type *ctrl)
+{
+   IRU_Interval_Type *iru_interval = &ctrl->iru_interval;
+   int status = 0;
+
+   switch (filetype)
+     {
+      default:
+        /* drop */
+        break;
+
+      case IOCSDPC_FILETYPE_EXPREC:
+        status = pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RADIANCE,
+                                                  &iru_interval->latest_radiance_timestamp_seen);
+        break;
+
+      case IOCSDPC_FILETYPE_IRU:
+        if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &iru_interval->latest_iru_timestamp_seen))
+          return -1;
+        if (0 != maybe_write_iru_only_interval (iru_interval))
+          return -1;
+        break;
+     }
+
+   return status;
+}
+
+static int query_filetype (const char *file, int *filetype)
+{
+   IOCSDPC_Common_Header_Type chdr;
+   int fd;
+
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
+     return -1;
+   *filetype = chdr.filetype;
+   (void) ioclib_fd_close (fd);
+   return 0;
+}
+
 static int process_file (const Process_Method_Table_Type *tbl,
                          const TPInfo_Type *tpinfo,
+                         Control_Type *ctrl,
                          const char *file)
 {
    Process_Method_Type *pmt;
+   int filetype;
 
-   if (NULL == (pmt = find_process_method (tbl, file)))
+   if (0 != query_filetype (file, &filetype))
      return -1;
 
-   return pmt->pmt_process (pmt, tpinfo, file);
+   if (NULL == (pmt = find_process_method (tbl, filetype)))
+     return -1;
+
+   if (0 != pmt->pmt_process (pmt, tpinfo, file))
+     return -1;
+
+   return update_control_parameters (pmt, filetype, ctrl);
 }
 
 static int process_dir_files (const Process_Method_Table_Type *tbl,
-                              const TPInfo_Type *tpinfo,
+                              const TPInfo_Type *tpinfo, Control_Type *ctrl,
                               char **file_list, size_t num_files)
 {
    size_t i;
@@ -188,7 +411,7 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
    for (i = 0; i < num_files; i++)
      {
         char *file = file_list[i];
-        if (0 == process_file (tbl, tpinfo, file))
+        if (0 == process_file (tbl, tpinfo, ctrl, file))
           {
              tell_vinfo (1, "processed: %s", file);
              /* If processing involved a rename, then deletion
@@ -321,7 +544,10 @@ static void log_caught_signal (void)
    tell_vinfo (0, "caught signal: %s (pid=%d)", signame, getpid());
 }
 
-#define CAUGHT_SIGNAL (Sighup_Received || Sigint_Received)
+static int caught_signal (void)
+{
+   return (Sighup_Received || Sigint_Received);
+}
 
 static int monitor_dir (Process_Method_Table_Type *tbl,
                         const TPInfo_Type *tpinfo, Control_Type *ctrl)
@@ -346,7 +572,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
    time_since_last_file = 0.0;
    may_have_cached_files = 0;
 
-   while (CAUGHT_SIGNAL == 0)
+   while (0 == caught_signal())
      {
         ioclib_glob_free (gt);
         gt = NULL;
@@ -359,7 +585,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
         if (ctrl->exit_on_emptydir && (gt->num_files == 0))
           break;
 
-        if (-1 == process_dir_files (tbl, tpinfo, gt->files, gt->num_files))
+        if (-1 == process_dir_files (tbl, tpinfo, ctrl, gt->files, gt->num_files))
           goto return_status;
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
@@ -384,7 +610,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
           }
      }
 
-   if (CAUGHT_SIGNAL)
+   if (caught_signal())
      log_caught_signal();
 
    tell_vinfo (0, "flush caches on exit");
