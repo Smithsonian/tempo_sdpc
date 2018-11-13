@@ -1756,13 +1756,16 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
         return -1;
      }
 
-   for (i = 0; i < num_sgrps; i++)
+   if (num_steps > 0)
      {
-        if (-1 == define_radiance_group (ncid, &sgrps[i], &dim_table, NULL))
+        for (i = 0; i < num_sgrps; i++)
           {
-             Tell_verror (TELL_IO_WRITE_ERROR,
-                          "%s failed defining radiance group %d", __func__, i);
-             return -1;
+             if (-1 == define_radiance_group (ncid, &sgrps[i], &dim_table, NULL))
+               {
+                  Tell_verror (TELL_IO_WRITE_ERROR,
+                               "%s failed defining radiance group %d", __func__, i);
+                  return -1;
+               }
           }
      }
 
