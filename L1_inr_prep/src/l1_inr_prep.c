@@ -11,6 +11,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
+#include <wordexp.h>
 
 #include <libconfig.h>
 
@@ -37,7 +38,7 @@ typedef struct
 {
    char *tmp_path;
    char *final_path;
-   const char *target_dir;
+   char *target_dir;
    int processing_version;
 }
 Rename_Path_Type;
@@ -65,6 +66,33 @@ static int read_config_file (const char *config_file, config_t *cfg)
      }
 
    return 0;
+}
+
+static char *expand_string (const char *s)
+{
+   wordexp_t we = {0};
+   char *s_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof (wordexp_t));
+
+   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, s ? s : "(null)");
+        wordfree (&we);
+        return NULL;
+     }
+
+   s_exp = strdup (we.we_wordv[0]);
+   wordfree (&we);
+
+   if (NULL == s_exp)
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
+     }
+
+   return s_exp;
 }
 
 static int read_common_params (config_t *cfg, const char *setting_name,
@@ -188,6 +216,7 @@ static char *temp_radiance_path (const char *target_dir)
 static int read_rename_config (config_t *cfg, Rename_Path_Type *rpt)
 {
    config_setting_t *s;
+   const char *target_dir;
 
    if (NULL == (s = config_lookup (cfg, "telemetry_only_config")))
      {
@@ -197,7 +226,7 @@ static int read_rename_config (config_t *cfg, Rename_Path_Type *rpt)
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string (s, "target_dir", &rpt->target_dir))
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "target_dir", &target_dir))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'target_dir' from param file: %s",
@@ -213,7 +242,8 @@ static int read_rename_config (config_t *cfg, Rename_Path_Type *rpt)
         return -1;
      }
 
-   if (NULL == (rpt->tmp_path = temp_radiance_path (rpt->target_dir)))
+   if ((NULL == (rpt->target_dir = expand_string (target_dir)))
+       || (NULL == (rpt->tmp_path = temp_radiance_path (rpt->target_dir))))
      return -1;
 
    return 0;
@@ -225,6 +255,7 @@ static void free_rename_path_type (Rename_Path_Type *rpt)
      return;
    ioclib_free (rpt->tmp_path);
    ioclib_free (rpt->final_path);
+   FREE(rpt->target_dir);
 }
 
 static int copy_ephem (Radiance_Type *r, config_t *cfg,
