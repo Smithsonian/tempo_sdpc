@@ -122,7 +122,7 @@ Radiance_Type *radiance_create (const char *file, int processing_version)
      goto return_error;
 
    num_scan_groups = sizeof(Scan_Groups)/sizeof(TIO_Scan_Group_Type);
-   num_steps = 1;
+   num_steps = 0;
 
    if (0 != TIO_l1_radiance_template (r->ncid, num_steps,
                                       num_scan_groups, Scan_Groups))
