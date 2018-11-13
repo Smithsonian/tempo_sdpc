@@ -23,12 +23,40 @@ test -d "$SDPC_ROOT" || exit 1
 
 export PATH="$SDPC_ROOT/bin:$PATH"
 
+make_iru_only_file_for_inr()
+{
+   time_interval_file="$1"
+
+   # read time interval from csv file
+   OLDIFS=$IFS
+   export IFS=','
+   read tbeg tend <"$time_interval_file"
+   export IFS=$OLDIFS
+
+   # run L1_inr_prep to generate the INR input file
+   export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
+   etc_dir="$SDPC_ROOT/etc"
+
+   L1_inr_prep -c ${etc_dir}/l1_inr_prep.cfg \
+       --begin $tbeg --end $tend
+
+   # If L1_inr_prep fails, 'set -e' ensures that the script
+   # will exit before we can delete the time interval file.
+   # If L1_inr_prep succeeds, its ok to delete the file.
+   /bin/rm -f $time_interval_file
+}
+
 # Parse the path to the granule file:
 granule_basename=$(basename "$granule_path" .nc| sed -e s"/^[.]//")
 granule_dir=$(dirname "$granule_path")
 
 # If necessary, lookup the relevant dark file:
 case "${granule_basename}" in
+   *_inr_* )
+   make_iru_only_file_for_inr $granule_path
+   exit 0
+   ;;
+
    *_irr_* | *_rad_* )
    # FIXME - in operations, a cron job should handle this DB update e.g. 1-2x per day
    # For testing, we'll update it here, because the dark file may be newly created
