@@ -19,6 +19,8 @@
 
 #include "plan_list.h"
 
+#define SCAN_START_TIME_ERROR_TOLERANCE_SEC (1.e-2)
+
 void plan_list_entry_free (Plan_List_Type *ple)
 {
    if (ple == NULL)
@@ -87,6 +89,7 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
    const char header_comment[] =
      "time,duration,mirror_x,num_steps,integration_time,timestamp\n";
    double unix_epoch_jd;
+   double previous_entry_end_time;
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
@@ -95,6 +98,8 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
         tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
         return -1;
      }
+
+   previous_entry_end_time = 0.0;
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
@@ -105,6 +110,14 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
         tstart_utc = (entry->tstart - unix_epoch_jd) * SEC_PER_DAY;
         if (0 != tio_time_utc_to_tempo (tstart_utc, &tstart_tai))
           return -1;
+
+        if (previous_entry_end_time - tstart_tai > SCAN_START_TIME_ERROR_TOLERANCE_SEC)
+          {
+             tell_verror (TELL_INTERNAL_ERROR,
+                          "%s: inconsistent scan start times: tstart=%0.16e is %e sec BEFORE the end of the previous scan",
+                          __func__, tstart_tai, previous_entry_end_time - tstart_tai);
+             return -1;
+          }
 
         if (mirror_tilt)
           fsw_xstart = mirror_tilt (entry->xstart);
@@ -133,6 +146,8 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
 
              tstart_tai += entry->scan_duration;
           }
+
+        previous_entry_end_time = tstart_tai;
      }
 
    return 0;
