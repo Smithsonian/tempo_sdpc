@@ -68,10 +68,11 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -d | --date YYYY-MM-DD   Plan start date\n");
    fprintf (stderr, "   -n | --ndays NUM         Number of days to plan [default=14]\n");
+   fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
    fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
-   fprintf (stderr, "   -m | --master            Generate master scan table, then exit\n");
+   fprintf (stderr, "   -m | --master TYPE       Generate master scan table, then exit (std | nl)\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF output to help visualize\n");
    fprintf (stderr, "                            the solar zenith angle at selected times\n");
    exit (EXIT_SUCCESS);
@@ -232,54 +233,11 @@ static double mirror_tilt (double azimuth)
    return 0.5 * azimuth;
 }
 
-static int generate_master_scan_table (config_t *cfg, FILE *fp)
+static int print_standard_scan_table (FILE *fp, double roll_angle, double delta_x,
+                                      double mirror_x0, double mirror_x1)
 {
    const char fmt[] = "%0.3f,%0.7g,%0.4g\n";
-   double mirror_x0, mirror_x1, delta_x, mirror_y, dx_r;
-   double step_size, roll_angle, max_roll_angle;
-   double cos_phi, sin_phi, x;
-
-   if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
-     return -1;
-
-   (void) fprintf (fp, "# roll = %0.6g microradian\n", roll_angle);
-
-   /* convert from microradians to radians */
-   roll_angle *= 1.e-6;
-
-   mirror_x0 =  SMA_MAX_CALIBRATED_MIRROR_X;
-   mirror_x1 = -SMA_MAX_CALIBRATED_MIRROR_X;
-   delta_x = mirror_tilt (step_size);
-
-   if (fabs(delta_x) > SMA_MAX_SCAN_TABLE_STEP)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: step_size = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
-                     __func__, delta_x, SMA_MAX_SCAN_TABLE_STEP);
-        return -1;
-     }
-
-   (void) fprintf (fp, "mirror_x,delta_x,mirror_y\n");
-
-   if (roll_angle == 0.0)
-     {
-        mirror_y = 0.0;
-
-        (void) fprintf (fp, fmt, mirror_x1, delta_x, mirror_y);
-        (void) fprintf (fp, fmt, mirror_x0, delta_x, mirror_y);
-        return 0;
-     }
-
-   max_roll_angle = atan2 (SMA_MAX_CALIBRATED_MIRROR_Y,
-                           SMA_MAX_CALIBRATED_MIRROR_X);
-
-   if (fabs(roll_angle) > max_roll_angle)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: roll_angle = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
-                     __func__, roll_angle*1.e6, max_roll_angle*1.e6);
-        return -1;
-     }
+   double cos_phi, sin_phi, x, dx_r;
 
    /* +X is eastward, +Y is southward,  +Z is along the boresight,
     * at (X,Y) = (0,0).
@@ -310,6 +268,110 @@ static int generate_master_scan_table (config_t *cfg, FILE *fp)
    (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
 
    return 0;
+}
+
+static int print_nightlights_scan_table (FILE *fp, double roll_angle, double delta_x,
+                                         double mirror_x0, double mirror_x1)
+{
+   const char fmt[] = "%0.3f,%0.7g,%0.4g\n";
+   double cos_phi, sin_phi, x, dx_r;
+
+   /* +X is eastward, +Y is southward,  +Z is along the boresight,
+    * at (X,Y) = (0,0).
+    * +roll_angle is clockwise rotation of a vector
+    * about the +Z axis of the right-handed coordinate system.
+    * For example, consider the vector (1,0).  Applying roll_angle>0
+    * will rotate the vector CW, making the Y coordinate > 0, and
+    * making the X coordinate smaller.
+    * Applying roll_angle=pi/2 will rotate the vector into (0,1).
+    *
+    * Vector rotation:
+    *  xp = cos(phi) * x - sin(phi) * y
+    *  yp = sin(phi) * x + cos(phi) * y
+    */
+
+   cos_phi = cos (roll_angle);
+   sin_phi = sin (roll_angle);
+
+   /* initially, y=0 and  delta_y=0, so rotation yields
+    * x, y components as follows: */
+
+   dx_r = cos_phi * delta_x;
+
+   x = mirror_x1;
+   do
+     {
+        (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
+        x -= dx_r;
+        (void) fprintf (fp, fmt, cos_phi*x,  0.0, sin_phi*x);
+     }
+   while (x < mirror_x0);
+
+   return 0;
+}
+
+typedef int Print_Method_Type(FILE *, double, double, double, double);
+
+static int generate_scan_table (config_t *cfg, FILE *fp,
+                               Print_Method_Type *print_method)
+{
+   double mirror_x0, mirror_x1, delta_x;
+   double step_size, roll_angle, max_roll_angle;
+
+   if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
+     return -1;
+
+   /* convert from microradians to radians */
+   roll_angle *= 1.e-6;
+
+   max_roll_angle = atan2 (SMA_MAX_CALIBRATED_MIRROR_Y,
+                           SMA_MAX_CALIBRATED_MIRROR_X);
+
+   if (fabs(roll_angle) > max_roll_angle)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: roll_angle = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
+                     __func__, roll_angle*1.e6, max_roll_angle*1.e6);
+        return -1;
+     }
+
+   mirror_x0 =  SMA_MAX_CALIBRATED_MIRROR_X;
+   mirror_x1 = -SMA_MAX_CALIBRATED_MIRROR_X;
+   delta_x = mirror_tilt (step_size);
+
+   if (fabs(delta_x) > SMA_MAX_SCAN_TABLE_STEP)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: step_size = %0.6g exceeds allowed maximum (+/-%0.6g microradians)",
+                     __func__, delta_x, SMA_MAX_SCAN_TABLE_STEP);
+        return -1;
+     }
+
+   (void) fprintf (fp, "# roll = %0.6g microradian\n", roll_angle * 1.e6);
+   (void) fprintf (fp, "mirror_x,delta_x,mirror_y\n");
+
+   return print_method (fp, roll_angle, delta_x, mirror_x0, mirror_x1);
+}
+
+static int generate_master_scan_table (config_t *cfg, const char *type, FILE *fp)
+{
+   Print_Method_Type *print_method = NULL;
+
+   if (0 == strncmp (type, "std", 3))
+     {
+        print_method = print_standard_scan_table;
+     }
+   else if (0 == strncmp (type, "nl", 2))
+     {
+        print_method = print_nightlights_scan_table;
+     }
+   else
+     {
+        fprintf (stderr, "*** Error: unsupported scan table type: %s\n", type);
+        return -1;
+     }
+
+   return generate_scan_table (cfg, fp, print_method);
 }
 
 static int read_sat_time_zone (config_t *cfg, double *hour)
@@ -366,8 +428,60 @@ return_status:
    return ((tio_status == 0) && (status == 0)) ? 0 : -1;
 }
 
+static Plan_List_Type *
+attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
+                          Scan_Limit_Times_Type *limit_times,
+                          Plan_List_Type *entry)
+{
+   const Scan_Method_Type *nl_dawn = find_scan_method ("nl_dawn");
+   const Scan_Method_Type *nl_dusk = find_scan_method ("nl_dusk");
+   Plan_List_Type *dawn = NULL;
+   Plan_List_Type *dusk = NULL;
+   Plan_List_Type *last = NULL;
+   double radiance_scans_end_time;
+
+   /* Because radiance scans are allowed to start a little early,
+    * it may be necessary to end dawn scans earlier.
+    */
+   if (entry->tstart < limit_times->jd_utc_beg)
+     {
+        limit_times->jd_utc_beg = entry->tstart;
+     }
+   dawn = nl_dawn->sm_plan (scan, solar_geom, limit_times);
+   if (dawn && (dawn->num_repeats > 0))
+     {
+        if (0 != plan_list_append (&dawn, entry))
+          return NULL;
+        entry = dawn;
+     }
+
+   /* Because radiance scans are allowed to run a little bit late,
+    * it may be necessary to start dusk scans later.
+    */
+   for (last = entry; last != NULL; last = last->next)
+     {
+        if (last->next == NULL)
+          break;
+     }
+   radiance_scans_end_time = last->tstart + last->num_repeats * last->scan_duration / SEC_PER_DAY;
+   if (radiance_scans_end_time > limit_times->jd_utc_end)
+     {
+        limit_times->jd_utc_end = radiance_scans_end_time;
+     }
+
+   dusk = nl_dusk->sm_plan (scan, solar_geom, limit_times);
+   if (dusk && (dusk->num_repeats > 0))
+     {
+        if (0 != plan_list_append (&entry, dusk))
+          return NULL;
+     }
+
+   return entry;
+}
+
 static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
                           int num_plan_days, const char *scan_method,
+                          int enable_night_scan,
                           const char *vis_output_file, FILE *fp)
 {
    Ephem_Type eph = {0};
@@ -416,6 +530,12 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
         if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times)))
           goto return_status;
 
+        if (enable_night_scan)
+          {
+             if (NULL == (entry = attach_nightlights_scans (scan, solar_geom, &limit_times, entry)))
+               goto return_status;
+          }
+
         if (0 != plan_list_append (&plan_list, entry))
           goto return_status;
      }
@@ -462,19 +582,22 @@ int main (int argc, char **argv)
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
    int status = EXIT_FAILURE;
    int do_master_scan_table = 0;
+   int enable_night_scan = 0;
    int have_date = 0;
    const char *vis_output_file = NULL;
    Cal_Date_Type t0 = {0};
+   char master_scan_table_type[3];
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
         {"date",    required_argument, 0, 'd'},
         {"config",  required_argument, 0, 'c'},
         {"ndays",   required_argument, 0, 'n'},
+        {"night",   no_argument,       0, 'N'},
         {"scan",    required_argument, 0, 's'},
         {"output",  required_argument, 0, 'o'},
         {"szaout",  required_argument, 0, 'z'},
-        {"master",  no_argument, 0, 'm'},
+        {"master",  required_argument, 0, 'm'},
         {0,0,0,0}
      };
    config_t cfg;
@@ -497,7 +620,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hmc:d:n:o:s:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNm:c:d:n:o:s:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -528,7 +651,12 @@ int main (int argc, char **argv)
            case 'h':
              usage();
              break;
+           case 'N':
+             enable_night_scan++;
+             break;
            case 'm':
+             if (1 != sscanf (optarg, "%3s", master_scan_table_type))
+               usage ();
              do_master_scan_table++;
              break;
            case 'n':
@@ -570,7 +698,7 @@ int main (int argc, char **argv)
 
    if (do_master_scan_table)
      {
-        if (0 != generate_master_scan_table (&cfg, fp))
+        if (0 != generate_master_scan_table (&cfg, master_scan_table_type, fp))
           goto return_status;
      }
    else
@@ -585,7 +713,7 @@ int main (int argc, char **argv)
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
           goto return_status;
 
-        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method,
+        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, enable_night_scan,
                                 vis_output_file, fp))
           goto return_status;
      }

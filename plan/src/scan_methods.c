@@ -31,47 +31,98 @@ typedef struct
 }
 AziElev_Type;
 
-static int scan_table_params (const Scan_Type *st,
-                              const Solar_Geom_Type *solar_geom,
-                              int num_tables, double *xstart, int *num_steps)
+static int compute_scan_angles (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
+{
+   TempoGeoErr error;
+
+   /* need sat_lon in radians */
+   sat_lon /= DEGTORAD;
+
+   if ((error = computeScanAngles (pt, sat_lon, SCAN_AZ_FIRST,
+                                   TEMPO_FIRST_CORRECTION,
+                                   &apt->azimuth, &apt->elevation)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: computeScanAngles failed (%s)",
+                     __func__, tempoGeoErrorString (error));
+        return -1;
+     }
+
+   /* want values in microradians */
+
+   apt->azimuth *= DEGTOMICRORAD;
+   apt->elevation *= DEGTOMICRORAD;
+
+   return 0;
+}
+
+static int radiance_scan_endpoints (const Scan_Type *st,
+                                    const Solar_Geom_Type *solar_geom,
+                                    AziElev_Type *beg,
+                                    AziElev_Type *end)
 {
    EarthPoint beg_pt={0}, end_pt={0};
-   AziElev_Type beg, end;
-   TempoGeoErr error;
-   double sat_lon, step_size;
-   int max_num_steps;
+   double sat_lon;
 
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
+
    if (0 != st->st_scan_beg (st, &beg_pt.theLon, &beg_pt.theLat))
      return -1;
    if (0 != st->st_scan_end (st, &end_pt.theLon, &end_pt.theLat))
      return -1;
 
-   sat_lon /= DEGTORAD;
+   if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+     return -1;
+   if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+     return -1;
 
-   if ((error = computeScanAngles (&beg_pt, sat_lon, SCAN_AZ_FIRST,
-                                   TEMPO_FIRST_CORRECTION,
-                                   &beg.azimuth, &beg.elevation)) != 0)
+   return 0;
+}
+
+static int nightlights_scan_endpoints (const Scan_Type *st,
+                                       const Solar_Geom_Type *solar_geom,
+                                       int is_east,
+                                       AziElev_Type *beg,
+                                       AziElev_Type *end)
+{
+   EarthPoint pt={0};
+   AziElev_Type p;
+   double sat_lon, width;
+
+   if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
+     return -1;
+
+   if (0 != st->st_night_scan_region (st, is_east, &pt.theLon, &pt.theLat, &width))
+     return -1;
+
+   if (0 != compute_scan_angles (&pt, sat_lon, &p))
+     return -1;
+
+   beg->elevation = p.elevation;
+   end->elevation = p.elevation;
+
+   /* width>0 means the region is eastward of the point.
+    * Scans always begin on the eastern side. */
+   if (width > 0)
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: computeScanAngles failed (%s)",
-                     __func__, tempoGeoErrorString (error));
-        return -1;
+        beg->azimuth = p.azimuth + width;
+        end->azimuth = p.azimuth;
+     }
+   else
+     {
+        beg->azimuth = p.azimuth;
+        end->azimuth = p.azimuth + width;
      }
 
-   if ((error = computeScanAngles (&end_pt, sat_lon, SCAN_AZ_FIRST,
-                                   TEMPO_FIRST_CORRECTION,
-                                   &end.azimuth, &end.elevation)) != 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: computeScanAngles failed (%s)",
-                     __func__, tempoGeoErrorString (error));
-        return -1;
-     }
+   return 0;
+}
 
-   /* want xstart in microradians */
-
-   beg.azimuth *= DEGTOMICRORAD;   beg.elevation *= DEGTOMICRORAD;
-   end.azimuth *= DEGTOMICRORAD;   end.elevation *= DEGTOMICRORAD;
+static int std_scan_table (const Scan_Type *st,
+                           const AziElev_Type *beg, const AziElev_Type *end,
+                           double *xstart, int *num_steps)
+{
+   double step_size;
+   int max_num_steps;
 
    /* In this context, we care only about the absolute value of the
     * mirror step size */
@@ -84,8 +135,8 @@ static int scan_table_params (const Scan_Type *st,
         return -1;
      }
 
-   /* Coordinate system should ensure beg.azimuth > end.azimuth */
-   max_num_steps = (beg.azimuth - end.azimuth) / step_size;
+   /* Coordinate system should ensure beg->azimuth > end->azimuth */
+   max_num_steps = (beg->azimuth - end->azimuth) / step_size;
 
    if (max_num_steps <= 0)
      {
@@ -95,32 +146,8 @@ static int scan_table_params (const Scan_Type *st,
         return -1;
      }
 
-   switch (num_tables)
-     {
-      case 1:
-        /* baseline */
-        *xstart = beg.azimuth;
-        *num_steps = max_num_steps;
-        break;
-
-      case 3:
-        /* optimize sunset/sunrise scans
-         * 0=sunrise, 1=mid-day, 2=sunset
-         */
-        xstart[0] = beg.azimuth;
-        xstart[1] = xstart[0];
-        xstart[2] = (beg.azimuth + end.azimuth) * 0.5;
-
-        num_steps[0] = max_num_steps/2;
-        num_steps[1] = max_num_steps;
-        num_steps[2] = max_num_steps - num_steps[0];
-        break;
-
-      default:
-        tell_verror (TELL_RUNTIME_ERROR, "%s: num_tables=%d not supported",
-                     __func__, num_tables);
-        return -1;
-     }
+   *xstart = beg->azimuth;
+   *num_steps = max_num_steps;
 
    return 0;
 }
@@ -130,16 +157,19 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
           const Scan_Limit_Times_Type *limit_times)
 {
    Plan_List_Type *entry = NULL;
+   AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart;
    int num_steps;
 
-   if (0 != scan_table_params (st, solar_geom, 1, &xstart, &num_steps))
+   if (0 != radiance_scan_endpoints (st, solar_geom, &beg, &end))
      return NULL;
-
-   if (NULL == (entry = plan_list_entry_alloc ()))
+   if (0 != std_scan_table (st, &beg, &end, &xstart, &num_steps))
      return NULL;
 
    time_full_scan = st->st_scan_duration (st, num_steps);
+
+   if (NULL == (entry = plan_list_entry_alloc ()))
+     return NULL;
 
    entry->tstart = limit_times->jd_utc_beg;
    entry->xstart = xstart;
@@ -151,30 +181,109 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
-static int std_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
+static int nightlights_scan_table (const Scan_Type *st,
+                                   const AziElev_Type *beg, const AziElev_Type *end,
+                                   double *xstart, int *num_steps)
 {
-   double *sza = NULL, jd_utc;
-   int status = -1;
+   double step_size;
+   int max_num_steps;
 
-   if (0 != vis_write_grid (v, ncid))
-     goto return_status;
+   /* In this context, we care only about the absolute value of the
+    * mirror step size */
+   step_size = fabs(st->st_night_step_size (st));
+   if (step_size == 0.0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: invalid mirror step size = %g",
+                     __func__, step_size);
+        return -1;
+     }
 
-   jd_utc = lst->tstart;
-   if (NULL == (sza = vis_sza (v, jd_utc, NULL)))
-     goto return_status;
-   if (0 != vis_write_value (v, ncid, jd_utc, "sza_beg", sza))
-     goto return_status;
+   /* Coordinate system should ensure beg->azimuth > end->azimuth */
+   max_num_steps = (beg->azimuth - end->azimuth) / step_size;
 
-   jd_utc = (lst->tstart + lst->num_repeats * lst->scan_duration / SEC_PER_DAY);
-   if (NULL == vis_sza (v, jd_utc, sza))
-     goto return_status;
-   if (0 != vis_write_value (v, ncid, jd_utc, "sza_end", sza))
-     goto return_status;
+   if (max_num_steps <= 0)
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: max_num_steps = %d (expected > 0)",
+                     __func__, max_num_steps);
+        return -1;
+     }
 
-   status = 0;
-return_status:
-   FREE(sza);
-   return status;
+   /* for nightlights scans, we want num_steps to be even */
+   if ((max_num_steps/2)*2 != max_num_steps)
+     max_num_steps -= 1;
+
+   *xstart = beg->azimuth;
+   *num_steps = max_num_steps;
+
+   return 0;
+}
+
+static Plan_List_Type *
+nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                       const Scan_Limit_Times_Type *limit_times)
+{
+   Plan_List_Type *entry = NULL;
+   AziElev_Type beg={0}, end={0};
+   double time_full_scan, xstart;
+   int num_steps, num_repeats;
+
+   if (0 != nightlights_scan_endpoints (st, solar_geom, 0, &beg, &end))
+     return NULL;
+   if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
+     return NULL;
+
+   time_full_scan = st->st_night_scan_duration (st, num_steps);
+
+   /* may be zero */
+   num_repeats = floor ((limit_times->jd_utc_beg - limit_times->jd_utc_beg_safe)
+                        / time_full_scan);
+
+   if (NULL == (entry = plan_list_entry_alloc ()))
+     return NULL;
+
+   entry->tstart = limit_times->jd_utc_beg_safe;
+   entry->xstart = xstart;
+   entry->num_steps = num_steps;
+   entry->scan_duration = time_full_scan * SEC_PER_DAY;
+   entry->integration_time = st->st_night_integration_time (st);
+   entry->num_repeats = num_repeats;
+
+   return entry;
+}
+
+static Plan_List_Type *
+nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                       const Scan_Limit_Times_Type *limit_times)
+{
+   Plan_List_Type *entry = NULL;
+   AziElev_Type beg={0}, end={0};
+   double time_full_scan, xstart;
+   int num_steps, num_repeats;
+
+   if (0 != nightlights_scan_endpoints (st, solar_geom, 1, &beg, &end))
+     return NULL;
+   if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
+     return NULL;
+
+   time_full_scan = st->st_night_scan_duration (st, num_steps);
+
+   /* may be zero */
+   num_repeats = floor ((limit_times->jd_utc_end_safe - limit_times->jd_utc_end)
+                        / time_full_scan);
+
+   if (NULL == (entry = plan_list_entry_alloc ()))
+     return NULL;
+
+   entry->tstart = limit_times->jd_utc_end;
+   entry->xstart = xstart;
+   entry->num_steps = num_steps;
+   entry->scan_duration = time_full_scan * SEC_PER_DAY;
+   entry->integration_time = st->st_night_integration_time (st);
+   entry->num_repeats = num_repeats;
+
+   return entry;
 }
 
 typedef struct
@@ -208,7 +317,47 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
    return plan_list_append (lst, entry);
 }
 
-#define NUM_TABLES_OPT1 3
+static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const AziElev_Type *end,
+                            double *xstart, int *num_steps)
+{
+   double step_size;
+   int max_num_steps;
+
+   /* In this context, we care only about the absolute value of the
+    * mirror step size */
+   step_size = fabs(st->st_step_size (st));
+   if (step_size == 0.0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: invalid mirror step size = %g",
+                     __func__, step_size);
+        return -1;
+     }
+
+   /* Coordinate system should ensure beg->azimuth > end->azimuth */
+   max_num_steps = (beg->azimuth - end->azimuth) / step_size;
+
+   if (max_num_steps <= 0)
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: max_num_steps = %d (expected > 0)",
+                     __func__, max_num_steps);
+        return -1;
+     }
+
+   /* optimize sunset/sunrise scans
+    * 0=sunrise, 1=mid-day, 2=sunset
+    */
+   xstart[0] = beg->azimuth;
+   xstart[1] = xstart[0];
+   xstart[2] = (beg->azimuth + end->azimuth) * 0.5;
+
+   num_steps[0] = max_num_steps/2;
+   num_steps[1] = max_num_steps;
+   num_steps[2] = max_num_steps - num_steps[0];
+
+   return 0;
+}
 
 static Plan_List_Type *
 opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
@@ -216,12 +365,14 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 {
    Plan_List_Type *opt_scans = NULL;
    Table_Schedule rise={0}, full={0}, set={0};
+   AziElev_Type beg={0}, end={0};
    double time_midpoint, sun_angle, min_sun_angle, jd_utc;
-   double xstart[NUM_TABLES_OPT1];
-   int num_steps[NUM_TABLES_OPT1];
+   double xstart[3];
+   int num_steps[3];
 
-   if (0 != scan_table_params (st, solar_geom, NUM_TABLES_OPT1,
-                               xstart, num_steps))
+   if (0 != radiance_scan_endpoints (st, solar_geom, &beg, &end))
+     return NULL;
+   if (0 != opt1_scan_table (st, &beg, &end, xstart, num_steps))
      return NULL;
 
    rise.xstart = xstart[0];   rise.num_steps = num_steps[0];
@@ -295,12 +446,9 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return opt_scans;
 }
 
-static int opt1_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
+static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
    const Plan_List_Type *entry;
-   const char *variable_names[] =
-     {"sza_beg", "sza_full_beg", "sza_full_end", NULL};
-   const char **name;
    double *sza = NULL, jd_utc;
    int status = -1;
 
@@ -308,24 +456,19 @@ static int opt1_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
      goto return_status;
 
    entry = lst;
-   for (name = variable_names; *name != NULL; name++)
+
+   jd_utc = entry->tstart;
+   if (NULL == (sza = vis_sza (v, jd_utc, sza)))
+     goto return_status;
+   if (0 != vis_write_value (v, ncid, jd_utc, "sza_beg", sza))
+     goto return_status;
+
+   /* find last scan */
+   for ( ; entry != NULL; entry = entry->next)
      {
-        jd_utc = entry->tstart;
-        if (NULL == (sza = vis_sza (v, jd_utc, sza)))
-          goto return_status;
-        if (0 != vis_write_value (v, ncid, jd_utc, *name, sza))
-          goto return_status;
-
-        entry = entry->next;
-        if (entry == NULL)
-          {
-             /* unexpectedly short list, but don't complain */
-             status = 0;
-             goto return_status;
-          }
+        if (entry->next == NULL)
+          break;
      }
-
-   entry = lst->next->next;
 
    /* end of last scan */
    jd_utc = entry->tstart + entry->num_repeats * entry->scan_duration / SEC_PER_DAY;
@@ -351,8 +494,10 @@ Method_Entry;
 
 static Method_Entry Method_Table[] =
 {
-   METHOD_ENTRY("std", std_plan, std_vis),
-   METHOD_ENTRY("opt1", opt1_plan, opt1_vis),
+   METHOD_ENTRY("std", std_plan, scan_vis),
+   METHOD_ENTRY("opt1", opt1_plan, scan_vis),
+   METHOD_ENTRY("nl_dawn", nightlights_dawn_plan, scan_vis),
+   METHOD_ENTRY("nl_dusk", nightlights_dusk_plan, scan_vis),
    METHOD_TABLE_END
 };
 

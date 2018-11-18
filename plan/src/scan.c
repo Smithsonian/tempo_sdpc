@@ -35,6 +35,22 @@ typedef struct
 }
 Step_Config_Type;
 
+typedef struct
+{
+   Surface_Point_Type pt;
+   double width;
+}
+Surface_Region_Type;
+
+typedef struct
+{
+   Surface_Region_Type east;
+   Surface_Region_Type west;
+   Step_Config_Type dt;
+   double step_size;
+}
+Night_Scan_Type;
+
 #define SCAN_TYPE_PRIVATE_DATA \
    double min_sun_angle; \
    double max_sza; \
@@ -43,7 +59,8 @@ Step_Config_Type;
    Surface_Point_Type day_beg; \
    Surface_Point_Type day_end; \
    Step_Config_Type dt; \
-   double step_size;
+   double step_size; \
+   Night_Scan_Type night_scan;
 #include "scan.h"
 
 static void free_scan_type (Scan_Type *st)
@@ -73,13 +90,19 @@ static int read_limits (config_t *cfg, Scan_Type *st)
    config_setting_t *s;
 
    if (NULL == (s = config_lookup (cfg, "limits_config")))
-     return -1;
+     goto return_error;
 
    if ((CONFIG_TRUE != config_setting_lookup_float (s, "max_sza", &st->max_sza))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "min_sun_angle", &st->min_sun_angle)))
-     return -1;
+     goto return_error;
 
    return 0;
+
+return_error:
+     tell_verror (TELL_INVALID_PARM_ERROR,
+                  "%s: accessing limits_config in param file: %s",
+                  __func__, config_error_file (cfg));
+   return -1;
 }
 
 static int read_surface_point (config_setting_t *s, const char *name,
@@ -119,7 +142,7 @@ static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
    return 0;
 }
 
-static int read_step_size (config_t *cfg, double *step_size)
+static int read_master_table_step_size (config_t *cfg, double *step_size)
 {
    config_setting_t *s;
 
@@ -137,17 +160,9 @@ static int read_step_size (config_t *cfg, double *step_size)
    return 0;
 }
 
-static int read_params (config_t *cfg, Scan_Type *st)
+static int read_scan_config (config_t *cfg, Scan_Type *st)
 {
    config_setting_t *s;
-
-   if (0 != read_limits (cfg, st))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing scan_config in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
 
    if (NULL == (s = config_lookup (cfg, "scan_config")))
      {
@@ -197,13 +212,90 @@ static int read_params (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
-   if (0 != read_step_size (cfg, &st->step_size))
+   if (0 != read_master_table_step_size (cfg, &st->step_size))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading step_size: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   return 0;
+}
+
+static int read_surface_region (config_setting_t *s, const char *name, Surface_Region_Type *reg)
+{
+   config_setting_t *sub;
+
+   if (0 != read_surface_point (s, name, &reg->pt))
+     return -1;
+
+   if (NULL == (sub = config_setting_get_member (s, name)))
+     return -1;
+
+   if (CONFIG_TRUE != config_setting_lookup_float (sub, "width", &reg->width))
+     return -1;
+
+   return 0;
+}
+
+static int read_night_scan_config (config_t *cfg, Night_Scan_Type *night_scan)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, "night_scan_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing night_scan_config in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_surface_region (s, "east_region", &night_scan->east))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading surface point 'night_scan_config:east': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_surface_region (s, "west_region", &night_scan->west))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading surface point 'night_scan_config:west': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_step_config (s, &night_scan->dt))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading night_scan_config:step_config: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "mean_step_size", &night_scan->step_size))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading night_scan_config:mean_step_size: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int read_params (config_t *cfg, Scan_Type *st)
+{
+   if (0 != read_limits (cfg, st))
+     return -1;
+
+   if (0 != read_scan_config (cfg, st))
+     return -1;
+
+   if (0 != read_night_scan_config (cfg, &st->night_scan))
+     return -1;
 
    return 0;
 }
@@ -256,44 +348,36 @@ static int sun_angle_vs_time (double jd_utc, double *dsa, void *v)
    return 0;
 }
 
-static int fixup_sun_angle (Solar_Geom_Type *sgt,
-                            double min_sun_angle,
-                            int is_morning, double *jd_utc_sza)
+static int find_safe_limit_time (Solar_Geom_Type *sgt,
+                                 double min_sun_angle, int is_morning,
+                                 double jd_utc, double *jd_utc_safe)
 {
    Sun_Angle_Bisect_Type b;
-   double jd_utc, jd_utc1, jd_utc2, sun_angle;
-
-   jd_utc = *jd_utc_sza;
-
-   /* If the sun-angle is ok, do nothing */
-   if (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &sun_angle))
-     return -1;
-   if (sun_angle > min_sun_angle)
-     return 0;
+   double jd_utc1, jd_utc2;
 
    b.sgt = sgt;
    b.min_sun_angle = min_sun_angle;
 
    if (is_morning)
      {
-        jd_utc1 = jd_utc;
-        jd_utc2 = jd_utc + 2.0/24;
+        jd_utc1 = jd_utc - 4.0/24;
+        jd_utc2 = jd_utc + 0.5/24;
      }
    else
      {
-        jd_utc1 = jd_utc - 2.0/24;
-        jd_utc2 = jd_utc;
+        jd_utc1 = jd_utc - 0.5/24;;
+        jd_utc2 = jd_utc + 4.0/24;
      }
 
    if (0 != bisection (sun_angle_vs_time, jd_utc1, jd_utc2, &b, &jd_utc))
      {
         tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: bisection failed (sun angle < %0.2f between jd1=%0.2f jd2=%02f)",
-                     __func__, min_sun_angle, jd_utc1, jd_utc2);
+                     "%s: bisection failed (is_morning=%d, sun_angle=%0.2f not found between jd1=%0.2f jd2=%02f)",
+                     __func__, is_morning, min_sun_angle, jd_utc1, jd_utc2);
         return -1;
      }
 
-   *jd_utc_sza = jd_utc;
+   *jd_utc_safe = jd_utc;
 
    return 0;
 }
@@ -343,13 +427,28 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
         return -1;
      }
 
-   /* Ensure sun angle constraints are met */
-   if (0 != fixup_sun_angle (sgt, st->min_sun_angle, 1, &slt->jd_utc_beg))
+   /* Find safe limit times (when it's ok to have the aperture open) */
+   if (0 != find_safe_limit_time (sgt, st->min_sun_angle, 1, slt->jd_utc_beg, &slt->jd_utc_beg_safe))
      return -1;
-   if (0 != fixup_sun_angle (sgt, st->min_sun_angle, 0, &slt->jd_utc_end))
+   if (0 != find_safe_limit_time (sgt, st->min_sun_angle, 0, slt->jd_utc_end, &slt->jd_utc_end_safe))
      return -1;
+   if (slt->jd_utc_end_safe <= slt->jd_utc_beg_safe)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid sun-angle safe interval",
+                     __func__);
+        return -1;
+     }
 
-   if (slt->jd_utc_beg >= slt->jd_utc_end)
+   /* Make sure that radiance scan interval is inside the safe interval */
+   if (slt->jd_utc_beg < slt->jd_utc_beg_safe)
+     {
+        slt->jd_utc_beg = slt->jd_utc_beg_safe;
+     }
+   if (slt->jd_utc_end > slt->jd_utc_end_safe)
+     {
+        slt->jd_utc_end = slt->jd_utc_end_safe;
+     }
+   if (slt->jd_utc_end <= slt->jd_utc_beg)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: failed sun angle safety constraint",
                      __func__);
@@ -389,6 +488,8 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
    slt->jd_utc_end = floor_sec (slt->jd_utc_end);
    slt->jd_utc_beg_full = ceil_sec (slt->jd_utc_beg_full);
    slt->jd_utc_end_full = floor_sec (slt->jd_utc_end_full);
+   slt->jd_utc_beg_safe = ceil_sec (slt->jd_utc_beg_safe);
+   slt->jd_utc_end_safe = floor_sec (slt->jd_utc_end_safe);
 
    return 0;
 }
@@ -407,6 +508,17 @@ static int scan_end_point (const Scan_Type *st, double *lon, double *lat)
    return 0;
 }
 
+static int night_scan_region (const Scan_Type *st, int is_east, double *lon, double *lat, double *width)
+{
+   const Surface_Region_Type *reg = is_east ? &st->night_scan.east : &st->night_scan.west;
+
+   *lon = reg->pt.lon;
+   *lat = reg->pt.lat;
+   *width = reg->width;
+
+   return 0;
+}
+
 static double scan_min_sun_angle (const Scan_Type *st)
 {
    return st->min_sun_angle;
@@ -417,20 +529,40 @@ static double scan_integration_time (const Scan_Type *st)
    return st->dt.integration_time;
 }
 
+static double night_scan_integration_time (const Scan_Type *st)
+{
+   return st->night_scan.dt.integration_time;
+}
+
 static double scan_step_size (const Scan_Type *st)
 {
    return st->step_size;
 }
 
-/* scan duration [days] */
-static double scan_duration (const Scan_Type *st, int num_steps)
+static double night_scan_step_size (const Scan_Type *st)
 {
-   const Step_Config_Type *dt = &st->dt;
+   return st->night_scan.step_size;
+}
+
+/* scan duration [days] */
+static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
+{
    double duration = (dt->step_dwell * num_steps
                       + 2*dt->scan_reset
                       + dt->scan_timing_margin) / SEC_PER_DAY;
    /* adjust scan duration to an integer number of seconds [in units of days] */
    return ceil_sec (duration);
+}
+
+static double scan_duration (const Scan_Type *st, int num_steps)
+{
+   return __scan_duration_days (&st->dt, num_steps);
+}
+
+static double night_scan_duration (const Scan_Type *st, int num_steps)
+{
+   /* FIXME - should night scan duration be computed differently? */
+   return __scan_duration_days (&st->night_scan.dt, num_steps);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,
@@ -467,6 +599,11 @@ Scan_Type *scan_open (config_t *cfg)
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;
    st->st_print_params = scan_print_params;
+
+   st->st_night_scan_region = night_scan_region;
+   st->st_night_scan_duration = night_scan_duration;
+   st->st_night_step_size = night_scan_step_size;
+   st->st_night_integration_time = night_scan_integration_time;
 
    if (0 != read_params (cfg, st))
      {
