@@ -4,17 +4,16 @@ import sys, os
 import argparse
 parser = argparse.ArgumentParser(description='Make a plot.')
 parser.add_argument('filename', help="netCDF data file name")
-parser.add_argument('-x', '--ext', dest='ext', default="pdf",
-                      help="plot type, EXT=pdf | png | ps | ...")
 args = parser.parse_args()
 
 nc_filename = args.filename
-plt_filename = os.path.splitext(nc_filename)[0] + "." + args.ext
+plt_filename = os.path.splitext(nc_filename)[0] + ".pdf"
 
 import numpy as np
 import numpy.ma as ma
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
+import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
@@ -83,15 +82,17 @@ def config_map (m):
     # draw meridians
     meridians = np.arange(180.,360.,10.)
     #m.drawmeridians(meridians) # cannot label meridians on 'ortho' projections
-    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=10)
+    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=20)
 
 def plot_var (nc, m, grid, var_config):
     config_map (m)
     var = read_var (nc, var_config)
     cs = plot_var_map (m, grid, var, var_config)
     cbar = m.colorbar(cs,location='bottom',pad="10%")
-    cbar.set_label(var_config.cbar_label)
-    plt.title('{}\n{}'.format (var_config.title, var.jd_utc_str))
+    cbar.ax.tick_params(labelsize=15)
+    cbar.set_label(var_config.cbar_label, size=15)
+    plt.title(var.jd_utc_str, loc='left')
+    #plt.title('{}\n{}'.format (var_config.title, var.jd_utc_str))
 
 # Create Basemap instance.
 # 'geos' seems to be the best projection for this application, but here
@@ -115,25 +116,24 @@ my = m1.urcrnry * 0.15
 m  = Basemap(projection='geos',lon_0=lon_0,resolution='l',\
      llcrnrx=mx,llcrnry=my,urcrnrx=px,urcrnry=py)
 
-beg_config = Var_Map_Config ('sza_beg', 'SZA [deg]', 50, 140, 'First scan, start')
-end_config = Var_Map_Config ('sza_end', 'SZA [deg]', 50, 140, 'Last scan, end')
-
 nc = NetCDFFile(nc_filename)
 grid = read_grid (nc)
+var_names = list(nc.variables.keys())
+sza_var_indices = [i for i,item in enumerate(var_names) if "sza_" in item]
 
-fig = plt.figure(1)
-fig.set_size_inches (9.0, 6.5)
-fig.set_dpi (200)
-fig.suptitle ('Solar zenith angle', fontsize=20, y=0.78)
-ax = plt.subplot(121)
-plot_var (nc, m, grid, end_config)
-ax = plt.subplot(122)
-plot_var (nc, m, grid, beg_config)
+pdf = matplotlib.backends.backend_pdf.PdfPages(plt_filename)
 
+for k in sza_var_indices:
+    fig = plt.figure(1)
+    fig.set_size_inches (9.0, 6.5)
+    fig.set_dpi (200)
+    fig.suptitle ('Solar zenith angle', fontsize=20, x=0.515)
+    print(var_names[k])
+    config = Var_Map_Config (var_names[k], 'SZA [deg]', 50, 140, 'xxx')
+    plot_var (nc, m, grid, config)
+    pdf.savefig(fig)
+    plt.close(fig)
+
+pdf.close()
 nc.close()
-
-#plt.show()
-fig.savefig (plt_filename, orientation='landscape',
-             bbox_inches='tight', pad_inches=0.1)
-plt.close(fig)
 
