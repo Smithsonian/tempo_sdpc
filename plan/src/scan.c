@@ -48,7 +48,6 @@ typedef struct
    Surface_Region_Type east;
    Surface_Region_Type west;
    Step_Config_Type dt;
-   double step_size;
 }
 Night_Scan_Type;
 
@@ -276,14 +275,6 @@ static int read_night_scan_config (config_t *cfg, Night_Scan_Type *night_scan)
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading night_scan_config:step_config: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (CONFIG_TRUE != config_setting_lookup_float (s, "mean_step_size", &night_scan->step_size))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading night_scan_config:mean_step_size: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -546,11 +537,6 @@ static double scan_step_size (const Scan_Type *st)
    return st->step_size;
 }
 
-static double night_scan_step_size (const Scan_Type *st)
-{
-   return st->night_scan.step_size;
-}
-
 /* scan duration [days] */
 static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
 {
@@ -609,7 +595,6 @@ Scan_Type *scan_open (config_t *cfg)
 
    st->st_night_scan_region = night_scan_region;
    st->st_night_scan_duration = night_scan_duration;
-   st->st_night_step_size = night_scan_step_size;
    st->st_night_integration_time = night_scan_integration_time;
 
    if (0 != read_params (cfg, st))

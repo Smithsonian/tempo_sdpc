@@ -189,45 +189,6 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
-static int nightlights_scan_table (const Scan_Type *st,
-                                   const AziElev_Type *beg, const AziElev_Type *end,
-                                   double *xstart, int *num_steps)
-{
-   double step_size;
-   int max_num_steps;
-
-   /* In this context, we care only about the absolute value of the
-    * mirror step size */
-   step_size = fabs(st->st_night_step_size (st));
-   if (step_size == 0.0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: invalid mirror step size = %g",
-                     __func__, step_size);
-        return -1;
-     }
-
-   /* Coordinate system should ensure beg->azimuth > end->azimuth */
-   max_num_steps = (beg->azimuth - end->azimuth) / step_size;
-
-   if (max_num_steps <= 0)
-     {
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: max_num_steps = %d (expected > 0)",
-                     __func__, max_num_steps);
-        return -1;
-     }
-
-   /* for nightlights scans, we want num_steps to be even */
-   if ((max_num_steps/2)*2 != max_num_steps)
-     max_num_steps -= 1;
-
-   *xstart = beg->azimuth;
-   *num_steps = max_num_steps;
-
-   return 0;
-}
-
 static Plan_List_Type *
 nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
                        const Scan_Limit_Times_Type *limit_times)
@@ -239,7 +200,7 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 0, &beg, &end))
      return NULL;
-   if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
+   if (0 != std_scan_table (st, &beg, &end, &xstart, &num_steps))
      return NULL;
 
    time_full_scan = st->st_night_scan_duration (st, num_steps);
@@ -272,7 +233,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 1, &beg, &end))
      return NULL;
-   if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
+   if (0 != std_scan_table (st, &beg, &end, &xstart, &num_steps))
      return NULL;
 
    time_full_scan = st->st_night_scan_duration (st, num_steps);

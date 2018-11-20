@@ -42,9 +42,6 @@ struct Scan_Type
    double (*st_night_integration_time)(const Scan_Type *);
    /**< retrieve the integration time [sec] for a single nightlights exposure in a co-add */
 
-   double (*st_night_step_size)(const Scan_Type *);
-   /**< retrieve the mean step size [microradian] for each night scan step */
-
    int (*st_print_params)(const Scan_Type *, const char *, FILE *);
    /**< print the scan parameters to an open FILE pointer */
 
