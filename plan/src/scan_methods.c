@@ -457,24 +457,31 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
 {
    const Plan_List_Type *entry;
+   char var_name[32];
    double *sza = NULL, jd_utc;
-   int status = -1;
+   int i, k, status = -1;
+
+#define VAR_NAME_FMT "sza_%d"
 
    if (0 != vis_write_grid (v, ncid))
      goto return_status;
 
-   entry = lst;
-
-   jd_utc = entry->tstart;
-   if (NULL == (sza = vis_sza (v, jd_utc, sza)))
-     goto return_status;
-   if (0 != vis_write_value (v, ncid, jd_utc, "sza_beg", sza))
-     goto return_status;
-
-   /* find last scan */
-   for ( ; entry != NULL; entry = entry->next)
+   k = 0;
+   for (entry = lst; (entry != NULL) && (entry->next != NULL); entry = entry->next)
      {
-        if (entry->next == NULL)
+        for (i = 0; i < entry->num_repeats; i++)
+          {
+             jd_utc = entry->tstart + i * entry->scan_duration / SEC_PER_DAY;
+             if (NULL == (sza = vis_sza (v, jd_utc, sza)))
+               goto return_status;
+             snprintf (var_name, sizeof(var_name), VAR_NAME_FMT, k);
+             k++;
+             if (0 != vis_write_value (v, ncid, jd_utc, var_name, sza))
+               goto return_status;
+          }
+        /* Process only the first day of the plan
+         * (the door-closed part of the orbit is always 1/3 of a day). */
+        if (entry->next->tstart - entry->tstart > 0.25)
           break;
      }
 
@@ -482,7 +489,8 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, int ncid)
    jd_utc = entry->tstart + entry->num_repeats * entry->scan_duration / SEC_PER_DAY;
    if (NULL == vis_sza (v, jd_utc, sza))
      goto return_status;
-   if (0 != vis_write_value (v, ncid, jd_utc, "sza_end", sza))
+   snprintf (var_name, sizeof(var_name), VAR_NAME_FMT, k);
+   if (0 != vis_write_value (v, ncid, jd_utc, var_name, sza))
      goto return_status;
 
    status = 0;
