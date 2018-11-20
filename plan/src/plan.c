@@ -72,7 +72,7 @@ static void usage (void)
    fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
-   fprintf (stderr, "   -m | --master TYPE       Generate master scan table, then exit (std | nl)\n");
+   fprintf (stderr, "   -m | --master            Generate master scan table, then exit\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF output to help visualize\n");
    fprintf (stderr, "                            the solar zenith angle at selected times\n");
    exit (EXIT_SUCCESS);
@@ -270,46 +270,6 @@ static int print_standard_scan_table (FILE *fp, double roll_angle, double delta_
    return 0;
 }
 
-static int print_nightlights_scan_table (FILE *fp, double roll_angle, double delta_x,
-                                         double mirror_x0, double mirror_x1)
-{
-   const char fmt[] = "%0.3f,%0.7g,%0.4g\n";
-   double cos_phi, sin_phi, x, dx_r;
-
-   /* +X is eastward, +Y is southward,  +Z is along the boresight,
-    * at (X,Y) = (0,0).
-    * +roll_angle is clockwise rotation of a vector
-    * about the +Z axis of the right-handed coordinate system.
-    * For example, consider the vector (1,0).  Applying roll_angle>0
-    * will rotate the vector CW, making the Y coordinate > 0, and
-    * making the X coordinate smaller.
-    * Applying roll_angle=pi/2 will rotate the vector into (0,1).
-    *
-    * Vector rotation:
-    *  xp = cos(phi) * x - sin(phi) * y
-    *  yp = sin(phi) * x + cos(phi) * y
-    */
-
-   cos_phi = cos (roll_angle);
-   sin_phi = sin (roll_angle);
-
-   /* initially, y=0 and  delta_y=0, so rotation yields
-    * x, y components as follows: */
-
-   dx_r = cos_phi * delta_x;
-
-   x = mirror_x1;
-   do
-     {
-        (void) fprintf (fp, fmt, cos_phi*x, dx_r, sin_phi*x);
-        x -= dx_r;
-        (void) fprintf (fp, fmt, cos_phi*x,  0.0, sin_phi*x);
-     }
-   while (x < mirror_x0);
-
-   return 0;
-}
-
 typedef int Print_Method_Type(FILE *, double, double, double, double);
 
 static int generate_scan_table (config_t *cfg, FILE *fp,
@@ -355,23 +315,8 @@ static int generate_scan_table (config_t *cfg, FILE *fp,
 
 static int generate_master_scan_table (config_t *cfg, const char *type, FILE *fp)
 {
-   Print_Method_Type *print_method = NULL;
-
-   if (0 == strncmp (type, "std", 3))
-     {
-        print_method = print_standard_scan_table;
-     }
-   else if (0 == strncmp (type, "nl", 2))
-     {
-        print_method = print_nightlights_scan_table;
-     }
-   else
-     {
-        fprintf (stderr, "*** Error: unsupported scan table type: %s\n", type);
-        return -1;
-     }
-
-   return generate_scan_table (cfg, fp, print_method);
+   (void) type;
+   return generate_scan_table (cfg, fp, print_standard_scan_table);
 }
 
 static int read_sat_time_zone (config_t *cfg, double *hour)
@@ -586,7 +531,6 @@ int main (int argc, char **argv)
    int have_date = 0;
    const char *vis_output_file = NULL;
    Cal_Date_Type t0 = {0};
-   char master_scan_table_type[3];
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
@@ -597,7 +541,7 @@ int main (int argc, char **argv)
         {"scan",    required_argument, 0, 's'},
         {"output",  required_argument, 0, 'o'},
         {"szaout",  required_argument, 0, 'z'},
-        {"master",  required_argument, 0, 'm'},
+        {"master",  no_argument, 0, 'm'},
         {0,0,0,0}
      };
    config_t cfg;
@@ -620,7 +564,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNm:c:d:n:o:s:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -655,8 +599,6 @@ int main (int argc, char **argv)
              enable_night_scan++;
              break;
            case 'm':
-             if (1 != sscanf (optarg, "%3s", master_scan_table_type))
-               usage ();
              do_master_scan_table++;
              break;
            case 'n':
@@ -698,7 +640,7 @@ int main (int argc, char **argv)
 
    if (do_master_scan_table)
      {
-        if (0 != generate_master_scan_table (&cfg, master_scan_table_type, fp))
+        if (0 != generate_master_scan_table (&cfg, NULL, fp))
           goto return_status;
      }
    else
