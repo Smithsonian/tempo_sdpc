@@ -33,7 +33,7 @@ struct Scan_Type
    int (*st_scan_end)(const Scan_Type *, double *, double *);
    /**< retrieve the (lon,lat) coordinates of the scan's western limit [deg] */
 
-   int (*st_night_scan_region)(const Scan_Type *, int, double *, double *, double *);
+   int (*st_night_scan_region)(const Scan_Type *, int, double *, double *, double *, int *);
    /**< retrieve night scan region as (lon,lat) of one boundary [deg], and an eastward or westward extent [urad]  */
 
    double (*st_night_scan_duration)(const Scan_Type *, int);

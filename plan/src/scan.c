@@ -39,6 +39,7 @@ typedef struct
 {
    Surface_Point_Type pt;
    double width;
+   int num;
 }
 Surface_Region_Type;
 
@@ -235,6 +236,10 @@ static int read_surface_region (config_setting_t *s, const char *name, Surface_R
 
    if (CONFIG_TRUE != config_setting_lookup_float (sub, "width", &reg->width))
      return -1;
+   if (CONFIG_TRUE != config_setting_lookup_int (sub, "num_subdivisions", &reg->num))
+     return -1;
+
+   if (reg->num <= 0) reg->num = 1;
 
    return 0;
 }
@@ -508,13 +513,15 @@ static int scan_end_point (const Scan_Type *st, double *lon, double *lat)
    return 0;
 }
 
-static int night_scan_region (const Scan_Type *st, int is_east, double *lon, double *lat, double *width)
+static int night_scan_region (const Scan_Type *st, int is_east, double *lon, double *lat,
+                              double *width, int *num)
 {
    const Surface_Region_Type *reg = is_east ? &st->night_scan.east : &st->night_scan.west;
 
    *lon = reg->pt.lon;
    *lat = reg->pt.lat;
    *width = reg->width;
+   *num = reg->num;
 
    return 0;
 }

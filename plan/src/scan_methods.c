@@ -81,6 +81,7 @@ static int radiance_scan_endpoints (const Scan_Type *st,
 
 static int nightlights_scan_endpoints (const Scan_Type *st,
                                        const Solar_Geom_Type *solar_geom,
+                                       const Scan_Limit_Times_Type *limit_times,
                                        int is_east,
                                        AziElev_Type *beg,
                                        AziElev_Type *end)
@@ -88,11 +89,13 @@ static int nightlights_scan_endpoints (const Scan_Type *st,
    EarthPoint pt={0};
    AziElev_Type p;
    double sat_lon, width;
+   double sub_width, sub_offset;
+   int i, num;
 
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
 
-   if (0 != st->st_night_scan_region (st, is_east, &pt.theLon, &pt.theLat, &width))
+   if (0 != st->st_night_scan_region (st, is_east, &pt.theLon, &pt.theLat, &width, &num))
      return -1;
 
    if (0 != compute_scan_angles (&pt, sat_lon, &p))
@@ -101,17 +104,22 @@ static int nightlights_scan_endpoints (const Scan_Type *st,
    beg->elevation = p.elevation;
    end->elevation = p.elevation;
 
+   /* Scan adjacent subdivisions on successive days */
+   i = ((int) limit_times->jd_utc_beg) % num;
+   sub_width = width / num;
+   sub_offset = p.azimuth + i * sub_width;
+
    /* width>0 means the region is eastward of the point.
     * Scans always begin on the eastern side. */
    if (width > 0)
      {
-        beg->azimuth = p.azimuth + width;
-        end->azimuth = p.azimuth;
+        beg->azimuth = sub_offset + sub_width;
+        end->azimuth = sub_offset;
      }
    else
      {
-        beg->azimuth = p.azimuth;
-        end->azimuth = p.azimuth + width;
+        beg->azimuth = sub_offset;
+        end->azimuth = sub_offset + sub_width;
      }
 
    return 0;
@@ -229,7 +237,7 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    double time_full_scan, xstart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (st, solar_geom, 0, &beg, &end))
+   if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 0, &beg, &end))
      return NULL;
    if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
      return NULL;
@@ -262,7 +270,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    double time_full_scan, xstart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (st, solar_geom, 1, &beg, &end))
+   if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 1, &beg, &end))
      return NULL;
    if (0 != nightlights_scan_table (st, &beg, &end, &xstart, &num_steps))
      return NULL;
