@@ -13,15 +13,18 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
 TIO_INC          = $(config_dir)/libtio/src/$(archobjs)
 
+ECCODES_LIBPATH  = -Wl,-rpath=/data/tempo_gs/sdpc/install/v1/ots/lib -L/data/tempo_gs/sdpc/install/v1/ots/lib
+
 MET_LIBPATHS     = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
 INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC)
 LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
+       $(ECCODES_LIBPATH) -leccodes \
        $(TIO_LIBPATHS) -ltio $(RPATH) $(INSTALL_LIBPATHS)
 
 MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I($TIO_INC)
-LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TELL_LIBPATHS) -ltell_f $(TIO_LIBPATHS) -ltio_f
+LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff $(TELL_LIBPATHS) -ltell_f $(TIO_LIBPATHS) -ltio_f $(ECCODES_LIBPATH) -leccodes_f90
 
 ELF_MAJOR_VERSION = 0#
 ELF_MINOR_VERSION = 0#

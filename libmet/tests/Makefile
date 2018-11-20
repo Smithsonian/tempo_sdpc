@@ -27,42 +27,46 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = test_nc
+EXECUTABLES = test_nc test_grib2
 
 all:  $(EXECUTABLES)
 
-check:	$(EXECUTABLES)
-	@./test_nc && echo "running test_nc...ok"
+#check:	$(EXECUTABLES)
+#	@./test_nc && echo "running test_nc...ok"
 
-GCDA_FILES_DIR = "../src/gnuobjs"
+#GCDA_FILES_DIR = "../src/gnuobjs"
 
-coverage:	$(EXECUTABLES)
-	# zero all execution counters
-	lcov -z -d $(GCDA_FILES_DIR) -d .
-	# create baseline coverage data file
-	lcov -c -i -d $(GCDA_FILES_DIR) -d . -o base.info
-	# perform test
-	$(MAKE) check
-	# create test coverage data file
-	lcov -c -d $(GCDA_FILES_DIR) -d . -o test_cov.info
-	# combine baseline and test coverage data
-	lcov -a base.info -a test_cov.info -o total.info
-	# remove selected paths from coverage statistics
-	lcov -r total.info $(OTS_ROOT)/include/cfortran.h -o filtered.info
-	# generate summary web pages
-	genhtml filtered.info -o lcov.dir
+#coverage:	$(EXECUTABLES)
+#	# zero all execution counters
+#	lcov -z -d $(GCDA_FILES_DIR) -d .
+#	# create baseline coverage data file
+#	lcov -c -i -d $(GCDA_FILES_DIR) -d . -o base.info
+#	# perform test
+#	$(MAKE) check
+#	# create test coverage data file
+#	lcov -c -d $(GCDA_FILES_DIR) -d . -o test_cov.info
+#	# combine baseline and test coverage data
+#	lcov -a base.info -a test_cov.info -o total.info
+#	# remove selected paths from coverage statistics
+#	lcov -r total.info $(OTS_ROOT)/include/cfortran.h -o filtered.info
+#	# generate summary web pages
+#	genhtml filtered.info -o lcov.dir
 
 test_nc:
 	$(COMPILE_F_CMD) -o test_nc $(INCS_F) test_nc.f90 $(LIBS_F)
+
+test_grib2:
+	$(COMPILE_F_CMD) -o test_grib2 $(INCS_F) test_grib2.f90 $(LIBS_F)
 
 # ---------------------------------------------------------
 
 clean:
 	-$(RM) -f .##* *.o *.mod
-covclean:
-	-$(RM) -f *.gcda *.gcno *.info
-	-$(RM) -rf lcov.dir
+#covclean:
+#	-$(RM) -f *.gcda *.gcno *.info
+#	-$(RM) -rf lcov.dir
 distclean: clean covclean
 	-$(RM) -f $(EXECUTABLES) *.nc
 
-.PHONY: clean covclean distclean check coverage $(EXECUTABLES)
+#.PHONY: clean covclean distclean check coverage $(EXECUTABLES)
+.PHONY: clean distclean $(EXECUTABLES)

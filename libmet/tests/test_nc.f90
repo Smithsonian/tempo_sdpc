@@ -134,12 +134,13 @@ program test_nc
     stop 1
   endif
 
-  if (ptrop-correct_ptrop .gt. tolerance) then
+  ! Note the file is in Pascals, output in hPa, so multiply by 100
+  if (abs((100.0d0*ptrop)-correct_ptrop) .gt. tolerance) then
     print *, "*** test_nc: failed: troposphere pressure incorrect"
     stop 1
   endif
 
-  if (psurf-correct_psurf .gt. tolerance) then
+  if (abs((100.0d0*psurf)-correct_psurf) .gt. tolerance) then
     print *, "*** test_nc: failed: surface pressure incorrect"
     stop 1
   endif

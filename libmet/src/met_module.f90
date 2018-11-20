@@ -1,10 +1,12 @@
-!> Read meteorology parameters from netCDF simulated NAM meteorology file
+!> Read meteorology parameters from real or simulated NAM meteorology files
 module met_module
   use tell_module
   use tio_module
+  use eccodes
 
-  public read_met_data, read_synth_met_data
-  private open_synth_troppres, close_synth_troppres
+  public read_met_data
+  private open_synth_troppres, close_synth_troppres, make_grib2_index, &
+       close_grib2_index, read_synth_met_data, read_grib2_met_data
 
 contains
 
@@ -80,12 +82,13 @@ contains
     call read_synth_met_data (metfile, lat, lon, troppres, surfpres, &
        tprof, errstat)
   else if (read_grib2 .and. .not. read_nc) then
-    print *, "GRIB2 meteorology reading not yet implemented"
-    stop 1
+    call read_grib2_met_data (metfile, lat, lon, troppres, surfpres, &
+       tprof, errstat)
   else
-    print *, &
-         "Unable to determine meteorology file type from filename extension"
-    stop 1
+    call tell_error (tell_runtime_error, &
+         "Unable to determine meteorology file type from filename extension",&
+         errstat)
+    return
   endif
 
 
@@ -276,6 +279,200 @@ contains
     endif
 
   end subroutine close_synth_troppres
+
+
+
+  !> Subroutine to create an index of a grib2 file using eccodes
+  !-------------------------------------------------------------------------
+  !
+  !> @param[in]  gribfile filename of GRIB2 meteorology file
+  !> @param[out] grib_idx index id for GRIB2 meteorology file
+  !> @param      errstat  error handling integer, non-zero indicates failure
+  !
+  !> @author     E. O'Sullivan Nov 2018
+  !-------------------------------------------------------------------------
+  subroutine make_grib2_index (gribfile, grib_idx, errstat)
+
+    implicit none
+
+    ! input variables
+    character (len=*), intent(in) :: gribfile
+
+    ! output variables
+    integer (kind=4), intent(out) :: grib_idx
+    integer (kind=4), intent(inout) :: errstat
+
+    ! local variables
+    integer (kind=4) :: status
+    !integer (kind=4) ::shortnamesize, levelsize
+    !character(len=20), dimension(:), allocatable :: shortname, level
+
+    if (errstat /= 0) return
+
+    ! index on keywords needed for surface & tropo pressure, t profile
+    call codes_index_create(grib_idx, gribfile, 'shortName,level',status)
+
+    if (status /= CODES_SUCCESS) then
+      call tell_error (tell_io_error, &
+           "make_grib2_index: failed to index GRIB2 file", errstat)
+      return
+    endif
+
+    !uncomment to print shortname and level keywords
+    !call codes_index_get_size(grib_idx,'shortName',shortnamesize)
+    !call codes_index_get_size(grib_idx,'level',levelsize)
+    !allocate(shortname(shortnamesize), level(levelsize))
+    !call codes_index_get(grib_idx,'shortName',shortname)
+    !call codes_index_get(grib_idx,'level',level)
+    !print *, shortname, level
+
+  end subroutine make_grib2_index
+
+
+
+  !> Subroutine to close the index of a grib2 file after use
+  !-------------------------------------------------------------------------
+  !
+  !> @param[in]  grib_idx index id for GRIB2 meteorology file
+  !> @param      errstat  error handling integer, non-zero indicates failure
+  !
+  !> @author     E. O'Sullivan Nov 2018
+  !-------------------------------------------------------------------------
+  subroutine close_grib2_index (grib_idx, errstat)
+
+    implicit none
+
+    ! input variables
+    integer (kind=4), intent(out) :: grib_idx
+
+    ! output variables
+    integer (kind=4), intent(inout) :: errstat
+
+    ! local variables
+    integer (kind=4) :: status
+
+    if (errstat /= 0) return
+
+    ! index on keywords needed for surface & tropo pressure, t profile
+    call codes_index_release(grib_idx, status)
+
+    if (status /= CODES_SUCCESS) then
+      call tell_error (tell_io_error, &
+           "close_grib2_index: failed to close GRIB2 index", errstat)
+      return
+    endif
+
+  end subroutine close_grib2_index
+
+
+  !> Subroutine to read from an indexed GRIB2 meteorology file using eccodes
+  !-------------------------------------------------------------------------
+  !
+  !> @param[in]  gribfile filename for GRIB2 meteorology file
+  !> @param[in]  lat      latitude  of target pixel
+  !> @param[in]  lon      longitude of target pixel
+  !> @param[out] troppres tropopause pressure value
+  !> @param[out] surfpres surface pressure value [OPTIONAL]
+  !> @param[out] tprof    temperature profile vector [OPTIONAL]
+  !> @param      errstat  error handling integer, non-zero indicates failure
+  !
+  !> @author     E. O'Sullivan Nov 2018
+  !-------------------------------------------------------------------------
+  subroutine read_grib2_met_data (gribfile, lat, lon, troppres, &
+       surfpres, tprof, errstat)
+
+    implicit none
+
+    !FIXME - pressure profile number of levels and pressure values
+    !        hard coded. Tough to see how to avoid this for GRIB2.
+    !        Need to figure out how many / which levels to read
+    !number of pressure levels in temperature profile
+    integer (kind=4), parameter :: npres=10
+
+    !input variables
+    character (len=*), intent(in) :: gribfile
+    real (kind=4), intent(in) :: lon, lat
+
+    !output variables
+    real (kind=4), intent(out), optional :: surfpres
+    real (kind=4), intent(out) :: troppres
+    real (kind=4), dimension(npres), intent(out), optional :: tprof
+    integer (kind=4), intent(inout) :: errstat
+
+    !local variables
+    integer (kind=4) :: grib_idx
+    integer (kind=4) :: igrib, status, i
+    real (kind=8) :: inlon, inlat
+    real (kind=8), dimension(4) :: outlats, outlons, distance, weights
+    real (kind=8), dimension(4) :: tmp_spres, tmp_tpres, tmp_t
+    integer (kind=4), dimension(4) :: kindex
+    integer (kind=4), dimension (npres), parameter :: presvals = (/1000, &
+         900, 800, 700, 600, 500, 400, 300, 200, 100/)
+    real (kind=8) :: weightsum
+
+    if (errstat /= 0) return
+
+    call make_grib2_index(gribfile, grib_idx, errstat)
+    if (errstat /= 0) return
+
+    inlat = real(lat, kind=8)
+    if (lon < 0.0d0) inlon = real(lon, kind=8)+360.0d0
+
+    ! tropopause pressure in 4 pixels nearest lon, lat position
+    call codes_index_select(grib_idx,'shortName','pres',status)
+    call codes_index_select(grib_idx,'level','0',status)
+    call codes_new_from_index(grib_idx, igrib, status)
+    call codes_grib_find_nearest_four_single(igrib, .false., &
+         inlat, inlon, outlats, outlons, tmp_tpres, distance, kindex, status)
+    if (status /= CODES_SUCCESS) then
+      call tell_error (tell_io_error, &
+           "read_grib2_met_data: failed to read tropopause pressure", errstat)
+      return
+    endif
+    ! weight by 1/distance^2
+    weightsum = sum(1/distance**2)
+    weights = (1/distance**2)/weightsum
+    troppres = real(sum(tmp_tpres*weights)/100.0d0, kind=4)
+
+    ! surface pressure
+    if (present(surfpres)) then
+      call codes_release(igrib)
+      call codes_index_select(grib_idx,'shortName','sp',status)
+      call codes_index_select(grib_idx,'level','0',status)
+      call codes_new_from_index(grib_idx, igrib, status)
+      call codes_get_element(igrib,"values", kindex, tmp_spres)
+      surfpres = real(sum(tmp_spres*weights)/100.0d0, kind=4)
+      if (status /= CODES_SUCCESS) then
+        call tell_error (tell_io_error, &
+             "read_grib2_met_data: failed to read surface error", errstat)
+        return
+      endif
+    endif
+
+    ! loop over pressure levels to get temperature profile
+    if (present(tprof)) then
+      do i=1, npres
+        call codes_release(igrib)
+        call codes_index_select(grib_idx,'shortName','t',status)
+        call codes_index_select(grib_idx,'level',presvals(i),status)
+        call codes_new_from_index(grib_idx, igrib, status)
+        call codes_get_element(igrib,"values", kindex, tmp_t)
+        tprof(i) = real(sum(tmp_t*weights), kind=4)
+        if (status /= CODES_SUCCESS) then
+          call tell_error (tell_io_error, &
+               "read_grib2_met_data: failed to read temperature", errstat)
+          return
+        endif
+      enddo
+    endif
+
+    !clean up
+    call codes_release(igrib, status)
+
+    call close_grib2_index(grib_idx, errstat)
+    if (errstat /= 0) return
+
+  end subroutine read_grib2_met_data
 
 
 

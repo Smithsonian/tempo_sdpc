@@ -1,9 +1,10 @@
 
 all:
 	cd src; $(MAKE) all
+	cd tests; $(MAKE) all
 
 check:
-	cd tests; $(MAKE) check
+#	cd tests; $(MAKE) check
 
 #docs:
 #	cd doc; $(MAKE) docs
