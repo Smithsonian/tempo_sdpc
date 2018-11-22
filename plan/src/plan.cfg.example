@@ -8,27 +8,54 @@
 scan_config: {
 
 # scan_beg, scan_end are the eastern and western limits of the scan:
-
-  scan_beg: {lon =  -73.71; lat = 18.0;};
-  scan_end: {lon = -126.40; lat = 18.0;};
+ scan_beg: {lon =  -52.712; lat = 47.5605;};  # St John's
+ scan_end: {lon = -123.00; lat = 18.0;};
+ #scan_beg: {lon =  -73.71; lat = 18.0;};
+ #scan_end: {lon = -126.40; lat = 18.0;};
  #scan_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
  #scan_end: {lon = -104.673; lat = 39.849;};  # Denver
 
 # day_beg, day_end are control points used to decide what time
 # interval is best for performing radiance scans with sza<max_sza.
 
-  day_beg: {lon =  -71.057; lat = 42.361;};  # Boston
-  day_end: {lon = -122.431; lat = 37.774;};  # San Francisco
+ day_beg: {lon =  -71.057; lat = 42.361;};  # Boston
+ day_end: {lon = -120.000; lat = 36.0; };
  #day_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
  #day_end: {lon = -104.673; lat = 39.849;};  # Denver
+ #day_beg: {lon =  -80.192; lat = 25.761;};  # Miami
+ #day_end: {lon = -122.431; lat = 37.774;};  # San Francisco
 
-# Mirror stepping parameters:
+# Scan stepping parameters:
 
   step_config: {
      scan_reset  = 2.35;
      scan_timing_margin = 52.51083872;
      integration_time = 0.118;
      num_coadds = 21;
+     frame_transfer_time = 0.00833328;
+     readout_time = 0.1;
+  };
+};
+
+night_scan_config: {
+
+  east_region: {
+     lon = -71.059877; lat = 42.35843;  # Boston
+     width = -60000.0;                  # urad, >0 is eastward
+     num_subdivisions = 2;
+  };
+
+  west_region: {
+     lon = -122.431; lat = 37.774;  # San Francisco
+     width = 60000.0;               # urad, >0 is eastward
+     num_subdivisions = 2;
+  };
+
+  step_config: {
+     scan_reset  = 2.35;
+     scan_timing_margin = 52.51083872;
+     integration_time = 0.118;
+     num_coadds = 85;
      frame_transfer_time = 0.00833328;
      readout_time = 0.1;
   };

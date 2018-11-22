@@ -73,14 +73,15 @@ def plot_var_map (m, grid, var, var_config):
     # scan start line
     (x0, y0) = m(var.start_pos[0], var.start_pos[1]) # (lon,lat) -> (x,y)
     ones_i = np.ones(len(yi))
-    plt.plot (x0 * ones_i, yi, color='white', linewidth=3, linestyle='--')
+    scan_reg_color='lime'
+    plt.plot (x0 * ones_i, yi, color=scan_reg_color, linewidth=3, linestyle='--')
     (xc, yc) = m(-100.0, 36.0)
-    plt.plot (x0, yc, marker=8, color='white', markersize=15, markeredgewidth=3, fillstyle='none')
+    plt.plot (x0, yc, marker=8, color=scan_reg_color, markersize=15, markeredgewidth=3, fillstyle='none')
 
     # scan end line
     geo_altitude = 35785831.0  # meters
     x1 = x0 + var.scan_angle * geo_altitude;
-    plt.plot (x1 * ones_i, yi, color='white', linewidth=3, linestyle='--')
+    plt.plot (x1 * ones_i, yi, color=scan_reg_color, linewidth=3, linestyle='--')
 
     return cs
 
