@@ -30,10 +30,14 @@ class Grid_Map (object):
         self.lat = lat
 
 class Var_Map (object):
-    def __init__(self, var, jd_utc, jd_utc_str):
+    def __init__(self, var, jd_utc, jd_utc_str, scan_duration, num_repeats, start_pos, scan_angle):
         self.var = var
         self.jd_utc = jd_utc
         self.jd_utc_str = jd_utc_str
+        self.scan_duration = scan_duration
+        self.num_repeats = num_repeats
+        self.start_pos = start_pos
+        self.scan_angle = scan_angle
 
 class Var_Map_Config (object):
     def __init__(self, name, cbar_label, min, max, title):
@@ -53,7 +57,11 @@ def read_var (nc, var_config):
     var = var_ptr[:]
     jd_utc = var_ptr.getncattr('julian_date')
     jd_utc_str = var_ptr.getncattr('julian_date_str')
-    return Var_Map (var, jd_utc, jd_utc_str)
+    scan_duration = var_ptr.getncattr('scan_duration')
+    num_repeats = var_ptr.getncattr('num_repeats')
+    start_pos = var_ptr.getncattr('start_pos')
+    scan_angle = var_ptr.getncattr('scan_angle_rad')
+    return Var_Map (var, jd_utc, jd_utc_str, scan_duration, num_repeats, start_pos, scan_angle)
 
 def plot_var_map (m, grid, var, var_config):
     xi, yi = m(grid.lon, grid.lat)
@@ -61,6 +69,19 @@ def plot_var_map (m, grid, var, var_config):
     # For greyscale, try cmap='bone_r'
     # For color, try cmap = 'bwr_r', 'YlOrBr', or 'hsv'
     cs = m.contourf(xi,yi,var.var, clevs, cmap='bwr_r', extend='both')
+
+    # scan start line
+    (x0, y0) = m(var.start_pos[0], var.start_pos[1]) # (lon,lat) -> (x,y)
+    ones_i = np.ones(len(yi))
+    plt.plot (x0 * ones_i, yi, color='white', linewidth=3, linestyle='--')
+    (xc, yc) = m(-100.0, 36.0)
+    plt.plot (x0, yc, marker=8, color='white', markersize=15, markeredgewidth=3, fillstyle='none')
+
+    # scan end line
+    geo_altitude = 35785831.0  # meters
+    x1 = x0 + var.scan_angle * geo_altitude;
+    plt.plot (x1 * ones_i, yi, color='white', linewidth=3, linestyle='--')
+
     return cs
 
 def config_map (m):
@@ -92,7 +113,7 @@ def plot_var (nc, m, grid, var_config):
     cbar.ax.tick_params(labelsize=15)
     cbar.set_label(var_config.cbar_label, size=15)
     plt.title(var.jd_utc_str, loc='left')
-    #plt.title('{}\n{}'.format (var_config.title, var.jd_utc_str))
+    plt.title("n=%d t=%0.1f m" % (var.num_repeats, var.scan_duration/60.0), loc='right')
 
 # Create Basemap instance.
 # 'geos' seems to be the best projection for this application, but here

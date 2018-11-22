@@ -13,6 +13,7 @@ struct Plan_List_Type
    Plan_List_Type *next;
    double tstart;            /**< scan start time, UTC [days] */
    double xstart;            /**< scan start mirror coordinate [microradian] */
+   double ystart;
    double scan_duration;     /**< scan duration [sec] */
    double integration_time;  /**< integration time for a single exposure in a co-add [sec] */
    int num_steps;            /**< number of mirror steps in the scan */

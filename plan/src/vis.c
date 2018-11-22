@@ -18,6 +18,7 @@
 
 #include "scan.h"
 #include "solar.h"
+#include "plan_list.h"
 #include "vis.h"
 
 #define DEGTORAD                (M_PI/180.0)
@@ -28,6 +29,9 @@
 struct Vis_Type
 {
    Solar_Geom_Type *solar_geom;
+
+   projPJ geos;
+   projPJ longlat;
 
    double tilt;
    double azi;
@@ -52,6 +56,8 @@ void vis_free (Vis_Type *v)
 {
    if (v == NULL)
      return;
+   pj_free (v->geos);
+   pj_free (v->longlat);
    FREE(v->x);
    FREE(v);
 }
@@ -126,25 +132,46 @@ static int vis_init_xygrid (Vis_Type *v)
    return 0;
 }
 
+static int vis_init_proj (Vis_Type *v, double sat_lon)
+{
+   char ctl_geos[PROJ_ARGS_BUFSIZE];
+   const char geos_fmt[] = "+proj=geos +lon_0=%0.3g +h=%0.1f";
+   const char ctl_longlat[] = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+   int len;
+
+   if (NULL == (v->longlat = pj_init_plus (ctl_longlat)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(longlat) failed", __func__);
+        return -1;
+     }
+
+   memset (ctl_geos, 0, PROJ_ARGS_BUFSIZE);
+   len = snprintf (ctl_geos, PROJ_ARGS_BUFSIZE, geos_fmt, sat_lon/DEGTORAD, GEO_ALTITUDE);
+   if (len >= PROJ_ARGS_BUFSIZE)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
+        return -1;
+     }
+
+   if (NULL == (v->geos = pj_init_plus (ctl_geos)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(geos) failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
 static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
 {
    projPJ tpers = NULL;
-   projPJ longlat = NULL;
    char ctl_tpers[PROJ_ARGS_BUFSIZE];
    const char tpers_fmt[] =
      "+proj=tpers +lat_0=0 +lon_0=%0.3g +h=%0.1f +tilt=%0.3g +azi=%0.3g";
-   const char ctl_longlat[] =
-     "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
    double *v_x = v->x, *v_y = v->y;
    double *v_lon = v->lon, *v_lat = v->lat;
    int len, status = -1;
    long i, n;
-
-   if (NULL == (longlat = pj_init_plus (ctl_longlat)))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(longlat) failed", __func__);
-        goto return_status;
-     }
 
    memset (ctl_tpers, 0, PROJ_ARGS_BUFSIZE);
    len = snprintf (ctl_tpers, PROJ_ARGS_BUFSIZE, tpers_fmt,
@@ -170,7 +197,7 @@ static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
         v_lat[i] = v_y[i] * GEO_ALTITUDE;
      }
 
-   if ((status = pj_transform (tpers, longlat, n, 1, v_lon, v_lat, NULL)) != 0)
+   if ((status = pj_transform (tpers, v->longlat, n, 1, v_lon, v_lat, NULL)) != 0)
      {
         tell_verror (TELL_APPLICATION_ERROR,
                      "%s: pj_transform failed, status = %d (%s)",
@@ -191,7 +218,6 @@ static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
 
    status = 0;
 return_status:
-   pj_free (longlat);
    pj_free (tpers);
    return status ? -1 : 0;
 }
@@ -261,13 +287,16 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
    if (0 != read_vis_params (v, cfg, &img_size))
      goto return_error;
 
+   if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
+     goto return_error;
+
+   if (0 != vis_init_proj (v, sat_lon))
+     goto return_error;
+
    if (0 != vis_alloc_grid (v, img_size, img_size))
      goto return_error;
 
    if (0 != vis_init_xygrid (v))
-     goto return_error;
-
-   if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
      goto return_error;
 
    if (0 != vis_xy_to_lonlat (v, sat_lon))
@@ -356,12 +385,46 @@ return_status:
    return status;
 }
 
+static int vis_azel_to_lonlat (const Vis_Type *v, double az, double el,
+                               double *plon, double *plat)
+{
+   double lon, lat;
+   long n;
+   int status;
+
+   /* microradian -> radian */
+   az *= 1.e-6;
+   el *= 1.e-6;
+
+   /* radian -> meters */
+   lon = az * GEO_ALTITUDE;
+   lat = el * GEO_ALTITUDE;
+   n = 1;
+
+   /* transform in-place to get lon,lat in radians */
+   if ((status = pj_transform (v->geos, v->longlat, n, 1, &lon, &lat, NULL)) != 0)
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: pj_transform failed, status = %d (%s)",
+                     __func__, status, pj_strerrno(status));
+        return -1;
+     }
+
+   /* lon,lat [deg] */
+   *plon = lon / DEGTORAD;
+   *plat = lat / DEGTORAD;
+
+   return 0;
+}
+
 int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
-                     const char *name, const double *value)
+                     const char *name, const double *value,
+                     double step_size, const Plan_List_Type *entry)
 {
    int varid, start[2], count[2];
    char buf[32];
    float float_missing = TIO_FILL_FLOAT;
+   double pos[2], scan_angle;
    int status = -1;
 
    if (0 != TIO_def_var (ncid, name, NC_FLOAT, 2, v->dimids_lon_lat, &varid))
@@ -370,8 +433,17 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    if (0 != mkjdtimestr (jd_utc, buf, sizeof(buf)))
      goto return_status;
 
+   if (0 != vis_azel_to_lonlat (v, entry->xstart, entry->ystart, &pos[0], &pos[1]))
+     goto return_status;
+
+   scan_angle = entry->num_steps * step_size * 1.e-6;  /* [rad] */
+
    if ((0 != TIO_put_att (ncid, varid, "julian_date", NC_DOUBLE, 1, &jd_utc))
-       ||(0 != TIO_put_att (ncid, varid, "julian_date_str", NC_CHAR, strlen(buf)+1, buf)))
+       ||(0 != TIO_put_att (ncid, varid, "julian_date_str", NC_CHAR, strlen(buf)+1, buf))
+       ||(0 != TIO_put_att (ncid, varid, "scan_duration", NC_DOUBLE, 1, &entry->scan_duration))
+       ||(0 != TIO_put_att (ncid, varid, "num_repeats", NC_INT, 1, &entry->num_repeats))
+       ||(0 != TIO_put_att (ncid, varid, "start_pos", NC_DOUBLE, 2, pos))
+       ||(0 != TIO_put_att (ncid, varid, "scan_angle_rad", NC_DOUBLE, 1, &scan_angle)))
      goto return_status;
 
    if ((0 != TIO_put_att (ncid, varid, "missing_value", NC_FLOAT, 1, &float_missing))

@@ -26,6 +26,7 @@
 
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
+#define DEFAULT_NUM_SZA_DAYS     1
 
 #define SMA_MAX_CALIBRATED_MIRROR_X  49600.0
 #define SMA_MAX_CALIBRATED_MIRROR_Y   4400.0
@@ -67,14 +68,15 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -d | --date YYYY-MM-DD   Plan start date\n");
-   fprintf (stderr, "   -n | --ndays NUM         Number of days to plan [default=14]\n");
-   fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
+   fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
+   fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
    fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
+   fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "   -m | --master            Generate master scan table, then exit\n");
-   fprintf (stderr, "   -z | --szaout FILE       Generate netCDF output to help visualize\n");
-   fprintf (stderr, "                            the solar zenith angle at selected times\n");
+   fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize the\n");
+   fprintf (stderr, "                            solar illumination at the start of each scan\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -345,9 +347,10 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
    return 0;
 }
 
-static int generate_vis (config_t *cfg, const char *filename,
+static int generate_vis (config_t *cfg, const char *filename, int num_days,
                          Solar_Geom_Type *solar_geom,
                          const Plan_List_Type *plan_list,
+                         double step_size,
                          const Scan_Method_Type *sm)
 {
    Vis_Type *v = NULL;
@@ -362,7 +365,7 @@ static int generate_vis (config_t *cfg, const char *filename,
    if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
      goto return_status;
 
-   if (0 != sm->sm_vis (v, plan_list, ncid))
+   if (0 != sm->sm_vis (v, plan_list, step_size, num_days, ncid))
      goto return_status;
 
    tio_status = TIO_close (ncid);
@@ -427,7 +430,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
 static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
                           int num_plan_days, const char *scan_method,
                           int enable_night_scan,
-                          const char *vis_output_file, FILE *fp)
+                          const char *vis_output_file, int num_sza_days, FILE *fp)
 {
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
@@ -496,7 +499,8 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
    if (0 != plan_list_write (fp, mirror_tilt, plan_list))
      goto return_status;
 
-   if (0 != generate_vis (cfg, vis_output_file, solar_geom, plan_list, sm))
+   if (0 != generate_vis (cfg, vis_output_file, num_sza_days, solar_geom, plan_list,
+                          scan->st_step_size(scan), sm))
      goto return_status;
 
    status = 0;
@@ -525,6 +529,7 @@ int main (int argc, char **argv)
    FILE *fp = stdout;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
+   int num_sza_days = DEFAULT_NUM_SZA_DAYS;
    int status = EXIT_FAILURE;
    int do_master_scan_table = 0;
    int enable_night_scan = 0;
@@ -602,8 +607,16 @@ int main (int argc, char **argv)
              do_master_scan_table++;
              break;
            case 'n':
-             if (1 != sscanf (optarg, "%d", &num_plan_days))
-               usage ();
+             if (NULL != strchr (optarg, ','))
+               {
+                  if (2 != sscanf (optarg, "%d,%d", &num_plan_days, &num_sza_days))
+                    usage ();
+               }
+             else
+               {
+                  if (1 != sscanf (optarg, "%d", &num_plan_days))
+                    usage ();
+               }
              break;
            case 'o':
              outfile = optarg;
@@ -656,7 +669,7 @@ int main (int argc, char **argv)
           goto return_status;
 
         if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, enable_night_scan,
-                                vis_output_file, fp))
+                                vis_output_file, num_sza_days, fp))
           goto return_status;
      }
 

@@ -45,10 +45,11 @@ extern int vis_write_grid (Vis_Type *v, int ncid);
  * @param[in]  ncid    netCDF file identifier
  * @param[in]  jd_utc  Julian date of the SZA map
  * @param[in]  name    netCDF file variable name for the SZA map
- * @param[in]  value   Pointer to the SZA map array
+ * @param[in]  sza     Pointer to the SZA map array
  * @return 0 on success, -1 on error
  */
 extern int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
-                            const char *name, const double *value);
+                            const char *name, const double *sza,
+                            double step_size, const Plan_List_Type *entry);
 
 #endif
