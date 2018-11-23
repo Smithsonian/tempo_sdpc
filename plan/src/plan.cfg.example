@@ -18,12 +18,8 @@ scan_config: {
 # day_beg, day_end are control points used to decide what time
 # interval is best for performing radiance scans with sza<max_sza.
 
- day_beg: {lon =  -71.057; lat = 42.361;};  # Boston
- day_end: {lon = -120.000; lat = 36.0; };
- #day_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
- #day_end: {lon = -104.673; lat = 39.849;};  # Denver
- #day_beg: {lon =  -80.192; lat = 25.761;};  # Miami
- #day_end: {lon = -122.431; lat = 37.774;};  # San Francisco
+ day_beg: {lon =  -80.000; lat = 30.0;};
+ day_end: {lon = -115.000; lat = 30.0;};
 
 # Scan stepping parameters:
 

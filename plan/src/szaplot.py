@@ -19,7 +19,7 @@ import matplotlib.colors as colors
 
 # Axis label numbers are still serif font.  Why?
 plt.rc('text', usetex=True)
-plt.rc('text.latex', preamble=r'\usepackage{lmodern}\renewcommand*\familydefault{\sfdefault}\usepackage[T1]{fontenc}')
+#plt.rc('text.latex', preamble=r'\usepackage{lmodern}\renewcommand*\familydefault{\sfdefault}\usepackage[T1]{fontenc}')
 
 from mpl_toolkits.basemap import Basemap, cm
 from netCDF4 import Dataset as NetCDFFile
@@ -63,25 +63,27 @@ def read_var (nc, var_config):
     scan_angle = var_ptr.getncattr('scan_angle_rad')
     return Var_Map (var, jd_utc, jd_utc_str, scan_duration, num_repeats, start_pos, scan_angle)
 
-def plot_var_map (m, grid, var, var_config):
-    xi, yi = m(grid.lon, grid.lat)
+def plot_var_map (m, xi, yi, var, var_config):
     clevs = np.arange(var_config.min, var_config.max, 10)
+    m.contour (xi,yi,var.var, [90.0], linewidths=2)
     # For greyscale, try cmap='bone_r'
     # For color, try cmap = 'bwr_r', 'YlOrBr', or 'hsv'
-    cs = m.contourf(xi,yi,var.var, clevs, cmap='bwr_r', extend='both')
+    cs = m.contourf(xi,yi,var.var, clevs,
+                    cmap='plasma_r', alpha=0.625, extend='both')
 
     # scan start line
     (x0, y0) = m(var.start_pos[0], var.start_pos[1]) # (lon,lat) -> (x,y)
     ones_i = np.ones(len(yi))
-    scan_reg_color='lime'
-    plt.plot (x0 * ones_i, yi, color=scan_reg_color, linewidth=3, linestyle='--')
+    scan_reg_color='white'
+    scan_reg_linewidth=2.5
+    plt.plot (x0 * ones_i, yi, color=scan_reg_color, linewidth=scan_reg_linewidth)
     (xc, yc) = m(-100.0, 36.0)
-    plt.plot (x0, yc, marker=8, color=scan_reg_color, markersize=15, markeredgewidth=3, fillstyle='none')
+    plt.plot (x0, yc, marker=8, color=scan_reg_color, markersize=15, markeredgewidth=scan_reg_linewidth, fillstyle='none')
 
     # scan end line
     geo_altitude = 35785831.0  # meters
     x1 = x0 + var.scan_angle * geo_altitude;
-    plt.plot (x1 * ones_i, yi, color=scan_reg_color, linewidth=3, linestyle='--')
+    plt.plot (x1 * ones_i, yi, color=scan_reg_color, linewidth=scan_reg_linewidth, linestyle='--')
 
     return cs
 
@@ -94,27 +96,30 @@ def config_map (m):
     parallels = np.arange(20.0,60.0,10.)
     m.drawparallels(parallels)
     #### for 'geos', 'ortho' projections, label parallels manually (UGLY!)
-    ## x_lab = [-120, -120]
-    ## for i in range(len(x_lab)):
-    ##     plt.annotate(np.str(parallels[i]),xy=m(x_lab[i],parallels[i]),xycoords='data',
-    ##                  horizontalalignment='right')
+    #x_lab = [-124, -126, -130]
+    x_lab = [-128.75, -132, -137.5, -148.5]
+    for i in range(len(x_lab)):
+        plt.annotate(r"\it %g N" % (parallels[i]),
+                     xy=m(x_lab[i],parallels[i]),xycoords='data',
+                     horizontalalignment='right',verticalalignment='center',
+                     fontsize=15,annotation_clip=False)
     #######
     #parallels = np.arange(0.0,90,10.)
     #m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
     # draw meridians
     meridians = np.arange(180.,360.,10.)
     #m.drawmeridians(meridians) # cannot label meridians on 'ortho' projections
-    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=20)
+    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=15, fmt=(lambda x: (r"\it %d W" % (abs(x-360)))))
 
-def plot_var (nc, m, grid, var_config):
+def plot_var (nc, m, xi, yi, var_config):
     config_map (m)
     var = read_var (nc, var_config)
-    cs = plot_var_map (m, grid, var, var_config)
+    cs = plot_var_map (m, xi, yi, var, var_config)
     cbar = m.colorbar(cs,location='bottom',pad="10%")
     cbar.ax.tick_params(labelsize=15)
     cbar.set_label(var_config.cbar_label, size=15)
-    plt.title(var.jd_utc_str, loc='left')
-    plt.title("n=%d t=%0.1f m" % (var.num_repeats, var.scan_duration/60.0), loc='right')
+    plt.title(var.jd_utc_str, loc='left', size=15)
+    plt.title(r"%d$\times$ %0.1f min" % (var.num_repeats, var.scan_duration/60.0), loc='right', size=15)
 
 # Create Basemap instance.
 # 'geos' seems to be the best projection for this application, but here
@@ -140,6 +145,8 @@ m  = Basemap(projection='geos',lon_0=lon_0,resolution='l',\
 
 nc = NetCDFFile(nc_filename)
 grid = read_grid (nc)
+xi, yi = m(grid.lon, grid.lat)
+
 var_names = list(nc.variables.keys())
 sza_var_indices = [i for i,item in enumerate(var_names) if "sza_" in item]
 
@@ -148,11 +155,11 @@ pdf = matplotlib.backends.backend_pdf.PdfPages(plt_filename)
 for k in sza_var_indices:
     fig = plt.figure(1)
     fig.set_size_inches (9.0, 6.5)
-    fig.set_dpi (200)
-    fig.suptitle ('Solar zenith angle', fontsize=20, x=0.515)
+    fig.set_dpi (100)
+    fig.suptitle ('Scan endpoints', fontsize=20, x=0.515)
     print(var_names[k])
     config = Var_Map_Config (var_names[k], 'SZA [deg]', 50, 140, 'xxx')
-    plot_var (nc, m, grid, config)
+    plot_var (nc, m, xi, yi, config)
     pdf.savefig(fig)
     plt.close(fig)
 
