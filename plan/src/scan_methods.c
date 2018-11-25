@@ -465,6 +465,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
           }
      }
 
+#if 0
    if (entry)
      {
         /* end of last scan */
@@ -475,6 +476,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
         if (0 != vis_write_value (v, ncid, jd_utc, var_name, sza, step_size, entry))
           goto return_status;
      }
+#endif
 
    status = 0;
 return_status:
