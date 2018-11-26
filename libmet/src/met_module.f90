@@ -343,7 +343,7 @@ contains
     implicit none
 
     ! input variables
-    integer (kind=4), intent(out) :: grib_idx
+    integer (kind=4), intent(in) :: grib_idx
 
     ! output variables
     integer (kind=4), intent(inout) :: errstat

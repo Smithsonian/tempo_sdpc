@@ -17,7 +17,7 @@ ECCODES_LIBPATH  = -Wl,-rpath=$(ECCODES_LIB) -L$(ECCODES_LIB)
 
 MET_LIBPATHS     = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
-INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC)
+INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC) -I$(ECCODES_INC)
 LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
        $(ECCODES_LIBPATH) -leccodes \
