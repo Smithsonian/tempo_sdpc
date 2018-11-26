@@ -13,7 +13,7 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
 TIO_INC          = $(config_dir)/libtio/src/$(archobjs)
 
-ECCODES_LIBPATH  = -Wl,-rpath=/data/tempo_gs/sdpc/install/v1/ots/lib -L/data/tempo_gs/sdpc/install/v1/ots/lib
+ECCODES_LIBPATH  = -Wl,-rpath=$(ECCODES_LIB) -L$(ECCODES_LIB)
 
 MET_LIBPATHS     = -Wl,-rpath=$(elfdir) -L$(elfdir)
 

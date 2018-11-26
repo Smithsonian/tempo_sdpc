@@ -657,6 +657,8 @@ INROTS_INC
 INROTS_LIB
 INR_INC
 INR_LIB
+ECCODES_INC
+ECCODES_LIB
 LIBCONFIG_INC
 LIBCONFIG_LIB
 SLNOVAS_INC
@@ -748,6 +750,7 @@ with_netcdf
 with_proj
 with_slnovas
 with_libconfig
+with_eccodes
 with_inrlib
 with_inrots
 with_tell
@@ -1403,6 +1406,7 @@ Optional Packages:
   --with-proj=DIR         Use proj4 library installed in DIR
   --with-slnovas=DIR      Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
+  --with-eccodes=DIR      Use eccodes library installed in DIR
   --with-inrlib=DIR       Use INR library installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
@@ -2695,6 +2699,24 @@ if test "x$jh_with_libconfig" = "xno"; then
 else
    LIBCONFIG_LIB="$jh_with_libconfig/lib"
    LIBCONFIG_INC="$jh_with_libconfig/include"
+fi
+
+
+
+
+# Check whether --with-eccodes was given.
+if test "${with_eccodes+set}" = set; then :
+  withval=$with_eccodes; jh_with_eccodes=$withval
+else
+  jh_with_eccodes=no
+fi
+
+if test "x$jh_with_eccodes" = "xno"; then
+   ECCODES_LIB="\$(OTS_ROOT)/lib"
+   ECCODES_INC="\$(OTS_ROOT)/include"
+else
+   ECCODES_LIB="$jh_with_eccodes/lib"
+   ECCODES_INC="$jh_with_eccodes/include"
 fi
 
 

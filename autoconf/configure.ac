@@ -114,6 +114,20 @@ fi
 AC_SUBST(LIBCONFIG_LIB)
 AC_SUBST(LIBCONFIG_INC)
 
+AC_ARG_WITH(eccodes,
+  [  --with-eccodes[=DIR]      Use eccodes library installed in DIR],
+  [jh_with_eccodes=$withval],
+  [jh_with_eccodes=no])
+if test "x$jh_with_eccodes" = "xno"; then
+   ECCODES_LIB="\$(OTS_ROOT)/lib"
+   ECCODES_INC="\$(OTS_ROOT)/include"
+else
+   ECCODES_LIB="$jh_with_eccodes/lib"
+   ECCODES_INC="$jh_with_eccodes/include"
+fi
+AC_SUBST(ECCODES_LIB)
+AC_SUBST(ECCODES_INC)
+
 AC_ARG_WITH(inrlib,
   [  --with-inrlib[=DIR]       Use INR library installed in DIR],
   [jh_with_inrlib=$withval],
