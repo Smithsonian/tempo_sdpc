@@ -435,7 +435,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
    double *sza = NULL, jd_utc;
    int i, k, status = -1;
 
-#define VAR_NAME_FMT "sza_%d"
+#define VAR_NAME_FMT "sza_%02d"
 
    if (0 != vis_write_grid (v, ncid))
      goto return_status;
