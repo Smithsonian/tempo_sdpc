@@ -9,7 +9,7 @@ from multiprocessing import Pool, cpu_count
 from netCDF4 import Dataset as NetCDFFile
 
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -130,7 +130,7 @@ def plot_var_map (m, xi, yi, var, var_config):
     x1 = x0 + var.scan_angle * geo_altitude;
     plt.plot (x1 * ones_i, yi, color=scan_reg_color, linewidth=scan_reg_linewidth, linestyle='--')
 
-def plot_var (nc_filename, var_name):
+def plot_var (nc_filename, var_name, outdir):
     config = Var_Map_Config (var_name, 'SZA [deg]', 50, 140)
 
     nc = NetCDFFile(nc_filename, 'r')
@@ -150,7 +150,7 @@ def plot_var (nc_filename, var_name):
 
     plot_var_map (m, xi, yi, var, config)
 
-    plt_filename = "%s_%s.pdf" % (os.path.splitext(nc_filename)[0], var_name)
+    plt_filename = "%s/%s.pdf" % (outdir, var_name)
     pdf = matplotlib.backends.backend_pdf.PdfPages(plt_filename)
     pdf.savefig(fig)
 
@@ -159,22 +159,28 @@ def plot_var (nc_filename, var_name):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description='Make a plot.')
-    parser.add_argument('filename', help="netCDF data file name")
+    parser = argparse.ArgumentParser(description='Plot SZA distribution at the start of each scan')
+    parser.add_argument('--infile', help="netCDF data file name")
+    parser.add_argument('--outdir', help="output directory path")
+    if len(sys.argv)==1:
+        parser.print_usage(sys.stderr)
+        sys.exit(0)
     args = parser.parse_args()
 
     m = init_basemap()
     pickle.dump(m,open(Saved_Basemap_Filename,'wb'),-1)
-    print('saved basemap {}'.format(Saved_Basemap_Filename))
+    print('basemap saved in file: {}'.format(Saved_Basemap_Filename))
 
-    nc_filename = args.filename
+    nc_filename = args.infile
 
     nc = NetCDFFile(nc_filename, 'r')
     var_names = list(nc.variables.keys())
     sza_vars = [var_names[i] for i,item in enumerate(var_names) if "sza_" in item]
     nc.close()
 
-    args = [(nc_filename, var_name) for var_name in sza_vars]
+    os.makedirs (args.outdir, exist_ok=True)
+
+    args = [(nc_filename, var_name, args.outdir) for var_name in sza_vars]
 
     num_proc = cpu_count()
     with Pool(num_proc) as p:
