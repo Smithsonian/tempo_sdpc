@@ -36,14 +36,14 @@ scan_config: {
 night_scan_config: {
 
   east_region: {
-     lon = -71.059877; lat = 42.35843;  # Boston
-     width = -60000.0;                  # urad, >0 is eastward
+     lon =  -66.9900; lat = 44.9062;  # Eastport, ME
+     width = -60000.0;                # urad, >0 is eastward
      num_subdivisions = 2;
   };
 
   west_region: {
-     lon = -122.431; lat = 37.774;  # San Francisco
-     width = 60000.0;               # urad, >0 is eastward
+     lon = -124.4049; lat = 40.4370;  # Capetown, CA
+     width = 60000.0;                 # urad, >0 is eastward
      num_subdivisions = 2;
   };
 
@@ -64,7 +64,7 @@ limits_config: {
 
 # min_sun_angle = minimum safe angle between the
 #                 sun and boresight directions
-  min_sun_angle = 60.0;
+  min_sun_angle = 61.0;
 };
 
 master_table_config: {
