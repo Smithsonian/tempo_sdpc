@@ -248,7 +248,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    if (NULL == (entry = plan_list_entry_alloc ()))
      return NULL;
 
-   entry->tstart = limit_times->jd_utc_end;
+   entry->tstart = limit_times->jd_utc_end_safe - num_repeats * time_full_scan;
    entry->xstart = xstart;
    entry->ystart = ystart;
    entry->num_steps = num_steps;
