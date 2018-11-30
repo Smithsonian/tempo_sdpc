@@ -5,10 +5,9 @@ module m_read_l1_tio
   use tell_module
   use netcdf, only: nf90_nowrite
   use m_convert_coadd, only: convert_2bytes_to_16bits
-  use OMSAO_omidata_module, only: ncoadd, nxtrack_max, ntimes_max 
-! nxtrack, ntimes, nfxtrack, 
+  !use OMSAO_omidata_module, only: ncoadd, nxtrack_max, ntimes_max 
+  use OMSAO_tmpodata_module, only:  nxtrack_max, ntimes_max
   use OMSAO_variables_module, only: scnwrt, step_idx
-
 
   public read_L1_dims_tio, read_L1_rad_line_tio, &
        open_L1_tio, close_L1_tio, read_L1_indices_tio
@@ -27,9 +26,10 @@ contains
   !> @param errstat error handling integer, non-zero indicates failure
   !
   !> @author E. O'Sullivan June 2016
+  !> Modified by Jbak Nov 2018
   !---------------------------------------------------------------------
-  subroutine read_L1_dims_tio (l1file, swathname, nstep, nxtrack, &
-       nxtrack_coadd, errstat)
+  subroutine read_L1_dims_tio (l1file, swathname, nstep, nxtrack, nwavel,&
+                               errstat)
 
     implicit none
     
@@ -37,20 +37,20 @@ contains
     character (len=*), intent (in) :: l1file, swathname
 
     !output variables
-    integer (kind=4), intent (out) :: nstep, nxtrack
-    integer (kind=4), optional, intent (out) :: nxtrack_coadd
-    integer (kind=4), intent (inout) :: errstat
+    integer (kind=4), intent (out) :: nstep, nxtrack, nwavel
+    integer (kind=4), intent (out) :: errstat
 
     !local variables
     type (tiof_file_type) :: tio_l1obj
 
-
-    if (errstat /= 0) return
+    errstat = 0
+    !if (errstat /= 0) return
 
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_dimlen (tio_l1obj, o3p_dim_step, nstep, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, o3p_dim_xtrack, nxtrack, errstat)
+    call tiof_inq_dimlen (tio_l1obj, o3p_dim_channel, nwavel, errstat)
     call tiof_close (tio_l1obj, errstat)
 
     if (errstat /= 0) then
@@ -61,9 +61,9 @@ contains
     endif
 
     ! Binning factor
-    if (present(nxtrack_coadd)) then
-      nxtrack_coadd = nxtrack * ncoadd
-    endif
+    !if (present(nxtrack_coadd)) then
+    !  nxtrack_coadd = nxtrack * ncoadd
+    !endif
 
     ! check dimension sizes are within bounds
     if (nstep > ntimes_max) then
@@ -75,14 +75,14 @@ contains
            "read_L1_dims_tio: nxtrack greater than nxtrack_max", errstat)
       return
     endif
-    if (present(nxtrack_coadd)) then
-      if (nxtrack_coadd > nxtrack_max) then
-        call tell_error (tell_invalid_parm, &
-             "read_L1_dims_tio: nxtrack_coadd greater than nxtrack_max", &
-             errstat)
-        return
-      endif
-    endif
+    !if (present(nxtrack_coadd)) then
+    !  if (nxtrack_coadd > nxtrack_max) then
+    !    call tell_error (tell_invalid_parm, &
+    !         "read_L1_dims_tio: nxtrack_coadd greater than nxtrack_max", &
+    !         errstat)
+    !    return
+    !  endif
+    !endif
 
 
   end subroutine read_L1_dims_tio 
@@ -118,14 +118,13 @@ contains
     logical, intent (in) :: read_irrad
     
     !output variables
-    real (kind=4), dimension(:,:), intent(out) :: &
+    real (kind=4),  dimension(:,:), intent(out) :: &
          radiance, rad_precision, wavelengths
     integer (kind=2), dimension (:,:), intent(out) :: &
          pixel_quality_flag
-    integer (kind=4), intent(out) :: num_wavelengths
-    integer (kind=2), intent(out) :: meas_qual_flag
-    integer (kind=4), intent(inout) :: errstat
-
+    integer (kind=4), intent(out) :: errstat
+    integer (kind=4), intent(inout) :: num_wavelengths
+    integer (kind=2), intent(inout) :: meas_qual_flag
     !local_variables
     real (kind=4), dimension(:,:,:), allocatable :: tio_rad, &
          tio_prec, tio_wvl
@@ -136,8 +135,7 @@ contains
 
     type (tiof_file_type) :: tio_l1obj
 
-    if (errstat /= 0) return
-
+    errstat = 0
     !Setup to read either radiance or irradiance
     if (read_irrad) then
       rad_param_name = o3p_var_irradiance
@@ -177,8 +175,10 @@ contains
          [1,nx,nw], tio_wvl, errstat)
     call tiof_get3d_i2 (tio_l1obj, o3p_var_pqf, [step,0,0], &
          [1,nx,nw], tio_pqf, errstat)
-    call tiof_get1d_i2 (tio_l1obj, o3p_var_mqf, [step], &
-         [1], tio_mqf, errstat)
+    IF (.NOT. read_irrad ) THEN 
+    !call tiof_get1d_i2 (tio_l1obj, o3p_var_mqf, [step], &
+    !     [1], tio_mqf, errstat)
+    ENDIF
     call tiof_pop_group (tio_l1obj, errstat)
 
     if (errstat /= 0) then

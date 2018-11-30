@@ -66,6 +66,7 @@ contains
   REAL (KIND=dp)                      :: wavg
   LOGICAL, PARAMETER                  :: correct_simrad = .false.
   LOGICAL                             :: cal_shiwf
+  LOGICAL, SAVE :: first=.true.
   INTEGER, DIMENSION (maxoth, 2)      :: tmpwins
   INTEGER, DIMENSION (maxwin, maxoth) :: tmpind, tmpfind
   ! ------------------------------
@@ -87,7 +88,6 @@ contains
            lidx =  fidx + nradpix(i) + nextra - 1
            delref(fidx:lidx) = refwvl(fidx:lidx) - (refwvl(fidx)+refwvl(lidx))*0.5
            IF (shfind(i, 1) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) + fitvar_rad(shind(i, 1)) 
-  
            DO j = 2, nsh
               IF (shfind(i, j) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) +  &
                    fitvar_rad(shind(i, j)) * delref(fidx:lidx)**(j-1)
@@ -103,22 +103,20 @@ contains
         lidx = SUM(nradpix(1: shwins(1, 2))) +  shwins(1, 2) * nextra
         delref(fidx:lidx) = refwvl(fidx:lidx) - (refwvl(fidx)+refwvl(lidx))*0.5
         IF (shfind(1, 1) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) + fitvar_rad(shind(1, 1)) 
-        
         DO j= 2, nsh
            IF (shfind(1, j) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) +  &
                 fitvar_rad(shind(1, j)) * delref(fidx:lidx)**(j-1)
         ENDDO
      ENDIF
   ENDIF
-
-  ! Re-sample the solar reference spectrum to the radiance grid
+ ! Re-sample the solar reference spectrum to the radiance grid
   CALL interpolation (n_refwvl, sunpos_ss(1:n_refwvl), database(solar_idx, 1:n_refwvl), &
-       ns, fitwavs(1:ns), sunspec_ss(1:ns), errstat)  
-
+   ns, fitwavs(1:ns), sunspec_ss(1:ns), errstat)  
   IF ( errstat >= pge_errstat_warning ) THEN
-     !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-     WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending: ', errstat
-     errstat = pge_errstat_error; RETURN
+       !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+    WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending:solar spectrum ', errstat
+    WRITE(www_lun, * ) sunpos_ss(1), sunpos_ss(n_refwvl), fitwavs(1), fitwavs(ns)
+    errstat = pge_errstat_error; RETURN
   END IF
 
   IF (do_shiwf .AND. nsl > 0) THEN
@@ -127,7 +125,7 @@ contains
 
      IF ( errstat >= pge_errstat_warning ) THEN
         !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-        WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending: ', errstat
+        WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending:do_shiwf ', errstat
         errstat = pge_errstat_error; RETURN
      END IF
      
@@ -316,7 +314,10 @@ contains
   ! Internal Scattering in Radiance
   corrected_rad = currspec(1:ns)
   IF ( nir > 0 ) THEN
-     print * , 'please consider to apply radiance response spectrum for correcting internal scattering in radiance'
+     IF (first) THEN
+       WRITE(www_lun, '(A)') 'please consider to apply radiance response spectrum for correcting internal scattering in radiance'
+        first = .false.
+     ENDIF
      IF (do_subfit) THEN
         fidx = 1
         DO i = 1, numwin
@@ -357,7 +358,7 @@ contains
         ENDDO
      ENDIF
   ENDIF
-  
+    
   fitspec = corrected_rad / corrected_irrad * div_rad / div_sun 
   ! Beer's law contributions for species other than ozone profile, because 
   ! measured radiance was already contaminated by absorption other than ozone, 
@@ -530,7 +531,6 @@ contains
         ELSE
             fitspec = fitspec * EXP(database_pslwf(idx, refidx(1:ns)) * corr)
         ENDIF
-        !print * , fitvar_rad(tmpind(1,1)), database_pslwf(idx, 1:2)
     ENDDO ! loop of n_slitvar
   ENDIF
 

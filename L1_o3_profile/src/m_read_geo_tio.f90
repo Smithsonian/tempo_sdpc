@@ -1,16 +1,12 @@
 !> Subroutines to read in geographic data from L1 radiance netCDF file
 module m_read_geo_tio
+  
   use netcdf
   use tio_module
   use tell_module
   use o3p_names_module
-  use OMSAO_omidata_module, only: nxtrack_max, ntimes_max
-
+  use OMSAO_tmpodata_module, only: nxtrack_max, ntimes_max
   implicit none
-
-  ! Public parameters
-  real (kind=4), dimension (4, 0:nxtrack_max, 0:ntimes_max) :: tio_allclat, &
-       tio_allclon
 
   ! Local parameters used in geometry calculations
   real (kind=8), parameter, private :: pi         = 3.14159265358979d0
@@ -24,7 +20,7 @@ module m_read_geo_tio
 
   public read_geo_tio!, read_geo_line_tio
   private get_sphgeoview_corners, sphergeom_intermediate, circle_rdis, &
-       angle_minus_twopi
+       angle_minus_twopi, convert_gpqualflag_info
 
 
 contains
@@ -34,97 +30,97 @@ contains
   !
   !> @param[in] l1file  L1 netCDF radiance file name
   !> @param[in] l1swath L1 netCDF swath name
-  !> @param[in] nstep   size of dimension in scan direction
+  !> @param[in] ntimes   size of dimension in scan direction
   !> @param[in] nxtrack size of dimention across scan direction
   !> @param[in] nl      number of binned lines in scan direction
   !> @param     errstat error tracking code, non-zero indiactes problem
   !
   !> @author E. O'Sullivan    July 2016
   !-----------------------------------------------------------------------
-  subroutine read_geo_tio ( l1file, l1swath, nstep, nxtrack, nl, errstat)
-    use OMSAO_omidata_module, only:  offset_line, nswath, &
-         land_water_flg, glint_flg, snow_ice_flg
-    use OMSAO_variables_module, only: use_he5_in, coadd_uv2, nxbin, nybin
-    ! replace with variables fined in this module once he5 input obsoleted
-    use OMSAO_pixelcorner_module, only: omi_alllat, omi_alllon, omi_allsza, &
-       omi_allvza, omi_allaza, omi_allsca, omi_alltime, omi_allGeoFlg, &
-       omi_allHeight, omi_allXTrackQFlg, omi_allMflg, &
-       omi_allelat, omi_allelon, omi_allclat, omi_allclon, &
-       omi_allsza, omi_allvza, omi_allaza, omi_allsca
-    use m_convert_coadd, only: coadd_byte_qflgs, convert_gpqualflag_info
-
+  subroutine read_geo_tio (l1swath, geo,ntimes, nxtrack, & 
+                           spix, lpix, sline, eline,do_deallo,  errstat)
+    use OMSAO_precision_module
+    use OMSAO_variables_module, only: geo_group, nxbin, nybin, l1file=>l1b_rad_filename, szamax
     implicit none
 
     ! input variables
-    integer, intent (in) :: nstep, nxtrack, nl
-    character (len=*), intent(in) :: l1file,  l1swath
+    logical, intent (in) :: do_deallo
+    integer, intent (in) :: ntimes, nxtrack
+    integer, intent(inout) ::  spix, lpix, sline, eline
+    character (len=*), intent(in) :: l1swath
+    type (geo_group), INTENT(OUT) :: geo
     ! output variables
-    integer, intent (inout) :: errstat
+    integer, intent (out) :: errstat
     ! local variables
     type (tiof_file_type) :: tio_l1obj
-    integer :: eline, sline, nline, iline, nx, i, j, ix, iy, nbits, ndim
+    integer :: nline, iline, nx, i, j, ix, iy,iix,iiy, nbits, ndim, nl, sline1, eline1, nbin
     integer :: ysidx, yeidx, ymidx, xsidx, xeidx, xmidx
-    real (kind=4), dimension (1:nxtrack, 0:nstep-1) :: tio_lat, &
-         tio_lon, tio_sza, tio_vza, tio_saza, tio_vaza
-    real (kind=8), dimension (1:nxtrack, 0:nstep-1) :: tio_alllat, &
-         tio_alllon
-    real (kind=8), dimension (1:nxtrack, 0:nstep-1) :: tmp_sza, &
-         tmp_vza, tmp_saza, tmp_vaza
-    integer (kind=4), dimension (1:nxtrack_max, 0:ntimes_max-1) :: tio_geoflg
-    integer (kind=2), dimension (1:nxtrack_max, 0:ntimes_max-1) :: tio_height
-    integer (kind=1), dimension (1:nxtrack_max, 0:ntimes_max-1) :: tio_xtrackqflg, tmp_xtrackqflg
-!    integer (kind=i1), dimension (1:nxtrack_max)      :: tio_xtrackqflg1
-    integer (kind=2), dimension (0:ntimes_max-1) :: tio_mflg
-    real (kind=8), dimension (0:ntimes_max-1)    :: tio_time
-    real (kind=8), dimension (0:nxtrack_max, 0:ntimes_max-1) :: tio_allelat, &
-         tio_allelon
-    real (kind=4), dimension (4, 0:nxtrack_max, 0:ntimes_max) :: tmp_allclon, &
-         tmp_allclat
-    real (kind=8), dimension (0:nxtrack_max, 0:ntimes_max) :: dummy_clat, &
-         dummy_clon, dummy_allclat, dummy_allclon
-    real (kind=8), dimension (1:nxtrack_max, 0:ntimes_max-1) :: tio_allsza, &
-         tio_allvza, tio_allaza, tio_allsca
+    !-----------------------------------------------------------
+    ! variables for reading original tempo geolocation dataset
+    !------------------------------------------------------------
+    real (kind=8), dimension (0:ntimes-1)    :: tio_time
+    real (kind=4), dimension (1:nxtrack, 0:ntimes-1) :: tio_lat, &
+                    tio_lon, tio_sza, tio_vza, tio_saza, tio_vaza
+    integer (kind=2), dimension (1:nxtrack,0:ntimes-1) :: tio_height
+    integer (kind=4), dimension (1:nxtrack,0:ntimes-1) :: tio_geoflg
+    real (kind=4), dimension (4,1:nxtrack,0:ntimes-1):: tio_clon, tio_clat
 
-    if (errstat /= 0) return
+    !real (kind=8), dimension (:), POINTER    :: tio_time
+    !real (kind=4), dimension (:,:), POINTER :: tio_lat, &
+    !                tio_lon, tio_sza, tio_vza, tio_saza, tio_vaza
+    !integer (kind=2), dimension (:,:), POINTER :: tio_height
+    !integer (kind=4), dimension (:,:), POINTER :: tio_geoflg
+    !real (kind=4), dimension (:,:,:), POINTER:: tio_clon, tio_clat
+    !------------------------------------------------------------------------------------
+    ! variables for binning/arrange tempo geolocation dataset
+    integer (kind=i2), dimension(1:nxtrack_max) ::land_water_flg, glint_flg, snow_ice_flg
+    real (kind=8) :: sza, vza,sazm, vazm, relaza
+    LOGICAL, save :: first =.true.
 
+    IF (first) THEN 
+       !allocate(tio_clon (4, nxtrack, 0:ntimes-1) , tio_clat(4, nxtrack, 0:ntimes-1) )
+       !allocate(tio_lon ( nxtrack, 0:ntimes-1) , tio_lat(nxtrack, 0:ntimes-1))
+       !allocate(tio_sza ( nxtrack, 0:ntimes-1) , tio_saza(nxtrack, 0:ntimes-1))
+       !allocate(tio_vza ( nxtrack, 0:ntimes-1) , tio_vaza(nxtrack, 0:ntimes-1))
+       !allocate(tio_height ( nxtrack, 0:ntimes-1) , tio_geoflg(nxtrack, 0:ntimes-1))
+       !allocate(tio_time (0:ntimes-1))
+       first = .false.
+    ENDIF
+   
+    !------------------------------------------------------------------------
+    ! Initialize
+    !------------------------------------------------------------------------
+    errstat = 0
+    tio_sza = -999
     ! limits of region to be read in
-    sline = offset_line
-    eline  = offset_line + nl * nybin - 1
-    if (eline == sline) eline = sline + 1
-    nline = eline - sline + 1
-
+    nl = eline - sline +1
+    sline1 = sline
+    eline1 = eline
+    if (eline == sline) eline1 = sline1 + 1       
+    IF (eline1 > ntimes) THEN 
+        eline1 = eline1-1 ; sline1=sline1-1
+    ENDIF
+    sline1 = sline1-1
+    eline1 = eline1-1
+    nline = eline1 - sline1 + 1
     ! read in geolocation data for the chosen subset of step positions
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_get1d_r8 (tio_l1obj, o3p_var_time, [sline], [nline], &
-         tio_time(sline:eline), errstat)
+    call tiof_get1d_r8 (tio_l1obj, o3p_var_time, [sline1], [nline], tio_time(sline1:eline1), errstat)
     call tiof_push_group (tio_l1obj, l1swath, errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_latitude, [sline,0], &
-         [nline,nxtrack], tio_lat(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_longitude, [sline,0], &
-         [nline,nxtrack], tio_lon(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_sz_angle, [sline,0], &
-         [nline,nxtrack], tio_sza(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_sa_angle, [sline,0], &
-         [nline,nxtrack], tio_saza(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_vz_angle, [sline,0], &
-         [nline,nxtrack], tio_vza(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_va_angle, [sline,0], &
-         [nline,nxtrack], tio_vaza(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_i2 (tio_l1obj, o3p_var_terrain_height, [sline,0], &
-         [nline,nxtrack], tio_height(1:nxtrack, sline:eline), errstat)
-    call tiof_get2d_i4 (tio_l1obj, o3p_var_geoflg, [sline,0], &
-         [nline,nxtrack], tio_geoflg(1:nxtrack, sline:eline), errstat)
-    call tiof_get1d_i2 (tio_l1obj, o3p_var_mqf, [sline], &
-         [nline], tio_mflg(sline:eline), errstat)
-    call tiof_get2d_i1 (tio_l1obj, o3p_var_anomflg, [sline,0], &
-         [nline,nxtrack], tio_xtrackqflg(1:nxtrack,sline:eline), errstat)
-    call tiof_get3d_r4 (tio_l1obj,o3p_var_latitude_bounds, [sline,0,0], &
-         [nline,nxtrack,4], tmp_allclat(:,1:nxtrack,sline:eline), errstat)
-    call tiof_get3d_r4 (tio_l1obj,o3p_var_longitude_bounds, [sline,0,0], &
-         [nline,nxtrack,4], tmp_allclon(:,1:nxtrack,sline:eline), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_latitude, [sline1,0],[nline,nxtrack], tio_lat(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_longitude,[sline1,0],[nline,nxtrack], tio_lon(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_sz_angle, [sline1,0],[nline,nxtrack], tio_sza(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_sa_angle, [sline1,0],[nline,nxtrack], tio_saza(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_vz_angle, [sline1,0],[nline,nxtrack], tio_vza(1:nxtrack, sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_va_angle, [sline1,0],[nline,nxtrack], tio_vaza(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_i2 (tio_l1obj, o3p_var_terrain_height, [sline1,0],  [nline,nxtrack], tio_height(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_i4 (tio_l1obj, o3p_var_geoflg, [sline1,0],    [nline,nxtrack], tio_geoflg(1:nxtrack,1:nline), errstat)
+    call tiof_get3d_r4 (tio_l1obj,o3p_var_latitude_bounds, [sline1,0,0], [nline,nxtrack,4], tio_clat(:,1:nxtrack,sline1:eline1), errstat)
+    call tiof_get3d_r4 (tio_l1obj,o3p_var_longitude_bounds, [sline1,0,0],[nline,nxtrack,4], tio_clon(:,1:nxtrack,sline1:eline1), errstat)
     call tiof_pop_group (tio_l1obj, errstat)
     call tiof_close (tio_l1obj, errstat)
 
+    
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
            "read_geo_data: failed to read geolocation data", &
@@ -132,52 +128,13 @@ contains
       return
     endif
 
-    ! coadd and correct any missing xtrack quality flags
-    nbits = 8
-    ndim = 1
-    if (nswath == 2 .AND. coadd_uv2) then
-      do iline = sline, eline
-        do ix = 1, nxtrack
-          i = ix * 2 - 1
-          j = i + 1
-          tmp_xtrackqflg = tio_xtrackqflg
-          !CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline))!, &
-               !tmp_xtrackqflg(j, iline)) ! by someone by TEMPO teams
-          CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg(i, iline), tmp_xtrackqflg(j, iline)) ! returned by jbak
-          tio_xtrackqflg(ix, iline) = tmp_xtrackqflg(i, iline)
-        end do
-      end do
-    endif
-    where (tio_xtrackqflg(1:nxtrack, sline:eline) == -127)
-      tio_xtrackqflg(1:nxtrack, sline:eline) = 0
-    end where
-
-
-    ! Resample corners coordinates from L1 file to account for binning
-    nx = nxtrack / nxbin
-    do i = 0, nx-1
-      do j = 0, nl-1
-        tio_allclon(1,i,j) = tmp_allclon(1,((i+1)*nxbin),&
-             sline+((j+1)*nybin)-1)
-        tio_allclon(2,i,j) = tmp_allclon(2,((i+1)*nxbin),sline+(j*nybin))
-        tio_allclon(3,i,j) = tmp_allclon(3,1+(i*nxbin),sline+(j*nybin))
-        tio_allclon(4,i,j) = tmp_allclon(4,1+(i*nxbin),&
-             sline+((j+1)*nybin)-1)
-        tio_allclat(1,i,j) = tmp_allclat(1,((i+1)*nxbin),&
-             sline+((j+1)*nybin)-1)
-        tio_allclat(2,i,j) = tmp_allclat(2,((i+1)*nxbin),sline+(j*nybin))
-        tio_allclat(3,i,j) = tmp_allclat(3,1+(i*nxbin),sline+(j*nybin))
-        tio_allclat(4,i,j) = tmp_allclat(4,1+(i*nxbin),&
-             sline+((j+1)*nybin)-1)
-      end do
-    end do
-
+  
     ! FIXME - note that the geometric calculations below probably need
     ! to be re-thought for TEMPO. For now we keep them for testing
 
     ! Add small offset to SZA if it is zero, to avoid VLIDORT failure
     do i = 1, nxtrack
-      do j = sline,eline
+      do j = sline1,eline1
         if (tio_sza(i,j) .lt. 1e-5) then
           tio_sza(i,j) = tio_sza(i,j) + 1e-5
         endif
@@ -187,142 +144,150 @@ contains
       enddo
     enddo
 
-    ! compute pixel corner coordinates for the spatially coadded pixels
-    ! get_sphgeoview_corners works in r8, so need temporary arrays
-    ! dummy corner values, not used except to check calculation against OMI
-    tio_alllon(1:nxtrack,sline:eline) = tio_lon(1:nxtrack,sline:eline)
-    tio_alllat(1:nxtrack,sline:eline) = tio_lat(1:nxtrack,sline:eline)
-    tmp_sza(1:nxtrack,sline:eline) = tio_sza(1:nxtrack,sline:eline)
-    tmp_saza(1:nxtrack,sline:eline) = tio_saza(1:nxtrack,sline:eline)
-    tmp_vza(1:nxtrack,sline:eline) = tio_vza(1:nxtrack,sline:eline)
-    tmp_vaza(1:nxtrack,sline:eline) = tio_vaza(1:nxtrack,sline:eline)
-    call get_sphgeoview_corners (nxtrack, nline, &
-         tio_alllon(:, sline:eline), &
-         tio_alllat(:, sline:eline), &
-         tmp_sza(:, sline:eline), &
-         tmp_saza(:, sline:eline), &
-         tmp_vza(:, sline:eline), &
-         tmp_vaza(:, sline:eline), &
-         dummy_clon(0:nxtrack, sline:eline+1), &
-         dummy_clat(0:nxtrack, sline:eline+1), &
-         tio_allelon(0:nxtrack, sline:eline), &
-         tio_allelat(0:nxtrack, sline:eline), &
-         tio_allsza(1:nxtrack, sline:eline), &
-         tio_allvza(1:nxtrack, sline:eline), &
-         tio_allaza(1:nxtrack, sline:eline), &
-         tio_allsca(1:nxtrack, sline:eline))
+   ! compute pixel corner coordinates for the spatially coadded pixels
+   ! get_sphgeoview_corners works in r8, so need temporary arrays
+   ! dummy corner values, not used except to check calculation against OMI
 
-    ! move data within arrays
-    i = sline
-    j = i + nl - 1
+    !------------------------------------------
+    ! dimension after coadding
+    !-----------------------------------------
+!    WRITE(www_lun,*) 'read_geo: sca is not calculated'
+    nl = nl/nybin
+    nx = nxtrack/nxbin
+    nbin = nxbin*nybin
+    geo%sza = -999
+    Do iy = 0, nl-1
+       ysidx = (sline -1)+ iy * nybin 
+       yeidx = ysidx + nybin - 1
+       ymidx = ysidx + nybin / 2
 
-    tio_alllon (1:nx, 0:nl-1)  = tio_alllon (1:nx, i:j)
-    tio_alllat (1:nx, 0:nl-1)  = tio_alllat (1:nx, i:j)
-    dummy_allclon(0:nx, 0:nl)  = dummy_clon(0:nx, i:j+1)
-    dummy_allclat(0:nx, 0:nl)  = dummy_clat(0:nx, i:j+1)
-    tio_allelon(0:nx, 0:nl-1)  = tio_allelon(0:nx, i:j)
-    tio_allelat(0:nx, 0:nl-1)  = tio_allelat(0:nx, i:j)
-    tio_allsza (1:nx, 0:nl-1)  = tio_allsza (1:nx, i:j)
-    tio_allvza (1:nx, 0:nl-1)  = tio_allvza (1:nx, i:j)
-    tio_allaza (1:nx, 0:nl-1)  = tio_allaza (1:nx, i:j)
-    tio_allsca (1:nx, 0:nl-1)  = tio_allsca (1:nx, i:j)
+       geo%time(iy) = sum(tio_time(ysidx:yeidx)) / nybin
+       DO ix = 1, nx
+         iix = (ix-1)*nxbin
+         xsidx = (ix - 1) * nxbin + 1
+         xeidx = xsidx + nxbin - 1
+         xmidx = xsidx + nxbin / 2
+         IF (ALL( (tio_clat(:,xsidx:xeidx,ysidx:yeidx) < 90 .and. tio_clat(:,xsidx:xeidx, ysidx:yeidx) > -90)  )) THEN 
 
+             sza = sum(tio_sza(xsidx:xeidx, ysidx:yeidx))/nbin
+             vza = sum(tio_vza(xsidx:xeidx, ysidx:yeidx))/nbin
+             IF (sza .lt. 1e-5) sza = sza + 1e-5
+             IF (vza .lt. 1e-5) vza = vza + 1e-5
+             sazm = sum(tio_saza(xsidx:xeidx, ysidx:yeidx))/nbin
+             vazm = sum(tio_vaza(xsidx:xeidx, ysidx:yeidx))/nbin
+             relaza = ABS( vazm - sazm) 
+             IF ( relaza < 180) relaza = 360.0 - relaza 
+           
+             geo%sza(ix, iy) = sza
+             geo%vza(ix, iy) = vza
+             geo%aza(ix, iy) = relaza
+             geo%sca(ix, iy) = 0.0 
+                
+             geo%height(ix, iy)  = int( sum(1.0 * tio_height(xsidx:xeidx, ysidx:yeidx)) &
+             / (1.0 * nbin), kind=2)
+             geo%lon(ix, iy) = sum(tio_lon(xsidx:xeidx, ysidx:yeidx))/nbin
+             geo%lat(ix, iy) = sum(tio_lat(xsidx:xeidx, ysidx:yeidx))/nbin
 
+             geo%clon(1,ix, iy) = tio_clon(1,xeidx, yeidx)
+             geo%clon(2,ix, iy) = tio_clon(2,xsidx,yeidx)
+             geo%clon(3,ix, iy) = tio_clon(3,xeidx, ysidx)
+             geo%clon(4,ix, iy) = tio_clon(4,xsidx, ysidx)
 
-    ! determine time and flags for coadded pixels
-    do iy = 0, nl - 1
-      ysidx = sline + iy * nybin
-      yeidx = ysidx + nybin - 1
-      ymidx = ysidx + nybin / 2
-      tio_time(iy) = sum(tio_time(ysidx:yeidx)) / nybin
-      ! Use those from the middle point
-      ! (avoid dealing with polar, dateline regions)
-      tio_mflg(iy) = tio_mflg(ymidx)
-      ! get separate land/water, glint, snow/ice flags
-      if (.NOT. use_he5_in) then
-        call convert_gpqualflag_info (nxtrack, &
-             omi_allGeoFlg(1:nxtrack, ymidx), &
-             land_water_flg(1:nxtrack, ymidx), glint_flg(1:nxtrack, ymidx), &
-             snow_ice_flg(1:nxtrack, ymidx))
-      endif
-
-      do ix = 1, nx
-        xsidx = (ix - 1) * nxbin + 1
-        xeidx = xsidx + nxbin - 1
-        xmidx = xsidx + nxbin / 2
-
-        tio_height(ix, iy)  = int( &
-             sum(1.0 * tio_height(xsidx:xeidx, ysidx:yeidx)) &
-             / (1.0 * nxbin * nybin), kind=2)
-
-        tio_geoflg(ix, iy) = tio_geoflg(xmidx, ymidx)
-
-        tio_xtrackqflg(ix, iy) = tio_xtrackqflg(xmidx, ymidx)
-
-      enddo
-    enddo
-
-    ! if using he5 input, check values are identical
-    if (use_he5_in) then
-      do iy = 0, nl-1
-        if (tio_time(iy).ne.omi_alltime(iy)) print *, 'mismatch: time'
-        if (tio_mflg(iy).ne.omi_allMflg(iy)) print *, 'mismatch: mflg'
-        do ix = 1, nx
-          if (tio_height(ix, iy).ne.omi_allHeight(ix, iy)) &
-               print *, 'mismatch: height'
-!          if (tio_geoflg(ix, iy).ne.omi_allGeoFlg(ix, iy)) &
-!               print *, 'mismatch: geoflg', &
-!               ix, iy, tio_geoflg(ix, iy), omi_allGeoFlg(ix, iy)
-          if (tio_xtrackqflg(ix, iy).ne.omi_allXtrackQFlg(ix, iy)) &
-               print *, 'mismatch: xtrackqflg'
-          if (tio_alllat(ix, iy).ne.omi_alllat(ix, iy)) &
-               print *, 'mismatch: lat', tio_alllat(ix, iy), omi_alllat(ix, iy)
-          if (tio_alllon(ix, iy).ne.omi_alllon(ix, iy)) &
-               print *, 'mismatch: lon', tio_alllon(ix, iy), omi_alllon(ix, iy)
-          if (tio_allsza(ix, iy).ne.omi_allsza(ix, iy)) &
-               print *, 'mismatch: sza'
-          if (tio_allaza(ix, iy).ne.omi_allaza(ix, iy)) &
-               print *, 'mismatch: aza'
-          if (tio_allvza(ix, iy).ne.omi_allvza(ix, iy)) &
-               print *, 'mismatch: vza'
-          if (tio_allsca(ix, iy).ne.omi_allsca(ix, iy)) &
-               print *, 'mismatch: sca'
-        enddo
-        do ix = 0, nx
-          if (dummy_allclat(ix, iy).ne.omi_allclat(ix, iy)) &
-               print *, 'mismatch: clat'
-          if (dummy_allclon(ix, iy).ne.omi_allclon(ix, iy)) &
-               print *, 'mismatch: clon'
-          if (tio_allelat(ix, iy).ne.omi_allelat(ix, iy)) &
-               print *, 'mismatch: elat'
-          if (tio_allelon(ix, iy).ne.omi_allelon(ix, iy)) &
-               print *, 'mismatch: elon'
-        enddo
-      enddo
-    endif
-
-    ! move tio values into omi variables
-    omi_alltime = tio_time
-    omi_allMflg = tio_mflg
-    omi_allHeight = tio_height
-    omi_allGeoFlg = INT(tio_geoflg, kind=2)
-    omi_allXtrackQFlg = tio_xtrackqflg
-    omi_alllat(1:nx,0:nl-1) = tio_alllat(1:nx,0:nl-1)
-    omi_alllon(1:nx,0:nl-1) = tio_alllon(1:nx,0:nl-1)
-    omi_allsza = tio_allsza
-    omi_allaza = tio_allaza
-    omi_allvza = tio_allvza
-    omi_allsca = tio_allsca
-    omi_allclat = dummy_allclat
-    omi_allclon = dummy_allclon
-    omi_allelat = tio_allelat
-    omi_allelon = tio_allelon
-
-
+             geo%clat(1,ix, iy) = tio_clat(1,xeidx, yeidx)
+             geo%clat(2,ix, iy) = tio_clat(2,xsidx, yeidx)
+             geo%clat(3,ix, iy) = tio_clat(3,xeidx, ysidx)
+             geo%clat(4,ix, iy) = tio_clat(4,xsidx, ysidx)              
+             geo%elon(ix:ix+1, iy) = geo%clon(1:2,ix,iy)
+             geo%elat(ix:ix+1, iy) = geo%clat(1:2,ix,iy)
+             !geo%clon(:, ix, iy) = geo%lon(ix, iy)
+             !geo%clat(:, ix, iy) = geo%lat(ix, iy)
+             !geo%elon(ix:ix+1, iy) = geo%lon(ix, iy)
+             !geo%elat(ix:ix+1, iy) = geo%lat(ix, iy)
+              
+             geo%gflg(ix, iy) = tio_geoflg(xmidx, ymidx)
+             !print * ,xsidx,ix,geo%sza(ix, iy), geo%vza(ix, iy)
+             
+         ENDIF
+      Enddo
+      call convert_gpqualflag_info (nx,geo%gflg(1:nx, iy), &
+               land_water_flg(1:nx), glint_flg(1:nx),snow_ice_flg(1:nx))
+      geo%glint_flg(1:nx,iy) = glint_flg(1:nx)
+      geo%snow_ice_flg(1:nx,iy) = snow_ice_flg(1:nx)
+      geo%land_water_flg(1:nx,iy) = land_water_flg(1:nx)
+    Enddo  
+      
+    IF (do_deallo) THEN 
+    !deallocate(tio_clon, tio_clat, tio_lon, tio_lat, tio_sza, tio_saza, & 
+    !           tio_vza,tio_vaza, tio_height, tio_geoflg, tio_time)
+    ENDIF
+    RETURN
+ 
   end subroutine read_geo_tio
 
+ SUBROUTINE convert_gpqualflag_info ( &
+       nxtrack, geoflg, land_water_flg, glint_flg, snow_ice_flg )
+    
+    USE OMSAO_precision_module
+    USE m_convert_coadd, ONLY: convert_2bytes_to_32bits
+    IMPLICIT NONE
 
-  ! FIXME - geometry probably needs checking for TEMPO
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
+    INTEGER (KIND=i4), DIMENSION (nxtrack), INTENT (IN) :: geoflg
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg,snow_ice_flg
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4),                PARAMETER      :: nbyte = 32
+    INTEGER (KIND=i4), DIMENSION (7), PARAMETER      :: seven_byte = int((/ 1,2, 4, 8, 16, 32, 64 /), kind=i4)
+    INTEGER (KIND=i4)                                :: i
+    INTEGER (KIND=i4), DIMENSION (nxtrack)           :: tmp_flg
+    INTEGER (KIND=i4), DIMENSION (nxtrack,0:nbyte-1) :: tmp_bytes
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    land_water_flg = 0
+    glint_flg = 0
+    snow_ice_flg = 0
+
+    ! -----------------------------------------------
+    ! Save input variable in TMP_FLG for modification
+    ! -----------------------------------------------
+    tmp_flg(1:nxtrack) = geoflg(1:nxtrack) ;  tmp_bytes = 0
+    ! FIXME - TEMPO ground_pixel_flag is now int4, but all subroutines
+    ! in this module assume int2
+
+    CALL convert_2bytes_to_32bits ( &
+         nbyte, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-1) )
+
+    ! ------------------------------
+    ! The Glint flag is easy: Byte 4
+    ! ------------------------------
+    glint_flg(1:nxtrack) = tmp_bytes(1:nxtrack,4)
+
+    ! ------------------------------------------------------------------
+    ! Land/Water and Ice require a bit more work. The BIT slices must be
+    ! multiplied with the corresponding powers of 2. The sum over this
+    ! product is the information we seek.
+    ! ------------------------------------------------------------------
+    DO i = 1, nxtrack
+      land_water_flg(i) = SUM(tmp_bytes(i,0:3 )*seven_byte(1:4))
+      snow_ice_flg  (i) = SUM(tmp_bytes(i,8:14)*seven_byte(1:7))
+    END DO
+
+    RETURN
+  END SUBROUTINE convert_gpqualflag_info
+
+
+ ! FIXME - geometry probably needs checking for TEMPO
   !
   !> Calculate parameter values at binned pixel corners
   !---------------------------------------------------------------------
@@ -448,6 +413,10 @@ contains
       tmpxmid(1:nxtrack) = (tmpx(0:nxtrack-1) + tmpx(1:nxtrack)) / 2.0
       call interpol(tmpxmid(1:nxtrack), sza(1:nxtrack, i),  nxtrack, &
            tmpx(0:nxtrack), tmpsza(0:nxtrack), nxtrack+1, errstat)
+      IF (errstat /= 0) THEN 
+         print * , 'get_corners: errors in interpol'
+         STOP
+      ENDIF
       call interpol(tmpxmid(1:nxtrack), saza(1:nxtrack, i), nxtrack, &
            tmpx(0:nxtrack), tmpsaza(0:nxtrack), nxtrack+1, errstat)
       call interpol(tmpxmid(1:nxtrack), vza(1:nxtrack, i),  nxtrack, &

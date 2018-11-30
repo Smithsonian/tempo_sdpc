@@ -19,10 +19,7 @@ contains
   ! 6. Read option use_pixel_bin
   ! *******************************************************************
 
-  SUBROUTINE read_fitting_control_file( fit_ctrl_unit, fit_ctrl_file,  &
-       instrument_idx, l1_inputs_fname_sol,&
-       l1_inputs_fname_rad, l2_output_fname, &
-       l2_cld_fname, l2_hdf_flag, pge_error_status)
+  SUBROUTINE read_fitting_control_file( fit_ctrl_unit, pge_error_status)
 
     USE PGS_PC_class
     USE OMI_LUN_set
@@ -43,18 +40,17 @@ contains
          comfidx,  cm1fidx, cm2fidx,   cm3fidx, &
          comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
          hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx, &
-         wr0_idx, wr7_idx
-    !, rspline_str, molline_str, &
-    !n_max_fitpars, iofline_str, ad1_idx, amf_idx, bro_idx, lbe_idx
-    USE OMSAO_parameters_module,   ONLY: maxchlen, maxwin, max_fit_pts!, &
-    !vb_lev_omidebug, vb_lev_develop, n_sol_winwav, n_rad_winwav, &
-    !max_mol_fit, forever
+         wr0_idx, wr7_idx , &
+         gome_idx, which_instrument, max_instrument_idx, instrument_idx, &
+         omi_idx, scia_idx, gome2_idx, tempo_idx
+    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts,l1l2inp_unit
     USE OMSAO_variables_module,    ONLY: use_backup, use_solcomp,    &
+         l1b_irrad_filename, l1b_rad_filename, l2_filename, l2_cld_filename, &
          avg_solcomp, avgsol_allorb, &
          n_fincol_idx, max_itnum_sol, &
          max_itnum_rad,  yn_smooth, yn_doas, weight_sun, fitvar_sol_saved, &
          fitvar_sol_init, fitvar_rad_init, fitvar_rad_saved, yn_varyslit,  &
-         wavcal, which_slit, n_slit_step, slit_fname, slit_redo, wavcal_redo, &
+         wavcal, which_slit,slit_name, n_slit_step, slit_fname, slit_redo, wavcal_redo, &
          wavcal_fname, swavcal_fname, use_meas_sig,  smooth_slit, &
          slit_fit_pts, wavcal_fit_pts, n_wavcal_step, wcal_bef_coadd,       &
          wavcal_sol, mask_fitvar_rad, mask_fitvar_sol, n_fitvar_sol, renorm,&
@@ -62,35 +58,33 @@ contains
          lo_sunbnd, up_sunbnd, lo_sunbnd_init,up_sunbnd_init, lo_radbnd,    &
          up_radbnd, refspec_fname, &
          radwavcal_freq, tol,  epsrel,  epsabs,  epsx, pm_one, phase, &
-         linenum_lim,  pixnum_lim, static_input_fnames,  coadd_uv2,       &
+         linenum_lim,  pixnum_lim, coadd_uv2,       &
          fitvar_rad_str, winwav_min, winwav_max, &
          have_amftable, have_undersampling, winlim, sol_identifier, &
-         rad_identifier, numwin, scnwrt, band_selectors, do_bandavg, &
+         rad_identifier, numwin, nviswin,scnwrt, calwrt,calscn, rtmdbg,& 
+         band_selectors, do_bandavg, &
          n_band_avg, n_band_samp, outdir, atmdbdir, tabdir, refdbdir, &
          rmask_fitvar_rad, database_indices, slit_trunc_limit, &
          reduce_resolution, redsampr, redlam, reduce_slit, rm_mgline, &
          redfixwav,use_redfixwav, nredfixwav, redfixwav_fname, radnhtrunc, &
          refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
-         use_he5_in, tempo_syn, nc_rad_swathname, nc_irrad_swathname, &
-         gome_idx, which_instrument, max_instrument_idx, &
-         omi_idx, scia_idx, gome2_idx, tempo_idx, correct_merr, xbin_decerr, ybin_decerr, &
-         do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol, debug_input
-    !verb_thresh_lev, n_refspec, fitpar_idxname, fitctrl_fname
-    !fitcol_idx, fincol_idx, n_mol_fit
-    !USE OMSAO_gome_data_module, ONLY:   &
-    !lm_gome_eshine, n_gome_data_dim, &
-    !n_gome_max_pts, lm_gome_solspec, gome_spec_missing, gome_orbc
+         correct_merr, xbin_decerr, ybin_decerr, &
+         do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol,l2_hdf_flag, redslw, &
+         upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd, nswath, orbnum, orbnumsol,& 
+         num_param
     USE OMSAO_errstat_module
-    USE OMSAO_omidata_module, ONLY: orbc, orbnum, orbcsol, orbnumsol, mswath, &
-         nswath, upper_wvls, lower_wvls, nxtrack_max, ntimes_max, ncoadd, &
-         ncoadd, omiraddate,  &
-         retlbnd, retubnd, omisol_version, omi_redslw!, nlines_max
+    USE OMSAO_omidata_module, ONLY: ncoadd, &
+        mswath_omi, nxomi_max=>nxtrack_max, ntomi_max=>ntimes_max, &
+        upper_wvls_omi, lower_wvls_omi, upper_spec_omi, lower_spec_omi, omisol_version
+    USE OMSAO_tmpodata_module, ONLY: &
+        mswath_tmpo, nxtmpo_max=>nxtrack_max,nttmpo_max=>ntimes_max, &
+        upper_wvls_tmpo, lower_wvls_tmpo, upper_spec_tmpo, lower_spec_tmpo
     USE ozprof_data_module, ONLY: ozprof_flag, &
-         ozprof_input_fname, fullorb, do_ch2reso, l1l2inp_unit, &
-         nos, nsh, nsl, do_simu, radcalwrt!, ozprof_str, colprof
+        ozprof_input_fname, fullorb, do_ch2reso,  &
+        nos, nsh, nsl, do_simu, radcalwrt, nfgas, ozfit_end_index,ozfit_start_index, nlay
     USE UTIL_tools_class
-    use utilities, only: get_substring, string2index, check_for_endofinput, &
-         skip_to_filemark
+    use m_utilities, only: get_substring, string2index, check_for_endofinput, &
+                           skip_to_filemark
     use omi_read_l1b_data, only: find_scan_line_range
     use m_read_ozprof_input
 
@@ -100,30 +94,29 @@ contains
     ! Input variables
     ! ---------------
     INTEGER,           INTENT (IN)    :: fit_ctrl_unit
-    CHARACTER (LEN=*), INTENT (INOUT) :: fit_ctrl_file
 
     ! ---------------
     ! Output variable
     ! ---------------
-    INTEGER,           INTENT (INOUT) :: instrument_idx
-    INTEGER,           INTENT (OUT)   :: pge_error_status, l2_hdf_flag
-    CHARACTER (LEN=*), INTENT (OUT)   :: l1_inputs_fname_sol, &
-         l1_inputs_fname_rad, l2_output_fname, l2_cld_fname
-
+    INTEGER,           INTENT (OUT)   :: pge_error_status
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER :: i, j, k, file_read_stat, sidx, ridx, idx, cldorb, ntsh!, nidx
+    INTEGER :: nxtrack_max, ntimes_max
+    INTEGER :: i, j, k, file_read_stat, sidx, ridx, idx, cldorb, ntsh, ext
     INTEGER, DIMENSION(2)    :: pixlim, linelim
     CHARACTER (LEN=maxchlen) :: tmpchar, l1l2_files, fname
     CHARACTER (LEN=3)        :: idxchar, xbinchar, ybinchar
     CHARACTER (LEN=5)        :: idxchar1, cldorbc
     CHARACTER (LEN=4)        :: slinechar, elinechar
-    CHARACTER (LEN=2)        :: sxchar, exchar
-    LOGICAL                  :: yn_eoi, rw_l1l2_here, select_lonlat, &
+    CHARACTER (LEN=4)        :: sxchar, exchar
+    LOGICAL                  :: yn_eoi, select_lonlat, &
          rw_l1l2_pcf
     REAL      (KIND=dp)      :: vartmp, lotmp, uptmp, slat, elat, slon, elon
 
+    CHARACTER (LEN=100)      :: fit_ctrl_file
+    CHARACTER (LEN=5)        :: orbc, orbcsol
+    CHARACTER (LEN=3) :: sn
     ! ==============================
     ! Name of this module/subroutine
     ! ==============================
@@ -139,18 +132,12 @@ contains
     ! -----------------------
     CHARACTER (LEN=26), PARAMETER :: lm_instrument = &
          '*Satellite instrument name'
-    !CHARACTER (LEN=20), PARAMETER :: lm_l1inputs   = '*Level 1 input files'
-    !CHARACTER (LEN=20), PARAMETER :: lm_l2output   = '*Level 2 output file'
     CHARACTER (LEN=17), PARAMETER :: lm_l2hdf      = '*Write HDF output'
-    !CHARACTER (LEN=22), PARAMETER :: lm_amftable   = '*Air mass factor table'
-    !CHARACTER (LEN=31), PARAMETER :: lm_atmdb      = &
-    !     '*Atmospheric database directory'
-    !CHARACTER (LEN=28), PARAMETER :: lm_refdb      = &
-    !     '*Reference spectra directory'
     CHARACTER (LEN=31), PARAMETER :: lm_bandselect = &
          '*OMI radiance bands to be used'
     CHARACTER (LEN=28), PARAMETER :: lm_reduceres  = &
          '*Reduce spectral resolution'
+    CHARACTER (LEN=6), PARAMETER :: lm_debug  = "*debug"
 
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
     INTEGER :: nc
@@ -160,7 +147,7 @@ contains
     INTEGER :: OMI_SMF_setmsg
 
     pge_error_status = pge_errstat_ok
-
+    coadd_uv2 = .false.
     ! -----------------------------------------------------------
     ! Initialize array with reference spectrum names to Zero_Spec
     ! -----------------------------------------------------------
@@ -168,22 +155,10 @@ contains
       refspec_fname(j) = 'OMSAO_Zero_Spec.dat'
     END DO
 
-    !! get table directory !! Kai
-    version = 1
-    errstat = PGS_PC_getreference( TAB_DIR_LUN, version, tabdir )
-    IF( errstat /= PGS_S_SUCCESS ) THEN
-      WRITE(msg, '(A,I10,I4)') 'get file from lun=', TAB_DIR_LUN, version
-      errstat = OMI_SMF_setmsg (OMI_E_INPUT, msg, modulename, 0)
-      pge_error_status = pge_errstat_error
-      RETURN
-    ELSE
-      errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, 'tabdir ='//TRIM(tabdir), &
-           modulename, 0)
-    END IF
-
-    ! -------------------------
+ 
+    ! -----------------------------------------------------------
     ! Open fitting control file
-    ! -------------------------
+    ! -----------------------------------------------------------
     version = 1
     errstat = PGS_PC_getreference( fit_ctrl_unit, version, fit_ctrl_file )
     IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -197,322 +172,34 @@ contains
            'fit_ctrl_file ='//TRIM(fit_ctrl_file), modulename, 0)
     END IF
 
-
     OPEN ( UNIT=fit_ctrl_unit, FILE=TRIM(ADJUSTL(fit_ctrl_file)), &
          STATUS='OLD', IOSTAT=errstat)
     IF ( errstat /= pge_errstat_ok ) THEN
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
            TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
+      WRITE(www_lun) 'failed to open:'//ADJUSTL(TRIM(fit_ctrl_file))
       pge_error_status = pge_errstat_error
       RETURN
     END IF
 
-    ! -----------------------------------------------
-    ! Position cursor to read instrument name
-    ! -----------------------------------------------
-    REWIND ( fit_ctrl_unit )
-    CALL skip_to_filemark ( fit_ctrl_unit, lm_instrument, tmpchar, &
-         file_read_stat )
-    IF ( file_read_stat /= file_read_ok ) THEN
-      errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_instrument, &
-           modulename, 0)
+    ! -----------------------------------------------------------
+    ! Get database directories 
+    !  It was getting here, but from external, now
+    ! -----------------------------------------------------------
+    ! tabdir
+    version = 1
+    errstat = PGS_PC_getreference( TAB_DIR_LUN, version, tabdir )
+    IF( errstat /= PGS_S_SUCCESS ) THEN
+      WRITE(msg, '(A,I10,I4)') 'get file from lun=', TAB_DIR_LUN, version
+      errstat = OMI_SMF_setmsg (OMI_E_INPUT, msg, modulename, 0)
       pge_error_status = pge_errstat_error
       RETURN
-    END IF
-    READ (fit_ctrl_unit, '(A)') tmpchar
-    CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
-         instrument_idx )
-    READ (fit_ctrl_unit, '(A)') debug_input
-
-    ! If Tempo synthetic data, we need to behave like OMI, but with an
-    ! over-ride for some settings (e.g., uv2_coadd)
-    if (instrument_idx == tempo_idx) then
-      instrument_idx = omi_idx
-      tempo_syn = .true.
-    endif
-
-    ! -------------------------------------------
-    ! Position cursor to read Level 1 input files
-    ! -------------------------------------------
-    select_lonlat = .FALSE.
-    rw_l1l2_here  = .FALSE.       ! read l1 (write l2) fname from another file
-    rw_l1l2_pcf   = .TRUE.        ! read l1 (write l2) fname from PCF file
-    fullorb = .TRUE.
-    do_ch2reso = .FALSE.
-    pixlim = -9999
-    linelim = -9999
-
-!!! FIXME
-!!! file path below should NOT be hard coded!
-
-    l1l2_files = TRIM(ADJUSTL(tabdir)) // '../control/L1L2_fnames.inp'
-
-    !  REWIND ( fit_ctrl_unit )
-    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_l1inputs, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_l2output, modulename, 0)
-    !     pge_error_status = pge_errstat_error ; RETURN
-    !  ELSE
-    !     READ (fit_ctrl_unit, *)        rw_l1l2_here, fullorb, do_ch2reso
-    !     READ (fit_ctrl_unit, '(A)')    l1l2_files
-    !     IF (rw_l1l2_here) THEN
-    !        READ (fit_ctrl_unit, '(A)') l1_inputs_fname_sol
-    !        READ (fit_ctrl_unit, '(A)') l1_inputs_fname_rad
-    !        READ (fit_ctrl_unit, '(A)') l2_cld_fname
-    !        pixlim = -9999; linelim = -9999
-    !     END IF
-    !  END IF
-
-    !  ! -------------------------------------------
-    !  ! Position cursor to read Level 2 output file
-    !  ! -------------------------------------------
-    !  REWIND ( fit_ctrl_unit )
-    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_l2output, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     errstat = OMI_SMF_setmsg (omsao_w_read_fitctrl_file, lm_l2output, modulename, 0)
-    !     pge_error_status = pge_errstat_warning
-    !     l2_output_fname = '../out/L2-default-output.dat'
-    !  ELSE
-    !     IF (rw_l1l2_here) READ (fit_ctrl_unit, '(A)') l2_output_fname
-    !  END IF
-
-    IF (.NOT. rw_l1l2_here .AND. .NOT. rw_l1l2_pcf ) THEN
-      OPEN(UNIT=l1l2inp_unit, FILE=TRIM(ADJUSTL(l1l2_files)), STATUS='OLD', &
-           IOSTAT=errstat)
-      IF ( errstat /= pge_errstat_ok ) THEN
-        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
-             TRIM(ADJUSTL(l1l2_files)), modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE
-        READ(l1l2inp_unit, '(A)') l1_inputs_fname_sol
-        READ(l1l2inp_unit, '(A)') l1_inputs_fname_rad
-        READ(l1l2inp_unit, '(A)') l2_cld_fname
-        READ(l1l2inp_unit, '(A)') l2_output_fname
-        READ(l1l2inp_unit, *)     linelim, pixlim
-        READ(l1l2inp_unit, *, IOSTAT=errstat)  select_lonlat
-        IF ( errstat /= pge_errstat_ok ) select_lonlat = .FALSE.
-        IF (select_lonlat) THEN
-          READ(l1l2inp_unit, *)   slat, elat, slon, elon
-          IF (slat >= elat .OR. slon >= elon) THEN
-            WRITE(www_lun, *) 'Incorrect lat/lon range!!!'
-            pge_error_status = pge_errstat_error
-            RETURN
-          ENDIF
-          pixlim(1)  = -5
-          pixlim(2) = -5
-          linelim(1) = -5
-          linelim(2) = -5
-        ENDIF
-        CLOSE(UNIT=l1l2inp_unit)
-      END IF
-    END IF
-
-
-    !! Start Read L1L2 file from PCF Kai
-    IF (rw_l1l2_pcf ) THEN
-      version = 1
-      errstat = PGS_PC_getreference( L1B_IRR_FILE_LUN, version, &
-           l1_inputs_fname_sol )
-      IF( errstat /= PGS_S_SUCCESS ) THEN
-        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L1B_IRR_FILE_LUN, &
-             version
-        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
-             modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      END IF
-
-      version = 1
-      errstat = PGS_PC_getreference( L1B_UV_FILE_LUN, version, &
-           l1_inputs_fname_rad )
-      IF( errstat /= PGS_S_SUCCESS ) THEN
-        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L1B_UV_FILE_LUN, version
-        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
-             modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE
-        errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, 'l1_inputs_fname_rad ='// &
-             TRIM(l1_inputs_fname_rad), modulename, 0)
-      END IF
-
-      version = 1
-      errstat = PGS_PC_getreference( L2_CLD_FILE_LUN, version, l2_cld_fname )
-      IF( errstat /= PGS_S_SUCCESS ) THEN
-        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_CLD_FILE_LUN, version
-        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
-             modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE
-        errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
-             'l2_cld_fname ='//TRIM(l2_cld_fname), modulename, 0)
-      END IF
-
-      version = 1
-      errstat = PGS_PC_getreference( L2_OUT_LUN, version, l2_output_fname )
-      IF( errstat /= PGS_S_SUCCESS ) THEN
-        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_OUT_LUN, version
-        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
-             modulename, 0)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE
-        errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
-             'l2_output_fname ='//TRIM(l2_output_fname), modulename, 0)
-      END IF
-
-      IF( scnwrt ) THEN
-        WRITE(*, '(A)') TRIM(l1_inputs_fname_sol)
-        WRITE(*, '(A)') TRIM(l1_inputs_fname_rad)
-        WRITE(*, '(A)') TRIM(l2_cld_fname)
-        WRITE(*, '(A)') TRIM(l2_output_fname)
-      ENDIF
-
-      !! get run specific inputs
-      errstat = PGS_PC_GetConfigData( LINE_SAMPLE_RANGE_LUN, msg )
-      IF( errstat /= PGS_S_SUCCESS ) THEN
-        WRITE( msg,'(A,I8)' ) "get line sample range failed at LUN = ", &
-             LINE_SAMPLE_RANGE_LUN
-        errstat = OMI_SMF_setmsg( errstat, msg, modulename, 0 )
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE
-        READ( msg, *) linelim, pixlim
-        errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
-             'PCF: UV2 Line sample ranges='//TRIM(msg), modulename, 0 )
-        IF( scnwrt ) THEN
-          WRITE(*,'(A,I4,A,I4,A)') &
-               " extracting line   range=[", linelim(1),",", linelim(2), "]"
-          WRITE(*,'(A,I4,A,I4,A)')  &
-               " extracting sampel range=[", pixlim(1), ",", pixlim(2) , "]"
-        ENDIF
-      ENDIF
-    END IF
-    !! End Read L1L2 file from PCF Kai
-    l1b_rad_filename = l1_inputs_fname_rad
-
-    IF (instrument_idx == omi_idx) THEN
-      if (use_he5_in) then
-        ! obtain orbit number from irradiance file
-        i = INDEX(l1_inputs_fname_sol, '-o') + 2
-        orbcsol = l1_inputs_fname_sol(i : i + 5)
-        READ (orbcsol, *) orbnumsol
-        READ (l1_inputs_fname_sol(i+7 : i + 9), *) omisol_version
-
-        ! obtain orbit number from radiance file
-        i = INDEX(l1_inputs_fname_rad, '-o') + 2
-        orbc = l1_inputs_fname_rad(i : i + 5)
-        READ (orbc, *) orbnum
-
-        ! check cloud file
-        i = INDEX(l2_cld_fname, '-o') + 2
-        cldorbc = l2_cld_fname(i : i + 5)
-        READ (cldorbc, *) cldorb
-
-        IF (cldorb /= orbnum) THEN
-          WRITE(www_lun, *) &
-               'Inconsistent orbit number between radiance and cloud file!!!'
-          pge_error_status = pge_errstat_error
-          RETURN
-        ENDIF
-      endif
-
-      ! generate identifer for irradiance and radiance spectrum
-      i = INDEX(l2_output_fname, 'OMIO3PROF')
-      outdir = l2_output_fname(1:i-1)
-      rad_identifier = 'o' // orbc
-
-      slit_fname    = TRIM(ADJUSTL(outdir)) // 'slit_o'    // orbcsol
-      swavcal_fname = TRIM(ADJUSTL(outdir)) // 'swavcal_o' // orbcsol
-      rslit_fname   = TRIM(ADJUSTL(outdir)) // 'rslit_o'   // orbc
-      wavcal_fname  = TRIM(ADJUSTL(outdir)) // 'wavcal_o'  // orbc
     ELSE
-      IF (instrument_idx == gome_idx) THEN
-        i = INDEX(l1_inputs_fname_sol, 'lv1_') + 11
-        orbc = l1_inputs_fname_rad(i-2:i)
-        orbcsol = orbc
-        i = INDEX(l1_inputs_fname_sol, 'lv1') + 4
-        sol_identifier = l1_inputs_fname_sol(i:i+7)
-        i = INDEX(l1_inputs_fname_rad, 'lv1') + 4
-        rad_identifier = l1_inputs_fname_rad(i:i+7)
-        j = INDEX(l2_output_fname, 'lv2')
-        outdir = l2_output_fname(1:j-1)
-        !ELSEIF (instrument_idx == scia_idx) THEN
-        !   i = INDEX(l1_inputs_fname_rad, 'Ch1orb') + 28
-        !   orbc = l1_inputs_fname_rad(i-2:i)
-        !   i = INDEX(l1_inputs_fname_sol, 'Ch1orb') + 20
-        !   sol_identifier = l1_inputs_fname_sol(i:i+4) // l1_inputs_fname_sol(i+6:i+8)
-        !   rad_identifier = sol_identifier
-        !   j = INDEX(l2_output_fname, 'lv2')        ; outdir = l2_output_fname(1:j-1)
-        !   sciaorb_identifier =  l1_inputs_fname_sol(i-3:i+11)
-      ELSEIF (instrument_idx == gome2_idx) THEN
-        orbc = '0'
-        i = INDEX(l1_inputs_fname_sol, 'GOME_xxx_1B') + 18
-        sol_identifier = l1_inputs_fname_sol(i:i+7)
-        i = INDEX(l1_inputs_fname_rad, 'GOME_xxx_1B') + 18
-        rad_identifier = l1_inputs_fname_rad(i:i+7)
-        j = INDEX(l2_output_fname, 'lv2')
-        outdir = l2_output_fname(1:j-1)
-      ENDIF
-      slit_fname    = &
-           TRIM(ADJUSTL(outdir)) // 'slit_'    // sol_identifier // '.dat'
-      swavcal_fname = &
-           TRIM(ADJUSTL(outdir)) // 'swavcal_' // sol_identifier // '.dat'
-      rslit_fname   = &
-           TRIM(ADJUSTL(outdir)) // 'rslit_'   // rad_identifier // '.dat'
-      wavcal_fname  = &
-           TRIM(ADJUSTL(outdir)) // 'wavcal_'  // rad_identifier // '.dat'
-    ENDIF
-
-    ! ----------------------------------------------
-    ! Position cursor to read HDF output flags (CRN)
-    ! ----------------------------------------------
-    REWIND ( fit_ctrl_unit )
-    CALL skip_to_filemark ( fit_ctrl_unit, lm_l2hdf, tmpchar, file_read_stat )
-    IF ( file_read_stat /= file_read_ok ) THEN
-      errstat = OMI_SMF_setmsg (omsao_w_read_fitctrl_file, lm_l2hdf, &
+      errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, 'tabdir ='//TRIM(tabdir), &
            modulename, 0)
-      pge_error_status = pge_errstat_warning
-      l2_hdf_flag = 0  ! Write ASCII
-    ELSE
-      READ (fit_ctrl_unit, '(I8)') l2_hdf_flag
-
-      ! Check output data format
-      IF (instrument_idx == gome2_idx .AND. (l2_hdf_flag < 1 .OR. &
-           l2_hdf_flag > 2)) THEN
-        WRITE(www_lun, *) 'GOME-2 data can only be written in HDF'
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE IF ((instrument_idx == gome_idx .OR. &
-           instrument_idx == scia_idx) .AND. l2_hdf_flag  > 0) THEN
-        WRITE(www_lun, *) 'GOME-1/SCIA data can only be written in ASCII'
-        pge_error_status = pge_errstat_error
-        RETURN
-      ELSE IF (instrument_idx == omi_idx .AND. (l2_hdf_flag /= 0 .AND. &
-           l2_hdf_flag /= 3)) THEN
-        WRITE(www_lun, *) 'OMI data can only be written in ASCII or HDF-EOS5'
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
     END IF
 
-
-    !xliu, 09/23/05 Add direcotry, remove hard code directory
-    ! ----------------------------------------------------------
-    ! Position cursor to read database directory
-    ! ----------------------------------------------------------
-    !  REWIND ( fit_ctrl_unit )
-    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_atmdb, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_atmdb, modulename, 0)
-    !     pge_error_status = pge_errstat_error; RETURN
-    !  ELSE
-    !!    READ (fit_ctrl_unit, '(A)') atmdbdir !! commented Kai
-    !  ENDIF
-
-    !! Start, get atmo data bsse, Kai
+    ! atmdbdir
     version = 1
     errstat = PGS_PC_getreference( ATMOSDB_DIR_LUN, version, atmdbdir )
     IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -525,18 +212,8 @@ contains
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(atmdbdir), modulename, 0)
     END IF
     IF( scnwrt ) WRITE (*, '(A)') TRIM(atmdbdir)
-    !! End, get atmo data bsse, Kai
 
-    !  REWIND ( fit_ctrl_unit)
-    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_refdb, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_refdb, modulename, 0)
-    !     pge_error_status = pge_errstat_error; RETURN
-    !  ELSE
-    !!    READ (fit_ctrl_unit, '(A)') refdbdir !! commented Kai
-    !  ENDIF
-
-    !! Start get reference data bsse, Kai
+    ! refdbdir
     version = 1
     errstat = PGS_PC_getreference( REFDB_DIR_LUN, version, refdbdir )
     IF( errstat /= PGS_S_SUCCESS ) THEN
@@ -548,82 +225,60 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(refdbdir), modulename, 0)
     END IF
-    !! End  get reference data bsse, Kai
 
-    !  ! --------------------------------------
-    !  ! Position cursor to read AMF table file
-    !  ! --------------------------------------
-    !  REWIND ( fit_ctrl_unit )
-    have_amftable = .FALSE.
-    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_amftable, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_amftable, modulename, 0)
-    !     pge_error_status = pge_errstat_warning
-    !  ELSE
-    !     READ (fit_ctrl_unit, *) have_amftable
-    !     IF ( have_amftable ) THEN
-    !        READ (fit_ctrl_unit, '(A)') static_input_fnames(amf_idx)
-    !        static_input_fnames(amf_idx) = TRIM(ADJUSTL(refdbdir)) // static_input_fnames(amf_idx)
-    !     ENDIF
-    !  END IF
-
-    !  !xliu: add the following block
-    !  ! ----------------------------------------------------------
-    !  ! Position cursor to read whether to retrieve ozone profile
-    !  ! ----------------------------------------------------------
-    !  REWIND ( fit_ctrl_unit )
-    !  CALL skip_to_filemark ( fit_ctrl_unit, ozprof_str, tmpchar, file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !     ozprof_flag = .FALSE.
-    !     WRITE(*, *) 'This algorithm is only for ozone profile retrieval!!!'
-    !     pge_error_status = pge_errstat_error; RETURN
-    !  ELSE
-    !     READ (fit_ctrl_unit, *) ozprof_flag
-    !     IF (ozprof_flag)  THEN
-    !!       READ (fit_ctrl_unit, '(A)') ozprof_input_fname !! commented Kai
-    !     END IF
-    !  END IF
-    ozprof_flag = .TRUE.
-
-    !! Start, Kai
-    version = 1
-    errstat = PGS_PC_getreference( OZPROF_CTRL_LUN, version, &
-         ozprof_input_fname )
-    IF( errstat /= PGS_S_SUCCESS ) THEN
-      WRITE(msg, '(A,I10,I4)') 'get file from lun=', OZPROF_CTRL_LUN, version
-      errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+    ! -----------------------------------------------------------
+    ! Position cursor to read instrument name
+    ! -----------------------------------------------------------
+    REWIND ( fit_ctrl_unit )
+    CALL skip_to_filemark ( fit_ctrl_unit, lm_instrument, tmpchar, &
+         file_read_stat )
+    IF ( file_read_stat /= file_read_ok ) THEN
+      errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_instrument, &
            modulename, 0)
       pge_error_status = pge_errstat_error
       RETURN
-    ELSE
-      errstat = OMI_SMF_setmsg (OMI_S_SUCCESS,TRIM(ozprof_input_fname), & !! Kai
-           modulename, 0)
     END IF
-    !! End, Kai
+    READ (fit_ctrl_unit, '(A)') tmpchar
+    CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
+         instrument_idx )
 
-    ! -----------------------------------------------
-    ! Position cursor to read molecule name(s) to fit
-    ! -----------------------------------------------
-    !IF (.NOT. ozprof_flag) THEN  !xliu
-    !  REWIND ( fit_ctrl_unit )
-    !  CALL skip_to_filemark ( fit_ctrl_unit, molline_str, tmpchar, &
-    !       file_read_stat )
-    !  IF ( file_read_stat /= file_read_ok ) THEN
-    !    errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, molline_str, &
-    !         modulename, 0)
-    !    pge_error_status = pge_errstat_error
-    !    RETURN
-    !  END IF
-    !  READ (fit_ctrl_unit, '(A)') tmpchar
-    !  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
-    !  IF ( errstat /= pge_errstat_ok ) THEN
-    !    errstat = OMI_SMF_setmsg (omsao_e_get_molfitname, '', modulename, 0)
-    !    pge_error_status = pge_errstat_error
-    !    RETURN
-    !  END IF
-    !END IF  !xliu
+    ! Set up according to instrument 
+    ! If Tempo synthetic data, we need to behave like OMI, but with an
+    ! over-ride for some settings (e.g., uv2_coadd)
+    IF (instrument_idx == omi_idx) THEN 
+      nxtrack_max = nxomi_max ; ntimes_max = ntomi_max
+      upper_wvls = upper_wvls_omi(1:mswath_omi)
+      lower_wvls = lower_wvls_omi(1:mswath_omi)
+      upper_spec = upper_spec_omi
+      lower_spec = lower_spec_omi
+    ELSE IF (instrument_idx == tempo_idx) THEN
+      nxtrack_max = nxtmpo_max ; ntimes_max = nttmpo_max
+      upper_wvls = upper_wvls_tmpo(1:mswath_tmpo)
+      lower_wvls = lower_wvls_tmpo(1:mswath_tmpo)
+      upper_spec = upper_spec_tmpo
+      lower_spec = lower_spec_tmpo
+      !instrument_idx = omi_idx
+    ENDIF
 
+    ! -----------------------------------------------------------
+    ! Position cursor to debug options
+    ! -----------------------------------------------------------
+    REWIND ( fit_ctrl_unit )
+    CALL skip_to_filemark ( fit_ctrl_unit, lm_debug, tmpchar, &
+         file_read_stat )
+    IF ( file_read_stat /= file_read_ok ) THEN
+      errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_debug, &
+           modulename, 0)
+      pge_error_status = pge_errstat_error
+      WRITE(www_lun) 'failed to read:', lm_debug 
+      RETURN
+    ENDIF
+    READ (fit_ctrl_unit, *) 
+    READ (fit_ctrl_unit, *) scnwrt, calwrt, calscn, rtmdbg
+
+    !----------------------------------------------------------------------
     !xliu, 01/03/2007, read options to degrade spectral resolution
+    !------------------------------------------------------------------------
     REWIND ( fit_ctrl_unit )
     CALL skip_to_filemark ( fit_ctrl_unit, lm_reduceres, tmpchar, &
          file_read_stat )
@@ -635,9 +290,9 @@ contains
     END IF
     READ (fit_ctrl_unit, *) reduce_resolution
     READ (fit_ctrl_unit, *) reduce_slit
-    READ (fit_ctrl_unit, *) omi_redslw(1:mswath)
-    IF ( reduce_slit == 1 ) omi_redslw(1:mswath) = &
-         omi_redslw(1:mswath) / 1.66511  ! convert from FWHM to hw1e
+    READ (fit_ctrl_unit, *) redslw(1:mswath)
+    IF ( reduce_slit == 1 ) redslw(1:mswath) = &
+         redslw(1:mswath) / 1.66511  ! convert from FWHM to hw1e
     READ (fit_ctrl_unit, *) use_redfixwav
     IF (.NOT. reduce_resolution) use_redfixwav = .FALSE.
     READ (fit_ctrl_unit, '(A)') redfixwav_fname
@@ -678,6 +333,12 @@ contains
     READ (fit_ctrl_unit, *) do_ybin, nybin
     READ (fit_ctrl_unit, *) rm_mgline
     READ (fit_ctrl_unit, *) numwin, do_bandavg, wcal_bef_coadd !, winwav_min, winwav_max
+
+    IF (nxbin == 1) do_xbin = .FALSE.
+    IF (nybin == 1) do_ybin = .FALSE.
+    IF (do_xbin == .false.) nxbin = 1
+    IF (do_ybin == .false.) nybin = 1
+
     IF (reduce_resolution) THEN
       do_bandavg = .FALSE.
       rm_mgline = .FALSE.
@@ -690,9 +351,10 @@ contains
 
     retlbnd = 1000.0
     retubnd = 0.0
+    nviswin = 0
     DO i = 1, numwin
       READ(fit_ctrl_unit, *) band_selectors(i), winlim(i, 1), winlim(i, 2), &
-           n_band_avg(i), n_band_samp(i)
+                            n_band_avg(i), n_band_samp(i)
 
       IF ((band_selectors(i) < 0) .OR. (band_selectors(i) > mswath)) THEN
         WRITE(www_lun, *) 'No such bands exist !!!'
@@ -702,15 +364,17 @@ contains
 
       IF (numwin > 1) THEN
         IF (winlim(i, 1) < lower_wvls(band_selectors(i)) .OR. &
-             winlim(i, 2) > upper_wvls(band_selectors(i))) THEN
+            winlim(i, 2) > upper_wvls(band_selectors(i))) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
+          WRITE(www_lun, *) ' winlim(i,:)', winlim(i,:)
+          WRITE(www_lun, *) ' lower/upper wvls(i,:)',lower_wvls(band_selectors(i)), upper_wvls(band_selectors(i))
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
       ELSE
         ! Allow 2 extra nm for radiance calibration
         IF (winlim(i, 1) < lower_wvls(band_selectors(i)) - 1.0 .OR. &
-             winlim(i, 2) > upper_wvls(band_selectors(i)) + 1.0) THEN
+            winlim(i, 2) > upper_wvls(band_selectors(i)) + 1.0) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
           pge_error_status = pge_errstat_error
           RETURN
@@ -721,7 +385,7 @@ contains
         IF  (band_selectors(i) < band_selectors(i-1) .OR. &
              winlim(i, 1) < winlim(i-1, 2))  THEN
           WRITE(www_lun, *) &
-               'Incorrect band selection (must be in increasing wavelength) !!'
+          'Incorrect band selection (must be in increasing wavelength) !!'
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
@@ -731,6 +395,9 @@ contains
            retlbnd(band_selectors(i)) = winlim(i, 1)
       IF (winlim(i, 2) > retubnd(band_selectors(i))) &
            retubnd(band_selectors(i)) = winlim(i, 2)
+      IF (instrument_idx == tempo_idx .or. instrument_idx == gome2_idx) THEN 
+         IF (winlim(i,1) > 400.0) nviswin = nviswin + 1
+      ENDIF
     END DO
     IF (MAXVAL(n_band_avg(1:numwin)) == 1) do_bandavg = .FALSE.
 
@@ -739,26 +406,29 @@ contains
       IF (retubnd(i) == 0.0)    retubnd(i) = upper_wvls(i)
     ENDDO
 
-    IF (ANY(band_selectors(1:numwin) == 1) .AND. &
-         ANY(band_selectors(1:numwin) == 2)) THEN
-      coadd_uv2 = .TRUE.
-      nswath = 2
-    ELSE
-      coadd_uv2 = .FALSE.
-      nswath = 1
-    ENDIF
-    IF (nswath == 1 .AND. band_selectors(1) == 1) THEN
-      nswath = 2 ! have to read measurements around 370 nm
-      coadd_uv2 = .TRUE.
-    ENDIF
-    ! TEMPO synthetic data
-    if (tempo_syn) then
-      nswath = 2
-      coadd_uv2 = .false.
-      nc_rad_swathname = (/ 'band_290_490_nm', 'band_290_490_nm'/)
-      nc_irrad_swathname = (/ 'band_290_490_nm', 'band_290_490_nm'/)
-    endif
 
+    IF (instrument_idx == omi_idx) THEN 
+      IF (ANY(band_selectors(1:numwin) == 1) .AND. &
+           ANY(band_selectors(1:numwin) == 2)) THEN
+        coadd_uv2 = .TRUE.
+        nswath = 2
+      ELSE
+        coadd_uv2 = .FALSE.
+        nswath = 1
+      ENDIF
+      IF (nswath == 1 .AND. band_selectors(1) == 1) THEN
+        nswath = 2 ! have to read measurements around 370 nm
+        coadd_uv2 = .TRUE.
+      ENDIF
+    ELSE IF (instrument_idx == tempo_idx) THEN     
+      IF (ANY(band_selectors(1:numwin) == 1) .AND. &
+         ANY(band_selectors(1:numwin) == 2)) THEN
+        nswath = 2
+      ELSE
+        nswath = 1
+      ENDIF        
+    ENDIF
+  
     IF (coadd_uv2) THEN
       ncoadd = 2
     ELSE
@@ -781,9 +451,9 @@ contains
     winwav_min = winlim(1, 1) - 5.0
     winwav_max = winlim(numwin, 2) + 5.0
 
-    ! ------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Position cursor to read general input parameters
-    ! ------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     REWIND (fit_ctrl_unit)
     CALL skip_to_filemark ( fit_ctrl_unit, genline_str, tmpchar, &
          file_read_stat )
@@ -812,7 +482,7 @@ contains
       pge_error_status = pge_errstat_error
       RETURN
     ENDIF
-    IF (.NOT. wavcal) wavcal_sol = .FALSE.
+    !IF (.NOT. wavcal) wavcal_sol = .FALSE.
     READ (fit_ctrl_unit, *) slit_fit_pts, n_slit_step, slit_redo
     READ (fit_ctrl_unit, *) wavcal_fit_pts, n_wavcal_step, wavcal_redo
     READ (fit_ctrl_unit, *) yn_smooth
@@ -825,9 +495,9 @@ contains
     READ (fit_ctrl_unit, *) epsabs
     READ (fit_ctrl_unit, *) epsx
 
-    ! ----------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Position cursor to read solar calibration input parameters
-    ! ----------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     REWIND (fit_ctrl_unit)
     CALL skip_to_filemark ( fit_ctrl_unit, socline_str, tmpchar, &
          file_read_stat )
@@ -884,14 +554,15 @@ contains
 
       IF (which_slit == 0 ) THEN 
         IF (sidx == hwe_idx .and. lotmp == uptmp) THEN
-            STOP
+            WRITE(www_lun, '(a)') 'sys gaussian does not have fit. variables w.r.t hwe'
+            pge_error_status = pge_errstat_error; RETURN
          ELSE IF (sidx == asy_idx .or. (sidx >= vgl_idx .and. sidx <= hwr_idx)) THEN 
-           vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
+            vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
          ENDIF
       ELSE IF (which_slit == 1) THEN 
          IF ( (sidx == hwe_idx .or. sidx == asy_idx) .and. lotmp == uptmp ) THEN
-             WRITE(*,*) 'check main_control.inp * irradiance cali. par.'
-             STOP
+           WRITE(www_lun, '(a)') 'aym gaussian does not have fit. variables w.r.t hwe or asy'
+           pge_error_status = pge_errstat_error; RETURN
          ELSE IF (sidx >=vgl_idx .and. sidx <= hwr_idx) THEN
                vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0
          ENDIF
@@ -914,14 +585,13 @@ contains
 
     IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0) .AND. &
           (rmask_fitvar_sol(shi_idx) > 0 .OR. rmask_fitvar_sol(squ_idx) > 0 )) THEN
-          WRITE(*, '(A)') 'Wavelength shi/squ should not be used with wavelength registraion!!!'
+          WRITE(www_lun, '(A)') 'Wavelength shi/squ should not be used with wavelength registraion!!!'
           pge_error_status = pge_errstat_error; RETURN
-   ENDIF
+    ENDIF
 
-
-    ! -------------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Position cursor to read radiance calibration input parameters
-    ! -------------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     REWIND (fit_ctrl_unit)
     CALL skip_to_filemark ( fit_ctrl_unit, racline_str, tmpchar, &
          file_read_stat )
@@ -955,7 +625,10 @@ contains
         uptmp = vartmp
         lotmp = vartmp
       END IF
-
+      IF (lotmp /= uptmp ) THEN
+         WRITE(*,*) 'Need to re-setup radiance calibration parameters'
+         STOP
+      ENDIF
       IF ( idxchar == eoi3str ) EXIT radpars
       CALL string2index ( calfit_strings, max_calfit_idx, idxchar, sidx )
       IF ( sidx > 0 ) THEN
@@ -966,172 +639,9 @@ contains
       END IF
     END DO radpars
 
-
-    ! Obsolete
-    ! Read date from radiance file (used for correcting sun-earth
-    ! distance when using backupirradiance)
-    if (use_he5_in) then
-      i = INDEX(l1_inputs_fname_rad, '-o') -14
-      omiraddate = l1_inputs_fname_rad(i : i + 8)
-    endif
-    ! ------------------------------------------------
-    ! Check for consistency of pixel limits to process
-    ! ------------------------------------------------
-    IF (select_lonlat) THEN
-      CALL find_scan_line_range(slat, elat, slon, elon, linelim(1), &
-           linelim(2), pixlim(1), pixlim(2), pge_error_status )
-      IF (pixlim(1) < 0 .OR. linelim(1) < 0 .OR. pge_error_status >= &
-           pge_errstat_error) THEN
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
-      ! pixlim is based on UV1, if both channels are selected
-      IF (coadd_uv2) THEN
-        pixlim(1) = pixlim(1) * ncoadd - 1
-        pixlim(2) = pixlim(2) * ncoadd
-      ENDIF
-    ENDIF
-
-
-    IF (linelim(1) /= -9999) linenum_lim =  linelim
-    IF (pixlim(1)  /= -9999) pixnum_lim  =  pixlim
-    IF ( ALL ( linenum_lim < 0 ) )      linenum_lim(1:2) = (/ 1, ntimes_max /)
-    IF ( linenum_lim(1) > linenum_lim(2) ) linenum_lim([1, 2]) = &
-         linenum_lim([2, 1])
-    IF ( linenum_lim(1) < 1 )              linenum_lim(1) = 1
-    IF ( linenum_lim(2) > ntimes_max )     linenum_lim(2) = ntimes_max
-
-    IF ( ALL ( pixnum_lim < 0 ) )       pixnum_lim(1:2) = (/ 1, nxtrack_max /)
-    IF ( pixnum_lim(1) > pixnum_lim(2) )   pixnum_lim([1, 2]) = &
-         pixnum_lim([2, 1])
-    IF ( pixnum_lim(1) < 1 )               pixnum_lim(1) = 1
-    IF ( pixnum_lim(2) > nxtrack_max )     pixnum_lim(2) = nxtrack_max
-
-    ! check for selected across track position (must start from odd positions)
-    IF (coadd_uv2)  THEN
-      i = pixnum_lim(2)-pixnum_lim(1) + 1
-      IF ( MOD(pixnum_lim(1), ncoadd) /= 1 .OR. MOD(i, ncoadd) /= 0 ) THEN
-        WRITE(www_lun, '(A,2I4)') &
-             'Incorrect across track positions to be coadded: ', &
-             pixnum_lim(1:2)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
-      ! NINT behaviour is not consistent between Intel and GNU builds
-      ! when input is exactly integer+0.5
-      ! pixnum_lim = NINT(1.0 * pixnum_lim / ncoadd)
-      pixnum_lim = INT((1.0 * pixnum_lim / ncoadd)+0.5)
-    ENDIF
-
-    WRITE(slinechar, '(I4.4)') linenum_lim(1)
-    WRITE(elinechar, '(I4.4)') linenum_lim(2)
-    WRITE(sxchar, '(I2.2)')    pixnum_lim(1)
-    WRITE(exchar, '(I2.2)')    pixnum_lim(2)
-
-    ! must divide and must start from odd coadded positions
-    IF (do_xbin .AND. nxbin > 1) THEN
-      i = pixnum_lim(2)-pixnum_lim(1) + 1
-      IF ( MOD (i, nxbin) /= 0 .OR. MOD(pixnum_lim(1), nxbin) /= 1 ) THEN
-        WRITE(www_lun, '(A,2I4)') &
-             'Incorrect across track binning option: ', pixnum_lim(1:2)
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
-    ELSE
-      nxbin = 1
-    ENDIF
-
-    ! Could start from any positions, adjust line positions if necessary
-    IF (do_ybin .AND. nybin > 1)  THEN
-      IF( linenum_lim(1) <= nybin ) THEN
-        linenum_lim(1) = 1
-      ELSE
-        linenum_lim(1) = INT((linenum_lim(1)-1)/nybin)*nybin + 1
-      ENDIF
-      IF ( linenum_lim(1) > linenum_lim(2) )   linenum_lim(2) = &
-           linenum_lim(1)
-      i = linenum_lim(2)-linenum_lim(1) + 1
-      IF (MOD(i, nybin) /= 0) THEN
-        linenum_lim(2) = CEILING(1.0 * i / nybin) * nybin + linenum_lim(1) - 1
-        IF (linenum_lim(2) > ntimes_max) linenum_lim(2) = &
-             linenum_lim(2) - nybin
-      ENDIF
-    ELSE
-      nybin = 1
-    ENDIF
-
-    IF( coadd_uv2 ) THEN
-      WRITE(msg, '(A,2I5,2I3)') 'Processing UV1 Line sample ranges=', &
-           linenum_lim(1:2),pixnum_lim(1:2)
-    ELSE
-      WRITE(msg, '(A,2I5,2I3)') 'Processing UV2 Line sample ranges=', &
-           linenum_lim(1:2),pixnum_lim(1:2)
-    ENDIF
-    errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, TRIM(msg), modulename, 0 )
-
-    IF (nxbin == 1) do_xbin = .FALSE.
-    IF (nybin == 1) do_ybin = .FALSE.
-
-
-    IF( l2_hdf_flag /= 3) THEN  !! Modify output file name only when it is L2 HE5 output, Kai
-      IF ( .NOT. (linenum_lim(1) == 1 .AND. linenum_lim(2) == ntimes_max)) THEN
-        l2_output_fname = &
-             TRIM(ADJUSTL(l2_output_fname)) // '_L' // slinechar // '-' // elinechar
-      ENDIF
-
-      IF ( .NOT. (pixnum_lim(1) == 1 .AND. (pixnum_lim(2) == nxtrack_max .OR. &
-           (coadd_uv2 .AND. pixnum_lim(2) == nxtrack_max / ncoadd)))) THEN
-        l2_output_fname = &
-             TRIM(ADJUSTL(l2_output_fname)) // '_X' // sxchar // '-' // exchar
-      ENDIF
-
-      IF (do_xbin) THEN
-        WRITE(xbinchar, '(A2,I1)') 'BX', nxbin
-        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // xbinchar
-      ENDIF
-      IF (do_ybin) THEN
-        WRITE(ybinchar, '(A2,I1)') 'BY', nybin
-        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '-' // ybinchar
-      ENDIF
-    ENDIF !Kai
-
-    IF ( instrument_idx /= gome2_idx) THEN
-      IF (instrument_idx == omi_idx .AND. l2_hdf_flag == 3) THEN
-        ! Kai
-        !  l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '.he5'
-        !  l2_swathname = 'OMI Vertical Ozone Profile'
-
-        errstat = PGS_PC_GetConfigData( SWATH_LUN, msg )
-        IF( errstat /= PGS_S_SUCCESS ) THEN
-          WRITE( msg,'(A,I8)' ) "get swath name failed at LUN = ", &
-               SWATH_LUN
-          errstat = OMI_SMF_setmsg( errstat, msg, modulename, 0 )
-          pge_error_status = pge_errstat_error
-          RETURN
-        ELSE
-          nc = deQuote( msg )
-          IF( nc <= 0 ) THEN
-            WRITE( msg,'(A)' ) "Error in Input Swath Name:"// TRIM(msg)
-            errstat = OMI_SMF_setmsg( OMI_E_HDFEOS,msg,modulename,0 )
-            pge_error_status = pge_errstat_error
-            RETURN
-            RETURN
-          ELSE
-            L2_swathname = TRIM( msg )
-          ENDIF
-          errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
-               'SwathName : '//TRIM(msg), modulename, 0 )
-        ENDIF
-      ELSE
-        l2_output_fname = TRIM(ADJUSTL(l2_output_fname)) // '.out'
-      ENDIF
-    ELSE
-      l2_output_fname = TRIM(ADJUSTL(l2_output_fname))
-    ENDIF
-
-    ! ---------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Position cursor to read radiance fitting input parameters
-    ! ---------------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     REWIND (fit_ctrl_unit)
     CALL skip_to_filemark ( fit_ctrl_unit, rafline_str, tmpchar, &
          file_read_stat )
@@ -1176,14 +686,12 @@ contains
       ! Convert SIS to index
       CALL string2index ( refspec_strings, max_rs_idx, tmpchar, ridx )
 
-
       ! GOME specific: the first line in the "spectrum parameter block" is
       ! the name of the corresponding reference spectrum
       READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) fname
 
       ! Read the block of fitting parameters for current reference spectrum
       DO k = 1, mxs_idx
-
         READ (fit_ctrl_unit, *) idxchar, vartmp, lotmp, uptmp
         ! ---------------------------------------------------------
         ! Check for consitency of bounds and adjust where necessary
@@ -1209,19 +717,19 @@ contains
                have_undersampling = .TRUE.
 
           IF ( ridx == com_idx .AND. lotmp < uptmp ) THEN
-            comvidx = i
+             comvidx = i
           ENDIF
 
           IF ( ridx == com1_idx .AND. lotmp < uptmp ) THEN
-            cm1vidx = i
+             cm1vidx = i
           ENDIF
 
           IF ( ridx == com2_idx .AND. lotmp < uptmp ) THEN
-              cm2vidx = i
+             cm2vidx = i
           ENDIF
 
           IF ( ridx == com3_idx .AND. lotmp < uptmp ) THEN
-              cm3vidx = i
+             cm3vidx = i
           ENDIF
 
           IF (lotmp < uptmp) THEN
@@ -1236,6 +744,7 @@ contains
         lotmp = vartmp
         uptmp = vartmp
       END IF
+
       IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
         uptmp = vartmp
         lotmp = vartmp
@@ -1257,14 +766,6 @@ contains
       up_radbnd (i) = uptmp
     END DO getpars
 
-    ! -----------------------------------------------------
-    ! For safety, copy REFSPEC_FNAME to STATIC_INPUT_FNAMES
-    ! (in the OMI branch this is the other way around since
-    !  there we get file names from the PCF)
-    ! -----------------------------------------------------
-    DO j = solar_idx, max_rs_idx
-      static_input_fnames(j) = refspec_fname(j)
-    END DO
 
     ! -------------------------------------------------------------
     ! Find the indices of those variables that are actually varied
@@ -1342,7 +843,6 @@ contains
           IF (idx + j == cm2vidx) cm2fidx = n_fitvar_rad
           IF (idx + j == cm3vidx) cm3fidx = n_fitvar_rad
 
-
         END IF
       END DO
     END DO
@@ -1359,37 +859,487 @@ contains
       END IF
     END DO
 
+
+    !  ! --------------------------------------
+    !  ! Position cursor to read AMF table file
+    !  ! --------------------------------------
+    !  REWIND ( fit_ctrl_unit )
+    have_amftable = .FALSE.
+    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_amftable, tmpchar, file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_amftable, modulename, 0)
+    !     pge_error_status = pge_errstat_warning
+    !  ELSE
+    !     READ (fit_ctrl_unit, *) have_amftable
+    !     IF ( have_amftable ) THEN
+    !        READ (fit_ctrl_unit, '(A)') static_input_fnames(amf_idx)
+    !        static_input_fnames(amf_idx) = TRIM(ADJUSTL(refdbdir)) // static_input_fnames(amf_idx)
+    !     ENDIF
+    !  END IF
+
+    !  !xliu: add the following block
+    !  ! ----------------------------------------------------------
+    !  ! Position cursor to read whether to retrieve ozone profile
+    !  ! ----------------------------------------------------------
+    !  REWIND ( fit_ctrl_unit )
+    !  CALL skip_to_filemark ( fit_ctrl_unit, ozprof_str, tmpchar, file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !     ozprof_flag = .FALSE.
+    !     WRITE(*, *) 'This algorithm is only for ozone profile retrieval!!!'
+    !     pge_error_status = pge_errstat_error; RETURN
+    !  ELSE
+    !     READ (fit_ctrl_unit, *) ozprof_flag
+    !     IF (ozprof_flag)  THEN
+    !!       READ (fit_ctrl_unit, '(A)') ozprof_input_fname !! commented Kai
+    !     END IF
+    !  END IF
+    ozprof_flag = .TRUE.
+
+    version = 1
+    errstat = PGS_PC_getreference( OZPROF_CTRL_LUN, version, &
+         ozprof_input_fname )
+    IF( errstat /= PGS_S_SUCCESS ) THEN
+      WRITE(msg, '(A,I10,I4)') 'get file from lun=', OZPROF_CTRL_LUN, version
+      errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+           modulename, 0)
+      pge_error_status = pge_errstat_error
+      RETURN
+    ELSE
+      errstat = OMI_SMF_setmsg (OMI_S_SUCCESS,TRIM(ozprof_input_fname), & !! Kai
+           modulename, 0)
+    END IF
+
+
+    ! -----------------------------------------------
+    ! Position cursor to read molecule name(s) to fit
+    ! -----------------------------------------------
+    IF (.NOT. ozprof_flag) THEN  !xliu
+    !  REWIND ( fit_ctrl_unit )
+    !  CALL skip_to_filemark ( fit_ctrl_unit, molline_str, tmpchar, &
+    !       file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !    errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, molline_str, &
+    !         modulename, 0)
+    !    pge_error_status = pge_errstat_error
+    !    RETURN
+    !  END IF
+    !  READ (fit_ctrl_unit, '(A)') tmpchar
+    !  CALL get_mols_for_fitting ( tmpchar, n_mol_fit, fitcol_idx, errstat )
+    !  IF ( errstat /= pge_errstat_ok ) THEN
+    !    errstat = OMI_SMF_setmsg (omsao_e_get_molfitname, '', modulename, 0)
+    !    pge_error_status = pge_errstat_error
+    !    RETURN
+    !  END IF
+    ENDIF
+
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    ! Position cursor to read Level 1 input files
+    ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    select_lonlat = .FALSE.
+    rw_l1l2_pcf   = .TRUE.        ! read l1 (write l2) fname from PCF file
+    fullorb = .TRUE.
+    do_ch2reso = .FALSE.
+    pixlim = -9999
+    linelim = -9999
+
+
+    l1l2_files = TRIM(ADJUSTL(tabdir)) // '../control/L1L2_fnames.inp'
+
+    IF (.NOT. rw_l1l2_pcf ) THEN
+      OPEN(UNIT=l1l2inp_unit, FILE=TRIM(ADJUSTL(l1l2_files)), STATUS='OLD', &
+           IOSTAT=errstat)
+      IF ( errstat /= pge_errstat_ok ) THEN
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
+             TRIM(ADJUSTL(l1l2_files)), modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        READ(l1l2inp_unit, '(A)') l1b_irrad_filename
+        READ(l1l2inp_unit, '(A)') l1b_rad_filename
+        READ(l1l2inp_unit, '(A)') l2_cld_filename
+        READ(l1l2inp_unit, '(A)') l2_filename
+        READ(l1l2inp_unit, *)     linelim, pixlim
+        READ(l1l2inp_unit, *, IOSTAT=errstat)  select_lonlat
+        IF ( errstat /= pge_errstat_ok ) select_lonlat = .FALSE.
+        IF (select_lonlat) THEN
+          READ(l1l2inp_unit, *)   slat, elat, slon, elon
+          IF (slat >= elat .OR. slon >= elon) THEN
+            WRITE(www_lun, *) 'Incorrect lat/lon range!!!'
+            pge_error_status = pge_errstat_error
+            RETURN
+          ENDIF
+          pixlim(1)  = -5
+          pixlim(2) = -5
+          linelim(1) = -5
+          linelim(2) = -5
+        ENDIF
+        CLOSE(UNIT=l1l2inp_unit)
+      END IF
+    ELSE !! Start Read L1L2 file from PCF 
+      ! read l1b_irrad_filename
+      version = 1
+      errstat = PGS_PC_getreference( L1B_IRR_FILE_LUN, version, &
+           l1b_irrad_filename )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L1B_IRR_FILE_LUN, version             
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+             modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      END IF
+      ! read l1b_rad_filename
+      version = 1
+      errstat = PGS_PC_getreference( L1B_UV_FILE_LUN, version, &
+           l1b_rad_filename )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L1B_UV_FILE_LUN, version
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+             modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, 'l1b_rad_filename ='// &
+             TRIM(l1b_rad_filename), modulename, 0)
+      END IF
+      ! read l2_cld_filename
+      version = 1
+      errstat = PGS_PC_getreference( L2_CLD_FILE_LUN, version, l2_cld_filename )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_CLD_FILE_LUN, version
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+             modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
+             'l2_cld_filename ='//TRIM(l2_cld_filename), modulename, 0)
+      END IF
+      ! read l2_filename
+      version = 1
+      errstat = PGS_PC_getreference( L2_OUT_LUN, version, l2_filename )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_OUT_LUN, version
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+             modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
+             'l2_filename ='//TRIM(l2_filename), modulename, 0)
+      END IF
+
+      !! get run specific inputs
+      errstat = PGS_PC_GetConfigData( LINE_SAMPLE_RANGE_LUN, msg )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE( msg,'(A,I8)' ) "get line sample range failed at LUN = ", &
+             LINE_SAMPLE_RANGE_LUN
+        errstat = OMI_SMF_setmsg( errstat, msg, modulename, 0 )
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        READ( msg, *) linelim, pixlim
+        errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, &
+             'PCF: UV2 Line sample ranges='//TRIM(msg), modulename, 0 )
+      ENDIF
+    END IF
+
+    IF( scnwrt ) THEN
+        WRITE(*, '(A)') TRIM(l1b_irrad_filename)
+        WRITE(*, '(A)') TRIM(l1b_rad_filename)
+        WRITE(*, '(A)') TRIM(l2_cld_filename)
+    ENDIF
+
+    IF (instrument_idx == omi_idx) THEN
+       ! obtain orbit number from irradiance file
+       i = INDEX(l1b_irrad_filename, '-o') + 2
+       orbcsol = l1b_irrad_filename(i : i + 5)
+       READ (orbcsol, *) orbnumsol
+       READ (l1b_irrad_filename(i+7 : i + 9), *) omisol_version
+
+       ! obtain orbit number from radiance file
+       i = INDEX(l1b_rad_filename, '-o') + 2
+       orbc = l1b_rad_filename(i : i + 5)
+       READ (orbc, *) orbnum
+
+       ! check cloud file
+       i = INDEX(l2_cld_filename, '-o') + 2
+       cldorbc = l2_cld_filename(i : i + 5)
+       READ (cldorbc, *) cldorb
+
+       IF (cldorb /= orbnum) THEN
+          WRITE(www_lun, *) &
+               'Inconsistent orbit number between radiance and cloud file!!!'
+          pge_error_status = pge_errstat_error
+          RETURN
+       ENDIF
+      ! generate identifer for irradiance and radiance spectrum
+      i = INDEX(l2_filename, 'OMIO3PROF')
+      outdir = l2_filename(1:i-1)
+      rad_identifier = 'o' // orbc
+      sol_identifier = 'o' // orbcsol
+    ELSE IF (instrument_idx == tempo_idx) THEN 
+      orbc = '00000'
+      orbcsol = orbc
+      !i = INDEX(l2_filename, 'OMIO3PROF')
+      outdir = './' !l2_filename(1:i-1)
+      rad_identifier = 'o' // orbc
+      sol_identifier = 'o' // orbcsol
+    ELSE IF (instrument_idx == gome_idx) THEN
+      i = INDEX(l1b_irrad_filename, 'lv1_') + 11
+      orbc = l1b_rad_filename(i-2:i)
+      orbcsol = orbc
+      i = INDEX(l1b_irrad_filename, 'lv1') + 4
+      sol_identifier = l1b_irrad_filename(i:i+7)
+      i = INDEX(l1b_rad_filename, 'lv1') + 4
+      rad_identifier = l1b_rad_filename(i:i+7)
+      j = INDEX(l2_filename, 'lv2')
+      outdir = l2_filename(1:j-1)
+        !ELSEIF (instrument_idx == scia_idx) THEN
+        !   i = INDEX(l1b_rad_filename, 'Ch1orb') + 28
+        !   orbc = l1b_rad_filename(i-2:i)
+        !   i = INDEX(l1b_irrad_filename, 'Ch1orb') + 20
+        !   sol_identifier = l1b_irrad_filename(i:i+4) // l1b_irrad_filename(i+6:i+8)
+        !   rad_identifier = sol_identifier
+        !   j = INDEX(l2_filename, 'lv2')        ; outdir = l2_filename(1:j-1)
+        !   sciaorb_identifier =  l1b_irrad_filename(i-3:i+11)
+    ELSE IF (instrument_idx == gome2_idx) THEN
+      orbc = '0'
+      i = INDEX(l1b_irrad_filename, 'GOME_xxx_1B') + 18
+      sol_identifier = l1b_irrad_filename(i:i+7)
+      i = INDEX(l1b_rad_filename, 'GOME_xxx_1B') + 18
+      rad_identifier = l1b_rad_filename(i:i+7)
+      j = INDEX(l2_filename, 'lv2')
+      outdir = l2_filename(1:j-1)
+    ENDIF
+    IF (use_backup) THEN 
+      sol_identifier = rad_identifier 
+    ENDIF
+    sn = slit_name(which_slit)
+    slit_fname    = TRIM(ADJUSTL(outdir))// 'slit_'//sol_identifier//'.'//sn
+    swavcal_fname = TRIM(ADJUSTL(outdir))// 'swavcal_'//sol_identifier// '.'//sn
+    rslit_fname   = TRIM(ADJUSTL(outdir))// 'rslit_'// rad_identifier // '.'//sn
+    wavcal_fname  = TRIM(ADJUSTL(outdir))//'wavcal_'// rad_identifier //'.'//sn
+
+    ! ----------------------------------------------
+    ! Position cursor to read HDF output flags (CRN)
+    ! ----------------------------------------------
+    REWIND ( fit_ctrl_unit )
+    CALL skip_to_filemark ( fit_ctrl_unit, lm_l2hdf, tmpchar, file_read_stat )
+    IF ( file_read_stat /= file_read_ok ) THEN
+      errstat = OMI_SMF_setmsg (omsao_w_read_fitctrl_file, lm_l2hdf, &
+           modulename, 0)
+      pge_error_status = pge_errstat_warning
+      l2_hdf_flag = 0  ! Write ASCII
+    ELSE
+      READ (fit_ctrl_unit, '(I8)') l2_hdf_flag
+
+      ! Check output data format
+      IF (instrument_idx == gome2_idx .AND. (l2_hdf_flag < 1 .OR. &
+           l2_hdf_flag > 2)) THEN
+        WRITE(www_lun, *) 'GOME-2 data can only be written in HDF'
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE IF ((instrument_idx == gome_idx .OR. &
+           instrument_idx == scia_idx) .AND. l2_hdf_flag  > 0) THEN
+        WRITE(www_lun, *) 'GOME-1/SCIA data can only be written in ASCII'
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE IF (instrument_idx == omi_idx .AND. (l2_hdf_flag /= 0 .AND. &
+           l2_hdf_flag /= 3 .AND. l2_hdf_flag /=4)) THEN
+        WRITE(www_lun, *) 'OMI data can only be written in ASCII or HDF-EOS5 or NC'
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE IF (instrument_idx == tempo_idx .AND. (l2_hdf_flag /= 0 .AND. &
+           l2_hdf_flag /= 3 .AND. l2_hdf_flag /=4)) THEN
+        WRITE(www_lun, *) 'TEMPO data can only be written in ASCII or HDF-EOS5 or NC'
+        pge_error_status = pge_errstat_error
+        RETURN
+      ENDIF
+    END IF
+
+
+    ! ------------------------------------------------
+    ! Check for consistency of pixel limits to process
+    ! ------------------------------------------------
+    IF (select_lonlat) THEN
+      CALL find_scan_line_range(slat, elat, slon, elon, linelim(1), &
+           linelim(2), pixlim(1), pixlim(2), pge_error_status )
+      IF (pixlim(1) < 0 .OR. linelim(1) < 0 .OR. pge_error_status >= &
+           pge_errstat_error) THEN
+        pge_error_status = pge_errstat_error
+        RETURN
+      ENDIF
+      ! pixlim is based on UV1, if both channels are selected
+      IF (coadd_uv2) THEN
+        pixlim(1) = pixlim(1) * ncoadd - 1
+        pixlim(2) = pixlim(2) * ncoadd
+      ENDIF
+    ENDIF
+
+    ! check for boundaries
+    IF (linelim(1) /= -9999) linenum_lim =  linelim
+    IF (pixlim(1)  /= -9999) pixnum_lim  =  pixlim
+    IF ( ALL ( linenum_lim < 0 ) )      linenum_lim(1:2) = (/ 1, ntimes_max /)
+    IF ( linenum_lim(1) > linenum_lim(2) ) linenum_lim([1, 2]) = &
+         linenum_lim([2, 1])
+    IF ( linenum_lim(1) < 1 )              linenum_lim(1) = 1
+    IF ( linenum_lim(2) > ntimes_max )     linenum_lim(2) = ntimes_max
+
+    IF ( ALL ( pixnum_lim < 0 ) )       pixnum_lim(1:2) = (/ 1, nxtrack_max /)
+    IF ( pixnum_lim(1) > pixnum_lim(2) )   pixnum_lim([1, 2]) = &
+         pixnum_lim([2, 1])
+    IF ( pixnum_lim(1) < 1 )               pixnum_lim(1) = 1
+    IF ( pixnum_lim(2) > nxtrack_max )     pixnum_lim(2) = nxtrack_max
+
+    ! check for selected across track position (must start from odd positions)
+    IF (instrument_idx == omi_idx) THEN    
+     IF (coadd_uv2)  THEN
+      i = pixnum_lim(2)-pixnum_lim(1) + 1
+      IF ( MOD(pixnum_lim(1), ncoadd) /= 1 .OR. MOD(i, ncoadd) /= 0 ) THEN
+        WRITE(www_lun, '(A,2I4)') &
+             'Incorrect across track positions to be coadded: ', &
+             pixnum_lim(1:2)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ENDIF
+      ! NINT behaviour is not consistent between Intel and GNU builds
+      ! when input is exactly integer+0.5
+      ! pixnum_lim = NINT(1.0 * pixnum_lim / ncoadd)
+      pixnum_lim = INT((1.0 * pixnum_lim / ncoadd)+0.5)
+     ENDIF
+     ! must divide and must start from odd coadded positions
+     IF (do_xbin .AND. nxbin > 1) THEN
+       i = pixnum_lim(2)-pixnum_lim(1) + 1
+       IF ( MOD (i, nxbin) /= 0 .OR. MOD(pixnum_lim(1), nxbin) /= 1 ) THEN
+         WRITE(www_lun, '(A,2I4)') &
+             'Incorrect across track binning option: ', pixnum_lim(1:2)
+              pge_error_status = pge_errstat_error
+         RETURN
+       ENDIF
+     ELSE
+       nxbin = 1
+     ENDIF
+
+     IF( coadd_uv2 ) THEN
+       WRITE(msg, '(A,2I5,2I3)') 'Processing UV1 Line sample ranges=', &
+           linenum_lim(1:2),pixnum_lim(1:2)
+     ELSE
+       WRITE(msg, '(A,2I5,2I3)') 'Processing UV2 Line sample ranges=', &
+           linenum_lim(1:2),pixnum_lim(1:2)
+     ENDIF
+     errstat = OMI_SMF_setmsg( OMI_S_SUCCESS, TRIM(msg), modulename, 0 )
+    ELSE IF (instrument_idx == tempo_idx) THEN 
+      IF (do_xbin .and. nxbin > 1) THEN 
+         IF (pixnum_lim(1) <= nybin) THEN 
+             pixnum_lim(1) = 1
+         ELSE
+             pixnum_lim(1) = INT(( pixnum_lim(1)/nxbin)*nxbin   ) +1
+         ENDIF
+       
+             i = pixnum_lim(2)-pixnum_lim(1) + 1
+             IF (mod(i, nxbin) /= 0 ) THEN 
+               pixnum_lim(2) = NINT(1.0 * i / nxbin) * nxbin + pixnum_lim(1) - 1
+             ENDIF            
+      ENDIF
+         ! print * , nint(0.4), ceiling(0.4), int(0.4)
+         ! print * , nint(0.6), ceiling(0.6), int(0.6)
+    ENDIF
+    
+    ! Could start from any positions, adjust line positions if necessary
+    IF (do_ybin .AND. nybin > 1)  THEN
+      IF( linenum_lim(1) <= nybin ) THEN
+        linenum_lim(1) = 1
+      ELSE
+        linenum_lim(1) = INT((linenum_lim(1)-1)/nybin)*nybin + 1
+      ENDIF
+      IF ( linenum_lim(1) > linenum_lim(2) )   linenum_lim(2) = &
+           linenum_lim(1)
+      i = linenum_lim(2)-linenum_lim(1) + 1
+      IF (MOD(i, nybin) /= 0) THEN
+        linenum_lim(2) = CEILING(1.0 * i / nybin) * nybin + linenum_lim(1) - 1
+        IF (linenum_lim(2) > ntimes_max) linenum_lim(2) = &
+             linenum_lim(2) - nybin
+      ENDIF
+    ELSE
+      nybin = 1
+    ENDIF
+    IF (instrument_idx /= tempo_idx ) THEN 
+    WRITE(slinechar, '(I4.4)') linenum_lim(1)
+    WRITE(elinechar, '(I4.4)') linenum_lim(2)
+    WRITE(sxchar, '(I2.2)')    pixnum_lim(1)
+    WRITE(exchar, '(I2.2)')    pixnum_lim(2)
+    ELSE
+    WRITE(slinechar, '(I3.3)') linenum_lim(1)
+    WRITE(elinechar, '(I3.3)') linenum_lim(2)
+    WRITE(sxchar, '(I4.4)')    pixnum_lim(1)
+    WRITE(exchar, '(I4.4)')    pixnum_lim(2)
+    ENDIF
+
+    IF( l2_hdf_flag == 0) THEN  !! Modify output file name only when it is L2 HE5 output, Kai
+      IF ( .NOT. (linenum_lim(1) == 1 .AND. linenum_lim(2) == ntimes_max)) THEN
+        l2_filename = TRIM(ADJUSTL(l2_filename)) &
+         // '_L' // TRIM(ADJUSTL(slinechar)) // '-' //TRIM(ADJUSTL(elinechar))
+      ENDIF
+      IF ( .NOT. (pixnum_lim(1) == 1 .AND. (pixnum_lim(2) == nxtrack_max .OR. &
+        (coadd_uv2 .AND. pixnum_lim(2) == nxtrack_max / ncoadd)))) THEN
+        l2_filename = TRIM(ADJUSTL(l2_filename)) // '_X' &
+        // ADJUSTL(TRIM(sxchar)) // '-' // ADJUSTL(TRIM(exchar))
+      ENDIF
+
+      IF (do_xbin) THEN
+        WRITE(xbinchar, '(A2,I1)') 'BX', nxbin
+        l2_filename = TRIM(ADJUSTL(l2_filename)) // '-' //ADJUSTL(TRIM(xbinchar))
+      ENDIF
+      IF (do_ybin) THEN
+        WRITE(ybinchar, '(A2,I1)') 'BY', nybin
+        l2_filename = TRIM(ADJUSTL(l2_filename)) // '-' //TRIM(ADJUSTL(ybinchar))
+      ENDIF
+    ENDIF 
+
+    IF (l2_hdf_flag == 4) THEN 
+        l2_filename=TRIM(ADJUSTL(L2_filename))//'.nc'
+    ELSE IF (l2_hdf_flag == 3) THEN 
+        l2_filename=TRIM(ADJUSTL(L2_filename))//'.he5'
+    ELSE IF (l2_hdf_flag == 0) THEN 
+        l2_filename=TRIM(ADJUSTL(L2_filename))//'.out'
+    ELSE IF (l2_hdf_flag == 1) THEN 
+        l2_filename=TRIM(ADJUSTL(L2_filename))//'.h5'
+    ELSE
+          STOP 
+    ENDIF
     ! -----------------------------------------------
     ! Close fitting control file, report SUCCESS read
     ! -----------------------------------------------
     CLOSE ( UNIT=fit_ctrl_unit )
 
-    !xliu: add the following block
     ! ------------------------------------------------------------------------
     ! Read fitting conrol parameters from input file for
     ! ozone profile variables
-    IF (ozprof_flag) THEN
+    IF (ozprof_flag) THEN 
       CALL read_ozprof_input ( &
            fit_ctrl_unit, ozprof_input_fname, pge_error_status )
       IF ( pge_error_status >= pge_errstat_error ) RETURN
-    END IF
-
-
-
+    ENDIF
     ! refnhextra must >= 1 and radnhtrunc > refnhextra, if interpolation
     ! is performed radnhtrunc should be
     IF ( (ntsh == 0 .AND. nsh == 0 .AND. nos == 0 .AND. nsl == 0) &
          .OR. (do_simu .AND. .NOT. radcalwrt)) THEN
       radnhtrunc = 3
       refnhextra = 2
+      IF (instrument_idx == tempo_idx) THEN 
+        radnhtrunc = 5
+        refnhextra = 2
+      ENDIF
       !ELSE IF (reduce_resolution .AND. use_redfixwav) THEN
       !   radnhtrunc = 2; refnhextra = 1
     ELSE
       radnhtrunc = 3
       refnhextra = 2
+      IF (instrument_idx == tempo_idx) THEN 
+        radnhtrunc = 5
+        refnhextra = 2
+      ENDIF
     ENDIF
-
-
     ! ------------------------------------------------------------------------
     fitvar_rad_saved = fitvar_rad_init
 
@@ -1401,6 +1351,42 @@ contains
 
     errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, "done reading.", modulename, 0) !! Kai
 
+    num_param = n_fitvar_rad - nfgas - &
+                (ozfit_end_index - ozfit_start_index + 1)
+    IF (scnwrt) THEN
+      WRITE(*, '(A, I8, A, I8)') ' n_fitvar_rad = ', n_fitvar_rad, '      nlayer =', nlay
+      DO i = 1, n_fitvar_rad
+         IF (i < ozfit_start_index .or. i > ozfit_end_index) THEN
+          WRITE(*, '(2I5, A10,f5.2, A20)') i,mask_fitvar_rad(i),fitvar_rad_str(mask_fitvar_rad(i)),  &
+          fitvar_rad_init(masK_fitvar_rad(i)),fitvar_rad_unit(mask_fitvar_rad(i))
+         ENDIF
+      ENDDO
+    ENDIF
+    RETURN
+    DO i = 1, 192
+      WRITE(*, '(2I5, A10,f5.2, A20)') i, rmask_fitvar_rad(i), fitvar_rad_str(i),&
+      fitvar_rad_init(i),  fitvar_rad_unit(i)
+    ENDDO
+    !xliu, 09/23/05 Add direcotry, remove hard code directory
+    ! ----------------------------------------------------------
+    ! Position cursor to read database directory
+    ! ----------------------------------------------------------
+    !  REWIND ( fit_ctrl_unit )
+    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_atmdb, tmpchar, file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_atmdb, modulename, 0)
+    !     pge_error_status = pge_errstat_error; RETURN
+    !  ELSE
+    !!    READ (fit_ctrl_unit, '(A)') atmdbdir !! commented Kai
+    !  ENDIF
+    !  REWIND ( fit_ctrl_unit)
+    !  CALL skip_to_filemark ( fit_ctrl_unit, lm_refdb, tmpchar, file_read_stat )
+    !  IF ( file_read_stat /= file_read_ok ) THEN
+    !     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, lm_refdb, modulename, 0)
+    !     pge_error_status = pge_errstat_error; RETURN
+    !  ELSE
+    !!    READ (fit_ctrl_unit, '(A)') refdbdir !! commented Kai
+    !  ENDIF
     RETURN
   END SUBROUTINE read_fitting_control_file
 

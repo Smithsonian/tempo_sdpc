@@ -38,14 +38,14 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: p0, boltz, xmair, accgrav, ugc, avo, &
-         rearth, du2mol
+         rearth, du2mol, profunit
     USE OMSAO_variables_module, ONLY : sza => the_sza_atm, &
-         the_surfalt, the_lon, the_lat, fitvar_rad_init!, &
+         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline! &
          !currline, n_refspec_pts, atmdbdir, database
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
          no2_t1_idx, so2v_idx, o2o2_idx, no2_t2_idx, & 
          o2_idx,  o2t2_idx, h2o_idx, h2ot2_idx
-    USE ozprof_data_module,     ONLY : atmos_prof_fname, profunit, &
+    USE ozprof_data_module,     ONLY : atmos_prof_fname, &
          do_lambcld, which_atm, which_clima, strataod, stratsca, tropaod, tropsca, &
          tropwaer, stratwaer, useasy, mflay, aerosol, cloud, has_clouds, &
          ncbp, nctp, ntp, aerwavs, nw=>actawin, fts, nmom, fps, fzs, fozs, &
@@ -58,17 +58,18 @@ contains
          so2valts, trpz
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, interpol
-    USE utilities, ONLY: reverse
-    use prepare_atmosphere, only: get_mipasig2t, get_v8temp
-    use get_cloud, only: get_cloud_miprop, get_tomsv8_ctp
+    USE m_utilities, ONLY: reverse
+    use prepare_atmosphere, only: get_mipasig2t, get_v8temp, get_ecmwfavgt
+    use m_get_cloud, only: get_cloud_miprop, get_tomsv8_ctp
     use m_read_aerosol_prof
     use m_get_o3prof, ONLY:get_o3prof
     use m_get_tracegas, ONLY: get_bro, get_no2, get_geoschem_hcho, get_geoschem_so2, get_afglus_h2o
     use m_get_ncep, ONLY:get_ncep_temp
+    use m_get_fnl, ONLY:get_fnl_temp, get_fnl_sfct
+    use m_get_omigeos5, ONLY: geos5, ngl
     IMPLICIT NONE
 
-    INTEGER, PARAMETER :: nv8=11, nlfnl=22, nref=71, nmpref=61, nmipas=121
-    INTEGER, PARAMETER :: nold0 = 22 + 6
+    INTEGER, PARAMETER :: nv8=11, nlfnl=26, nref=71, nmpref=61, nmipas=121
     ! Input variables
     INTEGER, INTENT(IN)          :: year, month, day, ndiv, numk
     INTEGER, INTENT(OUT)         :: errstat
@@ -86,14 +87,15 @@ contains
 
     ! Local variables
     INTEGER :: nlecm, nold
-    INTEGER :: i, j, k, n, ncld, ncldinc, np, nftp, ntemp
+    INTEGER :: i, j, k, n, ncld, ncldinc, np, nftp, ntemp, lidx
     INTEGER, DIMENSION(0:numk) :: indarr
     REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, tmp, tmpscl, &
-                                  so2v_fwhm, so2v_vcd,  halfdz
+                                  so2v_fwhm, so2v_vcd,  halfdz, sfct
     REAL (KIND=dp), DIMENSION (0:maxlay)        :: told0, pold, told, zold
     REAL (KIND=dp), DIMENSION (1:nmipas)       :: mipasp, mipast
     REAL (KIND=dp), DIMENSION (4)              :: ptemp    
     REAL (KIND=dp), DIMENSION (nv8)            :: v8temp
+    REAL (KIND=dp), DIMENSION (0:ngl)          :: g5_ts, g5_ps
     REAL (KIND=dp), DIMENSION (0:numk)         :: umkp, umkt, umkz, umkoz
     REAL (KIND=dp), DIMENSION (0:mflay)        :: oznref
     !REAL (KIND=dp), DIMENSION(2)               :: afgltmp
@@ -122,6 +124,7 @@ contains
 
     ! pressure grid, temperature at origianl meterological input grids
     told (:) = 0.0
+    sfct = 0.0
     IF (which_atm == 0 ) THEN 
         nlecm = 22 
         nold  = nlecm + 6
@@ -131,23 +134,42 @@ contains
         told0(0:nold) = (/288.2, 287.5,   283.3, 278.7, 268.6, 261., 252., 241.4, 228.6, 223.1, 220.5, 216.5, &
                          216.6, 216.6, 216.6, 220.5, 223.1, 227.7, 232.4, 239.3, 249.5, &
                          257.9, 271.3, 270.7, 260.8, 250., 247.0, 242., 236.0/)
-        CALL GET_NCEP_TEMP (told(1:nlecm)) !NCEP 1:17 + ECMWFAVG 18 + 22 
+        CALL get_ncep_temp (told(1:nlecm)) !NCEP 1:17 + ECMWFAVG 18 + 22 
     ELSE IF (which_atm == 1) THEN 
-        STOP
+        nlecm = 31
+        nold = nlecm + 6
+        pold(0:nold) = (/1013.25, 1000., 975., 950., 925., 900., 850., &
+        800., 750., 700., 650., 600., 550., 500., 450., 400., 350., 300., 250.,200., 150., 100., 70., 50., &
+        30., 20., 10., 7., 5., 3., 2., 1., 0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
+        told0(0:nold) = (/288.2, 287.5,286.1, 284.7, 283.2, 281.8, &
+        278.7, 275.5, 272.2, 268.6, 264.8, 260.8, 256.6, 251.9, 246.9, 241.4,235.4, 228.6, 220.5, &
+        216.5, 216.7, 216.7, 216.7, 217.2, 220.5, 223.1, 227.7, 232.4, 239.3,249.5, 257.9, 271.3, &
+        269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
+        CALL GET_fnl_temp(told(1:nlfnl))
+        CALL get_ecmwfavgt(told(nlfnl+1:nlecm))
+        CALL get_fnl_sfct(sfct)
+    ELSE IF (which_atm == 2) THEN 
+        g5_ps(0:ngl) = geos5%ps(0:ngl, currpix, currline)
+        g5_ts(1:ngl) = geos5%ts(1:ngl, currpix, currline)
+        lidx = MINVAL(MINLOC ( g5_ps (1:ngl) , MASK =(g5_ps(1:ngl) >=  0.71)))
+        nlecm = lidx
+        pold(0:nlecm) = g5_ps(0:nlecm)
+        told (1:nlecm) = g5_ts(1:nlecm)
+        pold (nlecm+1 : nlecm + 6) = (/0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
+        pold (nlecm+1 : nlecm + 6) = (/269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
     ENDIF
    
     IF (ALL(told(1:nlecm) == 0.0)) THEN 
-        nold = nold0
-        told(0:nold0) = told0(0:nold0)
+        told(0:nold) = told0(0:nold)
         WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm; STOP
     ENDIF
     pold(nold) = p0 * 2.0D0 ** (-13.5D0)  ! TOP
 
     ! Use TOMS V8 temperature climatology for 0.70, 0.35 mb 
-    CALL GET_V8TEMP(month, day, the_lat, v8temp)
+    CALL GET_V8TEMP(v8temp)
     told(nlecm+1) = v8temp(10); told(nlecm + 2) = v8temp(11)
     ! Use MIPAS Temperature cimatology for the upper 4 layers)
-    CALL GET_MIPASIG2T(month, day, the_lat, mipasp, mipast)
+    CALL GET_MIPASIG2T(mipasp, mipast)
     mipasp = LOG(mipasp); ptemp = LOG(pold(nlecm+3:nlecm+6))
     CALL BSPLINE(mipasp, mipast, nmipas, ptemp, told(nlecm+3:nlecm+6), 4, errstat)
     IF (errstat < 0) THEN
@@ -160,6 +182,7 @@ contains
     ! xliu (08/17/2008): Use extrapolation
     IF (use_input_spres) THEN
       IF (spres > pold(0) ) pold(0) = spres
+      IF (sfct /=0 ) told(0) = sfct      
     ENDIF
     
     IF (told(0) == 0.0) THEN
@@ -209,6 +232,7 @@ contains
         fndiv = 12.0 / numk
         DO i = 0, numk
           umkp0(i) = 2.D0 ** (-fndiv * i)
+          !WRITE(*,*) i, umkp0(i)
         ENDDO
         umkp0(numk) = 2.0D0 ** (-13.5D0)  ! 65 km xliu (Dec 06 2006)
         umkp0(0:numk) = LOG(umkp0(0:numk) * p0)
@@ -342,6 +366,7 @@ contains
       DO j = 1, int(fndiv)
         np = np + 1
         fps(np) = umkp(i-1) - dlgp * j
+        !print * , np, fps(np)
       ENDDO
     ENDDO
     ! Determine CBP by assumming COD of 20 per 100 hPa
@@ -352,7 +377,7 @@ contains
     !       2. change from 15 per 100 hPa to 20 Per 100 hPa (i.e., 6.6 to 5)
     has_clouds = .FALSE.; nctp = 0; ncbp = 0; cbp =0.0
     IF (cloud .AND. ctp > 0.0) THEN 
-      fps(1:np) = EXP(fps(1:np))
+      fps = EXP(fps)
       has_clouds = .TRUE.
 
       IF ( do_lambcld ) THEN            ! Lambertian clouds (not need for cbp)
@@ -406,8 +431,7 @@ contains
           np = np + 1;  nctp = i + 1; fps(i+1) = ctp; EXIT
         ENDIF
       ENDDO
-
-      fps(1:np) = LOG(fps(1:np))  ! convert fps back to logarithmic for convenience
+      fps = LOG(fps)  ! convert fps back to logarithmic for convenience
 
       ! need to break cloud to more layers ( tau = 2 / per layer) for scattering clouds
       IF (.NOT. do_lambcld) THEN
@@ -466,7 +490,6 @@ contains
       ENDIF
     ENDDO
     nfsfc = nup2p(nsfc)
-
     ! ================================ Get T, P, Z, aerosols ============================== 
     ! Interpolate temperature and altitude to FINE grids
     CALL BSPLINE(pold, told, nold+1, fps(0:np), fts(0:np), np+1, errstat)
@@ -510,13 +533,13 @@ contains
 
     umkt = fts(nup2p); umkz = fzs(nup2p)  !  T and Z grid for ozone retrieval layers
     trpz = umkz(ntp)
-
-
-    umkt = fts(nup2p); umkz = fzs(nup2p)     !  T and Z grid for ozone retrieval layers
-    trpz=umkz(ntp)
     ! convert back to mbar for pressures
     umkp = EXP(umkp); fps(0:np) = EXP(fps(0:np))
     atmosprof(1, 0:numk) = umkp; atmosprof(2,0:numk) = umkz; atmosprof(3, 0:numk)=umkt
+   
+    !DO i = 0, np 
+    ! WRITE(*,'(i3, f8.2, f8.2, f8.2, e15.5)') i, fzs(i), fps(i), fts(i), frhos(i)
+    !ENDDO 
   ! ======================== get ozprof and other tracegases===================================
   
     ! Need to normalize ozone profile (Strat. and trop.) or tropospheric ozone profile with input total ozone
@@ -525,9 +548,7 @@ contains
     oznref (0:np) = 0.0
     CALL get_o3prof (numk, umkp(0:numk),umkz(0:numk), ntp, norm_o3p, toz, ozprof(1:numk))
     CALL get_o3prof ( np,  fps(0:np), fzs(0:np), ntp, norm_o3p, toz, oznref(1:np))
-    !DO i = 1, numk
-    !   print * , i, umkp(i), umkp(i), umkz(i), umkt(i), ozprof(i)
-    !ENDDO
+  
     ! Loading minor trace gas profile
     IF (do_tracewf .OR. first) THEN
       DO i = 1, ngas
@@ -581,18 +602,18 @@ contains
           ELSE IF (gasidxs(i) == o2o2_idx) THEN
             ! Assume 20.95% for O2
             ! Here Divide 1.0E10, and absorption coefficients multiply by 1.D10
-            mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5/1.D10
-           ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN
+            mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5 /1.D10
+          ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN
               ! Assume 20.95% for O2
               mgasprof(i, 1:np) = frhos(1:np)*0.2095
-           ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
+          ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
               CALL get_afglus_h2o (fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nsfc)
-               ! xliu, 12/10/2014, Both h2o_idx and h2ot2_idx are selected
+              ! xliu, 12/10/2014, Both h2o_idx and h2ot2_idx are selected
               IF (gasidxs(i) == h2ot2_idx .AND. fgasidxs(9) > 0) THEN
                  mgasprof(9, 1:np+1)  = mgasprof(9, 1:np+1) * 0.70d0
                  mgasprof(i, 1:np)  = mgasprof(i, 1:np) * 0.30d0
               ENDIF
-           ELSE
+          ELSE
             print *, 'Not Implemented!!!'
             errstat = pge_errstat_error; RETURN
           ENDIF
@@ -610,8 +631,6 @@ contains
 !          CALL REVERSE(mgasprof(i, 1:np), np)
           CALL REVERSE(tmp_inarr, np)
           deallocate(tmp_inarr)
-
-
         ENDIF
       ENDDO
       IF (first) first = .FALSE.
@@ -789,6 +808,9 @@ contains
     nup2p(0:numk) = MAXVAL(nup2p(0:numk)) - nup2p(numk - indarr) 
     ntp = numk - ntp; nsfc = numk - nsfc 
 
+    !O i = 0, numk
+    !  write(*,'(i4, 10f8.2)') i, atmosprof(1:3,i), ozprof(i)
+    !NDDO
     RETURN
 
   END SUBROUTINE MAKE_ATM
@@ -807,7 +829,7 @@ contains
 
     USE OMSAO_precision_module
     USE m_ezspline_interpolation, ONLY: interpol
-    USE utilities, ONLY: reverse
+    USE m_utilities, ONLY: reverse
     USE OMSAO_errstat_module
 
     IMPLICIT NONE

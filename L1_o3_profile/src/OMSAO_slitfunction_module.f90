@@ -4,7 +4,7 @@ MODULE OMSAO_slitfunction_module
   USE OMSAO_variables_module,  ONLY: refdbdir, coadd_uv2, currpix, &
        band_selectors, numwin, winlim, nxbin
   USE OMSAO_omidata_module,    ONLY: nxtrack_max, nfxtrack, ncoadd
-  USE ozprof_data_module,      ONLY: calunit
+  USE OMSAO_parameters_module,      ONLY: calunit
   USE OMSAO_errstat_module
   IMPLICIT NONE
 
@@ -14,7 +14,7 @@ MODULE OMSAO_slitfunction_module
        NCH = 3    ! UV1, UV2, VIS
   REAL (KIND=r8), DIMENSION(NCH), PARAMETER:: omiscale = (/0.01, 0.001, 0.001/)
   REAL (KIND=r8), DIMENSION(NCH), PARAMETER:: omishi = (/0.0,  350.0, 450.0/) 
-  REAL (KIND=r8), DIMENSION(NCH, nxtrack_max, NP, NO)  :: omi_slitpars
+  REAL (KIND=r8), DIMENSION(:,:,:,:), POINTER  :: omi_slitpars
 
 CONTAINS
 
@@ -28,7 +28,13 @@ CONTAINS
     CHARACTER (LEN=maxchlen)                    :: slitpar_fname
     INTEGER                                     :: i, j, ic, ix, nx, errstat
     CHARACTER (LEN=13), PARAMETER  :: modulename = 'load_slitpars'
+    LOGICAL, SAVE :: first=.false.
+    
+    IF (first) THEN
 
+      allocate( omi_slitpars(NCH, nxtrack_max, NP, NO))
+      first=.false.
+    ENDIF
     !    ! For testing the slit parameters
     !    INTEGER :: ch, xpix, nw
     !    REAL (KIND=r8) :: lamda

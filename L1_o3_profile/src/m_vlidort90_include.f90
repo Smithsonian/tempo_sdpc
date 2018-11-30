@@ -2,6 +2,6 @@
 !
 module m_vlidort90_include
 
-  include 'VLIDORT90.PARS'
+  include 'VLIDORT.PARS'
 
 end module m_vlidort90_include

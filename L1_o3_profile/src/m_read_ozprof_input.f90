@@ -16,7 +16,7 @@ contains
        pge_error_status)
 
     USE OMSAO_precision_module
-    USE ozprof_data_module, ONLY: nlay, nlay_fit, ozstr, othgasstr, albstr, othstr, polstr, &
+    USE ozprof_data_module, ONLY: nlay, nlay_fit,  &
          ozprof_start_index, ozprof_end_index, ozfit_start_index, &
          ozfit_end_index, start_layer, end_layer, atmos_prof_fname, &
          lcurve_write, lcurve_fname, ozwrtint, ozwrtint_fname, &
@@ -30,6 +30,8 @@ contains
          atmos_prof_fname, ozwrtcorr, ozwrtcovar, ozwrtcontri, ozwrtres, &
          ozwrtvar, ozwrtavgk,  ozwrtfavgk, degfname, biascorr, biasfname, &
          do_tracewf, fgasidxs, ngas, gasidxs, algorithm_name, &
+         so2fidx, so2idx, o4fidx, o4idx, o2fidx, h2ofidx, h2oidx, &    
+         brofidx, broidx, hchofidx, hchoidx, &
          algorithm_version, atmwrt, gaswrt, nfgas, do_radinter, osind, &
          osfind, slind, slfind, shind, shfind, rnind, rnfind, dcind, &
          dcfind, isind, isfind, irind, irfind, oswins, slwins, shwins, &
@@ -39,32 +41,42 @@ contains
          which_caloz, caloz_fname, ozwrtwf, ozwrtsnr, which_aerosol, &
          scale_aod, scaled_aod, do_simu, pos_alb, toms_fwhm, &
          ozcrs_alb_fname, nmom, maxmom, ngksec, maxgksec, maxgkmatc, &
-         ngkmatc, wrtring, wrtozcrs, ncldaer, cldaerstr, ecfrind, ecodind, &
+         ngkmatc, wrtring, wrtozcrs, ncldaer,ecfrind, ecodind, &
          ectpind, taodind, twaeind, saodind,  ecfrfind, ecodfind, ectpfind, &
          taodfind, twaefind, saodfind, lambcld_initalb, scacld_initcod, &
          which_aperr, loose_aperr, min_serr, min_terr, which_toz, &
-         norm_tropo3, sprsind, sprsfind, nwfc, wfcstr, nfwfc, wfcmax, &
+         norm_tropo3, sprsind, sprsfind, nwfc, nfwfc, wfcmax, &
          wfcmin, wfcidx, wfcfidx, so2zind, so2zfind, rtm_treatment,&
          do_bothstep, do_twostep, use_large_so2_aperr, use_effcrs, &
          radc_msegsr, radc_nsegsr, radc_samprate, radc_lambnd, &
-         hres_samprate, thealbidx, thewfcidx, cntrstr, do_simu_rmring, vary_sfcalb, &
+         hres_samprate, thealbidx, thewfcidx, do_simu_rmring, vary_sfcalb, &
          np1, p1ind, p1find, p1wins, np2, p2ind, p2find, p2wins, &
          ncm, cmwins, cmind, cmfind, use_so2dtcrs, use_o4dtcrs,  &
-         npol, nfpol, maxpol, polidx, polmin, polmax, polfidx, thepolidx
-         !wfcfpix, wfclpix, coadd_after_b1ab
-
-    USE OMSAO_parameters_module,   ONLY: maxlay,  maxchlen, maxwin         
+         use_o2dptcrs, use_h2odptcrs, &
+         npol, nfpol, maxpol, polidx, polmin, polmax, polfidx, thepolidx, &
+         so2vidx, so2idx, o2idx, o2t2idx,o4idx, h2oidx, h2ot2idx,&
+         so2fidx, so2vfidx, o2fidx,o2t2fidx, o4fidx, h2ofidx, h2ot2fidx,&
+         no2idx, no2fidx, broidx, brofidx, hchoidx, hchofidx,&
+         so2crsidx, o4crsidx, o2crsidx, h2ocrsidx, o3crsidx, &
+         use_albspc, use_albeofs,nalbspcwin, nalbspcord, nalbspc, & ! static input
+         malbspc, is_albspcvar, wrtalbspc, & 
+         which_inr, do_alb_longwav, alb_swav,ring_lut, alb_ewav
+    USE OMSAO_parameters_module,   ONLY: maxlay,  maxchlen, maxwin, &         
+      ozstr, othgasstr, albstr, othstr, polstr, cldaerstr, wfcstr, cntrstr
     USE OMSAO_indices_module, ONLY: max_rs_idx,  max_calfit_idx, mxs_idx, &
          maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx, &
-         hwe_idx, asy_idx, vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx
+         hwe_idx, asy_idx, vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
+         so2_idx, so2v_idx, o2o2_idx, o2_idx,o2t2_idx, h2o_idx,h2ot2_idx, & 
+          hcho_idx,bro_idx,no2_t1_idx,&
+         n_max_fitpars
     USE OMSAO_variables_module, ONLY: fitvar_rad_init, fitvar_rad_saved, &
          mask_fitvar_rad, n_fitvar_rad, lo_radbnd, up_radbnd, fitvar_rad_str, &
-         rad_identifier, outdir, numwin, refdbdir, scnwrt, &
+         rad_identifier, outdir, numwin, refdbdir,  &
          tabdir, rmask_fitvar_rad, fitvar_rad_init_saved, winlim, &
          fothvarpos, fitvar_rad_unit, &
-         n_slitvar, mask_slitvar, which_slit, yn_varyslit
+         n_slitvar, mask_slitvar, which_slit, yn_varyslit, band_selectors,nviswin
     USE OMSAO_errstat_module
-    use utilities, only: skip_to_filemark
+    use m_utilities, only: skip_to_filemark
 
     IMPLICIT NONE
 
@@ -82,14 +94,15 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER               :: i, j, k, iw, fidx, lidx, file_read_stat, idx, &
+    INTEGER               :: i, j, k,l, iw, fidx, lidx, file_read_stat, idx, &
          swin, ewin, ntemp, nord, ntotp, thewin, theord, np, fstlay, lstlay, &
-         fstlayT, lstlayT
+         fstlayT, lstlayT, ch
     INTEGER, DIMENSION (maxoth, 2)      :: tmpwins
     INTEGER, DIMENSION (maxwin, maxoth) :: tmpind, tmpfind
     CHARACTER (LEN=maxchlen)            :: tmpchar
     !CHARACTER (LEN=3)                   :: idxchar
     CHARACTER (LEN=6)                   :: idxchar1
+    CHARACTER(LEN=1)                    :: winstr, albspc_typestr, albordstr
     REAL      (KIND=dp)                 :: vartmp, lotmp, uptmp, mnoz, &
          minoz, maxoz, mnT, minT, maxT
     !LOGICAL                             :: vart
@@ -121,8 +134,9 @@ contains
       pge_error_status = pge_errstat_error 
       RETURN
     END IF
+    WRITE(www_lun, '(A)') modulename//':open '//TRIM(ADJUSTL(fit_ctrl_file))
 
-    ! ------------------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++
     ! Read ozone profile retrieval control variables
     ! ------------------------------------------------
     REWIND ( fit_ctrl_unit )
@@ -142,6 +156,7 @@ contains
     ! -------------------------------
     ! Read general control variables
     ! -------------------------------
+    WRITE(www_lun,*) modulename//': read general control variables'
     READ (fit_ctrl_unit, *) do_multi_vza
     IF (do_multi_vza) THEN
       WRITE(www_lun, *) &
@@ -159,14 +174,13 @@ contains
     READ (fit_ctrl_unit, *) do_twostep, do_bothstep, use_large_so2_aperr
     READ (fit_ctrl_unit, *) do_tracewf 
     READ (fit_ctrl_unit, *) 
-    READ (fit_ctrl_unit, *) atmwrt, scnwrt, ozwrtint, gaswrt, ozwrtvar, &
+    READ (fit_ctrl_unit, *) atmwrt, ozwrtint, gaswrt, ozwrtvar, &
          ozwrtcorr, ozwrtcovar, ozwrtavgk, ozwrtfavgk, ozwrtcontri, &
-         ozwrtres, ozwrtwf, ozwrtsnr, wrtring, wrtozcrs
+         ozwrtres, ozwrtwf, ozwrtsnr, wrtring, wrtozcrs, wrtalbspc
     ozwrtint_fname = TRIM(ADJUSTL(outdir)) // 'inter_' // rad_identifier // '.dat'
     READ (fit_ctrl_unit, *) 
     READ (fit_ctrl_unit, '(A)') atmos_prof_fname
     atmos_prof_fname = TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(atmos_prof_fname))
-
     !  Calibration options
     READ (fit_ctrl_unit, *) 
     READ (fit_ctrl_unit, *) radcalwrt, which_caloz
@@ -190,7 +204,7 @@ contains
     READ (fit_ctrl_unit, *) use_lograd
     READ (fit_ctrl_unit, *) use_logstate
     READ (fit_ctrl_unit, *) use_flns
-    READ (fit_ctrl_unit, *) ring_on_line, ring_convol, fit_atanring
+    READ (fit_ctrl_unit, *) ring_on_line, ring_convol, fit_atanring, ring_lut
     READ (fit_ctrl_unit, *) smooth_ozbc
     READ (fit_ctrl_unit, *) biascorr, degcorr  
     READ (fit_ctrl_unit, *) which_biascorr
@@ -331,9 +345,10 @@ contains
       ngkmatc = 1
     ENDIF
 
-    ! -------------------------------------
+    ! +++++++++++++++++++++++++++++++++++++++++++++++
     ! Read ozone profile control variables
     ! -------------------------------------
+    WRITE(www_lun,*) modulename//'read ozprof control variables'
     REWIND ( fit_ctrl_unit )
     CALL skip_to_filemark ( fit_ctrl_unit, ozstr, tmpchar, file_read_stat )
     IF ( file_read_stat /= file_read_ok ) THEN
@@ -342,7 +357,6 @@ contains
       pge_error_status = pge_errstat_error
       RETURN
     END IF
-
     !xliu (02/08/2007): modify the way of reading input for atmospheric profiles
     !                   add more options for atmospheric layering scheme
     READ (fit_ctrl_unit, '(A)') ozabs_fname
@@ -444,7 +458,6 @@ contains
     !     END IF
     !
     !  END DO ozpfpars
-
     ! -------------------------------------------------------------
     ! Add unfixed ozone profile variables to the variable list 
     ! -------------------------------------------------------------
@@ -484,8 +497,7 @@ contains
       nt_fit = tf_lidx - tf_fidx + 1
     ENDIF
 
-
-   !------------------------------------------------
+   !+++++++++++++++++++++++++++++++++++++++++++++++++++++
    ! Read the control variable for T-dependent cross gases
    !------------------------------------------------
     REWIND ( fit_ctrl_unit )
@@ -497,85 +509,183 @@ contains
     END IF
     READ (fit_ctrl_unit, *) use_so2dtcrs
     READ (fit_ctrl_unit, *) use_o4dtcrs
-    ! -----------------------------------------------
-    ! Read wavelength dependent surface albedo terms
-    ! -----------------------------------------------
-    REWIND ( fit_ctrl_unit )
-    CALL skip_to_filemark ( fit_ctrl_unit, albstr, tmpchar, file_read_stat)
-    IF ( file_read_stat /= file_read_ok ) THEN
-      errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
-           TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
-      pge_error_status = pge_errstat_error
-      RETURN
-    END IF
+    READ (fit_ctrl_unit, *) use_o2dptcrs
+    READ (fit_ctrl_unit, *) use_h2odptcrs
+    WRITE(www_lun, '(A)') modulename//':read othgastr'
 
-    READ (fit_ctrl_unit, *) pos_alb, toms_fwhm
-    READ (fit_ctrl_unit, *) vary_sfcalb
-    READ (fit_ctrl_unit, '(A)') ozcrs_alb_fname
-    READ (fit_ctrl_unit, *) nalb
-    IF (nalb > maxalb) THEN
-      WRITE(www_lun, *) modulename, ' : # of albedo terms exceeds allowed  ', maxalb
-      pge_error_status = pge_errstat_error
-      RETURN
-    ELSE IF (nalb < 1) THEN
-      WRITE(www_lun, *) modulename, ' : Need to specify at least 1 albedo term!!!'
-      pge_error_status = pge_errstat_error
-      RETURN     
-    ENDIF
+  !+++++++++++++++++++++++++++++++++++++++++++++++++++++
+  ! Read wavelength dependent surface albedo terms
+  ! -----------------------------------------------
+  REWIND ( fit_ctrl_unit )
+  CALL skip_to_filemark ( fit_ctrl_unit, albstr, tmpchar, file_read_stat)
+  IF ( file_read_stat /= file_read_ok ) THEN
+     errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
+          TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
+     pge_error_status = pge_errstat_error; RETURN
+  END IF
+  READ (fit_ctrl_unit, *)     pos_alb, toms_fwhm
+  READ (fit_ctrl_unit, '(A)') ozcrs_alb_fname
+  READ (fit_ctrl_unit, *)     vary_sfcalb
+  READ (fit_ctrl_unit, *) do_alb_longwav, alb_swav, alb_ewav
+  READ (fit_ctrl_unit, *)     use_albspc, use_albeofs
+  IF (use_albspc .AND. nviswin == 0) THEN
+     use_albspc = .FALSE.
+  ENDIF
+  IF (.NOT. use_albspc) THEN
+     use_albeofs = .FALSE.
+     !wrtalbspc = .FALSE.
+  ENDIF
+  IF (use_albspc) vary_sfcalb = .TRUE.
+  READ (fit_ctrl_unit, *)  nalbspc, nalbspcwin, nalbspcord
+  IF ( use_albspc ) THEN
+     IF (nalbspcwin /= 1 .AND. nalbspcwin /= nviswin) THEN
+        WRITE(*, *) modulename, ' : # windows for albedo spectrum must be 1 or # fitting windows!!!'
+        pge_error_status = pge_errstat_error; RETURN    
+     ENDIF
 
-    idx = shift_offset + max_rs_idx + maxlay * 2
-    albidx = idx + 1
-    albmin= 0.0
-    albmax = 0.0
-    albpars: DO i = 1, nalb
-      READ (fit_ctrl_unit, *, IOSTAT=errstat) idxchar1, vartmp, &
-           lotmp, uptmp, albmin(i), albmax(i)
-      IF ( errstat /= pge_errstat_ok ) THEN
-        errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
+     IF (use_albeofs) THEN
+        IF (nalbspcord /= 1) nalbspcord = 1
+     ELSE
+        IF (nalbspcord < 1) THEN
+           WRITE(*, *) modulename, ' : Use >= 1 parameter for albedo spectrum in each window !!!'
+           pge_error_status = pge_errstat_error; RETURN  
+        ENDIF
+     ENDIF
+
+     IF (.NOT. use_albeofs) THEN
+        nalbspc = 1
+     ENDIF
+  ELSE
+     nalbspcwin = 0
+     nalbspcord = 0
+     nalbspc = 0
+  ENDIF
+
+  READ (fit_ctrl_unit, *)    nalb
+
+  idx = shift_offset + max_rs_idx + maxlay * 2
+  albidx = idx + 1
+  albmin= 0.0; albmax = 0.0
+  albpars: DO i = 1, nalb
+     READ (fit_ctrl_unit, *, IOSTAT=errstat) idxchar1, vartmp, &
+          lotmp, uptmp, albmin(i), albmax(i)
+     is_albspcvar(i) = .FALSE.
+     IF ( errstat /= pge_errstat_ok ) THEN
+       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
              TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
-        WRITE(www_lun, *) modulename, ' : Error in reading initial albedo variables!!!'
-        pge_error_status = pge_errstat_error
-        RETURN
-      END IF
+      WRITE(*, *) modulename, ' : Error in reading initial albedo variables!!!'
+       pge_error_status = pge_errstat_error; RETURN
+     END IF
+     IF (use_albspc) THEN
+        IF (albmin(i) <= winlim(numwin-nviswin+1, 1) .AND. albmax(i) >= winlim(numwin-nviswin+1, 2)) THEN
+           lotmp = uptmp  ! Disable albedo variables for this and afterward
+           nalb = i - 1; EXIT
+        ENDIF
+     ENDIF
+     
+     ! ---------------------------------------------------------
+     ! Check for consitency of bounds and adjust where necessary
+     ! ---------------------------------------------------------
+     IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
+        lotmp = vartmp ; uptmp = vartmp
+     END IF
+     IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
+        uptmp = vartmp ; lotmp = vartmp
+     END IF
 
-      ! ---------------------------------------------------------
-      ! Check for consitency of bounds and adjust where necessary
-      ! ---------------------------------------------------------
-      IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-        lotmp = vartmp 
-        uptmp = vartmp
-      END IF
-      IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-        uptmp = vartmp 
-        lotmp = vartmp
-      END IF
+     fitvar_rad_init(idx + i) = vartmp
+     fitvar_rad_str(idx+i) = TRIM(ADJUSTL(idxchar1))
+     lo_radbnd(idx + i) = lotmp
+     up_radbnd(idx + i) = uptmp
+  END DO albpars
+  ! Add albedo spectrum variables
+  IF (use_albeofs) THEN
+     albspc_typestr = 'e'
+  ELSE
+     albspc_typestr = 's'
+  ENDIF
 
-      fitvar_rad_init(idx + i) = vartmp
-      fitvar_rad_str(idx+i) = TRIM(ADJUSTL(idxchar1))
-      lo_radbnd(idx + i) = lotmp
-      up_radbnd(idx + i) = uptmp
-    END DO albpars
+  ! Add albedo spectrum variables, index starting from i as 
+  ! there are i - 1 albedo vairables previously
+  DO j = 1, nalbspcwin
+     IF (nalbspcwin == nviswin ) THEN
+       WRITE(winstr, '(I1)') band_selectors(numwin - nviswin + j )
+     ELSE
+        winstr = 'v'
+     ENDIF
 
-    ! -------------------------------------------------------------
-    ! Add albedo variable to the variable list
-    ! -------------------------------------------------------------
-    albfidx = 0
-    thealbidx = 0
-    DO i = idx + 1, idx + nalb
-      IF ( lo_radbnd(i) < up_radbnd(i) ) THEN
+     DO k = 1, nalbspc
+        DO l = 1, nalbspcord
+           
+           fitvar_rad_init(idx + i) = 0.0d0
+           IF (l == 1 .AND. .NOT. use_albeofs) THEN
+              fitvar_rad_init(idx + i) = 1.0d0
+           ENDIF
+           IF (use_albeofs) THEN
+              WRITE(albordstr, '(I1)') k
+           ELSE
+              WRITE(albordstr, '(I1)') l - 1
+           ENDIF
+           fitvar_rad_str(idx + i) = winstr // 'a' // albspc_typestr // albordstr
+           IF (.NOT. use_albeofs) THEN
+              IF ( l == 1 ) THEN
+                 lo_radbnd(idx + i) = 0.0d0
+                 up_radbnd(idx + i) = 5.0d0
+              ELSE
+                 lo_radbnd(idx + i) = -1.0d0
+                 up_radbnd(idx + i) =  1.0d0 
+              ENDIF
+           ELSE
+              lo_radbnd(idx + i) = -10.0d0
+              up_radbnd(idx + i) =  10.0d0
+           ENDIF
+
+           is_albspcvar(i) = .TRUE.
+           IF (winstr == 'v') THEN
+              albmin(i) = winlim(numwin - nviswin + 1, 1)
+              albmax(i) = winlim(numwin, 2)
+           ELSE
+              albmin(i) = winlim(numwin - nviswin + j, 1)
+              albmax(i) = winlim(numwin - nviswin + j, 2)
+           ENDIF
+           i = i + 1
+        ENDDO
+     ENDDO
+  ENDDO
+  nalb = i - 1
+  
+  IF (nalb > maxalb) THEN
+     WRITE(*, *) modulename, ' : # of albedo terms exceeds allowed  ', maxalb
+     pge_error_status = pge_errstat_error; RETURN
+  ELSE IF (nalb < 1) THEN
+     WRITE(*, *) modulename, ' : Need to specify at least 1 albedo term!!!'
+     pge_error_status = pge_errstat_error; RETURN     
+  ENDIF
+
+  ! -------------------------------------------------------------
+  ! Add albedo variable to the variable list
+  ! -------------------------------------------------------------
+  albfidx = 0; thealbidx = 0
+  DO i = idx + 1, idx + nalb
+     IF ( lo_radbnd(i) < up_radbnd(i) ) THEN
         n_fitvar_rad = n_fitvar_rad + 1
         mask_fitvar_rad(n_fitvar_rad) = i
         rmask_fitvar_rad(i) = n_fitvar_rad  
         IF (albfidx == 0) albfidx = n_fitvar_rad
-        IF ( fitvar_rad_str(i)(4:4)== '0') thealbidx = n_fitvar_rad
-      ENDIF
-    ENDDO
-    IF (albfidx > 0) THEN
-      nfalb = n_fitvar_rad - albfidx + 1
-      thealbidx = thealbidx - albfidx + 1
-    ENDIF
 
-    ! ------------------------------------------------
+        ! xliu, need to check the meaning of thealbidx, 12/07/2014
+        IF ( fitvar_rad_str(i)(4:4)== '0') thealbidx = n_fitvar_rad
+     ENDIF
+
+     !WRITE(*, '(I5,1X,A6,5F10.4, L2)') i-idx, fitvar_rad_str(i), lo_radbnd(i), &
+     !     fitvar_rad_init(i), up_radbnd(i), albmin(i - idx), albmax(i-idx), is_albspcvar(i-idx)
+  ENDDO
+  IF (albfidx > 0) THEN
+     nfalb = n_fitvar_rad - albfidx + 1
+     thealbidx = thealbidx - albfidx + 1
+  ENDIF
+
+    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read wavelength dependent cloud fraction terms
     ! ------------------------------------------------
     REWIND ( fit_ctrl_unit )
@@ -651,9 +761,9 @@ contains
       thewfcidx = thewfcidx - albfidx + 1
     ENDIF
 
-   !-----------------------------------
+   !+++++++++++++++++++++++++++++++++++++++++++++++
    ! Read Wavelength-dependent polcorr variables 
-   !-----------------------------------
+   !------------------------------------------------
    REWIND ( fit_ctrl_unit )
    CALL skip_to_filemark ( fit_ctrl_unit, polstr, tmpchar, file_read_stat)
    IF ( file_read_stat /= file_read_ok ) THEN
@@ -665,7 +775,7 @@ contains
    READ (fit_ctrl_unit, *) npol
    IF (polcorr /= 4) THEN 
       npol = 0
-      print * , 'npol = 0 because polcorr=', polcorr
+      WRITE(www_lun,*) modulename//'npol = 0 because polcorr=', polcorr
    ENDIF
 
    IF (npol > maxpol) THEN
@@ -704,7 +814,7 @@ contains
       up_radbnd(idx + i) = uptmp
     END DO polpars
 
-    ! -------------------------------
+    !++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read cloud/aerosol variables
     ! -------------------------------
     REWIND ( fit_ctrl_unit )
@@ -852,6 +962,7 @@ contains
       END IF
     END DO
 
+    !++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read other parameters (for multiple window)
     REWIND ( fit_ctrl_unit )
     CALL skip_to_filemark ( fit_ctrl_unit, othstr, tmpchar, file_read_stat)
@@ -861,6 +972,7 @@ contains
       pge_error_status = pge_errstat_error
       RETURN
     END IF
+    READ (fit_ctrl_unit, *) which_inr
     READ (fit_ctrl_unit, *) nothgrp 
     IF (nothgrp > maxgrp) THEN
       WRITE(www_lun, *) modulename, ' : Increase maxgrp in OMSAO_indices...!!!'
@@ -1049,91 +1161,141 @@ contains
       !WRITE(www_lun, '(8I5)') tmpind(1:np,  1:maxoth)
       !WRITE(www_lun, '(8I5)') tmpfind(1:np, 1:maxoth)
     ENDDO
- IF (np1 + np2 /= 0 ) THEN
-  IF (which_slit == 0 ) THEN   ! gaussian
-     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
-     np2 =0
-  ELSE IF (which_slit == 1) THEN  ! asym. gaussian
-     n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, asy_idx]
-     IF (np2 == 0) THEN
-     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
-     ELSE IF (np1 == 0) THEN
-     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [asy_idx]
-     ENDIF
-  ELSE IF (which_slit == 2) THEN  ! triangle
-     n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
-  ELSE IF (which_slit == 3) THEN  ! viot
-     !n_slitvar = 4 ; mask_slitvar(1:n_slitvar) = [vgl_idx, vgr_idx, hwl_idx,
-     !hwr_idx ]
-     print * , 'not yet implemented ' ; stop
-  ELSE IF (which_slit == 4) THEN  ! super gaussian
-     n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, spk_idx]
-     IF (np2 == 0) THEN
+
+
+    IF (np1 + np2 /= 0 ) THEN
+    IF (which_slit == 0 ) THEN   ! gaussian
+        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+        np2 =0
+    ELSE IF (which_slit == 1) THEN  ! asym. gaussian
+         n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, asy_idx]
+       IF (np2 == 0) THEN
+         n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+       ELSE IF (np1 == 0) THEN
+         n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [asy_idx]
+       ENDIF
+    ELSE IF (which_slit == 2) THEN  ! triangle
        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
-     ELSE IF (np1 == 0) THEN
-       n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [spk_idx]
-     ENDIF
-  ELSE IF (which_slit == 5) THEN  ! omi instrument
-     np1 = 0 ; np2 = 0
+    ELSE IF (which_slit == 3) THEN  ! viot
+       !n_slitvar = 4 ; mask_slitvar(1:n_slitvar) = [vgl_idx, vgr_idx, hwl_idx,
+       !hwr_idx ]
+       print * , 'not yet implemented ' ; stop
+    ELSE IF (which_slit == 4) THEN  ! super gaussian
+        n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, spk_idx]
+      IF (np2 == 0) THEN
+        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+      ELSE IF (np1 == 0) THEN
+        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [spk_idx]
+      ENDIF
+    ELSE IF (which_slit == 5) THEN  ! omi instrument
+      !IF (instrument_idx == omi_idx) THEN 
+         np1 = 0 ; np2 = 0
+      !ELSE       
+      !ENDIF
      ! current OMI instrument slit function is not fitted, but Kang Sun did it
      ! and jbak did it for OMPS
      ! so could be implemented later
-  ENDIF
-  IF (yn_varyslit) THEN
-     np1 = 0 ; np2 = 0
-     print * , 'not yet implemented' ; stop
-  ENDIF
-  ENDIF
+    ENDIF
+      IF (yn_varyslit) THEN
+       np1 = 0 ; np2 = 0
+       WRITE(www_lun,*) modulename//& 
+         ':pseudo slit function is turn off if yn_varyslit'
+      ENDIF
+    ENDIF
 
-! get indices for auxiliary variables in the final fitted array
+  ! get indices for auxiliary variables in the final fitted array
   rtm_treatment(1:max_rs_idx) = .FALSE.
   rtm_treatment(gasidxs) = .TRUE.
 
-    fgasidxs = 0
-    nfgas = 0
-    DO i = 1, ngas
-      fidx =  max_calfit_idx + (gasidxs(i) - 1) * mxs_idx + 1
-      lidx = fidx + 2
-      fitvar_rad_unit(fidx:lidx) = 'molecumes cm^-2'
-      fgasidxs(i) = MAXVAL(rmask_fitvar_rad(fidx:lidx))
-      fgassidxs(i) = rmask_fitvar_rad(shift_offset + gasidxs(i))
-      IF (fgasidxs(i) > 0) THEN
+  fgasidxs = 0
+  nfgas = 0
+  o3crsidx =1
+  DO i = 1, ngas
+    fidx =  max_calfit_idx + (gasidxs(i) - 1) * mxs_idx + 1
+    lidx = fidx + 2
+    fitvar_rad_unit(fidx:lidx) = 'molecumes cm^-2'
+    fgasidxs(i) = MAXVAL(rmask_fitvar_rad(fidx:lidx))
+    fgassidxs(i) = rmask_fitvar_rad(shift_offset + gasidxs(i))
+
+    IF (gasidxs(i) == so2_idx)    THEN 
+         so2fidx  = fgasidxs(i) ; so2idx = i 
+    ENDIF
+    IF (gasidxs(i) == so2v_idx)   THEN 
+         so2vfidx = fgasidxs(i) ; so2vidx = i
+    ENDIF
+    IF (gasidxs(i) == o2o2_idx)   THEN 
+         o4fidx   = fgasidxs(i) ; o4idx = i
+    ENDIF
+    IF (gasidxs(i) == o2_idx)    THEN 
+         o2fidx   = fgasidxs(i) ; o2idx = i
+    ENDIF
+
+    IF (gasidxs(i) == o2t2_idx)    THEN 
+         o2t2fidx   = fgasidxs(i) ; o2t2idx = i
+    ENDIF
+
+    IF (gasidxs(i) == h2o_idx)   THEN 
+        h2ofidx   = fgasidxs(i) ; h2oidx = i
+    ENDIF
+    
+    IF (gasidxs(i) == h2ot2_idx)   THEN 
+        h2ot2fidx   = fgasidxs(i) ; h2ot2idx = i
+    ENDIF
+    
+    IF (gasidxs(i) == no2_t1_idx) THEN 
+       no2fidx = fgasidxs(i) ; no2idx = i
+    ENDIF
+
+    IF (gasidxs(i) == bro_idx) THEN 
+       brofidx = fgasidxs(i) ; broidx = i
+    ENDIF
+
+    IF (gasidxs(i) == hcho_idx) THEN 
+       hchofidx = fgasidxs(i) ; hchoidx = i
+    ENDIF
+
+
+    IF (fgasidxs(i) > 0) THEN
         nfgas = nfgas + 1
         fgaspos(nfgas) = i
-      ENDIF
-    ENDDO
+        IF (use_so2dtcrs .AND. (gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx)) so2crsidx = nfgas+1
+        IF (use_o4dtcrs  .AND. gasidxs(i) == o2o2_idx) o4crsidx = nfgas+1
+        IF (use_o2dptcrs .AND. (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx)) o2crsidx = nfgas+1
+        IF (use_h2odptcrs.AND. (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx)) h2ocrsidx = nfgas+1
+    ENDIF
+  ENDDO
+  IF (fgasidxs(so2vidx) <= 0 .AND. fgasidxs(so2idx) <= 0) use_so2dtcrs = .FALSE.
+  IF (fgasidxs(o4idx) <= 0) use_o4dtcrs = .FALSE.
+  IF (fgasidxs(o2idx) <= 0 .AND. fgasidxs(o2t2idx) <= 0) use_o2dptcrs = .FALSE.
+  IF (fgasidxs(h2oidx) <= 0 .AND. fgasidxs(h2ot2idx) <= 0) use_h2odptcrs = .FALSE.
+  ! Could not handle two different wavelength shifts for the same cross sections
+  IF (fgassidxs(so2vidx) > 0 .AND. fgassidxs(so2idx) > 0 .AND. use_so2dtcrs) use_so2dtcrs = .FALSE.
+  IF (fgassidxs(o4idx) > 0  .AND. use_o4dtcrs) use_o4dtcrs = .FALSE.
+  IF (fgassidxs(o2idx) > 0 .AND. fgassidxs(o2t2idx) > 0 .AND. use_o2dptcrs) use_o2dptcrs = .FALSE.
+  IF (fgassidxs(h2oidx) > 0 .AND. fgassidxs(h2ot2idx) > 0 .AND. use_h2odptcrs) use_h2odptcrs = .FALSE.
 
-    ! Find indices of variables (other than trace gases and ozone)
-    j = 1
-    DO i = 1, n_fitvar_rad
-      !WRITE(www_lun, '(I5, A10, A20)') i, fitvar_rad_str(mask_fitvar_rad(i)), &
-      !     fitvar_rad_unit(mask_fitvar_rad(i))
-      IF (nfgas > 0) THEN
+
+
+  ! Find indices of variables (other than trace gases and ozone)
+  j = 1
+  DO i = 1, n_fitvar_rad
+    IF (nfgas > 0) THEN
         IF (i >= fgasidxs(fgaspos(1)) .AND. i <= fgasidxs(fgaspos(nfgas))) CYCLE
-      ENDIF
-      IF (i >= ozfit_start_index .AND. i <= ozfit_end_index) CYCLE
-      fothvarpos (j) = i
-      j = j + 1
-    ENDDO
+    ENDIF
+    IF (i >= ozfit_start_index .AND. i <= ozfit_end_index) CYCLE
+    fothvarpos (j) = i
+    j = j + 1
+  ENDDO
 
-    ! -----------------------------------------------
-    ! Close fitting control file, report SUCCESS read
-    ! -----------------------------------------------
-    CLOSE ( UNIT=fit_ctrl_unit )
+  ! -----------------------------------------------
+  ! Close fitting control file, report SUCCESS read
+  ! -----------------------------------------------
+  CLOSE ( UNIT=fit_ctrl_unit )
 
-    fitvar_rad_saved = fitvar_rad_init
-    fitvar_rad_init_saved = fitvar_rad_init
+  fitvar_rad_saved = fitvar_rad_init
+  fitvar_rad_init_saved = fitvar_rad_init
 
-    IF (scnwrt) THEN
-     WRITE(*, '(A, I8, A, I8)') ' n_fitvar_rad = ', n_fitvar_rad, '      nlayer = ', nlay
-     DO i = 1, n_fitvar_rad
-     IF (i < ozfit_start_index .or. i > ozfit_end_index) THEN
-     WRITE(*, '(I5, A10,f5.2, A20)') i, fitvar_rad_str(mask_fitvar_rad(i)), &
-         fitvar_rad_init(masK_fitvar_rad(i)),   fitvar_rad_unit(mask_fitvar_rad(i))
-     ENDIF
-     ENDDO
-  ENDIF
-    RETURN
+  RETURN
   END SUBROUTINE read_ozprof_input
 
 end module m_read_ozprof_input

@@ -548,8 +548,8 @@ contains
     !	gamma: generalized singular values  (n_fitvar_rad)
 
     USE gsvd_data_module,        ONLY : gamma, ptr_l
-    USE OMSAO_parameters_module, ONLY : lcurve_tol
-    USE ozprof_data_module,      ONLY : lcurve_write, lcurve_unit
+    USE OMSAO_parameters_module, ONLY : lcurve_tol, lcurve_unit
+    USE ozprof_data_module,      ONLY : lcurve_write
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
     use gsvd_o3prof_utilities, only: fmin

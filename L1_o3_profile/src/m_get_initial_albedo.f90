@@ -114,14 +114,16 @@ contains
       CALL BSPLINE(rad_posr(1:nrefl), rad_specr(1:nrefl), nrefl, &
            wave_arr(1:naw), rad_arr(1:naw), naw, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+        WRITE(www_lun, *) modulename, ': RAD BSPLINE error, errstat = ', errstat
+        WRITE(www_lun,*)  rad_posr(1:nrefl)
         STOP 1
       ENDIF
 
       CALL BSPLINE(sun_posr(1:nrefl), sun_specr(1:nrefl), nrefl,  &
            wave_arr(1:naw), irrad_arr(1:naw), naw, errstat)
       IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+        WRITE(www_lun, *) modulename, ': SOL BSPLINE error, errstat = ', errstat
+        WRITE(www_lun, *) sun_posr(1:nrefl)
         STOP 1
       ENDIF
 
@@ -154,9 +156,9 @@ contains
   FUNCTION calc_albedo(refl, spres, sza, vza, aza) RESULT (albedo)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY : deg2rad
+    USE OMSAO_parameters_module, ONLY : deg2rad, atmos_unit
     USE OMSAO_variables_module, ONLY  : refdbdir
-    USE ozprof_data_module,      ONLY : alb_tbl_fname, atmos_unit
+    USE ozprof_data_module,      ONLY : alb_tbl_fname
 
 
 
@@ -270,7 +272,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir
-    USE ozprof_data_module,     ONLY: atmos_unit
+    USE OMSAO_parameters_module,     ONLY: atmos_unit
     IMPLICIT NONE
 
     ! ======================
@@ -291,7 +293,7 @@ contains
          '610', '670'/)
     CHARACTER (LEN=max_pathlen)            :: alb_fname
     CHARACTER (LEN=14)             :: tmpstr
-    INTEGER, SAVE, DIMENSION(5, nlon, nlat) :: glbalb
+    INTEGER, SAVE, DIMENSION(:,:,:), POINTER :: glbalb
     INTEGER                        :: i, j, k, ialb, latin, lonin,  npix, nact
     LOGICAL                        :: file_exist
     LOGICAL, SAVE                  :: first = .TRUE.
@@ -299,6 +301,7 @@ contains
 
     ! read albedo at 380 nm  (closest to 370 nm)
     IF (first) THEN
+      allocate (glbalb(5, nlon, nlat))
       IF (region /= 2) THEN
         alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'albdb/alb' // &
              monstr(month) // '380.dat'
@@ -503,7 +506,6 @@ contains
           albpmax, vary_sfcalb, walb0s, nwfc, wfcarr, wfcpmin, wfcpmax, wfc0s,              &
           nostk, albwf, ozwf, tmpwf, o3shiwf, cfracwf, &
           codwf, ctpwf, taodwf, twaewf, saodwf, sprswf, so2zwf, simrad, errstat)
-    
      !xliu (02/01/2007): correct radiances based on ozone weighting function to deal with negative ozone values
      IF (negval) THEN
         DO i = 1, nlay 
@@ -512,7 +514,6 @@ contains
            ENDIF
         ENDDO
      ENDIF
-     
      IF (errstat == pge_errstat_error) RETURN 
 
      ! Initial delta values to zero
@@ -801,9 +802,6 @@ END SUBROUTINE adj_albcfrac
   !    RETURN
   !  END SUBROUTINE adj_albcfrac1
 
-
-
-
   ! =============================================================
   ! Obtain TOMS MLER surface albedo
   ! =============================================================
@@ -812,7 +810,7 @@ END SUBROUTINE adj_albcfrac
     USE OMSAO_precision_module
     use OMSAO_errstat_module, only: www_lun
     USE OMSAO_variables_module, ONLY: atmdbdir
-    USE ozprof_data_module,     ONLY: atmos_unit
+    USE OMSAO_parameters_module,     ONLY: atmos_unit
     IMPLICIT NONE
 
     ! ======================
@@ -831,13 +829,14 @@ END SUBROUTINE adj_albcfrac
          '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'/)
     CHARACTER (LEN=max_pathlen)            :: alb_fname
     !CHARACTER (LEN=14)             :: tmpstr
-    INTEGER, SAVE, DIMENSION(nlon, nlat) :: glbalb
+    INTEGER, SAVE, DIMENSION(:,:),POINTER :: glbalb
     INTEGER                        :: i, j, latin, lonin, nact, npix!, k
     LOGICAL                        :: file_exist
     LOGICAL, SAVE                  :: first = .TRUE.
     REAL (KIND=dp)                 :: sumalb, lat, lon
 
     IF (first) THEN
+      allocate (glbalb(nlon, nlat))
       ! determine lon and lat index
       alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'albdb/nrsclim' // &
            monstr(month) // '.dat'
@@ -902,7 +901,8 @@ END SUBROUTINE adj_albcfrac
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir
-    USE ozprof_data_module,     ONLY: atmos_unit, pos_alb
+    USE OMSAO_parameters_module, ONLY: atmos_unit
+    USE ozprof_data_module,     ONLY: pos_alb
     USE OMSAO_errstat_module
     IMPLICIT NONE
 
@@ -934,11 +934,11 @@ END SUBROUTINE adj_albcfrac
     INTEGER, DIMENSION(nlon)        :: tmpalb
 
     LOGICAL, SAVE                  :: first = .TRUE.
-    REAL (KIND=dp), SAVE, DIMENSION(nlon, nlat) :: glbalb
+    REAL (KIND=dp), SAVE, DIMENSION(:,:), POINTER :: glbalb
 
     ! Read albedo database
     IF (first) THEN
-
+      allocate(glbalb(nlon, nlat))
       IF (day <= 15) THEN
         monin(1) = month - 1
         IF (monin(1) == 0) monin(1) = 12
@@ -1222,5 +1222,753 @@ END SUBROUTINE adj_albcfrac
 
     RETURN
   END SUBROUTINE get_omler_alb
+
+! =========================================================================
+! Obtain GOME-2 (PMD/MSC)/SCIAMACHY Albedo Spectra (Tilstra et al., 2015)
+! Tilstra, L.G., O.N.E. Tuinder, and P. Stammes, GOME-2 surface LER product
+! - Algorithm Theoretical Basis Document, KNMI Report O3MSAF/KNMI/ATBD/003, 
+! Issue 1.7, October 26, 2015. http://www.temis.nl/surface/albedo.html
+! =========================================================================
+
+SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls, nwvl)
+  
+  USE OMSAO_precision_module 
+  USE OMSAO_variables_module, ONLY: atmdbdir
+  USE OMSAO_parameters_module, ONLY: atmos_unit
+  USE ozprof_data_module,     ONLY: pos_alb
+  USE HDF5
+  IMPLICIT NONE
+  
+  INTEGER, PARAMETER :: mlat = 360, mlon = 720, mwvl = 29, nmon = 12
+  
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                          :: month, day, which_sciagm2
+  REAL (KIND=dp), DIMENSION(2), INTENT(IN)     :: elons, elats  
+  REAL (KIND=dp), DIMENSION(mwvl), INTENT(OUT) :: albarr, wvls
+  INTEGER, INTENT(OUT)                         :: nwvl
+
+  ! ======================
+  ! Local variables
+  ! ======================
+  INTEGER                         :: i, j, k, ialb, latin, lonin,  npix, nact, nm
+  INTEGER, DIMENSION(2)           :: monin
+  REAL (KIND=dp)                  :: sumalb, lon, lat, frac      
+  REAL (KIND=dp), DIMENSION(2)    :: monfrac 
+  REAL (KIND=4), DIMENSION(:,:,:,:),POINTER  :: tmpalb
+  LOGICAL                         :: file_exist
+  CHARACTER (LEN=130)             :: alb_fname
+
+  LOGICAL, SAVE                         :: first = .TRUE.
+  INTEGER, SAVE                         :: nlon, nlat, nwvl0
+  REAL (KIND=dp), SAVE                  :: longrid, latgrid  
+  REAL (KIND=4), SAVE, DIMENSION(mlat)  :: lats
+  REAL (KIND=4), SAVE, DIMENSION(mlon)  :: lons  
+  REAL (KIND=4), SAVE, DIMENSION(mwvl)  :: wvls0
+  REAL (KIND=4), SAVE, DIMENSION(:,:,:), POINTER::glbalb 
+
+  INTEGER (HID_T)                 :: fid, dsid
+  INTEGER                         :: hdferr
+  INTEGER (HSIZE_T), DIMENSION(1) :: dim
+  INTEGER (HSIZE_T), DIMENSION(4) :: dims
+ 
+  ! Read albedo database
+  IF (first) THEN
+
+     allocate(tmpalb(nmon, mwvl, mlon, mlat))
+     allocate(glbalb(mwvl, mlon, mlat))
+     IF (which_sciagm2 == 1) THEN
+        alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'sciagm2alb/SCIAMACHY_Envisat_surface_LER_product.hdf5'
+        nlon = 360; nlat = 180; longrid = 1.0d0; latgrid = 1.0d0; nwvl0 = 29
+     ELSE IF (which_sciagm2 == 2) THEN
+        alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'sciagm2alb/GOME2_MetOp-A_MSC_surface_LER_product.hdf5'
+        nlon = 360; nlat = 180; longrid = 1.0d0; latgrid = 1.0d0; nwvl0 = 21
+     ELSE IF (which_sciagm2 == 3) THEN
+        alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'sciagm2alb/GOME2_MetOp-A_PMD_surface_LER_product.hdf5'
+        nlon = 720; nlat = 360; longrid = 0.5d0; latgrid = 0.5d0; nwvl0 = 12
+     ELSE
+        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP
+     ENDIF
+     
+     nm = 2     
+
+     IF (day <= 15) THEN
+        monin(1) = month - 1
+        IF (monin(1) == 0) monin(1) = 12
+        monin(2) = month
+        monfrac(1) = (15.0 - day) / 30.0
+        monfrac(2) = 1.0 - monfrac(1)
+     ELSE 
+        monin(2) = month + 1
+        IF (monin(2) == 13) monin(2) = 1
+        monin(1) = month
+        monfrac(2) = (day - 15) / 30.0
+        monfrac(1) = 1.0 - monfrac(2)
+     ENDIF
+     nm = 2
+
+     ! Determine if file exists or not
+     INQUIRE (FILE = alb_fname, EXIST = file_exist)
+     IF (.NOT. file_exist) THEN
+        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP
+     ENDIF
+
+     CALL H5OPEN_F(hdferr)
+     CALL H5FOPEN_F(TRIM(ADJUSTL(alb_fname)), H5F_ACC_RDONLY_F, fid, hdferr)
+
+     dim(1) = nlat
+     CALL H5DOPEN_F(fid, 'Latitude', dsid, hdferr)
+     CALL H5DREAD_F(dsid, H5T_NATIVE_REAL, lats(1:nlat), dim, hdferr)
+     CALL H5DCLOSE_F(dsid, hdferr)
+
+     dim(1) = nlon
+     CALL H5DOPEN_F(fid, 'Longitude', dsid, hdferr)
+     CALL H5DREAD_F(dsid, H5T_NATIVE_REAL, lons(1:nlon), dim, hdferr)
+     CALL H5DCLOSE_F(dsid, hdferr)
+
+     dim(1) = nwvl0
+     IF (which_sciagm2 /= 1) THEN
+        CALL H5DOPEN_F(fid, 'Wavelength', dsid, hdferr)
+        CALL H5DREAD_F(dsid, H5T_NATIVE_REAL, wvls0(1:nwvl0), dim, hdferr)
+        CALL H5DCLOSE_F(dsid, hdferr)
+     ELSE ! SCIAMACHY, wavelength defined as 16-bit integer
+        wvls0(1:nwvl0) = (/335.0, 340.0, 354.0, 367.0, 380.0, 388.0, 425.0, 440.0, &
+             463.0, 494.0, 510.0, 526.0, 546.0, 555.0, 564.0, 614.0, 640.0, 670.0, &
+             758.0, 772.0, 862.0, 875.0, 1030.0, 1052.0, 1245.0, 1560.0, 1592.0, 1630.0, 1670.0/)
+     ENDIF
+        
+     dims = (/nmon, nwvl0, nlon, nlat/)
+     CALL H5DOPEN_F(fid, 'Mode_LER', dsid, hdferr)
+     CALL H5DREAD_F(dsid, H5T_NATIVE_REAL, tmpalb(1:nmon, 1:nwvl0, 1:nlon, 1:nlat), dims, hdferr)
+     CALL H5DCLOSE_F(dsid, hdferr)
+     !print *, tmpalb(1, 1:nwvl0, 10, 20)
+
+     CALL H5FCLOSE_F(fid, hdferr)
+     CALL H5CLOSE_F(hdferr)
+
+     glbalb = 0.0d0
+     DO i = 1, nwvl0
+        DO j = 1, nm
+           frac = monfrac(j)
+           glbalb(i, 1:nlon, 1:nlat) = glbalb(i, 1:nlon, 1:nlat) + tmpalb(monin(j), i, 1:nlon, 1:nlat) * frac
+        ENDDO
+     ENDDO
+     deallocate(tmpalb)
+     first = .FALSE.
+  ENDIF
+
+  npix = NINT((elons(2) - elons(1)) / longrid)
+  IF (npix == 0) npix = 1
+
+  DO j = 1, nwvl0
+     sumalb = 0.0D0; nact=0
+     DO i = 1, npix
+        IF (npix > 1) THEN
+           lon = elons(1)  + (i - 1 + 0.5) * longrid
+           lat = elats(1)  + (lon - elons(1)) / (elons(2)-elons(1)) * (elats(2) - elats(1))
+        ELSE
+           lon = (elons(1) + elons(2) ) / 2.0
+           lat = (elats(1) + elats(2) ) / 2.0
+        ENDIF
+        
+        lonin = INT((lon + 180.0) / longrid) + 1
+        latin = INT((lat + 90.0)  / latgrid) + 1
+        IF (lonin > nlon) lonin = MOD(lonin, nlon)
+        IF (latin > nlat) latin = nlat
+        
+        IF (glbalb(j, lonin, latin) >= 0.0) THEN
+           sumalb = sumalb + glbalb(j, lonin, latin)
+           nact = nact + 1
+        ENDIF
+     ENDDO
+         
+     IF (nact > 0) THEN
+        albarr(j) = sumalb / nact
+     ELSE
+        albarr(j) = 0.10
+     ENDIF
+  ENDDO
+  nwvl = nwvl0
+  wvls = wvls0
+
+  RETURN
+END SUBROUTINE get_sciagm2_alb
+
+
+
+!###########################################################################
+! Obtain Albedo Spectra from P. Zoogman based on MODIS + ASTER EOFs
+
+!Subroutine to calculate surface reflectance spectrum or related quantities
+!Peter Zoogman, Xiong Liu, 2014
+!Surface_spectrum supplies either 4 EOFs or 1 surface reflectance spectrum
+!at given wavelengths and viewing geometry
+!
+!INPUTS:
+!dayofyear     -- Day of current calendar year
+!SZA           -- Solar Zenith Angle   (degrees)
+!AZA           -- Relative Azimuth Angle  (degrees)
+!VZA           -- Viewing Zenith Angle (degrees)
+!lon           -- Longitude (degrees)
+!lat           -- Latitude  (degrees)
+!nw            -- Number of wavelengths
+!wave          -- Wavelengt grid
+!snowflg       -- Snow pixel identifier
+
+!OUTPUTS:
+!nspec             -- Number of spectra (either 1 land/snow/water albedo spectra 
+!                     or 1 mean + 3 EOFs
+!albspecs(nw, 0:3) -- EOFs or Albedo spectra at given wavelengths
+
+! Further implementation: 
+! 2. Average over GOME-2 footprint
+! 3. Improve water and snow spectrum
+! 4. Account for partial land pixel
+ 
+SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg, nw, wave, &
+     albspcs, nspec, pge_error_status) 
+
+  USE OMSAO_precision_module 
+  USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad, atmos_unit
+  USE OMSAO_variables_module,  ONLY: atmdbdir
+  USE OMSAO_errstat_module
+  USE ozprof_data_module,      ONLY:  malbspc, nalbspc, use_albeofs
+  USE HDF5
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER (KIND=4), INTENT(IN)                    :: dayofyear
+  INTEGER, INTENT(IN)                             :: nw, snowflg
+  REAL (KIND=dp), INTENT(IN)                      :: sza, aza, vza
+  REAL (KIND=dp), DIMENSION(2), INTENT(IN)        :: elons, elats
+  REAL (KIND=dp), DIMENSION(nw), INTENT(IN)       :: wave
+  INTEGER, INTENT(OUT)                            :: nspec, pge_error_status
+  REAL (KIND=dp), DIMENSION(nw, 0:malbspc-1), INTENT(OUT) :: albspcs
+ 
+  ! ======================
+  !    Local variables
+  ! ======================
+  INTEGER                        :: i, j, n, id, errstat
+  INTEGER, DIMENSION(2)          :: mlats, mlons
+  LOGICAL                        :: file_exist
+  CHARACTER (LEN=maxchlen)       :: modis_fname
+  REAL (KIND=dp), DIMENSION(2)   :: fracs
+  INTEGER, DIMENSION(2)          :: idxs
+
+  ! Derive land albedo EOFs, snow/ice and water albedo spectra at input grid
+  REAL (KIND=dp), DIMENSION(nw, 0:malbspc-1) :: oeofs
+  REAL (KIND=dp), DIMENSION(nw)              :: osnowspec, owaterspec
+
+  INTEGER, PARAMETER       :: npos = 2501, neof = 4, njday = 48, nsnowpos=2501!, nsnowpos=61
+  INTEGER, PARAMETER       :: nband = 4, nkernel = 3, nmlon = 2160, nmlat = 1080
+  REAL(KIND=dp), PARAMETER :: modis_dlon = 1.d0/6.d0, modis_dlat = 1.d0/6.d0
+  CHARACTER(LEN=3), DIMENSION(njday), PARAMETER :: modis_daystrs = (/         &
+       '353', '361', '001', '009', '017', '025', '033', '041', '049', '057',  &
+       '065', '073', '081', '089', '097', '105', '113', '121', '129', '137',  &
+       '145', '153', '161', '169', '177', '185', '193', '201', '209', '217',  &
+       '225', '233', '241', '249', '257', '265', '273', '281', '289', '297',  &
+       '305',  '313', '321', '329', '337', '345', '353', '361'/)
+  REAL (KIND=dp), DIMENSION(njday), PARAMETER :: modis_days = (/ &
+       -5.0,  3.0,   8.0,   16.0,  24.0,  32.0,  40.0,  48.0,  56.0,  64.0,  &
+       72.0,  80.0,  88.0,  96.0,  104.0, 112.0, 120.0, 128.0, 136.0, 144.0, &
+       152.0, 160.0, 168.0, 176.0, 184.0, 192.0, 200.0, 208.0, 216.0, 224.0, &
+       232.0, 240.0, 248.0, 256.0, 264.0, 272.0, 280.0, 288.0, 296.0, 304.0, &
+       312.0, 320.0, 328.0, 336.6, 344.0, 352.0, 360.0, 368.0/)
+       
+  REAL (KIND=dp), DIMENSION(nkernel), PARAMETER    :: wsg = (/1.0d0, 0.18984d0, -1.377622d0/)
+  REAL (KIND=dp), DIMENSION(3, nkernel), PARAMETER :: bsg = (/ &
+        1.0d0,       0.d0,        0.d0,      &
+       -0.007574d0, -0.070987d0, 0.307588d0, &
+       -1.284909d0, -0.166314d0, 0.041840d0 /)
+  
+  !CHARACTER (LEN=3), DIMENSION(nkernel), PARAMETER  :: kernel_names = (/'iso', 'vol', 'geo'/)
+  ! Four channels used here: band 3: 459-479 nm, band 4: 545-565 nm, Band 1: 620-670 nm, Band 2: 841-876 nm 
+  !CHARACTER (LEN=5), DIMENSION(nband), PARAMETER    :: band_names  = (/'Band3', 'Band4', 'Band1', 'Band2'/)
+  !REAL(KIND=dp), DIMENSION(nband), PARAMETER        :: modis_bands = (/466.0d0, 555.0d0, 645.0d0, 859.0d0/)
+
+  ! Include mean and use MODIS spectral response function
+  !REAL(KIND=dp), DIMENSION(nband, nband), PARAMETER :: aap = (/ & 
+  !    104.45, -1630.35, -229.81,  -118.08, &
+  !    -162.96,  2552.96,  383.19, 150.16 , &
+  !    53.66, -835.60, -105.22, -34.13 ,    &
+  !    17.41, -244.24, -46.61, -14.68 /)  
+  !AAp(1:4,1)=(/104.45, -1630.35, -229.81, -118.08/)
+  !AAp(1:4,2)=(/-162.96,  2552.96,  383.19, 150.16/)
+  !AAp(1:4,3)=(/53.66, -835.60, -105.22, -34.13/)
+  !AAp(1:4,4)=(/17.41, -244.24, -46.61, -14.68/)
+
+  !This does not includes the mean spectrum
+  !REAL(KIND=dp), DIMENSION(nband, nband), PARAMETER :: aap = (/ & 
+  !     8.31, -322.84, -242.70,  21.06, &
+  !     -12.97,  513.06,  403.31, -66.92, &
+  !     4.27, -163.87, -111.84, 37.35,    &
+  !     1.39, -26.34, -48.76, 8.51 /)  
+ !AAp(1:4,1)=(/  8.31, -322.84, -242.70,  21.06/)
+ !AAp(1:4,2)=(/-12.97,  513.06,  403.31, -66.92/)
+ !AAp(1:4,3)=(/4.27, -163.87, -111.84, 37.35/)
+ !AAp(1:4,4)=(/1.39, -26.34, -48.76, 8.51/)
+
+ ! For using 4 EOFs subtracting the mean
+ REAL(KIND=dp), DIMENSION(nband, nband), PARAMETER :: aap = (/ & 
+      39.3409, -4.41668, -19.2454,   79.8933, &
+      -51.5215, 31.1677, -4.09099, -123.318, &
+      21.6908,  11.0041,  16.6703,  39.6572, &
+      34.1508, -9.11675,  1.81977,  13.6371/) 
+ !AAp(1:4,1)=(/39.3409, -4.41668, -19.2454,   79.8933/)
+ !AAp(1:4,2)=(/-51.5215, 31.1677, -4.09099, -123.318/)
+ !AAp(1:4,3)=(/21.6908,  11.0041,  16.6703,  39.6572/)
+ !AAp(1:4,4)=(/34.1508, -9.11675,  1.81977,  13.6371/)
+ 
+  ! Value of Mean Spectrum at MODIS wavelengths after accounting for MODIS RSR
+  REAL (KIND=dp), DIMENSION(nband) :: mean_refl_modis = (/0.10605587d0, 0.16985017d0, 0.16652411d0, 0.49806872d0/)
+ 
+  INTEGER, DIMENSION(nband)                 :: ord
+  REAL (KIND=dp), DIMENSION(nband, nkernel) :: brdf_par
+  REAL(KIND=dp)                             :: kgeo, kvol, sza2, sza3, the_landfrac, wtemp, secsza, szafrac
+  REAL(KIND=dp), DIMENSION(nband)           :: XX, xtmp, mBRDF, BB, dirfrac, fracslp
+  INTEGER, PARAMETER                        :: what_albedo = 3 ! (0: Directional 1: black 2: white 3: blue-sky)
+
+  REAL(KIND=sp), DIMENSION(:,:,:,:), POINTER :: tmp_brdfs
+  REAL(KIND=sp), DIMENSION(:,:),POINTER      :: tmp_land_frac
+
+  ! Save variables
+  LOGICAL, save :: first = .TRUE.
+  REAL(KIND=dp), DIMENSION(:), SAVE,POINTER :: pos, waterspec !(npos)
+  REAL(KIND=dp), DIMENSION(:),SAVE,POINTER :: snowpos, snowspec !(nsnowpos)
+  REAL(KIND=dp), DIMENSION(:,:), SAVE,POINTER :: eofs !(npos, 0:neof)
+  REAL(KIND=sp), DIMENSION(:,:,:,:), SAVE,POINTER :: modis_brdfs
+  REAL(KIND=sp), DIMENSION(:,:), SAVE,POINTER :: land_frac
+  INTEGER, PARAMETER :: nsza0 = 10
+  REAL(KIND=dp), DIMENSION(nsza0), SAVE        :: secsza0
+  REAL(KIND=dp), DIMENSION(nband, nsza0), SAVE :: dirfrac0, fracslp0
+  
+  ! Parameter and function declarations, and local variables to read hdf data
+  INTEGER, PARAMETER :: DFACC_READ = 1
+  INTEGER            :: sfstart, sfn2index, sfselect, sfginfo, sfrdata, sfendacc, sfend
+  INTEGER            :: sd_id, sds_id, sds_index, status
+  integer            :: rank, data_type, n_attrs
+  integer            :: dim_sizes(32), start(32), edges(32), stride(32)
+  CHARACTER (LEN=4)  :: sds_brdf_name = 'BRDF'
+  CHARACTER (LEN=9)  :: sds_landfrac_name = 'land_frac'
+
+  ! ------------------------------
+  ! Name of this subroutine/module
+  ! ------------------------------
+  CHARACTER (LEN=20), PARAMETER    :: modulename = 'get_surface_spectrum'
+  
+  ! Initialize error status
+  pge_error_status = pge_errstat_ok
+
+  ! Read EOFs, snow, water spectra and MODIS data
+  IF (first) THEN
+     allocate(pos(npos) , waterspec(npos))
+     allocate(snowpos(nsnowpos), snowspec(nsnowpos))
+     allocate(eofs(npos, 0:neof))
+     allocate(modis_brdfs(nmlon, nmlat, nband, nkernel))
+     allocate(land_frac(nmlon, nmlat))
+     allocate(tmp_brdfs(nmlon, nmlat, nband, nkernel))
+     allocate(tmp_land_frac(nmlon, nmlat))
+     ! Read EOFs
+     OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/4EOFs+mean_nohead_new.txt", status='old')
+     DO i = 1, npos
+        READ(atmos_unit, *) n, pos(i), eofs(i, 0:neof) ! Mean plus 4 EOFs
+     ENDDO
+     CLOSE(UNIT = atmos_unit)
+
+     ! Read ASTER water spectra
+     !OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/water_spec_smooth.txt", status='old')
+     !OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/water_spec_gm2alb.txt", status='old')
+     OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/water_spec_usgs_openocean.txt", status='old')
+     DO i = 1, npos
+        READ(atmos_unit, *) n, pos(i), waterspec(i)
+     ENDDO
+     CLOSE(UNIT = atmos_unit)
+
+     ! Read ASTER mean snow spectra
+     !OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/snow_spec_mean.txt", status='old')
+     OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/snow_spec_aster_coarse.txt", status='old')
+     DO i = 1, nsnowpos
+        READ(atmos_unit, *) n, snowpos(i), snowspec(i)
+     ENDDO
+     CLOSE(UNIT = atmos_unit)
+
+     ! Read LUT of ratio of direct irradiance to total downwelling irradiance
+     IF (what_albedo == 3) THEN
+        OPEN(UNIT=atmos_unit, file=trim(atmdbdir)//"/AlbSpec/directflux_to_totdnflux_modis_band1-4.txt", status='old')
+       READ (atmos_unit, *)
+       READ (atmos_unit, *) secsza0
+       secsza0 = 1.0/COS(secsza0 * deg2rad)
+        DO i = 1, 4
+           READ(atmos_unit, *)
+        ENDDO
+        DO i = 1, nband
+           READ(atmos_unit, *) wtemp, dirfrac0(i, 1:nsza0), fracslp0(i, 1:nsza0)
+        ENDDO
+        CLOSE(UNIT = atmos_unit)
+     ENDIF
+
+     ! Found out modis files to be read out
+     idxs(1) = MINVAL(MAXLOC(modis_days, MASK=(modis_days < dayofyear - 0.5)))
+     idxs(2) = idxs(1) + 1
+     fracs(2) = (dayofyear - 0.5 - modis_days(idxs(1))) / (modis_days(idxs(2)) - modis_days(idxs(1)))
+     fracs(1) = 1.0 - fracs(2)
+     !print *, fracs
+
+     modis_brdfs = 0.0
+     land_frac = 0.0
+     DO id = 1, 2 
+        modis_fname = TRIM(ADJUSTL(atmdbdir)) // 'AlbSpec/MODIS_COARSE_BRDF/MODIS_COARSE_BRDF_' &
+             // modis_daystrs(idxs(id)) // '_2002-2011.hdf'
+        !print *, modis_fname
+     
+        ! Determine if file exists or not
+        INQUIRE (FILE = modis_fname, EXIST = file_exist)
+        IF (.NOT. file_exist) THEN
+           WRITE(*, *) 'MODIS BRDF file does not exist!!!'
+           pge_error_status = pge_errstat_error; RETURN
+        ENDIF
+        
+        ! =============================
+        ! Read MODIS BRDFs in HDF4 file
+        ! =============================
+        ! Open HDF4
+        sd_id = sfstart(TRIM(modis_fname), DFACC_READ)
+        
+        ! read brdf dataset
+        sds_index = sfn2index(sd_id, sds_brdf_name)
+        sds_id = sfselect(sd_id, sds_index)
+        
+        ! Get the name, rank, dimension sizes, data type and # of attributes
+        status = sfginfo(sds_id, sds_brdf_name, rank, dim_sizes, data_type, n_attrs)
+        !print *, dim_sizes(1:rank)
+        
+        ! Define the location, pattern, and size of the data set
+        start(1:rank) = 0                    ! index of first row to read 
+        edges(1:rank) = dim_sizes(1:rank)    ! the number of cols to read
+        stride(1:rank) = 1                   ! to read entire data
+        
+        ! Read entire data into data array. The array stride (i.e. step) specifies 
+        ! the reading pattern along each dimension. 
+        ! The sfrdata routine reads numeric scientific data
+        status = sfrdata(sds_id, start, stride, edges, tmp_brdfs)
+        status = sfendacc(sds_id)  ! Terminate the acess to the dataset
+        !print *, maxval(tmp_brdfs), minval(tmp_brdfs)
+        
+        ! Read land_frac dataset
+        sds_index = sfn2index(sd_id, sds_landfrac_name)
+        sds_id = sfselect(sd_id, sds_index)
+        status = sfginfo(sds_id, sds_landfrac_name, rank, dim_sizes, data_type, n_attrs)
+        !print *, dim_sizes(1:rank)
+        status = sfrdata(sds_id, start, stride, edges, tmp_land_frac)
+        status = sfendacc(sds_id)  ! Terminate the acess to the dataset
+        !print *, maxval(tmp_land_frac), minval(tmp_land_frac)
+        
+        ! Close HDF file
+        status = sfend(sd_id)
+
+        modis_brdfs = modis_brdfs + tmp_brdfs * fracs(id)
+        land_frac   = land_frac   + tmp_land_frac * fracs(id)
+     ENDDO
+     
+     deallocate(tmp_brdfs)
+     deallocate(tmp_land_frac)
+     first = .FALSE.
+  ENDIF
+
+  ! Interpolate snow spectrum
+  CALL BSPLINE(snowpos(1:nsnowpos), snowspec(1:npos), nsnowpos, &
+       wave(1:nw), osnowspec(1:nw), nw, errstat)
+  IF (errstat < 0) THEN
+     WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
+     pge_error_status = pge_errstat_error; RETURN
+  ENDIF
+  
+  ! Interpolate water spectrum
+  CALL BSPLINE(pos(1:npos), waterspec(1:npos), npos, wave(1:nw), &
+       owaterspec(1:nw), nw, errstat)
+  IF (errstat < 0) THEN
+     WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
+     pge_error_status = pge_errstat_error; RETURN
+  ENDIF
+
+  ! Interpolate mean and EOFs
+  DO i = 0, neof
+     CALL BSPLINE(pos(1:npos), eofs(1:npos, i), npos, &
+          wave(1:nw), oeofs(1:nw, i), nw, errstat)
+     IF (errstat < 0) THEN
+        WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
+        pge_error_status = pge_errstat_error; RETURN
+     ENDIF
+  ENDDO
+  
+  !Find MODIS for this lon/lat range
+  mlats = NINT((90.0d0 - elats) / modis_dlat)  + 1   !To agree with MODIS convention
+  mlons = NINT((elons + 180.0d0) / modis_dlon) + 1              
+  
+  ! Sort lon, lat indices in increasing order
+  IF (mlons(2) < mlons(1)) THEN
+     n = mlons(1)
+     mlons(1) = mlons(2)
+     mlons(2) = n
+  ENDIF
+  
+  IF (mlats(2) < mlats(1)) THEN
+     n = mlats(1)
+     mlats(1) = mlats(2)
+     mlats(2) = n
+  ENDIF
+  !print *, 'mlons = ', mlons
+  !print *, 'mlats = ', mlats
+  
+  the_landfrac = SUM(land_frac(mlons(1):mlons(2), mlats(1):mlats(2)))&
+       /(mlons(2)-mlons(1)+1)/(mlats(2)-mlats(1)+1.0)
+  !print * , 'the_landfrac = ', the_landfrac, snowflg
+
+  ! Check if is over land, as MODIS does not have data over water
+  IF (the_landfrac > 0.0) THEN ! At least partial land
+     ! Get all brdf parameters
+     !-------------------------------------------------
+     brdf_par(:, :) = 0.0d0  
+     n = 0
+     DO i = mlons(1), mlons(2)
+        DO j = mlats(1), mlats(2)
+           IF (land_frac(i, j) > 0.0) THEN
+              brdf_par = brdf_par + modis_brdfs(i, j, :, :)/1000.0
+              n = n + 1
+           ENDIF
+        ENDDO
+     ENDDO
+     brdf_par = brdf_par / (1.d0 * n)
+     
+     IF (what_albedo == 3) THEN
+        secsza = 1.0/COS(sza * deg2rad)
+        
+        IF (secsza <= secsza0(1)) THEN
+           dirfrac = dirfrac0(:, 1)
+           fracslp = fracslp0(:, 1)
+        ELSE IF (secsza >= secsza0(nsza0)) THEN
+           dirfrac = dirfrac0(:, nsza0)
+           fracslp = fracslp0(:, nsza0)
+        ELSE
+           DO i = 2, nsza0
+              IF (secsza < secsza0(i)) EXIT
+           ENDDO
+           szafrac = (secsza - secsza0(i-1)) / (secsza0(i) - secsza0(i-1))
+           dirfrac = dirfrac0(:, i-1) * (1.0 - szafrac) + dirfrac0(:, i) * szafrac
+           fracslp = fracslp0(:, i-1) * (1.0 - szafrac) + fracslp0(:, i) * szafrac
+        ENDIF
+     ENDIF
+     
+     IF (what_albedo == 0) THEN   ! Directional albedo
+        !Get BRDF kernels at MODIS points for viewing geometry
+        CALL BRDF_kernels(sza, aza, vza, kvol, kgeo)
+     ELSE IF (what_albedo == 1 .OR. what_albedo == 3) THEN  ! For Black/Blue albedo
+        sza2 = (sza * deg2rad) ** 2
+        sza3 = sza2 * sza * deg2rad
+        kvol = bsg(1, 2) + sza2 * bsg(2, 2) + sza3 * bsg(3, 2)
+        kgeo = bsg(1, 3) + sza2 * bsg(2, 3) + sza3 * bsg(3, 3)              
+     ELSE IF (what_albedo == 2) THEN  ! White albedo
+        kvol = wsg(2); kgeo = wsg(3)
+     ENDIF
+     !print *, 'kvol, kgeo = ',  kvol, kgeo
+     
+     !Calculate BRDF/Directional Reflectance at MODIS points
+     IF (what_albedo <= 2) THEN
+        DO i = 1, nband
+           mBRDF(i) = brdf_par(i, 1) + kvol * brdf_par(i, 2) + kgeo * brdf_par(i, 3)
+        enddo
+     ELSE IF (what_albedo == 3) THEN
+        CALL calculate_blueskyalb(nband, nkernel, brdf_par, kvol, kgeo, wsg(2), wsg(3), &
+             dirfrac, fracslp, mBRDF)
+     ENDIF
+     !WRITE(*, '(A10, 4E12.4)') 'mBRDF = ', mBRDF
+     
+     BB = mBRDF - mean_refl_modis   ! Subtract mean (@ MODIS with SRS)
+     XX = MATMUL(aap, BB)           ! Coefficients for each EOF
+     !WRITE(*, '(A10, 4E12.4)') 'XX = ', XX
+
+     DO i = 1, neof
+        xtmp(i) = SUM(ABS(XX(i) * oeofs(:, i)))/nw
+     ENDDO
+     !WRITE(*, '(A10, 4E12.4)') 'Xtmp = ', xtmp
+     CALL sortord(4, xtmp, ord)
+    
+     ! Always initializing the albspcs(:, 0) to be MODIS-derived spectra
+     albspcs(:, 0) = oeofs(:, 0)
+     DO i = 1, neof
+        albspcs(:, 0) = albspcs(:, 0) + XX(i) * oeofs(: , i)
+     ENDDO 
+     albspcs(:, 1:neof) = oeofs(:, ord(1:neof))
+  ELSE  ! Pure water
+     albspcs(:, 0) = owaterspec              ! Initialize with water albedo spectrum
+     albspcs(:, 1) = owaterspec
+     albspcs(:, 2:neof) = oeofs(:, 1:neof-1) ! Fill in with land EOFs
+     !nspec = 1
+  ENDIF
+
+  ! Weight land/water surface for inital spectrum, replace 1 of EOFs with water spectrum
+  IF (the_landfrac > 0.0 .AND. the_landfrac < 1.0d0) THEN
+     albspcs(:, 0) = albspcs(:, 0) * the_landfrac + owaterspec * ( 1.0 - the_landfrac)   
+     albspcs(:, 2:neof) = albspcs(:, 1:neof-1)
+     albspcs(:, 1) = owaterspec
+  ENDIF
+
+  IF (snowflg == 1) THEN
+     albspcs(:, 2:neof) = albspcs(:, 1:neof-1)
+     albspcs(:, 0) = osnowspec  ! Initialize with snow/ice spectrum
+     albspcs(:, 2:neof) = albspcs(:, 1:neof-1)
+     albspcs(:, 1) = osnowspec
+     !nspec = 1
+  ENDIF
+
+  ! Normalize the EOFs to about 0.05
+  DO i = 1, neof
+     albspcs(:, i) = albspcs(:, i) * 0.05/ (SUM(ABS(albspcs(:, i)))/nw)
+  ENDDO
+  
+  nspec = neof + 1
+  !IF (snowflg == 1 .OR. the_landfrac == 0.0) nspec = 1
+  IF (.NOT. use_albeofs) nspec = 1   
+
+  RETURN
+        
+END SUBROUTINE get_surface_spectrum
+
+SUBROUTINE calculate_blueskyalb(nw, nkernel, brdf_par, kvol1, kgeo1, kvol2, kgeo2, dirfrac, fracslp, alb) 
+  USE OMSAO_precision_module 
+  IMPLICIT NONE
+  
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER (KIND=4), INTENT(IN)                       :: nw, nkernel
+  REAL (KIND=dp), INTENT(IN)                         :: kgeo1, kvol1, kgeo2, kvol2
+  REAL (KIND=dp), DIMENSION(nw, nkernel), INTENT(IN) :: brdf_par
+  REAL (KIND=dp), DIMENSION(nw), INTENT(IN)          :: dirfrac, fracslp
+  REAL (KIND=dp), DIMENSION(nw), INTENT(OUT)         :: alb
+
+  ! ======================
+  !    Local variables
+  ! ======================
+  INTEGER                       :: i
+  REAL (KIND=dp), DIMENSION(nw) :: balb, walb, dalb, frac
+
+  DO i = 1, nw
+     balb(i) = brdf_par(i, 1) + kvol1 * brdf_par(i, 2) + kgeo1 * brdf_par(i, 3)
+     walb(i) = brdf_par(i, 1) + kvol2 * brdf_par(i, 2) + kgeo2 * brdf_par(i, 3)
+  enddo
+
+  alb = balb * dirfrac + walb * ( 1.0 - dirfrac) ! use dirfrac (i.e., albedo=0.001)
+  dalb = 1.0
+  ! Iterative Derivation of blue-sky albedo as weighting depends on surface albedo
+  DO WHILE (ANY(dalb > 1.0E-4) ) 
+     frac = dirfrac + fracslp * (alb - 0.001) ! Derive actual fraction of direct irradiance for given alb
+     dalb = balb * frac + walb * (1.0 - frac) - alb
+     alb = alb + dalb
+  ENDDO
+  
+  RETURN
+END SUBROUTINE calculate_blueskyalb
+
+!BRDF_KERNELS
+!Calculates the BRDF kernels K_volumetric and K_geometric
+!based on the current viewing geometry (direct reflectance)
+!Uses the algorithm/assumptions from MODIS [Schaaf et al., 2002]
+
+SUBROUTINE BRDF_kernels(sza, aza, vza, kvol, kgeo)
+  USE OMSAO_precision_module 
+  USE OMSAO_parameters_module, ONLY: pi, deg2rad
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  REAL (KIND=dp), INTENT(IN)  :: sza, aza, vza
+  REAL (KIND=dp), INTENT(OUT) :: kvol, kgeo
+
+  ! ======================
+  ! Local variables
+  ! ======================
+  !Ratio of elevation to height of (spherical) tree crowns
+  REAL (KIND=dp), PARAMETER   :: hb = 2.0d0 
+  
+  REAL (KIND=dp) :: sza1, aza1, vza1, cossza, cosaza, cosvza, &
+       sinsza, sinaza, sinvza, tansza, tanvza, secsza, secvza, &
+       cosxi, xi, sinxi, d, o, t, cost
+  
+  sza1 = sza * deg2rad
+  !aza1 = aza * deg2rad  
+  aza1 = (180.0 - aza) * deg2rad  ! VLIDORT convention is different from MODIS BRDF convention 
+  vza1 = vza * deg2rad
+
+  cossza = COS(sza1)
+  cosaza = COS(aza1)
+  cosvza = COS(vza1)
+
+  sinsza = SIN(sza1)
+  sinaza = SIN(aza1)
+  sinvza = SIN(vza1)
+
+  tansza = TAN(sza1)
+  tanvza = TAN(vza1)
+
+  secsza = 1.d0 / cossza
+  secvza = 1.d0 / cosvza
+  
+  cosxi = cossza * cosvza + sinsza * sinvza * cosaza 
+
+  xi = ACOS(cosxi)
+
+  sinxi = SIN(xi)
+
+  kvol = ( ( (pi /2.0d0 - xi) * cosxi + sinxi ) / (cossza + cosvza)) - (pi / 4.0d0)
+
+  d = SQRT( tansza**2 + tanvza**2 - 2 * tansza * tanvza * cosaza)
+
+  cost = hb * SQRT(d**2 + (tansza * tanvza * sinaza)**2) / (secsza + secvza)
+
+  IF (cost > 1) THEN
+     cost = 1.0d0
+  ENDIF
+
+  t = ACOS(cost)
+
+  o = (1.0d0 / pi) * (t - SIN(t) * cost) * (secsza + secvza)
+
+  kgeo = o - secsza - secvza + (1 + cosxi) * secsza * secvza / 2.d0
+
+END SUBROUTINE BRDF_kernels
+
+! Sort in descending order
+SUBROUTINE sortord(n, x, pos)
+
+  USE OMSAO_precision_module 
+  IMPLICIT NONE
+
+  ! Input/output variables
+  INTEGER, INTENT (IN) :: n
+  REAL (KIND=dp), DIMENSION(n), INTENT(IN)  :: x
+  INTEGER, DIMENSION(n), INTENT(OUT)        :: pos
+
+  ! Local variables
+  INTEGER        :: i, j, itmp
+  REAL (KIND=dp) :: tmp
+  REAL (KIND=dp), DIMENSION(n) :: xout
+ xout = x
+  DO i = 1, n
+     pos(i) = i
+  ENDDO
+
+  DO i = 1, n - 1
+     j = MINVAL(MAXLOC(xout(i:n))) + i - 1
+     tmp = xout(j); xout(j) = xout(i); xout(i) = tmp
+     itmp = pos(j); pos(j) = pos(i); pos(i) = itmp
+  ENDDO
+
+  RETURN
+END SUBROUTINE sortord
 
 end module m_get_initial_albedo

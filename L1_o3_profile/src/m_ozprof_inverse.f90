@@ -6,7 +6,7 @@ module m_ozprof_inverse
     use m_oe_inversion
     use m_pseudo_model
     use m_ezspline_interpolation, only: bspline
-    use utilities, ONLY: reverse
+    use m_utilities, ONLY: reverse
     use m_get_o3prof, ONLY: get_tomsv8_clima
   public ozprof_inverse
   private get_caloz, negativeo3_inversion
@@ -53,9 +53,9 @@ contains
        ns, np, sa, bb, nchisq, fitspec, fitres, exval)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module,  ONLY: maxlay
+    USE OMSAO_parameters_module,  ONLY: maxlay, ozwrtint_unit
     USE ozprof_data_module,       ONLY: ffidx=>ozfit_start_index, &
-         flidx=>ozfit_end_index, ozwrtint_unit, ozwrtint, num_iter, &
+         flidx=>ozfit_end_index, ozwrtint, num_iter, &
          avg_kernel, contri, covar, ncovar, ozdfs, ozinfo, use_oe, nlay, &
          pfidx=>ozprof_start_index, plidx=>ozprof_end_index, ring_on_line, &
          albfidx, nfalb, use_logstate, fgasidxs, gasidxs, ngas, tracegas, &
@@ -66,12 +66,12 @@ contains
          do_simu_rmring, trace_avgk, trace_contri, trace_profwf
     USE OMSAO_variables_module,   ONLY: fitvar_rad, mask_fitvar_rad, epsrel, &
          fitwavs, fitweights, maxit=>max_itnum_rad, clmspec_rad, nradpix, &
-         numwin, currpix, currline, currloop, the_surfalt, band_selectors!, &
+         numwin, currpix, currline, currloop, the_surfalt, &
+         band_selectors,nspc_omi!, &
     !the_sza_atm, the_vza_atm, scnwrt, npix_fitted, fitvar_rad_init, &
     !fitvar_rad_apriori
     USE OMSAO_indices_module,     ONLY: no2_t1_idx, so2_idx, bro_idx, &
          hcho_idx, so2v_idx, o2o2_idx!, bro2_idx
-    USE OMSAO_pixelcorner_module, ONLY: omi_allNSPC
     USE OMSAO_errstat_module
 
 
@@ -201,16 +201,15 @@ contains
         fidx = lidx + 1
       ENDDO
     ENDIF
-
+    
     ! Calculate ring spectrum
     IF (ring_on_line .AND. .NOT. (do_simu .AND. radcalwrt .AND. &
          .NOT. wrtring .AND. .NOT. do_simu_rmring) ) THEN
-      CALL GET_RAMAN(nlay, fitvar_rad(pfidx:plidx), errstat)
-      IF (errstat == pge_errstat_error) THEN
+      CALL get_raman(nlay, fitvar_rad(pfidx:plidx), errstat)
+      IF (errstat == pge_errstat_error .or. errstat < 0) THEN
         exval = -4; RETURN
       ENDIF
     ENDIF
-
     IF (ozwrtint) WRITE(ozwrtint_unit, '(A,I5,A10,I5, A10, I5)')  'Line = ', &
          currline, ' XPix = ', currpix, ' Loop = ', currloop
 
@@ -225,7 +224,7 @@ contains
         refl_only = .TRUE.
       ENDIF
       IF (num_iter == cmerr_niter .AND. correct_merr) fitweights(1:ns) = &
-           fitweights(1:ns) / SQRT(1.0d0 * omi_allNSPC(currline)) * &
+           fitweights(1:ns) / SQRT(1.0d0 * nspc_omi) * &
            readout_noise
 
       CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, &
@@ -252,6 +251,7 @@ contains
       IF (use_logstate) xap(ffidx:flidx) = LOG(xap(ffidx:flidx))
 
       delchi = ABS(nradrms - oradrms) / SQRT(oradrms)
+
       ! check for NAN
       IF (IEOR(IBCLR(TRANSFER(delchi, NAN), DPSB), NAN) == 0) THEN
         proceed = .FALSE.; exval = -6; CYCLE
@@ -484,14 +484,14 @@ contains
 
       IF (correct_merr .AND. cmerr_niter == maxit + 1) THEN
         gspec(1:ns) = gspec(1:ns) * &
-             SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
+             SQRT(1.0d0 * nspc_omi) / readout_noise
         DO i = 1, nf
           dyda(1:ns, i) = dyda(1:ns, i) * &
-               SQRT(1.0d0 * omi_allNSPC(currline)) / readout_noise
+               SQRT(1.0d0 * nspc_omi) / readout_noise
         ENDDO
         fitweights(1:ns) = fitweights(1:ns) / &
-             SQRT(1.0d0 * omi_allNSPC(currline)) * readout_noise
-        nchisq = nchisq  * omi_allNSPC(currline) / &
+             SQRT(1.0d0 * nspc_omi) * readout_noise
+        nchisq = nchisq  * nspc_omi / &
              readout_noise / readout_noise
       ENDIF
 
@@ -677,8 +677,8 @@ contains
   SUBROUTINE get_caloz (nl, pres, ozprof)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY : mflay, rearth
-    USE ozprof_data_module,      ONLY : caloz_fname, profunit
+    USE OMSAO_parameters_module, ONLY : mflay, rearth, profunit
+    USE ozprof_data_module,      ONLY : caloz_fname
     USE OMSAO_errstat_module
 
 
@@ -699,7 +699,7 @@ contains
     REAL (KIND=dp), DIMENSION(0:mflay)              :: zs
     REAL (KIND=dp), DIMENSION(0:nl)                 :: cozprof
 
-    LOGICAL                                         :: first = .true.
+    LOGICAL, SAVE:: first = .true.
     REAL (KIND=dp), DIMENSION(0:mflay), SAVE        :: ps, ozs, cozs
 
 

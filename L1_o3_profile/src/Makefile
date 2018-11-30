@@ -14,8 +14,12 @@ incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
 msgs_installdir = $(prefix)/msgs
 
-ADDLIBD    = #
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -lvlidort -llapack -lblas
+#ADDLIBD    = #
+ADDLIBD    = -Wl,-rpath=/home/jbak/OzoneFit/lidort/LIB/linux64-intel -L/home/jbak/OzoneFit/lidort/LIB/linux64-intel \
+
+#ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -lvlidort -llapack -lblas
+
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llapack -lblas -llidort_vv2p4RTC
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -30,9 +34,11 @@ TIO_SRC  = $(config_dir)/libtio/src
 TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 
 PSPLINELIBS  = -lpspline -lezcdf
+
 TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
                -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f \
+
 
 NETCDFLIBS   = -lnetcdf -lnetcdff
 HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz

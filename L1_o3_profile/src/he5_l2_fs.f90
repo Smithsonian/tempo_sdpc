@@ -133,7 +133,7 @@
 !   AerWavel:    Wavelengths for inputing aerosol properties   : nAersolWavel x nXtrack x nTimes
 !   AOD:         Aerosol optical thickness                     : nAersolWavel x nXtrack x nTimes
 !   ASOD:        Aerosol scattering optical thickness          : nAersolWavel x nXtrack x nTimes 
-!   nSaaSpike:   number of SAA large spikes                    : nXtrack x nTimes
+!   nSaaSpike:   numbe
 
 MODULE he5_l2_fs
 
@@ -171,20 +171,20 @@ MODULE he5_l2_fs
     TYPE (DFHE5_T) :: gf_cLatitude =                                      &
            DFHE5_T( -90.0, 90.0, 1.0D0, 0.0D0,                            &
                     "LatitudePixelCorner           ",                     &
-                    "nXtrackp1,nTimesp1            ",                     & 
+                    "ncorner,nXtrack,nTimes              ",                     & 
                     "degree                        ",                     &
                     "Geodetic Corner Latitude      ",                     &
-                    "TOMS-OMI-Shared              ",                      & 
-                     -1, HE5T_NATIVE_FLOAT, 2, (/ -1, -1, -1, -1 /))
+                    "TOMS-OMI-Shared               ",                     & 
+                     -1, HE5T_NATIVE_FLOAT, 3, (/ -1, -1, -1, -1 /))
 
     TYPE (DFHE5_T) :: gf_cLongitude =                                     &
            DFHE5_T( -180.0, 180.0, 1.0D0, 0.0D0,                          & 
-                    "LongitudePixelCorner         ",                     &
-                    "nXtrackp1,nTimesp1            ",                     & 
+                    "LongitudePixelCorner          ",                     &
+                    "ncorner,nXtrack,nTimes              ",                     & 
                     "degree                        ",                     &
                     "Geodetic Corner Longitude     ",                     &
                     "TOMS-OMI-Shared              ",                      & 
-                     -1, HE5T_NATIVE_FLOAT, 2, (/ -1, -1, -1, -1 /))
+                     -1, HE5T_NATIVE_FLOAT, 3, (/ -1, -1, -1, -1 /))
 
 !    TYPE (DFHE5_T) :: gf_SolarAzimuthAngle =                              &
 !           DFHE5_T( -180.0, 180.0, 1.0D0, 0.0D0,                          & 
@@ -273,6 +273,15 @@ MODULE he5_l2_fs
                     "nTimes                          ",                   &
                     "meter                           ",                   &
                     "Spacecraft Altitude             ",                   & 
+                    "TOMS-Aura-Shared                ",                   & 
+                     -1, HE5T_NATIVE_FLOAT, 1, (/ -1, -1, -1, -1 /))
+
+    TYPE (DFHE5_T) :: gf_TerrainHeight =                             &
+           DFHE5_T( 4.0D05, 9.0D05, 1.0D0, 0.0D0,                         & 
+                    "TerrainHeight              ",                   &
+                    "nTimes                          ",                   &
+                    "meter                           ",                   &
+                    "TerrainHeight             ",                   & 
                     "TOMS-Aura-Shared                ",                   & 
                      -1, HE5T_NATIVE_FLOAT, 1, (/ -1, -1, -1, -1 /))
 
@@ -863,7 +872,7 @@ MODULE he5_l2_fs
                     "OMI-Specific                  ",                     &
                      -1, HE5T_NATIVE_UINT8, 2, (/ -1, -1, -1, -1 /))
 
-   INTEGER (KIND=4), PARAMETER       :: nGeoF = 12, nGeoF1 = 2, mDataF = 58
+   INTEGER (KIND=4), PARAMETER       :: nGeoF = 9, nGeoF1 = 2, mDataF = 58
    INTEGER (KIND=4)                  :: nDataF
    TYPE (DFHE5_T), DIMENSION(nGeoF)  :: gf_o3prof
    TYPE (DFHE5_T), DIMENSION(nGeoF1) :: gf1_o3prof
@@ -899,14 +908,15 @@ MODULE he5_l2_fs
           !          gf_ViewingAzimuthAngle    , &
           gf_RelativeAzimuthAngle   , &
           gf_Time                   , &       ! nTimes
-          gf_SecondsInDay           , &
-          gf_SpacecraftLatitude     , &
-          gf_SpacecraftLongitude    , &
-          gf_SpacecraftAltitude     , &       ! nXtrack,nTimes
+          !gf_SecondsInDay           , &
+          !gf_SpacecraftLatitude     , &
+          !gf_SpacecraftLongitude    , &
+          !gf_SpacecraftAltitude     , &       ! nXtrack,nTimes
+          gf_TerrainHeight     , &       ! nXtrack,nTimes
           gf_XtrackQualityFlags     /)
 
      gf1_o3prof(1:nGeoF1) = (/ &
-          gf_cLatitude              , &       ! nXtrackp1 x nTimesp1
+          gf_cLatitude              , &       ! 4 X nXtrack x nTimesp1
           gf_cLongitude             /)
 
      ! Necessary data fields

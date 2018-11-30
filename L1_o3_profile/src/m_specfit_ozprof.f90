@@ -37,31 +37,36 @@ contains
          fitvar_rad_saved, fitvar_rad_init, fitvar_rad_str, lo_radbnd, &
          up_radbnd, n_fitvar_rad, n_rad_wvl, mask_fitvar_rad,fitspec_rad, &
          fitres_rad, weight_rad, fitvar_rad_std, the_lon, the_lat, &
+         the_sza_atm, &
          the_month, the_year, the_day, npix_fitted, fitvar_rad_nstd, &
-         numwin, nradpix, refspec_norm, scnwrt, the_surfalt, &
+         numwin, nradpix, refspec_norm, scnwrt, &
          fitvar_rad_init_saved, the_lons, the_lats, the_surfalt, nloc, &
-         fitvar_rad_aperror
-    USE ozprof_data_module, ONLY: ozprof_start_index, ozprof_end_index, &
-         ozfit_start_index, ozfit_end_index, use_oe, covar, ozprof_std, &
-         ozprof_ap, ncovar, ozprof_apstd, ozprof_init, ozprof, &
-         start_layer, end_layer, eff_alb, eff_alb_init, nlay, &
-         nflay, ptr_order, ntp, nsfc, atmosprof, ndiv, &
-         ps0, pst, nup2p, nfalb, nalb, tf_fidx, tf_lidx, t_fidx, &
-         t_lidx, albidx, albfidx, nt_fit, pos_alb, the_cfrac, the_cod, &
-         the_ctp, ozprof_nstd, use_oe, maxawin, use_logstate, contri, &
-         smooth_ozbc, actawin, aerwavs, mgasprof, ozabs_convl, &
-         fgasidxs, gasidxs, tracegas, ngas, nflay, do_subfit, osind, &
-         rnind, dcind, isind, irind, shind, nos, nsh, &
-         shfind, osfind, use_tropopause, pst0, nsfc, &
+         fitvar_rad_aperror, the_pix, the_line
+    USE ozprof_data_module, ONLY: & 
+         ozp_fidx=>ozprof_start_index, ozp_lidx=>ozprof_end_index, &
+         ozf_fidx=>ozfit_start_index, ozf_lidx=>ozfit_end_index, & 
+         start_layer, end_layer, tf_fidx, tf_lidx, t_fidx, t_lidx, &
+         ozprof_nstd,ozprof_std, ozprof_ap, ozprof_apstd, ozprof_init, &
+         nt_fit,nlay, nflay, ntp, nsfc, ndiv,nup2p, pst0,ps0, pst, & 
+         pos_alb, the_cfrac, the_ctp, the_cod,glintprob, has_glint,&
+         ozprof, atmosprof, mgasprof, ptr_order, &
+         use_oe, which_atm, use_tropopause,use_logstate,smooth_ozbc, &
+         do_subfit, ozabs_convl, which_toz,radcalwrt,do_simu,&
+         use_large_so2_aperr, ozwrtcontri, ozwrtwf,fit_atanring, &
+         albfpix, alblpix,maxawin,actawin, aerwavs, &
+         nalb, nfalb, eff_alb, eff_alb_init,albidx, albfidx, &
+         nwfc, nfwfc, eff_wfc, eff_wfc_init, wfcidx, wfcfidx,&
+         ncovar, covar, contri, weight_function,&
+         ngas,fgasidxs, gasidxs, tracegas,trace_profwf, trace_contri, trace_prof, &
+         osind, rnind, dcind, isind, irind, shind, nos, nsh, shfind, osfind,&
          radcalwrt, do_simu, tropaod, tropsca, tropwaer, strataod, stratsca, &
          taodind, taodfind, twaeind, saodfind, ecfrind, ecfrfind, ecodind, &
-         ecodfind, ectpind, ectpfind, has_glint, twaefind, saodind, &
-         glintprob, which_toz, sprsind, sprsfind, wfcidx, wfcfidx, nwfc, &
-         nfwfc, eff_wfc, eff_wfc_init, so2zind, so2zfind, fit_atanring, &
-         use_large_so2_aperr, ozwrtcontri, ozwrtwf, weight_function, &
-         trace_profwf, trace_contri, trace_prof, which_atm, &
+         ecodfind, ectpind, ectpfind,twaefind, saodind, &
+         sprsind, sprsfind,so2zind, so2zfind, &
          np1, np2, p1find, p2find, p1ind, p2ind, ncm, cmind, & 
-       npol, nfpol, polidx, polfidx, polmin, polmax, polfpix, pollpix
+         npol, nfpol, polidx, polfidx, polmin, polmax, polfpix, pollpix, &
+         is_albspcvar, use_albeofs, nactalbspc, nalbspc, sfcalbs, albspcs, wrtalbspc, &
+         num_iter, allrms, allradrms
 
          !ndc, nir, nis, nsl, nrn, nfsfc, nlay_fit, num_iter, ozinfo, &
          !slind, do_lambcld, do_tracewf, cloud, avg_kernel, &
@@ -83,7 +88,7 @@ contains
     ! =============================
     INTEGER,            INTENT(IN)  :: initval
     INTEGER,            INTENT(OUT) :: exval
-    REAL (KIND=dp), INTENT(OUT) :: rms
+    REAL (KIND=dp),                 INTENT(OUT) :: rms
     REAL (KIND=dp), DIMENSION(3), INTENT(OUT)    :: fitcol
     REAL (KIND=dp), DIMENSION(3, 2), INTENT(OUT) :: dfitcol  ! smooth+noise, noise
 
@@ -93,7 +98,7 @@ contains
     INTEGER  :: i, j, nump, errstat, k1, npoints, k, u1idx, u2idx, nsub, &
          nord, is, fidx, lidx
     REAL (KIND=dp) :: asum, ssum, chisq, tmpsa, aodscl, waerscl, &
-         salbedo, ncepreso_z0, omi_z0
+         salbedo,wavavg
     REAL (KIND=dp), DIMENSION(n_max_fitpars, n_max_fitpars)    :: bb, sa
     REAL (KIND=dp), DIMENSION(nlay, nlay)                   :: sao3
     REAL (KIND=dp), DIMENSION (n_max_fitpars) :: lowbond, upbond, fitvar, &
@@ -105,10 +110,8 @@ contains
     REAL (KIND=dp), DIMENSION(maxlay)                       :: ozprof_std_sav
     REAL (KIND=dp), DIMENSION(n_max_fitpars, n_max_fitpars) :: covar_sav
 
-    REAL (KIND=dp), DIMENSION(nloc)                         :: fine_z0
-
     LOGICAL, SAVE :: first = .TRUE.
-    INTEGER, SAVE :: ozp_fidx,  ozp_lidx, ozf_fidx, ozf_lidx, nf
+    INTEGER, SAVE :: nf
 
     !xliu: 09/03/05, add sacldscal, scaling factor for scaling a priori 
     !covariance below clouds
@@ -118,16 +121,10 @@ contains
     ! Name of this module/subroutine
     ! ==============================
     !CHARACTER (LEN=14), PARAMETER :: modulename = 'specfit_ozprof'
-
     ! Initialize variables for convenience
     IF (first) THEN  ! only need to be initialized once
       nf = n_fitvar_rad
       fitvar_rad = 0.0
-      ozp_fidx = ozprof_start_index
-      ozp_lidx = ozprof_end_index
-      ozf_fidx = ozfit_start_index
-      ozf_lidx = ozfit_end_index
-
       sa = 0.0
       fitvar_rad_apriori = 0.0
       fitvar_rad_std = 0.0
@@ -145,21 +142,18 @@ contains
     ! Initialize variables
     errstat = pge_errstat_ok
     npoints = n_rad_wvl
-
     ! use previous fitting results except T, albedo, cloud will be updated
     ! use previous ozone will speed the convergence (could even double)
     fitvar_rad_init = fitvar_rad_saved
-
     ! ===================================================================
     !	         Set up measurement vector and measurement error
     ! ===================================================================
     fitwavs   (1:npoints) = curr_rad_spec(wvl_idx,1:npoints)
     currspec  (1:npoints) = curr_rad_spec(spc_idx,1:npoints)
     fitweights(1:npoints) = curr_rad_spec(sig_idx,1:npoints)
-
     !IF( scnwrt ) WRITE(444,'(3G20.8)') (curr_rad_spec(1:3,i), i=1,npoints)
     !IF( scnwrt ) WRITE(444, *)
-
+    !print * , 'spcfit_ozprof:', npoints
     IF (ozabs_convl) THEN
 
       ! For aerosol properties
@@ -195,20 +189,17 @@ contains
              >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
        ENDDO
     ENDIF 
-
     ! =======================================================================
     !       Set up atmospheric cloud properties, albedo and atmosphere
     ! ======================================================================
+    !print * , the_lons, the_lats
     call get_bc_layer(which_atm, nloc, the_lons, the_lats, ps0, pst,the_surfalt)
     IF (use_tropopause == .false.)  pst = pst0
-
     IF (which_toz /= 0 ) THEN
       CALL get_toz(which_toz, toz)
     ELSE
       toz = 0.0
     ENDIF
-
-
     ! ====================================================================
     !	                 Set up atmospheric profiles
     ! ====================================================================
@@ -235,7 +226,6 @@ contains
       exval = -2
       RETURN
     ENDIF
-
     ! Add ozone and trace gases into initialized array for the first retrieval
     ! Then use the previous retrieval as the initial
     ! NO2 and HCHO: always using GEOS-CHEM fields with 100% error
@@ -246,7 +236,6 @@ contains
     IF (initval == 0 .OR. ANY(fitvar_rad_init(ozp_fidx:ozp_lidx) <= 0.0))  THEN
       fitvar_rad_init(ozp_fidx:ozp_lidx) = ozprof(1:nlay)  
     ENDIF
-
     IF (nsfc < nlay) &
          fitvar_rad_init(ozp_lidx + 1 - nlay + nsfc : ozp_lidx) = &
          ozprof(nsfc+1:nlay)
@@ -268,7 +257,6 @@ contains
          tropwaer(actawin)
     IF (initval == 0 .OR. saodfind == 0) fitvar_rad_init(saodind) = &
          strataod(actawin)
-
     ! Set up albedo and cloud fraction in the retrieval
     ! albedo and cloud fraction can be adjusted based on 370.2 nm reflectance
     CALL SET_CLDALB(npoints, fitwavs, the_cod, the_ctp, the_cfrac, &
@@ -277,8 +265,6 @@ contains
       exval = -1
       RETURN
     ENDIF
-
-
 
     ! For clouds, initial ctp, cod is based on assumed input (e.g., 20/10) 
     !  or from other products, which maybe re-adjusted using longer wavelengths
@@ -325,7 +311,6 @@ contains
         fitvar_rad_init(j) = 0.00
       ENDIF
     ENDDO
-
     IF ( initval == 0 ) THEN
       DO i = 1, numwin
         fitvar_rad_init (osind(i, 1:maxoth)) = 0.0D0
@@ -342,7 +327,14 @@ contains
     ENDDO
 
     DO i = albidx, albidx + nalb - 1
+      k = i - albidx + 1
+      READ (fitvar_rad_str(i)(4:4), '(I1.1)') nord
       IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.D0
+      IF (fitvar_rad_str(i)(4:4) == '0') fitvar_rad_apriori(i) =fitvar_rad_init(i)
+      IF (is_albspcvar(k) .AND. use_albeofs .AND. nactalbspc ==1 .AND. nord ==1) THEN
+      fitvar_rad_init(i) = 1.0D0
+      fitvar_rad_apriori(i)  = 1.0D0
+      ENDIF
     ENDDO
 
     DO i = wfcidx, wfcidx + nwfc - 1
@@ -362,8 +354,11 @@ contains
     ELSE
       nsub = 1
     ENDIF
-    IF (scnwrt) WRITE(*, '(6(A,F8.2))') ' spres =', ps0, &
+    IF (scnwrt) THEN 
+         WRITE(*, '(6(A,F8.2))') ' spres =', ps0, &
          ' tpres =', pst, ' toz = ', toz, 'ctp= ', the_ctp, 'cfrac= ', the_cfrac, 'alb= ', salbedo
+    ENDIF
+    
     ! ======================================================================
     !	 Set up state vector, a priori state vector and covariance matrix
     ! ======================================================================
@@ -574,14 +569,42 @@ contains
 
       IF (nfalb > 0) THEN
         DO i = albfidx, albfidx + nfalb - 1
+          j = mask_fitvar_rad(i)
+          k = j - albidx + 1
           ! The a priori std. for non-zero albedo terms are based on retrievals
           ! (1.6E-3, 1.0E-5, 1.0E-7, 1.0E-9)
           ! (3.0E-2, 4.0E-4, 1.6E-5, 6.4E-7)
+          fidx = albfpix(mask_fitvar_rad(i)-albidx+1)
+          lidx = alblpix(mask_fitvar_rad(i)-albidx+1)
           READ (fitvar_rad_str(mask_fitvar_rad(i))(4:4), '(I1.1)') nord
-          sa(i, i) = albfc_aperr * (5.0 ** ( - nord * 2.0))
-          IF (salbedo > 0.6 .AND. nord >= 1) sa(i, i) = 0.0
-!          IF (the_cfrac > 0.2 .AND. the_cfrac < 0.99 .AND. nfwfc > 0 ) & 
+          IF (.NOT. is_albspcvar(k)) THEN
+            sa(i, i) = albfc_aperr * (5.0 ** ( - nord * 2.0))
+            IF (salbedo > 0.6 .AND. nord >= 1) sa(i, i) = 0.0
+!            IF (the_cfrac > 0.2 .AND. the_cfrac < 0.99 .AND. nfwfc > 0 ) & 
 !                sa(i, i) = 0.0 ! added for update v2
+          ELSE IF (use_albeofs) THEN
+             IF(nord ==1) THEN
+               sa(i,i) = 2.0**2.0 
+             ELSE IF (nord ==2) THEN
+               sa(i,i) = 2.0**2.0
+             ELSE IF (nord ==3) THEN
+               sa(i,i) = 2.0**2.0
+             ELSE
+               sa(i,i) = 2.0**2.0
+             ENDIf
+              ! For water/snow, only 1 EOF (same as water/snow spectra),
+              ! A priori error for 2 to nalbspc EOF is zero, fixed to be zero
+              IF (nactalbspc == 1) THEN
+                 !IF (nord == 1) THEN
+                 !   sa(i, i) = 0.2d0 ** 2
+                 !ELSE
+                 !   sa(i, i) = 0.0d0
+                 !ENDIF
+                 sa(i, i) = (0.2d0 ** 2) * ( ((fitwavs(lidx)-fitwavs(fidx))*0.5)** (-(nord-1) * 2.0) )
+              ENDIF
+          ELSE ! scale albedo spectrum
+                 sa(i, i) = (0.2d0 ** 2) * ( ((fitwavs(lidx)-fitwavs(fidx))*0.5)** (-(nord-1) * 2.0) )
+          ENDIF
         ENDDO
       ENDIF
 
@@ -661,17 +684,16 @@ contains
     fitvarap(1:nf)  = fitvar_rad_apriori(mask_fitvar_rad(1:nf))
     lowbond(1:nf)   = lo_radbnd(mask_fitvar_rad(1:nf))
     upbond(1:nf)    = up_radbnd(mask_fitvar_rad(1:nf))
-
     CALL ozprof_inverse (nf, varname(1:nf), fitvar(1:nf), fitvarap(1:nf), &
          lowbond(1:nf), upbond(1:nf), npoints, nump, sa(1:nf,1:nf), &
-         bb(1:nf,1:nf), chisq, fitspec_rad(1:npoints), &
+         bb(1:nf,1:nf), chisq,fitspec_rad(1:npoints), &
          fitres_rad(1:npoints), exval)
+
     fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar(1:nf)  ! for safe 
     fitvar_rad_apriori(mask_fitvar_rad(1:nf)) = fitvarap(1:nf)  ! Some a priori values can be changed
     DO i = 1, nf
       fitvar_rad_aperror(i) = SQRT(sa(i, i))
     ENDDO
-
     ! reset the wavelength shifts to zero if retrievals are not successful
     ! because the failure of retrievals are due to too large wavelength 
     ! shifts most of the time
@@ -686,7 +708,6 @@ contains
       fitcol  = missing_value_dp
       dfitcol = missing_value_dp    
       fitvar_rad_saved = fitvar_rad_init
-      RETURN
     ELSE
       IF (exval == 0 ) THEN
         fitvar_rad_saved = fitvar_rad_init 
@@ -698,8 +719,12 @@ contains
     ! calculate rms difference between measurements and calculations
     ! If using measurement error, rms is ideally to be 1, if it > 1, suggesting
     ! the estiamted measurement error is too small, and vice versa too large
-    rms = SQRT(chisq / REAL(npoints, KIND=dp))
-
+    rms = SQRT(chisq/REAL(npoints, KIND=dp))
+    WRITE(*,'("|Pix/Ln:",i4,",",i4,"|GEO:",f6.2,",",f4.1,"|RMS:",2f5.2,"|res:",2f5.2,"|Ex/NI:",i3,",",i2, & 
+             "|cld/alb:",i4,",",f4.2,",",f4.2)') & 
+             the_pix, the_line,the_lat, the_sza_atm, allrms(1:2), allradrms(1:2),exval, num_iter, &
+             int(the_ctp), the_cfrac, salbedo
+    IF (exval < 0) RETURN
     ! need to multiply rms to get the actual retrieval random noise error
     ! no matter whether use measurement error or not (sig=1.0)
     ! because measurement error is not reliable, a rms of > 1 indicates
@@ -839,6 +864,39 @@ contains
     eff_wfc_init = fitvar_rad_init(wfcidx:wfcidx+maxwfc-1)
     eff_wfc      = fitvar_rad(wfcidx:wfcidx+maxwfc-1) 
 
+    ! Derive Final Albedo spectraum
+    IF (wrtalbspc) THEN
+      DO i = 1, nalb
+        j = albidx - 1 + i
+        READ(fitvar_rad_str(j)(4:4), '(I1)') nord
+        fidx = albfpix(i); lidx = alblpix(i)
+        wavavg = (fitwavs(fidx) + fitwavs(lidx)) / 2.0d0
+
+        IF (.NOT. is_albspcvar(i)) THEN
+          IF (nord == 0  ) THEN
+            sfcalbs(fidx:lidx, 2) = fitvar_rad(j)
+          ELSE
+            sfcalbs(fidx:lidx, 2) = sfcalbs(fidx:lidx, 2) + fitvar_rad(j) *(fitwavs(fidx:lidx) - wavavg)**nord
+          ENDIF
+        ELSE
+          IF (use_albeofs) THEN
+            IF (nactalbspc == 1) THEN ! Snow/ice
+              sfcalbs(fidx:lidx, 2) = albspcs(fidx:lidx, 0) * fitvar_rad(j)
+            ELSE
+              IF (nord == 1)  sfcalbs(fidx:lidx, 2) = albspcs(fidx:lidx, 0)
+                sfcalbs(fidx:lidx, 2) = sfcalbs(fidx:lidx, 2) +albspcs(fidx:lidx, nord) * fitvar_rad(j)
+            ENDIF
+          ELSE
+            IF (nord == 0) THEN
+              sfcalbs(fidx:lidx, 2) = albspcs(fidx:lidx, 0) * fitvar_rad(j)
+            ELSE
+              sfcalbs(fidx:lidx, 2) =  sfcalbs(fidx:lidx, 2) +(fitwavs(fidx:lidx) - wavavg)**nord &
+                      * albspcs(fidx:lidx, 0) * fitvar_rad(j)
+            ENDIF
+          ENDIF
+        ENDIF
+      ENDDO
+    ENDIF
     ! trace gases
     DO k = 1, ngas
       i = fgasidxs(k)

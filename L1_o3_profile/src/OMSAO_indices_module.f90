@@ -374,6 +374,14 @@ MODULE OMSAO_indices_module
   ! ----------------
   INTEGER, PARAMETER :: md_inventory_idx = 2, md_archive_idx = 3
 
+  !----------------------
+  ! instrumnet indices
+  !----------------------
+  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, gome2_idx = 4,tempo_idx = 5
+  INTEGER, PARAMETER :: max_instrument_idx = tempo_idx
+  CHARACTER (LEN=4), DIMENSION (max_instrument_idx), PARAMETER :: &
+       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2','TMPO' /)
+  INTEGER :: instrument_idx
 END MODULE OMSAO_indices_module
 
 

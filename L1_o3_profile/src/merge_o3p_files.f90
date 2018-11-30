@@ -32,9 +32,9 @@ program merge_o3p_files
   integer (kind=4), dimension(:), allocatable :: step_out
   integer :: n, status, dummyid, i, j, omiflag, omicount
   integer, parameter :: one=1
-
+  
   type (tiof_file_type) :: tio_l2in
-
+  logical :: problems=.false.
   !input & output filenames entered via namelist
   namelist /merge_o3p_iolist/ ninput, input_files, outfile
 
@@ -265,7 +265,7 @@ program merge_o3p_files
   endif
 
   call l2_tio_close (errstat)
-  if (errstat /= 0) stop 1
+  if (errstat /=0) stop 1
 
   ! deallocate memory
   call o3p_param_dealloc (errstat)

@@ -75,7 +75,8 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: atmdbdir, refdbdir
-    USE ozprof_data_module,     ONLY: atmos_unit, nmom, maxgksec, &
+    USE OMSAO_parameters_module,ONLY: atmos_unit
+    USE ozprof_data_module, ONLY: nmom, maxgksec, &
          strat_aerosol, which_aerosol, maxmom
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, interpol
@@ -114,11 +115,13 @@ contains
     ! LOCAL variables
     ! ======================
     CHARACTER (LEN=max_pathlen) :: aername
-    REAL (KIND=dp), SAVE, DIMENSION(NLON, NLAT, NTLAYER, NAER):: tarsl
-    !REAL (KIND=sp), DIMENSION(NLON, NLAT, NTLAYER)            :: array
-    REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
-    REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) ::&
-         smoms
+    !REAL (KIND=dp), SAVE, DIMENSION(NLON, NLAT, NTLAYER, NAER):: tarsl
+    !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
+    !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) &
+    !smoms
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER:: tarsl
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER  :: sext, sasy
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:,:),POINTER :: smoms
     REAL (KIND=dp), DIMENSION(NWL, NSLAYER)                   :: nsext, nsasy
     REAL (KIND=dp), DIMENSION(NWL, NSLAYER, 0:nmom, ngksec)   :: nsmoms
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: zstrat
@@ -203,6 +206,9 @@ contains
     ENDIF
 
     IF (first) THEN
+      allocate (tarsl(NLON, NLAT, NTLAYER, NAER))
+      allocate (sext(NWL, NLAT, NSLAYER),sasy(NWL, NLAT, NSLAYER))
+      allocate (smoms(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec))
       !---------------------------------------------------------------
       ! Read tropospheric aerosol profiles from the binary punch file
       !---------------------------------------------------------------

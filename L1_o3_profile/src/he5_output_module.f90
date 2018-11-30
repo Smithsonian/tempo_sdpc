@@ -7,12 +7,9 @@
 ! 6. Close File/Swath
 
 MODULE he5_output_module
-  USE OMSAO_parameters_module, ONLY: maxwin, max_fit_pts, maxlay
+  USE OMSAO_parameters_module, ONLY: maxwin, max_fit_pts, maxlay,mswath,l2funit, l2swathunit
   USE OMSAO_HE5_module
   USE he5_l2writer_class
-  USE OMSAO_omidata_module,    ONLY: mTimes=>ntimes, mXtrack=>nfxtrack, &
-       nlines_max, offset_line, omi_nwav_irrad, mswath, &
-       omi_redslw, orbnum
   USE OMSAO_variables_module,  ONLY: l2_filename, n_fitvar_rad, numwin, &
        radnhtrunc, l2_swathname, fitvar_rad, mask_fitvar_rad, n_fitvar_rad, &
        fitvar_rad_std, n_rad_wvl, fitvar_rad_apriori, fitspec_rad, &
@@ -26,8 +23,10 @@ MODULE he5_output_module
        slit_fit_pts, wavcal_fit_pts, smooth_slit, wavcal_sol, &
        slit_trunc_limit, l1b_irrad_filename, l1b_rad_filename, &
        l2_cld_filename, TAI93At0ZOfGranule, TAI93StartOfGranule, &
-       GranuleYear, GranuleMonth, GranuleDay, GranuleJDay, nxbin, nybin
-  USE ozprof_data_module,      ONLY: l2funit, l2swathunit, nGas=>nfgas, &
+       GranuleYear, GranuleMonth, GranuleDay, GranuleJDay, nxbin, nybin,redslw,&
+       orbnum, mtimes=>ntimes,mxtrack=>nxtrack,  num_wav_max, offset_line, &
+       earthsundistance
+  USE ozprof_data_module,      ONLY: nGas=>nfgas, &
        nTgas=>ngas, nLayer=>nlay, ozfit_start_index, ozfit_end_index, &
        aerosol, do_lambcld, saa_flag, ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, wrtring, ozwrtvar, gaswrt, &
@@ -51,22 +50,16 @@ MODULE he5_output_module
        ozcrs_alb_fname, ntp0, useasy, algorithm_name, algorithm_version, &
        scaled_aod
   USE he5_l2_fs
-  USE OMSAO_pixelcorner_module,ONLY: omi_alllat, omi_alllon, omi_allclat, &
-       omi_allclon, omi_allsza, omi_allvza, omi_allaza, omi_alltime, &
-       omi_allSecondsInDay, omi_allSpcftAlt, omi_allSpcftLon, &
-       omi_allSpcftLat, omi_allGeoFlg, omi_allMflg, omi_allNSPC, &
-       omi_allXTrackQFlg
   USE OMSAO_indices_module,    ONLY: n_max_fitpars, ring_idx, solar_idx 
   USE OMSAO_precision_module,  ONLY: i4, r4, dp
   USE OMSAO_errstat_module 
-
   IMPLICIT NONE
 
   !INTEGER (KIND=i4), EXTERNAL           :: OMI_SMF_setmsg
-  INTEGER (KIND=i4), PARAMETER, PRIVATE :: mDim = 13
+  INTEGER (KIND=i4), PARAMETER, PRIVATE :: mDim = 13, ncorner=4
   INTEGER (KIND=i4), PRIVATE            :: nTimes, nXtrack, XOffset, &
        YOffset, nTimesp1, nXtrackp1, nLayerp1, nOth, mWavel, nAer, nDim, &
-       l2_fileid, l2_swid, nFitvar, nCh
+       l2_fileid, l2_swid, nFitvar, nCh 
   INTEGER (KIND=i4), DIMENSION(mDim)    :: dims
   INTEGER (KIND=i4)                     :: nElms
   CHARACTER (LEN=256)                   :: dimList
@@ -104,7 +97,7 @@ CONTAINS
     YOffset = INT( (YOffset - 1)/nYbin ) + 1
     nLayerp1 = nLayer + 1;        nAer = nCh + 2
     nOth = nFitvar - nGas - (ozfit_end_index - ozfit_start_index + 1)
-    mWavel = MAXVAL(omi_nwav_irrad(spix:epix)) - nCh * 2 * radnhtrunc
+    mWavel = num_wav_max !MAXVAL(omi_irrad%nwav(spix:epix)) - nCh * 2 * radnhtrunc
 
     !! Create the L2 output file
     !status = L2_createFile(l2funit, l2_filename )
@@ -116,9 +109,9 @@ CONTAINS
     ENDIF
 
     !! Setup the swath in the L2 output file
-    nDim = 9
-    dimList = "nXtrack,nXtrackp1,nTimes,nTimesp1,nLayer,nLayerp1,nFitvar,nParameter,nChannel"
-    dims(1:nDim) = (/nXtrack,nXtrackp1,nTimes,nTimesp1,nLayer,nLayerp1,nFitvar,nOth,nCh/)
+    nDim = 10
+    dimList = "nXtrack,nXtrackp1,nTimes,nTimesp1,ncorner,nLayer,nLayerp1,nFitvar,nParameter,nChannel"
+    dims(1:nDim) = (/nXtrack,nXtrackp1,nTimes,nTimesp1,ncorner,nLayer,nLayerp1,nFitvar,nOth,nCh/)
     IF( ozwrtcovar ) THEN
       nDim = nDim + 1
       nElms = (nLayer*(nLayer-1))/2
@@ -195,7 +188,9 @@ CONTAINS
     RETURN
   END SUBROUTINE He5_L2WrtInit
 
-  SUBROUTINE He5_L2SetGeoFields (spix, epix, pge_error_status )
+  SUBROUTINE He5_L2SetGeoFields (geo, spix, epix, pge_error_status )
+  USE OMSAO_variables_module, ONLY : geo_group
+    TYPE (geo_group), INTENT(IN) :: geo
     INTEGER, INTENT(IN)    :: spix, epix
     INTEGER, INTENT(OUT)   :: pge_error_status  
     TYPE (L2_generic_type) :: GeoBlk, GeoBlk1
@@ -205,14 +200,13 @@ CONTAINS
     CHARACTER (LEN = 18)   :: modulename = 'He5_L2SetGeoFields'
 
     pge_error_status = pge_errstat_ok
-
     !! Define the geofield in the L2 output file
     status = L2_defSWgeofields( l2_swid, gf_o3prof )
     IF( status /= OMI_S_SUCCESS ) THEN
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_defSWgeofields failed.", modulename, 0 )
       pge_error_status = pge_errstat_error; RETURN
     END IF
-
+    
     !! Allocate the memory for storing the L2 output information for a block.
     status = L2_newBlockW( GeoBlk, l2_filename, l2_swathname, l2_fileid, &
          l2_swid, gf_o3prof, nTimes )
@@ -220,7 +214,7 @@ CONTAINS
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_newBlockW for Geo failed.", modulename, 0 )
       pge_error_status = pge_errstat_error; RETURN
     END IF
-
+   
     ! Transfer data to the block
     DO ig = 1, GeoBlk%nFields
       bsize = GeoBlk%BlkSize(ig)
@@ -229,29 +223,29 @@ CONTAINS
       Ls    = Ls + 1       !! fortran index scheme
 
       IF ( ig == 1 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allgeoflg(spix:epix, 0:nTimes-1), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( geo%gflg(spix:epix, 0:nTimes-1), I1, bsize)
       ELSE IF( ig == 2 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(omi_alllat(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(geo%lat(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 3 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(omi_alllon(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(geo%lon(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 4 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(omi_allsza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(geo%sza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 5 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(omi_allvza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(geo%vza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 6 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(omi_allaza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
+        GeoBlk%data( Ls:Le ) = TRANSFER( REAL(geo%aza(spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 7 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_alltime(0:nTimes-1), I1, bsize )
+        GeoBlk%data( Ls:Le ) = TRANSFER( geo%time(0:nTimes-1), I1, bsize )
+      !ELSE IF( ig == 8 ) THEN
+      !  GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSecondsInDay(0:nTimes-1), I1, bsize )
+      !ELSE IF( ig == 9 ) THEN
+      !  GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSpcftLat(0:nTimes-1), I1, bsize )
+      !ELSE IF( ig == 10 ) THEN
+      !  GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSpcftLon(0:nTimes-1), I1, bsize )
       ELSE IF( ig == 8 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSecondsInDay(0:nTimes-1), I1, bsize )
+        GeoBlk%data( Ls:Le ) = TRANSFER( geo%height(spix:epix,0:nTimes-1), I1, bsize )
       ELSE IF( ig == 9 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSpcftLat(0:nTimes-1), I1, bsize )
-      ELSE IF( ig == 10 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSpcftLon(0:nTimes-1), I1, bsize )
-      ELSE IF( ig == 11 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allSpcftAlt(0:nTimes-1), I1, bsize )
-      ELSE IF( ig == 12 ) THEN
-        GeoBlk%data( Ls:Le ) = TRANSFER( omi_allXTrackQFlg(spix:epix, 0:nTimes-1), I1, bsize )
+        !GeoBlk%data( Ls:Le ) = TRANSFER( geo%xFlg(spix:epix, 0:nTimes-1), I1, bsize )
       ENDIF
     ENDDO
 
@@ -271,10 +265,10 @@ CONTAINS
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_defSWgeofields failed.", modulename, 0 )
       pge_error_status = pge_errstat_error; RETURN
     END IF
-
+   
     !! Allocate the memory for storing the L2 output information for a block.
     status = L2_newBlockW( GeoBlk1, l2_filename, l2_swathname, l2_fileid, &
-         l2_swid, gf1_o3prof, nTimes + 1 )
+         l2_swid, gf1_o3prof, nTimes  )
     IF (status /= OMI_S_SUCCESS ) THEN
       ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_newBlockW for Geo failed.", modulename, 0 )
       pge_error_status = pge_errstat_error; RETURN
@@ -286,11 +280,10 @@ CONTAINS
       Ls    = GeoBlk1%accuBlkSize(ig-1) 
       Le    = Ls + bsize
       Ls    = Ls + 1       !! fortran index scheme
-
       IF ( ig == 1 ) THEN
-        GeoBlk1%data( Ls:Le ) = TRANSFER( REAL(omi_allclat(spix-1:epix, 0:nTimes), KIND=4), I1, bsize)
+        GeoBlk1%data( Ls:Le ) = TRANSFER( REAL(geo%clat(1:4,spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ELSE IF( ig == 2 ) THEN
-        GeoBlk1%data( Ls:Le ) = TRANSFER( REAL(omi_allclon(spix-1:epix, 0:nTimes), KIND=4), I1, bsize)
+        GeoBlk1%data( Ls:Le ) = TRANSFER( REAL(geo%clon(1:4,spix:epix, 0:nTimes-1), KIND=4), I1, bsize)
       ENDIF
     ENDDO
 
@@ -372,43 +365,43 @@ CONTAINS
         CALL L2_disposeBlockW( WavBlk  )
       ENDIF
 
-      ! Write MeasurementQualityFlags and NumberSmallPixelColumns
-      status = L2_defSWdatafields( l2_swid, df_l1b )
-      IF( status /= OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_defSWdatafields failed.", modulename, 0 )
-        pge_error_status = pge_errstat_error; RETURN
-      ENDIF
+      !! Write MeasurementQualityFlags and NumberSmallPixelColumns
+      !status = L2_defSWdatafields( l2_swid, df_l1b )
+      !IF( status /= OMI_S_SUCCESS ) THEN
+      !  ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_defSWdatafields failed.", modulename, 0 )
+      !  pge_error_status = pge_errstat_error; RETURN
+      !ENDIF
 
       !! Allocate the memory for storing the L2 output information for a block.
-      status = L2_newBlockW( L1bBlk, l2_filename, l2_swathname, l2_fileid, &
-           l2_swid, df_l1b, nTimes)
-      IF (status /= OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_newBlockW for L1B fields failed.", modulename, 0 )
-        pge_error_status = pge_errstat_error; RETURN
-      ENDIF
+      !status = L2_newBlockW( L1bBlk, l2_filename, l2_swathname, l2_fileid, &
+      !     l2_swid, df_l1b, nTimes)
+      !IF (status /= OMI_S_SUCCESS ) THEN
+      !  ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_newBlockW for L1B fields failed.", modulename, 0 )
+      !  pge_error_status = pge_errstat_error; RETURN
+      !ENDIF
 
       ! Transfer data to the block
-      DO id = 1, L1bBlk%nFields
-        bsize = L1bBlk%BlkSize(id)
-        Ls    = L1bBlk%accuBlkSize(id-1) 
-        Le    = Ls + bsize
-        Ls    = Ls + 1       !! fortran index scheme
+      !DO id = 1, L1bBlk%nFields
+      !  bsize = L1bBlk%BlkSize(id)
+      !  Ls    = L1bBlk%accuBlkSize(id-1) 
+      !  Le    = Ls + bsize
+      !  Ls    = Ls + 1       !! fortran index scheme
 
-        IF ( id == 1 ) THEN
-          L1bBlk%data( Ls:Le ) = TRANSFER( INT(omi_allMflg(0:nTimes-1), KIND=1), I1, bsize)
-        ELSE IF( id == 2 ) THEN
-          L1bBlk%data( Ls:Le ) = TRANSFER( omi_allNSPC(0:nTimes-1), I1, bsize)
-        ENDIF
-      ENDDO
+      !  IF ( id == 1 ) THEN
+      !    L1bBlk%data( Ls:Le ) = TRANSFER( INT(omi_allMflg(0:nTimes-1), KIND=1), I1, bsize)
+      !  ELSE IF( id == 2 ) THEN
+      !    L1bBlk%data( Ls:Le ) = TRANSFER( omi_allNSPC(0:nTimes-1), I1, bsize)
+      !  ENDIF
+      !ENDDO
 
-      status = L2_writeBlock (L1bBlk, sWrtLine, nTimes) 
-      IF (status /= OMI_S_SUCCESS ) THEN
-        ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_writeBlockW for L1B fields failed.", modulename, 0 )
-        pge_error_status = pge_errstat_error; RETURN
-      END IF
+      !status = L2_writeBlock (L1bBlk, sWrtLine, nTimes) 
+      !IF (status /= OMI_S_SUCCESS ) THEN
+      !  ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_writeBlockW for L1B fields failed.", modulename, 0 )
+      !  pge_error_status = pge_errstat_error; RETURN
+      !END IF
 
       ! Deallocate the block
-      CALL L2_disposeBlockW( L1bBlk  )
+      !CALL L2_disposeBlockW( L1bBlk  )
 
       !! Define the data field in the L2 output file
       status = L2_defSWdatafields( l2_swid, df_o3prof(1:nDataF) )
@@ -416,7 +409,6 @@ CONTAINS
         ierr = OMI_SMF_setmsg( OMI_E_FAILURE, "L2_defSWdatafields failed.", modulename, 0 )
         pge_error_status = pge_errstat_error; RETURN
       END IF
-
       !! Allocate the memory for storing the L2 output information for a block.
       status = L2_newBlockW( DataBlk, l2_filename, l2_swathname, l2_fileid, &
            l2_swid, df_o3prof(1:nDataF), nloop)
@@ -434,7 +426,7 @@ CONTAINS
     ELSE        ! Retrieval not finished. Filling in them as missing values.
       CALL He5_L2FillDataPix(DataBlk, ix, iloop, exval)
     ENDIF
-
+    
     ! Write a block
     IF (currpix == epix .AND. iloop == nloop - 1) THEN
       status = L2_writeBlock (DataBlk, sWrtLine, nloop) 
@@ -444,7 +436,7 @@ CONTAINS
       ENDIF
       sWrtLine = sWrtLine + nloop
     ENDIF
-
+    
     ! End of processing, deallocate the block
     IF ( currpix == epix .AND. iline == nTimes - 1 ) THEN 
       CALL L2_disposeBlockW( DataBlk  )
@@ -454,11 +446,9 @@ CONTAINS
         WRITE(www_lun, *) modulename, ' : Cannot close HE5 output file!!!'
         pge_error_status = pge_errstat_error; RETURN
       END IF
-
       ! Write swath attributes
       !Kai!  CALL He5_writeAttribute( errstat )
       CALL L2_writeGlobalAttr( errstat )
-
       IF( use_backup ) THEN
         errstat = OMI_writeGlobalAttribute( l2_filename, &
              GranuleYear, GranuleMonth, GranuleDay,     &
@@ -468,19 +458,17 @@ CONTAINS
              GranuleYear, GranuleMonth, GranuleDay,     &
              (/ L1B_IRR_FILE_LUN, L1B_UV_FILE_LUN, L2_CLD_FILE_LUN /) )
       ENDIF
-
-      IF ( errstat /= OMI_S_SUCCESS ) THEN
-        WRITE(www_lun, *) modulename, ' : Cannot finish writing the attributes!!!'
-        pge_error_status = pge_errstat_error; RETURN
-      END IF
-
-      NumTimes = L1Bga_NumTimes( l1b_rad_filename, l1b_swathname, NumTimesSmallPixel ) 
-      EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, l1b_swathname )
-
+      !IF ( errstat /= OMI_S_SUCCESS ) THEN
+      !  WRITE(www_lun, *) modulename, ' : Cannot finish writing the attributes!!!'
+      !  pge_error_status = pge_errstat_error; RETURN
+      !END IF
+      NumTimes = mtimes !L1Bga_NumTimes( l1b_rad_filename, l1b_swathname, NumTimesSmallPixel ) 
+      NumtimesSmallPixel = mtimes
+      !EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, l1b_swathname )
       errstat = OMI_writeSwathAttribute( L2_filename, l2_swathname, &
-           NumTimes, NumTimesSmallPixel, &
-           EarthSunDistance, &
-           VerticalCoordinate )
+                                         NumTimes, NumTimesSmallPixel, &
+                                         EarthSunDistance, &
+                                         VerticalCoordinate )
       IF ( errstat /= OMI_S_SUCCESS ) THEN
         WRITE(www_lun, *) modulename, ' : Cannot finish writing swath attributes!!!'
         pge_error_status = pge_errstat_error; RETURN
@@ -1165,7 +1153,7 @@ CONTAINS
     RETURN    
   END SUBROUTINE He5_L2FillDataPix
 
-  SUBROUTINE L2_writeGlobalAttr( errstat )
+  SUBROUTINE L2_writeGlobalAttr(errstat )
 
     INTEGER (KIND=4), INTENT(OUT)                  :: errstat
     INTEGER (KIND=4)                               :: ierr, status, i!, count
@@ -1243,7 +1231,7 @@ CONTAINS
     SpectralDomainControls = 'reduce_resolution = '//TRIM( tempc ) //';'
 
     IF (reduce_resolution) THEN
-      WRITE( tempc1, * ) omi_redslw(1:mswath) 
+      WRITE( tempc1, * ) redslw(1:mswath) 
       SpectralDomainControls = TRIM(SpectralDomainControls) // ' Additional Slit Widths = '//TRIM( tempc1 ) //';'
 
       tempc = '.T.'; IF (.NOT. use_redfixwav) tempc = '.F.'
@@ -1304,7 +1292,7 @@ CONTAINS
     SlitControls = TRIM(SlitControls) // ' Slit Truncation Limit = '//TRIM( tempc1 ) //';'
 
     IF (reduce_resolution) THEN
-      WRITE( tempc1, * ) omi_redslw(1:mswath) 
+      WRITE( tempc1, * ) redslw(1:mswath) 
       SlitControls = TRIM(SlitControls) // ' Additional Slit Widths = '//TRIM( tempc1 ) //' due to reduced resolution;'
     ENDIF
 

@@ -1,18 +1,15 @@
 PROGRAM PROFOZ_main
 
+  USE OMSAO_indices_module, ONLY: omi_idx, tempo_idx, instrument_idx, gome2_idx
   USE OMSAO_precision_module
-  USE OMSAO_indices_module,   ONLY: icf_idx
-  USE OMSAO_variables_module, ONLY: static_input_fnames,    &
-       l1b_rad_filename,                &
-       l1b_irrad_filename, l2_filename, &
-       l2_cld_filename, & !, pge_idx
-       use_he5_in, use_he5_out, use_tio_in, use_tio_out, &
-       omi_idx, instrument_idx
   USE OMSAO_errstat_module
+  USE OMSAO_variables_module, ONLY:l2_filename
   USE OMI_LUN_set
-  use m_omi_fitting_process
-  use m_read_fitting_controls, only: read_fitting_control_file
-  use m_read_reference_spectra
+  USE omi_pge_process
+  USE tmpo_pge_process
+  !USE gome2_pge_process
+  USE m_read_fitting_controls, only: read_fitting_control_file
+  USE m_read_reference_spectra
 
   IMPLICIT NONE
 
@@ -30,11 +27,7 @@ PROGRAM PROFOZ_main
   ! Some variables/parameters that are specific to the GOME way of doing things
   ! ---------------------------------------------------------------------------
   INTEGER, PARAMETER       :: fcunit   = FIT_CTRL_LUN, &
-       specunit = OZPROF_CTRL_LUN!, amfunit  = REFDB_DIR_LUN
-  !INTEGER, PARAMETER       :: l1funit = 21, l2funit = 22
-  CHARACTER (LEN=maxchlen) :: l1_inputs_fname_sol, l1_inputs_fname_rad, &
-       l2_output_fname, arg
-  INTEGER                  :: l2_hdf_flag, iarg
+                              specunit = OZPROF_CTRL_LUN
 
   ! ------------------------------------------------------------------
   ! The general PGE error status variable. This is a relatively late
@@ -43,68 +36,50 @@ PROGRAM PROFOZ_main
   ! PGE once the PGE developer gets around to implementing it as such.
   ! ------------------------------------------------------------------
   INTEGER :: pge_error_status
+  REAL (kind=dp) :: e1, e2, runtime
+  CHARACTER (100) :: message
 
   pge_error_status = pge_errstat_ok
 
-  ! Assign fitting input control file
-  !! static_input_fnames(icf_idx) = 'INP/SOMIPROF.inp'
-  static_input_fnames(icf_idx) = ''
-
-  !! Commented by Kai
-  !!CALL unbufferSTDout()            ! Make PGE write STD/IO unbuffered
-  !! End Commented by Kai
-
-  !Check for command line args controlling he5/netCDF I/O
-  ! default is netCDF input & output
-  iarg = 0
-  do
-    call get_command_argument (iarg, arg)
-    if (len_trim(arg) == 0) exit
-    if (trim(arg) == "+he5_out") then
-      use_he5_out = .true.
-      ! currently not possible to produce he5 output
-      ! without reading metadata from he5 input
-      use_he5_in = .true.
-    else if (trim(arg) == "-nc_in") then
-      use_tio_in = .false.
-      use_he5_in = .true.
-    else if (trim(arg) == "-nc_out") then
-      use_tio_out = .false.
-    else if (trim(arg) == "+he5_in") then
-      use_he5_in = .true.
-    endif
-    iarg = iarg + 1
-  enddo
-
-  ! Read fitting conrol parameters from input file
-  ! CALL read_fitting_control_file ( pge_idx, pge_error_status )
-  CALL read_fitting_control_file (fcunit, static_input_fnames(icf_idx), &
-       instrument_idx, l1_inputs_fname_sol, l1_inputs_fname_rad,        &
-       l2_output_fname, l2_cld_filename, l2_hdf_flag, pge_error_status )
-
-
-  IF ( pge_error_status >= pge_errstat_error ) GOTO 666
-
+  call cpu_time(e2)
+  !----------------------------------------------------------------------------
+  ! read fitting control / ozprof fitting control
+  !----------------------------------------------------------------------------
+  CALL read_fitting_control_file (fcunit, pge_error_status )
+  IF ( pge_error_status >= pge_errstat_error ) THEN 
+       WRITE(*,*) "Errors in read_fitting_control_file"
+       GOTO 666
+  ENDIF
+  !----------------------------------------------------------------------------
   ! Read reference spectra
+  !----------------------------------------------------------------------------
   CALL read_reference_spectra ( specunit, pge_error_status )
-  IF ( pge_error_status >= pge_errstat_error ) GOTO 666
-
-
-  ! -----------------------------------------------
-  ! Different instruments require different actions
-  ! -----------------------------------------------
+  IF ( pge_error_status >= pge_errstat_error ) THEN 
+       WRITE(*,*) "Errors in read_reference_spectra"
+       GOTO 666
+  ENDIF
+   
+  ! ---------------------------------------------------------------------------
+  ! Algorithm running
+  ! ---------------------------------------------------------------------------
   SELECT CASE ( instrument_idx )
-
   CASE ( omi_idx )
-
-    l1b_irrad_filename = l1_inputs_fname_sol
-    l1b_rad_filename   = l1_inputs_fname_rad
-    l2_filename        = l2_output_fname
-    CALL omi_fitting_process ( l2_hdf_flag, pge_error_status )
+    CALL omi_fitting_process  (message, pge_error_status)
+  CASE ( gome2_idx)
+    !CALL gome2_fitting_process  (message, pge_error_status)
+  CASE (tempo_idx)
+    CALL tmpo_fitting_process (message, pge_error_status)
   CASE DEFAULT
     pge_error_status = pge_errstat_error
   END SELECT
-
+  IF (pge_error_status /= pge_errstat_ok) THEN 
+    WRITE(*,'(A)') message
+    STOP
+  ENDIF
+  WRITE(*,'(A)') '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+  call cpu_time(e1) 
+  runtime = e1-e2
+  WRITE(*,'(A,f8.2)') '@ Finish:'//ADJUSTL(TRIM(l2_filename))//"time:",runtime
   ! ------------------------------------
   ! Write END_OF_RUN message to log file
   ! ------------------------------------
@@ -123,6 +98,7 @@ PROGRAM PROFOZ_main
     errstat = OMI_SMF_setmsg ( OMSAO_W_ENDOFRUN, '', modulename, 0 )
     STOP 1
   CASE ( pge_errstat_error )
+
     ! ----------------------------------------------------------------
     ! PGE execution encountered an error that lead to termination.
     ! ----------------------------------------------------------------
@@ -137,3 +113,4 @@ PROGRAM PROFOZ_main
     STOP 1
   END SELECT
 END PROGRAM PROFOZ_main
+

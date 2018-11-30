@@ -22,14 +22,13 @@ MODULE OMSAO_variables_module
        amf_idx, n_amftab_ang_max,  n_amftab_dim_max
   USE OMSAO_parameters_module,   ONLY: &
        maxchlen, max_spec_pts, max_fit_pts, n_sol_winwav, n_rad_winwav,      &
-       max_mol_fit, maxwin, maxview, maxloc, max_ref_pts
-  USE OMSAO_omidata_module, only: mswath
+       max_mol_fit, maxwin, maxview, maxloc, max_ref_pts, mswath, max_ring_pts,mrefl
   IMPLICIT NONE
 
   ! Time of a Granule
   REAL (KIND=8) :: TAI93At0ZOfGranule, TAI93StartOfGranule, GranuleSecond
   INTEGER       :: GranuleYear, GranuleMonth, GranuleDay, GranuleHour,       &
-       GranuleMinute, GranuleJDay
+                   GranuleMinute, GranuleJDay
 
   ! -----------------------------
   ! Variables read from PCF file
@@ -60,33 +59,49 @@ MODULE OMSAO_variables_module
   LOGICAL :: correct_merr              ! Correct OMI COL3 measurement error,xliu: 09/25/12
   LOGICAL :: xbin_decerr, ybin_decerr  ! Reduce meas error when coadding in x/ydirection, xliu: 09/25/12
   LOGICAL :: weight_sun, weight_rad, renorm
+
+  ! ---------------------------------------------
+  ! Ground Scan Lines and xtrack pixels Limits
+  ! --------------------------------------------
+  INTEGER, DIMENSION (2) :: linenum_lim       ! scan lines or pixel numbers
+  INTEGER, DIMENSION (2) :: pixnum_lim        ! across the track pixels
+  INTEGER :: ntimes_loop, offset_line ! subset of fitted lines
+  INTEGER, DIMENSION(:), POINTER :: pix_pos, line_pos 
+  INTEGER :: the_pix, the_line
+  INTEGER  :: currloop, currline, currpix
+  CHARACTER (LEN=3) :: currpixchar
+  ! actual positions in L1B
   LOGICAL :: do_xbin, do_ybin ! binning across and along the track
   INTEGER :: nxbin, nybin
+  INTEGER :: nswath, nxtrack, ntimes, nwavel
+  INTEGER (KIND=I4) :: orbnum, orbnumsol
+  ! array of mirror_step indices for TEMPO synthetic data
+  integer (kind=4), dimension(:), allocatable :: step_idx
+  REAL (KIND=dp) :: EarthSundistance
+
   ! -------------------------------------------
   ! A special beast: The undersampling spectrum
   ! -------------------------------------------
   LOGICAL :: have_undersampling
-  
-  ! jbak,07/2017 moved from gome_data_module
-  ! -------------------------------------
-  ! GOME data fitting or OMI data fitting
-  ! -------------------------------------
-  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, gome2_idx = 4, tempo_idx = 5
-  INTEGER, PARAMETER :: max_instrument_idx = tempo_idx
-  CHARACTER (LEN=4), DIMENSION (max_instrument_idx), PARAMETER :: &
-       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2','TMPO' /)
-  INTEGER :: instrument_idx
+
+  REAL (KIND=dp)  :: upper_spec, lower_spec
+  REAL (KIND=dp), DIMENSION (mswath) :: upper_wvls, lower_wvls
+  INTEGER, DIMENSION (mswath) :: inschs
+  REAL (KIND=dp), DIMENSION (maxwin) :: redslw
+ REAL (KIND=dp), DIMENSION(mswath) :: reduce_ubnd, reduce_lbnd, retubnd,retlbnd
 
   ! xliu, 01/03/2007, add variables for reduce spectral resolution
   LOGICAL                                :: reduce_resolution, use_redfixwav
   INTEGER                                :: reduce_slit, nredfixwav
-  REAL (KIND=dp)                         :: redslw, redsampr, redlam
+  REAL (KIND=dp)                         :: redsampr, redlam
   REAL (KIND=dp), DIMENSION(max_fit_pts) :: redfixwav
   CHARACTER (LEN=maxchlen)               :: redfixwav_fname
 
   ! Number of pixels read and number of pixels with successful retrieval
   INTEGER :: npix_fitting, npix_fitted
-    
+  
+  INTEGER :: num_param    ! n_fitvar_rad - nfgas - (ozfit_end_index - ozfit_start_index + 1)
+  INTEGER :: num_wav_max !maxval(omi_irrad%nwav(:) - numwin*2*radnhtrunc  
   INTEGER                                       :: n_fitvar_rad, n_fitvar_sol
   INTEGER,           DIMENSION (max_calfit_idx) :: mask_fitvar_sol, rmask_fitvar_sol
   REAL (KIND=dp),    DIMENSION (max_calfit_idx) :: fitvar_sol, fitvar_sol_init,&
@@ -110,7 +125,6 @@ MODULE OMSAO_variables_module
   ! clmspec_rad: (simulated spectrum, ozone and albedo terms only, but with a priori climatology)
   REAL (KIND=dp),    DIMENSION (max_fit_pts)    :: fitspec_rad, fitres_rad, & 
                                                    actspec_rad, simspec_rad, clmspec_rad
-!  REAL (KIND=DP),    DIMENSION (max_fit_pts)    ::  simspec_sol
    
   REAL (KIND=dp), DIMENSION (max_rs_idx, max_ref_pts) :: database, database_shiwf, database_save
   REAL (KIND=dp), DIMENSION (max_ref_pts)             :: slwf, dfdsl
@@ -124,16 +138,17 @@ MODULE OMSAO_variables_module
   LOGICAL                                             :: do_dsdk, do_dsdw 
   REAL (KIND=dp), DIMENSION (max_calfit_idx, max_ref_pts) :: database_pslwf ! slit function derivatives
 
-  INTEGER                                             :: n_refwvl, n_refwvl_sav
-  REAL (KIND=dp), DIMENSION (3)     :: sza_atm, vza_atm, aza_atm
+  INTEGER                           :: n_refwvl, n_refwvl_sav
+  CHARACTER (LEN = 28)              :: the_utc
+  INTEGER                           :: the_month, the_year, the_day, the_jday
+  !REAL (KIND=dp), DIMENSION (3)     :: sza_atm, vza_atm, aza_atm
+  !REAL (KIND=dp) :: avgsza, avgvza,avgaza, avgsca
   REAL (KIND=dp)                    :: the_sza_atm, the_vza_atm, the_aza_atm, &
-       the_sca_atm, the_lat, the_lon, the_surfalt, avgsza, avgvza, avgaza, avgsca
-  INTEGER                           :: the_month, the_year, the_day 
+       the_sca_atm, the_lat, the_lon, the_surfalt
   INTEGER                           :: nview, nloc
   REAL (KIND=dp), DIMENSION(maxloc) :: the_lons, the_lats
   REAL (KIND=dp), DIMENSION(2)      :: edgelons, edgelats 
-  CHARACTER (LEN = 28)              :: the_utc
-        
+ 
   ! --------------------------------------------------------
   ! Identifier string for irradiacne and radiance input file
   ! --------------------------------------------------------
@@ -175,11 +190,11 @@ MODULE OMSAO_variables_module
   !  * number of spectral points:         N_REFSPEC_PTS
   !  * first and last wavelenghts:        REFSPEC_FIRSTLAST_WAV
   ! -----------------------------------------------------------
-  INTEGER                                                         :: n_refspec
+  INTEGER                                                         :: n_refspec, n_solarref
   CHARACTER (LEN=6),        DIMENSION (max_rs_idx)                :: fitpar_idxname
   CHARACTER (LEN=maxchlen), DIMENSION (max_rs_idx)                :: refspec_fname
   REAL (KIND=dp),           DIMENSION (max_rs_idx,max_spec_pts,3) :: refspec_orig_data
-  REAL (KIND=dp),           DIMENSION (max_spec_pts)              :: solar_refspec
+  REAL (KIND=dp),           DIMENSION (max_spec_pts)              :: solar_refspec,solar_refwav
   REAL (KIND=dp),           DIMENSION (max_rs_idx,2)              :: refspec_firstlast_wav
   REAL (KIND=dp),           DIMENSION (max_rs_idx)                :: refspec_norm
   INTEGER,                  DIMENSION (max_rs_idx)                :: n_refspec_pts
@@ -193,9 +208,6 @@ MODULE OMSAO_variables_module
   !REAL (KIND=dp), DIMENSION (maxozabs, max_spec_pts)    :: ozrefspec
   !REAL (KIND=dp), DIMENSION (max_spec_pts) :: ozrefpos
   !REAL (KIND=dp), DIMENSION (maxozabs, max_fit_pts+4)   :: ozdb, ozdb_shiwf
-
-
-  CHARACTER (LEN=maxchlen), DIMENSION (icf_idx:amf_idx) :: static_input_fnames
 
   REAL (KIND=dp), DIMENSION (max_spec_pts) :: cubic_x, cubic_y, cubic_w
   REAL (KIND=dp), DIMENSION (max_spec_pts) :: poly_x, poly_y, poly_w
@@ -219,16 +231,14 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------------------------------------
   ! The current solar and radiance spectrum, including wavelengths and weights
   ! --------------------------------------------------------------------------
-  INTEGER  :: currloop, currline, currpix
-  CHARACTER (LEN=3) :: currpixchar
   REAL (KIND=dp) :: curr_exposuretime
-  REAL (KIND=dp), DIMENSION (sig_idx, max_fit_pts) :: curr_rad_spec
+  REAL (KIND=dp), DIMENSION (sig_idx, max_fit_pts) :: curr_rad_spec, curr_rad_spec_save
   REAL (KIND=dp), DIMENSION (sig_idx, max_fit_pts) :: curr_sol_spec, curr_sol_spec_save
   REAL (KIND=dp), DIMENSION (max_fit_pts):: fitwavs, fitweights, currspec
-  REAL (KIND=dp), DIMENSION (2, max_fit_pts) :: curr_radresponse_spec
+!  REAL (KIND=dp), DIMENSION (2, max_fit_pts) :: curr_radresponse_spec
 
   INTEGER                                       :: nsol_ring, sring_fidx, sring_lidx
-  REAL (KIND=dp), DIMENSION (2, max_fit_pts)    :: sol_spec_ring
+  REAL (KIND=dp), DIMENSION (2, max_ring_pts)    :: sol_spec_ring
 
   ! ----------------------
   ! variable slit width
@@ -243,24 +253,30 @@ MODULE OMSAO_variables_module
   CHARACTER (LEN=maxchlen)  :: slit_fname, rslit_fname, swavcal_fname, wavcal_fname
   LOGICAL                   :: slit_redo, wavcal_redo, wavcal_sol, wavcal, slit_rad
   LOGICAL                   :: fixslitcal, smooth_slit, slitcal
+ ! hw1e, e_asym, shi, squ, hwl, hwr, vgl, vgr at each window 
+  ! (value, standard deviation)
+  REAL (KIND=dp), DIMENSION(maxwin,max_calfit_idx, 2) :: solwinfit, radwinfit, solwinfit_save
+  REAL (KIND=dp), DIMENSION(maxwin)                :: wincal_wav 
+  
+
+  INTEGER, PARAMETER        :: max_slit = 5
   INTEGER                   :: which_slit   ! 1. Gauss 2. Voigt 3. Triangle 4 super 5 instrument
+  CHARACTER (3), PARAMETER, DIMENSION(0:max_slit) :: slit_name=(/'sga','aga','voi','tri','spg','ins'/)
+  REAL (Kind=dp), DIMENSION(max_fit_pts) :: tmp_rad
+
   INTEGER, PARAMETER :: correct_lamda = 2
   !1 :  lamda =( fitwavs - shi)/(1.0 + squ) ; IN OLD VERSION
   !2 :  lamda =( fitwavs - shi + sol_wav_avg*squ) /(1.0+squ) IN UPDATED
   !VERSION,because there is too much correlation between squ and shi in previous
   !implemnetation
 
-  ! hw1e, e_asym, shi, squ, hwl, hwr, vgl, vgr at each window 
-  ! (value, standard deviation)
-  REAL (KIND=dp), DIMENSION(maxwin,max_calfit_idx,2) :: solwinfit, radwinfit, solwinfit_save
-  REAL (KIND=dp), DIMENSION(maxwin)                  :: wincal_wav 
-  
+ 
   ! ----------------------
   ! calibration
   ! ----------------------
-  INTEGER                                :: numwin
+  INTEGER                                :: numwin, nviswin
   REAL (KIND=dp), DIMENSION(maxwin, 2)   :: winlim
-  INTEGER, DIMENSION(maxwin, 2)          :: winpix
+  INTEGER, DIMENSION (maxwin, 2)         :: winpix ! find locatio of winlim in the original spectrum
   INTEGER, DIMENSION(maxwin)             :: nradpix, nsolpix, &
        n_band_avg, n_band_samp, nradpix_sav,  band_selectors
 
@@ -276,8 +292,8 @@ MODULE OMSAO_variables_module
 
   ! Determine whether to coadd UV2 spectrum to the UV-1 resolution
   ! When both UV-1 and UV-2 exist
-  LOGICAL                                :: coadd_uv2
-
+  LOGICAL                                :: coadd_uv2 ! for OMI
+  
   ! Use solar composite for destriping
   LOGICAL                                ::use_backup, use_solcomp, avg_solcomp, avgsol_allorb  
 
@@ -291,17 +307,15 @@ MODULE OMSAO_variables_module
 
   ! Writing limited output to screen for debugging and testing
   LOGICAL                                :: scnwrt
+  LOGICAL                                :: calwrt ! for slit/wavelength calibration
+  LOGICAL                                :: calscn ! for slit/wavelength calibration
+  LOGICAL                                :: rtmdbg ! for slit/wavelength calibration
   
   ! -------------------------------------------
   !band 1a and 1b boundary
   ! -------------------------------------------
   !REAL (KIND=dp) :: b1ab_div_wav 
 
-  ! ---------------------------------------------
-  ! Ground Scan Lines and xtrack pixels Limits
-  ! --------------------------------------------
-  INTEGER, DIMENSION (2) :: linenum_lim          ! scan lines or pixel numbers
-  INTEGER, DIMENSION (2) :: pixnum_lim           ! across the track pixels
 
   ! --------------------------------------------
   ! Frequency of radiance wavelength calibration
@@ -344,16 +358,17 @@ MODULE OMSAO_variables_module
   INTEGER :: max_itnum_sol, max_itnum_rad
 
   !----------------------
-  ! Write HDF output ?  0:txt 3:hdf 
+  ! Write HDF output ?  0:ascii, 1:(GOME2), 2:(GOME2),  3:he5(OMI) 4:nc (TEMPO)
   !---------------------
   INTEGER :: l2_hdf_flag
+
   ! ---------------------
   ! L1B and L2 file names
   ! ---------------------
   CHARACTER (LEN=maxchlen) :: l1b_rad_filename, l1b_irrad_filename, l2_filename, &
-       l2_cld_filename, l2_swathname, l2_geos5_filename, l3_toc_filename, &
+       l2_cld_filename, l2_geos5_filename, l3_toc_filename, &
        l1_rad_filename_nc, l1_irrad_filename_nc
-
+  CHARACTER (LEN=maxchlen), PARAMETER :: l2_swathname = 'O3 Profile'
   ! -----------------------------------------------------------------
   ! Generic dimension variables (initialized from either GOME or OMI)
   ! -----------------------------------------------------------------
@@ -367,36 +382,121 @@ MODULE OMSAO_variables_module
 
   ! debug variable
   LOGICAL :: debug_boreas
-  INTEGER :: debug_input 
+
 
   ! Define SAA boundary 
   REAL (KIND=sp) :: saa_minlon = -75.0, saa_maxlon = 0.00, &
                     saa_minlat = -50.0, saa_maxlat = -5.00, &
                     saa_minlon1= 0.00 , saa_maxlon1= 30.0, &
                     saa_minlat1= -35.0, saa_maxlat1= -15.0
-  !Logical swicthes to control use of he5 and netCDF inputs and outputs
-  logical :: use_he5_in = .false.
-  logical :: use_he5_out = .false.
-  logical :: use_tio_in = .true.
-  logical :: use_tio_out = .true.
 
-  !  ! NetCDF swathnames - OMI version
-  character (len=maxchlen), dimension(mswath) :: &
-       nc_rad_swathname = (/ 'band_290_490_nm', 'band_540_740_nm'/)
-  character (len=maxchlen), dimension(mswath) :: &
-       nc_irrad_swathname = (/ 'band_290_490_nm', 'band_540_740_nm'/)
-  !  ! NetCDF swathnames - TEMPO version
-  !  ! now set in m_read_fitting_controls
-  !  character (len=maxchlen), dimension(mswath), parameter :: &
-  !       nc_rad_swathname = (/ 'band_290_490_nm', 'band_290_490_nm'/)
-  !  character (len=maxchlen), dimension(mswath), parameter :: &
-  !       nc_irrad_swathname = (/ 'band_290_490_nm', 'band_290_490_nm'/)
-
-  ! logical over-ride flag when using TEMPO synthetic data
-  logical :: tempo_syn = .false.
-
-  ! array of mirror_step indices for TEMPO synthetic data
-  integer (kind=4), dimension(:), allocatable :: step_idx
+  ! variables for specfic instrument
+  INTEGER :: NSPC_omi  
+  ! -----------------------------------------------------------------
+  ! Common variables for handling satellite measurement data
+  ! -----------------------------------------------------------------
+  ! This type gets filled in by omi_read_radiance_paras
+  TYPE, PUBLIC :: Radiance_Paras_Type
+    CHARACTER (LEN=maxchlen) :: l1bfilename
+    INTEGER (KIND=i4)        :: ntimes, nxtrack, nwavel_ccd
+    CHARACTER (LEN=maxchlen) :: swathname
+    CHARACTER (LEN=maxchlen) :: l1bchannel
+  END TYPE Radiance_Paras_Type  
 
 
+  ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  ! satellite variables as a dimension of nxtrack, nytrack
+  !  - bad pixel is filtered
+  !  - sub-wave is taken in defined fitting window
+  !  - co-adding is applied
+  ! 1. irrad_group, rad_group, ring_group, refl_group 
+  ! 2. cali_group
+  ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  ! ------------------------------------------------------------
+  ! ozone fitting spectra
+  ! ------------------------------------------------------------
+  TYPE irrad_group
+  INTEGER, POINTER, DIMENSION (:)     :: errstat! nxtrack
+  INTEGER, POINTER, DIMENSION (:)     :: nwav   ! (nxtrack)
+  INTEGER, POINTER, DIMENSION (:,:)   :: npix   ! (numwin, nxtrack) 
+  INTEGER, POINTER, DIMENSION (:,:,:) :: winpix ! (numwin, nxtrack, 2)
+  INTEGER, POINTER, DIMENSION (:,:)   :: wind   ! (max_fit_pts, nxtrack)
+  INTEGER, POINTER, DIMENSION (:,:)   :: qflg   ! (max_fit_pts, nxtrack)
+  REAL (kind=dp), POINTER, DIMENSION (:,:) :: wavl,spec,prec !(max_fit_pts,nxtrack)
+  REAL (kind=dp), POINTER, DIMENSION (:) :: norm !(nxtrack)
+  ENDTYPE irrad_group
+
+  TYPE rad_group
+  INTEGER, POINTER, DIMENSION (:)     :: errstat 
+  INTEGER, POINTER, DIMENSION (:,:)     :: pix_errstat 
+  INTEGER, POINTER, DIMENSION (:,:)     :: nwav   ! (nxtrack, nytrack)
+  INTEGER, POINTER, DIMENSION (:,:,:)   :: npix   ! (numwin, nxtrack,nytrack) 
+  INTEGER, POINTER, DIMENSION (:,:,:,:) :: winpix ! (numwin, nxtrack,nytrack 2)
+  INTEGER, POINTER, DIMENSION (:,:,:)   :: wind   ! (max_fit_pts, nxtrack)
+  INTEGER, POINTER, DIMENSION (:,:,:)   :: qflg   ! (max_fit_pts, nxtrack, nytrack)
+  REAL (kind=dp), POINTER, DIMENSION (:,:,:)      :: wavl,spec,prec !(max_fit_pts,nxtrack,nytrack)
+  REAL (kind=dp), POINTER, DIMENSION (:,:) :: norm !(nxtrack, nytrack)
+  END TYPE rad_group
+  ! ------------------------------------------------------------
+  ! tempo ring fitting spectra
+  ! ------------------------------------------------------------
+  TYPE ring_group
+    REAL    (KIND=dp), POINTER, DIMENSION (:,:) ::  spec, wavl !(max_ring_pts, nxtrack_max)
+    INTEGER, POINTER, DIMENSION (:)   :: nsol,ndiv ! (nxtrack_max)
+    INTEGER, POINTER, DIMENSION (:,:) :: winpix ! (nxtrack_max,2)
+  END TYPE ring_group
+
+  !-----------------------
+  ! tempo surface albedo fitting spectra
+  !-----------------------
+  TYPE refl_group
+    REAL (KIND=r4), POINTER, DIMENSION (:,:)   :: solspec, solwavl ! (mrefl, nxtrack)
+    REAL (KIND=r4), POINTER, DIMENSION (:,:,:) :: radspec, radwavl  !(mrefl, nxtrack, ntimes)
+    INTEGER, POINTER, DIMENSION (:,:)   :: winpix ! (nxtrack, 2)
+  END TYPE refl_group
+
+  !-----------------------------------------
+  ! geolocation 
+  !-----------------------------------------
+  TYPE geo_group
+    REAL (KIND=dp), POINTER, DIMENSION(:)       :: time
+    REAL (KIND=r4), POINTER, DIMENSION (:,:)    :: lon, lat, sza, vza, aza, sca  !  (mrefl, nxtrack)
+    REAL (KIND=r4), POINTER, DIMENSION (:,:,:)    :: clon, clat  !  (mrefl, nxtrack)
+    REAL (KIND=r4), POINTER, DIMENSION (:,:)    :: elon, elat  !  (mrefl, nxtrack)
+    REAL (KIND=r4), POINTER, DIMENSION(:,:)     :: cfr, ctp, ai
+    INTEGER (KIND=1), POINTER, DIMENSION(:,:)   :: cloud_qflg
+    INTEGER (KIND=4), POINTER, DIMENSION(:,:)   :: gflg
+    INTEGER (KIND=1), POINTER, DIMENSION(:,:)   :: xflg
+    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: height
+    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: land_water_flg
+    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: snow_ice_flg
+    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: glint_flg
+  END TYPE geo_group
+
+  !-------------------------------------------
+  ! calibration variables for solar spectra
+  !-------------------------------------------
+  TYPE cali_group
+     ! calibration results for each fitting window
+     REAL (KIND=dp), POINTER, DIMENSION(:,:)      :: wincal_wav     !maxwin, nxtrack
+     REAL (KIND=dp), POINTER, DIMENSION (:,:,:)   :: solwinfit, radwinfit ! maxwin, max_calfit_idx, 2, nxtrack
+     ! slit fit results for sub-wavelengths
+     INTEGER, POINTER, DIMENSION (:)              :: nslit_sol, nslit_rad 
+     REAL (KIND=dp), POINTER, DIMENSION (:,:,:,:) :: slitfit_sol, slitfit_rad
+     REAL (KIND=dp), POINTER, DIMENSION (:,:)     :: slitwav_sol, slitwav_rad
+     ! wave fit results for sub
+     INTEGER, POINTER, DIMENSION (:)              :: nwavcal_sol, nwavcal_rad ! nxtrack_max
+     REAL (KIND=dp), POINTER, DIMENSION (:,:)     ::sswav_sol, sswav_rad !max_fit_pts, nxtrack
+  END TYPE cali_group
+
+  !------------------------------------------------------------
+  ! retrieval status for a block
+  !------------------------------------------------------------
+  TYPE o3p_group
+  INTEGER, DIMENSION (:, :), POINTER :: exitval, initval
+  REAL(kind=dp), DIMENSION(:,:,:), POINTER :: fitvar
+  END TYPE  o3p_group
+  
 END MODULE OMSAO_variables_module
+
+

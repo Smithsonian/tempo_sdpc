@@ -195,6 +195,7 @@ contains
 
 
     !write diagnostic group variables
+
     call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
     call append_diagnostic_vars (obj, dimlist, errstat)
     call tiof_pop_group (obj, errstat)
@@ -231,7 +232,6 @@ contains
            errstat)
       return
     endif
-
   end subroutine l2_tio_create
 
 
@@ -245,7 +245,6 @@ contains
     type (tiof_file_type), pointer :: obj
 
     obj => primary_output_file
-
     call tiof_close (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_error, "l2_tio_close failed", errstat)
@@ -1395,11 +1394,14 @@ contains
                               [o3p_dim_xtrack, o3p_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
+
+
     if (ozwrtres) then
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_wavl_max, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_wavmax_xtrack_step, &
                               errstat)
+
     endif
     if (aerosol) then
       call tiof_dimlist_lookup (dimlist, &
@@ -1507,7 +1509,6 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
-
   end subroutine append_diagnostic_vars
 
 
@@ -1634,21 +1635,17 @@ contains
   !! @param[in] last_pix   index of last xtrack pixel in use
   !! @param[in] ntimes     number of mirror steps in use
   !! @param[inout] errstat  Error status variable
-  subroutine l2_tio_write_geo (first_pix, last_pix, first_line, last_line, &
+  subroutine l2_tio_write_geo (geo, first_pix, last_pix, first_line, last_line, &
        errstat)
-    use OMSAO_pixelcorner_module,only: omi_alllat, omi_alllon, omi_allclat, &
-       omi_allclon, omi_allsza, omi_allvza, omi_allaza, omi_alltime, &
-       omi_allGeoFlg
-    use m_read_geo_tio, only: tio_allclat, tio_allclon
-    use OMSAO_variables_module, only: use_tio_in
 
+    USE OMSAO_variables_module, only: geo_group
     implicit none
 
     integer, intent(in) :: first_pix, last_pix, first_line, last_line
     integer, intent(inout) :: errstat
+    TYPE(geo_group), INTENT(IN) :: geo
 
     integer :: num_lines, num_pix
-    real (kind=4), dimension(:,:,:), allocatable :: corner_lat, corner_lon
 
     type (tiof_file_type), pointer :: obj
 
@@ -1659,67 +1656,36 @@ contains
     num_lines = last_line - first_line + 1
     num_pix = last_pix - first_pix + 1
 
-    ! Transfer pixel corner values into 3 dim array
-    allocate(corner_lat(4, num_pix, num_lines), stat=errstat)
-    if (errstat < 0) then
-      call tell_error (tell_malloc_error, &
-           'l2_tio_write_geo: allocate corner_lat failed', errstat)
-      return
-    endif
-    allocate(corner_lon(4, num_pix, num_lines), stat=errstat)
-    if (errstat < 0) then
-      call tell_error (tell_malloc_error, &
-           'l2_tio_write_geo: allocate corner_lon failed', errstat)
-      return
-    endif
-
-    if (use_tio_in) then
-      corner_lat(:,:,:) = tio_allclat(:,first_pix-1:last_pix-1, 0:num_lines-1)
-      corner_lon(:,:,:) = tio_allclon(:,first_pix-1:last_pix-1, 0:num_lines-1)
-    else
-      corner_lat(1,:,:) = real(omi_allclat(first_pix-1:last_pix-1, 0:num_lines-1), KIND=4)
-      corner_lat(2,:,:) = real(omi_allclat(first_pix:last_pix, 0:num_lines-1), KIND=4)
-      corner_lat(3,:,:) = real(omi_allclat(first_pix:last_pix, 1:num_lines), KIND=4)
-      corner_lat(4,:,:) = real(omi_allclat(first_pix-1:last_pix-1, 1:num_lines), KIND=4)
-      corner_lon(1,:,:) = real(omi_allclon(first_pix-1:last_pix-1, 0:num_lines-1), KIND=4)
-      corner_lon(2,:,:) = real(omi_allclon(first_pix:last_pix, 0:num_lines-1), KIND=4)
-      corner_lon(3,:,:) = real(omi_allclon(first_pix:last_pix, 1:num_lines), KIND=4)
-      corner_lon(4,:,:) = real(omi_allclon(first_pix-1:last_pix-1, 1:num_lines), KIND=4)
-    endif
  
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [0], [num_lines], &
-         omi_alltime(0:num_lines-1), errstat)
+         geo%time(0:num_lines-1), errstat)
     call tiof_put2d_ui2 (obj, o3p_var_geoflg, &
          [0, 0], [num_lines, num_pix], &
-         int(omi_allGeoFlg(first_pix:last_pix, 0:num_lines-1), kind=2), &
+         int(geo%GFlg(first_pix:last_pix, 0:num_lines-1), kind=2), &
          errstat)
     call tiof_put2d_r4 (obj, o3p_var_latitude, [0,0], &
          [num_lines, num_pix], &
-         real(omi_alllat(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
+         real(geo%lat(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
     call tiof_put2d_r4 (obj, o3p_var_longitude, [0,0], &
          [num_lines, num_pix], &
-         real(omi_alllon(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
+         real(geo%lon(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
     call tiof_put2d_r4 (obj, o3p_var_ra_angle, [0,0], &
          [num_lines, num_pix], &
-         real(omi_allaza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
+         real(geo%aza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
     call tiof_put2d_r4 (obj, o3p_var_sz_angle, [0,0], &
          [num_lines, num_pix], &
-         real(omi_allsza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
+         real(geo%sza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
     call tiof_put2d_r4 (obj, o3p_var_vz_angle, [0,0], &
          [num_lines, num_pix], &
-         real(omi_allvza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
+         real(geo%vza(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
     call tiof_put3d_r4 (obj, o3p_var_latitude_bounds, [0,0,0], &
-         [num_lines, num_pix, 4], corner_lat, errstat)
+         [num_lines, num_pix, 4], geo%clat(1:4,first_pix:last_pix, 0:num_lines-1), errstat)
     call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, [0,0,0], &
-         [num_lines, num_pix, 4], corner_lon, errstat)
+         [num_lines, num_pix, 4], geo%clon(1:4,first_pix:last_pix, 0:num_lines-1), errstat)
 
     call tiof_pop_group (obj, errstat)
-
-    ! tidy up allocated arrays
-    deallocate(corner_lat, stat=errstat)
-    deallocate(corner_lon, stat=errstat)
 
     if (errstat < 0) then
       call tell_error (tell_io_write_error, "l2_tio_write_geo: failed", errstat)
@@ -1754,8 +1720,8 @@ contains
          fitweights, fitspec_rad, simspec_rad, mask_fitvar_rad, &
          fitvar_rad, fothvarpos, fitvar_rad_nstd, fitvar_rad_std, &
          fitvar_rad_str, fitvar_rad_apriori, fitvar_rad_aperror, fitwavs, &
-         fitvar_rad_unit, use_he5_out
-    use OMSAO_pixelcorner_module, only: omi_allMflg
+         fitvar_rad_unit
+    use OMSAO_pixelcorner_module, only: omi_Mflg
     use ozprof_data_module, only: use_lograd, the_ai, ozprof, ozprof_std, &
          ozprof_nstd, ozprof_ap, ozprof_apstd, tracegas, fgaspos, fgasidxs, &
          atmosprof, the_ctp, the_cfrac, the_cod, the_cld_flg, ozinfo, ntp, &
@@ -1815,7 +1781,6 @@ contains
            nradpix(i))
       fidx = lidx + 1
     enddo
-    if (.not. use_he5_out) then
       ! changes will already have been made if he5 output generated
       simspec_rad(1:n_rad_wvl) = fitspec_rad(1:n_rad_wvl) - &
            fitres_rad(1:n_rad_wvl)
@@ -1828,14 +1793,6 @@ contains
       else
         lfitres_rad(1:n_rad_wvl) = fitres_rad(1:n_rad_wvl)
       end if
-    else
-      if (use_lograd) then
-        lfitres_rad(1:n_rad_wvl) = fitspec_rad(1:n_rad_wvl) -  &
-             simspec_rad(1:n_rad_wvl)
-      else
-        lfitres_rad(1:n_rad_wvl) = fitres_rad(1:n_rad_wvl)
-      endif
-    endif
 !    avgres = sqrt(sum((abs(fitres_rad(1:n_rad_wvl)) / &
     avgres = sqrt(sum((abs(lfitres_rad(1:n_rad_wvl)) / &
          fitspec_rad(1:n_rad_wvl))**2.0)/n_rad_wvl)*100.0
@@ -1855,8 +1812,6 @@ contains
       write(units(i), '(A20)') &
            trim(fitvar_rad_unit(mask_fitvar_rad(i)))
     enddo
-
-
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
@@ -2003,6 +1958,7 @@ contains
       i = ozfit_idxs; j = ozfit_idxe
       ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
       OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*1.0d4, KIND= 2)
+      print * , 'avger:tiof_put2d_i2'
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
            [1,1,nlayer,nlayer], transpose(OzAvgK_I16(1:nlayer,1:nlayer)), errstat)
     endif
@@ -2143,7 +2099,7 @@ contains
          [iline, ipix, 0], [1,1,nwindow], &
          real(allavgres(1:nwindow), kind=4), errstat)
     call tiof_put1d_i2 (obj, o3p_var_mqf, &
-         [iline], [1], [omi_allMflg(iline)], errstat)
+         [iline], [1], [omi_Mflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
       call tiof_put1d_r4 (obj, o3p_var_merr, &
@@ -2183,7 +2139,7 @@ contains
   subroutine l2_tio_fill_data (ipix, iline, exval, ngas, nlayer, nfitvar, &
        nwindow, num_param, num_wav_max, ozfit_idxs, ozfit_idxe, errstat)
 
-    use OMSAO_pixelcorner_module, only: omi_allMflg
+    use OMSAO_pixelcorner_module, only: omi_Mflg
 
     implicit none
 
@@ -2430,7 +2386,7 @@ contains
          [iline, ipix, 0], [1,1,nwindow], &
          tmp1D_numwin(1:nwindow), errstat)
     call tiof_put1d_i2 (obj, o3p_var_mqf, & ! there should always be an mflag
-         [iline], [1], [omi_allMflg(iline)], errstat)
+         [iline], [1], [omi_Mflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
       call tiof_put1d_r4 (obj, o3p_var_merr, [iline, ipix, 0], &

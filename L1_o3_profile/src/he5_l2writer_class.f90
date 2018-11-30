@@ -257,7 +257,6 @@ CONTAINS
         IF( TRIM( outstrs(ifld) ) == TRIM(dfList(id)%name) ) EXIT
       ENDDO
 
-      !PRINT *, ID, ND, dfList(id)%name
       IF( ifld > nflds ) THEN
         status = he5_swdefdfld( SW_id,                    &
              dfList(id)%name,          &
@@ -275,7 +274,6 @@ CONTAINS
         status = L2_setDFattrs( SW_id, dfList(id) )
       ENDIF
     ENDDO
-
     status = OMI_S_SUCCESS
     RETURN
   END FUNCTION L2_defSWdatafields
@@ -325,15 +323,10 @@ CONTAINS
       status = OMI_E_FAILURE
       RETURN
     ENDIF
-
-    !print *, 'Define new block: '
-    !print *, this%nDims, this%nFields
-
     !! Find out the dimension size, the rank, and the datatype and
     !! and byte size for each of the field (geo or data).
     this%SumElmSize = 0
     DO id = 1, INT(this%nFields, kind=4)
-      !print *, id, fieldList(id)%name
       this%fieldname(id) = fieldList(id)%name
       !FIXME - Modified to avoid creation of array temporary
 !      ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
@@ -341,7 +334,6 @@ CONTAINS
       ierr = HE5_SWfldinfo( this%swathID, this%fieldname(id), rankID, &
            tmp_dims(:), ntype, dimlist, maxdimlist )
       this%dims(id,:)=tmp_dims(:)
-
       IF( ierr == - 1 ) THEN
         WRITE( msg, '(A)') "HE5_SWfldinfo failed for "// &
              TRIM( this%fieldname(id)) // ", "// &
@@ -379,7 +371,6 @@ CONTAINS
       ELSE
         this%SumElmSize = this%SumElmSize + this%elmSize(id)
       ENDIF
-
       !! make sure every field has the same first (HDF5) dimension size
       !! Note that first HDF5 or C dimension is the last Fortran
       !! dimension.
@@ -395,7 +386,7 @@ CONTAINS
         ENDIF
       ENDIF
     ENDDO
-
+    
     !! the first C (HDF5) dimesnion is usually referred to as the line
     !! The block size is determined by the number of Lines in the block.
     IF( PRESENT(nL) ) THEN
@@ -411,7 +402,6 @@ CONTAINS
         this%nLine = nlines_max   !! default nLine is 100
       ENDIF
     ENDIF
-
     !!calculate the line size and block size and the accumulated block size
     this%SumLineSize = 0
     this%accuLineSize(0) = 0
@@ -436,7 +426,6 @@ CONTAINS
       this%accuLineSize(id) = this%accuLineSize(id-1) + this%lineSize(id)
       this%accuBlkSize(id) =  this%accuBlkSize(id-1) +  this%blkSize(id)
     ENDDO
-
     IF( this%accuBlkSize(this%nFields) > 0 ) THEN
       IF( ASSOCIATED( this%data ) ) DEALLOCATE( this%data )
       ALLOCATE( this%data( this%accuBlkSize(this%nFields) ), STAT = ierr )
@@ -451,7 +440,6 @@ CONTAINS
     this%eLine = -1
     this%initialized = .TRUE.
     status = OMI_S_SUCCESS
-
     RETURN
   END FUNCTION L2_newBlockW
 

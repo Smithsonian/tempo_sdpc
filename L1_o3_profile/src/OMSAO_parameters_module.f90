@@ -23,11 +23,16 @@ MODULE OMSAO_parameters_module
   ! ----------------------------------
   INTEGER, PARAMETER :: forever = 9999, max_iter=50
 
+  ! ----------------------------------
+  ! Maximum swath for all instruments
+  ! ----------------------------------
+  INTEGER, PARAMETER :: mswath = 2
   ! -------------------------------------------------------------------------
   ! Maximum numbers for fitting parameters, GOME pixels, spectral points, ...
   ! -------------------------------------------------------------------------
-  INTEGER, PARAMETER :: max_spec_pts = 10001 ! Original reference spectrum
-  INTEGER, PARAMETER :: max_fit_pts  = 2048 !800               ! fitted array
+  !INTEGER, PARAMETER :: max_spec_pts = 25001 ! Original reference spectrum
+  INTEGER, PARAMETER :: max_spec_pts = 35000 ! Original reference spectrum
+  INTEGER, PARAMETER :: max_fit_pts  = 700               ! fitted array
   INTEGER, PARAMETER :: max_ref_pts  = max_fit_pts + 20  ! convolved reference
                                                          !  spectrum
   INTEGER, PARAMETER :: max_ring_pts = max_fit_pts + 50  ! solar spectrum for
@@ -50,11 +55,10 @@ MODULE OMSAO_parameters_module
   ! -----------------------------------------------
   ! Number of windows to be used: 1, 2, 3, 4
   ! -----------------------------------------------
-  INTEGER, PARAMETER :: maxband = 2   ! UV-1, UV-2
-  INTEGER, PARAMETER :: maxwin = 5
+  INTEGER, PARAMETER :: maxwin = 4
 
   ! number of wavelengths around 370 nm used for calculating cloud fraction
-  INTEGER, PARAMETER :: mrefl = 100
+  INTEGER, PARAMETER :: mrefl = 100, mreflcld=200
 
   ! ==================
   ! Physical constants
@@ -104,11 +108,22 @@ MODULE OMSAO_parameters_module
   INTEGER, PARAMETER :: n_sol_winwav = 2*n_sol_window+2
   INTEGER, PARAMETER :: n_rad_winwav = 2*n_rad_window+2
 
-  ! ----------------
-  ! ZERO_SPEC string
-  ! ----------------
-  CHARACTER (LEN=9), PARAMETER :: zerospec_string = 'Zero_Spec'
 
+  CHARACTER (LEN=maxchlen) :: algorithm_version
+  CHARACTER (LEN=*), PARAMETER  :: ozprof_str  = 'Ozone profile retrieval'
+  CHARACTER (LEN=32), PARAMETER :: cntrstr     = '*Ozone Profile Retrieval Control'
+  CHARACTER (LEN=7), PARAMETER  :: ozstr       = '*ozprof'
+  CHARACTER (LEN=7), PARAMETER  :: othgasstr   = '*othgas'
+  CHARACTER (LEN=7), PARAMETER  :: albstr      = '*albedo'
+  CHARACTER (LEN=7), PARAMETER  :: wfcstr      = '*wcfrac'
+  CHARACTER (LEN=7), PARAMETER  :: cldaerstr   = '*cldaer'
+  CHARACTER (LEN=7), PARAMETER  :: othstr      = '*otherp'
+  CHARACTER (LEN=7), PARAMETER  :: polstr      = '*polcor'
+  CHARACTER (LEN=9), PARAMETER :: zerospec_string = 'Zero_Spec'
+ INTEGER, PARAMETER :: lcurve_unit = 50, ozwrtint_unit = 51, atmos_unit = 52, &
+       tprofunit1 = 53, tprofunit2 = 54, profunit = 55,  &  ! two toms std profiles, ozprof
+       cldunit = 56, corr_unit = 57, l1l2inp_unit = 58, ozabs_unit = 59, calunit = 23,  &
+       l2funit = 22, l2swathunit = 24, rtm_unit=11
   ! -----------------------------------------------------------------
   ! Maximum number of molecules to fit. This number can be greater
   ! than ONE: We may include multiple reference spectra for the same

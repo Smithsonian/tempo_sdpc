@@ -419,9 +419,8 @@ contains
     ENDIF
 
     frac = (x - xa(fidx)) / (xa(fidx+1) - xa(fidx))
-
     y = (1.0D0 - frac) * ya(fidx) + frac * ya(fidx + 1)
-
+    
     RETURN
 
   END SUBROUTINE INTERPOL

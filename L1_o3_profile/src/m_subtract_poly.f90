@@ -14,7 +14,7 @@ contains
     USE OMSAO_variables_module,   ONLY : poly_x, poly_y, poly_w, database, &
          poly_order
     USE bounded_nonlin_LS,        ONLY : elsunc
-    use fitting_functions, only: poly_specfit
+    use m_fitting_util, only: poly_specfit
 
     IMPLICIT NONE
 
@@ -108,7 +108,7 @@ contains
     !USE OMSAO_parameters_module, ONLY : max_spec_pts, elsunc_np, elsunc_nw
     USE OMSAO_variables_module,  ONLY : poly_x, poly_y, poly_w, poly_order
     USE bounded_nonlin_LS,       ONLY : elsunc
-    use fitting_functions, only: poly_specfit
+    use m_fitting_util, only: poly_specfit
 
     IMPLICIT NONE
 
@@ -208,7 +208,7 @@ contains
 !    !USE OMSAO_parameters_module, ONLY : max_spec_pts, elsunc_np, elsunc_nw
 !    USE OMSAO_variables_module,  ONLY : poly_x, poly_y, poly_w, poly_order
 !    USE bounded_nonlin_LS,       ONLY : elsunc
-!    use fitting_functions, only: poly_specfit
+!    use m_fitting_util, only: poly_specfit
 !
 !    IMPLICIT NONE
 !

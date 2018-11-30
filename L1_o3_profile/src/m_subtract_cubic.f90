@@ -14,7 +14,7 @@ contains
          elsunc_np, elsunc_nw
     USE OMSAO_variables_module,   ONLY : cubic_x, cubic_y, cubic_w, database
     USE bounded_nonlin_LS,        ONLY : elsunc
-    use fitting_functions, only: cubic_specfit
+    use m_fitting_util, only: cubic_specfit
 
     IMPLICIT NONE
 
@@ -115,7 +115,7 @@ contains
 !         !elsunc_np, elsunc_nw
 !    USE OMSAO_variables_module,  ONLY : cubic_x, cubic_y, cubic_w
 !    USE bounded_nonlin_LS,       ONLY : elsunc
-!    use fitting_functions, only: cubic_specfit
+!    use m_fitting_util, only: cubic_specfit
 !
 !    IMPLICIT NONE
 !

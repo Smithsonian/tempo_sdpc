@@ -1,11 +1,11 @@
-!> Read cloud fraction, pressure, and quality flags from L2 cloud netCDF file
+!> Read cloud fraction, pressure, and quality flags from L2 cloud netCDF fil
 module m_read_cloud_tio
   use o3p_names_module
   use tio_module
   use tell_module
   use netcdf, only: nf90_nowrite
-  use OMSAO_omidata_module, only: nxtrack_max, ntimes_max, ncoadd, offset_line
-  use OMSAO_variables_module, only: coadd_uv2, scnwrt, use_he5_in, nxbin, nybin
+  use OMSAO_tmpodata_module, ONLY: nxtrack_max, ntimes_max
+  use OMSAO_variables_module, only:  scnwrt, nxbin, nybin, l2file=>l2_cld_filename
 
   implicit none
   ! Type declaration for cloud data
@@ -15,7 +15,7 @@ module m_read_cloud_tio
     real (kind=4),   dimension (nxtrack_max,0:ntimes_max-1)  :: cfr
     real (kind=4),   dimension (nxtrack_max,0:ntimes_max-1)  :: ctp
     real (kind=4),   dimension (nxtrack_max,0:ntimes_max-1)  :: ai
-    integer(kind=1), dimension (nxtrack_max, 0:ntimes_max-1) :: qflags
+    integer(kind=1), dimension (nxtrack_max,0:ntimes_max-1) :: qflags
   end type tempo_cloud_block
   type (tempo_cloud_block), public :: L2_cloud
 
@@ -38,101 +38,89 @@ contains
   !> @author E. O'Sullivan June 2016
   !----------------------------------------------------------------------
 
-  subroutine read_cloud_tio (l2file, nstep, nxtrack, nl, errstat)
+  subroutine read_cloud_tio (ntimes, nxtrack,sline,eline, errstat)
 
     use m_convert_coadd, only: convert_2bytes_to_16bits
     ! To allow comparison with values read in from he5
-    use OMSAO_omicloud_module, only: OMIL2_clouds
 
     implicit none
 
     !input variables
-    integer (kind=4), intent (in) :: nstep, nxtrack, nl
-    character (len=*), intent(in) :: l2file
+    integer (kind=4), intent (in) :: sline, eline, ntimes, nxtrack
 
     !output variables
-    integer (kind=4), intent (inout) :: errstat
+    integer (kind=4), intent (out) :: errstat
 
     !local variables
-    type (tiof_file_type) :: tio_l2obj
-    real    (kind=4), dimension (nxtrack, 0:nstep-1) :: cfr, ctp
-    integer (kind=2), dimension (nxtrack, 0:nstep-1) :: qflag
+    INTEGER :: ntimes_loc, nxtrack_loc
     integer (kind=4), parameter :: nbit = 16
-    integer (kind=4) :: nstep_loc, nxtrack_loc, ix, iix, i, ii, j, k, &
-         nline, nbx, nbin, sline, eline
+    integer (kind=4) :: ix, iix, i, ii, j, k, &
+                       nbx, nbin, nl
     real    (kind=4) :: scfr, scfr1, scfr0, tmpsum
-    integer (kind=2), dimension (nxtrack, 0:nstep-1, 0:nbit-1) :: flgbits
-    integer (kind=2), dimension(nstep) :: tmp_byte_num
-    integer (kind=2), dimension(nstep, 0:nbit-1) :: tmp_bit_num
+    integer (kind=2), dimension(ntimes) :: tmp_byte_num
+    integer (kind=2), dimension(ntimes, 0:nbit-1) :: tmp_bit_num
+    type (tiof_file_type) :: tio_l2obj
+    ! Save variables
+    LOGICAL, SAVE :: first=.true.
+    real    (kind=4), dimension (nxtrack_max,0:ntimes_max-1), SAVE :: cfr, ctp
+    integer (kind=2), dimension (nxtrack_max,0:ntimes_max-1), SAVE :: qflag
+    integer (kind=2), dimension (:,:,:), POINTER :: flgbits 
+    !(nxtrack_max,0:ntimes_max-1, 0:nbit-1) :: flgbits
 
-    !get dimensions of L2 cloud file
-    call read_cloud_dims(l2file, tio_l2obj, nstep_loc, nxtrack_loc, &
-         errstat)
-    if (errstat /= 0) then 
+    errstat  = 0
+    IF (first) THEN 
+      !get dimensions of L2 cloud file
+      call read_cloud_dims(l2file, tio_l2obj, ntimes_loc, nxtrack_loc,errstat)
+      if (errstat /= 0) then 
       call tell_error (tell_io_read_error, &
-           "read_cloud_dims: failed", &
-           errstat)
+           "read_cloud_dims: failed",  errstat)
       return
-    endif
+      endif
 
-    !Check dimensions are consistent with input radiance data
-    if (nstep_loc /= nstep .OR. nxtrack_loc /= nxtrack) then
-      call tell_error (tell_io_error, &
-           "inconsistent dimensions between radiance and cloud files", &
-           errstat)
-      return
-    endif
+      !Check dimensions are consistent with input radiance data
+      if (ntimes_loc /= ntimes .OR. nxtrack_loc /= nxtrack) then
+        call tell_error (tell_io_error, &
+           "inconsistent dimensions between radiance and cloud files", errstat)
+        return
+      endif
       
-    !Read cloud fraction, pressure, quality flags for the swath
-    call read_cloud_data (l2file, tio_l2obj, nstep, nxtrack, &
-         cfr, ctp, qflag, errstat)
-    if (errstat /= 0) then 
-      call tell_error (tell_io_read_error, &
-           "read_cloud_data: failed", &
-           errstat)
+      !Read cloud fraction, pressure, quality flags for the swath
+      call read_cloud_data (l2file, tio_l2obj, ntimes, nxtrack, &
+           cfr, ctp, qflag, errstat)
+      if (errstat /= 0) then 
+        call tell_error (tell_io_read_error, "read_cloud_data: failed",  errstat)
       return
-    endif
+      endif
 
-    ! Move cloud arrays into cloud block and rebin
-    flgbits = 0
-    sline = offset_line
-    nline = nl * nybin
-    eline  = offset_line + nline - 1
-
-    DO ix = 1, nxtrack
-      tmp_byte_num=qflag(ix, 0:nstep-1)
-      CALL convert_2bytes_to_16bits (nbit, nstep, tmp_byte_num, &
+      allocate (flgbits(nxtrack_max,0:ntimes_max-1, 0:nbit-1))
+      flgbits = 0
+      DO ix = 1, nxtrack
+      tmp_byte_num=qflag(ix, 0:ntimes-1)
+      CALL convert_2bytes_to_16bits (nbit,ntimes, tmp_byte_num, &
            tmp_bit_num)
-      flgbits(ix, 0:nstep-1, 0:nbit-1)=tmp_bit_num
-    ENDDO
+      flgbits(ix, 0:ntimes-1, 0:nbit-1)=tmp_bit_num
+      ENDDO
 
-    nbin = nxbin
-    IF (coadd_uv2) nbin = nbin * ncoadd
-    nbx = nxtrack / nbin
-
-    L2_cloud%cfr   (1:nbx, 0:nl-1) = 0.0
-    L2_cloud%ctp   (1:nbx, 0:nl-1) = 0.0
-    L2_cloud%qflags(1:nbx, 0:nl-1) = 0
-
-    ! Fill in cloud top pressure values for bad pixels (interpolation/extrapolation)
-    ! 0   - failed convergence check
-    ! 1   - solar zenith angle, lat., lon., out of range (SZA > 88 deg) 
-    ! 2   - cloud pressure less than low range of table
-    ! 3   - cloud pressure greater than surface pressure
-    ! 4   - matrix inversion failed
-    ! 5   - snow/ice (if second byte of GroundPixelQualityFlags is 50-130)
-    ! 6   - reflectivity < 0 or > 1.0
-    ! 7   - bad radiances detected
-    ! 8   - aerosol index flag
-    ! 9   - radiance PixelQuality error
-    ! 10  - radiance PixelQuality warning
-    ! 11  - irradiance PixelQuality error
-    ! 12  - irradiance PixelQuality warning
-    ! 13  - effective surface pressure retrieved because cloud fraction < 0.05
-    ! 14  - missing data
-    ! 15  - geolocation error
-    qflag(1:nxtrack, :)  = &
+     ! Fill in cloud top pressure values for bad pixels (interpolation/extrapolation)
+     ! 0   - failed convergence check
+     ! 1   - solar zenith angle, lat., lon., out of range (SZA > 88 deg) 
+     ! 2   - cloud pressure less than low range of table
+     ! 3   - cloud pressure greater than surface pressure
+     ! 4   - matrix inversion failed
+     ! 5   - snow/ice (if second byte of GroundPixelQualityFlags is 50-130)
+     ! 6   - reflectivity < 0 or > 1.0
+     ! 7   - bad radiances detected
+     ! 8   - aerosol index flag
+     ! 9   - radiance PixelQuality error
+     ! 10  - radiance PixelQuality warning
+     ! 11  - irradiance PixelQuality error
+     ! 12  - irradiance PixelQuality warning
+     ! 13  - effective surface pressure retrieved because cloud fraction < 0.05
+     ! 14  - missing data
+     ! 15  - geolocation error
+     qflag(1:nxtrack, :)  = &
          flgbits(1:nxtrack, :, 0) + flgbits(1:nxtrack, :, 1) + &
+         flgbits(1:nxtrack, :, 2) + flgbits(1:nxtrack, :, 3) + &
          flgbits(1:nxtrack, :, 2) + flgbits(1:nxtrack, :, 3) + &
          flgbits(1:nxtrack, :, 4) + flgbits(1:nxtrack, :, 6) + &
          flgbits(1:nxtrack, :, 7) + flgbits(1:nxtrack, :, 9) + &
@@ -140,13 +128,26 @@ contains
          flgbits(1:nxtrack, :, 14) + flgbits(1:nxtrack, :, 15) 
 
     ! Fill in cloud top pressure values for bad pixels
-    call fill_in_ctp(nxtrack, nstep, ctp(1:nxtrack, 0:nstep-1), &
-         qflag(1:nxtrack, 0:nstep-1))
+     call fill_in_ctp(nxtrack, ntimes, ctp(1:nxtrack, 0:ntimes-1), &
+         qflag(1:nxtrack, 0:ntimes-1))
+     
+     deallocate(flgbits)
+     first = .false.
+    endif
+
+    ! Move cloud arrays into cloud block and rebin
+    nl = (eline-sline+1)/nybin
+    nbin = nxbin
+    nbx  = nxtrack / nbin
+  
+    L2_cloud%cfr   (1:nbx, 0:nl-1) = 0.0
+    L2_cloud%ctp   (1:nbx, 0:nl-1) = 0.0
+    L2_cloud%qflags(1:nbx, 0:nl-1) = 0
 
     do ix = 1, nbx
-      do i = 0, nl - 1        
+      do i = 0, nl-1
         iix = (ix - 1) * nbin + 1 
-        ii  = i * nybin + sline
+        ii  = i * nybin + sline-1
 
         scfr = 0.0
         scfr1 = 0.0
@@ -186,7 +187,7 @@ contains
     enddo
 
     do ix = 1, nbx
-      do i = 0, nl - 1
+      do i = 0, nl-1
         if (L2_cloud%ctp(ix, i) == 0.0 ) then
           L2_cloud%qflags(ix, i) = 10  ! Bad results (should not be used)
         else
@@ -194,26 +195,6 @@ contains
         endif
       enddo
     enddo
-
-    !Compare values with those from he5 file
-    if (use_he5_in) then
-      do ix = 1, nbx
-        do i = 0, nl - 1
-          ! ctp values not quite identical, but good to factor 10^-5
-          ! can't use normalized difference owing to zero values...
-          if (ABS(L2_cloud%ctp(ix, i)-OMIL2_clouds%ctp(ix, i)) .ge. 0.01) then
-            print *, 'mismatch: ctp', L2_cloud%ctp(ix, i), OMIL2_clouds%ctp(ix, i)
-          endif
-          if (L2_cloud%cfr(ix, i) .ne. OMIL2_clouds%cfr(ix, i)) then
-            print *, 'mismatch: cfr'
-          endif
-          if (L2_cloud%qflags(ix, i) .ne. OMIL2_clouds%qflags(ix, i)) then
-            print *, 'mismatch: qflags', L2_cloud%qflags(ix, i), OMIL2_clouds%qflags(ix, i)
-          endif
-        end do
-      end do
-    endif
-
 
   end subroutine read_cloud_tio
 
@@ -244,8 +225,6 @@ contains
     type (tiof_file_type) :: tio_l2obj
 
     if (errstat /= 0) return
-
-    if (scnwrt) print *, 'read_cloud_dims'
 
     call tiof_open (l2file, tio_l2obj, nf90_nowrite, errstat)
     call tiof_inq_dimlen (tio_l2obj, o3p_dim_xtrack, nxtrack_loc, errstat)
@@ -294,8 +273,6 @@ contains
     type (tiof_file_type) :: tio_l2obj
 
     if (errstat /=0) return
-
-    if (scnwrt) print *, 'read_cloud_data'
 
     call tiof_open (l2file, tio_l2obj, nf90_nowrite, errstat)
 !    call tiof_inq_group (tio_l2obj, "/product", errstat)

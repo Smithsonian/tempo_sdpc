@@ -13,32 +13,35 @@ MODULE OMSAO_pixelcorner_module
   USE OMSAO_variables_module, ONLY: l1b_rad_filename, verb_thresh_lev, &
        the_utc, TAI93At0ZOfGranule, TAI93StartOfGranule, GranuleYear, &
        GranuleMonth, GranuleDay, GranuleHour, GranuleMinute, GranuleSecond, &
-       GranuleJDay, nxbin, nybin
+       GranuleJDay, nxbin, nybin, nswath, offset_line
   USE OMSAO_omidata_module,   ONLY: omi_radiance_swathname, nxtrack_max, &
-       ntimes_max, offset_line, zoom_mode, nswath, zoom_p1, &
-       land_water_flg, glint_flg, snow_ice_flg, omi_irradiance_wavl
+       ntimes_max,zoom_mode, zoom_p1       
   use m_angle_sat2toa, only: omi_angle_sat2toa
+  use m_convert_coadd, only: coadd_byte_qflgs, convert_2bytes_to_16bits,convert_byte_to_8bits
+
   IMPLICIT NONE
 
   ! Public parameters
-  REAL (KIND=r8), DIMENSION (1:nxtrack_max, 0:ntimes_max-1) :: omi_alllat,  &
-       omi_alllon
-  REAL (KIND=r8), DIMENSION (0:nxtrack_max, 0:ntimes_max-1) :: omi_allelat, &
-       omi_allelon
-  REAL (KIND=r8), DIMENSION (1:nxtrack_max, 0:ntimes_max-1) :: omi_allsza, &
-       omi_allvza, omi_allaza, omi_allsca
-  REAL (KIND=r8), DIMENSION (0:nxtrack_max, 0:ntimes_max)   :: omi_allclat, &
-       omi_allclon
-  REAL (KIND=r8), DIMENSION (0:ntimes_max-1) :: omi_alltime
-  REAL (KIND=r4), DIMENSION (0:ntimes_max-1) :: omi_allSpcftLat, &
-       omi_allSpcftLon, omi_allSpcftAlt, omi_allSecondsInDay
-  INTEGER (KIND=i2), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: omi_allGeoFlg
-  INTEGER (KIND=i2), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: omi_allHeight
-  INTEGER (KIND=i1), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: &
-       omi_allXTrackQFlg
-  INTEGER (KIND=i2), DIMENSION(0:ntimes_max-1)              :: omi_allMflg
-  INTEGER (KIND=i1), DIMENSION(0:ntimes_max-1)              :: omi_allNSPC
 
+  ! Public parameters
+  !REAL (KIND=r8), DIMENSION (1:nxtrack_max, 0:ntimes_max-1) :: & 
+  REAL (KIND=r8), DIMENSION (:,:), POINTER :: & 
+       omi_lat,   omi_lon, omi_sza, omi_vza, omi_aza, omi_sca
+  REAL (KIND=r8), DIMENSION (0:nxtrack_max, 0:ntimes_max-1) :: omi_elat, &
+       omi_elon
+  REAL (KIND=r8), DIMENSION (0:nxtrack_max, 0:ntimes_max)   :: omi_clat, &
+       omi_clon
+  REAL (KIND=r8), DIMENSION (0:ntimes_max-1) :: omi_time
+  REAL (KIND=r4), DIMENSION (0:ntimes_max-1) :: omi_SpcftLat, &
+       omi_SpcftLon, omi_SpcftAlt, omi_SecondsInDay
+  INTEGER (KIND=i2), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: omi_GeoFlg
+  INTEGER (KIND=i2), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: omi_Height
+  INTEGER (KIND=i1), DIMENSION(1:nxtrack_max,0:ntimes_max-1):: &
+       omi_XTrackQFlg
+  INTEGER (KIND=i2), DIMENSION(0:ntimes_max-1)              :: omi_Mflg
+  INTEGER (KIND=i1), DIMENSION(0:ntimes_max-1)              :: omi_NSPC
+  INTEGER (KIND=i1),DIMENSION (0:nxtrack_max, 0:ntimes_max) :: rowanomaly_flg !(nxtrack_max,0:ntimes_max-1) :: 
+  INTEGER (KIND=i2), DIMENSION (0:nxtrack_max, 0:ntimes_max)  :: omi_land_water_flg, omi_glint_flg, omi_snow_ice_flg ! (nxtrack_max,0:ntimes_max-1) :: 
   ! ----------------
   ! Local Parameters
   ! ---------------------------------------------------------------------
@@ -64,15 +67,16 @@ MODULE OMSAO_pixelcorner_module
 
   public compute_pixel_corners
   private get_sphgeoview_corners, sphergeom_intermediate, angle_minus_twopi, &
-       circle_rdis!, sphergeom_baseline_comp, lonlat_to_pi, circle_dis
+       circle_rdis,  convert_gpqualflag_info,convert_xtrackqflag_info
+    !, sphergeom_baseline_comp, lonlat_to_pi, circle_dis
 
 
 CONTAINS
 
-  SUBROUTINE compute_pixel_corners ( ntimes, nxtrack, nl, pge_error_status )
+  SUBROUTINE compute_pixel_corners ( geo, ntimes, nxtrack, nl, pge_error_status )
 
-    use utilities, only: day_of_year
-    use m_convert_coadd, only: coadd_byte_qflgs, convert_gpqualflag_info
+    use m_utilities, only: day_of_year
+    use OMSAO_variables_module, ONLY:geo_group
 
     ! =======================================================
     ! Computes OMI pixel corner coordinates, start to finish:
@@ -93,7 +97,7 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i4), INTENT (OUT) :: pge_error_status
-
+    TYPE(geo_group), INTENT(OUT) :: geo
     ! ---------------
     ! Local variables
     ! ---------------
@@ -101,9 +105,10 @@ CONTAINS
     INTEGER (KIND=i4)  :: errstat, iline, i, j, nline, nx, sline, &
          eline, ix, nxtrack1, xoff, ysidx, yeidx, ymidx, xsidx, xeidx, &
          xmidx, iy, estat, nbits, ndim!, ny
-    REAL (KIND=r8), DIMENSION (1:nxtrack, 0:ntimes-1) :: sza, vza, saza, vaza
+    REAL (KIND=r8), DIMENSION (:,:),POINTER :: &
+          sza, vza, saza, vaza
     REAL (KIND=r4), DIMENSION (1:nxtrack)   :: tmp_lat, tmp_lon, tmp_sza, &
-         tmp_vza, tmp_saza, tmp_vaza
+                                               tmp_vza, tmp_saza, tmp_vaza
     INTEGER (KIND=i2), DIMENSION (1:nxtrack) :: tmp_height, tmp_geoflg
     INTEGER (KIND=i1), DIMENSION (1:nxtrack)          :: tmp_xtrackqflg
     INTEGER (KIND=i1), DIMENSION (1:nxtrack_max)      :: tmp_xtrackqflg1
@@ -114,7 +119,11 @@ CONTAINS
     REAL (KIND=r8)                                    :: tmp_time
     TYPE (L1B_block_type)                             :: omi_data_block
     LOGICAL :: ascendQ 
+    INTEGER (KIND=i1), DIMENSION (nxtrack_max) :: &
+                  waveshift_flg, blockage_flg, straysun_flg, strayearth_flg
+    INTEGER (KIND=i2), DIMENSION (nxtrack_max) ::land_water_flg, glint_flg, snow_ice_flg
 
+    
     ! Exteranl functions
     INTEGER                       :: OMI_SMF_setmsg
     INTEGER (KIND=i4), EXTERNAL   :: PGS_TD_TAItoUTC, PGS_TD_UTCtoTAI !, day_of_year
@@ -124,11 +133,32 @@ CONTAINS
 
     pge_error_status = pge_errstat_ok
     errstat          = omi_s_success
+    !-------------------------------------------------------------------------------
+    ! allocate
+
+    !---------------------------------------------------------------------------------
+    allocate(sza(nxtrack_max, 0:ntimes_max-1), saza(nxtrack_max,0:ntimes_max))
+    allocate(vza(nxtrack_max, 0:ntimes_max-1), vaza(nxtrack_max,0:ntimes_max))
+    allocate(omi_lat(nxtrack_max, 0:ntimes_max-1), omi_lon(nxtrack_max,0:ntimes_max))
+    allocate(omi_sza(nxtrack_max, 0:ntimes_max-1), omi_vza(nxtrack_max,0:ntimes_max))
+    allocate(omi_aza(nxtrack_max, 0:ntimes_max-1), omi_sca(nxtrack_max,0:ntimes_max))
+   ! ALLOCATE (omi_lat(nxtrack_max, 0:ntimes_max-1), omi_lon(nxtrack_max, 0:ntimes_max-1), &
+   !  omi_sza(nxtrack_max, 0:ntimes_max-1), omi_vza(nxtrack_max, 0:ntimes_max-1), &
+   !  omi_aza(nxtrack_max, 0:ntimes_max-1), omi_sca(nxtrack_max, 0:ntimes_max-1), &
+   !  omi_elat(0:nxtrack_max, 0:ntimes_max-1),omi_elon(0:nxtrack_max, 0:ntimes_max-1),&
+   !  omi_clat(0:nxtrack_max, 0:ntimes_max), omi_clon(0:nxtrack_max, 0:ntimes_max), & 
+   !  omi_GeoFlg(nxtrack, 0:ntimes_max-1), omi_Height(nxtrack_max,0:ntimes_max-1), &
+   !  omi_Mflg(0:ntimes_max-1), omi_NSPC(0:ntimes_max-1), omi_time(0:ntimes_max-1), &
+   !  omi_rowanomaly_flg(nxtrack_max,0:ntimes_max-1), omi_land_water_flg(nxtrack_max,0:ntimes_max-1), &
+   !  omi_glint_flg (nxtrack_max,0:ntimes_max-1), omi_snow_ice_flg(nxtrack_max,0:ntimes_max-1), &
+   !  omi_SpcftLat(0:ntimes_max-1), omi_SpcftLon(0:ntimes_max-1), omi_SpcftAlt(0:ntimes_max-1), omi_SecondsInDay(0:ntimes_max-1))
 
     ! -----------------------------------------------------------
     ! Open data block (UV-1, if both are selected) 
     ! called 'omi_data_block' with nTimes lines
     ! -----------------------------------------------------------
+    ! ** all geolocation variables is arranged in all domain (not subset) 
+    !    to be saved to L2
     errstat = L1Br_open ( omi_data_block, l1b_rad_filename, &
          omi_radiance_swathname(1))
     IF( errstat /= omi_s_success ) THEN
@@ -138,7 +168,7 @@ CONTAINS
     END IF
 
     sline = offset_line
-    eline  = offset_line + nl * nybin - 1
+    eline = offset_line + nl * nybin - 1
     IF (eline == sline) eline = sline + 1
     nline = eline - sline + 1
 
@@ -185,16 +215,16 @@ CONTAINS
            ViewingZenithAngle_k        = tmp_vza (1:nxtrack),      & 
            ViewingAzimuthAngle_k       = tmp_vaza(1:nxtrack))  
 
-      omi_alltime(iline)               = tmp_time
-      omi_allSecondsInDay(iline)       = tmp_SecondsInDay    
-      omi_allSpcftAlt(iline)           = tmp_auraalt
-      omi_allSpcftLon(iline)           = tmp_auralon
-      omi_allSpcftLat(iline)           = tmp_auralat
-      omi_allHeight(1:nxtrack1, iline) = tmp_height(1:nxtrack1)  
-      omi_allGeoFlg(1:nxtrack1, iline) = tmp_geoflg(1:nxtrack1) 
-      omi_allXTrackQFlg(1:nxtrack1, iline) = tmp_xtrackqflg(1:nxtrack1)   
-      omi_alllat(1:nxtrack1, iline)    = tmp_lat(1:nxtrack1)   
-      omi_alllon(1:nxtrack1, iline)    = tmp_lon(1:nxtrack1)   
+      omi_time(iline)               = tmp_time
+      omi_SecondsInDay(iline)       = tmp_SecondsInDay    
+      omi_SpcftAlt(iline)           = tmp_auraalt
+      omi_SpcftLon(iline)           = tmp_auralon
+      omi_SpcftLat(iline)           = tmp_auralat
+      omi_Height(1:nxtrack1, iline) = tmp_height(1:nxtrack1)  
+      omi_GeoFlg(1:nxtrack1, iline) = tmp_geoflg(1:nxtrack1) 
+      omi_XTrackQFlg(1:nxtrack1, iline) = tmp_xtrackqflg(1:nxtrack1)   
+      omi_lat(1:nxtrack1, iline)    = tmp_lat(1:nxtrack1)   
+      omi_lon(1:nxtrack1, iline)    = tmp_lon(1:nxtrack1)   
       sza (1:nxtrack1, iline)          = tmp_sza(1:nxtrack1)   
       saza(1:nxtrack1, iline)          = tmp_saza(1:nxtrack1)  
       vza (1:nxtrack1, iline)          = tmp_vza(1:nxtrack1)   
@@ -217,15 +247,17 @@ CONTAINS
       STOP 1
     ENDIF
 
-    ! Read measurement quality flags and NumberSmallPixelColumns (only in UV2 swath)
-    ! For XtrackQuality flags, always use that from UV2 because UV1 and UV2 are different
-    ! and more pixels are filtered in UV2
-
+    !----------------------------------------------------------------
+    ! measurement quality flags and NumberSmallPixelColumns 
+    !  ==> only in UV2 swath
+    ! XtrackQuality flags
+    !  ==> only in UV2 because UV1 and UV2 are different
+    !      and more pixels are filtered in UV2
     !errstat = L1Br_open ( omi_data_block, l1b_rad_filename, 'Earth UV-2 Swath')
-! FIXME
-! for some reason code fails if we don't set block size to full swath length,
-! seems to be unable to access any line beyond block limit of 100
-!    errstat = L1Br_open ( omi_data_block, l1b_rad_filename, 'Earth UV-2 Swath', 1644)
+    ! FIXME
+    ! for some reason code fails if we don't set block size to full swath length,
+    ! seems to be unable to access any line beyond block limit of 100
+    !    errstat = L1Br_open ( omi_data_block, l1b_rad_filename, 'Earth UV-2 Swath', 1644)
     errstat = L1Br_open ( omi_data_block, l1b_rad_filename, 'Earth UV-2 Swath', 100) !1643
     IF( errstat /= omi_s_success ) THEN
       estat = OMI_SMF_setmsg ( omsao_e_open_l1b_file, "L1Br_open failed.", &
@@ -235,7 +267,7 @@ CONTAINS
 
     ascendQ = .TRUE.
     IF( eline > sline ) THEN
-      IF( omi_allSpcftLat(sline) <  omi_allSpcftLat(sline+1) ) THEN
+      IF( omi_SpcftLat(sline) <  omi_SpcftLat(sline+1) ) THEN
         ascendQ = .TRUE.
       ELSE
         ascendQ = .FALSE.
@@ -254,16 +286,16 @@ CONTAINS
         STOP 1
       END IF
       IF( iline > sline ) THEN
-        IF( omi_allSpcftLat(iline-1) <  omi_allSpcftLat(iline) ) THEN
+        IF( omi_SpcftLat(iline-1) <  omi_SpcftLat(iline) ) THEN
           ascendQ = .TRUE.
         ELSE
           ascendQ = .FALSE.
         ENDIF
       ENDIF
       IF( .NOT. ascendQ  ) THEN
-        omi_allMflg(iline) = IBSET( tmp_mflg, 7  ) !! set bit 7 to 1 for decending pixel
+        omi_Mflg(iline) = IBSET( tmp_mflg, 7  ) !! set bit 7 to 1 for decending pixel
       ELSE
-        omi_allMflg(iline) = tmp_mflg
+        omi_Mflg(iline) = tmp_mflg
       ENDIF
 
       errstat = L1Br_getSIGline ( omi_data_block, iline, &
@@ -273,7 +305,7 @@ CONTAINS
              "L1Br_getSIGline failed.", modulename, 0 )
         STOP 1
       END IF
-      omi_allNSPC(iline) = tmp_NSPC
+      omi_NSPC(iline) = tmp_NSPC
 
       IF (nswath == 2) THEN
         errstat = L1Br_getGEOline ( omi_data_block, iline,           &
@@ -286,7 +318,7 @@ CONTAINS
           !CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i))!, & changed by someson TEMPO team
           !     !tmp_xtrackqflg1(j))
           CALL coadd_byte_qflgs(nbits, ndim, tmp_xtrackqflg1(i), tmp_xtrackqflg1(j)) ! returned by jbak
-          omi_allXTrackQFlg(ix, iline) = tmp_xtrackqflg1(i)
+          omi_XTrackQFlg(ix, iline) = tmp_xtrackqflg1(i)
         ENDDO
       ENDIF
 
@@ -298,94 +330,264 @@ CONTAINS
       STOP 1
     ENDIF
 
-    WHERE (omi_allXTrackQFlg(1:nxtrack1, sline:eline) == -127)
-      omi_allXTrackQFlg(1:nxtrack1, sline:eline) = 0
+    WHERE (omi_XTrackQFlg(1:nxtrack1, sline:eline) == -127)
+      omi_XTrackQFlg(1:nxtrack1, sline:eline) = 0
     ENDWHERE
 
-    ! -----------------------------------------------------
+
+    !*******************************************************
+    ! co-adding, convert flag
+    !*****************************************************
     ! Compute the corner coordinates/viewing geometry for
     !    the spatially coadded pixels
     ! -----------------------------------------------------
     CALL get_sphgeoview_corners (nxtrack1, nline,  &
-         omi_alllon(1:nxtrack1, sline:eline), omi_alllat(1:nxtrack1, sline:eline),       &
+         omi_lon(1:nxtrack1, sline:eline), omi_lat(1:nxtrack1, sline:eline),       &
          sza(1:nxtrack1, sline:eline), saza(1:nxtrack1, sline:eline),                    &
          vza(1:nxtrack1, sline:eline), vaza(1:nxtrack1, sline:eline), &
-         omi_allclon(0:nxtrack1, sline:eline+1), omi_allclat(0:nxtrack1, sline:eline+1), &
-         omi_allelon(0:nxtrack1, sline:eline),   omi_allelat(0:nxtrack1, sline:eline),   &
-         omi_allsza(1:nxtrack1, sline:eline),    omi_allvza(1:nxtrack1, sline:eline),    &
-         omi_allaza(1:nxtrack1, sline:eline),    omi_allsca(1:nxtrack1, sline:eline))
+         omi_clon(0:nxtrack1, sline:eline+1), omi_clat(0:nxtrack1, sline:eline+1), &
+         omi_elon(0:nxtrack1, sline:eline),   omi_elat(0:nxtrack1, sline:eline),   &
+         omi_sza(1:nxtrack1, sline:eline),    omi_vza(1:nxtrack1, sline:eline),    &
+         omi_aza(1:nxtrack1, sline:eline),    omi_sca(1:nxtrack1, sline:eline))
 
     ! Re-store the data
     nx = nxtrack1 / nxbin 
     i = sline
     j = i + nl - 1
 
-    omi_alllon (1+xoff:nx+xoff, 0:nl-1)  = omi_alllon (1:nx, i:j)
-    omi_alllat (1+xoff:nx+xoff, 0:nl-1)  = omi_alllat (1:nx, i:j)
+    omi_lon (1+xoff:nx+xoff, 0:nl-1)  = omi_lon (1:nx, i:j)
+    omi_lat (1+xoff:nx+xoff, 0:nl-1)  = omi_lat (1:nx, i:j)
     !sza        (1+xoff:nx+xoff, 0:nl-1)  = sza        (1:nx, i:j)
     !saza       (1+xoff:nx+xoff, 0:nl-1)  = saza       (1:nx, i:j)
     !vza        (1+xoff:nx+xoff, 0:nl-1)  = vza        (1:nx, i:j)
     !vaza       (1+xoff:nx+xoff, 0:nl-1)  = vaza       (1:nx, i:j)
-    omi_allclon(0+xoff:nx+xoff, 0:nl)    = omi_allclon(0:nx, i:j+1)
-    omi_allclat(0+xoff:nx+xoff, 0:nl)    = omi_allclat(0:nx, i:j+1)
-    omi_allelon(0+xoff:nx+xoff, 0:nl-1)  = omi_allelon(0:nx, i:j)
-    omi_allelat(0+xoff:nx+xoff, 0:nl-1)  = omi_allelat(0:nx, i:j)
-    omi_allsza (1+xoff:nx+xoff, 0:nl-1)  = omi_allsza (1:nx, i:j)
-    omi_allvza (1+xoff:nx+xoff, 0:nl-1)  = omi_allvza (1:nx, i:j)
-    omi_allaza (1+xoff:nx+xoff, 0:nl-1)  = omi_allaza (1:nx, i:j)
-    omi_allsca (1+xoff:nx+xoff, 0:nl-1)  = omi_allsca (1:nx, i:j)
+    omi_clon(0+xoff:nx+xoff, 0:nl)    = omi_clon(0:nx, i:j+1)
+    omi_clat(0+xoff:nx+xoff, 0:nl)    = omi_clat(0:nx, i:j+1)
+    omi_elon(0+xoff:nx+xoff, 0:nl-1)  = omi_elon(0:nx, i:j)
+    omi_elat(0+xoff:nx+xoff, 0:nl-1)  = omi_elat(0:nx, i:j)
+    omi_sza (1+xoff:nx+xoff, 0:nl-1)  = omi_sza (1:nx, i:j)
+    omi_vza (1+xoff:nx+xoff, 0:nl-1)  = omi_vza (1:nx, i:j)
+    omi_aza (1+xoff:nx+xoff, 0:nl-1)  = omi_aza (1:nx, i:j)
+    omi_sca (1+xoff:nx+xoff, 0:nl-1)  = omi_sca (1:nx, i:j)
 
     ! Need to get Time, SecondsInDay, Spacecfraft altitude/latitude/longitude, 
     ! GroundPixelQualityFlags, and Terrain Height for the spatially coadded pixels
     ! GroundPixelQualityFlags, XTrackQualityFlags, and Terrain Height for the spatially coadded pixels
+    ! Derive Row Anomaly Related Flags
+
+
+
     DO iy = 0, nl - 1 
       ysidx = sline + iy * nybin 
       yeidx = ysidx + nybin - 1
       ymidx = ysidx + nybin / 2
-      omi_alltime(iy)         = SUM(omi_alltime(ysidx:yeidx))      / nybin
-      omi_allSecondsInDay(iy) = SUM(omi_allSecondsInDay(ysidx:yeidx)) / nybin
-      omi_allSpcftAlt(iy)     = SUM(omi_allSpcftAlt(ysidx:yeidx))  / nybin
+      omi_time(iy)         = SUM(omi_time(ysidx:yeidx))      / nybin
+      omi_SecondsInDay(iy) = SUM(omi_SecondsInDay(ysidx:yeidx)) / nybin
+      omi_SpcftAlt(iy)     = SUM(omi_SpcftAlt(ysidx:yeidx))  / nybin
 
       ! Use those from the middle point (avoid dealing with polar, dateline regions)
-      omi_allSpcftLat(iy)     = omi_allSpcftLat(ymidx)
-      omi_allSpcftLon(iy)     = omi_allSpcftLon(ymidx)
-      omi_allMflg(iy)         = omi_allMflg(ymidx)
-      omi_allNSPC(iy)         = omi_allNSPC(ymidx)       
-
-      ! get separate land/water, glint, snow/ice flags
-      call convert_gpqualflag_info (nxtrack, omi_allGeoFlg(1:nxtrack, ymidx), &
-           land_water_flg(1:nxtrack, ymidx), glint_flg(1:nxtrack, ymidx), &
-           snow_ice_flg(1:nxtrack, ymidx))
+      omi_SpcftLat(iy)     = omi_SpcftLat(ymidx)
+      omi_SpcftLon(iy)     = omi_SpcftLon(ymidx)
+      omi_Mflg(iy)         = omi_Mflg(ymidx)
+      omi_NSPC(iy)         = omi_NSPC(ymidx)       
 
       DO ix = 1, nx 
         xsidx = (ix - 1) * nxbin + 1
         xeidx = xsidx + nxbin - 1
         xmidx = xsidx + nxbin / 2
-        omi_allHeight(ix, iy)  = INT( &
-             SUM(1.0 * omi_allHeight(xsidx:xeidx, ysidx:yeidx)) &
+        omi_Height(ix, iy)  = INT( &
+             SUM(1.0 * omi_Height(xsidx:xeidx, ysidx:yeidx)) &
              / (1.0 * nxbin * nybin), kind=i2)
-        omi_allGeoFlg(ix, iy) = omi_allGeoFlg(xmidx, ymidx)
-        omi_allXTrackQFlg(ix, iy) = omi_allXTrackQFlg(xmidx, ymidx)
+        omi_GeoFlg(ix, iy) = omi_GeoFlg(xmidx, ymidx)
+        omi_XTrackQFlg(ix, iy) = omi_XTrackQFlg(xmidx, ymidx)
       ENDDO
+
+      CALL convert_xtrackqflag_info (nx, omi_XTrackQFlg(1:nx, iy), &
+           rowanomaly_flg(1:nx, iy), waveshift_flg(1:nx), &
+           blockage_flg(1:nx), straysun_flg(1:nx), &
+           strayearth_flg(1:nx) )  
+      ! get separate land/water, glint, snow/ice flags
+      CALL convert_gpqualflag_info (nx, omi_GeoFlg(1:nx, iy), &
+           omi_land_water_flg(1:nx, iy), omi_glint_flg(1:nx, iy), &
+           omi_snow_ice_flg(1:nx, iy)) 
     ENDDO
+
     IF (xoff > 0) THEN
-      omi_allGeoFlg(1+xoff:nx+xoff, 0:nl-1) = omi_allGeoFlg(1:nx, 0:nl-1)
-      omi_allXTrackQFlg(1+xoff:nx+xoff, 0:nl-1) = omi_allXTrackQFlg(1:nx, 0:nl-1)
-      omi_allHeight(1+xoff:nx+xoff, 0:nl-1) = omi_allHeight(1:nx, 0:nl-1)
+      omi_GeoFlg(1+xoff:nx+xoff, 0:nl-1) = omi_GeoFlg(1:nx, 0:nl-1)
+      omi_XTrackQFlg(1+xoff:nx+xoff, 0:nl-1) = omi_XTrackQFlg(1:nx, 0:nl-1)
+      omi_Height(1+xoff:nx+xoff, 0:nl-1) = omi_Height(1:nx, 0:nl-1)
     ENDIF
 
-    !DO ix = 1, nxtrack
-    !   WRITE(90, '(I5, 2F10.4)'), ix, omi_alllat(ix, 1), omi_alllon(ix, 1)       
-    !ENDDO
-    !DO ix = 0, nx
-    !   WRITe(90, '(I5, 4F10.4)') ix, omi_allclat(ix, 1:2), omi_allclon(ix, 1:2)
-    !ENDDO
-    !stop
+    i = 0
+    j = nl -1
+    ! MOVE TO type variables
+    geo%time(i:j) = omi_time(i:j)
+    geo%height(1:nx, i:j) = omi_height(1:nx,i:j)
+    ! angles
+    geo%sza(1:nx, i:j) = omi_sza(1:nx, i:j)
+    geo%vza(1:nx, i:j) = omi_vza(1:nx, i:j)
+    geo%aza(1:nx, i:j) = omi_aza(1:nx, i:j)
+    geo%sca(1:nx, i:j) = omi_sca(1:nx, i:j)
+    ! lon/lat
+    geo%lon(1:nx, i:j)  = omi_lon(1:nx, i:j)
+    geo%lat(1:nx, i:j)  = omi_lat(1:nx, i:j)
+    geo%elon(0:nx,i:j) = omi_elon(0:nx, i:j)
+    geo%elat(0:nx,i:j) = omi_elat(0:nx, i:j)
+    geo%clon(1, 1:nx, i:j) = omi_clon(0:nx-1,i:j)
+    geo%clon(2, 1:nx, i:j) = omi_clon(0:nx-1,i+1:j+1)
+    geo%clon(3, 1:nx, i:j) = omi_clon(1:nx,i+1:j+1)
+    geo%clon(4, 1:nx, i:j) = omi_clon(1:nx,i:j)
+    geo%clat(1, 1:nx, i:j) = omi_clat(0:nx-1,i:j)
+    geo%clat(2, 1:nx, i:j) = omi_clat(0:nx-1,i+1:j+1)
+    geo%clat(3, 1:nx, i:j) = omi_clat(1:nx,i+1:j+1)
+    geo%clat(4, 1:nx, i:j) = omi_clat(1:nx,i:j)
 
+
+    ! flag
+    geo%xflg(1:nx, i:j) = omi_XTrackQFlg(1:nx,i:j)
+    geo%gflg(1:nx, i:j) = omi_geoflg(1:nx,i:j)
+    geo%glint_flg(1:nx, i:j) = omi_glint_flg(1:nx,i:j)
+    geo%snow_ice_flg(1:nx,i:j) = omi_snow_ice_flg(1:nx, i:j)
+    geo%land_water_flg(1:nx,i:j) = omi_land_water_flg(1:nx,i:j)
+    !---------------------------------------------------------------
+    ! de-allocate
+    !--------------------------------------------------------------
+    deallocate (sza, vza, saza, vaza)
+    deallocate (omi_lat, omi_lon)
+    deallocate (omi_sza, omi_vza, omi_aza, omi_sca)
+     !DEALLOCATE (omi_lat, omi_lon, &
+     !omi_sza, omi_vza, &
+     !omi_aza, omi_sca, &
+     !omi_elat,omi_elon,&
+     !omi_clat, omi_clon, & 
+     !omi_GeoFlg, omi_Height, &
+     !omi_Mflg, omi_NSPC, omi_time, &
+     !omi_rowanomaly_flg, & 
+     !omi_land_water_flg, &
+     !omi_glint_flg , omi_snow_ice_flg, &
+     !omi_SpcftLat, omi_SpcftLon, omi_SpcftAlt, omi_SecondsInDay)
     RETURN
   END SUBROUTINE compute_pixel_corners
 
+  SUBROUTINE convert_gpqualflag_info ( &
+       nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
 
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (IN) :: omi_geoflg
+!    INTEGER (KIND=i2), DIMENSION (:), INTENT (IN) :: omi_geoflg
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i2), DIMENSION (nxtrack), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
+!    INTEGER (KIND=i2), DIMENSION (:), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4),                PARAMETER      :: nbyte = 16
+    INTEGER (KIND=i2), DIMENSION (7), PARAMETER      :: seven_byte = int((/ 1, 2, 4, 8, 16, 32, 64 /), kind=i2)
+    INTEGER (KIND=i4)                                :: i
+    INTEGER (KIND=i2), DIMENSION (nxtrack)           :: tmp_flg
+    INTEGER (KIND=i2), DIMENSION (nxtrack,0:nbyte-1) :: tmp_bytes
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    land_water_flg = 0 
+    glint_flg = 0 
+    snow_ice_flg = 0
+
+    ! -----------------------------------------------
+    ! Save input variable in TMP_FLG for modification
+    ! -----------------------------------------------
+    tmp_flg(1:nxtrack) = int(omi_geoflg(1:nxtrack), kind=2)  ;  tmp_bytes = 0
+    ! FIXME - TEMPO ground_pixel_flag is now int4, but all subroutines
+    ! in this module assume int2
+
+    CALL convert_2bytes_to_16bits ( &
+         nbyte, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-1) )
+
+    ! ------------------------------
+    ! The Glint flag is easy: Byte 4
+    ! ------------------------------
+    glint_flg(1:nxtrack) = tmp_bytes(1:nxtrack,4)
+
+    ! ------------------------------------------------------------------
+    ! Land/Water and Ice require a bit more work. The BIT slices must be
+    ! multiplied with the corresponding powers of 2. The sum over this
+    ! product is the information we seek.
+    ! ------------------------------------------------------------------
+    DO i = 1, nxtrack
+      land_water_flg(i) = SUM(tmp_bytes(i,0:3 )*seven_byte(1:4))
+      snow_ice_flg  (i) = SUM(tmp_bytes(i,8:14)*seven_byte(1:7))
+    END DO
+
+    RETURN
+  END SUBROUTINE convert_gpqualflag_info
+
+  SUBROUTINE convert_xtrackqflag_info ( nxtrack, omi_xtrackqflg, &
+       rowanomaly_flg, waveshift_flg, blockage_flg, straysun_flg, strayearth_flg )
+
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                      INTENT (IN) :: nxtrack
+    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (IN) :: omi_xtrackqflg
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i1), DIMENSION (nxtrack), INTENT (OUT) :: rowanomaly_flg, &
+         waveshift_flg, blockage_flg, straysun_flg, strayearth_flg
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4),                PARAMETER      :: nbyte = 8
+    INTEGER (KIND=i2), DIMENSION (7), PARAMETER      :: seven_byte = int((/ 1, 2, 4, 8, 16, 32, 64 /), kind=i2)
+    INTEGER (KIND=i4)                                :: i
+    INTEGER (KIND=i1), DIMENSION (nxtrack)           :: tmp_flg
+    INTEGER (KIND=i1), DIMENSION (nxtrack,0:nbyte-1) :: tmp_bytes
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    rowanomaly_flg = 0; waveshift_flg = 0; blockage_flg = 0
+    straysun_flg = 0; strayearth_flg = 0
+
+    ! -----------------------------------------------
+    ! Save input variable in TMP_FLG for modification
+    ! -----------------------------------------------
+    tmp_flg(1:nxtrack) = omi_xtrackqflg(1:nxtrack)  ;  tmp_bytes = 0
+
+    CALL convert_byte_to_8bits (nbyte, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-1))
+
+    waveshift_flg(1:nxtrack)  = tmp_bytes(1:nxtrack,4)
+    blockage_flg(1:nxtrack)   = tmp_bytes(1:nxtrack,5)
+    straysun_flg(1:nxtrack)   = tmp_bytes(1:nxtrack,6)
+    strayearth_flg(1:nxtrack) = tmp_bytes(1:nxtrack,7)
+
+    ! ------------------------------------------------------------------
+    ! Row anomaly require a bit more work. The BIT slices must be
+    ! multiplied with the corresponding powers of 2. The sum over this
+    ! product is the information we seek.
+    ! ------------------------------------------------------------------
+    DO i = 1, nxtrack
+      rowanomaly_flg(i) = int(SUM(tmp_bytes(i,0:2)*seven_byte(1:3)), kind=i1)
+    ENDDO
+
+    RETURN
+  END SUBROUTINE convert_xtrackqflag_info
 
   !   Unused?
   !
@@ -458,11 +660,6 @@ CONTAINS
   !    RETURN
   !  END SUBROUTINE lonlat_to_pi
 
-
-
-
-
-
   REAL (KIND=r8) FUNCTION angle_minus_twopi ( gamma0, pival ) RESULT ( gamma )
 
     IMPLICIT NONE
@@ -482,10 +679,6 @@ CONTAINS
 
     RETURN
   END FUNCTION angle_minus_twopi
-
-
-
-
 
   SUBROUTINE get_sphgeoview_corners (nxtrack, ntimes, lon, lat, sza, saza, &
        vza, vaza, clon, clat, elon, elat, esza, evza, eaza, esca)
@@ -829,9 +1022,6 @@ CONTAINS
   !    RETURN
   !
   !  END FUNCTION circle_dis
-
-
-
 
 
   FUNCTION circle_rdis(lat1, lon1, lat2, lon2) RESULT(rdis)

@@ -1,9 +1,9 @@
 !
 module m_pseudo_model
-  use m_lidort_utilities, ONLY:get_hres_radcal_waves
+  use m_lidort_util, ONLY:get_hres_radcal_waves
   USE m_lidort_master, ONLY:lidort_prof_env
   use m_spectra_reflectance
-  use adj_measurement_data, only: uv1_spike_detect, spike_detect_correct
+  use m_fitting_util, only: uv1_spike_detect, spike_detect_correct
 
   public pseudo_model
   private
@@ -32,7 +32,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         shift_offset, maxalb, maxoth, maxwfc,&
          bro_idx, bro2_idx, so2_idx, so2v_idx, no2_t1_idx, hcho_idx, o2o2_idx,&
          ring_idx, us1_idx, us2_idx, com_idx, com1_idx, com2_idx, com3_idx, &
-         fsl_idx, rsl_idx, sdc_idx
+         fsl_idx, rsl_idx, sdc_idx, hwe_idx, spk_idx
   USE OMSAO_variables_module, ONLY : fitwavs, fitweights, sza => the_sza_atm, &
        vza => the_vza_atm, aza => the_aza_atm, sca=>the_sca_atm, &
        fitvar_rad, mask_fitvar_rad, database_indices,           &
@@ -60,7 +60,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        pos_alb, which_cld, & 
        maxpol, npol, nfpol, polmin, polmax, polfpix, pollpix, polidx, polfidx, &
        polwf, polcorr, polcc, &
-       is_albspcvar, albspcs, sfcalbs, use_albspc, use_albeofs, nactalbspc
+       is_albspcvar, albspcs, sfcalbs, use_albspc, use_albeofs, nactalbspc,&
+       allrms, allradrms
 
   USE OMSAO_errstat_module
 
@@ -80,9 +81,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER, PARAMETER :: MSTKS = 4
+
+  INTEGER, PARAMETER :: mstks = 4, nostk=1
   INTEGER :: n0alb, n0wfc, i, j, k, iw, ReturnStatus, ridx, sidx, fidx, lidx, &
-       idx, albord, min_ssa_iter, swin, ewin, ig, nord, nostk, wfcord, ntmp,  &
+       idx, albord, min_ssa_iter, swin, ewin, ig, nord, wfcord, ntmp,  &
        albsidx, albeidx , m, slit_idx, idx330, n0, ord
   INTEGER, DIMENSION(maxalb)               :: albpmax, albpmin
   INTEGER, DIMENSION(maxwfc)               :: wfcpmax, wfcpmin
@@ -100,10 +102,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION(numwin, maxoth):: o3shi
   REAL (KIND=dp), DIMENSION(nlay)          :: tprof, ozprof, ozadj, ozaprof
   REAL (KIND=dp), DIMENSION (nf)           :: fitvar_saved
-  REAL (KIND=dp)                           :: rms, radrms, wavavg, cfrac, the_salb
+  REAL (KIND=dp)                           :: rms, radrms,  wavavg, cfrac, the_salb
   REAL (KIND=dp)                           :: newoz, newso2, newbro,   newhcho, newno2, newo4
   REAL (KIND=dp)                           :: so2adj, so2vadj, broadj, hchoadj, no2adj, o4adj
-  REAL (KIND=dp), DIMENSION (numwin)       :: allrms, allchisq, allradrms
+  REAL (KIND=dp), DIMENSION (numwin)       :: allchisq
 
   LOGICAL :: do_ozwf, do_albwf, do_o3shi, do_tmpwf, do_shiwf, do_taodwf, do_twaewf, &
               do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, do_pslwf, do_polwf 
@@ -120,7 +122,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL(KIND=dp), ALLOCATABLE        :: y1tmp(:, :), Sy_invtmp(:, :)
 
   ! xliu, 08/10/2010
-  ! Current VLIDORT calculation is based on single surface albedo (per channel). 
+  ! Current VnnLIDORT calculation is based on single surface albedo (per channel). 
   ! The wavelength dependence of surface albedo on radiance is corrected through
   ! weighting function. Howver, there are not accounted for in the calculation of
   ! weighting functions. 
@@ -271,12 +273,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ENDIF
      
   ENDIF
-  tmpc = 'F,F'
-  if ( do_albwf)    tmpc(3:3) = 'T'
-  if ( do_cfracwf)  tmpc(1:1) = 'T'
- ! WRITE(*,'(i3, a3, 2f8.2, 2e15.7)') nfwfc, tmpc, the_cfrac,the_salb,    fitvar(wfcfidx+nfwfc-1), fitvar(albfidx+nfalb-1)
-!  print * , fitvar(wfcfidx:wfcfidx+nfwfc-1)
-!  print * , fitvar(albfidx:albfidx+nfalb-1)
+
   ! ======= Set up ozone, temperature, trace gases, albedo, lamda for LIDORT ============
   ozprof(1:nlay)  = fitvar_rad (ozp_fidx:ozp_lidx)
   ozaprof(1:nlay) = fitvar_rad_apriori(ozp_fidx:ozp_lidx)
@@ -355,19 +352,42 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   walb0s = 0.0
   n0alb =  0
   DO i = 1, nalb
-     j = albidx - 1 + i
-     !xliu, 02/08/2012, add albord and **albord 
-     READ(fitvar_rad_str(j)(4:4), '(I1)') albord
-     fidx=albfpix(i); lidx=alblpix(i)
-     wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
-     IF (albord == 0) THEN
+    j = albidx - 1 + i
+    !xliu, 02/08/2012, add albord and **albord 
+    READ(fitvar_rad_str(j)(4:4), '(I1)') albord
+    fidx=albfpix(i); lidx=alblpix(i)
+    wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
+    IF (.NOT. is_albspcvar(i)) THEN 
+      IF (albord == 0) THEN
         n0alb = n0alb + 1
         albarr(n0alb)  = fitvar_rad(j)
         albpmax(n0alb) = alblpix(i); albpmin(n0alb) = albfpix(i)
-     ENDIF
-     IF (vary_sfcalb) THEN 
+      ENDIF
+      IF (vary_sfcalb) THEN 
         walb0s(fidx:lidx) = walb0s(fidx:lidx) + fitvar_rad(j) * (waves(fidx:lidx) - wavavg)**albord
-     ENDIF
+      ENDIF
+    ELSE
+      IF (use_albeofs) THEN
+        IF (nactalbspc == 1 ) THEN ! Snow/ice/water
+          IF (albord == 1) THEN
+            walb0s(fidx:lidx) = albspcs(fidx:lidx, 0) * fitvar_rad(j)
+          ELSE
+            walb0s(fidx:lidx) = walb0s(fidx:lidx) + (waves(fidx:lidx) -wavavg)**(albord-1) &
+                      * albspcs(fidx:lidx, 0) * fitvar_rad(j)
+          ENDIF
+        ELSE
+          IF (albord == 1)  walb0s(fidx:lidx) = albspcs(fidx:lidx, 0)
+          walb0s(fidx:lidx) =  walb0s(fidx:lidx) + albspcs(fidx:lidx,albord) * fitvar_rad(j)
+        ENDIF
+      ELSE
+        IF (albord == 0) THEN
+          walb0s(fidx:lidx) = albspcs(fidx:lidx, 0) * fitvar_rad(j)
+        ELSE
+          walb0s(fidx:lidx) = walb0s(fidx:lidx) + (waves(fidx:lidx) -wavavg)**albord &
+                   * albspcs(fidx:lidx, 0) * fitvar_rad(j)
+        ENDIF
+      ENDIF
+    ENDIF
   ENDDO
 
   n0wfc = 0
@@ -402,7 +422,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
           wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
           polcc(fidx:lidx) = polcc(fidx:lidx) + fitvar_rad(j)*(waves(fidx:lidx) - wavavg)**ord
       ENDIF
-      print * , i,nfpol, fitvar_rad(j), polcorr
   ENDDO
   ENDIF
  
@@ -413,6 +432,9 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ELSE
      o3shi(1, 1:maxoth)    = fitvar_rad(osind(1, 1:maxoth))
   ENDIF
+  !print * , 'shi:', o3shi(1:numwin,1)
+  IF (np1 > 0) print * , 'pw0:',np1, fitvar_rad(p1ind(1:numwin,1)), database_pslwf(hwe_idx, 1:10)
+  !print * , 'pk0:',np2, fitvar_rad(p2ind(1:numwin,1)), database_pslwf(spk_idx, 1:10)
 
   waves = fitwavs(1:ns)
 
@@ -449,8 +471,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   !   ENDIF
   !ENDIF
   ! === Call LIDORT, polarization correction, and additional wf calc =====
-  !the_cfrac = 0.
-  nostk = 1
   IF (use_effcrs) THEN
      CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,   &
           do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
@@ -649,7 +669,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
    !call get_sdc_spec (ns, fitwavs, corr)
    !      database (sdc_idx, refidx(1:ns)) = corr(1:ns) !*exp(simrad(1:ns))
   ENDIF
-
+   
   CALL spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errstat)
   IF (errstat == pge_errstat_error) THEN
      WRITE(*, *) modulename, ': Errors in spectra_reflectance!!!'; RETURN
@@ -665,20 +685,25 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ! compute chi-square difference
  
      chisq  = SUM((fitres / fitweights(1:ns))**2.0)
- 
-
-  rms =    SQRT(chisq  / REAL(ns, KIND=dp))
-  relrms = 100.D0 * SQRT(SUM(ABS((simrad-fitspec) / fitspec)**2.0) &
+      rms =    SQRT(chisq  / REAL(ns, KIND=dp))
+      relrms = 100.D0 * SQRT(SUM(ABS((simrad-fitspec) / fitspec)**2.0) &
        / REAL(ns, KIND=dp))
   
- 
-  IF (scnwrt) THEN
      fidx = 1
      DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1
-
+       ! IF (.NOT.do_sy_diagonal) THEN
+       !    j = lidx-fidx+1
+       !    ALLOCATE(y1tmp(j, 1), sy_invtmp(j, j)) 
+       !    y1tmp(:, 1)    = y1(fidx:lidx, 1)
+       !    sy_invtmp(:, :)= sy_inv(fidx:lidx, fidx:lidx)
+    
+        !   chi = MATMUL(MATMUL(TRANSPOSE(y1tmp),sy_invtmp),y1tmp)
+        !   allchisq(i) = chi(1, 1)
+        !   DEALLOCATE(y1tmp, sy_invtmp)
+       ! ELSE
            allchisq(i) = SUM((fitres(fidx:lidx) / fitweights(fidx:lidx))**2.0)
-
+       ! ENDIF
         allrms(i)   = SQRT(allchisq(i) / nradpix(i))
         allradrms(i) = 100.D0 * SQRT(SUM(ABS((simrad(fidx:lidx)-fitspec(fidx:lidx)) &
              / fitspec(fidx:lidx))**2) / nradpix(i)) 
@@ -702,15 +727,20 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ELSE 
         radrms = relrms
      ENDIF
+     allrms(0) = rms
+     allradrms(0) = radrms
 
-    WRITE (*, '(I5, 4(A10,1pd11.3))') num_iter, ' Chi = ', chisq, ' rms = ', rms, &
-          ' rms(%) = ', relrms, ' Irms(%) = ', radrms
+  IF (scnwrt) THEN
+    WRITE (*, '(I5, 4(A10,1pd11.3), A, i4)') num_iter, ' Chi = ', chisq, ' rms = ', rms, &
+          ' rms(%) = ', relrms, ' Irms(%) = ', radrms, 'NwvL', ns
+    fidx =  1
     DO i = 1, numwin
-        WRITE (*, '(A13, I2, 2(A14, 1pd11.3))') 'Win ', i, ': allrms = ', &
-             allrms(i), 'allIrms(%) = ', allradrms(i)
+        lidx = fidx + nradpix(i) - 1
+        WRITE (*, '(A, I2, 4(A14, 1pd11.3))') 'Win ', i, ': allrms = ', &
+        allrms(i), 'allIrms(%) = ', allradrms(i),'Is = ', sum(simrad1(fidx:lidx)),'Im =',sum(fitspec1(fidx:lidx))
+        fidx = lidx + 1
     ENDDO
   ENDIF
-
 
   IF (npix_fitted == 0) THEN
      min_ssa_iter = 2
@@ -725,7 +755,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      CALL spike_detect_correct(nradpix(1)+10, fitspec(1:nradpix(1)+10), simrad(1:nradpix(1)+10))  
   ENDIF
   fitres = fitspec - simrad
-
   IF (.NOT. refl_only) THEN 
      dyda = 0.0
 
@@ -1136,7 +1165,6 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
   ! Note nw0 is MAX(ncalcp, nw)
   waves0 = 0.0
   waves0(1:ncalcp) = radcwav(1:ncalcp)
-
   ! Need to find indices of boundaries for using different surface albedos/cloud fractions
    
   k = 0; albpmin0(1) = 1; albpmax0(n0alb) = ncalcp 
@@ -1205,7 +1233,6 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
   !print *, albpmin0(1:n0alb), albpmax0(1:n0alb)
   !print *, waves0(albpmin0(1:n0alb)), waves0(albpmax0(1:n0alb))
   !STOP
-
   ! Call LIDORT_PROF_ENV on fine wavelength grids
   ! Return raidances and weighting functions on required resolution wavelength grid
   CALL LIDORT_PROF_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, do_taodwf,      &

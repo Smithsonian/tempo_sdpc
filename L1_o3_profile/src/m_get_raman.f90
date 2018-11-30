@@ -3,7 +3,7 @@ module m_get_raman
    USE m_ezspline_interpolation, only: bspline, interpol
    USE m_get_xcrs, ONLY: get_all_raycof, geto3_crs
    USE m_raman, only: raman
-   USE avg_band, only: avg_band_refspec
+   USE m_avg_band, only: avg_band_refspec
 
   PUBLIC get_raman
   PRIVATE
@@ -35,15 +35,14 @@ contains
     REAL (KIND=dp), DIMENSION(nl), INTENT(IN) :: ozprof
 
     ! Local Variables
-    INTEGER, PARAMETER :: maxnu = 15000
-    LOGICAL            :: do_o3shi, do_tmpwf, problems, do_bandavg_sav
+    INTEGER, PARAMETER :: maxnu = 20000
+    LOGICAL            :: do_o3shi, do_tmpwf,problems, do_bandavg_sav
     INTEGER            :: i, j,ntemp, low, hgh!, nnref, fidx, lidx
     REAL (KIND=dp)     :: scl, xg!, deltlam
     REAL (KIND=dp), DIMENSION(0:nflay) :: tauin, ts, ozs
     REAL (KIND=dp), DIMENSION(0:nl)    :: cumoz
     REAL (KIND=dp), DIMENSION(nflay)   :: ext
     REAL (KIND=dp), DIMENSION(nsol_ring, nflay) :: strans, vtrans, dads, dadt
-    REAL (KIND=dp), DIMENSION(3, nsol_ring)     :: abscrs_qtdepen
     REAL (KIND=dp), DIMENSION(maxnu, nflay)     :: st, vt
     REAL (KIND=dp), DIMENSION(maxnu)            :: ring
     REAL (KIND=dp), DIMENSION(n_refwvl_sav)    :: newring
@@ -62,14 +61,13 @@ contains
     CHARACTER (LEN=9), PARAMETER :: modulename = 'GET_RAMAN'
 
      errstat = pge_errstat_ok 
-
     IF (ozabs_convl) THEN   ! Check this for each cross track position
 
      ! Get position for raman calculation
      swavs(1:nsol_ring) = sol_spec_ring(1, 1:nsol_ring)
  
      IF (swavs(1) > refwvl(1)-2.0 .OR. swavs(nsol_ring) < refwvl(n_refwvl) + 2.0) THEN
-        WRITE(www_lun, *) modulename, ': Increase wavelength range for solar spectra in ring calculation!!!'
+        WRITE(*, *) modulename, ': Increase wavelength range for solar spectra in ring calculation!!!'
         errstat = pge_errstat_error; RETURN
      ENDIF
 
@@ -110,11 +108,10 @@ contains
      !CALL GETABS_CRS(swavs(1:nsol_ring), nsol_ring, nsol_ring,1, nflay, ts(1:nflay), &
      !     abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
      !     abscrs_qtdepen(1:3, 1:nsol_ring) ) 
+
      CALL geto3_crs(swavs(1:nsol_ring), nsol_ring, nsol_ring,nflay, ts(1:nflay), &
-          abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
-          abscrs_qtdepen(1:3, 1:nsol_ring) )
+          abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf,dads, dadt, problems)
      IF (problems) THEN
-        print *, swavs(1), swavs(nsol_ring)
         WRITE(www_lun, *) modulename, ': Problems in reading trace gas absorption!!!'
         do_bandavg = do_bandavg_sav; errstat = pge_errstat_error; RETURN
      ENDIF
@@ -180,20 +177,20 @@ contains
      !vtrans(i, 1:nflay) = EXP(-tauout(1:nflay))
      !WRITE(77, '(F12.5, 100D16.7)') swavs(i), sol_spec_ring(2, i), ext(1:nflay)
   ENDDO
-
+  
   ! Interpolate to raman grid in wavenumber
   DO i = 1, nflay
      CALL BSPLINE(swavs(1:nsol_ring), strans(1:nsol_ring, i), nsol_ring, &
           ramanwav(1:nu), st(1:nu, i), nu, errstat)
-        
      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
+        print * , swavs(1), swavs(nsol_ring), ramanwav(1), ramanwav(nu)
+        WRITE(www_lun, *) modulename, '(1): BSPLINE error, errstat = ', errstat; RETURN
      ENDIF
 
      CALL BSPLINE(swavs(1:nsol_ring), vtrans(1:nsol_ring, i), nsol_ring, &
           ramanwav(1:nu), vt(1:nu, i), nu, errstat)
      IF (errstat < 0) THEN
-        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
+        WRITE(www_lun, *) modulename, '(2): BSPLINE error, errstat = ', errstat; RETURN
      ENDIF
   ENDDO
   
@@ -209,9 +206,8 @@ contains
   CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, refwvl_sav(1:n_refwvl_sav), &
        newring(1:n_refwvl_sav), n_refwvl_sav, errstat) 
 
-  
   IF (errstat < 0) THEN
-     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat; RETURN
+     WRITE(www_lun, *) modulename, '(3): BSPLINE error, errstat = ', errstat; RETURN
   ENDIF
 
   !WRITE(90, *) 'After Coadding'
@@ -236,7 +232,7 @@ contains
   IF (wrtring) THEN
      WRITE(92, *) n_rad_wvl
      DO i = 1, n_rad_wvl
-        WRITE(92, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
+        WRITE(99, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
      ENDDO
   ENDIF
   RETURN

@@ -1,7 +1,7 @@
 !
 module m_triangle
 
-  USE utilities, ONLY: signdp
+  USE m_utilities, ONLY: signdp
   USE m_ezspline_interpolation, ONLY: interpolation
   public triangle, triangle_vary, triangle_multi, triangle_uneven, &
        triangle_f2c, triangle_vary_f2c
@@ -465,8 +465,6 @@ contains
         lidx = MINVAL(MAXLOC(wvlarr, MASK=(wvlarr <= wmid )))
       ENDIF
       fwhm = slw(iw)
-      !print *, iw, fidx, lidx, hw1e
-      !print *, wvlarr(fidx), wvlarr(lidx), slit_trunc_limit
 
       IF (fwhm /= 0.0) THEN
         DO i = fidx, lidx

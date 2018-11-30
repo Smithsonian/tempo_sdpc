@@ -1,25 +1,34 @@
-!
+!! We don't consider Zoom-in mode
 module omi_read_l1b_data
-
-  use omi_fitting_aux, only: corruv2wav, get_doy, omi_set_fitting_parameters
+  USE OMSAO_precision_module
+  USE OMSAO_indices_module,    ONLY: spc_idx
+  USE OMSAO_parameters_module, ONLY: max_ring_pts
+  use m_utilities, ONLY: get_doy
   use m_convert_coadd, only: coadd_2bytes_qflgs, convert_2bytes_to_16bits, &
-       convert_gpqualflag_info, convert_xtrackqflag_info
+       prespec_align, solwavcal_coadd
+  USE m_ezspline_interpolation, only: interpolation
+  USE m_fitting_util, ONLY: reduce_rad_resolution, reduce_irrad_resolution
+  USE OMSAO_omidata_module,    ONLY:  omi_radiance_swathname,&
+    nfxtrack, ncoadd,nwavel_max, nxtrack_max, ntimes_max,nlines_max, & 
+    omi_geo, omi_irrad, omi_rad, omi_ring, omi_refl
+
+  CHARACTER(len=9),PRIVATE   :: omiraddate
+  INTEGER (KIND=i2), PRIVATE :: omi_mflg
+  INTEGER (KIND=i1), DIMENSION (ntimes_max), PRIVATE :: omi_saa_flag
+  REAL (KIND=r4), DIMENSION (spc_idx, max_ring_pts, nxtrack_max), PRIVATE ::  omi_solspec_ring
 
   public omi_read_radiance_paras, find_scan_line_range, &
-       omi_read_irradiance_data, omi_read_radiance_lines, &
-       replace_solar_irradiance
-  private reduce_irrad_resolution, reduce_rad_resolution
+         omi_read_irradiance_data, omi_read_radiance_lines, &
+         omi_set_parameters, replace_solar_irradiance
+  private 
 
 contains
 
-  SUBROUTINE omi_read_radiance_paras (pge_error_status )
-
-    USE OMSAO_precision_module
+  SUBROUTINE omi_set_parameters (pge_error_status )
     USE OMSAO_parameters_module, ONLY: vb_lev_omidebug!, maxchlen
-    USE OMSAO_variables_module,  ONLY: l1b_rad_filename, verb_thresh_lev!, &
-         !coadd_uv2
-    USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname, nxtrack_max, &
-         ntimes_max, nxtrack, nfxtrack, ntimes, ncoadd, nswath, zoom_mode
+    USE OMSAO_variables_module, ONLY:ntimes, nxtrack, inschs, band_selectors, &
+        l1b_rad_filename, GranuleYear,  GranuleMonth,GranuleDay, GranuleJDay, nswath,verb_thresh_lev
+    USE OMSAO_omidata_module , ONLY: zoom_mode, omi_radiance_swathname,nfxtrack, ncoadd
     USE OMSAO_errstat_module
     USE hdfeos4_parameters
     USE L1B_Reader_class
@@ -34,9 +43,9 @@ contains
     ! Local variables
     ! ---------------
     TYPE (l1b_block_type) :: omi_data_block
+    INTEGER               :: i
     INTEGER (KIND=i4)     :: errstat, iline
     REAL (KIND=r4), DIMENSION (1:nxtrack_max) :: tmp_vza  
-
     ! Exteranl functions
     INTEGER               :: estat
 
@@ -54,8 +63,34 @@ contains
     nxtrack = 0
     zoom_mode = .FALSE.
 
+
+    ! ----------------------------------------------------------------
+    ! Name of solar and earthshine swaths (normally obtained from PCF)
+    ! ----------------------------------------------------------------
+    IF (nswath == 2) THEN
+      inschs(1) = 1
+      inschs(2) = 2
+    ELSE IF (nswath == 1) THEN
+      ! Ozone profile retrieval with channel 1 only (impossible due to always
+      ! using uv2 for fc)
+      IF (band_selectors(1) == 1) THEN
+        inschs(1) = 1
+      ELSE
+        ! Ozone profile retrieval with channel 2 only (total ozone retrieval)
+        inschs(1) = 2
+      ENDIF
+    ELSE
+      WRITE(*, '(A)') 'Need and only need UV swathes for ozone profileretrieval!!!'
+      pge_error_status = pge_errstat_error
+    ENDIF
+
+    i = INDEX(l1b_rad_filename, '-o') -14
+    omiraddate = l1b_rad_filename(i : i + 8)
+    READ(omiraddate, '(I4,1X,2I2)') GranuleYear,  GranuleMonth,GranuleDay
+    CALL GET_DOY(GranuleYear,  GranuleMonth,GranuleDay, GranuleJDay)
+
     ! Determine if UV2 data are observed by zoom mode
-    IF (nswath == 2 .OR. omi_radiance_swathname(1) == 'Earth UV-2 Swath')  THEN
+    IF (nswath == 2 .OR. inschs(1) == 2)  THEN
 
       ! -----------------------------------------------------------------------
       ! Open data block called 'omi_data_block' with default size of 100 lines
@@ -92,7 +127,7 @@ contains
       END IF
     ENDIF
 
-    IF (nswath ==2 .OR. omi_radiance_swathname(1) == 'Earth UV-1 Swath') THEN
+    IF (nswath ==2 .OR. inschs(1) == 1 ) THEN
       ! -----------------------------------------------------------------------
       ! Open data block called 'omi_data_block' with default size of 100 lines
       ! -----------------------------------------------------------------------
@@ -133,8 +168,9 @@ contains
       pge_error_status = pge_errstat_error
       WRITE(www_lun, '(A)') 'Need to increase nxtrack_max!!!'
     ENDIF
+
     RETURN
-  END SUBROUTINE omi_read_radiance_paras
+  END SUBROUTINE omi_set_parameters
 
   ! Find the scan line/x track position based on inut lat/lon range
   ! Avoid including descending orbits
@@ -142,9 +178,9 @@ contains
        spix, epix, pge_error_status )
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY: l1b_rad_filename, szamax
+    USE OMSAO_variables_module, ONLY: l1b_rad_filename, szamax, ntimes
     USE OMSAO_omidata_module,   ONLY: omi_radiance_swathname, &
-         nxtrack_max, ntimes_max, ntimes, nfxtrack!, nxtrack, nswath
+         nxtrack_max, ntimes_max,  nfxtrack!, nxtrack, nswath
     USE L1B_Reader_class
     USE OMSAO_errstat_module
     IMPLICIT NONE
@@ -179,8 +215,7 @@ contains
     pge_error_status = pge_errstat_ok
 
 
-    CALL omi_set_fitting_parameters ( pge_error_status )
-    CALL omi_read_radiance_paras (pge_error_status )
+    CALL omi_set_parameters ( pge_error_status )
 
     IF ( pge_error_status >= pge_errstat_error ) RETURN
 
@@ -272,100 +307,80 @@ contains
     RETURN
   END SUBROUTINE find_scan_line_range
 
-
   SUBROUTINE omi_read_irradiance_data (lun, nxcoadd, first_pix, last_pix, &
        pge_error_status ) 
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, maxwin
     USE OMSAO_parameters_module, ONLY: maxchlen, maxwin, max_ring_pts, &
-         mrefl, vb_lev_omidebug
+         mrefl, vb_lev_omidebug, mswath, max_fit_pts
     USE OMSAO_variables_module,  ONLY: verb_thresh_lev, l1b_irrad_filename, &
          wcal_bef_coadd, currpix, numwin, coadd_uv2, band_selectors, winpix, &
          winlim, scnwrt, refdbdir, use_backup, &
          reduce_resolution, redlam, redsampr, reduce_slit, rm_mgline, &
-         dwavmax, use_redfixwav, which_slit, &
-         GranuleYear, GranuleMonth, GranuleDay, &
-         use_he5_in, use_tio_in, l1_irrad_filename_nc, nc_irrad_swathname, nxbin
-    USE OMSAO_omidata_module,  ONLY: orbnum, nswath, mswath, omi_nsolpix, &
-         nwavel_max,  omi_irradiance_swathname, omi_irradiance_spec, &
-         omi_irradiance_qflg, omi_irradiance_prec, omi_irradiance_wavl, &
-         omi_nwav_irrad, nxtrack, nfxtrack, ncoadd, nxtrack_max, &
-         omi_nsolring, omi_solspec_ring, solring_lin, solring_uin, &
-         omi_solspecr, omisol_winpix, omisolr_winpix, omi_solnorm, &
-         omi_solpix_errstat, omi_solring_ndiv, irradwind, omiraddate, &
-         reduce_ubnd, reduce_lbnd, retlbnd, retubnd, omichs, &
-         omisol_version, zoom_p1, omi_redslw!, orbnumsol, &
-         !omi_rad_stray, omi_irrad_stray, ntimes
+         dwavmax, use_redfixwav, which_slit, avgsol_allorb, &
+         nxbin,nswath, GranuleJDay,orbnum, inschs, nxtrack,&
+         reduce_ubnd, reduce_lbnd, retlbnd, retubnd, redslw, earthsundistance
+    USE OMSAO_omidata_module,  ONLY: nwavel_max,  omi_irradiance_swathname, &
+                                      nfxtrack, ncoadd,  &
+                                     omisol_version, zoom_p1
     USE ozprof_data_module, ONLY: pos_alb, toms_fwhm, nrefl
     USE hdfeos4_parameters
     USE L1B_Reader_class
     USE OMSAO_errstat_module
     use m_gauss, only: gauss_uneven
     use m_triangle, only: triangle_uneven
-    use omi_cross_calibrate, only: prespec_align, solwavcal_coadd
-    use m_read_l1_tio, only: read_L1_dims_tio, read_l1_rad_line_tio, &
-         open_L1_tio, close_l1_tio
     use tell_module
-    use tio_module
+
 
     IMPLICIT NONE
-
     ! ---------------
     ! Input variables
     ! ---------------
     INTEGER, INTENT (IN)        :: nxcoadd, first_pix, last_pix, lun
-
     ! ----------------
     ! Output variables
     ! ----------------
     INTEGER , INTENT (OUT)      :: pge_error_status
-
     ! ---------------
     ! Local variables
     ! ---------------
     TYPE (L1B_block_type)                   :: omi_data_block
+    INTEGER, PARAMETER :: noff_uv1=12, noff_uv2=25
+    INTEGER  :: nwavel, is, ix, i, j, iix, nomi, fidx, lidx, ch, idum,  &
+         iw, ic, idx, noff1, noff2, nring, irefl, nbin,  &
+         thedoy, nsolbin, nbad, k, l
+    ! variables used to read original spectra
+    INTEGER (KIND=i2)                     :: mflg
+    INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls
+    INTEGER   (KIND=i2), DIMENSION (mswath) :: spos, epos
+    INTEGER, DIMENSION (nwavel_max)                        :: idxs
+    INTEGER (KIND=i2), DIMENSION(nwavel_max, nxtrack_max) :: tmpnavg
+    INTEGER (KIND=i2), DIMENSION(:, :), POINTER :: irrad_qflg
+    REAL (kind=4),DIMENSION (:, :), POINTER     :: irrad_spec, irrad_prec, irrad_wavl
+    LOGICAL :: read_irrad
+    INTEGER (KIND=i4)                     :: nx, nt
+    ! variables used for reduce resoltuion
+    INTEGER :: npos, np
+    REAL (KIND = dp)  :: tmpsampr, retswav, retewav!, fdum
+    INTEGER (KIND=i2), DIMENSION (:,:), POINTER :: tmpqflg
+    REAL (KIND = dp), DIMENSION (:,:,:),POINTER :: tmpspec
+    INTEGER (kind=i2), dimension(1) :: temp_mflg
+    ! Subset variables 
+    INTEGER (KIND=i4), DIMENSION(maxwin)  :: nwbin
     INTEGER, PARAMETER                      :: nbits = 16
     INTEGER (KIND=i2), DIMENSION(0:nbits-1) :: mflgbits
     INTEGER (KIND=i2), DIMENSION(nxcoadd, nwavel_max, 0:nbits-1) :: flgbits
     INTEGER (KIND=i2), DIMENSION(nwavel_max)                     :: flgmsks
-    INTEGER (KIND=i2)                     :: mflg
-    INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls
-    INTEGER (KIND=i4)                     :: nx, nt, tio_nx, tio_nt!, nw, nwc
-    INTEGER (KIND=i4), DIMENSION(maxwin)  :: nwbin
-    !REAL      (KIND=r8)                  :: tim
-    !REAL      (KIND=r4)                  :: lat, lon, sazmin, sazmax, selmin, selmax, salt
-
-    INTEGER   (KIND=i2), DIMENSION (mswath) :: spos, epos
-    INTEGER  :: nwavel, is, ix, i, j, iix, nomi, fidx, lidx, ch, idum,  &
-         iw, ic, idx, noff1, noff2, nring, irefl, nbin, theyear, themon, &
-         theday, thedoy, np, npos, nsolbin, nbad
-    INTEGER, DIMENSION (nwavel_max)                        :: idxs
-    INTEGER (KIND=i2), DIMENSION (nwavel_max, nxtrack_max) :: tmpqflg
-!    INTEGER (KIND=i1)                                      :: tmpNinteg
-    integer (kind=i2), dimension(1) :: temp_mflg
+    REAL (KIND = dp)  :: wcenter, normsc
+    REAL (KIND = dp), DIMENSION (maxwin, nxcoadd) :: wshis, wsqus
+    REAL (KIND = dp), DIMENSION (:,:,:),POINTER :: subspec
+    REAL (KIND = dp), DIMENSION (:,:), POINTER    :: subring 
 
     INTEGER (KIND=i4) :: errstat, iline
-    REAL (KIND = dp)  :: wcenter, normsc, tmpsampr, retswav, retewav!, fdum
-    REAL (KIND = dp), DIMENSION (maxwin, nxcoadd) :: wshis, wsqus
-    REAL (KIND = dp), DIMENSION (nxcoadd * 2, sig_idx, nwavel_max) :: omispec
-    !REAL (KIND = dp), DIMENSION (nxcoadd * 2, 2, nwavel_max) :: strayspec 
-    REAL (KIND = dp), DIMENSION (sig_idx, nwavel_max, nxtrack_max) :: tmpspec
-    REAL (KIND = dp), DIMENSION (spc_idx, max_ring_pts)            :: omirsol 
-    LOGICAL                                 :: error, read_irrad
-
-    CHARACTER (LEN=maxchlen)                :: bkfname!, straylight_fname
+    LOGICAL                                 :: error
+    CHARACTER (LEN=maxchlen)                :: bkfname
     CHARACTER (LEN=3)                       :: opfc
-
-    integer (kind=4), dimension(mswath)  :: tio_nwls
-    integer (kind=2), dimension(nwavel_max, nxtrack_max) :: tio_qflg
-    real (kind=4), dimension(nwavel_max, nxtrack_max) :: tio_spec, tio_prec, &
-         tio_wavl
-    integer (kind=2) :: tio_mflg
-    integer :: k,l
-
-    type (tiof_file_type) :: tio_l1obj
-
     ! Exteranl functions
     INTEGER                                 :: estat
 
@@ -374,14 +389,23 @@ contains
     ! ------------------------------
     CHARACTER (LEN=24), PARAMETER :: modulename = 'omi_read_irradiance_data' 
 
-    !nt = 0; nx = 0 ; nw = 0 ; nwc = 0 
+    !--------------------------------------------------------------------------
+    ! Starting with allocating local variables
+    !--------------------------------------------------------------------------
+    allocate (irrad_qflg (nwavel_max, nxtrack_max))
+    allocate (irrad_prec (nwavel_max, nxtrack_max))
+    allocate (irrad_spec (nwavel_max, nxtrack_max))
+    allocate (irrad_wavl (nwavel_max, nxtrack_max))
+    allocate (tmpspec (sig_idx, nwavel_max, nxtrack_max))
+    allocate (tmpqflg(nwavel_max, nxtrack_max))
+    allocate (subspec(nxcoadd*2, sig_idx, max_fit_pts))
+    allocate (subring(sig_idx, max_ring_pts))
+
     j = 1
     nwavel = 0
     iline = 0
     pge_error_status = pge_errstat_ok
     errstat = omi_s_success
-    omi_nsolpix = 0
-    omi_nwav_irrad = 0
 
     ! For zoom-in global products (once every 32 days), solar irradiance (not in radiance)
     ! in UV1 are provided at 60 Xtrack positions. Under this condition, solar irradiance needs
@@ -393,27 +417,25 @@ contains
     ! ----------------------------
     ! Initialize irradiance arrays
     ! ----------------------------  
-    omi_irradiance_spec (1:nwavel_max,1:nxtrack) = 0.0
-    omi_irradiance_prec (1:nwavel_max,1:nxtrack) = 0.0
-    omi_irradiance_qflg (1:nwavel_max,1:nxtrack) = 0
-    omi_irradiance_wavl (1:nwavel_max,1:nxtrack) = 0.0
-    omi_solpix_errstat(1:nxtrack) = pge_errstat_ok
+    omi_irrad%errstat(1:nxtrack) = pge_errstat_ok
+    omi_irrad%nwav (1:nxtrack) = 0
+    omi_irrad%npix (1:maxwin, 1:nxtrack) = 0
+    omi_irrad%prec (1:nwavel_max,1:nxtrack) = 0.0
+    omi_irrad%spec (1:nwavel_max,1:nxtrack) = 0.0
+    omi_irrad%wavl (1:nwavel_max,1:nxtrack) = 0.0
+    omi_irrad%qflg (1:nwavel_max,1:nxtrack) = 0
 
     IF (.NOT. use_backup) THEN 
       DO is = 1, nswath
-        ch = omichs(is)
-
+        ch = inschs(is)
         ! ------------------------------------------------------
         ! Open data block structure with default size of 1 lines
         ! ------------------------------------------------------
-        !errstat = L1Br_open ( omi_data_block, l1b_irrad_filename, 'Sun Volume VIS Swath ' )
-        if (use_he5_in) then
-          errstat = L1Br_open ( omi_data_block, l1b_irrad_filename, &
-               TRIM(ADJUSTL(omi_irradiance_swathname(is))) )
-          IF( errstat /= omi_s_success ) THEN
+         errstat = L1Br_open ( omi_data_block, l1b_irrad_filename, &
+                              TRIM(ADJUSTL(omi_irradiance_swathname(ch))) )
+         IF( errstat /= omi_s_success ) THEN
             estat = OMI_SMF_setmsg ( omsao_e_open_l1b_file, "L1Br_open failed.", modulename, 0)
-            STOP 1
-          END IF
+         STOP 1
 
         ! ----------------------------------
         ! Obtain irradiance swath dimensions
@@ -425,64 +447,22 @@ contains
           END IF
         endif
 
-        ! Get dimensions of netCDF and open for reading line-by-line
-        if (use_tio_in) then
-          errstat = 0 ! FIXME - remove when libtell more widely used
-          call read_L1_dims_tio (l1_irrad_filename_nc, nc_irrad_swathname(is),&
-               nstep = tio_nt, nxtrack = tio_nx, errstat = errstat) 
-          if (errstat /= 0) then
-            call tell_error (tell_io_error, &
-                 "omi_read_l1b_data: failed to read irradiance dimensions", &
-                 errstat)
-            return
-          endif
-
-          if (use_he5_in) then
-            if (nt /= tio_nt) print *, 'mismatch: nt', nt, tio_nt
-            if (nx /= tio_nx) print *, 'mismatch: nx', nx, tio_nx
-          endif
-          nt = tio_nt
-          nx = tio_nx
-
-          call open_L1_tio (l1_irrad_filename_nc, tio_l1obj, errstat)
-          if (errstat /= 0) then
-            call tell_error (tell_io_error, &
-                 "omi_read_l1b_data: failed to open irradiance file", &
-                 errstat)
-            return
-          endif
-        endif
-
-        ! For zoom-in global products, solar irradiance needs to be binned by a factor of 2 additionally
-!        IF (ch == 1 .AND. nx == nfxtrack * 2) nsolbin = 2
-
         ! ----------------------------------------------------------
         ! Obtain time, geolocation, and angular information on block
         ! ----------------------------------------------------------
-        !errstat = L1Br_getGEOline ( omi_data_block, iline, Time_k= tim, SpacecraftLatitude_k = lat, &
-        !     SpacecraftLongitude_k = lon, SolarElevationMinimum_k = selmin, &
-        !     SolarElevationMaximum_k = selmax, SolarAzimuthMinimum_k = sazmin, &
-        !     SolarAzimuthMaximum_k = sazmax,  SpacecraftAltitude_k = salt)
-        !IF( errstat /= omi_s_success ) THEN
-        !   estat = OMI_SMF_setmsg ( omsao_e_read_l1b_file, "L1Br_getGEOline failed.", modulename, 0); STOP 1
-        !END IF
-
-
-        if (use_he5_in) then
           errstat = L1Br_getDATA ( omi_data_block, iline, &
                MeasurementQualityFlags_k = mflg)
           IF( errstat /= omi_s_success ) THEN
             estat = OMI_SMF_setmsg ( omsao_e_read_l1b_file, &
                  "L1Br_getDATA failed.", modulename, 0)
             STOP 1
-          END IF
 
           errstat = L1Br_getSIGline ( omi_data_block, iline,     &
-               Signal_k            = omi_irradiance_spec(j:, :), &
-               SignalPrecision_k   = omi_irradiance_prec(j:, :), &
-               PixelQualityFlags_k = omi_irradiance_qflg(j:, :), &
-               Wavelength_k        = omi_irradiance_wavl(j:, :), &
-               !NumberSmallPixelColumns_k = tmpNinteg,            &
+               Signal_k            = irrad_spec(j:, :), &
+               SignalPrecision_k   = irrad_prec(j:, :), &
+               PixelQualityFlags_k = irrad_qflg(j:, :), &
+               Wavelength_k        = irrad_wavl(j:, :), &
+               !NumberSmallPixelColumns_k = tmpNinteg,           &
                Nwl_k  = nwls(ch) )
           IF( errstat /= omi_s_success ) THEN
             estat = OMI_SMF_setmsg ( omsao_e_read_l1b_file, &
@@ -491,60 +471,18 @@ contains
           END IF
         endif
 
-        if (use_tio_in) then
-          errstat = 0 ! FIXME - remove when libtell more widely used
-          read_irrad = .true.
-          call read_L1_rad_line_tio (tio_l1obj, nc_irrad_swathname(is), &
-               iline, tio_spec(j:, :), tio_prec(j:, :), tio_qflg(j:, :), &
-               tio_wavl(j:, :), tio_mflg, tio_nwls(ch), &
-               read_irrad, errstat)
-          if (errstat /= 0) then
-            call tell_error (tell_io_error, &
-                 "omi_read_l1b_data: failed to read irradiance data", &
-                 errstat)
-            return
-          endif
-          if (use_he5_in) then
-            if (tio_nwls(ch) /= nwls(ch)) print *, 'irrad mismatch: nwls'
-            if (tio_mflg /= mflg) print *, 'irrad mismatch: mflg'
-            do k=j, j+nwls(ch)-1
-              do l=1, size(omi_irradiance_spec, dim=2)
-                if (tio_spec(k,l).ne.omi_irradiance_spec(k,l) .and. &
-                   (tio_spec(k,l).gt.0).and.(omi_irradiance_spec(k,l).gt.0)) &
-                     print *, 'irrad mismatch: spec'
-                if (tio_prec(k,l).ne.omi_irradiance_prec(k,l) .and. &
-                   (tio_prec(k,l).gt.0).and.(omi_irradiance_prec(k,l).gt.0)) &
-                     print *, 'irrad mismatch: prec'
-                if (tio_qflg(k,l).ne.omi_irradiance_qflg(k,l)) &
-                     print *, 'irrad mismatch: qflg'
-                ! for wavelength matches may not be perfect
-                if (abs(tio_wavl(k,l)-omi_irradiance_wavl(k,l)).ge.4e-5) &
-                     print *, 'irrad mismatch: wavl'
-              end do
-            end do
-          endif
-          nwls = tio_nwls
-          mflg = tio_mflg
-          omi_irradiance_spec(j:, :) = tio_spec(j:, :)
-          omi_irradiance_prec(j:, :) = tio_prec(j:, :)
-          omi_irradiance_qflg(j:, :) = tio_qflg(j:, :)
-          omi_irradiance_wavl(j:, :) = tio_wavl(j:, :)
-
-        endif
-
-
         temp_mflg=mflg
         CALL convert_2bytes_to_16bits ( nbits, 1, temp_mflg, mflgbits(0:nbits-1))
 
         IF (mflgbits(0) == 1 .OR. mflgbits(1) == 1 .OR. mflgbits(3) == 1 .OR. mflgbits(12) == 1) THEN
           WRITE(www_lun, *) 'All irradiances could not be used, use backup irradiances: ', &
-               TRIM(ADJUSTL(omi_irradiance_swathname(is)))
-          omi_solpix_errstat(1:nxtrack) = pge_errstat_error
+               TRIM(ADJUSTL(omi_irradiance_swathname(ch)))
+          omi_irrad%errstat(1:nxtrack) = pge_errstat_error
           pge_error_status = pge_errstat_error
           RETURN
         ELSE IF (ANY(mflgbits == 1)) THEN
-          WRITE(www_lun, *) 'Warning set on all irradiances: ', TRIM(ADJUSTL(omi_irradiance_swathname(is)))
-          omi_solpix_errstat(1:nxtrack) = pge_errstat_error  
+          WRITE(www_lun, *) 'Warning set on all irradiances: ', TRIM(ADJUSTL(omi_irradiance_swathname(ch)))
+          omi_irrad%errstat(1:nxtrack) = pge_errstat_error  
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
@@ -557,7 +495,6 @@ contains
         ! --------------------------
         ! Close data block structure
         ! --------------------------
-        if (use_he5_in) then
           errstat = L1Br_CLOSE ( omi_data_block )
           IF( errstat /= omi_s_success .AND. verb_thresh_lev >= &
                vb_lev_omidebug ) THEN
@@ -565,38 +502,26 @@ contains
                  "L1Br_CLOSE failed.", modulename, 0)
             STOP 1
           END IF
-        endif
-
-        if (use_tio_in) then
-          errstat = 0 ! FIXME - remove when errstat properly defined
-          call close_L1_tio (tio_l1obj, errstat)
-          if (errstat /= 0) then
-            call tell_error (tell_io_error, &
-                 "omi_read_l1b_data: failed to close irradiance file", &
-                 errstat)
-            return
-          endif
-        endif
 
 
         ! Need to sort the data in increasing wavelength
-        IF (omi_irradiance_wavl(spos(ch), 1) > omi_irradiance_wavl(epos(ch), 1)) THEN
+        IF (irrad_wavl(spos(ch), 1) > irrad_wavl(epos(ch), 1)) THEN
           idxs(spos(ch):epos(ch)) = (/ (i, i = epos(ch), spos(ch), -1) /)
-          omi_irradiance_wavl(spos(ch):epos(ch), :) = omi_irradiance_wavl(idxs(spos(ch):epos(ch)), :)
-          omi_irradiance_spec(spos(ch):epos(ch), :) = omi_irradiance_spec(idxs(spos(ch):epos(ch)), :)
-          omi_irradiance_prec(spos(ch):epos(ch), :) = omi_irradiance_prec(idxs(spos(ch):epos(ch)), :)
-          omi_irradiance_qflg(spos(ch):epos(ch), :) = omi_irradiance_qflg(idxs(spos(ch):epos(ch)), :)     
+          irrad_wavl(spos(ch):epos(ch), :) = irrad_wavl(idxs(spos(ch):epos(ch)), :)
+          irrad_spec(spos(ch):epos(ch), :) = irrad_spec(idxs(spos(ch):epos(ch)), :)
+          irrad_prec(spos(ch):epos(ch), :) = irrad_prec(idxs(spos(ch):epos(ch)), :)
+          irrad_qflg(spos(ch):epos(ch), :) = irrad_qflg(idxs(spos(ch):epos(ch)), :)     
         ENDIF
 
-        !IF ( ch == 2 ) CALL corruv2wav(nwls(ch), nx, omi_irradiance_wavl(spos(ch):epos(ch), 1:nx)) 
+        !IF ( ch == 2 ) CALL corruv2wav(nwls(ch), nx, irrad_wavl(spos(ch):epos(ch), 1:nx)) 
 
         !OPEN(unit=90, FILE='/data/dumbo/xliu/OMIHCLD/OMIL1BBIRR-o05168_vis.dat', STATUS='old')
         !WRITE(90, *) nx, nw
         !DO ix = 1, nx 
         !   WRITE(90, *) ix
         !   DO iw = spos(ch), epos(ch)
-        !      !CALL convert_2bytes_to_16bits ( nbits, 1, omi_irradiance_qflg(iw, ix), mflgbits(0:nbits-1))
-        !      WRITE(90, '(F10.4,D14.6,1X)') omi_irradiance_wavl(iw, ix), omi_irradiance_spec(iw, ix) !, &
+        !      !CALL convert_2bytes_to_16bits ( nbits, 1, irrad_qflg(iw, ix), mflgbits(0:nbits-1))
+        !      WRITE(90, '(F10.4,D14.6,1X)') irrad_wavl(iw, ix), irrad_spec(iw, ix) !, &
         !      !mflgbits(0:nbits-1)
         !   ENDDO
         !ENDDO
@@ -605,17 +530,9 @@ contains
     ! Use backup solar spectrum
     ELSE
       ! Determine sun-earth distance correction
-      if (use_he5_in) then
-        READ(omiraddate, '(I4,1X,2I2)') theyear, themon, theday
-      endif
-      if (use_tio_in) then
-        theyear = GranuleYear
-        themon = GranuleMonth
-        theday= GranuleDay
-      endif
-      CALL GET_DOY(theyear, themon,  theday, thedoy)
+      thedoy=GranuleJDay
       IF (thedoy == 366) thedoy = 365
-
+     
       OPEN (UNIT=lun, FILE= ADJUSTL(TRIM(refdbdir)) // 'solar-distance.dat', &
            STATUS='UNKNOWN', IOSTAT=errstat)
       IF ( errstat /= pge_errstat_ok ) THEN
@@ -629,21 +546,14 @@ contains
       DO i = 1, thedoy
         READ(LUN, *) normsc, normsc
       ENDDO
+      earthsundistance = normsc
       CLOSE(LUN)
       normsc = 1.0 / normsc ** 2  ! solar energy is inversely proportional to square distance
-
-      ! Determine backup filename
-      IF (omisol_version == 2) THEN
-        IF (orbnum >= 6551) THEN
-          opfc = 'aft'
-        ELSE
-          opfc = 'bef'
-        ENDIF
-        bkfname = ADJUSTL(TRIM(refdbdir)) // 'OMI/omisol_'  // opfc // '_6551_avg_backup.dat'
+      IF (avgsol_allorb) THEN
+        bkfname = ADJUSTL(TRIM(refdbdir))//'OMI/omisol_v003_avg_nshi_backup.dat'
       ELSE
-        bkfname = ADJUSTL(TRIM(refdbdir)) // 'OMI/omisol_v003_avg_nshi_backup.dat'
+        bkfname = ADJUSTL(TRIM(refdbdir)) // 'omisolrunavg/omisol_'//omiraddate // '_v3_31runavg_backup.dat'
       ENDIF
-
       IF( scnwrt ) WRITE(*,*) 'use_backup=(T):'//ADJUSTL(TRIM( bkfname ))
       OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(bkfname)), STATUS='UNKNOWN', IOSTAT=errstat)
       IF ( errstat /= pge_errstat_ok ) THEN
@@ -660,43 +570,53 @@ contains
         epos(is) = int(nwavel + nwls(is) , kind=i2)
         DO i = 1, nx
           READ(lun, *) 
-          DO j = 1, nwls(is)
-            READ(lun, *) omi_irradiance_wavl(nwavel + j, i), &
-                 omi_irradiance_spec(nwavel + j, i), &
-                 omi_irradiance_prec(nwavel + j, i), idum, idum
-           IF (idum > 0) omi_irradiance_prec(nwavel + j, i) = &
-                 real(omi_irradiance_prec(nwavel + j, i) &
-                 / SQRT( REAL(idum, KIND=dp) ) , kind=r4)
-          ENDDO
+          IF (avgsol_allorb == .true.) THEN
+            DO j = 1, nwls(is)
+              READ(lun, *) irrad_wavl(nwavel + j, i),  irrad_spec(nwavel + j, i),&
+                           irrad_prec(nwavel + j, i), idum, idum
+              IF (idum > 0) irrad_prec(nwavel + j, i) = &
+                             real(irrad_prec(nwavel + j, i) &
+                             / SQRT( REAL(idum, KIND=dp) ) , kind=r4)
+            ENDDO
+          ELSE
+            DO j = 1, nwls(is)
+              READ(lun, *) irrad_wavl(nwavel + j, i), irrad_spec(nwavel + j, i), &
+                           irrad_prec(nwavel + j, i), idum, tmpnavg(nwavel +j,i)
+            ENDDO
+            idum = MAXVAL(tmpnavg(spos(is):epos(is), i))
+            DO j = 1, nwls(is)
+               IF (tmpnavg(nwavel + j, i) > 10) THEN
+                   irrad_prec(nwavel + j, i) = irrad_prec(nwavel+j, i) &
+                   / SQRT( REAL(tmpnavg(nwavel + j, i), KIND=dp) )
+               ELSE
+                 irrad_spec(nwavel + j, i) = 0.0
+                 irrad_prec(nwavel + j, i) = 0.0
+               ENDIF
+            ENDDO
+          ENDIF
         ENDDO
-        omi_irradiance_spec(spos(is):epos(is), 1:nx) = &
-             real(omi_irradiance_spec(spos(is):epos(is), 1:nx) * &
-             normsc , kind=r4)
-        omi_irradiance_prec(spos(is):epos(is), 1:nx) = &
-             real(omi_irradiance_prec(spos(is):epos(is), 1:nx) * &
-             normsc , kind=r4)
+        irrad_spec(spos(is):epos(is), 1:nx) = real(irrad_spec(spos(is):epos(is), 1:nx) *normsc , kind=r4)
+        irrad_prec(spos(is):epos(is), 1:nx) = real(irrad_prec(spos(is):epos(is), 1:nx) *normsc , kind=r4)
         nwavel = epos(is)
-        !IF ( is == 2 ) CALL corruv2wav(nwls(is), nx, omi_irradiance_wavl(spos(is):epos(is), 1:nx)) 
+        !IF ( is == 2 ) CALL corruv2wav(nwls(is), nx, irrad_wavl(spos(is):epos(is), 1:nx)) 
       ENDDO
-
       IF (nswath == 1) THEN
         IF (band_selectors(1) == 1) THEN
           nwavel = nwls(1)         
         ELSE
           nwavel = nwls(2)
-          omi_irradiance_wavl(1:nwavel, :) = &
-               omi_irradiance_wavl(spos(2):epos(2), :)
-          omi_irradiance_spec(1:nwavel, :) = &
-               omi_irradiance_spec(spos(2):epos(2), :) 
-          omi_irradiance_prec(1:nwavel, :) = &
-               omi_irradiance_prec(spos(2):epos(2), :)
+          irrad_wavl(1:nwavel, :) = &
+               irrad_wavl(spos(2):epos(2), :)
+          irrad_spec(1:nwavel, :) = &
+               irrad_spec(spos(2):epos(2), :) 
+          irrad_prec(1:nwavel, :) = &
+               irrad_prec(spos(2):epos(2), :)
           spos(2) = int(spos(2) - nwls(1) , kind=i2)
           epos(2) = int(epos(2) - nwls(1) , kind=i2)
         ENDIF
       ENDIF
       CLOSE(LUN)
     ENDIF
-
     !  ! xliu: Feb/19/2008, read straylight spectra
     !  straylight_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI/omi_irrad_sl_v3.dat' 
     !  OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(straylight_fname)), STATUS='UNKNOWN', IOSTAT=errstat)
@@ -765,14 +685,14 @@ contains
     ! Do not coadd wavelengths with a gap (e.g., filter Mg absorption lines), need to determine
     ! delta-lamda in UV-1
     ! Note in OMI delta-lamda varies with wavelength (largest for the first two pixels in each channel)
-    dwavmax = ( omi_irradiance_wavl(2, 1) - omi_irradiance_wavl(1, 1) ) * 1.1
+    dwavmax = ( irrad_wavl(2, 1) - irrad_wavl(1, 1) ) * 1.1
 
     ! Degrade spectral resolution if necessary
     IF (reduce_resolution) THEN
       nwavel = 0
       j = 1
       DO is = 1, nswath
-        ch = omichs(is)
+        ch = inschs(is)
         IF (coadd_uv2 .AND. is == 1) THEN
           npos = nfxtrack * nsolbin
         ELSE
@@ -790,10 +710,10 @@ contains
         IF (is == 1 .AND. band_selectors(1) == 1) tmpsampr = redsampr / 3.0
         np = nwls(ch)
 
-        tmpspec(wvl_idx, 1:np, 1:npos) = omi_irradiance_wavl(spos(ch):epos(ch), 1:npos)
-        tmpspec(spc_idx, 1:np, 1:npos) = omi_irradiance_spec(spos(ch):epos(ch), 1:npos)
-        tmpspec(sig_idx, 1:np, 1:npos) = omi_irradiance_prec(spos(ch):epos(ch), 1:npos)
-        tmpqflg(   1:np, 1:npos) = omi_irradiance_qflg(spos(ch):epos(ch), 1:npos)       
+        tmpspec(wvl_idx, 1:np, 1:npos) = irrad_wavl(spos(ch):epos(ch), 1:npos)
+        tmpspec(spc_idx, 1:np, 1:npos) = irrad_spec(spos(ch):epos(ch), 1:npos)
+        tmpspec(sig_idx, 1:np, 1:npos) = irrad_prec(spos(ch):epos(ch), 1:npos)
+        tmpqflg(   1:np, 1:npos) = irrad_qflg(spos(ch):epos(ch), 1:npos)       
 
         DO ix = 1, npos
           CALL convert_2bytes_to_16bits ( nbits, np, tmpqflg(1:np, ix), flgbits(1, 1:np, 0:nbits-1))
@@ -803,7 +723,7 @@ contains
         ENDDO
 
         CALL reduce_irrad_resolution (tmpspec(:, 1:np, 1:npos), &
-             tmpqflg(1:np, 1:npos), np, npos, reduce_slit, omi_redslw(is), &
+             tmpqflg(1:np, 1:npos), np, npos, reduce_slit, redslw(is), &
              tmpsampr, redlam, retswav, retewav, reduce_lbnd(ch), &
              reduce_ubnd(ch), nwls(ch), pge_error_status)
 
@@ -813,13 +733,13 @@ contains
         spos(ch) = int(j, kind=i2)
         j = nwavel + 1
         epos(ch) = int(nwavel, kind=i2)
-        omi_irradiance_wavl(spos(ch):epos(ch), 1:npos) = &
+        irrad_wavl(spos(ch):epos(ch), 1:npos) = &
              real(tmpspec(wvl_idx, 1:nwls(ch), 1:npos), kind=r4)
-        omi_irradiance_spec(spos(ch):epos(ch), 1:npos) = &
+        irrad_spec(spos(ch):epos(ch), 1:npos) = &
              real(tmpspec(spc_idx, 1:nwls(ch), 1:npos), kind=r4)
-        omi_irradiance_prec(spos(ch):epos(ch), 1:npos) = &
+        irrad_prec(spos(ch):epos(ch), 1:npos) = &
              real(tmpspec(sig_idx, 1:nwls(ch), 1:npos), kind=r4)
-        omi_irradiance_qflg(spos(ch):epos(ch), 1:npos) = 0   ! All data are good  (pre filtered) 
+        irrad_qflg(spos(ch):epos(ch), 1:npos) = 0   ! All data are good  (pre filtered) 
       ENDDO
     ENDIF
 
@@ -830,10 +750,10 @@ contains
     ENDIF
 
     ! Determine number of wavelengths to be read for deteriming cloud fraction
-    fidx = MAXVAL ( MINLOC ( omi_irradiance_wavl(1:nwavel, 1), MASK = &
-         (omi_irradiance_wavl(1:nwavel, 1) > pos_alb - toms_fwhm * 1.4) ))
-    lidx = MAXVAL ( MAXLOC ( omi_irradiance_wavl(1:nwavel, 1), MASK = &
-         (omi_irradiance_wavl(1:nwavel, 1) < pos_alb + toms_fwhm * 1.4) ))
+    fidx = MAXVAL ( MINLOC ( irrad_wavl(1:nwavel, 1), MASK = &
+         (irrad_wavl(1:nwavel, 1) > pos_alb - toms_fwhm * 1.4) ))
+    lidx = MAXVAL ( MAXLOC ( irrad_wavl(1:nwavel, 1), MASK = &
+         (irrad_wavl(1:nwavel, 1) < pos_alb + toms_fwhm * 1.4) ))
     IF (fidx <1 .OR. lidx > nwavel) THEN
       WRITE(www_lun, '(2A)') modulename, ': Need to change pos_alb/toms_fwhm!!!'
       pge_error_status = pge_errstat_error
@@ -872,7 +792,7 @@ contains
       ! Get quality flag bits, coadd flags if necessary to avoid coadding inconsistent # of pixels 
       flgmsks = 0
       DO is = 1, nswath
-        ch = omichs(is)
+        ch = inschs(is)
 
         !Do not use nwbin
         IF (is == 1) THEN
@@ -891,15 +811,15 @@ contains
         IF (.NOT. reduce_resolution) THEN
           ! properly align cross track positions to be coadded (should be within one pixel)
           IF (nbin / nsolbin > 2) CALL prespec_align(nwls(ch), nbin, &
-               omi_irradiance_wavl(spos(ch):epos(ch), iix+1:iix+nbin), &
-               omi_irradiance_spec(spos(ch):epos(ch), iix+1:iix+nbin), &
+               irrad_wavl(spos(ch):epos(ch), iix+1:iix+nbin), &
+               irrad_spec(spos(ch):epos(ch), iix+1:iix+nbin), &
                                 !omi_irrad_stray(spos(ch):epos(ch), iix+1:iix+nbin), &
                                 !omi_rad_stray(spos(ch):epos(ch), iix+1:iix+nbin), &
-               omi_irradiance_prec(spos(ch):epos(ch), iix+1:iix+nbin), &       
-               omi_irradiance_qflg(spos(ch):epos(ch), iix+1:iix+nbin))
+               irrad_prec(spos(ch):epos(ch), iix+1:iix+nbin), &       
+               irrad_qflg(spos(ch):epos(ch), iix+1:iix+nbin))
 
           DO ic = 1, nbin
-            CALL convert_2bytes_to_16bits ( nbits, nwls(ch), omi_irradiance_qflg(spos(ch):epos(ch), iix + ic ), &
+            CALL convert_2bytes_to_16bits ( nbits, nwls(ch), irrad_qflg(spos(ch):epos(ch), iix + ic ), &
                  flgbits(ic, spos(ch):epos(ch), 0:nbits-1))
             flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) &
                  + flgbits(ic, spos(ch):epos(ch), 0)                &   ! Missing
@@ -908,22 +828,21 @@ contains
           ENDDO
 
           !DO i = spos(is), epos(is)
-          !   WRITE(90, '(F10.4, D14.6, 16I2)') omi_irradiance_wavl(i, iix+1), &
-          !        omi_irradiance_spec(i, iix+1), flgbits(1, i, 0:nbits-1)
+          !   WRITE(*, '(F10.4, D14.6, 16I2)') irrad_wavl(i, iix+1), &
+          !        irrad_spec(i, iix+1), flgbits(1, i, 0:nbits-1)
           !ENDDO
 
         ELSE
           ! Already aligned because of using common wavelength scale
           DO ic = 1, nbin
             flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) + &
-                 omi_irradiance_qflg(spos(ch):epos(ch), iix + ic )
+                 irrad_qflg(spos(ch):epos(ch), iix + ic )
           ENDDO
         ENDIF
       ENDDO
-
       ! Subset valid data
       nomi = 0
-      omispec = 0.0
+      subspec = 0.0
       ! strayspec = 0.0
       DO iw = 1, numwin
         ch = band_selectors(iw)
@@ -935,116 +854,111 @@ contains
           iix = iix - (zoom_p1 - 1) * nsolbin
         ENDIF
 
-        winpix(iw, 1) = MINVAL ( MINLOC ( &
-             omi_irradiance_wavl(spos(ch):epos(ch),iix + 1), &
-             MASK = omi_irradiance_wavl(spos(ch):epos(ch),iix + 1) >= &
-             winlim(iw, 1)) )
-        winpix(iw, 2) = MAXVAL ( MAXLOC ( &
-             omi_irradiance_wavl(spos(ch):epos(ch),iix + 1), &
-             MASK = omi_irradiance_wavl(spos(ch):epos(ch),iix + 1) <= &
-             winlim(iw, 2)) )
+        winpix(iw, 1) = MINVAL ( MINLOC ( irrad_wavl(spos(ch):epos(ch),iix + 1), &
+             MASK = irrad_wavl(spos(ch):epos(ch),iix + 1) >= &
+             winlim(iw, 1)) ) + spos(ch) - 1
+        winpix(iw, 2) = MAXVAL ( MAXLOC ( irrad_wavl(spos(ch):epos(ch),iix + 1), &
+             MASK = irrad_wavl(spos(ch):epos(ch),iix + 1) <= &
+             winlim(iw, 2)) ) + spos(ch) - 1
 
-        omi_nsolpix  (iw, ix) = nomi
-        fidx = winpix(iw, 1) + spos(ch) - 1
-        lidx = winpix(iw, 2) + spos(ch) - 1
-        omisol_winpix(iw, ix, 1:2) = 0       
+        IF (winpix(iw, 1) .le. 0) winpix(iw,1) = 1
+        IF (winpix(iw, 2) .gt. nwavel) winpix(iw, 2) = nwavel
+
+        omi_irrad%winpix(iw, ix, 1:2) = 0       
+        omi_irrad%npix  (iw, ix) = nomi
+        fidx = winpix(iw, 1) 
+        lidx = winpix(iw, 2) 
 
         IF (rm_mgline .AND. winlim(iw, 1) < 286.0 .AND. &
              winlim(iw, 2) > 286.0) THEN
           DO i = fidx, lidx
-            IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-                ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. &
+            IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+                ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. &
                 flgmsks(i) == 0 .AND. &
-                 !(ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) < 273.8)   .OR. &
-                !ALL(omi_irradiance_wavl(i, iix+1:iix+nbin)  > 275.2))  .AND. &
-                 (ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) < 278.8)   .OR. &
-                 ALL(omi_irradiance_wavl(i, iix+1:iix+nbin)  > 281.0))  .AND. &
-                 (ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) < 284.7)   .OR. &
-                 ALL(omi_irradiance_wavl(i, iix+1:iix+nbin)  > 285.7))) THEN
-              !(ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) < 278.0)   .OR. &
-              !ALL(omi_irradiance_wavl(i, iix+1:iix+nbin)  > 282.0))  .AND. &
-              !(ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) < 284.0)   .OR. &
-              !ALL(omi_irradiance_wavl(i, iix+1:iix+nbin)  > 286.0))) THEN
+                 !(ALL(irrad_wavl(i, iix+1:iix+nbin) < 273.8)   .OR. &
+                !ALL(irrad_wavl(i, iix+1:iix+nbin)  > 275.2))  .AND. &
+                 (ALL(irrad_wavl(i, iix+1:iix+nbin) < 278.8)   .OR. &
+                 ALL(irrad_wavl(i, iix+1:iix+nbin)  > 281.0))  .AND. &
+                 (ALL(irrad_wavl(i, iix+1:iix+nbin) < 284.7)   .OR. &
+                 ALL(irrad_wavl(i, iix+1:iix+nbin)  > 285.7))) THEN
+              !(ALL(irrad_wavl(i, iix+1:iix+nbin) < 278.0)   .OR. &
+              !ALL(irrad_wavl(i, iix+1:iix+nbin)  > 282.0))  .AND. &
+              !(ALL(irrad_wavl(i, iix+1:iix+nbin) < 284.0)   .OR. &
+              !ALL(irrad_wavl(i, iix+1:iix+nbin)  > 286.0))) THEN
               nomi = nomi + 1
-              omispec(1:nbin, wvl_idx, nomi) = &
-                   omi_irradiance_wavl(i, iix+1:iix+nbin)
-              omispec(1:nbin, spc_idx, nomi) = &
-                   omi_irradiance_spec(i, iix+1:iix+nbin)
-              omispec(1:nbin, sig_idx, nomi) = &
-                   omi_irradiance_prec(i, iix+1:iix+nbin)
+              subspec(1:nbin, wvl_idx, nomi) =irrad_wavl(i, iix+1:iix+nbin)
+              subspec(1:nbin, spc_idx, nomi) =irrad_spec(i, iix+1:iix+nbin)
+              subspec(1:nbin, sig_idx, nomi) =irrad_prec(i, iix+1:iix+nbin)
            !strayspec(1:nbin, 1, nomi)     = omi_irrad_stray(i, iix+1:iix+nbin)
            !strayspec(1:nbin, 2, nomi)     = omi_rad_stray(i, iix+1:iix+nbin)
-              IF (omisol_winpix(iw, ix, 1) == 0) omisol_winpix(iw, ix, 1) = i
-              omisol_winpix(iw, ix, 2) = i
-              irradwind(nomi, ix) = int(i, kind=i2)
+              IF (omi_irrad%winpix(iw, ix, 1) == 0) omi_irrad%winpix(iw, ix, 1) = i
+              omi_irrad%winpix(iw, ix, 2) = i
+              omi_irrad%wind(nomi, ix) = int(i, kind=i2)
             ENDIF
           ENDDO
         ELSE
          DO i = fidx, lidx
 
-            IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-                 ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. &
+            IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+                 ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. &
                  flgmsks(i) == 0 ) THEN
               nomi = nomi + 1
-              omispec(1:nbin, wvl_idx, nomi) = &
-                   omi_irradiance_wavl(i, iix+1:iix+nbin)
-              omispec(1:nbin, spc_idx, nomi) = &
-                   omi_irradiance_spec(i, iix+1:iix+nbin)
-              omispec(1:nbin, sig_idx, nomi) = &
-                   omi_irradiance_prec(i, iix+1:iix+nbin)
+              subspec(1:nbin, wvl_idx, nomi) =irrad_wavl(i, iix+1:iix+nbin)
+              subspec(1:nbin, spc_idx, nomi) =irrad_spec(i, iix+1:iix+nbin)
+              subspec(1:nbin, sig_idx, nomi) =irrad_prec(i, iix+1:iix+nbin)
            !strayspec(1:nbin, 1, nomi)     = omi_irrad_stray(i, iix+1:iix+nbin)
            !strayspec(1:nbin, 2, nomi)     = omi_rad_stray(i, iix+1:iix+nbin)
-              IF (omisol_winpix(iw, ix, 1) == 0) omisol_winpix(iw, ix, 1) = i
-              omisol_winpix(iw, ix, 2) = i
-              irradwind(nomi, ix) = int(i, kind=i2)
+              IF (omi_irrad%winpix(iw, ix, 1) == 0) omi_irrad%winpix(iw, ix, 1) = i
+              omi_irrad%winpix(iw, ix, 2) = i
+              omi_irrad%wind(nomi, ix) = int(i, kind=i2)
             ENDIF
           ENDDO
         ENDIF
 
-        omi_nsolpix(iw, ix) = nomi - omi_nsolpix(iw, ix)
+        omi_irrad%npix(iw, ix) = nomi - omi_irrad%npix(iw, ix)
 
-        !WRITE(www_lun, '(2I5, 2F8.3, 2I5, 2F8.3, 6I5)') ix, iw, omi_irradiance_wavl(spos(ch), iix+1), &
-        !     omi_irradiance_wavl(epos(ch), iix+1), spos(ch), epos(ch), winlim(iw, 1), winlim(iw, 2), &
-        !     winpix(iw, 1), winpix(iw, 2), fidx, lidx, lidx - fidx + 1, omi_nsolpix(iw, ix)
+        !WRITE(www_lun, '(2I5, 2F8.3, 2I5, 2F8.3, 6I5)') ix, iw, irrad_wavl(spos(ch), iix+1), &
+        !     irrad_wavl(epos(ch), iix+1), spos(ch), epos(ch), winlim(iw, 1), winlim(iw, 2), &
+        !     winpix(iw, 1), winpix(iw, 2), fidx, lidx, lidx - fidx + 1, omi_irrad%npix(iw, ix)
       ENDDO
-      omi_nwav_irrad(ix) = nomi
+      omi_irrad%nwav(ix) = nomi
 
       ! Perform coadding when necessary
+ 
       fidx = 1
       DO iw = 1, numwin       
         ch = band_selectors(iw)
         nbin = nwbin(iw)
-        lidx = fidx + omi_nsolpix(iw, ix) - 1 
+        lidx = fidx + omi_irrad%npix(iw, ix) - 1 
         IF (nbin > 1) THEN
-          CALL solwavcal_coadd(wcal_bef_coadd, omi_nsolpix(iw, ix), nbin, &
-               omispec(1:nbin, :, fidx:lidx), wshis(iw, 1:nbin), wsqus(iw, 1:nbin), error)
+          CALL solwavcal_coadd(wcal_bef_coadd, omi_irrad%npix(iw, ix), nbin, &
+               subspec(1:nbin, :, fidx:lidx), wshis(iw, 1:nbin), wsqus(iw, 1:nbin), error)
           IF (error) THEN
             WRITE(www_lun, '(A)') 'No solar wavelength calibration before coadding!!!'
-            omi_solpix_errstat(ix) = pge_errstat_warning
+            omi_irrad%errstat(ix) = pge_errstat_warning
           ENDIF
         ENDIF
         fidx = lidx + 1    
       ENDDO
-
       ! Subset solar spectrum for Ring effect
       IF (.NOT. reduce_resolution .OR. (reduce_resolution .AND. .NOT. use_redfixwav)) THEN
-        omirsol = 0.0
+        subring = 0.0
         ch = band_selectors(1)
         IF (band_selectors(1) == 1) THEN
-          noff1 = 12
+          noff1 = noff_uv1
         ELSE
-          noff1 = 25
+          noff1 = noff_uv2
         ENDIF
-        nring = omi_nsolpix(1, ix) + noff1
-        omirsol(1:spc_idx, noff1+1 : nring) = omispec(1, 1:spc_idx, 1:omi_nsolpix(1, ix)) 
-        omi_solring_ndiv(ix) = 0
+        nring = omi_irrad%npix(1, ix) + noff1
+        subring(1:spc_idx, noff1+1 : nring) = subspec(1, 1:spc_idx, 1:omi_irrad%npix(1, ix)) 
+        omi_ring%ndiv(ix) = 0
 
         ! add extra spectra before first window (uncoadded)
         ! if unavailable, needed to ammened with solar reference spectrum
         noff1 = noff1 + 1 
         nbin = nwbin(1)
         iix = (ix - 1) * nbin
-
+        
         IF (ch == 2 .AND. nsolbin == 2) THEN  ! Shift the position by 15 
           iix = iix - (zoom_p1 - 1) * nsolbin
         ENDIF
@@ -1055,18 +969,18 @@ contains
         ! therefore there is 5 continuous bad pixels then exit
         nbad = 0
         DO i = winpix(1, 1) - 1, 1, -1
-          IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-               ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
+          IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+               ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
             noff1 = noff1 - 1
-            omirsol(wvl_idx, noff1) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-            omirsol(spc_idx, noff1) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+            subring(wvl_idx, noff1) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+            subring(spc_idx, noff1) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+           ! print * , i, subring(wvl_idx, noff1)
             IF (noff1 == 1) EXIT
           ELSE ! JBAK
             nbad = nbad + 1
             IF (nbad == 5) EXIT
           ENDIF
         ENDDO
-
         DO iw = 2, numwin
           ch = band_selectors(iw)
           nbin = nwbin(iw - 1) 
@@ -1076,62 +990,63 @@ contains
           ENDIF
           IF (ch == band_selectors(iw - 1) ) THEN   
             DO i = winpix(iw-1, 2)+1, winpix(iw, 1)-1 
-              IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-                   ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
+              IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+                   ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
                 nring = nring + 1
-                omirsol(wvl_idx, nring) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-                omirsol(spc_idx, nring) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+                subring(wvl_idx, nring) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+                subring(spc_idx, nring) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+                !print * , i,nring, subring(wvl_idx, nring)
               ENDIF
             ENDDO
           ELSE  ! first channel 1 and second channel 2
-            wcenter = (winlim(iw-1, 2) + winlim(iw, 1)) / 2.0 
-            idx = MAXVAL ( MAXLOC ( omi_irradiance_wavl(spos(ch-1):epos(ch-1), iix+1), &
-                 MASK = omi_irradiance_wavl(spos(ch-1):epos(ch-1), iix+1) < wcenter ) ) + spos(ch-1) - 1
+            wcenter = (winlim(iw-1, 2) + winlim(iw, 1)) / 2.0
+            idx = MAXVAL ( MAXLOC ( irrad_wavl(spos(ch-1):epos(ch-1),iix+1), &
+                   MASK = irrad_wavl(spos(ch-1):epos(ch-1), iix+1) < wcenter ) ) + spos(ch-1) - 1
             DO i = winpix(iw-1, 2)+1, idx 
-              IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-                   ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0 .AND. &
-                   ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) > omirsol(wvl_idx, nring)) ) THEN
+              IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+                   ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0 .AND. &
+                   ALL(irrad_wavl(i, iix+1:iix+nbin) > subring(wvl_idx, nring)) ) THEN
                 nring = nring + 1
-                omirsol(wvl_idx, nring) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-                omirsol(spc_idx, nring) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+                subring(wvl_idx, nring) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+                subring(spc_idx, nring) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+             ! print * , 'a',nring, subring(wvl_idx, nring) !, subring(wvl_idx, nring)-subring(wvl_idx,nring-1)
               ENDIF
             ENDDO
-
-            omi_solring_ndiv(ix) = nring               ! 1:nring is from the same channel
+            omi_ring%ndiv(ix) = nring               ! 1:nring is from the same channel
             nbin = nwbin(iw) 
             iix = (ix - 1) * nbin
             IF (ch == 2 .AND. nsolbin == 2) THEN  ! Shift the position by 15 
               iix = iix - (zoom_p1 - 1) * nsolbin
             ENDIF
 
-            idx = MAXVAL ( MINLOC ( omi_irradiance_wavl(spos(ch):epos(ch), iix+1),   &
-                 MASK = omi_irradiance_wavl(spos(ch):epos(ch), iix+1) > wcenter ) ) + spos(ch) - 1
-            DO i = idx, winpix(iw, 1) - 2 + spos(ch)
-              IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-                   ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0 .AND. &
-                   ALL(omi_irradiance_wavl(i, iix+1:iix+nbin) > omirsol(wvl_idx, nring)) ) THEN
+            idx = MAXVAL ( MINLOC ( irrad_wavl(spos(ch):epos(ch), iix+1),   &
+                   MASK = irrad_wavl(spos(ch):epos(ch), iix+1) > wcenter ) ) + spos(ch) - 1            
+            DO i = idx, winpix(iw, 1) - 1 
+              IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+                   ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0 .AND. &
+                   ALL(irrad_wavl(i, iix+1:iix+nbin) > subring(wvl_idx, nring)) ) THEN
                 nring = nring + 1
-                omirsol(wvl_idx, nring) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-                omirsol(spc_idx, nring) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+                subring(wvl_idx, nring) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+                subring(spc_idx, nring) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+            ! print * , 'b',nring, subring(wvl_idx, nring), subring(wvl_idx,nring)-subring(wvl_idx,nring-1)
               ENDIF
             ENDDO
           ENDIF
-
-          idx = SUM(omi_nsolpix(1:iw-1, ix))
-          omirsol(wvl_idx:spc_idx, nring+1:nring+omi_nsolpix(iw, ix)) = omispec(1, wvl_idx:spc_idx, &
-               idx+1:idx+omi_nsolpix(iw, ix))
-          nring = nring + omi_nsolpix(iw, ix)
+          idx = SUM(omi_irrad%npix(1:iw-1, ix))
+          subring(wvl_idx:spc_idx, nring+1:nring+omi_irrad%npix(iw, ix)) = subspec(1, wvl_idx:spc_idx, &
+               idx+1:idx+omi_irrad%npix(iw, ix))
+          !print * , subring(1, nring+1), subring(1, nring+omi_irrad%npix(iw,ix))
+          nring = nring + omi_irrad%npix(iw, ix)
         ENDDO
-
         ! Add extra spectra after fitting window
         noff2 = nring
         IF (ch == 2) THEN
-          nring = nring + 25
+          nring = nring + noff_uv2
         ELSE
-          nring = nring + 12
+          nring = nring + noff_uv1
         ENDIF
         nbad = 0
-        DO i = spos(ch) + winpix(numwin, 2), epos(ch)
+        DO i = winpix(numwin, 2) + 1, nwavel
           IF (ch == 1 .OR. .NOT. coadd_uv2) THEN
             nbin = nxbin
           ELSE
@@ -1139,32 +1054,38 @@ contains
           ENDIF
           iix = (ix - 1) * nbin
 
-          IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-               ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
+          IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+               ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
             noff2 = noff2 + 1
-            omirsol(wvl_idx, noff2) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-            omirsol(spc_idx, noff2) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
+            subring(wvl_idx, noff2) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+            subring(spc_idx, noff2) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+            !print * , noff2, subring(wvl_idx, noff2)
           ELSE
              nbad = nbad + 1
           ENDIF
-
           IF (noff2 == nring) EXIT
         ENDDO
-        omi_nsolring(ix) = nring
-        solring_lin(ix) = noff1
-        solring_uin(ix) = noff2
+    
+        omi_ring%nsol(ix) = nring
+        omi_ring%winpix(ix, 1) = noff1
+        omi_ring%winpix(ix, 2) = noff2
+        !print * ,ix, omi_ring%winpix(15,:), nring, 'noff1, noff2'
+        !DO j = 1, nring
+        !  print * , j, subring(1, j), subring(1, j)-subring(1, j-1)
+        !ENDDO
+        !STOP
       ELSE
         ! Need to convole the saved solar spectra with additional slit width
-        nring = omi_nsolring(ix)
-        omirsol(1, 1:nring) = omi_solspec_ring(1, 1:nring, ix)
-        omirsol(2, 1:nring) = omi_solspec_ring(2, 1:nring, ix)
+        nring = omi_ring%nsol(ix)
+        subring(1, 1:nring) = omi_solspec_ring(1, 1:nring, ix)
+        subring(2, 1:nring) = omi_solspec_ring(2, 1:nring, ix)
 
         IF (which_slit == 0) THEN
-          CALL gauss_uneven(omirsol(1, 1:nring), omirsol(2, 1:nring), nring, &
-               nswath, omi_redslw(omichs(1:nswath)), retlbnd(omichs(1:nswath)), retubnd(omichs(1:nswath)))
+          CALL gauss_uneven(subring(1, 1:nring), subring(2, 1:nring), nring, &
+               nswath, redslw(inschs(1:nswath)), retlbnd(inschs(1:nswath)), retubnd(inschs(1:nswath)))
         ELSE IF (which_slit == 3) THEN
-          CALL triangle_uneven(omirsol(1, 1:nring), omirsol(2, 1:nring), nring, &
-               nswath, omi_redslw(omichs(1:nswath)), retlbnd(omichs(1:nswath)), retubnd(omichs(1:nswath)))
+          CALL triangle_uneven(subring(1, 1:nring), subring(2, 1:nring), nring, &
+               nswath, redslw(inschs(1:nswath)), retlbnd(inschs(1:nswath)), retubnd(inschs(1:nswath)))
         ELSE
           WRITE(www_lun, *) 'This type of slit convolution is not implemented!!!'
           pge_error_status = pge_errstat_error
@@ -1173,7 +1094,7 @@ contains
 
       ! Get data for surface albedo & cloud fraction at 370.2 nm +/- 15 pixels
       irefl = 0
-      omisolr_winpix(ix, 1:2) = 0
+      omi_refl%winpix(ix, 1:2) = 0
       IF (.NOT. coadd_uv2) THEN
         nbin = nxbin
       ELSE
@@ -1185,33 +1106,24 @@ contains
         iix = iix - (zoom_p1 - 1) * nsolbin
       ENDIF
 
-!print *, 'pos_alb=', pos_alb
-!print *, 'toms_fwhm=', toms_fwhm
-!print *, 'iix=', iix
-!print *, 'shape(omi_irradiance_wavl)',shape(omi_irradiance_wavl) 
-!print *, pos_alb - toms_fwhm * 1.4
-!print *, omi_irradiance_wavl(1:nwavel, iix+1)
-
-      idx = MAXVAL ( MINLOC ( omi_irradiance_wavl(1:nwavel, iix+1), MASK = &
-           (omi_irradiance_wavl(1:nwavel, iix+1) > pos_alb - toms_fwhm * 1.4) ))
+      idx = MAXVAL ( MINLOC ( irrad_wavl(1:nwavel, iix+1), MASK = &
+           (irrad_wavl(1:nwavel, iix+1) > pos_alb - toms_fwhm * 1.4) ))
       DO i  = idx, nwavel
-        IF (ALL(omi_irradiance_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
-             ALL(omi_irradiance_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
+        IF (ALL(irrad_spec(i, iix+1:iix+nbin) > 0.0) .AND. &
+             ALL(irrad_spec(i, iix+1:iix+nbin) < 4.0E14) .AND. flgmsks(i) == 0) THEN
           irefl = irefl + 1
-          omi_solspecr(wvl_idx, irefl, ix) = SUM(omi_irradiance_wavl(i, iix+1:iix+nbin)) / nbin
-          omi_solspecr(spc_idx, irefl, ix) = SUM(omi_irradiance_spec(i, iix+1:iix+nbin)) / nbin
-
-          IF (omisolr_winpix(ix, 1) == 0) omisolr_winpix(ix, 1) = i
-          omisolr_winpix(ix, 2) = i
+          omi_refl%solwavl(irefl, ix) = SUM(irrad_wavl(i, iix+1:iix+nbin)) / nbin
+          omi_refl%solspec(irefl, ix) = SUM(irrad_spec(i, iix+1:iix+nbin)) / nbin
+          IF (omi_refl%winpix(ix, 1) == 0) omi_refl%winpix(ix, 1) = i
+          omi_refl%winpix(ix, 2) = i
         ENDIF
         IF (irefl == nrefl) EXIT
       ENDDO
-!print *, 'nrefl, irefl', nrefl, irefl
 
       IF (irefl /= nrefl) THEN
         WRITE(www_lun, *) &
              'Could not get enough irradiance points for cloud fraction!!!'
-        omi_solpix_errstat(ix) = pge_errstat_error
+        omi_irrad%errstat(ix) = pge_errstat_error
         CYCLE
       ENDIF
 
@@ -1219,8 +1131,8 @@ contains
         WRITE(www_lun, *) 'End Of Reading Irradiance Spectrum: ', ix
         DO i = 1, numwin
           WRITE(www_lun,'(A10,I4,2f8.3,I4)') 'win = ', i, winlim(i,1), &
-               winlim(i,2), omi_nsolpix(i, ix)
-          IF (omi_nsolpix(i, ix) < 4) THEN
+               winlim(i,2), omi_irrad%npix(i, ix)
+          IF (omi_irrad%npix(i, ix) < 4) THEN
             WRITE(www_lun, '(A,f8.3,A3,f8.3)') &
                  ' Not enough points (>=4)  in window: ', winlim(i,1), &
                  ' - ', winlim(i,2)
@@ -1229,37 +1141,42 @@ contains
         ENDDO
       ENDIF
 
-      omi_solnorm(ix) = SUM ( omispec(1, spc_idx, 1:nomi) ) / nomi
+      omi_irrad%norm(ix) = SUM ( subspec(1, spc_idx, 1:nomi) ) / nomi
 
-      IF ( omi_solnorm(ix) <= 0.0 ) THEN 
-        omi_solpix_errstat(ix) = pge_errstat_error
+      IF ( omi_irrad%norm(ix) <= 0.0 ) THEN 
+        omi_irrad%errstat(ix) = pge_errstat_error
         CYCLE
       ENDIF
 
-      omi_irradiance_wavl(1:nomi, ix) = &
-           real(omispec(1, wvl_idx, 1:nomi) , kind=r4)
-      omi_irradiance_spec(1:nomi, ix) = &
-           real(omispec(1, spc_idx, 1:nomi) / omi_solnorm(ix) , kind=r4)
-      omi_irradiance_prec(1:nomi, ix) = &
-           real(omispec(1, sig_idx, 1:nomi) / omi_solnorm(ix) , kind=r4)
-      !omi_irrad_stray(1:nomi, ix) = strayspec(1, 1, 1:nomi) / omi_solnorm(ix)
-      !omi_rad_stray  (1:nomi, ix) = strayspec(1, 2, 1:nomi) / omi_solnorm(ix)
+      omi_irrad%wavl(1:nomi, ix) = &
+           real(subspec(1, wvl_idx, 1:nomi) , kind=r4)
+      omi_irrad%spec(1:nomi, ix) = &
+           real(subspec(1, spc_idx, 1:nomi) / omi_irrad%norm(ix) , kind=r4)
+      omi_irrad%prec(1:nomi, ix) = &
+           real(subspec(1, sig_idx, 1:nomi) / omi_irrad%norm(ix) , kind=r4)
+      !omi_irrad_stray(1:nomi, ix) = strayspec(1, 1, 1:nomi) / omi_irrad%norm(ix)
+      !omi_rad_stray  (1:nomi, ix) = strayspec(1, 2, 1:nomi) / omi_irrad%norm(ix)
 
-      omi_solspec_ring(1, 1:nring, ix) = real(omirsol(1, 1:nring) , kind=r4)
-      omi_solspec_ring(2, 1:nring, ix) = real(omirsol(2, 1:nring) / &
-           omi_solnorm(ix) , kind=r4)
-
+      omi_ring%wavl(1:nring, ix) = real(subring(1, 1:nring) , kind=r4)
+      omi_ring%spec(1:nring, ix) = real(subring(2, 1:nring) / &
+           omi_irrad%norm(ix) , kind=r4)
+      dwavmax = (omi_irrad%wavl(2,1) - omi_irrad%wavl(1,1))*1.1
       !DO i = 1, nomi
-      !   WRITE(90, '(F10.4, 2D16.7)') omi_irradiance_wavl(i, ix), &
-      !        omi_irradiance_spec(i, ix) * omi_solnorm(ix) , omi_irradiance_prec(i, ix) * omi_solnorm(ix)
+      !   WRITE(90, '(F10.4, 2D16.7)') irrad_wavl(i, ix), &
+      !        irrad_spec(i, ix) * omi_irrad%norm(ix) , irrad_prec(i, ix) * omi_irrad%norm(ix)
       !ENDDO
       !STOP
 
       ! Back up solar irradiance from OMTO3
-      ! IF (orbnumsol == 99999) omi_irradiance_prec(1:nomi, ix)  = 1.0
+      ! IF (orbnumsol == 99999) irrad_prec(1:nomi, ix)  = 1.0
     ENDDO
-
-    RETURN
+   !--------------------------------------------------------------------------
+   ! Ending  with deallocating local variables
+   !--------------------------------------------------------------------------
+   deallocate (irrad_qflg, irrad_prec, irrad_spec, irrad_wavl)
+   deallocate (tmpspec, tmpqflg)
+   deallocate (subspec, subring)
+   RETURN
   END SUBROUTINE omi_read_irradiance_data
 
 
@@ -1268,43 +1185,21 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx
-    USE OMSAO_parameters_module, ONLY: maxwin, vb_lev_omidebug!, &
-         !missing_value_sp, mrefl, maxchlen
+    USE OMSAO_parameters_module, ONLY: maxwin, vb_lev_omidebug, mswath
     USE OMSAO_variables_module,  ONLY: verb_thresh_lev, l1b_rad_filename, &
          wcal_bef_coadd, numwin, coadd_uv2, band_selectors, &
          szamax, currpix, reduce_resolution, redlam, redsampr, &
          reduce_slit, correct_merr, ybin_decerr, & 
-         use_he5_in, use_tio_in, l1_rad_filename_nc, &
-         nc_rad_swathname, nxbin, nybin !, winpix, winlim, scnwrt
-    USE OMSAO_omidata_module,    ONLY: nswath, mswath, omi_nradpix, &
-         nwavel_max, nxtrack_max, omi_radiance_swathname, omi_radiance_spec, &
-         omi_radiance_qflg, omi_radiance_prec, omi_radiance_wavl, &
-         omi_nwav_rad, nxtrack, nfxtrack, ncoadd, omi_specr, &
-         !omi_latitude, omi_longitude, omi_szenith, &!omi_height, omi_geoflg, 
-         omi_mflg, &!omi_time, omi_auraalt, omi_vzenith, &
-         !omi_eaza, omi_esca, &!omi_auralat, omi_auralon, &
-         omi_radiance_errstat, &! land_water_flg, glint_flg, snow_ice_flg, 
-         omi_radpix_errstat, omi_nsolpix, &
-         omisolr_winpix, omichs, omi_saa_flag, omi_radnorm, irradwind, &
-         radwind, reduce_lbnd, reduce_ubnd, retlbnd, retubnd, &
-         omi_redslw, &!omi_xtrackqflg, &
-         rowanomaly_flg, waveshift_flg, blockage_flg, straysun_flg, &
-         strayearth_flg!, omisol_winpix, omi_sazimuth, omi_vazimuth, &
-         !omi_nwav_irrad, ntimes, zoom_mode, zoom_p1, zoom_p2, 
-    USE OMSAO_pixelcorner_module, ONLY: omi_allXTrackQFlg, omi_allsza!, &
-!         omi_alllon, omi_alllat, &
-!         omi_allvza, omi_allaza, omi_allsca, &
-!         omi_allGeoFlg, omi_alltime, omi_allSpcftAlt, omi_allSpcftLon, &
-!         omi_allSpcftLat, omi_allHeight, omi_allMflg
+         nxbin, nybin, redslw, nswath, inschs, &
+         nxtrack, ntimes, reduce_lbnd, reduce_ubnd, retlbnd, retubnd
     USE ozprof_data_module,       ONLY:  nrefl
+    USE OMSAO_pixelcorner_module, ONLY: rowanomaly_flg
     USE OMSAO_errstat_module
     USE hdfeos4_parameters
     USE L1B_Reader_class
-    use omi_cross_calibrate, only: prespec_align, radwavcal_coadd
-    use m_read_l1_tio, only: read_l1_rad_line_tio, open_L1_tio, &
-         close_l1_tio
+    use m_convert_coadd, only: prespec_align, radwavcal_coadd
     use tell_module
-    use tio_module
+  
 
     IMPLICIT NONE
 
@@ -1335,29 +1230,29 @@ contains
 !    REAL (KIND=r8)  :: tmp_time
 !    REAL (KIND=r4)  :: tmp_alt, tmp_lat, tmp_lon
     REAL (KIND=r4)  :: tmp_ExposureTime
-!    INTEGER (KIND=i2), DIMENSION(nxtrack_max)              :: tmp_height
-    REAL (KIND=r4), DIMENSION (nwavel_max, nxtrack_max) :: tmp_rspec, &
-         tmp_rprec, tmp_rwavl
-    INTEGER (KIND=I2), DIMENSION (nwavel_max, nxtrack_max) :: tmp_rqflg
-    REAL (KIND=4), DIMENSION (nwavel_max, nxtrack_max) :: tio_rspec, &
-         tio_rprec, tio_rwavl
-    INTEGER (KIND=2), DIMENSION (nwavel_max, nxtrack_max) :: tio_rqflg
+
     REAL (KIND= dp)                                        :: tmpNinteg
 
-    INTEGER   (KIND=4), DIMENSION (mswath)    :: nwls, tio_nwls
-    INTEGER   (KIND=i2), DIMENSION(mswath)    :: spos, epos
-    INTEGER, DIMENSION (nwavel_max)           :: idxs
+    INTEGER   (KIND=4), DIMENSION (mswath)    :: nwls
     INTEGER                                   :: nwavel, is, iloop, nwl, &
          i, j, ix, iix, ii, nomi, fidx, lidx, ch, iw, ic, irefl, nx, &
          nbin, fpix, lpix, np, npos, k, l!, idx
+   ! variables used to read original spectrum
     LOGICAL                                   :: error, read_irrad
+    INTEGER   (KIND=i2), DIMENSION(mswath)    :: spos, epos
+    INTEGER, DIMENSION (nwavel_max)           :: idxs
+    INTEGER (kind=2), POINTER, DIMENSION (:,:,:) :: rad_qflg
+    REAL (kind=i4), POINTER, DIMENSION(:,:,:) ::  rad_spec,rad_prec,rad_wavl
+    REAL (KIND=I4), POINTER, DIMENSION(:,:) :: ccd_spec, ccd_prec, ccd_wavl
+    INTEGER (KIND=2),POINTER, DIMENSION(:,:) :: ccd_qflg
+    ! variables used for reduced resolution
+    REAL (KIND = dp), DIMENSION (sig_idx, nwavel_max, nxtrack_max) :: tmpspec
+    INTEGER (KIND=2), DIMENSION (nwavel_max, nxtrack_max) :: tmpqflg
     LOGICAL, DIMENSION (maxwin, nxtrack_max)  :: wavcals 
     REAL (KIND = dp)                          :: tmpsampr, retswav, retewav
     REAL (KIND = dp), DIMENSION (maxwin, nxtrack_max, nxcoadd) :: wshis, wsqus
-    REAL (KIND = dp), DIMENSION (nxcoadd, sig_idx, nwavel_max) :: omispec
-    REAL (KIND = dp), DIMENSION (sig_idx, nwavel_max, nxtrack_max) :: tmpspec
-    type (tiof_file_type) :: tio_l1obj
-    integer (kind=2) :: tio_mflg
+    REAL (KIND = dp), DIMENSION (nxcoadd, sig_idx, nwavel_max) :: subspec
+    LOGICAL, SAVE :: first=.true. 
 
     ! Exteranl functions
     INTEGER                                   :: estat
@@ -1367,99 +1262,59 @@ contains
     ! ------------------------------
     CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_lines'
 
-    pge_error_status = pge_errstat_ok
-    errstat = omi_s_success
 
     ! Initialize all local data arrays
     nx = nfxtrack / nxbin
-!    omi_latitude  (1:nx, 0:ny-1) = &
-!         real(omi_alllat (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_longitude (1:nx, 0:ny-1) = &
-!         real(omi_alllon (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_szenith   (1:nx, 0:ny-1) = &
-!         real(omi_allsza (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_vzenith   (1:nx, 0:ny-1) = &
-!         real(omi_allvza (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_eaza      (1:nx, 0:ny-1) = &
-!         real(omi_allaza (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_esca      (1:nx, 0:ny-1) = &
-!         real(omi_allsca (1:nx, iline:iline+ny-1) , kind=r4)
-!    omi_xtrackqflg(1:nx, 0:ny-1) = omi_allXTrackQFlg(1:nx, iline:iline+ny-1)
-!    omi_geoflg(1:nx, 0:ny-1)     = omi_allGeoFlg(1:nx, iline:iline+ny-1)
+    IF ( first) THEN
+     allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nlines_max))
+     allocate (rad_prec (nwavel_max, nxtrack_max, 0:nlines_max))
+     allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nlines_max))
+     allocate (rad_spec (nwavel_max, nxtrack_max, 0:nlines_max))
+     allocate (ccd_prec(nwavel_max, nxtrack_max))
+     allocate (ccd_spec(nwavel_max, nxtrack_max))
+     allocate (ccd_wavl(nwavel_max, nxtrack_max))
+     allocate (ccd_qflg(nwavel_max, nxtrack_max))
+     first=.false.
+    ENDIF
+    rad_spec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
+    rad_prec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
+    rad_qflg (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0
+    rad_wavl (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
 
-    ! Derive Row Anomaly Related Flags
-    DO i = 0, ny - 1
-!      CALL convert_xtrackqflag_info ( nx, omi_xtrackqflg(1:nx, i), &
-      CALL convert_xtrackqflag_info ( nx, omi_allXTrackQFlg(1:nx, iline+i), &
-           rowanomaly_flg(1:nx, i), waveshift_flg(1:nx, i), &
-           blockage_flg(1:nx, i), straysun_flg(1:nx, i), &
-           strayearth_flg(1:nx, i) )    
-    ENDDO
+    ccd_spec (1:nwavel_max, 1:nxtrack_max) = 0.0
+    ccd_prec (1:nwavel_max, 1:nxtrack_max) = 0.0
+    ccd_qflg (1:nwavel_max, 1:nxtrack_max) = 0
+    ccd_wavl (1:nwavel_max, 1:nxtrack_max) = 0.0
 
-    !print *, nx, ny
-    !DO ix = 1, nx
-    !   WRITE(www_lun, '(I5, 6F10.4)') ix, omi_longitude(ix, 0), omi_latitude(ix, 0), omi_szenith(ix, 0), &
-    !        omi_vzenith(ix, 0), omi_eaza(ix, 0), omi_esca(ix, 0)
-    !ENDDO
-    !STOP
 
-!    omi_time      (0:ny-1)       = 0.0
-!    omi_auralat   (0:ny-1)       = 0.0
-!    omi_auralon   (0:ny-1)       = 0.0
-!    omi_auraalt   (0:ny-1)       = 0.0
-!    omi_height    (1:nx, 0:ny-1) = 0
-!    omi_geoflg    (1:nx, 0:ny-1) = 0
-    omi_radiance_spec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
-    omi_radiance_prec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
-    omi_radiance_qflg (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0
-    omi_radiance_wavl (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
-    tmp_rspec (1:nwavel_max, 1:nxtrack_max) = 0.0
-    tmp_rprec (1:nwavel_max, 1:nxtrack_max) = 0.0
-    tmp_rqflg (1:nwavel_max, 1:nxtrack_max) = 0
-    tmp_rwavl (1:nwavel_max, 1:nxtrack_max) = 0.0
-
-    tio_rspec = tmp_rspec
-    tio_rprec = tmp_rprec
-    tio_rqflg = tmp_rqflg
-    tio_rwavl = tmp_rwavl
-
-    omi_radiance_errstat(0:ny-1)          = pge_errstat_ok
-    omi_radpix_errstat(1:nxtrack, 0:ny-1) = pge_errstat_ok
-    omi_nradpix = 0
-    omi_nwav_rad = 0
+    errstat = omi_s_success
+    pge_error_status = pge_errstat_ok
+    omi_rad%errstat(0:ny-1)          = pge_errstat_ok
+    omi_rad%pix_errstat(1:nxtrack, 0:ny-1) = pge_errstat_ok
+    omi_rad%npix = 0
+    omi_rad%nwav = 0
+    omi_rad%spec (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
+    omi_rad%prec (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
+    omi_rad%qflg (1:nwavel_max, 1:nxtrack, 0:ny) = 0
+    omi_rad%wavl (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
 
     j = 1
     nwavel = 0
     wavcals = .TRUE.
 
     DO is = 1, nswath
-      ch = omichs(is)
-
+      ch = inschs(is)
 
       ! Open data block called 'omi_data_block' with default size of 100 lines
 !      errstat = L1Br_OPEN ( omi_data_block, l1b_rad_filename, omi_radiance_swathname(is), ny )
-!
 ! FIXME - for some reason insists on having block size = full swath length 
 !      errstat = L1Br_OPEN ( omi_data_block, l1b_rad_filename, omi_radiance_swathname(is), 1644 )
-      if (use_he5_in) then
-        errstat = L1Br_OPEN ( omi_data_block, l1b_rad_filename, omi_radiance_swathname(is), 100) !1643)
+        errstat = L1Br_OPEN ( omi_data_block, l1b_rad_filename, omi_radiance_swathname(ch), ntimes) !1643)
         IF ( errstat /= omi_s_success ) THEN
           estat = OMI_SMF_setmsg ( omsao_e_open_l1b_file, 'L1Br_OPEN failed.', modulename, 0 ) 
           STOP 1
         END IF
-      endif
 
-      if (use_tio_in) then
-        errstat=0 ! FIXME remove when errstat properly defined
-        !print *, trim(l1b_rad_filename_nc)
-        call open_L1_tio (l1_rad_filename_nc, tio_l1obj, errstat)
-        if (errstat /= 0) then
-          call tell_error (tell_io_error, &
-               "omi_read_l1b_data: failed to open radiance file", &
-               errstat)
-          return
-       endif
-      endif
 
       DO iloop = 0, ny - 1
         ! The current scan line number we are reading
@@ -1468,35 +1323,8 @@ contains
         DO i = 0, nybin - 1
           blockline = first_line + iloop * nybin + i
 
-          ! Get geolocation fields for UV-1 (if both UV-1 and UV-2 are selected)  
-!          IF ((coadd_uv2 .AND. is == 1) .OR. .NOT. coadd_uv2) THEN    
-!            errstat = L1Br_getGEOline ( omi_data_block, blockline,          &
-!                 Time_k                    = tmp_time,                &
-!                 SpacecraftAltitude_k      = tmp_alt,                       &
-!                 SpacecraftLongitude_k     = tmp_lon,                       &
-!                 SpacecraftLatitude_k      = tmp_lat,                       &
-!                 TerrainHeight_k           = tmp_height(1:nfxtrack),        &
-!                 GroundPixelQualityFlags_k = omi_geoflg(1:nfxtrack, iloop))
-!
-!            IF ( errstat /= omi_s_success ) THEN
-!              estat = OMI_SMF_setmsg (omsao_e_read_l1b_file, 'L1Br_getGEOline failed.', modulename, 0)
-!              STOP 1
-!            END IF
-!
-!            omi_time(iloop)    = tmp_time !+ omi_time(iloop) 
-!            omi_auraalt(iloop) = omi_auraalt(iloop) + tmp_alt
-!            omi_auralon(iloop) = omi_auralon(iloop) + tmp_lon
-!            omi_auralat(iloop) = omi_auralat(iloop) + tmp_lat
-!            omi_height(1:nfxtrack, iloop) = omi_height(1:nfxtrack, iloop) + tmp_height(1:nfxtrack)
-
-            ! Could not be properly coadded, just use the last line of these binned lines
-
-!            IF (i == nybin - 1) CALL convert_gpqualflag_info (nfxtrack, omi_geoflg(1:nfxtrack, iloop), &
-!                 land_water_flg(1:nfxtrack, iloop), glint_flg(1:nfxtrack, iloop), snow_ice_flg(1:nfxtrack, iloop))
-!          ENDIF
 
           !Measurement flag for the line
-          if (use_he5_in) then
             errstat = L1Br_getDATA ( omi_data_block, blockline, &
                  MeasurementQualityFlags_k = omi_mflg)
             IF( errstat /= omi_s_success ) THEN
@@ -1504,79 +1332,26 @@ contains
                    "L1Br_getDATA failed.", modulename, 0 )
               STOP 1
             END IF
-          endif
 
           ! Get radiances associated with wavelength range
-          if (use_he5_in) then
             errstat = L1Br_getSIGline ( omi_data_block, blockline,   &
-                 Signal_k            = tmp_rspec(j:, :),  &
-                 SignalPrecision_k   = tmp_rprec(j:, :),  &
-                 PixelQualityFlags_k = tmp_rqflg(j:, :),  &
-                 Wavelength_k        = tmp_rwavl(j:, :),  &
+                 Signal_k            = ccd_spec(j:, :),  &
+                 SignalPrecision_k   = ccd_prec(j:, :),  &
+                 PixelQualityFlags_k = ccd_qflg(j:, :),  &
+                 Wavelength_k        = ccd_wavl(j:, :),  &
                  Nwl_k  = nwls(ch) )
             IF( errstat /= omi_s_success ) THEN
               estat = OMI_SMF_setmsg ( omsao_e_read_l1b_file, &
                    "L1Br_getSIGline failed.", modulename, 0)
               STOP 1
             END IF
-          endif
-
-          if (use_tio_in) then
-            errstat = 0 ! FIXME - remove when errstat properly defined
-            read_irrad = .false.
-            call read_L1_rad_line_tio (tio_l1obj, nc_rad_swathname(is), &
-                 blockline, &
-                 radiance           = tio_rspec(j:, 1:), &
-                 rad_precision      = tio_rprec(j:, 1:), &
-                 pixel_quality_flag = tio_rqflg(j:, 1:), &
-                 wavelengths        = tio_rwavl(j:, 1:), &
-                 meas_qual_flag     = tio_mflg, &
-                 num_wavelengths    = tio_nwls(ch), &
-                 read_irrad         = read_irrad, &
-                 errstat = errstat)
-            if (errstat /= 0) then
-              call tell_error (tell_io_error, &
-                   "omi_read_l1b_data: failed to read from radiance file", &
-                   errstat)
-              return
-            endif
-            ! If using he5 and nc, check values are identical
-            if (use_he5_in) then
-              if (tio_nwls(ch).ne.nwls(ch)) print *,'mismatch:nwls'
-              if (tio_mflg .ne. omi_mflg) then
-                print *, 'mismatch: mflg', tio_mflg, omi_mflg, blockline
-              endif
-              do k=j, j+nwls(ch)-1
-                do l=1, size(tmp_rspec, dim=2)
-                  if (tio_rspec(k,l).ne.tmp_rspec(k,l) .and. &
-                       (tio_rspec(k,l).gt.0) .and. (tmp_rspec(k,l).gt.0)) &
-                    print *, 'mismatch:rspec', tio_rspec(k,l), tmp_rspec(k,l)
-                  if (tio_rprec(k,l).ne.tmp_rprec(k,l) .and. &
-                       (tio_rprec(k,l).gt.0) .and. (tmp_rprec(k,l).gt.0)) &
-                    print *, 'mismatch:rprec', tio_rprec(k,l), tmp_rprec(k,l)
-                  if (tio_rqflg(k,l).ne.tmp_rqflg(k,l)) &
-                    print *, 'mismatch:rqflg', tio_rqflg(k,l), tmp_rqflg(k,l)
-                  ! for wavelength matches may not be perfect
-                  if (abs(tio_rwavl(k,l)-tmp_rwavl(k,l)).ge.4e-5) &
-                    print *, 'mismatch:rwavl', tio_rwavl(k,l), tmp_rwavl(k,l)
-                end do
-              end do
-            endif
-            nwls(ch) =tio_nwls(ch)
-            omi_mflg =tio_mflg
-            tmp_rspec=tio_rspec
-            tmp_rprec=tio_rprec
-            tmp_rqflg=tio_rqflg
-            tmp_rwavl=tio_rwavl
-          endif
-
+            
           temp_omi_mflg=omi_mflg
           CALL convert_2bytes_to_16bits ( nbits, 1, temp_omi_mflg, &
                tmp_mflgbits(0:nbits-1))
           mflgbits = mflgbits + tmp_mflgbits(0:nbits-1)
 
           IF (correct_merr) THEN
-            if (use_he5_in) then
               errstat = L1Br_getDATA ( omi_data_block, blockline,   &
                    ExposureTime_k      = tmp_ExposureTime)
               IF( errstat /= omi_s_success ) THEN
@@ -1584,36 +1359,30 @@ contains
                      "L1Br_getDATA failed.", modulename, 0)
                 STOP 1
               END IF
-            endif
-            ! FIXME - exposure time array currently not filled in netCDF
-            ! radiance files, but would be either 1.0 or 1.0002
-            if (use_tio_in) then
-              tmp_ExposureTime = 1.0d0
-            endif
             tmpNinteg = 2.d0 / tmp_ExposureTime
           ENDIF
 
           nwl = j + nwls(ch) - 1
 
           !print *, j, nwl, nwls(ch), ny, iloop
-          !print *, tmp_rwavl(j, 6), tmp_rwavl(nwl, 6)
-          !print *, omi_radiance_wavl(j, 6, iloop), omi_radiance_wavl(nwl, 6, iloop)
+          !print *, ccd_wavl(j, 6), ccd_wavl(nwl, 6)
+          !print *, rad_wavl(j, 6, iloop), rad_wavl(nwl, 6, iloop)
 
-          omi_radiance_spec(j:nwl, :, iloop) = &
-               omi_radiance_spec(j:nwl, :, iloop) + tmp_rspec(j:nwl, :)
+          rad_spec(j:nwl, :, iloop) = &
+               rad_spec(j:nwl, :, iloop) + ccd_spec(j:nwl, :)
           IF (correct_merr) THEN
-            omi_radiance_prec(j:nwl, :, iloop) = &
-                 real(omi_radiance_prec(j:nwl, :, iloop) + &
-                 tmp_rprec(j:nwl, :) / SQRT( tmpNinteg ) , kind=r4)
+            rad_prec(j:nwl, :, iloop) = &
+                 real(rad_prec(j:nwl, :, iloop) + &
+                 ccd_prec(j:nwl, :) / SQRT( tmpNinteg ) , kind=r4)
           ELSE
-            omi_radiance_prec(j:nwl, :, iloop) = &
-                 omi_radiance_prec(j:nwl, :, iloop) + tmp_rprec(j:nwl, :)
+            rad_prec(j:nwl, :, iloop) = &
+                 rad_prec(j:nwl, :, iloop) + ccd_prec(j:nwl, :)
           ENDIF
-          omi_radiance_wavl(j:nwl, :, iloop) = &
-               omi_radiance_wavl(j:nwl, :, iloop) + tmp_rwavl(j:nwl, :)
+          rad_wavl(j:nwl, :, iloop) = &
+               rad_wavl(j:nwl, :, iloop) + ccd_wavl(j:nwl, :)
 
           DO ix = 1, nxtrack
-            CALL coadd_2bytes_qflgs(nbits, nwls(ch), omi_radiance_qflg(j:nwl, ix, iloop), tmp_rqflg(j:nwl, ix))
+            CALL coadd_2bytes_qflgs(nbits, nwls(ch), rad_qflg(j:nwl, ix, iloop), ccd_qflg(j:nwl, ix))
           ENDDO
 
 !          IF( errstat /= omi_s_success ) THEN
@@ -1623,40 +1392,29 @@ contains
 !          END IF
         ENDDO
 
-!        IF ((coadd_uv2 .AND. is == 1) .OR. .NOT. coadd_uv2) THEN  
-!          !omi_time(iloop)    = omi_time(iloop)    / nybin
-!          omi_auraalt(iloop) = omi_auraalt(iloop) / nybin
-!          omi_auralon(iloop) = omi_auralon(iloop) / nybin
-!          omi_auralat(iloop) = omi_auralat(iloop) / nybin
-!          omi_height(1:nfxtrack, iloop) = &
-!               NINT (1.0 * omi_height(1:nfxtrack, iloop) / nybin , kind=i2)
-!        ENDIF
+
 
         IF (mflgbits(0) >= 1 .OR. mflgbits(1) >= 1 .OR. &
              mflgbits(3) >= 1 .OR. mflgbits(12) >= 1) THEN
           WRITE(www_lun, *) 'All radiances could not be used: line ', &
                blockline, ' Swath ', is
-          omi_radiance_errstat(iloop) = pge_errstat_error      
+          omi_rad%errstat(iloop) = pge_errstat_error      
         ELSE IF (ANY(mflgbits >= 1)) THEN
           !WRITE(www_lun, *) 'Warning set on all radiances: line',  blockline, ' Swath ', is
-          IF (omi_radiance_errstat(iloop) /= pge_errstat_error) &
-               omi_radiance_errstat(iloop) = pge_errstat_warning      
+          IF (omi_rad%errstat(iloop) /= pge_errstat_error) &
+               omi_rad%errstat(iloop) = pge_errstat_warning      
           ! Over SAA region
           IF (mflgbits(10) >= 1) omi_saa_flag(iloop) = 1
         ENDIF
 
-        omi_radiance_spec(j:nwl, :, iloop) = &
-             omi_radiance_spec(j:nwl, :, iloop) / nybin
+        rad_spec(j:nwl, :, iloop) = rad_spec(j:nwl, :, iloop) / nybin
         IF (ybin_decerr) THEN 
-        omi_radiance_prec(j:nwl, :, iloop) = &
-              real(omi_radiance_prec(j:nwl, :, iloop) / nybin / &
+        rad_prec(j:nwl, :, iloop) =  real(rad_prec(j:nwl, :, iloop) / nybin / &
              SQRT(1.0D0 * nybin) , kind=r4)
         ELSE
-        omi_radiance_prec(j:nwl, :, iloop) = &
-               omi_radiance_prec(j:nwl, :, iloop) / nybin 
+        rad_prec(j:nwl, :, iloop) =   rad_prec(j:nwl, :, iloop) / nybin 
         ENDIF
-        omi_radiance_wavl(j:nwl, :, iloop) = &
-             omi_radiance_wavl(j:nwl, :, iloop) / nybin 
+        rad_wavl(j:nwl, :, iloop) =  rad_wavl(j:nwl, :, iloop) / nybin 
       END DO     ! end iloop
 
       nwavel = nwavel + nwls(ch)
@@ -1665,85 +1423,29 @@ contains
       epos(ch) = int(nwavel, kind=i2)
 
       ! Close data block structure
-      if (use_he5_in) then
         errstat = L1Br_CLOSE ( omi_data_block )
         IF ( errstat /= omi_s_success .AND. verb_thresh_lev >= &
              vb_lev_omidebug ) THEN
           estat = OMI_SMF_setmsg ( omsao_w_clos_l1b_file, &
                'L1Br_CLOSE failed.', modulename, 0 )
         END IF
-      endif
-
-      if (use_tio_in) then
-        errstat = 0 ! FIXME - remove when errstat properly defined
-        call close_L1_tio (tio_l1obj, errstat)
-        if (errstat /= 0) then
-          call tell_error (tell_io_error, &
-           "omi_read_l1b_data: failed to close radiance file", &
-           errstat)
-          return
-        endif
-      endif
 
       ! Sort data in wavelength increasing order   
-      IF (omi_radiance_wavl(spos(ch), 1, 0) > omi_radiance_wavl(epos(ch), 1, 0)) THEN
+      IF (rad_wavl(spos(ch), 1, 0) > rad_wavl(epos(ch), 1, 0)) THEN
         idxs(spos(ch):epos(ch)) = (/ (i, i = epos(ch), spos(ch), -1) /)
-        omi_radiance_wavl(spos(ch):epos(ch), :, :) = omi_radiance_wavl(idxs(spos(ch):epos(ch)), :, :)
-        omi_radiance_spec(spos(ch):epos(ch), :, :) = omi_radiance_spec(idxs(spos(ch):epos(ch)), :, :)
-        omi_radiance_prec(spos(ch):epos(ch), :, :) = omi_radiance_prec(idxs(spos(ch):epos(ch)), :, :)
-        omi_radiance_qflg(spos(ch):epos(ch), :, :) = omi_radiance_qflg(idxs(spos(ch):epos(ch)), :, :)     
+        rad_wavl(spos(ch):epos(ch), :, :) = rad_wavl(idxs(spos(ch):epos(ch)), :, :)
+        rad_spec(spos(ch):epos(ch), :, :) = rad_spec(idxs(spos(ch):epos(ch)), :, :)
+        rad_prec(spos(ch):epos(ch), :, :) = rad_prec(idxs(spos(ch):epos(ch)), :, :)
+        rad_qflg(spos(ch):epos(ch), :, :) = rad_qflg(idxs(spos(ch):epos(ch)), :, :)     
       ENDIF
-
-      !WRITE(www_lun, '(10F10.4)') omi_radiance_wavl(150, 1:60, 0)
-
-!      ! Aligh zoom mode data
-!      IF (zoom_mode .AND. ch == 2) THEN
-!        omi_radiance_wavl(spos(ch):epos(ch), zoom_p1:zoom_p2, :) = &
-!             omi_radiance_wavl(spos(ch):epos(ch), 1:nxtrack/2, :)
-!        omi_radiance_spec(spos(ch):epos(ch), zoom_p1:zoom_p2, :) = &
-!             omi_radiance_spec(spos(ch):epos(ch), 1:nxtrack/2, :)
-!        omi_radiance_prec(spos(ch):epos(ch), zoom_p1:zoom_p2, :) = &
-!             omi_radiance_prec(spos(ch):epos(ch), 1:nxtrack/2, :)
-!        omi_radiance_qflg(spos(ch):epos(ch), zoom_p1:zoom_p2, :) = &
-!             omi_radiance_qflg(spos(ch):epos(ch), 1:nxtrack/2, :)  
-!      ENDIF
-
-      !IF ( ch == 2 ) THEN
-      !   DO iloop = 0, ny - 1 
-      !      CALL corruv2wav(nwls(ch), nxtrack, omi_radiance_wavl(spos(ch):epos(ch), 1:nxtrack, iloop)) 
-      !   ENDDO
-      !ENDIF
-
-      !print *, ny
-      !IF (is == 1) THEN 
-      !   nx = 30
-      !ELSE
-      !   nx = 60
-      !ENDIF
-      !WRITE(90, *) nx, nwls(ch)
-      !DO ix = 1, nx
-      !   WRITE(90, *) ix
-      !   DO iw = spos(ch), epos(ch)
-      !      WRITE(90, '(F10.5,2D14.6,I6)') omi_radiance_wavl(iw, ix, 0), omi_radiance_spec(iw, ix, 0),&
-      !           omi_radiance_prec(iw, ix, 0), omi_radiance_qflg(iw, ix, 0) !, mflgbits(0:nbits-1)
-      !   ENDDO
-      !ENDDO
-
     ENDDO ! end swath loop
-
-!    IF (zoom_mode .AND. nswath == 1) THEN
-!      omi_height(zoom_p1:zoom_p2, 0:ny-1) = omi_height(1:nxtrack/2, 0:ny-1)
-!      glint_flg (zoom_p1:zoom_p2, 0:ny-1) = glint_flg  (1:nxtrack/2, 0:ny-1)
-!      land_water_flg(zoom_p1:zoom_p2, 0:ny-1) = land_water_flg(1:nxtrack/2, 0:ny-1)
-!      snow_ice_flg(zoom_p1:zoom_p2, 0:ny-1) = snow_ice_flg(1:nxtrack/2, 0:ny-1)     
-!    ENDIF
 
     ! Degrade spectral resolution if necessary
     IF (reduce_resolution) THEN
       nwavel = 0
       j = 1
       DO is = 1, nswath
-        ch = omichs(is)
+        ch = inschs(is)
 
         IF (coadd_uv2 .AND. is == 1) THEN
           npos = nfxtrack
@@ -1768,14 +1470,14 @@ contains
         np = nwls(ch)
 
         DO iloop = 0, ny - 1
-          tmpspec(wvl_idx, 1:np, fpix:lpix) = omi_radiance_wavl(spos(ch):epos(ch), fpix:lpix, iloop)
-          tmpspec(spc_idx, 1:np, fpix:lpix) = omi_radiance_spec(spos(ch):epos(ch), fpix:lpix, iloop)
-          tmpspec(sig_idx, 1:np, fpix:lpix) = omi_radiance_prec(spos(ch):epos(ch), fpix:lpix, iloop)
-          tmp_rqflg(       1:np, fpix:lpix) = omi_radiance_qflg(spos(ch):epos(ch), fpix:lpix, iloop)       
+          tmpspec(wvl_idx, 1:np, fpix:lpix) = rad_wavl(spos(ch):epos(ch), fpix:lpix, iloop)
+          tmpspec(spc_idx, 1:np, fpix:lpix) = rad_spec(spos(ch):epos(ch), fpix:lpix, iloop)
+          tmpspec(sig_idx, 1:np, fpix:lpix) = rad_prec(spos(ch):epos(ch), fpix:lpix, iloop)
+          tmpqflg(       1:np, fpix:lpix) = rad_qflg(spos(ch):epos(ch), fpix:lpix, iloop)       
 
           DO ix = fpix, lpix
-            CALL convert_2bytes_to_16bits ( nbits, np, tmp_rqflg(1:np, ix), flgbits(1, 1:np, 0:nbits-1))
-            tmp_rqflg(1:np, ix) = flgbits(1, 1:np, 0) &   ! Missing
+            CALL convert_2bytes_to_16bits ( nbits, np, tmpqflg(1:np, ix), flgbits(1, 1:np, 0:nbits-1))
+            tmpqflg(1:np, ix) = flgbits(1, 1:np, 0) &   ! Missing
                  + flgbits(1, 1:np, 1)                &   ! Bad
                  + flgbits(1, 1:np, 2)                &   ! Processing error
            !      + flgbits(1, 1:np, 4)                &   ! RTS_Pixel_Warning Flag
@@ -1783,19 +1485,19 @@ contains
                  + flgbits(1, 1:np, 7)                    ! Dark Current Warning Flag
           ENDDO
 
-          CALL reduce_rad_resolution (tmpspec(:, 1:np, fpix:lpix), tmp_rqflg(1:np, fpix:lpix),   &
-               np, lpix-fpix+1, reduce_slit, omi_redslw(is), tmpsampr, redlam, retswav, retewav, reduce_lbnd(ch), &
+          CALL reduce_rad_resolution (tmpspec(:, 1:np, fpix:lpix), tmpqflg(1:np, fpix:lpix),   &
+               np, lpix-fpix+1, reduce_slit, redslw(is), tmpsampr, redlam, retswav, retewav, reduce_lbnd(ch), &
                reduce_ubnd(ch), nwls(ch), pge_error_status)
           IF (pge_error_status == pge_errstat_error) RETURN
 
           nwavel = j + nwls(ch) - 1
-          omi_radiance_wavl(j:nwavel, fpix:lpix, iloop) = &
+          rad_wavl(j:nwavel, fpix:lpix, iloop) = &
                real(tmpspec(wvl_idx, 1:nwls(ch), fpix:lpix), kind=r4)
-          omi_radiance_spec(j:nwavel, fpix:lpix, iloop) = &
+          rad_spec(j:nwavel, fpix:lpix, iloop) = &
                real(tmpspec(spc_idx, 1:nwls(ch), fpix:lpix) , kind=r4)
-          omi_radiance_prec(j:nwavel, fpix:lpix, iloop) = &
+          rad_prec(j:nwavel, fpix:lpix, iloop) = &
                real(tmpspec(sig_idx, 1:nwls(ch), fpix:lpix) , kind=r4)
-          omi_radiance_qflg(j:nwavel, fpix:lpix, iloop) = 0   ! All data are good  (pre filtered)  
+          rad_qflg(j:nwavel, fpix:lpix, iloop) = 0   ! All data are good  (pre filtered)  
         ENDDO
         spos(ch) = int(j, kind=i2)
         epos(ch) = int(nwavel, kind=i2)
@@ -1809,24 +1511,6 @@ contains
       RETURN
     ENDIF
 
-    ! Resample the water/land, sea glint, and snow/oce flags if xbin, surface altitude
-!    IF (nxbin > 1) THEN
-!      DO ix = 1, nfxtrack / nxbin
-!        iix = (ix - 1) * nxbin + NINT(nxbin / 2.0)
-!        land_water_flg(ix, 0:ny-1) = land_water_flg(iix, 0:ny-1)
-!        snow_ice_flg(ix, 0:ny-1) = snow_ice_flg(iix, 0:ny-1) 
-!
-!        iix = (ix - 1) * nxbin
-!        DO i = 0, ny - 1
-!          omi_height(ix, i) = &
-!               NINT(SUM(1.0 * omi_height(iix+1:iix+nxbin, i)) / &
-!               nxbin , kind=i2)
-!          glint_flg(ix, i)  = &
-!               NINT(SUM(1.0 * glint_flg(iix+1:iix+nxbin, i))  / &
-!               nxbin , kind=i2)
-!        ENDDO
-!      ENDDO
-!    ENDIF
 
     ! Determine number of binning for different fitting windows
     DO iw = 1, numwin
@@ -1840,21 +1524,21 @@ contains
 
     ! Subset and coadd radiance spectrum
     DO iloop = 0, ny - 1 
-      IF (omi_radiance_errstat(iloop) == pge_errstat_error) THEN
-        omi_radpix_errstat(first_pix:last_pix, iloop) = pge_errstat_error
+      IF (omi_rad%errstat(iloop) == pge_errstat_error) THEN
+        omi_rad%pix_errstat(first_pix:last_pix, iloop) = pge_errstat_error
         CYCLE
       ENDIF
 
       DO ix = first_pix, last_pix
         currpix = ix
 !        IF (omi_szenith(ix, iloop) > szamax .OR. omi_szenith(ix, iloop) < 0 ) THEN
-        IF (omi_allsza (ix, iline+iloop) > szamax .OR. omi_allsza (ix, iline+iloop) < 0 ) THEN
-          omi_radpix_errstat(ix, iloop) = pge_errstat_error
+        IF (omi_geo%sza (ix, iline+iloop) > szamax .OR. omi_geo%sza (ix, iline+iloop) < 0 ) THEN
+          omi_rad%pix_errstat(ix, iloop) = pge_errstat_error
           CYCLE
         ENDIF
 
-        IF (rowanomaly_flg(ix, iloop) == 1 .AND. ix /= 24) THEN
-          omi_radpix_errstat(ix, iloop) = pge_errstat_error
+        IF (rowanomaly_flg(ix, iline+iloop) == 1 .AND. ix /= 24) THEN
+          omi_rad%pix_errstat(ix, iloop) = pge_errstat_error
           CYCLE
         ENDIF
 
@@ -1862,7 +1546,7 @@ contains
         ! Coadd uv-2 flags if necessary to avoid coadding inconsistent # of pixels 
         flgmsks = 0
         DO is = 1, nswath
-          ch = omichs(is)
+          ch = inschs(is)
           IF (is == 1) THEN
             nbin = nxbin
           ELSE
@@ -1872,92 +1556,94 @@ contains
 
           ! properly align cross track positions to be coadded (should be within one pixel)
           IF (.NOT. reduce_resolution) THEN
-            IF (nbin > 2) CALL prespec_align(nwls(ch), nbin, omi_radiance_wavl(spos(ch):epos(ch),&
-                 iix+1:iix+nbin, iloop), omi_radiance_spec(spos(ch):epos(ch), iix+1:iix+nbin, iloop), &
-                 omi_radiance_prec(spos(ch):epos(ch), iix+1:iix+nbin, iloop), &       
-                 omi_radiance_qflg(spos(ch):epos(ch), iix+1:iix+nbin, iloop))
-
+            IF (nbin > 2) CALL prespec_align(nwls(ch), nbin, rad_wavl(spos(ch):epos(ch),&
+                 iix+1:iix+nbin, iloop), rad_spec(spos(ch):epos(ch), iix+1:iix+nbin, iloop), &
+                 rad_prec(spos(ch):epos(ch), iix+1:iix+nbin, iloop), &       
+                 rad_qflg(spos(ch):epos(ch), iix+1:iix+nbin, iloop))
             DO ic = 1, nbin
-              CALL convert_2bytes_to_16bits ( nbits, nwls(ch), omi_radiance_qflg(spos(ch):epos(ch), &
+              CALL convert_2bytes_to_16bits ( nbits, nwls(ch), rad_qflg(spos(ch):epos(ch), &
                    iix + ic, iloop), flgbits(ic, spos(ch):epos(ch), 0:nbits-1))
               flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) &
                    + flgbits(ic, spos(ch):epos(ch), 0)                &   ! Missing
                    + flgbits(ic, spos(ch):epos(ch), 1)                &   ! Bad 
                    + flgbits(ic, spos(ch):epos(ch), 2)                &   ! Processing error
-         !          + flgbits(ic, spos(ch):epos(ch), 4)                &   ! RTS_Pixel_Warning Flag
+           !        + flgbits(ic, spos(ch):epos(ch), 4)                &   ! RTS_Pixel_Warning Flag
                    + flgbits(ic, spos(ch):epos(ch), 5)                &   ! Saturation Possibility Flag
                    + flgbits(ic, spos(ch):epos(ch), 7)                     ! Dark Current Warning Flag
+             !print *, ic,flgbits(ic, 40, 0:7), rad_qflg(40, iix+ic, iloop), iloop, iline
+             !if (is == 1) flgmsks(40) = 1
             ENDDO
-
+            
             !DO i = spos(ch), epos(ch)
-            !   WRITE(91, '(F10.4, D14.6, 16I2)') omi_radiance_wavl(i, iix+1, iloop), &
-            !        omi_radiance_spec(i, iix+1, iloop), flgbits(1, i, 0:nbits-1)
+            !   WRITE(91, '(F10.4, D14.6, 16I2)') rad_wavl(i, iix+1, iloop), &
+            !        rad_spec(i, iix+1, iloop), flgbits(1, i, 0:nbits-1)
             !ENDDO
 
           ELSE
             ! Already aligned because of using common wavelength scale
             DO ic = 1, nbin
               flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) + &
-                   omi_radiance_qflg(spos(ch):epos(ch), iix + ic, iloop)
+                   rad_qflg(spos(ch):epos(ch), iix + ic, iloop)
             ENDDO
           ENDIF
         ENDDO
 
         ! Subset valid data
         nomi = 0
-        omispec = 0.0
+        subspec = 0.0
         fidx = 1
         DO iw = 1, numwin
           ch = band_selectors(iw)                  
-          omi_nradpix(iw, ix, iloop) = nomi
+          omi_rad%npix(iw, ix, iloop) = nomi
           nbin = nwbin(iw)
           iix = (ix - 1) * nbin
 
-          !fidx = omisol_winpix(iw, ix, 1) 
-          !lidx = omisol_winpix(iw, ix, 2) 
-          lidx = fidx + omi_nsolpix(iw, ix) - 1
+          !fidx = omi_irrad%winpix(iw, ix, 1) 
+          !lidx = omi_irrad%winpix(iw, ix, 2) 
+          lidx = fidx + omi_irrad%npix(iw, ix) - 1
 
           DO ii = fidx, lidx
-            i = irradwind(ii, ix)
-            IF (ALL(omi_radiance_spec(i, iix+1:iix+nbin, iloop) > 0.0) .AND. &
-                 ALL(omi_radiance_spec(i, iix+1:iix+nbin, iloop) < 4.0E14) .AND. flgmsks(i) == 0 ) THEN
+            i = omi_irrad%wind(ii, ix)
+            IF (ALL(rad_spec(i, iix+1:iix+nbin, iloop) > 0.0) .AND. &
+                 ALL(rad_spec(i, iix+1:iix+nbin, iloop) < 4.0E14) .AND. flgmsks(i) == 0 ) THEN
               nomi = nomi + 1
-              omispec(1:nbin, wvl_idx, nomi) = omi_radiance_wavl(i, iix+1:iix+nbin, iloop)
-              omispec(1:nbin, spc_idx, nomi) = omi_radiance_spec(i, iix+1:iix+nbin, iloop)
-              omispec(1:nbin, sig_idx, nomi) = omi_radiance_prec(i, iix+1:iix+nbin, iloop)
-              radwind(nomi, ix, iloop) = int(ii, kind=i2)
+              subspec(1:nbin, wvl_idx, nomi) = rad_wavl(i, iix+1:iix+nbin, iloop)
+              subspec(1:nbin, spc_idx, nomi) = rad_spec(i, iix+1:iix+nbin, iloop)
+              subspec(1:nbin, sig_idx, nomi) = rad_prec(i, iix+1:iix+nbin, iloop)
+              omi_rad%wind(nomi, ix, iloop) = int(ii, kind=i2)
             ENDIF
+            !print * , ii, i, nomi, flgmsks(i), rad_wavl(i, iix+1, iloop)
           ENDDO
           fidx = lidx + 1
-          omi_nradpix(iw, ix, iloop) = nomi - omi_nradpix(iw, ix, iloop)
-
+          omi_rad%npix(iw, ix, iloop) = nomi - omi_rad%npix(iw, ix, iloop)
           ! If the # of wavelengths is <= 75% of the # of irradiances, stop processing this pixel
-          IF (omi_nradpix(iw, ix, iloop) <= omi_nsolpix(iw, ix) * 0.9 ) THEN
-            WRITE(www_lun, '(A,5I5,F9.2)') 'Too fewer radiance points: ', ix, iloop, iw, &
-                 omi_nradpix(iw, ix, iloop), omi_nsolpix(iw, ix)!, omi_szenith(ix, iloop)
-            omi_radpix_errstat(ix, iloop) = pge_errstat_error
+          IF (omi_rad%npix(iw, ix, iloop) <= omi_irrad%npix(iw, ix) * 0.9 ) THEN
+            WRITE(*, '(A,5I5,F9.2)') 'Too fewer radiance points: ', ix, iloop, iw, &
+                 omi_rad%npix(iw, ix, iloop), omi_irrad%npix(iw, ix)!, omi_szenith(ix, iloop)
+                 omi_rad%pix_errstat(ix, iloop) = pge_errstat_error
+            STOP 
             EXIT
           ENDIF
 
-          !WRITE(www_lun, '(2I5, 2F8.3, 2I5, 2F8.3, 6I5)') ix, iw, omi_radiance_wavl(spos(ch), iix+1, iloop), &
-          !     omi_radiance_wavl(epos(ch), iix+1, iloop), spos(ch), epos(ch),  &
-          !     fidx, lidx, lidx - fidx + 1, omi_nradpix(iw, ix, iloop)
+          !WRITE(www_lun, '(2I5, 2F8.3, 2I5, 2F8.3, 6I5)') ix, iw, rad_wavl(spos(ch), iix+1, iloop), &
+          !     rad_wavl(epos(ch), iix+1, iloop), spos(ch), epos(ch),  &
+          !     fidx, lidx, lidx - fidx + 1, omi_rad%npix(iw, ix, iloop)
         ENDDO
 
-        IF (omi_radpix_errstat(ix, iloop) == pge_errstat_error) CYCLE   ! This pixel will not be processed.     
-        omi_nwav_rad(ix, iloop) = nomi
+        IF (omi_rad%pix_errstat(ix, iloop) == pge_errstat_error) CYCLE   ! This pixel will not be processed.     
+        omi_rad%nwav(ix, iloop) = nomi
 
         ! Perform coadding if UV-2 is selected with UV-1
         fidx = 1
         DO iw = 1, numwin
           ch = band_selectors(iw)
           nbin = nwbin(iw)
-          lidx = fidx + omi_nradpix(iw, ix, iloop) - 1 
+          lidx = fidx + omi_rad%npix(iw, ix, iloop) - 1 
 
           IF (nbin > 1) THEN
             CALL radwavcal_coadd(wcal_bef_coadd, wavcals(iw, ix), & !iw, ix, &
-                 omi_nradpix(iw, ix, iloop), nbin, &
-                 omispec(1:nbin, :, fidx:lidx), wshis(iw, ix, 1:nbin), &
+                 omi_rad%npix(iw, ix, iloop), nbin, &
+                 subspec(1:nbin, :, fidx:lidx), wshis(iw, ix, 1:nbin), &
                  wsqus(iw, ix, 1:nbin), error)
             wavcals(iw, ix) = .FALSE.
             IF (error) THEN
@@ -1970,7 +1656,7 @@ contains
 
         ! Get data for surface albedo & cloud fraction at 370.2 nm +/- 20 pixels
         irefl = 0
-        fidx = int(omisolr_winpix(ix, 1) , kind=i4)
+        fidx = int(omi_refl%winpix(ix, 1) , kind=i4)
         IF (.NOT. coadd_uv2) THEN
           nbin = nxbin
         ELSE
@@ -1980,56 +1666,52 @@ contains
 
 
         DO i  = fidx, nwavel
-          IF ( ALL(omi_radiance_spec(i, iix+1:iix+nbin, iloop) > 0.0) .AND. &
-               ALL(omi_radiance_spec(i, iix+1:iix+nbin, iloop) < 4.0E14) .AND. flgmsks(i) == 0) THEN
+          IF ( ALL(rad_spec(i, iix+1:iix+nbin, iloop) > 0.0) .AND. &
+               ALL(rad_spec(i, iix+1:iix+nbin, iloop) < 4.0E14) .AND. flgmsks(i) == 0) THEN
             irefl = irefl + 1
-            omi_specr(wvl_idx, irefl, ix, iloop) = SUM(omi_radiance_wavl(i, iix+1:iix+nbin, iloop)) / nbin
-            omi_specr(spc_idx, irefl, ix, iloop) = SUM(omi_radiance_spec(i, iix+1:iix+nbin, iloop)) / nbin
+            omi_refl%radwavl( irefl, ix, iloop) = SUM(rad_wavl(i, iix+1:iix+nbin, iloop)) / nbin
+            omi_refl%radspec( irefl, ix, iloop) = SUM(rad_spec(i, iix+1:iix+nbin, iloop)) / nbin
           ENDIF
           IF (irefl == nrefl) EXIT
         ENDDO
 
+ 
         IF (irefl /= nrefl) THEN
           WRITE(www_lun, '(A, 2I5, F9.2)') 'Number of rad/sol points (cloud fraction) do not match: ', &
                ix, iloop !, omi_szenith(ix, iloop)
-          omi_radpix_errstat(ix, iloop) = pge_errstat_error  
+          omi_rad%pix_errstat(ix, iloop) = pge_errstat_error  
         ENDIF
 
         !IF (scnwrt) THEN
         !   WRITE(www_lun, *) 'End Of Reading Radiance Spectrum: ', ix, iloop + iline
         !   DO i = 1, numwin
-        !      WRITE(www_lun,'(A10,I4,2f8.3,I4)') 'win = ', i, winlim(i, 1), winlim(i, 2), omi_nradpix(i, ix, iloop)
+        !      WRITE(www_lun,'(A10,I4,2f8.3,I4)') 'win = ', i, winlim(i, 1), winlim(i, 2), omi_rad%npix(i, ix, iloop)
         !   
-        !      IF (omi_nradpix(i, ix, iloop) <= 20) THEN
+        !      IF (omi_rad%npix(i, ix, iloop) <= 20) THEN
         !         WRITE(www_lun, '(A,f8.3,A3,f8.3)') ' Not enough points in window: ', winlim(i, 1), ' - ', winlim(i, 2)
         !         pge_error_status = pge_errstat_error
         !        
         !      ENDIF
         !   ENDDO
-        !   print *, omispec(1, 1, 138:139)
+        !   print *, subspec(1, 1, 138:139)
         !ENDIF
 
-        omi_radnorm(ix, iloop) = SUM ( omispec(1, spc_idx, 1:nomi) ) / nomi
-        !omi_radnorm(ix, iloop) = 1.0E11 
-        IF ( omi_radnorm(ix, iloop) <= 0.0 ) THEN 
+        omi_rad%norm(ix, iloop) = SUM ( subspec(1, spc_idx, 1:nomi) ) / nomi
+        !omi_rad%norm(ix, iloop) = 1.0E11 
+        IF ( omi_rad%norm(ix, iloop) <= 0.0 ) THEN 
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
-        omi_radiance_wavl(1:nomi, ix, iloop) = &
-             real(omispec(1, wvl_idx, 1:nomi) , kind=r4)
-        omi_radiance_spec(1:nomi, ix, iloop) = &
-             real(omispec(1, spc_idx, 1:nomi) / &
-             omi_radnorm(ix, iloop) , kind=r4)
-        omi_radiance_prec(1:nomi, ix, iloop) = &
-             real(omispec(1, sig_idx, 1:nomi) / &
-             omi_radnorm(ix, iloop) , kind=r4)
+        omi_rad%wavl(1:nomi, ix, iloop) = real(subspec(1, wvl_idx, 1:nomi) , kind=r4)
+        omi_rad%spec(1:nomi, ix, iloop) = real(subspec(1, spc_idx, 1:nomi) /omi_rad%norm(ix, iloop) , kind=r4)
+        omi_rad%prec(1:nomi, ix, iloop) = real(subspec(1, sig_idx, 1:nomi) /omi_rad%norm(ix, iloop) , kind=r4)
       ENDDO
     ENDDO
 
     !DO ix = 1, nfxtrack
-    !   WRITE(90, '(10I5)') ix, omi_nsolpix(1:numwin, ix), omi_nwav_irrad(ix)
+    !   WRITE(90, '(10I5)') ix, omi_irrad%npix(1:numwin, ix), omi_irrad%nwav(ix)
     !   DO i = 0, nloop - 1
-    !      WRITE(90, '(I5, F10.3, 3I5)') i, omi_szenith(ix, i), omi_nradpix(1:numwin, ix, i), omi_nwav_rad(ix, i)
+    !      WRITE(90, '(I5, F10.3, 3I5)') i, omi_szenith(ix, i), omi_rad%npix(1:numwin, ix, i), %omi_rad%nwav(ix, i)
     !   ENDDO
     !ENDDO
 
@@ -2039,20 +1721,16 @@ contains
   ! Replace Solar Composite with original OMI solar irradiance
   SUBROUTINE replace_solar_irradiance (lun, first_pix, last_pix, &
        pge_error_status )
-
+   
     USE OMSAO_precision_module
+    USE OMSAO_parameters_module, ONLY: mswath
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx!, sig_idx
     USE OMSAO_parameters_module, ONLY: maxchlen, maxwin!, mrefl
     USE OMSAO_variables_module,  ONLY: avg_solcomp, avgsol_allorb, numwin, &
-         coadd_uv2, band_selectors, refdbdir, nxbin
-    USE OMSAO_omidata_module,    ONLY: nswath, mswath, orbnum, nxtrack_max, &
-         nxtrack, nwavel_max, omi_irradiance_wavl,&
-         omi_irradiance_spec, ncoadd, omi_nsolpix, omi_solnorm, &
-         omi_solspecr, omi_solspec_ring, solring_lin, solring_uin, &
-         omi_solring_ndiv!, omi_nwav_irrad, omi_nsolring, nfxtrack
+         coadd_uv2, band_selectors, refdbdir, nxbin, nswath, nxtrack, orbnum
+    USE OMSAO_omidata_module,    ONLY: nxtrack_max, nwavel_max,  ncoadd
     USE ozprof_data_module,      ONLY: nrefl
     USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: interpolation
 
     IMPLICIT NONE
 
@@ -2166,750 +1844,63 @@ contains
       ENDIF
     ENDDO
 
-    DO ix = first_pix, last_pix
-      fidx = 1
-      DO iw = 1, numwin
-        ch = band_selectors(iw)
-        nbin = nwbin(iw)
-        iix = (ix - 1) * nbin
-        npts1 = omi_nsolpix(iw, ix)
-        lidx = fidx + npts1 - 1
-
-        ! Check boundary levels
-        IF ( omi_irradiance_wavl(fidx, ix) < solcomp_wvl(ch, 1) .OR. &
-             omi_irradiance_wavl(lidx, ix) > solcomp_wvl(ch, nscpts(ch))) THEN
-          WRITE(www_lun, '(2A)') modulename, ': Reduce fitting window or switch off solar composite!!!'
-          WRITE(www_lun, '(3I5, 4F10.4)') ch, iw, ix, solcomp_wvl(ch, 1), solcomp_wvl(ch, nscpts(ch)), &
-               omi_irradiance_wavl(fidx, ix), omi_irradiance_wavl(lidx, ix)
-          pge_error_status = pge_errstat_error
-          RETURN
-        ENDIF
-
-        ! Replace Solar irradiance
-        sidx = MINVAL(MAXLOC(solcomp_wvl(ch, 1:nscpts(ch)), MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-             <= omi_irradiance_wavl(fidx, ix))))
-        eidx = MINVAL(MINLOC(solcomp_wvl(ch, 1:nscpts(ch)), MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-             >= omi_irradiance_wavl(lidx, ix)))) 
-        npts = eidx - sidx + 1
-
-        !print *, fidx, lidx, sidx, eidx
-        !print *, solcomp_wvl(ch, sidx), solcomp_wvl(ch, eidx)
-        !print *, omi_irradiance_wavl(fidx, ix), omi_irradiance_wavl(lidx, ix)
-
-        tmpwvl(1:npts1) = omi_irradiance_wavl(fidx:lidx, ix)      
-        omi_irradiance_spec(fidx:lidx, ix) = 0.0
-
-        DO i = 1, nbin
-          CALL interpolation (npts, solcomp_wvl(ch, sidx:eidx), &
-               solcomp(ch, iix + i, sidx:eidx), &
-               npts1, tmpwvl(1:npts1), tmpspec(1:npts1), errstat )
-          IF ( errstat > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-            STOP 1
-          END IF
-          omi_irradiance_spec(fidx:lidx, ix) = &
-               real(omi_irradiance_spec(fidx:lidx, ix) + &
-               tmpspec(1:npts1) , kind= r4)
-        ENDDO
-        omi_irradiance_spec(fidx:lidx, ix) = &
-             real(omi_irradiance_spec(fidx:lidx, ix) / nbin , kind= r4)
-        omi_irradiance_spec(fidx:lidx, ix) = &
-             real(omi_irradiance_spec(fidx:lidx, ix) * &
-             snorms(ch) / omi_solnorm(ix) , kind= r4)
-
-        fidx = lidx + 1
-      ENDDO
-
-      ! Replace ring source spectrum
-      IF (omi_solring_ndiv(ix) > 0) THEN  ! two channels
-        DO iw = 1, 2
-          ch = iw       
-          IF (ch == 1) THEN
-            fidx = solring_lin(ix)
-            lidx = omi_solring_ndiv(ix)
-            IF (omi_solspec_ring(wvl_idx, fidx, ix) <  &
-                 solcomp_wvl(ch, nscpts(ch))) THEN
-              sidx = MINVAL(MINLOC(omi_solspec_ring(wvl_idx, fidx:lidx, ix), &
-                   MASK=( omi_solspec_ring(wvl_idx, fidx:lidx, ix) >= &
-                   solcomp_wvl(ch, 1:nscpts(ch)) ))) + fidx - 1
-              fidx = sidx
-              solring_lin(ix) = sidx
-            ENDIF
-          ELSE
-            fidx = omi_solring_ndiv(ix)+1
-            lidx = solring_uin(ix) 
-          ENDIF
-
-          npts1 = lidx - fidx + 1
-          tmpwvl(1:npts1) = omi_solspec_ring(wvl_idx, fidx:lidx, ix)
-
-          IF ( tmpwvl(1) < solcomp_wvl(ch, 1) .OR. &
-               tmpwvl(npts1) > solcomp_wvl(ch, nscpts(ch))) THEN
-            WRITE(www_lun, '(2A)') modulename, &
-                 ': Solar Composite does not cover Ring source spectrum !!!'
-            pge_error_status = pge_errstat_error
-            RETURN
-          ENDIF
-
-          sidx = MINVAL(MAXLOC(solcomp_wvl(ch, 1:nscpts(ch)), &
-               MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-               <= tmpwvl(1))))
-          eidx = MINVAL(MINLOC(solcomp_wvl(ch, 1:nscpts(ch)), &
-               MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-               >= tmpwvl(npts1)))) 
-          npts = eidx - sidx + 1
-
-          IF (ch == 1 ) THEN   
-            nbin = nxbin
-          ELSE
-            nbin = nxbin * ncoadd
-          ENDIF
-          iix = (ix - 1) * nbin
-
-          omi_solspec_ring(spc_idx, fidx:lidx, ix) = 0.0
-          DO i = 1, nbin
-            CALL interpolation (npts, solcomp_wvl(ch, sidx:eidx), &
-                 solcomp(ch, iix + i, sidx:eidx), &
-                 npts1, tmpwvl(1:npts1), tmpspec(1:npts1), errstat )
-            IF ( errstat > pge_errstat_warning ) THEN
-              errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-              STOP 1
-            END IF
-            omi_solspec_ring(spc_idx, fidx:lidx, ix) = &
-                 real(omi_solspec_ring(spc_idx, fidx:lidx, ix) + &
-                 tmpspec(1:npts1), kind=r4)
-          ENDDO
-          omi_solspec_ring(spc_idx, fidx:lidx, ix) = &
-               real(omi_solspec_ring(spc_idx, fidx:lidx, ix) &
-               / nbin * snorms(ch) / omi_solnorm(ix) , kind=r4)
-        ENDDO
-      ELSE                                ! one channel, and no coadding
-        fidx = solring_lin(ix)
-        lidx = solring_uin(ix)
-        npts1 = lidx - fidx + 1
-        tmpwvl(1:npts1) = omi_solspec_ring(wvl_idx, fidx:lidx, ix)
-        ch = band_selectors(1)
-
-        IF ( tmpwvl(1) < solcomp_wvl(ch, 1) .OR. &
-             tmpwvl(npts1) > solcomp_wvl(ch, nscpts(ch))) THEN
-          WRITE(www_lun, '(2A)') modulename, &
-               ': Solar Composite does not cover Ring source spectrum !!!'
-          pge_error_status = pge_errstat_error
-          RETURN
-        ENDIF
-
-        sidx = MINVAL(MAXLOC(solcomp_wvl(ch, 1:nscpts(ch)), &
-             MASK=(solcomp_wvl(ch, 1:nscpts(ch)) <= tmpwvl(1))))
-        eidx = MINVAL(MINLOC(solcomp_wvl(ch, 1:nscpts(ch)), &
-             MASK=(solcomp_wvl(ch, 1:nscpts(ch)) >= tmpwvl(npts1)))) 
-        npts = eidx - sidx + 1
-
-        nbin = nxbin
-        iix = (ix - 1) * nbin
-        omi_solspec_ring(spc_idx, fidx:lidx, ix) = 0.0
-        DO i = 1, nbin
-          CALL interpolation (npts, solcomp_wvl(ch, sidx:eidx), &
-               solcomp(ch, iix + i, sidx:eidx), &
-               npts1, tmpwvl(1:npts1), tmpspec(1:npts1), errstat )
-          IF ( errstat > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-            STOP 1
-          END IF
-          omi_solspec_ring(spc_idx, fidx:lidx, ix) = &
-               real(omi_solspec_ring(spc_idx, fidx:lidx, ix) + &
-               tmpspec(1:npts1) , kind=r4)
-        ENDDO
-        omi_solspec_ring(spc_idx, fidx:lidx, ix) = &
-             real(omi_solspec_ring(spc_idx, fidx:lidx, ix) / nbin * &
-             snorms(ch) / omi_solnorm(ix) , kind=r4)
-      ENDIF
-
-      ! Replace solar irradiance around 370 nm region
-      ch = 2
-      IF ( omi_solspecr(wvl_idx, 1, ix) < solcomp_wvl(ch, 1) .OR. &
-           omi_solspecr(wvl_idx, nrefl, ix) > solcomp_wvl(ch, nscpts(ch))) THEN
-        WRITE(www_lun, '(2A)') modulename, ': Solar composite does not cover 370 nm!!!'
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
-      sidx = MINVAL(MAXLOC(solcomp_wvl(ch, 1:nscpts(ch)), MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-           <= omi_solspecr(wvl_idx, 1, ix))))
-      eidx = MINVAL(MINLOC(solcomp_wvl(ch, 1:nscpts(ch)), MASK=(solcomp_wvl(ch, 1:nscpts(ch)) &
-           >= omi_solspecr(wvl_idx, nrefl, ix)))) 
-      npts = eidx - sidx + 1
-
-      tmpwvl(1:nrefl) = omi_solspecr(wvl_idx, 1:nrefl, ix)
-
-      IF (.NOT. coadd_uv2) THEN
-        nbin = nxbin
-      ELSE
-        nbin = nxbin * ncoadd
-      ENDIF
-      iix = (ix - 1) * nbin
-      omi_solspecr(spc_idx, 1:nrefl, ix) = 0.0
-
-      DO i = 1, nbin
-        CALL interpolation (npts, solcomp_wvl(ch, sidx:eidx), &
-             solcomp(ch, iix + i, sidx:eidx), &
-             nrefl, tmpwvl(1:nrefl), tmpspec(1:nrefl), errstat )
-        IF ( errstat > pge_errstat_warning ) THEN
-          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-          STOP 1
-        END IF
-        omi_solspecr(spc_idx, 1:nrefl, ix) = &
-             real(omi_solspecr(spc_idx, 1:nrefl, ix) + &
-             tmpspec(1:nrefl), kind=r4)
-      ENDDO
-      omi_solspecr(spc_idx, 1:nrefl, ix)  = &
-           real(omi_solspecr(spc_idx, 1:nrefl, ix) / nbin * &
-           snorms(ch) , kind=r4)
-    ENDDO
-
     RETURN
   END SUBROUTINE replace_solar_irradiance
+! Correction for wavelength registration at 1:67 and 498:557
+  SUBROUTINE corruv2wav(nw, nx, waves)
+    USE OMSAO_precision_module
 
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                  INTENT (IN)    :: nw, nx
+    REAL (KIND=r4), DIMENSION (nw, nx), INTENT (INOUT) :: waves
 
-
-  SUBROUTINE reduce_irrad_resolution (spec, qflag, np, nx, which_slit, slwth, &
-       samprate, dwav, retswav, retewav, swav, ewav, np_out, pge_error_status)
-
-    USE OMSAO_precision_module 
-    USE OMSAO_parameters_module, ONLY: max_spec_pts
-    USE OMSAO_indices_module,    ONLY: sig_idx!, wvl_idx, spc_idx
-    USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
-    USE ozprof_data_module,      ONLY: pos_alb
-    USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: interpolation
-
-    IMPLICIT NONE
-
-    ! ====================
-    ! In/Output variables
-    ! ====================
-    INTEGER, INTENT(IN)                                 :: np, nx, which_slit
-    INTEGER, INTENT(OUT)                                :: np_out, pge_error_status
-    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN)    :: qflag                   
-    REAL (KIND=dp), INTENT(IN)                          :: samprate, slwth, retswav, retewav
-    REAL (KIND=dp), INTENT(INOUT)                       :: dwav
-    REAL (KIND=dp), INTENT(INOUT)                       :: swav, ewav
-    REAL (KIND=dp), DIMENSION(sig_idx, np, nx), INTENT(INOUT) :: spec
-
-    ! ====================
+    ! ----------------
     ! Local variables
-    ! ====================
-    INTEGER, PARAMETER     :: nmax = max_spec_pts
-    INTEGER                :: i, j, ix, mslit, nf, nsamp, nsamp1, nslit, errstat, iwin, idx
-    INTEGER, DIMENSION(nx) :: nmod
-    INTEGER, DIMENSION( 3) :: sidx, eidx, nstep
-    REAL (KIND=dp)         :: dlam0, slitsum, redsnr, dx, fwav, lwav
-    REAL (KIND=dp), DIMENSION(nmax)      :: slit
-    REAL (KIND=dp), DIMENSION(sig_idx, np, nx) :: specmod
-    REAL (KIND=dp), DIMENSION(sig_idx, nmax)   :: fnspec
+    ! ---------------
+    INTEGER        :: ix
+    REAL (KIND=r4) :: del, ndel, delp1, delp2, delm1, delm2, ndelp1, ndelm1, sh1, sh2
 
-    ! ------------------------------
-    ! Name of this subroutine/module
-    ! ------------------------------
-    CHARACTER (LEN=28), PARAMETER :: modulename = 'reduce_irradiance_resolution'
+    !RETURN
 
-    ! ------------------
-    ! External functions
-    ! ------------------
-    INTEGER :: OMI_SMF_setmsg
+    !print *, nw, nx
+    DO ix = 1, nx   
+      ! At position 67
+      del    = waves(68, ix) - waves(67, ix)
+      delm1  = waves(67, ix) - waves(66, ix)
+      delp1  = waves(69, ix) - waves(68, ix)
+      delp2  = waves(70, ix) - waves(69, ix)
+      ndel   = delp1 * 2 - delp2
+      ndelm1 = ndel * 2  - delp1
 
-    pge_error_status = pge_errstat_ok
+      ! Shifts
+      sh1 = (ndel - del)
+      sh2 = sh1 + (ndelm1 - delm1)
 
-    ! If slwth == 0, not allowed, unless that user provides a fixed wavelength grid
-    IF (slwth == 0 .AND. .NOT. use_redfixwav) THEN
-      WRITE(www_lun, '(2A)') modulename, ': Zero Slit Width Not allowed!!!'
-      pge_error_status = pge_errstat_error
-    ENDIF
+      !print *, 67, sh1, sh2
+      waves(67, ix)   = waves(67, ix) - sh1
+      waves(1:66, ix) = waves(1:66, ix) - sh2
 
-    ! Filter bad measurements, determine wavelength range for all x-track positions
-    dlam0 = spec(1, 2, 1) - spec(1, 1, 1)
-    ewav = MAXVAL(spec(1, np, :)) 
-    DO ix = 1, nx
-      j = 0
+      ! At position 498
+      delm2 = waves(496, ix) - waves(495, ix)
+      delm1 = waves(497, ix) - waves(496, ix)
+      del   = waves(498, ix) - waves(497, ix)
+      delp1 = waves(499, ix) - waves(498, ix)
+      ndel = delm1 * 2 - delm2
+      ndelp1 = ndel * 2 - delm1
 
-      DO i = 1, np 
-        IF (spec(2, i, ix) > 0. .AND. spec(2, i, ix) <= 4.0E14 .AND. qflag(i, ix) == 0) THEN
-          j = j + 1
-          specmod(:, j, ix) = spec(:, i, ix)
-        ENDIF
-      ENDDO
-      nmod(ix) = j
-      IF (specmod(1, j, ix) < ewav) ewav = specmod(1, j, ix)
-    ENDDO
-    swav = MAXVAL(specmod(1, 1, :))
+      sh1 = (ndel - del)
+      sh2 = sh1 + (ndelp1 - delp1)
+      !print *, 498, sh1, sh2
 
-    IF (slwth == 0 .AND. use_redfixwav) THEN
-
-      j = 0
-      DO i = 1, nredfixwav
-        IF (redfixwav(i) >= swav .AND. redfixwav(i) <=ewav) THEN
-          j = j + 1
-          spec(1, j, 1:nx) = redfixwav(i)
-        ENDIF
-      ENDDO
-
-    ELSE
-
-      ! Establish fine wavelength scale (common to all across-track positions)
-      nf = INT((ewav - swav) / dwav + 1)
-      fnspec(1, 1) = swav
-      DO i = 2, nf
-        fnspec(1, i) = fnspec(1, i - 1) + dwav
-      ENDDO
-
-      IF (dwav > dlam0 .OR. dwav <= 0) THEN
-        dwav = dlam0
-      ENDIF
-
-      IF (which_slit == 1) THEN               ! Symmetric Gaussian (slwth is hw1e)
-        ! hw1e * 1.6551 = FWHM
-        mslit = NINT(2.62826 * slwth / dwav) ! slit truncation (<0.1%)
-        nsamp = INT(slwth * 1.66511 / samprate / dwav)
-      ELSE IF (which_slit == 2) THEN          ! Triangular (slwth is FWHM)
-        mslit = NINT(slwth / dwav)
-        nsamp = INT(slwth / samprate / dwav)
-      ENDIF
-      nslit = mslit * 2 + 1
-      nsamp1 = INT(dlam0 / dwav)
-      IF (nsamp1 < 1.0) nsamp1 = 1
-
-      ! Set up slit function
-      IF (which_slit == 1) THEN
-        slit(1:nslit) = EXP( -((fnspec(1, 1:nslit)-fnspec(1, mslit+1)) / slwth)**2 )
-      ELSE
-        slit(1:nslit) = 1.0 - ABS(fnspec(1, 1:nslit)-fnspec(1, mslit+1)) / slwth
-        WHERE (slit(1:nslit) < 0.0)
-          slit(1:nslit) = 0.0
-        ENDWHERE
-      ENDIF
-      slitsum = SUM(slit(1:nslit))
-      slit(1:nslit) = slit(1:nslit) / slitsum       ! Normalization
-      redsnr = 1.0 / SQRT(slitsum / dlam0 * dwav)   ! Measurement error/noise reduction
-
-      ! Convolve and Sample
-      ! More sampling at the two ends of the selected spectral range
-      ! Especially for the first and last 4 positions 
-      ! This is to avoid extrapolation while keeping as many measurements as possible
-      IF (retswav <= fnspec(1, mslit+1)) THEN
-        i = mslit + 1 + 3 * nsamp1
-      ELSE
-        i = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= retswav + dlam0 * 3)))
-      ENDIF
-      sidx(1) = mslit+1
-      eidx(1) = i
-      nstep(1) = nsamp1
-
-      IF (retewav >= fnspec(1, nf - mslit)) THEN
-        i = nf - mslit - nsamp1 * 3
-      ELSE
-        i = MAXVAL(MAXLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) <= retewav - dlam0 * 3)))
-      ENDIF
-      sidx(2) = eidx(1) + nsamp1
-      eidx(2) = i-1
-      nstep(2) = nsamp
-      sidx(3) = i + nsamp1
-      eidx(3) = nf - mslit
-      nstep(3) = nsamp1
-
-      j = 0
-      DO i = 1, nredfixwav
-        IF (redfixwav(i) > fnspec(1, mslit + 1) .AND. redfixwav(i) < fnspec(1, nf - mslit)) THEN
-          j = j + 1
-          spec(1, j, 1:nx) = redfixwav(i)
-        ENDIF
-      ENDDO
-    ENDIF
-
-    IF (use_redfixwav) THEN
-      ! Add 3 * 2 extra wavelengths for irradiance and 2 * 2 extra wavelengths for radiance
-      ! Add 3 wavelengths at the beginning of a spectra region
-      DO i = 1, j
-        fwav = MAX(swav, retswav)
-        IF (spec(1, i, 1) > fwav) THEN
-          IF (i == 1) THEN
-            dx = (spec(1, i, 1) - fwav) / 3.
-          ELSE
-            dx = (spec(1, i, 1) - MAX(spec(1, i-1, 1), fwav)) / 3.
-          ENDIF
-          IF (dx > dlam0) dx = dlam0
-          spec(1, i+3:j+3, 1:nx) = spec(1, i:j, 1:nx)
-          spec(1, i, 1:nx)   = spec(1, i+3, 1:nx) - dx * 3.0
-          spec(1, i+1, 1:nx)   = spec(1, i+3, 1:nx) - dx * 2.0
-          spec(1, i+2, 1:nx)   = spec(1, i+3, 1:nx) - dx * 1.0
-          j = j + 3
-          EXIT
-        ENDIF
-      ENDDO
-
-      ! Add 3 wavelengths at the end of a spectra region
-      DO i = j, 1, -1
-        lwav = MIN(ewav, retewav)
-        IF (spec(1, i, 1) < lwav) THEN
-          IF (i == j) THEN
-            dx = (lwav - spec(1, i, 1)) / 3.
-          ELSE
-            dx = ( MAX(spec(1, i+1, 1), lwav) - spec(1, i, 1)) / 3.
-          ENDIF
-          IF (dx > dlam0) dx = dlam0
-          spec(1, i+4:j+3, 1:nx) = spec(1, i+1:j, 1:nx)
-          spec(1, i+1, 1:nx)   = spec(1, i, 1:nx) + dx * 1.0
-          spec(1, i+2, 1:nx)   = spec(1, i, 1:nx) + dx * 2.0
-          spec(1, i+3, 1:nx)   = spec(1, i, 1:nx) + dx * 3.0
-          j = j + 3
-          EXIT
-        ENDIF
-      ENDDO
-
-      ! Add a wavelength at the wavelength to derive initial cloud fraction
-      IF (swav < pos_alb .AND. ewav > pos_alb) THEN
-        DO i = j, 1, -1 
-          IF (spec(1, i, 1) < pos_alb) THEN
-            spec(1, i+1:j, 1:nx) = spec(1, i+2:j+1, 1:nx)
-            spec(1, i+1, 1:nx) = pos_alb
-            j = j + 1
-            EXIT
-          ENDIF
-        ENDDO
-      ENDIF
-
-    ENDIF
-    np_out = j
-
-    ! Perform direct interpolation
-    IF (slwth == 0 .AND. use_redfixwav) THEN
-
-      DO ix = 1, nx
-        DO i = 2, 3
-          CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
-               np_out, spec(1, 1:np_out, ix),  spec(i, 1:np_out, ix), pge_error_status )
-          IF ( pge_error_status > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-            RETURN
-          END IF
-        ENDDO
-      ENDDO
-    ELSE
-
-      DO ix = 1, nx 
-        ! Pre-interpolation
-        DO i = 2, 3
-          CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
-               nf, fnspec(1, 1:nf), fnspec(i, 1:nf), pge_error_status )
-          IF ( pge_error_status > pge_errstat_warning ) THEN
-            print *, ix, 'interpolation problem'
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-            RETURN
-          END IF
-        ENDDO
-
-        IF (.NOT. use_redfixwav) THEN
-          j = 0
-          DO iwin = 1, 3
-            DO i = sidx(iwin), eidx(iwin), nstep(iwin)
-              j = j + 1
-              spec(1, j, ix) = fnspec(1, i)
-              spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, i-mslit:i+mslit))
-              spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, i-mslit:i+mslit)) * redsnr ! Reduce noise
-            ENDDO
-          ENDDO
-        ELSE
-          DO j = 1,  np_out
-            idx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= spec(1, j, ix))))
-            IF ( ABS(fnspec(1, idx-1) - spec(1, j, ix)) < ABS(fnspec(1, idx) - spec(1, j, ix))) idx = idx - 1
-            spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, idx-mslit:idx+mslit))
-            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise              
-          ENDDO
-        ENDIF
-      ENDDO
-
-      np_out = j
-    ENDIF
-    !print *, nx
-    !IF (nx == 30) THEN
-    !   WRITE(www_lun, '(2F10.4)') spec(1, np_out, 15)
-    !   WRITE(www_lun, '(2D14.6)') spec(2, np_out, 15)
-    !ELSE
-    !   WRITE(www_lun, '(2F10.4)') spec(1, np_out, 29:30)
-    !   WRITE(www_lun, '(2D14.6)') SUM(spec(2, np_out, 29:30)) / 2.
-    !ENDIF
-    !IF (np_out > np) THEN
-    !   WRITE(www_lun, '(2A)') modulename, ': Improper sampling rate or slit width!!!'
-    !   pge_error_status = pge_errstat_error
-    !ENDIF
-
-    RETURN
-  END SUBROUTINE reduce_irrad_resolution
-
-
-  SUBROUTINE reduce_rad_resolution (spec, qflag, np, nx, which_slit, slwth, &
-       samprate, dwav, retswav, retewav, swav, ewav, np_out, pge_error_status)
-
-    USE OMSAO_precision_module 
-    USE OMSAO_parameters_module, ONLY: max_spec_pts
-    USE OMSAO_indices_module,    ONLY: sig_idx!, wvl_idx, spc_idx
-    USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
-    USE ozprof_data_module,      ONLY: pos_alb
-    USE OMSAO_errstat_module
-    use m_ezspline_interpolation, only: interpolation
-
-    IMPLICIT NONE
-
-    ! ====================
-    ! In/Output variables
-    ! ====================
-    INTEGER, INTENT(IN)                              :: np, nx, which_slit
-    INTEGER, INTENT(OUT)                             :: np_out, pge_error_status
-    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN) :: qflag                   
-    REAL (KIND=dp), INTENT(IN)                       :: samprate, slwth, dwav, swav, ewav, retswav, retewav
-    REAL (KIND=dp), DIMENSION(sig_idx, np, nx), INTENT(INOUT) :: spec
-
-    ! ====================
-    ! Local variables
-    ! ====================
-    INTEGER, PARAMETER     :: nmax = max_spec_pts
-    INTEGER                :: i, j, ix, mslit, nf, nsamp, nsamp1, nslit, errstat, fidx, lidx, iwin, idx
-    INTEGER, DIMENSION(nx) :: nmod
-    INTEGER, DIMENSION( 3) :: sidx, eidx, nstep
-    REAL (KIND=dp)         :: dlam0, slitsum, redsnr, dx, fwav, lwav
-    REAL (KIND=dp), DIMENSION(nmax)      :: slit
-    REAL (KIND=dp), DIMENSION(sig_idx, np, nx) :: specmod
-    REAL (KIND=dp), DIMENSION(sig_idx, nmax)   :: fnspec
-
-    ! ------------------------------
-    ! Name of this subroutine/module
-    ! ------------------------------
-    CHARACTER (LEN=28), PARAMETER :: modulename = 'reduce_irradiance_resolution'
-
-    ! ------------------
-    ! External functions
-    ! ------------------
-    INTEGER :: OMI_SMF_setmsg
-
-    pge_error_status = pge_errstat_ok
-
-    ! If slwth == 0, not allowed, unless that user provides a fixed wavelength grid
-    IF (slwth == 0 .AND. .NOT. use_redfixwav) THEN
-      WRITE(www_lun, '(2A)') modulename, ': Zero Slit Width Not allowed!!!'
-      pge_error_status = pge_errstat_error
-    ENDIF
-
-    dlam0 = spec(1, 2, 1) - spec(1, 1, 1)  
-
-    ! Filter bad measurements
-    DO ix = 1, nx
-      j = 0
-
-      DO i = 1, np 
-        IF (spec(2, i, ix) > 0. .AND. spec(2, i, ix) <= 4.0E14 .AND. qflag(i, ix) == 0) THEN
-          j = j + 1
-          specmod(:, j, ix) = spec(:, i, ix)
-        ENDIF
-      ENDDO
-      nmod(ix) = j
+      waves(498, ix) = waves(498, ix) + sh1
+      waves(499:nw, ix) = waves(499:nw, ix) + sh2
     ENDDO
 
-    IF (slwth == 0 .AND. use_redfixwav) THEN
-
-      j = 0
-      DO i = 1, nredfixwav
-        IF (redfixwav(i) >= swav .AND. redfixwav(i) <=ewav) THEN
-          j = j + 1
-          spec(1, j, 1:nx) = redfixwav(i)
-        ENDIF
-      ENDDO
-
-    ELSE
-
-      ! Establish fine wavelength scale (common to all across-track positions)
-      nf = INT((ewav - swav) / dwav + 1)
-      fnspec(1, 1) = swav
-      DO i = 2, nf
-        fnspec(1, i) = fnspec(1, i - 1) + dwav
-      ENDDO
-
-      IF (which_slit == 1) THEN               ! Symmetric Gaussian (slwth is hw1e)
-        ! hw1e * 1.6551 = FWHM
-        mslit = NINT(2.62826 * slwth / dwav) ! slit truncation (<0.1%)
-        nsamp = INT(slwth * 1.66511 / samprate / dwav)
-      ELSE IF (which_slit == 2) THEN          ! Triangular (slwth is FWHM)
-        mslit = NINT(slwth / dwav)
-        nsamp = INT(slwth / samprate / dwav)
-      ENDIF
-      nslit  = mslit * 2 + 1
-      nsamp1 = INT(dlam0 / dwav)
-      IF (nsamp1 < 1.0) nsamp1 = 1
-
-      ! Set up slit function
-      IF (which_slit == 1) THEN
-        slit(1:nslit) = EXP( -((fnspec(1, 1:nslit)-fnspec(1, mslit+1)) / slwth)**2 )
-      ELSE
-        slit(1:nslit) = 1.0 - ABS(fnspec(1, 1:nslit)-fnspec(1, mslit+1)) / slwth
-        WHERE (slit(1:nslit) < 0.0)
-          slit(1:nslit) = 0.0
-        ENDWHERE
-      ENDIF
-      slitsum = SUM(slit(1:nslit))
-      slit(1:nslit) = slit(1:nslit) / slitsum ! Normalization
-      redsnr  = 1.0 / SQRT(slitsum / dlam0 * dwav)                          ! Measurement error/noise reduction
-
-      ! Convolve and Sample
-      ! More sampling at the two ends of the selected spectral range
-      ! Especially for the first and last 4 positions 
-      ! This is to avoid extrapolation while keeping as many measurements as possible
-      IF (retswav <= fnspec(1, mslit+1)) THEN
-        i = mslit + 1 + 3 * nsamp1
-      ELSE
-        i = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= retswav + dlam0 * 3)))
-      ENDIF
-      sidx(1) = mslit+1
-      eidx(1) = i
-      nstep(1) = nsamp1
-
-      IF (retewav >= fnspec(1, nf - mslit)) THEN
-        i = nf - mslit - nsamp1 * 3
-      ELSE
-        i = MAXVAL(MAXLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) <= retewav - dlam0 * 3)))
-      ENDIF
-      sidx(2) = eidx(1) + nsamp1
-      eidx(2) = i-1
-      nstep(2) = nsamp
-      sidx(3) = i + nsamp1
-      eidx(3) = nf - mslit
-      nstep(3) = nsamp1
-
-      j = 0
-      DO i = 1, nredfixwav
-        IF (redfixwav(i) > fnspec(1, mslit + 1) .AND. redfixwav(i) < fnspec(1, nf - mslit)) THEN
-          j = j + 1
-          spec(1, j, 1:nx) = redfixwav(i)
-        ENDIF
-      ENDDO
-
-    ENDIF
-
-    IF (use_redfixwav) THEN
-      ! Add 3 * 2 extra wavelengths for irradiance and 2 * 2 extra wavelengths for radiance
-      ! Add 3 wavelengths at the beginning of a spectra region
-      DO i = 1, j
-        fwav = MAX(swav, retswav)
-        IF (spec(1, i, 1) > fwav) THEN
-          IF (i == 1) THEN
-            dx = (spec(1, i, 1) - fwav) / 3.
-          ELSE
-            dx = (spec(1, i, 1) - MAX(spec(1, i-1, 1), fwav)) / 3.
-          ENDIF
-          IF (dx > dlam0) dx = dlam0
-          spec(1, i+3:j+3, 1:nx) = spec(1, i:j, 1:nx)
-          spec(1, i, 1:nx)   = spec(1, i+3, 1:nx) - dx * 3.0
-          spec(1, i+1, 1:nx)   = spec(1, i+3, 1:nx) - dx * 2.0
-          spec(1, i+2, 1:nx)   = spec(1, i+3, 1:nx) - dx * 1.0
-          j = j + 3
-          EXIT
-        ENDIF
-      ENDDO
-
-      ! Add 3 wavelengths at the end of a spectra region
-      DO i = j, 1, -1
-        lwav = MIN(ewav, retewav)
-        IF (spec(1, i, 1) < lwav) THEN
-          IF (i == j) THEN
-            dx = (lwav - spec(1, i, 1)) / 3.
-          ELSE
-            dx = ( MAX(spec(1, i+1, 1), lwav) - spec(1, i, 1)) / 3.
-          ENDIF
-          IF (dx > dlam0) dx = dlam0
-          spec(1, i+4:j+3, 1:nx) = spec(1, i+1:j, 1:nx)
-          spec(1, i+1, 1:nx)   = spec(1, i, 1:nx) + dx * 1.0
-          spec(1, i+2, 1:nx)   = spec(1, i, 1:nx) + dx * 2.0
-          spec(1, i+3, 1:nx)   = spec(1, i, 1:nx) + dx * 3.0
-          j = j + 3
-          EXIT
-        ENDIF
-      ENDDO
-
-      ! Add a wavelength at the wavelength to derive initial cloud fraction
-      IF (swav < pos_alb .AND. ewav > pos_alb) THEN
-        DO i = j, 1, -1 
-          IF (spec(1, i, 1) < pos_alb) THEN
-            spec(1, i+1:j, 1:nx) = spec(1, i+2:j+1, 1:nx)
-            spec(1, i+1, 1:nx) = pos_alb
-            j = j + 1
-            EXIT
-          ENDIF
-        ENDDO
-      ENDIF
-
-    ENDIF
-    np_out = j
-
-    IF (slwth == 0 .AND. use_redfixwav) THEN
-
-      DO ix = 1, nx
-        DO i = 2, 3
-          CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
-               np_out, spec(1, 1:np_out, ix),  spec(i, 1:np_out, ix), pge_error_status )
-          IF ( pge_error_status > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-            RETURN
-          END IF
-        ENDDO
-      ENDDO
-
-    ELSE
-      DO ix = 1, nx 
-        ! Pre-interpolation
-        fidx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= specmod(1, 1, ix))))
-        lidx = MAXVAL(MAXLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) <= specmod(1, nmod(ix), ix))))
-        fnspec(2:3, 1:fidx-1) = 0.0
-        fnspec(2:3, lidx+1:nf) = 0.0
-
-        IF (nmod(ix) > np * 0.75) THEN
-          DO i = 2, 3           
-            CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
-                 lidx-fidx+1, fnspec(1, fidx:lidx), fnspec(i, fidx:lidx), pge_error_status )
-            IF ( pge_error_status > pge_errstat_warning ) THEN
-              errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
-              RETURN
-            END IF
-          ENDDO
-        ELSE
-          fnspec(2:3, 1:nf) = 0.0
-        ENDIF
-
-        IF (.NOT. use_redfixwav) THEN
-          ! Convolve and Sample
-          j = 0
-          DO iwin = 1, 3
-            DO i = sidx(iwin), eidx(iwin), nstep(iwin)
-              j = j + 1
-
-              spec(1, j, ix) = fnspec(1, i)
-              spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, i-mslit:i+mslit))
-              spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, i-mslit:i+mslit)) * redsnr ! Reduce noise
-
-              IF ((i - mslit < fidx) .OR. (i + mslit > lidx)) THEN
-                spec(2:3, j, ix) = 0.0
-              ENDIF
-            ENDDO
-          ENDDO
-        ELSE
-          DO j = 1,  np_out
-            idx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= spec(1, j, ix))))
-            IF ( ABS(fnspec(1, idx-1) - spec(1, j, ix)) < ABS(fnspec(1, idx) - spec(1, j, ix))) idx = idx - 1
-            spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, idx-mslit:idx+mslit))
-            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise              
-          ENDDO
-        ENDIF
-      ENDDO
-
-      np_out = j
-    ENDIF
-
-
     RETURN
-  END SUBROUTINE reduce_rad_resolution
+  END SUBROUTINE corruv2wav
 
 end module omi_read_l1b_data
+
+

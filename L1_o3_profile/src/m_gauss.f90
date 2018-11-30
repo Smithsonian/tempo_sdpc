@@ -1,12 +1,9 @@
 !> Gaussian slit functions
 module m_gauss
-  USE m_triangle, only: triangle_f2c, triangle_vary_f2c
-  USE m_voigt, only: asym_voigt_f2c, asym_voigt_vary_f2c
-  USE OMSAO_slitfunction_module, only: omislit_f2c, omislit_vary_f2c
+
   USE m_ezspline_interpolation, only: interpolation
   public asym_gauss, asym_gauss_multi, asym_gauss_vary, gauss, gauss_multi, &
-       gauss_vary, gauss_uneven, convol_f2c
-  private gauss_f2c, asym_gauss_f2c, gauss_vary_f2c, asym_gauss_vary_f2c
+       gauss_vary, gauss_uneven, gauss_f2c, asym_gauss_f2c, gauss_vary_f2c, asym_gauss_vary_f2c
 
 contains
 
@@ -870,57 +867,7 @@ contains
 
   END SUBROUTINE gauss_uneven
 
-  !xliu, 10/29/2009, add the capability to convole multiple spectrum simultaneously
-  SUBROUTINE convol_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
 
-    USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY : yn_varyslit, which_slit
-    USE OMSAO_slitfunction_module
-    USE m_super_gauss, ONLY : super_gauss_f2c, super_gauss_vary_f2c
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    INTEGER,                        INTENT (IN)         :: nc, nf, nspec
-    REAL (KIND=dp), DIMENSION (nf), INTENT (IN)         :: fwave
-    REAL (KIND=dp), DIMENSION (nf, nspec), INTENT (IN)  :: fspec
-    REAL (KIND=dp), DIMENSION (nc), INTENT (IN)         :: cwave
-    REAL (KIND=dp), DIMENSION (nc, nspec), INTENT (OUT) :: cspec
-
-    IF (.NOT. yn_varyslit) THEN
-      IF (which_slit == 0) THEN
-        CALL gauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 1) THEN
-        CALL asym_gauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 2) THEN
-        CALL asym_voigt_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 3) THEN
-        CALL triangle_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 4) THEN 
-        CALL super_gauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 5) THEN
-        CALL omislit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      END IF
-    ELSE 
-      IF (which_slit == 0) THEN
-        CALL gauss_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 1) THEN
-        CALL asym_gauss_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 2) THEN
-        CALL asym_voigt_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 3) THEN
-        CALL triangle_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 4) THEN
-        CALL super_gauss_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ELSE IF (which_slit == 5) THEN
-        CALL omislit_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-      ENDIF
-    ENDIF
-
-    RETURN
-
-  END SUBROUTINE convol_f2c
 
   !xliu, 10/22/2009, change the way of finding start & end positions on high resolution
   !      grid for slit convolution
@@ -967,8 +914,6 @@ contains
       hw1esq = solwinfit(iwin, hwe_idx, 1)**2
       nhalf  = CEILING(solwinfit(iwin, hwe_idx, 1) / dfw * SQRT(-LOG(slit_trunc_limit))) !xliu, 10/22/2009
 
-      !print *, iwin, fidx, lidx, fidxc, lidxc, nf, nc
-      !print *, fwave(fidx), fwave(lidx), cwave(fidxc), cwave(lidxc)
 
       DO i = fidxc, lidxc
         ! Find the closest pixel

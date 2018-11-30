@@ -134,7 +134,7 @@ MODULE OMI_metaData_class
                                             year, month, day, jday ) &
                                             RESULT( status ) 
 
-        use utilities, only: day_of_year
+        use m_utilities, only: day_of_year
 
         INTEGER (KIND=4), INTENT(IN) :: OMI_fileLUN, versionIN
         TYPE (OMIECSMETA_T), INTENT(OUT) :: OMIcoreMeta
