@@ -602,7 +602,7 @@ contains
           ELSE IF (gasidxs(i) == o2o2_idx) THEN
             ! Assume 20.95% for O2
             ! Here Divide 1.0E10, and absorption coefficients multiply by 1.D10
-            mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5 /1.D10
+            mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5 /1.0D20
           ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN
               ! Assume 20.95% for O2
               mgasprof(i, 1:np) = frhos(1:np)*0.2095

@@ -300,10 +300,10 @@ contains
         fitvar_rad_init(j) =  fitvar_rad_apriori(j) 
         IF (gasidxs(k) == so2_idx .OR. gasidxs(k) == so2v_idx) &
              fitvar_rad_init(j) = 0.0 
-        IF (gasidxs(k) == o2o2_idx) fitvar_rad_init(j) = 0.0
+        !IF (gasidxs(k) == o2o2_idx) fitvar_rad_init(j) = 0.0
         IF (gasidxs(k) == bro2_idx) fitvar_rad_apriori(j) = &
              fitvar_rad_apriori(j) * 5. / 2.
-
+        !print * , k, mgasprof(k, nflay + 1), refspec_norm(gasidxs(k))
         ! initial values for trace gas shift parameters needs to be fixed 
         !    for every pixel,
         ! otherwise increasing from North to South to unreasonably large
@@ -635,7 +635,7 @@ contains
           sa(j, j) = (fitvar_rad_apriori(mask_fitvar_rad(j)))**2.0
           IF (gasidxs(i) == hcho_idx .OR. gasidxs(i) == no2_t1_idx .OR. gasidxs(i) == no2_t2_idx ) &
                sa(j, j) = sa(j, j) * 0.25  !50% error
-          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) * 0.04 !50% error
+          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) !* 0.04 !50% error
           IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) sa(j, j) = sa(j, j) * 0.09 !30% error
           IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) sa(j, j) = sa(j,j) !100% error
           IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &

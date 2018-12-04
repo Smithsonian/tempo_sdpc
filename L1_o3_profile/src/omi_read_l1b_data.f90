@@ -9,7 +9,7 @@ module omi_read_l1b_data
   USE m_ezspline_interpolation, only: interpolation
   USE m_fitting_util, ONLY: reduce_rad_resolution, reduce_irrad_resolution
   USE OMSAO_omidata_module,    ONLY:  omi_radiance_swathname,&
-    nfxtrack, ncoadd,nwavel_max, nxtrack_max, ntimes_max,nlines_max, & 
+    nfxtrack,nwavel_max, nxtrack_max, ntimes_max,nlines_max, & 
     omi_geo, omi_irrad, omi_rad, omi_ring, omi_refl
 
   CHARACTER(len=9),PRIVATE   :: omiraddate
@@ -26,9 +26,9 @@ contains
 
   SUBROUTINE omi_set_parameters (pge_error_status )
     USE OMSAO_parameters_module, ONLY: vb_lev_omidebug!, maxchlen
-    USE OMSAO_variables_module, ONLY:ntimes, nxtrack, inschs, band_selectors, &
+    USE OMSAO_variables_module, ONLY:ntimes, nxtrack, inschs, band_selectors, ncoadd,&
         l1b_rad_filename, GranuleYear,  GranuleMonth,GranuleDay, GranuleJDay, nswath,verb_thresh_lev
-    USE OMSAO_omidata_module , ONLY: zoom_mode, omi_radiance_swathname,nfxtrack, ncoadd
+    USE OMSAO_omidata_module , ONLY: zoom_mode, omi_radiance_swathname,nfxtrack
     USE OMSAO_errstat_module
     USE hdfeos4_parameters
     USE L1B_Reader_class
@@ -319,10 +319,10 @@ contains
          winlim, scnwrt, refdbdir, use_backup, &
          reduce_resolution, redlam, redsampr, reduce_slit, rm_mgline, &
          dwavmax, use_redfixwav, which_slit, avgsol_allorb, &
-         nxbin,nswath, GranuleJDay,orbnum, inschs, nxtrack,&
+         nxbin,nswath, GranuleJDay,orbnum, inschs, nxtrack,ncoadd,&
          reduce_ubnd, reduce_lbnd, retlbnd, retubnd, redslw, earthsundistance
     USE OMSAO_omidata_module,  ONLY: nwavel_max,  omi_irradiance_swathname, &
-                                      nfxtrack, ncoadd,  &
+                                      nfxtrack, &
                                      omisol_version, zoom_p1
     USE ozprof_data_module, ONLY: pos_alb, toms_fwhm, nrefl
     USE hdfeos4_parameters
@@ -1190,7 +1190,7 @@ contains
          wcal_bef_coadd, numwin, coadd_uv2, band_selectors, &
          szamax, currpix, reduce_resolution, redlam, redsampr, &
          reduce_slit, correct_merr, ybin_decerr, & 
-         nxbin, nybin, redslw, nswath, inschs, &
+         nxbin, nybin, ncoadd,redslw, nswath, inschs, &
          nxtrack, ntimes, reduce_lbnd, reduce_ubnd, retlbnd, retubnd
     USE ozprof_data_module,       ONLY:  nrefl
     USE OMSAO_pixelcorner_module, ONLY: rowanomaly_flg
@@ -1727,8 +1727,8 @@ contains
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx!, sig_idx
     USE OMSAO_parameters_module, ONLY: maxchlen, maxwin!, mrefl
     USE OMSAO_variables_module,  ONLY: avg_solcomp, avgsol_allorb, numwin, &
-         coadd_uv2, band_selectors, refdbdir, nxbin, nswath, nxtrack, orbnum
-    USE OMSAO_omidata_module,    ONLY: nxtrack_max, nwavel_max,  ncoadd
+         coadd_uv2, band_selectors, refdbdir, nxbin, nswath, nxtrack, ncoadd, orbnum
+    USE OMSAO_omidata_module,    ONLY: nxtrack_max, nwavel_max
     USE ozprof_data_module,      ONLY: nrefl
     USE OMSAO_errstat_module
 

@@ -4,8 +4,8 @@ MODULE OMSAO_omicloud_module
   USE OMSAO_parameters_module, ONLY: maxchlen
   USE OMSAO_indices_module
   USE OMSAO_omidata_module,    ONLY: nxtrack_max, nlines_max, ntimes_max, &
-       ncoadd, nfxtrack, zoom_mode, zoom_p1
-  USE OMSAO_variables_module,  ONLY: l2_cld_filename, coadd_uv2, nxbin, nybin,offset_line
+      nfxtrack, zoom_mode, zoom_p1
+  USE OMSAO_variables_module,  ONLY: l2_cld_filename, coadd_uv2, nxbin, nybin,offset_line, ncoadd
   USE OMSAO_he5_module
   USE OMSAO_errstat_module
 

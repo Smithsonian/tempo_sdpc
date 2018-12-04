@@ -284,14 +284,14 @@ MODULE ozprof_data_module
   ! ------------------------------------------------------------------------------
   LOGICAL                   :: vary_sfcalb
   REAL (KIND=dp)            :: pf2ba0, pf2ba1, pf2fc0, pf2fc1
-  LOGICAL                   :: do_alb_longwav, use_prefitalb ! used for derving alb from non-ozoneband
+  LOGICAL                   :: do_alb_longwav=.false., use_prefitalb=.false. ! used for derving alb from non-ozoneband
   REAL (KIND=dp)            :: alb_swav, alb_ewav!, cld_swav, cld_ewav
   REAL (KIND=dp)            :: pos_alb, toms_fwhm 
   REAL (KIND=dp)            :: measref
   CHARACTER(LEN=maxchlen)   :: alb_tbl_fname, ozcrs_alb_fname       ! reflectance table
   ! @ variables for EOF/BRDF albedo spectrum
-  LOGICAL                   :: use_albspc   ! Use albedo spectra/EOFs (bands 3&4only)
-  LOGICAL                   :: use_albeofs  ! Use albedo EOFs (use_albspec must be set)
+  LOGICAL                   :: use_albspc=.false.   ! Use albedo spectra/EOFs (bands 3&4only)
+  LOGICAL                   :: use_albeofs=.false.  ! Use albedo EOFs (use_albspec must be set)
   INTEGER, PARAMETER        :: malbspc = 5  ! maximum number of albedo spectra/EOFs
   INTEGER                   :: nalbspc      ! # albedo spectra/# EOFs (does not include mean spectrum for albedo EOFs)
   INTEGER                   :: nactalbspc   ! # actually used albedo spectra/EOFs (include mean)
@@ -459,6 +459,7 @@ MODULE ozprof_data_module
   ! --------------------------------------
   ! spectra normalization constant, used for getting absolute reflectance
   REAL(KIND=dp)  :: div_sun, div_rad  
+  REAL(KIND=dp), DIMENSION(maxwin)  :: div_suns, div_rads  
 
   ! ---------------------------------------------------------
   ! Measurement error matrix

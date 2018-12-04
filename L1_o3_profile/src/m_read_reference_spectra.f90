@@ -10,13 +10,12 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: max_rs_idx, wvl_idx, spc_idx, &
-         solar_idx, so2_idx, o2o2_idx, o2_idx, h2o_idx
+         solar_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts, &
          zerospec_string, vb_lev_develop
     USE OMSAO_variables_module,  ONLY: &
          refspec_fname, refspec_firstlast_wav, refspec_norm, n_refspec_pts, &
-         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max, scnwrt, &
-         solar_refspec,solar_refwav, n_solarref
+         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max, scnwrt
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -100,9 +99,6 @@ contains
         !IF (i == so2_idx) refspec_orig_data(i,1:max_spec_pts,wvl_idx) = refspec_orig_data(i,1:max_spec_pts,wvl_idx)-0.269
       END IF
     END DO
-    n_solarref = n_refspec_pts(solar_idx)
-    solar_refwav(1:n_solarref) = refspec_orig_data(solar_idx, 1:n_refspec_pts(solar_idx), wvl_idx)
-    solar_refspec(1:n_refspec_pts(solar_idx)) = refspec_orig_data(solar_idx, 1:n_refspec_pts(solar_idx), spc_idx)
 
     ! ------------------------------------
     ! Report successful reading of spectra

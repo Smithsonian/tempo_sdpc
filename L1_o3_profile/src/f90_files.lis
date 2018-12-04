@@ -41,11 +41,11 @@ m_spectra.f90
 m_fitting_util.f90
 m_cal_fit_one.f90
 prepare_databases.f90
-sao_cross_calibrate.f90
+m_cross_calibrate.f90
 omi_adj_data.f90
 tmpo_adj_data.f90
-omi_fitting_process.f90
-tmpo_fitting_process.f90
+omi_pge_process.f90
+tmpo_pge_process.f90
 gsvd_data_module.f90
 gsvd_o3prof_utilities.f90
 m_gsvd_lcurve_gcv.f90
@@ -64,7 +64,7 @@ m_get_tracegas.f90
 m_get_xcrs.f90
 m_get_initial_albedo.f90
 m_get_reg_matrix.f90
-prepare_atmosphere.f90
+m_prepare_atmosphere.f90
 m_read_aerosol_prof.f90
 m_raman.f90
 m_get_raman.f90

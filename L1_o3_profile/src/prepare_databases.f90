@@ -7,7 +7,7 @@ module m_prepare_databases
          do_bandavg, numwin, lo_radbnd, up_radbnd, &         
          refnhextra,radnhtrunc, refnhextra,  &       
          curr_sol_spec, curr_rad_spec_save ,nsolpix, n_irrad_wvl,nradpix, & ! measured spectra
-         refspec_orig_data, n_refspec_pts, n_solarref, solar_refwav, solar_refspec, & ! refs
+         refspec_orig_data, n_refspec_pts,  & ! refs
          n_refspec_pts,  refspec_norm, refspec_fname, &
          sring_fidx, sring_lidx, nsol_ring, sol_spec_ring, & ! ringspec
          yn_varyslit,slit_rad, which_slit, & ! slit variables

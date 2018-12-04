@@ -60,9 +60,9 @@ contains
          so2crsidx, o4crsidx, o2crsidx, h2ocrsidx, o3crsidx, &
          use_albspc, use_albeofs,nalbspcwin, nalbspcord, nalbspc, & ! static input
          malbspc, is_albspcvar, wrtalbspc, & 
-         which_inr, do_alb_longwav, alb_swav,ring_lut, alb_ewav
-    USE OMSAO_parameters_module,   ONLY: maxlay,  maxchlen, maxwin, &         
-      ozstr, othgasstr, albstr, othstr, polstr, cldaerstr, wfcstr, cntrstr
+         which_inr, do_alb_longwav,alb_swav,ring_lut, alb_ewav
+    USE OMSAO_parameters_module, ONLY: maxlay,  maxchlen, maxwin, &         
+      ozstr, othgasstr, albstr,  othstr, polstr, cldaerstr, wfcstr, cntrstr
     USE OMSAO_indices_module, ONLY: max_rs_idx,  max_calfit_idx, mxs_idx, &
          maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx, &
          hwe_idx, asy_idx, vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
@@ -526,7 +526,7 @@ contains
   READ (fit_ctrl_unit, *)     pos_alb, toms_fwhm
   READ (fit_ctrl_unit, '(A)') ozcrs_alb_fname
   READ (fit_ctrl_unit, *)     vary_sfcalb
-  READ (fit_ctrl_unit, *) do_alb_longwav, alb_swav, alb_ewav
+  READ (fit_ctrl_unit, *)     do_alb_longwav, alb_swav, alb_ewav
   READ (fit_ctrl_unit, *)     use_albspc, use_albeofs
   IF (use_albspc .AND. nviswin == 0) THEN
      use_albspc = .FALSE.
@@ -598,6 +598,7 @@ contains
      lo_radbnd(idx + i) = lotmp
      up_radbnd(idx + i) = uptmp
   END DO albpars
+
   ! Add albedo spectrum variables
   IF (use_albeofs) THEN
      albspc_typestr = 'e'
@@ -1259,7 +1260,9 @@ contains
         nfgas = nfgas + 1
         fgaspos(nfgas) = i
         IF (use_so2dtcrs .AND. (gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx)) so2crsidx = nfgas+1
-        IF (use_o4dtcrs  .AND. gasidxs(i) == o2o2_idx) o4crsidx = nfgas+1
+        IF (use_o4dtcrs  .AND. gasidxs(i) == o2o2_idx) THEN
+            o4crsidx = nfgas+1
+        ENDIF
         IF (use_o2dptcrs .AND. (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx)) o2crsidx = nfgas+1
         IF (use_h2odptcrs.AND. (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx)) h2ocrsidx = nfgas+1
     ENDIF

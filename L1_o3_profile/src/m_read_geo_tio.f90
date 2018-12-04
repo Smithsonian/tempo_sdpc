@@ -267,7 +267,6 @@ contains
 
     CALL convert_2bytes_to_32bits ( &
          nbyte, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-1) )
-
     ! ------------------------------
     ! The Glint flag is easy: Byte 4
     ! ------------------------------

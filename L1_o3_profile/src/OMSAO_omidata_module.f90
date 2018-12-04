@@ -12,7 +12,6 @@ MODULE OMSAO_omidata_module
   ! max number of channels (UV-1 and UV-2) reqd for OMI O3 profile retrievals
   INTEGER, PARAMETER :: mswath_omi  = 2
   INTEGER, PARAMETER :: zoom_p1 = 16, zoom_p2 = 45
-  INTEGER            :: ncoadd
   LOGICAL            :: zoom_mode
   ! ---------------------------------
   ! Maximum OMI data/swath dimensions

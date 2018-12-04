@@ -94,7 +94,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION(maxalb)        :: albarr 
   REAL (KIND=dp), DIMENSION(maxwfc)        :: wfcarr 
   REAL (KIND=dp), DIMENSION (ns)           :: delpos, waves, meas1, meas2, &
-       sim1, sim2, simrad, simrad1, fitspec1, temporwf, corr
+       sim1, sim2, simrad, simrad1, fitspec1, temporwf, corr, simrad0
   REAL (KIND=dp), DIMENSION(ns,nlay,MSTKS) :: ozwf, tmpwf
   REAL (KIND=dp), DIMENSION(ns, 4)         :: albothwf, wfcothwf, polothwf
   REAL (KIND=dp), DIMENSION(ns, MSTKS)     :: o3shiwf, cfracwf, albwf, fsimrad, &
@@ -500,6 +500,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      IF (errstat == pge_errstat_error) &
           WRITE(*, *) modulename, ': Errors in calling HRES_RADCALC_ENV!!!'
   ENDIF
+  simrad0 = fsimrad(1:ns, 1)
   IF (errstat == pge_errstat_error) RETURN
   !xliu (02/01/2007): correct radiances based on ozone weighting function to deal with negative ozone values
   IF (negval) THEN
@@ -736,8 +737,9 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
     fidx =  1
     DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1
-        WRITE (*, '(A, I2, 4(A14, 1pd11.3))') 'Win ', i, ': allrms = ', &
-        allrms(i), 'allIrms(%) = ', allradrms(i),'Is = ', sum(simrad1(fidx:lidx)),'Im =',sum(fitspec1(fidx:lidx))
+        WRITE (*, '(A, I2, 5(A9, 1pd11.3))') 'Win ', i, ':rms = ', &
+        allrms(i), 'rms(%) = ', allradrms(i),'Is = ', sum(simrad1(fidx:lidx)),'Is0=',sum(simrad0(fidx:lidx)),&
+        'Im =',sum(fitspec1(fidx:lidx))
         fidx = lidx + 1
     ENDDO
   ENDIF

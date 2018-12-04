@@ -41,9 +41,11 @@ contains
          comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
          hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx, &
          wr0_idx, wr7_idx , &
+         so2_idx, o2_idx, o2o2_idx, h2o_idx, &
          gome_idx, which_instrument, max_instrument_idx, instrument_idx, &
          omi_idx, scia_idx, gome2_idx, tempo_idx
-    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts,l1l2inp_unit
+    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts,l1l2inp_unit, &
+                                         zerospec_string
     USE OMSAO_variables_module,    ONLY: use_backup, use_solcomp,    &
          l1b_irrad_filename, l1b_rad_filename, l2_filename, l2_cld_filename, &
          avg_solcomp, avgsol_allorb, &
@@ -71,9 +73,9 @@ contains
          correct_merr, xbin_decerr, ybin_decerr, &
          do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol,l2_hdf_flag, redslw, &
          upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd, nswath, orbnum, orbnumsol,& 
-         num_param
+         num_param, ncoadd
     USE OMSAO_errstat_module
-    USE OMSAO_omidata_module, ONLY: ncoadd, &
+    USE OMSAO_omidata_module, ONLY:  &
         mswath_omi, nxomi_max=>nxtrack_max, ntomi_max=>ntimes_max, &
         upper_wvls_omi, lower_wvls_omi, upper_spec_omi, lower_spec_omi, omisol_version
     USE OMSAO_tmpodata_module, ONLY: &
@@ -81,7 +83,8 @@ contains
         upper_wvls_tmpo, lower_wvls_tmpo, upper_spec_tmpo, lower_spec_tmpo
     USE ozprof_data_module, ONLY: ozprof_flag, &
         ozprof_input_fname, fullorb, do_ch2reso,  &
-        nos, nsh, nsl, do_simu, radcalwrt, nfgas, ozfit_end_index,ozfit_start_index, nlay
+        nos, nsh, nsl, do_simu, radcalwrt, nfgas, ozfit_end_index,ozfit_start_index, nlay, &
+        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs 
     USE UTIL_tools_class
     use m_utilities, only: get_substring, string2index, check_for_endofinput, &
                            skip_to_filemark
@@ -1237,9 +1240,15 @@ contains
          ENDIF
        
              i = pixnum_lim(2)-pixnum_lim(1) + 1
+             IF (i < nxbin) THEN 
+                 pixnum_lim(2) = pixnum_lim(1) + nxbin -1
+             ENDIF
              IF (mod(i, nxbin) /= 0 ) THEN 
-               pixnum_lim(2) = NINT(1.0 * i / nxbin) * nxbin + pixnum_lim(1) - 1
-             ENDIF            
+               pixnum_lim(2) = CEILING(1.0 * i / nxbin) * nxbin + pixnum_lim(1) - 1
+             ENDIF     
+             IF (pixnum_lim(2) > nxtrack_max) THEN
+               pixnum_lim(2) = pixnum_lim(2) - nxbin 
+             ENDIF       
       ENDIF
          ! print * , nint(0.4), ceiling(0.4), int(0.4)
          ! print * , nint(0.6), ceiling(0.6), int(0.6)
@@ -1340,6 +1349,10 @@ contains
         refnhextra = 2
       ENDIF
     ENDIF
+    IF (use_so2dtcrs) refspec_fname (so2_idx) = zerospec_string
+    IF (use_o4dtcrs) refspec_fname (o2o2_idx) = zerospec_string
+    IF (use_o2dptcrs) refspec_fname (o2_idx) = zerospec_string
+    IF (use_h2odptcrs) refspec_fname (h2o_idx) = zerospec_string
     ! ------------------------------------------------------------------------
     fitvar_rad_saved = fitvar_rad_init
 

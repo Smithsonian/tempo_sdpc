@@ -70,9 +70,18 @@ MODULE OMSAO_variables_module
   INTEGER :: the_pix, the_line
   INTEGER  :: currloop, currline, currpix
   CHARACTER (LEN=3) :: currpixchar
+
+  !--------------------------------------------------------
+  ! coadding variables
+  !-------------------------------------------------------- 
   ! actual positions in L1B
   LOGICAL :: do_xbin, do_ybin ! binning across and along the track
-  INTEGER :: nxbin, nybin
+  INTEGER :: nxbin, nybin, ncoadd
+
+  ! Determine whether to coadd UV2 spectrum to the UV-1 resolution
+  ! When both UV-1 and UV-2 exist
+  LOGICAL                                :: coadd_uv2 ! for OMI
+  
   INTEGER :: nswath, nxtrack, ntimes, nwavel
   INTEGER (KIND=I4) :: orbnum, orbnumsol
   ! array of mirror_step indices for TEMPO synthetic data
@@ -190,11 +199,10 @@ MODULE OMSAO_variables_module
   !  * number of spectral points:         N_REFSPEC_PTS
   !  * first and last wavelenghts:        REFSPEC_FIRSTLAST_WAV
   ! -----------------------------------------------------------
-  INTEGER                                                         :: n_refspec, n_solarref
+  INTEGER                                                         :: n_refspec
   CHARACTER (LEN=6),        DIMENSION (max_rs_idx)                :: fitpar_idxname
   CHARACTER (LEN=maxchlen), DIMENSION (max_rs_idx)                :: refspec_fname
   REAL (KIND=dp),           DIMENSION (max_rs_idx,max_spec_pts,3) :: refspec_orig_data
-  REAL (KIND=dp),           DIMENSION (max_spec_pts)              :: solar_refspec,solar_refwav
   REAL (KIND=dp),           DIMENSION (max_rs_idx,2)              :: refspec_firstlast_wav
   REAL (KIND=dp),           DIMENSION (max_rs_idx)                :: refspec_norm
   INTEGER,                  DIMENSION (max_rs_idx)                :: n_refspec_pts
@@ -289,10 +297,6 @@ MODULE OMSAO_variables_module
   INTEGER                                :: n_radwvl_sav
   REAL (KIND=dp), DIMENSION(max_fit_pts) :: radwvl_sav, i0sav
   
-
-  ! Determine whether to coadd UV2 spectrum to the UV-1 resolution
-  ! When both UV-1 and UV-2 exist
-  LOGICAL                                :: coadd_uv2 ! for OMI
   
   ! Use solar composite for destriping
   LOGICAL                                ::use_backup, use_solcomp, avg_solcomp, avgsol_allorb  
