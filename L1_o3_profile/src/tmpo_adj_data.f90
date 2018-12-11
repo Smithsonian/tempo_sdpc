@@ -356,7 +356,7 @@ CONTAINS
     has_glint = .FALSE.
     glintprob = 0.0
     ! Land-water flag=1: >=8 not used, else contain water
-    IF  (the_landwater_flg .AND. the_landwater_flg < 8) THEN 
+    IF  (the_landwater_flg /= 1 .AND. the_landwater_flg < 8) THEN
       IF (the_glint_flg == 1) THEN
         has_glint = .TRUE.
         CALL SUNGLINT_PROBABILITY (the_sza_atm, the_vza_atm, the_aza_atm, glintprob)

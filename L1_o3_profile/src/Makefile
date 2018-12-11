@@ -14,12 +14,8 @@ incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
 msgs_installdir = $(prefix)/msgs
 
-#ADDLIBD    = #
-ADDLIBD    = -Wl,-rpath=/home/jbak/OzoneFit/lidort/LIB/linux64-intel -L/home/jbak/OzoneFit/lidort/LIB/linux64-intel \
-
-#ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -lvlidort -llapack -lblas
-
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llapack -lblas -llidort_vv2p4RTC
+ADDLIBD    = -Wl,-rpath=$(OTS_ROOT)/lib -L$(OTS_ROOT)/lib
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llidort_vv2p4RTC -llapack -lblas
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line

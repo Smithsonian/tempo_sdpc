@@ -248,7 +248,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
           ENDDO
       ELSE IF (the_cfrac >=0.8 .and. (the_snowice <1 .and. the_snowice >= 104) ) THEN
            do_albwf = .false.
-      ELSE IF ( the_cfrac > 0.2 .and. do_cfracwf == .true.) THEN  
+      ELSE IF ( the_cfrac > 0.2 .and. do_cfracwf) THEN
             do_albwf = .false.
             DO i = 1, nalb
               j = albidx -1 + i 
@@ -510,8 +510,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         ENDIF
      ENDDO
   ENDIF
-  IF (do_albwf == .false.) albwf(:,:) = 0.0D0
-  IF (do_cfracwf == .false.) cfracwf(:,:) = 0.0D0
+  IF (.not.do_albwf) albwf(:,:) = 0.0D0
+  IF (.not.do_cfracwf) cfracwf(:,:) = 0.0D0
   !!xliu (12/11/2014): correct radiances based on SO2 to deal with negative
   !ozone values
   DO k = 1, ngas
@@ -604,9 +604,9 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   !  WRITE(77, '(f8.4, 43d14.6)') fitwavs(i), ozwf(i, 1:nlay) !* ozprof(1:nlay)
   !ENDDO
 
-  IF (do_albwf   == .false.) albwf(:,:) = 0.0D0
-  IF (do_cfracwf == .false.) cfracwf(:,:) = 0.0D0
-  IF (do_polwf   == .false.) polwf(:,:) = 0.0D0
+  IF (.not.do_albwf) albwf(:,:) = 0.0D0
+  IF (.not.do_cfracwf) cfracwf(:,:) = 0.0D0
+  IF (.not.do_polwf) polwf(:,:) = 0.0D0
   ! correct for linear/quardratic wavelength dependent in albedo
   albothwf = 0.0
   DO i = 1, nalb

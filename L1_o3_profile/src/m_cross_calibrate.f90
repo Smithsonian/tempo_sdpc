@@ -382,9 +382,9 @@ contains
        write(cunit, *) the_pix, the_line,  numwin, nw
        DO iw = 1, numwin
        IF (radcal) THEN 
-           WRITE(cunit,ADJUSTL(TRIM(form1))) cali.wincal_wav(iw,ix), cali.radwinfit(iw, fit_idx(1:n_fitvar), ix)
+           WRITE(cunit,ADJUSTL(TRIM(form1))) cali % wincal_wav(iw,ix), cali % radwinfit(iw, fit_idx(1:n_fitvar), ix)
        ELSE 
-           WRITE(cunit,ADJUSTL(TRIM(form1))) cali.wincal_wav(iw, ix), cali.solwinfit(iw, fit_idx(1:n_fitvar), ix)
+           WRITE(cunit,ADJUSTL(TRIM(form1))) cali % wincal_wav(iw, ix), cali % solwinfit(iw, fit_idx(1:n_fitvar), ix)
        ENDIF
        ENDDO
    ENDIF

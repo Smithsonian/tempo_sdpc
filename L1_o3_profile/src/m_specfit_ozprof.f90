@@ -180,7 +180,7 @@ contains
       END IF
     ENDIF
 
-    IF (nfpol) THEN 
+    IF (nfpol > 0) THEN
        DO i = 1, npol
         j = polidx + i -1
         polfpix(i)= MINVAL(MINLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
@@ -194,7 +194,7 @@ contains
     ! ======================================================================
     !print * , the_lons, the_lats
     call get_bc_layer(which_atm, nloc, the_lons, the_lats, ps0, pst,the_surfalt)
-    IF (use_tropopause == .false.)  pst = pst0
+    IF (.not.use_tropopause)  pst = pst0
     IF (which_toz /= 0 ) THEN
       CALL get_toz(which_toz, toz)
     ELSE

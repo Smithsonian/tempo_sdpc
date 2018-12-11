@@ -1479,10 +1479,10 @@ SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg
        312.0, 320.0, 328.0, 336.6, 344.0, 352.0, 360.0, 368.0/)
        
   REAL (KIND=dp), DIMENSION(nkernel), PARAMETER    :: wsg = (/1.0d0, 0.18984d0, -1.377622d0/)
-  REAL (KIND=dp), DIMENSION(3, nkernel), PARAMETER :: bsg = (/ &
+  REAL (KIND=dp), DIMENSION(3, nkernel), PARAMETER :: bsg = reshape((/ &
         1.0d0,       0.d0,        0.d0,      &
        -0.007574d0, -0.070987d0, 0.307588d0, &
-       -1.284909d0, -0.166314d0, 0.041840d0 /)
+       -1.284909d0, -0.166314d0, 0.041840d0 /), (/3, nkernel/))
   
   !CHARACTER (LEN=3), DIMENSION(nkernel), PARAMETER  :: kernel_names = (/'iso', 'vol', 'geo'/)
   ! Four channels used here: band 3: 459-479 nm, band 4: 545-565 nm, Band 1: 620-670 nm, Band 2: 841-876 nm 
@@ -1512,11 +1512,11 @@ SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg
  !AAp(1:4,4)=(/1.39, -26.34, -48.76, 8.51/)
 
  ! For using 4 EOFs subtracting the mean
- REAL(KIND=dp), DIMENSION(nband, nband), PARAMETER :: aap = (/ & 
+ REAL(KIND=dp), DIMENSION(nband, nband), PARAMETER :: aap = reshape ((/ &
       39.3409, -4.41668, -19.2454,   79.8933, &
       -51.5215, 31.1677, -4.09099, -123.318, &
       21.6908,  11.0041,  16.6703,  39.6572, &
-      34.1508, -9.11675,  1.81977,  13.6371/) 
+      34.1508, -9.11675,  1.81977,  13.6371/), (/nband, nband/))
  !AAp(1:4,1)=(/39.3409, -4.41668, -19.2454,   79.8933/)
  !AAp(1:4,2)=(/-51.5215, 31.1677, -4.09099, -123.318/)
  !AAp(1:4,3)=(/21.6908,  11.0041,  16.6703,  39.6572/)

@@ -142,7 +142,6 @@ MODULE O3P_output_module
   ELSE IF (l2_hdf_flag==3) THEN
   ELSE IF (l2_hdf_flag==4) THEN
     CALL l2_tio_close(errstat)
-    IF (errstat /= 0) problems=.true.
   ENDIF
   END SUBROUTINE L2_o3p_close 
 END MODULE

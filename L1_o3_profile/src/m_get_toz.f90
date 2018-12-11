@@ -157,7 +157,7 @@ MODULE m_get_toz
             ENDIF
          ENDDO
      ENDDO
-     IF (do_fillin == .true. ) THEN
+     IF (do_fillin) THEN
      ! linear interpolation along the track
      DO i = 1, nlon 
       DO j = 1, nlat 
@@ -295,7 +295,7 @@ MODULE m_get_toz
         tlats(i) = REAL(i, KIND=dp) - 89.5
      ENDDO
      READ (atmos_unit, *)
-     READ (atmos_unit, *) ((zmto3(i), zmalt(i)), i = 1, ntlat)
+     READ (atmos_unit, *) (zmto3(i), zmalt(i), i = 1, ntlat)
      CLOSE(atmos_unit)
      first = .FALSE.
    ENDIF

@@ -570,7 +570,7 @@ contains
         epos(is) = int(nwavel + nwls(is) , kind=i2)
         DO i = 1, nx
           READ(lun, *) 
-          IF (avgsol_allorb == .true.) THEN
+          IF (avgsol_allorb) THEN
             DO j = 1, nwls(is)
               READ(lun, *) irrad_wavl(nwavel + j, i),  irrad_spec(nwavel + j, i),&
                            irrad_prec(nwavel + j, i), idum, idum

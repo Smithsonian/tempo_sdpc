@@ -106,11 +106,11 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=6), DIMENSION (min_rs_idx:max_rs_idx), PARAMETER :: &
        refspec_strings = (/ &
        'solar ', 'ring  ', 'o3_t1 ', 'o3_t2 ', 'o3_t3 ', 'no2_t1', 'no2_t2', &
-       'o2o2  ', 'so2   ', 'bro   ', 'oclo  ', 'hcho  ', 'comod', 'usamp1', &
+       'o2o2  ', 'so2   ', 'bro   ', 'oclo  ', 'hcho  ', 'comod ', 'usamp1', &
        'usamp2', 'bro_tc', 'o3_tc ', 'pseudo', 'polcor', 'o2    ', 'h2o   ', &
-       'ring1 ', 'comod1', 'so2v',   'bro2',   'glyox ', 'io    ', 'vraman', &
-       'fsl',    'rsl',    'o2t2  ', 'h2ot2 ', 'lh2o  ', 'vege  ', 'chloro', &
-       'comod2', 'comod3', 'sdc',  'noname'  /)
+       'ring1 ', 'comod1', 'so2v  ', 'bro2  ', 'glyox ', 'io    ', 'vraman', &
+       'fsl   ', 'rsl   ', 'o2t2  ', 'h2ot2 ', 'lh2o  ', 'vege  ', 'chloro', &
+       'comod2', 'comod3', 'sdc   ', 'noname'  /)
 
 
   ! ==============================================

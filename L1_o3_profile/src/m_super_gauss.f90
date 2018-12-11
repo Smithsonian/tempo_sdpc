@@ -237,7 +237,7 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER :: modulename = 'super_gauss_vary'
+  CHARACTER (LEN=*), PARAMETER :: modulename = 'super_gauss_vary'
 
 
   !WRITE(*, *) 'nslit = ', nslit
@@ -477,7 +477,7 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=13), PARAMETER :: modulename = 'super_gauss_vary_f2c'
+  CHARACTER (LEN=*), PARAMETER :: modulename = 'super_gauss_vary_f2c'
 
   errstat = pge_errstat_ok 
   dfw  = fwave(2) - fwave(1) 

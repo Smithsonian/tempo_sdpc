@@ -1785,7 +1785,7 @@ CONTAINS
     ! Local variables
     CHARACTER (LEN=maxchlen)                           :: absfname
     INTEGER                                            :: nline, i, j, errstat
-    INTEGER                                            :: file_exist
+    LOGICAL                                            :: file_exist
     REAL (KIND=dp)                                     :: tmp
     CHARACTER (LEN=14)                                 :: tmpchar
 

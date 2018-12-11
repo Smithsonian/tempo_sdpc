@@ -339,8 +339,8 @@ contains
 
     IF (nxbin == 1) do_xbin = .FALSE.
     IF (nybin == 1) do_ybin = .FALSE.
-    IF (do_xbin == .false.) nxbin = 1
-    IF (do_ybin == .false.) nybin = 1
+    IF (.not.do_xbin) nxbin = 1
+    IF (.not.do_ybin) nybin = 1
 
     IF (reduce_resolution) THEN
       do_bandavg = .FALSE.

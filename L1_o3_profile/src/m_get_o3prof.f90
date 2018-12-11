@@ -249,7 +249,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
              30., 50., 70., 100., 150., 200., 300., 500., 700., 1000.0/)
      call get_fortstd (astd(1:nref )) 
   ELSE IF (which_aperr == 2 ) THEN
-     call get_mcprof(astd(1:nref), 2) 
+     call get_mcprof(astd(1:nref), 2)
   ELSE IF (which_aperr >= 8 .and. which_aperr <=9) THEN
      call get_tbprof (astd(1:nref),2) 
   ELSE  ! IF (which_aperr == 10) THEN
@@ -1045,7 +1045,7 @@ SUBROUTINE get_mcprof(ozref, which_out)
   ! ======================
   ! Input/Output variables
   ! ======================
-  INTEGER (KIND=dp), INTENT (IN)               :: which_out ! 1=o3p, 2=std
+  INTEGER, INTENT (IN)               :: which_out ! 1=o3p, 2=std
   REAL (KIND=dp), DIMENSION(nref), INTENT(OUT) :: ozref
 
   ! ======================

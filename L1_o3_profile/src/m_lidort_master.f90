@@ -170,9 +170,10 @@ module m_lidort_master
       !     TRIM(tabdir)//'../control/vlidort_control.inp', &
       !     'o3prof_lidort_error', status_inputread)
        openfileflag   = .FALSE.
-       CALL VLIDORT_L_INPUT_MASTER ( '../refdata_jbak/control/vlidort_control_vv2p4RTC.inp', &
+       CALL VLIDORT_L_INPUT_MASTER ( &
+         TRIM(tabdir)//'../control/vlidort_control_vv2p4RTC.inp', &
             status_inputread, nreadmessages, readmessages, readactions )
-        
+
        IF (status_inputread .NE. vlidort_success) THEN
            WRITE(www_lun, *) modulename, &
                ': Problems encountered with VLIDORT input read!!!'
@@ -812,8 +813,10 @@ module m_lidort_master
         ENDIF
      ENDIF
 
-     IF ( do_polcorrs(iw) .AND. ((polcorr == 3 .OR. polcorr == 5) .OR. (polcorr == 4 .AND. (num_iter == 0 .or. num_iter == 2 ) )) ) THEN
-        npolmod = 2   ! Twice, one vector and one scalar          
+     IF ( do_polcorrs(iw) .AND. &
+         ((polcorr == 3 .OR. polcorr == 5) .OR. (polcorr == 4 .AND. &
+                                                 (num_iter == 0 .or. num_iter == 2 ) )) ) THEN
+        npolmod = 2   ! Twice, one vector and one scalar
         update_drad = .true.
      ELSE 
         npolmod = 1   ! Only once either scalar or vector
@@ -1077,10 +1080,13 @@ module m_lidort_master
      WRITE(rtm_unit, '(A,i3, A, i4,A)') '# iter=', num_iter, '++++++    nw=',nw0,''
      IF (nw==1) THEN
         DO i = 2, nfgas1
-         WRITE(rtm_unit,'(i3,a5,500e15.5)') i, refspec_strings(gasidxs(tmp_gaspos(i-1))) , allcrs(1:nw, i, 10), allcol(i, 10)
+         WRITE(rtm_unit,'(i3,a5,500e15.5)') i, &
+           refspec_strings(gasidxs(tmp_gaspos(i-1))) , allcrs(1:nw, i, 10), allcol(i, 10)
         ENDDO
      ELSE
-       WRITE(rtm_unit, '(a6,100a12)') 'Lamda','O3',refspec_strings(gasidxs(fgaspos(1:nfgas1-1))), 'o3',refspec_strings(gasidxs(fgaspos(1:nfgas1-1)))
+       WRITE(rtm_unit, '(a6,100a12)') 'Lamda', &
+         'O3',refspec_strings(gasidxs(fgaspos(1:nfgas1-1))), &
+         'o3',refspec_strings(gasidxs(fgaspos(1:nfgas1-1)))
        DO i = 1, nw0 , 20
          k = radcal_idxs(i)
          WRITE(rtm_unit,'(f6.2, 500e12.3)')  waves(k), allcrs(k,1:nfgas1,10), allcol(1:nfgas1, 10)
@@ -1482,11 +1488,10 @@ module m_lidort_master
    
      !IF (absco_r <= 0.0) THEN
      !   print *, 'Negative total absorption (lamda,layer, ngas)', lamda, i, ngas
-     IF (i == 20 .and. lamda .ge. 600 < 0.01 ) THEN 
-    !    write(*,'(100e15.7)') lamda,abscrs(1:ngas, i), gascol(1:ngas, i)
-    !   problems  = .TRUE.
-        !RETURN
-     ENDIF
+     !   write(*,'(100e15.7)') lamda,abscrs(1:ngas, i), gascol(1:ngas, i)
+     !   problems  = .TRUE.
+     !   RETURN
+     !ENDIF
 
      extco_r = absco_r + scaco_r
      scaco_input(1) = scaco_r
