@@ -11,12 +11,14 @@ run_wavecal()
 
    jid_list=$(sbatch -w $SLURMD_NODENAME --parsable \
                      --array=$chunks \
-                     --job-name="wvl:${SDPC_GRANULE_LABEL}" \
+                     --job-name="wvl:uv:${SDPC_GRANULE_LABEL}" \
                      wavecal_block.sh band_290_490_nm $input_file $result_dir)
 
-   # FIXME - vis band narrow cal window not yet specified
-   #jid_vis=$(sbatch -w $SLURMD_NODENAME --parsable --array=$chunks wavecal_block.sh band_540_740_nm $input_file $result_dir)
-   #jid_list=${jid_list}:${jid_vis}
+   jid_vis=$(sbatch -w $SLURMD_NODENAME --parsable \
+                    --array=$chunks \
+                    --job-name="wvl:vis:${SDPC_GRANULE_LABEL}" \
+                    wavecal_block.sh band_540_740_nm $input_file $result_dir)
+   jid_list=${jid_list}:${jid_vis}
 
    sbatch -w $SLURMD_NODENAME --wait --dependency=afterany:$jid_list \
           --job-name="wvl-end:${SDPC_GRANULE_LABEL}" \

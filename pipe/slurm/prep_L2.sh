@@ -156,7 +156,7 @@ run_inr_post()
     L1_inr_post -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
-   run_wavecal $radiance_file "0-9"
+   run_wavecal $radiance_file "0-4"
 
    # polarization correction
    srun --ntasks=1 --output=log_polcorr.txt \
