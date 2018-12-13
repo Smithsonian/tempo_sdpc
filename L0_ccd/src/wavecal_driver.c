@@ -15,6 +15,8 @@
 #include "config.h"
 #include "wavecal.h"
 
+#define DIMNAME_WAVELEN "wavelen"
+
 typedef struct
 {
    double *spec;
@@ -439,95 +441,68 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
    return 0;
 }
 
-static int create_diagnostic_group (int parent_grp, const char *grp_name,
-                                    const TIO_Var_Info_Type *spectrum_info,
-                                    const Wavecal_Result_Type *wavecal_result,
-                                    int *pgrp)
+static int def_diagnostic_vars (int grp, const Wavecal_Result_Type *wavecal_result)
 {
-   int grp, varid, param_dimids[3];
-   size_t params_dimlen;
+   const char *dimname_wavelen = DIMNAME_WAVELEN;
+   int varid, dimid_wavelen, dimid_xtrack, dimid_step;
+   int dimids[3];
+   size_t num_waves = wavecal_result->num_fit;
 
-   if (0 != TIO_def_grp (parent_grp, grp_name, &grp))
+   if (0 == TIO_inq_dimid (grp, dimname_wavelen, &dimid_wavelen))
+     return 0;
+
+   if ((0 != TIO_inq_dimid (grp, TEMPO_DIM_XTRACK, &dimid_xtrack))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dimid_step)))
      return -1;
 
-   memcpy ((char *)param_dimids, (char *)spectrum_info->dimids,
-           3 * sizeof (int));
-   params_dimlen = wavecal_result->num_wave_params;
-   if (0 != TIO_def_dim (grp, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &param_dimids[2]))
+   if (0 != TIO_def_dim (grp, dimname_wavelen, num_waves, &dimid_wavelen))
      return -1;
 
-   if ((0 != TIO_def_var (grp, "wavelength", TIO_FLOAT,
-                          spectrum_info->ndims,
-                          spectrum_info->dimids, &varid))
-       || (0 != TIO_def_var (grp, "model", TIO_FLOAT,
-                             spectrum_info->ndims,
-                             spectrum_info->dimids, &varid))
-       || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT,
-                             spectrum_info->ndims,
-                             spectrum_info->dimids, &varid))
-       || (0 != TIO_def_var (grp, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT,
-                             spectrum_info->ndims,
-                             param_dimids, &varid))
-       || (0 != TIO_def_var (grp, "bestnorm", TIO_FLOAT, 2,
-                             param_dimids, &varid))
-      )
+   dimids[0] = dimid_step;
+   dimids[1] = dimid_xtrack;
+   dimids[2] = dimid_wavelen;
+
+   if ((0 != TIO_def_var (grp, dimname_wavelen, TIO_FLOAT, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "model", TIO_FLOAT, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "spec_scaled", TIO_FLOAT, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "weight", TIO_FLOAT, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT, 3, dimids, &varid)))
      {
         return -1;
      }
 
-   *pgrp = grp;
-
    return 0;
 }
 
-static int write_diagnostics (int parent_grp, const TIO_Var_Info_Type *spectrum_info,
-                              int step, int xtrack, const Wavecal_Type *wct,
-                              const double *wave_params, int num_wave_params,
+static int write_diagnostics (int grp, int beg_step, int step, int xtrack,
                               const Wavecal_Result_Type *wavecal_result)
 {
-   const char grp_name[] = "wavecal_diagnostics";
-   int grp, status, start[3], count[3];
+   int start[3], count[3];
 
-   (void) wct;
+   if (wavecal_result == NULL)
+     return 0;
 
-   tell_push_queue ();
-   status = TIO_inq_grp (parent_grp, grp_name, &grp);
-   tell_pop_queue (1);
-   if (status)
-     {
-        if (wavecal_result == NULL)
-          return -1;
+   /* quick return if variables already defined */
+   (void) def_diagnostic_vars (grp, wavecal_result);
 
-        if (0 != create_diagnostic_group (parent_grp, grp_name, spectrum_info,
-                                          wavecal_result, &grp))
-          return -1;
-     }
-
-   start[0] = step;
+   start[0] = step - beg_step;
    start[1] = xtrack;
    start[2] = 0;
 
    count[0] = 1;
    count[1] = 1;
-   count[2] = num_wave_params;
-
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVECAL_PARAM, start, count, TIO_DOUBLE,
-                                 wave_params))
-     return -1;
-
-   if (wavecal_result == NULL)
-     return 0;
-
    count[2] = wavecal_result->num_fit;
 
-   if ((0 != TIO_put_var_section (grp, "wavelength", start, count, TIO_DOUBLE,
+   if ((0 != TIO_put_var_section (grp, DIMNAME_WAVELEN, start, count, TIO_DOUBLE,
                                   wavecal_result->wave))
        || (0 != TIO_put_var_section (grp, "model", start, count, TIO_DOUBLE,
-                                  wavecal_result->model))
+                                     wavecal_result->model))
+       || (0 != TIO_put_var_section (grp, "spec_scaled", start, count, TIO_DOUBLE,
+                                     wavecal_result->spec_scaled))
+       || (0 != TIO_put_var_section (grp, "weight", start, count, TIO_DOUBLE,
+                                     wavecal_result->weight))
        || (0 != TIO_put_var_section (grp, "residuals", start, count, TIO_DOUBLE,
-                                  wavecal_result->residuals))
-       || (0 != TIO_put_var_section (grp, "bestnorm", start, count, TIO_DOUBLE,
-                                     &wavecal_result->bestnorm)))
+                                     wavecal_result->residuals)))
      {
         return -1;
      }
@@ -839,7 +814,7 @@ int main (int argc, char **argv)
 
              if (debug)
                {
-                  if (write_diagnostics (grp, &spectrum_info, step, xtrack, wct, wave_params, num_wave_params, wrt))
+                  if (write_diagnostics (ncid_result, beg_step, step, xtrack, wrt))
                     goto return_status;
                }
 

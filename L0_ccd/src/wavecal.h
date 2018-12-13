@@ -34,6 +34,7 @@ typedef struct
 
    const double *model;        /**< best fit model */
    const double *spec_scaled;  /**< scaled spectrum that was fitted */
+   const double *weight;       /**< weight of each data point (1/err) */
    const double *residuals;    /**< weighted fit residuals */
    double bestnorm;    /**< best fit statistic */
    int num_fit;        /**< number of pixels fitted */

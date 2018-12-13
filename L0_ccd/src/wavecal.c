@@ -1526,6 +1526,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         result->wave = win->wave0;
         result->model = win->model;
         result->spec_scaled = win->spec_scaled;
+        result->weight = win->weight;
         result->residuals = win->residuals;
         result->bestnorm = fit_result.bestnorm;
         result->num_fit = win->num_wave;
