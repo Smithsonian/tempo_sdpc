@@ -1472,7 +1472,8 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
           }
         else spec_scaled[i] = 0.0;
 
-        if ((pqf[i] == 0) && (0 != isfinite(err_i)) && (err_i != fill_value) && (err_i != 0.0))
+        if ((pqf[i] == 0) && (0 != isfinite(err_i)) && (err_i != fill_value) && (err_i != 0.0)
+            && (spec_i > 0))
           {
              weight[i] = 1.0/(fabs(err_i) * scale_factor);
           }
