@@ -1007,7 +1007,9 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         return NULL;
      }
 
-   if (0 != read_feature_window (s_band, &fwin))
+   /* For irradiances, always operate on the entire spectrum */
+   if (is_irradiance
+       || (0 != read_feature_window (s_band, &fwin)))
      {
         fwin.num_pix = max_num_wave;
         fwin.start_pix = 0;
