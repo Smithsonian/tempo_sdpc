@@ -329,7 +329,7 @@ contains
            ! (use radiance response spectrum
            !tempsum(fidx:lidx) = -1.0/div_rad/database(rsl_idx, refidx(fidx:lidx)) 
                       
-
+           !print * , i,tempsum(fidx), tempsum(lidx), fitvar_rad(irind(i,1))
            IF (irfind(i, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) &
                    + fitvar_rad(irind(i, 1)) * tempsum(fidx:lidx)
            DO j = 2, nir
@@ -527,9 +527,9 @@ contains
         ENDIF
 
         IF (correct_simrad) THEN 
-            simrad = simrad * EXP(-database_pslwf(idx, refidx(1:ns)) * corr)
+            simrad = simrad * EXP(-database_pslwf(idx, 1:ns) * corr)
         ELSE
-            fitspec = fitspec * EXP(database_pslwf(idx, refidx(1:ns)) * corr)
+            fitspec = fitspec * EXP(database_pslwf(idx, 1:ns) * corr)
         ENDIF
     ENDDO ! loop of n_slitvar
   ENDIF

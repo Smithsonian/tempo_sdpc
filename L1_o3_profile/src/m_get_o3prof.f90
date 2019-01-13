@@ -249,7 +249,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
              30., 50., 70., 100., 150., 200., 300., 500., 700., 1000.0/)
      call get_fortstd (astd(1:nref )) 
   ELSE IF (which_aperr == 2 ) THEN
-     call get_mcprof(astd(1:nref), 2)
+     call get_mcprof(astd(1:nref), 2) 
   ELSE IF (which_aperr >= 8 .and. which_aperr <=9) THEN
      call get_tbprof (astd(1:nref),2) 
   ELSE  ! IF (which_aperr == 10) THEN
@@ -1770,7 +1770,8 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
   ! saved variables
   !REAL (KIND=dp), SAVE, DIMENSION(nmon, nlat, maxprof, nl0) :: ozprofs
   REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
-  INTEGER,        SAVE, DIMENSION(nmon, nlat)               :: nprofs
+  !INTEGER,        SAVE, DIMENSION(nmon, nlat)              :: nprofs
+  INTEGER,        SAVE, DIMENSION(:,:), POINTER      :: nprofs
   REAL (KIND=dp), SAVE, DIMENSION(0:nl0)                    :: pv80
   LOGICAL,        SAVE                                      :: first = .TRUE.
 
@@ -1786,6 +1787,7 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
 
   IF (first) THEN
      allocate (ozprofs(nmon, nlat, maxprof, nl0))
+     allocate (nprofs(nmon, nlat))
      ! read the TOMS V8 profiles
      apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
      OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')

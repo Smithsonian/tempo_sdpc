@@ -119,23 +119,23 @@ contains
     !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
     !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) &
     !smoms
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER:: tarsl
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER  :: sext, sasy
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:),  POINTER :: tarsl
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),    POINTER :: sext, sasy
     REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:,:),POINTER :: smoms
-    REAL (KIND=dp), DIMENSION(NWL, NSLAYER)                   :: nsext, nsasy
-    REAL (KIND=dp), DIMENSION(NWL, NSLAYER, 0:nmom, ngksec)   :: nsmoms
+    REAL (KIND=dp), DIMENSION(:,:),    POINTER :: nsext, nsasy
+    REAL (KIND=dp), DIMENSION(:,:,:,:),POINTER :: nsmoms
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: zstrat
     REAL (KIND=dp), SAVE, DIMENSION(MWL, NAER)                :: wl
     REAL (KIND=dp), SAVE, DIMENSION(NWL)                      :: wls
     REAL (KIND=dp), SAVE, DIMENSION(MWL, NAER)  :: raa, qext, assa, qasy
-    REAL (KIND=dp), SAVE, DIMENSION(maxgksec, 0:maxmom, MWL, NAER)  :: phfcn
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: phfcn
     INTEGER,        SAVE, DIMENSION(MWL)                      :: nwls
-    REAL (KIND=dp), DIMENSION(ngksec, 0:nmom, NAER)           :: phsmoms
-    REAL (KIND=dp), DIMENSION(NTLAYER, NAER)                  :: tprof
-    REAL (KIND=dp), DIMENSION(0:NTLAYER, NAER)                :: ctprof
-    REAL (KIND=dp), DIMENSION(0:nz, NAER)                     :: ntprof
+    REAL (KIND=dp), DIMENSION(:,:,:), POINTER        :: phsmoms
+    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: tprof
+    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: ctprof
+    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: ntprof
     REAL (KIND=dp), DIMENSION(NSLAYER)                        :: sprof, sg
-    REAL (KIND=dp), DIMENSION(NSLAYER, 0:nmom, ngksec)        :: sph
+    REAL (KIND=dp), DIMENSION(:,:,:), POINTER        :: sph
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: csprof
     REAL (KIND=dp), DIMENSION(0:nz)                           :: nsprof
     REAL (KIND=dp), DIMENSION(NAER) :: ext, waer, ext400, asy
@@ -206,9 +206,17 @@ contains
     ENDIF
 
     IF (first) THEN
-      allocate (tarsl(NLON, NLAT, NTLAYER, NAER))
-      allocate (sext(NWL, NLAT, NSLAYER),sasy(NWL, NLAT, NSLAYER))
+      allocate (tarsl(NLON,NLAT, NTLAYER, NAER))
+      allocate ( sext(NWL, NLAT, NSLAYER),sasy(NWL, NLAT, NSLAYER))
       allocate (smoms(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec))
+      allocate (nsext(NWL, NSLAYER), nsasy(NWL, NSLAYER))
+      allocate (nsmoms(NWL,NSLAYER, 0:nmom, ngksec))
+      allocate (phfcn (maxgksec, 0:maxmom, NWL, NAER))
+      allocate (phsmoms (ngksec, 0:nmom, NAER))
+      allocate (tprof(NTLAYER, NAER))
+      allocate (ctprof(0:NTLAYER, NAER))
+      allocate (ntprof(0:nz, NAER))
+      allocate (sph(NSLAYER, 0:nmom, ngksec))
       !---------------------------------------------------------------
       ! Read tropospheric aerosol profiles from the binary punch file
       !---------------------------------------------------------------

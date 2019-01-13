@@ -459,7 +459,7 @@ contains
   do_tmpwf  = .FALSE.; do_ozwf   = .FALSE.; do_o3shi = .FALSE.; ozvary   = .FALSE.
   do_taodwf = .FALSE.; do_saodwf = .FALSE.; do_twaewf = .FALSE.; do_ctpwf = .FALSE.
   do_sprswf = .FALSE.; do_so2zwf = .FALSE.; do_pslwf =.FALSE.
-  IF (cfrac == 1.0) cfrac = 0.95 ! Calculate cloud fraction weighting function
+  IF (cfrac == 1.0d0) cfrac = 0.95d0 ! Calculate cloud fraction weighting function
 
   ! ======= Set up ozone, temperature, albedo, lamda for LIDORT ============
   ozprof(1:nlay) =  fitvar_rad_init(ozp_fidx:ozp_lidx)

@@ -183,6 +183,7 @@ contains
         lidx = npoints
       END IF
 
+      IF (fidx > npoints .or. lidx < 1) RETURN
       ! -----------------------------------------------
       ! No Gaussian convolution if Halfwidth @ 1/e is 0
       ! -----------------------------------------------

@@ -252,6 +252,7 @@ $(ODIR)/m_rad_shisqu.o: $(SDIR)/m_rad_shisqu.f90 \
 $(ODIR)/m_solar_fit.o: $(SDIR)/m_solar_fit.f90 \
   $(ODIR)/m_cal_fit_one.o \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_fitting_util.o \
   $(ODIR)/m_subtract_poly.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -299,6 +300,7 @@ $(ODIR)/m_spectra.o: $(SDIR)/m_spectra.f90 \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_spectra.f90 -o $(ODIR)/m_spectra.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_fitting_util.o: $(SDIR)/m_fitting_util.f90 \
+  $(ODIR)/bounded_nonlin_ls.o \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -309,6 +311,7 @@ $(ODIR)/m_fitting_util.o: $(SDIR)/m_fitting_util.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_fitting_util.f90 -o $(ODIR)/m_fitting_util.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cal_fit_one.o: $(SDIR)/m_cal_fit_one.f90 \
   $(ODIR)/bounded_nonlin_ls.o \
+  $(ODIR)/m_fitting_util.o \
   $(ODIR)/m_spectra.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \

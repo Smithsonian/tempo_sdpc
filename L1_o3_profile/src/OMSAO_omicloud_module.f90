@@ -18,14 +18,16 @@ MODULE OMSAO_omicloud_module
   TYPE, PUBLIC :: OMI_CloudBlock
     REAL (KIND=r4) :: CFRmissing, CFRscale, CFRoffset, CTPmissing, &
          CTPscale, CTPoffset
-    REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: cfr
-    REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: ctp
-    REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: ai
-    INTEGER(KIND=i1), DIMENSION (nxtrack_max, 0:ntimes_max-1)  :: qflags
+    !REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: cfr
+    !REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: ctp
+    !REAL (KIND=r4),   DIMENSION (nxtrack_max,0:ntimes_max-1)   :: ai
+    !INTEGER(KIND=i1), DIMENSION (nxtrack_max,0:ntimes_max-1)  :: qflags
+    REAL (KIND=r4),   DIMENSION (:,:), POINTER :: cfr, ctp, ai
+    INTEGER(KIND=i1), DIMENSION (:,:), POINTER :: qflags
     CHARACTER (LEN=maxchlen)                                   :: PGEversion
   END TYPE OMI_CloudBlock
   TYPE (OMI_CloudBlock),   PUBLIC :: OMIL2_clouds
-
+  LOGICAL, SAVE :: first=.true. ! used to decide to allocate or not
   ! ----------------------------------------------
   ! Names of various HE5 fields to read from files
   ! ----------------------------------------------
@@ -78,6 +80,14 @@ CONTAINS
     ! Name of the subroutine
     ! ----------------------
     CHARACTER (LEN=20), PARAMETER :: modulename = 'read_omicldrr_clouds'
+   
+    IF (first) THEN 
+      allocate(OMIL2_CLOUDS%cfr(nxtrack_max, 0:ntimes_max-1), &
+               OMIL2_CLOUDS%ctp(nxtrack_max, 0:ntimes_max-1), & 
+                OMIL2_CLOUDS%ai(nxtrack_max, 0:ntimes_max-1),&
+            OMIL2_CLOUDS%qflags(nxtrack_max, 0:ntimes_max-1) )
+      first = .false.
+    ENDIF
 
     locerrstat = pge_errstat_ok
     CALL he5_init_input_file ( l2_cld_filename, swath_name,  swath_id, &
@@ -333,6 +343,14 @@ CONTAINS
     ! Name of the subroutine
     ! ----------------------
     CHARACTER (LEN=20), PARAMETER :: modulename = 'read_omicldo2_clouds'
+
+    IF (first) THEN 
+      allocate(OMIL2_CLOUDS%cfr(nxtrack_max, 0:ntimes_max-1), &
+               OMIL2_CLOUDS%ctp(nxtrack_max, 0:ntimes_max-1), & 
+                OMIL2_CLOUDS%ai(nxtrack_max, 0:ntimes_max-1),&
+            OMIL2_CLOUDS%qflags(nxtrack_max, 0:ntimes_max-1) )
+      first = .false.
+    ENDIF
 
     locerrstat = pge_errstat_ok
     CALL he5_init_input_file ( l2_cld_filename, swath_name,  swath_id, &

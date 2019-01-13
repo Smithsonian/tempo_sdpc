@@ -221,8 +221,8 @@ contains
     ! Local variables
     ! ---------------
     INTEGER :: j, fidx, lidx, stidx,  idx, npts
-    REAL (KIND=dp), DIMENSION (max_spec_pts) :: specmod
-    REAL (KIND=dp)                           :: frefw, lrefw, scalex
+    REAL (KIND=dp), DIMENSION (:), POINTER :: specmod
+    REAL (KIND=dp)                         :: frefw, lrefw, scalex
 
     ! ------------------
     ! External functions
@@ -231,6 +231,7 @@ contains
 
     CHARACTER (LEN=11), PARAMETER :: modulename = 'dataspline'
 
+    allocate (specmod(max_spec_pts))
     errstat = pge_errstat_ok
 
     ! ---------------------------------------------------------------------
@@ -245,7 +246,6 @@ contains
     ! range of the current radiance wavelength, we interpolate only the
     ! part that is covered and set the rest to Zero.
     ! ---------------------------------------------------------------------
-
     ! ------------------------
     ! Spline Reference Spectra
     ! ------------------------
@@ -352,6 +352,7 @@ contains
       END IF
     END DO
 
+    deallocate(specmod)
     RETURN
   END SUBROUTINE dataspline
 
@@ -446,9 +447,9 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    REAL (KIND=dp), DIMENSION (2,n_gome_pts+4)  :: underspec
-    REAL (KIND=dp), DIMENSION (max_spec_pts)    :: locwvl, locspec, specmod, specmod1
-    REAL (KIND=dp), DIMENSION (n_gome_pts + 4)  :: tmpwav, over, under, resample, & 
+    REAL (KIND=dp), DIMENSION (2,n_gome_pts+4) :: underspec
+    REAL (KIND=dp), DIMENSION (:), POINTER     :: locwvl, locspec, specmod, specmod1
+    REAL (KIND=dp), DIMENSION (n_gome_pts + 4) :: tmpwav, over, under, resample, & 
           resample1, subwav, tmpspec
     INTEGER :: npts, errstat, iwin, fidx, lidx, npoints
 
@@ -463,6 +464,8 @@ contains
     CHARACTER (LEN=11), PARAMETER :: modulename = 'undersample'
 
     errstat = pge_errstat_ok
+    allocate (locwvl(max_spec_pts), locspec(max_spec_pts))
+    allocate (specmod(max_spec_pts), specmod1(max_spec_pts))
 
     IF (have_undersampling .OR. sring_fidx > 0 .OR. sring_lidx < nsol_ring) &
          THEN
@@ -716,6 +719,8 @@ contains
       slitwav = slitwav_rad
       slitfit = radslitfit
     ENDIF
+
+    deallocate(locwvl, locspec, specmod, specmod1)
 
     RETURN
   END SUBROUTINE undersample

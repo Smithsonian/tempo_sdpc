@@ -40,7 +40,8 @@ contains
     USE OMSAO_parameters_module, ONLY: p0, boltz, xmair, accgrav, ugc, avo, &
          rearth, du2mol, profunit
     USE OMSAO_variables_module, ONLY : sza => the_sza_atm, &
-         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline! &
+         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline, &
+         refspec_norm 
          !currline, n_refspec_pts, atmdbdir, database
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
          no2_t1_idx, so2v_idx, o2o2_idx, no2_t2_idx, & 
@@ -91,7 +92,7 @@ contains
     INTEGER, DIMENSION(0:numk) :: indarr
     REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, tmp, tmpscl, &
                                   so2v_fwhm, so2v_vcd,  halfdz, sfct
-    REAL (KIND=dp), DIMENSION (0:maxlay)        :: told0, pold, told, zold
+    REAL (KIND=dp), DIMENSION (0:mflay)        :: told0, pold, told, zold
     REAL (KIND=dp), DIMENSION (1:nmipas)       :: mipasp, mipast
     REAL (KIND=dp), DIMENSION (4)              :: ptemp    
     REAL (KIND=dp), DIMENSION (nv8)            :: v8temp
@@ -102,7 +103,7 @@ contains
     !REAL (KIND=dp), DIMENSION (0:24)           :: fixed_p, fixed_cumoz
     !REAL (KIND=dp), DIMENSION (1:24)           :: fixed_oz
 
-    LOGICAL, SAVE :: first = .TRUE., first1 = .TRUE., is_pgrid = .true., &
+    LOGICAL, SAVE :: first = .TRUE., first1 = .TRUE., first2=.TRUE., is_pgrid = .true., &
          isinc=.TRUE.
     REAL (KIND=dp), DIMENSION (0:maxlay), SAVE :: umkp0, umkz0
     real (kind=dp), dimension(:), allocatable :: tmp_inarr
@@ -192,7 +193,7 @@ contains
     ! Compute altitude grids for this temperature profile
     ! xliu, 03/09/11: Slightly modify the way of computing altitude grids (based on
     !       surface pressure and surface altitude). Also use surface temperature  from met. data.
-    pold = LOG(pold); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
+    pold(0:nold) = LOG(pold(0:nold)); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
     IF (use_input_spres) THEN
       IF (spres == pold(0)) THEN
          zold(0) = the_surfalt
@@ -603,9 +604,11 @@ contains
             ! Assume 20.95% for O2
             ! Here Divide 1.0E10, and absorption coefficients multiply by 1.D10
             mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2 / (fzs(1:np)-fzs(0:np-1)) / 1.0D5 /1.0D20
+            ! need to check if chris consider 10 scale factor in cross section spectrum
+            !mgasprof(i, 1:np) = (frhos(1:np)*0.2095)**2  /1.0D10
           ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN
               ! Assume 20.95% for O2
-              mgasprof(i, 1:np) = frhos(1:np)*0.2095
+            mgasprof(i, 1:np) = frhos(1:np)*0.2095
           ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
               CALL get_afglus_h2o (fps(nfsfc:np), mgasprof(i, nfsfc+1:np), np-nsfc)
               ! xliu, 12/10/2014, Both h2o_idx and h2ot2_idx are selected
@@ -620,6 +623,7 @@ contains
 
           mgasprof(i, 1:nfsfc) = 0.0
           mgasprof(i, np+1)    = SUM(mgasprof(i, nfsfc+1:np))
+
           IF (do_lambcld) THEN
             tracegas(i, 8)    = SUM(mgasprof(i, nfsfc+1:nctp)) / mgasprof(i, np+1)
           ELSE

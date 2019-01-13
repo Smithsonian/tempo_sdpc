@@ -61,14 +61,16 @@ contains
     integer (kind=2), dimension(ntimes, 0:nbit-1) :: tmp_bit_num
     type (tiof_file_type) :: tio_l2obj
     ! Save variables
-    LOGICAL, SAVE :: first=.true.
-    real    (kind=4), dimension (nxtrack_max,0:ntimes_max-1), SAVE :: cfr, ctp
-    integer (kind=2), dimension (nxtrack_max,0:ntimes_max-1), SAVE :: qflag
-    integer (kind=2), dimension (:,:,:), POINTER :: flgbits 
+    real    (kind=4), dimension (:,:),  POINTER :: cfr, ctp
+    integer (kind=2), dimension (:,:),  POINTER :: qflag
+    integer (kind=2), dimension (:,:,:),POINTER :: flgbits 
     !(nxtrack_max,0:ntimes_max-1, 0:nbit-1) :: flgbits
 
-    errstat  = 0
-    IF (first) THEN 
+    allocate (flgbits(nxtrack_max,0:ntimes_max-1, 0:nbit-1))
+    allocate ( cfr (nxtrack_max, 0:ntimes_max-1))
+    allocate ( ctp (nxtrack_max, 0:ntimes_max-1))
+    allocate ( qflag (nxtrack_max, 0:ntimes_max-1))
+
       !get dimensions of L2 cloud file
       call read_cloud_dims(l2file, tio_l2obj, ntimes_loc, nxtrack_loc,errstat)
       if (errstat /= 0) then 
@@ -92,7 +94,6 @@ contains
       return
       endif
 
-      allocate (flgbits(nxtrack_max,0:ntimes_max-1, 0:nbit-1))
       flgbits = 0
       DO ix = 1, nxtrack
       tmp_byte_num=qflag(ix, 0:ntimes-1)
@@ -131,9 +132,6 @@ contains
      call fill_in_ctp(nxtrack, ntimes, ctp(1:nxtrack, 0:ntimes-1), &
          qflag(1:nxtrack, 0:ntimes-1))
      
-     deallocate(flgbits)
-     first = .false.
-    endif
 
     ! Move cloud arrays into cloud block and rebin
     nl = (eline-sline+1)/nybin
@@ -196,6 +194,8 @@ contains
       enddo
     enddo
 
+    deallocate(flgbits, cfr, ctp, qflag)
+    RETURN
   end subroutine read_cloud_tio
 
 
@@ -441,7 +441,5 @@ contains
     return
 
   end subroutine fill_in_ctp
-
-
 
 end module m_read_cloud_tio

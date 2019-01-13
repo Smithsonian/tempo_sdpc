@@ -320,8 +320,10 @@ contains
     DO i = 1, numwin
       fitvar_rad_init (osind(i, 1:maxoth)) = 0.0D0
       fitvar_rad_init (shind(i, 1:maxoth)) = 0.0D0
-      fitvar_rad_init (cmind(i, 1)) = 1.0D0
-      fitvar_rad_init (cmind(i, 2:maxoth)) = 0.0D0
+      IF (ncm  > 0 ) THEN
+         fitvar_rad_init (cmind(i, 1)) = 1.0D0
+         fitvar_rad_init (cmind(i, 2:maxoth)) = 0.0D0
+      ENDIF
       fitvar_rad_init (p1ind(i, 1:maxoth)) = 0.0D0
       fitvar_rad_init (p2ind(i, 1:maxoth)) = 0.0D0
     ENDDO
@@ -341,7 +343,7 @@ contains
      IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
     ENDDO
 
-    fitvar_rad_init(irind(1, 1))  = -1.0E-5    ! non zero
+    fitvar_rad_init(irind(1:2, 1))  = -1.0E-5    ! non zero
 
 
     DO i = polidx, polidx + npol -1
@@ -635,7 +637,7 @@ contains
           sa(j, j) = (fitvar_rad_apriori(mask_fitvar_rad(j)))**2.0
           IF (gasidxs(i) == hcho_idx .OR. gasidxs(i) == no2_t1_idx .OR. gasidxs(i) == no2_t2_idx ) &
                sa(j, j) = sa(j, j) * 0.25  !50% error
-          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) !* 0.04 !50% error
+          IF (gasidxs(i) == o2o2_idx) sa(j, j) = sa(j, j) * 0.04 !50% error
           IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) sa(j, j) = sa(j, j) * 0.09 !30% error
           IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) sa(j, j) = sa(j,j) !100% error
           IF ((gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) .AND. &
@@ -712,7 +714,9 @@ contains
       IF (exval == 0 ) THEN
         fitvar_rad_saved = fitvar_rad_init 
       ELSE
-        fitvar_rad_saved = fitvar_rad 
+        !fitvar_rad_saved = fitvar_rad 
+        fitvar_rad_saved = fitvar_rad_init 
+        WRITE(*,*) 'first = initial '
       ENDIF
     ENDIF
 

@@ -6,6 +6,19 @@ module ascii_output_module
 
 contains
 
+  function filter_exp (x) result (exp_x)
+    real (kind=8), dimension(:), intent(in) :: x
+    real (kind=8), dimension(size(x)) :: exp_x
+    real (kind=8), parameter :: maxexp = log(huge(1.0d0))
+    integer :: i, n
+    n = size(x)
+    where (x < maxexp)
+      exp_x = exp(x)
+    elsewhere
+      exp_x = huge(1.0d0)
+    endwhere
+  end function
+
   ! ***************** Modification History ******************
   ! xiong liu, July 2003
   ! 1. Add an option for writing ozone retrieval results in 
@@ -341,17 +354,17 @@ contains
          exval, num_iter, saa_flag, nsaa_spike,   &
          the_landwater_flg, the_glint_flg, the_snowice, glintprob
 
-     rms = SQRT(SUM((ABS(fitres_rad(1:n_rad_wvl)) / &
-          fitweights(1:n_rad_wvl))**2.0)/n_rad_wvl)
+    ! rms = SQRT(SUM((ABS(fitres_rad(1:n_rad_wvl)) / &
+    !      fitweights(1:n_rad_wvl))**2.0)/n_rad_wvl)
 
      simspec_rad(1:n_rad_wvl) = fitspec_rad(1:n_rad_wvl) - fitres_rad(1:n_rad_wvl)
      IF (use_lograd) THEN
-        fitspec_rad(1:n_rad_wvl) = EXP(fitspec_rad(1:n_rad_wvl))
-        simspec_rad(1:n_rad_wvl) = EXP(simspec_rad(1:n_rad_wvl))
+        fitspec_rad(1:n_rad_wvl) = filter_exp(fitspec_rad(1:n_rad_wvl))
+        simspec_rad(1:n_rad_wvl) = filter_exp(simspec_rad(1:n_rad_wvl))
         fitres_rad(1:n_rad_wvl) = fitspec_rad(1:n_rad_wvl) - simspec_rad(1:n_rad_wvl)
      END IF
-     avgres = SQRT(SUM((ABS(fitres_rad(1:n_rad_wvl)) / &
-          fitspec_rad(1:n_rad_wvl))**2.0)/n_rad_wvl)*100.0
+     ! avgres = SQRT(SUM((ABS(fitres_rad(1:n_rad_wvl)) / &
+     !      fitspec_rad(1:n_rad_wvl))**2.0)/n_rad_wvl)*100.0
 
     !IF (exval >= 0) THEN
       WRITE(founit, '(A)')    'rms, avgres, dfs, info'

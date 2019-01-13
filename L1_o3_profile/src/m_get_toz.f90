@@ -274,10 +274,12 @@ MODULE m_get_toz
   REAL (KIND=dp)                   :: mnalt, do3
 
   ! Saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(ntlat) :: zmto3, tlats, zmalt
+  !REAL (KIND=dp), SAVE, DIMENSION(ntlat) :: zmto3, tlats, zmalt
+  REAL (KIND=dp), SAVE, DIMENSION(:), POINTER :: zmto3, tlats, zmalt
   LOGICAL,        SAVE                   :: first = .TRUE.
 
   IF (first) THEN
+     allocate (zmto3(ntlat), tlats(ntlat), zmalt(ntlat))
      WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
      WRITE(dayc, '(I2.2)') the_day            ! from 9 to '09'     
      WRITE(yrc,  '(I4.4)') the_year           ! from 1997 to '1997'

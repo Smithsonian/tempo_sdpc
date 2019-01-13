@@ -29,12 +29,12 @@ contains
          yn_varyslit, correct_lamda , rmask_fitvar_sol, correct_lamda
     USE OMSAO_slitfunction_module
     USE OMSAO_errstat_module
-    USE  m_gauss, only: asym_gauss, asym_gauss_vary, gauss, gauss_vary
-    
-    USE m_super_gauss, ONLY: super_gauss, super_gauss_vary
-    USE m_voigt, only: asym_voigt, asym_voigt_vary
     USE m_ezspline_interpolation, only: interpolation
+
+    USE  m_gauss, only: asym_gauss, asym_gauss_vary, gauss, gauss_vary
+    USE m_voigt, only: asym_voigt, asym_voigt_vary
     USE m_triangle, only: triangle, triangle_vary
+    USE m_super_gauss, ONLY: super_gauss, super_gauss_vary
 
     IMPLICIT NONE
 
@@ -191,7 +191,7 @@ contains
     ! Add the scaling.
     ! ----------------
     del(1:npoints) = locwvl(1:npoints) - sol_wav_avg
-    tempspec = 1.0d0
+    tempspec = 0.0d0
     delx(1:npoints) = 1.0d0
     DO i = sc0_idx, sc7_idx
      IF (fitvar_sol(i) /= 0.0) THEN

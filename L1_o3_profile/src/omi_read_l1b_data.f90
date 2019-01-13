@@ -14,8 +14,8 @@ module omi_read_l1b_data
 
   CHARACTER(len=9),PRIVATE   :: omiraddate
   INTEGER (KIND=i2), PRIVATE :: omi_mflg
-  INTEGER (KIND=i1), DIMENSION (ntimes_max), PRIVATE :: omi_saa_flag
-  REAL (KIND=r4), DIMENSION (spc_idx, max_ring_pts, nxtrack_max), PRIVATE ::  omi_solspec_ring
+  INTEGER (KIND=i1), DIMENSION (:), PRIVATE, POINTER :: omi_saa_flag
+  REAL (KIND=r4), DIMENSION (:,:,:),PRIVATE, POINTER :: omi_solspec_ring
 
   public omi_read_radiance_paras, find_scan_line_range, &
          omi_read_irradiance_data, omi_read_radiance_lines, &
@@ -63,6 +63,8 @@ contains
     nxtrack = 0
     zoom_mode = .FALSE.
 
+    allocate (omi_saa_flag(ntimes_max))
+    allocate (omi_solspec_ring(spc_idx, max_ring_pts, nxtrack_max))
 
     ! ----------------------------------------------------------------
     ! Name of solar and earthshine swaths (normally obtained from PCF)
@@ -191,13 +193,13 @@ contains
     REAL (KIND=dp), INTENT(IN) :: slat, elat, slon, elon
     INTEGER,      INTENT (OUT) :: pge_error_status, sline, eline, spix, epix
 
-    REAL (KIND=r4), DIMENSION (1:nxtrack_max, 0:ntimes_max) :: lons, lats, szas
-    REAL (KIND=r4), DIMENSION (1:ntimes_max)                :: latdf
-    LOGICAL, DIMENSION(1:nxtrack_max, 0:ntimes_max)         :: any_pixels
-    REAL (KIND=dp)                                          :: tmplon, dlat
-    INTEGER, DIMENSION (1:nxtrack_max, 2)                   :: okline
-    INTEGER, DIMENSION (1:ntimes_max)                       :: lines
-    INTEGER                                                 :: iline, errstat, ix
+    REAL (KIND=r4), DIMENSION (:,:), POINTER :: lons, lats, szas
+    REAL (KIND=r4), DIMENSION (:),   POINTER :: latdf
+    LOGICAL, DIMENSION(:,:), POINTER         :: any_pixels
+    REAL (KIND=dp)                           :: tmplon, dlat
+    INTEGER, DIMENSION (:,:), POINTER        :: okline
+    INTEGER, DIMENSION (:), POINTER          :: lines
+    INTEGER                                  :: iline, errstat, ix
 
     ! Exteranl functions
     INTEGER                    :: estat
@@ -212,8 +214,14 @@ contains
     ! --------------------------
     ! Initialize OUTPUT variable
     ! --------------------------
+    allocate (lons(nxtrack_max, 0:ntimes_max), & 
+              lats(nxtrack_max, 0:ntimes_max), & 
+              szas(nxtrack_max, 0:ntimes_max))
+    allocate (any_pixels (nxtrack_max, 0:ntimes_max))
+    allocate (latdf (ntimes_max))
+    allocate (okline(1:nxtrack_max, 2), lines(1:ntimes_max))
     pge_error_status = pge_errstat_ok
-
+ 
 
     CALL omi_set_parameters ( pge_error_status )
 
@@ -300,6 +308,7 @@ contains
       ENDDO
     ENDIF
 
+    deallocate( lons, lats, szas, any_pixels, latdf, okline, lines)
     !WRITE(www_lun, '(4F8.2)') slat, elat, slon, elon
     !WRITE(www_lun, '(4I8)')  sline, eline, spix, epix
     !STOP
@@ -354,8 +363,8 @@ contains
     INTEGER (KIND=i2)                     :: mflg
     INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls
     INTEGER   (KIND=i2), DIMENSION (mswath) :: spos, epos
-    INTEGER, DIMENSION (nwavel_max)                        :: idxs
-    INTEGER (KIND=i2), DIMENSION(nwavel_max, nxtrack_max) :: tmpnavg
+    INTEGER, DIMENSION (:), POINTER         :: idxs
+    INTEGER (KIND=i2), DIMENSION(:,:), POINTER :: tmpnavg
     INTEGER (KIND=i2), DIMENSION(:, :), POINTER :: irrad_qflg
     REAL (kind=4),DIMENSION (:, :), POINTER     :: irrad_spec, irrad_prec, irrad_wavl
     LOGICAL :: read_irrad
@@ -367,11 +376,11 @@ contains
     REAL (KIND = dp), DIMENSION (:,:,:),POINTER :: tmpspec
     INTEGER (kind=i2), dimension(1) :: temp_mflg
     ! Subset variables 
-    INTEGER (KIND=i4), DIMENSION(maxwin)  :: nwbin
+    INTEGER (KIND=i4), DIMENSION(maxwin)   :: nwbin
     INTEGER, PARAMETER                      :: nbits = 16
     INTEGER (KIND=i2), DIMENSION(0:nbits-1) :: mflgbits
-    INTEGER (KIND=i2), DIMENSION(nxcoadd, nwavel_max, 0:nbits-1) :: flgbits
-    INTEGER (KIND=i2), DIMENSION(nwavel_max)                     :: flgmsks
+    INTEGER (KIND=i2), DIMENSION(:,:,:), POINTER :: flgbits
+    INTEGER (KIND=i2), DIMENSION(nwavel_max)     :: flgmsks
     REAL (KIND = dp)  :: wcenter, normsc
     REAL (KIND = dp), DIMENSION (maxwin, nxcoadd) :: wshis, wsqus
     REAL (KIND = dp), DIMENSION (:,:,:),POINTER :: subspec
@@ -396,8 +405,11 @@ contains
     allocate (irrad_prec (nwavel_max, nxtrack_max))
     allocate (irrad_spec (nwavel_max, nxtrack_max))
     allocate (irrad_wavl (nwavel_max, nxtrack_max))
+    allocate (idxs (nwavel_max))
+    allocate (flgbits(nxcoadd, nwavel_max, 0:nbits-1))
     allocate (tmpspec (sig_idx, nwavel_max, nxtrack_max))
     allocate (tmpqflg(nwavel_max, nxtrack_max))
+    allocate (tmpnavg(nwavel_max, nxtrack_max))
     allocate (subspec(nxcoadd*2, sig_idx, max_fit_pts))
     allocate (subring(sig_idx, max_ring_pts))
 
@@ -1173,8 +1185,9 @@ contains
    !--------------------------------------------------------------------------
    ! Ending  with deallocating local variables
    !--------------------------------------------------------------------------
-   deallocate (irrad_qflg, irrad_prec, irrad_spec, irrad_wavl)
-   deallocate (tmpspec, tmpqflg)
+   deallocate (irrad_qflg, irrad_prec, irrad_spec, irrad_wavl, idxs)
+   deallocate (flgbits)
+   deallocate (tmpspec, tmpqflg, tmpnavg)
    deallocate (subspec, subring)
    RETURN
   END SUBROUTINE omi_read_irradiance_data
@@ -1222,13 +1235,10 @@ contains
     INTEGER (KIND=i4)     :: blockline, errstat
     INTEGER, PARAMETER    :: nbits = 16
     INTEGER (KIND=i2), DIMENSION(0:nbits-1) :: mflgbits , tmp_mflgbits
-    INTEGER (KIND=i2), DIMENSION(nxcoadd, nwavel_max, 0:nbits-1) :: flgbits
-    INTEGER (KIND=i2), DIMENSION(nwavel_max)                     :: flgmsks
-    INTEGER (KIND=i4), DIMENSION(maxwin)                         :: nwbin
+    INTEGER (KIND=i2), DIMENSION(:,:,:), POINTER :: flgbits
+    INTEGER (KIND=i2), DIMENSION(:), POINTER     :: flgmsks
+    INTEGER (KIND=i4), DIMENSION(maxwin)         :: nwbin
     integer (kind=i2), dimension(1) :: temp_omi_mflg
-
-!    REAL (KIND=r8)  :: tmp_time
-!    REAL (KIND=r4)  :: tmp_alt, tmp_lat, tmp_lon
     REAL (KIND=r4)  :: tmp_ExposureTime
 
     REAL (KIND= dp)                                        :: tmpNinteg
@@ -1240,18 +1250,18 @@ contains
    ! variables used to read original spectrum
     LOGICAL                                   :: error, read_irrad
     INTEGER   (KIND=i2), DIMENSION(mswath)    :: spos, epos
-    INTEGER, DIMENSION (nwavel_max)           :: idxs
+    INTEGER, DIMENSION (:), POINTER           :: idxs
     INTEGER (kind=2), POINTER, DIMENSION (:,:,:) :: rad_qflg
     REAL (kind=i4), POINTER, DIMENSION(:,:,:) ::  rad_spec,rad_prec,rad_wavl
     REAL (KIND=I4), POINTER, DIMENSION(:,:) :: ccd_spec, ccd_prec, ccd_wavl
     INTEGER (KIND=2),POINTER, DIMENSION(:,:) :: ccd_qflg
     ! variables used for reduced resolution
-    REAL (KIND = dp), DIMENSION (sig_idx, nwavel_max, nxtrack_max) :: tmpspec
-    INTEGER (KIND=2), DIMENSION (nwavel_max, nxtrack_max) :: tmpqflg
-    LOGICAL, DIMENSION (maxwin, nxtrack_max)  :: wavcals 
+    REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: tmpspec
+    INTEGER (KIND=2), DIMENSION (:,:), POINTER :: tmpqflg
     REAL (KIND = dp)                          :: tmpsampr, retswav, retewav
-    REAL (KIND = dp), DIMENSION (maxwin, nxtrack_max, nxcoadd) :: wshis, wsqus
-    REAL (KIND = dp), DIMENSION (nxcoadd, sig_idx, nwavel_max) :: subspec
+    LOGICAL, DIMENSION (:,:), POINTER  :: wavcals 
+    REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: wshis, wsqus
+    REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: subspec
     LOGICAL, SAVE :: first=.true. 
 
     ! Exteranl functions
@@ -1266,14 +1276,20 @@ contains
     ! Initialize all local data arrays
     nx = nfxtrack / nxbin
     IF ( first) THEN
-     allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nlines_max))
-     allocate (rad_prec (nwavel_max, nxtrack_max, 0:nlines_max))
-     allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nlines_max))
-     allocate (rad_spec (nwavel_max, nxtrack_max, 0:nlines_max))
+     allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nlines_max-1))
+     allocate (rad_prec (nwavel_max, nxtrack_max, 0:nlines_max-1))
+     allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nlines_max-1))
+     allocate (rad_spec (nwavel_max, nxtrack_max, 0:nlines_max-1))
      allocate (ccd_prec(nwavel_max, nxtrack_max))
      allocate (ccd_spec(nwavel_max, nxtrack_max))
      allocate (ccd_wavl(nwavel_max, nxtrack_max))
      allocate (ccd_qflg(nwavel_max, nxtrack_max))
+     allocate (idxs(nwavel_max), flgmsks(nwavel_max))
+     allocate (flgbits(nxcoadd, nwavel_max, 0:nbits-1))
+     allocate (tmpspec(sig_idx, nwavel_max, nxtrack_max), tmpqflg(nwavel_max,nxtrack_max))
+     allocate (wavcals( maxwin, nxtrack_max))
+     allocate (wshis(maxwin, nxtrack_max, nxcoadd), wsqus(maxwin, nxtrack_max,nxcoadd))
+     allocate (subspec(nxcoadd, sig_idx, nwavel_max) )
      first=.false.
     ENDIF
     rad_spec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
@@ -1755,8 +1771,8 @@ contains
     ! For the solar composite data
     INTEGER,        DIMENSION(mswath)                      :: nscpts   
     REAL (KIND=dp), DIMENSION(mswath)                      :: snorms                
-    REAL (KIND=dp), DIMENSION(mswath, nxtrack_max, mscpt)  :: solcomp
-    REAL (KIND=dp), DIMENSION(mswath, mscpt)               :: solcomp_wvl
+    REAL (KIND=dp), DIMENSION(:,:,:), POINTER  :: solcomp
+    REAL (KIND=dp), DIMENSION(:,:), POINTER    :: solcomp_wvl
 
     INTEGER :: i, j, ch, nx, errstat, ix, iix, iw, fidx, lidx, sidx, eidx, npts, npts1, nbin
     INTEGER (KIND=i4), DIMENSION(maxwin)  :: nwbin
@@ -1764,8 +1780,8 @@ contains
     CHARACTER(LEN=maxchlen)               :: scfname
     CHARACTER(LEN=3)                      :: chc, typec
     CHARACTER(LEN=4)                      :: orbtypec, opfc
-    REAL (KIND=dp), DIMENSION(nwavel_max) :: tmpspec, tmpwvl
-
+    REAL (KIND=dp), DIMENSION(:), POINTER :: tmpspec, tmpwvl
+    
     ! ------------------
     ! External functions
     ! ------------------
@@ -1775,6 +1791,10 @@ contains
     ! Name of this module/subroutine
     ! ------------------------------
     CHARACTER (LEN=24), PARAMETER :: modulename = 'replace_solar_irradiance'
+
+    allocate (solcomp(mswath, nxtrack_max, mscpt))
+    allocate (solcomp_wvl (mswath, mscpt))
+    allocate (tmpspec(nwavel_max), tmpwvl(nwavel_max))
 
     pge_error_status = pge_errstat_ok
 
@@ -1844,8 +1864,10 @@ contains
       ENDIF
     ENDDO
 
+    deallocate (solcomp, solcomp_wvl, tmpspec, tmpwvl)
     RETURN
   END SUBROUTINE replace_solar_irradiance
+
 ! Correction for wavelength registration at 1:67 and 498:557
   SUBROUTINE corruv2wav(nw, nx, waves)
     USE OMSAO_precision_module

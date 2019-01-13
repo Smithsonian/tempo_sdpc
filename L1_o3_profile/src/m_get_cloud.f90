@@ -1,7 +1,7 @@
 !
 module m_get_cloud
 
-  public m_get_cloud_miprop, get_cloud_miprop, get_tomsv8_ctp
+  public get_cloud_miprop, get_cloud_maprop, get_tomsv8_ctp
   private !get_isccp_ctp
 
   integer, parameter, private :: max_pathlen = 1024
@@ -157,7 +157,7 @@ contains
 
     USE OMSAO_precision_module 
     USE OMSAO_variables_module, ONLY: sol_identifier, atmdbdir
-    USE OMSAO_parameters_module, ONLY: cldunit
+    USE OMSAO_parameters_module, ONLY: atmos_unit
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -218,7 +218,7 @@ contains
         WRITE(www_lun, *) 'Warning: Cldfile not found!!!'; 
         errstat = pge_errstat_error; RETURN
       ENDIF
-      OPEN (UNIT=cldunit, FILE=cldname, STATUS='old')
+      OPEN (UNIT=atmos_unit, FILE=cldname, STATUS='old')
 
       first = .FALSE.
     ENDIF
@@ -244,13 +244,13 @@ contains
     ! search until find the start pixel or EOF or error
     DO WHILE (.NOT. found .OR. stat /= 0 .OR. nothere)  
 
-      READ (cldunit, FMT='(A14,2I6,8F10.4,1x,2L3)', IOSTAT=stat) idstr, apix,   &
+      READ (atmos_unit, FMT='(A14,2I6,8F10.4,1x,2L3)', IOSTAT=stat) idstr, apix,   &
            pixtyp, pmdcfrac, oxcfrac, actz, actp, atau, alb, ifrac, sfrac, &
            iflag, sflag
 
       IF (apix > stpix) THEN        ! no such pixel, since pixels are arranged in order
         nothere = .TRUE.
-        BACKSPACE (cldunit)
+        BACKSPACE (atmos_unit)
         EXIT
       ELSE IF (apix == stpix) THEN  ! pixel found
         found = .TRUE.
@@ -281,12 +281,12 @@ contains
           ENDIF
 
           DO i = 2, nump
-            READ(cldunit, FMT='(A14,2I6,8F10.4,1x,2L3)', IOSTAT=stat) idstr, &
+            READ(atmos_unit, FMT='(A14,2I6,8F10.4,1x,2L3)', IOSTAT=stat) idstr, &
                  apix, pixtyp, pmdcfrac, oxcfrac, actz, actp, atau, alb, &
                  ifrac, sfrac, iflag, sflag
             IF (stat /= 0) THEN
               errstat = pge_errstat_error
-              CLOSE (cldunit)
+              CLOSE (atmos_unit)
               RETURN   ! not eough cloud info, just exist assuming no clouds
             ENDIF
 

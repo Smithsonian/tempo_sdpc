@@ -114,10 +114,11 @@ SUBROUTINE get_ecmwfavgt(ecmwft)
   LOGICAL                         :: file_exist
 
 
-  INTEGER, SAVE, DIMENSION(nlon, nlat, nl) :: glbecmwft
+  INTEGER, SAVE, DIMENSION(:,:,:), POINTER :: glbecmwft
   LOGICAL, SAVE                            :: first = .TRUE.
 
   IF (first) THEN
+     allocate( glbecmwft(nlon, nlat, nl))
      WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
      WRITE(dayc, '(I2.2)') the_day            ! from 9 to '09'     
 
@@ -165,7 +166,7 @@ SUBROUTINE get_v8temp(v8temp)
   CHARACTER (LEN=130)                             :: tfname
 
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(nl, nlat, nmon) :: tprofs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: tprofs
   LOGICAL,        SAVE                            :: first = .TRUE.
 
   REAL (KIND=dp), DIMENSION(2)                    :: latfrac, monfrac
@@ -173,6 +174,7 @@ SUBROUTINE get_v8temp(v8temp)
   INTEGER                                         :: ib, nb, nm, im
 
   IF (first) THEN
+     allocate (tprofs(nl, nlat, nmon))
      ! read the reference profile for climatology
      tfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tv8_temp.dat'
      OPEN (UNIT = atmos_unit, file= tfname, status = 'unknown')
@@ -218,7 +220,7 @@ SUBROUTINE GET_MIPASIG2T(xx, yy)
   CHARACTER (LEN=130)                             :: fname
 
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(nl, nlat, nmon) :: profs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: profs
   REAL (KIND=dp), SAVE, DIMENSION(nl)             :: pres0
   LOGICAL,        SAVE                            :: first = .TRUE.
 
@@ -229,6 +231,7 @@ SUBROUTINE GET_MIPASIG2T(xx, yy)
   INTEGER                                         :: ib, nb, nm, im, i, nheader
 
   IF (first) THEN
+     allocate (profs(nl, nlat, nmon))
      fname = TRIM(ADJUSTL(atmdbdir)) // 'mipasprof/MIPAS_IG2_Tclima.dat'
      nheader = 8
      

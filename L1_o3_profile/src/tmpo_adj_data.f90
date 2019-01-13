@@ -69,7 +69,7 @@ CONTAINS
           slitfit = cali%slitfit_sol(:, :, :, currpix) 
         ENDIF
       ELSE 
-        solwinfit(:,:, 1) = cali%solwinfit(:, :,  currpix)
+        solwinfit(1:numwin,:, 1) = cali%solwinfit(1:numwin, :,  currpix)
         WRITE(www_lun,*) 'slit:', solwinfit(1:numwin, hwe_idx,1)
       END IF
     ENDIF
@@ -136,9 +136,8 @@ CONTAINS
     ! xliu (02/03/2007): variables for correcting across-track dependent biases
     TYPE soft_group
       INTEGER, DIMENSION (mswath) ::  nxcorr, nxwav
-      REAL (KIND=dp), DIMENSION(mswath, nxtrack_max) :: xcorr
-      REAL (KIND=dp), DIMENSION(mswath, nxtrack_max,max_fit_pts) :: xwcorr
-      REAL (KIND=dp), DIMENSION(mswath, max_fit_pts)     :: xwavs
+      REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: xwcorr
+      REAL (KIND=dp), DIMENSION(:,:), POINTER   :: xwavs
     END TYPE soft_group
     TYPE (soft_group), SAVE :: soft
     LOGICAL, SAVE   :: first = .TRUE.
@@ -249,6 +248,11 @@ CONTAINS
     ! load soft calibration spectra
     !-----------------------------------------------------------------------
     IF (first .AND. biascorr) THEN
+      allocate(soft%xwcorr(mswath, nxtrack_max, max_fit_pts))
+      allocate(soft%xwavs(mswath, max_fit_pts))
+      !REAL (KIND=dp), DIMENSION(mswath, nxtrack_max) :: xcorr
+      !REAL (KIND=dp), DIMENSION(mswath, nxtrack_max,max_fit_pts) :: xwcorr
+      !REAL (KIND=dp), DIMENSION(mswath, max_fit_pts)     :: xwavs
       WRITE(msg, *) TRIM(ADJUSTL(biasfname))//',which_biascorr=',which_biascorr
       errstat = OMI_SMF_setmsg (OMI_W_GENERAL, TRIM(msg), modulename, 0)
       IF ( which_biascorr == 7) THEN
@@ -347,16 +351,16 @@ CONTAINS
       the_cld_flg = 2  ! ISCCP
       CALL GET_TOMSV8_CTP(the_month, the_day, the_lon, the_lat, the_ctp, pge_error_status)
       the_ai = -999.0
+      the_cfrac = 0.5
     ENDIF
     ! check for NAN
-    IF (IEOR(IBCLR(TRANSFER(the_cfrac, NAN), DPSB), NAN) == 0 .OR. &
-        the_cfrac < 0 ) THEN
-        the_cfrac = 0.5
-    ENDIF
+    !IF (IEOR(IBCLR(TRANSFER(the_cfrac, NAN), DPSB), NAN) == 0) THEN
+    !    the_cfrac = 0.5
+    !ENDIF
     has_glint = .FALSE.
     glintprob = 0.0
     ! Land-water flag=1: >=8 not used, else contain water
-    IF  (the_landwater_flg /= 1 .AND. the_landwater_flg < 8) THEN
+    IF  (the_landwater_flg /= 1 .AND. the_landwater_flg < 8) THEN 
       IF (the_glint_flg == 1) THEN
         has_glint = .TRUE.
         CALL SUNGLINT_PROBABILITY (the_sza_atm, the_vza_atm, the_aza_atm, glintprob)
@@ -473,6 +477,8 @@ CONTAINS
              rad%wind(1:n_rad_wvl, currpix, currloop-1) /= 0)) redo_database = .TRUE.
       ENDIF
     ENDIF
+
+    redo_database = .true.
     IF ( MOD (theline, radwavcal_freq) == 0 .OR. redo_database) THEN 
       ! --------------------------------------------------------------
       ! Spline data bases, compute undersampling spectrum, and prepare
@@ -667,12 +673,13 @@ CONTAINS
     INTEGER                       :: ix, itemp, i, fidx, lidx
     CHARACTER (LEN=maxchlen)      :: comres_fname
 
-    LOGICAL,                                        SAVE :: first = .TRUE.
-    REAL (KIND=dp), DIMENSION (nx, max_fit_pts, 2), SAVE :: comres
-    INTEGER, DIMENSION(nx, 3),                      SAVE :: npts
+    REAL (KIND=dp), DIMENSION (:,:,:), SAVE, POINTER :: comres
+    INTEGER, DIMENSION(nx, 3),         SAVE :: npts
+    LOGICAL,                           SAVE :: first = .TRUE.
 
     errstat = pge_errstat_ok
     IF (first) THEN
+      allocate (comres(nx, max_fit_pts,2))
       comres = 0.D0
       comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
 

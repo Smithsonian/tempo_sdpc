@@ -27,7 +27,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      fitres, fitspec, chisq, relrms, errstat)
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module,ONLY : maxlay
+  USE OMSAO_parameters_module,ONLY : maxlay, maxwin
   USE OMSAO_indices_module,   ONLY : ring_idx, &
         shift_offset, maxalb, maxoth, maxwfc,&
          bro_idx, bro2_idx, so2_idx, so2v_idx, no2_t1_idx, hcho_idx, o2o2_idx,&
@@ -89,7 +89,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   INTEGER, DIMENSION(maxalb)               :: albpmax, albpmin
   INTEGER, DIMENSION(maxwfc)               :: wfcpmax, wfcpmin
   INTEGER, DIMENSION(maxpol)               :: polpmax, polpmin
-  INTEGER, DIMENSION(numwin, maxoth)       :: tmpind, tmpfind
+  INTEGER, DIMENSION(maxwin, maxoth)       :: tmpind, tmpfind
   INTEGER, DIMENSION(maxoth, 2)            :: tmpwins
   REAL (KIND=dp), DIMENSION(maxalb)        :: albarr 
   REAL (KIND=dp), DIMENSION(maxwfc)        :: wfcarr 
@@ -948,13 +948,13 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            nord = nis; tmpind = isind; tmpfind = isfind; tmpwins = iswins
         ELSE IF (ig == 7) THEN       ! Internal scattering in radiance
            nord = nir; tmpind = irind; tmpfind = irfind; tmpwins = irwins
-        ELSE IF (ig == 8 .or. ig == 9) THEN 
+        ELSE IF ((ig == 8 .or. ig == 9) .or. np1+np2 > 0) THEN 
            IF (ig  == 8 ) THEN                                                         
              nord = np1; tmpind = p1ind; tmpfind = p1find; tmpwins = p1wins ; slit_idx=mask_slitvar(1)
            ELSE IF (ig == 9 ) THEN 
              nord = np2; tmpind = p2ind; tmpfind = p2find; tmpwins = p2wins ; slit_idx=mask_slitvar(2)
            ENDIF
-           temporwf(1:ns) = - database_pslwf(slit_idx, 1:ns)
+           IF (slit_idx > 0) temporwf(1:ns) = - database_pslwf(slit_idx, 1:ns)
            !IF (use_lograd) temporwf(1:ns) = temporwf /simrad           IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
            IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
         ELSE IF (ig == 10 ) THEN 
@@ -1007,9 +1007,9 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
                  fitvar(tmpfind(swin:ewin, 1)) = fitvar_saved(tmpfind(swin:ewin, 1)); RETURN
               ENDIF
               fitvar(tmpfind(swin:ewin, 1))  = fitvar_saved(tmpfind(swin:ewin, 1))
-              if (ig == 10) THEN 
-              !     print * , meas1(ns-10:ns) - meas2(ns-10:ns)
-              ENDIF
+              !if (ig == 7) THEN 
+              !     print * , meas1(ns-10:ns) !, - meas2(ns-10:ns)
+              !ENDIF
               IF (swin == ewin) THEN
                  IF (fitvar_saved(tmpfind(swin, 1)) /= 0.0) THEN
                     temporwf = -(meas1 - sim1 - meas2 + sim2) / (0.002 * fitvar_saved(tmpfind(swin, 1)))
@@ -1100,7 +1100,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
 
      DO i = 1, nf  
         dyda(:, i) = dyda(:, i) / fitweights(1:ns)
-     !print * , i, mask_fitvar_rad(i),  fitvar_rad_str(mask_fitvar_rad(i)), dyda(1:10, i)
+     !WRITE(*,'(i3, a5,100e15.7)') , i,  fitvar_rad_str(mask_fitvar_rad(i)),sum(dyda(1:ns, i)), dyda(ns-10:ns, i)
      END DO
      ! finnally obtain the new spectrum to be fitted in the GSVD
      gspec(1:ns) = fitres(1:ns) / fitweights(1:ns)

@@ -21,7 +21,7 @@ MODULE OMSAO_parameters_module
   ! ----------------------------------
   ! Maximum iteration number for loops
   ! ----------------------------------
-  INTEGER, PARAMETER :: forever = 9999, max_iter=50
+  INTEGER, PARAMETER :: forever = 9999, max_iter=10
 
   ! ----------------------------------
   ! Maximum swath for all instruments
@@ -43,7 +43,8 @@ MODULE OMSAO_parameters_module
   ! ---------------------------------------------------------------------------
   ! Maximum numbers for layers in retrievals and radiative transfer calculation
   ! ---------------------------------------------------------------------------
-  INTEGER, PARAMETER        :: maxlay = 66, mflay = 100 
+  !INTEGER, PARAMETER        :: maxlay = 66, mflay = 100 
+  INTEGER, PARAMETER        :: maxlay = 30, mflay = 70
   REAL (KIND=dp), PARAMETER :: lcurve_tol = 1.0D-8, smallval = 1.0E-10_dp
 
   ! -----------------------------------------------

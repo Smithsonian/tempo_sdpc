@@ -1350,12 +1350,11 @@ contains
       ENDIF
     ENDIF
     IF (use_so2dtcrs) refspec_fname (so2_idx) = zerospec_string
-    IF (use_o4dtcrs) refspec_fname (o2o2_idx) = zerospec_string
+    !IF (use_o4dtcrs) refspec_fname (o2o2_idx) = zerospec_string
     IF (use_o2dptcrs) refspec_fname (o2_idx) = zerospec_string
     IF (use_h2odptcrs) refspec_fname (h2o_idx) = zerospec_string
     ! ------------------------------------------------------------------------
     fitvar_rad_saved = fitvar_rad_init
-
     IF ( yn_doas ) THEN
       pm_one     = -1.D0
     ELSE

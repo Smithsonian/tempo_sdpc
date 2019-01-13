@@ -109,7 +109,7 @@ CONTAINS
     !-----------------------------------------------------------------
     ! Allocate some memory - must be before cross_calibrate calls
     !-------------------------------------------------------------------
-    allocate(gome2_fitvar(nxtrack, 0:nlines_max, n_fitvar_rad))
+    allocate(gome2_fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
     call allocate_geo(nxtrack, ntimes, gome2_geo, pge_error_status)
     CALL allocate_spec (numwin, nxtrack,nlines_max, gome2_irrad, gome2_rad, gome2_ring, gome2_refl, gome2_cali, pge_error_status)
     IF ( pge_error_status >= pge_errstat_error ) THEN

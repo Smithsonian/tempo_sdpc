@@ -127,39 +127,37 @@ contains
     ! =================
     ! Local variables
     ! ================= 
+    LOGICAL                     :: redo_database
     INTEGER :: hour, minute, fidx, lidx, i, j, west_idx, south_idx, idxoff, &
          nhtrunc, ntrunc, ntrunc1, errstat, ntempx, nch, ix, nord, ch, nw, &
          is, nsub, idum, iw
     INTEGER (KIND=i4)           :: estat
     REAL (KIND=r8)              :: second, finit
     REAL (KIND=dp), DIMENSION (n_max_fitpars) :: fitvar
-    LOGICAL                     :: redo_database
 
     ! xliu (02/03/2007): variables for correcting across-track dependent biases
     INTEGER, PARAMETER  :: maxord = 12
     INTEGER, DIMENSION (mswath), SAVE :: corr_npars, nxcorr, nxwav
-    LOGICAL, SAVE   :: first = .TRUE.
-    REAL (KIND=dp), DIMENSION(mswath, nxtrack_max, 0:maxord), SAVE :: &
-         corrpars, offset_pars, slope_pars
     REAL (KIND=dp), DIMENSION(mswath), SAVE    :: corr_woffset
-    REAL (KIND=dp), DIMENSION(max_spec_pts)     :: corr, offset, slope
-    REAL (KIND=dp), DIMENSION(nxtrack_max, max_spec_pts), SAVE :: allcorr, &
-         alloffset
-    REAL (KIND=dp), DIMENSION(mswath, nxtrack_max), SAVE  :: xcorr
-    REAL (KIND=dp), DIMENSION(mswath,nxtrack_max,max_spec_pts),SAVE :: xwcorr, &
-         xwslp, xwoff!, cldclrdf_xwcorr
-    REAL (KIND=dp), DIMENSION(mswath, max_spec_pts), SAVE    :: xwavs
-    INTEGER, SAVE           :: nxgascorr, nxw2corr
-    REAL (KIND=dp), DIMENSION(nxtrack_max, max_spec_pts, 2), SAVE :: gascorr, &
-         xw2corr
-    INTEGER, DIMENSION(nxtrack_max, 3), SAVE  :: gascorr_npts, xw2corr_npts
-    REAL (KIND=dp), DIMENSION(1:maxord, max_spec_pts)  :: del
-    REAL (KIND=dp)                    :: woffset, rad347, irad347
-    real (kind=dp), dimension(1) :: temp_pos_alb, temp_rad
-    CHARACTER (LEN=maxchlen) :: gascorr_fname, xw2corr_fname!, &
-         !cldclrdf_biasfname
-    CHARACTER (LEN=255)      :: msg !! Kai
+    REAL (KIND=dp), DIMENSION(:,:,:), SAVE, POINTER  :: & ! (mswath,nx,0:maxord)
+                                      corrpars, offset_pars, slope_pars
+    REAL (KIND=dp), DIMENSION(:), POINTER       :: corr, offset, slope !max_spec_pts
+    REAL (KIND=dp), DIMENSION(:,:), SAVE, POINTER :: &
+                                                  allcorr, alloffset ! nx, max_spec_pts
+    REAL (KIND=dp), DIMENSION(:,:), SAVE, POINTER  :: xcorr
+    REAL (KIND=dp), DIMENSION(:,:,:),SAVE,POINTER ::& ! mswath, nx, max_spec_pts 
+                                                xwcorr,  xwslp, xwoff
+    REAL (KIND=dp), DIMENSION(:,:), SAVE, POINTER    :: xwavs ! (mswath,max_spec_pts)
+    INTEGER, SAVE                          :: nxgascorr, nxw2corr
+    REAL (KIND=dp), DIMENSION(:,:,:),SAVE,POINTER  :: gascorr, xw2corr ! nx, max_spec_pts, 2
+    INTEGER, DIMENSION(:,:),SAVE, POINTER  :: gascorr_npts, xw2corr_npts ! nx,3
+    REAL (KIND=dp), DIMENSION (:, :), POINTER :: del ! ( 1:maxord, max_spec_pts) 
 
+    REAL (KIND=dp)               :: woffset, rad347, irad347
+    real (kind=dp), dimension(1) :: temp_pos_alb, temp_rad
+    CHARACTER (LEN=maxchlen) :: gascorr_fname, xw2corr_fname
+    CHARACTER (LEN=255)      :: msg !! Kai
+    LOGICAL, SAVE   :: first = .TRUE.
     ! ================================
     !   External functions
     ! ================================
@@ -170,6 +168,7 @@ contains
     ! Name of this module/subroutine
     ! ==============================
     CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_adj_earthshine_data'
+
     pge_error_status = pge_errstat_ok
     nview       = 1
     the_sza_atm = geo%sza    (currpix, currline)
@@ -208,6 +207,34 @@ contains
          the_year, the_month, the_day, hour, minute, second
 
     IF (first .AND. biascorr) THEN
+
+     allocate ( del(1:maxord, max_spec_pts))  
+     allocate ( corr(max_spec_pts),offset(max_spec_pts),slope(max_spec_pts))
+     IF (which_biascorr == 1) THEN
+        allocate (allcorr(nxtrack_max, max_spec_pts))
+        allocate (alloffset(nxtrack_max, max_spec_pts))
+     ENDIF
+     IF (which_biascorr == 2) THEN 
+       allocate ( corrpars(mswath, nxtrack_max, 0:maxord))
+     ENDIF
+     IF (which_biascorr == 4) THEN 
+       allocate ( offset_pars(mswath, nxtrack_max, 0:maxord))
+       allocate ( slope_pars(mswath, nxtrack_max, 0:maxord))
+     ENDIF
+     IF (which_biascorr == 7) THEN
+       allocate ( xwavs (mswath, max_spec_pts))
+       allocate ( xcorr (mswath, nxtrack_max))
+       allocate ( xwcorr(mswath, nxtrack_max, max_spec_pts))
+       allocate ( gascorr_npts(nxtrack_max, 3), xw2corr_npts(nxtrack_max, 3))
+       allocate ( gascorr(nxtrack_max, max_spec_pts, 2))
+       allocate ( xw2corr (nxtrack_max, max_spec_pts, 2))
+     ENDIF
+     IF (which_biascorr == 8 .or. which_biascorr == 9) THEN 
+       allocate ( xwavs (mswath, max_spec_pts))
+       allocate ( xwslp(mswath, nxtrack_max, max_spec_pts))
+       allocate ( xwoff(mswath, nxtrack_max, max_spec_pts))
+     ENDIF
+
       WRITE(msg, *) TRIM(ADJUSTL(biasfname))//',which_biascorr=',which_biascorr
       errstat = OMI_SMF_setmsg (OMI_W_GENERAL, TRIM(msg), modulename, 0)
 
@@ -885,8 +912,6 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx
-    !USE OMSAO_parameters_module, ONLY: maxwin
-    !USE OMSAO_variables_module,  ONLY: numwin, nradpix, band_selectors
     USE ozprof_data_module,      ONLY: div_rad, div_sun, use_lograd, use_flns
 
     IMPLICIT NONE
@@ -903,7 +928,6 @@ contains
     ! ====================
     INTEGER, PARAMETER                :: nreg = 3
     INTEGER                           :: i, j, fidx, lidx!, iwin
-    !REAL(KIND=dp)                     :: dw1, dw2
     REAL (KIND=dp), DIMENSION(np)     :: relsig, normrad, sig
     !REAL (KIND=dp), DIMENSION(maxwin) :: floor_noise =  &
     !     (/0.004, 0.002, 0.001, 0.001, 0.001/)
@@ -969,7 +993,7 @@ contains
   END SUBROUTINE adj_rad_sig
 
  
-SUBROUTINE load_omi_comres(errstat)
+  SUBROUTINE load_omi_comres(errstat)
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: max_fit_pts, maxchlen
     USE OMSAO_variables_module, ONLY: refdbdir, n_refwvl, database, &
@@ -980,17 +1004,19 @@ SUBROUTINE load_omi_comres(errstat)
 
     INTEGER, INTENT (OUT)      :: errstat
 
-    CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
     INTEGER, PARAMETER            :: nx = 30, lun = 12
     INTEGER                       :: ix, itemp, i, fidx, lidx
     CHARACTER (LEN=maxchlen)      :: comres_fname
 
-    LOGICAL,                                        SAVE :: first = .TRUE.
-    REAL (KIND=dp), DIMENSION (nx, max_fit_pts, 2), SAVE :: comres
-    INTEGER, DIMENSION(nx, 3),                      SAVE :: npts
+    REAL (KIND=dp), DIMENSION (:,:,:), SAVE, POINTER :: comres
+    INTEGER, DIMENSION(:,:),SAVE, POINTER :: npts
+    LOGICAL,                            SAVE :: first = .TRUE.
+    CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
 
     errstat = pge_errstat_ok
     IF (first) THEN
+      allocate (npts(nx, 3))
+      allocate (comres(nx, max_fit_pts, 2))
       comres = 0.D0
       comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
 
@@ -1029,5 +1055,4 @@ SUBROUTINE load_omi_comres(errstat)
 
   END SUBROUTINE load_omi_comres
 
-  
 end module omi_adj_data 

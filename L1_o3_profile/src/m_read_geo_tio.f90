@@ -107,19 +107,20 @@ contains
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, o3p_var_time, [sline1], [nline], tio_time(sline1:eline1), errstat)
     call tiof_push_group (tio_l1obj, l1swath, errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_latitude, [sline1,0],[nline,nxtrack], tio_lat(1:nxtrack,sline1:eline1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_longitude,[sline1,0],[nline,nxtrack], tio_lon(1:nxtrack,sline1:eline1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_sz_angle, [sline1,0],[nline,nxtrack], tio_sza(1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_latitude, [sline1,0],[nline,nxtrack], tio_lat (1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_longitude,[sline1,0],[nline,nxtrack], tio_lon (1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_sz_angle, [sline1,0],[nline,nxtrack], tio_sza (1:nxtrack,sline1:eline1), errstat)
     call tiof_get2d_r4 (tio_l1obj, o3p_var_sa_angle, [sline1,0],[nline,nxtrack], tio_saza(1:nxtrack,sline1:eline1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, o3p_var_vz_angle, [sline1,0],[nline,nxtrack], tio_vza(1:nxtrack, sline1:eline1), errstat)
+    call tiof_get2d_r4 (tio_l1obj, o3p_var_vz_angle, [sline1,0],[nline,nxtrack], tio_vza (1:nxtrack,sline1:eline1), errstat)
     call tiof_get2d_r4 (tio_l1obj, o3p_var_va_angle, [sline1,0],[nline,nxtrack], tio_vaza(1:nxtrack,sline1:eline1), errstat)
-    call tiof_get2d_i2 (tio_l1obj, o3p_var_terrain_height, [sline1,0],  [nline,nxtrack], &
-                        tio_height(1:nxtrack,sline1:eline1), errstat)
-    call tiof_get2d_i4 (tio_l1obj, o3p_var_geoflg, [sline1,0],    [nline,nxtrack], tio_geoflg(1:nxtrack,1:nline), errstat)
-    call tiof_get3d_r4 (tio_l1obj,o3p_var_latitude_bounds, [sline1,0,0], [nline,nxtrack,4], &
-                        tio_clat(:,1:nxtrack,sline1:eline1), errstat)
-    call tiof_get3d_r4 (tio_l1obj,o3p_var_longitude_bounds, [sline1,0,0],[nline,nxtrack,4], &
-                        tio_clon(:,1:nxtrack,sline1:eline1), errstat)
+    call tiof_get2d_i2 (tio_l1obj, o3p_var_terrain_height, [sline1,0],  [nline,nxtrack],  tio_height(1:nxtrack,sline1:eline1), &
+                        errstat)
+    call tiof_get2d_i4 (tio_l1obj, o3p_var_geoflg,         [sline1,0],  [nline,nxtrack],  tio_geoflg(1:nxtrack,sline1:eline1), &
+                        errstat)
+    call tiof_get3d_r4 (tio_l1obj,o3p_var_latitude_bounds, [sline1,0,0],[nline,nxtrack,4],tio_clat(:,1:nxtrack,sline1:eline1), &
+                        errstat)
+    call tiof_get3d_r4 (tio_l1obj,o3p_var_longitude_bounds,[sline1,0,0],[nline,nxtrack,4],tio_clon(:,1:nxtrack,sline1:eline1), &
+                        errstat)
     call tiof_pop_group (tio_l1obj, errstat)
     call tiof_close (tio_l1obj, errstat)
 
@@ -200,8 +201,8 @@ contains
              geo%clat(2,ix, iy) = tio_clat(2,xsidx, yeidx)
              geo%clat(3,ix, iy) = tio_clat(3,xeidx, ysidx)
              geo%clat(4,ix, iy) = tio_clat(4,xsidx, ysidx)              
-             geo%elon(ix:ix+1, iy) = geo%clon(1:2,ix,iy)
-             geo%elat(ix:ix+1, iy) = geo%clat(1:2,ix,iy)
+             geo%elon(ix-1:ix, iy) = geo%clon(1:2,ix,iy)
+             geo%elat(ix-1:ix, iy) = geo%clat(1:2,ix,iy)
              !geo%clon(:, ix, iy) = geo%lon(ix, iy)
              !geo%clat(:, ix, iy) = geo%lat(ix, iy)
              !geo%elon(ix:ix+1, iy) = geo%lon(ix, iy)

@@ -491,9 +491,9 @@ CONTAINS
     REAL (KIND=dp), DIMENSION(3, 2), INTENT (IN) :: dfitcol
 
     REAL (KIND=dp), DIMENSION (maxwin)           :: allrms, allavgres
-    REAL (KIND=dp), DIMENSION (5, n_max_fitpars) :: tempvar
-    REAL (KIND=dp), DIMENSION (n_max_fitpars, n_max_fitpars) :: correl
-    REAL (KIND=dp), DIMENSION (max_fit_pts)      :: tempring
+    REAL (KIND=dp), DIMENSION (:,:), POINTER :: tempvar
+    REAL (KIND=dp), DIMENSION (:,:), POINTER :: correl
+    REAL (KIND=dp), DIMENSION (:), POINTER   :: tempring
     real (kind=8), dimension (n_rad_wvl) :: lfitres_rad
     REAL (KIND=dp)                               :: ncorrl_foo
     INTEGER (KIND=2), DIMENSION (nElms)          :: ncorrl_1d
@@ -502,10 +502,18 @@ CONTAINS
     INTEGER (KIND=i4)      :: id, LL, fidx, lidx, i, fid, j
     INTEGER (KIND=i8)      :: Ls, Le, bsize
     INTEGER (KIND=i4)      :: ii, irow, jcol, nn, ierr
-    INTEGER (KIND= 2), DIMENSION(nLayer,nLayer)  :: OzAvgK_I16
+    INTEGER (KIND= 2), DIMENSION(:,:), POINTER  :: OzAvgK_I16
     INTEGER (KIND= 1)      :: I1
     CHARACTER (LEN = 16)   :: modulename = 'He5_L2SetDataPix'  
+    LOGICAL, SAVE :: first=.true.
 
+    IF (first) THEN 
+     allocate (tempvar(5, n_max_fitpars))
+     allocate (correl(n_max_fitpars, n_max_fitpars))
+     allocate (tempring(max_fit_pts))
+     allocate (OzAvgK_I16 (nLayer, nLayer))
+     first=.false.
+    ENDIF
     fidx = 1
     DO i = 1, nCh
       lidx = fidx + nradpix(i) - 1
@@ -878,11 +886,20 @@ CONTAINS
     REAL (KIND=r4), DIMENSION(maxwin)        :: tmp1D_numwin
     INTEGER (KIND=2), DIMENSION(maxwin)      :: tmp1D_num
     INTEGER (KIND=2), DIMENSION(nElms)       :: tmp1D_ncorrl
-    INTEGER(KIND=2), DIMENSION(n_max_fitpars, n_max_fitpars) :: tmp2D_fitvarK16
+    INTEGER(KIND=2), DIMENSION(:,:),POINTER  :: tmp2D_fitvarK16
     REAL (KIND=r4), DIMENSION(maxwin+2)      :: tmp1D_aer
-    REAL (KIND=r4), DIMENSION(n_max_fitpars, n_max_fitpars) :: tmp2D_fitvar
-    REAL (KIND=r4), DIMENSION(n_max_fitpars, max_fit_pts)   :: tmp2D_contri
-    REAL (KIND=r4), DIMENSION(max_fit_pts, n_max_fitpars)   :: tmp2D_wf
+    REAL (KIND=r4), DIMENSION(:,:) ,POINTER  :: tmp2D_fitvar
+    REAL (KIND=r4), DIMENSION(:,:), POINTER  :: tmp2D_contri
+    REAL (KIND=r4), DIMENSION(:,:), POINTER  :: tmp2D_wf
+    LOGICAL, SAVE :: first=.true.
+
+    IF (first) THEN 
+      allocate (tmp2d_fitvarK16(n_max_fitpars, n_max_fitpars))
+      allocate (tmp2d_fitvar(n_max_fitpars, n_max_fitpars))
+      allocate (tmp2d_contri(n_max_fitpars, max_fit_pts))
+      allocate (tmp2d_wf(max_fit_pts, n_max_fitpars))
+      first=.false.
+    ENDIF    
 
     tmp1D_layer(0:nlay)     = fill_float32
     tmp1D_numwin(1:nCh)     = fill_float32

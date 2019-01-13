@@ -117,9 +117,9 @@ CONTAINS
         return
     ENDIF
 
-    allocate(omi_o3p%fitvar(nxtrack, 0:nlines_max, n_fitvar_rad))
-    allocate(omi_o3p%initval(nxtrack, 0:nlines_max))
-    allocate(omi_o3p%exitval(nxtrack, 0:nlines_max))
+    allocate(omi_o3p%fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
+    allocate(omi_o3p%initval(nxtrack, 0:nlines_max-1))
+    allocate(omi_o3p%exitval(nxtrack, 0:nlines_max-1))
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read irradiance & slit/wavelength calibration
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

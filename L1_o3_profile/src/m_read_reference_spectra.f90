@@ -1,9 +1,12 @@
 !
 module m_read_reference_spectra
 
-  public read_reference_spectra
-  private read_one_refspec
+  IMPLICIT NONE
 
+  public read_reference_spectra, read_one_refspec1
+  private !read_one_refspec
+
+  
 contains
 
   SUBROUTINE read_reference_spectra ( specunit, pge_error_status )
@@ -44,9 +47,9 @@ contains
     ! Local variables
     ! ---------------
     INTEGER         :: i
-    real (kind=dp)  :: wmin, wmax
-    real (kind=dp), dimension(2) :: tmp_specwav
-    real (kind=dp), dimension(:,:), POINTER :: tmp_onespec
+    REAL (kind=dp)  :: wmin, wmax
+    REAL (kind=dp), DIMENSION(2) :: firstlast_wav
+    REAL (kind=dp), DIMENSION(:,:), POINTER :: refonespec
 
     ! =================================
     ! External OMI and Toolkit routines
@@ -56,7 +59,7 @@ contains
     !-------------------------------
     ! start with allocation
     !-------------------------------
-    allocate(tmp_onespec(max_spec_pts, spc_idx))
+    allocate(refonespec(max_spec_pts, spc_idx))
     ! ----------------------------
     ! Initialize output quantities
     ! ----------------------------
@@ -74,6 +77,7 @@ contains
            zerospec_string ) == 0 ) THEN
 !  FIXME
 !  Modified to mask array temporaries
+        ! wavelength range for reference spectrum
         wmin = winwav_min ; wmax = winwav_max
         IF ( i == solar_idx) THEN 
           wmin = wmin - 1.0 ; wmax = wmax + 1.0
@@ -82,21 +86,18 @@ contains
         CALL read_one_refspec1 ( &
              specunit, &
              refspec_fname(i), wmin, wmax, n_refspec_pts(i), &
-!             refspec_firstlast_wav(i,wvl_idx:spc_idx), refspec_norm(i), &
-!             refspec_orig_data(i,1:max_spec_pts,wvl_idx:spc_idx), &
-             tmp_specwav, refspec_norm(i), &
-             tmp_onespec, &
+             firstlast_wav, refspec_norm(i), &
+             refonespec, &
              pge_error_status)
 
-        refspec_firstlast_wav(i,wvl_idx:spc_idx) = tmp_specwav
-        refspec_orig_data(i,1:max_spec_pts,wvl_idx:spc_idx) = tmp_onespec
+        refspec_firstlast_wav(i,wvl_idx:spc_idx) = firstlast_wav
+        refspec_orig_data(i,1:max_spec_pts,wvl_idx:spc_idx) = refonespec
 
         WRITE(www_lun, '(A80,/,2F10.2,I5,2F10.2, D14.6)') refspec_fname(i), winwav_min, &
                winwav_max, n_refspec_pts(i), refspec_orig_data(i, 1, wvl_idx), &
                refspec_orig_data(i, n_refspec_pts(i), wvl_idx), refspec_norm(i)
         IF ( pge_error_status >= pge_errstat_error ) RETURN
 
-        !IF (i == so2_idx) refspec_orig_data(i,1:max_spec_pts,wvl_idx) = refspec_orig_data(i,1:max_spec_pts,wvl_idx)-0.269
       END IF
     END DO
 
@@ -109,7 +110,7 @@ contains
     !-----------------------------------------------
     ! end with deallocate
     !-----------------------------------------------
-    deallocate(tmp_onespec)
+    deallocate(refonespec)
 
     RETURN
   END SUBROUTINE read_reference_spectra
@@ -406,7 +407,8 @@ contains
     ! Local Variables
     ! ----------------
     INTEGER  :: i, ip, ios, file_read_stat, imin, imax, nwin, iwin, fwin, lwin,wstep
-    INTEGER,        DIMENSION (max_spec_pts) :: irev
+    !INTEGER,        DIMENSION (max_spec_pts) :: irev
+    INTEGER,        DIMENSION (:), POINTER :: irev
     REAL (KIND=dp), DIMENSION (:), POINTER :: x, y
     REAL (KIND=dp), DIMENSION (maxwin, 2)    :: wlim
     REAL (KIND=dp)                           :: xdum, xmin, xmax
@@ -431,7 +433,7 @@ contains
     !---------------------------------------------
     ! start with allocate
     !---------------------------------------------
-    allocate(x(max_spec_pts), y(max_spec_pts))
+    allocate(x(max_spec_pts), y(max_spec_pts), irev(max_spec_pts))
     !---------------------------------------------
     IF (numwin == 1) THEN
        wlim(1, 1) = winlim(1, 1) - 5.0d0
@@ -563,7 +565,7 @@ contains
     !-------------------------------
     ! end with deallocate
     !-------------------------------
-    deallocate(x, y)
+    deallocate(x, y, irev)
     RETURN
   END SUBROUTINE read_one_refspec1
 end module m_read_reference_spectra

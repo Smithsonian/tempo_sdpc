@@ -103,7 +103,7 @@ CONTAINS
     ENDDO
     WRITE (*,*) '@ Define TEMPO Domain**'
     WRITE(*,'(A,2i5, A,i2)') '=>pixnum_lim :', pixnum_lim, "nxbin:", nxbin
-    WRITE(*,'(A,2i5, A,i2)') '=>linenum lim:', linenum_lim, "nxbin:", nybin
+    WRITE(*,'(A,2i5, A,i2)') '=>linenum lim:', linenum_lim, "nybin:", nybin
     WRITE(*,'(A,2i5,A,2I5)') '=>first/last pix :',first_pix,  last_pix, 'In',spix,epix
     WRITE(*,'(A,2i5,A,2I5)') '=>first/last line:',first_line, last_line,'In',sline, eline
     !print * , pix_pos(first_pix), pix_pos(last_pix)
@@ -133,9 +133,9 @@ CONTAINS
        go to 111
     ENDIF
 
-    ALLOCATE(tmpo_o3p%exitval(nxtrack,0:nlines_max))
-    ALLOCATE(tmpo_o3p%initval(nxtrack,0:nlines_max))
-    ALLOCATE(tmpo_o3p%fitvar(nxtrack, 0:nlines_max, n_fitvar_rad))
+    ALLOCATE(tmpo_o3p%exitval(nxtrack,0:nlines_max-1))
+    ALLOCATE(tmpo_o3p%initval(nxtrack,0:nlines_max-1))
+    ALLOCATE(tmpo_o3p%fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
 
 
 
@@ -408,7 +408,6 @@ CONTAINS
     !----------------------------------------------------------------
     IF (lcurve_write) CLOSE (lcurve_unit)
     IF (ozwrtint)     CLOSE (ozwrtint_unit)
-    
      CALL L2_O3P_close (errstat)
     IF (errstat /=0) THEN
       pge_error_status = pge_errstat_error

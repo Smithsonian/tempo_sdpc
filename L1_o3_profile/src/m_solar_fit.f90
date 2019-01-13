@@ -17,7 +17,7 @@ module m_solar_fit
       correct_lamda, xbin_decerr, tmp_rad, fitspec_rad, calscn
   USE OMSAO_errstat_module
   USE m_cal_fit_one
-
+  USE m_fitting_util, ONLY: poly_fit
   IMPLICIT NONE
   INTEGER, PARAMETER, PRIVATE :: slit_unit = 1000
 
@@ -132,7 +132,7 @@ CONTAINS
            ENDIF
         ENDDO
         ll = 1; lu = n_fit_pts
-      !  CALL poly_fit(polyx(1:n_fit_pts), n_fit_pts, fitwavs(1:n_fit_pts), ll,lu, polycoeffs(1:poly_order))
+        CALL poly_fit(polyx(1:n_fit_pts), n_fit_pts, fitwavs(1:n_fit_pts), ll,lu, polycoeffs(1:poly_order))
 
         j = 1
         DO i = wr0_idx, wr7_idx

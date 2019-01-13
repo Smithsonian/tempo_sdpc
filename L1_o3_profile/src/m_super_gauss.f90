@@ -1,26 +1,38 @@
-MODULE m_super_gauss
 ! =========================================================================
+! Author : Juseon Bak
+! Date : Sep. 2017
+! it is modified from gauss.f90
+! Purpose :
 ! Convolves input spectrum with an super Gaussian slit function 
-! where the exponent of the Gaussian is a variable N and will give a Gaussian for N=2. 
+! where the exponent of the Gaussian is a variable k and will give a Gaussian for k=2. 
 ! For big N the function will describe a more rectangular distribution, 
-! while for small N it fits to a distribution with long tails on both sides. 
+! while for small k it fits to a distribution with long tails on both sides. 
 !
 ! The symetric super Gaussian g(x) is defined as
 !                               _               _
 !              K               |      abs(x)^k   |
 !      g(x) =-----         EXP | - ------------- |
 !            2hw1e gam(1/k)    |_     hw1e ^k   _|
+! Reminder
+!    slit function derivatives are implemented in super_gauss_multi, super_gauss_fc
 ! =========================================================================
 
-USE OMSAO_precision_module
-USE OMSAO_indices_module,   ONLY : hwe_idx, spk_idx
-USE OMSAO_variables_module, ONLY : slit_trunc_limit, solwinfit, winlim, numwin,&
-                                   slitwav, slitfit, nslit, do_dsdw, do_dsdk
+MODULE m_super_gauss
 
-USE m_ezspline_interpolation, ONLY: interpolation 
-USE OMSAO_errstat_module
+ USE OMSAO_precision_module
+ USE OMSAO_indices_module,   ONLY : hwe_idx, spk_idx
+ USE OMSAO_variables_module, ONLY : slit_trunc_limit,  winlim, numwin,&
+     solwinfit, slitwav, slitfit, nslit, & ! slit function variables
+     do_dsdw, do_dsdk ! logical variables to implement sf derivaties
+ USE m_ezspline_interpolation, ONLY: interpolation 
+ USE OMSAO_errstat_module
 
-IMPLICIT NONE
+ IMPLICIT NONE
+
+ PUBLIC :: super_gauss, super_gauss_multi, super_gauss_vary, &
+           super_gauss_f2c, super_gauss_vary_f2c
+ PRIVATE
+
 CONTAINS
 SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
 
@@ -144,6 +156,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
      ! around 0. The spacing is provided by the equidistant WVLARR.
      ! --------------------------------------------------------------
     ! sw = - hw1e ** 2.0
+     IF (fidx > npoints .or. lidx < 1 ) return
      delwvl = wvlarr(fidx+1) - wvlarr(fidx)
     ! mslit = NINT( SQRT( LOG(slit_trunc_limit) * sw) / delwvl) 
      mslit = NINT((hw1e*((-LOG(slit_trunc_limit))**(1/power)))/delwvl)
@@ -174,7 +187,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
       ELSE IF (do_dsdk) THEN
         slit1(1:mslit) =coef* EXP(-1.*(abs(locwvl(1:mslit))/hw1e)**(power*1.001))
         ssum1 = sum(slit1(1:mslit))*2.0 + coef
-        pert = hw1e*0.001
+        pert = power*0.001
         slit (1:mslit) = (slit1(1:mslit)/ssum1 - slit(1:mslit))/pert
       ENDIF
           
@@ -253,7 +266,7 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
   ! No Gaussian convolution if Halfwidth @ 1/e is 0
   ! -----------------------------------------------
   hw1e   = MAXVAL(slitfit(1:nslit, hwe_idx, 1))
-  power   = MAXVAL(slitfit(1:nslit,spk_idx, 1))
+  power  = MAXVAL(slitfit(1:nslit,spk_idx, 1))
 
   IF ( hw1e == 0.0 .or. power == 0.0 ) RETURN
 
@@ -571,6 +584,5 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
 
   RETURN
 END SUBROUTINE super_gauss_vary_f2c
-
 
 END MODULE m_super_gauss

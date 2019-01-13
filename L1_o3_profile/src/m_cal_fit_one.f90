@@ -2,7 +2,7 @@
 module m_cal_fit_one
   USE bounded_nonlin_LS, ONLY: elsunc  
   USE m_spectra, ONLY:spectrum_solar
-
+  USE m_fitting_util, ONLY: poly_fit
   public cal_fit_one
   private specfit, specfit_func_sol
 contains
@@ -72,7 +72,7 @@ contains
         ENDIF
        ENDDO
        ll = 1; lu = n_fit_pts
-       !CALL poly_fit(polyx, n_fit_pts, fitwavs(1:n_fit_pts), ll, lu, polycoeffs(1:poly_order))
+       CALL poly_fit(polyx, n_fit_pts, fitwavs(1:n_fit_pts), ll, lu, polycoeffs(1:poly_order))
        j = 1
        DO i = wr0_idx, wr7_idx
           fitvar_sol(i) = polycoeffs(j)

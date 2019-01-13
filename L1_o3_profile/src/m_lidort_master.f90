@@ -117,11 +117,11 @@ module m_lidort_master
     REAL (KIND=dp), DIMENSION(nw, 2, nostk)      :: polerr
     REAL (KIND=dp), DIMENSION(nw, nostk)         :: radclr, radcld
     REAL (KIND=dp), DIMENSION(n_radwvl_sav)      :: delpos, swaves, delshi
-    REAL (KIND=dp), DIMENSION(2, nostk)           :: radclrcld
-    REAL (KIND=dp), DIMENSION(nw, nflay, nostk)   :: fozwf, faerwf, faerswf, fcodwf, fsprswf, fraywf
-    REAL (KIND=dp), DIMENSION(nw, maxlay):: pfozwf, pfaerwf, pfaerswf, pfcodwf, pfsprswf, pfraywf
+    REAL (KIND=dp), DIMENSION(2, nostk)          :: radclrcld
+    REAL (KIND=dp), DIMENSION(nw, nflay, nostk)  :: fozwf, faerwf, faerswf, fcodwf, fsprswf, fraywf
+    REAL (KIND=dp), DIMENSION(nw, nflay)         :: pfozwf, pfaerwf, pfaerswf, pfcodwf, pfsprswf, pfraywf
     REAL (KIND=dp), DIMENSION(nw)        :: prad, palbwf, pctpwf, pcfracwf
-    REAL (KIND=dp), DIMENSION (nw)      :: tmprefwav, tmprefspec
+    REAL (KIND=dp), DIMENSION(nw)        :: tmprefwav, tmprefspec
 
     INTEGER, DIMENSION (nallgas)                  :: gasin   
     INTEGER, DIMENSION (5)                        :: tmp_gaspos ! used to sort gases when nw=1
@@ -968,6 +968,8 @@ module m_lidort_master
            ! Pixel-independent approximation
            radclrcld(ic, 1:nostk) = stokes(1, 1, 1:nostk, 1) * polerr(iw, ic, 1:nostk)
            rad(iw, 1:nostk)       = rad(iw, 1:nostk) + radclrcld(ic, 1:nostk) * frac
+
+!           print * ,iw, lamda,  deltau(iw, nz1), delsca(iw, nz1), delo3abs(iw, nz1), rad(iw, 1)
            IF (do_linearization ) THEN
 
               ! weighting function per Dobson Unit
@@ -1290,12 +1292,12 @@ module m_lidort_master
       !                       rad(1:nw0, 1), nw0, nz, nz1, ozs(1:nz), &
       !                       waves(1:nw0), do_so2zwf, so2zwf(1:nw0, 1))
       nw0  = nw
-      CALL get_tracegas_wf  (nw0, nz1, nz1, rad(1:nw0,1), &
-                             fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz1), &
-                             use_so2dtcrs, so2crs(1:nw0, 1:nz1), &
-                             use_o4dtcrs, o4crs(1:nw0, 1:nz1), &
-                             use_o2dptcrs,o2crs(1:nw0, 1:nz1), &
-                             use_h2odptcrs, h2ocrs(1:nw0, 1:nz1), &
+      CALL get_tracegas_wf  (nw0, nz, nz1, rad(1:nw0,1), &
+                             fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
+                             use_so2dtcrs, so2crs(1:nw0, 1:nz), &
+                             use_o4dtcrs, o4crs(1:nw0, 1:nz), &
+                             use_o2dptcrs,o2crs(1:nw0, 1:nz), &
+                             use_h2odptcrs, h2ocrs(1:nw0, 1:nz), &
                              do_so2zwf, so2zwf(1:nw0, 1))
  
   IF (nw > 1 .AND. do_simu .AND. .NOT. radcalwrt) THEN

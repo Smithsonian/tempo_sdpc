@@ -38,7 +38,7 @@ contains
     ! ---------------
     INTEGER (KIND=i4)                   :: i!, j
     REAL (KIND=dp)                      :: powval
-    INTEGER (KIND=i4), DIMENSION (ndim) :: tmp_byte
+    INTEGER (KIND=i8), DIMENSION (ndim) :: tmp_byte
 
     ! ----------------------------
     ! Initialize output quantities
@@ -51,7 +51,7 @@ contains
     tmp_byte(1:ndim) = byte_num(1:ndim)
 
     WHERE ( tmp_byte(1:ndim) < 0)
-      tmp_byte(1:ndim) = int(tmp_byte(1:ndim) + 4294967296 , kind=i4)
+      tmp_byte(1:ndim) = int(tmp_byte(1:ndim) + 4294967296_i8 , kind=i8)
     ENDWHERE
 
     ! -------------------------------------------------------------------
@@ -65,7 +65,7 @@ contains
       IF ( powval > 0 ) THEN
         WHERE ( tmp_byte(1:ndim) >= powval )
           bit_num(1:ndim,i) = 1_i4
-          tmp_byte(1:ndim) = tmp_byte(1:ndim) - int(powval, kind=i4)
+          tmp_byte(1:ndim) = tmp_byte(1:ndim) - int(powval, kind=i8)
         ENDWHERE
       END IF
     END DO

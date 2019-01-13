@@ -51,7 +51,6 @@ SUBROUTINE get_bc_layer (which_atm, nloc, the_lons, the_lats, &
   RETURN
 END SUBROUTINE get_bc_layer
 
-
 SUBROUTINE get_finereso_surfalt(lon, lat, z0)
 
   USE OMSAO_precision_module
@@ -77,10 +76,11 @@ SUBROUTINE get_finereso_surfalt(lon, lat, z0)
   INTEGER, DIMENSION(2)          :: latin, lonin
   REAL (KIND=dp), DIMENSION(2)   :: latfrac, lonfrac
 
-  INTEGER, SAVE, DIMENSION(nlon, nlat) :: glbz
-  LOGICAL, SAVE                        :: first = .TRUE.
+  INTEGER, SAVE, DIMENSION(:,:), POINTER :: glbz
+  LOGICAL, SAVE                          :: first = .TRUE.
 
   IF (first) THEN
+      allocate (glbz(nlon, nlat))
       surfalt_fname = TRIM(ADJUSTL(atmdbdir)) // 'terrain_height/dem0.1x0.1.dat'
       ! Determine if file exists or not
       INQUIRE (FILE= surfalt_fname, EXIST= file_exist)

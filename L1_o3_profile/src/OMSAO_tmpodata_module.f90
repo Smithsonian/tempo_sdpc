@@ -15,7 +15,7 @@ MODULE OMSAO_tmpodata_module
    ! ---------------------------------
    INTEGER, PARAMETER :: mswath_tmpo = 2
    INTEGER (KIND=i4), PARAMETER :: &
-       ntimes_max     = 129, nxtrack_max  = 2048, nlines_max=10
+       ntimes_max     = 129, nxtrack_max  = 2048, nlines_max=20
    INTEGER, PARAMETER :: nwavel_ccd = 1026, nwavel_max=1026+1026
 
 

@@ -93,7 +93,7 @@ module tmpo_read_l1b_data
    INTEGER (KIND=i2) :: irrad_mflg
    INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls 
    INTEGER (KIND=i4), DIMENSION(mswath)  :: spos, epos  ! pos btw UV and VIS
-   INTEGER (KIND=i4), DIMENSION(nwavel_ccd) :: idxs
+   INTEGER (KIND=i4), DIMENSION(:), POINTER :: idxs
    INTEGER (KIND=i2), DIMENSION(:, :), POINTER :: irrad_qflg
    REAL (kind=4),DIMENSION (:, :), POINTER :: irrad_spec, irrad_prec, irrad_wavl
    ! variables used for reduced resultion
@@ -105,8 +105,8 @@ module tmpo_read_l1b_data
    INTEGER, DIMENSION(maxwin,2) :: winpix ! pos btw winlim
    INTEGER (KIND=i4), DIMENSION (maxwin) :: nwbin
    INTEGER, PARAMETER :: nbits = 16
-   INTEGER (KIND=i2), DIMENSION(nwavel_max) :: flgmsks
-   INTEGER (kind=i2), DIMENSION(nxbin, nwavel_max, 0:nbits-1) :: flgbits
+   INTEGER (KIND=i2), DIMENSION(:), POINTER :: flgmsks
+   INTEGER (kind=i2), DIMENSION(:, :,:), POINTER :: flgbits
    REAL (KIND=dp) :: wcenter, normsc
    REAL (KIND=dp), DIMENSION(nxbin) :: wshis, wsqus
    REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: subspec
@@ -123,6 +123,8 @@ module tmpo_read_l1b_data
    allocate (irrad_prec (nwavel_max, nxtrack_max))
    allocate (irrad_spec (nwavel_max, nxtrack_max))
    allocate (irrad_wavl (nwavel_max, nxtrack_max))
+   allocate (flgmsks(nwavel_max), idxs(nwavel_ccd))
+   allocate (flgbits(nxbin, nwavel_max, 0:nbits-1))
    allocate (tmpspec (sig_idx, nwavel_max, nxtrack_max))
    allocate (tmpqflg(nwavel_max, nxtrack_max))
    allocate (subspec(nxbin, sig_idx, max_fit_pts))
@@ -130,13 +132,13 @@ module tmpo_read_l1b_data
    ! ----------------------------
    ! Initialize irradiance arrays
    ! ----------------------------
-   tmpo_irrad%errstat(1:nxtrack) = pge_errstat_ok
-   tmpo_irrad%nwav (1:nxtrack) = 0
-   tmpo_irrad%npix (1:maxwin, 1:nxtrack) = 0
-   tmpo_irrad%prec (1:nwavel_max,1:nxtrack) = 0.0
-   tmpo_irrad%spec (1:nwavel_max,1:nxtrack) = 0.0
-   tmpo_irrad%wavl (1:nwavel_max,1:nxtrack) = 0.0
-   tmpo_irrad%qflg (1:nwavel_max,1:nxtrack) = 0
+   tmpo_irrad%errstat(:) = pge_errstat_ok
+   tmpo_irrad%nwav (:) = 0
+   tmpo_irrad%npix (:,:) = 0
+   tmpo_irrad%prec (:,:) = 0.0
+   tmpo_irrad%spec (:,:) = 0.0
+   tmpo_irrad%wavl (:,:) = 0.0
+   tmpo_irrad%qflg (:,:) = 0
    ! ----------------------------------------------------
    ! read irradiance : arracy is merged with UV and VIS
    ! ----------------------------------------------------
@@ -369,6 +371,10 @@ module tmpo_read_l1b_data
        tmpo_irrad%npix(iw, ix) = nsub - tmpo_irrad%npix(iw, ix)
      ENDDO
      tmpo_irrad%nwav(ix) = nsub
+
+     IF (nsub == 0) tmpo_irrad%errstat(ix) = pge_errstat_error
+     IF (tmpo_irrad%errstat(ix) == pge_errstat_error)    CYCLE
+
      !------------------------------------
      ! Perform coadding when necessary
      !-------------------------------------
@@ -562,6 +568,7 @@ module tmpo_read_l1b_data
    ! Ending  with deallocating local variables
    !--------------------------------------------------------------------------
    deallocate (irrad_qflg , irrad_prec, irrad_spec, irrad_wavl)
+   deallocate (idxs, flgmsks, flgbits)
    deallocate (tmpspec, tmpqflg)
    deallocate (subspec, subring)
   RETURN
@@ -607,22 +614,24 @@ module tmpo_read_l1b_data
               iwin, ic, nsub, blockline, nx, nt, nw, nwavel, irefl, ii, nl
    ! variables used to read TEMPO_data 
    INTEGER, DIMENSION (mswath) :: nwls, epos, spos
-   INTEGER (KIND=i4), DIMENSION (nwavel_ccd) :: idxs
+   INTEGER (KIND=i4), DIMENSION (:), POINTER :: idxs
    INTEGER (kind=2), POINTER, DIMENSION (:,:,:) :: rad_qflg
    REAL (kind=i4), POINTER, DIMENSION(:,:,:) ::  rad_spec,rad_prec,rad_wavl
-   REAL (kind=i4), DIMENSION (nwavel_ccd,nxtrack_max) ::  ccd_spec,ccd_prec,ccd_wavl
-   INTEGER (kind=2), dimension(nwavel_ccd,nxtrack_max)::  ccd_qflg
+   !REAL (kind=i4), DIMENSION (nwavel_ccd,nxtrack_max) ::  ccd_spec,ccd_prec,ccd_wavl
+   !INTEGER (kind=2), dimension(nwavel_ccd,nxtrack_max)::  ccd_qflg
+   REAL (kind=i4), DIMENSION (:,:), POINTER :: ccd_spec,ccd_prec,ccd_wavl
+   INTEGER (kind=2), dimension(:,:),POINTER :: ccd_qflg
    ! variables used for reduced resolution
    INTEGER :: npos, np
    ! Subset variables
    INTEGER, PARAMETER :: nbits = 16
-   INTEGER (KIND=i4), DIMENSION (maxwin) :: nwbin
-   INTEGER (KIND=i2), DIMENSION(nwavel_max) :: flgmsks
-   INTEGER (kind=i2), DIMENSION(nxbin, nwavel_max, 0:nbits-1) :: flgbits
+   INTEGER (KIND=i4), DIMENSION (maxwin)     :: nwbin
+   INTEGER (KIND=i2), DIMENSION (:), POINTER :: flgmsks
+   INTEGER (kind=i2), DIMENSION (:,:,:), POINTER :: flgbits
    LOGICAL, DIMENSION (maxwin, nxtrack_max)  :: wavcals
    REAL (KIND=dp), DIMENSION (maxwin,nxbin) :: wshis, wsqus
    ! subset
-   REAL (KIND=dp), DIMENSION(nxbin, sig_idx, max_fit_pts) :: subspec
+   REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: subspec
    CHARACTER (LEN=100) :: message
    ! ------------------------------
    ! Name of this module/subroutine
@@ -637,10 +646,13 @@ module tmpo_read_l1b_data
    allocate (rad_prec (nwavel_max, nxtrack_max, 0:nl))
    allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nl))
    allocate (rad_spec (nwavel_max, nxtrack_max, 0:nl))
-   !allocate (ccd_prec(nwavel_ccd, nxtrack_max))
-   !allocate (ccd_spec(nwavel_ccd, nxtrack_max))
-   !allocate (ccd_wavl(nwavel_ccd, nxtrack_max))
-   !allocate (ccd_qflg(nwavel_ccd, nxtrack_max))
+   allocate (flgmsks(nwavel_max),flgbits (nxbin, nwavel_max, 0:nbits-1))
+   allocate (idxs(nwavel_ccd))
+   allocate (ccd_prec(nwavel_ccd, nxtrack_max))
+   allocate (ccd_spec(nwavel_ccd, nxtrack_max))
+   allocate (ccd_wavl(nwavel_ccd, nxtrack_max))
+   allocate (ccd_qflg(nwavel_ccd, nxtrack_max))
+   allocate (subspec(nxbin, sig_idx, max_fit_pts))
    !--------------------------------------------------------------------------
    ! Initializing
    !--------------------------------------------------------------------------
@@ -648,11 +660,11 @@ module tmpo_read_l1b_data
    pge_error_status = pge_errstat_ok
    tmpo_rad%errstat(0:nl-1)          = pge_errstat_ok
    tmpo_rad%pix_errstat(1:nxtrack, 0:nl-1) = pge_errstat_ok
-   tmpo_rad%npix = 0
-   tmpo_rad%spec (1:nwavel_max, 1:nxtrack, 0:nl-1) = 0.0
-   tmpo_rad%prec (1:nwavel_max, 1:nxtrack, 0:nl-1) = 0.0
-   tmpo_rad%qflg (1:nwavel_max, 1:nxtrack, 0:nl-1) = 0
-   tmpo_rad%wavl (1:nwavel_max, 1:nxtrack, 0:nl-1) = 0.0
+   tmpo_rad%npix (:,:,:) = 0
+   tmpo_rad%spec (:,:,:) = 0.0
+   tmpo_rad%prec (:,:,:) = 0.0
+   tmpo_rad%qflg (:,:,:) = 0
+   tmpo_rad%wavl (:,:,:) = 0.0
 
    rad_spec = 0.0
    rad_wavl = 0.0
@@ -861,10 +873,13 @@ module tmpo_read_l1b_data
              !print * , flgmsks(tmpo_refl%winpix(ix,1):tmpo_refl%winpix(ix, 2))
              tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
         ENDIF
-        !fidx = tmpo_rad%npix(1, ix, iloop)+1
-        tmpo_rad%norm(ix, iloop) = SUM ( subspec(1, spc_idx, 1:nsub) ) / nsub
-        !tmpo_rad%norm(ix, iloop) = SUM ( subspec(1, spc_idx, fidx:nsub) ) / (nsub- fidx + 1)
-        !tmpo_rad%norm(ix, iloop) = 1.0E11
+
+        !if (nsub > 0) then
+          tmpo_rad%norm(ix, iloop) = SUM ( subspec(1, spc_idx, 1:nsub) ) / nsub
+        !else
+        !  tmpo_rad%norm(ix, iloop) = 0.0
+        !endif
+
         IF ( tmpo_rad%norm(ix, iloop) <= 0.0 ) THEN
           pge_error_status = pge_errstat_error
           RETURN
@@ -881,6 +896,8 @@ module tmpo_read_l1b_data
     ! Finishing with deallocating local variables
     !--------------------------------------------------------------------------
     deallocate (rad_qflg, rad_prec, rad_wavl, rad_spec)
+    deallocate (flgbits)
+    deallocate (ccd_spec, ccd_prec, ccd_wavl, ccd_qflg)
     RETURN
   123 continue
      pge_error_status = pge_errstat_error

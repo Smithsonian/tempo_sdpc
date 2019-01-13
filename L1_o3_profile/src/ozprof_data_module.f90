@@ -371,7 +371,7 @@ MODULE ozprof_data_module
   ! using effective cross section or high resolution 
   ! ---------------------------------------------------------
   ! Parameters for T-dependent cross sections
-  INTEGER, PARAMETER :: mxsect    =  7
+  INTEGER, PARAMETER :: mxsect    =  5
   LOGICAL            :: use_effcrs
   INTEGER, PARAMETER :: radc_msegsr = 5
   INTEGER            :: radc_nsegsr 
