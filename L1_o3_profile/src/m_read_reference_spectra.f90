@@ -3,11 +3,10 @@ module m_read_reference_spectra
 
   IMPLICIT NONE
 
-  public read_reference_spectra, read_one_refspec1
-  private !read_one_refspec
+  PUBLIC read_reference_spectra, read_one_refspec1
+  PRIVATE !read_one_refspec
 
-  
-contains
+CONTAINS  
 
   SUBROUTINE read_reference_spectra ( specunit, pge_error_status )
 
@@ -17,8 +16,9 @@ contains
     USE OMSAO_parameters_module, ONLY: max_spec_pts, &
          zerospec_string, vb_lev_develop
     USE OMSAO_variables_module,  ONLY: &
-         refspec_fname, refspec_firstlast_wav, refspec_norm, n_refspec_pts, &
-         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max, scnwrt
+         refspec_fname, refspec_norm, n_refspec_pts, &
+         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max, scnwrt 
+         ! refspec_firstlast_wav
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -48,7 +48,6 @@ contains
     ! ---------------
     INTEGER         :: i
     REAL (kind=dp)  :: wmin, wmax
-    REAL (kind=dp), DIMENSION(2) :: firstlast_wav
     REAL (kind=dp), DIMENSION(:,:), POINTER :: refonespec
 
     ! =================================
@@ -60,13 +59,14 @@ contains
     ! start with allocation
     !-------------------------------
     allocate(refonespec(max_spec_pts, spc_idx))
+
     ! ----------------------------
     ! Initialize output quantities
     ! ----------------------------
     n_refspec_pts         = 0
     refspec_norm          = 1.0
     refspec_orig_data     = 0.0
-    refspec_firstlast_wav = 0.0
+    !refspec_firstlast_wav = 0.0
     pge_error_status = pge_errstat_ok
 
     ! -----------------------------------------------------------
@@ -83,15 +83,12 @@ contains
           wmin = wmin - 1.0 ; wmax = wmax + 1.0
         ENDIF
 
-        CALL read_one_refspec1 ( &
-             specunit, &
+        CALL read_one_refspec1 (specunit, &
              refspec_fname(i), wmin, wmax, n_refspec_pts(i), &
-             firstlast_wav, refspec_norm(i), &
-             refonespec, &
-             pge_error_status)
+             refspec_norm(i), refonespec, pge_error_status)
 
-        refspec_firstlast_wav(i,wvl_idx:spc_idx) = firstlast_wav
         refspec_orig_data(i,1:max_spec_pts,wvl_idx:spc_idx) = refonespec
+        !refspec_firstlast_wav(i,wvl_idx:spc_idx) = firstlast_wav
 
         WRITE(www_lun, '(A80,/,2F10.2,I5,2F10.2, D14.6)') refspec_fname(i), winwav_min, &
                winwav_max, n_refspec_pts(i), refspec_orig_data(i, 1, wvl_idx), &
@@ -377,7 +374,7 @@ contains
   !      This subroutine can allow data gap in the reference if that portion of
   !      the orbit is not used so that we could use a smaller max_spec_pts
   SUBROUTINE read_one_refspec1 ( specunit, specname, winwav_min, winwav_max,&
-     nspec, specwav, specnorm, onespec, pge_error_status )
+     nspec,specnorm, onespec, pge_error_status )
 
     USE OMSAO_precision_module,   ONLY: dp
     USE OMSAO_indices_module,     ONLY: wvl_idx, spc_idx
@@ -400,7 +397,6 @@ contains
     INTEGER,                                                  INTENT (OUT) :: pge_error_status
     INTEGER,                                                  INTENT (OUT) :: nspec
     REAL (KIND=dp),                                           INTENT (OUT) :: specnorm
-    REAL (KIND=dp), DIMENSION (2),                            INTENT (OUT) :: specwav
     REAL (KIND=dp), DIMENSION (max_spec_pts,wvl_idx:spc_idx), INTENT (OUT) :: onespec
 
     ! ----------------
@@ -408,8 +404,9 @@ contains
     ! ----------------
     INTEGER  :: i, ip, ios, file_read_stat, imin, imax, nwin, iwin, fwin, lwin,wstep
     !INTEGER,        DIMENSION (max_spec_pts) :: irev
-    INTEGER,        DIMENSION (:), POINTER :: irev
-    REAL (KIND=dp), DIMENSION (:), POINTER :: x, y
+    INTEGER,        DIMENSION (:), POINTER   :: irev
+    REAL (KIND=dp), DIMENSION (:), POINTER   :: x, y
+    REAL (KIND=dp), DIMENSION (2)            :: specwav
     REAL (KIND=dp), DIMENSION (maxwin, 2)    :: wlim
     REAL (KIND=dp)                           :: xdum, xmin, xmax
     CHARACTER (LEN=maxchlen)                 :: lastline

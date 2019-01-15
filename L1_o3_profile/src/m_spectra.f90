@@ -26,7 +26,7 @@ contains
         wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
          fitwavs, fitvar_sol, mask_fitvar_sol, which_slit, fixslitcal, &
-         yn_varyslit, correct_lamda , rmask_fitvar_sol, correct_lamda
+         yn_varyslit, correct_lambda , rmask_fitvar_sol, correct_lambda
     USE OMSAO_slitfunction_module
     USE OMSAO_errstat_module
     USE m_ezspline_interpolation, only: interpolation
@@ -107,7 +107,7 @@ contains
     !     1 + FITVAR(SQU_IDX); do in absolute sense, 
     !     to make it easy to back-convert OMI data.
 
-    IF (correct_lamda == 1) THEN
+    IF (correct_lambda == 1) THEN
        kppos(1:npts)  = kppos(1:npts) * (1.0 + fitvar_sol(squ_idx)) + fitvar_sol(shi_idx)
     ELSE
        kppos(1:npts)  = kppos(1:npts) * (1.0 + fitvar_sol(squ_idx)) + fitvar_sol(shi_idx) - sol_wav_avg * fitvar_sol(squ_idx)

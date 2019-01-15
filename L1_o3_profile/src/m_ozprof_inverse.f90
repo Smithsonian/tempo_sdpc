@@ -53,7 +53,7 @@ contains
        ns, np, sa, bb, nchisq, fitspec, fitres, exval)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module,  ONLY: maxlay, ozwrtint_unit
+    USE OMSAO_parameters_module,  ONLY: maxlay
     USE ozprof_data_module,       ONLY: ffidx=>ozfit_start_index, &
          flidx=>ozfit_end_index, ozwrtint, num_iter, &
          avg_kernel, contri, covar, ncovar, ozdfs, ozinfo, use_oe, nlay, &
@@ -67,7 +67,7 @@ contains
     USE OMSAO_variables_module,   ONLY: fitvar_rad, mask_fitvar_rad, epsrel, &
          fitwavs, fitweights, maxit=>max_itnum_rad, clmspec_rad, nradpix, &
          numwin, currpix, currline, currloop, the_surfalt, &
-         band_selectors,nspc_omi!, &
+         band_selectors,nspc_omi, ozwrtint_unit!, &
     !the_sza_atm, the_vza_atm, scnwrt, npix_fitted, fitvar_rad_init, &
     !fitvar_rad_apriori
     USE OMSAO_indices_module,     ONLY: no2_t1_idx, so2_idx, bro_idx, &
@@ -673,11 +673,11 @@ contains
 
   END SUBROUTINE ozprof_inverse
 
-
   SUBROUTINE get_caloz (nl, pres, ozprof)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY : mflay, rearth, profunit
+    USE OMSAO_parameters_module, ONLY : mflay, rearth
+    USE OMSAO_variables_module,  ONLY : atmos_unit
     USE ozprof_data_module,      ONLY : caloz_fname
     USE OMSAO_errstat_module
 
@@ -709,26 +709,26 @@ contains
     CHARACTER (LEN=9), PARAMETER :: modulename = 'get_caloz'
 
     IF ( first ) THEN
-      OPEN(profunit, FILE=TRIM(ADJUSTL(caloz_fname)), STATUS='old')
-      READ(profunit, *) nz, oztyp
+      OPEN(atmos_unit, FILE=TRIM(ADJUSTL(caloz_fname)), STATUS='old')
+      READ(atmos_unit, *) nz, oztyp
       IF (nz > mflay) THEN
         WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'; STOP
       ENDIF
-      READ (profunit, *)
+      READ (atmos_unit, *)
       IF (oztyp <= 2) THEN
-        READ (profunit, *) ozs(1:nz)
+        READ (atmos_unit, *) ozs(1:nz)
       ELSE
-        READ (profunit, *) ozs(0:nz)
+        READ (atmos_unit, *) ozs(0:nz)
       ENDIF
 
       IF ( oztyp == 1 .AND. nz /= nl ) THEN
         WRITE(www_lun, *) modulename, ': Number of layers are inconsistent!!!'
         STOP 1
       ELSE
-        READ (profunit, *)
-        READ (profunit, *) ps(0:nz)  ! mb
+        READ (atmos_unit, *)
+        READ (atmos_unit, *) ps(0:nz)  ! mb
       ENDIF
-      CLOSE (profunit)
+      CLOSE (atmos_unit)
 
       IF (oztyp >= 2) THEN
         ! make profiles top-down

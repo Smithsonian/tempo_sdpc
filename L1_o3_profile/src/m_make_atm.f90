@@ -38,8 +38,8 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: p0, boltz, xmair, accgrav, ugc, avo, &
-         rearth, du2mol, profunit
-    USE OMSAO_variables_module, ONLY : sza => the_sza_atm, &
+         rearth, du2mol
+    USE OMSAO_variables_module, ONLY : profunit,sza => the_sza_atm, &
          the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline, &
          refspec_norm 
          !currline, n_refspec_pts, atmdbdir, database
@@ -62,7 +62,7 @@ contains
     USE m_utilities, ONLY: reverse
     use prepare_atmosphere, only: get_mipasig2t, get_v8temp, get_ecmwfavgt
     use m_get_cloud, only: get_cloud_miprop, get_tomsv8_ctp
-    use m_read_aerosol_prof
+    use m_get_aerosol, ONLY: read_aerosol_prof
     use m_get_o3prof, ONLY:get_o3prof
     use m_get_tracegas, ONLY: get_bro, get_no2, get_geoschem_hcho, get_geoschem_so2, get_afglus_h2o
     use m_get_ncep, ONLY:get_ncep_temp

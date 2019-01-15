@@ -1,10 +1,9 @@
 MODULE OMSAO_slitfunction_module
 
   USE OMSAO_precision_module
-  USE OMSAO_variables_module,  ONLY: refdbdir, coadd_uv2, currpix, &
-       band_selectors, numwin, winlim, nxbin, ncoadd
+  USE OMSAO_variables_module,  ONLY: refdbdir, calunit, &
+       coadd_uv2, currpix, band_selectors, numwin, winlim, nxbin, ncoadd
   USE OMSAO_omidata_module,    ONLY: nxtrack_max, nfxtrack
-  USE OMSAO_parameters_module,      ONLY: calunit
   USE OMSAO_errstat_module
   IMPLICIT NONE
 

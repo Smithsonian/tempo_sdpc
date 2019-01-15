@@ -92,7 +92,6 @@ contains
      ! Get Rayleigh scattering coefficients once
      CALL GET_ALL_RAYCOF(nsol_ring, swavs(1:nsol_ring), raycof(1:nsol_ring))
      
-     ! ozabs_convl will be changed after calling get_abscrs routine
     ENDIF
 
   IF (num_iter == 0) THEN

@@ -121,10 +121,7 @@ MODULE OMSAO_parameters_module
   CHARACTER (LEN=7), PARAMETER  :: othstr      = '*otherp'
   CHARACTER (LEN=7), PARAMETER  :: polstr      = '*polcor'
   CHARACTER (LEN=9), PARAMETER :: zerospec_string = 'Zero_Spec'
- INTEGER, PARAMETER :: lcurve_unit = 50, ozwrtint_unit = 51, atmos_unit = 52, &
-       tprofunit1 = 53, tprofunit2 = 54, profunit = 55,  &  ! two toms std profiles, ozprof
-       cldunit = 56, corr_unit = 57, l1l2inp_unit = 58, ozabs_unit = 59, calunit = 23,  &
-       l2funit = 22, l2swathunit = 24, rtm_unit=11
+
   ! -----------------------------------------------------------------
   ! Maximum number of molecules to fit. This number can be greater
   ! than ONE: We may include multiple reference spectra for the same

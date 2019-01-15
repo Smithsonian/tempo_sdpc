@@ -14,7 +14,7 @@ module m_radiance_fit
       mask_fitvar_sol, rmask_fitvar_sol, sol_wav_avg, &
       fitvar_sol_init, lo_sunbnd_init, up_sunbnd_init, fitvar_sol_saved, &
       which_slit, wavcal_sol, wavcal, fixslitcal, rslit_fname, poly_order, &
-      correct_lamda, xbin_decerr
+      correct_lambda, xbin_decerr
   USE OMSAO_errstat_module
   USE m_cal_fit_one
 
@@ -164,7 +164,7 @@ CONTAINS
       ! =================================
       ! fitvar_sol is updated in solar_fit_one through common module variables
       IF (wavcal) THEN
-        IF (correct_lamda == 1) THEN
+        IF (correct_lambda == 1) THEN
             allwaves(fidx:lidx) = (allwaves(fidx:lidx) - fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))     
         ELSE
             allwaves(fidx:lidx) = (allwaves(fidx:lidx) - fitvar_sol(shi_idx) + &
@@ -463,7 +463,7 @@ CONTAINS
         END IF
       END IF
 
-      IF (correct_lamda == 1) THEN
+      IF (correct_lambda == 1) THEN
          allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
                / (1.0 + locsqu(fidx:lidx))
      ELSE

@@ -3,12 +3,12 @@
 MODULE m_get_xcrs
    
    USE OMSAO_precision_module  
-   USE OMSAO_parameters_module, ONLY : max_spec_pts, maxchlen, zerok, ozabs_unit
+   USE OMSAO_parameters_module, ONLY : max_spec_pts, maxchlen, zerok
    USE OMSAO_indices_module, ONLY: so2_idx, so2v_idx, o2o2_idx, &
        o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, &
        solar_idx, wvl_idx, spc_idx, hwe_idx, spk_idx, &
                                    o3_t1_idx
-   USE OMSAO_variables_module,  ONLY : refdbdir, do_bandavg, &
+   USE OMSAO_variables_module,  ONLY : refdbdir, ozabs_unit,do_bandavg, &
        do_dsdw, do_dsdk,winwav_min,winwav_max, &
        n_refspec_pts, refspec_orig_data,  refspec_norm, database,refidx
    USE OMSAO_errstat_module
@@ -29,7 +29,9 @@ MODULE m_get_xcrs
    CHARACTER(maxchlen), PARAMETER :: h2oabs_fname='hitran_lut/h2o_lut_280-800nm_0p04fwhm.nc'
    CHARACTER(maxchlen), PARAMETER :: o2abs_fname='hitran_lut/o2_lut_280-800nm_0p04fwhm.nc'
 
-   ! saved variables for origianl abs spectrum
+   !----------------------------------------------------------------
+   ! Typed cross section for O3, O4, So2, T-dependent cross section
+   !------------------------------------------------------------------
    TYPE  txcrs_set
    INTEGER         :: nw, nt
    LOGICAL         :: tdepend, slitconv
@@ -40,24 +42,22 @@ MODULE m_get_xcrs
    REAL (KIND=dp), DIMENSION(:,:),POINTER :: crs  ! after convolution
    END TYPE  txcrs_set
 
-   TYPE  hitran_set
-    INTEGER         :: nw, nt
-    LOGICAL         :: tdepend=.false., slitconv=.false.
-    REAL (KIND=dp)  :: normc, minwav, maxwav
-    REAL (KIND=dp), DIMENSION(:),  POINTER :: wvl 
-    REAL (KIND=dp), DIMENSION(:,:),POINTER :: crs0 ! mflay,max_spec_pts
-    REAL (KIND=dp), DIMENSION(:,:),POINTER :: crs  ! after convolution
-   END TYPE  hitran_set
+   !-----------------------------------------------------------------
+   ! T-P dependent hitran LUT
+   !-----------------------------------------------------------------
+   INTEGER, PARAMETER :: maxw_ht=max_spec_pts, maxt_ht=19, maxp_ht=9
+   REAL (KIND=dp), DIMENSION (:,:,:), ALLOCATABLE :: o2_lut, h2o_lut, & !
+     o2_lut0,h2o_lut0
 
-   PUBLIC  geto3_crs, &
-           get_all_raycof,  &
-           get_alb_ozcrs_ray, &  ! nw = 1 for 347 nm
+   PUBLIC  geto3_crs, &           ! called in raman
+           get_all_raycof,  &     ! called in raman
+           get_alb_ozcrs_ray, &   ! nw = 1 for 347 nm
            get_hres_gascrs_ray, & ! nw > 1 without convolution
-           get_effres_gascrs_ray ! nw > 1 with convolution
-   PRIVATE
+           get_effres_gascrs_ray  ! nw > 1 with convolution
 
+   PRIVATE
    !PRIVATE read_txcrs, calc_crsz, & 
-   !        read_hitran_lut,& 
+   !        read_hitran_lut,calc_hitran_crsz, & 
    !        get_all_raycof_depol,get_all_raycof_depol1
    !        getabs_crs_hitran, geto4_crs, getso2_crs
 
@@ -65,22 +65,10 @@ CONTAINS
 
   SUBROUTINE allocate_txcrs (crs)
     TYPE (txcrs_set), INTENT(INOUT) :: crs
-    allocate (crs%wvl (max_spec_pts))
+    allocate (crs%wvl  (max_spec_pts))
     allocate (crs%crs0 (mxsect, max_spec_pts))
-    allocate (crs%crs (mxsect, max_spec_pts))
+    allocate (crs%crs  (mxsect, max_spec_pts))
   END SUBROUTINE  
-
-  SUBROUTINE deallocate_txcrs (crs)
-    TYPE (txcrs_set), INTENT(INOUT) :: crs
-    deallocate (crs%wvl, crs%crs0, crs%crs)
-  END SUBROUTINE  
-
-  SUBROUTINE allocate_hitran(crs)
-    TYPE (hitran_set), INTENT(INOUT) :: crs
-    allocate (crs%wvl (max_spec_pts))
-    allocate (crs%crs0(mflay, max_spec_pts))
-    allocate (crs%crs (mflay, max_spec_pts))
-  END SUBROUTINE
 
   SUBROUTINE geto3_crs  (lamda, nlsav, nlamda, nlayers, tsgrid, & 
                         abscrs, dods, dodt, dads, dadt,problems)
@@ -105,11 +93,10 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: i, j, errstat, ntemp, ni0,nline, nt
+  INTEGER            :: i, j, errstat, ntemp,nline, nt
   REAL (KIND=dp)     :: scalex, normc
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
   REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs, tmpabs_d1
-  REAL (KIND=dp), DIMENSION(maxt,maxline) :: crs_dp
   !-------------------------------------------------
   ! Save variables
   !-------------------------------------------------
@@ -146,6 +133,7 @@ CONTAINS
     do_dsdw = .false.; do_dsdk = .false. 
     scalex = 0.2 ! ~600 DU SUM(fozs(1:nflay)) * 2.69E16 * normc, now a dummy number, not used
     ! Perform solar i0 effect on ozone cross-section (no need to convolve)
+    o3%crs=o3%crs0
     DO i = 1, nt 
          CALL convol_i0effect(o3%wvl(1:nline),o3%crs(i, 1:nline), nline, scalex, errstat)
          IF ( errstat /= 0 ) THEN
@@ -193,7 +181,7 @@ CONTAINS
       tmpabs(i, :) = savabs(i, 1:nlamda)
       tmpabs_d1(i, :) = savabs_d1(i, 1:nlamda)
     ENDIF
-
+    
   ENDDO
   !database (o3_t1_idx,refidx(1:nlamda)) = tmpabs(1, 1:nlamda)
   abscrs = 0.0
@@ -201,9 +189,11 @@ CONTAINS
              nt, nlamda,o3%tdepend,o3%ts(1:nt),tsgrid(1:nlayers), nlayers, &
              dods,dodt ,abscrs(1:nlamda,1:nlayers), &
              dadsz=dads(1:nlamda, 1:nlayers), dadtz=dadt(1:nlamda, 1:nlayers) )
+
   IF (dods) dads = dads / abscrs   ! get relative sensitivty to shift
   IF (dodt) dadt = dadt / abscrs   ! get relative sensitivity to T
   abscrs = abscrs*normc
+
   RETURN  
   END SUBROUTINE geto3_crs
 
@@ -229,7 +219,7 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: fidx, lidx, i, j, errstat, ni0,nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, j, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
   LOGICAL            :: dods, dodt
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
@@ -313,14 +303,13 @@ CONTAINS
   RETURN  
   END SUBROUTINE getso2_crs
 
-  SUBROUTINE getabs_pslwf(lamda, nlsav, nlamda,  nlayers, tsgrid, & 
+  SUBROUTINE getabs_pslwf(lamda, nlsav, nlamda, nlayers, tsgrid, & 
                          slit_idx, dadp,problems)
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module,ONLY : zerok
   USE OMSAO_variables_module, ONLY : n_refspec_pts, refspec_orig_data, &
-      solwinfit, solwinfit_save, n_slitvar, mask_slitvar, numwin, nradpix_sav, &
-      do_dsdw, do_dsdk
+      solwinfit, solwinfit_save, numwin, nradpix_sav, do_dsdw, do_dsdk
   USE OMSAO_indices_module,   ONLY : solar_idx, wvl_idx, spc_idx, hwe_idx, spk_idx
   USE OMSAO_slitfunction_module
   IMPLICIT NONE
@@ -339,61 +328,48 @@ CONTAINS
   INTEGER, PARAMETER :: maxline  = max_spec_pts     ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3 
 
-  REAL (KIND=dp), DIMENSION(maxline, maxt)    :: inarr
-  REAL (KIND=dp), DIMENSION(maxline, maxt)    :: outarr
+  REAL (KIND=dp), DIMENSION(maxline) :: specmod
   REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs
-  REAL (KIND=dp), DIMENSION(nlamda, nlayers) :: abscrs0, abscrs
+  REAL (KIND=dp), DIMENSION(nlamda, nlayers) :: abscrs
 
-  INTEGER            :: i, j, k, errstat, npts, idx, lidx, fidx
+  INTEGER            :: i, j, k, errstat, npts, idx, lidx, fidx, nline
   REAL (KIND=dp)     :: thet
-  REAL (KIND=dp), DIMENSION(dp) :: scalex
-  REAL (KIND=dp), DIMENSION (nlamda)  :: i0
+  REAL (KIND=dp), DIMENSION (1) :: scalex
   !----------------------------------------------
   ! Save variables
   !------------------------------------------------
-  INTEGER, SAVE :: nline
   TYPE(txcrs_set), SAVE :: o3
-  REAL (KIND=dp),  SAVE, DIMENSION (maxline) :: refi0, refi0_ori
   LOGICAL, SAVE :: first = .true.
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER    :: modulename = 'getabs_o3'
+  CHARACTER (LEN=10), PARAMETER    :: modulename = 'getabs_pslwf'
 
   problems = .FALSE.
   IF (first) THEN
     CALL allocate_txcrs(o3) 
     CALL read_txcrs (winwav_min, winwav_max, o3_t1_idx, maxt, o3, problems)         
-     o3%crs = o3%crs0  
-     nline = o3%nw
+     o3%crs  = o3%crs0
      ! Obtain high resolution solar reference spectra
      IF ( problems ) THEN
         print * , modulename//'errors in read_txcrs'
         problems = .TRUE.; RETURN
      ENDIF
-  ! Obtain high resolution solar reference spectra
-     npts = n_refspec_pts(solar_idx)
-     CALL interpolation (npts, refspec_orig_data(solar_idx,1:npts,wvl_idx), &
-          refspec_orig_data(solar_idx,1:npts,spc_idx), nline, o3%wvl(1:nline),&
-          refi0_ori(1:nline), errstat)
-     IF ( errstat /=0  ) THEN
-        print * , modulename//'errrors in interpolation for solref'
-        problems = .TRUE.; RETURN
-     ENDIF
-     first = .FALSE.
      ozabs_convl = .true.
+     first = .FALSE.
   ENDIF
- 
+   
+  nline = o3%nw
   scalex = 0.2
   IF (ozabs_convl) THEN  
     do_dsdw = .false.  ; do_dsdk = .false. 
+    o3%crs=o3%crs0
     DO i = 1, o3%nt
-      CALL convolf2c_i0effect ( o3%wvl(1:nline), o3%crs0(i,1:nline),nline,1,scalex(1), &
-                                o3%wvl(1:nline), o3%crs(i,1:nline), nline)    
+      CALL convol_i0effect ( o3%wvl(1:nline), o3%crs(i,1:nline),nline,scalex(1), &
+                             errstat)    
     ENDDO
       ozabs_convl = .false.
   ENDIF
-
 
   !---------------------------------------------------------
   ! interpolation
@@ -416,15 +392,13 @@ CONTAINS
        abscrs(1:nlamda,i) = tmpabs(1,1:nlamda) + tmpabs(2,1:nlamda) * thet + tmpabs(3,1:nlamda)*thet *thet
   ENDDO
 
-  abscrs0 = abscrs
   ! with perterbated slit function
-  
   IF (which_pslwf  == 1) THEN 
      solwinfit_save = solwinfit
      solwinfit(1:numwin, slit_idx, 1) = solwinfit_save(1:numwin,slit_idx,1) *1.001
-
+     
      DO i = 1, o3%nt
-      CALL convolf2c_i0effect ( o3%wvl(1:nline), o3%crs0(i,1:nline),nline,1,scalex, &
+      CALL convolf2c_i0effect(o3%wvl(1:nline),o3%crs0(i,1:nline),nline,1,scalex(1), &
                                 lamda(1:nlamda), tmpabs(i,1:nlamda), nlamda)    
      ENDDO
 
@@ -433,7 +407,7 @@ CONTAINS
        thet = tsgrid(i) - zerok
        dadp(:,i) = tmpabs(1,:) + tmpabs(2,:) * thet + tmpabs(3,:)*thet *thet
      ENDDO
-     dadp = (dadp - abscrs0)
+     dadp = (dadp - abscrs)
      solwinfit = solwinfit_save
      fidx =1
      Do i = 1, numwin
@@ -447,7 +421,6 @@ CONTAINS
      ELSE IF (slit_idx == spk_idx) THEN 
          do_dsdw = .false.  ; do_dsdk = .true. 
      ENDIF
-   
      DO i = 1, o3%nt
       CALL convolf2c_i0effect ( o3%wvl(1:nline), o3%crs0(i,1:nline),nline,1,scalex, &
                                 lamda(1:nlamda), tmpabs(i,1:nlamda), nlamda)    
@@ -458,7 +431,8 @@ CONTAINS
      ENDDO
      do_dsdw = .false. ; do_dsdk = .false.
   ENDIF 
-  dadp(1:nlamda, 1:nlayers) =dadp(1:nlamda, 1:nlayers)/abscrs0(1:nlamda, 1:nlayers) 
+
+  dadp(1:nlamda, 1:nlayers) =dadp(1:nlamda, 1:nlayers)/abscrs(1:nlamda, 1:nlayers) 
   RETURN
  END SUBROUTINE getabs_pslwf
 
@@ -485,7 +459,7 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: fidx, lidx, i, j, errstat, ni0,nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, j, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
   LOGICAL            :: dods, dodt
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
@@ -515,10 +489,8 @@ CONTAINS
   ! convolution     
   !-----------------------------------------------------------------------------------------
   IF (o4crs_convl .AND. o4%slitconv) THEN  
-    scalex = 0.1! ~600 DU SUM(fozs(1:nflay)) * 2.69E16 * normc, now a dummy number, not used
+    scalex = 1 
     o4%crs(1:nt, 1:nline) = o4%crs0(1:nt, 1:nline)
-    ! Perform solar i0 effect on ozone cross-section (no need to convolve)
-    ni0 = n_refspec_pts(1)
     DO i = 1, nt 
          CALL convol_i0effect(o4%wvl(1:nline), o4%crs(i, 1:nline), nline, &
               scalex,  errstat)
@@ -571,8 +543,7 @@ CONTAINS
   END SUBROUTINE geto4_crs
 
   SUBROUTINE geto2_crs_hitran(lamda, nlsav, nlamda, nlayers, tsgrid, psgrid, & 
-                              abscrs, problems)
-  USE ozprof_data_module, ONLY: mflay
+                              abscrs, do_convl)
   IMPLICIT NONE
   
   !----------------------------------------------
@@ -581,85 +552,91 @@ CONTAINS
   INTEGER, INTENT(IN)                                     :: nlamda, nlsav, nlayers
   REAL (KIND=dp), INTENT(IN), DIMENSION(nlsav)            :: lamda
   REAL (KIND=dp), INTENT(IN), DIMENSION(nlayers)          :: tsgrid, psgrid
-  
+  LOGICAL, INTENT(IN) :: do_convl
   !------------------------------------------------- 
   ! Output variables
   !-------------------------------------------------
   REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs
-  LOGICAL, INTENT(OUT)                                    :: problems
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
-  INTEGER, PARAMETER   :: maxt = mflay             ! # of Ts or # of coeff.
-  INTEGER            :: fidx, lidx, i, j, errstat, ni0,nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, j, errstat, nline, nz, ntemp
   REAL (KIND=dp)     :: scalex
-  LOGICAL            :: do_i0corr,  dods, dodt
-  REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
-  REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs, tmpabs_d1
+  LOGICAL            :: do_i0corr, problems
+  REAL (KIND=dp), DIMENSION(nlayers, nlsav)   :: savabs
+  REAL (KIND=dp), DIMENSION(nlayers, nlamda)  :: tmpabs
+  REAL (KIND=dp), DIMENSION(maxline, nlayers) :: crsz
   !-------------------------------------------------
   ! Save variables
   !-------------------------------------------------
-  TYPE(hitran_set), SAVE :: o2
-  LOGICAL, SAVE :: first = .true.
+  INTEGER, SAVE :: nw_lut, nt_lut, np_lut
+  REAL (KIND=dp), SAVE ::wvl_lut(maxline), t_lut (maxt_ht), p_lut(maxp_ht)
+  LOGICAL, SAVE :: first = .TRUE.
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
   CHARACTER (LEN=10), PARAMETER    :: modulename = 'geto2_crs'
-  
+ 
+  !------------ 
   ! initialize
-  dods=.false. ; dodt = .false.
-  problems = .FALSE.
+  !-----------
   do_i0corr = .FALSE.
-
+  
   WRITE(www_lun, '(A)')  'scalex should be reconsidered'
   ! load origianl spectrum
   IF (first) THEN
-     CALL allocate_hitran(o2)
-     CALL read_hitran_lut(o2_idx,winwav_min, winwav_max, nlayers, tsgrid, psgrid, &
-     o2, problems) 
-     o2%crs = o2%crs0   
-     o2%nt = nlayers    
-     o2%slitconv=.false.
-     IF (o2%slitconv) o2crs_convl = .true.     
+     CALL read_hitran_lut(o2_idx, winwav_min, winwav_max, & 
+          nw_lut, nt_lut, np_lut, wvl_lut, t_lut, p_lut)
      first = .FALSE.
+     o2crs_convl = .true.
+     o2_lut = o2_lut0
   ENDIF
-
-  nline = o2%nw ; nt = o2%nt
-
-  !-----------------------------------------------------------------------------------------
+    
+  nline = nw_lut
+  !-----------------------------------------------------------
   ! convolution     
-  !-----------------------------------------------------------------------------------------
-  IF (o2crs_convl .AND. o2%slitconv) THEN  
+  !-----------------------------------------------------------
+  IF (do_convl .and. o2crs_convl) THEN  
+    o2_lut = o2_lut0
     scalex = 6.0E24! ~600 DU
-    o2%crs(1:nt, 1:nline) = o2%crs0(1:nt, 1:nline)
     ! Perform solar i0 effect on ozone cross-section (no need to convolve)
-    DO i = 1, nt 
+    DO i = 1, nt_lut
+    DO j = 1, np_lut
         IF (do_i0corr) THEN 
-         CALL convol_i0effect(o2%wvl(1:nline), o2%crs(i, 1:nline), nline, &
+          CALL convol_i0effect(wvl_lut(1:nline),o2_lut(1:nline,i,j), nline, &
               scalex,  errstat)
         ELSE
-         CALL convol(O2%wvl(1:nline),O2%crs(i, 1:nline), nline, errstat) 
+          CALL convol(wvl_lut(1:nline),o2_lut(1:nline,i,j), nline, errstat) 
         ENDIF
         IF ( errstat /= 0 ) THEN
           WRITE(*, *) modulename//': Error in Correct I0 Effect!!!'
           problems = .TRUE.; RETURN
         ENDIF
     ENDDO
-    o2crs_convl = .FALSE.
+    ENDDO
+    o2crs_convl = .false.
   ENDIF
 
+  !---------------------------------------------------------------------
+  ! interpolate onto T and P
+  !----------------------------------------------------------------------
+  nz = nlayers
+  CALL calc_hitran_crsz (o2_idx,nw_lut, nt_lut, np_lut, & 
+               t_lut, p_lut,& 
+               nz, tsgrid, psgrid, crsz(1:nw_lut,1:nz),problems)
+
   !------------------------------------------------------------------------
-  ! interpolation
+  ! interpolation onto W
   !-------------------------------------------------------------------------
   savabs = 0.0 
   tmpabs = 0.0 
 
-  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= o2%minwav)))
-  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= o2%maxwav)))
+  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= wvl_lut(1))))
+  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= wvl_lut(nline))))
 
-  DO i = 1, nt
-    CALL BSPLINE(o2%wvl(1:nline), o2%crs(i, 1:nline), nline, &
+  DO i = 1, nz
+    CALL BSPLINE(wvl_lut(1:nline), crsz(1:nline,i), nline, &
           lamda(fidx:lidx), savabs(i, fidx:lidx),lidx-fidx+1, errstat)
     IF (errstat < 0) THEN
           WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
@@ -668,7 +645,7 @@ CONTAINS
     IF (do_bandavg) THEN
       CALL avg_band_effozcrs(lamda, savabs(i, :), nlsav, ntemp, errstat)
       IF ( errstat /= 0 .OR. ntemp /= nlamda) THEN
-         WRITE(*, *) modulename//':SO2 crs Averaging Error: ', nlsav, nlamda, ntemp
+         WRITE(*, *) modulename//':o2 crs Averaging Error: ', nlsav, nlamda, ntemp
          problems = .TRUE.; RETURN
       ENDIF
       tmpabs(i, :) = savabs(i, 1:nlamda)
@@ -677,12 +654,12 @@ CONTAINS
     ENDIF
     abscrs(:, i) = tmpabs(i,:)
   ENDDO
+    
   RETURN  
   END SUBROUTINE geto2_crs_hitran
 
   SUBROUTINE geth2o_crs_hitran(lamda, nlsav, nlamda, nlayers, tsgrid, psgrid, & 
-                              abscrs, problems)
-  USE ozprof_data_module, ONLY: mflay
+                              abscrs, do_convl)
   IMPLICIT NONE
   
   !----------------------------------------------
@@ -691,84 +668,92 @@ CONTAINS
   INTEGER, INTENT(IN)                                     :: nlamda, nlsav, nlayers
   REAL (KIND=dp), INTENT(IN), DIMENSION(nlsav)            :: lamda
   REAL (KIND=dp), INTENT(IN), DIMENSION(nlayers)          :: tsgrid, psgrid
-  
+  LOGICAL, INTENT(IN) :: do_convl
   !------------------------------------------------- 
   ! Output variables
   !-------------------------------------------------
   REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs
-  LOGICAL, INTENT(OUT)                                    :: problems
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
-  INTEGER, PARAMETER   :: maxt = mflay             ! # of Ts or # of coeff.
-  INTEGER            :: fidx, lidx, i, j, errstat, nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, j, errstat, nline, nz, ntemp
   REAL (KIND=dp)     :: scalex
-  LOGICAL            :: do_i0corr, dods, dodt
-  REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
-  REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs, tmpabs_d1
+  LOGICAL            :: do_i0corr, problems
+  REAL (KIND=dp), DIMENSION(nlayers, nlsav)   :: savabs
+  REAL (KIND=dp), DIMENSION(nlayers, nlamda)  :: tmpabs
+  REAL (KIND=dp), DIMENSION(maxline, nlayers) :: crsz
   !-------------------------------------------------
   ! Save variables
   !-------------------------------------------------
-  TYPE(hitran_set), SAVE :: h2o
+  INTEGER, SAVE :: nw_lut, nt_lut, np_lut
+  REAL (KIND=dp), SAVE ::wvl_lut(maxline), t_lut (maxt_ht), p_lut(maxp_ht)
   LOGICAL, SAVE :: first = .true.
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
   CHARACTER (LEN=10), PARAMETER    :: modulename = 'geth2o_crs'
-  
+ 
+
+  !------------
   ! initialize
-  dods=.false. ; dodt = .false.
-  problems = .FALSE.
-  do_i0corr = .TRUE.
+  !-----------
+  do_i0corr = .FALSE.
 
   WRITE(www_lun, '(A)')  'scalex should be reconsidered'
   ! load origianl spectrum
   IF (first) THEN
-     CALL allocate_hitran(h2o)
-     CALL read_hitran_lut(h2o_idx,winwav_min, winwav_max, nlayers, tsgrid, psgrid, &
-     h2o, problems) 
-     h2o%crs = h2o%crs0   
-     h2o%slitconv=.false.
-     IF (h2o%slitconv) h2ocrs_convl = .true.     
+     CALL read_hitran_lut(h2o_idx, winwav_min, winwav_max, &
+          nw_lut, nt_lut, np_lut, wvl_lut, t_lut, p_lut)
      first = .FALSE.
+     h2ocrs_convl = .true.
+     h2o_lut = h2o_lut0
   ENDIF
 
-  nline = h2o%nw ; nt = h2o%nt
-
-  !-----------------------------------------------------------------------------------------
-  ! convolution     
-  !-----------------------------------------------------------------------------------------
-  IF (h2ocrs_convl .AND. h2o%slitconv) THEN  
-    scalex = 1.0E23! ~600 DU
-    h2o%crs(1:nt, 1:nline) = h2o%crs0(1:nt, 1:nline)
+  nline = nw_lut
+  !-----------------------------------------------------------
+  ! convolution
+  !-----------------------------------------------------------
+  IF (do_convl .and. h2ocrs_convl) THEN
+    h2o_lut = h2o_lut0
+    scalex = 6.0E24! ~600 DU
     ! Perform solar i0 effect on ozone cross-section (no need to convolve)
-    DO i = 1, nt 
-        IF (do_i0corr) THEN 
-         CALL convol_i0effect(h2o%wvl(1:nline), h2o%crs(i, 1:nline), nline, &
-              scalex, errstat)
+    DO i = 1, nt_lut
+    DO j = 1, np_lut
+        IF (do_i0corr) THEN
+          CALL convol_i0effect(wvl_lut(1:nline),h2o_lut(1:nline,i,j), nline, &
+              scalex,  errstat)
         ELSE
-         CALL convol(h2o%wvl(1:nline),h2o%crs(i, 1:nline), nline,errstat) 
+          CALL convol(wvl_lut(1:nline),h2o_lut(1:nline,i,j), nline, errstat)
         ENDIF
         IF ( errstat /= 0 ) THEN
           WRITE(*, *) modulename//': Error in Correct I0 Effect!!!'
           problems = .TRUE.; RETURN
         ENDIF
     ENDDO
-    h2ocrs_convl = .FALSE.
+    ENDDO
+    h2ocrs_convl = .false.
   ENDIF
+ 
+  !---------------------------------------------------------------------
+  ! interpolate onto T and P
+  !----------------------------------------------------------------------
+  nz = nlayers
+  CALL calc_hitran_crsz (h2o_idx,nw_lut, nt_lut, np_lut, &
+               t_lut, p_lut,&
+               nz, tsgrid, psgrid, crsz(1:nw_lut,1:nz),problems)
 
   !------------------------------------------------------------------------
-  ! interpolation
-  !-------------------------------------------------------------------------
+  ! interpolation onto W
+  !------------------------------------------------------------------------- 
   savabs = 0.0 
   tmpabs = 0.0 
 
-  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= h2o%minwav)))
-  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= h2o%maxwav)))
+  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= wvl_lut(1))))
+  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= wvl_lut(nline))))
 
-  DO i = 1, nt
-    CALL BSPLINE(h2o%wvl(1:nline),h2o%crs(i, 1:nline), nline, &
+  DO i = 1, nz
+    CALL BSPLINE(wvl_lut(1:nline), crsz(1:nline,i), nline, &
           lamda(fidx:lidx), savabs(i, fidx:lidx),lidx-fidx+1, errstat)
     IF (errstat < 0) THEN
           WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
@@ -777,18 +762,17 @@ CONTAINS
     IF (do_bandavg) THEN
       CALL avg_band_effozcrs(lamda, savabs(i, :), nlsav, ntemp, errstat)
       IF ( errstat /= 0 .OR. ntemp /= nlamda) THEN
-         WRITE(*, *) modulename//':SO2 crs Averaging Error: ', nlsav, nlamda, ntemp
+         WRITE(*, *) modulename//':h2o crs Averaging Error: ', nlsav, nlamda, ntemp
          problems = .TRUE.; RETURN
       ENDIF
-      tmpabs(i, :) = savabs(i, 1:nlamda)
-    ELSE
       tmpabs(i, :) = savabs(i, 1:nlamda)
     ENDIF
     abscrs(:, i) = tmpabs(i,:)
   ENDDO
+    
   RETURN  
   END SUBROUTINE geth2o_crs_hitran
-  
+
   SUBROUTINE get_all_raycof_depol(nw, waves, raycof, depol)
   IMPLICIT NONE
   !------------------
@@ -808,7 +792,7 @@ CONTAINS
   !     Rayleigh coefficient
   ! Using bodhaine et al, j. atm. oceanic tech. 16, 1854-1861, 1999.
   !--------------------------------------------------------------------
-
+  
   allocate ( sig(nw), sig2(nw), sig2p(nw), sig4(nw), fk_n2(nw),fk_o2(nw), fking(nw))
   sig =    1.0d3 / waves
   sig2 =   sig * sig
@@ -831,7 +815,7 @@ CONTAINS
 
   END SUBROUTINE get_all_raycof_depol
 
-  SUBROUTINE GET_ALL_RAYCOF(nw, waves, raycof)
+  SUBROUTINE get_all_raycof(nw, waves, raycof)
 
   IMPLICIT NONE
   !-------------------
@@ -859,9 +843,9 @@ CONTAINS
 
   RETURN
 
-  END SUBROUTINE GET_ALL_RAYCOF
+  END SUBROUTINE get_all_raycof 
 
-  SUBROUTINE GET_ALL_RAYCOF_DEPOL1(nw, waves, nw1, raycof, depol, do_first,problems)
+  SUBROUTINE get_all_raycof_depol1 (nw, waves, nw1, raycof, depol, do_first,problems)
   ! it is called for every pixels, so allocation/deaollocation is not applied.
   IMPLICIT NONE
 
@@ -875,9 +859,9 @@ CONTAINS
   ! Local variables
   INTEGER                               :: i, errstat, ni0, ntemp
   REAL (KIND=dp)                        :: scalex
-  REAL (KIND=dp), DIMENSION(nw)               :: raycof1, depol1
+  REAL (KIND=dp), DIMENSION(nw)         :: raycof1, depol1
 
-  INTEGER, SAVE                                 :: nref
+  INTEGER, SAVE                              :: nref
   REAL (KIND=dp), DIMENSION(:),POINTER, SAVE :: ray, dep, refwavs
   REAL (KIND=dp),                       SAVE :: rnorm, dnorm
   LOGICAL, SAVE                              :: first = .TRUE.
@@ -890,7 +874,7 @@ CONTAINS
      ni0 = n_refspec_pts(1); nref = ni0
      refwavs(1:nref) = refspec_orig_data(1, 1:ni0, 1)
 
-     CALL GET_ALL_RAYCOF_DEPOL(nref, refwavs, ray(1:nref), dep(1:nref))
+     CALL get_all_raycof_depol(nref, refwavs, ray(1:nref), dep(1:nref))
      rnorm = 1.0E-25; dnorm = 1.0E-2
      ray(1:nref) = ray(1:nref) / rnorm; dep(1:nref) = dep(1:nref) / dnorm
 
@@ -941,9 +925,9 @@ CONTAINS
   depol  = depol1(1:nw1)  * dnorm
 
   RETURN
-  END SUBROUTINE GET_ALL_RAYCOF_DEPOL1
+  END SUBROUTINE get_all_raycof_depol1
 
-  SUBROUTINE GET_ALB_OZCRS_RAY (nz, ts, ngas, abscrs, raycof, depol, problems)
+  SUBROUTINE get_alb_ozcrs_ray (nz, ts, ngas, abscrs, raycof, depol, problems)
 
   IMPLICIT NONE
   
@@ -1028,14 +1012,13 @@ CONTAINS
   
 
   RETURN
-  END SUBROUTINE GET_ALB_OZCRS_RAY
+  END SUBROUTINE get_alb_ozcrs_ray
 
-  SUBROUTINE get_effres_gascrs_ray (num_iter, nlsav, lamda, nlamda, &
-                                 nz, ts, ps,nfgas, allcol, rhos, &
-                                 do_o3shi, o3shi,do_tmpwf, do_o3hwe,do_o3spk, &
-                                 allcrs, dadsz, dadtz, & 
-                                 dadp1, dadp2,& 
-                                 raycof, depol,problems)
+  SUBROUTINE get_effres_gascrs_ray (& 
+   num_iter, nlsav, lamda, nlamda, nz, ts, ps,nfgas, allcol, rhos, &
+   do_o3shi, o3shi,do_tmpwf, do_o3hwe,do_o3spk, &
+   allcrs, dadsz, dadtz, dadp1, dadp2,raycof, depol,problems)
+
   USE OMSAO_indices_module, ONLY: so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx
   USE OMSAO_variables_module, ONLY: numwin, winlim, & 
       nradpix_sav, radwvl_sav, nradpix, database_save, database_shiwf,  &
@@ -1059,35 +1042,37 @@ CONTAINS
   REAL (KIND=dp), DIMENSION(nlamda, nfgas, nz), INTENT(OUT) :: allcrs
   LOGICAL, INTENT (OUT)                                 :: problems
   ! Local variables
+  LOGICAL :: do_convl
   INTEGER :: fidx, lidx, i, j,k, npts, nfgas1, errstat
   REAL (kind=dp) :: tmp, temp, normc
   REAL (KIND=dp), DIMENSION (nlsav) :: delshi, tmpwav, delpos, gshiwf
   REAL (KIND=dp), DIMENSION (:), POINTER :: tmprefspec, tmprefwav
-  REAL (KIND=dp), DIMENSION(:,:), POINTER  :: dumpz
-  ! Save variables
+  !--------------------------------
+  ! Save variables (max_fit_pts)
+  !--------------------------------
   LOGICAL :: first=.TRUE.
   TYPE crsz_group
     REAL (KIND=dp), DIMENSION(:), POINTER :: raycof, depol
-    REAL (KIND=dp), DIMENSION(:,:), POINTER  :: o3, so2, o4, o2,h2o, & ! max_fit_pts, mflay
+    REAL (KIND=dp), DIMENSION(:,:), POINTER  :: o3, so2, o4, o2,h2o, & 
                                            do3ds, do3dt, do3dhwe, do3dspk
   END TYPE crsz_group
   TYPE (crsz_group), SAVE :: crsz
+  !-------------------------------------------------
   ! Name of this subroutine/module 
   !-------------------------------------------------
   CHARACTER(10), PARAMETER :: modulename ='get_effcrs'
   
   IF (first) THEN
      allocate (tmprefspec(max_spec_pts), tmprefwav(max_spec_pts))
-     allocate (dumpz(max_fit_pts, mflay))
      allocate (crsz%raycof(max_fit_pts), crsz%depol(max_fit_pts)) 
      allocate (crsz%o3(max_fit_pts, mflay),crsz%do3ds(max_fit_pts, mflay))
      allocate (crsz%do3dt(max_fit_pts, mflay))
      allocate (crsz%do3dhwe(max_fit_pts, mflay))
      allocate (crsz%do3dspk(max_fit_pts, mflay))
-     allocate (crsz%so2(max_fit_pts, mflay))
-     allocate (crsz%o4(max_fit_pts, mflay))
-     allocate (crsz%o2(max_fit_pts, mflay))
-     allocate (crsz%h2o(max_fit_pts, mflay))
+     IF (use_so2dtcrs) allocate (crsz%so2(max_fit_pts, mflay))
+     IF (use_o4dtcrs)  allocate (crsz%o4(max_fit_pts, mflay))
+     IF (use_o2dptcrs) allocate (crsz%o2(max_fit_pts, mflay))
+     IF (use_h2odptcrs)allocate (crsz%h2o(max_fit_pts, mflay))
      first = .false. 
   ENDIF
 
@@ -1098,6 +1083,8 @@ CONTAINS
   ENDIF 
   raycof(1:nlamda) = crsz%raycof(1:nlamda) 
   depol(1:nlamda) = crsz%depol(1:nlamda)
+  
+
   delshi = 0.0
   IF (do_o3shi .AND. nos > 0 ) THEN 
     IF (do_subfit) THEN 
@@ -1138,7 +1125,7 @@ CONTAINS
       ENDDO
     ENDIF
   ENDIF
-
+  
   IF (num_iter == 0. .OR.  do_o3shi .OR. do_o3hwe .OR. do_o3spk) THEN 
      !IF (num_iter == 0) WRITE(*, *) modulename,' : Set up O3 absorption !!!'
      CALL geto3_crs(lamda - delshi, nlsav, nlamda, nz, ts, crsz%o3(1:nlamda,1:nz), &
@@ -1147,15 +1134,14 @@ CONTAINS
         WRITE(www_lun, *) modulename,' : Problems in reading O3 absorption !!!'
         RETURN
      ENDIF
-
      IF (do_o3hwe) THEN 
-        CALL getabs_pslwf(lamda-delshi, nlsav, nlamda,nz, ts,hwe_idx,dumpz, problems)
-         crsz%do3dhwe(1:nlamda,1:nz) = dumpz !/crsz%o3(1:nlamda,1:nz)
+        CALL getabs_pslwf(lamda-delshi, nlsav, nlamda,nz, ts,hwe_idx,& 
+                         crsz%do3dhwe(1:nlamda,1:nz), problems)
      ENDIF
      IF (do_o3spk ) THEN
         ! w.r.t slit shape factor
-        CALL getabs_pslwf(lamda-delshi, nlsav, nlamda,nz, ts,spk_idx,dumpz, problems)
-        crsz%do3dspk(1:nlamda,1:nz) = dumpz(1:nlamda,1:nz) !/crsz%o3(1:nlamda,1:nz)
+        CALL getabs_pslwf(lamda-delshi, nlsav, nlamda,nz, ts,spk_idx, &
+                         crsz%do3dhwe(1:nlamda,1:nz), problems)
      ENDIF
   ENDIF
 
@@ -1163,7 +1149,7 @@ CONTAINS
   IF ( num_iter == 0 .AND.  use_so2dtcrs) THEN
     !WRITE(*, *) modulename,' : Set up SO2 absorption !!!'
     CALL getso2_crs(lamda, nlsav, nlamda, nz, ts, &
-                           crsz%so2(1:nlamda, 1:nz), problems)
+                    crsz%so2(1:nlamda, 1:nz), problems)
     IF (problems) THEN
        WRITE(*, *) modulename, ' : Problems in reading SO2 absorption !!!'
       RETURN
@@ -1174,18 +1160,19 @@ CONTAINS
   IF (num_iter == 0 .AND. use_o4dtcrs) THEN
     !WRITE(*, *) modulename,' : Set up O4 absorption !!!'
     CALL geto4_crs(lamda, nlsav, nlamda,  nz, ts, &
-                           crsz%o4(1:nlamda, 1:nz), problems)
-    crsz%o4(1:nlamda, 1:nz) = crsz%o4(1:nlamda, 1:nz) !*1.0D10
+                  crsz%o4(1:nlamda, 1:nz), problems)
     IF (problems) THEN
        WRITE(*, *) modulename, ' : Problems in reading O4 absorption !!!'
       RETURN
     ENDIF
   ENDIF
   
+  do_convl = .true.
   ! GET T-dependent o2 cross section at instrument spectral resolution
   IF ( num_iter == 0 .AND. use_o2dptcrs) THEN
     !WRITE(*, *) modulename,' : Set up O2 absorption !!!'
-    CALL geto2_crs_hitran(lamda, nlsav, nlamda, nz,ts, ps, crsz%o2(1:nlamda, 1:nz), problems)
+    CALL geto2_crs_hitran(lamda, nlsav, nlamda, nz,ts, ps,&
+         crsz%o2(1:nlamda, 1:nz), do_convl)
     IF (problems) THEN
       WRITE(*, *) modulename, ' : Problems in getting H2O cross section!!!'
       RETURN
@@ -1196,7 +1183,7 @@ CONTAINS
   IF ( num_iter == 0 .AND. use_h2odptcrs) THEN
     !WRITE(*, *) modulename,' : Set up H2O absorption !!!'
     CALL geth2o_crs_hitran(lamda, nlsav, nlamda, nz, ts, ps, &
-                           crsz%h2o(1:nlamda, 1:nz), problems)
+                           crsz%h2o(1:nlamda, 1:nz), do_convl)
     IF (problems) THEN
       WRITE(*, *) modulename, ' : Problems in getting H2O cross section!!!'
       RETURN
@@ -1218,7 +1205,7 @@ CONTAINS
          ELSE IF (gasidxs(i) == o2o2_idx .AND. use_o4dtcrs) THEN 
            allcrs(1:nlamda, nfgas1, 1:nz) = crsz%o4(1:nlamda,1:nz)/normc
          ELSE IF (gasidxs(i) == o2_idx .AND. use_o2dptcrs) THEN 
-           allcrs(1:nlamda, nfgas1, 1:nz) = crsz%o2(1:nlamda,1:nz)
+           allcrs(1:nlamda, nfgas1, 1:nz) = crsz%o2(1:nlamda,1:nz)/normc
          ELSE IF (gasidxs(i) == h2o_idx .AND. use_h2odptcrs) THEN 
            allcrs(1:nlamda, nfgas1, 1:nz) = crsz%h2o(1:nlamda,1:nz)/normc
          ELSE 
@@ -1261,9 +1248,10 @@ CONTAINS
 ! just need to get once for each retrieval
 ! Other trace gas cross section: just need to get it once for all the retrievals
 ! if no shifts
-  SUBROUTINE get_hres_gascrs_ray (num_iter, nw, waves, nz, ts, ps, nfgas,allcol, rhos, &
-                                 do_o3shi, o3shi, do_tmpwf, & 
-                                 allcrs, raycof, depol, pge_error_status)
+  SUBROUTINE get_hres_gascrs_ray ( &
+             num_iter, nw, waves, nz, ts, ps, nfgas,allcol, rhos, &
+             do_o3shi, o3shi, do_tmpwf, & 
+             allcrs, raycof, depol, pge_error_status)
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module,ONLY  : max_spec_pts, zerok
@@ -1285,7 +1273,9 @@ CONTAINS
   USE OMSAO_errstat_module
   IMPLICIT NONE
 
+  !-----------------------------
   ! Input/output variables
+  !--------------------------------
   INTEGER, INTENT (IN)                                  :: nw, nz, nfgas, num_iter ! nw = ncalcp
   INTEGER, INTENT (OUT)                                 :: pge_error_status
   LOGICAL, INTENT (IN)                                  :: do_o3shi, do_tmpwf
@@ -1296,20 +1286,23 @@ CONTAINS
   REAL (KIND=dp), DIMENSION(nw), INTENT (OUT)           :: raycof, depol
   REAL (KIND=dp), DIMENSION(nw, nfgas, nz), INTENT(OUT) :: allcrs
 
+  !-----------------------------
   ! Local variables
-  INTEGER :: i, j, k, fidx, lidx,  npts, idum, nfgas1, errstat, nratio, nhalf, & 
-            maxw, maxz
-  LOGICAL                              :: problems, do_shi
+  !--------------------------------
+  INTEGER :: i, j, k, fidx, lidx,  npts, idum, nfgas1, errstat, nratio, nhalf
+  LOGICAL                              :: problems, do_shi, do_convl
   REAL (KIND=dp)                       :: tmp, so2sum, o4sum, o2sum,h2osum
   REAL (KIND=dp), DIMENSION(nhresp)    :: delshi, tmpwav, delpos ! (nhresp)
-  REAL (KIND=dp), DIMENSION(nhresp,nz) :: so2dadsz, o4dadsz, o2dadsz, h2odadsz,&
-                                          so2dadtz, o4dadtz, o2dadtz, h2odadtz ! (nhresp, nz)
+!  REAL (KIND=dp), DIMENSION(:, :), ALLOCATABLE ::so2dadsz, o4dadsz, o2dadsz, h2odadsz
+!  REAL (KIND=dp), DIMENSION(:, :), ALLOCATABLE ::so2dadtz, o4dadtz, o2dadtz, h2odadtz
+  REAL (KIND=dp), DIMENSION(nhresp, nz) ::so2dadsz, o4dadsz, o2dadsz, h2odadsz
+  REAL (KIND=dp), DIMENSION(nhresp, nz) ::so2dadtz, o4dadtz, o2dadtz, h2odadtz
 
   ! Save original O3/SO2 cross sections
   LOGICAL, SAVE :: do_so2shi, do_o4shi, do_o2shi, do_h2oshi, first = .TRUE.
+  LOGICAL, SAVE :: do_so2tmp=.false., do_o4tmp=.false., do_o2tmp=.false.,do_h2otmp=.false.
   INTEGER, SAVE :: so2sfidx, so2vsfidx, o4sfidx, o2sfidx, h2osfidx
   TYPE(txcrs_set), SAVE  :: o3, so2, o4
-  TYPE(hitran_set), SAVE :: o2, h2o
  ! Name of this subroutine/module
   ! ------------------------------
   CHARACTER (LEN=19), PARAMETER :: modulename = 'GET_HRES_GASCRS_RAY'
@@ -1319,22 +1312,6 @@ CONTAINS
    ! Load cross section at original grids
    !=====================================================
    IF (first) THEN
-     CALL allocate_txcrs (o3)
-     IF (use_so2dtcrs) THEN 
-        CALL allocate_txcrs (so2)
-     !   allocate(so2dadsz(nhresp, nz)) nz is not fixed
-     ENDIF
-     IF (use_o4dtcrs) THEN 
-        CALL allocate_txcrs (so2)
-     ENDIF
-     IF (use_o2dptcrs) THEN 
-       CALL allocate_hitran (o2)
-     ENDIF
-     IF (use_h2odptcrs) THEN 
-       CALL allocate_hitran (h2o)
-     ENDIF
-     
-     maxw=max_spec_pts ; maxz=mflay
      ! Obtain high resolution solar reference spectra
      npts = n_refspec_pts(solar_idx)
      CALL interpolation (npts, refspec_orig_data(solar_idx,1:npts,wvl_idx), &
@@ -1406,6 +1383,26 @@ CONTAINS
         ENDIF
      ENDDO
 
+     CALL allocate_txcrs (o3)
+     IF (use_so2dtcrs) THEN 
+        CALL allocate_txcrs (so2)
+        !allocate (so2dadsz(nhresp, mflay))
+        !allocate (so2dadtz(nhresp, mflay))
+     ENDIF
+     IF (use_o4dtcrs) THEN 
+        CALL allocate_txcrs (o4)
+        !allocate (o4dadsz(nhresp, mflay))
+        !allocate (o4dadtz(nhresp, mflay))
+     ENDIF
+     IF (use_o2dptcrs) THEN 
+        !allocate (o2dadsz(nhresp, mflay))
+        !allocate (o2dadtz(nhresp, mflay))
+     ENDIF
+     IF (use_h2odptcrs) THEN 
+        !allocate (h2odadsz(nhresp, mflay))
+        !allocate (h2odadtz(nhresp, mflay))
+     ENDIF 
+
      ! Obtain original O3 cross section (quadratic or individual T, shift, T-depen)
      CALL read_txcrs(winwav_min, winwav_max,o3_t1_idx,mxsect,o3,problems)
      IF (problems) THEN
@@ -1445,7 +1442,6 @@ CONTAINS
            ENDDO
         ENDIF
      ENDIF
-
      IF (use_o4dtcrs) THEN
         CALL read_txcrs(winwav_min, winwav_max,o2o2_idx, mxsect,o4,problems)
         IF (problems) THEN
@@ -1467,52 +1463,9 @@ CONTAINS
         ENDIF
      ENDIF
 
-     IF (use_o2dptcrs) THEN 
-       CALL read_hitran_lut (o2_idx,winwav_min, winwav_max, nz,ts,ps, o2, problems) 
-        IF (problems) THEN
-           WRITE(*, *) modulename, ' : Error in reading O4 cross sections!!!'
-           pge_error_status = pge_errstat_error; RETURN
-        ENDIF
-        IF (.NOT. do_o2shi) THEN 
-          DO i = 1, o2%nt
-              fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) > o2%wvl(1) )))
-              lidx=MINVAL(MAXLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) < o2%wvl(o2%nw) )))
-              CALL BSPLINE(o2%wvl(1:o2%nw),o2%crs0(i,1:o2%nw),o2%nw, & 
-                   hreswav(fidx:lidx),hres_o2(i, fidx:lidx), lidx-fidx+1, errstat)
-           IF (errstat < 0) THEN
-              WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
-              pge_error_status = pge_errstat_error; RETURN
-           ENDIF
-          ENDDO
-
-        ENDIF  
-     ENDIF
-     IF (use_h2odptcrs) THEN 
-       call read_hitran_lut (h2o_idx,winwav_min, winwav_max, nz,ts, ps, & 
-                                h2o, problems)
-       IF (problems) THEN
-           WRITE(*, *) modulename, ' : Error in reading O4 cross sections!!!'
-           pge_error_status = pge_errstat_error; RETURN
-       ENDIF
-        IF (.NOT. do_h2oshi) THEN 
-          DO i = 1, h2o%nt 
-              fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) > h2o%wvl(1) )))
-              lidx=MINVAL(MAXLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) < h2o%wvl(h2o%nw) )))
-              CALL BSPLINE(h2o%wvl(1:h2o%nw),h2o%crs0(i,1:h2o%nw),h2o%nw, & 
-                   hreswav(fidx:lidx),hres_h2o(i, fidx:lidx), lidx-fidx+1, errstat)
-
-
-           IF (errstat < 0) THEN
-              WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
-              pge_error_status = pge_errstat_error; RETURN
-           ENDIF
-          ENDDO
-        ENDIF  
-
-      ENDIF
     first = .FALSE.
     ENDIF
-    !======================================================================
+
     ! Interpolate onto instrument resolution
     !======================================================================
     ! Interpolate ozone cross section
@@ -1582,13 +1535,13 @@ CONTAINS
        ENDIF
        o3crsz(1:nhresp, 1:nz) = o3crsz(1:nhresp, 1:nz) * o3%normc
    ENDIF
+
    ! Saved O3 crs variables
    allcrs(1:ncalcp, 1, 1:nz) = o3crsz(radcidxs(1:ncalcp), 1:nz)
-   !print * , allcrs(1:ncalcp, 1, 1:nz), ncalcp
-   !print * , HREswav(radcidxs(1:ncalcp))
    DO i = 1, nz
        hresgabs(1:nhresp, i) = o3crsz(1:nhresp, i) * allcol(1, i)
    ENDDO
+
    ! Get SO2 cross sections
    IF (use_so2dtcrs) THEN
      fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) >so2%wvl(1) )))
@@ -1609,7 +1562,7 @@ CONTAINS
      IF (num_iter == 0 .OR. do_so2shi .OR. do_tmpwf) THEN
        so2crsz = 0.0; so2dadsz=0.0
        problems = calc_crsz (hres_so2(1:so2%nt, fidx:lidx), hres_so2shi(1:so2%nt,fidx:lidx), &
-       so2%nt,lidx-fidx+1, so2%tdepend, so2%ts(1:so2%nt), ts(1:nz), nz, do_so2shi,.false., &
+       so2%nt,lidx-fidx+1, so2%tdepend, so2%ts(1:so2%nt), ts(1:nz), nz, do_so2shi,do_so2tmp, &
        so2crsz(fidx:lidx, 1:nz), dadsz=so2dadsz(fidx:lidx, 1:nz),dadtz=so2dadtz(fidx:lidx, 1:nz)) 
        IF (do_so2shi) THEN  
          so2dadsz(1:nhresp, 1:nz) = so2dadsz(1:nhresp, 1:nz) /so2crsz(1:nhresp, 1:nz)
@@ -1638,9 +1591,8 @@ CONTAINS
      IF (num_iter == 0 .OR. do_o4shi .OR. do_tmpwf) THEN
        o4crsz=0.0 ; o4dadsz = 0.0
        problems = calc_crsz (hres_o4(1:o4%nt, fidx:lidx),hres_o4shi(1:o4%nt,fidx:lidx), &
-           o4%nt,lidx-fidx+1, o4%tdepend, o4%ts(1:o4%nt), ts(1:nz), nz,do_o4shi,.false., &
+           o4%nt,lidx-fidx+1, o4%tdepend, o4%ts(1:o4%nt), ts(1:nz), nz,do_o4shi,do_o4tmp, &
            o4crsz(fidx:lidx, 1:nz), dadsz=o4dadsz(fidx:lidx, 1:nz),dadtz=o4dadtz(fidx:lidx, 1:nz))
-           o4crsz(fidx:lidx, 1:nz) = o4crsz(fidx:lidx, 1:nz) !*1.0D20
        IF (do_o4shi) THEN              
          o4dadsz(fidx:lidx, 1:nz) =o4dadsz(fidx:lidx, 1:nz) /o4crsz(fidx:lidx, 1:nz)
        ENDIF
@@ -1650,70 +1602,26 @@ CONTAINS
 
    ! Get O2 cross section
    IF (use_o2dptcrs) THEN 
-     fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) > o2%minwav )))
-     lidx=MINVAL(MAXLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) < o2%maxwav )))
-
-     IF (do_o2shi) THEN
-       write(*,*) 'Need more consideration when it is implemented'
-       DO i = 1, o2%nt ! no2t = nz
-         idum = o2sfidx
-         tmp = fitvar_rad(rmask_fitvar_rad(idum))
-         CALL BSPLINE2(o2%wvl(1:o2%nw), o2%crs0(i,1:o2%nw),o2%nw,do_o2shi, &
-                 hreswav(fidx:lidx) - tmp, hres_o2(i, fidx:lidx),hres_o2shi(i,fidx:lidx), &
-                 lidx-fidx+1, errstat)
-         IF (errstat < 0) THEN
-          WRITE(*, *) modulename, ': BSPLINE2 error, errstat = ', errstat
-           pge_error_status = pge_errstat_error; RETURN
-         ENDIF
-       ENDDO
-     ENDIF
-     IF (num_iter == 0 .OR. do_o2shi .OR. do_tmpwf) THEN
+     IF (num_iter == 0) THEN  
+       do_convl = .false.
        o2crsz=0.0 ;o2dadsz=0.0
-       DO i = 1, nz 
-          ! print * , hres_o2(i, fidx:lidx)
-          o2crsz(fidx:lidx, i) = hres_o2(i,fidx:lidx)
-          IF (do_o2shi) THEN
-          o2dadsz(fidx:lidx, i) = hres_o2shi(i,fidx:lidx)/o3crsz(fidx:lidx, i)
-          ENDIF
-       ENDDO
-       o2crsz(1:nhresp, 1:nz) = o2crsz(1:nhresp, 1:nz) * o2%normc
+       CALL geto2_crs_hitran (hreswav(1:nhresp), nhresp, nhresp, & 
+             nz,ts, ps, o2crsz(1:nhresp, 1:nz), do_convl)
      ENDIF
    ENDIF  
 
    ! Get h2o cross section
    IF (use_h2odptcrs) THEN 
-     fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) > h2o%minwav )))
-     lidx=MINVAL(MAXLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) < h2o%maxwav )))
-     IF (do_h2oshi) THEN
-       DO i = 1, h2o%nt ! no2t = nz
-           idum = h2osfidx
-           tmp = fitvar_rad(rmask_fitvar_rad(idum))
-           CALL BSPLINE2(h2o%wvl(1:h2o%nw),h2o%crs0(i,1:h2o%nw),h2o%nw,do_h2oshi, &
-                 hreswav(fidx:lidx) - tmp, hres_h2o(i, fidx:lidx),hres_h2oshi(i,fidx:lidx), &
-                 lidx-fidx+1, errstat)
-           IF (errstat < 0) THEN
-             WRITE(*, *) modulename, ': BSPLINE2 error, errstat = ', errstat
-             pge_error_status = pge_errstat_error; RETURN
-           ENDIF
-       ENDDO
-     ENDIF
-     IF (num_iter == 0 .OR. do_h2oshi .OR. do_tmpwf) THEN
-       h2ocrsz = 0.0 ; h2odadsz=0.0
-     CALL geth2o_crs_hitran(hreswav(1:nhresp),nhresp,nhresp, nz, ts, ps, &
-              h2ocrsz(1:nhresp, 1:nz), problems)
-       DO i = 1, nz 
-         hres_h2o(i,:) = h2ocrsz(:,i)
-         h2ocrsz(fidx:lidx, i) = hres_h2o(i,fidx:lidx)
-         IF (do_h2oshi) THEN
-           h2odadsz(fidx:lidx,i) = hres_h2oshi(i,fidx:lidx)/h2ocrsz(fidx:lidx, i)
-         ENDIF
-       ENDDO
-       h2ocrsz(1:nhresp, 1:nz) = h2ocrsz(1:nhresp, 1:nz) * h2o%normc
+     IF (num_iter == 0) THEN  
+       do_convl = .false.
+       h2ocrsz=0.0 ;h2odadsz=0.0
+       CALL geth2o_crs_hitran (hreswav(1:nhresp), nhresp, nhresp, & 
+             nz,ts, ps, h2ocrsz(1:nhresp, 1:nz), do_convl)
      ENDIF
    ENDIF  
+
    
    ! Obtain high resolution cross sections of other trace gases
-   nfgas1 = 1
    IF (do_so2shi) THEN
      so2dads(1:nhresp) = 0.D0; so2sum = 0.D0
    ENDIF
@@ -1824,7 +1732,7 @@ CONTAINS
        hresray(1:nhresp, i) = rhos(i) * hres_raycof(1:nhresp)
     ENDDO
     RETURN
-  END SUBROUTINE GET_HRES_GASCRS_RAY
+  END SUBROUTINE get_hres_gascrs_ray
 
   ! Read T-dependent cross sections (O3, SO2, O4) at original grids
   !----------------------------------------------------------------------------------
@@ -1910,7 +1818,7 @@ CONTAINS
     !txcrs%crs0(1:txcrs%nt, 1:txcrs%nw) = txcrs%crs0(1:txcrs%nt, 1:txcrs%nw)*txcrs%normc
     refspec_norm (gas_idx) = txcrs%normc
 
-    WRITE(www_lun,*) 'N of refspectrum:', txcrs%nw 
+    WRITE(www_lun,*) 'N of refspectrum:', txcrs%nw ,'normc', txcrs%normc
   RETURN
   END SUBROUTINE read_txcrs
 
@@ -1994,57 +1902,60 @@ CONTAINS
      RETURN
   END FUNCTION calc_crsz
 
-  SUBROUTINE read_hitran_lut (gas_idx, win_min, win_max, nz, temp, press, &
-                                 hicrs,fail)
+  SUBROUTINE read_hitran_lut (gas_idx, win_min, win_max, & 
+                              nw, nt, np, wvl, ts, ps)
+
     ! ORIGINAL CODE : GC_xsections_module.f90 (M. Chris ?)
     USE OMSAO_indices_module, ONLY: h2o_idx, h2ot2_idx, o2_idx, o2t2_idx
-    USE ozprof_data_module, ONLY:mflay
     IMPLICIT NONE
     INCLUDE 'netcdf.inc'
+    !----------------------------------
     !Input
-    INTEGER, INTENT(IN) :: gas_idx, nz 
+    !---------------------------------
+    INTEGER, INTENT(IN) :: gas_idx
     REAL (KIND=dp) :: win_min, win_max
-    REAL (KIND=dp), DIMENSION (nz) :: press, temp    
-    !Output
-    TYPE(hitran_set) :: hicrs
-    LOGICAL, INTENT(OUT) :: fail
+    !---------------------------------
+    !Output 
+    !---------------------------------
+    INTEGER, INTENT(OUT) :: nw, nt, np
+    REAL (KIND=dp), INTENT(OUT), DIMENSION (max_spec_pts) :: wvl
+    REAL (KIND=dp), INTENT(OUT), DIMENSION (maxt_ht) :: ts
+    REAL (KIND=dp), INTENT(OUT), DIMENSION (maxp_ht) :: ps
+    !---------------------------------
     !Local variables
+    !---------------------------------
     ! helper for reading nc file
     CHARACTER (LEN=100) :: filename
     INTEGER :: ncid, rcode, var_id
     INTEGER :: posdim, pdim, Tdim
     CHARACTER(len=maxchlen) :: message
     CHARACTER(len=31) :: dimname
-    LOGICAL :: file_exist
+    LOGICAL :: file_exist, fail
     ! helper for LUT interpolation
     INTEGER :: i, j, errstat
     INTEGER :: tidx, pidx, fidx, lidx
     REAL (KIND=dp) :: tfrac, pfrac
-    ! Saved variables
+    !-------------------------------------------------------------------
+    ! LUT variables
+    !--------------------------------------------------------------------
     INTEGER :: nwvl_lut, np_lut, nT_lut
     REAL(KIND=8), ALLOCATABLE, DIMENSION(:)  :: T_lut, p_lut, wvl_lut
     REAL(KIND=8), ALLOCATABLE, DIMENSION(:,:,:)  :: xs_lut
-    REAL(KIND=8), ALLOCATABLE, DIMENSION(:)      :: xs_int, sol_lut
-    REAL(KIND=dp):: pmin, pmax, Tmin, Tmax, wmin, wmax,min_wvl, max_wvl
-    
-    CALL allocate_hitran (hicrs)
+    !------------------------------------------------------------------
 
     fail = .false.
     IF (gas_idx == h2o_idx .or. gas_idx == h2ot2_idx) THEN 
         filename = ADJUSTL(TRIM(refdbdir))//ADJUSTL(TRIM(h2oabs_fname))
-        hicrs%slitconv = .false. ; hicrs%normc = 1.0
     ELSE IF (gas_idx == o2_idx .or. gas_idx == o2t2_idx) THEN 
         filename = ADJUSTL(TRIM(refdbdir))//ADJUSTL(TRIM(o2abs_fname))
-        hicrs%slitconv = .false. ; hicrs%normc = 1.0
     ELSE
         write(*,*) 'this gas cross section is not provided from hitran'
     ENDIF
 
     INQUIRE (FILE= TRIM(ADJUSTL(filename)), EXIST= file_exist)
     IF (.not. file_exist) THEN
-        write(*,*) "No exsit:"//filename
-        fail = .true.;return
-    ENDIF
+        write(*,*) "No exsit:"//filename ; stop
+    ENDIF 
 
     ! ================================================================
     ! Open netCDF file and allocate arrays
@@ -2052,57 +1963,48 @@ CONTAINS
     ! Open file in read mode
     ncid = ncopn(trim(adjustl(filename)), nf_Nowrite, rcode)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncopn failed'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncopn failed' ; stop
     endif
    ! Get the wavelength dimension
     posdim = ncdid(ncid, 'npos', RCODE)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(npos)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdid failed(npos)' ;stop
     endif
 
     ! Read wavelength dimension
     call ncdinq(ncid, posdim, dimname, nwvl_lut, rcode)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(npos)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdinq failed(npos)' ;stop
     endif
 
     ! Get the temperature dimension
     Tdim = ncdid(ncid, 'nT', RCODE)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(nT)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdid failed(nT)' ;stop
     endif
    ! Read temperature  dimension
     call ncdinq(ncid, Tdim, dimname, nT_lut, rcode)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(nT)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdinq failed(nT)' ; stop
     endif
 
     ! Get the pressure dimension
     pdim = ncdid(ncid, 'np', RCODE)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(np)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdid failed(np)' ; stop
     endif
 
     ! Read the pressure  dimension
     call ncdinq(ncid, pdim, dimname, np_lut, rcode)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(np)'
-       fail = .true.; return
+       message =  ' error in read_xy_nc_prof: ncdinq failed(np)' ; stop
     endif
 
     ! Allocate arrays
     ALLOCATE(wvl_lut(nwvl_lut))
-    ALLOCATE(T_lut(nT_lut))
+    ALLOCATE(t_lut(nt_lut))
     ALLOCATE(p_lut(np_lut))
-    ALLOCATE(xs_lut(nwvl_lut,nT_lut,np_lut))
-    ALLOCATE(xs_int(nwvl_lut))
-    
+    ALLOCATE(xs_lut(nwvl_lut,nt_lut,np_lut))
     ! ================================================================
     ! Read the variables
     ! ================================================================
@@ -2178,60 +2080,93 @@ CONTAINS
     endif
     
 
-    ! Get max/min p and T
-    pmin = minval(p_lut)
-    pmax = maxval(p_lut)
-    Tmin = minval(T_lut)
-    Tmax = maxval(T_lut)
-    wmin = minval(wvl_lut)
-    wmax = maxval(wvl_lut)
     ! ================================================================
     ! Interpolate spectra
     ! ================================================================
     ! this spectra has the dependence on temperature and thence
     ! it should be updated if temperature is included as state vector     
-      hicrs%crs0  = 0.0 ; hicrs%wvl=0.0
-      fidx=MINVAL(MINLOC( wvl_lut(1:nwvl_lut),MASK=(wvl_lut(1:nwvl_lut) > win_min )))
-      lidx=MINVAL(MAXLOC( wvl_lut(1:nwvl_lut),MASK=(wvl_lut(1:nwvl_lut) < win_max )))
-      !print * , wvl_lut(fidx), wvl_lut(lidx), fidx, lidx
-      hicrs%nw = lidx  - fidx + 1
-      hicrs%wvl(1:hicrs%nw) = wvl_lut(fidx:lidx)
-      hicrs%minwav = wvl_lut(fidx) 
-      hicrs%maxwav = wvl_lut(lidx)
-      hicrs%nt = nz
-      DO i = 1, nz
-        pidx = minval(maxloc(p_lut(1:np_lut), MASK=(p_lut(1:np_lut) < press(i)) ))
-        IF (press(i) <= pmin) THEN 
-            pidx = 1 ; pfrac = 1.0
-        ENDIF
-        IF (press(i) >= pmax) THEN 
-            pidx = np_lut-1 ; pfrac = 0.0
-        ENDIF 
-        pfrac = 1.0- (press(i)-p_lut(pidx))/(p_lut(pidx+1) - p_lut(pidx)) 
+    fidx=MINVAL(MINLOC( wvl_lut(1:nwvl_lut),MASK=(wvl_lut(1:nwvl_lut) > win_min )))
+    lidx=MINVAL(MAXLOC( wvl_lut(1:nwvl_lut),MASK=(wvl_lut(1:nwvl_lut) < win_max )))
+    nw = lidx - fidx + 1
+    wvl (1:nw) = wvl_lut(fidx:lidx)
+    nt = nt_lut 
+    np = np_lut
+    ps (1:np) = p_lut(1:np)
+    ts (1:nt) = t_lut(1:nt)
+    IF (gas_idx == o2_idx) THEN 
+        allocate (o2_lut(nw, nt, np), o2_lut0(nw, nt, np))
+        o2_lut0 (1:nw, 1:nt, 1:np) = xs_lut(fidx:lidx, 1:nt,1:np)
+    ELSE IF (gas_idx == h2o_idx) THEN 
+        allocate (h2o_lut(nw, nt, np), h2o_lut0(nw, nt, np))
+        h2o_lut0 (1:nw, 1:nt, 1:np) = xs_lut(fidx:lidx, 1:nt,1:np)
+    ENDIF
+    DEALLOCATE (wvl_lut, t_lut, p_lut, xs_lut)
+    RETURN 
+  END SUBROUTINE read_hitran_lut 
+ 
+  SUBROUTINE calc_hitran_crsz (gas_idx,nw_lut, nt_lut, np_lut, &
+                               t_lut, p_lut,  & 
+                              nz, temp,press, crsz,fail)
+   IMPLICIT NONE
+  !------------------------------
+  ! input variables
+  !------------------------------
+   INTEGER, INTENT(IN) :: gas_idx,nz, nw_lut, nt_lut, np_lut
+   REAL (KIND=dp), DIMENSION (nt_lut), INTENT(IN) :: t_lut
+   REAL (KIND=dp), DIMENSION (np_lut), INTENT(IN) :: p_lut
+   REAL (KIND=dp), DIMENSION (nz), INTENT(IN) :: press, temp
+  !------------------------------
+  ! output variables
+  !------------------------------
+   REAL (KIND=dp), DIMENSION (nw_lut, nz), INTENT(OUT) :: crsz
+   LOGICAL, INTENT(OUT) :: fail
+  !-----------------------------
+  ! local variables
+  !-----------------------------
+   INTEGER :: i, pidx, tidx
+   REAL (KIND=dp) :: pmin, pmax, tmin, tmax, pfrac, tfrac
+   fail = .false.
+  ! Get max/min p and T
+    pmin = minval(p_lut)
+    pmax = maxval(p_lut)
+    Tmin = minval(T_lut)
+    Tmax = maxval(T_lut)  
+  
+  ! interpolation
+  DO i = 1, nz
+    pidx = minval(maxloc(p_lut(1:np_lut), MASK=(p_lut(1:np_lut) < press(i))))
+    IF (press(i) <= pmin) THEN
+        pidx = 1 ; pfrac = 1.0
+    ENDIF
+    IF (press(i) >= pmax) THEN
+        pidx = np_lut-1 ; pfrac = 0.0
+    ENDIF
+    pfrac = 1.0- (press(i)-p_lut(pidx))/(p_lut(pidx+1) - p_lut(pidx))
 
-        tidx = minval(maxloc(t_lut(1:nt_lut), MASK=(t_lut(1:nt_lut) < temp(i)) ))
-        IF (temp(i) <= tmin) THEN 
-            tidx = 1 ; tfrac = 1.0
-        ENDIF
-        IF (temp(i) >= tmax) THEN 
-            tidx = nt_lut-1 ; tfrac = 0.0
-        ENDIF 
-        tfrac = 1.0- (temp(i)-t_lut(tidx))/(t_lut(tidx+1) - t_lut(tidx)) 
-        hicrs%crs0(i, 1:hicrs%nw) = xs_lut(fidx:lidx, tidx, pidx)*tfrac*pfrac + &
-                         xs_lut(fidx:lidx, tidx+1, pidx+1)*(1.0-tfrac)*(1.0-pfrac) + &
-                         xs_lut(fidx:lidx, tidx, pidx+1)*tfrac*(1.0-pfrac) + &
-                         xs_lut(fidx:lidx, tidx+1, pidx)*(1.0-tfrac)*pfrac
-      ENDDO
-      WRITE(www_lun,*) 'N of HT reference spectrum:', hicrs%nw
-    DEALLOCATE(wvl_lut)
-    DEALLOCATE(T_lut)
-    DEALLOCATE(p_lut)
-    DEALLOCATE(xs_lut)
-    DEALLOCATE(xs_int)
-    
-    return 
-  END SUBROUTINE
-END MODULE m_get_xcrs
+    tidx = minval(maxloc(t_lut(1:nt_lut), MASK=(t_lut(1:nt_lut) < temp(i))))
+    IF (temp(i) <= tmin) THEN
+       tidx = 1 ; tfrac = 1.0
+    ENDIF
+    IF (temp(i) >= tmax) THEN
+       tidx = nt_lut-1 ; tfrac = 0.0
+    ENDIF
+    tfrac = 1.0- (temp(i)-t_lut(tidx))/(t_lut(tidx+1) - t_lut(tidx))
+    IF (gas_idx == o2_idx) THEN 
+    crsz(1:nw_lut, i) = o2_lut(1:nw_lut, tidx, pidx)*tfrac*pfrac + &
+                        o2_lut(1:nw_lut, tidx+1,pidx+1)*(1.0-tfrac)*(1.0-pfrac) + &
+                        o2_lut(1:nw_lut, tidx, pidx+1)*tfrac*(1.0-pfrac) + &
+                        o2_lut(1:nw_lut, tidx+1, pidx)*(1.0-tfrac)*pfrac
+    ELSE IF (gas_idx == h2o_idx) THEN 
+    crsz(1:nw_lut, i) = h2o_lut(1:nw_lut, tidx, pidx)*tfrac*pfrac + &
+                        h2o_lut(1:nw_lut, tidx+1,pidx+1)*(1.0-tfrac)*(1.0-pfrac) + &
+                        h2o_lut(1:nw_lut, tidx, pidx+1)*tfrac*(1.0-pfrac) + &
+                        h2o_lut(1:nw_lut, tidx+1, pidx)*(1.0-tfrac)*pfrac
+    ENDIF
+  ENDDO
+  RETURN
+  END SUBROUTINE calc_hitran_crsz
+
+  END MODULE m_get_xcrs
 
 !SUBROUTINE GET_RAYCOF_DEPOL(lamda, raycof, depol)
 !

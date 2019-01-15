@@ -7,10 +7,11 @@
 ! 6. Close File/Swath
 
 MODULE he5_output_module
-  USE OMSAO_parameters_module, ONLY: maxwin, max_fit_pts, maxlay,mswath,l2funit, l2swathunit
+  USE OMSAO_parameters_module, ONLY: maxwin, max_fit_pts, maxlay,mswath
   USE OMSAO_HE5_module
   USE he5_l2writer_class
-  USE OMSAO_variables_module,  ONLY: l2_filename, n_fitvar_rad, numwin, &
+  USE OMSAO_variables_module,  ONLY: l2funit, l2swathunit, & 
+       l2_filename, n_fitvar_rad, numwin, &
        radnhtrunc, l2_swathname, fitvar_rad, mask_fitvar_rad, n_fitvar_rad, &
        fitvar_rad_std, n_rad_wvl, fitvar_rad_apriori, fitspec_rad, &
        fitres_rad, fitwavs, fitvar_rad_str, fitvar_rad_nstd, simspec_rad, &

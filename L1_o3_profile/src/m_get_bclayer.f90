@@ -54,8 +54,7 @@ END SUBROUTINE get_bc_layer
 SUBROUTINE get_finereso_surfalt(lon, lat, z0)
 
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY: atmdbdir
-  USE OMSAO_parameters_module,     ONLY: atmos_unit
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
   USE OMSAO_errstat_module
   IMPLICIT NONE
 

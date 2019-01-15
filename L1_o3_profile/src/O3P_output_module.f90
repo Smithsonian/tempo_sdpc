@@ -6,11 +6,10 @@
 MODULE O3P_output_module
   USE OMSAO_indices_module, ONLY:instrument_idx, omi_idx
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY: l2_filename, & 
+  USE OMSAO_variables_module, ONLY: l2_filename, l2funit,  & 
       num_param, num_wav_max, & 
       num_wav_max, n_fitvar_rad, numwin, &
       linenum_lim, l2_hdf_flag, use_backup
-  USE OMSAO_parameters_module, ONLY: l2funit
   USE ozprof_data_module, ONLY: nfgas, nlay,  ozfit_start_index, ozfit_end_index
   USE ascii_output_module, only: omi_write_intermed, &
                                 l2_ascii_create, l2_ascii_close
@@ -39,7 +38,7 @@ MODULE O3P_output_module
    !character(len=6) :: ShortName = 'PROFOZ'
    !--------------------------------------------------------------
    INTEGER :: i, nx,ny
-   INTEGER, DIMENSION(:), POINTER :: step_idx
+   INTEGER, DIMENSION(:), POINTER :: step_idx   ! JCH FIXME, should be allocatable
 
    ! Initialize
    allocate(step_idx(ntimes))
@@ -144,7 +143,6 @@ MODULE O3P_output_module
   ELSE IF (l2_hdf_flag==3) THEN
   ELSE IF (l2_hdf_flag==4) THEN
     CALL l2_tio_close(errstat)
-    !IF (errstat /= 0) problems=.true.
   ENDIF
   END SUBROUTINE L2_o3p_close 
 END MODULE

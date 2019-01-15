@@ -1,9 +1,7 @@
 MODULE m_get_fnl
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY: atmdbdir, &
-                              the_month, the_year, the_day, &
-                              the_lon, the_lat
-  USE OMSAO_parameters_module,     ONLY: atmos_unit
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
+      the_month, the_year, the_day, the_lon, the_lat
 
   ! used for interpolation
   INTEGER, PARAMETER :: nlfnl = 26
@@ -11,7 +9,7 @@ MODULE m_get_fnl
   REAL (KIND=dp), PARAMETER,PRIVATE  :: longrid = 1.0, latgrid = 1.0, lon0=-180.0, lat0=-90
   REAL (KIND=dp), PARAMETER,PRIVATE  :: lat_offset   = lat0 + latgrid / 2.0
   REAL (KIND=dp), PARAMETER,PRIVATE  :: lon_offset   = lon0 + longrid  / 2.0
-  REAL (KIND=dp),PRIVATE                :: frac
+  REAL (KIND=dp), PRIVATE            :: frac
   INTEGER,PRIVATE                       :: nblon, nblat
   INTEGER, DIMENSION(2),PRIVATE         :: latin, lonin
   REAL (KIND=dp), DIMENSION(2),PRIVATE  :: latfrac, lonfrac

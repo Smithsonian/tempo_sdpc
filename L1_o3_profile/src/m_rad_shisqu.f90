@@ -11,7 +11,7 @@ contains
     USE OMSAO_precision_module,     ONLY: dp
     USE OMSAO_indices_module,       ONLY: wvl_idx, sig_idx, shi_idx, squ_idx
     USE OMSAO_variables_module,     ONLY: nradpix, winlim, radwavfit, &
-         nwavcal_rad, sswav_rad, numwin, sol_wav_avg, correct_lamda
+         nwavcal_rad, sswav_rad, numwin, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
     USE m_ezspline_interpolation, only: interpolation
 
@@ -94,10 +94,10 @@ contains
         END IF
       END IF
 
-      IF (correct_lamda == 1) THEN
+      IF (correct_lambda == 1) THEN
          allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx)) &
            / ( 1.0 + locsqu(fidx:lidx))
-      ELSE IF (correct_lamda == 2) THEN
+      ELSE IF (correct_lambda == 2) THEN
          allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) + sol_wav_avg * locsqu(fidx:lidx) ) &
           / (1.0 + locsqu(fidx:lidx))
       ENDIF

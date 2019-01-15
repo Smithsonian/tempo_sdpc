@@ -64,7 +64,6 @@ contains
          ecodfind, ectpind, ectpfind,twaefind, saodind, &
          sprsind, sprsfind,so2zind, so2zfind, &
          np1, np2, p1find, p2find, p1ind, p2ind, ncm, cmind, & 
-         npol, nfpol, polidx, polfidx, polmin, polmax, polfpix, pollpix, &
          is_albspcvar, use_albeofs, nactalbspc, nalbspc, sfcalbs, albspcs, wrtalbspc, &
          num_iter, allrms, allradrms
 
@@ -180,15 +179,6 @@ contains
       END IF
     ENDIF
 
-    IF (nfpol > 0) THEN
-       DO i = 1, npol
-        j = polidx + i -1
-        polfpix(i)= MINVAL(MINLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
-             >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
-        pollpix(i)= MINVAL(MAXLOC(fitwavs(1:npoints), MASK=(fitwavs(1:npoints) &
-             >= polmin(i) .AND. fitwavs(1:npoints) < polmax(i))))
-       ENDDO
-    ENDIF 
     ! =======================================================================
     !       Set up atmospheric cloud properties, albedo and atmosphere
     ! ======================================================================
@@ -345,11 +335,6 @@ contains
 
     fitvar_rad_init(irind(1:2, 1))  = -1.0E-5    ! non zero
 
-
-    DO i = polidx, polidx + npol -1
-      fitvar_rad_init(i) = 1.D0
-      IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
-    ENDDO
 
     IF (do_subfit) THEN
       nsub = numwin
@@ -618,13 +603,6 @@ contains
         ENDDO
       ENDIF
 
-      IF (nfpol > 0) THEN
-         DO i = polfidx, polfidx + nfpol -1
-            READ (fitvar_rad_str(mask_fitvar_rad(i))(4:4), '(I1.1)') nord
-            sa(i, i) = 1.0 * (5.0 ** ( - nord * 2.0))
-         ENDDO
-      ENDIF
-
       ! Use 50% (NO2 and HCHO) or 100% (SO2 and BrO) error for other 
       !    minor trace gases
       ! The apiori of these trace gases are determined by climatology 
@@ -761,7 +739,8 @@ contains
       ozprof_nstd(j) = stderr1(i)
       j = j + 1
     END DO
-
+   
+    ozprof_std_sav(:) = 0.0
     k1 = ozf_fidx - start_layer
     DO is = 1, 2
       IF (is == 1 ) THEN

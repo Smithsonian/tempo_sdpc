@@ -38,7 +38,6 @@ MODULE OMSAO_indices_module
   ! of reference spectra and fitting parameters in the ICF.
   !
   !     icf:    Input control file (not a reference spectrum)
-  !
   !     solar:  Solar reference (usually Kitt Peak)
   !     ring:   Ring
   !     o3_t1:  O3, first  temperature
@@ -78,19 +77,18 @@ MODULE OMSAO_indices_module
   !     comod3:  4th common mode
   !     noname: Not yet determined, dummy placeholder
   !     amf:    Air mass factor (not a reference spectrum)
-  !     soft  : softspectrum
   ! ---------------------------------------------------------------------
   INTEGER, PARAMETER :: &
        icf_idx    =  0, solar_idx  =  1, ring_idx   =  2, o3_t1_idx  =  3, &
        o3_t2_idx  =  4, o3_t3_idx  =  5, no2_t1_idx =  6, no2_t2_idx =  7, &
-       o2o2_idx   =  8, so2_idx    =  9, bro_idx    = 10, oclo_idx   = 11, &
-       hcho_idx   = 12, com_idx   = 13, us1_idx    = 14, us2_idx    = 15, &
-       bro_tc_idx = 16, o3_tc_idx  = 17, pabs_idx   = 18, polcor_idx = 19, &
-       o2_idx     = 20, h2o_idx    = 21, ring1_idx  = 22, com1_idx   = 23, &
-       so2v_idx   = 24, bro2_idx   = 25, glyox_idx  = 26, io_idx     = 27, &
-       vraman_idx = 28, fsl_idx    = 29, rsl_idx    = 30, o2t2_idx   = 31, &
-       h2ot2_idx  = 32, lh2o_idx   = 33, vege_idx   = 34, chloro_idx = 35, &
-       com2_idx = 36,   com3_idx   = 37, sdc_idx    = 38, noname_idx = 39, amf_idx=40
+       so2_idx    =  8, so2v_idx   =  9, o2o2_idx   = 10, hcho_idx   = 11, &
+       bro_idx    = 12, bro2_idx   = 13, o2_idx     = 14, o2t2_idx   = 15, &
+       h2o_idx    = 16, h2ot2_idx  = 17, lh2o_idx   = 18, oclo_idx   = 19, &
+       glyox_idx  = 20, io_idx     = 21, vege_idx   = 22, chloro_idx = 23, &
+       o3_tc_idx  = 24, bro_tc_idx = 25, ring1_idx  = 26, vraman_idx = 27, & 
+       us1_idx    = 28, us2_idx    = 29, fsl_idx    = 30, rsl_idx    = 31, &
+       pabs_idx   = 32, com_idx    = 33, com1_idx   = 34, com2_idx   = 35, &
+       com3_idx   = 36, polcor_idx = 37, noname_idx = 38, amf_idx    = 39
 
   INTEGER           :: comfidx, cm1fidx, cm2fidx, cm3fidx ,&
                        comvidx, cm1vidx, cm2vidx, cm3vidx
@@ -105,17 +103,12 @@ MODULE OMSAO_indices_module
   ! --------------------------------------------------------------
   CHARACTER (LEN=6), DIMENSION (min_rs_idx:max_rs_idx), PARAMETER :: &
        refspec_strings = (/ &
-       'solar ', 'ring  ', 'o3_t1 ', 'o3_t2 ', 'o3_t3 ', 'no2_t1', 'no2_t2', &
-       'o2o2  ', 'so2   ', 'bro   ', 'oclo  ', 'hcho  ', 'comod ', 'usamp1', &
-       'usamp2', 'bro_tc', 'o3_tc ', 'pseudo', 'polcor', 'o2    ', 'h2o   ', &
-       'ring1 ', 'comod1', 'so2v  ', 'bro2  ', 'glyox ', 'io    ', 'vraman', &
-       'fsl   ', 'rsl   ', 'o2t2  ', 'h2ot2 ', 'lh2o  ', 'vege  ', 'chloro', &
-       'comod2', 'comod3', 'sdc   ', 'noname'  /)
-
-
-  ! ==============================================
-  ! Now we define the specific fitting parameters.
-  ! ==============================================
+       'solar ', 'ring  ', 'o3_t1 ', 'o3_t2 ', 'o3_t3 ', 'no2_t1', 'no2_t2',&
+       'so2   ', 'so2v  ', 'o2o2  ', 'hcho  ', 'bro   ', 'bro2  ', 'o2    ',&
+       'o2t2  ', 'h2o   ', 'h2ot2 ', 'lh2o  ', 'oclo  ', 'glyox ', 'io    ',&
+       'vege  ', 'chloro', 'o3_tc ', 'bro_tc', 'ring1 ', 'vraman', 'us1   ',&
+       'uv2   ', 'fsl   ', 'rsl   ', 'pseudo', 'comod ', 'comod1', 'comod2',&
+       'comod3', 'polcor', 'noname' /)
 
   ! ----------------------------------------------------------------------------
   ! (1) Solar and Earthshine radiance fitting indices and identification strings
@@ -319,25 +312,21 @@ MODULE OMSAO_indices_module
        710116,  710117,  710118,  710119,  710120,  710121,  710122,  710123, &
        710124,  710125,  710126,  710127,  710128,  710129,  710130,  710131, &
        710132,  710133,  710134,  710135,  710136,  710137,  710138,  710139, &
-       710140,   &
        711100,  711101,  711102,  711103,  711104,  711105,  711106,  711107, &
        711108,  711109,  711110,  711111,  711112,  711113,  711114,  711115, &
        711116,  711117,  711118,  711119,  711120,  711121,  711122,  711123, &
        711124,  711125,  711126,  711127,  711128,  711129,  711130,  711131, &
        711132,  711133,  711134,  711135,  711136,  711137,  711138,  711139, &
-       711140,   &
        712100,  712101,  712102,  712103,  712104,  712105,  712106,  712107, &
        712108,  712109,  712110,  712111,  712112,  712113,  712114,  712115, &
        712116,  712117,  712118,  712119,  712120,  712121,  712122,  712123, &
        712124,  712125,  712126,  712127,  712128,  712129,  712130,  712131, &
        712132,  712133,  712134,  712135,  712136,  712137,  712138,  712139, &
-       712140,   &
        712200,  712201,  712202,  712203,  712204,  712205,  712206,  712207, &
        712208,  712209,  712210,  712211,  712212,  712213,  712214,  712215, &
        712216,  712217,  712218,  712219,  712220,  712221,  712222,  712223, &
        712224,  712225,  712226,  712227,  712228,  712229,  712230,  712231, &
-       712232,  712233,  712234,  712235,  712236,  712237,  712238,  712239, &
-       712240  /),&
+       712232,  712233,  712234,  712235,  712236,  712237,  712238,  712239/),&
         (/ amf_idx+1, n_sao_pge /) )
 
   ! ------------------------

@@ -32,14 +32,14 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         shift_offset, maxalb, maxoth, maxwfc,&
          bro_idx, bro2_idx, so2_idx, so2v_idx, no2_t1_idx, hcho_idx, o2o2_idx,&
          ring_idx, us1_idx, us2_idx, com_idx, com1_idx, com2_idx, com3_idx, &
-         fsl_idx, rsl_idx, sdc_idx, hwe_idx, spk_idx
+         fsl_idx, rsl_idx,hwe_idx, spk_idx
   USE OMSAO_variables_module, ONLY : fitwavs, fitweights, sza => the_sza_atm, &
        vza => the_vza_atm, aza => the_aza_atm, sca=>the_sca_atm, &
        fitvar_rad, mask_fitvar_rad, database_indices,           &
-       database_shiwf, slwf, npix_fitted, database, fitvar_rad_str, & 
+       database_shiwf, slwf, npix_fitted, database, database_cmwf, & 
+       fitvar_rad_str, & 
        numwin, nradpix, band_selectors, refidx,  scnwrt, & 
-       refspec_norm, rmask_fitvar_rad, fitvar_rad_apriori, actspec_rad, &
-       n_slitvar, mask_slitvar, database_pslwf
+       refspec_norm, rmask_fitvar_rad, fitvar_rad_apriori, actspec_rad,database_pslwf
   USE ozprof_data_module,     ONLY : nlay, use_lograd,                       &
        ozf_fidx => ozfit_start_index, ozf_lidx => ozfit_end_index,           &
        ozp_fidx=>ozprof_start_index, ozp_lidx => ozprof_end_index,           &
@@ -58,8 +58,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        do_subfit, radcalwrt, do_simu, do_simu_rmring, fit_atanring, & 
        use_effcrs, ncalcp, saa_flag, nsaa_spike,  vary_sfcalb, &
        pos_alb, which_cld, & 
-       maxpol, npol, nfpol, polmin, polmax, polfpix, pollpix, polidx, polfidx, &
-       polwf, polcorr, polcc, &
        is_albspcvar, albspcs, sfcalbs, use_albspc, use_albeofs, nactalbspc,&
        allrms, allradrms
 
@@ -88,7 +86,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        albsidx, albeidx , m, slit_idx, idx330, n0, ord
   INTEGER, DIMENSION(maxalb)               :: albpmax, albpmin
   INTEGER, DIMENSION(maxwfc)               :: wfcpmax, wfcpmin
-  INTEGER, DIMENSION(maxpol)               :: polpmax, polpmin
   INTEGER, DIMENSION(maxwin, maxoth)       :: tmpind, tmpfind
   INTEGER, DIMENSION(maxoth, 2)            :: tmpwins
   REAL (KIND=dp), DIMENSION(maxalb)        :: albarr 
@@ -96,24 +93,22 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION (ns)           :: delpos, waves, meas1, meas2, &
        sim1, sim2, simrad, simrad1, fitspec1, temporwf, corr, simrad0
   REAL (KIND=dp), DIMENSION(ns,nlay,MSTKS) :: ozwf, tmpwf
-  REAL (KIND=dp), DIMENSION(ns, 4)         :: albothwf, wfcothwf, polothwf
+  REAL (KIND=dp), DIMENSION(ns, 4)         :: albothwf, wfcothwf
   REAL (KIND=dp), DIMENSION(ns, MSTKS)     :: o3shiwf, cfracwf, albwf, fsimrad, &
        ctpwf, codwf, saodwf, taodwf, twaewf,  sprswf, so2zwf
   REAL (KIND=dp), DIMENSION(numwin, maxoth):: o3shi
   REAL (KIND=dp), DIMENSION(nlay)          :: tprof, ozprof, ozadj, ozaprof
-  REAL (KIND=dp), DIMENSION (nf)           :: fitvar_saved
+  REAL (KIND=dp), DIMENSION(nf)            :: fitvar_saved
   REAL (KIND=dp)                           :: rms, radrms,  wavavg, cfrac, the_salb
   REAL (KIND=dp)                           :: newoz, newso2, newbro,   newhcho, newno2, newo4
   REAL (KIND=dp)                           :: so2adj, so2vadj, broadj, hchoadj, no2adj, o4adj
   REAL (KIND=dp), DIMENSION (numwin)       :: allchisq
 
   LOGICAL :: do_ozwf, do_albwf, do_o3shi, do_tmpwf, do_shiwf, do_taodwf, do_twaewf, &
-              do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, do_pslwf, do_polwf 
+              do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, do_pslwf
   LOGICAL :: negval, so2negval, so2vnegval, hchonegval, bronegval, no2negval, o4negval
   LOGICAL, DIMENSION (nlay)     :: ozvary
   REAL (KIND=dp), DIMENSION(ns) :: walb0s, wfc0s 
-  CHARACTER(LEN=1)  :: ordchar
-  CHARACTER(LEN=3)  ::tmpc
 
   ! measurement error covariance Random + Systematic
   REAL(KIND=dp), DIMENSION(ns, ns)  :: Sy, Sy_inv
@@ -147,14 +142,13 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ENDIF
   ! ================ Determine flags for linearization ======================
   do_albwf  = .TRUE.; do_ozwf = .TRUE.; do_o3shi = .TRUE.; do_tmpwf = .TRUE.; do_cfracwf = .TRUE.; do_pslwf = .TRUE.
-  do_polwf=.TRUE.
   IF (nfalb <= 0) do_albwf = .FALSE. 
   IF (nfwfc <= 0) do_cfracwf = .FALSE.
   IF (refl_only .AND. .NOT. use_effcrs) THEN
      do_ozwf = .FALSE.; do_o3shi = .FALSE.; do_tmpwf = .FALSE.
   END IF
   IF (nos <= 0)    do_o3shi = .FALSE.
-  IF (np1+np2 <= 0)    do_pslwf  = .FALSE. ; IF (nfpol <=0 ) do_polwf = .FALSE.
+  IF (np1+np2 <= 0)    do_pslwf  = .FALSE. 
   IF (nt_fit <= 0) do_tmpwf = .FALSE. 
   ozvary = .FALSE.; ozvary(stlay:endlay) = .TRUE.
   do_ctpwf  = .FALSE.;  do_codwf  = .FALSE.
@@ -271,7 +265,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
               ENDIF
             ENDDO
      ENDIF
-     
   ENDIF
 
   ! ======= Set up ozone, temperature, trace gases, albedo, lamda for LIDORT ============
@@ -407,24 +400,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ENDIF
   ENDDO
 
-  n0 = 0
-  polcc(:) = 1.0
-  IF (do_polwf) THEN 
-  DO i = 1, npol
-      j = polidx - 1 + i
-      READ (fitvar_rad_str(j)(4:4), '(I1)')  ord
-      IF (ord == 0) THEN
-          n0 = n0 + 1
-          polpmax(n0) = pollpix(i); polpmin(n0) = polfpix(i)
-          polcc(polpmin(n0):polpmax(n0)) = fitvar_rad(j)
-      ELSE
-          fidx = polfpix(i) ; lidx = pollpix(i)
-          wavavg = SUM(waves(fidx:lidx)/(1.0+lidx-fidx))
-          polcc(fidx:lidx) = polcc(fidx:lidx) + fitvar_rad(j)*(waves(fidx:lidx) - wavavg)**ord
-      ENDIF
-  ENDDO
-  ENDIF
- 
   IF (do_subfit) THEN
      DO i = 1, maxoth
         o3shi(1:numwin, i) = fitvar_rad(osind(1:numwin, i))
@@ -433,8 +408,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      o3shi(1, 1:maxoth)    = fitvar_rad(osind(1, 1:maxoth))
   ENDIF
   !print * , 'shi:', o3shi(1:numwin,1)
-  IF (np1 > 0) print * , 'pw0:',np1, fitvar_rad(p1ind(1:numwin,1)), database_pslwf(hwe_idx, 1:10)
-  !print * , 'pk0:',np2, fitvar_rad(p2ind(1:numwin,1)), database_pslwf(spk_idx, 1:10)
+  !IF (np1 > 0) print * , 'pw0:',np1, fitvar_rad(p1ind(1:numwin,1)), database_pslwf(1, refidx(1:10))
+  !print * , 'pk0:',np2, fitvar_rad(p2ind(1:numwin,1)), database_pslwf(2, 1:10)
 
   waves = fitwavs(1:ns)
 
@@ -500,6 +475,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      IF (errstat == pge_errstat_error) &
           WRITE(*, *) modulename, ': Errors in calling HRES_RADCALC_ENV!!!'
   ENDIF
+
   simrad0 = fsimrad(1:ns, 1)
   IF (errstat == pge_errstat_error) RETURN
   !xliu (02/01/2007): correct radiances based on ozone weighting function to deal with negative ozone values
@@ -510,8 +486,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         ENDIF
      ENDDO
   ENDIF
-  IF (.not.do_albwf) albwf(:,:) = 0.0D0
-  IF (.not.do_cfracwf) cfracwf(:,:) = 0.0D0
+
   !!xliu (12/11/2014): correct radiances based on SO2 to deal with negative
   !ozone values
   DO k = 1, ngas
@@ -566,16 +541,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   !   database(no2_t1_idx, refidx(1:ns)) = 0.0    
   !ENDIF
 
-  !PRINT *, polcorr, ns, nlay
-  !print *, sza, aza, vza
-  !DO i = 1, ns
-  ! WRITE(77, '(f12.5, 43d14.6)') fitwavs(i), simrad(i), ozwf(i, 1:nlay, 1), albwf(i, 1) &!, taodwf(i, 1) !&
-  !        , o3shiwf(i, 1) !* ozprof(1:nlay)
-  !ENDDO
-  !CLOSE(77)
-  !STOP
-
-
   ! get dlnI/dx
   IF (use_lograd) THEN
      IF (do_albwf)   albwf(1:ns, 1)   = albwf(1:ns, 1)   / simrad     
@@ -588,7 +553,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      IF (do_taodwf)  taodwf(1:ns, 1)  = taodwf(1:ns, 1)  / simrad
      IF (do_saodwf)  saodwf(1:ns, 1)  = saodwf(1:ns, 1)  / simrad
      IF (do_twaewf)  twaewf(1:ns, 1)  = twaewf(1:ns, 1)  / simrad
-     IF (do_polwf)   polwf(1:ns, 1)   = polwf(1:ns, 1)   / simrad
 
      IF (do_ozwf) THEN
         DO i = stlay, endlay
@@ -599,15 +563,11 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
 
      simrad = LOG(simrad)           ! get dlnI     
   END IF
-  !WRITE(77, *) 'Ozone weighting function D(lnI)/D(lnx)'
-  !DO i = 1, ns
-  !  WRITE(77, '(f8.4, 43d14.6)') fitwavs(i), ozwf(i, 1:nlay) !* ozprof(1:nlay)
-  !ENDDO
 
   IF (.not.do_albwf) albwf(:,:) = 0.0D0
   IF (.not.do_cfracwf) cfracwf(:,:) = 0.0D0
-  IF (.not.do_polwf) polwf(:,:) = 0.0D0
   ! correct for linear/quardratic wavelength dependent in albedo
+
   albothwf = 0.0
   DO i = 1, nalb
      j = albidx + i - 1
@@ -621,12 +581,11 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      albothwf(fidx:lidx,albord) = albwf(fidx:lidx, 1)*(waves(fidx:lidx) - wavavg)**albord ! much better than above
      IF (.NOT. vary_sfcalb) simrad(fidx:lidx) = simrad(fidx:lidx) +  albothwf(fidx:lidx, albord) * fitvar_rad(j)        
   ENDDO
-
+  
   IF (nwfc > 0) THEN
      wfcothwf = 0.0
      DO i = 1, nwfc
         j = wfcidx + i - 1
-
         READ(fitvar_rad_str(j)(4:4), '(I1)') wfcord
         IF (wfcord == 0) CYCLE
 
@@ -637,20 +596,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ENDDO
   ENDIF
 
-  polothwf = 0.0
-  IF (do_polwf) THEN 
-  DO i = 1, npol
-     j = polidx + i - 1
-     READ (fitvar_rad_str(j)(4:4), '(I1)') ord
-     IF (ord == 0) CYCLE
-     fidx = polfpix(i); lidx = pollpix(i)
-     wavavg = SUM(waves(fidx:lidx)/(1.0 + lidx - fidx))
-     polothwf(fidx:lidx, ord) = polwf(fidx:lidx, 1) * (waves(fidx:lidx) -wavavg)**ord
-  ENDDO
-  ENDIF
 
   IF (radcalwrt .AND. do_simu .AND. .NOT. do_simu_rmring) THEN
      fitspec = actspec_rad(1:ns)
+     simrad = simrad0
      IF ( use_lograd ) fitspec = LOG( fitspec )
      fitres = fitspec - simrad
      chisq  = SUM((fitres / fitweights(1:ns))**2.0)
@@ -668,7 +617,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   IF (ncm > 0) THEN 
    print * , 'please update common mode spectra for new instrumnet'
    !call get_sdc_spec (ns, fitwavs, corr)
-   !      database (sdc_idx, refidx(1:ns)) = corr(1:ns) !*exp(simrad(1:ns))
+   !    database_cmwf (refidx(1:ns)) = corr(1:ns) !*exp(simrad(1:ns))
   ENDIF
    
   CALL spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errstat)
@@ -683,16 +632,16 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   
   ! get residual between measured and simulated reflectance
   fitres = fitspec - simrad
+
   ! compute chi-square difference
- 
-     chisq  = SUM((fitres / fitweights(1:ns))**2.0)
-      rms =    SQRT(chisq  / REAL(ns, KIND=dp))
-      relrms = 100.D0 * SQRT(SUM(ABS((simrad-fitspec) / fitspec)**2.0) &
+  chisq  = SUM((fitres / fitweights(1:ns))**2.0)
+  rms =    SQRT(chisq  / REAL(ns, KIND=dp))
+  relrms = 100.D0 * SQRT(SUM(ABS((simrad-fitspec) / fitspec)**2.0) &
        / REAL(ns, KIND=dp))
   
-     fidx = 1
-     DO i = 1, numwin
-        lidx = fidx + nradpix(i) - 1
+  fidx = 1
+  DO i = 1, numwin
+    lidx = fidx + nradpix(i) - 1
        ! IF (.NOT.do_sy_diagonal) THEN
        !    j = lidx-fidx+1
        !    ALLOCATE(y1tmp(j, 1), sy_invtmp(j, j)) 
@@ -703,33 +652,34 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         !   allchisq(i) = chi(1, 1)
         !   DEALLOCATE(y1tmp, sy_invtmp)
        ! ELSE
-           allchisq(i) = SUM((fitres(fidx:lidx) / fitweights(fidx:lidx))**2.0)
-       ! ENDIF
-        allrms(i)   = SQRT(allchisq(i) / nradpix(i))
-        allradrms(i) = 100.D0 * SQRT(SUM(ABS((simrad(fidx:lidx)-fitspec(fidx:lidx)) &
+    allchisq(i) = SUM((fitres(fidx:lidx) / fitweights(fidx:lidx))**2.0)
+     ! ENDIF
+    allrms(i)   = SQRT(allchisq(i) / nradpix(i))
+    allradrms(i) = 100.D0 * SQRT(SUM(ABS((simrad(fidx:lidx)-fitspec(fidx:lidx)) &
              / fitspec(fidx:lidx))**2) / nradpix(i)) 
-        fidx = lidx + 1
-     ENDDO
+    fidx = lidx + 1
+  ENDDO
 
-     ! Relative rms difference between calculated and simulated log-radiances
-     ! /radiances depending on the flag use_lograd
-     IF (use_lograd) THEN     
-        simrad1 = EXP(simrad); fitspec1 = EXP(fitspec)
-        radrms = 100.D0 * SQRT(SUM(ABS((simrad1-fitspec1) / fitspec1)**2) &
+  ! Relative rms difference between calculated and simulated log-radiances
+  ! /radiances depending on the flag use_lograd
+  IF (use_lograd) THEN     
+    simrad1 = EXP(simrad); fitspec1 = EXP(fitspec)
+    radrms = 100.D0 * SQRT(SUM(ABS((simrad1-fitspec1) / fitspec1)**2) &
              / REAL(ns, KIND=dp))   
 
-        fidx = 1
-        DO i = 1, numwin
-           lidx = fidx + nradpix(i) - 1
-           allradrms(i) = 100.D0 * SQRT(SUM(ABS((simrad1(fidx:lidx)-fitspec1(fidx:lidx)) &
+    fidx = 1
+    DO i = 1, numwin
+      lidx = fidx + nradpix(i) - 1
+      allradrms(i) = 100.D0 * SQRT(SUM(ABS((simrad1(fidx:lidx)-fitspec1(fidx:lidx)) &
                 / fitspec1(fidx:lidx))**2) / nradpix(i))
-           fidx = lidx + 1
-        ENDDO
-     ELSE 
-        radrms = relrms
-     ENDIF
-     allrms(0) = rms
-     allradrms(0) = radrms
+      fidx = lidx + 1
+    ENDDO
+  ELSE 
+    radrms = relrms
+  ENDIF
+
+  allrms(0) = rms
+  allradrms(0) = radrms
 
   IF (scnwrt) THEN
     WRITE (*, '(I5, 4(A10,1pd11.3), A, i4)') num_iter, ' Chi = ', chisq, ' rms = ', rms, &
@@ -738,7 +688,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
     DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1
         WRITE (*, '(A, I2, 5(A9, 1pd11.3))') 'Win ', i, ':rms = ', &
-        allrms(i), 'rms(%) = ', allradrms(i),'Is = ', sum(simrad1(fidx:lidx)),'Is0=',sum(simrad0(fidx:lidx)),&
+        allrms(i), 'rms(%) = ', allradrms(i),'Is = ', & 
+        sum(simrad1(fidx:lidx)),'Is0=',sum(simrad0(fidx:lidx)),&
         'Im =',sum(fitspec1(fidx:lidx))
         fidx = lidx + 1
     ENDDO
@@ -753,9 +704,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ! South Atlantic Anomaly Correction, use 10 channel 2 pixels as reference because they are
   ! less subject to South Atlantic Anomaly
   IF (num_iter == min_ssa_iter .AND. num_iter <=min_ssa_iter+2 .AND. .NOT. refl_only .AND. &
-       band_selectors(1) == 1 .AND. saa_flag  ) THEN 
+     band_selectors(1) == 1 .AND. saa_flag  ) THEN 
      CALL spike_detect_correct(nradpix(1)+10, fitspec(1:nradpix(1)+10), simrad(1:nradpix(1)+10))  
   ENDIF
+
   fitres = fitspec - simrad
   IF (.NOT. refl_only) THEN 
      dyda = 0.0
@@ -776,8 +728,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            !ENDIF
            !dyda(albsidx:lidx, j) = albwf(albsidx:lidx, 1)
         ELSE
-
-              dyda(fidx:lidx, j)=albothwf(fidx:lidx, albord)      
+           dyda(fidx:lidx, j)=albothwf(fidx:lidx, albord)      
         ENDIF
 
         ! xliu: 07/01/2010, compute aerosol index (defined with relative to 20 nm distance)
@@ -811,18 +762,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         ENDIF
      ENDDO
 
-     DO i = 1, nfpol
-        j = polfidx + i -1
-        k = mask_fitvar_rad(j)
-        fidx = polfpix(k - polidx + 1); lidx = pollpix(k - polidx + 1)
-        READ (fitvar_rad_str(k)(4:4), '(I1)') ord
-        IF (ord == 0) THEN
-           !print  * , i, j, fidx, lidx, polidx
-           dyda(fidx:lidx, j) = polwf(fidx:lidx, 1)
-        ELSE
-           dyda(fidx:lidx, j) = polothwf(fidx:lidx, ord)
-        ENDIF
-     ENDDO
      ! ozone profile and temperature weighting function
      dyda(:, ozf_fidx:ozf_lidx) = ozwf(:, stlay:endlay, 1) 
      ! do not use longer waves for ozone, this make no sense 
@@ -948,22 +887,18 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            nord = nis; tmpind = isind; tmpfind = isfind; tmpwins = iswins
         ELSE IF (ig == 7) THEN       ! Internal scattering in radiance
            nord = nir; tmpind = irind; tmpfind = irfind; tmpwins = irwins
-        ELSE IF ((ig == 8 .or. ig == 9) .or. np1+np2 > 0) THEN 
-           IF (ig  == 8 ) THEN                                                         
-             nord = np1; tmpind = p1ind; tmpfind = p1find; tmpwins = p1wins ; slit_idx=mask_slitvar(1)
-           ELSE IF (ig == 9 ) THEN 
-             nord = np2; tmpind = p2ind; tmpfind = p2find; tmpwins = p2wins ; slit_idx=mask_slitvar(2)
-           ENDIF
-           IF (slit_idx > 0) temporwf(1:ns) = - database_pslwf(slit_idx, 1:ns)
-           !IF (use_lograd) temporwf(1:ns) = temporwf /simrad           IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
+        ELSE IF (ig == 8) THEN 
+           nord = np1; tmpind = p1ind; tmpfind = p1find; tmpwins = p1wins 
+           temporwf(1:ns) = - database_pslwf(1, refidx(1:ns))
+           IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
+        ELSE IF (ig == 9 ) THEN 
+           nord = np2; tmpind = p2ind; tmpfind = p2find; tmpwins = p2wins
+           temporwf(1:ns) = - database_pslwf(2, refidx(1:ns))
            IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
         ELSE IF (ig == 10 ) THEN 
            nord = ncm; tmpind = cmind; tmpfind = cmfind; tmpwins = cmwins
-           temporwf(1:ns) = database(sdc_idx, refidx(1:ns)) 
-           !if (num_iter > 0 ) print *, num_iter, fitvar_rad(cmind(1,1)),fitvar_rad(cmind(2,1))
-           !print * , temporwf(ns-10:ns)
+           temporwf(1:ns) = database_cmwf(refidx(1:ns)) 
            IF (.NOT. use_lograd) temporwf(1:ns) = temporwf * simrad
-           !if (ig ==10  ) print *, fitvar(tmpfind(1:2, 1))
         ENDIF
         ! Use finite differences to get the zero-order weighting functions
         IF (nord > 0 .AND. ig >= 3 .AND. ig <= nothgrp .AND. ig /= 4 .AND. ( ig < 8 .or. ig > 10) ) THEN
@@ -1161,7 +1096,6 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
   REAL (KIND=dp)                            :: wavavg
   INTEGER, DIMENSION(n0alb)                 :: albpmax0, albpmin0
   INTEGER, DIMENSION(n0wfc)                 :: wfcpmax0, wfcpmin0
-  CHARACTER(LEN=1)  :: ordchar
   errstat = pge_errstat_ok
 
   ! Note nw0 is MAX(ncalcp, nw)

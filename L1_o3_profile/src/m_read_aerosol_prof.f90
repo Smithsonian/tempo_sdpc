@@ -1,5 +1,5 @@
 !
-module m_read_aerosol_prof
+module m_get_aerosol
 
   public read_aerosol_prof
   private
@@ -70,12 +70,11 @@ contains
   ! reading GEOS-CHEM aerosols
   ! Note in gasmoms, first moments are not stored, since they are always 1
 
-  SUBROUTINE READ_AEROSOL_PROF(year, month, lon, lat, ps, zs, tp, nz, &
+  SUBROUTINE read_aerosol_prof(year, month, lon, lat, ps, zs, tp, nz, &
        waves, nwave, useasy, gaext, gasca, gaasy, ngksec, gamoms, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY: atmdbdir, refdbdir
-    USE OMSAO_parameters_module,ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: atmdbdir, refdbdir, atmos_unit
     USE ozprof_data_module, ONLY: nmom, maxgksec, &
          strat_aerosol, which_aerosol, maxmom
     USE OMSAO_errstat_module
@@ -559,6 +558,6 @@ contains
 
     RETURN
 
-  END SUBROUTINE READ_AEROSOL_PROF
+  END SUBROUTINE read_aerosol_prof
 
-end module m_read_aerosol_prof
+end module m_get_aerosol

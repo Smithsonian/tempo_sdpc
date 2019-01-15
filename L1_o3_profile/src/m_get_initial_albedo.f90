@@ -156,8 +156,8 @@ contains
   FUNCTION calc_albedo(refl, spres, sza, vza, aza) RESULT (albedo)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY : deg2rad, atmos_unit
-    USE OMSAO_variables_module, ONLY  : refdbdir
+    USE OMSAO_parameters_module, ONLY : deg2rad
+    USE OMSAO_variables_module, ONLY  : refdbdir, atmos_unit
     USE ozprof_data_module,      ONLY : alb_tbl_fname
 
 
@@ -271,8 +271,7 @@ contains
   SUBROUTINE get_gome_alb(month, elons, elats, region, albarr, nalb)
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY: atmdbdir
-    USE OMSAO_parameters_module,     ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
     IMPLICIT NONE
 
     ! ======================
@@ -809,8 +808,7 @@ END SUBROUTINE adj_albcfrac
 
     USE OMSAO_precision_module
     use OMSAO_errstat_module, only: www_lun
-    USE OMSAO_variables_module, ONLY: atmdbdir
-    USE OMSAO_parameters_module,     ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
     IMPLICIT NONE
 
     ! ======================
@@ -900,8 +898,7 @@ END SUBROUTINE adj_albcfrac
   SUBROUTINE get_omi_alb(month, day, elons, elats, albedo)
 
     USE OMSAO_precision_module
-    USE OMSAO_variables_module, ONLY: atmdbdir
-    USE OMSAO_parameters_module, ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
     USE ozprof_data_module,     ONLY: pos_alb
     USE OMSAO_errstat_module
     IMPLICIT NONE
@@ -1233,8 +1230,7 @@ END SUBROUTINE adj_albcfrac
 SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls, nwvl)
   
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir
-  USE OMSAO_parameters_module, ONLY: atmos_unit
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
   USE ozprof_data_module,     ONLY: pos_alb
   USE HDF5
   IMPLICIT NONE
@@ -1430,8 +1426,8 @@ SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg
      albspcs, nspec, pge_error_status) 
 
   USE OMSAO_precision_module 
-  USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad, atmos_unit
-  USE OMSAO_variables_module,  ONLY: atmdbdir
+  USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad
+  USE OMSAO_variables_module,  ONLY: atmdbdir, atmos_unit
   USE OMSAO_errstat_module
   USE ozprof_data_module,      ONLY:  malbspc, nalbspc, use_albeofs
   USE HDF5

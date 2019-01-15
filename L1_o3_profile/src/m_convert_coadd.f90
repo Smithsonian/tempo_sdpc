@@ -424,7 +424,7 @@ contains
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,   &
          mask_fitvar_sol, fitvar_sol_saved, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
          fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
-         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lamda
+         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lambda
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: interpolation
@@ -509,7 +509,7 @@ contains
         ELSE 
 
           ! Shift and squeeze earthshine spectrum        
-          IF (correct_lamda == 1) THEN
+          IF (correct_lambda == 1) THEN
             allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx)) / & 
                                          (1.0 + fitvar_sol(squ_idx))
           ELSE
@@ -578,7 +578,7 @@ contains
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,fitvar_sol_saved, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
          fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
-         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lamda
+         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lambda
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: interpolation
@@ -663,7 +663,7 @@ contains
         ELSE 
 
           ! Shift and squeeze earthshine spectrum        
-          IF (correct_lamda == 1) THEN
+          IF (correct_lambda == 1) THEN
             allspec(i, wvl_idx, 1:nspec) = (fitwavs(1:nspec) - fitvar_sol(shi_idx)) / & 
                                          (1.0 + fitvar_sol(squ_idx))
           ELSE
@@ -684,7 +684,7 @@ contains
       ENDDO ! end  coadd
    ELSE IF (wcal_bef_coadd .AND. .NOT. wavcal) THEN
       DO i = 1, ncoadd
-        IF (correct_lamda == 1) THEN
+        IF (correct_lambda == 1) THEN
         allspec(i, wvl_idx, 1:nspec) = (allspec(i, wvl_idx, 1:nspec) - wshis(i)) / (1.0 + wsqus(i))
         ELSE
         allspec(i, wvl_idx, 1:nspec) = (allspec(i, wvl_idx, 1:nspec) - wshis(i) + sol_wav_avg * wsqus(i) ) / (1.0 + wsqus(i))

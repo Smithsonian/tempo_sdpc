@@ -14,9 +14,9 @@ module m_lidort_master
 !    
 ! ******************************************************************************************
 
-  public  lidort_prof_env
-  private lidort_prof_prep, get_slant_tau !, prepare_spherical
-  contains
+  PUBLIC  lidort_prof_env
+  PRIVATE lidort_prof_prep, get_slant_tau !, prepare_spherical
+  CONTAINS
 
   SUBROUTINE LIDORT_PROF_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
   do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, &
@@ -28,7 +28,7 @@ module m_lidort_master
           taodwf, twaewf, saodwf, sprswf, so2zwf, rad, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module,ONLY  : maxlay, max_fit_pts, du2mol, rearth, max_spec_pts, rtm_unit
+    USE OMSAO_parameters_module,ONLY  : maxlay, max_fit_pts, du2mol, rearth, max_spec_pts
     USE OMSAO_indices_module,   ONLY  : so2_idx, so2v_idx, o2o2_idx, o2_idx, o2t2_idx, &
                                         h2o_idx, h2ot2_idx, refspec_strings
     USE OMSAO_variables_module, ONLY  : currloop, the_surfalt, band_selectors, &
@@ -36,7 +36,7 @@ module m_lidort_master
        n_refspec_pts,  refspec_norm, refspec_orig_data,  &
        numwin, winlim, nradpix, nradpix_sav, n_rad_wvl, radwvl_sav, n_radwvl_sav, &
        database, database_shiwf, database_save, refidx, &
-       database_pslwf, n_slitvar, mask_slitvar, tabdir, rtmdbg
+       database_pslwf, max_psl, npsl, tabdir, rtmdbg, rtm_unit
     USE ozprof_data_module,     ONLY : num_iter, VlidortNstream, &
        nflay, mflay, ntp, nfsfc, nsfc, nup2p, nt_fit, &
        atmosprof, fts, fps, fzs, fozs, frhos, &
@@ -103,7 +103,7 @@ module m_lidort_master
     ! =======================
     ! Local variables
     ! =======================
-    LOGICAL :: problems,do_clouds, do_fozwf, do_faerwf, do_fraywf, do_polwf, update_drad, &
+    LOGICAL :: problems,do_clouds, do_fozwf, do_faerwf, do_fraywf,  &
                do_o3hwe, do_o3spk
     INTEGER :: nf, na, ic, iw, i, j, k, ii, kk, jj, jk, idum, low, hgh, fidx, lidx, &
          nz1,nfgas1, nstep, istk, npolmod, ipol, nsprs, npts, nw0
@@ -143,8 +143,7 @@ module m_lidort_master
     !REAL (KIND=dp), DIMENSION(max_fit_pts, mflay),       SAVE :: aersca, aerext, aerasy 
     !REAL (KIND=dp), DIMENSION(max_fit_pts,0:maxmom,maxgksec,mflay), SAVE :: aermoms
     REAL (KIND=dp), DIMENSION(3, max_fit_pts),            SAVE :: abscrs_qtdepen
-    REAL (KIND=dp), DIMENSION(max_fit_pts, mflay,10),     SAVE :: dadp
-    REAL (KIND=dp), DIMENSION(max_fit_pts, 10)      ,     SAVE :: drdp, dddp
+    REAL (KIND=dp), DIMENSION(max_fit_pts, mflay,max_psl),SAVE :: dadp
     LOGICAL, DIMENSION(mflay),                            SAVE :: aermsk
     LOGICAL, DIMENSION(max_fit_pts),                      SAVE :: do_radcals, do_polcorrs
     INTEGER, DIMENSION(max_fit_pts),                      SAVE :: polcorr_idxs, radcal_idxs
@@ -526,16 +525,16 @@ module m_lidort_master
         do_radcals(1:nw0) = .TRUE.
         radcal_idxs(1:nw0) = (/(i, i=1,nw0)/)
         IF (use_so2dtcrs) THEN
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(so2idx)))= mgasprof(o4idx, nflay+1) * refspec_norm(so2_idx)
+              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(so2idx)))= mgasprof(so2idx, nflay+1) * refspec_norm(so2_idx)
         ENDIF
         IF (use_o4dtcrs) THEN 
              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o4idx)))  = mgasprof(o4idx, nflay+1) * refspec_norm(o2o2_idx)
         ENDIF
         IF (use_o2dptcrs) THEN 
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o4idx))) = mgasprof(o2idx, nflay+1) * refspec_norm(o2_idx)
+              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o2idx))) = mgasprof(o2idx, nflay+1) * refspec_norm(o2_idx)
         ENDIF
         IF (use_h2odptcrs) THEN 
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o4idx))) = mgasprof(h2oidx, nflay+1) * refspec_norm(h2o_idx)
+              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(h2oidx))) = mgasprof(h2oidx, nflay+1) * refspec_norm(h2o_idx)
         ENDIF
      ENDIF
 
@@ -732,7 +731,6 @@ module m_lidort_master
         !STOP
      ENDIF
   ENDIF
-  update_drad = .false.
   ! ====================== Call LIDORT and Do Post Processing =====================
   DO iw = 1, nw 
            
@@ -817,7 +815,6 @@ module m_lidort_master
          ((polcorr == 3 .OR. polcorr == 5) .OR. (polcorr == 4 .AND. &
                                                  (num_iter == 0 .or. num_iter == 2 ) )) ) THEN
         npolmod = 2   ! Twice, one vector and one scalar
-        update_drad = .true.
      ELSE 
         npolmod = 1   ! Only once either scalar or vector
      ENDIF
@@ -1110,24 +1107,6 @@ module m_lidort_master
      nsprs = nup2p(nsfc-1)+1
      delabs(1:nw0, 1:nz1) = deltau(1:nw0, 1:nz1) - delsca(1:nw0, 1:nz1)
      !xliu, 11/02/2011, add abscrs in the variables
-     IF (do_polwf) THEN
-         DO i = 1, npolcorr
-            iw = polcorr_idxs(i)
-            !prad (iw) = prad(iw)/polcc(iw)
-            !IF (do_albwf) THEN 
-            !        palbwf(iw) = palbwf(iw)/polcc(iw)
-            !ELSE
-            !        palbwf(iw) = 0.0D0
-            !ENDIF              
-            !IF (do_fozwf) pfozwf(iw, 1:nz1) = pfozwf(iw, 1:nz1)/polcc(iw)
-            !IF (do_fraywf) pfraywf(iw, 1:nz1) = pfraywf(iw, 1:nz1)/polcc(iw)
-            !IF (do_cfracwf) then 
-            !        pcfracwf(iw) = pcfracwf(iw)/polcc(iw)
-            !ELSE
-            !        pcfracwf(iw) = 0.0D0
-            !ENDIF
-         ENDDO
-     ENDIF
      CALL polcorr_online(num_iter, polcorr, nw0, nz1, nctp, ncbp, nsprs, & 
           faer_lvl,  npolcorr, polcorr_idxs(1:npolcorr), &
           do_fozwf, do_albwf, do_faerwf,do_twaewf, do_codwf, do_sprswf, do_fraywf, do_cfracwf, &
@@ -1138,6 +1117,10 @@ module m_lidort_master
           fraywf(1:nw0, 1:nz1, 1), pfraywf(1:nw0, 1:nz1), cfracwf(1:nw0, 1), pcfracwf(1:nw0))
 
   ENDIF
+ ! IF (nw > 1) then 
+    !print * ,  nw0,allcrs(nw0,1:nfgas1, 10), allcol(1:nfgas1, 10)
+    !print * , allcrs(1:nw0, 3, 10)
+ ! ENDIF
   ! Radiance Interpolation
   IF (nw > 1 .AND. do_radinter ) THEN
      nsprs = nup2p(nsfc-1)+1
@@ -1183,12 +1166,8 @@ module m_lidort_master
   !print *, fozwf(100, 1:nflay, 1)
   !
   !STOP
-
-  IF (nw > 1 .AND. .NOT. use_effcrs) THEN
-     nw0 = n_rad_wvl
-  ELSE
-     nw0 = nw
-  ENDIF
+ 
+   nw0=nw
 
   ! Calculate desired weighting functions at the end after applying all the correction
   IF ( do_ozwf ) THEN  
@@ -1223,14 +1202,11 @@ module m_lidort_master
   ENDIF
 
   IF (do_pslwf .and. use_effcrs) THEN 
-    DO k = 1, n_slitvar
+    DO k = 1, npsl
       DO iw = 1, nw0
-          database_pslwf(mask_slitvar(k), iw) = &
+          database_pslwf(k, refidx(iw)) = &
                      SUM(fozwf(iw, 1:nz1, 1) * ozs(1:nz1) * dadp(iw, 1:nz1, k))   
-          !print * ,iw,  dadp(iw, 1:10, k)
-                !     SUM(fozwf(iw, 1:nz1, 1) * ozs(1:nz1) ) * drdp(iw, k) +  &
-                !     SUM(fozwf(iw, 1:nz1, 1) * ozs(1:nz1) ) * dddp(iw, k) 
-          database_pslwf(mask_slitvar(k), iw) = database_pslwf(mask_slitvar(k),iw ) /rad(iw,1) 
+          database_pslwf(k, refidx(iw)) = database_pslwf(k,refidx(iw) ) /rad(iw,1) 
       ENDDO
     ENDDO
   ENDIF
@@ -1280,7 +1256,6 @@ module m_lidort_master
         ENDDO
      ENDDO
   ENDIF
-
   !IF (nw > 1) THEN
   !   DO iw = 1, nw
   !      WRITE(78, '(4D16.7)') waves(iw), albwf(iw, 1), sprswf(iw, 1), cfracwf(iw, 1)
@@ -1485,6 +1460,7 @@ module m_lidort_master
      ! Gas absorption
      absod(1:ngas, i) = abscrs(1:ngas, i) * gascol(1:ngas, i)
      absco_r = SUM(absod(1:ngas, i))         
+     !if ( i == nlayers) print *, absco_r, absod(1:ngas, i)
      extco_r = absco_r + scaco_r
      scaco_input(1) = scaco_r
    

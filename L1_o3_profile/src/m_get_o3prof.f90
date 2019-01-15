@@ -1,9 +1,10 @@
 
 MODULE m_get_o3prof
 
-  USE OMSAO_parameters_module, ONLY: p0, atmos_unit
+  USE OMSAO_parameters_module, ONLY: p0
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY: atmdbdir, the_month, the_year, the_day, the_lon, the_lat, tabdir
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
+                               the_month, the_year, the_day, the_lon, the_lat, tabdir
   USE ozprof_data_module,     ONLY: which_clima, which_aperr, which_toz, & 
                                     trpz, ozone_above60km, use_logstate, & 
                                     which_aperr, min_serr, min_terr, loose_aperr, norm_tropo3
@@ -1768,19 +1769,17 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
   CHARACTER (LEN=200)                                :: line
 
   ! saved variables
-  !REAL (KIND=dp), SAVE, DIMENSION(nmon, nlat, maxprof, nl0) :: ozprofs
   REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
-  !INTEGER,        SAVE, DIMENSION(nmon, nlat)              :: nprofs
-  INTEGER,        SAVE, DIMENSION(:,:), POINTER      :: nprofs
-  REAL (KIND=dp), SAVE, DIMENSION(0:nl0)                    :: pv80
-  LOGICAL,        SAVE                                      :: first = .TRUE.
+  INTEGER,        SAVE, DIMENSION(:,:), POINTER     :: nprofs
+  REAL (KIND=dp), SAVE, DIMENSION(0:nl0)            :: pv80
+  LOGICAL,        SAVE                              :: first = .TRUE.
 
-  REAL (KIND=dp)                                            :: frac, fdum, maxoz, minoz
-  REAL (KIND=dp), DIMENSION(nl0)                            :: oz0
-  REAL (KIND=dp), DIMENSION(0:nl0)                          :: cum0
-  REAL (KIND=dp), DIMENSION(0:nl)                           :: logps, cum
-  REAL (KIND=dp), DIMENSION(2)                              :: latfrac, monfrac
-  INTEGER,        DIMENSION(2)                              :: latin, monin
+  REAL (KIND=dp)                                    :: frac, fdum, maxoz, minoz
+  REAL (KIND=dp), DIMENSION(nl0)                    :: oz0
+  REAL (KIND=dp), DIMENSION(0:nl0)                  :: cum0
+  REAL (KIND=dp), DIMENSION(0:nl)                   :: logps, cum
+  REAL (KIND=dp), DIMENSION(2)                      :: latfrac, monfrac
+  INTEGER,        DIMENSION(2)                      :: latin, monin
   INTEGER :: i, j, ib, profin, nprof, im
 
   CHARACTER (LEN=16), PARAMETER :: modulename = 'get_tomsv8_clima'

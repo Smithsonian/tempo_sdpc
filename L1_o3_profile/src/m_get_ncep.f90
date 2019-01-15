@@ -1,7 +1,7 @@
 MODULE m_get_ncep
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir, the_month, the_year, the_day, the_lon, the_lat
-  USE OMSAO_parameters_module,     ONLY: atmos_unit
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
+                                    the_month, the_year, the_day, the_lon, the_lat
   USE OMSAO_errstat_module
   IMPLICIT NONE
 

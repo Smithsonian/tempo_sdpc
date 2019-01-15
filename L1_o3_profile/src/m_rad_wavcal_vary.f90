@@ -21,7 +21,7 @@ contains
          wavcal_fname, nradpix, winlim, poly_order, radwavfit, slitfit, &
          fixslitcal, which_slit, fitweights, fitwavs, &
          currspec, fitvar_sol_saved, nslit, slitwav, fitvar_sol_init, &
-         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lamda
+         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: bspline, interpolation
@@ -296,10 +296,10 @@ contains
         END IF
 
       END IF
-      IF (correct_lamda == 1) THEN 
+      IF (correct_lambda == 1) THEN 
       allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) ) &
            / ( 1.0 + locsqu(fidx:lidx))
-      ELSE IF (correct_lamda == 2) THEN 
+      ELSE IF (correct_lambda == 2) THEN 
       allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) + sol_wav_avg * locsqu(fidx:lidx)) & 
            / ( 1.0 + locsqu(fidx:lidx))
       ENDIF

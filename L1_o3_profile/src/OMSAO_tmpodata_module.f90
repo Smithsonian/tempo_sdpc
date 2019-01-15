@@ -13,7 +13,7 @@ MODULE OMSAO_tmpodata_module
    ! ---------------------------------
    ! Maximum data/swath dimensions
    ! ---------------------------------
-   INTEGER, PARAMETER :: mswath_tmpo = 2
+   INTEGER, PARAMETER :: mswath = 2
    INTEGER (KIND=i4), PARAMETER :: &
        ntimes_max     = 129, nxtrack_max  = 2048, nlines_max=20
    INTEGER, PARAMETER :: nwavel_ccd = 1026, nwavel_max=1026+1026
@@ -22,17 +22,17 @@ MODULE OMSAO_tmpodata_module
    ! ---------------------------------
    ! swath names (UV and VIS)
    ! --------------------------------
-   CHARACTER (LEN=maxchlen), DIMENSION(mswath_tmpo), PARAMETER :: & 
+   CHARACTER (LEN=maxchlen), DIMENSION(mswath), PARAMETER :: & 
             rad_swathname = (/ 'band_290_490_nm', 'band_540_740_nm'/)
-   character (len=maxchlen), dimension(mswath_tmpo) :: &
+   character (len=maxchlen), dimension(mswath) :: &
            irrad_swathname = (/ 'band_290_490_nm', 'band_540_740_nm'/)
 
    ! ------------------------------------------------------------
    ! Boundary wavelengths (approximate) for UV and VIS channels
    ! ------------------------------------------------------------
-   REAL (KIND=dp), DIMENSION(mswath_tmpo),  PARAMETER :: &
-        lower_wvls_tmpo = (/290.0, 490.0/), upper_wvls_tmpo = (/540.0,740.0/) 
-   REAL (KIND=dp), PARAMETER :: lower_spec_tmpo = 0.0, upper_spec_tmpo = 10.0E14 
+   REAL (KIND=dp), DIMENSION(mswath),  PARAMETER :: &
+        lower_wvls = (/290.0, 490.0/), upper_wvls = (/540.0,740.0/) 
+   REAL (KIND=dp), PARAMETER :: lower_spec = 0.0, upper_spec = 10.0E14 
 
 
    TYPE(ring_group) :: tmpo_ring

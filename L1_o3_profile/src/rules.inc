@@ -50,7 +50,6 @@ $(ODIR)/OMSAO_pixelcorner_module.o: $(SDIR)/OMSAO_pixelcorner_module.f90 \
 $(ODIR)/OMSAO_slitfunction_module.o: $(SDIR)/OMSAO_slitfunction_module.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_slitfunction_module.f90 -o $(ODIR)/OMSAO_slitfunction_module.o $(MODOUTFLG) $(ODIR)
@@ -172,9 +171,6 @@ $(ODIR)/m_angle_sat2toa.o: $(SDIR)/m_angle_sat2toa.f90 \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_angle_sat2toa.f90 -o $(ODIR)/m_angle_sat2toa.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_int2string.o: $(SDIR)/m_int2string.f90 \
-  $(ODIR)/OMSAO_precision_module.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_int2string.f90 -o $(ODIR)/m_int2string.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_super_gauss.o: $(SDIR)/m_super_gauss.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \
@@ -376,7 +372,6 @@ $(ODIR)/tmpo_adj_data.o: $(SDIR)/tmpo_adj_data.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/tmpo_adj_data.f90 -o $(ODIR)/tmpo_adj_data.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_process.o: $(SDIR)/omi_pge_process.f90 \
-  $(ODIR)/ascii_output_module.o \
   $(ODIR)/m_allocate.o \
   $(ODIR)/m_cross_calibrate.o \
   $(ODIR)/m_specfit_ozprof.o \
@@ -386,7 +381,6 @@ $(ODIR)/omi_pge_process.o: $(SDIR)/omi_pge_process.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_omicloud_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_pixelcorner_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_slitfunction_module.o \
@@ -394,7 +388,6 @@ $(ODIR)/omi_pge_process.o: $(SDIR)/omi_pge_process.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_pge_process.f90 -o $(ODIR)/omi_pge_process.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/tmpo_pge_process.o: $(SDIR)/tmpo_pge_process.f90 \
-  $(ODIR)/ascii_output_module.o \
   $(ODIR)/m_allocate.o \
   $(ODIR)/m_cross_calibrate.o \
   $(ODIR)/m_read_cloud_tio.o \
@@ -402,8 +395,6 @@ $(ODIR)/tmpo_pge_process.o: $(SDIR)/tmpo_pge_process.f90 \
   $(ODIR)/m_specfit_ozprof.o \
   $(ODIR)/O3P_output_module.o \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_tmpodata_module.o \
   $(ODIR)/OMSAO_variables_module.o \
@@ -453,7 +444,6 @@ $(ODIR)/L2_attr_class.o: $(SDIR)/L2_attr_class.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/L2_attr_class.f90 -o $(ODIR)/L2_attr_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_cloud.o: $(SDIR)/m_get_cloud.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
@@ -461,12 +451,10 @@ $(ODIR)/m_get_cloud.o: $(SDIR)/m_get_cloud.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_cloud.f90 -o $(ODIR)/m_get_cloud.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_ncep.o: $(SDIR)/m_get_ncep.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_ncep.f90 -o $(ODIR)/m_get_ncep.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_fnl.o: $(SDIR)/m_get_fnl.f90 \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_fnl.f90 -o $(ODIR)/m_get_fnl.o $(MODOUTFLG) $(ODIR)
@@ -481,14 +469,12 @@ $(ODIR)/m_get_bclayer.o: $(SDIR)/m_get_bclayer.f90 \
   $(ODIR)/m_get_ncep.o \
   $(ODIR)/m_get_omigeos5.o \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_bclayer.f90 -o $(ODIR)/m_get_bclayer.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_toz.o: $(SDIR)/m_get_toz.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_toz.f90 -o $(ODIR)/m_get_toz.o $(MODOUTFLG) $(ODIR)
@@ -540,14 +526,12 @@ $(ODIR)/m_get_reg_matrix.o: $(SDIR)/m_get_reg_matrix.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_reg_matrix.f90 -o $(ODIR)/m_get_reg_matrix.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_prepare_atmosphere.o: $(SDIR)/m_prepare_atmosphere.f90 \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_prepare_atmosphere.f90 -o $(ODIR)/m_prepare_atmosphere.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_aerosol_prof.o: $(SDIR)/m_read_aerosol_prof.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
@@ -571,13 +555,13 @@ $(ODIR)/m_get_raman.o: $(SDIR)/m_get_raman.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_raman.f90 -o $(ODIR)/m_get_raman.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_make_atm.o: $(SDIR)/m_make_atm.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_read_aerosol_prof.o \
   $(ODIR)/m_get_cloud.o \
   $(ODIR)/m_get_fnl.o \
   $(ODIR)/m_get_ncep.o \
   $(ODIR)/m_get_o3prof.o \
   $(ODIR)/m_get_omigeos5.o \
   $(ODIR)/m_get_tracegas.o \
-  $(ODIR)/m_read_aerosol_prof.o \
   $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -707,7 +691,6 @@ $(ODIR)/O3P_output_module.o: $(SDIR)/O3P_output_module.f90 \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMI_MET_class.o \
   $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
@@ -775,16 +758,16 @@ $(ODIR)/m_read_metadata_tio.o: $(SDIR)/m_read_metadata_tio.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_metadata_tio.f90 -o $(ODIR)/m_read_metadata_tio.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_o3p_params.o: $(SDIR)/m_o3p_params.f90 \
-  $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/ozprof_data_module.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_o3p_params.f90 -o $(ODIR)/m_o3p_params.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_L2_o3p_tio.o: $(SDIR)/m_read_L2_o3p_tio.f90 \
   $(ODIR)/m_o3p_params.o \
   $(ODIR)/o3p_names_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_L2_o3p_tio.f90 -o $(ODIR)/m_read_L2_o3p_tio.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_o3p_params.o: $(SDIR)/m_o3p_params.f90 \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/ozprof_data_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_o3p_params.f90 -o $(ODIR)/m_o3p_params.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_vlidort90_include.o: $(SDIR)/m_vlidort90_include.f90

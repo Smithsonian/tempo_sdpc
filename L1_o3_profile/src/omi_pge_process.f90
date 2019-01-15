@@ -13,13 +13,13 @@ CONTAINS
          mask_fitvar_rad, reduce_resolution, l2_cld_filename, &
          l1b_rad_filename,  numwin, radnhtrunc, &
          l1b_irrad_filename, nxbin, nybin, ncoadd,&
-         nxtrack, ntimes, num_wav_max, ntimes_loop, offset_line, calwrt, the_pix, the_line
-    USE OMSAO_parameters_module, ONLY: l2funit, lcurve_unit, ozwrtint_unit,calunit
+         nxtrack, ntimes, num_wav_max, ntimes_loop, offset_line, calwrt, the_pix, the_line, &
+         l2funit, lcurve_unit, ozwrtint_unit,calunit
+
     USE ozprof_data_module, only: lcurve_write, ozwrtint,  &
          lcurve_fname, ozwrtint_fname, &
-         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl,which_cld, allrms
+         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl,which_cld
     USE OMSAO_errstat_module
-    USE ascii_output_module, only: write_final
     USE m_cross_calibrate, ONLY:calibrate_rad_cross, calibrate_irrad_cross
     USE m_specfit_ozprof
     use m_allocate
@@ -28,7 +28,7 @@ CONTAINS
     use OMSAO_pixelcorner_module
     use OMSAO_omicloud_module
     use OMSAO_slitfunction_module
-    use OMSAO_omidata_module, only: nlines_max, &
+    use OMSAO_omidata_module, only: ntimes_max,nlines_max, &
          nfxtrack, zoom_mode, zoom_p1, zoom_p2,  &
          omi_cali, omi_irrad, omi_rad, omi_refl, omi_ring, omi_geo, omi_o3p
     USE omi_read_l1b_data, only: omi_read_irradiance_data, &
@@ -100,15 +100,16 @@ CONTAINS
     ! Line number, starting from zero and keep track of offset
     offset_line = linenum_lim(1) - 1; first_line = 1
     last_line   = int ((linenum_lim(2) - linenum_lim(1) + 1.0) / nybin)
-    IF (last_line > 100) then
-      WRITE( message, *)  ': number of binned lines (>100) = ', last_line
-      pge_error_status = pge_errstat_error
-      RETURN
-    ENDIF
+    !IF (last_line > 100) then
+    !  WRITE( message, *)  ': number of binned lines (>100) = ', last_line
+    !  pge_error_status = pge_errstat_error
+    !  RETURN
+    !ENDIF
 
     !-----------------------------------------------------------------
     ! Allocate some memory - must be before cross_calibrate calls
     !-------------------------------------------------------------------
+   
     call allocate_geo(nxtrack, ntimes, omi_geo, pge_error_status)
     CALL allocate_spec (numwin, nxtrack,nlines_max, omi_irrad, omi_rad, omi_ring, omi_refl, omi_cali, pge_error_status)
 
@@ -360,13 +361,9 @@ CONTAINS
         close(calunit)
         STOP
     ENDIF
-    IF (scnwrt) THEN
-      CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
-           npix_fitted)
-      WRITE(*, '(2(A,I5))') 'Number of pixels = ', &
-      npix_fitting, '   Number of fitted pixels = ', npix_fitted
-    ENDIF
 
+    CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
+         npix_fitted, npix_fitting)
 
     !-----------------------------------------------------------------
     ! Deallocate any remaining arrays
@@ -392,4 +389,42 @@ CONTAINS
 
     RETURN
   END SUBROUTINE omi_fitting_process
+
+  SUBROUTINE write_final ( fitted_col, rmsavg, davg, drelavg, &
+            npix_fitted, npix_fitting )
+
+    ! **********************************
+    !
+    !   Final WRITE of fitting results
+    !
+    ! **********************************
+
+    USE OMSAO_precision_module
+    USE OMSAO_errstat_module
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,        INTENT (IN) :: npix_fitted, npix_fitting
+    REAL (KIND=dp), INTENT (IN) :: fitted_col, rmsavg, davg, drelavg
+    INTEGER :: ns
+    ! Write out the average fitting statistics
+    ns = npix_fitted
+    IF (ns == 0) NS = NS + 1
+    WRITE (*,*)
+    WRITE (*,'(A, 1PE13.5)') &
+         '                      Avg Col = ', fitted_col/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         '                      Avg RMS = ', rmsavg/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         '                     Avg dCol = ', davg/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         ' Avg relative Col uncertainty = ', drelavg/ns
+
+    WRITE(*, '(2(A,I5))') 'Number of pixels = ', &
+      npix_fitting, '   Number of fitted pixels = ', npix_fitted
+    RETURN
+  END SUBROUTINE write_final
+
 END MODULE omi_pge_process

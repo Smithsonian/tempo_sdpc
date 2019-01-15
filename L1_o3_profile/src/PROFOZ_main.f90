@@ -76,10 +76,12 @@ PROGRAM PROFOZ_main
     WRITE(*,'(A)') message
     STOP
   ENDIF
+
   WRITE(*,'(A)') '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
   call cpu_time(e1) 
   runtime = e1-e2
   WRITE(*,'(A,f8.2)') '@ Finish:'//ADJUSTL(TRIM(l2_filename))//"time:",runtime
+
   ! ------------------------------------
   ! Write END_OF_RUN message to log file
   ! ------------------------------------

@@ -26,7 +26,7 @@ contains
          cloud, use_flns, useasy, ndiv, albmax, albmin, do_multi_vza, &
          do_lambcld, ring_on_line, ring_convol, fit_atanring, degcorr, &
          do_subfit, fgassidxs, fgaspos, which_atm, which_clima, which_alb, which_cld, &
-         use_logstate, radcalwrt, smooth_ozbc, do_ch2reso, &
+         use_logstate, radcalwrt, smooth_ozbc,  &
          atmos_prof_fname, ozwrtcorr, ozwrtcovar, ozwrtcontri, ozwrtres, &
          ozwrtvar, ozwrtavgk,  ozwrtfavgk, degfname, biascorr, biasfname, &
          do_tracewf, fgasidxs, ngas, gasidxs, algorithm_name, &
@@ -53,7 +53,6 @@ contains
          np1, p1ind, p1find, p1wins, np2, p2ind, p2find, p2wins, &
          ncm, cmwins, cmind, cmfind, use_so2dtcrs, use_o4dtcrs,  &
          use_o2dptcrs, use_h2odptcrs, &
-         npol, nfpol, maxpol, polidx, polmin, polmax, polfidx, thepolidx, &
          so2vidx, so2idx, o2idx, o2t2idx,o4idx, h2oidx, h2ot2idx,&
          so2fidx, so2vfidx, o2fidx,o2t2fidx, o4fidx, h2ofidx, h2ot2fidx,&
          no2idx, no2fidx, broidx, brofidx, hchoidx, hchofidx,&
@@ -69,12 +68,13 @@ contains
          so2_idx, so2v_idx, o2o2_idx, o2_idx,o2t2_idx, h2o_idx,h2ot2_idx, & 
           hcho_idx,bro_idx,no2_t1_idx,&
          n_max_fitpars
-    USE OMSAO_variables_module, ONLY: fitvar_rad_init, fitvar_rad_saved, &
-         mask_fitvar_rad, n_fitvar_rad, lo_radbnd, up_radbnd, fitvar_rad_str, &
-         rad_identifier, outdir, numwin, refdbdir,  &
-         tabdir, rmask_fitvar_rad, fitvar_rad_init_saved, winlim, &
-         fothvarpos, fitvar_rad_unit, &
-         n_slitvar, mask_slitvar, which_slit, yn_varyslit, band_selectors,nviswin
+    USE OMSAO_variables_module, ONLY:& 
+         n_fitvar_rad, mask_fitvar_rad, rmask_fitvar_rad,fitvar_rad_str, &
+         fitvar_rad_init, fitvar_rad_init_saved, fitvar_rad_saved, &
+         fitvar_rad_unit, lo_radbnd, up_radbnd, numwin, nviswin,winlim, &
+         rad_identifier,outdir,tabdir, refdbdir,  do_ch2reso,&
+         fothvarpos,band_selectors, which_slit, yn_varyslit, &
+         npsl, psl_fpos
     USE OMSAO_errstat_module
     use m_utilities, only: skip_to_filemark
 
@@ -762,58 +762,6 @@ contains
       thewfcidx = thewfcidx - albfidx + 1
     ENDIF
 
-   !+++++++++++++++++++++++++++++++++++++++++++++++
-   ! Read Wavelength-dependent polcorr variables 
-   !------------------------------------------------
-   REWIND ( fit_ctrl_unit )
-   CALL skip_to_filemark ( fit_ctrl_unit, polstr, tmpchar, file_read_stat)
-   IF ( file_read_stat /= file_read_ok ) THEN
-       errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
-            TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
-       pge_error_status = pge_errstat_error; RETURN
-   END IF
-
-   READ (fit_ctrl_unit, *) npol
-   IF (polcorr /= 4) THEN 
-      npol = 0
-      WRITE(www_lun,*) modulename//'npol = 0 because polcorr=', polcorr
-   ENDIF
-
-   IF (npol > maxpol) THEN
-      WRITE(www_lun, *) modulename, ' : # of wavelength dependent terms exceed allowed  ', maxpol
-      pge_error_status = pge_errstat_error; RETURN
-   ELSE IF (npol < 1) THEN
-      npol = 0
-   ENDIF
-
-   idx = idx + maxpol
-   polidx = idx + 1
-   polmin= 0.0; polmax = 0.0
-   polpars: DO i = 1, npol
-     READ (fit_ctrl_unit, *, IOSTAT=errstat) idxchar1, vartmp, &
-          lotmp, uptmp, polmin(i), polmax(i)
-      IF ( errstat /= pge_errstat_ok ) THEN
-          errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
-             TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
-             WRITE(www_lun, *) modulename, ' : Error in reading initial cloud fraction variables!!!'
-             pge_error_status = pge_errstat_error; RETURN
-      END IF
-
-      ! ---------------------------------------------------------
-      ! Check for consitency of bounds and adjust where necessary
-      ! ---------------------------------------------------------
-      IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
-           lotmp = vartmp ; uptmp = vartmp
-      END IF
-      IF ( lotmp == uptmp .AND. lotmp /= vartmp ) THEN
-           uptmp = vartmp ; lotmp = vartmp
-      END IF
-    
-      fitvar_rad_init(idx + i) = vartmp
-      fitvar_rad_str(idx+i) = TRIM(ADJUSTL(idxchar1))
-      lo_radbnd(idx + i) = lotmp
-      up_radbnd(idx + i) = uptmp
-    END DO polpars
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read cloud/aerosol variables
@@ -998,7 +946,7 @@ contains
       tmpwins = 0
 
       DO j = 1, maxoth   ! for each order of parameters
-
+         
         READ (fit_ctrl_unit, *, IOSTAT=errstat) idxchar1, vartmp, lotmp, uptmp, swin, ewin
         IF ( errstat /= pge_errstat_ok ) THEN
           errstat = OMI_SMF_setmsg (omsao_e_read_fitctrl_file, &
@@ -1166,27 +1114,26 @@ contains
 
     IF (np1 + np2 /= 0 ) THEN
     IF (which_slit == 0 ) THEN   ! gaussian
-        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+        npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
         np2 =0
     ELSE IF (which_slit == 1) THEN  ! asym. gaussian
-         n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, asy_idx]
+         npsl = 2 ; psl_fpos(1:npsl) = [hwe_idx, asy_idx]
        IF (np2 == 0) THEN
-         n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+         npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
        ELSE IF (np1 == 0) THEN
-         n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [asy_idx]
+         npsl = 1 ; psl_fpos(1:npsl) = [asy_idx]
        ENDIF
     ELSE IF (which_slit == 2) THEN  ! triangle
-       n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+         npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
     ELSE IF (which_slit == 3) THEN  ! viot
-       !n_slitvar = 4 ; mask_slitvar(1:n_slitvar) = [vgl_idx, vgr_idx, hwl_idx,
-       !hwr_idx ]
+       !npsl = 4 ; psl_fpos(1:npsl) = [vgl_idx, vgr_idx, hwl_idx,hwr_idx ]
        print * , 'not yet implemented ' ; stop
     ELSE IF (which_slit == 4) THEN  ! super gaussian
-        n_slitvar = 2 ; mask_slitvar(1:n_slitvar) = [hwe_idx, spk_idx]
+         npsl = 2 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx]
       IF (np2 == 0) THEN
-        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [hwe_idx]
+        npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
       ELSE IF (np1 == 0) THEN
-        n_slitvar = 1 ; mask_slitvar(1:n_slitvar) = [spk_idx]
+        npsl = 1 ; psl_fpos(1:npsl) = [spk_idx]
       ENDIF
     ELSE IF (which_slit == 5) THEN  ! omi instrument
       !IF (instrument_idx == omi_idx) THEN 

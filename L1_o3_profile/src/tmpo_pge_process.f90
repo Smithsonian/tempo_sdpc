@@ -1,41 +1,42 @@
 !
 MODULE tmpo_pge_process
 
+  IMPLICIT NONE
   PUBLIC tmpo_fitting_process
+  PRIVATE
 
 CONTAINS
+
   SUBROUTINE tmpo_fitting_process  ( message, pge_error_status )
+
     USE OMSAO_precision_module
-    USE OMSAO_indices_module, ONLY: max_calfit_idx, n_max_fitpars
-    USE OMSAO_variables_module,  only:num_wav_max, num_param, & 
+    USE OMSAO_variables_module,  only:num_wav_max, & 
          nxtrack, ntimes, pixnum_lim, linenum_lim, &
          nxbin, nybin, currpix, currline, currloop,&
+         the_pix, the_line,ntimes_loop,offset_line,&
          n_fitvar_rad, mask_fitvar_rad,fitvar_rad_saved,& 
          npix_fitting, npix_fitted, numwin, radnhtrunc,&
-         scnwrt, use_backup, use_solcomp,reduce_resolution, wavcal, which_slit, &
-         l1b_irrad_filename, l1b_rad_filename,l2_cld_filename,l2_filename,  &
-         l2_hdf_flag, pix_pos, line_pos, ntimes_loop, offset_line,&
-         the_pix, the_line, calwrt
+         scnwrt, calwrt,use_backup, use_solcomp,reduce_resolution, wavcal, which_slit, &
+         l2_hdf_flag,l1b_irrad_filename, l1b_rad_filename,l2_cld_filename,l2_filename, &
+         l2funit, lcurve_unit, ozwrtint_unit,calunit
 
-    USE OMSAO_parameters_module, ONLY: l2funit, lcurve_unit, ozwrtint_unit,calunit
-    USE ozprof_data_module, only: lcurve_write, ozwrtint,&
-         lcurve_fname, ozwrtint_fname,&
-         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl,allrms
-    USE OMSAO_tmpodata_module, only: rad_swathname, & 
-        tmpo_rad, tmpo_irrad,tmpo_refl, tmpo_ring, tmpo_cali, & 
-        tmpo_geo1,tmpo_geo2,tmpo_o3p,nlines_max
     USE OMSAO_errstat_module
+    USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&
+         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl
+    USE OMSAO_tmpodata_module, only: rad_swathname,nlines_max, & 
+        tmpo_rad, tmpo_irrad,tmpo_refl, tmpo_ring, tmpo_cali, & 
+        tmpo_geo1,tmpo_geo2,tmpo_o3p
     USE m_specfit_ozprof
     USE m_allocate
-    USE o3p_output_module
     USE m_read_geo_tio
     USE m_read_cloud_tio
     USE m_cross_calibrate, ONLY: calibrate_irrad_cross,calibrate_rad_cross
     USE tmpo_read_l1b_data
     USE tmpo_adj_data, ONLY:adj_solar_data, adj_earthshine_data
+    USE o3p_output_module
     USE tio_output_module
-    USE ascii_output_module, only: write_final
-    implicit none
+
+    IMPLICIT NONE
 
     ! -----------------------
     ! Input/Output variables
@@ -43,13 +44,13 @@ CONTAINS
     INTEGER, INTENT (OUT) :: pge_error_status
     CHARACTER(LEN=100), INTENT(OUT) :: message
     ! -------------------------
-    ! Local variables (for now)
+    ! Local variables
     ! -------------------------
     LOGICAL :: reduce_resolution_save
     INTEGER :: exval, initval, errstat, curr_fitted_line,ix, iline
     INTEGER :: first_line, last_line, first_pix, last_pix
     INTEGER :: npix, nline ! actual number of pixel/line 
-    INTEGER :: sline, eline,spix, epix ! actual position in L1 domain (both staring 1)
+    INTEGER :: sline, eline, spix, epix ! actual position in L1 domain (both staring 1)
     REAL (kind=dp) :: rms, fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg
     REAL (kind=dp),DIMENSION(3)    :: fitcol
     REAL (kind=dp),DIMENSION(3, 2) :: dfitcol
@@ -94,13 +95,7 @@ CONTAINS
     epix = (last_pix-1)*nxbin  +1
     sline = offset_line + 1
     eline = offset_line + (nline-1)*nybin + 1
-    allocate (pix_pos(nxtrack), line_pos(ntimes))
-    DO ix = first_pix, last_pix
-       pix_pos(ix) = (ix-1)*nxbin + 1
-    ENDDO
-    DO iline = first_line, last_line
-       line_pos(iline) = (iline-1)*nybin +1 + offset_line 
-    ENDDO
+
     WRITE (*,*) '@ Define TEMPO Domain**'
     WRITE(*,'(A,2i5, A,i2)') '=>pixnum_lim :', pixnum_lim, "nxbin:", nxbin
     WRITE(*,'(A,2i5, A,i2)') '=>linenum lim:', linenum_lim, "nybin:", nybin
@@ -115,7 +110,7 @@ CONTAINS
     !  RETURN
     !ENDIF
     !-----------------------------------------------------------------
-    ! Allocate some memory - must be before cross_calibrate calls
+    ! Allocate some memory - must be before cross_calibrate CALLs
     !-------------------------------------------------------------------
    
     CALL allocate_spec (numwin, nxtrack,nlines_max, & 
@@ -126,7 +121,7 @@ CONTAINS
     ENDIF
 
     CALL allocate_geo (nxtrack, ntimes, tmpo_geo1, pge_error_status)
-    call allocate_geo (nxtrack, ntimes, tmpo_geo2, pge_error_status)
+    CALL allocate_geo (nxtrack, ntimes, tmpo_geo2, pge_error_status)
 
     IF (pge_error_status /= pge_errstat_ok) THEN 
        message =": failed to allocate geolocation variables"
@@ -147,47 +142,47 @@ CONTAINS
     !-------------------------------------------------------------------------
     IF (which_slit == 5) THEN
       PRINT *, 'Please update slit function for real TEMPO algorithm'
-      !call load_slitpars (pge_error_status)
+      !CALL load_slitpars (pge_error_status)
       IF (pge_error_status /= pge_errstat_ok) THEN 
         message=": failed to read instrument slit function"
         RETURN
       ENDIF
-      if (scnwrt) write(*, '(A)') '@ Finish loading slit parameters !!!'
+      IF (scnwrt) write(*, '(A)') '@ Finish loading slit parameters !!!'
     ENDIF
 
-    call tmpo_read_irradiance (first_pix, last_pix, pge_error_status)
+    CALL tmpo_read_irradiance (first_pix, last_pix, pge_error_status)
     IF (calwrt) close(calunit)
     reduce_resolution_save = reduce_resolution; reduce_resolution = .false.         
-    IF ( pge_error_status >= pge_errstat_error ) then
+    IF ( pge_error_status >= pge_errstat_error ) THEN
       use_backup = .true.
-      call tmpo_read_irradiance (first_pix, last_pix, pge_error_status )
+      CALL tmpo_read_irradiance (first_pix, last_pix, pge_error_status )
       IF ( pge_error_status >= pge_errstat_error ) THEN
          message =": failed to read irradiances"
          RETURN
       ENDIF
-    endif
+    ENDIF
 
-    if (scnwrt) write(*, '(A)') '@ Finish reading irradiances!!!'
-    ! if (use_solcomp) then
-    !   call replace_solar_irradiance(calunit, first_pix, last_pix, &
+    IF (scnwrt) write(*, '(A)') '@ Finish reading irradiances!!!'
+    ! IF (use_solcomp) THEN
+    !   CALL replace_solar_irradiance(calunit, first_pix, last_pix, &
     !        pge_error_status)
-    !   if ( pge_error_status >= pge_errstat_error ) return
-    !   if (scnwrt) write(*, '(A)') &
+    !   IF ( pge_error_status >= pge_errstat_error ) return
+    !   IF (scnwrt) write(*, '(A)') &
     !        'Finish replacing irradiances with solar composite!!!'
-    ! endif
+    ! ENDIF
     IF (reduce_resolution_save) reduce_resolution = .true.
-    call calibrate_irrad_cross (tmpo_irrad, tmpo_ring,tmpo_cali, first_pix, last_pix, pge_error_status)
+    CALL calibrate_irrad_cross (tmpo_irrad, tmpo_ring,tmpo_cali, first_pix, last_pix, pge_error_status)
     IF (pge_error_status /= pge_errstat_ok) THEN 
        message =": failed to calibrate irradiance"
        go to 111
     ENDIF
-    if (scnwrt) write(*, '(A)') '@ Finish calibrating irradiances!!!'
+    IF (scnwrt) write(*, '(A)') '@ Finish calibrating irradiances!!!'
 
     IF (reduce_resolution_save) THEN
-      !call omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, &
+      !CALL omi_read_irradiance_data (calunit, nxcoadd, first_pix, last_pix, &
       !     pge_error_status )
-      !if ( pge_error_status >= pge_errstat_error ) return
-      !if (scnwrt) write(*, '(A)') &
+      !IF ( pge_error_status >= pge_errstat_error ) return
+      !IF (scnwrt) write(*, '(A)') &
       !     '@ Finish reading irradiances (with reduced resolution)!!!'
     ENDIF
     
@@ -199,7 +194,7 @@ CONTAINS
     ! At present, compute_pixel_corners sets values in arrays whose size
     ! is determined by nlines_max = 100. This suggests that it expects
     ! to operate within one OMI data black of 100 lines. When operated
-    ! in it's current position, outside the OMIBlock loop, if last_line >100
+    ! in it's current position, outside the OMIBlock loop, IF last_line >100
     ! the array indices will exceed nlines_max, causing memory to be
     ! overwritten and causing the program to crash / give false results
     ! Consider moving compute_pixel_corners inside the OMIBlock loop.
@@ -224,7 +219,7 @@ CONTAINS
     tmpo_geo1%cfr(1:nxtrack,0:nline-1) = L2_cloud%cfr(1:nxtrack, 0:nline-1)
     tmpo_geo1%ctp(1:nxtrack,0:nline-1) = L2_cloud%ctp(1:nxtrack, 0:nline-1)
     tmpo_geo1%cloud_qflg(1:nxtrack, 0:nline-1) = L2_cloud%qflags(1:nxtrack,0:nline-1)
-    if (scnwrt) write(*, '(A)') '@ Finish reading L2 clouds !!!'
+    IF (scnwrt) write(*, '(A)') '@ Finish reading L2 clouds !!!'
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Open output files
@@ -252,13 +247,13 @@ CONTAINS
     ENDIF
 
     CALL L2_O3P_create (ntimes,first_pix, last_pix, first_line, last_line, errstat)
-    IF (errstat /= 0) then
+    IF (errstat /= 0) THEN
       pge_error_status = pge_errstat_error
       RETURN
     ENDIF
     IF (scnwrt) WRITE(*,'(A)') '@ Create '//TRIM(ADJUSTL(l2_filename)) 
     CALL L2_O3P_WRITE_GEO (tmpo_geo1,first_pix, last_pix, first_line, last_line, errstat)
-     IF (errstat /= 0) then
+     IF (errstat /= 0) THEN
       pge_error_status = pge_errstat_error
       RETURN
     ENDIF
@@ -285,23 +280,23 @@ CONTAINS
       
        ! Actually lines in L1B Data
       ntimes_loop = nlines_max
-      if ( iline + ntimes_loop > last_line ) ntimes_loop = last_line - iline
+      IF ( iline + ntimes_loop > last_line ) ntimes_loop = last_line - iline
       sline = offset_line + iline * nybin +1
       eline = sline + ntimes_loop * nybin -1
-      call tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
+      CALL tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
 
-      if ( pge_error_status >= pge_errstat_error ) return
-      if (scnwrt) write(*, '(A,I4,A,I4)') &
+      IF ( pge_error_status >= pge_errstat_error ) return
+      IF (scnwrt) write(*, '(A,I4,A,I4)') &
            '@ Finishing reading radiances for lines: ', sline, ' - ', eline
       ! Perform calibration for the middle scan line and apply to the other
       !  scan lines
-      if (wavcal) then
-        call calibrate_rad_cross (tmpo_rad, tmpo_cali,first_pix,last_pix,first_line, last_line, pge_error_status)
-        if ( pge_error_status >= pge_errstat_error ) return
-        if (scnwrt) write(*, '(A,I4,A,I4)') &
+      IF (wavcal) THEN
+        CALL calibrate_rad_cross (tmpo_rad, tmpo_cali,first_pix,last_pix,first_line, last_line, pge_error_status)
+        IF ( pge_error_status >= pge_errstat_error ) return
+        IF (scnwrt) write(*, '(A,I4,A,I4)') &
            '@ Finishing calibrating radiances for lines: ', sline, ' - ', eline
-      endif
-      if (calwrt) cycle
+      ENDIF
+      IF (calwrt) cycle
       ! loop through each xtrack position
       ! 1. Prepare databases, adjust radiances
       ! 2. Process all pixels at this poistion
@@ -317,8 +312,8 @@ CONTAINS
            tmpo_o3p%exitval(currpix, 0:ntimes_loop-1) = -10; CYCLE
         ENDIF
         ! Load/adjust irradiances and slit calibration parameters
-        call adj_solar_data (pge_error_status) 
-        if ( pge_error_status >= pge_errstat_error ) cycle
+        CALL adj_solar_data (pge_error_status) 
+        IF ( pge_error_status >= pge_errstat_error ) cycle
 
         curr_fitted_line = 0
         YfitLine: do currloop = 0, ntimes_loop - 1
@@ -327,33 +322,33 @@ CONTAINS
           currline = iline + currloop
           the_line= currline * nybin + offset_line + 1
           the_pix = (currpix-1) * nxbin  + 1
-          if (tmpo_rad%pix_errstat(currpix, currloop) == pge_errstat_error .or. &
+          IF (tmpo_rad%pix_errstat(currpix, currloop) == pge_errstat_error .or. &
                tmpo_irrad%errstat(currpix) == pge_errstat_error ) &
                tmpo_o3p%exitval(currpix, currloop) = -9
 
           ! Load/adjust radiances/geolocations fields for a particular pixel
-          ! Prepare databases for the first pixel (ifitline == 1)
-          if (tmpo_o3p%exitval(currpix, currloop) == -10) then
-            call adj_earthshine_data (curr_fitted_line, pge_error_status) 
-            if ( pge_error_status >= pge_errstat_error ) &
+          ! Prepare databases for the first pixel (IFitline == 1)
+          IF (tmpo_o3p%exitval(currpix, currloop) == -10) THEN
+            CALL adj_earthshine_data (curr_fitted_line, pge_error_status) 
+            IF ( pge_error_status >= pge_errstat_error ) &
                  tmpo_o3p%exitval(currpix, currloop) = -9
-          endif
+          ENDIF
         
-          if (tmpo_o3p%exitval(currpix, currloop) == -10) then
+          IF (tmpo_o3p%exitval(currpix, currloop) == -10) THEN
 
             initval = tmpo_o3p%initval(currpix, currloop)
             initval = 0
-            call specfit_ozprof (initval, fitcol, dfitcol,rms,  exval)
+            CALL specfit_ozprof (initval, fitcol, dfitcol,rms,  exval)
             ! Store exit status for current pixel
             tmpo_o3p%exitval(currpix, currloop) = exval
             tmpo_o3p%fitvar(currpix, currloop, 1:n_fitvar_rad) &
                  = fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad))
         
-            !if (scnwrt) write(*, '(A,2I5,A,I5, A, I4, A, i3)') &
+            !IF (scnwrt) write(*, '(A,2I5,A,I5, A, I4, A, i3)') &
             ! '@ O3P Retrieval: Line =', the_line, iline, ' XPix= ', the_pix,' init =',initval, 'exval=', exval
-          else
+          ELSE
             exval = -9
-          endif
+          ENDIF
 
          ! Write retrievals        
           CALL L2_O3P_write_data (currpix, first_pix, last_pix, currloop, currline, ntimes_loop,&
@@ -387,20 +382,16 @@ CONTAINS
        close(calunit)
        STOP
     ENDIF
-    IF (scnwrt) THEN
-      CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
-           npix_fitted)
-      WRITE(*, '(2(A,I5))') 'Number of pixels = ', &
-      npix_fitting, '   Number of fitted pixels = ', npix_fitted
-    ENDIF
 
+    CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
+           npix_fitted, npix_fitting)
     !----------------------------------------------------------------
     ! close l1b radiance file       
     !----------------------------------------------------------------
     ! If using netCDF inputs, copy critical metadata and label file
     IF (l2_hdf_flag == 4) THEN
-      call copy_hdr_metadata (l1b_rad_filename, errstat)
-      call label_output_file ("o3p", processing_version, errstat)
+      CALL copy_hdr_metadata (l1b_rad_filename, errstat)
+      CALL label_output_file ("o3p", processing_version, errstat)
     ENDIF
 
     !----------------------------------------------------------------
@@ -419,7 +410,7 @@ CONTAINS
     !-----------------------------------------------------------------
     ! Deallocate any remaining arrays
     !----------------------------------------------------------------
-    call dealloc (errstat)
+    CALL dealloc (errstat)
     RETURN
     !------------------------------------------------------------
     ! Error Handling
@@ -427,8 +418,45 @@ CONTAINS
     111 CONTINUE
     message = ADJUSTL(TRIM(modulename))//ADJUSTL(TRIM(message))
     WRITE(*,*) message
-    call tell_error (tell_io_write_error, message, pge_error_status)
+    CALL tell_error (tell_io_write_error, message, pge_error_status)
     STOP
   END SUBROUTINE tmpo_fitting_process
 
+  SUBROUTINE write_final ( fitted_col, rmsavg, davg, drelavg, &
+             npix_fitted, npix_fitting )
+
+    ! **********************************
+    !
+    !   Final WRITE of fitting results
+    !
+    ! **********************************
+
+    USE OMSAO_precision_module
+    USE OMSAO_errstat_module
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,        INTENT (IN) :: npix_fitted, npix_fitting
+    REAL (KIND=dp), INTENT (IN) :: fitted_col, rmsavg, davg, drelavg
+    INTEGER :: ns
+    ! Write out the average fitting statistics
+    ns = npix_fitted
+    IF (ns == 0) NS = NS + 1
+    WRITE (*,*)
+    WRITE (*,'(A, 1PE13.5)') &
+         '                      Avg Col = ', fitted_col/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         '                      Avg RMS = ', rmsavg/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         '                     Avg dCol = ', davg/ns
+    WRITE (*,'(A, 1PE13.5)') &
+         ' Avg relative Col uncertainty = ', drelavg/ns
+
+      WRITE(*, '(2(A,I5))') 'Number of pixels = ', &
+      npix_fitting, '   Number of fitted pixels = ', npix_fitted
+    RETURN
+  END SUBROUTINE write_final
+  
 END MODULE tmpo_pge_process

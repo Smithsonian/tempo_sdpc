@@ -10,14 +10,14 @@ MODULE OMSAO_omidata_module
   IMPLICIT NONE
 
   ! max number of channels (UV-1 and UV-2) reqd for OMI O3 profile retrievals
-  INTEGER, PARAMETER :: mswath_omi  = 2
+  INTEGER, PARAMETER :: mswath  = 2
   INTEGER, PARAMETER :: zoom_p1 = 16, zoom_p2 = 45
   LOGICAL            :: zoom_mode
   ! ---------------------------------
   ! Maximum OMI data/swath dimensions
   ! ---------------------------------
   INTEGER (KIND=i4), PARAMETER :: &
-       ntimes_max     = 2000, nxtrack_max  =  60, nwavel_max  = 750, &
+       ntimes_max     = 1644, nxtrack_max  =  60, nwavel_max  = 750, &
        nwavelcoef_max =    5, nlines_max = 100
 
   ! ---------------------------------
@@ -29,16 +29,16 @@ MODULE OMSAO_omidata_module
   ! ---------------------------------
   ! OMI swath names (UV-1 and UV-2)
   ! --------------------------------
-  CHARACTER (LEN=maxchlen), DIMENSION(mswath_omi), PARAMETER :: & 
+  CHARACTER (LEN=maxchlen), DIMENSION(mswath), PARAMETER :: & 
      omi_irradiance_swathname=(/'Sun Volumne UV-1 Swath','Sun Volumne UV-2 Swath'/), &
      omi_radiance_swathname=(/'Earth UV-1 Swath','Earth UV-2 Swath'/)
 
   ! ------------------------------------------------------------
   ! Boundary wavelengths (approximate) for UV-2 and VIS channels
   ! ------------------------------------------------------------
-  REAL (KIND=r4), DIMENSION(mswath_omi),  PARAMETER :: &
-       upper_wvls_omi = (/310.0, 387.0/), lower_wvls_omi = (/260.0, 310.0/)
-  REAL (KIND=dp), PARAMETER :: lower_spec_omi = 0.0, upper_spec_omi = 4.0E14
+  REAL (KIND=r4), DIMENSION(mswath),  PARAMETER :: &
+       upper_wvls = (/310.0, 387.0/), lower_wvls = (/260.0, 310.0/)
+  REAL (KIND=dp), PARAMETER :: lower_spec = 0.0, upper_spec = 4.0E14
 
   ! ---------------------------------------
   ! Minimum OMI spectral resolution (in nm)

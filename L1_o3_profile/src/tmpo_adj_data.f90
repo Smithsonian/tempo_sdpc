@@ -83,8 +83,8 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, &
          n_max_fitpars, solar_idx!, rsl_idx, fsl_idx, comm_idx, com1_idx
     USE OMSAO_parameters_module, ONLY: mswath, normweight, max_fit_pts, &
-         maxchlen, calunit
-    USE OMSAO_variables_module,  ONLY: curr_rad_spec, curr_sol_spec, &
+         maxchlen
+    USE OMSAO_variables_module,  ONLY: calunit, curr_rad_spec, curr_sol_spec, &
          n_rad_wvl, use_meas_sig, numwin, nradpix, the_sza_atm, the_vza_atm, &
          the_aza_atm, the_sca_atm, the_month, the_year, the_day,the_jday, the_lon, &
          the_lat, the_lats, the_lons, edgelons, edgelats, the_surfalt, nview, &
@@ -93,7 +93,7 @@ CONTAINS
          saa_minlon1, saa_maxlon1, do_bandavg, refidx, fitvar_rad_saved, &
          n_fitvar_rad, radwavcal_freq, currpix, currloop, &
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
-         mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_save, &
+         mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_ori, &
          GranuleYear, GranuleMonth, GranuleDay,GranuleJDay,tabdir, currline
     USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
     USE ozprof_data_module, ONLY: div_rad, div_sun, rad_posr, rad_specr, &
@@ -214,7 +214,6 @@ CONTAINS
     the_geo2%elat(1:2) = geo2%elat(currpix-1:currpix, currline)
 
 
-
     the_year  = GranuleYear
     the_month = GranuleMonth
     the_day   = GranuleDay
@@ -250,9 +249,7 @@ CONTAINS
     IF (first .AND. biascorr) THEN
       allocate(soft%xwcorr(mswath, nxtrack_max, max_fit_pts))
       allocate(soft%xwavs(mswath, max_fit_pts))
-      !REAL (KIND=dp), DIMENSION(mswath, nxtrack_max) :: xcorr
-      !REAL (KIND=dp), DIMENSION(mswath, nxtrack_max,max_fit_pts) :: xwcorr
-      !REAL (KIND=dp), DIMENSION(mswath, max_fit_pts)     :: xwavs
+
       WRITE(msg, *) TRIM(ADJUSTL(biasfname))//',which_biascorr=',which_biascorr
       errstat = OMI_SMF_setmsg (OMI_W_GENERAL, TRIM(msg), modulename, 0)
       IF ( which_biascorr == 7) THEN
@@ -436,7 +433,7 @@ CONTAINS
 
     ! Make sure that reference spectra has  more wavelengths than
     ! irradiance interpolation and shifting      
-    curr_rad_spec_save = curr_rad_spec ! used in prepare_database
+    curr_rad_spec_ori = curr_rad_spec ! used in prepare_database
     fidx = 1
     DO i = 1, numwin
       lidx = fidx + nradpix(i)

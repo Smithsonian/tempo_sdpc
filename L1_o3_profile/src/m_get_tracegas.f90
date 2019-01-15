@@ -3,8 +3,8 @@
 MODULE m_get_tracegas
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY: deg2rad, du2mol, atmos_unit
-  USE OMSAO_variables_module, ONLY: atmdbdir 
+  USE OMSAO_parameters_module, ONLY: deg2rad, du2mol
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
   USE OMSAO_errstat_module
   USE m_ezspline_interpolation, ONLY: interpol, bspline
   public get_geoschem_hcho, & ! unit is converted from ppb to DU

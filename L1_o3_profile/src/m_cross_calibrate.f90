@@ -1,13 +1,12 @@
 !
 module m_cross_calibrate
-  use m_solar_fit, ONLY:solar_fit, solar_fit_vary
-  use m_solar_wavcal_vary
-  use m_radiance_fit, ONLY: radiance_fit_vary
-  use m_radiance_wavcal, ONLY: radiance_wavcal, radiance_wavcal_vary
-  use m_ezspline_interpolation, only: interpol
-  use OMSAO_variables_module, ONLY:calwrt, the_pix, the_line, currpix, &
+  USE m_solar_fit, ONLY:solar_fit, solar_fit_vary
+  USE m_solar_wavcal_vary
+  USE m_radiance_fit, ONLY: radiance_fit_vary
+  USE m_radiance_wavcal, ONLY: radiance_wavcal, radiance_wavcal_vary
+  USE m_ezspline_interpolation, only: interpol
+  USE OMSAO_variables_module, ONLY:calwrt, calunit,the_pix, the_line, currpix, &
             ring_group, irrad_group, cali_group,cali_group, rad_group
-  USE OMSAO_parameters_module, ONLY: calunit
   USE OMSAO_indices_module
   LOGICAL, PRIVATE :: radcal=.false.
   INTEGER, PARAMETER, PRIVATE :: n_fitvar = 6
@@ -382,9 +381,9 @@ contains
        write(cunit, *) the_pix, the_line,  numwin, nw
        DO iw = 1, numwin
        IF (radcal) THEN 
-           WRITE(cunit,ADJUSTL(TRIM(form1))) cali % wincal_wav(iw,ix), cali % radwinfit(iw, fit_idx(1:n_fitvar), ix)
+           WRITE(cunit,ADJUSTL(TRIM(form1))) cali%wincal_wav(iw,ix), cali%radwinfit(iw, fit_idx(1:n_fitvar), ix)
        ELSE 
-           WRITE(cunit,ADJUSTL(TRIM(form1))) cali % wincal_wav(iw, ix), cali % solwinfit(iw, fit_idx(1:n_fitvar), ix)
+           WRITE(cunit,ADJUSTL(TRIM(form1))) cali%wincal_wav(iw, ix), cali%solwinfit(iw, fit_idx(1:n_fitvar), ix)
        ENDIF
        ENDDO
    ENDIF

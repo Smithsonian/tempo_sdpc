@@ -1,9 +1,8 @@
 MODULE m_get_toz
 
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir,&
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
       the_month, the_year, the_day, the_lon, the_lat, l3_toc_filename
-  USE OMSAO_parameters_module,     ONLY: atmos_unit
   USE OMSAO_errstat_module
   USE OMSAO_he5_module
 

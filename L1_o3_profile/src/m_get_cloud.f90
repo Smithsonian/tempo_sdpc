@@ -17,8 +17,7 @@ contains
   SUBROUTINE GET_CLOUD_MIPROP(waves, nwave, useasy, gcq, gcw, gcasy, ngksec, gcmoms, errstat) 
 
     USE OMSAO_precision_module 
-    USE OMSAO_variables_module, ONLY: refdbdir
-    USE OMSAO_parameters_module, ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: refdbdir, atmos_unit
     USE ozprof_data_module,     ONLY: nmom, maxgksec, pos_alb, maxmom
     USE OMSAO_errstat_module
 
@@ -156,8 +155,7 @@ contains
        ctaus, cfracs, ctps, errstat)
 
     USE OMSAO_precision_module 
-    USE OMSAO_variables_module, ONLY: sol_identifier, atmdbdir
-    USE OMSAO_parameters_module, ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: sol_identifier, atmdbdir, atmos_unit
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -450,8 +448,7 @@ contains
   SUBROUTINE GET_TOMSV8_CTP(month, day, lon, lat, ctp, errstat)
 
     USE OMSAO_precision_module 
-    USE OMSAO_variables_module, ONLY: atmdbdir
-    USE OMSAO_parameters_module, ONLY: atmos_unit
+    USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
     USE OMSAO_errstat_module
     use prepare_atmosphere, only: get_gridfrac1
 

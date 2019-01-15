@@ -30,7 +30,7 @@ contains
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, wincal_wav, &
          winlim, radwinfit, solwinfit, fixslitcal, fitwavs, fitweights, &
          currspec, fitvar_sol_init, numwin, &
-         nradpix, scnwrt, sol_wav_avg, correct_lamda
+         nradpix, scnwrt, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
 
 
@@ -117,7 +117,7 @@ contains
       ! Shift and squeeze solar spectrum.
       ! =================================
       ! fitvar_sol is updated in solar_fit_one through common module variables
-      IF (correct_lamda == 1) THEN
+      IF (correct_lambda == 1) THEN
           curr_rad_spec(wvl_idx,fidx:lidx) = (curr_rad_spec(wvl_idx,fidx:lidx) - &
           fitvar_sol(shi_idx)) / (1.0 + fitvar_sol(squ_idx))
       ELSE
@@ -145,7 +145,7 @@ contains
          wavcal_fname, nradpix, winlim, poly_order, radwavfit, slitfit, &
          fixslitcal, which_slit, fitweights, fitwavs, &
          currspec, fitvar_sol_saved, nslit, slitwav, fitvar_sol_init, &
-         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lamda
+         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, interpolation
     use m_subtract_poly, only: subtract_poly_meas
@@ -418,10 +418,10 @@ contains
         END IF
 
       END IF
-      IF (correct_lamda == 1) THEN 
+      IF (correct_lambda == 1) THEN 
       allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) ) &
            / ( 1.0 + locsqu(fidx:lidx))
-      ELSE IF (correct_lamda == 2) THEN 
+      ELSE IF (correct_lambda == 2) THEN 
       allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) + sol_wav_avg * locsqu(fidx:lidx)) & 
            / ( 1.0 + locsqu(fidx:lidx))
       ENDIF

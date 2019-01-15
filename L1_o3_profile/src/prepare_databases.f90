@@ -6,7 +6,7 @@ module m_prepare_databases
     USE OMSAO_variables_module, ONLY: phase, have_undersampling, &
          do_bandavg, numwin, lo_radbnd, up_radbnd, &         
          refnhextra,radnhtrunc, refnhextra,  &       
-         curr_sol_spec, curr_rad_spec_save ,nsolpix, n_irrad_wvl,nradpix, & ! measured spectra
+         curr_sol_spec, curr_rad_spec_ori ,nsolpix, n_irrad_wvl,nradpix, & ! measured spectra
          refspec_orig_data, n_refspec_pts,  & ! refs
          n_refspec_pts,  refspec_norm, refspec_fname, &
          sring_fidx, sring_lidx, nsol_ring, sol_spec_ring, & ! ringspec
@@ -22,7 +22,7 @@ module m_prepare_databases
          com_idx, com1_idx, com2_idx, com3_idx, vege_idx, &
          so2_idx, so2v_idx, bro_idx, bro2_idx, &
          hcho_idx, no2_t1_idx, no2_t2_idx,  o2o2_idx, chloro_idx, &
-         o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, lh2o_idx, sdc_idx
+         o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, lh2o_idx
 
     USE OMSAO_errstat_module
     USE ozprof_data_module,     ONLY: ring_on_line, ozprof_flag, nsl, ring_convol
@@ -99,9 +99,9 @@ contains
 
       ! jbak , 'discontinuty occures if there is large shift btw rad/irrad wave'
       IF (refnhextra > 0) refwvl(fidx:fidx+refnhextra-1) = &
-           curr_rad_spec_save(wvl_idx, refsol_idx(fidx:fidx+refnhextra-1))
+           curr_rad_spec_ori(wvl_idx, refsol_idx(fidx:fidx+refnhextra-1))
       IF (refnhextra > 0) refwvl(lidx-refnhextra+1:lidx) = &
-           curr_rad_spec_save(wvl_idx, refsol_idx(lidx-refnhextra+1:lidx))
+           curr_rad_spec_ori(wvl_idx, refsol_idx(lidx-refnhextra+1:lidx))
 
     !  IF (refnhextra > 0) refwvl(fidx:fidx+refnhextra-1) = &
     !       curr_sol_spec(wvl_idx, refsol_idx(fidx:fidx+refnhextra-1))
@@ -177,7 +177,7 @@ contains
         IF ( (i == ring_idx .OR. i == ring1_idx ) &
              .AND. ozprof_flag .AND. ring_on_line) CYCLE 
 
-        IF ( i == com_idx .OR. i == com1_idx .OR. i == com2_idx .OR. i == com3_idx .OR. i == sdc_idx ) CYCLE
+        IF ( i == com_idx .OR. i == com1_idx .OR. i == com2_idx .OR. i == com3_idx  ) CYCLE
 
         IF (n_refspec_pts(i) > 0 ) THEN
           CALL avg_band_refspec(refwvl(1:n_refwvl), database(i,1:n_refwvl), &
@@ -298,7 +298,7 @@ contains
           ! -----------------------------------------------------------------  
         ELSE IF ((idx /= com_idx .AND. idx /= com1_idx .AND. idx /= com2_idx .AND. idx /= com3_idx  &
              .AND. idx /= ring_idx .AND. idx /= ring1_idx &
-             .AND. idx /= vege_idx .AND. idx /= chloro_idx .AND. idx /= lh2o_idx .AND. idx /=  sdc_idx) .OR. &
+             .AND. idx /= vege_idx .AND. idx /= chloro_idx .AND. idx /= lh2o_idx ) .OR. &
              (idx == ring_idx .AND. ring_convol) .OR. (idx == ring1_idx .AND. ring_convol)) THEN
 
           CALL convol (refspec_orig_data(idx,1:npts, wvl_idx),specmod(1:npts),npts, errstat)
@@ -422,7 +422,7 @@ contains
   ! 3. Add arguments vgl, vgr, hwl, hwr
   ! 4. Use voigt_gauss to replace asym_gauss
   ! *****************************************************
-  SUBROUTINE undersample (n_gome_pts, curr_wvl, phase, pge_error_status )
+  SUBROUTINE undersample (n_rad_pts, curr_wvl, phase, pge_error_status )
 
     !  Convolves input spectrum with Gaussian slit function of specified
     !  HW1e, and samples at a particular input phase to give the OMI
@@ -435,9 +435,9 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                                INTENT (IN) :: n_gome_pts
-    REAL (KIND=dp),                         INTENT (IN) :: phase
-    REAL (KIND=dp), DIMENSION (n_gome_pts), INTENT (IN) :: curr_wvl
+    INTEGER,                               INTENT (IN) :: n_rad_pts
+    REAL (KIND=dp),                        INTENT (IN) :: phase
+    REAL (KIND=dp), DIMENSION (n_rad_pts), INTENT (IN) :: curr_wvl
 
     ! ---------------
     ! Output variable
@@ -447,9 +447,9 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    REAL (KIND=dp), DIMENSION (2,n_gome_pts+4) :: underspec
-    REAL (KIND=dp), DIMENSION (:), POINTER     :: locwvl, locspec, specmod, specmod1
-    REAL (KIND=dp), DIMENSION (n_gome_pts + 4) :: tmpwav, over, under, resample, & 
+    REAL (KIND=dp), DIMENSION (2,n_rad_pts+4) :: underspec
+    REAL (KIND=dp), DIMENSION (:), POINTER    :: locwvl, locspec, specmod, specmod1
+    REAL (KIND=dp), DIMENSION (n_rad_pts + 4) :: tmpwav, over, under, resample, & 
           resample1, subwav, tmpspec
     INTEGER :: npts, errstat, iwin, fidx, lidx, npoints
 
@@ -704,11 +704,11 @@ contains
 
     ENDDO ! end window loop
 
-    n_refspec_pts (us1_idx)  = n_gome_pts
-    n_refspec_pts (us2_idx)  = n_gome_pts
+    n_refspec_pts (us1_idx)  = n_rad_pts
+    n_refspec_pts (us2_idx)  = n_rad_pts
 
-    !WRITE(90, *) n_gome_pts, nradpix(1:numwin) + 4
-    !DO i = 1, n_gome_pts
+    !WRITE(90, *) n_rad_pts, nradpix(1:numwin) + 4
+    !DO i = 1, n_rad_pts
     !   WRITE(91, *) curr_wvl(i), database(us1_idx, i),  database(us2_idx, i)
     !ENDDO
     !STOP

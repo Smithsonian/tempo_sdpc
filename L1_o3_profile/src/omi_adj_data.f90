@@ -69,7 +69,7 @@ contains
           slitfit = cali%slitfit_sol(:, :, :, currpix)
         ENDIF
       ELSE
-        solwinfit(:,:, 1) = cali%solwinfit(:, :,  currpix)
+        solwinfit(1:numwin,:, 1) = cali%solwinfit(1:numwin, :,  currpix)
       END IF
     ENDIF
 
@@ -83,8 +83,8 @@ contains
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, &
          n_max_fitpars, solar_idx!, rsl_idx, fsl_idx, comm_idx, com1_idx
     USE OMSAO_parameters_module, ONLY: mswath, normweight, max_fit_pts,max_spec_pts, &
-         maxchlen, l1l2inp_unit
-    USE OMSAO_variables_module,  ONLY: curr_rad_spec,curr_sol_spec,curr_rad_spec_save, &
+         maxchlen
+    USE OMSAO_variables_module,  ONLY: curr_rad_spec,curr_sol_spec,curr_rad_spec_ori, &
          n_rad_wvl, use_meas_sig, numwin, nradpix, the_sza_atm, the_vza_atm, &
          the_aza_atm, the_sca_atm, the_month, the_year, the_day, the_lon, &
          the_lat, the_lats, the_lons, edgelons, edgelats, the_surfalt, nview, &
@@ -94,7 +94,7 @@ contains
          n_fitvar_rad, radwavcal_freq, currpix, currloop, currline, &
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, &
-         tabdir, orbnumsol, NSPC_omi!, refwvl, refidx_sav, lo_radbnd, up_radbnd, i0sav
+         l1l2inp_unit, tabdir, orbnumsol, NSPC_omi!, refwvl, refidx_sav, lo_radbnd, up_radbnd, i0sav
     !USE OMSAO_pixelcorner_module, ONLY: & 
     !     omi_allclon, omi_allclat,  omi_allelon, omi_allelat,&
     !     omi_allHeight, omi_alltime,omi_alllat, omi_alllon, &
@@ -141,7 +141,7 @@ contains
     REAL (KIND=dp), DIMENSION(mswath), SAVE    :: corr_woffset
     REAL (KIND=dp), DIMENSION(:,:,:), SAVE, POINTER  :: & ! (mswath,nx,0:maxord)
                                       corrpars, offset_pars, slope_pars
-    REAL (KIND=dp), DIMENSION(:), POINTER       :: corr, offset, slope !max_spec_pts
+    REAL (KIND=dp), DIMENSION(max_fit_pts) :: corr, offset, slope
     REAL (KIND=dp), DIMENSION(:,:), SAVE, POINTER :: &
                                                   allcorr, alloffset ! nx, max_spec_pts
     REAL (KIND=dp), DIMENSION(:,:), SAVE, POINTER  :: xcorr
@@ -151,7 +151,7 @@ contains
     INTEGER, SAVE                          :: nxgascorr, nxw2corr
     REAL (KIND=dp), DIMENSION(:,:,:),SAVE,POINTER  :: gascorr, xw2corr ! nx, max_spec_pts, 2
     INTEGER, DIMENSION(:,:),SAVE, POINTER  :: gascorr_npts, xw2corr_npts ! nx,3
-    REAL (KIND=dp), DIMENSION (:, :), POINTER :: del ! ( 1:maxord, max_spec_pts) 
+    REAL (KIND=dp), DIMENSION (maxord, max_fit_pts) :: del
 
     REAL (KIND=dp)               :: woffset, rad347, irad347
     real (kind=dp), dimension(1) :: temp_pos_alb, temp_rad
@@ -208,8 +208,6 @@ contains
 
     IF (first .AND. biascorr) THEN
 
-     allocate ( del(1:maxord, max_spec_pts))  
-     allocate ( corr(max_spec_pts),offset(max_spec_pts),slope(max_spec_pts))
      IF (which_biascorr == 1) THEN
         allocate (allcorr(nxtrack_max, max_spec_pts))
         allocate (alloffset(nxtrack_max, max_spec_pts))
@@ -312,7 +310,7 @@ contains
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
-
+          
         xcorr = 1.0  ! Initialize to 1.0
         DO is = 1, mswath
           READ (l1l2inp_unit, *) nxcorr(is)
@@ -453,7 +451,6 @@ contains
       DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1
         ch = band_selectors(i) 
-        !print *, ch, currpix, fidx, lidx, nradpix(i), nxwav(ch)
         CALL INTERPOL(xwavs(ch, 1:nxwav(ch)), xwcorr(ch, currpix, 1:nxwav(ch)), nxwav(ch), &
              curr_rad_spec(wvl_idx, fidx:lidx),  corr(1:nradpix(i)), nradpix(i), errstat)
         IF (errstat < 0) THEN
@@ -696,7 +693,7 @@ contains
     ntrunc = nhtrunc * 2
     ntrunc1 = ntrunc + 1
     fidx = 1
-    curr_rad_spec_save = curr_rad_spec
+    curr_rad_spec_ori = curr_rad_spec
     DO i = 1, numwin
       lidx = fidx + nradpix(i) - ntrunc1
       curr_rad_spec(1:sig_idx, fidx:lidx) = curr_rad_spec(1:sig_idx, fidx + nhtrunc : lidx + nhtrunc)

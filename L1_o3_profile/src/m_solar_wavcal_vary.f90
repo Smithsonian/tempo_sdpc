@@ -20,7 +20,7 @@ contains
          poly_order, solwavfit, fixslitcal, which_slit, &
          fitweights, fitwavs, currspec, fitvar_sol_saved, slitfit, nslit, &
          slitwav, fitvar_sol_init, numwin, sol_spec_ring, nsol_ring, &
-         currpixchar, scnwrt, sol_wav_avg, correct_lamda
+         currpixchar, scnwrt, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
     USE m_ezspline_interpolation, only: bspline, interpolation
     use m_cal_fit_one
@@ -297,7 +297,7 @@ contains
         END IF
       END IF
 
-      IF (correct_lamda == 1 ) THEN
+      IF (correct_lambda == 1 ) THEN
           allwaves(fidx:lidx) = (allwaves(fidx:lidx) - locshi(fidx:lidx) ) &
           / ( 1.0 + locsqu(fidx:lidx))
       ELSE
@@ -329,14 +329,14 @@ contains
       linter = finter + nsolpix(i) - 1
 
       sol_spec_ring(1, finter:linter) = allwaves(fidx:lidx)
-      IF (correct_lamda ==1 ) THEN
+      IF (correct_lambda ==1 ) THEN
        IF (finter > sfidx) sol_spec_ring(1, sfidx:finter-1) = &
            (sol_spec_ring(1,sfidx:finter-1) - &
            locshi(fidx)) / (1.0 + locsqu(fidx))
        IF (linter < slidx) sol_spec_ring(1, linter+1:slidx) = &
            (sol_spec_ring(1, linter+1:slidx) - &
            locshi(lidx)) / (1.0 + locsqu(lidx))
-      ELSE IF (correct_lamda == 2) THEN 
+      ELSE IF (correct_lambda == 2) THEN 
        IF (finter > sfidx) sol_spec_ring(1, sfidx:finter-1) = &
           (sol_spec_ring(1,sfidx:finter-1) - locshi(fidx) + sol_wav_avg * locsqu(fidx)) / (1.0 + locsqu(fidx))
        IF (linter < slidx) sol_spec_ring(1, linter+1:slidx) = &

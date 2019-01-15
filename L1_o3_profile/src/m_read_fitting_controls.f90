@@ -33,20 +33,20 @@ contains
     USE OMSAO_indices_module, ONLY: &
          max_rs_idx, max_calfit_idx, mns_idx, mxs_idx,&
          calfit_strings, radfit_strings, refspec_strings, & 
-         genline_str, socline_str, racline_str,     &
-         rafline_str, eoi3str, & 
+         genline_str, socline_str, racline_str,rafline_str, eoi3str, & 
          solar_idx, us1_idx, us2_idx, shift_offset, &
          com_idx, com1_idx, com2_idx, com3_idx, &
-         comfidx,  cm1fidx, cm2fidx,   cm3fidx, &
+         comfidx,  cm1fidx, cm2fidx,  cm3fidx, &
          comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
-         hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx, &
+         hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx,& 
          wr0_idx, wr7_idx , &
          so2_idx, o2_idx, o2o2_idx, h2o_idx, &
-         gome_idx, which_instrument, max_instrument_idx, instrument_idx, &
-         omi_idx, scia_idx, gome2_idx, tempo_idx
-    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts,l1l2inp_unit, &
+         which_instrument, max_instrument_idx, instrument_idx, &
+         gome_idx, omi_idx, scia_idx, gome2_idx, tempo_idx
+    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts, &
                                          zerospec_string
-    USE OMSAO_variables_module,    ONLY: use_backup, use_solcomp,    &
+
+    USE OMSAO_variables_module,    ONLY: l1l2inp_unit,use_backup, use_solcomp,    &
          l1b_irrad_filename, l1b_rad_filename, l2_filename, l2_cld_filename, &
          avg_solcomp, avgsol_allorb, &
          n_fincol_idx, max_itnum_sol, &
@@ -72,24 +72,25 @@ contains
          refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
          correct_merr, xbin_decerr, ybin_decerr, &
          do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol,l2_hdf_flag, redslw, &
-         upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd, nswath, orbnum, orbnumsol,& 
-         num_param, ncoadd
+         upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd,& 
+         nswath, orbnum, orbnumsol,num_param, ncoadd, do_ch2reso
     USE OMSAO_errstat_module
+    USE omi_read_l1b_data, only: find_scan_line_range
     USE OMSAO_omidata_module, ONLY:  &
-        mswath_omi, nxomi_max=>nxtrack_max, ntomi_max=>ntimes_max, &
-        upper_wvls_omi, lower_wvls_omi, upper_spec_omi, lower_spec_omi, omisol_version
+        mswath_omi=>mswath, nxomi_max=>nxtrack_max, ntomi_max=>ntimes_max, &
+        upper_wvls_omi=>upper_wvls, lower_wvls_omi=>lower_wvls, &
+        upper_spec_omi=>upper_spec, lower_spec_omi=>lower_spec, omisol_version
     USE OMSAO_tmpodata_module, ONLY: &
-        mswath_tmpo, nxtmpo_max=>nxtrack_max,nttmpo_max=>ntimes_max, &
-        upper_wvls_tmpo, lower_wvls_tmpo, upper_spec_tmpo, lower_spec_tmpo
-    USE ozprof_data_module, ONLY: ozprof_flag, &
-        ozprof_input_fname, fullorb, do_ch2reso,  &
-        nos, nsh, nsl, do_simu, radcalwrt, nfgas, ozfit_end_index,ozfit_start_index, nlay, &
+        mswath_tmpo=>mswath, nxtmpo_max=>nxtrack_max,nttmpo_max=>ntimes_max, &
+        upper_wvls_tmpo=>upper_wvls, lower_wvls_tmpo=>lower_wvls, &
+        upper_spec_tmpo=>upper_spec, lower_spec_tmpo=>lower_spec
+    USE ozprof_data_module, ONLY: radcalwrt,ozprof_flag, ozprof_input_fname,& 
+        nlay, nos, nsh, nsl, do_simu, nfgas, ozfit_end_index, ozfit_start_index, &
         use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs 
     USE UTIL_tools_class
-    use m_utilities, only: get_substring, string2index, check_for_endofinput, &
+    USE m_utilities, only: get_substring, string2index,check_for_endofinput, &
                            skip_to_filemark
-    use omi_read_l1b_data, only: find_scan_line_range
-    use m_read_ozprof_input
+    USE m_read_ozprof_input
 
     IMPLICIT NONE
 
@@ -150,7 +151,8 @@ contains
     INTEGER :: OMI_SMF_setmsg
 
     pge_error_status = pge_errstat_ok
-    coadd_uv2 = .false.
+    coadd_uv2 = .FALSE.
+    do_ch2reso= .FALSE.
     ! -----------------------------------------------------------
     ! Initialize array with reference spectrum names to Zero_Spec
     ! -----------------------------------------------------------
@@ -158,6 +160,8 @@ contains
       refspec_fname(j) = 'OMSAO_Zero_Spec.dat'
     END DO
 
+    fit_ctrl_file(:) = ' '
+    msg(:) = ' '
  
     ! -----------------------------------------------------------
     ! Open fitting control file
@@ -186,8 +190,7 @@ contains
     END IF
 
     ! -----------------------------------------------------------
-    ! Get database directories 
-    !  It was getting here, but from external, now
+    ! Get database directories fro external
     ! -----------------------------------------------------------
     ! tabdir
     version = 1
@@ -940,8 +943,6 @@ contains
     ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++
     select_lonlat = .FALSE.
     rw_l1l2_pcf   = .TRUE.        ! read l1 (write l2) fname from PCF file
-    fullorb = .TRUE.
-    do_ch2reso = .FALSE.
     pixlim = -9999
     linelim = -9999
 

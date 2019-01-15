@@ -431,11 +431,11 @@ contains
     ! ----------------------------  
     omi_irrad%errstat(1:nxtrack) = pge_errstat_ok
     omi_irrad%nwav (1:nxtrack) = 0
-    omi_irrad%npix (1:maxwin, 1:nxtrack) = 0
-    omi_irrad%prec (1:nwavel_max,1:nxtrack) = 0.0
-    omi_irrad%spec (1:nwavel_max,1:nxtrack) = 0.0
-    omi_irrad%wavl (1:nwavel_max,1:nxtrack) = 0.0
-    omi_irrad%qflg (1:nwavel_max,1:nxtrack) = 0
+    omi_irrad%npix (1:numwin, 1:nxtrack) = 0
+    omi_irrad%prec (:,1:nxtrack) = 0.0
+    omi_irrad%spec (:,1:nxtrack) = 0.0
+    omi_irrad%wavl (:,1:nxtrack) = 0.0
+    omi_irrad%qflg (:,1:nxtrack) = 0
 
     IF (.NOT. use_backup) THEN 
       DO is = 1, nswath
@@ -1259,10 +1259,9 @@ contains
     REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: tmpspec
     INTEGER (KIND=2), DIMENSION (:,:), POINTER :: tmpqflg
     REAL (KIND = dp)                          :: tmpsampr, retswav, retewav
-    LOGICAL, DIMENSION (:,:), POINTER  :: wavcals 
-    REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: wshis, wsqus
     REAL (KIND = dp), DIMENSION (:,:,:), POINTER :: subspec
-    LOGICAL, SAVE :: first=.true. 
+    LOGICAL, DIMENSION (numwin)                  :: wavcals 
+    REAL (KIND = dp), DIMENSION (numwin,nxcoadd) :: wshis, wsqus
 
     ! Exteranl functions
     INTEGER                                   :: estat
@@ -1273,29 +1272,27 @@ contains
     CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_lines'
 
 
-    ! Initialize all local data arrays
     nx = nfxtrack / nxbin
-    IF ( first) THEN
-     allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nlines_max-1))
-     allocate (rad_prec (nwavel_max, nxtrack_max, 0:nlines_max-1))
-     allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nlines_max-1))
-     allocate (rad_spec (nwavel_max, nxtrack_max, 0:nlines_max-1))
-     allocate (ccd_prec(nwavel_max, nxtrack_max))
-     allocate (ccd_spec(nwavel_max, nxtrack_max))
-     allocate (ccd_wavl(nwavel_max, nxtrack_max))
-     allocate (ccd_qflg(nwavel_max, nxtrack_max))
-     allocate (idxs(nwavel_max), flgmsks(nwavel_max))
-     allocate (flgbits(nxcoadd, nwavel_max, 0:nbits-1))
-     allocate (tmpspec(sig_idx, nwavel_max, nxtrack_max), tmpqflg(nwavel_max,nxtrack_max))
-     allocate (wavcals( maxwin, nxtrack_max))
-     allocate (wshis(maxwin, nxtrack_max, nxcoadd), wsqus(maxwin, nxtrack_max,nxcoadd))
-     allocate (subspec(nxcoadd, sig_idx, nwavel_max) )
-     first=.false.
-    ENDIF
-    rad_spec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
-    rad_prec (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
-    rad_qflg (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0
-    rad_wavl (1:nwavel_max, 1:nxtrack, 0:ny-1) = 0.0
+    ! allocation
+    allocate (rad_qflg (nwavel_max, nxtrack_max, 0:ny-1))
+    allocate (rad_prec (nwavel_max, nxtrack_max, 0:ny-1))
+    allocate (rad_wavl (nwavel_max, nxtrack_max, 0:ny-1))
+    allocate (rad_spec (nwavel_max, nxtrack_max, 0:ny-1))
+    allocate (ccd_prec (nwavel_max, nxtrack_max))
+    allocate (ccd_spec (nwavel_max, nxtrack_max))
+    allocate (ccd_wavl (nwavel_max, nxtrack_max))
+    allocate (ccd_qflg (nwavel_max, nxtrack_max))
+    allocate (idxs(nwavel_max), flgmsks(nwavel_max))
+    allocate (flgbits(nxcoadd, nwavel_max, 0:nbits-1))
+    allocate (tmpspec(sig_idx, nwavel_max, nxtrack_max), &
+              tmpqflg(nwavel_max,nxtrack_max))
+    allocate (subspec(nxcoadd, sig_idx, nwavel_max) )
+
+    ! Initialize all local data arrays
+    rad_spec (1:nwavel_max, 1:nxtrack_max, 0:ny-1) = 0.0
+    rad_prec (1:nwavel_max, 1:nxtrack_max, 0:ny-1) = 0.0
+    rad_qflg (1:nwavel_max, 1:nxtrack_max, 0:ny-1) = 0
+    rad_wavl (1:nwavel_max, 1:nxtrack_max, 0:ny-1) = 0.0
 
     ccd_spec (1:nwavel_max, 1:nxtrack_max) = 0.0
     ccd_prec (1:nwavel_max, 1:nxtrack_max) = 0.0
@@ -1309,10 +1306,10 @@ contains
     omi_rad%pix_errstat(1:nxtrack, 0:ny-1) = pge_errstat_ok
     omi_rad%npix = 0
     omi_rad%nwav = 0
-    omi_rad%spec (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
-    omi_rad%prec (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
-    omi_rad%qflg (1:nwavel_max, 1:nxtrack, 0:ny) = 0
-    omi_rad%wavl (1:nwavel_max, 1:nxtrack, 0:ny) = 0.0
+    omi_rad%spec (:, 1:nxtrack, 0:ny-1) = 0.0
+    omi_rad%prec (:, 1:nxtrack, 0:ny-1) = 0.0
+    omi_rad%qflg (:, 1:nxtrack, 0:ny-1) = 0
+    omi_rad%wavl (:, 1:nxtrack, 0:ny-1) = 0.0
 
     j = 1
     nwavel = 0
@@ -1657,11 +1654,11 @@ contains
           lidx = fidx + omi_rad%npix(iw, ix, iloop) - 1 
 
           IF (nbin > 1) THEN
-            CALL radwavcal_coadd(wcal_bef_coadd, wavcals(iw, ix), & !iw, ix, &
+            CALL radwavcal_coadd(wcal_bef_coadd, wavcals(iw), & !iw, ix, &
                  omi_rad%npix(iw, ix, iloop), nbin, &
-                 subspec(1:nbin, :, fidx:lidx), wshis(iw, ix, 1:nbin), &
-                 wsqus(iw, ix, 1:nbin), error)
-            wavcals(iw, ix) = .FALSE.
+                 subspec(1:nbin, :, fidx:lidx), wshis(iw,1:nbin), &
+                 wsqus(iw, 1:nbin), error)
+            wavcals(iw) = .FALSE.
             IF (error) THEN
               WRITE(www_lun, '(A)') 'No radiance wavelength calibration before coadding!!!'
               pge_error_status = pge_errstat_warning
@@ -1724,6 +1721,13 @@ contains
       ENDDO
     ENDDO
 
+   !-------------------------------------------------
+   ! finishing with deallocation
+   !-------------------------------------------------
+   deallocate(rad_qflg, rad_prec, rad_wavl, rad_spec)
+   deallocate(ccd_qflg, ccd_prec, ccd_wavl, ccd_spec)
+   deallocate(idxs, flgmsks, flgbits)
+   deallocate(tmpspec, tmpqflg, subspec)
     !DO ix = 1, nfxtrack
     !   WRITE(90, '(10I5)') ix, omi_irrad%npix(1:numwin, ix), omi_irrad%nwav(ix)
     !   DO i = 0, nloop - 1

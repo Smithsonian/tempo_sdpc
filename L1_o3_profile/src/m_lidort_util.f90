@@ -5,7 +5,7 @@ MODULE m_lidort_util
   USE m_avg_band, ONLY: avg_band_spec
   USE m_convol, ONLY: convol_f2c
   PUBLIC get_hres_radcal_waves, get_hres_gascrs_ray, &
-       hres_radwf_inter_convol, getabs_crs, getso2_crs, get_alb_ozcrs_ray, &
+       hres_radwf_inter_convol, &
        get_slant_tau, get_tracegas_wf, radwf_interpol, get_efft
 
   INTEGER, PARAMETER, PRIVATE :: max_pathlen = 1024
@@ -204,13 +204,14 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
      so2crs, o4crs, o2crs, h2ocrs, errstat)
 
   USE OMSAO_precision_module
-  USE OMSAO_indices_module,   ONLY  : so2_idx, so2v_idx, hwe_idx, spk_idx, o2o2_idx,o2_idx, o2t2_idx, h2o_idx, h2ot2_idx
+  USE OMSAO_indices_module,   ONLY  : hwe_idx, spk_idx, &
+      so2_idx, so2v_idx, o2o2_idx,o2_idx, o2t2_idx, h2o_idx, h2ot2_idx
   USE OMSAO_parameters_module,ONLY  : du2mol
   USE OMSAO_variables_module, ONLY  : numwin, nradpix, band_selectors, winlim, &
        owave=>radwvl_sav, now=>n_radwvl_sav,onpix=>nradpix_sav, i0sav, refidx, fitwavs, & 
        nrad=>n_rad_wvl, &
        do_bandavg, curr_rad_spec, refidx_sav, database, database_shiwf, &
-       database_pslwf,  solwinfit, solwinfit_save, n_slitvar, mask_slitvar,do_dsdw, do_dsdk
+       database_pslwf, solwinfit, solwinfit_save, npsl,psl_fpos,max_psl,do_dsdw, do_dsdk
   USE ozprof_data_module,     ONLY  : nup2p, hwave=>hreswav, radcwav, &
        radcidxs, hres_i0, nhw=>nhresp, hresgabs, hresray, nw0=>ncalcp, &
        hres_gas, hres_gasshi, ngas, gasidxs, fgasidxs, fgassidxs, &
@@ -236,19 +237,20 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   REAL (KIND=dp), DIMENSION(nw),     INTENT(INOUT) :: rad, albwf, cfracwf
 
   ! Local variables
-  INTEGER :: i, j, iwin, fidx, lidx, fidxc, lidxc, idx, iw, ntemp, nspec, sidx, eidx, which_pslwf
+  INTEGER, PARAMETER :: which_pslwf = 2
+  INTEGER :: i, j, iwin, fidx, lidx, fidxc, lidxc, idx, iw, ntemp, nspec, sidx, eidx
   LOGICAL :: do_so2shi, do_o4shi, do_o2shi, do_h2oshi
   REAL (KIND=dp)                      :: temp
   INTEGER, DIMENSION (nw)             :: c2hfidx, c2hlidx
 
-  REAL (KIND=dp), DIMENSION (nhw)     :: hrad,hrad1, hrad0,halbwf, tmparr, dtau, dray, hcfracwf
-  REAL (KIND=dp), DIMENSION (now)     :: oi0, otmp, tmpi0, so2dads1, o4dads1
-  REAL (KIND=dp), DIMENSION (nw, nz)  :: tauwf
+  REAL (KIND=dp), DIMENSION (nhw)     :: hrad,hrad1,halbwf, tmparr, dtau, dray, hcfracwf
+  REAL (KIND=dp), DIMENSION (now)     :: oi0, otmp, tmpi0 !, so2dads1, o4dads1
+  REAL (KIND=dp), DIMENSION (nw,  nz) :: tauwf
   REAL (KIND=dp), DIMENSION (now, nz) :: dads1, dadt1, abscrs1, so2crs1, o4crs1,o2crs1, h2ocrs1
-  REAL (KIND=dp), DIMENSION (ngas,now):: tmp_gas, tmp_gasshi
+  !REAL (KIND=dp), DIMENSION (ngas,now):: tmp_gas , tmp_gasshi
   REAL (KIND=dp), DIMENSION (nhw, nz) :: hozwf, haerwf, haerswf, hcodwf, hsprswf, hraywf 
   REAL (KIND=dp), DIMENSION (nhw, nz*8) :: inarr
-  REAL (KIND=dp), DIMENSION (now, nz*8) :: outarr, outarr1, outarr2
+  REAL (KIND=dp), DIMENSION (now, nz*8) :: outarr, outarr1
   REAL (KIND=dp), DIMENSION (now) :: dpabs
   !INTEGER :: ntime = 1
 
@@ -399,6 +401,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
         CALL BSPLINE(wave(1:nw0), fsprswf(1:nw0, i), nw0, hwave(1:nhw), hsprswf(1:nhw, i), nhw, errstat)
      ENDDO
   ENDIF
+
   ! Convert radiances back
   hrad = EXP(hrad)
   ! convert radiance/weighting function to dlnI/dx from dI/dx
@@ -563,12 +566,12 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   ! *** third, transfer all convolved spectra back ***
   oi0(1:now)  = outarr(1:now, 1)
   hrad(1:now) = outarr(1:now, 2) / oi0(1:now)
-  which_pslwf = 2
+
   IF (do_pslwf .and. which_pslwf ==1  ) THEN 
     solwinfit_save = solwinfit
     do_dsdw = .false. ; do_dsdk = .false.
-    DO i = 1, n_slitvar
-     idx = mask_slitvar(i)
+    DO i = 1, npsl
+     idx = psl_fpos(i)
      solwinfit(1:numwin, idx, 1) = solwinfit_save(1:numwin, idx,1) *1.001
      !CALL convol_f2c(hwave(1:nhw), inarr(1:nhw,2)/inarr(1:nhw,1), nhw, 1, owave(1:now), outarr1(1:now,2), now)
      !hrad1(1:now) = outarr1(1:now, 2) !/ outarr1(1:now,1) 
@@ -581,26 +584,26 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
        dpabs(fidx:lidx) =  solwinfit_save(iwin,idx,1)*0.001
        fidx = lidx+1
      ENDDO
-     database_pslwf(idx, 1:now) =(hrad1(1:now)-hrad(1:now))/(dpabs(1:now)) /hrad1(1:now)
+     database_pslwf(refidx(i), 1:now) =(hrad1(1:now)-hrad(1:now))/(dpabs(1:now)) /hrad1(1:now)
      solwinfit = solwinfit_save 
     ENDDO
   ENDIF 
   
   IF (do_pslwf .and. which_pslwf == 2) THEN 
 
-  !  CALL convol_f2c(hwave(1:nhw), inarr(1:nhw,2)/inarr(1:nhw,1), nhw,1, owave(1:now),hrad0(1:now), now)
     ! this show a better fitting acurrcy
-    DO i = 1, n_slitvar 
-    IF ( mask_slitvar(i) == hwe_idx) THEN  
-     do_dsdw = .true. ; do_dsdk = .false.
-    ELSE IF (mask_slitvar(i) == spk_idx) THEN 
-     do_dsdw = .false. ; do_dsdk = .true.
-    ENDIF
-     CALL convol_f2c(hwave(1:nhw), inarr(1:nhw, 2)/inarr(1:nhw,1), nhw, 1, owave(1:now), outarr1(1:now, 2), now)
-     hrad1(1:now) = outarr1(1:now, 2) ! / outarr1(1:now,1)
-     !CALL convol_f2c(hwave(1:nhw), inarr(1:nhw,1:2), nhw, 2, owave(1:now), outarr1(1:now,1:2), now)
-     !hrad1(1:now) = outarr1(1:now, 2)/ outarr1(1:now,1) 
-     database_pslwf(mask_slitvar(i), 1:now) = hrad1(1:now)/hrad(1:now)
+    DO i = 1, npsl 
+      IF ( psl_fpos(i) == hwe_idx) THEN  
+         do_dsdw = .true. ; do_dsdk = .false.
+      ELSE IF (psl_fpos(i) == spk_idx) THEN 
+         do_dsdw = .false. ; do_dsdk = .true.
+      ENDIF
+      !CALL convol_f2c(hwave(1:nhw), inarr(1:nhw, 2)/inarr(1:nhw,1), nhw, 1, &
+      !    owave(1:now), outarr1(1:now, 2), now)
+      !hrad1(1:now) = outarr1(1:now, 2)
+      CALL convol_f2c(hwave(1:nhw), inarr(1:nhw,1:2), nhw, 2, owave(1:now), outarr1(1:now,1:2), now)
+      hrad1(1:now) = outarr1(1:now, 2)/ outarr1(1:now,1) 
+      database_pslwf(i,refidx(1:now)) = hrad1(1:now)/hrad(1:now)
     ENDDO
     do_dsdw = .false. ; do_dsdk = .false.
   ENDIF
@@ -1781,7 +1784,7 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
   ENDDO
 
   RETURN
-END SUBROUTINE GET_TRACEGAS_WF
+END SUBROUTINE get_tracegas_wf
 
 SUBROUTINE get_efft(nz, zs, ozs, fts, ts, errstat)
   USE OMSAO_precision_module

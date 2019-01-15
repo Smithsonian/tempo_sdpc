@@ -61,7 +61,7 @@ module tmpo_read_l1b_data
 
   SUBROUTINE tmpo_read_irradiance ( first_pix, last_pix, pge_error_status)
    USE OMSAO_indices_module, ONLY : sig_idx, wvl_idx, spc_idx
-   USE OMSAO_parameters_module, ONLY: maxchlen, maxwin, max_fit_pts, mswath,max_ring_pts, calunit
+   USE OMSAO_parameters_module, ONLY: maxchlen, maxwin, max_fit_pts, mswath,max_ring_pts
    USE OMSAO_precision_module
    USE OMSAO_errstat_module
    USE OMSAO_variables_module, ONLY: nswath, nxtrack, numwin, currpix, &
@@ -69,7 +69,7 @@ module tmpo_read_l1b_data
     retlbnd, retubnd, reduce_lbnd, reduce_ubnd,redlam, redsampr,redslw, & 
     reduce_slit, reduce_resolution, &
     l1b_irrad_filename, nxbin, nybin, &
-    use_backup, refdbdir,&
+    use_backup, refdbdir, calunit,&
     scnwrt, use_redfixwav, which_slit, wcal_bef_coadd, dwavmax,GranuleJDay
    USE ozprof_data_module, ONLY:toms_fwhm, pos_alb,nrefl, mrefl
    USE m_gauss, ONLY:gauss_uneven
@@ -304,6 +304,7 @@ module tmpo_read_l1b_data
    DO ix = first_pix, last_pix
      ! Get quality flags bits, coadd flags
      currpix = ix
+     flgmsks (:) = 0
      DO is = 1, nswath 
        ch = inschs(is)
        nbin = nxbin
@@ -334,7 +335,7 @@ module tmpo_read_l1b_data
                                         irrad_qflg(spos(ch):epos(ch), iix + ic)
          ENDDO
        ENDIF        
-     ENDDO
+     ENDDO ! loop of nswath
 
      !1) subset solar spectrum for ozone fitting spectra 
      nsub = 0 ; subspec=0.0 
@@ -642,10 +643,10 @@ module tmpo_read_l1b_data
    ! Starting with allocating local variables
    !--------------------------------------------------------------------------
    nl = (eline - sline + 1)/nybin
-   allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nl))
-   allocate (rad_prec (nwavel_max, nxtrack_max, 0:nl))
-   allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nl))
-   allocate (rad_spec (nwavel_max, nxtrack_max, 0:nl))
+   allocate (rad_qflg (nwavel_max, nxtrack_max, 0:nl-1))
+   allocate (rad_prec (nwavel_max, nxtrack_max, 0:nl-1))
+   allocate (rad_wavl (nwavel_max, nxtrack_max, 0:nl-1))
+   allocate (rad_spec (nwavel_max, nxtrack_max, 0:nl-1))
    allocate (flgmsks(nwavel_max),flgbits (nxbin, nwavel_max, 0:nbits-1))
    allocate (idxs(nwavel_ccd))
    allocate (ccd_prec(nwavel_ccd, nxtrack_max))
@@ -896,8 +897,9 @@ module tmpo_read_l1b_data
     ! Finishing with deallocating local variables
     !--------------------------------------------------------------------------
     deallocate (rad_qflg, rad_prec, rad_wavl, rad_spec)
-    deallocate (flgbits)
+    deallocate (flgmsks,flgbits, idxs, subspec)
     deallocate (ccd_spec, ccd_prec, ccd_wavl, ccd_qflg)
+
     RETURN
   123 continue
      pge_error_status = pge_errstat_error

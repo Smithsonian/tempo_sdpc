@@ -40,7 +40,7 @@ MODULE ozprof_data_module
        ozwrtres, atmwrt, gaswrt, radcalwrt, ozwrtwf, ozwrtsnr, wrtring,wrtozcrs, wrtalbspc
 
   ! Options and ozone profiles used in performing radiometric calibration
-  INTEGER                       :: which_caloz
+  INTEGER                       :: which_caloz ! 1 climatology 2 true ozone profile
   CHARACTER (LEN=maxchlen)      :: caloz_fname    
   ! ----------------------------------------------
   ! Variables for regularization
@@ -49,13 +49,12 @@ MODULE ozprof_data_module
   CHARACTER (LEN=maxchlen)  :: lcurve_fname         
 
   ! 1: lcurve, 2: GCV, 3: use GSV with lcurve validation (GCV sometimes fails)
-  INTEGER         :: lcurve_gcv   
+  INTEGER                   :: lcurve_gcv   
   ! --------------------------------------------------------
   ! Use logarithmic radiance / logarithmic state vectir
   ! --------------------------------------------------------
   LOGICAL                       :: use_lograd 
   LOGICAL                       :: use_logstate  
-  LOGICAL                       :: do_tracewf
 
   ! --------------------------------------------------------
   ! Use optimal estimation / phillips-tikhonov regularization
@@ -78,11 +77,6 @@ MODULE ozprof_data_module
   ! ------------------
   LOGICAL                       :: use_flns
 
-  ! ---------------------------------------------------------
-  ! Full orbit processing vs. pixel processing
-  ! ---------------------------------------------------------
-  LOGICAL                       :: fullorb, do_ch2reso
-
   ! -------------------------------------
   ! whether to retrieve ozone profile
   ! -------------------------------------
@@ -94,11 +88,11 @@ MODULE ozprof_data_module
   LOGICAL                       :: saa_flag
   INTEGER                       :: nsaa_spike
 
-  ! Need to convolve high-resolution ozone absorption cross section at the beginning of 
-  ! processing each scan position of each block
+  ! Need to convolve high-resolution ozone absorption cross section 
+  ! at the beginning of processing each scan position of each block
   ! Once the xsection is convolved, it will be set to false in ROUTINE getabs_crs
   LOGICAL                       :: ozabs_convl, so2crs_convl, &
-                           o4crs_convl,  o2crs_convl, h2ocrs_convl
+                                   o4crs_convl,  o2crs_convl, h2ocrs_convl
 
   !----------------------------------------------------------
   ! Temperatrue dependent cross section for other tracegases
@@ -108,7 +102,7 @@ MODULE ozprof_data_module
   LOGICAL                       :: use_o2dptcrs
   LOGICAL                       :: use_h2odptcrs
 
- !-----------------------------------------------------------
+  !-----------------------------------------------------------
   ! indices for set up atmosphere
   ! --------------------------------------------------------
   !INTEGER                       :: which_atmos      
@@ -163,7 +157,8 @@ MODULE ozprof_data_module
   LOGICAL :: use_tropopause      ! T: varying tropopause F: fixed (e.g., 200 mb)
   LOGICAL :: fixed_ptrop         ! T: fixed tropopopause based on fixed pressure, F: based on pressure layer (from bottom)
   LOGICAL :: adjust_trop_layer   ! T: redistribute layers between tropopause and surface F: not except for surface
-  LOGICAL :: insert_sfc_layer=.false. ! T: insert a small surface layer of 10 hPa
+  LOGICAL :: insert_sfc_layer=.false. ! 
+  !T: insert a small surface layer of 10 hPa, not used anywhere
   CHARACTER (LEN=maxchlen) :: presgrid_fname  ! File contains the pressure levels
 
   LOGICAL        :: smooth_ozbc !for processing ozone below clouds
@@ -195,15 +190,7 @@ MODULE ozprof_data_module
   ! Number of fitted variabled for o3 crs shift, sol/rad shi, sol/rad slit (0-4)
   ! first-order ring (1/0)         
   INTEGER :: nos, nsh, nsl, nrn, ndc, nis, nir, np1, np2, ncm
-  ! additional variables to set up pseudo slit function fitting
-  ! do_asywf is not yet implemented
-  LOGICAL :: do_hwewf, do_spkwf, do_asywf
-  INTEGER, PARAMETER :: maxslitpar = 3
-  !INTEGER :: hweidx=1, spkidx=1, asyidx=3
-  INTEGER, PARAMETER, DIMENSION (maxslitpar) :: slitparidx = [hwe_idx, spk_idx, asy_idx]
-  INTEGER, DIMENSION (maxslitpar) :: slitparpos
-  REAL (KIND=dp), DIMENSION (max_fit_pts, maxslitpar) :: slit_wf
-
+ 
   ! additional variables to set up inr
   INTEGER                        :: which_inr
   !-------------------------------------------
@@ -243,9 +230,10 @@ MODULE ozprof_data_module
   ! Other traces gases (: NO2, SO2, BrO, HCHO)   
   INTEGER, PARAMETER :: ngas = 13, nallgas = 14
   INTEGER            :: nfgas
-  INTEGER, DIMENSION(ngas), PARAMETER         :: gasidxs = (/no2_t1_idx, no2_t2_idx, &
-       o2_idx, o2t2_idx, o2o2_idx,  bro_idx, bro2_idx, h2o_idx, h2ot2_idx, &
-       so2_idx, so2v_idx, hcho_idx, oclo_idx/)
+  INTEGER, DIMENSION(ngas), PARAMETER         :: & 
+   gasidxs = (/no2_t1_idx, no2_t2_idx, &
+              o2_idx, o2t2_idx, o2o2_idx,  bro_idx, bro2_idx, h2o_idx, h2ot2_idx, &
+              so2_idx, so2v_idx, hcho_idx, oclo_idx/)
   INTEGER :: so2idx, so2vidx, o4idx, o2idx, o2t2idx, h2oidx, h2ot2idx, broidx,hchoidx, no2idx
   INTEGER :: so2fidx,so2vfidx,o4fidx,o2fidx,o2t2fidx,h2ofidx,h2ot2fidx,brofidx, hchofidx,no2fidx
   INTEGER :: o3crsidx, so2crsidx, o4crsidx, o2crsidx, h2ocrsidx ! pos in allcol or allcrs (1:o3, 2~~)
@@ -255,6 +243,7 @@ MODULE ozprof_data_module
   INTEGER, DIMENSION(ngas)                    :: fgasidxs, fgassidxs, fgaspos
   ! initial, a priori, a priori std, retrieved, uncertainty (S+N), uncertainty (N), air mass factor, 
   ! above cloud fraction, average kernel (a priori influence), avgk (consider influence from others)
+  LOGICAL                       :: do_tracewf
   REAL (KIND=dp), DIMENSION(ngas, 10)          :: tracegas = 1.0  ! initial AMF to 1.0
 
   ! SO2V profiles if the cental altitude is decreased/increased by 1 km
@@ -324,16 +313,6 @@ MODULE ozprof_data_module
   INTEGER, DIMENSION (maxwfc)       :: wfcfpix, wfclpix      ! first and last pixel
   INTEGER :: wfcidx, wfcfidx, thewfcidx ! star index for wfc in whole and varied array
   REAL (KIND=dp), DIMENSION(maxwfc) :: wfcmax, wfcmin   ! max and min wfc
-  ! ------------------------------------------------------------------------------
-  ! wave-variant polcorr
-  ! ------------------------------------------------------------------------------
-  INTEGER, PARAMETER :: maxpol = 5 
-  INTEGER ::  polcorr,npol, nfpol  ! total # of polcorrs and fixed polcorrs
-  REAL (KIND=dp), DIMENSION(maxpol) :: polmax, polmin   ! max and min lamda 
-  INTEGER, DIMENSION (maxpol)       :: polfpix, pollpix ! first and last pixel
-  INTEGER :: polidx, polfidx, thepolidx 
-  REAL (KIND=dp), DIMENSION (max_fit_pts) :: polcc
-  REAL (KIND=dp), DIMENSION (max_fit_pts, 4) :: polwf
 
   ! Aerosol information
   INTEGER, PARAMETER                 :: maxawin = 6
@@ -416,7 +395,7 @@ MODULE ozprof_data_module
   ! --------------------------------------
   ! Variables for polarization correction
   ! --------------------------------------
-  INTEGER        :: VlidortNstream
+  INTEGER        :: VlidortNstream, polcorr
 
   ! -----------------------------------------
   ! Do claculation at three VZAs (A, B, C), but
@@ -443,13 +422,9 @@ MODULE ozprof_data_module
   ! false, the retrieval is done at 320 x 40 km2 and backscan is not used.
   ! OtherwISE, it is consistent with before the b1a/b change
   ! ---------------------------------------------------------------------
-  LOGICAL        :: coadd_after_b1ab
-  LOGICAL        :: b1ab_change, scia_coadd
-
-
-  ! read cloud, perform correction, L1L2 fnames, ozabs                                           
-  ! Other reserved 11, 12, 13, 21, 22, 23 (related to read/write level 1, references spectra
-
+  LOGICAL    :: coadd_after_b1ab ! not used for OMI, maybe it is only for gome
+  LOGICAL    :: b1ab_change ! not used for OMI
+  LOGICAL    :: scia_coadd ! not used for OMI
 
   ! # of division from retrieval grid to find grid LIDORT calculation
   INTEGER :: ndiv   

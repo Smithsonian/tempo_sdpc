@@ -1,7 +1,7 @@
 !
 module ascii_output_module
 
-  public write_final, omi_write_intermed, l2_ascii_create, l2_ascii_close
+  public omi_write_intermed, l2_ascii_create, l2_ascii_close
   private !gome_write_intermed
 
 contains
@@ -218,40 +218,6 @@ contains
 !
 !    RETURN
 !  END SUBROUTINE gome_write_intermed
-
-  SUBROUTINE write_final ( fitted_col, rmsavg, davg, drelavg, n_spec )
-
-    ! **********************************
-    !
-    !   Final WRITE of fitting results
-    !
-    ! **********************************
-
-    USE OMSAO_precision_module
-    USE OMSAO_errstat_module
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    INTEGER,        INTENT (IN) :: n_spec
-    REAL (KIND=dp), INTENT (IN) :: fitted_col, rmsavg, davg, drelavg
-    INTEGER :: ns
-    ! Write out the average fitting statistics
-    NS = n_spec
-    IF (ns == 0) NS = NS + 1
-    WRITE (*,*)
-    WRITE (*,'(A, 1PE13.5)') &
-         '                      Avg Col = ', fitted_col/ns
-    WRITE (*,'(A, 1PE13.5)') &
-         '                      Avg RMS = ', rmsavg/ns
-    WRITE (*,'(A, 1PE13.5)') &
-         '                     Avg dCol = ', davg/ns
-    WRITE (*,'(A, 1PE13.5)') &
-         ' Avg relative Col uncertainty = ', drelavg/ns
-
-    RETURN
-  END SUBROUTINE write_final
 
   SUBROUTINE l2_ascii_create (l2_filename,l2funit,errstat)
    USE OMSAO_errstat_module

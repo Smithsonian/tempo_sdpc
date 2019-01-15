@@ -19,15 +19,15 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY    : maxoth, maxwin, &
-       max_rs_idx, max_calfit_idx, solar_idx, ring_idx, &
-       mxs_idx, ad1_idx,lbe_idx, ad2_idx, no2_t1_idx, no2_t2_idx, &
-       com_idx, com1_idx, com2_idx, com3_idx, sdc_idx, &
-       shift_offset, fsl_idx, rsl_idx
+        max_rs_idx, max_calfit_idx, solar_idx, ring_idx, &
+        mxs_idx, ad1_idx,lbe_idx, ad2_idx, no2_t1_idx, no2_t2_idx, &
+        com_idx, com1_idx, com2_idx, com3_idx, &
+        shift_offset !, fsl_idx, rsl_idx
     USE OMSAO_variables_module,  ONLY : numwin, refnhextra, &
         fitvar_rad, mask_fitvar_rad, lo_radbnd, up_radbnd, & 
         database, database_shiwf, slwf, database_pslwf, &
-        currspec, fitwavs, n_refwvl, refwvl,nradpix, refidx, &
-        n_slitvar, mask_slitvar !, n_radwvl_sav, curr_exposuretime
+        database_cmwf, npsl, &
+        currspec, fitwavs, n_refwvl, refwvl, nradpix, refidx
     USE ozprof_data_module, ONLY : div_rad, div_sun, use_lograd, do_subfit, &
          slind, slfind, shind, shfind, rnind, rnfind, dcind, &
          dcfind, isind, isfind, irind, irfind, slwins, shwins, &
@@ -491,8 +491,7 @@ contains
   ! Second add-on contributions: add to the Sun-normalized radiance 
   ! (e.g. commomd mode, ring filling in)
   IF ( np1 > 0 .or. np2 > 0) THEN
-     DO k = 1, n_slitvar
-        idx  = mask_slitvar(k) 
+     DO k = 1, npsl
         corr = 0.0 ; del  = 0.0
         IF (k == 1 ) THEN 
              nord = np1 ; tmpind=p1ind ; tmpfind=p1find ; tmpwins = p1wins
@@ -527,9 +526,9 @@ contains
         ENDIF
 
         IF (correct_simrad) THEN 
-            simrad = simrad * EXP(-database_pslwf(idx, 1:ns) * corr)
+            simrad = simrad  * EXP(-database_pslwf(k, refidx(1:ns)) * corr)
         ELSE
-            fitspec = fitspec * EXP(database_pslwf(idx, 1:ns) * corr)
+            fitspec= fitspec * EXP(database_pslwf(k,refidx(1:ns)) * corr)
         ENDIF
     ENDDO ! loop of n_slitvar
   ENDIF
@@ -549,7 +548,7 @@ contains
        !print * , fitvar_rad(cmind(i,j))
     ENDDO
    ENDIF
-     fitspec (1:ns) = fitspec(1:ns)*(1.0 - (database(sdc_idx,refidx(1:ns))*corr(1:ns)))
+     fitspec (1:ns) = fitspec(1:ns)*(1.0 - (database_cmwf(refidx(1:ns))*corr(1:ns)))
      !fitspec (1:ns) = fitspec(1:ns) - database(sdc_idx,refidx(1:ns))*corr(1:ns)
   ENDIF
 
