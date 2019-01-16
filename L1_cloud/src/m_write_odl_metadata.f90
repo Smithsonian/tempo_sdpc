@@ -86,13 +86,15 @@ contains
 
     status = OMI_S_SUCCESS
     errstat = 0
+    polygon_lons=0.0d0
+    polygon_lats=0.0d0
 
     ! Bounding polgon points
-    ! For now, do the simlest possible thing - a bounding box
+    ! For now, do the simplest possible thing - a bounding box
     call bounding_box_md(nXtrack, nLines, lat, lon, p_lats, &
          p_lons, npts, errstat)
-    polygon_lons=p_lons
-    polygon_lats=p_lats
+    polygon_lons(1:npts)=p_lons(1:npts)
+    polygon_lats(1:npts)=p_lats(1:npts)
     do i=1,npts
       polygon_seq(i) = i
     enddo

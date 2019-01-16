@@ -159,6 +159,8 @@ contains
     read(cov_start_string,'(a10,1x,a8)') Objvalue(4), Objvalue(5)
 
     ! Bounding polgon points
+    polygon_lats=0.0d0
+    polygon_lons=0.0d0
     ! For now, do the simplest thing, a bounding box
     call bounding_box_md(nXtrack, nLines, lat, lon, p_lats, &
          p_lons, npts, errstat)
@@ -168,8 +170,8 @@ contains
            errstat)
       return
     endif
-    polygon_lats=p_lats
-    polygon_lons=p_lons
+    polygon_lats(1:npts)=p_lats(1:npts)
+    polygon_lons(1:npts)=p_lons(1:npts)
     do i=1,npts
       polygon_seq(i) = i
     enddo
