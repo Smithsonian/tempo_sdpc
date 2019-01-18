@@ -27,6 +27,7 @@ MODULE OMSAO_parameters_module
   ! Maximum swath for all instruments
   ! ----------------------------------
   INTEGER, PARAMETER :: mswath = 2
+
   ! -------------------------------------------------------------------------
   ! Maximum numbers for fitting parameters, GOME pixels, spectral points, ...
   ! -------------------------------------------------------------------------
@@ -57,6 +58,7 @@ MODULE OMSAO_parameters_module
   ! Number of windows to be used: 1, 2, 3, 4
   ! -----------------------------------------------
   INTEGER, PARAMETER :: maxwin = 4
+  ! INTEGER, PARAMETER :: maxband = 2 ! uv1, uv2
 
   ! number of wavelengths around 370 nm used for calculating cloud fraction
   INTEGER, PARAMETER :: mrefl = 100, mreflcld=200

@@ -142,7 +142,7 @@ module m_lidort_master
     REAL (KIND=dp), DIMENSION(0:mflay),                   SAVE :: ts, ps
     !REAL (KIND=dp), DIMENSION(max_fit_pts, mflay),       SAVE :: aersca, aerext, aerasy 
     !REAL (KIND=dp), DIMENSION(max_fit_pts,0:maxmom,maxgksec,mflay), SAVE :: aermoms
-    REAL (KIND=dp), DIMENSION(3, max_fit_pts),            SAVE :: abscrs_qtdepen
+    !REAL (KIND=dp), DIMENSION(3, max_fit_pts),            SAVE :: abscrs_qtdepen
     REAL (KIND=dp), DIMENSION(max_fit_pts, mflay,max_psl),SAVE :: dadp
     LOGICAL, DIMENSION(mflay),                            SAVE :: aermsk
     LOGICAL, DIMENSION(max_fit_pts),                      SAVE :: do_radcals, do_polcorrs
@@ -525,20 +525,18 @@ module m_lidort_master
         do_radcals(1:nw0) = .TRUE.
         radcal_idxs(1:nw0) = (/(i, i=1,nw0)/)
         IF (use_so2dtcrs) THEN
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(so2idx)))= mgasprof(so2idx, nflay+1) * refspec_norm(so2_idx)
+            fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(so2idx)))= mgasprof(so2idx, nflay+1) * refspec_norm(so2_idx)
         ENDIF
         IF (use_o4dtcrs) THEN 
-             fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o4idx)))  = mgasprof(o4idx, nflay+1) * refspec_norm(o2o2_idx)
+            fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o4idx)))  = mgasprof(o4idx, nflay+1) * refspec_norm(o2o2_idx)
         ENDIF
         IF (use_o2dptcrs) THEN 
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o2idx))) = mgasprof(o2idx, nflay+1) * refspec_norm(o2_idx)
+            fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(o2idx))) = mgasprof(o2idx, nflay+1) * refspec_norm(o2_idx)
         ENDIF
         IF (use_h2odptcrs) THEN 
-              fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(h2oidx))) = mgasprof(h2oidx, nflay+1) * refspec_norm(h2o_idx)
+            fitvar_rad_apriori (mask_fitvar_rad(fgasidxs(h2oidx))) = mgasprof(h2oidx, nflay+1) * refspec_norm(h2o_idx)
         ENDIF
      ENDIF
-
-
   ELSE
      do_radcals(1) = .TRUE.; nradcal = 1; radcal_idxs(1) = 1
 
@@ -1262,19 +1260,16 @@ module m_lidort_master
   !   ENDDO
   !ENDIF
 
-  IF (nw > 1 .AND. do_ozwf .AND. do_tracewf ) &
-      ! CALL GET_TRACEGAS_WF (fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), so2crs(1:nw0, 1:nz), use_so2dtcrs, &
-      !                       rad(1:nw0, 1), nw0, nz, nz1, ozs(1:nz), &
-      !                       waves(1:nw0), do_so2zwf, so2zwf(1:nw0, 1))
-      nw0  = nw
-      CALL get_tracegas_wf  (nw0, nz, nz1, rad(1:nw0,1), &
-                             fozwf(1:nw0, 1:nz, 1), abscrs(1:nw0, 1:nz), &
-                             use_so2dtcrs, so2crs(1:nw0, 1:nz), &
-                             use_o4dtcrs, o4crs(1:nw0, 1:nz), &
-                             use_o2dptcrs,o2crs(1:nw0, 1:nz), &
-                             use_h2odptcrs, h2ocrs(1:nw0, 1:nz), &
-                             do_so2zwf, so2zwf(1:nw0, 1))
- 
+  IF (nw > 1 .AND. do_ozwf .AND. do_tracewf ) THEN 
+      CALL get_tracegas_wf  (nw, nz, nz1, rad(1:nw,1), &
+                             fozwf(1:nw, 1:nz, 1), abscrs(1:nw, 1:nz), &
+                             use_so2dtcrs, so2crs(1:nw, 1:nz), &
+                             use_o4dtcrs,  o4crs(1:nw,  1:nz), &
+                             use_o2dptcrs, o2crs(1:nw,  1:nz), &
+                             use_h2odptcrs,h2ocrs(1:nw, 1:nz), &
+                             do_so2zwf,    so2zwf(1:nw, 1))
+  ENDIF
+
   IF (nw > 1 .AND. do_simu .AND. .NOT. radcalwrt) THEN
      WRITE(78, *) 2, nz1
      WRITE(78, *) 'Profile: Z, P, T, O3, SO2'

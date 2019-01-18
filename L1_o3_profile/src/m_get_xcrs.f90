@@ -306,12 +306,8 @@ CONTAINS
   SUBROUTINE getabs_pslwf(lamda, nlsav, nlamda, nlayers, tsgrid, & 
                          slit_idx, dadp,problems)
 
-  USE OMSAO_precision_module
-  USE OMSAO_parameters_module,ONLY : zerok
-  USE OMSAO_variables_module, ONLY : n_refspec_pts, refspec_orig_data, &
+  USE OMSAO_variables_module, ONLY : &
       solwinfit, solwinfit_save, numwin, nradpix_sav, do_dsdw, do_dsdk
-  USE OMSAO_indices_module,   ONLY : solar_idx, wvl_idx, spc_idx, hwe_idx, spk_idx
-  USE OMSAO_slitfunction_module
   IMPLICIT NONE
 
   ! Input variables
@@ -765,11 +761,14 @@ CONTAINS
          WRITE(*, *) modulename//':h2o crs Averaging Error: ', nlsav, nlamda, ntemp
          problems = .TRUE.; RETURN
       ENDIF
-      tmpabs(i, :) = savabs(i, 1:nlamda)
-    ENDIF
-    abscrs(:, i) = tmpabs(i,:)
+       tmpabs(i, :) = savabs(i, 1:nlamda)
+      ELSE 
+       tmpabs(i, :) = savabs(i, 1:nlamda)
+      ENDIF
+    abscrs(1:nlamda, i) = tmpabs(i, 1:nlamda)
   ENDDO
-    
+
+    !abscrs = abscrs*nromc
   RETURN  
   END SUBROUTINE geth2o_crs_hitran
 
@@ -1167,7 +1166,7 @@ CONTAINS
     ENDIF
   ENDIF
   
-  do_convl = .true.
+  do_convl = .false.
   ! GET T-dependent o2 cross section at instrument spectral resolution
   IF ( num_iter == 0 .AND. use_o2dptcrs) THEN
     !WRITE(*, *) modulename,' : Set up O2 absorption !!!'
@@ -1448,7 +1447,6 @@ CONTAINS
            WRITE(*, *) modulename, ' : Error in reading SO2 cross sections!!!'
            pge_error_status = pge_errstat_error; RETURN
         ENDIF
-
         IF (.NOT. do_o4shi) THEN
            DO i = 1, o4%nt
               fidx=MINVAL(MINLOC( hreswav(1:nhresp),MASK=(hreswav(1:nhresp) > o4%wvl(1) )))
@@ -1462,7 +1460,6 @@ CONTAINS
            ENDDO
         ENDIF
      ENDIF
-
     first = .FALSE.
     ENDIF
 

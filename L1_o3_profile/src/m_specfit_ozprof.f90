@@ -124,7 +124,6 @@ contains
     IF (first) THEN  ! only need to be initialized once
       nf = n_fitvar_rad
       fitvar_rad = 0.0
-      sa = 0.0
       fitvar_rad_apriori = 0.0
       fitvar_rad_std = 0.0
       fitvar_rad_nstd = 0.0
@@ -290,10 +289,9 @@ contains
         fitvar_rad_init(j) =  fitvar_rad_apriori(j) 
         IF (gasidxs(k) == so2_idx .OR. gasidxs(k) == so2v_idx) &
              fitvar_rad_init(j) = 0.0 
-        !IF (gasidxs(k) == o2o2_idx) fitvar_rad_init(j) = 0.0
+        IF (gasidxs(k) == o2o2_idx) fitvar_rad_init(j) = 0.0
         IF (gasidxs(k) == bro2_idx) fitvar_rad_apriori(j) = &
              fitvar_rad_apriori(j) * 5. / 2.
-        !print * , k, mgasprof(k, nflay + 1), refspec_norm(gasidxs(k))
         ! initial values for trace gas shift parameters needs to be fixed 
         !    for every pixel,
         ! otherwise increasing from North to South to unreasonably large
@@ -351,6 +349,7 @@ contains
     ! ======================================================================
     ! set up fitting variables
     fitvar_rad = fitvar_rad_init    
+    sa(:,:) = 0.0
     IF (start_layer /= 1) THEN
       lo_radbnd(ozp_fidx:ozp_fidx+start_layer-2) = &
            fitvar_rad(ozp_fidx:ozp_fidx+start_layer-2)

@@ -502,7 +502,6 @@ $(ODIR)/m_get_xcrs.o: $(SDIR)/m_get_xcrs.f90 \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_slitfunction_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_xcrs.f90 -o $(ODIR)/m_get_xcrs.o $(MODOUTFLG) $(ODIR)

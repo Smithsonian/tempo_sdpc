@@ -1125,6 +1125,7 @@ contains
        ENDIF
     ELSE IF (which_slit == 2) THEN  ! triangle
          npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
+       print * , 'not yet implemented ' ; stop
     ELSE IF (which_slit == 3) THEN  ! viot
        !npsl = 4 ; psl_fpos(1:npsl) = [vgl_idx, vgr_idx, hwl_idx,hwr_idx ]
        print * , 'not yet implemented ' ; stop
@@ -1136,10 +1137,9 @@ contains
         npsl = 1 ; psl_fpos(1:npsl) = [spk_idx]
       ENDIF
     ELSE IF (which_slit == 5) THEN  ! omi instrument
-      !IF (instrument_idx == omi_idx) THEN 
+     !IF (instrument_idx == omi_idx) THEN 
          np1 = 0 ; np2 = 0
-      !ELSE       
-      !ENDIF
+     !ENDIF
      ! current OMI instrument slit function is not fitted, but Kang Sun did it
      ! and jbak did it for OMPS
      ! so could be implemented later

@@ -584,7 +584,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
        dpabs(fidx:lidx) =  solwinfit_save(iwin,idx,1)*0.001
        fidx = lidx+1
      ENDDO
-     database_pslwf(refidx(i), 1:now) =(hrad1(1:now)-hrad(1:now))/(dpabs(1:now)) /hrad1(1:now)
+     database_pslwf(i, refidx(1:now)) =(hrad1(1:now)-hrad(1:now))/(dpabs(1:now)) /hrad1(1:now)
      solwinfit = solwinfit_save 
     ENDDO
   ENDIF 
@@ -1660,11 +1660,10 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
   DO i = 1, ngas 
      IF (fgasidxs(i) > 0) THEN
         avcd = mgasprof(i, nz+1)
-
         IF ( ((gasidxs(i) /= so2_idx .AND. gasidxs(i) /= so2v_idx)  .OR. .NOT. use_so2dtcrs) .AND. &
-             ((gasidxs(i) /= o2o2_idx .OR. .NOT. use_o4dtcrs) .AND. &
-             ((gasidxs(i) /= h2o_idx .AND. gasidxs(i) /= h2ot2_idx) .OR. .NOT. use_h2odptcrs) .AND. &
-             ((gasidxs(i) /= o2_idx  .AND. gasidxs(i) /= o2t2_idx)   .OR. .NOT. use_o2dptcrs) )) THEN
+             (gasidxs(i) /= o2o2_idx  .OR. .NOT. use_o4dtcrs) .AND. &
+             (gasidxs(i) /= h2o_idx   .OR. .NOT. use_h2odptcrs) .AND. &
+             (gasidxs(i) /= o2_idx    .OR. .NOT. use_o2dptcrs) ) THEN
            DO j = 1, nw
               tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1)) / avcd          
            ENDDO
@@ -1675,7 +1674,7 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
               database(gasidxs(i), refidx(1:nw)) = database_save(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
               !database(gasidxs(i), refidx(1:nw)) = database(gasidxs(i), refidx(1:nw)) * tamf(i, 1:nw)
            ENDIF
-
+          
            tracegas(i, 7) = 0.0; nk = 0
            DO j = 1, nw
               IF (database_save(gasidxs(i), refidx(j)) > 0.) THEN
@@ -1723,25 +1722,28 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
                tmpcrs = so2crs
            ELSE IF (gasidxs(i) == o2o2_idx) THEN 
                tmpcrs = o4crs
-           ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN 
+           ELSE IF (gasidxs(i) == o2_idx ) THEN 
                tmpcrs = o2crs
-           ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
+           ELSE IF (gasidxs(i) == h2o_idx) THEN
                tmpcrs = h2ocrs
            ENDIF
            DO j = 1, nw
               tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1) * tmpcrs(j, 1:nz1) ) / tmp
            ENDDO
            database(gasidxs(i), refidx(1:nw)) = tamf(i, 1:nw) 
-           
            tracegas(i, 7) = 0.0; nk = 0
+           !if (gasidxs(i) == o2o2_idx )  then 
+           !        print * , database(gasidxs(i),refidx(1:nw))
+           !ENDIF
            DO j = 1, nw
               IF (database_save(gasidxs(i), refidx(j)) > 0.) THEN
                  tracegas(i, 7) = tracegas(i, 7) + tamf(i, j) / database_save(gasidxs(i), refidx(j)) 
                  nk = nk + 1
               ENDIF
            ENDDO
-           tracegas(i, 7) = tracegas(i, 7) / nk
-
+           IF (nk > 0 ) THEN 
+              tracegas(i, 7) = tracegas(i, 7) / nk
+           ENDIF
            ! xliu: 08/06/2010, Add trace gas profile weighting function (dY/dx)
            ! Note dy = dI, instead of DlnI
            ! x is the normalized (by refspec_norm) quantity at each ozone retrieval layer 
@@ -1782,7 +1784,6 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
         
      ENDIF
   ENDDO
-
   RETURN
 END SUBROUTINE get_tracegas_wf
 

@@ -805,6 +805,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            ! for trace gases, wfs are just the cross sections (or amf * cross sections)
            dyda(:, i) = -database(ridx, refidx(1:ns))
            IF (.NOT. use_lograd)  dyda(:, i) =  dyda(:, i) * simrad
+!            if (ridx == o2o2_idx) print * , database(ridx, refidx(1:ns))
            ! xliu, 11/01/2011, the following for undersampling is incorrect
            !ELSE  IF (ridx == us1_idx .OR. ridx == us2_idx) THEN
            !   dyda(:, i) = - EXP(fitspec(1:ns)) * database(ridx, refidx(1:ns))  
@@ -1033,10 +1034,11 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ! IF (idx330  > 0 .AND. idx330  <= ns) dyda(idx330:ns, ozf_fidx:ozf_lidx) = 0.0D0
      !ENDIF
 
-     DO i = 1, nf  
+     DO i = 1, nf
         dyda(:, i) = dyda(:, i) / fitweights(1:ns)
      !WRITE(*,'(i3, a5,100e15.7)') , i,  fitvar_rad_str(mask_fitvar_rad(i)),sum(dyda(1:ns, i)), dyda(ns-10:ns, i)
      END DO
+     
      ! finnally obtain the new spectrum to be fitted in the GSVD
      gspec(1:ns) = fitres(1:ns) / fitweights(1:ns)
      ! Restore the unperturbated fitting variables

@@ -151,6 +151,8 @@ contains
     INTEGER :: OMI_SMF_setmsg
 
     pge_error_status = pge_errstat_ok
+    fit_ctrl_file(:) = ' '
+    msg(:) = ' '
     coadd_uv2 = .FALSE.
     do_ch2reso= .FALSE.
     ! -----------------------------------------------------------
@@ -159,9 +161,7 @@ contains
     DO j = solar_idx, max_rs_idx
       refspec_fname(j) = 'OMSAO_Zero_Spec.dat'
     END DO
-
-    fit_ctrl_file(:) = ' '
-    msg(:) = ' '
+    
  
     ! -----------------------------------------------------------
     ! Open fitting control file

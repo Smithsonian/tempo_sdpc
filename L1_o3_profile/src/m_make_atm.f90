@@ -378,7 +378,7 @@ contains
     !       2. change from 15 per 100 hPa to 20 Per 100 hPa (i.e., 6.6 to 5)
     has_clouds = .FALSE.; nctp = 0; ncbp = 0; cbp =0.0
     IF (cloud .AND. ctp > 0.0) THEN 
-      fps = EXP(fps)
+      fps(0:np) = EXP(fps(0:np))
       has_clouds = .TRUE.
 
       IF ( do_lambcld ) THEN            ! Lambertian clouds (not need for cbp)
@@ -432,7 +432,7 @@ contains
           np = np + 1;  nctp = i + 1; fps(i+1) = ctp; EXIT
         ENDIF
       ENDDO
-      fps = LOG(fps)  ! convert fps back to logarithmic for convenience
+      fps(0:np) = LOG(fps(0:np))  ! convert fps back to logarithmic for convenience
 
       ! need to break cloud to more layers ( tau = 2 / per layer) for scattering clouds
       IF (.NOT. do_lambcld) THEN
