@@ -96,6 +96,6 @@ MODULE OMSAO_omidata_module
   TYPE (geo_group) :: omi_geo
   TYPE (o3p_group) :: omi_o3p 
   ! OUTPUT variables
-  CHARACTER, PARAMETER :: l2_swathname = 'OMI Vertical Ozone Profile'
+  CHARACTER(len=*), PARAMETER :: l2_swathname = 'OMI Vertical Ozone Profile'
 
 END MODULE OMSAO_omidata_module

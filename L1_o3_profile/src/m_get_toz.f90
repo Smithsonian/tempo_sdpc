@@ -26,7 +26,6 @@ MODULE m_get_toz
     ! ======================
     INTEGER , INTENT(IN) :: which_toz
     REAL (KIND=dp), INTENT(OUT) :: toz
-    CHARACTER (len=4) :: ctoz
     IF (which_toz ==  1 ) THEN
        CALL get_eptoz (toz) 
     ELSE IF (which_toz == 2) THEN 
@@ -182,10 +181,10 @@ MODULE m_get_toz
                    j = j + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = dp )
+             dis = real((eidx - sidx), KIND = r4 )
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
+                      frac = real( 1.0 - REAL((k - sidx), KIND=dp) /dis, kind=r4)
                       glbtoz(i,k) = frac*glbtoz(i, sidx) + (1.0 - frac)*glbtoz(i,eidx)
                    ENDDO
              ENDIF
@@ -219,10 +218,10 @@ MODULE m_get_toz
                    i = i + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = dp )
+             dis = real((eidx - sidx), KIND = r4 )
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
+                      frac = real( 1.0 - REAL((k - sidx), KIND=dp) /dis, kind=r4)
                       glbtoz(k,j) = frac*glbtoz(sidx, j) + (1.0 - frac)*glbtoz(eidx,j)
                    ENDDO
              ENDIF
@@ -242,11 +241,11 @@ MODULE m_get_toz
      DO j = 1, nblat
         IF (glbtoz(lonin(i), latin(j)) > 0) THEN 
              toz = toz + glbtoz(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
-             sumfrac = sumfrac + lonfrac(i)*latfrac(j)
+             sumfrac = sumfrac + real (lonfrac(i)*latfrac(j), kind=r4)
         ENDIF
      ENDDO
   ENDDO
-  toz0=toz 
+  toz0=real(toz, kind=r4)
   IF (toz > 0) toz = toz/sumfrac
   IF (toz > 0) toz = toz +3  
   RETURN
@@ -269,8 +268,8 @@ MODULE m_get_toz
   CHARACTER (LEN=130)              :: omto3fname
   CHARACTER (LEN=2)                :: monc, dayc
   CHARACTER (LEN=4)                :: yrc
-  INTEGER                          :: i, j, ib, nband
-  REAL (KIND=dp)                   :: mnalt, do3
+  INTEGER                          :: i, ib, nband
+  REAL (KIND=dp)                   :: mnalt
 
   ! Saved variables
   !REAL (KIND=dp), SAVE, DIMENSION(ntlat) :: zmto3, tlats, zmalt

@@ -894,7 +894,7 @@ contains
     ! ===============
     INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, &
          eidx, nhalf!, iw
-    REAL (KIND=dp) :: temp, hw1e, hw1esq, dfw, ssum, hwle, ssum1, pert
+    REAL (KIND=dp) :: temp, hw1e, hw1esq, dfw, ssum, ssum1, pert
     REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
 
     !slit(:) = 0.0; cspec(:, :)= 0.0

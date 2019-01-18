@@ -10,8 +10,6 @@ contains
     real (kind=8), dimension(:), intent(in) :: x
     real (kind=8), dimension(size(x)) :: exp_x
     real (kind=8), parameter :: maxexp = log(huge(1.0d0))
-    integer :: i, n
-    n = size(x)
     where (x < maxexp)
       exp_x = exp(x)
     elsewhere
@@ -283,9 +281,9 @@ contains
          the_lons, the_lats, nloc, the_utc, fitvar_rad, &
          mask_fitvar_rad, n_fitvar_rad, fitvar_rad_std, n_rad_wvl, &
          fitspec_rad, fitres_rad, fitwavs, &
-         fitvar_rad_str, fitvar_rad_nstd, currline, currpix, &
+         fitvar_rad_str, fitvar_rad_nstd, &
          simspec_rad, clmspec_rad, actspec_rad, fitweights, &
-         numwin, nradpix, nxbin, nybin, the_pix, the_line
+         numwin, the_pix, the_line
 
     IMPLICIT NONE
 
@@ -300,9 +298,8 @@ contains
     ! ===============
     ! Local variables
     ! ===============
-    INTEGER                                  :: i, j, fidx, lidx!, id
+    INTEGER                                  :: i, j
     REAL (KIND=dp), DIMENSION (2*maxloc)     :: latlon
-    REAL (KIND=dp)                           :: avgres, rms
     REAL (KIND=dp), DIMENSION (n_fitvar_rad) :: correl
 
     !REAL (KIND=dp), DIMENSION (n_rad_wvl)    :: simrad

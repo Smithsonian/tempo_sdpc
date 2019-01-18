@@ -34,7 +34,6 @@ program merge_o3p_files
   integer, parameter :: one=1
   
   type (tiof_file_type) :: tio_l2in
-  logical :: problems=.false.
   !input & output filenames entered via namelist
   namelist /merge_o3p_iolist/ ninput, input_files, outfile
 

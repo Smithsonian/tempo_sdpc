@@ -6,7 +6,7 @@ MODULE tmpo_adj_data
   cali=>tmpo_cali, geo1=>tmpo_geo1, geo2=>tmpo_geo2, o3p=>tmpo_o3p
   IMPLICIT NONE
   PUBLIC  adj_solar_data, adj_earthshine_data     
-  PRIVATE adj_rad_sig, load_comres
+  PRIVATE adj_rad_sig!, load_comres
 
 CONTAINS
 
@@ -82,8 +82,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, &
          n_max_fitpars, solar_idx!, rsl_idx, fsl_idx, comm_idx, com1_idx
-    USE OMSAO_parameters_module, ONLY: mswath, normweight, max_fit_pts, &
-         maxchlen
+    USE OMSAO_parameters_module, ONLY: mswath, normweight, max_fit_pts
     USE OMSAO_variables_module,  ONLY: calunit, curr_rad_spec, curr_sol_spec, &
          n_rad_wvl, use_meas_sig, numwin, nradpix, the_sza_atm, the_vza_atm, &
          the_aza_atm, the_sca_atm, the_month, the_year, the_day,the_jday, the_lon, &
@@ -94,15 +93,15 @@ CONTAINS
          n_fitvar_rad, radwavcal_freq, currpix, currloop, &
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_ori, &
-         GranuleYear, GranuleMonth, GranuleDay,GranuleJDay,tabdir, currline
-    USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
+         GranuleYear, GranuleMonth, GranuleDay,GranuleJDay, currline
+    !USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
     USE ozprof_data_module, ONLY: div_rad, div_sun, rad_posr, rad_specr, &
          nsaa_spike, saa_flag, the_cfrac, the_ctp, the_cld_flg, which_cld, &
          the_cod, the_orig_cfr, the_orig_ctp, scacld_initcod, the_orig_cod, &
          the_ai, radcalwrt, biasfname, biascorr,  &
          which_biascorr, nrefl, aerosol, which_aerosol, scale_aod, &
          scaled_aod, do_simu, the_fixalb, do_lambcld, lambcld_refl, &
-         has_glint, glintprob, sun_posr, sun_specr, pos_alb, &
+         has_glint, glintprob, &
          the_snowice, the_landwater_flg, the_glint_flg, the_geo1, the_geo2
     USE OMSAO_errstat_module 
 
@@ -125,11 +124,10 @@ CONTAINS
     ! =================
     ! Local variables
     ! ================= 
-    INTEGER :: hour, minute, fidx, lidx, i, j, west_idx, south_idx, idxoff, &
-         nhtrunc, ntrunc, ntrunc1, errstat, ntempx, nch, ix, nord, ch, nw, &
-         is, nsub, idum, iw
-    INTEGER (KIND=i4)           :: estat
-    REAL (KIND=dp)              :: second, finit
+    INTEGER :: fidx, lidx, i, j, west_idx, south_idx, idxoff, &
+         nhtrunc, ntrunc, ntrunc1, errstat, ch, &
+         is, idum, iw
+    REAL (KIND=dp)              :: finit
     REAL (KIND=dp), DIMENSION (n_max_fitpars) :: fitvar
     LOGICAL                     :: redo_database
     REAL (KIND=dp), DIMENSION(max_fit_pts) :: corr
@@ -143,9 +141,9 @@ CONTAINS
     LOGICAL, SAVE   :: first = .TRUE.
     CHARACTER (LEN=255)      :: msg !! Kai
 
-    INTEGER, PARAMETER :: DBPRECISION = SELECTED_INT_KIND(PRECISION(1.0d0))
-    INTEGER (DBPRECISION), PARAMETER :: NAN = Z"7FF8000000000000"
-    INTEGER, PARAMETER :: DPSB = BIT_SIZE(NAN) - 1
+    !INTEGER, PARAMETER :: DBPRECISION = SELECTED_INT_KIND(PRECISION(1.0d0))
+    !INTEGER (DBPRECISION), PARAMETER :: NAN = Z"7FF8000000000000"
+    !INTEGER, PARAMETER :: DPSB = BIT_SIZE(NAN) - 1
     !   External functions
     ! ================================
     INTEGER (KIND=i4), EXTERNAL :: PGS_TD_TAItoUTC  
@@ -154,7 +152,7 @@ CONTAINS
     ! ==============================
     ! Name of this module/subroutine
     ! ==============================
-    CHARACTER (LEN=23), PARAMETER :: modulename = 'tmpo_adj_earthshine_data'
+    CHARACTER (LEN=*), PARAMETER :: modulename = 'tmpo_adj_earthshine_data'
 
     pge_error_status = pge_errstat_ok
 
@@ -655,64 +653,64 @@ CONTAINS
     RETURN
   END SUBROUTINE adj_rad_sig
 
-  SUBROUTINE load_comres(errstat)
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: max_fit_pts, maxchlen
-    USE OMSAO_variables_module, ONLY: refdbdir, n_refwvl, database, &
-         nradpix, refidx, currpix
-    USE OMSAO_indices_module, ONLY: com1_idx, com_idx, comfidx, cm1fidx
-    USE OMSAO_errstat_module, ONLY: pge_errstat_error, pge_errstat_ok, www_lun
-
-    INTEGER, INTENT (OUT)      :: errstat
-
-    CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
-    INTEGER, PARAMETER            :: nx = 30, lun = 12
-    INTEGER                       :: ix, itemp, i, fidx, lidx
-    CHARACTER (LEN=maxchlen)      :: comres_fname
-
-    REAL (KIND=dp), DIMENSION (:,:,:), SAVE, POINTER :: comres
-    INTEGER, DIMENSION(nx, 3),         SAVE :: npts
-    LOGICAL,                           SAVE :: first = .TRUE.
-
-    errstat = pge_errstat_ok
-    IF (first) THEN
-      allocate (comres(nx, max_fit_pts,2))
-      comres = 0.D0
-      comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
-
-      OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(comres_fname)), STATUS='UNKNOWN', IOSTAT=errstat)
-      IF ( errstat /= pge_errstat_ok ) THEN
-        WRITE(www_lun, '(2A)') modulename, ': Cannot open common-mode residual file!!!'
-        errstat = pge_errstat_error; RETURN
-      END IF
-
-      READ (lun, *)
-      READ (lun, *)
-      DO ix = 1, nx
-        READ (lun, *) itemp, npts(ix, 1:3)
-        DO i = 1, npts(ix, 1)
-          READ (lun, *) comres(ix, i, 1:2)
-        ENDDO
-      ENDDO
-      CLOSE (lun)
-
-      first = .FALSE.
-    ENDIF
-
-    IF (comfidx > 0) THEN
-      database(com_idx, 1:n_refwvl) = 0.D0
-      fidx = 1; lidx = fidx + nradpix(1) - 1
-      database(com_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
-    ENDIF
-
-    IF ( cm1fidx > 0 ) THEN
-      database(com1_idx, 1:n_refwvl) = 0.D0
-      fidx = nradpix(1) + 1; lidx = fidx + nradpix(2) - 1
-      database(com1_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
-    ENDIF
-
-    RETURN
-
-  END SUBROUTINE load_comres
+  !SUBROUTINE load_comres(errstat)
+  !  USE OMSAO_precision_module
+  !  USE OMSAO_parameters_module, ONLY: max_fit_pts, maxchlen
+  !  USE OMSAO_variables_module, ONLY: refdbdir, n_refwvl, database, &
+  !       nradpix, refidx, currpix
+  !  USE OMSAO_indices_module, ONLY: com1_idx, com_idx, comfidx, cm1fidx
+  !  USE OMSAO_errstat_module, ONLY: pge_errstat_error, pge_errstat_ok, www_lun
+  !
+  !  INTEGER, INTENT (OUT)      :: errstat
+  !
+  !  CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
+  !  INTEGER, PARAMETER            :: nx = 30, lun = 12
+  !  INTEGER                       :: ix, itemp, i, fidx, lidx
+  !  CHARACTER (LEN=maxchlen)      :: comres_fname
+  !
+  !  REAL (KIND=dp), DIMENSION (:,:,:), SAVE, POINTER :: comres
+  !  INTEGER, DIMENSION(nx, 3),         SAVE :: npts
+  !  LOGICAL,                           SAVE :: first = .TRUE.
+  !
+  !  errstat = pge_errstat_ok
+  !  IF (first) THEN
+  !    allocate (comres(nx, max_fit_pts,2))
+  !    comres = 0.D0
+  !    comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
+  !
+  !    OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(comres_fname)), STATUS='UNKNOWN', IOSTAT=errstat)
+  !    IF ( errstat /= pge_errstat_ok ) THEN
+  !      WRITE(www_lun, '(2A)') modulename, ': Cannot open common-mode residual file!!!'
+  !      errstat = pge_errstat_error; RETURN
+  !    END IF
+  !
+  !    READ (lun, *)
+  !    READ (lun, *)
+  !    DO ix = 1, nx
+  !      READ (lun, *) itemp, npts(ix, 1:3)
+  !      DO i = 1, npts(ix, 1)
+  !        READ (lun, *) comres(ix, i, 1:2)
+  !      ENDDO
+  !    ENDDO
+  !    CLOSE (lun)
+  !
+  !    first = .FALSE.
+  !  ENDIF
+  !
+  !  IF (comfidx > 0) THEN
+  !    database(com_idx, 1:n_refwvl) = 0.D0
+  !    fidx = 1; lidx = fidx + nradpix(1) - 1
+  !    database(com_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
+  !  ENDIF
+  !
+  !  IF ( cm1fidx > 0 ) THEN
+  !    database(com1_idx, 1:n_refwvl) = 0.D0
+  !    fidx = nradpix(1) + 1; lidx = fidx + nradpix(2) - 1
+  !    database(com1_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
+  !  ENDIF
+  !
+  !  RETURN
+  !
+  !END SUBROUTINE load_comres
 
 END MODULE tmpo_adj_data

@@ -17,8 +17,7 @@ CONTAINS
          zerospec_string, vb_lev_develop
     USE OMSAO_variables_module,  ONLY: &
          refspec_fname, refspec_norm, n_refspec_pts, &
-         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max, scnwrt 
-         ! refspec_firstlast_wav
+         refspec_orig_data, verb_thresh_lev, winwav_min, winwav_max
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -379,8 +378,8 @@ CONTAINS
     USE OMSAO_precision_module,   ONLY: dp
     USE OMSAO_indices_module,     ONLY: wvl_idx, spc_idx
     USE OMSAO_parameters_module,  ONLY: maxchlen, max_spec_pts, lm_start_of_table,&
-        vb_lev_omidebug, maxwin
-    USE OMSAO_variables_module,   ONLY: verb_thresh_lev, winlim, numwin
+        maxwin
+    USE OMSAO_variables_module,   ONLY: winlim, numwin
     USE OMSAO_errstat_module
     use m_utilities, only: skip_to_filemark
     IMPLICIT NONE
@@ -402,13 +401,13 @@ CONTAINS
     ! ----------------
     ! Local Variables
     ! ----------------
-    INTEGER  :: i, ip, ios, file_read_stat, imin, imax, nwin, iwin, fwin, lwin,wstep
+    INTEGER  :: i, ip, file_read_stat, imin, imax, nwin, iwin, fwin, lwin,wstep
     !INTEGER,        DIMENSION (max_spec_pts) :: irev
     INTEGER,        DIMENSION (:), POINTER   :: irev
     REAL (KIND=dp), DIMENSION (:), POINTER   :: x, y
     REAL (KIND=dp), DIMENSION (2)            :: specwav
     REAL (KIND=dp), DIMENSION (maxwin, 2)    :: wlim
-    REAL (KIND=dp)                           :: xdum, xmin, xmax
+    REAL (KIND=dp)                           :: xmin, xmax
     CHARACTER (LEN=maxchlen)                 :: lastline
     LOGICAL                                  :: isinc
 
@@ -420,7 +419,7 @@ CONTAINS
     ! ------------------------
     ! Error handling variables
     ! ------------------------
-    INTEGER :: errstat, version
+    INTEGER :: errstat
 
     ! ---------------------------------
     ! External OMI and Toolkit routines

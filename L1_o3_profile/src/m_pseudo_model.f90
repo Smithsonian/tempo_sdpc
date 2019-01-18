@@ -34,7 +34,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
          ring_idx, us1_idx, us2_idx, com_idx, com1_idx, com2_idx, com3_idx, &
          fsl_idx, rsl_idx,hwe_idx, spk_idx
   USE OMSAO_variables_module, ONLY : fitwavs, fitweights, sza => the_sza_atm, &
-       vza => the_vza_atm, aza => the_aza_atm, sca=>the_sca_atm, &
+       vza => the_vza_atm, aza => the_aza_atm, & !sca=>the_sca_atm, &
        fitvar_rad, mask_fitvar_rad, database_indices,           &
        database_shiwf, slwf, npix_fitted, database, database_cmwf, & 
        fitvar_rad_str, & 
@@ -57,8 +57,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        cmfind, cmind, cmwins, ncm, &
        do_subfit, radcalwrt, do_simu, do_simu_rmring, fit_atanring, & 
        use_effcrs, ncalcp, saa_flag, nsaa_spike,  vary_sfcalb, &
-       pos_alb, which_cld, & 
-       is_albspcvar, albspcs, sfcalbs, use_albspc, use_albeofs, nactalbspc,&
+       is_albspcvar, albspcs, use_albeofs, nactalbspc,&
        allrms, allradrms
 
   USE OMSAO_errstat_module
@@ -81,9 +80,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ! ===============
 
   INTEGER, PARAMETER :: mstks = 4, nostk=1
-  INTEGER :: n0alb, n0wfc, i, j, k, iw, ReturnStatus, ridx, sidx, fidx, lidx, &
-       idx, albord, min_ssa_iter, swin, ewin, ig, nord, wfcord, ntmp,  &
-       albsidx, albeidx , m, slit_idx, idx330, n0, ord
+  INTEGER :: n0alb, n0wfc, i, j, k, iw, ridx, sidx, fidx, lidx, &
+       albord, min_ssa_iter, swin, ewin, ig, nord, wfcord, ntmp
   INTEGER, DIMENSION(maxalb)               :: albpmax, albpmin
   INTEGER, DIMENSION(maxwfc)               :: wfcpmax, wfcpmin
   INTEGER, DIMENSION(maxwin, maxoth)       :: tmpind, tmpfind
@@ -91,7 +89,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION(maxalb)        :: albarr 
   REAL (KIND=dp), DIMENSION(maxwfc)        :: wfcarr 
   REAL (KIND=dp), DIMENSION (ns)           :: delpos, waves, meas1, meas2, &
-       sim1, sim2, simrad, simrad1, fitspec1, temporwf, corr, simrad0
+       sim1, sim2, simrad, simrad1, fitspec1, temporwf, simrad0
   REAL (KIND=dp), DIMENSION(ns,nlay,MSTKS) :: ozwf, tmpwf
   REAL (KIND=dp), DIMENSION(ns, 4)         :: albothwf, wfcothwf
   REAL (KIND=dp), DIMENSION(ns, MSTKS)     :: o3shiwf, cfracwf, albwf, fsimrad, &
@@ -99,7 +97,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION(numwin, maxoth):: o3shi
   REAL (KIND=dp), DIMENSION(nlay)          :: tprof, ozprof, ozadj, ozaprof
   REAL (KIND=dp), DIMENSION(nf)            :: fitvar_saved
-  REAL (KIND=dp)                           :: rms, radrms,  wavavg, cfrac, the_salb
+  REAL (KIND=dp)                           :: rms, radrms,  wavavg, the_salb
   REAL (KIND=dp)                           :: newoz, newso2, newbro,   newhcho, newno2, newo4
   REAL (KIND=dp)                           :: so2adj, so2vadj, broadj, hchoadj, no2adj, o4adj
   REAL (KIND=dp), DIMENSION (numwin)       :: allchisq
@@ -109,12 +107,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   LOGICAL :: negval, so2negval, so2vnegval, hchonegval, bronegval, no2negval, o4negval
   LOGICAL, DIMENSION (nlay)     :: ozvary
   REAL (KIND=dp), DIMENSION(ns) :: walb0s, wfc0s 
-
-  ! measurement error covariance Random + Systematic
-  REAL(KIND=dp), DIMENSION(ns, ns)  :: Sy, Sy_inv
-  REAL(KIND=dp), DIMENSION(ns, 1)   :: y1
-  REAL(KIND=dp), DIMENSION(1, 1)    :: chi
-  REAL(KIND=dp), ALLOCATABLE        :: y1tmp(:, :), Sy_invtmp(:, :)
 
   ! xliu, 08/10/2010
   ! Current VnnLIDORT calculation is based on single surface albedo (per channel). 
@@ -1057,12 +1049,11 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
      saodwf, sprswf, so2zwf, rad, errstat)
 
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY : fitvar_rad_str, fitwavs, numwin,  &
-       fitvar_rad, mask_fitvar_rad, rmask_fitvar_rad
-  USE ozprof_data_module,     ONLY : use_effcrs, radcwav, ncalcp,      &
-       albfidx, nalb, nfalb, albidx, albmin, albmax, albfpix, alblpix, &
-       wfcfidx, nwfc, nfwfc, wfcidx, wfcmin, wfcmax, wfcfpix, wfclpix, &
-       hreswav, which_cld
+  USE OMSAO_variables_module, ONLY : fitvar_rad_str, numwin,  &
+       fitvar_rad
+  USE ozprof_data_module,     ONLY : radcwav, ncalcp,      &
+       nalb, albidx, albmin, albmax, albfpix, alblpix, &
+       nwfc, wfcidx, wfcmin, wfcmax, wfcfpix, wfclpix
   USE OMSAO_errstat_module
 
   IMPLICIT NONE
@@ -1090,7 +1081,7 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
   ! =======================
   ! Local variables
   ! =======================
-  INTEGER :: i, j, k, m, n, fidx, lidx, fidx0, lidx0, albord, wfcord
+  INTEGER :: i, j, k, fidx, lidx, fidx0, lidx0, albord, wfcord
   REAL (KIND=dp), DIMENSION(nw0)            :: waves0, walb0s0, wfc0s0
   REAL (KIND=dp), DIMENSION(nw0, nostk)     :: rad0, albwf0, cfracwf0, o3shiwf0, &
        codwf0, ctpwf0, taodwf0, twaewf0, saodwf0, sprswf0, so2zwf0

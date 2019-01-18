@@ -432,7 +432,7 @@ END SUBROUTINE GET_NO2
     INTEGER, PARAMETER        :: nlat = 91, nlon = 144, nalt_pre2006 = 21, nalt_post2006 = 30
     INTEGER, SAVE             :: nalt
     REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.0, lon0=-181.25, lat0=-91.0
-    INTEGER                   :: errstat, i, j, k, nblat, nblon, error
+    INTEGER                   :: errstat, i, j, k, nblat, nblon
     REAL (KIND=dp), DIMENSION(0:nalt_post2006)          :: geospres, cumso2
     REAL (KIND=dp), DIMENSION(nalt_post2006)            :: gprof
     REAL (KIND=dp), DIMENSION(0:nz)                     :: tempso2
@@ -639,37 +639,37 @@ END SUBROUTINE GET_NO2
   !     nbmon=2
   !END SUBROUTINE get_monfrac
 
-  SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
-
-  IMPLICIT NONE
-    ! ======================
-    ! Input/Output variables
-    ! ======================
-    INTEGER, INTENT(IN)                       :: nlat
-    REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
-    INTEGER, INTENT(OUT)                      :: nblat
-    INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
-    REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
-
-    ! ======================
-    ! Local variables
-    ! ======================  
-    REAL (KIND=dp) :: frac, lat_offset
-
-    lat_offset   = lat0 + latgrid / 2.0
-    nblat = 2; frac = (lat - lat_offset) / latgrid + 1
-    latin(1) = INT(frac); latin(2) = latin(1) + 1
-    latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
-
-    IF (latin(1) == 0)   THEN
-       latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
-    ENDIF
-
-    IF (latin(2) > nlat) THEN
-       latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
-    ENDIF
-    RETURN
-  END SUBROUTINE get_latfrac
+  !SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
+  !
+  !IMPLICIT NONE
+  !  ! ======================
+  !  ! Input/Output variables
+  !  ! ======================
+  !  INTEGER, INTENT(IN)                       :: nlat
+  !  REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
+  !  INTEGER, INTENT(OUT)                      :: nblat
+  !  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
+  !  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
+  !
+  !  ! ======================
+  !  ! Local variables
+  !  ! ======================  
+  !  REAL (KIND=dp) :: frac, lat_offset
+  !
+  !  lat_offset   = lat0 + latgrid / 2.0
+  !  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+  !  latin(1) = INT(frac); latin(2) = latin(1) + 1
+  !  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+  !
+  !  IF (latin(1) == 0)   THEN
+  !     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+  !  ENDIF
+  !
+  !  IF (latin(2) > nlat) THEN
+  !     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+  !  ENDIF
+  !  RETURN
+  !END SUBROUTINE get_latfrac
 
   SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
     lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)

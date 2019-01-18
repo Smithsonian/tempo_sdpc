@@ -37,9 +37,8 @@ SUBROUTINE get_hres_radcal_waves(errstat)
   REAL (KIND=dp), PARAMETER :: dhw0 = 0.01  ! at 0.01 nm
   INTEGER, PARAMETER        :: mextraw = 100
 
-  INTEGER              :: i, j, k, fidx, lidx, nsub, nratio, nhalf, nextra, n0
-  REAL (KIND=dp)       :: tmp, swav, ewav, slw, samprate, invdhw, ds1, ds2
-  REAL (KIND=dp), DIMENSION (mextraw) :: extrawave
+  INTEGER              :: i, j, fidx, lidx, nsub, nratio, nhalf
+  REAL (KIND=dp)       :: tmp, swav, ewav, slw, samprate, invdhw
 
   ! ------------------------------
   ! Name of this subroutine/module
@@ -93,7 +92,7 @@ SUBROUTINE get_hres_radcal_waves(errstat)
      ENDDO
   ENDIF
   nhresp0 = nhresp; hreswav0(1:nhresp) = hreswav(1:nhresp)
-  invdhw = 1.0 / hres_samprate; nratio = hres_samprate / dhw0
+  invdhw = 1.0 / hres_samprate; nratio = int (hres_samprate / dhw0, kind=4)
   nhalf =  nratio / 2
   
   j = 1
@@ -207,14 +206,14 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   USE OMSAO_indices_module,   ONLY  : hwe_idx, spk_idx, &
       so2_idx, so2v_idx, o2o2_idx,o2_idx, o2t2_idx, h2o_idx, h2ot2_idx
   USE OMSAO_parameters_module,ONLY  : du2mol
-  USE OMSAO_variables_module, ONLY  : numwin, nradpix, band_selectors, winlim, &
-       owave=>radwvl_sav, now=>n_radwvl_sav,onpix=>nradpix_sav, i0sav, refidx, fitwavs, & 
+  USE OMSAO_variables_module, ONLY  : numwin, winlim, &
+       owave=>radwvl_sav, now=>n_radwvl_sav,onpix=>nradpix_sav, i0sav, refidx, &
        nrad=>n_rad_wvl, &
-       do_bandavg, curr_rad_spec, refidx_sav, database, database_shiwf, &
+       do_bandavg, refidx_sav, &
        database_pslwf, solwinfit, solwinfit_save, npsl,psl_fpos,max_psl,do_dsdw, do_dsdk
-  USE ozprof_data_module,     ONLY  : nup2p, hwave=>hreswav, radcwav, &
+  USE ozprof_data_module,     ONLY  : hwave=>hreswav, &
        radcidxs, hres_i0, nhw=>nhresp, hresgabs, hresray, nw0=>ncalcp, &
-       hres_gas, hres_gasshi, ngas, gasidxs, fgasidxs, fgassidxs, &
+       ngas, gasidxs, fgasidxs, fgassidxs, &
        o3crsz, o3dadtz, o3dadsz, so2crsz, o4crsz, o2crsz, h2ocrsz, &
        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs
   USE OMSAO_errstat_module
@@ -238,17 +237,17 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
 
   ! Local variables
   INTEGER, PARAMETER :: which_pslwf = 2
-  INTEGER :: i, j, iwin, fidx, lidx, fidxc, lidxc, idx, iw, ntemp, nspec, sidx, eidx
+  INTEGER :: i, iwin, fidx, lidx, fidxc, lidxc, idx, iw, ntemp, sidx, eidx
   LOGICAL :: do_so2shi, do_o4shi, do_o2shi, do_h2oshi
   REAL (KIND=dp)                      :: temp
   INTEGER, DIMENSION (nw)             :: c2hfidx, c2hlidx
 
-  REAL (KIND=dp), DIMENSION (nhw)     :: hrad,hrad1,halbwf, tmparr, dtau, dray, hcfracwf
+  REAL (KIND=dp), DIMENSION (nhw)     :: hrad,hrad1,halbwf, dtau, dray, hcfracwf
   REAL (KIND=dp), DIMENSION (now)     :: oi0, otmp, tmpi0 !, so2dads1, o4dads1
   REAL (KIND=dp), DIMENSION (nw,  nz) :: tauwf
   REAL (KIND=dp), DIMENSION (now, nz) :: dads1, dadt1, abscrs1, so2crs1, o4crs1,o2crs1, h2ocrs1
   !REAL (KIND=dp), DIMENSION (ngas,now):: tmp_gas , tmp_gasshi
-  REAL (KIND=dp), DIMENSION (nhw, nz) :: hozwf, haerwf, haerswf, hcodwf, hsprswf, hraywf 
+  REAL (KIND=dp), DIMENSION (nhw, nz) :: hozwf, haerwf, haerswf, hcodwf, hsprswf
   REAL (KIND=dp), DIMENSION (nhw, nz*8) :: inarr
   REAL (KIND=dp), DIMENSION (now, nz*8) :: outarr, outarr1
   REAL (KIND=dp), DIMENSION (now) :: dpabs
@@ -920,7 +919,7 @@ SUBROUTINE radwf_interpol(nw, nz, nctp, ncbp, nsprs, faerlvl, do_radcals, &
 
   USE OMSAO_precision_module
   USE OMSAO_variables_module, ONLY  : numwin, nradpix, band_selectors 
-  USE ozprof_data_module,     ONLY  : nup2p 
+  !USE ozprof_data_module,     ONLY  : nup2p 
   USE OMSAO_errstat_module
   
   IMPLICIT NONE
@@ -1629,8 +1628,8 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
   USE OMSAO_parameters_module,ONLY : du2mol
   USE OMSAO_indices_module,   ONLY : so2_idx, so2v_idx, bro_idx, o2o2_idx, o2_idx, h2o_idx,  &
                                 o2t2_idx, h2ot2_idx, hcho_idx, no2_t1_idx, ring_idx, ring1_idx
-  USE OMSAO_variables_module, ONLY : mask_fitvar_rad, refidx, database, database_save, refspec_norm
-  USE ozprof_data_module,     ONLY : fps, fzs, nlay, mgasprof, fgasidxs, &
+  USE OMSAO_variables_module, ONLY : refidx, database, database_save, refspec_norm
+  USE ozprof_data_module,     ONLY : nlay, mgasprof, fgasidxs, &
        tracegas, ngas, gasidxs, fgassidxs, so2valts, so2vprofn1p1, trace_profwf, nup2p, use_lograd
   IMPLICIT NONE
 
@@ -1819,7 +1818,8 @@ SUBROUTINE get_efft(nz, zs, ozs, fts, ts, errstat)
   zs1(0) = zs(0)
   fidx = 1
   DO i = 1, nz 
-     lidx = fidx + 9; dz = (zs(i) - zs(i-1)) / 10.
+     lidx = fidx + 9;
+     dz = real( (zs(i) - zs(i-1)) / 10., kind=r4)
      DO j = fidx, lidx
         zs1(j) = zs(i-1) + dz * (j - fidx + 1)
      ENDDO

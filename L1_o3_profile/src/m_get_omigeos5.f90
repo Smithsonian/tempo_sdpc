@@ -46,7 +46,7 @@ MODULE  m_get_omigeos5
     REAL (KIND=r4),DIMENSION(ngl,nx, 0:nt-1) :: TS,dp
     ! Coadding varaibles
     INTEGER :: ix, iy, iix, iiy, j, k ! used in loop
-    INTEGER :: nline, nbx, nbin, sline, eline,  nx4, nx1
+    INTEGER :: nline, nbx, nbin, sline, eline,  nx1
     INTEGER :: xoff, xoff0
     REAL (KIND=r4):: cc
     LOGICAL :: file_exist

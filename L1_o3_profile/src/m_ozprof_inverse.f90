@@ -63,7 +63,7 @@ contains
          start_layer, end_layer, atmosprof, ozwrtwf, weight_function, &
          do_simu, wrtring, wfcfidx, nfwfc, ecfrind, ecfrfind, so2zfind, &
          so2valts, use_large_so2_aperr, use_effcrs, &
-         do_simu_rmring, trace_avgk, trace_contri, trace_profwf
+         do_simu_rmring, trace_avgk, trace_profwf
     USE OMSAO_variables_module,   ONLY: fitvar_rad, mask_fitvar_rad, epsrel, &
          fitwavs, fitweights, maxit=>max_itnum_rad, clmspec_rad, nradpix, &
          numwin, currpix, currline, currloop, the_surfalt, &

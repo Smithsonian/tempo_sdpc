@@ -25,7 +25,6 @@ contains
     use netcdf
     use tio_module
     use tell_module
-    use OMSAO_variables_module, only: scnwrt
     use OMSAO_parameters_module, only : maxchlen
     use m_utilities, only: day_of_year
 

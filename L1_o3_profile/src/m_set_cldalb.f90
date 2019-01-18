@@ -32,7 +32,7 @@ contains
          which_alb, the_fixalb, do_simu, radcalwrt, lambcld_initalb, &
          ecfrfind, wfcmax, wfcmin, nwfc, nfwfc, &
          wfcfpix, wfclpix, wfcfidx, wfcidx, the_snowice, pos_alb, &
-         use_albspc, albspcs, malbspc, nalbspc, nactalbspc, is_albspcvar,sfcalbs
+         use_albspc, albspcs, malbspc, nactalbspc, is_albspcvar,sfcalbs
     !ps0, has_glint, glintprob, cloud
     !USE OMSAO_gome_data_module, ONLY: gome_pixdate, gome_orbc, gome_curpix, &
     !     gome_curscan

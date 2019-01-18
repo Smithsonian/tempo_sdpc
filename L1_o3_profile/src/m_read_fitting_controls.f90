@@ -40,7 +40,7 @@ contains
          comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
          hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx,& 
          wr0_idx, wr7_idx , &
-         so2_idx, o2_idx, o2o2_idx, h2o_idx, &
+         so2_idx, o2_idx, h2o_idx, &
          which_instrument, max_instrument_idx, instrument_idx, &
          gome_idx, omi_idx, scia_idx, gome2_idx, tempo_idx
     USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts, &
@@ -69,7 +69,7 @@ contains
          rmask_fitvar_rad, database_indices, slit_trunc_limit, &
          reduce_resolution, redsampr, redlam, reduce_slit, rm_mgline, &
          redfixwav,use_redfixwav, nredfixwav, redfixwav_fname, radnhtrunc, &
-         refnhextra, l2_swathname, fitvar_rad_unit, l1b_rad_filename, &
+         refnhextra, fitvar_rad_unit, l1b_rad_filename, &
          correct_merr, xbin_decerr, ybin_decerr, &
          do_xbin, do_ybin, nxbin, nybin, rmask_fitvar_sol,l2_hdf_flag, redslw, &
          upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd,& 
@@ -86,7 +86,7 @@ contains
         upper_spec_tmpo=>upper_spec, lower_spec_tmpo=>lower_spec
     USE ozprof_data_module, ONLY: radcalwrt,ozprof_flag, ozprof_input_fname,& 
         nlay, nos, nsh, nsl, do_simu, nfgas, ozfit_end_index, ozfit_start_index, &
-        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs 
+        use_so2dtcrs, use_o2dptcrs, use_h2odptcrs 
     USE UTIL_tools_class
     USE m_utilities, only: get_substring, string2index,check_for_endofinput, &
                            skip_to_filemark
@@ -107,7 +107,7 @@ contains
     ! Local variables
     ! ---------------
     INTEGER :: nxtrack_max, ntimes_max
-    INTEGER :: i, j, k, file_read_stat, sidx, ridx, idx, cldorb, ntsh, ext
+    INTEGER :: i, j, k, file_read_stat, sidx, ridx, idx, cldorb, ntsh
     INTEGER, DIMENSION(2)    :: pixlim, linelim
     CHARACTER (LEN=maxchlen) :: tmpchar, l1l2_files, fname
     CHARACTER (LEN=3)        :: idxchar, xbinchar, ybinchar
@@ -144,7 +144,6 @@ contains
     CHARACTER (LEN=6), PARAMETER :: lm_debug  = "*debug"
 
     CHARACTER( LEN = PGS_SMF_MAX_MSG_SIZE  ) :: msg
-    INTEGER :: nc
     ! =================================
     ! External OMI and Toolkit routines
     ! =================================

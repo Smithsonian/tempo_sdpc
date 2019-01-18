@@ -318,12 +318,11 @@ CONTAINS
     INTEGER, INTENT(OUT)   :: pge_error_status  
     REAL(KIND=dp), DIMENSION(3), INTENT (IN)    :: fitcol
     REAL(KIND=dp), DIMENSION(3, 2), INTENT (IN) :: dfitcol
-    TYPE (L2_generic_type) :: WavBlk, L1bBlk
+    TYPE (L2_generic_type) :: WavBlk
     !DataBlk has to be saved across multiple calls to this subroutine
     !otherwise it will be unallocated after the first iteration.
     TYPE (L2_generic_type), SAVE :: DataBlk
     INTEGER (KIND=i4)      :: ierr, status, ix, errstat
-    INTEGER (KIND=i8)      :: Ls, Le, bsize, id
     INTEGER (KIND= 1)      :: I1
     CHARACTER (LEN = 19)   :: modulename = 'He5_L2SetDataFields'   
     LOGICAL, SAVE          :: first = .TRUE.
@@ -332,7 +331,7 @@ CONTAINS
     INTEGER (KIND=i4), SAVE:: NumTimes = -1, NumTimesSmallPixel = -1
     REAL(KIND=4), SAVE     :: EarthSunDistance = -1.0
     CHARACTER (LEN = 19)   :: VerticalCoordinate = 'Partial Column'   
-    CHARACTER (LEN = 16)   :: l1b_swathname = 'Earth UV-2 Swath'
+    !CHARACTER (LEN = *)   :: l1b_swathname = 'Earth UV-2 Swath'
 
     pge_error_status = pge_errstat_ok
 

@@ -93,7 +93,7 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: i, j, errstat, ntemp,nline, nt
+  INTEGER            :: i, errstat, ntemp,nline, nt
   REAL (KIND=dp)     :: scalex, normc
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
   REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs, tmpabs_d1
@@ -219,7 +219,7 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: fidx, lidx, i, j, errstat, nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
   LOGICAL            :: dods, dodt
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
@@ -324,11 +324,10 @@ CONTAINS
   INTEGER, PARAMETER :: maxline  = max_spec_pts     ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3 
 
-  REAL (KIND=dp), DIMENSION(maxline) :: specmod
   REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs
   REAL (KIND=dp), DIMENSION(nlamda, nlayers) :: abscrs
 
-  INTEGER            :: i, j, k, errstat, npts, idx, lidx, fidx, nline
+  INTEGER            :: i, errstat, lidx, fidx, nline
   REAL (KIND=dp)     :: thet
   REAL (KIND=dp), DIMENSION (1) :: scalex
   !----------------------------------------------
@@ -339,7 +338,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER    :: modulename = 'getabs_pslwf'
+  CHARACTER (LEN=*), PARAMETER    :: modulename = 'getabs_pslwf'
 
   problems = .FALSE.
   IF (first) THEN
@@ -455,7 +454,7 @@ CONTAINS
   !-------------------------------------------------
   INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
-  INTEGER            :: fidx, lidx, i, j, errstat, nline, nt, ntemp
+  INTEGER            :: fidx, lidx, i, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
   LOGICAL            :: dods, dodt
   REAL (KIND=dp), DIMENSION(maxt, nlsav)   :: savabs, savabs_d1
@@ -856,7 +855,7 @@ CONTAINS
   LOGICAL, INTENT(OUT)                       :: problems
 
   ! Local variables
-  INTEGER                               :: i, errstat, ni0, ntemp
+  INTEGER                               :: errstat, ni0, ntemp
   REAL (KIND=dp)                        :: scalex
   REAL (KIND=dp), DIMENSION(nw)         :: raycof1, depol1
 
@@ -1020,7 +1019,7 @@ CONTAINS
 
   USE OMSAO_indices_module, ONLY: so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx
   USE OMSAO_variables_module, ONLY: numwin, winlim, & 
-      nradpix_sav, radwvl_sav, nradpix, database_save, database_shiwf,  &
+      database_save, database_shiwf,  &
       n_refspec_pts,  refspec_orig_data, refidx, &
       fitvar_rad, rmask_fitvar_rad, database
   USE OMSAO_parameters_module, ONLY: max_fit_pts, max_spec_pts
@@ -1044,7 +1043,7 @@ CONTAINS
   LOGICAL :: do_convl
   INTEGER :: fidx, lidx, i, j,k, npts, nfgas1, errstat
   REAL (kind=dp) :: tmp, temp, normc
-  REAL (KIND=dp), DIMENSION (nlsav) :: delshi, tmpwav, delpos, gshiwf
+  REAL (KIND=dp), DIMENSION (nlsav) :: delshi, delpos, gshiwf
   REAL (KIND=dp), DIMENSION (:), POINTER :: tmprefspec, tmprefwav
   !--------------------------------
   ! Save variables (max_fit_pts)
@@ -1254,8 +1253,8 @@ CONTAINS
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module,ONLY  : max_spec_pts, zerok
-  USE OMSAO_variables_module, ONLY  : numwin, nradpix, refspec_orig_data,    &
-       n_refspec_pts, solwinfit, which_slit, curr_rad_spec, use_redfixwav,   &
+  USE OMSAO_variables_module, ONLY  : numwin, refspec_orig_data,    &
+       n_refspec_pts, &
        winlim, fitvar_rad, rmask_fitvar_rad, refspec_norm
   USE OMSAO_indices_module,   ONLY : hwe_idx, wvl_idx, solar_idx, spc_idx,  &
        so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx, o2t2_idx, h2ot2_idx
@@ -1265,7 +1264,6 @@ CONTAINS
        hres_gas, hres_gasshi,hres_o3, hresgabs, hresray, &
        hres_i0, hres_raycof, hres_depol, &
        hres_o3shi, hres_so2, hres_so2shi, hres_o4, hres_o4shi,  & ! could be local variables
-       hres_o2, hres_h2o, hres_o2shi, hres_h2oshi, &
        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs, &
        o3crsz, o3dadsz, o3dadtz, so2crsz, so2dads, o4crsz, o4dads, &
        h2ocrsz,h2odads, o2crsz, o2dads  ! could be local variables
@@ -1288,18 +1286,18 @@ CONTAINS
   !-----------------------------
   ! Local variables
   !--------------------------------
-  INTEGER :: i, j, k, fidx, lidx,  npts, idum, nfgas1, errstat, nratio, nhalf
+  INTEGER :: i, j, fidx, lidx,  npts, idum, nfgas1, errstat, nratio, nhalf
   LOGICAL                              :: problems, do_shi, do_convl
   REAL (KIND=dp)                       :: tmp, so2sum, o4sum, o2sum,h2osum
   REAL (KIND=dp), DIMENSION(nhresp)    :: delshi, tmpwav, delpos ! (nhresp)
 !  REAL (KIND=dp), DIMENSION(:, :), ALLOCATABLE ::so2dadsz, o4dadsz, o2dadsz, h2odadsz
 !  REAL (KIND=dp), DIMENSION(:, :), ALLOCATABLE ::so2dadtz, o4dadtz, o2dadtz, h2odadtz
   REAL (KIND=dp), DIMENSION(nhresp, nz) ::so2dadsz, o4dadsz, o2dadsz, h2odadsz
-  REAL (KIND=dp), DIMENSION(nhresp, nz) ::so2dadtz, o4dadtz, o2dadtz, h2odadtz
+  REAL (KIND=dp), DIMENSION(nhresp, nz) ::so2dadtz, o4dadtz
 
   ! Save original O3/SO2 cross sections
   LOGICAL, SAVE :: do_so2shi, do_o4shi, do_o2shi, do_h2oshi, first = .TRUE.
-  LOGICAL, SAVE :: do_so2tmp=.false., do_o4tmp=.false., do_o2tmp=.false.,do_h2otmp=.false.
+  LOGICAL, SAVE :: do_so2tmp=.false., do_o4tmp=.false.
   INTEGER, SAVE :: so2sfidx, so2vsfidx, o4sfidx, o2sfidx, h2osfidx
   TYPE(txcrs_set), SAVE  :: o3, so2, o4
  ! Name of this subroutine/module
@@ -1320,7 +1318,7 @@ CONTAINS
         pge_error_status = pge_errstat_error; RETURN
      ENDIF
 
-     nratio = hres_samprate / 0.01
+     nratio = int(hres_samprate / 0.01, kind=4)
      nhalf =  nratio / 2
 
      j = 1
@@ -1753,7 +1751,7 @@ CONTAINS
     LOGICAL, INTENT(OUT)            :: problems
     ! Local variables
     CHARACTER (LEN=maxchlen)        :: absfname
-    INTEGER                         :: nline, i, j, errstat
+    INTEGER                         :: nline, i, j
     LOGICAL                         :: file_exist
     REAL (KIND=dp)                  :: tmp
     CHARACTER (LEN=14)              :: tmpchar
@@ -1929,9 +1927,7 @@ CONTAINS
     CHARACTER(len=31) :: dimname
     LOGICAL :: file_exist, fail
     ! helper for LUT interpolation
-    INTEGER :: i, j, errstat
-    INTEGER :: tidx, pidx, fidx, lidx
-    REAL (KIND=dp) :: tfrac, pfrac
+    INTEGER :: fidx, lidx
     !-------------------------------------------------------------------
     ! LUT variables
     !--------------------------------------------------------------------

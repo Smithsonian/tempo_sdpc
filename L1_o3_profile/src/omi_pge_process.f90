@@ -10,15 +10,15 @@ CONTAINS
     USE OMSAO_variables_module,  only: wavcal,  pixnum_lim, linenum_lim, &
          npix_fitting, npix_fitted, l2_filename, fitvar_rad_saved, &
          n_fitvar_rad, currpix, currline, currloop, which_slit, scnwrt, use_solcomp, use_backup, &
-         mask_fitvar_rad, reduce_resolution, l2_cld_filename, &
-         l1b_rad_filename,  numwin, radnhtrunc, &
-         l1b_irrad_filename, nxbin, nybin, ncoadd,&
+         mask_fitvar_rad, reduce_resolution, &
+         numwin, radnhtrunc, &
+         nxbin, nybin, ncoadd,&
          nxtrack, ntimes, num_wav_max, ntimes_loop, offset_line, calwrt, the_pix, the_line, &
          l2funit, lcurve_unit, ozwrtint_unit,calunit
 
     USE ozprof_data_module, only: lcurve_write, ozwrtint,  &
          lcurve_fname, ozwrtint_fname, &
-         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl,which_cld
+         ozabs_convl, so2crs_convl, o4crs_convl,which_cld
     USE OMSAO_errstat_module
     USE m_cross_calibrate, ONLY:calibrate_rad_cross, calibrate_irrad_cross
     USE m_specfit_ozprof
@@ -45,13 +45,12 @@ CONTAINS
     ! -------------------------
     ! Local variables (for now)
     ! -------------------------
-    integer :: i,first_line, last_line, iline, nxcoadd, first_pix, last_pix, &
-         exval, initval, errstat, curr_fitted_line, sline, eline, ix, ext
+    integer :: first_line, last_line, iline, nxcoadd, first_pix, last_pix, &
+         exval, initval, errstat, curr_fitted_line, sline, eline
     real (kind=dp), dimension(3)    :: fitcol
     real (kind=dp), dimension(3, 2) :: dfitcol
     real (kind=dp)     :: fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg,rms
     logical            :: reduce_resolution_save
-    integer :: processing_version = 1
     !------------------------------------
     ! Error variables
     !------------------------------------

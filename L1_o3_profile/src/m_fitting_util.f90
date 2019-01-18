@@ -1005,7 +1005,6 @@ CONTAINS
   SUBROUTINE poly_fit (locwvl, npoints, locspec, ll_rad, lu_rad, r )
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY : max_spec_pts, elsunc_np, elsunc_nw
   USE OMSAO_variables_module,  ONLY : poly_x, poly_y, poly_w, poly_order
   USE bounded_nonlin_LS,       ONLY : elsunc
 
@@ -1018,24 +1017,21 @@ CONTAINS
   REAL (KIND=dp), DIMENSION (poly_order), INTENT (OUT)   :: r
 
   REAL (KIND=dp), DIMENSION (npoints)              :: tmp, ptmp, sig
-  REAL (KIND=dp), DIMENSION (poly_order)           :: par, polfunc
-  REAL (KIND=dp), DIMENSION (poly_order,poly_order):: covar
 
-  INTEGER                             :: i, j, nlower, nupper, nfitted
-  REAL (KIND=dp)                      :: locavg, chisq
+  INTEGER                             :: i, nlower, nupper, nfitted
+  REAL (KIND=dp)                      :: locavg
   REAL (KIND=dp), DIMENSION (npoints) :: x
 
   ! ================
   ! ELSUNC variables
   ! ================
   INTEGER                                       :: exval
-  REAL (KIND=dp), DIMENSION (npoints)           :: fitres
-  REAL (KIND=dp)                                :: rms, chisq2
+  REAL (KIND=dp)                                :: chisq2
   INTEGER                                       :: elbnd
   INTEGER,        DIMENSION (11)                :: p
   REAL (KIND=dp), DIMENSION (6)                 :: w
   REAL (KIND=dp), DIMENSION (poly_order)         :: blow, bupp
-  REAL (KIND=dp), DIMENSION (npoints)           :: f, fitspec
+  REAL (KIND=dp), DIMENSION (npoints)           :: f
   REAL (KIND=dp), DIMENSION (npoints,poly_order) :: dfda
 
 

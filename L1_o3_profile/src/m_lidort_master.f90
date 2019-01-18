@@ -15,7 +15,7 @@ module m_lidort_master
 ! ******************************************************************************************
 
   PUBLIC  lidort_prof_env
-  PRIVATE lidort_prof_prep, get_slant_tau !, prepare_spherical
+  PRIVATE lidort_prof_prep!, get_slant_tau !, prepare_spherical
   CONTAINS
 
   SUBROUTINE LIDORT_PROF_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary, &
@@ -32,27 +32,27 @@ module m_lidort_master
     USE OMSAO_indices_module,   ONLY  : so2_idx, so2v_idx, o2o2_idx, o2_idx, o2t2_idx, &
                                         h2o_idx, h2ot2_idx, refspec_strings
     USE OMSAO_variables_module, ONLY  : currloop, the_surfalt, band_selectors, &
-       fitvar_rad, rmask_fitvar_rad, mask_fitvar_rad, fitvar_rad_apriori, &
-       n_refspec_pts,  refspec_norm, refspec_orig_data,  &
-       numwin, winlim, nradpix, nradpix_sav, n_rad_wvl, radwvl_sav, n_radwvl_sav, &
-       database, database_shiwf, database_save, refidx, &
+       fitvar_rad, mask_fitvar_rad, fitvar_rad_apriori, &
+       refspec_norm, &
+       numwin, winlim, nradpix, radwvl_sav, n_radwvl_sav, &
+       refidx, &
        database_pslwf, max_psl, npsl, tabdir, rtmdbg, rtm_unit
     USE ozprof_data_module,     ONLY : num_iter, VlidortNstream, &
        nflay, mflay, ntp, nfsfc, nsfc, nup2p, nt_fit, &
        atmosprof, fts, fps, fzs, fozs, frhos, &
-       ngas, nallgas, gasidxs, fgasidxs,fgaspos, gassidxs, fgassidxs, & 
+       ngas, nallgas, gasidxs, fgasidxs,fgaspos, gassidxs, & 
        do_tracewf, tracegas, mgasprof,      &
        do_lambcld, lambcld_refl, has_clouds, aerosol, useasy, strat_aerosol, &
        nwfc, ncbp, nctp, the_cbeta,  nmom, maxgksec, ngksec, actawin, aerwavs, &
        the_cod, the_cfrac, taodind, saodind, twaeind, sprsind, &
-       gaext, gasca, gaasy, gamoms, gcq, gcw, gcasy, gcmoms, &
+       gaext, gasca, gaasy, gamoms, gcq, gcasy, gcmoms, &
        raycof, depol, tropsca, tropaod, tropwaer, strataod, stratsca, &
-       do_subfit, osfind, oswins,np1, np2, &
-       do_simu, radcalwrt, wrtozcrs, &
+       np1, np2, &
+       do_simu, radcalwrt, &
        use_effcrs, ncalcp, do_radinter, polcorr, & 
        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs, &
-       no2idx, broidx, hchoidx, so2idx, so2vidx, o4idx, o2idx, o2t2idx, h2oidx, h2ot2idx,&
-       o3crsidx, so2crsidx, o2crsidx, o4crsidx, o2crsidx, h2ocrsidx
+       no2idx, broidx, hchoidx, so2idx, o4idx, o2idx, h2oidx, &
+       so2crsidx, o2crsidx, o4crsidx, o2crsidx, h2ocrsidx
 
     USE m_lidort_util, ONLY:  hres_radwf_inter_convol, &
         get_tracegas_wf, radwf_interpol, polcorr_online
@@ -105,23 +105,23 @@ module m_lidort_master
     ! =======================
     LOGICAL :: problems,do_clouds, do_fozwf, do_faerwf, do_fraywf,  &
                do_o3hwe, do_o3spk
-    INTEGER :: nf, na, ic, iw, i, j, k, ii, kk, jj, jk, idum, low, hgh, fidx, lidx, &
-         nz1,nfgas1, nstep, istk, npolmod, ipol, nsprs, npts, nw0
+    INTEGER :: ic, iw, i, j, k, kk, jj, jk, idum, low, hgh, fidx, lidx, &
+         nz1,nfgas1, nstep, istk, npolmod, ipol, nsprs, nw0
     INTEGER :: ozwfidx, aodwfidx, twaewfidx, codwfidx, sprswfidx, raywfidx
     LOGICAL, DIMENSION(nflay)                    :: cldmsk, varyprof!, aermsk
     REAL (KIND=dp)                               :: lamda, xg, frac, toz, temp, aodscl, waerscl
     REAL (KIND=dp), DIMENSION(0:nflay)           :: ozs, delps
-    REAL (KIND=dp), DIMENSION(nflay)             :: cldsca, cldext, cldasy, eta, cldext0, aersca, aerext, aerasy
+    REAL (KIND=dp), DIMENSION(nflay)             :: cldsca, cldext, cldasy, cldext0, aersca, aerext, aerasy
     REAL (KIND=dp), DIMENSION(0:nmom,maxgksec,nflay) :: cldmoms, aermoms
-    REAL (KIND=dp), DIMENSION(nw)                :: albs, tmpalbs, gshiwf, wfcs
+    REAL (KIND=dp), DIMENSION(nw)                :: albs, tmpalbs, wfcs
     REAL (KIND=dp), DIMENSION(nw, 2, nostk)      :: polerr
     REAL (KIND=dp), DIMENSION(nw, nostk)         :: radclr, radcld
-    REAL (KIND=dp), DIMENSION(n_radwvl_sav)      :: delpos, swaves, delshi
+    !REAL (KIND=dp), DIMENSION(n_radwvl_sav)      :: swaves
     REAL (KIND=dp), DIMENSION(2, nostk)          :: radclrcld
     REAL (KIND=dp), DIMENSION(nw, nflay, nostk)  :: fozwf, faerwf, faerswf, fcodwf, fsprswf, fraywf
     REAL (KIND=dp), DIMENSION(nw, nflay)         :: pfozwf, pfaerwf, pfaerswf, pfcodwf, pfsprswf, pfraywf
     REAL (KIND=dp), DIMENSION(nw)        :: prad, palbwf, pctpwf, pcfracwf
-    REAL (KIND=dp), DIMENSION(nw)        :: tmprefwav, tmprefspec
+    !REAL (KIND=dp), DIMENSION(nw)        :: tmprefwav, tmprefspec
 
     INTEGER, DIMENSION (nallgas)                  :: gasin   
     INTEGER, DIMENSION (5)                        :: tmp_gaspos ! used to sort gases when nw=1
@@ -688,7 +688,7 @@ module m_lidort_master
               j = (fidx + lidx ) / 2; k = fidx + (j - fidx) / 3  
 
               jj = (j + lidx )  / 2; kk = fidx + (k - fidx) / 3
-              jk = (j + k ) / 2.
+              jk = (j + k ) / 2
 
               DO i = fidx + 1, lidx - 1
                  IF (do_radcals(i) ) THEN
@@ -1324,7 +1324,7 @@ module m_lidort_master
      deltau, delsca, delo3abs, delray)
 
   USE OMSAO_precision_module
-  USE ozprof_data_module, ONLY : maxgksec, maxgkmatc, ngksec, ngkmatc, num_iter
+  USE ozprof_data_module, ONLY : maxgksec, maxgkmatc, ngksec, ngkmatc
   USE OMSAO_errstat_module
   !USE m_vlidort90_include
   IMPLICIT NONE  
@@ -1368,10 +1368,10 @@ module m_lidort_master
   INTEGER, DIMENSION(maxgkmatc), PARAMETER :: &
        greekmat_idxs = (/1, 2, 5, 6, 11, 12, 15, 16/), phasmoms_idxs = (/1, 5, 5, 2, 3, 6, 6, 4/)
 
-  INTEGER					  :: ui, i, j, k, q, nscatter, idx, cldidx, aeridx, nactgksec, nactgkmatc
+  INTEGER :: i, j, k, q, nscatter, idx, cldidx, aeridx, nactgksec, nactgkmatc
   INTEGER, DIMENSION(allngas) :: absin
-  REAL (KIND=dp)		      :: scaco_r, absco_r, &  ! raycof, depol, 
-		extco_r, extco, scaco, pvar, extco_a, scaco_a, extco_c, scaco_c, j0, j1
+  REAL (KIND=dp)  :: scaco_r, absco_r, &  ! raycof, depol, 
+             extco_r, extco, scaco, pvar, extco_a, scaco_a, extco_c, scaco_c, j0, j1
   REAL (KIND=dp), DIMENSION(maxscatter)              :: scaco_input
   REAL (KIND=dp), DIMENSION(ngas, nlayers)           :: absod
   REAL (KIND=dp), DIMENSION(0:maxmoments_input, 1:maxgksec, maxscatter),     SAVE :: phasmoms_input
@@ -1716,7 +1716,7 @@ module m_lidort_master
            ! xliu: August 12, 2008
            !  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
         ELSE IF ( profilewf_names(q) == 'rayleigh optical thickness-----' ) THEN
-           pvar = scaco_r / extco	       
+           pvar = scaco_r / extco
            l_omega_total_input(q,i) = (1.0 - omega_total_input(i)) * scaco_r / extco / omega_total_input(i)
            l_deltau_vert_input(q,i) = pvar
            l_greekmat_total_input(q, 0:ngreek_moments_input, i, :) = ZERO
@@ -1737,7 +1737,7 @@ module m_lidort_master
         ELSE IF ( profilewf_names(q) == 'rayleigh scattering coefficient' ) THEN
            !  xliu: April 13, 2007 
            !  Still need to consider the variation in phase function  
-           pvar = scaco_r / extco	       
+           pvar = scaco_r / extco
            l_omega_total_input(q, i) = ((ONE - pvar) * scaco_input(1) - &
                 pvar * (scaco - scaco_input(1)) ) / scaco
            l_omega_total_input(q,i) = pvar
@@ -1842,7 +1842,7 @@ module m_lidort_master
               IF ( nactgkmatc > 1 )  l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15) &
                    = - l_greekmat_total_input(q, 0:ngreek_moments_input, i, 15)
            ENDIF
-        ENDIF	     ! end selection of weighting function 
+        ENDIF        ! end selection of weighting function 
      ENDDO           ! n_totalatmos_wfs loop
   !ENDIF             ! end of do_linearization    
   ENDDO              ! layer loop
@@ -1878,54 +1878,54 @@ module m_lidort_master
   
 END SUBROUTINE LIDORT_PROF_PREP
 
-  SUBROUTINE GET_SLANT_TAU(nz, zs, tauin, sza, tauout)
-  USE OMSAO_parameters_module, ONLY  : maxchlen, rearth
-  USE OMSAO_precision_module
-  
-  IMPLICIT NONE
-  
-  !===============================  Define Variables ===========================
-  ! Include files of dimensions and numbers
-  INCLUDE 'VLIDORT.PARS'
-  INCLUDE 'VLIDORT_INPUTS.VARS'
-  INCLUDE 'VLIDORT_SETUPS.VARS'
-  
-  ! =======================
-  ! Input/Output variables
-  ! =======================
-  INTEGER, INTENT(IN)                          :: nz
-  REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: zs, tauin
-  REAL (KIND=dp), INTENT(IN)                   :: sza
-  REAL (KIND=dp), DIMENSION(0:nz), INTENT(out) :: tauout
-
-  ! =======================
-  ! Local variables
-  ! ======================= 
-  INTEGER                   :: i, j
-  LOGICAL                   :: fail
-  CHARACTER (len=maxchlen)  :: message, trace
-  
-  n_szangles = 1; szangles(1) = sza
-  IF (sza >= 90.0 .OR. sza < 0) THEN
-     STOP 'GET_SLANT_TAU: SZA is >= 90 or < 0!!!'
-  ENDIF
-
-  nlayers = nz; taugrid_input(0:nz) = tauin
-  height_grid(0:nz) = zs; earth_radius = rearth
-  IF (nz > maxlayers) THEN
-     STOP 'LIDORT_PROF_ENV: # of layers exceeded allowed !!!'
-  ENDIF 
-
-  CALL VLIDORT_CHAPMAN(fail, message, trace)
-  tauout = 0.0
-  DO i = 1, nz
-     DO j = 1, i
-        tauout(i) = tauout(i) + deltau_slant(i, j, 1)
-     ENDDO
-  ENDDO
-
-  RETURN
-  END SUBROUTINE GET_SLANT_TAU
+  !SUBROUTINE GET_SLANT_TAU(nz, zs, tauin, sza, tauout)
+  !USE OMSAO_parameters_module, ONLY  : maxchlen, rearth
+  !USE OMSAO_precision_module
+  !
+  !IMPLICIT NONE
+  !
+  !!===============================  Define Variables ===========================
+  !! Include files of dimensions and numbers
+  !INCLUDE 'VLIDORT.PARS'
+  !INCLUDE 'VLIDORT_INPUTS.VARS'
+  !INCLUDE 'VLIDORT_SETUPS.VARS'
+  !
+  !! =======================
+  !! Input/Output variables
+  !! =======================
+  !INTEGER, INTENT(IN)                          :: nz
+  !REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: zs, tauin
+  !REAL (KIND=dp), INTENT(IN)                   :: sza
+  !REAL (KIND=dp), DIMENSION(0:nz), INTENT(out) :: tauout
+  !
+  !! =======================
+  !! Local variables
+  !! ======================= 
+  !INTEGER                   :: i, j
+  !LOGICAL                   :: fail
+  !CHARACTER (len=maxchlen)  :: message, trace
+  !
+  !n_szangles = 1; szangles(1) = sza
+  !IF (sza >= 90.0 .OR. sza < 0) THEN
+  !   STOP 'GET_SLANT_TAU: SZA is >= 90 or < 0!!!'
+  !ENDIF
+  !
+  !nlayers = nz; taugrid_input(0:nz) = tauin
+  !height_grid(0:nz) = zs; earth_radius = rearth
+  !IF (nz > maxlayers) THEN
+  !   STOP 'LIDORT_PROF_ENV: # of layers exceeded allowed !!!'
+  !ENDIF 
+  !
+  !CALL VLIDORT_CHAPMAN(fail, message, trace)
+  !tauout = 0.0
+  !DO i = 1, nz
+  !   DO j = 1, i
+  !      tauout(i) = tauout(i) + deltau_slant(i, j, 1)
+  !   ENDDO
+  !ENDDO
+  !
+  !RETURN
+  !END SUBROUTINE GET_SLANT_TAU
 
 
 

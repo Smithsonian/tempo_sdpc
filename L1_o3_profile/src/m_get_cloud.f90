@@ -51,7 +51,7 @@ contains
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
-    CHARACTER (LEN=17), PARAMETER    :: modulename = 'm_get_cloud_miprop'
+    CHARACTER (LEN=*), PARAMETER    :: modulename = 'm_get_cloud_miprop'
 
     ! --------------------------------------------------------------
     ! Initialize to out variables

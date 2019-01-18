@@ -35,7 +35,7 @@ contains
     ! ---------------
     INTEGER                          :: fidx, lidx, npts
     REAL (KIND=dp), DIMENSION (nref) :: abspecmod, abspec
-    CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
+    !CHARACTER (LEN=*), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
     errstat = pge_errstat_ok
 
     fidx = 1
@@ -92,9 +92,8 @@ contains
     ! Local variables
     ! ---------------
     INTEGER                          :: fidx, lidx, npts
-    REAL (KIND=dp) :: frefw, lrefw
     REAL (KIND=dp), DIMENSION (nref) :: specmod, newi0, abspecmod, abspec
-    CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
+    !CHARACTER (LEN=*), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
     LOGICAL, PARAMETER :: weight_irrad = .true.
     errstat = pge_errstat_ok
 
@@ -182,7 +181,7 @@ contains
     INTEGER                          :: i
     REAL (KIND=dp), DIMENSION (nf) :: i0
     REAL (KIND=dp), DIMENSION (nc) :: newi0
-    CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
+    !CHARACTER (LEN=*), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
     LOGICAL, PARAMETER :: weight_irrad = .true.
   
 

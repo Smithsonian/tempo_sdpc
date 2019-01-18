@@ -40,9 +40,7 @@ contains
     USE OMSAO_parameters_module, ONLY: p0, boltz, xmair, accgrav, ugc, avo, &
          rearth, du2mol
     USE OMSAO_variables_module, ONLY : profunit,sza => the_sza_atm, &
-         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline, &
-         refspec_norm 
-         !currline, n_refspec_pts, atmdbdir, database
+         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
          no2_t1_idx, so2v_idx, o2o2_idx, no2_t2_idx, & 
          o2_idx,  o2t2_idx, h2o_idx, h2ot2_idx
@@ -70,7 +68,7 @@ contains
     use m_get_omigeos5, ONLY: geos5, ngl
     IMPLICIT NONE
 
-    INTEGER, PARAMETER :: nv8=11, nlfnl=26, nref=71, nmpref=61, nmipas=121
+    INTEGER, PARAMETER :: nv8=11, nlfnl=26, nmipas=121
     ! Input variables
     INTEGER, INTENT(IN)          :: year, month, day, ndiv, numk
     INTEGER, INTENT(OUT)         :: errstat
@@ -90,7 +88,7 @@ contains
     INTEGER :: nlecm, nold
     INTEGER :: i, j, k, n, ncld, ncldinc, np, nftp, ntemp, lidx
     INTEGER, DIMENSION(0:numk) :: indarr
-    REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, tmp, tmpscl, &
+    REAL (KIND=dp)             :: dlgp, cbp, mt, accr, mindiff, fndiv, tmpscl, &
                                   so2v_fwhm, so2v_vcd,  halfdz, sfct
     REAL (KIND=dp), DIMENSION (0:mflay)        :: told0, pold, told, zold
     REAL (KIND=dp), DIMENSION (1:nmipas)       :: mipasp, mipast
@@ -103,7 +101,7 @@ contains
     !REAL (KIND=dp), DIMENSION (0:24)           :: fixed_p, fixed_cumoz
     !REAL (KIND=dp), DIMENSION (1:24)           :: fixed_oz
 
-    LOGICAL, SAVE :: first = .TRUE., first1 = .TRUE., first2=.TRUE., is_pgrid = .true., &
+    LOGICAL, SAVE :: first = .TRUE., first1 = .TRUE., is_pgrid = .true., &
          isinc=.TRUE.
     REAL (KIND=dp), DIMENSION (0:maxlay), SAVE :: umkp0, umkz0
     real (kind=dp), dimension(:), allocatable :: tmp_inarr

@@ -8,7 +8,6 @@ module m_cross_calibrate
   USE OMSAO_variables_module, ONLY:calwrt, calunit,the_pix, the_line, currpix, &
             ring_group, irrad_group, cali_group,cali_group, rad_group
   USE OMSAO_indices_module
-  LOGICAL, PRIVATE :: radcal=.false.
   INTEGER, PARAMETER, PRIVATE :: n_fitvar = 6
   INTEGER, PARAMETER, DIMENSION(1:n_fitvar), PRIVATE :: & 
      fit_idx=(/shi_idx, squ_idx, sin_idx, hwe_idx, asy_idx, spk_idx/)
@@ -335,24 +334,24 @@ contains
     RETURN
   END SUBROUTINE calibrate_rad_cross
 
-  SUBROUTINE read_cali_cross (cunit, ix, cali, radcal)
-  USE OMSAO_variables_module, ONLY: cali_group, slit_fname
-  IMPLICIT NONE
-  ! INPUT/OUTPUT
-  INTEGER, INTENT(IN) :: cunit, ix
-  LOGICAL, INTENT(IN) :: radcal
-  TYPE(cali_group) :: cali
-  ! LOGICAL variables
-  INTEGER :: iw, nw,npix
-   OPEN(cunit, FILE=TRIM(ADJUSTL(slit_fname)), STATUS='unknown') 
-   READ(cunit, '(5i5)') !which_slit, n_fitvar + 1
-   READ(cunit, '(5i5)') npix !last_pix-first_pix + 1, first_pix, last_pix
-   READ(cunit,'(10(a5))') !'wav', calfit_strings(fit_idx)
-
-  END SUBROUTINE  
+  !SUBROUTINE read_cali_cross (cunit, ix, cali, radcal)
+  !USE OMSAO_variables_module, ONLY: cali_group, slit_fname
+  !IMPLICIT NONE
+  !! INPUT/OUTPUT
+  !INTEGER, INTENT(IN) :: cunit, ix
+  !LOGICAL, INTENT(IN) :: radcal
+  !TYPE(cali_group) :: cali
+  !! LOGICAL variables
+  !INTEGER :: npix
+  ! OPEN(cunit, FILE=TRIM(ADJUSTL(slit_fname)), STATUS='unknown') 
+  ! READ(cunit, '(5i5)') !which_slit, n_fitvar + 1
+  ! READ(cunit, '(5i5)') npix !last_pix-first_pix + 1, first_pix, last_pix
+  ! READ(cunit,'(10(a5))') !'wav', calfit_strings(fit_idx)
+  !
+  !END SUBROUTINE  
 
   SUBROUTINE write_cali_cross (cunit,ix, cali, radcal)
-   USE OMSAO_variables_module, ONLY: yn_varyslit, wavcal_sol, wavcal, numwin,& 
+   USE OMSAO_variables_module, ONLY: yn_varyslit, numwin,&
                                   cali_group, fitspec_rad, the_pix, the_line, &
       n_rad_wvl, n_irrad_wvl, curr_rad_spec, curr_sol_spec
    IMPLICIT NONE

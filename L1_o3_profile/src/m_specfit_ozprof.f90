@@ -36,7 +36,7 @@ contains
          currspec, fitweights, fitvar_rad, fitvar_rad_apriori, &
          fitvar_rad_saved, fitvar_rad_init, fitvar_rad_str, lo_radbnd, &
          up_radbnd, n_fitvar_rad, n_rad_wvl, mask_fitvar_rad,fitspec_rad, &
-         fitres_rad, weight_rad, fitvar_rad_std, the_lon, the_lat, &
+         fitres_rad, weight_rad, fitvar_rad_std, the_lat, &
          the_sza_atm, &
          the_month, the_year, the_day, npix_fitted, fitvar_rad_nstd, &
          numwin, nradpix, refspec_norm, scnwrt, &
@@ -64,7 +64,7 @@ contains
          ecodfind, ectpind, ectpfind,twaefind, saodind, &
          sprsind, sprsfind,so2zind, so2zfind, &
          np1, np2, p1find, p2find, p1ind, p2ind, ncm, cmind, & 
-         is_albspcvar, use_albeofs, nactalbspc, nalbspc, sfcalbs, albspcs, wrtalbspc, &
+         is_albspcvar, use_albeofs, nactalbspc, sfcalbs, albspcs, wrtalbspc, &
          num_iter, allrms, allradrms
 
          !ndc, nir, nis, nsl, nrn, nfsfc, nlay_fit, num_iter, ozinfo, &
@@ -701,9 +701,14 @@ contains
     ! If using measurement error, rms is ideally to be 1, if it > 1, suggesting
     ! the estiamted measurement error is too small, and vice versa too large
     rms = SQRT(chisq/REAL(npoints, KIND=dp))
-    WRITE(*,'("|Pix/Ln:",i4,",",i4,"|GEO:",f6.2,",",f4.1,"|RMS:",2f5.2,"|res:",2f5.2,"|Ex/NI:",i3,",",i2, & 
-             "|cld/alb:",i4,",",f4.2,",",f4.2)') & 
-             the_pix, the_line,the_lat, the_sza_atm, allrms(1:2), allradrms(1:2),exval, num_iter, &
+    WRITE(*,'("|Pix/Ln:",i4,",",i4,' // &
+            ' "|GEO:",f6.2,",",f4.1,' // &
+            ' "|RMS:", 2f5.2,' // &
+            ' "|res:", 2f5.2,' // &
+            ' "|Ex/NI:",i3,",",i2,' // &
+            ' "|cld/alb:",i4,",", f4.2,",",f4.2)') &
+              the_pix, the_line,the_lat, the_sza_atm, allrms(1:2), &
+             allradrms(1:2),exval, num_iter, &
              int(the_ctp), the_cfrac, salbedo
     IF (exval < 0) RETURN
     ! need to multiply rms to get the actual retrieval random noise error

@@ -450,7 +450,7 @@ contains
   REAL (KIND=dp), DIMENSION(nalb) :: wfcarr
   REAL (KIND=dp), DIMENSION(nos)  :: o3shi
   REAL (KIND=dp)                  :: delta_cfrac, delta_alb, delta_cod, &
-       simrad1, simrad2, spres, newoz, initalb
+       newoz, initalb
   LOGICAL                  :: do_albwf, do_tmpwf, do_ozwf, do_o3shi, negval, vary_sfcalb, &
        do_taodwf, do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, do_sprswf, do_so2zwf, do_pslwf
   LOGICAL, DIMENSION(nlay) :: ozvary
@@ -1231,7 +1231,7 @@ SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls
   
   USE OMSAO_precision_module 
   USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
-  USE ozprof_data_module,     ONLY: pos_alb
+  !USE ozprof_data_module,     ONLY: pos_alb
   USE HDF5
   IMPLICIT NONE
   
@@ -1248,7 +1248,7 @@ SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls
   ! ======================
   ! Local variables
   ! ======================
-  INTEGER                         :: i, j, k, ialb, latin, lonin,  npix, nact, nm
+  INTEGER                         :: i, j, latin, lonin,  npix, nact, nm
   INTEGER, DIMENSION(2)           :: monin
   REAL (KIND=dp)                  :: sumalb, lon, lat, frac      
   REAL (KIND=dp), DIMENSION(2)    :: monfrac 
@@ -1347,7 +1347,7 @@ SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls
      DO i = 1, nwvl0
         DO j = 1, nm
            frac = monfrac(j)
-           glbalb(i, 1:nlon, 1:nlat) = glbalb(i, 1:nlon, 1:nlat) + tmpalb(monin(j), i, 1:nlon, 1:nlat) * frac
+           glbalb(i, 1:nlon, 1:nlat) = real( glbalb(i, 1:nlon, 1:nlat) + tmpalb(monin(j), i, 1:nlon, 1:nlat) * frac, kind=r4)
         ENDDO
      ENDDO
      deallocate(tmpalb)
@@ -1429,7 +1429,7 @@ SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg
   USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad
   USE OMSAO_variables_module,  ONLY: atmdbdir, atmos_unit
   USE OMSAO_errstat_module
-  USE ozprof_data_module,      ONLY:  malbspc, nalbspc, use_albeofs
+  USE ozprof_data_module,      ONLY:  malbspc, use_albeofs
   USE HDF5
   IMPLICIT NONE
 
@@ -1665,8 +1665,8 @@ SUBROUTINE get_surface_spectrum (dayofyear, sza, aza, vza, elons, elats, snowflg
         ! Close HDF file
         status = sfend(sd_id)
 
-        modis_brdfs = modis_brdfs + tmp_brdfs * fracs(id)
-        land_frac   = land_frac   + tmp_land_frac * fracs(id)
+        modis_brdfs = real( modis_brdfs + tmp_brdfs * fracs(id), kind=r4)
+        land_frac   = real( land_frac   + tmp_land_frac * fracs(id), kind=r4)
      ENDDO
      
      deallocate(tmp_brdfs)

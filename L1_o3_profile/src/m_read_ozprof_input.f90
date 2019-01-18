@@ -58,16 +58,15 @@ contains
          no2idx, no2fidx, broidx, brofidx, hchoidx, hchofidx,&
          so2crsidx, o4crsidx, o2crsidx, h2ocrsidx, o3crsidx, &
          use_albspc, use_albeofs,nalbspcwin, nalbspcord, nalbspc, & ! static input
-         malbspc, is_albspcvar, wrtalbspc, & 
+         is_albspcvar, wrtalbspc, & 
          which_inr, do_alb_longwav,alb_swav,ring_lut, alb_ewav
     USE OMSAO_parameters_module, ONLY: maxlay,  maxchlen, maxwin, &         
-      ozstr, othgasstr, albstr,  othstr, polstr, cldaerstr, wfcstr, cntrstr
+      ozstr, othgasstr, albstr,  othstr, cldaerstr, wfcstr, cntrstr
     USE OMSAO_indices_module, ONLY: max_rs_idx,  max_calfit_idx, mxs_idx, &
          maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx, &
-         hwe_idx, asy_idx, vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
+         hwe_idx, asy_idx, spk_idx, &
          so2_idx, so2v_idx, o2o2_idx, o2_idx,o2t2_idx, h2o_idx,h2ot2_idx, & 
-          hcho_idx,bro_idx,no2_t1_idx,&
-         n_max_fitpars
+          hcho_idx,bro_idx,no2_t1_idx
     USE OMSAO_variables_module, ONLY:& 
          n_fitvar_rad, mask_fitvar_rad, rmask_fitvar_rad,fitvar_rad_str, &
          fitvar_rad_init, fitvar_rad_init_saved, fitvar_rad_saved, &
@@ -96,7 +95,7 @@ contains
     ! ---------------
     INTEGER               :: i, j, k,l, iw, fidx, lidx, file_read_stat, idx, &
          swin, ewin, ntemp, nord, ntotp, thewin, theord, np, fstlay, lstlay, &
-         fstlayT, lstlayT, ch
+         fstlayT, lstlayT
     INTEGER, DIMENSION (maxoth, 2)      :: tmpwins
     INTEGER, DIMENSION (maxwin, maxoth) :: tmpind, tmpfind
     CHARACTER (LEN=maxchlen)            :: tmpchar

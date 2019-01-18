@@ -55,7 +55,7 @@ CONTAINS
                     solfit_exval, ll, lu
   REAL (KIND=dp), DIMENSION(8) :: polycoeffs
   REAL (KIND=dp), DIMENSION(max_fit_pts) :: polyx
-  REAL (KIND=dp), DIMENSION (n_rad_wvl)      :: allwaves, del
+  REAL (KIND=dp), DIMENSION (n_rad_wvl)      :: allwaves
   REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_varstd
 
   LOGICAL, SAVE   :: wrt_to_screen, wrt_to_file, slitcal, first = .TRUE.
@@ -63,7 +63,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=14), PARAMETER :: modulename = 'radiance_fit'
+  !CHARACTER (LEN=*), PARAMETER :: modulename = 'radiance_fit'
 
   IF (first) THEN
       wrt_to_screen = .FALSE.

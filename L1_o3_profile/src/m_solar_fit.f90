@@ -55,7 +55,7 @@ CONTAINS
                     solfit_exval, ll, lu
   REAL (KIND=dp), DIMENSION(8) :: polycoeffs
   REAL (KIND=dp), DIMENSION(max_fit_pts) :: polyx
-  REAL (KIND=dp), DIMENSION (n_irrad_wvl)      :: allwaves, del
+  REAL (KIND=dp), DIMENSION (n_irrad_wvl)      :: allwaves
   REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_varstd
 
   LOGICAL, SAVE   :: wrt_to_screen, wrt_to_file, slitcal, first = .TRUE.
@@ -63,7 +63,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=14), PARAMETER :: modulename = 'solar_fit'
+  !CHARACTER (LEN=*), PARAMETER :: modulename = 'solar_fit'
   
   IF (first) THEN
      wrt_to_screen = calscn
@@ -226,7 +226,7 @@ CONTAINS
     REAL (KIND=dp), DIMENSION (max_calfit_idx, 2) :: tmp_varstd
     INTEGER :: npoints, i, iwin, fidx, lidx, errstat = pge_errstat_ok, &
          islit, fpos, lpos, fslit, lslit, ios, finter, &
-         linter, npoly, solfit_exval, slidx, sfidx
+         linter, npoly, solfit_exval
     CHARACTER(LEN=maxchlen)                       :: tmpchar, fname
     LOGICAL :: calfname_exist = .TRUE.
 

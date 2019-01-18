@@ -17,9 +17,9 @@ contains
     USE OMSAO_indices_module,     ONLY : max_calfit_idx, solar_idx, & 
          hwe_idx, asy_idx, shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, &
          vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
-         bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
-         sc0_idx, sc1_idx, sc2_idx, sc3_idx, sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
-         wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
+         bl0_idx, bl1_idx, bl2_idx, bl3_idx, &
+         sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
+         wr0_idx, wr7_idx
 
     USE OMSAO_variables_module,   ONLY: weight_sun,  &
         fitvar_sol, fitvar_sol_saved,chisq,  sol_wav_avg, which_slit, &

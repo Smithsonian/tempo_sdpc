@@ -24,7 +24,7 @@ CONTAINS
   TYPE(refl_group), INTENT(INOUT) :: refl
   TYPE(cali_group), INTENT(INOUT) :: cali
   INTEGER, INTENT(OUT) :: status
-  CHARACTER(10) :: varname
+  CHARACTER(64) :: varname
 
    IF (ASSOCIATED (irrad%nwav)) DEALLOCATE (irrad%nwav)
    IF (ASSOCIATED (irrad%errstat)) DEALLOCATE (irrad%errstat)

@@ -68,7 +68,7 @@ module tmpo_read_l1b_data
     winlim, lower_spec, upper_spec, inschs, band_selectors, &
     retlbnd, retubnd, reduce_lbnd, reduce_ubnd,redlam, redsampr,redslw, & 
     reduce_slit, reduce_resolution, &
-    l1b_irrad_filename, nxbin, nybin, &
+    l1b_irrad_filename, nxbin, &
     use_backup, refdbdir, calunit,&
     scnwrt, use_redfixwav, which_slit, wcal_bef_coadd, dwavmax,GranuleJDay
    USE ozprof_data_module, ONLY:toms_fwhm, pos_alb,nrefl, mrefl
@@ -87,7 +87,7 @@ module tmpo_read_l1b_data
    LOGICAL :: read_irrad=.true.
    LOGICAL :: problems
    INTEGER :: n_ring_off = 12
-   INTEGER :: i, j,fidx,lidx, is, iline,ch,iwin,iw,ix,iix, irefl, errstat, idx, ic
+   INTEGER :: i, j,fidx,lidx, is, iline,ch,iw,ix,iix, irefl, errstat, idx, ic
    INTEGER :: nx, nt,nw, nsub, nbin, nring, nbad, nwavel, noff1, noff2, thedoy
    ! variable used to read TEMPO data
    INTEGER (KIND=i2) :: irrad_mflg
@@ -112,8 +112,8 @@ module tmpo_read_l1b_data
    REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: subspec
    REAL (KIND=dp), DIMENSION(:,:), POINTER :: subring   
    ! Error Message
-   CHARACTER(LEN=maxchlen) :: message, bkfname, form1
-   CHARACTER(LEN=maxchlen), PARAMETER :: modulename='tmpo_read_irradiance_data'
+   CHARACTER(LEN=maxchlen) :: message, bkfname
+   CHARACTER(LEN=*), PARAMETER :: modulename='tmpo_read_irradiance_data'
 
    
    !--------------------------------------------------------------------------
@@ -261,9 +261,9 @@ module tmpo_read_l1b_data
        spos(ch) = j
        j = nwavel + 1
        epos(ch) = nwavel
-       irrad_wavl(spos(ch):epos(ch), 1:npos) = tmpspec(wvl_idx, 1:nwls(ch),1:npos)
-       irrad_spec(spos(ch):epos(ch), 1:npos) = tmpspec(spc_idx, 1:nwls(ch),1:npos)
-       irrad_prec(spos(ch):epos(ch), 1:npos) = tmpspec(sig_idx, 1:nwls(ch),1:npos)
+       irrad_wavl(spos(ch):epos(ch), 1:npos) = real (tmpspec(wvl_idx, 1:nwls(ch),1:npos), kind=r4)
+       irrad_spec(spos(ch):epos(ch), 1:npos) = real (tmpspec(spc_idx, 1:nwls(ch),1:npos), kind=r4)
+       irrad_prec(spos(ch):epos(ch), 1:npos) = real (tmpspec(sig_idx, 1:nwls(ch),1:npos), kind=r4)
        irrad_qflg(spos(ch):epos(ch), 1:npos) = 0 ! All are good (pre-filtered)
      ENDDO
    ENDIF
@@ -583,9 +583,9 @@ module tmpo_read_l1b_data
   SUBROUTINE tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline,  pge_error_status)
    USE OMSAO_parameters_module, ONLY:max_fit_pts, maxwin, mswath
    USE OMSAO_indices_module, ONLY:sig_idx, spc_idx, wvl_idx
-   USE OMSAO_variables_module, ONLY: nswath, nxtrack, ntimes, inschs,&
-       l1b_rad_filename, nxbin, nybin, inschs, numwin, reduce_resolution,currpix, &
-       which_slit, scnwrt, band_selectors, upper_spec, lower_spec, &
+   USE OMSAO_variables_module, ONLY: nswath, nxtrack, inschs,&
+       l1b_rad_filename, nxbin, nybin, inschs, numwin, reduce_resolution, &
+       upper_spec, lower_spec, &
        wcal_bef_coadd, ybin_decerr, szamax
    USE OMSAO_precision_module
    USE OMSAO_errstat_module
@@ -612,7 +612,7 @@ module tmpo_read_l1b_data
    LOGICAL :: problems
    INTEGER (KIND=i2) :: tmp_mflg
    INTEGER :: i, j, fidx, lidx, is, ch,  errstat, iloop, ix, iix, nbin, iw, &
-              iwin, ic, nsub, blockline, nx, nt, nw, nwavel, irefl, ii, nl
+              ic, nsub, blockline, nx, nt, nw, nwavel, irefl, ii, nl
    ! variables used to read TEMPO_data 
    INTEGER, DIMENSION (mswath) :: nwls, epos, spos
    INTEGER (KIND=i4), DIMENSION (:), POINTER :: idxs
@@ -623,7 +623,6 @@ module tmpo_read_l1b_data
    REAL (kind=i4), DIMENSION (:,:), POINTER :: ccd_spec,ccd_prec,ccd_wavl
    INTEGER (kind=2), dimension(:,:),POINTER :: ccd_qflg
    ! variables used for reduced resolution
-   INTEGER :: npos, np
    ! Subset variables
    INTEGER, PARAMETER :: nbits = 16
    INTEGER (KIND=i4), DIMENSION (maxwin)     :: nwbin
@@ -637,7 +636,7 @@ module tmpo_read_l1b_data
    ! ------------------------------
    ! Name of this module/subroutine
    ! ------------------------------
-   CHARACTER (LEN=23), PARAMETER :: modulename = 'tmpo_read_radiance_lines'
+   CHARACTER (LEN=*), PARAMETER :: modulename = 'tmpo_read_radiance_lines'
 
    !--------------------------------------------------------------------------
    ! Starting with allocating local variables

@@ -34,7 +34,7 @@ contains
          rnwins, dcwins, iswins, irwins, nsl, nsh, nrn, ndc, nis,nir,&
          fit_atanring, rtm_treatment, &
          np1, p1wins, p1find, p1ind, np2, p2wins, p2find, p2ind, &
-         cmfind, cmind, cmwins, ncm
+         cmfind, cmind, ncm
     USE OMSAO_errstat_module
 
  
@@ -54,12 +54,12 @@ contains
   ! =================================
   ! External OMI and Toolkit routines
   ! =================================
-  INTEGER :: OMI_SMF_setmsg
+  !INTEGER :: OMI_SMF_setmsg
 
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER  :: i, j, k, idx, fidx, lidx, nextra, nord
+  INTEGER  :: i, j, k, fidx, lidx, nextra, nord
   REAL (KIND=dp), DIMENSION (ns)      :: del, sunspec_ss, locdbs, dfdsl, gshiwf, tempsum
   REAL (KIND=dp), DIMENSION (n_refwvl):: sunpos_ss, refpos_ss, delref
   REAL (KIND=dp), DIMENSION (ns)      :: corrected_irrad, corr, corrected_rad

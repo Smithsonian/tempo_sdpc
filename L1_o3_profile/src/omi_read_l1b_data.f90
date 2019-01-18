@@ -328,11 +328,10 @@ contains
          winlim, scnwrt, refdbdir, use_backup, &
          reduce_resolution, redlam, redsampr, reduce_slit, rm_mgline, &
          dwavmax, use_redfixwav, which_slit, avgsol_allorb, &
-         nxbin,nswath, GranuleJDay,orbnum, inschs, nxtrack,ncoadd,&
+         nxbin,nswath, GranuleJDay, inschs, nxtrack,ncoadd,&
          reduce_ubnd, reduce_lbnd, retlbnd, retubnd, redslw, earthsundistance
     USE OMSAO_omidata_module,  ONLY: nwavel_max,  omi_irradiance_swathname, &
-                                      nfxtrack, &
-                                     omisol_version, zoom_p1
+                                      nfxtrack, zoom_p1
     USE ozprof_data_module, ONLY: pos_alb, toms_fwhm, nrefl
     USE hdfeos4_parameters
     USE L1B_Reader_class
@@ -358,7 +357,7 @@ contains
     INTEGER, PARAMETER :: noff_uv1=12, noff_uv2=25
     INTEGER  :: nwavel, is, ix, i, j, iix, nomi, fidx, lidx, ch, idum,  &
          iw, ic, idx, noff1, noff2, nring, irefl, nbin,  &
-         thedoy, nsolbin, nbad, k, l
+         thedoy, nsolbin, nbad
     ! variables used to read original spectra
     INTEGER (KIND=i2)                     :: mflg
     INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls
@@ -367,7 +366,6 @@ contains
     INTEGER (KIND=i2), DIMENSION(:,:), POINTER :: tmpnavg
     INTEGER (KIND=i2), DIMENSION(:, :), POINTER :: irrad_qflg
     REAL (kind=4),DIMENSION (:, :), POINTER     :: irrad_spec, irrad_prec, irrad_wavl
-    LOGICAL :: read_irrad
     INTEGER (KIND=i4)                     :: nx, nt
     ! variables used for reduce resoltuion
     INTEGER :: npos, np
@@ -389,7 +387,6 @@ contains
     INTEGER (KIND=i4) :: errstat, iline
     LOGICAL                                 :: error
     CHARACTER (LEN=maxchlen)                :: bkfname
-    CHARACTER (LEN=3)                       :: opfc
     ! Exteranl functions
     INTEGER                                 :: estat
 
@@ -598,8 +595,8 @@ contains
             idum = MAXVAL(tmpnavg(spos(is):epos(is), i))
             DO j = 1, nwls(is)
                IF (tmpnavg(nwavel + j, i) > 10) THEN
-                   irrad_prec(nwavel + j, i) = irrad_prec(nwavel+j, i) &
-                   / SQRT( REAL(tmpnavg(nwavel + j, i), KIND=dp) )
+                   irrad_prec(nwavel + j, i) = real( irrad_prec(nwavel+j, i) &
+                   / SQRT( REAL(tmpnavg(nwavel + j, i), KIND=dp) ), kind=r4)
                ELSE
                  irrad_spec(nwavel + j, i) = 0.0
                  irrad_prec(nwavel + j, i) = 0.0
@@ -1246,9 +1243,9 @@ contains
     INTEGER   (KIND=4), DIMENSION (mswath)    :: nwls
     INTEGER                                   :: nwavel, is, iloop, nwl, &
          i, j, ix, iix, ii, nomi, fidx, lidx, ch, iw, ic, irefl, nx, &
-         nbin, fpix, lpix, np, npos, k, l!, idx
+         nbin, fpix, lpix, np, npos
    ! variables used to read original spectrum
-    LOGICAL                                   :: error, read_irrad
+    LOGICAL                                   :: error
     INTEGER   (KIND=i2), DIMENSION(mswath)    :: spos, epos
     INTEGER, DIMENSION (:), POINTER           :: idxs
     INTEGER (kind=2), POINTER, DIMENSION (:,:,:) :: rad_qflg
@@ -1744,12 +1741,12 @@ contains
    
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: mswath
-    USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx!, sig_idx
+    !USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx
     USE OMSAO_parameters_module, ONLY: maxchlen, maxwin!, mrefl
     USE OMSAO_variables_module,  ONLY: avg_solcomp, avgsol_allorb, numwin, &
          coadd_uv2, band_selectors, refdbdir, nxbin, nswath, nxtrack, ncoadd, orbnum
     USE OMSAO_omidata_module,    ONLY: nxtrack_max, nwavel_max
-    USE ozprof_data_module,      ONLY: nrefl
+    !USE ozprof_data_module,      ONLY: nrefl
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -1778,7 +1775,7 @@ contains
     REAL (KIND=dp), DIMENSION(:,:,:), POINTER  :: solcomp
     REAL (KIND=dp), DIMENSION(:,:), POINTER    :: solcomp_wvl
 
-    INTEGER :: i, j, ch, nx, errstat, ix, iix, iw, fidx, lidx, sidx, eidx, npts, npts1, nbin
+    INTEGER :: i, j, ch, nx, errstat, iw
     INTEGER (KIND=i4), DIMENSION(maxwin)  :: nwbin
     REAL (KIND=dp)                        :: swav, ewav
     CHARACTER(LEN=maxchlen)               :: scfname
@@ -1789,7 +1786,7 @@ contains
     ! ------------------
     ! External functions
     ! ------------------
-    INTEGER :: OMI_SMF_setmsg
+    !INTEGER :: OMI_SMF_setmsg
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -1873,59 +1870,59 @@ contains
   END SUBROUTINE replace_solar_irradiance
 
 ! Correction for wavelength registration at 1:67 and 498:557
-  SUBROUTINE corruv2wav(nw, nx, waves)
-    USE OMSAO_precision_module
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                  INTENT (IN)    :: nw, nx
-    REAL (KIND=r4), DIMENSION (nw, nx), INTENT (INOUT) :: waves
-
-    ! ----------------
-    ! Local variables
-    ! ---------------
-    INTEGER        :: ix
-    REAL (KIND=r4) :: del, ndel, delp1, delp2, delm1, delm2, ndelp1, ndelm1, sh1, sh2
-
-    !RETURN
-
-    !print *, nw, nx
-    DO ix = 1, nx   
-      ! At position 67
-      del    = waves(68, ix) - waves(67, ix)
-      delm1  = waves(67, ix) - waves(66, ix)
-      delp1  = waves(69, ix) - waves(68, ix)
-      delp2  = waves(70, ix) - waves(69, ix)
-      ndel   = delp1 * 2 - delp2
-      ndelm1 = ndel * 2  - delp1
-
-      ! Shifts
-      sh1 = (ndel - del)
-      sh2 = sh1 + (ndelm1 - delm1)
-
-      !print *, 67, sh1, sh2
-      waves(67, ix)   = waves(67, ix) - sh1
-      waves(1:66, ix) = waves(1:66, ix) - sh2
-
-      ! At position 498
-      delm2 = waves(496, ix) - waves(495, ix)
-      delm1 = waves(497, ix) - waves(496, ix)
-      del   = waves(498, ix) - waves(497, ix)
-      delp1 = waves(499, ix) - waves(498, ix)
-      ndel = delm1 * 2 - delm2
-      ndelp1 = ndel * 2 - delm1
-
-      sh1 = (ndel - del)
-      sh2 = sh1 + (ndelp1 - delp1)
-      !print *, 498, sh1, sh2
-
-      waves(498, ix) = waves(498, ix) + sh1
-      waves(499:nw, ix) = waves(499:nw, ix) + sh2
-    ENDDO
-
-    RETURN
-  END SUBROUTINE corruv2wav
+  !SUBROUTINE corruv2wav(nw, nx, waves)
+  !  USE OMSAO_precision_module
+  !
+  !  ! ---------------
+  !  ! Input variables
+  !  ! ---------------
+  !  INTEGER (KIND=i4),                  INTENT (IN)    :: nw, nx
+  !  REAL (KIND=r4), DIMENSION (nw, nx), INTENT (INOUT) :: waves
+  !
+  !  ! ----------------
+  !  ! Local variables
+  !  ! ---------------
+  !  INTEGER        :: ix
+  !  REAL (KIND=r4) :: del, ndel, delp1, delp2, delm1, delm2, ndelp1, ndelm1, sh1, sh2
+  !
+  !  !RETURN
+  !
+  !  !print *, nw, nx
+  !  DO ix = 1, nx   
+  !    ! At position 67
+  !    del    = waves(68, ix) - waves(67, ix)
+  !    delm1  = waves(67, ix) - waves(66, ix)
+  !    delp1  = waves(69, ix) - waves(68, ix)
+  !    delp2  = waves(70, ix) - waves(69, ix)
+  !    ndel   = delp1 * 2 - delp2
+  !    ndelm1 = ndel * 2  - delp1
+  !
+  !    ! Shifts
+  !    sh1 = (ndel - del)
+  !    sh2 = sh1 + (ndelm1 - delm1)
+  !
+  !    !print *, 67, sh1, sh2
+  !    waves(67, ix)   = waves(67, ix) - sh1
+  !    waves(1:66, ix) = waves(1:66, ix) - sh2
+  !
+  !    ! At position 498
+  !    delm2 = waves(496, ix) - waves(495, ix)
+  !    delm1 = waves(497, ix) - waves(496, ix)
+  !    del   = waves(498, ix) - waves(497, ix)
+  !    delp1 = waves(499, ix) - waves(498, ix)
+  !    ndel = delm1 * 2 - delm2
+  !    ndelp1 = ndel * 2 - delm1
+  !
+  !    sh1 = (ndel - del)
+  !    sh2 = sh1 + (ndelp1 - delp1)
+  !    !print *, 498, sh1, sh2
+  !
+  !    waves(498, ix) = waves(498, ix) + sh1
+  !    waves(499:nw, ix) = waves(499:nw, ix) + sh2
+  !  ENDDO
+  !
+  !  RETURN
+  !END SUBROUTINE corruv2wav
 
 end module omi_read_l1b_data
 

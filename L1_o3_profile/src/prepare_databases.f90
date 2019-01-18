@@ -385,7 +385,7 @@ contains
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER :: errstat,i
+    INTEGER :: errstat
     REAL  (KIND=dp), DIMENSION (n_radpts) :: spline_sun
     real (kind=dp), dimension(n_irrad_wvl) :: tmp_x_in, tmp_y_in
 

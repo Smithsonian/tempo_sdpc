@@ -67,7 +67,7 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
   REAL (KIND=dp) :: tmp
   REAL (KIND=dp), DIMENSION (1:nmipas) :: mipasp, mipaso3
   REAL (KIND=dp), DIMENSION(0:nref)    :: ozref, refp
-  REAL (KIND=DP), DIMENSION(0:nv8)     :: pv8, v8oz
+  REAL (KIND=DP), DIMENSION(0:nv8)     :: pv8
   REAL (KIND=dp), DIMENSION(0:numk)    :: umkoz, umkpg
   CHARACTER(10), PARAMETER :: modulename='get_o3prof'
 
@@ -188,8 +188,8 @@ SUBROUTINE get_normtoz (toz, nz,  oz, fidx, lidx)
      !fidx = INT(ntp/2.0)
      !lidx = tmpntp
      res_to3 = 0.0
-     IF (lidx < nz) res_to3 = SUM(oz(lidx+1:nz))
-     IF (fidx > 1 ) res_to3 = res_to3 + SUM(oz(1:fidx-1))
+     IF (lidx < nz) res_to3 = real (SUM(oz(lidx+1:nz)), kind=r4)
+     IF (fidx > 1 ) res_to3 = real (res_to3 + SUM(oz(1:fidx-1)), kind=r4)
      oz(fidx:lidx) = oz(fidx:lidx) * (toz - res_to3) /SUM(oz(fidx:lidx))
    ELSE
      oz(1:nz) = oz(1:nz) * toz /SUM(oz(1:nz))
@@ -226,9 +226,9 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
 
   REAL (KIND=dp), DIMENSION(nz)       :: zmid
   REAL (KIND=dp), DIMENSION(0:nz)     :: pslg, nstd, nstd1, ps1, zs1
-  INTEGER                               :: i, j, k,mnorstd, tmpntp, nref
+  INTEGER                               :: i, j, mnorstd, tmpntp, nref
   REAL (KIND=dp) :: tmp
-  REAL (KIND=dp), DIMENSION(mref)       :: astd, a1, a2, a3
+  REAL (KIND=dp), DIMENSION(mref)       :: astd
   REAL (KIND=dp), DIMENSION(0: mref)    :: cumastd, preslg, pres
 
   ! ==============================
@@ -712,11 +712,10 @@ SUBROUTINE get_tb(ozref,std, which_tb)
   REAL (KIND=dp), PARAMETER         :: lat0=-90., latgrid=10.
   REAL (KIND=dp), DIMENSION(nlay)   :: ozref0,std0 ! orignal profile
   REAL (KIND=dp), DIMENSION(0:nlay) :: cum0,cums0, refz0, zstar, tb0
-  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, offset, tb
+  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, tb
 
   INTEGER                           :: i, j, k,fidx, lidx, errstat
-  REAL (KIND=dp)                    :: frac,fdum
-  REAL (KIND=dp)                    :: meg
+  REAL (KIND=dp)                    :: fdum
   REAL (KIND=dp)                    :: gravity_correct ! used for convertingunit
 
   LOGICAL, SAVE                     :: first = .TRUE.
@@ -889,8 +888,8 @@ SUBROUTINE get_ab (ozref,std)
   REAL (KIND=dp), DIMENSION(0:nlay) :: refz, zstar
   REAL (KIND=dp)                    :: gravity_correct
 
-  REAL (KIND=dp)                :: frac,fdum
-  INTEGER                       :: i, j, k, errstat
+  REAL (KIND=dp)                :: fdum
+  INTEGER                       :: i, j, k
 
   LOGICAL, SAVE                 :: first = .TRUE.
   REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER::ozrefs
@@ -900,7 +899,7 @@ SUBROUTINE get_ab (ozref,std)
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
+  !CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
 
   ! ** load std profiles ** !
   IF (first) THEN
@@ -952,91 +951,91 @@ END SUBROUTINE get_ab
 ! Obtain TOMS V8 ozone profiles (12 month, 18 latitude bands,
 !   3-10 profiles with total ozone at a step of 50 DU
 ! ===============================================================
-SUBROUTINE get_v8prof(toz, oz)
-
-  IMPLICIT NONE
-
-  INTEGER, PARAMETER                           :: nl = 11
-  ! ======================
-  ! Input/Output variables
-  ! ======================
-
-  REAL (KIND=dp), INTENT(INOUT)                :: toz
-  REAL (KIND=dp), DIMENSION(nl), INTENT(OUT)   :: oz
-
-  ! ======================
-  ! Local variables
-  ! ======================
-  INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
-  REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
-  CHARACTER (LEN=200)                                :: line
-
-  REAL (KIND=dp) :: frac, fdum, maxoz,minoz
-  INTEGER        :: i, j, ib, profin, nprof, im
-
-  ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
-  INTEGER,        SAVE, DIMENSION(:,:), POINTER:: nprofs
-  LOGICAL,        SAVE  :: first = .TRUE.
-
-! ** load oz profiles ** !
-
-  IF (first) THEN
-   allocate(ozprofs(nmon, nlat, maxprof, nl), nprofs(nmon, nlat))
-  apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
-  OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')
-        ! Read until the target month        
-         DO im = 1, nmon
-           DO i = 1, nlat
-              READ(atmos_unit, *)
-              nprof = 1
-              DO j = 1, maxprof
-                 READ (atmos_unit, '(A)') line;  READ (line, *) fdum
-
-                 IF (fdum < 999.0) THEN
-                    READ (line, *) fdum, ozprofs(im, i, nprof, :)
-                    nprof = nprof + 1
-                 ENDIF
-              ENDDO
-              nprofs(im, i) = nprof - 1
-           ENDDO
-        ENDDO
-  CLOSE (atmos_unit)
-  first = .FALSE.
-  ENDIF
-
-  CALL get_monfrac(nmon, the_month, the_day, nbmon, monfrac, monin)
-  CALL get_latfrac(nlat,latgrid, lat0, the_lat, nblat, latfrac, latin)
-
-  oz = 0.0
-  DO im = 1, nbmon
-        DO ib = 1, nblat
-           nprof = nprofs(monin(im), latin(ib))
-           minoz = SUM(ozprofs(monin(im), latin(ib), 1, :))
-           maxoz = SUM(ozprofs(monin(im), latin(ib), nprof, :))
-
-           IF (toz < minoz) THEN
-              WRITE(*,*), 'Warning: no a priori profile available!!!'
-              oz  = oz + ozprofs(monin(im), latin(ib), 1, :) * toz / minoz *latfrac(ib)
-           ELSE IF (toz > maxoz) THEN
-              WRITE(*,*), 'Warning: no a priori profile available!!!'
-              oz = oz + ozprofs(monin(im), latin(ib), nprof, :) * toz / maxoz *latfrac(ib)
-           ELSE
-              profin = INT ((toz - minoz ) / 50.0)+1
-              IF (profin == 0) THEN
-                 profin = 1
-              ELSE IF (profin == nprof) THEN
-                 profin = profin - 1
-              ENDIF
-
-              frac = 1.0 - (toz - (minoz + (profin-1) * 50.0)) / 50.0
-              oz = oz + latfrac(ib) * monfrac(im) * (frac * ozprofs(monin(im),latin(ib), profin, :) &
-                   + (1.0 - frac) * ozprofs(monin(im), latin(ib), profin+1, :))           
-           ENDIF
-        ENDDO
-  ENDDO
-  RETURN
-END SUBROUTINE get_v8prof
+!SUBROUTINE get_v8prof(toz, oz)
+!
+!  IMPLICIT NONE
+!
+!  INTEGER, PARAMETER                           :: nl = 11
+!  ! ======================
+!  ! Input/Output variables
+!  ! ======================
+!
+!  REAL (KIND=dp), INTENT(INOUT)                :: toz
+!  REAL (KIND=dp), DIMENSION(nl), INTENT(OUT)   :: oz
+!
+!  ! ======================
+!  ! Local variables
+!  ! ======================
+!  INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
+!  REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
+!  CHARACTER (LEN=200)                                :: line
+!
+!  REAL (KIND=dp) :: frac, fdum, maxoz,minoz
+!  INTEGER        :: i, j, ib, profin, nprof, im
+!
+!  ! saved variables
+!  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
+!  INTEGER,        SAVE, DIMENSION(:,:), POINTER:: nprofs
+!  LOGICAL,        SAVE  :: first = .TRUE.
+!
+!! ** load oz profiles ** !
+!
+!  IF (first) THEN
+!   allocate(ozprofs(nmon, nlat, maxprof, nl), nprofs(nmon, nlat))
+!  apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
+!  OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')
+!        ! Read until the target month        
+!         DO im = 1, nmon
+!           DO i = 1, nlat
+!              READ(atmos_unit, *)
+!              nprof = 1
+!              DO j = 1, maxprof
+!                 READ (atmos_unit, '(A)') line;  READ (line, *) fdum
+!
+!                 IF (fdum < 999.0) THEN
+!                    READ (line, *) fdum, ozprofs(im, i, nprof, :)
+!                    nprof = nprof + 1
+!                 ENDIF
+!              ENDDO
+!              nprofs(im, i) = nprof - 1
+!           ENDDO
+!        ENDDO
+!  CLOSE (atmos_unit)
+!  first = .FALSE.
+!  ENDIF
+!
+!  CALL get_monfrac(nmon, the_month, the_day, nbmon, monfrac, monin)
+!  CALL get_latfrac(nlat,latgrid, lat0, the_lat, nblat, latfrac, latin)
+!
+!  oz = 0.0
+!  DO im = 1, nbmon
+!        DO ib = 1, nblat
+!           nprof = nprofs(monin(im), latin(ib))
+!           minoz = SUM(ozprofs(monin(im), latin(ib), 1, :))
+!           maxoz = SUM(ozprofs(monin(im), latin(ib), nprof, :))
+!
+!           IF (toz < minoz) THEN
+!              WRITE(*,*)'Warning: no a priori profile available!!!'
+!              oz  = oz + ozprofs(monin(im), latin(ib), 1, :) * toz / minoz *latfrac(ib)
+!           ELSE IF (toz > maxoz) THEN
+!              WRITE(*,*)'Warning: no a priori profile available!!!'
+!              oz = oz + ozprofs(monin(im), latin(ib), nprof, :) * toz / maxoz *latfrac(ib)
+!           ELSE
+!              profin = INT ((toz - minoz ) / 50.0)+1
+!              IF (profin == 0) THEN
+!                 profin = 1
+!              ELSE IF (profin == nprof) THEN
+!                 profin = profin - 1
+!              ENDIF
+!
+!              frac = 1.0 - (toz - (minoz + (profin-1) * 50.0)) / 50.0
+!              oz = oz + latfrac(ib) * monfrac(im) * (frac * ozprofs(monin(im),latin(ib), profin, :) &
+!                   + (1.0 - frac) * ozprofs(monin(im), latin(ib), profin+1, :))           
+!           ENDIF
+!        ENDDO
+!  ENDDO
+!  RETURN
+!END SUBROUTINE get_v8prof
 
 SUBROUTINE get_mcprof(ozref, which_out)
 
@@ -1055,7 +1054,7 @@ SUBROUTINE get_mcprof(ozref, which_out)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlevel=61 ! o3 (DU) for 60 layer, std (mr) for 61 level
   INTEGER :: i, j, im,ib
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
-  REAL (KIND=dp)                                  :: frac, idum
+  REAL (KIND=dp)                                  :: idum
   REAL (KIND=dp), DIMENSION(nlevel)               :: std0, pres
   REAL (KIND=dp), DIMENSION(nref)                 :: std
   ! saved variables
@@ -1132,8 +1131,7 @@ SUBROUTINE get_mlprof(out, index_out)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlay=66
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
   CHARACTER (LEN=10) :: cdum
-  REAL (KIND=dp)     :: frac
-  INTEGER :: i, j, im,ib
+  INTEGER :: i, im,ib
   REAL (KIND=dp),DIMENSION(nlay) :: ozref0,std0, pres
   REAL (KIND=dp),DIMENSION(nref) :: std, ozref
   ! saved variables
@@ -1393,7 +1391,7 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
   ! ======================
   INTEGER, PARAMETER        :: nlat=46, nlon=72, nalt=13
   REAL (KIND=dp), PARAMETER :: longrid = 5.0, latgrid = 4.0, lon0=-180.0, lat0=-92.0
-  INTEGER                   :: errstat, i, j, k, ntp0
+  INTEGER                   :: errstat, i, j, ntp0
 
   REAL (KIND=dp), DIMENSION(nalt)             :: gprof
   REAL (KIND=dp), DIMENSION(0:nz)             :: tempoz
@@ -1406,8 +1404,8 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
        800., 700., 600., 500., 400., 300., 250., 200., 150., 125., 100./)
 
   REAL (KIND=dp), DIMENSION(1:nalt)           :: cumoz, presmod
-  CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
-       'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
+  !CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
+  !     'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=2)                           :: monc
   
   IF (first) THEN
@@ -1483,7 +1481,6 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
   REAL (KIND=dp), DIMENSION (0:ml) :: cumoz
   REAL (KIND=dp), DIMENSION (0:nz) :: tmpcumoz, tmps
   REAL (KIND=dp), DIMENSION (2)    :: latfrac
-  REAL (KIND=dp)                   :: sumfrac
   INTEGER,        DIMENSION (2)    :: latin
 
   ! Saved variables
@@ -1764,8 +1761,8 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
   ! ======================
   INTEGER, PARAMETER :: nmon=12, nlat=18, maxprof=10
   REAL (KIND=dp), PARAMETER :: lat0=-90.0, latgrid=10.0
-  CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
-       'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
+  !CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
+  !     'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=200)                                :: line
 
   ! saved variables

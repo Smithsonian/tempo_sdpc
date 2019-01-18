@@ -42,7 +42,7 @@ CONTAINS
                            spix, lpix, sline, eline,do_deallo,  errstat)
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: geo_group, nxbin, nybin, & 
-                                      l1file=>l1b_rad_filename, szamax
+                                      l1file=>l1b_rad_filename
 
     IMPLICIT NONE 
 
@@ -56,7 +56,7 @@ CONTAINS
     INTEGER, INTENT (out) :: errstat
     ! local variables
     type (tiof_file_type) :: tio_l1obj
-    INTEGER :: nline, iline, nx, i, j, ix, iy,iix,iiy, nbits, ndim, nl, sline1, eline1, nbin
+    INTEGER :: nline, nx, i, j, ix, iy,iix, nl, sline1, eline1, nbin
     INTEGER :: ysidx, yeidx, ymidx, xsidx, xeidx, xmidx
     !-----------------------------------------------------------
     ! variables for reading original tempo geolocation dataset
@@ -72,7 +72,7 @@ CONTAINS
     !--------------------------------------------------------
     INTEGER (kind=i2), dimension(1:nxtrack_max) ::land_water_flg, glint_flg, snow_ice_flg
     real (kind=8) :: sza, vza,sazm, vazm, relaza
-    LOGICAL, save :: first =.true.
+    !LOGICAL, save :: first =.true.
 
     !IF (first) THEN 
        allocate(tio_clon (4, nxtrack, 0:ntimes-1) , tio_clat(4, nxtrack, 0:ntimes-1) )
@@ -187,9 +187,9 @@ CONTAINS
              relaza = ABS( vazm - sazm) 
              IF ( relaza < 180) relaza = 360.0 - relaza 
            
-             geo%sza(ix, iy) = sza
-             geo%vza(ix, iy) = vza
-             geo%aza(ix, iy) = relaza
+             geo%sza(ix, iy) = real(sza, kind=r4)
+             geo%vza(ix, iy) = real(vza, kind=r4)
+             geo%aza(ix, iy) = real(relaza, kind=r4)
              geo%sca(ix, iy) = 0.0 
                 
              geo%gflg(ix, iy)  = tio_geoflg(xmidx, ymidx)
@@ -273,7 +273,7 @@ CONTAINS
     ! ------------------------------
     ! The Glint flag is easy: Byte 4
     ! ------------------------------
-    glint_flg(1:nxtrack) = tmp_bytes(1:nxtrack,4)
+    glint_flg(1:nxtrack) = int(tmp_bytes(1:nxtrack,4), kind=2)
 
     ! ------------------------------------------------------------------
     ! Land/Water and Ice require a bit more work. The BIT slices must be
@@ -281,8 +281,8 @@ CONTAINS
     ! product is the information we seek.
     ! ------------------------------------------------------------------
     DO i = 1, nxtrack
-      land_water_flg(i) = SUM(tmp_bytes(i,0:3 )*seven_byte(1:4))
-      snow_ice_flg  (i) = SUM(tmp_bytes(i,8:14)*seven_byte(1:7))
+      land_water_flg(i) = int(SUM(tmp_bytes(i,0:3 )*seven_byte(1:4)), kind=2)
+      snow_ice_flg  (i) = int(SUM(tmp_bytes(i,8:14)*seven_byte(1:7)), kind=2)
     END DO
 
     RETURN

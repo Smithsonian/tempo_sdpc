@@ -67,8 +67,8 @@ contains
   REAL (KIND=dp), PARAMETER :: c1=1.438769, NL=2.686763D19
   INTEGER,        PARAMETER :: N2Jmax=28, O2maxJ=53, O2max=94, maxpos=218, pixelno=6521 
      
-  INTEGER        :: nu, iz, j, k, fidx, lidx
-  REAL (KIND=dp) :: ZN2, ZO2, temp, temp1, temp2, phasefnc, pi3, avgt
+  INTEGER        :: nu, j, k, fidx, lidx
+  REAL (KIND=dp) :: ZN2, ZO2, temp, temp1, temp2, phasefnc, pi3
   REAL (KIND=dp), DIMENSION (nz)                         :: tempz
   REAL (KIND=dp), DIMENSION (nulo:nuhi)                  :: gammaN2, gammaO2
   REAL (KIND=dp), DIMENSION(nulo+maxpos:nuhi-maxpos)     :: RaylP, nr, Raylro, N2so, O2so, I_tot, &
@@ -109,7 +109,7 @@ contains
      CLOSE(48); CLOSE(49) 
      
      ! calculate partitioning of N2 
-     OPEN(48, file = N2En, status = 'old')     	
+     OPEN(48, file = N2En, status = 'old')
      DO j = 0, N2Jmax
         READ (48, *) N2E(j)    
      ENDDO

@@ -124,7 +124,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
   ! Local variables
   ! ===============
   INTEGER                             :: i, j, ii, j1, j2, num_slit, mslit, fidx, lidx, iwin
-  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, sw, coef, pert, ssum1
+  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, coef, pert, ssum1
   REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, upbnd, slit1
 
   ! --------------------------------------------------------
@@ -409,7 +409,7 @@ SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
+  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
   REAL (KIND=dp) :: power, temp, hw1e, dfw, ssum, ssum1, coeff, pert
   REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
   
@@ -476,7 +476,7 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, &
+  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, &
        midx, sidx, eidx, fslit,lslit, finter, linter, errstat, nhalf
   REAL (KIND=dp) :: temp, hw1e, power, dfw, ssum, coeff
   REAL (KIND=dp), DIMENSION (nf) :: slit

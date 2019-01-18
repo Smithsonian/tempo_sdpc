@@ -71,7 +71,7 @@ SUBROUTINE get_ecmwft( ecmwft) ! not used anywhere
            ! NCEP misses the 775 level, which is shown in ECMWFT, other levels are the same
            READ(atmos_unit, '(144I3)') (((glbecmwft(i, j, k), i = 1, nlon), j = 1, nlat), k = 1, 3)
            READ(atmos_unit, '(144I3)') (((glbecmwft(i, j, k), i = 1, nlon), j = 1, nlat), k = 5, 18)
-           glbecmwft(:, :, 4) = (glbecmwft(:, :, 3) + glbecmwft(:, :, 5)) / 2.0
+           glbecmwft(:, :, 4) = int((glbecmwft(:, :, 3) + glbecmwft(:, :, 5)) / 2.0, kind=4)
         ENDIF
      ENDIF
 
@@ -106,12 +106,11 @@ SUBROUTINE get_ecmwfavgt(ecmwft)
   ! ======================
   INTEGER, PARAMETER              :: nlat=72, nlon=144
   REAL (KIND=dp), PARAMETER       :: longrid = 2.5, latgrid = 2.5, lon0=-180.0,lat0=-90.0
-  CHARACTER (LEN=2)               :: yrc, monc, dayc
+  CHARACTER (LEN=2)               :: monc, dayc
   CHARACTER (LEN=130)             :: ecmwft_fname
   INTEGER                         :: il, i, j, k, nblat, nblon
   INTEGER, DIMENSION(2)           :: latin, lonin
   REAL (KIND=dp), DIMENSION(2)    :: latfrac, lonfrac
-  LOGICAL                         :: file_exist
 
 
   INTEGER, SAVE, DIMENSION(:,:,:), POINTER :: glbecmwft

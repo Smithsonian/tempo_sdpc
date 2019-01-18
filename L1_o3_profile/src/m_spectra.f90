@@ -21,9 +21,9 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: wvl_idx, spc_idx, solar_idx, shi_idx, squ_idx, &
         sin_idx,hwe_idx, asy_idx,  vgl_idx, vgr_idx, hwr_idx, hwl_idx, spk_idx, &
-        bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
-        sc0_idx, sc1_idx, sc2_idx, sc3_idx,  sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
-        wr0_idx, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx, wr7_idx
+        bl0_idx, bl7_idx, &
+        sc0_idx, sc7_idx, &
+        wr0_idx, wr7_idx
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
          fitwavs, fitvar_sol, mask_fitvar_sol, which_slit, fixslitcal, &
          yn_varyslit, correct_lambda , rmask_fitvar_sol, correct_lambda
@@ -224,8 +224,8 @@ contains
     USE OMSAO_indices_module, ONLY: &
          max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
          lbe_idx, ad2_idx, mxs_idx, &
-         bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
-         sc3_idx, sin_idx, shi_idx, squ_idx, bl7_idx, sc7_idx
+         bl0_idx, sc0_idx, &
+         sin_idx, shi_idx, squ_idx, bl7_idx, sc7_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts!, max_fit_pts
     USE OMSAO_variables_module,  ONLY: fitvar_rad, mask_fitvar_rad, &
          n_refwvl, refwvl!, curr_rad_spec, curr_sol_spec

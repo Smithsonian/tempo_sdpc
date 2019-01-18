@@ -105,7 +105,7 @@ CONTAINS
 
     INTEGER (KIND=i1), DIMENSION (nxtrack_max) :: &
                   waveshift_flg, blockage_flg, straysun_flg, strayearth_flg
-    INTEGER (KIND=i2), DIMENSION (nxtrack_max) ::land_water_flg, glint_flg, snow_ice_flg
+    !INTEGER (KIND=i2), DIMENSION (nxtrack_max) ::land_water_flg, glint_flg, snow_ice_flg
 
     ! * processing variables
     REAL (KIND=r8), DIMENSION (:,:),POINTER :: sza, vza, saza, vaza
@@ -422,23 +422,23 @@ CONTAINS
     geo%time(i:j) = omi_time(i:j)
     geo%height(1:nx, i:j) = omi_height(1:nx,i:j)
     ! angles
-    geo%sza(1:nx, i:j) = omi_sza(1:nx, i:j)
-    geo%vza(1:nx, i:j) = omi_vza(1:nx, i:j)
-    geo%aza(1:nx, i:j) = omi_aza(1:nx, i:j)
-    geo%sca(1:nx, i:j) = omi_sca(1:nx, i:j)
+    geo%sza(1:nx, i:j) = real (omi_sza(1:nx, i:j), kind=r4)
+    geo%vza(1:nx, i:j) = real (omi_vza(1:nx, i:j), kind=r4)
+    geo%aza(1:nx, i:j) = real (omi_aza(1:nx, i:j), kind=r4)
+    geo%sca(1:nx, i:j) = real (omi_sca(1:nx, i:j), kind=r4)
     ! lon/lat
-    geo%lon(1:nx, i:j) = omi_lon(1:nx, i:j)
-    geo%lat(1:nx, i:j) = omi_lat(1:nx, i:j)
-    geo%elon(0:nx,i:j) = omi_elon(0:nx, i:j)
-    geo%elat(0:nx,i:j) = omi_elat(0:nx, i:j)
-    geo%clon(1, 1:nx, i:j) = omi_clon(0:nx-1,i:j)
-    geo%clon(2, 1:nx, i:j) = omi_clon(0:nx-1,i+1:j+1)
-    geo%clon(3, 1:nx, i:j) = omi_clon(1:nx,i+1:j+1)
-    geo%clon(4, 1:nx, i:j) = omi_clon(1:nx,i:j)
-    geo%clat(1, 1:nx, i:j) = omi_clat(0:nx-1,i:j)
-    geo%clat(2, 1:nx, i:j) = omi_clat(0:nx-1,i+1:j+1)
-    geo%clat(3, 1:nx, i:j) = omi_clat(1:nx,i+1:j+1)
-    geo%clat(4, 1:nx, i:j) = omi_clat(1:nx,i:j)
+    geo%lon(1:nx, i:j) = real (omi_lon(1:nx, i:j), kind=r4)
+    geo%lat(1:nx, i:j) = real (omi_lat(1:nx, i:j), kind=r4)
+    geo%elon(0:nx,i:j) = real (omi_elon(0:nx, i:j), kind=r4)
+    geo%elat(0:nx,i:j) = real (omi_elat(0:nx, i:j), kind=r4)
+    geo%clon(1, 1:nx, i:j) = real (omi_clon(0:nx-1,i:j), kind=r4)
+    geo%clon(2, 1:nx, i:j) = real (omi_clon(0:nx-1,i+1:j+1), kind=r4)
+    geo%clon(3, 1:nx, i:j) = real (omi_clon(1:nx,i+1:j+1), kind=r4)
+    geo%clon(4, 1:nx, i:j) = real (omi_clon(1:nx,i:j), kind=r4)
+    geo%clat(1, 1:nx, i:j) = real (omi_clat(0:nx-1,i:j), kind=r4)
+    geo%clat(2, 1:nx, i:j) = real (omi_clat(0:nx-1,i+1:j+1), kind=r4)
+    geo%clat(3, 1:nx, i:j) = real (omi_clat(1:nx,i+1:j+1), kind=r4)
+    geo%clat(4, 1:nx, i:j) = real (omi_clat(1:nx,i:j), kind=r4)
 
 
     ! flag

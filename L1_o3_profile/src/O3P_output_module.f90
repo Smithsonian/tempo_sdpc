@@ -37,7 +37,7 @@ MODULE O3P_output_module
    !INTEGER :: errstat, i, version, jday, the_year, the_month, the_day
    !character(len=6) :: ShortName = 'PROFOZ'
    !--------------------------------------------------------------
-   INTEGER :: i, nx,ny
+   INTEGER :: i
    INTEGER, DIMENSION(:), POINTER :: step_idx   ! JCH FIXME, should be allocatable
 
    ! Initialize

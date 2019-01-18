@@ -420,7 +420,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
-         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx
+         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,   &
          mask_fitvar_sol, fitvar_sol_saved, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
          fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
@@ -574,7 +574,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
-         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx
+         wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,fitvar_sol_saved, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
          fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &

@@ -16,8 +16,8 @@ CONTAINS
          the_pix, the_line,ntimes_loop,offset_line,&
          n_fitvar_rad, mask_fitvar_rad,fitvar_rad_saved,& 
          npix_fitting, npix_fitted, numwin, radnhtrunc,&
-         scnwrt, calwrt,use_backup, use_solcomp,reduce_resolution, wavcal, which_slit, &
-         l2_hdf_flag,l1b_irrad_filename, l1b_rad_filename,l2_cld_filename,l2_filename, &
+         scnwrt, calwrt,use_backup, reduce_resolution, wavcal, which_slit, &
+         l2_hdf_flag, l1b_rad_filename,l2_cld_filename,l2_filename, &
          l2funit, lcurve_unit, ozwrtint_unit,calunit
 
     USE OMSAO_errstat_module
@@ -47,7 +47,7 @@ CONTAINS
     ! Local variables
     ! -------------------------
     LOGICAL :: reduce_resolution_save
-    INTEGER :: exval, initval, errstat, curr_fitted_line,ix, iline
+    INTEGER :: exval, initval, errstat, curr_fitted_line, iline
     INTEGER :: first_line, last_line, first_pix, last_pix
     INTEGER :: npix, nline ! actual number of pixel/line 
     INTEGER :: sline, eline, spix, epix ! actual position in L1 domain (both staring 1)
