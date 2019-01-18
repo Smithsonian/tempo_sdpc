@@ -1230,7 +1230,7 @@ END SUBROUTINE adj_albcfrac
 SUBROUTINE get_sciagm2_alb(which_sciagm2, month, day, elons, elats, albarr, wvls, nwvl)
   
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
+  USE OMSAO_variables_module, ONLY: atmdbdir
   !USE ozprof_data_module,     ONLY: pos_alb
   USE HDF5
   IMPLICIT NONE

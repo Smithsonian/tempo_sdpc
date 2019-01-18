@@ -14,7 +14,7 @@ CONTAINS
          numwin, radnhtrunc, &
          nxbin, nybin, ncoadd,&
          nxtrack, ntimes, num_wav_max, ntimes_loop, offset_line, calwrt, the_pix, the_line, &
-         l2funit, lcurve_unit, ozwrtint_unit,calunit
+         lcurve_unit, ozwrtint_unit,calunit
 
     USE ozprof_data_module, only: lcurve_write, ozwrtint,  &
          lcurve_fname, ozwrtint_fname, &
@@ -58,7 +58,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this module/subroutine
     ! ------------------------------
-    character (len=23), parameter :: modulename = 'omi_fitting_process'
+    !character (len=23), parameter :: modulename = 'omi_fitting_process'
 
     pge_error_status = pge_errstat_ok
     errstat = 0

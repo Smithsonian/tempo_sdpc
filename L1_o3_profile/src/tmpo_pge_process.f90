@@ -18,7 +18,7 @@ CONTAINS
          npix_fitting, npix_fitted, numwin, radnhtrunc,&
          scnwrt, calwrt,use_backup, reduce_resolution, wavcal, which_slit, &
          l2_hdf_flag, l1b_rad_filename,l2_cld_filename,l2_filename, &
-         l2funit, lcurve_unit, ozwrtint_unit,calunit
+         lcurve_unit, ozwrtint_unit,calunit
 
     USE OMSAO_errstat_module
     USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&

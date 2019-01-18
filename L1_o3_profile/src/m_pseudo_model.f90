@@ -30,9 +30,9 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   USE OMSAO_parameters_module,ONLY : maxlay, maxwin
   USE OMSAO_indices_module,   ONLY : ring_idx, &
         shift_offset, maxalb, maxoth, maxwfc,&
-         bro_idx, bro2_idx, so2_idx, so2v_idx, no2_t1_idx, hcho_idx, o2o2_idx,&
-         ring_idx, us1_idx, us2_idx, com_idx, com1_idx, com2_idx, com3_idx, &
-         fsl_idx, rsl_idx,hwe_idx, spk_idx
+         bro_idx, so2_idx, so2v_idx, no2_t1_idx, hcho_idx, o2o2_idx,&
+         us1_idx, us2_idx, com_idx, com1_idx, com2_idx, com3_idx, &
+         fsl_idx, rsl_idx
   USE OMSAO_variables_module, ONLY : fitwavs, fitweights, sza => the_sza_atm, &
        vza => the_vza_atm, aza => the_aza_atm, & !sca=>the_sca_atm, &
        fitvar_rad, mask_fitvar_rad, database_indices,           &

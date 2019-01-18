@@ -91,7 +91,6 @@ CONTAINS
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
-  INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
   INTEGER            :: i, errstat, ntemp,nline, nt
   REAL (KIND=dp)     :: scalex, normc
@@ -217,7 +216,6 @@ CONTAINS
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
-  INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
   INTEGER            :: fidx, lidx, i, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
@@ -321,7 +319,6 @@ CONTAINS
 
   ! Local variables
   INTEGER, PARAMETER :: which_pslwf = 2 ! 1 finite 2 analytic
-  INTEGER, PARAMETER :: maxline  = max_spec_pts     ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3 
 
   REAL (KIND=dp), DIMENSION(maxt, nlamda)  :: tmpabs
@@ -452,7 +449,6 @@ CONTAINS
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
-  INTEGER, PARAMETER :: maxline  = max_spec_pts      ! # of wavelengths
   INTEGER, PARAMETER :: maxt = 3  ! most 3 except for o4
   INTEGER            :: fidx, lidx, i, errstat, nline, nt, ntemp
   REAL (KIND=dp)     :: scalex, normc
@@ -1252,13 +1248,12 @@ CONTAINS
              allcrs, raycof, depol, pge_error_status)
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module,ONLY  : max_spec_pts, zerok
   USE OMSAO_variables_module, ONLY  : numwin, refspec_orig_data,    &
        n_refspec_pts, &
        winlim, fitvar_rad, rmask_fitvar_rad, refspec_norm
-  USE OMSAO_indices_module,   ONLY : hwe_idx, wvl_idx, solar_idx, spc_idx,  &
+  USE OMSAO_indices_module,   ONLY : wvl_idx, solar_idx, spc_idx,  &
        so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx, o2t2_idx, h2ot2_idx
-  USE ozprof_data_module,     ONLY : mxsect,mflay, do_subfit, nos, oswins, osfind, &
+  USE ozprof_data_module,     ONLY : mxsect, do_subfit, nos, oswins, osfind, &
        ngas, gasidxs, fgasidxs,  fgassidxs, &
        nhresp, nhresp0, hreswav0, hres_samprate, hreswav, radcidxs, ncalcp, &
        hres_gas, hres_gasshi,hres_o3, hresgabs, hresray, &
@@ -1758,7 +1753,7 @@ CONTAINS
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
-    CHARACTER (LEN=10), PARAMETER    :: modulename = 'READ_TXCRS'
+    !CHARACTER (LEN=10), PARAMETER    :: modulename = 'READ_TXCRS'
   
     CALL allocate_txcrs(txcrs)
 

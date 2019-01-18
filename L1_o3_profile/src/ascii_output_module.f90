@@ -259,7 +259,7 @@ contains
   SUBROUTINE omi_write_intermed (founit, fitcol, dfitcol, exval )
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: maxloc, maxwin
+    USE OMSAO_parameters_module, ONLY: maxloc
     !USE OMSAO_indices_module,    ONLY: ring_idx
     USE ozprof_data_module,      ONLY: ozprof, ozprof_std, &
          ozprof_ap, ozprof_apstd, eff_alb, eff_alb_init, nlay, ozdfs, &

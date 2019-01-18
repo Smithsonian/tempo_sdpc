@@ -25,7 +25,7 @@ SUBROUTINE get_hres_radcal_waves(errstat)
   USE OMSAO_variables_module, ONLY  : numwin, nradpix, solwinfit, which_slit, &
        curr_rad_spec, use_redfixwav, winlim
   USE OMSAO_indices_module,   ONLY  : hwe_idx, wvl_idx
-  USE ozprof_data_module,     ONLY  : radc_msegsr, radc_nsegsr, radc_samprate, radc_lambnd,  &
+  USE ozprof_data_module,     ONLY  : radc_nsegsr, radc_samprate, radc_lambnd,  &
        hreswav, radcwav, nhresp, ncalcp, radcidxs, nhresp0, hreswav0, hres_samprate
   USE OMSAO_errstat_module
   IMPLICIT NONE
@@ -35,7 +35,6 @@ SUBROUTINE get_hres_radcal_waves(errstat)
 
   ! Local variables
   REAL (KIND=dp), PARAMETER :: dhw0 = 0.01  ! at 0.01 nm
-  INTEGER, PARAMETER        :: mextraw = 100
 
   INTEGER              :: i, j, fidx, lidx, nsub, nratio, nhalf
   REAL (KIND=dp)       :: tmp, swav, ewav, slw, samprate, invdhw
@@ -210,7 +209,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
        owave=>radwvl_sav, now=>n_radwvl_sav,onpix=>nradpix_sav, i0sav, refidx, &
        nrad=>n_rad_wvl, &
        do_bandavg, refidx_sav, &
-       database_pslwf, solwinfit, solwinfit_save, npsl,psl_fpos,max_psl,do_dsdw, do_dsdk
+       database_pslwf, solwinfit, solwinfit_save, npsl,psl_fpos, do_dsdw, do_dsdk
   USE ozprof_data_module,     ONLY  : hwave=>hreswav, &
        radcidxs, hres_i0, nhw=>nhresp, hresgabs, hresray, nw0=>ncalcp, &
        ngas, gasidxs, fgasidxs, fgassidxs, &
@@ -256,7 +255,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  CHARACTER (LEN=17), PARAMETER :: modulename = 'hres_radwf_convol'
+  !CHARACTER (LEN=17), PARAMETER :: modulename = 'hres_radwf_convol'
 
   errstat = pge_errstat_ok
 
@@ -1309,7 +1308,7 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs, &
      fcodwf,pfcodwf, fsprswf, pfsprswf, fraywf, pfraywf, cfracwf, pcfracwf)
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY : maxlay, mflay, du2mol
+  USE OMSAO_parameters_module, ONLY : mflay, du2mol
   USE OMSAO_variables_module,  ONLY : currloop
   USE OMSAO_errstat_module
   
@@ -1626,8 +1625,7 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
   use_so2dtcrs, so2crs, use_o4dtcrs, o4crs, use_o2dptcrs, o2crs, use_h2odptcrs,h2ocrs,do_so2zwf, so2zwf)
   USE OMSAO_precision_module
   USE OMSAO_parameters_module,ONLY : du2mol
-  USE OMSAO_indices_module,   ONLY : so2_idx, so2v_idx, bro_idx, o2o2_idx, o2_idx, h2o_idx,  &
-                                o2t2_idx, h2ot2_idx, hcho_idx, no2_t1_idx, ring_idx, ring1_idx
+  USE OMSAO_indices_module,   ONLY : so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx
   USE OMSAO_variables_module, ONLY : refidx, database, database_save, refspec_norm
   USE ozprof_data_module,     ONLY : nlay, mgasprof, fgasidxs, &
        tracegas, ngas, gasidxs, fgassidxs, so2valts, so2vprofn1p1, trace_profwf, nup2p, use_lograd

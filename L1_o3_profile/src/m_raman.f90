@@ -65,7 +65,7 @@ contains
   ! Local variables
   ! ========================
   REAL (KIND=dp), PARAMETER :: c1=1.438769, NL=2.686763D19
-  INTEGER,        PARAMETER :: N2Jmax=28, O2maxJ=53, O2max=94, maxpos=218, pixelno=6521 
+  INTEGER,        PARAMETER :: N2Jmax=28, O2maxJ=53, O2max=94, maxpos=218
      
   INTEGER        :: nu, j, k, fidx, lidx
   REAL (KIND=dp) :: ZN2, ZO2, temp, temp1, temp2, phasefnc, pi3

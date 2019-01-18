@@ -20,7 +20,7 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY    : maxoth, maxwin, &
         max_rs_idx, max_calfit_idx, solar_idx, ring_idx, &
-        mxs_idx, ad1_idx,lbe_idx, ad2_idx, no2_t1_idx, no2_t2_idx, &
+        mxs_idx, ad1_idx,lbe_idx, ad2_idx, no2_t1_idx, &
         com_idx, com1_idx, com2_idx, com3_idx, &
         shift_offset !, fsl_idx, rsl_idx
     USE OMSAO_variables_module,  ONLY : numwin, refnhextra, &

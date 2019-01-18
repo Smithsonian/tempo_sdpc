@@ -28,9 +28,9 @@ module m_lidort_master
           taodwf, twaewf, saodwf, sprswf, so2zwf, rad, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module,ONLY  : maxlay, max_fit_pts, du2mol, rearth, max_spec_pts
-    USE OMSAO_indices_module,   ONLY  : so2_idx, so2v_idx, o2o2_idx, o2_idx, o2t2_idx, &
-                                        h2o_idx, h2ot2_idx, refspec_strings
+    USE OMSAO_parameters_module,ONLY  : max_fit_pts, du2mol, rearth
+    USE OMSAO_indices_module,   ONLY  : so2_idx, o2o2_idx, o2_idx, &
+                                        h2o_idx, refspec_strings
     USE OMSAO_variables_module, ONLY  : currloop, the_surfalt, band_selectors, &
        fitvar_rad, mask_fitvar_rad, fitvar_rad_apriori, &
        refspec_norm, &
@@ -40,7 +40,7 @@ module m_lidort_master
     USE ozprof_data_module,     ONLY : num_iter, VlidortNstream, &
        nflay, mflay, ntp, nfsfc, nsfc, nup2p, nt_fit, &
        atmosprof, fts, fps, fzs, fozs, frhos, &
-       ngas, nallgas, gasidxs, fgasidxs,fgaspos, gassidxs, & 
+       ngas, nallgas, gasidxs, fgasidxs,fgaspos, & 
        do_tracewf, tracegas, mgasprof,      &
        do_lambcld, lambcld_refl, has_clouds, aerosol, useasy, strat_aerosol, &
        nwfc, ncbp, nctp, the_cbeta,  nmom, maxgksec, ngksec, actawin, aerwavs, &
