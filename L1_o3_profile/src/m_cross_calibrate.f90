@@ -37,7 +37,7 @@ contains
     ! ================
     TYPE(irrad_group), INTENT(INOUT) :: irrad
     TYPE(ring_group), INTENT(INOUT) :: ring
-    TYPE(cali_group), INTENT(OUT) :: cali
+    TYPE(cali_group), INTENT(INOUT) :: cali
     INTEGER, INTENT (IN)          :: first_pix, last_pix
     INTEGER, INTENT (OUT)         :: pge_error_status
 
@@ -176,7 +176,7 @@ contains
     ! ================
     INTEGER, INTENT (IN)        :: first_pix, last_pix, first_line, last_line
     INTEGER, INTENT (OUT)       :: pge_error_status
-    TYPE (rad_group), INTENT(IN) :: rad  
+    TYPE (rad_group), INTENT(INOUT) :: rad
     TYPE (cali_group), INTENT(INOUT) :: cali
 
     ! ===============

@@ -38,7 +38,7 @@ MODULE O3P_output_module
    !character(len=6) :: ShortName = 'PROFOZ'
    !--------------------------------------------------------------
    INTEGER :: i
-   INTEGER, DIMENSION(:), POINTER :: step_idx   ! JCH FIXME, should be allocatable
+   INTEGER, DIMENSION(:), ALLOCATABLE :: step_idx
 
    ! Initialize
    allocate(step_idx(ntimes))

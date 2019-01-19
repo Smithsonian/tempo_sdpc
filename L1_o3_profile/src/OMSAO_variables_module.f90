@@ -387,61 +387,61 @@ MODULE OMSAO_variables_module
   ! ozone fitting spectra
   ! ------------------------------------------------------------
   TYPE irrad_group
-  INTEGER, POINTER, DIMENSION (:)     :: errstat! nxtrack
-  INTEGER, POINTER, DIMENSION (:)     :: nwav   ! (nxtrack)
-  INTEGER, POINTER, DIMENSION (:,:)   :: npix   ! (numwin, nxtrack) 
-  INTEGER, POINTER, DIMENSION (:,:,:) :: winpix ! (numwin, nxtrack, 2)
-  INTEGER, POINTER, DIMENSION (:,:)   :: wind   ! (max_fit_pts, nxtrack)
-  INTEGER, POINTER, DIMENSION (:,:)   :: qflg   ! (max_fit_pts, nxtrack)
-  REAL (kind=dp), POINTER, DIMENSION (:,:) :: wavl,spec,prec !(max_fit_pts,nxtrack)
-  REAL (kind=dp), POINTER, DIMENSION (:) :: norm !(nxtrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:)     :: errstat! nxtrack
+  INTEGER, ALLOCATABLE, DIMENSION (:)     :: nwav   ! (nxtrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:)   :: npix   ! (numwin, nxtrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:,:) :: winpix ! (numwin, nxtrack, 2)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:)   :: wind   ! (max_fit_pts, nxtrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:)   :: qflg   ! (max_fit_pts, nxtrack)
+  REAL (kind=dp), ALLOCATABLE, DIMENSION (:,:) :: wavl,spec,prec !(max_fit_pts,nxtrack)
+  REAL (kind=dp), ALLOCATABLE, DIMENSION (:) :: norm !(nxtrack)
   ENDTYPE irrad_group
 
   TYPE rad_group
-  INTEGER, POINTER, DIMENSION (:)     :: errstat 
-  INTEGER, POINTER, DIMENSION (:,:)     :: pix_errstat 
-  INTEGER, POINTER, DIMENSION (:,:)     :: nwav   ! (nxtrack, nytrack)
-  INTEGER, POINTER, DIMENSION (:,:,:)   :: npix   ! (numwin, nxtrack,nytrack) 
-  INTEGER, POINTER, DIMENSION (:,:,:,:) :: winpix ! (numwin, nxtrack,nytrack 2)
-  INTEGER, POINTER, DIMENSION (:,:,:)   :: wind   ! (max_fit_pts, nxtrack)
-  INTEGER, POINTER, DIMENSION (:,:,:)   :: qflg   ! (max_fit_pts, nxtrack, nytrack)
-  REAL (kind=dp), POINTER, DIMENSION (:,:,:)      :: wavl,spec,prec !(max_fit_pts,nxtrack,nytrack)
-  REAL (kind=dp), POINTER, DIMENSION (:,:) :: norm !(nxtrack, nytrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:)     :: errstat
+  INTEGER, ALLOCATABLE, DIMENSION (:,:)     :: pix_errstat
+  INTEGER, ALLOCATABLE, DIMENSION (:,:)     :: nwav   ! (nxtrack, nytrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:,:)   :: npix   ! (numwin, nxtrack,nytrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:,:,:) :: winpix ! (numwin, nxtrack,nytrack 2)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:,:)   :: wind   ! (max_fit_pts, nxtrack)
+  INTEGER, ALLOCATABLE, DIMENSION (:,:,:)   :: qflg   ! (max_fit_pts, nxtrack, nytrack)
+  REAL (kind=dp), ALLOCATABLE, DIMENSION (:,:,:)      :: wavl,spec,prec !(max_fit_pts,nxtrack,nytrack)
+  REAL (kind=dp), ALLOCATABLE, DIMENSION (:,:) :: norm !(nxtrack, nytrack)
   END TYPE rad_group
   ! ------------------------------------------------------------
   ! tempo ring fitting spectra
   ! ------------------------------------------------------------
   TYPE ring_group
-    REAL    (KIND=dp), POINTER, DIMENSION (:,:) ::  spec, wavl !(max_ring_pts, nxtrack_max)
-    INTEGER, POINTER, DIMENSION (:)   :: nsol,ndiv ! (nxtrack_max)
-    INTEGER, POINTER, DIMENSION (:,:) :: winpix ! (nxtrack_max,2)
+    REAL    (KIND=dp), ALLOCATABLE, DIMENSION (:,:) ::  spec, wavl !(max_ring_pts, nxtrack_max)
+    INTEGER, ALLOCATABLE, DIMENSION (:)   :: nsol,ndiv ! (nxtrack_max)
+    INTEGER, ALLOCATABLE, DIMENSION (:,:) :: winpix ! (nxtrack_max,2)
   END TYPE ring_group
 
   !-----------------------
   ! tempo surface albedo fitting spectra
   !-----------------------
   TYPE refl_group
-    REAL (KIND=r4), POINTER, DIMENSION (:,:)   :: solspec, solwavl ! (mrefl, nxtrack)
-    REAL (KIND=r4), POINTER, DIMENSION (:,:,:) :: radspec, radwavl  !(mrefl, nxtrack, ntimes)
-    INTEGER, POINTER, DIMENSION (:,:)   :: winpix ! (nxtrack, 2)
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:)   :: solspec, solwavl ! (mrefl, nxtrack)
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:,:) :: radspec, radwavl  !(mrefl, nxtrack, ntimes)
+    INTEGER, ALLOCATABLE, DIMENSION (:,:)   :: winpix ! (nxtrack, 2)
   END TYPE refl_group
 
   !-----------------------------------------
   ! geolocation 
   !-----------------------------------------
   TYPE geo_group
-    REAL (KIND=dp), POINTER, DIMENSION(:)       :: time
-    REAL (KIND=r4), POINTER, DIMENSION (:,:)    :: lon, lat, sza, vza, aza, sca  !  (mrefl, nxtrack)
-    REAL (KIND=r4), POINTER, DIMENSION (:,:,:)    :: clon, clat  !  (mrefl, nxtrack)
-    REAL (KIND=r4), POINTER, DIMENSION (:,:)    :: elon, elat  !  (mrefl, nxtrack)
-    REAL (KIND=r4), POINTER, DIMENSION(:,:)     :: cfr, ctp, ai
-    INTEGER (KIND=1), POINTER, DIMENSION(:,:)   :: cloud_qflg
-    INTEGER (KIND=4), POINTER, DIMENSION(:,:)   :: gflg
-    INTEGER (KIND=1), POINTER, DIMENSION(:,:)   :: xflg
-    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: height
-    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: land_water_flg
-    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: snow_ice_flg
-    INTEGER (KIND=2), POINTER, DIMENSION(:,:) :: glint_flg
+    REAL (KIND=dp), ALLOCATABLE, DIMENSION(:)       :: time
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:)    :: lon, lat, sza, vza, aza, sca  !  (mrefl, nxtrack)
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:,:)    :: clon, clat  !  (mrefl, nxtrack)
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:)    :: elon, elat  !  (mrefl, nxtrack)
+    REAL (KIND=r4), ALLOCATABLE, DIMENSION(:,:)     :: cfr, ctp, ai
+    INTEGER (KIND=1), ALLOCATABLE, DIMENSION(:,:)   :: cloud_qflg
+    INTEGER (KIND=4), ALLOCATABLE, DIMENSION(:,:)   :: gflg
+    INTEGER (KIND=1), ALLOCATABLE, DIMENSION(:,:)   :: xflg
+    INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: height
+    INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: land_water_flg
+    INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: snow_ice_flg
+    INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: glint_flg
   END TYPE geo_group
 
   !-------------------------------------------
@@ -449,23 +449,23 @@ MODULE OMSAO_variables_module
   !-------------------------------------------
   TYPE cali_group
      ! calibration results for each fitting window
-     REAL (KIND=dp), POINTER, DIMENSION(:,:)      :: wincal_wav     !maxwin, nxtrack
-     REAL (KIND=dp), POINTER, DIMENSION (:,:,:)   :: solwinfit, radwinfit ! maxwin, max_calfit_idx, 2, nxtrack
+     REAL (KIND=dp), ALLOCATABLE, DIMENSION(:,:)      :: wincal_wav     !maxwin, nxtrack
+     REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:,:)   :: solwinfit, radwinfit ! maxwin, max_calfit_idx, 2, nxtrack
      ! slit fit results for sub-wavelengths
-     INTEGER, POINTER, DIMENSION (:)              :: nslit_sol, nslit_rad 
-     REAL (KIND=dp), POINTER, DIMENSION (:,:,:,:) :: slitfit_sol, slitfit_rad
-     REAL (KIND=dp), POINTER, DIMENSION (:,:)     :: slitwav_sol, slitwav_rad
+     INTEGER, ALLOCATABLE, DIMENSION (:)              :: nslit_sol, nslit_rad
+     REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:,:,:) :: slitfit_sol, slitfit_rad
+     REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:)     :: slitwav_sol, slitwav_rad
      ! wave fit results for sub
-     INTEGER, POINTER, DIMENSION (:)              :: nwavcal_sol, nwavcal_rad ! nxtrack_max
-     REAL (KIND=dp), POINTER, DIMENSION (:,:)     ::sswav_sol, sswav_rad !max_fit_pts, nxtrack
+     INTEGER, ALLOCATABLE, DIMENSION (:)              :: nwavcal_sol, nwavcal_rad ! nxtrack_max
+     REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:)     ::sswav_sol, sswav_rad !max_fit_pts, nxtrack
   END TYPE cali_group
 
   !------------------------------------------------------------
   ! retrieval status for a block
   !------------------------------------------------------------
   TYPE o3p_group
-  INTEGER, DIMENSION (:, :), POINTER :: exitval, initval
-  REAL(kind=dp), DIMENSION(:,:,:), POINTER :: fitvar
+  INTEGER, DIMENSION (:, :), ALLOCATABLE :: exitval, initval
+  REAL(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: fitvar
   END TYPE  o3p_group
   
 END MODULE OMSAO_variables_module

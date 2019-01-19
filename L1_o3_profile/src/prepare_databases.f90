@@ -221,7 +221,7 @@ contains
     ! Local variables
     ! ---------------
     INTEGER :: j, fidx, lidx, stidx,  idx, npts
-    REAL (KIND=dp), DIMENSION (:), POINTER :: specmod
+    REAL (KIND=dp), DIMENSION (:), ALLOCATABLE :: specmod
     REAL (KIND=dp)                         :: frefw, lrefw, scalex
 
     ! ------------------
@@ -448,7 +448,7 @@ contains
     ! Local variables
     ! ---------------
     REAL (KIND=dp), DIMENSION (2,n_rad_pts+4) :: underspec
-    REAL (KIND=dp), DIMENSION (:), POINTER    :: locwvl, locspec, specmod, specmod1
+    REAL (KIND=dp), DIMENSION (:), ALLOCATABLE    :: locwvl, locspec, specmod, specmod1
     REAL (KIND=dp), DIMENSION (n_rad_pts + 4) :: tmpwav, over, under, resample, & 
           resample1, subwav, tmpspec
     INTEGER :: npts, errstat, iwin, fidx, lidx, npoints

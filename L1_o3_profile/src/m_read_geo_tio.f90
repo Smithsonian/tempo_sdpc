@@ -52,7 +52,7 @@ CONTAINS
     INTEGER, INTENT(inout) ::  spix, lpix, sline, eline
     CHARACTER (len=*), INTENT(in) :: l1swath
     ! output variables
-    TYPE (geo_group), INTENT(OUT) :: geo
+    TYPE (geo_group), INTENT(INOUT) :: geo
     INTEGER, INTENT (out) :: errstat
     ! local variables
     type (tiof_file_type) :: tio_l1obj

@@ -93,24 +93,24 @@ module tmpo_read_l1b_data
    INTEGER (KIND=i2) :: irrad_mflg
    INTEGER (KIND=i4), DIMENSION(mswath)  :: nwls 
    INTEGER (KIND=i4), DIMENSION(mswath)  :: spos, epos  ! pos btw UV and VIS
-   INTEGER (KIND=i4), DIMENSION(:), POINTER :: idxs
-   INTEGER (KIND=i2), DIMENSION(:, :), POINTER :: irrad_qflg
-   REAL (kind=4),DIMENSION (:, :), POINTER :: irrad_spec, irrad_prec, irrad_wavl
+   INTEGER (KIND=i4), DIMENSION(:), ALLOCATABLE :: idxs
+   INTEGER (KIND=i2), DIMENSION(:, :), ALLOCATABLE :: irrad_qflg
+   REAL (kind=4),DIMENSION (:, :), ALLOCATABLE :: irrad_spec, irrad_prec, irrad_wavl
    ! variables used for reduced resultion
    INTEGER :: npos, np
    REAL (KIND=dp) :: tmpsampr, retswav, retewav
-   REAL (KIND=dp),   DIMENSION(:,:,:), POINTER :: tmpspec
-   INTEGER(KIND=i2), DIMENSION(:, :), POINTER :: tmpqflg
+   REAL (KIND=dp),   DIMENSION(:,:,:), ALLOCATABLE :: tmpspec
+   INTEGER(KIND=i2), DIMENSION(:, :), ALLOCATABLE :: tmpqflg
    ! Subset variables
    INTEGER, DIMENSION(maxwin,2) :: winpix ! pos btw winlim
    INTEGER (KIND=i4), DIMENSION (maxwin) :: nwbin
    INTEGER, PARAMETER :: nbits = 16
-   INTEGER (KIND=i2), DIMENSION(:), POINTER :: flgmsks
-   INTEGER (kind=i2), DIMENSION(:, :,:), POINTER :: flgbits
+   INTEGER (KIND=i2), DIMENSION(:), ALLOCATABLE :: flgmsks
+   INTEGER (kind=i2), DIMENSION(:, :,:), ALLOCATABLE :: flgbits
    REAL (KIND=dp) :: wcenter, normsc
    REAL (KIND=dp), DIMENSION(nxbin) :: wshis, wsqus
-   REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: subspec
-   REAL (KIND=dp), DIMENSION(:,:), POINTER :: subring   
+   REAL (KIND=dp), DIMENSION(:,:,:), ALLOCATABLE :: subspec
+   REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: subring
    ! Error Message
    CHARACTER(LEN=maxchlen) :: message, bkfname
    CHARACTER(LEN=*), PARAMETER :: modulename='tmpo_read_irradiance_data'
@@ -615,23 +615,23 @@ module tmpo_read_l1b_data
               ic, nsub, blockline, nx, nt, nw, nwavel, irefl, ii, nl
    ! variables used to read TEMPO_data 
    INTEGER, DIMENSION (mswath) :: nwls, epos, spos
-   INTEGER (KIND=i4), DIMENSION (:), POINTER :: idxs
-   INTEGER (kind=2), POINTER, DIMENSION (:,:,:) :: rad_qflg
-   REAL (kind=i4), POINTER, DIMENSION(:,:,:) ::  rad_spec,rad_prec,rad_wavl
+   INTEGER (KIND=i4), DIMENSION (:), ALLOCATABLE :: idxs
+   INTEGER (kind=2), ALLOCATABLE, DIMENSION (:,:,:) :: rad_qflg
+   REAL (kind=i4), ALLOCATABLE, DIMENSION(:,:,:) ::  rad_spec,rad_prec,rad_wavl
    !REAL (kind=i4), DIMENSION (nwavel_ccd,nxtrack_max) ::  ccd_spec,ccd_prec,ccd_wavl
    !INTEGER (kind=2), dimension(nwavel_ccd,nxtrack_max)::  ccd_qflg
-   REAL (kind=i4), DIMENSION (:,:), POINTER :: ccd_spec,ccd_prec,ccd_wavl
-   INTEGER (kind=2), dimension(:,:),POINTER :: ccd_qflg
+   REAL (kind=i4), DIMENSION (:,:), ALLOCATABLE :: ccd_spec,ccd_prec,ccd_wavl
+   INTEGER (kind=2), dimension(:,:),ALLOCATABLE :: ccd_qflg
    ! variables used for reduced resolution
    ! Subset variables
    INTEGER, PARAMETER :: nbits = 16
    INTEGER (KIND=i4), DIMENSION (maxwin)     :: nwbin
-   INTEGER (KIND=i2), DIMENSION (:), POINTER :: flgmsks
-   INTEGER (kind=i2), DIMENSION (:,:,:), POINTER :: flgbits
+   INTEGER (KIND=i2), DIMENSION (:), ALLOCATABLE :: flgmsks
+   INTEGER (kind=i2), DIMENSION (:,:,:), ALLOCATABLE :: flgbits
    LOGICAL, DIMENSION (maxwin, nxtrack_max)  :: wavcals
    REAL (KIND=dp), DIMENSION (maxwin,nxbin) :: wshis, wsqus
    ! subset
-   REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: subspec
+   REAL (KIND=dp), DIMENSION(:,:,:), ALLOCATABLE :: subspec
    CHARACTER (LEN=100) :: message
    ! ------------------------------
    ! Name of this module/subroutine

@@ -11,9 +11,92 @@ MODULE m_allocate
   IMPLICIT NONE
 
   PUBLIC allocate_spec, allocate_geo, dealloc
+  public deallocate_irrad, deallocate_rad, deallocate_ring, deallocate_refl
+  public deallocate_cali
   PRIVATE
 
 CONTAINS
+
+  subroutine deallocate_irrad (irrad)
+    implicit none
+    type (irrad_group), intent(inout) :: irrad
+
+    IF (ALLOCATED (irrad%nwav)) DEALLOCATE (irrad%nwav)
+    IF (ALLOCATED (irrad%errstat)) DEALLOCATE (irrad%errstat)
+    IF (ALLOCATED (irrad%npix)) DEALLOCATE (irrad%npix)
+    IF (ALLOCATED (irrad%winpix)) DEALLOCATE (irrad%winpix)
+    IF (ALLOCATED (irrad%wind)) DEALLOCATE (irrad%wind)
+    IF (ALLOCATED (irrad%wavl)) DEALLOCATE (irrad%wavl)
+    IF (ALLOCATED (irrad%spec)) DEALLOCATE (irrad%spec)
+    IF (ALLOCATED (irrad%prec)) DEALLOCATE (irrad%prec)
+    IF (ALLOCATED (irrad%qflg)) DEALLOCATE (irrad%qflg)
+    IF (ALLOCATED (irrad%norm)) DEALLOCATE (irrad%norm)
+
+   return
+ end subroutine deallocate_irrad
+
+ subroutine deallocate_rad (rad)
+   implicit none
+   type (rad_group), intent(inout) :: rad
+
+   IF (ALLOCATED (rad%nwav)) DEALLOCATE (rad%nwav)
+   IF (ALLOCATED (rad%npix)) DEALLOCATE (rad%npix)
+   IF (ALLOCATED (rad%errstat)) DEALLOCATE (rad%errstat)
+   IF (ALLOCATED (rad%pix_errstat)) DEALLOCATE (rad%pix_errstat)
+   IF (ALLOCATED (rad%wind)) DEALLOCATE (rad%wind)
+   IF (ALLOCATED (rad%wavl)) DEALLOCATE (rad%wavl)
+   IF (ALLOCATED (rad%spec)) DEALLOCATE (rad%spec)
+   IF (ALLOCATED (rad%prec)) DEALLOCATE (rad%prec)
+   IF (ALLOCATED (rad%qflg)) DEALLOCATE (rad%qflg)
+   IF (ALLOCATED (rad%norm)) DEALLOCATE (rad%norm)
+
+   return
+ end subroutine deallocate_rad
+
+ subroutine deallocate_ring (ring)
+   implicit none
+   type (ring_group), intent(inout) :: ring
+
+   IF (ALLOCATED (ring%spec)) DEALLOCATE (ring%spec)
+   IF (ALLOCATED (ring%wavl)) DEALLOCATE (ring%wavl)
+   IF (ALLOCATED (ring%nsol)) DEALLOCATE (ring%nsol)
+   IF (ALLOCATED (ring%ndiv)) DEALLOCATE (ring%ndiv)
+   IF (ALLOCATED (ring%winpix)) DEALLOCATE (ring%winpix)
+
+   return
+ end subroutine deallocate_ring
+
+ subroutine deallocate_refl (refl)
+   implicit none
+   type (refl_group), intent(inout) :: refl
+
+   IF (ALLOCATED (refl%winpix)) DEALLOCATE (refl%winpix)
+   IF (ALLOCATED (refl%solspec)) DEALLOCATE (refl%solspec)
+   IF (ALLOCATED (refl%solwavl)) DEALLOCATE (refl%solwavl)
+   IF (ALLOCATED (refl%radspec)) DEALLOCATE (refl%radspec)
+   IF (ALLOCATED (refl%radwavl)) DEALLOCATE (refl%radwavl)
+
+   return
+ end subroutine deallocate_refl
+
+ subroutine deallocate_cali (cali)
+   implicit none
+   type (cali_group), intent(inout) :: cali
+
+   if (allocated (cali%wincal_wav)) deallocate(cali%wincal_wav)
+   if (allocated (cali%solwinfit)) deallocate(cali%solwinfit)
+   if (allocated (cali%radwinfit)) deallocate(cali%radwinfit)
+   if (allocated (cali%nslit_sol)) deallocate(cali%nslit_sol)
+   if (allocated (cali%nslit_rad)) deallocate(cali%nslit_rad)
+   if (allocated (cali%slitfit_sol)) deallocate(cali%slitfit_sol)
+   if (allocated (cali%slitfit_rad)) deallocate(cali%slitfit_rad)
+   if (allocated (cali%nwavcal_sol)) deallocate(cali%nwavcal_sol)
+   if (allocated (cali%nwavcal_rad)) deallocate(cali%nwavcal_rad)
+   if (allocated (cali%sswav_sol)) deallocate(cali%sswav_sol)
+   if (allocated (cali%sswav_rad)) deallocate(cali%sswav_rad)
+
+   return
+ end subroutine deallocate_cali
 
   SUBROUTINE allocate_spec (nwin, nx, ny, irrad,rad,  ring, refl, cali, status)
   IMPLICIT NONE
@@ -26,16 +109,7 @@ CONTAINS
   INTEGER, INTENT(OUT) :: status
   CHARACTER(64) :: varname
 
-   IF (ASSOCIATED (irrad%nwav)) DEALLOCATE (irrad%nwav)
-   IF (ASSOCIATED (irrad%errstat)) DEALLOCATE (irrad%errstat)
-   IF (ASSOCIATED (irrad%npix)) DEALLOCATE (irrad%npix)
-   IF (ASSOCIATED (irrad%winpix)) DEALLOCATE (irrad%winpix)
-   IF (ASSOCIATED (irrad%wind)) DEALLOCATE (irrad%wind)
-   IF (ASSOCIATED (irrad%wavl)) DEALLOCATE (irrad%wavl)
-   IF (ASSOCIATED (irrad%spec)) DEALLOCATE (irrad%spec)
-   IF (ASSOCIATED (irrad%prec)) DEALLOCATE (irrad%prec)
-   IF (ASSOCIATED (irrad%qflg)) DEALLOCATE (irrad%qflg)
-   IF (ASSOCIATED (irrad%norm)) DEALLOCATE (irrad%norm)
+  call deallocate_irrad (irrad)
 
    varname='irrad%nwav'
    ALLOCATE (irrad%nwav(nx), stat=status); IF (status .ne. 0 ) GOTO 111
@@ -70,16 +144,7 @@ CONTAINS
    !--------------------------------------------------------------------------
    ! radiance
    !-------------------------------------------------------------------------
-   IF (ASSOCIATED (rad%nwav)) DEALLOCATE (rad%nwav)
-   IF (ASSOCIATED (rad%npix)) DEALLOCATE (rad%npix)
-   IF (ASSOCIATED (rad%errstat)) DEALLOCATE (rad%errstat)
-   IF (ASSOCIATED (rad%pix_errstat)) DEALLOCATE (rad%pix_errstat)
-   IF (ASSOCIATED (rad%wind)) DEALLOCATE (rad%wind)
-   IF (ASSOCIATED (rad%wavl)) DEALLOCATE (rad%wavl)
-   IF (ASSOCIATED (rad%spec)) DEALLOCATE (rad%spec)
-   IF (ASSOCIATED (rad%prec)) DEALLOCATE (rad%prec)
-   IF (ASSOCIATED (rad%qflg)) DEALLOCATE (rad%qflg)
-   IF (ASSOCIATED (rad%norm)) DEALLOCATE (rad%norm)
+   call deallocate_rad (rad)
 
    varname='rad%nwav'
    ALLOCATE (rad%nwav(nx, 0:ny-1), stat=status); IF (status .ne. 0 ) GOTO 111
@@ -115,11 +180,7 @@ CONTAINS
    !--------------------------------------------------------------------------
    ! RING 
    !-------------------------------------------------------------------------
-   IF (ASSOCIATED (ring%spec)) DEALLOCATE (ring%spec)
-   IF (ASSOCIATED (ring%wavl)) DEALLOCATE (ring%wavl)
-   IF (ASSOCIATED (ring%nsol)) DEALLOCATE (ring%nsol)
-   IF (ASSOCIATED (ring%ndiv)) DEALLOCATE (ring%ndiv)
-   IF (ASSOCIATED (ring%winpix)) DEALLOCATE (ring%winpix)
+   call deallocate_ring (ring)
 
    varname='ring%spec'
    ALLOCATE (ring%spec(max_ring_pts, nx), stat=status); IF (status .ne. 0 ) GOTO 111
@@ -141,11 +202,7 @@ CONTAINS
    !--------------------------------------------------------------------------
    ! reflectance
    !--------------------------------------------------------------------------
-   IF (ASSOCIATED (refl%winpix)) DEALLOCATE (refl%winpix)
-   IF (ASSOCIATED (refl%solspec)) DEALLOCATE (refl%solspec)
-   IF (ASSOCIATED (refl%solwavl)) DEALLOCATE (refl%solwavl)
-   IF (ASSOCIATED (refl%radspec)) DEALLOCATE (refl%radspec)
-   IF (ASSOCIATED (refl%radwavl)) DEALLOCATE (refl%radwavl)
+   call deallocate_refl (refl)
 
    varname='refl%winpix'
    ALLOCATE (refl%winpix(nx,2), stat=status); IF (status .ne. 0 ) GOTO 111
@@ -166,17 +223,17 @@ CONTAINS
    ! calibration
    !--------------------------------------------------------------------------
    varname = 'cali%wincal_wav'
-   IF (ASSOCIATED (cali%wincal_wav)) DEALLOCATE (cali%wincal_wav)    
+   IF (ALLOCATED (cali%wincal_wav)) DEALLOCATE (cali%wincal_wav)
    ALLOCATE (cali%wincal_wav(nwin, nx), stat=status); IF (status .ne. 0 ) GOTO 111    
 
    IF (wavcal) THEN      
-     IF (ASSOCIATED (cali%radwinfit)) DEALLOCATE (cali%radwinfit)
+     IF (ALLOCATED (cali%radwinfit)) DEALLOCATE (cali%radwinfit)
      ALLOCATE (cali%radwinfit(nwin, max_calfit_idx, nx), stat=status)
    ENDIF
    IF (status .ne. 0 ) GOTO 111    
 
    varname='cali%solwinfit'
-   IF (ASSOCIATED (cali%solwinfit)) DEALLOCATE (cali%solwinfit)
+   IF (ALLOCATED (cali%solwinfit)) DEALLOCATE (cali%solwinfit)
    ALLOCATE (cali%solwinfit(nwin, max_calfit_idx, nx), stat=status)
    IF (status .ne. 0 ) GOTO 111    
 
@@ -184,51 +241,51 @@ CONTAINS
    IF (.NOT. slit_rad .AND. .NOT. yn_varyslit) return
 
      IF (slit_rad) THEN 
-        IF (ASSOCIATED (cali%radwinfit)) DEALLOCATE (cali%radwinfit)
+        IF (ALLOCATED (cali%radwinfit)) DEALLOCATE (cali%radwinfit)
         ALLOCATE (cali%radwinfit(nwin, max_calfit_idx, nx), stat=status)
         IF (status .ne. 0 ) GOTO 111    
      ENDIF 
       
      IF (yn_varyslit) THEN
-       IF (ASSOCIATED (cali%nslit_sol)) DEALLOCATE (cali%nslit_sol)
+       IF (ALLOCATED (cali%nslit_sol)) DEALLOCATE (cali%nslit_sol)
        ALLOCATE (cali%nslit_sol(nx), stat=status); IF (status .ne. 0 ) GOTO 111    
 
-       IF (ASSOCIATED (cali%slitwav_sol)) DEALLOCATE (cali%slitwav_sol)
+       IF (ALLOCATED (cali%slitwav_sol)) DEALLOCATE (cali%slitwav_sol)
        ALLOCATE (cali%slitwav_sol(max_fit_pts, nx), stat=status); IF (status .ne. 0 ) GOTO 111    
 
-       IF (ASSOCIATED (cali%slitfit_sol)) DEALLOCATE (cali%slitfit_sol)
+       IF (ALLOCATED (cali%slitfit_sol)) DEALLOCATE (cali%slitfit_sol)
        ALLOCATE (cali%slitfit_sol(max_fit_pts, max_calfit_idx, 2, nx), stat=status) 
        IF (status .ne. 0 ) GOTO 111    
        
        IF (wavcal .OR. wavcal_sol) THEN  
-         IF (ASSOCIATED (cali%nwavcal_sol)) DEALLOCATE (cali%nwavcal_sol)
+         IF (ALLOCATED (cali%nwavcal_sol)) DEALLOCATE (cali%nwavcal_sol)
          ALLOCATE (cali%nwavcal_sol(nx), stat=status); IF (status .ne. 0 ) GOTO 111    
 
-         IF (ASSOCIATED (cali%sswav_sol)) DEALLOCATE (cali%sswav_sol)
+         IF (ALLOCATED (cali%sswav_sol)) DEALLOCATE (cali%sswav_sol)
          ALLOCATE (cali%sswav_sol(max_fit_pts, nx), stat=status)
        ENDIF
 
        IF (status .ne. 0 ) GOTO 111    
 
          IF ( slit_rad) THEN 
-            IF (ASSOCIATED (cali%nslit_rad)) DEALLOCATE (cali%nslit_rad)
+            IF (ALLOCATED (cali%nslit_rad)) DEALLOCATE (cali%nslit_rad)
             ALLOCATE (cali%nslit_rad(nx), stat=status)
             IF (status .ne. 0 ) GOTO 111    
 
-            IF (ASSOCIATED (cali%slitwav_rad)) DEALLOCATE (cali%slitwav_rad)
+            IF (ALLOCATED (cali%slitwav_rad)) DEALLOCATE (cali%slitwav_rad)
             ALLOCATE (cali%slitwav_sol(max_fit_pts, nx), stat=status)
             IF (status .ne. 0 ) GOTO 111    
  
-            IF (ASSOCIATED (cali%slitfit_rad)) DEALLOCATE (cali%slitfit_rad)
+            IF (ALLOCATED (cali%slitfit_rad)) DEALLOCATE (cali%slitfit_rad)
             ALLOCATE (cali%slitfit_rad(max_fit_pts, max_calfit_idx, 2, nx), stat=status)
             IF (status .ne. 0 ) GOTO 111    
          ENDIF
 
          IF (wavcal) THEN 
-           IF (ASSOCIATED (cali%nwavcal_rad)) DEALLOCATE (cali%nwavcal_rad)
+           IF (ALLOCATED (cali%nwavcal_rad)) DEALLOCATE (cali%nwavcal_rad)
            ALLOCATE (cali%nwavcal_rad(nx), stat=status); IF (status .ne. 0 ) GOTO 111    
 
-           IF (ASSOCIATED (cali%sswav_rad)) DEALLOCATE (cali%sswav_rad)
+           IF (ALLOCATED (cali%sswav_rad)) DEALLOCATE (cali%sswav_rad)
            ALLOCATE (cali%sswav_rad(max_fit_pts, nx), stat=status)
            IF (status .ne. 0 ) GOTO 111    
          ENDIF
@@ -249,26 +306,26 @@ CONTAINS
    TYPE(geo_group), INTENT(INOUT) :: geo
    INTEGER, INTENT(OUT) :: status   
 
-   IF (ASSOCIATED (geo%time)) DEALLOCATE (geo%time)
-   IF (ASSOCIATED (geo%lon)) DEALLOCATE (geo%lon)
-   IF (ASSOCIATED (geo%lat)) DEALLOCATE (geo%lat)
-   IF (ASSOCIATED (geo%sza)) DEALLOCATE (geo%sza)
-   IF (ASSOCIATED (geo%vza)) DEALLOCATE (geo%vza)
-   IF (ASSOCIATED (geo%aza)) DEALLOCATE (geo%aza)
-   IF (ASSOCIATED (geo%sca)) DEALLOCATE (geo%sca)
-   IF (ASSOCIATED (geo%clon)) DEALLOCATE (geo%clon)
-   IF (ASSOCIATED (geo%clat)) DEALLOCATE (geo%clat)
-   IF (ASSOCIATED (geo%elon)) DEALLOCATE (geo%elon)
-   IF (ASSOCIATED (geo%elat)) DEALLOCATE (geo%elat)
-   IF (ASSOCIATED (geo%height)) DEALLOCATE (geo%height)
-   IF (ASSOCIATED (geo%cfr)) DEALLOCATE (geo%cfr)
-   IF (ASSOCIATED (geo%ctp)) DEALLOCATE (geo%ctp)
-   IF (ASSOCIATED (geo%cloud_qflg)) DEALLOCATE (geo%cloud_qflg)
-   IF (ASSOCIATED (geo%xflg)) DEALLOCATE (geo%xflg)
-   IF (ASSOCIATED (geo%gflg)) DEALLOCATE (geo%gflg)
-   IF (ASSOCIATED (geo%land_water_flg)) DEALLOCATE (geo%land_water_flg)
-   IF (ASSOCIATED (geo%snow_ice_flg)) DEALLOCATE (geo%snow_ice_flg)
-   IF (ASSOCIATED (geo%glint_flg)) DEALLOCATE (geo%glint_flg)
+   IF (ALLOCATED (geo%time)) DEALLOCATE (geo%time)
+   IF (ALLOCATED (geo%lon)) DEALLOCATE (geo%lon)
+   IF (ALLOCATED (geo%lat)) DEALLOCATE (geo%lat)
+   IF (ALLOCATED (geo%sza)) DEALLOCATE (geo%sza)
+   IF (ALLOCATED (geo%vza)) DEALLOCATE (geo%vza)
+   IF (ALLOCATED (geo%aza)) DEALLOCATE (geo%aza)
+   IF (ALLOCATED (geo%sca)) DEALLOCATE (geo%sca)
+   IF (ALLOCATED (geo%clon)) DEALLOCATE (geo%clon)
+   IF (ALLOCATED (geo%clat)) DEALLOCATE (geo%clat)
+   IF (ALLOCATED (geo%elon)) DEALLOCATE (geo%elon)
+   IF (ALLOCATED (geo%elat)) DEALLOCATE (geo%elat)
+   IF (ALLOCATED (geo%height)) DEALLOCATE (geo%height)
+   IF (ALLOCATED (geo%cfr)) DEALLOCATE (geo%cfr)
+   IF (ALLOCATED (geo%ctp)) DEALLOCATE (geo%ctp)
+   IF (ALLOCATED (geo%cloud_qflg)) DEALLOCATE (geo%cloud_qflg)
+   IF (ALLOCATED (geo%xflg)) DEALLOCATE (geo%xflg)
+   IF (ALLOCATED (geo%gflg)) DEALLOCATE (geo%gflg)
+   IF (ALLOCATED (geo%land_water_flg)) DEALLOCATE (geo%land_water_flg)
+   IF (ALLOCATED (geo%snow_ice_flg)) DEALLOCATE (geo%snow_ice_flg)
+   IF (ALLOCATED (geo%glint_flg)) DEALLOCATE (geo%glint_flg)
 
    ALLOCATE (geo%time(0:ny-1), stat=status); IF (status .ne. 0 ) GOTO 111
    ALLOCATE (geo%lon(nx,0:ny-1),geo%lat(nx,0:ny-1),geo%sza(nx,0:ny-1), &
@@ -291,7 +348,7 @@ CONTAINS
    RETURN
   END SUBROUTINE allocate_geo
 
-  SUBROUTINe dealloc (errstat)
+  SUBROUTINE dealloc (errstat)
 
     implicit none
 

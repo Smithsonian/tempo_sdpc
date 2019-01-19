@@ -132,8 +132,6 @@ CONTAINS
     ALLOCATE(tmpo_o3p%initval(nxtrack,0:nlines_max-1))
     ALLOCATE(tmpo_o3p%fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
 
-
-
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read irradiance & slit/wavelength calibration
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
@@ -406,10 +404,14 @@ CONTAINS
       RETURN
     ENDIF
 
-
     !-----------------------------------------------------------------
     ! Deallocate any remaining arrays
     !----------------------------------------------------------------
+    call deallocate_irrad (tmpo_irrad)
+    call deallocate_rad (tmpo_rad)
+    call deallocate_ring (tmpo_ring)
+    call deallocate_refl (tmpo_refl)
+    call deallocate_cali (tmpo_cali)
     CALL dealloc (errstat)
     RETURN
     !------------------------------------------------------------
