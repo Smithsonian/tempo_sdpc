@@ -1897,15 +1897,15 @@ CONTAINS
 
     ! ORIGINAL CODE : GC_xsections_module.f90 (M. Chris ?)
     USE OMSAO_indices_module, ONLY: h2o_idx, h2ot2_idx, o2_idx, o2t2_idx
+    use netcdf
     IMPLICIT NONE
-    INCLUDE 'netcdf.inc'
     !----------------------------------
     !Input
     !---------------------------------
     INTEGER, INTENT(IN) :: gas_idx
     REAL (KIND=dp) :: win_min, win_max
     !---------------------------------
-    !Output 
+    !Output
     !---------------------------------
     INTEGER, INTENT(OUT) :: nw, nt, np
     REAL (KIND=dp), INTENT(OUT), DIMENSION (max_spec_pts) :: wvl
@@ -1916,10 +1916,8 @@ CONTAINS
     !---------------------------------
     ! helper for reading nc file
     CHARACTER (LEN=100) :: filename
-    INTEGER :: ncid, rcode, var_id
+    INTEGER :: ncid, status, var_id
     INTEGER :: posdim, pdim, Tdim
-    CHARACTER(len=maxchlen) :: message
-    CHARACTER(len=31) :: dimname
     LOGICAL :: file_exist, fail
     ! helper for LUT interpolation
     INTEGER :: fidx, lidx
@@ -1932,9 +1930,9 @@ CONTAINS
     !------------------------------------------------------------------
 
     fail = .false.
-    IF (gas_idx == h2o_idx .or. gas_idx == h2ot2_idx) THEN 
+    IF (gas_idx == h2o_idx .or. gas_idx == h2ot2_idx) THEN
         filename = ADJUSTL(TRIM(refdbdir))//ADJUSTL(TRIM(h2oabs_fname))
-    ELSE IF (gas_idx == o2_idx .or. gas_idx == o2t2_idx) THEN 
+    ELSE IF (gas_idx == o2_idx .or. gas_idx == o2t2_idx) THEN
         filename = ADJUSTL(TRIM(refdbdir))//ADJUSTL(TRIM(o2abs_fname))
     ELSE
         write(*,*) 'this gas cross section is not provided from hitran'
@@ -1942,50 +1940,56 @@ CONTAINS
 
     INQUIRE (FILE= TRIM(ADJUSTL(filename)), EXIST= file_exist)
     IF (.not. file_exist) THEN
-        write(*,*) "No exsit:"//filename ; stop
-    ENDIF 
+        write(*,*) "No exist:"//filename ; stop 1
+    ENDIF
 
     ! ================================================================
     ! Open netCDF file and allocate arrays
     ! ================================================================
     ! Open file in read mode
-    ncid = ncopn(trim(adjustl(filename)), nf_Nowrite, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncopn failed' ; stop
+    status = nf90_open (trim(adjustl(filename)), nf90_nowrite, ncid)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a,a,a)')'*** nf90_open failed (',nf90_strerror(status), &
+        '): ', trim(adjustl(filename))
+      stop 1
     endif
    ! Get the wavelength dimension
-    posdim = ncdid(ncid, 'npos', RCODE)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(npos)' ;stop
+    status = nf90_inq_dimid (ncid, 'npos', posdim)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_dimid npos failed: ',nf90_strerror(status)
+      stop 1
     endif
-
     ! Read wavelength dimension
-    call ncdinq(ncid, posdim, dimname, nwvl_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(npos)' ;stop
+    status = nf90_inquire_dimension (ncid, posdim, len=nwvl_lut)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inquire_dimension npos failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! Get the temperature dimension
-    Tdim = ncdid(ncid, 'nT', RCODE)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(nT)' ;stop
+    status = nf90_inq_dimid (ncid, 'nT', Tdim)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_dimid nT failed: ',nf90_strerror(status)
+      stop 1
     endif
    ! Read temperature  dimension
-    call ncdinq(ncid, Tdim, dimname, nT_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(nT)' ; stop
+    status = nf90_inquire_dimension (ncid, Tdim, len=nT_lut)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inquire_dimension nT failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! Get the pressure dimension
-    pdim = ncdid(ncid, 'np', RCODE)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdid failed(np)' ; stop
+    status = nf90_inq_dimid (ncid, 'np', pdim)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_dimid np failed: ',nf90_strerror(status)
+      stop 1
     endif
-
     ! Read the pressure  dimension
-    call ncdinq(ncid, pdim, dimname, np_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncdinq failed(np)' ; stop
+    status = nf90_inquire_dimension (ncid, pdim, len=np_lut)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inquire_dimension np failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! Allocate arrays
@@ -2000,73 +2004,63 @@ CONTAINS
     ! ---------------------
     ! Read wavelength grid
     ! ---------------------
-
-    var_id = ncvid(ncid, 'Wavelength', rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvid failed(Wavelength)'
-       fail = .true.; return
+    status = nf90_inq_varid (ncid, 'Wavelength', var_id)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_varid Wavelength failed: ',nf90_strerror(status)
+      stop 1
     endif
-    call ncvgt(ncid, var_id, (/1/), (/nwvl_lut/), wvl_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvgt failed(Longitude)'
-       fail = .true.; return
+    status = nf90_get_var (ncid, var_id, wvl_lut, start=(/1/), count=(/nwvl_lut/))
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_get_var Wavelength failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! ----------------------
     ! Read temperature grid
     ! ----------------------
-
-    var_id = ncvid(ncid, 'Temperature', rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvid failed(Temperature)'
-       fail = .true.; return
+    status = nf90_inq_varid (ncid, 'Temperature', var_id)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_varid Temperature failed: ',nf90_strerror(status)
+      stop 1
     endif
-    call ncvgt(ncid, var_id, (/1/), (/nT_lut/), T_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvgt failed(Longitude)'
-       fail = .true.; return
+    status = nf90_get_var (ncid, var_id, T_lut, start=(/1/), count=(/nT_lut/))
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_get_var Temperature failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! ----------------------
     ! Read pressure grid
     ! ----------------------
-
-    var_id = ncvid(ncid, 'Pressure', rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvid failed(Pressure)'
-       fail = .true.; return
+    status = nf90_inq_varid (ncid, 'Pressure', var_id)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_varid Pressure failed: ',nf90_strerror(status)
+      stop 1
     endif
-    call ncvgt(ncid, var_id, (/1/), (/np_lut/), p_lut, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvgt failed(Pressure)'
-       fail = .true.; return
+    status = nf90_get_var (ncid, var_id, p_lut, start=(/1/), count=(/np_lut/))
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_get_var Pressure failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! ----------------------
     ! Read cross sections
     ! ----------------------
-
-    var_id = ncvid(ncid, 'CrossSection', rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvid failed(Pressure)'
-       fail = .true.; return
+    status = nf90_inq_varid (ncid, 'CrossSection', var_id)
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_inq_varid CrossSection failed: ',nf90_strerror(status)
+      stop 1
     endif
-    call ncvgt(ncid, var_id, (/1,1,1/), (/nwvl_lut,nT_lut,np_lut/), xs_lut,rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in netcdf_rd_dim: ncvgt failed(Pressure)'
-       fail = .true.; return
+    status = nf90_get_var (ncid, var_id, xs_lut, start=(/1,1,1/), count=(/nwvl_lut,nT_lut,np_lut/))
+    if (status /= nf90_noerr) then
+      write (*,'(a,a)')'*** nf90_get_var CrossSection failed: ',nf90_strerror(status)
+      stop 1
     endif
 
     ! ----------
     ! Close file
     ! ----------
-
-    call ncclos(ncid, rcode)
-    if (rcode .eq. -1) then
-       message =  ' error in netcdf_rd_dim: ncclos'
-       fail = .true.; return
-    endif
-    
+    status = nf90_close (ncid)
 
     ! ================================================================
     ! Interpolate spectra
