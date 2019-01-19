@@ -48,8 +48,7 @@
 !  Version number
 !  ==============
 
-      CHARACTER*5       VLIDORT_VERSION_NUMBER
-      PARAMETER       ( VLIDORT_VERSION_NUMBER = '2.4RTC' )
+      character (len=*), PARAMETER :: VLIDORT_VERSION_NUMBER = '2.4RTC'
 
 !  File i/o unit numbers
 !  ======================

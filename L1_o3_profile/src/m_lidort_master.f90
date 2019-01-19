@@ -59,14 +59,14 @@ module m_lidort_master
     USE m_ezspline_interpolation, only: bspline, bspline1
     USE m_get_xcrs, only: get_alb_ozcrs_ray,  get_hres_gascrs_ray, &
         get_effres_gascrs_ray
-!    USE m_vlidort90_include
+    USE m_vlidort90_include
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
 
     !===============================  Define Variables ===========================
     ! Include files of dimensions and numbers
-    INCLUDE 'VLIDORT.PARS'
+    !INCLUDE 'VLIDORT.PARS'
 
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS.VARS'
@@ -1326,12 +1326,12 @@ module m_lidort_master
   USE OMSAO_precision_module
   USE ozprof_data_module, ONLY : maxgksec, maxgkmatc, ngksec, ngkmatc
   USE OMSAO_errstat_module
-  !USE m_vlidort90_include
+  USE m_vlidort90_include
   IMPLICIT NONE  
    
     !===============================  Define Variables ========================
     ! Include files of dimensions and numbers
-    INCLUDE 'VLIDORT.PARS'
+    !INCLUDE 'VLIDORT.PARS'
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS.VARS'
     INCLUDE 'VLIDORT_SETUPS.VARS'

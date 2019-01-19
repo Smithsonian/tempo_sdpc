@@ -600,6 +600,7 @@ $(ODIR)/m_lidort_master.o: $(SDIR)/m_lidort_master.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/m_get_xcrs.o \
   $(ODIR)/m_lidort_util.o \
+  $(ODIR)/m_vlidort90_include.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
