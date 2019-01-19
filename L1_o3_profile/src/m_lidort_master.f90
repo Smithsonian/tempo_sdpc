@@ -66,7 +66,7 @@ module m_lidort_master
 
     !===============================  Define Variables ===========================
     ! Include files of dimensions and numbers
-    !INCLUDE 'VLIDORT.PARS'
+    ! (see m_vlidort90_include) DONT USE THIS --> INCLUDE 'VLIDORT.PARS'
 
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS.VARS'
@@ -156,6 +156,11 @@ module m_lidort_master
     ! Name of this module/subroutine
     ! ==============================
     CHARACTER (LEN=15), PARAMETER :: modulename = 'LIDORT_PROF_ENV'
+
+    ! JCH catch variable being used without initialization
+    low = 2147483647
+    hgh = 2147483647
+    raywfidx = 2147483647
 
     !do_polwf = .false. ;IF (nfpol > 0) do_polwf = .true.
     errstat = pge_errstat_ok
@@ -1331,7 +1336,7 @@ module m_lidort_master
    
     !===============================  Define Variables ========================
     ! Include files of dimensions and numbers
-    !INCLUDE 'VLIDORT.PARS'
+    ! (see m_vlidort90_include) DONT USE THIS --> INCLUDE 'VLIDORT.PARS'
     ! Include files of input variables
     INCLUDE 'VLIDORT_INPUTS.VARS'
     INCLUDE 'VLIDORT_SETUPS.VARS'

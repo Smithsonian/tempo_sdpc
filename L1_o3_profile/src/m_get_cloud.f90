@@ -191,6 +191,9 @@ contains
     errstat = pge_errstat_ok
     ctaus = 0.0; ctps = 0.0; cfracs = 0.0
 
+    ! JCH: try to catch variable being used before being properly initialized
+    nactp1 = 2147483647
+
     IF (first) THEN
       ! get month, day, year from level 1 filename. Even though the actual date 
       ! could be different from the date on level 1 data (e.g. last orbit)

@@ -2424,7 +2424,7 @@ CONTAINS
       END IF
 
       !     DETERMINE THE LOWEST POSSIBLE DIMENSION
-
+      mindim=1
       DO  i=1,prank
         mindim=i
         IF(work(i) > rabs*bn) EXIT

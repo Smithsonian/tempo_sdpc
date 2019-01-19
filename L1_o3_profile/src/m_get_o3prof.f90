@@ -514,11 +514,16 @@ SUBROUTINE get_geoschem_o3mean( ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
+  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
+  if (ntp0 < 0) then
+    write (*,*)'**** Error: get_geoschem_o3mean: ntp0 initialization failed'
+    stop 1
+  endif
      
   CALL BSPLINE(geospres, cumoz, nalt0+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)     
@@ -594,11 +599,16 @@ SUBROUTINE get_geoschem_o3std(ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
+  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
+  if (ntp0 < 0) then
+    write (*,*)'**** Error: get_geoschem_o3std: ntp0 initialization failed'
+    stop 1
+  endif
   
   CALL BSPLINE(geospres, cumoz, nalt+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)    
@@ -1360,11 +1370,16 @@ SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
+  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
+  if (ntp0 < 0) then
+    write (*,*)'**** Error: get_geoschem_o31: ntp0 initialization failed'
+    stop 1
+  endif
   
   CALL BSPLINE(geospres, cumoz, nalt0+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)     
@@ -1434,6 +1449,7 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
      cumoz(i) = cumoz(i-1) + (gprof(i-1) + gprof(i)) * (pres(i-1) - pres(i)) / 2533.125 
   ENDDO
 
+  ntp0 = -1
   presmod = pres
   DO i = 1, ntp
      IF (ps(i) < presmod(nalt)) THEN
@@ -1441,7 +1457,11 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
      ENDIF
   ENDDO
   IF (presmod(1) < ps(0))  presmod(1) = ps(0)
-  
+  if (ntp0 < 0) then
+    write (*,*)'**** Error: get_logan_clima: ntp0 initialization failed'
+    stop 1
+  endif
+
   CALL BSPLINE(presmod, cumoz, nalt, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)    
   ozprof(1:ntp0) =  tempoz(1:ntp0)  ! use actual profile shape
@@ -1565,6 +1585,7 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
  
   ! Only use MLS altitude range where reltative variability is < 50%
   ! Find first MLS layer to be used
+  sl = -1
   DO i = 1, nl
      IF (ratio(i) <= 50.0) THEN
         sl = i; EXIT
@@ -1576,14 +1597,23 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
         sl = i; EXIT
      ENDIF
   ENDDO
+  if (sl < 0) then
+    write (*,*)'**** Error: get_mlso3prof: sl initialization failed'
+    stop 1
+  endif
 
   ! Find last MLS layer to be used
+  el = -1
   DO i = nl, 1, -1
      IF (ratio(i) <= 50.0) THEN
         el = i; EXIT
      ENDIF
   ENDDO
-  
+  if (el < 0) then
+    write (*,*)'**** Error: get_mlso3prof: el initialization failed'
+    stop 1
+  endif
+
   IF (mnorstd == 2) tmpoz(1:nl) = tmpozstd(1:nz)
    
   ! Get cumulative ozone profile from (215 mb to 0.1 mb)
@@ -1695,18 +1725,28 @@ SUBROUTINE get_mlso3prof_single(nz, mnorstd, ps, zs, oz, ntp, errstat)
  
   ! Only use MLS altitude range where reltative variability is < 50%
   ! Find first MLS layer to be used
+  sl = -1
   DO i = 1, nl
      IF (ratio(i) <= 50.0) THEN
         sl = i; EXIT
      ENDIF
   ENDDO
+  if (sl < 0) then
+    write (*,*)'**** Error: get_mlso3prof_single: sl initialization failed'
+    stop 1
+  endif
 
   ! Find last MLS layer to be used
+  el = -1
   DO i = nl, 1, -1
      IF (ratio(i) <= 50.0) THEN
         el = i; EXIT
      ENDIF
   ENDDO
+  if (el < 0) then
+    write (*,*)'**** Error: get_mlso3prof_single: el initialization failed'
+    stop 1
+  endif
   
   IF (mnorstd == 1) THEN
      tmpoz(1:nl) = mlsprof(1:nz)

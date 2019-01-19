@@ -1091,6 +1091,10 @@ SUBROUTINE HRES_RADCALC_ENV (nw0, do_ozwf, do_albwf, do_tmpwf, do_o3shi, ozvary,
   INTEGER, DIMENSION(n0wfc)                 :: wfcpmax0, wfcpmin0
   errstat = pge_errstat_ok
 
+  !JCH catch variable being used before initialization
+  lidx0 = 2147483647
+  fidx0 = 2147483647
+
   ! Note nw0 is MAX(ncalcp, nw)
   waves0 = 0.0
   waves0(1:ncalcp) = radcwav(1:ncalcp)

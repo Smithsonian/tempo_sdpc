@@ -37,9 +37,9 @@ MODULE m_get_xcrs
    LOGICAL         :: tdepend, slitconv
    REAL (KIND=dp)  :: normc
    REAL (KIND=dp), DIMENSION(mxsect)      :: ts
-   REAL (KIND=dp), DIMENSION(:),  POINTER :: wvl ! before convolution
-   REAL (KIND=dp), DIMENSION(:,:),POINTER :: crs0 ! before convolution
-   REAL (KIND=dp), DIMENSION(:,:),POINTER :: crs  ! after convolution
+   REAL (KIND=dp), DIMENSION(:),  ALLOCATABLE :: wvl ! before convolution
+   REAL (KIND=dp), DIMENSION(:,:),ALLOCATABLE :: crs0 ! before convolution
+   REAL (KIND=dp), DIMENSION(:,:),ALLOCATABLE :: crs  ! after convolution
    END TYPE  txcrs_set
 
    !-----------------------------------------------------------------
@@ -778,7 +778,7 @@ CONTAINS
   !-----------------
   !Local variables
   !-----------------
-  REAL (KIND=dp), DIMENSION(:), POINTER :: & 
+  REAL (KIND=dp), DIMENSION(:), ALLOCATABLE :: &
        sig, sig2, sig2p, sig4, fk_n2, fk_o2, fking ! nw
   REAL (KIND=dp), PARAMETER     :: abod = 1.0455996d0, bbod = -341.29061d0, &
        cbod = -0.90230850d0, dbod = 0.0027059889d0, ebod = -85.968563d0
@@ -856,7 +856,7 @@ CONTAINS
   REAL (KIND=dp), DIMENSION(nw)         :: raycof1, depol1
 
   INTEGER, SAVE                              :: nref
-  REAL (KIND=dp), DIMENSION(:),POINTER, SAVE :: ray, dep, refwavs
+  REAL (KIND=dp), DIMENSION(:),ALLOCATABLE, SAVE :: ray, dep, refwavs
   REAL (KIND=dp),                       SAVE :: rnorm, dnorm
   LOGICAL, SAVE                              :: first = .TRUE.
 
@@ -936,9 +936,9 @@ CONTAINS
   INTEGER                                          :: nline, nw, i
   REAL (KIND=dp)                                   :: fwav, lwav, swav, ewav
   REAL (KIND=dp), DIMENSION(11)                    :: temp
-  REAL (KIND=dp), DIMENSION(:),  POINTER  :: waves, sol, weights, rays, dpols !( max_spec_pts)
-  REAL (KIND=dp), DIMENSION(:,:), POINTER :: ozcrs  !(3, max_spec_pts)
-  REAL (KIND=dp), DIMENSION(:,:), POINTER :: gcrs   !(6, max_spec_pts)
+  REAL (KIND=dp), DIMENSION(:),  ALLOCATABLE  :: waves, sol, weights, rays, dpols !( max_spec_pts)
+  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: ozcrs  !(3, max_spec_pts)
+  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: gcrs   !(6, max_spec_pts)
   CHARACTER (len=maxchlen)                   :: crs_fname
   
   ! Saved variables
@@ -1037,17 +1037,17 @@ CONTAINS
   LOGICAL, INTENT (OUT)                                 :: problems
   ! Local variables
   LOGICAL :: do_convl
-  INTEGER :: fidx, lidx, i, j,k, npts, nfgas1, errstat
+  INTEGER :: fidx, lidx, i, j,k, npts, nfgas1, errstat, allocate_status
   REAL (kind=dp) :: tmp, temp, normc
   REAL (KIND=dp), DIMENSION (nlsav) :: delshi, delpos, gshiwf
-  REAL (KIND=dp), DIMENSION (:), POINTER :: tmprefspec, tmprefwav
+  REAL (KIND=dp), DIMENSION (:), ALLOCATABLE :: tmprefspec, tmprefwav
   !--------------------------------
   ! Save variables (max_fit_pts)
   !--------------------------------
   LOGICAL :: first=.TRUE.
   TYPE crsz_group
-    REAL (KIND=dp), DIMENSION(:), POINTER :: raycof, depol
-    REAL (KIND=dp), DIMENSION(:,:), POINTER  :: o3, so2, o4, o2,h2o, & 
+    REAL (KIND=dp), DIMENSION(:), ALLOCATABLE :: raycof, depol
+    REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE  :: o3, so2, o4, o2,h2o, &
                                            do3ds, do3dt, do3dhwe, do3dspk
   END TYPE crsz_group
   TYPE (crsz_group), SAVE :: crsz
@@ -1057,12 +1057,20 @@ CONTAINS
   CHARACTER(10), PARAMETER :: modulename ='get_effcrs'
   
   IF (first) THEN
-     allocate (tmprefspec(max_spec_pts), tmprefwav(max_spec_pts))
-     allocate (crsz%raycof(max_fit_pts), crsz%depol(max_fit_pts)) 
-     allocate (crsz%o3(max_fit_pts, mflay),crsz%do3ds(max_fit_pts, mflay))
-     allocate (crsz%do3dt(max_fit_pts, mflay))
-     allocate (crsz%do3dhwe(max_fit_pts, mflay))
-     allocate (crsz%do3dspk(max_fit_pts, mflay))
+     allocate (tmprefspec(max_spec_pts), &
+               tmprefwav(max_spec_pts), &
+               crsz%raycof(max_fit_pts), &
+               crsz%depol(max_fit_pts), &
+               crsz%o3(max_fit_pts, mflay), &
+               crsz%do3ds(max_fit_pts, mflay), &
+               crsz%do3dt(max_fit_pts, mflay), &
+               crsz%do3dhwe(max_fit_pts, mflay), &
+               crsz%do3dspk(max_fit_pts, mflay), &
+               stat = allocate_status)
+     if (allocate_status /= 0) then
+       write (*,*)'**** Error:  allocated failed'
+       stop 1
+     endif
      IF (use_so2dtcrs) allocate (crsz%so2(max_fit_pts, mflay))
      IF (use_o4dtcrs)  allocate (crsz%o4(max_fit_pts, mflay))
      IF (use_o2dptcrs) allocate (crsz%o2(max_fit_pts, mflay))
@@ -1204,19 +1212,19 @@ CONTAINS
            allcrs(1:nlamda, nfgas1, 1:nz) = crsz%h2o(1:nlamda,1:nz)/normc
          ELSE 
            IF (fgassidxs(i) > 0 ) THEN 
-              npts = n_refspec_pts(gasidxs(k))
-              tmprefwav(1:npts) = refspec_orig_data(gasidxs(k), 1:npts, 1)
-              tmprefspec(1:npts) = refspec_orig_data(gasidxs(k),1:npts, 3)
+              npts = n_refspec_pts(gasidxs(i))
+              tmprefwav(1:npts) = refspec_orig_data(gasidxs(i), 1:npts, 1)
+              tmprefspec(1:npts) = refspec_orig_data(gasidxs(i),1:npts, 3)
               fidx = MINVAL(MINLOC(lamda(1:nlamda), MASK=(lamda(1:nlamda) >= &
                          tmprefwav(1) + 0.1 .AND. lamda(1:nlamda) <= tmprefwav(npts)- 0.1)))
               lidx = MINVAL(MAXLOC(lamda(1:nlamda), MASK=(lamda(1:nlamda) >= &
                           tmprefwav(1) + 0.1 .AND. lamda(1:nlamda) <= tmprefwav(npts)- 0.1)))
               IF (lidx > fidx .AND. lidx > 0 .AND. fidx > 0) THEN
-                temp = fitvar_rad(rmask_fitvar_rad(fgassidxs(k)))
+                temp = fitvar_rad(rmask_fitvar_rad(fgassidxs(i)))
                 CALL BSPLINE1(  tmprefwav(1:npts) - temp,tmprefspec(1:npts), npts, &
                      lamda(fidx:lidx), allcrs(fidx:lidx, nfgas1, 1),gshiwf(fidx:lidx), lidx-fidx+1, errstat)
-                database_shiwf(gasidxs(k), refidx(fidx:lidx)) = gshiwf(fidx:lidx)
-                database(gasidxs(k), refidx(fidx:lidx)) =allcrs(fidx:lidx, nfgas, 1)
+                database_shiwf(gasidxs(i), refidx(fidx:lidx)) = gshiwf(fidx:lidx)
+                database(gasidxs(i), refidx(fidx:lidx)) =allcrs(fidx:lidx, nfgas, 1)
                 IF (errstat < 0) THEN
                   WRITE(*, *) modulename, ' : BSPLINE error, errstat =', errstat; RETURN
                 ENDIF

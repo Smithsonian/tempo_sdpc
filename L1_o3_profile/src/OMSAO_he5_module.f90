@@ -120,7 +120,6 @@ MODULE OMSAO_he5_module
       ENDIF
       
       sOut = SIZE( outstrs )
-      IF( PRESENT( strln ) ) strlnS = SIZE( strln )
       
       IF( LEN_TRIM( delim ) == 0 ) THEN   ! input string not empty
          outstrs(1) = instring            ! but delim is empty
@@ -142,6 +141,7 @@ MODULE OMSAO_he5_module
             ENDIF
             
             IF( PRESENT( strln ) ) THEN
+               strlnS = SIZE( strln )
                IF( i > strlnS ) THEN
                   nstrout = -1
                   RETURN

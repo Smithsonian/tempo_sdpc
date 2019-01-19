@@ -444,6 +444,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   ! *** First, transfer all spectra to inarr ***
   inarr(1:nhw, 1) = hres_i0(1:nhw)
   inarr(1:nhw, 2) = hres_i0(1:nhw) * hrad(1:nhw)
+  sidx = 0
   DO i = 1, nz
      sidx = 2 + i;        inarr(1:nhw, sidx) = hres_i0(1:nhw) * hozwf(1:nhw, i)
   ENDDO

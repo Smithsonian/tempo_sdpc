@@ -118,23 +118,23 @@ contains
     !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER)       :: sext, sasy
     !REAL (KIND=dp), SAVE, DIMENSION(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec) &
     !smoms
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:),  POINTER :: tarsl
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),    POINTER :: sext, sasy
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:,:),POINTER :: smoms
-    REAL (KIND=dp), DIMENSION(:,:),    POINTER :: nsext, nsasy
-    REAL (KIND=dp), DIMENSION(:,:,:,:),POINTER :: nsmoms
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:),  ALLOCATABLE :: tarsl
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),    ALLOCATABLE :: sext, sasy
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:,:),ALLOCATABLE :: smoms
+    REAL (KIND=dp), DIMENSION(:,:),    ALLOCATABLE :: nsext, nsasy
+    REAL (KIND=dp), DIMENSION(:,:,:,:),ALLOCATABLE :: nsmoms
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: zstrat
     REAL (KIND=dp), SAVE, DIMENSION(MWL, NAER)                :: wl
     REAL (KIND=dp), SAVE, DIMENSION(NWL)                      :: wls
     REAL (KIND=dp), SAVE, DIMENSION(MWL, NAER)  :: raa, qext, assa, qasy
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: phfcn
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), ALLOCATABLE :: phfcn
     INTEGER,        SAVE, DIMENSION(MWL)                      :: nwls
-    REAL (KIND=dp), DIMENSION(:,:,:), POINTER        :: phsmoms
-    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: tprof
-    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: ctprof
-    REAL (KIND=dp), DIMENSION(:,:),   POINTER        :: ntprof
+    REAL (KIND=dp), DIMENSION(:,:,:), ALLOCATABLE        :: phsmoms
+    REAL (KIND=dp), DIMENSION(:,:),   ALLOCATABLE        :: tprof
+    REAL (KIND=dp), DIMENSION(:,:),   ALLOCATABLE        :: ctprof
+    REAL (KIND=dp), DIMENSION(:,:),   ALLOCATABLE        :: ntprof
     REAL (KIND=dp), DIMENSION(NSLAYER)                        :: sprof, sg
-    REAL (KIND=dp), DIMENSION(:,:,:), POINTER        :: sph
+    REAL (KIND=dp), DIMENSION(:,:,:), ALLOCATABLE        :: sph
     REAL (KIND=dp), DIMENSION(0:NSLAYER)                      :: csprof
     REAL (KIND=dp), DIMENSION(0:nz)                           :: nsprof
     REAL (KIND=dp), DIMENSION(NAER) :: ext, waer, ext400, asy
@@ -142,7 +142,7 @@ contains
     REAL (KIND=dp), DIMENSION(2) :: latfrac, lonfrac
     INTEGER       , DIMENSION(2) :: lonin, latin
     INTEGER  :: i, j, k, n, m, low, high, ntlvl, nslow, nshigh, &
-         ib, nblat, nblon, faer, laer!, tracer_in
+         ib, nblat, nblon, faer, laer, allocate_status
     LOGICAL  :: file_exist
 
     !     ! sigma coordinate for GEOS-STRAT
@@ -187,6 +187,8 @@ contains
     ! ------------------------------
     CHARACTER (LEN=17), PARAMETER    :: modulename = 'read_aerosol_prof'
 
+    nshigh = tp
+
     ! --------------------------------------------------------------
     ! Initialize output variables
     ! --------------------------------------------------------------
@@ -204,18 +206,30 @@ contains
       laer = which_aerosol
     ENDIF
 
+    allocate (nsmoms(NWL,NSLAYER, 0:nmom, ngksec), &
+              phsmoms (ngksec, 0:nmom, NAER), &
+              ntprof(0:nz, NAER), &
+              sph(NSLAYER, 0:nmom, ngksec), stat=allocate_status)
+    if (allocate_status /= 0) then
+      write (*,*)'**** Error: read_aerosol_prof: allocate failed '
+      stop 1
+    endif
+
     IF (first) THEN
-      allocate (tarsl(NLON,NLAT, NTLAYER, NAER))
-      allocate ( sext(NWL, NLAT, NSLAYER),sasy(NWL, NLAT, NSLAYER))
-      allocate (smoms(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec))
-      allocate (nsext(NWL, NSLAYER), nsasy(NWL, NSLAYER))
-      allocate (nsmoms(NWL,NSLAYER, 0:nmom, ngksec))
-      allocate (phfcn (maxgksec, 0:maxmom, NWL, NAER))
-      allocate (phsmoms (ngksec, 0:nmom, NAER))
-      allocate (tprof(NTLAYER, NAER))
-      allocate (ctprof(0:NTLAYER, NAER))
-      allocate (ntprof(0:nz, NAER))
-      allocate (sph(NSLAYER, 0:nmom, ngksec))
+      allocate (tarsl(NLON,NLAT, NTLAYER, NAER), &
+                sext(NWL, NLAT, NSLAYER), &
+                sasy(NWL, NLAT, NSLAYER), &
+                smoms(NWL, NLAT, NSLAYER, 0:maxmom, maxgksec), &
+                nsext(NWL, NSLAYER), &
+                nsasy(NWL, NSLAYER), &
+                phfcn (maxgksec, 0:maxmom, NWL, NAER), &
+                tprof(NTLAYER, NAER), &
+                ctprof(0:NTLAYER, NAER), &
+                stat=allocate_status)
+       if (allocate_status /= 0) then
+         write (*,*)'**** Error: read_aerosol_prof: allocate failed '
+         stop 1
+       endif
       !---------------------------------------------------------------
       ! Read tropospheric aerosol profiles from the binary punch file
       !---------------------------------------------------------------
@@ -381,9 +395,9 @@ contains
         latfrac(2) = 1.0 - latfrac(1)
       ENDIF
 
-      nsext = 0.0
-      nsasy = 0.0
-      nsmoms = 0.0
+      nsext(:,:) = 0.0
+      nsasy(:,:) = 0.0
+      nsmoms(:,:,:,:) = 0.0
       DO ib = 1, nblat
         nsext  =  nsext + sext(:, latin(ib), :) * latfrac(ib)
         nsasy  =  nsasy + sasy(:, latin(ib), :) * latfrac(ib)

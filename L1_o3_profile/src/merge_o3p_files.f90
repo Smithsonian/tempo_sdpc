@@ -110,17 +110,16 @@ program merge_o3p_files
     endif
   enddo
 
+  allocate(step(maxval(nstep), ninput), &
+           xtrack(maxval(nxtrack), ninput), stat=errstat)
+  if (errstat /= 0) then
+    call tell_error(tell_malloc_error, &
+                    "failed to allocate step and xtrack arrays", errstat)
+    stop 1
+  endif
+
   do n=1,ninput ! loop over input files, get dimension indices
     ! For each file, read in xtrack and step values
-    if (n == 1) then
-      allocate(step(maxval(nstep), ninput), stat=errstat)
-      allocate(xtrack(maxval(nxtrack), ninput), stat=errstat)
-      if (errstat /= 0) then
-        call tell_error(tell_malloc_error, &
-             "failed to allocate step and xtrack arrays", errstat)
-        stop 1
-      endif
-    endif
     call read_o3p_dim_indices (input_files(n), tio_l2in, nstep(n), &
          nxtrack(n), step(:,n), xtrack(:,n), errstat)
 

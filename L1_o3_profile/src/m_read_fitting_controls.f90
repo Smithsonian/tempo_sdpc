@@ -263,6 +263,9 @@ contains
       upper_spec = upper_spec_tmpo
       lower_spec = lower_spec_tmpo
       !instrument_idx = omi_idx
+    else
+      write (*,*)'**** Error: read_fitting_control_file: unsupported instrument index = ',instrument_idx
+      stop 1
     ENDIF
 
     ! -----------------------------------------------------------

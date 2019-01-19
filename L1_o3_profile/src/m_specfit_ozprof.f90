@@ -158,6 +158,7 @@ contains
       actawin = numwin + 2
       IF (actawin > maxawin) STOP 'Need to increase maxawin!!!'
       fidx = 1
+      lidx = 1
       DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1
         aerwavs(i) = fitwavs(fidx)

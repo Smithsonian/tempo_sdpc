@@ -143,6 +143,10 @@ contains
     ! ==============================
     CHARACTER (LEN=14), PARAMETER :: modulename = 'ozprof_inverse'
 
+    ! JCH: try to catch these variables being used uninitialized
+    uv2fy = 2147483647
+    uv2ly = 2147483647
+
     IF (first) THEN
       DO i = 1, ngas
         IF (gasidxs(i) == no2_t1_idx) no2fidx  = fgasidxs(i)

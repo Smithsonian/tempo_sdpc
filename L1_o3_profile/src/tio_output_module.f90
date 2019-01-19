@@ -88,6 +88,7 @@ contains
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, "l2_tio_create: allocation error", &
            errstat)
+      return
     endif
     bin_ms=size(step_indices)/num_steps
     do n=1,num_steps
@@ -1765,7 +1766,7 @@ contains
     ! allocate ncorrl_1d if we need it
     if (ozwrtcovar) then
       allocate(ncorrl_1d(num_elms), stat=errstat)
-      if (errstat < 0) then
+      if (errstat /= 0) then
         call tell_error (tell_malloc_error, &
              'l2_tio_write_data: allocate ncorrl_1d failed', errstat)
         return
@@ -1984,6 +1985,7 @@ contains
         call tell_error (tell_io_write_error, &
                        "l2_tio_write_data: nn not equal to nlayer", &
                        errstat)
+        return
       endif
       ii = 0
       do irow=1,nn-1
@@ -1998,6 +2000,7 @@ contains
         call tell_error (tell_io_write_error, &
                        "l2_tio_write_data: upper off-diagonal elements size mismatch", &
                        errstat)
+        return
       endif
       call tiof_put1d_i2 (obj, o3p_var_o3_noise_matrix, &
          [iline, ipix, 0], [1,1,num_elms], &

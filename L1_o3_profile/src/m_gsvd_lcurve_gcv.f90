@@ -594,6 +594,7 @@ contains
     gmin = LOG10 (gamma(1))
     DeltaLam = (gmax - gmin) / (maxlam - 1.0)
 
+    MinIn = 1
     DO i = 1, maxlam
       RegPar (i) = 10.0 ** ( gmin + DeltaLam * i)
       curv(i) = fcurv(RegPar(i))

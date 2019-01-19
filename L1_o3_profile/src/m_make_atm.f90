@@ -147,15 +147,19 @@ contains
         CALL GET_fnl_temp(told(1:nlfnl))
         CALL get_ecmwfavgt(told(nlfnl+1:nlecm))
         CALL get_fnl_sfct(sfct)
-    ELSE IF (which_atm == 2) THEN 
+    ELSE IF (which_atm == 2) THEN
         g5_ps(0:ngl) = geos5%ps(0:ngl, currpix, currline)
         g5_ts(1:ngl) = geos5%ts(1:ngl, currpix, currline)
         lidx = MINVAL(MINLOC ( g5_ps (1:ngl) , MASK =(g5_ps(1:ngl) >=  0.71)))
         nlecm = lidx
+        nold = nlecm + 6
         pold(0:nlecm) = g5_ps(0:nlecm)
         told (1:nlecm) = g5_ts(1:nlecm)
         pold (nlecm+1 : nlecm + 6) = (/0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
         pold (nlecm+1 : nlecm + 6) = (/269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
+    else
+      write (*,*)'**** Error: make_atm: unsupported which_atm=',which_atm
+      stop 1
     ENDIF
    
     IF (ALL(told(1:nlecm) == 0.0)) THEN 
@@ -956,9 +960,14 @@ contains
            fzs(0:nfsfc-1), isinc, gprofs(1:nfsfc-1, iz), errstat)
     ENDDO
 
+    so2idx = -1
     DO i = 1, ngas
       IF (gasidxs(i) == so2v_idx) so2idx = i
     ENDDO
+    if (so2idx < 0) then
+      write (*,*)'**** Error: adjust_so2vplumez: so2idx initialization failed'
+      stop 1
+    endif
 
     mgasprof(so2idx, 1:nfsfc-1) = gprofs(1:nfsfc-1, 0)  * du2mol
     so2vprofn1p1(1:nfsfc, 1)    = gprofs(1:nfsfc-1, -1) * du2mol

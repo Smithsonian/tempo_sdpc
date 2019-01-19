@@ -1268,6 +1268,8 @@ contains
     ! ------------------------------
     CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_read_radiance_lines'
 
+    ! JCH: try to catch nwl being used without being properly initialized
+    nwl = 2147483647
 
     nx = nfxtrack / nxbin
     ! allocation

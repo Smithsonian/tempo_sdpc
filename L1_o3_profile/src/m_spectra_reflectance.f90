@@ -76,6 +76,9 @@ contains
 
   errstat = pge_errstat_ok
 
+  tmpwins(:,:) = 0
+  fidx = 1
+
   ! Obtain the uncondensed array of variables
   fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar(1:nf)
 
@@ -490,12 +493,13 @@ contains
 
   ! Second add-on contributions: add to the Sun-normalized radiance 
   ! (e.g. commomd mode, ring filling in)
+  nord = 0
   IF ( np1 > 0 .or. np2 > 0) THEN
      DO k = 1, npsl
         corr = 0.0 ; del  = 0.0
         IF (k == 1 ) THEN 
              nord = np1 ; tmpind=p1ind ; tmpfind=p1find ; tmpwins = p1wins
-        ELSE IF (k ==2 ) THEN 
+        ELSE IF (k == 2 ) THEN
              nord = np2 ; tmpind=p2ind ; tmpfind=p2find ; tmpwins = p2wins
         ENDIF
         IF (do_subfit) THEN ! I don't know we need do_subfit ?
