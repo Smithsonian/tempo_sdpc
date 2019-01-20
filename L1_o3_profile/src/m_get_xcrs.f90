@@ -374,7 +374,8 @@ CONTAINS
           problems = .TRUE.; RETURN
     ENDIF
     IF (do_bandavg) THEN
-      print * , 'not implemented'; STOP 1
+      print * , 'not implemented'
+      STOP 1
     ENDIF
   ENDDO
 
@@ -1778,7 +1779,8 @@ CONTAINS
     IF (file_exist) THEN
         OPEN(UNIT = ozabs_unit, file=TRIM(ADJUSTL(absfname)), status='old')
     ELSE
-        write(*,*) 'read_txcrs: No file of '//TRIM(ADJUSTL(absfname)); STOP
+        write(*,*) 'read_txcrs: No file of '//TRIM(ADJUSTL(absfname))
+        STOP 1
     ENDIF
 
     DO WHILE (tmpchar /= 'START OF TABLE') 
@@ -1948,7 +1950,8 @@ CONTAINS
 
     INQUIRE (FILE= TRIM(ADJUSTL(filename)), EXIST= file_exist)
     IF (.not. file_exist) THEN
-        write(*,*) "No exist:"//filename ; stop 1
+        write(*,*) "No exist:"//filename
+        stop 1
     ENDIF
 
     ! ================================================================

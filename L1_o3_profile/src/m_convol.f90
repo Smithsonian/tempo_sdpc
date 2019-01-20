@@ -309,7 +309,7 @@ contains
          nwvl, wvl, refsol, errstat)
     IF (errstat /=0 ) THEN 
        WRITE(*,*) 'get_refspec: interpolation error'
-       STOP
+       STOP 1
     ENDIF     
     RETURN  
   END SUBROUTINE get_refspec

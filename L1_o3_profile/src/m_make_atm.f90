@@ -164,7 +164,8 @@ contains
    
     IF (ALL(told(1:nlecm) == 0.0)) THEN 
         told(0:nold) = told0(0:nold)
-        WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm; STOP
+        WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm
+        STOP 1
     ENDIF
     pold(nold) = p0 * 2.0D0 ** (-13.5D0)  ! TOP
 
@@ -242,11 +243,13 @@ contains
       ELSE
         OPEN (UNIT=profunit, FILE=TRIM(ADJUSTL(presgrid_fname)), status='old', IOSTAT=errstat)
         IF ( errstat /= pge_errstat_ok ) THEN
-          WRITE(www_lun, *) modulename, ': Error in opening pressure grid file!!!'; STOP
+          WRITE(www_lun, *) modulename, ': Error in opening pressure grid file!!!'
+          STOP 1
         ENDIF
         READ (profunit, *) ntemp, is_pgrid
         IF (ntemp /= numk + 1) THEN
-          WRITE(www_lun, *) modulename, ': The number of layers is inconsistent!!!'; STOP
+          WRITE(www_lun, *) modulename, ': The number of layers is inconsistent!!!'
+          STOP 1
         ENDIF
         IF (is_pgrid) THEN 
           READ (profunit, *) umkp0(0:numk) 
@@ -351,7 +354,8 @@ contains
 
     ! xliu (Dec 06 2006): Add one more layer for the top layer  
     IF (numk * ndiv + 3 > mflay) THEN
-      STOP 'MAKE_ATM: need to increas mflay!!!'
+      write (*,*) 'MAKE_ATM: need to increas mflay!!!'
+      STOP 1
     ENDIF
 
     fndiv = REAL(ndiv, KIND=dp)

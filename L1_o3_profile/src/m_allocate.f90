@@ -12,7 +12,7 @@ MODULE m_allocate
 
   PUBLIC allocate_spec, allocate_geo, dealloc
   public deallocate_irrad, deallocate_rad, deallocate_ring, deallocate_refl
-  public deallocate_cali
+  public deallocate_cali, deallocate_geo
   PRIVATE
 
 CONTAINS
@@ -97,6 +97,36 @@ CONTAINS
 
    return
  end subroutine deallocate_cali
+
+ subroutine deallocate_geo (geo)
+   implicit none
+   type (geo_group), intent(inout) :: geo
+
+   IF (ALLOCATED (geo%time)) DEALLOCATE (geo%time)
+   IF (ALLOCATED (geo%lon)) DEALLOCATE (geo%lon)
+   IF (ALLOCATED (geo%lat)) DEALLOCATE (geo%lat)
+   IF (ALLOCATED (geo%sza)) DEALLOCATE (geo%sza)
+   IF (ALLOCATED (geo%vza)) DEALLOCATE (geo%vza)
+   IF (ALLOCATED (geo%aza)) DEALLOCATE (geo%aza)
+   IF (ALLOCATED (geo%sca)) DEALLOCATE (geo%sca)
+   IF (ALLOCATED (geo%clon)) DEALLOCATE (geo%clon)
+   IF (ALLOCATED (geo%clat)) DEALLOCATE (geo%clat)
+   IF (ALLOCATED (geo%elon)) DEALLOCATE (geo%elon)
+   IF (ALLOCATED (geo%elat)) DEALLOCATE (geo%elat)
+   IF (ALLOCATED (geo%cfr)) DEALLOCATE (geo%cfr)
+   IF (ALLOCATED (geo%ctp)) DEALLOCATE (geo%ctp)
+   IF (ALLOCATED (geo%ai)) DEALLOCATE (geo%ai)
+   IF (ALLOCATED (geo%cloud_qflg)) DEALLOCATE (geo%cloud_qflg)
+   IF (ALLOCATED (geo%gflg)) DEALLOCATE (geo%gflg)
+   IF (ALLOCATED (geo%xflg)) DEALLOCATE (geo%xflg)
+   IF (ALLOCATED (geo%height)) DEALLOCATE (geo%height)
+   IF (ALLOCATED (geo%land_water_flg)) DEALLOCATE (geo%land_water_flg)
+   IF (ALLOCATED (geo%snow_ice_flg)) DEALLOCATE (geo%snow_ice_flg)
+   IF (ALLOCATED (geo%glint_flg)) DEALLOCATE (geo%glint_flg)
+
+   return
+ end subroutine deallocate_geo
+
 
   SUBROUTINE allocate_spec (nwin, nx, ny, irrad,rad,  ring, refl, cali, status)
   IMPLICIT NONE
@@ -306,26 +336,7 @@ CONTAINS
    TYPE(geo_group), INTENT(INOUT) :: geo
    INTEGER, INTENT(OUT) :: status   
 
-   IF (ALLOCATED (geo%time)) DEALLOCATE (geo%time)
-   IF (ALLOCATED (geo%lon)) DEALLOCATE (geo%lon)
-   IF (ALLOCATED (geo%lat)) DEALLOCATE (geo%lat)
-   IF (ALLOCATED (geo%sza)) DEALLOCATE (geo%sza)
-   IF (ALLOCATED (geo%vza)) DEALLOCATE (geo%vza)
-   IF (ALLOCATED (geo%aza)) DEALLOCATE (geo%aza)
-   IF (ALLOCATED (geo%sca)) DEALLOCATE (geo%sca)
-   IF (ALLOCATED (geo%clon)) DEALLOCATE (geo%clon)
-   IF (ALLOCATED (geo%clat)) DEALLOCATE (geo%clat)
-   IF (ALLOCATED (geo%elon)) DEALLOCATE (geo%elon)
-   IF (ALLOCATED (geo%elat)) DEALLOCATE (geo%elat)
-   IF (ALLOCATED (geo%height)) DEALLOCATE (geo%height)
-   IF (ALLOCATED (geo%cfr)) DEALLOCATE (geo%cfr)
-   IF (ALLOCATED (geo%ctp)) DEALLOCATE (geo%ctp)
-   IF (ALLOCATED (geo%cloud_qflg)) DEALLOCATE (geo%cloud_qflg)
-   IF (ALLOCATED (geo%xflg)) DEALLOCATE (geo%xflg)
-   IF (ALLOCATED (geo%gflg)) DEALLOCATE (geo%gflg)
-   IF (ALLOCATED (geo%land_water_flg)) DEALLOCATE (geo%land_water_flg)
-   IF (ALLOCATED (geo%snow_ice_flg)) DEALLOCATE (geo%snow_ice_flg)
-   IF (ALLOCATED (geo%glint_flg)) DEALLOCATE (geo%glint_flg)
+   call deallocate_geo (geo)
 
    ALLOCATE (geo%time(0:ny-1), stat=status); IF (status .ne. 0 ) GOTO 111
    ALLOCATE (geo%lon(nx,0:ny-1),geo%lat(nx,0:ny-1),geo%sza(nx,0:ny-1), &

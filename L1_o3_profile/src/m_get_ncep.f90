@@ -197,7 +197,8 @@ SUBROUTINE get_ncepreso_surfalt(z0)
       ! Determine if file exists or not
       INQUIRE (FILE= ncep_fname, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
-         STOP 'No Terrain Elevation datafile found!!!'
+        write(*,*)'No Terrain Elevation datafile found!!!'
+        STOP 1
       ENDIF
       
       OPEN (UNIT = atmos_unit, file = ncep_fname, status = 'unknown')

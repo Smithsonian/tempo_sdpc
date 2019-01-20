@@ -49,7 +49,7 @@ module tmpo_read_l1b_data
     ENDIF
   ELSE
     WRITE(*,'(A)') 'Check nswath !!!'
-    STOP
+    stop 1
   ENDIF 
 
   ! Set up dates from filename
@@ -273,7 +273,7 @@ module tmpo_read_l1b_data
    ! ----------------------------------------------------
    IF (nwavel > nwavel_max) THEN
      WRITE(*, '(A)') "Need to increase nwavel_max!!!"
-     stop
+     stop 1
      !pge_error_status = pge_errstat_error
      RETURN
    ENDIF
@@ -512,11 +512,11 @@ module tmpo_read_l1b_data
                nswath, redslw(inschs(1:nswath)), retlbnd(inschs(1:nswath)),retubnd(inschs(1:nswath)))
        ELSE
          WRITE(*, *) 'This type of slit convolution is not implemented!!!'
-         STOP
+         stop 1
             !pge_error_status = pge_errstat_error
        ENDIF  
        WRITE(*, *) 'This type is  not implemented!!!'
-       STOP
+       stop 1
      ENDIF
      !===============================================================================
      ! Get data for surface albedo & cloud fraction at 370.2 nm +/- 15 pixels
@@ -746,9 +746,10 @@ module tmpo_read_l1b_data
 
 
     !deallocate (ccd_spec,ccd_prec, ccd_wavl, ccd_qflg)
-    
-    IF (reduce_resolution) THEN 
-           STOP
+
+    IF (reduce_resolution) THEN
+      message=ADJUSTL(TRIM(modulename))//": reduce_resolution = .true."
+      goto 123
     ENDIF
 
     IF (nwavel > nwavel_max) THEN

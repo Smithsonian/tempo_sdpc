@@ -352,7 +352,8 @@ CONTAINS
           CALL L2_O3P_write_data (currpix, first_pix, last_pix, currloop, currline, ntimes_loop,&
                       exval, fitcol, dfitcol, message, problems)
           IF (problems) THEN
-           print *, message; stop
+            print *, message
+            stop 1
           ENDIF
           IF (exval >= 0 .and. fitcol(1) > 0.0 .and.dfitcol(1, 1) >= 0.0 ) THEN
             ! -----------------------------------------------------------------
@@ -371,7 +372,7 @@ CONTAINS
         ENDDO YfitLine
       ENDDO XtrackPix
     ENDDO OMIBlock ! from first_line to last_line
-    
+
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Final output
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -412,6 +413,8 @@ CONTAINS
     call deallocate_ring (tmpo_ring)
     call deallocate_refl (tmpo_refl)
     call deallocate_cali (tmpo_cali)
+    call deallocate_geo (tmpo_geo1)
+    call deallocate_geo (tmpo_geo2)
     CALL dealloc (errstat)
     RETURN
     !------------------------------------------------------------

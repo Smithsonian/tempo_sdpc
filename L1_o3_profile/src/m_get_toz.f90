@@ -133,7 +133,8 @@ MODULE m_get_toz
      INQUIRE (FILE = TRIM(ADJUSTL(l3_toc_filename)), EXIST = file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*,*) 'please prepare OMI TO3 L3 climatological data'
-        WRITE(*, *) 'GET_OMTOZ: TOC file does not exist!!!', l3_toc_filename ; STOP
+        WRITE(*, *) 'GET_OMTOZ: TOC file does not exist!!!', l3_toc_filename
+        STOP 1
      ENDIF
      start(:) = 0 ; stride(:) = 1
      fid = HE5_GDopen(TRIM(ADJUSTL(l3_toc_filename)), he5f_acc_rdonly)
@@ -288,7 +289,8 @@ MODULE m_get_toz
      ! Determine if file exists or not
      INQUIRE (FILE= omto3fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
-        WRITE(*, *) 'No Zonal Mean OMTO3 found!!!' ; stop
+        WRITE(*, *) 'No Zonal Mean OMTO3 found!!!'
+        stop 1
      ENDIF
      OPEN (UNIT = atmos_unit, file = omto3fname, status = 'unknown')
      DO i = 1, ntlat
@@ -317,7 +319,7 @@ MODULE m_get_toz
      ! Accounting for different terrain height using approximate pressure conversion
 !     IF (ps(0) < ps(1)) THEN 
 !         WRITE(*, *) 'check the order of pressure , should be down to top here'
-!         stop
+!         stop 1
 !     ENDIF
 !     do3 = 0.0
 !     IF (mnalt > 0.0 ) THEN 

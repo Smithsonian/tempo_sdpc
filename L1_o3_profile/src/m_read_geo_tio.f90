@@ -417,7 +417,7 @@ CONTAINS
            tmpx(0:nxtrack), tmpsza(0:nxtrack), nxtrack+1, errstat)
       IF (errstat /= 0) THEN 
          print * , 'get_corners: errors in interpol'
-         STOP
+         STOP 1
       ENDIF
       call interpol(tmpxmid(1:nxtrack), saza(1:nxtrack, i), nxtrack, &
            tmpx(0:nxtrack), tmpsaza(0:nxtrack), nxtrack+1, errstat)

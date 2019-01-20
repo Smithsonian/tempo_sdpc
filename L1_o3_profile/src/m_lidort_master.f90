@@ -609,7 +609,8 @@ module m_lidort_master
   polerr = 1.0
   IF ( polcorr == 2) THEN 
      IF (nwfc > 0) THEN
-        STOP 'Polarization correction + variable fc: not implemented!!!'
+       write(*,*)'Polarization correction + variable fc: not implemented!!!'
+       STOP 1
      ENDIF
      tmpalbs = albs 
      ! clear-sky
@@ -1286,7 +1287,7 @@ module m_lidort_master
         WRITE(78, '(F10.4, 500D16.7)') waves(i), rad(i, 1), albwf(i, 1), fozwf(i, 1:nz1, 1), & !, faerwf(i, 1:nz1, 1), &
              allcrs(i, 1, 1:nz1), allcrs(i, 3, nz1)*refspec_norm(9)
      ENDDO
-     STOP
+     STOP 1
   ENDIF
      !IF (wrtozcrs) THEN
      !   WRITE(91, *) nw

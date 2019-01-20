@@ -1082,7 +1082,7 @@ contains
         !DO j = 1, nring
         !  print * , j, subring(1, j), subring(1, j)-subring(1, j-1)
         !ENDDO
-        !STOP
+        !STOP 1
       ELSE
         ! Need to convole the saved solar spectra with additional slit width
         nring = omi_ring%nsol(ix)
@@ -1174,7 +1174,7 @@ contains
       !   WRITE(90, '(F10.4, 2D16.7)') irrad_wavl(i, ix), &
       !        irrad_spec(i, ix) * omi_irrad%norm(ix) , irrad_prec(i, ix) * omi_irrad%norm(ix)
       !ENDDO
-      !STOP
+      !STOP 1
 
       ! Back up solar irradiance from OMTO3
       ! IF (orbnumsol == 99999) irrad_prec(1:nomi, ix)  = 1.0
@@ -1633,7 +1633,7 @@ contains
             WRITE(*, '(A,5I5,F9.2)') 'Too fewer radiance points: ', ix, iloop, iw, &
                  omi_rad%npix(iw, ix, iloop), omi_irrad%npix(iw, ix)!, omi_szenith(ix, iloop)
                  omi_rad%pix_errstat(ix, iloop) = pge_errstat_error
-            STOP 
+            STOP 1
             EXIT
           ENDIF
 

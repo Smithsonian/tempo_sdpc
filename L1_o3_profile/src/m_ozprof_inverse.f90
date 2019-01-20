@@ -716,7 +716,8 @@ contains
       OPEN(atmos_unit, FILE=TRIM(ADJUSTL(caloz_fname)), STATUS='old')
       READ(atmos_unit, *) nz, oztyp
       IF (nz > mflay) THEN
-        WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'; STOP
+        WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'
+        STOP 1
       ENDIF
       READ (atmos_unit, *)
       IF (oztyp <= 2) THEN

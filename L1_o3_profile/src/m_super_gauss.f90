@@ -65,7 +65,7 @@ SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
   ! --------------------------------------
   IF ( hw1e == 0.0 .or. power ==0.0) THEN 
      WRITE(*,*) 'super gaussian error'
-     STOP
+     STOP 1
   ENDIF
   
   delwvl = wvlarr(2) - wvlarr(1)
@@ -147,7 +147,10 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
      ! -----------------------------------------------
      ! No Gaussian convolution if Halfwidth @ 1/e is 0
      ! -----------------------------------------------
-     IF ( hw1e == 0.0 .or. power == 0.0 ) STOP
+     IF ( hw1e == 0.0 .or. power == 0.0 ) then
+       write(*,*)' hw1e=0 or power=0 in super_gauss_multi'
+       STOP 1
+     endif
 
      ! --------------------------------------------------------------
      ! Find the number of spectral points that fall within a Gaussian
@@ -329,7 +332,7 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
         WRITE(*, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
              slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
      ENDIF
      
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -344,14 +347,16 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
              linter-finter+1, wvlarr(finter:linter), lochwe(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+           STOP 1
         END IF
         
         CALL interpolation ( &
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
              linter-finter+1, wvlarr(finter:linter), locspk(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+           STOP 1
         END IF
 
         IF (finter > fidx) THEN
@@ -521,7 +526,7 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
         WRITE(*, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
                     slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
      ENDIF
 
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -536,14 +541,16 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
              linter-finter+1, cwave(finter:linter), lochwe(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+           STOP 1
         END IF
 
         CALL interpolation ( &
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
              linter-finter+1, cwave(finter:linter), locspk(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+           STOP 1
         END IF
         
         IF (finter > fidxc) THEN

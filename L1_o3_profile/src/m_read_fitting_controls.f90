@@ -635,7 +635,7 @@ contains
       END IF
       IF (lotmp /= uptmp ) THEN
          WRITE(*,*) 'Need to re-setup radiance calibration parameters'
-         STOP
+         STOP 1
       ENDIF
       IF ( idxchar == eoi3str ) EXIT radpars
       CALL string2index ( calfit_strings, max_calfit_idx, idxchar, sidx )
@@ -1317,7 +1317,7 @@ contains
     ELSE IF (l2_hdf_flag == 1) THEN 
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.h5'
     ELSE
-          STOP 
+          STOP 1
     ENDIF
     ! -----------------------------------------------
     ! Close fitting control file, report SUCCESS read

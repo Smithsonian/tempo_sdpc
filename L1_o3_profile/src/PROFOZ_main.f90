@@ -74,7 +74,7 @@ PROGRAM PROFOZ_main
   END SELECT
   IF (pge_error_status /= pge_errstat_ok) THEN 
     WRITE(*,'(A)') message
-    STOP
+    STOP 1
   ENDIF
 
   WRITE(*,'(A)') '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'

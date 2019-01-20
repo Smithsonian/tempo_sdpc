@@ -107,6 +107,7 @@ SUBROUTINE get_fnl_spres (spres)
 
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
      READ (atmos_unit, '(360I4)') ((glbspres(i, j), i=1, nlon), j=1, nlat)
+     CLOSE (atmos_unit)
      first = .FALSE.
   ENDIF
 
@@ -265,7 +266,8 @@ SUBROUTINE get_fnl_surfalt(z0)
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
-        STOP 'No Terrain Elevation datafile found!!!'
+       write(*,*) 'No Terrain Elevation datafile found!!!'
+       STOP 1
      ENDIF
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
      DO i = 1, 4

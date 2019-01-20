@@ -145,7 +145,7 @@ CONTAINS
 
     IF (use_solcomp) THEN
       print * ,'not implemented'
-      STOP
+      STOP 1
       call replace_solar_irradiance(calunit, first_pix, last_pix, &
            pge_error_status)
       if ( pge_error_status >= pge_errstat_error ) return

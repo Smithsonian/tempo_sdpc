@@ -312,7 +312,10 @@ contains
       ENDDO
 
       h = xa (khi) - xa (klo)
-      IF (h == 0.0) STOP 'Bad xa input in: splint!!!'
+      IF (h == 0.0) then
+        write(*,*)'Bad xa input in: splint!!!'
+        STOP 1
+      endif
       a = (xa (khi) - x(ii)) / h
       b = (x(ii) - xa (klo)) / h
 
@@ -361,7 +364,10 @@ contains
       ENDDO
 
       h = xa (khi) - xa (klo)
-      IF (h == 0.0) STOP 'Bad xa input in: splint!!!'
+      IF (h == 0.0) then
+        write (*,*) 'Bad xa input in: splint!!!'
+        stop 1
+      endif
       a = (xa (khi) - x(ii)) / h
       b = (x(ii) - xa (klo)) / h
 

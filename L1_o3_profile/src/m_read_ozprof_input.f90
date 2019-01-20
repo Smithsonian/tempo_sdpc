@@ -1124,10 +1124,12 @@ contains
        ENDIF
     ELSE IF (which_slit == 2) THEN  ! triangle
          npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
-       print * , 'not yet implemented ' ; stop
+       print * , 'not yet implemented '
+       stop 1
     ELSE IF (which_slit == 3) THEN  ! viot
        !npsl = 4 ; psl_fpos(1:npsl) = [vgl_idx, vgr_idx, hwl_idx,hwr_idx ]
-       print * , 'not yet implemented ' ; stop
+       print * , 'not yet implemented '
+       stop 1
     ELSE IF (which_slit == 4) THEN  ! super gaussian
          npsl = 2 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx]
       IF (np2 == 0) THEN

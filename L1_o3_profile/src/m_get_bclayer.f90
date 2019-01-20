@@ -84,7 +84,8 @@ SUBROUTINE get_finereso_surfalt(lon, lat, z0)
       ! Determine if file exists or not
       INQUIRE (FILE= surfalt_fname, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
-         STOP 'No Terrain Elevation datafile found!!!'
+         write(*,*)'No Terrain Elevation datafile found!!!'
+         STOP 1
       ENDIF
 
       OPEN (UNIT = atmos_unit, file = surfalt_fname, status = 'unknown')

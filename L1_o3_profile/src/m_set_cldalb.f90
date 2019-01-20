@@ -202,7 +202,8 @@ contains
     ELSE IF (instrument_idx == tempo_idx) THEN 
       
     ELSE
-      STOP
+      write(*,*)'*** mysterious failure in set_cldalb'
+      STOP 1
     ENDIF
     do_adjcfrac = .TRUE.
     IF (nrefl < 1) do_adjcfrac = .FALSE.

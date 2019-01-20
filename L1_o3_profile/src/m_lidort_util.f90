@@ -688,7 +688,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
         DO i = 1, nz
            sidx = sidx + 1;  o4crs1(1:now, i)  = outarr(1:now, sidx) / oi0(1:now)
         ENDDO 
-        !print * , o4crs1(now-10:now, 1),'now' ; stop
+        !print * , o4crs1(now-10:now, 1),'now' ; stop 1
      ENDIF
      IF (use_o2dptcrs) THEN
         DO i = 1, nz
@@ -730,7 +730,8 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
      rad(1:nrad) = otmp(1:nrad) / oi0(1:nrad)
 
      IF (do_pslwf) THEN
-        print * , 'not implemented '; stop
+        print * , 'not implemented '
+        stop 1
      ENDIF
 
      DO i = 1, nz
@@ -1294,7 +1295,7 @@ SUBROUTINE radwf_interpol(nw, nz, nctp, ncbp, nsprs, faerlvl, do_radcals, &
   !        fozwf(i, 1:nz)
   !ENDDO  
   !print *, nz, nl, nw
-  !!STOP
+  !!STOP 1
 
   RETURN
 
