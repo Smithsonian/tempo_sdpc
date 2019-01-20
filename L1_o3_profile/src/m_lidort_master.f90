@@ -1345,21 +1345,21 @@ module m_lidort_master
     INCLUDE 'VLIDORT_BOOKKEEP.VARS'
 
   ! Input variables
-  INTEGER, INTENT(IN)                     :: ngas, nmoms
-  INTEGER, INTENT(IN), DIMENSION(ngas)    :: gasin
-  LOGICAL, INTENT(IN), DIMENSION(nlayers) :: cldmsk, aermsk, varyprof
-  LOGICAL, INTENT(IN)                     :: useasy
+  INTEGER, INTENT(IN) :: ngas, nmoms
+  LOGICAL, INTENT(IN) :: useasy
+  INTEGER, INTENT(IN), DIMENSION(:) :: gasin ! (ngas)
+  LOGICAL, INTENT(IN), DIMENSION(:) :: cldmsk, aermsk, varyprof !(nlayers)
 
   REAL (KIND=dp), INTENT(IN)              :: raycof, depol, lamda
-  REAL (KIND=dp), DIMENSION(0:nlayers), INTENT(IN) :: zsgrid
-  REAL (KIND=dp), DIMENSION(nlayers), INTENT(IN)   :: airgrid,  &
-       aersca, aerext, aerasy, cldsca, cldext, cldasy
-  REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: aermoms
-  REAL (KIND=dp), DIMENSION(0:nmoms, maxgksec, nlayers), INTENT(IN) :: cldmoms
-  REAL (KIND=dp), DIMENSION(ngas, nlayers), INTENT(IN)  :: abscrs, gascol, eta
+  REAL (KIND=dp), DIMENSION(0:), INTENT(IN) :: zsgrid  ! (0:nlayers)
+  REAL (KIND=dp), DIMENSION(:), INTENT(IN)   :: airgrid,  &
+       aersca, aerext, aerasy, cldsca, cldext, cldasy ! (nlayers)
+  REAL (KIND=dp), DIMENSION(0:,:,:), INTENT(IN) :: aermoms ! (0:nmoms,maxgksec,nlayers)
+  REAL (KIND=dp), DIMENSION(0:,:,:), INTENT(IN) :: cldmoms
+  REAL (KIND=dp), DIMENSION(:,:), INTENT(IN)  :: abscrs, gascol, eta ! (ngas, nlayers)
 
   ! Optional output
-  REAL (KIND=dp), DIMENSION(nlayers), INTENT(OUT) :: deltau, delsca, delo3abs, delray
+  REAL (KIND=dp), DIMENSION(:), INTENT(OUT) :: deltau, delsca, delo3abs, delray ! (nlayers)
   
   
   ! Output variables

@@ -60,8 +60,8 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                               INTENT (IN) :: n_rad_wvl
-    REAL (KIND=dp), DIMENSION (n_rad_wvl), INTENT (IN) :: curr_rad_wvl
+    INTEGER,                       INTENT (IN) :: n_rad_wvl
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: curr_rad_wvl ! (n_rad_wvl)
 
     ! ---------------
     ! Output variable
@@ -734,7 +734,7 @@ contains
     ! =================================
     INTEGER, INTENT(IN)                             :: nspec, n1, n2, nsol
     REAL (KIND=dp), DIMENSION(nsol),     INTENT(IN) :: solwav, solspec
-    REAL (KIND=dp), DIMENSION(nspec), INTENT(INOUT) :: wav, spec
+    REAL (KIND=dp), DIMENSION(:),     INTENT(INOUT) :: wav, spec ! (nspec)
     INTEGER,                            INTENT(OUT) :: errstat
 
     ! ===============

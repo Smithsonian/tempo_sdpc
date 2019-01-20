@@ -112,8 +112,8 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
   ! ===============
   ! Input variables
   ! ===============
-  INTEGER,                             INTENT (IN) :: npoints
-  REAL (KIND=dp), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
+  INTEGER,                       INTENT (IN) :: npoints
+  REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: wvlarr, specarr ! (npoints)
 
   ! ================
   ! Output variables

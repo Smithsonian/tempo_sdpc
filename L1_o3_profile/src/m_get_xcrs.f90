@@ -86,7 +86,7 @@ CONTAINS
   !------------------------------------------------- 
   ! Output variables
   !-------------------------------------------------
-  REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs, dads, dadt
+  REAL (KIND=dp), DIMENSION(:,:), INTENT(OUT) :: abscrs, dads, dadt ! (nlamda,nlayers)
   LOGICAL, INTENT(OUT) :: problems
   !-------------------------------------------------
   ! Local variables
@@ -547,7 +547,7 @@ CONTAINS
   !------------------------------------------------- 
   ! Output variables
   !-------------------------------------------------
-  REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(OUT) :: abscrs ! (nlamda,nlayers)
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
@@ -663,7 +663,7 @@ CONTAINS
   !------------------------------------------------- 
   ! Output variables
   !-------------------------------------------------
-  REAL (KIND=dp), DIMENSION(nlamda, nlayers), INTENT(OUT) :: abscrs
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(OUT) :: abscrs ! (nlamda, nlayers)
   !-------------------------------------------------
   ! Local variables
   !-------------------------------------------------
@@ -929,7 +929,7 @@ CONTAINS
   INTEGER, INTENT(IN)                              :: nz, ngas
   REAL (KIND=dp), INTENT(IN),  DIMENSION(nz)       :: ts
   REAL (KIND=dp), INTENT(OUT)                      :: raycof, depol
-  REAL (KIND=dp), INTENT(OUT), DIMENSION(ngas, nz) :: abscrs
+  REAL (KIND=dp), INTENT(OUT), DIMENSION(:,:)      :: abscrs   ! (ngas, nz)
   LOGICAL, INTENT(OUT)                             :: problems
   
   ! Local variable
@@ -1282,9 +1282,9 @@ CONTAINS
   REAL (KIND=dp), DIMENSION(nw), INTENT (IN )           :: waves
   REAL (KIND=dp), DIMENSION(nz), INTENT (IN )           :: ts, ps, rhos
   REAL (KIND=dp), DIMENSION(numwin, nos), INTENT(IN)    :: o3shi
-  REAL (KIND=dp), DIMENSION(nfgas, nz), INTENT(IN)      :: allcol
+  REAL (KIND=dp), DIMENSION(:,:), INTENT(IN)            :: allcol ! (nfgas, nz)
   REAL (KIND=dp), DIMENSION(nw), INTENT (OUT)           :: raycof, depol
-  REAL (KIND=dp), DIMENSION(nw, nfgas, nz), INTENT(OUT) :: allcrs
+  REAL (KIND=dp), DIMENSION(:,:,:), INTENT(OUT)         :: allcrs ! (nw, nfgas, nz)
 
   !-----------------------------
   ! Local variables
@@ -1827,11 +1827,11 @@ CONTAINS
      !INPUT VARIABLES
      LOGICAL, INTENT(IN) :: tdepend, do_shi, do_tmpwf
      INTEGER, INTENT(IN) :: nt, ncrs, nz
-     REAL(KIND=dp), INTENT(IN)   :: ts(nt), tz(nz)
-     REAL(KIND=dp), INTENT(IN)  ::  crs(nt, ncrs), crsshi(nt, ncrs)
+     REAL(KIND=dp), INTENT(IN), dimension(:)   :: ts, tz      ! ts(nt), tz(nz)
+     REAL(KIND=dp), INTENT(IN), dimension(:,:) :: crs, crsshi ! crs(nt,ncrs), crsshi(nt,ncrs)
      !OUTPUT VARIABLES
-     REAL (KIND=dp), DIMENSION(ncrs, nz) :: crsz
-     REAL (KIND=dp), DIMENSION(ncrs, nz), OPTIONAL ::  dadsz, dadtz
+     REAL (KIND=dp), DIMENSION(:, :) :: crsz                   ! crsz(ncrs,nz)
+     REAL (KIND=dp), DIMENSION(:, :), OPTIONAL :: dadsz, dadtz ! dadtz(ncrs,nz), dadtz(ncrs,nz)
      LOGICAL :: problem
      !local variables
      INTEGER :: i , errstat
@@ -2102,13 +2102,13 @@ CONTAINS
   ! input variables
   !------------------------------
    INTEGER, INTENT(IN) :: gas_idx,nz, nw_lut, nt_lut, np_lut
-   REAL (KIND=dp), DIMENSION (nt_lut), INTENT(IN) :: t_lut
-   REAL (KIND=dp), DIMENSION (np_lut), INTENT(IN) :: p_lut
-   REAL (KIND=dp), DIMENSION (nz), INTENT(IN) :: press, temp
+   REAL (KIND=dp), DIMENSION (:), INTENT(IN) :: t_lut ! (nt_lut)
+   REAL (KIND=dp), DIMENSION (:), INTENT(IN) :: p_lut ! (np_lut)
+   REAL (KIND=dp), DIMENSION (:), INTENT(IN) :: press, temp ! (nz)
   !------------------------------
   ! output variables
   !------------------------------
-   REAL (KIND=dp), DIMENSION (nw_lut, nz), INTENT(OUT) :: crsz
+   REAL (KIND=dp), DIMENSION (:,:), INTENT(OUT) :: crsz ! (nw_lut, nz)
    LOGICAL, INTENT(OUT) :: fail
   !-----------------------------
   ! local variables

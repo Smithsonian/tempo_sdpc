@@ -83,11 +83,11 @@ contains
 
     IMPLICIT NONE
 
-    INTEGER,                          INTENT (IN)    :: nref
-    REAL (KIND=dp),                   INTENT (IN)    :: scalex
-    REAL (KIND=dp), DIMENSION (nref), INTENT (IN)    :: refwav
-    REAL (KIND=dp), DIMENSION (nref), INTENT (INOUT) :: refspec
-    INTEGER,                          INTENT (OUT)   :: errstat
+    INTEGER,                       INTENT (IN)    :: nref
+    REAL (KIND=dp),                INTENT (IN)    :: scalex
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN)    :: refwav  ! (nref)
+    REAL (KIND=dp), DIMENSION (:), INTENT (INOUT) :: refspec ! (nref)
+    INTEGER,                       INTENT (OUT)   :: errstat
     ! ---------------
     ! Local variables
     ! ---------------
@@ -298,7 +298,7 @@ contains
     IMPLICIT NONE
     ! INPUT
     INTEGER, INTENT(IN) :: nwvl
-    REAL (kind=dp), DIMENSION(nwvl), INTENT(IN) :: wvl
+    REAL (kind=dp), DIMENSION(:), INTENT(IN) :: wvl  ! nwvl
     ! outpit
     REAL (kind=dp), DIMENSION(nwvl), INTENT(OUT) :: refsol
     ! local

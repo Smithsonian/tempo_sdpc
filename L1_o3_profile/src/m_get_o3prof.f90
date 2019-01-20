@@ -213,7 +213,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
   ! Input/Output variables
   ! ======================
   INTEGER, INTENT(IN) :: nz, ntp
-  REAL (KIND=dp), DIMENSION(0:nz),    INTENT(IN) :: ps, zs
+  REAL (KIND=dp), DIMENSION(0:),      INTENT(IN) :: ps, zs  ! (0:nz)
   REAL (KIND=dp), DIMENSION(nz),      INTENT(IN) :: ozprof
   REAL (KIND=dp), DIMENSION(nz, nz),  INTENT(OUT) :: sao3 ! top-down
 

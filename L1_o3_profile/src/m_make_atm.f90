@@ -495,7 +495,7 @@ contains
     nfsfc = nup2p(nsfc)
     ! ================================ Get T, P, Z, aerosols ============================== 
     ! Interpolate temperature and altitude to FINE grids
-    CALL BSPLINE(pold, told, nold+1, fps(0:np), fts(0:np), np+1, errstat)
+    CALL BSPLINE(pold(0:nold), told(0:nold), nold+1, fps(0:np), fts(0:np), np+1, errstat)
    
     IF (errstat < 0) THEN
       WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat

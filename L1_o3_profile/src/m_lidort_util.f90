@@ -222,17 +222,17 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, faerlvl,  &
   ! =======================
   ! Input/Output variables
   ! =======================
-  INTEGER, INTENT(IN)                              :: nw, nz, nctp, ncbp, faerlvl, nsprs
-  INTEGER, INTENT(OUT)                             :: errstat                                                   
-  LOGICAL, INTENT(IN)                              :: do_albwf, do_faerwf, do_faerswf, &
+  INTEGER, INTENT(IN)    :: nw, nz, nctp, ncbp, faerlvl, nsprs
+  INTEGER, INTENT(OUT)   :: errstat
+  LOGICAL, INTENT(IN)    :: do_albwf, do_faerwf, do_faerswf, &
        do_codwf, do_sprswf, do_cfracwf, do_o3shi, do_tmpwf, do_tracewf, do_pslwf
 
-  REAL (KIND=dp), DIMENSION(nz),     INTENT(IN)    :: ozs
-  REAL (KIND=dp), DIMENSION(nw, nz), INTENT(INOUT) :: fozwf, faerwf, faerswf, fcodwf, &
-       fsprswf, fraywf
-  REAL (KIND=dp), DIMENSION(nw, nz), INTENT(OUT)   :: dads, dadt, abscrs, so2crs, o4crs, o2crs, h2ocrs
-  REAL (KIND=dp), DIMENSION(nw),     INTENT(IN)    :: wave
-  REAL (KIND=dp), DIMENSION(nw),     INTENT(INOUT) :: rad, albwf, cfracwf
+  REAL (KIND=dp), DIMENSION(:),     INTENT(IN)    :: ozs  ! nz
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(INOUT) :: fozwf, faerwf, faerswf, fcodwf, &
+       fsprswf, fraywf ! (nw,nz)
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(OUT)   :: dads, dadt, abscrs, so2crs, o4crs, o2crs, h2ocrs !(nw,nz)
+  REAL (KIND=dp), DIMENSION(:),     INTENT(IN)    :: wave ! (nw)
+  REAL (KIND=dp), DIMENSION(:),     INTENT(INOUT) :: rad, albwf, cfracwf ! (nw)
 
   ! Local variables
   INTEGER, PARAMETER :: which_pslwf = 2
@@ -1321,15 +1321,13 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs, &
   INTEGER, INTENT(IN) :: nw, nz, ncorr, niter, which_polcorr, nctp, ncbp, faerlvl, nsprs
   LOGICAL, INTENT(IN) :: do_fozwf, do_albwf, do_faerwf, do_faerswf, do_codwf, do_sprswf, do_fraywf, do_cfracwf
 
-  INTEGER, DIMENSION (ncorr),          INTENT (IN) :: polidxs
-  REAL (KIND=dp), DIMENSION(nw, nz), INTENT(INOUT) :: fozwf, faerwf,   faerswf, fcodwf, fsprswf, fraywf
-  REAL (KIND=dp), DIMENSION(nw, nz),    INTENT(IN) :: pfozwf, pfaerwf, pfaerswf, pfcodwf, pfsprswf, tabs, o3crs, pfraywf
-  REAL (KIND=dp), DIMENSION(nw),        INTENT(IN) :: wave
-  REAL (KIND=dp), DIMENSION(nz),        INTENT(IN) :: ozs
-  REAL (KIND=dp), DIMENSION(nw),     INTENT(INOUT) :: rad, albwf, cfracwf
-  REAL (KIND=dp), DIMENSION(nw),        INTENT(IN) :: prad, palbwf, pcfracwf
-  
-
+  INTEGER, DIMENSION (:),          INTENT (IN) :: polidxs  ! (ncorr)
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(INOUT) :: fozwf, faerwf,   faerswf, fcodwf, fsprswf, fraywf ! (nw,nz)
+  REAL (KIND=dp), DIMENSION(:, :),    INTENT(IN) :: pfozwf, pfaerwf, pfaerswf, pfcodwf, pfsprswf, tabs, o3crs, pfraywf ! (nw,nz)
+  REAL (KIND=dp), DIMENSION(:),        INTENT(IN) :: wave !(nw)
+  REAL (KIND=dp), DIMENSION(:),        INTENT(IN) :: ozs !(nz)
+  REAL (KIND=dp), DIMENSION(:),     INTENT(INOUT) :: rad, albwf, cfracwf !(nw)
+  REAL (KIND=dp), DIMENSION(:),        INTENT(IN) :: prad, palbwf, pcfracwf !(nw)
 
   ! Local variables
   INTEGER, PARAMETER                               :: mcorr = 20, mw = 500
@@ -1633,13 +1631,11 @@ SUBROUTINE get_tracegas_wf (nw, nz, nz1, rad, ozwf, ozabs, &
   IMPLICIT NONE
 
   ! Input/Output variables
-  INTEGER, INTENT(IN)                           :: nw, nz, nz1
-  REAL (KIND=dp), DIMENSION(nw, nz), INTENT(IN) :: ozwf, ozabs, so2crs, o4crs,o2crs, h2ocrs
-  REAL (KIND=dp), DIMENSION(nw),     INTENT(IN) :: rad !, waves
-!  REAL (KIND=dp), DIMENSION(nz),     INTENT(IN) :: ozs
-  LOGICAL,                           INTENT(IN) :: use_so2dtcrs, do_so2zwf, use_o4dtcrs, &
-  use_o2dptcrs, use_h2odptcrs
-  REAL (KIND=dp), DIMENSION(nw),    INTENT(OUT) :: so2zwf
+  INTEGER, INTENT(IN) :: nw, nz, nz1
+  LOGICAL, INTENT(IN) :: use_so2dtcrs, do_so2zwf, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs
+  REAL (KIND=dp), DIMENSION(:, :), INTENT(IN) :: ozwf, ozabs, so2crs, o4crs,o2crs, h2ocrs ! (nw,nz)
+  REAL (KIND=dp), DIMENSION(:),    INTENT(IN) :: rad ! (nw)
+  REAL (KIND=dp), DIMENSION(:),   INTENT(OUT) :: so2zwf !(nw)
   ! Local variables
   INTEGER                                       :: i, j, k, fidx, lidx, nk
   REAL (KIND=dp)                                :: tmp

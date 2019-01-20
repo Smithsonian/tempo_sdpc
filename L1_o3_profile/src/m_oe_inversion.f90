@@ -64,7 +64,7 @@ contains
     REAL (KIND=dp), INTENT (IN) :: delta_chi_min
     REAL (KIND=dp), DIMENSION(ny, nx), INTENT (IN)  :: rK 
     REAL (KIND=dp), DIMENSION(ny), INTENT (IN)      :: y, dy
-    REAL (KIND=dp), DIMENSION(nx, nx), INTENT(IN)   :: Sa 
+    REAL (KIND=dp), DIMENSION(:, :), INTENT(IN)     :: Sa ! (nx,nx)
     REAL (KIND=dp), DIMENSION(nx), INTENT (IN)      :: xap, xold
     CHARACTER(len=6), DIMENSION(nx), INTENT(IN)     :: xname
 

@@ -20,15 +20,15 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                           INTENT (IN) :: n_in, n_out
-    REAL (KIND=dp), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
-    REAL (KIND=dp), DIMENSION (n_out), INTENT (IN) :: x_out
+    INTEGER,                       INTENT (IN) :: n_in, n_out
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_in, y_in  ! (n_in)
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_out       ! (n_out)
 
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER,                           INTENT (OUT) :: errstat
-    REAL (KIND=dp), DIMENSION (n_out), INTENT (OUT) :: y_out
+    INTEGER,                       INTENT (OUT) :: errstat
+    REAL (KIND=dp), DIMENSION (:), INTENT (OUT) :: y_out  ! (n_out)
 
     ! ------------------------------
     ! Local variables and parameters
@@ -112,9 +112,9 @@ contains
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
-    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
-    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
-    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y
+    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya ! (n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x ! (np)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y ! (np)
 
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
@@ -159,9 +159,9 @@ contains
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
-    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
-    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
-    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y, dydx
+    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya ! (n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x      ! (np)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dydx ! (np)
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
@@ -205,9 +205,9 @@ contains
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
     LOGICAL, INTENT (IN)                      :: cal_shiwf
-    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
-    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
-    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y, dydx
+    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya  ! (n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x       ! (np)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dydx ! (np)
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
@@ -257,8 +257,8 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n
-    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: x, y  
-    REAL (KIND=dp), DIMENSION(n), INTENT(OUT) :: y2
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x, y ! (n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT) :: y2  ! (n)
 
     REAL (KIND=dp), DIMENSION(n)  :: u
     INTEGER       :: i, k
@@ -292,9 +292,9 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n, m 
-    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
-    REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
-    REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y, dy1
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: xa, ya, y2a !(n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x           !(m)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dy1      !(m)
 
     INTEGER        :: ii, klo, khi, k 
     REAL (KIND=dp) :: h, a, b
@@ -333,9 +333,9 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n, m
-    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
-    REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
-    REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: xa, ya, y2a ! (n)
+    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x ! (m)
+    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y ! (m)
 
     INTEGER        :: ii, klo, khi, k 
     REAL (KIND=dp) :: h, a, b
@@ -806,9 +806,9 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                           INTENT (IN) :: n_in, n_out
-    REAL (KIND=dp), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
-    REAL (KIND=dp), DIMENSION (n_out), INTENT (IN) :: x_out
+    INTEGER,                       INTENT (IN) :: n_in, n_out
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_in, y_in  ! (n_in)
+    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_out       ! (n_out)
 
     ! ----------------
     ! Output variables

@@ -581,7 +581,7 @@ END SUBROUTINE GET_NO2
     ! ======================
     INTEGER, INTENT(IN)                          :: nz
     REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
-    REAL (KIND=dp), DIMENSION(nz),   INTENT(OUT) :: h2o
+    REAL (KIND=dp), DIMENSION(:),   INTENT(OUT) :: h2o ! (nz)
     ! Local variables
     ! AFGL US standard atmosphere
     INTEGER, PARAMETER              :: nz0 = 51

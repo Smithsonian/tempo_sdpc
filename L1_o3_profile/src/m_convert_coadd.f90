@@ -353,8 +353,10 @@ contains
     ! Input and Output variables
     ! =================================
     INTEGER, INTENT(IN)                                    :: nspec, nw
-    REAL (KIND=r4),    DIMENSION(nw, nspec), INTENT(INOUT) :: wavl, spec, prec
-    INTEGER (KIND=i2), DIMENSION(nw, nspec), INTENT(INOUT) :: qflg
+    !REAL (KIND=r4),    DIMENSION(nw, nspec), INTENT(INOUT) :: wavl, spec, prec
+    !INTEGER (KIND=i2), DIMENSION(nw, nspec), INTENT(INOUT) :: qflg
+    REAL (KIND=r4),    DIMENSION(:, :), INTENT(INOUT) :: wavl, spec, prec
+    INTEGER (KIND=i2), DIMENSION(:, :), INTENT(INOUT) :: qflg
 
     ! Local variables
     REAL (KIND=dp)                                         :: dwvl, mx_fwav
@@ -590,9 +592,9 @@ contains
     ! =================================
     INTEGER, INTENT(IN)  :: nspec, ncoadd
     LOGICAL, INTENT(IN)  :: wcal_bef_coadd, wavcal
-    REAL (KIND=dp), DIMENSION(ncoadd, sig_idx, nspec), INTENT(INOUT) :: allspec
-    REAL (KIND=dp), DIMENSION(ncoadd),  INTENT(OUT) :: wshis, wsqus
-    LOGICAL,                            INTENT(OUT) :: error
+    REAL (KIND=dp), DIMENSION(:,:,:), INTENT(INOUT) :: allspec ! (ncoadd, sig_idx, nspec)
+    REAL (KIND=dp), DIMENSION(:),  INTENT(OUT) :: wshis, wsqus ! (ncoadd)
+    LOGICAL,                       INTENT(OUT) :: error
 
     ! ===============
     ! Local variables

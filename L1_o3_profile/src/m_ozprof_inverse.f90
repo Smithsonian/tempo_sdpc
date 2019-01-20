@@ -84,8 +84,8 @@ contains
     REAL (KIND=dp), DIMENSION(nf), INTENT (IN)        :: lowbnd, upbnd
     CHARACTER (LEN=6), DIMENSION(nf), INTENT (IN)     :: varname
     REAL (KIND=dp), DIMENSION(nf), INTENT (INOUT)     :: fitvarap
-    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(INOUT)  :: sa
-    REAL (KIND=dp), DIMENSION(nf, nf), INTENT(IN)     :: bb
+    REAL (KIND=dp), DIMENSION(:, :), INTENT(INOUT)  :: sa  ! (nf,nf)
+    REAL (KIND=dp), DIMENSION(:, :), INTENT(IN)     :: bb
 
     ! ==================
     ! Modified variables

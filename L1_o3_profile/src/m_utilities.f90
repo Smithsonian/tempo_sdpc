@@ -584,8 +584,8 @@ contains
 
     INTEGER, INTENT(IN) :: num
     INTEGER             :: i
-    REAL (KIND=dp), DIMENSION(1: num), INTENT(INOUT) :: inarr
-    REAL (KIND=dp), DIMENSION(1: num)                :: temp
+    REAL (KIND=dp), DIMENSION(:), INTENT(INOUT) :: inarr ! (num)
+    REAL (KIND=dp), DIMENSION(num)              :: temp
 
     DO i = 1, num
       temp(i) = inarr(num - i + 1)
