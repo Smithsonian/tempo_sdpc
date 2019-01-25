@@ -54,7 +54,7 @@ $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES)) wavecal_driver.c wavecal_merge.c wavecal.c
+	ctags $(patsubst %.o,%.c,$(OFILES)) $(WAVECAL_DRIVER_SRCFILES)
 
 .PHONY: clean distclean all install check tags
 
@@ -106,8 +106,9 @@ $(objdir)/wavecal_merge:	$(objdir)/wavecal_merge.o
 $(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c $(LIBS)
 
-WAVECAL_DRIVER_OFILES = wavecal_driver.o util.o wavecal.o interp.o shapefun.o \
-     lsq.o interp_cheb.o interp_poly.o interp_cspline.o
+WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
+     lsq.c interp_cheb.c interp_poly.c interp_cspline.c
+WAVECAL_DRIVER_OFILES = $(patsubst %.c,%.o, $(WAVECAL_DRIVER_SRCFILES))
 WAVECAL_DRIVER_OBJS = $(patsubst %.o,$(objdir)/%.o, $(WAVECAL_DRIVER_OFILES))
 
 $(objdir)/wavecal_driver:	$(WAVECAL_DRIVER_OBJS)
@@ -159,6 +160,9 @@ $(objdir)/util.o:	$(srcdir)/util.c
 
 $(objdir)/wavecal.o:	$(srcdir)/wavecal.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal.c $(LIBS)
+
+$(objdir)/wavecal_adj.o:	$(srcdir)/wavecal_adj.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_adj.c $(LIBS)
 
 $(objdir)/interp.o:	$(srcdir)/interp.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp.c $(LIBS)

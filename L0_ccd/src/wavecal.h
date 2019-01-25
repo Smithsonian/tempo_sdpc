@@ -2,6 +2,7 @@
 #define __WAVECAL_INCLUDE__ 1
 
 #include <libconfig.h>
+#include "wavecal_adj.h"
 
 /** @file wavecal.h
  *  @brief Wavelength calibration
@@ -146,5 +147,8 @@ enum
  */
 extern int wavecal_query_term (const Wavecal_Type *wct, int nth,
                                Wavecal_Term_Info_Type *info);
+
+extern int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
+                           const double *narrow_band_wave_params, double *final_wave_params);
 
 #endif

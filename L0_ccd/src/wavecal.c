@@ -1423,6 +1423,39 @@ int wavecal_get_initial_params (Wavecal_Type *wct, const double *p_wave,
    return 0;
 }
 
+int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
+                    const double *narrow_band_wave_params, double *final_wave_params)
+{
+   Wadj_Cheb_Series_Type attr_narrow;
+   double narrow_band_mid_wl_shift = 0.0;
+
+   /* The calling routine should make sure that the various
+    * parameter array lengths are correct */
+   if (0 != wadj_narrow_band_get_attr (wadj, &attr_narrow))
+     return -1;
+
+   if (attr_narrow.num_series_coeff > 0)
+     {
+        const Window_Type *win = &wct->window;
+        const Shapefun_Type *wl = win->shapefun;
+        const double *tbl_narrow_band_nwave_params;
+        double mid_pix, mid_wl_fit, mid_wl_tbl;
+
+        mid_pix = 0.5*(attr_narrow.pix_min + attr_narrow.pix_max);
+
+        if (NULL == (tbl_narrow_band_nwave_params = wadj_narrow_band_coeff (wadj, xtrack)))
+          return -1;
+
+        if ((wl->st_eval (wl, narrow_band_wave_params, 1, &mid_pix, &mid_wl_fit) < 0)
+            ||(wl->st_eval (wl, tbl_narrow_band_nwave_params, 1, &mid_pix, &mid_wl_tbl) < 0))
+          return -1;
+
+        narrow_band_mid_wl_shift = mid_wl_fit - mid_wl_tbl;
+     }
+
+   return wadj_final_coeff (wadj, xtrack, narrow_band_mid_wl_shift, final_wave_params);
+}
+
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
                  const double *p_wave, const double *p_spec, const double *p_specerr,
                  const unsigned int *p_pixel_quality_flag, const Wavecal_Config_Type *config,

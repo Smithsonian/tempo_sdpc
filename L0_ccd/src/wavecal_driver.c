@@ -14,6 +14,7 @@
 
 #include "config.h"
 #include "wavecal.h"
+#include "wavecal_adj.h"
 
 #define DIMNAME_WAVELEN "wavelen"
 
@@ -43,6 +44,7 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help                print this usage message\n");
    fprintf (stderr, "   -d | --debug               write diagnostic information to output file\n");
+   fprintf (stderr, "   -a | --adjust              apply wavelength-shift adjustment\n");
    fprintf (stderr, "   -b | --block i:num         mirror step blocking specification\n");
    fprintf (stderr, "   -m | --mirror STEP         mirror step index\n");
    fprintf (stderr, "   -x | --xtrack N            cross-track pixel index, 0 is northernmost\n");
@@ -353,7 +355,8 @@ static int write_fit_details (FILE *fp, int xtrack,
 
 static int create_result_file (const char *path, const char *group_name,
                                size_t beg_step, size_t end_step, size_t step_dimlen,
-                               size_t num_xtrack, int start_pix, int num_pix, int num_coefs)
+                               size_t num_xtrack,
+                               int start_pix, int num_pix, int num_coefs)
 {
    int ncid, varid, param_dimids[3], start, count;
    size_t params_dimlen = num_coefs;
@@ -414,7 +417,7 @@ close_and_return:
 }
 
 static int write_result (int ncid, int beg_step, int step, int xtrack,
-                         const double *wave_params, int num_wave_params,
+                         const double *final_coeff, int num_final_coeff,
                          const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
@@ -425,10 +428,10 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
 
    count[0] = 1;
    count[1] = 1;
-   count[2] = num_wave_params;
+   count[2] = num_final_coeff;
 
    if (0 != TIO_put_var_section (ncid, TEMPO_VAR_WAVECAL_PARAM, start, count, TIO_DOUBLE,
-                                  wave_params))
+                                 final_coeff))
      return -1;
 
    if (wavecal_result)
@@ -523,6 +526,7 @@ int main (int argc, char **argv)
    Spectrum_Type spec = {0};
    int status = EXIT_FAILURE;
    Wavecal_Type *wct = NULL;
+   Wadj_Type *wadj = NULL;
    TIO_Var_Info_Type spectrum_info = {0};
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
@@ -530,6 +534,7 @@ int main (int argc, char **argv)
    double *y0 = NULL;
    double nan_value = nan("");
    double *wave_params = NULL;
+   double *final_coeff = NULL;
    double sza_max;
    int grp, ncid = 0, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
@@ -537,20 +542,24 @@ int main (int argc, char **argv)
    int use_blocking = 0, this_block, num_blocks;
    int is_irradiance = 0;
    int verbose = 0;
-   int ncid_result = 0, num_wave_params, start_pix, num_pix;
+   int ncid_result = 0;
    int debug = 0;
+   int apply_shift_adjust = 0;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
+   int num_wave_params, start_pix, num_pix;
+   int num_final_coeff, final_start_pix, final_num_pix;
    int fit_status_code;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
         {"debug",   no_argument, 0, 'd'},
+        {"verbose", no_argument, 0, 'v'},
+        {"adjust",  no_argument, 0, 'a'},
         {"config",  required_argument, 0, 'c'},
         {"wavepar", required_argument, 0, 'w'},
         {"xtrack",  required_argument, 0, 'x'},
         {"block",   required_argument, 0, 'b'},
         {"mirror",  required_argument, 0, 'm'},
-        {"verbose", no_argument, 0, 'v'},
         {"group",   required_argument, 0, 'g'},
         {0,0,0,0}
      };
@@ -574,7 +583,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hdb:m:c:g:x:w:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ahdb:m:c:g:x:w:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -582,6 +591,9 @@ int main (int argc, char **argv)
            default:
              fprintf (stderr, "getopt returned character %d??", c);
              goto return_status;
+             break;
+           case 'a':
+             apply_shift_adjust++;
              break;
            case 'c': config_file = optarg;
              /* This config file will override the default one
@@ -657,6 +669,14 @@ int main (int argc, char **argv)
      }
 
    wavecal_config.fill_value = nan_value;
+
+   /* The shift-adjustment table is used only
+    * for radiance wavelength calibration */
+   if (apply_shift_adjust && (0 == is_irradiance))
+     {
+        if (NULL == (wadj = wadj_open (&cfg, group_name)))
+          goto return_status;
+     }
 
    if (0 != TIO_open (input_file, NC_WRITE, &ncid))
      goto return_status;
@@ -753,6 +773,9 @@ int main (int argc, char **argv)
         end_step = step+1;
      }
 
+   /* Allocate space to store the fitted Chebyshev series
+    * coefficients which represent the wavelength grid
+    * within a single spectrum's fit window */
    num_wave_params = wavecal_num_wave_params (wct);
    if (num_wave_params <= 0)
      {
@@ -767,11 +790,65 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   /* Decide how many Chebyshev series coefficients (per-spectrum) will be
+    * written to the output file, and allocate a working array to hold the
+    * coefficients for a single spectrum */
+   if (wadj)
+     {
+        if (0 != wadj_num_final_coeff (wadj, &num_final_coeff))
+          goto return_status;
+        if (NULL == (final_coeff = (double *)MALLOC (num_final_coeff * sizeof(double))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto return_status;
+          }
+     }
+   else
+     {
+        num_final_coeff = num_wave_params;
+        final_coeff = wave_params;
+     }
+
    (void) wavecal_query_feature_window (wct, &start_pix, &num_pix);
 
+   /* If we're using a narrow fit window and applying the wavelength
+    * shift adjustment, make sure the wavelength shift adjustment
+    * lookup table is consistent.
+    */
+   if (wadj)
+     {
+        Wadj_Cheb_Series_Type narrow = {0};
+        Wadj_Cheb_Series_Type full = {0};
+        int num_narrow, num_full;
+
+        if ((0 != wadj_narrow_band_get_attr (wadj, &narrow))
+            ||(0 != wadj_full_band_get_attr (wadj, &full)))
+          goto return_status;
+
+        num_narrow = narrow.pix_max - narrow.pix_min + 1;
+        num_full = full.pix_max - full.pix_min + 1;
+
+        if ((narrow.pix_min != start_pix)
+            || (num_narrow != num_pix))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: shift_adjust_table: narrow window mismatch",
+                          __func__);
+             goto return_status;
+          }
+
+        final_start_pix = full.pix_min;
+        final_num_pix = num_full;
+     }
+   else
+     {
+        final_start_pix = start_pix;
+        final_num_pix = num_pix;
+     }
+
+   /* Create a netcdf output file to hold the wavelength grid coefficients */
    ncid_result = create_result_file (result_file, group_name,
-                                     beg_step, end_step, step_dimlen,
-                                     xtrack_dimlen, start_pix, num_pix, num_wave_params);
+                                     beg_step, end_step, step_dimlen, xtrack_dimlen,
+                                     final_start_pix, final_num_pix, num_final_coeff);
    if (ncid_result <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",
@@ -787,7 +864,7 @@ int main (int argc, char **argv)
 
              wrt = NULL;
 
-             /* Calibrate all irradiance spectra, and radiance spectra that meet filter criteria */
+             /* Calibrate each spectrum that meets the filter criteria */
              if ((0 != is_irradiance)
                  || (0 != will_calibrate_radiance (geoloc, step, xtrack, sza_max)))
                {
@@ -809,7 +886,13 @@ int main (int argc, char **argv)
                     goto return_status;
                }
 
-             if (write_result (ncid_result, beg_step, step, xtrack, wave_params, num_wave_params, wrt))
+             if (wadj)
+               {
+                  if (0 != wavecal_adjust (wct, wadj, xtrack, wave_params, final_coeff))
+                    goto return_status;
+               }
+
+             if (write_result (ncid_result, beg_step, step, xtrack, final_coeff, num_final_coeff, wrt))
                goto return_status;
 
              if (debug)
@@ -835,6 +918,7 @@ int main (int argc, char **argv)
 return_status:
    FREE(y0);
    FREE(wave_params);
+   if (final_coeff != wave_params) FREE(final_coeff);
    free_geoloc_type (geoloc);
    if (ncid) TIO_close (ncid);
    if (ncid_result) TIO_close (ncid_result);
@@ -842,6 +926,7 @@ return_status:
    config_destroy (&cfg);
    tell_close();
    wavecal_close (wct);
+   wadj_close (wadj);
 
    if ((fp != NULL) && (params_outfile != NULL))
      {
