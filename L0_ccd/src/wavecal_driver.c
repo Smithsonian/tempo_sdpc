@@ -670,14 +670,6 @@ int main (int argc, char **argv)
 
    wavecal_config.fill_value = nan_value;
 
-   /* The shift-adjustment table is used only
-    * for radiance wavelength calibration */
-   if (apply_shift_adjust && (0 == is_irradiance))
-     {
-        if (NULL == (wadj = wadj_open (&cfg, group_name)))
-          goto return_status;
-     }
-
    if (0 != TIO_open (input_file, NC_WRITE, &ncid))
      goto return_status;
 
@@ -699,6 +691,14 @@ int main (int argc, char **argv)
      {
         fprintf (stderr, "*** unsupported file type: %s\n", input_file);
         goto return_status;
+     }
+
+   /* The shift-adjustment table is used only
+    * for radiance wavelength calibration */
+   if (apply_shift_adjust && (0 == is_irradiance))
+     {
+        if (NULL == (wadj = wadj_open (&cfg, group_name)))
+          goto return_status;
      }
 
    /* expected dimensions are: [mirror_step, xtrack, spectral_channel] */
