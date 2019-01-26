@@ -1,5 +1,10 @@
 # The script assumes that the environment is properly set (e.g. PATH, SDPC_ROOT, etc.)
 
+# exit on error
+set -e
+# exit upon any usage of an undefined variable
+set -u
+
 run_wavecal()
 {
    input_file="$1"

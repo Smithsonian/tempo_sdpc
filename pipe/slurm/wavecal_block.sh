@@ -30,7 +30,18 @@ result_file()
 
 etc_dir="$SDPC_ROOT/etc"
 
-ARGS="-g $BAND_NAME -b $block_spec -c ${etc_dir}/wavecal.cfg"
+bn=$(basename $INPUT_FILE)
+case "$bn" in
+ *rad* )
+    adjust="--adjust"
+    ;;
+
+ * )
+    adjust=""
+    ;;
+esac
+
+ARGS="$adjust -g $BAND_NAME -b $block_spec -c ${etc_dir}/wavecal.cfg"
 
 result_file $INPUT_FILE
 
