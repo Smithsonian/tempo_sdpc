@@ -40,17 +40,17 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal_driver [options] <input-file> <output-file>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -g | --group NAME          name of netCDF4 file group containing spectra\n");
+   fprintf (stderr, "   -g | --group NAME          Name of netCDF4 file group containing spectra\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -h | --help                print this usage message\n");
-   fprintf (stderr, "   -d | --debug               write diagnostic information to output file\n");
-   fprintf (stderr, "   -a | --adjust              apply wavelength-shift adjustment\n");
-   fprintf (stderr, "   -b | --block i:num         mirror step blocking specification\n");
-   fprintf (stderr, "   -m | --mirror STEP         mirror step index\n");
-   fprintf (stderr, "   -x | --xtrack N            cross-track pixel index, 0 is northernmost\n");
-   fprintf (stderr, "   -w | --wavepar FILE        output file for wavelength parameters\n");
-   fprintf (stderr, "   -c | --config FILE         path to configuration file\n");
-   fprintf (stderr, "   -v | --verbose             turn on verbose output\n");
+   fprintf (stderr, "   -h | --help                Print this usage message\n");
+   fprintf (stderr, "   -d | --debug               Write diagnostic information to output file\n");
+   fprintf (stderr, "   -a | --adjust              Apply wavelength-shift adjustment\n");
+   fprintf (stderr, "   -b | --block i:num         Mirror step blocking specification\n");
+   fprintf (stderr, "   -m | --mirror STEP         Mirror step index\n");
+   fprintf (stderr, "   -x | --xtrack N            Cross-track pixel index, 0 is northernmost\n");
+   fprintf (stderr, "   -w | --wavepar FILE        Output file for wavelength parameters\n");
+   fprintf (stderr, "   -c | --config FILE         Path to configuration file\n");
+   fprintf (stderr, "   -v | --verbose             Turn on verbose output\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -790,28 +790,12 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   /* Decide how many Chebyshev series coefficients (per-spectrum) will be
-    * written to the output file, and allocate a working array to hold the
-    * coefficients for a single spectrum */
-   if (wadj)
-     {
-        if (0 != wadj_num_final_coeff (wadj, &num_final_coeff))
-          goto return_status;
-        if (NULL == (final_coeff = (double *)MALLOC (num_final_coeff * sizeof(double))))
-          {
-             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             goto return_status;
-          }
-     }
-   else
-     {
-        num_final_coeff = num_wave_params;
-        final_coeff = wave_params;
-     }
-
    (void) wavecal_query_feature_window (wct, &start_pix, &num_pix);
 
-   /* If we're using a narrow fit window and applying the wavelength
+   /* Decide how many Chebyshev series coefficients (per-spectrum) will be
+    * written to the output file, and allocate a working array to hold the
+    * coefficients for a single spectrum
+    * If we're using a narrow fit window and applying the wavelength
     * shift adjustment, make sure the wavelength shift adjustment
     * lookup table is consistent.
     */
@@ -820,6 +804,14 @@ int main (int argc, char **argv)
         Wadj_Cheb_Series_Type narrow = {0};
         Wadj_Cheb_Series_Type full = {0};
         int num_narrow, num_full;
+
+        if (0 != wadj_num_final_coeff (wadj, &num_final_coeff))
+          goto return_status;
+        if (NULL == (final_coeff = (double *)MALLOC (num_final_coeff * sizeof(double))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto return_status;
+          }
 
         if ((0 != wadj_narrow_band_get_attr (wadj, &narrow))
             ||(0 != wadj_full_band_get_attr (wadj, &full)))
@@ -841,6 +833,8 @@ int main (int argc, char **argv)
      }
    else
      {
+        num_final_coeff = num_wave_params;
+        final_coeff = wave_params;
         final_start_pix = start_pix;
         final_num_pix = num_pix;
      }

@@ -20,7 +20,7 @@
 typedef struct
 {
    Wadj_Cheb_Series_Type attr;
-   double *coeff;
+   double *coeff;                 /* Chebyshev series coefficients [k + num_xtrack * xtrack] */
 }
 Table_Type;
 
@@ -106,7 +106,7 @@ void wadj_close (Wadj_Type *wadj)
    FREE(wadj);
 }
 
-static int read_table_file (config_t *cfg, char **file)
+static int read_table_file_path (config_t *cfg, char **ppath)
 {
    config_setting_t *s;
    const char *path = NULL;
@@ -127,7 +127,7 @@ static int read_table_file (config_t *cfg, char **file)
         return -1;
      }
 
-   if (NULL == (*file = expand_path (path)))
+   if (NULL == (*ppath = expand_path (path)))
      return -1;
 
    return 0;
@@ -153,14 +153,14 @@ static int invalid_tables (const Table_Type *full, const Table_Type *adj)
 Wadj_Type *wadj_open (config_t *cfg, const char *group)
 {
    Wadj_Type *wadj = NULL;
-   char *file = NULL;
+   char *path = NULL;
    int ncid, grp, dimid_xtrack;
    int status = -1;
 
-   if (0 != read_table_file (cfg, &file))
+   if (0 != read_table_file_path (cfg, &path))
      return NULL;
 
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      goto return_error;
 
    if (NULL == (wadj = (Wadj_Type *) MALLOC (sizeof *wadj)))
@@ -192,7 +192,7 @@ return_error:
         wadj = NULL;
      }
    TIO_close (ncid);
-   FREE(file);
+   FREE(path);
    return wadj;
 }
 
