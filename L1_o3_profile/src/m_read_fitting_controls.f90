@@ -1287,7 +1287,8 @@ contains
     WRITE(exchar, '(I4.4)')    pixnum_lim(2)
     ENDIF
 
-    !IF( l2_hdf_flag == 0) THEN  !! Modify output file name only when it is L2 HE5 output, Kai
+    if (.false.) then  ! Don't modify the output file name, JCH
+      !IF( l2_hdf_flag == 0) THEN  !! Modify output file name only when it is L2 HE5 output, Kai
       IF ( .NOT. (linenum_lim(1) == 1 .AND. linenum_lim(2) == ntimes_max)) THEN
         l2_filename = TRIM(ADJUSTL(l2_filename)) &
          // '_L' // TRIM(ADJUSTL(slinechar)) // '-' //TRIM(ADJUSTL(elinechar))
@@ -1306,19 +1307,22 @@ contains
         WRITE(ybinchar, '(A2,I1)') 'BY', nybin
         l2_filename = TRIM(ADJUSTL(l2_filename)) // '-' //TRIM(ADJUSTL(ybinchar))
       ENDIF
-    !ENDIF 
+      !ENDIF
 
-    IF (l2_hdf_flag == 4) THEN 
+      IF (l2_hdf_flag == 4) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.nc'
-    ELSE IF (l2_hdf_flag == 3) THEN 
+      ELSE IF (l2_hdf_flag == 3) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.he5'
-    ELSE IF (l2_hdf_flag == 0) THEN 
+      ELSE IF (l2_hdf_flag == 0) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.out'
-    ELSE IF (l2_hdf_flag == 1) THEN 
+      ELSE IF (l2_hdf_flag == 1) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.h5'
-    ELSE
-          STOP 1
-    ENDIF
+      ELSE
+        write(*,*)'*** Error: unsupported value: l2_hdf_flag = ',l2_hdf_flag
+        STOP 1
+      ENDIF
+    endif
+
     ! -----------------------------------------------
     ! Close fitting control file, report SUCCESS read
     ! -----------------------------------------------
