@@ -416,7 +416,7 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
              tell_vinfo (1, "processed: %s", file);
              /* If processing involved a rename, then deletion
               * will be handled elsewhere. */
-             if (ioclib_isfile (file))
+             if (ioclib_isfile (file, NULL))
                {
                   if (0 != ioclib_unlink (file))
                     return -1;
