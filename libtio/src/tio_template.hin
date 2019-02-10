@@ -8,6 +8,8 @@ extern "C" {
 }
 #endif
 
+#include <stdint.h>
+
 #define __USE_XOPEN
 #include <time.h>
 
@@ -101,6 +103,14 @@ extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps
 #define TEMPO_GRANULE_FLAG_IS_LAST            0x2
 #define TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY  0x4
 extern int tio_define_granule_flag_var (int ncid);
+
+enum TIO_Scan_Type
+{
+   TEMPO_SCAN_TYPE_STANDARD = 0,
+   TEMPO_SCAN_TYPE_NIGHTLIGHTS = 1
+};
+extern int tio_make_scan_label (uint16_t *scan_label, uint16_t scan_type, uint16_t scan_num);
+extern void tio_parse_scan_label (uint16_t scan_label, uint16_t *scan_type, uint16_t *scan_num);
 
 extern int tio_write_granule_ident_indices (int ncid, int scan_num,
                                             int granule_num, int granule_flag);

@@ -137,6 +137,43 @@ int tio_define_granule_flag_var (int ncid)
    return 0;
 }
 
+#define NBITS_SCAN_LABEL 16
+#define NBITS_SCAN_NUM   10
+#define NBITS_SCAN_TYPE  (NBITS_SCAN_LABEL - NBITS_SCAN_NUM)
+
+/* MAX_SCAN_NUM=999 is set by ASDC-approved filename format, which allows a 3-digit scan number */
+#define MAX_SCAN_NUM     999
+#define MAX_SCAN_TYPE    ((1 << NBITS_SCAN_TYPE)-1)
+#define SCAN_TYPE_MASK   (MAX_SCAN_TYPE << NBITS_SCAN_NUM)
+
+int tio_make_scan_label (uint16_t *scan_label, uint16_t scan_type, uint16_t scan_num)
+{
+   if ((scan_type > MAX_SCAN_TYPE) || (scan_num > MAX_SCAN_NUM))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: scan_type=%d (must be [0,%d]), scan_num=%d (must be [0,%d])",
+                     __func__, scan_type, MAX_SCAN_TYPE, scan_num, MAX_SCAN_NUM);
+        return -1;
+     }
+
+   *scan_label = (scan_type << NBITS_SCAN_NUM) | scan_num;
+
+   return 0;
+}
+
+void tio_parse_scan_label (uint16_t scan_label, uint16_t *scan_type, uint16_t *scan_num)
+{
+   if (scan_type)
+     {
+        *scan_type = scan_label >> NBITS_SCAN_NUM;
+     }
+
+   if (scan_num)
+     {
+        *scan_num = scan_label & ~SCAN_TYPE_MASK;
+     }
+}
+
 static int write_granule_ident_indices (int ncid, int scan_num,
                                         int granule_num, int granule_flag)
 {
