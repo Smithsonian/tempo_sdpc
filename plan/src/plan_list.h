@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 
 typedef struct Plan_List_Type Plan_List_Type;
 struct Plan_List_Type
@@ -16,17 +17,21 @@ struct Plan_List_Type
    double ystart;
    double scan_duration;     /**< scan duration [sec] */
    double integration_time;  /**< integration time for a single exposure in a co-add [sec] */
+   double jd_utc_beg_safe;   /**< Earliest time when the aperture may safely open on this day, UTC [days] */
+   double jd_utc_end_safe;   /**< Latest time when the aperture may safely open on this day, UTC [days] */
    int num_steps;            /**< number of mirror steps in the scan */
    int num_repeats;          /**< number of scans on this day */
+   uint16_t scan_type;       /**< scan type value */
 };
 
 /** Allocate a \ref Plan_List_Type structure
+ * @param[in]  \ref scan_type   scan type label
  * @return  A \ref Plan_List_Type pointer on success, NULL on error
  *
  * When no longer needed, the returned structure should be freed
  * by a call to \ref plan_list_entry_free
 */
-extern Plan_List_Type *plan_list_entry_alloc (void);
+extern Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type);
 
 /** Free resources associated with a \ref Plan_List_Type structure
  * @param[in]  ple  A \ref Plan_List_Type pointer allocated by

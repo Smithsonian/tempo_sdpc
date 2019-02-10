@@ -60,6 +60,7 @@ Night_Scan_Type;
    Surface_Point_Type day_end; \
    Step_Config_Type dt; \
    double step_size; \
+   uint16_t scan_type; \
    Night_Scan_Type night_scan;
 #include "scan.h"
 
@@ -70,7 +71,7 @@ static void free_scan_type (Scan_Type *st)
    FREE(st);
 }
 
-static Scan_Type *new_scan_type (void)
+static Scan_Type *new_scan_type (uint16_t scan_type)
 {
    Scan_Type *st = NULL;
 
@@ -81,6 +82,8 @@ static Scan_Type *new_scan_type (void)
      }
 
    memset ((char *)st, 0, sizeof *st);
+
+   st->scan_type = scan_type;
 
    return st;
 }
@@ -577,11 +580,16 @@ static int scan_print_params (const Scan_Type *st, const char *pprefix,
    return 0;
 }
 
-Scan_Type *scan_open (config_t *cfg)
+static uint16_t query_scan_type (const Scan_Type *st)
+{
+   return st->scan_type;
+}
+
+Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
 {
    Scan_Type *st = NULL;
 
-   if (NULL == (st = new_scan_type ()))
+   if (NULL == (st = new_scan_type (scan_type)))
      return NULL;
 
    st->st_delete = free_scan_type;
@@ -592,6 +600,7 @@ Scan_Type *scan_open (config_t *cfg)
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;
    st->st_print_params = scan_print_params;
+   st->st_scan_type = query_scan_type;
 
    st->st_night_scan_region = night_scan_region;
    st->st_night_scan_duration = night_scan_duration;

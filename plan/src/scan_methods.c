@@ -13,6 +13,7 @@
 #include <libconfig.h>
 #include <tell.h>
 #include <tio.h>
+#include <tio_template.h>
 
 #include <tempo_geo.h>
 
@@ -169,6 +170,7 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps;
+   uint16_t scan_type = st->st_scan_type(st);
 
    if (0 != radiance_scan_endpoints (st, solar_geom, &beg, &end))
      return NULL;
@@ -177,7 +179,7 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    time_full_scan = st->st_scan_duration (st, num_steps);
 
-   if (NULL == (entry = plan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc (scan_type)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_beg;
@@ -188,6 +190,10 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->integration_time = st->st_integration_time (st);
    entry->num_repeats = ceil ((limit_times->jd_utc_end - limit_times->jd_utc_beg)
                               / time_full_scan);
+
+   entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
+   entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
+
    return entry;
 }
 
@@ -211,7 +217,7 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    num_repeats = floor ((limit_times->jd_utc_beg - limit_times->jd_utc_beg_safe)
                         / time_full_scan);
 
-   if (NULL == (entry = plan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_beg_safe;
@@ -221,6 +227,9 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = st->st_night_integration_time (st);
    entry->num_repeats = num_repeats;
+
+   entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
+   entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
    return entry;
 }
@@ -245,7 +254,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    num_repeats = floor ((limit_times->jd_utc_end_safe - limit_times->jd_utc_end)
                         / time_full_scan);
 
-   if (NULL == (entry = plan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_end_safe - num_repeats * time_full_scan;
@@ -255,6 +264,9 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = st->st_night_integration_time (st);
    entry->num_repeats = num_repeats;
+
+   entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
+   entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
    return entry;
 }
@@ -271,14 +283,16 @@ typedef struct
 Table_Schedule;
 
 static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
+                         const Scan_Limit_Times_Type *limit_times,
                          const Table_Schedule *x)
 {
    Plan_List_Type *entry = NULL;
+   uint16_t scan_type = st->st_scan_type(st);
 
    if (x->num_steps <= 0)
      return 0;
 
-   if (NULL == (entry = plan_list_entry_alloc ()))
+   if (NULL == (entry = plan_list_entry_alloc (scan_type)))
      return -1;
 
    entry->tstart = x->tstart;
@@ -288,6 +302,9 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
    entry->scan_duration = x->duration * SEC_PER_DAY;
    entry->integration_time = st->st_integration_time (st);
    entry->num_repeats = x->num_repeats;
+
+   entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
+   entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
    return plan_list_append (lst, entry);
 }
@@ -414,9 +431,9 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    set.tstart = jd_utc;
 
    /* append scan entries */
-   if ((0 != append_entry (&opt_scans, st, &rise))
-       || (0 != append_entry (&opt_scans, st, &full))
-       || (0 != append_entry (&opt_scans, st, &set)))
+   if ((0 != append_entry (&opt_scans, st, limit_times, &rise))
+       || (0 != append_entry (&opt_scans, st, limit_times, &full))
+       || (0 != append_entry (&opt_scans, st, limit_times, &set)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: appending scan plan entries",
                      __func__);

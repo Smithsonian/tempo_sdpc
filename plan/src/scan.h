@@ -1,6 +1,7 @@
 #ifndef __PLAN_SCAN_H__
 #define __PLAN_SCAN_H__ 1
 
+#include <stdint.h>
 #include <libconfig.h>
 #include "solar.h"
 
@@ -14,6 +15,9 @@ struct Scan_Type
 {
    void (*st_delete)(Scan_Type *);
    /**< delete an object of type \c Scan_Type */
+
+   uint16_t (*st_scan_type)(const Scan_Type *);
+   /**< retrieve the scan type value */
 
    double (*st_scan_duration)(const Scan_Type *, int);
    /**< compute the time [sec] required to complete a scan with N steps */
@@ -55,7 +59,7 @@ struct Scan_Type
  * @return on success, a pointer to an initialized \c Scan_Type object;
  *         on error, a NULL pointer.
 */
-extern Scan_Type *scan_open (config_t *cfg);
+extern Scan_Type *scan_open (config_t *cfg, uint16_t scan_type);
 
 typedef struct
 {

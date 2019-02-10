@@ -15,6 +15,7 @@
 #include <libconfig.h>
 #include <tell.h>
 #include <tio.h>
+#include <tio_template.h>
 
 #include <libnovas.h>
 
@@ -73,6 +74,7 @@ static void usage (void)
    fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
    fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
+   fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "   -m | --master            Generate master scan table, then exit\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize the\n");
@@ -429,7 +431,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
 
 static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
                           int num_plan_days, const char *scan_method,
-                          int enable_night_scan,
+                          uint16_t scan_type, int enable_night_scan,
                           const char *vis_output_file, int num_sza_days, FILE *fp)
 {
    Ephem_Type eph = {0};
@@ -464,7 +466,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
    if (NULL == (solar_geom = solar_geom_init (cfg)))
      goto return_status;
 
-   if (NULL == (scan = scan_open (cfg)))
+   if (NULL == (scan = scan_open (cfg, scan_type)))
      goto return_status;
 
    for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
@@ -534,6 +536,7 @@ int main (int argc, char **argv)
    int do_master_scan_table = 0;
    int enable_night_scan = 0;
    int have_date = 0;
+   uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
    const char *vis_output_file = NULL;
    Cal_Date_Type t0 = {0};
    static struct option long_options[] =
@@ -544,6 +547,7 @@ int main (int argc, char **argv)
         {"ndays",   required_argument, 0, 'n'},
         {"night",   no_argument,       0, 'N'},
         {"scan",    required_argument, 0, 's'},
+        {"type",    required_argument, 0, 't'},
         {"output",  required_argument, 0, 'o'},
         {"szaout",  required_argument, 0, 'z'},
         {"master",  no_argument, 0, 'm'},
@@ -569,7 +573,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:t:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -578,7 +582,7 @@ int main (int argc, char **argv)
              tell_verror (TELL_INVALID_PARM_ERROR,
                           "%s: getopt returned character %d??",
                           __func__, c);
-             goto return_status;
+             usage();
              break;
            case 'c':
              /* This config file will override the default one
@@ -629,6 +633,18 @@ int main (int argc, char **argv)
            case 's':
              scan_method = optarg;
              break;
+           case 't':
+             if (1 != sscanf (optarg, "%hd", &scan_type))
+               {
+                  fprintf (stderr, "*** error reading scan_type: %s\n", optarg);
+                  goto return_status;
+               }
+             if (scan_type == TEMPO_SCAN_TYPE_NIGHTLIGHTS)
+               {
+                  fprintf (stderr, "*** error: scan_type=%d is not user-selectable\n", scan_type);
+                  goto return_status;
+               }
+             break;
            case 'z':
              vis_output_file = optarg;
              break;
@@ -668,7 +684,7 @@ int main (int argc, char **argv)
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
           goto return_status;
 
-        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, enable_night_scan,
+        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, scan_type, enable_night_scan,
                                 vis_output_file, num_sza_days, fp))
           goto return_status;
      }
