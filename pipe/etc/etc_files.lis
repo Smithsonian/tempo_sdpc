@@ -10,6 +10,7 @@ cloud/cloud.rc
 o3_total/default.pcf.in
 o3_total/o3_total.rc
 o3_profile/default_main_control.inp
+o3_profile/default_profoz.inp
 o3_profile/default.pcf.in
 o3_profile/o3_profile.rc
 l0_ccd.cfg

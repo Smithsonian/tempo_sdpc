@@ -7,7 +7,8 @@ all:
 	@echo "targets: install"
 
 SCRIPT_FILES= run_postinr_L2.sh prep_L2.sh run_L2.sh run_L2_cleanup.sh \
-    run_trace_gas.sh run_o3t.sh run_o3p_util.sh run_o3p_block.sh \
+    run_trace_gas.sh run_o3t.sh \
+    run_L2_o3p.sh run_o3p_util.sh run_o3p_block.sh run_o3p_merge.sh \
     run_L0_pre_inr.sh run_L0.sh wavecal_block.sh run_wavecal.sh \
     run_wavecal_merge.sh
 

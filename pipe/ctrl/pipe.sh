@@ -24,6 +24,7 @@ test -f $CACHEMON || exit 1
 
 #PRODUCT_LIST="hcho,no2,o3t,o3p"
 PRODUCT_LIST="hcho,no2,o3t"
+#PRODUCT_LIST="o3p"
 
 __init_table_lookup()
 {

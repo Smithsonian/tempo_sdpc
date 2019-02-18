@@ -49,11 +49,88 @@ EOF
 
 # Run the pipeline:
 job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
-jid=$(sbatch --parsable --job-name=$job_prep_l2 --chdir $run_dir prep_L2.sh "${rad_basename}.nc" "$file_list_file")
+sbatch --wait --job-name=$job_prep_l2 --chdir $run_dir \
+        --nodes=1-1 --ntasks=8 \
+        prep_L2.sh "${rad_basename}.nc" "$file_list_file"
+
+# The --wait above ensures that we don't get to here until
+# this tar file has been created -- and there's no point in
+# proceeding further if we don't have it.
+tarfile_path="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
+if ! test -f "$tarfile_path" ; then
+  echo "*** Error: prep_L2.sh failed: $rad_basename"
+  exit 1
+fi
 
 job_run_l2="L2:${SDPC_GRANULE_LABEL}"
-tarfile_path="$SDPC_RUN_DIR/L2/incoming/${rad_basename}.tar"
-sbatch --dependency=afterany:$jid \
-       --job-name=$job_run_l2 \
-       --chdir $run_dir \
-       run_L2.sh "$tarfile_path" "$product_list"
+
+have_o3p="$(echo $product_list | grep o3p)"
+
+# FIXME: for now, only generate o3p products for one granule
+case "$rad_basename" in
+   *G01* )
+   ;;
+   * )
+   have_o3p=""
+   ;;
+esac
+
+if test x"$have_o3p" != x ; then
+
+  # FIXME: put these parameters in a control file somewhere.
+  ntasks_per_op3_host=14
+  num_o3p_hosts=3;
+  o3p_host_list=$(seq 0 $((num_o3p_hosts-1)))
+
+  # FIXME: Set this environment variable to make things run faster for testing.
+  export O3P_XTRACK_STEP=10
+
+  # To perform the o3p merge later, we'll need to know archive path for
+  # this granule.  Create that path now, and save it:
+  target_arch_dir_path="$(run_o3p_merge.sh path $tarfile_path)"
+  if test x"$target_arch_dir_path" = x ; then
+     echo "*** Error: constructing target archive directory path for $tarfile_path"
+     exit 1
+  fi
+
+  # On each host in $o3p_host_list, we'll issue an array of O3 profile tasks
+  # with --job-name="$job_o3p".  When each array job is completed, the output
+  # blocks are archived.  When all of those steps are finished, we run the final
+  # merge step to merge the blocks into a single O3 profile data product.
+  # The merge step is triggered by a slurm 'singleton' dependency on the
+  # job name "$job_o3p", defined here.
+  job_o3p="o3p:${SDPC_GRANULE_LABEL}"
+
+  for k in $o3p_host_list ; do
+     # To enable parallel cleanup, make a per-host hard link to the tar file
+     # (we can make these links now, only because prep_L2.sh ran with --wait)
+     tarfile_path_alias="${tarfile_path}_${k}"
+     if ! test -f $tarfile_path_alias ; then
+        ln $tarfile_path $tarfile_path_alias
+     fi
+
+     host_spec="${k}-${num_o3p_hosts}"
+
+     # We're asking for exclusive use of one node, but we may not get that,
+     # so the batch script needs to work whether or not that condition holds.
+     # FIXME: maybe it would be better to specify a particular host for each job.
+     sbatch --job-name="$job_o3p" \
+            --nodelist "temposdpc0$((k+1))" \
+            --nodes=1-1 --ntasks=$ntasks_per_op3_host --exclusive \
+            --chdir=$run_dir \
+            run_L2_o3p.sh "$host_spec" "$tarfile_path_alias"
+  done
+
+  # When the o3p jobs all finish, all the o3p blocks will be in the archive.
+  # Any node can perform the merge using the previously constructed path,
+  sbatch --dependency=singleton --job-name="$job_o3p" \
+         run_o3p_merge.sh merge $target_arch_dir_path
+fi
+
+product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
+
+if test x"$product_list_sans_o3p" != x ; then
+  sbatch --job-name=$job_run_l2 \
+         --chdir $run_dir \
+         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
+fi

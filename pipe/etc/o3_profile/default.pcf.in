@@ -5,13 +5,18 @@
 ! @spectra_dir@
 10|./|@refdata_dir@/data||||1
 11|@control_file@|@product_dir@||||1
-12|profoz.inp|@refdata_dir@/control||||1
+12|profoz.inp|@product_dir@||||1
 13|refdb/|@refdata_dir@/data||||1
 14|ATMOS/|@refdata_dir@/data||||1
 1100|@radiance_file@||||@radiance_file@|1
 1104|@irradiance_file@||||@irradiance_file@|1
 500001|@cloud_file@||||@cloud_file@|1
 10301|leapsec.dat|@refdata_dir@/data||||1
+#400121|OZON_CLIM.txt|../tbl/CLIM||||1
+#400122|TEMP_CLIM.txt|../tbl/CLIM||||1
+#400150|terrainPressure0303.he4|../tbl/V8ANC||||1
+#400151|cloud_pressure.he4|../tbl/V8ANC||||1
+#400152|v8snowice.he4|../tbl/V8ANC||||1
 410100|PROFOZ.MCF|@refdata_dir@/control||||1
 10250|MCF|||||1
 10252|GetAttr_21678|||||1
@@ -22,7 +27,7 @@
 10255|asciidump|||||1
 ?   SUPPORT INPUT FILES
 ! ./
-?   SUPPORT OUTPUT FILES 
+?   SUPPORT OUTPUT FILES
 ! @product_dir@
 10100|LogStatus_21678|||||1
 10101|LogStatus_21678|||||1
@@ -34,6 +39,8 @@
 10111|ShmMem_21678|||||1
 ?   USER DEFINED RUNTIME PARAMETERS
 10220|Toolkit version string|SCF  TK5.2.19
+#100001|RefSpecDir|/omidev/set3/xliu/tbl/
+#100002|AtmoDataBase|/omidev/set3/xliu/ATMOS/
 200100|SMF Verbosity Threshold|2
 200105|PGEVERSION|"0.9.3.3"
 200110|ProcessingCenter|"OMI SIPS"
@@ -45,11 +52,15 @@
 200185|AUTHORAFFILIATION|"NASA/GSFC"
 200190|AUTHORNAME|"Dr. Xiong Liu, Dr. Kai Yang, Dr. Pawan K. Bhartia"
 200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
+#200200|OrbitNumber|10582
 200200|OrbitNumber|04670
-#
-#200201|LINE SAMPLE EXTENT|401 412 1 60
+#200201|LINE SAMPLE EXTENT|2 2 1 4
+#200201|LINE SAMPLE EXTENT|1 24 1 60
 200201|LINE SAMPLE EXTENT|@line_sample_extent@
-#
+#200201|LINE SAMPLE EXTENT| -1 -1 -1 1403
+#200201|LINE SAMPLE EXTENT|401 800 29 32
+#200201|LINE SAMPLE EXTENT|401 800 0 60
+#Note maximum number of binned lines 100 => 400 unbinned
 200202|REGION EXTENT|15.0 22.5 32.0 40.0
 200203|SO2 H0 and W0|5.0 2.0 2 2 -1 0
 200210|SwathName|"OMI Vertical Ozone Profile"
@@ -59,6 +70,8 @@
 400040|wl_reflLow|331.3
 400050|wl_reflHigh|360.1
 400060|wl_max|370.0
+#400090|CLOUDPRESSURESOURCE|"Climatology"
+#400090|CLOUDPRESSURESOURCE|"OMCLDO2"
 400090|CLOUDPRESSURESOURCE|"OMCLDRR"
 400091|TERRAINPRESSURESOURCE|"ETOPO-5"
 400092|TEMPERATURESOURCE|"Climatology"

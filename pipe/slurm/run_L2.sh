@@ -114,33 +114,7 @@ do_o3t()
   update_job_list $jid_o3t
 }
 
-do_o3p()
-{
-   # Ozone profile is a job array:
-   #  1. Initialize the working directories.
-   #  2. Submit the job array for processing.
-   #  3. Submit job to handle cleanup
-   #  4. Update the master job dependency list.
-
-   o3p_num_blocks=4
-   o3p_range_spec="1 128 1 128"
-   run_o3p_util.sh init $o3p_num_blocks "$o3p_range_spec"
-
-   job_o3p_block="o3p:${SDPC_GRANULE_LABEL}"
-   jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
-                          --array="1-$o3p_num_blocks" \
-                          --job-name=$job_o3p_block \
-                          run_o3p_block.sh ${run_dir})
-
-   job_o3p_clean="o3p-end:${SDPC_GRANULE_LABEL}"
-   jid_o3p_cleanup=$(sbatch -w $SLURMD_NODENAME --parsable \
-                            --dependency=afterany:$jid_o3p_array \
-                            --job-name=$job_o3p_clean \
-                            run_o3p_util.sh cleanup)
-   update_job_list $jid_o3p_cleanup
-}
-
-product_list="$(echo $product_list_arg | sed -e 's/,/ /g')"
+product_list="$(echo $product_list_arg | tr -s , ' ')"
 if test x"$product_list" = x ; then
    exit 0
 fi
