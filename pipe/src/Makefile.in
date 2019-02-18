@@ -7,7 +7,7 @@ include ../../Makefile.defines
 #---------------------------------------------------------------------------
 MODULES = daemon-module.so
 SL_FILES = daemon.sl pipeutil.sl
-SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl
+SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl o3p_partition.sl
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES = ../doc/help/daemon.hlp
 DOC_FILES = ../COPYRIGHT ../README ../doc/text/daemon.txt
