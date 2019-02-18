@@ -181,10 +181,15 @@ define unpack_and_archive (tar_file, archive_dest_dir)
            "--strip-components=1"];
 
    vmessage (strjoin (argv, " "));
-   variable s = new_process(argv).wait();
+   variable unpack_log = "${tar_file}.unpack"$;
+   variable s = new_process(argv; stdout=unpack_log, dup2=1).wait();
    if (s.exit_status != 0)
      {
         throw ApplicationError, "*** Error: unpacking $tar_file"$;
+     }
+   else
+     {
+        () = remove (unpack_log);
      }
 
    % It's now safe to delete this copy
