@@ -1925,7 +1925,7 @@ CONTAINS
     !Local variables
     !---------------------------------
     ! helper for reading nc file
-    CHARACTER (LEN=100) :: filename
+    CHARACTER (LEN=256) :: filename
     INTEGER :: ncid, status, var_id
     INTEGER :: posdim, pdim, Tdim
     LOGICAL :: file_exist, fail
