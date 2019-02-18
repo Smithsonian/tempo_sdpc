@@ -30,7 +30,7 @@ program merge_o3p_files
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
   integer (kind=4), dimension(:), allocatable :: step_out
-  integer :: n, status, dummyid, i, j, omiflag, omicount
+  integer :: n, status, dummyid, i, j, omiflag, omicount, max_nmax_wavs
   integer, parameter :: one=1
   
   type (tiof_file_type) :: tio_l2in
@@ -39,6 +39,7 @@ program merge_o3p_files
 
   !--------------------------------------------------------------------
 
+  max_nmax_wavs = 0
   omicount = 0
   omiflag = 0
   errstat = 0
@@ -69,6 +70,8 @@ program merge_o3p_files
          ncorner(n), nfitvars(n), nfitwins(n), ngas(n), nlayer(n), &
          nlayerp1(n), nmax_wavs(n), nnoise_elems(n), nnongas(n), &
          naeros_wavs(n), errstat)
+
+    if (nmax_wavs(n) > max_nmax_wavs) max_nmax_wavs = nmax_wavs(n)
 
     if (n == 1) then
       if (ngas(n) > 0) gaswrt = .true.
@@ -117,6 +120,8 @@ program merge_o3p_files
                     "failed to allocate step and xtrack arrays", errstat)
     stop 1
   endif
+  step(:,:) = 0
+  xtrack(:,:) = 0
 
   do n=1,ninput ! loop over input files, get dimension indices
     ! For each file, read in xtrack and step values
@@ -131,7 +136,6 @@ program merge_o3p_files
       if (ngas(n) /= ngas(1)) errstat = -4
       if (nlayer(n) /= nlayer(1)) errstat = -5
       if (nlayerp1(n) /= nlayerp1(1)) errstat = -6
-      if (nmax_wavs(n) /= nmax_wavs(1)) errstat = -7
       if (nnoise_elems(n) /= nnoise_elems(1)) errstat = -8
       if (nnongas(n) /= nnongas(1)) errstat = -9
       if (naeros_wavs(n) /= naeros_wavs(1)) errstat = -10
@@ -175,6 +179,7 @@ program merge_o3p_files
     call tell_error(tell_malloc_error, "failed to allocate dup_check", errstat)
     stop 1
   endif
+
   dup_check=0
   do n=1,ninput
     do i=1,nstep(n)
@@ -192,7 +197,7 @@ program merge_o3p_files
   ! allocate output data arrays and insert fill values
   call o3p_param_alloc (one, maxval(nstep), one, maxval(nxtrack), &
        ncorner(1), nfitvars(1), nfitwins(1), ngas(1), nnongas(1), nlayer(1), &
-       nlayerp1(1), nmax_wavs(1), nnoise_elems(1), naeros_wavs(1), &
+       nlayerp1(1), max_nmax_wavs, nnoise_elems(1), naeros_wavs(1), &
        errstat)
   !  call o3p_param_fill (errstat)
   if (errstat /= 0) stop 1
@@ -204,22 +209,23 @@ program merge_o3p_files
   ! Create output file
   call l2_tio_create (outfile, min_xtrack+1, max_xtrack+1, min_step+1, &
        max_step+1, ngas(1), nlayer(1), nfitvars(1), nfitwins(1), &
-       nnongas(1), nmax_wavs(1), step_out, errstat)
+       nnongas(1), max_nmax_wavs, step_out, errstat)
   if (errstat /= 0) stop 1
 
   ! For each file, read in data to appropriate section of output arrays
   do n=1,ninput
-    min_sf = minval(step(:,n))
-    max_sf = maxval(step(:,n))
-    min_xf = minval(xtrack(:,n))
-    max_xf = maxval(xtrack(:,n))
-    start_wstep=min_sf-min_step
-    end_wstep=max_sf-min_step
-    start_wxtrack=min_xf-min_xtrack
-    end_wxtrack=max_xf-min_xtrack
+    min_sf = minval(step(1:nstep(n),n))
+    max_sf = maxval(step(1:nstep(n),n))
+    min_xf = minval(xtrack(1:nxtrack(n),n))
+    max_xf = maxval(xtrack(1:nxtrack(n),n))
+    start_wstep=min_sf
+    end_wstep=max_sf
+    start_wxtrack=min_xf
+    end_wxtrack=max_xf
 
     call o3p_param_fill (errstat)
 
+    write(*,*)'merging: ',trim(input_files(n))
     call open_o3p(input_files(n), tio_l2in, errstat)
 
     call read_o3p_geolocation(tio_l2in, nstep(n), nxtrack(n), ncorner(n), &
@@ -249,7 +255,7 @@ program merge_o3p_files
 
     call write_merged_data (start_wstep, end_wstep, start_wxtrack, &
          end_wxtrack, ngas(1), &
-         nnongas(1), nlayer(1), nfitvars(1), nfitwins(1), nmax_wavs(1), &
+         nnongas(1), nlayer(1), nfitvars(1), nfitwins(1), nmax_wavs(n), &
          nnoise_elems(1), naeros_wavs(1), errstat)
 
     if (errstat /= 0) stop 1

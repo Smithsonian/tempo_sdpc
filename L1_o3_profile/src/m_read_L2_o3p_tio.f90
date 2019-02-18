@@ -198,7 +198,7 @@ contains
     call tiof_push_group (tio_l2obj, o3p_grp_geolocation, errstat)
     call tiof_get1d_r8 (tio_l2obj, o3p_var_time, [0], [nstep], &
          time(min_step:max_step), errstat)
-    call tiof_get2d_ui2 (tio_l2obj, o3p_var_geoflg, [0, 0], &
+    call tiof_get2d_i2 (tio_l2obj, o3p_var_geoflg, [0, 0], &
          [nstep, nxtrack], geoflg(min_xtrack:max_xtrack, min_step:max_step), &
          errstat)
     call tiof_get2d_r4 (tio_l2obj, o3p_var_latitude, [0,0], &
@@ -395,7 +395,6 @@ contains
 
     if (errstat /= 0) return
 
-
     call tiof_push_group (tio_l2obj, o3p_grp_support_data, errstat)
     call tiof_get2d_r4 (tio_l2obj, o3p_var_aeros_index, [0,0], &
          [nstep, nxtrack], &
@@ -433,12 +432,12 @@ contains
     call tiof_get2d_r4 (tio_l2obj, o3p_var_surf_albedo, [0, 0], &
          [nstep, nxtrack], &
          eff_alb(min_xtrack:max_xtrack, min_step:max_step), errstat)
-    call tiof_get2d_ui4 (tio_l2obj, o3p_var_fit_wavel, [0, 0], &
+    call tiof_get2d_i4 (tio_l2obj, o3p_var_fit_wavel, [0, 0], &
          [nstep, nxtrack], &
          n_fit_wvl(min_xtrack:max_xtrack, min_step:max_step), errstat)
-    call tiof_get3d_ui4 (tio_l2obj, o3p_var_window_wavel, [0, 0, 0], &
+    call tiof_get3d_i4 (tio_l2obj, o3p_var_window_wavel, [0, 0, 0], &
          [nstep, nxtrack, nwindow], &
-         n_window_wvl(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+         n_window_wvl(1:nwindow, min_xtrack:max_xtrack, min_step:max_step), errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
@@ -477,13 +476,13 @@ contains
     if (ozwrtavgk .and. nlayer > 0) then
       call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_avg_kernel, [0, 0, 0, 0], &
            [nstep, nxtrack, nlayer, nlayer], &
-           avg_kernel(:,:,min_xtrack:max_xtrack,min_step:max_step), errstat)
+           avg_kernel(1:nlayer,1:nlayer,min_xtrack:max_xtrack,min_step:max_step), errstat)
     endif
     ! Optional - correlation matrix
     if (ozwrtcorr .and. nfitvars > 0) then
       call tiof_get4d_r4 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
            [nstep, nxtrack, nfitvars, nfitvars], &
-           correl_mtrx(:, :, min_xtrack:max_xtrack, min_step:max_step), &
+           correl_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
     endif
     ! Optional - noise matrix & ozone information content matrix
@@ -499,7 +498,7 @@ contains
     if (ozwrtcontri .and. nfitvars > 0 .and. nmax_wavs > 0) then
       call tiof_get4d_r4 (tio_l2obj, o3p_var_contrib_func, [0, 0, 0, 0], &
            [nstep, nxtrack, nfitvars, nmax_wavs], &
-           contrib_mtrx(:, :, min_xtrack:max_xtrack, min_step:max_step), &
+           contrib_mtrx(1:nmax_wavs, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
     endif
     ! Optional - cloud optical depth
@@ -512,11 +511,11 @@ contains
     if (aerosol .and. naeros_wavs > 0) then
       call tiof_get3d_r4 (tio_l2obj, o3p_var_aeros_opt_thick, [0, 0, 0], &
            [nstep, nxtrack, naeros_wavs], &
-           aeros_opt_thick(:, min_xtrack:max_xtrack, min_step:max_step), &
+           aeros_opt_thick(1:naeros_wavs, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
       call tiof_get3d_r4 (tio_l2obj, o3p_var_aeros_scatter_thick, [0, 0, 0], &
            [nstep, nxtrack, naeros_wavs], &
-           aeros_scatter_thick(:, min_xtrack:max_xtrack, min_step:max_step), &
+           aeros_scatter_thick(1:naeros_wavs, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
     endif
 
@@ -572,20 +571,20 @@ contains
     if (.not. reduce_resolution .and. nmax_wavs > 0) then
       call tiof_get3d_r4 (tio_l2obj, o3p_var_wavel, [0, 0, 0], &
            [nstep, nxtrack, nmax_wavs], &
-           wavelengths(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+           wavelengths(1:nmax_wavs, min_xtrack:max_xtrack, min_step:max_step), errstat)
     endif
     if (ozwrtwf .and. nmax_wavs > 0 .and. nfitvars > 0) then
       call tiof_get4d_r4 (tio_l2obj, o3p_var_weight_func, [0, 0, 0, 0], &
            [nstep, nxtrack, nmax_wavs, nfitvars], &
-           wgt_func(:, :, min_xtrack:max_xtrack, min_step:max_step), errstat)
+           wgt_func(1:nfitvars, 1:nmax_wavs, min_xtrack:max_xtrack, min_step:max_step), errstat)
     endif
     if (ozwrtres .and. nmax_wavs > 0) then
       call tiof_get3d_r4 (tio_l2obj, o3p_var_sim_norm_rad, [0, 0, 0], &
            [nstep, nxtrack, nmax_wavs], &
-           sim_norm_rad(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+           sim_norm_rad(1:nmax_wavs, min_xtrack:max_xtrack, min_step:max_step), errstat)
       call tiof_get3d_r4 (tio_l2obj, o3p_var_norm_radiance, [0, 0, 0], &
            [nstep, nxtrack, nmax_wavs], &
-           norm_rad(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+           norm_rad(1:nmax_wavs, min_xtrack:max_xtrack, min_step:max_step), errstat)
     endif
 
     if (errstat /= 0) then

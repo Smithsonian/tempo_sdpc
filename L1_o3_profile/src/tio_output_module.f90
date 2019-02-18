@@ -24,10 +24,8 @@ module tio_output_module
   real (kind=8), private :: fill_float, fill_double
   !fill values taken from he5_l2writer_class
   real (kind=8), private, parameter :: fill_uint1 = 255
-  real (kind=8), private, parameter :: fill_int8 = -127
-  real (kind=8), private, parameter :: fill_uint8 = 65535 !-127
   real (kind=8), private, parameter :: fill_int16 = -32767
-  real (kind=8), private, parameter :: fill_uint16 = -32767
+  real (kind=8), private, parameter :: fill_uint16 = 65535
 
 contains
 
@@ -598,11 +596,11 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_geoflg, &
-                              nf90_uint, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step, &
                               comment = "ground pixel quality flag", &
                               valid_range = [0.0_8, 65534.0_8], &
-                              fillvalue = fill_uint1, &
+                              fillvalue = fill_uint16, &
                               attlist=att_coord)
 !    call tiof_varlist_append (varlist, errstat, &
 !                              o3p_var_anomflg, &
@@ -1039,11 +1037,11 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_cld_flag, &
-                              nf90_float, &
+                              nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "cloud flag", &
                               valid_range = [0.0_8, 4.0_8], &
-                              fillvalue = fill_uint8, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
@@ -1135,11 +1133,11 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_index, &
-                              nf90_ushort, &
+                              nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "tropopause index", &
                               valid_range = [0.0_8, 100.0_8], &
-                              fillvalue = fill_uint8, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
@@ -1155,21 +1153,21 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_fit_wavel, &
-                              nf90_ushort, &
+                              nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "number of wavelengths used in fitting", &
                               valid_range = [0.0_8, 1000.0_8], &
-                              fillvalue = fill_uint8, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_window_wavel, &
-                              nf90_ushort, &
+                              nf90_short, &
                               dimids = dimids_window_xtrack_step, &
                               comment = "number of wavelengths in each fitting window", &
                               valid_range = [0.0_8, 1000.0_8], &
-                              fillvalue = fill_uint8, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
@@ -1251,7 +1249,7 @@ contains
     if (ozwrtavgk) then
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_avg_kernel, &
-                              nf90_float, &
+                              nf90_short, &
                               dimids = dimids_layer_layer_xtrack_step, &
                               comment = "ozone profile averaging kernels", &
                               valid_range = [-32766.0_8, 32767.0_8], &
@@ -1572,7 +1570,7 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "retrieval exit status", &
                               valid_range = [-10.0_8, 110.0_8], &
-                              fillvalue = fill_uint16, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
@@ -1662,7 +1660,7 @@ contains
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [0], [num_lines], &
          geo%time(0:num_lines-1), errstat)
-    call tiof_put2d_ui2 (obj, o3p_var_geoflg, &
+    call tiof_put2d_i2 (obj, o3p_var_geoflg, &
          [0, 0], [num_lines, num_pix], &
          int(geo%GFlg(first_pix:last_pix, 0:num_lines-1), kind=2), &
          errstat)
@@ -1904,9 +1902,9 @@ contains
          [1,1], [real(glintprob, kind=4)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_surf_albedo, [iline, ipix], &
          [1,1], [real(eff_alb(thealbidx), kind=4)], errstat)
-    call tiof_put1d_ui4 (obj, o3p_var_fit_wavel, &
+    call tiof_put1d_i4 (obj, o3p_var_fit_wavel, &
          [iline, ipix], [1,1], [n_rad_wvl], errstat)
-    call tiof_put1d_ui4 (obj, o3p_var_window_wavel, &
+    call tiof_put1d_i4 (obj, o3p_var_window_wavel, &
          [iline, ipix, 0], [1,1,nwindow], nradpix(1:nwindow), errstat)
     ! Optional parameters
     ! Other fitted gases
@@ -2178,7 +2176,7 @@ contains
 
     tmp1D_layer(0:nlayer)          = real(fill_double, kind=4)
     tmp1D_numwin(1:nwindow)       = real(fill_double, kind=4)
-    tmp1D_num(1:nwindow)          = int(fill_uint8, kind=4)
+    tmp1D_num(1:nwindow)          = int(fill_int16, kind=4)
     tmp1D_fitvar(1:nfitvar) = real(fill_double, kind=4)
     tmp1D_fitpts(1:num_wav_max)  = real(fill_double, kind=4)
 
@@ -2257,20 +2255,20 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &
          [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
     call tiof_put1d_i4(obj, o3p_var_tropo_index, [iline, ipix], &
-         [1,1], [int(fill_uint1)], errstat)
+         [1,1], [int(fill_int16)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_frac, [iline, ipix], &
          [1,1], [tmp1D_layer(0)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_pres, [iline, ipix], &
          [1,1], [tmp1D_layer(0)], errstat)
     call tiof_put1d_i4 (obj, o3p_var_cld_flag, [iline, ipix], &
-         [1,1], [INT(fill_uint8)], errstat)
+         [1,1], [INT(fill_int16)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_glint_prob, [iline, ipix], &
          [1,1], [tmp1D_layer(0)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_surf_albedo, [iline, ipix], &
          [1,1], [tmp1D_layer(0)], errstat)
-    call tiof_put1d_ui4 (obj, o3p_var_fit_wavel, &
-         [iline, ipix], [1,1], [int(fill_uint8)], errstat)
-    call tiof_put1d_ui4 (obj, o3p_var_window_wavel, &
+    call tiof_put1d_i4 (obj, o3p_var_fit_wavel, &
+         [iline, ipix], [1,1], [int(fill_int16)], errstat)
+    call tiof_put1d_i4 (obj, o3p_var_window_wavel, &
          [iline, ipix, 0], [1,1,nwindow], tmp1D_num(1:nwindow), errstat)
     ! Optional parameters
     ! Other fitted gases
@@ -2445,7 +2443,7 @@ contains
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [min_step], [nstep], time, errstat)
-    call tiof_put2d_ui2 (obj, o3p_var_geoflg, [min_step, min_xtrack], &
+    call tiof_put2d_i2 (obj, o3p_var_geoflg, [min_step, min_xtrack], &
          [nstep, nxtrack], geoflg, errstat)
     call tiof_put2d_r4 (obj, o3p_var_latitude, [min_step, min_xtrack], &
          [nstep, nxtrack], lat, errstat)
@@ -2533,7 +2531,6 @@ contains
     nstep=max_step-min_step+1
     nxtrack=max_xtrack-min_xtrack+1
     nlayerp1 = nlayer + 1
-
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
@@ -2623,9 +2620,9 @@ contains
          [nstep, nxtrack], glintprob, errstat)
     call tiof_put2d_r4 (obj, o3p_var_surf_albedo, [min_step, min_xtrack], &
          [nstep, nxtrack], eff_alb, errstat)
-    call tiof_put2d_ui4 (obj, o3p_var_fit_wavel, &
+    call tiof_put2d_i4 (obj, o3p_var_fit_wavel, &
          [min_step, min_xtrack], [nstep, nxtrack], n_fit_wvl, errstat)
-    call tiof_put3d_ui4 (obj, o3p_var_window_wavel, &
+    call tiof_put3d_i4 (obj, o3p_var_window_wavel, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, nfitwins], n_window_wvl, &
          errstat)
     ! Optional parameters

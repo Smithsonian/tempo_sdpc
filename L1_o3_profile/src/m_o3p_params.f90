@@ -367,7 +367,7 @@ contains
     real (kind=4) :: fill_float
     real (kind=8), parameter :: fill_uint1 = 255
     !real (kind=8), parameter :: fill_int8 = -127
-    real (kind=8), parameter :: fill_uint8 = 65535 !-127
+    !real (kind=8), parameter :: fill_uint8 = 65535 !-127
     real (kind=8), parameter :: fill_int16 = -32767
     !real (kind=8), parameter :: fill_uint16 = -32767
     integer (kind=4), external ::r8fill
@@ -415,12 +415,12 @@ contains
     aeros_idx = fill_float
     cld_frac = fill_float
     cld_pres = fill_float
-    cld_flag = int(fill_uint8)
-    tropo_idx = int(fill_uint8)
+    cld_flag = int(fill_int16)
+    tropo_idx = int(fill_int16)
     glintprob = fill_float
     eff_alb = fill_float
-    n_fit_wvl = int(fill_uint8)
-    n_window_wvl = int(fill_uint8)
+    n_fit_wvl = int(fill_int16)
+    n_window_wvl = int(fill_int16)
     iterations = int(fill_uint1)
     rms = fill_float
     avg_resid = fill_float
