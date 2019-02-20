@@ -218,10 +218,10 @@ program merge_o3p_files
     max_sf = maxval(step(1:nstep(n),n))
     min_xf = minval(xtrack(1:nxtrack(n),n))
     max_xf = maxval(xtrack(1:nxtrack(n),n))
-    start_wstep=min_sf
-    end_wstep=max_sf
-    start_wxtrack=min_xf
-    end_wxtrack=max_xf
+    start_wstep=min_sf-min_step
+    end_wstep=max_sf-min_step
+    start_wxtrack=min_xf-min_xtrack
+    end_wxtrack=max_xf-min_xtrack
 
     call o3p_param_fill (errstat)
 

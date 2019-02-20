@@ -150,6 +150,9 @@ config_subdir()
 
    # Read the block parameters:
    read xt_beg xt_end <"$subdir_name/block.txt"
+   # processing code uses 1-based numbering, so add 1:
+   xt_beg=$(($xt_beg+1))
+   xt_end=$(($xt_end+1))
 
    template_pcf="$etc_dir/o3_profile/default.pcf.in"
 # Edit the PCF file template:
