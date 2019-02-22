@@ -71,7 +71,8 @@ case "$rad_basename" in
    *G01* )
    ;;
    * )
-   have_o3p=""
+   # uncomment this to skip other granules:
+   ## have_o3p=""
    ;;
 esac
 
@@ -81,9 +82,6 @@ if test x"$have_o3p" != x ; then
   ntasks_per_op3_host=14
   num_o3p_hosts=3;
   o3p_host_list=$(seq 0 $((num_o3p_hosts-1)))
-
-  # FIXME: Set this environment variable to make things run faster for testing.
-  export O3P_XTRACK_STEP=10
 
   # To perform the o3p merge later, we'll need to know archive path for
   # this granule.  Create that path now, and save it:
@@ -111,12 +109,12 @@ if test x"$have_o3p" != x ; then
 
      host_spec="${k}-${num_o3p_hosts}"
 
-     # We're asking for exclusive use of one node, but we may not get that,
-     # so the batch script needs to work whether or not that condition holds.
-     # FIXME: maybe it would be better to specify a particular host for each job.
+     # The --wait is to ensure that the tar file has been unpacked and all
+     # associated o3p batch jobs have been submitted before the singleton
+     # dependency cleanup batch job is submitted.
+     # Without this wait, there's a severe race condition.
      sbatch --job-name="$job_o3p" \
-            --nodelist "temposdpc0$((k+1))" \
-            --nodes=1-1 --ntasks=$ntasks_per_op3_host --exclusive \
+            --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$run_dir \
             run_L2_o3p.sh "$host_spec" "$tarfile_path_alias"
   done
