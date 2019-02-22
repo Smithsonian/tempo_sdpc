@@ -208,6 +208,9 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
         variable lst = {};
         foreach dir (granule_dir_list)
           {
+             variable st = stat_file (dir);
+             if (0 == stat_is ("dir", st.st_mode))
+               continue;
              file = glob ("${dir}/${prod}/TEMPO_${prod}_L2_*.nc"$);
              if (length(file) == 0) continue;
              list_append (lst, file[0]);
