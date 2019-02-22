@@ -435,6 +435,7 @@ MODULE OMSAO_variables_module
     REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:,:)    :: clon, clat  !  (mrefl, nxtrack)
     REAL (KIND=r4), ALLOCATABLE, DIMENSION (:,:)    :: elon, elat  !  (mrefl, nxtrack)
     REAL (KIND=r4), ALLOCATABLE, DIMENSION(:,:)     :: cfr, ctp, ai
+    integer (kind=4), allocatable, dimension(:)     :: step_idx    ! (ntimes)
     INTEGER (KIND=1), ALLOCATABLE, DIMENSION(:,:)   :: cloud_qflg
     INTEGER (KIND=4), ALLOCATABLE, DIMENSION(:,:)   :: gflg
     INTEGER (KIND=1), ALLOCATABLE, DIMENSION(:,:)   :: xflg

@@ -103,6 +103,7 @@ CONTAINS
    type (geo_group), intent(inout) :: geo
 
    IF (ALLOCATED (geo%time)) DEALLOCATE (geo%time)
+   if (allocated (geo%step_idx)) deallocate (geo%step_idx)
    IF (ALLOCATED (geo%lon)) DEALLOCATE (geo%lon)
    IF (ALLOCATED (geo%lat)) DEALLOCATE (geo%lat)
    IF (ALLOCATED (geo%sza)) DEALLOCATE (geo%sza)
@@ -338,7 +339,9 @@ CONTAINS
 
    call deallocate_geo (geo)
 
-   ALLOCATE (geo%time(0:ny-1), stat=status); IF (status .ne. 0 ) GOTO 111
+   ALLOCATE (geo%time(0:ny-1), &
+             geo%step_idx(0:ny-1), stat=status);
+   IF (status .ne. 0 ) GOTO 111
    ALLOCATE (geo%lon(nx,0:ny-1),geo%lat(nx,0:ny-1),geo%sza(nx,0:ny-1), &
              geo%vza(nx,0:ny-1),geo%aza(nx,0:ny-1),geo%sca(nx,0:ny-1), &
              geo%cfr(nx,0:ny-1),geo%ctp(nx,0:ny-1),geo%ai(nx,0:ny-1), &            

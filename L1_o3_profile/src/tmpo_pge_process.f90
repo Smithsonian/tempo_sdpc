@@ -96,24 +96,41 @@ CONTAINS
 
     !  define the boundaries of along and across track domain
     ! linenum_lim and pixnum_lim is actual location in TEMPO domain
-    ! linelim and pixlim is location for current mpi process
     IF (linenum_lim(2) >= ntimes)  linenum_lim(2) = ntimes
-    IF (pixnum_lim(2) >= nxtrack)  pixnum_lim(2) = nxtrack
+    if (any (pixnum_lim < 1 .or. pixnum_lim > nxtrack)) then
+      write(*,*)'pixnum_lim = ',pixnum_lim
+      call tell_error (tell_runtime_error, 'invalid pixnum_lim', errstat)
+      return
+    endif
 
-    first_pix  = ceiling(1.0 * pixnum_lim(1) / nxbin)
-    last_pix   = nint(1.0 * pixnum_lim(2) / nxbin )
+    if ((pixnum_lim(1) > 1 .and. mod(pixnum_lim(1)-1,nxbin) /= 0) &
+        .or. (pixnum_lim(2) > 1 .and. mod(pixnum_lim(2),nxbin) /= 0)) then
+      call tell_error (tell_runtime_error, &
+                       'xtrack limit is not integer multiple of the binning factor', &
+                       errstat)
+      return
+    endif
+    if ((linenum_lim(1) > 1 .and. mod(linenum_lim(1)-1,nybin) /= 0) &
+        .or. (linenum_lim(2) > 1 .and. mod(linenum_lim(2),nybin) /= 0)) then
+      call tell_error (tell_runtime_error, &
+                       'mirror step limit is not integer multiple of the binning factor', &
+                       errstat)
+      return
+    endif
+
+    npix = (pixnum_lim(2) - pixnum_lim(1) + 1) / nxbin
+    first_pix = ceiling(1.0*pixnum_lim(1) / nxbin)
+    last_pix = first_pix + npix - 1
+    spix = pixnum_lim(1)
+    epix = spix + npix * nxbin - 1
+
+    nline = (linenum_lim(2) - linenum_lim(1) + 1) / nybin
+    first_line = ceiling(1.0*linenum_lim(1) / nybin)
+    last_line = first_line + nline - 1
+    sline = linenum_lim(1)
+    eline = sline + nline * nybin - 1
+
     offset_line = linenum_lim(1) - 1
-    first_line  = 1
-    last_line   = int ((linenum_lim(2) - linenum_lim(1) + 1.0) / nybin)
-
-    npix  = last_pix - first_pix + 1
-    nline = last_line - first_line + 1
-    offset_line = linenum_lim(1) - 1
-
-    spix = (first_pix-1)*nxbin +1
-    epix = (last_pix-1)*nxbin  +1
-    sline = offset_line + 1
-    eline = offset_line + (nline-1)*nybin + 1
 
     WRITE (*,*) '@ Define TEMPO Domain**'
     WRITE(*,'(A,2i5, A,i2)') '=>pixnum_lim :', pixnum_lim, "nxbin:", nxbin
@@ -274,6 +291,7 @@ CONTAINS
       pge_error_status = pge_errstat_error
       RETURN
     ENDIF
+
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! loop through each OMI data block
     ! 1. read each block

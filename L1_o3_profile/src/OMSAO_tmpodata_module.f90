@@ -38,7 +38,7 @@ MODULE OMSAO_tmpodata_module
    TYPE(ring_group) :: tmpo_ring
    TYPE(irrad_group) :: tmpo_irrad
    TYPE(rad_group) :: tmpo_rad
-   TYPE(geo_group) :: tmpo_geo1, tmpo_geo2, tmpo_geo3, tmpo_geo4, tmpo_geo5
+   TYPE(geo_group) :: tmpo_geo1, tmpo_geo2
    TYPE(refl_group) :: tmpo_refl
    TYPE(cali_group):: tmpo_cali
    TYPE(o3p_group):: tmpo_o3p

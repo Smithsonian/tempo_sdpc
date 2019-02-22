@@ -1655,6 +1655,11 @@ contains
     num_lines = last_line - first_line + 1
     num_pix = last_pix - first_pix + 1
 
+    ! root group
+    call tiof_push_group (obj, "/", errstat)
+    call tiof_put1d_i4 (obj, tempo_dim_step, [0], [num_lines], &
+                        geo%step_idx(0:num_lines-1), errstat)
+    call tiof_pop_group (obj, errstat)
  
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)

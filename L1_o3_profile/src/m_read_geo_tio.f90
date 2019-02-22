@@ -67,6 +67,7 @@ CONTAINS
     INTEGER (kind=2), dimension (:,:), POINTER :: tio_height
     INTEGER (kind=4), dimension (:,:), POINTER :: tio_geoflg
     real (kind=4), dimension (:,:,:), POINTER:: tio_clon, tio_clat
+    integer (kind=4), dimension(:), allocatable :: step_idx
     !---------------------------------------------------------
     ! variables for binning/arrange tempo geolocation dataset
     !--------------------------------------------------------
@@ -80,7 +81,7 @@ CONTAINS
        allocate(tio_sza ( nxtrack, 0:ntimes-1) , tio_saza(nxtrack, 0:ntimes-1))
        allocate(tio_vza ( nxtrack, 0:ntimes-1) , tio_vaza(nxtrack, 0:ntimes-1))
        allocate(tio_height ( nxtrack, 0:ntimes-1) , tio_geoflg(nxtrack, 0:ntimes-1))
-       allocate(tio_time (0:ntimes-1))
+       allocate(tio_time (0:ntimes-1), step_idx(0:ntimes-1))
     !   first = .false.
     !ENDIF
    
@@ -105,6 +106,8 @@ CONTAINS
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, o3p_var_time, [sline1], [nline], &
                         tio_time(sline1:eline1), errstat)
+    call tiof_get1d_i4 (tio_l1obj, tempo_dim_step, [sline1], [nline], &
+                        step_idx(sline1:eline1), errstat)
     call tiof_push_group (tio_l1obj, l1swath, errstat)
     call tiof_get2d_r4 (tio_l1obj, o3p_var_latitude, [sline1,0],[nline,nxtrack], &
                         tio_lat (1:nxtrack,sline1:eline1), errstat)
@@ -164,7 +167,9 @@ CONTAINS
 
     geo%sza = -999
     geo%gflg (:,:) = 0
-    
+
+    geo%step_idx(0:nl-1) = step_idx (sline1:eline1:nybin)
+
     Do iy = 0, nl-1
        ysidx = (sline -1)+ iy * nybin 
        yeidx = ysidx + nybin - 1
