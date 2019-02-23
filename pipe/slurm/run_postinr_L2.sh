@@ -64,6 +64,14 @@ fi
 
 job_run_l2="L2:${SDPC_GRANULE_LABEL}"
 
+product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
+
+if test x"$product_list_sans_o3p" != x ; then
+  sbatch --job-name=$job_run_l2 \
+         --chdir $run_dir \
+         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
+fi
+
 have_o3p="$(echo $product_list | grep o3p)"
 
 # FIXME: for now, only generate o3p products for one granule
@@ -123,12 +131,4 @@ if test x"$have_o3p" != x ; then
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" \
          run_o3p_merge.sh merge $target_arch_dir_path
-fi
-
-product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
-
-if test x"$product_list_sans_o3p" != x ; then
-  sbatch --job-name=$job_run_l2 \
-         --chdir $run_dir \
-         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
 fi
