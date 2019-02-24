@@ -47,7 +47,7 @@ snow_file=${snow_file}
 met_file_path=${met_file_path}
 EOF
 
-# Run the pipeline:
+# Run the post-INR pipeline to prepare for L2 product generation:
 job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
 sbatch --wait --job-name=$job_prep_l2 --chdir $run_dir \
         --nodes=1-1 --ntasks=8 \
@@ -62,16 +62,7 @@ if ! test -f "$tarfile_path" ; then
   exit 1
 fi
 
-job_run_l2="L2:${SDPC_GRANULE_LABEL}"
-
 product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
-
-if test x"$product_list_sans_o3p" != x ; then
-  sbatch --job-name=$job_run_l2 \
-         --chdir $run_dir \
-         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
-fi
-
 have_o3p="$(echo $product_list | grep o3p)"
 
 # FIXME: for now, only generate o3p products for one granule
@@ -84,6 +75,15 @@ case "$rad_basename" in
    ;;
 esac
 
+# Because the o3p array jobs go to different compute hosts, we use a hard link
+# to provide each o3p array job with its own private copy of the input data,
+# to be deleted upon job completion.
+# To avoid a race condition, it's important to set up the input data hard links
+# for ALL of the batch jobs, before ANY of the batch jobs are actually submitted.
+# This avoids a race condition where, e.g. the set of (hcho,no2,o3t)
+# finishes and removes the original tar file before the (o3p) job can
+# create hard links to the original tar file and then start running.
+
 if test x"$have_o3p" != x ; then
 
   # FIXME: put these parameters in a control file somewhere.
@@ -93,19 +93,11 @@ if test x"$have_o3p" != x ; then
 
   # To perform the o3p merge later, we'll need to know archive path for
   # this granule.  Create that path now, and save it:
-  target_arch_dir_path="$(run_o3p_merge.sh path $tarfile_path)"
-  if test x"$target_arch_dir_path" = x ; then
+  o3p_target_arch_dir_path="$(run_o3p_merge.sh path $tarfile_path)"
+  if test x"$o3p_target_arch_dir_path" = x ; then
      echo "*** Error: constructing target archive directory path for $tarfile_path"
      exit 1
   fi
-
-  # On each host in $o3p_host_list, we'll issue an array of O3 profile tasks
-  # with --job-name="$job_o3p".  When each array job is completed, the output
-  # blocks are archived.  When all of those steps are finished, we run the final
-  # merge step to merge the blocks into a single O3 profile data product.
-  # The merge step is triggered by a slurm 'singleton' dependency on the
-  # job name "$job_o3p", defined here.
-  job_o3p="o3p:${SDPC_GRANULE_LABEL}"
 
   for k in $o3p_host_list ; do
      # To enable parallel cleanup, make a per-host hard link to the tar file
@@ -114,21 +106,49 @@ if test x"$have_o3p" != x ; then
      if ! test -f $tarfile_path_alias ; then
         ln $tarfile_path $tarfile_path_alias
      fi
+  done
+fi
 
+# Now that a private copy (hard link) of the input data is ready for every batch
+# job, it's ok to submit all the batch jobs.  Submit the non-o3p batch jobs
+# first, to give them a better chance of running "soon" (e.g. when all
+# cluster nodes are busy).
+
+if test x"$product_list_sans_o3p" != x ; then
+  job_run_l2="L2:${SDPC_GRANULE_LABEL}"
+  sbatch --job-name=$job_run_l2 \
+         --chdir $run_dir \
+         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
+fi
+
+if test x"$have_o3p" != x ; then
+
+  # On each host in $o3p_host_list, we'll issue an array of O3 profile tasks
+  # with --job-name="$job_o3p".  When each array job is completed, the output
+  # blocks are archived.  When all of those job steps are finished, we run the
+  # final merge step to merge the blocks into a single O3 profile data product.
+  # The merge step is triggered by a slurm 'singleton' dependency on the
+  # job name "$job_o3p", defined here.
+  job_o3p="o3p:${SDPC_GRANULE_LABEL}"
+
+  for k in $o3p_host_list ; do
      host_spec="${k}-${num_o3p_hosts}"
+     tarfile_path_alias="${tarfile_path}_${k}"
 
-     # The --wait is to ensure that the tar file has been unpacked and all
-     # associated o3p batch jobs have been submitted before the singleton
-     # dependency cleanup batch job is submitted.
-     # Without this wait, there's a severe race condition.
+     # Here, the --wait ensures that the tar file has been unpacked on each
+     # compute host and all associated o3p batch jobs have been submitted
+     # BEFORE the singleton dependency cleanup batch job is submitted.
+     # Without this wait, there's a race condition, where some compute jobs are
+     # submitted after the singleton, causing some blocks to be omitted from
+     # the final data product file.
      sbatch --job-name="$job_o3p" \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$run_dir \
             run_L2_o3p.sh "$host_spec" "$tarfile_path_alias"
   done
 
-  # When the o3p jobs all finish, all the o3p blocks will be in the archive.
+  # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" \
-         run_o3p_merge.sh merge $target_arch_dir_path
+         run_o3p_merge.sh merge $o3p_target_arch_dir_path
 fi
