@@ -1942,13 +1942,6 @@ contains
          real(fitvar_rad_aperror(fothvarpos(1:num_param)), &
          kind=4), errstat)
       if (first) then
-! FIXME
-! Should be filling the array in one shot but this fails - first entry
-! gets filled with all varnames, second entry with all but the first, etc
-! Unclear why, so do one-by-one for now
-!        call tiof_put1d_string (obj, o3p_var_nongas_param_names, 0, &
-!             num_param, &
-!             [varnames_nNum(fothvarpos(1:num_param))], errstat)
         do i = 1, num_param
           call tiof_put1d_string (obj, o3p_var_nongas_param_names, i-1, &
                1, [varnames_nNum(fothvarpos(i))//c_null_char], errstat)

@@ -738,16 +738,13 @@ $(ODIR)/m_read_cloud_tio.o: $(SDIR)/m_read_cloud_tio.f90 \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_cloud_tio.f90 -o $(ODIR)/m_read_cloud_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_l1_tio.o: $(SDIR)/m_read_l1_tio.f90 \
-  $(ODIR)/m_convert_coadd.o \
   $(ODIR)/o3p_names_module.o \
   $(ODIR)/OMSAO_tmpodata_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_l1_tio.f90 -o $(ODIR)/m_read_l1_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_geo_tio.o: $(SDIR)/m_read_geo_tio.f90 \
-  $(ODIR)/m_angle_sat2toa.o \
-  $(ODIR)/m_convert_coadd.o \
-  $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/o3p_names_module.o \
+  $(ODIR)/OMSAO_pixelcorner_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_tmpodata_module.o \
   $(ODIR)/OMSAO_variables_module.o

@@ -74,8 +74,7 @@ CONTAINS
     DO i = 1, max_rs_idx
       IF ( INDEX (TRIM(ADJUSTL(refspec_fname(i))), &
            zerospec_string ) == 0 ) THEN
-!  FIXME
-!  Modified to mask array temporaries
+!  FIXME  Modified to mask array temporaries
         ! wavelength range for reference spectrum
         wmin = winwav_min ; wmax = winwav_max
         IF ( i == solar_idx) THEN 

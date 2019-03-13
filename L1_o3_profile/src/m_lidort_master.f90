@@ -169,7 +169,6 @@ module m_lidort_master
     status_inputread   = vlidort_success
     IF (first) THEN
      ! ======================= Read LIDORT Control Input ==========================
-      ! FIXME file path below should NOT be hard coded !
       !CALL VLIDORT_L_INPUT_MASTER ( &
       !     TRIM(tabdir)//'../control/vlidort_control.inp', &
       !     'o3prof_lidort_error', status_inputread)

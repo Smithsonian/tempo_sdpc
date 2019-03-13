@@ -51,11 +51,10 @@ MODULE OMSAO_pixelcorner_module
   REAL (KIND=r4), PARAMETER, PRIVATE :: minza = 0.0, maxza=90.0, &
        minaza = -360., maxaza = 360.0
 
-  public compute_pixel_corners
-  private get_sphgeoview_corners, sphergeom_intermediate, angle_minus_twopi, &
-       circle_rdis,  convert_gpqualflag_info,convert_xtrackqflag_info
+  public compute_pixel_corners, sphergeom_intermediate, circle_rdis
+  private get_sphgeoview_corners, angle_minus_twopi, &
+       convert_gpqualflag_info,convert_xtrackqflag_info
     !, sphergeom_baseline_comp, lonlat_to_pi, circle_dis
-
 
 CONTAINS
 
@@ -313,9 +312,7 @@ CONTAINS
         DO ix = 1, nxtrack1
           i = ix * 2 - 1
           j = i + 1
-          !CALL coadd_byte_qflgs(nbits, ndim, ccd_xqflg1(i))!, & changed by someson TEMPO team
-          !     !ccd_xqflg1(j))
-          CALL coadd_byte_qflgs(nbits, ndim, ccd_xqflg1(i), ccd_xqflg1(j)) ! returned by jbak
+          CALL coadd_byte_qflgs(nbits, ndim, ccd_xqflg1(i), ccd_xqflg1(j))
           omi_XTrackQFlg(ix, iline) = ccd_xqflg1(i)
         ENDDO
       ENDIF
@@ -506,8 +503,6 @@ CONTAINS
     ! Save input variable in TMP_FLG for modification
     ! -----------------------------------------------
     tmp_flg(1:nxtrack) = int(omi_geoflg(1:nxtrack), kind=2)  ;  tmp_bytes = 0
-    ! FIXME - TEMPO ground_pixel_flag is now int4, but all subroutines
-    ! in this module assume int2
 
     CALL convert_2bytes_to_16bits ( &
          nbyte, nxtrack, tmp_flg(1:nxtrack), tmp_bytes(1:nxtrack,0:nbyte-1) )

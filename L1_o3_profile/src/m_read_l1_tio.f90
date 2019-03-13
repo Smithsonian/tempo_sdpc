@@ -4,7 +4,6 @@ module m_read_l1_tio
   use tio_module
   use tell_module
   use netcdf, only: nf90_nowrite
-  use m_convert_coadd, only: convert_2bytes_to_16bits
   !use OMSAO_omidata_module, only: ncoadd, nxtrack_max, ntimes_max 
   use OMSAO_tmpodata_module, only:  nxtrack_max, ntimes_max
   use OMSAO_variables_module, only: scnwrt, step_idx

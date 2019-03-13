@@ -56,8 +56,7 @@ CONTAINS
     REAL (kind=dp),DIMENSION(3, 2) :: dfitcol
     character (len=4) :: xtrack_step_env
     integer :: xtrack_step, xtrack_step_env_status, iostatus
-    ! FIXME - should be input variable, not fixed value
-    INTEGER :: processing_version = 1
+    INTEGER :: processing_version = 1 ! FIXME - should be input variable, not fixed value
     LOGICAL :: problems = .false.
     ! ------------------------------
     ! Name of this module/subroutine
@@ -224,19 +223,11 @@ CONTAINS
     ! @ Reading geolocation variables
     !   with Computing spatial pixel corners and effective viewing geometry
     !------------------------------------------------------------------
-    !FIXME
-    ! At present, compute_pixel_corners sets values in arrays whose size
-    ! is determined by nlines_max = 100. This suggests that it expects
-    ! to operate within one OMI data black of 100 lines. When operated
-    ! in it's current position, outside the OMIBlock loop, IF last_line >100
-    ! the array indices will exceed nlines_max, causing memory to be
-    ! overwritten and causing the program to crash / give false results
-    ! Consider moving compute_pixel_corners inside the OMIBlock loop.
 
     CALL read_geo_tio (rad_swathname(1),tmpo_geo1, ntimes, nxtrack, &
-        first_pix, last_pix, sline, eline, .false.,pge_error_status)
+        first_pix, last_pix, sline, eline, pge_error_status)
     CALL read_geo_tio (rad_swathname(2),tmpo_geo2, ntimes, nxtrack, &
-        first_pix, last_pix, sline, eline, .true., pge_error_status)
+        first_pix, last_pix, sline, eline, pge_error_status)
     IF (pge_error_status /= pge_errstat_ok) THEN
        message =": failed to read geo location"
        RETURN
