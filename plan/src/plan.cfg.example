@@ -87,6 +87,9 @@ master_table_config: {
 
 sat_config: {
 
+# TEMPO epoch
+  epoch = "2000-01-01T00:00:00Z";
+
 # sat_lon = geostationary satellite longitude
   sat_lon = -100.0;
 

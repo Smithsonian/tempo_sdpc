@@ -323,6 +323,29 @@ static int generate_master_scan_table (config_t *cfg, const char *type, FILE *fp
    return generate_scan_table (cfg, fp, print_standard_scan_table);
 }
 
+static int read_epoch (config_t *cfg)
+{
+   config_setting_t *s;
+   const char *epoch;
+
+   if (NULL == (s = config_lookup (cfg, "sat_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing sat_config in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "epoch", &epoch))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading : %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return tio_time_set_tempo_epoch (epoch);
+}
+
 static int read_sat_time_zone (config_t *cfg, double *hour)
 {
    config_setting_t *s;
@@ -440,6 +463,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
    const Scan_Method_Type *sm = NULL;
    Solar_Geom_Type *solar_geom = NULL;
    double jd_utc, jd_utc0, jd_utc1;
+   char epoch_str[32];
    int status = -1;
 
    jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
@@ -490,12 +514,16 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
           goto return_status;
      }
 
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
+     goto return_status;
+
    (void) fprintf (fp, "# %s = scan method\n", scan_method);
    if (0 != scan->st_print_params (scan, "#", fp))
      goto return_status;
    if (0 != solar_geom->sgt_print_params (solar_geom, "#", fp))
      goto return_status;
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph.ephem_name);
+   (void) fprintf (fp, "# TEMPO epoch: %s\n", epoch_str);
    (void) fprintf (fp, "#\n");
 
    if (0 != plan_list_write (fp, mirror_tilt, plan_list))
@@ -679,6 +707,9 @@ int main (int argc, char **argv)
              fprintf (stderr, "Usage error: plan start date not specified (--date option missing)\n");
              goto return_status;
           }
+
+        if (0 != read_epoch (&cfg))
+          goto return_status;
 
         /* satellite orbital station determines effective time zone */
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
