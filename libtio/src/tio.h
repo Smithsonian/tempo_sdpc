@@ -395,7 +395,13 @@ extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
  * The NTP-synchronized Unix clock includes leap second corrections
  * and is therefore non-monotonic.
  */
-extern double tio_tempo_epoch_timet (void);
+extern double tio_time_tempo_epoch_timet (void);
+
+/** Set the TEMPO epoch using a UTC time string
+ * @param[in]  utc   Epoch specification of the form YYYY-MM-DDThh:mm:ssZ
+ * @return 0 on success, -1 on error
+ */
+extern int tio_time_set_tempo_epoch (const char *utc_string);
 
 /** Convert TAI sec since TEMPO epoch to calendar date and time, UTC
  * @param[in] tempo_time   Elapsed TAI seconds since the TEMPO epoch

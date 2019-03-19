@@ -601,7 +601,7 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
      return -1;
    epoch_tt = timegm (&tm);
 
-   tempo_epoch_utc = tio_tempo_epoch_timet ();
+   tempo_epoch_utc = tio_time_tempo_epoch_timet ();
    tempo_epoch_tt = (time_t)tempo_epoch_utc;
 
    if (epoch_tt == tempo_epoch_tt)

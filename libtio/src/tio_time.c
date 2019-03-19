@@ -2,38 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define __USE_XOPEN   /* for strptime */
+#include <time.h>
+
 /* Adapted from iocdbtime.c by John E. Davis <jedavis@cfa.harvard.edu> */
 
 #include <tell.h>
 #include "tio.h"
 #include "_tio.h"
-
-/* To simplify anomaly resolution, choose the TEMPO epoch to be the
-   same as the instrument on-board time epoch.  The CDS time code that
-   appears in the secondary header of the CCSDS packets is referenced
-   to the OBT epoch. Requirement GIF-297 in Ball document 2419038,
-   "Remote Electronics Subsystem (RES) Specification for the
-   Instrument Space Products Geostationary UV-VIS Dispersive Imaging
-   Spectrometers", states that "The on-board time (OBT) epoch shall be
-   12:00, January 1, 2000 UTC.".
-
-   Note that the CDS time code epoch is offset from the J2000.0
-   standard epoch by 64.184 seconds.
-
-   Following USNO Circular No. 179, 2005 Oct 20, page 9, the
-   J2000.0 standard epoch is defined as follows:
-   1) J2000.0 is 2000 January 1, 12h TT (JD 2451545.0 TT) at the
-      geocenter, where TT = Terrestrial Time.
-   2) TT = TAI + 32.184 sec, where TAI = International Atomic Time.
-   3) Between 1999-2005, TAI = UTC + 32 sec, where
-       UTC = Coordinated Universal Time.
-   Therefore, on Jan 1, 2000, the UTC of the epoch is:
-    UTC = TAI - 32
-        = (TT - 32.184) - 32
-        = 12:00:00 - 64.184
-        = 11:59:00 -  4.184
-        = 11:58:55.816
-*/
 
 #ifndef LEAP_SECONDS_LIST
 # define LEAP_SECONDS_LIST "/usr/share/zoneinfo/leap-seconds.list"
@@ -53,10 +29,6 @@ static const char *_pTIO_Leap_Sec_File = LEAP_SECONDS_LIST;
 /* The NTP EPOCH is at 1 January 1900, 00:00:00. */
 #define UNIX_EPOCH_NTP (2208988800LL)
 /* Note: (70*365 + 17leapdays)*86400 = 2208988800 */
-
-/* The TEMPO Epoch is at 12:00, January 1, 2000 UTC */
-#define TEMPO_EPOCH_TIME_T ((time_t)946728000L)
-#define TEMPO_EPOCH_TAI    ((time_t)946728032L)
 
 /* The present assumption is that the TEMPO time represents the number of
  * actual elapsed seconds since the TEMPO epoch.  To convert this to UTC,
@@ -86,6 +58,12 @@ static void free_leap_second_table (Leap_Second_Table_Type *lstt)
    if (lstt == NULL) return;
    TIO_FREE (lstt->entries);
    TIO_FREE (lstt);
+}
+
+static void atexit_free_leap_second_table (void)
+{
+   free_leap_second_table (Leap_Second_Table);
+   Leap_Second_Table = NULL;
 }
 
 static int resize_leap_second_table (Leap_Second_Table_Type *lstt, unsigned int new_size)
@@ -179,6 +157,7 @@ static int read_leapsecond_table (const char *file)
    lstt = (Leap_Second_Table_Type *)TIO_MALLOC (sizeof(Leap_Second_Table_Type));
    if (lstt == NULL)
      return -1;
+   atexit (atexit_free_leap_second_table);
    memset (lstt, 0, sizeof(Leap_Second_Table_Type));
 
    fp = fopen (file, "r");
@@ -262,11 +241,6 @@ return_error:
    return -1;
 }
 
-double tio_tempo_epoch_timet (void)
-{
-   return (double) TEMPO_EPOCH_TIME_T;
-}
-
 static int initialize (void)
 {
    if (-1 == read_leapsecond_table (_pTIO_Leap_Sec_File))
@@ -275,34 +249,7 @@ static int initialize (void)
    return 0;
 }
 
-int tio_time_tempo_to_utc_caldate
-(double tempo_time, int *year, int *month, int *day, double *hour)
-{
-   struct tm tm;
-   double utc;
-   time_t tt;
-
-   if (0 != tio_time_tempo_to_utc (tempo_time, &utc))
-     return -1;
-
-   tt = (time_t) utc;
-   if (NULL == gmtime_r (&tt, &tm))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
-                     __func__, tt);
-        return -1;
-     }
-
-   *year = 1900 + tm.tm_year;
-   *month = 1 + tm.tm_mon;
-   *day = tm.tm_mday;
-   *hour = (tm.tm_hour
-            + (1.0/60)*(tm.tm_min
-                        + (1.0/60)*(tm.tm_sec + (utc - tt))));
-   return 0;
-}
-
-int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
+static int utc_to_tai (double utc_time, double *tai_time)
 {
    Leap_Second_Table_Type *lstt;
    Leap_Second_Entry_Type *entries;
@@ -317,13 +264,55 @@ int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
         lstt = Leap_Second_Table;
      }
 
-   if (tempo_time < 0.0)
+   entries = lstt->entries;
+   ilo = 0;
+   ihi = lstt->num_entries;
+
+   if ((utc_time < entries->unix_time)
+       || (utc_time >= entries[ihi-1].unix_time))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR, "tio_time_tempo_to_utc: tempo time value is less than 0");
-        return -1;
+        if (utc_time < entries->unix_time)
+          tai = utc_time;
+        else
+          tai = utc_time + entries[ihi-1].tai_utc_offset;
+
+        if (utc_time >= lstt->expiration_time)
+          tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+
+        *tai_time = tai;
+        return 0;
      }
 
-   tai = (TEMPO_EPOCH_TAI + tempo_time);
+   while (ilo + 1 < ihi)
+     {
+        unsigned int i;
+
+        i = ilo + (ihi - ilo)/2;
+        if (utc_time >= entries[i].unix_time)
+          ilo = i;
+        else
+          ihi = i;
+     }
+
+   tai = utc_time + entries[ilo].tai_utc_offset;
+   *tai_time = tai;
+
+   return 0;
+}
+
+static int tai_to_utc (double tai, double *utc_time)
+{
+   Leap_Second_Table_Type *lstt;
+   Leap_Second_Entry_Type *entries;
+   unsigned int ilo, ihi;
+
+   lstt = Leap_Second_Table;
+   if (lstt == NULL)
+     {
+        if (-1 == initialize ())
+          return -1;
+        lstt = Leap_Second_Table;
+     }
 
    entries = lstt->entries;
    ilo = 0;
@@ -355,69 +344,127 @@ int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
      }
 
    *utc_time = tai - entries[ilo].tai_utc_offset;
+
    return 0;
+}
+
+/* FIXME: The TEMPO Epoch is at 12:00, January 1, 2000 UTC */
+static time_t __Tempo_Epoch_Time_T = ((time_t)946728000L);
+static time_t __Tempo_Epoch_TAI = ((time_t)946728032L);
+
+static time_t __tempo_epoch_tai (void)
+{
+   return __Tempo_Epoch_TAI;
+}
+
+static time_t __tempo_epoch_timet (void)
+{
+   return __Tempo_Epoch_Time_T;
+}
+
+static int __tempo_epoch_set (const char *utc_string)
+{
+   struct tm tm = {0};
+   double utc, tai;
+
+   if (utc_string == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid time specification: %s",
+                     __func__, utc_string ? utc_string : "NULL");
+        return -1;
+     }
+
+   if (NULL == strptime (utc_string, "%Y-%m-%dT%H:%M:%SZ", &tm))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
+                     __func__, utc_string);
+        return -1;
+     }
+
+   utc = (double) timegm (&tm);
+
+   if (0 != utc_to_tai (utc, &tai))
+     return -1;
+
+   __Tempo_Epoch_Time_T = (time_t)utc;
+   __Tempo_Epoch_TAI = (time_t)tai;
+
+   return 0;
+}
+
+int tio_time_set_tempo_epoch (const char *utc_string)
+{
+   return __tempo_epoch_set (utc_string);
+}
+
+double tio_time_tempo_epoch_timet (void)
+{
+   return (double) __tempo_epoch_timet();
+}
+
+int tio_time_tempo_to_utc_caldate
+(double tempo_time, int *year, int *month, int *day, double *hour)
+{
+   struct tm tm;
+   double utc;
+   time_t tt;
+
+   if (0 != tio_time_tempo_to_utc (tempo_time, &utc))
+     return -1;
+
+   tt = (time_t) utc;
+   if (NULL == gmtime_r (&tt, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
+                     __func__, tt);
+        return -1;
+     }
+
+   *year = 1900 + tm.tm_year;
+   *month = 1 + tm.tm_mon;
+   *day = tm.tm_mday;
+   *hour = (tm.tm_hour
+            + (1.0/60)*(tm.tm_min
+                        + (1.0/60)*(tm.tm_sec + (utc - tt))));
+   return 0;
+}
+
+int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
+{
+   double tai;
+
+   if (tempo_time < 0.0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "tio_time_tempo_to_utc: tempo time value is less than 0");
+        return -1;
+     }
+
+   tai = __tempo_epoch_tai() + tempo_time;
+
+   return tai_to_utc (tai, utc_time);
 }
 
 int tio_time_tempo_to_tai (double tempo_time, double *tai_time)
 {
-   *tai_time = tempo_time + TEMPO_EPOCH_TAI;
+   *tai_time = tempo_time + __tempo_epoch_tai();
    return 0;
 }
 
 int tio_time_utc_to_tempo (double utc_time, double *tempo_time)
 {
-   Leap_Second_Table_Type *lstt;
-   Leap_Second_Entry_Type *entries;
    double tai;
-   unsigned int ilo, ihi;
 
-   if (utc_time < TEMPO_EPOCH_TIME_T)
+   if (utc_time < __tempo_epoch_timet())
      {
-        tell_verror (TELL_INVALID_PARM_ERROR, "tio_time_utc_to_tempo: UTC time value is less than the TEMPO epoch");
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "tio_time_utc_to_tempo: UTC time value is less than the TEMPO epoch");
         return -1;
      }
 
-   lstt = Leap_Second_Table;
-   if (lstt == NULL)
-     {
-        if (-1 == initialize ())
-          return -1;
-        lstt = Leap_Second_Table;
-     }
+   if (0 != utc_to_tai (utc_time, &tai))
+     return -1;
 
-   entries = lstt->entries;
-   ilo = 0;
-   ihi = lstt->num_entries;
-
-   if ((utc_time < entries->unix_time)
-       || (utc_time >= entries[ihi-1].unix_time))
-     {
-        if (utc_time < entries->unix_time)
-          tai = utc_time;
-        else
-          tai = utc_time + entries[ihi-1].tai_utc_offset;
-
-        if (utc_time >= lstt->expiration_time)
-          tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
-
-        *tempo_time = tai - TEMPO_EPOCH_TAI;
-        return 0;
-     }
-
-   while (ilo + 1 < ihi)
-     {
-        unsigned int i;
-
-        i = ilo + (ihi - ilo)/2;
-        if (utc_time >= entries[i].unix_time)
-          ilo = i;
-        else
-          ihi = i;
-     }
-
-   tai = utc_time + entries[ilo].tai_utc_offset;
-   *tempo_time = tai - TEMPO_EPOCH_TAI;
+   *tempo_time = tai - __tempo_epoch_tai();
 
    return 0;
 }
-
