@@ -12,8 +12,8 @@ program tio_test
 
   integer, parameter :: dim_strlen_size = 32, dim_name_size = 20
   integer, parameter :: dim1_size = 5, dim2_size = 7
-  integer, parameter :: half_dim1_size = dim1_size/2
-  integer, parameter :: half_dim2_size = dim2_size/2
+  integer, parameter :: half_dim1_size = int(dim1_size/2.0)
+  integer, parameter :: half_dim2_size = int(dim2_size/2.0)
   character (len=dim_strlen_size), parameter :: dim_strlen = "strlen"
   character (len=dim_strlen_size), parameter :: dim_name = "name"
   integer, dimension(2) :: list_of_names_dimids

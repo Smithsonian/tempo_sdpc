@@ -913,7 +913,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
     r8_1d(:), r8_2d(:,:), r8_3d(:,:,:), &
     r8_4d(:,:,:,:), r8_5d(:,:,:,:,:), r8_6d(:,:,:,:,:,:)
 
-  real (kind=r4), parameter :: r4_huge_1 = huge(1)
+  real (kind=r4), parameter :: r4_huge_1 = huge(1.0_4)
 
   call tiof_open (filename, obj, nf90_nowrite, errstat)
   if (errstat < 0) then
