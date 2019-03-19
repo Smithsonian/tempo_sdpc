@@ -28,12 +28,13 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = tio_test time_test tio_test_f ftest1 ppc_test history_test
+EXECUTABLES = tio_test time_test epoch_test tio_test_f ftest1 ppc_test history_test
 
 all:  $(EXECUTABLES)
 
 check:	$(EXECUTABLES)
 	@./time_test < times.in > times.out && diff times.out times.chk && echo "running time_test...ok"
+	@./epoch_test && echo "running epoch_test...ok"
 	@./tio_test 2> c.test.log && echo "testing C...ok"
 	@./tio_test_f 2> f90.test.log && echo "testing Fortran...ok"
 	@./ftest1 2> ftest1.test.log && echo "running ftest1...ok"
@@ -65,6 +66,9 @@ tio_test:
 
 time_test:
 	$(COMPILE_CMD) -o time_test $(INCS) time_test.c $(LIBS)
+
+epoch_test:
+	$(COMPILE_CMD) -o epoch_test $(INCS) epoch_test.c $(LIBS)
 
 ppc_test:
 	$(COMPILE_CMD) -o ppc_test $(INCS) -DSELF_TEST ../src/tio_ppc.c $(LIBS)
