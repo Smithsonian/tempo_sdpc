@@ -403,6 +403,12 @@ extern double tio_time_tempo_epoch_timet (void);
  */
 extern int tio_time_set_tempo_epoch (const char *utc_string);
 
+/** Set the TEMPO epoch using the time_reference attribute stored in a file
+ * @param[in]  ncid   Device id of a netCDF file open for reading
+ * @return 0 on success, -1 on error
+ */
+extern int tio_use_file_epoch (int ncid);
+
 /** Convert TAI sec since TEMPO epoch to calendar date and time, UTC
  * @param[in] tempo_time   Elapsed TAI seconds since the TEMPO epoch
  * @param[out]  year       4-digit year

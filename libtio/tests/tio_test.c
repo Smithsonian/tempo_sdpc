@@ -662,7 +662,7 @@ close_and_return:
 
 /*}}}*/
 
-static int check_granule_ident (int ncid)
+static int check_granule_ident (int ncid) /*{{{*/
 {
    int scan_num, granule_num, granule_flag, itest, varid;
    int start=0, count=1;
@@ -727,6 +727,8 @@ static int check_granule_ident (int ncid)
 
    return 0;
 }
+
+/*}}}*/
 
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny) /*{{{*/
 {
@@ -911,6 +913,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
      goto cleanup;
 
    if (-1 == TIO_open (file, NC_NOWRITE, &ncid))
+     goto cleanup;
+
+   if (0 != tio_use_file_epoch (ncid))
      goto cleanup;
 
    if (NC_NOERR != (status = nc_inq_grp_full_ncid (ncid, grp_name, &grp)))

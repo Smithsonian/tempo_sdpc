@@ -575,6 +575,16 @@ int tio_write_epoch_timestamp (int ncid, int varid)
    return 0;
 }
 
+int tio_use_file_epoch (int ncid)
+{
+   char utc_string[MAX_ISOTIME_LEN];
+
+   if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, utc_string))
+     return -1;
+
+   return tio_time_set_tempo_epoch (utc_string);
+}
+
 int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
                          double secs_since_tempo_epoch)
 {
@@ -705,3 +715,5 @@ FCALLSCFUN3(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
             INT, STRING, INT)
 FCALLSCFUN5(INT, tio_time_tempo_to_utc_caldate, TIO_F_TEMPO_TIME_TO_UTC_CALDATE, tio_f_tempo_time_to_utc_caldate,
             DOUBLE, PINT,PINT,PINT,PDOUBLE)
+FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,
+            INT)

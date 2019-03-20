@@ -119,12 +119,12 @@ module tio_module
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_tempo_time_to_utc_caldate
+    tio_f_tempo_time_to_utc_caldate, tio_f_use_file_epoch
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_tempo_time_to_utc_caldate
+    tio_f_tempo_time_to_utc_caldate, tio_f_use_file_epoch
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -135,7 +135,7 @@ module tio_module
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
-    tiof_tempo_time_to_utc_caldate
+    tiof_tempo_time_to_utc_caldate, tiof_use_file_epoch
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -240,6 +240,15 @@ contains
       return
     endif
     name = trim(name)//c_null_char
+  end subroutine
+
+  subroutine tiof_use_file_epoch (obj, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+    errstat = tio_f_use_file_epoch (obj % fileid)
   end subroutine
 
   subroutine tiof_tempo_time_to_utc_caldate (tempo_time, year, &

@@ -65,6 +65,11 @@ program tio_test
     stop 2
   endif
 
+  call tiof_use_file_epoch (obj, errstat)
+  if (errstat /= 0) then
+    stop 2
+  endif
+
   call test_granule_ident (obj, errstat)
   if (errstat /= 0) then
     stop 2
