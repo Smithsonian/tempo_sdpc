@@ -9,11 +9,11 @@ nmlfile=boilerplate.nml
 $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 
 #comparison values
-cmlat_in="0"
-cmlon_in="0"
-polylat_in="-10, -10, 10, 10"
-polylon_in="-10, 10, 10, -10"
-polyseq_in="1, 2, 3, 4"
+cmlat_in="3.276634e-07"
+cmlon_in="-1.60647e-07"
+polylat_in="-10, -2, 6, 10, 10, 10, 10, 10, 10, 10, 2, -6"
+polylon_in="10, 10, 10, 10, 6, 2, -2, -6, -10, -10, -10, -10"
+polyseq_in="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
 inputs_in="l1_radiance.nc, l1_irradiance.nc, lookup.txt, reference_table.nc, otherstuff.dat"
 local_gran_in=$ncfile
 local_vers_in="(1)"
@@ -27,8 +27,8 @@ abs_in=`awk -F\" '/abstract/{print $2}' boilerplate.nml`
 keys_in=`awk -F\" '/keywords/{print $2}' boilerplate.nml`
 
 #attribute values
-cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | awk -F. '{print $1}'`
-cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | awk -F. '{print $1}'`
+cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
+cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
 polylat_out=`cat nc_header.txt | awk -F=\  '/:polygon_latitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
 polylon_out=`cat nc_header.txt | awk -F=\  '/:polygon_longitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
 polyseq_out=`cat nc_header.txt | awk -F=\  '/:polygon_sequence/{print $2}' | sed s/\ \;//`
@@ -65,7 +65,7 @@ if [ "$keys_out" != "$keys_in" ] ; then exitstat=16 ; fi
 
 if [ $exitstat -ne 0 ]
 then
-  echo "*** test_attr: comparison failed"
+  echo "*** test_attr: comparison failed:  exitstat=$exitstat"
 fi
 
 exit $exitstat

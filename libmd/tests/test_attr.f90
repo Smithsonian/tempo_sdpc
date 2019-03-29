@@ -29,8 +29,11 @@ program test_attr
   integer (kind=4) :: n, m, errstat
   integer (kind=4), dimension(0:nstep-1) :: step_indices
   integer (kind=4), dimension (0:nxtrack-1) :: xtrack_indices
-  real (kind=4), dimension (nxtrack,nstep) :: lat, lon
+  real (kind=4), dimension (nxtrack,nstep) :: lat, lon, vza
+  integer (kind=4), dimension (nxtrack,nstep) :: inrqf
   integer(kind=4), dimension(2) :: dimid_2d
+  real (kind=4), dimension(:), allocatable :: bdry_lon, bdry_lat
+  real (kind=4) :: centroid_lon, centroid_lat
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
@@ -39,18 +42,26 @@ program test_attr
   namelist /metadata/  collection_shortname, collection_version, platform, &
          access_description, access_value, abstract, keywords
 
-
   !--------------------------------------------------------------
 
   errstat = 0
 
   ! read from namelist
   open (333, file=nlfile, status='OLD', iostat=errstat)
-  if (errstat == 0) read (333, nml=metadata, iostat=errstat)
-  if (errstat == 0) close (333, iostat=errstat)
   if (errstat /= 0) then
-    call tell_error (tell_io_read_error, &
-         "*** test_attr: failed to read from namelist", errstat)
+    write (*,*)'*** error opening file: '//trim(nlfile)
+    stop 1
+  endif
+
+  read (333, nml=metadata, iostat=errstat)
+  if (errstat /= 0) then
+    write (*,*)'*** error reading file: '//trim(nlfile)
+    stop 1
+  endif
+
+  close (333, iostat=errstat)
+  if (errstat /= 0) then
+    write (*,*)'*** error closing file: '//trim(nlfile)
     stop 1
   endif
 
@@ -66,16 +77,19 @@ program test_attr
     do m=1,nxtrack
       lat(m,n)=-10+(m-1)
       lon(m,n)=-10+(2*n-2)
+      vza(m,n)=0.0
+      inrqf(m,n) = 0
     enddo
   enddo
 
   ! build a netCDF file with some basic data and a  metadata group
   call tiof_dimlist_append (dimlist, "mirror_step", nstep, errstat)
   call tiof_dimlist_append (dimlist, "xtrack", nxtrack, errstat)
-  if (errstat == 0) call tiof_create (obj, l2file, nf90_clobber, errstat)
-  if (errstat == 0) call tiof_def_group (obj, grp_md, errstat)
-  if (errstat == 0) call tiof_def_group (obj, grp_geo, errstat)
-  if (errstat == 0) call tiof_def_dims (obj, dimlist, errstat)
+  call tiof_create (obj, l2file, nf90_clobber, errstat)
+  call tiof_def_group (obj, grp_md, errstat)
+  call tiof_def_group (obj, grp_geo, errstat)
+  call tiof_def_dims (obj, dimlist, errstat)
+
   if (errstat /= 0) then
     write(*,*)'*** test_attr: tiof_create failed'
     stop 1
@@ -86,52 +100,75 @@ program test_attr
 
   call tiof_dimlist_lookup (dimlist, ["     xtrack", "mirror_step"], dimid_2d,&
        errstat)
-  if (errstat == 0) call tiof_varlist_append (varlist, errstat, "mirror_step",&
+  call tiof_varlist_append (varlist, errstat, "mirror_step",&
        nf90_int, dimids=[dimid_2d(2)])
-  if (errstat == 0) call tiof_varlist_append (varlist, errstat, "xtrack", &
+  call tiof_varlist_append (varlist, errstat, "xtrack", &
        nf90_int, dimids=[dimid_2d(1)])
-  if (errstat == 0) call tiof_def_vars (obj, varlist, errstat)
-  if (errstat == 0) call tiof_varlist_free (varlist)
-  if (errstat == 0) call tiof_put1d_i4 (obj, "xtrack", [0], [nxtrack], &
-         xtrack_indices, errstat)
-  if (errstat == 0) call tiof_put1d_i4 (obj, "mirror_step", [0], [nstep], &
-         step_indices, errstat)
+  call tiof_def_vars (obj, varlist, errstat)
+  call tiof_varlist_free (varlist)
+  call tiof_put1d_i4 (obj, "xtrack", [0], [nxtrack], xtrack_indices, errstat)
+  call tiof_put1d_i4 (obj, "mirror_step", [0], [nstep], step_indices, errstat)
+
   if (errstat /= 0) then
     write (*,*)'*** test_attr: failed to define coordinate vars'
     stop 1
   endif
 
-  call tiof_varlist_append (varlist, errstat, "lon", nf90_float, &
+  call tiof_varlist_append (varlist, errstat, tempo_var_longitude, nf90_float, &
        dimids=dimid_2d)
-  if (errstat == 0) call tiof_varlist_append (varlist, errstat, "lat", &
+  call tiof_varlist_append (varlist, errstat, tempo_var_latitude, &
        nf90_float, dimids=dimid_2d)
-  if (errstat == 0) call tiof_push_group (obj, grp_geo, errstat)
-  if (errstat == 0) call tiof_def_vars (obj, varlist, errstat)
-  if (errstat == 0) call tiof_put2d_r4 (obj, "lon", [0,0], &
+  call tiof_varlist_append (varlist, errstat, tempo_var_vz_angle, &
+       nf90_float, dimids=dimid_2d)
+  call tiof_varlist_append (varlist, errstat, tempo_var_inrqf, &
+       nf90_int, dimids=dimid_2d)
+
+  call tiof_push_group (obj, grp_geo, errstat)
+  call tiof_def_vars (obj, varlist, errstat)
+
+  call tiof_put2d_r4 (obj, tempo_var_longitude, [0,0], &
        [nstep, nxtrack], lon(1:nxtrack,1:nstep), errstat)
-  if (errstat == 0) call tiof_put2d_r4 (obj, "lat", [0,0], &
+  call tiof_put2d_r4 (obj, tempo_var_latitude, [0,0], &
        [nstep, nxtrack], lat(1:nxtrack,1:nstep), errstat)
-  if (errstat == 0) call tiof_pop_group (obj, errstat)
-  if (errstat == 0) call tiof_varlist_free (varlist)
+  call tiof_put2d_r4 (obj, tempo_var_vz_angle, [0,0], &
+       [nstep, nxtrack], vza(1:nxtrack,1:nstep), errstat)
+  call tiof_put2d_i4 (obj, tempo_var_inrqf, [0,0], &
+       [nstep, nxtrack], inrqf(1:nxtrack,1:nstep), errstat)
+
+  call tiof_pop_group (obj, errstat)
+  call tiof_varlist_free (varlist)
+
   if (errstat /= 0) then
     write (*,*)'*** test_attr: failed to write data vars'
     stop 1
   endif
-!
+
   call tiof_label_product (obj, "test", 1, errstat)
-  if (errstat == 0) call tiof_close (obj, errstat)
+  call tiof_close (obj, errstat)
+
   if (errstat /= 0) then
     write(*,*)'*** test_attr: failed to define metadata group'
     stop 1
   endif
 
+  call tiof_open (l2file, obj, nf90_write, errstat)
+  call tiof_push_group (obj, grp_geo, errstat)
+  call tiof_make_lev1_bounding_polygon (obj, bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
+  call tiof_close (obj, errstat)
+
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, "generating bounding polygon", errstat)
+    return
+  endif
+
   ! add the metadata
-  call open_md(l2file, errstat)
-  if (errstat == 0) call write_geo_bounds_md(nxtrack, nstep, lat, lon, errstat)
-  if (errstat == 0) call write_inputs_md(ninp, inputs, errstat)
-  if (errstat == 0) call write_fixed_md(nlfile,errstat)
-  if (errstat == 0) call write_prodid_md(l2file,version_str,errstat)
-  if (errstat == 0) call close_md(errstat)
+  call md_open (l2file, errstat)
+  call md_write_geo_bounds (bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
+  call md_write_inputs (ninp, inputs, errstat)
+  call md_write_fixed (nlfile,errstat)
+  call md_write_prodid (l2file,version_str,errstat)
+  call md_close (errstat)
+
   if (errstat /= 0) then
     write(*,*)'*** test_attr: failed to write metadata'
     stop 1
