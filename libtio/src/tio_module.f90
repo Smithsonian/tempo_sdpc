@@ -18,6 +18,7 @@
 !! status, via \a tell_get_error and \a tell_copy_strerror.
 !
 module tio_module
+  use, intrinsic :: iso_c_binding
   use netcdf
   use tell_module
   implicit none
@@ -115,6 +116,35 @@ module tio_module
     type (tiof_var_type), private, pointer :: head => null(), tail => null()
   end type
 
+  !> Fortran interface for C struct \a Bounding_Polygon_Type
+  !! NOTE: this declaration must match the layout of C struct Bounding_Polygon_Type
+  type, bind(c), public :: tiof_bounding_polygon_type
+    type(c_ptr) :: lon
+    type(c_ptr) :: lat
+    integer (c_int) :: num
+    real (kind=c_float) :: centroid_lon  !< centroid longitude
+    real (kind=c_float) :: centroid_lat  !< centroid latitude
+  end type
+
+  interface
+    subroutine free_lev1_bounding_polygon_struct (bpt) &
+      bind (c, name='__free_lev1_bounding_polygon_struct')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      type (c_ptr), value :: bpt
+    end subroutine
+  end interface
+
+  interface
+    integer (c_int) function make_lev1_bounding_polygon_struct (grp, bpt) &
+        bind (c, name='__make_lev1_bounding_polygon_struct')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      integer (c_int) :: grp
+      type (c_ptr), value:: bpt
+    end function
+  end interface
+
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
@@ -135,7 +165,8 @@ module tio_module
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
-    tiof_tempo_time_to_utc_caldate, tiof_use_file_epoch
+    tiof_tempo_time_to_utc_caldate, tiof_use_file_epoch, &
+    tiof_make_lev1_bounding_polygon
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -500,7 +531,9 @@ contains
 
     status = nf90_open (file, open_mode, fileid)
     if (status /= nf90_noerr) then
-      call tell_error (tell_io_open_error, "opening file "//file//" ("//trim(nf90_strerror(status))//")", errstat)
+      call tell_error (tell_io_open_error, &
+                       "opening file "//file//" ("//trim(nf90_strerror(status))//")", &
+                       errstat)
       obj % fileid = -1
       return
     endif
@@ -1342,5 +1375,54 @@ contains
     enddo
 
   end subroutine tiof_def_vars
+
+  !> Generate the bounding polygon for a Level 1 file (lon,lat) grid
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[inout] lon  Longitude coordinate of bounding polygon vertices (allocatable)
+  !! @param[inout] lat  Latitude coordinate of bounding polygon vertices (allocatable)
+  !! @param[out] centroid_lon  Longitude of bounding polygon centroid
+  !! @param[out] centroid_lat  Latitude of bounding polygon centroid
+  !! @param[inout]  errstat  Integer error status code.
+  !! @details
+  subroutine tiof_make_lev1_bounding_polygon (obj, lon, lat, centroid_lon, centroid_lat, errstat)
+    use, intrinsic :: iso_c_binding
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    real (kind=r4), dimension(:), allocatable, intent(inout) :: lon, lat
+    real (kind=r4), intent(out) :: centroid_lon, centroid_lat
+    integer, intent(inout) :: errstat
+
+    type (tiof_bounding_polygon_type), target :: bpt
+    real (kind=c_float), dimension(:), pointer :: bpt_lon, bpt_lat
+    integer status
+
+    if (errstat /= 0) return
+
+    status = make_lev1_bounding_polygon_struct (obj % groupid, c_loc(bpt))
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "tiof_make_lev1_bounding_polygon: failed making bounding  polygon", &
+                       errstat)
+      return
+    endif
+
+    call c_f_pointer (bpt % lon, bpt_lon, [bpt % num])
+    call c_f_pointer (bpt % lat, bpt_lat, [bpt % num])
+
+    allocate (lon(bpt%num), lat(bpt%num), stat=status)
+    if (status /= 0) then
+      call tell_error (tell_malloc_error, &
+                       "tiof_make_lev1_bounding_polygon: malloc failed", errstat)
+      return
+    endif
+
+    lon(1:bpt%num) = bpt_lon(1:bpt%num)
+    lat(1:bpt%num) = bpt_lat(1:bpt%num)
+    centroid_lon = bpt % centroid_lon
+    centroid_lat = bpt % centroid_lat
+
+    call free_lev1_bounding_polygon_struct (c_loc(bpt))
+
+  end subroutine
 
 end module tio_module

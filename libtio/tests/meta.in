@@ -1,0 +1,22 @@
+
+    NUM_VAL =     ${#INT_KEYWORD1}
+    VALUE   =     ${INT_KEYWORD1}
+
+    NUM_VAL =     ${#UINT_KEYWORD1}    # With a trailing comment
+    VALUE   =     ${UINT_KEYWORD1}
+
+    NUM_VAL =     ${#DBL_KEYWORD1}
+    VALUE   =     ${DBL_KEYWORD1}
+
+    NUM_VAL =     ${#STR_KEYWORD1}
+    VALUE   =     ${STR_KEYWORD1}
+
+    NUM_VAL =     ${#STR_KEYWORD2}
+    VALUE   =     ${STR_KEYWORD2}
+
+    NUM_VAL =     ${#STR_APPEND}
+    VALUE   =     ${STR_APPEND}
+
+    VALUE   = "A string with ${#CHARS in it"
+
+    VALUE   =     ${STR_KEYWORD3}

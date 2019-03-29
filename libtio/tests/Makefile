@@ -28,7 +28,7 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = tio_test time_test epoch_test tio_test_f ftest1 ppc_test history_test
+EXECUTABLES = tio_test time_test meta_test epoch_test tio_test_f ftest1 ppc_test history_test
 
 all:  $(EXECUTABLES)
 
@@ -41,7 +41,8 @@ check:	$(EXECUTABLES)
 	@./ppc_test > ppc_test.out && diff ppc_test.out ppc_test.chk && echo "running ppc_test...ok"
 	@./history_test && echo "history update [0 args]...ok"
 	@./history_test arg1 arg2 arg3 && echo "history update [3 args]...ok"
-	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out times.out history_test.nc
+	@./meta_test < meta.in > meta.out && diff meta.out meta.chk && echo "running meta_test...ok"
+	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out times.out meta.out history_test.nc
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
@@ -63,6 +64,9 @@ coverage:	$(EXECUTABLES)
 
 tio_test:
 	$(COMPILE_CMD) -o tio_test $(INCS) tio_test.c $(LIBS)
+
+meta_test:
+	$(COMPILE_CMD) -o meta_test $(INCS) meta_test.c $(LIBS)
 
 time_test:
 	$(COMPILE_CMD) -o time_test $(INCS) time_test.c $(LIBS)

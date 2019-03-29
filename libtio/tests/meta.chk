@@ -1,0 +1,22 @@
+
+    NUM_VAL =     1
+    VALUE   =     12345
+
+    NUM_VAL =     1    # With a trailing comment
+    VALUE   =     4294967295
+
+    NUM_VAL =     4
+    VALUE   =     (2e+42, -4e-42, 6, 8)
+
+    NUM_VAL =     4
+    VALUE   =     ("The", "Sun", "Also", "Rises")
+
+    NUM_VAL =     1
+    VALUE   =     "Just one string"
+
+    NUM_VAL =     6
+    VALUE   =     ("The first string", "append 1", "append 2", "append A", "append B", "append C")
+
+    VALUE   = "A string with ${#CHARS in it"
+
+    VALUE   =     "Another string"

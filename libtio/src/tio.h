@@ -451,6 +451,226 @@ extern int tio_append_history (int ncid, const char *str);
  */
 extern char *tio_concat_argv (int argc, char **argv, char *pstr, size_t len_pstr);
 
+/* Metadata interface */
+
+enum
+{
+   TIO_META_TYPE_UNDEFINED = 0,
+   TIO_META_TYPE_DOUBLE,
+   TIO_META_TYPE_FLOAT,
+   TIO_META_TYPE_INT,
+   TIO_META_TYPE_UINT,
+   TIO_META_TYPE_STRING
+};
+
+typedef struct TIO_Meta_Type TIO_Meta_Type;
+
+/** Initialize a data structure for storing metadata keyword values
+ * @return NULL on error, otherwise the return value is an opaque
+ *         pointer of type \a TIO_Meta_Type
+ */
+extern TIO_Meta_Type *tio_meta_open (void);
+
+/** Free memory associated with an instance of \a TIO_Meta_Type
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ */
+extern void tio_meta_close (TIO_Meta_Type *meta);
+
+/** Assign a scalar or array value to a metadata keyword
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  name   Metadata keyword name
+ * @param[in]  value_type  Data type of the metadata keyword value.  Must be one of
+ *                         \a TIO_META_TYPE_${t} where \a ${t} is \a DOUBLE|FLOAT|INT|UINT|STRING
+ * @param[in]  num_values  Number of values to be assigned
+ * @param[in]  values      \a{void *} pointer to the keyword values
+ * @return 0 on success, -1 on error
+ *
+ * If a keyword with the same name has already been defined, the previous keyword
+ * will be silently replaced.
+ *
+ * @code
+ *  status = tio_meta_set (meta, "FOO", TIO_META_TYPE_STRING, 1, "Example scalar");
+ *  status = tio_meta_set (meta, "BAR", TIO_META_TYPE_STRING, 5, array_of_strings);
+ *  status = tio_meta_set (meta, "BAZ", TIO_META_TYPE_DOUBLE, 1, &a_double);
+ * @endcode
+ *
+ * @see tio_meta_append
+ */
+extern int tio_meta_set (TIO_Meta_Type *meta, const char *name,
+                         int value_type, int num_values, const void *values);
+
+/** Append one or more values to a metadata keyword
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  name   Metadata keyword name
+ * @param[in]  value_type  Data type of the metadata keyword value.  Must be one of
+ *                         \a TIO_META_TYPE_${t} where \a ${t} is \a DOUBLE|FLOAT|INT|UINT|STRING
+ * @param[in]  num_values  Number of values to be assigned
+ * @param[in]  values      \a{void *} pointer to the keyword values
+ * @return 0 on success, -1 on error
+ *
+ * If the named keyword does not exist, it will be initialized using the values
+ * provided.   If the named keyword exists, the provided values will be appended.
+ * String values are appended as new items in an array of strings (strings are
+ * not concatenated).
+ *
+ * @warning The current implementation provides support for appending
+ *          only string values.
+ *
+ * @code
+ * char *strings[] = {"second", "third"};
+ *  status = tio_meta_append (meta, "KEY", TIO_META_TYPE_STRING, 1, "first");
+ *  status = tio_meta_append (meta, "KEY", TIO_META_TYPE_STRING, 2, strings);
+ * @endcode
+ *
+ * @see tio_meta_set
+ */
+extern int tio_meta_append (TIO_Meta_Type *lst, const char *name,
+                            int value_type, int num_values, const void *values);
+
+/** Expand keywords appearing in an ASCII input stream
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  fp_template  \a FILE pointer to an input stream containing keyword variables
+ * @param[in]  fp_outfile  \a FILE pointer to an output stream with keyword variables
+ *                         replaced with assigned keyword values.
+ * @return 0 on success, -1 on error
+ *
+ * Keywords in the input stream must have one of the following forms:
+ * @verbatim
+ *       ${KEYWORDNAME}      expands to the keyword value
+ *       ${#KEYWORDNAME}     expands to the number of keyword values
+ * @endverbatim
+ *
+ * @see tio_meta_expand_file
+ * @see tio_meta_write_ncattr
+ */
+extern int tio_meta_expand_stream (const TIO_Meta_Type *meta, FILE *fp_template,
+                                   FILE *fp_outfile);
+
+/** Expand keywords appearing in an ASCII template file
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  infile  Path to an input file containing keyword variables
+ * @param[in]  outfile_sans_extname  The output filename will be constructed by
+ *                                   appending a @<".met"@> extension to this string.
+ * @return 0 on success, -1 on error
+ *
+ * Keywords in the input stream must have one of the following forms:
+ * @verbatim
+ *       ${KEYWORDNAME}      expands to the keyword value
+ *       ${#KEYWORDNAME}     expands to the number of keyword values
+ * @endverbatim
+ *
+ * @see tio_meta_expand_stream
+ * @see tio_meta_write_ncattr
+ */
+extern int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *infile,
+                                 const char *outfile_sans_extname);
+
+/** Set values for several standard metadata keywords
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  product_file_name   Basename of the data product file
+ * @param[in]  product_short_name  Data product shortname
+ * @param[in]  product_versionid   Data product versionid
+ * @param[in]  pge_version_string  Version number string of the program used to generate
+ *                                 the data product
+ * @return 0 on success, -1 on error
+ *
+ * The provided keyword values are substituted for the following standard keyword names:
+ * @verbatim
+ * LOCALGRANULEID
+ * SHORTNAME
+ * VERSIOND
+ * PGEVERSION
+ * @endverbatim
+ */
+extern int tio_meta_set_standard (TIO_Meta_Type *meta,
+                                  const char *product_file_name,
+                                  const char *product_short_name,
+                                  int product_versionid,
+                                  const char *pge_version_string);
+
+/** Set values for standard observation time interval keywords
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  ncid   Integer device code for a netCDF4/HDF5 data product file open for reading
+ * @return 0 on success, -1 on error
+ *
+ * The following timestamps are parsed:
+ * @verbatim
+ *    time_coverage_start
+ *    time_coverage_end
+ * @endverbatim
+ * to assign values to the following standard keywords
+ * @verbatim
+ *    RANGEBEGINNINGDATE
+ *    RANGEBEGINNINGTIME
+ *    RANGEENDINGDATE
+ *    RANGEENDINGTIME
+ * @endverbatim
+ */
+extern int tio_meta_set_datetime_range (TIO_Meta_Type *meta, int ncid);
+
+/** Set value for standard production date keywords
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @return 0 on success, -1 on error
+ *
+ * The current time (UTC) is used to assign a value to the standard keyword
+ * @c PRODUCTIONDATETIME
+ */
+extern int tio_meta_set_datetime_production (TIO_Meta_Type *meta);
+
+/** Set value for geospatial bounding polygon keywords
+ * @param[in]  meta  Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  grp   Integer device code for reading from the group in a netCDF4/HDF5
+ *                   data product file containing \a longitude and \a latitude
+ *                   pixel coordinates
+ * @return 0 on success, -1 on error
+ *
+ * The following standard keyword values are set:
+ * @verbatim
+ *   GRINGPOINTLONGITUDE     boundary polygon longitudes
+ *   GRINGPOINTLATITUDE      boundary polygon latitudes
+ *   GRINGPOINTSEQUENCENO    integer indices giving the sequence in which the
+ *                           (lon,lat) points trace the boundary in CCW order
+ *   CENTROID_MEAN_LONGITUDE longitude of the polygon centroid
+ *   CDNTROID_MEAN_LATITUDE  latitude of the polygon centroid
+ * @endverbatim
+ *
+ * @see __tio_make_lev1_bounding_polygon
+ */
+extern int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int grp);
+
+/** Construct the geospatial bounding polygon
+ * @param[in]  grp   Integer device code for reading from the group in a netCDF4/HDF5
+ *                   data product file containing \a longitude and \a latitude
+ *                   pixel coordinates
+ * @param[out] num   Number of polygon vertices
+ * @param[out] plon  Pointer to an allocated array of longitude coordinates, in CCW
+ *                   order around the polygon boundary.
+ * @param[out] plat  Pointer to an allocated array of latitude coordinates, in CCW
+ *                   order around the polygon boundary.
+ * @param[out] lon_centroid  Polygon centroid longitude coordinate
+ * @param[out] lat_centroid  Polygon centroid latitude coordinate
+ * @return 0 on success, -1 on error
+ *
+ * The \a longitude and \a latitude coordinates in the file are processed to derive
+ * the coordinates of a polygon that bounds the region with valid coordinates.
+ * The centroid of the region is also computed.  The centroid is defined to be
+ * the point at the mean 3-D vector position, with all positions weighted equally.
+ *
+ * @see tio_meta_set_lev1_bounding_polygon_and_centroid
+ */
+extern int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat,
+                                             float *lon_centroid, float *lat_centroid);
+
+/** Write metadata keywords as attributes in a specified netCDF4/HDF5 group
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  grp   Integer device code for writing to a group in a netCDF4/HDF5
+ *                   data product file.
+ * @return 0 on success, -1 on error
+ *
+ * @see tio_meta_expand_stream
+ */
+extern int tio_meta_write_ncattr (const TIO_Meta_Type *meta, int grp);
+
 #if 0
 {
 #endif

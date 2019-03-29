@@ -41,7 +41,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o tio_time.o
+OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o tio_time.o tio_meta.o
 ELFOBJS  = $(patsubst %.o,$(elfdir)/%.o, $(OFILES))
 TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
 
@@ -228,6 +228,9 @@ tio_time_c_defines = -DLEAP_SECONDS_LIST="\"$(LEAP_SECONDS_LIST)\""
 
 $(elfdir)/tio_time.o:	$(srcdir)/tio_time.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(tio_time_c_defines) $(srcdir)/tio_time.c $(LIBS)
+
+$(elfdir)/tio_meta.o:	$(srcdir)/tio_meta.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_meta.c $(LIBS)
 
 $(elfdir)/tio_module.o:	$(srcdir)/tio_module.f90
 	cd $(elfdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/tio_module.f90
