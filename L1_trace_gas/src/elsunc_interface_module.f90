@@ -37,12 +37,14 @@ contains
     !real (kind=r8), dimension(dim1_cov_matrix,num_params), intent(inout) :: cov_matrix
 
     ! local variables
-    integer (kind=i4) :: return_status, log_level
+    integer (kind=i4) :: return_status, log_level, elsunc_ctrl_input
     character (len=1024) :: log_msg
 
     ! elsunc interprets the following return values of ctrl:
     integer (kind=i4), parameter :: UNCOMPUTABLE = -1
     integer (kind=i4), parameter :: JACOBIAN_NOT_AVAILABLE = 0
+
+    elsunc_ctrl_input = elsunc_ctrl
 
     ! 'this_optimizer' is a global
 
@@ -72,6 +74,7 @@ contains
     if (any(params < this_optimizer%param_min) &
         .or. any(this_optimizer%param_max < params)) then
       elsunc_ctrl = UNCOMPUTABLE
+      if (elsunc_ctrl_input /= 1) elsunc_ctrl = elsunc_ctrl - 10
       return
     endif
 
@@ -80,6 +83,7 @@ contains
 
     if (return_status < 0) then
       elsunc_ctrl = UNCOMPUTABLE
+      if (elsunc_ctrl_input /= 1) elsunc_ctrl = elsunc_ctrl - 10
     endif
 
     log_level = tell_get_log_level()
