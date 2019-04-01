@@ -3,19 +3,62 @@ module m_write_odl_metadata
 
   use m_LUN_set
   use m_pgs_include
-  use m_vars, only: filename_in_nc, lon, lat, nXtrack, nLines
+  use m_vars, only: filename_in_nc, nc_swathname
   use tell_module
   use netcdf, only: nf90_nowrite, nf90_global, nf90_noerr, nf90_get_att
   use tio_module
   use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
-  use md_module, only : bounding_box_md
 
   implicit none
   private
 
-  public write_odl_metadata
+  type, public :: boundary_polygon_type
+    real (kind=4), dimension(:), allocatable :: lons, lats
+    integer (kind=4), dimension(:), allocatable :: seq
+    real (kind=4) :: centroid_lat, centroid_lon
+  end type
+
+  public write_odl_metadata, make_bounding_polygon
 
 contains
+
+  subroutine make_bounding_polygon (bdry, errstat)
+    implicit none
+
+    ! input variables
+    type (boundary_polygon_type), intent(inout) :: bdry
+    integer, intent(inout) :: errstat
+
+    ! local variables
+    type (tiof_file_type) :: tio_l1obj
+    integer :: npts, alloc_status, i
+
+    if (errstat /= 0) return
+
+    call tiof_open (filename_in_nc, tio_l1obj, nf90_nowrite, errstat)
+
+    ! Bounding polygon and centroid
+    call tiof_push_group (tio_l1obj, trim(nc_swathname), errstat)
+    call tiof_make_lev1_bounding_polygon (tio_l1obj, bdry % lons, bdry % lats, &
+                                          bdry % centroid_lon, bdry % centroid_lat, errstat)
+    call tiof_pop_group (tio_l1obj, errstat)
+    call tiof_close (tio_l1obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, &
+                       "write_odl_metadata: failed generating bounding polygon", &
+                       errstat)
+      return
+    endif
+
+    npts = size(bdry % lons)
+    allocate (bdry % seq(npts), stat=alloc_status)
+    if (alloc_status /= 0) then
+      call tell_error (tell_malloc_error, "malloc failed", errstat)
+      return
+    endif
+    bdry % seq(1:npts) = (/(i, i=1,npts)/)
+
+  end subroutine
 
   !>Write ODL-format metadata to an ASCII .met output file
   !-----------------------------------------------------------------------
@@ -24,17 +67,19 @@ contains
   !> @param     errstat    error tracking code, non-zero indicates problem
   !
   ! @author E. O'Sullivan  November 2017
+  ! @author J. Houck, March 2019
   !
   ! Note: as yet, this is only a proof-of-concept test to ensure we can
   !       produce ASCII format ODL metadata when processing netCDF only.
   ! Also: note that there's a write_metadata subroutine in
   !       m_write_output_data_tio that writes to the netCDF file
   !-----------------------------------------------------------------------
-  function write_odl_metadata(outfilnm) result(errstat)
+  function write_odl_metadata (outfilnm, bdry) result(errstat)
 
     implicit none
 
     !input variables
+    type(boundary_polygon_type), intent(in) :: bdry
     character (len=*), intent(in) :: outfilnm
     integer :: errstat
 
@@ -64,61 +109,21 @@ contains
          "RANGEBEGINNINGTIME               "/)
     character (kind=C_CHAR) :: NULL = C_NULL_CHAR
 
-
-
     ! Additional attributes
     integer, parameter :: nadd = 2
     character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
 
-    ! bounding polgon / footprint parameters
-    integer, parameter :: max_npts = 100
-    integer :: npts
-    integer (kind=C_INT), dimension(max_npts) :: polygon_seq
-    real (kind=C_DOUBLE), dimension(max_npts) :: polygon_lats, polygon_lons
-    real (kind=4), dimension(max_npts) :: p_lats, p_lons
-    logical, dimension(nXtrack, nLines) :: valid
-    real (kind=4) :: center_lat, center_lon
-
-    integer :: ncerr
+    integer :: ncerr, npts
     character (len=32) :: cov_start_string, cov_end_string
 
     type(tiof_file_type) :: tio_l1obj
 
     status = OMI_S_SUCCESS
     errstat = 0
-    polygon_lons=0.0d0
-    polygon_lats=0.0d0
-
-    ! Bounding polgon points
-    ! For now, do the simplest possible thing - a bounding box
-    call bounding_box_md(nXtrack, nLines, lat, lon, p_lats, &
-         p_lons, npts, errstat)
-    polygon_lons(1:npts)=p_lons(1:npts)
-    polygon_lats(1:npts)=p_lats(1:npts)
-    do i=1,npts
-      polygon_seq(i) = i
-    enddo
-
-    ! Mean longitude and latitude
-    where (lat.ge.-90.0d0 .and. lat.le.90.0d0 .and. &
-         lon.ge.-180.0d0 .and. lon.le.180.0d0)
-      valid=.true.
-    elsewhere
-      valid=.false.
-    end where
-    center_lon=sum(lon,mask=valid)/count(valid)
-    center_lat=sum(lat,mask=valid)/count(valid)
-
-    ! Centroid values classed as additional attributes
-    AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
-    AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
-    write(AddAttrVal(1),'(f7.1)') center_lon
-    write(AddAttrVal(2),'(f7.1)') center_lat
 
     !
     ! TBD - here we need a section reading metadata from input radiance file
     !
-
 
     ! TBD - read metadata values from PCF file if you want to operate on them
 
@@ -130,6 +135,12 @@ contains
            "write_odl_metadata: failed to open L1 radiance file", errstat)
       return
     endif
+
+    ! Centroid values classed as additional attributes
+    AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
+    AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
+    write(AddAttrVal(1),'(f10.5)') bdry % centroid_lon
+    write(AddAttrVal(2),'(f10.5)') bdry % centroid_lat
 
     ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, &
          "time_coverage_start", cov_start_string)
@@ -228,12 +239,14 @@ contains
       return
     endif
 
+    npts = size(bdry % lons)
+
     returnstatus = pgs_MET_setmultiAttr_i(GROUPS(INVENTORY), &
-         "GRINGPOINTSEQUENCENO.1", npts, polygon_seq(1:npts))
+         "GRINGPOINTSEQUENCENO.1", npts, bdry % seq(1:npts))
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLATITUDE.1", npts, polygon_lats(1:npts))
+         "GRINGPOINTLATITUDE.1", npts, real(bdry % lats(1:npts), kind=8) )
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLONGITUDE.1", npts, polygon_lons(1:npts))
+         "GRINGPOINTLONGITUDE.1", npts, real(bdry % lons(1:npts), kind=8) )
 
     if(returnstatus /= 0)then
       call tell_error(tell_io_error, &
@@ -255,7 +268,6 @@ contains
         return
       endif
     enddo
-
 
     version =1
 
@@ -285,8 +297,6 @@ contains
     endif
 
     returnstatus = pgs_met_remove()
-
-
 
     call tell_log (1,"write_odl_metadata: success")
 

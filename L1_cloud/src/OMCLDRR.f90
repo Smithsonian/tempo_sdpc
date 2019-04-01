@@ -52,6 +52,8 @@ program OMCLDRR
   integer (kind=4), dimension(ninp) :: input_luns
   character (len=128), dimension(ninp) :: inputs
   character (len=256) :: buf
+
+  type (boundary_polygon_type) :: bdry
   !************************************************************************
 
   errstat=0
@@ -281,6 +283,7 @@ program OMCLDRR
            errstat)
       stop 1
     endif
+
     ! Proof-of-concept example of ODL ASCII and netCDF metadata
     if (wrt_odl) then
       input_luns=(/ L1B_LUN, IRR1B_file, terr_prs_id, chl_id, oc_ram_id, &
@@ -297,14 +300,18 @@ program OMCLDRR
           inputs(n) = trim(buf(j:))
         endif
       enddo
-      call open_md(filename_out_nc, errstat)
-      call write_geo_bounds_md(nXtrack, nTimes, lat, lon, errstat)
-      call write_inputs_md(ninp, inputs, errstat)
-      call write_fixed_md(md_namelist, errstat)
-      call write_prodid_md(filename_out_nc,"(1)",errstat)
-      call close_md(errstat)
 
-      errstat = write_odl_metadata(filename_out_nc)
+      call make_bounding_polygon (bdry, errstat)
+
+      call md_open (filename_out_nc, errstat)
+      call md_write_geo_bounds (bdry % lons, bdry % lats, &
+                                bdry % centroid_lon, bdry % centroid_lat, errstat)
+      call md_write_inputs (ninp, inputs, errstat)
+      call md_write_fixed (md_namelist, errstat)
+      call md_write_prodid (filename_out_nc,"(1)",errstat)
+      call md_close (errstat)
+
+      errstat = write_odl_metadata (filename_out_nc, bdry)
       if (errstat /= 0) then
         call tell_error(tell_io_write_error, "failed writing ODL metadata", &
              errstat)
