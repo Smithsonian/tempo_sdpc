@@ -51,9 +51,6 @@ contains
     integer, parameter :: INVENTORY=2
     integer, parameter :: ninvname=5
 
-
-    real (kind=4), dimension(nXtrack, nLines) :: lon, lat
-
     integer :: pgs_MET_setAttr_s, pgs_MET_setAttr_i, pgs_MET_setmultiAttr_s, &
          pgs_MET_setmultiAttr_d, pgs_MET_setmultiAttr_i
     integer :: pgs_met_init,pgs_met_write, pgs_pc_getreference, &
@@ -74,22 +71,19 @@ contains
          "RANGEBEGINNINGTIME               "/)
     character (kind=C_CHAR) :: NULL = C_NULL_CHAR
 
-
-
     ! Additional attributes
     integer, parameter :: nadd = 2
     character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
 
     ! bounding polgon / footprint parameters
-    integer, parameter :: max_npts=100
-    integer :: npts
-    integer (kind=C_INT), dimension(max_npts) :: polygon_seq
-    real (kind=C_DOUBLE), dimension(max_npts) :: polygon_lats, polygon_lons
-    real (kind=4), dimension(max_npts) :: p_lats, p_lons
-    logical, dimension(nXtrack, nLines) :: valid
-    real (kind=4) :: center_lat, center_lon
+    type boundary_type
+      real (kind=4), dimension(:), allocatable :: lats, lons
+      integer (kind=4), dimension(:), allocatable :: seq
+      real (kind=4) :: centroid_lat, centroid_lon
+    end type
+    type(boundary_type) :: bdry
 
-    integer :: ncerr
+    integer :: ncerr, npts
     character (len=32) :: cov_start_string, cov_end_string
 
     type (tiof_file_type) :: tio_l1obj
@@ -97,11 +91,9 @@ contains
     status = OMI_S_SUCCESS
     errstat = 0
 
-
     !
     ! TBD - here we need a section reading metadata from input radiance file
     !
-
 
     ! TBD - read metadata values from PCF file if you want to operate on them
 
@@ -132,21 +124,23 @@ contains
       return
     endif
 
-    ! We're going to need to read lon and lat in YET AGAIN because the
-    ! retrieval doesn't retain those arrays
+    read(cov_end_string,'(a10,1x,a8)') Objvalue(2), Objvalue(3)
+    read(cov_start_string,'(a10,1x,a8)') Objvalue(4), Objvalue(5)
+
+    ! Bounding polygon and centroid
     call tiof_push_group (tio_l1obj, omi_radiance_swathname, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [0,0], &
-         [nLines, nXtrack], lat(1:nXtrack,1:nLines), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_longitude, [0,0], &
-         [nLines, nXtrack], lon(1:nXtrack,1:nLines), errstat)
+    call tiof_make_lev1_bounding_polygon (tio_l1obj, &
+                                          bdry % lons, &
+                                          bdry % lats, &
+                                          bdry % centroid_lon, &
+                                          bdry % centroid_lat, errstat)
     call tiof_pop_group (tio_l1obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
-           "write_odl_metadata: failed to read longitude, latitude arrays", &
+           "write_odl_metadata: failed generating bounding polygon", &
            errstat)
       return
     endif
-
 
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) then
@@ -155,42 +149,22 @@ contains
       return
     endif
 
-    read(cov_end_string,'(a10,1x,a8)') Objvalue(2), Objvalue(3)
-    read(cov_start_string,'(a10,1x,a8)') Objvalue(4), Objvalue(5)
-
-    ! Bounding polgon points
-    polygon_lats=0.0d0
-    polygon_lons=0.0d0
-    ! For now, do the simplest thing, a bounding box
-    call bounding_box_md(nXtrack, nLines, lat, lon, p_lats, &
-         p_lons, npts, errstat)
-    if (npts > max_npts) then
-      call tell_error (tell_io_write_error, &
-           "write_geo_bounds_md: npts in polygon exceeds max allowed", &
-           errstat)
+    npts = size(bdry % lons)
+    allocate (bdry % seq(npts), stat=status)
+    if (status /= 0) then
+      call tell_error (tell_malloc_error, "malloc failed", errstat)
       return
     endif
-    polygon_lats(1:npts)=p_lats(1:npts)
-    polygon_lons(1:npts)=p_lons(1:npts)
-    do i=1,npts
-      polygon_seq(i) = i
-    enddo
 
-    ! Mean longitude and latitude
-    where (lat.ge.-90.0d0 .and. lat.le.90.0d0 .and. &
-         lon.ge.-180.0d0 .and. lon.le.180.0d0)
-      valid=.true.
-    elsewhere
-      valid=.false.
-    end where
-    center_lon=sum(lon,mask=valid)/count(valid)
-    center_lat=sum(lat,mask=valid)/count(valid)
+    do i=1,npts
+      bdry % seq(i) = i
+    enddo
 
     ! Centroid values classed as additional attributes
     AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
     AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
-    write(AddAttrVal(1),'(f7.1)') center_lon
-    write(AddAttrVal(2),'(f7.1)') center_lat
+    write(AddAttrVal(1),'(f10.5)') bdry % centroid_lon
+    write(AddAttrVal(2),'(f10.5)') bdry % centroid_lat
 
     ! FIXME - at present the code only includes a very limited set of input
     ! files (RAD, IRRAD, RADREF, PREFITS). It should really include all the
@@ -232,7 +206,6 @@ contains
       return
     endif
 
-
     do i=1,ninvname
       returnstatus = pgs_met_setattr_s(GROUPS(INVENTORY),trim(INVOBJ(i)), &
            Objvalue(i))
@@ -253,11 +226,11 @@ contains
     endif
 
     returnstatus = pgs_MET_setmultiAttr_i(GROUPS(INVENTORY), &
-         "GRINGPOINTSEQUENCENO.1", npts, polygon_seq(1:npts))
+         "GRINGPOINTSEQUENCENO.1", npts, bdry % seq(1:npts))
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLATITUDE.1", npts, polygon_lats(1:npts))
+         "GRINGPOINTLATITUDE.1", npts, real(bdry % lats(1:npts), kind=8))
     returnstatus = pgs_MET_setmultiAttr_d(GROUPS(INVENTORY), &
-         "GRINGPOINTLONGITUDE.1", npts, polygon_lons(1:npts))
+         "GRINGPOINTLONGITUDE.1", npts, real(bdry % lons(1:npts), kind=8))
 
     if(returnstatus /= 0)then
       call tell_error(tell_io_error, &
@@ -282,12 +255,14 @@ contains
 
     ! Write archive metadata attributes to netCDF file
     ! do this first since pgs_met functions apparently leave nc file open!
-    call open_md(outfilnm, errstat)
-    call write_geo_bounds_md(nXtrack, nLines, lat, lon, errstat)
-    call write_inputs_md(ninp, InputPnt, errstat)
-    call write_fixed_md(mdlist_filename,errstat)!md_namelist, errstat)
-    call write_prodid_md(outfilnm,"(1)",errstat)
-    call close_md(errstat)
+    call md_open (outfilnm, errstat)
+    call md_write_geo_bounds (bdry % lons, bdry % lats, &
+                              bdry % centroid_lon, &
+                              bdry % centroid_lat, errstat)
+    call md_write_inputs (ninp, InputPnt, errstat)
+    call md_write_fixed (mdlist_filename, errstat)
+    call md_write_prodid (outfilnm,"(1)",errstat)
+    call md_close (errstat)
 
     if (errstat /= 0) then
       call tell_error(tell_io_error, &
@@ -324,9 +299,6 @@ contains
     endif
 
     returnstatus = pgs_met_remove()
-
-
-
 
     call tell_log (1,"write_odl_metadata: success")
 
