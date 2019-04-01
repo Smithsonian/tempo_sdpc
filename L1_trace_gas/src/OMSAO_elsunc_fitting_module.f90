@@ -2439,8 +2439,30 @@ CONTAINS
         IF(work(i) > rabs*bn) EXIT
       END DO
 
+      ! FIXME? JCH 2019-Mar-30: There seems to be a bug here.
+      ! When prank < rngkm1, subroutine presub can read from
+      ! work(rngkm1) -- which is uninitialized because the above
+      ! code initializes only work(1:prank).  Looking at the code,
+      ! presumb obviously assumes that work(rngkm1) as been initialized,
+      ! and also seems to assume that rngkm1 <= prank. Since presub is
+      ! called nowhere else, I'm adding a test for the condition
+      ! rngkm1 <= prank before the call to presub.
+      ! Yes, I realize that initializing work(:)=0 would also "fix" it
+      ! (by hiding the underlying problem).  It would be better to fix the
+      ! real problem, but I don't fully understand the intent of the code.
+      ! Can you fix it?
+
       IF(kod == 1) CALL pregn(w1,sn,work,bn,mindim,prank,rank)
-      IF(-1 == kod) CALL presub(w1,work,bn,rabs,prank,fsum,rank)
+      !IF(-1 == kod) CALL presub(w1,work,bn,rabs,prank,fsum,rank)
+      IF(-1 == kod) then
+        if (rngkm1 <= prank) then ! JCH presub seems to assume that this condition holds
+          CALL presub(w1,work,bn,rabs,prank,fsum,rank)
+        else
+          write(*,*)'*** WARNING (elsunc): bug-workaround was triggered:'
+          write(*,*)'*** rngkm1=',rngkm1,' prank=',prank
+          write(*,*)'*** rngkm1 > prank, so presub call was skipped'
+        endif
+      endif
       RETURN !GO TO 100
     END IF
 
@@ -2543,6 +2565,13 @@ CONTAINS
 
     dim=MAX(1,rngkm1-1)
     IF(rngkm1 > 1 .AND. b(dim) > rabs*bn) RETURN
+
+    ! FIXME? JCH 2019-Mar-30:
+    ! This code assumes that b(rngkm1) has been initialized, and also
+    ! also seems to assume that rngkm1 <= prank, but the latter condition
+    ! is not checked.  In practice, this routine was called with
+    ! prank<rngkm1, causing b(rngkm1) to read from uninitialized memory,
+    ! because only b(1:prank) was initialized before the call.
 
     10  dim=rngkm1
     IF(b(dim) > predb*bn .AND. rlenb*s(dim) < s(dim+1)) RETURN
