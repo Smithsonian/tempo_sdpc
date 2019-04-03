@@ -388,6 +388,7 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
    TIO_Meta_Type *meta;
    char **ppc = NULL;
    char *s = NULL;
+   int i;
 
    /* If the keyword isn't found, create it */
    if (NULL == (meta = find_key_by_name (lst, name)))
@@ -401,6 +402,14 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
                      "%s: is not a string keyword (value_type=%d)",
                      __func__, meta->value_type);
         return -1;
+     }
+
+   /* silently ignore duplicates */
+   ppc = (char **)meta->values;
+   for (i = 0; i < meta->num_values; i++)
+     {
+        if (0 == strcmp (ppc[i], str))
+          return 0;
      }
 
    if (meta->num_alloc < meta->num_values + 1)

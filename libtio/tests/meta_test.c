@@ -38,6 +38,7 @@ int main (void)
    if (0 != tio_meta_set (meta, "STR_APPEND", TIO_META_TYPE_STRING, 1, "The first string"))
      goto cleanup_and_exit;
    if ((0 != tio_meta_append_string (meta, "STR_APPEND", "append 1"))
+       || (0 != tio_meta_append_string (meta, "STR_APPEND", "append 1"))  /* duplicates should be ignored */
        || (0 != tio_meta_append_string (meta, "STR_APPEND", "append 2")))
      {
         goto cleanup_and_exit;
