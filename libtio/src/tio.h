@@ -494,38 +494,52 @@ extern void tio_meta_close (TIO_Meta_Type *meta);
  *  status = tio_meta_set (meta, "BAZ", TIO_META_TYPE_DOUBLE, 1, &a_double);
  * @endcode
  *
- * @see tio_meta_append
+ * @see tio_meta_append_string
  */
 extern int tio_meta_set (TIO_Meta_Type *meta, const char *name,
                          int value_type, int num_values, const void *values);
 
-/** Append one or more values to a metadata keyword
+/** Read a keyword value from an attribute in the \a metadata group.
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  grp    netCDF group index, open for reading
  * @param[in]  name   Metadata keyword name
  * @param[in]  value_type  Data type of the metadata keyword value.  Must be one of
  *                         \a TIO_META_TYPE_${t} where \a ${t} is \a DOUBLE|FLOAT|INT|UINT|STRING
- * @param[in]  num_values  Number of values to be assigned
- * @param[in]  values      \a{void *} pointer to the keyword values
+ *
+ * @warning The current implementation requires @code value_type = TIO_META_TYPE_STRING @endcode
+ *
+ * @see tio_meta_expand_file
+ * @see tio_meta_write_ncattr
+ */
+extern int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name,
+                            int value_type);
+
+/** Append a value to metadata string keyword
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  name   Metadata keyword name
+ * @param[in]  str    Pointer to a string
  * @return 0 on success, -1 on error
  *
- * If the named keyword does not exist, it will be initialized using the values
- * provided.   If the named keyword exists, the provided values will be appended.
- * String values are appended as new items in an array of strings (strings are
- * not concatenated).
- *
- * @warning The current implementation provides support for appending
- *          only string values.
- *
- * @code
- * char *strings[] = {"second", "third"};
- *  status = tio_meta_append (meta, "KEY", TIO_META_TYPE_STRING, 1, "first");
- *  status = tio_meta_append (meta, "KEY", TIO_META_TYPE_STRING, 2, strings);
- * @endcode
+ * If the named keyword does not exist, it will be initialized using the value
+ * provided. String values are appended as new items in an array of strings
+ * (strings are not concatenated).
  *
  * @see tio_meta_set
  */
-extern int tio_meta_append (TIO_Meta_Type *lst, const char *name,
-                            int value_type, int num_values, const void *values);
+extern int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *str);
+
+/** Enable/disable keyword-value substitution for a named keyword
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  name   Metadata keyword name
+ * @param[in]  noexpand  If non-zero, disable keyword expansion for the named keyword.
+ *                       Otherwise, enable keyword expansion for the named keyword.
+ *
+ * This has no effect on how metadata keywords are written to netCDF files.
+ *
+ * @see tio_meta_expand_file
+ * @see tio_meta_write_ncattr
+ */
+extern int tio_meta_set_noexpand (TIO_Meta_Type *meta, const char *name, int noexpand);
 
 /** Expand keywords appearing in an ASCII input stream
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
@@ -548,10 +562,17 @@ extern int tio_meta_expand_stream (const TIO_Meta_Type *meta, FILE *fp_template,
 
 /** Expand keywords appearing in an ASCII template file
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
- * @param[in]  infile  Path to an input file containing keyword variables
- * @param[in]  outfile_sans_extname  The output filename will be constructed by
- *                                   appending a @<".met"@> extension to this string.
+ * @param[in]  infile  If non-NULL, this provides the path to a template file containing
+ *                     keyword variables.
+ * @param[in]  outfile_root  The output filename will be constructed by
+ *                           appending a @<".met"@> extension to this string.
  * @return 0 on success, -1 on error
+ *
+ * When @code infile==NULL @endcode, it is assumed that we are expanding a template
+ * named @code ${outfile_root}.met @endcode.  In this case, a temporary file is
+ * created to hold the expanded output, and then that temporary file is renamed
+ * to the original template name.  Effectively, the original file is over-written
+ * by a keyword-expanded version.
  *
  * Keywords in the input stream must have one of the following forms:
  * @verbatim
@@ -568,7 +589,7 @@ extern int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *infile,
 /** Set values for several standard metadata keywords
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
  * @param[in]  product_file_name   Basename of the data product file
- * @param[in]  product_short_name  Data product shortname
+ * @param[in]  product_short_name  Data product shortname (NULL is ok)
  * @param[in]  product_versionid   Data product versionid
  * @param[in]  pge_version_string  Version number string of the program used to generate
  *                                 the data product

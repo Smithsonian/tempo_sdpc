@@ -13,7 +13,7 @@ int main (void)
    char *meta_str_array[] = {"The", "Sun", "Also", "Rises"};
    char *strings_to_append[] = {"append A", "append B", "append C"};
    const char *ncfile = "delete_radiance.nc";
-   int ncid, grp;
+   int ncid, grp, i;
 
    if (NULL == (meta = tio_meta_open ()))
      goto cleanup_and_exit;
@@ -37,12 +37,17 @@ int main (void)
 
    if (0 != tio_meta_set (meta, "STR_APPEND", TIO_META_TYPE_STRING, 1, "The first string"))
      goto cleanup_and_exit;
-   if ((0 != tio_meta_append (meta, "STR_APPEND", TIO_META_TYPE_STRING, 1, "append 1"))
-       || (0 != tio_meta_append (meta, "STR_APPEND", TIO_META_TYPE_STRING, 1, "append 2"))
-       || (0 != tio_meta_append (meta, "STR_APPEND", TIO_META_TYPE_STRING, 3, strings_to_append))
-      )
-     goto cleanup_and_exit;
-   
+   if ((0 != tio_meta_append_string (meta, "STR_APPEND", "append 1"))
+       || (0 != tio_meta_append_string (meta, "STR_APPEND", "append 2")))
+     {
+        goto cleanup_and_exit;
+     }
+   for (i = 0; i < 3; i++)
+     {
+        if (0 != tio_meta_append_string (meta, "STR_APPEND", strings_to_append[i]))
+          goto cleanup_and_exit;
+     }
+
    if (0 != tio_meta_set (meta, "STR_KEYWORD3", TIO_META_TYPE_STRING, 1, "Another string"))
      goto cleanup_and_exit;
 
@@ -59,6 +64,34 @@ int main (void)
    if (0 != tio_meta_write_ncattr (meta, grp))
      goto cleanup_and_exit;
 
+   if (0 != TIO_close (ncid))
+     {
+        fprintf (stderr, "*** Error closing netcdf file: %s\n", ncfile);
+        goto cleanup_and_exit;
+     }
+
+   /* Test appending to a netcdf file string metadata keyword.
+    * For this purpose, we don't care about the ascii .met file.
+    */
+
+   if ((0 != TIO_open (ncfile, NC_WRITE, &ncid))
+       || (0 != TIO_inq_grp (ncid, "metadata", &grp)))
+     {
+        fprintf (stderr, "*** Error opening netcdf file metadata group: %s\n", ncfile);
+        goto cleanup_and_exit;
+     }
+
+   if (0 != tio_meta_ncinit (meta, grp, "STR_KEYWORD2", TIO_META_TYPE_STRING))
+     goto cleanup_and_exit;
+
+   if (0 != tio_meta_append_string (meta, "STR_KEYWORD2", "and another one"))
+     goto cleanup_and_exit;
+
+   /* run this here just to improve code coverage */
+   (void) tio_meta_set_noexpand (meta, "STR_KEYWORD2", 1);
+
+   if (0 != tio_meta_write_ncattr (meta, grp))
+     goto cleanup_and_exit;
    if (0 != TIO_close (ncid))
      {
         fprintf (stderr, "*** Error closing netcdf file: %s\n", ncfile);

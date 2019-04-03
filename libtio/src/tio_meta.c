@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 
 #define __USE_XOPEN   /* for strptime */
@@ -32,6 +33,7 @@ struct TIO_Meta_Type
    int num_values;
    int num_alloc;
    int value_type;
+   int noexpand;
 };
 
 #define KEYNAME_VALID_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_."
@@ -365,39 +367,45 @@ int tio_meta_set (TIO_Meta_Type *lst, const char *name,
    return 0;
 }
 
-int tio_meta_append (TIO_Meta_Type *lst, const char *name,
-                     int value_type, int num_values, const void *values)
+static TIO_Meta_Type *find_key_by_name (TIO_Meta_Type *lst, const char *name)
 {
    TIO_Meta_Type *meta;
-   char **ppc = NULL;
-   char *s;
 
    for (meta = lst; meta != NULL; meta = meta->next)
      {
         if (meta->name)
           {
              if (0 == strcmp (meta->name, name))
-               break;
+               return meta;
           }
      }
 
+   return NULL;
+}
+
+int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *str)
+{
+   TIO_Meta_Type *meta;
+   char **ppc = NULL;
+   char *s = NULL;
+
    /* If the keyword isn't found, create it */
-   if (meta == NULL)
+   if (NULL == (meta = find_key_by_name (lst, name)))
      {
-        return tio_meta_set (lst, name, value_type, num_values, values);
+        return tio_meta_set (lst, name, TIO_META_TYPE_STRING, 1, str);
      }
 
-   if (value_type != TIO_META_TYPE_STRING)
+   if (meta->value_type != TIO_META_TYPE_STRING)
      {
-        tell_verror (TELL_UNSUPPORTED_ERROR,
-                     "%s: appending values to a non-string keyword",
-                     __func__);
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: is not a string keyword (value_type=%d)",
+                     __func__, meta->value_type);
         return -1;
      }
 
-   if (meta->num_alloc < meta->num_values + num_values)
+   if (meta->num_alloc < meta->num_values + 1)
      {
-        int new_size = (meta->num_values + num_values) + 10;
+        int new_size = (meta->num_values + 1) + 10;
         void *v;
         if (NULL == (v = TIO_REALLOC (meta->values, new_size * sizeof(char *))))
           {
@@ -408,32 +416,82 @@ int tio_meta_append (TIO_Meta_Type *lst, const char *name,
         meta->num_alloc = new_size;
      }
 
+   if (NULL == (s = strdup (str)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
    ppc = (char **)meta->values;
-
-   if (num_values == 1)
-     {
-        if (NULL == (s = strdup ((char *)values)))
-          {
-             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             return -1;
-          }
-        ppc[meta->num_values++] = s;
-     }
-   else
-     {
-        int k;
-        for (k = 0; k < num_values; k++)
-          {
-             if (NULL == (s = strdup (((char **)values)[k])))
-               {
-                  tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-                  return -1;
-               }
-             ppc[meta->num_values++] = s;
-          }
-     }
+   ppc[meta->num_values++] = s;
 
    return 0;
+}
+
+int tio_meta_set_noexpand (TIO_Meta_Type *lst, const char *name, int noexpand)
+{
+   TIO_Meta_Type *meta;
+
+   if (NULL == (meta = find_key_by_name (lst, name)))
+     return -1;
+
+   meta->noexpand = noexpand;
+
+   return 0;
+}
+
+int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_type)
+{
+   int varid = NC_GLOBAL;
+   nc_type att_type;
+   size_t i, att_len;
+   char **atts = NULL;
+   int status = 0;
+
+   if (value_type != TIO_META_TYPE_STRING)
+     {
+        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: reading non-string metadata attribute from netcdf",
+                     __func__);
+        return -1;
+     }
+
+   /* It's ok if the attribute doesn't exist */
+   if (NC_NOERR != nc_inq_att (grp, varid, name, &att_type, &att_len))
+     return 0;
+
+   if (att_type != NC_STRING)
+     {
+        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: attribute %s is not of type NC_STRING (type=%d)",
+                     __func__, name, att_type);
+        return -1;
+     }
+
+   if (NULL == (atts = TIO_MALLOC (att_len * sizeof(char *))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   if (NC_NOERR != nc_get_att (grp, varid, name, atts))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading attribute %s", __func__, name);
+        TIO_FREE(atts);
+        return -1;
+     }
+
+   for (i = 0; i < att_len; i++)
+     {
+        if (0 != tio_meta_append_string (meta, name, atts[i]))
+          {
+             status = -1;
+             break;
+          }
+     }
+
+   /* free space allocated on string input */
+   (void) nc_free_string (att_len, (char **)atts);
+   TIO_FREE(atts);
+
+   return status;
 }
 
 static int key_search (const char *s, size_t slen, char **pos, size_t *len)
@@ -525,11 +583,13 @@ static int key_expand (const TIO_Meta_Type *meta, const char *keypos, size_t key
 
         if (0 == strncmp (name, k->name, len))
           {
-             return meta_write_value_ascii (k, want_num_values, fp);
+             if (k->noexpand == 0)
+               return meta_write_value_ascii (k, want_num_values, fp);
+             else break;
           }
      }
 
-   /* Pass-through undefined keywords */
+   /* Pass-through undefined or noexpand keywords */
    memset ((char *)buf, 0, sizeof(buf));
    len = keylen < sizeof(buf) ? keylen : sizeof(buf);
    strncpy (buf, keypos, len);
@@ -606,30 +666,75 @@ return_error:
    return return_status;
 }
 
-int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *template_file,
+static char *mkstrcat (const char *str, const char *suffix)
+{
+   char *s = NULL;
+   int len;
+
+   len = strlen(str) + strlen(suffix) + 1;
+   if (NULL == (s = TIO_MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   strcpy (s, str);
+   strcat (s, suffix);
+
+   return s;
+}
+
+int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *ptemplate_file,
                           const char *outfile_root)
 {
    FILE *fp_template = NULL;
    FILE *fp_outfile = NULL;
-   const char *suffix = ".met";
+   char *tmpl;
    char *outfile = NULL;
-   int len, status = -1;
+   int do_rename=0, status = -1;
 
-   if (NULL == (fp_template = fopen (template_file, "r")))
+   /* The output file root must always be specified */
+   if (outfile_root == NULL)
      {
-        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading",
-                     __func__, template_file);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: outfile_root == NULL", __func__);
         return -1;
      }
 
-   len = strlen (outfile_root) + strlen(suffix) + 1;
-   if (NULL == (outfile = (char *)TIO_MALLOC (len * sizeof(char))))
+   if (NULL == (outfile = mkstrcat (outfile_root, ".met")))
+     goto return_status;
+
+   /* ptemplate_file==NULL means that we're updating an existing template
+    * that's in the same directory as the input file, and that has the
+    * same filename, apart from a .met extension.
+    * In this case, we'll use the outfile name as the template,
+    * write the expanded file to a temporary file, and then rename.
+    */
+   if (ptemplate_file)
      {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        tmpl = (char *)ptemplate_file;
+     }
+   else
+     {
+        tmpl = outfile;
+
+        if (0 != access (tmpl, F_OK | R_OK))
+          {
+             tell_vwarn (0, "metadata template not found: %s", tmpl);
+             TIO_FREE(outfile);
+             return 0;
+          }
+
+        if (NULL == (outfile = mkstrcat (tmpl, ".tmp")))
+          goto return_status;
+
+        do_rename = 1;
+     }
+
+   if (NULL == (fp_template = fopen (tmpl, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading",
+                     __func__, tmpl);
         goto return_status;
      }
-   strcpy (outfile, outfile_root);
-   strcat (outfile, suffix);
 
    if (NULL == (fp_outfile = fopen (outfile, "w")))
      {
@@ -640,12 +745,16 @@ int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *template_file,
    if (0 != tio_meta_expand_stream (meta, fp_template, fp_outfile))
      goto return_status;
 
+   if ((do_rename != 0)
+       && (0 != rename (outfile, tmpl)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: rename failed: %s -> %s",
+                     __func__, outfile, tmpl);
+     }
+
    status = 0;
 return_status:
-   if (fp_template)
-     {
-        (void) fclose (fp_template);
-     }
+   if (fp_template) (void) fclose (fp_template);
    if (fp_outfile)
      {
         if (0 != fclose (fp_outfile))
@@ -653,7 +762,13 @@ return_status:
              tell_verror (TELL_IO_ERROR, "%s: closing file: %s", __func__, outfile);
           }
      }
+
    TIO_FREE(outfile);
+   if (ptemplate_file == NULL)
+     {
+        TIO_FREE(tmpl);
+     }
+
    return status;
 }
 
@@ -1081,11 +1196,16 @@ int tio_meta_set_standard (TIO_Meta_Type *meta,
      }
 
    if ((0 != tio_meta_set (meta, "LOCALGRANULEID", TIO_META_TYPE_STRING, 1, basename))
-       || (0 != tio_meta_set (meta, "SHORTNAME", TIO_META_TYPE_STRING, 1, product_short_name))
        || (0 != tio_meta_set (meta, "VERSIONID", TIO_META_TYPE_INT, 1, &product_versionid))
        || (0 != tio_meta_set (meta, "PGEVERSION", TIO_META_TYPE_STRING, 1, pge_version_string)))
      {
         return -1;
+     }
+
+   if (product_short_name != NULL)
+     {
+        if (0 != tio_meta_set (meta, "SHORTNAME", TIO_META_TYPE_STRING, 1, product_short_name))
+          return -1;
      }
 
    return 0;
