@@ -66,6 +66,6 @@ struct Granule_Type
  * @param[in] file  path to geolocated radiance file
  * @return pointer to initialized Granule_Type on success, NULL on error
  */
-extern Granule_Type *granule_open (const char *file);
+extern Granule_Type *granule_open (const char *file, TIO_Meta_Type *meta);
 
 #endif

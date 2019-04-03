@@ -835,7 +835,25 @@ static int read_ecef_geometry (Granule_Type *gt)
    return 0;
 }
 
-Granule_Type *granule_open (const char *file)
+static int maybe_init_metadata_keywords (int ncid, TIO_Meta_Type *meta)
+{
+   int grp, status;
+
+   /* It's ok if the group doesn't exist */
+   tell_push_queue();
+   status = TIO_inq_grp (ncid, "metadata", &grp);
+   tell_pop_queue(1);
+
+   if (status != 0)
+     return 0;
+
+   /* It's ok if the keyword doesn't exist */
+   (void) tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+
+   return 0;
+}
+
+Granule_Type *granule_open (const char *file, TIO_Meta_Type *meta)
 {
    Granule_Type *gt = NULL;
 
@@ -847,6 +865,8 @@ Granule_Type *granule_open (const char *file)
         gt->gt_close (gt);
         return NULL;
      }
+
+   (void) maybe_init_metadata_keywords (gt->ncid, meta);
 
    if (0 != read_geolocation (gt))
      {

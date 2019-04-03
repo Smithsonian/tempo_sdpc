@@ -12,6 +12,7 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <tio.h>
 
 #include "config.h"
 #include "granule.h"
@@ -23,11 +24,11 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: L1_inr_post [options] <input-file>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -s | --snow FILE       snow and ice mask file\n");
+   fprintf (stderr, "   -s | --snow FILE       Snow and ice mask file\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -c | --config FILE     configuration file\n");
-   fprintf (stderr, "   -h | --help            print this usage message\n");
-   fprintf (stderr, "   -v | --verbose lev     logging verbosity\n");
+   fprintf (stderr, "   -c | --config FILE     Configuration file\n");
+   fprintf (stderr, "   -h | --help            Print this usage message\n");
+   fprintf (stderr, "   -v | --verbose lev     Logging verbosity\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -91,12 +92,13 @@ static int read_angles (config_t *cfg, double *max_glint_angle_deg,
    return 0;
 }
 
-static int set_ground_pixel_quality_flags (Granule_Type *gt, config_t *cfg,
-                                           const char *snow_file)
+static int set_ground_pixel_quality_flags (Granule_Type *gt, TIO_Meta_Type *meta,
+                                           config_t *cfg, const char *snow_file)
 {
    Snow_Type *snow = NULL;
    Land_Cover_Type *land_cover = NULL;
    double max_glint_angle, max_eclipse_angle;
+   const char *snow_file_basename;
    int status = -1;
 
    if (0 != read_angles (cfg, &max_glint_angle, &max_eclipse_angle))
@@ -104,6 +106,13 @@ static int set_ground_pixel_quality_flags (Granule_Type *gt, config_t *cfg,
 
    if (NULL == (snow = snow_init (snow_file)))
      return -1;
+
+   if (NULL != (snow_file_basename = strrchr (snow_file, '/')))
+     {
+        snow_file_basename++;
+     }
+   else snow_file_basename = snow_file;
+   tio_meta_append_string (meta, "INPUTPOINTER", snow_file_basename);
 
    if (NULL == (land_cover = land_cover_init (cfg)))
      goto return_status;
@@ -119,8 +128,8 @@ return_status:
    return status;
 }
 
-static int process_inputs (Granule_Type *gt, config_t *cfg,
-                           const char *snow_file)
+static int process_inputs (Granule_Type *gt, TIO_Meta_Type *meta,
+                           config_t *cfg, const char *snow_file)
 {
    if (0 != set_elevation (gt, cfg))
      return -1;
@@ -131,10 +140,48 @@ static int process_inputs (Granule_Type *gt, config_t *cfg,
    if (0 != gt->gt_set_earth_sun_distance (gt))
      return -1;
 
-   if (0 != set_ground_pixel_quality_flags (gt, cfg, snow_file))
+   if (0 != set_ground_pixel_quality_flags (gt, meta, cfg, snow_file))
      return -1;
 
    return 0;
+}
+
+static int write_metadata (TIO_Meta_Type *meta, const char *input_file)
+{
+   int ncid = 0;
+   int grp, grp_meta, status = -1;
+
+   if (0 != TIO_open (input_file, NC_WRITE, &ncid))
+     goto return_status;
+
+   if (0 != TIO_inq_grp (ncid, "band_290_490_nm", &grp))
+     goto return_status;
+
+   if (0 != tio_meta_set_lev1_bounding_polygon_and_centroid (meta, grp))
+     goto return_status;
+
+   if ((0 != TIO_def_grp (ncid, "metadata", &grp_meta))
+       || (0 != tio_meta_write_ncattr (meta, grp_meta)))
+     goto return_status;
+
+   /* If no template exists, a warning will be printed,
+    * but no error will be generated
+    */
+   if (0 != tio_meta_expand_file (meta, NULL, input_file))
+     goto return_status;
+
+   status = 0;
+
+return_status:
+   if (ncid != 0)
+     {
+        if (0 != TIO_close (ncid))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: closing %s",
+                          __func__, input_file);
+          }
+     }
+   return status;
 }
 
 int main (int argc, char **argv)
@@ -143,6 +190,7 @@ int main (int argc, char **argv)
    char *config_file = "l1_inr_post.cfg";
    config_t cfg;
    Granule_Type *gt = NULL;
+   TIO_Meta_Type *meta = NULL;
    char *input_file = NULL;
    char *snow_file = NULL;
    int status = EXIT_FAILURE;
@@ -230,12 +278,22 @@ int main (int argc, char **argv)
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", input_file);
 
-   gt = granule_open (input_file);
+   if (NULL == (meta = tio_meta_open ()))
+     return -1;
+
+   gt = granule_open (input_file, meta);
 
    if (gt)
      {
-        status = process_inputs (gt, &cfg, snow_file);
+        status = process_inputs (gt, meta, &cfg, snow_file);
         gt->gt_close (gt);
+        if (status != 0)
+          goto return_status;
+
+        (void) tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+
+        if (0 != write_metadata (meta, input_file))
+          goto return_status;
      }
 
 return_status:
@@ -244,6 +302,7 @@ return_status:
    tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, finished %s",
               status, input_file);
    tell_close();
+   tio_meta_close (meta);
 
    return status;
 }

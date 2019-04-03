@@ -35,7 +35,7 @@ enum
 typedef struct
 {
    const char *rad_file;
-   const char *qu_file;
+   char *qu_file;
    Lps_Type *lps;
    int uv_beg, uv_end;
    int vis_beg, vis_end;
@@ -51,6 +51,7 @@ static void free_polcorr_type (Polcorr_Type *pt)
 {
    if (pt == NULL)
      return;
+   FREE(pt->qu_file);
 }
 
 extern int polcorrect (const Polcorr_Type *pt);
@@ -112,16 +113,90 @@ read_retrieval_limits (config_setting_t *s, const char *name,
    return 0;
 }
 
+static char *expand_path (const char *path)
+{
+   wordexp_t we;
+   char *s = NULL;
+
+   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, path);
+        goto return_status;
+     }
+
+   if (NULL == (s = strdup (we.we_wordv[0])))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+return_status:
+   wordfree (&we);
+   return s;
+}
+
+static int meta_record_basename (TIO_Meta_Type *meta, const char *path)
+{
+   const char *path_basename;
+
+   if (NULL != (path_basename = strrchr (path, '/')))
+     {
+        path_basename++;
+     }
+   else path_basename = path;
+
+   tio_meta_append_string (meta, "INPUTPOINTER", path_basename);
+
+   return 0;
+}
+
+static int update_radiance_metadata (const char *rad_file,
+                                     const char *qu_file,
+                                     const char *lps_file)
+{
+   TIO_Meta_Type *meta = NULL;
+   int ncid, grp;
+   int status = -1;
+
+   if ((0 != TIO_open (rad_file, NC_WRITE, &ncid))
+       ||( 0 != TIO_def_grp (ncid, "metadata", &grp)))
+     return -1;
+
+   if (NULL == (meta = tio_meta_open ()))
+     goto return_status;
+
+   /* It's ok if this keyword doesn't exist */
+   (void) tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+
+   meta_record_basename (meta, qu_file);
+   meta_record_basename (meta, lps_file);
+
+   if (0 != tio_meta_write_ncattr (meta, grp))
+     goto return_status;
+
+   /* If no template exists, a warning will be printed,
+    * but no error will be generated
+    */
+   if (0 != tio_meta_expand_file (meta, NULL, rad_file))
+     goto return_status;
+
+   status = 0;
+return_status:
+   tio_meta_close (meta);
+   (void) TIO_close (ncid);
+   return status;
+}
+
 static int process_inputs (config_t *cfg, const char *rad_file, int task,
                            int step, int xtrack, int diag_output)
 {
    Polcorr_Type pt = {0};
-   wordexp_t we;
    const char *qu_file;
+   const char *lps_file;
    config_setting_t *s;
    int status = -1;
-
-   memset ((char *)&we, 0, sizeof(wordexp_t));
 
    pt.rad_file = rad_file;
    pt.step = step;
@@ -137,6 +212,7 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
      }
 
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "qu_lut", &qu_file))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "lps_lut", &lps_file))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "use_mler", &pt.use_mler))
        || (CONFIG_TRUE != config_setting_lookup_bool (s, "merge_bands", &pt.merge_bands)))
      {
@@ -153,14 +229,12 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
         goto return_status;
      }
 
-   if ((0 != wordexp (qu_file, &we, WRDE_NOCMD | WRDE_UNDEF))
-       || (we.we_wordc != 1))
+   if (NULL == (pt.qu_file = expand_path (qu_file)))
      {
         tell_verror (TELL_UNKNOWN_ERROR,
                      "%s: expanding path: %s", __func__, qu_file);
         goto return_status;
      }
-   pt.qu_file = we.we_wordv[0];
 
    if (NULL == (pt.lps = lps_open (cfg)))
      goto return_status;
@@ -181,8 +255,13 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
         break;
      }
 
+   if ((status != 0)
+       || (0 != update_radiance_metadata (rad_file, qu_file, lps_file)))
+     goto return_status;
+
+   status = 0;
+
 return_status:
-   wordfree (&we);
    lps_close (pt.lps);
    free_polcorr_type (&pt);
 
@@ -233,7 +312,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ahc:ds:x:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ahmc:ds:x:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
