@@ -24,11 +24,6 @@
 #define DELIM_TIMESTAMP_FORMAT   "%Y-%m-%dT%H:%M:%SZ"
 #define NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
 
-struct TIO_Scan_Ident_Type
-{
-   _pTIO_Granule_Ident_Type *granule_ident;
-};
-
 int _pTIO_define_processing_level (int grp, int level)
 {
    int status, enum_typeid;

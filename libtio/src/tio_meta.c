@@ -1115,16 +1115,11 @@ return_status:
 }
 
 #define MAX_DATETIME_KEYLEN 72
-static int meta_get_datetime (TIO_Meta_Type *meta, int ncid,
-                               const char *timestamp_attr_name, const char *key_prefix)
+static int meta_set_datetime (TIO_Meta_Type *meta, const char *str, const char *key_prefix)
 {
-   char str[MAX_ISOTIME_LEN];
    char date_str[MAX_ISOTIME_LEN], time_str[MAX_ISOTIME_LEN];
    char date_key[MAX_DATETIME_KEYLEN], time_key[MAX_DATETIME_KEYLEN];
    int len, status;
-
-   if (-1 == TIO_get_att (ncid, NC_GLOBAL, timestamp_attr_name, NC_CHAR, str))
-     return -1;
 
    if (2 != (status = sscanf (str, "%[^T]T%[^Z]Z", date_str, time_str)))
      {
@@ -1159,11 +1154,57 @@ static int meta_get_datetime (TIO_Meta_Type *meta, int ncid,
 
 int tio_meta_set_datetime_range (TIO_Meta_Type *meta, int ncid)
 {
-   if ((0 != meta_get_datetime (meta, ncid, "time_coverage_start", "RANGEBEGINNING"))
-       || (0 != meta_get_datetime (meta, ncid, "time_coverage_end", "RANGEENDING")))
+   char str[MAX_ISOTIME_LEN];
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start", NC_CHAR, str))
+     return -1;
+
+   if (0 != meta_set_datetime (meta, str, "RANGEBEGINNING"))
+     return -1;
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end", NC_CHAR, str))
+     return -1;
+
+   if (0 != meta_set_datetime (meta, str, "RANGEENDING"))
+     return -1;
+
+   return 0;
+}
+
+int tio_meta_set_datetime_range_scan (TIO_Meta_Type *meta, const TIO_Scan_Ident_Type *lst)
+{
+   const _pTIO_Granule_Ident_Type *beg=NULL, *end=NULL, *gid;
+   double t_beg, t_end;
+
+   if (lst == NULL)
+     return -1;
+
+   beg = lst->granule_ident;
+   end = beg;
+
+   t_beg = beg->tstart;
+   t_end = beg->tend;
+
+   for (gid = lst->granule_ident; gid != NULL; gid = gid->next)
      {
-        return -1;
+        if (gid->tstart < t_beg)
+          {
+             t_beg = gid->tstart;
+             beg = gid;
+          }
+
+        if (gid->tend > t_end)
+          {
+             t_end = gid->tend;
+             end = gid;
+          }
      }
+
+   if (0 != meta_set_datetime (meta, beg->tstart_str, "RANGEBEGINNING"))
+     return -1;
+
+   if (0 != meta_set_datetime (meta, end->tend_str, "RANGEENDING"))
+     return -1;
 
    return 0;
 }

@@ -146,6 +146,11 @@ extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
 extern int _pTIO_tempo_time_from_utc_timestr (const char *timestr, double *tai_sec);
 
+struct TIO_Scan_Ident_Type
+{
+   _pTIO_Granule_Ident_Type *granule_ident;
+};
+
 #if 0
 {
 #endif

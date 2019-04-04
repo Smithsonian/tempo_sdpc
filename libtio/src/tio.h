@@ -67,6 +67,8 @@ typedef struct
 }
 TIO_Attr_Text_Type;
 
+typedef struct TIO_Scan_Ident_Type TIO_Scan_Ident_Type;
+
 /** Create a file
  * @param[in]  path   Path to file
  * @param[in]  cmode  Create mode
@@ -629,6 +631,28 @@ extern int tio_meta_set_standard (TIO_Meta_Type *meta,
  */
 extern int tio_meta_set_datetime_range (TIO_Meta_Type *meta, int ncid);
 
+/** Set values for standard observation time interval keywords for a full scan
+ * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
+ * @param[in]  lst    Pointer of type \a TIO_Scan_Ident_Type describing a full scan
+ * @return 0 on success, -1 on error
+ *
+ * The following timestamps are parsed:
+ * @verbatim
+ *    time_coverage_start
+ *    time_coverage_end
+ * @endverbatim
+ * to assign values to the following standard keywords
+ * @verbatim
+ *    RANGEBEGINNINGDATE
+ *    RANGEBEGINNINGTIME
+ *    RANGEENDINGDATE
+ *    RANGEENDINGTIME
+ * @endverbatim
+ * where the start time is the beginning of the scan and the end time is the
+ * end of the scan.
+ */
+extern int tio_meta_set_datetime_range_scan (TIO_Meta_Type *meta, const TIO_Scan_Ident_Type *lst);
+
 /** Set value for standard production date keywords
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
  * @return 0 on success, -1 on error
@@ -652,7 +676,7 @@ extern int tio_meta_set_datetime_production (TIO_Meta_Type *meta);
  *   GRINGPOINTSEQUENCENO    integer indices giving the sequence in which the
  *                           (lon,lat) points trace the boundary in CCW order
  *   CENTROID_MEAN_LONGITUDE longitude of the polygon centroid
- *   CDNTROID_MEAN_LATITUDE  latitude of the polygon centroid
+ *   CENTROID_MEAN_LATITUDE  latitude of the polygon centroid
  * @endverbatim
  *
  * @see __tio_make_lev1_bounding_polygon

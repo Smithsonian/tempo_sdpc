@@ -205,8 +205,6 @@ extern int __tio_filename_string (char *buf, int bufsize,
  */
 extern int TIO_label_product (int ncid, const char *product_type, int version);
 
-typedef struct TIO_Scan_Ident_Type TIO_Scan_Ident_Type;
-
 /** Allocate a new TIO_Scan_Ident_Type object
  * @return TIO_Scan_Ident_Type pointer on success,
  *         NULL on error
