@@ -2,6 +2,7 @@ control:
 {
    hk_glob_pattern = "*hk0.nc";    #  filename pattern to identify
    #                                  level 0 telemetry point files
+   metadata_template_dir = "$SDPC_ROOT/etc/level1";
 };
 
 dark_table_creation:
@@ -25,7 +26,7 @@ ccd_calibration:
    nominal_wavelength_grid:
    {
       delta_wave = 0.2;            # nominal wavelength step per pixel [nm]
-      min_wave_uv = 288.0;         # nominal shortest UV wavelength [nm]
+      min_wave_uv = 287.8;         # nominal shortest UV wavelength [nm]
       min_wave_vis = 536.8;        # nominal shortest visual wavelength [nm];
    };
 };
