@@ -12,6 +12,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <wordexp.h>
 
 #include <tell.h>
 #include <netcdf.h>
@@ -32,6 +33,7 @@ struct Product_Type
 
    char *name;
    char *outfile;
+   char *metadata_template;
    int processing_version;
 
    char *in_lonlat_grp;
@@ -88,6 +90,7 @@ static void free_product_type (Product_Type *p)
 
    FREE(p->value_types);
    FREE(p->name);
+   FREE(p->metadata_template);
    FREE(p->in_lonlat_grp);
    FREE(p->out_lonlat_grp);
    FREE(p);
@@ -302,12 +305,39 @@ return_error:
    return return_status;
 }
 
+static char *expand_path (const char *path)
+{
+   wordexp_t we;
+   char *path_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof(wordexp_t));
+
+   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, path);
+        goto return_error;
+     }
+
+   if (NULL == (path_exp = strdup (we.we_wordv[0])))
+     {
+        tell_verror (TELL_MALLOC_ERROR,
+                     "%s: strdup failed", __func__);
+     }
+
+return_error:
+   wordfree (&we);
+   return path_exp;
+}
+
 static int init_product_type (const config_setting_t *setting,
                               Product_Type **prodp)
 {
    Product_Type *prod = NULL;
    config_setting_t *s, *vars, *longlat_group;
    const char *name, *in_grp, *out_grp, *list_file;
+   const char *metadata_template;
    int i, num_vars, processing_version;
 
    *prodp = NULL;
@@ -336,6 +366,9 @@ static int init_product_type (const config_setting_t *setting,
         Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing processing_version", __func__);
         return -1;
      }
+
+   /* may be absent */
+   (void) config_setting_lookup_string (setting, "metadata_template", &metadata_template);
 
    vars = config_setting_get_member (setting, "vars");
    if (NULL == vars)
@@ -433,6 +466,15 @@ static int init_product_type (const config_setting_t *setting,
    if (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "out", &out_grp))
      out_grp = in_grp;
 
+   if (metadata_template)
+     {
+        if (NULL == (prod->metadata_template = expand_path (metadata_template)))
+          {
+             free_product_type (prod);
+             return -1;
+          }
+     }
+
    if ((NULL == (prod->name = malloc_strcpy (name)))
        || (NULL == (prod->in_lonlat_grp = malloc_strcpy (in_grp)))
        || (NULL == (prod->out_lonlat_grp = malloc_strcpy (out_grp))))
@@ -520,17 +562,104 @@ cleanup_and_return:
    return status;
 }
 
+static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
+                                      const Pixel_Grid_Param_Type *dest)
+{
+   int seq[4] = {1,2,3,4};
+   float lon[4], lat[4];
+   float centroid_lon, centroid_lat;
+
+   /* The following standard keyword values are set:
+    * @verbatim
+    *   GRINGPOINTLONGITUDE     boundary polygon longitudes
+    *   GRINGPOINTLATITUDE      boundary polygon latitudes
+    *   GRINGPOINTSEQUENCENO    integer indices giving the sequence in which the
+    *                           (lon,lat) points trace the boundary in CCW order
+    *   CENTROID_MEAN_LONGITUDE longitude of the polygon centroid
+    *   CENTROID_MEAN_LATITUDE  latitude of the polygon centroid
+    * @endverbatim
+    */
+
+   lon[0] = dest->xmin;  lat[0] = dest->ymin;
+   lon[1] = dest->xmax;  lat[1] = dest->ymin;
+   lon[2] = dest->xmax;  lat[2] = dest->ymax;
+   lon[3] = dest->xmin;  lat[3] = dest->ymax;
+
+   centroid_lon = 0.5 * (dest->xmin + dest->xmax);
+   centroid_lat = 0.5 * (dest->ymin + dest->ymax);
+
+   if ((0 != tio_meta_set (meta, "GRINGPOINTLONGITUDE", TIO_META_TYPE_FLOAT, 4, lon))
+       || (0 != tio_meta_set (meta, "GRINGPOINTLATITUDE",  TIO_META_TYPE_FLOAT, 4, lat))
+       || (0 != tio_meta_set (meta, "GRINGPOINTSEQUENCENOE", TIO_META_TYPE_INT, 4, seq))
+       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LONGITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
+       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LATITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
+     {
+        return -1;
+     }
+
+   return 0;
+}
+
+static int write_metadata (TIO_Meta_Type *meta, int ncid,
+                           const Product_Type *prod,
+                           const Pixel_Grid_Param_Type *dest,
+                           const TIO_Scan_Ident_Type *lst)
+{
+   const char *version_string = "0.1.0"; /* FIXME */
+   int i, grp;
+
+   if (0 != tio_meta_set_datetime_production (meta))
+     return -1;
+
+   if (lst)
+     {
+        if (0 != tio_meta_set_datetime_range_scan (meta, lst))
+          return -1;
+     }
+
+   if (0 != tio_meta_set_standard (meta, prod->outfile, prod->name,
+                                   prod->processing_version, version_string))
+     return -1;
+
+   for (i = 0; i < prod->num_input_files; i++)
+     {
+        if (0 != tio_meta_append_string (meta, "INPUTPOINTER", prod->input_files[i]))
+          return -1;
+     }
+
+   if (0 != meta_set_bounding_polygon (meta, dest))
+     return -1;
+
+   if (0 != TIO_def_grp (ncid, "metadata", &grp))
+     return -1;
+
+   if (0 != tio_meta_write_ncattr (meta, grp))
+     return -1;
+
+   if (prod->metadata_template)
+     {
+        if (0 != tio_meta_expand_file (meta, prod->metadata_template, prod->outfile))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int make_l3_product (const Product_Type *prod,
                             const Pixel_Grid_Param_Type *dest,
                             const Pixel_Regrid_Type *r,
                             Var_Value_Buffer_Type *vb,
                             TIO_Scan_Ident_Type *lst)
 {
+   TIO_Meta_Type *meta = NULL;
    int ncid=INT_MAX, ncid_infile=INT_MAX, i;
    int status = -1;
 
    if (-1 == TIO_create (prod->outfile, NC_NETCDF4, &ncid))
      return -1;
+
+   if (NULL == (meta = tio_meta_open ()))
+     goto return_status;
 
    if (-1 == Var_write_lonlat_grid (ncid, prod->out_lonlat_grp, dest))
      goto return_status;
@@ -540,6 +669,9 @@ static int make_l3_product (const Product_Type *prod,
      goto return_status;
 
    if (-1 == TIO_label_product (ncid, prod->name, prod->processing_version))
+     goto return_status;
+
+   if (0 != write_metadata (meta, ncid, prod, dest, lst))
      goto return_status;
 
    /* The first input file establishes each variable's dimensionality */
@@ -575,6 +707,7 @@ return_status:
      }
    if (-1 == TIO_close(ncid))
      return -1;
+   tio_meta_close (meta);
 
    return status;
 }
