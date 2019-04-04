@@ -82,9 +82,10 @@ struct Calibration_Type
 
 /** Initialize a Calibration_Type object
  * @param cfg  non-NULL pointer to a config_t object associated with an open configuration file
+ * @param meta non-NULL pointer to a \ref TIO_Meta_Type object
  * @return non-NULL pointer to a Calibration_Type object on success, NULL on error
  */
-extern Calibration_Type *sensorcal_init (config_t *cfg);
+extern Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta);
 
 typedef struct
 {

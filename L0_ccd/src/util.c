@@ -5,6 +5,7 @@
 #include <wordexp.h>
 
 #include <tell.h>
+#include <tio.h>
 #include "config.h"
 #include "util.h"
 
@@ -115,4 +116,40 @@ char *expand_path (const char *path)
 return_error:
    wordfree (&we);
    return path_exp;
+}
+
+char *path_concat (const char *dir, const char *basename)
+{
+   int status, len;
+   char *s;
+
+   len = strlen (dir) + strlen(basename) + 2;
+   if (NULL == (s = MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   status = snprintf (s, len, "%s/%s", dir, basename);
+   if ((status < 0) || (status >= len))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
+        FREE(s);
+        return NULL;
+     }
+
+   return s;
+}
+
+int meta_record_basename (TIO_Meta_Type *meta, const char *path)
+{
+   const char *path_basename;
+
+   if (NULL != (path_basename = strrchr (path, '/')))
+     {
+        path_basename++;
+     }
+   else path_basename = path;
+
+   return tio_meta_append_string (meta, "INPUTPOINTER", path_basename);
 }

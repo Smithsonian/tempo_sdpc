@@ -198,6 +198,8 @@ static int time_sort1 (Instr_Type *instr)
    return 0;
 }
 
+static TIO_Meta_Type *_pMeta_Ptr;
+
 static Instr_Type *read_instr1 (const char *file)
 {
    Instr_Type *instr = NULL;
@@ -236,7 +238,11 @@ static Instr_Type *read_instr1 (const char *file)
    if (-1 == time_sort1 (instr))
      goto return_error;
 
+   if (0 != meta_record_basename (_pMeta_Ptr, file))
+     goto return_error;
+
    TIO_close (ncid);
+
    return instr;
 
 return_error:
@@ -430,7 +436,7 @@ static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
 }
 
 Instr_Type *instr_open (const char *file, const char *glob_basename,
-                        double tstart, double tend)
+                        double tstart, double tend, TIO_Meta_Type *meta)
 {
    Instr_Filter_Type flt = {0};
 
@@ -444,6 +450,8 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
    flt.glob_basename = glob_basename;
    flt.tstart = tstart;
    flt.tend = tend;
+
+   _pMeta_Ptr = meta;
 
    return read_instr (file, &flt);
 }

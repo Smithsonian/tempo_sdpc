@@ -39,6 +39,7 @@ struct Instr_Type
  * @param  glob_basename  [optional] globbing pattern for instrument file basename
  * @param  tstart       [optional] desired coverage start time
  * @param  tend         [optional] desired coverage end time
+ * @param  meta         non-NULL pointer to a TIO_Meta_Type object
  * @return non-NULL pointer to an Instr_Type object on success, NULL on error
  *
  * The file specifier may be one of the following:
@@ -52,6 +53,6 @@ struct Instr_Type
  *      files from the directory.
  */
 extern Instr_Type *instr_open (const char *file, const char *glob_basename,
-                               double tstart, double tend);
+                               double tstart, double tend, TIO_Meta_Type *meta);
 
 #endif

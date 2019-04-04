@@ -1024,12 +1024,11 @@ static int read_dn_to_charge_params (CCD_Type *ccd, const char *gain_file)
    return 0;
 }
 
-static int init_gain (config_t *cfg, CCD_Type *ccd)
+static int init_gain (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *meta)
 {
    config_setting_t *setting;
    const char *gain_file;
    char *path = NULL;
-   int status;
 
    if (NULL == (setting = config_lookup (cfg, "ccd_calibration")))
      {
@@ -1049,10 +1048,16 @@ static int init_gain (config_t *cfg, CCD_Type *ccd)
 
    if (NULL == (path = expand_path (gain_file)))
      return -1;
-   status = read_dn_to_charge_params (ccd, path);
-   FREE(path);
 
-   return status;
+   if ((0 != read_dn_to_charge_params (ccd, path))
+       || (0 != meta_record_basename (meta, path)))
+     {
+        FREE(path);
+        return -1;
+     }
+
+   FREE(path);
+   return 0;
 }
 
 static int init_methods (config_t *cfg, CCD_Type *ccd)
@@ -1082,7 +1087,7 @@ static int init_methods (config_t *cfg, CCD_Type *ccd)
    return 0;
 }
 
-CCD_Type *ccd_init (config_t *cfg)
+CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    CCD_Type *ccd = NULL;
 
@@ -1095,7 +1100,7 @@ CCD_Type *ccd_init (config_t *cfg)
    if (-1 == init_subsets (ccd))
      goto error_return;
 
-   if (-1 == init_gain (cfg, ccd))
+   if (-1 == init_gain (cfg, ccd, meta))
      goto error_return;
 
    if (-1 == init_methods (cfg, ccd))

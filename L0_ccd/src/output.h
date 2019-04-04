@@ -82,7 +82,12 @@ struct Output_Type
     */
    int (*out_write_rec)(Output_Type *, int, const Output_Exprec_Type *);
 
-   int (*out_copy_metadata)(Output_Type *, int);
+   /** write standard metadata, both the netCDF data product and ASCII .met file
+    * @param out  non-NULL pointer to an Output_Type object
+    * @param ncid_from  netCDF file index of input granule
+    * @return 0 on success, non-zero on error
+    */
+   int (*out_std_metadata)(Output_Type *, TIO_Meta_Type *meta, int);
 
    /** close the file associated with an Output_Type object
     * @param out   non-NULL pointer to an Output_Type object

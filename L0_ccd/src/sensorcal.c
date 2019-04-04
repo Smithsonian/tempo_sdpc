@@ -510,7 +510,7 @@ static Calibration_Type *cal_init (const Cal_Data_Type *data)
    return cal;
 }
 
-Calibration_Type *sensorcal_init (config_t *cfg)
+Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s, *sub;
    const char *sensorcal_file;
@@ -535,10 +535,13 @@ Calibration_Type *sensorcal_init (config_t *cfg)
 
    if (NULL == (path = expand_path (sensorcal_file)))
      return NULL;
-   data = read_cal_file (path);
+   if ((NULL == (data = read_cal_file (path)))
+       || (0 != meta_record_basename (meta, path)))
+     {
+        FREE(path);
+        return NULL;
+     }
    FREE(path);
-   if (NULL == data)
-     return NULL;
 
    if ((NULL == (sub = config_setting_get_member (s, "nominal_wavelength_grid")))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "delta_wave", &data->delta_wave))

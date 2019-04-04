@@ -17,6 +17,7 @@
 
 #define OUTPUT_PRIVATE_DATA \
    char *file; \
+   char *metadata_template_dir; \
    int exposure_type; \
    int have_dims; \
    int num_recs; \
@@ -27,6 +28,7 @@
    double tstart; \
    double tend;
 #include "output.h"
+#include "util.h"
 
 static int out_set_file (Output_Type *out, const char *file)
 {
@@ -154,6 +156,7 @@ static void out_free (Output_Type *out)
 {
    if (out == NULL)
      return;
+   FREE(out->metadata_template_dir);
    FREE(out->file);
    FREE(out);
 }
@@ -337,6 +340,93 @@ static int out_get_ncid (const Output_Type *out)
    return out->ncid;
 }
 
+static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_from)
+{
+   const char *shortname = NULL;
+   const char *template_basename = NULL;
+   char *template_path = NULL;
+   int grp_meta, status = -1;
+
+   switch (out->exposure_type)
+     {
+      case EXPREC_TYPE_IRRADIANCE:
+        shortname = "TEMPO_irr";
+        template_basename = "irradiance.met.template";
+        break;
+
+      case EXPREC_TYPE_RADIANCE:
+        shortname = "TEMPO_rad";
+        template_basename = "radiance.met.template";
+        break;
+
+      default:
+        tell_vwarn (0, "%s: no metadata template expansion support for exposure records of type %d",
+                    __func__, out->exposure_type);
+        break;
+     }
+
+   /* FIXME: set version numbers */
+   if (0 != tio_meta_set_standard (meta, out->file, shortname, 1, "0.1.0"))
+     goto return_status;
+
+   if (0 != tio_meta_set_datetime_range (meta, ncid_from))
+     goto return_status;
+
+   if ((0 != TIO_def_grp (out->ncid, "metadata", &grp_meta))
+       || (0 != tio_meta_write_ncattr (meta, grp_meta)))
+     goto return_status;
+
+   if (out->exposure_type == EXPREC_TYPE_RADIANCE)
+     {
+        /* For radiance files, INPUTPOINTER gets expanded only in the
+         * last processing step of Level 0-1, e.g. post-INR */
+        tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+     }
+
+   if ((out->metadata_template_dir != NULL)
+       && (template_basename != NULL))
+     {
+        if (NULL == (template_path = path_concat (out->metadata_template_dir, template_basename)))
+          goto return_status;
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "Expanding metadata template: %s", template_path);
+        if (0 != tio_meta_expand_file (meta, template_path, out->file))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   FREE(template_path);
+   return status;
+}
+
+static int read_params (Output_Type *out, config_t *cfg)
+{
+   config_setting_t *setting;
+   const char *template_dir;
+
+   if (NULL == (setting = config_lookup (cfg, "control")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing control settings in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   out->metadata_template_dir = NULL;
+
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "metadata_template_dir", &template_dir))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "metadata template path not found: skipping template expansion");
+        return 0;
+     }
+
+   if (NULL == (out->metadata_template_dir = expand_path (template_dir)))
+     return -1;
+
+   return 0;
+}
+
 Output_Type *output_alloc (config_t *cfg, int exposure_type)
 {
    Output_Type *out = NULL;
@@ -351,6 +441,8 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
      }
    memset ((char *)out, 0, sizeof *out);
 
+   out->exposure_type = exposure_type;
+
    out->out_free = out_free;
    out->out_set_file = out_set_file;
    out->out_set_dims = out_set_dims;
@@ -359,6 +451,13 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->tstart = nan_value;
    out->tend = nan_value;
    out->out_ncid = out_get_ncid;
+   out->out_std_metadata = out_std_metadata;
+
+   if (0 != read_params (out, cfg))
+     {
+        out_free (out);
+        return NULL;
+     }
 
    switch (exposure_type)
      {

@@ -23,6 +23,7 @@
 
 #include "control.h"
 #include "process.h"
+#include "util.h"
 
 typedef struct
 {
@@ -299,7 +300,7 @@ static int compute_current_and_trim (const CCD_Type *ccd,
 
 static int process_dark (config_t *cfg, const Control_Type *ctrl,
                          Process_Control_Type *pct,
-                         Granule_Type *gr)
+                         Granule_Type *gr, TIO_Meta_Type *meta)
 {
    CCD_Type *ccd = NULL;
    Granule_Exprec_Type *exprec = NULL;
@@ -316,14 +317,14 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
-   if (NULL == (ccd = ccd_init (cfg)))
+   if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
 
    if (NULL == (pt = pixelqf_init (cfg)))
      goto return_status;
 
    if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
-                                    gr->granule_tstart(gr), gr->granule_tend(gr))))
+                                    gr->granule_tstart(gr), gr->granule_tend(gr), meta)))
      goto return_status;
 
    num_exprecs = gr->granule_num_exprecs(gr);
@@ -334,6 +335,8 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
      goto return_status;
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
+     goto return_status;
+   if (0 != meta_record_basename (meta, ctrl->bpix_file))
      goto return_status;
 
    bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
@@ -726,7 +729,7 @@ static int flag_transients1 (const Pixelqf_Type *pt,
 
 static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                              Process_Control_Type *pct,
-                             Granule_Type *gr)
+                             Granule_Type *gr, TIO_Meta_Type *meta)
 {
    Queue_Type exprec_queue;
    CCD_Type *ccd = NULL;
@@ -741,7 +744,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
    int num_serial_active_full, num_parallel_active_full;
-   int ixr, num_exprecs, exposure_type;
+   int ixr, num_exprecs, exposure_type, ncid_from, ncid_to;
    int status = -1;
 
    queue_init (&exprec_queue);
@@ -749,25 +752,29 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
-   if (NULL == (ccd = ccd_init (cfg)))
+   if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
 
-   if (NULL == (cal = sensorcal_init (cfg)))
+   if (NULL == (cal = sensorcal_init (cfg, meta)))
      return -1;
 
    if (NULL == (pt = pixelqf_init (cfg)))
      goto return_status;
 
    if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
-                                    gr->granule_tstart(gr), gr->granule_tend(gr))))
+                                    gr->granule_tstart(gr), gr->granule_tend(gr), meta)))
      goto return_status;
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
+     goto return_status;
+   if (0 != meta_record_basename (meta, ctrl->bpix_file))
      goto return_status;
 
    if (NULL == (dtt = dark_table_read (ctrl->dark_file)))
      goto return_status;
    if (0 != validate_dark_table_type (dtt, exposure_type))
+     goto return_status;
+   if (0 != meta_record_basename (meta, ctrl->dark_file))
      goto return_status;
 
    num_exprecs = gr->granule_num_exprecs(gr);
@@ -790,10 +797,11 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != out->out_create (out))
      goto return_status;
 
+   ncid_from = gr->granule_ncid (gr);
+
    if (exposure_type == EXPREC_TYPE_RADIANCE)
      {
-        int ncid_from = gr->granule_ncid (gr);
-        int ncid_to = out->out_ncid (out);
+        ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
      }
@@ -842,6 +850,9 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != apply_cal_then_output (out, cal, cfg, dtt, xr_ready, tmp_img))
      goto return_status;
 
+   if (0 != out->out_std_metadata (out, meta, ncid_from))
+     goto return_status;
+
    status = 0;
 return_status:
 
@@ -866,8 +877,15 @@ return_status:
 int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
    Granule_Type *gr = NULL;
+   TIO_Meta_Type *meta = NULL;
    Process_Control_Type pct = {0};
    int exposure_type, status = -1;
+
+   if (NULL == (meta = tio_meta_open ()))
+     return -1;
+
+   if (0 != tio_meta_set_datetime_production (meta))
+     goto return_status;
 
    if (0 != get_control_params (cfg, &pct))
      goto return_status;
@@ -882,13 +900,13 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      {
       case EXPREC_TYPE_DARK:
       case EXPREC_TYPE_LIN_DARK:
-        status = process_dark (cfg, ctrl, &pct, gr);
+        status = process_dark (cfg, ctrl, &pct, gr, meta);
         break;
 
       case EXPREC_TYPE_RADIANCE:
       case EXPREC_TYPE_IRRADIANCE:
       case EXPREC_TYPE_LIN_IRR:
-        status = process_exposure (cfg, ctrl, &pct, gr);
+        status = process_exposure (cfg, ctrl, &pct, gr, meta);
         break;
 
       default:
@@ -901,6 +919,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
 return_status:
 
    if (gr) gr->granule_close (gr);
+   tio_meta_close (meta);
 
    return status;
 }

@@ -195,6 +195,7 @@ struct CCD_Type
 /** Initialize a CCD_Type object
  * @param   cfg   A non-NULL pointer to a \ref config_t object associated
  *                with an open configuration file.
+ * @param  meta   A non-NULL pointer to a \ref TIO_Meta_Type object
  * @return a non-NULL pointer to a CCD_Type object on success, NULL on error.
  *
  * User-configurable parameter values are provided in a configuration file.
@@ -204,7 +205,7 @@ struct CCD_Type
  * When the CCD_Type object is no longer needed, free the associated resources
  * by passing the CCD_Type pointer to the destructor function, \ref ccd_delete
  */
-extern CCD_Type *ccd_init (config_t *cfg);
+extern CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta);
 
 /** Select the smear correction method
  * @param ccd         A non-null pointer to the CCD_Type object
