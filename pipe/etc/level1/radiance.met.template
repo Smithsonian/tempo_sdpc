@@ -1,0 +1,181 @@
+
+GROUP                  = INVENTORYMETADATA
+  GROUPTYPE            = MASTERGROUP
+
+  GROUP                  = ECSDATAGRANULE
+
+    OBJECT                 = LOCALGRANULEID
+      NUM_VAL              = 1
+      VALUE                = ${LOCALGRANULEID}
+    END_OBJECT             = LOCALGRANULEID
+
+    OBJECT                 = LOCALVERSIONID
+      NUM_VAL              = 1
+      VALUE                = ("RFC1321 MD5 = not yet calculated")
+    END_OBJECT             = LOCALVERSIONID
+
+    OBJECT                 = PRODUCTIONDATETIME
+      NUM_VAL              = 1
+      VALUE                = ${PRODUCTIONDATETIME}
+    END_OBJECT             = PRODUCTIONDATETIME
+
+  END_GROUP              = ECSDATAGRANULE
+
+  GROUP                  = COLLECTIONDESCRIPTIONCLASS
+
+    OBJECT                 = SHORTNAME
+      NUM_VAL              = 1
+      VALUE                = ${SHORTNAME}
+    END_OBJECT             = SHORTNAME
+
+    OBJECT                 = VERSIONID
+      NUM_VAL              = 1
+      VALUE                = ${VERSIONID}
+    END_OBJECT             = VERSIONID
+
+  END_GROUP              = COLLECTIONDESCRIPTIONCLASS
+
+  GROUP                  = INPUTGRANULE
+
+    OBJECT                 = INPUTPOINTER
+      NUM_VAL              = ${#INPUTPOINTER}
+      VALUE                = ${INPUTPOINTER}
+    END_OBJECT             = INPUTPOINTER
+
+  END_GROUP              = INPUTGRANULE
+
+  GROUP                  = SPATIALDOMAINCONTAINER
+
+    GROUP                  = HORIZONTALSPATIALDOMAINCONTAINER
+
+      GROUP                  = GPOLYGON
+
+        OBJECT                 = GPOLYGONCONTAINER
+          CLASS                = "1"
+
+          GROUP                  = GRINGPOINT
+            CLASS                = "1"
+
+            OBJECT                 = GRINGPOINTLONGITUDE
+              NUM_VAL              = ${#GRINGPOINTLONGITUDE}
+              CLASS                = "1"
+              VALUE                = ${GRINGPOINTLONGITUDE}
+            END_OBJECT             = GRINGPOINTLONGITUDE
+
+            OBJECT                 = GRINGPOINTLATITUDE
+              NUM_VAL              = ${#GRINGPOINTLATITUDE}
+              CLASS                = "1"
+              VALUE                = ${GRINGPOINTLATITUDE}
+            END_OBJECT             = GRINGPOINTLATITUDE
+
+            OBJECT                 = GRINGPOINTSEQUENCENO
+              NUM_VAL              = ${#GRINGPOINTSEQUENCENO}
+              CLASS                = "1"
+              VALUE                = ${GRINGPOINTSEQUENCENO}
+            END_OBJECT             = GRINGPOINTSEQUENCENO
+
+          END_GROUP              = GRINGPOINT
+
+          GROUP                  = GRING
+            CLASS                = "1"
+
+            OBJECT                 = EXCLUSIONGRINGFLAG
+              NUM_VAL              = 1
+              VALUE                = "N"
+              CLASS                = "1"
+            END_OBJECT             = EXCLUSIONGRINGFLAG
+
+          END_GROUP              = GRING
+
+        END_OBJECT             = GPOLYGONCONTAINER
+
+      END_GROUP              = GPOLYGON
+
+    END_GROUP              = HORIZONTALSPATIALDOMAINCONTAINER
+
+  END_GROUP              = SPATIALDOMAINCONTAINER
+
+  GROUP                  = RANGEDATETIME
+
+    OBJECT                 = RANGEENDINGDATE
+      NUM_VAL              = 1
+      VALUE                = ${RANGEENDINGDATE}
+    END_OBJECT             = RANGEENDINGDATE
+
+    OBJECT                 = RANGEENDINGTIME
+      NUM_VAL              = 1
+      VALUE                = ${RANGEENDINGTIME}
+    END_OBJECT             = RANGEENDINGTIME
+
+    OBJECT                 = RANGEBEGINNINGDATE
+      NUM_VAL              = 1
+      VALUE                = ${RANGEBEGINNINGDATE}
+    END_OBJECT             = RANGEBEGINNINGDATE
+
+    OBJECT                 = RANGEBEGINNINGTIME
+      NUM_VAL              = 1
+      VALUE                = ${RANGEBEGINNINGTIME}
+    END_OBJECT             = RANGEBEGINNINGTIME
+
+  END_GROUP              = RANGEDATETIME
+
+  GROUP                  = PGEVERSIONCLASS
+
+    OBJECT                 = PGEVERSION
+      NUM_VAL              = 1
+      VALUE                = ${PGEVERSION}
+    END_OBJECT             = PGEVERSION
+
+  END_GROUP              = PGEVERSIONCLASS
+
+  GROUP                  = ADDITIONALATTRIBUTES
+
+    OBJECT                 = ADDITIONALATTRIBUTESCONTAINER
+      CLASS                = "1"
+
+      OBJECT                 = ADDITIONALATTRIBUTENAME
+        CLASS                = "1"
+        NUM_VAL              = 1
+        VALUE                = "CENTROID_MEAN_LONGITUDE"
+      END_OBJECT             = ADDITIONALATTRIBUTENAME
+
+      GROUP                  = INFORMATIONCONTENT
+        CLASS                = "1"
+
+        OBJECT                 = PARAMETERVALUE
+          NUM_VAL              = 1
+          CLASS                = "1"
+          VALUE                = ${CENTROID_MEAN_LONGITUDE}
+        END_OBJECT             = PARAMETERVALUE
+
+      END_GROUP              = INFORMATIONCONTENT
+
+    END_OBJECT             = ADDITIONALATTRIBUTESCONTAINER
+
+    OBJECT                 = ADDITIONALATTRIBUTESCONTAINER
+      CLASS                = "2"
+
+      OBJECT                 = ADDITIONALATTRIBUTENAME
+        CLASS                = "2"
+        NUM_VAL              = 1
+        VALUE                = "CENTROID_MEAN_LATITUDE"
+      END_OBJECT             = ADDITIONALATTRIBUTENAME
+
+      GROUP                  = INFORMATIONCONTENT
+        CLASS                = "2"
+
+        OBJECT                 = PARAMETERVALUE
+          NUM_VAL              = 1
+          CLASS                = "2"
+          VALUE                = ${CENTROID_MEAN_LATITUDE}
+        END_OBJECT             = PARAMETERVALUE
+
+      END_GROUP              = INFORMATIONCONTENT
+
+    END_OBJECT             = ADDITIONALATTRIBUTESCONTAINER
+
+  END_GROUP              = ADDITIONALATTRIBUTES
+
+END_GROUP              = INVENTORYMETADATA
+
+END

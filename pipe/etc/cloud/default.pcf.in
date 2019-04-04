@@ -12,7 +12,9 @@
 10601|de200.eos||||de200.eos|1
 10801|sc_tags.dat||||sc_tags.dat|1
 299001|@radiance_file@|@spectra_dir@|||@radiance_file@|1
-511001|OMCLDRR.MCF|@refdata_dir@/control||||1
+#511001|OMCLDRR.MCF|@refdata_dir@/control||||1
+511001|SIMPLE.MCF|@etc_dir@/cloud||||1
+511002|metadata.nml|@etc_dir@/cloud||||1
 ?   PRODUCT OUTPUT FILES
 ! @product_dir@
 520001|@product_file@|@product_dir@||||1

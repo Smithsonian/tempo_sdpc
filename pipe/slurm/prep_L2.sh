@@ -198,6 +198,7 @@ run_cloud()
       -e s,@radiance_file@,$radiance_file,g \
       -e s,@irradiance_file@,$irradiance_file,g \
       -e s,@product_file@,$product_file,g \
+      -e s,@etc_dir@,$etc_dir,g \
       $template_pcf > $pcf_file
 
   export PGS_PC_INFO_FILE="$pcf_file"
@@ -205,6 +206,9 @@ run_cloud()
 
   srun --ntasks=1 --output=log_cloud.txt \
     L1_cloud $cmdline_args
+
+  # SDPTK MET routines litter the directory with temporary files
+  /bin/rm -f MCFWrite.temp_*
 
   tar_l2_cloud_to_dest "$l2_out_dir"
 

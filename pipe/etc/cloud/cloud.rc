@@ -8,7 +8,7 @@ refdata_dir="$SDPC_RUN_DIR/refdata/cloud"
 # absolute path for output pcf file
 pcf_file=$product_dir/cloud.pcf
 
-cmdline_args="-tempo"
+cmdline_args="-tempo -wrt_odl"
 
 # -- values above shouldn't change very often.
 # -- values below will change either daily or per-granule.

@@ -1,0 +1,11 @@
+! Basic metadata for trace gas code
+
+&metadata
+collection_shortname='TEMPOHCHO'
+collection_version = '(1)'
+platform = 'As-yet unknown Comsat'
+access_description = 'Test data, not for public release. Numerical access_values not yet defined.'
+access_value = '0'
+abstract = "This is supposed to be a short description of the product and what it is used for. Special characters such as ' will be escaped via backslash in the netCDF file. At present libtio limits attribute string length to 256 characters."
+keywords = "EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>CARBON AND HYDROCARBON COMPOUNDS>FORMALDEHYDE, EARTH SCIENCE>ATMOSPHERE>AIR QUALITY>VOLATILE ORGANIC COMPOUNDS"
+/
