@@ -17,10 +17,12 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal_merge -t <target-file> <wavecal-results-dir>\n");
    fprintf (stderr, "  Required:\n");
-   fprintf (stderr, "   -t | --target FILE   name of netCDF4 file to receive wavecal arrays\n");
+   fprintf (stderr, "   -t | --target FILE   Name of netCDF4 file to receive wavecal arrays\n");
    fprintf (stderr, "  Optional:\n");
-   fprintf (stderr, "   -d | --delete        delete input files and directory after successful merge\n");
-   fprintf (stderr, "   -h | --help          print this usage message\n");
+   fprintf (stderr, "   -d | --delete        Delete input files and directory after successful merge\n");
+   fprintf (stderr, "   -m | --meta          Use this option to indicate that this step\n");
+   fprintf (stderr, "                        finalizes the metadata for this data product\n");
+   fprintf (stderr, "   -h | --help          Print this usage message\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -161,6 +163,26 @@ close_and_return:
    return status;
 }
 
+static int read_metadata (TIO_Meta_Type *meta, const char *file)
+{
+   int ncid, grp, status;
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   tell_push_queue();
+   status = TIO_inq_grp (ncid, "metadata", &grp);
+   tell_pop_queue(1);
+   if (status == 0)
+     {
+        status = tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+     }
+
+   (void) TIO_close (ncid);
+
+   return status;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "wavecal_merge";
@@ -169,14 +191,17 @@ int main (int argc, char **argv)
    const char *results_dir = NULL;
    char *pattern = NULL;
    IOCLib_Glob_Type *gt = NULL;
+   TIO_Meta_Type *meta = NULL;
    int delete_files = 0;
-   int ncid_target;
+   int ncid_target, grp_meta_target;
+   int finalize_metadata = 0;
    size_t i, num_merged;
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
         {"target",  required_argument, 0, 't'},
         {"delete",  no_argument, 0, 'd'},
+        {"meta",    no_argument, 0, 'm'},
         {0,0,0,0}
      };
 
@@ -188,7 +213,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ht:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hmt:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -199,6 +224,9 @@ int main (int argc, char **argv)
              break;
            case 'h':
              usage();
+             break;
+           case 'm':
+             finalize_metadata++;
              break;
            case 'd':
              delete_files++;
@@ -223,7 +251,33 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   if (NULL == (meta = tio_meta_open ()))
+     goto return_status;
+
+   /* Initialize selected metadata entries from target file (to preserve that),
+    * and 1st merge block (to append whatever additional metadata it may contain).
+    * Assume the additional metadata is the same for all the merge blocks.
+    */
+   (void) read_metadata (meta, target_file);
+   (void) read_metadata (meta, gt->files[0]);
+
    if (0 != TIO_open (target_file, NC_WRITE, &ncid_target))
+     goto return_status;
+
+   /* Write the accumulated metadata entries */
+   if ((0 != TIO_def_grp (ncid_target, "metadata", &grp_meta_target))
+       || (0 != tio_meta_write_ncattr (meta, grp_meta_target)))
+     goto return_status;
+
+   if (finalize_metadata == 0)
+     {
+        tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+     }
+
+   /* If no template exists, a warning will be printed,
+    * but no error will be generated
+    */
+   if (0 != tio_meta_expand_file (meta, NULL, target_file))
      goto return_status;
 
    num_merged = 0;
@@ -257,6 +311,7 @@ return_status:
         (void) TIO_close (ncid_target);
      }
    tell_close();
+   tio_meta_close (meta);
    ioclib_free (pattern);
    ioclib_glob_free (gt);
    return status;

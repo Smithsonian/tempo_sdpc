@@ -150,7 +150,7 @@ static int invalid_tables (const Table_Type *full, const Table_Type *adj)
    return 0;
 }
 
-Wadj_Type *wadj_open (config_t *cfg, const char *group)
+Wadj_Type *wadj_open (config_t *cfg, const char *group, TIO_Meta_Type *meta)
 {
    Wadj_Type *wadj = NULL;
    char *path = NULL;
@@ -159,6 +159,9 @@ Wadj_Type *wadj_open (config_t *cfg, const char *group)
 
    if (0 != read_table_file_path (cfg, &path))
      return NULL;
+
+   if (0 != meta_record_basename (meta, path))
+     goto return_error;
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      goto return_error;

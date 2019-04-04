@@ -531,6 +531,7 @@ int main (int argc, char **argv)
    Wavecal_Config_Type wavecal_config = {0};
    Wavecal_Result_Type wavecal_result = {0};
    Geoloc_Type *geoloc = NULL;
+   TIO_Meta_Type *meta = NULL;
    double *y0 = NULL;
    double nan_value = nan("");
    double *wave_params = NULL;
@@ -546,7 +547,7 @@ int main (int argc, char **argv)
    int debug = 0;
    int apply_shift_adjust = 0;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
-   int num_wave_params, start_pix, num_pix;
+   int num_wave_params, start_pix, num_pix, grp_meta;
    int num_final_coeff, final_start_pix, final_num_pix;
    int fit_status_code;
    static struct option long_options[] =
@@ -668,6 +669,9 @@ int main (int argc, char **argv)
         usage();
      }
 
+   if (NULL == (meta = tio_meta_open ()))
+     goto return_status;
+
    wavecal_config.fill_value = nan_value;
 
    if (0 != TIO_open (input_file, NC_WRITE, &ncid))
@@ -697,7 +701,7 @@ int main (int argc, char **argv)
     * for radiance wavelength calibration */
    if (apply_shift_adjust && (0 == is_irradiance))
      {
-        if (NULL == (wadj = wadj_open (&cfg, group_name)))
+        if (NULL == (wadj = wadj_open (&cfg, group_name, meta)))
           goto return_status;
      }
 
@@ -850,6 +854,11 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
+   if (0 != TIO_def_grp (ncid_result, "metadata", &grp_meta))
+     goto return_status;
+   if (0 != tio_meta_write_ncattr (meta, grp_meta))
+     goto return_status;
+
    for (step = beg_step; step < end_step; step++)
      {
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
@@ -921,6 +930,7 @@ return_status:
    tell_close();
    wavecal_close (wct);
    wadj_close (wadj);
+   tio_meta_close (meta);
 
    if ((fp != NULL) && (params_outfile != NULL))
      {

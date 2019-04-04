@@ -26,9 +26,10 @@ Wadj_Cheb_Series_Type;
  *                with an appropriate configuration file.
  * @param  group  Name of the netcdf file group containing the lookup table for the
  *                spectral band of interest.
+ * @param  meta   Pointer to an open \a TIO_Meta_type structure
  * @return A valid \a Wadj_Type pointer on success, \a NULL on error
  */
-extern Wadj_Type *wadj_open (config_t *cfg, const char *group);
+extern Wadj_Type *wadj_open (config_t *cfg, const char *group, TIO_Meta_Type *meta);
 
 /** Release resources associated with a wavelength adjustment lookup table
  * @param   wadj  Pointer to a \a Wadj_Type pointer initialized by \a wadj_open
