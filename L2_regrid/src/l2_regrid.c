@@ -33,6 +33,7 @@ struct Product_Type
 
    char *name;
    char *outfile;
+   char *shortname;
    char *metadata_template;
    int processing_version;
 
@@ -90,6 +91,7 @@ static void free_product_type (Product_Type *p)
 
    FREE(p->value_types);
    FREE(p->name);
+   FREE(p->shortname);
    FREE(p->metadata_template);
    FREE(p->in_lonlat_grp);
    FREE(p->out_lonlat_grp);
@@ -331,13 +333,31 @@ return_error:
    return path_exp;
 }
 
+static int init_product_type_metadata (const config_setting_t *s,
+                                       Product_Type *prod)
+{
+   const char *shortname;
+   const char *metadata_template;
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "shortname", &shortname))
+     return -1;
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "template_file", &metadata_template))
+     return -1;
+
+   if (NULL == (prod->shortname = malloc_strcpy (shortname)))
+     return -1;
+   if (NULL == (prod->metadata_template = expand_path (metadata_template)))
+     return -1;
+
+   return 0;
+}
+
 static int init_product_type (const config_setting_t *setting,
                               Product_Type **prodp)
 {
    Product_Type *prod = NULL;
-   config_setting_t *s, *vars, *longlat_group;
+   config_setting_t *s, *vars, *longlat_group, *s_meta;
    const char *name, *in_grp, *out_grp, *list_file;
-   const char *metadata_template;
    int i, num_vars, processing_version;
 
    *prodp = NULL;
@@ -366,9 +386,6 @@ static int init_product_type (const config_setting_t *setting,
         Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing processing_version", __func__);
         return -1;
      }
-
-   /* may be absent */
-   (void) config_setting_lookup_string (setting, "metadata_template", &metadata_template);
 
    vars = config_setting_get_member (setting, "vars");
    if (NULL == vars)
@@ -439,7 +456,6 @@ static int init_product_type (const config_setting_t *setting,
         if ((NULL == (prod->in_var_names[i] = malloc_strcpy (in_name)))
             || (NULL == (prod->out_var_names[i] = malloc_strcpy (out_name))))
           {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
              return -1;
           }
@@ -448,7 +464,6 @@ static int init_product_type (const config_setting_t *setting,
           prod->var_qa_labels[i] = NULL;
         else if (NULL == (prod->var_qa_labels[i] = malloc_strcpy (var_qa_label)))
           {
-             Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              free_product_type (prod);
              return -1;
           }
@@ -466,10 +481,13 @@ static int init_product_type (const config_setting_t *setting,
    if (CONFIG_TRUE != config_setting_lookup_string (longlat_group, "out", &out_grp))
      out_grp = in_grp;
 
-   if (metadata_template)
+   /* may be absent */
+   if (NULL != (s_meta = config_setting_get_member (setting, "metadata")))
      {
-        if (NULL == (prod->metadata_template = expand_path (metadata_template)))
+        if (0 != init_product_type_metadata (s_meta, prod))
           {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: reading metadata settings for %s product",
+                          __func__, name);
              free_product_type (prod);
              return -1;
           }
@@ -479,7 +497,6 @@ static int init_product_type (const config_setting_t *setting,
        || (NULL == (prod->in_lonlat_grp = malloc_strcpy (in_grp)))
        || (NULL == (prod->out_lonlat_grp = malloc_strcpy (out_grp))))
      {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_product_type (prod);
         return -1;
      }
@@ -590,7 +607,7 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
 
    if ((0 != tio_meta_set (meta, "GRINGPOINTLONGITUDE", TIO_META_TYPE_FLOAT, 4, lon))
        || (0 != tio_meta_set (meta, "GRINGPOINTLATITUDE",  TIO_META_TYPE_FLOAT, 4, lat))
-       || (0 != tio_meta_set (meta, "GRINGPOINTSEQUENCENOE", TIO_META_TYPE_INT, 4, seq))
+       || (0 != tio_meta_set (meta, "GRINGPOINTSEQUENCENO", TIO_META_TYPE_INT, 4, seq))
        || (0 != tio_meta_set (meta, "CENTROID_MEAN_LONGITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
        || (0 != tio_meta_set (meta, "CENTROID_MEAN_LATITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
      {
@@ -617,13 +634,19 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
           return -1;
      }
 
-   if (0 != tio_meta_set_standard (meta, prod->outfile, prod->name,
+   if (0 != tio_meta_set_standard (meta, prod->outfile, prod->shortname,
                                    prod->processing_version, version_string))
      return -1;
 
    for (i = 0; i < prod->num_input_files; i++)
      {
-        if (0 != tio_meta_append_string (meta, "INPUTPOINTER", prod->input_files[i]))
+        const char *basename = prod->input_files[i];
+        const char *p;
+        if (NULL != (p = strrchr (basename, '/')))
+          {
+             basename = p + 1;
+          }
+        if (0 != tio_meta_append_string (meta, "INPUTPOINTER", basename))
           return -1;
      }
 
