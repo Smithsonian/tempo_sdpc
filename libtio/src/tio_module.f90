@@ -94,6 +94,7 @@ module tio_module
     integer, dimension(tiof_max_var_dims) :: dimids  !< ordered list of dimension ids
     character (len=tiof_max_att_len) :: comment  !< attribute: comment
     character (len=tiof_max_att_len) :: units    !< attribute: units
+    character (len=tiof_max_att_len) :: long_name    !< attribute: long_name
     real (kind=r8), dimension(2) :: valid_range = [0.0, 0.0]  !< attribute: valid_min, valid_max
     integer :: deflate_level = 0   !< attribute: compression deflate level
     logical :: shuffle = .false.   !< attribute: compress with shuffle?
@@ -102,6 +103,7 @@ module tio_module
     integer :: no_fill = 0         !< attribute: if non-zero, turn off auto-fill
     real (kind=r8) :: fillvalue     !< attribute: fill value
     logical, private :: &
+      have_long_name=.false., &
       have_comment=.false., &
       have_units=.false., &
       have_valid_range=.false., &
@@ -1060,6 +1062,7 @@ contains
   !! @param[in] chunksizes (optional) If present, use chunked storage, with
   !!                       the provided chunk sizes.
   !! @param[in] comment  (optional) Comment text.
+  !! @param[in] long_name  (optional) Long name text.
   !! @param[in] units  (optional) Physical units of the variable.
   !! @param[in] valid_range (optional) minimum and maximum valid values
   !! @param[in] no_fill  (optional) If non-zero, do not initialize the variable
@@ -1069,7 +1072,7 @@ contains
   !! @see tiof_def_vars, tiof_varlist_free, tiof_varlist_lookup
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
-                                  comment, units, valid_range, &
+                                  comment, long_name, units, valid_range, &
                                   no_fill, fillvalue, &
                                   attlist)
     implicit none
@@ -1081,7 +1084,7 @@ contains
     integer, optional, intent(in) :: deflate_level
     logical, optional, intent(in) :: contiguous, shuffle
     integer, optional, dimension(:), intent(in) :: chunksizes
-    character (len=*), optional, intent(in) :: comment, units
+    character (len=*), optional, intent(in) :: comment, long_name, units
     real (kind=r8), optional, dimension(2), intent(in) :: valid_range
     integer, optional, intent(in) :: no_fill
     real (kind=r8), optional, intent(in) :: fillvalue
@@ -1133,6 +1136,11 @@ contains
     if (present(comment)) then
       item % have_comment = .true.
       item % comment = adjustl(comment)
+    endif
+
+    if (present(long_name)) then
+      item % have_long_name = .true.
+      item % long_name = adjustl(long_name)
     endif
 
     if (present(units)) then
@@ -1336,6 +1344,15 @@ contains
 
       if (item % have_comment) then
         status = nf90_put_att (obj % groupid, item % varid, "comment", item % comment)
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
+      endif
+
+      if (item % have_long_name) then
+        status = nf90_put_att (obj % groupid, item % varid, "long_name", item % long_name)
         if (status /= nf90_noerr) then
           errstat = tell_io_error
           call tell_set_error (errstat)
