@@ -58,6 +58,10 @@ stop()
 
 status()
 {
+  if ! test -d $PID_DIR ; then
+    printf "stopped\n"
+    exit 0
+  fi
   PID_LIST=$(ls $PID_DIR)
   if test X"$PID_LIST" = X ; then
     printf "stopped\n"
