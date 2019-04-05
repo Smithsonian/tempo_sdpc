@@ -70,7 +70,7 @@ module tio_module
     character (len=tiof_max_name_len) :: name  !< attribute name
     integer :: len_name = 0
     integer :: xtype = -1       !< attribute value data type
-    character (len=tiof_max_att_len) :: att_text
+    character (len=:), allocatable :: att_text
     integer (kind=i4), allocatable, dimension(:) :: att_i4
     integer (kind=i8), allocatable, dimension(:) :: att_i8
     real (kind=r4), allocatable, dimension(:) :: att_r4
@@ -951,6 +951,7 @@ contains
       item % att_r8(:) = att_r8(:)
       item % xtype = nf90_double
     else if (present(att_text)) then
+      allocate (character (len(att_text)) :: item % att_text)
       item % att_text = adjustl(att_text)
       item % xtype = nf90_char
     endif
