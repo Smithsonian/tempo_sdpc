@@ -395,6 +395,7 @@ static int test_ccd_active_image_dims (CCD_Type *ccd)
 static int perform_test (int argc, char **argv, config_t *cfg)
 {
    CCD_Type *ccd = NULL;
+   TIO_Meta_Type *meta = NULL;
    typedef int test_fun_type (CCD_Type *);
    test_fun_type *test_funs[] =
      {
@@ -412,8 +413,11 @@ static int perform_test (int argc, char **argv, config_t *cfg)
 
    (void) argc; (void) argv;
 
-   if (NULL == (ccd = ccd_init (cfg)))
+   if (NULL == (meta = tio_meta_open ()))
      return -1;
+
+   if (NULL == (ccd = ccd_init (cfg, meta)))
+     goto return_status;
 
    for (fun = test_funs; *fun != NULL; fun++)
      {
@@ -423,6 +427,7 @@ static int perform_test (int argc, char **argv, config_t *cfg)
 
    status = 0;
 return_status:
+   tio_meta_close (meta);
    if (ccd) ccd->ccd_delete (ccd);
    return status;
 }
