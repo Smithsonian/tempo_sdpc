@@ -63,7 +63,13 @@ if ! test -f "$tarfile_path" ; then
 fi
 
 product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
-have_o3p="$(echo $product_list | grep o3p)"
+
+have_o3p=""
+for p in $product_list ; do
+   if test x"$p" = x"o3p" ; then
+      have_o3p="yes"
+   fi
+done
 
 # FIXME: for now, only generate o3p products for one granule
 case "$rad_basename" in

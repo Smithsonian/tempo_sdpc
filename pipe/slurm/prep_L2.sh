@@ -136,13 +136,15 @@ tar_l1_radiance_to_dest()
        $granule_dir/${rad_basename}.nc \
        $granule_dir/granule_ident.csv \
        $granule_dir/log_inr_post.txt $tiepoint_file \
-       $granule_dir/log_polcorr.txt
+       $granule_dir/log_polcorr.txt \
+       $granule_dir/${rad_basename}.nc.met
    /bin/mv $dest_dir/.${tarfile_rad} $dest_dir/${tarfile_rad}
 
    archive.sl --clobber --delete -a $SDPC_ARCHIVE_DIR -l L1 $dest_dir/${tarfile_rad}
 
    /bin/rm -f $granule_dir/log_inr_post.txt $tiepoint_file \
-              $granule_dir/log_polcorr.txt
+              $granule_dir/log_polcorr.txt \
+              $granule_dir/${rad_basename}.nc.met
 }
 
 . $SDPC_ROOT/bin/run_wavecal.sh
@@ -252,6 +254,14 @@ if ! test -f "$irr_file" ; then
 fi
 
 get_tiepoint_file
+
+# The metadata file was placed in the L2 incoming directory
+# just before the radiance file was staged for INR. Here's
+# where we pick it up again for further variable expansion.
+metadata_file_path="${l2_incoming}/${rad_basename}.nc.met"
+if test -f "$metadata_file_path" ; then
+  /bin/mv $metadata_file_path .
+fi
 
 mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc
 run_inr_post ${rad_basename}.nc
