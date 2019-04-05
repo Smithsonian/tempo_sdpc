@@ -1007,8 +1007,13 @@ contains
 
     call tiof_get2d_r8 (rad_s % obj, tempo_var_radiance, start, edge, &
                         rad_s % radiance(i0:i1,:), errstat, replace_fill=r8_fill)
+    ! For TEMPO, wavelengths are stored as coefficients, so we never expect
+    ! fill values in the computed wavelengths. Also, note that we cannot use the
+    ! replace_fill option with the 'wavelength' variable.  For TEMPO, 'wavelength'
+    ! doesn't normally exist as a file variable, so the fill value lookup for
+    ! variable 'wavelength' would usually fail.
     call tiof_get2d_r8 (rad_s % obj, tempo_var_wavelength, start, edge, &
-                        rad_s % wave(i0:i1,:), errstat, replace_fill=r8_fill)
+                        rad_s % wave(i0:i1,:), errstat)
     if (errstat /= 0) then
       write(msg,'(a,i0)')'reading radiances: step=',step
       call tell_error (tell_io_read_error, msg, errstat)
