@@ -376,10 +376,14 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
        || (0 != tio_meta_write_ncattr (meta, grp_meta)))
      goto return_status;
 
-   if (out->exposure_type == EXPREC_TYPE_RADIANCE)
+   if ((out->exposure_type == EXPREC_TYPE_RADIANCE)
+       || (out->exposure_type == EXPREC_TYPE_IRRADIANCE))
      {
         /* For radiance files, INPUTPOINTER gets expanded only in the
-         * last processing step of Level 0-1, e.g. post-INR */
+         * last processing step of Level 0-1, e.g. post-INR
+         * For irradiance files, INPUTPOINTER gets expanded after
+         * wavelength calibration.
+         */
         tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
      }
 
