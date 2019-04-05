@@ -1238,12 +1238,13 @@ int tio_meta_set_standard (TIO_Meta_Type *meta,
                            int product_versionid,
                            const char *pge_version_string)
 {
-   const char *basename = product_file_name;
+   const char *basename;
 
    if (NULL != (basename = strrchr (product_file_name, '/')))
      {
         basename++;
      }
+   else basename = product_file_name;
 
    if ((0 != tio_meta_set (meta, "LOCALGRANULEID", TIO_META_TYPE_STRING, 1, basename))
        || (0 != tio_meta_set (meta, "VERSIONID", TIO_META_TYPE_INT, 1, &product_versionid))
