@@ -83,8 +83,8 @@ O3P_output_module.f90
 he5_l2writer_class.f90
 he5_l2_fs.f90
 OMI_LUN_set.f90
-OMI_MET_class.f90
-OZPROF_metaDef.f90
+# OMI_MET_class.f90
+# OZPROF_metaDef.f90
 PGS_MET_class.f90
 PGS_PC_class.f90
 PGS_TD_class.f90

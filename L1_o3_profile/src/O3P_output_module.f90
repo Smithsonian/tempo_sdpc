@@ -15,8 +15,8 @@ MODULE O3P_output_module
                                 l2_ascii_create, l2_ascii_close
   USE he5_output_module, only: he5_l2setgeofields, he5_l2setdatafields,he5_l2wrtinit
   USE tio_output_module
-  USE OMI_metaData_class
-  USE PROFOZ_metaDef
+  !USE OMI_metaData_class
+  !USE PROFOZ_metaDef
   USE OMI_LUN_SET
   CONTAINS
 

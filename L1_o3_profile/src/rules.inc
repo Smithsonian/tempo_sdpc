@@ -688,12 +688,10 @@ $(ODIR)/O3P_output_module.o: $(SDIR)/O3P_output_module.f90 \
   $(ODIR)/ascii_output_module.o \
   $(ODIR)/he5_output_module.o \
   $(ODIR)/OMI_LUN_set.o \
-  $(ODIR)/OMI_MET_class.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/ozprof_data_module.o \
-  $(ODIR)/OZPROF_metaDef.o \
   $(ODIR)/tio_output_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/O3P_output_module.f90 -o $(ODIR)/O3P_output_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/he5_l2writer_class.o: $(SDIR)/he5_l2writer_class.f90 \
@@ -706,18 +704,6 @@ $(ODIR)/he5_l2_fs.o: $(SDIR)/he5_l2_fs.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/he5_l2_fs.f90 -o $(ODIR)/he5_l2_fs.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMI_LUN_set.o: $(SDIR)/OMI_LUN_set.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMI_LUN_set.f90 -o $(ODIR)/OMI_LUN_set.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/OMI_MET_class.o: $(SDIR)/OMI_MET_class.f90 \
-  $(ODIR)/m_utilities.o \
-  $(ODIR)/OMI_SMF_class.o \
-  $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_he5_module.o \
-  $(ODIR)/PGS_MET_class.o \
-  $(ODIR)/PGS_PC_class.o \
-  $(ODIR)/PGS_TD_class.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMI_MET_class.f90 -o $(ODIR)/OMI_MET_class.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/OZPROF_metaDef.o: $(SDIR)/OZPROF_metaDef.f90 \
-  $(ODIR)/OMI_MET_class.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OZPROF_metaDef.f90 -o $(ODIR)/OZPROF_metaDef.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/PGS_MET_class.o: $(SDIR)/PGS_MET_class.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/PGS_MET_class.f90 -o $(ODIR)/PGS_MET_class.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/PGS_PC_class.o: $(SDIR)/PGS_PC_class.f90
