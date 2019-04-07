@@ -93,7 +93,7 @@ export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="$pcf_file"
 
 srun --ntasks=1 --output=log_o3_total.txt \
-  L1_o3_total tempo
+  L1_o3_total tempo wrt_odl
 
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"
