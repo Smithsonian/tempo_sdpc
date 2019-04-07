@@ -74,6 +74,10 @@ $(ODIR)/m_nvalc.o: $(SDIR)/m_nvalc.f90 \
   $(ODIR)/PGS_PC_class.o \
   $(ODIR)/UTIL_tools_class.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_nvalc.f90 -o $(ODIR)/m_nvalc.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
+  $(ODIR)/o3t_names_module.o \
+  $(ODIR)/PGS_MET_class.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/o3t_names_module.o: $(SDIR)/o3t_names_module.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/o3t_names_module.f90 -o $(ODIR)/o3t_names_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/O3T_apriori_class.o: $(SDIR)/O3T_apriori_class.f90 \

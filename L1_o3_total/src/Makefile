@@ -53,11 +53,17 @@ ZLIBS       = -L$(OTS_ROOT)/lib -lsz -lz
 PGSINCS     = -I$(PGSINC)
 PGSLIBS     = -L$(PGSLIB) -lPGSTK
 
-IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
+MD_LIB      = $(prefix)/lib
+MD_SRC      = $(config_dir)/libmd/src
+MDSRC_OBJS  = $(MD_SRC)/$(archobjs)
+MDINCS      = -I$(MDSRC_OBJS)
+MDLIBS      = -L$(MD_LIB) -L$(MDSRC_OBJS) -lmd_f
+
+IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) $(MDINCS) \
          $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(HE4INCS)
 
 LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
-         $(NETCDFLIBS) $(HE5LIBS) $(HE4LIBS) $(ZLIBS) $(PGSLIBS) \
+         $(NETCDFLIBS) $(HE5LIBS) $(HE4LIBS) $(ZLIBS) $(PGSLIBS) $(MDLIBS) \
          $(LDPATH) $(TIOLIBS) -lm $(DL_LIB)
 
 CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS) $(HE4INCS)

@@ -76,11 +76,13 @@ PROGRAM O3T_mainNVAdj
   USE m_nvalc
   USE m_anomflg
   use l2_tio_class
+  use m_write_odl_metadata
 
   IMPLICIT NONE
   INTEGER (KIND=4), PARAMETER :: nLinesPerWrite = 100
   INTEGER (KIND=4), PARAMETER :: nGeoF = 15, nDatF = 25, nwlA = 4
   INTEGER (KIND=4), DIMENSION(5) :: dims
+  integer, parameter :: tempo_mcfLUN = 420002
   CHARACTER (LEN=256) :: dimList
   CHARACTER (LEN=PGSd_PC_FILE_PATH_MAX) :: OMTO3_fn
   CHARACTER (LEN=256) :: OMTO3_swathname
@@ -102,9 +104,9 @@ PROGRAM O3T_mainNVAdj
   TYPE (L2PARAM_T), DIMENSION(1) :: L2_parameters
   INTEGER (KIND=4), DIMENSION(11):: LUNinputPointer
   INTEGER (KIND=4) :: mcfLUN
-  REAL (KIND=4) :: doz_limit = 5.0, guesoz, stp1oz, stp2oz, stp3oz, dr
+  REAL (KIND=4) :: doz_limit = 5.0, guesoz, stp1oz, stp2oz, stp3oz=0.0, dr
   REAL (KIND=4), DIMENSION(NLYR) :: stp2prf, eff, aprfoz
-  REAL (KIND=4)  :: aerind, so2ind, soilim, pathl, oz_cld !, cloudcov = 0.0
+  REAL (KIND=4)  :: aerind, so2ind, soilim=0.0, pathl, oz_cld !, cloudcov = 0.0
   INTEGER (KIND=4), DIMENSION(4) :: iso2w
   REAL (KIND=4), DIMENSION(5) :: o3abs, so2abs
 
@@ -151,6 +153,7 @@ PROGRAM O3T_mainNVAdj
   logical :: use_he5_out = .false., use_tio_in = .true., use_tio_out = .true.
   logical :: have_omi_data = .true.
   logical :: did_so2_setup = .false.
+  logical :: write_odl = .false.
   character (len=1024) :: nc_l2_filename
   character (len=32) :: arg, rad_shortname
   integer (kind=4) :: step_index
@@ -173,6 +176,8 @@ PROGRAM O3T_mainNVAdj
       use_tio_out = .false.
     else if (trim(arg) == "tempo") then
       have_omi_data = .false.
+    else if (trim(arg) == "wrt_odl") then
+      write_odl = .true.
     endif
     iarg = iarg + 1
   enddo
@@ -1387,9 +1392,20 @@ PROGRAM O3T_mainNVAdj
     mcfLUN = OMTO3_MCF_LUN
   ENDIF
 
+  if (write_odl .and. use_tio_in .and. (.not. have_omi_data)) then
+    LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
+                            O3_CLIM_LUN,     TM_CLIM_LUN,       &
+                            TERRAINPRES_LUN, CLOUDPRES_LUN,     &
+                            OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
+                            OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
+    status = write_odl_metadata (UV_filename, nc_l2_filename, &
+                                 nXtrack_rad, nTimes_rad, &
+                                 tempo_mcfLUN, LUNinputPointer(1:11), 11)
+  endif
+
   !! Read the input file names from the PCF file and
   !! use these files as the input pointer for the L2 output
-  if (use_he5_out .and. .not. use_tio_in) then
+  if (use_he5_out .and..not. use_tio_in) then
     IF (cloud_pressure_source == cldpres_climatology) THEN
       LUNinputPointer(1:10) = (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
            O3_CLIM_LUN,     TM_CLIM_LUN,      &
