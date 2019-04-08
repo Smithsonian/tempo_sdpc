@@ -846,6 +846,7 @@ PROGRAM O3T_mainNVAdj
         CALL O3T_getOMICldPress( iLine, pcArray, nXtrack_rad )
       endif
       PclimQ(1:nXtrack_rad) = .FALSE.
+      cld_errflg = 0
       DO iX = 1, nXtrack_rad
         if (cloud_pressure_source == cldpres_o2) then
           cld_errflg = int(IBITS( ProcessingQualityFlags(iX),5,7 ),kind(cld_errflg))
@@ -1452,7 +1453,7 @@ PROGRAM O3T_mainNVAdj
   endif ! end if (use_he5_out...)
 
   !! write the final message
-  call tell_log(0, "L1_o3_profile finished normally")
+  call tell_log(0, "L1_o3_total finished normally")
 
   call tell_close ()
   CALL EXIT(0)

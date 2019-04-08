@@ -334,7 +334,7 @@ contains
     !         the unused high-order 16 bits on input.  If we want to
     !         carry the full 32-bits through to the output, more extensive
     !         changes will have to be made.
-    rg % geoflg(1:nx, 1:ns) = tmp_geoflg(1:nx, 1:ns)
+    rg % geoflg(1:nx, 1:ns) = int (tmp_geoflg(1:nx, 1:ns), kind=2)
     deallocate (tmp_geoflg)
 
   end subroutine
