@@ -83,6 +83,7 @@ sed \
  -e s,@spectra_dir@,$spectra_dir,g \
  -e s,@cloud_dir@,$cloud_dir,g \
  -e s,@product_dir@,$product_dir,g \
+ -e s,@etc_dir@,$etc_dir,g \
  -e s,@radiance_file@,$radiance_file,g \
  -e s,@irradiance_file@,$irradiance_file,g \
  -e s,@cloud_file@,$cloud_file,g \
@@ -94,6 +95,9 @@ export PGS_PC_INFO_FILE="$pcf_file"
 
 srun --ntasks=1 --output=log_o3_total.txt \
   L1_o3_total tempo wrt_odl
+
+# SDPTK MET routines litter the directory with temporary files
+/bin/rm -f MCFWrite.temp_*
 
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"
