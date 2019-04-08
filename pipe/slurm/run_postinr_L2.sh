@@ -62,10 +62,11 @@ if ! test -f "$tarfile_path" ; then
   exit 1
 fi
 
-product_list_sans_o3p="$(echo $product_list | tr -s , ' ' | sed -e 's/o3p//g' | tr -s ' ' ,)"
+product_list_tokens="$(echo $product_list | tr -s , ' ')"
+product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/o3p//g' | tr -s ' ' ,)"
 
 have_o3p=""
-for p in $product_list ; do
+for p in $product_list_tokens ; do
    if test x"$p" = x"o3p" ; then
       have_o3p="yes"
    fi
