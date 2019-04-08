@@ -2434,6 +2434,7 @@ CONTAINS
 
       !     DETERMINE THE LOWEST POSSIBLE DIMENSION
 
+      mindim=1
       DO  i=1,prank
         mindim=i
         IF(work(i) > rabs*bn) EXIT
@@ -2574,6 +2575,12 @@ CONTAINS
     ! because only b(1:prank) was initialized before the call.
 
     10  dim=rngkm1
+    if (dim < 1) then
+          write(*,*)'*** WARNING (elsunc): ANOTHER bug-workaround was triggered:'
+          write(*,*)'*** dim=rngkm1=',rngkm1
+          write(*,*)'*** immediate return to avoid array bounds violation'
+          return
+    endif
     IF(b(dim) > predb*bn .AND. rlenb*s(dim) < s(dim+1)) RETURN
     i1=rngkm1+1
     DO  i=i1,prank
@@ -3562,7 +3569,7 @@ CONTAINS
     dxnkm1=dxnorm
     alfkm1=alpha
     aupkm1=alphup
-    rngkm1=prank
+    rngkm1=prank  ! FIXME: JCH: crash occured because rngkm1=-1.  Did that rngkm1 value get set here?
     kodkm1=kod
 
     !     CHECK IF ANY BOUND IS CROSSED. IF SO, MAKE THE
