@@ -205,12 +205,20 @@ CONTAINS
     the_geo2%lat = geo2%lat (currpix, currline) 
     the_geo2%surfalt = geo2%height (currpix, currline) 
     the_geo2%lons(1:4) = geo2%clon(1:4,currpix, currline)
-    the_geo1%lons(5) = geo2%lon(currpix, currline)
+    the_geo2%lons(5) = geo2%lon(currpix, currline)
     the_geo2%lats(1:4) = geo2%clat(1:4,currpix, currline)
-    the_geo1%lats(5) = geo2%lat(currpix, currline)
+    the_geo2%lats(5) = geo2%lat(currpix, currline)
     the_geo2%elon(1:2) = geo2%elon(currpix-1:currpix, currline)
     the_geo2%elat(1:2) = geo2%elat(currpix-1:currpix, currline)
 
+    if (     any(isnan(the_geo1%lats) .or. isnan(the_geo1%lons)) &
+        .or. any(isnan(the_geo1%elat) .or. isnan(the_geo1%elon)) &
+        .or. any(isnan(the_geo2%lats) .or. isnan(the_geo2%lons)) &
+        .or. any(isnan(the_geo2%elat) .or. isnan(the_geo2%elon))) then
+      !write(*,*)' *** adj_earthshine_data: found geolocation nans, returning error'
+      pge_error_status = pge_errstat_error
+      return
+    endif
 
     the_year  = GranuleYear
     the_month = GranuleMonth
