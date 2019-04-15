@@ -88,7 +88,9 @@ define write_file_group (fp, g, target_dir)
      ncfile_chksum_type = g.nc_entry.file_chksum_type;
    variable
      metfile_id = g.met_entry.file_id,
-     metfile_size = g.met_entry.file_size;
+     metfile_size = g.met_entry.file_size,
+     metfile_chksum = g.met_entry.file_chksum,
+     metfile_chksum_type = g.met_entry.file_chksum_type;
 
    variable str =
 `OBJECT = FILE_GROUP;
@@ -108,6 +110,8 @@ define write_file_group (fp, g, target_dir)
     FILE_ID = $metfile_id;
     FILE_TYPE = METADATA;
     FILE_SIZE = $metfile_size;
+    FILE_CKSUM_TYPE = $metfile_chksum_type;
+    FILE_CKSUM_VALUE = "$metfile_chksum";
   END_OBJECT = FILE_SPEC;
 END_OBJECT = FILE_GROUP;
 `$;
