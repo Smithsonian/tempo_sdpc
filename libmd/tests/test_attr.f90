@@ -158,7 +158,7 @@ program test_attr
 
   if (errstat /= 0) then
     call tell_error (tell_runtime_error, "generating bounding polygon", errstat)
-    return
+    stop 1
   endif
 
   ! add the metadata
