@@ -326,7 +326,17 @@ module tmpo_read_l1b_data
            flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) &
                  + flgbits(ic, spos(ch):epos(ch), 0)                &   !Missing
                  + flgbits(ic, spos(ch):epos(ch), 1)                &   !Bad
-                 + flgbits(ic, spos(ch):epos(ch), 2)                    !Processing error
+                 + flgbits(ic, spos(ch):epos(ch), 2)                &   !Processing error
+                 + flgbits(ic, spos(ch):epos(ch), 3)                &   !
+                 + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
+                 + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
+                 + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
+                 + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
+                 + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
+                 + flgbits(ic, spos(ch):epos(ch), 10)               &   ! stray light correction error
+                 + flgbits(ic, spos(ch):epos(ch), 11)               &   ! nonlinear range error
+                 + flgbits(ic, spos(ch):epos(ch), 12)               &   ! hot pixel
+                 + flgbits(ic, spos(ch):epos(ch), 13)                   ! cold pixel
          ENDDO
        ELSE
          ! Already aligned because of using common wavelength scale
@@ -788,7 +798,13 @@ module tmpo_read_l1b_data
                    + flgbits(ic, spos(ch):epos(ch), 3)                &   !
                    + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
                    + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
-                   + flgbits(ic, spos(ch):epos(ch), 7)                     !Dark Current Warning Flag
+                   + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
+                   + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
+                   + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
+                   + flgbits(ic, spos(ch):epos(ch), 10)               &   ! stray light correction error
+                   + flgbits(ic, spos(ch):epos(ch), 11)               &   ! nonlinear range error
+                   + flgbits(ic, spos(ch):epos(ch), 12)               &   ! hot pixel
+                   + flgbits(ic, spos(ch):epos(ch), 13)                   ! cold pixel
 
             ENDDO
           ELSE
