@@ -1069,7 +1069,7 @@ CONTAINS
     lat = 0.0_r8 
     lon = 0.0_r8    
     gam0 = angle_minus_twopi ( lon2 - lon1, pi )
-    gamsign = ABS(gam0) / gam0
+    gamsign = sign(1.0_8, gam0)
     gam0 = ABS(gam0)
 
     ! Get straight line (AB) segment fraction frc intercepted by the line from center to C
