@@ -415,7 +415,7 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
         if (img_pixels[i] == IMAGE_PIXEL_FILL_VALUE)
           continue;
         dc_pixels_i = dc_pixels[i];
-        if ((dc_pqf[i] == 0) && (0 < dc_pixels_i) && (dc_pixels_i < img_pixels[i]))
+        if ((dc_pqf[i] == 0) && (0 <= dc_pixels_i) && (dc_pixels_i <= img_pixels[i]))
           {
              img_pixels[i] -= dc_pixels_i;
           }

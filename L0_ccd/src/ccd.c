@@ -183,6 +183,7 @@ static int correct_offset_oct (const CCD_Param_Type *ccdp,
    for (p = pb0; p < pe0; p += 1)
      {
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
         double offset = 0.0;
         int count = 0;
         for (s = sb; s < se; s += 2)
@@ -198,6 +199,8 @@ static int correct_offset_oct (const CCD_Param_Type *ccdp,
              if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                continue;
              oct_pixels[s] -= offset;
+             if (oct_pixels[s] < 0)
+               pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
           }
      }
 
@@ -233,6 +236,7 @@ static int correct_nonlinearity_oct (const Gain_Param_Type *gpt,
    for (p = pb0; p < pe0; p += 1)
      {
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
         for (s = sb0; s < se0; s += 2)
           {
              Image_Pixel_Type pixel_value = oct_pixels[s];
@@ -247,6 +251,8 @@ static int correct_nonlinearity_oct (const Gain_Param_Type *gpt,
                   tmpx *= pixel_value;
                }
              oct_pixels[s] = tmp;
+             if (oct_pixels[s] < 0)
+               pixel_quality_flags[s] |= IMAGE_PQF_NONLINEAR_RANGE_ERROR;  /* FIXME: setting the right bit? */
           }
      }
 
@@ -282,11 +288,14 @@ static int correct_gain_oct (const Gain_Param_Type *gpt,
    for (p = pb0; p < pe0; p += 1)
      {
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
         for (s = sb0; s < se0; s += 2)
           {
              if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                continue;
              oct_pixels[s] = (oct_pixels[s] - offset) / gain;
+             if (oct_pixels[s] < 0)
+               pixel_quality_flags[s] |= IMAGE_PQF_PROCESSING_ERROR;  /* FIXME: need a gain-specific error bit? */
           }
      }
 
@@ -458,7 +467,8 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
                                Smear_Corr_Method_Type *calc_correction,
                                const void *client_data, Image_Type *img)
 {
-   Image_Pixel_Type *quad_pixels = img->pixels;
+   Image_Pixel_Type *quad_pixels = NULL;
+   Image_Pqf_Bitmap_Type *quad_pqf = NULL;
    Image_Pixel_Type *smear_corr = NULL;
    int s, sb0, se0, p, pb0, pe0;
 
@@ -483,11 +493,14 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
    for (p = pb0; p < pe0; p++)
      {
         quad_pixels = img->pixels + p * img->num_cols;
+        quad_pqf = img->pixel_quality_flags + p * img->num_cols;
         for (s = sb0; s < se0; s++)
           {
              if (quad_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                continue;
              quad_pixels[s] -= smear_corr[s];
+             if (quad_pixels[s] < 0)
+               quad_pqf[s] |= IMAGE_PQF_SMEAR_CORR_ERROR;
           }
      }
 
