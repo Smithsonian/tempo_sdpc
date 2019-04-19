@@ -166,6 +166,31 @@ static int out_file_exists (const Output_Type *out)
    return out->formatted_file_exists ? 1 : 0;
 }
 
+static void flag_negative_pixels (const Output_Type *out, const Spectral_Data_Type *sdt)
+{
+   Image_Pqf_Bitmap_Type *pqf = sdt->pqf;
+   double *img = sdt->img;
+   size_t n = out->num_xtrack * out->num_waves;
+   size_t i, count;
+
+   count = 0;
+
+   for (i = 0; i < n; i++)
+     {
+	if ((img[i] < 0) && (pqf[i] == 0))
+	  {
+	     pqf[i] |= IMAGE_PQF_PROCESSING_ERROR;
+	     count++;
+	  }
+     }
+
+   if (count > 0)
+     {
+	tell_vwarn (0, "%s: set processing error bit in %ld pixels with ((value<0) && (pqf==0))",
+		    __func__, count);
+     }
+}
+
 static int
 write_rec_band1 (Output_Type *out, int index,
                  const Spectral_Data_Type *sdt,
@@ -175,6 +200,8 @@ write_rec_band1 (Output_Type *out, int index,
 
    if (sdt == NULL)
      return 0;
+
+   flag_negative_pixels (out, sdt);
 
    if (0 != TIO_inq_grp (out->ncid, sdt->name, &grp))
      {
