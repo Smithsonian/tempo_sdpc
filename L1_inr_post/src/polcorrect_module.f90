@@ -674,6 +674,11 @@ contains
       lpserr = 0.0
     end where
 
+    if (any(abs(lpserr) > 1.0)) then
+      write(*,'(a,i7,a)')'*** WARNING: N=', count(abs(lpserr) > 1.0), &
+        ' pixels have abs(lpserr) > 1.'
+    endif
+
     if (diag_s % active) then
       diag_s % q(:,ix) = q(:)
       diag_s % u(:,ix) = u(:)
