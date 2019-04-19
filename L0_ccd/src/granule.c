@@ -87,7 +87,7 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
            default:
              /* Quality flag is invalid, but we'll preserve the bits just in case */
              num_invalid_quality_byte += 1;
-             quality_byte = IMAGE_PQF_BAD_PIXEL;
+             quality_flag = IMAGE_PQF_BAD_PIXEL;
              pixel_value = PIXEL_VALUE(bits);
              break;
           }
