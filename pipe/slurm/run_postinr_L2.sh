@@ -126,6 +126,9 @@ if test x"$product_list_sans_o3p" != x ; then
   sbatch --job-name=$job_run_l2 \
          --chdir $run_dir \
          run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
+else
+  # If o3p is the only product, we no longer need the primary tar file
+  /bin/rm $tarfile_path
 fi
 
 if test x"$have_o3p" != x ; then
