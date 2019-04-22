@@ -9,8 +9,8 @@ nmlfile=boilerplate.nml
 $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 
 #comparison values
-cmlat_in="3.276634e-07"
-cmlon_in="-1.60647e-07"
+#cmlat_in="3.276634e-07"
+#cmlon_in="-1.60647e-07"
 polylat_in="-10, -2, 6, 10, 10, 10, 10, 10, 10, 10, 2, -6"
 polylon_in="10, 10, 10, 10, 6, 2, -2, -6, -10, -10, -10, -10"
 polyseq_in="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
@@ -27,8 +27,8 @@ abs_in=`awk -F\" '/abstract/{print $2}' boilerplate.nml`
 keys_in=`awk -F\" '/keywords/{print $2}' boilerplate.nml`
 
 #attribute values
-cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
-cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
+#cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
+#cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
 polylat_out=`cat nc_header.txt | awk -F=\  '/:polygon_latitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
 polylon_out=`cat nc_header.txt | awk -F=\  '/:polygon_longitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
 polyseq_out=`cat nc_header.txt | awk -F=\  '/:polygon_sequence/{print $2}' | sed s/\ \;//`
@@ -46,8 +46,9 @@ keys_out=`cat nc_header.txt | awk -F\" '/:keywords/{print $2}'`
 
 exitstat=0
 #compare
-if [ "$cmlat_out" != "$cmlat_in" ] ; then exitstat=1 ; fi
-if [ "$cmlon_out" != "$cmlon_in" ] ; then exitstat=2 ; fi
+# cmlon, cmlat are checked in the fortran code.
+#if [ "$cmlat_out" != "$cmlat_in" ] ; then exitstat=1 ; fi
+#if [ "$cmlon_out" != "$cmlon_in" ] ; then exitstat=2 ; fi
 if [ "$polylat_out" != "$polylat_in" ] ; then exitstat=3 ; fi
 if [ "$polylon_out" != "$polylon_in" ] ; then exitstat=4 ; fi
 if [ "$polyseq_out" != "$polyseq_in" ] ; then exitstat=5 ; fi

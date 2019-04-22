@@ -161,6 +161,15 @@ program test_attr
     stop 1
   endif
 
+  if (abs(centroid_lon) > 1.e-4) then
+    write(*,*)'*** test_attr:  unexpected centroid_lon = ', centroid_lon
+    stop 1
+  endif
+  if (abs(centroid_lat) > 1.e-4) then
+    write(*,*)'*** test_attr:  unexpected centroid_lat = ', centroid_lat
+    stop 1
+  endif
+
   ! add the metadata
   call md_open (l2file, errstat)
   call md_write_geo_bounds (bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
