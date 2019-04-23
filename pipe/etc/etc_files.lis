@@ -1,3 +1,6 @@
+sdpc_env.sh
+cachemon_L0_pre_inr.cfg
+cachemon_postinr_L2.cfg
 trace_gas/synth.control.no2.in
 trace_gas/synth.pcf.no2.in
 trace_gas/synth.control.hcho.in

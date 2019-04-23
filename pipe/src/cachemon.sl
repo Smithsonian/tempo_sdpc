@@ -11,10 +11,9 @@ prepend_to_slang_load_path (path_concat ($1, "../share/slsh/local-packages"));
 prepend_to_slang_load_path ($1);
 set_import_module_path (path_concat ($1, "../lib/slang/v2/modules") + ":" + get_import_module_path ());
 require ("pipeutil");
-require ("daemon");
 
 private variable Host_Name = uname().nodename;
-private variable Num_Processors = sysconf("_SC_NPROCESSORS_ONLN");
+private variable My_Pid = getpid();
 
 private variable Num_Running = 0;
 
@@ -37,7 +36,12 @@ private define oldest_first (files)
    return reverse (newest_first(files));
 }
 
-private define dir_monitor (obj, newest)
+private define alpha_order (files)
+{
+   return files[array_sort(files)];
+}
+
+private define dir_monitor (obj, order)
 {
    variable dirlist = glob (path_concat (obj.incoming_dir, obj.glob));
    if (dirlist == NULL)
@@ -55,10 +59,23 @@ private define dir_monitor (obj, newest)
 
    variable file_list;
 
-   if (newest != 0)
-     file_list = newest_first (dirlist);
-   else
-     file_list = oldest_first (dirlist);
+   switch (order)
+     {
+      case "newest":
+	file_list = newest_first (dirlist);
+     }
+     {
+      case "oldest":
+	file_list = oldest_first (dirlist);
+     }
+     {
+      case "alpha":
+	file_list = alpha_order (dirlist);
+     }
+     {
+	% default:
+	throw ApplicationError, "Unsupported sort order: $order"$;
+     }
 
    if (obj.process == NULL || length(file_list) == 0)
      return 0;
@@ -131,6 +148,14 @@ private define exit_msg (w)
      return "continued";
 }
 
+private variable LOG_INFO = "INFO";
+private variable LOG_ERR = "ERROR";
+
+private define write_log (severity, msg)
+{
+   () = fprintf (stderr, "%s:cachemon[%d] %s %s\n", time(), My_Pid, severity, msg);
+}
+
 private define sigchld_handler (sig);
 private define sigchld_handler (sig)
 {
@@ -139,7 +164,7 @@ private define sigchld_handler (sig)
         variable w = waitpid (-1, WNOHANG|WUNTRACED);
         if ((w == NULL) || (w.pid == 0))
           break;
-        daemon_log (LOG_INFO, sprintf ("[%d] %s", w.pid, exit_msg(w)));
+	write_log (LOG_INFO, sprintf ("[%d] %s", w.pid, exit_msg(w)));
         Num_Running--;
      }
    signal (SIGCHLD, &sigchld_handler);
@@ -170,34 +195,14 @@ private define wait_for_processes_to_exit ()
    if (Num_Running == 0)
      return;
 
-   daemon_log (LOG_INFO, "waiting for $Num_Running processes to exit"$);
+   write_log (LOG_INFO, "waiting for $Num_Running processes to exit"$);
 
    while (Num_Running > 0)
      {
         sleep(1);
      }
 
-   daemon_log (LOG_INFO, "done");
-}
-
-private define have_idle_processors (num_parallel)
-{
-   % /proc/loadavg gives a measure of the total system load averaged
-   % over the last 1, 5, and 15 minutes
-   variable load_avg_col;
-   variable num_read = readascii ("/proc/loadavg", &load_avg_col;
-                                  format="%f", nrows=1);
-   variable sys_load = (num_read == 1) ? load_avg_col[0] : 0.0;
-
-   % The system load average has an associated lag time and will essentially
-   % never be controlled by the current process.  On the other hand,
-   % the load that the current process has contributed is known exactly.
-   variable self_load = Num_Running * num_parallel;
-
-   % Try using a weighted average of these numbers to constrain the load:
-   variable weighted_load = 0.5 * (sys_load + self_load);
-
-   return weighted_load < Num_Processors;
+   write_log (LOG_INFO, "done");
 }
 
 private variable Exec = NULL;
@@ -297,7 +302,7 @@ private define run_executable (obj, file, run_dir, logfile)
    variable msg = sprintf ("[%d] started%s: %s %s",
                            p.pid, dir_str, path_basename(argv[0]),
                            argv_rest);
-   daemon_log (LOG_INFO, msg);
+   write_log (LOG_INFO, msg);
 
    if (s.pid == 0)
      {
@@ -307,14 +312,12 @@ private define run_executable (obj, file, run_dir, logfile)
 
    if (s.exited)
      {
-        daemon_log (LOG_INFO,
-                    sprintf ("child exited with status %d", s.exit_status));
+        write_log (LOG_INFO, sprintf ("child exited with status %d", s.exit_status));
      }
    else if (s.signal)
      {
-        daemon_log (LOG_INFO,
-                    sprintf ("child terminated by signal %d %s",
-                             s.signal, (s.coredump ? "(coredump)" : "")));
+	write_log (LOG_INFO, sprintf ("child terminated by signal %d %s",
+				      s.signal, (s.coredump ? "(coredump)" : "")));
      }
 
    return -1;
@@ -326,10 +329,6 @@ private define claim_with_rename (obj, path)
      return -1;
 
    variable cl = obj.client_data;
-
-   % If we're busy, let somebody else handle it.
-   if (0 == have_idle_processors (cl.exec_num_parallel))
-     return 0;
 
    variable bname = path_basename (path);
    variable dname = path_dirname (path);
@@ -346,113 +345,12 @@ private define claim_with_rename (obj, path)
    return 1;
 }
 
-private define claim_with_subdir_rename (obj, path)
-{
-   if (path == NULL)
-     return -1;
-
-   variable cl = obj.client_data;
-
-   % If we're busy, let somebody else handle it.
-   if (0 == have_idle_processors (cl.exec_num_parallel))
-     return 0;
-
-   variable
-     bname = path_basename (path),
-     dname = path_dirname (path);
-
-   % First, claim the file by renaming.
-   % If we fail, somebody else got their first, but that's ok.
-
-   variable claimed_bname = sprintf (".%s@%s", obj.host_pid, bname);
-   variable claimed_path = path_concat (dname, claimed_bname);
-   if (rename (path, claimed_path) != 0)
-     return 0;
-
-   % Now that we've claimed the file, we're free to operate
-   % without competition as long as we create nothing that
-   % matches the current search pattern. It's the user's
-   % responsibility to choose search patterns and naming
-   % patterns that don't conflict.
-
-   % Create a subdirectory and rename into it, reverting to
-   % the original basename.
-   variable e;
-   try (e)
-     {
-        variable exec_subdir = _$(cl.exec_subdir);
-        if (cl.exec_subdir_is_regex)
-          {
-             variable m = pcre_matches (exec_subdir, bname);
-             if (m == NULL)
-               throw RunTimeError, "regex mismatch: $bname"$;
-             exec_subdir = m[-1];
-          }
-        variable rename_dir = path_concat (obj.incoming_dir, exec_subdir);
-        if (0 != mkdir_p (rename_dir))
-          throw IOError, "creating rename directory: $rename_dir"$;
-     }
-   catch IOError, RunTimeError:
-     {
-        daemon_log (LOG_ERR, sprintf ("%s: %s", e.descr, e.message));
-        () = rename (claimed_path, path);
-        return -1;
-     }
-
-   try (e)
-     {
-        variable rename_path = path_concat (rename_dir, bname);
-        if (rename (claimed_path, rename_path) != 0)
-          throw IOError, "renaming to $rename_path"$;
-     }
-   catch IOError:
-     {
-        daemon_log (LOG_ERR, sprintf ("%s: %s", e.descr, e.message));
-        () = rename (claimed_path, path);
-        () = rmdir (rename_dir);
-        return -1;
-     }
-
-   % Now that the claimed file is in the desired subdirectory
-   % under its original basename, we can run the executable
-   % if one has been specified.
-
-   variable run_dir;
-   if (cl.exec_root_dir == NULL)
-     run_dir = rename_dir;
-   else
-     {
-        try (e)
-          {
-             run_dir = path_concat (cl.exec_root_dir, exec_subdir);
-             if (0 != mkdir_p (run_dir))
-               throw IOError, "creating run directory $run_dir"$;
-          }
-        catch IOError:
-          {
-             daemon_log (LOG_ERR, sprintf ("%s: %s", e.descr, e.message));
-             () = rename (rename_path, path);
-             () = rmdir (rename_dir);
-             return -1;
-          }
-     }
-
-   % From here on, the executable is responsible for
-   % rename_dir and all its contents (and run_dir as well).
-   if (run_executable (obj, rename_path, run_dir, cl.exec_logfile) < 0)
-     return -1;
-
-   obj.num_processed++;
-   return 1;
-}
-
 private define usage ()
 {
    variable msg =
 `Usage: cachemon.sl [opts] <config-file> [-- <exec-args>]
 Options:
     -r|--rename      Claim files using only rename
-    -d|--daemon      Run as a daemon
 `;
    () = fprintf (stderr, msg);
    exit (0);
@@ -468,16 +366,12 @@ private define cmdopt_error (msg)
 % it must not be declared static or private.
 variable _P = struct
 {
-   newest = 0,
+   order = "alpha",
    incoming_dir = NULL,
    file_glob = "*",
    wait_sec = 1.0,
-   logfile_name = "/tmp/cachemon.log",
-   exec_subdir = Host_Name,
-   exec_subdir_is_regex = 0,
    exec_root_dir = NULL,
    exec_name = NULL,
-   exec_num_parallel = 1,
    exec_logfile = "/dev/null"
 };
 
@@ -490,41 +384,11 @@ private define load_config_file (file)
    return _P;
 }
 
-private variable Temp_Pid_File = NULL;
-private define delete_pidfile ()
-{
-   if (Temp_Pid_File != NULL)
-     () = remove (Temp_Pid_File);
-}
-
-private define make_pidfile (pgm_name)
-{
-   variable pid_dir = "/var/tmp/${USER}/${pgm_name}"$;
-   if (0 != mkdir_p (pid_dir))
-     {
-        throw ApplicationError, "*** Error creating $pid_dir"$;
-     }
-   variable pid_file = path_concat (pid_dir, string(getpid()));
-   variable fp = fopen (pid_file, "w");
-   if ((fp == NULL) || (0 != fclose (fp)))
-     {
-        variable msg = sprintf ("*** Error creating %s (%s)",
-                                pid_file, errno_string(errno));
-        throw IOError, msg;
-     }
-   Temp_Pid_File = pid_file;
-   atexit (&delete_pidfile);
-}
-
 define slsh_main()
 {
-   variable run_as_daemon = 0;
-   variable claim_via_rename_only = 0;
    variable exec_args = NULL;
 
    variable opts = cmdopt_new (&cmdopt_error);
-   opts.add ("r|rename", &claim_via_rename_only; inc);
-   opts.add ("d|daemon", &run_as_daemon; inc);
    variable i = opts.process (__argv,1);
 
    if (__argc == i || i < 0)
@@ -546,24 +410,9 @@ define slsh_main()
 
    set_executable (p, exec_args);
 
-   variable dirmon_task = claim_via_rename_only ?
-     &claim_with_rename : &claim_with_subdir_rename;
-
    variable dir = new_dirmon (p.incoming_dir; glob = p.file_glob,
-                              task = dirmon_task,
+                              task = claim_with_rename,
                               delay = p.wait_sec, client_data = p);
-
-   if (run_as_daemon)
-     {
-        variable log_dir = path_dirname (p.logfile_name);
-        if (0 != mkdir_p (log_dir))
-          {
-             throw ApplicationError,
-               "*** Error: creating daemon log directory: $log_dir"$;
-          }
-        daemonize ("cachemon", p.logfile_name);
-        make_pidfile ("cachemon");
-     }
 
    Sighup_Received = 0;
    catch_sighup();
@@ -571,13 +420,13 @@ define slsh_main()
 
    while (Sighup_Received == 0)
      {
-        if (-1 == dir.monitor (p.newest))
+        if (-1 == dir.monitor (p.order))
           break;
         dir.wait();
      }
 
    if (Sighup_Received)
-     daemon_log (LOG_INFO, "received SIGHUP");
+     write_log (LOG_INFO, "received SIGHUP");
 
    wait_for_processes_to_exit ();
 }
