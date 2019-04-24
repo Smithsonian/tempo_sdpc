@@ -1,6 +1,7 @@
 
 all:
 	cd src; $(MAKE) all
+	cd etc/inr; $(MAKE)
 
 check:
 	cd tests; $(MAKE) check
@@ -14,6 +15,7 @@ install:
 
 clean:
 	cd src; $(MAKE) clean
+	cd etc/inr; $(MAKE) clean
 
 distclean:	clean
 	cd src; $(MAKE) distclean

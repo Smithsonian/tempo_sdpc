@@ -18,7 +18,7 @@ PIPELINE_CONF_FILE = TempoPipelineInterfaceSAO.conf
 
 INR_AUTOGEN_FILES = $(LOGGING_CONF_FILE) $(PIPELINE_CONF_FILE)
 
-inr-config:
+$(INR_AUTOGEN_FILES):	../sdpc_env.sh
 	# INR logging
 	sed -e s,@INR_PROCESSING_ROOT@,$(SDPC_INR_RUN_DIR),g \
 	       $(LOGGING_CONF_FILE).in > $(LOGGING_CONF_FILE)
