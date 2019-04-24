@@ -5,14 +5,13 @@ set -u
 
 # Note that the radiance file name be "hidden" (may begin with a ".").
 
-if test $# -ne 3 ; then
-  echo "Usage: $0 <rad-path> <run_dir> <product-list>"
+if test $# -ne 2 ; then
+  echo "Usage: $0 <rad-path> <run_dir>"
   exit 1
 fi
 
 rad_path="$1"
 run_dir="$2"
-product_list="$3"
 
 test -r $rad_path || exit 1
 test -d "$SDPC_ROOT" || exit 1
@@ -62,6 +61,7 @@ if ! test -f "$tarfile_path" ; then
   exit 1
 fi
 
+product_list="$SDPC_LEVEL2_PRODUCTS"
 product_list_tokens="$(echo $product_list | tr -s , ' ')"
 product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/o3p//g' | tr -s ' ' ,)"
 

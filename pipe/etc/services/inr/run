@@ -2,7 +2,7 @@
 
 if test -z "${SDPC_ROOT}"
 then
-  echo "The TEMPO environment is not set" >&2
+  echo "The SDPC environment is not set" >&2
   exit 1
 fi
 

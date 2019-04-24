@@ -2,7 +2,7 @@
 
 if test -z "${SDPC_ROOT}"
 then
-  echo "The TEMPO environment is not set" >&2
+  echo "The SDPC environment is not set" >&2
   exit 1
 fi
 
@@ -13,7 +13,6 @@ exec 2>& 1
 filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
 
-. $SDPC_ROOT/etc/level2_products.sh
-
 pgm="cachemon.sl"
-exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level2_cachemon.cfg" -- "${SDPC_RUN_DIR}/L2" "$SDPC_LEVEL2_PRODUCTS"
+$SDPC_S6_ROOT/bin/s6-envdir ./env \
+ ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level2_cachemon.cfg" -- "${SDPC_RUN_DIR}/L2"

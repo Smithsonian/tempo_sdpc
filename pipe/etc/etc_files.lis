@@ -1,7 +1,6 @@
 sdpc_env.sh
 level1a_cachemon.cfg
 level2_cachemon.cfg
-level2_products.sh
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 trace_gas/synth.control.no2.in
