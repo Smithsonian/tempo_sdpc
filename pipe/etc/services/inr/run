@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The TEMPO environment is not set" >&2
+  exit 1
+fi
+
+exec 2>& 1
+
+cd $SDPC_INR_RUN_DIR
+
+/bin/cp $SDPC_ROOT/etc/inr/TempoLogging.conf config
+/bin/cp $SDPC_ROOT/etc/inr/TempoPipelineInterfaceSAO.conf config
+
+pgm="PipelineInterface"
+exec ${INRSW_INSTALL_DIR}/bin/$pgm config/TempoPipelineInterfaceSAO.conf

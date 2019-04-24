@@ -7,7 +7,7 @@ include ../../Makefile.defines
 #---------------------------------------------------------------------------
 MODULES = daemon-module.so
 SL_FILES = daemon.sl pipeutil.sl
-SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl o3p_partition.sl
+SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl o3p_partition.sl sdpcrun.sh
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES = ../doc/help/daemon.hlp
 DOC_FILES = ../COPYRIGHT ../README ../doc/text/daemon.txt
@@ -139,6 +139,7 @@ install_directories:
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/o3_profile
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/level1
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/level3
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/inr
 	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
 	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
 
@@ -170,6 +171,9 @@ install_scripts:
 		  exit 1; \
 		fi; \
 	done
+
+install_supervision_tree:
+	/bin/cp -r ../etc/services $(DEST_ETC_FILES_INSTALL_DIR)
 
 install_etcfiles:
 	@for X in $(ETC_FILES); \
@@ -210,7 +214,8 @@ install_docfiles:
 	done
 
 install: all install_directories install_modules install_execs \
-          install_scripts install_etcfiles install_slfiles # install_hlpfiles install_docfiles
+          install_scripts install_etcfiles install_slfiles \
+          install_supervision_tree # install_hlpfiles install_docfiles
 
 clean:
 	-/bin/rm -f $(MODULES) $(objdir)/*

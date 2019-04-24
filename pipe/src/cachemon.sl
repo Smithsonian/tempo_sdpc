@@ -411,7 +411,7 @@ define slsh_main()
    set_executable (p, exec_args);
 
    variable dir = new_dirmon (p.incoming_dir; glob = p.file_glob,
-                              task = claim_with_rename,
+                              task = &claim_with_rename,
                               delay = p.wait_sec, client_data = p);
 
    Sighup_Received = 0;

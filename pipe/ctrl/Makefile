@@ -1,59 +1,46 @@
 # -*- sh -*-
 
-include ./inr_paths.sh
-
 default:	inr-targets pipe-targets
 
 inr-targets:
-	@echo "INR targets:  inr-config inr-install inr-start inr-feed clean"
+	@echo "INR targets:  inr-install inr-feed clean"
 
-INR_CONFIG_DIR = inr_config
-LOGGING_CONF_FILE  = TempoLogging.conf
-PIPELINE_CONF_FILE = TempoPipelineInterfaceSAO.conf
+#-----------------------------------------------------
+# Feed data into pipeline
 
-INR_AUTOGEN_FILES = $(addprefix $(INR_CONFIG_DIR)/,$(LOGGING_CONF_FILE) $(PIPELINE_CONF_FILE))
+INR_FEED = $(SDPC_INRSW_ROOT)/bin/TempoMockPipeline
+
+inr-feed:
+	/bin/cp $(INR_MOCK_FEED_CFG) $(SDPC_INR_RUN_DIR)
+	cd $(SDPC_INR_RUN_DIR) ; \
+	exec $(INR_FEED) $(INR_MOCK_FEED_CFG) > feed.log 2>&1 &
+
+#-----------------------------------------------------
+# Initialize INR directory tree
+
+inr-install:	inr-mkdirs inr-install-refdata
 
 INR_DIRS = config logs scantailoring Output CloudProducts \
            Staging/Granules Staging/Left Staging/Right Staging/rsr
 
-INR_FEED = $(INRSW_INSTALL_DIR)/bin/TempoMockPipeline
-INR_PIPE = $(INRSW_INSTALL_DIR)/bin/PipelineInterface
-
-inr-start:
-	cd $(INR_PROCESSING_ROOT) ; \
-	exec $(INR_PIPE) config/$(PIPELINE_CONF_FILE) > run.log 2>&1 &
-
-inr-feed:
-	/bin/cp $(INR_MOCK_FEED_CFG) $(INR_PROCESSING_ROOT)
-	cd $(INR_PROCESSING_ROOT) ; \
-	exec $(INR_FEED) $(INR_MOCK_FEED_CFG) > feed.log 2>&1 &
-
-inr-config:
-	# INR logging
-	sed -e s,@INR_PROCESSING_ROOT@,$(INR_PROCESSING_ROOT),g \
-	       $(INR_CONFIG_DIR)/$(LOGGING_CONF_FILE).in > $(INR_CONFIG_DIR)/$(LOGGING_CONF_FILE)
-	# INR pipeline
-	sed -e s,@INR_PROCESSING_ROOT@,$(INR_PROCESSING_ROOT),g \
-	    -e s,@INR_IERS_DIR@,$(INR_IERS_DIR),g \
-	    -e s,@INR_REFDATA_DIR@,$(INR_REFDATA_DIR),g \
-	   $(INR_CONFIG_DIR)/$(PIPELINE_CONF_FILE).in > $(INR_CONFIG_DIR)/$(PIPELINE_CONF_FILE)
-
-inr-install:	inr-mkdirs inr-install-config inr-install-refdata
-
 inr-mkdirs:
-	mkdir -p $(INR_PROCESSING_ROOT)
+	mkdir -p $(SDPC_INR_RUN_DIR)
 	for d in $(INR_DIRS) ; do \
-	  mkdir -p $(INR_PROCESSING_ROOT)/$$d ; \
+	  mkdir -p $(SDPC_INR_RUN_DIR)/$$d ; \
 	done
 
-inr-install-config:
-	/bin/cp -a inr_config/*.conf $(INR_PROCESSING_ROOT)/config
+# INR_GOES_REFDATA_DIR contains:
+#   GOES imagery
+#   GOES rsr files
+INR_GOES_REFDATA_DIR=/data/tempo/sdpc/inr/synth_granules_v2/FullGranules
 
 inr-install-refdata:
-	-ln -s -t $(INR_PROCESSING_ROOT)/Staging/rsr $(INR_GOES_REFDATA_DIR)/rsr/*.txt
-	-ln -s -t $(INR_PROCESSING_ROOT)/Staging/Left $(INR_GOES_REFDATA_DIR)/Reference/Left/*.nc
-	-ln -s -t $(INR_PROCESSING_ROOT)/Staging/Right $(INR_GOES_REFDATA_DIR)/Reference/Right/*.nc
-	# ln -s -t $(INR_PROCESSING_ROOT)/CloudProducts $(CLOUD_DATA_DIR)/*.nc
+	-ln -s -t $(SDPC_INR_RUN_DIR)/Staging/rsr $(INR_GOES_REFDATA_DIR)/rsr/*.txt
+	-ln -s -t $(SDPC_INR_RUN_DIR)/Staging/Left $(INR_GOES_REFDATA_DIR)/Reference/Left/*.nc
+	-ln -s -t $(SDPC_INR_RUN_DIR)/Staging/Right $(INR_GOES_REFDATA_DIR)/Reference/Right/*.nc
+	# ln -s -t $(SDPC_INR_RUN_DIR)/CloudProducts $(CLOUD_DATA_DIR)/*.nc
+
+#-----------------------------------------------------
 
 include ./pipe_paths.sh
 
@@ -99,7 +86,7 @@ pipe-setup-nodes:
 	                              $(NODE_ROOT_DIR)/L1/irradiance
 	-srun -N$(NUM_NODES) ln -s -n $(PROCESSING_ROOT)/L1/repro \
 	                              $(NODE_ROOT_DIR)/L1/repro
-	-srun -N$(NUM_NODES) ln -s -n $(INR_PROCESSING_ROOT)/Staging/Granules \
+	-srun -N$(NUM_NODES) ln -s -n $(SDPC_INR_RUN_DIR)/Staging/Granules \
 	                              $(NODE_ROOT_DIR)/L1/radiance_inr_staging
 	-srun -N$(NUM_NODES) ln -s -n $(PROCESSING_ROOT)/L2/incoming \
 	                              $(NODE_ROOT_DIR)/L2/incoming
@@ -123,6 +110,3 @@ NODE_ROOT_DIR_SUBDIRS = \
 delete-node-dirs:
 	-srun -N$(NUM_NODES) /bin/rm -f $(NODE_ROOT_DIR_SYMLINKS)
 	-srun -N$(NUM_NODES) /bin/rmdir $(NODE_ROOT_DIR_SUBDIRS)
-
-clean:
-	/bin/rm -f $(INR_AUTOGEN_FILES) .##* inr_config/.##*

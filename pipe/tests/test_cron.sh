@@ -12,7 +12,7 @@ fi
 # Start the cache monitor.
 # The incoming directory need not exist.
 export SLANG_MODULE_PATH="../src"
-../src/cachemon.sl --rename ./cron.cfg -- > log.cron 2>&1 &
+../src/cachemon.sl ./cron.cfg -- > log.cron 2>&1 &
 CACHEMON_PID="$!"
 
 # Create the incoming directory and feed files

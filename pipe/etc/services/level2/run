@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The TEMPO environment is not set" >&2
+  exit 1
+fi
+
+exec 2>& 1
+
+. $SDPC_ROOT/etc/level2_products.sh
+
+pgm="cachemon.sl"
+exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/cachemon_postinr_L2.cfg" -- "${SDPC_RUN_DIR}/L2" "$SDPC_LEVEL2_PRODUCTS"
