@@ -3,16 +3,6 @@
 set -u
 set -e
 
-if test $# -ne 1 ; then
-   echo "Usage:  $0 <pipe_label>"
-   exit 0
-fi
-
-PIPE_LABEL=$1
-
-# Local root processing directory on each compute node:
-NODE_ROOT_DIR=/scratch/$PIPE_LABEL/sdpc_run_dir
-
 assert_dir_exists()
 {
    dir=$1
@@ -33,7 +23,8 @@ assert_dir_absent()
    fi
 }
 
-assert_dir_absent $NODE_ROOT_DIR
+: "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set, run this with sdpcrun.sh}"
+assert_dir_absent $SDPC_RUN_DIR
 
 : "${SDPC_REFDATA_DIR:?SDPC_REFDATA_DIR not set, run this with sdpcrun.sh}"
 assert_dir_exists $SDPC_REFDATA_DIR
@@ -66,13 +57,13 @@ link_existing_dir()
 
 PIPE_NODE_DIRS="L0/incoming L1 L2"
 
-mkdirlist $NODE_ROOT_DIR "$PIPE_NODE_DIRS"
+mkdirlist $SDPC_RUN_DIR "$PIPE_NODE_DIRS"
 
-link_existing_dir $SDPC_REFDATA_DIR $NODE_ROOT_DIR/refdata
-link_existing_dir $SDPC_RUN_DIR_MASTER/ancillary $NODE_ROOT_DIR/ancillary
-link_existing_dir $SDPC_RUN_DIR_MASTER/L2/incoming $NODE_ROOT_DIR/L2/incoming
-link_existing_dir $SDPC_RUN_DIR_MASTER/L2/repro $NODE_ROOT_DIR/L2/repro
-link_existing_dir $SDPC_RUN_DIR_MASTER/L1/repro $NODE_ROOT_DIR/L1/repro
-link_existing_dir $SDPC_RUN_DIR_MASTER/L0/repro $NODE_ROOT_DIR/L0/repro
-link_existing_dir $SDPC_RUN_DIR_MASTER/L0/incoming/telem $NODE_ROOT_DIR/L0/incoming/telem
-link_existing_dir $SDPC_INR_RUN_DIR/Staging/Granules $NODE_ROOT_DIR/L1/radiance_inr_staging
+link_existing_dir $SDPC_REFDATA_DIR $SDPC_RUN_DIR/refdata
+link_existing_dir $SDPC_RUN_DIR_MASTER/ancillary $SDPC_RUN_DIR/ancillary
+link_existing_dir $SDPC_RUN_DIR_MASTER/L2/incoming $SDPC_RUN_DIR/L2/incoming
+link_existing_dir $SDPC_RUN_DIR_MASTER/L2/repro $SDPC_RUN_DIR/L2/repro
+link_existing_dir $SDPC_RUN_DIR_MASTER/L1/repro $SDPC_RUN_DIR/L1/repro
+link_existing_dir $SDPC_RUN_DIR_MASTER/L0/repro $SDPC_RUN_DIR/L0/repro
+link_existing_dir $SDPC_RUN_DIR_MASTER/L0/incoming/telem $SDPC_RUN_DIR/L0/incoming/telem
+link_existing_dir $SDPC_INR_RUN_DIR/Staging/Granules $SDPC_RUN_DIR/L1/radiance_inr_staging

@@ -51,11 +51,11 @@ export SDPC_RUN_DIR_MASTER="${SDPC_PIPE_HOME}/${SDPC_PIPE_NAME}"
 # SDPC_INR_RUN_DIR = root directory where INR processing takes place on the master node
 export SDPC_INR_RUN_DIR="${SDPC_RUN_DIR_MASTER}/inr"
 
-# SDPC_ARCHIVE_DIR = root directory for the mission archive
+# SDPC_ARCHIVE_DIR = root directory for the destination archive
 export SDPC_ARCHIVE_DIR="${SDPC_RUN_DIR_MASTER}/archive"
 
 # SDPC_RUN_DIR = root directory where pipeline processing takes place on slave nodes
-export SDPC_RUN_DIR="/scratch/${SDPC_PIPE_NAME}/sdpc_run_dir"
+export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"
 
 #---------------------------
 #  Command search path, etc.
