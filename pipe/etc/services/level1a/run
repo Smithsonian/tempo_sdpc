@@ -9,4 +9,4 @@ fi
 exec 2>& 1
 
 pgm="cachemon.sl"
-exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/cachemon_L0_pre_inr.cfg" -- "${SDPC_RUN_DIR}/L0"
+exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level1a_cachemon.cfg" -- "${SDPC_RUN_DIR}/L0"

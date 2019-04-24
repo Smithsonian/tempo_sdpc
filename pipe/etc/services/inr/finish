@@ -1,6 +1,6 @@
 #!/bin/sh
 
-SERVICE="level1a"
+SERVICE="inr"
 INCDIR=".."
 
 . $INCDIR/finish.inc

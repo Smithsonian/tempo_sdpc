@@ -12,6 +12,20 @@ export SDPC_INRSW_ROOT="/soft/tempo/sdpc/install/v1_gnu/inr"
 export SDPC_OTS_ROOT="/soft/tempo/sdpc/install/v1_gnu/ots"
 
 #---------------------------------
+#  Installed reference data paths:
+#---------------------------------
+
+# ANCILLARY_DIR contains time-sensitive reference data,
+# shared by all processing nodes
+# (e.g. GOES data, meteorology data, snow & ice cover)
+export SDPC_ANCILLARY_ROOT="/data/tempo/sdpc/ancillary"
+
+# SDPC_REFDATA_DIR contains static reference data,
+# shared by all processing nodes
+# (e.g. reference spectra, cross-sections, climatologies, etc.)
+export SDPC_REFDATA_DIR="/data/tempo/sdpc/refdata"
+
+#---------------------------------
 #  Live processing directory paths
 #---------------------------------
 

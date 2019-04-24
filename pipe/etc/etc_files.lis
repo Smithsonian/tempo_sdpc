@@ -1,6 +1,6 @@
 sdpc_env.sh
-cachemon_L0_pre_inr.cfg
-cachemon_postinr_L2.cfg
+level1a_cachemon.cfg
+level2_cachemon.cfg
 level2_products.sh
 inr/TempoLogging.conf
 inr/TempoPipelineInterfaceSAO.conf

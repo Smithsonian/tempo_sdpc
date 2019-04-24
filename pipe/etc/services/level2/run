@@ -11,4 +11,4 @@ exec 2>& 1
 . $SDPC_ROOT/etc/level2_products.sh
 
 pgm="cachemon.sl"
-exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/cachemon_postinr_L2.cfg" -- "${SDPC_RUN_DIR}/L2" "$SDPC_LEVEL2_PRODUCTS"
+exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level2_cachemon.cfg" -- "${SDPC_RUN_DIR}/L2" "$SDPC_LEVEL2_PRODUCTS"
