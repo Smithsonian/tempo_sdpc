@@ -8,6 +8,11 @@ fi
 
 exec 2>& 1
 
+# FIXME - During operations, cron jobs will do this.
+#         For testing purposes, do it here.
+filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
+
 . $SDPC_ROOT/etc/level2_products.sh
 
 pgm="cachemon.sl"
