@@ -1,7 +1,6 @@
 #! /bin/sh
 
 : "${SDPC_INRSW_ROOT:?SDPC_INRSW_ROOT not set, run this with sdpcrun.sh}"
-: "${SDPC_INR_RUN_DIR:?SDPC_INR_RUN_DIR not set, run this with sdpcrun.sh}"
 
 set -u
 set -e
@@ -13,7 +12,5 @@ fi
 
 INR_MOCK_FEED_CFG=$(realpath $1)
 
-cd $SDPC_INR_RUN_DIR
-
 _pgm="${SDPC_INRSW_ROOT}/bin/TempoMockPipeline"
- exec $_pgm $INR_MOCK_FEED_CFG > feed.log 2>&1 &
+exec $_pgm $INR_MOCK_FEED_CFG > feed.log 2>&1 &
