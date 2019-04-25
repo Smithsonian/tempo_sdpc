@@ -22,5 +22,7 @@ inr_mkdirs.sh
 inr_config.sh
 inr_refdata.sh
 
+test_telem.sh
+
 /bin/cp -r $SDPC_ROOT/etc/services $SDPC_RUN_DIR_MASTER
 

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+SERVICE="inr"
+. ../../log.inc

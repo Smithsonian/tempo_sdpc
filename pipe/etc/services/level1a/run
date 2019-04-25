@@ -1,12 +1,12 @@
 #!/bin/sh
 
+exec 2>& 1
+
 if test -z "${SDPC_ROOT}"
 then
-  echo "The SDPC environment is not set" >&2
+  echo "The SDPC environment is not set"
   exit 1
 fi
-
-exec 2>& 1
 
 pgm="cachemon.sl"
 exec ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level1a_cachemon.cfg" -- "${SDPC_RUN_DIR}/L0"

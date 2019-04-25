@@ -1,4 +1,4 @@
-#! /bin/sh -v
+#! /bin/sh
 #SBATCH --output=/dev/null
 
 # exit on error

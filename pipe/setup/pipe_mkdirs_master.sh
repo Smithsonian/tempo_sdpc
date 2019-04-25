@@ -31,7 +31,7 @@ mkdirlist()
 PIPE_DIRS="L0/repro L0/incoming/ccd L0/incoming/telem \
            L1/repro \
 	   L2/repro L2/incoming \
-	   status"
+	   log"
 
 mkdirlist $SDPC_RUN_DIR_MASTER "$PIPE_DIRS"
 

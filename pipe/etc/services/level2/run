@@ -1,12 +1,12 @@
 #!/bin/sh
 
+exec 2>& 1
+
 if test -z "${SDPC_ROOT}"
 then
-  echo "The SDPC environment is not set" >&2
+  echo "The SDPC environment is not set"
   exit 1
 fi
-
-exec 2>& 1
 
 # FIXME - During operations, cron jobs will do this.
 #         For testing purposes, do it here.

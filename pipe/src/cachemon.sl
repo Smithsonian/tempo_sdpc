@@ -153,7 +153,7 @@ private variable LOG_ERR = "ERROR";
 
 private define write_log (severity, msg)
 {
-   () = fprintf (stderr, "%s:cachemon[%d] %s %s\n", time(), My_Pid, severity, msg);
+   () = fprintf (stderr, "cachemon[%d] %s %s\n", My_Pid, severity, msg);
 }
 
 private define sigchld_handler (sig);
@@ -176,18 +176,18 @@ private define catch_sigchild ()
    sigprocmask (SIG_UNBLOCK, SIGCHLD);
 }
 
-private variable Sighup_Received;
-private define sighup_handler (sig);
-private define sighup_handler (sig)
+private variable Sigterm_Received;
+private define sigterm_handler (sig);
+private define sigterm_handler (sig)
 {
-   Sighup_Received++;
-   signal (SIGHUP, &sighup_handler);
+   Sigterm_Received++;
+   signal (SIGTERM, &sigterm_handler);
 }
-private define catch_sighup ()
+private define catch_sigterm ()
 {
-   sigprocmask (SIG_BLOCK, SIGHUP);
-   signal (SIGHUP, &sighup_handler);
-   sigprocmask (SIG_UNBLOCK, SIGHUP);
+   sigprocmask (SIG_BLOCK, SIGTERM);
+   signal (SIGTERM, &sigterm_handler);
+   sigprocmask (SIG_UNBLOCK, SIGTERM);
 }
 
 private define wait_for_processes_to_exit ()
@@ -238,8 +238,18 @@ private define set_executable (p, argv)
 
 private define ensure_logfile_exists (logfile)
 {
+   variable msg;
+
    if (NULL != stat_file (logfile))
      return;
+
+   variable logfile_dir = path_dirname (logfile);
+   if (0 != mkdir_p (logfile_dir))
+     {
+        msg = sprintf ("*** Error: creating directory: %s",
+		       logfile_dir);
+        throw ApplicationError, msg;
+     }
 
    variable fp = fopen (logfile, "w");
    if (fp == NULL)
@@ -247,8 +257,8 @@ private define ensure_logfile_exists (logfile)
 
    if (0 != fclose (fp))
      {
-        variable msg = sprintf ("closing logfile %s (%s)",
-                                logfile, errno_string(errno));
+        msg = sprintf ("closing logfile %s (%s)",
+		       logfile, errno_string(errno));
         throw IOError, msg;
      }
 }
@@ -414,19 +424,21 @@ define slsh_main()
                               task = &claim_with_rename,
                               delay = p.wait_sec, client_data = p);
 
-   Sighup_Received = 0;
-   catch_sighup();
+   Sigterm_Received = 0;
+   catch_sigterm();
    catch_sigchild();
 
-   while (Sighup_Received == 0)
+   write_log (LOG_INFO, "started");
+
+   while (Sigterm_Received == 0)
      {
         if (-1 == dir.monitor (p.order))
           break;
         dir.wait();
      }
 
-   if (Sighup_Received)
-     write_log (LOG_INFO, "received SIGHUP");
+   if (Sigterm_Received)
+     write_log (LOG_INFO, "received SIGTERM");
 
    wait_for_processes_to_exit ();
 }
