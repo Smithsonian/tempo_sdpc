@@ -11,4 +11,4 @@ fi
 cd $SDPC_INR_RUN_DIR
 
 pgm="PipelineInterface"
-exec ${INRSW_INSTALL_DIR}/bin/$pgm config/TempoPipelineInterfaceSAO.conf
+exec ${SDPC_INRSW_ROOT}/bin/$pgm config/TempoPipelineInterfaceSAO.conf
