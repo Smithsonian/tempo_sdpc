@@ -355,11 +355,16 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
      }
 
    if (NULL == (glob_path = ioclib_pathconcat (path, flt->glob_basename)))
-     return NULL;
+     goto return_status;
 
    /* The globbing pattern is assumed to yield a time-ordered list of files */
-   if (NULL == (g = ioclib_glob (glob_path, 0)))
-     goto return_status;
+   if ((NULL == (g = ioclib_glob (glob_path, 0)))
+       || (g->num_files == 0))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: no matching files: %s", __func__, glob_path);
+	goto return_status;
+     }
 
    for (i = 0; i < g->num_files; i++)
      {
@@ -386,6 +391,11 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
 
    status_flag = 0;
 return_status:
+   if (status_flag)
+     {
+	tell_verror (TELL_RUNTIME_ERROR, "%s: failed", __func__);
+     }
+
    ioclib_free (glob_path);
    ioclib_glob_free (g);
 
@@ -439,6 +449,9 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
                         double tstart, double tend, TIO_Meta_Type *meta)
 {
    Instr_Filter_Type flt = {0};
+   Instr_Type *instr = NULL;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
 
    if (file == NULL)
      {
@@ -453,5 +466,10 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
 
    _pMeta_Ptr = meta;
 
-   return read_instr (file, &flt);
+   if (NULL == (instr = read_instr (file, &flt)))
+     return NULL;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
+
+   return instr;
 }

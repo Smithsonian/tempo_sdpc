@@ -427,11 +427,15 @@ Pixelqf_Type *pixelqf_init (config_t *cfg)
 {
    Pixelqf_Type *pt = NULL;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
+
    if (NULL == (pt = pqf_create ()))
      return NULL;
 
    if (-1 == parse_param_file (cfg, pt))
      goto error_return;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
 
    return pt;
 error_return:

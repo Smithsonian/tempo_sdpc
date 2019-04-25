@@ -1104,6 +1104,8 @@ CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    CCD_Type *ccd = NULL;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
+
    if (NULL == (ccd = ccd_create ()))
      return NULL;
 
@@ -1118,6 +1120,8 @@ CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta)
 
    if (-1 == init_methods (cfg, ccd))
      goto error_return;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
 
    return ccd;
 

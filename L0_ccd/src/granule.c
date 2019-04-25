@@ -320,6 +320,8 @@ Granule_Type *granule_open (const char *file)
    char *exprec_type = NULL;
    size_t img_size;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
+
    if (NULL == (g = new_granule ()))
      return NULL;
 
@@ -346,6 +348,8 @@ Granule_Type *granule_open (const char *file)
      {
         goto error_return;
      }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
 
    return g;
 

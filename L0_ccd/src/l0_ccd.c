@@ -29,6 +29,7 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -n | --num N           Process <= N exposure records \n");
    fprintf (stderr, "   -v | --verbose lev     Logging level\n");
+   fprintf (stderr, "   -h | --help            Print this usage message\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -99,6 +100,7 @@ int main (int argc, char **argv)
         {"output",  required_argument, 0, 'o'},
         {"num",     optional_argument, 0, 'n'},
         {"verbose", optional_argument, 0, 'v'},
+	{"help",    no_argument,       0, 'h'},
         {0,0,0,0}
      };
 
@@ -122,7 +124,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "b:c:d:i:o:v:n:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:d:i:o:v:n:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -145,13 +147,16 @@ int main (int argc, char **argv)
              break;
            case 'd': ctrl.dark_file = optarg;
              break;
+           case 'h':
+	     usage();
+             break;
            case 'i': ctrl.instr_status_file = optarg;
              break;
            case 'o': ctrl.output_file = optarg;
              break;
            case 'n':
              if (1 != sscanf (optarg, "%u", &ctrl.limit_num_granules))
-               usage();
+	       usage();
            case 'v':
              {
                 int log_level;

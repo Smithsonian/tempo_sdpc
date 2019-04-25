@@ -135,6 +135,8 @@ Badpix_Map_Type *bpix_read (const char *file)
    int ncid;
    char *path = NULL;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
+
    if (NULL == (path = expand_path (file)))
      return NULL;
 
@@ -170,6 +172,8 @@ Badpix_Map_Type *bpix_read (const char *file)
         bpix_free (b);
         return NULL;
      }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
 
    return b;
 }
