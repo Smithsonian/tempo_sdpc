@@ -3,6 +3,17 @@
 set -u
 set -e
 
+if test $# -ne 2 ; then
+   echo "Usage:  $0  SDPC_PIPE_NAME SDPC_ROOT"
+   exit 0
+fi
+
+_pipe_name=$1
+_root_dir=$2
+
+export SDPC_PIPE_NAME=$_pipe_name
+. $_root_dir/etc/sdpc_env.sh
+
 assert_dir_exists()
 {
    dir=$1
@@ -23,16 +34,9 @@ assert_dir_absent()
    fi
 }
 
-: "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set, run this with sdpcrun.sh}"
 assert_dir_absent $SDPC_RUN_DIR
-
-: "${SDPC_REFDATA_DIR:?SDPC_REFDATA_DIR not set, run this with sdpcrun.sh}"
 assert_dir_exists $SDPC_REFDATA_DIR
-
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set, run this with sdpcrun.sh}"
 assert_dir_exists $SDPC_RUN_DIR_MASTER
-
-: "${SDPC_INR_RUN_DIR:?SDPC_INR_RUN_DIR not set, run this with sdpcrun.sh}"
 assert_dir_exists $SDPC_INR_RUN_DIR
 
 mkdirlist()
@@ -40,9 +44,9 @@ mkdirlist()
    rootdir="$1"
    subdirs="$2"
 
-   echo mkdir -p $rootdir
+   mkdir -p $rootdir
    for sub in $subdirs ; do
-      echo mkdir -p $rootdir/$sub
+      mkdir -p $rootdir/$sub
    done
 }
 

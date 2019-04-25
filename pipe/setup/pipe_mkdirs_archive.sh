@@ -15,9 +15,9 @@ mkdirlist()
    rootdir="$1"
    subdirs="$2"
 
-   echo mkdir -p $rootdir
+   mkdir -p $rootdir
    for sub in $subdirs ; do
-      echo mkdir -p $rootdir/$sub
+      mkdir -p $rootdir/$sub
    done
 }
 
