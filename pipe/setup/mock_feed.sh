@@ -11,10 +11,9 @@ if test $# -ne 1 ; then
    exit 0
 fi
 
-INR_MOCK_FEED_CFG=$1
+INR_MOCK_FEED_CFG=$(realpath $1)
 
-INR_FEED="${SDPC_INRSW_ROOT}/bin/TempoMockPipeline"
-
-/bin/cp $INR_MOCK_FEED_CFG $SDPC_INR_RUN_DIR
 cd $SDPC_INR_RUN_DIR
-exec $INR_FEED $INR_MOCK_FEED_CFG > feed.log 2>&1 &
+
+_pgm="${SDPC_INRSW_ROOT}/bin/TempoMockPipeline"
+ exec $_pgm $INR_MOCK_FEED_CFG > feed.log 2>&1 &
