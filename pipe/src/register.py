@@ -7,11 +7,14 @@ from netCDF4 import Dataset as NetCDFFile
 
 Radiance_Table_Name = "rad"
 
-Radiance_Products = ["hcho", "no2", "o3t", "o3p", "cldrr"]
+Radiance_Products = ["cldrr", "hcho", "no2", "o3t", "o3p"]
 
 Radiance_Derived_Files = ["rad_L0", "rad_L1"] \
                          + [s + "_L2" for s in Radiance_Products] \
                          + [s + "_L3" for s in Radiance_Products]
+
+Radiance_File_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
+                            "scan_num", "granule_num"]
 
 class Table_Type:
 
@@ -42,8 +45,8 @@ def init_radiance_table ():
     fields["time_coverage_start_since_epoch"] = "float not null"
     fields["time_coverage_end_since_epoch"] = "float not null"
     fields["filename"] = "text"
-    #fields["mirror_pos_beg"] = "integer not null"
-    #fields["mirror_pos_end"] = "integer not null"
+    fields["mirror_pos_beg"] = "integer not null"
+    fields["mirror_pos_end"] = "integer not null"
     quals = "primary key(istart), unique(istart)"
     return Table_Type(Radiance_Table_Name, fields, quals)
 
@@ -99,10 +102,12 @@ def insert_radiance_product_entry (conn, product_name, entry):
 def insert_other_product_entry (conn, product_name, entry):
     return insert_product_entry (conn, product_name, init_other_product_table, entry)
 
-def get_radiance_keys (keys, attr):
-    want_keys = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
-                 "scan_num", "granule_num"]
-    for k in want_keys:
+def get_radiance_keys (nc, keys):
+    mirror_step = nc.variables["mirror_step"][:]
+    keys["mirror_pos_beg"] = mirror_step.min()
+    keys["mirror_pos_end"] = mirror_step.max()
+    attr = nc.__dict__
+    for k in Radiance_File_Attributes:
         if k in attr:
             keys[k] = attr[k]
     return keys
@@ -130,12 +135,9 @@ def process_file (conn, filename):
     keys["istart"] = int(attr[k])
     keys["filename"] = basename
 
-    # FIXME: Eventually, rad_L0 will define the primary radiance granule
-    # and all other files derived from it will be treated as products,
-    # recording only istart, mtime, size
-
-    if (tok[1] == 'rad'):
-        get_radiance_keys (keys, attr)
+# FIXME: in  production, this will be 'rad_L0':
+    if (product_name == 'rad_L1'):
+        get_radiance_keys (nc, keys)
         status = insert_radiance_entry (conn, keys)
         if status < 0:
            print('ERROR: processing file {}'.format(filename))
