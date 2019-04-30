@@ -7,6 +7,12 @@ from netCDF4 import Dataset as NetCDFFile
 
 Radiance_Table_Name = "rad"
 
+Radiance_Products = ["hcho", "no2", "o3t", "o3p", "cldrr"]
+
+Radiance_Derived_Files = ["rad_L0", "rad_L1"] \
+                         + [s + "_L2" for s in Radiance_Products] \
+                         + [s + "_L3" for s in Radiance_Products]
+
 class Table_Type:
 
     def __init__ (self, table_name, fields, quals):
@@ -41,13 +47,22 @@ def init_radiance_table ():
     quals = "primary key(istart), unique(istart)"
     return Table_Type(Radiance_Table_Name, fields, quals)
 
-def init_product_table (table_name):
+def init_radiance_product_table (table_name):
     fields = {}
     fields["istart"] = "integer not null"
     fields["mtime"] = "integer"
     fields["size"] = "integer"
     fields["filename"] = "text"
     quals = "unique(istart), foreign key (istart) references {}(istart)".format(Radiance_Table_Name)
+    return Table_Type(table_name, fields, quals)
+
+def init_other_product_table (table_name):
+    fields = {}
+    fields["istart"] = "integer not null"
+    fields["mtime"] = "integer"
+    fields["size"] = "integer"
+    fields["filename"] = "text"
+    quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
 def insert_radiance_entry (conn, entry):
@@ -63,7 +78,7 @@ def insert_radiance_entry (conn, entry):
             print ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
             return -1
 
-def insert_product_entry (conn, product_name, entry):
+def insert_product_entry (conn, product_name, init_product_table, entry):
     with conn:
         c = conn.cursor()
         p = init_product_table (product_name)
@@ -77,6 +92,12 @@ def insert_product_entry (conn, product_name, entry):
         except sqlite3.IntegrityError:
             print ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
             return -1
+
+def insert_radiance_product_entry (conn, product_name, entry):
+    return insert_product_entry (conn, product_name, init_radiance_product_table, entry)
+
+def insert_other_product_entry (conn, product_name, entry):
+    return insert_product_entry (conn, product_name, init_other_product_table, entry)
 
 def get_radiance_keys (keys, attr):
     want_keys = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
@@ -123,7 +144,10 @@ def process_file (conn, filename):
     keys["mtime"] = st.st_mtime
     keys["size"] = st.st_size
 
-    status = insert_product_entry (conn, product_name, keys)
+    if (product_name in Radiance_Derived_Files):
+        status = insert_radiance_product_entry (conn, product_name, keys)
+    else:
+        status = insert_other_product_entry (conn, product_name, keys)
     if status < 0:
         print('ERROR: processing file {}'.format(filename))
 
