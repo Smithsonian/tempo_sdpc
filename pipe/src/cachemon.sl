@@ -12,6 +12,8 @@ prepend_to_slang_load_path ($1);
 set_import_module_path (path_concat ($1, "../lib/slang/v2/modules") + ":" + get_import_module_path ());
 require ("pipeutil");
 
+private variable Sigterm_Received;
+
 private variable Host_Name = uname().nodename;
 private variable My_Pid = getpid();
 
@@ -93,7 +95,7 @@ private define dir_monitor (obj, order)
 private define sleep_loop (dt)
 {
    % In this context, sleep(dt) is somewhat unreliable, because
-   % (I think) SIGCHLD keeps interrupting it.  This loop is a hack
+   % SIGCHLD keeps interrupting it.  This loop is a hack
    % to work around that.  If implemented in C, we'd need
    % something similar anyway.
    variable trem = dt;
@@ -102,7 +104,7 @@ private define sleep_loop (dt)
      {
         sleep (trem);
         variable tnow = _time();
-        if (tnow >= tend)
+        if ((tnow >= tend) || (Sigterm_Received != 0))
           break;
         trem = tend - tnow;
      }
@@ -176,7 +178,6 @@ private define catch_sigchild ()
    sigprocmask (SIG_UNBLOCK, SIGCHLD);
 }
 
-private variable Sigterm_Received;
 private define sigterm_handler (sig);
 private define sigterm_handler (sig)
 {

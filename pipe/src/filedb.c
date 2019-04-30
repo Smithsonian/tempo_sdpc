@@ -736,7 +736,8 @@ static int fdb_initialize (Filedb_Type *fdb)
 
    if (0 != nftw (fdb->root_dir, direntry_handler, nopenfd, nftw_flags))
      {
-        fprintf (stderr, "%s: nftw failed\n", __func__);
+        fprintf (stderr, "%s: nftw failed looking at root_dir=%s\n",
+		 __func__, fdb->root_dir);
         return -1;
      }
 

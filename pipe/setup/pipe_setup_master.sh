@@ -24,5 +24,10 @@ inr_refdata.sh
 
 test_telem.sh
 
+# FIXME - During operations, cron jobs will do this.
+#         For testing purposes, do it here.
+filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
+
 /bin/cp -r $SDPC_ROOT/etc/services $SDPC_RUN_DIR_MASTER
 

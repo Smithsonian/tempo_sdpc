@@ -8,11 +8,5 @@ then
   exit 1
 fi
 
-# FIXME - During operations, cron jobs will do this.
-#         For testing purposes, do it here.
-filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
-filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
-
-pgm="cachemon.sl"
-$SDPC_S6_ROOT/bin/s6-envdir ./env \
- ${SDPC_ROOT}/bin/$pgm "${SDPC_ROOT}/etc/level2_cachemon.cfg" -- "${SDPC_RUN_DIR}/L2"
+exec $SDPC_S6_ROOT/bin/s6-envdir ./env \
+ ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_ROOT}/etc/level2_cachemon.cfg" -- "${SDPC_RUN_DIR}/L2"
