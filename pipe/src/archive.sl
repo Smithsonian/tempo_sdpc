@@ -151,7 +151,12 @@ private define get_tarfile_archive_subdir (tar_file)
 define register_using_symlink (tar_file, archive_dest_subdir)
 {
    % Dump partial paths to archived data products into a temporary
-   % file on the local machine (usually a compute node), ideally on a RAM disk
+   % file on the local machine (usually a compute node), ideally on
+   % a RAM disk.
+   % Some tar files contain block_??? subdirectories with .nc files
+   % that will eventually be merged to generate the final product.
+   % These block .nc files should not be entered in the product
+   % database, so we filter them out of this query.
    variable tmpfile_dir = "/var/tmp/$USER/$SDPC_PIPE_NAME"$;
    () = mkdir_p (tmpfile_dir);
    variable tmpfile = sprintf ("%s/register_symlink.%d", tmpfile_dir, getpid());
@@ -169,6 +174,8 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    % Read the partial paths from the temporary file.
    % "partial_path" means something like
    %      hcho/TEMPO_hcho_L2_V01_20130715T165956Z_S002G01.nc
+   % (and remember that this temporary file may not contain anything
+   % relevant).
    variable partial_paths;
    variable fp = fopen (tmpfile, "r");
    if (fp == NULL)
@@ -193,6 +200,8 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    foreach pp (partial_paths)
      {
         oldpath = path_concat (archive_dest_subdir, pp);
+	if (NULL == stat_file (oldpath))
+	  continue;
         newpath = path_concat (incoming_dir, path_basename(pp));
         if (0 != symlink (oldpath, newpath))
           throw ApplicationError, "*** Error: creating symlink $newpath"$;

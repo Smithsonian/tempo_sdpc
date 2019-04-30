@@ -63,6 +63,11 @@ outfile='$product_file'
 EOF
 
   srun --ntasks=1 --output=merge.log merge_o3p_files
+
+  # make sure the merged product gets added to the product registry
+  if test -f $product_file ; then
+     ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
+  fi
 }
 
 mode="$1"
