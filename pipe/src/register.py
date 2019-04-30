@@ -112,6 +112,12 @@ def get_radiance_keys (nc, keys):
             keys[k] = attr[k]
     return keys
 
+def remove_dot_prefix (name):
+    if name.startswith('.'):
+        return name[1:]
+    else:
+        return name
+
 def process_file (conn, filename):
 
     basename = os.path.basename (filename)
@@ -133,7 +139,7 @@ def process_file (conn, filename):
         return -1
 
     keys["istart"] = int(attr[k])
-    keys["filename"] = basename
+    keys["filename"] = remove_dot_prefix (basename)
 
 # FIXME: in  production, this will be 'rad_L0':
     if (product_name == 'rad_L1'):
@@ -159,7 +165,7 @@ def make_db_path ():
     db_dir = os.getenv("SDPC_ARCHIVE_DIR", ".")
     db_basename = date.today().strftime("production_%Y%m.db")
     if db_dir != ".":
-        db_dir = os.path.join (db_dir, "stat")
+        db_dir = os.path.join (db_dir, "registry")
     if not os.path.isdir(db_dir):
         os.makedirs(db_dir)
     return os.path.join (db_dir, db_basename)
@@ -174,6 +180,12 @@ def main():
 
     db_path = make_db_path()
     conn = sqlite3.connect (db_path)
+    # For back-compatibility sqlite has foreign keys turned off by default,
+    # and foreign_keys=off is ALWAYS stored in the database, regardless of
+    # the runtime setting when the database was created.  For this reason,
+    # we apparently need to turn it on explicitly, each time the database
+    # connection is established.
+    conn.execute("pragma foreign_keys=on")
 
     status = 0
 

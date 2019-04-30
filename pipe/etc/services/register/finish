@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="register"
+INCDIR=".."
+
+. $INCDIR/finish.inc

@@ -14,6 +14,8 @@ private variable Delete_Tarfiles = 0;
 private variable Clobber_Output_Files = 0;
 private variable Granule_Ident_File = "granule_ident.csv";
 
+private variable Archive_Root_Dir;
+
 private define usage ()
 {
    variable argv0 = __argv[0];
@@ -146,6 +148,59 @@ private define get_tarfile_archive_subdir (tar_file)
    return dest_subdir;
 }
 
+define register_using_symlink (tar_file, archive_dest_subdir)
+{
+   % Dump partial paths to archived data products into a temporary
+   % file on the local machine (usually a compute node), ideally on a RAM disk
+   variable tmpfile_dir = "/var/tmp/$USER/$SDPC_PIPE_NAME"$;
+   () = mkdir_p (tmpfile_dir);
+   variable tmpfile = sprintf ("%s/register_symlink.%d", tmpfile_dir, getpid());
+   variable argv = ["tar", "tf", tar_file,
+		    "--exclude=block_*", "--strip-components=1",
+                    "--show-transformed-names", "--wildcards",
+                    "--no-anchored", "TEMPO_*.nc"];
+   %vmessage (strjoin (argv, " "));
+   variable s = new_process(argv; stdout=tmpfile, dup2=1).wait();
+   if (s.exit_status != 0)
+     {
+        throw ApplicationError, "*** Error: creating file:$tmpfile"$;
+     }
+
+   % Read the partial paths from the temporary file.
+   % "partial_path" means something like
+   %      hcho/TEMPO_hcho_L2_V01_20130715T165956Z_S002G01.nc
+   variable partial_paths;
+   variable fp = fopen (tmpfile, "r");
+   if (fp == NULL)
+     throw ApplicationError, "*** Error: reading file:$tmpfile"$;
+   partial_paths = fgetslines (fp);
+   () = fclose(fp);
+   () = remove (tmpfile);
+   partial_paths = array_map (String_Type, &strtrim, partial_paths, "\n");
+
+   % For each product file, make a symbolic link in $incoming_dir
+   % in the archive directory (usually on the master node)
+   variable incoming_dir = path_concat (Archive_Root_Dir, "registry/incoming");
+   if (NULL == stat_file (incoming_dir))
+     {
+        if (0 != mkdir_p (incoming_dir))
+          {
+             throw ApplicationError, "*** Error: creating $incoming_dir"$;
+          }
+     }
+
+   variable pp, product, oldpath, newpath;
+   foreach pp (partial_paths)
+     {
+        oldpath = path_concat (archive_dest_subdir, pp);
+        newpath = path_concat (incoming_dir, path_basename(pp));
+        if (0 != symlink (oldpath, newpath))
+          throw ApplicationError, "*** Error: creating symlink $newpath"$;
+     }
+
+   return 0;
+}
+
 define unpack_and_archive (tar_file, archive_dest_dir)
 {
    % The unpack and archive process involves the following steps:
@@ -180,7 +235,7 @@ define unpack_and_archive (tar_file, archive_dest_dir)
    argv = [argv, "-f", tar_file, "-C", archive_dest_subdir,
            "--strip-components=1"];
 
-   vmessage (strjoin (argv, " "));
+   %vmessage (strjoin (argv, " "));
    variable unpack_log = "${tar_file}.unpack"$;
    variable s = new_process(argv; stdout=unpack_log, dup2=1).wait();
    if (s.exit_status != 0)
@@ -190,6 +245,7 @@ define unpack_and_archive (tar_file, archive_dest_dir)
    else
      {
         () = remove (unpack_log);
+        () = register_using_symlink (tar_file, archive_dest_subdir);
      }
 
    % It's now safe to delete this copy
@@ -261,6 +317,8 @@ define slsh_main ()
    if (archive_root_dir == NULL)
      throw ApplicationError,
      "*** Error: Archive root directory not specified (SDPC_ARCHIVE_DIR not set)";
+
+   Archive_Root_Dir = archive_root_dir;
 
    % The tar file basename must be prefixed by the granule name.
    % The tar file must unpack into a directory with the granule
