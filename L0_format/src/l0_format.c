@@ -24,7 +24,6 @@
 #include <tio_template.h>
 
 #include "l0_format.h"
-#include "daemon.h"
 
 #define MAX_PATHLEN 1024
 
@@ -51,11 +50,9 @@ typedef struct
    const char *input_filename_glob_pattern;
    char *incoming_dir;
    char *tpinfo_file;
-   char *daemon_logfile_path;
    double monitor_wait_secs;
    double cache_flush_idle_wait_secs;
    int exit_on_emptydir;
-   int daemon;
    IRU_Interval_Type iru_interval;
 }
 Control_Type;
@@ -65,7 +62,6 @@ static void usage (void)
    fprintf (stderr, "Usage: L0_format [options] [config-file]\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help              Print this usage message\n");
-   fprintf (stderr, "   -d | --daemon            Run as a daemon\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
@@ -103,7 +99,6 @@ static void free_control_type_fields (Control_Type *ctrl)
 {
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
-   FREE(ctrl->daemon_logfile_path);
    FREE(ctrl->iru_interval.dir);
 }
 
@@ -112,7 +107,6 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
    config_setting_t *s;
    const char *incoming_dir;
    const char *tpinfo_file;
-   const char *daemon_logfile_path;
 
    if (NULL == (s = config_lookup (cfg, "main")))
      {
@@ -125,7 +119,6 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "incoming_dir", &incoming_dir))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "input_filename_glob_pattern", &ctrl->input_filename_glob_pattern))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &tpinfo_file))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "daemon_logfile_path", &daemon_logfile_path))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
       )
@@ -137,8 +130,7 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
      }
 
    if ((NULL == (ctrl->incoming_dir = expand_string (incoming_dir)))
-       || (NULL == (ctrl->tpinfo_file = expand_string (tpinfo_file)))
-       || (NULL == (ctrl->daemon_logfile_path = expand_string (daemon_logfile_path))))
+       || (NULL == (ctrl->tpinfo_file = expand_string (tpinfo_file))))
      {
         return -1;
      }
@@ -952,7 +944,6 @@ int main (int argc, char **argv)
      {
         {"help",    no_argument, 0, 'h'},
         {"archive", required_argument, 0, 'a'},
-        {"daemon",  no_argument, 0, 'd'},
         {"empty",   no_argument, 0, 'e'},
         {"verbose", no_argument, 0, 'v'},
         {0,0,0,0}
@@ -963,7 +954,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hadev", long_options, &option_index);
+        int c = getopt_long (argc, argv, "haev", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -977,9 +968,6 @@ int main (int argc, char **argv)
              break;
            case 'a':
              set_archive_root_dir (optarg);
-             break;
-           case 'd':
-             ctrl.daemon = 1;
              break;
            case 'e':
              ctrl.exit_on_emptydir = 1;
@@ -1018,14 +1006,8 @@ int main (int argc, char **argv)
    if (-1 == init_methods_table (tbl, &cfg))
      goto return_status;
 
-   if (ctrl.daemon)
-     {
-        /* daemonize calls tell_open for logfile */
-        tell_close();
-        if (0 != daemonize (appname, ctrl.daemon_logfile_path))
-          goto return_status;
-        tell_vinfo (0, "daemon started (pid=%d)", getpid());
-     }
+   tell_vinfo (0, "started (pid=%d)", getpid());
+
    catch_sighup ();
    catch_sigint ();
 
@@ -1035,11 +1017,7 @@ int main (int argc, char **argv)
    status = (status == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 return_status:
-   if (ctrl.daemon)
-     {
-        tell_vinfo (0, "daemon exiting: status = %d (pid=%d)",
-                    status, getpid());
-     }
+   tell_vinfo (0, "exiting: status = %d (pid=%d)", status, getpid());
    free_control_type_fields (&ctrl);
    tpinfo_free (tp);
    config_destroy (&cfg);

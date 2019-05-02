@@ -6,7 +6,6 @@ main: {
    tpinfo_file = "/vex/d0/tmp/ioc_sdpc_interface/tempo_tpmeta_r7.csv";
    monitor_wait_secs = 5.0;
    cache_flush_idle_wait_secs = 60.0;
-   daemon_logfile_path = "/vex/d0/tmp/ioc_sdpc_interface/l0.log";
 };
 
 tpsec: {
