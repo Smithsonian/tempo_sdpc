@@ -801,9 +801,16 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
    if (exposure_type == EXPREC_TYPE_RADIANCE)
      {
+	int scan_type;
         ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
+	/* Copy the scan_type attribute to the Level 1 file because L1_inr_prep needs it.
+	 * It's used nowhere else, so it need not be part of the granule ident struct.
+	 */
+	if ((0 != TIO_get_att (ncid_from, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
+	    ||(0 != TIO_put_att (ncid_to, NC_GLOBAL, "scan_type", NC_INT, 1, &scan_type)))
+	  goto return_status;
      }
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
