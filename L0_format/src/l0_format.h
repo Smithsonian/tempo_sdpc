@@ -72,6 +72,7 @@ extern int write_attr_global_product_type (int ncid, const char *product_type);
 typedef struct
 {
    int scan_num;
+   int scan_type;
    int granule_num;
    int granule_flag;
 }

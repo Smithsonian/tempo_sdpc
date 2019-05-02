@@ -194,6 +194,13 @@ static int define_file_vars (Process_Method_Type *pmt,
                                                   identp->granule_num,
                                                   identp->granule_flag))
           return -1;
+	/* (scan_type==0) means "standard radiance scan".
+	 * (scan_type!=0) means the data will probably require custom processing.
+	 * It is assumed that all exposures within a given scan_num will have the
+	 * same value of scan_type, but this is not checked.
+	 */
+	if (0 != TIO_put_att (ncid, NC_GLOBAL, "scan_type", NC_INT, 1, &identp->scan_type))
+	  return -1;
      }
 
    if (-1 == write_attr_global_timestamp (ncid, "time_coverage_start",
@@ -304,6 +311,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    char basename[MAX_BASENAME_SIZE];
    Radiance_Ident_Type radiance_ident = {0};
    Radiance_Ident_Type *identp = NULL;
+   uint16_t sdpc_scan_label, scan_num, scan_type;
 
    pmt->outfile_timestamp_start = erec->image_start_time;
    pmt->outfile_timestamp_end = image_end_time (erec);
@@ -317,7 +325,12 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
       case IOCSDPC_EXPREC_TYPE_RADIANCE:
         pmt->product_type = "rad";
         pmt->exprec_type_string = ioclib_strdup("radiance");
-        radiance_ident.scan_num = 0;   /* FIXME! exprec header should define this */
+	/* lowest 16 bits of erec->scan_label contain the 16 bit label
+	 * for the scan provided in the SDPC-generated radiance scan plan. */
+	sdpc_scan_label = erec->scan_label & 0x0000ffff;
+	tio_parse_scan_label (sdpc_scan_label, &scan_type, &scan_num);
+	radiance_ident.scan_num = scan_num;
+	radiance_ident.scan_type = scan_type;
         radiance_ident.granule_num = curr_granule + 1;
         set_radiance_granule_flag (curr_granule, num_granules,
                                    &radiance_ident.granule_flag);
