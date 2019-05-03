@@ -28,7 +28,7 @@ done
 wait_for_empty_dir $INCOMING 5
 
 # Processing should be done by now.
-kill -HUP $CACHEMON_PID
+kill -TERM $CACHEMON_PID
 wait $CACHEMON_PID
 
 # incoming directory should be empty at this point.
