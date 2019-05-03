@@ -800,7 +800,7 @@ static int query_file_timestamp (const char *file, double *timestamp_utc)
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &tempo_time))
      goto close_and_return;
 
-   if (0 != tio_time_tempo_to_utc (tempo_time, timestamp_utc))
+   if (0 != tio_time_taix_to_utc (tempo_time, timestamp_utc))
      goto close_and_return;
 
    status = 0;

@@ -495,7 +495,7 @@ enum
      DELIM_TIMESTAMP = 1
 };
 
-int _pTIO_tempo_time_from_utc_timestr (const char *str, double *tai_sec)
+int _pTIO_taix_time_from_utc_timestr (const char *str, double *tai_sec)
 {
    struct tm tm;
    double utc;
@@ -516,10 +516,10 @@ int _pTIO_tempo_time_from_utc_timestr (const char *str, double *tai_sec)
         return -1;
      }
 
-   return tio_time_utc_to_tempo (utc, tai_sec);
+   return tio_time_utc_to_taix (utc, tai_sec);
 }
 
-int TIO_mktimestamp_str (double tempo_tai_offset,
+int TIO_mktimestamp_str (double taix_offset,
                          int delim, char *buf, int bufsize)
 {
    struct tm tm;
@@ -527,7 +527,7 @@ int TIO_mktimestamp_str (double tempo_tai_offset,
    time_t tt;
    int status;
 
-   if (0 != tio_time_tempo_to_utc (tempo_tai_offset, &utc))
+   if (0 != tio_time_taix_to_utc (taix_offset, &utc))
      return -1;
    tt = (time_t)utc;
 
@@ -577,7 +577,7 @@ int tio_use_file_epoch (int ncid)
    if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_reference", NC_CHAR, utc_string))
      return -1;
 
-   return tio_time_set_tempo_epoch (utc_string);
+   return tio_time_set_taix_epoch (utc_string);
 }
 
 void _pTIO_warn_about_time_reference_mismatch (int ncid)
@@ -615,7 +615,7 @@ void _pTIO_warn_about_time_reference_mismatch (int ncid)
      }
 
    file_epoch_utc = (double) timegm (&tm);
-   internal_epoch_utc = tio_time_tempo_epoch_timet();
+   internal_epoch_utc = tio_time_taix_epoch_timet();
 
    if (file_epoch_utc != internal_epoch_utc)
      {
@@ -650,7 +650,7 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
      return -1;
    epoch_tt = timegm (&tm);
 
-   tempo_epoch_utc = tio_time_tempo_epoch_timet ();
+   tempo_epoch_utc = tio_time_taix_epoch_timet ();
    tempo_epoch_tt = (time_t)tempo_epoch_utc;
 
    if (epoch_tt == tempo_epoch_tt)
@@ -661,13 +661,13 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
      {
         double tempo, file_epoch_utc, tempo_epoch_tai, tai_timestamp;
 
-        if (0 != tio_time_tempo_to_tai (0.0, &tempo_epoch_tai))
+        if (0 != tio_time_taix_to_tai (0.0, &tempo_epoch_tai))
           return -1;
         tai_timestamp = tempo_epoch_tai + secs_since_tempo_epoch;
 
         file_epoch_utc = (double) epoch_tt;
-        if ((0 != tio_time_utc_to_tempo (file_epoch_utc, &tempo))
-            || (0 != tio_time_tempo_to_tai (tempo, &file_epoch_tai)))
+        if ((0 != tio_time_utc_to_taix (file_epoch_utc, &tempo))
+            || (0 != tio_time_taix_to_tai (tempo, &file_epoch_tai)))
           return -1;
 
         secs_since_file_epoch = tai_timestamp - file_epoch_tai;
@@ -752,7 +752,7 @@ FCALLSCFUN6(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_f
             INT, STRING, INT, INT, PSTRING, INT)
 FCALLSCFUN3(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
             INT, STRING, INT)
-FCALLSCFUN5(INT, tio_time_tempo_to_utc_caldate, TIO_F_TEMPO_TIME_TO_UTC_CALDATE, tio_f_tempo_time_to_utc_caldate,
+FCALLSCFUN5(INT, tio_time_taix_to_utc_caldate, TIO_F_TAIX_TIME_TO_UTC_CALDATE, tio_f_taix_time_to_utc_caldate,
             DOUBLE, PINT,PINT,PINT,PDOUBLE)
 FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,
             INT)

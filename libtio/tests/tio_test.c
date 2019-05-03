@@ -702,8 +702,8 @@ static int check_granule_ident (int ncid) /*{{{*/
         return -1;
      }
 
-   if ((0 != _pTIO_tempo_time_from_utc_timestr ("2018-09-26T18:00:00Z", &tstart))
-       || (0 != _pTIO_tempo_time_from_utc_timestr ("2018-09-26T18:00:01Z", &tend)))
+   if ((0 != _pTIO_taix_time_from_utc_timestr ("2018-09-26T18:00:00Z", &tstart))
+       || (0 != _pTIO_taix_time_from_utc_timestr ("2018-09-26T18:00:01Z", &tend)))
      return -1;
 
    if (0 != tio_write_granule_ident_times (ncid, tstart, tend))
@@ -1149,7 +1149,7 @@ int main (void)
 {
    int ntracks=8, nxtrack=6, ny=5;
 
-   if (0 != tio_time_set_tempo_epoch ("2000-01-01T12:00:00Z"))
+   if (0 != tio_time_set_taix_epoch ("2000-01-01T12:00:00Z"))
      return 1;
 
    if (test_l1_radiance ("delete_radiance.nc", ntracks, nxtrack, ny))

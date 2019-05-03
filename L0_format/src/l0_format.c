@@ -648,7 +648,7 @@ int make_level0_archdir_path (char **archdir_path,
         return 0;
      }
 
-   if (0 != tio_time_tempo_to_utc_caldate (sec_since_epoch, &year, &month, &day, &hour))
+   if (0 != tio_time_taix_to_utc_caldate (sec_since_epoch, &year, &month, &day, &hour))
      return -1;
 
    /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/YYYY/MM/DD/${file_type} */

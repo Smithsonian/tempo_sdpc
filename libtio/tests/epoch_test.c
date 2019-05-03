@@ -8,21 +8,21 @@ static int check_epoch (const char *epoch_str, time_t tt)
 {
    double tempo0, utc0;
 
-   if (0 != tio_time_set_tempo_epoch (epoch_str))
+   if (0 != tio_time_set_taix_epoch (epoch_str))
      {
         fprintf (stderr, "*** FAIL setting epoch = %s\n", epoch_str);
         return -1;
      }
 
    tempo0 = 0.0;
-   if ((0 != tio_time_tempo_to_utc (tempo0, &utc0))
+   if ((0 != tio_time_taix_to_utc (tempo0, &utc0))
        || (utc0 != (double) tt))
      {
         fprintf (stderr, "*** FAIL converting tempo time to UTC\n");
         return -1;
      }
 
-   if ((0 != tio_time_utc_to_tempo (utc0, &tempo0))
+   if ((0 != tio_time_utc_to_taix (utc0, &tempo0))
        || (tempo0 != 0.0))
      {
         fprintf (stderr, "*** FAIL converting UTC to tempo time\n");

@@ -343,7 +343,7 @@ static int read_epoch (config_t *cfg)
         return -1;
      }
 
-   return tio_time_set_tempo_epoch (epoch);
+   return tio_time_set_taix_epoch (epoch);
 }
 
 static int read_sat_time_zone (config_t *cfg, double *hour)

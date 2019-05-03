@@ -118,7 +118,7 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
         int i;
 
         tstart_utc = (entry->tstart - unix_epoch_jd) * SEC_PER_DAY;
-        if (0 != tio_time_utc_to_tempo (tstart_utc, &tstart_tai))
+        if (0 != tio_time_utc_to_taix (tstart_utc, &tstart_tai))
           return -1;
 
         if (previous_entry_tstop_tai - tstart_tai > SCAN_START_TIME_ERROR_TOLERANCE_SEC)

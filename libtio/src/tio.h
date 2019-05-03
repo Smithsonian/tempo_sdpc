@@ -356,8 +356,8 @@ TIO_Enum_Type;
 extern int TIO_define_enum_table (int grp, const char *name, int base_type,
                                   const TIO_Enum_Type *enum_table, int *enum_typeid);
 
-/** Convert TAI sec since TEMPO epoch to UTC sec since Unix epoch
- * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
+/** Convert TAI sec since X epoch to UTC sec since Unix epoch
+ * @param[in]  taix_time     TAI seconds since the X epoch
  * @param[out] utc_time      UTC seconds since the Unix epoch
  * @return 0 on success, -1 on error
  *
@@ -365,18 +365,18 @@ extern int TIO_define_enum_table (int grp, const char *name, int base_type,
  * time scale includes leap second corrections at irregular
  * intervals.
  */
-extern int tio_time_tempo_to_utc (double tempo_time, double *utc_time);
+extern int tio_time_taix_to_utc (double taix_time, double *utc_time);
 
-/** Convert UTC sec since the Unix epoch to TAI sec since the TEMPO epoch
- * @param[in]  utc_time      UTC seconds since the Unix epoch
- * @param[out] tempo_time    TAI seconds since the TEMPO epoch
+/** Convert UTC sec since the Unix epoch to TAI sec since the X epoch
+ * @param[in]  utc_time     UTC seconds since the Unix epoch
+ * @param[out] taix_time    TAI seconds since the X epoch
  * @return 0 on success, -1 on error
  *
  * The TAI time scale advances monotonically, while the UTC
  * time scale includes leap second corrections at irregular
  * intervals.
  */
-extern int tio_time_utc_to_tempo (double utc_time, double *tempo_time);
+extern int tio_time_utc_to_taix (double utc_time, double *taix_time);
 
 /** Convert UTC sec since the Unix epoch to TAI sec since the Unix epoch
  * @param[in]  utc_time    UTC seconds since the Unix epoch
@@ -389,18 +389,18 @@ extern int tio_time_utc_to_tempo (double utc_time, double *tempo_time);
  */
 extern int tio_time_utc_to_tai (double utc_time, double *tai_time);
 
-/** Convert TAI sec since the TEMPO epoch to TAI sec since the Unix epoch
- * @param[in]  tempo_time    TAI seconds since the TEMPO epoch
+/** Convert TAI sec since the X epoch to TAI sec since the Unix epoch
+ * @param[in]  taix_time     TAI seconds since the X epoch
  * @param[out] tai_time      TAI seconds since the Unix epoch
  * @return 0 on success, -1 on error
  *
  * The TAI time scale advances monotonically, with no leap second
  * corrections.
  */
-extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
+extern int tio_time_taix_to_tai (double taix_time, double *tai_time);
 
-/** Unix time_t value for the TEMPO epoch
- * @return Unix time_t value for the TEMPO epoch
+/** Unix time_t value for the X epoch
+ * @return Unix time_t value for the X epoch
  *
  * The time_t value may be used for direct comparison with the Unix
  * NTP-synchronized clock value, which is a count of seconds
@@ -408,30 +408,30 @@ extern int tio_time_tempo_to_tai (double tempo_time, double *tai_time);
  * The NTP-synchronized Unix clock includes leap second corrections
  * and is therefore non-monotonic.
  */
-extern double tio_time_tempo_epoch_timet (void);
+extern double tio_time_taix_epoch_timet (void);
 
-/** Set the TEMPO epoch using a UTC time string
+/** Set the X epoch using a UTC time string
  * @param[in]  utc   Epoch specification of the form YYYY-MM-DDThh:mm:ssZ
  * @return 0 on success, -1 on error
  */
-extern int tio_time_set_tempo_epoch (const char *utc_string);
+extern int tio_time_set_taix_epoch (const char *utc_string);
 
-/** Set the TEMPO epoch using the time_reference attribute stored in a file
+/** Set the X epoch using the time_reference attribute stored in a file
  * @param[in]  ncid   Device id of a netCDF file open for reading
  * @return 0 on success, -1 on error
  */
 extern int tio_use_file_epoch (int ncid);
 
-/** Convert TAI sec since TEMPO epoch to calendar date and time, UTC
- * @param[in] tempo_time   Elapsed TAI seconds since the TEMPO epoch
+/** Convert TAI sec since X epoch to calendar date and time, UTC
+ * @param[in] taix_time   Elapsed TAI seconds since the X epoch
  * @param[out]  year       4-digit year
  * @param[out]  month      month, 1-12
  * @param[out]  day        day of month, 1-31
  * @param[out]  hour       UTC hour of the day, 0-23.999...
  * @return 0 on success, -1 on error
  */
-extern int tio_time_tempo_to_utc_caldate
-(double tempo_time, int *year, int *month, int *day, double *hour);
+extern int tio_time_taix_to_utc_caldate
+(double taix_time, int *year, int *month, int *day, double *hour);
 
 /** Read one line from an ASCII text file
  * @param[out] linep   Pointer to an allocated string

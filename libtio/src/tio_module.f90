@@ -151,12 +151,12 @@ module tio_module
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_tempo_time_to_utc_caldate, tio_f_use_file_epoch
+    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_tempo_time_to_utc_caldate, tio_f_use_file_epoch
+    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -167,7 +167,7 @@ module tio_module
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
-    tiof_tempo_time_to_utc_caldate, tiof_use_file_epoch, &
+    tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
     tiof_make_lev1_bounding_polygon
 
   public tiof_put1d_text, tiof_get1d_text
@@ -284,10 +284,10 @@ contains
     errstat = tio_f_use_file_epoch (obj % fileid)
   end subroutine
 
-  subroutine tiof_tempo_time_to_utc_caldate (tempo_time, year, &
-                                             month, day, hour, errstat)
+  subroutine tiof_taix_time_to_utc_caldate (taix_time, year, &
+                                            month, day, hour, errstat)
     implicit none
-    real (kind=r8), intent(in) :: tempo_time
+    real (kind=r8), intent(in) :: taix_time
     integer, intent(out) :: year, month, day
     real (kind=r8), intent(out) :: hour
     integer, intent(inout) :: errstat
@@ -296,8 +296,8 @@ contains
 
     if (errstat < 0) return
 
-    status = tio_f_tempo_time_to_utc_caldate (tempo_time, year, &
-                                              month, day, hour)
+    status = tio_f_taix_time_to_utc_caldate (taix_time, year, &
+                                             month, day, hour)
     if (status /= 0) then
       call tell_error (tell_runtime_error, &
                        "Error converting time to calendar date", &

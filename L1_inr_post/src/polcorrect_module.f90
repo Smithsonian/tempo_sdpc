@@ -76,15 +76,15 @@ module polcorrect_module
   end interface
 
   interface
-    function tio_time_tempo_to_utc_caldate (tempo_time,year,month,day,hour) &
-      bind (c, name='tio_time_tempo_to_utc_caldate')
+    function tio_time_taix_to_utc_caldate (taix_time,year,month,day,hour) &
+      bind (c, name='tio_time_taix_to_utc_caldate')
       use, intrinsic :: iso_c_binding, only : c_double, c_int
       implicit none
-      real (c_double), value :: tempo_time
+      real (c_double), value :: taix_time
       integer (c_int), intent(out) :: year, month, day
       real (c_double), intent(out) :: hour
-      integer (c_int) :: tio_time_tempo_to_utc_caldate
-    end function tio_time_tempo_to_utc_caldate
+      integer (c_int) :: tio_time_taix_to_utc_caldate
+    end function tio_time_taix_to_utc_caldate
   end interface
 
   interface
@@ -904,7 +904,7 @@ contains
       return
     endif
 
-    err = tio_time_tempo_to_utc_caldate (tstart, year, month, day, hour)
+    err = tio_time_taix_to_utc_caldate (tstart, year, month, day, hour)
     if (err /= 0) then
       call tell_error (tell_io_read_error, &
                        "process_group: error processing granule start time", &

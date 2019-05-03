@@ -85,7 +85,7 @@ static int convert_seconds (double elapsed_seconds, int omit_delimiters)
    double hour, minf, sec;
    int year, month, day, hr, min;
 
-   if (0 != tio_time_tempo_to_utc_caldate (elapsed_seconds, &year, &month, &day, &hour))
+   if (0 != tio_time_taix_to_utc_caldate (elapsed_seconds, &year, &month, &day, &hour))
      return -1;
 
    hr   = (int)hour;
@@ -138,7 +138,7 @@ static int convert_timestamp_string (const char *arg)
         buf[len+1] = 0;
      }
 
-   if (0 != _pTIO_tempo_time_from_utc_timestr (buf, &tempo))
+   if (0 != _pTIO_taix_time_from_utc_timestr (buf, &tempo))
      return -1;
    tempo += fsec;
 
@@ -225,7 +225,7 @@ int main (int argc, char **argv)
           }
      }
 
-   if (0 != tio_time_set_tempo_epoch (epoch_string))
+   if (0 != tio_time_set_taix_epoch (epoch_string))
      goto error_return;
 
    switch (task)

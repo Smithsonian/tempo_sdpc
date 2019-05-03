@@ -67,8 +67,8 @@ static int leap_seconds (const Solar_Geom_Type *sgt, double jd_utc,
 
    utc_secs = (jd_utc - sgt->unix_epoch_jd) * SEC_PER_DAY;
 
-   if ((0 != tio_time_utc_to_tempo (utc_secs, &tempo))
-       || (0 != tio_time_tempo_to_tai (tempo, &tai_secs)))
+   if ((0 != tio_time_utc_to_taix (utc_secs, &tempo))
+       || (0 != tio_time_taix_to_tai (tempo, &tai_secs)))
      return -1;
 
    *leap_secs = tai_secs - utc_secs;

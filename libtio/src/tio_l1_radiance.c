@@ -195,8 +195,8 @@ static int define_radiance_granule_global_ident (int grp)
    strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
    strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
 
-   if ((0 != _pTIO_tempo_time_from_utc_timestr (gid.tstart_str, &gid.tstart))
-       ||(0 != _pTIO_tempo_time_from_utc_timestr (gid.tend_str, &gid.tend)))
+   if ((0 != _pTIO_taix_time_from_utc_timestr (gid.tstart_str, &gid.tstart))
+       ||(0 != _pTIO_taix_time_from_utc_timestr (gid.tend_str, &gid.tend)))
      return -1;
 
    return _pTIO_write_granule_ident (grp, &gid);

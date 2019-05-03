@@ -14,11 +14,11 @@ static int check_time_conversions (double tempo)
    struct tm tm;
    int year, month, day, hr, min;
 
-  if (-1 == tio_time_tempo_to_utc (tempo, &other))
+  if (-1 == tio_time_taix_to_utc (tempo, &other))
      return -1;
-   if (-1 == tio_time_tempo_to_utc_caldate (tempo, &year, &month, &day, &hour))
+   if (-1 == tio_time_taix_to_utc_caldate (tempo, &year, &month, &day, &hour))
      return -1;
-   if (0 != tio_time_utc_to_tempo (other, &tempo_from_utc))
+   if (0 != tio_time_utc_to_taix (other, &tempo_from_utc))
      return -1;
 
    tt = (time_t)other;
@@ -37,7 +37,7 @@ static int check_time_conversions (double tempo)
    fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6f\n",
             year, month, day, hr, min, sec);
 
-   if (-1 == tio_time_tempo_to_tai (tempo, &other))
+   if (-1 == tio_time_taix_to_tai (tempo, &other))
      return -1;
    tt = (time_t)other;
    gmtime_r (&tt, &tm);
@@ -52,7 +52,7 @@ int main (void)
    double tempo_time;
    int status;
 
-   if (0 != tio_time_set_tempo_epoch ("2000-01-01T12:00:00Z"))
+   if (0 != tio_time_set_taix_epoch ("2000-01-01T12:00:00Z"))
      exit (EXIT_FAILURE);
 
    while (!feof(stdin))

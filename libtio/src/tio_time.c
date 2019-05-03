@@ -350,36 +350,36 @@ static int tai_to_utc (double tai, double *utc_time)
 
 #if 0
 /* At one time, we thought the TEMPO Epoch was at 12:00, January 1, 2000 UTC */
-static time_t __Tempo_Epoch_Time_T = ((time_t)946728000L);
-static time_t __Tempo_Epoch_TAI = ((time_t)946728032L);
+static time_t __Epoch_Time_T = ((time_t)946728000L);
+static time_t __Epoch_TAI = ((time_t)946728032L);
 #else
-static time_t __Tempo_Epoch_Time_T = 0;
-static time_t __Tempo_Epoch_TAI = 0;
+static time_t __Epoch_Time_T = 0;
+static time_t __Epoch_TAI = 0;
 #endif
 
 static void __halt_when_epoch_not_set (void)
 {
-   fprintf (stderr, "*** ERROR: %s: TEMPO epoch is undefined\n", __func__);
+   fprintf (stderr, "*** ERROR: %s: epoch is undefined\n", __func__);
    exit (EXIT_FAILURE);
 }
 
-static time_t __tempo_epoch_tai (void)
+static time_t __taix_epoch_tai (void)
 {
-   if (__Tempo_Epoch_TAI == 0)
+   if (__Epoch_TAI == 0)
      __halt_when_epoch_not_set ();
 
-   return __Tempo_Epoch_TAI;
+   return __Epoch_TAI;
 }
 
-static time_t __tempo_epoch_timet (void)
+static time_t __taix_epoch_timet (void)
 {
-   if (__Tempo_Epoch_Time_T == 0)
+   if (__Epoch_Time_T == 0)
      __halt_when_epoch_not_set ();
 
-   return __Tempo_Epoch_Time_T;
+   return __Epoch_Time_T;
 }
 
-static int __tempo_epoch_set (const char *utc_string)
+static int __taix_epoch_set (const char *utc_string)
 {
    struct tm tm = {0};
    double utc, tai;
@@ -403,35 +403,35 @@ static int __tempo_epoch_set (const char *utc_string)
    if (0 != utc_to_tai (utc, &tai))
      return -1;
 
-   __Tempo_Epoch_Time_T = (time_t)utc;
-   __Tempo_Epoch_TAI = (time_t)tai;
+   __Epoch_Time_T = (time_t)utc;
+   __Epoch_TAI = (time_t)tai;
 
    return 0;
 }
 
 int _pTIO_time_epoch_is_set (void)
 {
-   return (__Tempo_Epoch_TAI != 0);
+   return (__Epoch_TAI != 0);
 }
 
-int tio_time_set_tempo_epoch (const char *utc_string)
+int tio_time_set_taix_epoch (const char *utc_string)
 {
-   return __tempo_epoch_set (utc_string);
+   return __taix_epoch_set (utc_string);
 }
 
-double tio_time_tempo_epoch_timet (void)
+double tio_time_taix_epoch_timet (void)
 {
-   return (double) __tempo_epoch_timet();
+   return (double) __taix_epoch_timet();
 }
 
-int tio_time_tempo_to_utc_caldate
-(double tempo_time, int *year, int *month, int *day, double *hour)
+int tio_time_taix_to_utc_caldate
+(double taix_time, int *year, int *month, int *day, double *hour)
 {
    struct tm tm;
    double utc;
    time_t tt;
 
-   if (0 != tio_time_tempo_to_utc (tempo_time, &utc))
+   if (0 != tio_time_taix_to_utc (taix_time, &utc))
      return -1;
 
    tt = (time_t) utc;
@@ -451,42 +451,42 @@ int tio_time_tempo_to_utc_caldate
    return 0;
 }
 
-int tio_time_tempo_to_utc (double tempo_time, double *utc_time)
+int tio_time_taix_to_utc (double taix_time, double *utc_time)
 {
    double tai;
 
-   if (tempo_time < 0.0)
+   if (taix_time < 0.0)
      {
-        tell_verror (TELL_INVALID_PARM_ERROR, "tio_time_tempo_to_utc: tempo time value is less than 0");
+        tell_verror (TELL_INVALID_PARM_ERROR, "tio_time_taix_to_utc: tai X time value is less than 0");
         return -1;
      }
 
-   tai = __tempo_epoch_tai() + tempo_time;
+   tai = __taix_epoch_tai() + taix_time;
 
    return tai_to_utc (tai, utc_time);
 }
 
-int tio_time_tempo_to_tai (double tempo_time, double *tai_time)
+int tio_time_taix_to_tai (double taix_time, double *tai_time)
 {
-   *tai_time = tempo_time + __tempo_epoch_tai();
+   *tai_time = taix_time + __taix_epoch_tai();
    return 0;
 }
 
-int tio_time_utc_to_tempo (double utc_time, double *tempo_time)
+int tio_time_utc_to_taix (double utc_time, double *taix_time)
 {
    double tai;
 
-   if (utc_time < __tempo_epoch_timet())
+   if (utc_time < __taix_epoch_timet())
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "tio_time_utc_to_tempo: UTC time value is less than the TEMPO epoch");
+                     "%s: UTC time value is earlier than the epoch", __func__);
         return -1;
      }
 
    if (0 != utc_to_tai (utc_time, &tai))
      return -1;
 
-   *tempo_time = tai - __tempo_epoch_tai();
+   *taix_time = tai - __taix_epoch_tai();
 
    return 0;
 }

@@ -534,7 +534,7 @@ contains
 
     tempo_time = 5.42937157308202d+08
     hour_expected = 11.8756411672300768d0;
-    call tiof_tempo_time_to_utc_caldate (tempo_time, year, &
+    call tiof_taix_time_to_utc_caldate (tempo_time, year, &
                                          month, day, hour, errstat)
     if (errstat /= 0) return
     if (year /= 2017 .or. month /= 3 .or. day /= 16 &
