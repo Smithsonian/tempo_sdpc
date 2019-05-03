@@ -131,6 +131,8 @@ contains
       return
     endif
 
+    call tiof_use_file_epoch (rad_s % obj, errstat)
+
     call tiof_push_group (rad_s % obj, tempo_band_name_uv, errstat)
     call check_pol_correction_status (rad_s % obj, errstat)
     call tiof_pop_group (rad_s % obj, errstat)
