@@ -27,13 +27,13 @@ static void usage (void)
    fprintf (stderr, "Options:\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
-   fprintf (stderr, "  -f | --fix FILE     Fix header timestamps\n");
+   fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
-   fprintf (stderr, "  -w | --write        Write time_reference timestamp\n");
-   fprintf (stderr, "  -s | --sec SECONDS  Convert seconds since epoch to UTC timestamp string\n");
+   fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
+   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
+   fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
    fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
-   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to seconds since epoch\n");
    fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
    exit (EXIT_SUCCESS);
 }
@@ -142,7 +142,7 @@ static int convert_timestamp_string (const char *arg)
      return -1;
    tempo += fsec;
 
-   fprintf (stdout, "%0.15e\n", tempo);
+   fprintf (stdout, "%0.6f\n", tempo);
    return 0;
 
 error_return:

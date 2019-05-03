@@ -353,8 +353,8 @@ static int tai_to_utc (double tai, double *utc_time)
 static time_t __Epoch_Time_T = ((time_t)946728000L);
 static time_t __Epoch_TAI = ((time_t)946728032L);
 #else
-static time_t __Epoch_Time_T = 0;
-static time_t __Epoch_TAI = 0;
+static time_t __Epoch_Time_T = ((time_t)-1);
+static time_t __Epoch_TAI = ((time_t)-1);
 #endif
 
 static void __halt_when_epoch_not_set (void)
@@ -365,7 +365,7 @@ static void __halt_when_epoch_not_set (void)
 
 static time_t __taix_epoch_tai (void)
 {
-   if (__Epoch_TAI == 0)
+   if (__Epoch_TAI < 0.0)
      __halt_when_epoch_not_set ();
 
    return __Epoch_TAI;
@@ -373,10 +373,15 @@ static time_t __taix_epoch_tai (void)
 
 static time_t __taix_epoch_timet (void)
 {
-   if (__Epoch_Time_T == 0)
+   if (__Epoch_Time_T < 0.0)
      __halt_when_epoch_not_set ();
 
    return __Epoch_Time_T;
+}
+
+int _pTIO_time_epoch_is_set (void)
+{
+   return (__Epoch_TAI > 0.0);
 }
 
 static int __taix_epoch_set (const char *utc_string)
@@ -403,15 +408,18 @@ static int __taix_epoch_set (const char *utc_string)
    if (0 != utc_to_tai (utc, &tai))
      return -1;
 
+   if (tai < 0.0)
+     {
+	tell_verror (TELL_UNSUPPORTED_ERROR,
+		     "%s: No support for epochs prior to 1970-01-01T00:00:00Z",
+		     __func__);
+	return -1;
+     }
+
    __Epoch_Time_T = (time_t)utc;
    __Epoch_TAI = (time_t)tai;
 
    return 0;
-}
-
-int _pTIO_time_epoch_is_set (void)
-{
-   return (__Epoch_TAI != 0);
 }
 
 int tio_time_set_taix_epoch (const char *utc_string)
