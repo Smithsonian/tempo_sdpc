@@ -60,7 +60,8 @@ static void usage (void)
    fprintf (stderr, "   -u | --update          update the lookup table\n");
    fprintf (stderr, "   -f | --find            search the lookup table\n");
    fprintf (stderr, "   -H | --header FILE     match header timestamp in TEMPO data product FILE\n");
-   fprintf (stderr, "   -s | --sec SECONDS     time elapsed since the TEMPO epoch [sec]\n");
+   fprintf (stderr, "   -s | --sec SECONDS     UTC time elapsed since the Unix epoch [sec]\n");
+   fprintf (stderr, "                          (e.g. a unix time_t value)\n");
    fprintf (stderr, "   -d | --delay SECONDS   delay closing database file (for testing only)\n\n");
    fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "WARNING: Because locking of network-mounted files is unreliable,\n");
@@ -669,8 +670,7 @@ static int direntry_handler (const char *fpath, const struct stat *sb, int typef
    Filedb_Type *fdb = get_global_filedb_ptr();
    const char *pbasename;
    struct tm tm = {0};
-   time_t utc;
-   double timestamp;
+   double utc;
 
    (void) sb;
 
@@ -690,12 +690,9 @@ static int direntry_handler (const char *fpath, const struct stat *sb, int typef
    /* timegm is a GNU extension, but this is easier than persuading
     * mktime to interpret the struct tm as UTC instead of local time.
     */
-   utc = timegm (&tm);
+   utc = (double) timegm (&tm);
 
-   if (0 != tio_time_utc_to_tempo (utc, &timestamp))
-     return -1;
-
-   return append_entry (fdb, fpath, timestamp);
+   return append_entry (fdb, fpath, utc);
 }
 
 static int create_lookup_table_dir (const char *path)
@@ -783,9 +780,10 @@ int read_config_common (Filedb_Type *fdb, config_t *cfg, const char *name)
    return 0;
 }
 
-static int query_file_timestamp (const char *file, double *timestamp)
+static int query_file_timestamp (const char *file, double *timestamp_utc)
 {
    int ncid, status = -1;
+   double tempo_time;
 
    if (0 != access (file, F_OK | R_OK))
      {
@@ -796,7 +794,13 @@ static int query_file_timestamp (const char *file, double *timestamp)
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return -1;
 
-   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, timestamp))
+   if (0 != tio_use_file_epoch (ncid))
+     goto close_and_return;
+
+   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &tempo_time))
+     goto close_and_return;
+
+   if (0 != tio_time_tempo_to_utc (tempo_time, timestamp_utc))
      goto close_and_return;
 
    status = 0;
@@ -863,7 +867,7 @@ int main (int argc, char **argv)
    Filedb_Type *fdb = NULL;
    const char *dbname;
    char *result_filename = NULL;
-   double timestamp = DBL_MAX;
+   double timestamp_utc = DBL_MAX;
    int status = EXIT_FAILURE;
    int task;
    enum
@@ -929,12 +933,12 @@ int main (int argc, char **argv)
              break;
 
            case 'H':
-             if (0 != query_file_timestamp (optarg, &timestamp))
+             if (0 != query_file_timestamp (optarg, &timestamp_utc))
                goto return_status;
              break;
 
            case 's':
-             if (1 != sscanf (optarg, "%le", &timestamp))
+             if (1 != sscanf (optarg, "%le", &timestamp_utc))
                goto return_status;
              break;
 
@@ -976,7 +980,7 @@ int main (int argc, char **argv)
         break;
 
       case TASK_FIND:
-        if (NULL == (result_filename = filedb_lookup (fdb->lookup_table, timestamp)))
+        if (NULL == (result_filename = filedb_lookup (fdb->lookup_table, timestamp_utc)))
           goto return_status;
         fputs (result_filename, stdout);
         FREE(result_filename);

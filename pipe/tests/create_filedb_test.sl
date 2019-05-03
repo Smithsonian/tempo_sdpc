@@ -56,7 +56,8 @@ define make_time_tagged_file (tt, path)
 
    if (mkdir_p (dir) != 0)
      throw ApplicationError, "creating $dir"$;
-   print(tt - Tempo_Epoch_Time_T, path);
+   %print(tt - Tempo_Epoch_Time_T, path);
+   print(tt, path);  % use time_t instead of times relative to tempo epoch
 }
 
 define slsh_main ()
