@@ -73,6 +73,12 @@ int main (int argc, char **argv)
    if (0 != TIO_open (radiance_file, NC_NOWRITE, &ncid))
      return 1;
 
+   if (0 != tio_use_file_epoch (ncid))
+     {
+	(void) TIO_close(ncid);
+	return 1;
+     }
+
    buf[0] = 0;
    n = TIO_filename_from_granule (ncid, prod_abbrev, level, version,
                                   buf, BUFSIZE);

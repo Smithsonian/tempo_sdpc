@@ -580,6 +580,50 @@ int tio_use_file_epoch (int ncid)
    return tio_time_set_tempo_epoch (utc_string);
 }
 
+void _pTIO_warn_about_time_reference_mismatch (int ncid)
+{
+   char file_epoch[MAX_ISOTIME_LEN];
+   double file_epoch_utc, internal_epoch_utc;
+   const char *attname = "time_reference";
+   struct tm tm = {0};
+   int status, nctype;
+
+   /* If the epoch hasn't been set, this issue may be totally irrelevant */
+   if (0 == _pTIO_time_epoch_is_set())
+     return;
+
+   /* If the file we're opening doesn't have the attribute, then we can't
+    * check for consistency, so silently do nothing more. */
+   status = nc_inq_att (ncid, NC_GLOBAL, attname, &nctype, NULL);
+   if ((status != NC_NOERR) || (nctype != NC_CHAR))
+     return;
+
+   /* If the file _does_ have the attribute, then we should complain about
+    * any failure to read it or parse it, and about any epoch mismatch.
+    */
+   if (NC_NOERR != nc_get_att_text (ncid, NC_GLOBAL, attname, file_epoch))
+     {
+	tell_vwarn (0, "%s: Error reading attribute %s", __func__, attname);
+	return;
+     }
+
+   if (NULL == strptime (file_epoch, DELIM_TIMESTAMP_FORMAT, &tm))
+     {
+	tell_vwarn (0, "%s: Error parsing attribute %s = %s",
+		    __func__, attname, file_epoch);
+	return;
+     }
+
+   file_epoch_utc = (double) timegm (&tm);
+   internal_epoch_utc = tio_time_tempo_epoch_timet();
+
+   if (file_epoch_utc != internal_epoch_utc)
+     {
+	tell_vwarn (0, "%s: Mismatched time reference: internal:%0.17e  file:%0.17e (time_t)",
+		    __func__, internal_epoch_utc, file_epoch_utc);
+     }
+}
+
 int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
                          double secs_since_tempo_epoch)
 {

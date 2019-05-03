@@ -348,17 +348,34 @@ static int tai_to_utc (double tai, double *utc_time)
    return 0;
 }
 
-/* FIXME: The TEMPO Epoch is at 12:00, January 1, 2000 UTC */
+#if 0
+/* At one time, we thought the TEMPO Epoch was at 12:00, January 1, 2000 UTC */
 static time_t __Tempo_Epoch_Time_T = ((time_t)946728000L);
 static time_t __Tempo_Epoch_TAI = ((time_t)946728032L);
+#else
+static time_t __Tempo_Epoch_Time_T = 0;
+static time_t __Tempo_Epoch_TAI = 0;
+#endif
+
+static void __halt_when_epoch_not_set (void)
+{
+   fprintf (stderr, "*** ERROR: %s: TEMPO epoch is undefined\n", __func__);
+   exit (EXIT_FAILURE);
+}
 
 static time_t __tempo_epoch_tai (void)
 {
+   if (__Tempo_Epoch_TAI == 0)
+     __halt_when_epoch_not_set ();
+
    return __Tempo_Epoch_TAI;
 }
 
 static time_t __tempo_epoch_timet (void)
 {
+   if (__Tempo_Epoch_Time_T == 0)
+     __halt_when_epoch_not_set ();
+
    return __Tempo_Epoch_Time_T;
 }
 
@@ -390,6 +407,11 @@ static int __tempo_epoch_set (const char *utc_string)
    __Tempo_Epoch_TAI = (time_t)tai;
 
    return 0;
+}
+
+int _pTIO_time_epoch_is_set (void)
+{
+   return (__Tempo_Epoch_TAI != 0);
 }
 
 int tio_time_set_tempo_epoch (const char *utc_string)
@@ -467,4 +489,9 @@ int tio_time_utc_to_tempo (double utc_time, double *tempo_time)
    *tempo_time = tai - __tempo_epoch_tai();
 
    return 0;
+}
+
+int tio_time_utc_to_tai (double utc_time, double *tai_time)
+{
+   return utc_to_tai (utc_time, tai_time);
 }

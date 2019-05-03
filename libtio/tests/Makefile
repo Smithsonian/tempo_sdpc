@@ -32,7 +32,7 @@ EXECUTABLES = tio_test time_test meta_test epoch_test tio_test_f ftest1 ppc_test
 
 all:  $(EXECUTABLES)
 
-check:	$(EXECUTABLES)
+check:	all
 	@./time_test < times.in > times.out && diff times.out times.chk && echo "running time_test...ok"
 	@./epoch_test && echo "running epoch_test...ok"
 	@./tio_test 2> c.test.log && echo "testing C...ok"
@@ -46,7 +46,7 @@ check:	$(EXECUTABLES)
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
-coverage:	$(EXECUTABLES)
+coverage:	all
 	# zero all execution counters
 	lcov -z -d $(GCDA_FILES_DIR) -d .
 	# create baseline coverage data file
@@ -96,4 +96,4 @@ covclean:
 distclean: clean covclean
 	-$(RM) -f $(EXECUTABLES) *.nc
 
-.PHONY: clean covclean distclean check coverage $(EXECUTABLES)
+.PHONY: all clean covclean distclean check coverage $(EXECUTABLES)

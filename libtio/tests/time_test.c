@@ -52,6 +52,9 @@ int main (void)
    double tempo_time;
    int status;
 
+   if (0 != tio_time_set_tempo_epoch ("2000-01-01T12:00:00Z"))
+     exit (EXIT_FAILURE);
+
    while (!feof(stdin))
      {
         status = fscanf (stdin, "%lf", &tempo_time);

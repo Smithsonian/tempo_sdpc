@@ -267,6 +267,7 @@ extern int TIO_write_timestamp (int ncid, int varid,
  * @param ncid    Index of destination netcdf file
  * @param varid   Variable id to receive attribute (usually NC_GLOBAL)
  * @return 0 on success, -1 on error
+ * Use \a tio_time_set_tempo_epoch to set the epoch.
 */
 extern int tio_write_epoch_timestamp (int ncid, int varid);
 

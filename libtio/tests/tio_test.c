@@ -1149,6 +1149,9 @@ int main (void)
 {
    int ntracks=8, nxtrack=6, ny=5;
 
+   if (0 != tio_time_set_tempo_epoch ("2000-01-01T12:00:00Z"))
+     return 1;
+
    if (test_l1_radiance ("delete_radiance.nc", ntracks, nxtrack, ny))
      return 1;
 

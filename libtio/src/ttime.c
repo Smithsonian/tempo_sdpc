@@ -9,20 +9,32 @@
 #include "_tio.h"
 #include "tio_template.h"
 
+enum
+{
+   TASK_UNKNOWN = 0,
+   TASK_CONVERT_FLOAT = 1,
+   TASK_CONVERT_STRING = 2,
+   TASK_FIX_FILE = 3
+};
+
+#define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
+
 static void usage (void)
 {
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
    fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SSZ\n");
    fprintf (stderr, "   or: ttime -f FILE [-g PATH] [-v VARNAME]\n");
-   fprintf (stderr, "  Options:\n");
+   fprintf (stderr, "Options:\n");
+   fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
+   fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
-   fprintf (stderr, "  -e | --epoch        Write TEMPO epoch timestamp\n");
-   fprintf (stderr, "  -s | --sec SECONDS  Convert seconds since TEMPO epoch to UTC timestamp string\n");
+   fprintf (stderr, "  -w | --write        Write time_reference timestamp\n");
+   fprintf (stderr, "  -s | --sec SECONDS  Convert seconds since epoch to UTC timestamp string\n");
    fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
-   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to seconds since TEMPO epoch\n");
-   fprintf (stderr, "  UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
+   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to seconds since epoch\n");
+   fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -68,19 +80,12 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
    return 0;
 }
 
-static int convert_seconds (const char *arg, int omit_delimiters)
+static int convert_seconds (double elapsed_seconds, int omit_delimiters)
 {
-   double tempo, hour, minf, sec;
+   double hour, minf, sec;
    int year, month, day, hr, min;
 
-   if (1 != sscanf (arg, "%le", &tempo))
-     {
-        fprintf (stderr, "*** Error: converting %s to elapsed seconds since TEMPO epoch\n",
-                 arg ? arg : "<null>");
-        return -1;
-     }
-
-   if (0 != tio_time_tempo_to_utc_caldate (tempo, &year, &month, &day, &hour))
+   if (0 != tio_time_tempo_to_utc_caldate (elapsed_seconds, &year, &month, &day, &hour))
      return -1;
 
    hr   = (int)hour;
@@ -90,12 +95,12 @@ static int convert_seconds (const char *arg, int omit_delimiters)
 
    if (omit_delimiters)
      {
-        fprintf (stdout, "%4d%02d%02dT%02d%02d%02.0f",
+        fprintf (stdout, "%4d%02d%02dT%02d%02d%02.0f\n",
                  year, month, day, hr, min, sec);
      }
    else
      {
-        fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6fZ",
+        fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
                  year, month, day, hr, min, sec);
      }
 
@@ -149,23 +154,27 @@ int main (int argc, char **argv)
 {
    static struct option long_options[] =
      {
-        {"utc", required_argument, 0, 'u'},
-        {"sec", required_argument, 0, 's'},
-        {"delim", no_argument,     0, 'd'},
-        {"epoch", no_argument,     0, 'e'},
-        {"fix", required_argument, 0, 'f'},
-        {"grp", required_argument, 0, 'g'},
-        {"var", required_argument, 0, 'v'},
+        {"utc",   required_argument, 0, 'u'},
+        {"sec",   required_argument, 0, 's'},
+        {"delim", no_argument,       0, 'd'},
+        {"write", no_argument,       0, 'w'},
+        {"epoch", required_argument, 0, 'e'},
+        {"fix",   required_argument, 0, 'f'},
+        {"grp",   required_argument, 0, 'g'},
+        {"var",   required_argument, 0, 'v'},
         {0,0,0,0}
      };
+   const char *utc_string = NULL;
+   const char *epoch_string = EPOCH_DEFAULT;
    const char *path = NULL;
    const char *grp = "/";
    const char *var = "time";
+   double elapsed_seconds = 0.0;
    int exit_status = EXIT_FAILURE;
    int status = -1;
-   int fix_file = 0;
    int write_epoch = 0;
    int omit_delimiters = 0;
+   int task = TASK_UNKNOWN;
 
    if (argc < 3)
      usage();
@@ -173,7 +182,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "edf:g:s:u:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "wde:f:g:s:u:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -181,7 +190,7 @@ int main (int argc, char **argv)
            default:
              fprintf (stderr, "getopt returned character %d??\n", c);
              break;
-           case 'e':
+           case 'w':
              write_epoch++;
              break;
            case 'd':
@@ -192,25 +201,53 @@ int main (int argc, char **argv)
              break;
            case 'f':
              path = optarg;
-             fix_file++;
+	     task = TASK_FIX_FILE;
              break;
            case 'v':
              var = optarg;
              break;
+	   case 'e':
+	     epoch_string = optarg;
+	     break;
            case 's':
-             status = convert_seconds (optarg, omit_delimiters);
+	     task = TASK_CONVERT_FLOAT;
+	     if (1 != sscanf (optarg, "%le", &elapsed_seconds))
+	       {
+		  fprintf (stderr, "*** Error: converting %s to elapsed seconds since the epoch\n",
+			   optarg ? optarg : "<null>");
+		  exit(1);
+	       }
              break;
            case 'u':
-             status = convert_timestamp_string (optarg);
+	     task = TASK_CONVERT_STRING;
+	     utc_string = optarg;
              break;
           }
      }
 
-   if (fix_file)
+   if (0 != tio_time_set_tempo_epoch (epoch_string))
+     goto error_return;
+
+   switch (task)
      {
+      case TASK_CONVERT_FLOAT:
+	status = convert_seconds (elapsed_seconds, omit_delimiters);
+	break;
+
+      case TASK_CONVERT_STRING:
+	status = convert_timestamp_string (utc_string);
+	break;
+
+      case TASK_FIX_FILE:
         status = fix_header_timestamp (path, grp, var, write_epoch);
+	break;
+
+      default:
+	fprintf (stderr, "*** Error: unsupported task\n");
+	break;
      }
 
+error_return:
    exit_status = status ? EXIT_FAILURE : EXIT_SUCCESS;
 
    return exit_status;

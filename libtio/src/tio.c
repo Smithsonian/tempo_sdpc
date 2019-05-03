@@ -330,6 +330,8 @@ int TIO_open (const char *path, int omode, int *ncid)
         return -1;
      }
 
+   _pTIO_warn_about_time_reference_mismatch (*ncid);
+
    return 0;
 }
 
