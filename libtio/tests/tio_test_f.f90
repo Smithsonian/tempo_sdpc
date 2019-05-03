@@ -43,6 +43,7 @@ program tio_test
   integer :: errstat, i,j,k, iwave_start
   integer :: scalar_int=-12345, scalar_int_read=0
   real (kind=r4) :: n
+  real (kind=r8) :: taix_time, taix_time_expected
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
@@ -68,6 +69,20 @@ program tio_test
   call tiof_use_file_epoch (obj, errstat)
   if (errstat /= 0) then
     stop 2
+  endif
+
+  taix_time = -1.0_r8
+  call tiof_utcstr_to_taix_time ("2000-01-01T12:00:00Z", taix_time, errstat)
+  if (errstat /= 0 .or. taix_time /= 0.0_r8) then
+    write(*,*)'*** tiof_utcstr_to_taix_time failed'
+    stop 3
+  endif
+  taix_time_expected = 328622402.0_r8
+  call tiof_utcstr_to_taix_time ("2010-06-01T00:00:00Z", taix_time, errstat)
+  if (errstat /= 0 .or. taix_time /= taix_time_expected) then
+    write(*,*)'*** tiof_utcstr_to_taix_time failed: expected t=', &
+      taix_time_expected,' got t=',taix_time
+    stop 3
   endif
 
   call test_granule_ident (obj, errstat)

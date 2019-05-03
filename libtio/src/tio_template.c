@@ -495,7 +495,7 @@ enum
      DELIM_TIMESTAMP = 1
 };
 
-int _pTIO_taix_time_from_utc_timestr (const char *str, double *tai_sec)
+int tio_time_utcstr_to_taix (const char *str, double *tai_sec)
 {
    struct tm tm;
    double utc;
@@ -756,3 +756,5 @@ FCALLSCFUN5(INT, tio_time_taix_to_utc_caldate, TIO_F_TAIX_TIME_TO_UTC_CALDATE, t
             DOUBLE, PINT,PINT,PINT,PDOUBLE)
 FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,
             INT)
+FCALLSCFUN2(INT, tio_time_utcstr_to_taix, TIO_F_TIME_UTCSTR_TO_TAIX, tio_f_time_utcstr_to_taix,
+	    STRING, PDOUBLE)

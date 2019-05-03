@@ -151,12 +151,14 @@ module tio_module
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch
+    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch, &
+    tio_f_time_utcstr_to_taix
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
-    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch
+    tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch, &
+    tio_f_time_utcstr_to_taix
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -168,7 +170,8 @@ module tio_module
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
-    tiof_make_lev1_bounding_polygon
+    tiof_make_lev1_bounding_polygon, &
+    tiof_utcstr_to_taix_time
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -282,6 +285,17 @@ contains
 
     if (errstat /= 0) return
     errstat = tio_f_use_file_epoch (obj % fileid)
+  end subroutine
+
+  subroutine tiof_utcstr_to_taix_time (utc_str, taix_time, errstat)
+    use iso_c_binding, only : c_null_char
+    implicit none
+    character (len=*), intent(in) :: utc_str
+    real (kind=r8), intent(out) :: taix_time
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+    errstat = tio_f_time_utcstr_to_taix (trim(utc_str)//c_null_char, taix_time)
   end subroutine
 
   subroutine tiof_taix_time_to_utc_caldate (taix_time, year, &

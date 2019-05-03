@@ -138,7 +138,7 @@ static int convert_timestamp_string (const char *arg)
         buf[len+1] = 0;
      }
 
-   if (0 != _pTIO_taix_time_from_utc_timestr (buf, &tempo))
+   if (0 != tio_time_utcstr_to_taix (buf, &tempo))
      return -1;
    tempo += fsec;
 

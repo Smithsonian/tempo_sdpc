@@ -144,7 +144,6 @@ struct _pTIO_Granule_Ident_Type
 extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid);
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
-extern int _pTIO_taix_time_from_utc_timestr (const char *timestr, double *taix_sec);
 extern void _pTIO_warn_about_time_reference_mismatch (int ncid);
 extern int _pTIO_time_epoch_is_set (void);
 

@@ -702,8 +702,8 @@ static int check_granule_ident (int ncid) /*{{{*/
         return -1;
      }
 
-   if ((0 != _pTIO_taix_time_from_utc_timestr ("2018-09-26T18:00:00Z", &tstart))
-       || (0 != _pTIO_taix_time_from_utc_timestr ("2018-09-26T18:00:01Z", &tend)))
+   if ((0 != tio_time_utcstr_to_taix ("2018-09-26T18:00:00Z", &tstart))
+       || (0 != tio_time_utcstr_to_taix ("2018-09-26T18:00:01Z", &tend)))
      return -1;
 
    if (0 != tio_write_granule_ident_times (ncid, tstart, tend))

@@ -378,6 +378,17 @@ extern int tio_time_taix_to_utc (double taix_time, double *utc_time);
  */
 extern int tio_time_utc_to_taix (double utc_time, double *taix_time);
 
+/** Convert UTC time string to TAI sec since the X epoch
+ * @param[in]  utc_str    UTC time stamp of the form YYYY-MM-DDThh:mm:ssZ
+ * @param[out] taix_time  TAI seconds since the X epoch
+ * @return 0 on success, -1 on error
+ *
+ * The TAI time scale advances monotonically, while the UTC
+ * time scale includes leap second corrections at irregular
+ * intervals.
+ */
+extern int tio_time_utcstr_to_taix (const char *utc_str, double *taix_sec);
+
 /** Convert UTC sec since the Unix epoch to TAI sec since the Unix epoch
  * @param[in]  utc_time    UTC seconds since the Unix epoch
  * @param[out] tai_time    TAI seconds since the Unix epoch
