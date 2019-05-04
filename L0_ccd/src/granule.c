@@ -329,6 +329,9 @@ Granule_Type *granule_open (const char *file)
      goto error_return;
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
 
+   if (0 != tio_use_file_epoch (g->ncid))
+     goto error_return;
+
    if (0 != get_granule_dims (g))
      goto error_return;
 
