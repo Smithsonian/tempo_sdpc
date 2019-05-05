@@ -9,12 +9,12 @@ Radiance_Table_Name = "rad"
 
 Radiance_Products = ["cldrr", "hcho", "no2", "o3t", "o3p"]
 
-Radiance_Derived_Files = ["rad_L0", "rad_L1"] \
+Radiance_Derived_Files = ["rad_L0", "rad_L1a", "rad_L1b"] \
                          + [s + "_L2" for s in Radiance_Products] \
                          + [s + "_L3" for s in Radiance_Products]
 
 Radiance_File_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
-                            "scan_num", "granule_num"]
+                            "scan_num", "scan_type", "granule_num"]
 
 class Table_Type:
 
@@ -40,6 +40,7 @@ class Table_Type:
 def init_radiance_table ():
     fields = {}
     fields["istart"] = "integer not null"
+    fields["scan_type"] = "integer not null"
     fields["scan_num"] = "integer not null"
     fields["granule_num"] = "integer not null"
     fields["time_coverage_start_since_epoch"] = "float not null"
@@ -131,18 +132,23 @@ def process_file (conn, filename):
 
     nc = NetCDFFile(filename, "r")
     attr = nc.__dict__
-    keys = {}
 
-    k = "time_coverage_start_since_epoch"
-    if not k in attr:
-        print ("WARNING: {} not in file {}".format (k, filename))
+    if not "time_coverage_start_since_epoch" in attr:
+        print ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
-    keys["istart"] = int(attr[k])
+    if "inr_status" in attr.keys():
+        if attr["inr_status"] == "2":
+            product_name = product_name + 'b'
+        else:
+            product_name = product_name + 'a'
+
+    keys = {}
+    keys["istart"] = int(attr["time_coverage_start_since_epoch"])
     keys["filename"] = remove_dot_prefix (basename)
 
-# FIXME: in  production, this will be 'rad_L0':
-    if (product_name == 'rad_L1'):
+    # FIXME: in  production, this will be 'rad_L0':
+    if (product_name == 'rad_L1a'):
         get_radiance_keys (nc, keys)
         status = insert_radiance_entry (conn, keys)
         if status < 0:
