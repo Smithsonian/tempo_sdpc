@@ -72,13 +72,19 @@ contains
       return
     endif
 
+    ! FIXME?: The docs are unclear about what "uncomputable" means.
+    ! Does it mean permanently uncomputable? (e.g. don't even try),
+    ! or does it mean "an error occurred" (e.g. try again and it might
+    ! work)?  Since I have no idea, I'm restoring the previous behavior
+    ! where the code only returns -1 to indicate that an error occurred.
+
     if (any(params < this_optimizer%param_min) &
         .or. any(this_optimizer%param_max < params)) then
-      if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
-        elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
-      else
+      !if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
+      !  elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
+      !else
         elsunc_ctrl = UNCOMPUTABLE
-      endif
+      !endif
       return
     endif
 
@@ -86,11 +92,11 @@ contains
                                    residuals, num_residuals, return_status)
 
     if (return_status < 0) then
-      if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
-        elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
-      else
+      !if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
+      !  elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
+      !else
         elsunc_ctrl = UNCOMPUTABLE
-      endif
+      !endif
     endif
 
     log_level = tell_get_log_level()
