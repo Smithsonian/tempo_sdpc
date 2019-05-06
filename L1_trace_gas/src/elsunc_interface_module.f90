@@ -42,13 +42,14 @@ contains
 
     ! elsunc interprets the following return values of ctrl:
     integer (kind=i4), parameter :: UNCOMPUTABLE = -1
+    integer (kind=i4), parameter :: UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT = -11 ! Why? I have no idea.
     integer (kind=i4), parameter :: JACOBIAN_NOT_AVAILABLE = 0
 
     elsunc_ctrl_input = elsunc_ctrl
 
     ! 'this_optimizer' is a global
 
-    if (elsunc_ctrl == 2) then
+    if (elsunc_ctrl_input == 2) then
       this_optimizer%num_jac_calls = this_optimizer%num_jac_calls + 1
       if (this_optimizer%num_jac_calls < this_optimizer%max_num_fun_calls) then
         elsunc_ctrl = JACOBIAN_NOT_AVAILABLE
@@ -73,8 +74,11 @@ contains
 
     if (any(params < this_optimizer%param_min) &
         .or. any(this_optimizer%param_max < params)) then
-      elsunc_ctrl = UNCOMPUTABLE
-      if (elsunc_ctrl_input /= 1) elsunc_ctrl = elsunc_ctrl - 10
+      if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
+        elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
+      else
+        elsunc_ctrl = UNCOMPUTABLE
+      endif
       return
     endif
 
@@ -82,8 +86,11 @@ contains
                                    residuals, num_residuals, return_status)
 
     if (return_status < 0) then
-      elsunc_ctrl = UNCOMPUTABLE
-      if (elsunc_ctrl_input /= 1) elsunc_ctrl = elsunc_ctrl - 10
+      if (elsunc_ctrl_input == -1 .or. elsunc_ctrl_input == 2) then
+        elsunc_ctrl = UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT
+      else
+        elsunc_ctrl = UNCOMPUTABLE
+      endif
     endif
 
     log_level = tell_get_log_level()
