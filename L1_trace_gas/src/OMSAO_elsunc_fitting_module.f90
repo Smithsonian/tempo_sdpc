@@ -2462,6 +2462,12 @@ CONTAINS
           write(*,*)'*** WARNING (elsunc): bug-workaround was triggered:'
           write(*,*)'*** rngkm1=',rngkm1,' prank=',prank
           write(*,*)'*** rngkm1 > prank, so presub call was skipped'
+          if (prank >= 1) then
+            rank = prank
+          else
+            rank = 1
+          endif
+          write(*,*)'*** We must set rank to something here, so we guess and hope: rank=',rank
         endif
       endif
       RETURN !GO TO 100
