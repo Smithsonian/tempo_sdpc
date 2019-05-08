@@ -203,14 +203,14 @@ CONTAINS
         ! Get the PGE Version
         ! ------------------------------------------------------------------
       CASE ( pge_version_lun )
-        IF ( errstat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = str_missval
+        IF ( estat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = str_missval
         pge_version = TRIM(ADJUSTL(config_lun_values(i)))
 
         ! ------------------------------------------------------------------
         ! Get the Instrument Name
         ! ------------------------------------------------------------------
       CASE ( instrument_name_lun )
-        IF ( errstat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = str_missval
+        IF ( estat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = str_missval
         instrument_name = TRIM(ADJUSTL(config_lun_values(i)))
 
         ! ------------------------------------------------------------------
