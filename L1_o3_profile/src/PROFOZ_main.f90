@@ -82,16 +82,18 @@ PROGRAM PROFOZ_main
   runtime = e1-e2
   WRITE(*,'(A,f8.2)') '@ Finish:'//ADJUSTL(TRIM(l2_filename))//"time:",runtime
 
+ 666 continue
+  write(*,'(a,i9)')' pge_error_status = ',pge_error_status
   ! ------------------------------------
   ! Write END_OF_RUN message to log file
   ! ------------------------------------
-666 SELECT CASE ( pge_error_status )
+  SELECT CASE ( pge_error_status )
   CASE ( pge_errstat_ok )
     ! ----------------------------------------------------------------
     ! PGE execution completed successfully. All is well.
     ! ----------------------------------------------------------------
     errstat = OMI_SMF_setmsg ( OMSAO_S_ENDOFRUN, '', modulename, 0 )
-
+    STOP 0
   CASE ( pge_errstat_warning )
     ! ----------------------------------------------------------------
     ! PGE execution raised non-terminal warnings. Nothing serious, we
