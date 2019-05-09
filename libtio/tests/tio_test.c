@@ -730,6 +730,96 @@ static int check_granule_ident (int ncid) /*{{{*/
 
 /*}}}*/
 
+static int write_lonlat_arrays (int ncid, int ntracks, int nxtrack) /*{{{*/
+{
+   float *lon=NULL, *lat=NULL, *vza=NULL;
+   int *inrqf=NULL;
+   float lon_0, lat_0, dlon, dlat;
+   size_t len = nxtrack * ntracks;
+   int i, j, grp, start[2], count[2], status = -1;
+
+   if ((NULL == (lon = (float *)malloc (len * sizeof(float))))
+       ||(NULL == (lat = (float *)malloc (len * sizeof(float))))
+       ||(NULL == (vza = (float *)malloc (len * sizeof(float))))
+       ||(NULL == (inrqf = (int *)malloc (len * sizeof(int))))
+      )
+     {
+        fprintf (stderr, "*** %s: malloc failed\n", __func__);
+        goto return_status;
+     }
+
+   memset ((char *)inrqf, 0, len * sizeof(int));
+
+   /* At some point, these arrays may need to be flipped in some way */
+   lon_0 = -90.0;   dlon = -0.08;
+   lat_0 = +45.0;   dlat = -0.08;
+
+   for (i = 0; i < ntracks; i++)
+     {
+        float *plon = lon + i * nxtrack;
+        float *plat = lat + i * nxtrack;
+        float *pvza = vza + i * nxtrack;
+        float lon_i = lon_0 + i * dlon;
+        for (j = 0; j < nxtrack; j++)
+          {
+             plon[j] = lon_i;
+             plat[j] = lat_0 + j * dlat;
+             pvza[j] = 0.0;
+          }
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = ntracks;
+   count[1] = nxtrack;
+
+   if (0 != TIO_inq_grp (ncid, "band_290_490_nm", &grp))
+     goto return_status;
+
+   if ((0 != TIO_put_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_FLOAT, lon))
+       ||(0 != TIO_put_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_FLOAT, lat))
+       ||(0 != TIO_put_var_section (grp, TEMPO_VAR_VZ_ANGLE, start, count, TIO_FLOAT, vza))
+       ||(0 != TIO_put_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, inrqf))
+      )
+     goto return_status;
+
+   status = 0;
+return_status:
+   free(lon);
+   free(lat);
+   free(vza);
+   free(inrqf);
+   return status;
+}
+
+/*}}}*/
+
+static int test_scan_type (void)
+{
+   uint16_t scan_label, scan_num, scan_type;
+
+#define TEST_SCAN_NUM  ((uint16_t)10)
+#define TEST_SCAN_TYPE  ((uint16_t)40)
+
+   scan_num = TEST_SCAN_NUM;
+   scan_type = TEST_SCAN_TYPE;
+
+   if (0 != tio_make_scan_label (&scan_label, scan_num, scan_type))
+     {
+        fprintf (stderr, "*** tio_make_scan_label failed\n");
+        return -1;
+     }
+
+   tio_parse_scan_label (scan_label, &scan_num, &scan_type);
+   if ((scan_num != TEST_SCAN_NUM) || (scan_type != TEST_SCAN_TYPE))
+     {
+        fprintf (stderr, "*** tio_make_scan_type failed\n");
+        return -1;
+     }
+
+   return 0;
+}
+
 static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny) /*{{{*/
 {
    int ncid, varid, status, grp, err=-1;
@@ -763,6 +853,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    int i, num_sgrps = sizeof (sgrps) / sizeof(sgrps[0]);
    TIO_Scan_Ident_Type *scan_ident = NULL;
    double test_timestamp_out, test_timestamp_in;
+
+   if (0 != test_scan_type ())
+     return -1;
 
    for (i = 0; i < num_sgrps; i++)
      {
@@ -899,6 +992,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         fprintf (stderr, "*** error reading timestamp\n");
         goto cleanup;
      }
+
+   if (0 != write_lonlat_arrays (ncid, ntracks, nxtrack))
+     goto cleanup;
 
    if ((0 != TIO_def_grp (grp, "subgroup", &sub_grp))
        || (0 != tio_def_l1_radiance_angle_vars (sub_grp))
@@ -1148,9 +1244,25 @@ cleanup:
 int main (void)
 {
    int ntracks=8, nxtrack=6, ny=5;
+   const char *epoch = "2000-01-01T12:00:00Z";
+   const char *buf_expected = "TEMPO_rad_L1_V01_20000101T120000Z.nc";
+   char buf[72];
 
-   if (0 != tio_time_set_taix_epoch ("2000-01-01T12:00:00Z"))
+   if (0 != tio_time_set_taix_epoch (epoch))
      return 1;
+
+   if ( __tio_filename_string (buf, sizeof(buf), 0.0, "rad", 1, 1) < 0)
+     {
+        fprintf (stderr, "*** Error: __tio_filename_string failed\n");
+        return 1;
+     }
+
+   if (0 != strcmp (buf, buf_expected))
+     {
+        fprintf (stderr, "*** Error: filename mismatch: buf=%s, expected=%s\n",
+                 buf, buf_expected);
+        return 1;
+     }
 
    if (test_l1_radiance ("delete_radiance.nc", ntracks, nxtrack, ny))
      return 1;

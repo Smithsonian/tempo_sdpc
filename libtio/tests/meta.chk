@@ -20,3 +20,8 @@
     VALUE   = "A string with ${#CHARS in it"
 
     VALUE   =     "Another string"
+
+    LOCALGRANULEID =   "product_file_name.nc"
+    VERSIONID      =   1
+    PGEVERSION     =   "v1.2.3"
+    SHORTNAME      =   "product_short_name"

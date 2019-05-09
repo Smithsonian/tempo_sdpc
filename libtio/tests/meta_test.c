@@ -2,6 +2,36 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <tio.h>
+#include <_tio.h>
+
+static int try_date_time_range_scan (TIO_Meta_Type *meta)
+{
+   _pTIO_Granule_Ident_Type g2 =
+     {
+        .next = NULL,
+        .scan_num = 1,
+        .granule_num = 2,
+        .granule_flag = 1,
+        .tstart = 2.0,
+        .tend = 3.0,
+        .tstart_str = "2019-05-09T03:00:00Z",
+        .tend_str = "2019-05-09T04:00:00Z"
+     };
+   _pTIO_Granule_Ident_Type g1 =
+     {
+        .next = &g2,
+        .scan_num = 1,
+        .granule_num = 1,
+        .granule_flag = 0,
+        .tstart = 1.0,
+        .tend = 2.0,
+        .tstart_str = "2019-05-09T01:00:00Z",
+        .tend_str = "2019-05-09T02:00:00Z"
+     };
+   TIO_Scan_Ident_Type lst = {&g1};
+
+   return tio_meta_set_datetime_range_scan (meta, &lst);
+};
 
 int main (void)
 {
@@ -13,7 +43,7 @@ int main (void)
    char *meta_str_array[] = {"The", "Sun", "Also", "Rises"};
    char *strings_to_append[] = {"append A", "append B", "append C"};
    const char *ncfile = "delete_radiance.nc";
-   int ncid, grp, i;
+   int ncid, grp, uv_grp, i;
 
    if (NULL == (meta = tio_meta_open ()))
      goto cleanup_and_exit;
@@ -52,7 +82,16 @@ int main (void)
    if (0 != tio_meta_set (meta, "STR_KEYWORD3", TIO_META_TYPE_STRING, 1, "Another string"))
      goto cleanup_and_exit;
 
+   if (0 != try_date_time_range_scan (meta))
+     goto cleanup_and_exit;
+
+   if (0 != tio_meta_set_standard (meta, "product_file_name.nc", "product_short_name", 1, "v1.2.3"))
+     goto cleanup_and_exit;
+
    if (0 != tio_meta_expand_stream (meta, stdin, stdout))
+     goto cleanup_and_exit;
+
+   if (0 != tio_meta_expand_file (meta, "meta.in", "xxx"))
      goto cleanup_and_exit;
 
    if ((0 != TIO_open (ncfile, NC_WRITE, &ncid))
@@ -61,6 +100,15 @@ int main (void)
         fprintf (stderr, "*** Error opening netcdf file metadata group: %s\n", ncfile);
         goto cleanup_and_exit;
      }
+
+   if (0 != tio_meta_set_datetime_range (meta, ncid))
+     goto cleanup_and_exit;
+
+   if (0 != TIO_inq_grp (ncid, "band_290_490_nm", &uv_grp))
+     goto cleanup_and_exit;
+
+   if (0 != tio_meta_set_lev1_bounding_polygon_and_centroid (meta, uv_grp))
+     goto cleanup_and_exit;
 
    if (0 != tio_meta_write_ncattr (meta, grp))
      goto cleanup_and_exit;

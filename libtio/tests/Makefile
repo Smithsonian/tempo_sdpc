@@ -41,8 +41,8 @@ check:	all
 	@./ppc_test > ppc_test.out && diff ppc_test.out ppc_test.chk && echo "running ppc_test...ok"
 	@./history_test && echo "history update [0 args]...ok"
 	@./history_test arg1 arg2 arg3 && echo "history update [3 args]...ok"
-	@./meta_test < meta.in > meta.out && diff meta.out meta.chk && echo "running meta_test...ok"
-	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out times.out meta.out history_test.nc
+	@./meta_test < meta.in > meta.out && diff meta.out meta.chk && diff xxx.met meta.chk && echo "running meta_test...ok"
+	-/bin/rm delete_*.nc ftest1.nc *.test.log ppc_test.out times.out meta.out history_test.nc xxx.met
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 

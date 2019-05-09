@@ -20,3 +20,8 @@
     VALUE   = "A string with ${#CHARS in it"
 
     VALUE   =     ${STR_KEYWORD3}
+
+    LOCALGRANULEID =   ${LOCALGRANULEID}
+    VERSIONID      =   ${VERSIONID}
+    PGEVERSION     =   ${PGEVERSION}
+    SHORTNAME      =   ${SHORTNAME}
