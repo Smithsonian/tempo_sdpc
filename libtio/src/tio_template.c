@@ -758,3 +758,5 @@ FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,
             INT)
 FCALLSCFUN2(INT, tio_time_utcstr_to_taix, TIO_F_TIME_UTCSTR_TO_TAIX, tio_f_time_utcstr_to_taix,
 	    STRING, PDOUBLE)
+     FCALLSCFUN1(INT, tio_time_set_taix_epoch, TIO_F_TIME_SET_TAIX_EPOCH, tio_f_time_set_taix_epoch,
+            STRING)
