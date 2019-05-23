@@ -198,6 +198,9 @@ subroutine test_put_errors (obj, max_dims, errstat)
   call tiof_put3d_ui1 (obj, absent, start(1:3), edge(1:3), &
                       int(reshape(values, edge(1:3)), kind=i1), errstat)
   call expected_fail (errstat)
+  call tiof_put4d_ui1 (obj, absent, start(1:4), edge(1:4), &
+                      int(reshape(values, edge(1:4)), kind=i1), errstat)
+  call expected_fail (errstat)
 
   ! integer (kind=i2)
   call tiof_put1d_i2 (obj, absent, start(1:1), edge(1:1), &
@@ -326,7 +329,7 @@ subroutine test_get_errors (obj, max_dims, errstat)
   real (kind=r4) :: r4s
   real (kind=r8) :: r8s
   character (len=1), dimension(1) :: strings
-  integer (kind=i1) :: i1_1d(1), i1_2d(1,1), i1_3d(1,1,1)
+  integer (kind=i1) :: i1_1d(1), i1_2d(1,1), i1_3d(1,1,1), i1_4d(1,1,1,1)
   integer (kind=i2) :: i2_1d(1), i2_2d(1,1), i2_3d(1,1,1), i2_4d(1,1,1,1)
   integer (kind=i4) :: i4_1d(1), i4_2d(1,1), i4_3d(1,1,1)
   integer (kind=i8) :: i8_1d(1), i8_2d(1,1), i8_3d(1,1,1)
@@ -391,6 +394,9 @@ subroutine test_get_errors (obj, max_dims, errstat)
   call expected_fail (errstat)
   call tiof_get3d_ui1 (obj, absent, start(1:3), edge(1:3), &
                       i1_3d, errstat)
+  call expected_fail (errstat)
+  call tiof_get4d_ui1 (obj, absent, start(1:4), edge(1:4), &
+                      i1_4d, errstat)
   call expected_fail (errstat)
 
   ! integer (kind=i2)
@@ -674,9 +680,11 @@ subroutine check_create (filename, values, max_dims, dimlens, &
     enddo
   enddo
 
-  ! rather than support all 4D arrays, just add this one explicitly
+  ! rather than support all 4D arrays, just add these explicitly
   call tiof_varlist_append (varlist, errstat, "ssA4", nf90_short, dimids=dimids(1:4), &
                             fillvalue=fillvalue, comment="comment: ssA4")
+  call tiof_varlist_append (varlist, errstat, "ubA4", nf90_byte, dimids=dimids(1:4), &
+                            fillvalue=fillvalue, comment="comment: ubA4")
   if (errstat < 0) then
     call tell_error (tell_runtime_error, "varlist append failed", errstat);
     return
@@ -745,6 +753,8 @@ subroutine check_create (filename, values, max_dims, dimlens, &
                       int(reshape(values(1:product(edge(1:2))), edge(1:2)),kind=i1), errstat)
   call tiof_put3d_ui1 (obj, "ubA3", start(3:1:-1), edge(3:1:-1), &
                       int(reshape(values(1:product(edge(1:3))), edge(1:3)),kind=i1), errstat)
+  call tiof_put4d_ui1 (obj, "ubA4", start(4:1:-1), edge(4:1:-1), &
+                      int(reshape(values(1:product(edge(1:4))), edge(1:4)),kind=i1), errstat)
 
   if (errstat < 0) then
     call tell_error (tell_io_write_error, "i1 write failed", errstat);
@@ -899,7 +909,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
   integer :: len_text, dim_text
 
   integer (kind=i1), allocatable :: &
-    i1_1d(:), i1_2d(:,:), i1_3d(:,:,:)
+    i1_1d(:), i1_2d(:,:), i1_3d(:,:,:), i1_4d(:,:,:,:)
   integer (kind=i2), allocatable :: &
     i2_1d(:), i2_2d(:,:), i2_3d(:,:,:), i2_4d(:,:,:,:)
   integer (kind=i4), allocatable :: &
@@ -1010,6 +1020,7 @@ subroutine check_read (filename, values, max_dims, start, edge, &
   allocate (i1_1d(edge(1)), &
             i1_2d(edge(1),edge(2)), &
             i1_3d(edge(1),edge(2),edge(3)), &
+            i1_4d(edge(1),edge(2),edge(3),edge(4)), &
             i2_1d(edge(1)), &
             i2_2d(edge(1),edge(2)), &
             i2_3d(edge(1),edge(2),edge(3)), &
@@ -1103,6 +1114,14 @@ subroutine check_read (filename, values, max_dims, start, edge, &
   if (any (int(values(1:product(edge(1:3))),kind=i1) &
            /= reshape(i1_3d, [product(edge(1:3))]))) then
     call tell_error (tell_runtime_error, "i1_3d u-value mismatch", errstat)
+    return
+  endif
+  i1_4d(:,:,:,:) = -1
+  call tiof_get4d_ui1 (obj, "ubA4", start(4:1:-1), edge(4:1:-1), i1_4d, errstat, &
+                     replace_fill=int(fillvalue,kind=i1))
+  if (any (int(values(1:product(edge(1:4))),kind=i1) &
+           /= reshape(i1_4d, [product(edge(1:4))]))) then
+    call tell_error (tell_runtime_error, "i1_4d u-value mismatch", errstat)
     return
   endif
 
