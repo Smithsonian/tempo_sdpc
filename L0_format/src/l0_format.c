@@ -936,7 +936,7 @@ int main (int argc, char **argv)
    const char *param_file = "l0_format.cfg";
    Process_Method_Table_Type *tbl = Method_Table;
    Control_Type ctrl = {0};
-   config_t cfg;
+   config_t cfg = {0};
    TPInfo_Type *tp = NULL;
    int verbose = 0;
    int status = EXIT_FAILURE;
