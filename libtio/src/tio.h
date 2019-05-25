@@ -427,6 +427,13 @@ extern double tio_time_taix_epoch_timet (void);
  */
 extern int tio_time_set_taix_epoch (const char *utc_string);
 
+/** Set the X epoch defined as a count of seconds (UTC) since the Unix epoch
+ * @param[in]  tt    Epoch specification expressed as a count of seconds since
+ *                   the Unix epoch (UTC)
+ * @return 0 on success, -1 on error
+ */
+extern int tio_time_set_taix_epoch_timet (time_t tt);
+
 /** Set the X epoch using the time_reference attribute stored in a file
  * @param[in]  ncid   Device id of a netCDF file open for reading
  * @return 0 on success, -1 on error

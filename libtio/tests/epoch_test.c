@@ -4,15 +4,9 @@
 #include <tio.h>
 #include <math.h>
 
-static int check_epoch (const char *epoch_str, time_t tt)
+static int check_epoch_tt (time_t tt)
 {
    double tempo0, utc0;
-
-   if (0 != tio_time_set_taix_epoch (epoch_str))
-     {
-        fprintf (stderr, "*** FAIL setting epoch = %s\n", epoch_str);
-        return -1;
-     }
 
    tempo0 = 0.0;
    if ((0 != tio_time_taix_to_utc (tempo0, &utc0))
@@ -30,6 +24,27 @@ static int check_epoch (const char *epoch_str, time_t tt)
      }
 
    return 0;
+}
+
+static int check_epoch (const char *epoch_str, time_t tt)
+{
+   if (0 != tio_time_set_taix_epoch (epoch_str))
+     {
+        fprintf (stderr, "*** FAIL setting epoch = %s\n", epoch_str);
+        return -1;
+     }
+
+   if (0 != check_epoch_tt (tt))
+     return -1;
+
+   if (0 != tio_time_set_taix_epoch_timet (tt))
+     {
+        fprintf (stderr, "*** FAIL setting epoch = %ld\n", tt);
+        return -1;
+     }
+
+   return check_epoch_tt (tt);
+
 }
 
 int main (void)

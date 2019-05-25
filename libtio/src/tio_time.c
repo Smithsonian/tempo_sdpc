@@ -384,26 +384,10 @@ int _pTIO_time_epoch_is_set (void)
    return (__Epoch_TAI > 0.0);
 }
 
-static int __taix_epoch_set (const char *utc_string)
+int tio_time_set_taix_epoch_timet (time_t tt)
 {
-   struct tm tm = {0};
-   double utc, tai;
-
-   if (utc_string == NULL)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid time specification: %s",
-                     __func__, utc_string ? utc_string : "NULL");
-        return -1;
-     }
-
-   if (NULL == strptime (utc_string, "%Y-%m-%dT%H:%M:%SZ", &tm))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
-                     __func__, utc_string);
-        return -1;
-     }
-
-   utc = (double) timegm (&tm);
+   double utc = (double) tt;
+   double tai;
 
    if (0 != utc_to_tai (utc, &tai))
      return -1;
@@ -420,6 +404,30 @@ static int __taix_epoch_set (const char *utc_string)
    __Epoch_TAI = (time_t)tai;
 
    return 0;
+}
+
+static int __taix_epoch_set (const char *utc_string)
+{
+   struct tm tm = {0};
+   time_t tt;
+
+   if (utc_string == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid time specification: %s",
+                     __func__, utc_string ? utc_string : "NULL");
+        return -1;
+     }
+
+   if (NULL == strptime (utc_string, "%Y-%m-%dT%H:%M:%SZ", &tm))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
+                     __func__, utc_string);
+        return -1;
+     }
+
+   tt = timegm (&tm);
+
+   return tio_time_set_taix_epoch_timet (tt);
 }
 
 int tio_time_set_taix_epoch (const char *utc_string)
