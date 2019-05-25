@@ -1,0 +1,1014 @@
+id,mnemonic,synopsis,description,datatype,units,red_low,yellow_low,yellow_high,red_high,raw_red_low,raw_yellow_low,raw_yellow_high,raw_red_high,enumlist,conversion,parameters,section_id,section_name,archive
+0,act_limit_cntrl,SMC FPGA Limit monitoring auto-shutdown configuration,"This item reports the value of the SMC FPGA ACT_LIMIT_CNTRL register.
+ This register setting controls the shutdown operation if the corresponding Actuator Processing Loop FPU's limit status bit is set.",UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+1,active_image,ICE Active Image,"This telemetry item reports the active image selection (the value of the SCIO BOOT_IMG field from the SCIO_STAT register). This is the
+ image that was booted during the most recent reset of the ICE.
+ 0 = Image 0
+ 1 = Image 1",ENUM,DN,,,,,,,,,"IMAGE_0:0, IMAGE_1:1",,,7,crit_tlm,1
+2,adc_busv_tlm,Input ICE Bus Voltage,"Value of the input ICE Bus Voltage. Note that this telemetry point is only valid when the heater master power is enabled
+ (HTR_MASTER_PWR = ON).",INT16,V,46,47.5,52,53,,,,,,poly1,-2.99010513E-08 0.0019595055957,12,adc_tlm,1
+3,adc_cal0_tmp_mux0,ADC_CAL0_TMP_MUX0,ADC_CAL0_TMP_MUX0,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+4,adc_cal0_tmp_mux1,ADC_CAL0_TMP_MUX1,ADC_CAL0_TMP_MUX1,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+5,adc_cal0_tmp_mux2,ADC_CAL0_TMP_MUX2,ADC_CAL0_TMP_MUX2,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+6,adc_cal1_tmp_mux0,ADC_CAL1_TMP_MUX0,ADC_CAL1_TMP_MUX0,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+7,adc_cal1_tmp_mux1,ADC_CAL1_TMP_MUX1,ADC_CAL1_TMP_MUX1,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+8,adc_cal1_tmp_mux2,ADC_CAL1_TMP_MUX2,ADC_CAL1_TMP_MUX2,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+9,adc_cal2_tmp_mux2,ADC_CAL2_TMP_MUX2,ADC_CAL2_TMP_MUX2,INT16,OHMS,,,,,,,,,,poly1,-4.63812796E-06 0.30395044,12,adc_tlm,1
+10,adc_cal3_tmp_mux2,ADC_CAL3_TMP_MUX2,ADC_CAL3_TMP_MUX2,INT16,OHMS,,,,,,,,,,poly1,-4.63812796E-06 0.30395044,12,adc_tlm,1
+11,adc_clct_cnt,ADC Collection counter,This telemetry item reports the number of times the FSW has collected Analog-to-Digital converted telemetry.,UINT32,DN,,,,,,,,,,,,16,util_info,1
+12,adc_ditce_temp,ADC_DITCE_TEMP,"Temperature sensor DITCE
+ SMA DITCE (Heater #4)",INT16,OHMS,986,1201,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+13,adc_hsc_temp,ADC_HSC_TEMP,ADC_HSC_TEMP,INT16,OHMS,334.9,396.1,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+14,adc_lvps_temp,ADC_LVPS_TEMP,ADC_LVPS_TEMP,INT16,OHMS,334.9,396.1,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+15,adc_mdf_temp,ADC_MDF_TEMP,ADC_MDF_TEMP,INT16,OHMS,334.9,396.1,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+16,adc_n13_5_v_tlm,ADC_N13_5_V_TLM,ADC_N13_5_V_TLM,INT16,V,-15.12,-14.85,-12.15,-11.88,,,,,,poly1,-9.31350996E-09 0.000610342249,12,adc_tlm,1
+17,adc_p13_5_v_tlm,ADC_P13_5_V_TLM,ADC_P13_5_V_TLM,INT16,V,11.88,12.15,14.85,15.12,,,,,,poly1,-9.31350996E-09 0.000610342249,12,adc_tlm,1
+18,adc_p2_5_v_ref,ADC_P2_5_V_REF,ADC_P2_5_V_REF,INT16,V,2.43,2.46,2.54,2.57,,,,,,poly1,-4.65675498E-09 0.000305171124,12,adc_tlm,1
+19,adc_p3_3_vdc,ADC_P3_3_VDC,ADC_P3_3_VDC,INT16,V,3.15,3.19,3.52,3.55,,,,,,poly1,-4.65675498E-09 0.000305171124,12,adc_tlm,1
+20,adc_rtd0,ADC_RTD0,ADC_RTD0,INT16,OHMS,,,,,,,,,,poly1,-4.63812796E-06 0.30395044,12,adc_tlm,1
+21,adc_rtd1,ADC_RTD1,ADC_RTD1,INT16,OHMS,,,,,,,,,,poly1,-4.63812796E-06 0.30395044,12,adc_tlm,1
+22,adc_sbc_temp,ADC_SBC_TEMP,ADC_SBC_TEMP,INT16,OHMS,334.9,396.1,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+23,adc_sm_base_temp,ADC_SM_BASE_TEMP,"Temperature sensor SMA Base
+ SMA Base (No Heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+24,adc_smc_temp,ADC_SMC_TEMP,ADC_SMC_TEMP,INT16,OHMS,334.9,396.1,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+25,adc_spare_0,Spare,Spare,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,14,adc_tlm_spare,1
+26,adc_spare_1,Spare,Spare,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,14,adc_tlm_spare,1
+27,adc_spare_2,Spare,Spare,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,14,adc_tlm_spare,1
+28,adc_temp0,Temperature Sensor 0,"Temperature Sensor 0
+ FPA Strap (Heater #0)",INT16,OHMS,674.2,813,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+29,adc_temp1,Temperature Sensor 1,"Temperature Sensor 1
+ FPA Window (Heater #1)",INT16,OHMS,674.2,813,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+30,adc_temp10,Temperature Sensor 12,"Temperature Sensor 12
+ Telescope +X (no heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+31,adc_temp11,Temperature Sensor 13,"Temperature Sensor 13
+ Telescope (Heater #6)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+32,adc_temp12,Temperature Sensor 14,"Temperature Sensor 14
+ SMA Mask (Heater #7)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+33,adc_temp13,Temperature Sensor 15,"Temperature Sensor 15
+ Telescope +X-Y (Heater #8)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+34,adc_temp14,Temperature Sensor 16,"Temperature Sensor 16
+ Telescope +X+Y (Heater #9)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+35,adc_temp15,Temperature Sensor 17,"Temperature Sensor 17
+ Telescope -X+Y (Heater #10)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+36,adc_temp16,Temperature Sensor 18,"Temperature Sensor 18
+ Telescope -X-Y (Heater #11)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+37,adc_temp17,Temperature Sensor 19,"Temperature Sensor 19
+ Telescope +Z (Heater #12)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+38,adc_temp18,Temperature Sensor 20,"Temperature Sensor 20
+ Telescope -Z (Heater #13)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+39,adc_temp19,Temperature Sensor 21,"Temperature Sensor 21
+ Telescope -Y-Z (Heater #14)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+40,adc_temp2,Temperature Sensor 2,"Temperature Sensor 2
+ FPA Frame (Heater #2)",INT16,OHMS,674.2,813,54683,75824.2,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+41,adc_temp20,Temperature Sensor 22,"Temperature Sensor 22
+ Telescope -Y+Z (Heater #15)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+42,adc_temp21,Temperature Sensor 21,"Temperature Sensor 21
+ Spare",INT16,OHMS,300,1700,29500,58000,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+43,adc_temp22,Temperature Sensor 22,"Temperature Sensor 22
+ Spare",INT16,OHMS,300,1700,29500,58000,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+44,adc_temp23,Temperature Sensor 23,"Temperature Sensor 23
+ Spare",INT16,OHMS,300,1700,29500,58000,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+45,adc_temp24,Temperature Sensor 24,"Temperature Sensor 24
+ Spare",INT16,OHMS,300,1700,29500,58000,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+46,adc_temp25,Temperature Sensor 25,"Temperature Sensor 25
+ Spare",INT16,OHMS,300,1700,29500,58000,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+47,adc_temp3,Temperature Sensor 3,"Temperature Sensor 3
+ CMA =Z face (Heater #3)",INT16,OHMS,470.7,561.9,75824.2,106362.9,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+48,adc_temp4,Temperature Sensor 4,"Temperature Sensor 4
+ CMA Motor (No Heater)",INT16,OHMS,334.9,396.1,75824.2,106362.9,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+49,adc_temp5,Temperature Sensor 7,"Temperature Sensor 7
+ Spectrometer -X (no heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+50,adc_temp6,Temperature Sensor 8,"Temperature Sensor 8
+ Spectrometer +Z (no heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+51,adc_temp7,Temperature Sensor 9,"Temperature Sensor 9
+ Sensor Heat Sink (No Heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+52,adc_temp8,Temperature Sensor 10,"Temperature Sensor 10
+ Telescope T4 (no heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+53,adc_temp9,Temperature Sensor 11,"Temperature Sensor 11
+ Telescope -X (no heater)",INT16,OHMS,674.2,813,39874,54683,,,,,,poly1,-2.79405299E-05 1.83102675,12,adc_tlm,1
+54,adc1_txclk_err,ADC #1 TXCLK error flag,"When the TXCLK signal from ADC1 exhibits an error, this bit is latched to '1'. It can be cleared to a '0' state by writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+55,adc1_txfrm_eo_status,ADC #1 line even/odd flag,"0'- first pixel of previous line contained even TXFRM signature for ADC1; '1'- first pixel of previous line contained odd TXFRM signature for
+ ADC1",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+56,adc1_txfrm_err,ADC #1 TXFRM error flag,"When the TXFRM signal from ADC1 exhibits an error, this bit is latched to '1'. It can be cleared to a '0' state by writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+57,adc1_txfrm_lb_err,ADC #1 TXFRM frame signature mismatch flag,"When the first pixel of image lines contain unequal TXFRM signatures for ADC1, this bit is latched to '1'. It can be cleared to a '0' state by
+ writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+58,adc2_txclk_err,ADC #2 TXCLK error flag,"When the TXCLK signal from ADC2 exhibits an error, this bit is latched to '1'. It can be cleared to a '0' state by writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+59,adc2_txfrm_eo_status,ADC #2 line even/odd flag,"0'- first pixel of previous line contained even TXFRM signature for ADC2; '1'- first pixel of previous line contained odd TXFRM signature for
+ ADC2",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+60,adc2_txfrm_err,ADC #2 TXFRM error flag,"When the TXFRM signal from ADC2 exhibits an error, this bit is latched to '1'. It can be cleared to a '0' state by writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+61,adc2_txfrm_lb_err,ADC #2 TXFRM frame signature mismatch flag,"When the first pixel of image lines contain unequal TXFRM signatures for ADC2, this bit is latched to '1'. It can be cleared to a '0' state by
+ writing a '1' to it.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+62,anclrydatanumsa,Number of spacecraft ancillary data subaddresses,This telemetry item reports the number of subaddress for spacecraft ancillary data from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+63,anclrydatasa1,First subaddress for spacecraft ancillary data,This telemetry item reports the first subaddress for spacecraft ancillary data from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+64,apid,CCSDS Primary Header APID,The APID of the telemetry packet.,UINT16,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+65,ascii_buf_char_cnt,Number of valid characters in the ASCII buffer table,"This telemetry item indicates the number of characters written to the ASCII buffer table during the last 'CHECK_CPU' or 'CHECK_RTOS'
+ command execution.",UINT16,DN,,,,,,,,,,,,16,util_info,1
+66,b1553running,Flag indicating if 1553 core has been started,"This telemetry item reports the flag used to indicate if the 1553 core has been started. The 1553 core is not started until the first set of critical
+ telemetry is loaded in to 1553 memory.",UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+67,boot_crc,ICE Active Image CRC,CRC value calculated by the BOOTROM for the active FSW image currently running.,UINT32,DN,,,,,,,,,,,,7,crit_tlm,1
+68,boot_image,ICE Boot Image,"This telemetry item reports the boot image selection (the value of the SCIO ACT_IMG field from the SCIO_STAT register). This is the image
+ that will be boot at the next reset of the ICE.
+ 0 = Image 0
+ 1 = Image 1",ENUM,DN,,,,,,,,,"IMAGE_0:0, IMAGE_1:1",,,7,crit_tlm,1
+69,boot_ram_err_cnt,Bootrom RAM test errors,This item indicates the number of errors detected by the bootrom while testing RAM.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+70,cbm_bypass_cnt,Number of bypassed CBM commands,Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+71,cbm_last_id,Last executed CBM block ID,"This telemetry item indicates the ID of the command block that was executed last.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+72,cbm_procd_cnt,Number of processed CBM commands,Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+73,cbm_routed_cnt,Number of routed CBM commands,Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+74,cbm_state,Current state of the Command Block Memory CSU,Current state of the Command Block Memory CSU,ENUM,DN,,,,,,,,,"IDLE:0, RUN_CRIT:1, RUN_NON_CRIT:2",,,9,cmd_tt_info,1
+75,cbm_tbl_index,Cmd block index being processed by CBM,Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+76,ccd_int_type,CCD Integration Type used when FPE is commanded to IMAGING,This telemetry item reports the value of the FPE FPGA CCD_INT_TYPE register,ENUM,DN,,,,,,,,,"NOMINAL:0, SHORT_INT:1, LONG_INT:2, DARK_INT:3",,,24,fpe_tlm,1
+77,ccd_param_sel,Indicates if the CCD_PARAM_SEL jumper input is high or low,Indicates if the CCD_PARAM_SEL jumper input is high or low,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+78,ccd_temp1,Latest value of CCD temperature sensor #1,FPE FPGA FPE_ATLM_CCD_TEMP1 register,UINT16,C,-40,-35,50,55,,,,,,poly1,-111.924 0.04697,29,fpe_analog_tlm2,1
+79,ccd_temp1_valid,Validity of CCD temperature sensor #1,FPE FPGA FPE_ATLM_CCD_TEMP1 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+80,ccd_temp2,Latest value of CCD temperature sensor #2,FPE FPGA FPE_ATLM_CCD_TEMP2 register,UINT16,C,-40,-35,50,55,,,,,,poly1,-96.961 0.04704,29,fpe_analog_tlm2,1
+81,ccd_temp2_valid,Validity of CCD temperature sensor #2,FPE FPGA FPE_ATLM_CCD_TEMP2 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+82,chn_lnk_par_err_cnt,Number of ChannelLink Parity Errors,This counter reports the total number of ChannelLink parity errors.,UINT32,DN,-1,-1,1,1,,,,,,,,22,spw_chn_lnk,1
+83,chn_lnk_status,Status of ChannelLink,The current status of the ChannelLink.,UINT8,DN,,,,,,,,,,,,22,spw_chn_lnk,1
+84,cice_id,ICE Active Electronics box,Unique ID of the Interface Electronics box,ENUM,DN,,,,,,,,,"GEMS_A:28330, GEMS_B:28347, UNDOCUMENTED:32496",,,7,crit_tlm,1
+85,cma_back_porch,CMA motor move back porch duration,This telemetry item reports the BCK_PRCH field from the HSC FPGA MTR_CNTRL_RT register,UINT16,msec,,,,,,,,,,poly1,0 0.4545,18,mech_stepper_tlm,1
+86,cma_front_porch,CMA motor move front porch duration,This telemetry item reports the FNT_PRCH field from the HSC FPGA MTR_CNTRL_RT register,UINT16,msec,,,,,,,,,,poly1,0 0.4545,18,mech_stepper_tlm,1
+87,cma_last_abs_move_status,Status of last Cal Mechanism Absolute Move,Status of last Cal Mechanism Absolute Move,ENUM,DN,,,,,,,,,"NONE:0, STEPS_LEFT:2113565, ABORTED:33816590, FAILED:33816591, SUCCESS:33816593, TIMEOUT:33816594",,,18,mech_stepper_tlm,1
+88,cma_move_dir,Calibrator Mechanism Move Direction,Calibrator Mechanism Move Direction,ENUM,DN,,,,,,,,,"CW:0, CCW:1",,,18,mech_stepper_tlm,1
+89,cma_move_steps,Calibrator Mechanism Commanded Number of Steps to Move,Calibrator Mechanism Commanded Number of Steps to Move,UINT16,DN,,,,,,,,,,,,18,mech_stepper_tlm,1
+90,cma_moving,Calibrator Mechanism Moving Flag,Read from HSC FPGA register,ENUM,DN,,,,,,,,,"NOT_MOVING:0, MOVING:1",,,18,mech_stepper_tlm,1
+91,cma_mtr_1_ocp,Calibrator Mechanism Motor 1 Overcurrent Protection Status,Calibrator Mechanism Motor 1 Overcurrent Protection Status,ENUM,DN,,,,,,,,,"OK:0, PHASE_A_TRIP:1, PHASE_B_TRIP:2, PHASE_A_B_TRIP:3",,,18,mech_stepper_tlm,1
+92,cma_mtr_2_ocp,Calibrator Mechanism Motor 2 Overcurrent Protection Status,Calibrator Mechanism Motor 2 Overcurrent Protection Status,ENUM,DN,,,,,,,,,"OK:0, PHASE_A_TRIP:1, PHASE_B_TRIP:2, PHASE_A_B_TRIP:3",,,18,mech_stepper_tlm,1
+93,cma_mtr_ab_stat,Indicates if the most recent CMA move occurred on mtr A or B,"This field is cleared to zero during a move, and is set to indicate on which motor the previous move occurred once the move completes.",ENUM,DN,,,,,,,,,"NONE:0, MTR_A:1, MTR_B:2",,,18,mech_stepper_tlm,1
+94,cma_mtr_go_err,Indicates if an error was detected while trying to start the move,This telemetry item reports the status of the MTR_GO_ERR bit in the HSC FPGA MTR_STATUS register,ENUM,DN,,,,,,,,,"OK:0, ERROR:1",,,18,mech_stepper_tlm,1
+95,cma_mtr_neg_cur,Negative motor current used when moving the CMA,This item reports the DAC_NEG value from the HSC FPGA MTR_I_CNTRL register,UINT16,A,,,,,,,,,,poly1,0.754008 -0.0003682579,18,mech_stepper_tlm,1
+96,cma_mtr_pos_cur,Positive motor current used when moving the CMA,This item reports the DAC_POS value from the HSC FPGA MTR_I_CNTRL register,UINT16,A,,,,,,,,,,poly1,0.754008 -0.0003682579,18,mech_stepper_tlm,1
+97,cma_ocp_status,HSC FPGA Overcurrent Control Register,HSC FPGA Overcurrent Control Register,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,18,mech_stepper_tlm,1
+98,cma_pos,Calibrator Mechanism Resolver Position,Calibrator Mechanism Resolver Position,UINT16,DN,,,,,,,,,,,,18,mech_stepper_tlm,1
+99,cma_res_en_err,Indicates if an error was detected while trying to enable resolver driver,This telemetry item reports the status of the RES_EN_ERR bit in the HSC RES_EN register,ENUM,DN,,,,,,,,,"OK:0, ERROR:1",,,18,mech_stepper_tlm,1
+100,cma_res_pwr_a,Calibrator Mechanism Resolver A Power,Calibrator Mechanism Resolver A Power,ENUM,DN,,,,,,,,,"OFF:0, ON:1",,,18,mech_stepper_tlm,1
+101,cma_res_pwr_b,Calibrator Mechanism Resolver B Power,Calibrator Mechanism Resolver B Power,ENUM,DN,,,,,,,,,"OFF:0, ON:1",,,18,mech_stepper_tlm,1
+102,cma_spare,Spare unused bits in MECH_STEPPER_TLM,Unused padding bits,UINT8,DN,,,,,,,,,,,,18,mech_stepper_tlm,1
+103,cma_state,Calibrator Mechanism State,"State of the CMA: OFF, IDLE or moving.",ENUM,DN,,,,,,,,,"OFF:0, IDLE:1, MOVING_REL:2, MOVING_ABS:4, MOVING_RETRY:6",,,18,mech_stepper_tlm,1
+104,cma_step_rate,Motor stepping rate for the CMA,This telemetry item reports the motor step rate from the HSC FPGA MTR_CNTRL_RT register,UINT16,msec,,,,,,,,,,poly1,0 0.4545,18,mech_stepper_tlm,1
+105,cma_steps_rem,Calibrator Mechanism Motor Steps Remaining,Calibrator Mechanism Motor Steps Remaining,UINT16,DN,,,,,,,,,,,,18,mech_stepper_tlm,1
+106,cmd_day_00,Command History Log Entry #1 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_1, the most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+107,cmd_day_01,Command History Log Entry #2 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_2, the 2nd most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+108,cmd_day_02,Command History Log Entry #3 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_3, the 3rd most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+109,cmd_day_03,Command History Log Entry #4 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_4, the 4th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+110,cmd_day_04,Command History Log Entry #5 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_5, the 5th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+111,cmd_day_05,Command History Log Entry #6 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_6, the 6th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+112,cmd_day_06,Command History Log Entry #7 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_7, the 7th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+113,cmd_day_07,Command History Log Entry #8 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_8, the 8th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+114,cmd_day_08,Command History Log Entry #9 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_9, the 9th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+115,cmd_day_09,Command History Log Entry #10 Time Tag (Days Since Epoch),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_10, the 10th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+116,cmd_msec_00,Command History Log Entry #0 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_00, the 1st most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+117,cmd_msec_01,Command History Log Entry #1 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_01, the 2nd most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+118,cmd_msec_02,Command History Log Entry #2 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_02, the 3rd most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+119,cmd_msec_03,Command History Log Entry #3 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_03, the 4th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+120,cmd_msec_04,Command History Log Entry #4 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_04, the 5th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+121,cmd_msec_05,Command History Log Entry #5 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_05,the 6th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+122,cmd_msec_06,Command History Log Entry #6 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_06, the 7th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+123,cmd_msec_07,Command History Log Entry #7 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_07, the 8th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+124,cmd_msec_08,Command History Log Entry #8 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_08, the 9th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+125,cmd_msec_09,Command History Log Entry #9 Time Tag (Milliseconds),"This field contains the number of milliseconds into the day specified by tlm point CMD_DAY_09, the 10th most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of sending the CLRLOG command to clear the Command Log.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+126,cmd_opcode_00,Command History List (Opcode #0),"The most recently logged command opcode.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+127,cmd_opcode_01,Command History List (Opcode #1),"The opcode of the 2nd most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+128,cmd_opcode_02,Command History List (Opcode #2),"The opcode of the 3rd most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+129,cmd_opcode_03,Command History List (Opcode #3),"The opcode of the 4th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+130,cmd_opcode_04,Command History List (Opcode #4),"The opcode of the 5th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+131,cmd_opcode_05,Command History List (Opcode #5),"The opcode of the 6th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+132,cmd_opcode_06,Command History List (Opcode #6),"The opcode of the 7th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+133,cmd_opcode_07,Command History List (Opcode #7),"The opcode of the 8th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+134,cmd_opcode_08,Command History List (Opcode #8),"The opcode of the 9th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+135,cmd_opcode_09,Command History List (Opcode #9),"The opcode of the 10th most recent command logged.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT8,DN,,,,,,,,,,,,4,cmd_history,1
+136,cmd_status_00,Command History List (Status #0),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+137,cmd_status_01,Command History List (Status #1),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+138,cmd_status_02,Command History List (Status #2),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+139,cmd_status_03,Command History List (Status #3),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+140,cmd_status_04,Command History List (Status #4),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+141,cmd_status_05,Command History List (Status #5),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+142,cmd_status_06,Command History List (Status #6),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+143,cmd_status_07,Command History List (Status #7),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+144,cmd_status_08,Command History List (Status #8),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+145,cmd_status_09,Command History List (Status #9),"The event ID for the command validation: CMD_ACCEPTED if all parameters were valid.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,4,cmd_history,1
+146,cmd_usec_00,Command History Log Entry #0 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_0, the most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+147,cmd_usec_01,Command History Log Entry #1 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_01, the 2nd most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+148,cmd_usec_02,Command History Log Entry #2 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_02, the 3rd most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+149,cmd_usec_03,Command History Log Entry #3 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_03, the 4th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+150,cmd_usec_04,Command History Log Entry #4 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_04, the 5th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+151,cmd_usec_05,Command History Log Entry #5 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_05, the 6th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+152,cmd_usec_06,Command History Log Entry #6 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_06, the 7th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+153,cmd_usec_07,Command History Log Entry #7 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_07, the 8th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+154,cmd_usec_08,Command History Log Entry #8 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_08, the 9th most
+ recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+155,cmd_usec_09,Command History Log Entry #9 Time Tag (Microseconds),"This field contains the number of microseconds since the last full millisecond into the day specified by tlm point CMD_DAY_09, the 10th
+ most recently logged command.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,4,cmd_history,1
+156,cmdfifo_lastwrsz,Number of words written to the Cmd FIFO during last write,The number of words written by the ICE FSW to the SMC FPGA command FIFO during the most recent write operation.,UINT16,DN,,,,,,,,,,,,28,sma_info2,1
+157,cmds_accepted,Number of commands FSW has accepted since last boot,Note: This telemetry Item will be reset to an initial value as a result of the GSE_CLRLOG Command.,UINT32,DN,,,,,,,,,,,,7,crit_tlm,1
+158,cmds_rejected,Number of Commands FSW has rejected since last boot,Note: This telemetry Item will be reset to an initial value as a result of the GSE_CLRLOG Command.,UINT32,DN,,,,,,,,,,,,7,crit_tlm,1
+159,cpu_sbe_cnt,CPU single bit error counter,This item indicates the number of single-bit errors detected by the UT699 while scrubbing the RAM.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+160,crc_img_addr,ICE Active Image address,Address in RAM from where the CRC was calculated.,UINT32,DN,,,,,,,,,,,,23,boot_info,1
+161,crit_cmd_ena,Critical commanding enabled flag,Flag denoting if commands deemed critical are allowed.,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,8,tbl_info,1
+162,crittlmnumsa,Number of critical telemetry subaddresses,This telemetry item reports the number of subaddress for critical telemetry from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+163,crittlmsa1,First subaddress for critical telemetry,This telemetry item reports the first subaddress for critical telemetry from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+164,csm_active_tbl_id,ID of active CSM command table,Shows the Table ID of the active Command Sequence (CSM).,UINT8,DN,,,,,,,,,,,,9,cmd_tt_info,1
+165,csm_bypass_cnt,Number of bypassed CSM commands,Number of CSM commands that have been bypassed.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+166,csm_procd_cnt,Number of processed CSM commands,Number of CSM commands that have been processed.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+167,csm_routed_cnt,Number of routed CSM commands,Number of CSM commands that have been routed.,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+168,csm_state,Current state of the Command Sequence Memory CSU,Current state of the Command Sequence Memory CSU,ENUM,DN,,,,,,,,,"IDLE:0, RUN_PRI:1, RUN_SEC:2",,,9,cmd_tt_info,1
+169,csm_tbl_index,Index into active CSM command table,The index into the active CSM command table,UINT16,DN,,,,,,,,,,,,9,cmd_tt_info,1
+170,curr_mirror_step,The current mirror step being collected,This telemetry item reports the value of the FPE FPGA CURRENT_MIRROR_STEP register.,UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+171,current_coadd,The current co-add frame being collected,This telemetry item reports the value of the FPE FPGA CURRENT_COADD register.,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+172,dda_tlm,Telemetry data for DDA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for DDA voltage,UINT16,V,17.58,17.95,19.06,19.43,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+173,dda_tlm_valid,DDA_TLM data validity flag (0 = valid; 1 = stale),DDA_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+174,ddb_tlm,Telemetry data for DDB voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for DDB voltage,UINT16,V,17.58,17.95,19.06,19.43,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+175,ddb_tlm_valid,DDB_TLM data validity flag (0 = valid; 1 = stale),DDB_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+176,ddc_tlm,Telemetry data for DDC voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for DDC voltage,UINT16,V,17.58,17.95,19.06,19.43,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+177,ddc_tlm_valid,DDC_TLM data validity flag (0 = valid; 1 = stale),DDC_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+178,ddd_tlm,Telemetry data for DDD voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for DDD voltage,UINT16,V,17.58,17.95,19.06,19.43,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+179,ddd_tlm_valid,DDD_TLM data validity flag (0 = valid; 1 = stale),DDD_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+180,delay_frames,Number of delay frames between each mirror step,"This telemetry item reports the value of the FPE FPGA DELAY_FRAMES registers. It determines the number of delay frames between each
+ swath during IMAGING mode.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+181,dmp_active_image,ICE Active Image,"This telemetry item reports the active image selection (the value of the SCIO BOOT_IMG field from the SCIO_STAT register). This is the
+ image that was booted during the most recent reset of the ICE.
+ 0 = Image 0
+ 1 = Image 1",ENUM,DN,,,,,,,,,"IMAGE_0:0, IMAGE_1:1",,,11,table_dump,1
+182,dmp_boot_crc,ICE Active Image CRC,CRC value calculated by the BOOTROM for the active FSW image currently running.,UINT32,DN,,,,,,,,,,,,11,table_dump,1
+183,dmp_data,Variable-Length Memory Dump Data,"This item is output only to COSMOS telemetry file, FSW does not know about this item and it is not output to any FSW file or the COSMOS
+ tables in tlm_rdr_tbls_ctdb.txt file.",UINT8[],DN,,,,,,,,,,,,11,table_dump,1
+184,dmp_fsw_mode,Current mode of the FSW,Current mode of the FSW.,ENUM,DN,,,,,,,,,"MODE_INITIALIZE:1, MODE_SAFE:2, MODE_OPERATE:4",,,11,table_dump,1
+185,dmp_mem_type,Table dump memory type (RAM or NVM),Table dump memory type (RAM or NVM),ENUM,DN,,,,,,,,,"RAM:0, NVM:17",,,11,table_dump,1
+186,dmp_offset,Table dump offset in bytes,Offset is in bytes from the beginning of the table.,UINT32,DN,,,,,,,,,,,,11,table_dump,1
+187,dmp_size,Table Dump size in bytes,The maximum download size is restricted by the fact that Memory Dump RDRs cannot be greater than 2048 CCSDS packets * 1024 bytes.,UINT32,DN,,,,,,,,,,,,11,table_dump,1
+188,dmp_tbl_cnt,Count of tables dumped,Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.,UINT16,DN,,,,,,,,,,,,11,table_dump,1
+189,dmp_tbl_id,Table ID of last table dumped,Table ID of last table dumped,UINT8,DN,,,,,,,,,,,,11,table_dump,1
+190,ev_byp_cnt,Count of Event Actions Responses that were bypassed.,Count of Event Actions Responses that were bypassed.,UINT32,DN,,,,,,,,,,,,5,event_history,1
+191,ev_code_00,Most Recent Fault List (Fault Code #1),"The most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+192,ev_code_01,Most Recent Fault List (Fault Code #1),"The 2nd most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+193,ev_code_02,Most Recent Fault List (Fault Code #2),"The 3rd most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+194,ev_code_03,Most Recent Fault List (Fault Code #3),"The 4th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+195,ev_code_04,Most Recent Fault List (Fault Code #4),"The 5th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+196,ev_code_05,Most Recent Fault List (Fault Code #5),"The 6th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+197,ev_code_06,Most Recent Fault List (Fault Code #6),"The 7th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+198,ev_code_07,Most Recent Fault List (Fault Code #7),"The 8th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+199,ev_code_08,Most Recent Fault List (Fault Code #8),"The 9th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+200,ev_code_09,Most Recent Fault List (Fault Code #9),"The 10th most recently logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+201,ev_file_00,Most Recent Fault List (File #0),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+202,ev_file_01,Most Recent Fault List (File #1),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+203,ev_file_02,Most Recent Fault List (File #2),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+204,ev_file_03,Most Recent Fault List (File #3),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+205,ev_file_04,Most Recent Fault List (File #4),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+206,ev_file_05,Most Recent Fault List (File #5),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+207,ev_file_06,Most Recent Fault List (File #6),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+208,ev_file_07,Most Recent Fault List (File #7),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+209,ev_file_08,Most Recent Fault List (File #8),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+210,ev_file_09,Most Recent Fault List (File #9),"The file name pointer in RAM associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+211,ev_line_00,Most Recent Fault List (Line No. #1),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+212,ev_line_01,Most Recent Fault List (Line No. #2),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+213,ev_line_02,Most Recent Fault List (Line No. #3),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+214,ev_line_03,Most Recent Fault List (Line No. #4),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+215,ev_line_04,Most Recent Fault List (Line No. #5),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+216,ev_line_05,Most Recent Fault List (Line No. #6),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+217,ev_line_06,Most Recent Fault List (Line No. #7),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+218,ev_line_07,Most Recent Fault List (Line No. #8),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+219,ev_line_08,Most Recent Fault List (Line No. #9),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+220,ev_line_09,Most Recent Fault List (Line No. #10),"The file line number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,6,event_history_2,1
+221,ev_param_00,Most Recent Fault List (Parameter #0),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+222,ev_param_01,Most Recent Fault List (Parameter #1),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+223,ev_param_02,Most Recent Fault List (Parameter #2),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+224,ev_param_03,Most Recent Fault List (Parameter #3),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+225,ev_param_04,Most Recent Fault List (Parameter #4),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+226,ev_param_05,Most Recent Fault List (Parameter #5),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+227,ev_param_06,Most Recent Fault List (Parameter #6),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+228,ev_param_07,Most Recent Fault List (Parameter #7),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+229,ev_param_08,Most Recent Fault List (Parameter #8),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+230,ev_param_09,Most Recent Fault List (Parameter #9),"The 32-bit parameter associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+231,ev_seq_00,Most Recent Fault List (Seq No. #0),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+232,ev_seq_01,Most Recent Fault List (Seq No. #1),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+233,ev_seq_02,Most Recent Fault List (Seq No. #2),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+234,ev_seq_03,Most Recent Fault List (Seq No. #3),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+235,ev_seq_04,Most Recent Fault List (Seq No. #4),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+236,ev_seq_05,Most Recent Fault List (Seq No. #5),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+237,ev_seq_06,Most Recent Fault List (Seq No. #6),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+238,ev_seq_07,Most Recent Fault List (Seq No. #7),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+239,ev_seq_08,Most Recent Fault List (Seq No. #8),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+240,ev_seq_09,Most Recent Fault List (Seq No. #9),"The sequence number associated with the logged event ID.
+ Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.",UINT16,DN,,,,,,,,,,,,5,event_history,1
+241,ev_unrep_cnt,Number of unreported faults,"This is the number of faults that went unreported due to the Fault Handler receiving faults too quickly. This value would increment under
+ extreme conditions where the FSW is generating a flood of errors that cannot be processed quickly enough.NOTE:",UINT32,DN,,,,,,,,,,,,5,event_history,1
+242,event_next_seq,Next event sequence number,Note: This telemetry Item will be reset to an initial value as a result of the CLR_LOG Command.,UINT32,DN,,,,,,,,,,,,7,crit_tlm,1
+243,event_resp_state,Event Action Response state,Event Action Response state,ENUM,DN,,,,,,,,,"DISABLED:13, ENABLED:14",,,7,crit_tlm,1
+244,event_unrep,Counter of unreported events,Counter of unreported events,UINT16,DN,,,,,,,,,,,,7,crit_tlm,1
+245,fpe_32v_tlm,Telemetry data for 32VA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for 32VA voltage,UINT16,V,30.4,31.04,32.96,33.6,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+246,fpe_32v_valid,Pos 32V TLM data validity flag (0 = valid; 1 = stale),Neg 5V TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+247,fpe_cmded_mode,Last commanded mode of the Focal Plane Electronics,This telemetry item reports the value of the COMMANDED_MODE field from the FPE FPGA MODE register,ENUM,DN,,,,,,,,,"OFF:0, INITIALIZATION:1, IDLE:2, IMAGING:3",,,24,fpe_tlm,1
+248,fpe_current_mode,Current mode of the Focal Plane Electronics,This telemetry item reports the value of the CURRENT_MODE field from the FPE FPGA MODE register,ENUM,DN,,,,,,,,,"OFF:0, INITIALIZATION:1, IDLE:2, IMAGING:3",,,24,fpe_tlm,1
+249,fpe_diag_enable,FPE FPGA Diagnostic enable register,"FPE FPGA DIAG_ENABLE Register
+ Bit 9: Unused
+ Bit 8: SIM_EN_STATUS
+ Bits 7-0: DIAG_KEY",UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+250,fpe_fpga_rev,FPE FPGA revision number,"From FPE_REVISION regisger
+ Bits 31-16: MAJOR_REV
+ Bits 15-0: MINOR_REV",UINT32,DN,,,,,,,,,,,,24,fpe_tlm,1
+251,fpe_n12v_tlm,Latest telemetry value of -12V voltage,FPE FPGA FPE_ATLM_N12V register:,UINT16,V,-14.26,-13.81,-12.61,-12.27,,,,,,poly1,-33 0.0088623,29,fpe_analog_tlm2,1
+252,fpe_n12v_valid,Validity of -12V voltage,FPE FPGA FPE_ATLM_N12V register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+253,fpe_n5v_tlm,Telemetry data for -5VA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for -5VA voltage,UINT16,V,-5.46,-5.36,-5.04,-4.94,,,,,,poly1,-13.2 0.004035,25,fpe_analog_tlm,1
+254,fpe_n5v_valid,Neg 5V TLM data validity flag (0 = valid; 1 = stale),Neg 5V TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+255,fpe_p_inj_delay_lines,FPE FPGA Parallel Injection config - number of delay lines,"Number of delay lines prior to parallel injection being performed. FPE FPGA P_INJ_CFG regiser, field P_INJ_DELAY_LINES",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+256,fpe_p_inj_num_lines,FPE FPGA Parallel Injection config - number of lines,"Number of parallel injection lines. FPE FPGA FPE_P_INJ_CFG regiser, field P_INJ_NUM_LINES",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+257,fpe_p13v_tlm,Latest telemetry value of +13V voltage,FPE FPGA FPE_ATLM_13V register:,UINT16,V,11.36,11.61,13.09,13.34,,,,,,poly1,0 0.0088623,29,fpe_analog_tlm2,1
+258,fpe_p13v_valid,Validity of +13V voltage,FPE FPGA FPE_ATLM_13V register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+259,fpe_p5v_tlm,Telemetry data for +5VA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for +5VA voltage,UINT16,V,4.94,5.04,5.36,5.46,,,,,,poly1,0 0.00161133,25,fpe_analog_tlm,1
+260,fpe_p5v_valid,Pos 5V TLM data validity flag (0 = valid; 1 = stale),Pos 5V TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+261,fpe_pclk_hi_tlm,Latest telemetry value of PCLK_HI voltage,FPE FPGA FPE_ATLM_PCLK_HI register:,UINT16,V,10.69,10.91,11.59,11.81,,,,,,poly1,0 0.0088623,29,fpe_analog_tlm2,1
+262,fpe_pclk_hi_valid,Validity of PCLK_HI voltage,FPE FPGA FPE_ATLM_PCLK_HI register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+263,fpe_pclk_lo_tlm,Latest telemetry value of PCLK_LO voltage,FPE FPGA FPE_ATLM_PCLK_LO register:,UINT16,V,,,,,,,,,,poly1,-13.23 0.0040353,29,fpe_analog_tlm2,1
+264,fpe_pclk_lo_valid,Validity of PCLK_LO voltage,FPE FPGA FPE_ATLM_PCLK_LO register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+265,fpe_pidab_tlm,FPE FPGA PIDAB voltage register,FPE FPGA ATLM_PIDAB register,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+266,fpe_pidab_valid,FPE FPGA PIDAB voltage validity,FPE FPGA ATLM_PIDAB register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+267,fpe_pidcd_tlm,FPE FPGA PIDCD voltage register,FPE FPGA ATLM_PIDCD register,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+268,fpe_pidcd_valid,FPE FPGA PIDCD voltage valid,FPE FPGA ATLM_PIDCD register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+269,fpe_rg_hi_tlm,Latest telemetry value of RG_HI voltage,FPE FPGA FPE_ATLM_RG_HI register:,UINT16,V,6.65,6.79,7.21,7.35,,,,,,poly1,0 0.00241699,29,fpe_analog_tlm2,1
+270,fpe_rg_hi_valid,Validity of RG_HI voltage,FPE FPGA FPE_ATLM_RG_HI register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+271,fpe_rg_lo_tlm,Latest telemetry value of RG_LO voltage,FPE FPGA FPE_ATLM_RG_LO register:,UINT16,V,-3.68,-3.61,-3.4,-3.33,,,,,,poly1,-13.23 0.0040353,29,fpe_analog_tlm2,1
+272,fpe_rg_lo_valid,Validity of RG_LO voltage,FPE FPGA FPE_ATLM_RG_LO register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+273,fpe_rga_cfg,FPE FPGA RGA configuration register,"FPE FPGA RGA_CFG register
+ Bits 7-4: RGA_WIDTH
+ Bits 3-0: RGA_START",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+274,fpe_rgb_cfg,FPE FPGA RGB configuration register,"FPE FPGA RGB_CFG register
+ Bits 7-4: RGB_WIDTH
+ Bits 3-0: RGB_START",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+275,fpe_rgc_cfg,FPE FPGA RGC configuration register,"FPE FPGA RGC_CFG register
+ Bits 7-4: RGC_WIDTH
+ Bits 3-0: RGC_START",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+276,fpe_rgd_cfg,FPE FPGA RGD configuration register,"FPE FPGA RGD_CFG register
+ Bits 7-4: RGD_WIDTH
+ Bits 3-0: RGD_START",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+277,fpe_s_inj_delay_px,FPE FPGA Serial Injection config - number of delay pixels,"Number of serial injection pixels. FPE FPGA FPE_S_INJ_CFG regiser, field S_INJ_DELAY_PIXELS",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+278,fpe_s_inj_num_px,FPE FPGA Serial Injection config - number of pixels,"Number of serial injection pixels. FPE FPGA FPE_S_INJ_CFG regiser, field S_INJ_NUM_PIXELS",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+279,fpe_sclk_hi_tlm,Latest telemetry value of SCLK_HI voltage,FPE FPGA FPE_ATLM_SCLK_HI register:,UINT16,V,10.69,10.91,11.59,11.81,,,,,,poly1,0 0.0088623,29,fpe_analog_tlm2,1
+280,fpe_sclk_hi_valid,Validity of SCLK_HI voltage,FPE FPGA FPE_ATLM_SCLK_HI register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+281,fpe_sclk_lo_tlm,Latest telemetry value of SCLK_LO voltage,FPE FPGA FPE_ATLM_SCLK_LO register:,UINT16,V,,,,,,,,,,poly1,-13.23 0.0040353,29,fpe_analog_tlm2,1
+282,fpe_sclk_lo_valid,Validity of SCLK_LO voltage,FPE FPGA FPE_ATLM_SCLK_LO register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+283,fpe_sidab_tlm,FPE FPGA SIDAB voltage register,FPE FPGA ATLM_SIDAB register,UINT16,V,13.49,13.77,14.63,14.91,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+284,fpe_sidab_valid,FPE FPGA SIDAB voltage valid,FPE FPGA ATLM_SIDAB register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+285,fpe_sidcd_tlm,FPE FPGA SIDCD voltage register,FPE FPGA ATLM_SIDCD register,UINT16,V,13.49,13.77,14.63,14.91,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+286,fpe_sidcd_valid,FPE FPGA SIDCD voltage valid,FPE FPGA ATLM_SIDCD register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+287,fpe_temp1,Latest value of onboard FPE temperature sensor #1,FPE FPGA FPE_ATLM_FPE_TEMP1 register,INT16,C,-40,-35,67,72,,,,,,poly4,110.7 -0.07531 0.00002418 -4.056E-09 1.084E-13,29,fpe_analog_tlm2,1
+288,fpe_temp1_valid,Validity of onboard FPE temperature sensor #1,FPE FPGA FPE_ATLM_FPE_TEMP1 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+289,fpe_temp2,Latest value of onboard FPE temperature sensor #2,FPE FPGA FPE_ATLM_FPE_TEMP2 register,INT16,C,-40,-35,78,83,,,,,,poly4,110.7 -0.07531 0.00002418 -4.056E-09 1.084E-13,29,fpe_analog_tlm2,1
+290,fpe_temp2_valid,Validity of onboard FPE temperature sensor #2,FPE FPGA FPE_ATLM_FPE_TEMP2 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+291,fpe_tlm_spare,Spare unused bits in FPE_TLM section,#Type!,UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+292,fpe_v_spare1,"Latest telemetry value of SPARE1 voltage (ADC4, input channel 6)",FPE FPGA FPE_ATLM_SPARE1 register:,UINT16,DN,,,,,,,,,,,,29,fpe_analog_tlm2,1
+293,fpe_v_spare1_valid,"Validity of SPARE1 voltage (ADC4, input channel 6)",FPE FPGA FPE_ATLM_SPARE1 register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+294,fpe_v_spare2,"Latest telemetry value of SPARE2 voltage (ADC4, input channel 7)",FPE FPGA FPE_ATLM_SPARE2 register:,UINT16,DN,,,,,,,,,,,,29,fpe_analog_tlm2,1
+295,fpe_v_spare2_valid,"Validity of SPARE2 voltage (ADC4, input channel 7)",FPE FPGA FPE_ATLM_SPARE2 register:,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+296,fpe_vref_tlm,Telemetry data for -5VA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for -5VA voltage,UINT16,V,4.75,4.85,5.15,5.25,,,,,,poly1,0 0.00268527,25,fpe_analog_tlm,1
+297,fpe_vref_valid,Neg 5V TLM data validity flag (0 = valid; 1 = stale),Neg 5V TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+298,fps_ov_detect,FPS overvoltage detection enable/disable state,"This telemetry item reports the value of the SCIO FPS_OV_EN flag. The flag indicates if the FPS overvoltage fault response is enabled or
+ not. Note that this does not actually enable or disable the OV detection circuitry (which resided within the FPS). Rather, it indicates whether
+ or not the autonomous SCIO FPGA disable of FPE power supply on an over-voltage condition is enabled.",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,16,util_info,1
+299,fps_ov_dur,Overvoltage fault detection duration,"Duration in microseconds of how long th FPS OV signal to the SCIO must be active before a fault is tripped. Resolution is 1 us per count,
+ and zero is equivalent to 10 us. Actual duration is: 10 us + n*1 us, where 'n' is the value of this telemetry item.",UINT8,DN,,,,,,,,,,,,16,util_info,1
+300,fps_passthru_rd,Value read from the FPE FPGA from last FPS PASSTHRU command,Value read from the FPE FPGA from last FPS PASSTHRU command,UINT32,DN,,,,,,,,,,,,24,fpe_tlm,1
+301,fps_passthru_reg,Register address from last FPS PASSTHRU command,Register address from last FPS PASSTHRU command,UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+302,fps_passthru_wr,Value written to the FPE FPGA from last FPS PASSTHRU command,Value written to the FPE FPGA from last FPS PASSTHRU command,UINT32,DN,,,,,,,,,,,,24,fpe_tlm,1
+303,fps_pwr,FPS power enable/disable state,This telemetry item reports the value of the SCIO FPS_EN_STAT flag. The flag indicates if power is enabled to the Focal Plane Subsystem.,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,16,util_info,1
+304,fsm_relay_ctrl,SMA Relay Control register setting,"This item reports the value of the SMC FPGA FSM_RELAY_CONTROL setting. This idicates whether the FSW has SMA commanded the
+ relay to be enabled or disabled.",ENUM,DN,,,,,,,,,"FSM_DSBL_A:0, FSM_ENBL_A:1",,,26,sma_info1,1
+305,fsm_relay_sts_a,Status of the SMA Relay A,This item reports the value of the SMC FPGA FSM_RELAY_A_STS setting. This idicates the current status of the SMA A relay.,ENUM,DN,,,,,,,,,"RLY_A_DSBL:0, RLY_A_ENBL:1",,,26,sma_info1,1
+306,fsm_relay_sts_b,Status of the SMA Relay B,This item reports the value of the SMC FPGA FSM_RELAY_B_STS setting. This idicates the current status of the SMA B relay.,ENUM,DN,,,,,,,,,"RLY_B_DSBL:0, RLY_B_ENBL:1",,,26,sma_info1,1
+307,fsw_init_fail,Reason for last FSW initialization failure,"If the FSW initialization fails, this value from the recovery area indicates what code line failed (this is a 'caller id' value)",UINT32,DN,,,,,,,,,,,,23,boot_info,1
+308,fsw_mode,Current mode of the FSW,Current mode of the FSW.,ENUM,DN,,,,,,,,,"MODE_INITIALIZE:1, MODE_SAFE:2, MODE_OPERATE:4",,,7,crit_tlm,1
+309,fsw_rst_param,Reason for last FSW reset,"The reset parameter associated with FSW_RST_REASON:
+ Commanded - the event ID EID_CMD_REBOOTING
+ Fault Response - the event ID that caused the 'RESET_ICE' action
+ Trap Execution - the value of the TBR (trap) UT699E register
+ If the ICE is reset by the HW, as indicated by HW_RST_REASON, this value is stale and should be ignored.",UINT32,DN,,,,,,,,,,,,23,boot_info,1
+310,fsw_rst_reason,Reason for last FSW reset,"The reason for the last FSW-generated reset:
+ Commanded - in response to a RESET_CPU 1553B operational command
+ Fault Response - when an event ID was generated associated to the 'RESET_ICE' action
+ Trap Execution - in response to a processor exception ('trap' in SPARC nomenclature)
+ If the ICE is reset by the HW, as indicated by HW_RST_REASON, this value is stale and should be ignored.",ENUM,DN,,,,,,,,,"NONE:0, COMMAND:12, TRAP_EXEC:46, FAULT_RESP:63",,,23,boot_info,1
+311,fsw_ver_maj,FSW Active Image Major Version,Major Version of currently active FSW image.,UINT16,DN,,,,,,,,,,,,23,boot_info,1
+312,fsw_ver_min,FSW Active Image Minor Version,Minor Version of currently active FSW image.,UINT16,DN,,,,,,,,,,,,23,boot_info,1
+313,htr_chn_pwm_00,Heater channel 0 pwm value,Heater channel 0 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+314,htr_chn_pwm_01,Heater channel 1 pwm value,Heater channel 1 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+315,htr_chn_pwm_02,Heater channel 2 pwm value,Heater channel 2 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+316,htr_chn_pwm_03,Heater channel 3 pwm value,Heater channel 3 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+317,htr_chn_pwm_04,Heater channel 4 pwm value,Heater channel 4 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+318,htr_chn_pwm_05,Heater channel 5 pwm value,Heater channel 5 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+319,htr_chn_pwm_06,Heater channel 6 pwm value,Heater channel 6 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+320,htr_chn_pwm_07,Heater channel 7 pwm value,Heater channel 7 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+321,htr_chn_pwm_08,Heater channel 8 pwm value,Heater channel 8 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+322,htr_chn_pwm_09,Heater channel 9 pwm value,Heater channel 9 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+323,htr_chn_pwm_10,Heater channel 10 pwm value,Heater channel 10 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+324,htr_chn_pwm_11,Heater channel 11 pwm value,Heater channel 11 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+325,htr_chn_pwm_12,Heater channel 12 pwm value,Heater channel 12 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+326,htr_chn_pwm_13,Heater channel 13 pwm value,Heater channel 13 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+327,htr_chn_pwm_14,Heater channel 14 pwm value,Heater channel 14 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+328,htr_chn_pwm_15,Heater channel 15 pwm value,Heater channel 15 pwm value,UINT8,DN,,,,,,,,,,,,17,mech_htr_tlm,1
+329,htr_chn_stat_00,Status of Heater Channel 0,Status of Heater Channel 0,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+330,htr_chn_stat_01,Status of Heater Channel 1,Status of Heater Channel 1,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+331,htr_chn_stat_02,Status of Heater Channel 2,Status of Heater Channel 2,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+332,htr_chn_stat_03,Status of Heater Channel 3,Status of Heater Channel 3,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+333,htr_chn_stat_04,Status of Heater Channel 4,Status of Heater Channel 4,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+334,htr_chn_stat_05,Status of Heater Channel 5,Status of Heater Channel 5,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+335,htr_chn_stat_06,Status of Heater Channel 6,Status of Heater Channel 6,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+336,htr_chn_stat_07,Status of Heater Channel 7,Status of Heater Channel 7,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+337,htr_chn_stat_08,Status of Heater Channel 8,Status of Heater Channel 8,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+338,htr_chn_stat_09,Status of Heater Channel 9,Status of Heater Channel 9,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+339,htr_chn_stat_10,Status of Heater Channel 10,Status of Heater Channel 10,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+340,htr_chn_stat_11,Status of Heater Channel 11,Status of Heater Channel 11,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+341,htr_chn_stat_12,Status of Heater Channel 12,Status of Heater Channel 12,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+342,htr_chn_stat_13,Status of Heater Channel 13,Status of Heater Channel 13,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+343,htr_chn_stat_14,Status of Heater Channel 14,Status of Heater Channel 14,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+344,htr_chn_stat_15,Status of Heater Channel 15,Status of Heater Channel 15,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,17,mech_htr_tlm,1
+345,htr_master_pwr,Status of Heater Master Power,Status of Heater Master Power,ENUM,DN,,,,,,,,,"OFF:0, ON:1",,,17,mech_htr_tlm,1
+346,htr_setpoint_00,Setpoint value for heater channel 0,Setpoint value for heater channel 0,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+347,htr_setpoint_01,Setpoint value for heater channel 1,Setpoint value for heater channel 1,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+348,htr_setpoint_02,Setpoint value for heater channel 2,Setpoint value for heater channel 2,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+349,htr_setpoint_03,Setpoint value for heater channel 3,Setpoint value for heater channel 3,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+350,htr_setpoint_04,Setpoint value for heater channel 4,Setpoint value for heater channel 4,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+351,htr_setpoint_05,Setpoint value for heater channel 5,Setpoint value for heater channel 5,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+352,htr_setpoint_06,Setpoint value for heater channel 6,Setpoint value for heater channel 6,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+353,htr_setpoint_07,Setpoint value for heater channel 7,Setpoint value for heater channel 7,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+354,htr_setpoint_08,Setpoint value for heater channel 8,Setpoint value for heater channel 8,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+355,htr_setpoint_09,Setpoint value for heater channel 9,Setpoint value for heater channel 9,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+356,htr_setpoint_10,Setpoint value for heater channel 10,Setpoint value for heater channel 10,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+357,htr_setpoint_11,Setpoint value for heater channel 11,Setpoint value for heater channel 11,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+358,htr_setpoint_12,Setpoint value for heater channel 12,Setpoint value for heater channel 12,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+359,htr_setpoint_13,Setpoint value for heater channel 13,Setpoint value for heater channel 13,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+360,htr_setpoint_14,Setpoint value for heater channel 14,Setpoint value for heater channel 14,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+361,htr_setpoint_15,Setpoint value for heater channel 15,Setpoint value for heater channel 15,INT16,OHMS,,,,,,,,,,poly1,-2.79405299E-05 1.83102675,17,mech_htr_tlm,1
+362,hw_rst_reason,ICE Reset Reason,"This telemetry item reports the value of the SCIO FPGA 'RESET_REASON'.
+ 0 = Power On Reset
+ 1 = Spacecraft Reset
+ 2 = FSW Reset (see FSW_RST_REASON)
+ 3 = Watchdog Reset",ENUM,DN,,,,,,,,,"POR:0, SPACECRAFT:1, FSW:2, WATCHDOG:3",,,23,boot_info,1
+363,ice_clock_status,Indicates if the ICE clock is synchrnized to the S/C or free-running,"This flag is nominally set to SYNCED_TO_SC when Time Code Updates (TCUs) and Pulse Per Second (PPS) signals are being received at
+ 1 Hz. If either the TCU or PPS is not being received at 1 Hz, the ICE onboard clock begins to free-run, and this flag is set to FREERUN.",ENUM,DN,,,,,,,,,"SYNCED_TO_SC:19, FREE_RUNNING:35",,,16,util_info,1
+364,img_data_source,Determines the source of the image data being produced,This telemetry item reports the value of the FPE FPGA DATA_SOURCE register,ENUM,DN,,,,,,,,,"VIDEO_ADC:0, FPGA_SIM:1",,,24,fpe_tlm,1
+365,img_pad,Science Image padding,16-bit zero pad for 5-byte alignment,UINT16,DN,,,,,,,,,,,,19,sci_pixel_data,1
+366,img_sync,Synchronization Word,Synchronization Word,UINT32,DN,,,,,,,,,,,,21,ccsds_img_sec_hdr,1
+367,img_time_day,CCSDS Timestamp - Day,"Days since Epoch of 12am Jan 1, 2000",UINT16,DN,,,,,,,,,,,,21,ccsds_img_sec_hdr,1
+368,img_time_msecs,CCSDS Timestamp - Milliseconds,CCSDS Timestamp - Milliseconds,UINT32,DN,,,,,,,,,,,,21,ccsds_img_sec_hdr,1
+369,img_time_usecs,CCSDS Timestamp - Microseconds,CCSDS Timestamp - Microseconds,UINT16,DN,,,,,,,,,,,,21,ccsds_img_sec_hdr,1
+370,immedcmdsa,Immediate command subaddress,This telemetry item reports the subaddress for immediate commands from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+371,iru_algo_time,IRU compensate algo duration,"This telemetry item reports the duration of the last IRU compensation algorithm execution, in micro-seconds",UINT16,US,,,,,,,,,,,,16,util_info,1
+372,iru_compensation,Flag indicating if the IRU compensation algorith is enable,"When IRU compensation is active (enabled), IRU input data is being processed and fed into the SMC control loop",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,16,util_info,1
+373,iru_int_cnt,Number of IRU Message Received interrupts received,This telemetry item reports the total number of IRU_RX interrupts received from the SCIO,UINT32,DN,,,,,,,,,,,,16,util_info,1
+374,iru_listen,IRU listening state,"This telemetry item reports the value of the SCIO IRU_EN flag. The flag indicates if if the ICE has been enabled to listen for and process
+ incoming IRU message data.",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,16,util_info,1
+375,iru_max_algo_time,IRU compensate algo max duration,"This telemetry item reports the maximum duration of the IRU compensation algorithm execution, in micro-seconds.
+ This maximum is reset every time the IRU is enabled/disabled",UINT16,US,,,,,,,,,,,,16,util_info,1
+376,iru_msg_array,Variable-Length IRU Messages,"Variable-length array of timestamped IRU messages.
+ Each entry consists of a 64-bit timestamp of when the IRU message was received from the serial port, followed by the IRU message
+ contents.",UINT8[],DN,,,,,,,,,,,,20,sci_iru_data,1
+377,iru_num_msgs,Number of IRU messages,Number of timestamped IRU messages in the following IRU_MSG_ARRAY.,UINT16,DN,,,,,,,,,,,,20,sci_iru_data,1
+378,iru_xc_corr,Current value of IRU correction,"Current value of the IRU correction position in the Xc axis in micro-radians.
+ This value is saturated to the POS_CMD_XC_LIM limit in the SMA_CONFIG table.",FLOAT32,URAD,,,,,,,,,,,,16,util_info,1
+379,iru_xc_rate,Current value of IRU correction,Current value of the IRU correction rate in the Xc axis in micro-radians/s.,FLOAT32,URADS,,,,,,,,,,,,16,util_info,1
+380,iru_yc_corr,Current value of IRU correction,"Current value of the IRU correction position in the Yc axis in micro-radians.
+ This value is saturated to the POS_CMD_YC_LIM limit in the SMA_CONFIG table.",FLOAT32,URAD,,,,,,,,,,,,16,util_info,1
+381,iru_yc_rate,Current value of IRU correction,Current value of the IRU correction rate in the Yc axis in micro-radians/s.,FLOAT32,URADS,,,,,,,,,,,,16,util_info,1
+382,last_pps_day,Time tag of last PPS signal (Days Since Epoch),The 'Day' portion of the time stamp for the last received PPS signal from the S/C,UINT16,DN,,,,,,,,,,,,16,util_info,1
+383,last_pps_ms,Time tag of last PPS signal (Milliseconds),The 'Milliseconds' portion of the time stamp for the last received PPS signal from the S/C,UINT32,DN,,,,,,,,,,,,16,util_info,1
+384,last_pps_us,Time tag of last PPS signal (Microseconds),The 'Microseconds' portion of the time stamp for the last received PPS signal from the S/C,UINT16,DN,,,,,,,,,,,,16,util_info,1
+385,lim_mon_rng_cnt,Limit Monitor out of range counter,"Indicates the number of out-of-limits samples. Note: This does not necessarily mean that there has been a limit violation, since the individual
+ limit monitor may not have passed its max persistence level.",UINT32,DN,,,,,,,,,,,,5,event_history,1
+386,lim_mon_stat,status of all the limit monitors,"Indicates the current status of all limit monitors. Is either DISABLED, where no limit checking occurs, or ENABLED, where each monitored
+ data item is checked against it defined high and low limits.",ENUM,DN,,,,,,,,,"DISABLED:13, ENABLED:14",,,7,crit_tlm,1
+387,long_int_lines,Number of CCD Long Integration Lines,#Type!,UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+388,lst1553tcuday,Day of last TCU received,This telemetry item reports the 'Day' field of the ICE FSW timestamp when the last TCU was received over the 1553 from the S/C,UINT16,DN,,,,,,,,,,,,10,1553_tlm,1
+389,lst1553tcumsec,Millisecond field of time stamp when last TCU received,This telemetry item reports the 'MIlliSec' field of the ICE FSW timestamp when the last TCU was received over the 1553 from the S/C,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+390,mdf_dbe_cnt,MDF board double bit error counter,This item indicates the number of double-bit errors detected by the MDF FPGA while scrubbing the SpaceWire Bridge SDRAM.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+391,mdf_sbe_cnt,MDF board single bit error counter,This item indicates the number of single-bit errors detected by the MDF FPGA while scrubbing the SpaceWire Bridge SDRAM.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+392,mem_mon_00,Memory Monitor 0/15,Memory Monitor 0,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+393,mem_mon_01,Memory Monitor 1/15,Memory Monitor 1,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+394,mem_mon_02,Memory Monitor 2/15,Memory Monitor 2,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+395,mem_mon_03,Memory Monitor 3/15,Memory Monitor 3,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+396,mem_mon_04,Memory Monitor 4/15,Memory Monitor 4,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+397,mem_mon_05,Memory Monitor 5/15,Memory Monitor 5,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+398,mem_mon_06,Memory Monitor 6/15,Memory Monitor 6,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+399,mem_mon_07,Memory Monitor 7/15,Memory Monitor 7,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+400,mem_mon_08,Memory Monitor 8/15,Memory Monitor 8,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+401,mem_mon_09,Memory Monitor 9/15,Memory Monitor 9,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+402,mem_mon_10,Memory Monitor 10/15,Memory Monitor 10,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+403,mem_mon_11,Memory Monitor 11/15,Memory Monitor 11,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+404,mem_mon_12,Memory Monitor 12/15,Memory Monitor 12,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+405,mem_mon_13,Memory Monitor 13/15,Memory Monitor 13,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+406,mem_mon_14,Memory Monitor 14/15,Memory Monitor 14,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+407,mem_mon_15,Memory Monitor 15/15,Memory Monitor 15,UINT32,DN,,,,,,,,,,,,13,mem_mon,1
+408,mem_mon_adr_00,Memory Monitor Address 0/15,Memory Monitor 0 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+409,mem_mon_adr_01,Memory Monitor Address 1/15,Memory Monitor 1 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+410,mem_mon_adr_02,Memory Monitor Address 2/15,Memory Monitor 2 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+411,mem_mon_adr_03,Memory Monitor Address 3/15,Memory Monitor 3 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+412,mem_mon_adr_04,Memory Monitor Address 4/15,Memory Monitor 4 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+413,mem_mon_adr_05,Memory Monitor Address 5/15,Memory Monitor 5 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+414,mem_mon_adr_06,Memory Monitor Address 6/15,Memory Monitor 6 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+415,mem_mon_adr_07,Memory Monitor Address 7/15,Memory Monitor 7 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+416,mem_mon_adr_08,Memory Monitor Address 8/15,Memory Monitor 8 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+417,mem_mon_adr_09,Memory Monitor Address 9/15,Memory Monitor 9 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+418,mem_mon_adr_10,Memory Monitor Address 10/15,Memory Monitor 10 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+419,mem_mon_adr_11,Memory Monitor Address 11/15,Memory Monitor 11 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+420,mem_mon_adr_12,Memory Monitor Address 12/15,Memory Monitor 12 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+421,mem_mon_adr_13,Memory Monitor Address 13/15,Memory Monitor 13 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+422,mem_mon_adr_14,Memory Monitor Address 14/15,Memory Monitor 14 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+423,mem_mon_adr_15,Memory Monitor Address 15/15,Memory Monitor 15 Address,UINT32,DN,,,,,,,,,,,,15,mem_mon_adr,1
+424,mem_scrub_cnt,Memory scrub counter,This telemetry item reports the number of times the FSW has scrubbed through the entire RAM bank.,UINT32,DN,,,,,,,,,,,,16,util_info,1
+425,mir_stp_rsp_time,Time in mirco-seconds for the FSW to respond to the MIRROR_STEP int,"This telemetry item reports the amount of time in microseconds from when the MIRROR_STEP interrupt is received until the first profile
+ position command has been written to the SMC.",UINT16,US,,,,,,,,,,,,28,sma_info2,1
+426,missing_pps_cnt,Counter of the number of consecutive missing PPS signals,"This item reports the number of consecutive missing Pulse Per Second (PPS) signals. If the number exceeds the maximum allowed number
+ of missing PPSs defined in the FSW's Global Configuration Table, an event is posted.",UINT16,DN,,,,,,,,,,,,16,util_info,1
+427,missing_tcu_cnt,Counter of the number of consecutive missing TCUs,"This item reports the number of consecutive missing (Time Code Updates) TCUs. If the number exceeds the maximum allowed number of
+ missing TCUs defined in the FSW's Global Configuration Table, an event is posted.",UINT16,DN,,,,,,,,,,,,16,util_info,1
+428,mmio_read_cnt,The total number of MMIO read operations,The total number of MMIO read operations,UINT32,DN,,,,,,,,,,,,16,util_info,1
+429,mmio_read_val,The last value read from any MMIO address,The last value read from any MMIO address,UINT32,DN,,,,,,,,,,,,16,util_info,1
+430,mmio_write_cnt,The total number of MMIO write operations,The total number of MMIO write operations,UINT32,DN,,,,,,,,,,,,16,util_info,1
+431,mmio_write_val,The value written in the last MMIO write operation,This telemetry item reports the value written during the last MMIO write command,UINT32,DN,,,,,,,,,,,,16,util_info,1
+432,n1553_anclry_int,Number of 1553 Ancillary Data Interrupts,This counter reports the total number of ancillary data interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+433,n1553_critlm_int,Number of 1553 Critical Telemetry Interrupts,This counter reports the total number of critical telemetry interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+434,n1553_drv_errs,Number of 1553 Driver Errors,This counter reports the total number of 1553 Driver errors,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+435,n1553_hw_int,Number of 1553 Hardware Interrupts,This counter reports the total number of 15535 hardware interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+436,n1553_imdcmd_int,Number of 1553 Immediate Command Interrupts,This counter reports the total number of immediate command interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+437,n1553_msg_int,Number of 1553 Message Interrupts,This counter reports the total number of 15535 message interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+438,n1553_nrmcmd_int,Number of 1553 Normal Command Interrupts,This counter reports the total number of normal command interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+439,n1553_tcu_int,Number of 1553 Time Code Update Interrupts,This counter reports the total number of time code update interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+440,n1553_upl_int,Number of 1553 Upload Interrupts,This counter reports the total number of upload interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+441,n1553_wrap_int,Number of 1553 Wrap Around Interrupts,This counter reports the total number of 1553 wrap-around interrupts processed by the 1553 CSU,UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+442,normcmdnumsa,Number of normal command subaddresses,This telemetry item reports the number of subaddress for normal commands from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+443,normcmdsa1,First subaddress for normal commands,This telemetry item reports the first subaddress for normal commands from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+444,num_coadds,The number of coadded frames in each complete,"This telemetry item reports the value of the FPE FPGA NUM_COADDS register. The value in this register determines the number of frames
+ output from the FPS for each swath in IMAGING mode.",UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+445,num_mirror_steps,The number of mirror steps in the current imaging sequence,"This telemetry item reports the value of the FPE FPGA NUM_MIRROR_STEPS register. The value in this register determines the number of
+ mirror steps executed during IMAGING mode.",UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+446,num_segs,Number of CCSDS Segments,"Number of segments in a CCSDS packet.
+ Only applies to segmented packets, otherwise it is set to 0xFFFF for standalone packets.",UINT16,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+447,oda_tlm,Telemetry data for ODA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for ODA voltage,UINT16,V,26.13,26.68,28.33,28.88,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+448,oda_tlm_valid,ODA_TLM data validity flag (0 = valid; 1 = stale),ODA_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+449,odb_tlm,Telemetry data for ODB voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for ODB voltage,UINT16,V,26.13,26.68,28.33,28.88,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+450,odb_tlm_valid,ODB_TLM data validity flag (0 = valid; 1 = stale),ODB_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+451,odc_tlm,Telemetry data for ODC voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for ODC voltage,UINT16,V,26.13,26.68,28.33,28.88,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+452,odc_tlm_valid,ODC_TLM data validity flag (0 = valid; 1 = stale),ODC_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+453,odd_tlm,Telemetry data for ODD voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for ODD voltage,UINT16,V,26.13,26.68,28.33,28.88,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+454,odd_tlm_valid,ODD_TLM data validity flag (0 = valid; 1 = stale),ODD_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+455,oga_tlm,Telemetry data for OGA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for OGA voltage,UINT16,V,1.43,1.46,1.55,1.58,,,,,,poly1,-3.322 0.001341,25,fpe_analog_tlm,1
+456,oga_tlm_valid,OGA_TLM data validity flag (0 = valid; 1 = stale),OGA_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+457,ogb_tlm,Telemetry data for OGB voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for OGB voltage,UINT16,V,1.43,1.46,1.55,1.58,,,,,,poly1,-3.322 0.001341,25,fpe_analog_tlm,1
+458,ogb_tlm_valid,OGB_TLM data validity flag (0 = valid; 1 = stale),OGB_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+459,ogc_tlm,Telemetry data for OGC voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for OGC voltage,UINT16,V,1.43,1.46,1.55,1.58,,,,,,poly1,-3.322 0.001341,25,fpe_analog_tlm,1
+460,ogc_tlm_valid,OGC_TLM data validity flag (0 = valid; 1 = stale),OGC_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+461,ogd_tlm,Telemetry data for OGD voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for OGD voltage,UINT16,V,1.43,1.46,1.55,1.58,,,,,,poly1,-3.322 0.001341,25,fpe_analog_tlm,1
+462,ogd_tlm_valid,OGD_TLM data validity flag (0 = valid; 1 = stale),OGD_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+463,pci_timer_stat,Enable/Disable status of the SMC FPGA PCI Timer,"This item reports the value of the SMC FPGA PCI_TIMER_EN register setting. It indicates if the PCI teimer is enabled or not. When
+ enabled, the 'SMC_PCI_TIMER' telemetry item indicates the timer's actual setting.",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+464,pci_tlm_thresh,The threshold setting for SMC telemetry collection via PCI,"This telemetry item reports the value from the SMC FPGA PCI_TLM_THRESH register. This indicates the threshold level at which the next
+ TLM_BUF_THRESH interrupt will be generated.",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+465,pci_tlm_wrptr,SMC PCI telemetry collection write pointer,"This telemetry item reports the value from the SMC FPGA PCI_TLM_WRPTR register. This indicates the location within the telemtery buffer
+ where the next telemetry data item will be written.",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+466,pci_tmr_int_msk,Interrupt mask bit for the SMC Telemetry PCI Timer,This item reports the interrupt mask (enable/disable) state for the SMC FPGA PCI_TIMER interrupt,ENUM,DN,,,,,,,,,"ENABLED:0, MASKED:1",,,26,sma_info1,1
+467,pclk_sense_n,Indicates if the PCLK_PWR_SENSE_N input is asserted,Indicates if the PCLK_PWR_SENSE_N input is asserted,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+468,pixel_data,Variable-Length Science Image Data,"A variable-length array of 20-bit pixel values.
+ For example, if the CCD has 4,224 pixels per line, and the frame size is 534 lines, the total image consists of 2,255,616 pixels. Each CCSDS
+ packet contains one line, equivalent to 4,224 20-bit pixels, which is 10,560 bytes.
+ The pixels are followed by one byte of padding, to achieve 5-byte alignment, and a 32-bit CRC, for a total PIXEL_DATA size of 10,565 bytes.",UINT8[],DN,,,,,,,,,,,,19,sci_pixel_data,1
+469,pkt_seq_count,CCSDS Packet Sequence Count,CCSDS Packet Sequence Count,UINT16,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+470,pps_int_cnt,Number of Pulse Per Second interrupts received,This telemetry item reports the total number of PPS_RX interrupts received from the SCIO,UINT16,DN,,,,,,,,,,,,16,util_info,1
+471,pps_sel,Pulse Per Second input selection,"Currently selected input for the spacecraft Pulse Per Second (PPS) discrete. This telemetry item reports the bit settings from the SCIO
+ hardware.",ENUM,DN,,,,,,,,,"PPS_A:0, PPS_B:1",,,16,util_info,1
+472,pre_temp1,Latest value of CCD interface board temperature sensor #1,FPE FPGA FPE_ATLM_PRE_TEMP1 register,INT16,C,-40,-35,45,55,,,,,,poly4,111.2 -0.07653 0.00002338 -3.269E-09 -1.13E-13,29,fpe_analog_tlm2,1
+473,pre_temp1_valid,Validity of CCD interface board temperature sensor #1,FPE FPGA FPE_ATLM_PRE_TEMP1 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+474,pre_temp2,Latest value of CCD interface board temperature sensor #2,FPE FPGA FPE_ATLM_PRE_TEMP2 register,INT16,C,-40,-35,45,55,,,,,,poly4,111.2 -0.07653 0.00002338 -3.269E-09 -1.13E-13,29,fpe_analog_tlm2,1
+475,pre_temp2_valid,Validity of CCD interface board temperature sensor #2,FPE FPGA FPE_ATLM_PRE_TEMP2 register,ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,29,fpe_analog_tlm2,1
+476,prof_num_steps,Number of steps in the scan profile that was loaded,"This item reports the number of steps in the calculated move step profile, which contains the smoothed-out positions for moving the SMA
+ from one staring position to the next.",UINT16,DN,,,,,,,,,,,,28,sma_info2,1
+477,rda_tlm,Telemetry data for RDA voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for RDA voltage,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+478,rda_tlm_valid,RDA_TLM data validity flag (0 = valid; 1 = stale),RDA_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+479,rdb_tlm,Telemetry data for RDB voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for RDB voltage,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+480,rdb_tlm_valid,RDB_TLM data validity flag (0 = valid; 1 = stale),RDB_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+481,rdc_tlm,Telemetry data for RDC voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for RDC voltage,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+482,rdc_tlm_valid,RDC_TLM data validity flag (0 = valid; 1 = stale),RDC_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+483,rdd_tlm,Telemetry data for RDD voltage,This telemetry item reports analog data from the Focal Plane Electronics. Telemetry data for RDD voltage,UINT16,V,18.53,18.92,20.09,20.48,,,,,,poly1,0 0.0088623,25,fpe_analog_tlm,1
+484,rdd_tlm_valid,RDD_TLM data validity flag (0 = valid; 1 = stale),RDD_TLM data validity flag (0 = valid; 1 = stale),ENUM,DN,,,,,,,,,"OK:0, STALE:1:r",,,25,fpe_analog_tlm,1
+485,rdr_version,RDR Version Number,RDR Version Number,UINT16,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+486,rg_sense_n,Indicates if the RG_PWR_SENSE_N input is asserted,Indicates if the RG_PWR_SENSE_N input is asserted,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+487,rst_time_day,FSW Reset Timestamp - Day,"Days since Epoch of 12am Jan 1, 2000",UINT16,DN,,,,,,,,,,,,23,boot_info,1
+488,rst_time_msecs,FSW Reset Timestamp - Milliseconds,FSW Reset Timestamp - Milliseconds,UINT32,DN,,,,,,,,,,,,23,boot_info,1
+489,rst_time_usecs,FSW Reset Timestamp - Microseconds,FSW Reset Timestamp - Microseconds,UINT16,DN,,,,,,,,,,,,23,boot_info,1
+490,safe_input_src,The expected input source line for SAFE signals from the S/C,"This telemetry item reports the input lines on which a SAFE signal will be acted upon. If a safe signal is received on an input other than
+ those configured by this telemetry item, it will be ignored.
+ The expected/allowed input lines are set in the Global Configuration table.",ENUM,DN,,,,,,,,,"SAFE_NONE:0, SAFE_B:1, SAFE_A:2, SAFE_A_OR_B:3, SAFE_HLDC:4, SAFE_HLDC_OR_B:5, SAFE_HLDC_OR_A:6, SAFE_INPUT_ANY:7",,,16,util_info,1
+491,safe_int_cnt,Number of SAFE interrupts received,This telemetry item reports the total number of SAFE_RX interrupts received from the SCIO,UINT16,DN,,,,,,,,,,,,16,util_info,1
+492,safe_stat,Status of the ICE SAFE_STAT output signal (active or inactive),"This telemetry item reports the value of the SCIO SAFE_STAT_EN flag, which controls the output HLDC discrete ""Calibration Wheel Closed"".",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,7,crit_tlm,1
+493,scan_cur_step,Current step of the scan,"This item reports the current scan table step being executed. This value is an index into the scan table, indicating the entry that will be
+ processed when the next MIRROR_STEP interrupt occurs",UINT16,DN,,,,,,,,,,,,28,sma_info2,1
+494,scan_num_steps,Number of steps defined in the currently-configured scan table,This item reports the number of scan steps that are defined in the currently loaded scan table,UINT16,DN,,,,,,,,,,,,28,sma_info2,1
+495,scan_tbl_id,SMA Scan Table ID,Table ID of the scan table used when starting the most recent SMA scan operation,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+496,scio_dbe_cnt,SCIO board double bit error counter,This item indicates the number of double-bit errors detected by the SCIO FPGA while scrubbing the 1553 memory space,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+497,scio_edac_err_addr,1553 memory addr offset of last SBE/DBE that occurred,This item reports the value from the SCIO EDAC_ERR_ADDR register.,UINT16,DN,,,,,,,,,,,,16,util_info,1
+498,scio_sbe_cnt,SCIO board single bit error counter,This item indicates the number of single-bit errors detected by the SCIO FPGA while scrubbing the 1553 memory space,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+499,sclk_sense_n,Indicates if the SCLK_PWR_SENSE_N input is asserted,Indicates if the SCLK_PWR_SENSE_N input is asserted,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+500,sec_hdr_flag,CCSDS Secondary Header Flag,CCSDS Secondary Header Flag,UINT8,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+501,seq_flag,CCSDS Sequence Flag,CCSDS Sequence Flag,UINT8,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+502,short_int_lines,Number of CCD Short Integration Lines,#Type!,UINT16,DN,,,,,,,,,,,,24,fpe_tlm,1
+503,size,CCSDS Packet Size,CCSDS Packet Size,UINT16,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+504,sma_ctrl_state,State of the SMA closed-loop control,"Current SMA mirror control state: OFF, HOLDING, CMD_MOVE, SCAN_WAIT or SCAN_MOVE.",ENUM,DN,,,,,,,,,"OFF:0, HOLDING:17, CMD_MOVE:34, SCAN_WAIT:51, SCAN_MOVE:68",,,28,sma_info2,1
+505,sma_last_x_pos,Last commanded SMA x-axis position,This item reports the last x-axis position value that was written to the SMC,FLOAT32,URAD,,,,,,,,,,,,28,sma_info2,1
+506,sma_last_y_pos,Last commanded SMA y-axis position,This item reports the last y-axis position value that was written to the SMC,FLOAT32,URAD,,,,,,,,,,,,28,sma_info2,1
+507,sma_spare1,Spare bits in SMA_INFO section,Spare,UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+607,sma_ss_curr_freq,SMA Sine Sweep Current testing frequency,The current frequency setting being tested during a sine sweep profile test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+608,sma_ss_curr_gain,SMA Sine Sweep Gain current setting,"This item reports the most recent gain (amplitude) used during the sine sweep test. The gain is adjusted automatically by the FSW in order
+ to get a valid data set.",FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+609,sma_ss_freqs_rem,SMA Sine Sweep number of test frequencies remaining,The number of test frequencies remaining in the current SMA sine sweep test,UINT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+610,sma_ss_lst_result,SMA Sine Sweep Last Data Check Result,Result from checking the most recent data set collected during a sine sweep test,ENUM,DN,,,,,,,,,"DATA_GOOD:17, ADJ_AMP_DN:34, ADJ_AMP_UP:51, DATA_INVALID:68, UNDOCUMENTED:0",,,30,sma_sine_sweep_info,1
+611,sma_ss_num_retries,SMA Sine Sweep Test number of retries,"Number of retries at the current frequency. Each time the collected data does not pass the validity checking, the amplitude is adjusted and
+ the retry counter is incremented. This item indicates the current retry number. A value of zero indicates the fi",UINT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+612,sma_ss_prev_gain,SMA Sine Sweep Gain previous setting,"This item reports the previous gain (amplitude) used during the sine sweep test. The gain is adjusted automatically by the FSW in order to
+ get a valid data set.",FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+613,sma_ss_profile_id,SMA Sine Sweep Profile ID,The profile ID of the currently executing Sine Sweep test,UINT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+614,sma_ss_retry_hwm,SMA Sine Sweep Test retry high water mark,"The maximum number of retries required across all test frequencies during the current SMA sine sweep test. This telemtery item is set to
+ zero when the sine sweep test is started.",UINT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+615,sma_ss_sig0_mean,SMA Sine Sweep signal 0 mean data value,Calculated mean signal value for signal 0 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+616,sma_ss_sig0_midrng,SMA Sine Sweep signal 0 data midrange limit,Calculated midrange limit value for signal 0 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+617,sma_ss_sig0_rslt,SMA Sine Sweep data validity result for signal 0,Bitmask that reports the data validity for signal 0,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+618,sma_ss_sig0_stdev,SMA Sine Sweep signal 0 data standard deviation,Calculated standard deviation for signal 0 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+619,sma_ss_sig1_mean,SMA Sine Sweep signal 1 mean data value,Calculated mean signal value for signal 1 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+620,sma_ss_sig1_midrng,SMA Sine Sweep signal 1 data midrange limit,Calculated midrange limit value for signal 1 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+621,sma_ss_sig1_rslt,SMA Sine Sweep data validity result for signal 1,Bitmask that reports the data validity for signal 1,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+622,sma_ss_sig1_stdev,SMA Sine Sweep signal 1 data standard deviation,Calculated standard deviation for signal 1 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+623,sma_ss_sig2_mean,SMA Sine Sweep signal 2 mean data value,Calculated mean signal value for signal 2 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+624,sma_ss_sig2_midrng,SMA Sine Sweep signal 2 data midrange limit,Calculated midrange limit value for signal 2 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+625,sma_ss_sig2_rslt,SMA Sine Sweep data validity result for signal 2,Bitmask that reports the data validity for signal 2,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+626,sma_ss_sig2_stdev,SMA Sine Sweep signal 2 data standard deviation,Calculated standard deviation for signal 2 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+627,sma_ss_sig3_mean,SMA Sine Sweep signal 3 mean data value,Calculated mean signal value for signal 3 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+628,sma_ss_sig3_midrng,SMA Sine Sweep signal 3 data midrange limit,Calculated midrange limit value for signal 3 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+629,sma_ss_sig3_rslt,SMA Sine Sweep data validity result for signal 3,Bitmask that reports the data validity for signal 3,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+630,sma_ss_sig3_stdev,SMA Sine Sweep signal 3 data standard deviation,Calculated standard deviation for signal 3 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+631,sma_ss_sig4_mean,SMA Sine Sweep signal 4 mean data value,Calculated mean signal value for signal 4 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+632,sma_ss_sig4_midrng,SMA Sine Sweep signal 4 data midrange limit,Calculated midrange limit value for signal 4 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+633,sma_ss_sig4_rslt,SMA Sine Sweep data validity result for signal 4,Bitmask that reports the data validity for signal 4,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+634,sma_ss_sig4_stdev,SMA Sine Sweep signal 4 data standard deviation,Calculated standard deviation for signal 4 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+635,sma_ss_sig5_mean,SMA Sine Sweep signal 5 mean data value,Calculated mean signal value for signal 5 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+636,sma_ss_sig5_midrng,SMA Sine Sweep signal 5 data midrange limit,Calculated midrange limit value for signal 5 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+637,sma_ss_sig5_rslt,SMA Sine Sweep data validity result for signal 5,Bitmask that reports the data validity for signal 5,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+638,sma_ss_sig5_stdev,SMA Sine Sweep signal 5 data standard deviation,Calculated standard deviation for signal 5 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+639,sma_ss_sig6_mean,SMA Sine Sweep signal 6 mean data value,Calculated mean signal value for signal 6 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+640,sma_ss_sig6_midrng,SMA Sine Sweep signal 6 data midrange limit,Calculated midrange limit value for signal 6 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+641,sma_ss_sig6_rslt,SMA Sine Sweep data validity result for signal 6,Bitmask that reports the data validity for signal 6,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+642,sma_ss_sig6_stdev,SMA Sine Sweep signal 6 data standard deviation,Calculated standard deviation for signal 6 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+643,sma_ss_sig7_mean,SMA Sine Sweep signal 7 mean data value,Calculated mean signal value for signal 7 during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+644,sma_ss_sig7_midrng,SMA Sine Sweep signal 7 data midrange limit,Calculated midrange limit value for signal 7 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+645,sma_ss_sig7_rslt,SMA Sine Sweep data validity result for signal 7,Bitmask that reports the data validity for signal 7,ENUM,DN,,,,,,,,,"DATA_GOOD:0, SATURATED:1, BELOW_MID:2, SAT_&_BELOW:3, NOISY:4, NOISY_&_SAT:5, NOISY_&_BELOW:6, DATA_INVALID:8, NOT_TESTED:128",,,30,sma_sine_sweep_info,1
+646,sma_ss_sig7_stdev,SMA Sine Sweep signal 7 data standard deviation,Calculated standard deviation for signal 7 data during a Sine Sweep test,FLOAT32,DN,,,,,,,,,,,,30,sma_sine_sweep_info,1
+647,sma_ss_test_state,SMA Sine Sweep Test State,Current execution state of the SMA Sine Sweep test,ENUM,DN,,,,,,,,,"NO_PROFILE:0, RUNNING:17, FAILED:34, ABORTED:51, COMPLETE:68",,,30,sma_sine_sweep_info,1
+508,smc_act_lmt_sts,Status of the SMC Actuator Loop FPU Limit Checking,"Each bit in this telemety item represents an FPU out-of-limits condition on the corresponding Actuator Processing Loop FPU within the SMC
+ FPGA. Bit 0 = FPU 0, Bit 1 = FPU 1, etc.",UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+509,smc_act_loop_period,The period of the SMC FPGA Actuator processing loop,This item reports the value of the SMC FPGA ACT_ADC_PERIOD register setting.,UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+510,smc_actadc_xa_ad1_en,Enable flag for Actuator ADCXA Dest Addr 1,This telemetry item reports the value of the ACT_ADC_XA_ADDR1_EN register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+511,smc_actadc_xa_ad2_en,Enable flag for Actuator ADC XA Dest Addr 2,This telemetry item reports the value of the ACT_ADC_XA_ADDR2_EN register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+512,smc_actadc_xa_addr1,Actuator ADC XA Destination Address 1,This telemetry item reports the value of the ACT_ADC_XA_ADDR1 register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+513,smc_actadc_xa_addr2,Actuator ADC XA Destination Address 2,This telemetry item reports the value of the ACT_ADC_XA_ADDR2 register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+514,smc_actadc_ya_ad1_en,Enable flag for Actuator ADC YA Dest Addr 1,This telemetry item reports the value of the ACT_ADC_YA_ADDR1_EN register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+515,smc_actadc_ya_ad2_en,Enable flag for Actuator ADC YA Dest Addr 2,This telemetry item reports the value of the ACT_ADC_YA_ADDR2_EN register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+516,smc_actadc_ya_addr1,Actuator ADC YA Destination Address 1,This telemetry item reports the value of the ACT_ADC_YA_ADDR1 register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+517,smc_actadc_ya_addr2,Actuator ADC YA Destination Address 2,This telemetry item reports the value of the ACT_ADC_YA_ADDR2 register field from the SMC FPGA,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+518,smc_cfg_tbl_id,SMC FPGA Configuration Table ID,Table ID of the configuration table used when initializing the SMC FPGA,ENUM,DN,,,,,,,,,"NONE:0, CFG_TBL_NOM:16, CFG_TBL_SPARE:17",,,28,sma_info2,1
+519,smc_cmdfifo_stat,Number of words in the Command Buffer FIFO,"This item reports the value of the SMC FPGA CMD_BUF_FIFO_STATUS register setting. It indicates the number of words in the FIFO
+ ready to be transferred.",UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+520,smc_cordic_control,Snapshot of the SMC FPGA CORDIC_CONTROL register,This item reports the value of the SMC FPGA CORDIC_CONTROL register,UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+521,smc_cordic_dest,Snapshot of the SMC FPGA CORDIC_DEST register,This item reports the value of the SMC FPGA CORDIC_DEST register setting,UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+522,smc_curr_drv_en,SMC FPGA Current Driver Output Enable Flag,This item reports the value of the SMC FPGA CUR_DRVR_DSM_OUT_EN register setting,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+523,smc_dec_filt_act,SMC FPGA Actuator Loop Decimation Filter setting,This item reports the value of the SMC FPGA ACT_ADC_DEC_FILTER register setting,UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+524,smc_dec_filt_sns,SMC FPGA Sensor Loop Decimation Filter setting,This item reports the value of the SMC FPGA SNS_ADC_DEC_FILTER register setting,UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+525,smc_dither_out_en,Dither driver output enable flag,This item reports the value of the SMC FPGA DITHER_PWM_OUT_EN,UINT8,DN,,,,,,,,,,,,28,sma_info2,1
+526,smc_dither_phz,Dither driver phase change in radians,This item reports the value of the SMC FPGA DITHER_DRIVER_PHASE_CHANGE register setting,UINT32,DN,,,,,,,,,,,,28,sma_info2,1
+527,smc_dsm_refin,Snapshot of the SMC FPGA DSM_REFIN register,This item reports the value of the SMC FPGA DSM_REFIN register,UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+528,smc_edac_scrub_state,SMC FGPA EDAC Scrubbing Enable Status,This item reports the value of the SMC FPGA EDAC_REG SCRUB setting,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+529,smc_edac_shutdown,SMC FGPA EDAC auto-shutdown enable status,"This item reports the value of the SMC FPGA ""2BIT_ERR_SHUTDOWN"" fields from the EDAC_REG register. This telemetry item is a
+ bitmask where each bit represents an auto-shutdown flag for an individual type of EDAC Error.
+ Bit 6: RD_RAM_EDAC
+ Bit 5: CMD_FIFO_EDAC
+ Bit 4: ACT_LOOP_STOR_RAM_EDAC
+ Bit 3: ACT_LOOP_CONF_RAM_EDAC
+ Bit 2: SNS_LOOP_POS_RAM_EDAC
+ Bit 1: SNS_LOOP_STOR_RAM_EDAC
+ Bit 0: SNS_LOOP_CONF_RAM_EDAC",UINT8,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+530,smc_edac_test_data,SMC FPGA EDAC test data,"This item reports the value of the SMC FPGA WR_ECC_TEST_DATA field of the EDAC_REG register. It contains the test value to be used
+ as the Error Code Correction (ECC)",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+531,smc_edac_test_en,Enable flag for the SMC FPGA EDAC data testing,"This item reports the value of the SMC FPGA WR_ECC_TEST_DATA_EN field of the EDAC_REG register. It indicates if the test mode is
+ enabled or not",ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,26,sma_info1,1
+532,smc_fpga_state,State of the SMC FPGA (IDLE or OPERATIONAL),This telemetry item reports the SMC FPGA state from the CONTROL_STATE register,ENUM,DN,,,,,,,,,"IDLE:0, OPERATIONAL:1, MRAM_INIT:2",,,26,sma_info1,1
+533,smc_fpga_version,SMC FPGA Revision and Configuration ID,"This item reports the value of the SMC FPGA FPGA_VERSION register:
+ Bits 31:16: CFG_ID_* register settings. The FPGA's ""Configuration ID"" is controlled by the version number within the FPGA configuration file
+ used to configure the FPGA for operations.
+ Bits 15:8: FPGA MAJOR_REV
+ Bits 7:0: FPGA MINOR_REV",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+534,smc_misc_err,Spare bits in SMA_INFO section,"Cumulative error bits from the SMC MISC_ERR register. These bits indicate whether a control loop overcurrent and/or EDAC error occurred.
+ To clear these bits in telemetry, use the CLEAR_LOG(EVENT) command.",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+535,smc_misc_errs,Miscellaneous errors from the SMC FPGA,This item reports the value from the SMC FPGA MISC_ERR_REG register,UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+536,smc_mram_rst,MRAM IO pin logic level,This item reports the value of the SMC FPGA MRAM_RST_ZZ register setting,UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+537,smc_mram_stat,Indicates if MRAM is installed on the SMC board,This item reports the value of the SMC FPGA MRAM_STATUS register setting,ENUM,DN,,,,,,,,,"NO_MRAM:0, MRAM_INSTALLED:1",,,26,sma_info1,1
+538,smc_pci_timer,Timer setting for the SMC FPGA PCI Timer,"This item reports the value of the SMC FPGA PCI_TIMER register setting. When enabled, this telemetry item indicates the timer's actual
+ setting.",UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+539,smc_pcitlm_cmplt,SMC PCI telemetry collection completion setting,"This item reports the value of the SMC FPGA PCI_TLM_COMPLETION register setting. This value indicates whether the SMC FPGA
+ should continuously collection PCI telemetry data, or only collection one set of data.",ENUM,DN,,,,,,,,,"CONTINUOUS:0, ONE_SHOT:1",,,26,sma_info1,1
+540,smc_pcitlm_cnt,Number of telemetry words to collect - 1,"This item reports the value of the SMC FPGA PCI_TLM_CONTROL_COLLECT_COUNT register setting. This value indicates how many
+ telemetry items to collect.",UINT8,DN,,,,,,,,,,,,26,sma_info1,1
+541,smc_pcitlm_rate,SMC PCI telemetry collection rate,"This item reports the value of the SMC FPGA PCI_TLM_RATE register setting. This value indicates at what rate the telemetry collection is
+ configured. Collection can be programmed to be synchronized with Actuator or Sensor Processing Loop rate, or a programmable multiple of
+ the Sensor Processing Loop rate.",ENUM,DN,,,,,,,,,"DISABLED:0, SENS_LOOP_RATE:1, ACT_LOOP_RATE:2, SENS_LOOP_MULT:3",,,26,sma_info1,1
+542,smc_sns_loop_period,The period of the SMC FPGA Sensor processing loop,This item reports the value of the SMC FPGA SENSOR_ADC_PERIOD register setting.,UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+543,smc_tlm_array,Variable-length array of SMC telemetry sets,"Variable-length array of timestamped SMC telemetry sets (see SMC_TLM_NUM_SETS, nominally 128).
+ Each SMC telemetry set contains:
+ 1) 32-bit SMA timestamp
+ 2) Array of N 32-bit values (configured by SMC FPGA table, N=SMC_TLM_NUM_ITEMS-1):
+ 1) 32-bit floating point SMC tlm value,
+ N) 32-bit floating point SMC tlm value,",UINT8[],DN,,,,,,,,,,,,27,smc_tlm,1
+544,smc_tlm_col_period,Number of milliseconds between consecutive SMC TLM collections,"This telemetry item reports the amount of time in milliseconds that has elapsed between the previous SMC telemetry collection and the
+ current one.",UINT16,msec,,,,,,,,,,,,28,sma_info2,1
+545,smc_tlm_col_stat,Telemetry collection status for the SMC FPGA,This item reports the ICE FSW flag indicating if telemetry collection via the PCI interface has been enabled.,ENUM,DN,,,,,,,,,"COLLECT_NOM:17, COLLECT_DIAG:34, COLLECT_SMA_SS:51, DISABLED:221",,,28,sma_info2,1
+546,smc_tlm_col_time,Amount of time in microseconds for the most recent TLM collection,"This telemetry item reports the amount of time in microseconds that it took to collect SMC telemetry from the board and copy it into
+ processor RAM.",UINT16,US,,,,,,,,,,,,28,sma_info2,1
+547,smc_tlm_loop_period,The period of the SMC FPGA telemetry collection loop,"This item reports the value of the SMC FPGA TLM_LOOP_PERIOD register setting. When item SMC_PCITLM_RATE is set to
+ 'SENS_LOOP_MULT', this telemtery item indicates the PCI telemetry collection rate in terms of number of Sensor Processing Loops
+ between each telemetry collection. Refer to SMC FRD for information on how to configure this register.",UINT16,DN,,,,,,,,,,,,26,sma_info1,1
+548,smc_tlm_num_items,Number of items in each SMC tlm set,"Number of 32-bit items (including the timestamp) in each SMC telemetry set. This value is in the range 2-64.
+ This value should be 16 for nominal telemetry collection.
+ This value is configured by the SMC FPGA table.",UINT8,DN,,,,,,,,,,,,27,smc_tlm,1
+549,smc_tlm_num_sets,Number of complete SMC Telemetry Sets,"Number of complete SMA telemetry sets contained within the SMC_TLM packet.
+ This value should be 128 for nominal telemetry collection.
+ This value changes depending on the value of SMC_TLM_NUM_ITEMS: configuring the SMC to collect a number of items different from
+ 4/8/16/32/64 might cause a partial telemetry set to be included in the SMC_TLM packet.",UINT32,DN,,,,,,,,,,,,27,smc_tlm,1
+550,smc_tlm_output,Indicates if SMC Telemetry Data is being output to SpW,This item reports the ICE FSW flag used to indicate if SMC telemetry will be output via SpW as it is collected,ENUM,DN,,,,,,,,,"DISABLED:221, ENABLED:238",,,28,sma_info2,1
+551,smc_tlm_partial_set_bytes,Number of bytes in the last partial set,"Size of the last, partial (incomplete) SMC telemetry set.
+ This value should be zero for nominal telemetry collection.
+ This value changes depending on the value of SMC_TLM_NUM_ITEMS: configuring the SMC to collect a number of items different from
+ 4/8/16/32/64 might cause a partial telemetry set to be included in the SMC_TLM packet.",UINT8,DN,,,,,,,,,,,,27,smc_tlm,1
+552,smc_tlm_time_day,SMC telemetry ISR timestamp (Day),SMC telemetry ISR timestamp (Day),UINT16,DN,,,,,,,,,,,,27,smc_tlm,1
+553,smc_tlm_time_msec,SMC telemetry ISR timestamp (msec),SMC telemetry ISR timestamp (milliseconds),UINT32,DN,,,,,,,,,,,,27,smc_tlm,1
+554,smc_tlm_time_usec,SMC telemetry ISR timestamp (usec),SMC telemetry ISR timestamp (microseconds),UINT16,DN,,,,,,,,,,,,27,smc_tlm,1
+555,sns_fpu_lmt_0_31,Sensor Loop FPU Limit Settings for FPUs 0 - 31,"This item reports the limit status for FPUs 0-31. This telemetry item is a bit field where each bit in the register maps to a single FPU limit
+ flag. For all bits, 0=Limit not exceeded, and 1=Limit exceeded",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+556,sns_fpu_lmt_32_63,Sensor Loop FPU Limit Settings for FPUs 32 - 63,"This item reports the limit status for FPUs 32 - 63. This telemetry item is a bit field where each bit in the register maps to a single FPU limit
+ flag. For all bits, 0=Limit not exceeded, and 1=Limit exceeded",UINT32,DN,,,,,,,,,,,,26,sma_info1,1
+557,spw_disc_cnt,Number of SpW Disconnect Errors,This counter reports the total number of times the SpaceWire link lost connection.,UINT32,DN,,,,,,,,,,,,22,spw_chn_lnk,1
+558,spw_err_bits,SpaceWire link error bits,"The cumulative error bits of the SpaceWire link.
+ Bit 0 - FLOW_CTRL_ERR1
+ Bit 1 - FLOW_CTRL_ERR2
+ Bit 2 - ESCAPE_ERROR
+ Bit 3 - CHAR_SEQ_ERR",UINT8,DN,-1,-1,1,1,,,,,,,,22,spw_chn_lnk,1
+559,spw_link_active,SpaceWire link is active,The active/down status of the SpaceWire link.,ENUM,DN,-1,-1,1,1,,,,,"ACTIVE:0, DOWN:1:r",,,22,spw_chn_lnk,1
+560,spw_link_stat,SpaceWire link status,The current status of the SpaceWire link.,ENUM,DN,,,,,,,,,"RESET:0, ERR_RESET:1, ERR_WAIT:2, READY:3, STARTED:4, PRE_CONN:5, CONNECTING:6, RUNNING:7, TEST_WAIT:8:r, TEST_RUN:9:r",,,22,spw_chn_lnk,1
+561,spw_par_err_cnt,Number of SpW Parity Errors,This counter reports the total number of SpaceWire parity errors.,UINT32,DN,-1,-1,1,1,,,,,,,,22,spw_chn_lnk,1
+562,spw_port_sel,SpaceWire port selected,The selected port of the SpaceWire link.,ENUM,DN,,,,,,,,,"PRIMARY:0, REDUNDANT:1",,,22,spw_chn_lnk,1
+563,spw_rcvd_bits,SpaceWire link received bits,"The cumulative received bits of the SpaceWire link.
+ Bit 0 - NULL_CHAR_RCVD
+ Bit 1 - FLOW_CTRL_RCVD
+ Bit 2 - DATA_CHAR_RCVD",UINT8,DN,,,,,,,,,,,,22,spw_chn_lnk,1
+564,spw_rx_byte_cnt,Number of SpW Bytes Received,This counter reports the total number of SpaceWire bytes received.,UINT32,DN,,,,,,,,,,,,22,spw_chn_lnk,1
+565,spw_rx_pkt_cnt,Number of SpW Packets Received,This counter reports the total number of SpaceWire packets received.,UINT32,DN,,,,,,,,,,,,22,spw_chn_lnk,1
+566,spw_rx_pkt_err_cnt,Number of SpW Packets RX Errors,This counter reports the total number of SpaceWire packets received with errors.,UINT16,DN,,,1,1,,,,,,,,22,spw_chn_lnk,1
+567,spw_rx_sbe_cnt,SpaceWire RX single bit error counter,This item indicates the number of single-bit errors detected by the MDF FPGA in the SpaceWire Receive FIFO.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+568,spw_tx_pkt_err_cnt,Number of SpW Packets TX Errors,This counter reports the total number of SpaceWire packets transmitted with errors.,UINT16,DN,,,1,1,,,,,,,,22,spw_chn_lnk,1
+569,spw_tx_sbe_cnt,SpaceWire TX single bit error counter,This item indicates the number of single-bit errors detected by the MDF FPGA in the SpaceWire Transmit FIFO.,UINT16,DN,,,1,1,,,,,,,,16,util_info,1
+570,sync,Synchronization Word,Synchronization Word,UINT32,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+571,tbl_bad_crcs,Number of bad CRCs detected,"This telemetry item is affected whenever a Table CRC is calculated, which can occur during table upload activites or whenever the
+ TBL_CHECK_CRC command is executed.",UINT16,DN,,,,,,,,,,,,8,tbl_info,1
+572,tbl_copy_cntr,Total number of table copies,Note: This telemetry Item will be reset to an initial value as a result of the CLRLOG Command.,UINT16,DN,,,,,,,,,,,,8,tbl_info,1
+573,tbl_good_crcs,Number of good CRCs detected,"This telemetry item is affected whenever a Table CRC is calculated, which can occur during table upload activites or whenever the
+ TBL_CHECK_CRC command is executed.",UINT16,DN,,,,,,,,,,,,8,tbl_info,1
+574,tbl_last_crc,Last CRC value calculated by the flight software,"This telemetry item is affected whenever a Table CRC is calculated, which can occur during table upload activites or whenever the
+ TBLCHECKCRC command is executed.",UINT32,DN,,,,,,,,,,,,8,tbl_info,1
+575,tbl_last_crc_valid,Status of the last CRC performed,Status of the last CRC performed,ENUM,DN,,,,,,,,,"CRC_FAILED:0:r, CRC_VALID:1",,,8,tbl_info,1
+576,tbl_nvm_ena,Flag indicating if table upload to NVM is enabled,Flag indicating if table upload to NVM is enabled,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,8,tbl_info,1
+577,tbl_state,Current state of the Memory Tables CSU,Current state of the Memory Tables CSU,ENUM,DN,,,,,,,,,"IDLE:0, UPL_IN_PROG:1, CRC_CHECK:2, COPYING:3",,,8,tbl_info,1
+578,tcusa,Subaddress for time code update messages,This telemetry item reports the subaddress for Time Code Update messages from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+579,time_day,CCSDS Timestamp - Day,"Days since Epoch of 12am Jan 1, 2000",UINT16,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+580,time_msecs,CCSDS Timestamp - Milliseconds,CCSDS Timestamp - Milliseconds,UINT32,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+581,time_usecs,CCSDS Timestamp - Microseconds,CCSDS Timestamp - Microseconds,UINT16,DN,,,,,,,,,,,,3,ccsds_sec_header,1
+582,tlm_collect_state,FPE telemetry collection enable flag,This is a keyed register that can disable onboard telemetry collection,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+583,tlm_ld_time_ms,Amount of time required to load last Tlm set (Milliseconds),"The 'Milliseconds' portion of the calculated time delta required to reload the complete telemetry RDR into the 1553 memory.
+ Time is calculated from when the 1553 interrupt is received until the compelte RDR has been written.",UINT32,DN,,,,,,,,,,,,10,1553_tlm,1
+584,tlm_ld_time_us,Amount of time required to load last Tlm set (Microseconds),"The 'Microseconds' portion of the calculated time delta required to reload the complete telemetry RDR into the 1553 memory.
+ Time is calculated from when the 1553 interrupt is received until the compelte RDR has been written.",UINT16,DN,,,,,,,,,,,,10,1553_tlm,1
+585,tlm_thresh_int_msk,Interrupt mask bit for the SMC Telemetry Buffer Threshold,This item reports the interrupt mask (enable/disable) state for the SMC FPGA TLM_BUF_THRESH interrupt,ENUM,DN,,,,,,,,,"ENABLED:0, MASKED:1",,,26,sma_info1,1
+586,type,CCSDS Type,CCSDS Type,UINT8,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+587,unexp_safe_cnt,Number of unexpected SAFE signals received by the ICE,"This telemetry item reports the number of SAFE signals received by the ICE on an unexpected input line. The expected/allowed input lines
+ are set in the Global Configuration table.",UINT16,DN,,,,,,,,,,,,16,util_info,1
+588,unknown_int_cnt,Number of unknown interrupts received,This telemetry item reports the total number of unknown interrupts received,UINT32,DN,,,,,,,,,,,,16,util_info,1
+589,upl_last_nvm,Flag indicating if last table upload was to NVM,Flag indicating if last table upload was to NVM,UINT8,DN,,,,,,,,,,,,8,tbl_info,1
+590,upl_last_tbl_id,ID of the last table uploaded,ID of the last table uploaded,UINT8,DN,,,,,,,,,,,,8,tbl_info,1
+591,upl_num_msgs,Total number of uploads received during an upload sequence,Total number of uploads received during an upload sequence,UINT16,DN,,,,,,,,,,,,8,tbl_info,1
+592,uploadnumsa,Number of upload subaddresses,This telemetry item reports the number of upload subaddresses from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+593,uploadsa1,First subaddress for upload data,This telemetry item reports the first subaddress for uploads from the 1553 config table.,UINT8,DN,,,,,,,,,,,,10,1553_tlm,1
+594,util_spare1,Spare unused bits in UTIL_INFO section,Used to pad to even number of bytes,UINT8,DN,,,,,,,,,,,,16,util_info,1
+595,version,CCSDS Version,CCSDS Version,UINT8,DN,,,,,,,,,,,,2,ccsds_pri_header,1
+596,vid_adc1_addr,Video ADC #1 address to read/write data from/to,Video ADC #1 address to read/write data from/to,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+597,vid_adc1_data,Data read from or written to the Video ADC #1,Data read from or written to the Video ADC #1,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+598,vid_adc1_rd_wr,Video ADC #1 Read/Write Flag,Video ADC #1 Read/Write Flag,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+599,vid_adc1_start,Start bit for commanding Video ADC #1,Start bit for commanding Video ADC #1,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+600,vid_adc2_addr,Video ADC #2 address to read/write data from/to,Video ADC #2 address to read/write data from/to,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+601,vid_adc2_data,Data read from or written to the Video ADC #2,Data read from or written to the Video ADC #2,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+602,vid_adc2_rd_wr,Video ADC #2 Read/Write Flag,Video ADC #2 Read/Write Flag,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+603,vid_adc2_start,Start bit for commanding Video ADC #2,Start bit for commanding Video ADC #2,UINT8,DN,,,,,,,,,,,,24,fpe_tlm,1
+604,wdog_dur,Watchdog timeout duration,"Duration of the watchdog timer in 100ms increments. Resolution is 100ms per count, and zero is equivalent to 100ms. Actual duration is:
+ 100 ms + n*100 ms, where 'n' is the value of this telemetry item.
+ The default watchdog timer duration is set in the Global Configuration table.",UINT8,DN,,,,,,,,,,,,16,util_info,1
+605,wdog_state,Watchdog enable/disable state,The enable state of the ICE watchdog,ENUM,DN,,,,,,,,,"DISABLED:0, ENABLED:1",,,16,util_info,1
+606,wdog_strk_cnt,Watchdog stroke counter,This telemetry item reports the number of time the FSW has stroked the watchdog,UINT32,DN,,,,,,,,,,,,16,util_info,1
+1000,adc_cal0_tmp_mux0_derived,ADC_CAL0_TMP_MUX0,ADC_CAL0_TMP_MUX0,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal0_tmp_mux0 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1001,adc_cal0_tmp_mux1_derived,ADC_CAL0_TMP_MUX1,ADC_CAL0_TMP_MUX1,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal0_tmp_mux1 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1002,adc_cal0_tmp_mux2_derived,ADC_CAL0_TMP_MUX2,ADC_CAL0_TMP_MUX2,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal0_tmp_mux2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1003,adc_cal1_tmp_mux0_derived,ADC_CAL1_TMP_MUX0,ADC_CAL1_TMP_MUX0,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal1_tmp_mux0 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1004,adc_cal1_tmp_mux1_derived,ADC_CAL1_TMP_MUX1,ADC_CAL1_TMP_MUX1,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal1_tmp_mux1 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1005,adc_cal1_tmp_mux2_derived,ADC_CAL1_TMP_MUX2,ADC_CAL1_TMP_MUX2,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal1_tmp_mux2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1006,adc_cal2_tmp_mux2_derived,ADC_CAL2_TMP_MUX2,ADC_CAL2_TMP_MUX2,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal2_tmp_mux2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1007,adc_cal3_tmp_mux2_derived,ADC_CAL3_TMP_MUX2,ADC_CAL3_TMP_MUX2,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_cal3_tmp_mux2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1008,adc_ditce_temp_derived,ADC_DITCE_TEMP,"Temperature sensor DITCE
+ SMA DITCE (Heater #4)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,40.00883502607661,44.98907167630534,,,,,,DERIVED:steinhart_hart,adc_ditce_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1009,adc_hsc_temp_derived,ADC_HSC_TEMP,ADC_HSC_TEMP,FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_hsc_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1010,adc_lvps_temp_derived,ADC_LVPS_TEMP,ADC_LVPS_TEMP,FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_lvps_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1011,adc_mdf_temp_derived,ADC_MDF_TEMP,ADC_MDF_TEMP,FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_mdf_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1012,adc_rtd0_derived,ADC_RTD0,ADC_RTD0,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_rtd0 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1013,adc_rtd1_derived,ADC_RTD1,ADC_RTD1,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_rtd1 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1014,adc_sbc_temp_derived,ADC_SBC_TEMP,ADC_SBC_TEMP,FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_sbc_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1015,adc_sm_base_temp_derived,ADC_SM_BASE_TEMP,"Temperature sensor SMA Base
+ SMA Base (No Heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_sm_base_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1016,adc_smc_temp_derived,ADC_SMC_TEMP,ADC_SMC_TEMP,FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_smc_temp 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1017,adc_spare_0_derived,Spare,Spare,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_spare_0 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,14,adc_tlm_spare,1
+1018,adc_spare_1_derived,Spare,Spare,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_spare_1 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,14,adc_tlm_spare,1
+1019,adc_spare_2_derived,Spare,Spare,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,adc_spare_2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,14,adc_tlm_spare,1
+1020,adc_temp0_derived,Temperature Sensor 0,"Temperature Sensor 0
+ FPA Strap (Heater #0)",FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp0 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1021,adc_temp1_derived,Temperature Sensor 1,"Temperature Sensor 1
+ FPA Window (Heater #1)",FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp1 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1022,adc_temp10_derived,Temperature Sensor 12,"Temperature Sensor 12
+ Telescope +X (no heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp10 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1023,adc_temp11_derived,Temperature Sensor 13,"Temperature Sensor 13
+ Telescope (Heater #6)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp11 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1024,adc_temp12_derived,Temperature Sensor 14,"Temperature Sensor 14
+ SMA Mask (Heater #7)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp12 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1025,adc_temp13_derived,Temperature Sensor 15,"Temperature Sensor 15
+ Telescope +X-Y (Heater #8)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp13 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1026,adc_temp14_derived,Temperature Sensor 16,"Temperature Sensor 16
+ Telescope +X+Y (Heater #9)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp14 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1027,adc_temp15_derived,Temperature Sensor 17,"Temperature Sensor 17
+ Telescope -X+Y (Heater #10)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp15 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1028,adc_temp16_derived,Temperature Sensor 18,"Temperature Sensor 18
+ Telescope -X-Y (Heater #11)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp16 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1029,adc_temp17_derived,Temperature Sensor 19,"Temperature Sensor 19
+ Telescope +Z (Heater #12)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp17 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1030,adc_temp18_derived,Temperature Sensor 20,"Temperature Sensor 20
+ Telescope -Z (Heater #13)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp18 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1031,adc_temp19_derived,Temperature Sensor 21,"Temperature Sensor 21
+ Telescope -Y-Z (Heater #14)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp19 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1032,adc_temp2_derived,Temperature Sensor 2,"Temperature Sensor 2
+ FPA Frame (Heater #2)",FLOAT32,deg_C,-39.99996614318391,-34.99998947609117,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp2 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1033,adc_temp20_derived,Temperature Sensor 22,"Temperature Sensor 22
+ Telescope -Y+Z (Heater #15)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp20 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1034,adc_temp21_derived,Temperature Sensor 21,"Temperature Sensor 21
+ Spare",FLOAT32,deg_C,-35.913667720724675,-25.06606436546923,31.567344933349602,78.34590377987752,,,,,,DERIVED:steinhart_hart,adc_temp21 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1035,adc_temp22_derived,Temperature Sensor 22,"Temperature Sensor 22
+ Spare",FLOAT32,deg_C,-35.913667720724675,-25.06606436546923,31.567344933349602,78.34590377987752,,,,,,DERIVED:steinhart_hart,adc_temp22 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1036,adc_temp23_derived,Temperature Sensor 23,"Temperature Sensor 23
+ Spare",FLOAT32,deg_C,-35.913667720724675,-25.06606436546923,31.567344933349602,78.34590377987752,,,,,,DERIVED:steinhart_hart,adc_temp23 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1037,adc_temp24_derived,Temperature Sensor 24,"Temperature Sensor 24
+ Spare",FLOAT32,deg_C,-35.913667720724675,-25.06606436546923,31.567344933349602,78.34590377987752,,,,,,DERIVED:steinhart_hart,adc_temp24 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1038,adc_temp25_derived,Temperature Sensor 25,"Temperature Sensor 25
+ Spare",FLOAT32,deg_C,-35.913667720724675,-25.06606436546923,31.567344933349602,78.34590377987752,,,,,,DERIVED:steinhart_hart,adc_temp25 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1039,adc_temp3_derived,Temperature Sensor 3,"Temperature Sensor 3
+ CMA =Z face (Heater #3)",FLOAT32,deg_C,-44.99988325355798,-39.99996614318391,60.04600829801086,65.04081226065534,,,,,,DERIVED:steinhart_hart,adc_temp3 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1040,adc_temp4_derived,Temperature Sensor 4,"Temperature Sensor 4
+ CMA Motor (No Heater)",FLOAT32,deg_C,-44.99988325355798,-39.99996614318391,70.00739042834169,75.07771577367816,,,,,,DERIVED:steinhart_hart,adc_temp4 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1041,adc_temp5_derived,Temperature Sensor 7,"Temperature Sensor 7
+ Spectrometer -X (no heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp5 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1042,adc_temp6_derived,Temperature Sensor 8,"Temperature Sensor 8
+ Spectrometer +Z (no heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp6 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1043,adc_temp7_derived,Temperature Sensor 9,"Temperature Sensor 9
+ Sensor Heat Sink (No Heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp7 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1044,adc_temp8_derived,Temperature Sensor 10,"Temperature Sensor 10
+ Telescope T4 (no heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp8 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1045,adc_temp9_derived,Temperature Sensor 11,"Temperature Sensor 11
+ Telescope -X (no heater)",FLOAT32,deg_C,-34.99998947609117,-29.999990213897604,49.99944753122958,55.007108756967284,,,,,,DERIVED:steinhart_hart,adc_temp9 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,12,adc_tlm,1
+1046,htr_setpoint_00_derived,Setpoint value for heater channel 0,Setpoint value for heater channel 0,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_00 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1047,htr_setpoint_01_derived,Setpoint value for heater channel 1,Setpoint value for heater channel 1,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_01 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1048,htr_setpoint_02_derived,Setpoint value for heater channel 2,Setpoint value for heater channel 2,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_02 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1049,htr_setpoint_03_derived,Setpoint value for heater channel 3,Setpoint value for heater channel 3,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_03 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1050,htr_setpoint_04_derived,Setpoint value for heater channel 4,Setpoint value for heater channel 4,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_04 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1051,htr_setpoint_05_derived,Setpoint value for heater channel 5,Setpoint value for heater channel 5,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_05 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1052,htr_setpoint_06_derived,Setpoint value for heater channel 6,Setpoint value for heater channel 6,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_06 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1053,htr_setpoint_07_derived,Setpoint value for heater channel 7,Setpoint value for heater channel 7,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_07 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1054,htr_setpoint_08_derived,Setpoint value for heater channel 8,Setpoint value for heater channel 8,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_08 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1055,htr_setpoint_09_derived,Setpoint value for heater channel 9,Setpoint value for heater channel 9,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_09 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1056,htr_setpoint_10_derived,Setpoint value for heater channel 10,Setpoint value for heater channel 10,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_10 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1057,htr_setpoint_11_derived,Setpoint value for heater channel 11,Setpoint value for heater channel 11,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_11 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1058,htr_setpoint_12_derived,Setpoint value for heater channel 12,Setpoint value for heater channel 12,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_12 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1059,htr_setpoint_13_derived,Setpoint value for heater channel 13,Setpoint value for heater channel 13,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_13 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1060,htr_setpoint_14_derived,Setpoint value for heater channel 14,Setpoint value for heater channel 14,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_14 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1061,htr_setpoint_15_derived,Setpoint value for heater channel 15,Setpoint value for heater channel 15,FLOAT32,deg_C,,,,,,,,,,DERIVED:steinhart_hart,htr_setpoint_15 0.00146451404336925 0.00023877956354964 9.98191547326879e-08,17,mech_htr_tlm,1
+1062,scan_label,The SDPC defined scan-label derived from the mem_mon_adr_15 TP,The SDPC defined scan-label derived from the mem_mon_adr_15 TP,UINT32,,,,,,,,,,,DERIVED:mem_mon_ptr,mem_mon_adr_15,15,mem_mon_adr,0

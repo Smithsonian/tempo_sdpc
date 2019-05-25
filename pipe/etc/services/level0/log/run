@@ -1,0 +1,4 @@
+#!/bin/sh
+
+SERVICE="level0"
+. ../../log.inc

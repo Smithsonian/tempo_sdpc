@@ -30,6 +30,8 @@ o3_profile/o3_profile.rc
 level1/radiance.met.template
 level1/irradiance.met.template
 level3/simple.met.template
+l0_format.cfg
+tempo_tpinfo_r9.csv
 l0_ccd.cfg
 wavecal.cfg
 l1_inr_prep.cfg
