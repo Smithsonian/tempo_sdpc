@@ -26,6 +26,7 @@
 #include "l0_format.h"
 
 #define MAX_PATHLEN 1024
+static int Have_Epoch;
 
 typedef struct
 {
@@ -492,19 +493,19 @@ static void delete_methods_table (Process_Method_Table_Type *tbl)
      }
 }
 
-static volatile int Sighup_Received;
-static void sighup_handler (int sig)
+static volatile int Sigterm_Received;
+static void sigterm_handler (int sig)
 {
    (void) sig;
-   Sighup_Received++;
+   Sigterm_Received++;
 }
-static void catch_sighup (void)
+static void catch_sigterm (void)
 {
    struct sigaction new_action;
-   new_action.sa_handler = sighup_handler;
+   new_action.sa_handler = sigterm_handler;
    sigemptyset (&new_action.sa_mask);
    new_action.sa_flags = 0;
-   sigaction (SIGHUP, &new_action, NULL);
+   sigaction (SIGTERM, &new_action, NULL);
 }
 
 static volatile int Sigint_Received;
@@ -526,8 +527,8 @@ static void log_caught_signal (void)
 {
    const char *signame;
 
-   if (Sighup_Received)
-     signame = "SIGHUP";
+   if (Sigterm_Received)
+     signame = "SIGTERM";
    else if (Sigint_Received)
      signame = "SIGINT";
    else
@@ -538,7 +539,7 @@ static void log_caught_signal (void)
 
 static int caught_signal (void)
 {
-   return (Sighup_Received || Sigint_Received);
+   return (Sigterm_Received || Sigint_Received);
 }
 
 static int monitor_dir (Process_Method_Table_Type *tbl,
@@ -627,6 +628,28 @@ static void set_archive_root_dir (const char *dir)
 static const char *get_archive_root_dir (void)
 {
    return Archive_Root_Dir;
+}
+
+int verify_epoch (time_t epoch)
+{
+   if (Have_Epoch)
+     {
+        double current_epoch = tio_time_taix_epoch_timet ();
+        if (epoch != current_epoch)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: epoch mismatch: old=%f  new=%ld",
+                          __func__, current_epoch, epoch);
+             return -1;
+          }
+     }
+   else
+     {
+        if (0 != tio_time_set_taix_epoch_timet (epoch))
+          return -1;
+        Have_Epoch = 1;
+     }
+
+   return 0;
 }
 
 int make_level0_archdir_path (char **archdir_path,
@@ -733,8 +756,9 @@ int write_attr_global_timestamp (int ncid, const char *tstamp_name,
    return TIO_write_timestamp (ncid, NC_GLOBAL, tstamp_name, tstamp_value);
 }
 
-static int write_std_global_metadata (int ncid)
+int write_std_global_metadata (int ncid, const IOCSDPC_Common_Header_Type *chdr)
 {
+   (void) chdr;
    return tio_write_epoch_timestamp (ncid, NC_GLOBAL);
 }
 
@@ -751,7 +775,6 @@ int create_hidden (const char *dirname, const char *basename, int *ncid)
 
    if ((NULL == (path = ioclib_pathconcat (dirname, hidden_basename)))
        || (-1 == TIO_create (path, NC_NETCDF4, ncid))
-       || (-1 == write_std_global_metadata (*ncid))
       )
      {
         status = -1;
@@ -997,6 +1020,8 @@ int main (int argc, char **argv)
    tell_set_log_level (TELL_MSGTYPE_INFO, verbose);
    config_init (&cfg);
 
+   Have_Epoch = 0;
+
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
      goto return_status;
 
@@ -1008,7 +1033,7 @@ int main (int argc, char **argv)
 
    tell_vinfo (0, "started (pid=%d)", getpid());
 
-   catch_sighup ();
+   catch_sigterm ();
    catch_sigint ();
 
    status = monitor_dir (tbl, tp, &ctrl);

@@ -320,12 +320,16 @@ static int write_iru_records (Process_Method_Type *pmt,
    return 0;
 }
 
-static int new_iru_outfile (Process_Method_Type *pmt, double timestamp)
+static int new_iru_outfile (Process_Method_Type *pmt, double timestamp,
+                            const IOCSDPC_Common_Header_Type *chdr)
 {
    char basename[MAX_BASENAME_SIZE];
 
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
+
+   if (0 != verify_epoch (chdr->epoch))
+     return -1;
 
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
@@ -345,7 +349,8 @@ static int new_iru_outfile (Process_Method_Type *pmt, double timestamp)
 
    tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
 
-   if (-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+   if ((-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+       || (-1 == write_std_global_metadata (pmt->ncid, chdr)))
      return -1;
    ioclib_free (pmt->out_basename);
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
@@ -365,7 +370,7 @@ static int select_iru_outfile (Process_Method_Type *pmt,
        && (iru->gyro_bias_time == pmt->gyro_bias_time))
      return 0;
 
-   if (0 != new_iru_outfile (pmt, timestamp))
+   if (0 != new_iru_outfile (pmt, timestamp, &iru->common_header))
      return -1;
 
    return define_iru_vars (pmt, iru);

@@ -281,12 +281,17 @@ static int write_smc_records (Process_Method_Type *pmt,
    return 0;
 }
 
-static int new_smc_outfile (Process_Method_Type *pmt, double timestamp)
+static int new_smc_outfile (Process_Method_Type *pmt,
+                            const IOCSDPC_Common_Header_Type *chdr,
+                            double timestamp)
 {
    char basename[MAX_BASENAME_SIZE];
 
    pmt->outfile_timestamp_start = timestamp;
    pmt->outfile_timestamp_end = timestamp;
+
+   if (0 != verify_epoch (chdr->epoch))
+     return -1;
 
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
@@ -306,7 +311,8 @@ static int new_smc_outfile (Process_Method_Type *pmt, double timestamp)
 
    tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
 
-   if (-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+   if ((-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+       || (-1 == write_std_global_metadata (pmt->ncid, chdr)))
      return -1;
    ioclib_free (pmt->out_basename);
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
@@ -315,7 +321,9 @@ static int new_smc_outfile (Process_Method_Type *pmt, double timestamp)
    return 0;
 }
 
-static int select_smc_outfile (Process_Method_Type *pmt, double timestamp)
+static int select_smc_outfile (Process_Method_Type *pmt,
+                               const IOCSDPC_Common_Header_Type *chdr,
+                               double timestamp)
 {
    /* FIXME - support splitting smc file across multiple
     * netcdf files? */
@@ -324,7 +332,7 @@ static int select_smc_outfile (Process_Method_Type *pmt, double timestamp)
            < pmt->outfile_deltat_sec))
      return 0;
 
-   if (0 != new_smc_outfile (pmt, timestamp))
+   if (0 != new_smc_outfile (pmt, chdr, timestamp))
      return -1;
 
    return define_smc_vars (pmt);
@@ -364,7 +372,7 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         goto return_status;
      }
 
-   if (0 != select_smc_outfile (pmt, rec_array[0].sample_time))
+   if (0 != select_smc_outfile (pmt, &smc->common_header, rec_array[0].sample_time))
      goto return_status;
 
    if (0 != write_smc_records (pmt, smc->num_records, rec_array))

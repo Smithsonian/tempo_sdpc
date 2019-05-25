@@ -155,7 +155,7 @@ static int schedule_granules (unsigned int num_recs,
    return 0;
 }
 
-static double image_end_time (IOCSDPC_Exprec_Type *erec)
+static double image_end_time (const IOCSDPC_Exprec_Type *erec)
 {
    return (erec->image_start_time
            + erec->exposure_time
@@ -364,6 +364,9 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (pmt->exprec_type_string == NULL)
      return -1;
 
+   if (0 != verify_epoch (erec->common_header.epoch))
+     return -1;
+
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
    if (0 != make_level0_archdir_path (&pmt->archdir_path, erec->image_start_time,
@@ -376,7 +379,8 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
 
-   if (-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+   if ((-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
+       || (-1 == write_std_global_metadata (pmt->ncid, &erec->common_header)))
      return -1;
    FREE(pmt->out_basename);
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))

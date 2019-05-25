@@ -51,6 +51,13 @@
  */
 extern char *expand_string (const char *s);
 
+/** Set the TEMPO epoch, and make sure all files use the same epoch
+ * @param[in] epoch   TEMPO epoch specification, expressed as the number
+ *                    of elapsed seconds (UTC) since the Unix epoch
+ * @return 0 on success, -1 on error
+ */
+extern int verify_epoch (time_t epoch);
+
 /** Write a global time-stamp attribute to an open netCDF file
  * @param[in] ncid  Index of a netCDF file, opened for writing.
  * @param[in] tstamp_name  Name of time-stamp variable, normally one either
@@ -61,6 +68,13 @@ extern char *expand_string (const char *s);
  */
 extern int write_attr_global_timestamp (int ncid, const char *tstamp_name,
                                         double tstamp_value);
+
+/** Write standard global metadata to an open netCDF file
+ * @param[in] ncid  Index of a netCDF file, opened for writing.
+ * @param[in] chdr  Pointer to IOCSDPC common header
+ * @return 0 on success, -1 on error
+ */
+extern int write_std_global_metadata (int ncid, const IOCSDPC_Common_Header_Type *chdr);
 
 /** Write a global product type attribute to an open netCDF file
  * @param[in] ncid  Index of a netCDF file, opened for writing.
