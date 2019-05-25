@@ -8,4 +8,4 @@ then
   exit 1
 fi
 
-exec L0_format --archive "$SDPC_ARCHIVE_DIR" "${SDPC_ROOT}/etc/l0_format.cfg"
+exec L0_format --register --archive "$SDPC_ARCHIVE_DIR" "${SDPC_ROOT}/etc/l0_format.cfg"

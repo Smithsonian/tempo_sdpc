@@ -137,7 +137,7 @@ def process_file (conn, filename):
         print ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
-    if "inr_status" in attr.keys():
+    if (product_name == 'rad_L1'):
         if attr["inr_status"] == "2":
             product_name = product_name + 'b'
         else:
