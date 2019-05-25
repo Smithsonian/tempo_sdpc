@@ -27,6 +27,7 @@
 
 #define MAX_PATHLEN 1024
 static int Have_Epoch;
+static int Perform_Archive_Registration;
 
 typedef struct
 {
@@ -895,6 +896,48 @@ return_status:
    return status;
 }
 
+static int register_with_symlink (const char *copydir, const char *basename)
+{
+   char *archived_path = NULL;
+   char *registry_dir = NULL;
+   char *symlink_path = NULL;
+   const char *root_path;
+   int status = -1;
+
+   /* NULL means don't perform archiving */
+   if (NULL == (root_path = get_archive_root_dir ()))
+     return 0;
+
+   if (Perform_Archive_Registration == 0)
+     return 0;
+
+   if ((NULL == (archived_path = ioclib_pathconcat (copydir, basename)))
+       || (NULL == (registry_dir = ioclib_pathconcat (root_path, "registry/incoming")))
+       || (NULL == (symlink_path = ioclib_pathconcat (registry_dir, basename)))
+      )
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed", __func__);
+        goto return_status;
+     }
+
+   if (0 != ioclib_mkdir (registry_dir, 0))
+     goto return_status;
+
+   if (0 != symlink (archived_path, symlink_path))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: symlink failed: %s -> %s",
+                     __func__, archived_path, symlink_path);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   ioclib_free (archived_path);
+   ioclib_free (registry_dir);
+   ioclib_free (symlink_path);
+   return status;
+}
+
 /* Close hidden file $dirname/.${basename} and
  * and rename to $dirname/$basename.
  * Optionally, if copydir != NULL, put a copy in $copydir/$basename
@@ -919,6 +962,9 @@ int close_hidden (int ncid, const char *dirname, const char *basename,
      goto return_status;
 
    if (0 != perform_copy (oldpath, copydir, basename))
+     goto return_status;
+
+   if (0 != register_with_symlink (copydir, basename))
      goto return_status;
 
    if (-1 == ioclib_rename (oldpath, newpath))
@@ -965,10 +1011,11 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
-        {"help",    no_argument, 0, 'h'},
-        {"archive", required_argument, 0, 'a'},
-        {"empty",   no_argument, 0, 'e'},
-        {"verbose", no_argument, 0, 'v'},
+        {"help",     no_argument,       0, 'h'},
+        {"archive",  required_argument, 0, 'a'},
+        {"empty",    no_argument,       0, 'e'},
+        {"register", no_argument,       0, 'r'},
+        {"verbose",  no_argument,       0, 'v'},
         {0,0,0,0}
      };
 
@@ -977,7 +1024,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "haev", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:erv", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -994,6 +1041,9 @@ int main (int argc, char **argv)
              break;
            case 'e':
              ctrl.exit_on_emptydir = 1;
+             break;
+           case 'r':
+             Perform_Archive_Registration++;
              break;
            case 'v':
              verbose++;
