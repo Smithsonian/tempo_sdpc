@@ -86,6 +86,12 @@ static int close_smc_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+{
+   (void) tpinfo;
+   return close_smc_outfile (pmt);
+}
+
 static void delete_smc (Process_Method_Type *pmt)
 {
    if (pmt == NULL)
@@ -442,7 +448,7 @@ Process_Method_Type *init_smc_method (config_t *cfg)
 
    pmt->pmt_process = process_smc;
    pmt->pmt_delete = delete_smc;
-   pmt->pmt_flush_cache = NULL;
+   pmt->pmt_flush_cache = flush_cache;
    pmt->pmt_query_latest_timestamp = query_latest_timestamp;
 
    pmt->out_basename = NULL;

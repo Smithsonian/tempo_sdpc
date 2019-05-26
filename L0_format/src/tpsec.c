@@ -88,6 +88,12 @@ static int close_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+{
+   (void) tpinfo;
+   return close_outfile (pmt);
+}
+
 /* Create a new netCDF output file, optionally closing the current one. */
 static int new_outfile (Process_Method_Type *pmt,
 			const IOCSDPC_Common_Header_Type *chdr,
@@ -608,7 +614,7 @@ Process_Method_Type *init_tpsec_method (config_t *cfg)
 
    pmt->pmt_process = process_tpsec_file;
    pmt->pmt_delete = delete_tpsec;
-   pmt->pmt_flush_cache = NULL;
+   pmt->pmt_flush_cache = flush_cache;
    pmt->pmt_query_latest_timestamp = query_latest_timestamp;
 
    pmt->out_basename = NULL;
