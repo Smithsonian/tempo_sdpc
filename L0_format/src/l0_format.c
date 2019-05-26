@@ -267,6 +267,7 @@ static int make_iru_only_path (const char *dir, double tstart, char *path, size_
 static int write_iru_only_interval (const char *dir, double tbeg, double tend)
 {
    char path[MAX_PATHLEN];
+   time_t epoch;
    FILE *fp;
 
    if (0 != make_iru_only_path (dir, tbeg, path, sizeof(path)))
@@ -280,7 +281,9 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
         return -1;
      }
 
-   if (fprintf (fp, "%0.15e,%0.15e\n", tbeg, tend) < 0)
+   epoch = (time_t) tio_time_taix_epoch_timet();
+
+   if (fprintf (fp, "%0.15e,%0.15e,%ld\n", tbeg, tend, epoch) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: error writing to file %s", __func__, path);
         (void) fclose (fp);
