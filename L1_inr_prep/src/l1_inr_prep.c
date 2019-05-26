@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -49,6 +50,7 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -b | --begin <start-time>  start time (sec since epoch)\n");
    fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
+   fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
    exit (EXIT_SUCCESS);
@@ -134,8 +136,11 @@ static int copy_iru (Radiance_Type *r, config_t *cfg,
                              iru.file_glob_pattern, &iru.rst))
      goto return_status;
 
-   if (0 != radiance_copy_iru (r, iru.rst))
-     goto return_status;
+   if (iru.rst)
+     {
+        if (0 != radiance_copy_iru (r, iru.rst))
+          goto return_status;
+     }
 
    status = 0;
 return_status:
@@ -157,8 +162,11 @@ static int copy_smc (Radiance_Type *r, config_t *cfg,
                              smc.file_glob_pattern, &smc.rst))
      goto return_status;
 
-   if (0 != radiance_copy_smc (r, smc.rst))
-     goto return_status;
+   if (smc.rst)
+     {
+        if (0 != radiance_copy_smc (r, smc.rst))
+          goto return_status;
+     }
 
    status = 0;
 return_status:
@@ -287,8 +295,11 @@ static int copy_ephem (Radiance_Type *r, config_t *cfg,
                              pad_enable ? num_pad : 0))
      goto return_status;
 
-   if (0 != radiance_write_eph (r, &eph))
-     goto return_status;
+   if (eph.n > 0)
+     {
+        if (0 != radiance_write_eph (r, &eph))
+          goto return_status;
+     }
 
    status = 0;
 return_status:
@@ -385,10 +396,11 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
-        {"help", no_argument, 0, 'h'},
-        {"begin", required_argument, 0, 'b'},
-        {"end",   required_argument, 0, 'e'},
-        {"config", required_argument, 0, 'c'},
+        {"help",    no_argument,       0, 'h'},
+        {"begin",   required_argument, 0, 'b'},
+        {"end",     required_argument, 0, 'e'},
+        {"epoch",   required_argument, 0, 'E'},
+        {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
         {0,0,0,0}
      };
@@ -398,6 +410,7 @@ int main (int argc, char **argv)
    double time_end = nan_value;
    char *radiance_file = NULL;
    int print_usage = 0;
+   int have_epoch = 0;
 
    if (argc < 2)
      usage();
@@ -417,7 +430,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:e:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:e:E:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -437,6 +450,16 @@ int main (int argc, char **argv)
            case 'e':
              if (1 != sscanf (optarg, "%le", &time_end))
                goto return_status;
+             break;
+           case 'E':
+               {
+                  time_t epoch;
+                  if (1 != sscanf (optarg, "%ld", &epoch))
+                    goto return_status;
+                  if (0 != tio_time_set_taix_epoch_timet (epoch))
+                    goto return_status;
+                  have_epoch++;
+               }
              break;
            case 'c':
              config_file = optarg;
@@ -476,6 +499,14 @@ int main (int argc, char **argv)
              fprintf (stdout, "%s ", argv[optind++]);
           }
         fprintf (stdout, "\n");
+     }
+
+   /* When either time boundary is set, the epoch must also be set */
+   if ((have_epoch == 0)
+       && ((0 == isnan(time_beg)) || (0 == isnan(time_end))))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: epoch is not set", __func__);
+        goto return_status;
      }
 
    if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end))

@@ -196,26 +196,34 @@ static int select_interval (Eph_Type *eph,
                             double time_beg, double time_end,
                             int num_pad)
 {
+   double eph_beg, eph_end;
    int beg, end;
 
-   if ((time_beg < eph->t[0])
-       || (eph->t[eph->n-1] < time_end))
+   if (eph->n == 0)
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: ephemeris coverage is incomplete",
-                     __func__);
-        return -1;
+        tell_vwarn (0, "%s: No ephemeris coverage", __func__);
+        return 0;
+     }
+
+   eph_beg = eph->t[0];
+   eph_end = eph->t[eph->n-1];
+
+   if ((time_end < eph_beg) || (eph_end < time_beg))
+     {
+        tell_vwarn (0, "%s: No ephemeris coverage", __func__);
+        eph->n = 0;
+        return 0;
      }
 
    beg = bsearch_d (time_beg, eph->t, eph->n);
    end = bsearch_d (time_end, eph->t, eph->n);
 
-   if (beg < 0 || end < 0)
+   if ((beg < 0) || (end < 0))
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: corrupt ephemeris? (this should never happen!)",
-                     __func__);
-        return -1;
+        tell_vwarn (0, "%s: Incomplete ephemeris coverage for interval [%f,%f]",
+                    __func__, time_beg, time_end);
+        if (beg < 0) beg = 0;
+        if (end < 0) end = eph->n-1;
      }
 
    if (num_pad > 0)

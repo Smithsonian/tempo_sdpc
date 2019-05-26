@@ -160,12 +160,22 @@ static int examine_file (Row_Select_Type **rstp, int ncid, const char *file,
      }
 
    if (time_end < time_coverage_start)
-     status = FILE_FOLLOWS_INTERVAL;
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "file follows interval: time_end:%f < time_coverage_start:%f",
+                   time_end, time_coverage_start);
+        status = FILE_FOLLOWS_INTERVAL;
+     }
    else if (time_coverage_end < time_beg)
-     status = FILE_PRECEDES_INTERVAL;
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "file precedes interval: time_coverage_end:%f < time_beg:%f",
+                   time_coverage_end, time_beg);
+        status = FILE_PRECEDES_INTERVAL;
+     }
    else
      {
         Row_Select_Type *rst = NULL;
+
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "file overlaps interval");
 
         if (NULL == (rst = alloc_row_select (file)))
           return status;
@@ -184,7 +194,7 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
    Row_Select_Type *rst_head = NULL;
    wordexp_t we = {0};
    int return_status = -1;
-   size_t n;
+   size_t i, n;
 
    *rstp = NULL;
 
@@ -197,9 +207,9 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
 
    if (we.we_wordc < 1)
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: no files match glob pattern: %s",
-                     __func__, file_glob_pattern);
+        return_status = 0;
+        tell_vwarn (0, "%s: no files match glob pattern: %s",
+                    __func__, file_glob_pattern);
         goto cleanup_and_return;
      }
 
@@ -208,13 +218,18 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
     */
    n = we.we_wordc;
 
-   while (n-- > 0)
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %ld files matching pattern %s",
+              n, file_glob_pattern);
+
+   for (i = 0; i < n; i++)
      {
         Row_Select_Type *rst;
-        const char *file = we.we_wordv[n];
+        const char *file = we.we_wordv[i];
         double time_beg_pad = time_beg;
         double time_end_pad = time_end;
         int ncid, status;
+
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %s", file);
 
         if (0 != TIO_open (file, NC_NOWRITE, &ncid))
           goto cleanup_and_return;
@@ -235,23 +250,28 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
           }
         else if (status == FILE_PRECEDES_INTERVAL)
           {
-             (void) TIO_close (ncid);
-             break;
-          }
-        else if (status == FILE_FOLLOWS_INTERVAL)
-          {
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "file precedes interval: %s", file);
              (void) TIO_close (ncid);
              continue;
           }
+        else if (status == FILE_FOLLOWS_INTERVAL)
+          {
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "file follows interval: %s", file);
+             (void) TIO_close (ncid);
+             break;
+          }
         else if (status == FILE_OVERLAPS_INTERVAL)
           {
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "file overlaps interval: %s", file);
              if (0 != read_times (rst, ncid))
                goto cleanup_and_return;
              (void) TIO_close (ncid);
 
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "read times: %s", file);
              if (0 != apply_selection (rst, time_beg_pad, time_end_pad))
                goto cleanup_and_return;
 
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "appending time samples from: %s", file);
              if (rst_head != NULL)
                {
                   rst->next = rst_head;
@@ -262,9 +282,9 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
 
    if (rst_head == NULL)
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: no samples in time interval [%0.4f, %0.4f) with num_pad=%d",
-                     __func__, time_beg, time_end, num_pad);
+        return_status = 0;
+        tell_vwarn (0, "%s: no samples in time interval [%0.4f, %0.4f) with num_pad=%d",
+                    __func__, time_beg, time_end, num_pad);
         goto cleanup_and_return;
      }
 

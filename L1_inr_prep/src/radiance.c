@@ -419,6 +419,9 @@ int radiance_write_eph (Radiance_Type *r, const Eph_Type *eph)
 {
    int grp, start, count;
 
+   if (eph->n == 0)
+     return 0;
+
    if (0 != TIO_inq_grp (r->ncid, "/inr_input/ephemeris", &grp))
      return -1;
 
