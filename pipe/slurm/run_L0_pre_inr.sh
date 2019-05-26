@@ -30,15 +30,15 @@ make_iru_only_file_for_inr()
    # read time interval from csv file
    OLDIFS=$IFS
    export IFS=','
-   read tbeg tend <"$time_interval_file"
+   read tbeg tend epoch <"$time_interval_file"
    export IFS=$OLDIFS
 
    # run L1_inr_prep to generate the INR input file
    export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
    etc_dir="$SDPC_ROOT/etc"
 
-   L1_inr_prep -c ${etc_dir}/l1_inr_prep.cfg \
-       --begin $tbeg --end $tend
+   L1_inr_prep -v 1 -c ${etc_dir}/l1_inr_prep.cfg \
+       --begin $tbeg --end $tend --epoch $epoch
 
    # If L1_inr_prep fails, 'set -e' ensures that the script
    # will exit before we can delete the time interval file.
