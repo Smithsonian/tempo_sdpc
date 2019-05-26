@@ -274,9 +274,18 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
              tell_vlog (TELL_MSGTYPE_INFO, 1, "appending time samples from: %s", file);
              if (rst_head != NULL)
                {
-                  rst->next = rst_head;
+                  Row_Select_Type *p;
+                  for (p = rst_head; p != NULL; p = p->next)
+                    {
+                       if (p->next == NULL)
+                         {
+                            p->next = rst;
+                            break;
+                         }
+                    }
                }
-             rst_head = rst;
+             else rst_head = rst;
+
           }
      }
 
