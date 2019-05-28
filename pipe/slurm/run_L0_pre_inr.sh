@@ -70,6 +70,7 @@ case "${granule_basename}" in
    ;;
    * )
    dark_file_path=NONE
+   ephem_file_path=NONE
    ;;
 esac
 
