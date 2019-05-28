@@ -28,6 +28,7 @@ test_telem.sh
 #         For testing purposes, do it here.
 filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --update
 
 /bin/cp -r $SDPC_ROOT/etc/services $SDPC_RUN_DIR_MASTER
 

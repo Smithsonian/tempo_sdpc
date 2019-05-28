@@ -30,15 +30,18 @@ make_iru_only_file_for_inr()
    # read time interval from csv file
    OLDIFS=$IFS
    export IFS=','
-   read tbeg tend epoch <"$time_interval_file"
+   read tbeg tend epoch tbeg_utc<"$time_interval_file"
    export IFS=$OLDIFS
 
    # run L1_inr_prep to generate the INR input file
    export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
    etc_dir="$SDPC_ROOT/etc"
 
+   ephem_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --find --sec $tbeg_utc)
+
    L1_inr_prep -v 1 -c ${etc_dir}/l1_inr_prep.cfg \
-       --begin $tbeg --end $tend --epoch $epoch
+       --begin $tbeg --end $tend --epoch $epoch \
+       --ephemeris ${ephem_file_path}
 
    # If L1_inr_prep fails, 'set -e' ensures that the script
    # will exit before we can delete the time interval file.
@@ -63,6 +66,7 @@ case "${granule_basename}" in
    filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:drk --update
 
    dark_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:drk --find --header "$granule_path")
+   ephem_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --find --header "$granule_path")
    ;;
    * )
    dark_file_path=NONE
@@ -74,6 +78,7 @@ file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
   granule_path=${granule_path}
   dark_file_path=${dark_file_path}
+  ephem_file_path=${ephem_file_path}
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"

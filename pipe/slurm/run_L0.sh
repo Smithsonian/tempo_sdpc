@@ -37,6 +37,7 @@ file_list_file="$2"
 # including this file should define these variables:
 #    granule_path
 #    dark_file_path
+#    ephem_file_path
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -112,7 +113,7 @@ run_inr_prep()
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
    srun --ntasks=1 --output=log_inr_prep.txt \
-   L1_inr_prep $target_file
+   L1_inr_prep --ephemeris $ephem_file_path $target_file
 }
 
 case "${granule_basename}" in

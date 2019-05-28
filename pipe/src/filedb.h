@@ -26,6 +26,7 @@ struct Filedb_Type
 
 extern int read_config_common (Filedb_Type *fdb, config_t *cfg, const char *name);
 
+extern int config_ephemeris (Filedb_Type *fdb, config_t *cfg, const char *name);
 extern int config_snow (Filedb_Type *fdb, config_t *cfg, const char *name);
 extern int config_tempo (Filedb_Type *fdb, config_t *cfg, const char *name);
 extern int config_met (Filedb_Type *fdb, config_t *cfg, const char *name);

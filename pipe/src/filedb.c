@@ -824,6 +824,7 @@ static Filedb_Method_Type Filedb_Methods_List[] =
    FILEDB_METHOD(met),
    FILEDB_METHOD(snow),
    FILEDB_METHOD(tempo),
+   FILEDB_METHOD(ephemeris),
    FILEDB_METHOD_TABLE_END
 };
 

@@ -105,7 +105,7 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 IOCSDPC_INC = $(prefix)/include
 IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
 
-FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o
+FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o filedb_ephemeris.o
 FILEDB_OBJS = $(patsubst %.o,$(objdir)/%.o, $(FILEDB_OFILES))
 
 FILEDB_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig $(IOCSDPC_LIBPATHS) \
@@ -131,6 +131,9 @@ $(objdir)/filedb_snow.o:	$(srcdir)/filedb_snow.c
 
 $(objdir)/filedb_tempo.o:	$(srcdir)/filedb_tempo.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_tempo.c $(FILEDB_LIBS)
+
+$(objdir)/filedb_ephemeris.o:	$(srcdir)/filedb_ephemeris.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_ephemeris.c $(FILEDB_LIBS)
 
 #---------------------------------------------------------------------------
 # Installation Rules
