@@ -18,6 +18,5 @@ iru_config: {
 };
 
 ephemeris_config: {
-  file = "sample_ephem.csv";
   num_pad = 10;
 };

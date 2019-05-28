@@ -51,6 +51,7 @@ static void usage (void)
    fprintf (stderr, "   -b | --begin <start-time>  start time (sec since epoch)\n");
    fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
    fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
+   fprintf (stderr, "   -p | --ephemeris FILE      ephemeris file\n");
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
    exit (EXIT_SUCCESS);
@@ -267,11 +268,11 @@ static void free_rename_path_type (Rename_Path_Type *rpt)
 }
 
 static int copy_ephem (Radiance_Type *r, config_t *cfg,
-                       double time_beg, double time_end, int pad_enable)
+                       double time_beg, double time_end, int pad_enable,
+                       const char *ephemeris_file)
 {
    Eph_Type eph = {0};
    config_setting_t *s;
-   const char *ephemeris_file;
    int num_pad, status = -1;
 
    if (NULL == (s = config_lookup (cfg, "ephemeris_config")))
@@ -282,8 +283,7 @@ static int copy_ephem (Radiance_Type *r, config_t *cfg,
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "file", &ephemeris_file))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &num_pad)))
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &num_pad))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'ephemeris_config' parameters in param file: %s",
@@ -310,7 +310,8 @@ return_status:
 
 static int process_inputs (config_t *cfg,
                            const char *radiance_file,
-                           double time_beg, double time_end)
+                           double time_beg, double time_end,
+                           const char *ephemeris_file)
 {
    Radiance_Type *r = NULL;
    Rename_Path_Type rpt = {0};
@@ -361,7 +362,7 @@ static int process_inputs (config_t *cfg,
      goto return_status;
 
    /* Copy subset of ephemeris */
-   if (0 != copy_ephem (r, cfg, time_beg, time_end, pad_enable))
+   if (0 != copy_ephem (r, cfg, time_beg, time_end, pad_enable, ephemeris_file))
      goto return_status;
 
    if (radiance_is_telemetry_only)
@@ -402,6 +403,7 @@ int main (int argc, char **argv)
         {"epoch",   required_argument, 0, 'E'},
         {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
+        {"ephemeris", required_argument, 0, 'p'},
         {0,0,0,0}
      };
 
@@ -409,6 +411,7 @@ int main (int argc, char **argv)
    double time_beg = nan_value;
    double time_end = nan_value;
    char *radiance_file = NULL;
+   char *ephemeris_file = NULL;
    int print_usage = 0;
    int have_epoch = 0;
 
@@ -430,7 +433,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:e:E:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:e:E:p:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -460,6 +463,9 @@ int main (int argc, char **argv)
                     goto return_status;
                   have_epoch++;
                }
+             break;
+           case 'p':
+             ephemeris_file = optarg;
              break;
            case 'c':
              config_file = optarg;
@@ -501,6 +507,13 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
+   if (ephemeris_file == NULL)
+     {
+        fprintf (stderr, "*** Ephemeris file not specified\n");
+        print_usage = 1;
+        goto return_status;
+     }
+
    /* When either time boundary is set, the epoch must also be set */
    if ((have_epoch == 0)
        && ((0 == isnan(time_beg)) || (0 == isnan(time_end))))
@@ -509,7 +522,7 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end))
+   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, ephemeris_file))
      goto return_status;
 
    status = 0;
