@@ -12,9 +12,10 @@
 enum
 {
    TASK_UNKNOWN = 0,
-   TASK_CONVERT_FLOAT = 1,
-   TASK_CONVERT_STRING = 2,
-   TASK_FIX_FILE = 3
+   TASK_CONVERT_TAI = 1,
+   TASK_CONVERT_UTC_STRING = 2,
+   TASK_CONVERT_IOC_STRING = 3,
+   TASK_FIX_FILE = 4
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
@@ -23,6 +24,7 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
    fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SSZ\n");
+   fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
    fprintf (stderr, "   or: ttime -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
@@ -31,6 +33,7 @@ static void usage (void)
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
+   fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
    fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
    fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
    fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
@@ -80,7 +83,23 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
    return 0;
 }
 
-static int convert_seconds (double elapsed_seconds, int omit_delimiters)
+static int print_ioc_string (double tai_sec)
+{
+   int day, msec, usec, sec_per_day = 86400;
+   double f_msec;
+
+   day = tai_sec / sec_per_day;
+   f_msec = (tai_sec - day * sec_per_day) * 1000;
+
+   msec = f_msec;
+   usec = (f_msec - msec) * 1000;
+
+   fprintf (stdout, "d%05dm%08du%03d\n", day, msec, usec);
+
+   return 0;
+}
+
+static int convert_tai_to_utc_string (double elapsed_seconds, int omit_delimiters)
 {
    double hour, minf, sec;
    int year, month, day, hr, min;
@@ -107,13 +126,19 @@ static int convert_seconds (double elapsed_seconds, int omit_delimiters)
    return 0;
 }
 
-static int convert_timestamp_string (const char *arg)
+static int convert_utc_string_to_tai (const char *arg, double *ptai)
 {
-#define BUFSIZE 32
-   char buf[BUFSIZE];
    double tempo, fsec = 0.0;
    char *dot;
    size_t len;
+#define BUFSIZE 32
+   char buf[BUFSIZE];
+
+   if (arg == NULL)
+     {
+        fprintf (stderr, "%s: NULL string\n", __func__);
+        return -1;
+     }
 
    dot = strchr (arg, '.');
 
@@ -142,12 +167,39 @@ static int convert_timestamp_string (const char *arg)
      return -1;
    tempo += fsec;
 
+   if (ptai) *ptai = tempo;
+
    fprintf (stdout, "%0.6f\n", tempo);
    return 0;
 
 error_return:
    fprintf (stderr, "*** ERROR: converting timestamp %s\n", arg);
    return -1;
+}
+
+static int convert_ioc_string_to_tai (const char *str, double *ptai)
+{
+   int day, msec, usec;
+   double tai;
+
+   if (str == NULL)
+     {
+        fprintf (stderr, "%s: NULL string\n", __func__);
+        return -1;
+     }
+
+   if (3 != sscanf (str, "d%5dm%8du%3d", &day, &msec, &usec))
+     {
+        fprintf (stderr, "*** Error: parsing timestamp: %s\n", str);
+        return -1;
+     }
+
+   tai = day * 86400.0 + msec/1000.0 + usec/1.e6;
+   if (ptai) *ptai = tai;
+
+   fprintf (stdout, "%0.6f\n", tai);
+
+   return 0;
 }
 
 int main (int argc, char **argv)
@@ -165,11 +217,13 @@ int main (int argc, char **argv)
         {0,0,0,0}
      };
    const char *utc_string = NULL;
+   const char *ioc_string = NULL;
    const char *epoch_string = EPOCH_DEFAULT;
    const char *path = NULL;
    const char *grp = "/";
    const char *var = "time";
    double elapsed_seconds = 0.0;
+   double tai;
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int write_epoch = 0;
@@ -182,7 +236,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "wde:f:g:s:u:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "wde:f:g:i:s:u:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -210,7 +264,7 @@ int main (int argc, char **argv)
 	     epoch_string = optarg;
 	     break;
            case 's':
-	     task = TASK_CONVERT_FLOAT;
+	     task = TASK_CONVERT_TAI;
 	     if (1 != sscanf (optarg, "%le", &elapsed_seconds))
 	       {
 		  fprintf (stderr, "*** Error: converting %s to elapsed seconds since the epoch\n",
@@ -219,8 +273,12 @@ int main (int argc, char **argv)
 	       }
              break;
            case 'u':
-	     task = TASK_CONVERT_STRING;
+	     task = TASK_CONVERT_UTC_STRING;
 	     utc_string = optarg;
+             break;
+           case 'i':
+	     task = TASK_CONVERT_IOC_STRING;
+	     ioc_string = optarg;
              break;
           }
      }
@@ -230,13 +288,23 @@ int main (int argc, char **argv)
 
    switch (task)
      {
-      case TASK_CONVERT_FLOAT:
-	status = convert_seconds (elapsed_seconds, omit_delimiters);
+      case TASK_CONVERT_TAI:
+	status = convert_tai_to_utc_string (elapsed_seconds, omit_delimiters);
+        print_ioc_string (elapsed_seconds);
 	break;
 
-      case TASK_CONVERT_STRING:
-	status = convert_timestamp_string (utc_string);
+      case TASK_CONVERT_UTC_STRING:
+	status = convert_utc_string_to_tai (utc_string, &tai);
+        print_ioc_string (tai);
 	break;
+
+      case TASK_CONVERT_IOC_STRING:
+        if ((0 == convert_ioc_string_to_tai (ioc_string, &tai))
+            && (0 == convert_tai_to_utc_string (tai, omit_delimiters)))
+          {
+             status = 0;
+          }
+        break;
 
       case TASK_FIX_FILE:
         status = fix_header_timestamp (path, grp, var, write_epoch);
