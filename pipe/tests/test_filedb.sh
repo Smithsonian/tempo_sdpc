@@ -11,12 +11,7 @@ fi
 FILEDB_EXEC="$1"
 
 TEST_DBNAME="met:nam227"
-#SEARCH_TIME="531379809"   # TAI sec since 2000-01-01T12:00:00Z
 SEARCH_TIME="1478107809"   # UTC sec since unix epoch
-
-# Note that 2000-01-01T12:00:00Z corresponds to time_t = 946728000 sec
-# after the unix epoch (UTC seconds, including leap seconds) so that
-# 946728000 + 531379809 = 1478107809
 
 DELAY=5
 APPROX_EXPECTED_DELAY_WHEN_BLOCKED=3
@@ -89,24 +84,16 @@ done
 
 printf "Test: database search result accuracy:\n"
 
-# Defining search_time= time since epoch 2000-01-01T12:00:00Z, we have:
-# 531379809 /tmp/filedb_test.jhouck/ancillary/met/nam227/2016/11/02/2016110217.nam.tffz.conusnest.hiresf17.tm00.grib2
-# 531365409 /tmp/filedb_test.jhouck/ancillary/snow/nsidc/2016/11/NISE_SSMISF18_20161102.HDFEOS
-# 531322209 /tmp/filedb_test.jhouck/archive/L1/irr/2016/11/02/TEMPO_irr_L1_V01_20161102T013009Z.nc
-# 531358209 /tmp/filedb_test.jhouck/archive/L0/drk/2016/11/02/TEMPO_drk_L0_V01_20161102T113009Z.nc
-
-# Unfortunately, that approach requires the TEMPO epoch, which may not be available.
-# Since leap seconds aren't critical, we can omit that correction, and use the
-# Unix epoch instead.  Therefore:
+# Since leap seconds aren't critical, we search on UTC time stamps based on the Unix epoch.
 # Defining search_time = time since the unix epoch 1970-01-01T00:00:00 UTC we have:
-# 1478107809  /tmp/filedb_test.jhouck/ancillary/met/nam227/2016/11/02/2016110217.nam.tffz.conusnest.hiresf17.tm00.grib2
-# 1478093409  /tmp/filedb_test.jhouck/ancillary/snow/nsidc/2016/11/NISE_SSMISF18_20161102.HDFEOS
-# 1478050209  /tmp/filedb_test.jhouck/archive/L1/irr/2016/11/02/TEMPO_irr_L1_V01_20161102T013009Z.nc
-# 1478086209  /tmp/filedb_test.jhouck/archive/L0/drk/2016/11/02/TEMPO_drk_L0_V01_20161102T113009Z.nc
+# 1478111409  /tmp/filedb_test.houck/ancillary/met/nam227/2016/11/02/2016110218.nam.tffz.conusnest.hiresf18.tm00.grib2
+# 1478179809  /tmp/filedb_test.houck/ancillary/snow/nsidc/2016/11/NISE_SSMISF18_20161103.HDFEOS
+# 1478136609  /tmp/filedb_test.houck/archive/L1/irr/2016/11/03/TEMPO_irr_L1_V01_20161103T013009Z.nc
+# 1478086209  /tmp/filedb_test.houck/archive/L0/drk/2016/11/02/TEMPO_drk_L0_V01_20161102T113009Z.nc
 
-check_search_result met:nam227 1478107809
-check_search_result snow:nsidc 1478093409
-check_search_result tempo:irr  1478050209
+check_search_result met:nam227 1478111409
+check_search_result snow:nsidc 1478179809
+check_search_result tempo:irr  1478136609
 check_search_result tempo:drk  1478086209
 
 #-------------- Test database file locking
