@@ -236,6 +236,11 @@ static int select_interval (Eph_Type *eph,
           end += num_pad;
         else end = eph->n-1;
      }
+   else if ((unsigned int) end + 1 < eph->n)
+     {
+        /* be sure that the ephemeris endpoint spans the full range */
+        end += 1;
+     }
 
    eph->n = (end - beg + 1);
 
