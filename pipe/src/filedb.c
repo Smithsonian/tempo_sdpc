@@ -594,6 +594,26 @@ static char *filedb_lookup (const char *filename, double query_time)
    else
      {
         id = bsearch_d (query_time, ft->timestamp, n);
+
+        /* FIXME?
+         * Maybe the lookup should be file-type specific?
+         *
+         * Ideally, each file would span a defined interval, and we would
+         * pick the file that contained the query point.  But the files
+         * aren't always convenient to read (grib2!), and an applicable
+         * interval is not always defined (e.g. snow cover).
+         *
+         * For now, we pick the file that has the nearest timestamp.
+         * For the ephemeris, we may have to pre-process the ephemeris data
+         * files to remove any ambiguities.
+         */
+
+        if (id+1 < n)
+          {
+             double t0 = fabs(ft->timestamp[id] - query_time);
+             double t1 = fabs(query_time - ft->timestamp[id+1]);
+             if (t1 < t0) id++;
+          }
      }
 
    if (NULL == (db_file = read_filename_at_offset (filename, ft->offset[id], ft->size[id])))
