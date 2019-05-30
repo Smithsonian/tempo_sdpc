@@ -113,7 +113,7 @@ run_inr_prep()
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
    srun --ntasks=1 --output=log_inr_prep.txt \
-   L1_inr_prep --ephemeris $ephem_file_path $target_file
+   L1_inr_prep --ephemeris $ephem_file_path --delay 120 $target_file
 }
 
 case "${granule_basename}" in

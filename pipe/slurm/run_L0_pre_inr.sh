@@ -41,7 +41,7 @@ make_iru_only_file_for_inr()
 
    L1_inr_prep -v 1 -c ${etc_dir}/l1_inr_prep.cfg \
        --begin $tbeg --end $tend --epoch $epoch \
-       --ephemeris ${ephem_file_path}
+       --ephemeris ${ephem_file_path} --delay 120
 
    # If L1_inr_prep fails, 'set -e' ensures that the script
    # will exit before we can delete the time interval file.
