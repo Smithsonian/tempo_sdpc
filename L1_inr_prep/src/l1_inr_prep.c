@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -52,6 +53,7 @@ static void usage (void)
    fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
    fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
    fprintf (stderr, "   -p | --ephemeris FILE      ephemeris file\n");
+   fprintf (stderr, "   -d | --delay SEC           delay start (to wait for all telemetry to arrive)\n");
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
    exit (EXIT_SUCCESS);
@@ -389,6 +391,23 @@ return_status:
    return status;
 }
 
+static void delay_start (time_t n)
+{
+   struct timespec req;
+
+   req.tv_sec = n;
+   req.tv_nsec = 0;
+
+   for (;;)
+     {
+        struct timespec rem;
+        if (0 == nanosleep (&req, &rem))
+          return;
+        if (errno != EINTR) break;
+        req = rem;
+     }
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "L1_inr_prep";
@@ -401,6 +420,7 @@ int main (int argc, char **argv)
         {"begin",   required_argument, 0, 'b'},
         {"end",     required_argument, 0, 'e'},
         {"epoch",   required_argument, 0, 'E'},
+        {"delay",   required_argument, 0, 'd'},
         {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
         {"ephemeris", required_argument, 0, 'p'},
@@ -410,6 +430,7 @@ int main (int argc, char **argv)
    double nan_value = nan("");
    double time_beg = nan_value;
    double time_end = nan_value;
+   time_t delay_sec = 0;
    char *radiance_file = NULL;
    char *ephemeris_file = NULL;
    int print_usage = 0;
@@ -433,7 +454,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:e:E:p:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:d:e:E:p:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -463,6 +484,10 @@ int main (int argc, char **argv)
                     goto return_status;
                   have_epoch++;
                }
+             break;
+           case 'd':
+             if (1 != sscanf (optarg, "%ld", &delay_sec))
+               goto return_status;
              break;
            case 'p':
              ephemeris_file = optarg;
@@ -512,6 +537,11 @@ int main (int argc, char **argv)
         fprintf (stderr, "*** Ephemeris file not specified\n");
         print_usage = 1;
         goto return_status;
+     }
+
+   if (delay_sec > 0)
+     {
+        delay_start (delay_sec);
      }
 
    /* When either time boundary is set, the epoch must also be set */
