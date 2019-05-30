@@ -285,9 +285,11 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
         return -1;
      }
 
+   tell_vinfo (0, "tbeg=%0.6f tend=%0.6f", tbeg, tend);
+
    epoch = (time_t) tio_time_taix_epoch_timet();
 
-   if (fprintf (fp, "%0.15e,%0.15e,%ld,%ld\n", tbeg, tend, epoch, (time_t) tbeg_utc) < 0)
+   if (fprintf (fp, "%0.6f,%0.6f,%ld,%ld\n", tbeg, tend, epoch, (time_t) tbeg_utc) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: error writing to file %s", __func__, path);
         (void) fclose (fp);
