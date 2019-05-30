@@ -93,6 +93,8 @@ static int read_times (Row_Select_Type *rst, int ncid)
 static int apply_selection (Row_Select_Type *rst,
                             double time_beg, double time_end)
 {
+   double frac;
+
    if (time_beg < rst->times[0])
      rst->start = 0;
    else if (time_beg > rst->times[rst->num_times-1])
@@ -113,8 +115,24 @@ static int apply_selection (Row_Select_Type *rst,
         int e = bsearch_d (time_end, rst->times, rst->num_times);
         if (e < 0) return -1;
         if ((e + 1) < rst->num_times) e += 1;
-        rst->count = e - rst->start;
+        rst->count = e - rst->start + 1;
      }
+
+   if ((rst->start < rst->num_times)
+       && (rst->count > 0))
+     {
+        double t0 = rst->times[rst->start];
+        double t1 = rst->times[rst->start + rst->count - 1];
+        if (time_end != time_beg)
+          frac = (t1 - t0) / (time_end - time_beg);
+        else
+          frac = 1.0;
+     }
+   else frac = 0.0;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1,
+              "file has %d samples spanning %g of time interval",
+              rst->count, frac);
 
    return 0;
 }
@@ -250,13 +268,13 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
           }
         else if (status == FILE_PRECEDES_INTERVAL)
           {
-             tell_vlog (TELL_MSGTYPE_INFO, 1, "file precedes interval: %s", file);
+             tell_vlog (TELL_MSGTYPE_INFO, 2, "file precedes interval: %s", file);
              (void) TIO_close (ncid);
              continue;
           }
         else if (status == FILE_FOLLOWS_INTERVAL)
           {
-             tell_vlog (TELL_MSGTYPE_INFO, 1, "file follows interval: %s", file);
+             tell_vlog (TELL_MSGTYPE_INFO, 2, "file follows interval: %s", file);
              (void) TIO_close (ncid);
              break;
           }
@@ -271,8 +289,9 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
              if (0 != apply_selection (rst, time_beg_pad, time_end_pad))
                goto cleanup_and_return;
 
-             tell_vlog (TELL_MSGTYPE_INFO, 1, "appending time samples from: %s", file);
-             if (rst_head != NULL)
+             if (rst_head == NULL)
+               rst_head = rst;
+             else
                {
                   Row_Select_Type *p;
                   for (p = rst_head; p != NULL; p = p->next)
@@ -284,8 +303,7 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
                          }
                     }
                }
-             else rst_head = rst;
-
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "appended time samples from: %s", file);
           }
      }
 
