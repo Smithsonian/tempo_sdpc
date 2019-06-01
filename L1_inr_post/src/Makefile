@@ -29,15 +29,14 @@ INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) 
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
-INC_DIRS = $(config_dir)/include $(REGRID_INC) \
-           $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC) \
-           $(GEOTIFF_INC) $(TIFF_INC) $(INR_INC)
+INC_DIRS = $(REGRID_INC) $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC) \
+           $(GEOTIFF_INC) $(TIFF_INC) $(INR_INC) $(config_dir)/include
 INCS = $(patsubst %,-I%, $(INC_DIRS))
 
-LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+LIBS = $(TIO_LIBPATHS) -ltio \
+       $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
-       $(TIO_LIBPATHS) -ltio \
        $(REGRID_LIBPATHS) -lregrid \
        $(GEOTIFF_LIBPATHS) $(TIFF_LIBPATHS) -lgeotiff -ltiff \
        $(INR_LIBPATHS) \

@@ -108,8 +108,7 @@ IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
 FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o filedb_ephemeris.o
 FILEDB_OBJS = $(patsubst %.o,$(objdir)/%.o, $(FILEDB_OFILES))
 
-FILEDB_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig $(IOCSDPC_LIBPATHS) \
-              $(TIO_LIBPATHS) -ltio
+FILEDB_LIBS = $(TIO_LIBPATHS) -ltio $(LIBCONFIG_LIBPATHS) -lconfig $(IOCSDPC_LIBPATHS)
 FILEDB_INC_DIRS = $(TIO_INC) $(LIBCONFIG_INC) $(IOCSDPC_INC)
 FILEDB_INCS = $(patsubst %,-I%, $(FILEDB_INC_DIRS))
 

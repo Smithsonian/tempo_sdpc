@@ -23,11 +23,11 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
 
-INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
-LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+INCS = -I$(TIO_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC) -I$(config_dir)/include
+LIBS = $(TIO_LIBPATHS) -ltio \
+       $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
-       $(TIO_LIBPATHS) -ltio \
        $(RPATH) $(INSTALL_LIBPATHS)
 
 ELF_MAJOR_VERSION = 0#

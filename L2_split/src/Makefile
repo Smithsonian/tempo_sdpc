@@ -25,13 +25,13 @@ GSL_LIBPATHS     = -lgsl -lgslcblas
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj $(GSL_LIBPATHS)
 
-INCS = -I$(config_dir)/include -I$(TIO_INC) -I$(REGRID_INC) \
-       -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC)
-LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+INCS = -I$(TIO_INC) -I$(REGRID_INC) -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC) \
+       -I$(config_dir)/include
+LIBS = $(TIO_LIBPATHS) -ltio \
        $(REGRID_LIBPATHS) -lregrid \
+       $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
-       $(TIO_LIBPATHS) -ltio \
        $(RPATH) $(INSTALL_LIBPATHS)
 
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)

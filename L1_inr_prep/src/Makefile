@@ -22,14 +22,14 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 EXTRA_INCS =
 EXTRA_LIBS =
 
-INC_DIRS = $(config_dir)/include -I$(IOCLIB_INC) \
-           $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC)
+INC_DIRS = $(IOCLIB_INC) $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC) \
+           $(config_dir)/include
 INCS = $(patsubst %,-I%, $(INC_DIRS))
 
-LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
+LIBS = $(TIO_LIBPATHS) -ltio \
+       $(LIBCONFIG_LIBPATHS) -lconfig \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
-       $(TIO_LIBPATHS) -ltio \
        $(IOCLIB_LIBPATHS) \
        $(RPATH) $(INSTALL_LIBPATHS)
 
@@ -38,7 +38,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = l1_inr_prep.o bsearch.o radiance.o row_select.o ephem.o 
+OFILES   = l1_inr_prep.o bsearch.o radiance.o row_select.o ephem.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------

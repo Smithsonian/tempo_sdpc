@@ -23,12 +23,12 @@ INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) 
 EXTRA_INCS = -I$(PROJ_INC) -I$(SLNOVAS_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj $(SLNOVAS_LIBPATHS) -llibnovas
 
-INC_DIRS = $(config_dir)/include $(TELL_INC) $(TIO_INC) $(NETCDF_INC) \
-           $(LIBCONFIG_INC) $(INR_INC) $(SLNOVAS_INC)
+INC_DIRS = $(TELL_INC) $(TIO_INC) $(NETCDF_INC) $(LIBCONFIG_INC) $(INR_INC) $(SLNOVAS_INC) \
+           $(config_dir)/include
 INCS = $(patsubst %,-I%, $(INC_DIRS))
 
-LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
-       $(TIO_LIBPATHS) -ltio \
+LIBS = $(TIO_LIBPATHS) -ltio \
+       $(LIBCONFIG_LIBPATHS) -lconfig \
        $(TELL_LIBPATHS) -ltell \
        $(NETCDF_LIBPATHS) -lnetcdf \
        $(INR_LIBPATHS) \
