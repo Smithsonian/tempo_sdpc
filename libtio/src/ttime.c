@@ -17,7 +17,7 @@ enum
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
-#define SC_TIMEZONE_DEFAULT  (-5)
+#define SC_TIMEZONE_DEFAULT  (-6)
 
 #define BUFSIZE 64
 
