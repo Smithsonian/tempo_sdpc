@@ -445,11 +445,19 @@ extern int tio_use_file_epoch (int ncid);
  * @param[out]  year       4-digit year
  * @param[out]  month      month, 1-12
  * @param[out]  day        day of month, 1-31
- * @param[out]  hour       UTC hour of the day, 0-23.999...
+ * @param[out]  hour       hour of the day, 0-23.999...
  * @return 0 on success, -1 on error
  */
 extern int tio_time_taix_to_utc_caldate
 (double taix_time, int *year, int *month, int *day, double *hour);
+
+/** Convert TAI sec since X epoch to calendar date and day of year, UTC
+ * @param[in] taix_time   Elapsed TAI seconds since the X epoch
+ * @param[out]  year      4-digit year
+ * @param[out]  doy       hour of the day, 0-23.999...
+ * @return 0 on success, -1 on error
+ */
+extern int tio_time_taix_to_yearday (double taix_time, int *year, int *doy);
 
 /** Read one line from an ASCII text file
  * @param[out] linep   Pointer to an allocated string

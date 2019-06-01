@@ -440,6 +440,29 @@ double tio_time_taix_epoch_timet (void)
    return (double) __taix_epoch_timet();
 }
 
+int tio_time_taix_to_yearday (double taix_time, int *year, int *doy)
+{
+   struct tm tm;
+   double utc;
+   time_t tt;
+
+   if (0 != tio_time_taix_to_utc (taix_time, &utc))
+     return -1;
+
+   tt = (time_t) utc;
+   if (NULL == gmtime_r (&tt, &tm))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: gmtime_r failed: tt=%ld",
+                     __func__, tt);
+        return -1;
+     }
+
+   *year = 1900 + tm.tm_year;
+   *doy = tm.tm_yday;
+
+   return 0;
+}
+
 int tio_time_taix_to_utc_caldate
 (double taix_time, int *year, int *month, int *day, double *hour)
 {
