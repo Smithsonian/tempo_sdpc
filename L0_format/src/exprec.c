@@ -312,6 +312,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    Radiance_Ident_Type radiance_ident = {0};
    Radiance_Ident_Type *identp = NULL;
    uint16_t sdpc_scan_label, scan_num, scan_type;
+   int scan_num_int;
 
    pmt->outfile_timestamp_start = erec->image_start_time;
    pmt->outfile_timestamp_end = image_end_time (erec);
@@ -319,6 +320,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    ioclib_free (pmt->exprec_type_string);
    pmt->exprec_type_string = NULL;
+   scan_num_int = -1;
 
    switch (pmt->exprec_type)
      {
@@ -329,6 +331,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 	 * for the scan provided in the SDPC-generated radiance scan plan. */
 	sdpc_scan_label = erec->scan_label & 0x0000ffff;
 	tio_parse_scan_label (sdpc_scan_label, &scan_type, &scan_num);
+        scan_num_int = scan_num;
 	radiance_ident.scan_num = scan_num;
 	radiance_ident.scan_type = scan_type;
         radiance_ident.granule_num = curr_granule + 1;
@@ -369,7 +372,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
-   if (0 != make_level0_archdir_path (&pmt->archdir_path, erec->image_start_time,
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, erec->image_start_time, scan_num_int,
                                       pmt->processing_version, pmt->product_type))
      return -1;
 

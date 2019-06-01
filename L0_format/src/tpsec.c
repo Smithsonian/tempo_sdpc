@@ -109,7 +109,7 @@ static int new_outfile (Process_Method_Type *pmt,
 
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
-   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp,
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp, -1,
                                       pmt->processing_version, PRODUCT_TYPE_TPSEC))
      return -1;
 

@@ -110,6 +110,7 @@ extern int make_level0_basename (char *buf, int bufsize,
  * @param[inout] archdir_path      The full archive directory path (malloced)
  * @param[in]  sec_since_epoch   A time stamp value, expressed as the number
  *                               of seconds elapsed since the TEMPO epoch.
+ * @param[in]  scan_num          Optional scan number (<0 means do not use this in the path)
  * @param[in] processing_version Integer processing version number.
  * @param[in] suffix      File name suffix indicating the file type.
  *
@@ -117,9 +118,8 @@ extern int make_level0_basename (char *buf, int bufsize,
  *
  * If \a archdir_path is \a NULL, this function does nothing and returns 0.
  */
-extern int make_level0_archdir_path (char **archdir_path,
-                                     double sec_since_epoch, int processing_version,
-                                     const char *suffix);
+extern int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int scan_num,
+                                     int processing_version, const char *suffix);
 
 /** Create a netCDF file with a hidden name.
  *  @param[in] dirname   Path to the target directory that will contain the file.

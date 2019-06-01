@@ -27,7 +27,9 @@
 
 #define MAX_PATHLEN 1024
 static int Have_Epoch;
+static int SC_Timezone;
 static int Perform_Archive_Registration;
+static const char *Archive_Root_Dir = NULL;
 
 typedef struct
 {
@@ -97,11 +99,65 @@ char *expand_string (const char *s)
    return s_exp;
 }
 
+static void set_archive_root_dir (const char *dir)
+{
+   Archive_Root_Dir = dir;
+}
+
+static const char *get_archive_root_dir (void)
+{
+   return Archive_Root_Dir;
+}
+
 static void free_control_type_fields (Control_Type *ctrl)
 {
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
    FREE(ctrl->iru_interval.dir);
+}
+
+static int read_sc_timezone (void)
+{
+   FILE *fp;
+   const char *root_dir = NULL;
+   char path[MAX_PATHLEN];
+   int n;
+
+   /* NULL means don't perform archiving */
+   if (NULL == get_archive_root_dir ())
+     return 0;
+
+   if (NULL == (root_dir = getenv ("SDPC_ROOT")))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: SDPC_ROOT not set", __func__);
+        return -1;
+     }
+
+   n = snprintf (path, MAX_PATHLEN, "%s/etc/sc_timezone", root_dir);
+   if (n < 0 || n >= MAX_PATHLEN)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error constructing path to sc_timezone file", __func__);
+        return -1;
+     }
+
+   if (NULL == (fp = fopen (path, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, path);
+        return -1;
+     }
+   if (1 != fscanf (fp, "%d", &SC_Timezone))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading sc_timezone from %s", __func__, path);
+     }
+   (void) fclose (fp);
+
+   if (abs(SC_Timezone) > 12)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: sc_timezone=%d in %s", __func__, SC_Timezone, path);
+        return -1;
+     }
+
+   return 0;
 }
 
 static int read_main_params (config_t *cfg, Control_Type *ctrl)
@@ -628,18 +684,6 @@ return_status:
    return status;
 }
 
-static const char *Archive_Root_Dir = NULL;
-
-static void set_archive_root_dir (const char *dir)
-{
-   Archive_Root_Dir = dir;
-}
-
-static const char *get_archive_root_dir (void)
-{
-   return Archive_Root_Dir;
-}
-
 int verify_epoch (time_t epoch)
 {
    if (Have_Epoch)
@@ -662,16 +706,14 @@ int verify_epoch (time_t epoch)
    return 0;
 }
 
-int make_level0_archdir_path (char **archdir_path,
-                              double sec_since_epoch, int processing_version,
-                              const char *suffix)
+int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int scan_num,
+                              int processing_version, const char *suffix)
 {
    char buf[MAX_PATHLEN];
    size_t bufsize = sizeof(buf);
    const char *root_path;
    char *path = NULL;
-   int year, month, day;
-   double hour;
+   int sat_day;
    size_t n;
 
    /* NULL means don't perform archiving */
@@ -681,12 +723,25 @@ int make_level0_archdir_path (char **archdir_path,
         return 0;
      }
 
-   if (0 != tio_time_taix_to_utc_caldate (sec_since_epoch, &year, &month, &day, &hour))
-     return -1;
+   /* Number of days since the TEMPO epoch, spacecraft local time.
+    * Spacecraft local time is used because it makes the archive organization
+    * more intuitive.  To force UTC time in the archive, set SC_Timezone=0.
+    */
+   sat_day = (sec_since_epoch + SC_Timezone * 3600.0) / 86400.0;
 
-   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/YYYY/MM/DD/${file_type} */
-   n = snprintf (buf, bufsize, "%s/L0/%d/%d/%d/%d/%s",
-                 root_path, processing_version, year, month, day, suffix);
+   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/ddddd/${file_type}
+    *   or ${SDPC_ARCHIVE_DIR}/L0/${version}/ddddd/${file_type}/scan
+    */
+   if (scan_num < 0)
+     {
+        n = snprintf (buf, bufsize, "%s/L0/%d/%d/%s",
+                      root_path, processing_version, sat_day, suffix);
+     }
+   else
+     {
+        n = snprintf (buf, bufsize, "%s/L0/%d/%d/%s/%d",
+                      root_path, processing_version, sat_day, suffix, scan_num);
+     }
 
    if (n >= bufsize)
      {
@@ -1080,6 +1135,9 @@ int main (int argc, char **argv)
    config_init (&cfg);
 
    Have_Epoch = 0;
+
+   if (0 != read_sc_timezone ())
+     goto return_status;
 
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
      goto return_status;
