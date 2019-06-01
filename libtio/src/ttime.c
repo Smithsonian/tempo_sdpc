@@ -17,6 +17,8 @@ enum
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
+#define SC_TIMEZONE_DEFAULT  (-5)
+
 #define BUFSIZE 64
 
 static void usage (void)
@@ -32,6 +34,8 @@ static void usage (void)
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
    fprintf (stderr, "                      Non-default epoch must precede time stamp option\n");
+   fprintf (stderr, "  -z | --zone h       Spacecraft local time-zone offset from UTC. Must be in range [-12,12].\n");
+   fprintf (stderr, "                      [default: %d]\n", SC_TIMEZONE_DEFAULT);
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
@@ -214,6 +218,7 @@ int main (int argc, char **argv)
         {"delim", no_argument,       0, 'd'},
         {"write", no_argument,       0, 'w'},
         {"epoch", required_argument, 0, 'e'},
+        {"zone",  required_argument, 0, 'z'},
         {"fix",   required_argument, 0, 'f'},
         {"grp",   required_argument, 0, 'g'},
         {"var",   required_argument, 0, 'v'},
@@ -230,6 +235,8 @@ int main (int argc, char **argv)
    int status = -1;
    int write_epoch = 0;
    int task = TASK_UNKNOWN;
+   int sc_timezone = SC_TIMEZONE_DEFAULT;
+   int utc_day, local_day;
 
    if (argc < 3)
      usage();
@@ -240,7 +247,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "we:f:g:i:s:u:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "we:f:g:i:s:u:v:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -264,12 +271,19 @@ int main (int argc, char **argv)
 	   case 'e':
 	     epoch_string = optarg;
 	     break;
+           case 'z':
+	     if ((1 != sscanf (optarg, "%d", &sc_timezone))
+                 || (abs(sc_timezone) > 12))
+	       {
+		  fprintf (stderr, "*** Error: setting spacecraft time zone\n");
+		  exit(1);
+	       }
+             break;
            case 's':
 	     task = TASK_PRINT_TIMES;
 	     if (1 != sscanf (optarg, "%le", &taix))
 	       {
-		  fprintf (stderr, "*** Error: converting %s to elapsed seconds since the epoch\n",
-			   optarg ? optarg : "<null>");
+		  fprintf (stderr, "*** Error: setting elapsed seconds since the epoch\n");
 		  exit(1);
 	       }
              break;
@@ -297,6 +311,12 @@ int main (int argc, char **argv)
         fprintf (stdout, "SEC: %0.6f\n", taix);
 	status = print_taix_as_strings (taix);
         print_ioc_string (taix);
+
+        utc_day = taix / 86400.0;
+        local_day = (taix + sc_timezone * 3600.0) / 86400.0;
+
+        fprintf (stdout, "DAY: %d UTC\n", utc_day);
+        fprintf (stdout, "DAY: %d local at UTC%+03d\n", local_day, sc_timezone);
 	break;
 
       case TASK_FIX_FILE:
