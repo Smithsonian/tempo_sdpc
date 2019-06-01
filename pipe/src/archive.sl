@@ -124,7 +124,9 @@ private define get_tarfile_archive_subdir (tar_file)
 
    switch (g.product_type)
      {
-      case "drk" or case "irr" or case "rad":
+      case "drk" or case "drkl"
+          or case "irr" or case "irrl"
+          or case "rad":
         subdir_seq = [subdir_seq, g.product_type];
      }
 
