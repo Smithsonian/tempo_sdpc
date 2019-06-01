@@ -5,11 +5,9 @@ import sqlite3
 from datetime import date
 from netCDF4 import Dataset as NetCDFFile
 
-Radiance_Table_Name = "rad"
-
 Radiance_Products = ["cldrr", "hcho", "no2", "o3t", "o3p"]
 
-Radiance_Derived_Files = ["rad_L0", "rad_L1a", "rad_L1b"] \
+Radiance_Derived_Files = ["rad_L1a", "rad_L1b"] \
                          + [s + "_L2" for s in Radiance_Products] \
                          + [s + "_L3" for s in Radiance_Products]
 
@@ -37,7 +35,7 @@ class Table_Type:
         value_string_tuple = tuple(str(v) for v in values)
         cur.execute (cmd, value_string_tuple)
 
-def init_radiance_table ():
+def init_radiance_table (table_name):
     fields = {}
     fields["istart"] = "integer not null"
     fields["scan_type"] = "integer not null"
@@ -49,7 +47,7 @@ def init_radiance_table ():
     fields["mirror_pos_beg"] = "integer not null"
     fields["mirror_pos_end"] = "integer not null"
     quals = "primary key(istart), unique(istart)"
-    return Table_Type(Radiance_Table_Name, fields, quals)
+    return Table_Type(table_name, fields, quals)
 
 def init_radiance_product_table (table_name):
     fields = {}
@@ -57,7 +55,7 @@ def init_radiance_product_table (table_name):
     fields["mtime"] = "integer"
     fields["size"] = "integer"
     fields["filename"] = "text"
-    quals = "unique(istart), foreign key (istart) references {}(istart)".format(Radiance_Table_Name)
+    quals = "unique(istart), foreign key (istart) references {}(istart)".format('rad_L1b')
     return Table_Type(table_name, fields, quals)
 
 def init_other_product_table (table_name):
@@ -69,10 +67,10 @@ def init_other_product_table (table_name):
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
-def insert_radiance_entry (conn, entry):
+def insert_radiance_entry (conn, table_name, entry):
     with conn:
         c = conn.cursor()
-        rad = init_radiance_table()
+        rad = init_radiance_table(table_name)
         rad.create(c)
         try:
             rad.new_entry (c, entry.keys(), entry.values())
@@ -147,10 +145,9 @@ def process_file (conn, filename):
     keys["istart"] = int(attr["time_coverage_start_since_epoch"])
     keys["filename"] = remove_dot_prefix (basename)
 
-    # FIXME: in  production, this will be 'rad_L0':
-    if (product_name == 'rad_L1a'):
+    if (product_name in ['rad_L1a', 'rad_L1b']):
         get_radiance_keys (nc, keys)
-        status = insert_radiance_entry (conn, keys)
+        status = insert_radiance_entry (conn, product_name, keys)
         if status < 0:
            print('ERROR: processing file {}'.format(filename))
 
