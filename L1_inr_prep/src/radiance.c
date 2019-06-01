@@ -53,13 +53,13 @@ static Radiance_Type *alloc_radiance_type (const char *file)
    return r;
 }
 
-int radiance_update_coverage_times (Radiance_Type *r)
+int radiance_update_coverage_times (Radiance_Type *r, double tstart, double tstop)
 {
    if (0 == r->created_for_inr_status_update)
      return 0;
 
-   if ((0 != TIO_write_timestamp (r->ncid, NC_GLOBAL, "time_coverage_start", r->tstart))
-       || (0 != TIO_write_timestamp (r->ncid, NC_GLOBAL, "time_coverage_end", r->tstop)))
+   if ((0 != TIO_write_timestamp (r->ncid, NC_GLOBAL, "time_coverage_start", tstart))
+       || (0 != TIO_write_timestamp (r->ncid, NC_GLOBAL, "time_coverage_end", tstop)))
      return -1;
 
    return 0;

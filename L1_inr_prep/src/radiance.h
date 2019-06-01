@@ -53,19 +53,24 @@ extern Radiance_Type *radiance_create (const char *file,
 
 /** Update header coverage time keywords in telemetry-only radiance file
  *
- *  @param[in] r   Pointer to a @c Radiance_Type structure
- *                 associated with a telemetry-only radiance file.
+ *  @param[in] r      Pointer to a @c Radiance_Type structure
+ *                    associated with a telemetry-only radiance file.
+ *  @param[in] tstart Effective coverage start time in TAI seconds since the TEMPO epoch
+ *  @param[in] tstop  Effective coverage stop  time in TAI seconds since the TEMPO epoch
  *  @return 0 on success, -1 on error
  *
  * In a telemetry-only radiance file the header keywords,
  * @c time_coverage_start, and @c time_coverage_end, are determined
- * by the endpoints of the IRU, SMC and ephemeris time series
- * that are stored in the file.  Note that the precise values of the
- * actual time series endpoints may differ slightly from the endpoints
+ * by the processing context.  The endpoints of the IRU, SMC and ephemeris
+ * time series that are stored in the file may extend a little beyond the time
+ * interval determined from the processing context.  This padding is intended
+ * to ensure that the INR software receives complete time coverage of each
+ * relevant data stream.  Note that the precise values
+ * of the actual time series endpoints may differ slightly from the endpoints
  * of the time interval specified on the command line when @c L1_inr_prep
  * is run.
  */
-extern int radiance_update_coverage_times (Radiance_Type *r);
+extern int radiance_update_coverage_times (Radiance_Type *r, double tstart, double tstop);
 
 /** Query the coverage time interval associated with a @c Radiance_Type struct
  *

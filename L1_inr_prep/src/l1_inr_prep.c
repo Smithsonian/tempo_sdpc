@@ -319,12 +319,11 @@ static int process_inputs (config_t *cfg,
    Rename_Path_Type rpt = {0};
    const char *logmsg_filename = NULL;
    int radiance_is_telemetry_only = 0;
-   int pad_enable = 0;
+   int pad_enable = 1;
    int status = -1;
 
    if (radiance_file)
      {
-        pad_enable = 1;
         logmsg_filename = radiance_file;
         if (NULL == (r = radiance_open (radiance_file)))
           return -1;
@@ -370,7 +369,7 @@ static int process_inputs (config_t *cfg,
    if (radiance_is_telemetry_only)
      {
         /* Finalize the temporary radiance file */
-        if (0 != radiance_update_coverage_times (r))
+        if (0 != radiance_update_coverage_times (r, time_beg, time_end))
           goto return_status;
 
         /* close before renaming */
