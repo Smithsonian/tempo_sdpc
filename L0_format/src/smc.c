@@ -333,7 +333,8 @@ static int select_smc_outfile (Process_Method_Type *pmt,
 {
    /* FIXME - support splitting smc file across multiple
     * netcdf files? */
-   if ((0 < pmt->outfile_timestamp_start)
+   if ((pmt->ncid != INT_MAX)
+       && (0 < pmt->outfile_timestamp_start)
        && ((timestamp - pmt->outfile_timestamp_start)
            < pmt->outfile_deltat_sec))
      return 0;

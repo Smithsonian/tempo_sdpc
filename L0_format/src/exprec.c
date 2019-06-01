@@ -345,11 +345,11 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         pmt->exprec_type_string = ioclib_strdup("irradiance");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_IRR:
-        pmt->product_type = "irr";
+        pmt->product_type = "irrl";
         pmt->exprec_type_string = ioclib_strdup("irradiance,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_DARK:
-        pmt->product_type = "drk";
+        pmt->product_type = "drkl";
         pmt->exprec_type_string = ioclib_strdup("dark,linearity");
         break;
       case IOCSDPC_EXPREC_TYPE_UNKNOWN:
@@ -599,7 +599,8 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
              if (k >= sched->num_granules)
                {
-                  tell_vinfo (0, "bad file: %s", path);
+                  tell_vinfo (0, "%s: bad file: %s (k >= num_granules: k=%d, num_granules=%d)",
+                              __func__, path, k, sched->num_granules);
                   if (0 != ioclib_rename_to_bad_file (path))
                     {
                        tell_verror (TELL_APPLICATION_ERROR,

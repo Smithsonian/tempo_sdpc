@@ -289,7 +289,8 @@ static int select_dest_group
 
    /* FIXME - support splitting a sciextract tpsec file
     * across multiple netcdf files? */
-   if ((pmt->outfile_timestamp_start < 0)
+   if ((pmt->ncid == INT_MAX)
+       || (pmt->outfile_timestamp_start < 0)
        || ((timestamp - pmt->outfile_timestamp_start)
            > pmt->outfile_deltat_sec))
      {

@@ -427,7 +427,7 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
           }
         else
           {
-             tell_vinfo (0, "bad file: %s", file);
+             tell_vinfo (0, "%s: bad file: %s", __func__, file);
              if (0 != ioclib_rename_to_bad_file (file))
                {
                   tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_rename_to_bad_file failed, file=%s",

@@ -370,7 +370,8 @@ static int select_iru_outfile (Process_Method_Type *pmt,
 {
    /* FIXME - support splitting iru file across multiple
     * netcdf files? */
-   if ((0 < pmt->outfile_timestamp_start)
+   if ((pmt->ncid != INT_MAX)
+       && (0 < pmt->outfile_timestamp_start)
        && ((timestamp - pmt->outfile_timestamp_start)
            < pmt->outfile_deltat_sec)
        && (iru->gyro_bias_time == pmt->gyro_bias_time))
