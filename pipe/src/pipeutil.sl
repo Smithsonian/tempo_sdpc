@@ -1,3 +1,25 @@
+define read_sc_timezone (sdpc_root_dir)
+{
+   variable file  = path_concat (sdpc_root_dir, "etc/sc_timezone");
+
+   variable fp = fopen (file, "r");
+   if (fp == NULL) throw ApplicationError, "reading $file"$;
+   variable s = fgetslines (fp, 1);
+   () = fclose (fp);
+
+   variable sc_timezone;
+   () = sscanf (s[0], "%d", &sc_timezone);
+
+   if (abs(sc_timezone) > 12)
+     throw ApplicationError, "invalid sc_timezone = $sc_timezone"$;
+
+   return sc_timezone;
+}
+
+define satellite_day (taix, sc_timezone)
+{
+   return (taix + sc_timezone * 3600.0) / 86400.0;
+}
 
 define mkdir_p (path)
 {

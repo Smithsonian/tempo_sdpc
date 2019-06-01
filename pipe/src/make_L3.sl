@@ -12,6 +12,7 @@ prepend_to_slang_load_path ($1);
 require ("pipeutil");
 
 private variable Clobber_Output_Files = 0;
+private variable SC_Timezone;
 
 private define config_file_case (cases)
 {
@@ -160,8 +161,10 @@ private define scan_subdir (g)
 {
    % Derive the destination archive directory from the contents of
    % the granule_ident CSV file.
+   variable tstart = atof(g.time_coverage_start_since_epoch);
+   variable sat_day = satellite_day (tstart, SC_Timezone);
    variable subdir_seq = [g.processing_version,
-                          g.tstart_year, g.tstart_month, g.tstart_mday,
+                          string(int(sat_day)),
                           g.scan_num];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
@@ -263,6 +266,7 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
 define slsh_main()
 {
    variable archive_root_dir = getenv ("SDPC_ARCHIVE_DIR");
+   variable sdpc_root_dir = getenv ("SDPC_ROOT");
    variable products = NULL;
 
    variable c = cmdopt_new (&error_routine);
@@ -282,8 +286,10 @@ define slsh_main()
      throw ApplicationError,
      "*** Error: Archive root directory not specified (SDPC_ARCHIVE_DIR not set)";
 
-   if (NULL == getenv ("SDPC_ROOT"))
-     throw UsageError, "*** SDPC_ROOT not set";
+   if (sdpc_root_dir == NULL)
+     throw ApplicationError, "*** Error: SDPC_ROOT is not set";
+
+   SC_Timezone = read_sc_timezone (sdpc_root_dir);
 
    variable scan_dir, scan_dir_list = __argv[[__i:]];
 

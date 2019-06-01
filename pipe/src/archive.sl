@@ -13,6 +13,7 @@ require ("pipeutil");
 private variable Delete_Tarfiles = 0;
 private variable Clobber_Output_Files = 0;
 private variable Granule_Ident_File = "granule_ident.csv";
+private variable SC_Timezone;
 
 private variable Archive_Root_Dir;
 
@@ -130,7 +131,9 @@ private define get_tarfile_archive_subdir (tar_file)
         subdir_seq = [subdir_seq, g.product_type];
      }
 
-   subdir_seq = [subdir_seq, g.tstart_year, g.tstart_month, g.tstart_mday];
+   variable tstart = atof(g.time_coverage_start_since_epoch);
+   variable sat_day = satellite_day (tstart, SC_Timezone);
+   subdir_seq = [subdir_seq, string(int(sat_day))];
 
    % scan_num=0 means "unused"
    if (atoi(g.scan_num) != 0)
@@ -312,6 +315,7 @@ define slsh_main ()
 {
    Delete_Tarfiles = 0;
    variable archive_root_dir = getenv ("SDPC_ARCHIVE_DIR");
+   variable sdpc_root_dir = getenv ("SDPC_ROOT");
    variable archive_level = NULL;
 
    variable c = cmdopt_new (&error_routine);
@@ -324,6 +328,10 @@ define slsh_main ()
 
    if (__argc - __i < 1)
      usage();
+
+   if (sdpc_root_dir == NULL)
+     throw ApplicationError, "*** Error: SDPC_ROOT is not set";
+   SC_Timezone = read_sc_timezone (sdpc_root_dir);
 
    if (archive_root_dir == NULL)
      throw ApplicationError,
