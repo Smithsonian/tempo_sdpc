@@ -29,7 +29,6 @@ static void usage (void)
    fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
    fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
    fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
-   fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
    fprintf (stderr, "                      Non-default epoch must precede time stamp option\n");
@@ -99,7 +98,7 @@ static int print_ioc_string (double taix_sec)
    return 0;
 }
 
-static int print_taix_as_strings (double taix, int omit_delimiters)
+static int print_taix_as_strings (double taix)
 {
    double hour, minf, sec, tai;
    int year, month, day, hr, min;
@@ -115,16 +114,11 @@ static int print_taix_as_strings (double taix, int omit_delimiters)
    min = (int)minf;
    sec = (minf - min)*60;
 
-   if (omit_delimiters)
-     {
-        fprintf (stdout, "UTC: %4d%02d%02dT%02d%02d%02.0fZ\n",
-                 year, month, day, hr, min, sec);
-     }
-   else
-     {
-        fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
-                 year, month, day, hr, min, sec);
-     }
+   tt = (time_t) taix;
+   gmtime_r (&tt, &tm);
+
+   fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ   yday: %d\n",
+            year, month, day, hr, min, sec, tm.tm_yday);
 
    /* taix is seconds since TEMPO epoch,
     * tai is seconds since Unix epoch
@@ -134,7 +128,7 @@ static int print_taix_as_strings (double taix, int omit_delimiters)
    tt = (time_t)tai;
    gmtime_r (&tt, &tm);
    strftime (buf, BUFSIZE, "%Y-%m-%dT%H:%M:%S", &tm);
-   fprintf (stdout, "TAI: %s.%06d ('atomic' time)\n", buf, (int)(round((tai-tt)*1e6)));
+   fprintf (stdout, "TAI: %s.%06d+00\n", buf, (int)(round((tai-tt)*1e6)));
 
    return 0;
 }
@@ -235,7 +229,6 @@ int main (int argc, char **argv)
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int write_epoch = 0;
-   int omit_delimiters = 0;
    int task = TASK_UNKNOWN;
 
    if (argc < 3)
@@ -247,7 +240,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "wde:f:g:i:s:u:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "we:f:g:i:s:u:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -257,9 +250,6 @@ int main (int argc, char **argv)
              break;
            case 'w':
              write_epoch++;
-             break;
-           case 'd':
-             omit_delimiters++;
              break;
            case 'g':
              grp = optarg;
@@ -305,7 +295,7 @@ int main (int argc, char **argv)
      {
       case TASK_PRINT_TIMES:
         fprintf (stdout, "SEC: %0.6f\n", taix);
-	status = print_taix_as_strings (taix, omit_delimiters);
+	status = print_taix_as_strings (taix);
         print_ioc_string (taix);
 	break;
 
