@@ -52,7 +52,7 @@ def init_radiance_table (table_name):
 def init_radiance_product_table (table_name):
     fields = {}
     fields["istart"] = "integer not null"
-    fields["mtime"] = "integer"
+    fields["mtime"] = "float"
     fields["size"] = "integer"
     fields["filename"] = "text"
     quals = "unique(istart), foreign key (istart) references {}(istart)".format('rad_L1b')
@@ -61,7 +61,7 @@ def init_radiance_product_table (table_name):
 def init_other_product_table (table_name):
     fields = {}
     fields["istart"] = "integer not null"
-    fields["mtime"] = "integer"
+    fields["mtime"] = "float"
     fields["size"] = "integer"
     fields["filename"] = "text"
     quals = "unique(istart)"
