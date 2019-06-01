@@ -12,31 +12,31 @@
 enum
 {
    TASK_UNKNOWN = 0,
-   TASK_CONVERT_TAI = 1,
-   TASK_CONVERT_UTC_STRING = 2,
-   TASK_CONVERT_IOC_STRING = 3,
-   TASK_FIX_FILE = 4
+   TASK_PRINT_TIMES = 1,
+   TASK_FIX_FILE = 2
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
+#define BUFSIZE 64
 
 static void usage (void)
 {
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
-   fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SSZ\n");
+   fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
    fprintf (stderr, "   or: ttime -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
+   fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
+   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
+   fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
+   fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
+   fprintf (stderr, "                      Non-default epoch must precede time stamp option\n");
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
-   fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
-   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
-   fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
-   fprintf (stderr, "  -d | --delim        Output UTC timestamp string omitting delimiters :-\n");
    fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
    exit (EXIT_SUCCESS);
 }
@@ -83,28 +83,31 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
    return 0;
 }
 
-static int print_ioc_string (double tai_sec)
+static int print_ioc_string (double taix_sec)
 {
    int day, msec, usec, sec_per_day = 86400;
    double f_msec;
 
-   day = tai_sec / sec_per_day;
-   f_msec = (tai_sec - day * sec_per_day) * 1000;
+   day = taix_sec / sec_per_day;
+   f_msec = (taix_sec - day * sec_per_day) * 1000;
 
    msec = f_msec;
    usec = (f_msec - msec) * 1000;
 
-   fprintf (stdout, "d%05dm%08du%03d\n", day, msec, usec);
+   fprintf (stdout, "IOC: d%05dm%08du%03d\n", day, msec, usec);
 
    return 0;
 }
 
-static int convert_tai_to_utc_string (double elapsed_seconds, int omit_delimiters)
+static int print_taix_as_strings (double taix, int omit_delimiters)
 {
-   double hour, minf, sec;
+   double hour, minf, sec, tai;
    int year, month, day, hr, min;
+   time_t tt;
+   struct tm tm = {0};
+   char buf[BUFSIZE];
 
-   if (0 != tio_time_taix_to_utc_caldate (elapsed_seconds, &year, &month, &day, &hour))
+   if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
      return -1;
 
    hr   = (int)hour;
@@ -114,24 +117,33 @@ static int convert_tai_to_utc_string (double elapsed_seconds, int omit_delimiter
 
    if (omit_delimiters)
      {
-        fprintf (stdout, "%4d%02d%02dT%02d%02d%02.0f\n",
+        fprintf (stdout, "UTC: %4d%02d%02dT%02d%02d%02.0fZ\n",
                  year, month, day, hr, min, sec);
      }
    else
      {
-        fprintf (stdout, "%4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
+        fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
                  year, month, day, hr, min, sec);
      }
+
+   /* taix is seconds since TEMPO epoch,
+    * tai is seconds since Unix epoch
+    */
+   if (-1 == tio_time_taix_to_tai (taix, &tai))
+     return -1;
+   tt = (time_t)tai;
+   gmtime_r (&tt, &tm);
+   strftime (buf, BUFSIZE, "%Y-%m-%dT%H:%M:%S", &tm);
+   fprintf (stdout, "TAI: %s.%06d ('atomic' time)\n", buf, (int)(round((tai-tt)*1e6)));
 
    return 0;
 }
 
-static int convert_utc_string_to_tai (const char *arg, double *ptai)
+static int convert_utc_string_to_taix (const char *arg, double *ptaix)
 {
-   double tempo, fsec = 0.0;
+   double taix, fsec = 0.0;
    char *dot;
    size_t len;
-#define BUFSIZE 32
    char buf[BUFSIZE];
 
    if (arg == NULL)
@@ -163,13 +175,12 @@ static int convert_utc_string_to_tai (const char *arg, double *ptai)
         buf[len+1] = 0;
      }
 
-   if (0 != tio_time_utcstr_to_taix (buf, &tempo))
+   if (0 != tio_time_utcstr_to_taix (buf, &taix))
      return -1;
-   tempo += fsec;
+   taix += fsec;
 
-   if (ptai) *ptai = tempo;
+   if (ptaix) *ptaix = taix;
 
-   fprintf (stdout, "%0.6f\n", tempo);
    return 0;
 
 error_return:
@@ -177,10 +188,10 @@ error_return:
    return -1;
 }
 
-static int convert_ioc_string_to_tai (const char *str, double *ptai)
+static int convert_ioc_string_to_taix (const char *str, double *ptaix)
 {
    int day, msec, usec;
-   double tai;
+   double taix;
 
    if (str == NULL)
      {
@@ -194,10 +205,8 @@ static int convert_ioc_string_to_tai (const char *str, double *ptai)
         return -1;
      }
 
-   tai = day * 86400.0 + msec/1000.0 + usec/1.e6;
-   if (ptai) *ptai = tai;
-
-   fprintf (stdout, "%0.6f\n", tai);
+   taix = day * 86400.0 + msec/1000.0 + usec/1.e6;
+   if (ptaix) *ptaix = taix;
 
    return 0;
 }
@@ -222,8 +231,7 @@ int main (int argc, char **argv)
    const char *path = NULL;
    const char *grp = "/";
    const char *var = "time";
-   double elapsed_seconds = 0.0;
-   double tai;
+   double taix = 0.0;
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int write_epoch = 0;
@@ -232,6 +240,9 @@ int main (int argc, char **argv)
 
    if (argc < 3)
      usage();
+
+   if (0 != tio_time_set_taix_epoch (epoch_string))
+     goto error_return;
 
    for (;;)
      {
@@ -264,8 +275,8 @@ int main (int argc, char **argv)
 	     epoch_string = optarg;
 	     break;
            case 's':
-	     task = TASK_CONVERT_TAI;
-	     if (1 != sscanf (optarg, "%le", &elapsed_seconds))
+	     task = TASK_PRINT_TIMES;
+	     if (1 != sscanf (optarg, "%le", &taix))
 	       {
 		  fprintf (stderr, "*** Error: converting %s to elapsed seconds since the epoch\n",
 			   optarg ? optarg : "<null>");
@@ -273,12 +284,16 @@ int main (int argc, char **argv)
 	       }
              break;
            case 'u':
-	     task = TASK_CONVERT_UTC_STRING;
+	     task = TASK_PRINT_TIMES;
 	     utc_string = optarg;
+             if (0 != convert_utc_string_to_taix (utc_string, &taix))
+               goto error_return;
              break;
            case 'i':
-	     task = TASK_CONVERT_IOC_STRING;
+	     task = TASK_PRINT_TIMES;
 	     ioc_string = optarg;
+             if (0 != convert_ioc_string_to_taix (ioc_string, &taix))
+                 goto error_return;
              break;
           }
      }
@@ -288,23 +303,11 @@ int main (int argc, char **argv)
 
    switch (task)
      {
-      case TASK_CONVERT_TAI:
-	status = convert_tai_to_utc_string (elapsed_seconds, omit_delimiters);
-        print_ioc_string (elapsed_seconds);
+      case TASK_PRINT_TIMES:
+        fprintf (stdout, "SEC: %0.6f\n", taix);
+	status = print_taix_as_strings (taix, omit_delimiters);
+        print_ioc_string (taix);
 	break;
-
-      case TASK_CONVERT_UTC_STRING:
-	status = convert_utc_string_to_tai (utc_string, &tai);
-        print_ioc_string (tai);
-	break;
-
-      case TASK_CONVERT_IOC_STRING:
-        if ((0 == convert_ioc_string_to_tai (ioc_string, &tai))
-            && (0 == convert_tai_to_utc_string (tai, omit_delimiters)))
-          {
-             status = 0;
-          }
-        break;
 
       case TASK_FIX_FILE:
         status = fix_header_timestamp (path, grp, var, write_epoch);
