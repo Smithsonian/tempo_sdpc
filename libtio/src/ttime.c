@@ -33,7 +33,6 @@ static void usage (void)
    fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
-   fprintf (stderr, "                      Non-default epoch must precede time stamp option\n");
    fprintf (stderr, "  -z | --zone h       Spacecraft local time-zone offset from UTC. Must be in range [-12,12].\n");
    fprintf (stderr, "                      [default: %d]\n", SC_TIMEZONE_DEFAULT);
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
@@ -237,12 +236,11 @@ int main (int argc, char **argv)
    int task = TASK_UNKNOWN;
    int sc_timezone = SC_TIMEZONE_DEFAULT;
    int utc_day, local_day;
+   int have_utc_string = 0;
+   int have_ioc_string = 0;
 
    if (argc < 3)
      usage();
-
-   if (0 != tio_time_set_taix_epoch (epoch_string))
-     goto error_return;
 
    for (;;)
      {
@@ -290,20 +288,29 @@ int main (int argc, char **argv)
            case 'u':
 	     task = TASK_PRINT_TIMES;
 	     utc_string = optarg;
-             if (0 != convert_utc_string_to_taix (utc_string, &taix))
-               goto error_return;
+             have_utc_string = 1;
              break;
            case 'i':
 	     task = TASK_PRINT_TIMES;
 	     ioc_string = optarg;
-             if (0 != convert_ioc_string_to_taix (ioc_string, &taix))
-                 goto error_return;
+             have_ioc_string = 1;
              break;
           }
      }
 
    if (0 != tio_time_set_taix_epoch (epoch_string))
      goto error_return;
+
+   if (have_utc_string)
+     {
+        if (0 != convert_utc_string_to_taix (utc_string, &taix))
+          goto error_return;
+     }
+   else if (have_ioc_string)
+     {
+        if (0 != convert_ioc_string_to_taix (ioc_string, &taix))
+          goto error_return;
+     }
 
    switch (task)
      {
