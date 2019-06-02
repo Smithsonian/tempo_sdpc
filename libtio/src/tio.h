@@ -91,6 +91,12 @@ extern int TIO_open (const char *path, int omode, int *ncid);
  */
 extern int TIO_close (int ncid);
 
+/** Sync a file to disk
+ * @param[in] ncid   Id number of currently open file
+ * @return 0 on success, -1 on error
+ */
+extern int tio_sync (int ncid);
+
 /** Get id of a group given the full path to it
  * @param[in]  parent_ncid   File index
  * @param[in]  path          Full name path to the group

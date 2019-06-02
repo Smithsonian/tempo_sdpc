@@ -349,6 +349,20 @@ int TIO_close (int ncid)
    return 0;
 }
 
+int tio_sync (int ncid)
+{
+   int status;
+
+   if (NC_NOERR != (status = nc_sync (ncid)))
+     {
+        tell_verror (TELL_IO_ERROR, "%s: syncing file %d (%s)",
+                     __func__, ncid, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
 int tio_append_history (int ncid, const char *str)
 {
    const char *history_attr = "history";

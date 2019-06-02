@@ -1002,6 +1002,9 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
        || (0 != tio_def_var_radiance_status_flag (sub_grp)))
      goto cleanup;
 
+   if (0 != tio_sync (ncid))
+     goto cleanup;
+
    if (-1 == TIO_close (ncid))
      goto cleanup;
 
