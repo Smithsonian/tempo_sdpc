@@ -24,7 +24,7 @@ get_granule_arch_dir_path()
   eval "$granule_ident"
 
   arch_type="$SDPC_ARCHIVE_DIR/L2/$processing_version/$product_type"
-  sat_day="$(compute_sat_day.sl $time_coverage_start_since_epoch)"
+  sat_day=$(compute_sat_day.sl $time_coverage_start_since_epoch)
 
   granule_arch_dir_path="${arch_type}/${sat_day}/${scan_num}/${granule_num}"
 
