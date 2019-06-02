@@ -391,7 +391,8 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    iocsdpc_smc_close (smc);
    ioclib_fd_close (fd);
    FREE(rec_array);
-   return 0;
+
+   return tio_sync (pmt->ncid);
 
 return_status:
    iocsdpc_smc_close (smc);

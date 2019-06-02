@@ -31,6 +31,8 @@ static int SC_Timezone;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
 
+static Process_Method_Type *Exprec_Process_Method;
+
 typedef struct
 {
    int filetype;
@@ -56,6 +58,7 @@ typedef struct
    char *tpinfo_file;
    double monitor_wait_secs;
    double cache_flush_idle_wait_secs;
+   double cache_flush_exprec_wait_secs;
    int exit_on_emptydir;
    IRU_Interval_Type iru_interval;
 }
@@ -179,6 +182,7 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
        || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &tpinfo_file))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_exprec_wait_secs", &ctrl->cache_flush_exprec_wait_secs))
       )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -515,6 +519,32 @@ static int flush_caches (const Process_Method_Table_Type *tbl,
    return num_failed;
 }
 
+static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ctrl)
+{
+   Process_Method_Type *pmt = Exprec_Process_Method;
+   time_t when_last_exprec_cached, age_secs;
+
+   /* If we're not processing exposure records, there's nothing more to do here */
+   if (pmt == NULL)
+     return 0;
+
+   if (0 != pmt->pmt_query_when_last_file_cached (pmt, &when_last_exprec_cached))
+     return -1;
+
+   /* If the cache is empty, we're done */
+   if (when_last_exprec_cached <= 0)
+     return 0;
+
+   age_secs = time(NULL) - when_last_exprec_cached;
+
+   if (age_secs < ctrl->cache_flush_exprec_wait_secs)
+     return 0;
+
+   tell_vinfo (0, "flush exprec cache (newest cached data is %ld sec old)", age_secs);
+
+   return pmt->pmt_flush_cache (pmt, tpinfo);
+}
+
 #define PROCESS_METHOD(filetype,init) {filetype,NULL,init}
 #define PROCESS_METHODS_TABLE_END {-1,NULL,NULL}
 
@@ -539,6 +569,9 @@ static int init_methods_table (Process_Method_Table_Type *tbl,
         tbl->method = (*tbl->init)(cfg);
         if (NULL == tbl->method)
           return -1;
+
+        if (tbl->filetype == IOCSDPC_FILETYPE_EXPREC)
+          Exprec_Process_Method = tbl->method;
      }
 
    return 0;
@@ -649,6 +682,10 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
 
+        /* If we haven't seen an exprec in a while, maybe it's time to flush the exprec cache */
+        if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
+          goto return_status;
+
         if (gt->num_files)
           {
              time_since_last_file = 0.0;
@@ -659,6 +696,7 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
              time_since_last_file += ctrl->monitor_wait_secs;
           }
 
+        /* If we haven't seen any files in a while, all the caches may need flushing. */
         if ((may_have_cached_files != 0) &&
             (time_since_last_file > ctrl->cache_flush_idle_wait_secs))
           {

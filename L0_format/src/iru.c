@@ -426,7 +426,8 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    iocsdpc_iru_close (iru);
    ioclib_fd_close (fd);
    FREE(rec_array);
-   return 0;
+
+   return tio_sync (pmt->ncid);
 
 return_status:
    iocsdpc_iru_close (iru);

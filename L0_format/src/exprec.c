@@ -58,6 +58,7 @@ File_Info_Type;
    int granule_size; \
    unsigned int curr_mirror_step; \
    unsigned int num_files_cached; \
+   time_t when_last_file_cached; \
    Granule_Schedule_Type sched;
 #include "l0_format.h"
 
@@ -477,7 +478,7 @@ static int write_exprec (Process_Method_Type *pmt,
 
    ioclib_free (data);
 
-   return 0;
+   return tio_sync (ncid);
 
 return_status:
    ioclib_free (data);
@@ -509,6 +510,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    /* If the cache is empty, do nothing */
    if (num_files == 0)
      {
+        pmt->when_last_file_cached = 0;
         ioclib_free (files);
         return 0;
      }
@@ -793,6 +795,7 @@ static int process_exprec (Process_Method_Type *pmt,
    if (0 != cache_file (pmt->cache_dirname, file))
      return -1;
    pmt->num_files_cached++;
+   pmt->when_last_file_cached = time(NULL);
 
    /* Non-radiance exposure records are cached until something
     * triggers cache processing: 1) arrival of a different
@@ -898,6 +901,12 @@ static int query_latest_timestamp (Process_Method_Type *pmt, int exprec_type, do
    return 0;
 }
 
+static int query_when_last_file_cached (const Process_Method_Type *pmt, time_t *when)
+{
+   *when = pmt->when_last_file_cached;
+   return 0;
+}
+
 static int dir_empty (DIR *d)
 {
    struct dirent *ent;
@@ -973,6 +982,7 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    pmt->pmt_delete = delete_exprec;
    pmt->pmt_flush_cache = flush_cache;
    pmt->pmt_query_latest_timestamp = query_latest_timestamp;
+   pmt->pmt_query_when_last_file_cached = query_when_last_file_cached;
 
    pmt->latest_radiance_timestamp_seen = -1.0;
 

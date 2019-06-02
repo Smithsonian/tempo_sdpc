@@ -540,7 +540,8 @@ static int process_tpsec_file
    free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
-   return 0;
+
+   return tio_sync (pmt->ncid);
 
 return_error:
    free_tpsec_row_list (row_list, nrows);
