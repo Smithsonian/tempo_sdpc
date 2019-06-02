@@ -5,11 +5,10 @@ import sqlite3
 from datetime import date
 from netCDF4 import Dataset as NetCDFFile
 
+Radiance_Files = ["rad_L1a", "rad_L1b"]
 Radiance_Products = ["cldrr", "hcho", "no2", "o3t", "o3p"]
-
-Radiance_Derived_Files = ["rad_L1a", "rad_L1b"] \
-                         + [s + "_L2" for s in Radiance_Products] \
-                         + [s + "_L3" for s in Radiance_Products]
+Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
+                       + [s + "_L3" for s in Radiance_Products]
 
 Radiance_File_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
                             "scan_num", "scan_type", "granule_num"]
@@ -44,6 +43,8 @@ def init_radiance_table (table_name):
     fields["time_coverage_start_since_epoch"] = "float not null"
     fields["time_coverage_end_since_epoch"] = "float not null"
     fields["filename"] = "text"
+    fields["mtime"] = "float"
+    fields["size"] = "integer"
     fields["mirror_pos_beg"] = "integer not null"
     fields["mirror_pos_end"] = "integer not null"
     quals = "primary key(istart), unique(istart)"
@@ -144,21 +145,18 @@ def process_file (conn, filename):
     keys = {}
     keys["istart"] = int(attr["time_coverage_start_since_epoch"])
     keys["filename"] = remove_dot_prefix (basename)
-
-    if (product_name in ['rad_L1a', 'rad_L1b']):
-        get_radiance_keys (nc, keys)
-        status = insert_radiance_entry (conn, product_name, keys)
-        if status < 0:
-           print('ERROR: processing file {}'.format(filename))
-
     st = os.stat(filename)
     keys["mtime"] = st.st_mtime
     keys["size"] = st.st_size
 
-    if (product_name in Radiance_Derived_Files):
+    if (product_name in Radiance_Files):
+        get_radiance_keys (nc, keys)
+        status = insert_radiance_entry (conn, product_name, keys)
+    elif (product_name in Radiance_Derived_Files):
         status = insert_radiance_product_entry (conn, product_name, keys)
     else:
         status = insert_other_product_entry (conn, product_name, keys)
+
     if status < 0:
         print('ERROR: processing file {}'.format(filename))
 
