@@ -112,6 +112,8 @@ run_inr_prep()
 
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
+   # The delay here can be relatively small because we've already had time
+   # for L0_ccd to process the granule before getting to this point.
    srun --ntasks=1 --output=log_inr_prep.txt \
    L1_inr_prep --ephemeris $ephem_file_path --delay 120 $target_file
 }
