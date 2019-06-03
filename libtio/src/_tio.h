@@ -146,6 +146,7 @@ extern int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *
 extern int _pTIO_parse_timestr (const char *timestr, struct tm *ptm);
 extern void _pTIO_warn_about_time_reference_mismatch (int ncid);
 extern int _pTIO_time_epoch_is_set (void);
+extern int _pTIO_set_sc_timezone (int sc_timezone);
 
 struct TIO_Scan_Ident_Type
 {

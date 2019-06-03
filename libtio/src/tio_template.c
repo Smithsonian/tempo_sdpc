@@ -24,6 +24,90 @@
 #define DELIM_TIMESTAMP_FORMAT   "%Y-%m-%dT%H:%M:%SZ"
 #define NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
 
+#define MAX_PATHLEN 1024
+static int SC_Timezone = INT_MAX;
+
+/* This is only intended to be used internally, by this library!! */
+int _pTIO_set_sc_timezone (int sc_timezone)
+{
+   if (abs(sc_timezone) > 12)
+     {
+        fprintf (stderr, "%s: invalid timezone: %d\n", __func__, sc_timezone);
+        return -1;
+     }
+   SC_Timezone = sc_timezone;
+   return 0;
+}
+
+static int read_sc_timezone (void)
+{
+   FILE *fp;
+   const char *root_dir = NULL;
+   char path[MAX_PATHLEN];
+   int n;
+
+   if (NULL == (root_dir = getenv ("SDPC_ROOT")))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: SDPC_ROOT not set", __func__);
+        return -1;
+     }
+
+   n = snprintf (path, MAX_PATHLEN, "%s/etc/sc_timezone", root_dir);
+   if (n < 0 || n >= MAX_PATHLEN)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error constructing path to sc_timezone file", __func__);
+        return -1;
+     }
+
+   if (NULL == (fp = fopen (path, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, path);
+        return -1;
+     }
+   if (1 != fscanf (fp, "%d", &SC_Timezone))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading sc_timezone from %s", __func__, path);
+     }
+   (void) fclose (fp);
+
+   if (abs(SC_Timezone) > 12)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: sc_timezone=%d in %s", __func__, SC_Timezone, path);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int init_sc_timezone (void)
+{
+   if (SC_Timezone != INT_MAX)
+     return 0;
+   return read_sc_timezone ();
+}
+
+int tio_time_sat_local_day_number (double taix, int *sat_day)
+{
+   if (0 != init_sc_timezone ())
+     return -1;
+
+   /* Number of days since the TEMPO epoch, spacecraft local time.
+    * Spacecraft local time is used because it makes the archive organization
+    * more intuitive.  To force UTC time in the archive, set SC_Timezone=0.
+    */
+   *sat_day = (taix + SC_Timezone * 3600.0) / 86400.0;
+
+   return 0;
+}
+
+int tio_time_sat_local_timezone (int *sc_timezone)
+{
+   if (0 != init_sc_timezone ())
+     return -1;
+   *sc_timezone = SC_Timezone;
+   return 0;
+}
+
 int _pTIO_define_processing_level (int grp, int level)
 {
    int status, enum_typeid;

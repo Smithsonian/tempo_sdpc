@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <time.h>
 #include <math.h>
+#include <limits.h>
 
 #include "tio.h"
 #include "_tio.h"
@@ -17,12 +18,16 @@ enum
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
-#define SC_TIMEZONE_DEFAULT  (-6)
 
 #define BUFSIZE 64
 
 static void usage (void)
 {
+   int sc_timezone_default = 0;
+   if (NULL != getenv ("SDPC_ROOT"))
+     {
+        (void) tio_time_sat_local_timezone (&sc_timezone_default);
+     }
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
    fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
@@ -34,7 +39,7 @@ static void usage (void)
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
    fprintf (stderr, "  -z | --zone h       Spacecraft local time-zone offset from UTC. Must be in range [-12,12].\n");
-   fprintf (stderr, "                      [default: %d]\n", SC_TIMEZONE_DEFAULT);
+   fprintf (stderr, "                      [default: %d]\n", sc_timezone_default);
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
@@ -234,7 +239,7 @@ int main (int argc, char **argv)
    int status = -1;
    int write_epoch = 0;
    int task = TASK_UNKNOWN;
-   int sc_timezone = SC_TIMEZONE_DEFAULT;
+   int sc_timezone = INT_MAX;
    int utc_day, local_day;
    int have_utc_string = 0;
    int have_ioc_string = 0;
@@ -270,8 +275,7 @@ int main (int argc, char **argv)
 	     epoch_string = optarg;
 	     break;
            case 'z':
-	     if ((1 != sscanf (optarg, "%d", &sc_timezone))
-                 || (abs(sc_timezone) > 12))
+	     if (1 != sscanf (optarg, "%d", &sc_timezone))
 	       {
 		  fprintf (stderr, "*** Error: setting spacecraft time zone\n");
 		  exit(1);
@@ -298,6 +302,24 @@ int main (int argc, char **argv)
           }
      }
 
+   if (sc_timezone != INT_MAX)
+     {
+        /* timezone set on command line */
+        if (0 != _pTIO_set_sc_timezone (sc_timezone))
+          goto error_return;
+     }
+   else if (NULL == getenv ("SDPC_ROOT"))
+     {
+        /* fall back to UTC */
+        sc_timezone = 0;
+        if (0 != _pTIO_set_sc_timezone (sc_timezone))
+          goto error_return;
+     }
+   else if (0 != tio_time_sat_local_timezone (&sc_timezone))
+     {
+        goto error_return;
+     }
+
    if (0 != tio_time_set_taix_epoch (epoch_string))
      goto error_return;
 
@@ -320,7 +342,8 @@ int main (int argc, char **argv)
         print_ioc_string (taix);
 
         utc_day = taix / 86400.0;
-        local_day = (taix + sc_timezone * 3600.0) / 86400.0;
+        if (0 != tio_time_sat_local_day_number (taix, &local_day))
+          goto error_return;
 
         fprintf (stdout, "DAY: %d UTC\n", utc_day);
         fprintf (stdout, "DAY: %d local at UTC%+03d\n", local_day, sc_timezone);
