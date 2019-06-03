@@ -205,6 +205,51 @@ static int examine_file (Row_Select_Type **rstp, int ncid, const char *file,
    return status;
 }
 
+static int expand_glob_pattern (const char *file_glob_pattern,
+                                double time_beg, double time_end,
+                                wordexp_t *we)
+{
+   int n, len, sat_day_beg, sat_day_end;
+   char *pat;
+
+   if (NULL == strstr (file_glob_pattern, "%d"))
+     {
+        return wordexp (file_glob_pattern, we, WRDE_NOCMD | WRDE_UNDEF);
+     }
+
+   if ((0 != tio_time_sat_local_day_number (time_beg, &sat_day_beg))
+       || (0 != tio_time_sat_local_day_number (time_end, &sat_day_end)))
+     return -1;
+
+   len = 8 + strlen(file_glob_pattern);
+   if (NULL == (pat = MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   n = snprintf (pat, len, file_glob_pattern, sat_day_beg);
+   if ((n < 0) || (n >= len)
+       || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF)))
+     {
+        FREE(pat);
+        return -1;
+     }
+
+   if (sat_day_end != sat_day_beg)
+     {
+        n = snprintf (pat, len, file_glob_pattern, sat_day_end);
+        if ((n < 0) || (n >= len)
+            || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF | WRDE_APPEND)))
+          {
+             FREE(pat);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
 int row_select_scan (double time_beg, double time_end, int num_pad,
                      const char *file_glob_pattern,
                      Row_Select_Type **rstp)
@@ -216,11 +261,11 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
 
    *rstp = NULL;
 
-   if (0 != wordexp (file_glob_pattern, &we, WRDE_NOCMD | WRDE_UNDEF))
+   if (0 != expand_glob_pattern (file_glob_pattern, time_beg, time_end, &we))
      {
         tell_verror (TELL_UNKNOWN_ERROR,
                      "%s: expanding path: %s", __func__, file_glob_pattern);
-        return -1;
+        goto cleanup_and_return;
      }
 
    if (we.we_wordc < 1)
