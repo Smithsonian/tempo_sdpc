@@ -218,7 +218,12 @@ CONTAINS
     ! Check whether we enough spectral points to carry out the fitting. If
     ! not, call it a bad pixel and return.
     ! --------------------------------------------------------------------
-    IF ( (n_fitvar_rad-n_prefit_vars) >= n_rad_wvl_loc ) THEN
+    ! EJOS - check against number of radiances with non-zero weights
+    !        not just the number of radiance values in use
+    n_nozero_wgt = &
+         MAX ( INT ( ANINT ( SUM(Spec%weights(1:n_rad_wvl_loc)) ) ), 1 )
+    !IF ( (n_fitvar_rad-n_prefit_vars) >= n_rad_wvl_loc ) THEN
+    IF ( (n_fitvar_rad-n_prefit_vars) >= n_nozero_wgt ) THEN
       is_bad_pixel = .TRUE.
       RETURN
     END IF
