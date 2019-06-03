@@ -260,8 +260,16 @@ int tio_write_granule_ident_times (int ncid, double tstart, double tend)
 
 int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
 {
+   char *p;
+
    memset ((char *)ptm, 0, sizeof (struct tm));
-   if (NULL == strptime (timestr, DELIM_TIMESTAMP_FORMAT, ptm))
+
+   if (NULL != strchr (timestr, '-'))
+     p = strptime (timestr, DELIM_TIMESTAMP_FORMAT, ptm);
+   else
+     p = strptime (timestr, NODELIM_TIMESTAMP_FORMAT, ptm);
+
+   if (NULL == p)
      {
         Tell_verror (TELL_RUNTIME_ERROR, "%s: strptime failed: %s",
                      __func__, timestr);

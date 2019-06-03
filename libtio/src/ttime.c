@@ -39,7 +39,7 @@ static void usage (void)
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
-   fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ\n");
+   fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ or YYYYMMDDTHHMMSSZ\n");
    exit (EXIT_SUCCESS);
 }
 
