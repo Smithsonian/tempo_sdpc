@@ -28,9 +28,9 @@ mkdirlist()
    done
 }
 
-PIPE_DIRS="L0/repro L0/incoming/ccd L0/incoming/telem \
-           L1/repro \
-	   L2/repro L2/incoming \
+PIPE_DIRS="incoming/l0ccd incoming/telem \
+           L0/repro L1/repro \
+           L2/repro L2/incoming \
 	   log"
 
 mkdirlist $SDPC_RUN_DIR_MASTER "$PIPE_DIRS"

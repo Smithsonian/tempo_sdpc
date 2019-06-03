@@ -5,7 +5,7 @@
 set -u
 set -e
 
-_telem_dir="/data/tempo/sdpc/test_data/level0/2018jun29_fixup/incoming_newnames/telem"
+_src_dir="/data/tempo/sdpc/test_data/level0/2018jun29_fixup/incoming_newnames/telem"
 
 assert_dir_exists()
 {
@@ -17,9 +17,11 @@ assert_dir_exists()
    fi
 }
 
-_target_dir="$SDPC_RUN_DIR_MASTER/L0/incoming/telem"
+assert_dir_exists $_src_dir
 
-assert_dir_exists $_telem_dir
-assert_dir_exists $_target_dir
+_target_dir="$SDPC_ARCHIVE_DIR/L0/1/4943"
 
-ln -s -t $_target_dir $_telem_dir/*.nc
+for d in hk iru smc ; do
+   mkdir -p $_target_dir/$d
+   ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*.nc
+done

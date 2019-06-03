@@ -46,7 +46,6 @@ file_list_file="$2"
 export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
-l0_incoming_dir="$SDPC_RUN_DIR/L0/incoming"
 l0_out_dir="$SDPC_RUN_DIR/L0/out"
 l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
 
@@ -96,10 +95,17 @@ run_l0_ccd()
    output_file="$1"
    dark_option="$2"
 
+   # Construct path to archive directory containing today's telemetry point stream.
+   # For now, we ignore the case where the data interval spans 2 days because the
+   # concept of operations has no CCD images of any kind being generated at local midnight.
+   tstart=$(grep time_coverage_start_since_epoch granule_ident.csv | cut -d, -f2)
+   sat_day=$(compute_sat_day.sl $tstart)
+   arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/1/${sat_day}/hk"
+
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
    srun --ntasks=1 --output=log_l0_ccd.txt \
-   L0_ccd -i $l0_incoming_dir/telem \
+   L0_ccd -i $arch_hk_dir \
           -o $output_file $dark_option \
           $granule_basename
 }
