@@ -27,7 +27,6 @@
 
 #define MAX_PATHLEN 1024
 static int Have_Epoch;
-static int SC_Timezone;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
 
@@ -117,50 +116,6 @@ static void free_control_type_fields (Control_Type *ctrl)
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
    FREE(ctrl->iru_interval.dir);
-}
-
-static int read_sc_timezone (void)
-{
-   FILE *fp;
-   const char *root_dir = NULL;
-   char path[MAX_PATHLEN];
-   int n;
-
-   /* NULL means don't perform archiving */
-   if (NULL == get_archive_root_dir ())
-     return 0;
-
-   if (NULL == (root_dir = getenv ("SDPC_ROOT")))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: SDPC_ROOT not set", __func__);
-        return -1;
-     }
-
-   n = snprintf (path, MAX_PATHLEN, "%s/etc/sc_timezone", root_dir);
-   if (n < 0 || n >= MAX_PATHLEN)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: error constructing path to sc_timezone file", __func__);
-        return -1;
-     }
-
-   if (NULL == (fp = fopen (path, "r")))
-     {
-        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, path);
-        return -1;
-     }
-   if (1 != fscanf (fp, "%d", &SC_Timezone))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading sc_timezone from %s", __func__, path);
-     }
-   (void) fclose (fp);
-
-   if (abs(SC_Timezone) > 12)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: sc_timezone=%d in %s", __func__, SC_Timezone, path);
-        return -1;
-     }
-
-   return 0;
 }
 
 static int read_main_params (config_t *cfg, Control_Type *ctrl)
@@ -765,7 +720,8 @@ int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int s
     * Spacecraft local time is used because it makes the archive organization
     * more intuitive.  To force UTC time in the archive, set SC_Timezone=0.
     */
-   sat_day = (sec_since_epoch + SC_Timezone * 3600.0) / 86400.0;
+   if (0 != tio_time_sat_local_day_number (sec_since_epoch, &sat_day))
+     return -1;
 
    /* e.g. ${SDPC_ARCHIVE_DIR}/L0/${version}/ddddd/${file_type}
     *   or ${SDPC_ARCHIVE_DIR}/L0/${version}/ddddd/${file_type}/scan
@@ -1040,7 +996,7 @@ return_status:
    return status;
 }
 
-/* Close hidden file $dirname/.${basename} and
+/* Close hidden file $dirname/.${basename}
  * and rename to $dirname/$basename.
  * Optionally, if copydir != NULL, put a copy in $copydir/$basename
  * before performing the rename.
@@ -1077,6 +1033,18 @@ return_status:
 
    FREE(oldpath);
    FREE(newpath);
+   return status;
+}
+
+int remove_file (const char *dirname, const char *basename)
+{
+   char *path = NULL;
+   int status;
+
+   if (NULL == (path = ioclib_pathconcat (dirname, basename)))
+     return -1;
+   status = ioclib_unlink (path);
+   ioclib_free (path);
    return status;
 }
 
@@ -1173,9 +1141,6 @@ int main (int argc, char **argv)
    config_init (&cfg);
 
    Have_Epoch = 0;
-
-   if (0 != read_sc_timezone ())
-     goto return_status;
 
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
      goto return_status;

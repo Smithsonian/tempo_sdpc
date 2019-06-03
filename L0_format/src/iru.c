@@ -74,6 +74,12 @@ static int close_iru_outfile (Process_Method_Type *pmt)
           return -1;
         if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
           return -1;
+        if (pmt->archdir_path)
+          {
+             /* At this point, the output file is in the archive,
+              * and we don't need the original */
+             (void) remove_file (pmt->out_dirname, pmt->out_basename);
+          }
      }
    pmt->ncid = INT_MAX;
    pmt->num_written = 0;

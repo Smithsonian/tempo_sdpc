@@ -43,6 +43,13 @@
 
 #define L0_DEFAULT_OUTFILE_DURATION_SEC 300.0
 
+/** Remove a file
+ * @param[in]  dirname   Directory path
+ * @param[in]  basename  File name
+ * @return 0 on success, -1 on error
+ */
+extern int remove_file (const char *dirname, const char *basename);
+
 /** Perform shell variable expansion on a string
  * @param[in]  s  Input string
  * @return on success, an allocated string, NULL on error.
