@@ -108,7 +108,7 @@ static int print_ioc_string (double taix_sec)
 
 static int print_taix_as_strings (double taix)
 {
-   double hour, minf, sec, tai;
+   double hour, minf, sec, tai, utc;
    int year, month, day, hr, min;
    time_t tt;
    struct tm tm = {0};
@@ -122,11 +122,16 @@ static int print_taix_as_strings (double taix)
    min = (int)minf;
    sec = (minf - min)*60;
 
-   tt = (time_t) taix;
-   gmtime_r (&tt, &tm);
+   fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
+            year, month, day, hr, min, sec);
 
-   fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ   yday: %d\n",
-            year, month, day, hr, min, sec, tm.tm_yday);
+   if (0 != tio_time_taix_to_utc (taix, &utc))
+     return -1;
+
+   tt = (time_t) utc;
+   gmtime_r (&tt, &tm);
+   fprintf (stdout, "     time_t: %ld    day of year: %d (1..366)\n",
+            tt, 1+tm.tm_yday);
 
    /* taix is seconds since TEMPO epoch,
     * tai is seconds since Unix epoch

@@ -460,10 +460,10 @@ extern int tio_time_taix_to_utc_caldate
 /** Convert TAI sec since X epoch to calendar date and day of year, UTC
  * @param[in] taix_time   Elapsed TAI seconds since the X epoch
  * @param[out]  year      4-digit year
- * @param[out]  doy       hour of the day, 0-23.999...
+ * @param[out]  yday      number of days since 1 Jan, [0..365]
  * @return 0 on success, -1 on error
  */
-extern int tio_time_taix_to_yearday (double taix_time, int *year, int *doy);
+extern int tio_time_taix_to_yearday (double taix_time, int *year, int *yday);
 
 /** Compute satellite local-time day number given a count of TAI sec since X epoch
  * @param[in]   taix_time   Elapsed TAI seconds since the X epoch
