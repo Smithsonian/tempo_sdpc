@@ -10,7 +10,7 @@
 [Granules]
 
 # Directory scanning method ("inotify" or "polling")
-method=inotify
+method=polling
 # The threshold used by the Granule Monitor if "polling" is selected as the
 # directory scanning method. A file is identified as a new file only
 # if the difference between the current time and file last updated time is
@@ -19,7 +19,7 @@ method=inotify
 pollingThreshold=5000
 # The polling interval used by the Granule Monitor if "polling" is selected as the
 # directory scanning method. Values are in milliseconds
-pollingSleepDuration=5000
+pollingSleepDuration=10000
 # The method for loading the granule. Operationally it is "Real"
 # "Mock" is used in some unit tests
 loadMethod=Real
