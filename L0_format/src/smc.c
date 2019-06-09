@@ -364,7 +364,10 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    (void) tpinfo;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return -1;
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: opening SMC file: %s", __func__, file);
+        return -1;
+     }
 
    if (NULL == (smc = iocsdpc_smc_fdopen_read (file, fd, &chdr)))
      goto return_status;
@@ -401,6 +404,7 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    return tio_sync (pmt->ncid);
 
 return_status:
+   tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing SMC file: %s", __func__, file);
    iocsdpc_smc_close (smc);
    ioclib_fd_close (fd);
    FREE(rec_array);

@@ -520,7 +520,10 @@ static int process_tpsec_file
    (void) pmt;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return -1;
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: opening file: %s", __func__, file);
+        return -1;
+     }
 
    if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, &chdr)))
      goto return_error;
@@ -550,6 +553,7 @@ static int process_tpsec_file
    return tio_sync (pmt->ncid);
 
 return_error:
+   tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing file: %s", __func__, file);
    free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);

@@ -402,7 +402,10 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    (void) tpinfo;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return -1;
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: opening file: %s", __func__, file);
+        return -1;
+     }
 
    if (NULL == (iru = iocsdpc_iru_fdopen_read (file, fd, &chdr)))
      goto return_status;
@@ -436,6 +439,7 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    return tio_sync (pmt->ncid);
 
 return_status:
+   tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing IRU file: %s", __func__, file);
    iocsdpc_iru_close (iru);
    ioclib_fd_close (fd);
    FREE(rec_array);

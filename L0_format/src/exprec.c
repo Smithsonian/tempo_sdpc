@@ -147,7 +147,10 @@ static int schedule_granules (unsigned int num_recs,
    for (;;)
      {
         if (0 != compute_granule_sizes (num_recs, num_granules, sched))
-          return -1;
+          {
+             tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: computing granule sizes", __func__);
+             return -1;
+          }
         if (sched->granule_sizes[0] < sched->size_max)
           break;
         num_granules++;
@@ -673,8 +676,16 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    status = 0;
 return_status:
-   tell_vinfo (2, "done processing exprec cache: num_files_cached=%d (status=%d)",
-               pmt->num_files_cached, status);
+   if (status)
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "processing exprec cache: num_files_cached=%d",
+                   pmt->num_files_cached);
+     }
+   else
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 2, "done processing exprec cache: num_files_cached=%d",
+                   pmt->num_files_cached);
+     }
 
    ioclib_free (path);
    ioclib_string_array_free (files, num_files);
@@ -763,7 +774,11 @@ static int process_exprec (Process_Method_Type *pmt,
    int is_radiance, is_new_type, is_radiance_new_scan;
 
    if (0 != classify_file (file, &file_info))
-     return -1;
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: classifying exposure record: %s",
+                   __func__, file);
+        return -1;
+     }
 
    /* Invariant:  the cache always contains only records
     * that belong together and could share the same granule.
@@ -793,7 +808,11 @@ static int process_exprec (Process_Method_Type *pmt,
 
    pmt->exprec_type = file_info.exprec_type;
    if (0 != cache_file (pmt->cache_dirname, file))
-     return -1;
+     {
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: caching %s in %s",
+                   __func__, file, pmt->cache_dirname);
+        return -1;
+     }
    pmt->num_files_cached++;
    pmt->when_last_file_cached = time(NULL);
 
