@@ -263,7 +263,14 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
    int status, varid, dims[3], num_masks, len;
    unsigned int *flag_masks = NULL;
    char *flag_meanings = NULL;
+   int shuffle, deflate=1, deflate_level=1;
+#ifdef DO_CHUNKING
+   int storage = NC_CHUNKED;
+   size_t chunksizes[TIO_MAX_VAR_DIMS];
+#endif
    int error_status = -1;
+
+   shuffle = deflate;
 
    dims[0] = dim_table->step.id;
    dims[1] = dim_table->xtrack.id;
@@ -272,7 +279,6 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
      return error_status;
    if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_USHORT))
      return error_status;
-
    if (-1 == _pTIOMake_Name_UInt_Arrays (PQF_Pairs, &num_masks, &flag_meanings,
                                          &flag_masks))
      {
@@ -301,6 +307,25 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
                      __func__, "flag_meanings", nc_strerror(status));
         goto cleanup_and_return;
      }
+
+   if (NC_NOERR != (status = nc_def_var_deflate (grp, varid, shuffle, deflate, deflate_level)))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR, "defining %s compression parameters (%s)",
+                     TEMPO_VAR_RADIANCE, nc_strerror(status));
+        goto cleanup_and_return;
+     }
+#ifdef DO_CHUNKING
+   /* FIXME */
+   chunksizes[0] = TIO_CHUNKSIZE_STEP;
+   chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
+                    dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
+   chunksizes[2] = dim_table->channel.len;
+   if ((storage == NC_CHUNKED)
+       && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+     {
+        goto cleanup_and_return;
+     }
+#endif
 
    error_status = 0;
 cleanup_and_return:
