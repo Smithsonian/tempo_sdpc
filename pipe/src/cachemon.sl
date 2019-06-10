@@ -12,6 +12,12 @@ prepend_to_slang_load_path ($1);
 set_import_module_path (path_concat ($1, "../lib/slang/v2/modules") + ":" + get_import_module_path ());
 require ("pipeutil");
 
+private variable Num_Cpus = sysconf("_SC_NPROCESSORS_ONLN");
+if (Num_Cpus < 1)
+{
+   throw ApplicationError, "Invalid number of cpus: _SC_NPROCESSORS_ONLN = $Num_Cpus"$;
+}
+
 private variable Sigterm_Received;
 
 private variable Host_Name = uname().nodename;
@@ -338,6 +344,10 @@ private define claim_with_rename (obj, path)
 {
    if (path == NULL)
      return -1;
+
+   % If the machine is fully loaded, try again later
+   if (Num_Running > Num_Cpus)
+     return 0;
 
    variable cl = obj.client_data;
 
