@@ -514,7 +514,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (num_files == 0)
      {
         pmt->when_last_file_cached = 0;
-        ioclib_free (files);
+        ioclib_string_array_free (files, num_files);
         return 0;
      }
 
