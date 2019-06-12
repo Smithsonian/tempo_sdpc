@@ -483,7 +483,7 @@ static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ct
    if (pmt == NULL)
      return 0;
 
-   if (0 != pmt->pmt_query_when_last_file_cached (pmt, &when_last_exprec_cached))
+   if (0 != pmt->pmt_query_when_last_rec_cached (pmt, &when_last_exprec_cached))
      return -1;
 
    /* If the cache is empty, we're done */
