@@ -40,6 +40,7 @@
 
 #define MAX_BASENAME_SIZE 72
 #define MAX_ISOTIME_LEN 32
+#define MAX_PATHLEN 1024
 
 #define L0_DEFAULT_OUTFILE_DURATION_SEC 300.0
 
@@ -171,8 +172,21 @@ struct Process_Method_Type
 /** Initialize the module that handles exposure record files
  * @param[in] cfg  Pointer to fully initialized @c config_t struct
  * @return A @c Process_Method_Type structure on success, or @c NULL on error
+ *
+ * Note: The caching method must be set before the \a Process_Method_Type
+ * is initialized.
  */
 extern Process_Method_Type *init_exprec_method (config_t *cfg);
+
+/** Set the exposure record caching method
+ * @param[in]  method  Integer method identifier
+ */
+extern void set_exprec_cache_method (int method);
+enum
+{
+   EXPREC_CACHE_DISK = 0,
+   EXPREC_CACHE_MEM  = 1
+};
 
 /** Initialize the module that handles telemetry point section files
  * @param[in] cfg  Pointer to fully initialized @c config_t struct

@@ -25,7 +25,6 @@
 
 #include "l0_format.h"
 
-#define MAX_PATHLEN 1024
 static int Have_Epoch;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
@@ -70,6 +69,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
+   fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
 }
@@ -320,6 +320,20 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
    return 0;
 }
 
+/* This logic works for live stream processing, but fails when processing
+ * the blocked exposure records from the IOC science data cache.
+ * The problem with blocked exposure records is that such a file mmay have
+ * a large time gap in it, e.g. between the last radiance exposure of the day,
+ * and the following dark collect.  The file containing the IRU data for the gap
+ * won't be encountered until after the blocked file is fully processed.  From the
+ * point of view of the code processing the data files, blocking of the exposure
+ * records has effectively moved some exposure records out of sequence relative
+ * to the IRU, SMC data files in the cache.
+ * When processing blocked exposure records, it's simplest to generate
+ * the corresponding IRU-only intervals after all the IRU and radiance
+ * files have been generated.  At that point, it's much easier to identify
+ * the time intervals where the INR SW will need an IRU update.
+ */
 static int maybe_write_iru_only_interval (IRU_Interval_Type *iru_interval)
 {
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
@@ -330,12 +344,7 @@ static int maybe_write_iru_only_interval (IRU_Interval_Type *iru_interval)
 
    /* Initialization: If we've never sent any IRU data to the INR subsystem,
     * we'll assume the current IRU knowledge gap starts with the latest
-    * IRU timestamp.  This isn't ideal, and this assumption might might leave
-    * a small gap in IRU coverage, but such a short, isolated coverage
-    * gap won't matter much.
-    * Essentially, this is a design decision, that modifying the code to get
-    * perfect, unbroken coverage isn't worth the effort, while starting the
-    * knowledge gap now is easy and is better than doing nothing at all.
+    * IRU timestamp.  Avoid gaps by padding the IRU coverage in every granule.
     */
    if (t_only <= 0.0 && t_rad <= 0.0)
      {
@@ -400,10 +409,8 @@ static int query_filetype (const char *file, int *filetype)
    return 0;
 }
 
-static int process_file (const Process_Method_Table_Type *tbl,
-                         const TPInfo_Type *tpinfo,
-                         Control_Type *ctrl,
-                         const char *file)
+static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
+                         Control_Type *ctrl, const char *file)
 {
    Process_Method_Type *pmt;
    int filetype;
@@ -596,8 +603,8 @@ static int caught_signal (void)
    return (Sigterm_Received || Sigint_Received);
 }
 
-static int monitor_dir (Process_Method_Table_Type *tbl,
-                        const TPInfo_Type *tpinfo, Control_Type *ctrl)
+static int process_live_stream (Process_Method_Table_Type *tbl,
+                                const TPInfo_Type *tpinfo, Control_Type *ctrl)
 {
    IOCLib_Glob_Type *gt = NULL;
    char *pattern = NULL;
@@ -673,6 +680,69 @@ static int monitor_dir (Process_Method_Table_Type *tbl,
 return_status:
    ioclib_free (pattern);
    ioclib_glob_free (gt);
+
+   return status;
+}
+
+static int process_cache_dirs (Process_Method_Table_Type *tbl,
+                               const TPInfo_Type *tpinfo, Control_Type *ctrl,
+                               const char *cache_dir_pattern)
+{
+   IOCLib_Glob_Type *gt = NULL;
+   char **files = NULL;
+   char *path = NULL;
+   int status = -1;
+   size_t i, k, num_files;
+
+   if (NULL == (gt = ioclib_glob (cache_dir_pattern, 0)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_glob failed", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < gt->num_files; i++)
+     {
+        const char *dir = gt->files[i];
+
+        if (NULL == (files = ioclib_dir_list(dir, &num_files, IOCLIB_LISTDIR_SORT)))
+          goto return_status;
+
+        tell_vinfo (0, "begin processing %ld files from directory %s", num_files, dir);
+
+        for (k = 0; k < num_files; k++)
+          {
+             if (NULL == (path = ioclib_pathconcat (dir, files[k])))
+               goto return_status;
+
+             if (caught_signal())
+               {
+                  log_caught_signal();
+                  goto return_status;
+               }
+
+             if (-1 == process_file (tbl, tpinfo, ctrl, path))
+               goto return_status;
+
+             ioclib_free (path);
+             path = NULL;
+          }
+
+        tell_vinfo (0, "end processing %ld files from directory %s", num_files, dir);
+
+        ioclib_string_array_free (files, num_files);
+        files = NULL;
+        num_files = 0;
+     }
+
+   tell_vinfo (0, "flush caches on exit");
+   if (0 != flush_caches (tbl, tpinfo))
+     goto return_status;
+
+   status = 0;
+return_status:
+   ioclib_glob_free (gt);
+   ioclib_string_array_free (files, num_files);
+   ioclib_free (path);
 
    return status;
 }
@@ -1078,11 +1148,14 @@ int main (int argc, char **argv)
    config_t cfg = {0};
    TPInfo_Type *tp = NULL;
    int verbose = 0;
+   int cache_method = EXPREC_CACHE_DISK;
+   const char *cache_dir_pattern = NULL;
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
         {"help",     no_argument,       0, 'h'},
         {"archive",  required_argument, 0, 'a'},
+        {"cache",    required_argument, 0, 'c'},
         {"empty",    no_argument,       0, 'e'},
         {"register", no_argument,       0, 'r'},
         {"verbose",  no_argument,       0, 'v'},
@@ -1094,7 +1167,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ha:erv", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:c:erv", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1108,6 +1181,10 @@ int main (int argc, char **argv)
              break;
            case 'a':
              set_archive_root_dir (optarg);
+             break;
+           case 'c':
+             cache_dir_pattern = optarg;
+             cache_method = EXPREC_CACHE_MEM;
              break;
            case 'e':
              ctrl.exit_on_emptydir = 1;
@@ -1148,6 +1225,9 @@ int main (int argc, char **argv)
    if (NULL == (tp = tpinfo_init (ctrl.tpinfo_file)))
      goto return_status;
 
+   /* must precede init_methods_table call */
+   set_exprec_cache_method (cache_method);
+
    if (-1 == init_methods_table (tbl, &cfg))
      goto return_status;
 
@@ -1156,7 +1236,11 @@ int main (int argc, char **argv)
    catch_sigterm ();
    catch_sigint ();
 
-   status = monitor_dir (tbl, tp, &ctrl);
+   if (cache_dir_pattern)
+     status = process_cache_dirs (tbl, tp, &ctrl, cache_dir_pattern);
+   else
+     status = process_live_stream (tbl, tp, &ctrl);
+
    delete_methods_table (tbl);
 
    status = (status == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

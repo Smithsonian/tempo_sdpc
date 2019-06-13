@@ -10,7 +10,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -19,6 +18,8 @@
 #include <tio.h>
 #include <tio_template.h>
 #include <tell.h>
+
+#include "exprec_cache.h"
 
 typedef struct
 {
@@ -43,7 +44,7 @@ Exprec_Info_Type;
 
 #define PROCESS_METHOD_PRIVATE_DATA \
    Enum_Lookup_Type *enum_lookup; \
-   char *cache_dirname; \
+   Exprec_Cache_Method_Type *cache_method; \
    char *out_dirname; \
    char *out_basename; \
    char *archdir_path; \
@@ -57,12 +58,18 @@ Exprec_Info_Type;
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
-   unsigned int num_erecs_cached; \
    time_t when_last_erec_cached; \
    Granule_Schedule_Type sched;
 #include "l0_format.h"
 
 #define EXPREC_ENUM_TABLE_SIZE 16
+
+static int Exprec_Cache_Method;
+
+void set_exprec_cache_method (int method)
+{
+   Exprec_Cache_Method = method;
+}
 
 static void sched_free (Granule_Schedule_Type *sched)
 {
@@ -491,14 +498,13 @@ return_status:
 static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                           int process_all_erecs)
 {
-   const char *cache_dirname = pmt->cache_dirname;
+   Exprec_Cache_Method_Type *cmt = pmt->cache_method;
    Granule_Schedule_Type *sched = NULL;
    IOCSDPC_Exprec_Type *erec = NULL;
-   char **files = NULL;
-   char *path = NULL;
+   char path[MAX_PATHLEN];
    unsigned int outfile_erec_count, outfile_cumulative_erec_count;
-   size_t i, num_files;
-   int fd, exprec_type, is_radiance, status = -1;
+   size_t cache_index, num_erecs;
+   int exprec_type, is_radiance, status = -1;
 
    /* If the cache directory is empty, do nothing.
     * Otherwise, the cache directory contains cached exposure records
@@ -507,18 +513,17 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
     * either some or all of the cached exposure records into netcdf granules.
     */
 
-   if (NULL == (files = ioclib_dir_list(cache_dirname, &num_files, IOCLIB_LISTDIR_SORT)))
+   if (0 != cmt->cache_open (cmt))
      return -1;
 
+   (void) cmt->cache_num_recs (cmt, &num_erecs);
+
    /* If the cache is empty, do nothing */
-   if (num_files == 0)
+   if (num_erecs == 0)
      {
         pmt->when_last_erec_cached = 0;
-        ioclib_string_array_free (files, num_files);
-        return 0;
+        return cmt->cache_close (cmt);
      }
-
-   tell_vinfo (2, "processing exprec cache: %ld files", num_files);
 
    exprec_type = pmt->exprec_type;
    is_radiance = (exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
@@ -534,7 +539,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
     */
    if (is_radiance == 0)
      {
-        if (0 != schedule_granules (num_files, &pmt->sched))
+        if (0 != schedule_granules (num_erecs, &pmt->sched))
           goto return_status;
      }
 
@@ -543,29 +548,16 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    outfile_erec_count = 0;
    outfile_cumulative_erec_count = 0;
 
-   for (i = 0; i < num_files; i++)
+   for (cache_index = 0; cache_index < num_erecs; cache_index++)
      {
-        IOCSDPC_Common_Header_Type chdr;
         unsigned int next_erec, curr_mirror_step, index;
         int need_new_outfile;
 
-        if (NULL == (path = ioclib_pathconcat (cache_dirname, files[i])))
+        if  (NULL == (erec = cmt->cache_erec_get (cmt)))
           goto return_status;
 
-        if (-1 == (fd = iocsdpc_open_file_read (path, 0, &chdr)))
-          {
-             ioclib_free (path);
-             path = NULL;
-             goto return_status;
-          }
-
-        if (NULL == (erec = iocsdpc_exprec_fdopen_read (path, fd, &chdr)))
-          {
-             ioclib_fd_close (fd);
-             ioclib_free (path);
-             path = NULL;
-             goto return_status;
-          }
+        path[0] = 0;
+        (void) cmt->cache_erec_path (cmt, path, sizeof(path));
 
         /* Assert: exprec_type == erec->exprec_type */
         if (exprec_type != erec->exprec_type)
@@ -607,17 +599,10 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
              if (k >= sched->num_granules)
                {
-                  tell_vinfo (0, "%s: bad file: %s (k >= num_granules: k=%d, num_granules=%d)",
+                  tell_vinfo (0, "%s: bad erec: %s (k >= num_granules: k=%d, num_granules=%d)",
                               __func__, path, k, sched->num_granules);
-                  if (0 != ioclib_rename_to_bad_file (path))
-                    {
-                       tell_verror (TELL_APPLICATION_ERROR,
-                                    "%s: ioclib_rename_to_bad_file, failed: file=%s",
-                                    __func__, path);
-                       goto return_status;
-                    }
-                  ioclib_free (path);
-                  path = NULL;
+                  if (0 != cmt->cache_erec_bad (cmt))
+                    goto return_status;
                   continue;
                }
 
@@ -625,7 +610,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
              granule_size = sched->granule_sizes[k];
 
              /* We prefer to open an output file only when we can fill it. */
-             if ((num_files - i < granule_size)
+             if ((num_erecs - cache_index < granule_size)
                  && (process_all_erecs == 0))
                {
                   /* No need to open yet: wait for more data */
@@ -633,11 +618,11 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                }
 
              if ((process_all_erecs != 0)
-                 && (granule_size > num_files-i)
+                 && (granule_size > num_erecs-cache_index)
                  && (is_radiance == 0))
                {
                   /* Must open now: size the granule to hold what's here */
-                  granule_size = num_files - i;
+                  granule_size = num_erecs - cache_index;
                }
 
              if (0 != new_outfile (pmt, tpinfo, granule_size, erec,
@@ -657,6 +642,8 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           }
         else index = outfile_erec_count;
 
+        tell_vinfo (2, "writing exprec: cache_index=%ld", cache_index);
+
         if (0 != write_exprec (pmt, tpinfo, index, erec))
           goto return_status;
         outfile_erec_count++;
@@ -664,47 +651,23 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
         iocsdpc_exprec_close (erec);
         erec = NULL;
-        if (0 != ioclib_unlink (path))
-          {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: unlink failed: path=%s",
-                          __func__, path);
-          }
-        pmt->num_erecs_cached--;
-        ioclib_free (path);
-        path = NULL;
+
+        (void) cmt->cache_erec_done (cmt);
      }
 
    status = 0;
 return_status:
    if (status)
      {
-        tell_vlog (TELL_MSGTYPE_ERROR, 0, "processing exprec cache: num_erecs_cached=%d",
-                   pmt->num_erecs_cached);
-     }
-   else
-     {
-        tell_vlog (TELL_MSGTYPE_INFO, 2, "done processing exprec cache: num_erecs_cached=%d",
-                   pmt->num_erecs_cached);
+        (void) cmt->cache_num_recs (cmt, &num_erecs);
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "processing exprec cache: num_erecs=%ld",
+                   num_erecs);
      }
 
-   ioclib_free (path);
-   ioclib_string_array_free (files, num_files);
+   (void) cmt->cache_close (cmt);
+
    if (erec) iocsdpc_exprec_close (erec);
    (void) close_outfile (pmt);
-   return status;
-}
-
-static int cache_erec (const char *cache_dirname, const char *file)
-{
-   const char *basename = ioclib_basename (file);
-   char *cache_path;
-   int status;
-
-   if (NULL == (cache_path = ioclib_pathconcat (cache_dirname, basename)))
-     return -1;
-
-   status = ioclib_rename (file, cache_path);
-   ioclib_free (cache_path);
    return status;
 }
 
@@ -718,45 +681,26 @@ static int radiance_belongs_to_curr_granule (const Process_Method_Type *pmt,
    return (exprec_info->curr_mirror_step < step_ubound);
 }
 
-static int classify_erec (const char *file, Exprec_Info_Type *info)
+static int classify_erec (IOCSDPC_Exprec_Type *erec, Exprec_Info_Type *info)
 {
-   IOCSDPC_Common_Header_Type chdr;
-   IOCSDPC_Exprec_Type *erec;
-   int fd;
-
-   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return -1;
-   if (NULL == (erec = iocsdpc_exprec_fdopen_read (file, fd, &chdr)))
-     {
-        ioclib_fd_close (fd);
-        return -1;
-     }
-
    info->exprec_type = erec->exprec_type;
    info->image_end_time = image_end_time (erec);
 
-   if ((NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step",
-                                             &info->curr_mirror_step))
-       || (NULL == iocsdpc_image_info_get_value (erec, "num_mirror_steps",
-                                                 &info->num_mirror_steps)))
+   if ((NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step", &info->curr_mirror_step))
+       || (NULL == iocsdpc_image_info_get_value (erec, "num_mirror_steps", &info->num_mirror_steps)))
+     return -1;
+
+   if (info->exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE)
      {
-        iocsdpc_exprec_close (erec);
-        return -1;
-     }
-
-   iocsdpc_exprec_close (erec);
-
-   if (info->exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
-     return 0;
-
-   if ((info->num_mirror_steps == 0)
-       || (info->curr_mirror_step > info->num_mirror_steps))
-     {
-        tell_vlog (TELL_MSGTYPE_INFO, 0,
-                   "%s: invalid radiance exposure record header: curr_mirror_step=%d num_mirror_steps=%d file=%s",
-                   __func__, info->curr_mirror_step,
-                   info->num_mirror_steps, file);
-        return -1;
+        if ((info->num_mirror_steps == 0)
+            || (info->curr_mirror_step > info->num_mirror_steps))
+          {
+             tell_vlog (TELL_MSGTYPE_INFO, 0,
+                        "%s: invalid radiance exposure record header: %s=%d %s=%d", __func__,
+                        "curr_mirror_step", info->curr_mirror_step,
+                        "num_mirror_steps", info->num_mirror_steps);
+             return -1;
+          }
      }
 
    return 0;
@@ -767,35 +711,30 @@ static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
    return process_cache (pmt, tpinfo, 1);
 }
 
-static int process_exprec (Process_Method_Type *pmt,
-                           const TPInfo_Type *tpinfo, const char *file)
+static int process_exprec1 (Process_Method_Type *pmt,
+                            const TPInfo_Type *tpinfo,
+                            const Exprec_Info_Type *exprec_info,
+                            const char *file, size_t exprec_index)
 {
-   Exprec_Info_Type exprec_info = {0};
+   Exprec_Cache_Method_Type *cmt = pmt->cache_method;
    int is_radiance, is_new_type, is_radiance_new_scan;
-
-   if (0 != classify_erec (file, &exprec_info))
-     {
-        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: classifying exposure record: %s",
-                   __func__, file);
-        return -1;
-     }
 
    /* Invariant:  the cache always contains only records
     * that belong together and could share the same granule.
     */
 
-   is_new_type = (exprec_info.exprec_type != pmt->exprec_type);
-   is_radiance = (exprec_info.exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
-   is_radiance_new_scan = (is_radiance && (exprec_info.curr_mirror_step
+   is_new_type = (exprec_info->exprec_type != pmt->exprec_type);
+   is_radiance = (exprec_info->exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
+   is_radiance_new_scan = (is_radiance && (exprec_info->curr_mirror_step
                                            < pmt->curr_mirror_step));
 
    /* Reject duplicate radiance */
-   if (is_radiance && (exprec_info.curr_mirror_step == pmt->curr_mirror_step))
+   if (is_radiance && (exprec_info->curr_mirror_step == pmt->curr_mirror_step))
      return -1;
 
    if (is_radiance)
      {
-        pmt->latest_radiance_timestamp_seen = exprec_info.image_end_time;
+        pmt->latest_radiance_timestamp_seen = exprec_info->image_end_time;
      }
 
    /* The cache contains records of type pmt->exprec_type.
@@ -806,14 +745,9 @@ static int process_exprec (Process_Method_Type *pmt,
           return -1;
      }
 
-   pmt->exprec_type = exprec_info.exprec_type;
-   if (0 != cache_erec (pmt->cache_dirname, file))
-     {
-        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: caching %s in %s",
-                   __func__, file, pmt->cache_dirname);
-        return -1;
-     }
-   pmt->num_erecs_cached++;
+   pmt->exprec_type = exprec_info->exprec_type;
+   if (0 != cmt->cache_erec (cmt, file, exprec_index))
+     return -1;
    pmt->when_last_erec_cached = time(NULL);
 
    /* Non-radiance exposure records are cached until something
@@ -823,7 +757,9 @@ static int process_exprec (Process_Method_Type *pmt,
 
    if (is_radiance == 0)
      {
-        if (pmt->num_erecs_cached < 1.5*pmt->sched.size_default)
+        size_t num_erecs;
+        (void) cmt->cache_num_recs (cmt, &num_erecs);
+        if (num_erecs < 1.5*pmt->sched.size_default)
           {
              return 0;
           }
@@ -834,17 +770,17 @@ static int process_exprec (Process_Method_Type *pmt,
     * so we generate granules according to a pre-planned schedule.
     */
 
-   pmt->curr_mirror_step = exprec_info.curr_mirror_step;
+   pmt->curr_mirror_step = exprec_info->curr_mirror_step;
 
    if (is_radiance_new_scan)
      {
         /* New schedule upon new scan resets sched->curr_granule to 0 */
-        if (0 != schedule_granules (exprec_info.num_mirror_steps + 1,
+        if (0 != schedule_granules (exprec_info->num_mirror_steps + 1,
                                     &pmt->sched))
           return -1;
      }
 
-   if (radiance_belongs_to_curr_granule (pmt, &exprec_info))
+   if (radiance_belongs_to_curr_granule (pmt, exprec_info))
      return 0;
 
    /* When we see a frame that doesn't belong to the current
@@ -852,11 +788,54 @@ static int process_exprec (Process_Method_Type *pmt,
    return process_cache (pmt, tpinfo, 0);
 }
 
+static int process_exprec (Process_Method_Type *pmt,
+                           const TPInfo_Type *tpinfo, const char *file)
+{
+   IOCSDPC_Common_Header_Type chdr = {0};
+   IOCSDPC_Exprec_Type *erec = NULL;
+   size_t exprec_index;
+   int fd, status;
+
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
+     return -1;
+   if (NULL == (erec = iocsdpc_exprec_fdopen_read (file, fd, &chdr)))
+     {
+        ioclib_fd_close (fd);
+        return -1;
+     }
+
+   for (exprec_index=0; /* until EOF */ ;exprec_index++)
+     {
+        Exprec_Info_Type exprec_info = {0};
+
+        if (0 != classify_erec (erec, &exprec_info))
+          {
+             tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: classifying exposure record: %s",
+                        __func__, file);
+             goto return_status;
+          }
+
+        if (0 != process_exprec1 (pmt, tpinfo, &exprec_info, file, exprec_index))
+          goto return_status;
+
+        /* status=1  => have next record
+         * status=0  => EOF
+         * status=-1 => error occurred
+         */
+        if (1 != (status = iocsdpc_exprec_open_next (erec)))
+          break;
+     }
+
+return_status:
+   iocsdpc_exprec_close (erec);
+
+   return status;
+}
+
 static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
 {
    config_setting_t *s;
    const char *out_dirname;
-   const char *cache_dirname;
    int size_default, size_max;
 
    if (NULL == (s = config_lookup (cfg, "exprec")))
@@ -869,7 +848,6 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &pmt->processing_version))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "cache_dir", &cache_dirname))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_default", &size_default))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_max", &size_max)))
      {
@@ -879,8 +857,7 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
         return -1;
      }
 
-   if ((NULL == (pmt->out_dirname = expand_string (out_dirname)))
-       || (NULL == (pmt->cache_dirname = expand_string (cache_dirname))))
+   if (NULL == (pmt->out_dirname = expand_string (out_dirname)))
      return -1;
 
    pmt->sched.size_default = size_default;
@@ -898,8 +875,14 @@ static void delete_exprec (Process_Method_Type *pmt)
    sched_free (&pmt->sched);
    FREE(pmt->out_basename);
    FREE(pmt->out_dirname);
-   FREE(pmt->cache_dirname);
    FREE(pmt->archdir_path);
+
+   if (pmt->cache_method)
+     {
+        Exprec_Cache_Method_Type *cmt = pmt->cache_method;
+        cmt->cache_delete (cmt);
+     }
+
    FREE(pmt);
 }
 
@@ -926,48 +909,6 @@ static int query_when_last_erec_cached (const Process_Method_Type *pmt, time_t *
    return 0;
 }
 
-static int dir_empty (DIR *d)
-{
-   struct dirent *ent;
-   int ret = 1;
-
-   while ((ent = readdir(d)))
-     {
-        if ((0 != strcmp(ent->d_name, "."))
-            && (0 != strcmp(ent->d_name, "..")))
-          {
-             ret = 0;
-             break;
-          }
-   }
-
-   return ret;
-}
-
-static int valid_cache_directory_path (const char *path)
-{
-   struct stat st;
-
-   /* nonexistent is ok - we'll create it */
-   if (0 != stat (path, &st))
-     return 1;
-
-   /* an empty, accessible directory is ok */
-   if (S_ISDIR(st.st_mode))
-     {
-        DIR *d;
-        int is_empty;
-        if (NULL == (d = opendir (path)))
-          return 0;  /* inaccessible is not ok */
-        is_empty = dir_empty (d);
-        (void) closedir(d);
-        if (is_empty) return 1;
-     }
-
-   /* 0 means invalid */
-   return 0;
-}
-
 Process_Method_Type *init_exprec_method (config_t *cfg)
 {
    Process_Method_Type *pmt = NULL;
@@ -980,18 +921,6 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    memset ((char *)pmt, 0, sizeof *pmt);
 
    if (-1 == parse_exprec_params (cfg, pmt))
-     {
-        delete_exprec (pmt);
-        return NULL;
-     }
-
-   if (0 == valid_cache_directory_path (pmt->cache_dirname))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid cache directory path: %s", __func__, pmt->cache_dirname);
-        return NULL;
-     }
-
-   if (0 != ioclib_mkdir (pmt->cache_dirname, 0))
      {
         delete_exprec (pmt);
         return NULL;
@@ -1014,6 +943,30 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    pmt->exprec_type = INT_MAX;
    pmt->exprec_type_string = NULL;
    pmt->curr_mirror_step = UINT_MAX;
+
+   switch (Exprec_Cache_Method)
+     {
+      case EXPREC_CACHE_DISK:
+        pmt->cache_method = open_erec_cache_disk (cfg);
+        break;
+
+      case EXPREC_CACHE_MEM:
+        pmt->cache_method = open_erec_cache_mem (cfg);
+        break;
+
+      default:
+        pmt->cache_method = NULL;
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: unsupported exprec cache method: %d",
+                     __func__, Exprec_Cache_Method);
+        break;
+     }
+
+   if (NULL == pmt->cache_method)
+     {
+        delete_exprec (pmt);
+        pmt = NULL;
+     }
 
    return pmt;
 }
