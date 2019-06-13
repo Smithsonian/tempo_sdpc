@@ -194,7 +194,17 @@ static int cache_erec_path (Exprec_Cache_Method_Type *cmt, char *buf, size_t buf
    return len;
 }
 
-/* The oldest record is bad.  All we can do is complain. */
+static void delete_front (Exprec_Cache_Method_Type *cmt)
+{
+   Exprec_Rec_Type *head = cmt->erec_list;
+   Exprec_Rec_Type *next = head->next;
+
+   free_rec1 (head);
+   cmt->erec_list = next;
+
+   cmt->num_erecs_cached--;
+}
+
 static int cache_erec_bad (Exprec_Cache_Method_Type *cmt)
 {
   Exprec_Rec_Type *rec = cmt->erec_list;
@@ -202,27 +212,19 @@ static int cache_erec_bad (Exprec_Cache_Method_Type *cmt)
    if (NULL == rec)
      return -1;
 
-   tell_vinfo (0, "bad exposure record: file=%s file_index=%ld",
-               rec->file, rec->file_index);
+   tell_vinfo (0, "bad exposure record: file=%s file_index=%ld", rec->file, rec->file_index);
+   delete_front (cmt);
+
    return 0;
 }
 
 /* We're done with the oldest record, so drop it from the queue */
 static int cache_erec_done (Exprec_Cache_Method_Type *cmt)
 {
-   Exprec_Rec_Type *head = cmt->erec_list;
-   Exprec_Rec_Type *r;
-
-   if (head == NULL)
+   if (cmt->erec_list == NULL)
      return -1;
 
-   r = head->next;
-   tell_vinfo (2, "del cached erec: file_index=%ld %s",
-               head->file_index, head->file);
-   free_rec1 (head);
-   cmt->erec_list = r;
-
-   cmt->num_erecs_cached--;
+   delete_front (cmt);
 
    return 0;
 }

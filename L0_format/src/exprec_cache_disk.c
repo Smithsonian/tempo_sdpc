@@ -17,6 +17,8 @@
  * For example, all cached radiances belong to a single scan.
  * Cached dark or irradiance exposure records all belong to a
  * single observing "session".
+ * The cache is maintained as a FIFO queue.  Records are added
+ * at the end and removed from the front.
  */
 
 #define EXPREC_CACHE_METHOD_PRIVATE_DATA \
@@ -24,7 +26,7 @@
    size_t num_erecs_cached; \
    char **files; \
    size_t num_files; \
-   size_t cache_index;
+   size_t front;
 #include "exprec_cache.h"
 
 static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t file_index)
@@ -66,14 +68,14 @@ static int cache_close (Exprec_Cache_Method_Type *cmt)
    ioclib_string_array_free (cmt->files, cmt->num_files);
    cmt->files = NULL;
    cmt->num_files = 0;
-   cmt->cache_index = 0;
+   cmt->front = 0;
    return 0;
 }
 
 static int cache_open (Exprec_Cache_Method_Type *cmt)
 {
    cmt->files = ioclib_dir_list(cmt->cache_dirname, &cmt->num_files, IOCLIB_LISTDIR_SORT);
-   cmt->cache_index = 0;
+   cmt->front = 0;
 
    return cmt->files ? 0 : -1;
 }
@@ -84,10 +86,10 @@ static char *get_oldest_file_path (Exprec_Cache_Method_Type *cmt)
    if (cmt->files == NULL)
      return NULL;
 
-   if (cmt->cache_index >= cmt->num_files)
+   if (cmt->front >= cmt->num_files)
      return NULL;
 
-   return ioclib_pathconcat (cmt->cache_dirname, cmt->files[cmt->cache_index]);
+   return ioclib_pathconcat (cmt->cache_dirname, cmt->files[cmt->front]);
 }
 
 static IOCSDPC_Exprec_Type *cache_erec_get (Exprec_Cache_Method_Type *cmt)
@@ -125,7 +127,7 @@ static int cache_erec_bad (Exprec_Cache_Method_Type *cmt)
    if (NULL == (path = get_oldest_file_path (cmt)))
      return -1;
 
-   cmt->cache_index++;
+   cmt->front++;
 
    if (0 != (status = ioclib_rename_to_bad_file (path)))
      {
@@ -146,7 +148,7 @@ static int cache_erec_done (Exprec_Cache_Method_Type *cmt)
    if (NULL == (path = get_oldest_file_path (cmt)))
      return -1;
 
-   cmt->cache_index++;
+   cmt->front++;
 
    if (0 != (status = ioclib_unlink (path)))
      {
