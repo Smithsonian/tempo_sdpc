@@ -81,6 +81,7 @@ static void usage (void)
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
+   fprintf (stderr, "                            e.g. --cache 'd710[1-4]'\n");
    fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
