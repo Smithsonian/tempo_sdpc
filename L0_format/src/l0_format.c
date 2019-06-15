@@ -1333,6 +1333,12 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
+   if (0 != access (param_file, F_OK | R_OK))
+     {
+        fprintf (stderr, "*** Cannot access param file: %s\n", param_file);
+        usage();
+     }
+
    tell_open (appname, -1, 0);
    tell_set_log_level (TELL_MSGTYPE_INFO, verbose);
    config_init (&cfg);
