@@ -497,7 +497,11 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
 
    t_end = t_last + t_max;
 
-   return write_iru_only_interval (iru_interval->dir, t_last, t_end);
+   if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
+     return -1;
+   iru_interval->latest_iru_only_interval_end_time = t_end;
+
+   return 0;
 }
 
 static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
