@@ -788,8 +788,8 @@ static int process_exprec1 (Process_Method_Type *pmt,
    return process_cache (pmt, tpinfo, 0);
 }
 
-static int process_exprec (Process_Method_Type *pmt,
-                           const TPInfo_Type *tpinfo, const char *file)
+static int process_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                           const char *file, void *client_data)
 {
    IOCSDPC_Common_Header_Type chdr = {0};
    IOCSDPC_Exprec_Type *erec = NULL;
@@ -817,6 +817,12 @@ static int process_exprec (Process_Method_Type *pmt,
 
         if (0 != process_exprec1 (pmt, tpinfo, &exprec_info, file, exprec_index))
           goto return_status;
+
+        if (pmt->pmt_post_process_callback != NULL)
+          {
+             if (0 != pmt->pmt_post_process_callback (pmt, client_data))
+               goto return_status;
+          }
 
         /* status=1  => have next record
          * status=0  => EOF

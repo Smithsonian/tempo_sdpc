@@ -352,7 +352,7 @@ static int select_smc_outfile (Process_Method_Type *pmt,
 }
 
 static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
-                        const char *file)
+                        const char *file, void *client_data)
 {
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_SMC_Type *smc = NULL;
@@ -361,7 +361,7 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    size_t rec_array_size;
    int fd;
 
-   (void) tpinfo;
+   (void) tpinfo; (void) client_data;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      {

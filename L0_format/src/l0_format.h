@@ -156,13 +156,17 @@ extern int close_hidden (int ncid, const char *dirname, const char *basename, co
 extern int annotate_var (int grp, int varid, const char *descr, const char *units);
 
 typedef struct Process_Method_Type Process_Method_Type;
+typedef int Process_Method_Callback_Function (Process_Method_Type *, void *);
+
 struct Process_Method_Type
 {
-   int (*pmt_process)(Process_Method_Type *, const TPInfo_Type *, const char *);
+   int (*pmt_process)(Process_Method_Type *, const TPInfo_Type *, const char *, void *);
    void (*pmt_delete)(Process_Method_Type *);
    int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *);
    int (*pmt_query_latest_timestamp)(Process_Method_Type *, int, double *);
    int (*pmt_query_when_last_rec_cached)(const Process_Method_Type *, time_t *);
+
+   Process_Method_Callback_Function *pmt_post_process_callback;
 
 #ifdef PROCESS_METHOD_PRIVATE_DATA
    PROCESS_METHOD_PRIVATE_DATA

@@ -28,6 +28,7 @@
 static int Have_Epoch;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
+static double Cache_Start_Time = 0.0;
 
 static Process_Method_Type *Exprec_Process_Method;
 
@@ -36,8 +37,17 @@ typedef struct
    int filetype;
    Process_Method_Type *method;
    Process_Method_Type *(*init)(config_t *);
+   Process_Method_Callback_Function *post_process_callback;
 }
 Process_Method_Table_Type;
+
+typedef struct IRU_Gap_Type IRU_Gap_Type;
+struct IRU_Gap_Type
+{
+   IRU_Gap_Type *next;
+   double tbeg;
+   double tend;
+};
 
 typedef struct
 {
@@ -46,6 +56,7 @@ typedef struct
    double latest_radiance_timestamp_seen;
    double latest_iru_only_interval_end_time;
    char *dir;
+   IRU_Gap_Type *gap_list;
 }
 IRU_Interval_Type;
 
@@ -70,6 +81,7 @@ static void usage (void)
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
+   fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
 }
@@ -111,11 +123,73 @@ static const char *get_archive_root_dir (void)
    return Archive_Root_Dir;
 }
 
+static void iru_gap_free_list (IRU_Gap_Type *glst)
+{
+   while (glst)
+     {
+        IRU_Gap_Type *next = glst->next;
+        FREE(glst);
+        glst = next;
+     }
+}
+
+/* add a new interval to a sorted list */
+static int iru_gap_append (IRU_Gap_Type **glst, double tbeg, double tend)
+{
+   IRU_Gap_Type *g = NULL;
+   IRU_Gap_Type *p;
+
+   if (tbeg >= tend)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: invalid IRU gap: tbeg=%f tend=%f",
+                     __func__, tbeg, tend);
+        return -1;
+     }
+
+   if (NULL == (g = (IRU_Gap_Type *)MALLOC (sizeof *g)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   g->next = NULL;
+   g->tbeg = tbeg;
+   g->tend = tend;
+
+   /* If this is the first entry, we're done */
+   if (*glst == NULL)
+     {
+        *glst = g;
+        return 0;
+     }
+
+   /* Append new entry */
+   for (p = *glst; p != NULL; p = p->next)
+     {
+        if (p->next != NULL)
+          continue;
+
+        if (p->tend > g->tbeg)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: IRU gap out of order: list tend=%f gap tbeg=%f",
+                          __func__, p->tend, g->tbeg);
+             FREE(g);
+             return -1;
+          }
+
+        p->next = g;
+        break;
+     }
+
+   return 0;
+}
+
 static void free_control_type_fields (Control_Type *ctrl)
 {
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
    FREE(ctrl->iru_interval.dir);
+   iru_gap_free_list (ctrl->iru_interval.gap_list);
 }
 
 static int read_main_params (config_t *cfg, Control_Type *ctrl)
@@ -175,6 +249,8 @@ static int read_exprec_params (config_t *cfg, Control_Type *ctrl)
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   ctrl->iru_interval.gap_list = NULL;
 
    if (NULL == (ctrl->iru_interval.dir = expand_string (exprec_out_dirname)))
      return -1;
@@ -320,27 +396,87 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
    return 0;
 }
 
-/* This logic works for live stream processing, but fails when processing
- * the blocked exposure records from the IOC science data cache.
- * The problem with blocked exposure records is that such a file mmay have
- * a large time gap in it, e.g. between the last radiance exposure of the day,
- * and the following dark collect.  The file containing the IRU data for the gap
- * won't be encountered until after the blocked file is fully processed.  From the
- * point of view of the code processing the data files, blocking of the exposure
- * records has effectively moved some exposure records out of sequence relative
- * to the IRU, SMC data files in the cache.
- * When processing blocked exposure records, it's simplest to generate
- * the corresponding IRU-only intervals after all the IRU and radiance
- * files have been generated.  At that point, it's much easier to identify
- * the time intervals where the INR SW will need an IRU update.
- */
-static int maybe_write_iru_only_interval (IRU_Interval_Type *iru_interval)
+static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_data)
 {
+   IRU_Interval_Type *iru_interval = (IRU_Interval_Type *)client_data;
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
-   double t_iru = iru_interval->latest_iru_timestamp_seen;
-   double t_rad = iru_interval->latest_radiance_timestamp_seen;
-   double t_only = iru_interval->latest_iru_only_interval_end_time;
-   double t_last, t_end;
+   double t_rad_prev = iru_interval->latest_radiance_timestamp_seen;
+   double t_rad;
+
+   if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RADIANCE, &t_rad))
+     return -1;
+
+   /* record any large gaps between radiance exposure records */
+   if ((t_rad_prev > 0) && (t_rad - t_rad_prev > t_max))
+     {
+        if (0 != iru_gap_append (&iru_interval->gap_list, t_rad_prev, t_rad))
+          return -1;
+     }
+
+   iru_interval->latest_radiance_timestamp_seen = t_rad;
+
+   return 0;
+}
+
+static int resolve_iru_gaps (IRU_Interval_Type *iru_interval)
+{
+   IRU_Gap_Type *head = iru_interval->gap_list;
+   double t_max = iru_interval->max_iru_knowledge_gap_duration;
+
+   /* If there are no gaps, do nothing */
+   if (head == NULL)
+     return 0;
+
+   /* Try to resolve previously accumulated gaps */
+   while (head != NULL)
+     {
+        IRU_Gap_Type *next;
+        double dt_gap, dt;
+        int i, n;
+
+        /* Is the oldest gap in radiance data covered by the available IRU data? */
+        if (iru_interval->latest_iru_timestamp_seen < head->tend)
+          return 0;
+
+        /* Write out time intervals for IRU-only files to span this gap */
+        dt_gap = head->tend - head->tbeg;
+        n = (dt_gap < t_max) ? 1 : (dt_gap / t_max);
+        dt = dt_gap / n;
+
+        for (i = 0; i < n; i++)
+          {
+             double tbeg = head->tbeg + i*dt;
+             double tend = tbeg + dt;
+             if (0 != write_iru_only_interval (iru_interval->dir, tbeg, tend))
+               return -1;
+             iru_interval->latest_iru_only_interval_end_time = tend;
+          }
+
+        /* Gap issue is resolved -- no need to track it further */
+        next = head->next;
+        FREE(head);
+        head = next;
+        iru_interval->gap_list = head;
+     }
+
+   return 0;
+}
+
+static int iru_post_process_callback (Process_Method_Type *pmt, void *client_data)
+{
+   IRU_Interval_Type *iru_interval = (IRU_Interval_Type *)client_data;
+   double t_max = iru_interval->max_iru_knowledge_gap_duration;
+   double t_iru, t_last, t_end, t_only, t_rad;
+
+   if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &t_iru))
+     return -1;
+   iru_interval->latest_iru_timestamp_seen = t_iru;
+
+   if (0 != resolve_iru_gaps (iru_interval))
+     return -1;
+
+   t_only = iru_interval->latest_iru_only_interval_end_time;
+   t_rad = iru_interval->latest_radiance_timestamp_seen;
 
    /* Initialization: If we've never sent any IRU data to the INR subsystem,
     * we'll assume the current IRU knowledge gap starts with the latest
@@ -361,70 +497,36 @@ static int maybe_write_iru_only_interval (IRU_Interval_Type *iru_interval)
 
    t_end = t_last + t_max;
 
-   if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
-     return -1;
-
-   iru_interval->latest_iru_only_interval_end_time = t_end;
-
-   return 0;
-}
-
-static int update_control_parameters (Process_Method_Type *pmt, int filetype,
-                                      Control_Type *ctrl)
-{
-   IRU_Interval_Type *iru_interval = &ctrl->iru_interval;
-   int status = 0;
-
-   switch (filetype)
-     {
-      default:
-        /* drop */
-        break;
-
-      case IOCSDPC_FILETYPE_EXPREC:
-        status = pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RADIANCE,
-                                                  &iru_interval->latest_radiance_timestamp_seen);
-        break;
-
-      case IOCSDPC_FILETYPE_IRU:
-        if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &iru_interval->latest_iru_timestamp_seen))
-          return -1;
-        if (0 != maybe_write_iru_only_interval (iru_interval))
-          return -1;
-        break;
-     }
-
-   return status;
-}
-
-static int query_filetype (const char *file, int *filetype)
-{
-   IOCSDPC_Common_Header_Type chdr;
-   int fd;
-
-   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
-     return -1;
-   *filetype = chdr.filetype;
-   (void) ioclib_fd_close (fd);
-   return 0;
+   return write_iru_only_interval (iru_interval->dir, t_last, t_end);
 }
 
 static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
                          Control_Type *ctrl, const char *file)
 {
    Process_Method_Type *pmt;
-   int filetype;
+   IOCSDPC_Common_Header_Type chdr = {0};
+   int fd, filetype;
 
-   if (0 != query_filetype (file, &filetype))
+   if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+   (void) ioclib_fd_close (fd);
+
+   filetype = chdr.filetype;
+
+   /* If we're processing the science data cache, we may want to skip files
+    * prior to some user-specified time */
+   if (Cache_Start_Time > 0)
+     {
+        if (0 != verify_epoch (chdr.epoch))
+          return -1;
+        if (chdr.last_packet_time < Cache_Start_Time)
+          return 0;
+     }
 
    if (NULL == (pmt = find_process_method (tbl, filetype)))
      return -1;
 
-   if (0 != pmt->pmt_process (pmt, tpinfo, file))
-     return -1;
-
-   return update_control_parameters (pmt, filetype, ctrl);
+   return pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
 }
 
 static int process_dir_files (const Process_Method_Table_Type *tbl,
@@ -507,15 +609,15 @@ static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ct
    return pmt->pmt_flush_cache (pmt, tpinfo);
 }
 
-#define PROCESS_METHOD(filetype,init) {filetype,NULL,init}
-#define PROCESS_METHODS_TABLE_END {-1,NULL,NULL}
+#define PROCESS_METHOD(filetype,init,callback) {filetype,NULL,init,callback}
+#define PROCESS_METHODS_TABLE_END {-1,NULL,NULL,NULL}
 
 static Process_Method_Table_Type Method_Table[] =
 {
-   PROCESS_METHOD(IOCSDPC_FILETYPE_EXPREC, init_exprec_method),
-   PROCESS_METHOD(IOCSDPC_FILETYPE_TPSEC, init_tpsec_method),
-   PROCESS_METHOD(IOCSDPC_FILETYPE_IRU, init_iru_method),
-   PROCESS_METHOD(IOCSDPC_FILETYPE_SMC, init_smc_method),
+   PROCESS_METHOD(IOCSDPC_FILETYPE_EXPREC, init_exprec_method, exprec_post_process_callback),
+   PROCESS_METHOD(IOCSDPC_FILETYPE_TPSEC, init_tpsec_method, NULL),
+   PROCESS_METHOD(IOCSDPC_FILETYPE_IRU, init_iru_method, iru_post_process_callback),
+   PROCESS_METHOD(IOCSDPC_FILETYPE_SMC, init_smc_method, NULL),
    /* PROCESS_METHOD(IOCSDPC_FILETYPE_TLMRAW, init_tlmraw_method), */
    PROCESS_METHODS_TABLE_END
 };
@@ -531,6 +633,8 @@ static int init_methods_table (Process_Method_Table_Type *tbl,
         tbl->method = (*tbl->init)(cfg);
         if (NULL == tbl->method)
           return -1;
+
+        tbl->method->pmt_post_process_callback = tbl->post_process_callback;
 
         if (tbl->filetype == IOCSDPC_FILETYPE_EXPREC)
           Exprec_Process_Method = tbl->method;
@@ -708,6 +812,10 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
           goto return_status;
 
         tell_vinfo (0, "begin processing %ld files from directory %s", num_files, dir);
+        if (Cache_Start_Time > 0)
+          {
+             tell_vinfo (0, "start time = %f sec since the epoch", Cache_Start_Time);
+          }
 
         for (k = 0; k < num_files; k++)
           {
@@ -1156,6 +1264,7 @@ int main (int argc, char **argv)
         {"help",     no_argument,       0, 'h'},
         {"archive",  required_argument, 0, 'a'},
         {"cache",    required_argument, 0, 'c'},
+        {"tstart",   required_argument, 0, 't'},
         {"empty",    no_argument,       0, 'e'},
         {"register", no_argument,       0, 'r'},
         {"verbose",  no_argument,       0, 'v'},
@@ -1191,6 +1300,13 @@ int main (int argc, char **argv)
              break;
            case 'r':
              Perform_Archive_Registration++;
+             break;
+           case 't':
+             if (1 != sscanf (optarg, "%le", &Cache_Start_Time))
+               {
+                  fprintf (stderr, "*** Error parsing start time: %s\n", optarg);
+                  goto return_status;
+               }
              break;
            case 'v':
              verbose++;

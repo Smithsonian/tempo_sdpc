@@ -508,8 +508,8 @@ static void free_tpsec_row_list (IOCSDPC_TPSec_Row_Type **row_list, int nrows)
    FREE(row_list);
 }
 
-static int process_tpsec_file
-(Process_Method_Type *pmt, const TPInfo_Type *tpinfo, const char *file)
+static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                               const char *file, void *client_data)
 {
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_TPSec_Type *s;
@@ -517,7 +517,7 @@ static int process_tpsec_file
    unsigned int i, nrows;
    int fd;
 
-   (void) pmt;
+   (void) pmt; (void) client_data;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      {

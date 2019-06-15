@@ -390,7 +390,7 @@ static int select_iru_outfile (Process_Method_Type *pmt,
 }
 
 static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
-                        const char *file)
+                        const char *file, void *client_data)
 {
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_IRU_Type *iru = NULL;
@@ -435,6 +435,12 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    iocsdpc_iru_close (iru);
    ioclib_fd_close (fd);
    FREE(rec_array);
+
+   if (pmt->pmt_post_process_callback != NULL)
+     {
+        if (0 != pmt->pmt_post_process_callback (pmt, client_data))
+          goto return_status;
+     }
 
    return tio_sync (pmt->ncid);
 
