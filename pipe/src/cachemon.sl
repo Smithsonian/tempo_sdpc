@@ -49,6 +49,19 @@ private define alpha_order (files)
    return files[array_sort(files)];
 }
 
+private define parse_utc_timestamp_in_filename (filename)
+{
+   % e.g. TEMPO_rad_L0_V01_20190614T000743Z_S1013G06.nc
+   %      TEMPO_drk_L0_V01_20190613T013740Z.nc
+   variable tok = strtok (filename, "_");
+   return tok[4];
+}
+private define oldest_utc_timestamp_first (files)
+{
+   variable timestamps = array_map (String_Type, &parse_utc_timestamp_in_filename, files);
+   return files[array_sort (timestamps)];
+}
+
 private define dir_monitor (obj, order)
 {
    variable dirlist = glob (path_concat (obj.incoming_dir, obj.glob));
@@ -75,6 +88,10 @@ private define dir_monitor (obj, order)
      {
       case "oldest":
 	file_list = oldest_first (dirlist);
+     }
+     {
+      case "oldest_utc_timestamp":
+	file_list = oldest_utc_timestamp_first (dirlist);
      }
      {
       case "alpha":
