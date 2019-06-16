@@ -220,8 +220,8 @@ int tio_define_granule_flag_var (int ncid)
 #define NBITS_SCAN_NUM   10
 #define NBITS_SCAN_TYPE  (NBITS_SCAN_LABEL - NBITS_SCAN_NUM)
 
-/* MAX_SCAN_NUM=999 is set by ASDC-approved filename format, which allows a 3-digit scan number */
-#define MAX_SCAN_NUM     999
+/* ASDC-approved filename format currently specifies 3-digit scan number, but 999 is inconvenient */
+#define MAX_SCAN_NUM     ((1 << NBITS_SCAN_NUM)-1)
 #define MAX_SCAN_TYPE    ((1 << NBITS_SCAN_TYPE)-1)
 #define SCAN_TYPE_MASK   (MAX_SCAN_TYPE << NBITS_SCAN_NUM)
 
