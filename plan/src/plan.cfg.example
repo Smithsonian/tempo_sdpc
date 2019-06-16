@@ -110,7 +110,7 @@ iers_config: {
 };
 
 novas_config: {
-  ephem_name = "/vex/d2/tempo/install/gnu/share/libnovas/JPLEPH";
+  ephem_name = "$SDPC_OTS_ROOT/share/libnovas/JPLEPH";
 };
 
 output_sza_map_config: {
