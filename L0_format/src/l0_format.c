@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -41,14 +42,6 @@ typedef struct
 }
 Process_Method_Table_Type;
 
-typedef struct IRU_Gap_Type IRU_Gap_Type;
-struct IRU_Gap_Type
-{
-   IRU_Gap_Type *next;
-   double tbeg;
-   double tend;
-};
-
 typedef struct
 {
    double max_iru_knowledge_gap_duration;
@@ -56,7 +49,6 @@ typedef struct
    double latest_radiance_timestamp_seen;
    double latest_iru_only_interval_end_time;
    char *dir;
-   IRU_Gap_Type *gap_list;
 }
 IRU_Interval_Type;
 
@@ -124,73 +116,11 @@ static const char *get_archive_root_dir (void)
    return Archive_Root_Dir;
 }
 
-static void iru_gap_free_list (IRU_Gap_Type *glst)
-{
-   while (glst)
-     {
-        IRU_Gap_Type *next = glst->next;
-        FREE(glst);
-        glst = next;
-     }
-}
-
-/* add a new interval to a sorted list */
-static int iru_gap_append (IRU_Gap_Type **glst, double tbeg, double tend)
-{
-   IRU_Gap_Type *g = NULL;
-   IRU_Gap_Type *p;
-
-   if (tbeg >= tend)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: invalid IRU gap: tbeg=%f tend=%f",
-                     __func__, tbeg, tend);
-        return -1;
-     }
-
-   if (NULL == (g = (IRU_Gap_Type *)MALLOC (sizeof *g)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   g->next = NULL;
-   g->tbeg = tbeg;
-   g->tend = tend;
-
-   /* If this is the first entry, we're done */
-   if (*glst == NULL)
-     {
-        *glst = g;
-        return 0;
-     }
-
-   /* Append new entry */
-   for (p = *glst; p != NULL; p = p->next)
-     {
-        if (p->next != NULL)
-          continue;
-
-        if (p->tend > g->tbeg)
-          {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: IRU gap out of order: list tend=%f gap tbeg=%f",
-                          __func__, p->tend, g->tbeg);
-             FREE(g);
-             return -1;
-          }
-
-        p->next = g;
-        break;
-     }
-
-   return 0;
-}
-
 static void free_control_type_fields (Control_Type *ctrl)
 {
    FREE(ctrl->incoming_dir);
    FREE(ctrl->tpinfo_file);
    FREE(ctrl->iru_interval.dir);
-   iru_gap_free_list (ctrl->iru_interval.gap_list);
 }
 
 static int read_main_params (config_t *cfg, Control_Type *ctrl)
@@ -250,8 +180,6 @@ static int read_exprec_params (config_t *cfg, Control_Type *ctrl)
                      __func__, config_error_file (cfg));
         return -1;
      }
-
-   ctrl->iru_interval.gap_list = NULL;
 
    if (NULL == (ctrl->iru_interval.dir = expand_string (exprec_out_dirname)))
      return -1;
@@ -397,20 +325,45 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
    return 0;
 }
 
+static int ensure_iru_covers_radiance_gap (IRU_Interval_Type *iru_interval, double t_beg, double t_end)
+{
+   double t_max = iru_interval->max_iru_knowledge_gap_duration;
+   double dt_gap, dt_file;
+   int i, n;
+
+   /* Decide how many files */
+   dt_gap = t_end - t_beg;
+   n = (dt_gap < t_max) ? 1 : (dt_gap / t_max);
+   dt_file = dt_gap / n;
+
+   for (i = 0; i < n; i++)
+     {
+        double tbeg = t_beg + i*dt_file;
+        double tend = tbeg + dt_file;
+        if (0 != write_iru_only_interval (iru_interval->dir, tbeg, tend))
+          return -1;
+        iru_interval->latest_iru_only_interval_end_time = tend;
+     }
+
+   return 0;
+}
+
 static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_data)
 {
    IRU_Interval_Type *iru_interval = (IRU_Interval_Type *)client_data;
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
+   double t_only = iru_interval->latest_iru_only_interval_end_time;
    double t_rad_prev = iru_interval->latest_radiance_timestamp_seen;
-   double t_rad;
+   double t_rad, t_last;
+
+   t_last = (t_rad_prev > t_only) ? t_rad_prev : t_only;
 
    if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RADIANCE, &t_rad))
      return -1;
 
-   /* record any large gaps between radiance exposure records */
-   if ((t_rad_prev > 0) && (t_rad - t_rad_prev > t_max))
+   if (t_rad - t_last > t_max)
      {
-        if (0 != iru_gap_append (&iru_interval->gap_list, t_rad_prev, t_rad))
+        if (0 != ensure_iru_covers_radiance_gap (iru_interval, t_last, t_rad))
           return -1;
      }
 
@@ -419,62 +372,15 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    return 0;
 }
 
-static int resolve_iru_gaps (IRU_Interval_Type *iru_interval)
-{
-   IRU_Gap_Type *head = iru_interval->gap_list;
-   double t_max = iru_interval->max_iru_knowledge_gap_duration;
-
-   /* If there are no gaps, do nothing */
-   if (head == NULL)
-     return 0;
-
-   /* Try to resolve previously accumulated gaps */
-   while (head != NULL)
-     {
-        IRU_Gap_Type *next;
-        double dt_gap, dt;
-        int i, n;
-
-        /* Is the oldest gap in radiance data covered by the available IRU data? */
-        if (iru_interval->latest_iru_timestamp_seen < head->tend)
-          return 0;
-
-        /* Write out time intervals for IRU-only files to span this gap */
-        dt_gap = head->tend - head->tbeg;
-        n = (dt_gap < t_max) ? 1 : (dt_gap / t_max);
-        dt = dt_gap / n;
-
-        for (i = 0; i < n; i++)
-          {
-             double tbeg = head->tbeg + i*dt;
-             double tend = tbeg + dt;
-             if (0 != write_iru_only_interval (iru_interval->dir, tbeg, tend))
-               return -1;
-             iru_interval->latest_iru_only_interval_end_time = tend;
-          }
-
-        /* Gap issue is resolved -- no need to track it further */
-        next = head->next;
-        FREE(head);
-        head = next;
-        iru_interval->gap_list = head;
-     }
-
-   return 0;
-}
-
 static int iru_post_process_callback (Process_Method_Type *pmt, void *client_data)
 {
    IRU_Interval_Type *iru_interval = (IRU_Interval_Type *)client_data;
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
-   double t_iru, t_last, t_end, t_only, t_rad;
+   double t_iru, t_last, t_only, t_rad;
 
    if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &t_iru))
      return -1;
    iru_interval->latest_iru_timestamp_seen = t_iru;
-
-   if (0 != resolve_iru_gaps (iru_interval))
-     return -1;
 
    t_only = iru_interval->latest_iru_only_interval_end_time;
    t_rad = iru_interval->latest_radiance_timestamp_seen;
@@ -493,14 +399,13 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
    t_last = (t_rad > t_only) ? t_rad : t_only;
 
    /* Does the INR subsystem need an IRU update? */
-   if (t_iru - t_last < t_max)
-     return 0;
-
-   t_end = t_last + t_max;
-
-   if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
-     return -1;
-   iru_interval->latest_iru_only_interval_end_time = t_end;
+   if (t_iru - t_last > t_max)
+     {
+        double t_end = t_last + t_max;
+        if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
+          return -1;
+        iru_interval->latest_iru_only_interval_end_time = t_end;
+     }
 
    return 0;
 }
