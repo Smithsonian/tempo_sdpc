@@ -506,8 +506,8 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    size_t cache_index, num_erecs;
    int exprec_type, is_radiance, status = -1;
 
-   /* If the cache directory is empty, do nothing.
-    * Otherwise, the cache directory contains cached exposure records
+   /* If the cache is empty, do nothing.
+    * Otherwise, the cache contains exposure records
     * of some type, and no output file is open.
     * Depending on the value of process_all_erecs, the goal is to pack
     * either some or all of the cached exposure records into netcdf granules.
@@ -533,9 +533,9 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
     * steps were commanded, so a schedule based on that was defined
     * when the first frame of the scan arrived.
     * For other types of exposure records, we derive a packing schedule
-    * based on the number of files we actually received. In most cases,
+    * based on the number of records we actually received. In most cases,
     * that will be a single granule, but we'll also handle the case when
-    * multiple files might be needed.
+    * multiple granules might be needed.
     */
    if (is_radiance == 0)
      {
@@ -588,7 +588,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
              if (-1 == close_outfile (pmt))
                goto return_status;
 
-             /* From granule schedule, find out which file
+             /* From granule schedule, find out which granule file
               * should hold the next exposure record.
               */
              for (k = sched->curr_granule; k < sched->num_granules; k++)
