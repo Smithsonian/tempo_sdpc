@@ -64,6 +64,14 @@ typedef struct
 }
 Cal_Date_Type;
 
+typedef struct
+{
+   const char *scan_tailoring_file;
+   const char *vis_output_file;
+   int num_sza_days;
+}
+Optional_Output_Type;
+
 static void usage (void)
 {
    fprintf (stderr, "Usage: plan [options]\n");
@@ -79,7 +87,9 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "   -m | --master            Generate master scan table, then exit\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize the\n");
-   fprintf (stderr, "                            solar illumination at the start of each scan\n");
+   fprintf (stderr, "                            solar illumination at the start of each scan\n\n");
+   fprintf (stderr, "  For testing:\n");
+   fprintf (stderr, "   -T | --tailor FILE       Output a 'nominal' scan tailoring file [default=none]\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -477,10 +487,52 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
+static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, double jd_utc1,
+                                      const char *filename)
+{
+   double delta = 15.0 * 60.0 / SEC_PER_DAY;
+   int i, n;
+   FILE *fp;
+
+   if (filename == NULL)
+     return 0;
+
+   jd_utc0 = floor (jd_utc0) + 0.5;
+   jd_utc1 = ceil (jd_utc1) + 0.5;
+
+   n = (jd_utc1 - jd_utc0) / delta;
+
+   if (n <= 0)
+     return 0;
+
+   if (NULL == (fp = fopen (filename, "w")))
+     {
+        fprintf (stderr, "*** Error: opening %s for writing\n", filename);
+        return -1;
+     }
+
+   fprintf (fp, "JD,dx,dy,sba\n");
+
+   for (i = 0; i < n; i++)
+     {
+        double jd_utc = jd_utc0 + i * delta;
+        double angle;
+        if (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &angle))
+          return -1;
+        if (fprintf (fp, "%0.8f,%d,%d,%0.15f\n", jd_utc, 0, 0, angle) < 0)
+          {
+             fprintf (stderr, "*** Error: writing to %s\n", filename);
+             break;
+          }
+     }
+
+   return fclose (fp);
+}
+
 static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
                           int num_plan_days, const char *scan_method,
                           uint16_t scan_type, int enable_night_scan,
-                          const char *vis_output_file, int num_sza_days, FILE *fp)
+                          const Optional_Output_Type *oot, FILE *fp)
 {
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
@@ -513,6 +565,9 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
      }
 
    if (NULL == (solar_geom = solar_geom_init (cfg)))
+     goto return_status;
+
+   if (0 != print_scan_tailoring_file (solar_geom, jd_utc0, jd_utc1, oot->scan_tailoring_file))
      goto return_status;
 
    if (NULL == (scan = scan_open (cfg, scan_type)))
@@ -554,7 +609,7 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
    if (0 != plan_list_write (fp, mirror_tilt, plan_list))
      goto return_status;
 
-   if (0 != generate_vis (cfg, vis_output_file, num_sza_days, solar_geom, plan_list,
+   if (0 != generate_vis (cfg, oot->vis_output_file, oot->num_sza_days, solar_geom, plan_list,
                           scan->st_step_size(scan), sm))
      goto return_status;
 
@@ -584,14 +639,18 @@ int main (int argc, char **argv)
    FILE *fp = stdout;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
-   int num_sza_days = DEFAULT_NUM_SZA_DAYS;
    int status = EXIT_FAILURE;
    int do_master_scan_table = 0;
    int enable_night_scan = 0;
    int have_date = 0;
    uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
-   const char *vis_output_file = NULL;
    Cal_Date_Type t0 = {0};
+   Optional_Output_Type oot =
+     {
+        .scan_tailoring_file = NULL,
+        .vis_output_file = NULL,
+        .num_sza_days = DEFAULT_NUM_SZA_DAYS,
+     };
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
@@ -603,6 +662,7 @@ int main (int argc, char **argv)
         {"type",    required_argument, 0, 't'},
         {"output",  required_argument, 0, 'o'},
         {"szaout",  required_argument, 0, 'z'},
+        {"tailor",  required_argument, 0, 'T'},
         {"master",  no_argument, 0, 'm'},
         {0,0,0,0}
      };
@@ -626,7 +686,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:t:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -666,7 +726,7 @@ int main (int argc, char **argv)
            case 'n':
              if (NULL != strchr (optarg, ','))
                {
-                  if (2 != sscanf (optarg, "%d,%d", &num_plan_days, &num_sza_days))
+                  if (2 != sscanf (optarg, "%d,%d", &num_plan_days, &oot.num_sza_days))
                     usage ();
                }
              else
@@ -698,8 +758,11 @@ int main (int argc, char **argv)
                   goto return_status;
                }
              break;
+           case 'T':
+             oot.scan_tailoring_file = optarg;
+             break;
            case 'z':
-             vis_output_file = optarg;
+             oot.vis_output_file = optarg;
              break;
           }
      }
@@ -740,8 +803,7 @@ int main (int argc, char **argv)
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
           goto return_status;
 
-        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, scan_type, enable_night_scan,
-                                vis_output_file, num_sza_days, fp))
+        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, scan_type, enable_night_scan, &oot, fp))
           goto return_status;
      }
 
