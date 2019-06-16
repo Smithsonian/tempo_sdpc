@@ -153,7 +153,7 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
              if (0 != tio_make_scan_label (&scan_label, entry->scan_type, scan_num))
                return -1;
 
-             if (fprintf (fp, "%d,%0.11e,%0.3f,%0.1f,%d,%0.3f,\"%s\"\n",
+             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,\"%s\"\n",
                           scan_label,
                           tstart_tai,
                           entry->scan_duration,
