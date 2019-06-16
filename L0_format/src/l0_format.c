@@ -931,6 +931,17 @@ int create_hidden (const char *dirname, const char *basename, int *ncid)
    return status;
 }
 
+/* From the ioblksize.h header in GNU coreutils, a 128 kiB block size
+ * minimizes system overhead when copying files on a wide variety
+ * of computer systems.  GNU cp uses this.
+ */
+enum {IO_BUFSIZE = 128*1024};
+static inline size_t io_blksize (struct stat *sb)
+{
+   size_t blksize = sb->st_blksize;
+   return (IO_BUFSIZE > blksize) ? IO_BUFSIZE : blksize;
+}
+
 static int copy_file (const char *from, const char *to)
 {
    mode_t mode_create = 00644;  /* rw-r--r-- */
@@ -946,18 +957,26 @@ static int copy_file (const char *from, const char *to)
         return -1;
      }
 
-   bufsize = st.st_blksize;
+   bufsize = io_blksize(&st);
 
    if ((fd_from = open (from, O_RDONLY)) < 0)
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: opening %s", __func__, from);
         return -1;
      }
+   if (0 != posix_fadvise(fd_from, 0, 0, POSIX_FADV_SEQUENTIAL))
+     {
+        tell_vwarn (0, "%s: posix_fadvise failed: %s", __func__, strerror(errno));
+     }
 
    if ((fd_to = open (to, O_WRONLY | O_CREAT | O_EXCL, mode_create)) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: opening %s (%s)", __func__, to, strerror (errno));
         goto return_status;
+     }
+   if (0 != posix_fallocate (fd_to, 0, st.st_size))
+     {
+        tell_vwarn (0, "%s: posix_fallocate failed: %s", __func__, strerror(errno));
      }
 
    if (NULL == (buf = (char *) MALLOC (bufsize)))
