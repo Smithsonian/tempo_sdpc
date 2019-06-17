@@ -358,7 +358,7 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
 
    t_last = (t_rad_prev > t_only) ? t_rad_prev : t_only;
 
-   if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RADIANCE, &t_rad))
+   if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RAD, &t_rad))
      return -1;
 
    if (t_rad - t_last > t_max)

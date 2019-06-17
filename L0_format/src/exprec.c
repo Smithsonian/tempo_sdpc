@@ -335,7 +335,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    switch (pmt->exprec_type)
      {
-      case IOCSDPC_EXPREC_TYPE_RADIANCE:
+      case IOCSDPC_EXPREC_TYPE_RAD:
         pmt->product_type = "rad";
         pmt->exprec_type_string = ioclib_strdup("radiance");
 	/* lowest 16 bits of erec->scan_label contain the 16 bit label
@@ -354,9 +354,13 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         pmt->product_type = "drk";
         pmt->exprec_type_string = ioclib_strdup("dark");
         break;
-      case IOCSDPC_EXPREC_TYPE_IRRADIANCE:
+      case IOCSDPC_EXPREC_TYPE_IRR_WORK:
         pmt->product_type = "irr";
         pmt->exprec_type_string = ioclib_strdup("irradiance");
+        break;
+      case IOCSDPC_EXPREC_TYPE_IRR_REF:
+        pmt->product_type = "irrr";
+        pmt->exprec_type_string = ioclib_strdup("irradiance,reference");
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_IRR:
         pmt->product_type = "irrl";
@@ -526,7 +530,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
      }
 
    exprec_type = pmt->exprec_type;
-   is_radiance = (exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
+   is_radiance = (exprec_type == IOCSDPC_EXPREC_TYPE_RAD);
 
    /* The schedule tells us how the exposure records should be packed
     * into granules. For radiances, the header tells us how many scan
@@ -676,7 +680,7 @@ static int radiance_belongs_to_curr_granule (const Process_Method_Type *pmt,
 {
    const Granule_Schedule_Type *sched = &pmt->sched;
    unsigned int step_ubound = sched->granule_ubound[sched->curr_granule];
-   if (exprec_info->exprec_type != IOCSDPC_EXPREC_TYPE_RADIANCE)
+   if (exprec_info->exprec_type != IOCSDPC_EXPREC_TYPE_RAD)
      return 0;
    return (exprec_info->curr_mirror_step < step_ubound);
 }
@@ -690,7 +694,7 @@ static int classify_erec (IOCSDPC_Exprec_Type *erec, Exprec_Info_Type *info)
        || (NULL == iocsdpc_image_info_get_value (erec, "num_mirror_steps", &info->num_mirror_steps)))
      return -1;
 
-   if (info->exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE)
+   if (info->exprec_type == IOCSDPC_EXPREC_TYPE_RAD)
      {
         if ((info->num_mirror_steps == 0)
             || (info->curr_mirror_step > info->num_mirror_steps))
@@ -724,7 +728,7 @@ static int process_exprec1 (Process_Method_Type *pmt,
     */
 
    is_new_type = (exprec_info->exprec_type != pmt->exprec_type);
-   is_radiance = (exprec_info->exprec_type == IOCSDPC_EXPREC_TYPE_RADIANCE);
+   is_radiance = (exprec_info->exprec_type == IOCSDPC_EXPREC_TYPE_RAD);
    is_radiance_new_scan = (is_radiance && (exprec_info->curr_mirror_step
                                            < pmt->curr_mirror_step));
 
@@ -896,7 +900,7 @@ static int query_latest_timestamp (Process_Method_Type *pmt, int exprec_type, do
 {
    switch (exprec_type)
      {
-      case IOCSDPC_EXPREC_TYPE_RADIANCE:
+      case IOCSDPC_EXPREC_TYPE_RAD:
         *timestamp = pmt->latest_radiance_timestamp_seen;
         break;
 
