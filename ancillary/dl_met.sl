@@ -4,6 +4,8 @@ require ("cmdopt");
 require ("curl");
 % require ("process");
 
+private variable Root_Url = "https://ftp.ncep.noaa.gov/data/nccf/com";
+
 private define usage ()
 {
    variable msg =
@@ -67,7 +69,7 @@ private define latest_grib2_url_nam227 (when)
 
    % grid 227 is high resolution CONUS nested grid, 3 km resolution(?)
 
-   variable root_url = "http://www.ftp.ncep.noaa.gov/data/nccf/com/nam/prod";
+   variable prod_root_url = "${Root_Url}/nam/prod"$;
    variable cycles = [0, 6, 12, 18];   % NAM 227 forecast cycles
 
    variable forecast_hour = when.hours_past_midnight;
@@ -76,7 +78,7 @@ private define latest_grib2_url_nam227 (when)
    variable dir = sprintf ("nam.%4d%02d%02d", when.year, when.month, when.day);
    variable file = sprintf ("nam.t%02dz.conusnest.hiresf%02d.tm00.grib2",
                             latest_cycle, forecast_hour);
-   variable grib2_url = "$root_url/$dir/$file"$;
+   variable grib2_url = "$prod_root_url/$dir/$file"$;
 
    return grib2_url;
 }
@@ -90,7 +92,7 @@ private define latest_grib2_url_rap130 (when)
 
    % grid 130 is Lambert Conformal, 13 km resolution
 
-   variable root_url = "http://www.ftp.ncep.noaa.gov/data/nccf/com/rap/prod";
+   variable prod_root_url = "${Root_Url}/rap/prod"$;
    variable cycles = [0:23];   % RAP 130 forecast cycles
 
    variable forecast_hour = when.hours_past_midnight;
@@ -99,7 +101,7 @@ private define latest_grib2_url_rap130 (when)
    variable dir = sprintf ("rap.%4d%02d%02d", when.year, when.month, when.day);
    variable file = sprintf ("rap.t%02dz.awp130pgrbf%02d.grib2",
                             latest_cycle, forecast_hour);
-   variable grib2_url = "$root_url/$dir/$file"$;
+   variable grib2_url = "$prod_root_url/$dir/$file"$;
 
    return grib2_url;
 }
@@ -117,7 +119,7 @@ private define latest_grib2_url_nam221 (when)
    % available.  Just replace nam -> rap in the URLs below.
    %
 
-   variable root_url = "http://www.ftp.ncep.noaa.gov/data/nccf/com/nam/prod";
+   variable prod_root_url = "${Root_Url}/nam/prod"$;
    variable cycles = [0, 6, 12, 18];   % NAM 221 forecast cycles
 
    variable forecast_hour = when.hours_past_midnight;
@@ -126,7 +128,7 @@ private define latest_grib2_url_nam221 (when)
    variable dir = sprintf ("nam.%4d%02d%02d", when.year, when.month, when.day);
    variable file = sprintf ("nam.t%02dz.awip32%02d.tm00.grib2",
                             latest_cycle, forecast_hour);
-   variable grib2_url = "$root_url/$dir/$file"$;
+   variable grib2_url = "$prod_root_url/$dir/$file"$;
 
    return grib2_url;
 }
