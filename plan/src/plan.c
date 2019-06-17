@@ -77,7 +77,8 @@ static void usage (void)
    fprintf (stderr, "Usage: plan [options]\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help              Print this usage message\n");
-   fprintf (stderr, "   -d | --date YYYY-MM-DD   Plan start date\n");
+   fprintf (stderr, "   -d | --date DATE         Plan start date:\n");
+   fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
    fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
    fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
@@ -491,6 +492,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
                                       const char *filename)
 {
    double delta = 15.0 * 60.0 / SEC_PER_DAY;
+   double unix_epoch_jd;
    int i, n;
    FILE *fp;
 
@@ -505,21 +507,34 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
    if (n <= 0)
      return 0;
 
+   unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
+
    if (NULL == (fp = fopen (filename, "w")))
      {
         fprintf (stderr, "*** Error: opening %s for writing\n", filename);
         return -1;
      }
 
-   fprintf (fp, "JD,dx,dy,sba\n");
+   fprintf (fp, "# time: Time since the TEMPO epoch [TAI hours]\n");
+   fprintf (fp, "# xoff: Mirror pointing offset in the East/West direction [degrees]\n");
+   fprintf (fp, "# yoff: Mirror pointing offset in the North/South direction [degrees]\n");
+   fprintf (fp, "# solar_boresight_angle: Angle between the sun and the TEMPO boresight [degrees]\n");
+   fprintf (fp, "time,xoff,yoff,solar_boresight_angle\n");
 
    for (i = 0; i < n; i++)
      {
         double jd_utc = jd_utc0 + i * delta;
-        double angle;
+        double angle, t_utc, taix;
+
         if (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &angle))
           return -1;
-        if (fprintf (fp, "%0.8f,%d,%d,%0.15f\n", jd_utc, 0, 0, angle) < 0)
+
+        t_utc = (jd_utc - unix_epoch_jd) * SEC_PER_DAY;
+
+        if (0 != tio_time_utc_to_taix (t_utc, &taix))
+          return -1;
+
+        if (fprintf (fp, "%0.8f,%f,%f,%0.15f\n", taix/3600.0, 0.0, 0.0, angle) < 0)
           {
              fprintf (stderr, "*** Error: writing to %s\n", filename);
              break;
@@ -645,6 +660,7 @@ int main (int argc, char **argv)
    int have_date = 0;
    uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
    Cal_Date_Type t0 = {0};
+   int ndays_since_epoch = 0;
    Optional_Output_Type oot =
      {
         .scan_tailoring_file = NULL,
@@ -707,7 +723,15 @@ int main (int argc, char **argv)
                goto return_status;
              break;
            case 'd':
-             if (3 != sscanf (optarg, "%hd%*c%hd%*c%hd", &t0.year, &t0.month, &t0.day))
+             if (NULL == strchr(optarg, '-'))
+               {
+                  if (1 != sscanf (optarg, "%d", &ndays_since_epoch))
+                    {
+                       fprintf (stderr, "*** error reading date option %s\n", optarg);
+                       usage();
+                    }
+               }
+             else if (3 != sscanf (optarg, "%hd%*c%hd%*c%hd", &t0.year, &t0.month, &t0.day))
                {
                   fprintf (stderr, "*** error reading date option %s\n", optarg);
                   usage();
@@ -798,6 +822,17 @@ int main (int argc, char **argv)
 
         if (0 != read_epoch (&cfg))
           goto return_status;
+
+        if (ndays_since_epoch > 0)
+          {
+             double taix = SEC_PER_DAY * ((double) ndays_since_epoch);
+             int year, month, day;
+             if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &t0.hour))
+               goto return_status;
+             t0.year = year;
+             t0.month = month;
+             t0.day = day;
+          }
 
         /* satellite orbital station determines effective time zone */
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
