@@ -534,7 +534,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
         if (0 != tio_time_utc_to_taix (t_utc, &taix))
           return -1;
 
-        if (fprintf (fp, "%0.8f,%f,%f,%0.15f\n", taix/3600.0, 0.0, 0.0, angle) < 0)
+        if (fprintf (fp, "%0.8f,%f,%f,%0.6f\n", taix/3600.0, 0.0, 0.0, angle) < 0)
           {
              fprintf (stderr, "*** Error: writing to %s\n", filename);
              break;
