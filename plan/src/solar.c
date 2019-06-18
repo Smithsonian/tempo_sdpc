@@ -128,7 +128,8 @@ static void vec_norm (double *a)
 
 static double angle_between_vectors (double *pa, double *pb)
 {
-   double cos_theta, a[3], b[3], c[3], c_hypot;
+   double cos_theta, a[3], b[3];
+   /* double c[3], c_hypot; */
    int i;
 
    /* Assuming A and B are unit vectors, we have:
@@ -156,9 +157,8 @@ static double angle_between_vectors (double *pa, double *pb)
         cos_theta += a[i] * b[i];
      }
 
-   if ((-0.7 < cos_theta) && (cos_theta < 0.7))
-     return acos (cos_theta);
-
+   return acos (cos_theta);
+#if 0
    /* cross product */
    c[0] = a[1]*b[2] - a[2]*b[1];
    c[1] = a[2]*b[0] - a[0]*b[2];
@@ -167,6 +167,7 @@ static double angle_between_vectors (double *pa, double *pb)
    c_hypot = sqrt (c[0]*c[0] + c[1]*c[1] * c[2]*c[2]);
 
    return atan2 (c_hypot, cos_theta);
+#endif
 }
 
 static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
@@ -191,7 +192,8 @@ static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
    if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
 
-   /* convert sat position from ITRS to GCRS system */
+   /* convert sat position from ITRS to GCRS system
+    * returns sat_gcrs [km] */
    if ((error = novas_ter2cel (tt.jd_ut1, 0.0, tt.delta_t,
                                method, sgt->accuracy, option,
                                sgt->xpole, sgt->ypole, sgt->sat_pos,
@@ -202,6 +204,7 @@ static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
         return -1;
      }
 
+   /* returns bs_gcrs [AU], bs_gcrs_vel [AU/day] */
    if ((error = novas_geo_posvel (tt.jd_tt, tt.delta_t, sgt->accuracy,
                                   &sgt->boresight_surface, bs_gcrs, bs_gcrs_vel)) != 0)
      {
@@ -209,7 +212,12 @@ static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
                      __func__, error);
         return -1;
      }
+   for (i = 0; i < 3; i++)
+     {
+        bs_gcrs[i] *= KM_PER_AU;
+     }
 
+   /* returns sun_place.dis [AU] */
    if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
                              tt.delta_t, coord_sys, sgt->accuracy,
                              &sun_place)) != 0)
