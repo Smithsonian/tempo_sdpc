@@ -161,7 +161,7 @@ distclean: clean distclean-tempo-names
 # Object Rules
 # --------------------------------------------------------------------------
 
-NAME_FILE_BASENAMES = tempo_dims tempo_grps tempo_vars
+NAME_FILE_BASENAMES = tempo_dims tempo_grps tempo_vars tempo_prod
 
 NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES)) \
            $(TIO_TEMPLATE_INCLUDE)in
@@ -170,7 +170,7 @@ NAME_FILE_TARGETS = $(addsuffix .inc, $(addprefix _, $(NAME_FILE_BASENAMES))) \
 tempo-names:	$(NAME_FILE_TARGETS)
 $(NAME_FILE_TARGETS):	$(NAME_FILE_SOURCES)
 	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %25s   %s\n",a[1],a[2])}' \
+	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %28s   %s\n",a[1],a[2])}' \
 	        $${bn}.csv > .$${bn}_h.tmp ; \
 	   awk 'NF && !/^#/ {split($$0,a,","); printf("character (len=tiof_max_name_len), public, parameter :: %25s = %s\n",tolower(a[1]),a[2])}' \
 	        $${bn}.csv > _$${bn}.inc ; \
@@ -180,6 +180,7 @@ $(NAME_FILE_TARGETS):	$(NAME_FILE_SOURCES)
 	sed -e '/@CSV_DIMS@/{r .tempo_dims_h.tmp' -e 'd}' \
 	    -e '/@CSV_GRPS@/{r .tempo_grps_h.tmp' -e 'd}' \
 	    -e '/@CSV_VARS@/{r .tempo_vars_h.tmp' -e 'd}' \
+	    -e '/@CSV_PROD@/{r .tempo_prod_h.tmp' -e 'd}' \
 	    $(srcdir)/tio_template.hin > $(TIO_TEMPLATE_INCLUDE)
 	sed -i -e '1i/*! @file\n    @brief Generated from tio_template.hin by Makefile. Do not edit. */' \
 	     $(TIO_TEMPLATE_INCLUDE)

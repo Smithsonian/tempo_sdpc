@@ -21,6 +21,9 @@ extern "C" {
 #define TEMPO_BAND_NAME_UV   "band_290_490_nm"
 #define TEMPO_BAND_NAME_VIS  "band_540_740_nm"
 
+/* Product type names */
+@CSV_PROD@
+
 /* File dimension names */
 @CSV_DIMS@
 
@@ -181,7 +184,7 @@ extern int __tio_filename_string_indexed (char *buf, int bufsize,
  * @param  buf           Buffer to hold filename string
  * @param  bufsize       Size of filename buffer
  * @param  tstart        TAI seconds elapsed since the TEMPO epoch
- * @param  label         Label string to include in the filename string (e.g. irr, drk, iru, smc...)
+ * @param  label         Label string to include in the filename string (e.g. IRR, DRK, IRU, SMC...)
  * @param  level         Processing level number (e.g. 0, 1, 2, 3)
  * @param  version       Processing version number to include in the filename string
  * @return On error, a negative value is returned.  On success, the
@@ -199,7 +202,7 @@ extern int __tio_filename_string (char *buf, int bufsize,
 
 /** Write product_type and processing version metadata to a netcdf header
  * @param  ncid          Index of destination netcdf file
- * @param  product_type  Product type string, e.g. "rad", or "no2"
+ * @param  product_type  Product type string, e.g. "RAD"
  * @param  version       Processing version number
  * @return 0 on success, -1 on error
  */

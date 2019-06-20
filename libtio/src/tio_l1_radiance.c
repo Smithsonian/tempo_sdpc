@@ -207,7 +207,7 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"product_type", "rad"},
+        {"product_type", TEMPO_PROD_TYPE_RAD},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =

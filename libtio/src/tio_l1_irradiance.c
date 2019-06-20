@@ -130,7 +130,7 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"product_type", "irr"},
+        {"product_type", TEMPO_PROD_TYPE_IRR},
         {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
         {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
         _pTEXT_ATTRS_END

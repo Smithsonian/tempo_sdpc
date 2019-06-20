@@ -1248,13 +1248,13 @@ int main (void)
 {
    int ntracks=8, nxtrack=6, ny=5;
    const char *epoch = "2000-01-01T12:00:00Z";
-   const char *buf_expected = "TEMPO_rad_L1_V01_20000101T120000Z.nc";
+   const char *buf_expected = "TEMPO_" TEMPO_PROD_TYPE_RAD "_L1_V01_20000101T120000Z.nc";
    char buf[72];
 
    if (0 != tio_time_set_taix_epoch (epoch))
      return 1;
 
-   if ( __tio_filename_string (buf, sizeof(buf), 0.0, "rad", 1, 1) < 0)
+   if ( __tio_filename_string (buf, sizeof(buf), 0.0, TEMPO_PROD_TYPE_RAD, 1, 1) < 0)
      {
         fprintf (stderr, "*** Error: __tio_filename_string failed\n");
         return 1;

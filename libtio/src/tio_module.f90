@@ -33,6 +33,7 @@ module tio_module
   include '_tempo_dims.inc'
   include '_tempo_grps.inc'
   include '_tempo_vars.inc'
+  include '_tempo_prod.inc'
 
   integer, private, parameter :: &
     i1 = selected_int_kind (2**1), &
