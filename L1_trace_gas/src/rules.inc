@@ -138,6 +138,7 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_pge_postprocessing.o \
   $(ODIR)/omi_read_l1b_data.o \
+  $(ODIR)/OMSAO_casestring_module.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \

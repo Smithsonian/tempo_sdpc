@@ -53,8 +53,8 @@ Exprec_Info_Type;
    double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
-   char *product_type; \
-   char *exprec_type_string; \
+   const char *product_type; \
+   const char *exprec_type_string; \
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
@@ -329,15 +329,14 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    pmt->outfile_timestamp_end = image_end_time (erec);
    pmt->exprec_type = erec->exprec_type;
 
-   ioclib_free (pmt->exprec_type_string);
    pmt->exprec_type_string = NULL;
    scan_num_int = -1;
 
    switch (pmt->exprec_type)
      {
       case IOCSDPC_EXPREC_TYPE_RAD:
-        pmt->product_type = "rad";
-        pmt->exprec_type_string = ioclib_strdup("radiance");
+        pmt->product_type = TEMPO_PROD_TYPE_RAD;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
 	/* lowest 16 bits of erec->scan_label contain the 16 bit label
 	 * for the scan provided in the SDPC-generated radiance scan plan. */
 	sdpc_scan_label = erec->scan_label & 0x0000ffff;
@@ -351,30 +350,30 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         identp = &radiance_ident;
         break;
       case IOCSDPC_EXPREC_TYPE_DARK:
-        pmt->product_type = "drk";
-        pmt->exprec_type_string = ioclib_strdup("dark");
+        pmt->product_type = TEMPO_PROD_TYPE_DRK;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_DRK;
         break;
       case IOCSDPC_EXPREC_TYPE_IRR_WORK:
-        pmt->product_type = "irr";
-        pmt->exprec_type_string = ioclib_strdup("irradiance");
+        pmt->product_type = TEMPO_PROD_TYPE_IRR;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_IRR;
         break;
       case IOCSDPC_EXPREC_TYPE_IRR_REF:
-        pmt->product_type = "irrr";
-        pmt->exprec_type_string = ioclib_strdup("irradiance,reference");
+        pmt->product_type = TEMPO_PROD_TYPE_IRR_REF;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_IRR_REF;
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_IRR:
-        pmt->product_type = "irrl";
-        pmt->exprec_type_string = ioclib_strdup("irradiance,linearity");
+        pmt->product_type = TEMPO_PROD_TYPE_IRR_LIN;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_IRR_LIN;
         break;
       case IOCSDPC_EXPREC_TYPE_LIN_DARK:
-        pmt->product_type = "drkl";
-        pmt->exprec_type_string = ioclib_strdup("dark,linearity");
+        pmt->product_type = TEMPO_PROD_TYPE_DRK_LIN;
+        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_DRK_LIN;
         break;
       case IOCSDPC_EXPREC_TYPE_UNKNOWN:
         /* drop */
       default:
-        pmt->product_type = "unk";
-        pmt->exprec_type_string = ioclib_strdup("unknown");
+        pmt->product_type = "UNK";
+        pmt->exprec_type_string = "UNK";
         break;
      }
 
@@ -881,7 +880,6 @@ static void delete_exprec (Process_Method_Type *pmt)
    if (pmt == NULL)
      return;
    (void) close_outfile (pmt);
-   ioclib_free (pmt->exprec_type_string);
    sched_free (&pmt->sched);
    FREE(pmt->out_basename);
    FREE(pmt->out_dirname);

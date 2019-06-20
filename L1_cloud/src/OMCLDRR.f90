@@ -26,6 +26,7 @@ program OMCLDRR
   use tell_module
   use m_write_odl_metadata
   use md_module
+  use tio_module, only : tempo_prod_type_cldrr
 
   IMPLICIT NONE
 
@@ -269,7 +270,7 @@ program OMCLDRR
            errstat)
     endif
     call copy_hdr_metadata (filename_in_nc, errstat)
-    call label_output_file ("cldrr", processing_version, errstat)
+    call label_output_file (tempo_prod_type_cldrr, processing_version, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "failed writing metadata", &
            errstat)

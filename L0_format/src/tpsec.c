@@ -19,8 +19,6 @@
 
 #include "enum.h"
 
-#define PRODUCT_TYPE_TPSEC "hk"
-
 #define PROCESS_METHOD_PRIVATE_DATA \
    Enum_Lookup_Type *enum_lookup; \
    char *out_dirname; \
@@ -116,11 +114,11 @@ static int new_outfile (Process_Method_Type *pmt,
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
    if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp, -1,
-                                      pmt->processing_version, PRODUCT_TYPE_TPSEC))
+                                      pmt->processing_version, TEMPO_PROD_TYPE_TPSEC))
      return -1;
 
    if (-1 == make_level0_basename (basename, sizeof(basename), timestamp,
-                                   pmt->processing_version, PRODUCT_TYPE_TPSEC, NULL))
+                                   pmt->processing_version, TEMPO_PROD_TYPE_TPSEC, NULL))
      return -1;
 
    if (pmt->ncid != INT_MAX)
@@ -138,7 +136,7 @@ static int new_outfile (Process_Method_Type *pmt,
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
      return -1;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, PRODUCT_TYPE_TPSEC))
+   if ((0 != write_attr_global_product_type (pmt->ncid, TEMPO_PROD_TYPE_TPSEC))
        || (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                               pmt->outfile_timestamp_start)))
      return -1;

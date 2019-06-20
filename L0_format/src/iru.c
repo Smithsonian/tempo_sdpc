@@ -19,8 +19,6 @@
 #include <tio.h>
 #include <tio_template.h>
 
-#define PRODUCT_TYPE_IRU "iru"
-
 #define PROCESS_METHOD_PRIVATE_DATA \
    char *out_dirname; \
    char *out_basename; \
@@ -126,7 +124,7 @@ static int define_iru_vars (Process_Method_Type *pmt,
    pmt->gyro_bias_time = iru->gyro_bias_time;
    pmt->gyro_dimension = iru->gyro_dimension ? iru->gyro_dimension : 4;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, PRODUCT_TYPE_IRU))
+   if ((0 != write_attr_global_product_type (pmt->ncid, TEMPO_PROD_TYPE_IRU))
        || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                              pmt->outfile_timestamp_start)))
      return -1;
@@ -346,11 +344,11 @@ static int new_iru_outfile (Process_Method_Type *pmt, double timestamp,
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
    if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp, -1,
-                                      pmt->processing_version, PRODUCT_TYPE_IRU))
+                                      pmt->processing_version, TEMPO_PROD_TYPE_IRU))
      return -1;
 
    if (0 != make_level0_basename (basename, sizeof(basename), timestamp,
-                                  pmt->processing_version, PRODUCT_TYPE_IRU, NULL))
+                                  pmt->processing_version, TEMPO_PROD_TYPE_IRU, NULL))
      return -1;
 
    if (pmt->ncid != INT_MAX)

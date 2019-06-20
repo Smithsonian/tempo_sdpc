@@ -272,7 +272,7 @@ static int make_iru_only_path (const char *dir, double tstart, char *path, size_
         strsize = pathsize - n;
      }
 
-   n = __tio_filename_string (str, strsize, tstart, "inr", 0, 0);
+   n = __tio_filename_string (str, strsize, tstart, TEMPO_PROD_TYPE_INR, 0, 0);
    if (n >= strsize)
      {
         tell_verror (TELL_APPLICATION_ERROR,

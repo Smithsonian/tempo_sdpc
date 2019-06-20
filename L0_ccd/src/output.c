@@ -369,20 +369,22 @@ static int out_get_ncid (const Output_Type *out)
 
 static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_from)
 {
-   const char *shortname = NULL;
+#define SHORTNAME_BUFSIZE 32
+   char shortname[SHORTNAME_BUFSIZE];
+   const char *prod_name = NULL;
    const char *template_basename = NULL;
    char *template_path = NULL;
-   int grp_meta, status = -1;
+   int grp_meta, n, status = -1;
 
    switch (out->exposure_type)
      {
       case EXPREC_TYPE_IRRADIANCE:
-        shortname = "TEMPO_irr";
+        prod_name = TEMPO_PROD_TYPE_IRR;
         template_basename = "irradiance.met.template";
         break;
 
       case EXPREC_TYPE_RADIANCE:
-        shortname = "TEMPO_rad";
+        prod_name = TEMPO_PROD_TYPE_RAD;
         template_basename = "radiance.met.template";
         break;
 
@@ -390,6 +392,13 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
         tell_vwarn (0, "%s: no metadata template expansion support for exposure records of type %d",
                     __func__, out->exposure_type);
         break;
+     }
+
+   n = snprintf (shortname, SHORTNAME_BUFSIZE, "TEMPO_%s", prod_name);
+   if (n < 0 || n >= SHORTNAME_BUFSIZE)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error generating shortname for %s", __func__, prod_name);
+        goto return_status;
      }
 
    /* FIXME: set version numbers */

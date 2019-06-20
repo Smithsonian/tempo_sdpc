@@ -172,6 +172,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        omi_radiance_swathname, result_vars
   USE irradiance_data, only: irradiance_data_init
   use m_write_odl_metadata
+  use OMSAO_casestring_module, only : upper_case
 
   IMPLICIT NONE
 
@@ -371,7 +372,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        errstat)
   if (errstat /= 0) return
 
-  call label_output_file (molname, processing_version, errstat)
+  call label_output_file (upper_case(molname), processing_version, errstat)
   if (errstat /= 0) return
 
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.

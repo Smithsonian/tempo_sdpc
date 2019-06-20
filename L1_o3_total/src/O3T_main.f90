@@ -77,6 +77,7 @@ PROGRAM O3T_mainNVAdj
   USE m_anomflg
   use l2_tio_class
   use m_write_odl_metadata
+  use tio_module, only : tempo_prod_type_o3t
 
   IMPLICIT NONE
   INTEGER (KIND=4), PARAMETER :: nLinesPerWrite = 100
@@ -503,7 +504,7 @@ PROGRAM O3T_mainNVAdj
          nwl_com, have_omi_data, errstat)
     if (errstat /= 0) stop 1
     call l2_tio_copy_metadata (l1b_file_object(rad_file_obj), errstat)
-    call l2_tio_label_output_file ("o3t", processing_version, errstat)
+    call l2_tio_label_output_file (tempo_prod_type_o3t, processing_version, errstat)
     if (errstat /= 0) stop 1
   endif
 

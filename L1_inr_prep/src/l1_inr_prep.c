@@ -185,7 +185,7 @@ static int rename_radiance_file (Rename_Path_Type *rpt)
    if (0 != TIO_open (rpt->tmp_path, NC_NOWRITE, &ncid))
      return -1;
 
-   if (TIO_filename_from_granule (ncid, "rad", 1, rpt->processing_version,
+   if (TIO_filename_from_granule (ncid, TEMPO_PROD_TYPE_RAD, 1, rpt->processing_version,
                                   basename, BASENAME_SIZE) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: generating filename", __func__);

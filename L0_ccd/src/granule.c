@@ -4,8 +4,9 @@
 
 #include <libconfig.h>
 #include <netcdf.h>
-#include <tio.h>
 #include <tell.h>
+#include <tio.h>
+#include <tio_template.h>
 
 #include "config.h"
 #include "image.h"
@@ -238,11 +239,11 @@ typedef struct
 Exprec_Type;
 static Exprec_Type Exprec_Type_Table[] =
 {
-   {"dark", EXPREC_TYPE_DARK},
-   {"radiance", EXPREC_TYPE_RADIANCE},
-   {"irradiance", EXPREC_TYPE_IRRADIANCE},
-   {"dark-linear", EXPREC_TYPE_LIN_DARK},
-   {"irradiance-linear", EXPREC_TYPE_LIN_IRR},
+   {TEMPO_PROD_TYPESTR_DRK, EXPREC_TYPE_DARK},
+   {TEMPO_PROD_TYPESTR_RAD, EXPREC_TYPE_RADIANCE},
+   {TEMPO_PROD_TYPESTR_IRR, EXPREC_TYPE_IRRADIANCE},
+   {TEMPO_PROD_TYPESTR_DRK_LIN, EXPREC_TYPE_LIN_DARK},
+   {TEMPO_PROD_TYPESTR_IRR_LIN, EXPREC_TYPE_LIN_IRR},
    {NULL, EXPREC_TYPE_UNKNOWN}
 };
 

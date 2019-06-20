@@ -418,7 +418,7 @@ CONTAINS
     ! If using netCDF inputs, copy critical metadata and label file
     IF (l2_hdf_flag == 4) THEN
       CALL copy_hdr_metadata (l1b_rad_filename, errstat)
-      CALL label_output_file ("o3p", processing_version, errstat)
+      CALL label_output_file (tempo_prod_type_o3p, processing_version, errstat)
     ENDIF
 
     !----------------------------------------------------------------
