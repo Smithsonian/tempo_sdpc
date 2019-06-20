@@ -1,0 +1,18 @@
+#!/bin/sh
+
+exec 2>& 1
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The SDPC environment is not set"
+  exit 1
+fi
+
+_src_dir="/tempo/ioc/sciroot/l0spool"
+
+_dest_dir="$SDPC_RUN_DIR/l0spool"
+if ! test -d $_dest_dir ; then
+  mkdir -p $_dest_dir
+fi
+
+exec move_file_stream.sl $_src_dir $_dest_dir

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="iocpull"
+INCDIR=".."
+
+. $INCDIR/finish.inc
