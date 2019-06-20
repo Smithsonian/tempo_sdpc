@@ -8,11 +8,12 @@ then
   exit 1
 fi
 
-_src_dir="/tempo/ioc/sciroot/l0spool"
+. "$SDPC_ROOT/etc/iocpull.rc"
 
-_dest_dir="$SDPC_RUN_DIR/l0spool"
-if ! test -d $_dest_dir ; then
-  mkdir -p $_dest_dir
+if ! test -d $sdpc_dest_dir ; then
+  mkdir -p $sdpc_dest_dir
 fi
 
-exec move_file_stream.sl $_src_dir $_dest_dir
+echo "iocpull $ioc_src_dir -> $sdpc_dest_dir"
+
+exec move_file_stream.sl $ioc_src_dir $sdpc_dest_dir

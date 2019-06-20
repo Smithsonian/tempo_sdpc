@@ -1,5 +1,6 @@
 sc_timezone
 sdpc_env.sh
+iocpull.rc
 level1a_cachemon.cfg
 level2_cachemon.cfg
 register_cachemon.cfg

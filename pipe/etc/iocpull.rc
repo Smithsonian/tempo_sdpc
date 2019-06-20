@@ -1,0 +1,9 @@
+#
+# ioc_src_dir = IOC directory to pull science data from
+#
+ioc_src_dir="/tempo/ioc/sciroot/l0spool"
+
+#
+# sdpc_dest_dir = SDPC directory to receive science data files
+#
+sdpc_dest_dir="$SDPC_RUN_DIR/l0spool"
