@@ -54,7 +54,7 @@ work_dir_tarfile="${rad_basename}.${work_dir}_${host_spec}.tar"
 lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc)
 lev2_base_fmt=$(basename $lev2_file_fmt .nc)
 
-out_basename=$(printf "$lev1_base_fmt" O3P)
+out_basename=$(printf "$lev2_base_fmt" O3P)
 
 tar_product_to_dest_dir()
 {
