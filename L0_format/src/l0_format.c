@@ -361,7 +361,7 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RAD, &t_rad))
      return -1;
 
-   if (t_rad - t_last > t_max)
+   if ((t_last > 0) && (t_rad - t_last > t_max))
      {
         if (0 != ensure_iru_covers_radiance_gap (iru_interval, t_last, t_rad))
           return -1;
