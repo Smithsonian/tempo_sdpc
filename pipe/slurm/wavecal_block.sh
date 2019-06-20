@@ -32,7 +32,7 @@ etc_dir="$SDPC_ROOT/etc"
 
 bn=$(basename $INPUT_FILE)
 case "$bn" in
- *rad* )
+ *RAD* )
     adjust="--adjust"
     ;;
 

@@ -21,7 +21,7 @@ assert_dir_exists $_src_dir
 
 _target_dir="$SDPC_ARCHIVE_DIR/L0/1/4943"
 
-for d in hk iru smc ; do
+for d in HK IRU SMC ; do
    mkdir -p $_target_dir/$d
    ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*.nc
 done

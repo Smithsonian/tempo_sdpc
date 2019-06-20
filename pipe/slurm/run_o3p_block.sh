@@ -10,7 +10,7 @@ ulimit -s unlimited
 run_dir=$1
 
 block_run_subdir=$(printf "block_%03d" $SLURM_ARRAY_TASK_ID)
-cd "${run_dir}/o3p/${block_run_subdir}"
+cd "${run_dir}/O3P/${block_run_subdir}"
 
 # Load default config parameters
 config_file="$SDPC_ROOT/etc/o3_profile/o3_profile.rc"

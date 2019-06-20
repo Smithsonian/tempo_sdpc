@@ -100,7 +100,7 @@ run_l0_ccd()
    # concept of operations has no CCD images of any kind being generated at local midnight.
    tstart=$(grep time_coverage_start_since_epoch granule_ident.csv | cut -d, -f2)
    sat_day=$(compute_sat_day.sl $tstart)
-   arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/1/${sat_day}/hk"
+   arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/1/${sat_day}/HK"
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
@@ -125,23 +125,23 @@ run_inr_prep()
 }
 
 case "${granule_basename}" in
-  *drk* )
-  output_file=$(mkgranule_name -L 0 -p drkt -v $SDPC_PROCESSING_VERSION $granule_basename)
+  *DRK* )
+  output_file=$(mkgranule_name -L 0 -p DRKT -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file ""
   tar_out_dir="$l0_out_dir"
   archive_level="L0"
   ;;
 
-  *irr* )
-  output_file=$(mkgranule_name -L 1 -p irr -v $SDPC_PROCESSING_VERSION $granule_basename)
+  *IRR* )
+  output_file=$(mkgranule_name -L 1 -p IRR -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   run_wavecal $output_file "0-4"
   tar_out_dir="$l1_out_dir"
   archive_level="L1"
   ;;
 
-  *rad* )
-  output_file=$(mkgranule_name -L 1 -p rad -v $SDPC_PROCESSING_VERSION $granule_basename)
+  *RAD* )
+  output_file=$(mkgranule_name -L 1 -p RAD -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file

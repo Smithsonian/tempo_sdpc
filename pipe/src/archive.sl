@@ -125,9 +125,9 @@ private define get_tarfile_archive_subdir (tar_file)
 
    switch (g.product_type)
      {
-      case "drk" or case "drkl"
-          or case "irr" or case "irrl"
-          or case "rad":
+      case "DRK" or case "DRKL"
+          or case "IRR" or case "IRRL" or case "IRRR"
+          or case "RAD":
         subdir_seq = [subdir_seq, g.product_type];
      }
 
@@ -178,7 +178,7 @@ define register_using_symlink (tar_file, archive_dest_subdir)
 
    % Read the partial paths from the temporary file.
    % "partial_path" means something like
-   %      hcho/TEMPO_hcho_L2_V01_20130715T165956Z_S002G01.nc
+   %      HCHO/TEMPO_HCHO_L2_V01_20130715T165956Z_S002G01.nc
    % (and remember that this temporary file may not contain anything
    % relevant).
    variable partial_paths;

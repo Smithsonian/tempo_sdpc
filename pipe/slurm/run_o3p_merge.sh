@@ -35,7 +35,7 @@ perform_merge()
 {
   granule_arch_dir_path="$1"
 
-  o3p_dir="$granule_arch_dir_path/o3p"
+  o3p_dir="$granule_arch_dir_path/O3P"
 
   if ! test -d "$o3p_dir" ; then
       printf "*** Error: directory not found: $o3p_dir"
@@ -45,7 +45,7 @@ perform_merge()
   cd $o3p_dir
   #echo "chdir $o3p_dir"
 
-  input_files=$(ls block_*/TEMPO_o3p*.nc)
+  input_files=$(ls block_*/TEMPO_O3P*.nc)
 
   # The blocks all have the same filename.
   # Use the same filename for the merged result.

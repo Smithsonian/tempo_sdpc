@@ -1,7 +1,7 @@
 ! Basic metadata for total ozone code
 
 &metadata
-collection_shortname='TEMPO_o3t'
+collection_shortname='TEMPOO3T'
 collection_version = '(1)'
 platform = 'As-yet unknown Comsat'
 access_description = 'Test data, not for public release. Numerical access_values not yet defined.'

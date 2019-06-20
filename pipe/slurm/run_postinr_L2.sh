@@ -63,11 +63,11 @@ fi
 
 product_list="$SDPC_LEVEL2_PRODUCTS"
 product_list_tokens="$(echo $product_list | tr -s , ' ')"
-product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/o3p//g' | tr -s ' ' ,)"
+product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/O3P//g' | tr -s ' ' ,)"
 
 have_o3p=""
 for p in $product_list_tokens ; do
-   if test x"$p" = x"o3p" ; then
+   if test x"$p" = x"O3P" ; then
       have_o3p="yes"
    fi
 done

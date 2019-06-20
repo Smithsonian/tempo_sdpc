@@ -102,7 +102,7 @@ update_job_list()
   fi
 }
 
-do_o3p()
+do_O3P()
 {
    # Ozone profile is a job array:
    #  1. Initialize the working directories.
@@ -113,7 +113,7 @@ do_o3p()
    block_range_file="blocks"
    run_o3p_util.sh init "$host_spec" "$block_range_file"
 
-   block_range_path="${run_dir}/o3p/$block_range_file"
+   block_range_path="${run_dir}/O3P/$block_range_file"
 
    if ! test -f "$block_range_path" ; then
       echo "*** Error: file not found: $block_range_path"
@@ -140,10 +140,10 @@ do_o3p()
    update_job_list $jid_o3p_cleanup
 }
 
-init_product_dir o3p
+init_product_dir O3P
 remove_redundant_files
 
-do_o3p
+do_O3P
 
 if test X"$jid_list" != X ; then
    job_clean="L2-end:$SDPC_GRANULE_LABEL"

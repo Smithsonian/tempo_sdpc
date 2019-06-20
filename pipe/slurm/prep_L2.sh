@@ -83,7 +83,7 @@ irr_basename=$(basename "$irr_file" .nc)
 lev1_file_fmt=$(mkgranule_name -L 1 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
 lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
 lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
-cld_basename=$(printf "$lev2_base_fmt" cldrr)
+cld_basename=$(printf "$lev2_base_fmt" CLDRR)
 cld_dir="cloud"
 
 get_tiepoint_file()

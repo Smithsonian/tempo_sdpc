@@ -6,7 +6,7 @@ result_dir="$2"
 
 bn=$(basename $input_file)
 case "$bn" in
- *irr* )
+ *IRR* )
     args="--meta"
     ;;
 

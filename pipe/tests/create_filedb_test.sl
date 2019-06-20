@@ -81,9 +81,9 @@ define slsh_main ()
    variable tt0 = 1540733409L - 2 * year;
 
    variable drk = make_series_struct (tt0 - 2*hour, 2, 16*hour,
-                                      "$archive_root/L0/drk/%Y/%m/%d/TEMPO_drk_L0_V01_%Y%m%dT%H%M%SZ.nc"$);
+                                      "$archive_root/L0/DRK/%Y/%m/%d/TEMPO_DRK_L0_V01_%Y%m%dT%H%M%SZ.nc"$);
    variable irr = make_series_struct (tt0 - 12*hour, 1, 0*hour,
-                                      "$archive_root/L1/irr/%Y/%m/%d/TEMPO_irr_L1_V01_%Y%m%dT%H%M%SZ.nc"$);
+                                      "$archive_root/L1/IRR/%Y/%m/%d/TEMPO_IRR_L1_V01_%Y%m%dT%H%M%SZ.nc"$);
    variable snow = make_series_struct (tt0, 1, 0*hour,
                                        "$ancillary_root/snow/nsidc/%Y/%m/NISE_SSMISF18_%Y%m%d.HDFEOS"$);
    variable nam227 = make_series_struct (tt0, 12, hour,

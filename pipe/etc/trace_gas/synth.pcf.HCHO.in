@@ -224,8 +224,8 @@
 #  example MCF input file       
 # -----------------------------------------------------------------------
 # 700001|OMHCHO.MCF|refdata/control||||1
-700001|SIMPLE_hcho.MCF|@etc_dir@/trace_gas||||1
-700002|metadata_hcho.nml|@etc_dir@/trace_gas||||1
+700001|SIMPLE_HCHO.MCF|@etc_dir@/trace_gas||||1
+700002|metadata_HCHO.nml|@etc_dir@/trace_gas||||1
 # =======================================================================
 # tpk> The following file contains the tabulated OMI slit function data
 # tpk> which are used by the PGE to determine the slit function shape at

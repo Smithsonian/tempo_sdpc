@@ -88,8 +88,8 @@ printf "Test: database search result accuracy:\n"
 # Defining search_time = time since the unix epoch 1970-01-01T00:00:00 UTC we have:
 # 1478111409  /tmp/filedb_test.houck/ancillary/met/nam227/2016/11/02/2016110218.nam.tffz.conusnest.hiresf18.tm00.grib2
 # 1478179809  /tmp/filedb_test.houck/ancillary/snow/nsidc/2016/11/NISE_SSMISF18_20161103.HDFEOS
-# 1478136609  /tmp/filedb_test.houck/archive/L1/irr/2016/11/03/TEMPO_irr_L1_V01_20161103T013009Z.nc
-# 1478086209  /tmp/filedb_test.houck/archive/L0/drk/2016/11/02/TEMPO_drk_L0_V01_20161102T113009Z.nc
+# 1478136609  /tmp/filedb_test.houck/archive/L1/IRR/2016/11/03/TEMPO_IRR_L1_V01_20161103T013009Z.nc
+# 1478086209  /tmp/filedb_test.houck/archive/L0/DRK/2016/11/02/TEMPO_DRK_L0_V01_20161102T113009Z.nc
 
 check_search_result met:nam227 1478111409
 check_search_result snow:nsidc 1478179809

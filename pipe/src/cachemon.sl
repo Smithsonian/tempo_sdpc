@@ -51,8 +51,8 @@ private define alpha_order (files)
 
 private define parse_utc_timestamp_in_filename (filename)
 {
-   % e.g. TEMPO_rad_L0_V01_20190614T000743Z_S1013G06.nc
-   %      TEMPO_drk_L0_V01_20190613T013740Z.nc
+   % e.g. TEMPO_RAD_L0_V01_20190614T000743Z_S1013G06.nc
+   %      TEMPO_DRK_L0_V01_20190613T013740Z.nc
    variable tok = strtok (filename, "_");
    return tok[4];
 }

@@ -5,8 +5,8 @@ import sqlite3
 from datetime import date
 from netCDF4 import Dataset as NetCDFFile
 
-Radiance_Files = ["rad_L1a", "rad_L1b"]
-Radiance_Products = ["cldrr", "hcho", "no2", "o3t", "o3p"]
+Radiance_Files = ["RAD_L1a", "RAD_L1b"]
+Radiance_Products = ["CLDRR", "HCHO", "NO2", "O3T", "O3P"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
 
@@ -56,7 +56,7 @@ def init_radiance_product_table (table_name):
     fields["mtime"] = "float"
     fields["size"] = "integer"
     fields["filename"] = "text"
-    quals = "unique(istart), foreign key (istart) references {}(istart)".format('rad_L1b')
+    quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1b')
     return Table_Type(table_name, fields, quals)
 
 def init_other_product_table (table_name):
@@ -136,7 +136,7 @@ def process_file (conn, filename):
         print ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
-    if (product_name == 'rad_L1'):
+    if (product_name == 'RAD_L1'):
         if attr["inr_status"] == "2":
             product_name = product_name + 'b'
         else:

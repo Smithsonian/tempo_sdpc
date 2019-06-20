@@ -93,21 +93,21 @@ update_job_list()
   fi
 }
 
-do_hcho()
+do_HCHO()
 {
   job_hcho="hcho:${SDPC_GRANULE_LABEL}"
-  jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho run_trace_gas.sh hcho)
+  jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho run_trace_gas.sh HCHO)
   update_job_list $jid_hcho
 }
 
-do_no2()
+do_NO2()
 {
   job_no2="no2:${SDPC_GRANULE_LABEL}"
-  jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 run_trace_gas.sh no2)
+  jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 run_trace_gas.sh NO2)
   update_job_list $jid_no2
 }
 
-do_o3t()
+do_O3T()
 {
   job_o3t="o3t:${SDPC_GRANULE_LABEL}"
   jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t run_o3t.sh)
