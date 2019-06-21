@@ -335,12 +335,20 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    switch (pmt->exprec_type)
      {
       case IOCSDPC_EXPREC_TYPE_RAD:
-        pmt->product_type = TEMPO_PROD_TYPE_RAD;
-        pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
 	/* lowest 16 bits of erec->scan_label contain the 16 bit label
 	 * for the scan provided in the SDPC-generated radiance scan plan. */
 	sdpc_scan_label = erec->scan_label & 0x0000ffff;
 	tio_parse_scan_label (sdpc_scan_label, &scan_type, &scan_num);
+        if (scan_type == 0)
+          {
+             pmt->product_type = TEMPO_PROD_TYPE_RAD;
+             pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
+          }
+        else
+          {
+             pmt->product_type = TEMPO_PROD_TYPE_RAD_TWI;
+             pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD_TWI;
+          }
         scan_num_int = scan_num;
 	radiance_ident.scan_num = scan_num;
 	radiance_ident.scan_type = scan_type;
