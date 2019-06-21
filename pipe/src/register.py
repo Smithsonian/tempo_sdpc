@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import os, sys
+import time
 import sqlite3
 from datetime import date
 from netCDF4 import Dataset as NetCDFFile
@@ -162,42 +163,51 @@ def process_file (conn, filename):
 
     return status
 
-def make_db_path ():
-    db_dir = os.getenv("SDPC_ARCHIVE_DIR", ".")
+def make_db_path (arch_dir):
     db_basename = date.today().strftime("production_%Y%m.db")
-    if db_dir != ".":
-        db_dir = os.path.join (db_dir, "registry")
+    db_dir = os.path.join (arch_dir, "registry")
     if not os.path.isdir(db_dir):
         os.makedirs(db_dir)
     return os.path.join (db_dir, db_basename)
 
-def main():
+def register_files (db_path, filenames):
 
-    if len(sys.argv) == 1:
-        print('Usage:  {} FILE ...'.format(sys.argv[0]))
-        sys.exit(0)
-
-    filenames = sys.argv[1:]
-
-    db_path = make_db_path()
-    conn = sqlite3.connect (db_path)
     # For back-compatibility sqlite has foreign keys turned off by default,
     # and foreign_keys=off is ALWAYS stored in the database, regardless of
     # the runtime setting when the database was created.  For this reason,
     # we apparently need to turn it on explicitly, each time the database
     # connection is established.
+
+    conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
 
-    status = 0
+    # Operate only on symbolic links!
 
     for fn in filenames:
-        if os.path.isfile(fn):
-            status += process_file (conn, fn)
-        else:
-            print('WARNING: nonexistent file: {}'.format(fn))
+        if (os.path.islink(fn)):
+            status = process_file (conn, fn)
+            if (status != 0):
+                print('Error processing file: {}'.format(fn))
+            os.remove(fn)
 
     conn.close()
-    sys.exit(status)
+
+def main():
+
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    if (arch_dir == None):
+        printf ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        sys.exit(1)
+
+    dir = os.path.join (arch_dir, 'registry/incoming')
+    db_path = make_db_path (arch_dir)
+
+    while True:
+        filenames = [os.path.join(dir,f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
+        register_files (db_path, filenames)
+        time.sleep (30)
+
+    #sys.exit(status)
 
 if __name__ == "__main__":
     main()
