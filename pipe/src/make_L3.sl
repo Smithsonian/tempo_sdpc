@@ -6,6 +6,9 @@ require ("glob");
 require ("process");
 require ("setfuns");
 
+_debug_info=1;
+_traceback=1;
+
 $1 = path_dirname (__FILE__);
 prepend_to_slang_load_path (path_concat ($1, "../share/slsh/local-packages"));
 prepend_to_slang_load_path ($1);
@@ -161,10 +164,10 @@ private define scan_subdir (g)
 {
    % Derive the destination archive directory from the contents of
    % the granule_ident CSV file.
-   variable tstart = atof(g.time_coverage_start_since_epoch);
+   variable tstart = g.time_coverage_start_since_epoch;
    variable sat_day = satellite_day (tstart, SC_Timezone);
    variable subdir_seq = [g.processing_version,
-                          string(int(sat_day)),
+                          int(sat_day),
                           g.scan_num];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
