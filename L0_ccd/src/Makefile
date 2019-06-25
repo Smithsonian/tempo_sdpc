@@ -37,9 +37,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
 OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
-           bpix.o dark.o sensorcal.o output.o util.o \
-	   interp.o lsq.o shapefun.o \
-	   interp_cheb.o interp_poly.o interp_cspline.o
+           bpix.o dark.o sensorcal.o output.o util.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
