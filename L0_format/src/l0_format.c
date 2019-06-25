@@ -325,7 +325,7 @@ static int write_iru_only_interval (const char *dir, double tbeg, double tend)
    return 0;
 }
 
-static int ensure_iru_covers_radiance_gap (IRU_Interval_Type *iru_interval, double t_beg, double t_end)
+static int ensure_iru_coverage_for_inr (IRU_Interval_Type *iru_interval, double t_beg, double t_end)
 {
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
    double dt_gap, dt_file;
@@ -363,7 +363,7 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
 
    if ((t_last > 0) && (t_rad - t_last > t_max))
      {
-        if (0 != ensure_iru_covers_radiance_gap (iru_interval, t_last, t_rad))
+        if (0 != ensure_iru_coverage_for_inr (iru_interval, t_last, t_rad))
           return -1;
      }
 
@@ -402,9 +402,8 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
    if (t_iru - t_last > t_max)
      {
         double t_end = t_last + t_max;
-        if (0 != write_iru_only_interval (iru_interval->dir, t_last, t_end))
+        if (0 != ensure_iru_coverage_for_inr (iru_interval, t_last, t_end))
           return -1;
-        iru_interval->latest_iru_only_interval_end_time = t_end;
      }
 
    return 0;
