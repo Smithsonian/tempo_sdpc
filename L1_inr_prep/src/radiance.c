@@ -77,30 +77,12 @@ void radiance_close (Radiance_Type *r)
 Radiance_Type *radiance_open (const char *file)
 {
    Radiance_Type *r = NULL;
-   int scan_type = 0;
 
    if (NULL == (r = alloc_radiance_type (file)))
      return NULL;
 
    if (0 != TIO_open (file, NC_WRITE, &r->ncid))
      goto return_error;
-
-   /* scan_type != 0 indicates a non-standard radiance observation, such as
-    * a night-lights scan, which should not receive INR processing, or any
-    * further automated analysis.  By generating an error here, normal
-    * pipeline processing should divert this dataset into a 'repro' directory
-    * where an operator can deal with it manually.
-    * Later on, if time and funding allows, maybe we will provide more fully
-    * automated processing of these data.  But for now, no further support
-    * will be provided.
-    */
-   if ((0 == TIO_get_att (r->ncid, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
-       && (scan_type != 0))
-     {
-	tell_verror (TELL_UNSUPPORTED_ERROR,
-		     "%s: Radiance file has scan_type != 0; further processing is not supported", __func__);
-	goto return_error;
-     }
 
    if (0 != TIO_get_att (r->ncid, NC_GLOBAL, "time_coverage_start_since_epoch",
                          NC_DOUBLE, &r->tstart))

@@ -805,8 +805,9 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
-	/* Copy the scan_type attribute to the Level 1 file because L1_inr_prep needs it.
-	 * It's used nowhere else, so it need not be part of the granule ident struct.
+	/* Copy the scan_type attribute to the Level 1 file.
+	 * It's not in the granule ident struct for now, because putting it there would
+         * be too much trouble.
 	 */
 	if ((0 != TIO_get_att (ncid_from, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
 	    ||(0 != TIO_put_att (ncid_to, NC_GLOBAL, "scan_type", NC_INT, 1, &scan_type)))
