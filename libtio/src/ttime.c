@@ -122,6 +122,12 @@ static int print_taix_as_strings (double taix)
    min = (int)minf;
    sec = (minf - min)*60;
 
+   /* Truncate numerical value to match output precision.
+    * If we don't do this, rounding on output may show
+    * a string timestamp with seconds=60.
+    */
+   sec = ((int)(sec * 1.e6))/1.e6;
+
    fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
             year, month, day, hr, min, sec);
 
