@@ -22,23 +22,25 @@ CP = /bin/cp
 
 LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
 
+LOCAL_OBJS = -L$(METSRC_OBJS) -L$(MDSRC_OBJS) -L$(TIOSRC_OBJS)
+
 TIO_LIB     = $(prefix)/lib
 TIO_SRC     = $(config_dir)/libtio/src
 TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
-TIOLIBS     = -L$(TIO_LIB) -L$(TIOSRC_OBJS) -ltio_f -ltio
+TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
 MET_LIB     = $(prefix)/lib
 MET_SRC     = $(config_dir)/libmet/src
 METSRC_OBJS = $(MET_SRC)/$(archobjs)
 METINCS     = -I$(METSRC_OBJS)
-METLIBS     = -L$(MET_LIB) -L$(METSRC_OBJS) -lmet_f
+METLIBS     = -L$(MET_LIB) -lmet_f
 
 MD_LIB      = $(prefix)/lib
 MD_SRC      = $(config_dir)/libmd/src
 MDSRC_OBJS  = $(MD_SRC)/$(archobjs)
 MDINCS      = -I$(MDSRC_OBJS)
-MDLIBS      = -L$(MD_LIB) -L$(MDSRC_OBJS) -lmd_f
+MDLIBS      = -L$(MD_LIB) -lmd_f
 
 TELLINCS    = -I$(TELL_INC)
 TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
@@ -60,9 +62,9 @@ PGSLIBS     = -L$(PGSLIB) -lPGSTK
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
          $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(METINCS) $(MDINCS)
 
-LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
+LIBS   = $(LOCAL_OBJS) $(TIOLIBS) $(METLIBS) $(MDLIBS) $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
-         $(LDPATH) $(TIOLIBS) $(METLIBS) $(MDLIBS) -lm $(DL_LIB)
+         $(LDPATH) -lm $(DL_LIB)
 
 CINCFLGS = -I$(objdir) $(HE5INCS) $(PGSINCS)
 

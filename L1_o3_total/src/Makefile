@@ -27,11 +27,13 @@ CP = /bin/cp
 
 LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
 
+LOCAL_OBJDIRS = -L$(TIOSRC_OBJS) -L$(MDSRC_OBJS)
+
 TIO_LIB     = $(prefix)/lib
 TIO_SRC     = $(config_dir)/libtio/src
 TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
-TIOLIBS     = -L$(TIO_LIB) -L$(TIOSRC_OBJS) -ltio_f -ltio
+TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
 TELLINCS    = -I$(TELL_INC)
 TELLLIBS    = -L$(TELL_LIB) -ltell_f -ltell
@@ -57,12 +59,12 @@ MD_LIB      = $(prefix)/lib
 MD_SRC      = $(config_dir)/libmd/src
 MDSRC_OBJS  = $(MD_SRC)/$(archobjs)
 MDINCS      = -I$(MDSRC_OBJS)
-MDLIBS      = -L$(MD_LIB) -L$(MDSRC_OBJS) -lmd_f
+MDLIBS      = -L$(MD_LIB) -lmd_f
 
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) $(MDINCS) \
          $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(HE4INCS)
 
-LIBS   = $(TELLLIBS) $(PSPLINELIBS) \
+LIBS   = $(LOCAL_OBJDIRS) $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(HE4LIBS) $(ZLIBS) $(PGSLIBS) $(MDLIBS) \
          $(LDPATH) $(TIOLIBS) -lm $(DL_LIB)
 

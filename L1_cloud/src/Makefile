@@ -32,10 +32,11 @@ MD_LIB  = $(prefix)/lib
 MD_SRC  = $(config_dir)/libmd/src
 MD_SRC_OBJDIR = $(MD_SRC)/$(archobjs)
 
+LOCAL_OBJDIRS = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
+                -Wl,-rpath=$(MD_SRC_OBJDIR) -L$(MD_SRC_OBJDIR)
+
 PSPLINELIBS  = -lpspline -lezcdf
-TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
-               -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
-	       -Wl,-rpath=$(MD_SRC_OBJDIR) -L$(MD_SRC_OBJDIR) \
+TIOLIBS      = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
 	       -Wl,-rpath=$(MD_LIB) -L$(MD_LIB) -lmd_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f
 NETCDFLIBS   = -lnetcdf -lnetcdff
@@ -63,7 +64,7 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD)
 
-LFLAGS = -L$(objdir) \
+LFLAGS = $(LOCAL_OBJDIRS) -L$(objdir) \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
          -L$(NETCDF_LIB) -L$(PSPLINELIB) $(ADDLIBD)
 

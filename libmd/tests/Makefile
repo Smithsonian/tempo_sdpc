@@ -18,11 +18,10 @@ TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 TIO_LIBPATHS    = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 
-INCS_F = -I$(libtio_srcdir) -I$(elfdir) -I$(TELL_INC) -I$(TIO_INC)
-LIBS_F = -Wl,-rpath=$(libtio_objdir) -L$(libtio_objdir) \
-         $(MD_LIBPATHS) -lmd_f \
+INCS_F = -I$(libtio_srcdir) -I$(libtio_objdir) -I$(elfdir) -I$(TELL_INC) -I$(TIO_INC)
+LIBS_F = $(MD_LIBPATHS) -lmd_f \
+         -L$(libtio_objdir) -Wl,-rpath=$(libtio_objdir) $(TIO_LIBPATHS) -ltio_f -ltio \
          $(TELL_LIBPATHS) -ltell_f -ltell \
-         $(TIO_LIBPATHS) -ltio_f -ltio \
          $(NETCDF_LIBPATHS) -lnetcdff -lnetcdf $(RPATH)
 
 COMPILE_F_CMD = $(FC) $(FCFLAGS)
