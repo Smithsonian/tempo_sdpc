@@ -44,15 +44,13 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/wavecal_driver $(objdir)/wavecal_merge
-
-tests:	$(objdir) $(objdir)/wavecal_driver $(objdir)/test_interp
+all:	 $(objdir) $(objdir)/$(THIS_MODULE)
 
 $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES)) $(WAVECAL_DRIVER_SRCFILES)
+	ctags $(patsubst %.o,%.c,$(OFILES))
 
 .PHONY: clean distclean all install check tags
 
@@ -68,8 +66,6 @@ install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
-	$(INSTALL_PROGRAM) $(objdir)/wavecal_driver $(bindir)/
-	$(INSTALL_PROGRAM) $(objdir)/wavecal_merge $(bindir)/
 
 install:	install-executables
 
@@ -85,36 +81,6 @@ distclean: clean
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
-
-TEST_INTERP_OFILES = test_interp.o lsq.o interp.o \
-              interp_cheb.o interp_poly.o interp_cspline.o
-TEST_INTERP_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_INTERP_OFILES))
-
-$(objdir)/test_interp:	$(TEST_INTERP_OBJS)
-	$(COMPILE_CMD) -o $(objdir)/test_interp $(TEST_INTERP_OBJS) \
-	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
-
-$(objdir)/test_interp.o:	$(srcdir)/test_interp.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
-
-$(objdir)/wavecal_merge:	$(objdir)/wavecal_merge.o
-	$(COMPILE_CMD) -o $(objdir)/wavecal_merge $(objdir)/wavecal_merge.o \
-	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
-
-$(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c $(LIBS)
-
-WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
-     lsq.c interp_cheb.c interp_poly.c interp_cspline.c
-WAVECAL_DRIVER_OFILES = $(patsubst %.c,%.o, $(WAVECAL_DRIVER_SRCFILES))
-WAVECAL_DRIVER_OBJS = $(patsubst %.o,$(objdir)/%.o, $(WAVECAL_DRIVER_OFILES))
-
-$(objdir)/wavecal_driver:	$(WAVECAL_DRIVER_OBJS)
-	$(COMPILE_CMD) -o $(objdir)/wavecal_driver $(WAVECAL_DRIVER_OBJS) \
-	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
-
-$(objdir)/wavecal_driver.o:	$(srcdir)/wavecal_driver.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_driver.c $(LIBS)
 
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \
@@ -155,28 +121,4 @@ $(objdir)/output.o:	$(srcdir)/output.c
 
 $(objdir)/util.o:	$(srcdir)/util.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/util.c $(LIBS)
-
-$(objdir)/wavecal.o:	$(srcdir)/wavecal.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal.c $(LIBS)
-
-$(objdir)/wavecal_adj.o:	$(srcdir)/wavecal_adj.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_adj.c $(LIBS)
-
-$(objdir)/interp.o:	$(srcdir)/interp.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp.c $(LIBS)
-
-$(objdir)/shapefun.o:	$(srcdir)/shapefun.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/shapefun.c $(LIBS)
-
-$(objdir)/lsq.o:	$(srcdir)/lsq.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/lsq.c $(LIBS)
-
-$(objdir)/interp_cspline.o:	$(srcdir)/interp_cspline.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cspline.c $(LIBS)
-
-$(objdir)/interp_poly.o:	$(srcdir)/interp_poly.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_poly.c $(LIBS)
-
-$(objdir)/interp_cheb.o:	$(srcdir)/interp_cheb.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c $(LIBS)
 
