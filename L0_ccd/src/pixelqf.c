@@ -143,7 +143,6 @@ Neighbor_Type;
 static int flag_neighbor1 (Neighbor_Type *nt, const Image_Type *img,
                            int pb, int pe, int sb, int se)
 {
-   Image_Pqf_Bitmap_Type *neighbor_pqf = nt->pqf;
    Image_Pqf_Bitmap_Type loc_mask = nt->loc_mask;
    Image_Pqf_Bitmap_Type set_mask = nt->set_mask;
    int p, s;
@@ -151,6 +150,8 @@ static int flag_neighbor1 (Neighbor_Type *nt, const Image_Type *img,
    for (p = pb; p < pe; p++)
      {
         Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *neighbor_pqf;
+
         for (s = sb; s < se; s++)
           {
              int pp, ss, nsb, nse, npb, npe;
@@ -172,10 +173,10 @@ static int flag_neighbor1 (Neighbor_Type *nt, const Image_Type *img,
 
              for (pp=npb; pp<npe; pp++)
                {
-                  int o = pp * img->num_cols;
+                  neighbor_pqf = nt->pqf + pp * img->num_cols;
                   for (ss=nsb; ss<nse; ss++)
                     {
-                       neighbor_pqf[ss + o] |= set_mask;
+                       neighbor_pqf[ss] |= set_mask;
                     }
                }
           }
@@ -211,10 +212,10 @@ static void flag_neighbor (const Image_Type *img, Neighbor_Type *nt)
    int nr = img->num_rows;
    int nc = img->num_cols;
 
-   flag_neighbor1 (nt, img,    0, nr/2,    0, nc/2);
-   flag_neighbor1 (nt, img,    0, nr/2, nc/2, nc  );
-   flag_neighbor1 (nt, img, nr/2, nr  ,    0, nc/2);
-   flag_neighbor1 (nt, img, nr/2, nr  , nc/2, nc  );
+   flag_neighbor1 (nt, img,    0, nr/2,    0, nc/2);  /* A */
+   flag_neighbor1 (nt, img,    0, nr/2, nc/2, nc  );  /* B */
+   flag_neighbor1 (nt, img, nr/2, nr  , nc/2, nc  );  /* C */
+   flag_neighbor1 (nt, img, nr/2, nr  ,    0, nc/2);  /* D */
 }
 
 static int pqf_flag_neighbor (const Pixelqf_Type *pt, Image_Type *img,

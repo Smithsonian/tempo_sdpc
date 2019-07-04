@@ -17,6 +17,7 @@ typedef struct CCD_Type CCD_Type;
  * The functions that perform corrections are intended to be called
  * in the following order:
  *   -# ccd_correct_coadd
+ *   -# ccd_decide_phase_change
  *   -# ccd_correct_offset
  *   -# ccd_correct_nonlinearity
  *   -# ccd_correct_gain
@@ -55,6 +56,9 @@ struct CCD_Type
     */
    int (*ccd_correct_coadd)(const CCD_Type *, int, Image_Type *);
 
+   int (*ccd_configure_using_octant_phase)(CCD_Type *, const Image_Type *);
+   int (*ccd_correct_crosstalk)(const CCD_Type *, Image_Type *);
+
    /** Offset correction
     * @param ccd         A non-null pointer to the CCD_Type object
     * @param img         A non-null pointer to an Image_Type object
@@ -85,6 +89,8 @@ struct CCD_Type
    /** Gain correction
     * @param ccd         A non-null pointer to the CCD_Type object
     * @param img         A non-null pointer to an Image_Type object
+    * @param fpa_temp    Focal Plane Assembly temperature
+    * @param fpe_temp    Focal Plane Electronics temperature
     * @return 0 on success, non-zero on error
     *
     * Gain correction is a linear transformation of the pixels in the
@@ -97,7 +103,7 @@ struct CCD_Type
     * number of electrons in a pixel are flagged by setting the
     * \a IMAGE_PQF_SATURATED bit in the pixel quality flag.
     */
-   int (*ccd_correct_gain)(const CCD_Type *, Image_Type *);
+   int (*ccd_correct_gain)(const CCD_Type *, Image_Type *, float, float);
 
    /** Smear correction
     * @param ccd         A non-null pointer to the CCD_Type object
@@ -128,6 +134,8 @@ struct CCD_Type
    /** Compute the mean, per-pixel storage region dark count
     * @param ccd         A non-null pointer to the CCD_Type object
     * @param img         A non-null pointer to an Image_Type object
+    * @param num_dg_rows First storage region dark row summed.
+    * @param num_tg_rows Number of storage region rows summed.
     * @param mean_sdc    Mean, per-pixel storage region dark count in each quadrant.
     * @return 0 on success, non-zero on error
     *
@@ -138,7 +146,8 @@ struct CCD_Type
     * number of pixels it represents.
     * Pixels containing \a IMAGE_PIXEL_FILL_VALUE are ignored.
     */
-   int (*ccd_mean_storage_region_dark)(const CCD_Type *, const Image_Type *, float mean_sdc[4]);
+   int (*ccd_mean_storage_region_dark)(const CCD_Type *, const Image_Type *,
+                                       int, int, float *mean_sdc);
 
    /** Retrieve the dimensions of the photo-active CCD image
     * @param ccd         A non-null pointer to the CCD_Type object
@@ -186,6 +195,8 @@ struct CCD_Type
     * not modified.
     */
    int (*ccd_update_noisesq)(const CCD_Type *, const float *, Image_Type *);
+
+   int (*ccd_correct_prnu)(const CCD_Type *, Image_Type *);
 
 #ifdef CCD_TYPE_PRIVATE_DATA
    CCD_TYPE_PRIVATE_DATA

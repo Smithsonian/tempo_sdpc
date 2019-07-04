@@ -18,8 +18,8 @@
 #define INSTR_PRIVATE_DATA \
    Instr_Type *next; \
    double *timestamp; \
-   float *ccd_temp1; \
-   float *ccd_temp2; \
+   float *adc_temp0_derived; \
+   float *fpe_temp1; \
    size_t num_times;
 #include "instr.h"
 
@@ -87,33 +87,19 @@ static const Instr_Type *find_entry (const Instr_Type *instr, double t,
    return closest_instr;
 }
 
-static int instr_ccd_temp1 (const Instr_Type *instr, double timestamp,
-                            float *ccd_temp1)
+static int instr_temps (const Instr_Type *instr, double timestamp,
+                        float *fpa_temp, float *fpe_temp)
 {
    const Instr_Type *this_instr = NULL;
    int index, index_status;
    this_instr = find_entry (instr, timestamp, &index, &index_status);
    if (this_instr)
      {
-        *ccd_temp1 = this_instr->ccd_temp1[index];
+        *fpa_temp = this_instr->adc_temp0_derived[index];
+        *fpe_temp = this_instr->fpe_temp1[index];
         return index_status;
      }
-   tell_verror (TELL_UNKNOWN_ERROR, "%s: CCD_TEMP1 lookup failed", __func__);
-   return -2;
-}
-
-static int instr_ccd_temp2 (const Instr_Type *instr, double timestamp,
-                            float *ccd_temp2)
-{
-   const Instr_Type *this_instr = NULL;
-   int index, index_status;
-   this_instr = find_entry (instr, timestamp, &index, &index_status);
-   if (this_instr)
-     {
-        *ccd_temp2 = this_instr->ccd_temp2[index];
-        return index_status;
-     }
-   tell_verror (TELL_UNKNOWN_ERROR, "%s: CCD_TEMP2 lookup failed", __func__);
+   tell_verror (TELL_UNKNOWN_ERROR, "%s: temperature lookup failed", __func__);
    return -2;
 }
 
@@ -122,8 +108,8 @@ static void free_instr1 (Instr_Type *instr)
    if (instr == NULL)
      return;
    FREE(instr->timestamp);
-   FREE(instr->ccd_temp1);
-   FREE(instr->ccd_temp2);
+   FREE(instr->adc_temp0_derived);
+   FREE(instr->fpe_temp1);
    FREE(instr);
 }
 
@@ -149,8 +135,8 @@ static Instr_Type *new_instr_type (size_t num_times)
    memset ((char *)instr, 0, sizeof *instr);
 
    if ((NULL == (instr->timestamp = (double *) MALLOC (num_times * sizeof(double))))
-       || (NULL == (instr->ccd_temp1 = (float *) MALLOC (num_times * sizeof(float))))
-       || (NULL == (instr->ccd_temp2 = (float *) MALLOC (num_times * sizeof(float)))))
+       || (NULL == (instr->adc_temp0_derived = (float *) MALLOC (num_times * sizeof(float))))
+       || (NULL == (instr->fpe_temp1 = (float *) MALLOC (num_times * sizeof(float)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_instr1 (instr);
@@ -159,8 +145,7 @@ static Instr_Type *new_instr_type (size_t num_times)
 
    instr->num_times = num_times;
    instr->instr_delete = free_instr;
-   instr->instr_ccd_temp1 = instr_ccd_temp1;
-   instr->instr_ccd_temp2 = instr_ccd_temp2;
+   instr->instr_temps = instr_temps;
 
    return instr;
 }
@@ -223,12 +208,29 @@ static Instr_Type *read_instr1 (const char *file)
    start = 0;
    count = num_times;
 
+   /* For the FPA temperature, the Command and Telemetry Handbook contains
+    * at least 5 telemetry points that are related. Dave Flittner (NASA/LARC)
+    * tells me that the ADC_TEMP0 is the one to use.
+    * ADC_TEMP0 is used as the control point in the thermal control of the CCD.
+    * It is located on the conduction bar between the S-Link, which is connected
+    * to the FPA, and the FPA thermal interface with the Host S/C. In ground
+    * testing, the on-die temperature sense resistors, CCD_TEMP1 and CCD_TEMP2
+    * were noisy and sometimes erratic, while ADC_TEMP0 was most reliable.
+    *
+    * For the FPE temperature, FPE_TEMP1 is the only option.
+    *
+    * Regarding units, ADC_TEMP0 is actually in Ohms, so for a Celsius temperature,
+    * we use ADC_TEMP0_DERIVED, which is provided by the IOC.  FPE_TEMP1 is already
+    * in Celsius so we use that directly.
+    */
+
    if ((0 != TIO_get_var_section (grp, "time", &start, &count, TIO_DOUBLE,
                                   instr->timestamp))
-       || (0 != TIO_get_var_section (grp, "ccd_temp1", &start, &count, TIO_FLOAT,
-                                     instr->ccd_temp1))
-       || (0 != TIO_get_var_section (grp, "ccd_temp2", &start, &count, TIO_FLOAT,
-                                     instr->ccd_temp2)))
+       || (0 != TIO_get_var_section (grp, "adc_temp0_derived", &start, &count, TIO_FLOAT,
+                                     instr->adc_temp0_derived))
+       || (0 != TIO_get_var_section (grp, "fpe_temp1", &start, &count, TIO_FLOAT,
+                                     instr->fpe_temp1))
+      )
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading instrument status: %s",
                      __func__, file);

@@ -30,7 +30,11 @@ typedef struct
    Granule_Exprec_Type *exprec;
    Image_Type *img_err;
    float storage_region_dark[4];
-   float ccd_temp;
+   float fpa_temp;
+   float fpe_temp;
+   /* ConOps 3.3: instrument command parameters: NUM_TG_ROWS, NUM_DG_ROWS */
+   int num_dg_rows;   /* index of first row included in storage region dark summation */
+   int num_tg_rows;   /* number of rows included in storage region dark summation */
    int index;
 }
 Exprec_Meta_Type;
@@ -154,7 +158,7 @@ static Dark_Array_Type *create_dark_array (Exprec_Meta_Type *exprec_array,
              sdc += xr->storage_region_dark[k];
           }
         sdc /= 4;
-        if (0 != dark_array_elem_set (dark_array, i, exprec->img, sdc, xr->ccd_temp,
+        if (0 != dark_array_elem_set (dark_array, i, exprec->img, sdc, xr->fpa_temp,
                                       exprec->exposure_time))
           {
              dark_array_free (dark_array);
@@ -199,33 +203,50 @@ return_error:
    return -1;
 }
 
-static int compute_current_and_trim (const CCD_Type *ccd,
+static int compute_noisesq_for_active_pixels (const CCD_Type *ccd, const Image_Type *img,
+                                              Exprec_Meta_Type *xr)
+{
+   Image_Type *noisesq = NULL;
+   Image_Type *aimg = NULL;
+   int status = -1;
+
+   if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, img)))
+     return -1;
+   if (NULL == (noisesq = image_dup (aimg)))
+     goto return_status;
+
+   if (-1 == ccd->ccd_update_noisesq (ccd, xr->storage_region_dark, noisesq))
+     goto return_status;
+
+   xr->img_err = noisesq;
+
+   status = 0;
+return_status:
+   image_free (noisesq);
+   image_free(aimg);
+   return status;
+}
+
+static int compute_current_and_trim (CCD_Type *ccd,
                                      const Instr_Type *instr,
                                      const Pixelqf_Type *pt,
                                      const Process_Control_Type *pct,
                                      Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
-   float *mean_sdc = xr->storage_region_dark;
    Image_Type *aimg = NULL;
    double smear_fraction;
    double exposure_time_per_frame;
    int i;
 
-   /* FIXME: is this the correct temp? */
-   if (0 != instr->instr_ccd_temp1 (instr, exprec->start_time, &xr->ccd_temp))
-     {
-        tell_vlog (TELL_MSGTYPE_WARN, 0,
-                   "%s: ccd_temp lookup failed, start_time=%15.12e",
-                   __func__, exprec->start_time);
-        /* drop */
-     }
-
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
    exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
 
-   if (-1 == ccd->ccd_correct_offset (ccd, exprec->img))
+   if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
+     return-1;
+
+   if (0 != ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
 
    if (0 == EXPREC_TYPE_IS_LINEARITY(exprec->exposure_type))
@@ -234,66 +255,85 @@ static int compute_current_and_trim (const CCD_Type *ccd,
           return -1;
      }
 
-   if (-1 == ccd->ccd_correct_gain (ccd, exprec->img))
+   if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
+
+   if (0 != instr->instr_temps (instr, exprec->start_time, &xr->fpa_temp, &xr->fpe_temp))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "%s: temperature lookup failed, start_time=%15.12e",
+                   __func__, exprec->start_time);
+        /* drop */
+     }
+
+   if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))
+     return -1;
+
+   if (-1 == ccd->ccd_mean_storage_region_dark (ccd, exprec->img,
+                                                xr->num_dg_rows, xr->num_tg_rows,
+                                                xr->storage_region_dark))
+     {
+        return -1;
+     }
+
+   if (0) fprintf (stderr, "mean sdc:  %7.1f %7.1f %7.1f %7.1f\n",
+                   xr->storage_region_dark[0],
+                   xr->storage_region_dark[1],
+                   xr->storage_region_dark[2],
+                   xr->storage_region_dark[3]);
+
+   /* Compute noisesq before smear correction */
+   if ((exprec->exposure_type == EXPREC_TYPE_RADIANCE)
+       || (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type)))
+     {
+        if (0 != compute_noisesq_for_active_pixels (ccd, exprec->img, xr))
+          return -1;
+     }
 
    smear_fraction = (exprec->frame_transfer_time
                      /(exprec->frame_transfer_time + exposure_time_per_frame));
 
+   /* Smear correction uses the parallel overclocks */
    if (-1 == ccd->ccd_correct_smear (ccd, &smear_fraction, exprec->img))
      return -1;
 
-   if (-1 == ccd->ccd_mean_storage_region_dark (ccd, exprec->img, mean_sdc))
-     return -1;
-
-   if (0) fprintf (stderr, "mean sdc:  %7.1f %7.1f %7.1f %7.1f\n",
-                   mean_sdc[0], mean_sdc[1], mean_sdc[2], mean_sdc[3]);
-
+   /* Now we can truncate the image to just the active pixels */
    if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, exprec->img)))
      return -1;
    image_free (exprec->img);
    exprec->img = aimg;
 
+   if (-1 == pt->pqf_flag_neighbor (pt, exprec->img,
+                                    pct->saturated_neighbor_hw_serial,
+                                    pct->saturated_neighbor_hw_parallel,
+                                    IMAGE_PQF_SATURATED, IMAGE_PQF_SATURATED))
+     {
+        return -1;
+     }
+
+#if 0
+   /* FIXME - are we still doing this? */
    if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
      {
         if (-1 == pt->pqf_flag_hotcold (pt, exprec->img))
           return -1;
      }
-
-   if (-1 == pt->pqf_flag_neighbor (pt, exprec->img,
-                                    pct->saturated_neighbor_hw_serial,
-                                    pct->saturated_neighbor_hw_parallel,
-                                    IMAGE_PQF_SATURATED, IMAGE_PQF_SATURATED))
-     return -1;
-
-   /* FIXME: why not compute an uncertainty for everything,
-    * include dark images? */
-   if ((exprec->exposure_type == EXPREC_TYPE_RADIANCE)
-       || (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type)))
-     {
-        Image_Type *noisesq = NULL;
-
-        if (NULL == (noisesq = image_dup (exprec->img)))
-          return -1;
-
-        if (-1 == ccd->ccd_update_noisesq (ccd, mean_sdc, noisesq))
-          {
-             image_free (noisesq);
-             return -1;
-          }
-
-        image_sqrt (noisesq);
-        xr->img_err = noisesq;
-
-        image_scale (xr->img_err, 1.0/exposure_time_per_frame);
-     }
+#endif
 
    image_scale (exprec->img, 1.0/exposure_time_per_frame);
+
+   if (xr->img_err)
+     {
+        image_scale (xr->img_err, 1.0/exposure_time_per_frame);
+     }
 
    for (i = 0; i < 4; i++)
      {
         xr->storage_region_dark[i] /= exprec->readout_time;
      }
+
+   if (0 != ccd->ccd_correct_prnu (ccd, exprec->img))
+     return -1;
 
    return 0;
 }
@@ -361,9 +401,13 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
           goto return_status;
 
+#if 0
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
                                                      bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
+#else
+        fprintf (stderr, "**** FIXME: Skipping call to ccd_apply_pixel_quality_flags\n");
+#endif
 
         if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
           goto return_status;
@@ -428,7 +472,7 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
 static int subtract_dark_current (Granule_Exprec_Type *exprec,
                                   const Dark_Table_Type *dtt,
                                   const float *storage_region_dark,
-                                  float ccd_temp, Image_Type *tmp_img)
+                                  float fpa_temp, Image_Type *tmp_img)
 {
    int k, ordered_by = dtt->dtt_ordering (dtt);
    double key;
@@ -445,7 +489,7 @@ static int subtract_dark_current (Granule_Exprec_Type *exprec,
         break;
 
       case DARK_TABLE_ORDERED_BY_TEMP:
-        key = ccd_temp;
+        key = fpa_temp;
         break;
 
       case DARK_TABLE_ORDERED_BY_EXPTIME:
@@ -484,11 +528,7 @@ static int radiometric_correction (const Calibration_Type *cal, const Dark_Table
    /* FIXME? propagate dark-current subtraction error to
     * uncertainty estimate? */
    if (0 != subtract_dark_current (exprec, dtt, xr->storage_region_dark,
-                                   xr->ccd_temp, tmp_img))
-     return -1;
-
-   /* FIXME: update uncertainty? */
-   if (0 != cal->cal_apply_prnu (cal, exprec->img))
+                                   xr->fpa_temp, tmp_img))
      return -1;
 
    /* >>> Stray light correction goes here <<< */

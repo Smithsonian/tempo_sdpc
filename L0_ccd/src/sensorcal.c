@@ -230,16 +230,6 @@ static int cal_apply_btdf (const Calibration_Type *cal,
    return 0;
 }
 
-static int cal_apply_prnu (const Calibration_Type *cal, Image_Type *img)
-{
-   (void) cal;
-   (void) img;
-
-   /* FIXME: PRNU not implemented yet */
-
-   return 0;
-}
-
 static const CCD_Cal_Type *ccd_cal (const Calibration_Type *cal,
                                     int band_index)
 {
@@ -359,7 +349,6 @@ static Calibration_Type *cal_alloc (int num_waves_per_ccd)
 
    cal->cal_delete = cal_delete;
    cal->cal_apply_rcoeffs = cal_apply_rcoeffs;
-   cal->cal_apply_prnu = cal_apply_prnu;
    cal->cal_apply_btdf = cal_apply_btdf;
    cal->cal_wavecal = cal_wavecal;
 

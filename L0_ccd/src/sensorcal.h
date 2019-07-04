@@ -49,18 +49,6 @@ struct Calibration_Type
    int (*cal_apply_btdf)(const Calibration_Type *, double, double,
                          Image_Type *);
 
-   /** Apply PRNU calibration
-    * @param cal  non-NULL pointer to a Calibration_Type object
-    * @param img  non-NULL pointer to an uncalibrated image
-    * @return 0 on success, non-zero on error
-    *
-    * The PRNU is the pixel response non-uniformity.  Applying the PRNU factor modifies
-    * the image in place. Pixels containing \a IMAGE_PIXEL_FILL_VALUE are not modified.
-    *
-    * Not implemented yet
-    */
-   int (*cal_apply_prnu)(const Calibration_Type *, Image_Type *);
-
    /** Perform wavelength calibration
     * @param cal  non-NULL pointer to a Calibration_Type object
     * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)
