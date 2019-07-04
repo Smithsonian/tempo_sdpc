@@ -163,7 +163,7 @@ static int Qsort_Index_Compare (const void *a, const void *b)
 
 static int time_sort1 (Instr_Type *instr)
 {
-   static int *sort_index = NULL;
+   int *sort_index = NULL;
    size_t i, num_keys = instr->num_times;
 
    if (NULL == (sort_index = (int *) MALLOC (instr->num_times * sizeof(int))))
@@ -179,6 +179,9 @@ static int time_sort1 (Instr_Type *instr)
    Qsort_Indices = sort_index;
    num_keys = instr->num_times;
    qsort (sort_index, num_keys, sizeof(int), Qsort_Index_Compare);
+
+   FREE(sort_index);
+   sort_index = NULL;
 
    return 0;
 }

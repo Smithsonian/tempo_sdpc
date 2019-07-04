@@ -138,71 +138,6 @@ static int validate_exposure_type (int exposure_type0, int exposure_type)
    return 0;
 }
 
-static Dark_Array_Type *create_dark_array (Exprec_Meta_Type *exprec_array,
-                                           int num_exprecs)
-{
-   Dark_Array_Type *dark_array = NULL;
-   int i, k;
-
-   if (NULL == (dark_array = dark_array_alloc (num_exprecs)))
-     return NULL;
-
-   for (i = 0; i < num_exprecs; i++)
-     {
-        Exprec_Meta_Type *xr = &exprec_array[i];
-        Granule_Exprec_Type *exprec = xr->exprec;
-        double sdc;
-        sdc = 0.0;
-        for (k = 0; k < 4; k++)
-          {
-             sdc += xr->storage_region_dark[k];
-          }
-        sdc /= 4;
-        if (0 != dark_array_elem_set (dark_array, i, exprec->img, sdc, xr->fpa_temp,
-                                      exprec->exposure_time))
-          {
-             dark_array_free (dark_array);
-             return NULL;
-          }
-     }
-
-   return dark_array;
-}
-
-static int make_dark_table (config_t *cfg, int is_linearity,
-                            Exprec_Meta_Type *exprec_array, int num_exprecs,
-                            const char *output_file)
-{
-   Dark_Table_Type *dtt = NULL;
-   Dark_Config_Type *dcfg = NULL;
-   Dark_Array_Type *dark_array = NULL;
-
-   if (NULL == (dcfg = dark_table_config (cfg, is_linearity)))
-     return -1;
-
-   if (NULL == (dark_array = create_dark_array (exprec_array, num_exprecs)))
-     goto return_error;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "creating dark current table: %s",
-              output_file);
-   if (NULL == (dtt = dark_table_create (dcfg, dark_array)))
-     goto return_error;
-
-   if (0 != dtt->dtt_write (dtt, output_file))
-     goto return_error;
-
-   dark_table_config_free (dcfg);
-   dark_array_free (dark_array);
-   dtt->dtt_delete (dtt);
-
-   return 0;
-return_error:
-   dark_table_config_free (dcfg);
-   dark_array_free (dark_array);
-   if (dtt) dtt->dtt_delete (dtt);
-   return -1;
-}
-
 static int compute_noisesq_for_active_pixels (const CCD_Type *ccd, const Image_Type *img,
                                               Exprec_Meta_Type *xr)
 {
@@ -246,8 +181,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
      return-1;
 
+   if (0) (void) image_write_raw (exprec->img, "before_offset_corr");
+
    if (0 != ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
+
+   if (0) (void) image_write_raw (exprec->img, "after_offset_corr");
 
    if (0 == EXPREC_TYPE_IS_LINEARITY(exprec->exposure_type))
      {
@@ -266,6 +205,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
         /* drop */
      }
 
+   /* convert DN to electrons */
    if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))
      return -1;
 
@@ -293,11 +233,9 @@ static int compute_current_and_trim (CCD_Type *ccd,
    smear_fraction = (exprec->frame_transfer_time
                      /(exprec->frame_transfer_time + exposure_time_per_frame));
 
-   /* Smear correction uses the parallel overclocks */
    if (-1 == ccd->ccd_correct_smear (ccd, &smear_fraction, exprec->img))
      return -1;
 
-   /* Now we can truncate the image to just the active pixels */
    if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, exprec->img)))
      return -1;
    image_free (exprec->img);
@@ -311,28 +249,60 @@ static int compute_current_and_trim (CCD_Type *ccd,
         return -1;
      }
 
-#if 0
-   /* FIXME - are we still doing this? */
-   if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
-     {
-        if (-1 == pt->pqf_flag_hotcold (pt, exprec->img))
-          return -1;
-     }
-#endif
-
+   /* Compute pixel current: electrons/sec */
    image_scale (exprec->img, 1.0/exposure_time_per_frame);
-
    if (xr->img_err)
      {
         image_scale (xr->img_err, 1.0/exposure_time_per_frame);
      }
-
    for (i = 0; i < 4; i++)
      {
         xr->storage_region_dark[i] /= exprec->readout_time;
      }
 
    if (0 != ccd->ccd_correct_prnu (ccd, exprec->img))
+     return -1;
+
+   if (0) (void) image_write_raw (exprec->img, "after_prnu");
+
+   if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
+     {
+        if (-1 == pt->pqf_flag_hotcold (pt, exprec->img))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int write_dark_exprec (int ncid, const Exprec_Meta_Type *xr)
+{
+   Granule_Exprec_Type *exprec = xr->exprec;
+   Image_Type *img = exprec->img;
+   int start[3], count[3];
+
+   start[0] = xr->index;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = 1;
+
+   if ((0 != TIO_put_var_section (ncid, "image_start_time", start, count, TIO_DOUBLE, &exprec->start_time))
+       || (0 != TIO_put_var_section (ncid, "fpa_temp", start, count, TIO_FLOAT, &xr->fpa_temp))
+       || (0 != TIO_put_var_section (ncid, "fpe_temp", start, count, TIO_FLOAT, &xr->fpe_temp))
+       || (0 != TIO_put_var_section (ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_DOUBLE, &exprec->exposure_time)))
+     return -1;
+
+   count[0] = 1;
+   count[1] = 4;
+   if (0 != TIO_put_var_section (ncid, "mean_sdc", start, count, TIO_FLOAT, xr->storage_region_dark))
+     return -1;
+
+   count[0] = 1;
+   count[1] = img->num_rows;
+   count[2] = img->num_cols;
+
+   if (0 != TIO_put_var_section (ncid, "image", start, count, TIO_FLOAT, img->pixels))
+     return -1;
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_USHORT, img->pixel_quality_flags))
      return -1;
 
    return 0;
@@ -351,8 +321,9 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
    int ixr, num_exprecs, exposure_type;
+   int num_parallel_active_full, num_serial_active_full, drk_ncid = 0;
    int bpix_occur_threshold;
-   int is_linearity, status = -1;
+   int status = -1;
 
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
@@ -385,6 +356,18 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (NULL == bpix_occur)
      goto return_status;
 
+   /* Open the output file */
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Opening output file: %s", ctrl->output_file);
+   if (0 != TIO_create (ctrl->output_file, NC_NETCDF4, &drk_ncid))
+     goto return_status;
+   ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
+   if (0 != drk_create_file (drk_ncid, num_exprecs, num_parallel_active_full, num_serial_active_full))
+     goto return_status;
+   if (0 != tio_write_epoch_timestamp (drk_ncid, NC_GLOBAL))
+     goto return_status;
+   if (0 != TIO_copy_granule_ident (gr->granule_ncid(gr), drk_ncid))
+     goto return_status;
+
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
@@ -401,35 +384,30 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
           goto return_status;
 
-#if 0
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
                                                      bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
-#else
-        fprintf (stderr, "**** FIXME: Skipping call to ccd_apply_pixel_quality_flags\n");
-#endif
 
         if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
           goto return_status;
 
-        if (-1 == bpix_occur_incr (bpix_occur,
-                                   exprec->img->pixel_quality_flags))
+        if (0 != write_dark_exprec (drk_ncid, xr))
+          goto return_status;
+
+        if (-1 == bpix_occur_incr (bpix_occur, exprec->img->pixel_quality_flags))
           goto return_status;
      }
 
    bpix_occur_threshold = pct->bpix_update_thresh * num_exprecs;
    if (num_exprecs > pct->bpix_update_num_exprecs_needed)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "updating bpix map");
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "updating internal bpix map");
         if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
                                  bpix_occur_mask, bpixmap->bits))
           goto return_status;
      }
-   /* FIXME: write out updated badpix map */
 
-   is_linearity = (exposure_type == EXPREC_TYPE_LIN_DARK);
-   if (0 != make_dark_table (cfg, is_linearity, exprec_array, num_exprecs, ctrl->output_file))
-     goto return_status;
+   /* FIXME: eventually, we may write out an updated badpix map */
 
    status = 0;
 return_status:
@@ -437,7 +415,15 @@ return_status:
    bpix_free (bpixmap);
    bpix_occur_close (bpix_occur);
    free_exprec_array (exprec_array, num_exprecs, gr);
-
+   if (drk_ncid)
+     {
+        if (0 != TIO_close (drk_ncid))
+          {
+             tell_verror (TELL_IO_ERROR, "Closing output file: %s", ctrl->output_file);
+             if (status == 0) status = -1;
+          }
+        else tell_vlog (TELL_MSGTYPE_INFO, 1, "Closed output file: %s", ctrl->output_file);
+     }
    if (ccd) ccd->ccd_delete (ccd);
    if (instr) instr->instr_delete (instr);
    if (pt) pt->pqf_delete (pt);
@@ -469,66 +455,23 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
    return 0;
 }
 
-static int subtract_dark_current (Granule_Exprec_Type *exprec,
-                                  const Dark_Table_Type *dtt,
-                                  const float *storage_region_dark,
-                                  float fpa_temp, Image_Type *tmp_img)
-{
-   int k, ordered_by = dtt->dtt_ordering (dtt);
-   double key;
-
-   switch (ordered_by)
-     {
-      case DARK_TABLE_ORDERED_BY_SDC:
-        key = 0.0;
-        for (k = 0; k < 4; k++)
-          {
-             key += storage_region_dark[k];
-          }
-        key /= 4;
-        break;
-
-      case DARK_TABLE_ORDERED_BY_TEMP:
-        key = fpa_temp;
-        break;
-
-      case DARK_TABLE_ORDERED_BY_EXPTIME:
-        key = exprec->exposure_time;
-        break;
-     }
-
-   /* FIXME - may not need to interpolate a new dark image
-    * for _every_ exposure record */
-   if (0 != dtt->dtt_interp (dtt, key, tmp_img))
-     return -1;
-
-   return subtract_dark_current_img (exprec->img, tmp_img);
-}
-
-static int validate_dark_table_type (const Dark_Table_Type *dtt,
-                                     int exposure_type)
-{
-   int ordering = dtt->dtt_ordering (dtt);
-
-   if ((exposure_type == EXPREC_TYPE_LIN_IRR)
-       && (ordering != DARK_TABLE_ORDERED_BY_EXPTIME))
-     {
-        tell_vlog (TELL_MSGTYPE_WARN, 0,
-                   "Unexpected dark interpolation method -- linearity should use 'exptime'");
-     }
-
-   return 0;
-}
-
-static int radiometric_correction (const Calibration_Type *cal, const Dark_Table_Type *dtt,
+static int radiometric_correction (const Calibration_Type *cal, const Dark_Type *drk,
                                    Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
+   Dark_Lookup_Type dlt =
+     {
+        .exposure_time = exprec->exposure_time,
+        .fpa_temp = xr->fpa_temp,
+        .storage_region_dark = xr->storage_region_dark,
+     };
 
    /* FIXME? propagate dark-current subtraction error to
     * uncertainty estimate? */
-   if (0 != subtract_dark_current (exprec, dtt, xr->storage_region_dark,
-                                   xr->fpa_temp, tmp_img))
+   if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
+     return -1;
+
+   if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
 
    /* >>> Stray light correction goes here <<< */
@@ -580,17 +523,13 @@ return_status:
    return sdt;
 }
 
-static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal,
-                                  config_t *cfg, Dark_Table_Type *dtt,
-                                  Exprec_Meta_Type *xr,
-                                  Image_Type *tmp_img)
+static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Dark_Type *drk,
+                                  Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
    int status = -1;
 
-   (void) cfg;
-
-   if (0 != radiometric_correction (cal, dtt, xr, tmp_img))
+   if (0 != radiometric_correction (cal, drk, xr, tmp_img))
      return -1;
 
    if (NULL == (outrec.uv = finalize_band (cal, xr, TEMPO_BAND_UV)))
@@ -780,7 +719,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Exprec_Meta_Type *xr_ready = NULL;
    Pixelqf_Type *pt = NULL;
    Badpix_Map_Type *bpixmap = NULL;
-   Dark_Table_Type *dtt = NULL;
+   Dark_Type *drk = NULL;
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
    int num_serial_active_full, num_parallel_active_full;
@@ -810,9 +749,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != meta_record_basename (meta, ctrl->bpix_file))
      goto return_status;
 
-   if (NULL == (dtt = dark_table_read (ctrl->dark_file)))
-     goto return_status;
-   if (0 != validate_dark_table_type (dtt, exposure_type))
+   if (NULL == (drk = drk_open (ctrl->dark_file)))
      goto return_status;
    if (0 != meta_record_basename (meta, ctrl->dark_file))
      goto return_status;
@@ -889,13 +826,13 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
         /* Frame ixr-1 is now ready to continue processing */
         xr_ready = exprec_queue.items[1];
-        if (0 != apply_cal_then_output (out, cal, cfg, dtt, xr_ready, tmp_img))
+        if (0 != apply_cal_then_output (out, cal, drk, xr_ready, tmp_img))
           goto return_status;
      }
 
    /* Process the last entry in the queue, exprec[num_exprecs-1] */
    xr_ready = exprec_queue.items[2];
-   if (0 != apply_cal_then_output (out, cal, cfg, dtt, xr_ready, tmp_img))
+   if (0 != apply_cal_then_output (out, cal, drk, xr_ready, tmp_img))
      goto return_status;
 
    if (0 != out->out_std_metadata (out, meta, ncid_from))
@@ -912,7 +849,7 @@ return_status:
    if (instr) instr->instr_delete (instr);
    if (pt) pt->pqf_delete (pt);
    if (cal) cal->cal_delete (cal);
-   if (dtt) dtt->dtt_delete (dtt);
+   if (drk) drk->drk_close (drk);
    if (out)
      {
         (void) out->out_close (out);

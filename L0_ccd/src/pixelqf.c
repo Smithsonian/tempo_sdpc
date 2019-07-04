@@ -122,10 +122,10 @@ static int pqf_flag_hotcold (const Pixelqf_Type *pt, Image_Type *img)
    int nr = img->num_rows;
    int nc = img->num_cols;
 
-   flag_hotcold (pt, img,    0, nr/2,    0, nc/2);
-   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  );
-   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2);
-   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  );
+   flag_hotcold (pt, img,    0, nr/2,    0, nc/2);  /* A */
+   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2);  /* B */
+   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  );  /* C */
+   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  );  /* D */
 
    return 0;
 }

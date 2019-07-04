@@ -114,7 +114,6 @@ static void free_gain_param_type (Gain_Param_Type *gpt)
    if (gpt == NULL)
      return;
    FREE(gpt->gain_Tfpa.gain);
-   FREE(gpt->gain_Tfpa.temp);
    FREE(gpt->gain_Tfpe_coeffs);
 }
 
@@ -324,7 +323,7 @@ static int mean_serial_trailing_oct (const CCD_Param_Type *ccdp,
    else
      {/* A, D */
         sb = (oct->col_end
-              - ccdp->num_serial_trailing
+              - ccdp->num_serial_trailing - 1
               + num_skip);
      }
    se = sb + num_selected;
@@ -425,9 +424,9 @@ static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *i
 {
    const CCD_Param_Type *ccdp = &ccd->params;
    int saturation_level_coadded = (1 << ccdp->num_coadd_bits) - 1;
-   float saturation_threshold_coadded = (SAT_FUDGE_FACTOR * saturation_level_coadded / num_coadds);
+   float saturation_threshold_coadded = SAT_FUDGE_FACTOR * saturation_level_coadded;
    int saturation_level_readout = (1 << ccdp->num_readout_bits) - 1;
-   float saturation_threshold_readout = (SAT_FUDGE_FACTOR * saturation_level_readout);
+   float saturation_threshold_readout = SAT_FUDGE_FACTOR * saturation_level_readout;
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags;
    int i, num_pixels = img->num_rows * img->num_cols;
@@ -473,7 +472,9 @@ static int correct_offset_oct (float mean_eoffset,
                continue;
              oct_pixels[s] -= mean_eoffset;
              if (oct_pixels[s] < 0)
-               pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
+               {
+                  pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
+               }
           }
      }
 

@@ -148,7 +148,7 @@ Badpix_Map_Type *bpix_read (const char *file)
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
    FREE(path);
 
-   if (0 != TIO_inq_var (ncid, "badpix", &info))
+   if (0 != TIO_inq_var (ncid, "bad_pixel_mask", &info))
      return NULL;
 
    if (info.ndims != 2)
@@ -166,12 +166,14 @@ Badpix_Map_Type *bpix_read (const char *file)
    start[1] = 0;
    count[0] = b->num_rows;
    count[1] = b->num_cols;
-   if (0 != TIO_get_var_section (ncid, "badpix", start, count, BADPIX_BITMAP_TIO_TYPE,
+   if (0 != TIO_get_var_section (ncid, "bad_pixel_mask", start, count, BADPIX_BITMAP_TIO_TYPE,
                                  b->bits))
      {
         bpix_free (b);
         return NULL;
      }
+
+   (void) TIO_close (ncid);
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
 
