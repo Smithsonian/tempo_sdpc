@@ -88,17 +88,17 @@ $(objdir)/$(THIS_MODULE):	$(OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/l1_inr_prep.o:	$(srcdir)/l1_inr_prep.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l1_inr_prep.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l1_inr_prep.c
 
 $(objdir)/row_select.o:	$(srcdir)/row_select.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/row_select.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/row_select.c
 
 $(objdir)/radiance.o:	$(srcdir)/radiance.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/radiance.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/radiance.c
 
 $(objdir)/ephem.o:	$(srcdir)/ephem.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ephem.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ephem.c
 
 $(objdir)/bsearch.o:	$(srcdir)/bsearch.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bsearch.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bsearch.c
 

@@ -131,10 +131,10 @@ $(elfdir)/$(EXECUTABLE):	$(ELFDIR_ELF_LIB) $(elfdir)/l2_regrid.o
 	    $(INCS) $(EXTRA_INCS) $(REGRID_LIBPATHS) -lregrid $(LIBS) $(EXTRA_LIBS) -lm
 
 $(elfdir)/poly.o:	$(srcdir)/poly.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/poly.c $(LIBS)
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/poly.c
 
 $(elfdir)/pixel.o:	$(srcdir)/pixel.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/pixel.c $(LIBS)
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/pixel.c
 
 $(elfdir)/regrid.o:	$(srcdir)/regrid.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/regrid.c

@@ -108,25 +108,25 @@ $(objdir)/$(THIS_MODULE):	$(OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/l1_inr_post.o:	$(srcdir)/l1_inr_post.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l1_inr_post.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l1_inr_post.c
 
 $(objdir)/map.o:	$(srcdir)/map.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/map.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/map.c
 
 $(objdir)/elevation.o:	$(srcdir)/elevation.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/elevation.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/elevation.c
 
 $(objdir)/land_cover.o:	$(srcdir)/land_cover.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/land_cover.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/land_cover.c
 
 $(objdir)/granule.o:	$(srcdir)/granule.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/granule.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/granule.c
 
 $(objdir)/snow.o:	$(srcdir)/snow.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/snow.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/snow.c
 
 $(objdir)/ezlhconv.o:	$(srcdir)/ezlhconv.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ezlhconv.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ezlhconv.c
 
 # -----------------------------------------------------------------------
 
@@ -156,16 +156,16 @@ $(objdir)/L1_polcorr:	$(POLCORR_OBJS)
 	$(COMPILE_CMD) -o $(objdir)/L1_polcorr $(POLCORR_OBJS) $(POLCORR_LIBS) -lm
 
 $(objdir)/l1_polcorr.o:	$(srcdir)/l1_polcorr.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/l1_polcorr.o $(POLCORR_INCS) $(srcdir)/l1_polcorr.c $(POLCORR_LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/l1_polcorr.o $(POLCORR_INCS) $(srcdir)/l1_polcorr.c
 
 $(objdir)/lps.o:	$(srcdir)/lps.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps.o $(POLCORR_INCS) $(srcdir)/lps.c $(POLCORR_LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps.o $(POLCORR_INCS) $(srcdir)/lps.c
 
 $(objdir)/lps_apply.o:	$(srcdir)/lps_apply.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps_apply.o $(POLCORR_INCS) $(srcdir)/lps_apply.c $(POLCORR_LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/lps_apply.o $(POLCORR_INCS) $(srcdir)/lps_apply.c
 
 $(objdir)/spline.o:	$(srcdir)/spline.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/spline.o $(POLCORR_INCS) $(srcdir)/spline.c $(POLCORR_LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) -o $(objdir)/spline.o $(POLCORR_INCS) $(srcdir)/spline.c
 
 $(objdir)/types_module.o:	$(srcdir)/types_module.f90
 	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/types_module.f90

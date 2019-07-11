@@ -88,14 +88,14 @@ $(objdir)/test_interp:	$(TEST_INTERP_OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/test_interp.o:	$(srcdir)/test_interp.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/test_interp.c
 
 $(objdir)/wavecal_merge:	$(objdir)/wavecal_merge.o
 	$(COMPILE_CMD) -o $(objdir)/wavecal_merge $(objdir)/wavecal_merge.o \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c
 
 WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
      lsq.c interp_cheb.c interp_poly.c interp_cspline.c
@@ -107,32 +107,32 @@ $(objdir)/wavecal_driver:	$(WAVECAL_DRIVER_OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/wavecal_driver.o:	$(srcdir)/wavecal_driver.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_driver.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_driver.c
 
 $(objdir)/util.o:	$(srcdir)/util.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/util.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/util.c
 
 $(objdir)/wavecal.o:	$(srcdir)/wavecal.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal.c
 
 $(objdir)/wavecal_adj.o:	$(srcdir)/wavecal_adj.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_adj.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_adj.c
 
 $(objdir)/interp.o:	$(srcdir)/interp.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp.c
 
 $(objdir)/shapefun.o:	$(srcdir)/shapefun.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/shapefun.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/shapefun.c
 
 $(objdir)/lsq.o:	$(srcdir)/lsq.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/lsq.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/lsq.c
 
 $(objdir)/interp_cspline.o:	$(srcdir)/interp_cspline.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cspline.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cspline.c
 
 $(objdir)/interp_poly.o:	$(srcdir)/interp_poly.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_poly.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_poly.c
 
 $(objdir)/interp_cheb.o:	$(srcdir)/interp_cheb.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c
 

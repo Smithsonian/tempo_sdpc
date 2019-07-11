@@ -89,16 +89,16 @@ $(objdir)/$(THIS_MODULE):	$(OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/l2_split.o:	$(srcdir)/l2_split.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l2_split.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l2_split.c
 
 $(objdir)/proj.o:	$(srcdir)/proj.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/proj.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/proj.c
 
 $(objdir)/scan.o:	$(srcdir)/scan.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan.c
 
 $(objdir)/process.o:	$(srcdir)/process.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/process.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/process.c
 
 $(objdir)/filter.o:	$(srcdir)/filter.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/filter.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/filter.c

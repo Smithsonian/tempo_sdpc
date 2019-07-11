@@ -90,23 +90,23 @@ $(objdir)/$(THIS_MODULE):	$(OBJS)
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/plan.o:	$(srcdir)/plan.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/plan.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/plan.c
 
 $(objdir)/bisect.o:	$(srcdir)/bisect.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bisect.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bisect.c
 
 $(objdir)/solar.o:	$(srcdir)/solar.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/solar.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/solar.c
 
 $(objdir)/scan.o:	$(srcdir)/scan.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan.c
 
 $(objdir)/plan_list.o:	$(srcdir)/plan_list.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/plan_list.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/plan_list.c
 
 $(objdir)/scan_methods.o:	$(srcdir)/scan_methods.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan_methods.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan_methods.c
 
 $(objdir)/vis.o:	$(srcdir)/vis.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/vis.c $(LIBS)
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/vis.c
 
