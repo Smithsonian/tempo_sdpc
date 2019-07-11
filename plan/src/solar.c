@@ -16,6 +16,10 @@
 #include <tell.h>
 #include <tio.h>
 
+#ifndef SEC_PER_DAY
+# define SEC_PER_DAY 86400.0
+#endif
+
 typedef struct
 {
    double jd_utc;
@@ -129,20 +133,7 @@ static void vec_norm (double *a)
 static double angle_between_vectors (double *pa, double *pb)
 {
    double cos_theta, a[3], b[3];
-   /* double c[3], c_hypot; */
    int i;
-
-   /* Assuming A and B are unit vectors, we have:
-    *   AxB = sin(theta)
-    *   A.B = cos(theta)
-    * When A and B are nearly colinear, theta is small
-    * and the most accurate answer is obtained from either
-    * the sin or tangent:
-    *    theta = atan2 ( |AxB|, A.B )
-    * Otherwise, we can use the cosine:
-    *    theta = acos (A.B)
-    * Since the cosine is used in both cases, we compute it first.
-    */
 
    memcpy ((char *)a, (char *)pa, 3 * sizeof(double));
    memcpy ((char *)b, (char *)pb, 3 * sizeof(double));
@@ -158,16 +149,6 @@ static double angle_between_vectors (double *pa, double *pb)
      }
 
    return acos (cos_theta);
-#if 0
-   /* cross product */
-   c[0] = a[1]*b[2] - a[2]*b[1];
-   c[1] = a[2]*b[0] - a[0]*b[2];
-   c[2] = a[0]*b[1] - a[1]*b[0];
-
-   c_hypot = sqrt (c[0]*c[0] + c[1]*c[1] * c[2]*c[2]);
-
-   return atan2 (c_hypot, cos_theta);
-#endif
 }
 
 static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
