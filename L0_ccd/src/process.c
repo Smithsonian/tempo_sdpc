@@ -580,19 +580,18 @@ static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Solar
                                   Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
-   size_t num_negative = 0;
-   int status = -1;
+   int num_negative, status = -1;
 
    if (0 != radiometric_correction (cal, sgt, drk, xr, tmp_img))
      return -1;
 
    if (0) (void) image_write_raw (xr->exprec->img, "final");
 
-   if (0 != image_check_negative_pixels (xr->exprec->img, 1, &num_negative))
+   if ((num_negative = image_check_negative_pixels (xr->exprec->img, 1)) < 0)
      return -1;
    if (num_negative > 0)
      {
-	tell_vwarn (0, "%s: set processing error bit in %ld pixels with ((value<0) && (pqf==0))",
+	tell_vwarn (0, "%s: set processing error bit in %d pixels with ((value<0) && (pqf==0))",
 		    __func__, num_negative);
      }
 

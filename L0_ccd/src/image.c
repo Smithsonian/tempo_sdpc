@@ -105,11 +105,11 @@ void image_sqrt (Image_Type *img)
      }
 }
 
-int image_check_negative_pixels (Image_Type *img, int flag, size_t *pcount)
+int image_check_negative_pixels (Image_Type *img, int flag)
 {
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
-   size_t i, n, count;
+   int i, n, count;
 
    n = img->num_rows * img->num_cols;
 
@@ -126,12 +126,7 @@ int image_check_negative_pixels (Image_Type *img, int flag, size_t *pcount)
           }
      }
 
-   if (pcount)
-     {
-        *pcount = count;
-     }
-
-   return 0;
+   return count;
 }
 
 void image_scale (Image_Type *img, double s)

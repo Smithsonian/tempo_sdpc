@@ -348,6 +348,7 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
 {
    IOCLib_Glob_Type *g = NULL;
    Instr_Type *head = NULL;
+   Instr_Type **tail = NULL;
    char *glob_path = NULL;
    unsigned int i;
    int status_flag = -1;
@@ -373,7 +374,7 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
 
    for (i = 0; i < g->num_files; i++)
      {
-        Instr_Type *instr, **tail;
+        Instr_Type *instr;
         int status = filter_excludes_file (flt, g->files[i]);
 
         if (status < 0)
