@@ -12,293 +12,447 @@
 #include "config.h"
 #include "util.h"
 
+#define SLIT_AOV_MAX_DEG (2.3)
+
 typedef struct
 {
-   const char *name;
-   double *waves;
-   double *rcoeffs;
-   double *plate_trans;
    int num_waves;
-   int ybeg;
-   int yend;
-}
-CCD_Cal_Type;
+   float *waves;
+   /* [nm] wavelength */
 
-#define CCD_UV(cal)  &(cal)->ccds[TEMPO_BAND_UV]
-#define CCD_VIS(cal) &(cal)->ccds[TEMPO_BAND_VIS]
+   int num_aov;
+   float *aov;
+   /* [deg] "angle of view" */
+
+   int num_slope_aoi;
+   float *slope_aoi;
+   /* polynomial coefficients for interpolating the dependence on angle of incidence
+    * (polar angle, theta) */
+
+   float aoi_nom;
+   /* [deg] nominal angle of incidence (polar angle, theta) */
+
+   float *btdfe_lut;
+   /* [dimensionless] (num_waves,num_aov) Effective BTDF, averaged over pixel FOV */
+}
+BTDF_Type;
 
 #define SENSORCAL_PRIVATE_DATA \
-   CCD_Cal_Type ccds[2]; \
+   BTDF_Type *diffuser_wrk; \
+   BTDF_Type *diffuser_ref; \
+   float *wavelength_grid; \
+   float *radcal_coeffs; \
+   int num_waves; \
+   int num_xpos; \
    double btdf; \
-   double diffuser_trend; \
-   int num_waves_per_ccd;
+   double diffuser_trend;
 #include "sensorcal.h"
 
-typedef struct Cal_Data_Type Cal_Data_Type;
-
-struct Cal_Data_Type
+static int read_wavelength_grid (Calibration_Type *cal, const char *file)
 {
-   double *waves;            /* wavelengths */
-   double *rmetric_conv;     /* radiometric calibration conversion factor */
-   double *diffuser_trans;   /* diffuser plate transmission  */
-   int num_waves;
-   int num_waves_per_ccd;
-   double delta_wave;
-   double min_wave_uv;
-   double min_wave_vis;
-};
+   size_t num_waves, num_xpos, len;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
 
-static void free_cal_data (Cal_Data_Type *data)
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
+       || (0 != TIO_inq_dim (ncid, "Xpos", &dimid, &num_xpos)))
+     goto close_and_return;
+
+   cal->num_waves = num_waves;
+   cal->num_xpos = num_xpos;
+
+   len = num_waves * num_xpos;
+
+   if (NULL == (cal->wavelength_grid = (float *)MALLOC (len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_xpos;
+
+   if (0 != TIO_get_var_section (ncid, "wavelength_grid", start, count, TIO_FLOAT,
+                                  cal->wavelength_grid))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading nominal wavelength grid: %s",
+                     __func__, file);
+        goto close_and_return;
+     }
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+   if (status)
+     {
+        FREE(cal->wavelength_grid);
+        cal->wavelength_grid = NULL;
+     }
+
+   return 0;
+}
+
+static int read_radcal_coeffs (Calibration_Type *cal, const char *file)
 {
-   if (data == NULL)
+   size_t num_waves, num_xpos, len;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
+       || (0 != TIO_inq_dim (ncid, "Xpos", &dimid, &num_xpos)))
+     goto close_and_return;
+
+   cal->num_waves = num_waves;
+   cal->num_xpos = num_xpos;
+
+   len = num_waves * num_xpos;
+
+   if (NULL == (cal->radcal_coeffs = (float *)MALLOC (len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_xpos;
+
+   if (0 != TIO_get_var_section (ncid, "radcal_coeffs", start, count, TIO_FLOAT,
+                                  cal->radcal_coeffs))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading sensor calibration: %s",
+                     __func__, file);
+        goto close_and_return;
+     }
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+   if (status)
+     {
+        FREE(cal->radcal_coeffs);
+        cal->radcal_coeffs = NULL;
+     }
+
+   return 0;
+}
+
+static int cal_apply_radcal_coeffs (const Calibration_Type *cal, Image_Type *img)
+{
+   Image_Pixel_Type *pixels = img->pixels;
+   float *radcal_coeffs = cal->radcal_coeffs;
+   size_t i, n;
+
+   if ((cal->num_waves != img->num_rows)
+       || (cal->num_xpos != img->num_cols))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: array size mismatch: img[%d,%d] (expected [%d,%d])", __func__,
+                     img->num_rows, img->num_cols,
+                     cal->num_waves, cal->num_xpos);
+        return -1;
+     }
+
+   n = img->num_rows * img->num_cols;
+
+   for (i = 0; i < n; i++)
+     {
+        if (pixels[i] != IMAGE_PIXEL_FILL_VALUE)
+          {
+             pixels[i] *= radcal_coeffs[i];
+          }
+     }
+
+   return 0;
+}
+
+static void btdf_free (BTDF_Type *btdf)
+{
+   if (btdf == NULL)
      return;
-   FREE(data->waves);
-   FREE(data);
+   FREE(btdf->waves);
+   FREE(btdf->aov);
+   FREE(btdf->slope_aoi);
+   FREE(btdf->btdfe_lut);
+   FREE(btdf);
 }
 
-static Cal_Data_Type *new_cal_data (int num_waves)
+static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope_aoi)
 {
-   Cal_Data_Type *data = NULL;
-   size_t sizeof_data = 3 * num_waves * sizeof(double);
+   BTDF_Type *btdf = NULL;
 
-   if (NULL == (data = (Cal_Data_Type *) MALLOC (sizeof *data)))
+   if (NULL == (btdf = (BTDF_Type *)MALLOC (sizeof *btdf)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
-   data->num_waves = num_waves;
+   memset ((char *)btdf, 0, sizeof (*btdf));
 
-   if (NULL == (data->waves = (double *) MALLOC (sizeof_data)))
+   if ((NULL == (btdf->waves = (float *)MALLOC (num_waves * sizeof(float))))
+       || (NULL == (btdf->aov = (float *)MALLOC (num_aov * sizeof(float))))
+       || (NULL == (btdf->slope_aoi = (float *)MALLOC (num_slope_aoi * sizeof(float))))
+       || (NULL == (btdf->btdfe_lut = (float *)MALLOC (num_aov * num_waves * sizeof(float)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        FREE(data);
+        btdf_free (btdf);
         return NULL;
      }
-   memset ((char *)data->waves, 0, sizeof_data);
 
-   data->rmetric_conv = data->waves + num_waves;
-   data->diffuser_trans = data->waves + num_waves * 2;
+   btdf->num_aov = num_aov;
+   btdf->num_waves = num_waves;
+   btdf->num_slope_aoi = num_slope_aoi;
 
-   return data;
+   return btdf;
 }
 
-static Cal_Data_Type *read_cal_file (const char *file)
+static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file)
 {
-   Cal_Data_Type *data = NULL;
-   int ncid, start, count, dimid;
-   size_t num_waves;
+   BTDF_Type *btdf = NULL;
+   const char *slope_aoi_name;
+   const char *lut_name;
+   size_t num_waves, num_aov, num_slope_aoi;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return NULL;
 
-   if (0 != TIO_inq_dim (ncid, "wavelength", &dimid, &num_waves))
+   if ((0 != TIO_inq_dim (ncid, "n_BTDF_w", &dimid, &num_waves))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_aov", &dimid, &num_aov))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_slope_aoi", &dimid, &num_slope_aoi)))
+     goto close_and_return;
+
+   if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_slope_aoi)))
+     goto close_and_return;
+
+   if (is_reference_diffuser)
      {
-        (void) TIO_close (ncid);
-        return NULL;
+        slope_aoi_name = "BTDF_ref_slope_aoi";
+        lut_name = "BTDFe_ref_lut";
+     }
+   else
+     {
+        slope_aoi_name = "BTDF_work_slope_aoi";
+        lut_name = "BTDFe_work_lut";
      }
 
-   if (NULL == (data = new_cal_data (num_waves)))
+   start[0] = 0;
+   count[0] = num_waves;
+
+   if (0 != TIO_get_var_section (ncid, "BTDF_w", start, count, TIO_FLOAT, btdf->waves))
+     goto close_and_return;
+
+   start[0] = 0;
+   count[0] = num_aov;
+
+   if (0 != TIO_get_var_section (ncid, "BTDF_aov", start, count, TIO_FLOAT, btdf->aov))
+     goto close_and_return;
+
+   start[0] = 0;
+   count[0] = 1;
+
+   if (0 != TIO_get_var_section (ncid, "BTDF_aoi_nom", start, count, TIO_FLOAT, &btdf->aoi_nom))
+     goto close_and_return;
+
+   start[0] = 0;
+   count[0] = num_slope_aoi;
+
+   if (0 != TIO_get_var_section (ncid, slope_aoi_name, start, count, TIO_FLOAT, btdf->slope_aoi))
+     goto close_and_return;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_aov;
+
+   if (0 != TIO_get_var_section (ncid, lut_name, start, count, TIO_FLOAT, btdf->btdfe_lut))
+     goto close_and_return;
+
+   status = 0;
+close_and_return:
+   if (ncid)
      {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         (void) TIO_close (ncid);
-        return NULL;
+     }
+   if (status)
+     {
+        btdf_free (btdf);
+        btdf = NULL;
      }
 
-   start = 0;
-   count = num_waves;
-
-   if ((0 != TIO_get_var_section (ncid, "wavelength", &start, &count, TIO_DOUBLE,
-                                  data->waves))
-       ||(0 != TIO_get_var_section (ncid, "conversion_factor", &start, &count, TIO_DOUBLE,
-                                  data->rmetric_conv))
-       ||(0 != TIO_get_var_section (ncid, "transmission", &start, &count, TIO_DOUBLE,
-                                  data->diffuser_trans)))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading sensor calibration: %s",
-                     __func__, file);
-        (void) TIO_close (ncid);
-        free_cal_data (data);
-        return NULL;
-     }
-
-   (void) TIO_close (ncid);
-
-   return data;
+   return btdf;
 }
 
-static void make_wavelength_grid (double *y, int ny, double dy, double y0)
+static int read_btdf (Calibration_Type *cal, const char *path)
 {
-   int i;
-
-   for (i = 0; i < ny; i++)
+   if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path)))
+       ||(NULL == (cal->diffuser_ref = read_btdf_parameters (1, path))))
      {
-        y[i] = y0 + dy * i;
-     }
-}
-
-static int cal_apply_rcoeffs (const Calibration_Type *cal, Image_Type *img)
-{
-   const CCD_Cal_Type *uv = CCD_UV(cal);
-   const CCD_Cal_Type *vis = CCD_VIS(cal);
-   int y, ny = img->num_rows;
-   int x, nx = img->num_cols;
-   int yoffset;
-
-   if (ny != uv->num_waves + vis->num_waves)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: unexpected wavelength grid size n=%d (expected n=%d)",
-                     __func__, ny, uv->num_waves+vis->num_waves);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading BTDF parameters from %s",
+                     __func__, path);
         return -1;
-     }
-
-   for (y = 0; y < uv->num_waves; y++)
-     {
-        Image_Pixel_Type *pixels = img->pixels + y * nx;
-        double r_y = uv->rcoeffs[y];
-        for (x = 0; x < nx; x++)
-          {
-             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
-               pixels[x] *= r_y;
-          }
-     }
-
-   yoffset = uv->num_waves;
-
-   for (y = 0; y < vis->num_waves; y++)
-     {
-        Image_Pixel_Type *pixels = img->pixels + (y + yoffset) * nx;
-        double r_y = vis->rcoeffs[y];
-        for (x = 0; x < nx; x++)
-          {
-             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
-               pixels[x] *= r_y;
-          }
      }
 
    return 0;
 }
 
 static int cal_apply_btdf (const Calibration_Type *cal,
-                           double solar_phi, double solar_theta,
+                           int is_reference_diffuser,
+                           double solar_phi_deg, double solar_theta_deg,
                            Image_Type *img)
 {
-   const CCD_Cal_Type *uv = CCD_UV(cal);
-   const CCD_Cal_Type *vis = CCD_VIS(cal);
-   int y, ny = img->num_rows;
-   int x, nx = img->num_cols;
-   int yoffset;
-   double factor = cal->btdf * cal->diffuser_trend;
+   const BTDF_Type *bt;
+   float aov_min, aov_step, hs;
+   float wave_min, wave_step;
+   int p, s;
 
-   /* FIXME: BTDF angle interpolation not implemented yet */
-   (void) solar_phi;  (void) solar_theta;
+   /* Total BTDF has no significant dependence on azimuth.
+    * Polarization correction does have azimuthal dependence.
+    */
+   (void) solar_phi_deg;
 
-   if (ny != uv->num_waves + vis->num_waves)
+   if (img->num_cols != cal->num_xpos)
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: unexpected wavelength grid size n=%d (expected n=%d)",
-                     __func__, ny, uv->num_waves + vis->num_waves);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: image size mismatch: img->num_cols=%d (expected %d)",
+                     __func__, img->num_cols, cal->num_xpos);
         return -1;
      }
 
-   for (y = 0; y < uv->num_waves; y++)
-     {
-        Image_Pixel_Type *pixels = img->pixels + y * nx;
-        double btdf = factor * uv->plate_trans[y];
-        for (x = 0; x < nx; x++)
-          {
-             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
-               pixels[x] /= btdf;
-          }
-     }
+   bt = is_reference_diffuser ? cal->diffuser_ref : cal->diffuser_wrk;
 
-   yoffset = uv->num_waves;
-
-   for (y = 0; y < vis->num_waves; y++)
-     {
-        Image_Pixel_Type *pixels = img->pixels + (y + yoffset) * nx;
-        double btdf = factor * vis->plate_trans[y];
-        for (x = 0; x < nx; x++)
-          {
-             if (pixels[x] != IMAGE_PIXEL_FILL_VALUE)
-               pixels[x] /= btdf;
-          }
-     }
-
-   return 0;
-}
-
-static const CCD_Cal_Type *ccd_cal (const Calibration_Type *cal,
-                                    int band_index)
-{
-   switch (band_index)
-     {
-      case TEMPO_BAND_UV:
-        return CCD_UV(cal);
-
-      case TEMPO_BAND_VIS:
-        return CCD_VIS(cal);
-
-      default:
-        break;
-     }
-
-   tell_verror (TELL_INVALID_PARM_ERROR,
-                "%s: invalid band index = %d", __func__, band_index);
-   return NULL;
-}
-
-static int cal_wavecal (const Calibration_Type *cal, int band_index,
-                        int nx, const double *pspec, const double *pspec_err,
-                        double *pwaves)
-{
-   const CCD_Cal_Type *ccd = NULL;
-
-   (void) nx; (void) pspec; (void) pspec_err;
-
-   /* Wavelength calibration is performed elsewhere.
-    * Here, we just copy the nominal wavelength grid.
+   /* This code assumes that bt->waves and bt->aov are
+    * monotonic increasing, with fixed-width grid spacing.
     */
 
-   if (NULL == (ccd = ccd_cal (cal, band_index)))
-     return -1;
+   wave_min = bt->waves[0];
+   wave_step = bt->waves[1] - wave_min;
 
-   if (cal->num_waves_per_ccd != ccd->num_waves)
+   aov_min = bt->aov[0];
+   aov_step = bt->aov[1] - aov_min;
+
+   hs = (img->num_cols - 1)/2.0;
+
+   for (p = 0; p < img->num_rows; p++)
      {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: unexpected wavelength grid size n=%d (expected n=%d)",
-                     __func__, cal->num_waves_per_ccd, ccd->num_waves);
-        return -1;
-     }
+        Image_Pixel_Type *img_pixels = img->pixels + p * img->num_cols;
+        float *waves = cal->wavelength_grid + p * cal->num_xpos;
+        for (s = 0; s < img->num_cols; s++)
+          {
+             float *lut_w0, *lut_w1;
+             float aov_s, wave_s, fa0, fa1, fw0, fw1, b0, b1;
+             float aoi_correction, btdfe_s;
+             int iw, ia;
 
-   memcpy ((char *)pwaves, (char *)ccd->waves,
-           cal->num_waves_per_ccd * sizeof(double));
+             if (img_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+
+             aov_s = SLIT_AOV_MAX_DEG * (1.0 - s/hs);
+             wave_s = waves[s];
+
+             /* angle of incidendence correction */
+             aoi_correction = ((bt->slope_aoi[0] + wave_s * bt->slope_aoi[1])
+                               * (solar_theta_deg - bt->aoi_nom) / 100.0);
+
+             /* Bilinear interpolation of effective BTDF, with no extrapolation */
+
+             iw = (waves[s] - wave_min) / wave_step;
+             ia = (aov_s - aov_min) / aov_step;
+
+             if (iw < 0)
+               {
+                  iw = 0;
+                  wave_s = bt->waves[iw];
+               }
+             else if (iw > bt->num_waves-2)
+               {
+                  iw = bt->num_waves-2;
+                  wave_s = bt->waves[iw];
+               }
+
+             if (ia < 0)
+               {
+                  ia = 0;
+                  aov_s = bt->aov[ia];
+               }
+             else if (ia > bt->num_aov-2)
+               {
+                  ia = bt->num_aov-2;
+                  aov_s = bt->aov[ia];
+               }
+
+             /* LUT rows bracketing the wavelength */
+             lut_w0 = bt->btdfe_lut + bt->num_aov * iw;
+             lut_w1 = bt->btdfe_lut + bt->num_aov * (iw + 1);
+
+             /* In each row, interpolate in aov: */
+             fa0 = (bt->aov[ia+1] - aov_s) / aov_step;
+             fa1 = (aov_s   - bt->aov[ia]) / aov_step;
+
+             b0 = fa0 * lut_w0[ia] + fa1 * lut_w0[ia+1];
+             b1 = fa0 * lut_w1[ia] + fa1 * lut_w1[ia+1];
+
+             /* interpolate in wavelength: */
+             fw0 = (bt->waves[iw+1] - wave_s) / wave_step;
+             fw1 = (wave_s   - bt->waves[iw]) / wave_step;
+
+             btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
+
+             img_pixels[s] /= btdfe_s;
+          }
+     }
 
    return 0;
 }
 
-static void free_ccd_cal (CCD_Cal_Type *ccd)
+static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_index,
+                        double *pwaves)
 {
-   if (ccd == NULL)
-     return;
-   FREE(ccd->waves);
-   FREE(ccd->rcoeffs);
-   FREE(ccd->plate_trans);
-}
+   int iw0, iw, ix, num_waves;
 
-static int alloc_ccd_cal (CCD_Cal_Type *ccd, int num_waves)
-{
-   if (ccd == NULL)
-     return -1;
+   /* Nominal wavelength grid is cal->wavelength_grid[waves,xpos].
+    * xpos is the fastest varying index, and cal->wavelength_grid[0,*]
+    * is the long wavelength end.
+    */
 
-   if ((NULL == (ccd->waves = alloc_doubles (num_waves)))
-       || (NULL == (ccd->rcoeffs = alloc_doubles (num_waves)))
-       || (NULL == (ccd->plate_trans = alloc_doubles (num_waves))))
-     return -1;
+   switch (band_index)
+     {
+      case TEMPO_BAND_VIS:
+        iw0 = cal->num_waves/2 - 1;
+        break;
+      case TEMPO_BAND_UV:
+        iw0 = cal->num_waves - 1;
+        break;
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unrecognized band index=%d", __func__, band_index);
+        return -1;
+     }
 
-   ccd->num_waves = num_waves;
+   /* Define the "nominal" wavelength grid to be the wavelength grid
+    * across the middle of the chip
+    */
+   ix = cal->num_xpos/2;
+   num_waves = cal->num_waves/2;
+
+   for (iw = 0; iw < num_waves; iw++)
+     {
+        float *cal_wavelen = cal->wavelength_grid + (iw0 - iw) * cal->num_xpos;
+        pwaves[iw] = cal_wavelen[ix];
+     }
 
    return 0;
 }
@@ -307,54 +461,14 @@ static void cal_delete (Calibration_Type *cal)
 {
    if (cal == NULL)
      return;
-   free_ccd_cal (CCD_UV(cal));
-   free_ccd_cal (CCD_VIS(cal));
+   btdf_free(cal->diffuser_wrk);
+   btdf_free(cal->diffuser_ref);
+   FREE(cal->radcal_coeffs);
+   FREE(cal->wavelength_grid);
    FREE(cal);
 }
 
-static Calibration_Type *cal_alloc (int num_waves_per_ccd)
-{
-   Calibration_Type *cal = NULL;
-   CCD_Cal_Type *uv, *vis;
-
-   if (NULL == (cal = (Calibration_Type *)MALLOC (sizeof *cal)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-   memset ((char *)cal, 0, sizeof *cal);
-
-   cal->num_waves_per_ccd = num_waves_per_ccd;
-
-   if ((0 != alloc_ccd_cal (CCD_UV(cal), num_waves_per_ccd))
-       || (0 != alloc_ccd_cal (CCD_VIS(cal), num_waves_per_ccd)))
-     {
-        cal_delete (cal);
-        return NULL;
-     }
-
-   uv = CCD_UV(cal);
-   uv->name = TEMPO_BAND_NAME_UV;
-   uv->ybeg = 0;
-   uv->yend = uv->num_waves;
-
-   vis = CCD_VIS(cal);
-   vis->name = TEMPO_BAND_NAME_VIS;
-   vis->ybeg = uv->num_waves;
-   vis->yend = vis->ybeg + vis->num_waves;
-
-   /* FIXME: placeholder for BTDF and diffuser trend */
-   cal->btdf = 0.1;
-   cal->diffuser_trend = 1.0;
-
-   cal->cal_delete = cal_delete;
-   cal->cal_apply_rcoeffs = cal_apply_rcoeffs;
-   cal->cal_apply_btdf = cal_apply_btdf;
-   cal->cal_wavecal = cal_wavecal;
-
-   return cal;
-}
-
+#if 0
 static int spline_interp (const double *x0, const double *y0, size_t n0,
                           const double *x, size_t n, double *y)
 {
@@ -391,121 +505,15 @@ return_error:
 
    return interp_status;
 }
-
-static int init_rcoeffs (const Cal_Data_Type *data,
-                         Calibration_Type *cal)
-{
-   CCD_Cal_Type *uv = CCD_UV(cal);
-   CCD_Cal_Type *vis = CCD_VIS(cal);
-   double *rmetric_conv = data->rmetric_conv;
-   int i, n0 = data->num_waves;
-   double *y0 = NULL;
-
-   if (NULL == (y0 = (double *) MALLOC (n0 * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   for (i = 0; i < n0; i++)
-     {
-        /* FIXME:
-         * Input rmetric_conv value has units e-/(ph/s/sr/cm^2/nm)
-         * which is the conversion factor for 4 spatial pixels.
-         * Divide by 4 to obtain the conversion factor per spatial pixel.
-         * Prototype also divides by 0.118 sec, which is
-         * the nominal value of exposure_time.
-         * I think this scaling is needed to account for the specific
-         * exposure time and binning used when deriving these coefficients.
-         * Presumably we'll eventually get coefficients with documentation
-         * that explains these details.
-         */
-        double y0_i = rmetric_conv[i] / 4 / 0.118;
-        y0[i] = (y0_i > 0) ? 1.0/y0_i : 0.0;
-     }
-
-   if ((0 != spline_interp (data->waves, y0, data->num_waves,
-                           uv->waves, uv->num_waves, uv->rcoeffs))
-       || (0 != spline_interp (data->waves, y0, data->num_waves,
-                               vis->waves, vis->num_waves, vis->rcoeffs)))
-     {
-        FREE(y0);
-        return -1;
-     }
-
-   FREE(y0);
-   return 0;
-}
-
-static int init_plate_trans (const Cal_Data_Type *data,
-                             Calibration_Type *cal)
-{
-   CCD_Cal_Type *uv = CCD_UV(cal);
-   CCD_Cal_Type *vis = CCD_VIS(cal);
-   double *diffuser_trans = data->diffuser_trans;
-   int i, n0 = data->num_waves;
-   double *y0 = NULL;
-
-   if (NULL == (y0 = (double *) MALLOC (n0 * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   /* The diffuser has 2 plates, so there are 2 transmission
-    * factors, one for each plate: */
-   for (i = 0; i < n0; i++)
-     {
-        double plate_trans = diffuser_trans[i];
-        y0[i] = plate_trans * plate_trans;
-     }
-
-   if ((0 !=spline_interp (data->waves, y0, data->num_waves,
-                           uv->waves, uv->num_waves, uv->plate_trans))
-       ||(0 !=spline_interp (data->waves, y0, data->num_waves,
-                             vis->waves, vis->num_waves, vis->plate_trans)))
-     {
-        FREE(y0);
-        return -1;
-     }
-
-   FREE(y0);
-   return 0;
-}
-
-static Calibration_Type *cal_init (const Cal_Data_Type *data)
-{
-   Calibration_Type *cal = NULL;
-   CCD_Cal_Type *uv, *vis;
-
-   if (NULL == (cal = cal_alloc (data->num_waves_per_ccd)))
-     return NULL;
-
-   uv = CCD_UV(cal);
-   vis = CCD_VIS(cal);
-
-   make_wavelength_grid (uv->waves, uv->num_waves,
-                         data->delta_wave, data->min_wave_uv);
-   make_wavelength_grid (vis->waves, vis->num_waves,
-                         data->delta_wave, data->min_wave_vis);
-
-   if ((0 != init_rcoeffs (data, cal))
-       || (0 != init_plate_trans (data, cal)))
-     {
-        cal_delete (cal);
-        return NULL;
-     }
-
-   return cal;
-}
+#endif
 
 Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
-   config_setting_t *s, *sub;
-   const char *sensorcal_file;
+   config_setting_t *s;
+   const char *sensorcal_file = NULL;
    Calibration_Type *cal = NULL;
-   Cal_Data_Type *data = NULL;
    char *path = NULL;
+   int status = -1;
 
    if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
      {
@@ -517,52 +525,41 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 
    if (CONFIG_TRUE != config_setting_lookup_string (s, "sensorcal_file", &sensorcal_file))
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading sensorcal_file",
-                     __func__);
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading sensorcal_file", __func__);
         return NULL;
      }
 
    if (NULL == (path = expand_path (sensorcal_file)))
      return NULL;
-   if ((NULL == (data = read_cal_file (path)))
+
+   if (NULL == (cal = (Calibration_Type *)MALLOC (sizeof *cal)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)cal, 0, sizeof(*cal));
+
+   cal->cal_delete = cal_delete;
+   cal->cal_apply_radcal_coeffs = cal_apply_radcal_coeffs;
+   cal->cal_apply_btdf = cal_apply_btdf;
+   cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
+
+   if ((0 != read_radcal_coeffs (cal, path))
+       || (0 != read_btdf (cal, path))
+       || (0 != read_wavelength_grid (cal, path))
        || (0 != meta_record_basename (meta, path)))
      {
-        FREE(path);
-        return NULL;
+        goto free_and_return;
      }
+
+   status = 0;
+free_and_return:
    FREE(path);
-
-   if ((NULL == (sub = config_setting_get_member (s, "nominal_wavelength_grid")))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "delta_wave", &data->delta_wave))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "min_wave_uv", &data->min_wave_uv))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "min_wave_vis", &data->min_wave_vis))
-      )
+   if (status)
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading nominal_wavelength_grid parameters",
-                     __func__);
-        free_cal_data (data);
-        return NULL;
+        cal_delete(cal);
+        cal = NULL;
      }
-
-   if (NULL == (s = config_lookup (cfg, "ccd_parameters")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_parameters in param file: %s",
-                     __func__, config_error_file (cfg));
-        free_cal_data (data);
-        return NULL;
-     }
-
-   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_parallel_active", &data->num_waves_per_ccd))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading num_parallel_active",
-                     __func__);
-        free_cal_data (data);
-        return NULL;
-     }
-
-   cal = cal_init (data);
-   free_cal_data (data);
 
    return cal;
 }
@@ -571,6 +568,7 @@ void sdt_free (Spectral_Data_Type *sdt)
 {
    if (sdt == NULL)
      return;
+   FREE(sdt->name);
    FREE(sdt->wave);
    FREE(sdt->img);
    FREE(sdt->pqf);
@@ -650,18 +648,37 @@ sdt_extract_band (const Calibration_Type *cal, int band_id,
                   const Image_Type *img_err)
 {
    Spectral_Data_Type *sdt = NULL;
-   const CCD_Cal_Type *ccd;
+   const char *band_name = NULL;
+   int beg, end, num_waves = cal->num_waves/2;
 
-   if (NULL == (ccd = ccd_cal (cal, band_id)))
+   switch (band_id)
+     {
+      case TEMPO_BAND_UV:  beg = 0;
+        band_name = TEMPO_BAND_NAME_UV;
+        break;
+      case TEMPO_BAND_VIS: beg = num_waves;
+        band_name = TEMPO_BAND_NAME_VIS;
+        break;
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported band index=%d", __func__, band_id);
+        return NULL;
+     }
+
+   end = beg + num_waves;
+
+   if (NULL == (sdt = sdt_alloc (img->num_cols, num_waves)))
      return NULL;
 
-   if (NULL == (sdt = sdt_alloc (img->num_cols, ccd->num_waves)))
-     return NULL;
+   if (NULL == (sdt->name = strdup (band_name)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
+        sdt_free (sdt);
+        return NULL;
+     }
 
-   sdt->name = ccd->name;
-   copy_image_pixels_to_wavelength_order (img, ccd->ybeg, ccd->yend, sdt->img);
-   copy_image_pixels_to_wavelength_order (img_err, ccd->ybeg, ccd->yend, sdt->img_err);
-   copy_image_pqf_to_wavelength_order (img, ccd->ybeg, ccd->yend, sdt->pqf);
+   copy_image_pixels_to_wavelength_order (img, beg, end, sdt->img);
+   copy_image_pixels_to_wavelength_order (img_err, beg, end, sdt->img_err);
+   copy_image_pqf_to_wavelength_order (img, beg, end, sdt->pqf);
 
    return sdt;
 }

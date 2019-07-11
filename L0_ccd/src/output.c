@@ -192,7 +192,7 @@ static void flag_negative_pixels (const Output_Type *out, const Spectral_Data_Ty
 }
 
 static int
-write_rec_band1 (Output_Type *out, int index,
+write_rec_band1 (Output_Type *out, int index, int w_nwg,
                  const Spectral_Data_Type *sdt,
                  const char *name_var, const char *name_var_err)
 {
@@ -241,12 +241,15 @@ write_rec_band1 (Output_Type *out, int index,
         return -1;
      }
 
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, &start[2], &count[2], TIO_DOUBLE,
-                                 sdt->wave))
+   if (w_nwg)
      {
-        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
-                     __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
-        return -1;
+        if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, &start[2], &count[2], TIO_DOUBLE,
+                                      sdt->wave))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                          __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
+             return -1;
+          }
      }
 
    return 0;
@@ -327,6 +330,8 @@ write_rec_bands (Output_Type *out, int index,
                  const Output_Exprec_Type *rec,
                  const char *name_var, const char *name_var_err)
 {
+   int w_nwg = rec->write_nominal_wavelength_grid;
+
    if (0 == out_file_exists (out))
      {
         tell_verror (TELL_USAGE_ERROR, "%s: no open output file",
@@ -337,10 +342,10 @@ write_rec_bands (Output_Type *out, int index,
    if (0 != write_rec_meta (out, index, &rec->meta))
      return -1;
 
-   if (0 != write_rec_band1 (out, index, rec->uv, name_var, name_var_err))
+   if (0 != write_rec_band1 (out, index, w_nwg, rec->uv, name_var, name_var_err))
      return -1;
 
-   if (0 != write_rec_band1 (out, index, rec->vis, name_var, name_var_err))
+   if (0 != write_rec_band1 (out, index, w_nwg, rec->vis, name_var, name_var_err))
      return -1;
 
    return 0;
@@ -378,12 +383,17 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
 
    switch (out->exposure_type)
      {
-      case EXPREC_TYPE_IRRADIANCE:
+      case EXPREC_TYPE_IRR_WRK:
         prod_name = TEMPO_PROD_TYPE_IRR;
         template_basename = "irradiance.met.template";
         break;
 
-      case EXPREC_TYPE_RADIANCE:
+      case EXPREC_TYPE_IRR_REF:
+        prod_name = TEMPO_PROD_TYPE_IRR_REF;
+        template_basename = "irradiance.met.template";
+        break;
+
+      case EXPREC_TYPE_RAD:
         prod_name = TEMPO_PROD_TYPE_RAD;
         template_basename = "radiance.met.template";
         break;
@@ -412,8 +422,9 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
        || (0 != tio_meta_write_ncattr (meta, grp_meta)))
      goto return_status;
 
-   if ((out->exposure_type == EXPREC_TYPE_RADIANCE)
-       || (out->exposure_type == EXPREC_TYPE_IRRADIANCE))
+   if ((out->exposure_type == EXPREC_TYPE_RAD)
+       || (out->exposure_type == EXPREC_TYPE_IRR_WRK)
+       || (out->exposure_type == EXPREC_TYPE_IRR_REF))
      {
         /* For radiance files, INPUTPOINTER gets expanded only in the
          * last processing step of Level 0-1, e.g. post-INR
@@ -508,14 +519,14 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
         FREE(out);
         return NULL;
 
-      case EXPREC_TYPE_RADIANCE:
+      case EXPREC_TYPE_RAD:
         out->out_create = create_rad_file;
         out->out_write_rec = write_rad_rec;
         break;
 
-      case EXPREC_TYPE_LIN_IRR:
-        /* drop */
-      case EXPREC_TYPE_IRRADIANCE:
+      case EXPREC_TYPE_LIN_IRR: /* drop */
+      case EXPREC_TYPE_IRR_WRK: /* drop */
+      case EXPREC_TYPE_IRR_REF:
         out->out_create = create_irr_file;
         out->out_write_rec = write_irr_rec;
         break;

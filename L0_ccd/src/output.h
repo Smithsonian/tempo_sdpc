@@ -27,6 +27,7 @@ typedef struct
    Output_Metadata_Type meta;
    Spectral_Data_Type *uv;
    Spectral_Data_Type *vis;
+   int write_nominal_wavelength_grid;   /* boolean */
 }
 Output_Exprec_Type;
 

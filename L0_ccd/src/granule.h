@@ -16,12 +16,13 @@
  */
 enum
 {
-   EXPREC_TYPE_RADIANCE   = 0,   /**< radiance */
-   EXPREC_TYPE_DARK       = 1,   /**< dark */
-   EXPREC_TYPE_IRRADIANCE = 2,   /**< irradiance */
-   EXPREC_TYPE_LIN_IRR    = 3,   /**< irradiance - linearity */
-   EXPREC_TYPE_LIN_DARK   = 4,   /**< dark - linearity */
-   EXPREC_TYPE_UNKNOWN    = -1   /**< unknown */
+   EXPREC_TYPE_RAD,        /**< radiance */
+   EXPREC_TYPE_DARK,       /**< dark */
+   EXPREC_TYPE_IRR_WRK,    /**< irradiance [working diffuser] */
+   EXPREC_TYPE_IRR_REF,    /**< irradiance [reference diffuser] */
+   EXPREC_TYPE_LIN_IRR,    /**< irradiance - linearity */
+   EXPREC_TYPE_LIN_DARK,   /**< dark - linearity */
+   EXPREC_TYPE_UNKNOWN = -1   /**< unknown */
 };
 
 #define EXPREC_TYPE_IS_LINEARITY(type) \
@@ -31,7 +32,7 @@ enum
    (((type) == EXPREC_TYPE_DARK) || ((type) == EXPREC_TYPE_LIN_DARK))
 
 #define EXPREC_TYPE_IS_IRRADIANCE(type) \
-   (((type) == EXPREC_TYPE_IRRADIANCE) || ((type) == EXPREC_TYPE_LIN_IRR))
+   (((type) == EXPREC_TYPE_IRR_WRK) || ((type) == EXPREC_TYPE_IRR_REF) || ((type) == EXPREC_TYPE_LIN_IRR))
 
 /** @brief Granule exposure record object
  *

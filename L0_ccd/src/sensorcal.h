@@ -32,10 +32,11 @@ struct Calibration_Type
     * Applying the radiometric calibration modifies the image in place.
     * Pixels containing \a IMAGE_PIXEL_FILL_VALUE are not modified.
     */
-   int (*cal_apply_rcoeffs)(const Calibration_Type *, Image_Type *);
+   int (*cal_apply_radcal_coeffs)(const Calibration_Type *, Image_Type *);
 
    /** Apply BTDF calibration
     * @param cal  non-NULL pointer to a Calibration_Type object
+    * @param is_reference   0 for the working diffuser, non-zero for the reference diffuser
     * @param solar_phi    azimuthal angle coordinate of the solar position vector
     * @param solar_theta  polar angle coordinate of the solar position vector
     * @param img  non-NULL pointer to an uncalibrated image
@@ -46,22 +47,21 @@ struct Calibration_Type
     * of the incident solar irradiance.  Applying the BTDF factor modifies
     * the image in place. Pixels containing \a IMAGE_PIXEL_FILL_VALUE are not modified.
     */
-   int (*cal_apply_btdf)(const Calibration_Type *, double, double,
+   int (*cal_apply_btdf)(const Calibration_Type *, int, double, double,
                          Image_Type *);
 
-   /** Perform wavelength calibration
+   /** Define a nominal wavelength grid
     * @param cal  non-NULL pointer to a Calibration_Type object
     * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)
-    * @param num  number of spectra to calibrate
-    * @param img  non-NULL pointer to spectrum values
-    * @param img_err  non-NULL pointer to spectrum uncertainty values
-    * @param img_waves non-NULL pointer to the output calibrated wavelength arrays
+    * @param img_waves non-NULL pointer to the nominal wavelength grid
     * @return 0 on success, non-zero on error
     *
-    * Not implemented yet
+    * The initial Level 1 radiance and irradiance files contain a nominal
+    * wavelength grid that's used to initialize wavelength calibration
+    * (which happens later), and also, for radiances, to provide INR
+    * with a nominal wavelength grid.
     */
-   int (*cal_wavecal)(const Calibration_Type *, int, int,
-                      const double *, const double *, double *);
+   int (*cal_nominal_wavelength_grid)(const Calibration_Type *, int, double *);
 
 #ifdef SENSORCAL_PRIVATE_DATA
    SENSORCAL_PRIVATE_DATA
@@ -81,7 +81,7 @@ typedef struct
    double *img_err;
    double *wave;
    Image_Pqf_Bitmap_Type *pqf;
-   const char *name;
+   char *name;
    int num_xtrack;
    int num_channels;
 }

@@ -5,11 +5,16 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
+#include <wordexp.h>
 
 #include <libconfig.h>
+#include <libnovas.h>
 #include <tell.h>
 #include <tio.h>
 #include <tio_template.h>
+
+/* from plan/src */
+#include <solar.h>
 
 #include "config.h"
 #include "ccd.h"
@@ -47,6 +52,26 @@ typedef struct
    int bpix_update_num_exprecs_needed;
 }
 Process_Control_Type;
+
+typedef struct
+{
+   char *ephem_name;
+   double jd_begin;
+   double jd_end;
+   short int de_number;
+}
+Ephem_Type;
+
+typedef struct
+{
+   short int year;
+   short int month;
+   short int day;
+   double hour;
+}
+Cal_Date_Type;
+
+static int Write_Nominal_Wavelength_Grid;
 
 static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 {
@@ -157,8 +182,12 @@ static int compute_noisesq_for_active_pixels (const CCD_Type *ccd, const Image_T
 
    status = 0;
 return_status:
-   image_free (noisesq);
    image_free(aimg);
+   if (status)
+     {
+        image_free (noisesq);
+     }
+
    return status;
 }
 
@@ -223,7 +252,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
                    xr->storage_region_dark[3]);
 
    /* Compute noisesq before smear correction */
-   if ((exprec->exposure_type == EXPREC_TYPE_RADIANCE)
+   if ((exprec->exposure_type == EXPREC_TYPE_RAD)
        || (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type)))
      {
         if (0 != compute_noisesq_for_active_pixels (ccd, exprec->img, xr))
@@ -455,40 +484,67 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
    return 0;
 }
 
-static int radiometric_correction (const Calibration_Type *cal, const Dark_Type *drk,
+static int julian_date_from_taix (double taix, double *jd_utc)
+{
+   int year, month, day;
+   double hour;
+
+   if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
+     return -1;
+
+   *jd_utc = novas_julian_date ((short int)year, (short int)month, (short int) day, hour);
+
+   return 0;
+}
+
+static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type *sgt,
+                                   const Dark_Type *drk,
                                    Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Dark_Lookup_Type dlt =
      {
-        .exposure_time = exprec->exposure_time,
         .fpa_temp = xr->fpa_temp,
+        .exposure_time = exprec->exposure_time,
         .storage_region_dark = xr->storage_region_dark,
      };
 
-   /* FIXME? propagate dark-current subtraction error to
-    * uncertainty estimate? */
+   /* store the dark current image in tmp_img */
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
 
+   if (0) (void) image_write_raw (exprec->img, "irr_pre");
+   if (0) (void) image_write_raw (tmp_img, "dark");
+
+   /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
+
+   if (0) (void) image_write_raw (exprec->img, "irr_sub");
 
    /* >>> Stray light correction goes here <<< */
 
    /* Multiplicative factor converts e/s to photons/s */
-   if ((0 != cal->cal_apply_rcoeffs (cal, exprec->img))
-       || (0 != cal->cal_apply_rcoeffs (cal, xr->img_err)))
+   if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))
+       || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
      return -1;
+
+   if (0) (void) image_write_raw (exprec->img, "irr_cal");
 
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
-        double solar_phi=0.0, solar_theta=0.0;
-        /* FIXME: placeholders for angles to be computed based on
-         * the observation date/time and orbital ephemeris */
-        if ((0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, exprec->img))
-            || (0 != cal->cal_apply_btdf (cal, solar_phi, solar_theta, xr->img_err))) /* FIXME: ok? */
+        int use_reference_diffuser = (exprec->exposure_type == EXPREC_TYPE_IRR_REF);
+        double jd_utc, solar_theta, solar_phi=0.0;
+
+        if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
+            || (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &solar_theta)))
           return -1;
+
+        if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
+            || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
+          return -1;
+
+        if (0) (void) image_write_raw (exprec->img, "irr_btdf");
      }
 
    return 0;
@@ -506,11 +562,17 @@ finalize_band (const Calibration_Type *cal,
    /* FIXME: It might be slightly more efficient to allocate two
     * Spectral_Data_Type objects at a high level and then re-use them */
    if (NULL == (sdt = sdt_extract_band (cal, band_id, img, img_err)))
-     return NULL;
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: extracting band, band_id=%d", __func__, band_id);
+        goto return_status;
+     }
 
-   if (0 != cal->cal_wavecal (cal, band_id, sdt->num_xtrack,
-                              sdt->img, sdt->img_err, sdt->wave))
-     goto return_status;
+   if (Write_Nominal_Wavelength_Grid)
+     {
+        /* only do this once per band in each granule */
+        if (0 != cal->cal_nominal_wavelength_grid (cal, band_id, sdt->wave))
+          goto return_status;
+     }
 
    status = 0;
 return_status:
@@ -523,27 +585,29 @@ return_status:
    return sdt;
 }
 
-static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Dark_Type *drk,
-                                  Exprec_Meta_Type *xr, Image_Type *tmp_img)
+static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
+                                  Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
    int status = -1;
 
-   if (0 != radiometric_correction (cal, drk, xr, tmp_img))
+   if (0 != radiometric_correction (cal, sgt, drk, xr, tmp_img))
      return -1;
 
-   if (NULL == (outrec.uv = finalize_band (cal, xr, TEMPO_BAND_UV)))
-     return -1;
-
-   if (NULL == (outrec.vis = finalize_band (cal, xr, TEMPO_BAND_VIS)))
+   if ((NULL == (outrec.uv = finalize_band (cal, xr, TEMPO_BAND_UV)))
+       || (NULL == (outrec.vis = finalize_band (cal, xr, TEMPO_BAND_VIS))))
      goto return_status;
 
    outrec.meta.start_time = xr->exprec->start_time;
    outrec.meta.exposure_time = xr->exprec->exposure_time;
    outrec.meta.mirror_step = xr->exprec->curr_mirror_step;
 
+   outrec.write_nominal_wavelength_grid = Write_Nominal_Wavelength_Grid;
+
    if (0 != out->out_write_rec (out, xr->index, &outrec))
      goto return_status;
+
+   Write_Nominal_Wavelength_Grid = 0;
 
    status = 0;
 return_status:
@@ -722,8 +786,10 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Dark_Type *drk = NULL;
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
+   Solar_Geom_Type *sgt = NULL;
    int num_serial_active_full, num_parallel_active_full;
    int ixr, num_exprecs, exposure_type, ncid_from, ncid_to;
+   int do_flag_transients;
    int status = -1;
 
    queue_init (&exprec_queue);
@@ -776,20 +842,32 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
    ncid_from = gr->granule_ncid (gr);
 
-   if (exposure_type == EXPREC_TYPE_RADIANCE)
+   if (exposure_type == EXPREC_TYPE_RAD)
      {
-	int scan_type;
+        int scan_type;
         ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
-	/* Copy the scan_type attribute to the Level 1 file.
-	 * It's not in the granule ident struct for now, because putting it there would
+        /* Copy the scan_type attribute to the Level 1 file.
+         * It's not in the granule ident struct for now, because putting it there would
          * be too much trouble.
-	 */
-	if ((0 != TIO_get_att (ncid_from, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
-	    ||(0 != TIO_put_att (ncid_to, NC_GLOBAL, "scan_type", NC_INT, 1, &scan_type)))
-	  goto return_status;
+         */
+        if ((0 != TIO_get_att (ncid_from, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
+            ||(0 != TIO_put_att (ncid_to, NC_GLOBAL, "scan_type", NC_INT, 1, &scan_type)))
+          goto return_status;
      }
+   else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
+     {
+        if (NULL == (sgt = solar_geom_init (cfg)))
+          goto return_status;
+     }
+
+   /* FIXME? */
+   do_flag_transients = 0;
+   /* We need at least 3 frames to look for transients */
+   if (num_exprecs < 3) do_flag_transients = 0;
+
+   Write_Nominal_Wavelength_Grid = 1;
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
@@ -813,27 +891,37 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
           goto return_status;
 
-        /* We need at least 2 frames queued to look for transients */
-
-        xr_to_delete = queue_push (&exprec_queue, xr);
-        free_exprec_meta_type (xr_to_delete, gr);
-        if (exprec_queue.num_queued < 2)
-          continue;
-
-        if (0 != flag_transients1 (pt, bpixmap, num_exprecs,
-                                   &exprec_queue, ixr, tmp_img))
-          goto return_status;
-
-        /* Frame ixr-1 is now ready to continue processing */
-        xr_ready = exprec_queue.items[1];
-        if (0 != apply_cal_then_output (out, cal, drk, xr_ready, tmp_img))
-          goto return_status;
+        if (do_flag_transients == 0)
+          {
+             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr, tmp_img))
+               goto return_status;
+             free_exprec_meta_type (xr, gr);
+             xr = NULL;
+          }
+        else
+          {
+             /* We need at least 2 frames queued to look for transients */
+             xr_to_delete = queue_push (&exprec_queue, xr);
+             free_exprec_meta_type (xr_to_delete, gr);
+             if (exprec_queue.num_queued < 2)
+               continue;
+             if (0 != flag_transients1 (pt, bpixmap, num_exprecs,
+                                        &exprec_queue, ixr, tmp_img))
+               goto return_status;
+             /* Frame ixr-1 is now ready to continue processing */
+             xr_ready = exprec_queue.items[1];
+             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+               goto return_status;
+          }
      }
 
-   /* Process the last entry in the queue, exprec[num_exprecs-1] */
-   xr_ready = exprec_queue.items[2];
-   if (0 != apply_cal_then_output (out, cal, drk, xr_ready, tmp_img))
-     goto return_status;
+   if (do_flag_transients)
+     {
+        /* Process the last entry in the queue, exprec[num_exprecs-1] */
+        xr_ready = exprec_queue.items[2];
+        if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+          goto return_status;
+     }
 
    if (0 != out->out_std_metadata (out, meta, ncid_from))
      goto return_status;
@@ -850,6 +938,7 @@ return_status:
    if (pt) pt->pqf_delete (pt);
    if (cal) cal->cal_delete (cal);
    if (drk) drk->drk_close (drk);
+   if (sgt) sgt->sgt_delete (sgt);
    if (out)
      {
         (void) out->out_close (out);
@@ -859,11 +948,115 @@ return_status:
    return status;
 }
 
+static int ephem_close (Ephem_Type *eph)
+{
+   short int error = 0;
+
+   FREE(eph->ephem_name);
+   memset ((char *)eph, 0, sizeof (*eph));
+
+   if ((error = novas_ephem_close ()) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: error %d while closing ephemeris",
+                     __func__, error);
+     }
+
+   return error ? -1 : 0;
+}
+
+static char *expand_string (const char *s)
+{
+   wordexp_t we = {0};
+   char *s_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof (wordexp_t));
+
+   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, s ? s : "(null)");
+        wordfree (&we);
+        return NULL;
+     }
+
+   s_exp = strdup (we.we_wordv[0]);
+   wordfree (&we);
+
+   if (NULL == s_exp)
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
+     }
+
+   return s_exp;
+}
+
+static int ephem_open (config_t *cfg, Ephem_Type *eph)
+{
+   config_setting_t *s;
+   const char *ephem_name;
+   short int error;
+
+   if (NULL == (s = config_lookup (cfg, "novas_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing novas_config in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "ephem_name", &ephem_name))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading ephem_name: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (NULL == (eph->ephem_name = expand_string (ephem_name)))
+     return -1;
+
+   if ((error = novas_ephem_open (eph->ephem_name,
+                                  &eph->jd_begin, &eph->jd_end,
+                                  &eph->de_number)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: error %d while opening ephemeris %s",
+                     __func__, error, eph->ephem_name);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int init_solsys_ephem (config_t *cfg, const Granule_Type *gr, Ephem_Type *eph)
+{
+   double jd_utc0, jd_utc1;
+
+   if (0 != ephem_open (cfg, eph))
+     return -1;
+
+   if ((0 != julian_date_from_taix (gr->granule_tstart(gr), &jd_utc0))
+       || (0 != julian_date_from_taix (gr->granule_tend(gr), &jd_utc1)))
+     return -1;
+
+   if ((jd_utc0 < eph->jd_begin) || (eph->jd_end < jd_utc1))
+     {
+        fprintf (stderr, "*** Ephemeris JD=%f-%f doesn't cover JD=%f-%f \n",
+                 eph->jd_begin, eph->jd_end,
+                 jd_utc0, jd_utc1);
+        return -1;
+     }
+
+   return 0;
+}
+
 int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
    Granule_Type *gr = NULL;
    TIO_Meta_Type *meta = NULL;
    Process_Control_Type pct = {0};
+   Ephem_Type eph = {0};
    int exposure_type, status = -1;
 
    if (NULL == (meta = tio_meta_open ()))
@@ -888,9 +1081,14 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
         status = process_dark (cfg, ctrl, &pct, gr, meta);
         break;
 
-      case EXPREC_TYPE_RADIANCE:
-      case EXPREC_TYPE_IRRADIANCE:
+      case EXPREC_TYPE_IRR_WRK:
+      case EXPREC_TYPE_IRR_REF:
       case EXPREC_TYPE_LIN_IRR:
+        /* For irradiances, we'll need to compute the solar illumination geometry */
+        if (0 != init_solsys_ephem (cfg, gr, &eph))
+          goto return_status;
+        /* drop */
+      case EXPREC_TYPE_RAD:
         status = process_exposure (cfg, ctrl, &pct, gr, meta);
         break;
 
@@ -905,6 +1103,7 @@ return_status:
 
    if (gr) gr->granule_close (gr);
    tio_meta_close (meta);
+   (void) ephem_close (&eph);
 
    return status;
 }

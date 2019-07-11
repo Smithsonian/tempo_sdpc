@@ -102,7 +102,7 @@ int drk_create_file (int ncid, int num_times, int num_rows, int num_cols)
         return -1;
      }
 
-   if (0 != TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, strlen(product_type), product_type))
+   if (0 != TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, 1 + strlen(product_type), product_type))
      return -1;
 
    if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))
@@ -155,6 +155,7 @@ static void drk_close (Dark_Type *drk)
 {
    if (drk == NULL)
      return;
+   image_free(drk->image);
    FREE(drk->dark_file);
    FREE(drk);
 }
@@ -189,25 +190,30 @@ static int drk_lookup_fptemp (const Dark_Type *drk, const Dark_Lookup_Type *dlt,
 static Image_Type *read_dark_image (int ncid)
 {
    TIO_Var_Info_Type info = {0};
-   Image_Type *img;
-   int start[2], count[2];
+   Image_Type *img = NULL;
+   int start[3], count[3];
 
    if (0 != TIO_inq_var (ncid, "image", &info))
      return NULL;
 
-   if (NULL == (img = image_new (info.dimlens[0], info.dimlens[1])))
+   if (NULL == (img = image_new (info.dimlens[1], info.dimlens[2])))
      return NULL;
 
    start[0] = 0;
    start[1] = 0;
-   count[0] = info.dimlens[0];
+   start[2] = 0;
+   count[0] = 1;
    count[1] = info.dimlens[1];
+   count[2] = info.dimlens[2];
 
-   if (0 != TIO_get_var_section (ncid, "image", start, count, TIO_FLOAT, img->pixels))
+   if ((0 != TIO_get_var_section (ncid, "image", start, count, TIO_FLOAT, img->pixels))
+       || (0 != TIO_get_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_USHORT, img->pixel_quality_flags)))
      {
         image_free(img);
         return NULL;
      }
+
+   img->image_type = IMAGE_TYPE_ACTIVE;
 
    return img;
 }
