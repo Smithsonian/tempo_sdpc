@@ -101,9 +101,10 @@ close_and_return:
 
 static int read_radcal_coeffs (Calibration_Type *cal, const char *file)
 {
-   size_t num_waves, num_xpos, len;
+   size_t num_waves, num_xpos, len, i;
    int start[2], count[2];
    int ncid, dimid, status = -1;
+   int count_invalid;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
 
@@ -136,6 +137,21 @@ static int read_radcal_coeffs (Calibration_Type *cal, const char *file)
         tell_verror (TELL_IO_READ_ERROR, "%s: reading sensor calibration: %s",
                      __func__, file);
         goto close_and_return;
+     }
+
+   count_invalid = 0;
+   for (i = 0; i < len; i++)
+     {
+        if (cal->radcal_coeffs[i] < 0.0)
+          {
+             count_invalid++;
+             cal->radcal_coeffs[i] = 0.0;
+          }
+     }
+   if (count_invalid)
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0, "read/zeroed %d invalid radcal_coeffs from %s",
+                   count_invalid, file);
      }
 
    status = 0;

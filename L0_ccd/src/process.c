@@ -208,14 +208,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
    exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
 
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
-     return-1;
-
-   if (0) (void) image_write_raw (exprec->img, "before_offset_corr");
+     return -1;
 
    if (0 != ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
 
-   if (0) (void) image_write_raw (exprec->img, "after_offset_corr");
+   if (0) (void) image_write_raw (exprec->img, "offset");
 
    if (0 == EXPREC_TYPE_IS_LINEARITY(exprec->exposure_type))
      {
@@ -237,6 +235,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
    /* convert DN to electrons */
    if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))
      return -1;
+
+   if (0) (void) image_write_raw (exprec->img, "gain");
 
    if (-1 == ccd->ccd_mean_storage_region_dark (ccd, exprec->img,
                                                 xr->num_dg_rows, xr->num_tg_rows,
@@ -292,13 +292,13 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_correct_prnu (ccd, exprec->img))
      return -1;
 
-   if (0) (void) image_write_raw (exprec->img, "after_prnu");
-
    if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
      {
         if (-1 == pt->pqf_flag_hotcold (pt, exprec->img))
           return -1;
      }
+
+   if (0) (void) image_write_raw (exprec->img, "prnu");
 
    return 0;
 }
@@ -509,18 +509,13 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
         .storage_region_dark = xr->storage_region_dark,
      };
 
-   /* store the dark current image in tmp_img */
+   /* copy the appropriate dark current image into tmp_img */
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
-
-   if (0) (void) image_write_raw (exprec->img, "irr_pre");
-   if (0) (void) image_write_raw (tmp_img, "dark");
 
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
-
-   if (0) (void) image_write_raw (exprec->img, "irr_sub");
 
    /* >>> Stray light correction goes here <<< */
 
@@ -528,8 +523,6 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
    if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))
        || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
      return -1;
-
-   if (0) (void) image_write_raw (exprec->img, "irr_cal");
 
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
@@ -543,8 +536,6 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
             || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
           return -1;
-
-        if (0) (void) image_write_raw (exprec->img, "irr_btdf");
      }
 
    return 0;
@@ -589,10 +580,21 @@ static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Solar
                                   Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
+   size_t num_negative = 0;
    int status = -1;
 
    if (0 != radiometric_correction (cal, sgt, drk, xr, tmp_img))
      return -1;
+
+   if (0) (void) image_write_raw (xr->exprec->img, "final");
+
+   if (0 != image_check_negative_pixels (xr->exprec->img, 1, &num_negative))
+     return -1;
+   if (num_negative > 0)
+     {
+	tell_vwarn (0, "%s: set processing error bit in %ld pixels with ((value<0) && (pqf==0))",
+		    __func__, num_negative);
+     }
 
    if ((NULL == (outrec.uv = finalize_band (cal, xr, TEMPO_BAND_UV)))
        || (NULL == (outrec.vis = finalize_band (cal, xr, TEMPO_BAND_VIS))))

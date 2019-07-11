@@ -130,6 +130,14 @@ extern void image_sqrt (Image_Type *img);
  */
 extern void image_scale (Image_Type *img, double s);
 
+/** Examine negative pixels that are unflagged
+ * @param  img   A non-NULL pointer to an existing Image_Type object
+ * @param  flag  If non-zero, mark any unflagged negative pixels
+ *               by setting the quality flag bit for IMAGE_PQF_PROCCESSING_ERROR.
+ * @param  pcount  If non-NULL, a count of negative pixels is stored here.
+ */
+extern int image_check_negative_pixels (Image_Type *img, int flag, size_t *pcount);
+
 /** Allocate an array of image subset structs
  * @param num_subsets   The number of Image_Subset_Type struct to allocate
  * @return a non-NULL pointer to an array of Image_Subset_Type structs on success,

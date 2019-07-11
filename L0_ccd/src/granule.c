@@ -99,7 +99,7 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
 
    if (num_invalid_quality_byte)
      {
-        tell_vwarn (0, "%s: %d pixels had invalid quality byte values",
+        tell_vwarn (0, "%s: %d pixels had invalid quality byte values (flagged as bad pixels)",
                     __func__, num_invalid_quality_byte);
      }
 
