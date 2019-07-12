@@ -55,6 +55,16 @@ Process_Control_Type;
 
 typedef struct
 {
+   Solar_Geom_Type *sgt;
+   double tilt_angle_deg;
+   /* [deg] Angle by which the instrument is tilted northward
+    *       from the equator to point at the boresight point.
+    */
+}
+BTDF_Geom_Type;
+
+typedef struct
+{
    char *ephem_name;
    double jd_begin;
    double jd_end;
@@ -497,10 +507,11 @@ static int julian_date_from_taix (double taix, double *jd_utc)
    return 0;
 }
 
-static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type *sgt,
+static int radiometric_correction (const Calibration_Type *cal, BTDF_Geom_Type *bgt,
                                    const Dark_Type *drk,
                                    Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
+   Solar_Geom_Type *sgt = bgt->sgt;
    Granule_Exprec_Type *exprec = xr->exprec;
    Dark_Lookup_Type dlt =
      {
@@ -527,10 +538,10 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
         int use_reference_diffuser = (exprec->exposure_type == EXPREC_TYPE_IRR_REF);
-        double jd_utc, solar_theta, solar_phi=0.0;
+        double jd_utc, solar_theta, solar_phi;
 
         if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
-            || (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &solar_theta)))
+            || (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &solar_theta, bgt->tilt_angle_deg, &solar_phi)))
           return -1;
 
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
@@ -576,13 +587,13 @@ return_status:
    return sdt;
 }
 
-static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
+static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, BTDF_Geom_Type *bgt,
                                   Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
    int num_negative, status = -1;
 
-   if (0 != radiometric_correction (cal, sgt, drk, xr, tmp_img))
+   if (0 != radiometric_correction (cal, bgt, drk, xr, tmp_img))
      return -1;
 
    if (0) (void) image_write_raw (xr->exprec->img, "final");
@@ -771,6 +782,37 @@ static int flag_transients1 (const Pixelqf_Type *pt,
    return status;
 }
 
+/* ratio = (Geo orbit radius)/(Earth mean radius) */
+#define GEO_ORBIT_RADIUS_RATIO (42163.968/6371.0088)
+
+static int init_btdf_geometry (config_t *cfg, BTDF_Geom_Type *bgt)
+{
+   config_setting_t *s, *sub;
+   double a = GEO_ORBIT_RADIUS_RATIO;
+   double sat_lat, tan_tilt;
+
+   if (NULL == (bgt->sgt = solar_geom_init (cfg)))
+     return -1;
+
+   if ((NULL == (s = config_lookup (cfg, "sat_config")))
+       || (NULL == (sub = config_setting_get_member (s, "boresight")))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "lat", &sat_lat)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading boresight latitude from %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   /* Here, I'm assuming that the boresight point has the
+    * same longitude as the satellite. */
+
+   sat_lat *= M_PI/180.0;
+   tan_tilt = sin(sat_lat)/ (a - cos(sat_lat));
+   bgt->tilt_angle_deg = atan(tan_tilt) * 180/M_PI;
+
+   return 0;
+}
+
 static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                              Process_Control_Type *pct,
                              Granule_Type *gr, TIO_Meta_Type *meta)
@@ -787,7 +829,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Dark_Type *drk = NULL;
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
-   Solar_Geom_Type *sgt = NULL;
+   BTDF_Geom_Type bgt = {0};
    int num_serial_active_full, num_parallel_active_full;
    int ixr, num_exprecs, exposure_type, ncid_from, ncid_to;
    int do_flag_transients;
@@ -859,7 +901,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
      }
    else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
      {
-        if (NULL == (sgt = solar_geom_init (cfg)))
+        if (0 != init_btdf_geometry (cfg, &bgt))
           goto return_status;
      }
 
@@ -894,7 +936,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
         if (do_flag_transients == 0)
           {
-             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr, tmp_img))
+             if (0 != apply_cal_then_output (out, cal, &bgt, drk, xr, tmp_img))
                goto return_status;
              free_exprec_meta_type (xr, gr);
              xr = NULL;
@@ -911,7 +953,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */
              xr_ready = exprec_queue.items[1];
-             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+             if (0 != apply_cal_then_output (out, cal, &bgt, drk, xr_ready, tmp_img))
                goto return_status;
           }
      }
@@ -920,7 +962,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
         xr_ready = exprec_queue.items[2];
-        if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+        if (0 != apply_cal_then_output (out, cal, &bgt, drk, xr_ready, tmp_img))
           goto return_status;
      }
 
@@ -939,7 +981,7 @@ return_status:
    if (pt) pt->pqf_delete (pt);
    if (cal) cal->cal_delete (cal);
    if (drk) drk->drk_close (drk);
-   if (sgt) sgt->sgt_delete (sgt);
+   if (bgt.sgt) bgt.sgt->sgt_delete (bgt.sgt);
    if (out)
      {
         (void) out->out_close (out);
