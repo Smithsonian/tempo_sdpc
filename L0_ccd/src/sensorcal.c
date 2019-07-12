@@ -436,7 +436,7 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 }
 
 static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_index,
-                        double *pwaves)
+                                        double *pwaves)
 {
    int iw0, iw, ix, num_waves;
 
@@ -447,11 +447,11 @@ static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_in
 
    switch (band_index)
      {
-      case TEMPO_BAND_VIS:
-        iw0 = cal->num_waves/2 - 1;
-        break;
       case TEMPO_BAND_UV:
-        iw0 = cal->num_waves - 1;
+        iw0 = cal->num_waves;   /* shortest UV */
+        break;
+      case TEMPO_BAND_VIS:
+        iw0 = cal->num_waves/2; /* shortest VIS */
         break;
       default:
         tell_verror (TELL_RUNTIME_ERROR, "%s: unrecognized band index=%d", __func__, band_index);
@@ -466,7 +466,7 @@ static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_in
 
    for (iw = 0; iw < num_waves; iw++)
      {
-        float *cal_wavelen = cal->wavelength_grid + (iw0 - iw) * cal->num_xpos;
+        float *cal_wavelen = cal->wavelength_grid + (iw0 - iw - 1) * cal->num_xpos;
         pwaves[iw] = cal_wavelen[ix];
      }
 
@@ -633,7 +633,7 @@ static void copy_image_pixels_to_wavelength_order
         double *pixels_out = outbuf + x * ny;
         for (y = ybeg; y < yend; y++)
           {
-             pixels_out[y-ybeg] = pixels_img[x + y * nx];
+             pixels_out[yend-y-1] = pixels_img[x + y * nx];
           }
      }
 }
@@ -653,7 +653,7 @@ static void copy_image_pqf_to_wavelength_order
         Image_Pqf_Bitmap_Type *pqf_out = outbuf + x * ny;
         for (y = ybeg; y < yend; y++)
           {
-             pqf_out[y-ybeg] = img_pqf[x + y * nx];
+             pqf_out[yend-y-1] = img_pqf[x + y * nx];
           }
      }
 }
@@ -665,24 +665,26 @@ sdt_extract_band (const Calibration_Type *cal, int band_id,
 {
    Spectral_Data_Type *sdt = NULL;
    const char *band_name = NULL;
-   int beg, end, num_waves = cal->num_waves/2;
+   int beg, end;
 
    switch (band_id)
      {
-      case TEMPO_BAND_UV:  beg = 0;
-        band_name = TEMPO_BAND_NAME_UV;
-        break;
-      case TEMPO_BAND_VIS: beg = num_waves;
+      case TEMPO_BAND_VIS:
+        beg = 0;
+        end = cal->num_waves/2;
         band_name = TEMPO_BAND_NAME_VIS;
+        break;
+      case TEMPO_BAND_UV:
+        beg = cal->num_waves/2;
+        end = cal->num_waves;
+        band_name = TEMPO_BAND_NAME_UV;
         break;
       default:
         tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported band index=%d", __func__, band_id);
         return NULL;
      }
 
-   end = beg + num_waves;
-
-   if (NULL == (sdt = sdt_alloc (img->num_cols, num_waves)))
+   if (NULL == (sdt = sdt_alloc (img->num_cols, end-beg+1)))
      return NULL;
 
    if (NULL == (sdt->name = strdup (band_name)))

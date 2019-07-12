@@ -227,8 +227,8 @@ static int init_image_subsets (CCD_Type *ccd)
    hc = nc/2;
 
    /* Image subsets are specified with X_beg <= i < X_end, for X=row|col.
-    * row =0, col=0 is the outer corner of quadrant A on UV CCD.
-    * (e.g. row=0 is minimum wavelength, col=0 is north-most)
+    * row =0, col=0 is the outer corner of quadrant A on VIS CCD.
+    * (e.g. row=0 is maximum wavelength, col=0 is north-most)
     * Sign of row_step indicates parallel readout direction:
     *     row_step < 0 means readout toward row zero
     *     row_step > 0 means readout away from row zero
@@ -238,22 +238,24 @@ static int init_image_subsets (CCD_Type *ccd)
     *     col_step > 0 means readout away from col zero
     *
     * Sensor labeling and array indexing:
-    *      |----------|----------|
-    *      |          |          |
-    *      |          |          |     <-- VIS ccd
-    *      |          |          |
-    *      |D         |C         |
+    * 290 nm
     *      |----------|----------|
     *      |          |          |
     *      |          |          |     <-- UV ccd
     *      |          |          |
+    *      |D         |C         |
+    *      |----------|----------|
+    *      |          |          |
+    *      |          |          |     <-- VIS ccd
+    *      |          |          |
     *      |A         |B         |
     *      |----------|----------|  <- row 0
+    * 740 nm
     *      columns --->
     *
     * Serial readout at each outer corner.
-    * UV chip (AB) parallel read-out is toward shorter wavelengths ("downward")
-    * VIS chip (DC) parallel read-out is toward longer wavelengths ("upward")
+    * VIS chip (AB) parallel read-out is toward longer wavelengths ("downward")
+    * UV chip (DC) parallel read-out is toward shorter wavelengths ("upward")
     *
     * The netcdf4 calibration file organizes the relevant calibration data as
     * arrays dimensioned like TSOC_eOffset(ADC,quad), with quad the fastest
@@ -266,23 +268,23 @@ static int init_image_subsets (CCD_Type *ccd)
     * We organize the image octant-subset arrays accordingly.
     */
 
-   image_set_subset (&ccd->half[0],  0, hr, -1,    0, nc  , +1); /* UV */
-   image_set_subset (&ccd->half[1], hr, nr, +1,    0, nc  , +1); /* VIS */
+   image_set_subset (&ccd->half[0],  0, hr, -1,    0, nc  , +1); /* VIS */
+   image_set_subset (&ccd->half[1], hr, nr, +1,    0, nc  , +1); /* UV */
 
-   image_set_subset (&ccd->quad[0],  0, hr, -1,    0, hc  , -1); /* UV-A */
-   image_set_subset (&ccd->quad[1],  0, hr, -1,   hc, nc  , +1); /* UV-B */
-   image_set_subset (&ccd->quad[2], hr, nr, +1,   hc, nc  , +1); /* VIS-C */
-   image_set_subset (&ccd->quad[3], hr, nr, +1,    0, hc  , -1); /* VIS-D */
+   image_set_subset (&ccd->quad[0],  0, hr, -1,    0, hc  , -1); /* VIS-A */
+   image_set_subset (&ccd->quad[1],  0, hr, -1,   hc, nc  , +1); /* VIS-B */
+   image_set_subset (&ccd->quad[2], hr, nr, +1,   hc, nc  , +1); /* UV-C */
+   image_set_subset (&ccd->quad[3], hr, nr, +1,    0, hc  , -1); /* UV-D */
 
-   image_set_subset (&ccd->oct[0],   0, hr, -1,    1, hc  , -2); /* UV-Ao */
-   image_set_subset (&ccd->oct[1],   0, hr, -1, hc+1, nc  , +2); /* UV-Bo */
-   image_set_subset (&ccd->oct[2],  hr, nr, +1, hc+1, nc  , +2); /* VIS-Co */
-   image_set_subset (&ccd->oct[3],  hr, nr, +1,    1, hc  , -2); /* VIS-Do */
+   image_set_subset (&ccd->oct[0],   0, hr, -1,    1, hc  , -2); /* VIS-Ao */
+   image_set_subset (&ccd->oct[1],   0, hr, -1, hc+1, nc  , +2); /* VIS-Bo */
+   image_set_subset (&ccd->oct[2],  hr, nr, +1, hc+1, nc  , +2); /* UV-Co */
+   image_set_subset (&ccd->oct[3],  hr, nr, +1,    1, hc  , -2); /* UV-Do */
 
-   image_set_subset (&ccd->oct[4],   0, hr, -1,    0, hc-1, -2); /* UV-Ae */
-   image_set_subset (&ccd->oct[5],   0, hr, -1, hc  , nc-1, +2); /* UV-Be */
-   image_set_subset (&ccd->oct[6],  hr, nr, +1, hc  , nc-1, +2); /* VIS-Ce */
-   image_set_subset (&ccd->oct[7],  hr, nr, +1,    0, hc-1, -2); /* VIS-De */
+   image_set_subset (&ccd->oct[4],   0, hr, -1,    0, hc-1, -2); /* VIS-Ae */
+   image_set_subset (&ccd->oct[5],   0, hr, -1, hc  , nc-1, +2); /* VIS-Be */
+   image_set_subset (&ccd->oct[6],  hr, nr, +1, hc  , nc-1, +2); /* UV-Ce */
+   image_set_subset (&ccd->oct[7],  hr, nr, +1,    0, hc-1, -2); /* UV-De */
 
    return 0;
 }
@@ -1320,10 +1322,10 @@ static int ccd_update_noisesq (const CCD_Type *ccd, const float *sdc,
         return -1;
      }
 
-   update_noisesq_quad (ccd, sdc[0], img_noisesq,    0, nr/2, -1,    0, nc/2, -1); /* UV-A */
-   update_noisesq_quad (ccd, sdc[1], img_noisesq,    0, nr/2, -1, nc/2,   nc, +1); /* UV-B */
-   update_noisesq_quad (ccd, sdc[2], img_noisesq, nr/2,   nr, +1, nc/2,   nc, +1); /* VIS-C */
-   update_noisesq_quad (ccd, sdc[3], img_noisesq, nr/2,   nr, +1,    0, nc/2, -1); /* VIS-D */
+   update_noisesq_quad (ccd, sdc[0], img_noisesq,    0, nr/2, -1,    0, nc/2, -1); /* VIS-A */
+   update_noisesq_quad (ccd, sdc[1], img_noisesq,    0, nr/2, -1, nc/2,   nc, +1); /* VIS-B */
+   update_noisesq_quad (ccd, sdc[2], img_noisesq, nr/2,   nr, +1, nc/2,   nc, +1); /* UV-C */
+   update_noisesq_quad (ccd, sdc[3], img_noisesq, nr/2,   nr, +1,    0, nc/2, -1); /* UV-D */
 
    return 0;
 }
