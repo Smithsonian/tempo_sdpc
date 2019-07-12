@@ -1032,7 +1032,8 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
                           int num_dg_rows, int num_tg_rows,
                           float *mean_sdc_per_pixel)
 {
-   int s, sb0, se0, p, pb, pe, pixcount;
+   const Image_Pixel_Type *quad_pixels;
+   int s, sb0, se0, p0, pixcount;
    float pixsum;
 
    if (num_tg_rows <= 0)
@@ -1044,30 +1045,20 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
    if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, NULL, NULL))
      return -1;
 
-   /* Apparently, only one imaging region row is used
-    * to hold the sum over selected storage dark current rows.
-    * Which row?  (FIXME?)
+   /* The row nearest the readout contains the sum
+    * over storage region dark current rows
     */
-   if (quad->row_step < 0)
-     {
-        pb = quad->row_beg;
-        pe = quad->row_beg + 1;
-     }
-   else
-     {
-        pb = quad->row_end - 1;
-        pe = quad->row_end;
-     }
+
+   p0 = (quad->row_step < 0) ? quad->row_beg : quad->row_end-1;
+   quad_pixels = img->pixels + p0 * img->num_cols;
 
    pixsum = 0.0;
    pixcount = 0;
-   for (p = pb; p < pe; p++)
+
+   for (s = sb0; s < se0; s++)
      {
-        const Image_Pixel_Type *quad_pixels = img->pixels + p * img->num_cols;
-        for (s = sb0; s < se0; s++)
+        if (quad_pixels[s] != IMAGE_PIXEL_FILL_VALUE)
           {
-             if (quad_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
-               continue;
              pixsum += quad_pixels[s];
              pixcount += 1;
           }
