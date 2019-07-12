@@ -122,37 +122,66 @@ static int sgt_solar_zenith_angle (const Solar_Geom_Type *sgt,
    return 0;
 }
 
-static void vec_norm (double *a)
+static void vec_norm (const double *a, double *norm)
 {
    double r = sqrt (a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
-   a[0] /= r;
-   a[1] /= r;
-   a[2] /= r;
+   norm[0] = a[0]/r;
+   norm[1] = a[1]/r;
+   norm[2] = a[2]/r;
 }
 
-static double angle_between_vectors (double *pa, double *pb)
+static double vec_dot (const double *a, const double *b)
 {
-   double cos_theta, a[3], b[3];
-   int i;
-
-   memcpy ((char *)a, (char *)pa, 3 * sizeof(double));
-   memcpy ((char *)b, (char *)pb, 3 * sizeof(double));
-
-   vec_norm (a);
-   vec_norm (b);
-
-   /* dot product */
-   cos_theta = 0.0;
-   for (i = 0; i < 3; i++)
-     {
-        cos_theta += a[i] * b[i];
-     }
-
-   return acos (cos_theta);
+   return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
 
-static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
-                              double *psun_angle)
+static void vec_cross (const double *a, const double *b, double *c)
+{
+   c[0] =   a[1] * b[2] - a[2] * b[1];
+   c[1] = - a[0] * b[2] + a[2] * b[0];
+   c[2] =   a[0] * b[1] - a[1] * b[0];
+}
+
+static void vec_scale (double c, const double *a, double *b)
+{
+   b[0] = a[0] * c;
+   b[1] = a[1] * c;
+   b[2] = a[2] * c;
+}
+
+/* Rotate 3D vector v about axis k by an angle theta, yielding vector vrot,
+ * where theta > 0 is defined according to the right hand rule.
+ * Rodrigues' rotation formula:
+ *   vrot = v cos(t) + (k \cross v) sin(t) + k (k \dot v) (1 - cos(t))
+ */
+static void vec_rotate (const double *v, const double *k,
+                        double theta, double *vrot)
+{
+   double cross[3], n[3], p[3];
+   double dot, cos_t = cos(theta);
+
+   vec_cross (k, v, cross);
+   vec_scale (sin(theta), cross, n);
+
+   dot = vec_dot(k, v);
+   vec_scale (dot * (1 - cos_t), k, p);
+
+   vec_scale (cos_t, v, vrot);
+   vrot[0] += n[0] + p[0];
+   vrot[1] += n[1] + p[1];
+   vrot[2] += n[2] + p[2];
+}
+
+static double vec_angle (double *pa, double *pb)
+{
+   double a[3], b[3];
+   vec_norm (pa, a);
+   vec_norm (pb, b);
+   return acos (vec_dot(a, b));
+}
+
+static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc,
+                               double *ptheta, double tilt_angle_deg, double *pphi)
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
@@ -217,7 +246,51 @@ static int sgt_sat_sun_angle (Solar_Geom_Type *sgt, double jd_utc,
         sun_sat[i] = sun_gcrs_i - sat_gcrs_i;
      }
 
-   *psun_angle = angle_between_vectors (bs_sat, sun_sat) / DEGTORAD;
+   *ptheta = vec_angle (bs_sat, sun_sat) / DEGTORAD;
+
+   if (pphi)
+     {
+        double dot, hat_bs_sat[3], hat_sat[3], u[3], hat_u[3];
+        double hat_z[3], hat_vel[3], hat_slit[3];
+        double cos_phi, tilt_angle = tilt_angle_deg * DEGTORAD;
+
+        /* \H = host satellite position vector
+         * \S = sun pos. vec.
+         * \B = boresight pos. vec.
+         * \z = earth rotation axis unit vector
+         * \l = unit vector along slit
+         * \v = unit tangent vector in the direction of the orbital velocity
+         *   = \z x \h,  where \h = \H/norm(\H)
+         * R(\v,\k,theta) = rotation of vector \v about axis \k by angle theta,
+         *                  where theta>0 is defined according to the right-hand rule.
+         *
+         * define: \P = \S - \H = vector toward the sun from the satellite
+         * define: \n = (\B-\H) / norm(\B-\H) = unit normal to diffuser plate
+         * define: \U = \P - (\P dot \n)\n
+         *            = vector component of \P perpendicular to the boresight
+         * define: \u = \U / norm(\U)
+         *
+         * \l = R(\z, \v, tilt) = z unit vector rotated about an axis
+         *                        along the orbital velocity vector.
+         *
+         * cos(phi) = \u dot \l
+         */
+
+        vec_norm (bs_sat, hat_bs_sat);                      /* \n */
+        dot = vec_dot (sun_sat, hat_bs_sat);                /* \P dot \n */
+        u[0] = sun_sat[0] - dot * hat_bs_sat[0];
+        u[1] = sun_sat[1] - dot * hat_bs_sat[1];
+        u[2] = sun_sat[2] - dot * hat_bs_sat[2];            /* \U */
+        vec_norm (u, hat_u);                                /* \u */
+        hat_z[0] = 0.0;
+        hat_z[1] = 0.0;
+        hat_z[2] = 1.0;                                     /* \z */
+        vec_norm (sat_gcrs, hat_sat);                       /* \h */
+        vec_cross (hat_z, hat_sat, hat_vel);                /* \v */
+        vec_rotate (hat_z, hat_vel, tilt_angle, hat_slit);  /* \l */
+        cos_phi = vec_dot (hat_u, hat_slit);                /* \u dot \l */
+        *pphi = acos(cos_phi) / DEGTORAD;
+     }
 
    return 0;
 }
@@ -376,7 +449,7 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
 
    sgt->sgt_delete = sgt_delete;
    sgt->sgt_solar_zenith_angle = sgt_solar_zenith_angle;
-   sgt->sgt_sat_sun_angle = sgt_sat_sun_angle;
+   sgt->sgt_sat_sun_angles = sgt_sat_sun_angles;
    sgt->sgt_geosat_longitude = sgt_geosat_longitude;
    sgt->sgt_print_params = sgt_print_params;
 

@@ -526,7 +526,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
         double jd_utc = jd_utc0 + i * delta;
         double angle, t_utc, taix;
 
-        if (0 != sgt->sgt_sat_sun_angle (sgt, jd_utc, &angle))
+        if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &angle, 0.0, NULL))
           return -1;
 
         t_utc = (jd_utc - unix_epoch_jd) * SEC_PER_DAY;
