@@ -133,7 +133,7 @@ int drk_create_file (int ncid, int num_times, int num_rows, int num_cols)
    img_dimids[2] = dimid_col;
 
    chunksizes[0] = 1;
-   chunksizes[1] = num_rows / 2;
+   chunksizes[1] = 128;
    chunksizes[2] = num_cols / 2;
 
    if ((0 != TIO_def_var (ncid, "image", TIO_FLOAT, 3, img_dimids, &varid_img))
