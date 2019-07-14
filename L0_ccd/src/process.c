@@ -255,6 +255,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (-1 == ccd->ccd_correct_smear (ccd, &smear_fraction, exprec->img))
      return -1;
 
+   /* trim parallel overclocks, and serial leading and trailing */
    if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, exprec->img)))
      return -1;
    image_free (exprec->img);
@@ -567,8 +568,8 @@ return_status:
    return sdt;
 }
 
-static int apply_cal_then_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
-                                  Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
+static int apply_cal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
+                                 Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Output_Exprec_Type outrec = {0};
    int num_negative, status = -1;
@@ -873,7 +874,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
         if (do_flag_transients == 0)
           {
-             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr, tmp_img))
+             if (0 != apply_cal_and_output (out, cal, sgt, drk, xr, tmp_img))
                goto return_status;
              free_exprec_meta (xr, gr);
              xr = NULL;
@@ -890,7 +891,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */
              xr_ready = exprec_queue.items[1];
-             if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+             if (0 != apply_cal_and_output (out, cal, sgt, drk, xr_ready, tmp_img))
                goto return_status;
           }
      }
@@ -899,7 +900,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
         xr_ready = exprec_queue.items[2];
-        if (0 != apply_cal_then_output (out, cal, sgt, drk, xr_ready, tmp_img))
+        if (0 != apply_cal_and_output (out, cal, sgt, drk, xr_ready, tmp_img))
           goto return_status;
      }
 
@@ -1009,15 +1010,15 @@ static int ephem_open (config_t *cfg, Ephem_Type *eph)
    return 0;
 }
 
-static int init_solsys_ephem (config_t *cfg, const Granule_Type *gr, Ephem_Type *eph)
+static int init_solsys_ephem (config_t *cfg, double tbeg, double tend, Ephem_Type *eph)
 {
    double jd_utc0, jd_utc1;
 
    if (0 != ephem_open (cfg, eph))
      return -1;
 
-   if ((0 != julian_date_from_taix (gr->granule_tstart(gr), &jd_utc0))
-       || (0 != julian_date_from_taix (gr->granule_tend(gr), &jd_utc1)))
+   if ((0 != julian_date_from_taix (tbeg, &jd_utc0))
+       || (0 != julian_date_from_taix (tend, &jd_utc1)))
      return -1;
 
    if ((jd_utc0 < eph->jd_begin) || (eph->jd_end < jd_utc1))
@@ -1037,6 +1038,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    TIO_Meta_Type *meta = NULL;
    Process_Control_Type pct = {0};
    Ephem_Type eph = {0};
+   double tbeg, tend;
    int exposure_type, status = -1;
 
    if (NULL == (meta = tio_meta_open ()))
@@ -1065,7 +1067,9 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
       case EXPREC_TYPE_IRR_REF:
       case EXPREC_TYPE_LIN_IRR:
         /* For irradiances, we'll need to compute the solar illumination geometry */
-        if (0 != init_solsys_ephem (cfg, gr, &eph))
+        tbeg = gr->granule_tstart (gr);
+        tend = gr->granule_tend (gr);
+        if (0 != init_solsys_ephem (cfg, tbeg, tend, &eph))
           goto return_status;
         /* drop */
       case EXPREC_TYPE_RAD:
