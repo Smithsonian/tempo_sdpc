@@ -945,6 +945,7 @@ return_status:
    (void) ephem_close (&eph);
    plan_list_free (plan_list);
    close_outfile (fp_scan, scan_outfile);
+   close_outfile (fp_master, master_outfile);
    close_outfile (fp_irr, irr_outfile);
    config_destroy (&cfg);
    tell_close ();
