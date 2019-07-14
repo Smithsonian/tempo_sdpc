@@ -109,37 +109,27 @@ static int get_control_params (config_t *cfg, Process_Control_Type *pct)
    return 0;
 }
 
-static void free_exprec_array (Exprec_Meta_Type *a, int num_exprecs,
-                               Granule_Type *gr)
+static void free_exprec_meta (Exprec_Meta_Type *xr, Granule_Type *gr)
 {
-   int i;
-
-   if ((gr == NULL) || (a == NULL))
+   if (xr == NULL)
      return;
-
-   for (i = 0; i < num_exprecs; i++)
-     {
-        Exprec_Meta_Type *a_i = &a[i];
-        gr->granule_free_exprec (a_i->exprec);
-        image_free (a_i->img_err);
-     }
-   FREE(a);
+   gr->granule_free_exprec (xr->exprec);
+   image_free (xr->img_err);
+   memset ((char *)xr, 0, sizeof (*xr));
+   FREE(xr);
 }
 
-static Exprec_Meta_Type *alloc_exprec_array (int num_exprecs)
+static Exprec_Meta_Type *alloc_exprec_meta (void)
 {
-   Exprec_Meta_Type *a = NULL;
-   size_t exprec_array_size;
+   Exprec_Meta_Type *xr = NULL;
 
-   exprec_array_size = num_exprecs * sizeof(*a);
-   if (NULL == (a = (Exprec_Meta_Type *) MALLOC (exprec_array_size)))
+   if (NULL == (xr = (Exprec_Meta_Type *) MALLOC (sizeof *xr)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
-   memset ((char *)a, 0, exprec_array_size);
-
-   return a;
+   memset ((char *)xr, 0, sizeof *xr);
+   return xr;
 }
 
 static int validate_exposure_type (int exposure_type0, int exposure_type)
@@ -193,7 +183,7 @@ return_status:
 
 static int compute_current_and_trim (CCD_Type *ccd,
                                      const Instr_Type *instr,
-                                     const Pixelqf_Type *pt,
+                                     const Pixelqf_Type *pqft,
                                      const Process_Control_Type *pct,
                                      Exprec_Meta_Type *xr)
 {
@@ -270,10 +260,10 @@ static int compute_current_and_trim (CCD_Type *ccd,
    image_free (exprec->img);
    exprec->img = aimg;
 
-   if (-1 == pt->pqf_flag_neighbor (pt, exprec->img,
-                                    pct->saturated_neighbor_hw_serial,
-                                    pct->saturated_neighbor_hw_parallel,
-                                    IMAGE_PQF_SATURATED, IMAGE_PQF_SATURATED))
+   if (-1 == pqft->pqf_flag_neighbor (pqft, exprec->img,
+                                      pct->saturated_neighbor_hw_serial,
+                                      pct->saturated_neighbor_hw_parallel,
+                                      IMAGE_PQF_SATURATED, IMAGE_PQF_SATURATED))
      {
         return -1;
      }
@@ -294,7 +284,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
      {
-        if (-1 == pt->pqf_flag_hotcold (pt, exprec->img))
+        if (-1 == pqft->pqf_flag_hotcold (pqft, exprec->img))
           return -1;
      }
 
@@ -342,10 +332,9 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
                          Granule_Type *gr, TIO_Meta_Type *meta)
 {
    CCD_Type *ccd = NULL;
-   Granule_Exprec_Type *exprec = NULL;
    Instr_Type *instr = NULL;
-   Exprec_Meta_Type *exprec_array = NULL;
-   Pixelqf_Type *pt = NULL;
+   Exprec_Meta_Type *xr = NULL;
+   Pixelqf_Type *pqft = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
@@ -360,7 +349,7 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
 
-   if (NULL == (pt = pixelqf_init (cfg)))
+   if (NULL == (pqft = pixelqf_init (cfg)))
      goto return_status;
 
    if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
@@ -370,9 +359,6 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
      num_exprecs = ctrl->limit_num_granules;
-
-   if (NULL == (exprec_array = alloc_exprec_array (num_exprecs)))
-     goto return_status;
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
      goto return_status;
@@ -400,31 +386,34 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        Exprec_Meta_Type *xr = &exprec_array[ixr];
-
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
 
-        if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+        if (NULL == (xr = alloc_exprec_meta ()))
           goto return_status;
 
-        xr->exprec = exprec;
+        if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+          goto return_status;
+
         xr->index = ixr;
 
-        if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
+        if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
 
-        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
+        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,
                                                      bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
 
-        if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
+        if (-1 == compute_current_and_trim (ccd, instr, pqft, pct, xr))
           goto return_status;
 
         if (0 != write_dark_exprec (drk_ncid, xr))
           goto return_status;
 
-        if (-1 == bpix_occur_incr (bpix_occur, exprec->img->pixel_quality_flags))
+        if (-1 == bpix_occur_incr (bpix_occur, xr->exprec->img->pixel_quality_flags))
           goto return_status;
+
+        free_exprec_meta (xr, gr);
+        xr = NULL;
      }
 
    bpix_occur_threshold = pct->bpix_update_thresh * num_exprecs;
@@ -443,7 +432,9 @@ return_status:
 
    bpix_free (bpixmap);
    bpix_occur_close (bpix_occur);
-   free_exprec_array (exprec_array, num_exprecs, gr);
+   free_exprec_meta (xr, gr);
+   xr = NULL;
+
    if (drk_ncid)
      {
         if (0 != TIO_close (drk_ncid))
@@ -455,7 +446,7 @@ return_status:
      }
    if (ccd) ccd->ccd_delete (ccd);
    if (instr) instr->instr_delete (instr);
-   if (pt) pt->pqf_delete (pt);
+   if (pqft) pqft->pqf_delete (pqft);
 
    return status;
 }
@@ -618,16 +609,6 @@ return_status:
    return status;
 }
 
-static Exprec_Meta_Type *new_exprec_meta_type (void)
-{
-   return alloc_exprec_array (1);
-}
-
-static void free_exprec_meta_type (Exprec_Meta_Type *xr, Granule_Type *gr)
-{
-   free_exprec_array (xr, 1, gr);
-}
-
 #define QUEUE_DEPTH  3
 typedef struct
 {
@@ -674,7 +655,8 @@ static void queue_empty (Queue_Type *q, Granule_Type *gr)
 
    for (i = 0; i < q->num_queued; i++)
      {
-        free_exprec_meta_type (q->items[i], gr);
+        free_exprec_meta (q->items[i], gr);
+        q->items[i] = NULL;
      }
 }
 
@@ -704,7 +686,7 @@ static void make_transient_ref_img (const Image_Type *prev,
      }
 }
 
-static int flag_transients1 (const Pixelqf_Type *pt,
+static int flag_transients1 (const Pixelqf_Type *pqft,
                              const Badpix_Map_Type *bpixmap,
                              int num_exprecs, Queue_Type *q, int exprec_index,
                              Image_Type *img_ref)
@@ -752,8 +734,7 @@ static int flag_transients1 (const Pixelqf_Type *pt,
                                 img_ref);
      }
 
-   status = pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
-                                     xr->exprec->img);
+   status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->exprec->img);
    if (status != 0)
      return status;
 
@@ -764,8 +745,7 @@ static int flag_transients1 (const Pixelqf_Type *pt,
         prev = q->items[1];
         img_ref = prev->exprec->img;
         xr = q->items[2];
-        status = pt->pqf_flag_transients (pt, bpixmap->bits, img_ref,
-                                          xr->exprec->img);
+        status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->exprec->img);
      }
 
    return status;
@@ -775,14 +755,13 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                              Process_Control_Type *pct,
                              Granule_Type *gr, TIO_Meta_Type *meta)
 {
-   Queue_Type exprec_queue;
+   Queue_Type exprec_queue = {0};
    CCD_Type *ccd = NULL;
-   Granule_Exprec_Type *exprec = NULL;
    Instr_Type *instr = NULL;
    Calibration_Type *cal = NULL;
    Exprec_Meta_Type *xr = NULL;
    Exprec_Meta_Type *xr_ready = NULL;
-   Pixelqf_Type *pt = NULL;
+   Pixelqf_Type *pqft = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Dark_Type *drk = NULL;
    Output_Type *out = NULL;
@@ -804,7 +783,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (NULL == (cal = sensorcal_init (cfg, meta)))
      return -1;
 
-   if (NULL == (pt = pixelqf_init (cfg)))
+   if (NULL == (pqft = pixelqf_init (cfg)))
      goto return_status;
 
    if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
@@ -876,38 +855,38 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
 
-        if (NULL == (exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+        if (NULL == (xr = alloc_exprec_meta ()))
           goto return_status;
-        if (-1 == validate_exposure_type (exposure_type, exprec->exposure_type))
+
+        xr->index = ixr;
+
+        if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
           goto return_status;
-        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, exprec->img,
+        if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
+          goto return_status;
+        if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,
                                                      bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
 
-        if (NULL == (xr = new_exprec_meta_type ()))
-          goto return_status;
-        xr->exprec = exprec;
-        xr->index = ixr;
-
-        if (-1 == compute_current_and_trim (ccd, instr, pt, pct, xr))
+        if (-1 == compute_current_and_trim (ccd, instr, pqft, pct, xr))
           goto return_status;
 
         if (do_flag_transients == 0)
           {
              if (0 != apply_cal_then_output (out, cal, sgt, drk, xr, tmp_img))
                goto return_status;
-             free_exprec_meta_type (xr, gr);
+             free_exprec_meta (xr, gr);
              xr = NULL;
           }
         else
           {
              /* We need at least 2 frames queued to look for transients */
              xr_to_delete = queue_push (&exprec_queue, xr);
-             free_exprec_meta_type (xr_to_delete, gr);
+             free_exprec_meta (xr_to_delete, gr);
+             xr_to_delete = NULL;
              if (exprec_queue.num_queued < 2)
                continue;
-             if (0 != flag_transients1 (pt, bpixmap, num_exprecs,
-                                        &exprec_queue, ixr, tmp_img))
+             if (0 != flag_transients1 (pqft, bpixmap, num_exprecs, &exprec_queue, ixr, tmp_img))
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */
              xr_ready = exprec_queue.items[1];
@@ -936,7 +915,7 @@ return_status:
 
    if (ccd) ccd->ccd_delete (ccd);
    if (instr) instr->instr_delete (instr);
-   if (pt) pt->pqf_delete (pt);
+   if (pqft) pqft->pqf_delete (pqft);
    if (cal) cal->cal_delete (cal);
    if (drk) drk->drk_close (drk);
    if (sgt) sgt->sgt_delete (sgt);
