@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <float.h>
 #include <limits.h>
 
 #include <libconfig.h>
@@ -35,6 +36,10 @@ Times_Type;
    Novas_observer_t geocenter; \
    Novas_observer_t boresight_surface; \
    double sat_longitude; /* radians */ \
+   double bs_longitude; /* radians */ \
+   double bs_latitude; /* radians */ \
+   double bs_elevation_angle; /* radians */ \
+   double bs_azimuth_angle; /* radians */ \
    double sat_pos[3]; \
    double xpole; \
    double ypole; \
@@ -45,6 +50,7 @@ Times_Type;
 
 #define KM_PER_AU      149597871.0
 #define GEO_SAT_RADIUS     42163.968  /* km */
+#define EARTH_MEAN_RADIUS   6371.0088 /* km */
 #define DEGTORAD       (M_PI/180.0)
 
 #define DEFAULT_HEIGHT        0.0   /* height [meters] */
@@ -180,14 +186,14 @@ static double vec_angle (double *pa, double *pb)
    return acos (vec_dot(a, b));
 }
 
-static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc,
-                               double *ptheta, double tilt_angle_deg, double *pphi)
+static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc, double *ptheta, double *pphi)
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
    double sat_gcrs[3];
    double bs_gcrs[3], bs_gcrs_vel[3];
    double bs_sat[3], sun_sat[3];
+   double tilt_angle = sgt->bs_elevation_angle; /* radians */
    double r_sun;
    short int error;
    short int coord_sys = 0;   /* 0 means GCRS coordinates */
@@ -252,7 +258,7 @@ static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc,
      {
         double dot, hat_bs_sat[3], hat_sat[3], u[3], hat_u[3];
         double hat_z[3], hat_vel[3], hat_slit[3];
-        double cos_phi, tilt_angle = tilt_angle_deg * DEGTORAD;
+        double cos_phi;
 
         /* \H = host satellite position vector
          * \S = sun pos. vec.
@@ -298,6 +304,13 @@ static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc,
 static int sgt_geosat_longitude (const Solar_Geom_Type *sgt, double *lon)
 {
    if (lon) *lon = sgt->sat_longitude;
+   return 0;
+}
+
+static int sgt_boresight_angles (const Solar_Geom_Type *sgt, double *elev_deg, double *azi_deg)
+{
+   if (elev_deg) *elev_deg = sgt->bs_elevation_angle / DEGTORAD;
+   if (azi_deg) *azi_deg = sgt->bs_azimuth_angle / DEGTORAD;
    return 0;
 }
 
@@ -390,7 +403,8 @@ static int read_iers_params (Solar_Geom_Type *sgt, config_t *cfg)
 static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
 {
    Novas_cat_entry_t dummy_star;
-   double bs_lon, bs_lat;
+   double a = GEO_SAT_RADIUS / EARTH_MEAN_RADIUS;
+   double tan_elev;
    short int error;
 
    /* We'll need the positions of:
@@ -409,15 +423,27 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
 
    novas_make_observer_at_geocenter (&sgt->geocenter);
 
-   if (0 != read_sat_config (cfg, &sgt->sat_longitude, &bs_lon, &bs_lat))
+   if (0 != read_sat_config (cfg, &sgt->sat_longitude, &sgt->bs_longitude, &sgt->bs_latitude))
      return -1;
+
+   /* Elevation and azimuth angles to point boresight at specified (lon,lon). */
+   if (fabs (sgt->sat_longitude - sgt->bs_longitude) > DBL_EPSILON)
+     {
+        tell_verror (TELL_NOT_IMPLEMENTED_ERROR,
+                     "%s: The code assumes that the satellite and the boresight are at the same longitude", __func__);
+        return -1;
+     }
+
+   tan_elev = sin(sgt->bs_latitude) / (a - cos(sgt->bs_latitude));
+   sgt->bs_elevation_angle = atan(tan_elev); /* radians */
+   sgt->bs_azimuth_angle = 0.0;
 
    /* WGS84 coordinates of geostationary satellite */
    sgt->sat_pos[0] = GEO_SAT_RADIUS * cos(sgt->sat_longitude);  /* X */
    sgt->sat_pos[1] = GEO_SAT_RADIUS * sin(sgt->sat_longitude);  /* Y */
    sgt->sat_pos[2] = 0.0;                            /* Z */
 
-   novas_make_observer_on_surface (bs_lat, bs_lon, DEFAULT_HEIGHT,
+   novas_make_observer_on_surface (sgt->bs_latitude, sgt->bs_longitude, DEFAULT_HEIGHT,
                                    DEFAULT_TEMPERATURE, DEFAULT_PRESSURE,
                                    &sgt->boresight_surface);
 
@@ -451,6 +477,7 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
    sgt->sgt_solar_zenith_angle = sgt_solar_zenith_angle;
    sgt->sgt_sat_sun_angles = sgt_sat_sun_angles;
    sgt->sgt_geosat_longitude = sgt_geosat_longitude;
+   sgt->sgt_boresight_angles = sgt_boresight_angles;
    sgt->sgt_print_params = sgt_print_params;
 
    if (0 != sgt_initialize (sgt, cfg))

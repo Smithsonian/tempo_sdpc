@@ -46,6 +46,8 @@
  *  10/12/2017)
  */
 
+#define IRRADIANCE_SUN_ANGLE_DEG 30.0
+
 typedef struct
 {
    char *ephem_name;
@@ -81,8 +83,9 @@ static void usage (void)
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
    fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
-   fprintf (stderr, "   -o | --output FILE       Output file [default=stdout]\n");
+   fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
+   fprintf (stderr, "   -I | --irr FILE          Irradiance plan output file\n");
    fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
@@ -310,6 +313,12 @@ static int print_standard_scan_table (FILE *fp, double roll_angle, double delta_
    return 0;
 }
 
+static int timestamp_created (FILE *fp)
+{
+   time_t now_tt = time(NULL);
+   return fprintf (fp, "# Created: %s", ctime(&now_tt));
+}
+
 typedef int Print_Method_Type(FILE *, double, double, double, double);
 
 static int generate_scan_table (config_t *cfg, FILE *fp,
@@ -317,6 +326,8 @@ static int generate_scan_table (config_t *cfg, FILE *fp,
 {
    double mirror_x0, mirror_x1, delta_x;
    double step_size, roll_angle, max_roll_angle;
+
+   timestamp_created (fp);
 
    if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
      return -1;
@@ -515,6 +526,8 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
         return -1;
      }
 
+   timestamp_created (fp);
+
    fprintf (fp, "# time: Time since the TEMPO epoch [TAI hours]\n");
    fprintf (fp, "# xoff: Mirror pointing offset in the East/West direction [degrees]\n");
    fprintf (fp, "# yoff: Mirror pointing offset in the North/South direction [degrees]\n");
@@ -526,7 +539,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
         double jd_utc = jd_utc0 + i * delta;
         double angle, t_utc, taix;
 
-        if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &angle, 0.0, NULL))
+        if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &angle, NULL))
           return -1;
 
         t_utc = (jd_utc - unix_epoch_jd) * SEC_PER_DAY;
@@ -544,49 +557,94 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
    return fclose (fp);
 }
 
-static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
-                          int num_plan_days, const char *scan_method,
-                          uint16_t scan_type, int enable_night_scan,
-                          const Optional_Output_Type *oot, FILE *fp)
+static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Type *solar_geom, const Scan_Type *scan,
+                            const char *scan_method, const Plan_List_Type *plan_list)
 {
-   Ephem_Type eph = {0};
-   Scan_Type *scan = NULL;
-   Plan_List_Type *plan_list = NULL;
-   const Scan_Method_Type *sm = NULL;
-   Solar_Geom_Type *solar_geom = NULL;
-   double jd_utc, jd_utc0, jd_utc1;
    char epoch_str[32];
+
+   /* Write out scan plan */
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
+     return -1;
+
+   timestamp_created (fp);
+   (void) fprintf (fp, "# %s = scan method\n", scan_method);
+   if (0 != scan->st_print_params (scan, "#", fp))
+     return -1;
+   if (0 != solar_geom->sgt_print_params (solar_geom, "#", fp))
+     return -1;
+   (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_name);
+   (void) fprintf (fp, "# TEMPO epoch: %s\n", epoch_str);
+   (void) fprintf (fp, "#\n");
+
+   return plan_list_write (fp, mirror_tilt, plan_list);
+}
+
+static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)
+{
+   const char header[] = "time,solar_theta,solar_phi,timestamp\n";
+   double unix_epoch_jd;
+   double jd_utc0, jd_utc1, jd_utc;
+   double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
+
+   unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
+
+   jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
+   jd_utc1 = jd_utc0 + num_days;
+
+   timestamp_created (fp);
+   if (fprintf (fp, header) < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        return -1;
+     }
+
+   for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
+     {
+        char buf[32];
+        double jd_utc_irr, solar_theta, solar_phi, tirr_utc, tirr_tai;
+
+        if (0 != scan_irradiance_time (solar_geom, irr_angle, jd_utc, &jd_utc_irr))
+          return -1;
+        if (0 != solar_geom->sgt_sat_sun_angles (solar_geom, jd_utc_irr, &solar_theta, &solar_phi))
+          return -1;
+
+        if (0 != mkjdtimestr (jd_utc_irr, buf, sizeof(buf)))
+          return -1;
+
+        tirr_utc = (jd_utc_irr - unix_epoch_jd) * SEC_PER_DAY;
+
+        if (0 != tio_time_utc_to_taix (tirr_utc, &tirr_tai))
+          return -1;
+
+        (void) fprintf (fp, "%0.3f,%0.3f,%0.3f,\"%s\"\n",
+                        tirr_tai, solar_theta, solar_phi, buf);
+     }
+
+   return 0;
+}
+
+static Plan_List_Type *generate_plan (const Ephem_Type *eph, Solar_Geom_Type *solar_geom,
+                                      const Scan_Type *scan, const Scan_Method_Type *sm,
+                                      const Cal_Date_Type *t0, int num_plan_days, int enable_night_scan,
+                                      const Optional_Output_Type *oot)
+{
+   Plan_List_Type *plan_list = NULL;
+   double jd_utc, jd_utc0, jd_utc1;
    int status = -1;
 
    jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
    jd_utc1 = jd_utc0 + num_plan_days;
 
-   if (0 != ephem_open (cfg, &eph))
-     return -1;
-
-   if ((jd_utc0 < eph.jd_begin) || (eph.jd_end < jd_utc1))
+   if ((jd_utc0 < eph->jd_begin) || (eph->jd_end < jd_utc1))
      {
         fprintf (stderr, "*** Ephemeris JD=%0.2f-%0.2f doesn't cover JD=%0.2f + %d days \n",
-                 eph.jd_begin, eph.jd_end,
+                 eph->jd_begin, eph->jd_end,
                  jd_utc0, num_plan_days);
-        goto return_status;
+        return NULL;
      }
-
-   if (NULL == (sm = find_scan_method (scan_method)))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unrecognized scan method '%s'",
-                     __func__, scan_method ? scan_method : "(null)");
-        goto return_status;
-     }
-
-   if (NULL == (solar_geom = solar_geom_init (cfg)))
-     goto return_status;
 
    if (0 != print_scan_tailoring_file (solar_geom, jd_utc0, jd_utc1, oot->scan_tailoring_file))
-     goto return_status;
-
-   if (NULL == (scan = scan_open (cfg, scan_type)))
-     goto return_status;
+     return NULL;
 
    for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
      {
@@ -609,41 +667,15 @@ static int generate_plan (config_t *cfg, const Cal_Date_Type *t0,
           goto return_status;
      }
 
-   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
-     goto return_status;
-
-   (void) fprintf (fp, "# %s = scan method\n", scan_method);
-   if (0 != scan->st_print_params (scan, "#", fp))
-     goto return_status;
-   if (0 != solar_geom->sgt_print_params (solar_geom, "#", fp))
-     goto return_status;
-   (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph.ephem_name);
-   (void) fprintf (fp, "# TEMPO epoch: %s\n", epoch_str);
-   (void) fprintf (fp, "#\n");
-
-   if (0 != plan_list_write (fp, mirror_tilt, plan_list))
-     goto return_status;
-
-   if (0 != generate_vis (cfg, oot->vis_output_file, oot->num_sza_days, solar_geom, plan_list,
-                          scan->st_step_size(scan), sm))
-     goto return_status;
-
    status = 0;
 return_status:
-   (void) ephem_close (&eph);
-   if (solar_geom)
+   if (status)
      {
-        solar_geom->sgt_delete (solar_geom);
-        solar_geom = NULL;
+        plan_list_free (plan_list);
+        plan_list = NULL;
      }
-   if (scan)
-     {
-        scan->st_delete (scan);
-        scan = NULL;
-     }
-   plan_list_free (plan_list);
 
-   return status;
+   return plan_list;
 }
 
 int main (int argc, char **argv)
@@ -652,10 +684,12 @@ int main (int argc, char **argv)
    char *config_file = "plan.cfg";
    char *outfile = NULL;
    FILE *fp = stdout;
+   FILE *fp_irr = stdout;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
    int status = EXIT_FAILURE;
    int do_master_scan_table = 0;
+   int do_irradiance_plan = 0;
    int enable_night_scan = 0;
    int have_date = 0;
    uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
@@ -677,12 +711,18 @@ int main (int argc, char **argv)
         {"scan",    required_argument, 0, 's'},
         {"type",    required_argument, 0, 't'},
         {"output",  required_argument, 0, 'o'},
+        {"irr",     required_argument, 0, 'I'},
         {"szaout",  required_argument, 0, 'z'},
         {"tailor",  required_argument, 0, 'T'},
         {"master",  no_argument, 0, 'm'},
         {0,0,0,0}
      };
-   config_t cfg;
+   config_t cfg = {0};
+   Ephem_Type eph = {0};
+   const Scan_Method_Type *sm = NULL;
+   Scan_Type *scan = NULL;
+   Plan_List_Type *plan_list = NULL;
+   Solar_Geom_Type *solar_geom = NULL;
 
    if (argc < 2)
      usage();
@@ -702,7 +742,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNmc:d:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNmc:d:I:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -746,6 +786,14 @@ int main (int argc, char **argv)
              break;
            case 'm':
              do_master_scan_table++;
+             break;
+           case 'I':
+             if (NULL == (fp_irr = fopen (optarg, "w")))
+               {
+                  fprintf (stderr, "*** error opening file %s for writing\n", optarg);
+                  goto return_status;
+               }
+             do_irradiance_plan++;
              break;
            case 'n':
              if (NULL != strchr (optarg, ','))
@@ -801,12 +849,6 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
-   {
-      time_t now_tt = time(NULL);
-      if (fprintf (fp, "# Created: %s", ctime(&now_tt)) < 0)
-        goto return_status;
-   }
-
    if (do_master_scan_table)
      {
         if (0 != generate_master_scan_table (&cfg, NULL, fp))
@@ -838,12 +880,54 @@ int main (int argc, char **argv)
         if (0 != read_sat_time_zone (&cfg, &t0.hour))
           goto return_status;
 
-        if (0 != generate_plan (&cfg, &t0, num_plan_days, scan_method, scan_type, enable_night_scan, &oot, fp))
+        if ((0 != ephem_open (&cfg, &eph))
+            || (NULL == (solar_geom = solar_geom_init (&cfg))))
           goto return_status;
+
+        if (do_irradiance_plan)
+          {
+             if (0 != write_irradiance_plan (fp_irr, solar_geom, &t0, num_plan_days))
+               goto return_status;
+          }
+        else
+          {
+             if (NULL == (scan = scan_open (&cfg, scan_type)))
+               goto return_status;
+
+             if (NULL == (sm = find_scan_method (scan_method)))
+               {
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: unrecognized scan method '%s'",
+                               __func__, scan_method ? scan_method : "(null)");
+                  goto return_status;
+               }
+
+             if (NULL == (plan_list = generate_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days, enable_night_scan, &oot)))
+               goto return_status;
+
+             if (0 != write_scan_plan (fp, &eph, solar_geom, scan, scan_method, plan_list))
+               goto return_status;
+
+             /* Optionally, generate some plots */
+             if (0 != generate_vis (&cfg, oot.vis_output_file, oot.num_sza_days, solar_geom, plan_list,
+                                    scan->st_step_size(scan), sm))
+               goto return_status;
+          }
      }
 
    status = EXIT_SUCCESS;
 return_status:
+   (void) ephem_close (&eph);
+   if (solar_geom)
+     {
+        solar_geom->sgt_delete (solar_geom);
+        solar_geom = NULL;
+     }
+   if (scan)
+     {
+        scan->st_delete (scan);
+        scan = NULL;
+     }
+   plan_list_free (plan_list);
    if ((fp != NULL) && (outfile != NULL))
      {
         if (0 != fclose (fp))
@@ -851,6 +935,7 @@ return_status:
              tell_verror (TELL_IO_WRITE_ERROR, "closing file %s\n", outfile);
           }
      }
+   if (fp_irr) (void) fclose (fp_irr);
    config_destroy (&cfg);
    tell_close ();
 

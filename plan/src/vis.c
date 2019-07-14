@@ -167,7 +167,7 @@ static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
    projPJ tpers = NULL;
    char ctl_tpers[PROJ_ARGS_BUFSIZE];
    const char tpers_fmt[] =
-     "+proj=tpers +lat_0=0 +lon_0=%0.3g +h=%0.1f +tilt=%0.3g +azi=%0.3g";
+     "+proj=tpers +lat_0=0 +lon_0=%f +h=%f +tilt=%0.4g +azi=%0.4g";
    double *v_x = v->x, *v_y = v->y;
    double *v_lon = v->lon, *v_lat = v->lat;
    int len, status = -1;
@@ -241,8 +241,6 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
        || (CONFIG_TRUE != config_setting_lookup_int (s, "num_mirror_steps", &num_mirror_steps))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "size_mirror_step", &size_mirror_step))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "size_xtrack_pixel", &size_xtrack_pixel))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "tilt", &v->tilt))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "azi", &v->azi))
        )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config: %s",
@@ -254,17 +252,9 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
    size_mirror_step *= 1.e-6;
    size_xtrack_pixel *= 1.e-6;
 
-   /* convert degrees to radians */
-   v->tilt *= DEGTORAD;
-   v->azi *= DEGTORAD;
-
    /* FOR size [radians] */
    v->xsize = num_mirror_steps * size_mirror_step;
    v->ysize = num_xtrack * size_xtrack_pixel * cos (v->tilt);
-
-   /* FOR center coordinates [radians] */
-   v->x0 = 0.0;
-   v->y0 = v->tilt;
 
    return 0;
 }
@@ -272,7 +262,7 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
 Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 {
    Vis_Type *v = NULL;
-   double sat_lon;
+   double sat_lon, unused_azimuth_angle_about_z_axis;
    int img_size;
 
    if (NULL == (v = (Vis_Type *) MALLOC (sizeof *v)))
@@ -286,6 +276,31 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 
    if (0 != read_vis_params (v, cfg, &img_size))
      goto return_error;
+
+   /* tilt>0 [deg] is northward tilt of instrument boresight,
+    *              about spacecraft roll axis
+    * azi>0 [deg] is rotation, eastward from north (CW),
+    *             about instrument boresight axis
+    * These angles specify the instrument pointing direction
+    * for the tilted perspective projection ('tpers') from
+    * the Proj4 library.
+    *
+    * Note that if the sgt_boresight_angles returned an azimuth angle,
+    * it would correspond to a rotation about an axis parallel to the
+    * Earth's spin axis, which is NOT the same as the azi angle that Proj4 wants.
+    * So, if this gets generalized to support the case where the boresight
+    * differs from the satellite longitude, fixing these angles will take
+    * a bit of care.
+    */
+   if (0 != solar_geom->sgt_boresight_angles (solar_geom, &v->tilt, &unused_azimuth_angle_about_z_axis))
+     goto return_error;
+
+   v->tilt *= DEGTORAD;
+   v->azi = 0.0;
+
+   /* FOR center coordinates [radians] */
+   v->x0 = 0.0;
+   v->y0 = v->tilt;
 
    if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
      goto return_error;

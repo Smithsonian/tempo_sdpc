@@ -87,14 +87,16 @@ master_table_config: {
 
 sat_config: {
 
-# TEMPO epoch
   epoch = "2000-01-01T00:00:00Z";
+# TEMPO epoch
 
+  sat_lon = -92.85;
 # sat_lon = geostationary satellite longitude
-  sat_lon = -100.0;
 
-# instrument boresight surface coordinates:
-  boresight: {lon = -97.0; lat = 34.0;};
+  boresight: {lon = -92.85; lat = 34.095428013683204;};
+# (lon,lat) coordinates of instrument boresight point:
+# (note: lon=sat_lon and lat=34.095428013683204 => tilt=5.53 deg)
+
 };
 
 iers_config: {
@@ -110,7 +112,7 @@ iers_config: {
 };
 
 novas_config: {
-  ephem_name = "$SDPC_OTS_ROOT/share/libnovas/JPLEPH";
+  ephem_name = "/vex/d2/tempo/install/gnu/share/libnovas/JPLEPH";
 };
 
 output_sza_map_config: {
@@ -126,15 +128,4 @@ output_sza_map_config: {
 
    num_xtrack         = 2038;
    size_xtrack_pixel  = 41.79;
-
-# tilt>0 [deg] is northward tilt of instrument boresight,
-#              about spacecraft roll axis
-# azi>0 [deg] is rotation, eastward from north (CW),
-#             about instrument boresight axis
-# These angles specify the instrument pointing direction
-# for the tilted perspective projection ('tpers') from
-# the Proj4 library.
-
-   tilt = 5.53;
-   azi  = 4.5;
 };

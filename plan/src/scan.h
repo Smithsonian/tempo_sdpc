@@ -94,4 +94,14 @@ Scan_Limit_Times_Type;
 extern int scan_limit_times (const Scan_Type *st, double jd_utc,
                              Solar_Geom_Type *sgt,
                              Scan_Limit_Times_Type *slt);
+
+/** Compute the time at which an irradiance measurement may be taken with a specified sun angle
+ * @param[in]  sgt     Pointer to an initialized \c Solar_Geom_Type object
+ * @param[in]  irr_sun_angle   Desired angle of incidence of sunlight [deg]
+ * @param[in]  jd_utc  Julian date of local midnight on the day of interest.
+ * @param[out] jd_utc_irr  Julian date for the irradiance observation
+ * @return 0 on success, -1 on error
+ */
+extern int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle,
+                                 double jd_utc, double *jd_utc_irr);
 #endif

@@ -330,7 +330,7 @@ static int dsza_vs_time (double jd_utc, double *dsza, void *v)
 typedef struct
 {
    Solar_Geom_Type *sgt;
-   double min_sun_angle;
+   double target_sun_angle;
 }
 Sun_Angle_Bisect_Type;
 
@@ -340,9 +340,9 @@ static int sun_angle_vs_time (double jd_utc, double *dsa, void *v)
    Solar_Geom_Type *sgt = b->sgt;
    double sun_angle;
 
-   if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &sun_angle, 0.0, NULL))
+   if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &sun_angle, NULL))
      return -1;
-   *dsa = sun_angle - b->min_sun_angle;
+   *dsa = sun_angle - b->target_sun_angle;
 
    return 0;
 }
@@ -355,7 +355,7 @@ static int find_safe_limit_time (Solar_Geom_Type *sgt,
    double jd_utc1, jd_utc2;
 
    b.sgt = sgt;
-   b.min_sun_angle = min_sun_angle;
+   b.target_sun_angle = min_sun_angle;
 
    if (is_morning)
      {
@@ -377,6 +377,34 @@ static int find_safe_limit_time (Solar_Geom_Type *sgt,
      }
 
    *jd_utc_safe = jd_utc;
+
+   return 0;
+}
+
+int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle,
+                          double jd_utc, double *jd_utc_irr)
+{
+   Sun_Angle_Bisect_Type b;
+   double jd_utc1, jd_utc2;
+
+   /* Assume: jd_utc = local midnight at the satellite's longitude */
+
+   b.sgt = sgt;
+   b.target_sun_angle = irr_sun_angle;
+
+   /* Expect the nominal sun angle to occur within 3 hours before midnight */
+   jd_utc1 = jd_utc - 3.0/24;
+   jd_utc2 = jd_utc;
+
+   if (0 != bisection (sun_angle_vs_time, jd_utc1, jd_utc2, &b, &jd_utc))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: bisection failed (sun_angle=%0.2f not found between jd1=%0.2f jd2=%02f)",
+                     __func__, irr_sun_angle, jd_utc1, jd_utc2);
+        return -1;
+     }
+
+   *jd_utc_irr = jd_utc;
 
    return 0;
 }
