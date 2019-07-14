@@ -69,11 +69,11 @@ def read_var (nc, var_config):
 # Create Basemap instance.
 # For the 'geos' projection, use m1 to define the boundaries:
 def init_basemap ():
-    lon_0=-100.0
+    lon_0=-92.85
     m1 = Basemap(projection='geos',lon_0=lon_0,resolution=None)
-    px = m1.urcrnrx * 0.3
+    px = m1.urcrnrx * 0.275
     py = m1.urcrnry * 0.48
-    mx = m1.urcrnrx * (-0.25)
+    mx = m1.urcrnrx * (-0.275)
     my = m1.urcrnry * 0.15
     m  = Basemap(projection='geos',lon_0=lon_0,resolution='l',\
          llcrnrx=mx,llcrnry=my,urcrnrx=px,urcrnry=py)
@@ -89,7 +89,7 @@ def config_map (m):
     m.drawparallels(parallels)
     #### for 'geos', 'ortho' projections, label parallels manually (UGLY!)
     #x_lab = [-124, -126, -130]
-    x_lab = [-128.75, -132, -137.5, -148.5]
+    x_lab = [-125, -129, -136, -150]
     for i in range(len(x_lab)):
         plt.annotate(r"\it %g N" % (parallels[i]),
                      xy=m(x_lab[i],parallels[i]),xycoords='data',
