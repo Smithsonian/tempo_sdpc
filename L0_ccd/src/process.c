@@ -347,6 +347,10 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
+   num_exprecs = gr->granule_num_exprecs(gr);
+   if (ctrl->limit_num_granules < num_exprecs)
+     num_exprecs = ctrl->limit_num_granules;
+
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
 
@@ -356,10 +360,6 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (NULL == (instr = instr_open (ctrl->instr_status_file, ctrl->instr_glob,
                                     gr->granule_tstart(gr), gr->granule_tend(gr), meta)))
      goto return_status;
-
-   num_exprecs = gr->granule_num_exprecs(gr);
-   if (ctrl->limit_num_granules < num_exprecs)
-     num_exprecs = ctrl->limit_num_granules;
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
      goto return_status;
@@ -392,14 +392,12 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         if (NULL == (xr = alloc_exprec_meta ()))
           goto return_status;
 
-        if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
-          goto return_status;
-
         xr->index = ixr;
 
+        if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
+          goto return_status;
         if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
-
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,
                                                      bpixmap->bits, bpixmap->num_rows, bpixmap->num_cols))
           goto return_status;
@@ -778,16 +776,15 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    int do_flag_transients = 1;
    int status = -1;
 
-   queue_init (&exprec_queue);
-
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
 
+   num_exprecs = gr->granule_num_exprecs(gr);
+   if (ctrl->limit_num_granules < num_exprecs)
+     num_exprecs = ctrl->limit_num_granules;
+
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
-
-   if (NULL == (cal = sensorcal_init (cfg, meta)))
-     return -1;
 
    if (NULL == (pqft = pixelqf_init (cfg)))
      goto return_status;
@@ -801,14 +798,13 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (0 != meta_record_basename (meta, ctrl->bpix_file))
      goto return_status;
 
+   if (NULL == (cal = sensorcal_init (cfg, meta)))
+     goto return_status;
+
    if (NULL == (drk = drk_open (ctrl->dark_file)))
      goto return_status;
    if (0 != meta_record_basename (meta, ctrl->dark_file))
      goto return_status;
-
-   num_exprecs = gr->granule_num_exprecs(gr);
-   if (ctrl->limit_num_granules < num_exprecs)
-     num_exprecs = ctrl->limit_num_granules;
 
    /* Allocate reusable scratch space to hold a full, trimmed CCD image */
    ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
@@ -852,6 +848,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    if (num_exprecs < 3) do_flag_transients = 0;
 
    Write_Nominal_Wavelength_Grid = 1;
+   queue_init (&exprec_queue);
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
