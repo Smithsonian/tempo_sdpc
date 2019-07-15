@@ -254,14 +254,16 @@ static int pqf_flag_neighbor (const Pixelqf_Type *pt, Image_Type *img,
    return 0;
 }
 
-static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
-                             float *spikefs, int pb, int pe, int sb, int se)
+static int flag_transients (const Pixelqf_Type *pt, Image_Type *img,
+                            float *spikefs, int pb, int pe, int sb, int se)
 {
    double threshold = pt->transient_threshold;
    int hw_serial = pt->transient_neighbor_hw_serial;
    int hw_parallel = pt->transient_neighbor_hw_parallel;
    Image_Pqf_Bitmap_Type *pqf;
-   int s, p;
+   int s, p, num_pixels_flagged;
+
+   num_pixels_flagged = 0;
 
    for (p = pb; p < pe; p++)
      {
@@ -272,10 +274,7 @@ static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
              int pp, ss, nsb, nse, npb, npe, count;
              double sum;
 
-             /* FIXME? - prototype compares spikefs with threshold,
-              * but it probably should have compared spikefs with 1+threshold
-              */
-             if (spikefs_row[s] <= 1 + threshold)
+             if (spikefs_row[s] <= threshold)
                continue;
 
              nsb = s - hw_serial;
@@ -308,10 +307,20 @@ static void flag_transients (const Pixelqf_Type *pt, Image_Type *img,
                   spikefs_adjacent_mean = ((sum - spikefs_row[s]) / (count - 1));
                   contrast = spikefs_row[s] / spikefs_adjacent_mean - 1.0;
                   if (contrast > threshold)
-                    pqf[s] |= IMAGE_PQF_TRANSIENT_PIXEL;
+                    {
+                       pqf[s] |= IMAGE_PQF_TRANSIENT_PIXEL;
+                       num_pixels_flagged++;
+                    }
                }
           }
      }
+
+   if (num_pixels_flagged > 0)
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "found %d transients", num_pixels_flagged);
+     }
+
+   return num_pixels_flagged;
 }
 
 static float *compute_spikefs (const Image_Pqf_Bitmap_Type *bpixmap,
@@ -360,6 +369,8 @@ static int pqf_flag_transients (const Pixelqf_Type *pt,
 
    if (NULL == (spikefs = compute_spikefs (bpixmap, img_ref, img)))
      return -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "searching by quadrant for transient pixels:");
 
    flag_transients (pt, img, spikefs,    0, nr/2,    0, nc/2);
    flag_transients (pt, img, spikefs,    0, nr/2, nc/2, nc  );

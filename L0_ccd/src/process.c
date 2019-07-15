@@ -770,7 +770,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Solar_Geom_Type *sgt = NULL;
    int num_serial_active_full, num_parallel_active_full;
    int ixr, num_exprecs, exposure_type, ncid_from, ncid_to;
-   int do_flag_transients;
+   int do_flag_transients = 1;
    int status = -1;
 
    queue_init (&exprec_queue);
@@ -843,8 +843,6 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
           goto return_status;
      }
 
-   /* FIXME? */
-   do_flag_transients = 0;
    /* We need at least 3 frames to look for transients */
    if (num_exprecs < 3) do_flag_transients = 0;
 
