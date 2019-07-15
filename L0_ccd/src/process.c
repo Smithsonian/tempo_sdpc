@@ -489,9 +489,7 @@ static int julian_date_from_taix (double taix, double *jd_utc)
    return 0;
 }
 
-static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type *sgt,
-                                   const Dark_Type *drk,
-                                   Exprec_Meta_Type *xr, Image_Type *tmp_img)
+static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Dark_Lookup_Type dlt =
@@ -508,6 +506,14 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
+
+   return 0;
+}
+
+static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type *sgt,
+                                   Exprec_Meta_Type *xr)
+{
+   Granule_Exprec_Type *exprec = xr->exprec;
 
    /* >>> Stray light correction goes here <<< */
 
@@ -533,9 +539,8 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
    return 0;
 }
 
-static Spectral_Data_Type *
-finalize_band (const Calibration_Type *cal,
-               const Exprec_Meta_Type *xr, int band_id)
+static Spectral_Data_Type *finalize_band (const Calibration_Type *cal,
+                                          const Exprec_Meta_Type *xr, int band_id)
 {
    Image_Type *img = xr->exprec->img;
    Image_Type *img_err = xr->img_err;
@@ -568,13 +573,13 @@ return_status:
    return sdt;
 }
 
-static int apply_cal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
-                                 Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
+static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geom_Type *sgt,
+                              Exprec_Meta_Type *xr)
 {
    Output_Exprec_Type outrec = {0};
    int num_negative, status = -1;
 
-   if (0 != radiometric_correction (cal, sgt, drk, xr, tmp_img))
+   if (0 != radiometric_correction (cal, sgt, xr))
      return -1;
 
    if (0) (void) image_write_raw (xr->exprec->img, "final");
@@ -870,9 +875,12 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         if (-1 == compute_current_and_trim (ccd, instr, pqft, pct, xr))
           goto return_status;
 
+        if (0 != dark_subtract (drk, xr, tmp_img))
+          return -1;
+
         if (do_flag_transients == 0)
           {
-             if (0 != apply_cal_and_output (out, cal, sgt, drk, xr, tmp_img))
+             if (0 != radcal_and_output (out, cal, sgt, xr))
                goto return_status;
              free_exprec_meta (xr, gr);
              xr = NULL;
@@ -889,7 +897,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */
              xr_ready = exprec_queue.items[1];
-             if (0 != apply_cal_and_output (out, cal, sgt, drk, xr_ready, tmp_img))
+             if (0 != radcal_and_output (out, cal, sgt, xr_ready))
                goto return_status;
           }
      }
@@ -898,7 +906,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
         xr_ready = exprec_queue.items[2];
-        if (0 != apply_cal_and_output (out, cal, sgt, drk, xr_ready, tmp_img))
+        if (0 != radcal_and_output (out, cal, sgt, xr_ready))
           goto return_status;
      }
 
