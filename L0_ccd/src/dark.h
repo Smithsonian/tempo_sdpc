@@ -34,6 +34,5 @@ enum
 };
 
 extern Dark_Type *drk_open (const char *path);
-extern int drk_create_file (int ncid, int num_times, int num_rows, int num_cols);
 
 #endif

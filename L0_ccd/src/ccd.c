@@ -16,8 +16,6 @@
 #define NUM_QUAD     4
 #define NUM_OCTANTS  8
 
-#define SAT_FUDGE_FACTOR (0.999)
-
 typedef struct
 {
    int num_serial;              /* total number of serial readout pixels */
@@ -101,6 +99,7 @@ typedef int Smear_Corr_Method_Type
    Image_Subset_Type *half; \
    Image_Subset_Type *quad; \
    Image_Subset_Type *oct; \
+   float saturation_fudge_factor; \
    Response_Info_Type resp_info; \
    Phase_Change_Type pct; \
    Octant_Response_Type oct_resp_data[NUM_OCTANTS]; \
@@ -426,9 +425,9 @@ static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *i
 {
    const CCD_Param_Type *ccdp = &ccd->params;
    int saturation_level_coadded = (1 << ccdp->num_coadd_bits) - 1;
-   float saturation_threshold_coadded = SAT_FUDGE_FACTOR * saturation_level_coadded;
+   float saturation_threshold_coadded = ccd->saturation_fudge_factor * saturation_level_coadded;
    int saturation_level_readout = (1 << ccdp->num_readout_bits) - 1;
-   float saturation_threshold_readout = SAT_FUDGE_FACTOR * saturation_level_readout;
+   float saturation_threshold_readout = ccd->saturation_fudge_factor * saturation_level_readout;
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags;
    int i, num_pixels = img->num_rows * img->num_cols;
@@ -733,7 +732,8 @@ static int interpolate_gain (const Gain_Param_Type *gpt,
 
 static int correct_gain_oct (const Octant_Response_Type *oct_resp,
                              const Image_Subset_Type *oct, Image_Type *img,
-                             float fpa_temp, float fpe_temp)
+                             float fpa_temp, float fpe_temp,
+                             float saturation_fudge_factor)
 {
    int s, sb, se, p, pb, pe;
    float gain, saturation_threshold_gate;
@@ -747,7 +747,7 @@ static int correct_gain_oct (const Octant_Response_Type *oct_resp,
    se = oct->col_end;
 
    /* serial readout gate saturation threshold [e-] */
-   saturation_threshold_gate = SAT_FUDGE_FACTOR * oct_resp->ccd_gate_limit;
+   saturation_threshold_gate = saturation_fudge_factor * oct_resp->ccd_gate_limit;
 
    for (p = pb; p < pe; p += 1)
      {
@@ -782,7 +782,7 @@ static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
      {
         int k = ccd->oct_resp_index[i];
         if (-1 == correct_gain_oct (&ccd->oct_resp_data[k], &ccd->oct[i], img,
-                                    fpa_temp, fpe_temp))
+                                    fpa_temp, fpe_temp, ccd->saturation_fudge_factor))
           {
              return -1;
           }
@@ -1673,7 +1673,8 @@ return_status:
 
 static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *meta)
 {
-   config_setting_t *setting;
+   config_setting_t *setting, *sub;
+   double saturation_fudge_factor;
    const char *cal_param_file;
    char *path = NULL;
    int status = -1;
@@ -1711,6 +1712,15 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
 
    if (0 != meta_record_basename (meta, path))
      goto return_status;
+
+   if (NULL == (setting = config_lookup (cfg, "pixel_quality_flag_params")))
+     goto return_status;
+
+   if ((NULL == (sub = config_setting_get_member (setting, "saturation")))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "fudge_factor", &saturation_fudge_factor)))
+     goto return_status;
+
+   ccd->saturation_fudge_factor = saturation_fudge_factor;
 
    status = 0;
 return_status:

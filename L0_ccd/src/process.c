@@ -197,6 +197,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
      return -1;
    exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
 
+   if (0) (void) image_write_raw (exprec->img, "coadd");
+
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
      return -1;
 
@@ -294,7 +296,158 @@ static int compute_current_and_trim (CCD_Type *ccd,
    return 0;
 }
 
-static int write_dark_exprec (int ncid, const Exprec_Meta_Type *xr)
+typedef struct
+{
+   const char *name;
+   const char *text;
+}
+Text_Attr_Type;
+
+static int define_text_attrs (int grp, int varid, const Text_Attr_Type *attrs)
+{
+   const Text_Attr_Type *a;
+
+   for (a = attrs; a->name != NULL; a++)
+     {
+        size_t len = strlen(a->text) + 1;
+        if (0 != TIO_put_att (grp, varid, a->name, TIO_CHAR, len, a->text))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int create_current_file (int ncid, int num_times, int num_rows, int num_cols,
+                                int exposure_type)
+{
+   const char *product_type;
+   int dimid_time, dimid_row, dimid_col, dimid_quad;
+   int varid_time, varid_img, varid_pqf, varid_fpa_temp;
+   int varid_fpe_temp, varid_exptime, varid_sdc;
+   int sdc_dimids[2];
+   int shuffle = 1;
+   int deflate = 1;
+   int deflate_level = 1;
+   int storage = NC_CHUNKED;
+   size_t chunksizes[3];
+   int img_dimids[3];
+   const Text_Attr_Type time_attrs[] =
+     {
+        {"units", "sec since TEMPO epoch"},
+        {"comment", "start time"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type img_attrs[] =
+     {
+        {"units", "electrons/sec"},
+        {"comment", "pixel current"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type pqf_attrs[] =
+     {
+        {"comment", "pixel quality flag"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type fpa_temp_attrs[] =
+     {
+        {"units", "C"},
+        {"comment", "FPA temperature"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type fpe_temp_attrs[] =
+     {
+        {"units", "C"},
+        {"comment", "FPE temperature"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type exptime_attrs[] =
+     {
+        {"units", "seconds"},
+        {"comment", "Exposure time"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type sdc_attrs[] =
+     {
+        {"units", "electrons/sec"},
+        {"comment", "Mean storage region dark current in each quadrant; A,B,C,D"},
+        {NULL, NULL}
+     };
+
+   switch (exposure_type)
+     {
+      case EXPREC_TYPE_DARK:
+        product_type = TEMPO_PROD_TYPE_DRK;
+        break;
+      case EXPREC_TYPE_LIN_DARK:
+        product_type = TEMPO_PROD_TYPE_DRK_LIN;
+        break;
+      case EXPREC_TYPE_LIN_IRR:
+        product_type = TEMPO_PROD_TYPE_IRR_LIN;
+        break;
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure record type = %d", __func__, exposure_type);
+        return -1;
+     }
+
+   if ((0 != TIO_def_dim (ncid, "time", num_times, &dimid_time))
+       || (0 != TIO_def_dim (ncid, "row", num_rows, &dimid_row))
+       || (0 != TIO_def_dim (ncid, "col", num_cols, &dimid_col))
+       || (0 != TIO_def_dim (ncid, "quad", 4, &dimid_quad)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining file array dimensions", __func__);
+        return -1;
+     }
+
+   if (0 != TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, 1 + strlen(product_type), product_type))
+     return -1;
+
+   if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))
+       || (0 != define_text_attrs (ncid, varid_time, time_attrs)))
+     return -1;
+
+   if ((0 != TIO_def_var (ncid, "fpa_temp", TIO_FLOAT, 1, &dimid_time, &varid_fpa_temp))
+       || (0 != define_text_attrs (ncid, varid_fpa_temp, fpa_temp_attrs)))
+     return -1;
+
+   if ((0 != TIO_def_var (ncid, "fpe_temp", TIO_FLOAT, 1, &dimid_time, &varid_fpe_temp))
+       || (0 != define_text_attrs (ncid, varid_fpe_temp, fpe_temp_attrs)))
+     return -1;
+
+   if ((0 != TIO_def_var (ncid, TEMPO_VAR_EXPOSURE_TIME, TIO_FLOAT, 1, &dimid_time, &varid_exptime))
+       || (0 != define_text_attrs (ncid, varid_exptime, exptime_attrs)))
+     return -1;
+
+   sdc_dimids[0] = dimid_time;
+   sdc_dimids[1] = dimid_quad;
+
+   if ((0 != TIO_def_var (ncid, "mean_sdc", TIO_FLOAT, 2, sdc_dimids, &varid_sdc))
+       || (0 != define_text_attrs (ncid, varid_sdc, sdc_attrs)))
+     return -1;
+
+   img_dimids[0] = dimid_time;
+   img_dimids[1] = dimid_row;
+   img_dimids[2] = dimid_col;
+
+   chunksizes[0] = 1;
+   chunksizes[1] = 128;
+   chunksizes[2] = num_cols / 2;
+
+   if ((0 != TIO_def_var (ncid, "image", TIO_FLOAT, 3, img_dimids, &varid_img))
+       || (0 != TIO_def_var_chunking (ncid, varid_img, storage, chunksizes))
+       || (0 != TIO_def_var_deflate (ncid, varid_img, shuffle, deflate, deflate_level))
+       || (0 != define_text_attrs (ncid, varid_img, img_attrs)))
+     return -1;
+
+   if ((0 != TIO_def_var (ncid, TEMPO_VAR_PQF, TIO_UINT, 3, img_dimids, &varid_pqf))
+       || (0 != TIO_def_var_chunking (ncid, varid_pqf, storage, chunksizes))
+       || (0 != TIO_def_var_deflate (ncid, varid_pqf, shuffle, deflate, deflate_level))
+       || (0 != define_text_attrs (ncid, varid_pqf, pqf_attrs)))
+     return -1;
+
+   return 0;
+}
+
+static int write_current_exprec (int ncid, const Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *img = exprec->img;
@@ -328,9 +481,8 @@ static int write_dark_exprec (int ncid, const Exprec_Meta_Type *xr)
    return 0;
 }
 
-static int process_dark (config_t *cfg, const Control_Type *ctrl,
-                         Process_Control_Type *pct,
-                         Granule_Type *gr, TIO_Meta_Type *meta)
+static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
+                           Granule_Type *gr, TIO_Meta_Type *meta)
 {
    CCD_Type *ccd = NULL;
    Instr_Type *instr = NULL;
@@ -339,13 +491,15 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
-   int ixr, num_exprecs, exposure_type;
-   int num_parallel_active_full, num_serial_active_full, drk_ncid = 0;
+   int ixr, num_exprecs, exposure_type, is_dark;
+   int num_parallel_active_full, num_serial_active_full, ncid = 0;
    int bpix_occur_threshold;
    int status = -1;
 
    if (0 != gr->granule_type (gr, &exposure_type))
      return -1;
+
+   is_dark = EXPREC_TYPE_IS_DARK(exposure_type);
 
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
@@ -366,22 +520,25 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
    if (0 != meta_record_basename (meta, ctrl->bpix_file))
      goto return_status;
 
-   bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
-   bpix_occur = bpix_occur_open (bpixmap->num_rows, bpixmap->num_cols,
-                                 bpix_occur_mask);
-   if (NULL == bpix_occur)
-     goto return_status;
+   if (is_dark)
+     {
+        bpix_occur_mask = IMAGE_PQF_HOT_PIXEL | IMAGE_PQF_COLD_PIXEL;
+        bpix_occur = bpix_occur_open (bpixmap->num_rows, bpixmap->num_cols,
+                                      bpix_occur_mask);
+        if (NULL == bpix_occur)
+          goto return_status;
+     }
 
    /* Open the output file */
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Opening output file: %s", ctrl->output_file);
-   if (0 != TIO_create (ctrl->output_file, NC_NETCDF4, &drk_ncid))
+   if (0 != TIO_create (ctrl->output_file, NC_NETCDF4, &ncid))
      goto return_status;
    ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
-   if (0 != drk_create_file (drk_ncid, num_exprecs, num_parallel_active_full, num_serial_active_full))
+   if (0 != create_current_file (ncid, num_exprecs, num_parallel_active_full, num_serial_active_full, exposure_type))
      goto return_status;
-   if (0 != tio_write_epoch_timestamp (drk_ncid, NC_GLOBAL))
+   if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
      goto return_status;
-   if (0 != TIO_copy_granule_ident (gr->granule_ncid(gr), drk_ncid))
+   if (0 != TIO_copy_granule_ident (gr->granule_ncid(gr), ncid))
      goto return_status;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
@@ -405,23 +562,29 @@ static int process_dark (config_t *cfg, const Control_Type *ctrl,
         if (-1 == compute_current_and_trim (ccd, instr, pqft, pct, xr))
           goto return_status;
 
-        if (0 != write_dark_exprec (drk_ncid, xr))
+        if (0 != write_current_exprec (ncid, xr))
           goto return_status;
 
-        if (-1 == bpix_occur_incr (bpix_occur, xr->exprec->img->pixel_quality_flags))
-          goto return_status;
+        if (is_dark)
+          {
+             if (-1 == bpix_occur_incr (bpix_occur, xr->exprec->img->pixel_quality_flags))
+               goto return_status;
+          }
 
         free_exprec_meta (xr, gr);
         xr = NULL;
      }
 
-   bpix_occur_threshold = pct->bpix_update_thresh * num_exprecs;
-   if (num_exprecs > pct->bpix_update_num_exprecs_needed)
+   if (is_dark)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "updating internal bpix map");
-        if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
-                                 bpix_occur_mask, bpixmap->bits))
-          goto return_status;
+        bpix_occur_threshold = pct->bpix_update_thresh * num_exprecs;
+        if (num_exprecs > pct->bpix_update_num_exprecs_needed)
+          {
+             tell_vlog (TELL_MSGTYPE_INFO, 1, "updating internal bpix map");
+             if (0 != bpix_occur_set (bpix_occur, bpix_occur_threshold,
+                                      bpix_occur_mask, bpixmap->bits))
+               goto return_status;
+          }
      }
 
    /* FIXME: eventually, we may write out an updated badpix map */
@@ -434,9 +597,9 @@ return_status:
    free_exprec_meta (xr, gr);
    xr = NULL;
 
-   if (drk_ncid)
+   if (ncid)
      {
-        if (0 != TIO_close (drk_ncid))
+        if (0 != TIO_close (ncid))
           {
              tell_verror (TELL_IO_ERROR, "Closing output file: %s", ctrl->output_file);
              if (status == 0) status = -1;
@@ -474,19 +637,6 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
    return 0;
 }
 
-static int julian_date_from_taix (double taix, double *jd_utc)
-{
-   int year, month, day;
-   double hour;
-
-   if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
-     return -1;
-
-   *jd_utc = novas_julian_date ((short int)year, (short int)month, (short int) day, hour);
-
-   return 0;
-}
-
 static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
@@ -504,6 +654,19 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
+
+   return 0;
+}
+
+static int julian_date_from_taix (double taix, double *jd_utc)
+{
+   int year, month, day;
+   double hour;
+
+   if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
+     return -1;
+
+   *jd_utc = novas_julian_date ((short int)year, (short int)month, (short int) day, hour);
 
    return 0;
 }
@@ -755,8 +918,7 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
    return status;
 }
 
-static int process_exposure (config_t *cfg, const Control_Type *ctrl,
-                             Process_Control_Type *pct,
+static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
                              Granule_Type *gr, TIO_Meta_Type *meta)
 {
    Queue_Type exprec_queue = {0};
@@ -772,7 +934,7 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
    Image_Type *tmp_img = NULL;
    Solar_Geom_Type *sgt = NULL;
    int num_serial_active_full, num_parallel_active_full;
-   int ixr, num_exprecs, exposure_type, ncid_from, ncid_to;
+   int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
    int do_flag_transients = 1;
    int status = -1;
 
@@ -824,9 +986,9 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
 
    ncid_from = gr->granule_ncid (gr);
 
-   if (exposure_type == EXPREC_TYPE_RAD)
+   switch (exposure_type)
      {
-        int scan_type;
+      case EXPREC_TYPE_RAD:
         ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
@@ -837,11 +999,18 @@ static int process_exposure (config_t *cfg, const Control_Type *ctrl,
         if ((0 != TIO_get_att (ncid_from, NC_GLOBAL, "scan_type", NC_INT, &scan_type))
             ||(0 != TIO_put_att (ncid_to, NC_GLOBAL, "scan_type", NC_INT, 1, &scan_type)))
           goto return_status;
-     }
-   else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
-     {
+        break;
+
+      case EXPREC_TYPE_IRR_WRK:
+        /* drop */
+      case EXPREC_TYPE_IRR_REF:
         if (NULL == (sgt = solar_geom_init (cfg)))
           goto return_status;
+        break;
+
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure record type = %d", __func__, exposure_type);
+        goto return_status;
      }
 
    /* We need at least 3 frames to look for transients */
@@ -1063,20 +1232,21 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      {
       case EXPREC_TYPE_DARK:
       case EXPREC_TYPE_LIN_DARK:
-        status = process_dark (cfg, ctrl, &pct, gr, meta);
+      case EXPREC_TYPE_LIN_IRR:   /* Yes, LIN_IRR belongs here. */
+        status = derive_current (cfg, ctrl, &pct, gr, meta);
         break;
 
       case EXPREC_TYPE_IRR_WRK:
       case EXPREC_TYPE_IRR_REF:
-      case EXPREC_TYPE_LIN_IRR:
         /* For irradiances, we'll need to compute the solar illumination geometry */
         tbeg = gr->granule_tstart (gr);
         tend = gr->granule_tend (gr);
         if (0 != init_solsys_ephem (cfg, tbeg, tend, &eph))
           goto return_status;
         /* drop */
+
       case EXPREC_TYPE_RAD:
-        status = process_exposure (cfg, ctrl, &pct, gr, meta);
+        status = derive_photons (cfg, ctrl, &pct, gr, meta);
         break;
 
       default:
