@@ -497,7 +497,6 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
         out->out_write_rec = write_rad_rec;
         break;
 
-      case EXPREC_TYPE_LIN_IRR: /* drop */
       case EXPREC_TYPE_IRR_WRK: /* drop */
       case EXPREC_TYPE_IRR_REF:
         out->out_create = create_irr_file;
