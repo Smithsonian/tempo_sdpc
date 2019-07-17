@@ -50,6 +50,7 @@ typedef struct
    int saturated_neighbor_hw_parallel;
    double bpix_update_thresh;
    int bpix_update_num_exprecs_needed;
+   int do_flag_transients;
 }
 Process_Control_Type;
 
@@ -103,6 +104,15 @@ static int get_control_params (config_t *cfg, Process_Control_Type *pct)
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading badpix_update params in param file: %s",
                      __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((NULL == (sub = config_setting_get_member (s, "transients")))
+       || (CONFIG_TRUE != config_setting_lookup_bool (sub, "do_flag_transients", &pct->do_flag_transients))
+       )
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading saturation flag parameters",
+                     __func__);
         return -1;
      }
 
@@ -708,8 +718,6 @@ static Spectral_Data_Type *finalize_band (const Calibration_Type *cal,
    Spectral_Data_Type *sdt = NULL;
    int status;
 
-   /* FIXME: It might be slightly more efficient to allocate two
-    * Spectral_Data_Type objects at a high level and then re-use them */
    if (NULL == (sdt = sdt_extract_band (cal, band_id, img, img_err)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: extracting band, band_id=%d", __func__, band_id);
@@ -777,12 +785,49 @@ return_status:
 }
 
 #define QUEUE_DEPTH  3
+
 typedef struct
 {
-   Exprec_Meta_Type *items[QUEUE_DEPTH];
+   Image_Type *img;
+   Exprec_Meta_Type *xr;
+}
+Queue_Entry_Type;
+typedef struct
+{
+   Queue_Entry_Type *items[QUEUE_DEPTH];
    int num_queued;
 }
 Queue_Type;
+
+static void free_queue_entry (Queue_Entry_Type *entry)
+{
+   if (entry == NULL)
+     return;
+   image_free (entry->img);
+   entry->img = NULL;
+   entry->xr = NULL;
+   FREE(entry);
+}
+
+static Queue_Entry_Type *new_queue_entry (Exprec_Meta_Type *xr)
+{
+   Queue_Entry_Type *entry = NULL;
+   if (NULL == (entry = (Queue_Entry_Type *)MALLOC (sizeof *entry)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   entry->xr = xr;
+
+   if (NULL == (entry->img = image_dup (xr->exprec->img)))
+     {
+        free_queue_entry (entry);
+        return NULL;
+     }
+
+   return entry;
+}
 
 static void queue_init (Queue_Type *q)
 {
@@ -790,9 +835,9 @@ static void queue_init (Queue_Type *q)
    q->num_queued = 0;
 }
 
-static Exprec_Meta_Type *queue_shift (Queue_Type *q)
+static Queue_Entry_Type *queue_shift (Queue_Type *q)
 {
-   Exprec_Meta_Type *oldest = q->items[0];
+   Queue_Entry_Type *oldest = q->items[0];
    int i;
 
    for (i = 1; i < QUEUE_DEPTH; i++)
@@ -803,11 +848,10 @@ static Exprec_Meta_Type *queue_shift (Queue_Type *q)
    return oldest;
 }
 
-static Exprec_Meta_Type *queue_push (Queue_Type *q,
-                                     Exprec_Meta_Type *xr)
+static Queue_Entry_Type *queue_push (Queue_Type *q, Queue_Entry_Type *qnew)
 {
-   Exprec_Meta_Type *oldest = queue_shift (q);
-   q->items[QUEUE_DEPTH-1] = xr;
+   Queue_Entry_Type *oldest = queue_shift (q);
+   q->items[QUEUE_DEPTH-1] = qnew;
    q->num_queued += 1;
    if (q->num_queued > QUEUE_DEPTH)
      q->num_queued = QUEUE_DEPTH;
@@ -817,12 +861,15 @@ static Exprec_Meta_Type *queue_push (Queue_Type *q,
 static void queue_empty (Queue_Type *q, Granule_Type *gr)
 {
    int i;
-   if ((q == NULL) || (gr == NULL))
+
+   if (q == NULL)
      return;
 
    for (i = 0; i < q->num_queued; i++)
      {
-        free_exprec_meta (q->items[i], gr);
+        Queue_Entry_Type *entry = q->items[i];
+        free_exprec_meta (entry->xr, gr);
+        free_queue_entry (entry);
         q->items[i] = NULL;
      }
 }
@@ -858,7 +905,7 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
                              int num_exprecs, Queue_Type *q, int exprec_index,
                              Image_Type *img_ref)
 {
-   Exprec_Meta_Type *prev, *xr, *next;
+   Queue_Entry_Type *prev, *xr, *next;
    int status = 0;
 
    if (img_ref == NULL)
@@ -892,16 +939,15 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
    if (prev == NULL)
      {
         /* e.g. exprec_index == 1 for num_exprecs >= 2 */
-        img_ref = next->exprec->img;
+        img_ref = next->img;
      }
    else
      {
         /* here's where we actually need the space img_ref points to */
-        make_transient_ref_img (prev->exprec->img, next->exprec->img,
-                                img_ref);
+        make_transient_ref_img (prev->img, next->img, img_ref);
      }
 
-   status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->exprec->img);
+   status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img);
    if (status != 0)
      return status;
 
@@ -910,9 +956,9 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
      {
         /* queue contains {..., img(n-2), img(n-1)} */
         prev = q->items[1];
-        img_ref = prev->exprec->img;
+        img_ref = prev->img;
         xr = q->items[2];
-        status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->exprec->img);
+        status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img);
      }
 
    return status;
@@ -935,7 +981,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Solar_Geom_Type *sgt = NULL;
    int num_serial_active_full, num_parallel_active_full;
    int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
-   int do_flag_transients = 1;
    int status = -1;
 
    if (0 != gr->granule_type (gr, &exposure_type))
@@ -963,7 +1008,10 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    if (NULL == (cal = sensorcal_init (cfg, meta)))
      goto return_status;
 
-   if (NULL == (drk = drk_open (ctrl->dark_file)))
+   if (NULL == (drk = drk_init (cfg)))
+     goto return_status;
+
+   if (0 != drk->drk_open (drk, ctrl->dark_file))
      goto return_status;
    if (0 != meta_record_basename (meta, ctrl->dark_file))
      goto return_status;
@@ -1014,14 +1062,14 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
      }
 
    /* We need at least 3 frames to look for transients */
-   if (num_exprecs < 3) do_flag_transients = 0;
+   if (num_exprecs < 3) pct->do_flag_transients = 0;
 
    Write_Nominal_Wavelength_Grid = 1;
    queue_init (&exprec_queue);
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        Exprec_Meta_Type *xr_to_delete;
+        Queue_Entry_Type *xr_to_delete;
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
 
@@ -1044,7 +1092,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
         if (0 != dark_subtract (drk, xr, tmp_img))
           return -1;
 
-        if (do_flag_transients == 0)
+        if (pct->do_flag_transients == 0)
           {
              if (0 != radcal_and_output (out, cal, sgt, xr))
                goto return_status;
@@ -1053,25 +1101,44 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
           }
         else
           {
-             /* We need at least 2 frames queued to look for transients */
-             xr_to_delete = queue_push (&exprec_queue, xr);
-             free_exprec_meta (xr_to_delete, gr);
-             xr_to_delete = NULL;
+             Queue_Entry_Type *qnew = NULL;
+             /* We need at least 2 frames queued to look for transients.
+              * To queue the frames, we need to make a duplicate copy of the
+              * current image because the radiometric correction will occur
+              * in-place in the next step.  Along with the duplicate current
+              * image, we'll also need the Exprec_Meta_Type pointer for each
+              * entry as it comes out of the queue.  So here, we allocate
+              * a new queue entry, and delete the old entry that's no longer
+              * needed.  Sure, it's a little complicated, but we only need
+              * 3 frames worth in memory at once, instead of reading the
+              * entire granule.
+              */
+             if (NULL == (qnew = new_queue_entry (xr)))
+               goto return_status;
+             xr_to_delete = queue_push (&exprec_queue, qnew);
+             if (xr_to_delete)
+               {
+                  free_exprec_meta (xr_to_delete->xr, gr);
+                  free_queue_entry (xr_to_delete);
+                  xr_to_delete = NULL;
+               }
+
              if (exprec_queue.num_queued < 2)
                continue;
+
              if (0 != flag_transients1 (pqft, bpixmap, num_exprecs, &exprec_queue, ixr, tmp_img))
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */
-             xr_ready = exprec_queue.items[1];
+             xr_ready = exprec_queue.items[1]->xr;
              if (0 != radcal_and_output (out, cal, sgt, xr_ready))
                goto return_status;
           }
      }
 
-   if (do_flag_transients)
+   if (pct->do_flag_transients)
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
-        xr_ready = exprec_queue.items[2];
+        xr_ready = exprec_queue.items[2]->xr;
         if (0 != radcal_and_output (out, cal, sgt, xr_ready))
           goto return_status;
      }

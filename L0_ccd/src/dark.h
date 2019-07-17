@@ -17,7 +17,10 @@ Dark_Lookup_Type;
 struct Dark_Type
 {
    void (*drk_close)(Dark_Type *);
+
+   int (*drk_open)(Dark_Type *, const char *path);
    /* path may be either a dark granule, or a lookup table */
+
    int (*drk_get_image)(const Dark_Type *, const Dark_Lookup_Type *, Image_Type *img);
 
 #ifdef DARK_PRIVATE_DATA
@@ -25,14 +28,6 @@ struct Dark_Type
 #endif
 };
 
-enum
-{
-   DARK_METHOD_FILE,
-   DARK_METHOD_LOOKUP_EXPTIME,
-   DARK_METHOD_LOOKUP_SDC,
-   DARK_METHOD_LOOKUP_FPTEMP
-};
-
-extern Dark_Type *drk_open (const char *path);
+extern Dark_Type *drk_init (config_t *cfg);
 
 #endif
