@@ -17,7 +17,6 @@
 #define DARK_PRIVATE_DATA \
    Image_Type *dc_image; \
    float ref_fpa_temp; \
-   float dc_at_ref_fpa_temp[NUM_QUAD]; \
    float dc_coeffs[NUM_QUAD];
 #include "dark.h"
 
@@ -248,12 +247,6 @@ static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
 
    if (0 != TIO_get_var_section (ncid, "ref_Tfpa_4dc", start, count, TIO_FLOAT, &drk->ref_fpa_temp))
      goto return_status;
-
-   start[0] = 0;
-   count[0] = 2;
-
-   if (0 != TIO_get_var_section (ncid, "DC_ref_Tfpa", start, count, TIO_FLOAT, drk->dc_at_ref_fpa_temp))
-     return -1;
 
    start[0] = 0;
    start[1] = 0;
