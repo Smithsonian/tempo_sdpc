@@ -848,14 +848,27 @@ static Queue_Entry_Type *queue_shift (Queue_Type *q)
    return oldest;
 }
 
-static Queue_Entry_Type *queue_push (Queue_Type *q, Queue_Entry_Type *qnew)
+static int queue_push (Queue_Type *q, Exprec_Meta_Type *xr, Granule_Type *gr)
 {
-   Queue_Entry_Type *oldest = queue_shift (q);
+   Queue_Entry_Type *qnew = NULL;
+   Queue_Entry_Type *oldest;
+
+   if (NULL == (qnew = new_queue_entry (xr)))
+     return -1;
+
+   oldest = queue_shift (q);
+   if (oldest)
+     {
+        free_exprec_meta (oldest->xr, gr);
+        free_queue_entry (oldest);
+     }
+
    q->items[QUEUE_DEPTH-1] = qnew;
    q->num_queued += 1;
    if (q->num_queued > QUEUE_DEPTH)
      q->num_queued = QUEUE_DEPTH;
-   return oldest;
+
+   return 0;
 }
 
 static void queue_empty (Queue_Type *q, Granule_Type *gr)
@@ -975,7 +988,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Instr_Type *instr = NULL;
    Calibration_Type *cal = NULL;
    Exprec_Meta_Type *xr = NULL;
-   Exprec_Meta_Type *xr_ready = NULL;
    Pixelqf_Type *pqft = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Dark_Type *drk = NULL;
@@ -1072,8 +1084,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        Queue_Entry_Type *xr_to_delete;
-
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
 
         if (NULL == (xr = alloc_exprec_meta ()))
@@ -1104,35 +1114,25 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
           }
         else
           {
-             Queue_Entry_Type *qnew = NULL;
-             /* We need at least 2 frames queued to look for transients.
-              * To queue the frames, we need to make a duplicate copy of the
-              * current image because the radiometric correction will occur
-              * in-place in the next step.  Along with the duplicate current
-              * image, we'll also need the Exprec_Meta_Type pointer for each
-              * entry as it comes out of the queue.  So here, we allocate
-              * a new queue entry, and delete the old entry that's no longer
-              * needed.  Sure, it's a little complicated, but we only need
-              * 3 frames worth in memory at once, instead of reading the
-              * entire granule.
+             /* To look for transients, we need at least 2 pixel current (e-/sec)
+              * images queued. To queue these images, we need to make a duplicate copy
+              * of the pixel current image because the radiometric correction
+              * will occur in-place in the next step.  Along with the duplicate
+              * pixel current image, we'll also need the Exprec_Meta_Type pointer
+              * for each entry when it comes out of the queue.  queue_push allocates
+              * a new queue entry containing both of these objects, and deletes the
+              * old queue entry that's no longer needed.  Sure, it's a little complicated,
+              * but we only need 3 frames in memory at once, instead of reading the
+              * entire granule, which may contain >100 frames.
               */
-             if (NULL == (qnew = new_queue_entry (xr)))
+             if (0 != queue_push (&exprec_queue, xr, gr))
                goto return_status;
-             xr_to_delete = queue_push (&exprec_queue, qnew);
-             if (xr_to_delete)
-               {
-                  free_exprec_meta (xr_to_delete->xr, gr);
-                  free_queue_entry (xr_to_delete);
-                  xr_to_delete = NULL;
-               }
-
              if (exprec_queue.num_queued < 2)
                continue;
              if (0 != flag_transients1 (pqft, bpixmap, num_exprecs, &exprec_queue, ixr, tmp_img))
                goto return_status;
-             /* Frame ixr-1 is now ready to continue processing */
-             xr_ready = exprec_queue.items[1]->xr;
-             if (0 != radcal_and_output (out, cal, sgt, xr_ready))
+             /* The previous frame, ixr-1, is now ready to continue processing */
+             if (0 != radcal_and_output (out, cal, sgt, exprec_queue.items[1]->xr))
                goto return_status;
           }
      }
@@ -1140,8 +1140,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    if (pct->do_flag_transients)
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
-        xr_ready = exprec_queue.items[2]->xr;
-        if (0 != radcal_and_output (out, cal, sgt, xr_ready))
+        if (0 != radcal_and_output (out, cal, sgt, exprec_queue.items[2]->xr))
           goto return_status;
      }
 
