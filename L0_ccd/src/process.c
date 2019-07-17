@@ -906,7 +906,6 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
                              Image_Type *img_ref)
 {
    Queue_Entry_Type *prev, *xr, *next;
-   int status = 0;
 
    if (img_ref == NULL)
      {
@@ -947,9 +946,10 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
         make_transient_ref_img (prev->img, next->img, img_ref);
      }
 
-   status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img);
-   if (status != 0)
-     return status;
+   /* since xr->img is a duplicate, we must transfer any flag bits that get set */
+   if ((0 != pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img))
+       || (0 != image_transfer_pqf (xr->img, xr->xr->exprec->img)))
+     return -1;
 
    /* When exprec_index==num_exprecs-1, process one more to finish: */
    if (exprec_index == num_exprecs-1)
@@ -958,10 +958,13 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
         prev = q->items[1];
         img_ref = prev->img;
         xr = q->items[2];
-        status = pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img);
+        /* since xr->img is a duplicate, we must transfer any flag bits that get set */
+        if ((0 != pqft->pqf_flag_transients (pqft, bpixmap->bits, img_ref, xr->img))
+            || (0 != image_transfer_pqf (xr->img, xr->xr->exprec->img)))
+          return -1;
      }
 
-   return status;
+   return 0;
 }
 
 static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
@@ -1125,7 +1128,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
              if (exprec_queue.num_queued < 2)
                continue;
-
              if (0 != flag_transients1 (pqft, bpixmap, num_exprecs, &exprec_queue, ixr, tmp_img))
                goto return_status;
              /* Frame ixr-1 is now ready to continue processing */

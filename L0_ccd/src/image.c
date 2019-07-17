@@ -129,6 +129,42 @@ int image_check_negative_pixels (Image_Type *img, int flag)
    return count;
 }
 
+int image_count_mask_pixels (Image_Type *img, unsigned int mask)
+{
+   Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
+   int i, n, count;
+
+   n = img->num_rows * img->num_cols;
+
+   count = 0;
+   for (i = 0; i < n; i++)
+     {
+        if (pqf[i] & mask) count++;
+     }
+
+   return count;
+}
+
+int image_transfer_pqf (const Image_Type *a, Image_Type *b)
+{
+   const Image_Pqf_Bitmap_Type *a_pqf = a->pixel_quality_flags;
+   Image_Pqf_Bitmap_Type *b_pqf = b->pixel_quality_flags;
+   int i, n;
+
+   if ((a->num_rows != b->num_rows)
+       || (a->num_cols != b->num_cols))
+     return -1;
+
+   n = a->num_rows * a->num_cols;
+
+   for (i = 0; i < n; i++)
+     {
+        b_pqf[i] |= a_pqf[i];
+     }
+
+   return 0;
+}
+
 void image_scale (Image_Type *img, double s)
 {
    Image_Pixel_Type *pixels = img->pixels;

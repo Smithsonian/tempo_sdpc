@@ -280,13 +280,13 @@ static int flag_transients (const Pixelqf_Type *pt, Image_Type *img,
              nsb = s - hw_serial;
              nsb = MAX(sb,nsb);
 
-             nse = s + hw_serial;
+             nse = s + hw_serial + 1;
              nse = MIN(se,nse);
 
              npb = p - hw_parallel;
              npb = MAX(pb,npb);
 
-             npe = p + hw_parallel;
+             npe = p + hw_parallel + 1;
              npe = MIN(pe,npe);
 
              sum = 0.0;

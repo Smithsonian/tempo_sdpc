@@ -139,6 +139,20 @@ extern void image_scale (Image_Type *img, double s);
  */
 extern int image_check_negative_pixels (Image_Type *img, int flag);
 
+/** Count pixels that match a quality flag mask
+ * @param  img   A non-NULL pointer to an existing Image_Type object
+ * @param  mask  The mask
+ * @return 0 on success, -1 on error
+ */
+extern int image_count_mask_pixels (Image_Type *img, unsigned int mask);
+
+/** Transfer pixel quality flags from one image to another of the same size
+ * @param  src   A non-NULL pointer to an existing (source) Image_Type object
+ * @param  dest   A non-NULL pointer to an existing (destination) Image_Type object
+ * @return 0 on success, -1 on error
+ */
+extern int image_transfer_pqf (const Image_Type *src, Image_Type *dest);
+
 /** Allocate an array of image subset structs
  * @param num_subsets   The number of Image_Subset_Type struct to allocate
  * @return a non-NULL pointer to an array of Image_Subset_Type structs on success,
