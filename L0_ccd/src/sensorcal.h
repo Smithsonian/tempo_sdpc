@@ -50,6 +50,8 @@ struct Calibration_Type
    int (*cal_apply_btdf)(const Calibration_Type *, int, double, double,
                          Image_Type *);
 
+   int (*cal_straylight_correction)(const Calibration_Type *, Image_Type *);
+
    /** Define a nominal wavelength grid
     * @param cal  non-NULL pointer to a Calibration_Type object
     * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)

@@ -8,11 +8,19 @@
 #include <tio_template.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
+#include <gsl/gsl_interp.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_matrix_float.h>
 
 #include "config.h"
 #include "util.h"
 
 #define SLIT_AOV_MAX_DEG (2.3)
+
+enum
+{
+   SL_METHOD_BB_FILTER
+};
 
 typedef struct
 {
@@ -37,7 +45,29 @@ typedef struct
 }
 BTDF_Type;
 
+typedef struct
+{
+   int num_waves;
+   int num_kernels;
+
+   float *bb_kernels_transpose;
+   /**< Transpose of Broad band kernels for stray light [num_kernels,num_waves] */
+
+   float *bb_stray_light;
+   /**< Broad band stray light for each kernel [num_waves,num_kernels] */
+
+   float *bb_source_mean;
+   /**< Broad band source mean for each kernel [num_kernels] */
+
+   int shadow_ftop;
+   int shadow_ltop;
+   int shadow_fbot;
+   int shadow_lbot;
+}
+BB_Kernel_Type;
+
 #define SENSORCAL_PRIVATE_DATA \
+   BB_Kernel_Type *sl; \
    BTDF_Type *diffuser_wrk; \
    BTDF_Type *diffuser_ref; \
    float *wavelength_grid; \
@@ -435,6 +465,341 @@ static int cal_apply_btdf (const Calibration_Type *cal,
    return 0;
 }
 
+static void free_bb_kernel_type (BB_Kernel_Type *sl)
+{
+   if (sl == NULL)
+     return;
+   FREE(sl->bb_kernels_transpose);
+   FREE(sl->bb_stray_light);
+   FREE(sl->bb_source_mean);
+   FREE(sl);
+}
+
+static BB_Kernel_Type *alloc_bb_kernel_type (size_t num_waves, size_t num_kernels)
+{
+   BB_Kernel_Type *sl = NULL;
+
+   if (NULL == (sl = (BB_Kernel_Type *)MALLOC (sizeof *sl)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)sl, 0, sizeof *sl);
+
+   if ((NULL == (sl->bb_kernels_transpose = (float *) MALLOC (num_waves * num_kernels * sizeof(float))))
+       || (NULL == (sl->bb_stray_light = (float *) MALLOC (num_waves * num_kernels * sizeof(float))))
+       || (NULL == (sl->bb_source_mean = (float *) MALLOC (num_kernels * sizeof(float)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_bb_kernel_type (sl);
+        return NULL;
+     }
+
+   sl->num_waves = num_waves;
+   sl->num_kernels = num_kernels;
+
+   return sl;
+}
+
+static int read_bb_kernels (Calibration_Type *cal, const char *path)
+{
+   BB_Kernel_Type *sl = NULL;
+   float *bb_kernels = NULL;
+   size_t i, k, num_waves, num_kernels;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
+
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
+       || (0 != TIO_inq_dim (ncid, "n_BBSL_kernel", &dimid, &num_kernels)))
+     goto close_and_return;
+
+   if (NULL == (sl = alloc_bb_kernel_type (num_waves, num_kernels)))
+     goto close_and_return;
+
+   if (NULL == (bb_kernels = (float *)MALLOC (num_waves * num_kernels * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   sl->shadow_ftop = 0;      /* North end CCD columns in shadow */
+   sl->shadow_ltop = 4;
+   sl->shadow_fbot = 2043;   /* South end CCD columns in shadow */
+   sl->shadow_lbot = 2047;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_kernels;
+
+   if ((0 != TIO_get_var_section (ncid, "BB_kernels", start, count, TIO_FLOAT, bb_kernels))
+       || (0 != TIO_get_var_section (ncid, "BB_SLs", start, count, TIO_FLOAT, sl->bb_stray_light)))
+     goto close_and_return;
+
+   count[0] = num_kernels;
+   if (0 != TIO_get_var_section (ncid, "BB_SourceMean", start, count, TIO_FLOAT, sl->bb_source_mean))
+     goto close_and_return;
+
+   /* Apparently the kernels need to be normalized */
+   for (i = 0; i < num_waves; i++)
+     {
+        float *kern = bb_kernels + i * num_kernels;
+        for (k = 0; k < num_kernels; k++)
+          {
+             kern[k] /= num_waves * sl->bb_source_mean[k];
+          }
+     }
+
+   /* Store the kernels transposed
+    * [waves,b] -> [b,waves]
+    */
+   for (i = 0; i < num_waves; i++)
+     {
+        float *kern = bb_kernels + i * num_kernels;
+        float *kern_Ti = sl->bb_kernels_transpose + i;
+        for (k = 0; k < num_kernels; k++)
+          {
+             kern_Ti[k * num_waves] = kern[k];
+          }
+     }
+
+   cal->sl = sl;
+   status = 0;
+
+close_and_return:
+   (void) TIO_close (ncid);
+   if (status)
+     {
+        free_bb_kernel_type (sl);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading %s", __func__, path);
+     }
+   FREE(bb_kernels);
+
+   return status;
+}
+
+typedef struct
+{
+   double *good;
+   double *good_idx;
+   double *bad_idx;
+   size_t num_good;
+   size_t num_bad;
+   gsl_interp_accel *acc;
+}
+Hole_Info_Type;
+
+static void free_hole_info (Hole_Info_Type *h)
+{
+   if (h == NULL)
+     return;
+   FREE(h->good);
+   gsl_interp_accel_free (h->acc);
+}
+
+static int alloc_hole_info (size_t n, Hole_Info_Type *h)
+{
+   if ((NULL == (h->good = (double *)MALLOC (3*n*sizeof(double))))
+       || (NULL == (h->acc = gsl_interp_accel_alloc())))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_hole_info (h);
+        return -1;
+     }
+
+   h->good_idx = h->good + n;
+   h->bad_idx = h->good + n*2;
+   h->num_good = 0;
+   h->num_bad = 0;
+
+   return 0;
+}
+
+static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf_Bitmap_Type *pqf,
+                       Image_Pqf_Bitmap_Type mask, size_t n)
+{
+   gsl_interp *lin = NULL;
+   size_t i, g, b;
+   int status = -1;
+
+   /* Use the good pixels to define a function, then linearly
+    * interpolate values to fill in the bad pixels in this row
+    */
+
+   g = 0;
+   b = 0;
+   for (i = 0; i < n; i++)
+     {
+        if (pqf[i] & mask)
+          {
+             h->bad_idx[b] = i;
+             b++;
+          }
+
+        else
+          {
+             h->good[g] = pix[i];
+             h->good_idx[g] = i;
+             g++;
+          }
+     }
+
+   h->num_good = g;
+   h->num_bad = b;
+
+   if ((NULL == (lin = gsl_interp_alloc (gsl_interp_linear, h->num_good)))
+       || (0 != gsl_interp_init (lin, h->good_idx, h->good, h->num_good)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: gsl_interp_linear initialization failed", __func__);
+        goto return_status;
+     }
+
+   for (b = 0; b < h->num_bad; b++)
+     {
+        double x = h->bad_idx[b];
+        double val = gsl_interp_eval (lin, h->good_idx, h->good, x, h->acc);
+        pix[(size_t)x] = (float) val;
+     }
+
+   status = 0;
+return_status:
+
+   gsl_interp_free (lin);
+
+   return status;
+}
+
+static int fill_image_holes (Image_Type *img)
+{
+   Hole_Info_Type h = {0};
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA;
+   size_t np = img->num_rows;
+   size_t ns = img->num_cols;
+   size_t s, p;
+
+   /* Bad features are likely to extend along columns, so we'll fill in
+    * bad pixels by interpolating along each row.
+    */
+
+   if (0 != alloc_hole_info (ns, &h))
+     return -1;
+
+   for (p = 0; p < np; p++)
+     {
+        Image_Pixel_Type *pixels = img->pixels + p * ns;
+        Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags + p * ns;
+
+        for (s = 0; s < ns; s++)
+          {
+             if (pqf[s] & mask)
+               {
+                  if (0 != interp_row (&h, pixels, pqf, mask, ns))
+                    {
+                       free_hole_info (&h);
+                       return -1;
+                    }
+               }
+          }
+     }
+
+   free_hole_info (&h);
+
+   return 0;
+}
+
+static int cal_straylight_correction (const Calibration_Type *cal, Image_Type *img)
+{
+   BB_Kernel_Type *sl = cal->sl;
+   gsl_matrix_float_view Kt, S, I0, KtI0, D;
+   Image_Type *img0 = NULL;
+   Image_Type *kti0 = NULL;
+   Image_Type *d = NULL;
+   Image_Pixel_Type *pix;
+   Image_Pixel_Type *pix0;
+   Image_Pqf_Bitmap_Type *pqf;
+   Image_Pqf_Bitmap_Type *pqf0;
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_MISSING_DATA | IMAGE_PQF_BAD_PIXEL;
+   size_t num_rows = img->num_rows;
+   size_t num_cols = img->num_cols;
+   size_t i, num_pixels = num_rows * num_cols;
+   int status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Stray light correction:");
+
+   if (NULL == (img0 = image_dup (img)))
+     return -1;
+
+   if (0 != fill_image_holes (img0))
+     goto return_status;
+
+   if ((NULL == (kti0 = image_new (sl->num_kernels, num_cols)))
+       ||(NULL == (d = image_new (img->num_rows, num_cols))))
+     goto return_status;
+
+   Kt = gsl_matrix_float_view_array (sl->bb_kernels_transpose, sl->num_kernels, sl->num_waves);
+   S  = gsl_matrix_float_view_array (sl->bb_stray_light, sl->num_waves, sl->num_kernels);
+   I0 = gsl_matrix_float_view_array (img0->pixels, num_rows, num_cols);
+
+   KtI0 = gsl_matrix_float_view_array (kti0->pixels, sl->num_kernels, num_cols);
+   D    = gsl_matrix_float_view_array (d->pixels, num_rows, num_cols);
+
+   /* We want to compute
+    *   I = I0 - S * (transpose(K) * I0),
+    * where '*' is matrix multiplication, and where the array dimensions are:
+    *  [p,s] = [p,s] - [p,b] * ([b,p] * [p,s])    p=parallel, s=serial
+    *        = [p,s] - [p,b] * [b,s]
+    *        = [p,s] - [p,s]
+    *        = [p,s]   (** showing that the dimensions work out **)
+    * Note:
+    *    *) K should be transposed on input so that it has dimensions [b,p].
+    *    *) the original IDL expression looked different because IDL stores arrays
+    *       differently and because the IDL code had additional transpose calls.
+    *
+    * SGEMM computes C = alpha op(A) op(B) + beta C
+    */
+
+   /* KtI0 = transpose(K) * I0 */
+   gsl_blas_sgemm (CblasNoTrans, CblasNoTrans, 1.0, &Kt.matrix, &I0.matrix, 0.0, &KtI0.matrix);
+
+   /* D = S * KtI0 */
+   gsl_blas_sgemm (CblasNoTrans, CblasNoTrans, 1.0, &S.matrix, &KtI0.matrix, 0.0, &D.matrix);
+
+   /* I0 -= D */
+   gsl_matrix_float_sub (&I0.matrix, &D.matrix);
+
+   if (0) (void) image_write_raw (kti0, "SLkti0");
+   if (0) (void) image_write_raw (d, "SLdelta");
+
+   /* Over-write the input image, leaving original bad pixel values in place. */
+   pqf = img->pixel_quality_flags;
+   pqf0 = img0->pixel_quality_flags;
+   pix0 = img0->pixels;
+   pix = img->pixels;
+   for (i = 0; i < num_pixels; i++)
+     {
+        if (0 == (pqf0[i] & mask))
+          {
+             if ((pix[i] > 0) && (pix0[i] < 0))
+               {
+                  pqf[i] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+               }
+             pix[i] = pix0[i];
+          }
+     }
+
+   status = 0;
+return_status:
+   image_free (img0);
+   image_free (kti0);
+   image_free (d);
+   return status;
+}
+
 static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_index,
                                         double *pwaves)
 {
@@ -477,6 +842,7 @@ static void cal_delete (Calibration_Type *cal)
 {
    if (cal == NULL)
      return;
+   free_bb_kernel_type (cal->sl);
    btdf_free(cal->diffuser_wrk);
    btdf_free(cal->diffuser_ref);
    FREE(cal->radcal_coeffs);
@@ -558,11 +924,13 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_delete = cal_delete;
    cal->cal_apply_radcal_coeffs = cal_apply_radcal_coeffs;
    cal->cal_apply_btdf = cal_apply_btdf;
+   cal->cal_straylight_correction = cal_straylight_correction;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
    if ((0 != read_radcal_coeffs (cal, path))
        || (0 != read_btdf (cal, path))
        || (0 != read_wavelength_grid (cal, path))
+       || (0 != read_bb_kernels (cal, path))
        || (0 != meta_record_basename (meta, path)))
      {
         goto free_and_return;

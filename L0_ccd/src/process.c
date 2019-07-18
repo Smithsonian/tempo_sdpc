@@ -686,7 +686,8 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 {
    Granule_Exprec_Type *exprec = xr->exprec;
 
-   /* >>> Stray light correction goes here <<< */
+   if (0 != cal->cal_straylight_correction (cal, exprec->img))
+     return -1;
 
    /* Multiplicative factor converts e/s to photons/s */
    if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))
