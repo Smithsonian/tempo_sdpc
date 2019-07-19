@@ -982,12 +982,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
    int i;
 
    if (ccd->ccd_smear_correction_method == NULL)
-     {
-        tell_verror (TELL_INTERNAL_ERROR,
-                     "%s: smear correction method not specified!",
-                     __func__);
-        return -1;
-     }
+     return 0;
 
    for (i = 0; i < NUM_QUAD; i++)
      {
@@ -1717,6 +1712,7 @@ Smear_Method_Table[] =
 {
    {"oclocks", smear_correction_using_oclocks},
    {"timing", smear_correction_using_timing},
+   {"none", NULL},
    {NULL, NULL}
 };
 

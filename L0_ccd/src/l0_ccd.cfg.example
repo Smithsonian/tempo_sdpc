@@ -9,14 +9,14 @@ enable:
    transients   = true;
 
    dark         = "mean_tfpa";
-                  # dark: off | mean | mean_tfpa
+                  # dark: none | mean | mean_tfpa
 
    smear        = "oclocks";
-                  # smear: oclocks | timing
+                  # smear: none | oclocks | timing
                   # "timing" method seems to overcorrect
 
    straylight   = "shadow";
-                  # straylight:  "BB" | "shadow"  | "shadow:X"
+                  # straylight: none | BB | shadow | "shadow:X"
                   # where X = N | S | T | B
 };
 

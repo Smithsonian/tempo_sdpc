@@ -648,7 +648,7 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
      };
    const char *method = enable_state_query_enum (ENABLE_DARK);
 
-   if (0 == strcmp (method, "off"))
+   if (0 == strcmp (method, "none"))
      return 0;
 
    /* copy the appropriate dark current image into tmp_img */
@@ -682,8 +682,11 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 {
    Granule_Exprec_Type *exprec = xr->exprec;
 
-   if (0 != cal->cal_straylight_correction (cal, exprec->img))
-     return -1;
+   if (cal->cal_straylight_correction)
+     {
+        if (0 != cal->cal_straylight_correction (cal, exprec->img))
+          return -1;
+     }
 
    /* Multiplicative factor converts e/s to photons/s */
    if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))

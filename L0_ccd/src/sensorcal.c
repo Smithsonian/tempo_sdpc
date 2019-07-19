@@ -1105,6 +1105,12 @@ static int config_straylight_method (Calibration_Type *cal, const char *path)
    const char *sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
    char *p;
 
+   if (0 == strcmp (sl_method, "none"))
+     {
+        cal->cal_straylight_correction = NULL;
+        return 0;
+     }
+
    if (0 == strcmp (sl_method, "BB"))
      {
         if (0 != read_bb_kernels (cal, path))
