@@ -688,6 +688,8 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
           return -1;
      }
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "radiometric correction");
+
    /* Multiplicative factor converts e/s to photons/s */
    if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))
        || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
@@ -701,6 +703,8 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
         if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
             || (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &solar_theta, &solar_phi)))
           return -1;
+
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
             || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))

@@ -967,6 +967,8 @@ static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
    Shadow_Type bot = {0};
    int status = -1;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction (shadow)");
+
    if (cal->straylight_shadow_method & SHADOW_TOP)
      {
         /* shadowed columns on the top/north end of the slit */
