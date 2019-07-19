@@ -17,6 +17,9 @@
 
 #define SLIT_AOV_MAX_DEG (2.3)
 
+#define SHADOW_TOP (1<<0)
+#define SHADOW_BOT (1<<1)
+
 enum
 {
    SL_METHOD_BB_FILTER
@@ -58,13 +61,18 @@ typedef struct
 
    float *bb_source_mean;
    /**< Broad band source mean for each kernel [num_kernels] */
-
-   int shadow_ftop;
-   int shadow_ltop;
-   int shadow_fbot;
-   int shadow_lbot;
 }
 BB_Kernel_Type;
+
+typedef struct
+{
+   float *spec;
+   int *count;
+   int num_rows;
+   int first_col;
+   int last_col;
+}
+Shadow_Type;
 
 #define SENSORCAL_PRIVATE_DATA \
    BB_Kernel_Type *sl; \
@@ -75,7 +83,8 @@ BB_Kernel_Type;
    int num_waves; \
    int num_xpos; \
    double btdf; \
-   double diffuser_trend;
+   double diffuser_trend; \
+   unsigned int straylight_shadow_method;
 #include "sensorcal.h"
 
 static int read_wavelength_grid (Calibration_Type *cal, const char *file)
@@ -530,11 +539,6 @@ static int read_bb_kernels (Calibration_Type *cal, const char *path)
         goto close_and_return;
      }
 
-   sl->shadow_ftop = 0;      /* North end CCD columns in shadow */
-   sl->shadow_ltop = 4;
-   sl->shadow_fbot = 2043;   /* South end CCD columns in shadow */
-   sl->shadow_lbot = 2047;
-
    start[0] = 0;
    start[1] = 0;
    count[0] = num_waves;
@@ -803,6 +807,210 @@ return_status:
    return status;
 }
 
+static void shadow_free (Shadow_Type *sh)
+{
+   if (sh == NULL)
+     return;
+   FREE(sh->spec);
+   FREE(sh->count);
+}
+
+static int shadow_alloc (Shadow_Type *sh, int num_rows, int first_col, int last_col)
+{
+   if (sh == NULL)
+     return -1;
+
+   sh->spec = NULL;
+   sh->count = NULL;
+
+   if ((NULL == (sh->spec = (float *)MALLOC (num_rows * sizeof(float))))
+       || (NULL == (sh->count = (int *)MALLOC (num_rows * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        shadow_free(sh);
+        return -1;
+     }
+
+   sh->first_col = first_col;
+   sh->last_col = last_col;
+   sh->num_rows = num_rows;
+
+   return 0;
+}
+
+static int shadow_mean_spectrum (Shadow_Type *sh, const Image_Type *img)
+{
+   int p, s, sb, se, np;
+   float *spec = sh->spec;
+   int *count = sh->count;
+
+   np = img->num_rows;
+   sb = sh->first_col;
+   se = sh->last_col;
+
+   memset ((char *)spec, 0, np * sizeof(float));
+
+   for (p = 0; p < np; p++)
+     {
+        Image_Pixel_Type *img_pixel = img->pixels + p * img->num_cols;
+        count[p] = 0;
+        spec[p] = 0.0;
+        for (s = sb; s < se; s++)
+          {
+             Image_Pixel_Type pix = img_pixel[s];
+             if (pix != IMAGE_PIXEL_FILL_VALUE)
+               {
+                  spec[p] += pix;
+                  count[p] += 1;
+               }
+          }
+     }
+
+   for (p = 0; p < np; p++)
+     {
+        if (count[p] > 0) spec[p] /= count[p];
+     }
+
+   return 0;
+}
+
+static int slcorr_subtract_shadow (const Shadow_Type *sh, Image_Type *img)
+{
+   int p, s;
+
+   for (p = 0; p < img->num_rows; p++)
+     {
+        Image_Pixel_Type *img_pixel = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags + p * img->num_cols;
+        float spec_p = sh->spec[p];
+        for (s = 0; s < img->num_cols; s++)
+          {
+             Image_Pixel_Type pix = img_pixel[s];
+             if (pix != IMAGE_PIXEL_FILL_VALUE)
+               {
+                  if ((pix >= 0.0) && (spec_p > pix))
+                    {
+                       pqf[s] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+                    }
+                  img_pixel[s] -= spec_p;
+               }
+          }
+     }
+
+   return 0;
+}
+
+static int slcorr_subtract_weighted_shadows (const Shadow_Type *top, const Shadow_Type *bot,
+                                             Image_Type *img)
+{
+   float *col_weight = NULL;
+   int p, s, num_not_shadowed;
+
+   if (NULL == (col_weight = (float *)MALLOC (img->num_cols * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)col_weight, 0, img->num_cols * sizeof(float));
+
+   num_not_shadowed = bot->first_col - top->last_col + 1;
+
+   for (s = top->first_col; s < top->last_col; s++)
+     {
+        col_weight[s] = 1.0;
+     }
+   for (s = top->last_col; s < bot->first_col; s++)
+     {
+        col_weight[s] = 1.0 - (s - top->last_col + 1.0)/num_not_shadowed;
+     }
+   for (s = bot->first_col; s < bot->last_col; s++)
+     {
+        col_weight[s] = 0.0;
+     }
+
+   for (p = 0; p < img->num_rows; p++)
+     {
+        Image_Pixel_Type *img_pixel = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags + p * img->num_cols;
+        float top_spec_p = top->spec[p];
+        float bot_spec_p = bot->spec[p];
+
+        for (s = 0; s < img->num_cols; s++)
+          {
+             Image_Pixel_Type pix = img_pixel[s];
+             float spec_p, wt;
+
+             if (pix == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+
+             wt = col_weight[s];
+             spec_p = top_spec_p * wt + bot_spec_p * (1.0 - wt);
+
+             if ((pix >= 0.0) && (spec_p > pix))
+               {
+                  pqf[s] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+               }
+
+             img_pixel[s] -= spec_p;
+          }
+     }
+
+   FREE(col_weight);
+
+   return 0;
+}
+
+static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
+{
+   const Shadow_Type *sh = NULL;
+   Shadow_Type top = {0};
+   Shadow_Type bot = {0};
+   int status = -1;
+
+   if (cal->straylight_shadow_method & SHADOW_TOP)
+     {
+        /* shadowed columns on the top/north end of the slit */
+        if (0 != shadow_alloc (&top, img->num_rows, 0, 4))
+          goto return_status;
+        if (0 != shadow_mean_spectrum (&top, img))
+          goto return_status;
+        sh = &top;
+     }
+
+   if (cal->straylight_shadow_method & SHADOW_BOT)
+     {
+        /* shadowed columns on the bottom/south end of the slit */
+        if (0 != shadow_alloc (&bot, img->num_rows, 2043, 2047))
+          goto return_status;
+        if (0 != shadow_mean_spectrum (&bot, img))
+          goto return_status;
+        sh = &bot;
+     }
+
+   if (cal->straylight_shadow_method == (SHADOW_BOT | SHADOW_TOP))
+     {
+        if (0 != slcorr_subtract_weighted_shadows (&top, &bot, img))
+          goto return_status;
+     }
+   else if (sh)
+     {
+        if (0 != slcorr_subtract_shadow (sh, img))
+          goto return_status;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid straylight correction method", __func__);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   shadow_free (&top);
+   shadow_free (&bot);
+
+   return status;
+}
+
 static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_index,
                                         double *pwaves)
 {
@@ -892,13 +1100,58 @@ return_error:
 }
 #endif
 
+static int config_straylight_method (Calibration_Type *cal, const char *path)
+{
+   const char *sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
+   char *p;
+
+   if (0 == strcmp (sl_method, "BB"))
+     {
+        if (0 != read_bb_kernels (cal, path))
+          return -1;
+        cal->cal_straylight_correction = slcorr_using_bb_kernels;
+        return 0;
+     }
+
+   if (0 == strncmp (sl_method, "shadow", 6))
+     {
+        cal->cal_straylight_correction = slcorr_using_shadows;
+
+        /* by default, use both shadows */
+        cal->straylight_shadow_method = SHADOW_BOT | SHADOW_TOP;
+
+        if (NULL == (p = strchr (sl_method, ';')))
+          return 0;
+
+        cal->straylight_shadow_method = 0;
+        p++;
+
+        /* optionally specify which shadows */
+        if (0 != strspn (p, "NT"))
+          {
+             cal->straylight_shadow_method |= SHADOW_TOP;
+          }
+
+        if (0 != strspn (p, "SB"))
+          {
+             cal->straylight_shadow_method |= SHADOW_BOT;
+          }
+
+        return 0;
+     }
+
+   tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported straylight correction method: %s",
+                __func__, sl_method);
+   return -1;
+}
+
 Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
-   const char *sl_method = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
+
    int status = -1;
 
    if ((0 != enable_state_define (cfg, ENABLE_STRAYLIGHT))
@@ -947,20 +1200,8 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
           goto free_and_return;
      }
 
-   sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
-
-   if (0 == strcmp (sl_method, "BB"))
-     {
-        if (0 != read_bb_kernels (cal, path))
-          goto free_and_return;
-        cal->cal_straylight_correction = slcorr_using_bb_kernels;
-     }
-   else
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported straylight correction method: %s",
-                     __func__, sl_method);
-        goto free_and_return;
-     }
+   if (0 != config_straylight_method (cal, path))
+     goto free_and_return;
 
    status = 0;
 free_and_return:
