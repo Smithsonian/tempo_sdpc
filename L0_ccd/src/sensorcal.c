@@ -20,11 +20,6 @@
 #define SHADOW_TOP (1<<0)
 #define SHADOW_BOT (1<<1)
 
-enum
-{
-   SL_METHOD_BB_FILTER
-};
-
 typedef struct
 {
    int num_waves;
@@ -1125,26 +1120,26 @@ static int config_straylight_method (Calibration_Type *cal, const char *path)
      {
         cal->cal_straylight_correction = slcorr_using_shadows;
 
-        /* by default, use both shadows */
-        cal->straylight_shadow_method = SHADOW_BOT | SHADOW_TOP;
+        /* By default, use both shadows; optionally, specify each shadow */
 
         if (NULL == (p = strchr (sl_method, ';')))
-          return 0;
-
-        cal->straylight_shadow_method = 0;
-        p++;
-
-        /* optionally specify which shadows */
-        if (0 != strspn (p, "NT"))
           {
-             cal->straylight_shadow_method |= SHADOW_TOP;
+             cal->straylight_shadow_method = SHADOW_BOT | SHADOW_TOP;
           }
-
-        if (0 != strspn (p, "SB"))
+        else
           {
-             cal->straylight_shadow_method |= SHADOW_BOT;
-          }
+             cal->straylight_shadow_method = 0;
+             p++;
+             if (0 != strspn (p, "NT"))
+               {
+                  cal->straylight_shadow_method |= SHADOW_TOP;
+               }
 
+             if (0 != strspn (p, "SB"))
+               {
+                  cal->straylight_shadow_method |= SHADOW_BOT;
+               }
+          }
         return 0;
      }
 
