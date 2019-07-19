@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "image.h"
+#include "util.h"
 
 #define PIXELQF_TYPE_PRIVATE_DATA \
    int num_sigmas_hot_threshold; \
@@ -121,6 +122,9 @@ static int pqf_flag_hotcold (const Pixelqf_Type *pt, Image_Type *img)
 {
    int nr = img->num_rows;
    int nc = img->num_cols;
+
+   if (enable_state_query_bool (ENABLE_HOTCOLD) < 1)
+     return 0;
 
    flag_hotcold (pt, img,    0, nr/2,    0, nc/2);  /* A */
    flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2);  /* B */
@@ -404,6 +408,10 @@ static Pixelqf_Type *pqf_create (void)
 static int parse_param_file (config_t *cfg, Pixelqf_Type *pt)
 {
    config_setting_t *s, *sub;
+
+   if ((0 != enable_state_define (cfg, ENABLE_TRANSIENTS))
+       || (0 != enable_state_define (cfg, ENABLE_HOTCOLD)))
+     return -1;
 
    if (NULL == (s = config_lookup (cfg, "pixel_quality_flag_params")))
      {

@@ -367,6 +367,9 @@ static int cal_apply_btdf (const Calibration_Type *cal,
    float wave_min, wave_step;
    int p, s;
 
+   if (enable_state_query_bool (ENABLE_BTDF) < 1)
+     return 0;
+
    /* Total BTDF has no significant dependence on azimuth.
     * Polarization correction does have azimuthal dependence.
     */
@@ -712,7 +715,7 @@ static int fill_image_holes (Image_Type *img)
    return 0;
 }
 
-static int cal_straylight_correction (const Calibration_Type *cal, Image_Type *img)
+static int slcorr_using_bb_kernels (const Calibration_Type *cal, Image_Type *img)
 {
    BB_Kernel_Type *sl = cal->sl;
    gsl_matrix_float_view Kt, S, I0, KtI0, D;
@@ -729,7 +732,7 @@ static int cal_straylight_correction (const Calibration_Type *cal, Image_Type *i
    size_t i, num_pixels = num_rows * num_cols;
    int status = -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "Stray light correction:");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction (broad-band kernels)");
 
    if (NULL == (img0 = image_dup (img)))
      return -1;
@@ -893,14 +896,19 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
+   const char *sl_method = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
    int status = -1;
 
-   if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
+   if ((0 != enable_state_define (cfg, ENABLE_STRAYLIGHT))
+       || (0 != enable_state_define (cfg, ENABLE_BTDF)))
+     return NULL;
+
+   if (NULL == (s = config_lookup (cfg, "calibration")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_calibration in param file: %s",
+                     "%s: accessing group 'calibration' in param file: %s",
                      __func__, config_error_file (cfg));
         return NULL;
      }
@@ -924,15 +932,33 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_delete = cal_delete;
    cal->cal_apply_radcal_coeffs = cal_apply_radcal_coeffs;
    cal->cal_apply_btdf = cal_apply_btdf;
-   cal->cal_straylight_correction = cal_straylight_correction;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
    if ((0 != read_radcal_coeffs (cal, path))
-       || (0 != read_btdf (cal, path))
        || (0 != read_wavelength_grid (cal, path))
-       || (0 != read_bb_kernels (cal, path))
        || (0 != meta_record_basename (meta, path)))
      {
+        goto free_and_return;
+     }
+
+   if (enable_state_query_bool (ENABLE_BTDF) > 0)
+     {
+        if (0 != read_btdf (cal, path))
+          goto free_and_return;
+     }
+
+   sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
+
+   if (0 == strcmp (sl_method, "BB"))
+     {
+        if (0 != read_bb_kernels (cal, path))
+          goto free_and_return;
+        cal->cal_straylight_correction = slcorr_using_bb_kernels;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported straylight correction method: %s",
+                     __func__, sl_method);
         goto free_and_return;
      }
 

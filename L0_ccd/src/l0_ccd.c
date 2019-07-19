@@ -28,7 +28,7 @@ static void usage (void)
    fprintf (stderr, "   -b | --bpix FILE       Bad pixel file\n");
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -n | --num N           Process <= N exposure records \n");
-   fprintf (stderr, "   -v | --verbose lev     Logging level\n");
+   fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
    fprintf (stderr, "   -h | --help            Print this usage message\n");
    exit (EXIT_SUCCESS);
 }
@@ -47,10 +47,10 @@ static int read_config_file (const char *config_file,
         return -1;
      }
 
-   if (NULL == (setting = config_lookup (cfg, "control")))
+   if (NULL == (setting = config_lookup (cfg, "metadata")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing control settings in param file: %s",
+                     "%s: accessing group 'template' in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -64,10 +64,10 @@ static int read_config_file (const char *config_file,
         return -1;
      }
 
-   if (NULL == (setting = config_lookup (cfg, "ccd_calibration")))
+   if (NULL == (setting = config_lookup (cfg, "calibration")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_calibration in param file: %s",
+                     "%s: accessing group 'calibration' in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -90,16 +90,17 @@ int main (int argc, char **argv)
    char *config_file = "l0_ccd.cfg";
    config_t cfg;
    Control_Type ctrl = {0};
+   int log_level = -1;
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
-        {"config",  optional_argument, 0, 'c'},
-        {"bpix",    optional_argument, 0, 'b'},
+        {"config",  required_argument, 0, 'c'},
+        {"bpix",    required_argument, 0, 'b'},
         {"dark",    required_argument, 0, 'd'},
         {"instr",   required_argument, 0, 'i'},
         {"output",  required_argument, 0, 'o'},
-        {"num",     optional_argument, 0, 'n'},
-        {"verbose", optional_argument, 0, 'v'},
+        {"num",     required_argument, 0, 'n'},
+        {"verbose", no_argument,       0, 'v'},
 	{"help",    no_argument,       0, 'h'},
         {0,0,0,0}
      };
@@ -124,7 +125,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:d:i:o:v:n:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -158,11 +159,7 @@ int main (int argc, char **argv)
              if (1 != sscanf (optarg, "%u", &ctrl.limit_num_granules))
 	       usage();
            case 'v':
-             {
-                int log_level;
-                if (1 == sscanf (optarg, "%d", &log_level))
-                  (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
-             }
+             log_level++;
           }
      }
 
@@ -180,6 +177,8 @@ int main (int argc, char **argv)
           }
         fprintf (stdout, "\n");
      }
+
+   (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", ctrl.input_file);
 

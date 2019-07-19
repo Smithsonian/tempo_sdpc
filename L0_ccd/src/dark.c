@@ -50,6 +50,7 @@ static int apply_quad_factor (Image_Type *img, int pb, int pe, int sb, int se, f
 static int drk_image_Tfpa_corrected (const Dark_Type *drk, const Dark_Lookup_Type *dlt,
                                      Image_Type *img)
 {
+   const char *method = enable_state_query_enum (ENABLE_DARK);
    float delta_invt, fac[NUM_QUAD];
    int nr = img->num_rows;
    int nc = img->num_cols;
@@ -57,6 +58,9 @@ static int drk_image_Tfpa_corrected (const Dark_Type *drk, const Dark_Lookup_Typ
 
    if (0 != image_copy (drk->dc_image, img))
      return -1;
+
+   if (0 != strcmp (method, "mean_tfpa"))
+     return 0;
 
    delta_invt = 1.0/dlt->fpa_temp - 1.0/drk->ref_fpa_temp;
 
@@ -288,10 +292,10 @@ static int read_dc_params (config_t *cfg, Dark_Type *drk)
    char *path = NULL;
    int status = -1;
 
-   if (NULL == (s = config_lookup (cfg, "ccd_calibration")))
+   if (NULL == (s = config_lookup (cfg, "calibration")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_calibration in param file: %s",
+                     "%s: accessing group 'calibration' in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -318,6 +322,9 @@ return_status:
 Dark_Type *drk_init (config_t *cfg)
 {
    Dark_Type *drk = NULL;
+
+   if (enable_state_define (cfg, ENABLE_DARK) < 0)
+     return NULL;
 
    if (NULL == (drk = (Dark_Type *)MALLOC (sizeof (*drk))))
      {

@@ -428,10 +428,10 @@ static int read_params (Output_Type *out, config_t *cfg)
    config_setting_t *setting;
    const char *template_dir;
 
-   if (NULL == (setting = config_lookup (cfg, "control")))
+   if (NULL == (setting = config_lookup (cfg, "metadata")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing control settings in param file: %s",
+                     "%s: accessing group 'template' in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }

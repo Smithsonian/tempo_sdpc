@@ -551,6 +551,9 @@ static int ccd_correct_nonlinearity (const CCD_Type *ccd, Image_Type *img)
 {
    int i;
 
+   if (enable_state_query_bool (ENABLE_NONLINEARITY) < 1)
+     return 0;
+
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         int k = ccd->oct_resp_index[i];
@@ -605,6 +608,9 @@ static int ccd_correct_crosstalk (const CCD_Type *ccd, Image_Type *img)
    Image_Type *img0 = NULL;
    float crosstalk_AB[2];
    float crosstalk_DC[2];
+
+   if (enable_state_query_bool (ENABLE_CROSSTALK) < 1)
+     return 0;
 
    if (NULL == (img0 = image_dup (img)))
      return -1;
@@ -985,6 +991,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
 
    for (i = 0; i < NUM_QUAD; i++)
      {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "smear correction (quad=%d)", i);
         if (-1 == correct_smear_quad (&ccd->params, &ccd->quad[i],
                                       ccd->ccd_smear_correction_method,
                                       client_data, img))
@@ -992,40 +999,6 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
      }
 
    return 0;
-}
-
-typedef struct
-{
-   const char *name;
-   Smear_Corr_Method_Type *method;
-}
-Smear_Corr_Method_Entry_Type;
-static Smear_Corr_Method_Entry_Type Smear_Corr_Methods[] =
-{
-   {"oclocks", smear_correction_using_oclocks},
-   {"timing", smear_correction_using_timing},
-   {NULL, NULL}
-};
-
-int __ccd_set_smear_corr_method (CCD_Type *ccd, const char *name)
-{
-   Smear_Corr_Method_Entry_Type *m;
-
-   for (m = Smear_Corr_Methods; m->name != NULL; m++)
-     {
-        if (0 == strcasecmp (m->name, name))
-          {
-             tell_vlog (TELL_MSGTYPE_INFO, 1, "smear correction method: %s", name);
-             ccd->ccd_smear_correction_method = m->method;
-             return 0;
-          }
-     }
-
-   tell_verror (TELL_INVALID_PARM_ERROR,
-                "%s: unsupported smear correction method = %s",
-                __func__, name);
-
-   return -1;
 }
 
 static int mean_sdc_quad (const CCD_Param_Type *ccdp,
@@ -1240,6 +1213,9 @@ static int ccd_apply_pixel_quality_flags (const CCD_Type *ccd, Image_Type *img,
    int num_parallel_active_full, num_serial_active_full;
    int image_type;
 
+   if (enable_state_query_bool (ENABLE_BADPIX_USE) < 1)
+     return 0;
+
    if (IMAGE_TYPE_PADDED != (image_type = image_get_type (img)))
      {
         tell_verror (TELL_RUNTIME_ERROR,
@@ -1334,6 +1310,9 @@ static int ccd_correct_prnu (const CCD_Type *ccd, Image_Type *img)
 {
    const PRNU_Type *pt = &ccd->resp_info.prnu;
    int s, p, image_type;
+
+   if (enable_state_query_bool (ENABLE_PRNU) < 1)
+     return 0;
 
    if (IMAGE_TYPE_ACTIVE != (image_type = image_get_type (img)))
      {
@@ -1679,10 +1658,10 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
    char *path = NULL;
    int status = -1;
 
-   if (NULL == (setting = config_lookup (cfg, "ccd_calibration")))
+   if (NULL == (setting = config_lookup (cfg, "calibration")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_calibration in param file: %s",
+                     "%s: accessing group 'calibration' in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -1729,28 +1708,57 @@ return_status:
    return status;
 }
 
+static struct Smear_Method_Type
+{
+   const char *name;
+   Smear_Corr_Method_Type *method;
+}
+Smear_Method_Table[] =
+{
+   {"oclocks", smear_correction_using_oclocks},
+   {"timing", smear_correction_using_timing},
+   {NULL, NULL}
+};
+
+static int config_smear_method (CCD_Type *ccd)
+{
+   const char *method = enable_state_query_enum (ENABLE_SMEAR);
+   struct Smear_Method_Type *m;
+
+   for (m = &Smear_Method_Table[0]; m->name != NULL; m++)
+     {
+        if (0 == strcmp (method, m->name))
+          {
+             ccd->ccd_smear_correction_method = m->method;
+             return 0;
+          }
+     }
+
+   tell_verror (TELL_RUNTIME_ERROR, "%s: unknown smear correction method: %s",
+                __func__, method);
+   return -1;
+}
+
 static int init_methods (config_t *cfg, CCD_Type *ccd)
 {
-   config_setting_t *setting;
-   const char *smear_method;
-
-   if (NULL == (setting = config_lookup (cfg, "ccd_methods")))
+   const char **method;
+   const char *enable_methods[] =
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing ccd_methods in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
+        ENABLE_BADPIX_USE,
+        ENABLE_CROSSTALK,
+        ENABLE_NONLINEARITY,
+        ENABLE_PRNU,
+        ENABLE_SMEAR,
+        NULL
+     };
+
+   for (method = enable_methods; *method != NULL; method++)
+     {
+        if (enable_state_define (cfg, *method) < 0)
+          return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string (setting, "smear_corr", &smear_method))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading smear correction method in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (-1 == __ccd_set_smear_corr_method (ccd, smear_method))
+   if (0 != config_smear_method (ccd))
      return -1;
 
    return 0;

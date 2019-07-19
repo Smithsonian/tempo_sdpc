@@ -9,6 +9,135 @@
 #include "config.h"
 #include "util.h"
 
+#define MAX_ENABLE_STATE_SETTINGS  100
+
+typedef struct
+{
+   /* These const char * pointers are assumed to point to either
+    * a string literal, or to memory managed by libconfig
+    */
+   const char *name;
+   const char *enum_state;
+   int boolean_state;
+   int state_type;
+}
+Enable_State_Type;
+
+static Enable_State_Type Enable_Settings[MAX_ENABLE_STATE_SETTINGS];
+static int Num_Enable_Settings;
+
+static int find_enable_setting (const char *name)
+{
+   int i;
+
+   for (i = 0; i < Num_Enable_Settings; i++)
+     {
+        Enable_State_Type *s = &Enable_Settings[i];
+        if (0 == strcmp (s->name, name))
+          {
+             return i;
+             break;
+          }
+     }
+
+   return -1;
+}
+
+static int enable_state_new (const char *name, int type, int boolean_state, const char *enum_state)
+{
+   Enable_State_Type *s;
+   int n;
+
+   if (Num_Enable_Settings == MAX_ENABLE_STATE_SETTINGS)
+     {
+        tell_verror (TELL_INTERNAL_ERROR, "%s: enable state table is full", __func__);
+        return -1;
+     }
+
+   if ((n = find_enable_setting (name)) < 0)
+     {
+        n = Num_Enable_Settings;
+        Num_Enable_Settings++;
+     }
+
+   s = &Enable_Settings[n];
+   s->state_type = type;
+   s->boolean_state = boolean_state;
+   s->enum_state = enum_state;
+   s->name = name;
+
+   return 0;
+}
+
+int enable_state_define (config_t *cfg, const char *state_name)
+{
+   config_setting_t *s, *m;
+   const char *enum_state = NULL;
+   int boolean_state = 0;
+   int type;
+
+   if ((NULL == (s = config_lookup (cfg, "enable")))
+       || (NULL == (m = config_setting_get_member (s, state_name))))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: reading %s from group 'enable' in %s",
+                     __func__, state_name, config_error_file(cfg));
+        return -1;
+     }
+
+   type = config_setting_type (m);
+
+   switch (type)
+     {
+      case CONFIG_TYPE_BOOL:
+        boolean_state = config_setting_get_bool (m);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "SELECT %s: %s", state_name, boolean_state ? "ON" : "OFF");
+        break;
+
+      case CONFIG_TYPE_STRING:
+        enum_state = config_setting_get_string (m);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "SELECT %s: %s", state_name, enum_state ? enum_state : "NULL");
+        break;
+
+      default:
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: invalid setting: %s",  __func__, state_name);
+        return -1;
+     }
+
+   return enable_state_new (state_name, type, boolean_state, enum_state);
+}
+
+const char *enable_state_query_enum (const char *name)
+{
+   Enable_State_Type *s;
+   int n;
+
+   if ((n = find_enable_setting (name)) < 0)
+     return NULL;
+
+   s = &Enable_Settings[n];
+
+   if (s->state_type != CONFIG_TYPE_STRING)
+     return NULL;
+
+   return s->enum_state;
+}
+
+int enable_state_query_bool (const char *name)
+{
+   Enable_State_Type *s;
+   int n;
+
+   if ((n = find_enable_setting (name)) < 0)
+     return -1;
+
+   s = &Enable_Settings[n];
+
+   if (s->state_type != CONFIG_TYPE_BOOL)
+     return -1;
+
+   return s->boolean_state;
+}
+
 int bsearch_d (double t, const double *x, int n)
 {
    int n0, n1, n2;

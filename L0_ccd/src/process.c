@@ -50,7 +50,6 @@ typedef struct
    int saturated_neighbor_hw_parallel;
    double bpix_update_thresh;
    int bpix_update_num_exprecs_needed;
-   int do_flag_transients;
 }
 Process_Control_Type;
 
@@ -104,15 +103,6 @@ static int get_control_params (config_t *cfg, Process_Control_Type *pct)
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading badpix_update params in param file: %s",
                      __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if ((NULL == (sub = config_setting_get_member (s, "transients")))
-       || (CONFIG_TRUE != config_setting_lookup_bool (sub, "do_flag_transients", &pct->do_flag_transients))
-       )
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading saturation flag parameters",
-                     __func__);
         return -1;
      }
 
@@ -656,10 +646,16 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
         .exposure_time = exprec->exposure_time,
         .storage_region_dark = xr->storage_region_dark,
      };
+   const char *method = enable_state_query_enum (ENABLE_DARK);
+
+   if (0 == strcmp (method, "off"))
+     return 0;
 
    /* copy the appropriate dark current image into tmp_img */
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "dark subtraction (%s)", method);
 
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
@@ -995,7 +991,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
    Solar_Geom_Type *sgt = NULL;
-   int num_serial_active_full, num_parallel_active_full;
+   int num_serial_active_full, num_parallel_active_full, flag_transients;
    int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
    int status = -1;
 
@@ -1077,8 +1073,14 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
         goto return_status;
      }
 
-   /* We need at least 3 frames to look for transients */
-   if (num_exprecs < 3) pct->do_flag_transients = 0;
+   if ((flag_transients = enable_state_query_bool (ENABLE_TRANSIENTS)) < 0)
+     goto return_status;
+   if ((flag_transients != 0) && (num_exprecs < 3))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "%s: flag_transients is ON, but we processing too few exposure records (>= 3 are required)", __func__);
+        flag_transients = 0;
+     }
 
    Write_Nominal_Wavelength_Grid = 1;
    queue_init (&exprec_queue);
@@ -1106,7 +1108,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
         if (0 != dark_subtract (drk, xr, tmp_img))
           return -1;
 
-        if (pct->do_flag_transients == 0)
+        if (flag_transients == 0)
           {
              if (0 != radcal_and_output (out, cal, sgt, xr))
                goto return_status;
@@ -1138,7 +1140,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
           }
      }
 
-   if (pct->do_flag_transients)
+   if (flag_transients)
      {
         /* Process the last entry in the queue, exprec[num_exprecs-1] */
         if (0 != radcal_and_output (out, cal, sgt, exprec_queue.items[2]->xr))
