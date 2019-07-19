@@ -15,7 +15,9 @@ enable:
                   # smear: oclocks | timing
                   # "timing" method seems to overcorrect
 
-   straylight   = "BB";
+   straylight   = "shadow";
+                  # straylight:  "BB" | "shadow"  | "shadow:X"
+                  # where X = N | S | T | B
 };
 
 calibration:
