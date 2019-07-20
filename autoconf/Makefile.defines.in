@@ -38,6 +38,10 @@ ifeq ($(COMPILER_SUITE), gnu)
   all-dbg :: export CFLAGS=-g -ggdb -Wall -W -Wextra -Wformat=2 -Wunused -Wundef -Wno-long-long -Winline -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wcast-align -Wshadow -Wstrict-prototypes -Wc++-compat -fdiagnostics-color=never
   all-dbg :: export FFLAGS=-g -ggdb -Wall -W -Wextra -Warray-bounds -Wno-unused-dummy-argument -ffpe-trap=invalid,zero,overflow -finit-real=snan -fcheck=all -fbounds-check -fmax-errors=0 -fbacktrace -fcheck-array-temporaries -fdiagnostics-color=never
   all-dbg :: export LFLAGS=#
+
+  all-gprof :: export CFLAGS += -pg -no-pie -fprofile-arcs
+  all-gprof :: export FFLAGS += -pg -no-pie -fprofile-arcs
+  all-gprof :: export LFLAGS += -pg -no-pie
 endif
 
 ifeq ($(COMPILER_SUITE), intel)
@@ -140,8 +144,11 @@ SQLITE3_INC  = @SQLITE3_INC@
 # For example, in any subdirectory, you can do 'make clean all-dbg' to compile
 # with debug flags turned on, independent of how the environment has defined
 # CFLAGS, FFLAGS, and LFLAGS.
+all-dbg:
+	$(MAKE) all
+
 all-opt:
 	$(MAKE) all
 
-all-dbg:
+all-gprof:
 	$(MAKE) all
