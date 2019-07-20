@@ -63,10 +63,9 @@ static void compute_goodpix_mean_and_stddev (const Image_Type *img,
              if (pqf[s]) continue;
              dev = pixels[s] - mean;
              sum_sqdev += dev * dev;
-             count += 1;
           }
      }
-   stddev = sqrt (sum_sqdev / count);
+   stddev = sqrt (sum_sqdev / (count-1.0));
 
    if (meanp) *meanp = mean;
    if (stddevp) *stddevp = stddev;
@@ -76,9 +75,9 @@ static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
                          int pb, int pe, int sb, int se)
 {
    Image_Pixel_Type *pixels;
+   Image_Pqf_Bitmap_Type *pqf;
    Image_Pixel_Type hot_thresh, cold_thresh;
    double mean, stddev;
-   Image_Pqf_Bitmap_Type *pqf;
    int p, s;
 
    compute_goodpix_mean_and_stddev (img, pb, pe, sb, se,
