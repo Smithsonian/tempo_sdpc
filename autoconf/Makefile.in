@@ -1,4 +1,6 @@
 
+include ./Makefile.defines
+
 @SET_MAKE@
 
 RM = /bin/rm

@@ -29,6 +29,15 @@ ifeq ($(COMPILER_SUITE), gnu)
   MODOUTFLG    = -J
   RPATH        = -Wl,-rpath=$(OTS_ROOT)/lib
   FC_EXTRA_LIBS =#
+
+# target specific variables propagated to every makefile that includes this one
+  all-opt :: export CFLAGS=-O3
+  all-opt :: export FFLAGS=-O3
+  all-opt :: export LFLAGS=#
+
+  all-dbg :: export CFLAGS=-g -ggdb -Wall -W -Wextra -Wformat=2 -Wunused -Wundef -Wno-long-long -Winline -Wmissing-prototypes -Wnested-externs -Wpointer-arith -Wcast-align -Wshadow -Wstrict-prototypes -Wc++-compat -fdiagnostics-color=never
+  all-dbg :: export FFLAGS=-g -ggdb -Wall -W -Wextra -Warray-bounds -Wno-unused-dummy-argument -ffpe-trap=invalid,zero,overflow -finit-real=snan -fcheck=all -fbounds-check -fmax-errors=0 -fbacktrace -fcheck-array-temporaries -fdiagnostics-color=never
+  all-dbg :: export LFLAGS=#
 endif
 
 ifeq ($(COMPILER_SUITE), intel)
@@ -52,6 +61,15 @@ ifeq ($(COMPILER_SUITE), intel)
   LONG_BIT      = $(shell getconf LONG_BIT)
   FC_EXTRA_LIBS = $(INTEL_ROOT)/lib/intel$(LONG_BIT)
   RPATH        = -Wl,-rpath=$(FC_EXTRA_LIBS):$(HDFEOS5_LIB):$(HDFEOS_LIB):$(PGSLIB):$(HDF5LIB):$(HDFLIB)
+
+# target specific variables propagated to every makefile that includes this one
+  all-opt :: export CFLAGS=-O3
+  all-opt :: export FFLAGS=-O3
+  all-opt :: export LFLAGS=#
+
+  all-dbg :: export CFLAGS=-O0 -g -debug all -traceback -check-uninit
+  all-dbg :: export FFLAGS=-O0 -g -debug all -traceback -check bounds -check arg_temp_created -fpe0 -ftrapuv
+  all-dbg :: export LFLAGS=#
 endif
 
 INSTALL = @INSTALL@
@@ -115,3 +133,15 @@ LEAP_SECONDS_LIST = @LEAP_SECONDS_LIST@
 
 SQLITE3_LIB  = @SQLITE3_LIB@ -lsqlite3
 SQLITE3_INC  = @SQLITE3_INC@
+
+# Target-specific compiler options have been defined above.
+# Doing a 'make all-opt' will build using the all-opt compiler flags defined above.
+# These build targets are propagated to all makefiles that include this one.
+# For example, in any subdirectory, you can do 'make clean all-dbg' to compile
+# with debug flags turned on, independent of how the environment has defined
+# CFLAGS, FFLAGS, and LFLAGS.
+all-opt:
+	$(MAKE) all
+
+all-dbg:
+	$(MAKE) all
