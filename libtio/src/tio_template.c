@@ -154,13 +154,17 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
    if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &gid->scan_num))
        ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
      {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading scan_num, granule_num attributes from file", __func__);
         return -1;
      }
 
    start = 0;
    count = 1;
    if (0 != TIO_get_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &gid->granule_flag))
-     return -1;
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading granule_flag variable from file", __func__);
+        return -1;
+     }
 
    return 0;
 }
