@@ -12,9 +12,10 @@
 
 enum
 {
-   TASK_UNKNOWN = 0,
-   TASK_PRINT_TIMES = 1,
-   TASK_FIX_FILE = 2
+   TASK_UNKNOWN,
+   TASK_PRINT_TIMES,
+   TASK_PRINT_TIMESTAMP,
+   TASK_FIX_FILE
 };
 
 #define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
@@ -44,6 +45,7 @@ static void usage (void)
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
+   fprintf (stderr, "  -T | --timestamp SECONDS  Generate a UTC timestamp for a TEMPO filename\n");
    fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ or YYYYMMDDTHHMMSSZ\n");
    exit (EXIT_SUCCESS);
 }
@@ -106,13 +108,12 @@ static int print_ioc_string (double taix_sec)
    return 0;
 }
 
-static int print_taix_as_strings (double taix)
+static int make_iso8601_string (double taix, int want_delim, int want_frac,
+                                char *buf, int bufsize)
 {
-   double hour, minf, sec, tai, utc;
+   double hour, minf, sec;
    int year, month, day, hr, min;
-   time_t tt;
-   struct tm tm = {0};
-   char buf[BUFSIZE];
+   const char *fmt;
 
    if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
      return -1;
@@ -128,8 +129,41 @@ static int print_taix_as_strings (double taix)
     */
    sec = ((int)(sec * 1.e6))/1.e6;
 
-   fprintf (stdout, "UTC: %4d-%02d-%02dT%02d:%02d:%09.6fZ\n",
-            year, month, day, hr, min, sec);
+   if (want_frac)
+     {
+        fmt = (want_delim ?
+               "%4d-%02d-%02dT%02d:%02d:%09.6fZ" :
+               "%4d%02d%02dT%02d%02d%09.6fZ");
+        return snprintf (buf, bufsize, fmt, year, month, day, hr, min, sec);
+     }
+   else
+     {
+        fmt = (want_delim ?
+               "%4d-%02d-%02dT%02d:%02d:%02dZ" :
+               "%4d%02d%02dT%02d%02d%02dZ");
+        return snprintf (buf, bufsize, fmt, year, month, day, hr, min, (int) sec);
+     }
+}
+
+static int print_timestamp (double taix)
+{
+   char buf[BUFSIZE];
+   if (make_iso8601_string (taix, 0, 0, buf, sizeof(buf)) < 0)
+     return -1;
+   fprintf (stdout, "%s", buf);
+   return 0;
+}
+
+static int print_taix_as_strings (double taix)
+{
+   double tai, utc;
+   time_t tt;
+   struct tm tm = {0};
+   char buf[BUFSIZE];
+
+   if (make_iso8601_string (taix, 1, 1, buf, sizeof(buf)) < 0)
+     return -1;
+   fprintf (stdout, "UTC: %s\n", buf);
 
    if (0 != tio_time_taix_to_utc (taix, &utc))
      return -1;
@@ -237,6 +271,7 @@ int main (int argc, char **argv)
         {"fix",   required_argument, 0, 'f'},
         {"grp",   required_argument, 0, 'g'},
         {"var",   required_argument, 0, 'v'},
+        {"timestamp", required_argument, 0, 'T'},
         {0,0,0,0}
      };
    const char *utc_string = NULL;
@@ -261,7 +296,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "we:f:g:i:s:u:v:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "we:f:g:i:s:T:u:v:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -294,6 +329,14 @@ int main (int argc, char **argv)
              break;
            case 's':
 	     task = TASK_PRINT_TIMES;
+	     if (1 != sscanf (optarg, "%le", &taix))
+	       {
+		  fprintf (stderr, "*** Error: setting elapsed seconds since the epoch\n");
+		  exit(1);
+	       }
+             break;
+           case 'T':
+	     task = TASK_PRINT_TIMESTAMP;
 	     if (1 != sscanf (optarg, "%le", &taix))
 	       {
 		  fprintf (stderr, "*** Error: setting elapsed seconds since the epoch\n");
@@ -347,6 +390,10 @@ int main (int argc, char **argv)
 
    switch (task)
      {
+      case TASK_PRINT_TIMESTAMP:
+        status = print_timestamp (taix);
+        break;
+
       case TASK_PRINT_TIMES:
         fprintf (stdout, "SEC: %0.6f\n", taix);
 	status = print_taix_as_strings (taix);
