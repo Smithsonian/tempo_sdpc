@@ -23,10 +23,10 @@ enable:
 
 calibration:
 {
-   cal_param_file = "$SDPC_RUN_DIR/refdata/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
-   gain_file      = "$SDPC_RUN_DIR/refdata/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
-   badpix_file    = "$SDPC_RUN_DIR/refdata/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
-   sensorcal_file = "$SDPC_RUN_DIR/refdata/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+   cal_param_file = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+   gain_file      = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+   badpix_file    = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+   sensorcal_file = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
 };
 
 metadata:

@@ -319,7 +319,7 @@ static int get_granule_dims (Granule_Type *g)
 Granule_Type *granule_open (const char *file)
 {
    Granule_Type *g;
-   char *exprec_type = NULL;
+   char exprec_type[TIO_MAX_SHORT_NAME_LEN];
    size_t img_size;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
@@ -341,12 +341,11 @@ Granule_Type *granule_open (const char *file)
    if (NULL == (g->pixel_buffer = (int *) MALLOC (img_size)))
      goto error_return;
 
-   if (0 != TIO_get_att (g->ncid, NC_GLOBAL, "exprec_type", NC_STRING, &exprec_type))
+   memset ((char *)exprec_type, 0, sizeof(exprec_type));
+   if (0 != TIO_get_att (g->ncid, NC_GLOBAL, "exprec_type", NC_CHAR, exprec_type))
      goto error_return;
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec_type: %s", exprec_type ? exprec_type : "(null)");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec_type: %s", exprec_type);
    g->exposure_type = identify_exprec_type (exprec_type);
-   (void) TIO_free_string (1, &exprec_type);
-   exprec_type = NULL;
 
    if ((-1 == TIO_get_att (g->ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &g->tstart))
        || (-1 == TIO_get_att (g->ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &g->tend)))
