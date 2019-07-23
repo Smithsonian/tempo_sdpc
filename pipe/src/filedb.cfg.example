@@ -21,7 +21,7 @@ irr:
 
 drk:
 {
-    root_dir = "$SDPC_ROOT/archive/L0/DRK" ;
+    root_dir = "$SDPC_ROOT/archive/L1/DRK" ;
     basename_pattern = "TEMPO_DRK_*.nc" ;
     lookup_table = "$SDPC_ROOT/var/drk.db" ;
 };

@@ -22,8 +22,6 @@ inr_mkdirs.sh
 inr_config.sh
 inr_refdata.sh
 
-test_telem.sh
-
 # FIXME - During operations, cron jobs will do this.
 #         For testing purposes, do it here.
 filedb -c $SDPC_ROOT/etc/filedb.cfg met --update

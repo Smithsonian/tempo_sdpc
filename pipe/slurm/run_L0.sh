@@ -126,10 +126,10 @@ run_inr_prep()
 
 case "${granule_basename}" in
   *DRK* )
-  output_file=$(mkgranule_name -L 0 -p DRKT -v $SDPC_PROCESSING_VERSION $granule_basename)
+  output_file=$(mkgranule_name -L 1 -p DRK -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file ""
-  tar_out_dir="$l0_out_dir"
-  archive_level="L0"
+  tar_out_dir="$l1_out_dir"
+  archive_level="L1"
   ;;
 
   *IRR* )

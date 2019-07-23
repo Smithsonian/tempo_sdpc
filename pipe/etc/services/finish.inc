@@ -22,4 +22,5 @@ then
    exit 0
 fi
 
+s6-permafailon 300 5 sigabrt,sigsegv,sigbus \
 echo "`date --iso-8601=seconds` $SERVICE killed by signal $sigval" 1>&2
