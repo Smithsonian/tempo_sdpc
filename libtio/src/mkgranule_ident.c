@@ -51,8 +51,8 @@ static int write_granule_ident_file (const char *file,
    fprintf (fp, "product_type,%s\n", product_type);
    fprintf (fp, "scan_num,%d\n", gid->scan_num);
    fprintf (fp, "granule_num,%d\n", gid->granule_num);
-   fprintf (fp, "time_coverage_start_since_epoch,%0.16e\n", gid->tstart);
-   fprintf (fp, "time_coverage_end_since_epoch,%0.16e\n", gid->tend);
+   fprintf (fp, "time_coverage_start_since_epoch,%f\n", gid->tstart);
+   fprintf (fp, "time_coverage_end_since_epoch,%f\n", gid->tend);
 
    fprintf (fp, "tstart_year,%d\n", tstart.tm_year + 1900);
    fprintf (fp, "tstart_month,%d\n", tstart.tm_mon + 1);
