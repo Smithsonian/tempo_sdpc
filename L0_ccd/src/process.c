@@ -704,7 +704,16 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
             || (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &solar_theta, &solar_phi)))
           return -1;
 
+#define SOLAR_THETA_NOMINAL     30.0  /* deg */
+#define SOLAR_THETA_WARN_DELTA   5.0  /* deg */
+
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
+        if (fabs (solar_theta - SOLAR_THETA_NOMINAL) > SOLAR_THETA_WARN_DELTA)
+          {
+             tell_vlog (TELL_MSGTYPE_WARN, 0,
+                        "diffuser solar incidence angle = %0.3f deg (>%g deg away from nominal value = %0.3f deg)",
+                        solar_theta, SOLAR_THETA_WARN_DELTA, SOLAR_THETA_NOMINAL);
+          }
 
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
             || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
