@@ -32,7 +32,4 @@ done
 _target_dir="$SDPC_ARCHIVE_DIR/L0/1/7134/HK"
 mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T052010Z.nc
-
-_target_dir="$SDPC_ARCHIVE_DIR/L0/1/7135/HK"
-mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T081005Z.nc
