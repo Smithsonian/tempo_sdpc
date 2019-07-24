@@ -361,6 +361,9 @@ static int read_btdf (Calibration_Type *cal, const char *path)
    return 0;
 }
 
+#define BTDF_SOLAR_THETA_NOMINAL     30.0  /* deg */
+#define BTDF_SOLAR_THETA_WARN_DELTA   5.0  /* deg */
+
 static int cal_apply_btdf (const Calibration_Type *cal,
                            int is_reference_diffuser,
                            double solar_phi_deg, double solar_theta_deg,
@@ -373,6 +376,13 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 
    if (enable_state_query_bool (ENABLE_BTDF) < 1)
      return 0;
+
+   if (fabs (solar_theta_deg - BTDF_SOLAR_THETA_NOMINAL) > BTDF_SOLAR_THETA_WARN_DELTA)
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "diffuser solar incidence angle = %0.3f deg (>%g deg away from nominal value = %0.3f deg)",
+                   solar_theta_deg, BTDF_SOLAR_THETA_WARN_DELTA, BTDF_SOLAR_THETA_NOMINAL);
+     }
 
    /* Total BTDF has no significant dependence on azimuth.
     * Polarization correction does have azimuthal dependence.
