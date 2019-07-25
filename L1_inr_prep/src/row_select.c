@@ -209,7 +209,9 @@ static int expand_glob_pattern (const char *file_glob_pattern,
                                 double time_beg, double time_end,
                                 wordexp_t *we)
 {
-   int n, len, sat_day_beg, sat_day_end;
+   double sat_day_beg, sat_day_end;
+   int isat_day_beg, isat_day_end;
+   int n, len;
    char *pat;
 
    if (NULL == strstr (file_glob_pattern, "%d"))
@@ -221,6 +223,9 @@ static int expand_glob_pattern (const char *file_glob_pattern,
        || (0 != tio_time_sat_local_day_number (time_end, &sat_day_end)))
      return -1;
 
+   isat_day_beg = sat_day_beg;
+   isat_day_end = sat_day_end;
+
    len = 8 + strlen(file_glob_pattern);
    if (NULL == (pat = MALLOC (len * sizeof(char))))
      {
@@ -228,7 +233,7 @@ static int expand_glob_pattern (const char *file_glob_pattern,
         return -1;
      }
 
-   n = snprintf (pat, len, file_glob_pattern, sat_day_beg);
+   n = snprintf (pat, len, file_glob_pattern, isat_day_beg);
    if ((n < 0) || (n >= len)
        || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF)))
      {
@@ -236,9 +241,9 @@ static int expand_glob_pattern (const char *file_glob_pattern,
         return -1;
      }
 
-   if (sat_day_end != sat_day_beg)
+   if (isat_day_end != isat_day_beg)
      {
-        n = snprintf (pat, len, file_glob_pattern, sat_day_end);
+        n = snprintf (pat, len, file_glob_pattern, isat_day_end);
         if ((n < 0) || (n >= len)
             || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF | WRDE_APPEND)))
           {

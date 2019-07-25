@@ -281,12 +281,13 @@ int main (int argc, char **argv)
    const char *grp = "/";
    const char *var = "time";
    double taix = 0.0;
+   double flocal_day;
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int write_epoch = 0;
    int task = TASK_UNKNOWN;
    int sc_timezone = INT_MAX;
-   int utc_day, local_day;
+   int utc_day;
    int have_utc_string = 0;
    int have_ioc_string = 0;
 
@@ -400,11 +401,11 @@ int main (int argc, char **argv)
         print_ioc_string (taix);
 
         utc_day = taix / 86400.0;
-        if (0 != tio_time_sat_local_day_number (taix, &local_day))
+        if (0 != tio_time_sat_local_day_number (taix, &flocal_day))
           goto error_return;
 
         fprintf (stdout, "DAY: %d UTC\n", utc_day);
-        fprintf (stdout, "DAY: %d local at UTC%+03d\n", local_day, sc_timezone);
+        fprintf (stdout, "DAY: %f local at UTC%+03d\n", flocal_day, sc_timezone);
 	break;
 
       case TASK_FIX_FILE:

@@ -15,7 +15,6 @@ prepend_to_slang_load_path ($1);
 require ("pipeutil");
 
 private variable Clobber_Output_Files = 0;
-private variable SC_Timezone;
 
 private define config_file_case (cases)
 {
@@ -164,10 +163,8 @@ private define scan_subdir (g)
 {
    % Derive the destination archive directory from the contents of
    % the granule_ident CSV file.
-   variable tstart = g.time_coverage_start_since_epoch;
-   variable sat_day = satellite_day (tstart, SC_Timezone);
    variable subdir_seq = [g.processing_version,
-                          int(sat_day),
+                          g.sat_local_day_start,
                           g.scan_num];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
@@ -291,8 +288,6 @@ define slsh_main()
 
    if (sdpc_root_dir == NULL)
      throw ApplicationError, "*** Error: SDPC_ROOT is not set";
-
-   SC_Timezone = read_sc_timezone (sdpc_root_dir);
 
    variable scan_dir, scan_dir_list = __argv[[__i:]];
 

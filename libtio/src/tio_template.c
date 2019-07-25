@@ -86,16 +86,23 @@ static int init_sc_timezone (void)
    return read_sc_timezone ();
 }
 
-int tio_time_sat_local_day_number (double taix, int *sat_day)
+int tio_time_sat_local_day_number (double taix, double *sat_day)
 {
+   int year, month, day;
+   double epoch_hour;
+
    if (0 != init_sc_timezone ())
      return -1;
 
-   /* Number of days since the TEMPO epoch, spacecraft local time.
+   /* If the epoch is offset from midnight, we'll need to correct for that */
+   if (0 != tio_time_taix_to_utc_caldate (0.0, &year, &month, &day, &epoch_hour))
+     return -1;
+
+   /* Number of days since midnight on the TEMPO epoch day, spacecraft local time.
     * Spacecraft local time is used because it makes the archive organization
     * more intuitive.  To force UTC time in the archive, set SC_Timezone=0.
     */
-   *sat_day = (taix + SC_Timezone * 3600.0) / 86400.0;
+   *sat_day = (taix + (SC_Timezone + epoch_hour) * 3600.0) / 86400.0;
 
    return 0;
 }

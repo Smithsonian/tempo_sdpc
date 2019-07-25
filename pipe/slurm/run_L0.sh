@@ -98,8 +98,7 @@ run_l0_ccd()
    # Construct path to archive directory containing today's telemetry point stream.
    # For now, we ignore the case where the data interval spans 2 days because the
    # concept of operations has no CCD images of any kind being generated at local midnight.
-   tstart=$(grep time_coverage_start_since_epoch granule_ident.csv | cut -d, -f2)
-   sat_day=$(compute_sat_day.sl $tstart)
+   sat_day=$(grep sat_local_day_start granule_ident.csv | cut -d, -f2)
    arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/1/${sat_day}/HK"
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .

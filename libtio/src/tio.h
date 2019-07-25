@@ -470,7 +470,7 @@ extern int tio_time_taix_to_yearday (double taix_time, int *year, int *yday);
  * @param[out]  sat_day     The day number in the satellite-local time zone.
  * @return 0 on success, -1 on error
  */
-extern int tio_time_sat_local_day_number (double taix, int *sat_day);
+extern int tio_time_sat_local_day_number (double taix, double *sat_day);
 
 /** Query the number of hours offset from UTC in the satellite local time zone
  * @param[out]  sc_timezone    The offset from UTC [hours]

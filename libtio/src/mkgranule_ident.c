@@ -34,11 +34,19 @@ static int write_granule_ident_file (const char *file,
                                      int version, const char *product_type)
 {
    struct tm tstart, tend;
+   double flocal_tstart, flocal_tend;
    FILE *fp;
 
    if ((-1 == _pTIO_parse_timestr (gid->tstart_str, &tstart))
        || (-1 == _pTIO_parse_timestr (gid->tend_str, &tend)))
      return -1;
+
+   if ((0 != tio_time_sat_local_day_number (gid->tstart, &flocal_tstart))
+       || (0 != tio_time_sat_local_day_number (gid->tend, &flocal_tend)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: computing satellite-local day numbers", __func__);
+        return -1;
+     }
 
    if (NULL == (fp = fopen (file, "w")))
      {
@@ -71,6 +79,9 @@ static int write_granule_ident_file (const char *file,
    fprintf (fp, "tend_sec,%d\n", tend.tm_sec);
    fprintf (fp, "tend_wday,%d\n", tend.tm_wday);
    fprintf (fp, "tend_yday,%d\n", tend.tm_yday);
+
+   fprintf (fp, "sat_local_day_start,%d\n", (int) flocal_tstart);
+   fprintf (fp, "sat_local_day_end,%d\n", (int) flocal_tend);
 
    errno = 0;
    if (0 != fclose (fp))
@@ -137,7 +148,8 @@ int main (int argc, char **argv)
    if (0 != TIO_open (radiance_file, NC_NOWRITE, &ncid))
      return 1;
 
-   if (-1 == _pTIO_read_granule_ident (ncid, &gid))
+   if ((0 != tio_use_file_epoch (ncid))
+       || (-1 == _pTIO_read_granule_ident (ncid, &gid)))
      {
         (void) TIO_close (ncid);
         return -1;

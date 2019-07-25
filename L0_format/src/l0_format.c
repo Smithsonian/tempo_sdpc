@@ -793,7 +793,7 @@ int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int s
    size_t bufsize = sizeof(buf);
    const char *root_path;
    char *path = NULL;
-   int sat_day;
+   double sat_day;
    size_t n;
 
    /* NULL means don't perform archiving */
@@ -816,12 +816,12 @@ int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int s
    if (scan_num < 0)
      {
         n = snprintf (buf, bufsize, "%s/L0/%d/%d/%s",
-                      root_path, processing_version, sat_day, suffix);
+                      root_path, processing_version, (int) sat_day, suffix);
      }
    else
      {
         n = snprintf (buf, bufsize, "%s/L0/%d/%d/%s/%d",
-                      root_path, processing_version, sat_day, suffix, scan_num);
+                      root_path, processing_version, (int) sat_day, suffix, scan_num);
      }
 
    if (n >= bufsize)
