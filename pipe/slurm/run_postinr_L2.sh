@@ -13,8 +13,17 @@ fi
 rad_path="$1"
 run_dir="$2"
 
-test -r $rad_path || exit 1
-test -d "$SDPC_ROOT" || exit 1
+PROGNAME="$0"
+error_exit()
+{
+   echo "${PROGNAME}: ${1:-'Unknown Error'}" 1>&2
+   exit 1
+}
+
+trap error_exit ERR
+
+test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
+test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
 # SDPC_RUN_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used

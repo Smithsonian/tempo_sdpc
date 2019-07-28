@@ -247,7 +247,15 @@ int main (int argc, char **argv)
 
    if (NULL == (gt = ioclib_glob (pattern, 0)))
      {
-        tell_verror (TELL_APPLICATION_ERROR, "ioclib_glob failed: %s", pattern);
+        tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_glob failed: %s",
+                     __func__, pattern);
+        goto return_status;
+     }
+
+   if (gt->num_files == 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: no files match glob pattern: %s",
+                     __func__, pattern);
         goto return_status;
      }
 
