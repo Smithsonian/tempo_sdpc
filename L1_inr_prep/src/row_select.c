@@ -156,7 +156,12 @@ static int estimate_padding (int ncid, int num_pad,
    dt = num_pad / average_sample_frequency_hz;
 
    *time_beg -= dt;
-   *time_end += dt;
+
+   if (0) /* No need to pad beyond the endpoint */
+     {
+        *time_end += dt;
+     }
+
 
    return 0;
 }
