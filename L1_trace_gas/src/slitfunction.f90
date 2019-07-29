@@ -6,6 +6,7 @@
 module slitfunction
   use tell_module
   use slitfunction_asym_gaussian
+  use slitfunction_super_gaussian
   use OMSAO_precision_module, only : i4, r8
   implicit none
 
@@ -80,6 +81,8 @@ contains
         return
       endif
       call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
+! asymmetric_gaussian_sf ( npoints, hw1e, e_asym, wvlarr, specarr, specmod)
+!      call super_gaussian_sf (num_wvl, params(1), 10.0_r8 , wvl, spec, spec_conv)
     endif
 
     if (errstat /= 0) then

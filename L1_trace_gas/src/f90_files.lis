@@ -1,6 +1,7 @@
 slitfunction.f90
 slitfunction_omi.f90
 slitfunction_asym_gaussian.f90
+slitfunction_super_gaussian.f90
 cache_module.f90
 optimizer_interface_module.f90
 elsunc_interface_module.f90
