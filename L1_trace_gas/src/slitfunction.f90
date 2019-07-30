@@ -80,9 +80,10 @@ contains
         call tell_error (tell_invalid_parm, "slitfunction_convolve: analytic slit function requires num_params=2", errstat)
         return
       endif
-      call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
+!      call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
 ! asymmetric_gaussian_sf ( npoints, hw1e, e_asym, wvlarr, specarr, specmod)
-!      call super_gaussian_sf (num_wvl, params(1), 10.0_r8 , wvl, spec, spec_conv)
+! super_gaussian_sf ( npoints, hwem, aw, ak,k, wvl, spec, conv_spec)
+      call super_gaussian_sf (num_wvl, params(1),0.0_r8, 0.0_r8, 6.5_r8 , wvl, spec, spec_conv)
     endif
 
     if (errstat /= 0) then

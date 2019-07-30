@@ -1,14 +1,14 @@
 module slitfunction_super_gaussian
   use OMSAO_precision_module, only: i4, r8
 contains
-  SUBROUTINE super_gaussian_sf ( npoints, hwem, k, wvl, spec, conv_spec)
+  SUBROUTINE super_gaussian_sf ( npoints, hwem, aw, ak,k, wvl, spec, conv_spec)
 
     ! =========================================================================
     !
-    ! Convolves input spectrum with a super gaussian slit function of
+    ! Convolves input spectrum with an assymetric super gaussian slit function of
     ! specified HWEM (half-width at 1/e intensity) and a shape variable (k).
     !
-    ! The super gaussian is defined by:
+    ! The symmetric super gaussian is defined by:
     !
     !      S(x) = A(w,k) x exp (-(x/w)^k)
     ! where
@@ -18,9 +18,21 @@ contains
     !
     !    w = HWEM (or FWEM = 2w)
     !    k is the shape factor
-    !    k=2 makes it a normal gaussian cause gamma(2) = 1! = 1 
+    !    k=2 makes it a normal gaussian
     !    Gamma function: https://en.wikipedia.org/wiki/Gamma_function
     !    
+    !  For having an asymmetric super gaussian, we need to add two parameters:
+    !  
+    !     S(x) = A(w,k) x exp (- | x/(w - aw) | ^ (k - ak)) for x<=0
+    !  	  S(x) = A(w,k)	x exp (- | x/(w + aw) | ^ (k + ak)) for	x>0
+    ! 
+    !     where aw and ak are asymmetry parameters
+    !
+    !     For now on, ak should be set zero until we find an appropirate normalized
+    !     function. 
+    !     The function gets shifted based on aw to make the center of mass = 0
+    !     
+    !     The asymmetric super gaussion equals to a symmetric one under (ak=aw=0.0_r8)
     ! =========================================================================
 
 
@@ -35,7 +47,7 @@ contains
     INTEGER (KIND=i4),                      INTENT (IN) :: npoints
     REAL    (KIND=r8),                      INTENT (IN) :: hwem, k
     REAL    (KIND=r8), DIMENSION (npoints), INTENT (IN) :: wvl, spec
-
+    REAL    (KIND=r8),                      INTENT (IN) :: aw,ak
     ! ----------------
     ! Output variables
     ! ----------------
@@ -96,12 +108,20 @@ contains
       amp_sg = k / ( 2.0_r8 * hwem * GAMMA(1.0_r8/k) )
       sf_val = 0.0_r8
       cwvl = wvl_temp(npoints+i)
-      sf_val(npoints+i) = amp_sg ! maximum value
+      sf_val(npoints+i) = amp_sg * EXP(-(ABS((aw)/(hwem+aw)))**(k-ak)) ! value at center
       getslit: DO j = 1, npoints
-        sslit = npoints+i-j ; lwvl = wvl_temp(sslit) - cwvl
-        eslit = npoints+i+j ; rwvl = wvl_temp(eslit) - cwvl
-        sf_val(sslit) = amp_sg * EXP(-(ABS(lwvl/hwem))**k)
-        sf_val(eslit) = amp_sg * EXP(-(ABS(rwvl/hwem))**k)
+        sslit = npoints+i-j ; lwvl = wvl_temp(sslit) - cwvl + aw 
+        eslit = npoints+i+j ; rwvl = wvl_temp(eslit) - cwvl + aw
+        IF ( lwvl .LE. 0) THEN
+        sf_val(sslit) = amp_sg * EXP(-(ABS((lwvl)/(hwem-aw)))**(k-ak))
+	ELSE
+        sf_val(sslit) = amp_sg * EXP(-(ABS((lwvl)/(hwem+aw)))**(k+ak))
+	ENDIF
+        IF ( rwvl .LE. 0) THEN
+        sf_val(eslit) = amp_sg * EXP(-(ABS((rwvl)/(hwem-aw)))**(k-ak))
+        ELSE
+	sf_val(eslit) = amp_sg * EXP(-(ABS((rwvl)/(hwem+aw)))**(k+ak))
+        ENDIF
         IF ( sf_val(sslit) < 0.0005_r8 .AND. sf_val(eslit) < 0.0005_r8 ) EXIT getslit
       END DO getslit
 
@@ -111,6 +131,7 @@ contains
 !	OPEN(UNIT=14, FILE="xslit_10.dat", ACTION="write", STATUS="replace")
 !	WRITE(14,*) wvl_temp(sslit:eslit)-cwvl
 !	CLOSE(UNIT=14)
+!	STOP
       ! ----------------------------------
       ! The number of slit function points
       ! ----------------------------------
