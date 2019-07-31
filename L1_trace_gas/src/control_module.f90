@@ -469,12 +469,25 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Super-Gaussian slit function will fail if shape parameter k = 0
   ! check starting value and bounds are non-zero
   !----------------------------------------------------------------------
+print *, fitvar_rad_init(sgk_idx), lo_radbnd(sgk_idx), up_radbnd(sgk_idx)
   if (.not. yn_use_labslitfunc) then
-    if (fitvar_sol_init(sgk_idx) <= 1.0e-8 .or. &
-         lo_sunbnd(sgk_idx) <= 1.0e-8 .or. &
-         fitvar_rad_init(sgk_idx) <= 1.0e-8 .or. &
+    if (lo_sunbnd(sgk_idx) < up_sunbnd(sgk_idx)) then
+      if (fitvar_sol_init(sgk_idx) <= 1.0e-8 .or. &
+           lo_sunbnd(sgk_idx) <= 1.0e-8) then
+        call tell_error (tell_invalid_parm, &
+             "Solar super-Gaussian shape parameter k must always be >0", &
+             errstat)
+        return
+      endif
+    endif
+    if (lo_radbnd(sgk_idx) < up_radbnd(sgk_idx)) then
+      if (fitvar_rad_init(sgk_idx) <= 1.0e-8 .or. &
          lo_radbnd(sgk_idx) <= 1.0e-8) then
-      call tell_log (1, "WARNING: super-Gaussian shape parameter k may be <0")
+        call tell_error (tell_invalid_parm, &
+             "Radiance super-Gaussian shape parameter k must always be >0", &
+             errstat)
+        return
+      endif
     endif
   endif
 
