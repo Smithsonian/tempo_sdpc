@@ -76,14 +76,16 @@ contains
     if (yn_use_labslitfunc) then
       call sf_convolve (pixel, num_wvl, wvl, spec, spec_conv, errstat)
     else
-      if (num_params /= 2) then
-        call tell_error (tell_invalid_parm, "slitfunction_convolve: analytic slit function requires num_params=2", errstat)
+      if (num_params /= 3) then
+        call tell_error (tell_invalid_parm, "slitfunction_convolve: analytic slit function requires num_params=3", errstat)
         return
       endif
 !      call asymmetric_gaussian_sf (num_wvl, params(1), params(2), wvl, spec, spec_conv)
-! asymmetric_gaussian_sf ( npoints, hw1e, e_asym, wvlarr, specarr, specmod)
-! super_gaussian_sf ( npoints, hwem, aw, ak,k, wvl, spec, conv_spec)
-      call super_gaussian_sf (num_wvl, params(1),0.0_r8, 0.0_r8, 6.5_r8 , wvl, spec, spec_conv)
+      ! Call asymmetric super-Gaussian slit-function. Width asymmetry is 
+      ! allowed, but shape asymmetry is temporarily disbaled, so 
+      ! fourth parameter is hard-coded to 0.0_r8
+      call super_gaussian_sf (num_wvl, params(1), params(2), params(3), &
+           0.0_r8, wvl, spec, spec_conv)
     endif
 
     if (errstat /= 0) then

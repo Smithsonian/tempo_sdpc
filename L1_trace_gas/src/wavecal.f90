@@ -104,12 +104,13 @@ contains
     USE OMSAO_indices_module, ONLY: &
       solar_idx, &
       bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, &
-      sc2_idx, sc3_idx, sin_idx, hwe_idx, asy_idx, shi_idx, squ_idx
+      sc2_idx, sc3_idx, sin_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, squ_idx
     USE OMSAO_variables_module,  ONLY: &
       refspecs_original, curr_xtrack_pixnum
     use ctrlvars, only: yn_spectrum_norm, yn_newshift
     use slitfunction, only : slitfunction_convolve
-    USE cache_module, ONLY: saved_shift, saved_squeeze, saved_hwe, saved_asy
+    USE cache_module, ONLY: saved_shift, saved_squeeze, saved_hwe, saved_asy, &
+         saved_sgk
     !USE OMSAO_errstat_module
     USE sao_pge_utils, ONLY: interpolation
     use OMSAO_parameters_module, only: MAX_SPEC_PTS
@@ -204,11 +205,12 @@ contains
       saved_shift   = loc_cal_parms(shi_idx)
       saved_hwe   = loc_cal_parms(hwe_idx)
       saved_asy   = loc_cal_parms(asy_idx)
+      saved_sgk   = loc_cal_parms(sgk_idx)
       saved_solar_spec_convolved = 0.0_r8
       CALL slitfunction_convolve ( &
         npts, solar_wvls(1:npts), solar_spec(1:npts), &
         saved_solar_spec_convolved(1:npts), &
-        curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx]), 2, &
+        curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx, sgk_idx]), 3, &
         err)
       if (err /= 0) return
     endif

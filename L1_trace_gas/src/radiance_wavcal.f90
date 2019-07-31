@@ -15,11 +15,11 @@ SUBROUTINE radiance_wavecal ( &
     i2_missval, i4_missval, r8_missval
   USE OMSAO_indices_module,       ONLY: &
     max_calfit_idx, shi_idx, squ_idx, &
-    hwe_idx, asy_idx
+    hwe_idx, asy_idx, sgk_idx
   USE OMSAO_variables_module,   ONLY: &
     fitvar_cal, fitvar_rad_init, fitvar_cal_saved, & !fitvar_sol_init,
-    lo_radbnd, up_radbnd, &
-    max_itnum_sol, Slit_Half_Width_1e, Slit_Asym_Factor!, sol_wav_avg
+    lo_radbnd, up_radbnd, max_itnum_sol, &
+    Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor!, sol_wav_avg
   use ctrlvars, only: yn_newshift
   !USE OMSAO_errstat_module
   USE commonmode, ONLY: compute_common_mode
@@ -92,6 +92,9 @@ SUBROUTINE radiance_wavecal ( &
   fitvar_cal(asy_idx) = Slit_Asym_Factor
   lo_radbnd (asy_idx) = Slit_Asym_Factor
   up_radbnd (asy_idx) = Slit_Asym_Factor
+  fitvar_cal(sgk_idx) = Slit_Shape_Factor
+  lo_radbnd (sgk_idx) = Slit_Shape_Factor
+  up_radbnd (sgk_idx) = Slit_Shape_Factor
 
   ! -----------------------------------------------------
   ! Assign the solar average wavelength - the wavelength

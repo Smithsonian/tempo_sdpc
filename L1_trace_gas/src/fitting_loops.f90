@@ -13,13 +13,13 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
-      max_calfit_idx, max_rs_idx, hwe_idx, asy_idx,  &
+      max_calfit_idx, max_rs_idx, hwe_idx, asy_idx, sgk_idx, &
       shi_idx, squ_idx, solar_idx,    &
       radcal_idx
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, normweight, &
       NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
-      Slit_Half_Width_1e, Slit_Asym_Factor, &  ! verb_thresh_lev,
+      Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
       database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg, 
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
@@ -171,6 +171,7 @@ CONTAINS
       !sol_wav_avg = omi_radref_wav_avg(ipix)    ! JCH: no need to set this here
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
+      Slit_Shape_Factor = omi_solcal_pars(sgk_idx,ipix)
 
       ! -----------------------------------------------------
       ! Assign (hopefully predetermined) "reference" weights.
@@ -295,8 +296,9 @@ CONTAINS
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
+      WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
+        '; k = ', Slit_Shape_Factor, &
         '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
         '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
       call tell_log (1, addmsg)
@@ -498,7 +500,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
       wvl_idx, spc_idx, shi_idx, &
-      o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, &
+      o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, sgk_idx, &
       pge_o3_idx, & !pge_hcho_idx, &
       solar_idx, radfit_idx, & !pge_gly_idx, &
       max_rs_idx,   max_calfit_idx,hcho_idx,mxs_idx,lbe_idx
@@ -506,7 +508,7 @@ CONTAINS
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
       database, curr_sol_spec, n_rad_wvl, & ! sol_wav_avg, 
-      Slit_Half_Width_1e, Slit_Asym_Factor,     &
+      Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor,    &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
       szamax, n_fincol_idx, curr_xtrack_pixnum, fitvar_rad
     USE cache_module, ONLY: saved_shift, saved_squeeze
@@ -643,6 +645,7 @@ CONTAINS
       !sol_wav_avg                             = omi_radref_wav_avg(ipix)  ! JCH: no need to set this here
       Slit_Half_Width_1e                     = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor                       = omi_solcal_pars(asy_idx,ipix)
+      Slit_Shape_Factor                       = omi_solcal_pars(sgk_idx,ipix)
       curr_sol_spec(1:n_database_wvl,wvl_idx) = omi_database_wvl(1:n_database_wvl,ipix)
       curr_sol_spec(1:n_database_wvl,spc_idx) = omi_database    (1:n_database_wvl,ipix,solar_idx)
       ! --------------------------------------------------------------------------------

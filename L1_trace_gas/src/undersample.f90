@@ -1,6 +1,6 @@
 MODULE undersample
 CONTAINS
-SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_asym, phase, errstat )
+SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_asym, k, phase, errstat )
 
   !     Convolves input spectrum with Gaussian slit function of specified
   !     HW1e, and samples at a particular input phase to give the OMI
@@ -23,7 +23,7 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   ! Input variables
   ! ---------------
   INTEGER (KIND=i4),                           INTENT (IN) :: n_sensor_pts, xtrack_pix
-  REAL    (KIND=r8),                           INTENT (IN) :: hw1e, e_asym, phase
+  REAL    (KIND=r8),                           INTENT (IN) :: hw1e, e_asym, k, phase
   REAL    (KIND=r8), DIMENSION (n_sensor_pts), INTENT (IN) :: curr_wvl
 
   ! ---------------
@@ -83,8 +83,8 @@ SUBROUTINE undersample_spectrum ( xtrack_pix, n_sensor_pts, curr_wvl, hw1e, e_as
   !  locerrstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
   !  modulename//f_sep//'Convolution', vb_lev_default, errstat )
   !IF ( locerrstat >= pge_errstat_error ) RETURN
-  call slitfunction_convolve (npts, locwvl(1:npts), locspec(1:npts), specmod(1:npts), &
-                              xtrack_pix, [hw1e, e_asym], 2, errstat)
+  call slitfunction_convolve (npts, locwvl(1:npts), locspec(1:npts), &
+       specmod(1:npts), xtrack_pix, [hw1e, e_asym, k], 3, errstat)
   if (errstat /= 0) return
 
   ! Phase1 calculation: Calculate spline derivatives for KPNO data

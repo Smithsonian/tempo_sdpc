@@ -165,7 +165,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
 
   USE OMSAO_precision_module
   USE OMSAO_variables_module, ONLY: Slit_Half_Width_1e, Slit_Asym_Factor, &
-    Undersample_Phase, have_undersampling, database
+    Slit_Shape_Factor, Undersample_Phase, have_undersampling, database
   !USE OMSAO_errstat_module
   USE dataspline_module, ONLY: dataspline
   USE undersample, ONLY: undersample_spectrum
@@ -207,8 +207,9 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   ! Calculate the undersampled spectrum
   ! -----------------------------------
   IF ( ANY (have_undersampling) ) &
-    CALL undersample_spectrum (xtrack_pix, n_rad_wvl, curr_rad_wvl(1:n_rad_wvl), &
-                               Slit_Half_Width_1e, Slit_Asym_Factor, Undersample_Phase, errstat) ! locerrstat )
+    CALL undersample_spectrum (xtrack_pix, n_rad_wvl, &
+    curr_rad_wvl(1:n_rad_wvl), Slit_Half_Width_1e, Slit_Asym_Factor, &
+    Slit_Shape_Factor, Undersample_Phase, errstat) ! locerrstat )
   if (errstat /= 0) return
   !errstat = MAX ( errstat, locerrstat )
   !IF ( errstat >= pge_errstat_error ) RETURN

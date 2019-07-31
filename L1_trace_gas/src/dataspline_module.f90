@@ -15,7 +15,7 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
   USE OMSAO_precision_module
   USE OMSAO_indices_module,     ONLY: &
     max_rs_idx, mxs_idx, max_calfit_idx, solar_idx, &
-    refspec_strings, hwe_idx, asy_idx, comm_idx, us1_idx,   &
+    refspec_strings, hwe_idx, asy_idx, sgk_idx, comm_idx, us1_idx,   &
     us2_idx
   USE OMSAO_parameters_module,  ONLY: &
     zerospec_string, &
@@ -81,7 +81,8 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
     solar_spc(1:nsol) = refspecs_original(idx)%RefSpecData(1:nsol)
     CALL slitfunction_convolve ( &
       nsol, solar_wvl(1:nsol), solar_spc(1:nsol), solar_conv(1:nsol), &
-      xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+      xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx, sgk_idx],xtrack_pix), &
+      3, errstat)
     !CALL convolve_data (                                                              &
     !  xtrack_pix, nsol,  solar_wvl(1:nsol), solar_spc(1:nsol), yn_use_labslitfunc, &
     !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),    &
@@ -167,7 +168,8 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
       ! ------------------------------
       CALL slitfunction_convolve ( &
         nsol, solar_wvl(1:nsol), tmp_spec(1:nsol), xsec_i0_spc(1:nsol),&
-        xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+        xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx, sgk_idx],xtrack_pix), &
+        3, errstat)
       !CALL convolve_data (                                                            &
       !  xtrack_pix, nsol, solar_wvl(1:nsol), tmp_spec(1:nsol), yn_use_labslitfunc, &
       !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix),  &
@@ -202,7 +204,8 @@ SUBROUTINE dataspline ( xtrack_pix, n_radwvl, curr_rad_wvl, n_max_rspec, errstat
         call tell_log (2, logmsg)
         CALL slitfunction_convolve ( &
           npts, tmp_wavl(1:npts), tmp_spec_copy(1:npts), tmp_spec(1:npts), &
-          xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx],xtrack_pix), 2, errstat)
+          xtrack_pix, omi_solcal_pars([hwe_idx, asy_idx, sgk_idx],xtrack_pix),&
+          3, errstat)
         !CALL convolve_data (                                                           &
         !  xtrack_pix, npts, tmp_wavl(1:npts), tmp_spec(1:npts), yn_use_labslitfunc, &
         !  omi_solcal_pars(hwe_idx,xtrack_pix), omi_solcal_pars(asy_idx,xtrack_pix), &

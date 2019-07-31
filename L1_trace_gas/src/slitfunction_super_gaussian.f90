@@ -1,11 +1,33 @@
 module slitfunction_super_gaussian
+
   use OMSAO_precision_module, only: i4, r8
+
+  implicit none
+
+  public super_gaussian_sf
+  private
+
 contains
-  SUBROUTINE super_gaussian_sf ( npoints, hwem, aw, ak,k, wvl, spec, conv_spec)
+
+  ! Convolve spectrum with asymmetric super-Gaussian slit function
+  !----------------------------------------------------------------------------
+  !
+  !> @param[in]  npoints   number of points in spectrum
+  !> @param[in]  hwem      slit function half-width at 1/e
+  !> @param[in]  aw        width asymmetry factor
+  !> @param[in]  k         slit function shape factor
+  !> @param[in]  ak        shape asymmetry factor
+  !> @param[in]  wvl       1-D spectrum wavelengths array
+  !> @param[in]  spec      1-D spectrum intensity array
+  !> @param[out] conv_spec 1-D array, convolved spectrum
+  !
+  !> @author  Amir Hossein Souri, Jul 2019
+  !----------------------------------------------------------------------------
+  subroutine super_gaussian_sf (npoints, hwem, aw, k, ak, wvl, spec, conv_spec)
 
     ! =========================================================================
     !
-    ! Convolves input spectrum with an assymetric super gaussian slit function of
+    ! Convolves input spectrum with asymmetric super gaussian slit function of
     ! specified HWEM (half-width at 1/e intensity) and a shape variable (k).
     !
     ! The symmetric super gaussian is defined by:
@@ -20,48 +42,52 @@ contains
     !    k is the shape factor
     !    k=2 makes it a normal gaussian
     !    Gamma function: https://en.wikipedia.org/wiki/Gamma_function
-    !    
+    !
     !  For having an asymmetric super gaussian, we need to add two parameters:
-    !  
+    !
     !     S(x) = A(w,k) x exp (- | x/(w - aw) | ^ (k - ak)) for x<=0
     !  	  S(x) = A(w,k)	x exp (- | x/(w + aw) | ^ (k + ak)) for	x>0
-    ! 
+    !
     !     where aw and ak are asymmetry parameters
     !
-    !     For now on, ak should be set zero until we find an appropirate normalized
-    !     function. 
+    !     For now, ak should be set zero until we find an appropriate
+    !     normalization function.
     !     The function gets shifted based on aw to make the center of mass = 0
-    !     
-    !     The asymmetric super gaussion equals to a symmetric one under (ak=aw=0.0_r8)
+    !
+    !     The asymmetric super gaussion becomes symmetric if (ak=aw=0.0_r8)
+    !
+    !     See Beirle, S. et al. (2017) Atmos. Meas. Tech., 10, 581-598
     ! =========================================================================
 
-
-    USE sao_pge_utils, ONLY: signdp
-    USE integration_routines, ONLY: cubint
+    use sao_pge_utils, only: signdp
+    use integration_routines, only: cubint
     use slatec_davint, only : davint
-    IMPLICIT NONE
+
+    implicit none
 
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                      INTENT (IN) :: npoints
-    REAL    (KIND=r8),                      INTENT (IN) :: hwem, k
-    REAL    (KIND=r8), DIMENSION (npoints), INTENT (IN) :: wvl, spec
-    REAL    (KIND=r8),                      INTENT (IN) :: aw,ak
+    integer (KIND=i4),                      intent (IN) :: npoints
+    real    (KIND=r8),                      intent (IN) :: hwem, k
+    real    (KIND=r8), dimension (npoints), intent (IN) :: wvl, spec
+    real    (KIND=r8),                      intent (IN) :: aw,ak
     ! ----------------
     ! Output variables
     ! ----------------
-    REAL (KIND=r8), DIMENSION (npoints), INTENT (OUT) :: conv_spec
+    real (KIND=r8), dimension (npoints), intent (OUT) :: conv_spec
 
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                        :: i, j, nslit, sslit, eslit, davint_err
-    REAL    (KIND=r8)                        :: slitsum, sliterr, cwvl, lwvl, rwvl
-    REAL    (KIND=r8)                        :: amp_sg ! A(w,k)
-    REAL    (KIND=r8), DIMENSION (3*npoints) :: spc_temp, wvl_temp, sf_val, xtmp, ytmp
+    integer (KIND=i4) :: i, j, nslit, sslit, eslit, davint_err
+    real (KIND=r8) :: slitsum, sliterr, cwvl, lwvl, rwvl
+    real (KIND=r8) :: amp_sg
+    real (KIND=r8), dimension (3*npoints) :: spc_temp, wvl_temp, sf_val, &
+         xtmp, ytmp
 
-    sslit = 1; eslit = 1   ! silence compiler warning
+    sslit = 1
+    eslit = 1   ! silence compiler warning
 
     ! --------------------------------------------------------
     ! Initialize output variable (default for "no convolution"
@@ -70,8 +96,9 @@ contains
 
     ! -----------------------------------------------
     ! No Super Gaussian convolution if Halfwidth @ 1/e is 0
+    ! or if shape factor k<=0
     ! -----------------------------------------------
-    IF ( hwem == 0.0_r8 ) RETURN
+    if ( hwem == 0.0_r8 .or. k <= 0.00000001_r8 ) return
     ! ------------------------------------------------------------------------
     ! One temporary variable is SPC_TEMP, which is three times the size of
     ! SPEC. For the convolution routine to work (hopefully) in each and
@@ -88,12 +115,12 @@ contains
     ! ------------------------------------------------------------------------
     spc_temp(npoints+1:2*npoints) = spec(1:npoints)
     wvl_temp(npoints+1:2*npoints) = wvl (1:npoints)
-    DO i = 1, npoints
+    do i = 1, npoints
       spc_temp(npoints+1-i) = spec(i)
       wvl_temp(npoints+1-i) = 2.0_r8*wvl(1)-wvl(i) -0.001_r8
       spc_temp(2*npoints+i) = spec(npoints+1-i)
       wvl_temp(2*npoints+i) = 2.0_r8*wvl(npoints)-wvl(npoints+1-i) +0.001_r8
-    END DO
+    end do
 
     ! ------------------------------------------------------------------------
     ! We now compute the super Gaussian for every point in the spectrum.
@@ -104,34 +131,37 @@ contains
     ! NPOINTS+1:2*NPOINTS
     ! ------------------------------------------------------------------------
 
-    DO i = 1, npoints
+    do i = 1, npoints
       amp_sg = k / ( 2.0_r8 * hwem * GAMMA(1.0_r8/k) )
       sf_val = 0.0_r8
       cwvl = wvl_temp(npoints+i)
-      sf_val(npoints+i) = amp_sg * EXP(-(ABS((aw)/(hwem+aw)))**(k-ak)) ! value at center
-      getslit: DO j = 1, npoints
-        sslit = npoints+i-j ; lwvl = wvl_temp(sslit) - cwvl + aw 
-        eslit = npoints+i+j ; rwvl = wvl_temp(eslit) - cwvl + aw
-        IF ( lwvl .LE. 0) THEN
-        sf_val(sslit) = amp_sg * EXP(-(ABS((lwvl)/(hwem-aw)))**(k-ak))
-	ELSE
-        sf_val(sslit) = amp_sg * EXP(-(ABS((lwvl)/(hwem+aw)))**(k+ak))
-	ENDIF
-        IF ( rwvl .LE. 0) THEN
-        sf_val(eslit) = amp_sg * EXP(-(ABS((rwvl)/(hwem-aw)))**(k-ak))
-        ELSE
-	sf_val(eslit) = amp_sg * EXP(-(ABS((rwvl)/(hwem+aw)))**(k+ak))
-        ENDIF
-        IF ( sf_val(sslit) < 0.0005_r8 .AND. sf_val(eslit) < 0.0005_r8 ) EXIT getslit
-      END DO getslit
+      sf_val(npoints+i) = amp_sg * exp(-(abs((aw)/(hwem+aw)))**(k-ak)) ! value at center
+      getslit: do j = 1, npoints
+        sslit = npoints+i-j
+        lwvl = wvl_temp(sslit) - cwvl + aw
+        eslit = npoints+i+j
+        rwvl = wvl_temp(eslit) - cwvl + aw
+        if ( lwvl .le. 0) then
+          sf_val(sslit) = amp_sg * exp(-(abs((lwvl)/(hwem-aw)))**(k-ak))
+        else
+          sf_val(sslit) = amp_sg * exp(-(abs((lwvl)/(hwem+aw)))**(k+ak))
+        endif
+        if ( rwvl .le. 0) then
+          sf_val(eslit) = amp_sg * exp(-(abs((rwvl)/(hwem-aw)))**(k-ak))
+        else
+          sf_val(eslit) = amp_sg * exp(-(abs((rwvl)/(hwem+aw)))**(k+ak))
+        endif
+        if ( sf_val(sslit) < 0.0005_r8 .and. sf_val(eslit) < 0.0005_r8 ) &
+             exit getslit
+      end do getslit
 
-!	OPEN(UNIT=15, FILE="yslit_10.dat", ACTION="write", STATUS="replace")
-!	WRITE(15,*) sf_val(sslit:eslit)
-!	CLOSE(UNIT=15)
-!	OPEN(UNIT=14, FILE="xslit_10.dat", ACTION="write", STATUS="replace")
-!	WRITE(14,*) wvl_temp(sslit:eslit)-cwvl
-!	CLOSE(UNIT=14)
-!	STOP
+      !	OPEN(UNIT=15, FILE="yslit_10.dat", ACTION="write", STATUS="replace")
+      !	WRITE(15,*) sf_val(sslit:eslit)
+      !	CLOSE(UNIT=15)
+      !	OPEN(UNIT=14, FILE="xslit_10.dat", ACTION="write", STATUS="replace")
+      !	WRITE(14,*) wvl_temp(sslit:eslit)-cwvl
+      !	CLOSE(UNIT=14)
+      !	STOP
       ! ----------------------------------
       ! The number of slit function points
       ! ----------------------------------
@@ -142,26 +172,27 @@ contains
       ! ----------------------------------------------------------------
       xtmp(1:nslit) = wvl_temp(sslit:eslit)-cwvl
       ytmp(1:nslit) = sf_val  (sslit:eslit)
-!      CALL cubint ( &
-!        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
-!      !!CALL DAVINT ( &
-!      !!     xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-!      !!     slitsum, locerrstat )
+      !      CALL cubint ( &
+      !        nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
+      !      !!CALL DAVINT ( &
+      !      !!  xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+      !      !!  slitsum, locerrstat )
       if (nslit > 3) then
         ! jch - it's an error to call cubint with nslit < 4
-        CALL cubint ( &
-          nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
+        call cubint ( &
+             nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, slitsum, sliterr)
       else
-	CALL DAVINT ( &
-          xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-          slitsum, davint_err )
+        call DAVINT ( &
+             xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+             slitsum, davint_err )
         if (davint_err /= 1) then
           write (*,*)'*** super_gaussian_sf::davint failed, davint_err=', &
-            davint_err
+               davint_err
         endif
       endif
 
-      IF ( slitsum > 0.0_r8 ) sf_val(sslit:eslit) = sf_val(sslit:eslit) / slitsum
+      if ( slitsum > 0.0_r8 ) &
+           sf_val(sslit:eslit) = sf_val(sslit:eslit) / slitsum
 
       ! ---------------------------------------------------------------------
       ! Prepare array for integration: Multiply slit function values with the
@@ -175,21 +206,21 @@ contains
 
       if (nslit > 3) then
         ! jch - it's an error to call cubint with nslit < 4
-        CALL cubint ( &
-          nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, conv_spec(i), sliterr)
+        call cubint ( nslit, xtmp(1:nslit), ytmp(1:nslit), 1, nslit, &
+             conv_spec(i), sliterr)
       else
-	CALL DAVINT ( &
-           xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
-           conv_spec(i), davint_err )
+        call DAVINT ( &
+             xtmp(1:nslit), sf_val(1:nslit), nslit, xtmp(1), xtmp(nslit), &
+             conv_spec(i), davint_err )
         if (davint_err /= 1) then
           write (*,*)'*** super_gaussian_sf::davint failed, davint_err=', &
-            davint_err
+               davint_err
         endif
       endif
-    END DO
+    end do
 
-    RETURN
-  END SUBROUTINE super_gaussian_sf
+    return
+  end subroutine super_gaussian_sf
 end module slitfunction_super_gaussian
 
 

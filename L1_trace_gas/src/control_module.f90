@@ -61,7 +61,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
     max_rs_idx, calfit_strings, max_calfit_idx, radfit_strings, mxs_idx,  &
-    hwe_idx, refspec_strings,    icf_idx, pge_static_input_luns,                        &
+    hwe_idx, sgk_idx, refspec_strings,    icf_idx, pge_static_input_luns,                        &
     genline_str, socline_str, racline_str, rrsline_str, procline_str,                   &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
     pge_hcho_idx, pge_gly_idx,                &
@@ -465,6 +465,19 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   END DO radpars
   fitvar_rad_saved = fitvar_rad_init
 
+  !----------------------------------------------------------------------
+  ! Super-Gaussian slit function will fail if shape parameter k = 0
+  ! check starting value and bounds are non-zero
+  !----------------------------------------------------------------------
+  if (.not. yn_use_labslitfunc) then
+    if (fitvar_sol_init(sgk_idx) <= 1.0e-8 .or. &
+         lo_sunbnd(sgk_idx) <= 1.0e-8 .or. &
+         fitvar_rad_init(sgk_idx) <= 1.0e-8 .or. &
+         lo_radbnd(sgk_idx) <= 1.0e-8) then
+      call tell_log (1, "WARNING: super-Gaussian shape parameter k may be <0")
+    endif
+  endif
+
   ! ---------------------------------------------------------------------
   ! Check the latitude for the radiance reference, a.k.a. wavelength
   ! calibration spectrum.
@@ -863,7 +876,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
     max_rs_idx, max_calfit_idx, mns_idx, mxs_idx,       &
     calfit_titles,  radfit_titles,  refspec_titles,     &
     calfit_strings, radfit_strings, refspec_strings,    &
-    comm_idx, hwe_idx, asy_idx
+    comm_idx, hwe_idx, asy_idx, sgk_idx
   USE OMSAO_variables_module,    ONLY: &
     n_fitvar_rad, all_radfit_idx, mask_fitvar_rad, fitvar_rad_init,         &
     lo_radbnd, up_radbnd, n_fincol_idx, n_mol_fit, fitcol_idx, fincol_idx,  &
@@ -934,7 +947,7 @@ SUBROUTINE find_radiance_fitting_variables ( errstat )
   ! --------------------------------
   DO i = 1, max_calfit_idx
 
-    IF ( i == hwe_idx .OR. i == asy_idx ) THEN
+    IF ( i == hwe_idx .OR. i == asy_idx .OR. i == sgk_idx) THEN
 
       IF ( .NOT. fit_lsf_for_every_spectrum ) CYCLE
 

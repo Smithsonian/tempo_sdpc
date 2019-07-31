@@ -370,14 +370,15 @@ CONTAINS
 
     USE OMSAO_indices_module,    ONLY: &
       spc_idx, wvl_idx, &
-      o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, shi_idx, &
+      o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, &
       squ_idx, solar_idx, radref_idx, max_rs_idx, max_calfit_idx
     USE OMSAO_parameters_module, ONLY:  &
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
       database, curr_sol_spec,     & ! sol_wav_avg,
-      Slit_Half_Width_1e, Slit_Asym_Factor, n_fitvar_rad, & !verb_thresh_lev,  &
-      n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx,                            &
+      Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
+      n_fitvar_rad, & !verb_thresh_lev,  &
+      n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx, &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
       n_rad_wvl_max, target_npol, &
       curr_xtrack_pixnum, fitvar_rad_saved, fitvar_rad_init
@@ -534,6 +535,7 @@ CONTAINS
       ! sol_wav_avg = omi_radref_wav_avg (ipix)   ! JCH - no need to set this here.
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
+      Slit_Shape_Factor = omi_solcal_pars(sgk_idx,ipix)
       curr_sol_spec(1:n_database_wvl,wvl_idx) = omi_database_wvl(1:n_database_wvl,ipix)
       curr_sol_spec(1:n_database_wvl,spc_idx) = omi_database    (1:n_database_wvl,ipix,solar_idx)
       ! --------------------------------------------------------------------------------
@@ -630,9 +632,10 @@ CONTAINS
 
         IF ( is_bad_pixel ) CYCLE
 
-        WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'RADIANCE Reference #', ipix, &
-          ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
-          fitvar_rad(shi_idx), '; squeeze = ', fitvar_rad(squ_idx),&
+        WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') 'RADIANCE Reference #', ipix, &
+          ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
+          '; k = ', Slit_Shape_Factor, '; shift = ', fitvar_rad(shi_idx), &
+          '; squeeze = ', fitvar_rad(squ_idx), '; rms = ', rms, &
           '; exit val = ', radfit_exval, '; iter num = ', radfit_itnum
       ELSE
         WRITE (addmsg, '(A,I5,A)') 'RADIANCE Reference #', ipix, ': Skipped!'

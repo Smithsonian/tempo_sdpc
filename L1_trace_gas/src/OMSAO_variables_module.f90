@@ -69,7 +69,7 @@ MODULE OMSAO_variables_module
   ! Previously IMPLICIT variables
   ! -----------------------------
   REAL (KIND=r8) :: Undersample_Phase, szamax, chisq !JCH, sol_wav_avg
-  REAL (KIND=r8) :: Slit_Half_Width_1e, Slit_Asym_Factor
+  REAL (KIND=r8) :: Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor
   REAL (KIND=r4) :: zatmos
 
   ! -----------------------------------------------------------

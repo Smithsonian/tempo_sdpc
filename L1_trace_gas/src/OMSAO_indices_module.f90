@@ -146,20 +146,21 @@ MODULE OMSAO_indices_module
   !     sin: solar intensity
   !     hwe: slit width at 1/e
   !     asy: slit function asymmetry
+  !     sgk  super-Gaussian shape factor
   !     shi: spectral shift
   !     squ: spectral squeeze
   ! --------------------------
   INTEGER (KIND=i4), PARAMETER :: &
     bl0_idx =  1, bl1_idx =  2, bl2_idx =  3, bl3_idx =  4, bl4_idx =  5, bl5_idx =  6, &
     sc0_idx =  7, sc1_idx =  8, sc2_idx =  9, sc3_idx = 10, sc4_idx = 11, sc5_idx = 12, &
-    sin_idx = 13, hwe_idx = 14, asy_idx = 15, shi_idx = 16, squ_idx = 17,               &
+    sin_idx = 13, hwe_idx = 14, asy_idx = 15, sgk_idx = 16, shi_idx = 17, squ_idx = 18,               &
     max_calfit_idx = squ_idx
 
   integer (kind=i4), parameter :: MAX_CAL_PARMS = max_calfit_idx
 
   CHARACTER (LEN=3), DIMENSION (max_calfit_idx), PARAMETER :: calfit_strings = (/ &
     'bl0', 'bl1', 'bl2', 'bl3', 'bl4', 'bl5', 'sc0', 'sc1', 'sc2', 'sc3', 'sc4', &
-    'sc5', 'sin', 'hwe', 'asy', 'shi', 'squ' /)
+    'sc5', 'sin', 'hwe', 'asy', 'sgk', 'shi', 'squ' /)
 
   CHARACTER (LEN=29), DIMENSION (max_calfit_idx), PARAMETER :: calfit_titles = (/ &
     'Baseline Polynomial 0th Order', &
@@ -177,6 +178,7 @@ MODULE OMSAO_indices_module
     'Solar Intensity Contribution ', &
     'Slit Function Half Width @1/e', &
     'Slit Function Asymmetry      ', &
+    'Super-Gaussian Shape Factor k', &
     'Wavelength Shift             ', &
     'Wavelength Squeeze           ' /)
 

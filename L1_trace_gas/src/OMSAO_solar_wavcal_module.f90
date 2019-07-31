@@ -236,7 +236,7 @@ CONTAINS
   SUBROUTINE solar_fit ( &
       n_fitres_loop, fitres_range, n_irradwvl, avg_sol_wav, &
       sol_wvl, sol_spec, sol_wgts, sol_resid, &
-      hw1e, e_asym, solcal_exval, solcal_itnum, chisquav, &
+      hw1e, e_asym, k, solcal_exval, solcal_itnum, chisquav, &
       is_bad_pixel, errstat )
 
     ! ***************************************************************
@@ -252,7 +252,7 @@ CONTAINS
       fitvar_sol_init, & !sol_wav_avg, 
       max_itnum_sol, up_sunbnd, lo_sunbnd
     use ctrlvars, only: yn_newshift
-    USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, &
+    USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, sgk_idx, &
       shi_idx, squ_idx, max_calfit_idx
     !USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     use optimizer_interface_module, only: opt_convergence_good
@@ -269,7 +269,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    REAL    (KIND=r8), INTENT (OUT)   :: hw1e, e_asym, chisquav
+    REAL    (KIND=r8), INTENT (OUT)   :: hw1e, e_asym, k, chisquav
     INTEGER (KIND=i4), INTENT (OUT)   :: solcal_exval
     INTEGER (KIND=i2), INTENT (OUT)   :: solcal_itnum
 
@@ -353,7 +353,9 @@ CONTAINS
     !  Save the slit function parameters for later use
     ! in the undersampling correction.
     ! ------------------------------------------------
-    hw1e   = fitvar_cal(hwe_idx)  ;  e_asym = fitvar_cal(asy_idx)
+    hw1e   = fitvar_cal(hwe_idx)  
+    e_asym = fitvar_cal(asy_idx)
+    k      = fitvar_cal(sgk_idx)
 
     RETURN
 
@@ -373,7 +375,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN, &
       nwavel_max, nxtrack_max
     USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, & ! verb_thresh_lev,
-      Slit_Asym_Factor, fitvar_cal, fitvar_cal_saved,  &
+      Slit_Asym_Factor, Slit_Shape_Factor, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum
     !USE OMSAO_errstat_module
@@ -497,8 +499,8 @@ CONTAINS
         ctrl_n_fitres_loop(solcal_idx), ctrl_fitres_range(solcal_idx), n_irradwvl, &
         curr_sol_wav_avg, &
         adj_wvl, adj_spec, adj_wgts, adj_resid, &
-        Slit_Half_Width_1e, &
-        Slit_Asym_Factor, solcal_exval, solcal_itnum, chisquav, &
+        Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
+        solcal_exval, solcal_itnum, chisquav, &
         is_bad_pixel, errstat) ! locerrstat )
       ! solar_fit modifies the following variables:
       !   adj_wvl, adj_spec, adj_wgts, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
@@ -544,10 +546,15 @@ CONTAINS
       endif
 
       addmsg = ''
-      WRITE (addmsg, '(A,I4,4(A,1PE10.3),2(A,I9))') 'SOLAR FIT          #', ipix, &
-        ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, '; shift = ', &
-        fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), '; exit val = ', &
-        solcal_exval, '; iter num = ', solcal_itnum
+      WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') &
+           'SOLAR FIT          #', ipix, &
+           ': hw 1/e = ', Slit_Half_Width_1e, &
+           '; e_asy = ', Slit_Asym_Factor, &
+           '; k = ', Slit_Shape_Factor, &
+           '; shift = ', fitvar_cal(shi_idx),&
+           '; squeeze = ', fitvar_cal(squ_idx), &
+           '; rms = ', sqrt(sum(adj_resid(1:n_irradwvl)**2)/real(n_irradwvl, kind=8)), &
+           '; exit val = ', solcal_exval, '; iter num = ', solcal_itnum
       call tell_log (1, addmsg)
       !CALL error_check ( &
       !  0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), &
