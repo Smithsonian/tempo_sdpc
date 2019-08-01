@@ -715,6 +715,7 @@ static int fill_image_holes (Image_Type *img)
                        free_hole_info (&h);
                        return -1;
                     }
+                  break;
                }
           }
      }
