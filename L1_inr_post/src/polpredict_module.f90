@@ -87,7 +87,10 @@ contains
 
     call ndi_find_indices (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices, errstat)
     call ndi_calc_weights (lut_s % qu_dims (iqu_pre:iqu_pre), (/pre/), indices, weights, errstat)
-    if (errstat /= 0) return
+    if (errstat /= 0) then
+      write(*,*)'pp_interp_ozone_profile: interpolation failed: pre=',pre
+      return
+    endif
 
     oz(:) = 0.0
     do k = 1, nterms
@@ -202,7 +205,10 @@ contains
 
     call ndi_find_indices (lut_s % ler_dims(2:3), x, indices, errstat)
     call ndi_calc_weights (lut_s % ler_dims(2:3), x, indices, weights, errstat)
-    if (errstat /= 0) return
+    if (errstat /= 0) then
+      write(*,*)'pp_interp_surface_albedo: interpolation failed: x()= ',x
+      return
+    endif
 
     alb(:) = 0.0
     do k = 1, nterms
@@ -815,7 +821,10 @@ contains
         x(3) = oz
 
         call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights, errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) then
+          write(*,*)'pp_derive_scene_pressure: interpolation failed: x()= ',x
+          return
+        endif
 
         val = 0.0
         do k = 1, nterms
@@ -918,7 +927,10 @@ contains
 
       ! compute the 4-D linear interpolation weights
       call ndi_calc_weights (lut_s % si_dims (ids), x, indices, weights, errstat)
-      if (errstat /= 0) return
+      if (errstat /= 0) then
+        write(*,*)'pp_derive_ctp: interpolation failed: iz=',iz,' x()= ',x
+        return
+      endif
 
       ! Using 4-D interpolation weights, linearly interpolate
       ! a 3-D object with dimensions (nw,nalb,npre) and accumulate
@@ -948,7 +960,10 @@ contains
         x(1) = snalbs (iw, is)
         indices(1) = ndi_find_index (x(1), lut_s % si_dims(iqu_alb) % x)
         call ndi_calc_weights (lut_s % si_dims(ids(1:2)), x(1:2), indices(1:2), weights(1:2), errstat)
-        if (errstat /= 0) return
+        if (errstat /= 0) then
+          write(*,*)'pp_derive_ctp: interpolation failed: is=',is,' iw=',iw,' x()= ',x(1:2)
+          return
+        endif
         snrad0_val = 0.0
         do k = 1, nterms_2d
           call ndi_calc_term_weight (k, indices(1:2), weights(1:2), id_k, wt_k)
@@ -1041,7 +1056,10 @@ contains
       x(:) = (/snalbs(iw,1), snps(1)/)
       call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
       call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
-      if (errstat /= 0) return
+      if (errstat /= 0) then
+        write(*,*)'derive_ctp_ler: interpolation failed: iw=',iw,' x()= ',x
+        return
+      endif
 
       val = 0.0
       do k = 1, nterms
@@ -1158,7 +1176,10 @@ contains
       x(:) = (/snalbs(iw,2), snps(2)/)
       call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
       call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
-      if (errstat /= 0) return
+      if (errstat /= 0) then
+        write(*,*)'derive_ctp_mler: interpolation failed: iw=',iw,' x()= ',x
+        return
+      endif
 
       val = 0.0
       do k = 1, nterms
@@ -1295,7 +1316,10 @@ contains
 
       call ndi_find_indices (lut_s % si_dims(ids), x, indices, errstat)
       call ndi_calc_weights (lut_s % si_dims(ids), x, indices, weights, errstat)
-      if (errstat /= 0) return
+      if (errstat /= 0) then
+        write(*,*)'pp_derive_to3: interpolation failed: is=',is,' x()= ',x
+        return
+      endif
 
       do k = 1, nterms_4d
         call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
@@ -1646,7 +1670,10 @@ contains
     xs(:)  = (/    sza,     vza,     raa/)
     call ndi_find_indices (lut_s % si_dims(ids), xs, indices(3:5), errstat)
     call ndi_calc_weights (lut_s % si_dims(ids), xs, indices(3:5), weights(3:5), errstat)
-    if (errstat /= 0) return
+    if (errstat /= 0) then
+      write(*,*)'pp_derive_albcld: interpolation failed: xs()= ',xs
+      return
+    endif
 
     do iw = 1, nswav
 
@@ -1821,7 +1848,10 @@ contains
     ids(:) = (/iqu_sza, iqu_vza, iqu_raa/)
     call ndi_find_indices (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6), errstat)
     call ndi_calc_weights (lut_s % qu_dims(ids), (/sza, vza, raa/), indices(4:6), weights(4:6), errstat)
-    if (errstat /= 0) return
+    if (errstat /= 0) then
+      write(*,*)'pp_get_qu: interpolation failed: (sza,vza,raa) = ',(/sza,vza,raa/)
+      return
+    endif
 
     alb_grid => lut_s % qu_dims(iqu_alb) % x
     pre_grid => lut_s % qu_dims(iqu_pre) % x
