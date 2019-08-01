@@ -29,6 +29,10 @@ set -e
 set -u
 ulimit -s unlimited
 
+# If RADIANCE_POLCORR is not set, define it to be ON.
+# To turn off polarization correction, set it to anything else.
+: "${RADIANCE_POLCORR:=ON}"
+
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
 test -d $SDPC_RUN_DIR || exit 1
@@ -132,19 +136,23 @@ tar_l1_radiance_to_dest()
 
    tarfile_rad="${rad_basename}.rad.tar"
 
+   EXTRA_FILES=""
+   if test x"$RADIANCE_POLCORR" = x"ON"; then
+      EXTRA_FILES="$granule_dir/log_polcorr.txt"
+   fi
+
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
        $granule_dir/granule_ident.csv \
        $granule_dir/log_inr_post.txt $tiepoint_file \
-       $granule_dir/log_polcorr.txt \
-       $granule_dir/${rad_basename}.nc.met
+       $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
+
    /bin/mv $dest_dir/.${tarfile_rad} $dest_dir/${tarfile_rad}
 
    archive.sl --clobber --delete -a $SDPC_ARCHIVE_DIR -l L1 $dest_dir/${tarfile_rad}
 
    /bin/rm -f $granule_dir/log_inr_post.txt $tiepoint_file \
-              $granule_dir/log_polcorr.txt \
-              $granule_dir/${rad_basename}.nc.met
+              $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 }
 
 . $SDPC_ROOT/bin/run_wavecal.sh
@@ -161,8 +169,10 @@ run_inr_post()
    run_wavecal $radiance_file "0-4"
 
    # polarization correction
-   srun --ntasks=1 --output=log_polcorr.txt \
-    L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
+   if test x"$RADIANCE_POLCORR" = x"ON"; then
+      srun --ntasks=1 --output=log_polcorr.txt \
+       L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
+   fi
 
    (tar_l1_radiance_to_dest "$l1_out_dir")
 }
