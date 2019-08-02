@@ -333,8 +333,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
    int img_dimids[3];
    const Text_Attr_Type time_attrs[] =
      {
-        {"units", "sec since TEMPO epoch"},
-        {"comment", "start time"},
+        {"comment", "exposure start time"},
         {NULL, NULL}
      };
    const Text_Attr_Type img_attrs[] =
@@ -363,7 +362,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
    const Text_Attr_Type exptime_attrs[] =
      {
         {"units", "seconds"},
-        {"comment", "Exposure time"},
+        {"comment", "exposure time duration"},
         {NULL, NULL}
      };
    const Text_Attr_Type sdc_attrs[] =
@@ -402,7 +401,8 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
      return -1;
 
    if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))
-       || (0 != define_text_attrs (ncid, varid_time, time_attrs)))
+       || (0 != define_text_attrs (ncid, varid_time, time_attrs))
+       || (0 != tio_write_timestamp_unit_string (ncid, "image_start_time")))
      return -1;
 
    if ((0 != TIO_def_var (ncid, "fpa_temp", TIO_FLOAT, 1, &dimid_time, &varid_fpa_temp))
