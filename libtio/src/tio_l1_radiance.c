@@ -118,12 +118,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type time_attrs[] =
           {
-             {"units", "s"},
              {"comment", "Exposure start time"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if ((-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
+            || (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME)))
           return -1;
      }
 
@@ -131,7 +131,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type exposure_time_attrs[] =
           {
-             {"units", "s"},
+             {"units", "seconds"},
              {"comment", "Exposure duration"},
              _pTEXT_ATTRS_END
           };
@@ -1242,13 +1242,14 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
 
    /* time coordinate variable */
      {
-        static _pText_Attr_Type time_attrs[] =
-          {
-             {"units", "s"},
-             _pTEXT_ATTRS_END
-          };
         dims[0] = dim_table->time_ephemeris.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_EPHEM, NC_DOUBLE, 1, dims, time_attrs, &varid))
+        if (NC_NOERR != (status = nc_def_var (grp, TEMPO_VAR_TIME_EPHEM, NC_DOUBLE, 1, dims, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                          __func__, TEMPO_VAR_TIME_EPHEM, nc_strerror(status));
+             return -1;
+          }
+        if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_EPHEM))
           return -1;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
@@ -1395,13 +1396,14 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 
    /* time coordinate variable */
      {
-        static _pText_Attr_Type time_attrs[] =
-          {
-             {"units", "s"},
-             _pTEXT_ATTRS_END
-          };
         dims[0] = dim_table->time_maneuvers.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_MANEUVER, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if (NC_NOERR != (status = nc_def_var (grp, TEMPO_VAR_TIME_MANEUVER, NC_DOUBLE, 1, dims, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                          __func__, TEMPO_VAR_TIME_MANEUVER, nc_strerror(status));
+             return -1;
+          }
+        if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_MANEUVER))
           return -1;
      }
 
@@ -1483,13 +1485,14 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 
    /* gyro time coordinate */
      {
-        static _pText_Attr_Type gyro_time_attrs[] =
-          {
-             {"units", "s"},
-             _pTEXT_ATTRS_END
-          };
         dims[0] = dim_table->time_gyroscope.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, gyro_time_attrs, &varid))
+        if (NC_NOERR != (status = nc_def_var (grp, TEMPO_VAR_TIME_GYRO, NC_DOUBLE, 1, dims, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                          __func__, TEMPO_VAR_TIME_GYRO, nc_strerror(status));
+             return -1;
+          }
+        if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_GYRO))
           return -1;
 #ifdef DO_CHUNKING
         /* FIXME */
@@ -1524,13 +1527,14 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 
    /* gyro bias time coordinate */
      {
-        static _pText_Attr_Type bias_time_attrs[] =
-          {
-             {"units", "s"},
-             _pTEXT_ATTRS_END
-          };
         dims[0] = dim_table->time_bias.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_GYRO_BIAS, NC_DOUBLE, 1, dims, bias_time_attrs, &varid))
+        if (NC_NOERR != (status = nc_def_var (grp, TEMPO_VAR_TIME_GYRO_BIAS, NC_DOUBLE, 1, dims, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                          __func__, TEMPO_VAR_TIME_GYRO_BIAS, nc_strerror(status));
+             return -1;
+          }
+        if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_GYRO_BIAS))
           return -1;
 #ifdef DO_CHUNKING
         /* FIXME */
@@ -1609,13 +1613,14 @@ static int define_mirror_group (int parent_grp, const char *grp_name,
 
    /* time coordinate variable */
      {
-        static _pText_Attr_Type time_attrs[] =
-          {
-             {"units", "s"},
-             _pTEXT_ATTRS_END
-          };
         dims[0] = dim_table->time_sma.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME_SMA, NC_DOUBLE, 1, dims, time_attrs, &varid))
+        if (NC_NOERR != (status = nc_def_var (grp, TEMPO_VAR_TIME_SMA, NC_DOUBLE, 1, dims, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining variable %s (%s)",
+                          __func__, TEMPO_VAR_TIME_SMA, nc_strerror(status));
+             return -1;
+          }
+        if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_SMA))
           return -1;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))

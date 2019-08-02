@@ -72,12 +72,12 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type time_attrs[] =
           {
-             {"units", "s"},
              {"comment", "Exposure start time"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL))
+        if ((-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_TIME, NC_DOUBLE, 1, dims, time_attrs, NULL)
+             || (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME))))
           return -1;
      }
 
@@ -85,7 +85,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type exposure_time_attrs[] =
           {
-             {"units", "s"},
+             {"units", "seconds"},
              {"comment", "Exposure duration"},
              _pTEXT_ATTRS_END
           };

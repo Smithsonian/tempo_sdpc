@@ -673,6 +673,38 @@ int tio_write_epoch_timestamp (int ncid, int varid)
    return 0;
 }
 
+int tio_write_timestamp_unit_string (int ncid, const char *varname)
+{
+#define TIMESTAMP_UNIT_STRING_SIZE 128
+   char unit_string[TIMESTAMP_UNIT_STRING_SIZE];
+   char epoch[MAX_ISOTIME_LEN];
+   int n, varid, len;
+
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch, sizeof(epoch)))
+     return -1;
+
+   len = sizeof(unit_string);
+
+   memset ((char *)unit_string, 0, len);
+   if (((n = snprintf (unit_string, len, "seconds since %s", epoch)) < 0)
+       || (n >= (int) len))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed: buffer size=%d  return value=%d",
+                     __func__, len, n);
+        return -1;
+     }
+
+   if ((0 != tio_inq_varid (ncid, varname, &varid))
+       || (0 != TIO_put_att (ncid, varid, "units", NC_CHAR, 1 + strlen(unit_string), unit_string)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing units attribute for variable %s",
+                     __func__, varname);
+        return -1;
+     }
+
+   return 0;
+}
+
 int tio_use_file_epoch (int ncid)
 {
    char utc_string[MAX_ISOTIME_LEN];

@@ -274,6 +274,14 @@ extern int TIO_write_timestamp (int ncid, int varid,
 */
 extern int tio_write_epoch_timestamp (int ncid, int varid);
 
+/** Write a timestamp units string that contains the the TEMPO epoch
+ * @param ncid    Index of destination netcdf file
+ * @param varname Variable name to receive attribute
+ * @return 0 on success, -1 on error
+ * Use \a tio_time_set_tempo_epoch to set the epoch.
+*/
+extern int tio_write_timestamp_unit_string (int ncid, const char *varname);
+
 #if 0
 {
 #endif
