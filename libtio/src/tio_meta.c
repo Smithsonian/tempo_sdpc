@@ -856,17 +856,30 @@ static int compute_centroid (const float *lon2d, const float *lat2d, const int *
    return 0;
 }
 
+static inline float merge_coordinates (float corner1, float corner2, float center, float fill_value)
+{
+   if (corner1 == fill_value)
+     {
+        return (corner2 == fill_value) ? center : corner2;
+     }
+
+   return (corner2 == fill_value) ? corner1 : 0.5 * (corner1 + corner2);
+}
+
 int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat,
                                       float *lon_centroid, float *lat_centroid)
 {
    TIO_Var_Info_Type info;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
+   float *lon2d_bnds=NULL, *lat2d_bnds=NULL;
    int *inrqf=NULL, *indices=NULL;
-   int *bx1=NULL, *bx2=NULL, *bs1=NULL, *bs2=NULL, *bdry=NULL;
-   int start[2], count[2];
+   int *bx1=NULL, *bx2=NULL, *bs1=NULL, *bs2=NULL, *bdry=NULL, *side=NULL;
+   int start[3], count[3];
    int num_steps, num_xtrack, num_pixels, max_num_boundary;
    int s, x, i, n, x_first_ok, x_last_ok, s_first_ok, s_last_ok;
+   int varid, no_fill, lon_bounds_status;
    int status = -1;
+   float fill_value = TIO_FILL_FLOAT;
    float vza_max_deg = 85.0; /* avoid pixels near the Earth's limb */
    int dx=8, ds=2;            /* reduce final polygon point density */
 
@@ -887,6 +900,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
        || (NULL == (lon2d = (float *)TIO_MALLOC (num_pixels * sizeof(float))))
        || (NULL == (lat2d = (float *)TIO_MALLOC (num_pixels * sizeof(float))))
        || (NULL == (vza2d = (float *)TIO_MALLOC (num_pixels * sizeof(float))))
+       || (NULL == (side = (int *)TIO_MALLOC (max_num_boundary * sizeof(int))))
        || (NULL == (indices = (int *)TIO_MALLOC (2 * max_num_boundary * sizeof(int)))) )
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -904,6 +918,32 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
        || (0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, inrqf)))
      {
         goto return_status;
+     }
+
+   /* If we have lon/lat bounds, we'll use them to define the polygon boundaries. */
+
+   tell_push_queue ();
+   lon_bounds_status = tio_inq_varid (grp, TEMPO_VAR_LONGITUDE_BOUNDS, &varid);
+   tell_pop_queue (1);
+
+   if (lon_bounds_status == 0)
+     {
+        if ((NULL == (lon2d_bnds = (float *)TIO_MALLOC (4 * num_pixels * sizeof(float))))
+            || (NULL == (lat2d_bnds = (float *)TIO_MALLOC (4 * num_pixels * sizeof(float)))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto return_status;
+          }
+
+        if (0 != TIO_inq_var_fill (grp, varid, &no_fill, &fill_value))
+          goto return_status;
+
+        start[2] = 0;
+        count[2] = 4;
+
+        if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_FLOAT, lon2d_bnds))
+            || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_FLOAT, lat2d_bnds)))
+          goto return_status;
      }
 
    if (0 != compute_centroid (lon2d, lat2d, inrqf, num_pixels, lon_centroid, lat_centroid))
@@ -989,15 +1029,30 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    n = 0;
    for (x = 0; x < num_xtrack; x += dx)
      {
-        if (bs2[x] >= 0) bdry[n++] = bs2[x];
+        if (bs2[x] >= 0)
+          {
+             side[n] = 0;
+             bdry[n] = bs2[x];
+             n++;
+          }
      }
    for (s = num_steps-1; s >= 0; s -= ds)
      {
-        if (bx2[s] >= 0) bdry[n++] = bx2[s];
+        if (bx2[s] >= 0)
+          {
+             side[n] = 1;
+             bdry[n] = bx2[s];
+             n++;
+          }
      }
    for (x = num_xtrack-1; x >= 0; x -= dx)
      {
-        if (bs1[x] >= 0) bdry[n++] = bs1[x];
+        if (bs1[x] >= 0)
+          {
+             side[n] = 2;
+             bdry[n] = bs1[x];
+             n++;
+          }
      }
 #if 0
    /* The northernmost boundary points are sometimes jagged and/or
@@ -1008,7 +1063,12 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
     */
    for (s = num_steps-1; s >= 0; s -= ds)
      {
-        if (bx1[s] >= 0) bdry[n++] = bx1[s];
+        if (bx1[s] >= 0)
+          {
+             side[n] = 3;
+             bdry[n] = bx1[s];
+             n++;
+          }
      }
 #endif
 
@@ -1022,11 +1082,55 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
         goto return_status;
      }
 
-   for (i = 0; i < n; i++)
+   if (lon_bounds_status != 0)
      {
-        int k = bdry[i];
-        lon[i] = lon2d[k];
-        lat[i] = lat2d[k];
+        /* pixel bounds not available - use the pixel centers */
+        for (i = 0; i < n; i++)
+          {
+             int k = bdry[i];
+             lon[i] = lon2d[k];
+             lat[i] = lat2d[k];
+          }
+     }
+   else
+     {
+        for (i = 0; i < n; i++)
+          {
+             int k = bdry[i];
+             float lon_k = lon2d[k];
+             float lat_k = lat2d[k];
+             float *lonbnds = lon2d_bnds + k*4;
+             float *latbnds = lat2d_bnds + k*4;
+             float lon_i, lat_i;
+             switch (side[i])
+               {
+                case 0:
+                  /* "west"  e.g. NW,SW corners, regardless of actual lon,lat coordinate values  */
+                  lon_i = merge_coordinates (lonbnds[1], lonbnds[2], lon_k, fill_value);
+                  lat_i = merge_coordinates (latbnds[1], latbnds[2], lat_k, fill_value);
+                  break;
+                case 1:
+                  /* "south", e.g. SW,SE corners */
+                  lon_i = merge_coordinates (lonbnds[2], lonbnds[3], lon_k, fill_value);
+                  lat_i = merge_coordinates (latbnds[2], latbnds[3], lat_k, fill_value);
+                  break;
+                case 2:
+                  /* "east", e.g. SE,NE corners */
+                  lon_i = merge_coordinates (lonbnds[3], lonbnds[0], lon_k, fill_value);
+                  lat_i = merge_coordinates (latbnds[3], latbnds[0], lat_k, fill_value);
+                  break;
+                case 3:
+                  /* "north" e.g. NE,NW corners */
+                  lon_i = merge_coordinates (lonbnds[0], lonbnds[1], lon_k, fill_value);
+                  lat_i = merge_coordinates (latbnds[0], latbnds[1], lat_k, fill_value);
+                  break;
+                default:
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: this should never happen!!", __func__);
+                  goto return_status;
+               }
+             lon[i] = lon_i;
+             lat[i] = lat_i;
+          }
      }
 
    *num = n;
@@ -1038,8 +1142,11 @@ return_status:
    TIO_FREE(inrqf);
    TIO_FREE(lon2d);
    TIO_FREE(lat2d);
+   TIO_FREE(lon2d_bnds);
+   TIO_FREE(lat2d_bnds);
    TIO_FREE(vza2d);
    TIO_FREE(indices);
+   TIO_FREE(side);
 
    if (status)
      {
