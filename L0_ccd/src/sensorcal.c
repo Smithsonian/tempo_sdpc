@@ -838,7 +838,7 @@ static int shadow_alloc (Shadow_Type *sh, int num_rows, int first_col, int last_
      }
 
    sh->first_col = first_col;
-   sh->last_col = last_col;
+   sh->last_col = last_col + 1;   /* loop runs (i=first; i<last; i++) */
    sh->num_rows = num_rows;
 
    return 0;
@@ -919,7 +919,7 @@ static int slcorr_subtract_weighted_shadows (const Shadow_Type *top, const Shado
      }
    memset ((char *)col_weight, 0, img->num_cols * sizeof(float));
 
-   num_not_shadowed = bot->first_col - top->last_col + 1;
+   num_not_shadowed = bot->first_col - top->last_col;
 
    for (s = top->first_col; s < top->last_col; s++)
      {
@@ -927,7 +927,7 @@ static int slcorr_subtract_weighted_shadows (const Shadow_Type *top, const Shado
      }
    for (s = top->last_col; s < bot->first_col; s++)
      {
-        col_weight[s] = 1.0 - (s - top->last_col + 1.0)/num_not_shadowed;
+        col_weight[s] = 1.0 - (s - top->last_col)/num_not_shadowed;
      }
    for (s = bot->first_col; s < bot->last_col; s++)
      {
