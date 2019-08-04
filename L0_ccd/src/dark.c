@@ -156,6 +156,8 @@ static Image_Type *compute_image_mean (int ncid)
 
    num = info.dimlens[0];
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "averaging %d dark frames...", num);
+
    for (k = 0; k < num; k++)
      {
         if (0 != read_image (ncid, k, tmp))
@@ -166,6 +168,8 @@ static Image_Type *compute_image_mean (int ncid)
 
    if (0 != image_divide (img, count))
      goto return_status;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "done");
 
    status = 0;
 

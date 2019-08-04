@@ -119,6 +119,8 @@ const char *enable_state_query_enum (const char *name)
    if (s->state_type != CONFIG_TYPE_STRING)
      return NULL;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: %s", name, s->enum_state);
+
    return s->enum_state;
 }
 
@@ -134,6 +136,8 @@ int enable_state_query_bool (const char *name)
 
    if (s->state_type != CONFIG_TYPE_BOOL)
      return -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: %s", name, s->boolean_state ? "ON" : "OFF");
 
    return s->boolean_state;
 }

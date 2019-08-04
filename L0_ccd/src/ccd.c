@@ -986,7 +986,6 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
 
    for (i = 0; i < NUM_QUAD; i++)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "smear correction (quad=%d)", i);
         if (-1 == correct_smear_quad (&ccd->params, &ccd->quad[i],
                                       ccd->ccd_smear_correction_method,
                                       client_data, img))

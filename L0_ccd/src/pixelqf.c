@@ -320,7 +320,7 @@ static int flag_transients (const Pixelqf_Type *pt, Image_Type *img,
 
    if (num_pixels_flagged > 0)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "found %d transients", num_pixels_flagged);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%d transient pixels", num_pixels_flagged);
      }
 
    return num_pixels_flagged;
@@ -373,7 +373,7 @@ static int pqf_flag_transients (const Pixelqf_Type *pt,
    if (NULL == (spikefs = compute_spikefs (bpixmap, img_ref, img)))
      return -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "searching by quadrant for transient pixels:");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "transient pixel search by quadrant:");
 
    flag_transients (pt, img, spikefs,    0, nr/2,    0, nc/2);
    flag_transients (pt, img, spikefs,    0, nr/2, nc/2, nc  );
