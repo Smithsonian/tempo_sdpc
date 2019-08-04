@@ -90,7 +90,7 @@ int main (int argc, char **argv)
    char *config_file = "l0_ccd.cfg";
    config_t cfg;
    Control_Type ctrl = {0};
-   int log_level = -1;
+   int log_level = 0;
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
@@ -158,6 +158,7 @@ int main (int argc, char **argv)
            case 'n':
              if (1 != sscanf (optarg, "%u", &ctrl.limit_num_granules))
 	       usage();
+             break;
            case 'v':
              log_level++;
           }

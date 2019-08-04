@@ -742,7 +742,7 @@ static int slcorr_using_bb_kernels (const Calibration_Type *cal, Image_Type *img
    size_t i, num_pixels = num_rows * num_cols;
    int status = -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction (broad-band kernels)");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: broad-band kernels");
 
    if (NULL == (img0 = image_dup (img)))
      return -1;
@@ -973,7 +973,7 @@ static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
    Shadow_Type bot = {0};
    int status = -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction (shadow)");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: shadow");
 
    if (cal->straylight_shadow_method & SHADOW_TOP)
      {

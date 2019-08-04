@@ -544,7 +544,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
 
         if (NULL == (xr = alloc_exprec_meta ()))
           goto return_status;
@@ -654,8 +654,6 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
    /* copy the appropriate dark current image into tmp_img */
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "dark subtraction (%s)", method);
 
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
@@ -1094,7 +1092,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exprec %3d/%d", ixr, num_exprecs);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
 
         if (NULL == (xr = alloc_exprec_meta ()))
           goto return_status;
