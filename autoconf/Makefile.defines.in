@@ -40,9 +40,9 @@ ifeq ($(COMPILER_SUITE), gnu)
   all-dbg :: export FFLAGS=-g -ggdb -Wall -W -Wextra -Warray-bounds -Wno-unused-dummy-argument -fcheck=all -fbounds-check -fmax-errors=0 -fbacktrace -fcheck-array-temporaries -fdiagnostics-color=never
   all-dbg :: export LFLAGS=#
 
-  all-gprof :: export CFLAGS += -pg -no-pie -fprofile-arcs
-  all-gprof :: export FFLAGS += -pg -no-pie -fprofile-arcs
-  all-gprof :: export LFLAGS += -pg -no-pie
+  all-gprof :: export CFLAGS += -pg -no-pie -fprofile-arcs -ftest-coverage -lgcov
+  all-gprof :: export FFLAGS += -pg -no-pie -fprofile-arcs -ftest-coverage -lgcov
+  all-gprof :: export LFLAGS += -pg -fprofile-arcs -lgcov
 endif
 
 ifeq ($(COMPILER_SUITE), intel)
