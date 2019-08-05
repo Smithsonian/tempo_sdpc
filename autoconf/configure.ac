@@ -220,6 +220,14 @@ elif ! test -r "$LEAP_SECONDS_LIST" ; then
 fi
 AC_SUBST(LEAP_SECONDS_LIST)
 
+AC_ARG_ENABLE(imgcomp,
+  [  --enable-imgcomp        Compress image data ],
+  [ jh_imgcomp_enable=$enableval ], [jh_imgcomp_enable=no])
+if test X"$jh_imgcomp_enable" = X"yes" ; then
+  AC_DEFINE(ENABLE_IMAGE_COMPRESSION)
+  echo 'Enable image compression'
+fi
+
 JD_WITH_LIBRARY(slang)
 JD_SLANG_MODULE_INSTALL_DIR
 INSTALL_MODULE="\$(INSTALL_DATA)"
@@ -241,7 +249,11 @@ JD_SET_RPATH($libdir)
 
 JH_LIST_SOURCES(L1_trace_gas/src)
 
-AC_CONFIG_HEADER(pipe/src/config.h:pipe/src/config.hin)
+AC_CONFIG_HEADER(\
+ libtio/src/config.h:libtio/src/config.hin\
+ L0_format/src/config.h:L0_format/src/config.hin\
+ pipe/src/config.h:pipe/src/config.hin\
+)
 
 AC_CONFIG_FILES([\
  Makefile:autoconf/Makefile.in \

@@ -757,6 +757,7 @@ with_tell
 with_tiff
 with_geotiff
 with_leapsec
+enable_imgcomp
 with_slang
 with_slanglib
 with_slanginc
@@ -1393,6 +1394,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-gcov           Do not use for production code!
+  --enable-imgcomp        Compress image data
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2836,6 +2838,19 @@ elif ! test -r "$LEAP_SECONDS_LIST" ; then
    as_fn_error $? "Cannot read leap seconds file: $LEAP_SECONDS_LIST" "$LINENO" 5
 fi
 
+
+# Check whether --enable-imgcomp was given.
+if test "${enable_imgcomp+set}" = set; then :
+  enableval=$enable_imgcomp;  jh_imgcomp_enable=$enableval
+else
+  jh_imgcomp_enable=no
+fi
+
+if test X"$jh_imgcomp_enable" = X"yes" ; then
+  $as_echo "#define ENABLE_IMAGE_COMPRESSION 1" >>confdefs.h
+
+  echo 'Enable image compression'
+fi
 
 
   if test "X$jd_prefix" = "X"
@@ -4617,7 +4632,7 @@ LINKOBJS="$F90OBJS $COBJS"
 
 
 
-ac_config_headers="$ac_config_headers pipe/src/config.h:pipe/src/config.hin"
+ac_config_headers="$ac_config_headers libtio/src/config.h:libtio/src/config.hin L0_format/src/config.h:L0_format/src/config.hin pipe/src/config.h:pipe/src/config.hin"
 
 
 ac_config_files="$ac_config_files Makefile:autoconf/Makefile.in Makefile.defines:autoconf/Makefile.defines.in pipe/src/Makefile:pipe/src/Makefile.in pipe/slurm/Makefile:pipe/slurm/Makefile.in"
@@ -5312,6 +5327,8 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
+    "libtio/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS libtio/src/config.h:libtio/src/config.hin" ;;
+    "L0_format/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS L0_format/src/config.h:L0_format/src/config.hin" ;;
     "pipe/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS pipe/src/config.h:pipe/src/config.hin" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile:autoconf/Makefile.in" ;;
     "Makefile.defines") CONFIG_FILES="$CONFIG_FILES Makefile.defines:autoconf/Makefile.defines.in" ;;

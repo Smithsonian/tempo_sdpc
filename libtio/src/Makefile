@@ -155,7 +155,7 @@ install:	elf install-header install-elf install-elf-f install-execs
 clean:	clean-tempo-names
 	-$(RM) -f .##* $(elfdir)/*
 distclean: clean distclean-tempo-names
-	-$(RM) -rf $(elfdir) $(EXECUTABLES)
+	-$(RM) -rf $(elfdir) $(EXECUTABLES) config.h
 
 # --------------------------------------------------------------------------
 # Object Rules

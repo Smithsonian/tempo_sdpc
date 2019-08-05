@@ -153,6 +153,8 @@ struct TIO_Scan_Ident_Type
    _pTIO_Granule_Ident_Type *granule_ident;
 };
 
+extern void _pTIO_get_level1_compression (int *deflate, int *deflate_level, int *shuffle);
+
 #if 0
 {
 #endif

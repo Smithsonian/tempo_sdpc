@@ -4,6 +4,7 @@
  *  @brief Process exposure record files
  */
 
+#include "config.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,16 @@
 #include <tell.h>
 
 #include "exprec_cache.h"
+
+#ifdef ENABLE_IMAGE_COMPRESSION
+# define LEVEL0_IMAGE_SHUFFLE_SELECT 1
+# define LEVEL0_IMAGE_DEFLATE_SELECT 1
+# define LEVEL0_IMAGE_DEFLATE_LEVEL  1
+#else
+# define LEVEL0_IMAGE_SHUFFLE_SELECT 0
+# define LEVEL0_IMAGE_DEFLATE_SELECT 0
+# define LEVEL0_IMAGE_DEFLATE_LEVEL  0
+#endif
 
 typedef struct
 {
@@ -180,7 +191,9 @@ static int define_outfile_vars (Process_Method_Type *pmt,
 {
    const IOCSDPC_Image_Info_Item_Type *item;
    int ncid = pmt->ncid;
-   int shuffle=1, deflate=1, deflate_level=1;
+   int shuffle=LEVEL0_IMAGE_SHUFFLE_SELECT;
+   int deflate=LEVEL0_IMAGE_DEFLATE_SELECT;
+   int deflate_level=LEVEL0_IMAGE_DEFLATE_LEVEL;
    int dimid_time, dimid_row, dimid_col;
    int varid_image_start_time, varid_exposure_time;
    int varid_readout_time, varid_frame_transfer_time;

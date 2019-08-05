@@ -160,13 +160,13 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 {
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
-   int shuffle, deflate=1, deflate_level=1;
+   int shuffle, deflate, deflate_level;
 #ifdef DO_CHUNKING
    int storage = NC_CHUNKED;
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
 
-   shuffle = deflate;
+   _pTIO_get_level1_compression (&deflate, &deflate_level, &shuffle);
 
    if (sg->name == NULL)
      {

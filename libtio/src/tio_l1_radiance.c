@@ -1,6 +1,7 @@
 /** @file
  *  @brief TEMPO Level 1 radiance file template generation
  */
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -24,6 +25,23 @@
 #define COMMENT_WGS84 \
  "Earth-centered WGS84 Cartesian coordinates (z=North Pole, y=equator, x=prime meridian)"
 #define COORDINATE_AT_EXPOSURE_START "coordinate at exposure start"
+
+#ifdef ENABLE_IMAGE_COMPRESSION
+# define LEVEL1_IMAGE_DEFLATE_SELECT 1
+# define LEVEL1_IMAGE_DEFLATE_LEVEL  1
+# define LEVEL1_IMAGE_SHUFFLE_SELECT 1
+#else
+# define LEVEL1_IMAGE_DEFLATE_SELECT 0
+# define LEVEL1_IMAGE_DEFLATE_LEVEL  0
+# define LEVEL1_IMAGE_SHUFFLE_SELECT 0
+#endif
+
+void _pTIO_get_level1_compression (int *deflate, int *deflate_level, int *shuffle)
+{
+   if (deflate) *deflate = LEVEL1_IMAGE_DEFLATE_SELECT;
+   if (deflate_level) *deflate_level = LEVEL1_IMAGE_DEFLATE_LEVEL;
+   if (shuffle) *shuffle = LEVEL1_IMAGE_SHUFFLE_SELECT;
+}
 
 /* An instance of a _pDim_Table_Type struct is used as a lookup table
  * for all the dimensions that are defined anywhere in the associated
@@ -263,14 +281,14 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
    int status, varid, dims[3], num_masks, len;
    unsigned int *flag_masks = NULL;
    char *flag_meanings = NULL;
-   int shuffle, deflate=1, deflate_level=1;
+   int shuffle, deflate, deflate_level;
 #ifdef DO_CHUNKING
    int storage = NC_CHUNKED;
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
    int error_status = -1;
 
-   shuffle = deflate;
+   _pTIO_get_level1_compression (&deflate, &deflate_level, &shuffle);
 
    dims[0] = dim_table->step.id;
    dims[1] = dim_table->xtrack.id;
@@ -617,13 +635,13 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      };
    int status, grp, varid;
    int dims[TIO_MAX_VAR_DIMS];
-   int shuffle, deflate=1, deflate_level=1;
+   int shuffle, deflate, deflate_level;
 #ifdef DO_CHUNKING
    int storage = NC_CHUNKED;
    size_t chunksizes[TIO_MAX_VAR_DIMS];
 #endif
 
-   shuffle = deflate;
+   _pTIO_get_level1_compression (&deflate, &deflate_level, &shuffle);
 
    if (sg->name == NULL)
      {
