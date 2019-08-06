@@ -1394,7 +1394,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-gcov           Do not use for production code!
-  --enable-imgcomp        Compress image data
+  --disable-imgcomp       Don't compress image data on output
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2843,13 +2843,13 @@ fi
 if test "${enable_imgcomp+set}" = set; then :
   enableval=$enable_imgcomp;  jh_imgcomp_enable=$enableval
 else
-  jh_imgcomp_enable=no
+  jh_imgcomp_enable=yes
 fi
 
 if test X"$jh_imgcomp_enable" = X"yes" ; then
   $as_echo "#define ENABLE_IMAGE_COMPRESSION 1" >>confdefs.h
 
-  echo 'Enable image compression'
+  echo 'Enable image compression on output'
 fi
 
 

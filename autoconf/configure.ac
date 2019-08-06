@@ -221,11 +221,11 @@ fi
 AC_SUBST(LEAP_SECONDS_LIST)
 
 AC_ARG_ENABLE(imgcomp,
-  [  --enable-imgcomp        Compress image data ],
-  [ jh_imgcomp_enable=$enableval ], [jh_imgcomp_enable=no])
+  [  --disable-imgcomp       Don't compress image data on output],
+  [ jh_imgcomp_enable=$enableval ], [jh_imgcomp_enable=yes])
 if test X"$jh_imgcomp_enable" = X"yes" ; then
   AC_DEFINE(ENABLE_IMAGE_COMPRESSION)
-  echo 'Enable image compression'
+  echo 'Enable image compression on output'
 fi
 
 JD_WITH_LIBRARY(slang)
