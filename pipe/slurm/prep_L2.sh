@@ -174,6 +174,15 @@ run_inr_post()
        L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
    fi
 
+   # compress before archiving
+   num_dsets_gzipped=$(h5stat -d $radiance_file | grep GZIP | cut -d: -f2)
+   if test $num_dsets_gzipped -eq 0 ; then
+      tmpfile="${radiance_file}.prezip"
+      /bin/mv $radiance_file $tmpfile
+      srun --ntasks=1 nccopy -s -d 1 $tmpfile $radiance_file
+      /bin/rm $tmpfile
+   fi
+
    (tar_l1_radiance_to_dest "$l1_out_dir")
 }
 
