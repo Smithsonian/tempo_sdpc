@@ -3,6 +3,9 @@
 set -e
 set -u
 
+# If SDPC_LEVEL2_PRODUCTS is not set, define it
+: "${SDPC_LEVEL2_PRODUCTS:=NONE}"
+
 # Note that the radiance file name be "hidden" (may begin with a ".").
 
 if test $# -ne 2 ; then
@@ -70,6 +73,11 @@ if ! test -f "$tarfile_path" ; then
   exit 1
 fi
 
+# If no level 2 products were requested, we're done
+if test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
+  exit 0
+fi
+
 product_list="$SDPC_LEVEL2_PRODUCTS"
 product_list_tokens="$(echo $product_list | tr -s , ' ')"
 product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/O3P//g' | tr -s ' ' ,)"
@@ -80,16 +88,6 @@ for p in $product_list_tokens ; do
       have_o3p="yes"
    fi
 done
-
-# FIXME: for now, only generate o3p products for one granule
-case "$rad_basename" in
-   *G01* )
-   ;;
-   * )
-   # uncomment this to skip other granules:
-   ## have_o3p=""
-   ;;
-esac
 
 # Because the o3p array jobs go to different compute hosts, we use a hard link
 # to provide each o3p array job with its own private copy of the input data,
