@@ -324,6 +324,7 @@ static int process_inputs (config_t *cfg,
 
    if (radiance_file)
      {
+        tell_vlog (TELL_MSGTYPE_INFO, 0, "processing file: %s", radiance_file);
         logmsg_filename = radiance_file;
         if (NULL == (r = radiance_open (radiance_file)))
           return -1;
@@ -333,6 +334,7 @@ static int process_inputs (config_t *cfg,
    else
      {
         /* If necessary, create a telemetry-only radiance file */
+        tell_vlog (TELL_MSGTYPE_INFO, 0, "create telemetry-only radiance file: [%f, %f]", time_beg, time_end);
         radiance_is_telemetry_only = 1;
         if (0 != read_rename_config (cfg, &rpt))
           goto return_status;
@@ -382,7 +384,7 @@ static int process_inputs (config_t *cfg,
 
    status = 0;
 return_status:
-   tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, file=%s",
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "exit status=%d, file=%s",
               status, logmsg_filename ? logmsg_filename : "(null)");
    radiance_close (r);
    free_rename_path_type (&rpt);
