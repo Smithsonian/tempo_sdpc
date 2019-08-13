@@ -1,5 +1,22 @@
 #! /bin/sh
 
+# 0. This script is run by cachemon, triggered by the appearance
+#    of a newly completed geolocated radiance file in the INR
+#    output cache.
+#
+# 1. The script first runs a batch process (prep_L2.sh) on a compute
+#    node to finish Level 1 processing (post-INR calculations,
+#    polarization correction, wavelength calibration), and generate
+#    the cloud product.
+#
+# 2. Once the cloud product is available, the remaining Level 2
+#    products are generated in parallel by running slurm batch
+#    jobs (run_L2.sh, run_L2_o3p.sh).
+#
+# On error, a tar file is stored in L2/repro
+#
+#--------------------------------------------------------------------
+
 set -e
 set -u
 
@@ -93,7 +110,7 @@ done
 # to provide each o3p array job with its own private copy of the input data,
 # to be deleted upon job completion.
 # To avoid a race condition, it's important to set up the input data hard links
-# for ALL of the batch jobs, before ANY of the batch jobs are actually submitted.
+# for _all_ of the batch jobs, before _any_ of the batch jobs are submitted.
 # This avoids a race condition where, e.g. the set of (hcho,no2,o3t)
 # finishes and removes the original tar file before the (o3p) job can
 # create hard links to the original tar file and then start running.
@@ -154,7 +171,7 @@ if test x"$have_o3p" != x ; then
 
      # Here, the --wait ensures that the tar file has been unpacked on each
      # compute host and all associated o3p batch jobs have been submitted
-     # BEFORE the singleton dependency cleanup batch job is submitted.
+     # _before_ the singleton dependency cleanup batch job is submitted.
      # Without this wait, there's a race condition, where some compute jobs are
      # submitted after the singleton, causing some blocks to be omitted from
      # the final data product file.

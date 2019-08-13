@@ -1,5 +1,20 @@
 #! /bin/sh
 
+# 0. This script is run by cachemon, triggered by the arrival of
+#    each new granule of exposure records, whether dark, irradiance,
+#    or radiance.  This script may also be triggered by the arrival
+#    of a special "INR" file containing a time interval for which IRU
+#    coverage should be forwarded to the INR subsystem.
+#
+# 1. When triggered on behalf of a granule of Level 0 exposure records,
+#    this script constructs a list of data files needed to support
+#    processing and then submits a slurm batch job to process the
+#    Level 0 data (in a subdirectory of the directory specified on the
+#    command line).
+#    When triggered on behalf of an "INR" file, this script runs
+#    L1_inr_prep to collect the relevant IRU, SMC, and ephemeris time
+#    series in a special "telemetry only" granule for input to INR.
+
 set -e
 set -u
 

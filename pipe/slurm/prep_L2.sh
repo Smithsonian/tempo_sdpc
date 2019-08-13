@@ -1,25 +1,37 @@
 #! /bin/sh
 #SBATCH --output=/dev/null
 
-# 1. Assume this script is started in a writeable directory
-#    with the path to a (hidden) radiance granule provided
-#    on the command line.
+# 0. This script is normally run on a compute node as a batch process
+#    to prepare for L2 product generation.
 #
-#    The following environment variables are assumed to be set:
-#          * SDPC_ROOT, SDPC_RUN_DIR
+# 1. The script is started in a writeable directory, with the
+#    command line:
+#          $1 = radiance file basename
+#          $2 = file defining these variables:
+#                rad_file = geolocated radiance file path
+#                irr_file = irradiance file path
+#                snow_file = path to NSIDC snow and ice cover data file
+#                met_file_path = path to file containing meteorological data
 #
-# 2. When execution is successful, the following tar files are created:
-#          tarfile = $SDPC_RUN_DIR/L1/out/${rad_basename}.tar
-#      tarfile_rad = $SDPC_RUN_DIR/L1/out/${rad_basename}.rad.tar
-#      tarfile_cld = $SDPC_RUN_DIR/L2/out/${rad_basename}.cld.tar
+# 2. The first task is to finish processing of the geolocated radiance file
+#    by doing the following:
+#       - run L1_inr_post
+#       - perform wavelength calibration
+#       - perform polarization correction
+#    The finished L1 radiance file is then stored in the archive.
 #
-#    On error, the relevant tar files go to the corresponding 'repro'
-#    directory.
+# 3. The second task is generate the L2 cloud product, which is used
+#    later on to generate the other Level 2 data products.
+#    The finished cloud file is then stored in the archive.
 #
-#    The tarfile contents are:
-#         tarfile = (rad1, irr1, cld2, etc) for input to L2 pipeline
-#     tarfile_rad = (rad1, etc) for archiving
-#     tarfile_cld = cloud processing directory, for archiving
+# 4. Upon completion of the cloud product, a tar file containing
+#    the radiance, irradiance, and cloud products is stored in the
+#    L2/incoming directory.
+#
+# 5. When it's finished, the script cleans up after itself and
+#    should leave nothing behind.
+#
+# On error, a tar file is stored in the L2/repro directory.
 #
 #---------------------------------------------------------------------
 
@@ -59,7 +71,6 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
-l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
 l2_incoming="$SDPC_RUN_DIR/L2/incoming"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 l2_repro_dir="$SDPC_RUN_DIR/L2/repro"

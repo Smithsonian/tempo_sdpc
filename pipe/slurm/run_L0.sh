@@ -2,17 +2,26 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --output=/dev/null
 
-# 1. Assume this script is started in a writeable directory
-#    with the path to a (hidden) Level 0 granule file provided
-#    on the command line.  The L0 granule may contain dark,
-#    irradiance or radiance frames.
+# 0. This script is intended to run on a compute node.
+#
+# 1. Assume this script is started in a writeable directory.
+#    The command line arguments are:
+#       $1 = granule basename
+#       $2 = file containing a list of filenames:
+#               granule_path
+#               dark_file_path
+#               ephem_file_path
 #
 #    The following environment variables are assumed to be set:
-#          * SDPC_ROOT, SDPC_RUN_DIR
+#          * SDPC_ROOT, SDPC_RUN_DIR, SDPC_ARCHIVE_DIR
 #
-# 2. When execution is successful...
+# 2. Successful excecution yields the following cases:
+#    DRK:  run L0_ccd, archive the result
+#    IRR:  run L0_ccd, perform wavelength calibration, archive the result
+#    RAD:  run L0_ccd, run L1_inr_prep, archive the (intermediate) result,
+#          and put the radiance granule into the INR input cache
 #
-#    On error...
+# 3. On error, a tar file is placed in the L0/repro directory
 #
 #---------------------------------------------------------------------
 
@@ -50,7 +59,6 @@ l0_out_dir="$SDPC_RUN_DIR/L0/out"
 l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
-l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
 
 l2_incoming_dir="$SDPC_RUN_DIR/L2/incoming"
 
@@ -98,6 +106,7 @@ run_l0_ccd()
    # Construct path to archive directory containing today's telemetry point stream.
    # For now, we ignore the case where the data interval spans 2 days because the
    # concept of operations has no CCD images of any kind being generated at local midnight.
+
    sat_day=$(grep sat_local_day_start granule_ident.csv | cut -d, -f2)
    arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/1/${sat_day}/HK"
 
@@ -117,8 +126,12 @@ run_inr_prep()
 
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
-   # The delay here can be relatively small because we've already had time
-   # for L0_ccd to process the granule before getting to this point.
+   # Delay for 2 minutes to be certain that we have all telemetry
+   # relevant to these radiance exposure records.  This may be overly
+   # conservative because we've already had time for L0_ccd to run
+   # to completion.  The minimum delay would be 2 minutes after the
+   # last exposure record of this granule was received from the IOC.
+
    srun --ntasks=1 --output=log_inr_prep.txt \
    L1_inr_prep --ephemeris $ephem_file_path --delay 120 $target_file
 }
