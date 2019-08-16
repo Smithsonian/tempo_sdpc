@@ -37,6 +37,7 @@ typedef struct
    float storage_region_dark[4];
    float fpa_temp;
    float fpe_temp;
+   double earth_sun_distance;
    /* ConOps 3.3: instrument command parameters: NUM_TG_ROWS, NUM_DG_ROWS */
    int num_dg_rows;   /* index of first row included in storage region dark summation */
    int num_tg_rows;   /* number of rows included in storage region dark summation */
@@ -679,6 +680,7 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
                                    Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
+   double jd_utc, solar_theta, solar_phi;
 
    if (cal->cal_straylight_correction)
      {
@@ -693,14 +695,19 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
        || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
      return -1;
 
+   /* For the irradiance, we need the angular position of the sun
+    * relative to the boresight, and the earth-sun distance.
+    * For the radiance, we eventually need only the earth-sun distance,
+    * and that gets done elsewhere anyway, but to keep the code simple,
+    * we compute the solar position for both.  It's cheap, so no worries.
+    */
+   if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
+       || (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &solar_theta, &solar_phi, &xr->earth_sun_distance)))
+     return -1;
+
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
         int use_reference_diffuser = (exprec->exposure_type == EXPREC_TYPE_IRR_REF);
-        double jd_utc, solar_theta, solar_phi;
-
-        if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
-            || (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &solar_theta, &solar_phi)))
-          return -1;
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
@@ -770,6 +777,7 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
    outrec.meta.start_time = xr->exprec->start_time;
    outrec.meta.exposure_time = xr->exprec->exposure_time;
    outrec.meta.mirror_step = xr->exprec->curr_mirror_step;
+   outrec.meta.earth_sun_distance = xr->earth_sun_distance;
 
    outrec.write_nominal_wavelength_grid = Write_Nominal_Wavelength_Grid;
 

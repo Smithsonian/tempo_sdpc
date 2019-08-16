@@ -261,6 +261,16 @@ static int write_rec_meta (Output_Type *out, int index,
 
    update_coverage_time_range (out, meta);
 
+   /* Assuming out->tstart has been set in update_coverage_time_range,
+    * set the header earth-sun distance to the value for the first record.
+    */
+   if (out->tstart == meta->start_time)
+     {
+        /* header value is in meters, computed value is in km */
+        if (0 != tio_set_earth_sun_distance (out->ncid, meta->earth_sun_distance * 1.e3))
+          return -1;
+     }
+
    if (0 != TIO_inq_grp (out->ncid, "/", &grp))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: accessing group / in %s",
