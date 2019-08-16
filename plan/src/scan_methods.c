@@ -401,7 +401,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    while (rise.num_repeats > 0)
      {
         rise.tstart = full.tstart - rise.num_repeats * rise.duration;
-        if (0 != solar_geom->sgt_sat_sun_angles (solar_geom, rise.tstart, &sun_angle, NULL))
+        if (0 != solar_geom->sgt_sat_sun_position (solar_geom, rise.tstart, &sun_angle, NULL, NULL))
           return NULL;
         if (sun_angle > min_sun_angle)
           break;
@@ -416,7 +416,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    while (set.num_repeats > 0)
      {
         double set_tend = set.tstart + set.num_repeats * set.duration;
-        if (0 != solar_geom->sgt_sat_sun_angles (solar_geom, set_tend, &sun_angle, NULL))
+        if (0 != solar_geom->sgt_sat_sun_position (solar_geom, set_tend, &sun_angle, NULL, NULL))
           return NULL;
         if (sun_angle > min_sun_angle)
           break;

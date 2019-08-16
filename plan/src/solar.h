@@ -24,14 +24,15 @@ struct Solar_Geom_Type
                                  double *psza);
    /**< compute the solar zenith angle for the specified place and time */
 
-   int (*sgt_sat_sun_angles)(Solar_Geom_Type *sgt, double jd_utc,
-                             double *ptheta, double *pphi);
+   int (*sgt_sat_sun_position)(Solar_Geom_Type *sgt, double jd_utc,
+                               double *ptheta, double *pphi, double *earth_sun_distance);
    /**< Compute the position angles of the sun relative to the instrument boresight.
     * @param[in] sgt     Pointer to a struct of type \a Solar_Geom_Type
     * @param[in] jd_utc  Julian date for the UTC time of interest.
     * @param[out] ptheta  Polar angle of the sun [deg] (must be non-NULL)
     * @param[out] pphi    Azimuth angle of the sun [deg], CCW from the northern end of
     *                     the instrument slit.  (NULL is ok)
+    * @param[out] earth_sun_distance   Distance of the sun from geocenter [km] (NULL is ok)
     */
 
    int (*sgt_print_params)(const Solar_Geom_Type *sgt, const char *, FILE *);

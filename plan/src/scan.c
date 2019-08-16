@@ -340,7 +340,7 @@ static int sun_angle_vs_time (double jd_utc, double *dsa, void *v)
    Solar_Geom_Type *sgt = b->sgt;
    double sun_angle;
 
-   if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &sun_angle, NULL))
+   if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &sun_angle, NULL, NULL))
      return -1;
    *dsa = sun_angle - b->target_sun_angle;
 

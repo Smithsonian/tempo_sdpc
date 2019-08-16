@@ -186,7 +186,8 @@ static double vec_angle (double *pa, double *pb)
    return acos (vec_dot(a, b));
 }
 
-static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc, double *ptheta, double *pphi)
+static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *ptheta, double *pphi,
+                                 double *earth_sun_distance)
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
@@ -253,6 +254,11 @@ static int sgt_sat_sun_angles (Solar_Geom_Type *sgt, double jd_utc, double *pthe
      }
 
    *ptheta = vec_angle (bs_sat, sun_sat) / DEGTORAD;
+
+   if (earth_sun_distance)
+     {
+        *earth_sun_distance = r_sun;
+     }
 
    if (pphi)
      {
@@ -475,7 +481,7 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
 
    sgt->sgt_delete = sgt_delete;
    sgt->sgt_solar_zenith_angle = sgt_solar_zenith_angle;
-   sgt->sgt_sat_sun_angles = sgt_sat_sun_angles;
+   sgt->sgt_sat_sun_position = sgt_sat_sun_position;
    sgt->sgt_geosat_longitude = sgt_geosat_longitude;
    sgt->sgt_boresight_angles = sgt_boresight_angles;
    sgt->sgt_print_params = sgt_print_params;

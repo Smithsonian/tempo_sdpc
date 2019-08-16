@@ -539,7 +539,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
         double jd_utc = jd_utc0 + i * delta;
         double angle, t_utc, taix;
 
-        if (0 != sgt->sgt_sat_sun_angles (sgt, jd_utc, &angle, NULL))
+        if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &angle, NULL, NULL))
           return -1;
 
         t_utc = (jd_utc - unix_epoch_jd) * SEC_PER_DAY;
@@ -605,7 +605,7 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
 
         if (0 != scan_irradiance_time (solar_geom, irr_angle, jd_utc, &jd_utc_irr))
           return -1;
-        if (0 != solar_geom->sgt_sat_sun_angles (solar_geom, jd_utc_irr, &solar_theta, &solar_phi))
+        if (0 != solar_geom->sgt_sat_sun_position (solar_geom, jd_utc_irr, &solar_theta, &solar_phi, NULL))
           return -1;
 
         if (0 != mkjdtimestr (jd_utc_irr, buf, sizeof(buf)))
