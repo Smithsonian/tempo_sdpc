@@ -104,25 +104,32 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      }
 
    /* earth_sun_distance */
-     {
-        static _pText_Attr_Type earth_sun_distance_attrs[] =
-          {
-             {"units", "m"},
-             {"comment", "Earth sun distance"},
-             _pTEXT_ATTRS_END
-          };
-        float earth_sun_distance = _pTIO_EARTH_SUN_DISTANCE;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_EARTH_SUN_DISTANCE, NC_FLOAT, 0, NULL, earth_sun_distance_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &earth_sun_distance)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing earth sun distance (%s)",
-                          __func__, nc_strerror(status));
-             return -1;
-          }
-     }
+   if (0 != tio_set_earth_sun_distance (grp, _pTIO_EARTH_SUN_DISTANCE))
+     return -1;
 
    return 0;
+}
+
+static int set_default_header_timestamps (int grp)
+{
+   char buf[MAX_ISOTIME_LEN];
+   int len, status;
+
+   if (0 != TIO_mktimestamp_str (0.0, 1, buf, sizeof(buf)))
+     return -1;
+
+   len = strlen(buf)+1;
+
+   if (NC_NOERR != (status = nc_put_att_text (grp, NC_GLOBAL, "time_coverage_start", len, buf)))
+     goto report_error;
+   if (NC_NOERR != (status = nc_put_att_text (grp, NC_GLOBAL, "time_coverage_end", len, buf)))
+     goto report_error;
+
+   return 0;
+report_error:
+   tell_verror (TELL_IO_WRITE_ERROR,
+                "%s: writing timestamp attributes (%s)", __func__, nc_strerror(status));
+   return -1;
 }
 
 static int define_global_attrs (int grp)
@@ -131,8 +138,6 @@ static int define_global_attrs (int grp)
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
         {"product_type", TEMPO_PROD_TYPE_IRR},
-        {"time_coverage_start", _pTIO_TIME_COVERAGE_START},
-        {"time_coverage_end", _pTIO_TIME_COVERAGE_END},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
@@ -144,6 +149,9 @@ static int define_global_attrs (int grp)
 
    if ((-1 == tio_write_epoch_timestamp (grp, NC_GLOBAL))
        || (-1 == _pTIO_define_text_attrs (grp, NC_GLOBAL, text_attrs)))
+     return -1;
+
+   if (0 != set_default_header_timestamps (grp))
      return -1;
 
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
@@ -275,7 +283,6 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              return -1;
           }
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
                          dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
@@ -321,7 +328,6 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              return -1;
           }
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
                          dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);

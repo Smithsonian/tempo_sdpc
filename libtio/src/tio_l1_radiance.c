@@ -210,8 +210,12 @@ static int define_radiance_granule_global_ident (int grp)
    gid.scan_num = 1;
    gid.granule_num = 1;
    gid.granule_flag = 0;
-   strncpy (gid.tstart_str, _pTIO_TIME_COVERAGE_START, MAX_ISOTIME_LEN);
-   strncpy (gid.tend_str, _pTIO_TIME_COVERAGE_END, MAX_ISOTIME_LEN);
+   gid.tstart = 0.0;
+   gid.tend = 0.0;
+
+   if ((0 != TIO_mktimestamp_str (gid.tstart, 1, gid.tstart_str, MAX_ISOTIME_LEN))
+       || (0 != TIO_mktimestamp_str (gid.tend, 1, gid.tend_str, MAX_ISOTIME_LEN)))
+     return -1;
 
    if ((0 != tio_time_utcstr_to_taix (gid.tstart_str, &gid.tstart))
        ||(0 != tio_time_utcstr_to_taix (gid.tend_str, &gid.tend)))
@@ -333,7 +337,6 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
         goto cleanup_and_return;
      }
 #ifdef DO_CHUNKING
-   /* FIXME */
    chunksizes[0] = TIO_CHUNKSIZE_STEP;
    chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
                     dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
@@ -762,7 +765,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              return -1;
           }
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
                          dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
@@ -802,7 +804,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              return -1;
           }
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNKSIZE_STEP;
         chunksizes[1] = ((dim_table->xtrack.len < TIO_CHUNKSIZE_XTRACK) ?
                          dim_table->xtrack.len : TIO_CHUNKSIZE_XTRACK);
@@ -1513,7 +1514,6 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_GYRO))
           return -1;
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
@@ -1534,7 +1534,6 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_OUTPUT, NC_INT, 2, dims, output_attrs, &varid))
           return -1;
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
         chunksizes[1] = dim_table->gyro_axis.len;
         if ((storage == NC_CHUNKED)
@@ -1555,7 +1554,6 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         if (0 != tio_write_timestamp_unit_string (grp, TEMPO_VAR_TIME_GYRO_BIAS))
           return -1;
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
         if ((storage == NC_CHUNKED)
             && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
@@ -1576,7 +1574,6 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_BIAS, NC_FLOAT, 2, dims, bias_attrs, &varid))
           return -1;
 #ifdef DO_CHUNKING
-        /* FIXME */
         chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
         chunksizes[1] = dim_table->bias_axis.len;
         if ((storage == NC_CHUNKED)

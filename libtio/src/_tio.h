@@ -14,14 +14,11 @@ extern "C" {
 #include <time.h>
 #include <netcdf.h>
 
-/* placeholder values -- FIXME */
-#define _pTIO_PIXEL_SCALE_ROW      0.195  /* nm */
-#define _pTIO_PIXEL_SCALE_COLUMN   55.0   /* microradian */
+#define _pTIO_PIXEL_SCALE_ROW       0.2   /* nm */
+#define _pTIO_PIXEL_SCALE_COLUMN   41.79  /* microradian */
 #define _pTIO_MIRROR_STEP_SIZE    114.0   /* microradian */
 
-/* default values for template files */
-#define _pTIO_TIME_COVERAGE_START   "2017-01-01T12:00:00Z"
-#define _pTIO_TIME_COVERAGE_END     "2017-01-01T13:00:00Z"
+/* nominal default values for template files */
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 #define _pTIO_PHOTON_UNITS "photons/s/cm^2/nm/sr"
 
