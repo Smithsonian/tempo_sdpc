@@ -1077,14 +1077,17 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
       case EXPREC_TYPE_IRR_WRK:
         /* drop */
       case EXPREC_TYPE_IRR_REF:
-        if (NULL == (sgt = solar_geom_init (cfg)))
-          goto return_status;
+        /* nothing yet */
         break;
 
       default:
         tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure record type = %d", __func__, exposure_type);
         goto return_status;
      }
+
+   /* we use this for both radiance and irradiance */
+   if (NULL == (sgt = solar_geom_init (cfg)))
+     goto return_status;
 
    if ((flag_transients = enable_state_query_bool (ENABLE_TRANSIENTS)) < 0)
      goto return_status;
@@ -1322,14 +1325,14 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
 
       case EXPREC_TYPE_IRR_WRK:
       case EXPREC_TYPE_IRR_REF:
-        /* For irradiances, we'll need to compute the solar illumination geometry */
+      case EXPREC_TYPE_RAD:
+        /* For irradiances, we'll need to compute the solar illumination geometry.
+         * For radiances, we'll compute the earth-sun distance.
+         */
         tbeg = gr->granule_tstart (gr);
         tend = gr->granule_tend (gr);
         if (0 != init_solsys_ephem (cfg, tbeg, tend, &eph))
           goto return_status;
-        /* drop */
-
-      case EXPREC_TYPE_RAD:
         status = derive_photons (cfg, ctrl, &pct, gr, meta);
         break;
 
