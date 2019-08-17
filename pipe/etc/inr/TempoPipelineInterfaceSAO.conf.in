@@ -213,17 +213,17 @@ maxTPVerticalShift=12
 # Tilt of telescope with respect to mirror at home in degrees
 telescopeOffset=13
 # Nominal number of spatial pixels in the long and short wavelength bands
-numPixUpper=2014
-numPixLower=2014
+numPixUpper=2048
+numPixLower=2048
 # Nominal number of column in a full scan
 numCol=1283
 # Angular sampling distance for long and short wavelength bands in radians
-angularSamplingEW=1.1400e-04
-angularSamplingNSUpper=4.1800e-05
-angularSamplingNSLower=4.1800e-05
+angularSamplingEW=1.19100e-04
+angularSamplingNSUpper=4.1790e-05
+angularSamplingNSLower=4.1790e-05
 # Nominal instantaneous geometric field of view in radians
-IGFOVew=120e-6
-IGFOVns=41.8e-6
+IGFOVew=119.1e-6
+IGFOVns=41.79e-6
 # Engineering term to weight individual tie points for binocular pairs in raidans
 # Sets in accordance with INR error requirements for reference image
 measWeight=42e-6
@@ -414,9 +414,9 @@ delta_v3=1e-3
 
 # Initial state for cold-start of Kalman Filter
 # TODO item is to set up in accordance with as-built instrument
-init_state_roll=0
-init_state_pitch=0
-init_state_yaw=0
+init_state_roll=-3.659427697244887E-4
+init_state_pitch=-4.681046622478289E-4
+init_state_yaw=-4.410908890791226E-4
 init_state_magnification=0.02
 init_state_misalignment=0.01
 init_state_smile=-3.3529e-06
