@@ -86,7 +86,7 @@ contains
     call tiof_inq_dimlen (tio_ring_obj, "phi", nphi, errstat)
     call tiof_inq_dimlen (tio_ring_obj, "scan", nscan, errstat)
     call tiof_inq_dimlen (tio_ring_obj, "theta", ntheta, errstat)
-    call tiof_inq_dimlen (tio_ring_obj, "wave", nwave, errstat)
+    call tiof_inq_dimlen (tio_ring_obj, "wgrid_out", nwave, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
