@@ -11,7 +11,7 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  only:num_wav_max, &
-         nxtrack, ntimes, pixnum_lim, linenum_lim, &
+         nxtrack, ntimes, nwavel,pixnum_lim, linenum_lim, &
          nxbin, nybin, currpix, currline, currloop,&
          the_pix, the_line,ntimes_loop,offset_line,&
          n_fitvar_rad, mask_fitvar_rad,fitvar_rad_saved,&
@@ -71,6 +71,8 @@ CONTAINS
     CALL tmpo_set_parameters (pge_error_status)
     ! insch, the_year, the_month_the_day, jday is set-up
     ! ntimes, nxtrack, nwavel, granuelyear/month/day
+    WRITE(www_lun, '(3(A,i5))') & 
+       'ntimes=',ntimes, 'nxtrack=',nxtrack,'nwavel=',nwavel
     IF ( pge_error_status >= pge_errstat_error ) THEN
         message = ':Failed in tmpo_set_parameters'
         RETURN
@@ -233,6 +235,7 @@ CONTAINS
        RETURN
     ENDIF
     IF (scnwrt) write(*, '(A)') '@ Finish reading geolocation data!!!'
+    
     !-----------------------------------------------------------------------
     ! reading cloud product
     !----------------------------------------------------------------------
@@ -282,7 +285,7 @@ CONTAINS
       pge_error_status = pge_errstat_error
       RETURN
     ENDIF
-
+    
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! loop through each OMI data block
     ! 1. read each block
@@ -302,6 +305,7 @@ CONTAINS
     tmpo_o3p%exitval = 10
     tmpo_o3p%fitvar = 0.0
     tmpo_o3p%initval = 0
+
     OMIBlock: do iline =  0, last_line-1, nlines_max
 
        ! Actually lines in L1B Data
@@ -310,7 +314,6 @@ CONTAINS
       sline = offset_line + iline * nybin +1
       eline = sline + ntimes_loop * nybin -1
       CALL tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
-
       IF ( pge_error_status >= pge_errstat_error ) return
       IF (scnwrt) write(*, '(A,I4,A,I4)') &
            '@ Finishing reading radiances for lines: ', sline, ' - ', eline
@@ -331,7 +334,7 @@ CONTAINS
         !  (for this position). Once the xsection is convolved, it will be
         !  set to false in ROUTINE getabs_crs
         ozabs_convl = .true.; so2crs_convl = .true. ; o4crs_convl = .true.
-        o2crs_convl = .true.;h2ocrs_convl = .true.
+        o2crs_convl = .true.; h2ocrs_convl = .true.
 
         IF (ALL(tmpo_rad%pix_errstat(currpix, 0:ntimes_loop-1) == pge_errstat_error) &
              .OR. tmpo_irrad%errstat(currpix) == pge_errstat_error) THEN
@@ -339,6 +342,7 @@ CONTAINS
         ENDIF
         ! Load/adjust irradiances and slit calibration parameters
         CALL adj_solar_data (pge_error_status)
+
         IF ( pge_error_status >= pge_errstat_error ) cycle
 
         curr_fitted_line = 0
@@ -346,8 +350,9 @@ CONTAINS
 
           tmpo_o3p%exitval(currpix, currloop) = -10
           currline = iline + currloop
-          the_line= currline * nybin + offset_line + 1
-          the_pix = (currpix-1) * nxbin  + 1
+          the_line = currline * nybin + offset_line + 1
+          the_pix  = (currpix-1) * nxbin  + 1
+
           IF (tmpo_rad%pix_errstat(currpix, currloop) == pge_errstat_error .or. &
                tmpo_irrad%errstat(currpix) == pge_errstat_error ) &
                tmpo_o3p%exitval(currpix, currloop) = -9
@@ -370,8 +375,8 @@ CONTAINS
             tmpo_o3p%fitvar(currpix, currloop, 1:n_fitvar_rad) &
                  = fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad))
 
-            !IF (scnwrt) write(*, '(A,2I5,A,I5, A, I4, A, i3)') &
-            ! '@ O3P Retrieval: Line =', the_line, iline, ' XPix= ', the_pix,' init =',initval, 'exval=', exval
+            IF (scnwrt) write(*, '(A,2I5,A,I5, A, I4, A, i3)') &
+             '@ O3P Retrieval: Line =', the_line, iline, ' XPix= ', the_pix,' init =',initval, 'exval=', exval
           ELSE
             exval = -9
           ENDIF

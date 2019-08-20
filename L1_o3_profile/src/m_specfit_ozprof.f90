@@ -58,7 +58,7 @@ contains
          nwfc, nfwfc, eff_wfc, eff_wfc_init, wfcidx, wfcfidx,&
          ncovar, covar, contri, weight_function,&
          ngas,fgasidxs, gasidxs, tracegas,trace_profwf, trace_contri, trace_prof, &
-         osind, rnind, dcind, isind, irind, shind, nos, nsh, shfind, osfind,&
+         osind, rnind, dcind, isind, irind, shind,nir ,nos, nsh, shfind, osfind,&
          radcalwrt, do_simu, tropaod, tropsca, tropwaer, strataod, stratsca, &
          taodind, taodfind, twaeind, saodfind, ecfrind, ecfrfind, ecodind, &
          ecodfind, ectpind, ectpfind,twaefind, saodind, &
@@ -332,8 +332,7 @@ contains
      IF (fitvar_rad_str(i)(4:4) /= '0') fitvar_rad_init(i) = 0.0D0
     ENDDO
 
-    fitvar_rad_init(irind(1:2, 1))  = -1.0E-5    ! non zero
-
+    fitvar_rad_init(irind(1:nir, 1))  = -1.0E-5    ! non zero
 
     IF (do_subfit) THEN
       nsub = numwin

@@ -174,15 +174,12 @@ module tmpo_read_l1b_data
         ENDIF
         IF (irrad_wavl(fidx, 1) > irrad_wavl(lidx, 1)) THEN
           idxs(1:nw) = (/ (i, i = lidx, fidx , -1) /)
-        ELSE
-          idxs(1:nw) = (/ (i, i = fidx, lidx ) /)
+          irrad_wavl(fidx:lidx, :) = irrad_wavl(idxs(1:nw), :)
+          irrad_spec(fidx:lidx, :) = irrad_spec(idxs(1:nw), :)
+          irrad_prec(fidx:lidx, :) = irrad_prec(idxs(1:nw), :)
+          irrad_qflg(fidx:lidx, :) = irrad_qflg(idxs(1:nw), :)   
         ENDIF
-
         nwavel = nwavel + nwls(ch)
-        irrad_wavl(fidx:lidx, :) = irrad_wavl(idxs(1:nw), :)
-        irrad_spec(fidx:lidx, :) = irrad_spec(idxs(1:nw), :)
-        irrad_prec(fidx:lidx, :) = irrad_prec(idxs(1:nw), :)
-        irrad_qflg(fidx:lidx, :) = irrad_qflg(idxs(1:nw), :)   
         spos(ch) = fidx
         epos(ch) = lidx 
         fidx = lidx + 1     
@@ -327,16 +324,15 @@ module tmpo_read_l1b_data
                  + flgbits(ic, spos(ch):epos(ch), 0)                &   !Missing
                  + flgbits(ic, spos(ch):epos(ch), 1)                &   !Bad
                  + flgbits(ic, spos(ch):epos(ch), 2)                &   !Processing error
-                 + flgbits(ic, spos(ch):epos(ch), 3)                &   !
-                 + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
-                 + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
-                 + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
+!                 + flgbits(ic, spos(ch):epos(ch), 3)                &   !transient_pixel
+!                 + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
+!                 + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
+!                 + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
                  + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
                  + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
                  + flgbits(ic, spos(ch):epos(ch), 10)               &   ! stray light correction error
-                 + flgbits(ic, spos(ch):epos(ch), 11)               &   ! nonlinear range error
-                 + flgbits(ic, spos(ch):epos(ch), 12)               &   ! hot pixel
-                 + flgbits(ic, spos(ch):epos(ch), 13)                   ! cold pixel
+                 + flgbits(ic, spos(ch):epos(ch), 11)                  ! nonlinear range error
+
          ENDDO
        ELSE
          ! Already aligned because of using common wavelength scale
@@ -377,7 +373,7 @@ module tmpo_read_l1b_data
            tmpo_irrad%winpix(iw, ix, 2) = i
            tmpo_irrad%wind(nsub, ix) = i
          END IF 
-     !      print * , i, nsub,irrad_wavl(i, iix+1), flgmsks(i)  ,irrad_spec(i, iix+1), flgmsks(i)
+         !  print * , i, nsub,irrad_wavl(i, iix+1), flgmsks(i)  ,irrad_spec(i, iix+1), flgmsks(i)
        ENDDO
        tmpo_irrad%npix(iw, ix) = nsub - tmpo_irrad%npix(iw, ix)
      ENDDO
@@ -793,19 +789,17 @@ module tmpo_read_l1b_data
                    iix + ic, iloop), flgbits(ic, spos(ch):epos(ch), 0:nbits-1))
                flgmsks(spos(ch):epos(ch)) = flgmsks(spos(ch):epos(ch)) &
                    + flgbits(ic, spos(ch):epos(ch), 0)                &   !Missing
-                   + flgbits(ic, spos(ch):epos(ch), 1)                &   ! Bad
+                   + flgbits(ic, spos(ch):epos(ch), 1)                &   !Bad
                    + flgbits(ic, spos(ch):epos(ch), 2)                &   !Processing error
-                   + flgbits(ic, spos(ch):epos(ch), 3)                &   !
-                   + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
-                   + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
-                   + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
+!                  + flgbits(ic, spos(ch):epos(ch), 3)                &   !transient pixel 
+!                  + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
+!                  + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
+!                  + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
                    + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
                    + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
                    + flgbits(ic, spos(ch):epos(ch), 10)               &   ! stray light correction error
-                   + flgbits(ic, spos(ch):epos(ch), 11)               &   ! nonlinear range error
-                   + flgbits(ic, spos(ch):epos(ch), 12)               &   ! hot pixel
-                   + flgbits(ic, spos(ch):epos(ch), 13)                   ! cold pixel
-
+                   + flgbits(ic, spos(ch):epos(ch), 11)                  ! nonlinear range error
+        !print * , flgbits(ic, tmpo_refl%winpix(ix,1),0:11) 
             ENDDO
           ELSE
             ! Already aligned because of using common wavelength scale
@@ -819,7 +813,8 @@ module tmpo_read_l1b_data
         ! Subset valid data
         nsub = 0
         subspec = 0.0
-        fidx =1
+        fidx = 1
+
         DO iw = 1, numwin
           tmpo_rad%npix(iw, ix, iloop) = nsub
           nbin = nwbin(iw)
@@ -835,13 +830,16 @@ module tmpo_read_l1b_data
               subspec(1:nbin, spc_idx, nsub) = rad_spec(i,iix+1:iix+nbin, iloop)
               subspec(1:nbin, sig_idx, nsub) = rad_prec(i,iix+1:iix+nbin, iloop)
               tmpo_rad%wind(nsub, ix, iloop) = int(ii, kind=i2)
+
             ENDIF
+            !WRITE(*,'(4i4,f8.2,2e17.5)')  ii, i,nsub,flgmsks(i), &
+            ! rad_wavl(i, iix+1, iloop),rad_spec(i,iix+1:iix+nbin, iloop), rad_prec(i, iix+1, iloop)
           ENDDO
           fidx = lidx + 1
           tmpo_rad%npix(iw, ix, iloop) = nsub - tmpo_rad%npix(iw, ix, iloop)
           ! processing this pixel
           IF (tmpo_rad%npix(iw, ix, iloop) <= tmpo_irrad%npix(iw, ix) * 0.80 ) THEN
-            WRITE(*, '(2I5, A, 2I5, F8.2)') ix, iloop, ': Too fewer #of rad=',  &
+            WRITE(*, '(3I5, A, 2I5, F8.2)') ix, iloop,iw, ': Too fewer #of rad=',  &
             tmpo_rad%npix(iw, ix, iloop),tmpo_irrad%npix(iw, ix), tmpo_geo%sza(ix, iloop+iline)
             tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
           ENDIF
@@ -881,6 +879,7 @@ module tmpo_read_l1b_data
             tmpo_refl%radwavl(irefl, ix, iloop) = SUM(rad_wavl(i,iix+1:iix+nbin, iloop)) / nbin
             tmpo_refl%radspec(irefl, ix, iloop) = SUM(rad_spec(i,iix+1:iix+nbin, iloop)) / nbin
           ENDIF
+          !print * , i, irefl, flgmsks(i) , rad_wavl(i, iix, iloop) 
           IF (irefl == nrefl) EXIT
         ENDDO
         IF (irefl /= nrefl) THEN

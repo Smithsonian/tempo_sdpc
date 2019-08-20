@@ -51,6 +51,7 @@ MODULE OMSAO_errstat_module
   INTEGER, PARAMETER :: he5_stat_ok = 0, he5_stat_fail = -1
 
   INTEGER, PARAMETER :: www_lun = 333
+  CHARACTER (LEN=maxchlen) :: www_message
 
   public error_check
 !  private pge_error_status_exit
