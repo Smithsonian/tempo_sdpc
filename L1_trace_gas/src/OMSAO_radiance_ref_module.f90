@@ -67,7 +67,7 @@ CONTAINS
     LOGICAL                      :: have_scanline
     LOGICAL, DIMENSION (2)       :: have_limits
 
-    INTEGER (KIND=i4) :: fpix, lpix, midpt_line
+    INTEGER (KIND=i4) :: fpix, lpix, midpt_line, i
     INTEGER (KIND=i4) :: nloop, j1, iline, ix, iloop, imin, imax, icnt
     REAL    (KIND=r4) :: lat_midpt
     REAL    (KIND=r8) :: specsum
@@ -110,44 +110,44 @@ CONTAINS
       return
 
     if (yn_disable_omi_features) then
-      radiance_reference_lnums(1) = 0
-      radiance_reference_lnums(2) = ntrr-1
-      have_limits(1:2) = .true.
-      midpt_line = 0
-      have_scanline = .true.
+       radiance_reference_lnums(1) = 0
+       radiance_reference_lnums(2) = ntrr-1
+       have_limits(1:2) = .true.
+       midpt_line = 0
+       have_scanline = .true.
     else
-    ! ----------------------------------------------------------------------
-    ! Locate the swath line numbers corresponding the center of the latitude
-    ! range to average into radiance reference spectrum.
-    ! ----------------------------------------------------------------------
-    call tell_log (3, 'omi_get_radiance_reference:  calling '// &
-                     'find_swathline_by_latitude (midpt_line)')
-    CALL find_swathline_by_latitude ( &
-      nxrr, 0, ntrr-1, latr4(1:nxrr,0:ntrr-1), lat_midpt, &
-      xtrange(0:ntrr-1,1:2), midpt_line, have_scanline )
+       ! ----------------------------------------------------------------------
+       ! Locate the swath line numbers corresponding the center of the latitude
+       ! range to average into radiance reference spectrum.
+       ! ----------------------------------------------------------------------
+       call tell_log (3, 'omi_get_radiance_reference:  calling '// &
+            'find_swathline_by_latitude (midpt_line)')
+       CALL find_swathline_by_latitude ( &
+            nxrr, 0, ntrr-1, latr4(1:nxrr,0:ntrr-1), lat_midpt, &
+            xtrange(0:ntrr-1,1:2), midpt_line, have_scanline )
 
-    ! --------------------------------------------------------------------
-    ! If lower and upper bounds of the radiance reference block to average
-    ! are identical, then we keep the midpoint line number as the only
-    ! reference. Else locate the corresponding swath line numbers.
-    ! --------------------------------------------------------------------
-    IF ( radref_latrange(1) == radref_latrange(2) ) THEN
-      radiance_reference_lnums(1:2) = midpt_line
-      have_limits(1:2)           = .TRUE.
-    ELSE
-      call tell_log (3, 'omi_get_radiance_reference:  calling '// &
-                       'find_swathline_by_latitude (have_limits(1))')
-      CALL find_swathline_by_latitude ( &
-        nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
-        xtrange, radiance_reference_lnums(1), have_limits(1)   )
-        !xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
-      call tell_log (3, 'omi_get_radiance_reference:  calling '// &
-                       'find_swathline_by_latitude (have_limits(2))')
-      CALL find_swathline_by_latitude ( &
-        nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
-        xtrange, radiance_reference_lnums(2), have_limits(2) )
-        !xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
-    END IF
+       ! --------------------------------------------------------------------
+       ! If lower and upper bounds of the radiance reference block to average
+       ! are identical, then we keep the midpoint line number as the only
+       ! reference. Else locate the corresponding swath line numbers.
+       ! --------------------------------------------------------------------
+       IF ( radref_latrange(1) == radref_latrange(2) ) THEN
+          radiance_reference_lnums(1:2) = midpt_line
+          have_limits(1:2)           = .TRUE.
+       ELSE
+          call tell_log (3, 'omi_get_radiance_reference:  calling '// &
+               'find_swathline_by_latitude (have_limits(1))')
+          CALL find_swathline_by_latitude ( &
+               nxrr, 0, midpt_line, latr4(1:nxrr,0:midpt_line), radref_latrange(1), &
+               xtrange, radiance_reference_lnums(1), have_limits(1)   )
+          !xtrange(0:midpt_line,1:2), radiance_reference_lnums(1), have_limits(1)   )
+          call tell_log (3, 'omi_get_radiance_reference:  calling '// &
+               'find_swathline_by_latitude (have_limits(2))')
+          CALL find_swathline_by_latitude ( &
+               nxrr, midpt_line, ntrr-1, latr4(1:nxrr,midpt_line:ntrr-1), radref_latrange(2), &
+               xtrange, radiance_reference_lnums(2), have_limits(2) )
+          !xtrange(midpt_line:ntrr-1,1:2), radiance_reference_lnums(2), have_limits(2) )
+       END IF
     endif
 
     deallocate (latr4, stat=errstat)
@@ -199,7 +199,7 @@ CONTAINS
     bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
 
     DO iline = radiance_reference_lnums(1), radiance_reference_lnums(2), nlines_max
-
+       
       ! --------------------------------------------------------
       ! Check if loop ends before n_times_loop max is exhausted,
       ! or if we are outside the FIRST_LINE -> LAST_LINE range.
@@ -227,7 +227,7 @@ CONTAINS
         lpix = xtrange(iline+iloop,2)
 
         DO ix = fpix, lpix
-
+           
           cntr8(1:nwrr) = 1.0_r8
 
           where (iand(omi_radiance_qflg(1:nwrr,ix,iloop), bad_qflg_mask) /= 0)
@@ -235,6 +235,7 @@ CONTAINS
           end where
 
           sum_cntr8 = sum (cntr8)
+
           if (sum_cntr8 > 0.0) then
           ! ------------------------------------
           ! Only proceed if we have a good value
@@ -243,8 +244,9 @@ CONTAINS
             !omi_radiance_spec(1:nwrr,ix,iloop) = &
             !  omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr) * cntr8(1:nwrr)
             ! Since cntr8(:) is either 0 or 1, why square it?? -- JCH
-            omi_radiance_spec(1:nwrr,ix,iloop) = &
-              omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr)
+           !!omi_radiance_spec(1:nwrr,ix,iloop) = &
+           !!  omi_radiance_spec(1:nwrr,ix,iloop)*cntr8(1:nwrr)
+             ! Do not set individual detector pixels to zero or will bias average -- CRN
 
             !specsum = SUM ( omi_radiance_spec(1:nwrr,ix,iloop) ) / sum_cntr8
             !IF ( specsum == 0.0_r8 ) specsum = 1.0_r8
@@ -283,7 +285,9 @@ CONTAINS
       ! Average the wavelengths and spectra
       ! -----------------------------------
       WHERE ( allcount(ix,1:nwrr) /= 0.0_r8 )
-        radref_spec(ix,1:nwrr) = radref_spec(ix,1:nwrr) / allcount(ix,1:nwrr)
+        !radref_spec(ix,1:nwrr) = radref_spec(ix,1:nwrr) / allcount(ix,1:nwrr)
+        !Do not divide by allcount as cannot exclude individual pixels in a single spectrum -- CRN
+        radref_spec(ix,1:nwrr) = radref_spec(ix,1:nwrr) / dumcount(ix,1:nwrr)
       END WHERE
       WHERE ( dumcount(ix,1:nwrr) /= 0.0_r8 )
         radref_wavl(ix,1:nwrr) = radref_wavl(ix,1:nwrr) / dumcount(ix,1:nwrr)
