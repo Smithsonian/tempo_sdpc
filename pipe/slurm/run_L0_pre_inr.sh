@@ -28,7 +28,7 @@ fi
 granule_path="$1"
 run_dir="$2"
 
-PROGNAME="$0"
+PROGNAME="$(basename $0)"
 error_exit()
 {
    echo "${PROGNAME}: ${1:-'Unknown Error'}" 1>&2
@@ -63,10 +63,14 @@ make_iru_only_file_for_inr()
 
    ephem_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --find --sec $tbeg_utc)
 
+   echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
+
    # No delay is needed here (any IRU coverage padding extends to earlier times)
    L1_inr_prep -v 1 -c ${etc_dir}/l1_inr_prep.cfg \
        --begin $tbeg --end $tend --epoch $epoch \
        --ephemeris ${ephem_file_path}
+
+   echo "L1_inr_prep finished"
 
    # If L1_inr_prep fails, 'set -e' ensures that the script
    # will exit before we can delete the time interval file.
@@ -108,6 +112,8 @@ cat <<EOF > $file_list_file
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
+
+echo "start batch run_L0.sh: $SDPC_GRANULE_LABEL"
 
 # Run the pipeline:
 job_l0="L0:$SDPC_GRANULE_LABEL"

@@ -33,14 +33,19 @@ fi
 rad_path="$1"
 run_dir="$2"
 
-PROGNAME="$0"
+PROGNAME="$(basename $0)"
 error_exit()
 {
-   echo "${PROGNAME}: ${1:-'Unknown Error'}" 1>&2
+   echo "${PROGNAME}[$$]: ${1:-'Unknown Error'}" 1>&2
    exit 1
 }
 
 trap error_exit ERR
+
+log_message()
+{
+   printf "${PROGNAME}[$$]: $1\n"
+}
 
 test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
@@ -75,19 +80,22 @@ snow_file=${snow_file}
 met_file_path=${met_file_path}
 EOF
 
+log_message "start batch prep_L2.sh: $SDPC_GRANULE_LABEL"
+
 # Run the post-INR pipeline to prepare for L2 product generation:
 job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
 sbatch --wait --job-name=$job_prep_l2 --chdir $run_dir \
         --nodes=1-1 --ntasks=8 \
         prep_L2.sh "${rad_basename}.nc" "$file_list_file"
 
+log_message "finished batch prep_L2.sh: $SDPC_GRANULE_LABEL"
+
 # The --wait above ensures that we don't get to here until
 # this tar file has been created -- and there's no point in
 # proceeding further if we don't have it.
 tarfile_path="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
 if ! test -f "$tarfile_path" ; then
-  echo "*** Error: prep_L2.sh failed: $rad_basename"
-  exit 1
+  error_exit "*** Error: prep_L2.sh failed: $rad_basename"
 fi
 
 # If no level 2 products were requested, we're done
@@ -95,14 +103,15 @@ if test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
   exit 0
 fi
 
-product_list="$SDPC_LEVEL2_PRODUCTS"
-product_list_tokens="$(echo $product_list | tr -s , ' ')"
-product_list_sans_o3p="$(echo $product_list_tokens | sed -e 's/O3P//g' | tr -s ' ' ,)"
+product_list_tokens="$(echo $SDPC_LEVEL2_PRODUCTS | tr , ' ')"
 
 have_o3p=""
+product_list_sans_o3p=''
 for p in $product_list_tokens ; do
    if test x"$p" = x"O3P" ; then
       have_o3p="yes"
+   else
+      product_list_sans_o3p="$product_list_sans_o3p $p"
    fi
 done
 
@@ -126,8 +135,7 @@ if test x"$have_o3p" != x ; then
   # this granule.  Create that path now, and save it:
   o3p_target_arch_dir_path="$(run_o3p_merge.sh path $tarfile_path)"
   if test x"$o3p_target_arch_dir_path" = x ; then
-     echo "*** Error: constructing target archive directory path for $tarfile_path"
-     exit 1
+     error_exit "*** Error: constructing target archive directory path for $tarfile_path"
   fi
 
   for k in $o3p_host_list ; do
@@ -146,6 +154,7 @@ fi
 # cluster nodes are busy).
 
 if test x"$product_list_sans_o3p" != x ; then
+  log_message "start batch run_L2.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
   job_run_l2="L2:${SDPC_GRANULE_LABEL}"
   sbatch --job-name=$job_run_l2 \
          --chdir $run_dir \
@@ -169,6 +178,7 @@ if test x"$have_o3p" != x ; then
      host_spec="${k}-${num_o3p_hosts}"
      tarfile_path_alias="${tarfile_path}_${k}"
 
+     log_message "start batch run_L2_o3p.sh [O3P:$k]: $SDPC_GRANULE_LABEL"
      # Here, the --wait ensures that the tar file has been unpacked on each
      # compute host and all associated o3p batch jobs have been submitted
      # _before_ the singleton dependency cleanup batch job is submitted.
@@ -181,6 +191,7 @@ if test x"$have_o3p" != x ; then
             run_L2_o3p.sh "$host_spec" "$tarfile_path_alias"
   done
 
+  log_message "start singleton-dependent batch run_o3p_merge.sh: $job_o3p"
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" \
