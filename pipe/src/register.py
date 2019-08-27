@@ -200,6 +200,9 @@ def main():
         sys.exit(1)
 
     dir = os.path.join (arch_dir, 'registry/incoming')
+    if not os.path.isdir (dir):
+        os.makedirs(dir)
+
     db_path = make_db_path (arch_dir)
 
     while True:
