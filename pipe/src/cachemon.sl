@@ -260,34 +260,7 @@ private define set_executable (p, argv)
      }
 }
 
-private define ensure_logfile_exists (logfile)
-{
-   variable msg;
-
-   if (NULL != stat_file (logfile))
-     return;
-
-   variable logfile_dir = path_dirname (logfile);
-   if (0 != mkdir_p (logfile_dir))
-     {
-        msg = sprintf ("*** Error: creating directory: %s",
-		       logfile_dir);
-        throw ApplicationError, msg;
-     }
-
-   variable fp = fopen (logfile, "w");
-   if (fp == NULL)
-     throw IOError, "opening logfile $logfile"$;
-
-   if (0 != fclose (fp))
-     {
-        msg = sprintf ("closing logfile %s (%s)",
-		       logfile, errno_string(errno));
-        throw IOError, msg;
-     }
-}
-
-private define run_executable (obj, file, run_dir, logfile)
+private define run_executable (obj, file, run_dir)
 {
    if (Exec == NULL)
      return 0;
@@ -311,17 +284,15 @@ private define run_executable (obj, file, run_dir, logfile)
    % redirect output to /dev/null, but provide a config file
    % alternative for debugging.
 
-   ensure_logfile_exists (logfile);
-
    variable p, dir_str = "";
    if (run_dir != NULL)
      {
-        p = new_process (argv; dir=run_dir, stdout=">>${logfile}"$, dup2=1);
+        p = new_process (argv; dir=run_dir);
         dir_str = sprintf (" in %s", run_dir);
      }
    else
      {
-        p = new_process (argv; stdout=">>${logfile}"$, dup2=1);
+        p = new_process (argv);
      }
 
    variable s = p.wait(WNOHANG);
@@ -375,7 +346,7 @@ private define claim_with_rename (obj, path)
    if (rename (path, claimed_path) != 0)
      return 0;
 
-   if (run_executable (obj, claimed_path, cl.exec_root_dir, cl.exec_logfile) < 0)
+   if (run_executable (obj, claimed_path, cl.exec_root_dir) < 0)
      return -1;
 
    obj.num_processed++;
@@ -409,8 +380,7 @@ variable _P = struct
    file_glob = "*",
    wait_sec = 1.0,
    exec_root_dir = NULL,
-   exec_name = NULL,
-   exec_logfile = "/dev/null"
+   exec_name = NULL
 };
 
 private define load_config_file (file)

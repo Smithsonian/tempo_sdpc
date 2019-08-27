@@ -35,4 +35,4 @@ wait $CACHEMON_PID
 /bin/rmdir "$INCOMING" || exit 1
 
 # cleanup
-/bin/rm log.cron cron_tar.log|| exit 1
+/bin/rm log.cron || exit 1
