@@ -32,8 +32,8 @@ MODULE OMSAO_parameters_module
   ! Maximum numbers for fitting parameters, GOME pixels, spectral points, ...
   ! -------------------------------------------------------------------------
   !INTEGER, PARAMETER :: max_spec_pts = 25001 ! Original reference spectrum
-  INTEGER, PARAMETER :: max_spec_pts = 35000 ! Original reference spectrum
-  INTEGER, PARAMETER :: max_fit_pts  = 700               ! fitted array
+  INTEGER, PARAMETER :: max_spec_pts = 37000 ! Original reference spectrum
+  INTEGER, PARAMETER :: max_fit_pts  = 800               ! fitted array
   INTEGER, PARAMETER :: max_ref_pts  = max_fit_pts + 20  ! convolved reference
                                                          !  spectrum
   INTEGER, PARAMETER :: max_ring_pts = max_fit_pts + 50  ! solar spectrum for

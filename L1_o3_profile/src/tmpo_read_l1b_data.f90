@@ -326,7 +326,7 @@ module tmpo_read_l1b_data
                  + flgbits(ic, spos(ch):epos(ch), 2)                &   !Processing error
 !                 + flgbits(ic, spos(ch):epos(ch), 3)                &   !transient_pixel
 !                 + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
-!                 + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
+                 + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
 !                 + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
                  + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
                  + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
@@ -793,7 +793,7 @@ module tmpo_read_l1b_data
                    + flgbits(ic, spos(ch):epos(ch), 2)                &   !Processing error
 !                  + flgbits(ic, spos(ch):epos(ch), 3)                &   !transient pixel 
 !                  + flgbits(ic, spos(ch):epos(ch), 4)                &   !RTS_Pixel_Warning Flag
-!                  + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
+                  + flgbits(ic, spos(ch):epos(ch), 5)                &   !Saturation Possibility Flag
 !                  + flgbits(ic, spos(ch):epos(ch), 7)                &   !Dark Current Warning Flag
                    + flgbits(ic, spos(ch):epos(ch), 8)                &   ! offset correction error
                    + flgbits(ic, spos(ch):epos(ch), 9)                &   ! smear correction error
