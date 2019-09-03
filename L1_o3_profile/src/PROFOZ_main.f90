@@ -47,7 +47,7 @@ PROGRAM PROFOZ_main
   !----------------------------------------------------------------------------
   CALL read_fitting_control_file (fcunit, pge_error_status )
   IF ( pge_error_status >= pge_errstat_error ) THEN 
-       WRITE(*,*) "Errors in read_fitting_control_file"
+       WRITE(*,*) www_message
        GOTO 666
   ENDIF
   !----------------------------------------------------------------------------

@@ -149,6 +149,7 @@ contains
     ! =================================
     INTEGER :: OMI_SMF_setmsg
 
+    www_message=TRIM(ADJUSTL(modulename))
     pge_error_status = pge_errstat_ok
     fit_ctrl_file(:) = ' '
     msg(:) = ' '
@@ -161,7 +162,6 @@ contains
       refspec_fname(j) = 'OMSAO_Zero_Spec.dat'
     END DO
     
- 
     ! -----------------------------------------------------------
     ! Open fitting control file
     ! -----------------------------------------------------------
@@ -176,18 +176,18 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, &
            'fit_ctrl_file ='//TRIM(fit_ctrl_file), modulename, 0)
-    END IF
+   END IF
 
     OPEN ( UNIT=fit_ctrl_unit, FILE=TRIM(ADJUSTL(fit_ctrl_file)), &
          STATUS='OLD', IOSTAT=errstat)
     IF ( errstat /= pge_errstat_ok ) THEN
       errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
            TRIM(ADJUSTL(fit_ctrl_file)), modulename, 0)
-      WRITE(www_lun) 'failed to open:'//ADJUSTL(TRIM(fit_ctrl_file))
+      www_message=':fail to open '//TRIM(ADJUSTL(fit_ctrl_file))
       pge_error_status = pge_errstat_error
       RETURN
     END IF
-
+ 
     ! -----------------------------------------------------------
     ! Get database directories fro external
     ! -----------------------------------------------------------
