@@ -38,9 +38,6 @@ typedef struct
    float fpa_temp;
    float fpe_temp;
    double earth_sun_distance;
-   /* ConOps 3.3: instrument command parameters: NUM_TG_ROWS, NUM_DG_ROWS */
-   int num_dg_rows;   /* index of first row included in storage region dark summation */
-   int num_tg_rows;   /* number of rows included in storage region dark summation */
    int index;
 }
 Exprec_Meta_Type;
@@ -232,7 +229,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0) (void) image_write_raw (exprec->img, "gain");
 
    if (-1 == ccd->ccd_mean_storage_region_dark (ccd, exprec->img,
-                                                xr->num_dg_rows, xr->num_tg_rows,
+                                                exprec->num_dg_rows, exprec->num_tg_rows,
                                                 xr->storage_region_dark))
      {
         return -1;

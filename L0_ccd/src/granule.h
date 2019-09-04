@@ -48,6 +48,9 @@ typedef struct
    int exposure_type;           /**< \ref granule_exprec_types "exposure record type" */
    int num_coadds;              /**< number of co-adds */
    int curr_mirror_step;        /**< current mirror step */
+   /* ConOps 3.3: instrument command parameters: NUM_TG_ROWS, NUM_DG_ROWS */
+   int num_dg_rows;             /**< index of first row included in storage region dark current sum [rows numbered 1..N] */
+   int num_tg_rows;             /**< number of rows included in storage region dark current sum */
    Image_Type *img;             /**< Pointer to image data */
 }
 Granule_Exprec_Type;
