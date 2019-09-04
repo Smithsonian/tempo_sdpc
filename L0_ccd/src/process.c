@@ -235,11 +235,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
         return -1;
      }
 
-   if (0) fprintf (stderr, "mean sdc:  %7.1f %7.1f %7.1f %7.1f\n",
-                   xr->storage_region_dark[0],
-                   xr->storage_region_dark[1],
-                   xr->storage_region_dark[2],
-                   xr->storage_region_dark[3]);
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "mean sdc [offset=%d, num=%d]:  %f %f %f %f",
+              exprec->num_dg_rows, exprec->num_tg_rows,
+              xr->storage_region_dark[0],
+              xr->storage_region_dark[1],
+              xr->storage_region_dark[2],
+              xr->storage_region_dark[3]);
 
    /* Compute noisesq before smear correction */
    if ((exprec->exposure_type == EXPREC_TYPE_RAD)
