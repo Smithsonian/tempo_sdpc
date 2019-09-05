@@ -43,8 +43,10 @@
 #510007|resids_346_356_ecs2_earlygdps.txt|||||1
 #510008|resids_346_356_ecs2_lategdps.txt|||||1
 510009|o3_xsect_350.txt|||||1
-510010|ring_tab_omi_uv_z_p_all.dat|||||1
-510011|oc_raman_omi.dat|||||1
+###510010|ring_tab_omi_uv_z_p_all.dat|||||1
+###510011|oc_raman_omi.dat|||||1
+510010|ring_tab_tempo_p_all.nc|||||1
+510011|oc_raman_tempo.nc|||||1
 510012|ler354_cox_munk.txt|||||1
 #510012|reflec_cal_3941.txt|||||1
 510013|reflec_cal_3941.txt|||||1
