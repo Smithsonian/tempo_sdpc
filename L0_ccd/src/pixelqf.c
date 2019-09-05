@@ -277,7 +277,7 @@ static int flag_transients (const Pixelqf_Type *pt, Image_Type *img,
              int pp, ss, nsb, nse, npb, npe, count;
              double sum;
 
-             if (spikefs_row[s] <= threshold)
+             if (spikefs_row[s] <= 1.0 + threshold)
                continue;
 
              nsb = s - hw_serial;
