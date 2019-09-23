@@ -1,7 +1,6 @@
 
 all:
 	cd src; $(MAKE) all
-	cd tests; $(MAKE) all
 
 check:
 #	cd tests; $(MAKE) check

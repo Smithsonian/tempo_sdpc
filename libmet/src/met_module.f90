@@ -1,99 +1,105 @@
 !> Read meteorology parameters from real or simulated NAM meteorology files
 module met_module
+  use, intrinsic :: iso_c_binding, only: c_float, c_int, c_ptr
   use tell_module
-  use tio_module
   use eccodes
+  implicit none
 
-  public read_met_data
-  private open_synth_troppres, close_synth_troppres, make_grib2_index, &
-       close_grib2_index, read_synth_met_data, read_grib2_met_data
+  public met_list_interp_f, read_synth_met_data
+
+  !> Fortran interface for C struct \a Met_Value_Type
+  type, bind(c), public :: met_value_type
+    real (c_float) :: pressure_surface
+    real (c_float) :: pressure_tropopause
+    type (c_ptr) :: temperature_on_isobar
+    type (c_ptr) :: isobars
+    integer (c_int) :: num_isobars
+  end type
+
+  interface
+    function met_list_new (flags) bind (c, name='met_list_new')
+      use, intrinsic :: iso_c_binding, only : c_ptr, c_int
+      implicit none
+      integer (c_int), value :: flags
+      type (c_ptr) :: met_list_new
+    end function
+  end interface
+
+  interface
+    subroutine met_list_free (met_list) bind (c, name='met_list_free')
+      use, intrinsic :: iso_c_binding, only : c_ptr
+      implicit none
+      type (c_ptr), value :: met_list
+    end subroutine
+  end interface
+
+  interface
+    function met_list_add_file (met_list, path) bind (c, name='met_list_add_file')
+      use, intrinsic :: iso_c_binding, only : c_ptr, c_char, c_int
+      implicit none
+      type (c_ptr), value :: met_list
+      character (kind=c_char,len=1) :: path
+      integer (c_int) :: met_list_add_file
+    end function
+  end interface
+
+  interface
+    function met_list_interp (met_list, lon, lat, mvt) bind (c, name='met_list_interp')
+      use, intrinsic :: iso_c_binding, only : c_ptr, c_float, c_int
+      implicit none
+      type (c_ptr), value :: met_list
+      real (c_float), value :: lon, lat
+      type (c_ptr), value :: mvt
+      integer (c_int) :: met_list_interp
+    end function
+  end interface
 
 contains
 
-  !> determine whether file is netCDF or GRIB2, call appropriate subroutine
-  !--------------------------------------------------------------------------
-  !
-  !> @param[in]  metfile  filename of netcdf synthetic meteorology file
-  !> @param[in]  lat      latitude of target pixel
-  !> @param[in]  lon      longitude of target pixel
-  !> @param[out] troppres tropopause pressure value (hPa)
-  !> @param[out] surfpres surface pressure value (hPa) [OPTIONAL]
-  !> @param[out] tprof    teperature profile vector [OPTIONAL]
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Jan 2018
-  !--------------------------------------------------------------------------
-  subroutine read_met_data (metfile, lat, lon, troppres, surfpres, &
-       tprof, errstat)
-
+  subroutine met_list_interp_f (met_list, lon, lat, errstat, &
+                                psurf, ptrop, isobars, temp_on_isobar)
+    use, intrinsic :: iso_c_binding, only : c_ptr, c_null_ptr, c_loc
     implicit none
+    type (c_ptr), value :: met_list
+    real (kind=4), intent(in) :: lon, lat
+    integer, intent(inout) :: errstat
+    real (kind=4), optional, intent(out) :: psurf
+    real (kind=4), optional, intent(out) :: ptrop
+    real (kind=4), optional, intent(in), dimension(:), target :: isobars
+    real (kind=4), optional, intent(inout), dimension(:), target :: temp_on_isobar
 
-    character (len=*), intent(in) :: metfile
-    real (kind=4), intent(in) :: lat, lon
-    real (kind=4), intent(out) :: troppres
-    real (kind=4), intent(out), optional :: surfpres
-    real (kind=4), dimension(:), intent(out), optional :: tprof
-    integer (kind=4), intent(inout) :: errstat
-
-    integer :: ext
-    logical :: read_nc, read_grib2
+    type (met_value_type), target :: mvt
+    integer :: status
 
     if (errstat /= 0) return
 
-    read_nc = .false.
-    read_grib2 = .false.
-
-    ext = index(metfile, '.nc')
-    if (ext > 0) then
-      read_nc = .true.
-    else
-      ext = index(metfile, '.netcdf')
-      if (ext > 0) then
-        read_nc = .true.
-      else
-        ext = index(metfile, '.NC')
-        if (ext > 0) then
-          read_nc = .true.
-        endif
+    if (present(isobars) .and. present(temp_on_isobar)) then
+      if (size(isobars) .ne. size(temp_on_isobar)) then
+        call tell_error (tell_runtime_error, &
+                         'size(isobars) /= size(temp_on_isobar)', errstat)
+        return
       endif
+      mvt % num_isobars = size(isobars)
+      mvt % isobars = c_loc (isobars)
+      mvt % temperature_on_isobar = c_loc(temp_on_isobar)
+    else
+      mvt % num_isobars = 0
+      mvt % isobars = c_null_ptr
+      mvt % temperature_on_isobar = c_null_ptr
     endif
 
-    ext = index(metfile, '.grib2')
-    if (ext > 0) then
-      read_grib2 = .true.
-    else
-      ext = index(metfile, '.grb2')
-      if (ext > 0) then
-        read_grib2 = .true.
-      else
-      ext = index(metfile, '.GRIB2')
-      if (ext > 0) then
-        read_grib2 = .true.
-      else
-        ext = index(metfile, '.GRB2')
-        if (ext > 0) then
-          read_grib2 = .true.
-        endif
-      endif
+    status = met_list_interp (met_list, lon, lat, c_loc(mvt))
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, &
+                       'met_list_interp_f: interpolation failed', &
+                       errstat)
+      return
     endif
-  endif
 
-  if (read_nc .and. .not. read_grib2) then
-    call read_synth_met_data (metfile, lat, lon, troppres, surfpres, &
-       tprof, errstat)
-  else if (read_grib2 .and. .not. read_nc) then
-    call read_grib2_met_data (metfile, lat, lon, troppres, surfpres, &
-       tprof, errstat)
-  else
-    call tell_error (tell_runtime_error, &
-         "Unable to determine meteorology file type from filename extension",&
-         errstat)
-    return
-  endif
+    if (present(psurf)) psurf = mvt % pressure_surface
+    if (present(ptrop)) ptrop = mvt % pressure_tropopause
 
-
-  end subroutine read_met_data
-
+  end subroutine
 
   !> read parameters from synthetic meteorology file
   !--------------------------------------------------------------------------
@@ -110,7 +116,8 @@ contains
   !--------------------------------------------------------------------------
   subroutine read_synth_met_data (metfile, lat, lon, troppres, surfpres, &
        tprof, errstat)
-
+    use netcdf, only : nf90_nowrite
+    use tio_module
     implicit none
 
     ! number of pressure levels (fixed)
@@ -137,10 +144,14 @@ contains
 
     if (errstat /= 0) return
 
-
     !open the file
-    call open_synth_troppres(metfile, metobj, errstat)
-    if (errstat /= 0) return
+    call tiof_open (metfile, metobj, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+           "read_synth_met_data: failed to open synth meteorology file", &
+           errstat)
+      return
+    endif
 
     !determine dimensions of meteorology grid
     call tiof_inq_dimlen (metobj, "x", nlon, errstat)
@@ -198,8 +209,13 @@ contains
     endif
 
     !close the file
-    call close_synth_troppres(metobj, errstat)
-    if (errstat /= 0) return
+    call tiof_close (metobj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "read_synth_troppres: failed to close synth meteorology file", &
+           errstat)
+      return
+    endif
 
     !deallocate arrays
     if (allocated(longrid)) deallocate(longrid, stat=errstat)
@@ -211,270 +227,5 @@ contains
     endif
 
   end subroutine read_synth_met_data
-
-
-
-
-  !> open netCDF synthetic meteorology file
-  !--------------------------------------------------------------------------
-  !
-  !> @param[in]  metfile  filename of netcdf synthetic meteorology file
-  !> @param[out] metobj
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Jan 2018
-  !--------------------------------------------------------------------------
-  subroutine open_synth_troppres (metfile, metobj, errstat)
-
-    use netcdf, only: nf90_nowrite
-
-    implicit none
-
-    !Input variables
-    character(len=*), intent(in) :: metfile
-    !Output variables
-    integer, intent(inout) :: errstat
-
-    type (tiof_file_type) :: metobj
-
-    if (errstat /= 0) return
-
-    call tiof_open (metfile, metobj, nf90_nowrite, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_open_error, &
-           "open_synth_troppres: failed to open synth meteorology file", &
-           errstat)
-      return
-    endif
-
-  end subroutine open_synth_troppres
-
-
-  !> close netCDF synthetic meteorology file
-  !--------------------------------------------------------------------------
-  !
-  !> @param[in]  metobj
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Jan 2018
-  !--------------------------------------------------------------------------
-  subroutine close_synth_troppres (metobj, errstat)
-
-    implicit none
-
-    !Output variables
-    integer, intent(inout) :: errstat
-    !Input variables
-
-    type (tiof_file_type) :: metobj
-
-    if (errstat /= 0) return
-
-    call tiof_close (metobj, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_error, &
-           "close_synth_troppres: failed to close synth meteorology file", &
-           errstat)
-      return
-    endif
-
-  end subroutine close_synth_troppres
-
-
-
-  !> Subroutine to create an index of a grib2 file using eccodes
-  !-------------------------------------------------------------------------
-  !
-  !> @param[in]  gribfile filename of GRIB2 meteorology file
-  !> @param[out] grib_idx index id for GRIB2 meteorology file
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Nov 2018
-  !-------------------------------------------------------------------------
-  subroutine make_grib2_index (gribfile, grib_idx, errstat)
-
-    implicit none
-
-    ! input variables
-    character (len=*), intent(in) :: gribfile
-
-    ! output variables
-    integer (kind=4), intent(out) :: grib_idx
-    integer (kind=4), intent(inout) :: errstat
-
-    ! local variables
-    integer (kind=4) :: status
-    !integer (kind=4) ::shortnamesize, levelsize
-    !character(len=20), dimension(:), allocatable :: shortname, level
-
-    if (errstat /= 0) return
-
-    ! index on keywords needed for surface & tropo pressure, t profile
-    call codes_index_create(grib_idx, gribfile, 'shortName,level',status)
-
-    if (status /= CODES_SUCCESS) then
-      call tell_error (tell_io_error, &
-           "make_grib2_index: failed to index GRIB2 file", errstat)
-      return
-    endif
-
-    !uncomment to print shortname and level keywords
-    !call codes_index_get_size(grib_idx,'shortName',shortnamesize)
-    !call codes_index_get_size(grib_idx,'level',levelsize)
-    !allocate(shortname(shortnamesize), level(levelsize))
-    !call codes_index_get(grib_idx,'shortName',shortname)
-    !call codes_index_get(grib_idx,'level',level)
-    !print *, shortname, level
-
-  end subroutine make_grib2_index
-
-
-
-  !> Subroutine to close the index of a grib2 file after use
-  !-------------------------------------------------------------------------
-  !
-  !> @param[in]  grib_idx index id for GRIB2 meteorology file
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Nov 2018
-  !-------------------------------------------------------------------------
-  subroutine close_grib2_index (grib_idx, errstat)
-
-    implicit none
-
-    ! input variables
-    integer (kind=4), intent(in) :: grib_idx
-
-    ! output variables
-    integer (kind=4), intent(inout) :: errstat
-
-    ! local variables
-    integer (kind=4) :: status
-
-    if (errstat /= 0) return
-
-    ! index on keywords needed for surface & tropo pressure, t profile
-    call codes_index_release(grib_idx, status)
-
-    if (status /= CODES_SUCCESS) then
-      call tell_error (tell_io_error, &
-           "close_grib2_index: failed to close GRIB2 index", errstat)
-      return
-    endif
-
-  end subroutine close_grib2_index
-
-
-  !> Subroutine to read from an indexed GRIB2 meteorology file using eccodes
-  !-------------------------------------------------------------------------
-  !
-  !> @param[in]  gribfile filename for GRIB2 meteorology file
-  !> @param[in]  lat      latitude  of target pixel
-  !> @param[in]  lon      longitude of target pixel
-  !> @param[out] troppres tropopause pressure value
-  !> @param[out] surfpres surface pressure value [OPTIONAL]
-  !> @param[out] tprof    temperature profile vector [OPTIONAL]
-  !> @param      errstat  error handling integer, non-zero indicates failure
-  !
-  !> @author     E. O'Sullivan Nov 2018
-  !-------------------------------------------------------------------------
-  subroutine read_grib2_met_data (gribfile, lat, lon, troppres, &
-       surfpres, tprof, errstat)
-
-    implicit none
-
-    !FIXME - pressure profile number of levels and pressure values
-    !        hard coded. Tough to see how to avoid this for GRIB2.
-    !        Need to figure out how many / which levels to read
-    !number of pressure levels in temperature profile
-    integer (kind=4), parameter :: npres=10
-
-    !input variables
-    character (len=*), intent(in) :: gribfile
-    real (kind=4), intent(in) :: lon, lat
-
-    !output variables
-    real (kind=4), intent(out), optional :: surfpres
-    real (kind=4), intent(out) :: troppres
-    real (kind=4), dimension(npres), intent(out), optional :: tprof
-    integer (kind=4), intent(inout) :: errstat
-
-    !local variables
-    integer (kind=4) :: grib_idx
-    integer (kind=4) :: igrib, status, i
-    real (kind=8) :: inlon, inlat
-    real (kind=8), dimension(4) :: outlats, outlons, distance, weights
-    real (kind=8), dimension(4) :: tmp_spres, tmp_tpres, tmp_t
-    integer (kind=4), dimension(4) :: kindex
-    integer (kind=4), dimension (npres), parameter :: presvals = (/1000, &
-         900, 800, 700, 600, 500, 400, 300, 200, 100/)
-    real (kind=8) :: weightsum
-
-    if (errstat /= 0) return
-
-    call make_grib2_index(gribfile, grib_idx, errstat)
-    if (errstat /= 0) return
-
-    inlat = real(lat, kind=8)
-    if (lon < 0.0d0) inlon = real(lon, kind=8)+360.0d0
-
-    ! tropopause pressure in 4 pixels nearest lon, lat position
-    call codes_index_select(grib_idx,'shortName','pres',status)
-    call codes_index_select(grib_idx,'level','0',status)
-    call codes_new_from_index(grib_idx, igrib, status)
-    call codes_grib_find_nearest_four_single(igrib, .false., &
-         inlat, inlon, outlats, outlons, tmp_tpres, distance, kindex, status)
-    if (status /= CODES_SUCCESS) then
-      call tell_error (tell_io_error, &
-           "read_grib2_met_data: failed to read tropopause pressure", errstat)
-      return
-    endif
-    ! weight by 1/distance^2
-    weightsum = sum(1/distance**2)
-    weights = (1/distance**2)/weightsum
-    troppres = real(sum(tmp_tpres*weights)/100.0d0, kind=4)
-
-    ! surface pressure
-    if (present(surfpres)) then
-      call codes_release(igrib)
-      call codes_index_select(grib_idx,'shortName','sp',status)
-      call codes_index_select(grib_idx,'level','0',status)
-      call codes_new_from_index(grib_idx, igrib, status)
-      call codes_get_element(igrib,"values", kindex, tmp_spres)
-      surfpres = real(sum(tmp_spres*weights)/100.0d0, kind=4)
-      if (status /= CODES_SUCCESS) then
-        call tell_error (tell_io_error, &
-             "read_grib2_met_data: failed to read surface error", errstat)
-        return
-      endif
-    endif
-
-    ! loop over pressure levels to get temperature profile
-    if (present(tprof)) then
-      do i=1, npres
-        call codes_release(igrib)
-        call codes_index_select(grib_idx,'shortName','t',status)
-        call codes_index_select(grib_idx,'level',presvals(i),status)
-        call codes_new_from_index(grib_idx, igrib, status)
-        call codes_get_element(igrib,"values", kindex, tmp_t)
-        tprof(i) = real(sum(tmp_t*weights), kind=4)
-        if (status /= CODES_SUCCESS) then
-          call tell_error (tell_io_error, &
-               "read_grib2_met_data: failed to read temperature", errstat)
-          return
-        endif
-      enddo
-    endif
-
-    !clean up
-    call codes_release(igrib, status)
-
-    call close_grib2_index(grib_idx, errstat)
-    if (errstat /= 0) return
-
-  end subroutine read_grib2_met_data
-
-
-
 
 end module met_module
