@@ -2683,7 +2683,7 @@ CONTAINS
            ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
                 alpha(1:CmETA))
            ! Read in tropopause pressure
-           call read_met_data(trim(OMSAO_meteorology_filename), &
+           call read_synth_met_data(trim(OMSAO_meteorology_filename), &
                 lat(ixtrack,itimes), lon(ixtrack,itimes), &
                 tropopause_pressure(ixtrack,itimes), errstat=errstat)
 

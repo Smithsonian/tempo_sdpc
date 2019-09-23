@@ -34,7 +34,7 @@ MET_LIB     = $(prefix)/lib
 MET_SRC     = $(config_dir)/libmet/src
 METSRC_OBJS = $(MET_SRC)/$(archobjs)
 METINCS     = -I$(METSRC_OBJS)
-METLIBS     = -L$(MET_LIB) -lmet_f
+METLIBS     = -L$(MET_LIB) -lmet_f -lmet
 
 MD_LIB      = $(prefix)/lib
 MD_SRC      = $(config_dir)/libmd/src
