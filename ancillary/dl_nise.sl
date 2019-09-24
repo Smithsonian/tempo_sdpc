@@ -10,7 +10,7 @@
 require ("cmdopt");
 require ("glob");
 require ("curl");
-% require ("process");
+require ("process");
 
 private variable Root_Dir = ".";
 
@@ -88,8 +88,8 @@ private define write_callback (fp, data)
 
 define download_file (from_url, to_file)
 {
-   variable cookie_file = "${Root_Dir}/ancillary/etc/nsidc.cookies"$;
-   variable netrc_file = "${Root_Dir}/ancillary/etc/netrc_nsidc"$;
+   variable cookie_file = "${Root_Dir}/ancillary/nise/etc/nsidc.cookies"$;
+   variable netrc_file = "${HOME}/.netrc"$;
    variable dest_dir = "${Root_Dir}/ancillary/nise/data"$;
    variable log_file = "${Root_Dir}/ancillary/nise/log"$;
 
@@ -99,6 +99,12 @@ define download_file (from_url, to_file)
           throw RunTimeError, "Destination directory does not exist: $dest_dir"$;
      }
 
+   if (NULL == stat_file (cookie_file))
+     {
+	if (0 != mkdir_p (path_dirname (cookie_file)))
+	  throw RunTimeError, "Cookie file directory does not exist: $cookie_file"$;
+     }
+
    % Although curl supports resuming interrupted downloads
    % (-C option), we don't use it because NISE files are small.
    % The NISE ftp server may not support resuming anyway,
@@ -106,7 +112,7 @@ define download_file (from_url, to_file)
    % already exists (locally) causes http error 416
    % "Requested Range not satisfiable".
 
-#iffalse
+#iftrue
    variable argv = ["curl",
                     "-sS",     % show errors, but no progress meter
                     "--fail",  % we want non-zero exit status on http 404, etc
@@ -121,12 +127,13 @@ define download_file (from_url, to_file)
    vmessage (strjoin (argv, " "));
    variable s = new_process (argv; stdout=">>$log_file"$, dup2=1).wait();
    log_entry (log_file, "downloaded $to_file"$);
-        return s.exit_status;
+   return s.exit_status;
 #else
    variable out_file = path_concat (dest_dir, to_file);
    variable fp = fopen (out_file, "wb");
    if (fp == NULL)
      throw IOError, "opening $out_file"$;
+   vmessage ("downloading $from_url"$);
    variable c = curl_new (from_url);
    curl_setopt (c, CURLOPT_WRITEFUNCTION, &write_callback, fp);
    curl_setopt (c, CURLOPT_COOKIEFILE, cookie_file);
@@ -136,7 +143,11 @@ define download_file (from_url, to_file)
    curl_setopt (c, CURLOPT_NETRC, CURL_NETRC_REQUIRED);
    curl_setopt (c, CURLOPT_FOLLOWLOCATION, 1L);
    curl_setopt (c, CURLOPT_UNRESTRICTED_AUTH, 1L);
-   % curl_setopt (c, CURLOPT_FAILONERROR, 1L);  % s-lang module doesn't support this
+   % curl_setopt (c, CURLOPT_FAILONERROR, 1L);  % s-lang module
+   % doesn't support this... and that's kind of a show-stopper
+   % because '404 not found" is reasonably common.
+   % The file dated today often appears late. Maybe we're just
+   % looking too early in the day?
    variable e, status = 0;
    try (e)
      {
@@ -153,9 +164,9 @@ define download_file (from_url, to_file)
         () = fclose (fp);
         log_entry (log_file, "downloaded $out_file"$);
      }
-#endif
 
    return status;
+#endif
 }
 
 define record_pending (dir_pending, url, file)
@@ -191,7 +202,14 @@ define nise_download_date (dir_pending, year, month, day)
    variable status = download_file (url, hdfeos_basename);
 
    if (status != 0)
-     record_pending (dir_pending, url, hdfeos_basename);
+     {
+	vmessage ("$hdfeos_basename download pending"$);
+	record_pending (dir_pending, url, hdfeos_basename);
+     }
+   else
+     {
+	vmessage ("$hdfeos_basename downloaded"$);
+     }
 
    % On "connection refused", curl will exit with status=7
    % On "404 not found", curl --fail will exit with status=22
