@@ -674,7 +674,10 @@ contains
         IF (albfidx == 0) albfidx = n_fitvar_rad
 
         ! xliu, need to check the meaning of thealbidx, 12/07/2014
-        IF ( fitvar_rad_str(i)(4:4)== '0') thealbidx = n_fitvar_rad
+        IF ( fitvar_rad_str(i)(4:4)== '0' &
+            .and. fitvar_rad_str(i)(1:1) == '2') then
+          thealbidx = n_fitvar_rad
+        endif
      ENDIF
 
      !WRITE(*, '(I5,1X,A6,5F10.4, L2)') i-idx, fitvar_rad_str(i), lo_radbnd(i), &
