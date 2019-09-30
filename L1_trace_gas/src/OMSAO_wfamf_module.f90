@@ -2048,7 +2048,7 @@ CONTAINS
        IF ( ( ANY( l2cfr(spix:epix,it) < 0.0_r8 ) ) .OR. &
             ( ANY( l2ctp(spix:epix,it) < 0.0_r8 ) ) ) THEN
           DO ix = spix, epix
-             IF (amfdiag(ix,it) >= 0_i2) THEN
+             IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
                 latdp = REAL ( lat(ix,it), KIND=r8 ) ; londp = REAL ( lon(ix,it), KIND=r8 ) ;
                 ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-latdp) ))
                 j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
