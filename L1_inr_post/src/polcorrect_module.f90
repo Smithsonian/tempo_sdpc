@@ -97,7 +97,7 @@ module polcorrect_module
     end function tio_def_var_radiance_status_flag
   end interface
 
-  real (kind=r8), parameter :: r8_fill = nf90_fill_double
+  real (kind=r8), parameter :: r8_fill = nf90_fill_float
 
   ! cloud albedo for MLER
   real (kind=r8), parameter :: cldalb0 = 0.8d0
@@ -1114,6 +1114,7 @@ contains
   end subroutine define_diag_vars
 
   subroutine write_radiance_band (rad_s, step, band_id, merge_bands, diag_s, errstat)
+    use, intrinsic :: ieee_arithmetic
     implicit none
     type(radiance_type), intent(inout) :: rad_s
     integer, intent(in) :: step, band_id
@@ -1123,7 +1124,7 @@ contains
 
     integer, dimension(3) :: start, edge
     character (len=128) :: msg
-    integer :: err, nofill, varid, i0, i1, num_wave
+    integer :: err, nofill, varid, i0, i1, num_wave, i, k
     real (kind=r4) :: fill_value
 
     if (errstat /= 0) return
@@ -1147,6 +1148,13 @@ contains
       where (rad_s % radiance (i0:i1, :) == r8_fill)
         rad_s % radiance(i0:i1, :) = real(fill_value, kind=r8)
       end where
+      do k = 1, rad_s % num_xtrack
+        do i = i0, i1
+          if (.not. ieee_is_finite(rad_s % radiance (i, k))) then
+            rad_s % radiance (i, k) = real(fill_value, kind=r8)
+          endif
+        enddo
+      enddo
     endif
 
     call tiof_put2d_r8 (rad_s % obj, tempo_var_radiance, start, edge, &

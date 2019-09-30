@@ -115,7 +115,7 @@ read_retrieval_limits (config_setting_t *s, const char *name,
 
 static char *expand_path (const char *path)
 {
-   wordexp_t we;
+   wordexp_t we = {0};
    char *s = NULL;
 
    if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
