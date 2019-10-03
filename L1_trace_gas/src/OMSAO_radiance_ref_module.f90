@@ -67,7 +67,7 @@ CONTAINS
     LOGICAL                      :: have_scanline
     LOGICAL, DIMENSION (2)       :: have_limits
 
-    INTEGER (KIND=i4) :: fpix, lpix, midpt_line, i
+    INTEGER (KIND=i4) :: fpix, lpix, midpt_line
     INTEGER (KIND=i4) :: nloop, j1, iline, ix, iloop, imin, imax, icnt
     REAL    (KIND=r4) :: lat_midpt
     REAL    (KIND=r8) :: specsum

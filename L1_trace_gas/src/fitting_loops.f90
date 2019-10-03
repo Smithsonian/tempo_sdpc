@@ -300,6 +300,7 @@ CONTAINS
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
         '; k = ', Slit_Shape_Factor, &
         '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
+        '; rms = ', sqrt(sum(adj_resid(1:adj_num)**2)/real(adj_num, kind=8)), &
         '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
       call tell_log (1, addmsg)
       !CALL error_check ( &
