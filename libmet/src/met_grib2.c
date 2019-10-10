@@ -53,9 +53,9 @@ LCC_Grid_Type;
 
 typedef struct
 {
-   double *pressure_surface;      /* 2D array: pressure at ground or water surface */
-   double *pressure_tropopause;   /* 2D array: pressure at tropopause */
-   double *temperature_on_isobar; /* 3D array: 2D temperature on each of N isobaric surfaces */
+   double *pressure_surface;      /* 2D array: pressure at ground or water surface [hPa] */
+   double *pressure_tropopause;   /* 2D array: pressure at tropopause [hPa] */
+   double *temperature_on_isobar; /* 3D array: 2D temperature on each of N isobaric surfaces [K] */
 }
 MET_Data_Type;
 
@@ -466,8 +466,7 @@ static int get_isobars (codes_index *index, Array_Type *isobars)
 
                   if (NULL != (h = codes_handle_new_from_index (index, &codes_err)))
                     {
-                       /* convert from hPa to Pa */
-                       isobars->v[num_isobars++] = levels[lev] * 100.0;
+                       isobars->v[num_isobars++] = levels[lev];
                        codes_handle_delete (h);
                     }
                }
@@ -522,8 +521,7 @@ static int read_temperature_on_isobars (Met_File_Type *mft, codes_index *index)
 
    for (i = 0; i < num_isobars; i++)
      {
-        /* convert from Pa to hPa */
-        long lev = mft->isobars.v[i] / 100;
+        long lev = mft->isobars.v[i];
 
         if ((codes_err = codes_index_select_long (index, "level", lev)) != 0)
           goto return_status;
@@ -587,7 +585,7 @@ static int read_forecast_vars (Met_File_Type *mft, const char *path)
    LCC_Grid_Type *g = mft->grid;
    codes_index *index = NULL;
    double *p = NULL;
-   size_t num_grid;
+   size_t i, num_grid;
    int codes_err, status = -1;
 
    num_grid = g->x.n * g->y.n;
@@ -599,6 +597,9 @@ static int read_forecast_vars (Met_File_Type *mft, const char *path)
      {
         if (NULL == (p = read_slab (index, "sp", "surface", num_grid)))
           goto return_status;
+        /* convert Pa to hPa */
+        for (i = 0; i < num_grid; i++)
+          p[i] /= 100.0;
         mft->vars.pressure_surface = p;
      }
 
@@ -606,6 +607,9 @@ static int read_forecast_vars (Met_File_Type *mft, const char *path)
      {
         if (NULL == (p = read_slab (index, "pres", "tropopause", num_grid)))
           goto return_status;
+        /* convert Pa to hPa */
+        for (i = 0; i < num_grid; i++)
+          p[i] /= 100.0;
         mft->vars.pressure_tropopause = p;
      }
 

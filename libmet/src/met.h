@@ -3,10 +3,10 @@
 
 typedef struct
 {
-   float pressure_surface;         /* pressure interpolated at (lon,lat) surface */
-   float pressure_tropopause;      /* pressure interpolated at (lon,lat) tropopause */
-   float *temperature_on_isobar;   /* temperature_on_isobar[i] interpolated at (lon,lat,isobars[i]) */
-   float *isobars;                 /* optional input vector of pressures, monotonic decreasing */
+   float pressure_surface;         /* pressure interpolated at (lon,lat) surface [hPa] */
+   float pressure_tropopause;      /* pressure interpolated at (lon,lat) tropopause [hPa] */
+   float *temperature_on_isobar;   /* temperature_on_isobar[i] interpolated at (lon,lat,isobars[i]) [K] */
+   float *isobars;                 /* optional input vector of pressures, monotonic decreasing, [hPa] */
    int num_isobars;
 }
 Met_Value_Type;

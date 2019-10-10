@@ -7,6 +7,11 @@ program test_met
   real (kind=4) :: lon, lat, psurf, ptrop
   integer, parameter :: num_isobars = 3
   real (kind=4), dimension(num_isobars) :: isobars, temp_on_isobar
+  ! netcdf4 test is hard-coded
+  character (len=*), parameter :: ncfile = 'data/test_met.nc'
+  logical :: ncfile_exists
+  integer, parameter :: nlev = 72
+  real (kind=4), dimension(nlev) :: tprof
   integer :: i, status, errstat
 
   character (kind=c_char, len=1024) :: argbuf
@@ -29,23 +34,39 @@ program test_met
     i = i + 1
   enddo
 
-  isobars = (/9.e4, 5.e4, 1.e4/)
+  if (i == 1) then
+    write(*,*)'Usage: ftest_met GRIB_FILE [GRIB_FILE ...]'
+    call met_list_free (met)
+    call exit(0)
+  endif
+
+  isobars = (/900.0, 500.0, 100.0/)
 
   call met_list_interp_f (met, lon, lat, errstat, psurf)
-  write(*,*)'psurf=',psurf
+  write(*,'(f8.1)')psurf
 
   call met_list_interp_f (met, lon, lat, errstat, ptrop=ptrop)
-  write(*,*)'ptrop=',ptrop
+  write(*,'(f8.1)')ptrop
 
   call met_list_interp_f (met, lon, lat, errstat, psurf, ptrop)
-  write(*,*)'psurf=',psurf,' ptrop=',ptrop
+  write(*,'(f8.1)')psurf
+  write(*,'(f8.1)')ptrop
 
   call met_list_interp_f (met, lon, lat, errstat, &
                           psurf, ptrop, isobars, temp_on_isobar)
-  write(*,*)'psurf=',psurf,' ptrop=',ptrop
-  write(*,*)'isobars=', isobars(:)
-  write(*,*)'temp_on_isobar=', temp_on_isobar(:)
+  write(*,'(f8.1)')psurf
+  write(*,'(f8.1)')ptrop
+  write(*,'(f8.1)')temp_on_isobar(:)
 
   call met_list_free (met)
+
+  inquire (file=ncfile, exist=ncfile_exists)
+  if (ncfile_exists) then
+    call read_synth_met_data (ncfile, lat, lon, ptrop, psurf, &
+                              tprof, errstat)
+    write(*,'(f8.1)')psurf
+    write(*,'(f8.1)')ptrop
+    write(*,'(f8.1)')tprof
+  endif
 
 end program
