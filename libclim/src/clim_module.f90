@@ -23,6 +23,8 @@ module clim_module
 
   public clim_pres, clim_pres_init, clim_pres_nz
   public clim_species_vmr, clim_species_init
+  public clim_cloud, clim_cloud_init
+  public clim_partial_column
 
   interface clim_pres_init
     module procedure clim_pres_init_args
@@ -71,6 +73,14 @@ module clim_module
     type(clim_type), dimension(:), allocatable :: clim   ! (nhours)
   end type
 
+  type, public :: clim_cloud_type
+    private
+    integer :: nlon, nlat, nmon
+    real (kind=4), dimension(:,:,:), allocatable :: cloud_pressure  ! (nlon,nlat,nmon)
+    real (kind=4), dimension(:), allocatable :: lon   ! (nlon)
+    real (kind=4), dimension(:), allocatable :: lat   ! (nlat)
+  end type
+
   interface
     function c_make_climatology_filename (species, month, hour, path, path_buflen) &
         bind (c, name='make_climatology_filename')
@@ -93,6 +103,19 @@ module clim_module
       integer (c_int) :: c_make_pressure_filename
     end function
   end interface
+
+  interface
+    function c_make_cloud_climatology_filename (path, path_buflen) &
+        bind (c, name='make_cloud_climatology_filename')
+      use, intrinsic :: iso_c_binding, only : c_char, c_int
+      implicit none
+      integer (c_int), value, intent(in) :: path_buflen
+      character (kind=c_char), intent(out) :: path(*)
+      integer (c_int) :: c_make_cloud_climatology_filename
+    end function
+  end interface
+
+  real (kind=4), private, parameter :: mean_days_per_month = 365.25/12
 
 contains
 
@@ -320,7 +343,6 @@ contains
     real (kind=4), intent(in) :: lon_min, lon_max, lat_min, lat_max
     integer, intent(inout) :: errstat
 
-    real (kind=4), parameter :: mean_days_per_month = 365.25/12
     character (kind=c_char, len=path_bufsize) :: file_month0, file_month1
     integer :: month0, month1
     real (kind=4) :: fmonth, wt0
@@ -727,6 +749,174 @@ contains
 
     vmr_z(:) = (wt0 * cst % clim(ihr0) % vmr(:,ilat0,ilon0) &
                 + (1.0 - wt0) * cst % clim(ihr0+1) % vmr(:,ilat0,ilon0))
+
+  end subroutine
+
+  ! Assumes dimensions: pres_z(nz) vmr_z(nz-1), col_z(nz-1)
+  subroutine clim_partial_column (pres_z, vmr_z, col_z, errstat, vmr_h2o)
+    implicit none
+    real (kind=4), intent(in),  dimension(:)              :: pres_z
+    real (kind=4), intent(in),  dimension(size(pres_z)-1) :: vmr_z
+    real (kind=4), intent(out), dimension(size(pres_z)-1) :: col_z
+    integer, intent(inout) :: errstat
+    real (kind=4), intent(in),  dimension(size(pres_z)-1), optional :: vmr_h2o
+
+    real (kind=4), parameter :: cm  = 1.e-2                        ! m per cm
+    real (kind=4), parameter :: km  = 1.e3                         ! m per km
+    real (kind=4), parameter :: hpa = 1.e2                         ! Pa per hPa
+    real (kind=4), parameter :: gm_constant = 3.986004418e14       ! G * M_earth [m^3 s^-2]
+    real (kind=4), parameter :: r_earth = 6371.0088e3              ! Earth mean radius [m]
+    real (kind=4), parameter :: avogadros_number = 6.02214076e23   ! [mol^-1]
+    real (kind=4), parameter :: mu_dry_air = 28.97e-3              ! [kg/mol]
+    real (kind=4), parameter :: mu_water = 18.01528e-3             ! [kg/mol]
+    real (kind=4), parameter :: pres_std_sea = 1013.25             ! sea-level pressure [hPa]
+
+    real (kind=4), parameter :: coef = (avogadros_number / mu_dry_air) * (hpa * cm**2)
+    real (kind=4), parameter :: g0 = gm_constant / r_earth**2
+    real (kind=4), parameter :: f = mu_water / mu_dry_air - 1.0
+
+    real (kind=4) :: z_km, f_earth, grav_accel, pmid
+    integer :: i, nz
+
+    if (errstat/= 0) return
+
+    nz = size(pres_z)
+
+    do i = 1, nz-1
+      pmid = 0.5 * (pres_z(i) + pres_z(i+1))       ! layer midpoint pressure
+
+      z_km = -16.0 * log (pmid / pres_std_sea)     ! P [hPa] -> altitude [km]
+      f_earth = 1.0 + km * z_km / r_earth
+      grav_accel = g0 / (f_earth * f_earth)        ! grav [m/s^2]
+
+      col_z(i) = (coef / grav_accel) * vmr_z(i) * (pres_z(i) - pres_z(i+1))
+    enddo
+
+    if (present (vmr_h2o)) then
+      col_z(:) = col_z(:) / (1.0 + f * vmr_h2o(:))
+    endif
+
+  end subroutine
+
+  subroutine make_cloud_climatology_filename (file, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char, c_int
+    implicit none
+    character (kind=c_char, len=*), target, intent(inout) :: file
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat /= 0) return
+
+    err = c_make_cloud_climatology_filename (file, len(file))
+    if (err /= 0) then
+      call tell_error (tell_runtime_error, "make_cloud_climatology_filename: failed", errstat)
+      return
+    endif
+  end subroutine
+
+  subroutine clim_cloud_init (cct, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char, c_null_char
+    implicit none
+    type (clim_cloud_type), intent(out) :: cct
+    integer, intent(inout) :: errstat
+
+    character (kind=c_char, len=path_bufsize) :: file
+    type (tiof_file_type) :: obj
+    integer, dimension(3) :: istart, icount
+    integer :: err
+
+    if (errstat /= 0) return
+
+    call make_cloud_climatology_filename (file, errstat)
+    if (errstat /= 0) return
+
+    call tiof_open (file, obj, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+                       'clim_cloud_init: error opening file: '//trim(file), &
+                       errstat)
+      return
+    endif
+
+    call tiof_inq_dimlen (obj, 'nlon', cct % nlon, errstat)
+    call tiof_inq_dimlen (obj, 'nlat', cct % nlat, errstat)
+    call tiof_inq_dimlen (obj, 'nmon', cct % nmon, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, 'reading pressure file dimensions', errstat)
+      return
+    endif
+
+    allocate (cct % lon(cct % nlon), &
+              cct % lat(cct % nlat), &
+              cct % cloud_pressure (cct % nlon, cct % nlat, cct % nmon), &
+              stat=err)
+    if (err /= 0) then
+      call tell_error (tell_malloc_error, 'clim_cloud_init: allocate failed', errstat)
+      return
+    endif
+
+    istart(1) = 0
+    icount(1) = cct % nlon
+
+    call tiof_get1d_r4 (obj, 'lon'//c_null_char, &
+                        istart, icount, cct % lon, errstat)
+
+    istart(1) = 0
+    icount(1) = cct % nlat
+
+    call tiof_get1d_r4 (obj, 'lat'//c_null_char, &
+                        istart, icount, cct % lat, errstat)
+
+    istart(1) = 0
+    istart(2) = 0
+    istart(3) = 0
+    icount(1) = cct % nmon
+    icount(2) = cct % nlat
+    icount(3) = cct % nlon
+
+    call tiof_get3d_r4 (obj, 'omcldrr'//c_null_char, &
+                        istart, icount, cct % cloud_pressure, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, &
+                       'clim_cloud_init: error reading file: '//trim(file), &
+                       errstat)
+      return
+    endif
+
+    call tiof_close (obj, errstat)
+
+  end subroutine
+
+  subroutine clim_cloud (cct, month, day, lon, lat, cloud_pressure, errstat)
+    implicit none
+    type (clim_cloud_type), intent(in) :: cct
+    integer, intent(in) :: month, day
+    real (kind=4), intent(in) :: lon, lat
+    real (kind=4), intent(out) :: cloud_pressure
+    integer, intent(inout) :: errstat
+
+    integer :: ilon0, ilat0, month0, month1
+    real (kind=4) :: lon0, lat0, dlon, dlat, wt0
+
+    if (errstat /= 0) return
+
+    month0 = month
+    month1 = modulo (month+1,12)
+    wt0 = (day - 1)/ mean_days_per_month
+
+    lon0 = cct % lon(1)
+    dlon = cct % lon(2) - lon0
+    ilon0 = ceiling ((lon - lon0)/dlon)
+    if (ilon0 == 0) ilon0 = 1
+
+    lat0 = cct % lat(1)
+    dlat = cct % lat(2) - lat0
+    ilat0 = ceiling ((lat - lat0)/dlat)
+    if (ilat0 == 0) ilat0 = 1
+
+    cloud_pressure = (wt0 * cct % cloud_pressure (ilon0, ilat0, month0) &
+                      + (1.0 - wt0) * cct % cloud_pressure (ilon0, ilat0, month1))
 
   end subroutine
 

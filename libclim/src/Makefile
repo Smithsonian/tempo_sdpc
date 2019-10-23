@@ -63,7 +63,7 @@ ELF_F_LINK_CMD = $(ELF_F_LINK)
 ELF_F_COMPILE_CMD = $(ELF_FC) -c $(ELF_FCFLAGS)
 
 OFILES_F = clim_module.o
-ELFOBJS_F = $(elfdir)/clim_module.o
+ELFOBJS_F = $(patsubst %.o,$(elfdir)/%.o, $(OFILES_F))
 
 # --------------------------------------------------------------------------
 # Rules
@@ -72,7 +72,7 @@ ELFOBJS_F = $(elfdir)/clim_module.o
 EXECUTABLES = test_clim
 
 all:	elf $(EXECUTABLES)
-elf:	$(elfdir) $(ELFDIR_F_ELF_LIB) # $(ELFDIR_ELF_LIB) 
+elf:	$(elfdir) $(ELFDIR_F_ELF_LIB) # $(ELFDIR_ELF_LIB)
 
 tags:
 	ctags $(patsubst %.o,%.c,$(OFILES)) $(patsubst %.o,%.f90,$(OFILES_F))

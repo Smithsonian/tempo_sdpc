@@ -5,9 +5,19 @@
 
 #include <tell.h>
 
+#define CLIM_FILE_PATTERN_TRACE_GAS \
+   "$SDPC_REFDATA_DIR/climatology/%s/gcnr_TRC%s_2013%02d_%02d00.nc"
+
+#define CLIM_FILE_PATTERN_PRESSURE \
+   "$SDPC_REFDATA_DIR/climatology/PRES/gcnr_pressure_2013%02d.nc"
+
+#define CLIM_FILE_PATTERN_CLOUD \
+   "$SDPC_REFDATA_DIR/climatology/CLOUD/omcldrr_pressure.nc"
+
 extern int make_pressure_filename (int month, char *buf, int bufsize);
 extern int make_climatology_filename (const char *species, int month, int hour,
                                       char *path, int path_bufsize);
+extern int make_cloud_climatology_filename (char *buf, int bufsize);
 
 static char *expand_string (const char *s)
 {
@@ -66,7 +76,7 @@ static int expand_buffer_in_place (char *buf, size_t bufsize)
 int make_climatology_filename (const char *species, int month, int hour,
                                char *buf, int bufsize)
 {
-   const char fmt[] = "$SDPC_REFDATA_DIR/climatology/%s/gcnr_TRC%s_2013%02d_%02d00.nc";
+   const char fmt[] = CLIM_FILE_PATTERN_TRACE_GAS;
    int n;
 
    if ((n = snprintf (buf, bufsize, fmt, species, species, month, hour)) < 0)
@@ -87,10 +97,31 @@ int make_climatology_filename (const char *species, int month, int hour,
 
 int make_pressure_filename (int month, char *buf, int bufsize)
 {
-   const char fmt[] = "$SDPC_REFDATA_DIR/climatology/PRES/gcnr_pressure_2013%02d.nc";
+   const char fmt[] = CLIM_FILE_PATTERN_PRESSURE;
    int n;
 
    if ((n = snprintf (buf, bufsize, fmt, month)) < 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
+        return -1;
+     }
+   if (n >= bufsize)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: buffer size exceeded: string length = %d > %d",
+                     __func__, n, bufsize);
+        return -1;
+     }
+
+   return expand_buffer_in_place (buf, bufsize);
+}
+
+int make_cloud_climatology_filename (char *buf, int bufsize)
+{
+   const char fmt[] = CLIM_FILE_PATTERN_CLOUD;
+   int n;
+
+   if ((n = snprintf (buf, bufsize, fmt)) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
         return -1;

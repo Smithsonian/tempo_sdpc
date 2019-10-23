@@ -4,20 +4,12 @@ program test_clim
   type (clim_pres_type) :: cpt
   type (clim_species_type) :: cst
   type (clim_pres_bounds_type) :: bounds
+  type (clim_cloud_type) :: cct
   integer :: month, day, nz, i, errstat
-  real (kind=4) :: hour, lon, lat, psurf, ptrop
-  real (kind=4), dimension(:), allocatable :: pres_z, ap, bp, vmr_z
-  real (kind=4), dimension(:), allocatable :: partial_column_z
+  real (kind=4) :: hour, lon, lat, psurf, ptrop, cloud_pressure
+  real (kind=4), dimension(:), allocatable :: pres_z, ap, bp
+  real (kind=4), dimension(:), allocatable :: vmr_z, partial_column_z
   character (len=*), parameter :: species = 'NO2'
-  real (kind=4), parameter :: avogadro_number = 6.02214076e23 ! mol^-1
-  real (kind=4), parameter :: mu_dry_air = 28.97e-3           ! kg/mol
-  real (kind=4), parameter :: grav_accel = 9.80665            ! m/s^2
-  real (kind=4), parameter :: pascals_per_hPa = 100.0
-  real (kind=4), parameter :: meter_per_cm = 1.e-2
-  real (kind=4), parameter :: du = 2.69e16                    ! Dobson unit mol/cm^2
-  real (kind=4), parameter :: pc_coeff = &
-    ((avogadro_number / (grav_accel * mu_dry_air)) &
-     * pascals_per_hPa * meter_per_cm**2)
 
   errstat = 0
 
@@ -42,6 +34,14 @@ program test_clim
   lon  = -85.0
   lat  = +36.0
 
+  call clim_cloud_init (cct, errstat)
+  if (errstat /= 0) call exit(1)
+
+  call clim_cloud (cct, month, day, lon, lat, cloud_pressure, errstat)
+  if (errstat /= 0) call exit(1)
+
+  write (*,'(a,f10.4,a)')'cloud pressure = ',cloud_pressure,' hPa'
+
   write (*,*)'species = ',species
   write (*,'(a,i2,1x,i2,1x,f7.4)')' month, day, hour = ', month, day, hour
   write (*,'(a,f10.4,1x,f10.4)')' lon, lat = ', lon, lat
@@ -62,17 +62,16 @@ program test_clim
   call clim_species_vmr (cst, cpt, hour, lon, lat, vmr_z, errstat)
   if (errstat /= 0) call exit(1)
 
-  ! neglect z dependence of acceleration due to gravity (~3% error at 100 km altitude)
-  ! neglect correction for water content (e.g. assume dry air)
-  ! Units [mol cm^-2]
-  partial_column_z(:) = pc_coeff * vmr_z(:) * (pres_z(1:nz-1)-pres_z(2:nz))
+  call clim_partial_column (pres_z, vmr_z, partial_column_z, errstat)
+  if (errstat /= 0) call exit(1)
 
   write(*,*)'N(total) = ',sum(partial_column_z),' mol/cm^2'
 
-  write(*,*)'  i  pres_z        ap            bp            vmr_z         dN [cm^-2]    dN [DU]'
+  write(*,*)' i  pres_z        ap            bp            '// &
+    'vmr_z         dN [cm^-2]'
   do i=1,nz-1
-    write(*,'(i3,10(2x,1pe12.6))')i,pres_z(i),ap(i),bp(i),vmr_z(i), &
-      partial_column_z(i), partial_column_z(i)/du
+    write(*,'(i3,10(2x,1pe12.6))')i,pres_z(i),ap(i),bp(i), &
+      vmr_z(i),partial_column_z(i)
   enddo
   i=nz
   write(*,'(i3,10(2x,1pe12.6))')i,pres_z(i),ap(i),bp(i)
