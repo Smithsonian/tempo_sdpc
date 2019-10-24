@@ -1,0 +1,34 @@
+/**
+@mainpage libclim Manual
+
+@section Introduction
+
+The libclim library provides an interface for a database of files
+describing the average spatial distribution of selected atmospheric
+variables, including seasonal and diurnal variations where
+appropriate.  Atmospheric pressure, cloud pressure, and trace gas
+volume mixing ratio are currently supported.
+
+@section Overview
+
+For each climatology type, the library typically provides:
+- one subroutine to read the relevant subset of climatology data
+  into a private data structure held in memory
+- one or more subroutines to retrieve data from the private data
+  structure, and to perform linear interpolation.
+
+The private data structures used by the library are managed by the
+calling routine.  For each private data structure, the calling routine
+declares an instance of an opaque data type, e.g.:
+
+\code{.f90}
+  type(clim_pres_type) :: cpt
+\endcode
+
+Once that structure is initialized by calling the corresponding
+initialization routine, the private data will be accessible through
+the provided library interface while the corresponding variable
+remains in scope.  When the variable goes out of scope, the private
+data structures are automatically deallocated.
+
+*/

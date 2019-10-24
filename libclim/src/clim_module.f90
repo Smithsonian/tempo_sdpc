@@ -31,6 +31,8 @@ module clim_module
     module procedure clim_pres_init_struct
   end interface
 
+  real (kind=4), private, parameter :: mean_days_per_month = 365.25/12
+
   integer, private, parameter :: path_bufsize = 1024, msg_bufsize = 128
 
   type :: dim_subset_type
@@ -55,9 +57,9 @@ module clim_module
   end type
 
   type, public :: clim_pres_bounds_type
-    real (kind=4) :: hour_beg, hour_end
-    real (kind=4) :: lon_min, lon_max
-    real (kind=4) :: lat_min, lat_max
+    real (kind=4) :: hour_beg, hour_end !< UTC begin/end of time interval of interest
+    real (kind=4) :: lon_min, lon_max   !< longitude range of interest [deg]
+    real (kind=4) :: lat_min, lat_max   !< latitude range of interest [deg]
   end type
 
   ! Note: clim_type % nz = clim_pres_type % nz - 1
@@ -114,8 +116,6 @@ module clim_module
       integer (c_int) :: c_make_cloud_climatology_filename
     end function
   end interface
-
-  real (kind=4), private, parameter :: mean_days_per_month = 365.25/12
 
 contains
 
@@ -424,6 +424,10 @@ contains
 
   end subroutine
 
+  !> @brief
+  !> Query the number of vertical layers in the pressure grid
+  !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
+  !> @return the number of vertical layers in the pressure grid
   function clim_pres_nz (cpt)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
@@ -434,14 +438,14 @@ contains
   !> @brief
   !> Interpolate pressure vs height
   !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
-  !> @param[in] hour_utc  UTC hour of interest
-  !> @param[in] lon, lat  Longitude, latitude coordinates of interest
+  !> @param[in] hour_utc  UTC hour of interest [hours]
+  !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
   !> @param[out] pres_z   Output pressure [hPa] vs height
   !> @param[inout] errstat        Error status code (0 on success)
   !> @param[out] eta_a, eta_b    Optional output pressure parameters
   !>                             p(z) = eta_a(z) + eta_b(z) * p_surf
-  !> @param[out] p_surf    Optional output surface pressure
-  !> @param[out] p_trop    Optional output tropopause pressure
+  !> @param[out] p_surf    Optional output surface pressure [hPa]
+  !> @param[out] p_trop    Optional output tropopause pressure [hPa]
   subroutine clim_pres (cpt, hour_utc, lon, lat, pres_z, errstat, &
                         eta_a, eta_b, p_surf, p_trop)
     implicit none
@@ -724,7 +728,7 @@ contains
   !> @param[out] cst  Initialized instance of opaque @a type(clim_species_type)
   !> @param[in] cpt   Initialized instance of @a type(clim_pres_type)
   !> @param[in] hour_utc  UTC hour of interest
-  !> @param[in] lon, lat  Longitude, latitude coordinates of interest
+  !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
   !> @param[out] vmr_z   Output volume mixing ratio vs height.
   !>                     For (nz) pressure values, the VMR array size is (nz-1).
   !> @param[inout] errstat        Error status code (0 on success)
@@ -752,7 +756,22 @@ contains
 
   end subroutine
 
-  ! Assumes dimensions: pres_z(nz) vmr_z(nz-1), col_z(nz-1)
+  !> @brief
+  !> Compute the partial column from the volume mixing ratio and pressure
+  !> @param[in] pres_z  Atmospheric pressure in @a nz layers [hPa]
+  !> @param[in] vmr_z   Volume mixing ratio of a trace constituent in
+  !>                    @a (nz-1) layers.
+  !> @param[out] col_z  Partial column [cm^-2] in each layer
+  !> @param[inout]  errstat  Error status code (0 on success)
+  !> @param[in]  vmr_h2o  Optional volume mixing ratio of water in @a (nz-1) layers
+  !>
+  !> The pressure array is assumed to provide the pressure at both boundaries
+  !> of each layer, therefore the pressure array dimension is one larger than
+  !> the VMR and partial column arrays.  The partial column includes the
+  !> variation of the gravitational acceleration with height.
+  !> When the water VMR is provided, the partial column value will include
+  !> a correction for the presence of water.  Otherwise, the partial column
+  !> is computed for dry air.
   subroutine clim_partial_column (pres_z, vmr_z, col_z, errstat, vmr_h2o)
     implicit none
     real (kind=4), intent(in),  dimension(:)              :: pres_z
@@ -815,6 +834,11 @@ contains
     endif
   end subroutine
 
+  !> @brief
+  !> Initialize cloud climatology
+  !> @param[out] cct   Instance of opaque @a type(clim_cloud_type) to hold
+  !>                   the cloud climatology data
+  !> @param[inout] errstat        Error status code (0 on success)
   subroutine clim_cloud_init (cct, errstat)
     use, intrinsic :: iso_c_binding, only : c_char, c_null_char
     implicit none
@@ -888,6 +912,14 @@ contains
 
   end subroutine
 
+  !> @brief
+  !> Interpolate cloud pressure
+  !> @param[in] cct    Initialized instance of opaque @a type(clim_cloud_type)
+  !> @param[in] month  Integer month [1,12] of climatology data to read
+  !> @param[in] day    Integer day [1,30] of data to read
+  !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
+  !> @param[out] cloud_pressure   Output cloud pressure [hPa]
+  !> @param[inout] errstat        Error status code (0 on success)
   subroutine clim_cloud (cct, month, day, lon, lat, cloud_pressure, errstat)
     implicit none
     type (clim_cloud_type), intent(in) :: cct

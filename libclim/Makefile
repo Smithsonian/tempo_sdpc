@@ -5,8 +5,8 @@ all:
 check:
 #	cd tests; $(MAKE) check
 
-#docs:
-#	cd doc; $(MAKE) docs
+docs:
+	cd doc; $(MAKE) docs
 
 install:
 	cd src; $(MAKE) install
