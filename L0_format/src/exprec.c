@@ -212,11 +212,12 @@ static int define_outfile_vars (Process_Method_Type *pmt,
 
    if (identp)
      {
+        if (0 != tio_write_granule_ident_indices (ncid, identp->scan_num,
+                                                  identp->granule_num))
+          return -1;
         if (0 != tio_define_granule_flag_var (ncid))
           return -1;
-        if (0 != tio_write_granule_ident_indices (ncid, identp->scan_num,
-                                                  identp->granule_num,
-                                                  identp->granule_flag))
+        if (0 != tio_write_granule_flag_var (ncid, identp->granule_flag))
           return -1;
 	/* (scan_type==0) means "standard radiance scan".
 	 * (scan_type!=0) means the data will probably require custom processing.
