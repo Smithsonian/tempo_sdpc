@@ -672,7 +672,9 @@ static int check_granule_ident (int ncid) /*{{{*/
    granule_num = 3;
    granule_flag = 1;
 
-   if (0 != tio_write_granule_ident_indices (ncid, scan_num, granule_num, granule_flag))
+   if (0 != tio_write_granule_ident_indices (ncid, scan_num, granule_num))
+     return -1;
+   if (0 != tio_write_granule_flag_var (ncid, granule_flag))
      return -1;
 
    if ((0 != TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &itest)
@@ -1138,6 +1140,8 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         fprintf (stderr, "*** Error copying granule id to %s\n", namebuf);
         goto cleanup;
      }
+   if (-1 == tio_copy_granule_flag_var (ncid, target_ncid))
+     goto cleanup;
 
    if (-1 == TIO_label_product (target_ncid, "just testing", 1))
      {

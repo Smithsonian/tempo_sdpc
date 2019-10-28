@@ -209,7 +209,6 @@ static int define_radiance_granule_global_ident (int grp)
    gid.next = NULL;
    gid.scan_num = 1;
    gid.granule_num = 1;
-   gid.granule_flag = 0;
    gid.tstart = 0.0;
    gid.tend = 0.0;
 
@@ -219,6 +218,9 @@ static int define_radiance_granule_global_ident (int grp)
 
    if ((0 != tio_time_utcstr_to_taix (gid.tstart_str, &gid.tstart))
        ||(0 != tio_time_utcstr_to_taix (gid.tend_str, &gid.tend)))
+     return -1;
+
+   if (0 != tio_write_granule_flag_var (grp, 0))
      return -1;
 
    return _pTIO_write_granule_ident (grp, &gid);

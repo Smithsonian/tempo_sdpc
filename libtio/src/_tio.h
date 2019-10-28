@@ -131,7 +131,6 @@ struct _pTIO_Granule_Ident_Type
    _pTIO_Granule_Ident_Type *next;
    int scan_num;
    int granule_num;
-   int granule_flag;
    char tstart_str[MAX_ISOTIME_LEN];   /**< start time, UTC, ISO 8601 time string */
    char tend_str[MAX_ISOTIME_LEN];     /**< end time, UTC, ISO 8601 time string */
    double tstart;  /**< start time, TAI seconds since TEMPO epoch */

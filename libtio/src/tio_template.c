@@ -145,7 +145,7 @@ int _pTIO_define_processing_level (int grp, int level)
 
 static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
-   int start, count, attid;
+   int attid;
 
    /* When granule ident indices aren't present, we assume this granule doesn't need them.
     * In this case, we set the indices to zero to indicate that they aren't used.
@@ -154,7 +154,6 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
      {
         gid->scan_num = 0;
         gid->granule_num = 0;
-        gid->granule_flag = 0;
         return 0;
      }
 
@@ -162,14 +161,6 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
        ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading scan_num, granule_num attributes from file", __func__);
-        return -1;
-     }
-
-   start = 0;
-   count = 1;
-   if (0 != TIO_get_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &gid->granule_flag))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading granule_flag variable from file", __func__);
         return -1;
      }
 
@@ -227,6 +218,58 @@ int tio_define_granule_flag_var (int ncid)
    return 0;
 }
 
+int tio_write_granule_flag_var (int ncid, int granule_flag)
+{
+   int err, varid, status = -1;
+   int start, count;
+
+   if (NC_NOERR != (err = nc_inq_varid (ncid, TEMPO_VAR_GRANULE_FLAG, &varid)))
+     {
+        if (err != NC_ENOTVAR)
+          goto return_error;
+        if (0 != tio_define_granule_flag_var (ncid))
+          goto return_error;
+        /* drop */
+     }
+
+   start = 0;
+   count = 1;
+   if (NC_NOERR != (err = TIO_put_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count,
+                                               NC_INT, &granule_flag)))
+     goto return_error;
+
+   status = 0;
+return_error:
+   if (status)
+     {
+        tell_verror (TELL_IO_ERROR, "%s: writing granule_flag variable to file", __func__);
+     }
+
+   return status;
+}
+
+int tio_copy_granule_flag_var (int ncid_from, int ncid_to)
+{
+   int start, count, granule_flag, status = -1;
+
+   start = 0;
+   count = 1;
+   if (0 != TIO_get_var_section (ncid_from, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &granule_flag))
+     goto return_error;
+
+   if (0 != tio_write_granule_flag_var (ncid_to, granule_flag))
+     goto return_error;
+
+   status = 0;
+return_error:
+   if (status)
+     {
+        tell_verror (TELL_IO_ERROR, "%s: copying granule_flag variable from file", __func__);
+     }
+
+   return status;
+}
+
 #define NBITS_SCAN_LABEL 16
 #define NBITS_SCAN_NUM   10
 #define NBITS_SCAN_TYPE  (NBITS_SCAN_LABEL - NBITS_SCAN_NUM)
@@ -264,10 +307,9 @@ void tio_parse_scan_label (uint16_t scan_label, uint16_t *scan_type, uint16_t *s
      }
 }
 
-static int write_granule_ident_indices (int ncid, int scan_num,
-                                        int granule_num, int granule_flag)
+static int write_granule_ident_indices (int ncid, int scan_num, int granule_num)
 {
-   int status, start, count, varid;
+   int status;
 
    /* In use, granule_num and scan_num are both positive values.
     * A value of zero indicates that the index will not be used.
@@ -279,21 +321,6 @@ static int write_granule_ident_indices (int ncid, int scan_num,
              ||(-1 == TIO_put_att (ncid, NC_GLOBAL, "granule_num", NC_INT, 1, &granule_num)));
    if (status)
      return -1;
-
-   status = nc_inq_varid (ncid, TEMPO_VAR_GRANULE_FLAG, &varid);
-   if (NC_NOERR != status)
-     {
-        if (status != NC_ENOTVAR)
-          return -1;
-        if (0 != tio_define_granule_flag_var (ncid))
-          return -1;
-        /* drop */
-     }
-
-   start = 0;
-   count = 1;
-   status = TIO_put_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count,
-                                 NC_INT, &granule_flag);
 
    return status ? -1 : 0;
 }
@@ -321,18 +348,15 @@ static int write_granule_ident_times (int ncid, const _pTIO_Granule_Ident_Type *
 
 int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
-   if (0 != write_granule_ident_indices (ncid, gid->scan_num, gid->granule_num,
-                                         gid->granule_flag))
+   if (0 != write_granule_ident_indices (ncid, gid->scan_num, gid->granule_num))
      return -1;
 
    return write_granule_ident_times (ncid, gid);
 }
 
-int tio_write_granule_ident_indices (int ncid, int scan_num, int granule_num,
-                                    int granule_flag)
+int tio_write_granule_ident_indices (int ncid, int scan_num, int granule_num)
 {
-   return write_granule_ident_indices (ncid, scan_num, granule_num,
-                                       granule_flag);
+   return write_granule_ident_indices (ncid, scan_num, granule_num);
 }
 
 int tio_write_granule_ident_times (int ncid, double tstart, double tend)
@@ -452,7 +476,6 @@ static int same_granule_ident (const _pTIO_Granule_Ident_Type *gid1,
 {
    return ((gid1->scan_num == gid2->scan_num)
            && (gid1->granule_num == gid2->granule_num)
-           && (gid1->granule_flag == gid2->granule_flag)
            && (gid1->tstart == gid2->tstart)
            && (gid1->tend == gid2->tend)
            && (0 == strncmp (gid1->tstart_str, gid2->tstart_str, MAX_ISOTIME_LEN))
@@ -893,5 +916,9 @@ FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,
             INT)
 FCALLSCFUN2(INT, tio_time_utcstr_to_taix, TIO_F_TIME_UTCSTR_TO_TAIX, tio_f_time_utcstr_to_taix,
 	    STRING, PDOUBLE)
-     FCALLSCFUN1(INT, tio_time_set_taix_epoch, TIO_F_TIME_SET_TAIX_EPOCH, tio_f_time_set_taix_epoch,
+FCALLSCFUN1(INT, tio_time_set_taix_epoch, TIO_F_TIME_SET_TAIX_EPOCH, tio_f_time_set_taix_epoch,
             STRING)
+FCALLSCFUN2(INT, tio_write_epoch_timestamp, TIO_F_WRITE_EPOCH_TIMESTAMP, tio_f_write_epoch_timestamp,
+            INT, INT)
+FCALLSCFUN4(INT, TIO_mktimestamp_str, TIO_F_MKTIMESTAMP_STR, tio_f_mktimestamp_str,
+            DOUBLE, INT, PSTRING, INT)

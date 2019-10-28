@@ -153,13 +153,15 @@ module tio_module
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
     tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch, &
-    tio_f_time_utcstr_to_taix, tio_f_time_set_taix_epoch
+    tio_f_time_utcstr_to_taix, tio_f_time_set_taix_epoch, &
+    tio_f_write_epoch_timestamp, tio_f_mktimestamp_str
   external   tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
     tio_f_filename_from_granule, tio_f_label_product, &
     tio_f_taix_time_to_utc_caldate, tio_f_use_file_epoch, &
-    tio_f_time_utcstr_to_taix, tio_f_time_set_taix_epoch
+    tio_f_time_utcstr_to_taix, tio_f_time_set_taix_epoch, &
+    tio_f_write_epoch_timestamp, tio_f_mktimestamp_str
 
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
@@ -172,7 +174,8 @@ module tio_module
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
     tiof_make_lev1_bounding_polygon, &
-    tiof_utcstr_to_taix_time, tiof_time_set_taix_epoch
+    tiof_utcstr_to_taix_time, tiof_time_set_taix_epoch, &
+    tiof_write_epoch_timestamp, tiof_mktimestamp_str
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -286,6 +289,44 @@ contains
 
     if (errstat /= 0) return
     errstat = tio_f_use_file_epoch (obj % fileid)
+  end subroutine
+
+  subroutine tiof_write_epoch_timestamp (obj, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout) :: errstat
+    integer, parameter :: nc_global = -1
+
+    if (errstat /= 0) return
+    ! Annoyingly, the netcdf library design is such that its C and Fortran
+    ! interfaces use different numbering schemes for file objects(!)
+    ! One would think that an object in a file would be language-independent,
+    ! but no. For this reason, when this fortran interface calls the C
+    ! interface layer, it is necessary to use file references appropriate
+    ! for the netcdf library C interface.  Hence, we have to use nc_global
+    ! instead of nf90_global. Arrghhh!!!
+    errstat = tio_f_write_epoch_timestamp (obj % fileid, nc_global)
+  end subroutine
+
+  subroutine tiof_mktimestamp_str (taix, buf, errstat, no_delim)
+    implicit none
+    real (kind=8), intent(in) :: taix
+    character (len=*), intent(inout) :: buf
+    integer, intent(inout) :: errstat
+    logical, optional, intent(in) :: no_delim
+
+    integer :: delim, bufsize
+
+    if (errstat /= 0) return
+
+    if (present(no_delim)) then
+      delim = 0
+    else
+      delim = 1
+    endif
+
+    bufsize = len(buf)
+    errstat = tio_f_mktimestamp_str (taix, delim, buf, bufsize)
   end subroutine
 
   subroutine tiof_time_set_taix_epoch (utc_str, errstat)
