@@ -449,6 +449,8 @@ contains
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
 
+    character (len=32) :: epoch_buf
+
     ! Define dimid arrays associated with common data field shapes.
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_xtrack, tg_dim_step], &
@@ -529,12 +531,15 @@ contains
     call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist_qa)
 
+    epoch_buf(:)=''
+    call tiof_mktimestamp_str (0.0_r8, epoch_buf, errstat)
+
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
-                              comment = "exposure start time", &
-                              units = "s", &
+                              comment = "radiance exposure start time", &
+                              units = "seconds since "//trim(epoch_buf), &
                               valid_range = [0.0_r8, 1.e30_r8], &
                               fillvalue = fill_double)
 
@@ -1642,6 +1647,8 @@ contains
 
     call tiof_copy_granule_ident (l1b, obj, errstat)
     call tiof_close (l1b, errstat)
+
+    call tiof_write_epoch_timestamp (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_runtime_error, "copy_metadata: copying from "//trim(l1bfile), &

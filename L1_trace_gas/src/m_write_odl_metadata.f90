@@ -274,7 +274,9 @@ contains
     ! write ODL-format text file
     version =1
 
-    returnstatus = pgs_met_sfstart( trim(outfilnm), HDF5_ACC_RDWR,sdid)
+    ! declare the HDF5 file read-only to prevent creation of
+    ! HDFEOS_INFORMATION group that we will not use
+    returnstatus = pgs_met_sfstart (trim(outfilnm), HDF5_ACC_RDONLY, sdid)
     if(returnstatus /= 0) then
       call tell_error(tell_io_error, &
            "write_odl_metadata: failed to open .met file", errstat)
