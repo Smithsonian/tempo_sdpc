@@ -1063,6 +1063,8 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
         ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
+        if (0 != tio_copy_granule_flag_var (ncid_from, ncid_to))
+          goto return_status;
         /* Copy the scan_type attribute to the Level 1 file.
          * It's not in the granule ident struct for now, because putting it there would
          * be too much trouble.
