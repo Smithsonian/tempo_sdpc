@@ -96,7 +96,7 @@ module tio_module
     character (len=tiof_max_att_len) :: comment  !< attribute: comment
     character (len=tiof_max_att_len) :: units    !< attribute: units
     character (len=tiof_max_att_len) :: long_name    !< attribute: long_name
-    real (kind=r8), dimension(2) :: valid_range = [0.0, 0.0]  !< attribute: valid_min, valid_max
+    real (kind=r8) :: valid_min, valid_max  !< attribute: valid_min, valid_max
     integer :: deflate_level = 0   !< attribute: compression deflate level
     logical :: shuffle = .false.   !< attribute: compress with shuffle?
     logical :: contiguous = .true. !< attribute: use contiguous storage?
@@ -107,7 +107,8 @@ module tio_module
       have_long_name=.false., &
       have_comment=.false., &
       have_units=.false., &
-      have_valid_range=.false., &
+      have_valid_min=.false., &
+      have_valid_max=.false., &
       have_fillvalue = .false.
     type (tiof_attlist_type), private, pointer :: attlist => null()
     type (tiof_var_type), private, pointer :: next => null()
@@ -1131,6 +1132,8 @@ contains
   !! @param[in] long_name  (optional) Long name text.
   !! @param[in] units  (optional) Physical units of the variable.
   !! @param[in] valid_range (optional) minimum and maximum valid values
+  !! @param[in] valid_min (optional) minimum valid value
+  !! @param[in] valid_max (optional) maximum valid value
   !! @param[in] no_fill  (optional) If non-zero, do not initialize the variable
   !!                     by writing fill values.
   !! @param[in] fillvalue  (optional) Fill value to use for uninitialized values.
@@ -1138,7 +1141,8 @@ contains
   !! @see tiof_def_vars, tiof_varlist_free, tiof_varlist_lookup
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
-                                  comment, long_name, units, valid_range, &
+                                  comment, long_name, units, &
+                                  valid_range, valid_min, valid_max, &
                                   no_fill, fillvalue, &
                                   attlist)
     implicit none
@@ -1152,6 +1156,7 @@ contains
     integer, optional, dimension(:), intent(in) :: chunksizes
     character (len=*), optional, intent(in) :: comment, long_name, units
     real (kind=r8), optional, dimension(2), intent(in) :: valid_range
+    real (kind=r8), optional, intent(in) :: valid_min, valid_max
     integer, optional, intent(in) :: no_fill
     real (kind=r8), optional, intent(in) :: fillvalue
     type (tiof_attlist_type), optional, target, intent(in) :: attlist
@@ -1215,8 +1220,20 @@ contains
     endif
 
     if (present(valid_range)) then
-      item % have_valid_range = .true.
-      item % valid_range = valid_range(1:2)
+      item % have_valid_min = .true.
+      item % have_valid_max = .true.
+      item % valid_min = valid_range(1)
+      item % valid_max = valid_range(2)
+    endif
+
+    if (present(valid_min)) then
+      item % have_valid_min = .true.
+      item % valid_min = valid_min
+    endif
+
+    if (present(valid_max)) then
+      item % have_valid_max = .true.
+      item % valid_max = valid_max
     endif
 
     if (present(no_fill)) then
@@ -1318,6 +1335,42 @@ contains
 
   end subroutine tiof_varlist_lookup
 
+  subroutine put_numerical_att (gid, varid, name, xtype, value, errstat)
+    implicit none
+    integer, intent(in) :: gid, varid, xtype
+    character (len=*), intent(in) :: name
+    real (kind=r8), intent(in) :: value
+    integer, intent(inout) :: errstat
+    integer :: status
+
+    if (errstat /= 0) return
+
+    select case (xtype)
+      case (nf90_double)
+        status = nf90_put_att (gid, varid, name, value)
+      case (nf90_float)
+        status = nf90_put_att (gid, varid, name, real(value, kind=r4))
+      case (nf90_int64, nf90_uint64)
+        status = nf90_put_att (gid, varid, name, int(value, kind=i8))
+      case (nf90_int, nf90_uint)
+        status = nf90_put_att (gid, varid, name, int(value,kind=i4))
+      case (nf90_short, nf90_ushort)
+        status = nf90_put_att (gid, varid, name, int(value,kind=i2))
+      case (nf90_byte, nf90_ubyte)
+        status = nf90_put_att (gid, varid, name, int(value,kind=i1))
+      case default
+        call tell_error (tell_runtime_error, &
+                         "tio_def_vars:  unsupported attribute value type: "//trim(name), &
+                         errstat)
+        return
+    end select
+    if (status /= nf90_noerr) then
+      errstat = tell_io_error
+      call tell_set_error (errstat)
+      return
+    endif
+  end subroutine
+
   !> Write a variable list to a file
   !! @param[in] obj  File type object, \a type(tiof_file_type)
   !! @param[in] list  Variable list object, \a type(tiof_varlist_type)
@@ -1380,6 +1433,41 @@ contains
         return
       endif
 
+      if (item % have_long_name) then
+        status = nf90_put_att (obj % groupid, item % varid, "long_name", item % long_name)
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
+      endif
+
+      if (item % have_comment) then
+        status = nf90_put_att (obj % groupid, item % varid, "comment", item % comment)
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
+      endif
+
+      if (item % have_units) then
+        status = nf90_put_att (obj % groupid, item % varid, "units", item % units)
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
+      endif
+
+      if (item % have_valid_min) then
+        call put_numerical_att (obj % groupid, item % varid, "valid_min", item % xtype, item % valid_min, errstat)
+      endif
+      if (item % have_valid_max) then
+        call put_numerical_att (obj % groupid, item % varid, "valid_max", item % xtype, item % valid_max, errstat)
+      endif
+      if (errstat /= 0) return
+
       if (item % have_fillvalue) then
         select case (item % xtype)
           case (nf90_double)
@@ -1401,48 +1489,6 @@ contains
                              "tio_def_vars:  unsupported fill value type: "//item%name(1:item%len_name), &
                              errstat)
         end select
-        if (status /= nf90_noerr) then
-          errstat = tell_io_error
-          call tell_set_error (errstat)
-          return
-        endif
-      endif
-
-      if (item % have_comment) then
-        status = nf90_put_att (obj % groupid, item % varid, "comment", item % comment)
-        if (status /= nf90_noerr) then
-          errstat = tell_io_error
-          call tell_set_error (errstat)
-          return
-        endif
-      endif
-
-      if (item % have_long_name) then
-        status = nf90_put_att (obj % groupid, item % varid, "long_name", item % long_name)
-        if (status /= nf90_noerr) then
-          errstat = tell_io_error
-          call tell_set_error (errstat)
-          return
-        endif
-      endif
-
-      if (item % have_units) then
-        status = nf90_put_att (obj % groupid, item % varid, "units", item % units)
-        if (status /= nf90_noerr) then
-          errstat = tell_io_error
-          call tell_set_error (errstat)
-          return
-        endif
-      endif
-
-      if (item % have_valid_range) then
-        status = nf90_put_att (obj % groupid, item % varid, "valid_min", item % valid_range(1))
-        if (status /= nf90_noerr) then
-          errstat = tell_io_error
-          call tell_set_error (errstat)
-          return
-        endif
-        status = nf90_put_att (obj % groupid, item % varid, "valid_max", item % valid_range(2))
         if (status /= nf90_noerr) then
           errstat = tell_io_error
           call tell_set_error (errstat)
