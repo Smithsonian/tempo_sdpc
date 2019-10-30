@@ -96,21 +96,22 @@ contains
                               tg_var_common_mode_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack,  &
-                              comment = "common mode spectrum", &
+                              long_name = "common mode spectrum", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_common_mode_wavelengths, &
                               nf90_float, &
                               dimids = dimids_commwvl_xtrack,  &
-                              comment = "common mode wavelengths", &
+                              long_name = "common mode wavelength", &
                               valid_range = [-1e30_r8, 1e30_r8], &
                               fillvalue = fill_float)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_common_mode_count, &
                               nf90_int, &
                               dimids = [dimids_commwvl_xtrack(2)],  &
-                              comment = "common mode spectrum averaging count", &
+                              long_name = "common mode count", &
+                              comment = "number of values averaged at each wavelength", &
                               valid_range = [0.0_r8, 2147483647.0_r8])
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_common_mode_ccd_pixel_range, &
@@ -131,8 +132,8 @@ contains
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    type (tiof_varlist_type) :: varlist, varlist_supp
+    type (tiof_attlist_type) :: att_coord, att_amf_diag
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_xtrack_step_levels, dimsizes_xtrack_step_levels
     integer, dimension(3) :: chunksizes
@@ -155,6 +156,13 @@ contains
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
+    call tiof_attlist_append (att_amf_diag, errstat, "coordinates", &
+                              att_text = trim(tg_var_longitude) &
+                              //' '//trim(tg_var_latitude))
+    call tiof_attlist_append (att_amf_diag, errstat, "flag_meanings", &
+                              att_text = "cloud pressure extrapolation, snow correction, glint")
+    call tiof_attlist_append (att_amf_diag, errstat, "flag_values", &
+                              att_i4 = [0,1,2])
     ! append amf variables
     chunksizes(1) = min(dimsizes_xtrack_step_levels(1), 128)  ! xtrack dimension
     chunksizes(2) = min(dimsizes_xtrack_step_levels(2), 128)  ! step dimension
@@ -164,8 +172,9 @@ contains
                               tg_var_amf_scattering_weights, &
                               nf90_float, &
                               dimids = dimids_xtrack_step_levels,  &
-                              comment = "scattering weights", &
-                              valid_range = [-1e30_r8, 1e30_r8], &
+                              long_name = "scattering weights", &
+                              comment = "vertical profile of scattering weights", &
+                              valid_min = 0.0_r8, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
@@ -174,79 +183,93 @@ contains
                               tg_var_amf_gas_profile, &
                               nf90_float, &
                               dimids = dimids_xtrack_step_levels,  &
-                              comment = "gas profile", &
-                              units = "ppb", &
-                              valid_range = [-1e30_r8, 1e30_r8], &
+                              long_name = "vertical profile of molecule partial column", &
+                              units = "molec/cm^2", &
+                              valid_min = 0.0_r8, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_albedo, &
-                              nf90_double, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "albedo", &
-                              valid_range = [-1e30_r8, 1e30_r8], &
+                              long_name = "surface albedo", &
+                              valid_range = [0.0_r8, 1.0_r8], &
                               attlist = att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_amf_molecule_specific, &
+                              tg_var_amf, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "molecule-specific air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8], &
+                              long_name = "molecule-specific air mass factor (AMF)", &
+                              valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_diagnostic_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "air mass factor diagnostic flag ", &
                               comment = "diagnostic flag for molecule-specific air mass factor (AMF)", &
-                              valid_range = [-2.0_r8, 13127.0_r8], &
-                              attlist = att_coord)
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_amf_geometric, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "geometric air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8], &
-                              attlist = att_coord)
+                              valid_range = [0.0_r8, 2.0_r8], &
+                              fillvalue = -1.0_r8, &
+                              attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_fraction, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "adjusted cloud fraction", &
                               comment = "adjusted cloud fraction for AMF computation", &
-                              valid_range = [0.0_r8, 1e30_r8], &
+                              valid_range = [0.0_r8, 1.0_r8], &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "adjusted cloud pressure", &
                               comment = "adjusted cloud pressure for AMF computation", &
+                              units = "hPa", &
                               valid_range = [0.0_r8, 1e30_r8], &
                               attlist = att_coord)
     IF (yn_stratrop) THEN
        call tiof_varlist_append (varlist, errstat, &
-                              tg_var_amf_molecule_tropospheric, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "molecule-specific tropospheric air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8], &
-                              fillvalue = fill_float, &
-                              attlist = att_coord)
+                                 tg_var_amf_molecule_tropospheric, &
+                                 nf90_float, &
+                                 dimids = dimids_xtrack_step,  &
+                                 long_name = "tropospheric air mass factor", &
+                                 comment = "molecule-specific tropospheric air mass factor (AMF)", &
+                                 valid_range = [0.0_r8, 1e30_r8], &
+                                 fillvalue = fill_float, &
+                                 attlist = att_coord)
        call tiof_varlist_append (varlist, errstat, &
-                              tg_var_amf_molecule_stratospheric, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "molecule-specific stratospheric air mass factor (AMF)", &
-                              valid_range = [0.0_r8, 1e30_r8], &
-                              fillvalue = fill_float, &
-                              attlist = att_coord)
+                                 tg_var_amf_molecule_stratospheric, &
+                                 nf90_float, &
+                                 dimids = dimids_xtrack_step,  &
+                                 long_name = "stratospheric air mass factor", &
+                                 comment = "molecule-specific stratospheric air mass factor (AMF)", &
+                                 valid_range = [0.0_r8, 1e30_r8], &
+                                 fillvalue = fill_float, &
+                                 attlist = att_coord)
     END IF
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
+
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_amf_error, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "air mass factor uncertainty", &
+                              comment = "molecule-specific air mass factor (AMF) uncertainty", &
+                              valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
+    call tiof_def_vars (obj, varlist_supp, errstat)
+    call tiof_varlist_free (varlist_supp)
+
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_amf_diag)
 
   end subroutine append_amf_vars
 
@@ -301,7 +324,7 @@ contains
                               tg_var_radfit_iteration_count, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "radiance fit iteration count", &
+                              long_name = "radiance fit iteration count", &
                               valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short, &
                               attlist = att_coord)
@@ -314,7 +337,7 @@ contains
                               tg_var_radfit_params, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
-                              comment = "fit parameter", &
+                              long_name = "radiance fit parameter", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -324,7 +347,7 @@ contains
                               tg_var_radfit_errors, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
-                              comment = "fit parameter uncertainty", &
+                              long_name = "radiance fit parameter uncertainty", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -334,7 +357,7 @@ contains
                               tg_var_radfit_correl, &
                               nf90_double, &
                               dimids = dimids_var_xtrack_step, &
-                              comment = "fit parameter correlation", &
+                              long_name = "radiance fit parameter correlation", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -349,7 +372,7 @@ contains
                               tg_var_radfit_measured_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
-                              comment = "measured spectrum", &
+                              long_name = "measured radiance spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -359,7 +382,7 @@ contains
                               tg_var_radfit_measured_wavelengths, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
-                              comment = "measured wavelength", &
+                              long_name = "measured radiance wavelength", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -369,7 +392,7 @@ contains
                               tg_var_radfit_model_spectrum, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
-                              comment = "model spectrum", &
+                              long_name = "model radiance spectrum", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -379,7 +402,7 @@ contains
                               tg_var_radfit_weights, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
-                              comment = "spectrum fit weights", &
+                              long_name = "radiance spectrum fit weights", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -389,7 +412,7 @@ contains
                               tg_var_radfit_residuals, &
                               nf90_double, &
                               dimids = dimids_commwvl_xtrack_step, &
-                              comment = "spectrum fit residuals", &
+                              long_name = "radiance spectrum fit residuals", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -408,6 +431,7 @@ contains
                               tg_var_refspec, &
                               nf90_double, &
                               dimids = dimids_refwavl_xtrack_refspec, &
+                              long_name = "reference spectrum", &
                               comment = "reference spectra used in the fitting process", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
@@ -418,7 +442,7 @@ contains
                               tg_var_refspec_wavelength, &
                               nf90_double, &
                               dimids = dimids_refwavl_xtrack, &
-                              comment = "reference spectra wavelengths", &
+                              comment = "reference spectrum wavelengths", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               fillvalue = fill_double, &
                               deflate_level = deflate_level, &
@@ -427,7 +451,7 @@ contains
                               tg_var_refspec_norm, &
                               nf90_double, &
                               dimids = [dimids_refwavl_xtrack_refspec(3) ], &
-                              comment = "reference spectra normalization factors", &
+                              comment = "reference spectrum normalization factors", &
                               valid_range=[-1e30_r8, 1e30_r8], &
                               deflate_level = deflate_level, &
                               shuffle = shuffle)
@@ -445,7 +469,9 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist, varlist_geo, varlist_qa
+    type (tiof_varlist_type) :: varlist_supp
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
+    type (tiof_attlist_type) :: att_main_dqf
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
 
@@ -464,46 +490,44 @@ contains
     ! Construct a list of variables with their associated dimension ids
     ! and attributes:
 
-    ! data field variables with optional attribute lists:
+    ! optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
+
+    call tiof_attlist_append (att_main_dqf, errstat, "coordinates", &
+                              att_text = trim(tg_var_longitude) &
+                              //' '//trim(tg_var_latitude))
+    call tiof_attlist_append (att_main_dqf, errstat, "flag_meanings", &
+                              att_text = "normal, suspicious, bad")
+    call tiof_attlist_append (att_main_dqf, errstat, "flag_values", &
+                              att_i4 = [0,1,2])
+
+    ! data field variables with optional attribute lists:
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_column_amount, &
+                              tg_var_vertical_column, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "column amount", &
-                              units = "molec/cm2", &
-                              valid_range = [-1.e30_r8, 1.e30_r8], &
+                              long_name = "vertical column", &
+                              units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
-                              tg_var_column_uncert, &
+                              tg_var_vertical_column_error, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "column amount uncertainty", &
-                              units = "molec/cm2", &
-                              valid_range = [-1.e30_r8, 1.e30_r8], &
+                              long_name = "vertical column uncertainty", &
+                              units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_main_dqf, &
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
-                              comment = "main data quality flag", &
-                              valid_range = [-1.0_r8, 2.0_r8], &
-                              attlist=att_coord)
-    if (yn_refseccor) then
-      call tiof_varlist_append (varlist, errstat, &
-                                tg_var_refseccor_vertical_column, &
-                                nf90_double, &
-                                dimids = dimids_xtrack_step, &
-                                comment = "reference sector corrected vertical_column", &
-                                units = "molec/cm2", &
-                                valid_range = [-1e30_r8, 1e30_r8], &
-                                fillvalue = fill_double, &
-                                attlist=att_coord)
-    endif
+                              long_name = "main data quality flag", &
+                              valid_range = [0.0_r8, 2.0_r8], &
+                              fillvalue = -1.0_r8, &
+                              attlist=att_main_dqf)
     call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_pop_group (obj, errstat)
@@ -511,17 +535,17 @@ contains
 
     call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radfit_rms_residual, &
-                              nf90_double, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "fit rms residual", &
-                              valid_range = [0.0_r8, 1.e30_r8], &
+                              long_name = "radiance fit RMS residual", &
+                              valid_range = [0.0_r8, 0.01_r8], &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radfit_convergence_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "fit convergence flag", &
+                              long_name = "radiance fit convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_coord)
@@ -538,7 +562,7 @@ contains
                               tg_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
-                              comment = "radiance exposure start time", &
+                              long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
                               valid_range = [0.0_r8, 1.e30_r8], &
                               fillvalue = fill_double)
@@ -549,6 +573,7 @@ contains
                               tg_var_latitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "pixel center latitude", &
                               comment = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
@@ -558,6 +583,7 @@ contains
                               tg_var_latitude_bounds, &
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
+                              long_name = "pixel corner latitude", &
                               comment = "latitude at pixel corners (SW,SE,NE,NW)", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
@@ -569,6 +595,7 @@ contains
                               tg_var_longitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "pixel center longitude", &
                               comment = "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
@@ -578,6 +605,7 @@ contains
                               tg_var_longitude_bounds, &
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
+                              long_name = "pixel corner longitude", &
                               comment = "longitude at pixel corners (SW,SE,NE,NW)", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
@@ -587,7 +615,7 @@ contains
                               tg_var_sz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "solar zenith angle at pixel center", &
+                              long_name = "solar zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -596,7 +624,7 @@ contains
                               tg_var_sa_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "solar azimuth angle at pixel center", &
+                              long_name = "solar azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -605,7 +633,7 @@ contains
                               tg_var_vz_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "viewing zenith angle at pixel center", &
+                              long_name = "viewing zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -614,7 +642,7 @@ contains
                               tg_var_va_angle, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "viewing azimuth angle at pixel center", &
+                              long_name = "viewing azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -623,18 +651,9 @@ contains
                               tg_var_relative_azimuth, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "relative azimuth angle at pixel center", &
+                              long_name = "relative azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [-180.0_r8, 180.0_r8], &
-                              fillvalue = fill_float, &
-                              attlist=att_coord)
-    call tiof_varlist_append (varlist_geo, errstat, &
-                              tg_var_surface_pressure, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "surface pressure", &
-                              units = "hPa", &
-                              valid_range = [0.0_r8, 1030.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
     IF (yn_stratrop) THEN
@@ -642,30 +661,73 @@ contains
                               tg_var_tropopause_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "tropopause pressure", &
+                              long_name = "tropopause pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1030.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
     END IF
-    call tiof_varlist_append (varlist_geo, errstat, &
-                              tg_var_terrain_height, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "terrain height", &
-                              units = "m", &
-                              valid_range = [-1000.0_r8, 10000.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist=att_coord)
 
     call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_def_vars (obj, varlist_geo, errstat)
     call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist_geo)
 
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_surface_pressure, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "surface pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1030.0_r8], &
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_terrain_height, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              long_name = "terrain height", &
+                              units = "m", &
+                              valid_range = [-1000.0_r8, 10000.0_r8], &
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_fitted_slant_column, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "fitted slant column", &
+                              units = "molec/cm^2", &
+                              fillvalue = fill_double, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_fitted_slant_column_error, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "fitted slant column uncertainty", &
+                              units = "molec/cm^2", &
+                              fillvalue = fill_double, &
+                              attlist=att_coord)
+    if (yn_refseccor) then
+      call tiof_varlist_append (varlist_supp, errstat, &
+                                tg_var_refsec_corr, &
+                                nf90_double, &
+                                dimids = dimids_xtrack_step, &
+                                long_name = "reference sector correction", &
+                                comment = "reference sector correction based on differences"//&
+                                " between model and retrieval over reference sector", &
+                                units = "molec/cm^2", &
+                                fillvalue = fill_double, &
+                                attlist=att_coord)
+    endif
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_def_vars (obj, varlist_supp, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_varlist_free (varlist_supp)
+
     call tiof_attlist_free (att_coord)
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
+    call tiof_attlist_free (att_main_dqf)
 
   end subroutine append_column_vars
 
@@ -676,7 +738,7 @@ contains
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist, varlist_diag, varlist_qa
+    type (tiof_varlist_type) :: varlist_diag, varlist_qa!, varlist
     integer, dimension(1) :: dimid_xtrack
     integer, dimension(2) :: dimids_refwavl_xtrack
 
@@ -691,28 +753,33 @@ contains
                                 tg_var_solcal_wavelengths, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
-                                comment = "solar wavecal wavelengths", &
+                                units = "nm", &
+                                long_name = "calibrated solar spectrum wavelengths", &
                                 valid_range = [100.0_r8, 1000.0_r8], &
                                 fillvalue = fill_double)
       call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_solcal_residuals, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
-                                comment = "solar wavecal residuals", &
+                                long_name = "solar spectrum residuals", &
+                                comment = "fit residuals from solar spectrum wavelength calibration", &
                                 valid_range = [-1e30_r8, 1e30_r8], &
                                 fillvalue = fill_double)
       call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_radcal_wavelengths, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
-                                comment = "radiance wavecal wavelengths", &
+                                units = "nm", &
+                                long_name = "calibrated radiance wavelengths", &
+                                comment = "fit residuals from radiance wavelength calibration", &
                                 valid_range = [100.0_r8, 1000.0_r8], &
                                 fillvalue = fill_double)
       call tiof_varlist_append (varlist_diag, errstat, &
                                 tg_var_radcal_residuals, &
                                 nf90_double, &
                                 dimids = dimids_refwavl_xtrack,  &
-                                comment = "radiance wavecal residuals", &
+                                long_name = "radiance spectrum residuals", &
+                                comment = "fit residuals from radiance spectrum wavelength calibration", &
                                 valid_range = [-1e30_r8, 1e30_r8], &
                                 fillvalue = fill_double)
 
@@ -727,90 +794,63 @@ contains
                               tg_var_solcal_convergence_flag, &
                               nf90_short, &
                               dimids = dimid_xtrack,  &
-                              comment = "solar wavelength calibration convergence flag", &
+                              long_name = "solar wavelength calibration convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
     call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_radcal_convergence_flag, &
                               nf90_short, &
                               dimids = dimid_xtrack,  &
-                              comment = "radiance wavelength calibration convergence flag", &
+                              long_name = "radiance wavelength calibration convergence flag", &
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short)
-    call tiof_varlist_append (varlist_qa, errstat, &
-                              tg_var_radref_convergence_flag, &
-                              nf90_short, &
-                              dimids = dimid_xtrack,  &
-                              comment = "radiance reference fit convergence flag", &
-                              valid_range = [-10.0_r8, 12344.0_r8], &
-                              fillvalue = fill_short)
-    call tiof_varlist_append (varlist_qa, errstat, &
-                              tg_var_radref_fit_rms, &
-                              nf90_double, &
-                              dimids = dimid_xtrack,  &
-                              comment = "radiance reference fit RMS", &
-                              valid_range = [0.0_r8, 1.e30_r8])
+    !call tiof_varlist_append (varlist_qa, errstat, &
+    !                          tg_var_radref_convergence_flag, &
+    !                          nf90_short, &
+    !                          dimids = dimid_xtrack,  &
+    !                          long_name = "radiance reference fit convergence flag", &
+    !                          valid_range = [-10.0_r8, 12344.0_r8], &
+    !                          fillvalue = fill_short)
+    !call tiof_varlist_append (varlist_qa, errstat, &
+    !                          tg_var_radref_fit_rms, &
+    !                          nf90_double, &
+    !                          dimids = dimid_xtrack,  &
+    !                          long_name = "radiance reference fit RMS", &
+    !                          valid_range = [0.0_r8, 1.e30_r8])
 
     call tiof_push_group (obj, tg_grp_qa_stats, errstat)
     call tiof_def_vars (obj, varlist_qa, errstat)
     call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist_qa)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_radref_column_amount, &
-                              nf90_double, &
-                              dimids = dimid_xtrack, &
-                              comment = "radiance reference fit column amount", &
-                              units = "molec/cm2", &
-                              valid_range = [-1.e30_r8, 1.e30_r8])
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_radref_column_uncert, &
-                              nf90_double, &
-                              dimids = dimid_xtrack,  &
-                              comment = "radiance reference fit column uncert", &
-                              units = "molec/cm2", &
-                              valid_range = [0.0_r8, 1.e30_r8])
-    call tiof_varlist_append (varlist, errstat, &
-                              tg_var_radref_column_xtrfit, &
-                              nf90_double, &
-                              dimids = dimid_xtrack,  &
-                              comment = "radiance reference fit column XTR fit", &
-                              units = "molec/cm2", &
-                              valid_range = [0.0_r8, 1.e30_r8])
+    !call tiof_varlist_append (varlist, errstat, &
+    !                          tg_var_radref_column_amount, &
+    !                          nf90_double, &
+    !                          dimids = dimid_xtrack, &
+    !                          long_name = "radiance reference fit column amount", &
+    !                          units = "molec/cm^2", &
+    !                          valid_range = [-1.e30_r8, 1.e30_r8])
+    !call tiof_varlist_append (varlist, errstat, &
+    !                          tg_var_radref_column_uncert, &
+    !                          nf90_double, &
+    !                          dimids = dimid_xtrack,  &
+    !                          long_name = "radiance reference fit column uncert", &
+    !                          units = "molec/cm^2", &
+    !                          valid_range = [0.0_r8, 1.e30_r8])
+    !call tiof_varlist_append (varlist, errstat, &
+    !                          tg_var_radref_column_xtrfit, &
+    !                          nf90_double, &
+    !                          dimids = dimid_xtrack,  &
+    !                          long_name = "radiance reference fit column XTR fit", &
+    !                          units = "molec/cm^2", &
+    !                          valid_range = [0.0_r8, 1.e30_r8])
 
-    call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_def_vars (obj, varlist, errstat)
-    call tiof_pop_group (obj, errstat)
-    call tiof_varlist_free (varlist)
+    !call tiof_push_group (obj, tg_grp_support_data, errstat)
+    !call tiof_def_vars (obj, varlist, errstat)
+    !call tiof_pop_group (obj, errstat)
+    !call tiof_varlist_free (varlist)
 
   end subroutine append_wavcal_vars
-
-  subroutine append_fit_stats (obj, errstat)
-    implicit none
-
-    type (tiof_file_type), intent(in) :: obj
-    integer, intent(inout) :: errstat
-
-    type (tiof_varlist_type) :: varlist
-
-    if (errstat /= 0) return
-
-    call tiof_varlist_append (varlist, errstat, "num_crosstrack_pixels", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_scan_lines", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_good_input", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_good_output", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_suspect_output", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_bad_output", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_converged", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_failed_convergence", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_exceeded_iterations", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "num_out_of_bounds", nf90_int)
-    call tiof_varlist_append (varlist, errstat, "percent_good_output", nf90_float)
-    call tiof_varlist_append (varlist, errstat, "percent_bad_output", nf90_float)
-    call tiof_varlist_append (varlist, errstat, "percent_suspect_output", nf90_float)
-    call tiof_def_vars (obj, varlist, errstat)
-    call tiof_varlist_free (varlist)
-  end subroutine append_fit_stats
 
   !> Create netCDF format Level 2 product file
   !! @param[in] filename   netCDF output file name
@@ -871,9 +911,9 @@ contains
     call tiof_dimlist_append (dimlist, tg_dim_corner, 4, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
-    call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
     if (yn_diagnostic_run) then
       ! For simplicity, use one dimlist for all groups
+      call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
       call tiof_dimlist_append (dimlist, tg_dim_fitvar, n_fitvar_rad, errstat)
       call tiof_dimlist_append (dimlist, tg_dim_refwavl, nwavel_max, errstat)
       call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
@@ -896,9 +936,6 @@ contains
 
     ! Define variables roughly in order of importance to aid users
     ! viewing the file with an application like ncdump
-    call tiof_push_group (obj, tg_grp_qa_stats, errstat)
-    call append_fit_stats (obj, errstat)
-    call tiof_pop_group (obj, errstat)
 
     call append_column_vars (obj, dimlist, errstat)
     if (errstat /= 0) then
@@ -980,10 +1017,10 @@ contains
     obj => primary_output_file
 
     ! result_vars
-    call tiof_push_group (obj, tg_grp_product, errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_amount, [iline,0], [nblock, nxtrack], &
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_put2d_r8 (obj, tg_var_fitted_slant_column, [iline,0], [nblock, nxtrack], &
                         result_vars % column_amount (1:nxtrack, 0:nblock-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_uncert, [iline,0], [nblock, nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_fitted_slant_column_error, [iline,0], [nblock, nxtrack], &
                         result_vars % column_uncert (1:nxtrack, 0:nblock-1), errstat)
     call tiof_pop_group (obj, errstat)
 
@@ -1056,6 +1093,9 @@ contains
                         input_vars % viewing_azimuth (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_r4 (obj, tg_var_relative_azimuth, [iline,0], [nblock,nxtrack], &
                         relative_azimuth (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     call tiof_pop_group (obj, errstat)
@@ -1088,20 +1128,20 @@ contains
                         result_vars % solcal_convergence_flag (1:nxtrack), errstat)
     call tiof_put1d_i2 (obj, tg_var_radcal_convergence_flag, [0], [nxtrack], &
                         result_vars % radcal_convergence_flag (1:nxtrack), errstat)
-    call tiof_put1d_i2 (obj, tg_var_radref_convergence_flag, [0], [nxtrack], &
-                        result_vars % radref_convergence_flag (1:nxtrack), errstat)
-    call tiof_put1d_r8 (obj, tg_var_radref_fit_rms, [0], [nxtrack], &
-                        result_vars % radref_fit_rms (1:nxtrack), errstat)
+    !call tiof_put1d_i2 (obj, tg_var_radref_convergence_flag, [0], [nxtrack], &
+    !                    result_vars % radref_convergence_flag (1:nxtrack), errstat)
+    !call tiof_put1d_r8 (obj, tg_var_radref_fit_rms, [0], [nxtrack], &
+    !                    result_vars % radref_fit_rms (1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
 
-    call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_put1d_r8 (obj, tg_var_radref_column_amount, [0], [nxtrack], &
-                        result_vars % radref_column_amount (1:nxtrack), errstat)
-    call tiof_put1d_r8 (obj, tg_var_radref_column_uncert, [0], [nxtrack], &
-                        result_vars % radref_column_uncert (1:nxtrack), errstat)
-    call tiof_put1d_r8 (obj, tg_var_radref_column_xtrfit, [0], [nxtrack], &
-                        result_vars % radref_column_xtrfit (1:nxtrack), errstat)
-    call tiof_pop_group (obj, errstat)
+    !call tiof_push_group (obj, tg_grp_support_data, errstat)
+    !call tiof_put1d_r8 (obj, tg_var_radref_column_amount, [0], [nxtrack], &
+    !                    result_vars % radref_column_amount (1:nxtrack), errstat)
+    !call tiof_put1d_r8 (obj, tg_var_radref_column_uncert, [0], [nxtrack], &
+    !                    result_vars % radref_column_uncert (1:nxtrack), errstat)
+    !call tiof_put1d_r8 (obj, tg_var_radref_column_xtrfit, [0], [nxtrack], &
+    !                    result_vars % radref_column_xtrfit (1:nxtrack), errstat)
+    !call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_wavcal_output: failed", errstat)
@@ -1124,25 +1164,29 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
+    type (tiof_attlist_type) :: attlist
     integer :: ncp, nsl
 
     obj => primary_output_file
 
+    call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", att_i4 = [stats % num_crosstrack_pixels])
+    call tiof_attlist_append (attlist, errstat, "num_scan_lines", att_i4 = [stats % num_scan_lines])
+    call tiof_attlist_append (attlist, errstat, "num_good_input", att_i4 = [stats % num_good_input])
+    call tiof_attlist_append (attlist, errstat, "num_good_output", att_i4 = [stats % num_good_output])
+    call tiof_attlist_append (attlist, errstat, "num_suspect_output", att_i4 = [stats % num_suspect_output])
+    call tiof_attlist_append (attlist, errstat, "num_bad_output", att_i4 = [stats % num_bad_output])
+    call tiof_attlist_append (attlist, errstat, "num_converged", att_i4 = [stats % num_converged])
+    call tiof_attlist_append (attlist, errstat, "num_failed_convergence", att_i4 = [stats % num_failed_convergence])
+    call tiof_attlist_append (attlist, errstat, "num_exceeded_iterations", att_i4 = [stats % num_exceeded_iterations])
+    call tiof_attlist_append (attlist, errstat, "num_out_of_bounds", att_i4 = [stats % num_out_of_bounds])
+    call tiof_attlist_append (attlist, errstat, "percent_good_output", att_r4 = [stats % percent_good_output])
+    call tiof_attlist_append (attlist, errstat, "percent_bad_output", att_r4 = [stats % percent_bad_output])
+    call tiof_attlist_append (attlist, errstat, "percent_suspect_output", att_r4 = [stats % percent_suspect_output])
+
     call tiof_push_group (obj, tg_grp_qa_stats, errstat)
-    call tiof_put_i4 (obj, "num_crosstrack_pixels", stats % num_crosstrack_pixels, errstat)
-    call tiof_put_i4 (obj, "num_scan_lines", stats % num_scan_lines, errstat)
-    call tiof_put_i4 (obj, "num_good_input", stats % num_good_input, errstat)
-    call tiof_put_i4 (obj, "num_good_output", stats % num_good_output, errstat)
-    call tiof_put_i4 (obj, "num_suspect_output", stats % num_suspect_output, errstat)
-    call tiof_put_i4 (obj, "num_bad_output", stats % num_bad_output, errstat)
-    call tiof_put_i4 (obj, "num_converged", stats % num_converged, errstat)
-    call tiof_put_i4 (obj, "num_failed_convergence", stats % num_failed_convergence, errstat)
-    call tiof_put_i4 (obj, "num_exceeded_iterations", stats % num_exceeded_iterations, errstat)
-    call tiof_put_i4 (obj, "num_out_of_bounds", stats % num_out_of_bounds, errstat)
-    call tiof_put_r4 (obj, "percent_good_output", stats % percent_good_output, errstat)
-    call tiof_put_r4 (obj, "percent_bad_output", stats % percent_bad_output, errstat)
-    call tiof_put_r4 (obj, "percent_suspect_output", stats % percent_suspect_output, errstat)
+    call tiof_def_atts (obj, attlist, nf90_global, errstat)
     call tiof_pop_group (obj, errstat)
+    call tiof_attlist_free (attlist)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
@@ -1296,9 +1340,7 @@ contains
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_i2 (obj, tg_var_amf_diagnostic_flag, [0,0], [ntimes,nxtrack], &
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_amf_geometric, [0,0], [ntimes,nxtrack], &
-                        amf_corr % amf_geometric (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes,nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_amf, [0,0], [ntimes,nxtrack], &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_stratrop) then
@@ -1319,7 +1361,7 @@ contains
     endif
     call tiof_pop_group (obj, errstat)
 
-    call tiof_push_group (obj, tg_grp_geolocation, errstat)
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_r4 (obj, tg_var_surface_pressure, [0,0], [ntimes,nxtrack], &
                         amf_corr % surface_pressure (1:nxtrack, 0:ntimes-1), errstat)
 
@@ -1327,15 +1369,13 @@ contains
        call tiof_put2d_r4 (obj, tg_var_tropopause_pressure, [0,0], [ntimes,nxtrack], &
                            amf_corr % tropopause_pressure (1:nxtrack, 0:ntimes-1), errstat)
     end if
-       
+
     call tiof_pop_group (obj, errstat)
 
-    ! Note that we're over-writing the column amount variable in the file
-    ! (to which we previously wrote the slant column values).
     call tiof_push_group (obj, tg_grp_product, errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes,nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_vertical_column, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_put2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes,nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_vertical_column_error, [0,0], [ntimes,nxtrack], &
                         amf_corr_column_uncertainty (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_pop_group (obj, errstat)
 
@@ -1453,7 +1493,7 @@ contains
     obj => primary_output_file
 
     call tiof_push_group (obj, tg_grp_product, errstat)
-    call tiof_put2d_r8 (obj, tg_var_refseccor_vertical_column, [0,0], [ntimes, nxtrack], &
+    call tiof_put2d_r8 (obj, tg_var_refsec_corr, [0,0], [ntimes, nxtrack], &
                         column(1:nxtrack, 0:ntimes-1), errstat)
     call tiof_pop_group (obj, errstat)
 
@@ -1722,7 +1762,6 @@ contains
 
     thgt(1:nxtrack,1:ntimes) = real(i2_thgt(1:nxtrack,1:ntimes),kind=r4)
 
-
   end subroutine read_geofields
 
   !> Read fit results from Level 2 product file
@@ -1752,9 +1791,9 @@ contains
 
     obj => primary_output_file
 
-    call tiof_push_group (obj, tg_grp_product, errstat)
-    call tiof_get2d_r8 (obj, tg_var_column_amount, [0,0], [ntimes, nxtrack], col(1:nxtrack,1:ntimes), errstat)
-    call tiof_get2d_r8 (obj, tg_var_column_uncert, [0,0], [ntimes, nxtrack], col_unc(1:nxtrack,1:ntimes), errstat)
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_get2d_r8 (obj, tg_var_fitted_slant_column, [0,0], [ntimes, nxtrack], col(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_fitted_slant_column_error, [0,0], [ntimes, nxtrack], col_unc(1:nxtrack,1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
     call tiof_push_group (obj, tg_grp_qa_stats, errstat)
@@ -1764,7 +1803,7 @@ contains
     call tiof_pop_group (obj, errstat)
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_get2d_r8 (obj, tg_var_amf_molecule_specific, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
+    call tiof_get2d_r8 (obj, tg_var_amf, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
