@@ -550,14 +550,16 @@ contains
   end subroutine append_diagnostic_vars
 
   subroutine append_column_vars (obj, dimlist, errstat)
+    use OMSAO_indices_module, only : pge_no2_idx
     implicit none
 
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist, varlist_geo, varlist_qa
-    type (tiof_varlist_type) :: varlist_supp
+    type (tiof_varlist_type) :: varlist_geo, varlist_qa
+    type (tiof_varlist_type), target :: varlist, varlist_supp
+    type (tiof_varlist_type), pointer :: varlist_with_vertical_column
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     type (tiof_attlist_type) :: att_main_dqf
     integer, dimension(2) :: dimids_xtrack_step
@@ -591,8 +593,17 @@ contains
     call tiof_attlist_append (att_main_dqf, errstat, "flag_values", &
                               att_i4 = [0,1,2])
 
+    ! Separate NO2 contributions from stratosphere/troposphere will be derived in
+    ! post-processing, so the NO2 vertical column goes to the "support data" group.
+    ! For all other molecules, the vertical column goes to the "product" group.
+    if (target_molecule % pge_idx == pge_no2_idx) then
+      varlist_with_vertical_column => varlist_supp
+    else
+      varlist_with_vertical_column => varlist
+    endif
+
     ! data field variables with optional attribute lists:
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_with_vertical_column, errstat, &
                               tg_var_vertical_column, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
@@ -600,7 +611,7 @@ contains
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
-    call tiof_varlist_append (varlist, errstat, &
+    call tiof_varlist_append (varlist_with_vertical_column, errstat, &
                               tg_var_vertical_column_error, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
@@ -608,6 +619,7 @@ contains
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_main_dqf, &
                               nf90_short, &
@@ -750,6 +762,31 @@ contains
     call tiof_varlist_free (varlist_geo)
 
     call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_fitted_slant_column, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = trim(target_molecule % name)//" fitted slant column", &
+                              units = "molec/cm^2", &
+                              fillvalue = fill_double, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_fitted_slant_column_error, &
+                              nf90_double, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = trim(target_molecule % name)//" fitted slant column uncertainty", &
+                              units = "molec/cm^2", &
+                              fillvalue = fill_double, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_terrain_height, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              long_name = "terrain height", &
+                              units = "m", &
+                              valid_range = [-1000.0_r8, 10000.0_r8], &
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_surface_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -769,31 +806,6 @@ contains
                                 fillvalue = fill_float, &
                                 attlist=att_coord)
     END IF
-    call tiof_varlist_append (varlist_supp, errstat, &
-                              tg_var_terrain_height, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step, &
-                              long_name = "terrain height", &
-                              units = "m", &
-                              valid_range = [-1000.0_r8, 10000.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist=att_coord)
-    call tiof_varlist_append (varlist_supp, errstat, &
-                              tg_var_fitted_slant_column, &
-                              nf90_double, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = trim(target_molecule % name)//" fitted slant column", &
-                              units = "molec/cm^2", &
-                              fillvalue = fill_double, &
-                              attlist=att_coord)
-    call tiof_varlist_append (varlist_supp, errstat, &
-                              tg_var_fitted_slant_column_error, &
-                              nf90_double, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = trim(target_molecule % name)//" fitted slant column uncertainty", &
-                              units = "molec/cm^2", &
-                              fillvalue = fill_double, &
-                              attlist=att_coord)
     if (yn_refseccor) then
       call tiof_varlist_append (varlist_supp, errstat, &
                                 tg_var_refsec_corr, &
@@ -1423,6 +1435,7 @@ contains
                                    amf_corr_column, amf_corr_column_uncertainty, &
                                    yn_write_cloud_variables, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
+    use OMSAO_indices_module, only : pge_no2_idx
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes
@@ -1473,7 +1486,14 @@ contains
 
     call tiof_pop_group (obj, errstat)
 
-    call tiof_push_group (obj, tg_grp_product, errstat)
+    ! Separate NO2 contributions from stratosphere/troposphere will be derived in
+    ! post-processing, so the NO2 vertical column goes to the "support data" group.
+    ! For all other molecules, the vertical column goes to the "product" group.
+    if (target_molecule % pge_idx == pge_no2_idx) then
+      call tiof_push_group (obj, tg_grp_support_data, errstat)
+    else
+      call tiof_push_group (obj, tg_grp_product, errstat)
+    endif
     call tiof_put2d_r8 (obj, tg_var_vertical_column, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, tg_var_vertical_column_error, [0,0], [ntimes,nxtrack], &

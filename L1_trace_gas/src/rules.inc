@@ -89,6 +89,7 @@ $(ODIR)/he5_output_tools.o: $(SDIR)/he5_output_tools.f90 \
 $(ODIR)/output_tools.o: $(SDIR)/output_tools.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/omi_pge_fitting_aux.o \
+  $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
