@@ -37,7 +37,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
-  use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
+  !use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
   IMPLICIT NONE
 
   ! ---------------

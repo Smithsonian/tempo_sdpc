@@ -162,7 +162,6 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_pge_fitting_process.f90 -o $(ODIR)/omi_pge_fitting_process.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_postprocessing.o: $(SDIR)/omi_pge_postprocessing.f90 \
   $(ODIR)/ctrlvars.o \
-  $(ODIR)/datafields.o \
   $(ODIR)/he5_output_tools.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_read_l1b_data.o \

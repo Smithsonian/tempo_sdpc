@@ -249,7 +249,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval
     USE OMSAO_variables_module,  ONLY: fitvar_cal, fitvar_cal_saved, &
-      fitvar_sol_init, & !sol_wav_avg, 
+      fitvar_sol_init, & !sol_wav_avg,
       max_itnum_sol, up_sunbnd, lo_sunbnd
     use ctrlvars, only: yn_newshift
     USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, sgk_idx, &
@@ -337,7 +337,7 @@ CONTAINS
       ! JCH: <comment-start>
       !      This is the assignment from the old code.
       !      I think 'sol_wav_avg' was supposed to be 'avg_sol_wav'.  When
-      !      I made that replacement, the computed numbers didn't change, so I 
+      !      I made that replacement, the computed numbers didn't change, so I
       !      got rid of the reference to 'sol_wav_avg' from OMSAO_variables_module.
       !sol_wvl(1:n_irradwvl) = &
       !  (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
@@ -346,14 +346,14 @@ CONTAINS
       ! JCH: <comment-end>
       sol_wvl(1:n_irradwvl) = &
         (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
-         + avg_sol_wav * fitvar_cal_saved(squ_idx)) &    
+         + avg_sol_wav * fitvar_cal_saved(squ_idx)) &
         / (1.0_r8 + fitvar_cal_saved(squ_idx))
     endif
     ! ------------------------------------------------
     !  Save the slit function parameters for later use
     ! in the undersampling correction.
     ! ------------------------------------------------
-    hw1e   = fitvar_cal(hwe_idx)  
+    hw1e   = fitvar_cal(hwe_idx)
     e_asym = fitvar_cal(asy_idx)
     k      = fitvar_cal(sgk_idx)
 
@@ -404,7 +404,6 @@ CONTAINS
     real (kind=r8), dimension(:), allocatable :: adj_wvl, adj_spec, adj_wgts, adj_resid
     integer (kind=i4) :: adj_len
     integer locerr
-    integer, parameter :: unit_solar_wavcal = 20
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -421,15 +420,6 @@ CONTAINS
     ! ---------------------------------------------------------------
     ! Loop for solar wavelength calibration and slit function fitting
     ! ---------------------------------------------------------------
-
-    if (yn_diagnostic_run) then
-      open (unit=unit_solar_wavcal, file='diag.solar_wavcal', iostat=locerrstat)
-      if (locerrstat /= 0) then
-        call tell_error (tell_io_open_error, &
-                         "error opening diag.solar_wavcal", errstat)
-        return
-      endif
-    endif
 
     if (yn_diagnostic_run) then
       allocate (save_wvl(nwavel_max, nxtrack_max), &
@@ -541,10 +531,6 @@ CONTAINS
       Irr_Data%avg_wavelengths(ipix) = curr_sol_wav_avg
       omi_irradiance_wght(1:n_irradwvl,ipix) = adj_wgts(1:n_irradwvl)
 
-      if (yn_diagnostic_run) then
-        write(unit_solar_wavcal,'(i4,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
-      endif
-
       addmsg = ''
       WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') &
            'SOLAR FIT          #', ipix, &
@@ -563,10 +549,6 @@ CONTAINS
 
     END DO XtrackSolCal
     !errstat = MAX ( errstat, locerrstat )
-
-    if (yn_diagnostic_run) then
-      close (unit_solar_wavcal)
-    endif
 
     ! ----------------------------------------------------------------------------
     ! After the successful wavelength calibration of all cross-track solar spectra,

@@ -42,7 +42,7 @@ contains
 
     ! elsunc interprets the following return values of ctrl:
     integer (kind=i4), parameter :: UNCOMPUTABLE = -1
-    integer (kind=i4), parameter :: UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT = -11 ! Why? I have no idea.
+    !integer (kind=i4), parameter :: UNCOMPUTABLE_IN_A_DIFFERENT_CONTEXT = -11 ! Why? I have no idea.
     integer (kind=i4), parameter :: JACOBIAN_NOT_AVAILABLE = 0
 
     elsunc_ctrl_input = elsunc_ctrl

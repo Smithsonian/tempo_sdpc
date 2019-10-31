@@ -20,7 +20,7 @@ CONTAINS
       NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
-      database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg, 
+      database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg,
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
     use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp, yn_do_he5_output
@@ -79,7 +79,6 @@ CONTAINS
     integer (kind=i4) :: adj_num, adj_num_allocated, adj_num_max
     integer (kind=i4) :: n_irradwvl
     integer :: locerr
-    integer, parameter :: unit_xtrack_wavcal = 20
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -103,16 +102,6 @@ CONTAINS
     !n_comm_wvl_out = MAXVAL ( omi_nwav_radref(first_pix:last_pix) )
     !IF ( MAXVAL(omi_nwav_rad(first_pix:last_pix,0)) > n_comm_wvl_out ) &
     !  n_comm_wvl_out = MAXVAL(omi_nwav_rad(first_pix:last_pix,0))
-
-    if (yn_diagnostic_run) then
-      open (unit=unit_xtrack_wavcal, file='diag.xtrack_wavcal', &
-           iostat=locerrstat)
-      if (locerrstat /= 0) then
-        call tell_error (tell_io_open_error, &
-                         "error opening diag.xtrack_wavcal", errstat)
-        return
-      endif
-    endif
 
     if (yn_diagnostic_run) then
       allocate (save_wvl(nwavel_max,nxtrack), &
@@ -291,10 +280,6 @@ CONTAINS
       END IF
       ! ------------------------------------------------------------------------------------
 
-      if (yn_diagnostic_run) then
-        write(unit_xtrack_wavcal,'(i4,2x,1pe12.5)')ipix, fitvar_cal(shi_idx)
-      endif
-
       addmsg = ''
       WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
         ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
@@ -412,14 +397,10 @@ CONTAINS
 
     END DO XTrackWavCal
 
-    if (yn_diagnostic_run) then
-      close (unit_xtrack_wavcal)
-    endif
-
     ! CCM Write splined/convolved databases if necessary
     IF( yn_diagnostic_run .and. yn_do_he5_output) THEN
       ! omi_database maybe omi_database_wvl?
-      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), & 
+      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &
                                   omi_database_wvl(1:adj_num, 1:nxtrack_max), &
                                   max_rs_idx, adj_num, nxtrack_max, errstat)
       ! JCH:  I don't think adj_num should be used to define the subarrays that
@@ -500,18 +481,18 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
-      wvl_idx, spc_idx, shi_idx, &
+      wvl_idx, spc_idx, & ! shi_idx,
       o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, sgk_idx, &
       pge_o3_idx, & !pge_hcho_idx, &
       solar_idx, radfit_idx, & !pge_gly_idx, &
-      max_rs_idx,   max_calfit_idx,hcho_idx,mxs_idx,lbe_idx
+      max_rs_idx! , mxs_idx ,max_calfit_idx, lbe_idx, hcho_idx,
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
-      database, curr_sol_spec, n_rad_wvl, & ! sol_wav_avg, 
+      database, curr_sol_spec, n_rad_wvl, & ! sol_wav_avg,
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor,    &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
-      szamax, n_fincol_idx, curr_xtrack_pixnum, fitvar_rad
+      szamax, n_fincol_idx, curr_xtrack_pixnum!, fitvar_rad
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_prefitcol_module, ONLY: prefit_type, copy_prefit_values
     USE OMSAO_omidata_module, ONLY: omi_database_wvl, omi_radiance_wavl, &
@@ -525,7 +506,6 @@ CONTAINS
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
-    use ctrlvars, only : yn_diagnostic_run
 
     IMPLICIT NONE
 
@@ -567,7 +547,6 @@ CONTAINS
     real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts
     integer (kind=i4) :: adj_num, adj_num_allocated
     integer :: locerr
-    integer, parameter :: unit_radiance_wavcal = 21
 
     ! CCM Array for holding fitted spectra
     REAL    (KIND=r8), DIMENSION (fitspc_out_dim0)   :: fitspc
@@ -578,16 +557,6 @@ CONTAINS
 
     if (errstat /= 0) return
     locerrstat = 0 ! pge_errstat_ok
-
-    if (yn_diagnostic_run) then
-      open (unit=unit_radiance_wavcal, file='diag.radiance_wavcal', access='append', &
-           iostat=locerrstat)
-      if (locerrstat /= 0) then
-        call tell_error (tell_io_open_error, &
-                         "error opening diag.radiance_wavcal", errstat)
-        return
-      endif
-    endif
 
     !!!fitvar_rad_saved = fitvar_rad_init
 
@@ -726,11 +695,6 @@ CONTAINS
 
         IF ( is_bad_pixel ) CYCLE
 
-        if (yn_diagnostic_run) then
-          write(unit_radiance_wavcal,'(i4,2x,i4, 2(2x,1pe12.5))')iloop, &
-            ipix, fitvar_rad(shi_idx), fitvar_rad(max_calfit_idx + (hcho_idx-1)*mxs_idx + lbe_idx)
-        endif
-
       END IF
 
       ! -----------------------------------
@@ -757,10 +721,6 @@ CONTAINS
     END DO XTrackPix
 
     !errstat = MAX ( errstat, locerrstat )
-
-    if (yn_diagnostic_run) then
-      close (unit_radiance_wavcal)
-    endif
 
     RETURN
   END SUBROUTINE xtrack_radiance_fitting_loop
