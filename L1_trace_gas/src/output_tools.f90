@@ -36,7 +36,63 @@ module output_tools
     fill_float = -1.0e30, &
     fill_double = -1.0e30_r8
 
+  integer, private, parameter :: molname_len = 33
+  type, private :: molname_type
+    character (len=molname_len) :: name, name_sans_spaces
+    integer :: pge_idx
+  end type
+  type (molname_type) :: target_molecule
+
 contains
+
+  subroutine set_molecule_name (pge_idx, errstat)
+    implicit none
+    integer, intent(in) :: pge_idx
+    integer, intent(inout) :: errstat
+
+    ! index range matches pge_idx definitions from OMSAO_indices_module.f90
+    integer, parameter :: beg_idx=10, end_idx=22
+    character (len=molname_len), dimension(beg_idx:end_idx), &
+      parameter :: mol_names = (/ &
+      'chlorine dioxide                ' &
+    , 'bromine monoxide                ' &
+    , 'formaldehyde                    ' &
+    , 'ozone                           ' &
+    , 'nitrogen dioxide                ' &
+    , 'sulfur dioxide                  ' &
+    , 'glyoxal                         ' &
+    , 'iodine monoxide                 ' &
+    , 'water vapor                     ' &
+    , 'nitrous acid                    ' &
+    , 'collision induced oxygen complex' &
+    , 'liquid water                    ' &
+    , 'nitrogen dioxide                ' &
+      /)
+    character (len=128) :: msg
+    character (len=molname_len) :: name_sans_spaces
+    integer :: i, n
+
+    if (errstat /= 0) return
+
+    if (pge_idx < beg_idx .or. end_idx < pge_idx) then
+      write (msg, *)'molecule_name: unsupported value pge_idx=',pge_idx
+      call tell_error (tell_runtime_error, msg, errstat)
+      return
+    endif
+
+    name_sans_spaces = mol_names (pge_idx)
+    n = len_trim(name_sans_spaces)
+    do i = 1, n
+      if (name_sans_spaces(i:i) == ' ') then
+        name_sans_spaces(i:i) = '_'
+      endif
+    enddo
+
+    target_molecule % pge_idx = pge_idx
+    target_molecule % name = mol_names (pge_idx)
+    target_molecule % name_sans_spaces = name_sans_spaces
+
+  end subroutine
 
   subroutine write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
     implicit none
@@ -183,7 +239,7 @@ contains
                               tg_var_amf_gas_profile, &
                               nf90_float, &
                               dimids = dimids_xtrack_step_levels,  &
-                              long_name = "vertical profile of molecule partial column", &
+                              long_name = "vertical profile of "//trim(target_molecule % name)//" partial column", &
                               units = "molec/cm^2", &
                               valid_min = 0.0_r8, &
                               deflate_level = deflate_level, &
@@ -202,7 +258,7 @@ contains
                               tg_var_amf, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "molecule-specific air mass factor (AMF)", &
+                              long_name = trim(target_molecule % name)//" air mass factor (AMF)", &
                               valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
@@ -210,8 +266,8 @@ contains
                               tg_var_amf_diagnostic_flag, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "air mass factor diagnostic flag ", &
-                              comment = "diagnostic flag for molecule-specific air mass factor (AMF)", &
+                              long_name = trim(target_molecule % name)//" air mass factor diagnostic flag ", &
+                              comment = "diagnostic flag for "//trim(target_molecule % name)//" air mass factor (AMF)", &
                               valid_range = [0.0_r8, 2.0_r8], &
                               fillvalue = -1.0_r8, &
                               attlist = att_amf_diag)
@@ -237,8 +293,8 @@ contains
                                  tg_var_amf_molecule_tropospheric, &
                                  nf90_float, &
                                  dimids = dimids_xtrack_step,  &
-                                 long_name = "tropospheric air mass factor", &
-                                 comment = "molecule-specific tropospheric air mass factor (AMF)", &
+                                 long_name = trim(target_molecule % name)//" tropospheric air mass factor", &
+                                 comment = trim(target_molecule % name)//" tropospheric air mass factor (AMF)", &
                                  valid_range = [0.0_r8, 1e30_r8], &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
@@ -246,8 +302,8 @@ contains
                                  tg_var_amf_molecule_stratospheric, &
                                  nf90_float, &
                                  dimids = dimids_xtrack_step,  &
-                                 long_name = "stratospheric air mass factor", &
-                                 comment = "molecule-specific stratospheric air mass factor (AMF)", &
+                                 long_name = trim(target_molecule % name)//" stratospheric air mass factor", &
+                                 comment = trim(target_molecule % name)//" stratospheric air mass factor (AMF)", &
                                  valid_range = [0.0_r8, 1e30_r8], &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
@@ -260,8 +316,8 @@ contains
                               tg_var_amf_error, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "air mass factor uncertainty", &
-                              comment = "molecule-specific air mass factor (AMF) uncertainty", &
+                              long_name = trim(target_molecule % name)//" air mass factor uncertainty", &
+                              comment = trim(target_molecule % name)//" air mass factor (AMF) uncertainty", &
                               valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
@@ -508,7 +564,7 @@ contains
                               tg_var_vertical_column, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "vertical column", &
+                              long_name = trim(target_molecule % name)//" vertical column", &
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
@@ -516,7 +572,7 @@ contains
                               tg_var_vertical_column_error, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "vertical column uncertainty", &
+                              long_name = trim(target_molecule % name)//" vertical column uncertainty", &
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
@@ -656,18 +712,6 @@ contains
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
-    IF (yn_stratrop) THEN
-       call tiof_varlist_append (varlist_geo, errstat, &
-                              tg_var_tropopause_pressure, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = "tropopause pressure", &
-                              units = "hPa", &
-                              valid_range = [0.0_r8, 1030.0_r8], &
-                              fillvalue = fill_float, &
-                              attlist=att_coord)
-    END IF
-
     call tiof_push_group (obj, tg_grp_geolocation, errstat)
     call tiof_def_vars (obj, varlist_geo, errstat)
     call tiof_pop_group (obj, errstat)
@@ -682,6 +726,17 @@ contains
                               valid_range = [0.0_r8, 1030.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
+    IF (yn_stratrop) THEN
+      call tiof_varlist_append (varlist_supp, errstat, &
+                                tg_var_tropopause_pressure, &
+                                nf90_float, &
+                                dimids = dimids_xtrack_step,  &
+                                long_name = "tropopause pressure", &
+                                units = "hPa", &
+                                valid_range = [0.0_r8, 1030.0_r8], &
+                                fillvalue = fill_float, &
+                                attlist=att_coord)
+    END IF
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_terrain_height, &
                               nf90_short, &
@@ -695,7 +750,7 @@ contains
                               tg_var_fitted_slant_column, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "fitted slant column", &
+                              long_name = trim(target_molecule % name)//" fitted slant column", &
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
@@ -703,7 +758,7 @@ contains
                               tg_var_fitted_slant_column_error, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "fitted slant column uncertainty", &
+                              long_name = trim(target_molecule % name)//" fitted slant column uncertainty", &
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
@@ -854,6 +909,7 @@ contains
 
   !> Create netCDF format Level 2 product file
   !! @param[in] filename   netCDF output file name
+  !! @param[in] pge_idx    Index of target molecule [integer]
   !! @param[in] num_steps  Number of scan steps
   !! @param[in] num_xtrack  Number of cross-track pixels
   !! @param[in] num_swlevels  Number of height levels used in AMF climatologies
@@ -862,12 +918,12 @@ contains
   !! @param[in] max_rs_idx  Maximum reference spectrum index
   !! @param[in] n_fitvar_rad  Number of radiance spectrum fit variables
   !! @param[inout]  errstat  Error status variable
-  subroutine create_output_file (filename, num_steps, num_xtrack, num_swlevels, &
+  subroutine create_output_file (filename, pge_idx, num_steps, num_xtrack, num_swlevels, &
                                  n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
                                  errstat)
     implicit none
     character (len=*), intent(in) :: filename
-    integer (kind=i4), intent(in) :: num_steps, num_xtrack, num_swlevels, &
+    integer (kind=i4), intent(in) :: pge_idx, num_steps, num_xtrack, num_swlevels, &
       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad
     integer, intent(inout) :: errstat
 
@@ -877,6 +933,9 @@ contains
     if (errstat /= 0) return
 
     obj => primary_output_file
+
+    call set_molecule_name (pge_idx, errstat)
+    if (errstat /= 0) return
 
     ! Create a file.
     call tiof_create (obj, filename, nf90_clobber, errstat)

@@ -367,7 +367,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   write(logmsg,'(a,i4,a)')'omi_fitting: n_comm_wvl=',n_comm_wvl, &
        ', calling create_output_file: '//trim(l2_filename_netcdf)
   call tell_log (1, logmsg)
-  call create_output_file (l2_filename_netcdf, ntimes_rad, nxtrack_rad, CmETA, &
+  call create_output_file (l2_filename_netcdf, pge_idx, ntimes_rad, nxtrack_rad, CmETA, &
        n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
        errstat)
   if (errstat /= 0) return
