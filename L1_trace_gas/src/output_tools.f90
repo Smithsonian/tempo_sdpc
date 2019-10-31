@@ -29,6 +29,7 @@ module output_tools
     read_geofields, read_column_results, read_cloud_params
 
   type (tiof_file_type), private, save, target :: primary_output_file
+  type (tiof_file_type), private, save, target :: diagnostic_output_file
 
   ! using fill values from the original code simplifies diffing output files
   real (kind=8), private, parameter :: &
@@ -223,7 +224,7 @@ contains
     chunksizes(1) = min(dimsizes_xtrack_step_levels(1), 128)  ! xtrack dimension
     chunksizes(2) = min(dimsizes_xtrack_step_levels(2), 128)  ! step dimension
     chunksizes(3) = dimsizes_xtrack_step_levels(3)            ! level dimension
-    ! FIXME - choose more optimal chunk sizes
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_scattering_weights, &
                               nf90_float, &
@@ -337,7 +338,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    integer, dimension(1) :: dimid_xtrack
     integer, dimension(2) :: dimids_xtrack_step, dimids_refwavl_xtrack
     integer, dimension(3) :: dimids_var_xtrack_step, dimsizes_var_xtrack_step
     integer, dimension(3) :: dimids_commwvl_xtrack_step, dimsizes_commwvl_xtrack_step
@@ -349,6 +350,7 @@ contains
     if (errstat /= 0) return
 
     ! lookup dimids for relevant array shapes
+    call tiof_dimlist_lookup (dimlist, [tg_dim_xtrack], dimid_xtrack, errstat)
     call tiof_dimlist_lookup (dimlist, &
                               [tg_dim_xtrack, tg_dim_step], &
                               dimids_xtrack_step, &
@@ -370,25 +372,53 @@ contains
                               dimids_refwavl_xtrack, &
                               errstat)
 
-    ! coordinates for 2D variables
-    call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
-                              //' '//trim(tg_var_latitude))
-
     ! append diagnostic variables
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_solcal_wavelengths, &
+                              nf90_double, &
+                              dimids = dimids_refwavl_xtrack,  &
+                              units = "nm", &
+                              long_name = "calibrated solar spectrum wavelengths", &
+                              valid_range = [100.0_r8, 1000.0_r8], &
+                              fillvalue = fill_double)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_solcal_residuals, &
+                              nf90_double, &
+                              dimids = dimids_refwavl_xtrack,  &
+                              long_name = "solar spectrum residuals", &
+                              comment = "fit residuals from solar spectrum wavelength calibration", &
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radcal_wavelengths, &
+                              nf90_double, &
+                              dimids = dimids_refwavl_xtrack,  &
+                              units = "nm", &
+                              long_name = "calibrated radiance wavelengths", &
+                              comment = "fit residuals from radiance wavelength calibration", &
+                              valid_range = [100.0_r8, 1000.0_r8], &
+                              fillvalue = fill_double)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_radcal_residuals, &
+                              nf90_double, &
+                              dimids = dimids_refwavl_xtrack,  &
+                              long_name = "radiance spectrum residuals", &
+                              comment = "fit residuals from radiance spectrum wavelength calibration", &
+                              valid_range = [-1e30_r8, 1e30_r8], &
+                              fillvalue = fill_double)
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radfit_iteration_count, &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "radiance fit iteration count", &
                               valid_range = [0.0_r8, 32767.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist = att_coord)
+                              fillvalue = fill_short)
 
-    chunksizes(1) = dimsizes_var_xtrack_step(1)  ! var dimension
-    chunksizes(2) = dimsizes_var_xtrack_step(2)  ! xtrack dimension
-    chunksizes(3) = 1                            ! step dimension
-    ! FIXME - choose more optimal chunk sizes
+    chunksizes(1) = dimsizes_var_xtrack_step(1)           ! var dimension
+    chunksizes(2) = min(dimsizes_var_xtrack_step(2),128)  ! xtrack dimension
+    chunksizes(3) = 1                                     ! step dimension
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radfit_params, &
                               nf90_double, &
@@ -421,9 +451,9 @@ contains
                               chunksizes = chunksizes)
 
     chunksizes(1) = dimsizes_commwvl_xtrack_step(1)            ! wavelength dimension
-    chunksizes(2) = min(dimsizes_commwvl_xtrack_step(2),1024)  ! xtrack dimension
+    chunksizes(2) = min(dimsizes_commwvl_xtrack_step(2),128)   ! xtrack dimension
     chunksizes(3) = 1                                          ! step dimension
-    ! FIXME - choose more optimal chunk sizes
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radfit_measured_spectrum, &
                               nf90_double, &
@@ -480,9 +510,9 @@ contains
                               dimids = [dimids_var_xtrack_step(1)])
 
     chunksizes(1) = dimsizes_refwavl_xtrack_refspec(1)              ! wavelength dimension
-    chunksizes(2) = min(dimsizes_refwavl_xtrack_refspec(2), 1024)   ! xtrack dimension
+    chunksizes(2) = min(dimsizes_refwavl_xtrack_refspec(2), 128)    ! xtrack dimension
     chunksizes(3) = 1                                               ! refspec dimension
-    ! FIXME - choose more optimal chunk sizes
+
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_refspec, &
                               nf90_double, &
@@ -514,6 +544,8 @@ contains
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
+
+    call append_common_mode_vars (obj, dimlist, errstat)
 
   end subroutine append_diagnostic_vars
 
@@ -793,7 +825,7 @@ contains
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
-    type (tiof_varlist_type) :: varlist_diag, varlist_qa!, varlist
+    type (tiof_varlist_type) :: varlist_qa
     integer, dimension(1) :: dimid_xtrack
     integer, dimension(2) :: dimids_refwavl_xtrack
 
@@ -802,48 +834,6 @@ contains
                               [tg_dim_refwavl, tg_dim_xtrack], &
                               dimids_refwavl_xtrack, &
                               errstat)
-
-    if (yn_diagnostic_run) then
-      call tiof_varlist_append (varlist_diag, errstat, &
-                                tg_var_solcal_wavelengths, &
-                                nf90_double, &
-                                dimids = dimids_refwavl_xtrack,  &
-                                units = "nm", &
-                                long_name = "calibrated solar spectrum wavelengths", &
-                                valid_range = [100.0_r8, 1000.0_r8], &
-                                fillvalue = fill_double)
-      call tiof_varlist_append (varlist_diag, errstat, &
-                                tg_var_solcal_residuals, &
-                                nf90_double, &
-                                dimids = dimids_refwavl_xtrack,  &
-                                long_name = "solar spectrum residuals", &
-                                comment = "fit residuals from solar spectrum wavelength calibration", &
-                                valid_range = [-1e30_r8, 1e30_r8], &
-                                fillvalue = fill_double)
-      call tiof_varlist_append (varlist_diag, errstat, &
-                                tg_var_radcal_wavelengths, &
-                                nf90_double, &
-                                dimids = dimids_refwavl_xtrack,  &
-                                units = "nm", &
-                                long_name = "calibrated radiance wavelengths", &
-                                comment = "fit residuals from radiance wavelength calibration", &
-                                valid_range = [100.0_r8, 1000.0_r8], &
-                                fillvalue = fill_double)
-      call tiof_varlist_append (varlist_diag, errstat, &
-                                tg_var_radcal_residuals, &
-                                nf90_double, &
-                                dimids = dimids_refwavl_xtrack,  &
-                                long_name = "radiance spectrum residuals", &
-                                comment = "fit residuals from radiance spectrum wavelength calibration", &
-                                valid_range = [-1e30_r8, 1e30_r8], &
-                                fillvalue = fill_double)
-
-      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
-      call tiof_def_vars (obj, varlist_diag, errstat)
-      call tiof_pop_group (obj, errstat)
-      call tiof_varlist_free (varlist_diag)
-      if (errstat /= 0) return
-    endif
 
     call tiof_varlist_append (varlist_qa, errstat, &
                               tg_var_solcal_convergence_flag, &
@@ -907,6 +897,74 @@ contains
 
   end subroutine append_wavcal_vars
 
+  subroutine create_diagnostic_file (product_filename, num_steps, num_xtrack, n_comm_wvl, &
+                                     nwavel_max, max_rs_idx, n_fitvar_rad, &
+                                     errstat)
+    implicit none
+    character (len=*), intent(in) :: product_filename
+    integer (kind=i4), intent(in) :: num_steps, num_xtrack, n_comm_wvl, nwavel_max
+    integer (kind=i4), intent(in) :: max_rs_idx, n_fitvar_rad
+    integer, intent(inout) :: errstat
+
+    integer :: dot_pos
+    character (len=*), parameter :: diag_label = '_diag'
+    character (len=len(product_filename)+len(diag_label)) :: filename
+    type (tiof_file_type), pointer :: obj
+    type (tiof_dimlist_type) :: dimlist
+
+    if (errstat /= 0) return
+
+    obj => diagnostic_output_file
+
+    ! Generate the filename
+    dot_pos = scan (trim(product_filename), '.', back=.true.)
+    filename = product_filename (1:dot_pos-1)//diag_label//'.nc'
+
+    ! Create the file
+    call tiof_create (obj, filename, nf90_clobber, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_diagnostic_file: creating file "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    ! Define a dimension list.
+    call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_fitvar, n_fitvar_rad, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_refwavl, nwavel_max, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
+    call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
+    call tiof_def_dims (obj, dimlist, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_diagnostic_file: defining dimensions in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    call write_coordinate_vars (obj, dimlist, num_steps, num_xtrack, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_diagnostic_file: writing coordinate variables to "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    call append_diagnostic_vars (obj, dimlist, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+                       "create_diagnostic_file: defining diagnostic variables in "//trim(filename), &
+                       errstat)
+      return
+    endif
+
+    call tiof_dimlist_free (dimlist)
+
+  end subroutine
+
   !> Create netCDF format Level 2 product file
   !! @param[in] filename   netCDF output file name
   !! @param[in] pge_idx    Index of target molecule [integer]
@@ -954,9 +1012,6 @@ contains
     call tiof_def_group (obj, tg_grp_support_data, errstat)
     call tiof_def_group (obj, tg_grp_qa_stats, errstat)
     call tiof_def_group (obj, tg_grp_metadata, errstat)
-    if (yn_diagnostic_run) then
-      call tiof_def_group (obj, tg_grp_diagnostic, errstat)
-    endif
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file:  defining groups in "//trim(filename), &
@@ -970,13 +1025,6 @@ contains
     call tiof_dimlist_append (dimlist, tg_dim_corner, 4, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
-    if (yn_diagnostic_run) then
-      ! For simplicity, use one dimlist for all groups
-      call tiof_dimlist_append (dimlist, tg_dim_commwvl, n_comm_wvl, errstat)
-      call tiof_dimlist_append (dimlist, tg_dim_fitvar, n_fitvar_rad, errstat)
-      call tiof_dimlist_append (dimlist, tg_dim_refwavl, nwavel_max, errstat)
-      call tiof_dimlist_append (dimlist, tg_dim_refspec, max_rs_idx, errstat)
-    endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
@@ -1024,20 +1072,14 @@ contains
       return
     endif
 
+    call tiof_dimlist_free (dimlist)
+
     if (yn_diagnostic_run) then
-      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
-      call append_common_mode_vars (obj, dimlist, errstat)
-      call append_diagnostic_vars (obj, dimlist, errstat)
-      call tiof_pop_group (obj, errstat)
-      if (errstat /= 0) then
-        call tell_error (tell_io_write_error, &
-                         "create_output_file: defining diagnostic variables in "//trim(filename), &
-                         errstat)
-        return
-      endif
+      call create_diagnostic_file (filename, num_steps, num_xtrack, n_comm_wvl, &
+                                   nwavel_max, max_rs_idx, n_fitvar_rad, errstat)
+      if (errstat /= 0) return
     endif
 
-    call tiof_dimlist_free (dimlist)
   end subroutine create_output_file
 
   !> Write a block of radiance fit results to Level 2 product file
@@ -1065,7 +1107,7 @@ contains
     type (radfit_diagnostics_type), intent(in) :: radfit_diagnostics
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type), pointer :: obj, obj_diag
     real (kind=r8), dimension(1:n_rad_wvl, 1:nxtrack, 0:nblock-1) :: residuals
     real (kind=r8), dimension(:,:,:), pointer :: waves, meas, model, weights
     real (kind=r4), dimension(1:nxtrack,0:nblock-1) :: relative_azimuth
@@ -1074,6 +1116,7 @@ contains
     if (errstat /= 0) return
 
     obj => primary_output_file
+    obj_diag => null()
 
     ! result_vars
     call tiof_push_group (obj, tg_grp_support_data, errstat)
@@ -1091,17 +1134,17 @@ contains
     call tiof_pop_group (obj, errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
-      call tiof_put2d_i2 (obj, tg_var_radfit_iteration_count, [iline,0], [nblock, nxtrack], &
+      obj_diag => diagnostic_output_file
+      call tiof_put2d_i2 (obj_diag, tg_var_radfit_iteration_count, [iline,0], [nblock, nxtrack], &
                           result_vars % fit_iteration_count (1:nxtrack, 0:nblock-1), errstat)
 
-      call tiof_put3d_r8 (obj, tg_var_radfit_params, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_params, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % params(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_radfit_errors, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_errors, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % errors(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
-      call tiof_put3d_r8 (obj, tg_var_radfit_correl, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_correl, [iline,0,0], [nblock,nxtrack,n_fitvar_rad], &
                           radfit_diagnostics % correl(1:n_fitvar_rad,1:nxtrack,0:nblock-1), &
                           errstat)
 
@@ -1110,19 +1153,18 @@ contains
       waves   => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 3, 0:nblock-1)
       weights => radfit_diagnostics % fitspc(1:n_rad_wvl, 1:nxtrack, 4, 0:nblock-1)
 
-      call tiof_put3d_r8 (obj, tg_var_radfit_model_spectrum, &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_model_spectrum, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], model, errstat)
-      call tiof_put3d_r8 (obj, tg_var_radfit_measured_spectrum, &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_measured_spectrum, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], meas, errstat)
-      call tiof_put3d_r8 (obj, tg_var_radfit_measured_wavelengths, &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_measured_wavelengths, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl],  waves, errstat)
-      call tiof_put3d_r8 (obj, tg_var_radfit_weights, &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_weights, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], weights, errstat)
 
       residuals(:,:,:) = meas - model
-      call tiof_put3d_r8 (obj, tg_var_radfit_residuals, &
+      call tiof_put3d_r8 (obj_diag, tg_var_radfit_residuals, &
                           [iline,0,0], [nblock,nxtrack,n_rad_wvl], residuals, errstat)
-      call tiof_pop_group (obj, errstat)
     endif
 
     ! Compute relative azimuth angle
@@ -1222,11 +1264,12 @@ contains
     integer, intent(in) :: num_params
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type), pointer :: obj, obj_diag
     type (tiof_attlist_type) :: attlist
     integer :: ncp, nsl
 
     obj => primary_output_file
+    obj_diag => null()
 
     call tiof_attlist_append (attlist, errstat, "num_crosstrack_pixels", att_i4 = [stats % num_crosstrack_pixels])
     call tiof_attlist_append (attlist, errstat, "num_scan_lines", att_i4 = [stats % num_scan_lines])
@@ -1264,10 +1307,9 @@ contains
     call tiof_pop_group (obj, errstat)
 
     if (yn_diagnostic_run) then
-      call tiof_push_group (obj, tg_grp_diagnostic, errstat)
-      call tiof_put1d_string (obj, tg_var_radfit_param_names, 0, num_params, &
+      obj_diag => diagnostic_output_file
+      call tiof_put1d_string (obj_diag, tg_var_radfit_param_names, 0, num_params, &
                               param_names(1:num_params), errstat)
-      call tiof_pop_group (obj, errstat)
     endif
 
     if (errstat /= 0) then
@@ -1464,9 +1506,8 @@ contains
 
     if (errstat /= 0) return
 
-    obj => primary_output_file
+    obj => diagnostic_output_file
 
-    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_common_mode_spectrum, [0,0], [nxtrack,n_comm_wvl], &
                         common_mode % refspecdata (1:n_comm_wvl,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_common_mode_wavelengths, [0,0], [nxtrack,n_comm_wvl], &
@@ -1475,7 +1516,6 @@ contains
                         common_mode % ccdpixel (1:nxtrack,1:2), errstat)
     call tiof_put1d_i4 (obj, tg_var_common_mode_count, [0], [nxtrack], &
                         common_mode % refspeccount (1:nxtrack), errstat)
-    call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_common_mode", errstat)
@@ -1509,9 +1549,7 @@ contains
 
     if (errstat /= 0) return
 
-    obj => primary_output_file
-
-    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
+    obj => diagnostic_output_file
 
     ! Loop avoids creation of temporary array that may exceed process address space,
     ! causing a segv.  This can happen, when nxtrack is large, e.g. 2048.
@@ -1524,8 +1562,6 @@ contains
                         db_wvl(1:npts, 1:nxtrack), errstat)
     call tiof_put1d_r8 (obj, tg_var_refspec_norm, [0], [nrefspec], &
                         refspec (1:nrefspec) % normfactor, errstat)
-
-    call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_refspec_database", errstat)
@@ -1581,14 +1617,12 @@ contains
 
     if (errstat /= 0) return
 
-    obj => primary_output_file
+    obj => diagnostic_output_file
 
-    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_solcal_wavelengths, [0,0], [nxtrack, nwaves], &
                         waves (1:nwaves,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_solcal_residuals, [0,0], [nxtrack, nwaves], &
                         resid (1:nwaves,1:nxtrack), errstat)
-    call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_solar_wavecal_diagnostics", errstat)
@@ -1614,14 +1648,12 @@ contains
 
     if (errstat /= 0) return
 
-    obj => primary_output_file
+    obj => diagnostic_output_file
 
-    call tiof_push_group (obj, tg_grp_diagnostic, errstat)
     call tiof_put2d_r8 (obj, tg_var_radcal_wavelengths, [0,0], [nxtrack, nwaves], &
                         waves (1:nwaves,1:nxtrack), errstat)
     call tiof_put2d_r8 (obj, tg_var_radcal_residuals, [0,0], [nxtrack, nwaves], &
                         resid (1:nwaves,1:nxtrack), errstat)
-    call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_radiance_wavecal_diagnostics", errstat)
