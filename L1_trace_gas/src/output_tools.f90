@@ -1776,6 +1776,8 @@ contains
 
     call tiof_pop_group (obj, errstat)
 
+    corners_copied = .true.
+
   end subroutine copy_pixel_corners
 
   subroutine copy_metadata (l1bfile, errstat)
