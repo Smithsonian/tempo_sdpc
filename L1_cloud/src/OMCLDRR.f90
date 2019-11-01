@@ -269,6 +269,7 @@ program OMCLDRR
            "create_output_file: failed", &
            errstat)
     endif
+    call copy_pixel_corners (filename_in_nc, nTimes, nXtrack, errstat)
     call copy_hdr_metadata (filename_in_nc, errstat)
     call label_output_file (tempo_prod_type_cldrr, processing_version, errstat)
     if (errstat /= 0) then

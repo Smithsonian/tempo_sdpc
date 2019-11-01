@@ -4,14 +4,14 @@ module m_write_output_data_tio
   use tio_module
   use tell_module
   use cld_names_module
-  use m_vars, only: fill_value, fill_value_int 
+  use m_vars, only: fill_value, fill_value_int
 
   implicit none
   private
 
   public create_output_file, close_output_file, write_coordinate_vars, &
        write_geo_struct, write_geo_data, write_cloud_struct, &
-       copy_hdr_metadata, label_output_file!, write_cloud_data
+       copy_hdr_metadata, copy_pixel_corners, label_output_file!, write_cloud_data
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -20,7 +20,7 @@ module m_write_output_data_tio
        fill_double=fill_value, fill_short=fill_value_int, &
        fill_int=fill_value_int
 
-contains 
+contains
 
   !>Write coordinate variables into L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -108,6 +108,74 @@ contains
 
   end subroutine write_coordinate_vars
 
+  subroutine copy_pixel_corners (l1bfile, num_steps, num_xtrack, errstat)
+    use m_vars, only: nc_swathname
+    implicit none
+    character (len=*), intent(in) :: l1bfile
+    integer (kind=4), intent(in) :: num_steps, num_xtrack
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+    integer, dimension(num_steps) :: step_indices
+    real (kind=4), dimension(4,1:num_xtrack,1:num_steps) :: tmp
+
+    if (errstat /= 0) return
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+                       "copy_pixel_corners: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_get1d_i4 (l1b, cld_dim_step, [0], [num_steps], step_indices, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+                       "copy_pixel_corners: reading step indices from file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    ! use pixel corners associated with the radiances being fitted
+    call tiof_push_group (l1b, trim(nc_swathname), errstat)
+
+    call tiof_get3d_r4 (l1b, cld_var_latitude_bounds, [0,0,0], [num_steps, num_xtrack, 4], &
+                        tmp(1:4,1:num_xtrack,1:num_steps), errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+                       "copy_pixel_corners: reading latitude bounds from file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    obj => primary_output_file
+
+    ! copy mirror step indices from input radiance file
+    call tiof_push_group (obj, "/", errstat)
+    call tiof_put1d_i4 (obj, cld_dim_step, [0], [num_steps], step_indices, errstat)
+    call tiof_pop_group (obj, errstat)
+
+    call tiof_push_group (obj, cld_grp_geolocation, errstat)
+    call tiof_put3d_r4 (obj, cld_var_latitude_bounds, [0,0,0], [num_steps, num_xtrack, 4], &
+                        tmp(1:4,1:num_xtrack,1:num_steps), errstat)
+    call tiof_get3d_r4 (l1b, cld_var_longitude_bounds, [0,0,0], [num_steps, num_xtrack, 4], &
+                        tmp(1:4,1:num_xtrack,1:num_steps), errstat)
+    call tiof_put3d_r4 (obj, cld_var_longitude_bounds, [0,0,0], [num_steps, num_xtrack, 4], &
+                        tmp(1:4,1:num_xtrack,1:num_steps), errstat)
+
+    call tiof_close (l1b, errstat)
+    if (errstat /= 0) then
+      call tiof_pop_group (obj, errstat)
+      call tell_error (tell_io_read_error, "copy_pixel_corners: reading file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_pop_group (obj, errstat)
+
+  end subroutine copy_pixel_corners
 
   !>Top-level subroutine to create and populate an L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -129,9 +197,9 @@ contains
     integer (kind=4), intent(in), optional :: num_wavel
     integer (kind=4), intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj 
+    type (tiof_file_type), pointer :: obj
     type (tiof_dimlist_type) :: dimlist
-    
+
     if (errstat /= 0) return
 
     obj => primary_output_file
@@ -167,6 +235,7 @@ contains
     ! define the dimension list
     call tiof_dimlist_append (dimlist, cld_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, cld_dim_xtrack, num_xtrack, errstat)
+    call tiof_dimlist_append (dimlist, cld_dim_corner, 4, errstat)
     if (write_resid) then
       call tiof_dimlist_append (dimlist, cld_dim_channel, num_wavel, errstat)
     endif
@@ -239,7 +308,6 @@ contains
 
   end subroutine create_output_file
 
-
   !>Close L2 Cloud netCDF file
   !-----------------------------------------------------------------------
   !
@@ -251,7 +319,7 @@ contains
     implicit none
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type), pointer :: obj 
+    type (tiof_file_type), pointer :: obj
 
     obj => primary_output_file
 
@@ -261,7 +329,6 @@ contains
     endif
 
   end subroutine close_output_file
-
 
   !> Create the structure for the geolocation data in L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -281,14 +348,16 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_geo
+    type (tiof_attlist_type) :: att_geo, att_latbnd, att_lonbnd
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_wavel_xtrack_step
+    integer, dimension(3) :: dimids_corner_xtrack_step
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
+    character (len=32) :: epoch_buf
 
     if (errstat /= 0) return
 
@@ -296,6 +365,10 @@ contains
     call tiof_dimlist_lookup (dimlist, &
                               [cld_dim_xtrack, cld_dim_step], &
                               dimids_xtrack_step, &
+                              errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              [cld_dim_corner, cld_dim_xtrack, cld_dim_step], &
+                              dimids_corner_xtrack_step, &
                               errstat)
     if (write_resid) then
       call tiof_dimlist_lookup (dimlist, &
@@ -305,11 +378,25 @@ contains
     endif
 
     ! Make a list of variables with their dimension ids and attributes:
+    epoch_buf(:)=''
+    call tiof_mktimestamp_str (0.0_r8, epoch_buf, errstat)
 
     ! Geolocation Fields with optional attribute lists
     call tiof_attlist_append (att_geo, errstat, "coordinates", &
                               att_text = trim(cld_var_longitude) &
                               //' '//trim(cld_var_latitude))
+    call tiof_varlist_append (varlist, errstat, &
+                              cld_var_time, &
+                              nf90_double, &
+                              dimids = [dimids_xtrack_step(2)],  &
+                              comment = "radiance exposure start time", &
+                              units = "seconds since "//trim(epoch_buf), &
+                              valid_range = [0.0_r8, 1.0e30_r8], &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              fillvalue = fill_double)
+    call tiof_attlist_append (att_latbnd, errstat, "bounds", &
+                              att_text = cld_var_latitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_latitude, &
                               nf90_float, &
@@ -320,7 +407,9 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_geo)
+                              attlist=att_latbnd)
+    call tiof_attlist_append (att_lonbnd, errstat, "bounds", &
+                              att_text = cld_var_longitude_bounds)
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_longitude, &
                               nf90_float, &
@@ -331,17 +420,29 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_geo)
+                              attlist=att_lonbnd)
     call tiof_varlist_append (varlist, errstat, &
-                              cld_var_time, &
-                              nf90_double, &
-                              dimids = [dimids_xtrack_step(2)],  &
-                              comment = "exposure start time", &
-                              units = "s", &
-                              valid_range = [0.0_r8, 1.0e30_r8], &
+                              cld_var_latitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              long_name = "pixel corner latitude", &
+                              comment = "latitude at pixel corners (SW,SE,NE,NW)", &
+                              units = "degrees_north", &
+                              valid_range = [-90.0_r8, 90.0_r8], &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              fillvalue = fill_double)
+                              shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              cld_var_longitude_bounds, &
+                              nf90_float, &
+                              dimids = dimids_corner_xtrack_step,  &
+                              long_name = "pixel corner longitude", &
+                              comment = "longitude at pixel corners (SW,SE,NE,NW)", &
+                              units = "degrees_east", &
+                              valid_range = [-180.0_r8, 180.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
     call tiof_varlist_append (varlist, errstat, &
                               cld_var_sz_angle, &
                               nf90_float, &
@@ -399,6 +500,8 @@ contains
     call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_geo)
+    call tiof_attlist_free (att_latbnd)
+    call tiof_attlist_free (att_lonbnd)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_geo_struct: failed", &
@@ -407,7 +510,6 @@ contains
     endif
 
   end subroutine write_geo_struct
-
 
   !> Write geolocation data into L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -422,7 +524,7 @@ contains
   subroutine write_geo_data(obj, num_steps, num_xtrack, errstat)
     use m_vars, only: lat, lon, time, sza, sat_zen, azimuth, terr_height, &
          geoflg
-    
+
     implicit none
 
     integer, intent(in) :: num_xtrack, num_steps
@@ -473,7 +575,6 @@ contains
     endif
 
   end subroutine write_geo_data
-
 
   !> Create cloud data structure in L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -759,7 +860,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
- 
+
       call tiof_push_group (obj, cld_grp_diagnostic, errstat)
       call tiof_def_vars (obj, varlist, errstat)
       call tiof_pop_group (obj, errstat)
@@ -774,7 +875,6 @@ contains
       return
     endif
   end subroutine write_cloud_struct
-
 
   !>Write out cloud data into L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -795,7 +895,7 @@ contains
          refl, meas_qual_flg, biases2, stds2, chi_sqr2, chlorophyll, &
          cld_pres2, eff_cld_frac2, qc2, do_cloud_mask, read_he4, &
          have_omi_data
-    
+
     implicit none
 
     integer, intent(in) :: num_xtrack, num_steps
@@ -905,8 +1005,6 @@ contains
       call tiof_pop_group (obj, errstat)
     endif
 
-
-
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_cloud_data: failed", errstat)
       return
@@ -914,8 +1012,7 @@ contains
 
   end subroutine write_cloud_data
 
-
-  !>Add some basic metadata to L2 Cloud netCDF file. 
+  !>Add some basic metadata to L2 Cloud netCDF file.
   !>Proof of concept for now
   !-----------------------------------------------------------------------
   !
@@ -934,12 +1031,12 @@ contains
          PerGoodQualData, ind
     character(len=*), parameter :: expl="Flag set to Passed if "// &
          "QAPercentHighQualityData >= 80%, "// &
-         "Flag set to Suspect if percent high quality data >= 20%, "//& 
+         "Flag set to Suspect if percent high quality data >= 20%, "//&
          "or L1B AutomaticQualityFlag not set to Passed, "//         &
          "otherwise Flag set to Failed"
     character(len=10) :: value
 
-    type (tiof_file_type), pointer :: obj 
+    type (tiof_file_type), pointer :: obj
     type (tiof_attlist_type) :: attlist
 
     obj => primary_output_file
@@ -964,7 +1061,7 @@ contains
     !if( trim(value) == "Passed" .and. trim(L1B_AutQualFl) /= "Passed") &
     !value = "Suspect"
 
-    QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input)) 
+    QAmissingdata = nint( real(n_missing)*100.0 /2.0/ real(n_input))
     ! n_missing counts twice in m_cloud_pres_ret
 
     call tiof_attlist_append (attlist, errstat, "QA_percent_missing_data", &
