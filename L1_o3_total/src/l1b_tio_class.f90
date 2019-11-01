@@ -82,6 +82,8 @@ contains
       return
     endif
 
+    call tiof_use_file_epoch (this % ft, errstat)
+
     this % filename = filename
 
     call tiof_get_r4 (this % ft, o3t_var_earth_sun_distance, this % distance, errstat)

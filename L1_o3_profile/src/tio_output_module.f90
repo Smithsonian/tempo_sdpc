@@ -103,6 +103,7 @@ contains
     endif
 
     call tiof_put_git_commit_hash (obj, errstat)
+    call tiof_write_epoch_timestamp (obj, errstat)
 
     ! Create default groups.
     call tiof_def_group (obj, o3p_grp_product, errstat)

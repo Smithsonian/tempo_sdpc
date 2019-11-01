@@ -46,6 +46,7 @@ contains
     !if (errstat /= 0) return
 
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
+    call tiof_use_file_epoch (tio_l1obj, errstat)
     call tiof_inq_dimlen (tio_l1obj, o3p_dim_step, nstep, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, o3p_dim_xtrack, nxtrack, errstat)

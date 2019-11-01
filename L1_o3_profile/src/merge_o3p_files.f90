@@ -15,7 +15,6 @@ program merge_o3p_files
 
   implicit none
 
-
   integer (kind=4) :: errstat
   ! input files
   ! note fixed max size of input_files array, required for namelist input
@@ -32,7 +31,7 @@ program merge_o3p_files
   integer (kind=4), dimension(:), allocatable :: step_out
   integer :: n, status, dummyid, i, j, omiflag, omicount, max_nmax_wavs
   integer, parameter :: one=1
-  
+
   type (tiof_file_type) :: tio_l2in
   !input & output filenames entered via namelist
   namelist /merge_o3p_iolist/ ninput, input_files, outfile
@@ -79,6 +78,7 @@ program merge_o3p_files
       if (nnoise_elems(n) > 0) ozwrtcovar = .true.
       if (naeros_wavs(n) > 0) aerosol = .true.
       call open_o3p(input_files(n), tio_l2in, errstat)
+      call tiof_use_file_epoch (tio_l2in, errstat)
       call tiof_push_group (tio_l2in, o3p_grp_support_data, errstat)
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_o3_avg_kernel, dummyid)
       if (status == nf90_noerr) ozwrtavgk = .true.

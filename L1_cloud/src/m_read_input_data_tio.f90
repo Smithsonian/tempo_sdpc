@@ -278,6 +278,7 @@ contains
 
     if (errstat /= 0) return
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
+    call tiof_use_file_epoch (tio_l1obj, errstat)
     call tiof_inq_group (tio_l1obj, swathname, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_xtrack, nXtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, cld_dim_step, nTimes, errstat)

@@ -701,6 +701,11 @@ static int make_l3_product (const Product_Type *prod,
    if (-1 == TIO_open (prod->input_files[0], NC_NOWRITE, &ncid_infile))
      goto return_status;
 
+   if (0 != tio_use_file_epoch (ncid_infile))
+     goto return_status;
+   if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
+     goto return_status;
+
    for (i = 0; i < prod->num_var_names; i++)
      {
         int want_qa = (prod->var_qa_labels[i] != NULL);

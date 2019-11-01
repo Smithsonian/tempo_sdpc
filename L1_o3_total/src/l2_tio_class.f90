@@ -635,6 +635,8 @@ contains
       return
     endif
 
+    call tiof_write_epoch_timestamp (obj, errstat)
+
     ! Create default groups.
     call tiof_def_group (obj, o3t_grp_product, errstat)
     call tiof_def_group (obj, o3t_grp_geolocation, errstat)
