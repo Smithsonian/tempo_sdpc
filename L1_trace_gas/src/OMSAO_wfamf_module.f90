@@ -2710,12 +2710,12 @@ CONTAINS
                   climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
                   SUM(climatology(ixtrack,itimes,1:tropopause_idx))
            endif
-           if (SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA)).eq.0) then
+           if (SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
              tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
                   climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
-                  SUM(climatology(ixtrack,itimes,tropopause_idx:CmETA))
+                  SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA))
            endif
            DEALLOCATE(pressure_grid,temperature_profile,alpha)
         END IF
