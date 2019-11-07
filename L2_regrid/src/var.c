@@ -778,12 +778,15 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
 }
 
 static int write_grid_1d (int ncid, int grp, const char *name,
+                          const double *valid_range,
                           double xmin, double xmax, int num,
                           const TIO_Attr_Text_Type *attrs)
 {
    int i, dim_id, var_id, start, count;
    double *x = NULL;
    double dx;
+   float valid_min = valid_range[0];
+   float valid_max = valid_range[1];
 
    /* assume dimensions are global even when lon-lat variables
     * are in a group */
@@ -791,8 +794,12 @@ static int write_grid_1d (int ncid, int grp, const char *name,
      return -1;
 
    if ((-1 == TIO_def_var (grp, name, NC_FLOAT, 1, &dim_id, &var_id))
-       || (-1 == TIO_put_text_attrs (grp, dim_id, attrs)))
-     return -1;
+       || (-1 == TIO_put_text_attrs (grp, dim_id, attrs))
+       || (0 != TIO_put_att (grp, var_id, "valid_min", NC_FLOAT, 1, &valid_min))
+       || (0 != TIO_put_att (grp, var_id, "valid_max", NC_FLOAT, 1, &valid_max)))
+     {
+        return -1;
+     }
 
    if (NULL == (x = (double *)MALLOC (num * sizeof(double))))
      {
@@ -823,15 +830,21 @@ int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
 {
    static TIO_Attr_Text_Type lon_attrs[] =
      {
+        {"long_name", "longitude"},
+        {"comment", "longitude at grid box center"},
         {"units", "degrees_east"},
         {NULL,NULL}
      };
    static TIO_Attr_Text_Type lat_attrs[] =
      {
+        {"long_name", "latitude"},
+        {"comment", "latitude at grid box center"},
         {"units", "degrees_north"},
         {NULL,NULL}
      };
    int grp = ncid;
+   double valid_lon_range[] = {-180.0, +180.0};
+   double valid_lat_range[] = {-90.0, +90.0};
 
    if (lonlat_grp)
      {
@@ -839,11 +852,11 @@ int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
           return -1;
      }
 
-   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LONGITUDE,
+   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LONGITUDE, valid_lon_range,
                              dest->xmin, dest->xmax, dest->nx, lon_attrs))
      return -1;
 
-   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LATITUDE,
+   if (-1 == write_grid_1d (ncid, grp, TEMPO_VAR_LATITUDE, valid_lat_range,
                              dest->ymin, dest->ymax, dest->ny, lat_attrs))
      return -1;
 
@@ -891,6 +904,21 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
                                   int num_dims, const int *dims, int *count,
                                   const Pixel_Regrid_Stats_Type *rs)
 {
+   static TIO_Attr_Text_Type num_attrs[] =
+     {
+        {"comment", "Number of Level 2 pixel values contributing to the area-weighted Level 3 pixel value"},
+        {NULL,NULL}
+     };
+   static TIO_Attr_Text_Type min_attrs[] =
+     {
+        {"comment", "Smallest Level 2 pixel value contributing to the area-weighted Level 3 pixel value"},
+        {NULL,NULL}
+     };
+   static TIO_Attr_Text_Type max_attrs[] =
+     {
+        {"comment", "Largest Level 2 pixel values contributing to the area-weighted Level 3 pixel value"},
+        {NULL,NULL}
+     };
    char num_buf[TIO_MAX_NAME_LEN];
    char min_buf[TIO_MAX_NAME_LEN];
    char max_buf[TIO_MAX_NAME_LEN];
@@ -918,12 +946,15 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
      }
 
    if ((-1 == TIO_def_var (qa_grp, num_buf, NC_INT, num_dims, dims, &num_varid))
+       || (0 != TIO_put_text_attrs (qa_grp, num_varid, num_attrs))
        || (-1 == TIO_def_var_fill (qa_grp, num_varid, 0, &fill_num)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, num_dims, dims, &min_varid))
+       || (0 != TIO_put_text_attrs (qa_grp, min_varid, min_attrs))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, num_dims, dims, &max_varid))
+       || (0 != TIO_put_text_attrs (qa_grp, max_varid, max_attrs))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid)))
      return -1;
 
