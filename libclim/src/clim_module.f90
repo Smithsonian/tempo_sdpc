@@ -21,7 +21,8 @@ module clim_module
 
   private
 
-  public clim_pres, clim_pres_init, clim_pres_nz
+  public clim_query_nz
+  public clim_pres, clim_pres_init, clim_pres_nz, clim_pres_eta
   public clim_species_vmr, clim_species_init
   public clim_cloud, clim_cloud_init
   public clim_partial_column
@@ -374,6 +375,37 @@ contains
 
   end subroutine
 
+  subroutine clim_query_nz (nz, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char
+    implicit none
+    integer, intent(out) :: nz
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type) :: obj
+    integer :: month
+    character (kind=c_char, len=path_bufsize) :: pressure_file
+
+    if (errstat /= 0) return
+
+    ! Assuming all months have the same grid, the month doesn't matter.
+    ! July is available now, so I'll pick that.
+    month = 7
+    call make_pressure_filename (month, pressure_file, errstat)
+    if (errstat /= 0) return
+
+    call tiof_open (pressure_file, obj, nf90_nowrite, errstat)
+    call tiof_inq_dimlen (obj, 'z', nz, errstat)
+    call tiof_close (obj, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, &
+                       'clim_query_nz: error reading: '//trim(pressure_file), &
+                       errstat)
+      return
+    endif
+
+  end subroutine
+
   subroutine lonlat_lookup (cpt, lon, lat, ilon0, ilat0, errstat)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
@@ -438,22 +470,44 @@ contains
   !> @brief
   !> Interpolate pressure vs height
   !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
+  !> @param[out] eta_a    Output Eta_A array
+  !> @param[out] eta_b    Output Eta_B array
+  !>
+  !> \a Eta_A and \a Eta_B are the pressure parameterization arrays such that
+  !> the pressure vs height is defined in terms of \a eta_a, \a eta_b, and
+  !> the surface pressure as:
+  !> @v+
+  !> p(z) = eta_a(z) + eta_b(z) * p_surf
+  !> @v-
+  subroutine clim_pres_eta (cpt, eta_a, eta_b, errstat)
+    implicit none
+    type(clim_pres_type), intent(in) :: cpt
+    real (kind=4), dimension(cpt % nz), intent(out) :: eta_a, eta_b
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    eta_a(:) = cpt % eta_a(:)
+    eta_b(:) = cpt % eta_b(:)
+
+  end subroutine
+
+  !> @brief
+  !> Interpolate pressure vs height
+  !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
   !> @param[in] hour_utc  UTC hour of interest [hours]
   !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
   !> @param[out] pres_z   Output pressure [hPa] vs height
   !> @param[inout] errstat        Error status code (0 on success)
-  !> @param[out] eta_a, eta_b    Optional output pressure parameters
-  !>                             p(z) = eta_a(z) + eta_b(z) * p_surf
   !> @param[out] p_surf    Optional output surface pressure [hPa]
   !> @param[out] p_trop    Optional output tropopause pressure [hPa]
   subroutine clim_pres (cpt, hour_utc, lon, lat, pres_z, errstat, &
-                        eta_a, eta_b, p_surf, p_trop)
+                        p_surf, p_trop)
     implicit none
     type(clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
     real (kind=4), dimension(cpt % nz), intent(out) :: pres_z
     integer, intent(inout) :: errstat
-    real (kind=4), dimension(cpt % nz), optional, intent(out) :: eta_a, eta_b
     real (kind=4), optional, intent(out) :: p_surf, p_trop
 
     integer :: ilon0, ilat0, ihr0
@@ -489,14 +543,6 @@ contains
              + (1.0 - wt0) * cpt % p_surf (ilat0, ilon0, ihr0+1))
 
     pres_z(:) = cpt % eta_a(:) + cpt % eta_b (:) * psurf
-
-    if (present(eta_a)) then
-      eta_a(:) = cpt % eta_a(:)
-    endif
-
-    if (present(eta_b)) then
-      eta_b(:) = cpt % eta_b(:)
-    endif
 
     if (present(p_surf)) then
       p_surf = psurf

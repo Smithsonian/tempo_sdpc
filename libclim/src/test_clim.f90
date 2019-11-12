@@ -13,6 +13,9 @@ program test_clim
 
   errstat = 0
 
+  call clim_query_nz (nz, errstat)
+  if (errstat /= 0) call exit(1)
+
   bounds % hour_beg = 18.0
   bounds % hour_end = 18.0 + 6.0/60
   bounds % lon_min = -90.0
@@ -46,8 +49,8 @@ program test_clim
   write (*,'(a,i2,1x,i2,1x,f7.4)')' month, day, hour = ', month, day, hour
   write (*,'(a,f10.4,1x,f10.4)')' lon, lat = ', lon, lat
 
+  call clim_pres_eta (cpt, ap, bp, errstat)
   call clim_pres (cpt, hour, lon, lat, pres_z, errstat, &
-                  eta_a=ap, eta_b=bp, &
                   p_surf=psurf, p_trop=ptrop)
   if (errstat /= 0) call exit(1)
 
