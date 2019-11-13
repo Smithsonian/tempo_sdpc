@@ -1794,6 +1794,7 @@ contains
   subroutine read_geofields (l1bfile, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thgt, time, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
     use OMSAO_omidata_module, only: omi_radiance_swathname
+    use OMSAO_parameters_module, only : max_latitude, max_longitude, r4_missval
     use tio_module
     use netcdf, only: nf90_nowrite
     implicit none
@@ -1828,6 +1829,13 @@ contains
       call tell_error (tell_io_read_error, "in read_geofields", errstat)
       return
     endif
+
+    where (abs(lat(1:nxtrack,1:ntimes)) > max_latitude)
+      lat(1:nxtrack,1:ntimes) = r4_missval
+    endwhere
+    where (abs(lon(1:nxtrack,1:ntimes)) > max_longitude)
+      lon(1:nxtrack,1:ntimes) = r4_missval
+    endwhere
 
     thgt(1:nxtrack,1:ntimes) = real(i2_thgt(1:nxtrack,1:ntimes),kind=r4)
 
