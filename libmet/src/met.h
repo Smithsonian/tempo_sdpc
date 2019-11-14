@@ -47,4 +47,8 @@ extern void met_list_free (Met_List_Type *met_list);
 extern int met_list_add_file (Met_List_Type *met_list, const char *path);
 extern int met_list_interp (Met_List_Type *met_list, float lon, float lat, Met_Value_Type *mvt);
 
+/* Utility routines */
+extern int met_linear_interp (double *x0, double *y0, int n0,
+                              int n, double *x, double *y);
+
 #endif

@@ -54,6 +54,16 @@ module met_module
     end function
   end interface
 
+  interface
+    function met_linear_interp (x0, y0, n0, n, x, y) bind (c, name='met_linear_interp')
+      use, intrinsic :: iso_c_binding, only : c_double, c_int
+      real (kind=c_double), dimension(*), intent(in) :: x0, y0, x
+      real (kind=c_double), dimension(*), intent(out) :: y
+      integer (c_int), value :: n0, n
+      integer (c_int) :: met_linear_interp
+    end function
+  end interface
+
 contains
 
   subroutine met_list_interp_f (met_list, lon, lat, errstat, &
@@ -108,20 +118,24 @@ contains
   !> @param[in]  lat      latitude of target pixel
   !> @param[in]  lon      longitude of target pixel
   !> @param[out] troppres tropopause pressure value (hPa)
-  !> @param[out] surfpres surface pressure value (hPa) [OPTIONAL]
-  !> @param[out] tprof    teperature profile vector [OPTIONAL]
   !> @param      errstat  error handling integer, non-zero indicates failure
+  !> @param[out] surfpres surface pressure value (hPa) [OPTIONAL]
+  !> @param[in]  pprof    pressure profile vector (hPa) [OPTIONAL]
+  !> @param[out] tprof    temperature profile vector [OPTIONAL]
+  !
+  ! The optional \a pprof, and \a tprof vectors are ordered so that
+  ! array index 1 is at the surface.
   !
   !> @author     E. O'Sullivan Jan 2018
   !--------------------------------------------------------------------------
-  subroutine read_synth_met_data (metfile, lat, lon, troppres, surfpres, &
-       tprof, errstat)
+  subroutine read_synth_met_data (metfile, lat, lon, troppres, errstat, &
+                                  surfpres, tprof, pprof)
     use netcdf, only : nf90_nowrite
     use tio_module
     implicit none
 
     ! number of pressure levels (fixed)
-    integer(kind=4) , parameter :: nlev=72
+    integer(kind=c_int) , parameter :: nlev=72
 
     !Input variables
     character (len=*), intent(in) :: metfile
@@ -130,15 +144,18 @@ contains
     !Output variables
     real(kind=4), intent(out) :: troppres
     real(kind=4), intent(out), optional :: surfpres
-    real(kind=4), intent(out), dimension(nlev), optional :: tprof
+    real(kind=8), intent(out), dimension(:), optional, target :: tprof
+    real(kind=8), intent(out), dimension(:), optional :: pprof
     integer(kind=4), intent(inout) :: errstat
 
     !local variables
-    integer(kind=4) :: nlon, nlat
+    integer (kind=c_int) :: nprof
+    integer(kind=4) :: nlon, nlat, err
     integer(kind=4), dimension(2) :: lonlatidx
     real(kind=4), dimension(:,:), allocatable :: longrid, latgrid
     real(kind=4), dimension(1,1) :: tmp_surfpres, tmp_troppres
-    real(kind=4), dimension(1,1,nlev) :: tmp_tprof
+    real(kind=4), dimension(1,1,nlev) :: tmp_tprof, tmp_pprof
+    real(kind=8), dimension(nlev) :: tlev_d, plev_d
 
     type (tiof_file_type) :: metobj
 
@@ -159,7 +176,7 @@ contains
 
     if (errstat /= 0) then
       call tell_error(tell_io_error, &
-           "read_synth_troppres: failed to read dimensions", errstat)
+           "read_synth_met_data: failed to read dimensions", errstat)
       return
     endif
 
@@ -168,7 +185,7 @@ contains
          stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, &
-           "read_synth_troppres: failed to allocate arrays", errstat)
+           "read_synth_met_data: failed to allocate arrays", errstat)
       return
     endif
 
@@ -179,7 +196,7 @@ contains
          latgrid(0:nlon-1,0:nlat-1), errstat)
     if (errstat /= 0) then
       call tell_error(tell_io_error, &
-           "read_synth_troppres: failed to read lon, lat positions", errstat)
+           "read_synth_met_data: failed to read lon, lat positions", errstat)
       return
     endif
 
@@ -197,22 +214,61 @@ contains
            tmp_surfpres, errstat)
       surfpres = real(tmp_surfpres(1,1)/100.0d0, kind=4)
     endif
+
     if (present(tprof)) then
+      ! read the temperature profile
       call tiof_get3d_r4(metobj, "T", [0,lonlatidx(2),lonlatidx(1)], &
-           [nlev,1,1], tmp_tprof, errstat)
-      tprof = tmp_tprof(1,1,:)
-    endif
-    if (errstat /= 0) then
-      call tell_error(tell_io_error, &
-           "read_synth_troppres: failed to read pressure, temp", errstat)
-      return
+                         [nlev,1,1], tmp_tprof, errstat)
+      if (errstat /= 0) then
+        call tell_error(tell_io_error, &
+                        "read_synth_met_data: failed to read temp profile", errstat)
+        return
+      endif
+
+      if (present(pprof)) then
+        ! If an array of isobars was provided, we'll interpolate the
+        ! temperatures onto that pressure grid.
+        ! Read the pressure grid, and interpolate on arrays of doubles
+        ! because the interpolation routine wants doubles.
+        call tiof_get3d_r4(metobj, "PL", [0,lonlatidx(2),lonlatidx(1)], &
+                           [nlev,1,1], tmp_pprof, errstat)
+        if (errstat /= 0) then
+          call tell_error(tell_io_error, &
+                          "read_synth_met_data: failed to read pressure profile", errstat)
+          return
+        endif
+        tlev_d(:) = real(tmp_tprof(1,1,1:nlev), kind=8)
+        plev_d(:) = real(tmp_pprof(1,1,1:nlev)/100.0, kind=8) ! convert to hPa
+        nprof = size(pprof)
+        ! The file stores pressures in increasing order, as wanted by the
+        ! interpolation routine, but the calling routine will provide the
+        ! pressures in decreasing order, hence the need to reverse array order:
+        err = met_linear_interp (plev_d, tlev_d, nlev, nprof, pprof(nprof:1:-1), tprof)
+        if (err /= 0) then
+          call tell_error(tell_runtime_error, &
+                          "read_synth_met_data: interpolation error", errstat)
+          return
+        endif
+        ! since we reversed the pprof() array, we now need to reverse the tprof()
+        ! array to provide the expected order on output.
+        tprof = tprof(nprof:1:-1)
+      else
+        ! If no array of isobars was given, we just return the temperature
+        ! profile on the native grid
+        if (size(tprof).lt.nlev) then
+          call tell_error(tell_runtime_error, &
+                          "read_synth_met_data: array size mismatch", errstat)
+          return
+        endif
+        tprof(:) = real(tmp_tprof(1,1,nlev:1:-1), kind=8)
+      endif
     endif
 
     !close the file
     call tiof_close (metobj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_error, &
-           "read_synth_troppres: failed to close synth meteorology file", &
+           "read_synth_met_data: failed to close synth meteorology file", &
            errstat)
       return
     endif
@@ -222,7 +278,7 @@ contains
     if (allocated(latgrid)) deallocate(latgrid, stat=errstat)
     if (errstat /= 0) then
       call tell_error(tell_malloc_error, &
-           "read_synth_troppres: failed to deallocate arrays", errstat)
+           "read_synth_met_data: failed to deallocate arrays", errstat)
       return
     endif
 

@@ -778,3 +778,35 @@ Met_File_Type *met_open_file_grib2 (const char *path, int flags)
 
    return mft;
 }
+
+int met_linear_interp (double *x0, double *y0, int n0,
+                       int n, double *x, double *y)
+{
+   gsl_interp *interp = NULL;
+   gsl_interp_accel *acc = NULL;
+   gsl_error_handler_t *old_error_handler;
+   int i, status = -1;
+
+   old_error_handler = gsl_set_error_handler_off();
+
+   if ((NULL == (acc = gsl_interp_accel_alloc ()))
+       || (NULL == (interp = gsl_interp_alloc (gsl_interp_linear, n0)))
+       || (0 != gsl_interp_init (interp, x0, y0, n0)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: initializing interpolation", __func__);
+        goto return_status;
+     }
+
+   for (i = 0; i < n; i++)
+     {
+        y[i] = gsl_interp_eval (interp, x0, y0, x[i], acc);
+     }
+
+   status = 0;
+return_status:
+   gsl_set_error_handler (old_error_handler);
+   gsl_interp_free (interp);
+   gsl_interp_accel_free (acc);
+
+   return status;
+}

@@ -11,7 +11,7 @@ program test_met
   character (len=*), parameter :: ncfile = 'data/test_met.nc'
   logical :: ncfile_exists
   integer, parameter :: nlev = 72
-  real (kind=4), dimension(nlev) :: tprof
+  real (kind=8), dimension(nlev) :: tprof
   integer :: i, status, errstat
 
   character (kind=c_char, len=1024) :: argbuf
@@ -62,8 +62,8 @@ program test_met
 
   inquire (file=ncfile, exist=ncfile_exists)
   if (ncfile_exists) then
-    call read_synth_met_data (ncfile, lat, lon, ptrop, psurf, &
-                              tprof, errstat)
+    call read_synth_met_data (ncfile, lat, lon, ptrop, errstat, &
+                              psurf, tprof)
     write(*,'(f8.1)')psurf
     write(*,'(f8.1)')ptrop
     write(*,'(f8.1)')tprof
