@@ -5,14 +5,16 @@ include ../../Makefile.defines
 srcdir  = $(config_dir)/L2_regrid/src
 elfdir  = $(srcdir)/$(archobjs)
 
-TIO_INC = $(config_dir)/libtio/src
+TIO_SRC = $(config_dir)/libtio/src
+TIO_LIB = $(prefix)/lib
+TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 
-TIO_LIBPATHS    = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
+TIO_LIBPATHS    = -Wl,-rpath=$(TIOSRC_OBJS):$(TIO_LIB) -L$(TIOSRC_OBJS) -L$(TIO_LIB)
 TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 REGRID_LIBPATHS = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
-INCS   = -I$(TIO_INC) -I$(TELL_INC) -I$(NETCDF_INC) -I$(srcdir)
+INCS   = -I$(TIO_SRC) -I$(TELL_INC) -I$(NETCDF_INC) -I$(srcdir)
 LIBS   = $(REGRID_LIBPATHS) -lregrid \
          $(TIO_LIBPATHS) -ltio \
          $(TELL_LIBPATHS) -ltell \

@@ -11,6 +11,9 @@
 #include <netcdf.h>
 #include <proj_api.h>
 
+#include <tio.h>
+#include <tio_template.h>
+
 #define MALLOC  malloc
 #define FREE    free
 
@@ -466,6 +469,10 @@ int main (int argc, char **argv)
 
         status = nc_create (outfile, NC_NETCDF4, &ncid);
         NC_CHECK_STATUS(status);
+
+        if ((0 != tio_time_set_taix_epoch ("2000-01-01T00:00:00Z"))
+            || (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL)))
+          goto cleanup_and_exit;
 
         status = nc_def_grp (ncid, "test_group", &grp);
         NC_CHECK_STATUS(status);
