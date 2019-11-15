@@ -3,12 +3,14 @@
 #include <string.h>
 #include <math.h>
 
-#include <config.h>
 #include <libconfig.h>
 #include <image.h>
 #include <pixelqf.h>
 
 #include "util.h"
+
+#define MALLOC malloc
+#define FREE free
 
 #define NUM_ROWS 2000
 #define NUM_COLS NUM_ROWS
