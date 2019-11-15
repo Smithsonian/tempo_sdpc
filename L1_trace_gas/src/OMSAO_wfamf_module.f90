@@ -22,7 +22,6 @@ MODULE OMSAO_wfamf_module
 
   ! Set this to select where the climatology data comes from
   logical, parameter :: use_libclim_gas = .true.
-  logical, parameter :: use_libclim_cloud = .true.
 
   ! ---------
   ! PCF stuff
@@ -129,36 +128,6 @@ MODULE OMSAO_wfamf_module
   ! Integer parameters
   INTEGER (KIND=i4), PARAMETER :: one = 1, two = 2
 
-  ! -----------
-  ! ISCCP stuff
-  ! -----------
-  ! --------------------------------------------
-  ! TYPE declaration for ISCCP cloud climatology
-  ! --------------------------------------------
-  INTEGER (KIND=i4), PARAMETER, PRIVATE :: nlat_isccp=72, nlon_isccp=6596
-  TYPE :: CloudClimatology
-     REAL    (KIND=r8)                         :: &
-          scale_ctp, scale_cfr, delta_lat, missval_cfr, missval_ctp
-     REAL    (KIND=r4), DIMENSION (nlat_isccp) :: latvals, delta_lon
-     INTEGER (KIND=i4), DIMENSION (nlat_isccp) :: n_lonvals
-     REAL    (KIND=r4), DIMENSION (nlon_isccp) :: lonvals
-     REAL    (KIND=r8), DIMENSION (nlon_isccp) :: cfr, ctp
-  END TYPE CloudClimatology
-  ! ----------------------------------------------
-  ! Composite variable for ISCCP Cloud Climatology
-  ! ----------------------------------------------
-  TYPE (CloudClimatology) :: ISCCP_CloudClim
-
-  ! --------------------------
-  !(3) ISCCP Cloud Climatology
-  ! --------------------------
-  CHARACTER (LEN=10), PARAMETER :: isccp_lat_field  = 'ISCCP_Lats'
-  CHARACTER (LEN=15), PARAMETER :: isccp_dlon_field = 'ISCCP_DeltaLons'
-  CHARACTER (LEN=13), PARAMETER :: isccp_nlon_field = 'ISCCP_NumLons'
-  CHARACTER (LEN=10), PARAMETER :: isccp_lon_field  = 'ISCCP_Lons'
-  CHARACTER (LEN=30), PARAMETER :: isccp_mcfr_field = 'ISCCP_MonthlyAVG_CloudFraction'
-  CHARACTER (LEN=30), PARAMETER :: isccp_mctp_field = 'ISCCP_MonthlyAVG_CloudPressure'
-
 CONTAINS
 
   subroutine wfamf_deallocate (errstat)
@@ -166,9 +135,6 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    if (.not. (use_libclim_cloud.or.use_libclim_gas)) then
-      call climatology_deallocate(errstat)
-    endif
     call vlidort_deallocate(errstat)
     if (errstat /= 0) return
   end subroutine wfamf_deallocate
@@ -187,8 +153,7 @@ CONTAINS
     !     - VLIDORT calculated scattering weights
     ! =================================================================
     USE OMSAO_errstat_module, only: pge_errstat_ok!, pge_errstat_error
-    use OMSAO_indices_module, only: voc_omicld_idx, &
-         voc_isccp_idx
+    use OMSAO_indices_module, only: voc_omicld_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
       write_scattering_weights, write_amf_correction
@@ -323,21 +288,10 @@ CONTAINS
        endif
        call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
 
-       if (use_libclim_cloud) then
-         call clim_cloud_init (cct, errstat)
-         if (errstat /= 0) return
-       else
-         ! ----------------------------
-         ! Read ISCCP cloud climatology
-         ! ----------------------------
-         cloud_file = voc_amf_filenames(voc_isccp_idx)
-         CALL voc_amf_readisccp  ( errstat )
-         if (errstat /= 0) then
-           call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
-           return
-         endif
-         call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
-       endif
+       ! Read cloud climatology
+       call tell_log (1, 'amf_calculation: read cloud climatology')
+       call clim_cloud_init (cct, errstat)
+       if (errstat /= 0) return
 
        ! ------------------------------------------------
        ! Read climatology and interpolate to lon/lat/time
@@ -1519,22 +1473,6 @@ CONTAINS
     RETURN
   END SUBROUTINE climatology_getdim
 
-  subroutine climatology_deallocate (errstat)
-    implicit none
-    integer, intent(inout) :: errstat
-
-    if (errstat /= 0) return
-    deallocate (latvals, lonvals, timevals, stat=errstat)
-    if (allocated(Gas_profiles)) DEALLOCATE(Gas_profiles, stat=errstat)
-    if (allocated(wgh_ozo_pro)) DEALLOCATE(wgh_ozo_pro, stat=errstat)
-    if (allocated(idx_ozo_pro)) DEALLOCATE(idx_ozo_pro, stat=errstat)
-    if (errstat /= 0) then
-      call tell_error(tell_malloc_error, "climatology_deallocate failed", &
-           errstat)
-      return
-    endif
-  end subroutine climatology_deallocate
-
   subroutine climatology_deallocate_arrays (errstat)
     implicit none
     integer, intent(inout) :: errstat
@@ -2146,8 +2084,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: j1, j2, ix, it, ilat, ilon, spix, epix
-    REAL    (KIND=r8) :: latdp, londp
+    INTEGER (KIND=i4) :: ix, it, spix, epix
 
     integer :: year, month, day, errstat
     real (kind=r8) :: hour
@@ -2211,32 +2148,17 @@ CONTAINS
       ! ---------------------------------------
        IF ( ( ANY( l2cfr(spix:epix,it) < 0.0_r8 ) ) .OR. &
             ( ANY( l2ctp(spix:epix,it) < 0.0_r8 ) ) ) THEN
-         if (use_libclim_cloud) then
-           call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
-           do ix = spix, epix
-             IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
-               errstat = 0
-               call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp_f, errstat)
-               if (errstat /= 0) return
-               l2ctp(ix,it) = real(ctp_f, r8)
-               l2cfr(ix,it) = 0.0_r8
-               amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
-             endif
-           enddo
-         else
-          DO ix = spix, epix
-             IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
-                latdp = REAL ( lat(ix,it), KIND=r8 ) ; londp = REAL ( lon(ix,it), KIND=r8 ) ;
-                ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-latdp) ))
-                j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
-                j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
-                ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-londp) ))
-                l2ctp(ix,it) = ISCCP_CloudClim%ctp(ilon)
-                l2cfr(ix,it) = ISCCP_CloudClim%cfr(ilon)
-                amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
-             ENDIF
-          END DO
-          endif
+         call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
+         do ix = spix, epix
+           IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
+             errstat = 0
+             call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp_f, errstat)
+             if (errstat /= 0) return
+             l2ctp(ix,it) = real(ctp_f, r8)
+             l2cfr(ix,it) = 0.0_r8
+             amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
+           endif
+         enddo
        END IF
 
       ! --------------------------------------------------
@@ -2304,8 +2226,7 @@ CONTAINS
     ! ---------------
     real (kind=r4), dimension(CmETA+1) :: eta_a, eta_b
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
-         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, &
-         j1, j2, ilat, ilon, status
+         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, status
     character (len=72) :: logmsg
 
     ! LUT ozone profile variables
@@ -2421,29 +2342,15 @@ CONTAINS
           ! then use climatology to correct cloud pressure.
           ! ---------------------------------------------------------------------------
           IF (local_ctp .GT. local_srf) THEN
-            if (use_libclim_cloud) then
-              call tio_f_taix_time_to_utc_caldate (time(itime), year, month, day, hour)
-              lon_f = lon(ixtrack, itime)
-              lat_f = lat(ixtrack, itime)
-              locerrstat = 0
-              call clim_cloud (cct, month, day, lon_f, lat_f, ctp_f, locerrstat)
-              if (locerrstat /= 0) return
-              if (ctp_f > local_srf) ctp_f = real (local_srf, kind=r4)
-              local_ctp = ctp_f
-              l2ctp(ixtrack, itime) = ctp_f
-            else
-              ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-REAL(lat(ixtrack,itime),KIND=r8))))
-              j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
-              j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
-              ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-REAL(lon(ixtrack,itime),KIND=r8))))
-              IF (ISCCP_CloudClim%ctp(ilon) < local_srf) THEN
-                local_ctp = ISCCP_CloudClim%ctp(ilon)
-                l2ctp(ixtrack,itime) = ISCCP_CloudClim%ctp(ilon)
-              ELSE
-                local_ctp = local_srf
-                l2ctp(ixtrack,itime) = local_srf
-              END IF
-           endif
+            call tio_f_taix_time_to_utc_caldate (time(itime), year, month, day, hour)
+            lon_f = lon(ixtrack, itime)
+            lat_f = lat(ixtrack, itime)
+            locerrstat = 0
+            call clim_cloud (cct, month, day, lon_f, lat_f, ctp_f, locerrstat)
+            if (locerrstat /= 0) return
+            if (ctp_f > local_srf) ctp_f = real (local_srf, kind=r4)
+            local_ctp = ctp_f
+            l2ctp(ixtrack, itime) = ctp_f
           END IF
 
           ! -----------------------------------------------------------------
@@ -3341,111 +3248,6 @@ CONTAINS
     endif
 
   end subroutine read_climatology_dimensions
-
-  SUBROUTINE voc_amf_readisccp ( errstat )
-
-    USE OMSAO_variables_module, ONLY: voc_amf_filenames
-    USE OMSAO_indices_module, ONLY: voc_isccp_idx
-    USE OMSAO_errstat_module, ONLY: he5_stat_fail
-    USE OMSAO_he5_module, ONLY: HE5_SWclose, HE5_SWopen, &
-         he5f_acc_rdonly, granule_month, HE5_SWattach, &
-         HE5_SWinqswath, HE5_SWrdfld, HE5_SWrdlattr, &
-         HE5_SWdetach
-
-    IMPLICIT NONE
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER   (KIND=C_LONG) :: swath_id, swath_file_id, swlen, he5stat
-    INTEGER   (KIND=C_LONG) :: locerrstat
-    CHARACTER (LEN=MAX_STR_LEN) :: swath_file, swath_name
-    INTEGER   (KIND=i4), DIMENSION (nlon_isccp) :: tmparr
-
-    swath_file = TRIM(ADJUSTL(voc_amf_filenames(voc_isccp_idx)))
-
-    ! -----------------------------------------------------------
-    ! Open HE5 output file and check SWATH_FILE_ID ( -1 if error)
-    ! -----------------------------------------------------------
-    swath_file_id = HE5_SWopen ( swath_file, he5f_acc_rdonly )
-    IF ( swath_file_id == he5_stat_fail ) THEN
-      call tell_error (tell_io_error, "voc_amf_readisccp: opening climatology file "// &
-                       trim(swath_file), errstat)
-      RETURN
-    END IF
-
-    ! ---------------------------------------------
-    ! Check for existing HE5 swath and attach to it
-    ! ---------------------------------------------
-    swath_name = ''
-    locerrstat  = HE5_SWinqswath  ( TRIM(ADJUSTL(swath_file)), swath_name, swlen )
-    swath_id = HE5_SWattach ( swath_file_id, TRIM(ADJUSTL(swath_name)) )
-    IF ( swath_id == he5_stat_fail ) THEN
-       call tell_error (tell_io_error, "voc_amf_readisccp: attaching to swath "// &
-            trim(swath_name), errstat)
-       RETURN
-    END IF
-
-    ! ----------------------------
-    ! Read ISCCP Cloud Climatoloty
-    ! ----------------------------
-    ! * Latitudes
-    he5_start_1d = 0 ; he5_stride_1d = 1 ; he5_edge_1d = nlat_isccp
-    he5stat = HE5_SWrdfld ( swath_id, isccp_lat_field, &
-         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%latvals(1:nlat_isccp) )
-    ! * Number of longitudes per latitude
-    he5stat = HE5_SWrdfld ( swath_id, isccp_nlon_field, &
-         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%n_lonvals(1:nlat_isccp) )
-    ! * Delta-Longitudes
-    he5stat = HE5_SWrdfld ( swath_id, isccp_dlon_field, &
-         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%delta_lon(1:nlat_isccp) )
-    ! * Longitudes
-    he5_start_1d = 0 ; he5_stride_1d = 1 ; he5_edge_1d = nlon_isccp
-    he5stat = HE5_SWrdfld ( swath_id, isccp_lon_field, &
-         he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%lonvals(1:nlon_isccp) )
-
-    ! * Cloud fraction
-    he5_start_2d  = (/ granule_month-1, 0 /) ; he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ 1, nlon_isccp /)
-    he5stat = HE5_SWrdfld ( swath_id, isccp_mcfr_field,                 &
-         he5_start_2d, he5_stride_2d, he5_edge_2d, tmparr(1:nlon_isccp) )
-    ISCCP_CloudClim%cfr(1:nlon_isccp) = REAL (tmparr(1:nlon_isccp), KIND=r8)
-    ! * Cloud top pressure
-    he5stat = HE5_SWrdfld ( swath_id, isccp_mctp_field,                 &
-         he5_start_2d, he5_stride_2d, he5_edge_2d, tmparr(1:nlon_isccp) )
-    ISCCP_CloudClim%ctp(1:nlon_isccp) = REAL (tmparr(1:nlon_isccp), KIND=r8)
-
-    ! --------------------
-    ! Read some attributes
-    ! --------------------
-    he5stat = HE5_SWrdlattr ( swath_id, isccp_lat_field,  "DeltaGrid",    ISCCP_CloudClim%delta_lat   )
-    he5stat = HE5_SWrdlattr ( swath_id, isccp_mcfr_field, "ScaleFactor",  ISCCP_CloudClim%scale_cfr   )
-    he5stat = HE5_SWrdlattr ( swath_id, isccp_mctp_field, "ScaleFactor",  ISCCP_CloudClim%scale_ctp   )
-    he5stat = HE5_SWrdlattr ( swath_id, isccp_mcfr_field, "MissingValue", ISCCP_CloudClim%missval_cfr )
-    he5stat = HE5_SWrdlattr ( swath_id, isccp_mctp_field, "MissingValue", ISCCP_CloudClim%missval_ctp )
-
-    ! -------------------------------------------------------
-    ! Scale the ISCCP cloud values with their scaling factors
-    ! -------------------------------------------------------
-    WHERE ( ISCCP_CloudClim%cfr /= ISCCP_CloudClim%missval_ctp )
-       ISCCP_CloudClim%cfr = ISCCP_CloudClim%cfr * ISCCP_CloudClim%scale_cfr
-    END WHERE
-    WHERE ( ISCCP_CloudClim%ctp /= ISCCP_CloudClim%missval_ctp )
-       ISCCP_CloudClim%ctp = ISCCP_CloudClim%ctp * ISCCP_CloudClim%scale_ctp
-    END WHERE
-
-    ! -----------------------------------------------
-    ! Detach from HE5 swath and close HE5 output file
-    ! -----------------------------------------------
-    he5stat = HE5_SWdetach ( swath_id )
-    he5stat = HE5_SWclose  ( swath_file_id )
-
-    RETURN
-  END SUBROUTINE voc_amf_readisccp
 
 END MODULE OMSAO_wfamf_module
 
