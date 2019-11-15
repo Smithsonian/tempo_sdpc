@@ -350,7 +350,6 @@ $(ODIR)/OMSAO_variables_module.o: $(SDIR)/OMSAO_variables_module.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_variables_module.f90 -o $(ODIR)/OMSAO_variables_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_wfamf_module.o: $(SDIR)/OMSAO_wfamf_module.f90 \
   $(ODIR)/ctrlvars.o \
-  $(ODIR)/datafields.o \
   $(ODIR)/ezspline_interpolation.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/OMSAO_errstat_module.o \

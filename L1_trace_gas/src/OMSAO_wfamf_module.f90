@@ -159,7 +159,7 @@ CONTAINS
       write_scattering_weights, write_amf_correction
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
-    use ctrlvars, only : yn_do_he5_output, yn_stratrop
+    use ctrlvars, only : yn_stratrop
     use clim_module
     IMPLICIT NONE
 
@@ -262,9 +262,6 @@ CONTAINS
        ! Write the albedo to the output file he5
        ! ---------------------------------------
        IF (do_write) then
-          if (yn_do_he5_output) then
-             CALL write_albedo_he5 ( albedo, nt, nx, locerrstat)
-          endif
           call write_albedo (albedo, nx, nt, errstat)
           if (errstat /= 0) return
        endif
@@ -302,10 +299,6 @@ CONTAINS
        ! Write the climatology to the he5 file
        ! -------------------------------------
        IF (do_write) then
-          if (yn_do_he5_output) then
-             CALL write_climatology_he5 (climatology, nt, nx, CmETA, &
-                  locerrstat)
-          endif
           call write_gas_profile (climatology, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
        endif
@@ -355,9 +348,6 @@ CONTAINS
        ! Write out scattering weights, altitude grid and averaging kernels
        ! -----------------------------------------------------------------
        IF (do_write) then
-          if (yn_do_he5_output) then
-             CALL write_scatt_he5 (scattw, nt, nx, CmETA, locerrstat)
-          endif
           call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
        endif
@@ -377,12 +367,6 @@ CONTAINS
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
     IF (do_write) then
-      if (yn_do_he5_output) then
-        CALL he5_amf_write ( nx, nt, saocol, saodco, saoamf, &
-                            amfgeo, amfdiag, l2cfr, l2ctp, surface_pressure, &
-                            tropopause_pressure, tropospheric_amf, &
-                            stratospheric_amf, locerrstat )
-      endif
       nz = clim_pres_nz (cpt)
       allocate (eta_a(nz), eta_b(nz))
       call clim_pres_eta (cpt, eta_a, eta_b, errstat)
@@ -2859,291 +2843,6 @@ CONTAINS
     END DO ! Finish
 
   END SUBROUTINE compute_amf
-
-  SUBROUTINE write_albedo_he5(albedo, nt, nx, errstat)
-
-    ! ==================================================================
-    ! This routines writes the albedos obtained from the OMLER climatolo
-    ! gy to the output file.
-    ! ==================================================================
-    use datafields, only: albedo_field
-    use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                         INTENT (IN) :: nt, nx
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT (IN) :: albedo
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
-    INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=16), PARAMETER :: modulename = 'write_albedo_he5'
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)                          :: locerrstat
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1) :: colloc
-
-    !locerrstat = pge_errstat_ok
-
-    he5_start_2d  = (/ 0, 0 /)
-    he5_stride_2d = (/ 1, 1 /)
-    he5_edge_2d   = (/ nx, nt /)
-
-    colloc = albedo
-    !CALL roundoff_2darr_r8 ( n_roff_dig, nx, nt, colloc(1:nx,0:nt-1) )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-                              TRIM(ADJUSTL(albedo_field)),             &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d,&
-                              colloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-  END SUBROUTINE write_albedo_he5
-
-  SUBROUTINE write_climatology_he5(climatology, nt, nx, nl, errstat)
-
-    ! ===============================================================
-    ! This routines writes the Target Gas Profiles from the GEOS-Chem
-    ! climatology to the output file.
-    ! ===============================================================
-    use datafields, only: gasprofile_field
-    use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                              INTENT (IN) :: nt, nx, nl
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1,1:nl), INTENT (IN) :: climatology
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
-    INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=24), PARAMETER :: modulename = 'write_climatology_he5'  ! JED fix
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)                               :: locerrstat
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,1:nl) :: colloc
-
-    !locerrstat = pge_errstat_ok
-
-    he5_start_3d  = (/ 0, 0, 0 /)
-    he5_stride_3d = (/ 1, 1, 1 /)
-    he5_edge_3d   = (/ nx, nt, nl /)
-
-    colloc = climatology
-    !CALL roundoff_3darr_r8 ( n_roff_dig, nx, nt, nl, colloc(1:nx,0:nt-1,1:nl) )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-                              TRIM(ADJUSTL(gasprofile_field)),         &
-                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
-                              colloc(1:nx,0:nt-1,1:nl) )
-    errstat = MAX ( errstat, locerrstat )
-
-  END SUBROUTINE write_climatology_he5
-
-  SUBROUTINE write_scatt_he5(scattw, nt, nx, nl, errstat)
-
-    ! ===============================================================
-    ! This routines writes the scattering weigths to the output file.
-    ! ===============================================================
-    use datafields, only: scaweights_field
-    use OMSAO_he5_module, ONLY: HE5_SWWRFLD
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                              INTENT (IN) :: nt, nx, nl
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1,1:nl), INTENT (IN) :: scattw !, akernels
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
-    INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=16), PARAMETER :: modulename = 'write_scatt_he5'
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)                               :: locerrstat
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,1:nl) :: colloc
-
-    he5_start_3d  = (/ 0, 0, 0 /)
-    he5_stride_3d = (/ 1, 1, 1 /)
-    he5_edge_3d   = (/ nx, nt, nl /)
-
-    colloc = scattw
-    locerrstat = HE5_SWWRFLD ( pge_swath_id,                            &
-                              TRIM(ADJUSTL(scaweights_field)),         &
-                              he5_start_3d, he5_stride_3d, he5_edge_3d,&
-                              colloc(1:nx,0:nt-1,1:nl) )
-
-    errstat = MAX ( errstat, locerrstat )
-
-  END SUBROUTINE write_scatt_he5
-
-  SUBROUTINE he5_amf_write ( &
-      nx, nt, saocol, saodco, amfmol, amfgeo, amfdiag, &
-      amfcfr, amfctp, surface_pressure, tropopause_pressure, &
-      tropospheric_amf, stratospheric_amf, errstat )
-
-    USE OMSAO_precision_module, ONLY: i2, i4, r8
-    USE OMSAO_he5_module, ONLY: HE5_SWWRFLD, he5_start_2d, he5_stride_2d, &
-      he5_edge_2d
-    USE OMSAO_errstat_module, only : pge_errstat_ok
-    use datafields, only: amfcfr_field, amfctp_field, amfdiag_field, &
-      amfgeo_field, amfmol_field, col_field, dcol_field, surpre_field, &
-      amfstr_field, amftro_field, tropre_field
-    use ctrlvars, only: yn_stratrop
-
-    IMPLICIT NONE
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=13), PARAMETER :: modulename = 'he5_write_amf'
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                          INTENT (IN) :: nx, nt
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: saocol, saodco
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfmol, amfgeo, tropospheric_amf, &
-         stratospheric_amf
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfcfr, amfctp
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: surface_pressure, tropopause_pressure
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: amfdiag
-
-    ! -----------------
-    ! Modified variable
-    ! -----------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)                          :: locerrstat
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: amfloc
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1) :: colloc
-
-    ! -------------------------------------------------------------
-    ! Air mass factor plus diagnostic.
-    ! -------------------------------------------------------------
-    ! As yet, only OMBRO and OMHCHO have true, non-geometric AMFs.
-    ! But we try to have symmetric data fields as much as possible,
-    ! hence the presence of the "molecule specific" AMF and its
-    ! diagnostic for all PGEs. Non-OMBRO and -OMHCHO PGEs carry a
-    ! geometric AMF here.
-    !
-    ! For completeness, the geometric AMF is added.
-    ! -------------------------------------------------------------
-
-    locerrstat = pge_errstat_ok
-
-    he5_start_2d  = (/ 0, 0 /) ;  he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nx, nt /)
-
-    ! ----------------------------------------
-    ! (1) AMF diagnostic. No rounding required
-    ! ----------------------------------------
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfdiag_field)), &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, amfdiag(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    ! -----------------
-    ! (2) Geometric AMF
-    ! -----------------
-    amfloc = REAL ( amfgeo, KIND=r4 )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfgeo_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    ! -----------------
-    ! (3) Molecular AMF
-    ! -----------------
-    amfloc = REAL ( amfmol, KIND=r4 )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfmol_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    IF (yn_stratrop) then
-       amfloc = REAL ( tropospheric_amf, KIND=r4 )
-       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amftro_field)), &
-                                  he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-       errstat = MAX ( errstat, locerrstat )
-       amfloc = REAL ( stratospheric_amf, KIND=r4 )
-       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfstr_field)), &
-                                  he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-       errstat = MAX ( errstat, locerrstat )
-    END IF
-
-    ! ----------------------------------------------------------
-    ! (4) AMF cloud fraction and pressure
-    ! ----------------------------------------------------------
-    amfloc = REAL ( amfcfr, KIND=r4 )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfcfr_field)), &
-         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    amfloc = REAL ( amfctp, KIND=r4 )
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfctp_field)), &
-         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    ! -----------------------------------------------------------------------
-    ! (5) All PGEs: Output of columns and column uncertainties. For some PGEs
-    !     (e.g., OMBRO, OMHCHO, OMCHOCHO) those have been adjusted by the AMF,
-    !     but we have as yet to perform the rounding for any of them.
-    ! -----------------------------------------------------------------------
-    colloc = saocol
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(col_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    colloc = saodco
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(dcol_field)), &
-                              he5_start_2d, he5_stride_2d, he5_edge_2d, colloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    ! ----------------
-    ! Surface pressure
-    ! ----------------
-    amfloc = surface_pressure
-    locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(surpre_field)), &
-         he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-    errstat = MAX ( errstat, locerrstat )
-
-    ! -------------------
-    ! Tropopause pressure
-    ! -------------------
-    IF (yn_stratrop) then
-       amfloc = tropopause_pressure
-       locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(tropre_field)), &
-                                 he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
-       errstat = MAX ( errstat, locerrstat )
-    END IF
-
-    RETURN
-  END SUBROUTINE he5_amf_write
 
   SUBROUTINE omi_read_climatology_dimensions(errstat)
 
