@@ -22,7 +22,7 @@ CP = /bin/cp
 
 LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
 
-LOCAL_OBJS = -L$(METSRC_OBJS) -L$(MDSRC_OBJS) -L$(TIOSRC_OBJS)
+LOCAL_OBJS = -L$(CLIMSRC_OBJS) -L$(METSRC_OBJS) -L$(MDSRC_OBJS) -L$(TIOSRC_OBJS)
 
 TIO_LIB     = $(prefix)/lib
 TIO_SRC     = $(config_dir)/libtio/src
