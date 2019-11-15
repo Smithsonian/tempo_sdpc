@@ -1402,6 +1402,8 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
+    type (tiof_attlist_type) :: attlist
+    integer :: status, varid_surface_pressure
 
     if (errstat /= 0) return
 
@@ -1434,6 +1436,12 @@ contains
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_r4 (obj, tg_var_surface_pressure, [0,0], [ntimes,nxtrack], &
                         amf_corr % surface_pressure (1:nxtrack, 0:ntimes-1), errstat)
+    ! Pressure profile is parameterized by p(z) = eta_a(z) + eta_b(z) * psurf
+    status = nf90_inq_varid (obj % groupid, tg_var_surface_pressure, varid_surface_pressure)
+    call tiof_attlist_append (attlist, errstat, "Eta_A", att_r4 = amf_corr % eta_a)
+    call tiof_attlist_append (attlist, errstat, "Eta_B", att_r4 = amf_corr % eta_b)
+    call tiof_def_atts (obj, attlist, varid_surface_pressure, errstat)
+    call tiof_attlist_free (attlist)
 
     if (yn_stratrop) then
        call tiof_put2d_r4 (obj, tg_var_tropopause_pressure, [0,0], [ntimes,nxtrack], &

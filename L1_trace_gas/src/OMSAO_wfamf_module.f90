@@ -20,6 +20,10 @@ MODULE OMSAO_wfamf_module
   public read_climatology_dimensions, amf_calculation_bis, &
     wfamf_deallocate
 
+  ! Set this to select where the climatology data comes from
+  logical, parameter :: use_libclim_gas = .true.
+  logical, parameter :: use_libclim_cloud = .true.
+
   ! ---------
   ! PCF stuff
   ! ---------
@@ -33,7 +37,8 @@ MODULE OMSAO_wfamf_module
   ! -----------------------------
   ! Dimensions of the climatology
   ! -----------------------------
-  INTEGER (KIND=i4), public :: Cmlat, Cmlon, CmETA, CmHRS
+  INTEGER (KIND=i4) :: Cmlat, Cmlon, CmHRS
+  INTEGER (KIND=i4), public :: CmETA
 
   ! ====================================================================
   ! Wavelength dependent AMF factor specific variables
@@ -45,7 +50,9 @@ MODULE OMSAO_wfamf_module
   ! ---------------------------------
   ! GMAO GEOS-5 hybrid grid Ap and Bp
   ! ---------------------------------
-  REAL(KIND=r8), DIMENSION(48), PARAMETER :: Ap=(/0.000000E+00, 4.804826E-02, 6.593752E+00, 1.313480E+01, &
+  INTEGER(KIND=i4), PARAMETER :: ngeos5 = 48
+  REAL(KIND=r8), DIMENSION(ngeos5) :: Ap= &
+    (/ 0.000000E+00, 4.804826E-02, 6.593752E+00, 1.313480E+01, &
        1.961311E+01, 2.609201E+01, 3.257081E+01, 3.898201E+01, &
        4.533901E+01, 5.169611E+01, 5.805321E+01, 6.436264E+01, &
        7.062198E+01, 7.883422E+01, 8.909992E+01, 9.936521E+01, &
@@ -57,7 +64,8 @@ MODULE OMSAO_wfamf_module
        7.851231E+01, 5.638791E+01, 4.017541E+01, 2.836781E+01, &
        1.979160E+01, 9.292942E+00, 4.076571E+00, 1.650790E+00, &
        6.167791E-01, 2.113490E-01, 6.600001E-02, 1.000000E-02/)
-  REAL(KIND=r8), DIMENSION(48), PARAMETER :: Bp=(/1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01, &
+  REAL(KIND=r8), DIMENSION(ngeos5) :: Bp= &
+    (/ 1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01, &
        9.203870E-01, 8.989080E-01, 8.774290E-01, 8.560180E-01, &
        8.346609E-01, 8.133039E-01, 7.919469E-01, 7.706375E-01, &
        7.493782E-01, 7.211660E-01, 6.858999E-01, 6.506349E-01, &
@@ -69,7 +77,6 @@ MODULE OMSAO_wfamf_module
        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00/)
-  INTEGER(KIND=i4), PARAMETER :: ngeos5 = 48
 
   ! ---------------------------------------
   ! Data obtained from the climatology file
@@ -159,7 +166,9 @@ CONTAINS
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
-    call climatology_deallocate(errstat)
+    if (.not. (use_libclim_cloud.or.use_libclim_gas)) then
+      call climatology_deallocate(errstat)
+    endif
     call vlidort_deallocate(errstat)
     if (errstat /= 0) return
   end subroutine wfamf_deallocate
@@ -186,6 +195,7 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
     use ctrlvars, only : yn_do_he5_output, yn_stratrop
+    use clim_module
     IMPLICIT NONE
 
     ! ---------------
@@ -222,6 +232,11 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
 
+    real    (kind=r4), dimension (:), allocatable, target :: eta_a, eta_b
+    integer :: nz
+
+    type (clim_pres_type) :: cpt
+    type (clim_cloud_type) :: cct
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
@@ -258,7 +273,7 @@ CONTAINS
           spixx = xtrange(itt,1) ; epixx = xtrange(itt,2)
           saoamf(spixx:epixx,itt) = 1.0_r8
        END DO
-       
+
     ELSE
 
        ! -------------------------
@@ -272,7 +287,7 @@ CONTAINS
        ! molecular AMF can be computed.
        ! -------------------------------------------------------
        saoamf = amfgeo
-      
+
        ! ----------------------------------------------------
        ! Read OMLER albedo database stored in variable albedo
        ! ----------------------------------------------------
@@ -308,21 +323,26 @@ CONTAINS
        endif
        call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
 
-       ! ----------------------------
-       ! Read ISCCP cloud climatology
-       ! ----------------------------
-       cloud_file = voc_amf_filenames(voc_isccp_idx)
-       CALL voc_amf_readisccp  ( errstat )
-       if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
-          return
+       if (use_libclim_cloud) then
+         call clim_cloud_init (cct, errstat)
+         if (errstat /= 0) return
+       else
+         ! ----------------------------
+         ! Read ISCCP cloud climatology
+         ! ----------------------------
+         cloud_file = voc_amf_filenames(voc_isccp_idx)
+         CALL voc_amf_readisccp  ( errstat )
+         if (errstat /= 0) then
+           call tell_error (tell_io_read_error, "reading ISCCP cloud file: "//trim(cloud_file), errstat)
+           return
+         endif
+         call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
        endif
-       call tell_log (1, 'Read ISCCP climatology from: '//trim(cloud_file))
 
        ! ------------------------------------------------
        ! Read climatology and interpolate to lon/lat/time
        ! ------------------------------------------------
-       CALL omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, &
+       CALL get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
             cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
        ! -------------------------------------
        ! Write the climatology to the he5 file
@@ -351,7 +371,7 @@ CONTAINS
        ! amfdiag is used to keep track of the pixels were enough information is
        ! available to carry on the AMFs calculation.
        ! ----------------------------------------------------------------------
-       CALL amf_diagnostic (nt, nx, lat, lon, &
+       CALL amf_diagnostic (cct, nt, nx, time, lat, lon, &
             sza, vza, snow, glint, xtrange, &
             l2cfr, l2ctp, &
             amfdiag  )
@@ -364,7 +384,7 @@ CONTAINS
        ! Compute Scattering weights in the look up table grid but
        ! with the correct albedo. amfdiag is used to skip pixel
        ! ---------------------------------------------------------
-       CALL compute_scatt ( nt, nx, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
+       CALL compute_scatt (cpt, cct, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
             lat, lon, amfdiag, scattw)
 
@@ -372,9 +392,10 @@ CONTAINS
        ! Work out the AMF using the scattering weights and the climatology
        ! Work out Averaging Kernels
        ! -----------------------------------------------------------------
-       CALL compute_amf ( nt, nx, CmETA, climatology, &
-            scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, tropopause_pressure, lat, lon, amfdiag, &
-            locerrstat)
+       CALL compute_amf (cpt,  nt, nx, CmETA, climatology, &
+                         scattw, saoamf, stratospheric_amf, tropospheric_amf, &
+                         surface_pressure, tropopause_pressure, lat, lon, amfdiag, &
+                         locerrstat)
 
        ! -----------------------------------------------------------------
        ! Write out scattering weights, altitude grid and averaging kernels
@@ -408,6 +429,10 @@ CONTAINS
                             tropopause_pressure, tropospheric_amf, &
                             stratospheric_amf, locerrstat )
       endif
+      nz = clim_pres_nz (cpt)
+      allocate (eta_a(nz), eta_b(nz))
+      call clim_pres_eta (cpt, eta_a, eta_b, errstat)
+      if (errstat /= 0) return
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_molecule_stratospheric => stratospheric_amf
       amf_corr % amf_molecule_tropospheric => tropospheric_amf
@@ -417,6 +442,8 @@ CONTAINS
       amf_corr % cloud_pressure => l2ctp
       amf_corr % surface_pressure => surface_pressure
       amf_corr % tropopause_pressure => tropopause_pressure
+      amf_corr % eta_a => eta_a
+      amf_corr % eta_b => eta_b
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
@@ -425,9 +452,112 @@ CONTAINS
 
   END SUBROUTINE amf_calculation_bis
 
+  subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                   xtrange, errstat, amfdiag)
+    use clim_module
+    use omsao_omidata_module, only: omi_scattfail_amf
+    use omsao_indices_module, only: sao_molecule_names
+    implicit none
+
+    type (clim_pres_type), intent(inout) :: cpt
+    integer (kind=i4), intent(in) :: pge_idx
+    real (kind=r8), dimension(1:nx,0:nt-1, cmeta), intent (inout) :: climatology
+    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
+    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    integer (kind=i4), intent (in) :: nt, nx
+    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
+    integer (kind=i4), intent (inout) :: errstat
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    type (clim_pres_bounds_type) :: bounds
+    type (clim_species_type) :: cst
+    integer :: year(2), month(2), day(2)
+    integer :: nz, nlayers, spix, epix, itimes, ixtrack
+    real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end
+    real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
+    real (kind=r4) :: hour_f, lon_f, lat_f
+    character (len=6) :: clim_db_molecule_name
+
+    if (errstat /= 0) return
+
+    t_beg = minval(time, time /= r8_missval)
+    t_end = maxval(time, time /= r8_missval)
+
+    if (t_end - t_beg > 86400.0) then
+      call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
+      return
+    endif
+
+    call tio_f_taix_time_to_utc_caldate (t_beg, year(1), month(1), day(1), hour_beg)
+    call tio_f_taix_time_to_utc_caldate (t_end, year(2), month(2), day(2), hour_end)
+
+    bounds % hour_beg = real (hour_beg, kind=r4)
+    bounds % hour_end = real (hour_end, kind=r4)
+    bounds % lon_min = minval(lon, lon /= r4_missval)
+    bounds % lon_max = maxval(lon, lon /= r4_missval)
+    bounds % lat_min = minval(lat, lat /= r4_missval)
+    bounds % lat_max = maxval(lat, lat /= r4_missval)
+
+    call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
+    if (errstat /= 0) return
+
+    nz = clim_pres_nz (cpt)
+    nlayers = nz - 1
+    allocate (pres(nz), vmr(nlayers), partial_column(nlayers))
+
+    clim_db_molecule_name = sao_molecule_names(pge_idx)
+
+    ! We can't agree on how to spell the names of molecules.
+    if (clim_db_molecule_name == 'HCHO') then
+      clim_db_molecule_name = 'CH2O  '
+    endif
+
+    call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
+    if (errstat /= 0) return
+
+    do itimes = 0, nt-1
+
+      if (time(itimes) == r8_missval) then
+        amfdiag(:,itimes) = omi_scattfail_amf
+        cycle
+      endif
+
+      call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
+      hour_f = real (hour, kind=r4)
+
+      spix = xtrange(itimes,1)
+      epix = xtrange(itimes,2)
+
+      do ixtrack = spix, epix
+
+        lon_f = lon(ixtrack,itimes)
+        lat_f = lat(ixtrack,itimes)
+
+        if (lon_f == r4_missval .or. lat_f == r4_missval) cycle
+
+        ! FIXME - this is just temporary
+        cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
+        cli_idx_ozo_pro(ixtrack,itimes,1:2) = 1
+
+        call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
+        call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+        call clim_partial_column (pres, vmr, partial_column, errstat)
+        if (errstat /= 0) return
+
+        where (partial_column < 0.0_r8)
+          partial_column = 0.0_r8
+        end where
+        climatology(ixtrack,itimes,1:nlayers) = real (partial_column(1:nlayers), kind=r8)
+      enddo
+    enddo
+  end subroutine
+
   SUBROUTINE omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, &
     cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
-    
+
     ! =========================================
     ! Extract Gas climatology to granule pixels
     ! No interpolation or something like that,
@@ -444,7 +574,7 @@ CONTAINS
          he5_swinqswath, he5_swinqdflds
 
     IMPLICIT NONE
-    
+
     ! ---------------
     ! Input variables
     ! ---------------
@@ -452,7 +582,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon
     REAL    (KIND=r8), DIMENSION (0:nt-1), INTENT (IN) :: time
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
-    
+
     ! ------------------
     ! Modified variables
     ! ------------------
@@ -476,7 +606,7 @@ CONTAINS
          gasdatafieldname, h2odatafieldname
     INTEGER (KIND=C_LONG) :: nswathcl, swlen
     INTEGER (KIND=i2), DIMENSION(nUTCdim) :: time_utc
-    character (len=72) :: logmsg    
+    character (len=72) :: logmsg
 
     ! ----------------------
     ! Subroutine starts here
@@ -484,7 +614,7 @@ CONTAINS
     if (errstat /= 0) return
 
     locerrstat = 0
-    
+
     ! ----------------------------------------------------
     ! Open climatology file (done here to do it only once)
     ! and look for the swath and data fields we are need.
@@ -495,7 +625,7 @@ CONTAINS
        return
     endif
     swath_file = TRIM(ADJUSTL(OMSAO_climatology_filename))
-  
+
     ! --------------------------------------------------------------
     ! Open he5 OMI climatology and check SWATH_FILE_ID (-1 if error)
     ! --------------------------------------------------------------
@@ -505,14 +635,14 @@ CONTAINS
             errstat)
        RETURN
     END IF
-  
+
     ! -----------------------------------------------------------
     ! Check for existing HE5 swathw and attach to the one we need
     ! -----------------------------------------------------------
     swath_name = "" !JED
     nswathcl = HE5_SWinqswath(TRIM(ADJUSTL(swath_file)), swath_name, swlen )
     nswath   = INT(nswathcl, KIND=i4 )
-    
+
     ! ----------------------------------------------------------------
     ! If there is only one swath in the file, we can attach to it but
     ! if there are more (NSWATH > 1), then we must find the swath that
@@ -532,7 +662,7 @@ CONTAINS
     ELSE
        locswathname = TRIM(ADJUSTL(swath_name))
     END IF
-    
+
     ! -----------------------------
     ! Attach to current month swath
     ! -----------------------------
@@ -542,7 +672,7 @@ CONTAINS
             trim(locswathname), errstat)
        RETURN
     END IF
-    
+
     ! -----------------------------------------------------------------------
     ! Finding out the data field for the gas of interest (.eq. to target gas)
     ! -----------------------------------------------------------------------
@@ -567,7 +697,7 @@ CONTAINS
     h2odatafieldname=""
     CALL extract_swathname(ndatafields, TRIM(ADJUSTL(datafield_name)), &
          TRIM(ADJUSTL(sao_molecule_names(pge_h2o_idx))), h2odatafieldname)
-    
+
     ! ---------------------------------------------------------------------------
     ! Check if we found the correct swath name. If not, report an error and exit.
     ! ---------------------------------------------------------------------------
@@ -597,9 +727,9 @@ CONTAINS
        END IF
 
        spix = xtrange(itimes,1); epix = xtrange(itimes,2)
-       
+
        DO ixtrack = spix, epix
-          
+
           llon = REAL(lon(ixtrack,itimes),KIND=r8)
           llat = REAL(lat(ixtrack,itimes),KIND=r8)
 
@@ -616,7 +746,7 @@ CONTAINS
           ! ------------------------------------------------------------------------
           ! Given the values of lonvals, latvals, timevals and llon, llat, and ltime
           ! determine the indices of climatolgoy values to be read.
-          ! Using linear interpolation only 2 nodes needed in each dimension or if 
+          ! Using linear interpolation only 2 nodes needed in each dimension or if
           ! outbounds, closest node is selected
           ! ------------------------------------------------------------------------
           CALL GetNode(REAL(lonvals,KIND=r8),llon, &
@@ -735,29 +865,57 @@ CONTAINS
                   "omi_climatology: climatology_deallocate_arrays failed", errstat)
              RETURN
           END IF
-          
+
        END DO
        write(logmsg, '(a,1x,i5)')'Preparing climatology line', itimes
        call tell_log (1, logmsg)
     END DO
-   
+
     ! Close climatology file (done here to do it only once)
     errstat = HE5_SWCLOSE(swath_file_id)
     IF ( errstat == he5_stat_fail ) THEN
-       call tell_error (tell_io_error, "read_climatology_dimensions: closing climatology file "// &
+       call tell_error (tell_io_error, "omi_climatology: closing climatology file "// &
             trim(swath_file), errstat)
        RETURN
     END IF
 
   END SUBROUTINE omi_climatology
-  
+
+  subroutine get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                   xtrange, errstat, amfdiag)
+    use clim_module
+    implicit none
+    type (clim_pres_type), intent(inout) :: cpt
+    integer (kind=i4), intent(in) :: pge_idx
+    real (kind=r8), dimension(1:nx,0:nt-1, cmeta), intent (inout) :: climatology
+    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
+    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    integer (kind=i4), intent (in) :: nt, nx
+    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
+    integer (kind=i4), intent (inout) :: errstat
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    if (use_libclim_gas) then
+      call clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                                 cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                 xtrange, errstat, amfdiag)
+    else
+      call omi_climatology (pge_idx, climatology, cli_wgh_ozo_pro, &
+                            cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                            xtrange, errstat, amfdiag)
+    endif
+  end subroutine
+
   SUBROUTINE read_climatology (idx_lon, idx_lat, idx_tim, swath_id, &
        gasdatafieldname, errstat)
     ! ==========================================================
     ! This subroutine reads in the climatology from GEOS-Chem or
     ! other source. The climatology file needs to be conform to
     ! the format assumed here.
-    ! ==========================================================    
+    ! ==========================================================
     USE OMSAO_he5_module, ONLY: HE5_SWrdfld, HE5_SWrdlattr
     IMPLICIT NONE
 
@@ -786,7 +944,7 @@ CONTAINS
 
     ! -----------------------------------------------------------------------
     ! Create KIND=4/KIND=8 variables. We have to use the vertical dimension a
-    ! few times in this subroutine, so it saves some typing if we do the 
+    ! few times in this subroutine, so it saves some typing if we do the
     ! conversion once and save them in new variables.
     ! -----------------------------------------------------------------------
     ! ---------------------------------------------------------
@@ -796,7 +954,7 @@ CONTAINS
     nlat = INT(idx_lat(2)-idx_lat(1)+1,KIND=C_LONG)
     nlev = INT(CmETA, KIND=C_LONG )
     ntim = INT(idx_tim(2)-idx_tim(1)+1,KIND=C_LONG)
-    
+
     if (errstat /= 0) return
 
     ! ----------------------------
@@ -810,7 +968,7 @@ CONTAINS
       swath_id, TRIM(ADJUSTL(gasdatafieldname)), &
       he5_start_4d, he5_stride_4d, he5_edge_4d, &
       Gas_profiles(1:nlon,1:nlat,1:nlev,1:ntim) )
-    
+
     ! -----------------------------------------
     ! Read gas datafield scale factor attribute
     ! -----------------------------------------
@@ -841,7 +999,7 @@ CONTAINS
       wgh_ozo_pro(1:nlon,1:nlat,1:ntim,1:2) )
     he5stat = HE5_SWrdlattr ( swath_id, TRIM(ADJUSTL(wgh_ozo_pro_field)),&
       "ScaleFactor", scale_wgh       )
-    
+
     ! ------------------------------------
     ! Apply scaling factors to data fields
     ! ------------------------------------
@@ -1064,7 +1222,7 @@ CONTAINS
 
        spix = xtrange(itimes,1); epix = xtrange(itimes,2)
        DO ixtrack = spix, epix
-  
+
           lonp = REAL(lon(ixtrack,itimes), KIND=r8)
           latp = REAL(lat(ixtrack,itimes), KIND=r8)
 
@@ -1133,7 +1291,7 @@ CONTAINS
                   "omi_omler_albedo: lon/lat interpolation failed", errstat)
              return
           endif
-  
+
        END DO
     END DO
 
@@ -1147,7 +1305,7 @@ CONTAINS
             "omi_omler_albedo: deallocate failed", errstat)
        return
     endif
-   
+
     errstat = MAX(errstat, locerrstat)
 
   END SUBROUTINE omi_omler_albedo
@@ -1690,7 +1848,7 @@ CONTAINS
     ! Air Column, Ozone Column
     tmp_2d_dim(1) = ozo_dim(1); tmp_2d_dim(2) = lay_dim(1)
     CALL h5dread_f(air_lay_did, H5T_NATIVE_REAL, lut_air_col, tmp_2d_dim, hdferr)
-    CALL h5dread_f(ozo_lay_did, H5T_NATIVE_REAL, lut_ozo_col, tmp_2d_dim, hdferr)      
+    CALL h5dread_f(ozo_lay_did, H5T_NATIVE_REAL, lut_ozo_col, tmp_2d_dim, hdferr)
     ! Temperature
     tmp_2d_dim(1) = ozo_dim(1); tmp_2d_dim(2) = lev_dim(1)
     CALL h5dread_f(tmp_lev_did, H5T_NATIVE_REAL, lut_tmp, tmp_2d_dim, hdferr)
@@ -1739,7 +1897,6 @@ CONTAINS
     CALL h5dclose_f(dI0_did, hdferr)
     CALL h5dclose_f(dI1_did, hdferr)
     CALL h5dclose_f(dI2_did, hdferr)
-
 
     ! ----------
     ! Close file
@@ -1959,20 +2116,23 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_read_omiclouds
 
-  SUBROUTINE amf_diagnostic ( nt, nx, lat, lon, &
+  SUBROUTINE amf_diagnostic (cct, nt, nx, time, lat, lon, &
                              sza, vza, snow, glint, xtrange, &
                              l2cfr, l2ctp, amfdiag )
 
     USE OMSAO_omidata_module, ONLY: omi_geo_amf, omi_cld_addmiss, &
          omi_ooblut_amf, omi_glint_add, omi_bigsza_amf
     !USE OMSAO_errstat_module
+    use clim_module
 
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
+    type (clim_cloud_type), intent(in) :: cct
     INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx
+    REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, lat, lon
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
@@ -1988,6 +2148,10 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4) :: j1, j2, ix, it, ilat, ilon, spix, epix
     REAL    (KIND=r8) :: latdp, londp
+
+    integer :: year, month, day, errstat
+    real (kind=r8) :: hour
+    real (kind=r4) :: ctp_f
 
     ! -------------------------------------------------------------------
     ! AMFDIAG has already been set to "geometric" AMF where SZA and VZA
@@ -2047,6 +2211,19 @@ CONTAINS
       ! ---------------------------------------
        IF ( ( ANY( l2cfr(spix:epix,it) < 0.0_r8 ) ) .OR. &
             ( ANY( l2ctp(spix:epix,it) < 0.0_r8 ) ) ) THEN
+         if (use_libclim_cloud) then
+           call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
+           do ix = spix, epix
+             IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
+               errstat = 0
+               call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp_f, errstat)
+               if (errstat /= 0) return
+               l2ctp(ix,it) = real(ctp_f, r8)
+               l2cfr(ix,it) = 0.0_r8
+               amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
+             endif
+           enddo
+         else
           DO ix = spix, epix
              IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
                 latdp = REAL ( lat(ix,it), KIND=r8 ) ; londp = REAL ( lon(ix,it), KIND=r8 ) ;
@@ -2055,10 +2232,11 @@ CONTAINS
                 j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
                 ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-londp) ))
                 l2ctp(ix,it) = ISCCP_CloudClim%ctp(ilon)
-                l2cfr(ix,it) = ISCCP_CloudClim%cfr(ilon)                   
+                l2cfr(ix,it) = ISCCP_CloudClim%cfr(ilon)
                 amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
              ENDIF
           END DO
+          endif
        END IF
 
       ! --------------------------------------------------
@@ -2089,21 +2267,26 @@ CONTAINS
     RETURN
   END SUBROUTINE amf_diagnostic
 
-  SUBROUTINE compute_scatt ( nt, nx, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, terrain_height, &
-       surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, lat, lon, amfdiag, scattw)
+  SUBROUTINE compute_scatt (cpt, cct, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
+                            terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
+                            lat, lon, amfdiag, scattw)
 
     use OMSAO_omidata_module, only: omi_scattfail_amf
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
     use sao_pge_utils, only: calc_relaz_angle
+    use clim_module
 
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
+    type (clim_pres_type), intent(in) :: cpt
+    type (clim_cloud_type), intent(in) :: cct
     INTEGER (KIND=i4), INTENT (IN) :: nt, nx
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (inout) :: amfdiag
+    REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, saa, vaa, terrain_height, lat, lon
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_wgh_ozo_pro
@@ -2119,10 +2302,11 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
+    real (kind=r4), dimension(CmETA+1) :: eta_a, eta_b
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
          iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, &
          j1, j2, ilat, ilon, status
-    character (len=72) :: logmsg    
+    character (len=72) :: logmsg
 
     ! LUT ozone profile variables
     INTEGER (KIND=i4), PARAMETER :: nozo = 2
@@ -2140,6 +2324,11 @@ CONTAINS
          local_cfr, local_raa, out_pre_lay
     real (kind=4) :: local_saa, local_vaa
 
+    !
+    real (kind=r8) :: hour
+    real (kind=4) :: lon_f, lat_f, ctp_f
+    integer :: year, month, day
+
     ! Error variables
     INTEGER (KIND=i4) :: locerrstat
 
@@ -2156,6 +2345,14 @@ CONTAINS
 
     write(logmsg, '(a)')'Computing scattering weights...'
     call tell_log (1, logmsg)
+
+    if (use_libclim_gas) then
+      locerrstat = 0
+      call clim_pres_eta (cpt, eta_a, eta_b, locerrstat)
+      if (locerrstat /= 0) return
+      Ap(:) = real (eta_a(:), kind=r8)
+      Bp(:) = real (eta_b(:), kind=r8)
+    endif
 
     ! ---------------
     ! Loop over lines
@@ -2223,18 +2420,30 @@ CONTAINS
           ! If cloud pressure is greater than surface pressure (cloud below surface!!!)
           ! then use climatology to correct cloud pressure.
           ! ---------------------------------------------------------------------------
-          IF (local_ctp .GT. local_srf) THEN 
-             ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-REAL(lat(ixtrack,itime),KIND=r8))))
-             j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
-             j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
-             ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-REAL(lon(ixtrack,itime),KIND=r8))))
-             IF (ISCCP_CloudClim%ctp(ilon) < local_srf) THEN
+          IF (local_ctp .GT. local_srf) THEN
+            if (use_libclim_cloud) then
+              call tio_f_taix_time_to_utc_caldate (time(itime), year, month, day, hour)
+              lon_f = lon(ixtrack, itime)
+              lat_f = lat(ixtrack, itime)
+              locerrstat = 0
+              call clim_cloud (cct, month, day, lon_f, lat_f, ctp_f, locerrstat)
+              if (locerrstat /= 0) return
+              if (ctp_f > local_srf) ctp_f = real (local_srf, kind=r4)
+              local_ctp = ctp_f
+              l2ctp(ixtrack, itime) = ctp_f
+            else
+              ilat = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%latvals-REAL(lat(ixtrack,itime),KIND=r8))))
+              j1 = SUM(ISCCP_CloudClim%n_lonvals(1:ilat-1)) + 1
+              j2 = ISCCP_CloudClim%n_lonvals(ilat) + j1
+              ilon = MAXVAL(MINLOC( ABS(ISCCP_CloudClim%lonvals(j1:j2)-REAL(lon(ixtrack,itime),KIND=r8))))
+              IF (ISCCP_CloudClim%ctp(ilon) < local_srf) THEN
                 local_ctp = ISCCP_CloudClim%ctp(ilon)
                 l2ctp(ixtrack,itime) = ISCCP_CloudClim%ctp(ilon)
-             ELSE
+              ELSE
                 local_ctp = local_srf
                 l2ctp(ixtrack,itime) = local_srf
-             END IF
+              END IF
+           endif
           END IF
 
           ! -----------------------------------------------------------------
@@ -2348,7 +2557,7 @@ CONTAINS
              ENDIF
              nctp = idx_ctp(2)-idx_ctp(1)+1
           ENDIF
-          
+
           ! -----------------------------------------------
           ! Allocate and initialize interpolation variables
           ! -----------------------------------------------
@@ -2368,7 +2577,7 @@ CONTAINS
           Rad_3D_clear = 0.0; Rad_3D_cloud = 0.0
           Sca_1D = 0.0; Sca_1D_cloud = 0.0; Sca_2D = 0.0; Sca_2D_cloud = 0.0
           Sca_5D_clear = 0.0; Sca_5D_cloud = 0.
-          
+
           ! -------------------------------------------------------------
           ! First compute back from the parametrization on RAA and albedo
           ! -------------------------------------------------------------
@@ -2399,7 +2608,7 @@ CONTAINS
                               lut_dI1(local_ozo_idx(2),isrf,ilay,ialb,ivza,isza) * COS(local_raa*d2r) + &
                               lut_dI2(local_ozo_idx(2),isrf,ilay,ialb,ivza,isza) * COS(2.0*local_raa*d2r), KIND=8) &
                               * local_ozo_wgh(2)
-                              
+
                       END DO
                    END DO
                 END DO
@@ -2433,7 +2642,7 @@ CONTAINS
                 END DO
              END DO
           END DO
-          
+
           ! Radiance (perform linear interpolation on srf, vza, and sza)
           Radiance_clr = linInterpol(nsrf,nvza,nsza, &
                REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
@@ -2461,7 +2670,7 @@ CONTAINS
              call tell_log (1,logmsg)
              goto 999
           END IF
-          
+
           ! Scattering Weights linear interpolation on alb, vza, sza
           DO isrf = 1, nsrf
              DO ilay = 1, INT(lay_dim(1),KIND=4)
@@ -2559,10 +2768,10 @@ CONTAINS
                goto 999
              END IF
           END DO
-          
+
           ! Convert effective cloud fraction to radiance cloud fraction
           local_cfr = local_cfr * Radiance_cld / ( local_cfr * Radiance_cld + (1.0 - local_cfr) * Radiance_clr)
-             
+
           ! ---------------------------------------------------------------------------------
           ! Boersma et al. 2011 AMT, 4, 2011
           ! Cloud radiance fraction: Crf= Cfr * Icl / Ir
@@ -2577,7 +2786,7 @@ CONTAINS
              Sca_1D(ilay) = ( Sca_1D_cloud(ilay) * local_cfr + Sca_1D(ilay) * (1.0 - local_cfr) )
              IF (Sca_1D(ilay) .LT. 0.0) Sca_1D(ilay) = 0.0
           END DO
-                          
+
           ! --------------------------------------------------------------
           ! Interpolate Sca_1D from lut_pre_lay grid to the one defined by
           ! local_srf (from climatology or L1 file), Ap and Bp.
@@ -2586,10 +2795,10 @@ CONTAINS
              out_pre_lay = (( Ap(ilay) + local_srf * Bp(ilay)  ) + &
                   ( Ap(ilay+1) + local_srf * Bp(ilay+1) )) / 2.0
              IF ( (out_pre_lay > MAXVAL(lut_pre_lay)) .OR. (out_pre_lay < MINVAL(lut_pre_lay)) ) THEN
-                scattw(ixtrack,itime,CmETA-ilay+1) = 0.0
+                scattw(ixtrack,itime,ilay) = 0.0
                 cycle
              ENDIF
-             scattw(ixtrack,itime,CmETA-ilay+1) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
+             scattw(ixtrack,itime,ilay) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
                   Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
                amfdiag(ixtrack,itime) = omi_scattfail_amf
@@ -2600,7 +2809,7 @@ CONTAINS
                goto 999
              END IF
           END DO
-          
+
  999      continue
           if (allocated(Sca_1D)) then
             DEALLOCATE(Rad_3D_clear, Rad_3D_cloud, Sca_5D_clear, &
@@ -2617,24 +2826,26 @@ CONTAINS
           WHERE ( scattw(ixtrack,itime,1:CmETA) < 0.0_r8 )
              scattw(ixtrack,itime,1:CmETA) = 0.0_r8
           END WHERE
-          
+
        END DO ! End loop xtrack
 
     END DO ! End loop lines
- 
+
   END SUBROUTINE COMPUTE_SCATT
 
-  SUBROUTINE compute_amf ( nt, nx, CmETA, climatology, &
+  SUBROUTINE compute_amf (cpt, nt, nx, CmETA, climatology, &
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
       tropopause_pressure, lat, lon, amfdiag, errstat)
 
     use ctrlvars, only: yn_stratrop
     use met_module
+    use clim_module
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
+    type (clim_pres_type), intent(in) :: cpt
     INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
     INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: amfdiag
@@ -2653,6 +2864,7 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx
     REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid, temperature_profile, alpha
+    real (kind=r4), dimension(CmETA+1) :: eta_a, eta_b
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2660,6 +2872,13 @@ CONTAINS
     !CHARACTER (LEN=11), PARAMETER :: modulename = 'compute_amf'
 
     if (errstat /= 0) return
+
+    if (use_libclim_gas) then
+      call clim_pres_eta (cpt, eta_a, eta_b, errstat)
+      if (errstat /= 0) return
+      Ap(:) = real (eta_a(:), kind=r8)
+      Bp(:) = real (eta_b(:), kind=r8)
+    endif
 
     ! ----------------------
     ! Subroutine starts here
@@ -2682,18 +2901,20 @@ CONTAINS
            ! Allocate pressure_grid and temperature vertical profile
            ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
                 alpha(1:CmETA))
-           ! Read in tropopause pressure
-           call read_synth_met_data(trim(OMSAO_meteorology_filename), &
-                lat(ixtrack,itimes), lon(ixtrack,itimes), &
-                tropopause_pressure(ixtrack,itimes), errstat=errstat)
-
-           ! Set temperature profile constant and equal to 220K
-           temperature_profile = 220.0_r8
            ! Work out pressure_grid
            DO ilay = 1, CmETA
-              pressure_grid(CmETA-ilay+1) = (( Ap(ilay) + surface_pressure(ixtrack,itimes) * Bp(ilay)  ) + &
+              pressure_grid(ilay) = (( Ap(ilay) + surface_pressure(ixtrack,itimes) * Bp(ilay)  ) + &
                    ( Ap(ilay+1) + surface_pressure(ixtrack,itimes) * Bp(ilay+1) )) / 2.0
            END DO
+
+           ! Read in tropopause pressure and temperature profile
+           call read_synth_met_data(trim(OMSAO_meteorology_filename), &
+                                    lat(ixtrack,itimes), lon(ixtrack,itimes), &
+                                    tropopause_pressure(ixtrack,itimes), errstat, &
+                                    pprof = pressure_grid, tprof = temperature_profile)
+
+           ! Set temperature profile constant and equal to 220K
+           ! temperature_profile = 220.0_r8
 
            ! Find which layer is closer to the tropopause.
            tropopause_idx = MINLOC(ABS(pressure_grid-REAL(tropopause_pressure(ixtrack,itimes),KIND=r4)),1)
@@ -2704,16 +2925,16 @@ CONTAINS
            ! EJOS adding a test for zero in climatology to avoid NaN AMFs
            alpha = 1.0_r8-0.003_r8*(temperature_profile-220.0_r8)
            if (SUM(climatology(ixtrack,itimes,1:tropopause_idx)).eq.0) then
-             stratospheric_amf(ixtrack,itimes) = 0.0d0
+             tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
-             stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
+             tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
                   climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
                   SUM(climatology(ixtrack,itimes,1:tropopause_idx))
            endif
            if (SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA)).eq.0) then
-             tropospheric_amf(ixtrack,itimes) = 0.0d0
+             stratospheric_amf(ixtrack,itimes) = 0.0d0
            else
-             tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
+             stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
                   climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
                   SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA))
            endif
@@ -2975,7 +3196,7 @@ CONTAINS
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfcfr_field)), &
          he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
     errstat = MAX ( errstat, locerrstat )
-    
+
     amfloc = REAL ( amfctp, KIND=r4 )
     locerrstat = HE5_SWWRFLD ( pge_swath_id, TRIM(ADJUSTL(amfctp_field)), &
          he5_start_2d, he5_stride_2d, he5_edge_2d, amfloc(1:nx,0:nt-1) )
@@ -3017,7 +3238,7 @@ CONTAINS
     RETURN
   END SUBROUTINE he5_amf_write
 
-  SUBROUTINE read_climatology_dimensions(errstat)
+  SUBROUTINE omi_read_climatology_dimensions(errstat)
 
     USE OMSAO_he5_module, ONLY: he5_swopen, he5_swattach, &
       he5_SWrdlattr, he5_swclose, he5f_acc_rdonly, &
@@ -3101,7 +3322,25 @@ CONTAINS
       RETURN
     END IF
 
-  END SUBROUTINE read_climatology_dimensions
+  END SUBROUTINE omi_read_climatology_dimensions
+
+  subroutine read_climatology_dimensions (errstat)
+    use clim_module
+    implicit none
+    integer, intent(inout) :: errstat
+
+    integer :: nz
+
+    if (errstat /= 0) return
+
+    if (use_libclim_gas) then
+      call clim_query_nz (nz, errstat)
+      CmETA = nz - 1
+    else
+      call omi_read_climatology_dimensions (errstat)
+    endif
+
+  end subroutine read_climatology_dimensions
 
   SUBROUTINE voc_amf_readisccp ( errstat )
 
@@ -3129,7 +3368,7 @@ CONTAINS
     INTEGER   (KIND=i4), DIMENSION (nlon_isccp) :: tmparr
 
     swath_file = TRIM(ADJUSTL(voc_amf_filenames(voc_isccp_idx)))
-    
+
     ! -----------------------------------------------------------
     ! Open HE5 output file and check SWATH_FILE_ID ( -1 if error)
     ! -----------------------------------------------------------
@@ -3139,7 +3378,7 @@ CONTAINS
                        trim(swath_file), errstat)
       RETURN
     END IF
-    
+
     ! ---------------------------------------------
     ! Check for existing HE5 swath and attach to it
     ! ---------------------------------------------
@@ -3162,14 +3401,14 @@ CONTAINS
     ! * Number of longitudes per latitude
     he5stat = HE5_SWrdfld ( swath_id, isccp_nlon_field, &
          he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%n_lonvals(1:nlat_isccp) )
-    ! * Delta-Longitudes    
+    ! * Delta-Longitudes
     he5stat = HE5_SWrdfld ( swath_id, isccp_dlon_field, &
          he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%delta_lon(1:nlat_isccp) )
     ! * Longitudes
     he5_start_1d = 0 ; he5_stride_1d = 1 ; he5_edge_1d = nlon_isccp
     he5stat = HE5_SWrdfld ( swath_id, isccp_lon_field, &
          he5_start_1d, he5_stride_1d, he5_edge_1d, ISCCP_CloudClim%lonvals(1:nlon_isccp) )
-    
+
     ! * Cloud fraction
     he5_start_2d  = (/ granule_month-1, 0 /) ; he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ 1, nlon_isccp /)
     he5stat = HE5_SWrdfld ( swath_id, isccp_mcfr_field,                 &
@@ -3179,7 +3418,7 @@ CONTAINS
     he5stat = HE5_SWrdfld ( swath_id, isccp_mctp_field,                 &
          he5_start_2d, he5_stride_2d, he5_edge_2d, tmparr(1:nlon_isccp) )
     ISCCP_CloudClim%ctp(1:nlon_isccp) = REAL (tmparr(1:nlon_isccp), KIND=r8)
-    
+
     ! --------------------
     ! Read some attributes
     ! --------------------
@@ -3198,7 +3437,7 @@ CONTAINS
     WHERE ( ISCCP_CloudClim%ctp /= ISCCP_CloudClim%missval_ctp )
        ISCCP_CloudClim%ctp = ISCCP_CloudClim%ctp * ISCCP_CloudClim%scale_ctp
     END WHERE
-   
+
     ! -----------------------------------------------
     ! Detach from HE5 swath and close HE5 output file
     ! -----------------------------------------------

@@ -30,6 +30,12 @@ TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
 TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
+CLIM_LIB     = $(prefix)/lib
+CLIM_SRC     = $(config_dir)/libclim/src
+CLIMSRC_OBJS = $(CLIM_SRC)/$(archobjs)
+CLIMINCS     = -I$(CLIMSRC_OBJS)
+CLIMLIBS     = -L$(CLIMSRC_OBJS) -L$(CLIM_LIB) -lclim_f
+
 MET_LIB     = $(prefix)/lib
 MET_SRC     = $(config_dir)/libmet/src
 METSRC_OBJS = $(MET_SRC)/$(archobjs)
@@ -60,9 +66,9 @@ PGSINCS     = -I$(PGSINC)
 PGSLIBS     = -L$(PGSLIB) -lPGSTK
 
 IFLAGS = -I$(objdir) $(TIOINCS) $(TELLINCS) $(PSPLINEMODS) \
-         $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(METINCS) $(MDINCS)
+         $(NETCDFINCS) $(HE5INCS) $(PGSINCS) $(CLIMINCS) $(METINCS) $(MDINCS)
 
-LIBS   = $(LOCAL_OBJS) $(TIOLIBS) $(METLIBS) $(MDLIBS) $(TELLLIBS) $(PSPLINELIBS) \
+LIBS   = $(LOCAL_OBJS) $(TIOLIBS) $(CLIMLIBS) $(METLIBS) $(MDLIBS) $(TELLLIBS) $(PSPLINELIBS) \
          $(NETCDFLIBS) $(HE5LIBS) $(ZLIBS) $(PGSLIBS) \
          $(LDPATH) -lm $(DL_LIB)
 

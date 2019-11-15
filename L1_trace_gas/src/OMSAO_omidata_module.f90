@@ -77,7 +77,9 @@ MODULE OMSAO_omidata_module
     real (kind=r8), dimension (:,:), pointer :: cloud_pressure => null()
     integer (kind=i2), dimension (:,:), pointer :: diagnostic_flag => null()
     real (kind=r4), dimension (:,:), pointer :: surface_pressure => null() 
-    real (kind=r4), dimension (:,:), pointer :: tropopause_pressure => null() 
+    real (kind=r4), dimension (:,:), pointer :: tropopause_pressure => null()
+    real (kind=r4), dimension (:), pointer :: eta_a => null()
+    real (kind=r4), dimension (:), pointer :: eta_b => null()
   end type amf_correction_type
 
   PRIVATE MAX_STR_LEN, max_spec_pts, nxtrack_max, nlines_max, nutcdim, nwavel_max
