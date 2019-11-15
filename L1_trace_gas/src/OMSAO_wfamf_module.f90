@@ -20,7 +20,10 @@ MODULE OMSAO_wfamf_module
   public read_climatology_dimensions, amf_calculation, &
     wfamf_deallocate
 
-  ! Set this to select where the climatology data comes from
+  ! Set this to select where the climatology data comes from.
+  ! NOTE: if you switch back to use the OMI climatology, it
+  ! may be necessary to modify the code below -- search for
+  ! FIXME(omi climatology) below.
   logical, parameter :: use_libclim_gas = .true.
 
   ! ---------
@@ -778,6 +781,9 @@ CONTAINS
 
           DO n = 1, CmETA
              ! Interpolate trace gas profile to lon,lat,hrs [GAS]/cm^2
+             ! FIXME(omi climatology): if you use this code, you may
+             ! need to change this to
+             ! climatology(ixtrack,itimes,n) = linInterpol(..
              climatology(ixtrack,itimes,CmETA-n+1) = linInterpol(nlon,nlat,ntim, &
                   REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
                   REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
