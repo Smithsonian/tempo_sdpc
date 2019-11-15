@@ -331,7 +331,7 @@ CONTAINS
     USE OMSAO_precision_module, ONLY: i1, i4!, r4
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r8_missval, & ! , r4_missval
       MAX_STR_LEN
-    USE OMSAO_wfamf_module,     ONLY: amf_calculation_bis
+    USE OMSAO_wfamf_module,     ONLY: amf_calculation
     USE OMSAO_variables_module, ONLY: OMSAO_refseccor_cld_filename, voc_amf_filenames, &
       Radiance_Paras_Type, common_latrange, l1b_rad_filename, l1b_radref_filename
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
@@ -552,7 +552,7 @@ CONTAINS
     ! --------------------------------------------------------
     voc_amf_filenames(voc_omicld_idx) = TRIM(ADJUSTL(OMSAO_refseccor_cld_filename))
 
-    CALL amf_calculation_bis (                                            &
+    CALL amf_calculation (                                            &
       pge_idx, nTimesRadRR, nXtrackRadRR, rt%latitude, rt%longitude, &
       rt%sza, rt%vza, rt%saa, rt%vaa, rt%time, mem_snow, mem_glint, &
       omi_xtrpix_range_rr, yn_szoom_rs, rt%column_amount, &

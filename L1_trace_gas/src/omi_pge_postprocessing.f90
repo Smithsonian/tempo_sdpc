@@ -28,7 +28,7 @@ SUBROUTINE omi_pge_postprocess ( &
   use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
-  USE OMSAO_wfamf_module, ONLY: amf_calculation_bis, &
+  USE OMSAO_wfamf_module, ONLY: amf_calculation, &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
     he5_write_fitting_statistics, saopge_geofieldtime_read
@@ -129,8 +129,8 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Comnpute AMF bis
   ! ----------------
   do_write = .TRUE.
-  call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation_bis')
-  CALL amf_calculation_bis (                             &
+  call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation')
+  CALL amf_calculation (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, time,  &
     snow_ice_flg, glint_flg, xtrange, is_szoom,       &
     saocol, saodco, saoamf, thg, do_write, &

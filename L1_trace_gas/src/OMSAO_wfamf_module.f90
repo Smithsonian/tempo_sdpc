@@ -17,7 +17,7 @@ MODULE OMSAO_wfamf_module
   IMPLICIT NONE
   private
 
-  public read_climatology_dimensions, amf_calculation_bis, &
+  public read_climatology_dimensions, amf_calculation, &
     wfamf_deallocate
 
   ! Set this to select where the climatology data comes from
@@ -173,7 +173,7 @@ CONTAINS
     if (errstat /= 0) return
   end subroutine wfamf_deallocate
 
-  SUBROUTINE amf_calculation_bis (            &
+  SUBROUTINE amf_calculation (            &
       pge_idx, nt, nx, lat, lon, sza, vza, saa, vaa, time,  &
       snow, glint, xtrange, do_szoom,        &
       saocol, saodco, saoamf, terrain_height,&
@@ -450,7 +450,7 @@ CONTAINS
       if (errstat /= 0) return
     endif
 
-  END SUBROUTINE amf_calculation_bis
+  END SUBROUTINE amf_calculation
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                    cli_idx_ozo_pro, lat, lon, time, nt, nx, &
