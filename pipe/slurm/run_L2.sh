@@ -107,7 +107,7 @@ do_NO2()
   update_job_list $jid_no2
 }
 
-do_O3T()
+do_O3TOT()
 {
   job_o3t="o3t:${SDPC_GRANULE_LABEL}"
   jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t run_o3t.sh)

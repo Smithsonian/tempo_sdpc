@@ -80,19 +80,19 @@ CONTAINS
 
     ! xtrack_step is a hack to skip work so that the code exits sooner.
     xtrack_step = 1
-    call get_environment_variable ("O3P_XTRACK_STEP", xtrack_step_env, status=xtrack_step_env_status)
+    call get_environment_variable ("O3PROF_XTRACK_STEP", xtrack_step_env, status=xtrack_step_env_status)
     if (xtrack_step_env_status == 0) then
 
       read (xtrack_step_env, *, iostat=iostatus) xtrack_step
       if (iostatus /= 0) then
-        call tell_error (tell_runtime_error, 'reading xtrack_step from environment variable O3P_XTRACK_STEP', errstat)
+        call tell_error (tell_runtime_error, 'reading xtrack_step from environment variable O3PROF_XTRACK_STEP', errstat)
         return
       endif
       if (xtrack_step < 1) then
-        call tell_error (tell_runtime_error, 'read invalid xtrack_step from environment variable O3P_XTRACK_STEP', errstat)
+        call tell_error (tell_runtime_error, 'read invalid xtrack_step from environment variable O3PROF_XTRACK_STEP', errstat)
         return
       endif
-      write (*,*)'Read environment variable O3P_XTRACK_STEP=',xtrack_step
+      write (*,*)'Read environment variable O3PROF_XTRACK_STEP=',xtrack_step
     endif
 
     !  define the boundaries of along and across track domain

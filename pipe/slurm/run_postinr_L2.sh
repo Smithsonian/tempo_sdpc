@@ -108,7 +108,7 @@ product_list_tokens="$(echo $SDPC_LEVEL2_PRODUCTS | tr , ' ')"
 have_o3p=""
 product_list_sans_o3p=''
 for p in $product_list_tokens ; do
-   if test x"$p" = x"O3P" ; then
+   if test x"$p" = x"O3PROF" ; then
       have_o3p="yes"
    else
       product_list_sans_o3p="$product_list_sans_o3p $p"
@@ -178,7 +178,7 @@ if test x"$have_o3p" != x ; then
      host_spec="${k}-${num_o3p_hosts}"
      tarfile_path_alias="${tarfile_path}_${k}"
 
-     log_message "start batch run_L2_o3p.sh [O3P:$k]: $SDPC_GRANULE_LABEL"
+     log_message "start batch run_L2_o3p.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
      # Here, the --wait ensures that the tar file has been unpacked on each
      # compute host and all associated o3p batch jobs have been submitted
      # _before_ the singleton dependency cleanup batch job is submitted.

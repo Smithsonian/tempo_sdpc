@@ -14,7 +14,7 @@ ulimit -s unlimited
 #    appropriate destination directory.
 # 3. When processing ends, remove the processing directory.
 
-work_dir="O3T"
+work_dir="O3TOT"
 
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 l2_repro_dir="$SDPC_RUN_DIR/L2/repro"
@@ -64,7 +64,7 @@ finish()
 }
 trap finish EXIT ERR
 
-out_basename=$(printf "$lev2_base_fmt" O3T)
+out_basename=$(printf "$lev2_base_fmt" O3TOT)
 
 etc_dir="$SDPC_ROOT/etc"
 

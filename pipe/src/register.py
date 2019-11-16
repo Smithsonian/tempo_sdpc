@@ -7,7 +7,7 @@ from datetime import date
 from netCDF4 import Dataset as NetCDFFile
 
 Radiance_Files = ["RAD_L1a", "RAD_L1b"]
-Radiance_Products = ["CLDRR", "HCHO", "NO2", "O3T", "O3P"]
+Radiance_Products = ["CLDRR", "HCHO", "NO2", "O3TOT", "O3PROF"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
 
