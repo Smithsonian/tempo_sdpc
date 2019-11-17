@@ -646,6 +646,7 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
                {
                   double a = o->area[j];
                   double src_k = src[k];
+                  if (src_k == fill_value) continue;
                   awt_sum += a * src_k;
                   a_sum   += a;
 
