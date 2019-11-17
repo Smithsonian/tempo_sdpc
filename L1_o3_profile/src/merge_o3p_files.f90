@@ -265,7 +265,7 @@ program merge_o3p_files
   ! if working with TEMPO data, copy global attributes
   if (write_global_attr) then
     call copy_hdr_metadata(input_files(1), errstat)
-    call label_output_file("O3PROF", processing_version, errstat)
+    call label_output_file(tempo_prod_type_o3p, processing_version, errstat)
   endif
 
   call l2_tio_close (errstat)
