@@ -292,6 +292,7 @@ contains
                               long_name = "cloud fraction", &
                               comment = "cloud fraction for AMF computation", &
                               valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = -1.0_r8, &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_pressure, &
@@ -300,7 +301,8 @@ contains
                               long_name = "cloud pressure", &
                               comment = "cloud pressure for AMF computation", &
                               units = "hPa", &
-                              valid_range = [0.0_r8, 1e30_r8], &
+                              valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
                               attlist = att_coord)
     IF (yn_stratrop) THEN
        call tiof_varlist_append (varlist, errstat, &
@@ -308,7 +310,7 @@ contains
                                  nf90_float, &
                                  dimids = dimids_xtrack_step,  &
                                  long_name = trim(target_molecule % name)//" tropospheric air mass factor", &
-                                 valid_range = [0.0_r8, 1e30_r8], &
+                                 valid_min = 0.0_r8, &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
        call tiof_varlist_append (varlist, errstat, &
@@ -316,7 +318,7 @@ contains
                                  nf90_float, &
                                  dimids = dimids_xtrack_step,  &
                                  long_name = trim(target_molecule % name)//" stratospheric air mass factor", &
-                                 valid_range = [0.0_r8, 1e30_r8], &
+                                 valid_min = 0.0_r8, &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
     END IF
