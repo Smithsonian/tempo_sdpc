@@ -199,7 +199,7 @@ CONTAINS
     bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
 
     DO iline = radiance_reference_lnums(1), radiance_reference_lnums(2), nlines_max
-       
+
       ! --------------------------------------------------------
       ! Check if loop ends before n_times_loop max is exhausted,
       ! or if we are outside the FIRST_LINE -> LAST_LINE range.
@@ -227,7 +227,7 @@ CONTAINS
         lpix = xtrange(iline+iloop,2)
 
         DO ix = fpix, lpix
-           
+
           cntr8(1:nwrr) = 1.0_r8
 
           where (iand(omi_radiance_qflg(1:nwrr,ix,iloop), bad_qflg_mask) /= 0)
@@ -376,7 +376,7 @@ CONTAINS
       spc_idx, wvl_idx, &
       o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, &
       squ_idx, solar_idx, radref_idx, max_rs_idx, max_calfit_idx
-    USE OMSAO_parameters_module, ONLY:  &
+    USE OMSAO_parameters_module, ONLY:  nlines_max, &
       i2_missval, r8_missval, downweight, normweight
     USE OMSAO_variables_module,  ONLY:  &
       database, curr_sol_spec,     & ! sol_wav_avg,
@@ -419,7 +419,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: ipix, radfit_exval, radfit_itnum ! locerrstat, 
+    INTEGER (KIND=i4) :: ipix, radfit_exval, radfit_itnum ! locerrstat,
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
@@ -444,6 +444,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (n_rad_wvl_max) :: fitspctmp
 
     type (prefit_type) :: prefit
+    integer :: iselect
 
     if (errstat /= 0) return
 
@@ -551,6 +552,7 @@ CONTAINS
       IF ( yn_radiance_reference ) THEN
         n_omi_radwvl = omi_nwav_radref(ipix) ! JCH: let's get the array length right
         n_rad_wvl_loc = n_omi_radwvl
+
         omi_radiance_wavl(1:n_omi_radwvl,ipix,0) = omi_radref_wavl(1:n_omi_radwvl,ipix)
         omi_radiance_spec(1:n_omi_radwvl,ipix,0) = omi_radref_spec(1:n_omi_radwvl,ipix)
         omi_radiance_qflg(1:n_omi_radwvl,ipix,0) = omi_radref_qflg(1:n_omi_radwvl,ipix)
@@ -578,8 +580,15 @@ CONTAINS
         num_adj_allocated = n_rad_wvl_loc
       endif
 
-      adj_wvls(1:n_rad_wvl_loc) = omi_radiance_wavl (1:n_rad_wvl_loc, ipix, 0)
-      adj_spec(1:n_rad_wvl_loc) = omi_radiance_spec (1:n_rad_wvl_loc, ipix, 0)
+      ! OMI heritage code defaulted to iselect=0.
+      ! For TEMPO, some lines can be clipped by the limb of the earth,
+      ! so we'll take any line with a valid spectrum at this ipix.
+      do iselect=0, nlines_max-1
+        if (any(omi_radiance_spec(1:n_rad_wvl_loc,ipix,iselect) > 0.0)) exit
+      enddo
+
+      adj_wvls(1:n_rad_wvl_loc) = omi_radiance_wavl (1:n_rad_wvl_loc, ipix, iselect)
+      adj_spec(1:n_rad_wvl_loc) = omi_radiance_spec (1:n_rad_wvl_loc, ipix, iselect)
       adj_wgts(1:n_rad_wvl_loc) = solar_wgt(1:n_rad_wvl_loc)
 
       select_idx(1:4) = rad_ccdpix_selection(ipix,1:4)
@@ -590,8 +599,8 @@ CONTAINS
         select_idx(1:4), exclud_idx(1:2),            &
         n_rad_wvl_loc, &
         adj_wvls(1:n_rad_wvl_loc), adj_spec(1:n_rad_wvl_loc), adj_wgts(1:n_rad_wvl_loc), &
-        omi_radiance_qflg   (1:n_omi_radwvl,ipix,0), &
-        omi_radiance_ccdpix (1:n_omi_radwvl,ipix,0), &
+        omi_radiance_qflg   (1:n_omi_radwvl,ipix,iselect), &
+        omi_radiance_ccdpix (1:n_omi_radwvl,ipix,iselect), &
         rad_spec_avg, do_skip_pix )
 
       ! --------------------------------------------------------------------
@@ -881,7 +890,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                     :: &
-      i, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat, 
+      i, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat,
     LOGICAL                                               :: have_good_window
     REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
     integer (kind=i2) :: bad_qflg_mask

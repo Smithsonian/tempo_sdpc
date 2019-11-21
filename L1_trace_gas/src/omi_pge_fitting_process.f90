@@ -390,12 +390,17 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------------------------------------------------------------------------
   ! If we are NOT using a radiance reference, then we need to read the
   ! swath line for radiance wavelength calibration. In this case, the
-  ! value of  RADIANCE_WAVCAL_LNUMS is that of the first line of the radiance reference
-  ! selected
+  ! value of RADIANCE_WAVCAL_LNUMS is the selected radiance reference line.
+  ! For OMI, the first line worked best.
+  ! For TEMPO, the first line can be clipped by the limb of the earth,
+  !            but the last line may be (is?) fortuitously unaffected by that.
+  ! Obviously, a more general algorithm would look at all the radiances first and
+  ! pick the very best line, but since we're trying to avoid reading all the data
+  ! at once, we try to get by with a simple choice.
   ! -----------------------------------------------------------------------------------
   IF ( .NOT. yn_radiance_reference ) THEN
     ntimes_loop = 1 ! The number of scan lines to read
-    iline = radiance_wavcal_lnums(1)
+    iline = radiance_wavcal_lnums(2)
     ! Get NTIMES_LOOP radiance lines.
     ! Note: omi_read_radiance_lines sets the global omi_nwav_rad
     CALL omi_read_radiance_lines (&
