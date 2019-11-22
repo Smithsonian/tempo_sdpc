@@ -41,6 +41,14 @@ extern Scan_Type *scan_read_grids (int num_files, char **files);
  */
 extern void scan_free (Scan_Type *st);
 
+/** Retrieve the scan start/end times
+ * @param[in] st  Pointer to a Scan_Type object created by \c scan_read_grids.
+ * @param[out] tstart  Scan start time [seconds since TEMPO epoch]
+ * @param[out] tend    Scan end time [seconds since TEMPO epoch]
+ * @return 0 on success, -1 on error
+ */
+extern int scan_time_interval (const Scan_Type *st, double *ptstart, double *ptend);
+
 /** Prepare to regrid variables from the scan grid to a uniform mesh.
  * @param[in]   st   Pointer to a \c Scan_Type object initialized by
  *                  \c scan_read_grids

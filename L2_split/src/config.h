@@ -5,8 +5,6 @@
 
 typedef struct
 {
-   char *apriori_trop_file;
-   char *testdata_file;
    double trop_thresh;
 }
 Config_Type;

@@ -15,6 +15,9 @@
 #include "filter.h"
 #include "process.h"
 
+extern int c_clim_species_vtrop (Pixel_Grid_Param_Type *cm,
+                                 double taix_beg, double taix_end,
+                                 double *vtrop);
 typedef struct
 {
    double *slant_column;
@@ -70,61 +73,25 @@ static int init_mesh (config_t *cfg, Pixel_Grid_Param_Type *mesh)
    return 0;
 }
 
-static double *
-read_apriori_vertical_trop_column (const char *file,
-                                   const Pixel_Grid_Param_Type *cm)
+static double *get_apriori_vertical_trop_column (double taix_beg, double taix_end,
+                                                 Pixel_Grid_Param_Type *cm)
 {
-   TIO_Var_Info_Type vi;
-   int ncid, num_pixels, start[2], count[2];
-   const char var_name[] = "no2";
    double *vtrop = NULL;
-   int i;
 
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
-     return NULL;
-
-   if (0 != TIO_inq_var (ncid, var_name, &vi))
-     goto return_error;
-
-   /* FIXME:  A more general implementation might read grid information,
-    *         and then regrid as needed.
-    */
-   if ((cm->ny != (int) vi.dimlens[0])
-       || (cm->nx != (int) vi.dimlens[1]))
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: array size mismatch: input apriori vertical trop column (%s)",
-                     __func__, file);
-        goto return_error;
-     }
-
-   num_pixels = vi.dimlens[0] * vi.dimlens[1];
-
-   if (NULL == (vtrop = (double *) MALLOC (num_pixels * sizeof(double))))
+   if (NULL == (vtrop = (double *) MALLOC (cm->ny * cm->nx * sizeof(double))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto return_error;
      }
 
-   start[0] = 0;
-   start[1] = 0;
-   count[0] = vi.dimlens[0];
-   count[1] = vi.dimlens[1];
-
-   if (0 != TIO_get_var_section (ncid, var_name, start, count, TIO_DOUBLE, vtrop))
+   if (0 != c_clim_species_vtrop (cm, taix_beg, taix_end, vtrop))
      goto return_error;
 
-   (void) TIO_close(ncid);
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        vtrop[i] *= 1.e15;
-     }
+   /* image_write_raw ("apriori_vtrop", cm->ny, cm->nx, vtrop); */
 
    return vtrop;
 
 return_error:
-   (void) TIO_close(ncid);
    FREE(vtrop);
    return NULL;
 }
@@ -201,51 +168,13 @@ vertical_trop_column (const Pixel_Grid_Param_Type *mesh,
    return vtrop;
 }
 
-static void free_params (Config_Type *params)
-{
-   if (params == NULL)
-     return;
-   FREE(params->testdata_file);
-   FREE(params->apriori_trop_file);
-}
-
 static int init_params (config_t *cfg, Config_Type *params)
 {
-   config_setting_t *s;
-   const char *testdata_file;
-   const char *apriori_trop_file;
-
    if (CONFIG_TRUE != config_lookup_float (cfg, "trop_thresh", &params->trop_thresh))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading trop_thresh in param file: %s",
                      __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (NULL == (s = config_lookup (cfg, "refdata")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing refdata in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "testdata_file", &testdata_file))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "apriori_trop_file", &apriori_trop_file)))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading refdata filenames in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   FREE(params->testdata_file);
-   FREE(params->apriori_trop_file);
-   if ((NULL == (params->testdata_file = strdup (testdata_file)))
-       || (NULL == (params->apriori_trop_file = strdup (apriori_trop_file))))
-     {
-        free_params (params);
         return -1;
      }
 
@@ -423,7 +352,7 @@ static int filter_vert_strat (const Pixel_Grid_Param_Type *mesh,
    return status;
 }
 
-int process_files (config_t *cfg, int num_files, char **files, int omi_test)
+int process_files (config_t *cfg, int num_files, char **files)
 {
    Config_Type params = {0};
    Pixel_Grid_Param_Type mesh = {0};
@@ -434,6 +363,7 @@ int process_files (config_t *cfg, int num_files, char **files, int omi_test)
    double *mesh_apriori_vert_trop = NULL;
    double *mesh_vert_strat = NULL;
    double *mesh_vert_trop = NULL;
+   double taix_beg, taix_end;
    int num_steps, num_xtrack;
    int status = -1;
 
@@ -457,26 +387,17 @@ int process_files (config_t *cfg, int num_files, char **files, int omi_test)
      goto free_and_return;
 
    /* Pack product variables on scan grid */
-   if (!omi_test)
-     {
-        if (0 != scan_vars_pack (st, sv))
-          goto free_and_return;
-     }
-   else
-     {
-        if (0 != __scan_enable_testdata (st, params.testdata_file, r_mesh))
-          goto free_and_return;
-        if (0 != __scan_vars_read (st, sv))
-          goto free_and_return;
-     }
+   if (0 != scan_vars_pack (st, sv))
+     goto free_and_return;
 
    /* Regrid product variables onto mesh grid */
    if (NULL == (mesh_vars = regrid_product_vars (sv, &mesh, r_mesh)))
      goto free_and_return;
 
    /* Read apriori tropospheric vertical column and map to mesh grid */
-   mesh_apriori_vert_trop =
-     read_apriori_vertical_trop_column (params.apriori_trop_file, &mesh);
+   if (0 != scan_time_interval (st, &taix_beg, &taix_end))
+     goto free_and_return;
+   mesh_apriori_vert_trop = get_apriori_vertical_trop_column (taix_beg, taix_end, &mesh);
    if (NULL == mesh_apriori_vert_trop)
      goto free_and_return;
 
@@ -501,7 +422,6 @@ int process_files (config_t *cfg, int num_files, char **files, int omi_test)
 
    status = 0;
 free_and_return:
-   free_params (&params);
    scan_free (st);
    scan_vars_free (sv);
    Pixel_close_regrid (r_mesh);

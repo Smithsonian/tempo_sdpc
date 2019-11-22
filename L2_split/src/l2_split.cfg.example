@@ -8,8 +8,8 @@
 #                  only the corner points are used.
 #
 mesh: {
-   longitude = {delta = 0.1; min = -180.0; num = 3600;};
-   latitude  = {delta = 0.1; min =  -90.0; num = 1800;};
+   longitude = {delta = 0.1; min = -150.0; num = 1000;};
+   latitude  = {delta = 0.1; min =   15.0; num =  500;};
 };
 
 trop_thresh = 0.3e15;
@@ -27,14 +27,3 @@ filter: {
    smooth2 = {num_dim0 =  3; num_dim1 =  5;};
    # boxcar smoothing window (post-clip)
 };
-
-refdata: {
-# January:
-# apriori_trop_file = "/tmp/mean_no2_filt_200701.nc";
-# testdata_file = "/tmp/OMI_GRIDDED_DATA_0.10x0.10_2007_01_15.nc";
-
-# July:
- apriori_trop_file = "/tmp/mean_no2_filt_200707.nc";
- testdata_file = "/tmp/OMI_GRIDDED_DATA_0.10x0.10_2007_07_15.nc";
-};
-

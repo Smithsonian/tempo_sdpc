@@ -13,6 +13,8 @@
 #include "proj.h"
 #include "scan.h"
 
+static int _pEpoch_Set = 0;
+
 /* Valid longitude, latitude values */
 #define INVALID_LONGITUDE(b) ((0 == isfinite(b)) || ((b) < -180.0) || (360.0 < (b)))
 #define INVALID_LATITUDE(b)  ((0 == isfinite(b)) || ((b) <  -90.0) || ( 90.0 < (b)))
@@ -27,6 +29,8 @@ struct Granule_Type
    double *slant_column;
    double *amf_trop;
    double *amf_strat;
+   double tstart;
+   double tend;
    int *data_quality_flag;
    int *steps;
    int num_xtrack;
@@ -252,7 +256,20 @@ static int read_data_arrays (Granule_Type *gr, int ncid)
    if (-1 == TIO_inq_grp (ncid, "product", &grp))
      return -1;
 
-   if (0 != read_dbl_and_replace_fill (grp, "column_amount", count, gr->slant_column))
+   if (0 != TIO_get_var_section (grp, "main_data_quality_flag",
+                                 start, count, TIO_INT, gr->data_quality_flag))
+     return -1;
+
+   if (-1 == TIO_inq_grp (ncid, "support_data", &grp))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "fitted_slant_column", count, gr->slant_column))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "amf_troposphere", count, gr->amf_trop))
+     return -1;
+
+   if (0 != read_dbl_and_replace_fill (grp, "amf_stratosphere", count, gr->amf_strat))
      return -1;
 
    if (1)  /* FIXME - why are input slant columns < 0? */
@@ -270,19 +287,6 @@ static int read_data_arrays (Granule_Type *gr, int ncid)
         }
    }
 
-   if (0 != TIO_get_var_section (grp, "main_data_quality_flag",
-                                 start, count, TIO_INT, gr->data_quality_flag))
-     return -1;
-
-   if (-1 == TIO_inq_grp (ncid, "support_data", &grp))
-     return -1;
-
-   if (0 != read_dbl_and_replace_fill (grp, "amf_molecule_tropospheric", count, gr->amf_trop))
-     return -1;
-
-   if (0 != read_dbl_and_replace_fill (grp, "amf_molecule_stratospheric", count, gr->amf_strat))
-     return -1;
-
    return 0;
 }
 
@@ -299,6 +303,17 @@ static Granule_Type *granule_init (const char *file)
         granule_free (gr);
         return NULL;
      }
+
+   if (0 == _pEpoch_Set)
+     {
+        if (0 != tio_use_file_epoch (ncid))
+          goto free_and_return;
+        _pEpoch_Set = 1;
+     }
+
+   if ((0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &gr->tstart))
+       || (0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &gr->tend)))
+     goto free_and_return;
 
    if (0 != read_pixel_vertices (gr, ncid))
      goto free_and_return;
@@ -396,6 +411,27 @@ Scan_Type *scan_read_grids (int num_files, char **files)
      }
 
    return st;
+}
+
+int scan_time_interval (const Scan_Type *st, double *ptstart, double *ptend)
+{
+   double tbeg, tend;
+   int i;
+
+   tbeg = st->granules[0]->tstart;
+   tend = st->granules[0]->tend;
+
+   for (i = 1; i < st->num_granules; i++)
+     {
+        Granule_Type *gr = st->granules[i];
+        if (gr->tstart < tbeg) tbeg = gr->tstart;
+        if (gr->tend > tend) tend = gr->tstart;
+     }
+
+   *ptstart = tbeg;
+   *ptend = tend;
+
+   return 0;
 }
 
 static Pixel_List_Type *make_lonlat_pixel_list (const Granule_Type *gr)
@@ -601,20 +637,6 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
    return sv;
 }
 
-int __scan_enable_testdata (Scan_Type *st, const char *filename,
-                            Pixel_Regrid_Type *r)
-{
-   st->__t.regrid_obj = r;
-
-   if (NULL == (st->__t.filename = strdup (filename)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   return 0;
-}
-
 static double *read_testdata_value (const char *file, const char *var_name)
 {
    TIO_Var_Info_Type vi;
@@ -716,6 +738,20 @@ free_and_return:
    return var;
 }
 
+int __scan_enable_testdata (Scan_Type *st, const char *filename,
+                            Pixel_Regrid_Type *r)
+{
+   st->__t.regrid_obj = r;
+
+   if (NULL == (st->__t.filename = strdup (filename)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
 int __scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv)
 {
    int i, num_pixels;
@@ -798,45 +834,75 @@ int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv)
    return 0;
 }
 
+typedef struct
+{
+   const char *name;
+   const char *long_name;
+   int varid;
+}
+Name_Type;
+
+static int write_vertical_column_attributes (int grp, double fill_value, const Name_Type *vcol)
+{
+   const char coordinate_string[] = "longitude latitude";
+
+   if (0 != TIO_def_var_fill (grp, vcol->varid, 0, &fill_value))
+     return -1;
+
+   if ((0 != TIO_put_att (grp, vcol->varid, "coordinates", TIO_CHAR, sizeof(coordinate_string), coordinate_string))
+       || (0 != TIO_put_att (grp, vcol->varid, "long_name", TIO_CHAR, 1+strlen(vcol->long_name), vcol->long_name)))
+     return -1;
+
+   return 0;
+}
+
 static int write_granule_vars (const Granule_Type *gr, double fill_value,
                                const double *vtrop_gr, const double *vstrat_gr)
 {
    TIO_Var_Info_Type vi;
-   const char vtrop_name[] = "tropospheric_column_amount";
-   const char vstrat_name[] = "stratospheric_column_amount";
-   const char coordinate_string[] = "longitude latitude";
-   int start[2], count[2], varid_trop, varid_strat;
+   Name_Type vtrop =
+     {
+        .name = "vertical_column_troposphere",
+        .long_name = "troposphere nitrogen dioxide vertical column",
+        .varid = 0
+     };
+   Name_Type vstrat =
+     {
+        .name = "vertical_column_stratosphere",
+        .long_name = "stratosphere nitrogen dioxide vertical column",
+        .varid = 0
+     };
+   int start[2], count[2];
    int i, num_steps, num_xtrack;
    int ncid, grp, status = -1;
 
    if (0 != TIO_open (gr->file, NC_WRITE, &ncid))
      return -1;
 
+   if (0 != TIO_inq_grp (ncid, "support_data", &grp))
+     goto close_and_return;
+
+   if (-1 == TIO_inq_var (grp, "vertical_column_total", &vi))
+     goto close_and_return;
+
    if (0 != TIO_inq_grp (ncid, "product", &grp))
      goto close_and_return;
 
-   if (-1 == TIO_inq_var (grp, "column_amount", &vi))
-     goto close_and_return;
-
-   if (0 != tio_inq_varid (grp, vtrop_name, &varid_trop))
+   if (0 != tio_inq_varid (grp, vtrop.name, &vtrop.varid))
      {
-        if ((0 != TIO_def_var (grp, vtrop_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_trop))
-            || (0 != TIO_def_var_fill (grp, varid_trop, 0, &fill_value)))
+        if (0 != TIO_def_var (grp, vtrop.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vtrop.varid))
+          goto close_and_return;
+        if (0 != write_vertical_column_attributes (grp, fill_value, &vtrop))
           goto close_and_return;
      }
 
-   if (0 != tio_inq_varid (grp, vstrat_name, &varid_strat))
+   if (0 != tio_inq_varid (grp, vstrat.name, &vstrat.varid))
      {
-        if ((0 != TIO_def_var (grp, vstrat_name, TIO_DOUBLE, vi.ndims, vi.dimids, &varid_strat))
-            || (0 != TIO_def_var_fill (grp, varid_strat, 0, &fill_value)))
+        if (0 != TIO_def_var (grp, vstrat.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vstrat.varid))
+          goto close_and_return;
+        if (0 != write_vertical_column_attributes (grp, fill_value, &vstrat))
           goto close_and_return;
      }
-
-   if ((0 != TIO_put_att (grp, varid_trop, "coordinates", TIO_CHAR,
-                          sizeof(coordinate_string), coordinate_string))
-       ||(0 != TIO_put_att (grp, varid_strat, "coordinates", TIO_CHAR,
-                          sizeof(coordinate_string), coordinate_string)))
-     goto close_and_return;
 
    num_steps = vi.dimlens[0];
    num_xtrack = vi.dimlens[1];
@@ -851,8 +917,8 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
         count[0] = 1;
         count[1] = num_xtrack;
 
-        if ((0 != TIO_put_var_section (grp, vtrop_name, start, count, TIO_DOUBLE, vtrop_i))
-            || (0 != TIO_put_var_section (grp, vstrat_name, start, count, TIO_DOUBLE, vstrat_i)))
+        if ((0 != TIO_put_var_section (grp, vtrop.name, start, count, TIO_DOUBLE, vtrop_i))
+            || (0 != TIO_put_var_section (grp, vstrat.name, start, count, TIO_DOUBLE, vstrat_i)))
           {
              goto close_and_return;
           }
