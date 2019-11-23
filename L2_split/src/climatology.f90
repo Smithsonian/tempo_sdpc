@@ -32,7 +32,7 @@ contains
     real (kind=c_double) :: dx, dy
     real (kind=c_float) :: lon, lat
     real (kind=4) :: ptrop
-    integer :: nx, ny, nz, nlayers, errstat, i, j, k, idx
+    integer :: nx, ny, nz, nlayers, errstat, i, j, k
     integer, dimension(2) :: year, month, day
     real (kind=8), dimension(2) :: hour
 
@@ -66,9 +66,9 @@ contains
     allocate (pres_z(0:nz-1), vmr_z(nlayers), partial_column_z(nlayers))
 
     do i = 1, nx
-      lon = real (grid % xmin + (i-1) * dx, kind=4)
+      lon = real (grid % xmin + (i-0.5) * dx, kind=4)
       do j = 1, ny
-        lat = real (grid % ymin + (j-1) * dy, kind=4)
+        lat = real (grid % ymin + (j-0.5) * dy, kind=4)
 
         call clim_pres (cpt, bounds % hour_beg, lon, lat, pres_z, errstat, p_trop=ptrop)
         call clim_species_vmr (cst, cpt, bounds % hour_beg, lon, lat, vmr_z, errstat)
@@ -86,8 +86,7 @@ contains
           return
         endif
 
-        idx = i + (j-1) * nx
-        vtrop(idx) = sum(partial_column_z(1:k))
+        vtrop(i + (j-1)*nx) = sum(partial_column_z(1:k))
       enddo
     enddo
 
