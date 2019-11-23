@@ -37,6 +37,7 @@ l0_ccd.cfg
 wavecal.cfg
 l1_inr_prep.cfg
 l1_inr_post.cfg
+l2_split.cfg
 l3.cfg
 l3_cldrr.cfg
 l3_o3p.cfg
