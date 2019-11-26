@@ -194,8 +194,8 @@ CONTAINS
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: climatology
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA) :: scattw
+    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: climatology
+    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: scattw
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
@@ -403,7 +403,7 @@ CONTAINS
 
     type (clim_pres_type), intent(inout) :: cpt
     integer (kind=i4), intent(in) :: pge_idx
-    real (kind=r8), dimension(1:nx,0:nt-1, cmeta), intent (inout) :: climatology
+    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
     real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
     integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
@@ -491,7 +491,7 @@ CONTAINS
         where (partial_column < 0.0_r8)
           partial_column = 0.0_r8
         end where
-        climatology(ixtrack,itimes,1:nlayers) = real (partial_column(1:nlayers), kind=r8)
+        climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
       enddo
     enddo
   end subroutine
@@ -528,7 +528,7 @@ CONTAINS
     ! Modified variables
     ! ------------------
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, CmETA), INTENT (INOUT) :: climatology
+    REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT (INOUT) :: climatology
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION(1:nx,0:nt-1, 2), INTENT (INOUT) :: cli_idx_ozo_pro
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (OUT) :: amfdiag
@@ -783,8 +783,8 @@ CONTAINS
              ! Interpolate trace gas profile to lon,lat,hrs [GAS]/cm^2
              ! FIXME(omi climatology): if you use this code, you may
              ! need to change this to
-             ! climatology(ixtrack,itimes,n) = linInterpol(..
-             climatology(ixtrack,itimes,CmETA-n+1) = linInterpol(nlon,nlat,ntim, &
+             ! climatology(n,ixtrack,itimes) = linInterpol(..
+             climatology(CmETA-n+1,ixtrack,itimes) = linInterpol(nlon,nlat,ntim, &
                   REAL(lonvals(idx_lon(1):idx_lon(2)),KIND=r8), &
                   REAL(latvals(idx_lat(1):idx_lat(2)),KIND=r8), &
                   REAL(timevals(idx_tim(1):idx_tim(2)),KIND=r8), &
@@ -798,8 +798,8 @@ CONTAINS
           END DO
 
           !  Set non-physical entries to zero.
-          WHERE ( climatology(ixtrack,itimes,1:CmETA) < 0.0_r8 )
-             climatology(ixtrack,itimes,1:CmETA) = 0.0_r8
+          WHERE ( climatology(1:CmETA,ixtrack,itimes) < 0.0_r8 )
+             climatology(1:CmETA,ixtrack,itimes) = 0.0_r8
           END WHERE
 
           ! De-allocate climatology arrays
@@ -832,7 +832,7 @@ CONTAINS
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
     integer (kind=i4), intent(in) :: pge_idx
-    real (kind=r8), dimension(1:nx,0:nt-1, cmeta), intent (inout) :: climatology
+    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
     real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
     integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
@@ -2207,7 +2207,7 @@ CONTAINS
     ! ------------------
     ! Modified variables
     ! ------------------
-    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,CmETA), INTENT (INOUT) :: scattw
+    REAL (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1), INTENT (INOUT) :: scattw
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: surface_pressure
 
@@ -2281,7 +2281,7 @@ CONTAINS
           ! different from r8_missval and it needs to be
           ! initialized to 0.0 to work out the average
           ! ----------------------------------------------
-          scattw(ixtrack,itime,:) = 0.0_r8
+          scattw(:,ixtrack,itime) = 0.0_r8
 
           ! -----------------------------------
           ! Fill up local values for this pixel
@@ -2692,10 +2692,10 @@ CONTAINS
              out_pre_lay = (( Ap(ilay) + local_srf * Bp(ilay)  ) + &
                   ( Ap(ilay+1) + local_srf * Bp(ilay+1) )) / 2.0
              IF ( (out_pre_lay > MAXVAL(lut_pre_lay)) .OR. (out_pre_lay < MINVAL(lut_pre_lay)) ) THEN
-                scattw(ixtrack,itime,ilay) = 0.0
+                scattw(ilay,ixtrack,itime) = 0.0
                 cycle
              ENDIF
-             scattw(ixtrack,itime,ilay) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
+             scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
                   Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
                amfdiag(ixtrack,itime) = omi_scattfail_amf
@@ -2720,8 +2720,8 @@ CONTAINS
           endif
 
           !  Set non-physical entries to zero.
-          WHERE ( scattw(ixtrack,itime,1:CmETA) < 0.0_r8 )
-             scattw(ixtrack,itime,1:CmETA) = 0.0_r8
+          WHERE ( scattw(1:CmETA,ixtrack,itime) < 0.0_r8 )
+             scattw(1:CmETA,ixtrack,itime) = 0.0_r8
           END WHERE
 
        END DO ! End loop xtrack
@@ -2744,7 +2744,7 @@ CONTAINS
     ! ---------------
     type (clim_pres_type), intent(in) :: cpt
     INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
-    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1,CmETA), INTENT(IN) :: climatology, scattw
+    REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(IN) :: climatology, scattw
     INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: amfdiag
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: surface_pressure
     real (kind=r4), dimension(1:nx,0:nt-1), intent(in) :: lat, lon
@@ -2821,19 +2821,19 @@ CONTAINS
            ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
            ! EJOS adding a test for zero in climatology to avoid NaN AMFs
            alpha = 1.0_r8-0.003_r8*(temperature_profile-220.0_r8)
-           if (SUM(climatology(ixtrack,itimes,1:tropopause_idx)).eq.0) then
+           if (SUM(climatology(1:tropopause_idx,ixtrack,itimes)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
-             tropospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:tropopause_idx) * &
-                  climatology(ixtrack,itimes,1:tropopause_idx) * alpha(1:tropopause_idx))     / &
-                  SUM(climatology(ixtrack,itimes,1:tropopause_idx))
+             tropospheric_amf(ixtrack,itimes) = SUM(scattw(1:tropopause_idx,ixtrack, itimes) * &
+                  climatology(1:tropopause_idx,ixtrack,itimes) * alpha(1:tropopause_idx))     / &
+                  SUM(climatology(1:tropopause_idx,ixtrack,itimes))
            endif
-           if (SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA)).eq.0) then
+           if (SUM(climatology(tropopause_idx+1:CmETA,ixtrack,itimes)).eq.0) then
              stratospheric_amf(ixtrack,itimes) = 0.0d0
            else
-             stratospheric_amf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, tropopause_idx+1:CmETA) * &
-                  climatology(ixtrack,itimes,tropopause_idx+1:CmETA) * alpha(tropopause_idx+1:CmETA) ) / &
-                  SUM(climatology(ixtrack,itimes,tropopause_idx+1:CmETA))
+             stratospheric_amf(ixtrack,itimes) = SUM(scattw(tropopause_idx+1:CmETA,ixtrack, itimes) * &
+                  climatology(tropopause_idx+1:CmETA,ixtrack,itimes) * alpha(tropopause_idx+1:CmETA) ) / &
+                  SUM(climatology(tropopause_idx+1:CmETA,ixtrack,itimes))
            endif
            DEALLOCATE(pressure_grid,temperature_profile,alpha)
         END IF
@@ -2841,9 +2841,9 @@ CONTAINS
         ! -------------------------
         ! Finally work out the AMFs
         ! -------------------------
-        saoamf(ixtrack,itimes) = SUM(scattw(ixtrack, itimes, 1:CmETA) * &
-             climatology(ixtrack,itimes,1:CmETA))     / &
-             SUM(climatology(ixtrack,itimes,1:CmETA))
+        saoamf(ixtrack,itimes) = SUM(scattw(1:CmETA,ixtrack, itimes) * &
+             climatology(1:CmETA,ixtrack,itimes))     / &
+             SUM(climatology(1:CmETA,ixtrack,itimes))
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish

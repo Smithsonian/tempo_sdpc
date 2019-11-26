@@ -196,7 +196,7 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_coord, att_amf_diag
     integer, dimension(2) :: dimids_xtrack_step
-    integer, dimension(3) :: dimids_xtrack_step_levels, dimsizes_xtrack_step_levels
+    integer, dimension(3) :: dimids_levels_xtrack_step, dimsizes_levels_xtrack_step
     integer, dimension(3) :: chunksizes
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
@@ -209,9 +209,9 @@ contains
                               dimids_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [tg_dim_xtrack, tg_dim_step,tg_dim_swt_level], &
-                              dimids_xtrack_step_levels, &
-                              errstat, dimsizes = dimsizes_xtrack_step_levels)
+                              [tg_dim_swt_level, tg_dim_xtrack, tg_dim_step], &
+                              dimids_levels_xtrack_step, &
+                              errstat, dimsizes = dimsizes_levels_xtrack_step)
 
     ! coordinates for 2D variables
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
@@ -225,14 +225,14 @@ contains
     call tiof_attlist_append (att_amf_diag, errstat, "flag_values", &
                               att_i4 = [0,1,2])
     ! append amf variables
-    chunksizes(1) = min(dimsizes_xtrack_step_levels(1), 128)  ! xtrack dimension
-    chunksizes(2) = min(dimsizes_xtrack_step_levels(2), 128)  ! step dimension
-    chunksizes(3) = dimsizes_xtrack_step_levels(3)            ! level dimension
+    chunksizes(1) = dimsizes_levels_xtrack_step(1)            ! level dimension
+    chunksizes(2) = min(dimsizes_levels_xtrack_step(2), 128)  ! xtrack dimension
+    chunksizes(3) = min(dimsizes_levels_xtrack_step(3), 128)  ! step dimension
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_scattering_weights, &
                               nf90_float, &
-                              dimids = dimids_xtrack_step_levels,  &
+                              dimids = dimids_levels_xtrack_step,  &
                               long_name = "scattering weights", &
                               comment = "vertical profile of scattering weights", &
                               valid_min = 0.0_r8, &
@@ -243,7 +243,7 @@ contains
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
                               nf90_float, &
-                              dimids = dimids_xtrack_step_levels,  &
+                              dimids = dimids_levels_xtrack_step,  &
                               long_name = "vertical profile of "//trim(target_molecule % name)//" partial column", &
                               units = "molec/cm^2", &
                               valid_min = 0.0_r8, &
@@ -1330,7 +1330,7 @@ contains
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes, nlevels
-    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: gas_profile
+    real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: gas_profile
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1341,8 +1341,8 @@ contains
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r4 (obj, tg_var_amf_gas_profile, [0,0,0], &
-         [nlevels,ntimes,nxtrack], &
-         real(gas_profile(1:nxtrack, 0:ntimes-1, 1:nlevels), kind=4), errstat)
+         [ntimes,nxtrack,nlevels], &
+         real(gas_profile(1:nlevels,1:nxtrack, 0:ntimes-1), kind=4), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_gas_profile", errstat)
@@ -1360,7 +1360,7 @@ contains
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes, nlevels
-    real (kind=r8), dimension (1:nxtrack, 0:ntimes-1, 1:nlevels), intent(in) :: scattw
+    real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: scattw
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1371,8 +1371,8 @@ contains
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r4 (obj, tg_var_amf_scattering_weights, [0,0,0], &
-         [nlevels,ntimes,nxtrack], &
-         real(scattw (1:nxtrack, 0:ntimes-1, 1:nlevels), kind=4), errstat)
+         [ntimes,nxtrack,nlevels], &
+         real(scattw (1:nlevels,1:nxtrack, 0:ntimes-1), kind=4), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
