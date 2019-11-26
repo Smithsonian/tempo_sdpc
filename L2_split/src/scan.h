@@ -22,6 +22,7 @@ typedef struct
    double *slant_column; /**< Slant column [num_steps, num_xtrack] */
    double *amf_trop;     /**< Tropospheric air mass factor [num_steps, num_xtrack] */
    double *amf_strat;    /**< Stratospheric air mass factor [num_steps, num_xtrack] */
+   double *vert_strat;   /**< Stratospheric vertical column */
    int *data_quality_flag;  /**< Data quality flag [num_steps, num_xtrack] */
    int num_steps;        /**< number of mirror steps = dimension of the slowest varying index */
    int num_xtrack;       /**< number of cross-track pixels = dimension of the fastest varying index */
@@ -31,10 +32,11 @@ Scan_Vars_Type;
 /** Read longitude and latitude grids from granule files comprising a single scan
  * @param[in] num_files   Number of granule files
  * @param[in] files       Pointer to an array of granule file names
+ * @param[in] trop_thresh  Threshold for contaminating tropospheric vertical column
  * @return  On success, an opaque pointer to a \c Scan_Type object.
  *          On error, a NULL pointer
  */
-extern Scan_Type *scan_read_grids (int num_files, char **files);
+extern Scan_Type *scan_read_grids (int num_files, char **files, double trop_thresh);
 
 /** Free resources associated with a Scan_Type object
  * @param[in] st  Pointer to a Scan_Type object created by \c scan_read_grids.

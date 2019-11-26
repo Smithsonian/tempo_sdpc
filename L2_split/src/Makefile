@@ -14,9 +14,9 @@ REGRID_INC = $(config_dir)/L2_regrid/src
 REGRID_LIB = $(config_dir)/L2_regrid/src/$(archobjs)
 REGRID_LIBPATHS  = -Wl,-rpath=$(REGRID_LIB) -L$(REGRID_LIB)
 
-CLIM_INC = $(config_dir)/libclim/src
-CLIM_LIB = $(config_dir)/libclim/src/$(archobjs)
-CLIM_LIBPATHS  = -Wl,-rpath=$(CLIM_LIB) -L$(CLIM_LIB)
+# CLIM_INC = $(config_dir)/libclim/src
+# CLIM_LIB = $(config_dir)/libclim/src/$(archobjs)
+# CLIM_LIBPATHS  = -Wl,-rpath=$(CLIM_LIB) -L$(CLIM_LIB)
 
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
@@ -38,9 +38,8 @@ LIBS = $(TIO_LIBPATHS) -ltio \
        $(TELL_LIBPATHS) -ltell \
        $(RPATH) $(INSTALL_LIBPATHS)
 
-MODS_F = -I$(TELL_INC) -I$(TIO_INC)/$(archobjs) -I$(CLIM_INC)/$(archobjs)
-LIBS_F = $(CLIM_LIBPATHS) -lclim_f \
-         $(TELL_LIBPATHS) -ltell_f \
+MODS_F = -I$(TELL_INC) -I$(TIO_INC)/$(archobjs)
+LIBS_F = $(TELL_LIBPATHS) -ltell_f \
 	 $(TIO_LIBPATHS) -ltio_f -lgfortran
 
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
@@ -51,9 +50,8 @@ ELF_F_COMPILE_CMD = $(ELF_FC) -c $(ELF_FCFLAGS)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES_F = climatology.o
 OFILES   = l2_split.o proj.o scan.o process.o filter.o
-OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES) $(OFILES_F))
+OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
 # Rules
@@ -65,7 +63,7 @@ $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES)) $(patsubst %.o,%.f90,$(OFILES_F))
+	ctags $(patsubst %.o,%.c,$(OFILES)) # $(patsubst %.o,%.f90,$(OFILES_F))
 
 .PHONY: clean distclean all install check tags
 
@@ -115,6 +113,3 @@ $(objdir)/process.o:	$(srcdir)/process.c
 
 $(objdir)/filter.o:	$(srcdir)/filter.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/filter.c
-
-$(objdir)/climatology.o:	$(srcdir)/climatology.f90
-	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/climatology.f90

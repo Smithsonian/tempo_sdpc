@@ -29,6 +29,7 @@ struct Granule_Type
    double *slant_column;
    double *amf_trop;
    double *amf_strat;
+   double *vert_strat;
    double tstart;
    double tend;
    int *data_quality_flag;
@@ -66,6 +67,7 @@ static void granule_free (Granule_Type *gr)
    FREE(gr->slant_column);
    FREE(gr->amf_trop);
    FREE(gr->amf_strat);
+   FREE(gr->vert_strat);
    FREE(gr->data_quality_flag);
    FREE(gr);
 }
@@ -117,6 +119,7 @@ static int granule_alloc_data_arrays (Granule_Type *gr)
        || (NULL == (gr->slant_column = (double *) MALLOC (len_doubles))
        || (NULL == (gr->amf_trop = (double *) MALLOC (len_doubles)))
        || (NULL == (gr->amf_strat = (double *) MALLOC (len_doubles)))
+       || (NULL == (gr->vert_strat = (double *) MALLOC (len_doubles)))
        || (NULL == (gr->data_quality_flag = (int *) MALLOC (num_pixels * sizeof(int)))))
       )
      {
@@ -244,9 +247,202 @@ static int read_dbl_and_replace_fill (int grp, const char *name,
    return 0;
 }
 
+typedef struct
+{
+   double *psurf;
+   double *ap;
+   double *bp;
+   int num_pressures;
+   int num_pixels;
+}
+Pressure_Param_Type;
+
+static void free_pressure_params (Pressure_Param_Type *p)
+{
+   if (p == NULL)
+     return;
+   FREE(p->psurf);
+   FREE(p->ap);
+   FREE(p->bp);
+   FREE(p);
+}
+
+static Pressure_Param_Type *alloc_pressure_params (int num_pixels, int num_pressures)
+{
+   Pressure_Param_Type *p = NULL;
+
+   if (NULL == (p = (Pressure_Param_Type *)MALLOC (sizeof *p)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)p, 0, sizeof *p);
+
+   if ((NULL == (p->psurf = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (p->ap = (double *)MALLOC (num_pressures * sizeof(double))))
+       || (NULL == (p->bp = (double *)MALLOC (num_pressures * sizeof(double)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_pressure_params (p);
+        return NULL;
+     }
+
+   p->num_pixels = num_pixels;
+   p->num_pressures = num_pressures;
+
+   return p;
+}
+
+static Pressure_Param_Type *read_pressure_params (const Granule_Type *gr, int ncid)
+{
+   TIO_Var_Info_Type info = {0};
+   Pressure_Param_Type *p = NULL;
+   const char *name = "surface_pressure";
+   int grp, start[2], count[2], xtype, num_pressures, num_pixels;
+
+   if (-1 == TIO_inq_grp (ncid, "support_data", &grp))
+     return NULL;
+
+   if ((0 != TIO_inq_var (grp, name, &info))
+       || (0 != TIO_inq_att (grp, info.varid, "Eta_A", &xtype, &num_pressures)))
+     return NULL;
+
+   num_pixels = gr->num_steps * gr->num_xtrack;
+
+   if (NULL == (p = alloc_pressure_params (num_pixels, num_pressures)))
+     return NULL;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = gr->num_steps;
+   count[1] = gr->num_xtrack;
+
+   if ((0 != TIO_get_var_section (grp, name, start, count, TIO_DOUBLE, p->psurf))
+       || (0 != TIO_get_att (grp, info.varid, "Eta_A", TIO_DOUBLE, p->ap))
+       || (0 != TIO_get_att (grp, info.varid, "Eta_B", TIO_DOUBLE, p->bp)))
+     {
+        free_pressure_params (p);
+        return NULL;
+     }
+
+   return p;
+}
+
+static int find_tropopause (int pix, double ptrop, const Pressure_Param_Type *pt)
+{
+   double *ap = pt->ap;
+   double *bp = pt->bp;
+   double p0 = pt->psurf[pix];
+   int n = pt->num_pressures;
+
+   /* Is it faster to compute only the upper part of the
+    * profile and search it linearly, or is it better to
+    * compute the whole profile, and then do a binary search?
+    * Let's try the linear approach first */
+   while (n-- > 0)
+     {
+        double p = ap[n] + bp[n] * p0;
+        if (p > ptrop)
+          return n;
+     }
+
+   tell_verror (TELL_RUNTIME_ERROR,
+                "%s: cannot find tropopause for pixel %d: P(trop) = %g",
+                __func__, pix, ptrop);
+
+   return -1;
+}
+
+static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
+                                          double trop_thresh)
+{
+   Pressure_Param_Type *pt = NULL;
+   int i, grp, start[3], count[3], dimid_levels, num_pixels;
+   size_t dimlen_levels;
+   double nan_value = nan("");
+   double *tropopause_pressure = NULL;
+   double *gas_profile = NULL;
+   int status = -1;
+
+   if (0 != TIO_inq_dim (ncid, "swt_level", &dimid_levels, &dimlen_levels))
+     return -1;
+
+   if (-1 == TIO_inq_grp (ncid, "support_data", &grp))
+     return -1;
+
+   num_pixels = gr->num_steps * gr->num_xtrack;
+
+   if  ((NULL == (tropopause_pressure = (double *)MALLOC (num_pixels * sizeof(double))))
+        || (NULL == (gas_profile = (double *)MALLOC (num_pixels * dimlen_levels * sizeof(double)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+
+   count[0] = gr->num_steps;
+   count[1] = gr->num_xtrack;
+   count[2] = 0;
+
+   if (0 != read_dbl_and_replace_fill (grp, "tropopause_pressure", count, tropopause_pressure))
+     goto free_and_return;
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = gr->num_steps;
+   count[1] = gr->num_xtrack;
+   count[2] = dimlen_levels;
+
+   if (0 != TIO_get_var_section (grp, "gas_profile", start, count, TIO_DOUBLE, gas_profile))
+     goto free_and_return;
+
+   if (NULL == (pt = read_pressure_params (gr, ncid)))
+     goto free_and_return;
+
+   for (i = 0; i < num_pixels; i++)
+     {
+        double *gas_profile_i = gas_profile + i * dimlen_levels;
+        double vtrop_apriori, trop_slant;
+        int k, ktrop;
+
+        gr->vert_strat[i] = nan_value;
+
+        if (isnan(tropopause_pressure[i])
+            || isnan(gr->amf_strat[i])
+            || isnan(gr->slant_column[i]))
+          {
+             continue;
+          }
+
+        if ((ktrop = find_tropopause (i, tropopause_pressure[i], pt)) < 0)
+          goto free_and_return;
+
+        vtrop_apriori = 0.0;
+        for (k = 0; k < ktrop; k++)
+          {
+             vtrop_apriori += gas_profile_i[k];
+          }
+
+        trop_slant = vtrop_apriori * gr->amf_trop[i];
+
+        if (trop_slant < trop_thresh * gr->amf_strat[i])
+          {
+             gr->vert_strat[i] = (gr->slant_column[i] - trop_slant) / gr->amf_strat[i];
+          }
+     }
+
+   status = 0;
+free_and_return:
+   free_pressure_params (pt);
+   FREE(tropopause_pressure);
+   FREE(gas_profile);
+
+   return status;
+}
+
 static int read_data_arrays (Granule_Type *gr, int ncid)
 {
-   int grp, start[2], count[2];
+   int grp, start[3], count[3];
 
    start[0] = 0;
    start[1] = 0;
@@ -290,7 +486,7 @@ static int read_data_arrays (Granule_Type *gr, int ncid)
    return 0;
 }
 
-static Granule_Type *granule_init (const char *file)
+static Granule_Type *granule_init (const char *file, double trop_thresh)
 {
    Granule_Type *gr = NULL;
    int ncid;
@@ -319,6 +515,9 @@ static Granule_Type *granule_init (const char *file)
      goto free_and_return;
 
    if (0 != read_data_arrays (gr, ncid))
+     goto free_and_return;
+
+   if (0 != compute_vstrat_from_file_data (gr, ncid, trop_thresh))
      goto free_and_return;
 
    (void) TIO_close (ncid);
@@ -374,7 +573,7 @@ static Scan_Type *new_scan (int num_files)
    return st;
 }
 
-Scan_Type *scan_read_grids (int num_files, char **files)
+Scan_Type *scan_read_grids (int num_files, char **files, double trop_thresh)
 {
    Scan_Type *st = NULL;
    int i;
@@ -388,7 +587,7 @@ Scan_Type *scan_read_grids (int num_files, char **files)
 
    for (i = 0; i < st->num_granules; i++)
      {
-        Granule_Type *gr = granule_init (files[i]);
+        Granule_Type *gr = granule_init (files[i], trop_thresh);
         int j;
 
         if (gr == NULL)
@@ -600,6 +799,7 @@ void scan_vars_free (Scan_Vars_Type *sv)
    FREE(sv->slant_column);
    FREE(sv->amf_trop);
    FREE(sv->amf_strat);
+   FREE(sv->vert_strat);
    FREE(sv->data_quality_flag);
    FREE(sv);
 }
@@ -619,6 +819,7 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
    if ((NULL == (sv->slant_column = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (sv->vert_strat = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->data_quality_flag = (int *)MALLOC (num_pixels * sizeof(int))))
       )
      {
@@ -629,6 +830,7 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
    memset ((char *)sv->slant_column, 0, num_pixels * sizeof(double));
    memset ((char *)sv->amf_strat, 0, num_pixels * sizeof(double));
    memset ((char *)sv->amf_trop, 0, num_pixels * sizeof(double));
+   memset ((char *)sv->vert_strat, 0, num_pixels * sizeof(double));
    memset ((char *)sv->data_quality_flag, 0, num_pixels * sizeof(int));
 
    sv->num_steps = num_steps;
@@ -819,6 +1021,7 @@ int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv)
         copy_dbl_field (sv->slant_column, sv->num_xtrack, gr->slant_column, gr);
         copy_dbl_field (sv->amf_trop, sv->num_xtrack, gr->amf_trop, gr);
         copy_dbl_field (sv->amf_strat, sv->num_xtrack, gr->amf_strat, gr);
+        copy_dbl_field (sv->vert_strat, sv->num_xtrack, gr->vert_strat, gr);
         copy_int_field (sv->data_quality_flag, sv->num_xtrack, gr->data_quality_flag, gr);
      }
 

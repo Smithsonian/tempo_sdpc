@@ -23,6 +23,7 @@ typedef struct
    double *slant_column;
    double *amf_trop;
    double *amf_strat;
+   double *vert_strat;
    int dim0;
    int dim1;
 }
@@ -71,68 +72,6 @@ static int init_mesh (config_t *cfg, Pixel_Grid_Param_Type *mesh)
      return -1;
 
    return 0;
-}
-
-static double *get_apriori_vertical_trop_column (double taix_beg, double taix_end,
-                                                 Pixel_Grid_Param_Type *cm)
-{
-   double *vtrop = NULL;
-
-   if (NULL == (vtrop = (double *) MALLOC (cm->ny * cm->nx * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto return_error;
-     }
-
-   if (0 != c_clim_species_vtrop (cm, taix_beg, taix_end, vtrop))
-     goto return_error;
-
-   /* image_write_raw ("apriori_vtrop", cm->ny, cm->nx, vtrop); */
-
-   return vtrop;
-
-return_error:
-   FREE(vtrop);
-   return NULL;
-}
-
-static double *
-vertical_strat_column (const Pixel_Grid_Param_Type *mesh,
-                       const Product_Var_Type *mesh_vars,
-                       const double *apriori_vert_trop, double trop_thresh)
-{
-   double nan_value = nan("");
-   const double *slant_column = mesh_vars->slant_column;
-   const double *amf_trop = mesh_vars->amf_trop;
-   const double *amf_strat = mesh_vars->amf_strat;
-   double *vstrat = NULL;
-   int i, num_pixels;
-
-   num_pixels = mesh->nx * mesh->ny;
-
-   if (NULL == (vstrat = (double *)MALLOC (num_pixels * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        double slant_column_i = slant_column[i];
-        double s_trop, v_strat;
-
-        vstrat[i] = nan_value;
-
-        if (isnan(slant_column_i) || (slant_column_i == DBL_MAX))
-          continue;
-
-        s_trop = apriori_vert_trop[i] * amf_trop[i];
-        v_strat = (slant_column_i - s_trop) / amf_strat[i];
-        if (s_trop < trop_thresh * amf_strat[i])
-          vstrat[i] = v_strat;
-     }
-
-   return vstrat;
 }
 
 static double *
@@ -188,6 +127,7 @@ static void free_var_type (Product_Var_Type *pvt)
    FREE(pvt->slant_column);
    FREE(pvt->amf_trop);
    FREE(pvt->amf_strat);
+   FREE(pvt->vert_strat);
    FREE(pvt);
 }
 
@@ -205,7 +145,8 @@ static Product_Var_Type *alloc_var_type (int dim0, int dim1)
 
    if ((NULL == (pvt->slant_column = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (pvt->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (pvt->amf_trop = (double *)MALLOC (num_pixels * sizeof(double)))))
+       || (NULL == (pvt->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (pvt->vert_strat = (double *)MALLOC (num_pixels * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_var_type (pvt);
@@ -235,7 +176,8 @@ regrid_product_vars (Scan_Vars_Type *sv, const Pixel_Grid_Param_Type *mesh,
 
    if ((0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->slant_column, mesh_grid->slant_column, NULL))
        || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->amf_trop, mesh_grid->amf_trop, NULL))
-       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->amf_strat, mesh_grid->amf_strat, NULL)))
+       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->amf_strat, mesh_grid->amf_strat, NULL))
+       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->vert_strat, mesh_grid->vert_strat, NULL)))
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: mapping from scan grid to mesh grid", __func__);
@@ -361,9 +303,7 @@ int process_files (config_t *cfg, int num_files, char **files)
    Pixel_Regrid_Type *r_mesh = NULL;
    Product_Var_Type *mesh_vars = NULL;
    double *mesh_apriori_vert_trop = NULL;
-   double *mesh_vert_strat = NULL;
    double *mesh_vert_trop = NULL;
-   double taix_beg, taix_end;
    int num_steps, num_xtrack;
    int status = -1;
 
@@ -375,7 +315,7 @@ int process_files (config_t *cfg, int num_files, char **files)
      goto free_and_return;
 
    /* Read scan grid */
-   if (NULL == (st = scan_read_grids (num_files, files)))
+   if (NULL == (st = scan_read_grids (num_files, files, params.trop_thresh)))
      goto free_and_return;
 
    /* Prepare for regridding scan variables onto mesh grid */
@@ -394,30 +334,17 @@ int process_files (config_t *cfg, int num_files, char **files)
    if (NULL == (mesh_vars = regrid_product_vars (sv, &mesh, r_mesh)))
      goto free_and_return;
 
-   /* Read apriori tropospheric vertical column and map to mesh grid */
-   if (0 != scan_time_interval (st, &taix_beg, &taix_end))
-     goto free_and_return;
-   mesh_apriori_vert_trop = get_apriori_vertical_trop_column (taix_beg, taix_end, &mesh);
-   if (NULL == mesh_apriori_vert_trop)
-     goto free_and_return;
-
-   /* Estimate stratospheric vertical column */
-   mesh_vert_strat = vertical_strat_column (&mesh, mesh_vars, mesh_apriori_vert_trop,
-                                            params.trop_thresh);
-   if (mesh_vert_strat == NULL)
-     goto free_and_return;
-
    /* Filter stratospheric vertical column estimate */
-   if (0 != filter_vert_strat (&mesh, mesh_vert_strat, cfg))
+   if (0 != filter_vert_strat (&mesh, mesh_vars->vert_strat, cfg))
      goto free_and_return;
 
    /* Compute tropospheric vertical column */
-   mesh_vert_trop = vertical_trop_column (&mesh, mesh_vars, mesh_vert_strat);
+   mesh_vert_trop = vertical_trop_column (&mesh, mesh_vars, mesh_vars->vert_strat);
    if (mesh_vert_trop == NULL)
      goto free_and_return;
 
    /* Write strat/trop variables to corresponding granule files */
-   if (0 != write_split (st, sv, r_mesh, mesh_vert_trop, mesh_vert_strat))
+   if (0 != write_split (st, sv, r_mesh, mesh_vert_trop, mesh_vars->vert_strat))
      goto free_and_return;
 
    status = 0;
@@ -427,7 +354,6 @@ free_and_return:
    Pixel_close_regrid (r_mesh);
    free_var_type (mesh_vars);
    FREE(mesh_apriori_vert_trop);
-   FREE(mesh_vert_strat);
    FREE(mesh_vert_trop);
 
    return status;
