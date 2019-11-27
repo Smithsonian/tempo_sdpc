@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libconfig.h>
 #include <tell.h>
 #include <netcdf.h>
 #include <tio.h>
@@ -54,6 +55,12 @@ struct Scan_Type
    int max_num_xtrack;
    Testdata_Info_Type __t;  /* FIXME */
 };
+
+typedef struct
+{
+   double trop_thresh;
+}
+Params_Type;
 
 static void granule_free (Granule_Type *gr)
 {
@@ -486,7 +493,7 @@ static int read_data_arrays (Granule_Type *gr, int ncid)
    return 0;
 }
 
-static Granule_Type *granule_init (const char *file, double trop_thresh)
+static Granule_Type *granule_init (const char *file, const Params_Type *params)
 {
    Granule_Type *gr = NULL;
    int ncid;
@@ -517,7 +524,7 @@ static Granule_Type *granule_init (const char *file, double trop_thresh)
    if (0 != read_data_arrays (gr, ncid))
      goto free_and_return;
 
-   if (0 != compute_vstrat_from_file_data (gr, ncid, trop_thresh))
+   if (0 != compute_vstrat_from_file_data (gr, ncid, params->trop_thresh))
      goto free_and_return;
 
    (void) TIO_close (ncid);
@@ -573,10 +580,27 @@ static Scan_Type *new_scan (int num_files)
    return st;
 }
 
-Scan_Type *scan_read_grids (int num_files, char **files, double trop_thresh)
+static int init_params (config_t *cfg, Params_Type *params)
+{
+   if (CONFIG_TRUE != config_lookup_float (cfg, "trop_thresh", &params->trop_thresh))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading trop_thresh in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+Scan_Type *scan_read_grids (int num_files, char **files, config_t *cfg)
 {
    Scan_Type *st = NULL;
+   Params_Type params = {0};
    int i;
+
+   if (0 != init_params (cfg, &params))
+     return NULL;
 
    if (NULL == (st = new_scan (num_files)))
      return NULL;
@@ -587,7 +611,7 @@ Scan_Type *scan_read_grids (int num_files, char **files, double trop_thresh)
 
    for (i = 0; i < st->num_granules; i++)
      {
-        Granule_Type *gr = granule_init (files[i], trop_thresh);
+        Granule_Type *gr = granule_init (files[i], &params);
         int j;
 
         if (gr == NULL)

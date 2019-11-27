@@ -15,9 +15,6 @@
 #include "filter.h"
 #include "process.h"
 
-extern int c_clim_species_vtrop (Pixel_Grid_Param_Type *cm,
-                                 double taix_beg, double taix_end,
-                                 double *vtrop);
 typedef struct
 {
    double *slant_column;
@@ -105,19 +102,6 @@ vertical_trop_column (const Pixel_Grid_Param_Type *mesh,
      }
 
    return vtrop;
-}
-
-static int init_params (config_t *cfg, Config_Type *params)
-{
-   if (CONFIG_TRUE != config_lookup_float (cfg, "trop_thresh", &params->trop_thresh))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading trop_thresh in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   return 0;
 }
 
 static void free_var_type (Product_Var_Type *pvt)
@@ -296,7 +280,6 @@ static int filter_vert_strat (const Pixel_Grid_Param_Type *mesh,
 
 int process_files (config_t *cfg, int num_files, char **files)
 {
-   Config_Type params = {0};
    Pixel_Grid_Param_Type mesh = {0};
    Scan_Type *st = NULL;
    Scan_Vars_Type *sv = NULL;
@@ -307,15 +290,12 @@ int process_files (config_t *cfg, int num_files, char **files)
    int num_steps, num_xtrack;
    int status = -1;
 
-   if (0 != init_params (cfg, &params))
-     return -1;
-
    /* Read mesh for calculations */
    if (0 != init_mesh (cfg, &mesh))
      goto free_and_return;
 
    /* Read scan grid */
-   if (NULL == (st = scan_read_grids (num_files, files, params.trop_thresh)))
+   if (NULL == (st = scan_read_grids (num_files, files, cfg)))
      goto free_and_return;
 
    /* Prepare for regridding scan variables onto mesh grid */

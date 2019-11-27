@@ -2,6 +2,7 @@
 #define __L2_SPLIT_GRANULE_H__ 1
 
 #include <pixel.h>
+#include <libconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,11 +33,11 @@ Scan_Vars_Type;
 /** Read longitude and latitude grids from granule files comprising a single scan
  * @param[in] num_files   Number of granule files
  * @param[in] files       Pointer to an array of granule file names
- * @param[in] trop_thresh  Threshold for contaminating tropospheric vertical column
+ * @param[in] cfg         Initialized pointer to config_t structure
  * @return  On success, an opaque pointer to a \c Scan_Type object.
  *          On error, a NULL pointer
  */
-extern Scan_Type *scan_read_grids (int num_files, char **files, double trop_thresh);
+extern Scan_Type *scan_read_grids (int num_files, char **files, config_t *cfg);
 
 /** Free resources associated with a Scan_Type object
  * @param[in] st  Pointer to a Scan_Type object created by \c scan_read_grids.
