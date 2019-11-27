@@ -39,13 +39,6 @@ struct Granule_Type
    int num_steps;
 };
 
-typedef struct  /* FIXME */
-{
-   char *filename;
-   Pixel_Regrid_Type *regrid_obj;
-}
-Testdata_Info_Type;
-
 struct Scan_Type
 {
    Granule_Type **granules;
@@ -53,7 +46,6 @@ struct Scan_Type
    int min_step;
    int max_step;
    int max_num_xtrack;
-   Testdata_Info_Type __t;  /* FIXME */
 };
 
 typedef struct
@@ -550,7 +542,6 @@ void scan_free (Scan_Type *st)
           }
         FREE(st->granules);
      }
-   FREE(st->__t.filename);
    FREE(st);
 }
 
@@ -861,149 +852,6 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
    sv->num_xtrack = num_xtrack;
 
    return sv;
-}
-
-static double *read_testdata_value (const char *file, const char *var_name)
-{
-   TIO_Var_Info_Type vi;
-   double *var = NULL;
-   size_t num_pixels;
-   int ncid, start[2], count[2];
-
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
-     return NULL;
-
-   if (-1 == TIO_inq_var (ncid, var_name, &vi))
-     goto free_and_return;
-
-   num_pixels = vi.dimlens[0] * vi.dimlens[1];
-   if (NULL == (var = (double *)MALLOC (num_pixels * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto free_and_return;
-     }
-
-   start[0] = 0;
-   start[1] = 0;
-   count[0] = vi.dimlens[0];
-   count[1] = vi.dimlens[1];
-   if (0 != TIO_get_var_section (ncid, var_name, start, count, TIO_DOUBLE, var))
-     goto free_and_return;
-
-   (void) TIO_close (ncid);
-   return var;
-
-free_and_return:
-   (void) TIO_close (ncid);
-   FREE(var);
-   return NULL;
-}
-
-/* If pvar != NULL, use the space it points to.  Otherwise, allocate space
- * and return a pointer to the allocated storage */
-static double *read_var (const Scan_Type *st,
-                         const char *var_name, double *pvar)
-{
-   int num_xtrack = st->max_num_xtrack;
-   int num_step = st->max_step + 1;
-   int num_pixels = num_xtrack * num_step;
-   double *mesh_value = NULL;
-   double *var = NULL;
-   int *mesh_mask = NULL;
-   double nan_value = nan("");
-   double fill_value = nan_value;
-   int status = -1;
-
-   if (pvar == NULL)
-     {
-        if (NULL == (var = (double *) MALLOC (num_pixels * sizeof(double))))
-          {
-             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             return NULL;
-          }
-     }
-   else var = pvar;
-
-   /* If we're getting variable values by regridding test data,
-    * we'll assume that the test data mesh parameters are the same
-    * as the the target mesh parameters (so we can use the existing
-    * regrid object) */
-   if (NULL == (mesh_value = read_testdata_value (st->__t.filename, var_name)))
-        goto free_and_return;
-
-   /* FIXME: prototype performs this transformation */
-   if (0 == strcmp (var_name, "slant_column"))
-     {
-        int i;
-        for (i = 0; i < num_pixels; i++)
-          {
-             if (mesh_value[i] == 0.0)
-               mesh_value[i] = nan_value;
-          }
-     }
-
-   /* Note that regridding the test data means that we lose some of the
-    * bad pixels that appeared on the input grid -- simply because there
-    * isn't a one-to-one correspondence between the original test data grid
-    * and the scan grid.
-    */
-   if (0 != Pixel_regrid_from_mesh (st->__t.regrid_obj, mesh_mask, fill_value,
-                                    mesh_value, var))
-     goto free_and_return;
-
-   status = 0;
-free_and_return:
-   FREE(mesh_value);
-
-   if (status != 0)
-     {
-        if (pvar == NULL) FREE(var);
-        var = NULL;
-     }
-
-   return var;
-}
-
-int __scan_enable_testdata (Scan_Type *st, const char *filename,
-                            Pixel_Regrid_Type *r)
-{
-   st->__t.regrid_obj = r;
-
-   if (NULL == (st->__t.filename = strdup (filename)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   return 0;
-}
-
-int __scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv)
-{
-   int i, num_pixels;
-   double *slant_column;
-   int *dqf;
-
-   if ((NULL == read_var (st, "slant_column", sv->slant_column))
-       || (NULL == read_var (st, "amf_trop", sv->amf_trop))
-       || (NULL == read_var (st, "amf_strat", sv->amf_strat)))
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: reading slant_column, amf_trop, amf_strat",
-                     __func__);
-        return -1;
-     }
-
-   dqf = sv->data_quality_flag;
-   slant_column = sv->slant_column;
-   num_pixels = sv->num_steps * sv->num_xtrack;
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        dqf[i] = (0 == isfinite (slant_column[i]));
-     }
-
-   return 0;
 }
 
 static void copy_dbl_field (double *dest, int num_xtrack_dest,

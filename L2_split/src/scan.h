@@ -104,11 +104,6 @@ extern void scan_vars_free (Scan_Vars_Type *sv);
  */
 extern int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv);
 
-/* FIXME - this is needed only for initial development */
-extern int __scan_vars_read (const Scan_Type *st, Scan_Vars_Type *sv);
-extern int __scan_enable_testdata (Scan_Type *st, const char *filename,
-                                   Pixel_Regrid_Type *r);
-
 #if 0
 {
 #endif
