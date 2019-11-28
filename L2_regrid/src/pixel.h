@@ -307,6 +307,8 @@ extern int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r);
 /* Debugging tools */
 
 extern int __Pixel_print_overlap (const Pixel_Regrid_Type *r, int dest_pixel_index);
+extern void __Pixel_verbose_output (int);
+extern void __Pixel_verbose_output_window (double x, double y, double dx, double dy);
 
 #if 0
 {

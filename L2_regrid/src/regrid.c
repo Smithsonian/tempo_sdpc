@@ -15,6 +15,23 @@
 #include "pixel.h"
 #include "regrid.h"
 
+#ifndef DO_VERBOSE_POLYGONS
+# define START_VERBOSE_POLYGONS
+# define STOP_VERBOSE_POLYGONS
+#else
+# define START_VERBOSE_POLYGONS \
+   do { \
+      double *px = spv->lon_bounds + 4 * (spv->num_pixels/2); \
+      double *py = spv->lat_bounds + 4 * (spv->num_pixels/2); \
+      __Pixel_verbose_output (1); \
+      __Pixel_verbose_output_window (px[0], py[0], 50.0e3, 50.0e3); \
+   } while (0)
+# define STOP_VERBOSE_POLYGONS \
+   do { \
+      __Pixel_verbose_output (0); \
+   } while (0)
+#endif
+
 typedef struct
 {
    double *lon_bounds;
@@ -321,7 +338,9 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
 
         Pixel_regrid_grow_srcdims (r, spv->max_step, spv->max_xtrack);
 
+        START_VERBOSE_POLYGONS;
         num_overlaps = Pixel_find_overlaps (r, src_area, src_lookup);
+        STOP_VERBOSE_POLYGONS;
         if (num_overlaps < 0)
           break;
         else if (num_overlaps == 0)

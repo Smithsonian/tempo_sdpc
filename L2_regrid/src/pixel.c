@@ -1,9 +1,11 @@
+/* -*- mode: C; mode: fold -*- */
 #include "defs.h"
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <tell.h>
 #include "poly.h"
@@ -36,6 +38,108 @@ struct Pixel_Regrid_Type
    int num_src_step;
    int num_src_xtrack;
 };
+
+/* Support verbose polygon output */ /*{{{*/
+static int Write_Verbose_Polygons;
+
+typedef struct
+{
+   FILE *fp;
+   int wrote_first_line;
+}
+Verbose_Output_Type;
+
+static int verbose_open (const char *filename, Verbose_Output_Type *v)
+{
+   char buf[1024];
+   if (v == NULL)
+     return 0;
+   if (0 == access (filename, F_OK))
+     {
+        int n = 0;
+        do
+          {
+             sprintf (buf, "%s.%d", filename, ++n);
+          }
+        while (0 == access (buf, F_OK));
+        filename = buf;
+     }
+   if (NULL == (v->fp = fopen (filename, "w")))
+     return -1;
+   fputs ("{ \"type\" : \"GeometryCollection\", \"geometries\" : [\n", v->fp);
+   v->wrote_first_line = 0;
+   return 0;
+}
+
+static void verbose_close (Verbose_Output_Type *v)
+{
+   if ((v == NULL) || (v->fp == NULL))
+     return;
+   fputs ("\n]}\n", v->fp);
+   (void) fclose (v->fp);
+   v->fp = NULL;
+}
+
+static struct verbose_window
+{
+   double x0, y0;
+   double dx, dy;
+}
+Verbose_Window =
+{
+   .x0 = 0.0,
+   .y0 = 0.0,
+   .dx = DBL_MAX,
+   .dy = DBL_MAX,
+};
+
+void __Pixel_verbose_output (int i)
+{
+   Write_Verbose_Polygons = i;
+}
+
+void __Pixel_verbose_output_window (double x, double y, double dx, double dy)
+{
+   struct verbose_window *w = &Verbose_Window;
+   w->x0 = x;
+   w->y0 = y;
+   w->dx = dx;
+   w->dy = dy;
+}
+
+static void verbose_poly_write (Verbose_Output_Type *v, Polygon_Type *p, int index)
+{
+   FILE *fp = v->fp;
+   struct verbose_window  *w = &Verbose_Window;
+   const char *prefix = "{\"type\": \"Polygon\", \"coordinates\": [";
+   double x, y;
+   int i, n;
+
+   if ((fp == NULL) || (p == NULL))
+     return;
+
+   if (0 != Polygon_vertex (p, 0, &x, &y))
+     return;
+   if ((fabs (x - w->x0) > w->dx)
+       || (fabs (y - w->y0) > w->dy))
+     return;
+
+   n = Polygon_length (p);
+
+   if (v->wrote_first_line) fputs (",\n", fp);
+   fprintf (fp, "%s[", prefix);
+   fprintf (fp, "[%12.8e,%12.8e]", x, y);
+   for (i = 1; i < n; i++)
+     {
+        if (0 != Polygon_vertex (p, i, &x, &y))
+          break;
+        fprintf (fp, ",[%12.8e,%12.8e]", x, y);
+     }
+   fprintf (fp, "]], \"id\": %d}", index);
+   v->wrote_first_line = 1;
+}
+
+/*}}}*/
 
 static void free_overlap (Pixel_Overlap_Type *o)
 {
@@ -349,6 +453,9 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
    double xsize, ysize, dx, dy;
    int have_dest_polygons;
    int k, num_src_dest_overlap = 0;
+   /* Support for verbose polygon output */
+   Verbose_Output_Type v_src = {0};
+   Verbose_Output_Type v_overlap = {0};
 
    xsize = dest->xmax - dest->xmin;
    ysize = dest->ymax - dest->ymin;
@@ -362,6 +469,22 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
      {
         if (NULL == (dest_poly = Polygon_new (4)))
           return -1;
+     }
+
+   if (Write_Verbose_Polygons != 0)
+     {
+        verbose_open ("polygons_overlap.json", &v_overlap);
+        verbose_open ("polygons_src.json", &v_src);
+        if (have_dest_polygons)
+          {
+             Verbose_Output_Type v_dest = {0};
+             verbose_open ("polygons_dest.json", &v_dest);
+             for (k = 0; k < dest_area->num_polys; k++)
+               {
+                  verbose_poly_write (&v_dest, dest_area->poly[k], k);
+               }
+             verbose_close (&v_dest);
+          }
      }
 
    if (NULL == (cl = Polygon_open_clip ()))
@@ -389,6 +512,11 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
             || (ymn > dest->ymax) || (ymx < dest->ymin))
           {
              continue;
+          }
+
+        if (Write_Verbose_Polygons != 0)
+          {
+             verbose_poly_write (&v_src, src_poly_area, k);
           }
 
         num_src_dest_overlap++;
@@ -429,6 +557,10 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                   if (NULL == (p = Polygon_clip (cl, src_poly_area, dest_poly)))
                     return -1;
                   overlap_area = Polygon_area (p);
+                  if ((Write_Verbose_Polygons != 0) && (overlap_area > 0.0))
+                    {
+                       verbose_poly_write (&v_overlap, p, dest_poly_index);
+                    }
                   Polygon_free (p);
 
                   if (overlap_area > 0.0)
@@ -454,6 +586,12 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
    if (have_dest_polygons == 0)
      {
         Polygon_free (dest_poly);
+     }
+
+   if (Write_Verbose_Polygons)
+     {
+        verbose_close (&v_overlap);
+        verbose_close (&v_src);
      }
 
    return num_src_dest_overlap;
