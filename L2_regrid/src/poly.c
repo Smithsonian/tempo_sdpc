@@ -178,10 +178,10 @@ int Polygon_bbox (const Polygon_Type *p,
           }
 
         if (x < xmn) xmn = x;
-        else if (x > xmx) xmx = x;
+        if (x > xmx) xmx = x;
 
         if (y < ymn) ymn = y;
-        else if (y > ymx) ymx = y;
+        if (y > ymx) ymx = y;
      }
 
    *xmin = xmn;
