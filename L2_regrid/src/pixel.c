@@ -706,7 +706,7 @@ Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel)
      {
         rs->min[i] = PIXEL_INIT_MIN_SAMPLE;
         rs->max[i] = PIXEL_INIT_MAX_SAMPLE;
-        rs->num[i] = 0;
+        rs->num[i] = PIXEL_INIT_NUM_SAMPLES;
      }
 
    return rs;
@@ -766,9 +766,9 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
 
         if (rs)
           {
-             rs->min[i] = mn;
-             rs->max[i] = mx;
-             rs->num[i] = num;
+             rs->min[i] = PIXEL_INIT_MIN_SAMPLE;
+             rs->max[i] = PIXEL_INIT_MAX_SAMPLE;
+             rs->num[i] = PIXEL_INIT_NUM_SAMPLES;
           }
 
         if (o == NULL)
