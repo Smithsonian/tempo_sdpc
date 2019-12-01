@@ -15,22 +15,7 @@
 #include "pixel.h"
 #include "regrid.h"
 
-#ifndef DO_VERBOSE_POLYGONS
-# define START_VERBOSE_POLYGONS
-# define STOP_VERBOSE_POLYGONS
-#else
-# define START_VERBOSE_POLYGONS \
-   do { \
-      double *px = spv->lon_bounds + 4 * (spv->num_pixels/2); \
-      double *py = spv->lat_bounds + 4 * (spv->num_pixels/2); \
-      __Pixel_verbose_output (1); \
-      __Pixel_verbose_output_window (px[0], py[0], 50.0e3, 50.0e3); \
-   } while (0)
-# define STOP_VERBOSE_POLYGONS \
-   do { \
-      __Pixel_verbose_output (0); \
-   } while (0)
-#endif
+static int _pDiagnostic_Output;
 
 typedef struct
 {
@@ -297,6 +282,27 @@ free_and_return:
    return NULL;
 }
 
+static void start_diagnostic_output (const Source_Pixel_Vertices_Type *spv)
+{
+   double *px, *py;
+   if (_pDiagnostic_Output == 0) return;
+   px = spv->lon_bounds + 4 * (spv->num_pixels/2);
+   py = spv->lat_bounds + 4 * (spv->num_pixels/2);
+   __Pixel_diagnostic_output (1);
+   __Pixel_diagnostic_window (px[0], py[0], 50.0e3, 50.0e3);
+}
+
+static void stop_diagnostic_output (void)
+{
+   if (_pDiagnostic_Output == 0) return;
+   __Pixel_diagnostic_output (0);
+}
+
+void Regrid_diagnostic_output (int b)
+{
+   _pDiagnostic_Output = b;
+}
+
 static int
 find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
                          const char *lonlat_grp)
@@ -338,9 +344,9 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
 
         Pixel_regrid_grow_srcdims (r, spv->max_step, spv->max_xtrack);
 
-        START_VERBOSE_POLYGONS;
+        start_diagnostic_output (spv);
         num_overlaps = Pixel_find_overlaps (r, src_area, src_lookup);
-        STOP_VERBOSE_POLYGONS;
+        stop_diagnostic_output ();
         if (num_overlaps < 0)
           break;
         else if (num_overlaps == 0)

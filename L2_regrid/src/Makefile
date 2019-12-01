@@ -136,11 +136,8 @@ $(elfdir)/poly.o:	$(srcdir)/poly.c
 $(elfdir)/pixel.o:	$(srcdir)/pixel.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/pixel.c
 
-# Diagnostic option
-REGRID_DEFINES = # -DDO_VERBOSE_POLYGONS
-
 $(elfdir)/regrid.o:	$(srcdir)/regrid.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(REGRID_DEFINES) $(INCS) $(EXTRA_INCS) $(srcdir)/regrid.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/regrid.c
 
 $(elfdir)/var.o:	$(srcdir)/var.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(EXTRA_INCS) $(srcdir)/var.c

@@ -39,17 +39,17 @@ struct Pixel_Regrid_Type
    int num_src_xtrack;
 };
 
-/* Support verbose polygon output */ /*{{{*/
-static int Write_Verbose_Polygons;
+/* Support diagnostic polygon output */ /*{{{*/
+static int Write_Diagnostic_Polygons;
 
 typedef struct
 {
    FILE *fp;
    int wrote_first_line;
 }
-Verbose_Output_Type;
+Diagnostic_Output_Type;
 
-static int verbose_open (const char *filename, Verbose_Output_Type *v)
+static int diagnostic_open (const char *filename, Diagnostic_Output_Type *v)
 {
    char buf[1024];
    if (v == NULL)
@@ -71,7 +71,7 @@ static int verbose_open (const char *filename, Verbose_Output_Type *v)
    return 0;
 }
 
-static void verbose_close (Verbose_Output_Type *v)
+static void diagnostic_close (Diagnostic_Output_Type *v)
 {
    if ((v == NULL) || (v->fp == NULL))
      return;
@@ -80,12 +80,12 @@ static void verbose_close (Verbose_Output_Type *v)
    v->fp = NULL;
 }
 
-static struct verbose_window
+static struct diagnostic_window
 {
    double x0, y0;
    double dx, dy;
 }
-Verbose_Window =
+Diagnostic_Window =
 {
    .x0 = 0.0,
    .y0 = 0.0,
@@ -93,24 +93,24 @@ Verbose_Window =
    .dy = DBL_MAX,
 };
 
-void __Pixel_verbose_output (int i)
+void __Pixel_diagnostic_output (int i)
 {
-   Write_Verbose_Polygons = i;
+   Write_Diagnostic_Polygons = i;
 }
 
-void __Pixel_verbose_output_window (double x, double y, double dx, double dy)
+void __Pixel_diagnostic_window (double x, double y, double dx, double dy)
 {
-   struct verbose_window *w = &Verbose_Window;
+   struct diagnostic_window *w = &Diagnostic_Window;
    w->x0 = x;
    w->y0 = y;
    w->dx = dx;
    w->dy = dy;
 }
 
-static void verbose_poly_write (Verbose_Output_Type *v, Polygon_Type *p, int index)
+static void diagnostic_poly_write (Diagnostic_Output_Type *v, Polygon_Type *p, int index)
 {
    FILE *fp = v->fp;
-   struct verbose_window  *w = &Verbose_Window;
+   struct diagnostic_window  *w = &Diagnostic_Window;
    const char *prefix = "{\"type\": \"Polygon\", \"coordinates\": [";
    double x, y;
    int i, n;
@@ -453,9 +453,9 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
    double xsize, ysize, dx, dy;
    int have_dest_polygons;
    int k, num_src_dest_overlap = 0;
-   /* Support for verbose polygon output */
-   Verbose_Output_Type v_src = {0};
-   Verbose_Output_Type v_overlap = {0};
+   /* Support for diagnostic polygon output */
+   Diagnostic_Output_Type v_src = {0};
+   Diagnostic_Output_Type v_overlap = {0};
 
    xsize = dest->xmax - dest->xmin;
    ysize = dest->ymax - dest->ymin;
@@ -471,19 +471,19 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
           return -1;
      }
 
-   if (Write_Verbose_Polygons != 0)
+   if (Write_Diagnostic_Polygons != 0)
      {
-        verbose_open ("polygons_overlap.json", &v_overlap);
-        verbose_open ("polygons_src.json", &v_src);
+        diagnostic_open ("polygons_overlap.json", &v_overlap);
+        diagnostic_open ("polygons_src.json", &v_src);
         if (have_dest_polygons)
           {
-             Verbose_Output_Type v_dest = {0};
-             verbose_open ("polygons_dest.json", &v_dest);
+             Diagnostic_Output_Type v_dest = {0};
+             diagnostic_open ("polygons_dest.json", &v_dest);
              for (k = 0; k < dest_area->num_polys; k++)
                {
-                  verbose_poly_write (&v_dest, dest_area->poly[k], k);
+                  diagnostic_poly_write (&v_dest, dest_area->poly[k], k);
                }
-             verbose_close (&v_dest);
+             diagnostic_close (&v_dest);
           }
      }
 
@@ -514,9 +514,9 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
              continue;
           }
 
-        if (Write_Verbose_Polygons != 0)
+        if (Write_Diagnostic_Polygons != 0)
           {
-             verbose_poly_write (&v_src, src_poly_area, k);
+             diagnostic_poly_write (&v_src, src_poly_area, k);
           }
 
         num_src_dest_overlap++;
@@ -557,9 +557,9 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                   if (NULL == (p = Polygon_clip (cl, src_poly_area, dest_poly)))
                     return -1;
                   overlap_area = Polygon_area (p);
-                  if ((Write_Verbose_Polygons != 0) && (overlap_area > 0.0))
+                  if ((Write_Diagnostic_Polygons != 0) && (overlap_area > 0.0))
                     {
-                       verbose_poly_write (&v_overlap, p, dest_poly_index);
+                       diagnostic_poly_write (&v_overlap, p, dest_poly_index);
                     }
                   Polygon_free (p);
 
@@ -588,10 +588,10 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
         Polygon_free (dest_poly);
      }
 
-   if (Write_Verbose_Polygons)
+   if (Write_Diagnostic_Polygons)
      {
-        verbose_close (&v_overlap);
-        verbose_close (&v_src);
+        diagnostic_close (&v_overlap);
+        diagnostic_close (&v_src);
      }
 
    return num_src_dest_overlap;

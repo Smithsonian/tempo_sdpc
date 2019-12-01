@@ -38,6 +38,8 @@ Regrid_open (const Pixel_Grid_Param_Type *dest,
  */
 extern void Regrid_close (Pixel_Regrid_Type *r);
 
+extern void Regrid_diagnostic_output (int);
+
 #if 0
 {
 #endif

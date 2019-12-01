@@ -60,6 +60,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help            Print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     Use this configuration file\n");
    fprintf (stderr, "   -i | --ignore          Ignore scan metadata fields\n");
+   fprintf (stderr, "   -d | --diagnostic      Generate diagnostic output\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -795,18 +796,20 @@ int main (int argc, char **argv)
    int src_num_steps, src_num_xtrack;
    int expect_scan_ident = 1;
    int status = 1;
+   int want_diagnostic_output = 0;
    static struct option long_options[] =
      {
-        {"help", no_argument, 0, 'h'},
-        {"config", required_argument, 0, 'c'},
-        {"ignore", no_argument, 0, 'i'},
+        {"help",       no_argument,       0, 'h'},
+        {"config",     required_argument, 0, 'c'},
+        {"ignore",     no_argument,       0, 'i'},
+        {"diagnostic", no_argument,       0, 'd'},
         {0,0,0,0}
      };
 
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hic:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "dhic:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -823,6 +826,9 @@ int main (int argc, char **argv)
              break;
            case 'i':
              expect_scan_ident = 0;
+             break;
+           case 'd':
+             want_diagnostic_output++;
              break;
           }
      }
@@ -847,8 +853,13 @@ int main (int argc, char **argv)
    if (-1 == parse_param_file (param_file, &dest, &product_list))
      goto return_status;
 
+   if (NULL != getenv ("SDPC_REGRID_DIAGNOSTICS"))
+     want_diagnostic_output++;
+
    /* Compute pixel overlaps using the first set of products */
    prod = product_list;
+
+   Regrid_diagnostic_output (want_diagnostic_output);
 
    r = Regrid_open (&dest, prod->input_files, prod->num_input_files,
                     prod->in_lonlat_grp);
