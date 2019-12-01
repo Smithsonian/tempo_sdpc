@@ -118,13 +118,23 @@ static void diagnostic_poly_write (Diagnostic_Output_Type *v, Polygon_Type *p, i
    if ((fp == NULL) || (p == NULL))
      return;
 
-   if (0 != Polygon_vertex (p, 0, &x, &y))
-     return;
-   if ((fabs (x - w->x0) > w->dx)
-       || (fabs (y - w->y0) > w->dy))
+   n = Polygon_length (p);
+
+   /* write out polygons with any vertex inside the window */
+   for (i = 0; i < n; i++)
+     {
+        if (0 != Polygon_vertex (p, i, &x, &y))
+          return;
+        if ((fabs (x - w->x0) < w->dx)
+            && (fabs (y - w->y0) < w->dy))
+          break;
+     }
+   /* exclude polygons entirely outside the window */
+   if (i == n)
      return;
 
-   n = Polygon_length (p);
+   if (0 != Polygon_vertex (p, 0, &x, &y))
+     return;
 
    if (v->wrote_first_line) fputs (",\n", fp);
    fprintf (fp, "%s[", prefix);
