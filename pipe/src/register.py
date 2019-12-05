@@ -11,8 +11,9 @@ Radiance_Products = ["CLDRR", "HCHO", "NO2", "O3TOT", "O3PROF"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
 
-Radiance_File_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch",
-                            "scan_num", "scan_type", "granule_num"]
+Coverage_Time_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch"]
+Radiance_File_Attributes = Coverage_Time_Attributes \
+                         + ["scan_num", "scan_type", "granule_num"]
 
 class Table_Type:
 
@@ -35,17 +36,21 @@ class Table_Type:
         value_string_tuple = tuple(str(v) for v in values)
         cur.execute (cmd, value_string_tuple)
 
+def define_common_fields (fields):
+    fields["istart"] = "integer not null"
+    fields["filename"] = "text"
+    fields["path"] = "text"
+    fields["mtime"] = "float"
+    fields["size"] = "integer"
+
 def init_radiance_table (table_name):
     fields = {}
-    fields["istart"] = "integer not null"
+    define_common_fields (fields)
     fields["scan_type"] = "integer not null"
     fields["scan_num"] = "integer not null"
     fields["granule_num"] = "integer not null"
     fields["time_coverage_start_since_epoch"] = "float not null"
     fields["time_coverage_end_since_epoch"] = "float not null"
-    fields["filename"] = "text"
-    fields["mtime"] = "float"
-    fields["size"] = "integer"
     fields["mirror_pos_beg"] = "integer not null"
     fields["mirror_pos_end"] = "integer not null"
     quals = "primary key(istart), unique(istart)"
@@ -53,19 +58,21 @@ def init_radiance_table (table_name):
 
 def init_radiance_product_table (table_name):
     fields = {}
-    fields["istart"] = "integer not null"
-    fields["mtime"] = "float"
-    fields["size"] = "integer"
-    fields["filename"] = "text"
+    define_common_fields (fields)
     quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1b')
+    return Table_Type(table_name, fields, quals)
+
+def init_dark_product_table (table_name):
+    fields = {}
+    define_common_fields (fields)
+    fields["mean_exposure_time_per_coadd"] = "float"
+    fields["mean_fpa_temp"] = "float"
+    quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
 def init_other_product_table (table_name):
     fields = {}
-    fields["istart"] = "integer not null"
-    fields["mtime"] = "float"
-    fields["size"] = "integer"
-    fields["filename"] = "text"
+    define_common_fields (fields)
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
@@ -100,8 +107,22 @@ def insert_product_entry (conn, product_name, init_product_table, entry):
 def insert_radiance_product_entry (conn, product_name, entry):
     return insert_product_entry (conn, product_name, init_radiance_product_table, entry)
 
+def insert_dark_product_entry (conn, product_name, entry):
+    return insert_product_entry (conn, product_name, init_dark_product_table, entry)
+
 def insert_other_product_entry (conn, product_name, entry):
     return insert_product_entry (conn, product_name, init_other_product_table, entry)
+
+def get_dark_keys (nc, keys):
+    variables_to_average = ["exposure_time_per_coadd", "fpa_temp"]
+    for vname in variables_to_average:
+        v = nc.variables[vname][:]
+        keys["mean_{}".format(vname)] = v.mean()
+    attr = nc.__dict__
+    for k in Coverage_Time_Attributes:
+        if k in attr:
+            keys[k] = attr[k]
+    return keys
 
 def get_radiance_keys (nc, keys):
     mirror_step = nc.variables["mirror_step"][:]
@@ -143,9 +164,15 @@ def process_file (conn, filename):
         else:
             product_name = product_name + 'a'
 
+    final_basename = remove_dot_prefix (basename)
+    final_path = os.readlink (filename)
+    dirname = os.path.dirname (final_path)
+
+    # define common keys
     keys = {}
     keys["istart"] = int(attr["time_coverage_start_since_epoch"])
-    keys["filename"] = remove_dot_prefix (basename)
+    keys["filename"] = final_basename
+    keys["path"] = final_path
     st = os.stat(filename)
     keys["mtime"] = st.st_mtime
     keys["size"] = st.st_size
@@ -155,6 +182,9 @@ def process_file (conn, filename):
         status = insert_radiance_entry (conn, product_name, keys)
     elif (product_name in Radiance_Derived_Files):
         status = insert_radiance_product_entry (conn, product_name, keys)
+    elif (product_name == "DRK_L1"):
+        get_dark_keys (nc, keys)
+        status = insert_dark_product_entry (conn, product_name, keys)
     else:
         status = insert_other_product_entry (conn, product_name, keys)
 
