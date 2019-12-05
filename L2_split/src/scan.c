@@ -353,12 +353,13 @@ static int find_tropopause (int pix, double ptrop, const Pressure_Param_Type *pt
 }
 
 static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
-                                          double trop_thresh)
+                                          const Params_Type *params)
 {
    Pressure_Param_Type *pt = NULL;
    int i, grp, start[3], count[3], dimid_levels, num_pixels;
    size_t dimlen_levels;
    double nan_value = nan("");
+   double trop_thresh = params->trop_thresh;
    double *tropopause_pressure = NULL;
    double *gas_profile = NULL;
    int status = -1;
@@ -406,9 +407,10 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
 
         gr->vert_strat[i] = nan_value;
 
-        if (isnan(tropopause_pressure[i])
+        if ((gr->data_quality_flag[i] != 0)
             || isnan(gr->amf_strat[i])
-            || isnan(gr->slant_column[i]))
+            || isnan(gr->slant_column[i])
+            || isnan(tropopause_pressure[i]))
           {
              continue;
           }
@@ -516,7 +518,7 @@ static Granule_Type *granule_init (const char *file, const Params_Type *params)
    if (0 != read_data_arrays (gr, ncid))
      goto free_and_return;
 
-   if (0 != compute_vstrat_from_file_data (gr, ncid, params->trop_thresh))
+   if (0 != compute_vstrat_from_file_data (gr, ncid, params))
      goto free_and_return;
 
    (void) TIO_close (ncid);

@@ -16,6 +16,7 @@ static void usage (void)
 {
    fprintf (stderr, "Usage: L2_split [options] file1 file2 ...\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
    fprintf (stderr, "   -v | --verbose lev     logging level\n");
    exit (EXIT_SUCCESS);
@@ -43,8 +44,9 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
-        {"config",  optional_argument, 0, 'c'},
-        {"verbose", optional_argument, 0, 'v'},
+        {"config",  required_argument, 0, 'c'},
+        {"help",    no_argument,       0, 'h'},
+        {"verbose", required_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -66,7 +68,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "c:tv:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hc:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -84,6 +86,9 @@ int main (int argc, char **argv)
               * any corresponding config file values */
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
+             break;
+           case 'h':
+             usage();
              break;
            case 'v':
              {
