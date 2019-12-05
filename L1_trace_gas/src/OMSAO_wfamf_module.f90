@@ -2296,6 +2296,7 @@ CONTAINS
           local_srf = REAL(terrain_height(ixtrack,itime), KIND = r8)
           local_ozo_wgh(1:2) = cli_wgh_ozo_pro(ixtrack,itime,1:2)
           local_ozo_idx(1:2) = cli_idx_ozo_pro(ixtrack,itime,1:2)
+          if (any(local_ozo_idx(1:2) < 1)) cycle
           ! ----------------------------------------------
           ! If sza > amf_max_sza set it for calculation to
           ! amf_max_sza
