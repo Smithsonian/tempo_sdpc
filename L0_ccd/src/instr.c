@@ -314,6 +314,8 @@ static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file)
    double file_tstart, file_tend;
    int ncid, status;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: looking at %s", __func__, file);
+
    status = FILTER_ERROR;
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
@@ -368,7 +370,7 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
        || (g->num_files == 0))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: no matching files: %s", __func__, glob_path);
+                     "%s: no files match pattern: %s", __func__, glob_path);
 	goto return_status;
      }
 
@@ -393,6 +395,12 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
              *tail = instr;
           }
         tail = &instr->next;
+     }
+
+   if (head == NULL)
+     {
+	tell_verror (TELL_RUNTIME_ERROR, "%s: no files match selection criteria: %s",
+                     __func__, glob_path);
      }
 
    status_flag = 0;

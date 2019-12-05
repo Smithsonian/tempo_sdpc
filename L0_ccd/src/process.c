@@ -275,6 +275,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (xr->img_err)
      {
         image_scale (xr->img_err, 1.0/exposure_time_per_frame);
+        image_sqrt (xr->img_err);
      }
    for (i = 0; i < 4; i++)
      {
@@ -323,6 +324,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
    int dimid_time, dimid_row, dimid_col, dimid_quad;
    int varid_time, varid_img, varid_pqf, varid_fpa_temp;
    int varid_fpe_temp, varid_exptime, varid_sdc;
+   int varid_exptime_per_coadd;
    int sdc_dimids[2];
    int shuffle = 1;
    int deflate = 1;
@@ -332,42 +334,49 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
    int img_dimids[3];
    const Text_Attr_Type time_attrs[] =
      {
-        {"comment", "exposure start time"},
+        {"long_name", "exposure start time"},
         {NULL, NULL}
      };
    const Text_Attr_Type img_attrs[] =
      {
         {"units", "electrons/sec"},
-        {"comment", "pixel current"},
+        {"long_name", "pixel current"},
         {NULL, NULL}
      };
    const Text_Attr_Type pqf_attrs[] =
      {
-        {"comment", "pixel quality flag"},
+        {"long_name", "pixel quality flag"},
         {NULL, NULL}
      };
    const Text_Attr_Type fpa_temp_attrs[] =
      {
         {"units", "C"},
-        {"comment", "FPA temperature"},
+        {"long_name", "focal plane array (FPA) temperature"},
         {NULL, NULL}
      };
    const Text_Attr_Type fpe_temp_attrs[] =
      {
         {"units", "C"},
-        {"comment", "FPE temperature"},
+        {"long_name", "focal plane electronics (FPE) temperature"},
         {NULL, NULL}
      };
    const Text_Attr_Type exptime_attrs[] =
      {
         {"units", "seconds"},
-        {"comment", "exposure time duration"},
+        {"long_name", "exposure time duration"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type exptime_per_coadd_attrs[] =
+     {
+        {"units", "seconds"},
+        {"long_name", "exposure time duration per coadd"},
         {NULL, NULL}
      };
    const Text_Attr_Type sdc_attrs[] =
      {
         {"units", "electrons/sec"},
-        {"comment", "Mean storage region dark current in each quadrant; A,B,C,D"},
+        {"long_name", "mean storage region dark current"},
+        {"comment", "mean storage region dark current in each quadrant; A,B,C,D"},
         {NULL, NULL}
      };
 
@@ -416,6 +425,10 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
        || (0 != define_text_attrs (ncid, varid_exptime, exptime_attrs)))
      return -1;
 
+   if ((0 != TIO_def_var (ncid, "exposure_time_per_coadd", TIO_FLOAT, 1, &dimid_time, &varid_exptime_per_coadd))
+       || (0 != define_text_attrs (ncid, varid_exptime_per_coadd, exptime_per_coadd_attrs)))
+     return -1;
+
    sdc_dimids[0] = dimid_time;
    sdc_dimids[1] = dimid_quad;
 
@@ -450,6 +463,7 @@ static int write_current_exprec (int ncid, const Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *img = exprec->img;
+   double exposure_time_per_frame;
    int start[3], count[3];
 
    start[0] = xr->index;
@@ -457,10 +471,13 @@ static int write_current_exprec (int ncid, const Exprec_Meta_Type *xr)
    start[2] = 0;
    count[0] = 1;
 
+   exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
+
    if ((0 != TIO_put_var_section (ncid, "image_start_time", start, count, TIO_DOUBLE, &exprec->start_time))
        || (0 != TIO_put_var_section (ncid, "fpa_temp", start, count, TIO_FLOAT, &xr->fpa_temp))
        || (0 != TIO_put_var_section (ncid, "fpe_temp", start, count, TIO_FLOAT, &xr->fpe_temp))
-       || (0 != TIO_put_var_section (ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_DOUBLE, &exprec->exposure_time)))
+       || (0 != TIO_put_var_section (ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_DOUBLE, &exprec->exposure_time))
+       || (0 != TIO_put_var_section (ncid, "exposure_time_per_coadd", start, count, TIO_DOUBLE, &exposure_time_per_frame)))
      return -1;
 
    count[0] = 1;
@@ -626,7 +643,7 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
         if (img_pixels[i] == IMAGE_PIXEL_FILL_VALUE)
           continue;
         dc_pixels_i = dc_pixels[i];
-        if ((dc_pqf[i] == 0) && (0 <= dc_pixels_i) && (dc_pixels_i <= img_pixels[i]))
+        if ((dc_pqf[i] == 0) && (0 <= dc_pixels_i) && (dc_pixels_i < img_pixels[i]))
           {
              img_pixels[i] -= dc_pixels_i;
           }

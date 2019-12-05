@@ -866,6 +866,9 @@ static int smear_correction_using_oclocks (const CCD_Param_Type *ccdp,
         pb = pe - num_include;
      }
 
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: sb0=%4d se0=%4d pb=%4d pe=%4d",
+              __func__, sb0, se0, pb, pe);
+
    for (s = sb0; s < se0; s++)
      {
         Image_Pixel_Type pixsum = 0.0;
@@ -940,7 +943,7 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
    if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, &pb0, &pe0))
      return -1;
 
-   if (0) fprintf (stderr, "smear:  sb0=%4d se0=%4d pb0=%4d pe0=%4d\n",
+   if (0) fprintf (stderr, "apply smear correction:  sb0=%4d se0=%4d pb0=%4d pe0=%4d\n",
                    sb0, se0, pb0, pe0);
 
    if (NULL == (smear_corr = (Image_Pixel_Type *) MALLOC (img->num_cols * sizeof(Image_Pixel_Type))))
@@ -1002,6 +1005,7 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
                           float *mean_sdc_per_pixel)
 {
    const Image_Pixel_Type *quad_pixels;
+   const Image_Pqf_Bitmap_Type *quad_pqf;
    int s, sb0, se0, p0, pixcount;
    float pixsum;
 
@@ -1020,13 +1024,14 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
 
    p0 = (quad->row_step < 0) ? quad->row_beg : quad->row_end-1;
    quad_pixels = img->pixels + p0 * img->num_cols;
+   quad_pqf = img->pixel_quality_flags + p0 * img->num_cols;
 
    pixsum = 0.0;
    pixcount = 0;
 
    for (s = sb0; s < se0; s++)
      {
-        if (quad_pixels[s] != IMAGE_PIXEL_FILL_VALUE)
+        if ((quad_pixels[s] != IMAGE_PIXEL_FILL_VALUE) && (quad_pqf[s] == 0))
           {
              pixsum += quad_pixels[s];
              pixcount += 1;
