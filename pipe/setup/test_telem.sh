@@ -7,7 +7,7 @@ set -e
 
 #_src_dir="/data/tempo/sdpc/test_data/level0/2018jun29_fixup/incoming_newnames/telem"
 
-_src_dir="/data/tempo/sdpc/test_data/level0/2019jul21/v1/telem"
+_src_dir="/data/tempo/sdpc/test_data/level0/2019jul21/v2/telem"
 _target_dir="$SDPC_ARCHIVE_DIR/L0/1/4944"
 
 assert_dir_exists()
@@ -31,6 +31,7 @@ done
 # and the filenames don't match the 'time' array in the file either. Sigh).
 _target_dir="$SDPC_ARCHIVE_DIR/L0/1/7134/HK"
 mkdir -p $_target_dir
+ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T051005Z.nc
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T052010Z.nc
 
 _target_dir="$SDPC_ARCHIVE_DIR/L0/1/7135/HK"
