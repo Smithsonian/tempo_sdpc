@@ -586,7 +586,7 @@ static int init_params (config_t *cfg, Params_Type *params)
    return 0;
 }
 
-Scan_Type *scan_read_grids (int num_files, char **files, config_t *cfg)
+Scan_Type *scan_read_granules (int num_files, char **files, config_t *cfg)
 {
    Scan_Type *st = NULL;
    Params_Type params = {0};

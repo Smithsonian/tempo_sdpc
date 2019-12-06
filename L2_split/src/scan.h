@@ -30,14 +30,14 @@ typedef struct
 }
 Scan_Vars_Type;
 
-/** Read longitude and latitude grids from granule files comprising a single scan
+/** Read granule files comprising a single scan
  * @param[in] num_files   Number of granule files
  * @param[in] files       Pointer to an array of granule file names
  * @param[in] cfg         Initialized pointer to config_t structure
  * @return  On success, an opaque pointer to a \c Scan_Type object.
  *          On error, a NULL pointer
  */
-extern Scan_Type *scan_read_grids (int num_files, char **files, config_t *cfg);
+extern Scan_Type *scan_read_granules (int num_files, char **files, config_t *cfg);
 
 /** Free resources associated with a Scan_Type object
  * @param[in] st  Pointer to a Scan_Type object created by \c scan_read_grids.

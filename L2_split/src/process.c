@@ -17,14 +17,12 @@
 
 typedef struct
 {
-   double *slant_column;
-   double *amf_trop;
-   double *amf_strat;
+   double *vert_trop;
    double *vert_strat;
-   int dim0;
-   int dim1;
+   int num_steps;
+   int num_xtrack;
 }
-Product_Var_Type;
+Split_Type;
 
 static int lookup_grid_spec (const config_setting_t *s,
                              int *num, double *min, double *max,
@@ -71,97 +69,25 @@ static int init_mesh (config_t *cfg, Pixel_Grid_Param_Type *mesh)
    return 0;
 }
 
-static double *
-vertical_trop_column (const Pixel_Grid_Param_Type *mesh,
-                      const Product_Var_Type *mesh_vars,
-                      const double *vert_strat)
+static double *map_vert_strat_to_mesh (Scan_Vars_Type *sv, const Pixel_Grid_Param_Type *mesh,
+                                       const Pixel_Regrid_Type *r_mesh)
 {
-   double nan_value = nan("");
-   const double *slant_column = mesh_vars->slant_column;
-   const double *amf_trop = mesh_vars->amf_trop;
-   const double *amf_strat = mesh_vars->amf_strat;
-   double *vtrop = NULL;
-   int i, num_pixels;
-
-   num_pixels = mesh->nx * mesh->ny;
-
-   if (NULL == (vtrop = (double *)MALLOC (num_pixels * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        if (amf_trop[i] != 0)
-          {
-             vtrop[i] = ((slant_column[i]
-                          - vert_strat[i] * amf_strat[i]) /amf_trop[i]);
-          }
-        else vtrop[i] = nan_value;
-     }
-
-   return vtrop;
-}
-
-static void free_var_type (Product_Var_Type *pvt)
-{
-   if (pvt == NULL)
-     return;
-   FREE(pvt->slant_column);
-   FREE(pvt->amf_trop);
-   FREE(pvt->amf_strat);
-   FREE(pvt->vert_strat);
-   FREE(pvt);
-}
-
-static Product_Var_Type *alloc_var_type (int dim0, int dim1)
-{
-   Product_Var_Type *pvt = NULL;
-   int num_pixels = dim0 * dim1;
-
-   if (NULL == (pvt = (Product_Var_Type *)MALLOC (sizeof *pvt)))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-   memset ((char *)pvt, 0, sizeof *pvt);
-
-   if ((NULL == (pvt->slant_column = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (pvt->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (pvt->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
-       || (NULL == (pvt->vert_strat = (double *)MALLOC (num_pixels * sizeof(double)))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        free_var_type (pvt);
-        return NULL;
-     }
-
-   pvt->dim0 = dim0;
-   pvt->dim1 = dim1;
-
-   return pvt;
-}
-
-static Product_Var_Type *
-regrid_product_vars (Scan_Vars_Type *sv, const Pixel_Grid_Param_Type *mesh,
-                     const Pixel_Regrid_Type *r_mesh)
-{
-   Product_Var_Type *mesh_grid = NULL;
    double fill_value = nan("");
+   double *vert_strat = NULL;
    int *mesh_mask = NULL;   /* FIXME? */
-   int status = -1;
+   int num_pixels, status = -1;
 
-   /* Map variables from Level 2 product scan grid to the uniform mesh grid
+   /* Map from the Level 2 product scan grid to a uniform mesh grid
     * that will be used for computations.
     */
-   if (NULL == (mesh_grid = alloc_var_type (mesh->nx, mesh->ny)))
-     goto free_and_return;
+   num_pixels = mesh->nx * mesh->ny;
+   if (NULL == (vert_strat = (double *)MALLOC (num_pixels * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
 
-   if ((0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->slant_column, mesh_grid->slant_column, NULL))
-       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->amf_trop, mesh_grid->amf_trop, NULL))
-       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->amf_strat, mesh_grid->amf_strat, NULL))
-       || (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->vert_strat, mesh_grid->vert_strat, NULL)))
+   if (0 != Pixel_regrid (r_mesh, mesh_mask, fill_value, sv->vert_strat, vert_strat, NULL))
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: mapping from scan grid to mesh grid", __func__);
@@ -172,11 +98,11 @@ regrid_product_vars (Scan_Vars_Type *sv, const Pixel_Grid_Param_Type *mesh,
 free_and_return:
    if (status)
      {
-        free_var_type (mesh_grid);
-        mesh_grid = NULL;
+        FREE(vert_strat);
+        vert_strat = NULL;
      }
 
-   return mesh_grid;
+   return vert_strat;
 }
 
 static void replace_fill (double *a, int n, double old_fill_value,
@@ -194,39 +120,80 @@ static void replace_fill (double *a, int n, double old_fill_value,
      }
 }
 
-static int write_split (const Scan_Type *st,
-                        const Scan_Vars_Type *sv,
-                        const Pixel_Regrid_Type *r_mesh,
-                        const double *mesh_vert_trop,
-                        const double *mesh_vert_strat)
+static void free_split_type (Split_Type *split)
 {
-   int *dqf = sv->data_quality_flag;
-   int *mesh_mask = NULL; /* FIXME? */
-   double *scan_values = NULL;
-   double *vert_strat = NULL;
-   double *vert_trop = NULL;
-   double nan_value = nan("");
-   double fill_value = nan_value;
-   double fill_value_output = -1.0e30;  /* (should not be a NaN!) */
-   int i, num_scan_pixels;
-   int status = -1;
+   if (split == NULL)
+     return;
+   FREE(split->vert_strat);
+   FREE(split->vert_trop);
+   FREE(split);
+}
 
-   /* Regrid strat/trop column values back to Level 2 product scan grid */
-   num_scan_pixels = sv->num_steps * sv->num_xtrack;
-   if (NULL == (scan_values = (double *) MALLOC (2 * num_scan_pixels * sizeof(double))))
+static Split_Type *alloc_split_type (int num_steps, int num_xtrack)
+{
+   Split_Type *split = NULL;
+   int num_scan_pixels;
+
+   if (NULL == (split = (Split_Type *)MALLOC (sizeof *split)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
+        return NULL;
      }
-   vert_trop = scan_values;
-   vert_strat = scan_values + num_scan_pixels;
 
-   if ((0 != Pixel_regrid_from_mesh (r_mesh, mesh_mask, fill_value, mesh_vert_strat, vert_strat))
-       || (0 != Pixel_regrid_from_mesh (r_mesh, mesh_mask, fill_value, mesh_vert_trop, vert_trop)))
+   split->num_steps = num_steps;
+   split->num_xtrack = num_xtrack;
+
+   num_scan_pixels = num_steps * num_xtrack;
+   if ((NULL == (split->vert_trop = (double *) MALLOC (num_scan_pixels * sizeof(double))))
+       || (NULL == (split->vert_strat = (double *) MALLOC (num_scan_pixels * sizeof(double)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_split_type (split);
+        return NULL;
+     }
+
+   return split;
+}
+
+static Split_Type *perform_split (const Scan_Vars_Type *sv,
+                                  const Pixel_Regrid_Type *r_mesh,
+                                  const double *mesh_vert_strat)
+{
+   int *dqf = sv->data_quality_flag;
+   Split_Type *split = NULL;
+   double *vert_strat = NULL;
+   double *vert_trop = NULL;
+   int *mesh_mask = NULL;   /* FIXME? */
+   double nan_value = nan("");
+   double fill_value = nan_value;
+   int i, num_scan_pixels;
+
+   if (NULL == (split = alloc_split_type (sv->num_steps, sv->num_xtrack)))
+     return NULL;
+
+   vert_strat = split->vert_strat;
+   vert_trop = split->vert_trop;
+
+   /* Map vert_strat column values from mesh back to Level 2 product scan grid */
+   if (0 != Pixel_regrid_from_mesh (r_mesh, mesh_mask, fill_value, mesh_vert_strat, vert_strat))
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: mapping from mesh grid to scan grid", __func__);
-        goto free_and_return;
+        free_split_type (split);
+        return NULL;
+     }
+
+   num_scan_pixels = sv->num_steps * sv->num_xtrack;
+
+   /* Compute the tropospheric vertical column on the native scan pixel grid */
+   for (i = 0; i < num_scan_pixels; i++)
+     {
+        if (sv->amf_trop[i] != 0)
+          {
+             vert_trop[i] = (sv->slant_column[i] -
+                          vert_strat[i] * sv->amf_strat[i]) / sv->amf_trop[i];
+          }
+        else vert_trop[i] = nan_value;
      }
 
    /* Mask strat/trop variables using original data quality flag */
@@ -239,26 +206,35 @@ static int write_split (const Scan_Type *st,
           }
      }
 
+   return split;
+}
+
+static int write_split (const Scan_Type *st, const Split_Type *split)
+{
+   double nan_value = nan("");
+   double fill_value = nan_value;
+   double fill_value_output = -1.0e30;  /* (should not be a NaN!) */
+   int num_scan_pixels;
+
+   num_scan_pixels = split->num_steps * split->num_xtrack;
+
    /* For output, replace fill_value, NaN, Inf with standard fill value */
    if (isnan(fill_value) || (fill_value_output != fill_value))
      {
-        replace_fill (vert_trop, num_scan_pixels, fill_value, fill_value_output);
-        replace_fill (vert_strat, num_scan_pixels, fill_value, fill_value_output);
+        replace_fill (split->vert_strat, num_scan_pixels, fill_value, fill_value_output);
+        replace_fill (split->vert_trop, num_scan_pixels, fill_value, fill_value_output);
      }
 
    /* Write strat/trop vertical columns on Level 2 product scan grid */
-   if (0 != scan_write_split (st, fill_value_output, vert_trop, vert_strat))
+   if (0 != scan_write_split (st, fill_value_output, split->vert_trop, split->vert_strat))
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: writing strat/trop vertical column values",
                      __func__);
-        goto free_and_return;
+        return -1;
      }
 
-   status = 0;
-free_and_return:
-   FREE(scan_values);
-   return status;
+   return 0;
 }
 
 static int filter_vert_strat (const Pixel_Grid_Param_Type *mesh,
@@ -284,9 +260,8 @@ int process_files (config_t *cfg, int num_files, char **files)
    Scan_Type *st = NULL;
    Scan_Vars_Type *sv = NULL;
    Pixel_Regrid_Type *r_mesh = NULL;
-   Product_Var_Type *mesh_vars = NULL;
-   double *mesh_apriori_vert_trop = NULL;
-   double *mesh_vert_trop = NULL;
+   Split_Type *split = NULL;
+   double *mesh_vert_strat = NULL;
    int num_steps, num_xtrack;
    int status = -1;
 
@@ -294,8 +269,10 @@ int process_files (config_t *cfg, int num_files, char **files)
    if (0 != init_mesh (cfg, &mesh))
      goto free_and_return;
 
-   /* Read scan grid */
-   if (NULL == (st = scan_read_grids (num_files, files, cfg)))
+   /* Read scan granules, and compute initial estimate of
+    * the stratospheric vertical column on the native scan grid.
+    */
+   if (NULL == (st = scan_read_granules (num_files, files, cfg)))
      goto free_and_return;
 
    /* Prepare for regridding scan variables onto mesh grid */
@@ -306,25 +283,24 @@ int process_files (config_t *cfg, int num_files, char **files)
    if (NULL == (sv = scan_vars_alloc (num_steps, num_xtrack)))
      goto free_and_return;
 
-   /* Pack product variables on scan grid */
+   /* Pack product variables on scan grid-sized arrays */
    if (0 != scan_vars_pack (st, sv))
      goto free_and_return;
 
-   /* Regrid product variables onto mesh grid */
-   if (NULL == (mesh_vars = regrid_product_vars (sv, &mesh, r_mesh)))
+   /* Regrid stratospheric vertical column estimate onto mesh grid */
+   if (NULL == (mesh_vert_strat = map_vert_strat_to_mesh (sv, &mesh, r_mesh)))
      goto free_and_return;
 
    /* Filter stratospheric vertical column estimate */
-   if (0 != filter_vert_strat (&mesh, mesh_vars->vert_strat, cfg))
+   if (0 != filter_vert_strat (&mesh, mesh_vert_strat, cfg))
      goto free_and_return;
 
-   /* Compute tropospheric vertical column */
-   mesh_vert_trop = vertical_trop_column (&mesh, mesh_vars, mesh_vars->vert_strat);
-   if (mesh_vert_trop == NULL)
+   /* Perform strat/trop separation on native scan grid */
+   if (NULL == (split = perform_split (sv, r_mesh, mesh_vert_strat)))
      goto free_and_return;
 
    /* Write strat/trop variables to corresponding granule files */
-   if (0 != write_split (st, sv, r_mesh, mesh_vert_trop, mesh_vars->vert_strat))
+   if (0 != write_split (st, split))
      goto free_and_return;
 
    status = 0;
@@ -332,9 +308,8 @@ free_and_return:
    scan_free (st);
    scan_vars_free (sv);
    Pixel_close_regrid (r_mesh);
-   free_var_type (mesh_vars);
-   FREE(mesh_apriori_vert_trop);
-   FREE(mesh_vert_trop);
+   free_split_type (split);
+   FREE(mesh_vert_strat);
 
    return status;
 }
