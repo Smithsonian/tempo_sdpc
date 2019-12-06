@@ -67,6 +67,9 @@ EOF
   if test -f $product_file ; then
      ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
   fi
+
+  block_tarfile_name=$(basename $product_file .nc)
+  tar cf ${block_tarfile_name}.tar --remove-files --transform s,\^,${block_tarfile_name}/, block_*
 }
 
 mode="$1"
