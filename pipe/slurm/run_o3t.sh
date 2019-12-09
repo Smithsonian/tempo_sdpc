@@ -68,8 +68,12 @@ out_basename=$(printf "$lev2_base_fmt" O3TOT)
 
 etc_dir="$SDPC_ROOT/etc"
 
-config_file="$etc_dir/o3_total/o3_total.rc"
-. $config_file
+product_dir=.
+spectra_dir=.
+cloud_dir=.
+refdata_dir="$SDPC_RUN_DIR/refdata/o3_total"
+
+pcf_file="$product_dir/o3_total.pcf"
 
 radiance_file="$rad_file"
 irradiance_file="$irr_file"

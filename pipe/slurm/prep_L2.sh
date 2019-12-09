@@ -212,15 +212,18 @@ tar_l2_cloud_to_dest()
 
 run_cloud()
 {
-  . ${etc_dir}/cloud/cloud.rc
-
   mkdir -p $cld_dir
   cd $cld_dir
 
-  radiance_file="../${rad_basename}.he4"
-  irradiance_file="../${irr_basename}.he4"
-  product_file="${cld_basename}.he5"
+  product_dir=.
+  spectra_dir=.
+  refdata_dir="$SDPC_RUN_DIR/refdata/cloud"
+
+  radiance_file="../${rad_basename}.nc"
+  irradiance_file="../${irr_basename}.nc"
+  product_file="${cld_basename}.nc"
   template_pcf="${etc_dir}/cloud/default.pcf.in"
+  pcf_file="$product_dir/cloud.pcf"
 
   # Edit the PCF file template:
   sed \
@@ -237,7 +240,7 @@ run_cloud()
   export PGSMSG="${SDPC_ROOT}/msgs"
 
   srun --ntasks=1 --output=log_cloud.txt \
-    L1_cloud $cmdline_args
+    L1_cloud -tempo -wrt_odl
 
   # SDPTK MET routines litter the directory with temporary files
   /bin/rm -f MCFWrite.temp_*

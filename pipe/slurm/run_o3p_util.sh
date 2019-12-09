@@ -137,9 +137,12 @@ config_subdir()
    profoz_file="${etc_dir}/o3_profile/default_profoz.inp"
    /bin/cp $profoz_file $subdir_name/profoz.inp
 
-   # Load default config parameters
-   config_file="$SDPC_ROOT/etc/o3_profile/o3_profile.rc"
-   . $config_file
+   product_dir=.
+   spectra_dir=.
+   cloud_dir=.
+   refdata_dir="$SDPC_RUN_DIR/refdata/o3_profile_jbak"
+
+   pcf_file="$product_dir/o3_profile.pcf"
 
    # file names
    radiance_file="../${rad_basename}.nc"

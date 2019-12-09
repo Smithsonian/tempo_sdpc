@@ -70,13 +70,19 @@ export TG_NO_HE5_OUTPUT=1
 
 etc_dir="$SDPC_ROOT/etc"
 
-config_file="$etc_dir/trace_gas/trace_gas.rc"
-. $config_file
+product_dir=.
+spectra_dir=.
+cloud_dir=.
+refsec_dir="$SDPC_RUN_DIR/refdata/trace_gas/refsec"
+refdata_dir="$SDPC_RUN_DIR/refdata"
 
-radiance_file="$rad_file"
-irradiance_file="$irr_file"
-cloud_file="$cld_file"
-product_file="${out_basename}.he5"
+pcf_file="$product_dir/trace_gas.pcf"
+
+# FIXME! reference sector files are in $refsec_dir
+refsec_rad_file="OML1BRUG-o08544.nc"
+refsec_cld_file="OMCLDRR-o08544.nc"
+
+product_file="${out_basename}.nc"
 template_pcf="${etc_dir}/trace_gas/synth.pcf.${molecule}.in"
 template_ctrl="${etc_dir}/trace_gas/synth.control.${molecule}.in"
 control_file="control_${molecule}.txt"
@@ -107,9 +113,9 @@ sed \
  -e s,@cloud_dir@,$cloud_dir,g \
  -e s,@product_dir@,$product_dir,g \
  -e s,@etc_dir@,$etc_dir,g \
- -e s,@radiance_file@,$radiance_file,g \
- -e s,@irradiance_file@,$irradiance_file,g \
- -e s,@cloud_file@,$cloud_file,g \
+ -e s,@radiance_file@,$rad_file,g \
+ -e s,@irradiance_file@,$irr_file,g \
+ -e s,@cloud_file@,$cld_file,g \
  -e s,@clim_file@,$clim_file,g \
  -e s,@met_dir@,$met_dir,g \
  -e s,@met_file@,$met_file,g \
