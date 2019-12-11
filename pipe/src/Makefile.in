@@ -5,8 +5,8 @@ include ../../Makefile.defines
 #---------------------------------------------------------------------------
 # List of modules and associated .sl files to install
 #---------------------------------------------------------------------------
-MODULES = daemon-module.so
-SL_FILES = daemon.sl pipeutil.sl
+MODULES =# daemon-module.so
+SL_FILES = pipeutil.sl
 SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh inr_refdata.sh \
                      pipe_mkdirs_archive.sh pipe_mkdirs_master.sh \
 		     pipe_mkdirs_node.sh pipe_setup_master.sh \
@@ -15,8 +15,8 @@ SCRIPT_FILES = cachemon.sl archive.sl make_L3.sl o3p_partition.sl \
                move_file_stream.sl sdpcrun.sh sdpcpipe.sh register.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
-HLP_FILES = ../doc/help/daemon.hlp
-DOC_FILES = ../COPYRIGHT ../README ../doc/text/daemon.txt
+HLP_FILES =# ../doc/help/daemon.hlp
+DOC_FILES = ../COPYRIGHT ../README #../doc/text/daemon.txt
 MODULE_VERSION	= `./mkversion.sh`
 
 #---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ SL_FILES_INSTALL_DIR = @SL_FILES_INSTALL_DIR@
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
 ETC_FILES_INSTALL_DIR = $(prefix)/etc
 HLP_FILES_INSTALL_DIR = $(SL_FILES_INSTALL_DIR)/help
-DOC_FILES_INSTALL_DIR = $(datarootdir)/doc/slang-daemon
+DOC_FILES_INSTALL_DIR =# $(datarootdir)/doc/slang-daemon
 
 #---------------------------------------------------------------------------
 # C Compiler to create a shared library
@@ -90,8 +90,8 @@ all: $(objdir) $(MODULES) $(objdir)/filedb
 #---------------------------------------------------------------------------
 # Put Rules to create the modules here
 #---------------------------------------------------------------------------
-daemon-module.so: daemon-module.c
-	$(CC_SHARED) $(INCS) daemon-module.c -o daemon-module.so $(LIBS)
+#daemon-module.so: daemon-module.c
+#	$(CC_SHARED) $(INCS) daemon-module.c -o daemon-module.so $(LIBS)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
