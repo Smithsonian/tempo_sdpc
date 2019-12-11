@@ -113,7 +113,8 @@ static int make_iso8601_string (double taix, int want_delim, int want_frac,
 {
    double hour, minf, sec;
    int year, month, day, hr, min;
-   const char *fmt;
+   const char *dash;
+   const char *colon;
 
    if (0 != tio_time_taix_to_utc_caldate (taix, &year, &month, &day, &hour))
      return -1;
@@ -129,19 +130,20 @@ static int make_iso8601_string (double taix, int want_delim, int want_frac,
     */
    sec = ((int)(sec * 1.e6))/1.e6;
 
+   dash  = want_delim ? "-" : "";
+   colon = want_delim ? ":" : "";
+
    if (want_frac)
      {
-        fmt = (want_delim ?
-               "%4d-%02d-%02dT%02d:%02d:%09.6fZ" :
-               "%4d%02d%02dT%02d%02d%09.6fZ");
-        return snprintf (buf, bufsize, fmt, year, month, day, hr, min, sec);
+        return snprintf (buf, bufsize, "%4d%s%02d%s%02dT%02d%s%02d%s%09.6fZ",
+                         year, dash, month, dash, day,
+                         hr, colon, min, colon, sec);
      }
    else
      {
-        fmt = (want_delim ?
-               "%4d-%02d-%02dT%02d:%02d:%02dZ" :
-               "%4d%02d%02dT%02d%02d%02dZ");
-        return snprintf (buf, bufsize, fmt, year, month, day, hr, min, (int) sec);
+        return snprintf (buf, bufsize, "%4d%s%02d%s%02dT%02d%s%02d%s%02dZ",
+                         year, dash, month, dash, day,
+                         hr, colon, min, colon, (int) sec);
      }
 }
 
