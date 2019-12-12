@@ -718,6 +718,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           }
      }
 
+#if 0 /* Obsolete for INRSW release 2.2, and later */
    /* mirror_step_size */
      {
         static _pText_Attr_Type mirror_step_size_attrs[] =
@@ -737,6 +738,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              return -1;
           }
      }
+#endif
 
    /* radiance */
      {
