@@ -697,7 +697,7 @@ int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *ptemplate_file,
 {
    FILE *fp_template = NULL;
    FILE *fp_outfile = NULL;
-   char *tmpl;
+   char *tmpl = NULL;
    char *outfile = NULL;
    int do_rename=0, status = -1;
 

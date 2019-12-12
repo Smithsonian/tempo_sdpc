@@ -282,7 +282,7 @@ static int write_term_info (const Wavecal_Term_Info_Type *info, const double *wa
 
    if (NULL == (fp = fopen (filename, "w")))
      {
-        fprintf (fp, "*** Error opening %s for writing\n", filename);
+        fprintf (stderr, "*** Error opening %s for writing\n", filename);
         return -1;
      }
 

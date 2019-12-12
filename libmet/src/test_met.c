@@ -12,7 +12,7 @@ static int perform_test (Met_List_Type *met, Met_Value_Type *mvt,
    const char *points_file;
    float isobars[NUM_ISOBARS];
    float temperature_on_isobar[NUM_ISOBARS];
-   int k, j, status;
+   int k, j, status = -1;
 
    if (argc < 3)
      {

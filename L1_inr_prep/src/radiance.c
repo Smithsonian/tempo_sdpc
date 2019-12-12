@@ -169,6 +169,7 @@ static int radiance_write_times (Radiance_Type *r,
    tstart_global = ((rst_head->start < rst_head->num_times)
                     ? rst_head->times[rst_head->start]
                     : nan(""));
+   tstop_global = tstart_global;
 
    start = 0;
    for (rst = rst_head; rst != NULL; rst = rst->next)
@@ -247,6 +248,11 @@ static int copy_file_var (const Row_Select_Type *rst, Buffer_Type *buf,
       case NC_UBYTE:
         size_elem = 1;
         break;
+
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported type = %d",
+                     __func__, info.type);
+        return -1;
      }
 
    if (copy_all)

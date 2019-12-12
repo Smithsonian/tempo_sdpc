@@ -74,6 +74,7 @@ MODULE O3T_dndx_m
         REAL (KIND=8) :: pc, fac_pcl
 
         errstat = 0
+        fac_pcl = 0.0  ! silence compiler warning 'fac_pcl may be used uninitialized'
 
         nwl = SIZE(dndx, 1)
         IF( nwl  < nwl_sub  .OR.  SIZE(dndx, 2) < NLYR  ) THEN

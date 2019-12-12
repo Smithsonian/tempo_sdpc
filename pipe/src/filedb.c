@@ -890,12 +890,12 @@ int main (int argc, char **argv)
    char *result_filename = NULL;
    double timestamp_utc = DBL_MAX;
    int status = EXIT_FAILURE;
-   int task;
    enum
      {
         TASK_UPDATE = 1,
         TASK_FIND = 2
      };
+   int task = TASK_FIND;
    static struct option long_options[] =
      {
         {"config", required_argument, 0, 'c'},
