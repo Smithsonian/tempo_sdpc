@@ -40,6 +40,23 @@ granuleTime=360
 # The regular expression for filename to determine whether a file is a granule
 filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})\.nc$
 
+## The actual time bounds of GNA cutout relatively to start time of Full Disk
+
+[GNATimeBounds]
+
+west_mode3_start=32
+west_mode3_end=218
+west_mode4_start=11
+west_mode4_end=91
+west_mode6_start=16
+west_mode6_end=174
+east_mode3_start=28
+east_mode3_end=214
+east_mode4_start=7
+east_mode4_end=87
+east_mode6_start=12
+east_mode6_end=170
+
 ## Left reference image configuration
 
 [Left]
@@ -187,6 +204,19 @@ ECALimit=80
 # Mode of measuring TiePoints. Possible values are "LEFT_REF", "RIGHT_REF", "BINOCULAR"
 # "LEFT_REF" and "RIGHT_REF" is used when we are testing the software in AutoCorrelation Mode
 mode=BINOCULAR
+# Number of threads to be used for parallel processing
+numThreads=1
+# Flag indicating whether optical flow in reference images are used to improve calculations
+# TRUE or FALSE
+useOpticalFlow=TRUE
+# The maximum number of loops to be used in optical flow
+useOpticalFlowMaxLoops=10
+# The position tolerance for optical flow calculation in km
+useOpticalFlowRTol=1e-4
+# The velocity tolerance for optical flow calculation in km/s
+useOpticalFlowVTol=1e-5
+# The cos of limb limit (cos(85*pi/180))
+cosLimb=0.087155742747658
 
 ## Parameters to contral tie-point validity checking
 
