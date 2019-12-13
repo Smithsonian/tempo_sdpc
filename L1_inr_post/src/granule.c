@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <float.h>
 #include <math.h>
+#include <wordexp.h>
 
 #include <tempo_geo.h>
 #include <tell.h>
@@ -75,6 +76,18 @@ Angles_Type;
    ECEF_Position_Type moon; \
    ECEF_Position_Type sat;
 #include "granule.h"
+
+typedef struct
+{
+   AltitudeData geoid_height;
+   AltitudeData dem;
+}
+Geoid_Data_Type;
+
+static __inline__ int invalid_lonlat (double lon, double lat)
+{
+   return ((fabs(lon) > 360.0) || (fabs(lat) > 90.0));
+}
 
 static void free_geoloc_fields (Geoloc_Type *geoloc)
 {
@@ -381,7 +394,7 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
              BIT_CLEAR(illum_flags_row[i], 1);
 
              /* input may include fill values */
-             if ((fabs(lon_row[i]) > 360.0) || (fabs(lat_row[i]) > 90.0))
+             if (invalid_lonlat (lon_row[i], lat_row[i]))
                continue;
 
              pt.theLon = lon_row[i];
@@ -581,7 +594,7 @@ static int object_angles (const ECEF_Vector *object,
         azimuth_angle[i] = TIO_FILL_FLOAT;
 
         /* input may include fill values */
-        if ((fabs(lon[i]) > 360.0) || (fabs(lat[i]) > 90.0))
+        if (invalid_lonlat (lon[i], lat[i]))
           continue;
 
         pt.theLon = lon[i];
@@ -735,6 +748,218 @@ static Granule_Type *new_granule_type (void)
    return gt;
 }
 
+static int write_band_geolocation (const Granule_Type *gt, const char *band_name,
+                                   const Geoloc_Type *geoloc)
+{
+   const char *attname = "geolocation_is_parallax_adjusted";
+   const char *yes = "yes";
+   int grp, idp, start[3], count[3];
+
+   if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
+     return -1;
+
+   if (NC_NOERR == nc_inq_attid (grp, NC_GLOBAL, attname, &idp))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: file coordinates are already parallax-adjusted",
+                     __func__);
+        return -1;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = geoloc->num_mirror_step;
+   count[1] = geoloc->num_xtrack;
+   count[2] = geoloc->num_corner;
+
+   if ((0 != TIO_put_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_DOUBLE, geoloc->lon))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_DOUBLE, geoloc->lat))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lon_cnr))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lat_cnr)))
+     {
+        return -1;
+     }
+
+   if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_STRING, 1, &yes))
+     return -1;
+
+   return 0;
+}
+
+static int write_geolocation (const Granule_Type *gt)
+{
+   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
+   int i;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
+          return -1;
+     }
+
+   return 0;
+}
+
+static void free_geoid_data (Geoid_Data_Type *gdt)
+{
+   if (gdt == NULL)
+     return;
+   freeAltitudeData (&gdt->geoid_height);
+   freeAltitudeData (&gdt->dem);
+}
+
+static int read_geoid_data (Geoid_Data_Type *gdt, const char *geoid_dem_path)
+{
+   if (1 != readGeoidHeightFromFile (geoid_dem_path, &gdt->geoid_height))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading geoid height from file: %s",
+                     __func__, geoid_dem_path);
+        return -1;
+     }
+
+   if (1 != readDEMFromFile (geoid_dem_path, &gdt->dem))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading digital elevation model from file: %s",
+                     __func__, geoid_dem_path);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
+                                                  const ECEF_Position_Type *satloc,
+                                                  Geoloc_Type *geoloc)
+{
+   unsigned int s, num_xtrack_corners;
+   /* Convergence criterion on corrected height [km]
+    * Typical value: 10.0e-6, e.g. 10 meters
+    */
+   double height_tol_km = 10.0e-6;
+   /* Maximum number of iterations to converge
+    * Typical value: 20
+    */
+   int maxiter = 20;
+
+   num_xtrack_corners = geoloc->num_xtrack * geoloc->num_corner;
+
+   for (s = 0; s < geoloc->num_mirror_step; s++)
+     {
+        ECEF_Vector sat;
+        double *lon_step = geoloc->lon + s * geoloc->num_xtrack;
+        double *lat_step = geoloc->lat + s * geoloc->num_xtrack;
+        double *lon_step_cnr = geoloc->lon_cnr + s * num_xtrack_corners;
+        double *lat_step_cnr = geoloc->lat_cnr + s * num_xtrack_corners;
+        unsigned int y, c;
+
+        sat.theX = satloc->X[s];
+        sat.theY = satloc->Y[s];
+        sat.theZ = satloc->Z[s];
+
+        for (y = 0; y < geoloc->num_xtrack; y++)
+          {
+             double lon_y = lon_step[y];
+             double lat_y = lat_step[y];
+
+             /* input may include fill values */
+             if (invalid_lonlat (lon_y, lat_y))
+               continue;
+
+             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_y, lon_y, sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
+                                                  &lat_step[y], &lon_step[y]))
+               {
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: parallaxAdj failed: pixel center lat=%f lon=%f",
+                               __func__, lat_y, lon_y);
+                  return -1;
+               }
+          }
+
+        for (c = 0; c < num_xtrack_corners; c++)
+          {
+             double lon_c = lon_step_cnr[c];
+             double lat_c = lat_step_cnr[c];
+
+             /* input may include fill values */
+             if (invalid_lonlat (lon_c, lat_c))
+               continue;
+
+             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_c, lon_c, sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
+                                                  &lat_step_cnr[c], &lon_step_cnr[c]))
+               {
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: parallaxAdj failed: pixel corner lat=%f lon=%f",
+                               __func__, lat_c, lon_c);
+                  return -1;
+               }
+          }
+
+     }
+
+   return 0;
+}
+
+static char *expand_path (const char *path)
+{
+   wordexp_t we = {0};
+   char *s = NULL;
+
+   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, path);
+        goto return_status;
+     }
+
+   if (NULL == (s = strdup (we.we_wordv[0])))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+return_status:
+   wordfree (&we);
+   return s;
+}
+
+static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *meta, config_t *cfg)
+{
+   config_setting_t *s;
+   Geoid_Data_Type gdt = {0};
+   const char *geoid_dem_setting;
+   char *geoid_dem_path = NULL;
+   int i, status = -1;
+
+   if ((NULL == (s = config_lookup (cfg, "parallax_correction")))
+       || (CONFIG_TRUE != config_setting_lookup_string (s, "altitude_file", &geoid_dem_setting)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading parallax_correction.altitude_file", __func__);
+        return -1;
+     }
+
+   if (NULL == (geoid_dem_path = expand_path (geoid_dem_setting)))
+     return -1;
+
+   if (0 != read_geoid_data (&gdt, geoid_dem_path))
+     goto free_and_return;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        if (0 != correct_band_geolocation_for_parallax (&gdt, &gt->sat, &gt->geoloc[i]))
+          goto free_and_return;
+     }
+
+   if (0 != write_geolocation (gt))
+     goto free_and_return;
+
+   tio_meta_append_string (meta, "INPUTPOINTER", geoid_dem_path);
+
+   status = 0;
+free_and_return:
+   free_geoid_data (&gdt);
+   FREE(geoid_dem_path);
+   return status;
+}
+
 static int read_band_geolocation (Granule_Type *gt, const char *band_name,
                                   Geoloc_Type *geoloc)
 {
@@ -853,7 +1078,8 @@ static int maybe_init_metadata_keywords (int ncid, TIO_Meta_Type *meta)
    return 0;
 }
 
-Granule_Type *granule_open (const char *file, TIO_Meta_Type *meta)
+Granule_Type *granule_open (const char *file, int correct_parallax,
+                            TIO_Meta_Type *meta, config_t *cfg)
 {
    Granule_Type *gt = NULL;
 
@@ -879,6 +1105,20 @@ Granule_Type *granule_open (const char *file, TIO_Meta_Type *meta)
         gt->gt_close (gt);
         return NULL;
      }
+
+   /* If we correct lon-lat coordinates for local height above/below
+    * the WGS84 ellipsoid, we must do that before doing any other
+    * calculations that use the lon-lat coordinates.
+    */
+   if (correct_parallax)
+     {
+        if (0 != correct_geolocation_for_parallax (gt, meta, cfg))
+          {
+             gt->gt_close (gt);
+             return NULL;
+          }
+     }
+   else tell_vlog (TELL_MSGTYPE_INFO, 0, "Skipping parallax correction");
 
    return gt;
 }

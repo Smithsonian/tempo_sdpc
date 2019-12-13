@@ -6,6 +6,8 @@
  *         set geolocation-dependent variables
  */
 
+#include <libconfig.h>
+
 #include "elevation.h"
 #include "snow.h"
 #include "land_cover.h"
@@ -64,8 +66,14 @@ struct Granule_Type
 
 /**  Initialize Granule_Type object
  * @param[in] file  path to geolocated radiance file
+ * @param[in] correct_parallax  if non-zero, apply the parallax correction
+ * @param[in] meta              pointer to an initialized instance of
+ *                              \a TIO_Meta_Type
+ * @param[in] cfg               pointer to an initialized instance of
+ *                              \a config_t
  * @return pointer to initialized Granule_Type on success, NULL on error
  */
-extern Granule_Type *granule_open (const char *file, TIO_Meta_Type *meta);
+extern Granule_Type *granule_open (const char *file, int correct_parallax,
+                                   TIO_Meta_Type *meta, config_t *cfg);
 
 #endif

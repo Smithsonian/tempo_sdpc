@@ -26,6 +26,7 @@ static void usage (void)
    fprintf (stderr, "  Required:\n");
    fprintf (stderr, "   -s | --snow FILE       Snow and ice mask file\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -p | --parallaxoff     Turn off the parallax correction\n");
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -h | --help            Print this usage message\n");
    fprintf (stderr, "   -v | --verbose lev     Logging verbosity\n");
@@ -194,12 +195,14 @@ int main (int argc, char **argv)
    char *input_file = NULL;
    char *snow_file = NULL;
    int status = EXIT_FAILURE;
+   int correct_parallax = 1;    /* apply the correction by default */
    static struct option long_options[] =
      {
-        {"snow",    required_argument, 0, 's'},
-        {"config",  required_argument, 0, 'c'},
-        {"help",    no_argument,       0, 'h'},
-        {"verbose", optional_argument, 0, 'v'},
+        {"parallaxoff", no_argument,       0, 'p'},
+        {"snow",        required_argument, 0, 's'},
+        {"config",      required_argument, 0, 'c'},
+        {"help",        no_argument,       0, 'h'},
+        {"verbose",     optional_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -221,7 +224,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hc:s:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hpc:s:v:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -237,9 +240,14 @@ int main (int argc, char **argv)
              tell_close();
              usage();
              break;
-           case 's': snow_file = optarg;
+           case 's':
+             snow_file = optarg;
              break;
-           case 'c': config_file = optarg;
+           case 'p':
+             correct_parallax = 0;
+             break;
+           case 'c':
+             config_file = optarg;
              /* This config file will override the default one
               * that might have been read previously.
               * Subsequent command-line args will override
@@ -281,7 +289,7 @@ int main (int argc, char **argv)
    if (NULL == (meta = tio_meta_open ()))
      return -1;
 
-   gt = granule_open (input_file, meta);
+   gt = granule_open (input_file, correct_parallax, meta, &cfg);
 
    if (gt)
      {
