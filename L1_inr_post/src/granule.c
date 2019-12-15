@@ -25,12 +25,17 @@
 
 #define BITMASK_GPQF_BITS_USED   0xffffffff
 
+/* To compute the parallax shift distance and write it to the output file: */
+/* #define OUTPUT_PARALLAX_SHIFT 1 */
+#undef OUTPUT_PARALLAX_SHIFT
+
 typedef struct
 {
    double *lon;
    double *lat;
    double *lon_cnr;
    double *lat_cnr;
+   double *shift_km;
    unsigned int num_mirror_step;
    unsigned int num_xtrack;
    unsigned int num_corner;
@@ -95,6 +100,7 @@ static void free_geoloc_fields (Geoloc_Type *geoloc)
      return;
    FREE(geoloc->lon);
    FREE(geoloc->lat);
+   FREE(geoloc->shift_km);
 }
 
 static double *alloc_geoloc_coordinate (Geoloc_Type *geoloc)
@@ -126,6 +132,14 @@ static int alloc_geoloc_fields (size_t *dimlens, Geoloc_Type *geoloc)
         free_geoloc_fields (geoloc);
         return -1;
      }
+
+#ifdef OUTPUT_PARALLAX_SHIFT
+   if (NULL == (geoloc->shift_km = alloc_geoloc_coordinate (geoloc)))
+     {
+        free_geoloc_fields (geoloc);
+        return -1;
+     }
+#endif
 
    num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
    geoloc->lon_cnr = geoloc->lon + num_pixels;
@@ -748,10 +762,42 @@ static Granule_Type *new_granule_type (void)
    return gt;
 }
 
+#ifdef OUTPUT_PARALLAX_SHIFT
+static int write_shift (const Granule_Type *gt, const char *band_name,
+                        const Geoloc_Type *geoloc)
+{
+   const char *varname = "parallax_shift";
+   static TIO_Attr_Text_Type attrs[] =
+     {
+        {"coordinates", "longitude latitude"},
+        {NULL,NULL}
+     };
+   int grp, varid, start[2], count[2];
+
+   if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
+     return -1;
+   if (0 != TIO_def_var (grp, varname, NC_DOUBLE, 2, geoloc->dimids, &varid))
+     return -1;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = geoloc->num_mirror_step;
+   count[1] = geoloc->num_xtrack;
+
+   if (0 != TIO_put_var_section (grp, varname, start, count, TIO_DOUBLE, geoloc->shift_km))
+     return -1;
+
+   if (0 != TIO_put_text_attrs (grp, varid, attrs))
+     return -1;
+
+   return 0;
+}
+#endif
+
 static int write_band_geolocation (const Granule_Type *gt, const char *band_name,
                                    const Geoloc_Type *geoloc)
 {
-   const char *attname = "geolocation_is_parallax_adjusted";
+   const char *attname = "terrain_referenced_coordinates";
    const char *yes = "yes";
    int grp, idp, start[3], count[3];
 
@@ -760,7 +806,7 @@ static int write_band_geolocation (const Granule_Type *gt, const char *band_name
 
    if (NC_NOERR == nc_inq_attid (grp, NC_GLOBAL, attname, &idp))
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: file coordinates are already parallax-adjusted",
+        tell_verror (TELL_RUNTIME_ERROR, "%s: file coordinates are already terrain-referenced",
                      __func__);
         return -1;
      }
@@ -793,6 +839,10 @@ static int write_geolocation (const Granule_Type *gt)
 
    for (i = 0; i < NUM_BANDS; i++)
      {
+#ifdef OUTPUT_PARALLAX_SHIFT
+        if (0 != write_shift (gt, band_names[i], &gt->geoloc[i]))
+          return -1;
+#endif
         if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
           return -1;
      }
@@ -827,6 +877,20 @@ static int read_geoid_data (Geoid_Data_Type *gdt, const char *geoid_dem_path)
    return 0;
 }
 
+static __inline__ double compute_shift (double lat0, double lon0, double lat1, double lon1)
+{
+   double deg2rad = M_PI/180.0;
+   double phi0 = lat0 * deg2rad;
+   double th0  = lon0 * deg2rad;
+   double phi1 = lat1 * deg2rad;
+   double th1  = lon1 * deg2rad;
+   /* haversine forumula */
+   double sphi = sin((phi1-phi0)*0.5);
+   double sth  = sin(( th1- th0)*0.5);
+   double delta = 2 * asin (sqrt(sphi*sphi + cos(phi0)*cos(phi1)*sth*sth));
+   return delta * 6371.0088;
+}
+
 static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
                                                   const ECEF_Position_Type *satloc,
                                                   Geoloc_Type *geoloc)
@@ -850,6 +914,9 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
         double *lat_step = geoloc->lat + s * geoloc->num_xtrack;
         double *lon_step_cnr = geoloc->lon_cnr + s * num_xtrack_corners;
         double *lat_step_cnr = geoloc->lat_cnr + s * num_xtrack_corners;
+#ifdef OUTPUT_PARALLAX_SHIFT
+        double *shift_km_step = geoloc->shift_km + s * geoloc->num_xtrack;
+#endif
         unsigned int y, c;
 
         sat.theX = satloc->X[s];
@@ -858,40 +925,53 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
 
         for (y = 0; y < geoloc->num_xtrack; y++)
           {
-             double lon_y = lon_step[y];
-             double lat_y = lat_step[y];
+             double lat_y, lon_y;
+
+#ifdef OUTPUT_PARALLAX_SHIFT
+             shift_km_step[y] = 0.0;
+#endif
 
              /* input may include fill values */
-             if (invalid_lonlat (lon_y, lat_y))
+             if (invalid_lonlat (lon_step[y], lat_step[y]))
                continue;
 
-             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_y, lon_y, sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
-                                                  &lat_step[y], &lon_step[y]))
+             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_step[y], lon_step[y],
+                                                  sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
+                                                  &lat_y, &lon_y))
                {
-                  tell_verror (TELL_RUNTIME_ERROR, "%s: parallaxAdj failed: pixel center lat=%f lon=%f",
-                               __func__, lat_y, lon_y);
-                  return -1;
+                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: parallaxAdj failed: pixel center lat=%f lon=%f",
+                             __func__, lat_step[y], lon_step[y]);
+                  continue;
                }
+
+#ifdef OUTPUT_PARALLAX_SHIFT
+             shift_km_step[y] = compute_shift (lat_step[y], lon_step[y], lat_y, lon_y);
+#endif
+
+             lat_step[y] = lat_y;
+             lon_step[y] = lon_y;
           }
 
         for (c = 0; c < num_xtrack_corners; c++)
           {
-             double lon_c = lon_step_cnr[c];
-             double lat_c = lat_step_cnr[c];
+             double lat_c, lon_c;
 
              /* input may include fill values */
-             if (invalid_lonlat (lon_c, lat_c))
+             if (invalid_lonlat (lon_step_cnr[c], lat_step_cnr[c]))
                continue;
 
-             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_c, lon_c, sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
-                                                  &lat_step_cnr[c], &lon_step_cnr[c]))
+             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_step_cnr[c], lon_step_cnr[c],
+                                                  sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
+                                                  &lat_c, &lon_c))
                {
-                  tell_verror (TELL_RUNTIME_ERROR, "%s: parallaxAdj failed: pixel corner lat=%f lon=%f",
-                               __func__, lat_c, lon_c);
-                  return -1;
+                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: parallaxAdj failed: pixel corner lat=%f lon=%f",
+                             __func__, lat_step_cnr[y], lon_step_cnr[y]);
+                  continue;
                }
-          }
 
+             lat_step_cnr[c] = lat_c;
+             lon_step_cnr[c] = lon_c;
+          }
      }
 
    return 0;
@@ -921,6 +1001,14 @@ return_status:
    return s;
 }
 
+/* INR lon-lat coordinates are referenced to the WGS84 ellipsoid. This means that
+ * features that sit at a significant vertical offset from the ellipsoid (e.g. mountaintops)
+ * are assigned the coordinates of the point where the line of sight from the spacecraft
+ * through the feature intersects the ellipsoid.  To derive the actual terrain-referenced
+ * coordinates of the feature, it is necessary to correct for the offset associated with
+ * projection from the satellite viewpoint onto the ellipsoid.  The INR software refers
+ * to this as a "parallax" correction. The function parallaxAdj is provided to correct for it.
+ */
 static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *meta, config_t *cfg)
 {
    config_setting_t *s;
