@@ -891,19 +891,191 @@ static __inline__ double compute_shift (double lat0, double lon0, double lat1, d
    return delta * 6371.0088;
 }
 
+static int isconvex_polygon (const double *x, const double *y, int n)
+{
+   double wsign=0;
+   int xsign=0, xsignfirst=0, xflips=0;
+   int ysign=0, ysignfirst=0, yflips=0;
+   int i, prev, curr, next;
+
+   if (n < 3)
+     return 0;
+
+   curr = n-2;
+   next = n-1;
+
+   for (i = 0; i < n; i++)
+     {
+        double w, ax, ay, bx, by;
+
+        prev = curr;
+        curr = next;
+        next = i;
+
+        /* previous edge vector ("before") */
+        bx = x[curr] - x[prev];
+        by = y[curr] - y[prev];
+
+        /* next edge vector ("after") */
+        ax = x[next] - x[curr];
+        ay = y[next] - y[curr];
+
+        /* calculate sign flips using next edge vector ("after"),
+         * recording the first sign */
+        if (ax > 0)
+          {
+             if (xsign == 0)
+               xsignfirst = +1;
+             else if (xsign < 0)
+               xflips++;
+             xsign = +1;
+          }
+        else if (ax < 0)
+          {
+             if (xsign == 0)
+               xsignfirst = -1;
+             else if (xsign > 0)
+               xflips++;
+             xsign = -1;
+          }
+
+        if (xflips > 2)
+          return 0;
+
+        if (ay > 0)
+          {
+             if (ysign == 0)
+               ysignfirst = +1;
+             else if (ysign < 0)
+               yflips++;
+             ysign = +1;
+          }
+        else if (ay < 0)
+          {
+             if (ysign == 0)
+               ysignfirst = -1;
+             else if (ysign > 0)
+               yflips++;
+             ysign = -1;
+          }
+
+        if (yflips > 2)
+          return 0;
+
+        /* Find out the orientation of this pair of edges,
+         * and ensure it does not differ from previous pairs. */
+        w = bx * ay - ax * by;
+        if ((wsign == 0) && (w != 0))
+          wsign = w;
+        else if ((wsign > 0) && (w < 0))
+          return 0;
+        else if ((wsign < 0) && (w > 0))
+          return 0;
+     }
+
+   /* final/wraparound sign flips */
+   if ((xsign != 0) && (xsignfirst != 0) && (xsign != xsignfirst))
+     xflips++;
+   if ((ysign != 0) && (ysignfirst != 0) && (ysign != ysignfirst))
+     yflips++;
+
+   /* concave polygons have two sign flips along each axis */
+   if ((xflips != 2) || (yflips != 2))
+     return 0;
+
+   /* This is a convex polygon */
+   return 1;
+}
+
+/* This code will only ever process polygons with 4 vertices,
+ * so use static temporary arrays for the sort. */
+static struct
+{
+   double x[4];
+   double y[4];
+   double angles[4];
+   int index[4];
+}
+Angle_Sort;
+
+static int compare_angle_indices (const void *va, const void *vb)
+{
+   int ia = *(int *)va;
+   int ib = *(int *)vb;
+   double angle_a = Angle_Sort.angles[ia];
+   double angle_b = Angle_Sort.angles[ib];
+   if (angle_a < angle_b) return -1;
+   if (angle_a > angle_b) return +1;
+   return 0;
+}
+
+static int polygon_sort_ccw (double *x, double *y, int n)
+{
+   double xc, yc, xmn, xmx, ymn, ymx;
+   int i;
+
+   if (n != 4)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: expected polygon with 4 vertices!! num_vertices=%d", __func__, n);
+        return -1;
+     }
+
+   xc = 0.0;
+   yc = 0.0;
+   xmn = x[0];
+   xmx = x[0];
+   ymn = y[0];
+   ymx = y[0];
+
+   for (i = 0; i < n; i++)
+     {
+        xc += x[i];
+        yc += y[i];
+        if (x[i] < xmn) xmn = x[i];
+        if (x[i] > xmx) xmx = x[i];
+        if (y[i] < ymn) ymn = x[i];
+        if (y[i] > ymx) ymx = x[i];
+     }
+
+   xc /= n;
+   yc /= n;
+
+   /* shift center to break angle degeneracy in case of a perfect quadrilateral */
+   xc += 0.1 * (xmx - xmn);
+   yc += 0.1 * (ymx - ymn);
+
+   /* define angles so that the sort yields points ordered NE,NW,SW,SE */
+   for (i = 0; i < n; i++)
+     {
+        double theta = atan2 (-(y[i]-yc), -(x[i]-xc)) + M_PI;
+        Angle_Sort.angles[i] = theta;
+        Angle_Sort.index[i] = i;
+        Angle_Sort.x[i] = x[i];
+        Angle_Sort.y[i] = y[i];
+     }
+
+   qsort (Angle_Sort.index, sizeof(int), (size_t)n, compare_angle_indices);
+
+   for (i = 0; i < n; i++)
+     {
+        int k = Angle_Sort.index[i];
+        x[i] = Angle_Sort.x[k];
+        y[i] = Angle_Sort.y[k];
+        /* fprintf (stderr, "%f %f %f\n", x[i], y[i], Angle_Sort.angles[k] * 180.0/M_PI); */
+     }
+
+   return 0;
+}
+
 static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
                                                   const ECEF_Position_Type *satloc,
                                                   Geoloc_Type *geoloc)
 {
    unsigned int s, num_xtrack_corners;
-   /* Convergence criterion on corrected height [km]
-    * Typical value: 10.0e-6, e.g. 10 meters
-    */
-   double height_tol_km = 10.0e-6;
-   /* Maximum number of iterations to converge
-    * Typical value: 20
-    */
-   int maxiter = 20;
+   /* Convergence criterion on corrected height [km] */
+   double height_tol_km = 10.0e-3;
+   /* Maximum number of iterations to converge */
+   int maxiter = 50;
 
    num_xtrack_corners = geoloc->num_xtrack * geoloc->num_corner;
 
@@ -923,6 +1095,7 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
         sat.theY = satloc->Y[s];
         sat.theZ = satloc->Z[s];
 
+        /* Adjust pixel centers */
         for (y = 0; y < geoloc->num_xtrack; y++)
           {
              double lat_y, lon_y;
@@ -952,6 +1125,7 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
              lon_step[y] = lon_y;
           }
 
+        /* Adjust pixel corners */
         for (c = 0; c < num_xtrack_corners; c++)
           {
              double lat_c, lon_c;
@@ -971,6 +1145,34 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
 
              lat_step_cnr[c] = lat_c;
              lon_step_cnr[c] = lon_c;
+          }
+
+        /* After parallax adjustment, some polygons may be non-convex.
+         * When necessary, re-order the vertices to obtain a convex polygon.
+         */
+        for (y = 0; y < geoloc->num_xtrack; y++)
+          {
+             double *lat_cnr = lat_step_cnr + y * geoloc->num_corner;
+             double *lon_cnr = lon_step_cnr + y * geoloc->num_corner;
+             int have_invalid_point;
+
+             have_invalid_point = 0;
+             for (c = 0; c < geoloc->num_corner; c++)
+               {
+                  if (invalid_lonlat (lon_cnr[c], lat_cnr[c]))
+                    {
+                       have_invalid_point++;
+                       break;
+                    }
+               }
+             if (have_invalid_point) continue;
+
+             if (0 == isconvex_polygon (lon_cnr, lat_cnr, geoloc->num_corner))
+               {
+                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: non-convex polygon: mirror_step=%d xtrack=%d",
+                             __func__, s, y);
+                  (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
+               }
           }
      }
 
@@ -1001,8 +1203,8 @@ return_status:
    return s;
 }
 
-/* INR lon-lat coordinates are referenced to the WGS84 ellipsoid. This means that
- * features that sit at a significant vertical offset from the ellipsoid (e.g. mountaintops)
+/* INR lon-lat coordinates are referenced to the WGS84 ellipsoid. This means that features
+ * that sit at a significant vertical offset from the ellipsoid (e.g. mountain-tops, cloud-tops)
  * are assigned the coordinates of the point where the line of sight from the spacecraft
  * through the feature intersects the ellipsoid.  To derive the actual terrain-referenced
  * coordinates of the feature, it is necessary to correct for the offset associated with
