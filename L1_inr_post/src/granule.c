@@ -979,7 +979,7 @@ static int isconvex_polygon (const double *x, const double *y, int n)
    if ((ysign != 0) && (ysignfirst != 0) && (ysign != ysignfirst))
      yflips++;
 
-   /* concave polygons have two sign flips along each axis */
+   /* convex polygons have two sign flips along each axis */
    if ((xflips != 2) || (yflips != 2))
      return 0;
 
@@ -1011,7 +1011,7 @@ static int compare_angle_indices (const void *va, const void *vb)
 
 static int polygon_sort_ccw (double *x, double *y, int n)
 {
-   double xc, yc, xmn, xmx, ymn, ymx;
+   double xc, yc;
    int i;
 
    if (n != 4)
@@ -1022,27 +1022,15 @@ static int polygon_sort_ccw (double *x, double *y, int n)
 
    xc = 0.0;
    yc = 0.0;
-   xmn = x[0];
-   xmx = x[0];
-   ymn = y[0];
-   ymx = y[0];
 
    for (i = 0; i < n; i++)
      {
         xc += x[i];
         yc += y[i];
-        if (x[i] < xmn) xmn = x[i];
-        if (x[i] > xmx) xmx = x[i];
-        if (y[i] < ymn) ymn = x[i];
-        if (y[i] > ymx) ymx = x[i];
      }
 
    xc /= n;
    yc /= n;
-
-   /* shift center to break angle degeneracy in case of a perfect quadrilateral */
-   xc += 0.1 * (xmx - xmn);
-   yc += 0.1 * (ymx - ymn);
 
    /* define angles so that the sort yields points ordered NE,NW,SW,SE */
    for (i = 0; i < n; i++)
@@ -1067,15 +1055,53 @@ static int polygon_sort_ccw (double *x, double *y, int n)
    return 0;
 }
 
+static int apply_parallax_adj (const Geoid_Data_Type *gdt, const ECEF_Vector sat,
+                               double *lon, double *lat, int n, double *shift)
+{
+   /* Convergence criterion on corrected height [km] */
+   double height_tol_km = 10.0e-3;
+   /* Maximum number of iterations to converge */
+   int maxiter = 50;
+   int i;
+
+   for (i = 0; i < n; i++)
+     {
+        double lat_tmp, lon_tmp;
+
+        if (shift)
+          {
+             shift[i] = 0.0;
+          }
+
+        if (invalid_lonlat (lon[i], lat[i]))
+          continue;
+
+        if (TEMPO_GEO_NO_ERR != parallaxAdj (lat[i], lon[i],
+                                             sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
+                                             &lat_tmp, &lon_tmp))
+          {
+             tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: parallaxAdj failed: lat=%f lon=%f",
+                        __func__, lat[i], lon[i]);
+             continue;
+          }
+
+        if (shift)
+          {
+             shift[i] = compute_shift (lat[i], lon[i], lat_tmp, lon_tmp);
+          }
+
+        lat[i] = lat_tmp;
+        lon[i] = lon_tmp;
+     }
+
+   return 0;
+}
+
 static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
                                                   const ECEF_Position_Type *satloc,
                                                   Geoloc_Type *geoloc)
 {
    unsigned int s, num_xtrack_corners;
-   /* Convergence criterion on corrected height [km] */
-   double height_tol_km = 10.0e-3;
-   /* Maximum number of iterations to converge */
-   int maxiter = 50;
 
    num_xtrack_corners = geoloc->num_xtrack * geoloc->num_corner;
 
@@ -1086,92 +1112,49 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
         double *lat_step = geoloc->lat + s * geoloc->num_xtrack;
         double *lon_step_cnr = geoloc->lon_cnr + s * num_xtrack_corners;
         double *lat_step_cnr = geoloc->lat_cnr + s * num_xtrack_corners;
-#ifdef OUTPUT_PARALLAX_SHIFT
-        double *shift_km_step = geoloc->shift_km + s * geoloc->num_xtrack;
-#endif
+        double *shift_km_step = NULL;
         unsigned int y, c;
 
         sat.theX = satloc->X[s];
         sat.theY = satloc->Y[s];
         sat.theZ = satloc->Z[s];
 
+#ifdef OUTPUT_PARALLAX_SHIFT
+        shift_km_step = geoloc->shift_km + s * geoloc->num_xtrack;
+#endif
+
         /* Adjust pixel centers */
-        for (y = 0; y < geoloc->num_xtrack; y++)
-          {
-             double lat_y, lon_y;
-
-#ifdef OUTPUT_PARALLAX_SHIFT
-             shift_km_step[y] = 0.0;
-#endif
-
-             /* input may include fill values */
-             if (invalid_lonlat (lon_step[y], lat_step[y]))
-               continue;
-
-             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_step[y], lon_step[y],
-                                                  sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
-                                                  &lat_y, &lon_y))
-               {
-                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: parallaxAdj failed: pixel center lat=%f lon=%f",
-                             __func__, lat_step[y], lon_step[y]);
-                  continue;
-               }
-
-#ifdef OUTPUT_PARALLAX_SHIFT
-             shift_km_step[y] = compute_shift (lat_step[y], lon_step[y], lat_y, lon_y);
-#endif
-
-             lat_step[y] = lat_y;
-             lon_step[y] = lon_y;
-          }
+        if (0 != apply_parallax_adj (gdt, sat, lon_step, lat_step, geoloc->num_xtrack, shift_km_step))
+          return -1;
 
         /* Adjust pixel corners */
-        for (c = 0; c < num_xtrack_corners; c++)
-          {
-             double lat_c, lon_c;
+        if (0 != apply_parallax_adj (gdt, sat, lon_step_cnr, lat_step_cnr, num_xtrack_corners, NULL))
+          return -1;
 
-             /* input may include fill values */
-             if (invalid_lonlat (lon_step_cnr[c], lat_step_cnr[c]))
-               continue;
-
-             if (TEMPO_GEO_NO_ERR != parallaxAdj (lat_step_cnr[c], lon_step_cnr[c],
-                                                  sat, &gdt->geoid_height, &gdt->dem, height_tol_km, maxiter,
-                                                  &lat_c, &lon_c))
-               {
-                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: parallaxAdj failed: pixel corner lat=%f lon=%f",
-                             __func__, lat_step_cnr[y], lon_step_cnr[y]);
-                  continue;
-               }
-
-             lat_step_cnr[c] = lat_c;
-             lon_step_cnr[c] = lon_c;
-          }
-
-        /* After parallax adjustment, some polygons may be non-convex.
+        /* After parallax adjustment, some pixel polygons may be non-convex.
          * When necessary, re-order the vertices to obtain a convex polygon.
          */
         for (y = 0; y < geoloc->num_xtrack; y++)
           {
              double *lat_cnr = lat_step_cnr + y * geoloc->num_corner;
              double *lon_cnr = lon_step_cnr + y * geoloc->num_corner;
-             int have_invalid_point;
+             int num_valid_points = 0;
 
-             have_invalid_point = 0;
              for (c = 0; c < geoloc->num_corner; c++)
                {
                   if (invalid_lonlat (lon_cnr[c], lat_cnr[c]))
-                    {
-                       have_invalid_point++;
-                       break;
-                    }
+                    break;
+                  num_valid_points++;
                }
-             if (have_invalid_point) continue;
 
-             if (0 == isconvex_polygon (lon_cnr, lat_cnr, geoloc->num_corner))
+             if (num_valid_points == geoloc->num_corner)
                {
-                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: non-convex polygon: mirror_step=%d xtrack=%d",
+                  if (0 == isconvex_polygon (lon_cnr, lat_cnr, geoloc->num_corner))
+                    {
+                       tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: non-convex polygon: mirror_step=%d xtrack=%d",
                              __func__, s, y);
-                  (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
+                       (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
+                    }
                }
           }
      }
