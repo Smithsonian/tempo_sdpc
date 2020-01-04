@@ -15,6 +15,7 @@
 #include "pixel.h"
 #include "regrid.h"
 
+#define BUFSIZE 1024
 static int _pDiagnostic_Output;
 
 typedef struct
@@ -282,14 +283,49 @@ free_and_return:
    return NULL;
 }
 
-static void start_diagnostic_output (const Source_Pixel_Vertices_Type *spv)
+static void start_diagnostic_output (const char *file)
 {
-   double *px, *py;
+   FILE *fp;
+   char buf[BUFSIZE];
+   const char *base;
+   double lon, lat;
+   int n;
+
+   /* Do nothing when not in diagnostic mode */
    if (_pDiagnostic_Output == 0) return;
-   px = spv->lon_bounds + 4 * (spv->num_pixels/2);
-   py = spv->lat_bounds + 4 * (spv->num_pixels/2);
+
+   /* Look in the current directory for a .p file matching this granule's basename */
+   if (NULL == (base = strrchr (file, '/')))
+     {
+        base = file;
+     }
+   else base++;
+
+   n = snprintf (buf, BUFSIZE, "%s.p", base);
+   if ((n < 0) || (n >= BUFSIZE))
+     {
+        fprintf (stderr, "%s: buffer size %d exceeded, file basename=%s\n", __func__, BUFSIZE, base);
+        return;
+     }
+   /* When the file does not exist, return silently.
+    * We may not want diagnostic output for this granule.*/
+   if (NULL == (fp = fopen (buf, "r")))
+     return;
+   /* Read (lon,lat) in degrees */
+   n = fscanf (fp, "%lf %lf", &lon, &lat);
+   fclose (fp);
+   if (n != 2)
+     {
+        fprintf (stderr, "%s: error reading diagnostic point from file: %s\n", __func__, buf);
+        return;
+     }
+
+   /* After the call (lon,lat) is really Albers (x,y) in [meters] */
+   if (0 != longlat_to_albers (&lon, &lat, 1))
+     return;
+
    __Pixel_diagnostic_output (1);
-   __Pixel_diagnostic_window (px[0], py[0], 50.0e3, 50.0e3);
+   __Pixel_diagnostic_window (lon, lat, 50.0e3, 50.0e3);
 }
 
 static void stop_diagnostic_output (void)
@@ -344,7 +380,7 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
 
         Pixel_regrid_grow_srcdims (r, spv->max_step, spv->max_xtrack);
 
-        start_diagnostic_output (spv);
+        start_diagnostic_output (files[i]);
         num_overlaps = Pixel_find_overlaps (r, src_area, src_lookup);
         stop_diagnostic_output ();
         if (num_overlaps < 0)
