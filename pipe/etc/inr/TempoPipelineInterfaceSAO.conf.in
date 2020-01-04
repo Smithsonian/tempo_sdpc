@@ -205,7 +205,7 @@ ECALimit=80
 # "LEFT_REF" and "RIGHT_REF" is used when we are testing the software in AutoCorrelation Mode
 mode=BINOCULAR
 # Number of threads to be used for parallel processing
-numThreads=1
+numThreads=4
 # Flag indicating whether optical flow in reference images are used to improve calculations
 # TRUE or FALSE
 useOpticalFlow=TRUE
