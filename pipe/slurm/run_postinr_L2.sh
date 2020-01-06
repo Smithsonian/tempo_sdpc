@@ -98,6 +98,11 @@ if ! test -f "$tarfile_path" ; then
   error_exit "*** Error: prep_L2.sh failed: $rad_basename"
 fi
 
+# Since the tar file exists, we're confident that the final L1b radiance file
+# has been archived, so we can now delete the L1a radiance file that was
+# provided as input to INR:
+/bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
+
 # If no level 2 products were requested, we're done
 if test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
   exit 0
