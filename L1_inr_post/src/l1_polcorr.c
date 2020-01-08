@@ -189,6 +189,60 @@ return_status:
    return status;
 }
 
+static int compute_mean_satellite_longitude (const char *rad_file, double *sat_lon)
+{
+   int ncid, grp;
+   TIO_Var_Info_Type info={0};
+   double *sat_x=NULL, *sat_y=NULL;
+   double avg_x, avg_y;
+   size_t i, ntimes;
+   int start, count, status = -1;
+
+   if (0 != TIO_open (rad_file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (0 != TIO_inq_grp (ncid, TEMPO_GRP_GEOMETRY, &grp))
+     goto return_error;
+
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_SAT_X, &info))
+     goto return_error;
+
+   ntimes = info.dimlens[0];
+
+   if (NULL == (sat_x = (double *)MALLOC (2 * ntimes * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_error;
+     }
+   sat_y = sat_x + ntimes;
+
+   start = 0;
+   count = ntimes;
+
+   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_X, &start, &count, NC_DOUBLE, sat_x))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_Y, &start, &count, NC_DOUBLE, sat_y)))
+     goto return_error;
+
+   avg_x = 0.0;
+   avg_y = 0.0;
+   for (i = 0; i < ntimes; i++)
+     {
+        avg_x += sat_x[i];
+        avg_y += sat_y[i];
+     }
+   avg_x /= ntimes;
+   avg_y /= ntimes;
+
+   *sat_lon = atan2 (avg_y, avg_x);
+
+   status = 0;
+return_error:
+   FREE(sat_x);
+   (void) TIO_close (ncid);
+
+   return status;
+}
+
 static int process_inputs (config_t *cfg, const char *rad_file, int task,
                            int step, int xtrack, int diag_output)
 {
@@ -196,6 +250,7 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
    const char *qu_file;
    const char *lps_file;
    config_setting_t *s;
+   double sat_lon;
    int status = -1;
 
    pt.rad_file = rad_file;
@@ -236,7 +291,10 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
         goto return_status;
      }
 
-   if (NULL == (pt.lps = lps_open (cfg)))
+   if (0 != compute_mean_satellite_longitude (rad_file, &sat_lon))
+     goto return_status;
+
+   if (NULL == (pt.lps = lps_open (cfg, sat_lon)))
      goto return_status;
 
    switch (task)

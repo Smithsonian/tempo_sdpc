@@ -171,8 +171,7 @@ static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_float (s, "sat_lon", &geom->sat_lon))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "tilt", &geom->tilt))
+   if ((CONFIG_TRUE != config_setting_lookup_float (s, "tilt", &geom->tilt))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "azi", &geom->azi)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -182,7 +181,6 @@ static int read_geom (config_t *cfg, Instr_Geom_Type *geom)
         return -1;
      }
 
-   geom->sat_lon *= DEGTORAD;
    geom->tilt *= DEGTORAD;
    geom->azi *= DEGTORAD;
 
@@ -880,7 +878,7 @@ void lps_close (Lps_Type *lps)
    free_lps (lps);
 }
 
-Lps_Type *lps_open (config_t *cfg)
+Lps_Type *lps_open (config_t *cfg, double sat_lon_radians)
 {
    Lps_Type *lps = NULL;
    wordexp_t we;
@@ -913,6 +911,8 @@ Lps_Type *lps_open (config_t *cfg)
         return NULL;
      }
    memset ((char *)lps, 0, sizeof *lps);
+
+   lps->geom.sat_lon = sat_lon_radians;
 
    if (0 != read_geom (cfg, &lps->geom))
      goto return_error;

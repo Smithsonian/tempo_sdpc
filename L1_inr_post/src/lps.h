@@ -63,13 +63,14 @@ lps_eval (Lps_Type *lps, int band_index, int xtrack,
           double *lmp_irp_angle);
 
 /** Initialize \a Lps_Type object
- * @param[in]  cfg   pointer to open \a config_t object
+ * @param[in]  cfg       pointer to open \a config_t object
+ * @param[in]  sat_lon   satellite longitude [radians]
  * @return pointer to initialized \a Lps_Type on success, NULL on error
  *
  * Data file names and control parameters are retrieved from the
  * configuration file, and an \a Lps_Type is initialized.
  */
-extern Lps_Type *lps_open (config_t *cfg);
+extern Lps_Type *lps_open (config_t *cfg, double sat_lon);
 
 /** Free resources associated with \a Lps_Type object
  * @param[in]  lps   pointer to \a Lps_Type object allocated by \a lps_open

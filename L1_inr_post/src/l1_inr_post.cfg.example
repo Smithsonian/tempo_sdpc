@@ -18,9 +18,6 @@ polcorr_tables: {
 
 polcorr_instr_geom: {
 
-# sat_lon = geostationary satellite longitude
-  sat_lon = -100.0;
-
 # tilt>0 [deg] is northward tilt of instrument boresight,
 #              about spacecraft roll axis
 # azi>0 [deg] is rotation, eastward from north (CW),

@@ -1138,7 +1138,7 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
           {
              double *lat_cnr = lat_step_cnr + y * geoloc->num_corner;
              double *lon_cnr = lon_step_cnr + y * geoloc->num_corner;
-             int num_valid_points = 0;
+             unsigned int num_valid_points = 0;
 
              for (c = 0; c < geoloc->num_corner; c++)
                {
