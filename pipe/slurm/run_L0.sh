@@ -153,14 +153,6 @@ case "${granule_basename}" in
   # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file
 
-  # We'll need the metadata file again for post-INR processing,
-  # so we'll optimistically put it in the L2 incoming cache
-  # (because that's a known path that's already available to all nodes).
-  metadata_file="${output_file}.met"
-  if test -f "$metadata_file" ; then
-     /bin/cp "$metadata_file" $l2_incoming_dir
-  fi
-
   rad_tmpfile=$inr_input_cache/.${output_file}
   /bin/cp $output_file $rad_tmpfile
   /bin/mv $rad_tmpfile $inr_input_cache/$output_file

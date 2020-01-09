@@ -281,6 +281,17 @@ perform_cleanup()
    done
 }
 
+get_metadata_file()
+{
+   granule_ident=$(cat granule_ident.csv | tr ',' '=')
+   eval "$granule_ident"
+
+   arch_type="$SDPC_ARCHIVE_DIR/L1/$processing_version/$product_type"
+   granule_arch_dir_path="${arch_type}/${sat_local_day_start}/${scan_num}/${granule_num}"
+
+   /bin/cp $granule_arch_dir_path/${rad_basename}.nc.met .
+}
+
 if ! test -f "$irr_file" ; then
   echo "ERROR:  irradiance file not found:  $irr_file"
   exit 1
@@ -288,15 +299,11 @@ fi
 
 get_tiepoint_file
 
-# The metadata file was placed in the L2 incoming directory
-# just before the radiance file was staged for INR. Here's
-# where we pick it up again for further variable expansion.
-metadata_file_path="${l2_incoming}/${rad_basename}.nc.met"
-if test -f "$metadata_file_path" ; then
-  /bin/mv $metadata_file_path .
-fi
-
 mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc
+
+# We'll be updating the metadata file, so retrieve the pre-INR version from the archive
+(get_metadata_file)
+
 run_inr_post ${rad_basename}.nc
 
 /bin/cp $irr_file ${irr_basename}.nc
